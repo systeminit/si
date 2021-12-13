@@ -4,6 +4,7 @@ export enum PanelType {
   Attribute = "attribute",
   Secret = "secret",
   Schematic = "schematic",
+  Empty = "empty",
 }
 
 export interface PanelMaximized {

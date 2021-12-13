@@ -12,6 +12,7 @@ import SchemaNew from "@/organisims/Schema/SchemaNew.vue";
 import SchemaView from "@/organisims/Schema/SchemaView.vue";
 import Application from "@/templates/Application.vue";
 import ApplicationList from "@/organisims/Application/ApplicationList.vue";
+import ApplicationView from "@/organisims/Application/ApplicationView.vue";
 import Editor from "@/organisims/Editor.vue";
 import _ from "lodash";
 
@@ -53,7 +54,7 @@ const routes: RouteRecordRaw[] = [
                 applicationId,
               };
             },
-            component: Editor,
+            component: ApplicationView,
           },
         ],
       },

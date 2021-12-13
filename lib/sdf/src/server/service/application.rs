@@ -10,6 +10,7 @@ use thiserror::Error;
 
 pub mod create_application;
 pub mod list_applications;
+pub mod get_application;
 
 #[derive(Debug, Error)]
 pub enum ApplicationError {
@@ -64,4 +65,9 @@ pub fn routes() -> Router {
             "/list_applications",
             get(list_applications::list_applications),
         )
+        .route(
+            "/get_application",
+            get(get_application::get_application),
+        )
+
 }

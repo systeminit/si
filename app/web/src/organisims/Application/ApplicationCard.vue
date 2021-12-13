@@ -50,7 +50,7 @@ import { Component } from "@/api/sdf/dal/component";
 import VueFeather from "vue-feather";
 import ApplicationActivitySummary from "./Summary/ApplicationActivitySummary.vue";
 import ApplicationServicesSummary from "./Summary/ApplicationServicesSummary.vue";
-import ApplicationComputingResourcesSummary from "@/organisims/Application/Summary/ApplicationComputingResourcesSummary.vue";
+import ApplicationComputingResourcesSummary from "@/organisims/Application/ApplicationComputingResourcesSummary.vue";
 import ApplicationProviderSummary from "@/organisims/Application/Summary/ApplicationProviderSummary.vue";
 import ApplicationChangesSummary from "@/organisims/Application/Summary/ApplicationChangesSummary.vue";
 

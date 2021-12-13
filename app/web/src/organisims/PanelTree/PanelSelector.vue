@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-row w-full h-full">
     <component
-      :is="PanelEmpty"
+      :is="whichComponent"
       :is-visible="isVisible"
       :panel-index="panelIndex"
       :panel-ref="panelRef"
@@ -19,9 +19,10 @@
 </template>
 
 <script setup lang="ts">
-import { PropType, ref } from "vue";
+import { computed, PropType, ref } from "vue";
 import { PanelMaximized, PanelType } from "./panel_types";
 import PanelEmpty from "@/organisims/PanelEmpty.vue";
+import PanelSchematic from "@/organisims/PanelSchematic.vue";
 
 const props = defineProps({
   panelIndex: { type: Number, required: true },
@@ -39,8 +40,16 @@ const emit = defineEmits([
   "panel-maximize-full",
   "panel-minimize-full",
 ]);
-
 const panelType = ref<PanelType>(props.initialPanelType);
+
+const whichComponent = computed<any>(() => {
+  if (panelType.value == "schematic") {
+    return PanelSchematic;
+  } else {
+    return PanelEmpty;
+  }
+});
+
 const maximizedFull = ref<boolean>(false);
 const maximizedContainer = ref<boolean>(false);
 const isVisible = ref<boolean>(true);
