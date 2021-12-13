@@ -75,6 +75,7 @@ use std::{cmp, fmt, io};
 
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use tokio_util::codec::{Decoder, Encoder};
+use tracing::trace;
 
 /// A codec for frames delimited by a newline character.
 ///
@@ -165,6 +166,13 @@ impl Decoder for BytesLinesCodec {
                     let mut line = src.split_to(newline_index + 1);
                     let line = line.split_to(line.len() - 1);
                     let line = without_carriage_return(line);
+                    // Tracing here is assuming a UTF8-based string as the contents of the frame.
+                    // This doesn't have to be true, and in that case when trace level logging is
+                    // active, we would see a UTF8 string representation of this byte buffer.
+                    trace!(
+                        line = String::from_utf8_lossy(line.as_ref()).as_ref(),
+                        "framed line"
+                    );
                     return Ok(Some(line));
                 }
                 (false, None) if src.len() > self.max_length => {

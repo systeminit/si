@@ -9,24 +9,24 @@ use thiserror::Error;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_tungstenite::WebSocketStream;
 
-use crate::resolver_function::{
-    ResolverFunctionExecutingMessage, ResolverFunctionMessage, ResolverFunctionRequest,
-    ResolverFunctionResult,
-};
-
 pub use tokio_tungstenite::tungstenite::{
     protocol::frame::CloseFrame as WebSocketCloseFrame, Message as WebSocketMessage,
 };
 
+use crate::qualification_check::{
+    QualificationCheckExecutingMessage, QualificationCheckMessage, QualificationCheckRequest,
+    QualificationCheckResult,
+};
+
 pub fn execute<T>(
     stream: WebSocketStream<T>,
-    request: ResolverFunctionRequest,
-) -> ResolverFunctionExecution<T> {
-    ResolverFunctionExecution { stream, request }
+    request: QualificationCheckRequest,
+) -> QualificationCheckExecution<T> {
+    QualificationCheckExecution { stream, request }
 }
 
 #[derive(Debug, Error)]
-pub enum ResolverFunctionExecutionError {
+pub enum QualificationCheckExecutionError {
     #[error("closing execution stream without a result")]
     ClosingWithoutResult,
     #[error("finish message received before result message was received")]
@@ -37,8 +37,8 @@ pub enum ResolverFunctionExecutionError {
     JSONSerialize(#[source] serde_json::Error),
     #[error("unexpected websocket message after finish was sent: {0}")]
     MessageAfterFinish(WebSocketMessage),
-    #[error("unexpected resolver function message before start was sent: {0:?}")]
-    MessageBeforeStart(ResolverFunctionMessage),
+    #[error("unexpected qualification check message before start was sent: {0:?}")]
+    MessageBeforeStart(QualificationCheckMessage),
     #[error("unexpected websocket message type: {0}")]
     UnexpectedMessageType(WebSocketMessage),
     #[error("websocket stream is closed, but finish was not sent")]
@@ -51,58 +51,58 @@ pub enum ResolverFunctionExecutionError {
     WSSendIO(#[source] tokio_tungstenite::tungstenite::Error),
 }
 
-type Result<T> = std::result::Result<T, ResolverFunctionExecutionError>;
+type Result<T> = std::result::Result<T, QualificationCheckExecutionError>;
 
 #[derive(Debug)]
-pub struct ResolverFunctionExecution<T> {
+pub struct QualificationCheckExecution<T> {
     stream: WebSocketStream<T>,
-    request: ResolverFunctionRequest,
+    request: QualificationCheckRequest,
 }
 
-impl<T> ResolverFunctionExecution<T>
+impl<T> QualificationCheckExecution<T>
 where
     T: AsyncRead + AsyncWrite + Connection + Unpin + Send + 'static,
 {
-    pub async fn start(mut self) -> Result<ResolverFunctionExecutionStarted<T>> {
+    pub async fn start(mut self) -> Result<QualificationCheckExecutionStarted<T>> {
         match self.stream.next().await {
             Some(Ok(WebSocketMessage::Text(json_str))) => {
-                let msg = ResolverFunctionMessage::deserialize_from_str(&json_str)
-                    .map_err(ResolverFunctionExecutionError::JSONDeserialize)?;
+                let msg = QualificationCheckMessage::deserialize_from_str(&json_str)
+                    .map_err(QualificationCheckExecutionError::JSONDeserialize)?;
                 match msg {
-                    ResolverFunctionMessage::Start => {
+                    QualificationCheckMessage::Start => {
                         // received correct message, so proceed
                     }
                     unexpected => {
-                        return Err(ResolverFunctionExecutionError::MessageBeforeStart(
+                        return Err(QualificationCheckExecutionError::MessageBeforeStart(
                             unexpected,
                         ))
                     }
                 }
             }
             Some(Ok(unexpected)) => {
-                return Err(ResolverFunctionExecutionError::UnexpectedMessageType(
+                return Err(QualificationCheckExecutionError::UnexpectedMessageType(
                     unexpected,
                 ))
             }
-            Some(Err(err)) => return Err(ResolverFunctionExecutionError::WSReadIO(err)),
-            None => return Err(ResolverFunctionExecutionError::WSClosedBeforeStart),
+            Some(Err(err)) => return Err(QualificationCheckExecutionError::WSReadIO(err)),
+            None => return Err(QualificationCheckExecutionError::WSClosedBeforeStart),
         }
 
         let msg = self
             .request
             .serialize_to_string()
-            .map_err(ResolverFunctionExecutionError::JSONSerialize)?;
+            .map_err(QualificationCheckExecutionError::JSONSerialize)?;
         self.stream
             .send(WebSocketMessage::Text(msg))
             .await
-            .map_err(ResolverFunctionExecutionError::WSSendIO)?;
+            .map_err(QualificationCheckExecutionError::WSSendIO)?;
 
         Ok(self.into())
     }
 }
 
-impl<T> From<ResolverFunctionExecution<T>> for ResolverFunctionExecutionStarted<T> {
-    fn from(value: ResolverFunctionExecution<T>) -> Self {
+impl<T> From<QualificationCheckExecution<T>> for QualificationCheckExecutionStarted<T> {
+    fn from(value: QualificationCheckExecution<T>) -> Self {
         Self {
             stream: value.stream,
             result: None,
@@ -111,83 +111,85 @@ impl<T> From<ResolverFunctionExecution<T>> for ResolverFunctionExecutionStarted<
 }
 
 #[derive(Debug)]
-pub struct ResolverFunctionExecutionStarted<T> {
+pub struct QualificationCheckExecutionStarted<T> {
     stream: WebSocketStream<T>,
-    result: Option<ResolverFunctionResult>,
+    result: Option<QualificationCheckResult>,
 }
 
-impl<T> ResolverFunctionExecutionStarted<T>
+impl<T> QualificationCheckExecutionStarted<T>
 where
     T: AsyncRead + AsyncWrite + Connection + Unpin + Send + 'static,
 {
-    pub async fn finish(self) -> Result<ResolverFunctionResult> {
-        ResolverFunctionExecutionClosing::try_from(self)?
+    pub async fn finish(self) -> Result<QualificationCheckResult> {
+        QualificationCheckExecutionClosing::try_from(self)?
             .finish()
             .await
     }
 }
 
-impl<T> Stream for ResolverFunctionExecutionStarted<T>
+impl<T> Stream for QualificationCheckExecutionStarted<T>
 where
     T: AsyncRead + AsyncWrite + Connection + Unpin + Send + 'static,
 {
-    type Item = Result<ResolverFunctionExecutingMessage>;
+    type Item = Result<QualificationCheckExecutingMessage>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         match Pin::new(&mut self.stream.next()).poll(cx) {
             // We successfully got a websocket text message
             Poll::Ready(Some(Ok(WebSocketMessage::Text(json_str)))) => {
-                let msg = ResolverFunctionMessage::deserialize_from_str(&json_str)
-                    .map_err(ResolverFunctionExecutionError::JSONDeserialize)?;
+                let msg = QualificationCheckMessage::deserialize_from_str(&json_str)
+                    .map_err(QualificationCheckExecutionError::JSONDeserialize)?;
                 match msg {
                     // We got a heartbeat message, pass it on
-                    ResolverFunctionMessage::Heartbeat => {
-                        Poll::Ready(Some(Ok(ResolverFunctionExecutingMessage::Heartbeat)))
+                    QualificationCheckMessage::Heartbeat => {
+                        Poll::Ready(Some(Ok(QualificationCheckExecutingMessage::Heartbeat)))
                     }
                     // We got an output message, pass it on
-                    ResolverFunctionMessage::OutputStream(output_stream) => Poll::Ready(Some(Ok(
-                        ResolverFunctionExecutingMessage::OutputStream(output_stream),
-                    ))),
+                    QualificationCheckMessage::OutputStream(output_stream) => {
+                        Poll::Ready(Some(Ok(QualificationCheckExecutingMessage::OutputStream(
+                            output_stream,
+                        ))))
+                    }
                     // We got a funtion result message, save it and continue
-                    ResolverFunctionMessage::Result(function_result) => {
+                    QualificationCheckMessage::Result(function_result) => {
                         self.result = Some(function_result);
                         // TODO(fnichol): what is the right return here??
                         // (future fnichol): hey buddy! pretty sure you can:
                         // `cx.waker().wake_by_ref()` before returning Poll::Ready which immediatly
                         // re-wakes this stream to maybe pop another item off. cool huh? I think
                         // you're learning and that's great.
-                        Poll::Ready(Some(Ok(ResolverFunctionExecutingMessage::Heartbeat)))
+                        Poll::Ready(Some(Ok(QualificationCheckExecutingMessage::Heartbeat)))
                         //Poll::Pending
                     }
                     // We got a finish message
-                    ResolverFunctionMessage::Finish => {
+                    QualificationCheckMessage::Finish => {
                         if self.result.is_some() {
                             // If we have saved the result, then close this stream out
                             Poll::Ready(None)
                         } else {
                             // Otherwise we got a finish before seeing the result
                             Poll::Ready(Some(Err(
-                                ResolverFunctionExecutionError::FinishBeforeResult,
+                                QualificationCheckExecutionError::FinishBeforeResult,
                             )))
                         }
                     }
                     // We got an unexpected message
                     unexpected => Poll::Ready(Some(Err(
-                        ResolverFunctionExecutionError::MessageBeforeStart(unexpected),
+                        QualificationCheckExecutionError::MessageBeforeStart(unexpected),
                     ))),
                 }
             }
             // We successfully got an unexpected websocket message type that was not text
             Poll::Ready(Some(Ok(unexpected))) => Poll::Ready(Some(Err(
-                ResolverFunctionExecutionError::UnexpectedMessageType(unexpected),
+                QualificationCheckExecutionError::UnexpectedMessageType(unexpected),
             ))),
             // We failed to get the next websocket message
             Poll::Ready(Some(Err(err))) => {
-                Poll::Ready(Some(Err(ResolverFunctionExecutionError::WSReadIO(err))))
+                Poll::Ready(Some(Err(QualificationCheckExecutionError::WSReadIO(err))))
             }
             // We see the end of the websocket stream, but finish was never sent
             Poll::Ready(None) => Poll::Ready(Some(Err(
-                ResolverFunctionExecutionError::WSClosedBeforeFinish,
+                QualificationCheckExecutionError::WSClosedBeforeFinish,
             ))),
             // Not ready, so...not ready!
             Poll::Pending => Poll::Pending,
@@ -196,15 +198,15 @@ where
 }
 
 #[derive(Debug)]
-pub struct ResolverFunctionExecutionClosing<T> {
+pub struct QualificationCheckExecutionClosing<T> {
     stream: WebSocketStream<T>,
-    result: ResolverFunctionResult,
+    result: QualificationCheckResult,
 }
 
-impl<T> TryFrom<ResolverFunctionExecutionStarted<T>> for ResolverFunctionExecutionClosing<T> {
-    type Error = ResolverFunctionExecutionError;
+impl<T> TryFrom<QualificationCheckExecutionStarted<T>> for QualificationCheckExecutionClosing<T> {
+    type Error = QualificationCheckExecutionError;
 
-    fn try_from(value: ResolverFunctionExecutionStarted<T>) -> Result<Self> {
+    fn try_from(value: QualificationCheckExecutionStarted<T>) -> Result<Self> {
         match value.result {
             Some(result) => Ok(Self {
                 stream: value.stream,
@@ -215,17 +217,17 @@ impl<T> TryFrom<ResolverFunctionExecutionStarted<T>> for ResolverFunctionExecuti
     }
 }
 
-impl<T> ResolverFunctionExecutionClosing<T>
+impl<T> QualificationCheckExecutionClosing<T>
 where
     T: AsyncRead + AsyncWrite + Connection + Unpin + Send + 'static,
 {
-    async fn finish(mut self) -> Result<ResolverFunctionResult> {
+    async fn finish(mut self) -> Result<QualificationCheckResult> {
         match self.stream.next().await {
             Some(Ok(WebSocketMessage::Close(_))) | None => Ok(self.result),
-            Some(Ok(unexpected)) => Err(ResolverFunctionExecutionError::MessageAfterFinish(
+            Some(Ok(unexpected)) => Err(QualificationCheckExecutionError::MessageAfterFinish(
                 unexpected,
             )),
-            Some(Err(err)) => Err(ResolverFunctionExecutionError::WSReadIO(err)),
+            Some(Err(err)) => Err(QualificationCheckExecutionError::WSReadIO(err)),
         }
     }
 }

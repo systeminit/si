@@ -9,6 +9,7 @@ mod jwt_key;
 mod key_pair;
 mod node;
 mod organization;
+mod qualification_check;
 mod schema;
 mod socket;
 mod standard_model;

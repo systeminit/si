@@ -64,6 +64,14 @@ pub(crate) struct Args {
     #[clap(long, group = "resolver")]
     pub(crate) disable_resolver: bool,
 
+    /// Enables qualification endpoint.
+    #[clap(long, group = "qualification")]
+    pub(crate) enable_qualification: bool,
+
+    /// Disables qualification endpoint.
+    #[clap(long, group = "qualification")]
+    pub(crate) disable_qualification: bool,
+
     /// Path to the lang server program.
     #[clap(long, env = "SI_LANG_SERVER", setting = ArgSettings::HideEnvValues)]
     pub(crate) lang_server: PathBuf,
@@ -106,6 +114,12 @@ impl TryFrom<Args> for Config {
             builder.enable_resolver(true);
         } else if args.disable_resolver {
             builder.enable_resolver(false);
+        }
+
+        if args.enable_qualification {
+            builder.enable_qualification(true);
+        } else if args.disable_qualification {
+            builder.enable_qualification(false);
         }
 
         if args.lang_server.is_file() {

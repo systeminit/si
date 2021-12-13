@@ -8,7 +8,7 @@ use axum::{handler::get, routing::BoxRoute, AddExtensionLayer, Router};
 use telemetry::prelude::*;
 use tokio::sync::mpsc;
 
-use super::{handlers, server::ShutdownSource, tower::LimitRequestLayer, Config};
+use super::{extract::RequestLimiter, handlers, server::ShutdownSource, Config};
 use crate::server::watch;
 
 pub struct State {
@@ -102,23 +102,19 @@ fn execute_routes(config: &Config, shutdown_tx: mpsc::Sender<ShutdownSource>) ->
             .or(Router::new().route("/resolver", get(handlers::ws_execute_resolver)))
             .boxed();
     }
+    if config.enable_qualification() {
+        debug!("enabling qualification endpoint");
+        router = router
+            .or(Router::new().route("/qualification", get(handlers::ws_execute_qualification)))
+            .boxed();
+    }
+
+    let limit_requests = Arc::new(config.limit_requests().map(|i| i.into()));
 
     router
-        .layer(LimitRequestLayer::new(config.limit_requests(), shutdown_tx))
-        // TODO(fnichol): we are going to need this, mark my words...
-        // .handle_error(convert_tower_error_into_reponse)
+        .layer(AddExtensionLayer::new(RequestLimiter::new(
+            limit_requests,
+            shutdown_tx,
+        )))
         .boxed()
 }
-
-// TODO(fnichol): we are going to need this, mark my words...
-//
-//
-// fn convert_tower_error_into_reponse(err: BoxError) -> Result<Response<Full<Bytes>>, Infallible> {
-//     // TODO(fnichol): more to do here, see:
-//     // https://github.com/bwalter/rust-axum-scylla/blob/main/src/routing/mod.rs
-//     Ok((
-//         StatusCode::INTERNAL_SERVER_ERROR,
-//         Json(json!({ "error": err.to_string() })),
-//     )
-//         .into_response())
-// }

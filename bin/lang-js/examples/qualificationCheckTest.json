@@ -1,0 +1,9 @@
+{
+  "executionId": "5678",
+  "handler": "nameIsGood",
+  "component": {
+    "name": "jane",
+    "properties": {}
+  },
+  "codeBase64": "Ly8gRW5jb2RlIHRoaXMgaW50byBCYXNlNjQgd2l0aDoKLy8KLy8gYGBgc2gKLy8gY2F0IGV4YW1wbGVzL3F1YWxpZmljYXRpb25DaGVja1Rlc3RDb2RlLmpzIHwgYmFzZTY0IHwgdHIgLWQgJ1xuJwovLyBgYGAKCmZ1bmN0aW9uIG5hbWVJc0dvb2QoY29tcG9uZW50KSB7CiAgLy8gRm9yIG91ciBwdXJwb3NlcywgYSAiZ29vZCIgbmFtZSBpcyBvbmUgdGhhdCBpcyBhbGwgbG93ZXJjYXNlCiAgaWYgKGNvbXBvbmVudFsibmFtZSJdLnRvTG93ZXJDYXNlKCkgPT0gY29tcG9uZW50WyJuYW1lIl0pIHsKICAgIHJldHVybiB7IHF1YWxpZmllZDogdHJ1ZSB9OwogIH0gZWxzZSB7CiAgICByZXR1cm4gewogICAgICBxdWFsaWZpZWQ6IGZhbHNlLAogICAgICBvdXRwdXQ6ICJuYW1lIG11c3QgYmUgYWxsIGxvd2VyY2FzZSIsCiAgICB9OwogIH0KfQo="
+}

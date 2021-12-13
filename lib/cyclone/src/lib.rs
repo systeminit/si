@@ -14,6 +14,7 @@
 pub mod canonical_command;
 mod liveness;
 pub mod process;
+pub mod qualification_check;
 mod readiness;
 pub mod resolver_function;
 

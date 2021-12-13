@@ -34,7 +34,7 @@ async fn main() -> Result<(), Box<(dyn std::error::Error + 'static)>> {
 
     let spec = LocalUdsInstance::spec()
         .try_cyclone_cmd_path("../../target/debug/cyclone")?
-        .try_lang_server_cmd_path("../bin/lang-js/target/lang-js")?
+        .try_lang_server_cmd_path("../../bin/lang-js/target/lang-js")?
         .ping()
         .build()?;
     let manager = Manager::new(spec);

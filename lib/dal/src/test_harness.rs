@@ -3,8 +3,8 @@ use crate::jwt_key::JwtEncrypt;
 use crate::node::NodeKind;
 use crate::{
     schema, socket, BillingAccount, ChangeSet, Component, EditSession, Group, HistoryActor,
-    KeyPair, Node, Schema, SchemaKind, StandardModel, Tenancy, User, Visibility, NO_CHANGE_SET_PK,
-    NO_EDIT_SESSION_PK,
+    KeyPair, Node, QualificationCheck, Schema, SchemaKind, StandardModel, Tenancy, User,
+    Visibility, NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK,
 };
 use anyhow::Result;
 use async_trait::async_trait;
@@ -432,4 +432,17 @@ pub async fn create_socket(
     )
     .await
     .expect("cannot create socket")
+}
+
+pub async fn create_qualification_check(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    tenancy: &Tenancy,
+    visibility: &Visibility,
+    history_actor: &HistoryActor,
+) -> QualificationCheck {
+    let name = generate_fake_name();
+    QualificationCheck::new(txn, nats, tenancy, visibility, history_actor, name)
+        .await
+        .expect("cannot create qualification check")
 }

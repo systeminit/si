@@ -12,7 +12,6 @@ default = []
 
 # The client implementation for a cyclone server.
 client = [
-  "async-trait",
   "futures-lite",
   "http",
   "hyperlocal",
@@ -23,6 +22,7 @@ client = [
 server = [
   "axum",
   "bytes-lines-codec",
+  "chrono",
   "derive_builder",
   "pin-project-lite",
   "tokio-serde",
@@ -33,6 +33,7 @@ server = [
 
 [dependencies]
 # server and client
+async-trait = { version = "0.1.51" }
 futures = { version = "0.3.17" }
 hyper = { version = "0.14", features = ["client", "http1", "runtime", "server"] }
 nix = { version = "0.23.0" }
@@ -44,7 +45,6 @@ tokio = { version = "1.12.0", features = ["full"] }
 uuid = { version = "0.8.2", features = ["serde", "v4"] }
 
 # client only
-async-trait = { version = "0.1.51", optional = true }
 futures-lite = { version = "1.12.0", optional = true }
 http = { version = "0.2.5", optional = true }
 hyperlocal = { version = "0.8.0", default-features = false, features = ["client"], optional = true }
@@ -53,6 +53,7 @@ tokio-tungstenite = { version = "0.15.0", optional = true }
 # server only
 axum = { version = "0.2.5", features = ["ws"], optional = true }
 bytes-lines-codec = { path = "../bytes-lines-codec", optional = true }
+chrono = { version = "0.4.19", optional = true }
 derive_builder = { version = "0.10.2", optional = true }
 pin-project-lite = { version = "0.2.7", optional = true }
 tokio-serde = { version = "0.8.0", features = ["json"], optional = true }
@@ -61,6 +62,7 @@ tower = { version = "0.4.8", optional = true }
 tower-http = { version = "0.1", features = ["trace"], optional = true }
 
 [dev-dependencies]
+base64 = "0.13.0"
 tempfile = { version = "3.2.0" }
 test-env-log = { version = "0.2.7", default-features = false, features = ["trace"] }
 tracing = { version = "0.1" }
