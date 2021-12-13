@@ -374,7 +374,7 @@ impl<'a> ser::SerializeStruct for &'a mut Serializer {
         T: Serialize,
     {
         if !self.key.is_empty() {
-            self.key.push_str(".");
+            self.key.push('.');
         }
         self.key.push_str(key);
         value.serialize(&mut **self)?;
@@ -419,7 +419,7 @@ struct MapKeySerializer<'a> {
 impl<'a> MapKeySerializer<'a> {
     fn push_key(&mut self, key: &str) {
         if !self.ser.key.is_empty() {
-            self.ser.key.push_str(".");
+            self.ser.key.push('.');
         }
         self.ser.key.push_str(key);
     }

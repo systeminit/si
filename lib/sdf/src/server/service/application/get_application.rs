@@ -1,5 +1,5 @@
 use axum::{extract::Query, Json};
-use dal::{StandardModel, Visibility, WorkspaceId, Component, ComponentId};
+use dal::{Component, ComponentId, StandardModel, Visibility, WorkspaceId};
 use serde::{Deserialize, Serialize};
 
 use super::ApplicationResult;
@@ -23,6 +23,7 @@ pub async fn get_application(
     QueryWorkspaceTenancy(tenancy): QueryWorkspaceTenancy,
 ) -> ApplicationResult<Json<GetApplicationResponse>> {
     let txn = txn.start().await?;
-    let component = Component::get_by_id(&txn, &tenancy, &request.visibility, &request.application_id).await?;
+    let component =
+        Component::get_by_id(&txn, &tenancy, &request.visibility, &request.application_id).await?;
     Ok(Json(component))
 }

@@ -399,16 +399,9 @@ pub async fn create_node(
     history_actor: &HistoryActor,
     node_kind: &NodeKind,
 ) -> Node {
-    let node = Node::new(
-        &txn,
-        &nats,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        node_kind,
-    )
-    .await
-    .expect("cannot create node");
+    let node = Node::new(txn, nats, tenancy, visibility, history_actor, node_kind)
+        .await
+        .expect("cannot create node");
     node
 }
 

@@ -189,7 +189,7 @@ async fn find_by_name() {
 #[tokio::test]
 async fn get_defaults() {
     test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats);
-    let (nba, _auth_token) = billing_account_signup(&txn, &nats, &secret_key).await;
+    let (nba, _auth_token) = billing_account_signup(&txn, &nats, secret_key).await;
     let visibility = create_visibility_head();
     let tenancy = Tenancy::new_billing_account(vec![*nba.billing_account.id()]);
     let defaults =

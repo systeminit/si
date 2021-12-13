@@ -17,7 +17,9 @@ use super::{ConnectionMetadata, Error, Message, Result};
 pub struct Subscription {
     inner: nats::Subscription,
     next: Option<NextMessage>,
+    #[allow(dead_code)]
     shutdown_tx: crossbeam_channel::Sender<()>,
+    #[allow(dead_code)]
     shutdown_rx: crossbeam_channel::Receiver<()>,
     metadata: Arc<SubscriptionMessageMetadata>,
     sub_span: Span,

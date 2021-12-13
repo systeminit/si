@@ -25,6 +25,7 @@ mod limit_requests {
     }
 
     impl LimitRequestLayer {
+        #[allow(dead_code)]
         pub fn new(
             remaining: Arc<Option<AtomicU32>>,
             shutdown_tx: mpsc::Sender<ShutdownSource>,
