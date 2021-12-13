@@ -10,14 +10,26 @@ use crate::{
 
 #[derive(Error, Debug)]
 pub enum EditFieldError {
+    #[error("invalid edit field name: {0}")]
+    InvalidField(String),
+    #[error("value is not expected type: {0}")]
+    InvalidValueType(&'static str),
     #[error("label list error: {0}")]
     LabelList(#[from] LabelListError),
+    #[error("value for edit field not provided, cannot set value")]
+    MissingValue,
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("missing head value in visibility diff calculation")]
     VisibilityDiffMissingHeadValue,
     #[error("missing change set value in visibility diff calculation")]
     VisibilityDiffMissingChangeSetValue,
+}
+
+impl EditFieldError {
+    pub fn invalid_field(field_name: impl Into<String>) -> Self {
+        Self::InvalidField(field_name.into())
+    }
 }
 
 pub type EditFieldResult<T> = Result<T, EditFieldError>;

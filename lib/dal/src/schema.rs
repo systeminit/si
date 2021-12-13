@@ -427,24 +427,25 @@ impl EditFieldAble for Schema {
         match edit_field_id {
             "name" => match value {
                 Some(json_value) => {
-                    let value = json_value
-                        .as_str()
-                        .expect("value must be a string, and it aint");
+                    let value = json_value.as_str().map(|s| s.to_string()).ok_or(
+                        Self::Error::EditField(EditFieldError::InvalidValueType("string")),
+                    )?;
                     object
                         .set_name(txn, nats, visibility, history_actor, value)
                         .await?;
                 }
-                None => panic!("cannot set the value"),
+                None => return Err(EditFieldError::MissingValue.into()),
             },
             "kind" => match value {
                 Some(json_value) => {
-                    let value: SchemaKind = serde_json::from_value(json_value)
-                        .expect("value must be a string, and it aint");
+                    let value: SchemaKind = serde_json::from_value(json_value).map_err(|_| {
+                        Self::Error::EditField(EditFieldError::InvalidValueType("string"))
+                    })?;
                     object
                         .set_kind(txn, nats, visibility, history_actor, value)
                         .await?;
                 }
-                None => panic!("cannot set the value"),
+                None => return Err(EditFieldError::MissingValue.into()),
             },
             "variants.schemaVariants" => {
                 let variant = SchemaVariant::new(
@@ -467,7 +468,7 @@ impl EditFieldAble for Schema {
                     .set_schema(txn, nats, visibility, history_actor, object.id())
                     .await?;
             }
-            invalid => panic!("TODO: invalid field name: {}", invalid),
+            invalid => return Err(EditFieldError::invalid_field(invalid).into()),
         }
         Ok(())
     }
