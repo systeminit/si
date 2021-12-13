@@ -1,0 +1,18 @@
+name: CI
+on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Git checkout
+      uses: actions/checkout@v2
+    - name: Install dependencies
+      run: sudo apt-get install -y lld build-essential cmake clang openssl libev-dev libevent-dev libssl-dev pkg-config
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+        override: true
+    - name: Execute CI target
+      run: make ci
