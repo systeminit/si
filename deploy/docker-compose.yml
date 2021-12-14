@@ -41,6 +41,6 @@ services:
       - "5432:5432"
 
   nats:
-    image: "nats:2.3.4"
+    image: "systeminit/nats:stable"
     ports:
       - "4222:4222"
