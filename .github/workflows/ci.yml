@@ -1,7 +1,15 @@
 name: CI
-on: push
+on:
+  push:
+    paths:
+        - ".github/workflows/ci.yml"
+        - ".cargo/**"
+        - "Cargo.*"
+        - "**/*.rs"
+        - "rust-toolchain"
+        - "rustfmt.toml"
 jobs:
-  test:
+  ci-rust:
     runs-on: ubuntu-latest
     steps:
     - name: Git checkout
