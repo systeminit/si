@@ -1,18 +1,7 @@
-include ../build/typescript.mk
-include ../build/image.mk
+include ../../component/mk/base.mk
+include ../../component/mk/typescript.mk
+include ../../component/mk/image.mk
 
-COMPONENT:=si-webapp
-CONTAINER_NAME := web
 .DEFAULT_GOAL := build
-
-build: node_modules
-	@echo "--- [$(shell basename ${CURDIR})] $@"
-	env NODE_ENV=production npm run build
-
-lint: node_modules
-	@echo "--- [$(shell basename ${CURDIR})] $@"
-	npm run eslint
-
-run: node_modules
-	@echo "--- [$(shell basename ${CURDIR})] $@"
-	npm run lint
+CONTAINER_NAME := web
+IMG := systeminit/web
