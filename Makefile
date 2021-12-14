@@ -40,6 +40,7 @@ COMPONENTS = \
 RELEASEABLE_COMPONENTS = \
 	si-veritech \
 	sdf \
+	nats \
 	si-web-app
 RUNNABLE_COMPONENTS = \
 	components/si-veritech \
@@ -90,6 +91,10 @@ $(IMAGEABLE):
 
 $(RELEASEABLE):
 	cd bin/$(patsubst release-%,%,$@) && $(MAKE) release
+
+release-nats:
+	cd component/nats && $(MAKE) release
+
 # TODO(fnichol): rename `components/si-web-app` -> `components/si-web`
 release-si-web: release-si-web-app
 

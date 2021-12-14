@@ -6,8 +6,8 @@ main() {
   if [ -n "${TRACE:-}" ]; then set -xv; fi
 
   local version img name
-  version="${VERSION:-2.3.4}"
-  img="${IMG:-nats}"
+  version="${VERSION:-stable}"
+  img="${IMG:-systeminit/nats}"
   name="${CONTAINER_NAME:-nats}"
 
   if [ -n "$(docker container ls --filter "name=^$name" --filter "status=running" --quiet)" ]; then
