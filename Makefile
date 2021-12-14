@@ -39,11 +39,11 @@ COMPONENTS = \
 	components/si-sdf
 RELEASEABLE_COMPONENTS = \
 	si-veritech \
-	si-sdf \
+	sdf \
 	si-web-app
 RUNNABLE_COMPONENTS = \
 	components/si-veritech \
-	components/si-sdf \
+	bin/sdf \
 	components/si-web-app
 BUILDABLE = $(patsubst %,build//%,$(COMPONENTS))
 TESTABLE = $(patsubst %,test//%,$(COMPONENTS))
@@ -89,7 +89,7 @@ $(IMAGEABLE):
 	cd $(patsubst image//%,%,$@) && $(MAKE) image
 
 $(RELEASEABLE):
-	cd components/$(patsubst release-%,%,$@) && $(MAKE) release
+	cd bin/$(patsubst release-%,%,$@) && $(MAKE) release
 # TODO(fnichol): rename `components/si-web-app` -> `components/si-web`
 release-si-web: release-si-web-app
 

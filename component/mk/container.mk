@@ -1,19 +1,19 @@
-run-container:
+run-container: ## Runs the component in a container (uses ./script/run-container.sh)
 	@echo "--- [$(shell basename ${CURDIR})] $@"
 	./script/run-container.sh
 .PHONY: run-container
 
-stop-container:
+stop-container: ## Stops a running container for the component
 	@echo "--- $@"
 	docker container stop $(CONTAINER_NAME)
 .PHONY: stop
 
-tail-container:
+tail-container: ## Tails the logs of the container for the component
 	@echo "--- $@"
 	docker container logs -f $(CONTAINER_NAME)
 .PHONY: tail
 
-clean-container:
+clean-container: ### Stops and removes the container for the component
 	@if [ -n "$$(docker container ls --filter "name=^$(CONTAINER_NAME)" \
 		--filter "status=running" --quiet)" ]; \
 	then \
