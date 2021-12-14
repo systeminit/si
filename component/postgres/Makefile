@@ -1,6 +1,7 @@
-include ../build/container.mk
+include ../../component/mk/base.mk
+include ../../component/mk/image.mk
 
+.DEFAULT_GOAL := build
 CONTAINER_NAME := postgres
-
-clean: clean-container
-.PHONY: clean
+IMG := systeminit/postgres
+BASE_VERSION := 11.10-alpine

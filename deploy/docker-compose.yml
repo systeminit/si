@@ -26,7 +26,7 @@ services:
     command: --interval 30 --label-enable
 
   pg:
-    image: "postgres:11.10-alpine"
+    image: "systeminit/postgres:stable"
     command: "-c log_error_verbosity=VERBOSE \
       -c log_statement=all \
       -c shared_buffers=4GB \

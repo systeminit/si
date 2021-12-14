@@ -92,6 +92,9 @@ $(IMAGEABLE):
 $(RELEASEABLE):
 	cd bin/$(patsubst release-%,%,$@) && $(MAKE) release
 
+release-postgres:
+	cd component/postgres && $(MAKE) release
+
 release-nats:
 	cd component/nats && $(MAKE) release
 
