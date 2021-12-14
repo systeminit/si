@@ -1,18 +1,20 @@
-name: release-si-sdf
+name: release-sdf
 
 on:
   push:
     branches:
-      - master
+      - main
     paths:
-      - .github/workflows/release-si-sdf.yml
+      - .github/workflows/release-sdf.yml
       - .cargo/**
       - Cargo.*
-      - components/si-data/**
-      - components/si-model-settings/**
-      - components/si-model-test/**
-      - components/si-model/**
-      - components/si-sdf/**
+      - bin/sdf/**
+      - lib/config-file/**
+      - lib/dal/**
+      - lib/sdf/**
+      - lib/si-data/**
+      - lib/si-settings/**
+      - lib/telemetry-rs/**
       - rust-toolchain
       - rustfmt.toml
 
