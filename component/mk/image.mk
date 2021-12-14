@@ -14,8 +14,3 @@ release: ## Builds and pushes the image and tags to the repository (uses ./scrip
 	@echo "--- [$(shell basename ${CURDIR})] $@"
 	env BASE_VERSION=${BASE_VERSION} IMG=${IMG} ./script/build-image.sh --ci
 .PHONY: release
-
-run_container: ## Runs the container (uses ./script/run-container.sh)
-	@echo "--- [$(shell basename ${CURDIR})] $@"
-	env IMG=${IMG} CONTAINER_NAME=${CONTAINER_NAME} ./script/run-container.sh
-.PHONY: run_container
