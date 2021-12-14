@@ -232,8 +232,9 @@ ci:
 .PHONY: ci
 
 # TODO(nick): add back cargo test.
+# TODO(nick): consider adding --all-targets --all-features to clippy
 ci-prepare:
 	cd $(MAKEPATH); cargo fix --edition-idioms --allow-dirty --allow-staged
 	cd $(MAKEPATH); cargo fmt --all
-	cd $(MAKEPATH); cargo clippy --fix --allow-dirty --allow-staged --all-targets
+	cd $(MAKEPATH); cargo clippy --fix --allow-dirty --allow-staged
 .PHONY: ci-prepare

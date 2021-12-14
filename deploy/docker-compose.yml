@@ -1,0 +1,46 @@
+version: "3"
+
+services:
+  sdf:
+    image: "systeminit/sdf:stable"
+    ports:
+      - "5156:5156"
+    environment:
+      - "SI_SDF__PG__HOSTNAME=postgres"
+      - "SI_SDF__NATS__URL=nats"
+      - "OTEL_EXPORTER_OTLP_ENDPOINT=http://otelcol:4317"
+    extra_hosts:
+      - "postgres:${GATEWAY}"
+      - "nats:${GATEWAY}"
+      - "otelcol:${GATEWAY}"
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+    depends_on:
+      - watchtower
+    restart: "unless-stopped"
+
+  watchtower:
+    image: "containrrr/watchtower"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --interval 30 --label-enable
+
+  pg:
+    image: "postgres:11.10-alpine"
+    command: "-c log_error_verbosity=VERBOSE \
+      -c log_statement=all \
+      -c shared_buffers=4GB \
+      -c wal_buffers=64MB \
+      -c effective_cache_size=32GB"
+    environment:
+      - "POSTGRES_PASSWORD=bugbear"
+      - "PGPASSWORD=bugbear"
+      - "POSTGRES_USER=si"
+      - "POSTGRES_DB=si"
+    ports:
+      - "5432:5432"
+
+  nats:
+    image: "nats:2.3.4"
+    ports:
+      - "4222:4222"
