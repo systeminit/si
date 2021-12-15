@@ -1,6 +1,7 @@
-include ../build/container.mk
+include ../../component/mk/base.mk
+include ../../component/mk/image.mk
 
+.DEFAULT_GOAL := build
 CONTAINER_NAME := otelcol
-
-clean: clean-container ## Cleans up containers and images
-.PHONY: clean
+IMG := systeminit/otelcol
+BASE_VERSION := 0.29.0
