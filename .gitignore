@@ -15,3 +15,4 @@ vendor/automerge
 /support/dev/k8s/**/dockerconfig.json
 /support/dev/k8s/**/web-htpasswd
 /tmp/
+deploy/docker-compose.env.yml
