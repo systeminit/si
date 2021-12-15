@@ -98,6 +98,9 @@ release-postgres:
 release-nats:
 	cd component/nats && $(MAKE) release
 
+release-otelcol:
+	cd component/otelcol && $(MAKE) release
+
 # TODO(fnichol): rename `components/si-web-app` -> `components/si-web`
 release-si-web: release-si-web-app
 
