@@ -44,3 +44,9 @@ services:
     image: "systeminit/nats:stable"
     ports:
       - "4222:4222"
+
+  otel:
+    image: "systeminit/otelcol:stable"
+    ports:
+      - "4317:4317"
+      - "55679:55679"
