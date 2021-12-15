@@ -27,35 +27,62 @@ async fn run(args: args::Args, mut telemetry: telemetry::Client) -> Result<()> {
         telemetry.set_verbosity(args.verbose.into()).await?;
     }
     debug!(arguments =?args, "parsed cli arguments");
-    if args.disable_opentelemetry {
-        telemetry.disable_opentelemetry().await?;
+
+    Server::init()?;
+
+    // TODO(fnichol): we have a mutex poisoning panic that happens, but is avoided if opentelemetry
+    // is not running when the migrations are. For the moment we'll disable otel until after the
+    // migrations, which means we miss out on some good migration telemetry in honeycomb, but the
+    // service boots??
+    //
+    // See: https://app.shortcut.com/systeminit/story/1934/sdf-mutex-poison-panic-on-launch-with-opentelemetry-exporter
+    let disable_opentelemetry = args.disable_opentelemetry;
+    telemetry.disable_opentelemetry().await?;
+    // if args.disable_opentelemetry {
+    //     telemetry.disable_opentelemetry().await?;
+    // }
+
+    if let Some(path) = args.generate_jwt_secret_key {
+        let _key = Server::generate_jwt_secret_key(path).await?;
+        return Ok(());
     }
+
     let config = Config::try_from(args)?;
+
+    let jwt_secret_key = Server::load_jwt_secret_key(config.jwt_secret_key_path()).await?;
+
+    let nats = Server::connect_to_nats(config.nats()).await?;
 
     let pg_pool = Server::create_pg_pool(config.pg_pool()).await?;
 
     if let MigrationMode::Run | MigrationMode::RunAndQuit = config.migration_mode() {
-        Server::migrate_database(&pg_pool).await?;
+        Server::migrate_database(&pg_pool, &nats, &jwt_secret_key).await?;
         if let MigrationMode::RunAndQuit = config.migration_mode() {
-            info!("migration mode is runAndQuit, shutting down");
+            info!(
+                "migration mode is {}, shutting down",
+                config.migration_mode()
+            );
             return Ok(());
         }
     } else {
         trace!("migration mode is skip, not running migrations");
     }
 
-    let nats = Server::connect_to_nats(config.nats()).await?;
+    // TODO(fnichol): re-enable, which we shouldn't need in the long run
+    if !disable_opentelemetry {
+        telemetry.enable_opentelemetry().await?;
+    }
 
     start_tracing_level_signal_handler_task(&telemetry)?;
 
     match config.incoming_stream() {
         IncomingStream::HTTPSocket(_) => {
-            Server::http(config, telemetry, pg_pool, nats)?
+            Server::http(config, telemetry, pg_pool, nats, jwt_secret_key)?
                 .run()
                 .await?;
         }
         IncomingStream::UnixDomainSocket(_) => {
-            Server::uds(config, telemetry, pg_pool, nats)
+            Server::uds(config, telemetry, pg_pool, nats, jwt_secret_key)
                 .await?
                 .run()
                 .await?;

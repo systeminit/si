@@ -1,6 +1,6 @@
 use std::{
     net::{SocketAddr, ToSocketAddrs},
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
 use derive_builder::Builder;
@@ -10,12 +10,17 @@ use si_data::{NatsConfig, PgPoolConfig};
 use strum_macros::{Display, EnumString, EnumVariantNames};
 use thiserror::Error;
 
+pub use dal::JwtSecretKey;
 pub use si_settings::{StandardConfig, StandardConfigFile};
+
+use crate::canonical_file::{CanonicalFile, CanonicalFileError};
 
 #[derive(Debug, Error)]
 pub enum ConfigError {
     #[error("config builder")]
     Builder(#[from] ConfigBuilderError),
+    #[error(transparent)]
+    CanonicalFile(#[from] CanonicalFileError),
     #[error("no socket addrs where resolved")]
     NoSocketAddrResolved,
     #[error(transparent)]
@@ -40,11 +45,8 @@ pub struct Config {
     #[builder(default = "MigrationMode::default()")]
     migration_mode: MigrationMode,
 
-    #[builder(default = "JwtSigningKey::default()")]
-    jwt_signing_key: JwtSigningKey,
+    jwt_secret_key_path: CanonicalFile,
 }
-
-pub type JwtSigningKey = dal::JwtEncrypt;
 
 impl StandardConfig for Config {
     type Builder = ConfigBuilder;
@@ -75,10 +77,10 @@ impl Config {
         &self.nats
     }
 
-    /// Gets a reference to the config's nats.
+    /// Gets a reference to the config's jwt secret key path.
     #[must_use]
-    pub fn jwt_signing_key(&self) -> &JwtSigningKey {
-        &self.jwt_signing_key
+    pub fn jwt_secret_key_path(&self) -> &Path {
+        self.jwt_secret_key_path.as_path()
     }
 }
 
@@ -92,12 +94,38 @@ impl ConfigBuilder {
     }
 }
 
-#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ConfigFile {
     pg: PgPoolConfig,
     nats: NatsConfig,
     migration_mode: MigrationMode,
-    jwt_signing_key: JwtSigningKey,
+    jwt_secret_key_path: String,
+}
+
+impl Default for ConfigFile {
+    fn default() -> Self {
+        let mut jwt_secret_key_path = "/run/sdf/jwt_secret_key.bin".to_string();
+
+        // TODO(fnichol): okay, this goes away/changes when we determine where the key would be by
+        // default, etc.
+        if let Ok(dir) = std::env::var("CARGO_MANIFEST_DIR") {
+            jwt_secret_key_path = Path::new(&dir)
+                .join("src/dev.jwt_secret_key.bin")
+                .to_string_lossy()
+                .to_string();
+            telemetry::tracing::warn!(
+                jwt_secret_key_path = jwt_secret_key_path.as_str(),
+                "detected cargo run, setting *default* jwt secret key path from sources"
+            );
+        }
+
+        Self {
+            pg: Default::default(),
+            nats: Default::default(),
+            migration_mode: Default::default(),
+            jwt_secret_key_path,
+        }
+    }
 }
 
 impl StandardConfigFile for ConfigFile {
@@ -112,7 +140,7 @@ impl TryFrom<ConfigFile> for Config {
         config.pg_pool(value.pg);
         config.nats(value.nats);
         config.migration_mode(value.migration_mode);
-        config.jwt_signing_key(value.jwt_signing_key);
+        config.jwt_secret_key_path(value.jwt_secret_key_path.try_into()?);
         config.build().map_err(Into::into)
     }
 }

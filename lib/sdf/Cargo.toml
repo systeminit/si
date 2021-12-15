@@ -9,15 +9,16 @@ publish = false
 axum = { version = "0.3.0", features = ["ws"] }
 axum-debug = { version = "0.1.0" }
 chrono = { version = "0.4.19", features = ["serde"] }
+dal = { path = "../dal" }
 derive_builder = { version = "0.10.2" }
 futures = { version = "0.3.17" }
 hyper = { version = "0.14", features = ["http1", "runtime", "server"] }
 nix = { version = "0.23.0" }
+pathdiff = "0.2.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", features = ["preserve_order"] }
 serde_with = "1.10.0"
 si-data = { path = "../../lib/si-data" }
-dal = { path = "../dal" }
 si-settings = { path = "../../lib/si-settings" }
 sodiumoxide = "0.2.7"
 strum = "0.21.0"
@@ -26,8 +27,8 @@ telemetry = { path = "../../lib/telemetry-rs" }
 thiserror = { version = "1.0" }
 tokio = { version = "1.12.0", features = ["full"] }
 tokio-tungstenite = "0.15.0"
-tower-http = { version = "0.1", features = ["trace"] }
 tower = { version = "0.4.10" }
+tower-http = { version = "0.1", features = ["trace"] }
 
 [dev-dependencies]
 serde_url_params = "0.2.1"

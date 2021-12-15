@@ -1,11 +1,18 @@
-use std::{io, net::SocketAddr, path::PathBuf};
+use std::{
+    io,
+    net::SocketAddr,
+    path::{Path, PathBuf},
+};
 
-use crate::server::config::JwtSigningKey;
+use crate::server::config::JwtSecretKey;
 use axum::routing::IntoMakeService;
 use axum::Router;
-use dal::migrate;
+use dal::{
+    jwt_key::{install_new_jwt_key, jwt_key_exists},
+    migrate, migrate_builtin_schemas,
+};
 use hyper::server::{accept::Accept, conn::AddrIncoming};
-use si_data::{NatsClient, NatsConfig, NatsError, PgPool, PgPoolConfig, PgPoolError};
+use si_data::{NatsClient, NatsConfig, NatsError, PgError, PgPool, PgPoolConfig, PgPoolError};
 use telemetry::{prelude::*, TelemetryClient};
 use thiserror::Error;
 use tokio::{
@@ -21,10 +28,16 @@ use super::{routes, Config, IncomingStream, UdsIncomingStream, UdsIncomingStream
 pub enum ServerError {
     #[error("hyper server error")]
     Hyper(#[from] hyper::Error),
+    #[error("error initializing the server")]
+    Init,
+    #[error("jwt secret key error")]
+    JwtSecretKey(#[from] dal::jwt_key::JwtKeyError),
     #[error(transparent)]
     Model(#[from] dal::ModelError),
     #[error(transparent)]
     Nats(#[from] NatsError),
+    #[error(transparent)]
+    Pg(#[from] PgError),
     #[error(transparent)]
     PgPool(#[from] PgPoolError),
     #[error("failed to setup signal handler")]
@@ -50,11 +63,12 @@ impl Server<(), ()> {
         telemetry: telemetry::Client,
         pg_pool: PgPool,
         nats: NatsClient,
+        jwt_secret_key: JwtSecretKey,
     ) -> Result<Server<AddrIncoming, SocketAddr>> {
         match config.incoming_stream() {
             IncomingStream::HTTPSocket(socket_addr) => {
                 let (service, shutdown_rx) =
-                    build_service(telemetry, pg_pool, nats, config.jwt_signing_key().clone())?;
+                    build_service(telemetry, pg_pool, nats, jwt_secret_key)?;
 
                 info!("binding to HTTP socket; socket_addr={}", &socket_addr);
                 let inner = axum::Server::bind(socket_addr).serve(service.into_make_service());
@@ -78,11 +92,12 @@ impl Server<(), ()> {
         telemetry: telemetry::Client,
         pg_pool: PgPool,
         nats: NatsClient,
+        jwt_secret_key: JwtSecretKey,
     ) -> Result<Server<UdsIncomingStream, PathBuf>> {
         match config.incoming_stream() {
             IncomingStream::UnixDomainSocket(path) => {
                 let (service, shutdown_rx) =
-                    build_service(telemetry, pg_pool, nats, config.jwt_signing_key().clone())?;
+                    build_service(telemetry, pg_pool, nats, jwt_secret_key)?;
 
                 info!("binding to Unix domain socket; path={}", path.display());
                 let inner = axum::Server::builder(UdsIncomingStream::create(path).await?)
@@ -102,8 +117,38 @@ impl Server<(), ()> {
         }
     }
 
-    pub async fn migrate_database(pg: &PgPool) -> Result<()> {
-        migrate(pg).await.map_err(Into::into)
+    pub fn init() -> Result<()> {
+        sodiumoxide::init().map_err(|_| ServerError::Init)
+    }
+
+    #[instrument(skip_all)]
+    pub async fn generate_jwt_secret_key(path: impl AsRef<Path>) -> Result<JwtSecretKey> {
+        JwtSecretKey::create(path).await.map_err(Into::into)
+    }
+
+    #[instrument(skip_all)]
+    pub async fn load_jwt_secret_key(path: impl AsRef<Path>) -> Result<JwtSecretKey> {
+        JwtSecretKey::load(path).await.map_err(Into::into)
+    }
+
+    #[instrument(skip_all)]
+    pub async fn migrate_database(
+        pg: &PgPool,
+        nats: &NatsClient,
+        jwt_secret_key: &JwtSecretKey,
+    ) -> Result<()> {
+        migrate(pg).await?;
+        migrate_builtin_schemas(pg, nats).await?;
+
+        let mut conn = pg.get().await?;
+        let txn = conn.transaction().await?;
+        if !jwt_key_exists(&txn).await? {
+            debug!("no jwt key found, generating new keypair");
+            install_new_jwt_key(&txn, jwt_secret_key).await?;
+        }
+        txn.commit().await?;
+
+        Ok(())
     }
 
     #[instrument(skip_all)]
@@ -153,7 +198,7 @@ pub fn build_service(
     telemetry: impl TelemetryClient,
     pg_pool: PgPool,
     nats: NatsClient,
-    jwt_signing_key: JwtSigningKey,
+    jwt_secret_key: JwtSecretKey,
 ) -> Result<(Router, oneshot::Receiver<()>)> {
     let (shutdown_tx, shutdown_rx) = mpsc::channel(4);
     // Note the channel parameter corresponds to the number of channels that may be maintained when
@@ -165,7 +210,7 @@ pub fn build_service(
         telemetry,
         pg_pool,
         nats,
-        jwt_signing_key,
+        jwt_secret_key,
         shutdown_tx,
         shutdown_broadcast_tx.clone(),
     )

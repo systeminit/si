@@ -7,7 +7,7 @@ use dal::{
 use serde::{Deserialize, Serialize};
 
 use super::TestResult;
-use crate::server::extract::{JwtSigningKey, NatsTxn, PgRwTxn};
+use crate::server::extract::{JwtSecretKey, NatsTxn, PgRwTxn};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SignupResponse {
@@ -18,7 +18,7 @@ pub struct SignupResponse {
 pub async fn signup_and_login(
     mut txn: PgRwTxn,
     mut nats: NatsTxn,
-    secret_key: JwtSigningKey,
+    JwtSecretKey(jwt_secret_key): JwtSecretKey,
 ) -> TestResult<Json<SignupResponse>> {
     let txn = txn.start().await?;
     let nats = nats.start().await?;
@@ -46,7 +46,7 @@ pub async fn signup_and_login(
         .user
         .login(
             &txn,
-            secret_key.key(),
+            &jwt_secret_key,
             result.billing_account.id(),
             user_password,
         )

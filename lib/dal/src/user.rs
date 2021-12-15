@@ -1,7 +1,7 @@
 use jwt_simple::{algorithms::RSAKeyPairLike, claims::Claims, reexports::coarsetime::Duration};
 use serde::{Deserialize, Serialize};
 use si_data::{NatsError, NatsTxn, PgError, PgTxn};
-use sodiumoxide::crypto::{pwhash::argon2id13, secretbox};
+use sodiumoxide::crypto::pwhash::argon2id13;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::task::JoinError;
@@ -10,7 +10,7 @@ use crate::jwt_key::{get_jwt_signing_key, JwtKeyError};
 use crate::standard_model::option_object_from_row;
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
-    BillingAccount, BillingAccountId, HistoryActor, HistoryEventError, StandardModel,
+    BillingAccount, BillingAccountId, HistoryActor, HistoryEventError, JwtSecretKey, StandardModel,
     StandardModelError, Tenancy, Timestamp, Visibility,
 };
 
@@ -154,7 +154,7 @@ impl User {
     pub async fn login(
         &self,
         txn: &PgTxn<'_>,
-        secret_key: &secretbox::Key,
+        jwt_secret_key: &JwtSecretKey,
         billing_account_id: &BillingAccountId,
         password: impl Into<String>,
     ) -> UserResult<String> {
@@ -171,7 +171,7 @@ impl User {
             .with_issuer("https://app.systeminit.com")
             .with_subject(*self.id());
 
-        let signing_key = get_jwt_signing_key(txn, secret_key).await?;
+        let signing_key = get_jwt_signing_key(txn, jwt_secret_key).await?;
         let jwt = signing_key.sign(claims)?;
         Ok(jwt)
     }

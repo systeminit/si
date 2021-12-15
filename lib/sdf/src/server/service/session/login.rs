@@ -1,5 +1,5 @@
 use super::SessionResult;
-use crate::server::extract::{JwtSigningKey, NatsTxn, PgRwTxn};
+use crate::server::extract::{JwtSecretKey, NatsTxn, PgRwTxn};
 use crate::server::service::session::SessionError;
 use axum::Json;
 use dal::{BillingAccount, StandardModel, Tenancy, User, Visibility};
@@ -24,7 +24,7 @@ pub struct LoginResponse {
 pub async fn login(
     mut txn: PgRwTxn,
     mut nats: NatsTxn,
-    jwt_signing_key: JwtSigningKey,
+    JwtSecretKey(jwt_secret_key): JwtSecretKey,
     Json(request): Json<LoginRequest>,
 ) -> SessionResult<Json<LoginResponse>> {
     let txn = txn.start().await?;
@@ -46,7 +46,7 @@ pub async fn login(
     let jwt = user
         .login(
             &txn,
-            jwt_signing_key.key(),
+            &jwt_secret_key,
             billing_account.id(),
             &request.user_password,
         )

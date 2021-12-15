@@ -42,7 +42,7 @@ pub use edit_session::{
 };
 pub use group::{Group, GroupError, GroupId, GroupResult};
 pub use history_event::{HistoryActor, HistoryEvent, HistoryEventError};
-pub use jwt_key::{create_jwt_key_if_missing, JwtEncrypt};
+pub use jwt_key::{create_jwt_key_if_missing, JwtSecretKey};
 pub use key_pair::{KeyPair, KeyPairError, KeyPairResult};
 pub use label_list::{LabelEntry, LabelList, LabelListError};
 pub use node::{Node, NodeError};
@@ -92,7 +92,7 @@ pub async fn migrate(pg: &PgPool) -> ModelResult<()> {
     Ok(result)
 }
 
-#[instrument(skip(pg, nats))]
+#[instrument(skip_all)]
 pub async fn migrate_builtin_schemas(pg: &PgPool, nats: &NatsClient) -> ModelResult<()> {
     let mut conn = pg.get().await?;
     let txn = conn.transaction().await?;

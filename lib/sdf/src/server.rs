@@ -1,5 +1,5 @@
 pub use config::{
-    Config, ConfigBuilder, ConfigError, ConfigFile, IncomingStream, JwtSigningKey, MigrationMode,
+    Config, ConfigBuilder, ConfigError, ConfigFile, IncomingStream, JwtSecretKey, MigrationMode,
     StandardConfig, StandardConfigFile,
 };
 pub use routes::{routes, AppError, AppResult};
