@@ -2,7 +2,7 @@ version: "3"
 
 services:
   sdf:
-    image: "systeminit/sdf:stable"
+    image: "index.docker.io/systeminit/sdf:stable"
     ports:
       - "5156:5156"
     environment:
@@ -17,16 +17,24 @@ services:
       - "com.centurylinklabs.watchtower.enable=true"
     depends_on:
       - watchtower
+      - pg
+      - otel
+      - nats
     restart: "unless-stopped"
 
-  watchtower:
-    image: "containrrr/watchtower"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    command: --interval 30 --label-enable
+  web:
+    image: "index.docker.io/systeminit/web:stable"
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+    ports:
+      - "80:80"
+    depends_on:
+      - watchtower
+      - sdf
+    restart: "unless-stopped"
 
   pg:
-    image: "systeminit/postgres:stable"
+    image: "index.docker.io/systeminit/postgres:stable"
     command: "-c log_error_verbosity=VERBOSE \
       -c log_statement=all \
       -c shared_buffers=4GB \
@@ -41,26 +49,31 @@ services:
       - "com.centurylinklabs.watchtower.enable=true"
     ports:
       - "5432:5432"
+    depends_on:
+      - watchtower
 
   nats:
-    image: "systeminit/nats:stable"
+    image: "index.docker.io/systeminit/nats:stable"
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
     ports:
       - "4222:4222"
+    depends_on:
+      - watchtower
 
   otel:
-    image: "systeminit/otelcol:stable"
+    image: "index.docker.io/systeminit/otelcol:stable"
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
     ports:
       - "4317:4317"
       - "55679:55679"
+    depends_on:
+      - watchtower
 
-  web:
-    image: "systeminit/web:stable"
-    labels:
-      - "com.centurylinklabs.watchtower.enable=true"
-    ports:
-      - "80:80"
-
+  watchtower:
+    image: "containrrr/watchtower"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${DOCKER_CONFIG}:/config.json
+    command: --interval 30 --label-enable
