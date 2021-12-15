@@ -40,14 +40,16 @@ smoke-test:
 
 check-env:
 	@if [ ! -f $(MAKEPATH)/docker-compose.env.yml ]; then \
-		echo "Missing docker-compose.env.yml - must be included for prod!"; \
+		echo "Missing docker-compose.env.yml - must be included for use!"; \
 		echo "A sample file appears below, for your convenience. ;)"; \
 		echo "---"; \
-		echo "services:"; \
-		echo "  web:"; \
-		echo "    environment:"; \
-		echo "      - HONEYCOMB_TOKEN=the_token"; \
-		echo "      - HONEYCOMB_DATASET=the_dataset"; \
+		echo "sdf:"; \
+		echo "  volumes:"; \
+		echo "    - /etc/jwt_secret_key.bin:/run/sdf/jwt_secret_key.bin"; \
+		echo "otel:"; \
+		echo "  environment:"; \
+		echo "    - HONEYCOMB_TOKEN=the_token"; \
+		echo "    - HONEYCOMB_DATASET=the_dataset"; \
 		echo "---"; \
 		exit 1; \
 	fi
