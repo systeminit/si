@@ -1,17 +1,14 @@
-name: release-si-web
+name: release-web
 
 on:
   push:
     branches:
-      - master
+      - main
     paths:
-      - .github/workflows/release-si-web.yml
+      - .github/workflows/release-web.yml
       - .prettierrc.js
       - babel.config.js
-      - components/si-entity/**
-      - components/si-inference/**
-      - components/si-registry/**
-      - components/si-web-app/**
+      - app/web/**
 
 jobs:
   release:

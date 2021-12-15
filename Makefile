@@ -38,6 +38,7 @@ COMPONENTS = \
 	components/si-settings \
 	components/si-sdf
 RELEASEABLE_COMPONENTS = \
+	web \
 	si-veritech \
 	sdf \
 	nats \
@@ -101,8 +102,8 @@ release-nats:
 release-otelcol:
 	cd component/otelcol && $(MAKE) release
 
-# TODO(fnichol): rename `components/si-web-app` -> `components/si-web`
-release-si-web: release-si-web-app
+release-web:
+	cd app/web && $(MAKE) release
 
 $(WATCHABLE):
 	@ pushd $(patsubst watch//%,%,$@); $(MAKE) watch
