@@ -1,26 +1,24 @@
-use crate::billing_account::BillingAccountSignup;
-use crate::jwt_key::JwtEncrypt;
-use crate::node::NodeKind;
-use crate::{
-    schema, socket, BillingAccount, ChangeSet, Component, EditSession, Group, HistoryActor,
-    KeyPair, Node, QualificationCheck, Schema, SchemaKind, StandardModel, Tenancy, User,
-    Visibility, NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK,
-};
+use std::{env, sync::Arc};
+
 use anyhow::Result;
 use async_trait::async_trait;
 use lazy_static::lazy_static;
 use names::{Generator, Name};
 use si_data::{NatsClient, NatsConfig, NatsTxn, PgPool, PgPoolConfig, PgTxn};
-use sodiumoxide::crypto::secretbox;
-use std::env;
-use std::sync::Arc;
 use telemetry::{ClientError, TelemetryClient, Verbosity};
+
+use crate::{
+    billing_account::BillingAccountSignup, jwt_key::JwtSecretKey, node::NodeKind, schema, socket,
+    BillingAccount, ChangeSet, Component, EditSession, Group, HistoryActor, KeyPair, Node,
+    QualificationCheck, Schema, SchemaKind, StandardModel, Tenancy, User, Visibility,
+    NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK,
+};
 
 #[derive(Debug)]
 pub struct TestConfig {
     pg: PgPoolConfig,
     nats: NatsConfig,
-    jwt_encrypt: JwtEncrypt,
+    jwt_encrypt: JwtSecretKey,
 }
 
 impl Default for TestConfig {
@@ -37,7 +35,7 @@ impl Default for TestConfig {
         Self {
             pg,
             nats,
-            jwt_encrypt: JwtEncrypt::default(),
+            jwt_encrypt: JwtSecretKey::default(),
         }
     }
 }
@@ -89,7 +87,7 @@ pub struct TestContext {
     tmp_event_log_fs_root: tempfile::TempDir,
     pub pg: PgPool,
     pub nats_conn: NatsClient,
-    pub secret_key: secretbox::Key,
+    pub jwt_secret_key: JwtSecretKey,
     pub telemetry: NoopTelemetryClient,
 }
 
@@ -106,20 +104,20 @@ impl TestContext {
         let nats_conn = NatsClient::new(&settings.nats)
             .await
             .expect("failed to connect to NATS");
-        let secret_key = settings.jwt_encrypt.key.clone();
+        let secret_key = settings.jwt_encrypt.clone();
         let telemetry = NoopTelemetryClient;
 
         Self {
             tmp_event_log_fs_root,
             pg,
             nats_conn,
-            secret_key,
+            jwt_secret_key: secret_key,
             telemetry,
         }
     }
 
-    pub fn entries(&self) -> (&PgPool, &NatsClient, &secretbox::Key) {
-        (&self.pg, &self.nats_conn, &self.secret_key)
+    pub fn entries(&self) -> (&PgPool, &NatsClient, &JwtSecretKey) {
+        (&self.pg, &self.nats_conn, &self.jwt_secret_key)
     }
 
     /// Gets a reference to the test context's telemetry.
@@ -136,12 +134,17 @@ pub async fn one_time_setup() -> Result<()> {
 
     sodiumoxide::init().expect("crypto failed to init");
 
+    let nats_conn = NatsClient::new(&SETTINGS.nats)
+        .await
+        .expect("failed to connect to NATS");
+
     let pg = PgPool::new(&SETTINGS.pg)
         .await
         .expect("failed to connect to postgres");
     pg.drop_and_create_public_schema()
         .await
         .expect("failed to drop the database");
+
     crate::migrate(&pg).await.expect("migration failed!");
 
     let mut conn = pg.get().await?;
@@ -156,9 +159,6 @@ pub async fn one_time_setup() -> Result<()> {
     .await?;
     txn.commit().await?;
 
-    let nats_conn = NatsClient::new(&SETTINGS.nats)
-        .await
-        .expect("failed to connect to NATS");
     crate::migrate_builtin_schemas(&pg, &nats_conn).await?;
 
     *finished = true;
@@ -293,7 +293,7 @@ pub async fn create_group(
 pub async fn billing_account_signup(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
-    secret_key: &secretbox::Key,
+    jwt_secret_key: &JwtSecretKey,
 ) -> (BillingAccountSignup, String) {
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
@@ -318,7 +318,7 @@ pub async fn billing_account_signup(
     .expect("cannot signup a new billing_account");
     let auth_token = nba
         .user
-        .login(txn, secret_key, nba.billing_account.id(), "snakes")
+        .login(txn, jwt_secret_key, nba.billing_account.id(), "snakes")
         .await
         .expect("cannot log in newly created user");
     (nba, auth_token)

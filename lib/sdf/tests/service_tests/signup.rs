@@ -1,27 +1,20 @@
-use axum::body::Body;
-use axum::http::{Method, Request, StatusCode};
-use axum::{http, Router};
+use axum::{
+    body::Body,
+    http::{self, Method, Request, StatusCode},
+    Router,
+};
 use dal::test_harness::{one_time_setup, TestContext};
-use sdf::service::signup;
-use sdf::service::signup::create_account::CreateAccountResponse;
-use sdf::JwtSigningKey;
+use sdf::service::signup::{self, create_account::CreateAccountResponse};
 use tower::ServiceExt;
 
 #[tokio::test]
 async fn create_account() {
     one_time_setup().await.expect("cannot setup tests");
     let ctx = TestContext::init().await;
-    let (pg, nats, secret_key) = ctx.entries();
+    let (pg, nats, jwt_secret_key) = ctx.entries();
     let telemetry = ctx.telemetry();
-    let (app, _) = sdf::build_service(
-        telemetry,
-        pg.clone(),
-        nats.clone(),
-        JwtSigningKey {
-            key: secret_key.clone(),
-        },
-    )
-    .expect("cannot build new server");
+    let (app, _) = sdf::build_service(telemetry, pg.clone(), nats.clone(), jwt_secret_key.clone())
+        .expect("cannot build new server");
     let app: Router = app;
 
     let request = signup::create_account::CreateAccountRequest {
@@ -46,5 +39,5 @@ async fn create_account() {
         serde_json::from_slice(&body).expect("response is not valid json");
     let response: CreateAccountResponse =
         serde_json::from_value(body_json).expect("response is not a valid rust struct");
-    assert_eq!(response.success, true);
+    assert!(response.success);
 }

@@ -1,3 +1,5 @@
+use std::{fs::File, io::prelude::*, path::Path, pin::Pin};
+
 use jwt_simple::{
     algorithms::{RS256KeyPair, RS256PublicKey},
     prelude::{JWTClaims, RSAPublicKeyLike, Token},
@@ -5,10 +7,13 @@ use jwt_simple::{
 use serde::{Deserialize, Serialize};
 use si_data::PgTxn;
 use sodiumoxide::crypto::secretbox;
-use std::{fs::File, io::prelude::*};
 use telemetry::prelude::*;
 use thiserror::Error;
-use tokio::task::JoinError;
+use tokio::{
+    fs,
+    io::{AsyncRead, AsyncReadExt, AsyncWriteExt},
+    task::JoinError,
+};
 
 use crate::{pk, UserClaim};
 
@@ -27,8 +32,12 @@ pub enum JwtKeyError {
     BearerToken,
     #[error("failed to decrypt secret data")]
     Decrypt,
+    #[error("error generating new keypair")]
+    GenerateKeyPair,
     #[error("io error: {0}")]
     Io(#[from] std::io::Error),
+    #[error("failed to load jwt encryption key from bytes")]
+    JwtEncryptionKeyParse,
     #[error("failure to build signing key from pem: {0}")]
     KeyFromPem(String),
     #[error("failure to extract metadata from bearer token: {0}")]
@@ -43,6 +52,8 @@ pub enum JwtKeyError {
     PgPool(#[from] si_data::PgPoolError),
     #[error("{0}")]
     TaskJoin(#[from] JoinError),
+    #[error("failed to convert into PEM format")]
+    ToPem,
     #[error("failed to build string from utf8: {0}")]
     Utf8(#[from] std::string::FromUtf8Error),
     #[error("failure to verify token: {0}")]
@@ -67,11 +78,11 @@ pk!(JwtPk);
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(default)]
-pub struct JwtEncrypt {
+pub struct JwtSecretKey {
     pub key: secretbox::Key,
 }
 
-impl Default for JwtEncrypt {
+impl Default for JwtSecretKey {
     #[cfg(debug_assertions)]
     fn default() -> Self {
         let raw_key = [
@@ -80,14 +91,41 @@ impl Default for JwtEncrypt {
         ];
         let key = sodiumoxide::crypto::secretbox::Key::from_slice(&raw_key)
             .expect("embedded key is invalid");
-        JwtEncrypt { key }
+        Self { key }
     }
 
     #[cfg(not(debug_assertions))]
     fn default() -> Self {
-        JwtEncrypt {
+        Self {
             key: sodiumoxide::crypto::secretbox::gen_key(),
         }
+    }
+}
+
+impl JwtSecretKey {
+    pub async fn create(path: impl AsRef<Path>) -> JwtKeyResult<Self> {
+        let mut file = fs::File::create(path).await?;
+        let key = secretbox::gen_key();
+        file.write_all(&key.0).await?;
+
+        Ok(Self { key })
+    }
+
+    pub async fn load(path: impl AsRef<Path>) -> JwtKeyResult<Self> {
+        trace!(
+            path = path.as_ref().to_string_lossy().as_ref(),
+            "loading jwt secret key"
+        );
+        let mut file = fs::File::open(path).await?;
+        Self::from_reader(Pin::new(&mut file)).await
+    }
+
+    pub async fn from_reader(mut reader: Pin<&mut impl AsyncRead>) -> JwtKeyResult<Self> {
+        let mut buf: Vec<u8> = Vec::with_capacity(secretbox::KEYBYTES);
+        reader.read_to_end(&mut buf).await?;
+        let key = secretbox::Key::from_slice(&buf).ok_or(JwtKeyError::JwtEncryptionKeyParse)?;
+
+        Ok(Self { key })
     }
 }
 
@@ -168,10 +206,10 @@ pub async fn validate_bearer_token_api_client(
     Ok(claims)
 }
 
-#[tracing::instrument(skip(txn, secret_key))]
+#[tracing::instrument(skip_all)]
 pub async fn get_jwt_signing_key(
     txn: &PgTxn<'_>,
-    secret_key: &secretbox::Key,
+    jwt_secret_key: &JwtSecretKey,
 ) -> JwtKeyResult<RS256KeyPair> {
     let row = txn.query_one(JWT_KEY_GET_LATEST_PRIVATE_KEY, &[]).await?;
     let encrypted_private_key: String = row.try_get("private_key")?;
@@ -180,8 +218,8 @@ pub async fn get_jwt_signing_key(
     let nonce = secretbox::Nonce::from_slice(nonce_bytes).ok_or(JwtKeyError::BadNonce)?;
 
     let secret_bytes = base64::decode(&encrypted_private_key)?;
-    let key_bytes =
-        secretbox::open(&secret_bytes, &nonce, secret_key).map_err(|()| JwtKeyError::Decrypt)?;
+    let key_bytes = secretbox::open(&secret_bytes, &nonce, &jwt_secret_key.key)
+        .map_err(|()| JwtKeyError::Decrypt)?;
     let key = String::from_utf8(key_bytes)?;
     let key_pair =
         RS256KeyPair::from_pem(&key).map_err(|err| JwtKeyError::KeyFromPem(format!("{}", err)))?;
@@ -189,15 +227,62 @@ pub async fn get_jwt_signing_key(
     Ok(key_pair_with_id)
 }
 
-#[instrument(skip(txn, public_filename, private_filename, secret_key))]
+#[instrument(skip_all)]
+pub async fn jwt_key_exists(txn: &PgTxn<'_>) -> JwtKeyResult<bool> {
+    let rows = txn.query(JWT_KEY_EXISTS, &[]).await?;
+    Ok(!rows.is_empty())
+}
+
+#[instrument(skip_all)]
+pub async fn install_new_jwt_key(
+    txn: &PgTxn<'_>,
+    jwt_secret_key: &JwtSecretKey,
+) -> JwtKeyResult<()> {
+    // NOTE(fnichol): It's a little unclear to me what a good "molulus bits" value would be, this
+    // seems to correspond to the key length, and generating longer keys, unsurprisingly takes much
+    // longer
+    info!("generating new RS256 key pair for signing JWT, this may take a while");
+    let keypair = tokio::task::spawn_blocking(move || {
+        RS256KeyPair::generate(2048).map_err(|err| {
+            warn!(error = ?err, "failed to generate keypair");
+            JwtKeyError::GenerateKeyPair
+        })
+    })
+    .instrument(info_span!(
+        "generate",
+        code.namespace = "jwt_simple::algorithms::rsa::RS256KeyPair"
+    ))
+    .await??;
+    debug!("finished generating new RS256 key pair");
+
+    let private_key_pem = keypair.to_pem().map_err(|_| JwtKeyError::ToPem)?;
+    let public_key_pem = keypair
+        .public_key()
+        .to_pem()
+        .map_err(|_| JwtKeyError::ToPem)?;
+
+    let nonce = secretbox::gen_nonce();
+    let encrypted_key = secretbox::seal(private_key_pem.as_bytes(), &nonce, &jwt_secret_key.key);
+    let base64_encrypted_key = base64::encode(encrypted_key);
+
+    let _row = txn
+        .query_one(
+            "SELECT jwt_key_create_v1($1, $2, $3)",
+            &[&public_key_pem, &base64_encrypted_key, &nonce.as_ref()],
+        )
+        .await?;
+
+    Ok(())
+}
+
+#[instrument(skip_all)]
 pub async fn create_jwt_key_if_missing(
     txn: &PgTxn<'_>,
     public_filename: impl AsRef<str>,
     private_filename: impl AsRef<str>,
     secret_key: &secretbox::Key,
 ) -> JwtKeyResult<()> {
-    let rows = txn.query(JWT_KEY_EXISTS, &[]).await?;
-    if !rows.is_empty() {
+    if jwt_key_exists(txn).await? {
         return Ok(());
     }
 

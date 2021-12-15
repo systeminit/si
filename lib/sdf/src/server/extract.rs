@@ -138,24 +138,24 @@ fn internal_error(err: impl std::error::Error) -> (StatusCode, Json<InternalErro
     )
 }
 
-pub struct JwtSigningKey(crate::JwtSigningKey);
+pub struct JwtSecretKey(pub crate::JwtSecretKey);
 
 #[async_trait]
-impl<P> FromRequest<P> for JwtSigningKey
+impl<P> FromRequest<P> for JwtSecretKey
 where
     P: Send,
 {
     type Rejection = (StatusCode, Json<InternalError>);
 
     async fn from_request(req: &mut RequestParts<P>) -> Result<Self, Self::Rejection> {
-        let Extension(key) = Extension::<crate::server::config::JwtSigningKey>::from_request(req)
+        let Extension(key) = Extension::<crate::server::config::JwtSecretKey>::from_request(req)
             .await
             .map_err(internal_error)?;
         Ok(Self(key))
     }
 }
 
-impl JwtSigningKey {
+impl JwtSecretKey {
     pub fn key(&self) -> &sodiumoxide::crypto::secretbox::Key {
         &self.0.key
     }

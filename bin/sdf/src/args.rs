@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use clap::Parser;
 use sdf::{Config, ConfigError, ConfigFile, MigrationMode, StandardConfigFile};
 
@@ -52,6 +54,14 @@ pub(crate) struct Args {
     /// Disable OpenTelemetry on startup
     #[clap(long)]
     pub(crate) disable_opentelemetry: bool,
+
+    /// JWT secret key file location [default: /run/sdf/jwt_secret_key_path.bin]
+    #[clap(long)]
+    pub(crate) jwt_secret_key_path: Option<String>,
+
+    /// Generates a JWT secret key file (does not run server)
+    #[clap(long)]
+    pub(crate) generate_jwt_secret_key: Option<PathBuf>,
 }
 
 impl TryFrom<Args> for Config {
@@ -79,6 +89,9 @@ impl TryFrom<Args> for Config {
             }
             if let Some(url) = args.nats_url {
                 config_map.set("nats.url", url);
+            }
+            if let Some(jwt_secret_key_path) = args.jwt_secret_key_path {
+                config_map.set("jwt_secret_key_path", jwt_secret_key_path);
             }
         })?
         .try_into()

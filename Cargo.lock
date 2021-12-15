@@ -2542,6 +2542,7 @@ dependencies = [
  "futures",
  "hyper",
  "nix",
+ "pathdiff",
  "serde",
  "serde_json",
  "serde_url_params",

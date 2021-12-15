@@ -165,7 +165,7 @@ pub async fn api_request_raw<Req: Serialize>(
 #[macro_export]
 macro_rules! test_setup {
     ($ctx:ident,
-     $secret_key:ident,
+     $jwt_secret_key:ident,
      $pg:ident,
      $pgconn:ident,
      $pgtxn:ident,
@@ -178,7 +178,7 @@ macro_rules! test_setup {
             .await
             .expect("one time setup failed");
         let $ctx = dal::test_harness::TestContext::init().await;
-        let ($pg, $nats_conn, $secret_key) = $ctx.entries();
+        let ($pg, $nats_conn, $jwt_secret_key) = $ctx.entries();
         let telemetry = $ctx.telemetry();
         let $nats = $nats_conn.transaction();
         let mut $pgconn = $pg.get().await.expect("cannot connect to pg");
@@ -187,14 +187,12 @@ macro_rules! test_setup {
             telemetry,
             $pg.clone(),
             $nats_conn.clone(),
-            sdf::JwtSigningKey {
-                key: $secret_key.clone(),
-            },
+            $jwt_secret_key.clone(),
         )
         .expect("cannot build new server");
         let $app: axum::Router = $app.into();
         let ($nba, $auth_token) =
-            dal::test_harness::billing_account_signup(&$pgtxn, &$nats, &$secret_key).await;
+            dal::test_harness::billing_account_signup(&$pgtxn, &$nats, &$jwt_secret_key).await;
         $pgtxn.commit().await.expect("cannot commit txn");
         $nats.commit().await.expect("cannot commit nats");
         let $nats = $nats_conn.transaction();

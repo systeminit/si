@@ -1,6 +1,6 @@
 use std::{convert::Infallible, sync::Arc};
 
-use crate::server::config::JwtSigningKey;
+use crate::server::config::JwtSecretKey;
 use axum::{
     body::{Bytes, Full},
     response::IntoResponse,
@@ -45,7 +45,7 @@ pub fn routes(
     telemetry: impl TelemetryClient,
     pg_pool: pg::PgPool,
     nats: nats::Client,
-    jwt_signing_key: JwtSigningKey,
+    jwt_secret_key: JwtSecretKey,
     shutdown_tx: mpsc::Sender<ShutdownSource>,
     shutdown_broadcast_tx: broadcast::Sender<()>,
 ) -> Router {
@@ -80,7 +80,7 @@ pub fn routes(
         .layer(AddExtensionLayer::new(telemetry))
         .layer(AddExtensionLayer::new(pg_pool))
         .layer(AddExtensionLayer::new(nats))
-        .layer(AddExtensionLayer::new(jwt_signing_key))
+        .layer(AddExtensionLayer::new(jwt_secret_key))
         .layer(AddExtensionLayer::new(ShutdownBroadcast(
             shutdown_broadcast_tx,
         )));
