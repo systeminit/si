@@ -9,36 +9,38 @@ if [ "$(uname -s)" = "Linux" ]; then
 elif [ "$(uname -s)" = "Darwin" ]; then
     SCRIPTPATH=$( cd "$(dirname "$0")" ; pwd -P )
 fi
-cd $SCRIPTPATH
-cd ..
-echo "Changed current working directory for script: $(pwd)"
+
+# Only change directory to where the compose file is if we are in the repository.
+if [ "$(basename $(dirname $SCRIPTPATH))" = "deploy" ]; then
+    cd $(dirname $SCRIPTPATH)
+fi
 
 function set-gateway {
-    GATEWAY=$(docker run --rm busybox ip route | awk '/^default via/ { print $3 }')
+    GATEWAY=$(sudo docker run --rm busybox ip route | awk '/^default via/ { print $3 }')
 }
 
 # Smoke test the private repository pull first.
 function smoke-test {
-    docker pull systeminit/sdf:stable
+    sudo env GATEWAY=$GATEWAY docker-compose pull
 }
 
 function command-dev {
     set +e
-    docker-compose down
+    sudo env GATEWAY=$GATEWAY docker-compose down
     set -e
     smoke-test
     set-gateway
-    GATEWAY=$GATEWAY docker-compose up
+    sudo env GATEWAY=$GATEWAY docker-compose up
 }
 
 function command-down {
-    docker-compose down
+    sudo env GATEWAY=$GATEWAY docker-compose down
 }
 
 function command-prod {
     smoke-test
     set-gateway
-    GATEWAY=$GATEWAY docker-compose up -d
+    sudo env GATEWAY=$GATEWAY docker-compose up -d
 }
 
 case $1 in

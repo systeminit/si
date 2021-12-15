@@ -26,16 +26,15 @@ function verify-fedora {
 
 # Source: https://docs.docker.com/engine/install/fedora/
 function install-docker {
-    dnf -y install dnf-plugins-core
-    dnf config-manager --add-repo https://download.docker.com/linux/fedora/docker-ce.repo
-    dnf install -y docker-ce docker-ce-cli containerd.io docker-compose
-    systemctl start docker
-    systemctl enable docker
-    docker run hello-world
+    sudo dnf -y install dnf-plugins-core
+    sudo dnf config-manager --add-repo https://download.docker.com/linux/fedora/docker-ce.repo
+    sudo dnf install -y docker-ce docker-ce-cli containerd.io docker-compose
+    sudo systemctl start docker
+    sudo systemctl enable docker
+    sudo docker run hello-world
 }
 
 verify-fedora
-determine-user
 if [ ! "$(command -v docker)" ] || [ ! "$(command -v docker-compose)" ]; then
     install-docker
 fi
