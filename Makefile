@@ -205,15 +205,15 @@ clean-containers: clean-dev-deps
 	cd ./components/si-web-app && $(MAKE) clean-container
 .PHONY: clean-containers
 
-# FIXME(nickgerace): The below targets are to be used during the transition period between the
+# TODO(nick): The below targets are to be used during the transition period between the
 # Vue 2 to Vue 3 rewrite. These targets should be merged into existing ones once the transition is
 # complete.
 
 sdf-prepare:
+	-cd $(MAKEPATH)/deploy && $(MAKE) down
 	cd $(MAKEPATH)/bin/lang-js; npm install
 	cd $(MAKEPATH)/bin/lang-js; npm run package
-	$(MAKEPATH)/component/postgres/bin/run-container.sh
-	$(MAKEPATH)/component/nats/bin/run-container.sh
+	cd $(MAKEPATH)/deploy && $(MAKE) partial
 	cd $(MAKEPATH); cargo check
 	cd $(MAKEPATH); cargo build
 	cd $(MAKEPATH); cargo test
