@@ -37,22 +37,30 @@ services:
       - "PGPASSWORD=bugbear"
       - "POSTGRES_USER=si"
       - "POSTGRES_DB=si"
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
     ports:
       - "5432:5432"
 
   nats:
     image: "systeminit/nats:stable"
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
     ports:
       - "4222:4222"
 
   otel:
     image: "systeminit/otelcol:stable"
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
     ports:
       - "4317:4317"
       - "55679:55679"
 
   web:
     image: "systeminit/web:stable"
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
     ports:
       - "80:80"
 
