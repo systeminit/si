@@ -8,10 +8,16 @@ boostrap:
 	$(MAKEPATH)/scripts/bootstrap.sh
 
 # Run this target alongside local developer builds of web, sdf, etc.
-partial: down smoke-test check-env
+# This target does not compose down beforehand.
+partial: smoke-test check-env
 	DOCKER_CONFIG=$(DOCKER_CONFIG) GATEWAY=$(shell $(MAKEPATH)/scripts/gateway.sh) \
 		docker-compose -f $(MAKEPATH)/docker-compose.yml -f $(MAKEPATH)/docker-compose.env.yml \
 		up nats pg otel
+
+partial-detached: smoke-test check-env
+	DOCKER_CONFIG=$(DOCKER_CONFIG) GATEWAY=$(shell $(MAKEPATH)/scripts/gateway.sh) \
+		docker-compose -f $(MAKEPATH)/docker-compose.yml -f $(MAKEPATH)/docker-compose.env.yml \
+		up -d nats pg otel
 
 # Run interactively and compose down beforehand. This target is meant to be run iteratively for
 # local development and testing.
