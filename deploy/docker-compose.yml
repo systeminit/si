@@ -50,3 +50,9 @@ services:
     ports:
       - "4317:4317"
       - "55679:55679"
+
+  web:
+    image: "systeminit/web:stable"
+    ports:
+      - "80:80"
+
