@@ -30,7 +30,7 @@ describe("Schema", () => {
         cy.getBySel("schema-new-form-name").click().type("coffeeCupJapan");
         cy.getBySel("schema-new-form-kind").select("Concrete");
         cy.getBySel("schema-new-form-create-button").click();
-        cy.getBySel("schema-list").contains("coffeeCupJapan");
+        cy.contains("coffeeCupJapan");
       });
   });
 });

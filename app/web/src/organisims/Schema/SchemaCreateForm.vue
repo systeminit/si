@@ -26,6 +26,7 @@
         <template #widget>
           <SiSelect
             id="schema-new-form-kind"
+            data-test="schema-new-form-kind"
             :options="kindOptions"
             value="concrete"
             size="xs"
