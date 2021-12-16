@@ -1,19 +1,22 @@
-name: release-si-veritech
+name: release-veritech
 
 on:
   push:
     branches:
-      - master
+      - main
     paths:
-      - .github/workflows/release-si-veritech.yml
-      - .prettierrc.js
-      - Makefile
-      - babel.config.js
-      - components/build/**
-      - components/si-entity/**
-      - components/si-inference/**
-      - components/si-registry/**
-      - components/si-veritech/**
+      - .github/workflows/release-veritech.yml
+      - .cargo/**
+      - Cargo.*
+      - bin/veritech/**
+      - lib/config-file/**
+      - lib/cyclone/**
+      - lib/si-data/**
+      - lib/si-settings/**
+      - lib/telemetry-rs/**
+      - lib/veritech/**
+      - rust-toolchain
+      - rustfmt.toml
 
 jobs:
   release:
