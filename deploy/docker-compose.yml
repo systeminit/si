@@ -71,6 +71,7 @@ services:
     depends_on:
       - watchtower
 
+  # Note: watchtower requires full image names for private registries, which include prefixes like "index.docker.io".
   watchtower:
     image: "containrrr/watchtower"
     volumes:

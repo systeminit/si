@@ -9,6 +9,7 @@ on:
         - "rust-toolchain"
         - "rustfmt.toml"
 jobs:
+
   ci-rust:
     runs-on: self-hosted
     steps:
@@ -21,4 +22,26 @@ jobs:
         toolchain: stable
         override: true
     - name: Execute CI target
-      run: make ci
+      run: ( cd ci; make ci-rust )
+
+  ci-test:
+    runs-on: self-hosted
+    steps:
+    - name: Git checkout
+      uses: actions/checkout@v2
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+        override: true
+    - name: Login Docker
+      id: login
+      uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9 # pin@v1.10.0
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_PASSWORD }}
+    - name: Execute CI target
+      run: ( source /data/runners/.profile; cd ci; make ci )
+      env:
+        HONEYCOMB_TOKEN: ${{ secrets.HONEYCOMB_TOKEN }}

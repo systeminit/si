@@ -213,7 +213,7 @@ sdf-prepare:
 	-cd $(MAKEPATH)/deploy && $(MAKE) down
 	cd $(MAKEPATH)/bin/lang-js; npm install
 	cd $(MAKEPATH)/bin/lang-js; npm run package
-	cd $(MAKEPATH)/deploy && $(MAKE) partial
+	cd $(MAKEPATH)/deploy && $(MAKE) partial-detached
 	cd $(MAKEPATH); cargo check
 	cd $(MAKEPATH); cargo build
 	cd $(MAKEPATH); cargo test
@@ -235,18 +235,3 @@ app-run:
 cargo-clean:
 	cd $(MAKEPATH); cargo clean
 .PHONY: clean-cargo
-
-# Actual target to be ran in CI, but can also be ran locally.
-# TODO(nick): add back cargo test.
-ci:
-	cd $(MAKEPATH); cargo fmt --all -- --check
-	cd $(MAKEPATH); cargo clippy -- -D warnings
-.PHONY: ci
-
-# TODO(nick): add back cargo test.
-# TODO(nick): consider adding --all-targets --all-features to clippy
-ci-prepare:
-	cd $(MAKEPATH); cargo fix --edition-idioms --allow-dirty --allow-staged
-	cd $(MAKEPATH); cargo fmt --all
-	cd $(MAKEPATH); cargo clippy --fix --allow-dirty --allow-staged
-.PHONY: ci-prepare
