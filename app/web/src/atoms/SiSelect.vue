@@ -6,6 +6,7 @@
       :class="selectorStyling()"
       :disabled="disabled"
       :aria-name="id"
+      :data-test="dataTest"
       @change="selected"
       @keypress.space.prevent
     >
@@ -70,6 +71,10 @@ const props = defineProps({
   valueAsNumber: {
     type: Boolean,
     default: false,
+  },
+  dataTest: {
+    type: String,
+    required: false,
   },
 });
 const emits = defineEmits(["update:modelValue"]);
