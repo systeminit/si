@@ -15,7 +15,8 @@
 
 ```sh
 $ sudo dnf -y upgrade
-$ sudo dnf -y install nvme-cli
+$ sudo dnf -y install nvme-cli lld clang cmake openssl libev libevent 
+$ sudo dnf -y groupinstall 'Development Tools'
 ```
 
 ## Setting up ephemeral storage
@@ -59,3 +60,50 @@ tmpfs           6.9G     0  6.9G   0% /run/user/1000
 ```
 
 And viola - you're gtg.
+
+## Adding users
+
+```sh 
+$ sudo useradd -r grunner
+$ sudo mkdir -p /data/runners
+```
+
+## Installing the runners
+
+Follow the instructions at [github](https://github.com/systeminit/si/settings/actions/runners/new). 
+
+Install the runner to /data/runner/X, where X is the number of the runner. (1, for the first)
+
+Then install it to systemd, with this file in /etc/systemd/system/actions.runner.systeminit-si.ci-1.service
+
+```sh 
+[Unit]
+Description=GitHub Actions Runner (systeminit-si.ci-1-1)
+After=network.target
+
+[Service]
+ExecStart=/data/runners/1/runsvc.sh
+User=grunner
+WorkingDirectory=/data/runners/1
+KillMode=process
+KillSignal=SIGTERM
+TimeoutStopSec=5min
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Make sure you enable the selinux context:
+
+```sh 
+$ restorecon -r -v /etc/systemd/system/actions.runner.*.service
+$ chcon system_u:object_r:usr_t:s0 runsvc.sh
+```
+
+Then enable and start it:
+
+```sh
+$ systemctl enable actions.runner.systeminit-si.ci-1
+$ systemctl start actions.runner.systeminit-si.ci-1
+```
+
