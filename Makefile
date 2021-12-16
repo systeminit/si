@@ -39,12 +39,12 @@ COMPONENTS = \
 	components/si-sdf
 RELEASEABLE_COMPONENTS = \
 	web \
-	si-veritech \
+	veritech \
 	sdf \
 	nats \
 	si-web-app
 RUNNABLE_COMPONENTS = \
-	components/si-veritech \
+	bin/veritech \
 	bin/sdf \
 	components/si-web-app
 BUILDABLE = $(patsubst %,build//%,$(COMPONENTS))
