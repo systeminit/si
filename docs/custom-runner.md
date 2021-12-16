@@ -15,8 +15,13 @@
 
 ```sh
 $ sudo dnf -y upgrade
-$ sudo dnf -y install nvme-cli lld clang cmake openssl libev libevent 
+$ sudo dnf -y install nvme-cli lld clang cmake openssl libev libevent jq
 $ sudo dnf -y groupinstall 'Development Tools'
+$ sudo dnf -y install dnf-plugins-core
+$ sudo dnf config-manager --add-repo https://download.docker.com/linux/fedora/docker-ce.repo
+$ sudo dnf install -y docker-ce docker-ce-cli containerd.io docker-compose
+$ systemctl start docker
+$ systemctl enable docker
 ```
 
 ## Setting up ephemeral storage
@@ -67,6 +72,8 @@ And viola - you're gtg.
 $ sudo useradd -r grunner
 $ sudo mkdir -p /data/runners
 ```
+
+Add `grunner` and `fedora` to the `docker` group
 
 ## Installing the runners
 
