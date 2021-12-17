@@ -12,7 +12,8 @@
     "prettier-check": "prettier --check ./src",
     "format": "prettier --write ./src",
     "cypress:open": "cypress open",
-    "eslint:fix": "eslint --ext .ts,.js,.vue --ignore-path .gitignore --fix src"
+    "eslint:fix": "eslint --ext .ts,.js,.vue --ignore-path .gitignore --fix src",
+    "cypress:run": "cypress run"
   },
   "dependencies": {
     "vue": "^3.2.16"

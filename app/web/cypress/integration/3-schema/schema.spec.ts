@@ -12,7 +12,7 @@ describe("Schema", () => {
     cy.getBySel("schema-nav-link")
       .click()
       .then(() => {
-        cy.url().should("be.equal", `${Cypress.config("baseUrl")}/schema/list`);
+        cy.url().should("be.match", /\/schema\/list$/);
       });
   });
 
@@ -27,9 +27,14 @@ describe("Schema", () => {
       })
       .then(() => {
         cy.getBySel("schema-new-button").click();
-        cy.getBySel("schema-new-form-name").click().type("coffeeCupJapan");
-        cy.getBySel("schema-new-form-kind").select("Concrete");
-        cy.getBySel("schema-new-form-create-button").click();
+        cy.getBySel("schema-new-form-name")
+          .click()
+          .wait(2000) // FIXME(adam): remove wait in favor of handler to wait for Vue component to fully load.
+          .type("coffeeCupJapan")
+          .then(() => {
+            cy.getBySel("schema-new-form-kind").select("Concrete");
+            cy.getBySel("schema-new-form-create-button").click();
+          });
         cy.contains("coffeeCupJapan");
       });
   });

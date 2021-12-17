@@ -1,5 +1,8 @@
 version: "3"
 
+# NOTE(nick): "depends_on" will start parent containers when using docker-compose run, so we should
+# try to only use it when necessary.
+
 services:
   sdf:
     image: "index.docker.io/systeminit/sdf:stable"
@@ -10,30 +13,14 @@ services:
       - "SI_SDF__NATS__URL=nats"
       - "OTEL_EXPORTER_OTLP_ENDPOINT=http://otelcol:4317"
     extra_hosts:
-      - "postgres:${GATEWAY}"
-      - "nats:${GATEWAY}"
-      - "otelcol:${GATEWAY}"
+      - "postgres:${GATEWAY:-I like my butt}"
+      - "nats:${GATEWAY:-I like my butt}"
+      - "otelcol:${GATEWAY:-I like my butt}"
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
     depends_on:
       - watchtower
       - pg
-      - otel
-      - nats
-    restart: "unless-stopped"
-
-  veritech:
-    image: "index.docker.io/systeminit/veritech:stable"
-    environment:
-      - "SI_VERITECH__NATS__URL=nats"
-      - "OTEL_EXPORTER_OTLP_ENDPOINT=http://otelcol:4317"
-    extra_hosts:
-      - "nats:${GATEWAY}"
-      - "otelcol:${GATEWAY}"
-    labels:
-      - "com.centurylinklabs.watchtower.enable=true"
-    depends_on:
-      - watchtower
       - otel
       - nats
     restart: "unless-stopped"
@@ -46,7 +33,22 @@ services:
       - "443:443"
     depends_on:
       - watchtower
-      - sdf
+    restart: "unless-stopped"
+
+  veritech:
+    image: "index.docker.io/systeminit/veritech:stable"
+    environment:
+      - "SI_VERITECH__NATS__URL=nats"
+      - "OTEL_EXPORTER_OTLP_ENDPOINT=http://otelcol:4317"
+    extra_hosts:
+      - "nats:${GATEWAY:-I like my butt}"
+      - "otelcol:${GATEWAY:-I like my butt}"
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+    depends_on:
+      - watchtower
+      - otel
+      - nats
     restart: "unless-stopped"
 
   pg:
@@ -87,10 +89,10 @@ services:
     depends_on:
       - watchtower
 
-  # Note: watchtower requires full image names for private registries, which include prefixes like "index.docker.io".
+  # NOTE(nick): watchtower requires full image names for private registries, which include prefixes like "index.docker.io".
   watchtower:
     image: "containrrr/watchtower"
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - ${DOCKER_CONFIG}:/config.json
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "${DOCKER_CONFIG:-~/.docker/config}:/config.json:ro"
     command: --interval 30 --label-enable

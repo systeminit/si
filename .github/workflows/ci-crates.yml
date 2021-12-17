@@ -1,16 +1,17 @@
-name: CI
+name: CI (Crates)
 on:
   push:
     paths:
-        - ".github/workflows/ci.yml"
-        - ".cargo/**"
-        - "Cargo.*"
-        - "**/*.rs"
-        - "rust-toolchain"
-        - "rustfmt.toml"
+      - ".github/workflows/ci-crates.yml"
+      - ".cargo/**"
+      - "Cargo.*"
+      - "**/*.rs"
+      - "rust-toolchain"
+      - "rustfmt.toml"
+      - "ci/**"
 jobs:
 
-  ci-rust:
+  ci-rust-lint:
     runs-on: self-hosted
     steps:
     - name: Git checkout
@@ -22,9 +23,9 @@ jobs:
         toolchain: stable
         override: true
     - name: Execute CI target
-      run: ( cd ci; make ci-rust )
+      run: ( cd ci; make ci-rust-lint )
 
-  ci-test:
+  ci-crates:
     runs-on: self-hosted
     steps:
     - name: Git checkout
@@ -42,6 +43,6 @@ jobs:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_PASSWORD }}
     - name: Execute CI target
-      run: ( source /data/runners/.profile; cd ci; make ci )
+      run: ( source /data/runners/.profile; cd ci; make ci-crates )
       env:
         HONEYCOMB_TOKEN: ${{ secrets.HONEYCOMB_TOKEN }}

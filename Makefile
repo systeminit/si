@@ -213,7 +213,7 @@ sdf-prepare:
 	-cd $(MAKEPATH)/deploy && $(MAKE) down
 	cd $(MAKEPATH)/bin/lang-js; npm install
 	cd $(MAKEPATH)/bin/lang-js; npm run package
-	cd $(MAKEPATH)/deploy && $(MAKE) partial-detached
+	cd $(MAKEPATH)/deploy && $(MAKE) partial
 	cd $(MAKEPATH); cargo check
 	cd $(MAKEPATH); cargo build
 	cd $(MAKEPATH); cargo test
