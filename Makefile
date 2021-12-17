@@ -235,3 +235,7 @@ app-run:
 cargo-clean:
 	cd $(MAKEPATH); cargo clean
 .PHONY: clean-cargo
+
+deploy-prod:
+	@$(MAKEPATH)/scripts/deploy-prod.sh
+.PHONY: deploy-prod
