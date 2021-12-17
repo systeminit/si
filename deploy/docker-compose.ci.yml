@@ -11,9 +11,11 @@ services:
 
   web:
     image: "nginx:1.21.4-alpine"
+    # NOTE(nick): "dist" is a directory and the other mounts are files. This might help when debugging permissions errors
+    # SELinux, volume mounts, etc.
     volumes:
-      - "${REPOPATH:-..}/app/web/nginx.conf:/etc/nginx/conf.d/default.conf"
       - "${REPOPATH:-..}/app/web/dist:/usr/share/nginx/html"
+      - "${REPOPATH:-..}/app/web/nginx.conf:/etc/nginx/conf.d/default.conf"
       - "${REPOPATH:-..}/app/web/nginx/dhparam.pem:/etc/ssl/certs/dhparam.pem"
       - "${REPOPATH:-..}/app/web/nginx/nginx-selfsigned.crt:/etc/ssl/certs/nginx-selfsigned.crt"
       - "${REPOPATH:-..}/app/web/nginx/nginx-selfsigned.key:/etc/ssl/certs/nginx-selfsigned.key"

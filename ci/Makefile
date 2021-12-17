@@ -16,18 +16,19 @@ ci-rust-lint:
 	cd $(REPOPATH); cargo clippy -- -D warnings
 .PHONY: ci-rust-lint
 
-ci-crates: setup-crates
+ci-crates: teardown setup-crates
 	cd $(REPOPATH); cargo test
 .PHONY: ci-crates
 
-ci-web: setup-web
+ci-web: teardown setup-web
 	$(MAKEPATH)/scripts/readiness-check.sh
-	cd $(REPOPATH)/app/web; env CYPRESS_BASE_URL="https://max:L0vesMiriya!@localhost" npm run ci
+	cd $(REPOPATH)/app/web; env CYPRESS_BASE_URL='https://max:L0vesMiriya!@localhost' npm run cypress:run
 .PHONY: ci-web
 
 setup-crates:
 	$(MAKEPATH)/scripts/init-compose-env.sh
-	cd $(REPOPATH)/bin/lang-js; npm ci && npm run package
+	cd $(REPOPATH)/bin/lang-js; npm ci
+	cd $(REPOPATH)/bin/lang-js; npm run package
 	cd $(REPOPATH)/deploy && $(MAKE) partial
 	cd $(REPOPATH); cargo build
 .PHONY: setup-crates
@@ -35,7 +36,9 @@ setup-crates:
 setup-web:
 	$(MAKEPATH)/scripts/init-compose-env.sh
 	cd $(REPOPATH)/bin/lang-js; npm ci
-	cd $(REPOPATH)/app/web; npm ci && env VUE_APP_SDF_BASE_HTTP_URL="https://localhost/api" \
+	cd $(REPOPATH)/bin/lang-js; npm run package
+	cd $(REPOPATH)/app/web; npm ci
+	cd $(REPOPATH)/app/web; env VUE_APP_SDF_BASE_HTTP_URL="https://localhost/api" \
 		VUE_APP_SDF_BASE_WS_URL="wss://localhost/api/ws/billing_account_updates" \
 		npm run build;
 	cd $(REPOPATH); cargo build
@@ -43,7 +46,7 @@ setup-web:
 .PHONY: setup-web
 
 teardown:
-	cd $(REPOPATH)/deploy && $(MAKE) down
+	-cd $(REPOPATH)/deploy && $(MAKE) down
 .PHONY: teardown
 
 # TODO(nick): consider adding --all-targets --all-features to clippy

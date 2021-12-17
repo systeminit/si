@@ -1,4 +1,4 @@
-name: CI
+name: CI (Web)
 on:
   push:
     paths:
@@ -13,7 +13,7 @@ on:
       - "app/web/**"
 jobs:
 
-  end-to-end:
+  ci-web:
     runs-on: self-hosted
     steps:
       - name: Git checkout

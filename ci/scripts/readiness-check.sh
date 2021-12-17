@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -ex
+set -e
 
 MAX_RETRIES=60
 RETRY_COUNT=0
@@ -11,7 +11,6 @@ function readiness-check {
             echo "hit max retry count: $MAX_RETRIES"
             exit 1
         fi
-        echo $RETRY_COUNT
 
         # NOTE(nick): declare VALUE as local first so that we capture the subshell output.
         # Then, ensure that we allow curl to fail as needed.

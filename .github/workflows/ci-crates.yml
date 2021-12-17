@@ -1,4 +1,4 @@
-name: CI
+name: CI (Crates)
 on:
   push:
     paths:
@@ -11,7 +11,7 @@ on:
       - "ci/**"
 jobs:
 
-  lint:
+  ci-rust-lint:
     runs-on: self-hosted
     steps:
     - name: Git checkout
@@ -25,7 +25,7 @@ jobs:
     - name: Execute CI target
       run: ( cd ci; make ci-rust-lint )
 
-  test:
+  ci-crates:
     runs-on: self-hosted
     steps:
     - name: Git checkout

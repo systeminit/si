@@ -28,7 +28,7 @@ prod: check-env
 		up -d
 
 ci: check-env
-	GATEWAY=$(shell $(MAKEPATH)/scripts/gateway.sh) REPOPATH=$(REPOPATH)\
+	GATEWAY=$(shell $(MAKEPATH)/scripts/gateway.sh) REPOPATH=$(REPOPATH) \
 		docker-compose -f $(MAKEPATH)/docker-compose.yml -f $(MAKEPATH)/docker-compose.env.yml \
 		-f $(MAKEPATH)/docker-compose.ci.yml \
 		up -d
