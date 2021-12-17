@@ -29,7 +29,7 @@
 
 # Ignore non-portable context in component sub-directories
 **/.envrc
+**/Makefile
+**/script
+**/target
 **/tmp
-**/*/targ
-**/*/script
-**/*/Makefile
