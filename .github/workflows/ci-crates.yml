@@ -1,6 +1,8 @@
 name: CI (Crates)
 on:
   push:
+    branches-ignore:
+      - "main"
     paths:
       - ".github/workflows/ci-crates.yml"
       - ".cargo/**"

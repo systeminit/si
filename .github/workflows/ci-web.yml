@@ -1,6 +1,8 @@
 name: CI (Web)
 on:
   push:
+    branches-ignore:
+      - "main"
     paths:
       - ".github/workflows/ci-web.yml"
       - ".cargo/**"
