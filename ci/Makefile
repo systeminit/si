@@ -35,7 +35,7 @@ setup-crates:
 setup-web:
 	$(MAKEPATH)/scripts/init-compose-env.sh
 	cd $(REPOPATH)/bin/lang-js; npm ci
-	cd $(REPOPATH)/app/web; env VUE_APP_SDF_BASE_HTTP_URL="https://localhost/api" \
+	cd $(REPOPATH)/app/web; npm ci && env VUE_APP_SDF_BASE_HTTP_URL="https://localhost/api" \
 		VUE_APP_SDF_BASE_WS_URL="wss://localhost/api/ws/billing_account_updates" \
 		npm run build;
 	cd $(REPOPATH); cargo build
