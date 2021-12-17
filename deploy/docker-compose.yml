@@ -22,6 +22,22 @@ services:
       - nats
     restart: "unless-stopped"
 
+  veritech:
+    image: "index.docker.io/systeminit/veritech:stable"
+    environment:
+      - "SI_VERITECH__NATS__URL=nats"
+      - "OTEL_EXPORTER_OTLP_ENDPOINT=http://otelcol:4317"
+    extra_hosts:
+      - "nats:${GATEWAY}"
+      - "otelcol:${GATEWAY}"
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+    depends_on:
+      - watchtower
+      - otel
+      - nats
+    restart: "unless-stopped"
+
   web:
     image: "index.docker.io/systeminit/web:stable"
     labels:
