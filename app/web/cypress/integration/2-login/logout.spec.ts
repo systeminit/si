@@ -12,10 +12,7 @@ describe("Logout", () => {
         .should(() => {
           expect(localStorage.getItem("si-sdf-token")).to.be.null;
         });
-      cy.url().should(
-        "be.equal",
-        `${Cypress.config("baseUrl")}/authenticate/login`,
-      );
+      cy.url().should("be.match", /\/authenticate\/login$/);
     });
   });
 });

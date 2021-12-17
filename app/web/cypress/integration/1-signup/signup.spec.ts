@@ -11,9 +11,6 @@ describe("Signup", () => {
     cy.getBySel("userEmail").type("a");
     cy.getBySel("userPassword").type("a");
     cy.getBySel("signUp").click();
-    cy.url().should(
-      "be.equal",
-      `${Cypress.config("baseUrl")}/authenticate/login`,
-    );
+    cy.url().should("be.match", /\/authenticate\/login$/);
   });
 });

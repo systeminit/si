@@ -1,6 +1,5 @@
 MAKEPATH := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
-DOCKER_CONFIG := $(HOME)/.docker/config.json
-GATEWAY_DEFAULT := "I like my butt"
+REPOPATH := $(shell dirname $(MAKEPATH))
 
 .DEFAULT_GOAL := prod
 
@@ -9,40 +8,34 @@ boostrap:
 
 # Run this target alongside local developer builds of web, sdf, etc.
 # This target does not compose down beforehand.
-partial: smoke-test check-env
-	DOCKER_CONFIG=$(DOCKER_CONFIG) GATEWAY=$(shell $(MAKEPATH)/scripts/gateway.sh) \
-		docker-compose -f $(MAKEPATH)/docker-compose.yml -f $(MAKEPATH)/docker-compose.env.yml \
-		up nats pg otel
-
-partial-detached: smoke-test check-env
-	DOCKER_CONFIG=$(DOCKER_CONFIG) GATEWAY=$(shell $(MAKEPATH)/scripts/gateway.sh) \
+partial: check-env
+	GATEWAY=$(shell $(MAKEPATH)/scripts/gateway.sh) \
 		docker-compose -f $(MAKEPATH)/docker-compose.yml -f $(MAKEPATH)/docker-compose.env.yml \
 		up -d nats pg otel
 
 # Run interactively and compose down beforehand. This target is meant to be run iteratively for
 # local development and testing.
-dev: down smoke-test check-env
-	DOCKER_CONFIG=$(DOCKER_CONFIG) GATEWAY=$(shell $(MAKEPATH)/scripts/gateway.sh) \
+dev: down check-env
+	GATEWAY=$(shell $(MAKEPATH)/scripts/gateway.sh) \
 		docker-compose -f $(MAKEPATH)/docker-compose.yml -f $(MAKEPATH)/docker-compose.env.yml \
 		up
 
 # Run in a detached state and do not compose down beforehand.
 # This is the target to run in production.
-prod: smoke-test check-env
-	DOCKER_CONFIG=$(DOCKER_CONFIG) GATEWAY=$(shell $(MAKEPATH)/scripts/gateway.sh) \
+prod: check-env
+	GATEWAY=$(shell $(MAKEPATH)/scripts/gateway.sh) \
 		docker-compose -f $(MAKEPATH)/docker-compose.yml -f $(MAKEPATH)/docker-compose.env.yml \
 		up -d
 
-down:
-	-DOCKER_CONFIG=$(DOCKER_CONFIG) GATEWAY=$(GATEWAY_DEFAULT) \
-		docker-compose -f $(MAKEPATH)/docker-compose.yml \
-		down
+ci: check-env
+	GATEWAY=$(shell $(MAKEPATH)/scripts/gateway.sh) REPOPATH=$(REPOPATH)\
+		docker-compose -f $(MAKEPATH)/docker-compose.yml -f $(MAKEPATH)/docker-compose.env.yml \
+		-f $(MAKEPATH)/docker-compose.ci.yml \
+		up -d
 
-# Smoke test the private repository pull first.
-smoke-test:
-	DOCKER_CONFIG=$(DOCKER_CONFIG) GATEWAY=$(GATEWAY_DEFAULT) \
-		docker-compose -f $(MAKEPATH)/docker-compose.yml \
-		pull
+down:
+	-docker-compose -f $(MAKEPATH)/docker-compose.yml \
+		down
 
 check-env:
 	@if [ ! -f $(MAKEPATH)/docker-compose.env.yml ]; then \

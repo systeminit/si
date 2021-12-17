@@ -2,6 +2,7 @@ import { TestCtx } from "../../support/commands";
 
 describe("Login", () => {
   beforeEach(() => {
+    cy.visit("/");
     cy.signup();
   });
 
@@ -16,7 +17,7 @@ describe("Login", () => {
         .should(() => {
           expect(localStorage.getItem("si-sdf-token")).to.not.be.null;
         });
-      cy.url().should("be.equal", `${Cypress.config("baseUrl")}/`);
+      cy.url().should("be.match", /\/$/);
     });
   });
 });

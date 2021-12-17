@@ -53,7 +53,7 @@ pub fn routes(
 
     let mut router: Router = Router::new();
     router = router
-        .route("/demo", get(handlers::demo))
+        .route("/api/demo", get(handlers::demo))
         .nest(
             "/api/application",
             crate::server::service::application::routes(),
