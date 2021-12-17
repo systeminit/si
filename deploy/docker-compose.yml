@@ -27,7 +27,7 @@ services:
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
     ports:
-      - "80:80"
+      - "443:443"
     depends_on:
       - watchtower
       - sdf
