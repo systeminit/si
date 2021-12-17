@@ -27,9 +27,16 @@
 !lib/si-settings
 !lib/telemetry-rs
 
+# Include lang-js as currently Veritech ships with Cyclone/lang-js as a bundle
+!bin/lang-js
+
 # Ignore non-portable context in component sub-directories
 **/.envrc
+**/Makefile
+**/script
+**/target
 **/tmp
-**/*/targ
-**/*/script
-**/*/Makefile
+
+# Ignore non-portable context for lang-js
+**/node_modules
+**/dist
