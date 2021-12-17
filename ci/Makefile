@@ -27,7 +27,7 @@ ci-web: setup-web
 
 setup-crates:
 	$(MAKEPATH)/scripts/init-compose-env.sh
-	cd $(REPOPATH)/bin/lang-js; npm ci
+	cd $(REPOPATH)/bin/lang-js; npm ci && npm run package
 	cd $(REPOPATH)/deploy && $(MAKE) partial
 	cd $(REPOPATH); cargo build
 .PHONY: setup-crates
