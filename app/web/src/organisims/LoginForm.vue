@@ -7,6 +7,12 @@
     </div>
     <div class="p-4">
       <div
+        data-testid="error-message"
+        class="text-white bg-red-500 text-center"
+      >
+        Happy Holidays, 2021!!
+      </div>
+      <div
         v-if="errorMessage"
         data-testid="error-message"
         class="text-white bg-red-500"
