@@ -27,7 +27,7 @@ function set-jwt-secret-key {
 }
 
 # We will not check for the honeycomb token since it will be passed in by our CI platform.
-function perfom-init {
+function perform-init {
     cp $REPOPATH/ci/docker-compose.env.yml $REPOPATH/deploy/docker-compose.env.yml
     sed -i "s|<jwt-secret-key>|$JWT_SECRET_KEY|g" $REPOPATH/deploy/docker-compose.env.yml
     sed -i "s|<honeycomb-token>|$HONEYCOMB_TOKEN|g" $REPOPATH/deploy/docker-compose.env.yml
