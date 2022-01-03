@@ -53,5 +53,5 @@ teardown:
 prepare:
 	cd $(REPOPATH); cargo fix --edition-idioms --allow-dirty --allow-staged
 	cd $(REPOPATH); cargo fmt --all
-	cd $(REPOPATH); cargo clippy --fix --allow-dirty --allow-staged
+	cd $(REPOPATH); cargo clippy
 .PHONY: prepare

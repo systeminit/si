@@ -44,11 +44,21 @@ Please reach out internally if your account cannot pull images from the private 
 In one terminal pane (e.g. using a terminal multiplexer, such as `tmux`, or tabs/windows), execute the following:
 
 ```bash
-make sdf-all
+make sdf-prepare
 ```
 
-This will ensure that our database is running, our NATS server is running, the JS language server is built, all crates are built, and the database has been "warmed up" via our test suite.
-Open success, you can execute `make sdf-run` for subsequent runs.
+This will ensure that our database is running, our NATS server is running, the JS language server is built, and all crates are built.
+
+Now, wait for the `postgres` database container to be running and ready to receive incoming client connection requests.
+If it is not ready, `sdf` database migration will fail.
+
+Once the database is ready, you can run `sdf`.
+
+```bash
+make sdf-run
+```
+
+_Note:_ you can run `sdf` again without running the prepare target if you are only making changes to `sdf` and the libraries it pulls in.
 
 In another terminal pane, execute the following command:
 
@@ -58,6 +68,11 @@ make app-run
 
 This will run the web application, which you can access by navigating to https://localhost:8080.
 Now, you have SI running!
+
+## Prepare Your Changes
+
+Navigate to the `Makefile` in the [ci](./ci) directory to see local development targets.
+These targets include code linting, formating, running CI locally, etc.
 
 ## Architecture
 
@@ -92,6 +107,21 @@ When in doubt, use `feat`, `fix`, or `chore`!
 
 Moreover, please sign your commits using `git commit -s`.
 You can amend an existing commit with `git commit -s --amend`, if needed.
+
+### Shortcut Integration
+
+If using [Shortcut](https://shortcut.com), you can link stories with commits.
+You can do so by including `[sc-XXXX]` in your commit message where `XXXX` represents the story ID.
+A recommended workflow is to put it in the body of the commit message rather than the title due to the latter's 50 character limit.
+
+Here is an example commit message using the integration:
+
+```
+chore(butt): add I like my butt
+
+- Add I like my butt to butt [sc-1234]
+- Enhance unit tests for butt
+```
 
 ## Engineering Team Links
 

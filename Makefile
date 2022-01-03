@@ -214,18 +214,12 @@ sdf-prepare:
 	cd $(MAKEPATH)/bin/lang-js; npm install
 	cd $(MAKEPATH)/bin/lang-js; npm run package
 	cd $(MAKEPATH)/deploy && $(MAKE) partial
-	cd $(MAKEPATH); cargo check
-	cd $(MAKEPATH); cargo build
-	cd $(MAKEPATH); cargo test
-	cd $(MAKEPATH); cargo doc
 .PHONY: sdf-prepare
 
 sdf-run:
+	cd $(MAKEPATH); cargo build
 	cd $(MAKEPATH); cargo run --bin sdf -- --disable-opentelemetry
 .PHONY: sdf-run
-
-sdf-all: sdf-prepare sdf-run
-.PHONY: sdf-all
 
 app-run:
 	cd $(MAKEPATH)/app/web; npm install

@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use axum::http::Method;
 
 use dal::test_harness::create_schema as dal_create_schema;
@@ -58,7 +60,8 @@ async fn list_schemas() {
     let tenancy = Tenancy::new_billing_account(vec![*nba.billing_account.id()]);
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
-    let _schema_one = dal_create_schema(
+
+    let rand_schema1 = dal_create_schema(
         &txn,
         &nats,
         &tenancy,
@@ -67,7 +70,8 @@ async fn list_schemas() {
         &SchemaKind::Concrete,
     )
     .await;
-    let _schema_two = dal_create_schema(
+    let rand_schema1_name = rand_schema1.name();
+    let rand_schema2 = dal_create_schema(
         &txn,
         &nats,
         &tenancy,
@@ -76,11 +80,29 @@ async fn list_schemas() {
         &SchemaKind::Concrete,
     )
     .await;
+    let rand_schema2_name = rand_schema2.name();
+
     txn.commit().await.expect("cannot commit txn");
     let request = ListSchemaRequest { visibility };
     let response: ListSchemaResponse =
         api_request_auth_query(app, "/api/schema/list_schemas", &auth_token, &request).await;
-    assert_eq!(response.list.len(), 3);
+
+    let filtered_schema_names: HashSet<String> = response
+        .list
+        .into_iter()
+        .filter_map(|schema| match schema.name() {
+            schema_name if schema_name == rand_schema1_name || schema_name == rand_schema2_name => {
+                Some(schema_name.to_string())
+            }
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        filtered_schema_names,
+        vec![rand_schema1_name.to_string(), rand_schema2_name.to_string()]
+            .into_iter()
+            .collect()
+    );
 }
 
 #[tokio::test]
