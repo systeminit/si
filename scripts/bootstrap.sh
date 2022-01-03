@@ -7,9 +7,9 @@ SI_LINUX="unknown"
 SI_WSL2="unknown"
 SI_ARCH="unknown"
 
-function error-and-exit {
+function die {
     if [ "$1" = "" ]; then
-        error-and-exit "must provide argument <error-message>"
+        die "must provide argument <error-message>"
     fi
     echo "error: $1"
     exit 1
@@ -17,7 +17,7 @@ function error-and-exit {
 
 function determine-user {
     if [ $EUID -eq 0 ]; then
-        error-and-exit "must run as non-root"
+        die "must run as non-root"
     fi
     SI_USER=$(whoami)
     sudo -v
@@ -40,7 +40,7 @@ function set-config {
         if [ -f /etc/os-release ]; then
             SI_OS=$(grep '^ID=' /etc/os-release | sed 's/^ID=//' | tr -d '"')
         else
-            error-and-exit "file \"/etc/os-release\" not found"
+            die "file \"/etc/os-release\" not found"
         fi
 
         SI_WSL2="false"
@@ -48,7 +48,7 @@ function set-config {
             SI_WSL2="true"
         fi
     else
-        error-and-exit "detected OS is neither Darwin nor Linux"
+        die "detected OS is neither Darwin nor Linux"
     fi
 }
 
@@ -77,14 +77,14 @@ function perform-bootstrap {
     elif [ "$SI_OS" = "fedora" ] && [ "$SI_ARCH" = "x86_64" ]; then
         fedora-bootstrap
     else
-        error-and-exit "detected distro \"$SI_OS\" and architecture \"$SI_ARCH\" combination have not yet been validated"
+        die "detected distro \"$SI_OS\" and architecture \"$SI_ARCH\" combination have not yet been validated"
     fi
 }
 
 function check-binaries {
-    for BINARY in "cargo" "node" "npm" "docker"; do
+    for BINARY in "cargo" "node" "npm" "docker" "docker-compose"; do
         if ! [ "$(command -v ${BINARY})" ]; then
-            error-and-exit "\"$BINARY\" must be installed and in PATH"
+            die "\"$BINARY\" must be installed and in PATH"
         fi
     done
 }
@@ -92,7 +92,7 @@ function check-binaries {
 function check-node {
     # Check added due to vercel/pkg requirement: https://github.com/vercel/pkg/issues/838
     if [ "$(node -pe process.release.lts)" = "undefined" ] && [ "$SI_OS" = "darwin"] && [ "$SI_ARCH" = "arm64"]; then
-        error-and-exit "must use an LTS release of node for \"$SI_OS\" on \"$SI_ARCH\""
+        die "must use an LTS release of node for \"$SI_OS\" on \"$SI_ARCH\""
     fi
 }
 
