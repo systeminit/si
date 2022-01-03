@@ -25,7 +25,7 @@ If unsure, the following tools are recommended to help manage your toolchains:
 
 ## Quickstart
 
-To get ready to run this repository, you should run the following script:
+**Bootstrap:** to get ready to run this repository, you should run the following script:
 
 ```bash
 ./scripts/bootstrap.sh
@@ -34,7 +34,9 @@ To get ready to run this repository, you should run the following script:
 The bootstrapper is idempotent, so feel free to run it as many times as you like!
 However, it _will_ upgrade existing packages without confirmations, so ensure that you are ready to do so.
 
-With all dependencies installed and required binaries in `PATH`, we are ready to go!
+**Login:** now, we need to ensure that we are [logged into Docker locally](https://docs.docker.com/engine/reference/commandline/login/) and that the corrresponding account can pull images from our [private repositories](https://hub.docker.com/orgs/systeminit/repositories).
+
+**Make:** with all dependencies installed and required binaries in `PATH`, we are ready to go!
 In one terminal pane (e.g. using a terminal multiplexer, such as `tmux`, or tabs/windows), execute the following:
 
 ```bash
