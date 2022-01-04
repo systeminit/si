@@ -47,7 +47,7 @@ invoke_cli() {
   shift
 
   local img source license
-  img="${IMG:-systeminit/sdf}"
+  img="${IMG:-systeminit/postgres}"
   source="http://github.com/systeminit/si.git"
   license="PROPRIETARY"
 
