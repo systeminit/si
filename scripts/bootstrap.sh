@@ -52,10 +52,6 @@ function set-config {
     fi
 }
 
-function arch-bootstrap {
-    sudo pacman -Syu --noconfirm base-devel make git
-}
-
 function darwin-bootstrap {
     brew update
     brew upgrade
@@ -63,10 +59,21 @@ function darwin-bootstrap {
     brew install bash make git
 }
 
+function arch-bootstrap {
+    sudo pacman -Syu --noconfirm base-devel make git
+}
+
 function fedora-bootstrap {
     sudo dnf upgrade -y --refresh
     sudo dnf autoremove -y
     sudo dnf install -y @development-tools make git lld
+}
+
+function ubuntu-bootstrap {
+    sudo apt update
+    sudo apt upgrade -y
+    sudo apt autoremove -y
+    sudo apt install -y build-essential make git lld
 }
 
 function perform-bootstrap {
@@ -76,8 +83,18 @@ function perform-bootstrap {
         arch-bootstrap
     elif [ "$SI_OS" = "fedora" ] && [ "$SI_ARCH" = "x86_64" ]; then
         fedora-bootstrap
+    elif [ "$SI_OS" = "ubuntu" ] && [ "$SI_ARCH" = "x86_64" ]; then
+        ubuntu-bootstrap
     else
-        die "detected distro \"$SI_OS\" and architecture \"$SI_ARCH\" combination have not yet been validated"
+        die "detected distro \"$SI_OS\" and architecture \"$SI_ARCH\" combination
+have not yet been validated
+
+  - if you would like to add this combination, edit \"./scripts/bootstrap.sh\"
+    and \"./README.md\" accordingly
+  - note: adding your preferred environment will also add you as a maintainer
+    of its functionality throughout this repository
+  - refer to \"./README.md\" for more information, which includes the formal
+    checklist for adding your preferred environment"
     fi
 }
 
@@ -96,17 +113,17 @@ function check-node {
     fi
 }
 
-# We use empty echo payloads instead of newline characters for readability.
+
 function print-success {
-    echo ""
-    echo "Success! Ready to build System Initiative with your config 🦀:"
-    echo ""
-    echo "user  : $SI_USER"
-    echo "os    : $SI_OS"
-    echo "arch  : $SI_ARCH"
-    echo "linux : $SI_LINUX"
-    echo "wsl2  : $SI_WSL2"
-    echo ""
+    echo "
+Success! Ready to build System Initiative with your config 🦀:
+
+  user  : $SI_USER
+  os    : $SI_OS
+  arch  : $SI_ARCH
+  linux : $SI_LINUX
+  wsl2  : $SI_WSL2
+"
 }
 
 determine-user
