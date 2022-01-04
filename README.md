@@ -8,6 +8,8 @@ This is a monolithic repository containing the source for System Initiative (SI)
 * Fedora `(x86_64 / amd64)`
 * macOS `(arm64 / aarch64)`
 * macOS `(x86_64 / amd64)`
+* Ubuntu `(x86_64 / amd64)`
+* WSL2 `(x86_64 / amd64)`
 
 > If your preferred environment is not listed, please feel free to add it once the following conditions have been met:
 >
@@ -16,6 +18,7 @@ This is a monolithic repository containing the source for System Initiative (SI)
 > 3. Running the **Quickstart** steps below is successful and the UI is fully functional
 >
 > _Please note:_ adding your preferred environment will also add you as a maintainer of its functionality throughout this repository.
+> If unsure where to start, you can look at a [PR from the past](https://github.com/systeminit/si/pull/589) to help.
 
 We recommend using the latest stable Rust toolchain and latest LTS Node toolchain for your environment.
 If unsure, the following tools are recommended to help manage your toolchains:
@@ -35,6 +38,7 @@ The bootstrapper is idempotent, so feel free to run it as many times as you like
 However, it _will_ upgrade existing packages without confirmations, so ensure that you are ready to do so.
 
 **Login:** now, we need to ensure that we are [logged into Docker locally](https://docs.docker.com/engine/reference/commandline/login/) and that the corrresponding account can pull images from our [private repositories](https://hub.docker.com/orgs/systeminit/repositories).
+Please reach out internally if your account cannot pull images from the private SI repositories.
 
 **Make:** with all dependencies installed and required binaries in `PATH`, we are ready to go!
 In one terminal pane (e.g. using a terminal multiplexer, such as `tmux`, or tabs/windows), execute the following:
