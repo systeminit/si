@@ -108,7 +108,7 @@ function check-binaries {
 
 function check-node {
     # Check added due to vercel/pkg requirement: https://github.com/vercel/pkg/issues/838
-    if [ "$(node -pe process.release.lts)" = "undefined" ] && [ "$SI_OS" = "darwin"] && [ "$SI_ARCH" = "arm64"]; then
+    if [ "$(node -pe process.release.lts)" = "undefined" ] && [ "$SI_OS" = "darwin" ] && [ "$SI_ARCH" = "arm64" ]; then
         die "must use an LTS release of node for \"$SI_OS\" on \"$SI_ARCH\""
     fi
 }
