@@ -9,6 +9,7 @@
       :initial-maximized-full="maximizedFull"
       :initial-maximized-container="maximizedContainer"
       :is-maximized-container-enabled="isMaximizedContainerEnabled"
+      :initial-panel-type="panelType"
       @change-panel="changePanelType"
       @panel-maximize-full="setMaximizedFullTrue($event)"
       @panel-minimize-full="setMaximizedFullFalse($event)"

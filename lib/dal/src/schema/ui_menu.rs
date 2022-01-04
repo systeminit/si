@@ -1,10 +1,10 @@
 use async_trait::async_trait;
 use jwt_simple::reexports::serde_json::Value;
 use serde::{Deserialize, Serialize};
+
 use si_data::{NatsTxn, PgTxn};
 use telemetry::prelude::*;
 
-use super::{Schema, SchemaId, SchemaResult};
 use crate::{
     edit_field::{
         value_and_visiblity_diff, value_and_visiblity_diff_option, EditField, EditFieldAble,
@@ -15,6 +15,8 @@ use crate::{
     standard_model_many_to_many, HistoryActor, LabelList, SchemaError, SchematicKind,
     StandardModel, Tenancy, Timestamp, Visibility,
 };
+
+use super::{Schema, SchemaId, SchemaResult};
 
 pk!(UiMenuPk);
 pk!(UiMenuId);
@@ -98,6 +100,30 @@ impl UiMenu {
         returns: Schema,
         result: SchemaResult,
     );
+
+    /// A menu item is unusable when it doesn't have the fields set yet that
+    /// enable it to show up in a menu.
+    pub async fn usable_in_menu(
+        &self,
+        txn: &PgTxn<'_>,
+        visibility: &Visibility,
+    ) -> SchemaResult<bool> {
+        if self.name().is_none()
+            || self.category().is_none()
+            || self.schema(txn, visibility).await?.is_none()
+        {
+            Ok(false)
+        } else {
+            Ok(true)
+        }
+    }
+
+    pub fn category_path(&self) -> Vec<&str> {
+        match self.category() {
+            Some(category) => category.split('.').collect(),
+            None => Vec::new(),
+        }
+    }
 }
 
 #[async_trait]

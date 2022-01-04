@@ -8,6 +8,7 @@ use dal::{SchemaError as DalSchemaError, StandardModelError};
 use std::convert::Infallible;
 use thiserror::Error;
 
+pub mod get_node_add_menu;
 pub mod get_schematic;
 pub mod set_schematic;
 
@@ -49,4 +50,8 @@ pub fn routes() -> Router {
     Router::new()
         .route("/get_schematic", get(get_schematic::get_schematic))
         .route("/set_schematic", post(set_schematic::set_schematic))
+        .route(
+            "/get_node_add_menu",
+            post(get_node_add_menu::get_node_add_menu),
+        )
 }
