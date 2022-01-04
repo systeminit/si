@@ -34,7 +34,7 @@
 </template>
 
 <script setup lang="ts">
-import { PropType, ref } from "vue";
+import { PropType } from "vue";
 import { EditFields } from "@/api/sdf/dal/edit_field";
 import CheckboxWidget from "@/organisims/EditForm/CheckboxWidget.vue";
 import TextWidget from "@/organisims/EditForm/TextWidget.vue";
@@ -42,13 +42,13 @@ import SelectWidget from "@/organisims/EditForm/SelectWidget.vue";
 import HeaderWidget from "@/organisims/EditForm/HeaderWidget.vue";
 import ArrayWidget from "@/organisims/EditForm/ArrayWidget.vue";
 
-const props = defineProps({
+defineProps({
   editFields: {
     type: Array as PropType<EditFields>,
     required: true,
   },
 });
 
-type TreeOpenState = Record<string, boolean>;
-const treeOpenState = ref<TreeOpenState>({});
+// type TreeOpenState = Record<string, boolean>;
+// const treeOpenState = ref<TreeOpenState>({});
 </script>

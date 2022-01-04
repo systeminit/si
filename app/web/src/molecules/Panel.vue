@@ -96,7 +96,7 @@ const props = defineProps({
   panelIndex: { type: Number, required: true },
   panelRef: { type: String, required: true },
   panelContainerRef: { type: String, required: true },
-  initialPanelType: { type: String as PropType<PanelType>, required: true },
+  initialPanelType: { type: String as PropType<PanelType>, default: PanelType.Empty },
   initialMaximizedFull: Boolean,
   initialMaximizedContainer: Boolean,
   isVisible: { type: Boolean, default: true },
@@ -225,13 +225,15 @@ div.inactive-panel-menu > * {
   filter: brightness(90%);
 }
 
+/*
 div.active-panel {
-  /* border: solid;
+  border: solid;
   border-color: #323536;
-  border-width: 0.1em; */
+  border-width: 0.1em;
 }
 
 div.inactive-panel > * {
-  /* filter: brightness(98%); */
+  filter: brightness(98%);
 }
+*/
 </style>
