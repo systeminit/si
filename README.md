@@ -37,11 +37,13 @@ If unsure, the following tools are recommended to help manage your toolchains:
 The bootstrapper is idempotent, so feel free to run it as many times as you like!
 However, it _will_ upgrade existing packages without confirmations, so ensure that you are ready to do so.
 
-**Login:** now, we need to ensure that we are [logged into Docker locally](https://docs.docker.com/engine/reference/commandline/login/) and that the corrresponding account can pull images from our [private repositories](https://hub.docker.com/orgs/systeminit/repositories).
+**Login:** now, we need to ensure that we are [logged into Docker locally](https://docs.docker.com/engine/reference/commandline/login/) and that the corresponding account can pull images from our [private repositories](https://hub.docker.com/orgs/systeminit/repositories).
 Please reach out internally if your account cannot pull images from the private SI repositories.
 
 **Make:** with all dependencies installed and required binaries in `PATH`, we are ready to go!
 In one terminal pane (e.g. using a terminal multiplexer, such as `tmux`, or tabs/windows), execute the following:
+
+**Services:** docker-compose deploys a postgresql service, an open-telemetry service, a nats service and an watchtower service, using the default ports, so if some of those already are running on the host machine a conflict will happen, for now just disable the host's service and let the docker one do its job
 
 ```bash
 make sdf-all

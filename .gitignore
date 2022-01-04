@@ -18,3 +18,7 @@ vendor/automerge
 deploy/docker-compose.env.yml
 app/web/cypress/screenshots/
 app/web/cypress/videos/
+
+# vim temp files
+.*.swp
+.*.swo
