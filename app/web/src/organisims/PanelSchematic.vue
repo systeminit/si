@@ -1,6 +1,5 @@
 <template>
   <Panel
-    initial-panel-type="empty"
     :panel-index="panelIndex"
     :panel-ref="panelRef"
     :panel-container-ref="panelContainerRef"

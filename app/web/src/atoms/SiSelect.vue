@@ -32,8 +32,8 @@ import { PropType, defineProps, defineEmits, computed } from "vue";
 import VueFeather from "vue-feather";
 
 export interface SelectPropsOption {
-  value: string | null | Object | number;
-  label: string;
+  value: unknown;
+  label: unknown;
 }
 
 export interface SelectProps {

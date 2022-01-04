@@ -8,6 +8,7 @@
       :panel-container-ref="panelContainerRef"
       :initial-maximized-full="maximizedFull"
       :initial-maximized-container="maximizedContainer"
+      :initial-panel-type="panelType"
       :is-maximized-container-enabled="isMaximizedContainerEnabled"
       @change-panel="changePanelType"
       @panel-maximize-full="setMaximizedFullTrue($event)"
@@ -22,6 +23,8 @@
 import { computed, PropType, ref } from "vue";
 import { PanelMaximized, PanelType } from "./panel_types";
 import PanelEmpty from "@/organisims/PanelEmpty.vue";
+
+import PanelAttribute from "@/organisims/PanelAttribute.vue";
 import PanelSchematic from "@/organisims/PanelSchematic.vue";
 
 const props = defineProps({
@@ -43,7 +46,9 @@ const emit = defineEmits([
 const panelType = ref<PanelType>(props.initialPanelType);
 
 const whichComponent = computed<any>(() => {
-  if (panelType.value == "schematic") {
+  if (panelType.value == "attribute") {
+    return PanelAttribute;
+  } else if (panelType.value == "schematic") {
     return PanelSchematic;
   } else {
     return PanelEmpty;
