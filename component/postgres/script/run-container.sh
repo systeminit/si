@@ -6,14 +6,15 @@ main() {
   if [ -n "${TRACE:-}" ]; then set -xv; fi
 
   local version img name
-  version="${VERSION:-11.10-alpine}"
-  img="${IMG:-postgres}"
+  version="${VERSION:-stable}"
+  img="${IMG:-systeminit/postgres}"
   name="${CONTAINER_NAME:-postgres}"
 
   : "${POSTGRES_PASSWORD=bugbear}"
   : "${PGPASSWORD=bugbear}"
   : "${POSTGRES_USER=si}"
   : "${POSTGRES_DB=si}"
+  : "${POSTGRES_MULTIPLE_DBS=si_test}"
 
   if [ -n "$(docker container ls --filter "name=^$name" --filter "status=running" --quiet)" ]; then
     echo "  - Container $name is already running"
@@ -30,6 +31,7 @@ main() {
       --env "PGPASSWORD=$PGPASSWORD" \
       --env "POSTGRES_USER=$POSTGRES_USER" \
       --env "POSTGRES_DB=$POSTGRES_DB" \
+      --env "POSTGRES_MULTIPLE_DBS=$POSTGRES_MULTIPLE_DBS" \
       --publish 5432:5432 \
       --name "$name" \
       "$@" \

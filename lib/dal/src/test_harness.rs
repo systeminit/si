@@ -31,6 +31,7 @@ impl Default for TestConfig {
         if let Ok(value) = env::var("SI_TEST_PG_HOSTNAME") {
             pg.hostname = value;
         }
+        pg.dbname = env::var("SI_TEST_PG_DBNAME").unwrap_or_else(|_| "si_test".to_string());
 
         Self {
             pg,
