@@ -4,14 +4,15 @@ use anyhow::Result;
 use async_trait::async_trait;
 use lazy_static::lazy_static;
 use names::{Generator, Name};
+
 use si_data::{NatsClient, NatsConfig, NatsTxn, PgPool, PgPoolConfig, PgTxn};
 use telemetry::{ClientError, TelemetryClient, Verbosity};
 
 use crate::{
     billing_account::BillingAccountSignup, jwt_key::JwtSecretKey, node::NodeKind, schema, socket,
     BillingAccount, ChangeSet, Component, EditSession, Group, HistoryActor, KeyPair, Node,
-    Organization, QualificationCheck, Schema, SchemaKind, StandardModel, System, Tenancy, User,
-    Visibility, Workspace, NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK,
+    Organization, QualificationCheck, Schema, SchemaId, SchemaKind, StandardModel, System, Tenancy,
+    User, Visibility, Workspace, NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK,
 };
 
 #[derive(Debug)]
@@ -416,6 +417,25 @@ pub async fn create_component_and_schema(
         .await
         .expect("cannot create entity");
     entity
+}
+
+pub async fn create_component_for_schema(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    tenancy: &Tenancy,
+    visibility: &Visibility,
+    history_actor: &HistoryActor,
+    schema_id: &SchemaId,
+) -> Component {
+    let name = generate_fake_name();
+    let component = Component::new(txn, nats, tenancy, visibility, history_actor, &name)
+        .await
+        .expect("cannot create component");
+    component
+        .set_schema(txn, nats, visibility, history_actor, schema_id)
+        .await
+        .expect("cannot set the schema for our component");
+    component
 }
 
 pub async fn create_node(

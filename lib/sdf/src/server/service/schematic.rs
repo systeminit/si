@@ -4,7 +4,7 @@ use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::Json;
 use axum::Router;
-use dal::{SchemaError as DalSchemaError, StandardModelError};
+use dal::{NodeMenuError, SchemaError as DalSchemaError, StandardModelError};
 use std::convert::Infallible;
 use thiserror::Error;
 
@@ -24,6 +24,8 @@ pub enum SchematicError {
     Schema(#[from] DalSchemaError),
     #[error("schema not found")]
     SchemaNotFound,
+    #[error("node menu error: {0}")]
+    NodeMenu(#[from] NodeMenuError),
 }
 
 pub type SchematicResult<T> = std::result::Result<T, SchematicError>;
