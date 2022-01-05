@@ -9,7 +9,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, reactive, Ref } from "vue";
+import { onMounted, ref} from "vue";
 import _ from "lodash";
 
 import Viewer from "./SchematicViewer/Viewer.vue";
