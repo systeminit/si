@@ -5,8 +5,8 @@ use thiserror::Error;
 
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
-    HistoryActor, HistoryEventError, Organization, OrganizationId, StandardModel,
-    StandardModelError, Tenancy, Timestamp, Visibility,
+    standard_model_has_many, HistoryActor, HistoryEventError, Organization, OrganizationId,
+    StandardModel, StandardModelError, System, SystemResult, Tenancy, Timestamp, Visibility,
 };
 
 #[derive(Error, Debug)]
@@ -80,6 +80,7 @@ impl Workspace {
     }
 
     standard_model_accessor!(name, String, WorkspaceResult);
+
     standard_model_belongs_to!(
         lookup_fn: organization,
         set_fn: set_organization,
@@ -89,5 +90,13 @@ impl Workspace {
         belongs_to_id: OrganizationId,
         returns: Organization,
         result: WorkspaceResult,
+    );
+
+    standard_model_has_many!(
+        lookup_fn: systems,
+        table: "system_belongs_to_workspace",
+        model_table: "systems",
+        returns: System,
+        result: SystemResult,
     );
 }

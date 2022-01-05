@@ -13,6 +13,7 @@ mod qualification_check;
 mod schema;
 mod socket;
 mod standard_model;
+mod system;
 mod tenancy;
 mod user;
 mod visibility;

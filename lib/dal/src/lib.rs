@@ -23,6 +23,7 @@ pub mod socket;
 pub mod standard_accessors;
 pub mod standard_model;
 pub mod standard_pk;
+pub mod system;
 pub mod tenancy;
 pub mod test_harness;
 pub mod timestamp;
@@ -57,6 +58,7 @@ pub use schema::{
 };
 pub use schematic::SchematicKind;
 pub use standard_model::{StandardModel, StandardModelError, StandardModelResult};
+pub use system::{System, SystemError, SystemId, SystemPk, SystemResult};
 pub use tenancy::{Tenancy, TenancyError};
 pub use timestamp::{Timestamp, TimestampError};
 pub use user::{User, UserClaim, UserError, UserId, UserResult};
