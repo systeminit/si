@@ -51,6 +51,8 @@ pub enum SchemaError {
     Variant(#[from] SchemaVariantError),
     #[error("schema not found by name: {0}")]
     NotFoundByName(String),
+    #[error("no default variant for schema id: {0}")]
+    NoDefaultVariant(SchemaId),
 }
 
 pub type SchemaResult<T> = Result<T, SchemaError>;
@@ -210,6 +212,24 @@ impl Schema {
         returns: Schema,
         result: SchemaResult,
     );
+
+    pub async fn default_schema_variant_id_for_name(
+        txn: &PgTxn<'_>,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+        name: impl AsRef<str>,
+    ) -> SchemaResult<SchemaVariantId> {
+        let name = name.as_ref();
+        let schemas = Schema::find_by_attr(txn, tenancy, visibility, "name", &name).await?;
+        let schema = schemas
+            .first()
+            .ok_or_else(|| SchemaError::NotFoundByName(name.into()))?;
+        let schema_variant_id = schema
+            .default_schema_variant_id()
+            .ok_or_else(|| SchemaError::NoDefaultVariant(*schema.id()))?;
+
+        Ok(*schema_variant_id)
+    }
 
     fn name_edit_field(
         visibility: &Visibility,
