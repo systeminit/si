@@ -49,6 +49,8 @@ pub enum SchemaError {
     EditField(#[from] EditFieldError),
     #[error("schema variant error: {0}")]
     Variant(#[from] SchemaVariantError),
+    #[error("schema not found by name: {0}")]
+    NotFoundByName(String),
 }
 
 pub type SchemaResult<T> = Result<T, SchemaError>;
@@ -122,6 +124,7 @@ impl Schema {
 
     standard_model_accessor!(name, String, SchemaResult);
     standard_model_accessor!(kind, Enum(SchemaKind), SchemaResult);
+    standard_model_accessor!(ui_hidden, bool, SchemaResult);
     standard_model_accessor!(
         default_schema_variant_id,
         OptionBigInt<SchemaVariantId>,

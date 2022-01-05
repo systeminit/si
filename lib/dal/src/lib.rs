@@ -15,6 +15,7 @@ pub mod jwt_key;
 pub mod key_pair;
 pub mod label_list;
 pub mod node;
+pub mod node_menu;
 pub mod organization;
 pub mod qualification_check;
 pub mod schema;
@@ -47,6 +48,7 @@ pub use jwt_key::{create_jwt_key_if_missing, JwtSecretKey};
 pub use key_pair::{KeyPair, KeyPairError, KeyPairResult};
 pub use label_list::{LabelEntry, LabelList, LabelListError};
 pub use node::{Node, NodeError};
+pub use node_menu::{MenuFilter, NodeMenuError};
 pub use organization::{
     Organization, OrganizationError, OrganizationId, OrganizationPk, OrganizationResult,
 };
