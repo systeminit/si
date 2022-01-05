@@ -12,6 +12,7 @@ import { DraggingManager } from "./dragging";
 import { PanningManager } from "./panning";
 import { ConnectingManager } from "./connecting";
 import { ZoomingManager } from "./zooming";
+import { NodeAddManager } from "./nodeAdd";
 
 // import { PanningInteractionData } from "./interaction/panning";
 
@@ -57,6 +58,7 @@ export class InteractionManager {
   panningManager: PanningManager;
   connectingManager: ConnectingManager;
   zoomingManager: ZoomingManager;
+  nodeAddManager: NodeAddManager;
   zoomMagnitude$: Rx.ReplaySubject<number | null>;
   zoomFactor$: Rx.ReplaySubject<number | null>;
   zoomMagnitude?: number | null;
@@ -102,6 +104,7 @@ export class InteractionManager {
       this.zoomMagnitude$,
       this.zoomFactor$,
     );
+    this.nodeAddManager = new NodeAddManager(sceneManager, dataManager);
   }
 
   setZoomMagnitude(zoomMagnitude: number | null): void {
@@ -200,6 +203,11 @@ export class InteractionManager {
         }
       }
     }
+
+    // Adding a node
+    if (ST.isAddingNode(this.stateService)) {
+      ST.deactivateNodeAdd(this.stateService);
+    }
   }
 
   onMouseMove(this: InteractionManager, e: PIXI.InteractionEvent) {
@@ -251,6 +259,22 @@ export class InteractionManager {
         this.connectingManager.drag(e.data, this.sceneManager);
         this.renderer.renderStage();
       }
+    }
+
+    // Adding node
+    if (ST.isNodeAddActivated(this.stateService)) {
+      console.log("initiating node add!!");
+      this.renderer.renderStage();
+      ST.initiateNodeAdd(this.stateService);
+    }
+    if (ST.isNodeAddInitiated(this.stateService)) {
+      console.log("add a node add!!");
+      this.nodeAddManager.beforeAddNode(e.data);
+      ST.addingNode(this.stateService);
+    }
+    if (ST.isAddingNode(this.stateService)) {
+      console.log("adding a node!!");
+      this.nodeAddManager.drag();
     }
   }
 

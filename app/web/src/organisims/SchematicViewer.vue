@@ -1,6 +1,7 @@
 <template>
-  <div :id="viewerId" ref="viewer" class="w-full h-full">
+  <div :id="viewerId" class="w-full h-full">
     <Viewer
+      ref="viewer"
       :schematic-viewer-id="viewerId"
       :viewer-state="viewerState"
       :schematic-data="schematicData"
@@ -9,7 +10,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref} from "vue";
+import { onMounted, ref, defineExpose } from "vue";
 import _ from "lodash";
 
 import Viewer from "./SchematicViewer/Viewer.vue";
@@ -70,11 +71,12 @@ const getSchematic = () => {
   );
 };
 
-//   mounted(): void {
-//     this.viewer.element = this.$refs.viewport as HTMLElement;
+function addNode(nodeType: string) {
+  // @ts-ignore
+  viewer.value.handleNodeAdd(nodeType);
+}
 
-//     console.log("sending schematic data:", schematicData);
-//     schematicData$.next(schematicData);
-//   },
-// });
+defineExpose({
+  addNode,
+});
 </script>
