@@ -2,10 +2,11 @@ use super::{ApplicationError, ApplicationResult};
 use crate::server::extract::{Authorization, NatsTxn, PgRwTxn};
 use axum::Json;
 use dal::{
-    Component, HistoryActor, StandardModel, Tenancy, Visibility, Workspace, WorkspaceId, WsEvent,
-    WsPayload, NO_CHANGE_SET_PK,
+    Component, HistoryActor, Schema, StandardModel, Tenancy, Visibility, Workspace, WorkspaceId,
+    WsEvent, WsPayload, NO_CHANGE_SET_PK,
 };
 use serde::{Deserialize, Serialize};
+use si_data::PgTxn;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -46,7 +47,7 @@ pub async fn create_application(
     // You can only create applications directly to head? This feels wrong, but..
     let visibility = Visibility::new_head(false);
 
-    let (component, _node) = Component::new_application_with_node(
+    let (application, _node) = Component::new_application_with_node(
         &txn,
         &nats,
         &tenancy,
@@ -55,6 +56,10 @@ pub async fn create_application(
         &request.name,
     )
     .await?;
+
+    // TODO(fnichol): we're going to create a service component here until we have "node add"
+    // functionality in the frontend--then this extra code gets deleted
+    create_service_with_node(&txn, &nats, &tenancy, &visibility, &history_actor).await?;
 
     // When we create something intentionally on head, we need to fake that a change
     // set has been applied.
@@ -68,7 +73,31 @@ pub async fn create_application(
 
     txn.commit().await?;
     nats.commit().await?;
-    Ok(Json(CreateApplicationResponse {
-        application: component,
-    }))
+    Ok(Json(CreateApplicationResponse { application }))
+}
+
+async fn create_service_with_node(
+    txn: &PgTxn<'_>,
+    nats: &si_data::NatsTxn,
+    tenancy: &Tenancy,
+    visibility: &Visibility,
+    history_actor: &HistoryActor,
+) -> ApplicationResult<()> {
+    let universal_tenancy = Tenancy::new_universal();
+    let schema_variant_id =
+        Schema::default_schema_variant_id_for_name(txn, &universal_tenancy, visibility, "service")
+            .await?;
+
+    let (_component, _node) = Component::new_for_schema_variant_with_node(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        "whiskers",
+        &schema_variant_id,
+    )
+    .await?;
+
+    Ok(())
 }

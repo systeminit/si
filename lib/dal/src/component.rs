@@ -8,7 +8,7 @@ use crate::schema::variant::{SchemaVariantError, SchemaVariantId};
 use crate::schema::SchemaVariant;
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
-    HistoryActor, HistoryEventError, Node, NodeError, Schema, SchemaId, StandardModel,
+    HistoryActor, HistoryEventError, Node, NodeError, Schema, SchemaError, SchemaId, StandardModel,
     StandardModelError, Tenancy, Timestamp, Visibility,
 };
 
@@ -26,6 +26,8 @@ pub enum ComponentError {
     StandardModelError(#[from] StandardModelError),
     #[error("node error: {0}")]
     NodeError(#[from] NodeError),
+    #[error("schema error: {0}")]
+    Schema(#[from] SchemaError),
     #[error("schema variant not found")]
     SchemaVariantNotFound,
     #[error("schema not found")]
@@ -161,18 +163,15 @@ impl Component {
         name: impl AsRef<str>,
     ) -> ComponentResult<(Self, Node)> {
         let universal_tenancy = Tenancy::new_universal();
-        let schemas = Schema::find_by_attr(
+
+        let schema_variant_id = Schema::default_schema_variant_id_for_name(
             txn,
             &universal_tenancy,
             visibility,
-            "name",
-            &"application".to_string(),
+            "application",
         )
         .await?;
-        let schema = schemas.first().ok_or(ComponentError::SchemaNotFound)?;
-        let schema_variant_id = schema
-            .default_schema_variant_id()
-            .ok_or(ComponentError::SchemaVariantNotFound)?;
+
         let (component, node) = Component::new_for_schema_variant_with_node(
             txn,
             nats,
@@ -180,7 +179,7 @@ impl Component {
             visibility,
             history_actor,
             name,
-            schema_variant_id,
+            &schema_variant_id,
         )
         .await?;
         Ok((component, node))
