@@ -7,16 +7,19 @@ use crate::standard_model::option_object_from_row;
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_has_many,
     Capability, CapabilityError, Group, GroupError, HistoryActor, HistoryEventError, KeyPair,
-    KeyPairError, Organization, OrganizationError, StandardModel, StandardModelError, Tenancy,
-    Timestamp, User, UserError, Visibility, Workspace, WorkspaceError,
+    KeyPairError, Organization, OrganizationError, StandardModel, StandardModelError, System,
+    SystemError, Tenancy, Timestamp, User, UserError, Visibility, Workspace, WorkspaceError,
 };
 
+const INITIAL_SYSTEM_NAME: &str = "production";
 const BILLING_ACCOUNT_GET_BY_NAME: &str = include_str!("./queries/billing_account_get_by_name.sql");
 const BILLING_ACCOUNT_GET_DEFAULTS: &str =
     include_str!("./queries/billing_account_get_defaults.sql");
 
 #[derive(Error, Debug)]
 pub enum BillingAccountError {
+    #[error("initial system missing for get_defaults")]
+    InitialSystemMissing,
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("pg error: {0}")]
@@ -37,6 +40,8 @@ pub enum BillingAccountError {
     Capability(#[from] CapabilityError),
     #[error("organization error: {0}")]
     Organization(#[from] OrganizationError),
+    #[error("system error: {0}")]
+    System(#[from] SystemError),
     #[error("workspace error: {0}")]
     Workspace(#[from] WorkspaceError),
 }
@@ -279,6 +284,26 @@ impl BillingAccount {
             )
             .await?;
 
+        let workspace_tenancy = Tenancy::new(
+            false,
+            organization_tenancy.billing_account_ids.clone(),
+            organization_tenancy.organization_ids.clone(),
+            vec![*workspace.id()],
+        );
+
+        let system = System::new(
+            txn,
+            nats,
+            &workspace_tenancy,
+            visibility,
+            &user_history_actor,
+            INITIAL_SYSTEM_NAME,
+        )
+        .await?;
+        system
+            .set_workspace(txn, nats, visibility, &user_history_actor, workspace.id())
+            .await?;
+
         Ok(BillingAccountSignup {
             billing_account,
             key_pair,
@@ -316,9 +341,19 @@ impl BillingAccount {
         let organization: Organization = serde_json::from_value(organization_json)?;
         let workspace_json: serde_json::Value = row.try_get("workspace")?;
         let workspace: Workspace = serde_json::from_value(workspace_json)?;
+
+        // TODO(fnichol): this query should get rolled up into the above query...
+        let system = workspace
+            .systems(txn, tenancy, visibility)
+            .await?
+            .into_iter()
+            .find(|system| system.name() == INITIAL_SYSTEM_NAME)
+            .ok_or(BillingAccountError::InitialSystemMissing)?;
+
         let result = BillingAccountDefaults {
             organization,
             workspace,
+            system,
         };
         Ok(result)
     }
@@ -338,4 +373,5 @@ pub struct BillingAccountSignup {
 pub struct BillingAccountDefaults {
     pub organization: Organization,
     pub workspace: Workspace,
+    pub system: System,
 }

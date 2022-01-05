@@ -10,8 +10,8 @@ use telemetry::{ClientError, TelemetryClient, Verbosity};
 use crate::{
     billing_account::BillingAccountSignup, jwt_key::JwtSecretKey, node::NodeKind, schema, socket,
     BillingAccount, ChangeSet, Component, EditSession, Group, HistoryActor, KeyPair, Node,
-    QualificationCheck, Schema, SchemaKind, StandardModel, Tenancy, User, Visibility,
-    NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK,
+    Organization, QualificationCheck, Schema, SchemaKind, StandardModel, System, Tenancy, User,
+    Visibility, Workspace, NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK,
 };
 
 #[derive(Debug)]
@@ -243,6 +243,32 @@ pub async fn create_billing_account(
         .expect("cannot create billing_account")
 }
 
+pub async fn create_organization(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    tenancy: &Tenancy,
+    visibility: &Visibility,
+    history_actor: &HistoryActor,
+) -> Organization {
+    let name = generate_fake_name();
+    Organization::new(txn, nats, tenancy, visibility, history_actor, &name)
+        .await
+        .expect("cannot create organization")
+}
+
+pub async fn create_workspace(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    tenancy: &Tenancy,
+    visibility: &Visibility,
+    history_actor: &HistoryActor,
+) -> Workspace {
+    let name = generate_fake_name();
+    Workspace::new(txn, nats, tenancy, visibility, history_actor, &name)
+        .await
+        .expect("cannot create workspace")
+}
+
 pub async fn create_key_pair(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
@@ -439,4 +465,17 @@ pub async fn create_qualification_check(
     QualificationCheck::new(txn, nats, tenancy, visibility, history_actor, name)
         .await
         .expect("cannot create qualification check")
+}
+
+pub async fn create_system(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    tenancy: &Tenancy,
+    visibility: &Visibility,
+    history_actor: &HistoryActor,
+) -> System {
+    let name = generate_fake_name();
+    System::new(txn, nats, tenancy, visibility, history_actor, name)
+        .await
+        .expect("cannot create system")
 }
