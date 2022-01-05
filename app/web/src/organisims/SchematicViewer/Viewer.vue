@@ -12,7 +12,7 @@
     <canvas
       :id="canvas.id"
       ref="canvas"
-      @wheel="handleMouseWheel"
+      @wheel.passive="handleMouseWheel"
       @mouseenter="mouseEnter()"
       @mouseleave="mouseLeave()"
     />
@@ -84,7 +84,8 @@ export default defineComponent({
     },
     schematicData: {
       type: Object as PropType<Schematic> | undefined,
-      required: true,
+      required: false,
+      default: undefined,
     },
   },
   setup(props) {
@@ -231,7 +232,7 @@ export default defineComponent({
     },
 
     handleMouseWheel(e: WheelEvent): void {
-      e.preventDefault();
+      // e.preventDefault();
       // implement zoom on alt/option key
       if (this.interactionManager) {
         this.send(ViewerEventKind.ACTIVATE_ZOOMING);
