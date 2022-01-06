@@ -8,7 +8,7 @@ import {
   NodeAddEventKind,
   NodeAddEvent,
   NodeAddState,
-} from "./machine/NodeAdd";
+} from "./machine/nodeAdd";
 
 import {
   ConnectEventKind,
