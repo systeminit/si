@@ -56,7 +56,7 @@ WATCHABLE = $(patsubst %,watch//%,$(RUNNABLE_COMPONENTS))
 BUILDABLE_REGEX = $(shell echo $(COMPONENTS) | tr " " "|")
 RELEASEABLE_REGEX = $(shell echo $(RELEASEABLE_COMPONENTS) | tr " " "|")
 
-.DEFAULT_GOAL := sdf-prepare
+.DEFAULT_GOAL := prepare
 
 .PHONY: $(BUILDABLE) $(TESTABLE) $(RELEASEABLE) $(IMAGEABLE) image release
 
@@ -209,12 +209,12 @@ clean-containers: clean-dev-deps
 # Vue 2 to Vue 3 rewrite. These targets should be merged into existing ones once the transition is
 # complete.
 
-sdf-prepare:
+prepare:
 	-cd $(MAKEPATH)/deploy && $(MAKE) down
 	cd $(MAKEPATH)/bin/lang-js; npm install
 	cd $(MAKEPATH)/bin/lang-js; npm run package
 	cd $(MAKEPATH)/deploy && $(MAKE) partial
-.PHONY: sdf-prepare
+.PHONY: prepare
 
 sdf-run:
 	cd $(MAKEPATH); cargo build

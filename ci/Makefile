@@ -50,8 +50,8 @@ teardown:
 .PHONY: teardown
 
 # TODO(nick): consider adding --all-targets --all-features to clippy
-prepare:
+tidy:
 	cd $(REPOPATH); cargo fix --edition-idioms --allow-dirty --allow-staged
 	cd $(REPOPATH); cargo fmt --all
 	cd $(REPOPATH); cargo clippy
-.PHONY: prepare
+.PHONY: tidy

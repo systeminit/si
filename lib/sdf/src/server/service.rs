@@ -1,5 +1,6 @@
 pub mod application;
 pub mod change_set;
+pub mod component;
 pub mod edit_field;
 pub mod schema;
 pub mod schematic;
