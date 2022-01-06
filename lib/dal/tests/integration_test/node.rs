@@ -1,8 +1,10 @@
 use crate::test_setup;
 
-use dal::node::NodeKind;
-use dal::test_harness::{create_component_and_schema, create_node};
-use dal::{HistoryActor, Node, StandardModel, Tenancy, Visibility};
+use dal::node::{NodeKind, NodeTemplate};
+use dal::test_harness::{
+    create_component_and_schema, create_node, create_schema, create_schema_variant,
+};
+use dal::{HistoryActor, Node, SchemaKind, StandardModel, Tenancy, Visibility};
 
 #[tokio::test]
 async fn new() {
@@ -48,4 +50,43 @@ async fn component_relationships() {
         .expect("cannot retrieve component for node")
         .expect("no component set for node");
     assert_eq!(&retrieved_component, &component);
+}
+
+#[tokio::test]
+async fn new_node_template() {
+    test_setup!(ctx, _secret_key, _pg, _conn, txn, _nats_conn, nats);
+    let tenancy = Tenancy::new_universal();
+    let visibility = Visibility::new_head(false);
+    let history_actor = HistoryActor::SystemInit;
+
+    let mut schema = create_schema(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        &SchemaKind::Concept,
+    )
+    .await;
+    let schema_variant =
+        create_schema_variant(&txn, &nats, &tenancy, &visibility, &history_actor).await;
+    schema_variant
+        .set_schema(&txn, &nats, &visibility, &history_actor, schema.id())
+        .await
+        .expect("cannot set schema for variant");
+    schema
+        .set_default_schema_variant_id(
+            &txn,
+            &nats,
+            &visibility,
+            &history_actor,
+            Some(*schema_variant.id()),
+        )
+        .await
+        .expect("cannot set default schema variant");
+
+    let node_template = NodeTemplate::new_from_schema_id(&txn, &tenancy, &visibility, *schema.id())
+        .await
+        .expect("cannot create node template");
+    assert_eq!(node_template.label.title, schema.name());
 }
