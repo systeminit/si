@@ -17,19 +17,20 @@ pub enum VeritechClientError {
 
 pub type VeritechClientResult<T> = Result<T, VeritechClientError>;
 
-#[instrument(name = "veritech.client.run_function", skip(nats, kind, code))]
+#[instrument(name = "veritech.client.run_function", skip(nats, _kind, code))]
 pub async fn run_function(
     nats: &NatsClient,
-    kind: impl Into<String>,
+    _kind: impl Into<String>,
     code: impl Into<String>,
 ) -> VeritechClientResult<ResolverFunctionResult> {
-    let kind = kind.into();
     let code = code.into();
     let request = ResolverFunctionRequest {
-        kind,
-        code,
-        container_image: "foo".to_string(),
-        container_tag: "latest".to_string(),
+        // TODO(jhelwig): Something will need to own generating a real execution_id at some point, but we don't have that place or a definition of exactly what the execution_id is yet.
+        execution_id: "TODO".into(),
+        // TODO(jhelwig): This should be the name of the function to call in the base64 encoded code block, but we don't have a way to know that yet.
+        handler: "TODO".into(),
+        parameters: None,
+        code_base64: base64::encode(&code),
     };
     let mut reply_sub = nats
         .request_multi(
