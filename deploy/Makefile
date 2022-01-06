@@ -8,26 +8,26 @@ boostrap:
 
 # Run this target alongside local developer builds of web, sdf, etc.
 # This target does not compose down beforehand.
-partial: check-env
+partial: init
 	GATEWAY=$(shell $(MAKEPATH)/scripts/gateway.sh) \
 		docker-compose -f $(MAKEPATH)/docker-compose.yml -f $(MAKEPATH)/docker-compose.env.yml \
 		up -d nats pg otel
 
 # Run interactively and compose down beforehand. This target is meant to be run iteratively for
 # local development and testing.
-dev: down check-env
+dev: down init
 	GATEWAY=$(shell $(MAKEPATH)/scripts/gateway.sh) \
 		docker-compose -f $(MAKEPATH)/docker-compose.yml -f $(MAKEPATH)/docker-compose.env.yml \
 		up
 
 # Run in a detached state and do not compose down beforehand.
 # This is the target to run in production.
-prod: check-env
+prod: init
 	GATEWAY=$(shell $(MAKEPATH)/scripts/gateway.sh) \
 		docker-compose -f $(MAKEPATH)/docker-compose.yml -f $(MAKEPATH)/docker-compose.env.yml \
 		up -d
 
-ci: check-env
+ci: init
 	GATEWAY=$(shell $(MAKEPATH)/scripts/gateway.sh) REPOPATH=$(REPOPATH) \
 		docker-compose -f $(MAKEPATH)/docker-compose.yml -f $(MAKEPATH)/docker-compose.env.yml \
 		-f $(MAKEPATH)/docker-compose.ci.yml \
@@ -37,7 +37,9 @@ down:
 	-docker-compose -f $(MAKEPATH)/docker-compose.yml \
 		down
 
-check-env:
+init:
 	if [ ! -f $(MAKEPATH)/docker-compose.env.yml ]; then \
 		echo "version: \"3\"" > $(MAKEPATH)/docker-compose.env.yml; \
 	fi
+	docker-compose -f $(MAKEPATH)/docker-compose.yml \
+		pull

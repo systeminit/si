@@ -46,7 +46,7 @@ In one terminal pane (e.g. using a terminal multiplexer, such as `tmux`, or tabs
 **Services:** docker-compose deploys a postgresql service, an open-telemetry service, a nats service and an watchtower service, using the default ports, so if some of those already are running on the host machine a conflict will happen, for now just disable the host's service and let the docker one do its job
 
 ```bash
-make sdf-prepare
+make prepare
 ```
 
 This will ensure that our database is running, our NATS server is running, the JS language server is built, and all crates are built.
@@ -75,6 +75,20 @@ Now, you have SI running!
 
 Navigate to the `Makefile` in the [ci](./ci) directory to see local development targets.
 These targets include code linting, formating, running CI locally, etc.
+For instance, you can tidy up your Rust code before opening a pull request by executing the following:
+
+```bash
+( cd ci; make tidy )
+```
+
+You can also run individual tests before bringing up the entire SI stack, as neeeded.
+This can be done in the root of the repository:
+
+```bash
+make prepare
+cargo build
+RUST_BACKTRACE=1 cargo test <your-test-name>
+``
 
 ## Architecture
 

@@ -7,6 +7,7 @@ use tower::ServiceExt;
 
 mod application;
 mod change_set;
+mod component;
 mod schema;
 mod session;
 mod signup;

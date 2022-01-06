@@ -8,20 +8,37 @@
     :is-visible="isVisible"
     :is-maximized-container-enabled="isMaximizedContainerEnabled"
   >
-    <template #content>
-      I like my butt
+    <template #menuButtons>
+      <div class="min-w-max" v-if="componentNamesOnlyList">
+        <SiSelect
+          id="nodeSelect"
+          size="xs"
+          name="nodeSelect"
+          class="pl-1"
+          :options="componentNamesOnlyList"
+        />
+      </div>
+
+      <LockButton
+        v-model="isPinned"
+      />
     </template>
   </Panel>
 </template>
 
 <script setup lang="ts">
 import Panel from "@/molecules/Panel.vue";
-// import ViewerAttribute from "@/organisims/PanelAttribute/ViewerAttribute.vue";
+import LockButton from "@/atoms/LockButton.vue";
+import SiSelect from "@/atoms/SiSelect.vue";
+import { ref } from "vue";
+import { LabelList } from "@/api/sdf/dal/label_list";
+import { refFrom } from "vuse-rx";
+import { switchMap } from "rxjs/operators";
+import { from } from "rxjs";
+import { ComponentService } from "@/service/component";
+import { GlobalErrorService } from "@/service/global_error";
 
-// import { GlobalErrorService } from "@/service/global_error";
-// import { ApiResponse } from "@/api/sdf";
-
-// TODO: Nick, here is your panel. The switcher is fucked, but otherwise, should be good to port.
+const isPinned = ref<boolean>(false);
 
 defineProps({
   panelIndex: { type: Number, required: true },
@@ -32,6 +49,19 @@ defineProps({
   isVisible: Boolean,
   isMaximizedContainerEnabled: Boolean,
 });
+
+const componentNamesOnlyList = refFrom<LabelList<number>>(
+  ComponentService.listComponentsNamesOnly().pipe(
+    switchMap((response) => {
+      if (response.error) {
+        GlobalErrorService.set(response);
+        return from([[]]);
+      } else {
+        return from([response.list]);
+      }
+    }),
+  ),
+);
 
 </script>
 
