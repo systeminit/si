@@ -23,7 +23,7 @@ pk!(UiMenuId);
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct UiMenu {
-    pk: UiMenuPk,
+    pub pk: UiMenuPk,
     id: UiMenuId,
     name: Option<String>,
     category: Option<String>,
@@ -118,9 +118,9 @@ impl UiMenu {
         }
     }
 
-    pub fn category_path(&self) -> Vec<&str> {
+    pub fn category_path(&self) -> Vec<String> {
         match self.category() {
-            Some(category) => category.split('.').collect(),
+            Some(category) => category.split('.').map(|f| f.to_string()).collect(),
             None => Vec::new(),
         }
     }
