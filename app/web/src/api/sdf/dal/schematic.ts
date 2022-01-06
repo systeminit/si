@@ -32,10 +32,11 @@ export interface Category {
 export interface Item {
   kind: "item";
   name: string;
-  entityType: string;
+  schema_id: number;
   links?: LinkNodeItem[];
 }
 
+// TODO: This entire thing is wrong now, but should look like item eventually. -- Adam
 export interface LinkNodeItem {
   kind: "link";
   entityType: string;

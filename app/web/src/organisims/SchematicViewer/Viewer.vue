@@ -258,14 +258,14 @@ export default defineComponent({
       }
     },
 
-    handleNodeAdd(nodeType: string): void {
+    async handleNodeAdd(schemaId: number): Promise<void> {
       this.activateComponent();
       if (this.component.isActive) {
         console.log("component is active");
 
         if (this.interactionManager) {
+          await this.interactionManager.nodeAddManager.addNode(schemaId);
           this.send(ViewerEventKind.ACTIVATE_NODEADD);
-          this.interactionManager.nodeAddManager.addNode(nodeType);
           console.log("activated NodeAdd and added node");
         }
       }

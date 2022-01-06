@@ -86,7 +86,7 @@ import { ChangeSetService } from "@/service/change_set";
 
 // TODO: Alex, here is your panel. The switcher is fucked, but otherwise, should be good to port.
 
-const schematicViewer = ref(null);
+const schematicViewer = ref<typeof SchematicViewer | null>(null);
 
 defineProps({
   panelIndex: { type: Number, required: true },
@@ -162,9 +162,11 @@ const addMenuEnabled = computed(() => {
   }
 });
 
-const addNode = (nodeType: string) => {
-  // @ts-ignore
-  schematicViewer.value.addNode(nodeType);
+const addNode = (schemaId: number, _event: MouseEvent) => {
+  console.log("poop canoe", { schemaId });
+  if (schematicViewer.value) {
+    schematicViewer.value.addNode(schemaId);
+  }
 };
 
 // const getSchematic = () => {

@@ -4,6 +4,9 @@ import { SceneManager } from "../scene";
 import { SchematicDataManager } from "../../data";
 import * as OBJ from "../obj";
 import * as MODEL from "../../model";
+import { SchematicService } from "@/service/schematic";
+import {GlobalErrorService} from "@/service/global_error";
+import {firstValueFrom} from "rxjs";
 
 interface Position {
   x: number;
@@ -34,18 +37,24 @@ export class NodeAddManager {
     this.data = data;
   }
 
-  addNode(nodeType: string): void {
+  async addNode(schemaId: number): Promise<void> {
     // only render the node when the mouse moves... so that it is hidden when "added"
-    console.log("adding a new node: ", nodeType, this.data);
-
-    const n = MODEL.generateNode("temporary", "my Title", "my-name", {
-      x: 0,
-      y: 0,
+    console.log("adding a new node for compnent: ", {
+      schemaId,
+      data: this.data,
     });
+
+    const response = await firstValueFrom(SchematicService.getNodeTemplate({ schemaId }));
+    if (response.error) {
+      GlobalErrorService.set(response);
+      return;
+    }
+    const n = MODEL.fakeNodeFromTemplate(response);
     const node = new OBJ.Node(n);
     this.sceneManager.addNode(node);
 
-    this.node = this.sceneManager.getGeo("my-name") as OBJ.Node;
+    // TODO: This should probably be a unique id?
+    this.node = this.sceneManager.getGeo(node.name) as OBJ.Node;
     console.log("this node", this.node);
 
     console.log("added a node to the scene");
