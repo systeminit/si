@@ -3540,6 +3540,7 @@ dependencies = [
 name = "veritech"
 version = "0.1.0"
 dependencies = [
+ "base64",
  "cyclone",
  "derive_builder",
  "futures",

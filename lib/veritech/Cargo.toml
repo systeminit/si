@@ -22,6 +22,7 @@ server = [
 
 [dependencies]
 # server and client dependencies
+base64 = "0.13.0"
 futures = { version = "0.3.17"}
 serde = "1.0.123"
 serde_json = { version = "1.0.64", features = ["preserve_order"] }
