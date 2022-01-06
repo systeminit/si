@@ -2,6 +2,8 @@ import * as PIXI from "pixi.js";
 
 import _ from "lodash";
 
+import { SocketConnector } from "./socketConnector";
+
 interface Position {
   x: number;
   y: number;
@@ -12,7 +14,7 @@ export enum SocketType {
   output = "output",
 }
 
-export class Socket extends PIXI.Graphics {
+export class Socket extends PIXI.Container {
   kind: string;
   type: SocketType;
   id: string;
@@ -32,23 +34,21 @@ export class Socket extends PIXI.Graphics {
     this.labelText = labelText;
     this.type = type;
 
-    this.beginFill(color);
-    this.drawCircle(0, 0, 6);
-    this.endFill();
-    this.interactive = true;
-
-    this.position.x = position.x;
-    this.position.y = position.y;
+    this.disableInteraction();
+    this.setPosition(position);
+    this.createConnector(id, type, color);
 
     if (labelText) {
-      const label = this.createLabel(labelText);
-      this.addLabel(label);
+      this.createLabel(labelText);
     }
-
-    this.name = id;
   }
 
-  createLabel(text: string): PIXI.Text {
+  createConnector(id: string, type: SocketType, color: number): void {
+    const socket = new SocketConnector(id, type, color);
+    this.addChild(socket);
+  }
+
+  createLabel(text: string): void {
     const label = new PIXI.Text(text, {
       fontFamily: "Source Code Pro",
       fontSize: 9,
@@ -59,12 +59,21 @@ export class Socket extends PIXI.Graphics {
     });
     label.position.x = 10;
     label.position.y = -5;
-    label.zIndex = 2;
+    label.zIndex = 1;
     label.interactive = false;
-    return label;
+    this.addChild(label);
   }
 
-  addLabel(label: PIXI.Text): void {
-    this.addChild(label);
+  setPosition(position: Position): void {
+    this.position.x = position.x;
+    this.position.y = position.y;
+  }
+
+  setZIndex(): void {
+    this.zIndex = 2;
+  }
+
+  disableInteraction(): void {
+    this.interactive = false;
   }
 }
