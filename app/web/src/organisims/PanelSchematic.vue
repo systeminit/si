@@ -42,10 +42,11 @@
         class="pl-4"
         :filter="addMenuFilters"
         :disabled="!addMenuEnabled"
-        @selected="nodeCreate"
+        @selected="addNode"
       />
     </template>
     <template #content>
+      <SchematicViewer ref="schematicViewer" />
       <!-- <SchematicViewer /> -->
       <!-- <div
         class="flex flex-col items-center justify-center w-full h-full align-middle"
@@ -61,13 +62,14 @@
 </template>
 
 <script setup lang="ts">
+import { computed, ref } from "vue";
+
 import Panel from "@/molecules/Panel.vue";
 import SchematicViewer from "@/organisims/SchematicViewer.vue";
 import SiSelect from "@/atoms/SiSelect.vue";
 
 import { SchematicKind } from "@/api/sdf/dal/schematic";
 import { LabelList } from "@/api/sdf/dal/label_list";
-import { computed, ref } from "vue";
 import LockButton from "@/atoms/LockButton.vue";
 import NodeAddMenu from "@/molecules/NodeAddMenu.vue";
 import { ApplicationService } from "@/service/application";
@@ -83,6 +85,9 @@ import { ChangeSetService } from "@/service/change_set";
 // import { SetSchematicResponse } from "@/service/schematic/set_schematic";
 
 // TODO: Alex, here is your panel. The switcher is fucked, but otherwise, should be good to port.
+
+const schematicViewer = ref(null);
+
 defineProps({
   panelIndex: { type: Number, required: true },
   panelRef: { type: String, required: true },
@@ -94,7 +99,7 @@ defineProps({
 });
 
 const schematicKind = ref<SchematicKind>(SchematicKind.Deployment);
-const rootObjectId = ref<number | null>(null);
+// const rootObjectId = ref<number | null>(null);
 
 const schematicKinds = computed(() => {
   let labels: LabelList<string> = [];
@@ -157,8 +162,9 @@ const addMenuEnabled = computed(() => {
   }
 });
 
-const nodeCreate = () => {
-  console.log("Congrats! You like your butt!");
+const addNode = (nodeType: string) => {
+  // @ts-ignore
+  schematicViewer.value.addNode(nodeType);
 };
 
 // const getSchematic = () => {
@@ -182,6 +188,10 @@ const nodeCreate = () => {
 //     },
 //   );
 // };
+
+// onMounted(() => {
+//   // console.log("aaaaaaaaa:", schematicViewer.value);
+// });
 </script>
 
 <style scoped>

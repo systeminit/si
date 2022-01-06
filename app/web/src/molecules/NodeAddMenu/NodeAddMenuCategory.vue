@@ -33,7 +33,7 @@
 
 <script setup lang="ts">
 import { computed, PropType, ref } from "vue";
-import { MenuItem } from "@/molecules/NodeAddMenu.vue";
+import { MenuItem } from "@/api/sdf/dal/schematic";
 
 interface OpenCategories {
   [category: string]: boolean;
@@ -42,7 +42,8 @@ interface OpenCategories {
 const props = defineProps({
   menuItems: {
     type: Array as PropType<MenuItem[]>,
-    required: true,
+    required: false,
+    default: undefined,
   },
   rootMenu: { type: Boolean, default: false },
   isOpen: { type: Boolean, default: false },

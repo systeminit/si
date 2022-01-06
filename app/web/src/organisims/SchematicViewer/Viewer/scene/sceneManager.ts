@@ -53,7 +53,7 @@ export class SceneManager {
     this.zoomFactor = 1;
   }
 
-  subscribeToInteracctionEvents(interactionManager: InteractionManager): void {
+  subscribeToInteractionEvents(interactionManager: InteractionManager): void {
     interactionManager.zoomFactor$.subscribe({
       next: (v) => this.updateZoomFactor(v),
     });
@@ -199,7 +199,6 @@ export class SceneManager {
       this.addConnection(connection);
       this.refreshConnections(); // inefficient, should be for the connections on a node.
       // this.renderConnection(connection); // causes an orphan edge to renders.
-
       return connection;
     } else {
       console.log("connection already exist!");

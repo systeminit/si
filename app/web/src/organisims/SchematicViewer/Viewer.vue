@@ -1,6 +1,6 @@
 <template>
   <div :id="container.id" ref="container" class="w-full h-full">
-    <!-- <div class="flex flex-row">
+    <div class="flex flex-row">
       <div class="ml-2 font-medium text-yellow-200">{{ state.value }}</div>
 
       <div v-if="selection" class="ml-2 font-medium text-blue-200">
@@ -8,7 +8,7 @@
           {{ s.name }}
         </div>
       </div>
-    </div> -->
+    </div>
     <canvas
       :id="canvas.id"
       ref="canvas"
@@ -187,7 +187,7 @@ export default defineComponent({
     );
     this.interactionManager = interactionManager;
 
-    this.sceneManager.subscribeToInteracctionEvents(interactionManager);
+    this.sceneManager.subscribeToInteractionEvents(interactionManager);
 
     this.renderer.stage.sortableChildren = true;
 
@@ -224,11 +224,19 @@ export default defineComponent({
       }
     },
 
-    mouseEnter() {
+    activateComponent(): void {
       this.component.isActive = true;
     },
-    mouseLeave() {
+
+    deactivateComponent(): void {
       this.component.isActive = false;
+    },
+
+    mouseEnter(): void {
+      this.activateComponent();
+    },
+    mouseLeave(): void {
+      this.deactivateComponent();
     },
 
     handleMouseWheel(e: WheelEvent): void {
@@ -248,6 +256,21 @@ export default defineComponent({
       if (schematic && this.sceneManager) {
         this.sceneManager.loadSceneData(schematic);
       }
+    },
+
+    handleNodeAdd(nodeType: string): void {
+      this.activateComponent();
+      if (this.component.isActive) {
+        console.log("component is active");
+
+        if (this.interactionManager) {
+          this.send(ViewerEventKind.ACTIVATE_NODEADD);
+          this.interactionManager.nodeAddManager.addNode(nodeType);
+          console.log("activated NodeAdd and added node");
+        }
+      }
+
+      // this.dataManager?.addNode$.next(nodeType);
     },
   },
 });

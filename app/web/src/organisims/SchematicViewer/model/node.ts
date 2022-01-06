@@ -77,9 +77,9 @@ interface NodeAction {
  * @changeCount
  * */
 interface NodeStatus {
-  qualification: QualificationStatus;
-  resource: ResourceStatus;
-  changeCount: number;
+  qualification?: QualificationStatus;
+  resource?: ResourceStatus;
+  changeCount?: number;
   action?: NodeAction;
 }
 
@@ -97,11 +97,11 @@ export interface Node extends SchematicObject {
   id: string;
   label: NodeLabel;
   classification: NodeClassification;
-  status: NodeStatus;
+  status?: NodeStatus;
   position: NodePosition;
   input: Socket[];
   output: Socket[];
-  connections: NodeConnection[];
+  connections?: NodeConnection[];
   display?: NodeDisplay;
 }
 
@@ -114,4 +114,74 @@ export interface NodePositionUpdate {
 export interface NodeUpdate {
   nodeId: string;
   position: NodePositionUpdate;
+}
+
+export function generateNode(
+  id: string,
+  title: string,
+  name: string,
+  position: { x: number; y: number },
+): Node {
+  const node: Node = {
+    id: "A:1",
+    label: {
+      title: title,
+      name: name,
+    },
+    classification: {
+      component: ComponentType.APPLICATION,
+      kind: "kubernetes",
+      type: "service",
+    },
+    position: {
+      ctx: [
+        {
+          id: id,
+          position: {
+            x: position.x,
+            y: position.y,
+          },
+        },
+      ],
+    },
+    input: [
+      {
+        id: "A:1.S:1",
+        type: "kubernetes.namespace",
+        name: "namespace",
+      },
+      {
+        id: "A:1.S:2",
+        type: "kubernetes.deployment",
+        name: "deployment",
+      },
+      {
+        id: "A:1.S:3",
+        type: "kubernetes.service",
+        name: "service",
+      },
+      {
+        id: "A:1.S:4",
+        type: "kubernetes.env",
+        name: "env",
+      },
+    ],
+    output: [
+      {
+        id: "A:1.S:5",
+        type: "kubernetes.service",
+      },
+    ],
+    display: {
+      color: 0x32b832,
+    },
+    lastUpdated: new Date(Date.now()),
+    checksum: "j4j4j4j4j4j4j4j4j4j4j4",
+    schematic: {
+      deployment: false,
+      component: true,
+    },
+  };
+
+  return node;
 }

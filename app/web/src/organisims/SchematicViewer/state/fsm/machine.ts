@@ -4,6 +4,11 @@ import { PanEventKind, PanEvent, PanState } from "./machine/pan";
 import { DragEventKind, DragEvent, DragState } from "./machine/drag";
 import { SelectEventKind, SelectEvent, SelectState } from "./machine/select";
 import { ZoomEventKind, ZoomEvent, ZoomState } from "./machine/zoom";
+import {
+  NodeAddEventKind,
+  NodeAddEvent,
+  NodeAddState,
+} from "./machine/nodeAdd";
 
 import {
   ConnectEventKind,
@@ -19,13 +24,15 @@ export const ViewerEventKind = {
   ...DragEventKind,
   ...PanEventKind,
   ...SelectEventKind,
+  ...NodeAddEventKind,
 };
 export type ViewerEvent =
   | PanEvent
   | DragEvent
   | SelectEvent
   | ConnectEvent
-  | ZoomEvent;
+  | ZoomEvent
+  | NodeAddEvent;
 
 export const ViewerState = {
   ...ZoomState,
@@ -34,6 +41,7 @@ export const ViewerState = {
   ...DragState,
   ...PanState,
   ...IdleState,
+  ...NodeAddState,
 };
 
 /**
@@ -57,6 +65,9 @@ const IdleMachineState = {
       [ZoomEventKind.ACTIVATE_ZOOMING]: {
         target: ZoomState.ZOOMING_ACTIVATED,
       },
+      [NodeAddEventKind.ACTIVATE_NODEADD]: {
+        target: NodeAddState.NODEADD_ACTIVATED,
+      },
     },
   },
 };
@@ -64,7 +75,7 @@ const IdleMachineState = {
 /**
  * Pan state machine implementation
  */
-const PanMachineSate = {
+const PanMachineState = {
   [PanState.PANNING_ACTIVATED]: {
     on: {
       [PanEventKind.INITIATE_PANNING]: {
@@ -97,7 +108,7 @@ const PanMachineSate = {
 /**
  * Zoom state machine implementation
  */
-const ZoomMachineSate = {
+const ZoomMachineState = {
   [ZoomState.ZOOMING_ACTIVATED]: {
     on: {
       [ZoomEventKind.INITIATE_ZOOMING]: {
@@ -130,7 +141,7 @@ const ZoomMachineSate = {
 /**
  * Drag state machine implementation
  */
-const DragMachineSate = {
+const DragMachineState = {
   [DragState.DRAGGING_ACTIVATED]: {
     on: {
       [DragEventKind.INITIATE_DRAGGING]: {
@@ -163,7 +174,7 @@ const DragMachineSate = {
 /**
  * Connect state machine implementation
  */
-const ConnectMachineSate = {
+const ConnectMachineState = {
   [ConnectState.CONNECTING_ACTIVATED]: {
     on: {
       [ConnectEventKind.INITIATE_CONNECTING]: {
@@ -206,7 +217,7 @@ const ConnectMachineSate = {
 /**
  * Select state machine implementation
  */
-const SelectMachineSate = {
+const SelectMachineState = {
   [SelectState.SELECTING_ACTIVATED]: {
     on: {
       [SelectEventKind.INITIATE_SELECTING]: {
@@ -250,6 +261,39 @@ const SelectMachineSate = {
 };
 
 /**
+ * Node add state machine implementation
+ */
+const NodeAddMachineState = {
+  [NodeAddState.NODEADD_ACTIVATED]: {
+    on: {
+      [NodeAddEventKind.INITIATE_NODEADD]: {
+        target: NodeAddState.NODEADD_INITIATED,
+      },
+      [NodeAddEventKind.DEACTIVATE_NODEADD]: {
+        target: IdleState.IDLING,
+      },
+    },
+  },
+  [NodeAddState.NODEADD_INITIATED]: {
+    on: {
+      [NodeAddEventKind.DEACTIVATE_NODEADD]: {
+        target: IdleState.IDLING,
+      },
+      [NodeAddEventKind.ADDING_NODE]: {
+        target: NodeAddState.ADDING_NODE,
+      },
+    },
+  },
+  [NodeAddState.ADDING_NODE]: {
+    on: {
+      [NodeAddEventKind.DEACTIVATE_NODEADD]: {
+        target: IdleState.IDLING,
+      },
+    },
+  },
+};
+
+/**
  * Viewer state machine
  */
 export class ViewerStateMachine {
@@ -261,11 +305,12 @@ export class ViewerStateMachine {
       initial: IdleState.IDLING,
       states: {
         ...IdleMachineState,
-        ...PanMachineSate,
-        ...ZoomMachineSate,
-        ...DragMachineSate,
-        ...ConnectMachineSate,
-        ...SelectMachineSate,
+        ...PanMachineState,
+        ...ZoomMachineState,
+        ...DragMachineState,
+        ...ConnectMachineState,
+        ...SelectMachineState,
+        ...NodeAddMachineState,
       },
     });
   }

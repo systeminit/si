@@ -15,12 +15,16 @@ export class SchematicDataManager {
   schematicData$: Rx.ReplaySubject<Schematic | null>;
   nodeUpdate$: Rx.ReplaySubject<NodeUpdate | null>;
   connectionCreate$: Rx.ReplaySubject<ConnectionCreate | null>;
+  addNode$: Rx.ReplaySubject<string | null>;
 
   constructor() {
     this.id = _.uniqueId();
 
     this.schematicData$ = new Rx.ReplaySubject<Schematic | null>(1);
     this.schematicData$.next(null);
+
+    this.addNode$ = new Rx.ReplaySubject<string | null>(1);
+    this.addNode$.next(null);
 
     this.nodeUpdate$ = new Rx.ReplaySubject<NodeUpdate | null>(1);
     this.nodeUpdate$.next(null);
@@ -34,6 +38,7 @@ export class SchematicDataManager {
   initialize(): void {
     this.nodeUpdate$.subscribe({ next: (d) => this.updateNodePosition(d) });
     this.connectionCreate$.subscribe({ next: (d) => this.createConnection(d) });
+    this.addNode$.subscribe({ next: (d) => this.addNode(d) });
   }
 
   updateNodePosition(nodeUpdate: NodeUpdate | null): void {
@@ -64,5 +69,9 @@ export class SchematicDataManager {
         },
       );
     }
+  }
+
+  addNode(nodeType: string | null) {
+    console.log("dataManager::addNode()", nodeType);
   }
 }
