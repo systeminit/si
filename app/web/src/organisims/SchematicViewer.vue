@@ -48,7 +48,7 @@ import { Schematic } from "./SchematicViewer/model";
 const componentName = "SchematicViewer";
 const componentId = _.uniqueId();
 
-const viewer = ref(null);
+const viewer = ref<typeof Viewer | null>(null);
 const viewerId = componentName + "-" + componentId;
 const viewerState = new ViewerStateMachine();
 
@@ -71,9 +71,10 @@ const getSchematic = () => {
   );
 };
 
-function addNode(nodeType: string) {
-  // @ts-ignore
-  viewer.value.handleNodeAdd(nodeType);
+function addNode(schemaId: number) {
+  if (viewer.value) {
+    viewer.value.handleNodeAdd(schemaId);
+  }
 }
 
 defineExpose({

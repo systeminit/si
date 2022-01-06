@@ -3,10 +3,12 @@ use si_data::{NatsError, NatsTxn, PgError, PgTxn};
 use telemetry::prelude::*;
 use thiserror::Error;
 
+use crate::schema::variant::SchemaVariantError;
+use crate::socket::Socket;
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
-    Component, ComponentId, HistoryActor, HistoryEventError, StandardModel, StandardModelError,
-    Tenancy, Timestamp, Visibility,
+    Component, ComponentId, HistoryActor, HistoryEventError, Schema, SchemaId, SchemaVariant,
+    StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
 };
 
 #[derive(Error, Debug)]
@@ -21,6 +23,12 @@ pub enum NodeError {
     HistoryEvent(#[from] HistoryEventError),
     #[error("standard model error: {0}")]
     StandardModelError(#[from] StandardModelError),
+    #[error("cannot find schema id to generate node template")]
+    SchemaIdNotFound,
+    #[error("cannot generate node template with missing default schema variant")]
+    SchemaMissingDefaultVariant,
+    #[error("schema variant error: {0}")]
+    SchemaVariant(#[from] SchemaVariantError),
 }
 
 pub type NodeResult<T> = Result<T, NodeError>;
@@ -106,4 +114,78 @@ impl Node {
         returns: Component,
         result: NodeResult,
     );
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+pub struct NodeLabel {
+    title: String,
+    name: String,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+pub enum NodeComponentType {
+    Application,
+    Computing,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct NodeClassification {
+    component: NodeComponentType,
+    kind: String,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct NodeDisplay {
+    color: String,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+pub struct NodeTemplate {
+    kind: NodeKind,
+    label: NodeLabel,
+    classification: NodeClassification,
+    input: Vec<Socket>,
+    output: Vec<Socket>,
+    display: NodeDisplay,
+}
+
+impl NodeTemplate {
+    pub async fn new_from_schema_id(
+        txn: &PgTxn<'_>,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+        schema_id: SchemaId,
+    ) -> NodeResult<Self> {
+        let schema = Schema::get_by_id(txn, tenancy, visibility, &schema_id)
+            .await?
+            .ok_or(NodeError::SchemaIdNotFound)?;
+        let schema_variant_id = schema
+            .default_schema_variant_id()
+            .ok_or(NodeError::SchemaMissingDefaultVariant)?;
+        let schema_variant = SchemaVariant::get_by_id(txn, tenancy, visibility, schema_variant_id)
+            .await?
+            .ok_or(NodeError::SchemaMissingDefaultVariant)?;
+        let sockets = schema_variant.sockets(txn, visibility).await?;
+
+        let node_name = schema.name().to_string();
+        Ok(NodeTemplate {
+            kind: NodeKind::Component,
+            label: NodeLabel {
+                title: node_name.clone(),
+                name: node_name.clone(),
+            },
+            // eventually, this needs to come from the schema itself
+            classification: NodeClassification {
+                component: NodeComponentType::Application,
+                kind: node_name,
+            },
+            input: sockets.clone(),
+            output: sockets,
+            display: NodeDisplay {
+                color: "0x32b832".to_string(),
+            },
+        })
+    }
 }

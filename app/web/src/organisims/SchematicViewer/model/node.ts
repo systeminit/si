@@ -1,7 +1,8 @@
 import { Color, SchematicObject, Position } from "./common";
 import { Socket } from "./socket";
+import {NodeTemplate} from "@/api/sdf/dal/node";
 
-interface NodeLabel {
+export interface NodeLabel {
   title: string;
   name: string;
 }
@@ -24,7 +25,7 @@ export enum SchematicLevel {
  *
  * This will evolve over time as we grow the list of component
  * */
-interface NodeClassification {
+export interface NodeClassification {
   component: ComponentType; // update to correct value
   kind: string; // update to correct value
   type: string; // update to correct value
@@ -84,7 +85,7 @@ interface NodeStatus {
 }
 
 /**  Display properties */
-interface NodeDisplay {
+export interface NodeDisplay {
   color?: Color;
 }
 
@@ -114,6 +115,37 @@ export interface NodePositionUpdate {
 export interface NodeUpdate {
   nodeId: string;
   position: NodePositionUpdate;
+}
+
+export function fakeNodeFromTemplate(
+  template: NodeTemplate,
+): Node {
+  const node: Node = {
+    id: "A:1",
+    label: template.label,
+    classification: template.classification,
+    position: {
+      ctx: [
+        {
+          id: "A:1",
+          position: {
+            x: 0,
+            y: 0,
+          },
+        },
+      ],
+    },
+    input: template.input,
+    output: template.output,
+    display: template.display,
+    lastUpdated: new Date(Date.now()),
+    checksum: "j4j4j4j4j4j4j4j4j4j4j4",
+    schematic: {
+      deployment: false,
+      component: true,
+    },
+  };
+  return node;
 }
 
 export function generateNode(

@@ -3,11 +3,13 @@ import { setSchematic } from "./schematic/set_schematic";
 import { setNode } from "./schematic/set_node";
 import { createConnection } from "./schematic/create_connection";
 import { getNodeAddMenu } from "./schematic/get_node_add_menu";
+import { getNodeTemplate } from "./schematic/get_node_template";
 
 export const SchematicService = {
   getSchematic,
   setSchematic,
   getNodeAddMenu,
+  getNodeTemplate,
   setNode,
   createConnection,
 };

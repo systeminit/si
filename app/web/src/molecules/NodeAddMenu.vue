@@ -55,9 +55,9 @@ const emits = defineEmits(["selected"]);
 
 const isOpen = ref<boolean>(false);
 
-const onSelect = (entityType: string, event: MouseEvent) => {
+const onSelect = (schemaId: number, event: MouseEvent) => {
   event.preventDefault();
-  emits("selected", entityType, event);
+  emits("selected", schemaId, event);
   isOpen.value = false;
 };
 

@@ -21,7 +21,7 @@
         v-if="item.kind === 'item'"
         :key="item.name"
         class="w-full px-4 text-sm subpixel-antialiased font-light tracking-tight text-left text-gray-300 whitespace-no-wrap cursor-pointer options"
-        @click="selectedType(item.entityType, $event)"
+        @click="selectedType(item.schema_id, $event)"
       >
         <div class="whitespace-no-wrap">
           {{ item.name }}
@@ -75,8 +75,8 @@ const listClasses = computed(() => {
   }
 });
 
-const selectedType = (entityType: string, event: MouseEvent) => {
-  emits("selected", entityType, event);
+const selectedType = (schemaId: number, event: MouseEvent) => {
+  emits("selected", schemaId, event);
 };
 const open = (category: string) => {
   openCategories.value[category] = true;
