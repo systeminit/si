@@ -1,6 +1,7 @@
 import { LabelList } from "@/api/sdf/dal/label_list";
 
 export enum EditFieldObjectKind {
+  Component = "Component",
   Schema = "Schema",
 }
 

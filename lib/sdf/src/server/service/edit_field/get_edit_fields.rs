@@ -4,7 +4,7 @@ use dal::{
     edit_field::{EditFieldAble, EditFieldObjectKind, EditFields},
     schema,
     socket::Socket,
-    Component, QualificationCheck, Schema, Tenancy, Visibility,
+    Component, QualificationCheck, Schema, Tenancy, Visibility, WorkspaceId,
 };
 use serde::{Deserialize, Serialize};
 
@@ -16,6 +16,7 @@ use crate::server::extract::{Authorization, PgRwTxn};
 pub struct GetEditFieldsRequest {
     pub object_kind: EditFieldObjectKind,
     pub id: i64,
+    pub workspace_id: Option<WorkspaceId>,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -32,8 +33,11 @@ pub async fn get_edit_fields(
     Query(request): Query<GetEditFieldsRequest>,
 ) -> EditFieldResult<Json<GetEditFieldsResponse>> {
     let txn = txn.start().await?;
-    let mut tenancy = Tenancy::new_billing_account(vec![claim.billing_account_id]);
-    // TODO: This needs to be something we can control - it's a security problem now - Adam
+
+    let mut tenancy = match request.workspace_id {
+        Some(workspace_id) => Tenancy::new_workspace(vec![workspace_id]),
+        None => Tenancy::new_billing_account(vec![claim.billing_account_id]),
+    };
     tenancy.universal = true;
 
     let edit_fields = match request.object_kind {

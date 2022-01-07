@@ -1,17 +1,21 @@
 import { ApiResponse, SDF } from "@/api/sdf";
-import { combineLatest, Observable, shareReplay, tap } from "rxjs";
+import { combineLatest, Observable, shareReplay, from } from "rxjs";
 import { standardVisibilityTriggers$ } from "@/observable/visibility";
 import Bottle from "bottlejs";
 import { switchMap } from "rxjs/operators";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import { EditFieldObjectKind, EditFields } from "@/api/sdf/dal/edit_field";
+import { workspace$ } from "@/observable/workspace";
+import _ from "lodash";
 
 export interface GetEditFieldsArgs {
   objectKind: EditFieldObjectKind;
   id: number;
 }
 
-export interface GetEditFieldsRequest extends GetEditFieldsArgs, Visibility {}
+export interface GetEditFieldsRequest extends GetEditFieldsArgs, Visibility {
+  workspaceId?: number,
+}
 
 export interface GetEditFieldsResponse {
   fields: EditFields;
@@ -37,14 +41,35 @@ export function getEditFields(
   }
   getEditFieldsCollection[args.objectKind][args.id] = combineLatest([
     standardVisibilityTriggers$,
+    workspace$,
   ]).pipe(
-    switchMap(([[visibility]]) => {
+    switchMap(([[visibility], workspace]) => {
       const bottle = Bottle.pop("default");
       const sdf: SDF = bottle.container.SDF;
-      const request: GetEditFieldsRequest = {
-        ...args,
-        ...visibility,
-      };
+      let request: GetEditFieldsRequest;
+      if (args.objectKind === EditFieldObjectKind.Component) {
+        if (_.isNull(workspace)) {
+          return from([
+            {
+              error: {
+                statusCode: 10,
+                message: "cannot make call without a workspace; bug!",
+                code: 10,
+              },
+            },
+          ]);
+        }
+        request = {
+          ...args,
+          ...visibility,
+          workspaceId: workspace.id,
+        };
+      } else { 
+        request = {
+          ...args,
+          ...visibility,
+        };
+      }
       const response = sdf.get<ApiResponse<GetEditFieldsResponse>>(
         "edit_field/get_edit_fields",
         request,
