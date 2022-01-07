@@ -16,12 +16,17 @@
           name="nodeSelect"
           class="pl-1"
           :options="componentNamesOnlyList"
+          v-model="selectedComponentId"
         />
       </div>
 
       <LockButton
         v-model="isPinned"
       />
+    </template>
+
+    <template #content>
+      <AttributeViewer :componentId="selectedComponentId" v-if="selectedComponentId"/>
     </template>
   </Panel>
 </template>
@@ -37,8 +42,11 @@ import { switchMap } from "rxjs/operators";
 import { from } from "rxjs";
 import { ComponentService } from "@/service/component";
 import { GlobalErrorService } from "@/service/global_error";
+import AttributeViewer from "@/organisims/AttributeViewer.vue";
 
 const isPinned = ref<boolean>(false);
+const selectedComponentId = ref<number | undefined>(undefined);
+// const attributeViewer = ref<typeof AttributeViewer | null>(null);
 
 defineProps({
   panelIndex: { type: Number, required: true },

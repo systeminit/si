@@ -3,7 +3,7 @@ use dal::{
     edit_field::{EditFieldAble, EditFieldObjectKind},
     schema::{self, SchemaVariant},
     socket::Socket,
-    Component, HistoryActor, QualificationCheck, Schema, Tenancy, Visibility,
+    Component, HistoryActor, QualificationCheck, Schema, Tenancy, Visibility, WorkspaceId,
 };
 use serde::{Deserialize, Serialize};
 
@@ -17,6 +17,7 @@ pub struct UpdateFromEditFieldRequest {
     pub object_id: i64,
     pub edit_field_id: String,
     pub value: Option<serde_json::Value>,
+    pub workspace_id: Option<WorkspaceId>,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -35,7 +36,10 @@ pub async fn update_from_edit_field(
 ) -> EditFieldResult<Json<UpdateFromEditFieldResponse>> {
     let txn = txn.start().await?;
     let nats = nats.start().await?;
-    let mut tenancy = Tenancy::new_billing_account(vec![claim.billing_account_id]);
+    let mut tenancy = match request.workspace_id {
+        Some(workspace_id) => Tenancy::new_workspace(vec![workspace_id]),
+        None => Tenancy::new_billing_account(vec![claim.billing_account_id]),
+    };
     tenancy.universal = true;
     let history_actor: HistoryActor = HistoryActor::from(claim.user_id);
 
