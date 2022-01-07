@@ -91,3 +91,91 @@ async fn set_node() {
         node.id()
     );
 }
+
+#[tokio::test]
+async fn set_node_position() {
+    test_setup!(ctx, _secret_key, _pg, _conn, txn, _nats_conn, nats);
+    let tenancy = Tenancy::new_universal();
+    let visibility = Visibility::new_head(false);
+    let history_actor = HistoryActor::SystemInit;
+    let root_node = create_node(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        &NodeKind::Component,
+    )
+    .await;
+    let node = create_node(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        &NodeKind::Component,
+    )
+    .await;
+
+    let node_position = NodePosition::upsert_by_node_id(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        SchematicKind::Component,
+        &None,
+        *root_node.id(),
+        *node.id(),
+        "123",
+        "-10",
+    )
+    .await
+    .expect("cannot upsert node position");
+
+    assert_eq!(
+        NodePosition::get_by_pk(&txn, node_position.pk())
+            .await
+            .expect("failed to get node position by pk")
+            .x(),
+        "123"
+    );
+    assert_eq!(
+        NodePosition::get_by_pk(&txn, node_position.pk())
+            .await
+            .expect("failed to get node position by pk")
+            .y(),
+        "-10"
+    );
+
+    let node_position = NodePosition::upsert_by_node_id(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        SchematicKind::Component,
+        &None,
+        *root_node.id(),
+        *node.id(),
+        "-10",
+        "123",
+    )
+    .await
+    .expect("cannot upsert node position");
+
+    assert_eq!(
+        NodePosition::get_by_pk(&txn, node_position.pk())
+            .await
+            .expect("failed to get node position by pk")
+            .x(),
+        "-10"
+    );
+    assert_eq!(
+        NodePosition::get_by_pk(&txn, node_position.pk())
+            .await
+            .expect("failed to get node position by pk")
+            .y(),
+        "123"
+    );
+}

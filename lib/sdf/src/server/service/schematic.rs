@@ -5,7 +5,8 @@ use axum::routing::{get, post};
 use axum::Json;
 use axum::Router;
 use dal::{
-    ComponentError, NodeError, NodeMenuError, SchemaError as DalSchemaError, StandardModelError,
+    ComponentError, NodeError, NodeMenuError, NodePositionError, SchemaError as DalSchemaError,
+    StandardModelError,
 };
 use std::convert::Infallible;
 use thiserror::Error;
@@ -14,6 +15,7 @@ pub mod create_node;
 pub mod get_node_add_menu;
 pub mod get_node_template;
 pub mod get_schematic;
+pub mod set_node_position;
 pub mod set_schematic;
 
 #[derive(Debug, Error)]
@@ -36,6 +38,8 @@ pub enum SchematicError {
     InvalidRequest,
     #[error("component error: {0}")]
     ComponentError(#[from] ComponentError),
+    #[error("node position error: {0}")]
+    NodePosition(#[from] NodePositionError),
 }
 
 pub type SchematicResult<T> = std::result::Result<T, SchematicError>;
@@ -71,4 +75,8 @@ pub fn routes() -> Router {
             get(get_node_template::get_node_template),
         )
         .route("/create_node", post(create_node::create_node))
+        .route(
+            "/set_node_position",
+            post(set_node_position::set_node_position),
+        )
 }

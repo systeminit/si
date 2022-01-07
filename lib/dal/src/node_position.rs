@@ -19,6 +19,9 @@ pub enum NodePositionError {
     StandardModelError(#[from] StandardModelError),
 }
 
+const FIND_NODE_POSITION_BY_NODE_ID: &str =
+    include_str!("./queries/node_position_find_by_node_id.sql");
+
 pub type NodePositionResult<T> = Result<T, NodePositionError>;
 
 pk!(NodePositionPk);
@@ -87,6 +90,87 @@ impl NodePosition {
         .await?;
 
         Ok(object)
+    }
+
+    pub async fn find_by_node_id(
+        txn: &PgTxn<'_>,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+        schematic_kind: SchematicKind,
+        system_id: &Option<SystemId>,
+        root_node_id: NodeId,
+        node_id: NodeId,
+    ) -> NodePositionResult<Option<Self>> {
+        let row = txn
+            .query_opt(
+                FIND_NODE_POSITION_BY_NODE_ID,
+                &[
+                    tenancy,
+                    visibility,
+                    &schematic_kind.as_ref(),
+                    &system_id,
+                    &root_node_id,
+                    &node_id,
+                ],
+            )
+            .await?;
+        let object = standard_model::option_object_from_row(row)?;
+        Ok(object)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub async fn upsert_by_node_id(
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+        history_actor: &HistoryActor,
+        schematic_kind: SchematicKind,
+        system_id: &Option<SystemId>,
+        root_node_id: NodeId,
+        node_id: NodeId,
+        x: impl AsRef<str>,
+        y: impl AsRef<str>,
+    ) -> NodePositionResult<Self> {
+        if let Some(mut position) = Self::find_by_node_id(
+            txn,
+            tenancy,
+            visibility,
+            schematic_kind,
+            system_id,
+            root_node_id,
+            node_id,
+        )
+        .await?
+        {
+            position
+                .set_x(txn, nats, visibility, history_actor, x.as_ref())
+                .await?;
+            position
+                .set_y(txn, nats, visibility, history_actor, y.as_ref())
+                .await?;
+            Ok(position)
+        } else {
+            let mut obj = Self::new(
+                txn,
+                nats,
+                tenancy,
+                visibility,
+                history_actor,
+                schematic_kind,
+                root_node_id,
+                x,
+                y,
+            )
+            .await?;
+            if let Some(system_id) = system_id {
+                obj.set_system_id(txn, nats, visibility, history_actor, Some(*system_id))
+                    .await?;
+            }
+            obj.set_node(txn, nats, visibility, history_actor, &node_id)
+                .await?;
+            Ok(obj)
+        }
     }
 
     standard_model_accessor!(schematic_kind, Enum(SchematicKind), NodePositionResult);
