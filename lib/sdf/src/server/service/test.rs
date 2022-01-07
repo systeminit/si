@@ -12,6 +12,7 @@ mod signup;
 mod signup_and_login;
 
 #[derive(Debug, Error)]
+#[allow(clippy::large_enum_variant)]
 pub enum TestError {
     #[error(transparent)]
     Nats(#[from] si_data::NatsError),
