@@ -6,8 +6,8 @@ use axum::{
     Json, Router,
 };
 use dal::{
-    schema::variant::SchemaVariantError, socket::SocketError, QualificationCheckError, SchemaError,
-    StandardModelError,
+    schema::variant::SchemaVariantError, socket::SocketError, ComponentError,
+    QualificationCheckError, SchemaError, StandardModelError,
 };
 use std::convert::Infallible;
 use thiserror::Error;
@@ -17,6 +17,8 @@ pub mod update_from_edit_field;
 
 #[derive(Debug, Error)]
 pub enum EditFieldError {
+    #[error("component error: {0}")]
+    Component(#[from] ComponentError),
     #[error(transparent)]
     Nats(#[from] si_data::NatsError),
     #[error(transparent)]

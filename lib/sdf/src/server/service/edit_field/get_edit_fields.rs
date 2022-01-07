@@ -4,7 +4,7 @@ use dal::{
     edit_field::{EditFieldAble, EditFieldObjectKind, EditFields},
     schema,
     socket::Socket,
-    QualificationCheck, Schema, Tenancy, Visibility,
+    Component, QualificationCheck, Schema, Tenancy, Visibility,
 };
 use serde::{Deserialize, Serialize};
 
@@ -37,6 +37,10 @@ pub async fn get_edit_fields(
     tenancy.universal = true;
 
     let edit_fields = match request.object_kind {
+        EditFieldObjectKind::Component => {
+            Component::get_edit_fields(&txn, &tenancy, &request.visibility, &request.id.into())
+                .await?
+        }
         EditFieldObjectKind::QualificationCheck => {
             QualificationCheck::get_edit_fields(
                 &txn,
