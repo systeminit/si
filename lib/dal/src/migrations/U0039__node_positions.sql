@@ -54,4 +54,3 @@ BEGIN
     object := row_to_json(this_new_row);
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
-
