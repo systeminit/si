@@ -8,7 +8,7 @@
         :y1="sourceSocketPosition.y"
         :x2="destinationSocketPosition.x"
         :y2="destinationSocketPosition.y"
-        style="stroke:rgb(71,99,113); stroke-width:2"
+        style="stroke: rgb(71, 99, 113); stroke-width: 2"
       />
     </svg>
   </div>
@@ -216,7 +216,7 @@ export default Vue.extend({
         switch (this.orientation) {
           case SchematicOrientation.Horizontal: {
             const socketId = this.edge.headVertex.socket;
-            const index = _.findIndex(this.inputs(), function(o) {
+            const index = _.findIndex(this.inputs(), function (o) {
               return o.name == socketId;
             });
 
@@ -335,7 +335,7 @@ export default Vue.extend({
 
             case SchematicOrientation.Horizontal: {
               const socketId = this.edge.headVertex.socket;
-              const index = _.findIndex(this.inputs(), function(o) {
+              const index = _.findIndex(this.inputs(), function (o) {
                 return o.name == socketId;
               });
 

@@ -405,7 +405,7 @@ export default Vue.extend({
   beforeDestroy() {
     this.deRegisterEvents();
   },
-  subscriptions: function(this: any): Record<string, any> {
+  subscriptions: function (this: any): Record<string, any> {
     return {
       selectedNode: schematicSelectNode$,
       deploymentSelectedNode: deploymentSchematicSelectNode$,
@@ -424,11 +424,11 @@ export default Vue.extend({
 
       PanelEventBus.$on("panel-viewport-edge-remove", this.removeTemporaryEdge);
 
-      SpaceBarEvents.subscribe(event =>
+      SpaceBarEvents.subscribe((event) =>
         this.spacebarEvent(event as ShortcutUpdateEvent),
       );
 
-      BackspaceEvents.subscribe(event =>
+      BackspaceEvents.subscribe((event) =>
         this.backspaceEvent(event as ShortcutUpdateEvent),
       );
 
@@ -1498,7 +1498,7 @@ export default Vue.extend({
     ): Input | undefined {
       let destinationEntitySchema = destinationEntity.schema();
       let sourceEntitySchema = sourceEntity.schema();
-      let validInput = _.find(destinationEntitySchema.inputs, input => {
+      let validInput = _.find(destinationEntitySchema.inputs, (input) => {
         return (
           input.edgeKind == connectionKind &&
           (_.includes(input.types, sourceEntity.entityType) ||
@@ -1592,7 +1592,7 @@ export default Vue.extend({
         throw new Error("graph must be set for edgeExists check, bug!");
       }
 
-      return Object.values(this.schematic.edges).some(function(edge) {
+      return Object.values(this.schematic.edges).some(function (edge) {
         return (
           edge.headVertex.nodeId == destination.nodeId &&
           edge.headVertex.socket == destination.socketId &&

@@ -32,4 +32,8 @@ export class Renderer extends PIXI.Renderer {
   renderStage(): void {
     this.render(this.stage);
   }
+
+  renderGroup(group: PIXI.DisplayObject): void {
+    this.render(group);
+  }
 }

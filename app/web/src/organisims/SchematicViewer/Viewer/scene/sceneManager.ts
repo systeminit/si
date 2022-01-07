@@ -160,8 +160,13 @@ export class SceneManager {
     }
   }
 
-  removeNode(): void {
-    console.log("removeNode");
+  removeNode(node: OBJ.Node): void {
+    node.destroy();
+
+    if (this.group) {
+      const nodeGroup = this.scene.getChildByName(this.group.nodes.name, true);
+      this.renderer.renderGroup(nodeGroup);
+    }
   }
 
   translateNode(node: Node, position: Position): void {
