@@ -9,6 +9,7 @@ mod jwt_key;
 mod key_pair;
 mod node;
 mod node_menu;
+mod node_position;
 mod organization;
 mod qualification_check;
 mod schema;

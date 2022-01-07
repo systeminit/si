@@ -16,6 +16,7 @@ pub mod key_pair;
 pub mod label_list;
 pub mod node;
 pub mod node_menu;
+pub mod node_position;
 pub mod organization;
 pub mod qualification_check;
 pub mod schema;
@@ -49,6 +50,9 @@ pub use key_pair::{KeyPair, KeyPairError, KeyPairResult};
 pub use label_list::{LabelEntry, LabelList, LabelListError};
 pub use node::{Node, NodeError};
 pub use node_menu::{MenuFilter, NodeMenuError};
+pub use node_position::{
+    NodePosition, NodePositionError, NodePositionId, NodePositionPk, NodePositionResult,
+};
 pub use organization::{
     Organization, OrganizationError, OrganizationId, OrganizationPk, OrganizationResult,
 };
