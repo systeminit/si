@@ -1,8 +1,13 @@
+use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use si_data::{NatsError, NatsTxn, PgError, PgTxn};
 use telemetry::prelude::*;
 use thiserror::Error;
 
+use crate::edit_field::{
+    value_and_visiblity_diff, EditField, EditFieldAble, EditFieldDataType, EditFieldError,
+    EditFieldObjectKind, EditFields, RequiredValidator, TextWidget, Validator, Widget,
+};
 use crate::node::NodeKind;
 use crate::schema::variant::{SchemaVariantError, SchemaVariantId};
 use crate::schema::SchemaVariant;
@@ -14,6 +19,8 @@ use crate::{
 
 #[derive(Error, Debug)]
 pub enum ComponentError {
+    #[error("edit field error: {0}")]
+    EditField(#[from] EditFieldError),
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("pg error: {0}")]
@@ -26,6 +33,8 @@ pub enum ComponentError {
     StandardModelError(#[from] StandardModelError),
     #[error("node error: {0}")]
     NodeError(#[from] NodeError),
+    #[error("component not found: {0}")]
+    NotFound(ComponentId),
     #[error("schema error: {0}")]
     Schema(#[from] SchemaError),
     #[error("schema variant not found")]
@@ -208,4 +217,105 @@ impl Component {
         returns: SchemaVariant,
         result: ComponentResult,
     );
+
+    fn name_edit_field(
+        visibility: &Visibility,
+        object: &Self,
+        head_object: &Option<Self>,
+        change_set_object: &Option<Self>,
+    ) -> ComponentResult<EditField> {
+        let field_name = "name";
+        let target_fn = Self::name;
+        let object_kind = EditFieldObjectKind::Component;
+
+        let (value, visibility_diff) = value_and_visiblity_diff(
+            visibility,
+            Some(object),
+            target_fn,
+            head_object.as_ref(),
+            change_set_object.as_ref(),
+        )?;
+
+        Ok(EditField::new(
+            field_name,
+            vec![],
+            object_kind,
+            object.id,
+            EditFieldDataType::String,
+            Widget::Text(TextWidget::new()),
+            value,
+            visibility_diff,
+            vec![Validator::Required(RequiredValidator)],
+        ))
+    }
+}
+
+#[async_trait]
+impl EditFieldAble for Component {
+    type Id = ComponentId;
+    type Error = ComponentError;
+
+    async fn get_edit_fields(
+        txn: &PgTxn<'_>,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+        id: &ComponentId,
+    ) -> ComponentResult<EditFields> {
+        let object = Component::get_by_id(txn, tenancy, visibility, id)
+            .await?
+            .ok_or(ComponentError::NotFound(*id))?;
+        let head_object: Option<Component> = if visibility.in_change_set() {
+            let head_visibility = Visibility::new_head(visibility.deleted);
+            Component::get_by_id(txn, tenancy, &head_visibility, id).await?
+        } else {
+            None
+        };
+        let change_set_object: Option<Component> = if visibility.in_change_set() {
+            let change_set_visibility =
+                Visibility::new_change_set(visibility.change_set_pk, visibility.deleted);
+            Component::get_by_id(txn, tenancy, &change_set_visibility, id).await?
+        } else {
+            None
+        };
+
+        Ok(vec![Self::name_edit_field(
+            visibility,
+            &object,
+            &head_object,
+            &change_set_object,
+        )?])
+    }
+
+    async fn update_from_edit_field(
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+        history_actor: &HistoryActor,
+        id: Self::Id,
+        edit_field_id: String,
+        value: Option<serde_json::Value>,
+    ) -> ComponentResult<()> {
+        let edit_field_id = edit_field_id.as_ref();
+        let mut object = Component::get_by_id(txn, tenancy, visibility, &id)
+            .await?
+            .ok_or(ComponentError::NotFound(id))?;
+
+        match edit_field_id {
+            "name" => match value {
+                Some(json_value) => {
+                    let value = json_value.as_str().map(|s| s.to_string()).ok_or(
+                        Self::Error::EditField(EditFieldError::InvalidValueType("string")),
+                    )?;
+                    object
+                        .set_name(txn, nats, visibility, history_actor, value)
+                        .await?;
+                }
+                None => return Err(EditFieldError::MissingValue.into()),
+            },
+            invalid => return Err(EditFieldError::invalid_field(invalid).into()),
+        }
+
+        Ok(())
+    }
 }

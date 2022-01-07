@@ -57,6 +57,7 @@ pub enum Widget {
 
 #[derive(AsRefStr, Clone, Debug, Deserialize, Display, EnumString, Eq, PartialEq, Serialize)]
 pub enum EditFieldObjectKind {
+    Component,
     QualificationCheck,
     Schema,
     SchemaUiMenu,

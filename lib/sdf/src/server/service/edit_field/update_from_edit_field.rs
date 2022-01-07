@@ -3,7 +3,7 @@ use dal::{
     edit_field::{EditFieldAble, EditFieldObjectKind},
     schema::{self, SchemaVariant},
     socket::Socket,
-    HistoryActor, QualificationCheck, Schema, Tenancy, Visibility,
+    Component, HistoryActor, QualificationCheck, Schema, Tenancy, Visibility,
 };
 use serde::{Deserialize, Serialize};
 
@@ -40,6 +40,19 @@ pub async fn update_from_edit_field(
     let history_actor: HistoryActor = HistoryActor::from(claim.user_id);
 
     match request.object_kind {
+        EditFieldObjectKind::Component => {
+            Component::update_from_edit_field(
+                &txn,
+                &nats,
+                &tenancy,
+                &request.visibility,
+                &history_actor,
+                request.object_id.into(),
+                request.edit_field_id,
+                request.value,
+            )
+            .await?
+        }
         EditFieldObjectKind::QualificationCheck => {
             QualificationCheck::update_from_edit_field(
                 &txn,
