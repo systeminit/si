@@ -206,6 +206,7 @@ export class InteractionManager {
 
     // Adding a node
     if (ST.isAddingNode(this.stateService)) {
+      this.nodeAddManager.afterAddNode();
       ST.deactivateNodeAdd(this.stateService);
     }
   }

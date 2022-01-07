@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use si_data::{NatsError, NatsTxn, PgError, PgTxn};
 use telemetry::prelude::*;
@@ -118,7 +119,7 @@ impl Node {
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct NodeLabel {
-    title: String,
+    pub title: String,
     name: String,
 }
 
@@ -131,24 +132,24 @@ pub enum NodeComponentType {
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct NodeClassification {
-    component: NodeComponentType,
-    kind: String,
+    pub component: NodeComponentType,
+    pub kind: String,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct NodeDisplay {
-    color: String,
+    pub color: String,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct NodeTemplate {
-    kind: NodeKind,
-    label: NodeLabel,
-    classification: NodeClassification,
-    input: Vec<Socket>,
-    output: Vec<Socket>,
-    display: NodeDisplay,
+    pub kind: NodeKind,
+    pub label: NodeLabel,
+    pub classification: NodeClassification,
+    pub input: Vec<Socket>,
+    pub output: Vec<Socket>,
+    pub display: NodeDisplay,
 }
 
 impl NodeTemplate {
@@ -187,5 +188,60 @@ impl NodeTemplate {
                 color: "0x32b832".to_string(),
             },
         })
+    }
+}
+
+// This maps to the typescript node, and can go from the database
+// representation of a node, combined with the schema data.
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+pub struct NodeView {
+    id: NodeId,
+    kind: NodeKind,
+    label: NodeLabel,
+    classification: NodeClassification,
+    // Update with real position data
+    position: serde_json::Value,
+    input: Vec<Socket>,
+    output: Vec<Socket>,
+    display: NodeDisplay,
+    last_updated: DateTime<Utc>,
+    checksum: serde_json::Value,
+    schematic: serde_json::Value,
+}
+
+impl NodeView {
+    pub fn new(name: impl Into<String>, node: Node, node_template: NodeTemplate) -> Self {
+        let name = name.into();
+        NodeView {
+            id: node.id,
+            kind: node_template.kind,
+            label: NodeLabel {
+                name,
+                title: node_template.label.title,
+            },
+            classification: node_template.classification,
+            position: serde_json::json!({
+               "ctx": [
+                 {
+                   "id": node.id,
+                   "position": {
+                     "x": 0,
+                     "y": 0,
+                   },
+                 },
+               ],
+            }),
+            input: node_template.input,
+            output: node_template.output,
+            display: node_template.display,
+            last_updated: node.timestamp.updated_at,
+            // What is this for?
+            checksum: serde_json::json!["j4j4j4j4j4j4j4j4j4j4j4"],
+            // This feels redundant
+            schematic: serde_json::json![{
+                "deployment": true,
+                "component": true,
+            }],
+        }
     }
 }

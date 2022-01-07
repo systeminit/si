@@ -93,6 +93,73 @@ impl Component {
     }
 
     #[tracing::instrument(skip(txn, nats, name))]
+    pub async fn new_for_schema_with_node(
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+        history_actor: &HistoryActor,
+        name: impl AsRef<str>,
+        schema_id: &SchemaId,
+    ) -> ComponentResult<(Self, Node)> {
+        let name = name.as_ref();
+
+        let mut schema_tenancy = tenancy.clone();
+        schema_tenancy.universal = true;
+
+        let schema = Schema::get_by_id(txn, &schema_tenancy, visibility, schema_id)
+            .await?
+            .ok_or(ComponentError::SchemaNotFound)?;
+
+        let schema_variant_id = schema
+            .default_schema_variant_id()
+            .ok_or(ComponentError::SchemaVariantNotFound)?;
+        let schema_variant =
+            SchemaVariant::get_by_id(txn, &schema_tenancy, visibility, schema_variant_id)
+                .await?
+                .ok_or(ComponentError::SchemaVariantNotFound)?;
+
+        let row = txn
+            .query_one(
+                "SELECT object FROM component_create_v1($1, $2, $3)",
+                &[&tenancy, &visibility, &name],
+            )
+            .await?;
+
+        let component: Component = standard_model::finish_create_from_row(
+            txn,
+            nats,
+            tenancy,
+            visibility,
+            history_actor,
+            row,
+        )
+        .await?;
+        component
+            .set_schema(txn, nats, visibility, history_actor, schema.id())
+            .await?;
+        component
+            .set_schema_variant(txn, nats, visibility, history_actor, schema_variant.id())
+            .await?;
+        // Need to flesh out node so that the template data is also included in the node we
+        // persist. But it isn't, - our node is anemic.
+
+        let node = Node::new(
+            txn,
+            nats,
+            tenancy,
+            visibility,
+            history_actor,
+            &NodeKind::Component,
+        )
+        .await?;
+        node.set_component(txn, nats, visibility, history_actor, component.id())
+            .await?;
+
+        Ok((component, node))
+    }
+
+    #[tracing::instrument(skip(txn, nats, name))]
     pub async fn new_for_schema_variant_with_node(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
