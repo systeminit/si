@@ -1,6 +1,6 @@
 <template>
   <div :id="container.id" ref="container" class="w-full h-full">
-    <div class="flex flex-row">
+    <div v-if="debug" class="flex flex-row">
       <div class="ml-2 font-medium text-yellow-200">{{ state.value }}</div>
 
       <div v-if="selection" class="ml-2 font-medium text-blue-200">
@@ -12,7 +12,7 @@
     <canvas
       :id="canvas.id"
       ref="canvas"
-      @wheel.passive="handleMouseWheel"
+      @wheel="handleMouseWheel"
       @mouseenter="mouseEnter()"
       @mouseleave="mouseLeave()"
     />
@@ -69,6 +69,7 @@ interface Data {
   spaceBarPressed: boolean;
   resizeObserver: ResizeObserver;
   interactionManager: InteractionManager | undefined;
+  debug: boolean;
 }
 
 export default defineComponent({
@@ -133,6 +134,7 @@ export default defineComponent({
       spaceBarPressed: false,
       resizeObserver: resizeObserver,
       interactionManager: undefined,
+      debug: true,
     };
   },
   watch: {
@@ -240,7 +242,7 @@ export default defineComponent({
     },
 
     handleMouseWheel(e: WheelEvent): void {
-      // e.preventDefault();
+      e.preventDefault();
       // implement zoom on alt/option key
       if (this.interactionManager) {
         this.send(ViewerEventKind.ACTIVATE_ZOOMING);

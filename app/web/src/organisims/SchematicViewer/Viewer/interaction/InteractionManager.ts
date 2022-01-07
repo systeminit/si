@@ -121,6 +121,7 @@ export class InteractionManager {
 
   onMouseDown(this: InteractionManager, e: PIXI.InteractionEvent) {
     const target = this.renderer.plugins.interaction.hitTest(e.data.global);
+
     if (target.name === "scene") {
       if (ST.isPanningActivated(this.stateService)) {
         ST.initiatePanning(this.stateService);

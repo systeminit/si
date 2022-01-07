@@ -5,8 +5,10 @@ import * as MODEL from "../../model";
 
 import _ from "lodash";
 
-import { Socket, SocketType } from "./socket";
 import { Connection } from "./connection";
+import { NodeTitle } from "./node/nodeTitle";
+import { NodeName } from "./node/nodeName";
+import { Socket, SocketType } from "./node/socket";
 
 interface Position {
   x: number;
@@ -28,12 +30,11 @@ const SOCKET_HEIGHT = 3;
 
 export class Node extends PIXI.Container {
   kind: string;
-  selection: PIXI.Graphics;
   isSelected = false;
   id: string;
   title: string;
   connections: Array<Connection>;
-  // interaction: Interaction;
+  selection?: PIXI.Graphics;
 
   constructor(n: MODEL.Node) {
     super();
@@ -50,7 +51,41 @@ export class Node extends PIXI.Container {
     this.buttonMode = true;
     this.sortableChildren = true;
 
+    // Card object
+    this.setCard(Math.max(n.input.length, n.output.length));
+    this.setTitle();
+    this.setName();
+
+    // Sockets
+    this.setInputSockets(n.input);
+    this.setOutputSockets(n.output);
+
+    // Selection hilight
+    this.setSelection(Math.max(n.input.length, n.output.length));
+
     // Shadow
+    this.setShadows();
+  }
+
+  setCard(socketCount: number): void {
+    const card = new PIXI.Graphics()
+      .beginFill(0x282e30)
+      .drawRoundedRect(0, 0, NODE_WIDTH, this.nodeHeight(socketCount), 6)
+      .endFill();
+    card.zIndex = 1;
+    this.addChild(card);
+  }
+
+  setSelection(socketCount: number): void {
+    this.selection = new PIXI.Graphics()
+      .lineStyle(1, 0x4dfaff, 1, 0, false)
+      .drawRoundedRect(0, 0, NODE_WIDTH, this.nodeHeight(socketCount), 6);
+    this.selection.zIndex = 2;
+    this.addChild(this.selection);
+    this.deselect();
+  }
+
+  setShadows(): void {
     const dropShadow = new PIXIFILTER.DropShadowFilter();
     dropShadow.color = 0x000000;
     dropShadow.blur = 1;
@@ -59,33 +94,27 @@ export class Node extends PIXI.Container {
     dropShadow.alpha = 0.5;
     dropShadow.resolution = window.devicePixelRatio || 1;
     this.filters = [dropShadow];
+  }
 
-    this.selection = new PIXI.Graphics()
-      .lineStyle(1, 0x4dfaff, 1, 0, false)
-      .drawRoundedRect(0, 0, NODE_WIDTH, this.nodeHeight(n.input.length), 6);
-    this.selection.zIndex = 2;
+  setTitle(): void {
+    const title = new NodeTitle(this.title, NODE_WIDTH);
+    this.addChild(title);
+  }
 
-    this.addChild(this.selection);
-    this.deselect();
+  setName(): void {
+    const name = new NodeName(this.name, NODE_WIDTH);
+    this.addChild(name);
+  }
 
-    // Card object
-    const card = new PIXI.Graphics()
-      .beginFill(0x282e30)
-      .drawRoundedRect(0, 0, NODE_WIDTH, this.nodeHeight(n.input.length), 6)
-      .endFill();
-    card.zIndex = 1;
-    this.addChild(card);
-
-    // Create input sockets
-    for (let i = 0; i < n.input.length; i++) {
-      const s = n.input[i];
+  setInputSockets(inputs: MODEL.Socket[]): void {
+    for (let i = 0; i < inputs.length; i++) {
+      const s = inputs[i];
 
       let socketLabel = null;
       if (s.name) {
         socketLabel = s.name;
       }
-
-      const socket = this.createSocket(
+      const socket = new Socket(
         s.id,
         socketLabel,
         SocketType.input,
@@ -95,19 +124,18 @@ export class Node extends PIXI.Container {
         },
         0xffdd44,
       );
-      this.addSocket(socket);
+      socket.zIndex = 3;
+      this.addChild(socket);
     }
+  }
 
-    for (let i = 0; i < n.output.length; i++) {
-      const s = n.output[i];
+  setOutputSockets(outputs: MODEL.Socket[]): void {
+    for (let i = 0; i < outputs.length; i++) {
+      const s = outputs[i];
 
-      let socketName = null;
-      if (s.name) {
-        socketName = s.name;
-      }
-      const socket = this.createSocket(
+      const socket = new Socket(
         s.id,
-        socketName,
+        null,
         SocketType.output,
         {
           x: NODE_WIDTH,
@@ -115,36 +143,9 @@ export class Node extends PIXI.Container {
         },
         0xeb44ff,
       );
-      this.addSocket(socket);
+      socket.zIndex = 3;
+      this.addChild(socket);
     }
-
-    // Title
-    const title = new PIXI.Text(this.title, {
-      fontFamily: "Source Code Pro",
-      fontSize: 12,
-      fontWeight: "400",
-      letterSpacing: 0,
-      fill: "white",
-      align: "left",
-    });
-    title.position.x = NODE_WIDTH * 0.5 - title.width * 0.5;
-    title.position.y = 5;
-    title.zIndex = 2;
-    this.addChild(title);
-
-    // Name
-    const name = new PIXI.Text(this.name, {
-      fontFamily: "Source Code Pro",
-      fontSize: 10,
-      fontWeight: "400",
-      letterSpacing: 0,
-      fill: "white",
-      align: "left",
-    });
-    name.position.x = NODE_WIDTH * 0.5 - name.width * 0.5;
-    name.position.y = 25;
-    name.zIndex = 2;
-    this.addChild(name);
   }
 
   select(): void {
@@ -159,31 +160,6 @@ export class Node extends PIXI.Container {
 
   addConnection(c: Connection): void {
     this.connections.push(c);
-  }
-
-  createSocket(
-    id: string,
-    label: string | null,
-    type: SocketType,
-    position: Position,
-    color: number,
-  ): Socket {
-    const socket = new Socket(
-      id,
-      label,
-      type,
-      {
-        x: position.x,
-        y: position.y,
-      },
-      color,
-    );
-    socket.zIndex = 2;
-    return socket;
-  }
-
-  addSocket(s: Socket): void {
-    this.addChild(s);
   }
 
   nodeHeight(socketCount: number): number {
