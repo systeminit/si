@@ -22,6 +22,7 @@
 <script lang="ts">
 import { defineComponent, PropType } from "vue";
 import _ from "lodash";
+import * as Rx from "rxjs";
 import * as PIXI from "pixi.js";
 import { refFrom } from "vuse-rx";
 
@@ -33,7 +34,10 @@ import { InteractionManager } from "./Viewer/interaction";
 import { Renderer } from "./Viewer/renderer";
 import { SchematicDataManager } from "./data";
 
-import { Schematic } from "./model";
+// import { Schematic } from "./model";
+import * as MODEL from "./model";
+
+import * as VE from "./event";
 
 import * as s from "./state";
 import { schematicData$ } from "./data";
@@ -83,15 +87,21 @@ export default defineComponent({
       type: Object as PropType<ViewerStateMachine>,
       required: true,
     },
+    viewerEvent$: {
+      type: Object as
+        | PropType<Rx.ReplaySubject<VE.ViewerEvent | null>>
+        | undefined,
+      required: false,
+      default: undefined,
+    },
     schematicData: {
-      type: Object as PropType<Schematic> | undefined,
+      type: Object as PropType<MODEL.Schematic> | undefined,
       required: false,
       default: undefined,
     },
   },
   setup(props) {
     const { state, send, service } = useMachine(props.viewerState.machine);
-
     const selection = refFrom(s.selection$); //pipe and additional operations.
     return {
       state,
@@ -150,6 +160,12 @@ export default defineComponent({
 
     document.addEventListener("keydown", this.handleKeyDown);
     document.addEventListener("keyup", this.handleKeyUp);
+
+    if (this.viewerEvent$) {
+      this.viewerEvent$.subscribe({
+        next: (v) => this.handleViewerEvent(v),
+      });
+    }
 
     // this.$once("hook:beforeDestroy", () => {
     //   this.container.element.removeEventListener("keydown", this.handleKeyDown);
@@ -254,25 +270,26 @@ export default defineComponent({
       }
     },
 
-    loadSchematicData(schematic: Schematic | null): void {
+    loadSchematicData(schematic: MODEL.Schematic | null): void {
       if (schematic && this.sceneManager) {
         this.sceneManager.loadSceneData(schematic);
       }
     },
 
-    async handleNodeAdd(schemaId: number): Promise<void> {
+    handleViewerEvent(e: VE.ViewerEvent | null): void {
+      if (e && e.kind == VE.ViewerEventKind.NODE_ADD) {
+        this.nodeAdd(e.data.node, e.data.schemaId);
+      }
+    },
+
+    nodeAdd(node: MODEL.Node, schemaId: number): void {
       this.activateComponent();
       if (this.component.isActive) {
-        console.log("component is active");
-
         if (this.interactionManager) {
-          await this.interactionManager.nodeAddManager.addNode(schemaId);
           this.send(ViewerEventKind.ACTIVATE_NODEADD);
-          console.log("activated NodeAdd and added node");
+          this.interactionManager.nodeAddManager.addNode(node, schemaId);
         }
       }
-
-      // this.dataManager?.addNode$.next(nodeType);
     },
   },
 });

@@ -46,7 +46,7 @@
       />
     </template>
     <template #content>
-      <SchematicViewer ref="schematicViewer" />
+      <SchematicViewer :viewer-event$="viewerEventObservable.viewerEvent$" />
       <!-- <SchematicViewer /> -->
       <!-- <div
         class="flex flex-col items-center justify-center w-full h-full align-middle"
@@ -77,6 +77,12 @@ import { refFrom } from "vuse-rx";
 import { switchMap } from "rxjs/operators";
 import { from } from "rxjs";
 import { ChangeSetService } from "@/service/change_set";
+import { NodeAddEvent, ViewerEventObservable } from "./SchematicViewer/event";
+
+import { SchematicService } from "@/service/schematic";
+import { GlobalErrorService } from "@/service/global_error";
+import { firstValueFrom } from "rxjs";
+import * as MODEL from "./SchematicViewer/model";
 
 // import { SchematicService } from "@/service/schematic";
 // import { GlobalErrorService } from "@/service/global_error";
@@ -86,7 +92,9 @@ import { ChangeSetService } from "@/service/change_set";
 
 // TODO: Alex, here is your panel. The switcher is fucked, but otherwise, should be good to port.
 
-const schematicViewer = ref<typeof SchematicViewer | null>(null);
+// TODO: degfine viewer observable here.
+
+const viewerEventObservable = new ViewerEventObservable();
 
 defineProps({
   panelIndex: { type: Number, required: true },
@@ -162,11 +170,18 @@ const addMenuEnabled = computed(() => {
   }
 });
 
-const addNode = (schemaId: number, _event: MouseEvent) => {
-  console.log("poop canoe", { schemaId });
-  if (schematicViewer.value) {
-    schematicViewer.value.addNode(schemaId);
+const addNode = async (schemaId: number, _event: MouseEvent) => {
+  const response = await firstValueFrom(
+    SchematicService.getNodeTemplate({ schemaId }),
+  );
+  if (response.error) {
+    GlobalErrorService.set(response);
+    return;
   }
+
+  const n = MODEL.fakeNodeFromTemplate(response);
+  const event = new NodeAddEvent({ node: n, schemaId: schemaId });
+  viewerEventObservable.viewerEvent$.next(event);
 };
 
 // const getSchematic = () => {

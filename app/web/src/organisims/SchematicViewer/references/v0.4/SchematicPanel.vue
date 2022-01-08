@@ -196,9 +196,9 @@ export default Vue.extend({
     };
   },
   subscriptions() {
-    const selectedSchematicKind$: Observable<Data["schematicKind"]> = this.$watchAsObservable<
+    const selectedSchematicKind$: Observable<
       Data["schematicKind"]
-    >(
+    > = this.$watchAsObservable<Data["schematicKind"]>(
       () =>
         // @ts-ignore
         this.schematicKind,
@@ -528,7 +528,7 @@ export default Vue.extend({
         }),
       ),
       nameAttributeChanged: nameAttributeChanged$.pipe(
-        tap(payload => {
+        tap((payload) => {
           // @ts-ignore
           const schematic = this.schematic as Data["schematic"];
 
@@ -539,7 +539,7 @@ export default Vue.extend({
         }),
       ),
       nodeDeleted: nodeDeleted$.pipe(
-        tap(payload => {
+        tap((payload) => {
           // @ts-ignore
           const schematic = this.schematic as Data["schematic"];
 
@@ -549,7 +549,7 @@ export default Vue.extend({
         }),
       ),
       workflowRunUpdate: workflowRuns$.pipe(
-        tap(workflowRun => {
+        tap((workflowRun) => {
           // @ts-ignore
           const schematic = this.schematic as Data["schematic"];
 
@@ -573,7 +573,7 @@ export default Vue.extend({
         }),
       ),
       resourceUpdate: resources$.pipe(
-        tap(resource => {
+        tap((resource) => {
           // @ts-ignore
           const schematic = this.schematic as Data["schematic"];
 
@@ -591,7 +591,7 @@ export default Vue.extend({
         }),
       ),
       qualificationsUpdate: entityQualifications$.pipe(
-        tap(qualification => {
+        tap((qualification) => {
           // @ts-ignore
           const schematic = this.schematic as Data["schematic"];
 
@@ -658,7 +658,7 @@ export default Vue.extend({
           if (this.rootObjectId && this.schematic) {
             const ret = _.find(
               Object.values(this.schematic.nodes),
-              n => n.object.id == this.rootObjectId,
+              (n) => n.object.id == this.rootObjectId,
             );
             if (ret) {
               rootEntityType = ret.node.objectType;
@@ -722,7 +722,7 @@ export default Vue.extend({
         ) {
           const ret = _.find(
             Object.values(this.schematic.nodes as ISchematicNode[]),
-            n => n.object.id == this.rootObjectId,
+            (n) => n.object.id == this.rootObjectId,
           );
           if (ret) {
             request["deploymentSelectedEntityId"] = ret.object.id;
@@ -779,7 +779,7 @@ export default Vue.extend({
         ) {
           const ret = _.find(
             Object.values(this.schematic.nodes as ISchematicNode[]),
-            n => n.object.id == this.rootObjectId,
+            (n) => n.object.id == this.rootObjectId,
           );
           if (ret) {
             request["deploymentSelectedEntityId"] = ret.object.id;

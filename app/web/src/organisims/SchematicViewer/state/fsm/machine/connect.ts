@@ -1,6 +1,5 @@
 import { Interpreter } from "xstate";
 
-
 export enum ConnectEventKind {
   ACTIVATE_CONNECTING = "ACTIVATE_CONNECTING",
   INITIATE_CONNECTING = "INITIATE_CONNECTING",

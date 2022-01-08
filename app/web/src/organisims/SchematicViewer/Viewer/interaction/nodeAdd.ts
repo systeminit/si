@@ -2,16 +2,12 @@ import * as PIXI from "pixi.js";
 
 import { SceneManager } from "../scene";
 import { SchematicDataManager } from "../../data";
+import { Renderer } from "../renderer";
 import * as OBJ from "../obj";
 import * as MODEL from "../../model";
-import { SchematicService } from "@/service/schematic";
-import { GlobalErrorService } from "@/service/global_error";
-import { firstValueFrom } from "rxjs";
+import { NodeCreate } from "../../data/event";
 
-interface Position {
-  x: number;
-  y: number;
-}
+import { selection$ } from "../../state";
 
 export interface NodeAddInteractionData {
   position: {
@@ -25,96 +21,75 @@ export interface NodeAddInteractionData {
 export class NodeAddManager {
   sceneManager: SceneManager;
   dataManager: SchematicDataManager;
+  renderer: Renderer;
   data?: PIXI.InteractionData | undefined;
   node?: OBJ.Node;
   // Note: this probably needs to not be data on this object, and instead be part of the
   // node template/node somewhere. :)
   nodeAddSchemaId?: number;
 
-  constructor(sceneManager: SceneManager, dataManager: SchematicDataManager) {
+  constructor(
+    sceneManager: SceneManager,
+    dataManager: SchematicDataManager,
+    renderer: Renderer,
+  ) {
     this.sceneManager = sceneManager;
     this.dataManager = dataManager;
+    this.renderer = renderer;
   }
 
   beforeAddNode(data: PIXI.InteractionData): void {
     this.data = data;
   }
 
-  async addNode(schemaId: number): Promise<void> {
-    // only render the node when the mouse moves... so that it is hidden when "added"
-    console.log("adding a new node for compnent: ", {
-      schemaId,
-      data: this.data,
-    });
-
-    const response = await firstValueFrom(
-      SchematicService.getNodeTemplate({ schemaId }),
-    );
-    if (response.error) {
-      GlobalErrorService.set(response);
-      return;
-    }
-    const n = MODEL.fakeNodeFromTemplate(response);
-    const node = new OBJ.Node(n);
-    this.sceneManager.addNode(node);
-
+  addNode(n: MODEL.Node, schemaId: number): void {
+    const nodeObj = new OBJ.Node(n);
+    this.sceneManager.addNode(nodeObj);
     this.nodeAddSchemaId = schemaId;
+    this.node = this.sceneManager.getGeo(nodeObj.name) as OBJ.Node;
+    this.select(this.node);
+  }
 
-    // TODO: This should probably be a unique id?
-    this.node = this.sceneManager.getGeo(node.name) as OBJ.Node;
-    console.log("this node", this.node);
-
-    console.log("added a node to the scene");
-    // Add temporary node to the scene
+  select(node: OBJ.Node): void {
+    node.zIndex += 1;
+    const selection = [];
+    selection.push(node);
+    selection$.next(selection);
   }
 
   drag(): void {
     if (this.data && this.node) {
-      const localPosition = this.data.getLocalPosition(this.node.parent);
-      const position = {
-        x: localPosition.x,
-        y: localPosition.y,
+      const positionOffset = {
+        x: this.node.width * 0.5,
+        y: this.node.height * 0.5,
       };
 
+      const localPosition = this.data.getLocalPosition(this.node.parent);
+      const position = {
+        x: localPosition.x - positionOffset.x,
+        y: localPosition.y - positionOffset.y,
+      };
       this.sceneManager.translateNode(this.node, position);
-      this.node.render(this.sceneManager.renderer);
+      this.sceneManager.renderer.renderStage();
     }
   }
 
-  // afterDrag(node: Node): void {
-  //   const nodeUpdate: NodeUpdate = {
-  //     nodeId: node.id,
-  //     position: {
-  //       ctxId: "aaa",
-  //       x: node.x,
-  //       y: node.y,
-  //     },
-  //   };
-  //   this.dataManager.nodeUpdate$.next(nodeUpdate);
-  // }
-
-  // offset = {
-  //   x: e.data.global.x - sceneGeo.worldTransform.tx,
-  //   y: e.data.global.y - sceneGeo.worldTransform.ty,
-  // };
-
   afterAddNode(): void {
     if (this.node && this.nodeAddSchemaId) {
-      SchematicService.createNode({ schemaId: this.nodeAddSchemaId }).subscribe(
-        (response) => {
-          if (response.error) {
-            GlobalErrorService.set(response);
-          }
-          // Note: Alex, I imagine you want to actually update the node with
-          // the new one. But we're leaving that as an exercise for you, since you're
-          // going to refactor it anyway. -- Adam + Paulo
-          console.log("Node created on backend", { response });
-        },
-      );
-      // Cleanup?
-      this.nodeAddSchemaId = undefined;
+      const event: NodeCreate = {
+        nodeSchemaId: this.nodeAddSchemaId,
+      };
+
+      this.dataManager.nodeCreate$.next(event);
+
+      // TODO waiting for backend to implement "node swap". A schematic reload shuld be fine.
+      this.sceneManager.removeNode(this.node);
+      this.sceneManager.renderer.renderStage();
+
+      // cleanup
       this.node = undefined;
+      this.nodeAddSchemaId = undefined;
+      selection$.next(null);
     }
-    // remove temporary node
   }
 }
