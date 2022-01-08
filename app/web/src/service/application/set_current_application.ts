@@ -14,7 +14,7 @@ import { Visibility } from "@/api/sdf/dal/visibility";
 import { Component } from "@/api/sdf/dal/component";
 import { workspace$ } from "@/observable/workspace";
 import _ from "lodash";
-import { application$ } from "@/observable/application";
+import { application$, application_node_id$ } from "@/observable/application";
 
 export interface GetApplicationArgs {
   applicationId: number;
@@ -24,7 +24,10 @@ export interface GetApplicationRequest extends GetApplicationArgs, Visibility {
   workspaceId: number;
 }
 
-export type GetApplicationResponse = Component;
+export interface GetApplicationResponse {
+  application: Component;
+  application_node_id: number;
+}
 
 export function setCurrentApplication(
   args: GetApplicationArgs,
@@ -56,9 +59,9 @@ export function setCurrentApplication(
       );
     }),
     tap((response) => {
-      console.log("refired");
       if (!response.error) {
-        application$.next(response);
+        application$.next(response.application);
+        application_node_id$.next(response.application_node_id);
       }
     }),
   );

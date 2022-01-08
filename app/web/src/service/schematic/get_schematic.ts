@@ -6,8 +6,14 @@ import Bottle from "bottlejs";
 import { switchMap } from "rxjs/operators";
 import { workspace$ } from "@/observable/workspace";
 import { system$ } from "@/observable/system";
-import { application$ } from "@/observable/application";
+import { application_node_id$ } from "@/observable/application";
 import _ from "lodash";
+import { Visibility } from "@/api/sdf/dal/visibility";
+
+export interface GetSchematicArgs {
+  systemId: number;
+  rootNodeId: number;
+}
 
 export interface GetSchematicRequest extends GetSchematicArgs, Visibility {
   workspaceId: number;
@@ -15,14 +21,24 @@ export interface GetSchematicRequest extends GetSchematicArgs, Visibility {
 
 export type GetSchematicResponse = Schematic;
 
-export function getSchematic(): Observable<ApiResponse<GetSchematicResponse>> {
-  return combineLatest([
+const getSchematicCollection: {
+  [key: string]: Observable<ApiResponse<Schematic>>;
+} = {};
+
+export function getSchematic(
+  args: GetSchematicArgs,
+): Observable<ApiResponse<GetSchematicResponse>> {
+  const context = `${args.rootNodeId}-${args.systemId}`;
+  if (getSchematicCollection[context]) {
+    return getSchematicCollection[context];
+  }
+  getSchematicCollection[context] = combineLatest([
     standardVisibilityTriggers$,
     workspace$,
     system$,
-    application$,
+    application_node_id$,
   ]).pipe(
-    switchMap(([[visibility], workspace, system, application]) => {
+    switchMap(([[visibility], workspace, system, application_node_id]) => {
       if (_.isNull(workspace)) {
         return from([
           {
@@ -34,12 +50,13 @@ export function getSchematic(): Observable<ApiResponse<GetSchematicResponse>> {
           },
         ]);
       }
-      if (_.isNull(application)) {
+      if (_.isNull(application_node_id)) {
         return from([
           {
             error: {
               statusCode: 10,
-              message: "cannot get schematic without an application; bug!",
+              message:
+                "cannot get schematic without an application node id; bug!",
               code: 10,
             },
           },
@@ -50,13 +67,15 @@ export function getSchematic(): Observable<ApiResponse<GetSchematicResponse>> {
       return sdf.get<ApiResponse<GetSchematicResponse>>(
         "schematic/get_schematic",
         {
+          ...args,
           ...visibility,
-	  systemId: system?.id,
-	  rootNodeId: application.id,
+          systemId: system?.id,
+          rootNodeId: application_node_id,
           workspaceId: workspace.id,
         },
       );
     }),
-    shareReplay(1),
+    shareReplay({ bufferSize: 1, refCount: true }),
   );
+  return getSchematicCollection[context];
 }

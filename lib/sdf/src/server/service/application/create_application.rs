@@ -1,10 +1,7 @@
 use super::{ApplicationError, ApplicationResult};
 use crate::server::extract::{Authorization, NatsTxn, PgRwTxn};
 use axum::Json;
-use dal::{
-    Component, HistoryActor, Schema, StandardModel, Tenancy, Visibility, Workspace, WorkspaceId,
-    WsEvent, WsPayload, NO_CHANGE_SET_PK,
-};
+use dal::{Component, HistoryActor, Schema, StandardModel, Tenancy, Visibility, Workspace, WorkspaceId, WsEvent, WsPayload, NO_CHANGE_SET_PK, Node};
 use serde::{Deserialize, Serialize};
 use si_data::PgTxn;
 
@@ -47,7 +44,7 @@ pub async fn create_application(
     // You can only create applications directly to head? This feels wrong, but..
     let visibility = Visibility::new_head(false);
 
-    let (application, _node) = Component::new_application_with_node(
+    let (application, _application_node) = Component::new_application_with_node(
         &txn,
         &nats,
         &tenancy,

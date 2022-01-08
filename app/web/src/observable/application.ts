@@ -6,4 +6,9 @@ import { Component } from "@/api/sdf/dal/component";
  */
 export const application$ = new ReplaySubject<Component | null>(1);
 application$.next(null);
-application$.subscribe((a) => console.log("application$", { a }));
+
+/**
+ * The currently selected applications node id
+ */
+export const application_node_id$ = new ReplaySubject<number | null>(1);
+application_node_id$.next(null);
