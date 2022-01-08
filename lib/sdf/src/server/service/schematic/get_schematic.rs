@@ -19,11 +19,14 @@ pub type GetSchematicResponse = Schematic;
 
 pub async fn get_schematic(
     mut txn: PgRoTxn,
-    Authorization(_claim): Authorization,
+    Authorization(claim): Authorization,
     Query(request): Query<GetSchematicRequest>,
 ) -> SchematicResult<Json<GetSchematicResponse>> {
     let txn = txn.start().await?;
-    let tenancy = Tenancy::new_workspace(vec![request.workspace_id]);
+    let mut tenancy = Tenancy::new_workspace(vec![request.workspace_id]);
+    tenancy.billing_account_ids = vec![claim.billing_account_id];
+    tenancy.universal = true;
+
     let response = Schematic::find(&txn, &tenancy, &request.visibility, request.system_id, request.root_node_id).await?;
     println!("{:?}", response);
 

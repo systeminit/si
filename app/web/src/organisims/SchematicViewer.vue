@@ -10,22 +10,29 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, defineExpose } from "vue";
+import {onMounted, ref, defineExpose} from "vue";
 import _ from "lodash";
 
 import Viewer from "./SchematicViewer/Viewer.vue";
 
-import { ViewerStateMachine } from "./SchematicViewer/state";
+import {ViewerStateMachine} from "./SchematicViewer/state";
 
-import { SchematicService } from "@/service/schematic";
-import { GlobalErrorService } from "@/service/global_error";
-import { ApiResponse } from "@/api/sdf";
-import { GetSchematicResponse } from "@/service/schematic/get_schematic";
+import {SchematicService} from "@/service/schematic";
+import {GlobalErrorService} from "@/service/global_error";
+import {ApiResponse} from "@/api/sdf";
+import {GetSchematicResponse} from "@/service/schematic/get_schematic";
 // import { SetSchematicResponse } from "@/service/schematic/set_schematic";
 
 // import { schematicData } from "./SchematicViewer/model";
 // import { schematicData$ } from "./SchematicViewer/data";
-import { Schematic } from "./SchematicViewer/model";
+import {Schematic} from "./SchematicViewer/model";
+import {refFrom} from "vuse-rx";
+import {applicationNodeId$} from "@/observable/application";
+import {system$} from "@/observable/system";
+import {System} from "@/api/sdf/dal/system";
+import {combineLatest, from} from "rxjs";
+import {switchMap} from "rxjs/operators";
+
 // export interface ViewerData {
 //   component: {
 //     id: string;
@@ -51,25 +58,33 @@ const componentId = _.uniqueId();
 const viewer = ref<typeof Viewer | null>(null);
 const viewerId = componentName + "-" + componentId;
 const viewerState = new ViewerStateMachine();
-
-// Ref<Schematic>
-let schematicData = ref<Schematic>();
-
-onMounted(() => {
-  getSchematic();
-});
-
-const getSchematic = () => {
-  SchematicService.getSchematic().subscribe(
-    (response: ApiResponse<GetSchematicResponse>) => {
-      if (response.error) {
-        GlobalErrorService.set(response);
+const schematicData = refFrom<Schematic | null>(
+  combineLatest([system$, applicationNodeId$]).pipe(
+    switchMap(([system, applicationNodeId]) => {
+      console.log("we were triggered and we are switch mapped", { system, applicationNodeId });
+      if (system && applicationNodeId) {
+        return SchematicService.getSchematic({
+          systemId: system.id,
+          rootNodeId: applicationNodeId,
+        });
       } else {
-        schematicData.value = response;
+        return from([null]);
       }
-    },
-  );
-};
+    }),
+    switchMap((schematic) => {
+      if (schematic) {
+        if (schematic.error) {
+          GlobalErrorService.set(schematic);
+          return from([null]);
+        } else {
+          return from([schematic]);
+        }
+      } else {
+        return from([null]);
+      }
+    }),
+  ),
+);
 
 function addNode(schemaId: number) {
   if (viewer.value) {

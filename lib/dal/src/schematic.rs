@@ -57,7 +57,7 @@ impl Schematic {
         system_id: Option<SystemId>,
         root_node_id: NodeId,
     ) -> SchematicResult<Self> {
-        let nodes: Vec<Node> = standard_model::list(txn, "nodes", tenancy, visibility).await?;
+        let nodes: Vec<Node> = Node::list(txn, tenancy, visibility).await?;
 
         let mut node_views = Vec::with_capacity(nodes.len());
         for node in nodes {

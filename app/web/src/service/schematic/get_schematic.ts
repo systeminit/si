@@ -1,12 +1,10 @@
 import { ApiResponse, SDF } from "@/api/sdf";
-import { Schematic } from "@/api/sdf/dal/schematic";
+import { Schematic } from "@/organisims/SchematicViewer/model/schematic";
 import { combineLatest, from, Observable, shareReplay } from "rxjs";
 import { standardVisibilityTriggers$ } from "@/observable/visibility";
 import Bottle from "bottlejs";
 import { switchMap } from "rxjs/operators";
 import { workspace$ } from "@/observable/workspace";
-import { system$ } from "@/observable/system";
-import { application_node_id$ } from "@/observable/application";
 import _ from "lodash";
 import { Visibility } from "@/api/sdf/dal/visibility";
 
@@ -35,28 +33,14 @@ export function getSchematic(
   getSchematicCollection[context] = combineLatest([
     standardVisibilityTriggers$,
     workspace$,
-    system$,
-    application_node_id$,
   ]).pipe(
-    switchMap(([[visibility], workspace, system, application_node_id]) => {
+    switchMap(([[visibility], workspace]) => {
       if (_.isNull(workspace)) {
         return from([
           {
             error: {
               statusCode: 10,
               message: "cannot get schematic without a workspace; bug!",
-              code: 10,
-            },
-          },
-        ]);
-      }
-      if (_.isNull(application_node_id)) {
-        return from([
-          {
-            error: {
-              statusCode: 10,
-              message:
-                "cannot get schematic without an application node id; bug!",
               code: 10,
             },
           },
@@ -69,8 +53,8 @@ export function getSchematic(
         {
           ...args,
           ...visibility,
-          systemId: system?.id,
-          rootNodeId: application_node_id,
+          systemId: args.systemId,
+          rootNodeId: args.rootNodeId,
           workspaceId: workspace.id,
         },
       );

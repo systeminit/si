@@ -37,7 +37,7 @@ pub async fn get_application(
         Component::get_by_id(&txn, &tenancy, &request.visibility, &request.application_id)
             .await?
             .ok_or(ApplicationError::NotFound)?;
-    let application_node = component
+    let application_node = application
         .node(&txn, &tenancy, &request.visibility)
         .await?
         .pop()
