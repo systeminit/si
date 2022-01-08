@@ -48,7 +48,7 @@ pub use history_event::{HistoryActor, HistoryEvent, HistoryEventError};
 pub use jwt_key::{create_jwt_key_if_missing, JwtSecretKey};
 pub use key_pair::{KeyPair, KeyPairError, KeyPairResult};
 pub use label_list::{LabelEntry, LabelList, LabelListError};
-pub use node::{Node, NodeError};
+pub use node::{Node, NodeError, NodeKind, NodeTemplate, NodeView};
 pub use node_menu::{MenuFilter, NodeMenuError};
 pub use node_position::{
     NodePosition, NodePositionError, NodePositionId, NodePositionPk, NodePositionResult,
@@ -62,7 +62,7 @@ pub use qualification_check::{
 pub use schema::{
     Schema, SchemaError, SchemaId, SchemaKind, SchemaPk, SchemaVariant, SchemaVariantId,
 };
-pub use schematic::SchematicKind;
+pub use schematic::{Schematic, SchematicError, SchematicKind};
 pub use standard_model::{StandardModel, StandardModelError, StandardModelResult};
 pub use system::{System, SystemError, SystemId, SystemPk, SystemResult};
 pub use tenancy::{Tenancy, TenancyError};

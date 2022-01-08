@@ -6,7 +6,7 @@ use axum::Json;
 use axum::Router;
 use dal::{
     ComponentError, NodeError, NodeMenuError, NodePositionError, SchemaError as DalSchemaError,
-    StandardModelError,
+    StandardModelError, SchematicError as DalSchematicError
 };
 use std::convert::Infallible;
 use thiserror::Error;
@@ -40,6 +40,8 @@ pub enum SchematicError {
     ComponentError(#[from] ComponentError),
     #[error("node position error: {0}")]
     NodePosition(#[from] NodePositionError),
+    #[error("dal schematic error: {0}")]
+    SchematicError(#[from] DalSchematicError),
 }
 
 pub type SchematicResult<T> = std::result::Result<T, SchematicError>;
