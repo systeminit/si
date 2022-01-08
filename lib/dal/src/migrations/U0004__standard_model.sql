@@ -95,7 +95,7 @@ END ;
 $$ LANGUAGE PLPGSQL STABLE;
 
 
-CREATE OR REPLACE FUNCTION update_by_id_v1(this_table_text text,
+CREATE OR REPLACE FUNCTION update_by_id_v1(this_table text,
                                            this_column text,
                                            this_tenancy jsonb,
                                            this_visibility jsonb,
@@ -105,11 +105,9 @@ CREATE OR REPLACE FUNCTION update_by_id_v1(this_table_text text,
 AS
 $$
 DECLARE
-    this_table                   regclass;
     this_visibility_row          visibility_record_v1;
     copy_change_set_column_names text;
 BEGIN
-    this_table := this_table_text::regclass;
     this_visibility_row = visibility_json_to_columns_v1(this_visibility);
 
     /* First, try the update - if it works, we're all set. */
