@@ -60,7 +60,7 @@ onMounted(() => {
 });
 
 const getSchematic = () => {
-  SchematicService.getSchematic({ context: "poop" }).subscribe(
+  SchematicService.getSchematic().subscribe(
     (response: ApiResponse<GetSchematicResponse>) => {
       if (response.error) {
         GlobalErrorService.set(response);

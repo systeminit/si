@@ -209,8 +209,6 @@ pub struct NodeView {
 }
 
 impl NodeView {
-    // Note: position should always exist, but it's going to break old usage of this API in a complex
-    // way, so we just hardcode to x: 0, y: 0 if it's not there
     pub fn new(
         name: impl Into<String>,
         node: Node,

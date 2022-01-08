@@ -9,28 +9,14 @@ import { system$ } from "@/observable/system";
 import { application$ } from "@/observable/application";
 import _ from "lodash";
 
-export interface GetSchematicArgs {
-  systemId: number;
-  rootNodeId: number;
-}
-
 export interface GetSchematicRequest extends GetSchematicArgs, Visibility {
   workspaceId: number;
 }
 
 export type GetSchematicResponse = Schematic;
 
-const getSchematicCollection: {
-  [key: string]: Observable<ApiResponse<Schematic>>;
-} = {};
-
-export function getSchematic(
-  args: GetSchematicArgs,
-): Observable<ApiResponse<GetSchematicResponse>> {
-  if (getSchematicCollection[args.context]) {
-    return getSchematicCollection[args.context];
-  }
-  getSchematicCollection[args.context] = combineLatest([
+export function getSchematic(): Observable<ApiResponse<GetSchematicResponse>> {
+  return combineLatest([
     standardVisibilityTriggers$,
     workspace$,
     system$,
@@ -64,7 +50,6 @@ export function getSchematic(
       return sdf.get<ApiResponse<GetSchematicResponse>>(
         "schematic/get_schematic",
         {
-          ...args,
           ...visibility,
 	  systemId: system?.id,
 	  rootNodeId: application.id,
@@ -74,5 +59,4 @@ export function getSchematic(
     }),
     shareReplay(1),
   );
-  return getSchematicCollection[args.context];
 }
