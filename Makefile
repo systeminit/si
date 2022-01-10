@@ -209,8 +209,11 @@ clean-containers: clean-dev-deps
 # Vue 2 to Vue 3 rewrite. These targets should be merged into existing ones once the transition is
 # complete.
 
-prepare:
+down:
 	-cd $(MAKEPATH)/deploy && $(MAKE) down
+.PHONY: down
+
+prepare: down
 	cd $(MAKEPATH)/bin/lang-js; npm install
 	cd $(MAKEPATH)/bin/lang-js; npm run package
 	cd $(MAKEPATH)/deploy && $(MAKE) partial
@@ -223,6 +226,7 @@ sdf-run:
 
 app-run:
 	cd $(MAKEPATH)/app/web; npm install
+	cd $(MAKEPATH)/app/web; npm run vite-clean
 	cd $(MAKEPATH)/app/web; npm run dev
 .PHONY: app-run
 
