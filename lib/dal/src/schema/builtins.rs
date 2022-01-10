@@ -18,8 +18,8 @@ pub async fn migrate(txn: &PgTxn<'_>, nats: &NatsTxn) -> SchemaResult<()> {
 
     application(txn, nats, &tenancy, &visibility, &history_actor).await?;
     service(txn, nats, &tenancy, &visibility, &history_actor).await?;
-
     kubernetes_service(txn, nats, &tenancy, &visibility, &history_actor).await?;
+    docker_image(txn, nats, &tenancy, &visibility, &history_actor).await?;
 
     Ok(())
 }
@@ -32,32 +32,34 @@ async fn application(
     history_actor: &HistoryActor,
 ) -> SchemaResult<()> {
     let name = "application".to_string();
-    if !default_schema_exists(txn, tenancy, visibility, &name).await? {
-        let mut schema = Schema::new(
-            txn,
-            nats,
-            tenancy,
-            visibility,
-            history_actor,
-            &name,
-            &SchemaKind::Concept,
-        )
+    let mut schema = match create_schema(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        &name,
+        &SchemaKind::Concept,
+    )
+    .await?
+    {
+        Some(schema) => schema,
+        None => return Ok(()),
+    };
+
+    schema
+        .set_ui_hidden(txn, nats, visibility, history_actor, true)
         .await?;
 
-        schema
-            .set_ui_hidden(txn, nats, visibility, history_actor, true)
-            .await?;
-
-        create_and_set_default_schema_variant(
-            txn,
-            nats,
-            tenancy,
-            visibility,
-            history_actor,
-            &mut schema,
-        )
-        .await?;
-    }
+    create_and_set_default_schema_variant(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        &mut schema,
+    )
+    .await?;
     Ok(())
 }
 
@@ -69,78 +71,80 @@ async fn service(
     history_actor: &HistoryActor,
 ) -> SchemaResult<()> {
     let name = "service".to_string();
-    if !default_schema_exists(txn, tenancy, visibility, &name).await? {
-        let mut schema = Schema::new(
+    let mut schema = match create_schema(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        &name,
+        &SchemaKind::Concept,
+    )
+    .await?
+    {
+        Some(schema) => schema,
+        None => return Ok(()),
+    };
+
+    let mut ui_menu = UiMenu::new(txn, nats, tenancy, visibility, history_actor).await?;
+    ui_menu
+        .set_name(
             txn,
             nats,
-            tenancy,
             visibility,
             history_actor,
-            &name,
-            &SchemaKind::Concept,
+            Some(schema.name().to_string()),
         )
         .await?;
 
-        let mut ui_menu = UiMenu::new(txn, nats, tenancy, visibility, history_actor).await?;
-        ui_menu
-            .set_name(
-                txn,
-                nats,
-                visibility,
-                history_actor,
-                Some(schema.name().to_string()),
-            )
-            .await?;
-
-        let application_name = "application".to_string();
-        ui_menu
-            .set_category(
-                txn,
-                nats,
-                visibility,
-                history_actor,
-                Some(application_name.clone()),
-            )
-            .await?;
-        ui_menu
-            .set_schematic_kind(
-                txn,
-                nats,
-                visibility,
-                history_actor,
-                SchematicKind::Deployment,
-            )
-            .await?;
-        ui_menu
-            .set_schema(txn, nats, visibility, history_actor, schema.id())
-            .await?;
-
-        let application_schema_results =
-            Schema::find_by_attr(txn, tenancy, visibility, "name", &application_name).await?;
-        let application_schema = application_schema_results
-            .first()
-            .ok_or(SchemaError::NotFoundByName(application_name))?;
-
-        ui_menu
-            .add_root_schematic(
-                txn,
-                nats,
-                visibility,
-                history_actor,
-                application_schema.id(),
-            )
-            .await?;
-
-        create_and_set_default_schema_variant(
+    let application_name = "application".to_string();
+    ui_menu
+        .set_category(
             txn,
             nats,
-            tenancy,
             visibility,
             history_actor,
-            &mut schema,
+            Some(application_name.clone()),
         )
         .await?;
-    }
+    ui_menu
+        .set_schematic_kind(
+            txn,
+            nats,
+            visibility,
+            history_actor,
+            SchematicKind::Deployment,
+        )
+        .await?;
+    ui_menu
+        .set_schema(txn, nats, visibility, history_actor, schema.id())
+        .await?;
+
+    let application_schema_results =
+        Schema::find_by_attr(txn, tenancy, visibility, "name", &application_name).await?;
+    let application_schema = application_schema_results
+        .first()
+        .ok_or(SchemaError::NotFoundByName(application_name))?;
+
+    ui_menu
+        .add_root_schematic(
+            txn,
+            nats,
+            visibility,
+            history_actor,
+            application_schema.id(),
+        )
+        .await?;
+
+    create_and_set_default_schema_variant(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        &mut schema,
+    )
+    .await?;
     Ok(())
 }
 
@@ -152,29 +156,98 @@ async fn kubernetes_service(
     history_actor: &HistoryActor,
 ) -> SchemaResult<()> {
     let name = "kubernetes_service".to_string();
-    if !default_schema_exists(txn, tenancy, visibility, &name).await? {
-        let mut schema = Schema::new(
-            txn,
-            nats,
-            tenancy,
-            visibility,
-            history_actor,
-            &name,
-            &SchemaKind::Implementation,
-        )
-        .await?;
+    let mut schema = match create_schema(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        &name,
+        &SchemaKind::Implementation,
+    )
+    .await?
+    {
+        Some(schema) => schema,
+        None => return Ok(()),
+    };
 
-        create_and_set_default_schema_variant(
-            txn,
-            nats,
-            tenancy,
-            visibility,
-            history_actor,
-            &mut schema,
-        )
-        .await?;
-    }
+    create_and_set_default_schema_variant(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        &mut schema,
+    )
+    .await?;
+
     Ok(())
+}
+
+async fn docker_image(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    tenancy: &Tenancy,
+    visibility: &Visibility,
+    history_actor: &HistoryActor,
+) -> SchemaResult<()> {
+    let name = "docker_imagee".to_string();
+    let mut schema = match create_schema(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        &name,
+        &SchemaKind::Concept,
+    )
+    .await?
+    {
+        Some(schema) => schema,
+        None => return Ok(()),
+    };
+
+    create_and_set_default_schema_variant(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        &mut schema,
+    )
+    .await?;
+
+    Ok(())
+}
+
+// TODO(nick): this function should return an "AlreadyExists" error instead of None wrapped by Ok,
+// but since the client will have to deal with same scenario either way, it makes little difference
+// for now.
+async fn create_schema(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    tenancy: &Tenancy,
+    visibility: &Visibility,
+    history_actor: &HistoryActor,
+    schema_name: &str,
+    schema_kind: &SchemaKind,
+) -> SchemaResult<Option<Schema>> {
+    match default_schema_exists(txn, tenancy, visibility, schema_name).await? {
+        true => Ok(None),
+        false => {
+            let schema = Schema::new(
+                txn,
+                nats,
+                tenancy,
+                visibility,
+                history_actor,
+                schema_name,
+                schema_kind,
+            )
+            .await?;
+            Ok(Some(schema))
+        }
+    }
 }
 
 // TODO(nick): there's one issue here. If the schema kind has changed, then this check will be
