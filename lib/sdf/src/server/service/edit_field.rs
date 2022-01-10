@@ -6,7 +6,7 @@ use axum::{
     Json, Router,
 };
 use dal::{
-    schema::variant::SchemaVariantError, socket::SocketError, ComponentError,
+    schema::variant::SchemaVariantError, socket::SocketError, ComponentError, PropError,
     QualificationCheckError, SchemaError, StandardModelError,
 };
 use std::convert::Infallible;
@@ -23,6 +23,8 @@ pub enum EditFieldError {
     Nats(#[from] si_data::NatsError),
     #[error(transparent)]
     Pg(#[from] si_data::PgError),
+    #[error("prop error: {0}")]
+    Prop(#[from] PropError),
     #[error("qualification check error: {0}")]
     QualificationChec(#[from] QualificationCheckError),
     #[error(transparent)]

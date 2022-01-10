@@ -11,8 +11,8 @@ use telemetry::{ClientError, TelemetryClient, Verbosity};
 use crate::{
     billing_account::BillingAccountSignup, jwt_key::JwtSecretKey, node::NodeKind, schema, socket,
     BillingAccount, ChangeSet, Component, EditSession, Group, HistoryActor, KeyPair, Node,
-    Organization, QualificationCheck, Schema, SchemaId, SchemaKind, StandardModel, System, Tenancy,
-    User, Visibility, Workspace, NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK,
+    Organization, Prop, PropKind, QualificationCheck, Schema, SchemaId, SchemaKind, StandardModel,
+    System, Tenancy, User, Visibility, Workspace, NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK,
 };
 
 #[derive(Debug)]
@@ -498,4 +498,25 @@ pub async fn create_system(
     System::new(txn, nats, tenancy, visibility, history_actor, name)
         .await
         .expect("cannot create system")
+}
+
+pub async fn create_prop(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    tenancy: &Tenancy,
+    visibility: &Visibility,
+    history_actor: &HistoryActor,
+) -> Prop {
+    let name = generate_fake_name();
+    Prop::new(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        name,
+        PropKind::String,
+    )
+    .await
+    .expect("cannot create prop")
 }

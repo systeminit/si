@@ -16,8 +16,8 @@ use crate::{
     schema::ui_menu::UiMenuId,
     standard_model, standard_model_accessor, standard_model_has_many, standard_model_many_to_many,
     BillingAccount, BillingAccountId, Component, HistoryActor, HistoryEventError, LabelEntry,
-    LabelList, Organization, OrganizationId, StandardModel, StandardModelError, Tenancy, Timestamp,
-    Visibility, Workspace, WorkspaceId, WsEventError,
+    LabelList, Organization, OrganizationId, PropError, StandardModel, StandardModelError, Tenancy,
+    Timestamp, Visibility, Workspace, WorkspaceId, WsEventError,
 };
 
 use crate::socket::SocketError;
@@ -30,32 +30,34 @@ pub mod variant;
 
 #[derive(Error, Debug)]
 pub enum SchemaError {
-    #[error("error serializing/deserializing json: {0}")]
-    SerdeJson(#[from] serde_json::Error),
-    #[error("pg error: {0}")]
-    Pg(#[from] PgError),
-    #[error("nats txn error: {0}")]
-    Nats(#[from] NatsError),
-    #[error("history event error: {0}")]
-    HistoryEvent(#[from] HistoryEventError),
-    #[error("standard model error: {0}")]
-    StandardModel(#[from] StandardModelError),
-    #[error("ws event error: {0}")]
-    WsEvent(#[from] WsEventError),
-    #[error("schema not found: {0}")]
-    NotFound(SchemaId),
-    #[error("ui menu not found: {0}")]
-    UiMenuNotFound(UiMenuId),
     #[error("edit field error: {0}")]
     EditField(#[from] EditFieldError),
-    #[error("schema variant error: {0}")]
-    Variant(#[from] SchemaVariantError),
-    #[error("schema not found by name: {0}")]
-    NotFoundByName(String),
+    #[error("history event error: {0}")]
+    HistoryEvent(#[from] HistoryEventError),
+    #[error("nats txn error: {0}")]
+    Nats(#[from] NatsError),
     #[error("no default variant for schema id: {0}")]
     NoDefaultVariant(SchemaId),
+    #[error("schema not found: {0}")]
+    NotFound(SchemaId),
+    #[error("schema not found by name: {0}")]
+    NotFoundByName(String),
+    #[error("pg error: {0}")]
+    Pg(#[from] PgError),
+    #[error("prop error: {0}")]
+    Prop(#[from] PropError),
+    #[error("error serializing/deserializing json: {0}")]
+    SerdeJson(#[from] serde_json::Error),
     #[error("socket error: {0}")]
     Socket(#[from] SocketError),
+    #[error("standard model error: {0}")]
+    StandardModel(#[from] StandardModelError),
+    #[error("ui menu not found: {0}")]
+    UiMenuNotFound(UiMenuId),
+    #[error("schema variant error: {0}")]
+    Variant(#[from] SchemaVariantError),
+    #[error("ws event error: {0}")]
+    WsEvent(#[from] WsEventError),
 }
 
 pub type SchemaResult<T> = Result<T, SchemaError>;

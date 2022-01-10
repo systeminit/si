@@ -14,8 +14,9 @@ use crate::{
     impl_standard_model, pk,
     socket::{Socket, SocketError, SocketId},
     standard_model, standard_model_accessor, standard_model_belongs_to,
-    standard_model_many_to_many, HistoryActor, HistoryEventError, Schema, SchemaId, StandardModel,
-    StandardModelError, Tenancy, Timestamp, Visibility, WsEventError,
+    standard_model_many_to_many, HistoryActor, HistoryEventError, Prop, PropError, PropId,
+    PropKind, Schema, SchemaId, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
+    WsEventError,
 };
 
 #[derive(Error, Debug)]
@@ -30,6 +31,8 @@ pub enum SchemaVariantError {
     NotFound(SchemaVariantId),
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
+    #[error("prop error: {0}")]
+    Prop(#[from] PropError),
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("socket error: {0}")]
@@ -123,6 +126,20 @@ impl SchemaVariant {
         result: SchemaVariantResult,
     );
 
+    standard_model_many_to_many!(
+        lookup_fn: props,
+        associate_fn: add_prop,
+        disassociate_fn: remove_prop,
+        table_name: "prop_many_to_many_schema_variants",
+        left_table: "props",
+        left_id: PropId,
+        right_table: "schema_variants",
+        right_id: SchemaVariantId,
+        which_table_is_this: "right",
+        returns: Prop,
+        result: SchemaVariantResult,
+    );
+
     fn edit_field_object_kind() -> EditFieldObjectKind {
         EditFieldObjectKind::SchemaVariant
     }
@@ -153,6 +170,32 @@ impl SchemaVariant {
             Widget::Text(TextWidget::new()),
             value,
             visibility_diff,
+            vec![Validator::Required(RequiredValidator)],
+        ))
+    }
+
+    async fn properties_edit_field(
+        txn: &PgTxn<'_>,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+        object: &Self,
+    ) -> SchemaVariantResult<EditField> {
+        let field_name = "properties";
+
+        let mut items: Vec<EditFields> = vec![];
+        for prop in object.props(txn, visibility).await?.into_iter() {
+            let edit_fields = Prop::get_edit_fields(txn, tenancy, visibility, prop.id()).await?;
+            items.push(edit_fields);
+        }
+        Ok(EditField::new(
+            field_name,
+            vec![],
+            EditFieldObjectKind::Prop,
+            object.id,
+            EditFieldDataType::Array,
+            Widget::Array(items.into()),
+            None,
+            VisibilityDiff::None,
             vec![Validator::Required(RequiredValidator)],
         ))
     }
@@ -226,6 +269,7 @@ impl EditFieldAble for SchemaVariant {
 
         let edit_fields = vec![
             Self::name_edit_field(visibility, &object, &head_object, &change_set_object)?,
+            Self::properties_edit_field(txn, tenancy, visibility, &object).await?,
             Self::connections_edit_field(txn, tenancy, visibility, &object).await?,
         ];
 
@@ -259,6 +303,22 @@ impl EditFieldAble for SchemaVariant {
                 }
                 None => return Err(EditFieldError::MissingValue.into()),
             },
+            "properties" => {
+                // TODO(fnichol): we're sticking in arbitrary default values--these become required
+                // field entries on a "new item" form somewhere
+                let prop = Prop::new(
+                    txn,
+                    nats,
+                    tenancy,
+                    visibility,
+                    history_actor,
+                    "TODO: name me!",
+                    PropKind::String,
+                )
+                .await?;
+                prop.add_schema_variant(txn, nats, visibility, history_actor, object.id())
+                    .await?;
+            }
             "connections.sockets" => {
                 // TODO(fnichol): we're sticking in arbitrary default values--these become required
                 // field entries on a "new item" form somewhere
