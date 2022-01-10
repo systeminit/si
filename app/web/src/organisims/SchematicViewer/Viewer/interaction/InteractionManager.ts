@@ -104,7 +104,11 @@ export class InteractionManager {
       this.zoomMagnitude$,
       this.zoomFactor$,
     );
-    this.nodeAddManager = new NodeAddManager(sceneManager, dataManager);
+    this.nodeAddManager = new NodeAddManager(
+      sceneManager,
+      dataManager,
+      renderer,
+    );
   }
 
   setZoomMagnitude(zoomMagnitude: number | null): void {
@@ -265,17 +269,14 @@ export class InteractionManager {
 
     // Adding node
     if (ST.isNodeAddActivated(this.stateService)) {
-      console.log("initiating node add!!");
       this.renderer.renderStage();
       ST.initiateNodeAdd(this.stateService);
     }
     if (ST.isNodeAddInitiated(this.stateService)) {
-      console.log("add a node add!!");
       this.nodeAddManager.beforeAddNode(e.data);
       ST.addingNode(this.stateService);
     }
     if (ST.isAddingNode(this.stateService)) {
-      console.log("adding a node!!");
       this.nodeAddManager.drag();
     }
   }

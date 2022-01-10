@@ -1,6 +1,6 @@
 import { Color, SchematicObject, Position } from "./common";
 import { Socket } from "./socket";
-import {NodeTemplate} from "@/api/sdf/dal/node";
+import { NodeTemplate } from "@/api/sdf/dal/node";
 
 export interface NodeLabel {
   title: string;
@@ -117,9 +117,7 @@ export interface NodeUpdate {
   position: NodePositionUpdate;
 }
 
-export function fakeNodeFromTemplate(
-  template: NodeTemplate,
-): Node {
+export function fakeNodeFromTemplate(template: NodeTemplate): Node {
   const node: Node = {
     id: "A:1",
     label: template.label,

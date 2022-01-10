@@ -226,7 +226,7 @@ export default Vue.extend({
       sockets: [],
     };
   },
-  subscriptions: function(this: any): Record<string, any> {
+  subscriptions: function (this: any): Record<string, any> {
     let entity$ = this.$watchAsObservable("entity", { immediate: true }).pipe(
       pluck("newValue"),
     );
@@ -267,7 +267,7 @@ export default Vue.extend({
           });
         }
       }),
-      tap(reply => {
+      tap((reply) => {
         if (reply.error) {
           if (reply.error.code == 42 || reply.error.code == 406) {
             this.selectedImplementationField = null;
@@ -284,12 +284,12 @@ export default Vue.extend({
       selectedImplemenation: selectedImplementation$,
       edgeCreating: edgeCreating$.pipe(
         filter(
-          edgeCreating =>
+          (edgeCreating) =>
             (!_.isNull(edgeCreating) &&
               edgeCreating.graphViewerId == this.graphViewerId) ||
             _.isNull(edgeCreating),
         ),
-        tap(edgeCreating => {
+        tap((edgeCreating) => {
           if (
             edgeCreating &&
             edgeCreating.schematicKind == this.schematicKind &&
@@ -301,7 +301,7 @@ export default Vue.extend({
               return false;
             }
 
-            let hasValidInput = _.find(schema.inputs, input => {
+            let hasValidInput = _.find(schema.inputs, (input) => {
               if (this.schematicKind == SchematicKind.Deployment) {
                 return (
                   input.edgeKind == "deployment" &&
@@ -330,7 +330,7 @@ export default Vue.extend({
       ),
     };
   },
-  mounted: function() {
+  mounted: function () {
     this.registerEvents();
   },
   // updated() {
@@ -445,7 +445,7 @@ export default Vue.extend({
     qualificationStatusClass(): Record<string, any> {
       let style: Record<string, any> = {};
       if (this.node.qualifications.length > 0) {
-        if (_.find(this.node.qualifications, q => q.qualified == false)) {
+        if (_.find(this.node.qualifications, (q) => q.qualified == false)) {
           style["error"] = true;
         } else {
           style["ok"] = true;
@@ -460,7 +460,7 @@ export default Vue.extend({
       if (
         _.find(
           Object.values(this.node.resources),
-          r => r.internalHealth == ResourceInternalHealth.Error,
+          (r) => r.internalHealth == ResourceInternalHealth.Error,
         )
       ) {
         style["error"] = true;
@@ -468,7 +468,7 @@ export default Vue.extend({
       } else if (
         _.find(
           Object.values(this.node.resources),
-          r => r.internalHealth == ResourceInternalHealth.Warning,
+          (r) => r.internalHealth == ResourceInternalHealth.Warning,
         )
       ) {
         style["warning"] = true;
@@ -476,7 +476,7 @@ export default Vue.extend({
       } else if (
         _.find(
           Object.values(this.node.resources),
-          r => r.internalHealth == ResourceInternalHealth.Ok,
+          (r) => r.internalHealth == ResourceInternalHealth.Ok,
         )
       ) {
         style["ok"] = true;
@@ -490,7 +490,7 @@ export default Vue.extend({
       if (
         _.find(
           Object.values(this.node.workflowRuns),
-          w => w.workflowRun.state == WorkflowRunState.Failure,
+          (w) => w.workflowRun.state == WorkflowRunState.Failure,
         )
       ) {
         style["error-fill"] = true;
@@ -498,7 +498,7 @@ export default Vue.extend({
       } else if (
         _.find(
           Object.values(this.node.workflowRuns),
-          w => w.workflowRun.state == WorkflowRunState.Running,
+          (w) => w.workflowRun.state == WorkflowRunState.Running,
         )
       ) {
         style["running-fill"] = true;
@@ -507,7 +507,7 @@ export default Vue.extend({
       } else if (
         _.find(
           Object.values(this.node.workflowRuns),
-          w => w.workflowRun.state == WorkflowRunState.Success,
+          (w) => w.workflowRun.state == WorkflowRunState.Success,
         )
       ) {
         style["ok-fill"] = true;
@@ -522,7 +522,7 @@ export default Vue.extend({
       if (
         _.find(
           Object.values(this.node.workflowRuns),
-          w => w.workflowRun.state == WorkflowRunState.Failure,
+          (w) => w.workflowRun.state == WorkflowRunState.Failure,
         )
       ) {
         style["error"] = true;
@@ -530,7 +530,7 @@ export default Vue.extend({
       } else if (
         _.find(
           Object.values(this.node.workflowRuns),
-          w => w.workflowRun.state == WorkflowRunState.Running,
+          (w) => w.workflowRun.state == WorkflowRunState.Running,
         )
       ) {
         style["running"] = true;
@@ -538,7 +538,7 @@ export default Vue.extend({
       } else if (
         _.find(
           Object.values(this.node.workflowRuns),
-          w => w.workflowRun.state == WorkflowRunState.Success,
+          (w) => w.workflowRun.state == WorkflowRunState.Success,
         )
       ) {
         style["ok"] = true;
@@ -558,7 +558,7 @@ export default Vue.extend({
       return SiEntity.fromJson(this.node.object as Entity);
     },
     inputs(): RegistryEntry["inputs"] {
-      let inputs = _.filter(this.entity.schema().inputs, input => {
+      let inputs = _.filter(this.entity.schema().inputs, (input) => {
         if (this.schematicKind == SchematicKind.Deployment) {
           return input.edgeKind == "deployment";
         } else if (this.schematicKind == SchematicKind.Component) {

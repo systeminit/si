@@ -1,17 +1,18 @@
 <template>
   <div :id="viewerId" class="w-full h-full">
     <Viewer
-      ref="viewer"
       :schematic-viewer-id="viewerId"
       :viewer-state="viewerState"
       :schematic-data="schematicData"
+      :viewer-event$="props.viewerEvent$"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import {onMounted, ref, defineExpose} from "vue";
+import { onMounted, ref, defineExpose, PropType } from "vue";
 import _ from "lodash";
+import * as Rx from "rxjs";
 
 import Viewer from "./SchematicViewer/Viewer.vue";
 
@@ -32,7 +33,7 @@ import {system$} from "@/observable/system";
 import {System} from "@/api/sdf/dal/system";
 import {combineLatest, from} from "rxjs";
 import {switchMap} from "rxjs/operators";
-
+import { ViewerEvent } from "./SchematicViewer/event";
 // export interface ViewerData {
 //   component: {
 //     id: string;
@@ -52,10 +53,17 @@ import {switchMap} from "rxjs/operators";
 //   Record<string, { width: number; height: number; hidden: boolean }>
 // >({});
 
+const props = defineProps({
+  viewerEvent$: {
+    type: Object as PropType<Rx.ReplaySubject<ViewerEvent | null>> | undefined,
+    required: false,
+    default: undefined,
+  },
+});
+
 const componentName = "SchematicViewer";
 const componentId = _.uniqueId();
 
-const viewer = ref<typeof Viewer | null>(null);
 const viewerId = componentName + "-" + componentId;
 const viewerState = new ViewerStateMachine();
 const schematicData = refFrom<Schematic | null>(
@@ -85,14 +93,4 @@ const schematicData = refFrom<Schematic | null>(
     }),
   ),
 );
-
-function addNode(schemaId: number) {
-  if (viewer.value) {
-    viewer.value.handleNodeAdd(schemaId);
-  }
-}
-
-defineExpose({
-  addNode,
-});
 </script>
