@@ -67,6 +67,8 @@ pub async fn create_node(
     )
     .await?;
 
+    // TODO: this creates a node without a position, it will be upserted when dragged, but it's a
+    // problem. We need to pass the position in CreateNodeRequest
     let node_view = NodeView::new(component.name(), node, vec![], node_template);
 
     txn.commit().await?;
