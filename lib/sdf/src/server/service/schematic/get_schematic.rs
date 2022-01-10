@@ -1,5 +1,5 @@
 use axum::{extract::Query, Json};
-use dal::{Visibility, Tenancy, schematic::Schematic, WorkspaceId, node::NodeId, system::SystemId};
+use dal::{node::NodeId, schematic::Schematic, system::SystemId, Tenancy, Visibility, WorkspaceId};
 use serde::{Deserialize, Serialize};
 
 use super::SchematicResult;
@@ -27,135 +27,13 @@ pub async fn get_schematic(
     tenancy.billing_account_ids = vec![claim.billing_account_id];
     tenancy.universal = true;
 
-    let response = Schematic::find(&txn, &tenancy, &request.visibility, request.system_id, request.root_node_id).await?;
-    println!("{:?}", response);
-
-    //let response = serde_json::json![{
-    //  "nodes": [{
-    //      "id": "A:1",
-    //      "label": {
-    //        "title": "k8s service",
-    //        "name": "whiskers malandragem",
-    //      },
-    //      "classification": {
-    //        "component": "application",
-    //        "kind": "kubernetes",
-    //        "type": "service",
-    //      },
-    //      "status": {
-    //        "qualification": "succeeded",
-    //        "resource": "healthy",
-    //        "changeCount": 3,
-    //        "action": {
-    //          "name": "aaa",
-    //          "timestamp": "123",
-    //          "status": "succeeded",
-    //        },
-    //      },
-    //      "position": {
-    //        "ctx": [
-    //          {
-    //            "id": "aaa",
-    //            "position": {
-    //              "x": 300,
-    //              "y": 100,
-    //            },
-    //          },
-    //        ],
-    //      },
-    //      "input": [
-    //        {
-    //          "id": "A:1.S:1",
-    //          "type": "kubernetes.namespace",
-    //          "name": "namespace",
-    //        },
-    //        {
-    //          "id": "A:1.S:2",
-    //          "type": "kubernetes.deployment",
-    //          "name": "deployment",
-    //        },
-    //        {
-    //          "id": "A:1.S:3",
-    //          "type": "kubernetes.service",
-    //          "name": "service",
-    //        },
-    //        {
-    //          "id": "A:1.S:4",
-    //          "type": "kubernetes.env",
-    //          "name": "env",
-    //        },
-    //      ],
-    //      "output": [
-    //        {
-    //          "id": "A:1.S:5",
-    //          "type": "kubernetes.service",
-    //        },
-    //      ],
-    //      "display": {
-    //        "color": "0x32b832",
-    //      },
-    //      "connections": [],
-    //      "lastUpdated": "1234",
-    //      "checksum": "j4j4j4j4j4j4j4j4j4j4j4",
-    //      "schematic": {
-    //        "deployment": false,
-    //        "component": true,
-    //      },
-    //    }, {
-    //      "id": "B:1",
-    //      "label": {
-    //        "title": "k8s namespace",
-    //        "name": "dev",
-    //      },
-    //      "classification": {
-    //        "component": "application",
-    //        "kind": "kubernetes",
-    //        "type": "namespace",
-    //      },
-    //      "status": {
-    //        "qualification": "succeeded",
-    //        "resource": "healthy",
-    //        "changeCount": 0,
-    //        "action": {
-    //          "name": "aaa",
-    //          "timestamp": "123",
-    //          "status": "succeeded",
-    //        },
-    //      },
-    //      "position": {
-    //        "ctx": [
-    //          {
-    //            "id": "B:1.S:1",
-    //            "position": {
-    //              "x": 100,
-    //              "y": 100,
-    //            },
-    //          },
-    //        ],
-    //      },
-    //      "input": [
-    //      ],
-    //      "output": [
-    //        {
-    //          "id": "B:1.S:5",
-    //          "type": "kubernetes.namespace",
-    //        },
-    //      ],
-    //      "display": {
-    //        "color": "0x3251b8",
-    //      },
-    //      "connections": [],
-    //      "lastUpdated": "1234",
-    //      "checksum": "j4j4j4j4j4j4j4j4j4j4j4",
-    //      "schematic": {
-    //        "deployment": false,
-    //        "component": true,
-    //      },
-    //    },
-    //  ],
-    //  "connections": [],
-    //  "lastUpdated": "123",
-    //  "checksum": "i5i5i55i5i5i5i55i5i5i",
-    //}];
+    let response = Schematic::find(
+        &txn,
+        &tenancy,
+        &request.visibility,
+        request.system_id,
+        request.root_node_id,
+    )
+    .await?;
     Ok(Json(response))
 }

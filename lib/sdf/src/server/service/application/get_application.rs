@@ -1,8 +1,7 @@
 use axum::{extract::Query, Json};
-use dal::edit_field::value_and_visiblity_diff;
-use dal::{Component, ComponentId, Node, StandardModel, Visibility, WorkspaceId};
-use serde::{Deserialize, Serialize};
 use dal::node::NodeId;
+use dal::{Component, ComponentId, StandardModel, Visibility, WorkspaceId};
+use serde::{Deserialize, Serialize};
 
 use super::ApplicationResult;
 use crate::server::extract::{Authorization, PgRoTxn, QueryWorkspaceTenancy};
@@ -42,5 +41,8 @@ pub async fn get_application(
         .await?
         .pop()
         .ok_or(ApplicationError::NotFound)?;
-    Ok(Json(GetApplicationResponse { application, application_node_id: *application_node.id() }))
+    Ok(Json(GetApplicationResponse {
+        application,
+        application_node_id: *application_node.id(),
+    }))
 }

@@ -6,7 +6,7 @@ use axum::Json;
 use axum::Router;
 use dal::{
     ComponentError, NodeError, NodeMenuError, NodePositionError, SchemaError as DalSchemaError,
-    StandardModelError, SchematicError as DalSchematicError
+    SchematicError as DalSchematicError, StandardModelError,
 };
 use std::convert::Infallible;
 use thiserror::Error;

@@ -11,7 +11,11 @@ use crate::edit_field::{
 use crate::node::NodeKind;
 use crate::schema::variant::{SchemaVariantError, SchemaVariantId};
 use crate::schema::SchemaVariant;
-use crate::{impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to, HistoryActor, HistoryEventError, Node, NodeError, Schema, SchemaError, SchemaId, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility, standard_model_has_many};
+use crate::{
+    impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
+    standard_model_has_many, HistoryActor, HistoryEventError, Node, NodeError, Schema, SchemaError,
+    SchemaId, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
+};
 
 #[derive(Error, Debug)]
 pub enum ComponentError {

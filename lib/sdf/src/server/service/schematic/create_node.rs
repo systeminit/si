@@ -2,8 +2,8 @@ use crate::server::extract::{Authorization, NatsTxn, PgRwTxn};
 use crate::service::schematic::{SchematicError, SchematicResult};
 use axum::Json;
 use dal::{
-    generate_name, Component, HistoryActor, SchemaId, StandardModel, Tenancy, Visibility,
-    Workspace, WorkspaceId, NodeTemplate, NodeView
+    generate_name, Component, HistoryActor, NodeTemplate, NodeView, SchemaId, StandardModel,
+    Tenancy, Visibility, Workspace, WorkspaceId,
 };
 use serde::{Deserialize, Serialize};
 

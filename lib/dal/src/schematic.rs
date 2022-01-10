@@ -1,11 +1,10 @@
 use crate::{
-    Node, NodeError, NodeKind, NodePosition, NodePositionError, ComponentError,
-    NodeTemplate, NodeView, StandardModel, StandardModelError, Tenancy, Visibility, SystemId, node::NodeId
+    node::NodeId, ComponentError, Node, NodeError, NodeKind, NodePosition, NodePositionError,
+    NodeTemplate, NodeView, StandardModel, StandardModelError, SystemId, Tenancy, Visibility,
 };
 use serde::{Deserialize, Serialize};
 use strum_macros::{AsRefStr, Display, EnumString};
 
-use crate::standard_model;
 use si_data::{PgError, PgTxn};
 use thiserror::Error;
 
@@ -26,7 +25,7 @@ pub enum SchematicError {
     #[error("component not foundl")]
     ComponentNotFound,
     #[error("schema not foundl")]
-    SchemaNotFound
+    SchemaNotFound,
 }
 
 pub type SchematicResult<T> = Result<T, SchematicError>;
@@ -63,29 +62,36 @@ impl Schematic {
         for node in nodes {
             let (schema, name, schematic_kind) = match node.kind() {
                 NodeKind::Component => {
-                    let component = node.component(txn, visibility).await?.ok_or(SchematicError::ComponentNotFound)?;
-                    let schema = component.schema(txn, visibility).await?.ok_or(SchematicError::SchemaNotFound)?;
-                    (schema, component.name().to_owned(), SchematicKind::Component)
-                },
+                    let component = node
+                        .component(txn, visibility)
+                        .await?
+                        .ok_or(SchematicError::ComponentNotFound)?;
+                    // TODO: component's tenancy isn't universal, but schemas are, we need to
+                    // modify the belongs_to machinery to support universal data by default
+                    let schema = component
+                        .schema(txn, visibility)
+                        .await?
+                        .ok_or(SchematicError::SchemaNotFound)?;
+                    (
+                        schema,
+                        component.name().to_owned(),
+                        SchematicKind::Component,
+                    )
+                }
             };
 
             let position = NodePosition::find_by_node_id(
-                &txn,
-                &tenancy,
-                &visibility,
+                txn,
+                tenancy,
+                visibility,
                 schematic_kind,
                 &system_id,
                 root_node_id,
                 *node.id(),
             )
             .await?;
-            let template = NodeTemplate::new_from_schema_id(
-                txn,
-                tenancy,
-                visibility,
-                *schema.id(),
-            )
-            .await?;
+            let template =
+                NodeTemplate::new_from_schema_id(txn, tenancy, visibility, *schema.id()).await?;
             let view = NodeView::new(name, node, position.map_or(vec![], |p| vec![p]), template);
             node_views.push(view);
         }
