@@ -1,7 +1,7 @@
 <template>
   <div
     v-if="isVisible"
-    class="flex flex-col w-full h-ful"
+    class="flex flex-col w-full h-full"
     :class="panelClasses"
     @mouseenter="mouseEnter()"
     @mouseleave="mouseLeave()"
@@ -72,7 +72,7 @@
         </div>
       </div>
     </div>
-    <div class="flex flex-grow w-full h-full overflow-auto">
+    <div class="flex flex-grow w-full h-full overflow-hidden">
       <slot name="content"></slot>
     </div>
   </div>

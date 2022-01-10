@@ -40,10 +40,20 @@ However, it _will_ upgrade existing packages without confirmations, so ensure th
 **Login:** now, we need to ensure that we are [logged into Docker locally](https://docs.docker.com/engine/reference/commandline/login/) and that the corresponding account can pull images from our [private repositories](https://hub.docker.com/orgs/systeminit/repositories).
 Please reach out internally if your account cannot pull images from the private SI repositories.
 
+**Check Services:** SI uses external services in conjunction with its native components.
+These external services are deployed via `docker-compose` and are configured to stick to their default settings as closely as possible, including port settings.
+Thus, it is worth checking if you are running these services to avoid conflicts when running SI.
+Potentially conflicting services include, but are not limited to, the following:
+
+* PostgreSQL DB
+* OpenTelemetry
+* NATS
+* Watchtower
+
+In the case of a port conflict, a good strategy is to temporarily disable the host service until SI is no longer being run.
+
 **Make:** with all dependencies installed and required binaries in `PATH`, we are ready to go!
 In one terminal pane (e.g. using a terminal multiplexer, such as `tmux`, or tabs/windows), execute the following:
-
-**Services:** docker-compose deploys a postgresql service, an open-telemetry service, a nats service and an watchtower service, using the default ports, so if some of those already are running on the host machine a conflict will happen, for now just disable the host's service and let the docker one do its job
 
 ```bash
 make prepare
@@ -70,6 +80,12 @@ make app-run
 
 This will run the web application, which you can access by navigating to https://localhost:8080.
 Now, you have SI running!
+
+**Teardown**: you can teardown SI and its external services by stopping the active `make` targets above and executing the following in the repository root:
+
+```bash
+make down
+```
 
 ## Prepare Your Changes
 
