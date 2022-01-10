@@ -66,10 +66,10 @@ impl Schematic {
                         .component(txn, visibility)
                         .await?
                         .ok_or(SchematicError::ComponentNotFound)?;
-                    // TODO: component's tenancy isn't universal, but schemas are, we need to
-                    // modify the belongs_to machinery to support universal data by default
+                    let mut tenancy = tenancy.clone();
+                    tenancy.universal = true;
                     let schema = component
-                        .schema(txn, visibility)
+                        .schema_with_tenancy(txn, &tenancy, visibility)
                         .await?
                         .ok_or(SchematicError::SchemaNotFound)?;
                     (

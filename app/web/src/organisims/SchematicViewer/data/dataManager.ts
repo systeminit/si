@@ -7,7 +7,6 @@ import { SchematicService } from "@/service/schematic";
 import { GlobalErrorService } from "@/service/global_error";
 import { ApiResponse } from "@/api/sdf";
 import { SetNodeResponse } from "@/service/schematic/set_node";
-import { schematicDataAfter } from "../model/testDatasetAfter";
 import { schematicData$ as schematicDataGlobal$ } from "./observable";
 
 export class SchematicDataManager {
@@ -48,9 +47,11 @@ export class SchematicDataManager {
           if (response.error) {
             GlobalErrorService.set(response);
           }
-          const d = schematicDataAfter;
+	  // TODO: fetch schematic when position is set
+
+          //const d = schematicDataAfter;
           // this.schematicData$.next(d);
-          schematicDataGlobal$.next(d);
+          //schematicDataGlobal$.next(nodeUpdate);
         },
       );
     }
