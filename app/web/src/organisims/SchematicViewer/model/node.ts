@@ -122,17 +122,13 @@ export function fakeNodeFromTemplate(template: NodeTemplate): Node {
     id: "A:1",
     label: template.label,
     classification: template.classification,
-    position: {
-      ctx: [
-        {
-          id: "A:1",
-          position: {
-            x: 0,
-            y: 0,
-          },
-        },
-      ],
-    },
+    position: [
+      {
+        id: "A:1",
+        x: 0,
+        y: 0,
+      },
+    ],
     input: template.input,
     output: template.output,
     display: template.display,
@@ -163,17 +159,13 @@ export function generateNode(
       kind: "kubernetes",
       type: "service",
     },
-    position: {
-      ctx: [
-        {
-          id: id,
-          position: {
-            x: position.x,
-            y: position.y,
-          },
-        },
-      ],
-    },
+    position: [
+      {
+        id,
+        x: position.x,
+        y: position.y,
+      },
+    ],
     input: [
       {
         id: "A:1.S:1",

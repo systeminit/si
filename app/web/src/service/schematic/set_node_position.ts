@@ -11,7 +11,6 @@ import { editSessionWritten$ } from "@/observable/edit_session";
 import { workspace$ } from "@/observable/workspace";
 import _ from "lodash";
 
-// Note: eventually, this needs to include the name and the position. For now, just the ID is good enough.
 export interface SetNodePositionArgs {
   nodeId: number;
   schematicKind: SchematicKind;

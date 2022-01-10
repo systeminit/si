@@ -8,8 +8,8 @@ use crate::schema::variant::SchemaVariantError;
 use crate::socket::Socket;
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
-    Component, ComponentId, HistoryActor, HistoryEventError, Schema, SchemaId, SchemaVariant,
-    StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
+    Component, ComponentId, HistoryActor, HistoryEventError, NodePosition, Schema, SchemaId,
+    SchemaVariant, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
 };
 
 #[derive(Error, Debug)]
@@ -199,8 +199,7 @@ pub struct NodeView {
     kind: NodeKind,
     label: NodeLabel,
     classification: NodeClassification,
-    // Update with real position data
-    position: serde_json::Value,
+    position: Vec<NodePosition>,
     input: Vec<Socket>,
     output: Vec<Socket>,
     display: NodeDisplay,
@@ -210,7 +209,12 @@ pub struct NodeView {
 }
 
 impl NodeView {
-    pub fn new(name: impl Into<String>, node: Node, node_template: NodeTemplate) -> Self {
+    pub fn new(
+        name: impl Into<String>,
+        node: Node,
+        position: Vec<NodePosition>,
+        node_template: NodeTemplate,
+    ) -> Self {
         let name = name.into();
         NodeView {
             id: node.id,
@@ -220,17 +224,7 @@ impl NodeView {
                 title: node_template.label.title,
             },
             classification: node_template.classification,
-            position: serde_json::json!({
-               "ctx": [
-                 {
-                   "id": node.id,
-                   "position": {
-                     "x": 0,
-                     "y": 0,
-                   },
-                 },
-               ],
-            }),
+            position,
             input: node_template.input,
             output: node_template.output,
             display: node_template.display,

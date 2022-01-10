@@ -1,10 +1,9 @@
 use crate::server::extract::{Authorization, NatsTxn, PgRwTxn};
 use crate::service::schematic::{SchematicError, SchematicResult};
 use axum::Json;
-use dal::node::{NodeTemplate, NodeView};
 use dal::{
-    generate_name, Component, HistoryActor, SchemaId, StandardModel, Tenancy, Visibility,
-    Workspace, WorkspaceId,
+    generate_name, Component, HistoryActor, NodeTemplate, NodeView, SchemaId, StandardModel,
+    Tenancy, Visibility, Workspace, WorkspaceId,
 };
 use serde::{Deserialize, Serialize};
 
@@ -68,7 +67,9 @@ pub async fn create_node(
     )
     .await?;
 
-    let node_view = NodeView::new(component.name(), node, node_template);
+    // TODO: this creates a node without a position, it will be upserted when dragged, but it's a
+    // problem. We need to pass the position in CreateNodeRequest
+    let node_view = NodeView::new(component.name(), node, vec![], node_template);
 
     txn.commit().await?;
     nats.commit().await?;

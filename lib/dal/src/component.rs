@@ -13,8 +13,8 @@ use crate::schema::variant::{SchemaVariantError, SchemaVariantId};
 use crate::schema::SchemaVariant;
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
-    HistoryActor, HistoryEventError, Node, NodeError, Schema, SchemaError, SchemaId, StandardModel,
-    StandardModelError, Tenancy, Timestamp, Visibility,
+    standard_model_has_many, HistoryActor, HistoryEventError, Node, NodeError, Schema, SchemaError,
+    SchemaId, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
 };
 
 #[derive(Error, Debug)]
@@ -282,6 +282,14 @@ impl Component {
         model_table: "schema_variants",
         belongs_to_id: SchemaVariantId,
         returns: SchemaVariant,
+        result: ComponentResult,
+    );
+
+    standard_model_has_many!(
+        lookup_fn: node,
+        table: "node_belongs_to_component",
+        model_table: "nodes",
+        returns: Node,
         result: ComponentResult,
     );
 

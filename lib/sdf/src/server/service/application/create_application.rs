@@ -47,7 +47,7 @@ pub async fn create_application(
     // You can only create applications directly to head? This feels wrong, but..
     let visibility = Visibility::new_head(false);
 
-    let (application, _node) = Component::new_application_with_node(
+    let (application, _application_node) = Component::new_application_with_node(
         &txn,
         &nats,
         &tenancy,

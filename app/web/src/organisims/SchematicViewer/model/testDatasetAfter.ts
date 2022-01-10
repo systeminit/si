@@ -36,17 +36,13 @@ const nodeA: Node = {
       status: ActionStatus.SUCCEEDED,
     },
   },
-  position: {
-    ctx: [
-      {
-        id: generateUniqueId(),
-        position: {
-          x: 300,
-          y: 100,
-        },
-      },
-    ],
-  },
+  position: [
+    {
+       id: generateUniqueId(),
+       x: 300,
+       y: 100,
+    },
+  ],
   input: [
     {
       id: "A:1.S:1",
@@ -108,14 +104,13 @@ const nodeB: Node = {
       status: ActionStatus.SUCCEEDED,
     },
   },
-  position: {
-    ctx: [
-      {
-        id: generateUniqueId(),
-        position: { x: 100, y: 100 },
-      },
-    ],
-  },
+  position: [
+    {
+       id: generateUniqueId(),
+       x: 100,
+       y: 100,
+    },
+  ],
   input: [],
   output: [
     {

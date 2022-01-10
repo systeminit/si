@@ -1,20 +1,21 @@
-// import { ApiResponse, SDF } from "@/api/sdf";
-// import { Schematic } from "@/api/sdf/dal/schematic";
-// import { combineLatest, from, Observable, shareReplay } from "rxjs";
-// import { standardVisibilityTriggers$ } from "@/observable/visibility";
-// import Bottle from "bottlejs";
-// import { switchMap } from "rxjs/operators";
-
-import { ApiResponse } from "@/api/sdf";
-import { from, Observable } from "rxjs";
+import { ApiResponse, SDF } from "@/api/sdf";
+import { Schematic } from "@/organisims/SchematicViewer/model/schematic";
+import { combineLatest, from, Observable, shareReplay } from "rxjs";
+import { standardVisibilityTriggers$ } from "@/observable/visibility";
+import Bottle from "bottlejs";
+import { switchMap } from "rxjs/operators";
+import { workspace$ } from "@/observable/workspace";
+import _ from "lodash";
 import { Visibility } from "@/api/sdf/dal/visibility";
-import { Schematic, schematicData } from "@/organisims/SchematicViewer/model";
 
 export interface GetSchematicArgs {
-  context: string;
+  systemId: number;
+  rootNodeId: number;
 }
 
-export interface GetSchematicRequest extends GetSchematicArgs, Visibility {}
+export interface GetSchematicRequest extends GetSchematicArgs, Visibility {
+  workspaceId: number;
+}
 
 export type GetSchematicResponse = Schematic;
 
@@ -25,25 +26,40 @@ const getSchematicCollection: {
 export function getSchematic(
   args: GetSchematicArgs,
 ): Observable<ApiResponse<GetSchematicResponse>> {
-  if (getSchematicCollection[args.context]) {
-    return getSchematicCollection[args.context];
+  const context = `${args.rootNodeId}-${args.systemId}`;
+  if (getSchematicCollection[context]) {
+    return getSchematicCollection[context];
   }
-  // getSchematicCollection[args.context] = combineLatest([
-  //   standardVisibilityTriggers$,
-  // ]).pipe(
-  //   switchMap(([[visibility]]) => {
-  //     const bottle = Bottle.pop("default");
-  //     const sdf: SDF = bottle.container.SDF;
-  //     return sdf.get<ApiResponse<GetSchematicResponse>>(
-  //       "schematic/get_schematic",
-  //       {
-  //         ...args,
-  //         ...visibility,
-  //       },
-  //     );
-  //   }),
-  //   shareReplay(1),
-  // );
-  // return getSchematicCollection[args.context];
-  return from([schematicData]);
+  getSchematicCollection[context] = combineLatest([
+    standardVisibilityTriggers$,
+    workspace$,
+  ]).pipe(
+    switchMap(([[visibility], workspace]) => {
+      if (_.isNull(workspace)) {
+        return from([
+          {
+            error: {
+              statusCode: 10,
+              message: "cannot get schematic without a workspace; bug!",
+              code: 10,
+            },
+          },
+        ]);
+      }
+      const bottle = Bottle.pop("default");
+      const sdf: SDF = bottle.container.SDF;
+      return sdf.get<ApiResponse<GetSchematicResponse>>(
+        "schematic/get_schematic",
+        {
+          ...args,
+          ...visibility,
+          systemId: args.systemId,
+          rootNodeId: args.rootNodeId,
+          workspaceId: workspace.id,
+        },
+      );
+    }),
+    shareReplay({ bufferSize: 1, refCount: true }),
+  );
+  return getSchematicCollection[context];
 }
