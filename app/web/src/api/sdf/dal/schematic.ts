@@ -45,4 +45,9 @@ export interface LinkNodeItem {
   name: string;
 }
 
+export interface EditorContext {
+  applicationNodeId: number;
+  systemId?: number;
+}
+
 export type MenuItem = Category | Item | LinkNodeItem;

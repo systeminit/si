@@ -100,8 +100,12 @@ export class SceneManager {
 
     if (data) {
       for (const n of data.nodes) {
-        const node = new OBJ.Node(n);
-        this.addNode(node);
+        if (n.position.length > 0) {
+          const node = new OBJ.Node(n);
+          this.addNode(node);
+	} else {
+          console.error("Node didn't have a position:", n);
+	}
       }
 
       if (data.connections.length > 0) {

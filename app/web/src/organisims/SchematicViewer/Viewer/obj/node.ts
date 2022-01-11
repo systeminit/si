@@ -45,11 +45,9 @@ export class Node extends PIXI.Container {
     this.kind = "node";
     this.connections = [];
 
-    // TODO: we should get the propper function for our context instead of assuming it's the first one
-    if (n.position.length > 0) {
-      this.x = n.position[0].x;
-      this.y = n.position[0].y;
-    }
+    this.x = parseFloat(n.position[0].x);
+    this.y = parseFloat(n.position[0].y);
+
     this.interactive = true;
     this.buttonMode = true;
     this.sortableChildren = true;

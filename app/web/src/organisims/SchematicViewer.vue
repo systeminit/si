@@ -5,6 +5,7 @@
       :viewer-state="viewerState"
       :schematic-data="schematicData"
       :viewer-event$="props.viewerEvent$"
+      :editor-context="editorContext"
     />
   </div>
 </template>
@@ -90,6 +91,18 @@ const schematicData = refFrom<Schematic | null>(
         } else {
           return from([schematic]);
         }
+      } else {
+        return from([null]);
+      }
+    }),
+  ),
+);
+
+const editorContext = refFrom<EditorContext | null>(
+  combineLatest([system$, applicationNodeId$]).pipe(
+    switchMap(([system, applicationNodeId]) => {
+      if (applicationNodeId) {
+        return from([{systemId: system?.id, applicationNodeId}]);
       } else {
         return from([null]);
       }

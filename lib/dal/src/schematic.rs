@@ -82,7 +82,7 @@ impl Schematic {
 
             let position = NodePosition::find_by_node_id(
                 txn,
-                tenancy,
+                &tenancy,
                 visibility,
                 schematic_kind,
                 &system_id,
@@ -91,7 +91,7 @@ impl Schematic {
             )
             .await?;
             let template =
-                NodeTemplate::new_from_schema_id(txn, tenancy, visibility, *schema.id()).await?;
+                NodeTemplate::new_from_schema_id(txn, &tenancy, visibility, *schema.id()).await?;
             let view = NodeView::new(name, node, position.map_or(vec![], |p| vec![p]), template);
             node_views.push(view);
         }

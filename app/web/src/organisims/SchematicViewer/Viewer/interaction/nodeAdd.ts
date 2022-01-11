@@ -6,6 +6,8 @@ import { Renderer } from "../renderer";
 import * as OBJ from "../obj";
 import * as MODEL from "../../model";
 import { NodeCreate } from "../../data/event";
+import {EditorContext} from "@/api/sdf/dal/schematic";
+import { refFrom } from "vuse-rx";
 
 import { selection$ } from "../../state";
 
@@ -27,15 +29,18 @@ export class NodeAddManager {
   // Note: this probably needs to not be data on this object, and instead be part of the
   // node template/node somewhere. :)
   nodeAddSchemaId?: number;
+  editorContext: refFrom<EditorContext | null>;
 
   constructor(
     sceneManager: SceneManager,
     dataManager: SchematicDataManager,
     renderer: Renderer,
+    editorContext: refFrom<EditorContext | null>,
   ) {
     this.sceneManager = sceneManager;
     this.dataManager = dataManager;
     this.renderer = renderer;
+    this.editorContext = editorContext;
   }
 
   beforeAddNode(data: PIXI.InteractionData): void {
@@ -75,9 +80,13 @@ export class NodeAddManager {
   }
 
   afterAddNode(): void {
-    if (this.node && this.nodeAddSchemaId) {
+    if (this.node && this.nodeAddSchemaId && this.editorContext) {
       const event: NodeCreate = {
         nodeSchemaId: this.nodeAddSchemaId,
+        rootNodeId: this.editorContext.applicationNodeId,
+        systemId: this.editorContext.systemId,
+        x: `${this.node.position.x}`,
+        y: `${this.node.position.y}`,
       };
 
       this.dataManager.nodeCreate$.next(event);

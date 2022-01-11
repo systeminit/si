@@ -2,8 +2,8 @@ use crate::server::extract::{Authorization, NatsTxn, PgRwTxn};
 use crate::service::schematic::{SchematicError, SchematicResult};
 use axum::Json;
 use dal::{
-    generate_name, Component, HistoryActor, NodeTemplate, NodeView, SchemaId, StandardModel,
-    Tenancy, Visibility, Workspace, WorkspaceId,
+    generate_name, node::NodeId, Component, HistoryActor, NodePosition, NodeTemplate, NodeView,
+    SchemaId, SchematicKind, StandardModel, SystemId, Tenancy, Visibility, Workspace, WorkspaceId,
 };
 use serde::{Deserialize, Serialize};
 
@@ -11,6 +11,10 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "camelCase")]
 pub struct CreateNodeRequest {
     pub schema_id: SchemaId,
+    pub root_node_id: NodeId,
+    pub system_id: Option<SystemId>,
+    pub x: String,
+    pub y: String,
     pub workspace_id: WorkspaceId,
     #[serde(flatten)]
     pub visibility: Visibility,
@@ -67,9 +71,33 @@ pub async fn create_node(
     )
     .await?;
 
-    // TODO: this creates a node without a position, it will be upserted when dragged, but it's a
-    // problem. We need to pass the position in CreateNodeRequest
-    let node_view = NodeView::new(component.name(), node, vec![], node_template);
+    let mut position = NodePosition::new(
+        &txn,
+        &nats,
+        &tenancy,
+        &request.visibility,
+        &history_actor,
+        SchematicKind::Component,
+        request.root_node_id,
+        request.x,
+        request.y,
+    )
+    .await?;
+    if let Some(system_id) = request.system_id {
+        position
+            .set_system_id(
+                &txn,
+                &nats,
+                &request.visibility,
+                &history_actor,
+                Some(system_id),
+            )
+            .await?;
+    }
+    position
+        .set_node(&txn, &nats, &request.visibility, &history_actor, node.id())
+        .await?;
+    let node_view = NodeView::new(component.name(), node, vec![position], node_template);
 
     txn.commit().await?;
     nats.commit().await?;

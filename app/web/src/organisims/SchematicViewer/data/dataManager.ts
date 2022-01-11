@@ -77,8 +77,8 @@ export class SchematicDataManager {
   }
 
   createNode(e: NodeCreate | null): void {
-    if (e && e.nodeSchemaId) {
-      SchematicService.createNode({ schemaId: e.nodeSchemaId }).subscribe(
+    if (e) {
+      SchematicService.createNode({ schemaId: e.nodeSchemaId, rootNodeId: e.rootNodeId, systemId: e.systemId, x: e.x, y: e.x }).subscribe(
         (response) => {
           if (response.error) {
             GlobalErrorService.set(response);
