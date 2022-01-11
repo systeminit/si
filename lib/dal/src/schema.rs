@@ -24,7 +24,6 @@ pub use ui_menu::UiMenu;
 pub use variant::{SchemaVariant, SchemaVariantId};
 
 pub mod builtins;
-mod defaults;
 pub mod ui_menu;
 pub mod variant;
 

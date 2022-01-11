@@ -1,15 +1,10 @@
-use crate::schema::defaults;
-use crate::schema::{SchemaResult, UiMenu};
+use crate::schema::{SchemaResult, SchemaVariant, UiMenu};
 use crate::{
     HistoryActor, Schema, SchemaError, SchemaKind, SchematicKind, StandardModel, Tenancy,
     Visibility,
 };
 use si_data::{NatsTxn, PgTxn};
 
-// NOTE(nick): the next time this becomes more complex, we should consider using a struct that
-// contains tenancy, visibility, and history actor. Moreover, it should probably contain mostly
-// everything but the migrate public function as methods. This will likely come to fruition as
-// a natural chain of events.
 pub async fn migrate(txn: &PgTxn<'_>, nats: &NatsTxn) -> SchemaResult<()> {
     let (tenancy, visibility, history_actor) = (
         Tenancy::new_universal(),
@@ -33,7 +28,7 @@ async fn application(
     history_actor: &HistoryActor,
 ) -> SchemaResult<()> {
     let name = "application".to_string();
-    let mut schema = match defaults::create_schema(
+    let mut schema = match create_schema(
         txn,
         nats,
         tenancy,
@@ -52,15 +47,13 @@ async fn application(
         .set_ui_hidden(txn, nats, visibility, history_actor, true)
         .await?;
 
-    defaults::create_and_set_default_schema_variant(
-        txn,
-        nats,
-        tenancy,
-        visibility,
-        history_actor,
-        &mut schema,
-    )
-    .await?;
+    let variant = SchemaVariant::new(txn, nats, tenancy, visibility, history_actor, "v0").await?;
+    variant
+        .set_schema(txn, nats, visibility, history_actor, schema.id())
+        .await?;
+    schema
+        .set_default_schema_variant_id(txn, nats, visibility, history_actor, Some(*variant.id()))
+        .await?;
     Ok(())
 }
 
@@ -72,7 +65,7 @@ async fn service(
     history_actor: &HistoryActor,
 ) -> SchemaResult<()> {
     let name = "service".to_string();
-    let mut schema = match defaults::create_schema(
+    let mut schema = match create_schema(
         txn,
         nats,
         tenancy,
@@ -137,15 +130,13 @@ async fn service(
         )
         .await?;
 
-    defaults::create_and_set_default_schema_variant(
-        txn,
-        nats,
-        tenancy,
-        visibility,
-        history_actor,
-        &mut schema,
-    )
-    .await?;
+    let variant = SchemaVariant::new(txn, nats, tenancy, visibility, history_actor, "v0").await?;
+    variant
+        .set_schema(txn, nats, visibility, history_actor, schema.id())
+        .await?;
+    schema
+        .set_default_schema_variant_id(txn, nats, visibility, history_actor, Some(*variant.id()))
+        .await?;
     Ok(())
 }
 
@@ -157,7 +148,7 @@ async fn kubernetes_service(
     history_actor: &HistoryActor,
 ) -> SchemaResult<()> {
     let name = "kubernetes_service".to_string();
-    let mut schema = match defaults::create_schema(
+    let mut schema = match create_schema(
         txn,
         nats,
         tenancy,
@@ -172,16 +163,13 @@ async fn kubernetes_service(
         None => return Ok(()),
     };
 
-    defaults::create_and_set_default_schema_variant(
-        txn,
-        nats,
-        tenancy,
-        visibility,
-        history_actor,
-        &mut schema,
-    )
-    .await?;
-
+    let variant = SchemaVariant::new(txn, nats, tenancy, visibility, history_actor, "v0").await?;
+    variant
+        .set_schema(txn, nats, visibility, history_actor, schema.id())
+        .await?;
+    schema
+        .set_default_schema_variant_id(txn, nats, visibility, history_actor, Some(*variant.id()))
+        .await?;
     Ok(())
 }
 
@@ -193,7 +181,7 @@ async fn docker_image(
     history_actor: &HistoryActor,
 ) -> SchemaResult<()> {
     let name = "docker_imagee".to_string();
-    let mut schema = match defaults::create_schema(
+    let mut schema = match create_schema(
         txn,
         nats,
         tenancy,
@@ -208,15 +196,51 @@ async fn docker_image(
         None => return Ok(()),
     };
 
-    defaults::create_and_set_default_schema_variant(
-        txn,
-        nats,
-        tenancy,
-        visibility,
-        history_actor,
-        &mut schema,
-    )
-    .await?;
-
+    let variant = SchemaVariant::new(txn, nats, tenancy, visibility, history_actor, "v0").await?;
+    variant
+        .set_schema(txn, nats, visibility, history_actor, schema.id())
+        .await?;
+    schema
+        .set_default_schema_variant_id(txn, nats, visibility, history_actor, Some(*variant.id()))
+        .await?;
     Ok(())
+}
+
+async fn create_schema(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    tenancy: &Tenancy,
+    visibility: &Visibility,
+    history_actor: &HistoryActor,
+    schema_name: &str,
+    schema_kind: &SchemaKind,
+) -> SchemaResult<Option<Schema>> {
+    // TODO(nick): there's one issue here. If the schema kind has changed, then this check will be
+    // inaccurate. As a result, we will be unable to re-create the schema without manual intervention.
+    // This should be fine since this code should likely only last as long as default schemas need to
+    // be created... which is hopefully not long.... hopefully...
+    let default_schema_exists =
+        !Schema::find_by_attr(txn, tenancy, visibility, "name", &schema_name.to_string())
+            .await?
+            .is_empty();
+
+    // TODO(nick): this should probably return an "AlreadyExists" error instead of "None", but
+    // since the calling function would have to deal with the result similarly, this should suffice
+    // for now.
+    match default_schema_exists {
+        true => Ok(None),
+        false => {
+            let schema = Schema::new(
+                txn,
+                nats,
+                tenancy,
+                visibility,
+                history_actor,
+                schema_name,
+                schema_kind,
+            )
+            .await?;
+            Ok(Some(schema))
+        }
+    }
 }
