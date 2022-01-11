@@ -14,7 +14,7 @@ export interface GetEditFieldsArgs {
 }
 
 export interface GetEditFieldsRequest extends GetEditFieldsArgs, Visibility {
-  workspaceId?: number,
+  workspaceId?: number;
 }
 
 export interface GetEditFieldsResponse {
@@ -64,7 +64,7 @@ export function getEditFields(
           ...visibility,
           workspaceId: workspace.id,
         };
-      } else { 
+      } else {
         request = {
           ...args,
           ...visibility,

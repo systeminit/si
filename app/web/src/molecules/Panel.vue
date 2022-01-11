@@ -96,7 +96,10 @@ const props = defineProps({
   panelIndex: { type: Number, required: true },
   panelRef: { type: String, required: true },
   panelContainerRef: { type: String, required: true },
-  initialPanelType: { type: String as PropType<PanelType>, default: PanelType.Empty },
+  initialPanelType: {
+    type: String as PropType<PanelType>,
+    default: PanelType.Empty,
+  },
   initialMaximizedFull: Boolean,
   initialMaximizedContainer: Boolean,
   isVisible: { type: Boolean, default: true },

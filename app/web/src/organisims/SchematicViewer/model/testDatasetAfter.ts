@@ -38,9 +38,9 @@ const nodeA: Node = {
   },
   position: [
     {
-       id: generateUniqueId(),
-       x: 300,
-       y: 100,
+      id: generateUniqueId(),
+      x: 300,
+      y: 100,
     },
   ],
   input: [
@@ -106,9 +106,9 @@ const nodeB: Node = {
   },
   position: [
     {
-       id: generateUniqueId(),
-       x: 100,
-       y: 100,
+      id: generateUniqueId(),
+      x: 100,
+      y: 100,
     },
   ],
   input: [],

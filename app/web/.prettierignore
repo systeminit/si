@@ -1,1 +1,4 @@
 src/ignore
+
+# Used by WebGL Shader
+*.frag
