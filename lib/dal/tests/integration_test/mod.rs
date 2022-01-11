@@ -4,6 +4,7 @@ mod change_set;
 mod component;
 mod edge;
 mod edit_session;
+mod func;
 mod group;
 mod history_event;
 mod jwt_key;

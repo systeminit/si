@@ -10,6 +10,7 @@ pub mod component;
 pub mod edge;
 pub mod edit_field;
 pub mod edit_session;
+pub mod func;
 pub mod group;
 pub mod history_event;
 pub mod jwt_key;
@@ -45,6 +46,10 @@ pub use component::{Component, ComponentError, ComponentId};
 pub use edge::{Edge, EdgeError, EdgeResult};
 pub use edit_session::{
     EditSession, EditSessionError, EditSessionPk, EditSessionStatus, NO_EDIT_SESSION_PK,
+};
+pub use func::{
+    backend::{FuncBackendError, FuncBackendKind, FuncBackendResponseType},
+    Func, FuncError, FuncResult,
 };
 pub use group::{Group, GroupError, GroupId, GroupResult};
 pub use history_event::{HistoryActor, HistoryEvent, HistoryEventError};
