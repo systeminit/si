@@ -2,6 +2,7 @@ mod billing_account;
 mod capability;
 mod change_set;
 mod component;
+mod edge;
 mod edit_session;
 mod group;
 mod history_event;

@@ -7,6 +7,7 @@ pub mod billing_account;
 pub mod capability;
 pub mod change_set;
 pub mod component;
+pub mod edge;
 pub mod edit_field;
 pub mod edit_session;
 pub mod group;
@@ -40,6 +41,7 @@ pub use billing_account::{
 pub use capability::{Capability, CapabilityError, CapabilityId, CapabilityPk, CapabilityResult};
 pub use change_set::{ChangeSet, ChangeSetError, ChangeSetPk, ChangeSetStatus, NO_CHANGE_SET_PK};
 pub use component::{Component, ComponentError, ComponentId};
+pub use edge::{Edge, EdgeError, EdgeResult};
 pub use edit_session::{
     EditSession, EditSessionError, EditSessionPk, EditSessionStatus, NO_EDIT_SESSION_PK,
 };
