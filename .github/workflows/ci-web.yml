@@ -32,6 +32,10 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
+      - name: NPM Install
+        run: ( source /data/runners/.profile; cd app/web; npm install )
+      - name: Check formatting
+        run: ( source /data/runners/.profile; cd ci; make ci-web-lint )
       - name: Execute CI target
         run: ( source /data/runners/.profile; cd ci; make ci-web )
         env:
