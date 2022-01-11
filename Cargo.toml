@@ -17,6 +17,9 @@ members = [
     "lib/si-settings",
     "lib/telemetry-rs",
 ]
+exclude = [
+  "components/*",
+]
 
 [patch.crates-io]
 # pending a potential merge and release of https://github.com/softprops/hyperlocal/pull/53

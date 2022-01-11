@@ -1,4 +1,5 @@
 use crate::schema::{SchemaResult, SchemaVariant, UiMenu};
+use crate::socket::{Socket, SocketArity, SocketEdgeKind};
 use crate::{
     HistoryActor, Schema, SchemaError, SchemaKind, SchematicKind, StandardModel, Tenancy,
     Visibility,
@@ -54,6 +55,37 @@ async fn application(
     schema
         .set_default_schema_variant_id(txn, nats, visibility, history_actor, Some(*variant.id()))
         .await?;
+
+    let input_socket = Socket::new(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        "input",
+        &SocketEdgeKind::Configures,
+        &SocketArity::Many,
+    )
+    .await?;
+    variant
+        .add_socket(txn, nats, visibility, history_actor, input_socket.id())
+        .await?;
+
+    let output_socket = Socket::new(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        "output",
+        &SocketEdgeKind::Output,
+        &SocketArity::Many,
+    )
+    .await?;
+    variant
+        .add_socket(txn, nats, visibility, history_actor, output_socket.id())
+        .await?;
+
     Ok(())
 }
 
@@ -137,6 +169,37 @@ async fn service(
     schema
         .set_default_schema_variant_id(txn, nats, visibility, history_actor, Some(*variant.id()))
         .await?;
+
+    let input_socket = Socket::new(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        "input",
+        &SocketEdgeKind::Configures,
+        &SocketArity::Many,
+    )
+    .await?;
+    variant
+        .add_socket(txn, nats, visibility, history_actor, input_socket.id())
+        .await?;
+
+    let output_socket = Socket::new(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        "output",
+        &SocketEdgeKind::Output,
+        &SocketArity::Many,
+    )
+    .await?;
+    variant
+        .add_socket(txn, nats, visibility, history_actor, output_socket.id())
+        .await?;
+
     Ok(())
 }
 
@@ -170,6 +233,37 @@ async fn kubernetes_service(
     schema
         .set_default_schema_variant_id(txn, nats, visibility, history_actor, Some(*variant.id()))
         .await?;
+
+    let input_socket = Socket::new(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        "input",
+        &SocketEdgeKind::Configures,
+        &SocketArity::Many,
+    )
+    .await?;
+    variant
+        .add_socket(txn, nats, visibility, history_actor, input_socket.id())
+        .await?;
+
+    let output_socket = Socket::new(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        "output",
+        &SocketEdgeKind::Output,
+        &SocketArity::Many,
+    )
+    .await?;
+    variant
+        .add_socket(txn, nats, visibility, history_actor, output_socket.id())
+        .await?;
+
     Ok(())
 }
 
@@ -203,6 +297,40 @@ async fn docker_image(
     schema
         .set_default_schema_variant_id(txn, nats, visibility, history_actor, Some(*variant.id()))
         .await?;
+
+    // Note: This is not right; each schema needs its own socket types.
+    //       Also, they should clearly inherit from the core schema? Something
+    //       for later.
+    let input_socket = Socket::new(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        "input",
+        &SocketEdgeKind::Configures,
+        &SocketArity::Many,
+    )
+    .await?;
+    variant
+        .add_socket(txn, nats, visibility, history_actor, input_socket.id())
+        .await?;
+
+    let output_socket = Socket::new(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        "output",
+        &SocketEdgeKind::Output,
+        &SocketArity::Many,
+    )
+    .await?;
+    variant
+        .add_socket(txn, nats, visibility, history_actor, output_socket.id())
+        .await?;
+
     Ok(())
 }
 

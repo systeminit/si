@@ -59,6 +59,7 @@ pub enum SocketEdgeKind {
     Component,
     Configures,
     Deployment,
+    Output,
 }
 
 impl ToLabelList for SocketEdgeKind {}

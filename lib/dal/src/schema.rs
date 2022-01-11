@@ -20,6 +20,7 @@ use crate::{
     Visibility, Workspace, WorkspaceId, WsEventError,
 };
 
+use crate::socket::SocketError;
 pub use ui_menu::UiMenu;
 pub use variant::{SchemaVariant, SchemaVariantId};
 
@@ -53,6 +54,8 @@ pub enum SchemaError {
     NotFoundByName(String),
     #[error("no default variant for schema id: {0}")]
     NoDefaultVariant(SchemaId),
+    #[error("socket error: {0}")]
+    Socket(#[from] SocketError),
 }
 
 pub type SchemaResult<T> = Result<T, SchemaError>;
@@ -212,6 +215,24 @@ impl Schema {
         returns: Schema,
         result: SchemaResult,
     );
+
+    pub async fn default_variant(
+        &self,
+        txn: &PgTxn<'_>,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+    ) -> SchemaResult<SchemaVariant> {
+        match self.default_schema_variant_id() {
+            Some(schema_variant_id) => {
+                Ok(
+                    SchemaVariant::get_by_id(txn, tenancy, visibility, schema_variant_id)
+                        .await?
+                        .ok_or_else(|| SchemaError::NoDefaultVariant(*self.id()))?,
+                )
+            }
+            None => Err(SchemaError::NoDefaultVariant(*self.id())),
+        }
+    }
 
     pub async fn default_schema_variant_id_for_name(
         txn: &PgTxn<'_>,
