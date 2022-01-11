@@ -9,7 +9,7 @@ import { ApiResponse } from "@/api/sdf";
 import { SetNodeResponse } from "@/service/schematic/set_node";
 import { NodeCreate } from "./event";
 
-import { schematicData$ as schematicDataGlobal$ } from "./observable";
+// import { schematicData$ as schematicDataGlobal$ } from "./observable";
 
 export class SchematicDataManager {
   id: string;
@@ -68,24 +68,27 @@ export class SchematicDataManager {
           if (response.error) {
             GlobalErrorService.set(response);
           }
-          const d = schematicDataAfter;
-          // this.schematicData$.next(d);
-          schematicDataGlobal$.next(d);
+          // const d = schematicDataAfter;
+          // schematicDataGlobal$.next(d);
         },
       );
     }
   }
 
   createNode(e: NodeCreate | null): void {
-    if (e && e.nodeSchemaId) {
-      SchematicService.createNode({ schemaId: e.nodeSchemaId }).subscribe(
-        (response) => {
-          if (response.error) {
-            GlobalErrorService.set(response);
-          }
-          console.log("Node created on backend", { response });
-        },
-      );
+    if (e) {
+      SchematicService.createNode({
+        schemaId: e.nodeSchemaId,
+        rootNodeId: e.rootNodeId,
+        systemId: e.systemId,
+        x: e.x,
+        y: e.y,
+      }).subscribe((response) => {
+        if (response.error) {
+          GlobalErrorService.set(response);
+        }
+        console.log("Node created on backend", { response });
+      });
     }
     // remove temporary node
   }

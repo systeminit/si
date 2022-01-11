@@ -1,6 +1,5 @@
 import Bottle from "bottlejs";
 import { ApiResponse, SDF } from "@/api/sdf";
-import { Schema, SchemaKind } from "@/api/sdf/dal/schema";
 import { SchematicKind } from "@/api/sdf/dal/schematic";
 import { combineLatest, from, Observable, take, tap } from "rxjs";
 import { Visibility } from "@/api/sdf/dal/visibility";

@@ -45,11 +45,23 @@ export class Node extends PIXI.Container {
     this.kind = "node";
     this.connections = [];
 
-    // TODO: we should get the propper function for our context instead of assuming it's the first one
-    if (n.position.length > 0) {
-      this.x = n.position[0].x;
-      this.y = n.position[0].y;
+    if (typeof n.position[0].x == typeof "") {
+      // TODO this shouldn't live here; Position should already be a number.
+      const postiion = {
+        x: n.position[0].x as string,
+        y: n.position[0].y as string,
+      };
+      this.x = parseFloat(postiion.x);
+      this.y = parseFloat(postiion.y);
+    } else {
+      const postiion = {
+        x: n.position[0].x as number,
+        y: n.position[0].y as number,
+      };
+      this.x = postiion.x;
+      this.y = postiion.y;
     }
+
     this.interactive = true;
     this.buttonMode = true;
     this.sortableChildren = true;

@@ -2,7 +2,6 @@ import * as PIXI from "pixi.js";
 import * as OBJ from "../obj";
 
 import { SchematicGroup, NodeGroup, ConnectionGroup } from "../group";
-import { Node } from "../obj";
 import { Renderer } from "../renderer";
 import { Grid, BACKGROUND_GRID_NAME } from "../obj";
 import { Schematic } from "../../model";
@@ -100,8 +99,12 @@ export class SceneManager {
 
     if (data) {
       for (const n of data.nodes) {
-        const node = new OBJ.Node(n);
-        this.addNode(node);
+        if (n.position.length > 0) {
+          const node = new OBJ.Node(n);
+          this.addNode(node);
+        } else {
+          // console.error("Node didn't have a position:", n);
+        }
       }
 
       if (data.connections.length > 0) {
@@ -169,7 +172,7 @@ export class SceneManager {
     }
   }
 
-  translateNode(node: Node, position: Position): void {
+  translateNode(node: OBJ.Node, position: Position): void {
     node.x = position.x;
     node.y = position.y;
     node.updateTransform();

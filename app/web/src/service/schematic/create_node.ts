@@ -1,6 +1,5 @@
 import Bottle from "bottlejs";
 import { ApiResponse, SDF } from "@/api/sdf";
-import { Schema, SchemaKind } from "@/api/sdf/dal/schema";
 import { combineLatest, from, Observable, take, tap } from "rxjs";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import { visibility$ } from "@/observable/visibility";
@@ -13,6 +12,10 @@ import _ from "lodash";
 // Note: eventually, this needs to include the name and the position. For now, just the ID is good enough.
 export interface CreateNodeArgs {
   schemaId: number;
+  rootNodeId: number;
+  x: string;
+  y: string;
+  systemId?: number;
 }
 
 export interface CreateNodeRequest extends CreateNodeArgs, Visibility {

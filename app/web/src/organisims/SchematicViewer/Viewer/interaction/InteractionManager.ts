@@ -13,6 +13,7 @@ import { PanningManager } from "./panning";
 import { ConnectingManager } from "./connecting";
 import { ZoomingManager } from "./zooming";
 import { NodeAddManager } from "./nodeAdd";
+import { EditorContext } from "@/api/sdf/dal/schematic";
 
 // import { PanningInteractionData } from "./interaction/panning";
 
@@ -69,6 +70,7 @@ export class InteractionManager {
     dataManager: SchematicDataManager,
     stateService: Interpreter<any>,
     renderer: Renderer,
+    editorContext: EditorContext | null,
   ) {
     this.stateService = stateService;
     this.sceneManager = sceneManager;
@@ -108,6 +110,7 @@ export class InteractionManager {
       sceneManager,
       dataManager,
       renderer,
+      editorContext,
     );
   }
 

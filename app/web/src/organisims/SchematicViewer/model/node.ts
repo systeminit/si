@@ -1,4 +1,4 @@
-import { Color, SchematicObject, Position } from "./common";
+import { Color, SchematicObject } from "./common";
 import { Socket } from "./socket";
 import { NodeTemplate } from "@/api/sdf/dal/node";
 
@@ -32,18 +32,14 @@ export interface NodeClassification {
 }
 
 /**  Node positions for a given context */
-interface NodePositionContext {
+interface NodePosition {
   id: string;
+  x: number | string;
+  y: number | string;
   schematicKind?: SchematicLevel;
   rootNodeId?: string;
   applicationId?: string;
   systemId?: string;
-  position: Position;
-}
-
-/**  Node position for contextes */
-interface NodePosition {
-  ctx: NodePositionContext[];
 }
 
 export enum QualificationStatus {
@@ -99,7 +95,7 @@ export interface Node extends SchematicObject {
   label: NodeLabel;
   classification: NodeClassification;
   status?: NodeStatus;
-  position: NodePosition;
+  position: NodePosition[]; // TODO: refactor schematic & schematicResponses
   input: Socket[];
   output: Socket[];
   connections?: NodeConnection[];
@@ -140,6 +136,11 @@ export function fakeNodeFromTemplate(template: NodeTemplate): Node {
     },
   };
   return node;
+}
+
+export function generateNodeName(): string {
+  const name = "si-";
+  return name;
 }
 
 export function generateNode(
