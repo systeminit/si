@@ -1,6 +1,5 @@
 import Bottle from "bottlejs";
 import { ApiResponse, SDF } from "@/api/sdf";
-import { Schema, SchemaKind } from "@/api/sdf/dal/schema";
 import { combineLatest, from, Observable, take, tap } from "rxjs";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import { visibility$ } from "@/observable/visibility";
@@ -16,6 +15,7 @@ export interface CreateNodeArgs {
   rootNodeId: number;
   x: string;
   y: string;
+  systemId?: number;
 }
 
 export interface CreateNodeRequest extends CreateNodeArgs, Visibility {

@@ -33,9 +33,9 @@
 </template>
 
 <script setup lang="ts">
-import { MenuFilter, MenuItem } from "@/api/sdf/dal/schematic";
+import { MenuFilter } from "@/api/sdf/dal/schematic";
 import NodeAddMenuCategory from "./NodeAddMenu/NodeAddMenuCategory.vue";
-import { computed, onBeforeUnmount, PropType, ref } from "vue";
+import { onBeforeUnmount, PropType, ref } from "vue";
 import { refFrom } from "vuse-rx";
 import _ from "lodash";
 import { SchematicService } from "@/service/schematic";

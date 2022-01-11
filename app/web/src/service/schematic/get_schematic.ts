@@ -48,7 +48,9 @@ export function getSchematic(
       }
       const bottle = Bottle.pop("default");
       const sdf: SDF = bottle.container.SDF;
-      return sdf.get<ApiResponse<GetSchematicResponse>>(
+
+      // TODO parse response to convert node position from string to number.
+      const schematicResponse = sdf.get<ApiResponse<GetSchematicResponse>>(
         "schematic/get_schematic",
         {
           ...args,
@@ -58,6 +60,8 @@ export function getSchematic(
           workspaceId: workspace.id,
         },
       );
+
+      return schematicResponse;
     }),
     shareReplay({ bufferSize: 1, refCount: true }),
   );

@@ -7,9 +7,10 @@ use thiserror::Error;
 use crate::schema::variant::SchemaVariantError;
 use crate::socket::Socket;
 use crate::{
-    impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
-    Component, ComponentId, HistoryActor, HistoryEventError, NodePosition, Schema, SchemaId,
-    SchemaVariant, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
+    generate_name, impl_standard_model, pk, standard_model, standard_model_accessor,
+    standard_model_belongs_to, Component, ComponentId, HistoryActor, HistoryEventError,
+    NodePosition, Schema, SchemaId, SchemaVariant, StandardModel, StandardModelError, Tenancy,
+    Timestamp, Visibility,
 };
 
 #[derive(Error, Debug)]
@@ -175,7 +176,8 @@ impl NodeTemplate {
             kind: NodeKind::Component,
             label: NodeLabel {
                 title: node_name.clone(),
-                name: node_name.clone(),
+                // name: node_name.clone(),
+                name: generate_name(None),
             },
             // eventually, this needs to come from the schema itself
             classification: NodeClassification {

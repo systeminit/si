@@ -29,7 +29,7 @@ import { refFrom } from "vuse-rx";
 import { ViewerStateMachine, ViewerEventKind } from "./state";
 import { useMachine } from "@xstate/vue";
 
-import {EditorContext} from "@/api/sdf/dal/schematic";
+import { EditorContext } from "@/api/sdf/dal/schematic";
 import { SceneManager } from "./Viewer/scene";
 import { InteractionManager } from "./Viewer/interaction";
 import { Renderer } from "./Viewer/renderer";
@@ -101,9 +101,9 @@ export default defineComponent({
       default: undefined,
     },
     editorContext: {
-      type: Object as PropType<refFrom<EditorContext | null>>,
+      type: Object as PropType<EditorContext | null>,
       required: true,
-    }
+    },
   },
   setup(props) {
     const { state, send, service } = useMachine(props.viewerState.machine);
@@ -207,7 +207,7 @@ export default defineComponent({
       dataManager,
       this.service,
       this.renderer as Renderer,
-      this.editorContext
+      this.editorContext,
     );
     this.interactionManager = interactionManager;
 

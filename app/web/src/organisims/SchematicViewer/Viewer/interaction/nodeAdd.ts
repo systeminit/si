@@ -6,8 +6,7 @@ import { Renderer } from "../renderer";
 import * as OBJ from "../obj";
 import * as MODEL from "../../model";
 import { NodeCreate } from "../../data/event";
-import {EditorContext} from "@/api/sdf/dal/schematic";
-import { refFrom } from "vuse-rx";
+import { EditorContext } from "@/api/sdf/dal/schematic";
 
 import { selection$ } from "../../state";
 
@@ -29,13 +28,13 @@ export class NodeAddManager {
   // Note: this probably needs to not be data on this object, and instead be part of the
   // node template/node somewhere. :)
   nodeAddSchemaId?: number;
-  editorContext: refFrom<EditorContext | null>;
+  editorContext: EditorContext | null;
 
   constructor(
     sceneManager: SceneManager,
     dataManager: SchematicDataManager,
     renderer: Renderer,
-    editorContext: refFrom<EditorContext | null>,
+    editorContext: EditorContext | null,
   ) {
     this.sceneManager = sceneManager;
     this.dataManager = dataManager;
@@ -92,8 +91,8 @@ export class NodeAddManager {
       this.dataManager.nodeCreate$.next(event);
 
       // TODO waiting for backend to implement "node swap". A schematic reload shuld be fine.
-      this.sceneManager.removeNode(this.node);
-      this.sceneManager.renderer.renderStage();
+      // this.sceneManager.removeNode(this.node);
+      // this.sceneManager.renderer.renderStage();
 
       // cleanup
       this.node = undefined;

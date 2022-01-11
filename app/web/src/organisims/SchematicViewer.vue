@@ -11,7 +11,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, defineExpose, PropType } from "vue";
+import { PropType } from "vue";
 import _ from "lodash";
 import * as Rx from "rxjs";
 
@@ -21,8 +21,6 @@ import { ViewerStateMachine } from "./SchematicViewer/state";
 
 import { SchematicService } from "@/service/schematic";
 import { GlobalErrorService } from "@/service/global_error";
-import { ApiResponse } from "@/api/sdf";
-import { GetSchematicResponse } from "@/service/schematic/get_schematic";
 // import { SetSchematicResponse } from "@/service/schematic/set_schematic";
 
 // import { schematicData } from "./SchematicViewer/model";
@@ -31,7 +29,7 @@ import { Schematic } from "./SchematicViewer/model";
 import { refFrom } from "vuse-rx";
 import { applicationNodeId$ } from "@/observable/application";
 import { system$ } from "@/observable/system";
-import { System } from "@/api/sdf/dal/system";
+import { EditorContext } from "@/api/sdf/dal/schematic";
 import { combineLatest, from } from "rxjs";
 import { switchMap } from "rxjs/operators";
 import { ViewerEvent } from "./SchematicViewer/event";
@@ -70,10 +68,6 @@ const viewerState = new ViewerStateMachine();
 const schematicData = refFrom<Schematic | null>(
   combineLatest([system$, applicationNodeId$]).pipe(
     switchMap(([system, applicationNodeId]) => {
-      console.log("we were triggered and we are switch mapped", {
-        system,
-        applicationNodeId,
-      });
       if (system && applicationNodeId) {
         return SchematicService.getSchematic({
           systemId: system.id,
@@ -102,7 +96,7 @@ const editorContext = refFrom<EditorContext | null>(
   combineLatest([system$, applicationNodeId$]).pipe(
     switchMap(([system, applicationNodeId]) => {
       if (applicationNodeId) {
-        return from([{systemId: system?.id, applicationNodeId}]);
+        return from([{ systemId: system?.id, applicationNodeId }]);
       } else {
         return from([null]);
       }

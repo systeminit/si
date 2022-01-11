@@ -13,8 +13,7 @@ import { PanningManager } from "./panning";
 import { ConnectingManager } from "./connecting";
 import { ZoomingManager } from "./zooming";
 import { NodeAddManager } from "./nodeAdd";
-import {EditorContext} from "@/api/sdf/dal/schematic";
-import { refFrom } from "vuse-rx";
+import { EditorContext } from "@/api/sdf/dal/schematic";
 
 // import { PanningInteractionData } from "./interaction/panning";
 
@@ -71,7 +70,7 @@ export class InteractionManager {
     dataManager: SchematicDataManager,
     stateService: Interpreter<any>,
     renderer: Renderer,
-    editorContext: refFrom<EditorContext | null>,
+    editorContext: EditorContext | null,
   ) {
     this.stateService = stateService;
     this.sceneManager = sceneManager;

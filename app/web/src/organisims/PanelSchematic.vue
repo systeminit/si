@@ -181,6 +181,7 @@ const addNode = async (schemaId: number, _event: MouseEvent) => {
 
   const n = MODEL.fakeNodeFromTemplate(response);
   const event = new NodeAddEvent({ node: n, schemaId: schemaId });
+
   viewerEventObservable.viewerEvent$.next(event);
 };
 
