@@ -5,7 +5,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::schema::variant::SchemaVariantError;
-use crate::socket::Socket;
+use crate::socket::{Socket, SocketEdgeKind};
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
     Component, ComponentId, HistoryActor, HistoryEventError, NodePosition, Schema, SchemaId,
@@ -168,7 +168,16 @@ impl NodeTemplate {
         let schema_variant = SchemaVariant::get_by_id(txn, tenancy, visibility, schema_variant_id)
             .await?
             .ok_or(NodeError::SchemaMissingDefaultVariant)?;
+
         let sockets = schema_variant.sockets(txn, visibility).await?;
+        let mut outputs = vec![];
+        let mut inputs = vec![];
+        for socket in sockets.into_iter() {
+            match socket.edge_kind() {
+                SocketEdgeKind::Output => outputs.push(socket),
+                _ => inputs.push(socket),
+            }
+        }
 
         let node_name = schema.name().to_string();
         Ok(NodeTemplate {
@@ -182,8 +191,8 @@ impl NodeTemplate {
                 component: NodeComponentType::Application,
                 kind: node_name,
             },
-            input: sockets.clone(),
-            output: sockets,
+            input: inputs,
+            output: outputs,
             display: NodeDisplay {
                 color: "0x32b832".to_string(),
             },
