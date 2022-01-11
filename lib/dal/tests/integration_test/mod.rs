@@ -12,6 +12,7 @@ mod node;
 mod node_menu;
 mod node_position;
 mod organization;
+mod prop;
 mod qualification_check;
 mod schema;
 mod socket;

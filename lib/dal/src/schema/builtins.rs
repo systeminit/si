@@ -1,8 +1,8 @@
 use crate::schema::{SchemaResult, SchemaVariant, UiMenu};
 use crate::socket::{Socket, SocketArity, SocketEdgeKind};
 use crate::{
-    HistoryActor, Schema, SchemaError, SchemaKind, SchematicKind, StandardModel, Tenancy,
-    Visibility,
+    HistoryActor, Prop, PropKind, Schema, SchemaError, SchemaKind, SchematicKind, StandardModel,
+    Tenancy, Visibility,
 };
 use si_data::{NatsTxn, PgTxn};
 
@@ -298,6 +298,20 @@ async fn docker_image(
         .set_default_schema_variant_id(txn, nats, visibility, history_actor, Some(*variant.id()))
         .await?;
 
+    let image_prop = Prop::new(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        "image",
+        PropKind::String,
+    )
+    .await?;
+    image_prop
+        .add_schema_variant(txn, nats, visibility, history_actor, variant.id())
+        .await?;
+
     // Note: This is not right; each schema needs its own socket types.
     //       Also, they should clearly inherit from the core schema? Something
     //       for later.
@@ -330,7 +344,6 @@ async fn docker_image(
     variant
         .add_socket(txn, nats, visibility, history_actor, output_socket.id())
         .await?;
-
     Ok(())
 }
 

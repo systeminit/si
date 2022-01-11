@@ -27,7 +27,7 @@ async fn list_components_names_only() {
 
     let component_name1 = "poop";
     let component_name2 = "ilikemybutt";
-    for name in vec![component_name1, component_name2] {
+    for name in &[component_name1, component_name2] {
         let _component = Component::new(&txn, &nats, &tenancy, &visibility, &history_actor, &name)
             .await
             .expect("cannot create new component");

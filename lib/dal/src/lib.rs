@@ -19,6 +19,7 @@ pub mod node;
 pub mod node_menu;
 pub mod node_position;
 pub mod organization;
+pub mod prop;
 pub mod qualification_check;
 pub mod schema;
 pub mod schematic;
@@ -58,6 +59,7 @@ pub use node_position::{
 pub use organization::{
     Organization, OrganizationError, OrganizationId, OrganizationPk, OrganizationResult,
 };
+pub use prop::{Prop, PropError, PropId, PropKind, PropPk, PropResult};
 pub use qualification_check::{
     QualificationCheck, QualificationCheckError, QualificationCheckId, QualificationCheckPk,
 };
