@@ -22,18 +22,18 @@
           </div>
         </div>
       </div>
-      <!--
       <div class="flex flex-wrap">
         <ValidationErrors :errors="errors" class="p-2" />
       </div>
-      -->
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue';
 import { refFrom } from "vuse-rx";
 import { ChangeSetService } from "@/service/change_set";
+import ValidationErrors from "@/organisims/EditForm/ValidationErrors.vue";
 
 defineProps({
   show: {
@@ -42,6 +42,7 @@ defineProps({
   },
 });
 const editMode = refFrom(ChangeSetService.currentEditMode());
+const errors = ref([{ message: "Aieeee!", link: "https://placekitten.com" }]);
 </script>
 
 <style scoped></style>
