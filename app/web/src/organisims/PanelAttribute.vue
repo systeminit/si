@@ -20,13 +20,14 @@
         />
       </div>
 
-      <LockButton
-        v-model="isPinned"
-      />
+      <LockButton v-model="isPinned" />
     </template>
 
     <template #content>
-      <AttributeViewer :componentId="selectedComponentId" v-if="selectedComponentId"/>
+      <AttributeViewer
+        :componentId="selectedComponentId"
+        v-if="selectedComponentId"
+      />
     </template>
   </Panel>
 </template>
@@ -70,7 +71,6 @@ const componentNamesOnlyList = refFrom<LabelList<number>>(
     }),
   ),
 );
-
 </script>
 
 <style scoped>

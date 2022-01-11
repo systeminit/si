@@ -20,7 +20,9 @@ export interface SetNodePositionArgs {
   y: string;
 }
 
-export interface SetNodePositionRequest extends SetNodePositionArgs, Visibility {
+export interface SetNodePositionRequest
+  extends SetNodePositionArgs,
+    Visibility {
   workspaceId: number;
 }
 
@@ -54,7 +56,10 @@ export function setNodePosition(
         workspaceId: workspace.id,
       };
       return sdf
-        .post<ApiResponse<SetNodePositionResponse>>("schematic/set_node_position", request)
+        .post<ApiResponse<SetNodePositionResponse>>(
+          "schematic/set_node_position",
+          request,
+        )
         .pipe(
           tap((response) => {
             if (!response.error) {

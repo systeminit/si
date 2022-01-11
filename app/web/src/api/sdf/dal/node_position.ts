@@ -8,8 +8,8 @@ export interface NodePosition {
   rootNodeId: number;
   systemId?: number;
   x: string;
-  y: string,
-  tenancy: Tenancy,
-  timestamp: Date,
-  visibility: Visibility,
+  y: string;
+  tenancy: Tenancy;
+  timestamp: Date;
+  visibility: Visibility;
 }

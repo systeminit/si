@@ -19,8 +19,8 @@ export interface UpdateFromEditFieldArgs {
 export interface UpdateFromEditFieldRequest
   extends UpdateFromEditFieldArgs,
     Visibility {
-      workspaceId?: number,
-  }
+  workspaceId?: number;
+}
 
 export interface UpdateFromEditFieldResponse {
   success: boolean;
@@ -31,10 +31,7 @@ export function updateFromEditField(
 ): Observable<ApiResponse<UpdateFromEditFieldResponse>> {
   const bottle = Bottle.pop("default");
   const sdf: SDF = bottle.container.SDF;
-  return combineLatest([
-    visibility$,
-    workspace$,
-  ]).pipe(
+  return combineLatest([visibility$, workspace$]).pipe(
     take(1),
     switchMap(([visibility, workspace]) => {
       let request: UpdateFromEditFieldRequest;
@@ -55,7 +52,7 @@ export function updateFromEditField(
           ...visibility,
           workspaceId: workspace.id,
         };
-      } else { 
+      } else {
         request = {
           ...args,
           ...visibility,

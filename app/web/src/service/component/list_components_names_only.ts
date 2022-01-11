@@ -22,7 +22,9 @@ export interface ListComponentNamesOnlyResponse {
   list: LabelList<number>;
 }
 
-const componentNamesOnlyList$ = combineLatest([standardVisibilityTriggers$]).pipe(
+const componentNamesOnlyList$ = combineLatest([
+  standardVisibilityTriggers$,
+]).pipe(
   combineLatestWith(workspace$),
   switchMap(([[[visibility]], workspace]) => {
     const bottle = Bottle.pop("default");

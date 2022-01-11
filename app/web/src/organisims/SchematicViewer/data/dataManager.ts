@@ -51,7 +51,7 @@ export class SchematicDataManager {
           if (response.error) {
             GlobalErrorService.set(response);
           }
-	  // TODO: fetch schematic when position is set
+          // TODO: fetch schematic when position is set
 
           //const d = schematicDataAfter;
           // this.schematicData$.next(d);

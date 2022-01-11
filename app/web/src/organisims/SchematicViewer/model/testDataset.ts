@@ -38,7 +38,7 @@ const nodeA: Node = {
     {
       id: generateUniqueId(),
       x: 300,
-      y: 100
+      y: 100,
     },
   ],
   input: [
@@ -106,7 +106,7 @@ const nodeB: Node = {
     {
       id: "B:1.S:1",
       x: 100,
-      y: 100
+      y: 100,
     },
   ],
   input: [],

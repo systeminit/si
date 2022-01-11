@@ -16,23 +16,23 @@ import * as Rx from "rxjs";
 
 import Viewer from "./SchematicViewer/Viewer.vue";
 
-import {ViewerStateMachine} from "./SchematicViewer/state";
+import { ViewerStateMachine } from "./SchematicViewer/state";
 
-import {SchematicService} from "@/service/schematic";
-import {GlobalErrorService} from "@/service/global_error";
-import {ApiResponse} from "@/api/sdf";
-import {GetSchematicResponse} from "@/service/schematic/get_schematic";
+import { SchematicService } from "@/service/schematic";
+import { GlobalErrorService } from "@/service/global_error";
+import { ApiResponse } from "@/api/sdf";
+import { GetSchematicResponse } from "@/service/schematic/get_schematic";
 // import { SetSchematicResponse } from "@/service/schematic/set_schematic";
 
 // import { schematicData } from "./SchematicViewer/model";
 // import { schematicData$ } from "./SchematicViewer/data";
-import {Schematic} from "./SchematicViewer/model";
-import {refFrom} from "vuse-rx";
-import {applicationNodeId$} from "@/observable/application";
-import {system$} from "@/observable/system";
-import {System} from "@/api/sdf/dal/system";
-import {combineLatest, from} from "rxjs";
-import {switchMap} from "rxjs/operators";
+import { Schematic } from "./SchematicViewer/model";
+import { refFrom } from "vuse-rx";
+import { applicationNodeId$ } from "@/observable/application";
+import { system$ } from "@/observable/system";
+import { System } from "@/api/sdf/dal/system";
+import { combineLatest, from } from "rxjs";
+import { switchMap } from "rxjs/operators";
 import { ViewerEvent } from "./SchematicViewer/event";
 // export interface ViewerData {
 //   component: {
@@ -69,7 +69,10 @@ const viewerState = new ViewerStateMachine();
 const schematicData = refFrom<Schematic | null>(
   combineLatest([system$, applicationNodeId$]).pipe(
     switchMap(([system, applicationNodeId]) => {
-      console.log("we were triggered and we are switch mapped", { system, applicationNodeId });
+      console.log("we were triggered and we are switch mapped", {
+        system,
+        applicationNodeId,
+      });
       if (system && applicationNodeId) {
         return SchematicService.getSchematic({
           systemId: system.id,
