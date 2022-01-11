@@ -5,10 +5,12 @@
 <script setup lang="ts">
 import { PropType, ref } from "vue";
 import { EditFieldObjectKind, EditFields } from "@/api/sdf/dal/edit_field";
-import { untilUnmounted } from "vuse-rx";
+import { refFrom, fromRef } from "vuse-rx";
 import { EditFieldService } from "@/service/edit_field";
 import { GlobalErrorService } from "@/service/global_error";
 import Widgets from "@/organisims/EditForm/Widgets.vue";
+import { from } from "rxjs";
+import { switchMap } from "rxjs/operators";
 
 const props = defineProps({
   objectKind: {
@@ -23,19 +25,24 @@ const props = defineProps({
 
 type TreeOpenState = Record<string, boolean>;
 const treeOpenState = ref<TreeOpenState>({});
+const props$ = fromRef(props);
 
-const editFields = ref<EditFields>([]);
-untilUnmounted(
-  EditFieldService.getEditFields({
-    id: props.objectId,
-    objectKind: props.objectKind,
-  }),
-).subscribe((response) => {
-  if (response.error) {
-    GlobalErrorService.set(response);
-    editFields.value = [];
-  } else {
-    editFields.value = response.fields;
-  }
-});
+const editFields = refFrom<EditFields>(
+  props$.pipe(
+    switchMap((props) => {
+      return EditFieldService.getEditFields({
+        id: props.objectId,
+        objectKind: props.objectKind,
+      });
+    }),
+    switchMap((response) => {
+      if (response.error) {
+        GlobalErrorService.set(response);
+        return from([[]]);
+      } else {
+        return from([response.fields]);
+      }
+    }),
+  ),
+);
 </script>
