@@ -274,7 +274,7 @@ async fn docker_image(
     visibility: &Visibility,
     history_actor: &HistoryActor,
 ) -> SchemaResult<()> {
-    let name = "docker_imagee".to_string();
+    let name = "docker_image".to_string();
     let mut schema = match create_schema(
         txn,
         nats,
