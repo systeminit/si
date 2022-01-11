@@ -1,7 +1,7 @@
 MAKEPATH := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 REPOPATH := $(shell dirname $(MAKEPATH))
 
-.DEFAULT_GOAL = ci-rust-lint
+.DEFAULT_GOAL = ci-lint
 
 # ┌────────────────────────────────────────────────────────┐
 # │ Makefile Legend                                        │
@@ -11,10 +11,17 @@ REPOPATH := $(shell dirname $(MAKEPATH))
 # │ *       │ other targets intended for local development │
 # └─────────┴──────────────────────────────────────────────┘
 
+ci-lint: ci-rust-lint ci-web-lint
+.PHONY: ci-lint
+
 ci-rust-lint:
 	cd $(REPOPATH); cargo fmt --all -- --check
 	cd $(REPOPATH); cargo clippy -- -D warnings
 .PHONY: ci-rust-lint
+
+ci-web-lint:
+	cd $(REPOPATH)/app/web; npm run prettier-check
+.PHONY: ci-web-lint
 
 ci-crates: teardown setup-crates
 	cd $(REPOPATH); cargo test
