@@ -9,10 +9,14 @@ use si_data::{NatsClient, NatsConfig, NatsTxn, PgPool, PgPoolConfig, PgTxn};
 use telemetry::{ClientError, TelemetryClient, Verbosity};
 
 use crate::{
-    billing_account::BillingAccountSignup, jwt_key::JwtSecretKey, node::NodeKind, schema, socket,
-    BillingAccount, ChangeSet, Component, EditSession, Group, HistoryActor, KeyPair, Node,
-    Organization, Prop, PropKind, QualificationCheck, Schema, SchemaId, SchemaKind, StandardModel,
-    System, Tenancy, User, Visibility, Workspace, NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK,
+    billing_account::BillingAccountSignup,
+    func::{binding::FuncBinding, FuncId},
+    jwt_key::JwtSecretKey,
+    node::NodeKind,
+    schema, socket, BillingAccount, ChangeSet, Component, EditSession, Func, FuncBackendKind,
+    FuncBackendResponseType, Group, HistoryActor, KeyPair, Node, Organization, Prop, PropKind,
+    QualificationCheck, Schema, SchemaId, SchemaKind, StandardModel, System, Tenancy, User,
+    Visibility, Workspace, NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK,
 };
 
 #[derive(Debug)]
@@ -519,4 +523,51 @@ pub async fn create_prop(
     )
     .await
     .expect("cannot create prop")
+}
+
+pub async fn create_func(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    tenancy: &Tenancy,
+    visibility: &Visibility,
+    history_actor: &HistoryActor,
+) -> Func {
+    let name = generate_fake_name();
+    Func::new(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        name,
+        FuncBackendKind::String,
+        FuncBackendResponseType::String,
+    )
+    .await
+    .expect("cannot create func")
+}
+
+#[allow(clippy::too_many_arguments)]
+pub async fn create_func_binding(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    tenancy: &Tenancy,
+    visibility: &Visibility,
+    history_actor: &HistoryActor,
+    args: serde_json::Value,
+    func_id: FuncId,
+    backend_kind: FuncBackendKind,
+) -> FuncBinding {
+    FuncBinding::new(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        args,
+        func_id,
+        backend_kind,
+    )
+    .await
+    .expect("cannot create func")
 }
