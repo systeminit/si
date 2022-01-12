@@ -101,6 +101,9 @@ impl NodePosition {
         root_node_id: NodeId,
         node_id: NodeId,
     ) -> NodePositionResult<Option<Self>> {
+        // Note: This query is broken if system_id is None, we spent quite some
+        // time trying to fix, but since right now the system_id always is
+        // set we decided to leave it as future work - Paulo & Fletcher
         let row = txn
             .query_opt(
                 FIND_NODE_POSITION_BY_NODE_ID,

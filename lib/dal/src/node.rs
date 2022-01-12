@@ -250,4 +250,12 @@ impl NodeView {
             }],
         }
     }
+
+    pub fn id(&self) -> &NodeId {
+        &self.id
+    }
+
+    pub fn positions(&self) -> &[NodePosition] {
+        &self.position
+    }
 }
