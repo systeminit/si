@@ -49,8 +49,8 @@ CREATE TABLE func_binding_return_values
     visibility_deleted          bool,
     created_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     updated_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
-    unprocessed_value           jsonb                    NOT NULL,
-    value                       jsonb                    NOT NULL
+    unprocessed_value           jsonb,
+    value                       jsonb
 );
 SELECT standard_model_table_constraints_v1('func_binding_return_values');
 SELECT belongs_to_table_create_v1('func_binding_return_value_belongs_to_func', 'func_binding_return_values', 'funcs');

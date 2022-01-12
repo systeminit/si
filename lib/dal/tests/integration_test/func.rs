@@ -81,8 +81,8 @@ async fn func_binding_return_value_new() {
         &tenancy,
         &visibility,
         &history_actor,
-        serde_json::json!("funky"),
-        serde_json::json!("funky"),
+        Some(serde_json::json!("funky")),
+        Some(serde_json::json!("funky")),
         *func.id(),
         *func_binding.id(),
     )
@@ -116,9 +116,9 @@ async fn func_binding_execute() {
         .execute(&txn, &nats)
         .await
         .expect("failed to execute func binding");
-    assert_eq!(return_value.value(), &serde_json::json!["funky"]);
+    assert_eq!(return_value.value(), Some(&serde_json::json!["funky"]));
     assert_eq!(
         return_value.unprocessed_value(),
-        &serde_json::json!["funky"]
+        Some(&serde_json::json!["funky"])
     );
 }
