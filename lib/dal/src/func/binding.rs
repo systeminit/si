@@ -140,7 +140,7 @@ impl FuncBinding {
                 if !return_value.is_string() {
                     return Err(FuncBindingError::IncorrectReturnValueType("String"));
                 }
-                return_value
+                Some(return_value)
             }
         };
 

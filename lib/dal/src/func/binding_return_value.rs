@@ -41,9 +41,9 @@ pub struct FuncBindingReturnValue {
     // The unprocessed return value is the "real" result, unprocessed for any other behavior
     // This is useful when a function binding result is used as a generator for other
     // results - it lets us see where things came from.
-    unprocessed_value: serde_json::Value,
+    unprocessed_value: Option<serde_json::Value>,
     // The processed return value.
-    value: serde_json::Value,
+    value: Option<serde_json::Value>,
     #[serde(flatten)]
     tenancy: Tenancy,
     #[serde(flatten)]
@@ -75,8 +75,8 @@ impl FuncBindingReturnValue {
         tenancy: &Tenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
-        unprocessed_value: serde_json::Value,
-        value: serde_json::Value,
+        unprocessed_value: Option<serde_json::Value>,
+        value: Option<serde_json::Value>,
         func_id: FuncId,
         func_binding_id: FuncBindingId,
     ) -> FuncBindingReturnValueResult<Self> {
@@ -107,10 +107,10 @@ impl FuncBindingReturnValue {
 
     standard_model_accessor!(
         unprocessed_value,
-        Json<JsonValue>,
+        OptionJson<JsonValue>,
         FuncBindingReturnValueResult
     );
-    standard_model_accessor!(value, Json<JsonValue>, FuncBindingReturnValueResult);
+    standard_model_accessor!(value, OptionJson<JsonValue>, FuncBindingReturnValueResult);
 
     standard_model_belongs_to!(
         lookup_fn: func,
