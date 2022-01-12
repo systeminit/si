@@ -190,6 +190,7 @@ export default defineComponent({
 
     const dataManager = new SchematicDataManager();
     this.dataManager = dataManager;
+    this.dataManager.editorContext$.next(this.editorContext);
 
     dataManager.schematicData$.subscribe({
       next: (d) => this.loadSchematicData(d),

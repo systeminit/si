@@ -3,11 +3,13 @@ import _ from "lodash";
 
 import { NodeUpdate, ConnectionCreate, Schematic } from "../model";
 
+import { SchematicKind } from "@/api/sdf/dal/schematic";
 import { SchematicService } from "@/service/schematic";
 import { GlobalErrorService } from "@/service/global_error";
 import { ApiResponse } from "@/api/sdf";
 import { SetNodeResponse } from "@/service/schematic/set_node";
 import { NodeCreate } from "./event";
+import { EditorContext } from "@/api/sdf/dal/schematic";
 
 // import { schematicData$ as schematicDataGlobal$ } from "./observable";
 
@@ -17,6 +19,7 @@ export class SchematicDataManager {
   nodeUpdate$: Rx.ReplaySubject<NodeUpdate | null>;
   connectionCreate$: Rx.ReplaySubject<ConnectionCreate | null>;
   nodeCreate$: Rx.ReplaySubject<NodeCreate | null>;
+  editorContext: Rx.ReplaySubject<EditorContext | null>;
 
   constructor() {
     this.id = _.uniqueId();
@@ -35,6 +38,9 @@ export class SchematicDataManager {
     this.connectionCreate$ = new Rx.ReplaySubject<ConnectionCreate | null>(1);
     this.connectionCreate$.next(null);
 
+    this.editorContext$ = new Rx.ReplaySubject<EditorContext | null>(1);
+    this.editorContext$.next(null);
+
     this.initialize();
   }
 
@@ -44,20 +50,23 @@ export class SchematicDataManager {
     this.nodeCreate$.subscribe({ next: (d) => this.createNode(d) });
   }
 
-  updateNodePosition(nodeUpdate: NodeUpdate | null): void {
-    if (nodeUpdate) {
-      SchematicService.setNode({ name: "canoe" }).subscribe(
-        (response: ApiResponse<SetNodeResponse>) => {
-          if (response.error) {
-            GlobalErrorService.set(response);
-          }
-          // TODO: fetch schematic when position is set
-
-          //const d = schematicDataAfter;
-          // this.schematicData$.next(d);
-          //schematicDataGlobal$.next(nodeUpdate);
-        },
-      );
+  async updateNodePosition(nodeUpdate: NodeUpdate | null): void {
+    const editorContext = await Rx.firstValueFrom(this.editorContext$);
+    if (nodeUpdate && editorContext) {
+      SchematicService.setNodePosition({
+        schematicKind: SchematicKind.Component,
+        x: `${nodeUpdate.position.x}`,
+        y: `${nodeUpdate.position.y}`,
+        nodeId: nodeUpdate.nodeId,
+        rootNodeId: editorContext.applicationNodeId,
+        systemId: editorContext.systemId,
+      }).subscribe((response: ApiResponse<SetNodePositionResponse>) => {
+        if (response.error) {
+          GlobalErrorService.set(response);
+        }
+        // this.schematicData$.next(d);
+        //schematicDataGlobal$.next(nodeUpdate);
+      });
     }
   }
 
