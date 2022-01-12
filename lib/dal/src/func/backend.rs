@@ -36,7 +36,7 @@ pub enum FuncBackendKind {
     //Array,
     //EmptyObject,
     //EmptyArray,
-    //Unset,
+    Unset,
     //Json,
     //Js,
 }
@@ -61,7 +61,7 @@ pub enum FuncBackendResponseType {
     //Boolean,
     //Object,
     //Array,
-    //Unset,
+    Unset,
     //Json,
 }
 
