@@ -1,7 +1,7 @@
 use crate::test_setup;
 use dal::{
-    Component, HistoryActor, NodePosition, Schema, Schematic, SchematicKind, StandardModel,
-    SystemId, Tenancy, Visibility,
+    Component, Connection, HistoryActor, NodePosition, Schema, Schematic, SchematicKind,
+    StandardModel, SystemId, Tenancy, Visibility,
 };
 
 #[tokio::test]
@@ -81,4 +81,85 @@ async fn get_schematic() {
     assert_eq!(schematic.nodes()[1].id(), node.id());
     assert_eq!(schematic.nodes()[1].positions()[0].x(), node_position.x());
     assert_eq!(schematic.nodes()[1].positions()[0].y(), node_position.y());
+}
+
+#[tokio::test]
+async fn create_connection() {
+    test_setup!(ctx, _secret_key, _pg, _conn, txn, _nats_conn, nats);
+    let tenancy = Tenancy::new_universal();
+    let visibility = Visibility::new_head(false);
+    let history_actor = HistoryActor::SystemInit;
+
+    let service_schema =
+        Schema::find_by_attr(&txn, &tenancy, &visibility, "name", &"service".to_string())
+            .await
+            .expect("cannot find service schema")
+            .pop()
+            .expect("no service schema found");
+
+    let service_schema_variant = service_schema
+        .default_variant(&txn, &tenancy, &visibility)
+        .await
+        .expect("cannot get default schema variant");
+
+    let sockets = service_schema_variant
+        .sockets(&txn, &visibility)
+        .await
+        .expect("cannot fetch sockets");
+
+    let input_socket = sockets
+        .iter()
+        .find(|s| s.name() == "input")
+        .expect("cannot find input socket");
+
+    let output_socket = sockets
+        .iter()
+        .find(|s| s.name() == "output")
+        .expect("cannot find output socket");
+
+    let (_head_component, head_node) = Component::new_for_schema_with_node(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        "head",
+        service_schema.id(),
+    )
+    .await
+    .expect("cannot create component and node for service");
+
+    let (_tail_component, tail_node) = Component::new_for_schema_with_node(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        "tail",
+        service_schema.id(),
+    )
+    .await
+    .expect("cannot create component and node for service");
+
+    let connection = Connection::new(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        &head_node.id(),
+        output_socket.id(),
+        &tail_node.id(),
+        input_socket.id(),
+    )
+    .await
+    .expect("could not create connection");
+
+    let (source_node_id, source_socket_id) = connection.source();
+    let (destination_node_id, destination_socket_id) = connection.destination();
+
+    assert_eq!(source_node_id, *head_node.id());
+    assert_eq!(source_socket_id, output_socket.id().to_owned());
+    assert_eq!(destination_node_id, *tail_node.id());
+    assert_eq!(destination_socket_id, input_socket.id().to_owned());
 }

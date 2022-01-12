@@ -7,9 +7,10 @@ import { SchematicKind } from "@/api/sdf/dal/schematic";
 import { SchematicService } from "@/service/schematic";
 import { GlobalErrorService } from "@/service/global_error";
 import { ApiResponse } from "@/api/sdf";
-import { SetNodeResponse } from "@/service/schematic/set_node";
 import { NodeCreate } from "./event";
 import { EditorContext } from "@/api/sdf/dal/schematic";
+import { CreateConnectionResponse } from "@/service/schematic/create_connection";
+import { SetNodePositionResponse } from "@/service/schematic/set_node_position";
 
 // import { schematicData$ as schematicDataGlobal$ } from "./observable";
 
@@ -19,7 +20,7 @@ export class SchematicDataManager {
   nodeUpdate$: Rx.ReplaySubject<NodeUpdate | null>;
   connectionCreate$: Rx.ReplaySubject<ConnectionCreate | null>;
   nodeCreate$: Rx.ReplaySubject<NodeCreate | null>;
-  editorContext: Rx.ReplaySubject<EditorContext | null>;
+  editorContext$: Rx.ReplaySubject<EditorContext | null>;
 
   constructor() {
     this.id = _.uniqueId();
@@ -50,7 +51,7 @@ export class SchematicDataManager {
     this.nodeCreate$.subscribe({ next: (d) => this.createNode(d) });
   }
 
-  async updateNodePosition(nodeUpdate: NodeUpdate | null): void {
+  async updateNodePosition(nodeUpdate: NodeUpdate | null): Promise<void> {
     const editorContext = await Rx.firstValueFrom(this.editorContext$);
     if (nodeUpdate && editorContext) {
       SchematicService.setNodePosition({
@@ -72,15 +73,20 @@ export class SchematicDataManager {
 
   createConnection(nodeUpdate: ConnectionCreate | null): void {
     if (nodeUpdate) {
-      SchematicService.createConnection({ name: "canoe" }).subscribe(
-        (response: ApiResponse<SetNodeResponse>) => {
-          if (response.error) {
-            GlobalErrorService.set(response);
-          }
-          // const d = schematicDataAfter;
-          // schematicDataGlobal$.next(d);
-        },
-      );
+      // FIXME(nick): these values are temporary.
+      SchematicService.createConnection({
+        headSocketId: 1,
+        headNodeId: 1,
+        tailSocketId: 2,
+        tailNodeId: 2,
+      }).subscribe((response: ApiResponse<CreateConnectionResponse>) => {
+        if (response.error) {
+          GlobalErrorService.set(response);
+        }
+        // const d = schematicDataAfter;
+        // this.schematicData$.next(d);
+        // schematicDataGlobal$.next(d);
+      });
     }
   }
 

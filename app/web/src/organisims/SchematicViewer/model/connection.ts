@@ -29,13 +29,17 @@ interface Destination {
 
 /**  A connection (from an output to an input) */
 export interface Connection extends SchematicObject {
-  id: string;
+  id: number;
   classification: ConnectionClassification;
   source: Source;
   destination: Destination;
+  // FIXME(nick): the backend is not returning or storing color at this time.
   display?: ConnectionDisplay;
 }
 
 export interface ConnectionCreate {
-  id: string;
+  sourceNodeId: number;
+  sourceSocketId: number;
+  destinationNodeId: number;
+  destinationSocketId: number;
 }

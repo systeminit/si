@@ -31,6 +31,10 @@ pub enum NodeError {
     SchemaMissingDefaultVariant,
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] SchemaVariantError),
+    #[error("component is None")]
+    ComponentIsNone,
+    #[error("could not find node with ID: {0}")]
+    NotFound(NodeId),
 }
 
 pub type NodeResult<T> = Result<T, NodeError>;
