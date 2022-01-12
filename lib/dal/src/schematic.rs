@@ -101,4 +101,8 @@ impl Schematic {
             connections,
         })
     }
+
+    pub fn nodes(&self) -> &[NodeView] {
+        &self.nodes
+    }
 }

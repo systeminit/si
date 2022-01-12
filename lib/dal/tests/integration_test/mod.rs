@@ -16,6 +16,7 @@ mod organization;
 mod prop;
 mod qualification_check;
 mod schema;
+mod schematic;
 mod socket;
 mod standard_model;
 mod system;
