@@ -196,6 +196,7 @@ impl NodeTemplate {
 // This maps to the typescript node, and can go from the database
 // representation of a node, combined with the schema data.
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct NodeView {
     id: NodeId,
     kind: NodeKind,

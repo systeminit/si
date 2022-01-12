@@ -12,6 +12,7 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "camelCase")]
 pub struct SetNodePositionRequest {
     pub workspace_id: WorkspaceId,
+    #[serde(flatten)]
     pub visibility: Visibility,
     pub node_id: NodeId,
     pub schematic_kind: SchematicKind,
