@@ -311,6 +311,7 @@ impl BillingAccount {
             admin_group,
             organization,
             workspace,
+            system,
         })
     }
 
@@ -367,6 +368,7 @@ pub struct BillingAccountSignup {
     pub admin_group: Group,
     pub organization: Organization,
     pub workspace: Workspace,
+    pub system: System,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]

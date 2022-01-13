@@ -3,6 +3,7 @@ use si_data::{NatsClient, NatsError, PgError, PgPool, PgPoolError};
 use telemetry::prelude::*;
 use thiserror::Error;
 
+pub mod attribute_resolver;
 pub mod billing_account;
 pub mod capability;
 pub mod change_set;
@@ -37,6 +38,7 @@ pub mod visibility;
 pub mod workspace;
 pub mod ws_event;
 
+pub use attribute_resolver::{AttributeResolver, AttributeResolverError, AttributeResolverId};
 pub use billing_account::{
     BillingAccount, BillingAccountDefaults, BillingAccountError, BillingAccountId, BillingAccountPk,
 };

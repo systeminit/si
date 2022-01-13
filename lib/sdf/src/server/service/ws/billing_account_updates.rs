@@ -115,10 +115,7 @@ mod billing_account_updates {
 
     impl BillingAccountUpdates {
         pub async fn start(self) -> Result<BillingAccountUpdatesStarted> {
-            let subject = format!(
-                "si.billing_account_id.{}.>",
-                self.billing_account_id.to_string()
-            );
+            let subject = format!("si.billing_account_id.{}.>", self.billing_account_id);
             let subscription = self
                 .nats
                 .subscribe(&subject)
