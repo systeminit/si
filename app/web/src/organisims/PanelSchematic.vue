@@ -73,7 +73,6 @@ import { SchematicKind, MenuFilter } from "@/api/sdf/dal/schematic";
 import { LabelList } from "@/api/sdf/dal/label_list";
 import LockButton from "@/atoms/LockButton.vue";
 import NodeAddMenu from "@/molecules/NodeAddMenu.vue";
-import { MenuFilter } from "@/api/sdf/dal/schematic";
 import { ApplicationService } from "@/service/application";
 import { refFrom } from "vuse-rx";
 import { switchMap } from "rxjs/operators";

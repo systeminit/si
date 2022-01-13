@@ -6,9 +6,11 @@
     "jsx": "preserve",
     "strict": true,
     "noEmit": true,
+    "skipLibCheck": true,
     "importHelpers": true,
     "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,  
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,  
     // "explainFiles": true,
     // "extendedDiagnostics": true,
     // "noErrorTruncation": true,
@@ -28,6 +30,7 @@
       "dom.iterable",
       "scripthost"
     ],
+    "types": ["node"],
     "typeRoots": [
       "./node_modules/@types"
     ]
@@ -42,6 +45,7 @@
     "src/ignore/**/*.ts",
     "src/ignore/**/*.tsx",
     "src/ignore/**/*.vue",
-    "src/organisims/SchematicViewer/references"
+    "src/organisims/SchematicViewer/references",
+    "node_modules/@pixi/text/index.d.ts"
   ]
 }
