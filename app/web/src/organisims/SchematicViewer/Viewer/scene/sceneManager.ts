@@ -109,13 +109,12 @@ export class SceneManager {
 
       if (data.connections.length > 0) {
         for (const connection of data.connections) {
-          const sourceSocket = this.scene.getChildByName(
-            connection.source.socketId,
-            true,
-          );
+          const sourceSocketId = `${connection.source.nodeId}.${connection.source.socketId}`;
+          const sourceSocket = this.scene.getChildByName(sourceSocketId, true);
 
+          const destinationSocketId = `${connection.destination.nodeId}.${connection.destination.socketId}`;
           const destinationSocket = this.scene.getChildByName(
-            connection.destination.socketId,
+            destinationSocketId,
             true,
           );
 

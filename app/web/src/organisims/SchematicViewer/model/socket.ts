@@ -12,3 +12,8 @@ export interface Socket {
   type: string;
   display?: SocketDisplay;
 }
+
+export interface SocketCtx {
+  nodeId: string;
+  socketId: string;
+}

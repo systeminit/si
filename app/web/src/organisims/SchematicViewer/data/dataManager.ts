@@ -71,14 +71,13 @@ export class SchematicDataManager {
     }
   }
 
-  createConnection(nodeUpdate: ConnectionCreate | null): void {
-    if (nodeUpdate) {
-      // FIXME(nick): these values are temporary.
+  createConnection(connection: ConnectionCreate | null): void {
+    if (connection) {
       SchematicService.createConnection({
-        headSocketId: 1,
-        headNodeId: 1,
-        tailSocketId: 2,
-        tailNodeId: 2,
+        headSocketId: connection.destinationSocketId,
+        headNodeId: connection.destinationNodeId,
+        tailSocketId: connection.sourceSocketId,
+        tailNodeId: connection.sourceNodeId,
       }).subscribe((response: ApiResponse<CreateConnectionResponse>) => {
         if (response.error) {
           GlobalErrorService.set(response);
@@ -102,7 +101,6 @@ export class SchematicDataManager {
         if (response.error) {
           GlobalErrorService.set(response);
         }
-        console.log("Node created on backend", { response });
       });
     }
     // remove temporary node

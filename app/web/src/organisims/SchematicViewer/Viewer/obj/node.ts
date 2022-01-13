@@ -129,8 +129,10 @@ export class Node extends PIXI.Container {
       if (s.name) {
         socketLabel = s.name;
       }
+
       const socket = new Socket(
         s.id,
+        this.id,
         socketLabel,
         SocketType.input,
         {
@@ -150,6 +152,7 @@ export class Node extends PIXI.Container {
 
       const socket = new Socket(
         s.id,
+        this.id,
         null,
         SocketType.output,
         {

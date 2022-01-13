@@ -16,3 +16,4 @@
 - Selected node should stay selected until the selection is cleared.
 - Socket labels should not be interactive, so that they don't occlude the node when clicking on a node. (the socket object should be a container.)
 - Implement Interpreter type in fsms (will resolve all any warnings)
+- implement siCtx to store si metadata on webGl objs.

@@ -2,7 +2,7 @@ import * as PIXI from "pixi.js";
 
 import { SceneManager } from "../scene";
 import { SchematicDataManager } from "../../data";
-import { Connection } from "../obj";
+import * as OBJ from "../obj";
 
 interface Position {
   x: number;
@@ -24,7 +24,7 @@ export class ConnectingManager {
   interactiveConnection?: undefined;
   sourceSocket?: string | undefined;
   destinationSocket?: string | undefined;
-  connection?: Connection | undefined | null;
+  connection?: OBJ.Connection | undefined | null;
   data?: PIXI.InteractionData | undefined;
   offset?: Position | undefined;
 
@@ -35,7 +35,7 @@ export class ConnectingManager {
 
   beforeConnect(
     data: PIXI.InteractionData,
-    target: Connection,
+    target: OBJ.Connection,
     sceneManager: SceneManager,
     offset: Position,
     zoomFactor: number,
@@ -104,12 +104,15 @@ export class ConnectingManager {
       );
       this.clearInteractiveConnection(sceneManager);
       sceneManager.refreshConnections();
-      // FIXME(nick): these values are temporary.
+
+      const sourceSocket = source.name.split(".");
+      const destinationSocket = destination.name.split(".");
+
       this.dataManager.connectionCreate$.next({
-        sourceNodeId: 1,
-        sourceSocketId: 1,
-        destinationNodeId: 2,
-        destinationSocketId: 2,
+        sourceNodeId: parseInt(sourceSocket[0]),
+        sourceSocketId: parseInt(sourceSocket[1]),
+        destinationNodeId: parseInt(destinationSocket[0]),
+        destinationSocketId: parseInt(destinationSocket[1]),
       });
     }
   }

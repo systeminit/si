@@ -22,6 +22,7 @@ export class Socket extends PIXI.Container {
 
   constructor(
     id: string,
+    nodeId: string,
     labelText: string | null,
     type: SocketType,
     position: Position,
@@ -31,12 +32,15 @@ export class Socket extends PIXI.Container {
     this.kind = "socket";
 
     this.id = id;
+
+    this.name = `${nodeId}.${id}`;
+
     this.labelText = labelText;
     this.type = type;
 
     this.disableInteraction();
     this.setPosition(position);
-    this.createConnector(id, type, color);
+    this.createConnector(this.name, type, color);
 
     if (labelText) {
       this.createLabel(labelText);
