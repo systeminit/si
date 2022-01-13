@@ -142,6 +142,7 @@ impl FuncBinding {
                 }
                 Some(return_value)
             }
+            FuncBackendKind::Unset => None,
         };
 
         let func = self

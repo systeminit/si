@@ -122,3 +122,44 @@ async fn func_binding_execute() {
         Some(&serde_json::json!["funky"])
     );
 }
+
+#[tokio::test]
+async fn func_binding_execute_unset() {
+    test_setup!(ctx, _secret_key, _pg, _conn, txn, _nats_conn, nats);
+    let tenancy = Tenancy::new_universal();
+    let visibility = Visibility::new_head(false);
+    let history_actor = HistoryActor::SystemInit;
+    let name = dal::test_harness::generate_fake_name();
+    let func = Func::new(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        name,
+        FuncBackendKind::Unset,
+        FuncBackendResponseType::Unset,
+    )
+    .await
+    .expect("cannot create func");
+    let args = serde_json::json!({});
+
+    let func_binding = create_func_binding(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        args,
+        *func.id(),
+        *func.backend_kind(),
+    )
+    .await;
+
+    let return_value = func_binding
+        .execute(&txn, &nats)
+        .await
+        .expect("failed to execute func binding");
+    assert_eq!(return_value.value(), None);
+    assert_eq!(return_value.unprocessed_value(), None,);
+}
