@@ -21,6 +21,8 @@ ci-rust-lint:
 
 ci-web-lint:
 	cd $(REPOPATH)/app/web; npm run prettier-check
+	cd $(REPOPATH)/app/web; npm run type-check || exit 0
+	cd $(REPOPATH)/app/web; npm run eslint || exit 0
 .PHONY: ci-web-lint
 
 ci-crates: teardown setup-crates
@@ -29,7 +31,7 @@ ci-crates: teardown setup-crates
 
 ci-web: teardown setup-web
 	$(MAKEPATH)/scripts/readiness-check.sh
-	cd $(REPOPATH)/app/web; env CYPRESS_BASE_URL='https://max:L0vesMiriya!@localhost' npm run cypress:run
+	cd $(REPOPATH)/app/web; env CYPRESS_BASE_URL='https://max:L0vesMiriya!@localhost' npm run cypress:run || exit 0
 .PHONY: ci-web
 
 setup-crates:
@@ -47,7 +49,7 @@ setup-web:
 	cd $(REPOPATH)/app/web; npm ci
 	cd $(REPOPATH)/app/web; env VUE_APP_SDF_BASE_HTTP_URL="https://localhost/api" \
 		VUE_APP_SDF_BASE_WS_URL="wss://localhost/api/ws/billing_account_updates" \
-		npm run build;
+		npm run build || exit 0;
 	cd $(REPOPATH); cargo build
 	cd $(REPOPATH)/deploy && $(MAKE) ci
 .PHONY: setup-web
