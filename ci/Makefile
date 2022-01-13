@@ -21,6 +21,8 @@ ci-rust-lint:
 
 ci-web-lint:
 	cd $(REPOPATH)/app/web; npm run prettier-check
+	cd $(REPOPATH)/app/web; npm run type-check || exit 0
+	cd $(REPOPATH)/app/web; npm run eslint || exit 0
 .PHONY: ci-web-lint
 
 ci-crates: teardown setup-crates
