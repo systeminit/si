@@ -131,7 +131,7 @@ const nodeB: Node = {
 };
 
 const conn: Connection = {
-  id: generateUniqueId(),
+  id: parseInt(generateUniqueId()),
   classification: {
     kind: ConnectionKind.DEPLOYMENT,
   },

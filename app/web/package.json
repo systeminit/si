@@ -14,7 +14,8 @@
     "cypress:open": "cypress open",
     "eslint:fix": "eslint --ext .ts,.js,.vue --ignore-path .gitignore --fix src",
     "cypress:run": "cypress run",
-    "vite-clean": "./script/clean-vite-cache.sh"
+    "vite-clean": "./script/clean-vite-cache.sh",
+    "checks": "npm run eslint; npm run type-check; npm run prettier-check"
   },
   "dependencies": {
     "@pixi/layers": "^1.0.11",

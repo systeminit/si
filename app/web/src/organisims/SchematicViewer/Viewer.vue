@@ -96,7 +96,7 @@ export default defineComponent({
       default: undefined,
     },
     schematicData: {
-      type: Object as PropType<MODEL.Schematic> | undefined,
+      type: Object as PropType<MODEL.Schematic | null>,
       required: false,
       default: undefined,
     },
@@ -190,6 +190,7 @@ export default defineComponent({
 
     const dataManager = new SchematicDataManager();
     this.dataManager = dataManager;
+
     this.dataManager.editorContext$.next(this.editorContext);
 
     dataManager.schematicData$.subscribe({

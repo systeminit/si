@@ -3,7 +3,7 @@ import { from, Observable } from "rxjs";
 import { ApiResponse } from "@/api/sdf";
 
 export interface SetNodeArgs {
-  name: String;
+  name: string;
 }
 
 export interface SetNodeRequest extends SetNodeArgs, Visibility {}
@@ -13,7 +13,7 @@ export interface SetNodeResponse {
 }
 
 export function setNode(
-  args: SetNodeArgs,
+  _args: SetNodeArgs,
 ): Observable<ApiResponse<SetNodeResponse>> {
   return from([{ schematic: "node position updated" }]);
 }
