@@ -115,18 +115,34 @@ impl Connection {
             Err(e) => return Err(SchematicError::Edge(e)),
         };
 
-        Ok(Connection {
+        Ok(Self::from_edge(&edge))
+    }
+
+    pub async fn list(
+        txn: &PgTxn<'_>,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+    ) -> SchematicResult<Vec<Self>> {
+        let edges = Edge::list(txn, tenancy, visibility).await?;
+        let connections = edges.iter().map(Self::from_edge).collect::<Vec<Self>>();
+        Ok(connections)
+    }
+
+    // NOTE(nick): we clone kind for now, but I'd imagine Connection will have it's own "kind"
+    // wrapper in the future.
+    pub fn from_edge(edge: &Edge) -> Self {
+        Self {
             id: *edge.id(),
             classification: edge.kind().clone(),
             source: Vertex {
-                node_id: *head_node.id(),
-                socket_id: *head_socket_id,
+                node_id: edge.head_node_id(),
+                socket_id: edge.head_socket_id(),
             },
             destination: Vertex {
-                node_id: *tail_node.id(),
-                socket_id: *tail_socket_id,
+                node_id: edge.tail_node_id(),
+                socket_id: edge.tail_socket_id(),
             },
-        })
+        }
     }
 
     // NOTE(nick): value is moved, but that's fine for tests.
@@ -134,6 +150,7 @@ impl Connection {
         (self.source.node_id, self.source.socket_id)
     }
 
+    // NOTE(nick): value is moved, but that's fine for tests.
     pub fn destination(&self) -> (NodeId, SocketId) {
         (self.destination.node_id, self.destination.socket_id)
     }
@@ -193,7 +210,8 @@ impl Schematic {
             let view = NodeView::new(name, node, position.map_or(vec![], |p| vec![p]), template);
             node_views.push(view);
         }
-        let connections = vec![]; // TODO: retrieve actual connections (they don't exist yet in the backend)
+
+        let connections = Connection::list(txn, tenancy, visibility).await?;
         Ok(Self {
             nodes: node_views,
             connections,
