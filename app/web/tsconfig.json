@@ -2,21 +2,26 @@
   "compilerOptions": {
     "target": "esnext",
     "module": "esnext",
-    "strict": true,
+    "moduleResolution": "node",
     "jsx": "preserve",
+    "strict": true,
+    "skipLibCheck": true,
     "noEmit": true,
     "importHelpers": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,  
+    // "explainFiles": true,
+    // "extendedDiagnostics": true,
+        // "noErrorTruncation": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "moduleResolution": "node",
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
+    "pretty": true,
     "sourceMap": true,
     "baseUrl": ".",
     "paths": {
       "@/*": [
         "src/*"
-      ]
+      ] 
     },
     "lib": [
       "esnext",
@@ -38,5 +43,6 @@
     "src/ignore/**/*.ts",
     "src/ignore/**/*.tsx",
     "src/ignore/**/*.vue",
+    "src/organisims/SchematicViewer/references"
   ]
 }
