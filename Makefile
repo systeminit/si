@@ -219,6 +219,12 @@ prepare: down
 	cd $(MAKEPATH)/deploy && $(MAKE) partial
 .PHONY: prepare
 
+backend: down
+	cd $(MAKEPATH)/bin/lang-js; npm install
+	cd $(MAKEPATH)/bin/lang-js; npm run package
+	cd $(MAKEPATH)/deploy && $(MAKE) backend
+.PHONY: backend
+
 sdf-run:
 	cd $(MAKEPATH); cargo build
 	cd $(MAKEPATH); cargo run --bin sdf -- --disable-opentelemetry

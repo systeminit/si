@@ -4,6 +4,16 @@ version: "3"
 # try to only use it when necessary.
 
 services:
+  web:
+    image: "index.docker.io/systeminit/web:stable"
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+    ports:
+      - "443:443"
+    depends_on:
+      - watchtower
+    restart: "unless-stopped"
+
   sdf:
     image: "index.docker.io/systeminit/sdf:stable"
     ports:
@@ -23,16 +33,6 @@ services:
       - pg
       - otel
       - nats
-    restart: "unless-stopped"
-
-  web:
-    image: "index.docker.io/systeminit/web:stable"
-    labels:
-      - "com.centurylinklabs.watchtower.enable=true"
-    ports:
-      - "443:443"
-    depends_on:
-      - watchtower
     restart: "unless-stopped"
 
   veritech:
