@@ -104,7 +104,29 @@ This can be done in the root of the repository:
 make prepare
 cargo build
 RUST_BACKTRACE=1 cargo test <your-test-name>
-``
+```
+
+## UI Development
+
+Are you only working on the UI?
+You can execute the following target to get started:
+
+```bash
+make backend
+```
+
+Now, everything but the web application should be running.
+You can run the web application manually, or with the following target:
+
+```bash
+make app-run
+```
+
+You can teardown everything with the same target that the **Quickstart** guide uses.
+
+```bash
+make down
+```
 
 ## Architecture
 

@@ -13,6 +13,14 @@ partial: init
 		docker-compose -f $(MAKEPATH)/docker-compose.yml -f $(MAKEPATH)/docker-compose.env.yml \
 		up -d nats pg otel
 
+# Run this target alongside local developer builds of web.
+# This target does not compose down beforehand. This is especially helpful for iterating on the UI
+# without having to build backend components.
+backend: init
+	GATEWAY=$(shell $(MAKEPATH)/scripts/gateway.sh) \
+		docker-compose -f $(MAKEPATH)/docker-compose.yml -f $(MAKEPATH)/docker-compose.env.yml \
+		up -d nats pg otel sdf veritech
+
 # Run interactively and compose down beforehand. This target is meant to be run iteratively for
 # local development and testing.
 dev: down init
