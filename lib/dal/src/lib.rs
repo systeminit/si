@@ -71,7 +71,7 @@ pub use qualification_check::{
 pub use schema::{
     Schema, SchemaError, SchemaId, SchemaKind, SchemaPk, SchemaVariant, SchemaVariantId,
 };
-pub use schematic::{Schematic, SchematicError, SchematicKind};
+pub use schematic::{Connection, Schematic, SchematicError, SchematicKind};
 pub use standard_model::{StandardModel, StandardModelError, StandardModelResult};
 pub use system::{System, SystemError, SystemId, SystemPk, SystemResult};
 pub use tenancy::{Tenancy, TenancyError};

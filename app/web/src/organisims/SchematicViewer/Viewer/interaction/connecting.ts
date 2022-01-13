@@ -104,7 +104,13 @@ export class ConnectingManager {
       );
       this.clearInteractiveConnection(sceneManager);
       sceneManager.refreshConnections();
-      this.dataManager.connectionCreate$.next({ id: "a new connection" });
+      // FIXME(nick): these values are temporary.
+      this.dataManager.connectionCreate$.next({
+        sourceNodeId: 1,
+        sourceSocketId: 1,
+        destinationNodeId: 2,
+        destinationSocketId: 2,
+      });
     }
   }
 

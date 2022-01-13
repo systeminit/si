@@ -11,6 +11,7 @@ use dal::{
 use std::convert::Infallible;
 use thiserror::Error;
 
+pub mod create_connection;
 pub mod create_node;
 pub mod get_node_add_menu;
 pub mod get_node_template;
@@ -80,5 +81,9 @@ pub fn routes() -> Router {
         .route(
             "/set_node_position",
             post(set_node_position::set_node_position),
+        )
+        .route(
+            "/create_connection",
+            post(create_connection::create_connection),
         )
 }

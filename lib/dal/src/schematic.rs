@@ -1,11 +1,15 @@
+use crate::edge::{Edge, EdgeId, EdgeKind, VertexObjectKind};
+use crate::EdgeError;
 use crate::{
-    node::NodeId, ComponentError, Node, NodeError, NodeKind, NodePosition, NodePositionError,
-    NodeTemplate, NodeView, StandardModel, StandardModelError, SystemId, Tenancy, Visibility,
+    node::NodeId, ComponentError, HistoryActor, Node, NodeError, NodeKind, NodePosition,
+    NodePositionError, NodeTemplate, NodeView, StandardModel, StandardModelError, SystemId,
+    Tenancy, Visibility,
 };
 use serde::{Deserialize, Serialize};
 use strum_macros::{AsRefStr, Display, EnumString};
 
-use si_data::{PgError, PgTxn};
+use crate::socket::SocketId;
+use si_data::{NatsTxn, PgError, PgTxn};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -20,6 +24,8 @@ pub enum SchematicError {
     NodePosition(#[from] NodePositionError),
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
+    #[error("edge error: {0}")]
+    Edge(#[from] EdgeError),
     #[error("position not found")]
     PositionNotFound,
     #[error("component not foundl")]
@@ -42,10 +48,102 @@ pub enum SchematicKind {
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
+pub struct Connection {
+    id: EdgeId,
+    classification: EdgeKind,
+    source: Vertex,
+    destination: Vertex,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+struct Vertex {
+    node_id: NodeId,
+    socket_id: SocketId,
+}
+
+impl Connection {
+    #[allow(clippy::too_many_arguments)]
+    pub async fn new(
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+        history_actor: &HistoryActor,
+        head_node_id: &NodeId,
+        head_socket_id: &SocketId,
+        tail_node_id: &NodeId,
+        tail_socket_id: &SocketId,
+    ) -> SchematicResult<Self> {
+        let head_node = Node::get_by_id(txn, tenancy, visibility, head_node_id)
+            .await?
+            .ok_or(SchematicError::Node(NodeError::NotFound(*head_node_id)))?;
+        let tail_node = Node::get_by_id(txn, tenancy, visibility, tail_node_id)
+            .await?
+            .ok_or(SchematicError::Node(NodeError::NotFound(*tail_node_id)))?;
+
+        let head_component = head_node
+            .component(txn, visibility)
+            .await?
+            .ok_or(SchematicError::Node(NodeError::ComponentIsNone))?;
+        let tail_component = tail_node
+            .component(txn, visibility)
+            .await?
+            .ok_or(SchematicError::Node(NodeError::ComponentIsNone))?;
+
+        // TODO(nick): a lot of hardcoded values here along with the (temporary) insinuation that an
+        // edge is equivalent to a connection.
+        let edge = match Edge::new(
+            txn,
+            nats,
+            tenancy,
+            visibility,
+            history_actor,
+            EdgeKind::Configures,
+            *head_node_id,
+            VertexObjectKind::Component,
+            (*head_component.id()).into(),
+            *head_socket_id,
+            *tail_node_id,
+            VertexObjectKind::Component,
+            (*tail_component.id()).into(),
+            *tail_socket_id,
+        )
+        .await
+        {
+            Ok(edge) => edge,
+            Err(e) => return Err(SchematicError::Edge(e)),
+        };
+
+        Ok(Connection {
+            id: *edge.id(),
+            classification: edge.kind().clone(),
+            source: Vertex {
+                node_id: *head_node.id(),
+                socket_id: *head_socket_id,
+            },
+            destination: Vertex {
+                node_id: *tail_node.id(),
+                socket_id: *tail_socket_id,
+            },
+        })
+    }
+
+    // NOTE(nick): value is moved, but that's fine for tests.
+    pub fn source(&self) -> (NodeId, SocketId) {
+        (self.source.node_id, self.source.socket_id)
+    }
+
+    pub fn destination(&self) -> (NodeId, SocketId) {
+        (self.destination.node_id, self.destination.socket_id)
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct Schematic {
     nodes: Vec<NodeView>,
-    // Dummy type, we should actually have a Connection struct defined somewhere
-    connections: Vec<String>,
+    connections: Vec<Connection>,
 }
 
 impl Schematic {

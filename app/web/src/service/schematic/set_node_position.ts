@@ -11,7 +11,7 @@ import { workspace$ } from "@/observable/workspace";
 import _ from "lodash";
 
 export interface SetNodePositionArgs {
-  nodeId: number;
+  nodeId: string;
   schematicKind: SchematicKind;
   rootNodeId: number;
   systemId?: number;
@@ -49,7 +49,7 @@ export function setNodePosition(
           },
         ]);
       }
-      const request: SetPositionRequest = {
+      const request: SetNodePositionRequest = {
         ...args,
         ...visibility,
         workspaceId: workspace.id,
