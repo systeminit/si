@@ -8,7 +8,7 @@ import { switchMap } from "rxjs/operators";
 import { editSessionWritten$ } from "@/observable/edit_session";
 
 export interface SetSchematicArgs {
-  name: String;
+  name: string;
 }
 
 export interface SetSchematicRequest extends SetSchematicArgs, Visibility {}

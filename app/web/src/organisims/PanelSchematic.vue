@@ -39,6 +39,7 @@
       />
 
       <NodeAddMenu
+        v-if="addMenuFilters"
         class="pl-4"
         :filter="addMenuFilters"
         :disabled="!addMenuEnabled"
@@ -72,6 +73,7 @@ import { SchematicKind } from "@/api/sdf/dal/schematic";
 import { LabelList } from "@/api/sdf/dal/label_list";
 import LockButton from "@/atoms/LockButton.vue";
 import NodeAddMenu from "@/molecules/NodeAddMenu.vue";
+import { MenuFilter } from "@/api/sdf/dal/schematic";
 import { ApplicationService } from "@/service/application";
 import { refFrom } from "vuse-rx";
 import { switchMap } from "rxjs/operators";
@@ -149,10 +151,14 @@ const applicationId = refFrom<number | null>(
 // TODO: This eventually needs to be smart enough to deal with being in deployment or component context,
 // but for now, it will just work for deployment
 const addMenuFilters = computed(() => {
-  return {
-    rootComponentId: applicationId.value,
-    schematicKind: schematicKind.value,
-  };
+  if (applicationId.value) {
+    const filter: MenuFilter = {
+      rootComponentId: applicationId.value,
+      schematicKind: schematicKind.value,
+    };
+    return filter;
+  }
+  return null;
 });
 
 const editMode = refFrom<boolean>(ChangeSetService.currentEditMode());

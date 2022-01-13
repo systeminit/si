@@ -17,8 +17,6 @@ export class PanningManager {
   position?: PanningPositionData | undefined;
   offset?: Position | undefined;
 
-  constructor() {}
-
   beforePan(data: PIXI.InteractionData, offset: Position): void {
     this.data = data;
     this.position = {

@@ -165,12 +165,12 @@ export class Node extends PIXI.Container {
 
   select(): void {
     this.isSelected = true;
-    this.selection.visible = true;
+    if (this.selection) this.selection.visible = true;
   }
 
   deselect(): void {
     this.isSelected = false;
-    this.selection.visible = false;
+    if (this.selection) this.selection.visible = false;
   }
 
   addConnection(c: Connection): void {

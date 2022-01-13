@@ -1,6 +1,7 @@
 <template>
   <div :id="viewerId" class="w-full h-full">
     <Viewer
+      v-if="schematicData && editorContext"
       :schematic-viewer-id="viewerId"
       :viewer-state="viewerState"
       :schematic-data="schematicData"
@@ -65,6 +66,7 @@ const componentId = _.uniqueId();
 
 const viewerId = componentName + "-" + componentId;
 const viewerState = new ViewerStateMachine();
+
 const schematicData = refFrom<Schematic | null>(
   combineLatest([system$, applicationNodeId$]).pipe(
     switchMap(([system, applicationNodeId]) => {
