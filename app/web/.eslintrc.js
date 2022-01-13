@@ -3,7 +3,7 @@ module.exports = {
   env: {
     node: true,
   },
-  globals: { defineProps: "readonly", defineEmits: "readonly", },
+  globals: { defineProps: "readonly", defineEmits: "readonly" },
   extends: [
     "eslint:recommended",
     "plugin:vue/vue3-recommended",
@@ -27,5 +27,8 @@ module.exports = {
   parserOptions: {
     parser: "@typescript-eslint/parser",
   },
-  ignorePatterns: ["src/ignore/*"],
+  ignorePatterns: [
+    "src/ignore/*",
+    "src/organisims/SchematicViewer/references/*",
+  ],
 };
