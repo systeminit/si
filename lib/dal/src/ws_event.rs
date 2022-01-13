@@ -53,10 +53,7 @@ impl WsEvent {
 
     pub async fn publish(&self, nats: &NatsTxn) -> WsEventResult<()> {
         for billing_account_id in self.billing_account_ids.iter() {
-            let subject = format!(
-                "si.billing_account_id.{}.event",
-                billing_account_id.to_string()
-            );
+            let subject = format!("si.billing_account_id.{}.event", billing_account_id);
             nats.publish(subject, &self).await?;
         }
         Ok(())

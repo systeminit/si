@@ -1,3 +1,4 @@
+mod attribute_resolver;
 mod billing_account;
 mod capability;
 mod change_set;
