@@ -17,14 +17,14 @@ const app = createApp(App);
 
 // Expose our internal services to Cypress, so we can use them
 // directly in tests.
-// @ts-ignore
-if (window.Cypress) {
-  // @ts-ignore
-  window.SignupService = SignupService;
-  // @ts-ignore
-  window.SessionService = SessionService;
-  // @ts-ignore
-  window.ChangeSetService = ChangeSetService;
+//
+// FIXME(paulo): Please don't judge me, I'm turning a bad hack (@ts-ignore)
+// that causes a linter error into a less worse hack that causes a linter warning,
+// so we can properly fix when we decide tackle all 'any' related technical debt
+if ((window as any).Cypress) {
+  (window as any).SignupService = SignupService;
+  (window as any).SessionService = SessionService;
+  (window as any).ChangeSetService = ChangeSetService;
 }
 
 app.use(router);

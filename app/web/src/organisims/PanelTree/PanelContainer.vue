@@ -56,7 +56,7 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeMount, onMounted, PropType, ref, watch } from "vue";
+import { onMounted, PropType, ref, watch } from "vue";
 import PanelSelector from "./PanelSelector.vue";
 import {
   IPanelContainer,
@@ -191,10 +191,8 @@ const setInitialPanelSize = () => {
 
   if (orientation == "row") {
     if (panelContainerElem && panelCheechElem && panelChongElem) {
-      // @ts-ignore
-      if (panelContainer.panels[0].width) {
-        // @ts-ignore
-        const newCheechWidthPercent = panelContainer.panels[0].width;
+      if (panelContainer.width) {
+        const newCheechWidthPercent = panelContainer.width;
         const newChongWidthPercent = 100 - newCheechWidthPercent;
         if (panelSize.value[`${panelCheechIndex}`]) {
           panelSize.value[`${panelCheechIndex}`][

@@ -21,7 +21,7 @@
 
 <script setup lang="ts">
 import { computed, PropType, ref, watch } from "vue";
-import type { EditField, CheckboxWidgetDal } from "@/api/sdf/dal/edit_field";
+import type { EditField } from "@/api/sdf/dal/edit_field";
 import { EditFieldService } from "@/service/edit_field";
 import EditFormField from "./EditFormField.vue";
 import { GlobalErrorService } from "@/service/global_error";
@@ -37,11 +37,6 @@ const props = defineProps({
     type: Object as PropType<EditField>,
     required: true,
   },
-});
-
-const widget = computed<CheckboxWidgetDal>(() => {
-  // Lies, damn lies, and statistics!
-  return props.editField.widget as CheckboxWidgetDal;
 });
 
 const updating = ref(false);

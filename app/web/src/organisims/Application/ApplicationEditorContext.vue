@@ -44,25 +44,23 @@
       data-cy="application-details-extended"
     >
       <div class="w-1/5 h-full py-2 mx-2">
-        <ApplicationActivitySummary :application-id="application.id" />
+        <!-- <ApplicationActivitySummary :application-id="application.id" /> -->
       </div>
 
       <div class="w-1/5 h-full py-2 mx-2">
-        <ApplicationServicesSummary :application-id="application.id" />
+        <!-- <ApplicationServicesSummary application-id="application.id" /> -->
       </div>
 
       <div class="w-1/5 h-full py-2 mx-2">
-        <ApplicationComputingResourcesSummary
-          :application-id="application.id"
-        />
+        <!-- <ApplicationComputingResourcesSummary :application-id="application.id" /> -->
       </div>
 
       <div class="w-1/5 h-full py-2 mx-2">
-        <ApplicationProviderSummary :application-id="application.id" />
+        <!-- <ApplicationProviderSummary :application-id="application.id" /> -->
       </div>
 
       <div class="w-1/5 h-full py-2 mx-2">
-        <ApplicationChangesSummary :application-id="application.id" />
+        <!-- <ApplicationChangesSummary :application-id="application.id" /> -->
       </div>
     </div>
 
@@ -82,11 +80,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
 
-import ApplicationActivitySummary from "@/organisims/Application/Summary/ApplicationActivitySummary.vue";
-import ApplicationServicesSummary from "@/organisims/Application/Summary/ApplicationServicesSummary.vue";
-import ApplicationComputingResourcesSummary from "@/organisims/Application/ApplicationComputingResourcesSummary.vue";
-import ApplicationProviderSummary from "@/organisims/Application/Summary/ApplicationProviderSummary.vue";
-import ApplicationChangesSummary from "@/organisims/Application/Summary/ApplicationChangesSummary.vue";
 import VueFeather from "vue-feather";
 
 const showDetails = ref<boolean>(false);

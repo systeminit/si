@@ -17,7 +17,7 @@
           id="modalCancel"
           size="xs"
           label="cancel"
-          icon="null"
+          :icon="null"
           kind="cancel"
           @click="$emit('confirm', close)"
         />
@@ -26,7 +26,7 @@
           size="xs"
           label="confirm"
           class="ml-1"
-          icon="null"
+          :icon="null"
           kind="save"
           @click="$emit('cancel', close)"
         />
@@ -48,7 +48,6 @@ export default {
 import { defineEmits } from "vue";
 import VueFeather from "vue-feather";
 import SiButton from "@/atoms/SiButton.vue";
-// @ts-ignore
 import { VueFinalModal } from "vue-final-modal";
 
 defineEmits(["confirm", "cancel"]);

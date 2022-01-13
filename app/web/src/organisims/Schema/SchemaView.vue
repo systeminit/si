@@ -3,11 +3,14 @@
     <div class="flex flex-col">
       <StatusBar />
       <SiChangeSetHeader>
-        <template #title> Schema {{ schema.name }}</template>
+        <template #title> Schema {{ schema?.name || "" }}</template>
       </SiChangeSetHeader>
     </div>
     <div>
-      <EditForm object-kind="Schema" :object-id="schemaId" />
+      <EditForm
+        :object-kind="EditFieldObjectKind.Schema"
+        :object-id="schemaId"
+      />
     </div>
   </div>
   <div v-else-if="isNotFound()">
@@ -21,13 +24,13 @@ import NotFound from "@/pages/NotFound.vue";
 import { SchemaService } from "@/service/schema";
 import { refFrom } from "vuse-rx";
 import { GlobalErrorService } from "@/service/global_error";
-import { tap } from "rxjs";
 import type { Schema } from "@/api/sdf/dal/schema";
-import { ApiResponse } from "@/api/sdf";
+import * as Rx from "rxjs";
 import { ref } from "vue";
-import { ChangeSetService } from "@/service/change_set";
 import EditForm from "@/organisims/EditForm.vue";
 import StatusBar from "@/molecules/StatusBar.vue";
+import { EditFieldObjectKind } from "@/api/sdf/dal/edit_field";
+import { switchMap } from "rxjs/operators";
 
 const props = defineProps({
   schemaId: {
@@ -46,16 +49,20 @@ const ready = ref<ReadyState>(ReadyState.LOADING);
 const isLoaded = () => ready.value == ReadyState.LOADED;
 const isNotFound = () => ready.value == ReadyState.NOT_FOUND;
 
-const editMode = refFrom<boolean>(ChangeSetService.currentEditMode());
-
-const schema = refFrom<ApiResponse<Schema>>(
+const schema = refFrom<Schema | null>(
   SchemaService.getSchema({ schemaId: props.schemaId.valueOf() }).pipe(
-    tap((response) => {
-      if (response.error) {
-        GlobalErrorService.set(response);
-        ready.value = ReadyState.NOT_FOUND;
+    switchMap((schema) => {
+      if (schema) {
+        if (schema.error) {
+          GlobalErrorService.set(schema);
+          ready.value = ReadyState.NOT_FOUND;
+          return Rx.from([null]);
+        } else {
+          ready.value = ReadyState.LOADED;
+          return Rx.from([schema]);
+        }
       } else {
-        ready.value = ReadyState.LOADED;
+        return Rx.from([null]);
       }
     }),
   ),

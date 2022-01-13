@@ -1,17 +1,17 @@
 <template>
   <section>
     <div class="flex w-full pt-1 pb-1 mt-2 text-sm text-white">
-      <div v-if="open" class="flex">
+      <div v-if="isOpen" class="flex">
         <VueFeather type="chevron-down" />
         {{ editField.name }}
       </div>
 
-      <div v-else-if="!open" class="flex">
+      <div v-else-if="!isOpen" class="flex">
         <VueFeather type="chevron-right" />
         {{ editField.name }}
       </div>
     </div>
-    <div v-show="open" class="flex w-full pt-1 pb-1 mt-2 text-sm text-white">
+    <div v-show="isOpen" class="flex w-full pt-1 pb-1 mt-2 text-sm text-white">
       <Widgets :edit-fields="widget.options.edit_fields" />
     </div>
   </section>
@@ -20,9 +20,7 @@
 <script setup lang="ts">
 import { computed, PropType, ref } from "vue";
 import type { EditField, HeaderWidgetDal } from "@/api/sdf/dal/edit_field";
-import { refFrom } from "vuse-rx";
 import VueFeather from "vue-feather";
-import { ChangeSetService } from "@/service/change_set";
 import Widgets from "@/organisims/EditForm/Widgets.vue";
 
 const props = defineProps({
@@ -36,13 +34,12 @@ const props = defineProps({
   },
 });
 
-const editMode = refFrom<boolean>(ChangeSetService.currentEditMode());
 const widget = computed<HeaderWidgetDal>(() => {
   console.log({ widget: JSON.stringify(props.editField.widget) });
   return props.editField.widget as HeaderWidgetDal;
 });
 
-const open = ref<boolean>(true);
+const isOpen = ref(true);
 </script>
 
 <style scoped>

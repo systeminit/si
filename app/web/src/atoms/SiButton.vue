@@ -2,7 +2,7 @@
   <button
     class="inline-block py-1"
     :class="buttonStyle"
-    :aria-label="label"
+    :aria-label="label ?? undefined"
     :disabled="disabled"
   >
     <div class="flex justify-center">

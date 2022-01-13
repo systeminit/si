@@ -9,14 +9,14 @@
     :is-maximized-container-enabled="isMaximizedContainerEnabled"
   >
     <template #menuButtons>
-      <div class="min-w-max" v-if="componentNamesOnlyList">
+      <div v-if="componentNamesOnlyList" class="min-w-max">
         <SiSelect
           id="nodeSelect"
+          v-model="selectedComponentId"
           size="xs"
           name="nodeSelect"
           class="pl-1"
           :options="componentNamesOnlyList"
-          v-model="selectedComponentId"
         />
       </div>
 
@@ -25,8 +25,8 @@
 
     <template #content>
       <AttributeViewer
-        :componentId="selectedComponentId"
         v-if="selectedComponentId"
+        :component-id="selectedComponentId"
       />
     </template>
   </Panel>

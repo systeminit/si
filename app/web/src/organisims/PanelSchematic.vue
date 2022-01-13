@@ -69,7 +69,7 @@ import Panel from "@/molecules/Panel.vue";
 import SchematicViewer from "@/organisims/SchematicViewer.vue";
 import SiSelect from "@/atoms/SiSelect.vue";
 
-import { SchematicKind } from "@/api/sdf/dal/schematic";
+import { SchematicKind, MenuFilter } from "@/api/sdf/dal/schematic";
 import { LabelList } from "@/api/sdf/dal/label_list";
 import LockButton from "@/atoms/LockButton.vue";
 import NodeAddMenu from "@/molecules/NodeAddMenu.vue";

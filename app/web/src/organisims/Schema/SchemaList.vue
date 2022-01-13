@@ -66,7 +66,6 @@
 <script setup lang="ts">
 import SiButton from "@/atoms/SiButton.vue";
 import SiModal from "@/molecules/SiModal.vue";
-import ChangeSetWidget from "@/organisims/ChangeSetWidget.vue";
 import SchemaCreateForm from "./SchemaCreateForm.vue";
 
 import { Schema } from "@/api/sdf/dal/schema";
@@ -74,7 +73,7 @@ import { GlobalErrorService } from "@/service/global_error";
 
 import { useRouter } from "vue-router";
 import { ref } from "vue";
-import { refFrom, untilUnmounted } from "vuse-rx";
+import { refFrom } from "vuse-rx";
 import { from } from "rxjs";
 import { switchMap } from "rxjs/operators";
 import { SchemaService } from "@/service/schema";

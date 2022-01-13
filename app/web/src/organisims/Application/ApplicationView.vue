@@ -39,7 +39,7 @@
           size="sm"
           label="leave"
           class="mx-1"
-          icon="null"
+          :icon="null"
           kind="cancel"
           @click="leave"
         />
@@ -47,7 +47,7 @@
           size="sm"
           label="stay"
           class="mx-1"
-          icon="null"
+          :icon="null"
           kind="save"
           @click="stay"
         />
@@ -74,7 +74,6 @@ import { ApplicationService } from "@/service/application";
 import { setIfError } from "@/service/global_error";
 import { Component } from "@/api/sdf/dal/component";
 import StatusBar from "@/molecules/StatusBar.vue";
-import ApplicationEditorContext from "@/organisims/Application/ApplicationEditorContext.vue";
 import SiChangeSetHeader from "@/molecules/SiChangeSetHeader.vue";
 
 const props = defineProps({

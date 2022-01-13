@@ -16,21 +16,20 @@ export function bottleSetup(config: Config) {
   // });
 }
 
-// @ts-ignore
-export function bottleSetStore(router: VueRouter, config: Config) {
-  const bottle = Bottle.pop("default");
-  bottle.factory("SDF", function (_container): SDF {
-    return new SDF(config);
-  });
+//export function bottleSetStore(_router: VueRouter, _config: Config) {
+//  const bottle = Bottle.pop("default");
+//  bottle.factory("SDF", function (_container): SDF {
+//    return new SDF(config);
+//  });
+//
+//   bottle.factory("Router", function(_container): VueRouter {
+//     router.beforeEach(async (to, from, next) => {
+//       await routeCheck(to, from, next);
+//     });
+//     return router;
+//   });
+//}
 
-  // bottle.factory("Router", function(_container): VueRouter {
-  //   router.beforeEach(async (to, from, next) => {
-  //     await routeCheck(to, from, next);
-  //   });
-  //   return router;
-  // });
-}
-
-export function bottleClear() {
-  Bottle.clear("default");
-}
+// export function bottleClear() {
+//   Bottle.clear("default");
+// }

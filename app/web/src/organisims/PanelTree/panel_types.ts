@@ -34,7 +34,7 @@ export interface Size {
 }
 
 export interface IPanel {
-  name: string;
+  name: PanelType;
   type: "panel";
 }
 

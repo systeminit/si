@@ -6,7 +6,6 @@
       :class="selectorStyling()"
       :disabled="disabled"
       :aria-name="id"
-      :data-test="dataTest"
       @change="selected"
       @keypress.space.prevent
     >
@@ -39,7 +38,7 @@ export interface SelectPropsOption {
 export interface SelectProps {
   size: "xs" | "sm" | "base" | "lg";
   options: SelectPropsOption[];
-  value: string | null | Object | number;
+  value: string | null | any | number;
 }
 
 const props = defineProps({
@@ -71,10 +70,6 @@ const props = defineProps({
   valueAsNumber: {
     type: Boolean,
     default: false,
-  },
-  dataTest: {
-    type: String,
-    required: false,
   },
 });
 const emits = defineEmits(["update:modelValue"]);

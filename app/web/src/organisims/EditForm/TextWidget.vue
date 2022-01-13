@@ -65,8 +65,7 @@ const onBlur = () => {
   updating.value = false;
 };
 const onKeyEnter = (event: KeyboardEvent) => {
-  if (event && event.target) {
-    // @ts-ignore - we don't know what the real type is!
+  if (event?.target instanceof HTMLElement) {
     event.target.blur();
   }
 };

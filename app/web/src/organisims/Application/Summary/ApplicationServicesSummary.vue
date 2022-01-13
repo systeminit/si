@@ -31,9 +31,7 @@
 
 <script setup lang="ts">
 import SummaryCard from "@/atoms/SummaryCard.vue";
-import { ref } from "vue";
 
-const servicesData = ref([]);
 defineProps({
   showButton: {
     type: Boolean,

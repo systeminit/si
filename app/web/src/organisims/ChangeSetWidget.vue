@@ -66,7 +66,7 @@
         <div class="flex flex-col w-full p-8">
           <SiError
             :message="changeSetCreateModalError"
-            @clear="changeSetCreateModalError.value = ''"
+            @clear="clearChangeSetCreateModalError"
           />
           <SiFormRow>
             <template #label>name:</template>
@@ -119,7 +119,6 @@ import SiModal from "@/molecules/SiModal.vue";
 import SiTextBox from "@/atoms/SiTextBox.vue";
 import SiError from "@/atoms/SiError.vue";
 import SiFormRow from "@/atoms/SiFormRow.vue";
-// @ts-ignore
 import { $vfm } from "vue-final-modal";
 
 import { LabelList } from "@/api/sdf/dal/label_list";
@@ -236,7 +235,9 @@ const changeSetApply = () => {
     }
   });
 };
-
+const clearChangeSetCreateModalError = () => {
+  changeSetCreateModalError.value = "";
+};
 const editSessionCancel = () => {
   GlobalErrorService.setIfError(ChangeSetService.cancelEditSession());
 };
