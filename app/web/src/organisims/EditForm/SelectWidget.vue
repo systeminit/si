@@ -14,7 +14,7 @@
         @blur="onBlur"
       >
         <option
-          v-for="option in widget.options.options"
+          v-for="option in widget.options"
           :key="option.value"
           :value="option.value"
         >

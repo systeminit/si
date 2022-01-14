@@ -10,7 +10,7 @@ import { workspace$ } from "@/observable/workspace";
 import _ from "lodash";
 
 export interface CreateApplicationArgs {
-  name: String;
+  name: string;
 }
 
 export interface CreateApplicationRequest

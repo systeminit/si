@@ -39,6 +39,9 @@ export interface SelectPropsOption {
 export interface SelectProps {
   size: "xs" | "sm" | "base" | "lg";
   options: SelectPropsOption[];
+
+  // TODO: fix below
+  // eslint-disable-next-line @typescript-eslint/ban-types
   value: string | null | Object | number;
 }
 

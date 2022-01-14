@@ -16,7 +16,6 @@ import "vue-loading-overlay/dist/vue-loading.css";
 export default defineComponent({
   name: "SiLoader",
   components: {
-    // @ts-ignore
     Loading,
   },
   props: {

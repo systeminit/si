@@ -1,6 +1,6 @@
 <template>
   <Panel
-    initial-panel-type="empty"
+    :initial-panel-type="PanelType.Empty"
     :panel-index="panelIndex"
     :panel-ref="panelRef"
     :panel-container-ref="panelContainerRef"
@@ -24,6 +24,7 @@
 <script setup lang="ts">
 import Panel from "@/molecules/Panel.vue";
 import cheechSvg from "@/assets/images/cheech-and-chong.svg";
+import { PanelType } from "@/organisims/PanelTree/panel_types";
 
 defineProps({
   panelIndex: { type: Number, required: true },

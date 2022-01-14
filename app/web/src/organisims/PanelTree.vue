@@ -15,6 +15,7 @@
 
 <script setup lang="ts">
 import type { IPanelContainer, PanelMaximized } from "./PanelTree/panel_types";
+import { PanelType } from "./PanelTree/panel_types";
 import PanelContainer from "./PanelTree/PanelContainer.vue";
 import { ref, watch, onBeforeMount } from "vue";
 
@@ -49,11 +50,11 @@ const panelContainers = ref<IPanelContainer[]>([
         width: 60,
         panels: [
           {
-            name: "schematic",
+            name: PanelType.Schematic,
             type: "panel",
           },
           {
-            name: "schematic",
+            name: PanelType.Schematic,
             type: "panel",
           },
         ],
@@ -63,11 +64,11 @@ const panelContainers = ref<IPanelContainer[]>([
         type: "panelContainer",
         panels: [
           {
-            name: "attribute",
+            name: PanelType.Attribute,
             type: "panel",
           },
           {
-            name: "attribute",
+            name: PanelType.Attribute,
             type: "panel",
           },
         ],

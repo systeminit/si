@@ -1,6 +1,6 @@
 <template>
   <div class="w-full h-full">
-    <Viewer :componentId="props.componentId" />
+    <Viewer :component-id="props.componentId" />
   </div>
 </template>
 

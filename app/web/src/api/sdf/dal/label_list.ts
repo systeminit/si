@@ -1,5 +1,5 @@
 export interface LabelEntry<V> {
-  label: String;
+  label: string;
   value: V;
 }
 
