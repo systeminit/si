@@ -7,7 +7,7 @@ use thiserror::Error;
 use crate::{
     edit_field::{
         value_and_visiblity_diff, EditField, EditFieldAble, EditFieldDataType, EditFieldError,
-        EditFieldObjectKind, EditFields, RequiredValidator, TextWidget, Validator, Widget,
+        EditFieldObjectKind, EditFields, TextWidget, Widget,
     },
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_many_to_many,
     HistoryActor, HistoryEventError, SchemaVariant, SchemaVariantId, StandardModel,
@@ -130,7 +130,7 @@ impl QualificationCheck {
             Widget::Text(TextWidget::new()),
             value,
             visibility_diff,
-            vec![Validator::Required(RequiredValidator)],
+            vec![], // TODO: actually validate to generate ValidationErrors
         ))
     }
 }

@@ -5,8 +5,8 @@ use strum_macros::{AsRefStr, Display, EnumString};
 use thiserror::Error;
 
 use crate::{
-    label_list::ToLabelList, HistoryActor, LabelList, LabelListError, PropId, SystemId, Tenancy,
-    Visibility,
+    func::backend::validation::ValidationError, label_list::ToLabelList, HistoryActor, LabelList,
+    LabelListError, PropId, SystemId, Tenancy, Visibility,
 };
 
 #[derive(Error, Debug)]
@@ -98,7 +98,7 @@ pub struct EditField {
     widget: Widget,
     value: Option<serde_json::Value>,
     visibility_diff: VisibilityDiff,
-    validators: Vec<Validator>,
+    validation_errors: Vec<ValidationError>,
     baggage: Option<EditFieldBaggage>,
 }
 
@@ -113,7 +113,7 @@ impl EditField {
         widget: Widget,
         value: Option<serde_json::Value>,
         visibility_diff: VisibilityDiff,
-        validators: Vec<Validator>,
+        validation_errors: Vec<ValidationError>,
     ) -> Self {
         let name = name.into();
         let object_id = object_id.into();
@@ -130,7 +130,7 @@ impl EditField {
             path,
             value,
             visibility_diff,
-            validators,
+            validation_errors,
             baggage: None,
         }
     }
@@ -230,19 +230,6 @@ impl From<Vec<EditFields>> for ArrayWidget {
         Self::new(entries)
     }
 }
-
-#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
-#[serde(tag = "kind")]
-pub enum Validator {
-    Required(RequiredValidator),
-    Regex(RegexValidator),
-}
-
-#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
-pub struct RequiredValidator;
-
-#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
-pub struct RegexValidator;
 
 #[async_trait::async_trait]
 pub trait EditFieldAble {

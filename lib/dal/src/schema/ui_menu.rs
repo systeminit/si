@@ -8,8 +8,8 @@ use telemetry::prelude::*;
 use crate::{
     edit_field::{
         value_and_visiblity_diff, value_and_visiblity_diff_option, EditField, EditFieldAble,
-        EditFieldDataType, EditFieldError, EditFieldObjectKind, EditFields, RequiredValidator,
-        SelectWidget, TextWidget, Validator, Widget,
+        EditFieldDataType, EditFieldError, EditFieldObjectKind, EditFields, SelectWidget,
+        TextWidget, Widget,
     },
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
     standard_model_many_to_many, HistoryActor, LabelList, SchemaError, SchematicKind,
@@ -185,7 +185,7 @@ impl EditFieldAble for UiMenu {
                 Widget::Text(TextWidget::new()),
                 name_value,
                 name_visibility_diff,
-                vec![Validator::Required(RequiredValidator)],
+                vec![], // TODO: actually validate to generate ValidationErrors
             ),
             EditField::new(
                 String::from("category"),
@@ -196,7 +196,7 @@ impl EditFieldAble for UiMenu {
                 Widget::Text(TextWidget::new()),
                 category_value,
                 category_visibility_diff,
-                vec![Validator::Required(RequiredValidator)],
+                vec![], // TODO: actually validate to generate ValidationErrors
             ),
             EditField::new(
                 String::from("schematic_kind"),
@@ -210,7 +210,7 @@ impl EditFieldAble for UiMenu {
                 )),
                 schematic_kind_value,
                 schematic_kind_visibility_diff,
-                vec![Validator::Required(RequiredValidator)],
+                vec![], // TODO: actually validate to generate ValidationErrors
             ),
         ])
     }

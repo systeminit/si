@@ -9,7 +9,7 @@ use crate::{
     edit_field::{
         value_and_visiblity_diff, value_and_visiblity_diff_copy, CheckboxWidget, EditField,
         EditFieldAble, EditFieldDataType, EditFieldError, EditFieldObjectKind, EditFields,
-        RequiredValidator, TextWidget, ToSelectWidget, Validator, Widget,
+        TextWidget, ToSelectWidget, Widget,
     },
     impl_standard_model,
     label_list::ToLabelList,
@@ -177,7 +177,7 @@ impl Socket {
             Widget::Text(TextWidget::new()),
             value,
             visibility_diff,
-            vec![Validator::Required(RequiredValidator)],
+            vec![], // TODO: actually validate to generate ValidationErrors
         ))
     }
 
@@ -207,7 +207,7 @@ impl Socket {
             Widget::Select(SocketEdgeKind::to_select_widget_with_no_default()?),
             value,
             visibility_diff,
-            vec![Validator::Required(RequiredValidator)],
+            vec![], // TODO: actually validate to generate ValidationErrors
         ))
     }
 
@@ -237,7 +237,7 @@ impl Socket {
             Widget::Select(SocketArity::to_select_widget_with_no_default()?),
             value,
             visibility_diff,
-            vec![Validator::Required(RequiredValidator)],
+            vec![], // TODO: actually validate to generate ValidationErrors
         ))
     }
 
