@@ -47,12 +47,10 @@ impl FuncBackendValidateStringValue {
                 });
             }
         } else {
-            validation_errors.push(
-                ValidationError {
-                    message: "value must be present".to_string(),
-                    ..ValidationError::default()
-                }
-            )
+            validation_errors.push(ValidationError {
+                message: "value must be present".to_string(),
+                ..ValidationError::default()
+            })
         }
 
         Ok(serde_json::to_value(validation_errors)?)

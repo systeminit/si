@@ -23,6 +23,7 @@ mod standard_model;
 mod system;
 mod tenancy;
 mod user;
+mod validation_resolver;
 mod visibility;
 mod workspace;
 
