@@ -181,6 +181,9 @@ impl FuncBinding {
             FuncBackendKind::String => {
                 let args: FuncBackendStringArgs = serde_json::from_value(self.args.clone())?;
                 let return_value = FuncBackendString::new(args).execute()?;
+
+                // TODO: From the `if` to the end of the match arm, might be able to be replaced with the following?
+                //       Some(FuncBackendString::new(args).execute()?)
                 if !return_value.is_string() {
                     return Err(FuncBindingError::IncorrectReturnValueType("String"));
                 }
