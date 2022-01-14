@@ -14,6 +14,7 @@ pub async fn migrate(txn: &PgTxn<'_>, nats: &NatsTxn) -> FuncResult<()> {
 
     si_set_string(txn, nats, &tenancy, &visibility, &history_actor).await?;
     si_unset(txn, nats, &tenancy, &visibility, &history_actor).await?;
+    si_validate_string_equals(txn, nats, &tenancy, &visibility, &history_actor).await?;
 
     Ok(())
 }
@@ -73,5 +74,32 @@ async fn si_unset(
         .await
         .expect("cannot create func");
     }
+    Ok(())
+}
+
+async fn si_validate_string_equals(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    tenancy: &Tenancy,
+    visibility: &Visibility,
+    history_actor: &HistoryActor,
+) -> FuncResult<()> {
+    let func_name = "si:validateStringEquals".to_string();
+    let existing_func = Func::find_by_attr(txn, tenancy, visibility, "name", &func_name).await?;
+    if existing_func.is_empty() {
+        Func::new(
+            txn,
+            nats,
+            tenancy,
+            visibility,
+            history_actor,
+            &func_name,
+            FuncBackendKind::ValidateStringValue,
+            FuncBackendResponseType::Validation,
+        )
+        .await
+        .expect("cannot create func");
+    }
+
     Ok(())
 }
