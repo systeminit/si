@@ -6,7 +6,10 @@ use thiserror::Error;
 use serde_json::Value as JsonValue;
 
 use crate::{
-    func::backend::{FuncBackendString, FuncBackendStringArgs},
+    func::backend::{
+        validation::{FuncBackendValidateStringValue, FuncBackendValidateStringValueArgs},
+        FuncBackendString, FuncBackendStringArgs,
+    },
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
     Func, FuncBackendError, FuncBackendKind, HistoryActor, HistoryEvent, HistoryEventError,
     StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
@@ -181,13 +184,20 @@ impl FuncBinding {
             FuncBackendKind::String => {
                 let args: FuncBackendStringArgs = serde_json::from_value(self.args.clone())?;
                 let return_value = FuncBackendString::new(args).execute()?;
+
+                // TODO: From the `if` to the end of the match arm, might be able to be replaced with the following?
+                //       Some(FuncBackendString::new(args).execute()?)
                 if !return_value.is_string() {
                     return Err(FuncBindingError::IncorrectReturnValueType("String"));
                 }
                 Some(return_value)
             }
             FuncBackendKind::Unset => None,
-            FuncBackendKind::ValidateStringValue => unimplemented!(),
+            FuncBackendKind::ValidateStringValue => {
+                let args: FuncBackendValidateStringValueArgs =
+                    serde_json::from_value(self.args.clone())?;
+                Some(FuncBackendValidateStringValue::new(args).execute()?)
+            }
         };
 
         let func = self
