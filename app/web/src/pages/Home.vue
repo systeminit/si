@@ -29,7 +29,7 @@ import { globalErrorMessage$ } from "@/observable/global";
 import { refFrom } from "vuse-rx";
 import { map } from "rxjs/operators";
 import { GlobalErrorService } from "@/service/global_error";
-import { firstValueFrom, tap } from "rxjs";
+import { firstValueFrom } from "rxjs";
 
 const route = useRoute();
 const router = useRouter();

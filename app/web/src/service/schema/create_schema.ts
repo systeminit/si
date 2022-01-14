@@ -8,7 +8,7 @@ import { switchMap } from "rxjs/operators";
 import { editSessionWritten$ } from "@/observable/edit_session";
 
 export interface CreateSchemaArgs {
-  name: String;
+  name: string;
   kind: SchemaKind;
 }
 

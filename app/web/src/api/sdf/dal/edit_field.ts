@@ -78,7 +78,7 @@ export type VisibilityDiff =
 export interface EditField {
   id: string;
   name: string;
-  path: Array<String>;
+  path: Array<string>;
   object_kind: EditFieldObjectKind;
   object_id: number;
   data_type: EditFieldDataType;

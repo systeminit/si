@@ -1,4 +1,4 @@
-import { ReplaySubject, tap } from "rxjs";
+import { ReplaySubject } from "rxjs";
 import { Component } from "@/api/sdf/dal/component";
 import { persistToSession } from "@/observable/session_state";
 
