@@ -1,5 +1,5 @@
 <template>
-  <div v-if="show" class="flex flex-row items-center w-full">
+  <div v-if="props.show" class="flex flex-row items-center w-full">
     <div class="flex flex-col w-full">
       <div class="flex flex-row items-center">
         <div class="flex-wrap self-start text-sm leading-tight text-right w-36">
@@ -23,26 +23,24 @@
         </div>
       </div>
       <div class="flex flex-wrap">
-        <ValidationErrors :errors="errors" class="p-2" />
+        <ValidationErrorsWidget :errors="props.validationErrors" class="p-2" />
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
 import { refFrom } from "vuse-rx";
 import { ChangeSetService } from "@/service/change_set";
-import ValidationErrors from "@/organisims/EditForm/ValidationErrors.vue";
+import ValidationErrorsWidget from "@/organisims/EditForm/ValidationErrorsWidget.vue";
+import type { ValidationErrors } from "@/api/sdf/dal/edit_field";
 
-defineProps({
-  show: {
-    type: Boolean,
-    required: true,
-  },
-});
+const props = defineProps<{
+  show: boolean;
+  validationErrors: ValidationErrors;
+}>();
+
 const editMode = refFrom(ChangeSetService.currentEditMode());
-const errors = ref([{ message: "Aieeee!", link: "https://placekitten.com" }]);
 </script>
 
 <style scoped></style>

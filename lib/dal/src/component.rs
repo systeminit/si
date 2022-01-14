@@ -10,6 +10,7 @@ use crate::edit_field::{
     EditFieldBaggage, EditFieldBaggageComponentProp, EditFieldDataType, EditFieldError,
     EditFieldObjectKind, EditFields, TextWidget, Widget,
 };
+use crate::func::backend::validation::ValidationError;
 use crate::func::backend::FuncBackendStringArgs;
 use crate::func::binding::{FuncBinding, FuncBindingError};
 use crate::func::binding_return_value::FuncBindingReturnValue;
@@ -336,7 +337,11 @@ impl Component {
             Widget::Text(TextWidget::new()),
             value,
             visibility_diff,
-            vec![], // TODO: actually validate to generate ValidationErrors
+            vec![ValidationError {
+                message: "Aieeee! This name SUCKS!".to_string(),
+                link: Some("https://placekitten.com".to_string()),
+                ..ValidationError::default()
+            }], // TODO: actually validate to generate ValidationErrors
         ))
     }
 

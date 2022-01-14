@@ -10,7 +10,9 @@ boostrap:
 # This target does not compose down beforehand.
 partial: init
 	GATEWAY=$(shell $(MAKEPATH)/scripts/gateway.sh) \
-		docker-compose -f $(MAKEPATH)/docker-compose.yml -f $(MAKEPATH)/docker-compose.env.yml \
+		docker-compose \
+			-f $(MAKEPATH)/docker-compose.yml \
+			-f $(MAKEPATH)/docker-compose.env.yml \
 		up -d nats pg otel
 
 # Run this target alongside local developer builds of web.
@@ -18,27 +20,37 @@ partial: init
 # without having to build backend components.
 backend: init
 	GATEWAY=$(shell $(MAKEPATH)/scripts/gateway.sh) \
-		docker-compose -f $(MAKEPATH)/docker-compose.yml -f $(MAKEPATH)/docker-compose.env.yml \
+	REPOPATH=$(REPOPATH) \
+		docker-compose \
+			-f $(MAKEPATH)/docker-compose.yml \
+			-f $(MAKEPATH)/docker-compose.env.yml \
+			-f $(MAKEPATH)/docker-compose.backend.yml \
 		up -d nats pg otel sdf veritech
 
 # Run interactively and compose down beforehand. This target is meant to be run iteratively for
 # local development and testing.
 dev: down init
 	GATEWAY=$(shell $(MAKEPATH)/scripts/gateway.sh) \
-		docker-compose -f $(MAKEPATH)/docker-compose.yml -f $(MAKEPATH)/docker-compose.env.yml \
+		docker-compose \
+			-f $(MAKEPATH)/docker-compose.yml \
+			-f $(MAKEPATH)/docker-compose.env.yml \
 		up
 
 # Run in a detached state and do not compose down beforehand.
 # This is the target to run in production.
 prod: init
 	GATEWAY=$(shell $(MAKEPATH)/scripts/gateway.sh) \
-		docker-compose -f $(MAKEPATH)/docker-compose.yml -f $(MAKEPATH)/docker-compose.env.yml \
+		docker-compose \
+			-f $(MAKEPATH)/docker-compose.yml \
+			-f $(MAKEPATH)/docker-compose.env.yml \
 		up -d
 
 ci: init
 	GATEWAY=$(shell $(MAKEPATH)/scripts/gateway.sh) REPOPATH=$(REPOPATH) \
-		docker-compose -f $(MAKEPATH)/docker-compose.yml -f $(MAKEPATH)/docker-compose.env.yml \
-		-f $(MAKEPATH)/docker-compose.ci.yml \
+		docker-compose \
+			-f $(MAKEPATH)/docker-compose.yml \
+			-f $(MAKEPATH)/docker-compose.env.yml \
+			-f $(MAKEPATH)/docker-compose.ci.yml \
 		up -d
 
 down:
@@ -49,5 +61,4 @@ init:
 	if [ ! -f $(MAKEPATH)/docker-compose.env.yml ]; then \
 		echo "version: \"3\"" > $(MAKEPATH)/docker-compose.env.yml; \
 	fi
-	docker-compose -f $(MAKEPATH)/docker-compose.yml \
-		pull
+	docker-compose -f $(MAKEPATH)/docker-compose.yml pull

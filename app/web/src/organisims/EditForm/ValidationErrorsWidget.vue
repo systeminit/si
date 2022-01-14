@@ -1,5 +1,5 @@
 <template>
-  <ul :v-if="props.errors.length">
+  <ul v-if="props.errors.length">
     <li
       v-for="(error, index) in props.errors"
       :key="index"
@@ -26,23 +26,18 @@
 
 <script setup lang="ts">
 import VueFeather from "vue-feather";
+import type { ValidationErrors } from "@/api/sdf/dal/edit_field";
 
 const props = defineProps<{
-  errors: {
-    message: string;
-    level?: string;
-    kind?: string;
-    link?: string;
-  }[];
+  errors: ValidationErrors;
 }>();
 
-function strokeColorForLevel(level: string | undefined): string {
+function strokeColorForLevel(level: string): string {
   switch (level) {
     case "warning":
       return "yellow";
     case "info":
       return "grey";
-
     default:
       return "red";
   }
