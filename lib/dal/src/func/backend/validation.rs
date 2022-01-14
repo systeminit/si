@@ -4,12 +4,12 @@ use crate::func::backend::FuncBackendResult;
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct FuncBackendValidateStringValueArgs {
-    pub value: String,
+    pub value: Option<String>,
     pub expected: String,
 }
 
 impl FuncBackendValidateStringValueArgs {
-    pub fn new(value: String, expected: String) -> Self {
+    pub fn new(value: Option<String>, expected: String) -> Self {
         Self { value, expected }
     }
 }
@@ -39,11 +39,20 @@ impl FuncBackendValidateStringValue {
         let expected = self.args.expected.clone();
         let mut validation_errors = vec![];
 
-        if value != expected {
-            validation_errors.push(ValidationError {
-                message: format!("value ({value}) does not match expected ({expected})"),
-                ..ValidationError::default()
-            });
+        if let Some(v) = value {
+            if v != expected {
+                validation_errors.push(ValidationError {
+                    message: format!("value ({v}) does not match expected ({expected})"),
+                    ..ValidationError::default()
+                });
+            }
+        } else {
+            validation_errors.push(
+                ValidationError {
+                    message: "value must be present".to_string(),
+                    ..ValidationError::default()
+                }
+            )
         }
 
         Ok(serde_json::to_value(validation_errors)?)
