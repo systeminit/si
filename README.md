@@ -97,6 +97,12 @@ For instance, you can tidy up your Rust code before opening a pull request by ex
 ( cd ci; make tidy )
 ```
 
+To verify that all lints will pass in CI, execute the following target:
+
+```bash
+( cd ci; make ci-lint )
+```
+
 You can also run individual tests before bringing up the entire SI stack, as neeeded.
 This can be done in the root of the repository:
 

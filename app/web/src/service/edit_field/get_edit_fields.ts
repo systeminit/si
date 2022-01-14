@@ -70,11 +70,10 @@ export function getEditFields(
           ...visibility,
         };
       }
-      const response = sdf.get<ApiResponse<GetEditFieldsResponse>>(
+      return sdf.get<ApiResponse<GetEditFieldsResponse>>(
         "edit_field/get_edit_fields",
         request,
       );
-      return response;
     }),
     shareReplay(1),
   );

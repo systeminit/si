@@ -86,8 +86,17 @@ export interface EditField {
   widget: Widget;
   value: any;
   visibility_diff: VisibilityDiff;
-  validators: Array<Validator>;
+  validation_errors: ValidationErrors;
   baggage?: any;
 }
 
 export type EditFields = Array<EditField>;
+
+export type ValidationErrors = Array<ValidationError>;
+
+export interface ValidationError {
+  message: string;
+  level?: string;
+  kind?: string;
+  link?: string;
+}

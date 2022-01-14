@@ -1,5 +1,5 @@
 <template>
-  <EditFormField :show="show">
+  <EditFormField :show="show" :validation-errors="editField.validation_errors">
     <template #name>
       {{ editField.name }}
     </template>
