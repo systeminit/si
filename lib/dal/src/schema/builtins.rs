@@ -298,6 +298,55 @@ async fn docker_image(
         .set_default_schema_variant_id(txn, nats, visibility, history_actor, Some(*variant.id()))
         .await?;
 
+    let mut ui_menu = UiMenu::new(txn, nats, tenancy, visibility, history_actor).await?;
+    ui_menu
+        .set_name(
+            txn,
+            nats,
+            visibility,
+            history_actor,
+            Some(schema.name().to_string()),
+        )
+        .await?;
+
+    let application_name = "application".to_string();
+    ui_menu
+        .set_category(
+            txn,
+            nats,
+            visibility,
+            history_actor,
+            Some(application_name.clone()),
+        )
+        .await?;
+    ui_menu
+        .set_schematic_kind(
+            txn,
+            nats,
+            visibility,
+            history_actor,
+            SchematicKind::Deployment,
+        )
+        .await?;
+    ui_menu
+        .set_schema(txn, nats, visibility, history_actor, schema.id())
+        .await?;
+
+    let application_schema_results =
+        Schema::find_by_attr(txn, tenancy, visibility, "name", &application_name).await?;
+    let application_schema = application_schema_results
+        .first()
+        .ok_or(SchemaError::NotFoundByName(application_name))?;
+    ui_menu
+        .add_root_schematic(
+            txn,
+            nats,
+            visibility,
+            history_actor,
+            application_schema.id(),
+        )
+        .await?;
+
     let image_prop = Prop::new(
         txn,
         nats,

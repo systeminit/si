@@ -6,9 +6,10 @@ use thiserror::Error;
 
 use crate::{
     func::{binding::FuncBindingId, binding_return_value::FuncBindingReturnValue, FuncId},
-    impl_standard_model, pk, standard_model, ComponentId, HistoryActor, HistoryEventError, PropId,
-    SchemaId, SchemaVariantId, StandardModel, StandardModelError, SystemId, Tenancy, Timestamp,
-    Visibility,
+    impl_standard_model, pk,
+    standard_model::{self, object_from_row},
+    standard_model_accessor, ComponentId, HistoryActor, HistoryEventError, PropId, SchemaId,
+    SchemaVariantId, StandardModel, StandardModelError, SystemId, Tenancy, Timestamp, Visibility,
 };
 
 #[derive(Error, Debug)]
@@ -169,21 +170,35 @@ impl AttributeResolver {
         Ok(object)
     }
 
+    standard_model_accessor!(func_id, Pk(FuncId), AttributeResolverResult);
+    standard_model_accessor!(func_binding_id, Pk(FuncBindingId), AttributeResolverResult);
+
     #[allow(clippy::too_many_arguments)]
-    pub async fn find_value_for_prop_and_component(
+    #[tracing::instrument(skip(txn, nats))]
+    pub async fn upsert(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
         tenancy: &Tenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
-        prop_id: PropId,
-        component_id: ComponentId,
-        system_id: SystemId,
-    ) -> AttributeResolverResult<FuncBindingReturnValue> {
+        func_id: FuncId,
+        func_binding_id: FuncBindingId,
+        context: AttributeResolverContext,
+    ) -> AttributeResolverResult<Self> {
         let row = txn
             .query_one(
-                FIND_VALUE_FOR_CONTEXT,
-                &[&tenancy, &visibility, &prop_id, &component_id, &system_id],
+                "SELECT object FROM attribute_resolver_upsert_v1($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+                &[
+                    &tenancy,
+                    &visibility,
+                    &func_id,
+                    &func_binding_id,
+                    &context.prop_id(),
+                    &context.component_id(),
+                    &context.schema_id(),
+                    &context.schema_variant_id(),
+                    &context.system_id(),
+                ],
             )
             .await?;
         let object = standard_model::finish_create_from_row(
@@ -195,6 +210,25 @@ impl AttributeResolver {
             row,
         )
         .await?;
+        Ok(object)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub async fn find_value_for_prop_and_component(
+        txn: &PgTxn<'_>,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+        prop_id: PropId,
+        component_id: ComponentId,
+        system_id: SystemId,
+    ) -> AttributeResolverResult<FuncBindingReturnValue> {
+        let row = txn
+            .query_one(
+                FIND_VALUE_FOR_CONTEXT,
+                &[&tenancy, &visibility, &prop_id, &component_id, &system_id],
+            )
+            .await?;
+        let object = object_from_row(row)?;
         Ok(object)
     }
 }

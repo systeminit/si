@@ -60,6 +60,7 @@ const onBlur = () => {
       objectId: props.editField.object_id,
       editFieldId: props.editField.id,
       value: currentValue.value,
+      baggage: props.editField.baggage,
     }).subscribe((response: ApiResponse<UpdateFromEditFieldResponse>) => {
       if (response.error) {
         GlobalErrorService.set(response);

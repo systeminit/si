@@ -101,6 +101,8 @@ pub enum ModelError {
     PgError(#[from] PgError),
     #[error("Schema error")]
     Schema(#[from] SchemaError),
+    #[error("Func error")]
+    Func(#[from] FuncError),
 }
 
 pub type ModelResult<T> = Result<T, ModelError>;
@@ -117,6 +119,7 @@ pub async fn migrate_builtin_schemas(pg: &PgPool, nats: &NatsClient) -> ModelRes
     let txn = conn.transaction().await?;
     let nats = nats.transaction();
     schema::builtins::migrate(&txn, &nats).await?;
+    func::builtins::migrate(&txn, &nats).await?;
     txn.commit().await?;
     nats.commit().await?;
     Ok(())

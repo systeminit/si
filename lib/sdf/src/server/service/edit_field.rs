@@ -35,6 +35,8 @@ pub enum EditFieldError {
     SchemaVariant(#[from] SchemaVariantError),
     #[error("socket error: {0}")]
     Socket(#[from] SocketError),
+    #[error("missing required baggage for edit field request; bug")]
+    MissingBaggage,
 }
 
 pub type EditFieldResult<T> = std::result::Result<T, EditFieldError>;
