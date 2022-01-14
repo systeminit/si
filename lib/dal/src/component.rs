@@ -8,7 +8,7 @@ use crate::attribute_resolver::{AttributeResolverContext, UNSET_ID_VALUE};
 use crate::edit_field::{
     value_and_visiblity_diff, value_and_visiblity_diff_json_option, EditField, EditFieldAble,
     EditFieldBaggage, EditFieldBaggageComponentProp, EditFieldDataType, EditFieldError,
-    EditFieldObjectKind, EditFields, RequiredValidator, TextWidget, Validator, Widget,
+    EditFieldObjectKind, EditFields, TextWidget, Widget,
 };
 use crate::func::backend::FuncBackendStringArgs;
 use crate::func::binding::{FuncBinding, FuncBindingError};
@@ -336,7 +336,7 @@ impl Component {
             Widget::Text(TextWidget::new()),
             value,
             visibility_diff,
-            vec![Validator::Required(RequiredValidator)],
+            vec![], // TODO: actually validate to generate ValidationErrors
         ))
     }
 
@@ -548,7 +548,7 @@ impl EditFieldAble for Component {
                 Widget::Text(TextWidget::new()),
                 value,
                 visibility_diff,
-                vec![Validator::Required(RequiredValidator)],
+                vec![], // TODO: actually validate to generate ValidationErrors
             );
             edit_field.set_baggage(EditFieldBaggage::ComponentProp(
                 EditFieldBaggageComponentProp {

@@ -8,8 +8,7 @@ use thiserror::Error;
 use crate::{
     edit_field::{
         value_and_visiblity_diff, EditField, EditFieldAble, EditFieldDataType, EditFieldError,
-        EditFieldObjectKind, EditFields, RequiredValidator, TextWidget, ToSelectWidget, Validator,
-        Widget,
+        EditFieldObjectKind, EditFields, TextWidget, ToSelectWidget, Widget,
     },
     impl_standard_model,
     label_list::ToLabelList,
@@ -148,7 +147,7 @@ impl Prop {
             Widget::Text(TextWidget::new()),
             value,
             visibility_diff,
-            vec![Validator::Required(RequiredValidator)],
+            vec![], // TODO: actually validate to generate ValidationErrors
         ))
     }
 
@@ -178,7 +177,7 @@ impl Prop {
             Widget::Select(PropKind::to_select_widget_with_no_default()?),
             value,
             visibility_diff,
-            vec![Validator::Required(RequiredValidator)],
+            vec![], // TODO: actually validate to generate ValidationErrors
         ))
     }
 }

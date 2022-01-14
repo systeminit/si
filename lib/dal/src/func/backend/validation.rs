@@ -14,7 +14,7 @@ impl FuncBackendValidateStringValueArgs {
     }
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone, Default)]
+#[derive(Deserialize, Serialize, Debug, Clone, Default, PartialEq, Eq)]
 pub struct ValidationError {
     pub message: String,
     /// This really should be an enum at some point, but we need to figure out the set of values it should be first.

@@ -9,8 +9,8 @@ use self::variant::{SchemaVariantError, SchemaVariantResult};
 use crate::{
     edit_field::{
         value_and_visiblity_diff, EditField, EditFieldAble, EditFieldDataType, EditFieldError,
-        EditFieldObjectKind, EditFields, HeaderWidget, RequiredValidator, SelectWidget, TextWidget,
-        Validator, VisibilityDiff, Widget,
+        EditFieldObjectKind, EditFields, HeaderWidget, SelectWidget, TextWidget, VisibilityDiff,
+        Widget,
     },
     impl_standard_model, pk,
     schema::ui_menu::UiMenuId,
@@ -281,7 +281,7 @@ impl Schema {
             Widget::Text(TextWidget::new()),
             value,
             visibility_diff,
-            vec![Validator::Required(RequiredValidator)],
+            vec![], // TODO: actually validate to generate ValidationErrors
         ))
     }
 
@@ -328,7 +328,7 @@ impl Schema {
             )),
             value,
             visibility_diff,
-            vec![Validator::Required(RequiredValidator)],
+            vec![], // TODO: actually validate to generate ValidationErrors
         ))
     }
 
@@ -367,11 +367,11 @@ impl Schema {
                 Widget::Array(items.into()),
                 None,
                 VisibilityDiff::None,
-                vec![Validator::Required(RequiredValidator)],
+                vec![], // TODO: actually validate to generate ValidationErrors
             )])),
             None,
             VisibilityDiff::None,
-            vec![Validator::Required(RequiredValidator)],
+            vec![], // TODO: actually validate to generate ValidationErrors
         ))
     }
 
@@ -410,11 +410,11 @@ impl Schema {
                 Widget::Array(items.into()),
                 None,
                 VisibilityDiff::None,
-                vec![Validator::Required(RequiredValidator)],
+                vec![], // TODO: actually validate to generate ValidationErrors
             )])),
             None,
             VisibilityDiff::None,
-            vec![Validator::Required(RequiredValidator)],
+            vec![], // TODO: actually validate to generate ValidationErrors
         ))
     }
 }
