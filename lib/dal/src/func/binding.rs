@@ -124,8 +124,9 @@ impl FuncBinding {
             )
             .await?;
         let created: bool = row.try_get("created")?;
+
+        let json_object: serde_json::Value = row.try_get("object")?;
         let object: FuncBinding = if created {
-            let json_object: serde_json::Value = row.try_get("object")?;
             let _history_event = HistoryEvent::new(
                 txn,
                 nats,
@@ -142,7 +143,6 @@ impl FuncBinding {
                 .await?;
             object
         } else {
-            let json_object: serde_json::Value = row.try_get("object")?;
             serde_json::from_value(json_object)?
         };
 
