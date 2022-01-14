@@ -5,7 +5,8 @@ use strum_macros::{AsRefStr, Display, EnumString};
 use thiserror::Error;
 
 use crate::{
-    label_list::ToLabelList, HistoryActor, LabelList, LabelListError, Tenancy, Visibility,
+    label_list::ToLabelList, HistoryActor, LabelList, LabelListError, PropId, SystemId, Tenancy,
+    Visibility,
 };
 
 #[derive(Error, Debug)]
@@ -58,6 +59,7 @@ pub enum Widget {
 #[derive(AsRefStr, Clone, Debug, Deserialize, Display, EnumString, Eq, PartialEq, Serialize)]
 pub enum EditFieldObjectKind {
     Component,
+    ComponentProp,
     Prop,
     QualificationCheck,
     Schema,
@@ -74,6 +76,17 @@ pub enum VisibilityDiff {
     ChangeSet(Option<serde_json::Value>),
 }
 
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct EditFieldBaggageComponentProp {
+    pub prop_id: PropId,
+    pub system_id: Option<SystemId>,
+}
+
+#[derive(AsRefStr, Clone, Debug, Deserialize, Display, Eq, PartialEq, Serialize)]
+pub enum EditFieldBaggage {
+    ComponentProp(EditFieldBaggageComponentProp),
+}
+
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 pub struct EditField {
     id: String,
@@ -86,6 +99,7 @@ pub struct EditField {
     value: Option<serde_json::Value>,
     visibility_diff: VisibilityDiff,
     validators: Vec<Validator>,
+    baggage: Option<EditFieldBaggage>,
 }
 
 impl EditField {
@@ -117,7 +131,16 @@ impl EditField {
             value,
             visibility_diff,
             validators,
+            baggage: None,
         }
+    }
+
+    pub fn set_baggage(&mut self, baggage: EditFieldBaggage) {
+        self.baggage = Some(baggage);
+    }
+
+    pub fn unset_baggage(&mut self) {
+        self.baggage = None;
     }
 }
 
@@ -265,6 +288,29 @@ pub fn value_and_visiblity_diff_option<Obj, Value: Eq + Serialize + ?Sized>(
     let mut value = None;
     if let Some(target_value_real) = target_value {
         value = Some(serde_json::to_value(target_value_real)?);
+    }
+    Ok((value, visibility_diff))
+}
+
+pub fn value_and_visiblity_diff_json_option<Obj>(
+    visibility: &Visibility,
+    target_obj: Option<&Obj>,
+    target_fn: impl Fn(&Obj) -> Option<&serde_json::Value> + Copy,
+    head_obj: Option<&Obj>,
+    change_set_obj: Option<&Obj>,
+) -> EditFieldResult<(Option<serde_json::Value>, VisibilityDiff)> {
+    let target_value = target_obj.map(target_fn);
+    let head_value_option = head_obj.map(target_fn);
+    let change_set_value_option = change_set_obj.map(target_fn);
+    let visibility_diff = visibility_diff(
+        visibility,
+        target_value.as_ref(),
+        head_value_option.as_ref(),
+        change_set_value_option.as_ref(),
+    )?;
+    let mut value = None;
+    if let Some(target_value_real) = target_value {
+        value = target_value_real.cloned();
     }
     Ok((value, visibility_diff))
 }

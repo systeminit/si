@@ -5,9 +5,12 @@ use dal::{
         backend::FuncBackendStringArgs, binding::FuncBinding,
         binding_return_value::FuncBindingReturnValue,
     },
-    test_harness::{create_func, create_func_binding},
+    test_harness::{
+        create_change_set, create_edit_session, create_func, create_func_binding,
+        create_visibility_change_set, create_visibility_edit_session,
+    },
     Func, FuncBackendKind, FuncBackendResponseType, HistoryActor, StandardModel, Tenancy,
-    Visibility,
+    Visibility, NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK,
 };
 
 #[tokio::test]
@@ -51,6 +54,175 @@ async fn func_binding_new() {
     )
     .await
     .expect("cannot create func binding");
+}
+
+#[tokio::test]
+async fn func_binding_find_or_create_head() {
+    test_setup!(ctx, _secret_key, _pg, _conn, txn, _nats_conn, nats);
+    let tenancy = Tenancy::new_universal();
+    let visibility = Visibility::new_head(false);
+    let history_actor = HistoryActor::SystemInit;
+    let func = create_func(&txn, &nats, &tenancy, &visibility, &history_actor).await;
+    let args = FuncBackendStringArgs::new("floop".to_string());
+    let args_json = serde_json::to_value(args).expect("cannot serialize args to json");
+    let (_func_binding, created) = FuncBinding::find_or_create(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        args_json.clone(),
+        *func.id(),
+        *func.backend_kind(),
+    )
+    .await
+    .expect("cannot create func binding");
+    assert_eq!(
+        created, true,
+        "must create a new func binding when one is absent"
+    );
+
+    let (_func_binding, created) = FuncBinding::find_or_create(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        args_json,
+        *func.id(),
+        *func.backend_kind(),
+    )
+    .await
+    .expect("cannot create func binding");
+    assert_eq!(
+        created, false,
+        "must not create a new func binding when one is present"
+    );
+}
+
+#[tokio::test]
+async fn func_binding_find_or_create_edit_session() {
+    test_setup!(ctx, _secret_key, _pg, _conn, txn, _nats_conn, nats);
+    let tenancy = Tenancy::new_universal();
+    let head_visibility = Visibility::new_head(false);
+    let history_actor = HistoryActor::SystemInit;
+    let mut change_set = create_change_set(&txn, &nats, &tenancy, &history_actor).await;
+    let mut edit_session = create_edit_session(&txn, &nats, &history_actor, &change_set).await;
+    let edit_session_visibility = create_visibility_edit_session(&change_set, &edit_session);
+
+    let func = create_func(
+        &txn,
+        &nats,
+        &tenancy,
+        &edit_session_visibility,
+        &history_actor,
+    )
+    .await;
+    let args = FuncBackendStringArgs::new("floop".to_string());
+    let args_json = serde_json::to_value(args).expect("cannot serialize args to json");
+    let (edit_session_func_binding, created) = FuncBinding::find_or_create(
+        &txn,
+        &nats,
+        &tenancy,
+        &edit_session_visibility,
+        &history_actor,
+        args_json.clone(),
+        *func.id(),
+        *func.backend_kind(),
+    )
+    .await
+    .expect("cannot create func binding");
+    assert_eq!(
+        created, true,
+        "must create a new func binding when one is absent"
+    );
+
+    let (edit_session_func_binding_again, created) = FuncBinding::find_or_create(
+        &txn,
+        &nats,
+        &tenancy,
+        &edit_session_visibility,
+        &history_actor,
+        args_json.clone(),
+        *func.id(),
+        *func.backend_kind(),
+    )
+    .await
+    .expect("cannot create func binding");
+    assert_eq!(
+        created, false,
+        "must not create a new func binding when one is present"
+    );
+    assert_eq!(
+        edit_session_func_binding, edit_session_func_binding_again,
+        "should return the identical func binding"
+    );
+
+    edit_session
+        .save(&txn, &nats, &history_actor)
+        .await
+        .expect("cannot save edit session");
+
+    let second_edit_session = create_edit_session(&txn, &nats, &history_actor, &change_set).await;
+    let second_edit_session_visibility =
+        create_visibility_edit_session(&change_set, &second_edit_session);
+    let (change_set_func_binding, created) = FuncBinding::find_or_create(
+        &txn,
+        &nats,
+        &tenancy,
+        &second_edit_session_visibility,
+        &history_actor,
+        args_json.clone(),
+        *func.id(),
+        *func.backend_kind(),
+    )
+    .await
+    .expect("cannot create func binding");
+    assert_eq!(
+        created, false,
+        "must not create a new func binding when one is present"
+    );
+    assert_eq!(
+        change_set_func_binding.visibility().edit_session_pk,
+        NO_EDIT_SESSION_PK,
+        "should return the identical func binding"
+    );
+
+    change_set
+        .apply(&txn, &nats, &history_actor)
+        .await
+        .expect("cannot apply change set");
+
+    let final_change_set = create_change_set(&txn, &nats, &tenancy, &history_actor).await;
+    let final_edit_session =
+        create_edit_session(&txn, &nats, &history_actor, &final_change_set).await;
+    let final_visibility = create_visibility_edit_session(&final_change_set, &final_edit_session);
+    let (head_func_binding, created) = FuncBinding::find_or_create(
+        &txn,
+        &nats,
+        &tenancy,
+        &final_visibility,
+        &history_actor,
+        args_json,
+        *func.id(),
+        *func.backend_kind(),
+    )
+    .await
+    .expect("cannot create func binding");
+    assert_eq!(
+        created, false,
+        "must not create a new func binding when one is present"
+    );
+    assert_eq!(
+        head_func_binding.visibility().edit_session_pk,
+        NO_EDIT_SESSION_PK,
+        "should not have an edit session"
+    );
+    assert_eq!(
+        head_func_binding.visibility().change_set_pk,
+        NO_CHANGE_SET_PK,
+        "should not have a change set"
+    );
 }
 
 #[tokio::test]

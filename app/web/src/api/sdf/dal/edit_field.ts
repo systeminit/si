@@ -2,6 +2,7 @@ import { LabelList } from "@/api/sdf/dal/label_list";
 
 export enum EditFieldObjectKind {
   Component = "Component",
+  ComponentProp = "ComponentProp",
   Schema = "Schema",
 }
 
@@ -86,6 +87,7 @@ export interface EditField {
   value: any;
   visibility_diff: VisibilityDiff;
   validators: Array<Validator>;
+  baggage?: any;
 }
 
 export type EditFields = Array<EditField>;

@@ -66,6 +66,7 @@ const addToArray = () => {
     objectId: props.editField.object_id,
     editFieldId: props.editField.id,
     value: null,
+    baggage: props.editField.baggage,
   }).subscribe((response: ApiResponse<UpdateFromEditFieldResponse>) => {
     if (response.error) {
       GlobalErrorService.set(response);

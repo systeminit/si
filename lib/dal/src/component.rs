@@ -4,16 +4,22 @@ use si_data::{NatsError, NatsTxn, PgError, PgTxn};
 use telemetry::prelude::*;
 use thiserror::Error;
 
+use crate::attribute_resolver::{AttributeResolverContext, UNSET_ID_VALUE};
 use crate::edit_field::{
-    value_and_visiblity_diff, EditField, EditFieldAble, EditFieldDataType, EditFieldError,
+    value_and_visiblity_diff, value_and_visiblity_diff_json_option, EditField, EditFieldAble,
+    EditFieldBaggage, EditFieldBaggageComponentProp, EditFieldDataType, EditFieldError,
     EditFieldObjectKind, EditFields, RequiredValidator, TextWidget, Validator, Widget,
 };
+use crate::func::backend::FuncBackendStringArgs;
+use crate::func::binding::{FuncBinding, FuncBindingError};
+use crate::func::binding_return_value::FuncBindingReturnValue;
 use crate::node::NodeKind;
 use crate::schema::variant::{SchemaVariantError, SchemaVariantId};
 use crate::schema::SchemaVariant;
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
-    standard_model_has_many, HistoryActor, HistoryEventError, Node, NodeError, Schema, SchemaError,
+    standard_model_has_many, AttributeResolver, AttributeResolverError, Func, FuncBackendKind,
+    HistoryActor, HistoryEventError, Node, NodeError, Prop, PropId, PropKind, Schema, SchemaError,
     SchemaId, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
 };
 
@@ -43,6 +49,16 @@ pub enum ComponentError {
     SchemaNotFound,
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] SchemaVariantError),
+    #[error("attribute resolver error: {0}")]
+    AttributeResolver(#[from] AttributeResolverError),
+    #[error("missing a prop in attribute update: {0} not found")]
+    MissingProp(PropId),
+    #[error("missing a func in attribute update: {0} not found")]
+    MissingFunc(String),
+    #[error("invalid prop value; expected {0} but got {1}")]
+    InvalidPropValue(String, serde_json::Value),
+    #[error("func binding error: {0}")]
+    FuncBinding(#[from] FuncBindingError),
 }
 
 pub type ComponentResult<T> = Result<T, ComponentError>;
@@ -323,6 +339,83 @@ impl Component {
             vec![Validator::Required(RequiredValidator)],
         ))
     }
+
+    #[allow(clippy::too_many_arguments)]
+    pub async fn update_prop_from_edit_field(
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+        history_actor: &HistoryActor,
+        component_id: ComponentId,
+        prop_id: PropId,
+        _edit_field_id: String,
+        value: Option<serde_json::Value>,
+    ) -> ComponentResult<()> {
+        let prop = Prop::get_by_id(txn, tenancy, visibility, &prop_id)
+            .await?
+            .ok_or(ComponentError::MissingProp(prop_id))?;
+        let _component = Component::get_by_id(txn, tenancy, visibility, &component_id)
+            .await?
+            .ok_or(ComponentError::NotFound(component_id))?;
+        let (func, func_binding) = match (prop.kind(), value) {
+            (PropKind::String, Some(value_json)) => {
+                let value = if !value_json.is_string() {
+                    return Err(ComponentError::InvalidPropValue(
+                        "String".to_string(),
+                        value_json,
+                    ));
+                } else {
+                    value_json.as_str().unwrap().to_string()
+                };
+                let func_name = "si:setString".to_string();
+                let mut funcs =
+                    Func::find_by_attr(txn, tenancy, visibility, "name", &func_name).await?;
+                let func = funcs.pop().ok_or(ComponentError::MissingFunc(func_name))?;
+                let func_backend_string_args =
+                    serde_json::to_value(FuncBackendStringArgs::new(value))?;
+                let (func_binding, created) = FuncBinding::find_or_create(
+                    txn,
+                    nats,
+                    tenancy,
+                    visibility,
+                    history_actor,
+                    func_backend_string_args,
+                    *func.id(),
+                    FuncBackendKind::String,
+                )
+                .await?;
+
+                // Note for future humans - if this isn't a built in, then we need to
+                // think about execution time. Probably higher up than this? But just
+                // an FYI.
+                if created {
+                    func_binding.execute(txn, nats).await?;
+                }
+                (func, func_binding)
+            }
+            (PropKind::String, None) => {
+                todo!("we haven't dealt with unseting a string");
+            }
+        };
+
+        let mut attribute_resolver_context = AttributeResolverContext::new();
+        attribute_resolver_context.set_prop_id(prop_id);
+        attribute_resolver_context.set_component_id(component_id);
+        AttributeResolver::upsert(
+            txn,
+            nats,
+            tenancy,
+            visibility,
+            history_actor,
+            *func.id(),
+            *func_binding.id(),
+            attribute_resolver_context,
+        )
+        .await?;
+
+        Ok(())
+    }
 }
 
 #[async_trait]
@@ -336,29 +429,137 @@ impl EditFieldAble for Component {
         visibility: &Visibility,
         id: &ComponentId,
     ) -> ComponentResult<EditFields> {
-        let object = Component::get_by_id(txn, tenancy, visibility, id)
+        let mut tenancy = tenancy.clone();
+        tenancy.universal = true;
+        let head_visibility = Visibility::new_head(visibility.deleted);
+        let change_set_visibility =
+            Visibility::new_change_set(visibility.change_set_pk, visibility.deleted);
+
+        let component = Component::get_by_id(txn, &tenancy, visibility, id)
             .await?
             .ok_or(ComponentError::NotFound(*id))?;
         let head_object: Option<Component> = if visibility.in_change_set() {
-            let head_visibility = Visibility::new_head(visibility.deleted);
-            Component::get_by_id(txn, tenancy, &head_visibility, id).await?
+            Component::get_by_id(txn, &tenancy, &head_visibility, id).await?
         } else {
             None
         };
         let change_set_object: Option<Component> = if visibility.in_change_set() {
-            let change_set_visibility =
-                Visibility::new_change_set(visibility.change_set_pk, visibility.deleted);
-            Component::get_by_id(txn, tenancy, &change_set_visibility, id).await?
+            Component::get_by_id(txn, &tenancy, &change_set_visibility, id).await?
         } else {
             None
         };
 
-        Ok(vec![Self::name_edit_field(
+        let mut edit_fields: EditFields = vec![Self::name_edit_field(
             visibility,
-            &object,
+            &component,
             &head_object,
             &change_set_object,
-        )?])
+        )?];
+
+        let schema_variant = component
+            .schema_variant_with_tenancy(txn, &tenancy, visibility)
+            .await?
+            .ok_or(ComponentError::SchemaVariantNotFound)?;
+
+        let props = schema_variant.props(txn, visibility).await?;
+        for prop in props.iter() {
+            let system_id = UNSET_ID_VALUE.into();
+            let current_value: Option<FuncBindingReturnValue> =
+                match AttributeResolver::find_value_for_prop_and_component(
+                    txn,
+                    &tenancy,
+                    visibility,
+                    *prop.id(),
+                    *component.id(),
+                    system_id,
+                )
+                .await
+                {
+                    Ok(v) => Some(v),
+                    Err(e) => {
+                        dbg!("missing attribute resolver; might be fine, might be a bug! who knows? only god.");
+                        dbg!(&e);
+                        None
+                    }
+                };
+            let head_value: Option<FuncBindingReturnValue> = if visibility.in_change_set() {
+                match AttributeResolver::find_value_for_prop_and_component(
+                    txn,
+                    &tenancy,
+                    &head_visibility,
+                    *prop.id(),
+                    *component.id(),
+                    system_id,
+                )
+                .await
+                {
+                    Ok(v) => Some(v),
+                    Err(e) => {
+                        dbg!("missing attribute resolver; might be fine, might be a bug! who knows? only god.");
+                        dbg!(&e);
+                        None
+                    }
+                }
+            } else {
+                None
+            };
+            let change_set_value: Option<FuncBindingReturnValue> = if visibility.in_change_set() {
+                match AttributeResolver::find_value_for_prop_and_component(
+                    txn,
+                    &tenancy,
+                    &change_set_visibility,
+                    *prop.id(),
+                    *component.id(),
+                    system_id,
+                )
+                .await
+                {
+                    Ok(v) => Some(v),
+                    Err(e) => {
+                        dbg!("missing attribute resolver; might be fine, might be a bug! who knows? only god.");
+                        dbg!(&e);
+                        None
+                    }
+                }
+            } else {
+                None
+            };
+
+            let field_name = prop.name();
+            let object_kind = EditFieldObjectKind::ComponentProp;
+
+            fn extract_value(fbrv: &FuncBindingReturnValue) -> Option<&serde_json::Value> {
+                fbrv.value()
+            }
+
+            let (value, visibility_diff) = value_and_visiblity_diff_json_option(
+                visibility,
+                current_value.as_ref(),
+                extract_value,
+                head_value.as_ref(),
+                change_set_value.as_ref(),
+            )?;
+            let mut edit_field = EditField::new(
+                field_name,
+                vec!["properties".to_string()],
+                object_kind,
+                *id,
+                EditFieldDataType::String,
+                Widget::Text(TextWidget::new()),
+                value,
+                visibility_diff,
+                vec![Validator::Required(RequiredValidator)],
+            );
+            edit_field.set_baggage(EditFieldBaggage::ComponentProp(
+                EditFieldBaggageComponentProp {
+                    prop_id: *prop.id(),
+                    system_id: None,
+                },
+            ));
+            edit_fields.push(edit_field);
+        }
+
+        Ok(edit_fields)
     }
 
     async fn update_from_edit_field(
@@ -372,7 +573,7 @@ impl EditFieldAble for Component {
         value: Option<serde_json::Value>,
     ) -> ComponentResult<()> {
         let edit_field_id = edit_field_id.as_ref();
-        let mut object = Component::get_by_id(txn, tenancy, visibility, &id)
+        let mut component = Component::get_by_id(txn, tenancy, visibility, &id)
             .await?
             .ok_or(ComponentError::NotFound(id))?;
 
@@ -382,7 +583,7 @@ impl EditFieldAble for Component {
                     let value = json_value.as_str().map(|s| s.to_string()).ok_or(
                         Self::Error::EditField(EditFieldError::InvalidValueType("string")),
                     )?;
-                    object
+                    component
                         .set_name(txn, nats, visibility, history_actor, value)
                         .await?;
                 }

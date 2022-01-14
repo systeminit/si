@@ -8,8 +8,8 @@ use serde_json::Value as JsonValue;
 use crate::{
     func::backend::{FuncBackendString, FuncBackendStringArgs},
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
-    Func, FuncBackendError, FuncBackendKind, HistoryActor, HistoryEventError, StandardModel,
-    StandardModelError, Tenancy, Timestamp, Visibility,
+    Func, FuncBackendError, FuncBackendKind, HistoryActor, HistoryEvent, HistoryEventError,
+    StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
 };
 
 use super::{
@@ -103,6 +103,50 @@ impl FuncBinding {
             .set_func(txn, nats, visibility, history_actor, &func_id)
             .await?;
         Ok(object)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    #[tracing::instrument(skip(txn, nats))]
+    pub async fn find_or_create(
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+        history_actor: &HistoryActor,
+        args: serde_json::Value,
+        func_id: FuncId,
+        backend_kind: FuncBackendKind,
+    ) -> FuncBindingResult<(Self, bool)> {
+        let row = txn
+            .query_one(
+                "SELECT object, created FROM func_binding_find_or_create_v1($1, $2, $3, $4)",
+                &[&tenancy, &visibility, &args, &backend_kind.as_ref()],
+            )
+            .await?;
+        let created: bool = row.try_get("created")?;
+        let object: FuncBinding = if created {
+            let json_object: serde_json::Value = row.try_get("object")?;
+            let _history_event = HistoryEvent::new(
+                txn,
+                nats,
+                FuncBinding::history_event_label(vec!["create"]),
+                history_actor,
+                FuncBinding::history_event_message("created"),
+                &serde_json::json![{ "visibility": &visibility }],
+                tenancy,
+            )
+            .await?;
+            let object: FuncBinding = serde_json::from_value(json_object)?;
+            object
+                .set_func(txn, nats, visibility, history_actor, &func_id)
+                .await?;
+            object
+        } else {
+            let json_object: serde_json::Value = row.try_get("object")?;
+            serde_json::from_value(json_object)?
+        };
+
+        Ok((object, created))
     }
 
     standard_model_accessor!(args, Json<JsonValue>, FuncBindingResult);

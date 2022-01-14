@@ -1,13 +1,13 @@
 use axum::Json;
 use dal::{
-    edit_field::{EditFieldAble, EditFieldObjectKind},
+    edit_field::{EditFieldAble, EditFieldBaggage, EditFieldObjectKind},
     schema::{self, SchemaVariant},
     socket::Socket,
     Component, HistoryActor, Prop, QualificationCheck, Schema, Tenancy, Visibility, WorkspaceId,
 };
 use serde::{Deserialize, Serialize};
 
-use super::EditFieldResult;
+use super::{EditFieldError, EditFieldResult};
 use crate::server::extract::{Authorization, NatsTxn, PgRwTxn};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -17,6 +17,7 @@ pub struct UpdateFromEditFieldRequest {
     pub object_id: i64,
     pub edit_field_id: String,
     pub value: Option<serde_json::Value>,
+    pub baggage: Option<EditFieldBaggage>,
     pub workspace_id: Option<WorkspaceId>,
     #[serde(flatten)]
     pub visibility: Visibility,
@@ -52,6 +53,25 @@ pub async fn update_from_edit_field(
                 &request.visibility,
                 &history_actor,
                 request.object_id.into(),
+                request.edit_field_id,
+                request.value,
+            )
+            .await?
+        }
+        EditFieldObjectKind::ComponentProp => {
+            // Eventually, this won't be infallible. -- Adam
+            #[allow(clippy::infallible_destructuring_match)]
+            let baggage = match request.baggage.ok_or(EditFieldError::MissingBaggage)? {
+                EditFieldBaggage::ComponentProp(baggage) => baggage,
+            };
+            Component::update_prop_from_edit_field(
+                &txn,
+                &nats,
+                &tenancy,
+                &request.visibility,
+                &history_actor,
+                request.object_id.into(),
+                baggage.prop_id,
                 request.edit_field_id,
                 request.value,
             )

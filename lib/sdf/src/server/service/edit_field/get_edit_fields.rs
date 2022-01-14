@@ -45,6 +45,10 @@ pub async fn get_edit_fields(
             Component::get_edit_fields(&txn, &tenancy, &request.visibility, &request.id.into())
                 .await?
         }
+        EditFieldObjectKind::ComponentProp => {
+            Component::get_edit_fields(&txn, &tenancy, &request.visibility, &request.id.into())
+                .await?
+        }
         EditFieldObjectKind::Prop => {
             Prop::get_edit_fields(&txn, &tenancy, &request.visibility, &request.id.into()).await?
         }

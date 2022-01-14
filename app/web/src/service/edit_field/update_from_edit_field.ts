@@ -14,6 +14,7 @@ export interface UpdateFromEditFieldArgs {
   objectId: number;
   editFieldId: string;
   value: any;
+  baggage?: any;
 }
 
 export interface UpdateFromEditFieldRequest
@@ -35,7 +36,10 @@ export function updateFromEditField(
     take(1),
     switchMap(([visibility, workspace]) => {
       let request: UpdateFromEditFieldRequest;
-      if (args.objectKind === EditFieldObjectKind.Component) {
+      if (
+        args.objectKind === EditFieldObjectKind.Component ||
+        args.objectKind === EditFieldObjectKind.ComponentProp
+      ) {
         if (_.isNull(workspace)) {
           return from([
             {
