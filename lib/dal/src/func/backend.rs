@@ -41,6 +41,7 @@ pub enum FuncBackendKind {
     Unset,
     //Json,
     //Js,
+    ValidateStringValue,
 }
 
 #[derive(
@@ -65,6 +66,7 @@ pub enum FuncBackendResponseType {
     //Array,
     Unset,
     //Json,
+    Validation,
 }
 
 impl ToLabelList for FuncBackendKind {}

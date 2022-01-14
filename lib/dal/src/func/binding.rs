@@ -187,6 +187,7 @@ impl FuncBinding {
                 Some(return_value)
             }
             FuncBackendKind::Unset => None,
+            FuncBackendKind::ValidateStringValue => unimplemented!(),
         };
 
         let func = self
