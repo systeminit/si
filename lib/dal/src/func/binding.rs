@@ -6,7 +6,7 @@ use thiserror::Error;
 use serde_json::Value as JsonValue;
 
 use crate::{
-    func::backend::{FuncBackendString, FuncBackendStringArgs},
+    func::backend::{FuncBackendString, FuncBackendStringArgs, validation::{FuncBackendValidateStringValueArgs, FuncBackendValidateStringValue}},
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
     Func, FuncBackendError, FuncBackendKind, HistoryActor, HistoryEvent, HistoryEventError,
     StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
@@ -187,7 +187,10 @@ impl FuncBinding {
                 Some(return_value)
             }
             FuncBackendKind::Unset => None,
-            FuncBackendKind::ValidateStringValue => unimplemented!(),
+            FuncBackendKind::ValidateStringValue => {
+                let args:  FuncBackendValidateStringValueArgs = serde_json::from_value(self.args.clone())?;
+                Some(FuncBackendValidateStringValue::new(args).execute()?)
+            },
         };
 
         let func = self
