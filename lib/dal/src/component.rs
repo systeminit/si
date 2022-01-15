@@ -10,18 +10,20 @@ use crate::edit_field::{
     EditFieldBaggage, EditFieldBaggageComponentProp, EditFieldDataType, EditFieldError,
     EditFieldObjectKind, EditFields, TextWidget, Widget,
 };
-use crate::func::backend::validation::ValidationError;
+use crate::func::backend::validation::{FuncBackendValidateStringValueArgs, ValidationError};
 use crate::func::backend::FuncBackendStringArgs;
 use crate::func::binding::{FuncBinding, FuncBindingError};
 use crate::func::binding_return_value::FuncBindingReturnValue;
 use crate::node::NodeKind;
 use crate::schema::variant::{SchemaVariantError, SchemaVariantId};
 use crate::schema::SchemaVariant;
+use crate::validation_resolver::ValidationResolverContext;
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
     standard_model_has_many, AttributeResolver, AttributeResolverError, Func, FuncBackendKind,
     HistoryActor, HistoryEventError, Node, NodeError, Prop, PropId, PropKind, Schema, SchemaError,
-    SchemaId, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
+    SchemaId, StandardModel, StandardModelError, Tenancy, Timestamp, ValidationResolver,
+    ValidationResolverError, Visibility,
 };
 
 #[derive(Error, Debug)]
@@ -60,6 +62,8 @@ pub enum ComponentError {
     InvalidPropValue(String, serde_json::Value),
     #[error("func binding error: {0}")]
     FuncBinding(#[from] FuncBindingError),
+    #[error("validation resolver error: {0}")]
+    ValidationResolver(#[from] ValidationResolverError),
 }
 
 pub type ComponentResult<T> = Result<T, ComponentError>;
@@ -360,10 +364,12 @@ impl Component {
         let prop = Prop::get_by_id(txn, tenancy, visibility, &prop_id)
             .await?
             .ok_or(ComponentError::MissingProp(prop_id))?;
-        let _component = Component::get_by_id(txn, tenancy, visibility, &component_id)
+        let component = Component::get_by_id(txn, tenancy, visibility, &component_id)
             .await?
             .ok_or(ComponentError::NotFound(component_id))?;
-        let (func, func_binding) = match (prop.kind(), value) {
+        // We shouldn't be leaking this value, because it may or may not be actually set. But
+        // when you YOLO, YOLO hard. -- Adam
+        let (func, func_binding, created, value) = match (prop.kind(), value) {
             (PropKind::String, Some(value_json)) => {
                 let value = if !value_json.is_string() {
                     return Err(ComponentError::InvalidPropValue(
@@ -378,7 +384,7 @@ impl Component {
                     Func::find_by_attr(txn, tenancy, visibility, "name", &func_name).await?;
                 let func = funcs.pop().ok_or(ComponentError::MissingFunc(func_name))?;
                 let func_backend_string_args =
-                    serde_json::to_value(FuncBackendStringArgs::new(value))?;
+                    serde_json::to_value(FuncBackendStringArgs::new(value.clone()))?;
                 let (func_binding, created) = FuncBinding::find_or_create(
                     txn,
                     nats,
@@ -397,7 +403,7 @@ impl Component {
                 if created {
                     func_binding.execute(txn, nats).await?;
                 }
-                (func, func_binding)
+                (func, func_binding, created, value)
             }
             (PropKind::String, None) => {
                 todo!("we haven't dealt with unseting a string");
@@ -418,6 +424,65 @@ impl Component {
             attribute_resolver_context,
         )
         .await?;
+
+        if created {
+            let func_name = "si:validateStringEquals".to_string();
+            let mut funcs =
+                Func::find_by_attr(txn, tenancy, visibility, "name", &func_name).await?;
+            let func = funcs.pop().ok_or(ComponentError::MissingFunc(func_name))?;
+            let args = FuncBackendValidateStringValueArgs::new(Some(value), "poop".to_string());
+            let args_json = serde_json::to_value(args)?;
+            let (func_binding, binding_created) = FuncBinding::find_or_create(
+                txn,
+                nats,
+                tenancy,
+                visibility,
+                history_actor,
+                args_json,
+                *func.id(),
+                FuncBackendKind::ValidateStringValue,
+            )
+            .await?;
+            if binding_created {
+                func_binding.execute(txn, nats).await?;
+            }
+            let mut existing_validation_resolvers = ValidationResolver::find_by_attr(
+                txn,
+                tenancy,
+                visibility,
+                "name",
+                &format!("must be poop: {}", component.id()),
+            )
+            .await?;
+
+            // If we dont' have one, create the validation resolver. If we do, update the
+            // func binding id to point to the new value. Interesting to think about
+            // garbage collecting the left over funcbinding + func result value?
+            if existing_validation_resolvers.is_empty() {
+                let mut validation_resolver_context = ValidationResolverContext::new();
+                validation_resolver_context.set_prop_id(*prop.id());
+                validation_resolver_context.set_component_id(*component.id());
+                ValidationResolver::new(
+                    txn,
+                    nats,
+                    tenancy,
+                    visibility,
+                    history_actor,
+                    format!("must be poop: {}", component.id()),
+                    *func.id(),
+                    *func_binding.id(),
+                    validation_resolver_context,
+                )
+                .await?;
+            } else {
+                let mut validation_resolver = existing_validation_resolvers
+                    .pop()
+                    .expect("we know there is one, we just checked");
+                validation_resolver
+                    .set_func_binding_id(txn, nats, visibility, history_actor, *func_binding.id())
+                    .await?;
+            }
+        }
 
         Ok(())
     }
@@ -544,6 +609,26 @@ impl EditFieldAble for Component {
                 head_value.as_ref(),
                 change_set_value.as_ref(),
             )?;
+
+            let mut validation_errors = Vec::new();
+            let validation_field_values = ValidationResolver::find_values_for_prop_and_component(
+                txn,
+                &tenancy,
+                visibility,
+                *prop.id(),
+                *component.id(),
+                system_id,
+            )
+            .await?;
+            for field_value in validation_field_values.into_iter() {
+                if let Some(value_json) = field_value.value() {
+                    // This clone shouldn't be neccessary, but we have no way to get to the owned value -- Adam
+                    let mut validation_error: Vec<ValidationError> =
+                        serde_json::from_value(value_json.clone())?;
+                    validation_errors.append(&mut validation_error);
+                }
+            }
+
             let mut edit_field = EditField::new(
                 field_name,
                 vec!["properties".to_string()],
@@ -553,7 +638,7 @@ impl EditFieldAble for Component {
                 Widget::Text(TextWidget::new()),
                 value,
                 visibility_diff,
-                vec![], // TODO: actually validate to generate ValidationErrors
+                validation_errors,
             );
             edit_field.set_baggage(EditFieldBaggage::ComponentProp(
                 EditFieldBaggageComponentProp {
