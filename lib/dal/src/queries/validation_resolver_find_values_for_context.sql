@@ -24,11 +24,12 @@ WHERE in_tenancy_v1($1, validation_resolvers.tenancy_universal, validation_resol
     func_binding_return_values.visibility_edit_session_pk, 
     func_binding_return_values.visibility_deleted)
   AND validation_resolvers.prop_id = $3
-   AND (validation_resolvers.component_id = $4 OR validation_resolvers.component_id = -1)
+   AND validation_resolvers.component_id = $4
    AND (validation_resolvers.system_id = $5 OR validation_resolvers.system_id = -1)
 	ORDER BY validation_resolvers.id, 
       visibility_change_set_pk DESC, 
       visibility_edit_session_pk DESC, 
+      prop_id DESC,
       component_id DESC, 
       system_id DESC, 
       schema_variant_id DESC, 
