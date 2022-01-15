@@ -29,6 +29,7 @@ tokio = { version = "1.12.0", features = ["full"] }
 tokio-tungstenite = "0.15.0"
 tower = { version = "0.4.10" }
 tower-http = { version = "0.1", features = ["trace"] }
+veritech = { path = "../../lib/veritech", features = ["client"] }
 
 [dev-dependencies]
 serde_url_params = "0.2.1"

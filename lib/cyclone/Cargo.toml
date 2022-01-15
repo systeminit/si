@@ -10,39 +10,60 @@ publish = false
 # to the features they desire.
 default = []
 
+process = [
+  "nix",
+  "tokio",
+]
+
 # The client implementation for a cyclone server.
 client = [
+  "async-trait",
+  "futures",
   "futures-lite",
   "http",
+  "hyper",
   "hyperlocal",
+  "tokio",
   "tokio-tungstenite",
+  "uuid",
 ]
 
 # The server side implementation of cyclone, as a library.
 server = [
+  "async-trait",
   "axum",
   "bytes-lines-codec",
   "chrono",
   "derive_builder",
+  "futures",
+  "hyper",
+  "nix",
   "pin-project-lite",
+  "process",
+  "tokio",
   "tokio-serde",
   "tokio-util",
   "tower",
   "tower-http",
+  "uuid",
 ]
 
 [dependencies]
-# server and client
-async-trait = { version = "0.1.51" }
-futures = { version = "0.3.17" }
-hyper = { version = "0.14", features = ["client", "http1", "runtime", "server"] }
-nix = { version = "0.23.0" }
+# for common types shared between client and server
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", features = ["preserve_order"] }
 telemetry = { path = "../../lib/telemetry-rs" }
 thiserror = { version = "1.0" }
-tokio = { version = "1.12.0", features = ["full"] }
-uuid = { version = "0.8.2", features = ["serde", "v4"] }
+
+# for process shutdown behavior
+nix = { version = "0.23.0", optional = true }
+
+# server and/or client
+async-trait = { version = "0.1.51", optional = true }
+futures = { version = "0.3.17", optional = true }
+hyper = { version = "0.14", features = ["client", "http1", "runtime", "server"], optional = true }
+tokio = { version = "1.12.0", features = ["full"], optional = true }
+uuid = { version = "0.8.2", features = ["serde", "v4"], optional = true }
 
 # client only
 futures-lite = { version = "1.12.0", optional = true }

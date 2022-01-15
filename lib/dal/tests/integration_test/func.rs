@@ -264,10 +264,11 @@ async fn func_binding_return_value_new() {
 
 #[tokio::test]
 async fn func_binding_execute() {
-    test_setup!(ctx, _secret_key, _pg, _conn, txn, _nats_conn, nats);
+    test_setup!(ctx, _secret_key, _pg, _conn, txn, nats_conn, nats);
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
+    let veritech = veritech::Client::new(nats_conn.clone());
     let func = create_func(&txn, &nats, &tenancy, &visibility, &history_actor).await;
     let args = serde_json::to_value(FuncBackendStringArgs::new("funky".to_string()))
         .expect("cannot serialize args to json");
@@ -285,7 +286,7 @@ async fn func_binding_execute() {
     .await;
 
     let return_value = func_binding
-        .execute(&txn, &nats)
+        .execute(&txn, &nats, veritech)
         .await
         .expect("failed to execute func binding");
     assert_eq!(return_value.value(), Some(&serde_json::json!["funky"]));
@@ -297,10 +298,11 @@ async fn func_binding_execute() {
 
 #[tokio::test]
 async fn func_binding_execute_unset() {
-    test_setup!(ctx, _secret_key, _pg, _conn, txn, _nats_conn, nats);
+    test_setup!(ctx, _secret_key, _pg, _conn, txn, nats_conn, nats);
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
+    let veritech = veritech::Client::new(nats_conn.clone());
     let name = dal::test_harness::generate_fake_name();
     let func = Func::new(
         &txn,
@@ -329,7 +331,7 @@ async fn func_binding_execute_unset() {
     .await;
 
     let return_value = func_binding
-        .execute(&txn, &nats)
+        .execute(&txn, &nats, veritech)
         .await
         .expect("failed to execute func binding");
     assert_eq!(return_value.value(), None);

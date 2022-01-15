@@ -19,9 +19,16 @@ use async_trait::async_trait;
 use deadpool::managed;
 use thiserror::Error;
 
-use self::instance::{Instance, Spec};
+pub use self::instance::{Instance, Spec};
 
-pub use cyclone::client;
+pub use cyclone::{
+    client::{self, ResolverFunctionExecutionError},
+    resolver_function::{
+        OutputStream, ResolverFunctionExecutingMessage, ResolverFunctionRequest,
+        ResolverFunctionResult,
+    },
+    CycloneClient,
+};
 
 /// [`Instance`] implementations.
 pub mod instance;

@@ -182,12 +182,14 @@ macro_rules! test_setup {
         let ($pg, $nats_conn, $jwt_secret_key) = $ctx.entries();
         let telemetry = $ctx.telemetry();
         let $nats = $nats_conn.transaction();
+        let veritech = veritech::Client::new($nats_conn.clone());
         let mut $pgconn = $pg.get().await.expect("cannot connect to pg");
         let $pgtxn = $pgconn.transaction().await.expect("cannot create txn");
         let ($app, _) = sdf::build_service(
             telemetry,
             $pg.clone(),
             $nats_conn.clone(),
+            veritech,
             $jwt_secret_key.clone(),
         )
         .expect("cannot build new server");

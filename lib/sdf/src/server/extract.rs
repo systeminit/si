@@ -124,6 +124,23 @@ impl NatsTxn {
     }
 }
 
+pub struct Veritech(pub veritech::Client);
+
+#[async_trait]
+impl<P> FromRequest<P> for Veritech
+where
+    P: Send,
+{
+    type Rejection = (StatusCode, Json<InternalError>);
+
+    async fn from_request(req: &mut RequestParts<P>) -> Result<Self, Self::Rejection> {
+        let Extension(veritech) = Extension::<veritech::Client>::from_request(req)
+            .await
+            .map_err(internal_error)?;
+        Ok(Self(veritech))
+    }
+}
+
 #[derive(Debug, Serialize)]
 pub struct InternalError {
     error: String,

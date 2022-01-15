@@ -45,6 +45,7 @@ pub fn routes(
     telemetry: impl TelemetryClient,
     pg_pool: pg::PgPool,
     nats: nats::Client,
+    veritech: veritech::Client,
     jwt_secret_key: JwtSecretKey,
     shutdown_tx: mpsc::Sender<ShutdownSource>,
     shutdown_broadcast_tx: broadcast::Sender<()>,
@@ -84,6 +85,7 @@ pub fn routes(
         .layer(AddExtensionLayer::new(telemetry))
         .layer(AddExtensionLayer::new(pg_pool))
         .layer(AddExtensionLayer::new(nats))
+        .layer(AddExtensionLayer::new(veritech))
         .layer(AddExtensionLayer::new(jwt_secret_key))
         .layer(AddExtensionLayer::new(ShutdownBroadcast(
             shutdown_broadcast_tx,

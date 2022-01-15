@@ -68,6 +68,8 @@ async fn run(args: args::Args, mut telemetry: telemetry::Client) -> Result<()> {
         trace!("migration mode is skip, not running migrations");
     }
 
+    let veritech = Server::create_veritech_client(nats.clone());
+
     // TODO(fnichol): re-enable, which we shouldn't need in the long run
     if !disable_opentelemetry {
         telemetry.enable_opentelemetry().await?;
@@ -77,12 +79,12 @@ async fn run(args: args::Args, mut telemetry: telemetry::Client) -> Result<()> {
 
     match config.incoming_stream() {
         IncomingStream::HTTPSocket(_) => {
-            Server::http(config, telemetry, pg_pool, nats, jwt_secret_key)?
+            Server::http(config, telemetry, pg_pool, nats, veritech, jwt_secret_key)?
                 .run()
                 .await?;
         }
         IncomingStream::UnixDomainSocket(_) => {
-            Server::uds(config, telemetry, pg_pool, nats, jwt_secret_key)
+            Server::uds(config, telemetry, pg_pool, nats, veritech, jwt_secret_key)
                 .await?
                 .run()
                 .await?;

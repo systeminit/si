@@ -349,6 +349,7 @@ impl Component {
     pub async fn update_prop_from_edit_field(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
+        veritech: veritech::Client,
         tenancy: &Tenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
@@ -395,7 +396,7 @@ impl Component {
                 // think about execution time. Probably higher up than this? But just
                 // an FYI.
                 if created {
-                    func_binding.execute(txn, nats).await?;
+                    func_binding.execute(txn, nats, veritech).await?;
                 }
                 (func, func_binding)
             }

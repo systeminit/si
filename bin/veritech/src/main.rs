@@ -1,6 +1,6 @@
 use color_eyre::Result;
 use telemetry::{start_tracing_level_signal_handler_task, tracing::debug, TelemetryClient};
-use veritech::{Config, CycloneStream, Server};
+use veritech::{Config, CycloneSpec, Server};
 
 mod args;
 
@@ -30,11 +30,11 @@ async fn run(args: args::Args, mut telemetry: telemetry::Client) -> Result<()> {
 
     start_tracing_level_signal_handler_task(&telemetry)?;
 
-    match config.cyclone_stream() {
-        CycloneStream::HttpSocket(_) => {
+    match config.cyclone_spec() {
+        CycloneSpec::LocalHttp(_) => {
             Server::for_cyclone_http(config).await?.run().await?;
         }
-        CycloneStream::UnixDomainSocket(_) => {
+        CycloneSpec::LocalUds(_) => {
             Server::for_cyclone_uds(config).await?.run().await?;
         }
     }

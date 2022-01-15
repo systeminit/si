@@ -1,9 +1,13 @@
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 use si_data::{NatsError, NatsTxn, PgError, PgTxn};
 use telemetry::prelude::*;
 use thiserror::Error;
 
 use serde_json::Value as JsonValue;
+use tokio::sync::mpsc;
+use veritech::{Client, OutputStream};
 
 use crate::{
     func::backend::{
@@ -16,6 +20,7 @@ use crate::{
 };
 
 use super::{
+    backend::FuncBackendJsString,
     binding_return_value::{FuncBindingReturnValue, FuncBindingReturnValueError},
     FuncId,
 };
@@ -28,8 +33,6 @@ pub enum FuncBindingError {
     FuncBackend(#[from] FuncBackendError),
     #[error("func backend return value error: {0}")]
     FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
-    #[error("incorrect return value type, expected: {0}")]
-    IncorrectReturnValueType(&'static str),
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("pg error: {0}")]
@@ -169,6 +172,7 @@ impl FuncBinding {
         &self,
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
+        veritech: Client,
     ) -> FuncBindingResult<FuncBindingReturnValue> {
         // NOTE: for now (subject to change), we are using the same visibility and tenancy to
         // create a return value. This seems to make sense as why would a return value be in a
@@ -181,15 +185,25 @@ impl FuncBinding {
         let history_actor = HistoryActor::SystemInit;
 
         let return_value = match self.backend_kind() {
+            FuncBackendKind::JsString => {
+                let (tx, rx) = mpsc::channel(64);
+                // TODO(fnichol): clearly we're going to do something with the output....
+                tokio::spawn(print_output_for_now_why_not(rx));
+                let handler = "upperCaseString";
+                let args: HashMap<String, serde_json::Value> =
+                    serde_json::from_value(self.args.clone())?;
+                let code_base64 = base64::encode(
+                    "function upperCaseString(params) { return params.value.toUpperCase(); }",
+                );
+                let return_value =
+                    FuncBackendJsString::new(veritech, tx, handler, args, code_base64)
+                        .execute()
+                        .await?;
+                Some(return_value)
+            }
             FuncBackendKind::String => {
                 let args: FuncBackendStringArgs = serde_json::from_value(self.args.clone())?;
-                let return_value = FuncBackendString::new(args).execute()?;
-
-                // TODO: From the `if` to the end of the match arm, might be able to be replaced with the following?
-                //       Some(FuncBackendString::new(args).execute()?)
-                if !return_value.is_string() {
-                    return Err(FuncBindingError::IncorrectReturnValueType("String"));
-                }
+                let return_value = FuncBackendString::new(args).execute().await?;
                 Some(return_value)
             }
             FuncBackendKind::Unset => None,
@@ -218,5 +232,11 @@ impl FuncBinding {
         )
         .await
         .map_err(Into::into)
+    }
+}
+
+async fn print_output_for_now_why_not(mut rx: mpsc::Receiver<OutputStream>) {
+    while let Some(output) = rx.recv().await {
+        debug!("output: {:?}", output);
     }
 }

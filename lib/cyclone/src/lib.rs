@@ -13,13 +13,15 @@
 
 pub mod canonical_command;
 mod liveness;
-pub mod process;
 pub mod qualification_check;
 mod readiness;
 pub mod resolver_function;
 
 pub use liveness::{LivenessStatus, LivenessStatusParseError};
 pub use readiness::{ReadinessStatus, ReadinessStatusParseError};
+
+#[cfg(feature = "process")]
+pub mod process;
 
 #[cfg(feature = "server")]
 mod server;

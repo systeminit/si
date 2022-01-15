@@ -4,7 +4,7 @@ use std::{
     task::{Context, Poll},
 };
 
-use cyclone::resolver_function::ResolverFunctionRequest;
+use deadpool_cyclone::ResolverFunctionRequest;
 use futures::{Stream, StreamExt};
 use futures_lite::FutureExt;
 use pin_project_lite::pin_project;

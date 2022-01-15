@@ -13,10 +13,11 @@ use dal::{
 
 #[tokio::test]
 async fn new() {
-    test_setup!(ctx, _secret_key, _pg, _conn, txn, _nats_conn, nats);
+    test_setup!(ctx, _secret_key, _pg, _conn, txn, nats_conn, nats);
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
+    let veritech = veritech::Client::new(nats_conn.clone());
 
     let schema = Schema::find_by_attr(
         &txn,
@@ -80,7 +81,7 @@ async fn new() {
     .await
     .expect("cannot create function binding");
     func_binding
-        .execute(&txn, &nats)
+        .execute(&txn, &nats, veritech)
         .await
         .expect("failed to execute func binding");
 
@@ -104,12 +105,13 @@ async fn new() {
 
 #[tokio::test]
 async fn find_values_for_prop_and_component() {
-    test_setup!(ctx, secret_key, pg, _conn, txn, _nats_conn, nats);
+    test_setup!(ctx, secret_key, pg, _conn, txn, nats_conn, nats);
     let (nba, _token) = billing_account_signup(&txn, &nats, secret_key).await;
     let mut tenancy = Tenancy::new_workspace(vec![*nba.workspace.id()]);
     tenancy.universal = true;
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
+    let veritech = veritech::Client::new(nats_conn.clone());
 
     let unset_system_id: SystemId = UNSET_ID_VALUE.into();
 
@@ -175,7 +177,7 @@ async fn find_values_for_prop_and_component() {
     .await
     .expect("cannot create function binding");
     first_func_binding
-        .execute(&txn, &nats)
+        .execute(&txn, &nats, veritech.clone())
         .await
         .expect("failed to execute func binding");
     let mut validation_resolver_context = ValidationResolverContext::new();
@@ -210,7 +212,7 @@ async fn find_values_for_prop_and_component() {
     .await
     .expect("cannot create function binding");
     second_func_binding
-        .execute(&txn, &nats)
+        .execute(&txn, &nats, veritech)
         .await
         .expect("failed to execute func binding");
     let mut validation_resolver_context = ValidationResolverContext::new();
@@ -247,12 +249,13 @@ async fn find_values_for_prop_and_component() {
 
 #[tokio::test]
 async fn find_values_for_prop_and_component_override() {
-    test_setup!(ctx, secret_key, pg, _conn, txn, _nats_conn, nats);
+    test_setup!(ctx, secret_key, pg, _conn, txn, nats_conn, nats);
     let (nba, _token) = billing_account_signup(&txn, &nats, secret_key).await;
     let mut tenancy = Tenancy::new_workspace(vec![*nba.workspace.id()]);
     tenancy.universal = true;
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
+    let veritech = veritech::Client::new(nats_conn.clone());
 
     let unset_system_id: SystemId = UNSET_ID_VALUE.into();
 
@@ -318,7 +321,7 @@ async fn find_values_for_prop_and_component_override() {
     .await
     .expect("cannot create function binding");
     first_func_binding
-        .execute(&txn, &nats)
+        .execute(&txn, &nats, veritech.clone())
         .await
         .expect("failed to execute func binding");
     let mut validation_resolver_context = ValidationResolverContext::new();
@@ -353,7 +356,7 @@ async fn find_values_for_prop_and_component_override() {
     .await
     .expect("cannot create function binding");
     second_func_binding
-        .execute(&txn, &nats)
+        .execute(&txn, &nats, veritech)
         .await
         .expect("failed to execute func binding");
     let mut validation_resolver_context = ValidationResolverContext::new();
