@@ -640,6 +640,7 @@ dependencies = [
  "tokio-postgres",
  "tokio-stream",
  "url",
+ "veritech",
 ]
 
 [[package]]
@@ -2558,6 +2559,7 @@ dependencies = [
  "tokio-tungstenite",
  "tower",
  "tower-http",
+ "veritech",
 ]
 
 [[package]]
@@ -3542,6 +3544,7 @@ version = "0.1.0"
 dependencies = [
  "base64",
  "cyclone",
+ "deadpool-cyclone",
  "derive_builder",
  "futures",
  "futures-lite",
@@ -3551,9 +3554,12 @@ dependencies = [
  "si-data",
  "si-settings",
  "telemetry",
+ "test-env-log",
  "thiserror",
  "tokio",
  "toml",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]

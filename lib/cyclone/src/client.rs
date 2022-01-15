@@ -397,6 +397,7 @@ impl Default for ClientConfig {
     }
 }
 
+#[allow(clippy::panic)]
 #[cfg(test)]
 mod tests {
     use std::{borrow::Cow, collections::HashMap, env, path::Path};

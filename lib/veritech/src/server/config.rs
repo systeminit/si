@@ -3,9 +3,14 @@ use std::{
     path::PathBuf,
 };
 
+use deadpool_cyclone::{
+    instance::cyclone::{LocalHttpInstanceSpec, LocalUdsInstance, LocalUdsInstanceSpec},
+    Instance,
+};
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 use si_data::NatsConfig;
+use telemetry::prelude::*;
 use thiserror::Error;
 
 pub use si_settings::{StandardConfig, StandardConfigFile};
@@ -14,6 +19,8 @@ pub use si_settings::{StandardConfig, StandardConfigFile};
 pub enum ConfigError {
     #[error(transparent)]
     Builder(#[from] ConfigBuilderError),
+    #[error("cyclone spec build error")]
+    CycloneSpecBuild(#[source] Box<dyn std::error::Error + 'static + Sync + Send>),
     #[error("no socket addrs where resolved")]
     NoSocketAddrResolved,
     #[error(transparent)]
@@ -29,8 +36,13 @@ pub struct Config {
     #[builder(default = "NatsConfig::default()")]
     nats: NatsConfig,
 
-    #[builder(default = "CycloneStream::default()")]
-    cyclone_stream: CycloneStream,
+    cyclone_spec: CycloneSpec,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum CycloneSpec {
+    LocalUds(LocalUdsInstanceSpec),
+    LocalHttp(LocalHttpInstanceSpec),
 }
 
 impl StandardConfig for Config {
@@ -52,15 +64,43 @@ impl TryFrom<ConfigFile> for Config {
     fn try_from(value: ConfigFile) -> Result<Self> {
         let mut config = Config::builder();
         config.nats(value.nats);
+        config.cyclone_spec(create_hardcoded_cyclone_spec()?);
         config.build().map_err(Into::into)
     }
 }
 
+fn create_hardcoded_cyclone_spec() -> Result<CycloneSpec> {
+    // TODO(fnichol): I'm asserting a default here that can eventually come from config
+    // file/cli args etc, but for the moment--we all get a local uds setup
+
+    // TODO(fnichol): okay, this goes away/changes when we determine what the right developer
+    // defaults are vs. the right production/artifact defaults are
+    let (cyclone_cmd_path, lang_server_cmd_path) = match std::env::var("CARGO_MANIFEST_DIR") {
+        Ok(_) => {
+            warn!("detected cargo run, setting *default* cyclone and lang-js paths under target");
+            (
+                "../../target/debug/cyclone",
+                "../../bin/lang-js/target/lang-js",
+            )
+        }
+        Err(_) => ("/usr/local/bin/cyclone", "/usr/local/bin/lang-js"),
+    };
+    Ok(CycloneSpec::LocalUds(
+        LocalUdsInstance::spec()
+            .try_cyclone_cmd_path(cyclone_cmd_path)
+            .map_err(|err| ConfigError::CycloneSpecBuild(Box::new(err)))?
+            .try_lang_server_cmd_path(lang_server_cmd_path)
+            .map_err(|err| ConfigError::CycloneSpecBuild(Box::new(err)))?
+            .resolver()
+            .build()
+            .map_err(|err| ConfigError::CycloneSpecBuild(Box::new(err)))?,
+    ))
+}
+
 impl Config {
-    /// Gets a reference to the config's cyclone stream.
-    #[must_use]
-    pub fn cyclone_stream(&self) -> &CycloneStream {
-        &self.cyclone_stream
+    /// Gets a reference to the config's cyclone spec.
+    pub fn cyclone_spec(&self) -> &CycloneSpec {
+        &self.cyclone_spec
     }
 
     /// Gets a reference to the config's nats.

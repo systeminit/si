@@ -36,6 +36,7 @@ derive_more = "0.99.16"
 postgres-types = { version = "0.2.2", features = ["derive"] }
 paste = "1.0"
 async-trait = "0.1.51"
+veritech = { path = "../../lib/veritech", features = ["client"] }
 
 [dev-dependencies]
 insta = "1.8.0"

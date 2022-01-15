@@ -11,10 +11,15 @@ publish = false
 default = []
 
 # The client implementation for a veritech service.
-client = []
+client = [
+  "cyclone",
+  "futures-lite",
+  "pin-project-lite",
+]
 
 # The server side implementation of veritech, as a library.
 server = [
+  "deadpool-cyclone",
   "derive_builder",
   "futures-lite",
   "pin-project-lite",
@@ -23,10 +28,13 @@ server = [
 [dependencies]
 # server and client dependencies
 base64 = "0.13.0"
+deadpool-cyclone = { path = "../../lib/deadpool-cyclone", optional = true }
 futures = { version = "0.3.17"}
 serde = "1.0.123"
 serde_json = { version = "1.0.64", features = ["preserve_order"] }
-cyclone = { path = "../../lib/cyclone", default-features = false, features = ["client"] }
+cyclone = { path = "../../lib/cyclone", optional = true }
+futures-lite = { version = "1.12.0", optional = true }
+pin-project-lite = { version = "0.2.7", optional = true }
 si-data = { path = "../../lib/si-data", features = ["nats"] }
 si-settings = { path = "../../lib/si-settings" }
 telemetry = { path = "../../lib/telemetry-rs" }
@@ -36,5 +44,8 @@ toml = "0.5"
 
 # server only dependencies
 derive_builder = { version = "0.10.2", optional = true }
-futures-lite = { version = "1.12.0", optional = true }
-pin-project-lite = { version = "0.2.7", optional = true }
+
+[dev-dependencies]
+test-env-log = { version = "0.2.7", default-features = false, features = ["trace"] }
+tracing = { version = "0.1" }
+tracing-subscriber = { version = "0.2.19", default-features = false, features = ["env-filter", "fmt"] }

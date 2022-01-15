@@ -1,132 +1,132 @@
-use cyclone::{
-    client::Connection,
-    resolver_function::{ResolverFunctionExecutingMessage, ResolverFunctionRequest},
-    Client, CycloneClient, HttpClient, UdsClient,
+use deadpool_cyclone::{
+    instance::cyclone::LocalUdsInstanceSpec, CycloneClient, Manager, Pool,
+    ResolverFunctionExecutingMessage, ResolverFunctionRequest,
 };
-use futures::{StreamExt, TryStreamExt};
+use futures::StreamExt;
 use si_data::NatsClient;
 use telemetry::prelude::*;
 use thiserror::Error;
-use tokio::io::{AsyncRead, AsyncWrite};
 
-use super::{Config, Publisher, PublisherError, Request, Subscriber, SubscriberError};
-use crate::server::config::CycloneStream;
+use super::{
+    config::CycloneSpec, Config, Publisher, PublisherError, Request, Subscriber, SubscriberError,
+};
 
 #[derive(Error, Debug)]
 pub enum ServerError {
     #[error(transparent)]
-    Cyclone(#[from] cyclone::ClientError),
+    Cyclone(#[from] deadpool_cyclone::client::ClientError),
+    #[error("cyclone spec builder error")]
+    CycloneSpec(#[source] Box<dyn std::error::Error + Sync + Send + 'static>),
     #[error("error connecting to nats")]
     NatsConnect(#[source] si_data::NatsError),
     #[error(transparent)]
     Publisher(#[from] PublisherError),
     #[error(transparent)]
-    ResolverFunction(#[from] cyclone::client::ResolverFunctionExecutionError),
+    ResolverFunction(#[from] deadpool_cyclone::client::ResolverFunctionExecutionError),
     #[error(transparent)]
     Subscriber(#[from] SubscriberError),
-    #[error("wrong cyclone stream for {0} server: {1:?}")]
-    WrongCycloneStream(&'static str, CycloneStream),
+    #[error("wrong cyclone spec type for {0} spec: {1:?}")]
+    WrongCycloneSpec(&'static str, CycloneSpec),
 }
 
 type Result<T> = std::result::Result<T, ServerError>;
 
-pub struct Server<Cycl> {
+pub struct Server {
     nats: NatsClient,
-    cyclone_client: Cycl,
+    cyclone_pool: Pool<LocalUdsInstanceSpec>,
 }
 
-impl Server<()> {
+impl Server {
     #[instrument(name = "veritech.init.cyclone.http", skip(config))]
-    pub async fn for_cyclone_http(config: Config) -> Result<Server<HttpClient>> {
-        match config.cyclone_stream() {
-            CycloneStream::HttpSocket(socket_addr) => {
-                let nats = connect_to_nats(&config).await?;
-                // TODO(fnichol): determine client type and connection details
-                let cyclone_client = Client::http(socket_addr)?;
+    pub async fn for_cyclone_http(config: Config) -> Result<Server> {
+        match config.cyclone_spec() {
+            CycloneSpec::LocalHttp(_spec) => {
+                // TODO(fnichol): Hi there! Ultimately, the Veritech server should be able to work
+                // with a LocalUds Cyclone backend and a LocalHttp version. But since this involves
+                // threading through some generic types which themselves have trait
+                // constraints--well we can add this back in the near future... Note that the
+                // immediately prior state to this line change is roughly the starting point for
+                // adding the types back. Good luck to us all.
+                //
+                // let nats = connect_to_nats(&config).await?;
+                // let manager = Manager::new(spec.clone());
+                // let cyclone_pool = Pool::builder(manager)
+                //     .build()
+                //     .map_err(|err| ServerError::CycloneSpec(Box::new(err)))?;
 
-                Ok(Server {
-                    nats,
-                    cyclone_client,
-                })
+                // Ok(Server { nats, cyclone_pool })
+                unimplemented!("get ready for a surprise!!")
             }
-            wrong @ CycloneStream::UnixDomainSocket(_) => {
-                Err(ServerError::WrongCycloneStream("http", wrong.clone()))
+            wrong @ CycloneSpec::LocalUds(_) => {
+                Err(ServerError::WrongCycloneSpec("LocalHttp", wrong.clone()))
             }
         }
     }
 
     #[instrument(name = "veritech.init.cyclone.uds", skip(config))]
-    pub async fn for_cyclone_uds(config: Config) -> Result<Server<UdsClient>> {
-        match config.cyclone_stream() {
-            CycloneStream::UnixDomainSocket(path) => {
+    pub async fn for_cyclone_uds(config: Config) -> Result<Server> {
+        match config.cyclone_spec() {
+            CycloneSpec::LocalUds(spec) => {
                 let nats = connect_to_nats(&config).await?;
-                // TODO(fnichol): determine client type and connection details
-                let cyclone_client = Client::uds(path)?;
+                let manager = Manager::new(spec.clone());
+                let cyclone_pool = Pool::builder(manager)
+                    .build()
+                    .map_err(|err| ServerError::CycloneSpec(Box::new(err)))?;
 
-                Ok(Server {
-                    nats,
-                    cyclone_client,
-                })
+                Ok(Server { nats, cyclone_pool })
             }
-            wrong @ CycloneStream::HttpSocket(_) => {
-                Err(ServerError::WrongCycloneStream("http", wrong.clone()))
+            wrong @ CycloneSpec::LocalHttp(_) => {
+                Err(ServerError::WrongCycloneSpec("LocalUds", wrong.clone()))
             }
         }
     }
 }
 
-impl<Cycl> Server<Cycl> {
-    pub async fn run<Strm>(self) -> Result<()>
-    where
-        Cycl: CycloneClient<Strm> + Send + Clone + 'static,
-        Strm: AsyncRead + AsyncWrite + Connection + Unpin + Send + 'static,
-    {
+impl Server {
+    pub async fn run(self) -> Result<()> {
         let mut resolver_function_requests = Subscriber::resolver_function(&self.nats).await?;
 
-        // NOTE: for the moment, this stream will terminate on first error, being a NATS IO error,
-        // a serde deserialize, etc. This may not be what we want, or we want to have a
-        // retry/re-subscribe loop
-        while let Some(request) = resolver_function_requests.try_next().await? {
-            // Spawn a task an process the request
-            tokio::spawn(resolver_function_request_task(
-                self.nats.clone(),
-                self.cyclone_client.clone(),
-                request,
-            ));
+        while let Some(request) = resolver_function_requests.next().await {
+            match request {
+                Ok(request) => {
+                    // Spawn a task an process the request
+                    tokio::spawn(resolver_function_request_task(
+                        self.nats.clone(),
+                        self.cyclone_pool.clone(),
+                        request,
+                    ));
+                }
+                Err(err) => {
+                    warn!(error = ?err, "next resolver function request had error");
+                }
+            }
         }
-
         resolver_function_requests.unsubscribe().await?;
 
         Ok(())
     }
 }
 
-async fn resolver_function_request_task<Cycl, Strm>(
+async fn resolver_function_request_task(
     nats: NatsClient,
-    cyclone_client: Cycl,
+    cyclone_pool: Pool<LocalUdsInstanceSpec>,
     request: Request<ResolverFunctionRequest>,
-) where
-    Cycl: CycloneClient<Strm>,
-    Strm: AsyncRead + AsyncWrite + Connection + Unpin + Send + 'static,
-{
-    if let Err(err) = resolver_function_request(nats, cyclone_client, request).await {
+) {
+    if let Err(err) = resolver_function_request(nats, cyclone_pool, request).await {
         warn!(error = ?err, "resolver function execution failed");
     }
 }
 
-async fn resolver_function_request<Cycl, Strm>(
+async fn resolver_function_request(
     nats: NatsClient,
-    mut cyclone_client: Cycl,
+    cyclone_pool: Pool<LocalUdsInstanceSpec>,
     request: Request<ResolverFunctionRequest>,
-) -> Result<()>
-where
-    Cycl: CycloneClient<Strm>,
-    Strm: AsyncRead + AsyncWrite + Connection + Unpin + Send + 'static,
-{
+) -> Result<()> {
     let (reply_mailbox, cyclone_request) = request.into_parts();
 
     let publisher = Publisher::new(&nats, &reply_mailbox);
-    let mut progress = cyclone_client
+    let mut client = cyclone_pool.get().await.expect("DODO");
+    let mut progress = client
         .execute_resolver(cyclone_request)
         .await?
         .start()
@@ -135,7 +135,7 @@ where
     while let Some(msg) = progress.next().await {
         match msg {
             Ok(ResolverFunctionExecutingMessage::OutputStream(output)) => {
-                publisher.publish(&output).await?;
+                publisher.publish_output(&output).await?;
             }
             Ok(ResolverFunctionExecutingMessage::Heartbeat) => {
                 trace!("received heartbeat message");
@@ -143,9 +143,10 @@ where
             Err(e) => todo!("deal with this: {:?}", e),
         }
     }
+    publisher.finalize_output().await?;
 
     let function_result = progress.finish().await?;
-    publisher.publish(&function_result).await?;
+    publisher.publish_result(&function_result).await?;
 
     Ok(())
 }

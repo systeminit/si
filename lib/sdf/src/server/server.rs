@@ -63,12 +63,13 @@ impl Server<(), ()> {
         telemetry: telemetry::Client,
         pg_pool: PgPool,
         nats: NatsClient,
+        veritech: veritech::Client,
         jwt_secret_key: JwtSecretKey,
     ) -> Result<Server<AddrIncoming, SocketAddr>> {
         match config.incoming_stream() {
             IncomingStream::HTTPSocket(socket_addr) => {
                 let (service, shutdown_rx) =
-                    build_service(telemetry, pg_pool, nats, jwt_secret_key)?;
+                    build_service(telemetry, pg_pool, nats, veritech, jwt_secret_key)?;
 
                 info!("binding to HTTP socket; socket_addr={}", &socket_addr);
                 let inner = axum::Server::bind(socket_addr).serve(service.into_make_service());
@@ -92,12 +93,13 @@ impl Server<(), ()> {
         telemetry: telemetry::Client,
         pg_pool: PgPool,
         nats: NatsClient,
+        veritech: veritech::Client,
         jwt_secret_key: JwtSecretKey,
     ) -> Result<Server<UdsIncomingStream, PathBuf>> {
         match config.incoming_stream() {
             IncomingStream::UnixDomainSocket(path) => {
                 let (service, shutdown_rx) =
-                    build_service(telemetry, pg_pool, nats, jwt_secret_key)?;
+                    build_service(telemetry, pg_pool, nats, veritech, jwt_secret_key)?;
 
                 info!("binding to Unix domain socket; path={}", path.display());
                 let inner = axum::Server::builder(UdsIncomingStream::create(path).await?)
@@ -164,6 +166,10 @@ impl Server<(), ()> {
         debug!("successfully connected nats client");
         client
     }
+
+    pub fn create_veritech_client(nats: NatsClient) -> veritech::Client {
+        veritech::Client::new(nats)
+    }
 }
 
 impl<I, IO, IE, S> Server<I, S>
@@ -198,6 +204,7 @@ pub fn build_service(
     telemetry: impl TelemetryClient,
     pg_pool: PgPool,
     nats: NatsClient,
+    veritech: veritech::Client,
     jwt_secret_key: JwtSecretKey,
 ) -> Result<(Router, oneshot::Receiver<()>)> {
     let (shutdown_tx, shutdown_rx) = mpsc::channel(4);
@@ -210,6 +217,7 @@ pub fn build_service(
         telemetry,
         pg_pool,
         nats,
+        veritech,
         jwt_secret_key,
         shutdown_tx,
         shutdown_broadcast_tx.clone(),

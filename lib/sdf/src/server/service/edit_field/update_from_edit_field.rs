@@ -8,7 +8,7 @@ use dal::{
 use serde::{Deserialize, Serialize};
 
 use super::{EditFieldError, EditFieldResult};
-use crate::server::extract::{Authorization, NatsTxn, PgRwTxn};
+use crate::server::extract::{Authorization, NatsTxn, PgRwTxn, Veritech};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -32,6 +32,7 @@ pub struct UpdateFromEditFieldResponse {
 pub async fn update_from_edit_field(
     mut txn: PgRwTxn,
     mut nats: NatsTxn,
+    Veritech(veritech): Veritech,
     Authorization(claim): Authorization,
     Json(request): Json<UpdateFromEditFieldRequest>,
 ) -> EditFieldResult<Json<UpdateFromEditFieldResponse>> {
@@ -67,6 +68,7 @@ pub async fn update_from_edit_field(
             Component::update_prop_from_edit_field(
                 &txn,
                 &nats,
+                veritech,
                 &tenancy,
                 &request.visibility,
                 &history_actor,

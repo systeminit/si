@@ -203,7 +203,7 @@ impl LocalUdsInstance {
 }
 
 /// The [`Spec`] for [`LocalUdsInstance`]
-#[derive(Builder, Debug)]
+#[derive(Builder, Clone, Debug, Eq, PartialEq)]
 pub struct LocalUdsInstanceSpec {
     /// Canonical path to the `cyclone` program.
     #[builder(try_setter, setter(into))]
@@ -353,7 +353,7 @@ impl LocalUdsInstanceSpecBuilder {
 }
 
 /// Socket strategy when spawning [`Instance`]s using a local Unix domain socket.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum LocalUdsSocketStrategy {
     /// Randomly assign a socket from a temp file.
     Random,

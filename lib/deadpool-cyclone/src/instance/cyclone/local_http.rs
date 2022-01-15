@@ -195,7 +195,7 @@ impl LocalHttpInstance {
 }
 
 /// The [`Spec`] for [`LocalHttpInstance`]
-#[derive(Builder, Debug)]
+#[derive(Builder, Clone, Debug, Eq, PartialEq)]
 pub struct LocalHttpInstanceSpec {
     /// Canonical path to the `cyclone` program.
     #[builder(try_setter, setter(into))]
@@ -344,7 +344,7 @@ impl LocalHttpInstanceSpecBuilder {
 }
 
 /// Socket strategy when spawning [`Instance`]s using a TCP socket.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum LocalHttpSocketStrategy {
     /// Randomly assign a port.
     Random,

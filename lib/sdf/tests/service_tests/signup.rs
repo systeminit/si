@@ -12,9 +12,16 @@ async fn create_account() {
     one_time_setup().await.expect("cannot setup tests");
     let ctx = TestContext::init().await;
     let (pg, nats, jwt_secret_key) = ctx.entries();
+    let veritech = veritech::Client::new(nats.clone());
     let telemetry = ctx.telemetry();
-    let (app, _) = sdf::build_service(telemetry, pg.clone(), nats.clone(), jwt_secret_key.clone())
-        .expect("cannot build new server");
+    let (app, _) = sdf::build_service(
+        telemetry,
+        pg.clone(),
+        nats.clone(),
+        veritech,
+        jwt_secret_key.clone(),
+    )
+    .expect("cannot build new server");
     let app: Router = app;
 
     let request = signup::create_account::CreateAccountRequest {
