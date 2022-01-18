@@ -402,7 +402,7 @@ impl Component {
                 // think about execution time. Probably higher up than this? But just
                 // an FYI.
                 if created {
-                    func_binding.execute(txn, nats, veritech).await?;
+                    func_binding.execute(txn, nats, veritech.clone()).await?;
                 }
                 (func, func_binding, created, value)
             }
@@ -445,7 +445,7 @@ impl Component {
             )
             .await?;
             if binding_created {
-                func_binding.execute(txn, nats).await?;
+                func_binding.execute(txn, nats, veritech).await?;
             }
             let mut existing_validation_resolvers = ValidationResolver::find_by_attr(
                 txn,
