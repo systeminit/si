@@ -56,7 +56,7 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeMount, onMounted, PropType, ref, watch } from "vue";
+import { onMounted, PropType, ref, watch } from "vue";
 import PanelSelector from "./PanelSelector.vue";
 import {
   IPanelContainer,

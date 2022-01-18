@@ -3,7 +3,7 @@
 </template>
 
 <script setup lang="ts">
-import { PropType, ref } from "vue";
+import { PropType } from "vue";
 import { EditFieldObjectKind, EditFields } from "@/api/sdf/dal/edit_field";
 import { refFrom, fromRef } from "vuse-rx";
 import { EditFieldService } from "@/service/edit_field";
@@ -23,8 +23,6 @@ const props = defineProps({
   },
 });
 
-type TreeOpenState = Record<string, boolean>;
-const treeOpenState = ref<TreeOpenState>({});
 const props$ = fromRef(props);
 
 const editFields = refFrom<EditFields>(

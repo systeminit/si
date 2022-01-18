@@ -25,7 +25,6 @@ import { tap } from "rxjs";
 import type { Schema } from "@/api/sdf/dal/schema";
 import { ApiResponse } from "@/api/sdf";
 import { ref } from "vue";
-import { ChangeSetService } from "@/service/change_set";
 import EditForm from "@/organisims/EditForm.vue";
 import StatusBar from "@/molecules/StatusBar.vue";
 
@@ -45,8 +44,6 @@ enum ReadyState {
 const ready = ref<ReadyState>(ReadyState.LOADING);
 const isLoaded = () => ready.value == ReadyState.LOADED;
 const isNotFound = () => ready.value == ReadyState.NOT_FOUND;
-
-const editMode = refFrom<boolean>(ChangeSetService.currentEditMode());
 
 const schema = refFrom<ApiResponse<Schema>>(
   SchemaService.getSchema({ schemaId: props.schemaId.valueOf() }).pipe(
