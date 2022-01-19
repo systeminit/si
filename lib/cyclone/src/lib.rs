@@ -13,12 +13,19 @@
 
 pub mod canonical_command;
 mod liveness;
-pub mod qualification_check;
+mod progress;
+mod qualification_check;
 mod readiness;
-pub mod resolver_function;
+mod resolver_function;
 
 pub use liveness::{LivenessStatus, LivenessStatusParseError};
+pub use progress::{
+    FunctionResult, FunctionResultFailure, FunctionResultFailureError, Message, OutputStream,
+    ProgressMessage,
+};
+pub use qualification_check::{QualificationCheckRequest, QualificationCheckResultSuccess};
 pub use readiness::{ReadinessStatus, ReadinessStatusParseError};
+pub use resolver_function::{ResolverFunctionRequest, ResolverFunctionResultSuccess};
 
 #[cfg(feature = "process")]
 pub mod process;

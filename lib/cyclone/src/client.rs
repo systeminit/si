@@ -410,14 +410,10 @@ mod tests {
 
     use super::*;
     use crate::{
-        qualification_check::{
-            Component, QualificationCheckExecutingMessage, QualificationCheckResult,
-        },
-        resolver_function::{
-            ResolverFunctionExecutingMessage, ResolverFunctionRequest, ResolverFunctionResult,
-        },
+        qualification_check::Component,
+        resolver_function::ResolverFunctionRequest,
         server::{Config, ConfigBuilder, UdsIncomingStream},
-        Server,
+        FunctionResult, ProgressMessage, Server,
     };
 
     fn rand_uds() -> TempPath {
@@ -670,7 +666,7 @@ mod tests {
 
         // Consume the output messages
         match progress.next().await {
-            Some(Ok(ResolverFunctionExecutingMessage::OutputStream(output))) => {
+            Some(Ok(ProgressMessage::OutputStream(output))) => {
                 assert_eq!(output.message, "i like")
             }
             Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
@@ -678,7 +674,7 @@ mod tests {
             None => panic!("output stream ended early"),
         };
         match progress.next().await {
-            Some(Ok(ResolverFunctionExecutingMessage::OutputStream(output))) => {
+            Some(Ok(ProgressMessage::OutputStream(output))) => {
                 assert_eq!(output.message, "my butt")
             }
             Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
@@ -688,7 +684,7 @@ mod tests {
         // TODO(fnichol): until we've determined how to handle processing the result server side,
         // we're going to see a heartbeat come back when a request is processed
         match progress.next().await {
-            Some(Ok(ResolverFunctionExecutingMessage::Heartbeat)) => assert!(true),
+            Some(Ok(ProgressMessage::Heartbeat)) => assert!(true),
             Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
             Some(Err(err)) => panic!("failed to receive heartbeat: err={:?}", err),
             None => panic!("output stream ended early"),
@@ -700,11 +696,11 @@ mod tests {
         // Get the result
         let result = progress.finish().await.expect("failed to return result");
         match result {
-            ResolverFunctionResult::Success(success) => {
+            FunctionResult::Success(success) => {
                 assert_eq!(success.unset, false);
                 assert_eq!(success.data, json!({"a": "b"}));
             }
-            ResolverFunctionResult::Failure(failure) => {
+            FunctionResult::Failure(failure) => {
                 panic!("result should be success; failure={:?}", failure)
             }
         }
@@ -742,7 +738,7 @@ mod tests {
 
         // Consume the output messages
         match progress.next().await {
-            Some(Ok(ResolverFunctionExecutingMessage::OutputStream(output))) => {
+            Some(Ok(ProgressMessage::OutputStream(output))) => {
                 assert_eq!(output.message, "i like")
             }
             Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
@@ -750,7 +746,7 @@ mod tests {
             None => panic!("output stream ended early"),
         };
         match progress.next().await {
-            Some(Ok(ResolverFunctionExecutingMessage::OutputStream(output))) => {
+            Some(Ok(ProgressMessage::OutputStream(output))) => {
                 assert_eq!(output.message, "my butt")
             }
             Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
@@ -760,7 +756,7 @@ mod tests {
         // TODO(fnichol): until we've determined how to handle processing the result server side,
         // we're going to see a heartbeat come back when a request is processed
         match progress.next().await {
-            Some(Ok(ResolverFunctionExecutingMessage::Heartbeat)) => assert!(true),
+            Some(Ok(ProgressMessage::Heartbeat)) => assert!(true),
             Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
             Some(Err(err)) => panic!("failed to receive heartbeat: err={:?}", err),
             None => panic!("output stream ended early"),
@@ -772,11 +768,11 @@ mod tests {
         // Get the result
         let result = progress.finish().await.expect("failed to return result");
         match result {
-            ResolverFunctionResult::Success(success) => {
+            FunctionResult::Success(success) => {
                 assert_eq!(success.unset, false);
                 assert_eq!(success.data, json!({"a": "b"}));
             }
-            ResolverFunctionResult::Failure(failure) => {
+            FunctionResult::Failure(failure) => {
                 panic!("result should be success; failure={:?}", failure)
             }
         }
@@ -821,7 +817,7 @@ mod tests {
 
         // Consume the output messages
         match progress.next().await {
-            Some(Ok(QualificationCheckExecutingMessage::OutputStream(output))) => {
+            Some(Ok(ProgressMessage::OutputStream(output))) => {
                 assert_eq!(output.message, "i like")
             }
             Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
@@ -829,7 +825,7 @@ mod tests {
             None => panic!("output stream ended early"),
         };
         match progress.next().await {
-            Some(Ok(QualificationCheckExecutingMessage::OutputStream(output))) => {
+            Some(Ok(ProgressMessage::OutputStream(output))) => {
                 assert_eq!(output.message, "my butt")
             }
             Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
@@ -839,7 +835,7 @@ mod tests {
         // TODO(fnichol): until we've determined how to handle processing the result server side,
         // we're going to see a heartbeat come back when a request is processed
         match progress.next().await {
-            Some(Ok(QualificationCheckExecutingMessage::Heartbeat)) => assert!(true),
+            Some(Ok(ProgressMessage::Heartbeat)) => assert!(true),
             Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
             Some(Err(err)) => panic!("failed to receive heartbeat: err={:?}", err),
             None => panic!("output stream ended early"),
@@ -851,11 +847,11 @@ mod tests {
         // Get the result
         let result = progress.finish().await.expect("failed to return result");
         match result {
-            QualificationCheckResult::Success(success) => {
+            FunctionResult::Success(success) => {
                 assert_eq!(success.qualified, true);
                 assert_eq!(success.output, None);
             }
-            QualificationCheckResult::Failure(failure) => {
+            FunctionResult::Failure(failure) => {
                 panic!("result should be success; failure={:?}", failure)
             }
         }
@@ -902,7 +898,7 @@ mod tests {
 
         // Consume the output messages
         match progress.next().await {
-            Some(Ok(QualificationCheckExecutingMessage::OutputStream(output))) => {
+            Some(Ok(ProgressMessage::OutputStream(output))) => {
                 assert_eq!(output.message, "i like")
             }
             Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
@@ -910,7 +906,7 @@ mod tests {
             None => panic!("output stream ended early"),
         };
         match progress.next().await {
-            Some(Ok(QualificationCheckExecutingMessage::OutputStream(output))) => {
+            Some(Ok(ProgressMessage::OutputStream(output))) => {
                 assert_eq!(output.message, "my butt")
             }
             Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
@@ -920,7 +916,7 @@ mod tests {
         // TODO(fnichol): until we've determined how to handle processing the result server side,
         // we're going to see a heartbeat come back when a request is processed
         match progress.next().await {
-            Some(Ok(QualificationCheckExecutingMessage::Heartbeat)) => assert!(true),
+            Some(Ok(ProgressMessage::Heartbeat)) => assert!(true),
             Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
             Some(Err(err)) => panic!("failed to receive heartbeat: err={:?}", err),
             None => panic!("output stream ended early"),
@@ -932,11 +928,11 @@ mod tests {
         // Get the result
         let result = progress.finish().await.expect("failed to return result");
         match result {
-            QualificationCheckResult::Success(success) => {
+            FunctionResult::Success(success) => {
                 assert_eq!(success.qualified, true);
                 assert_eq!(success.output, None);
             }
-            QualificationCheckResult::Failure(failure) => {
+            FunctionResult::Failure(failure) => {
                 panic!("result should be success; failure={:?}", failure)
             }
         }

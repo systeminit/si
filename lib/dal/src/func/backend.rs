@@ -5,7 +5,7 @@ use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::mpsc;
-use veritech::{Client, OutputStream, ResolverFunctionRequest, ResolverFunctionResult};
+use veritech::{Client, FunctionResult, OutputStream, ResolverFunctionRequest};
 
 use crate::{edit_field::ToSelectWidget, label_list::ToLabelList};
 
@@ -189,7 +189,7 @@ impl FuncBackendJsString {
             .await
             .map_err(|err| span.record_err(err))?;
         let value = match result {
-            ResolverFunctionResult::Success(success) => {
+            FunctionResult::Success(success) => {
                 if success.unset {
                     return Err(span.record_err(FuncBackendError::UnexpectedUnset));
                 }
@@ -198,7 +198,7 @@ impl FuncBackendJsString {
                 }
                 success.data
             }
-            ResolverFunctionResult::Failure(failure) => {
+            FunctionResult::Failure(failure) => {
                 return Err(span.record_err(FuncBackendError::ResultFailure {
                     kind: failure.error.kind,
                     message: failure.error.message,

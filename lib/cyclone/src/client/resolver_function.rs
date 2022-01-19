@@ -9,9 +9,9 @@ use thiserror::Error;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_tungstenite::WebSocketStream;
 
-use crate::resolver_function::{
-    ResolverFunctionExecutingMessage, ResolverFunctionMessage, ResolverFunctionRequest,
-    ResolverFunctionResult,
+use crate::{
+    FunctionResult, Message, ProgressMessage, ResolverFunctionRequest,
+    ResolverFunctionResultSuccess,
 };
 
 pub use tokio_tungstenite::tungstenite::{
@@ -38,7 +38,7 @@ pub enum ResolverFunctionExecutionError {
     #[error("unexpected websocket message after finish was sent: {0}")]
     MessageAfterFinish(WebSocketMessage),
     #[error("unexpected resolver function message before start was sent: {0:?}")]
-    MessageBeforeStart(ResolverFunctionMessage),
+    MessageBeforeStart(Message<ResolverFunctionResultSuccess>),
     #[error("unexpected websocket message type: {0}")]
     UnexpectedMessageType(WebSocketMessage),
     #[error("websocket stream is closed, but finish was not sent")]
@@ -66,10 +66,10 @@ where
     pub async fn start(mut self) -> Result<ResolverFunctionExecutionStarted<T>> {
         match self.stream.next().await {
             Some(Ok(WebSocketMessage::Text(json_str))) => {
-                let msg = ResolverFunctionMessage::deserialize_from_str(&json_str)
+                let msg = Message::deserialize_from_str(&json_str)
                     .map_err(ResolverFunctionExecutionError::JSONDeserialize)?;
                 match msg {
-                    ResolverFunctionMessage::Start => {
+                    Message::Start => {
                         // received correct message, so proceed
                     }
                     unexpected => {
@@ -113,14 +113,14 @@ impl<T> From<ResolverFunctionExecution<T>> for ResolverFunctionExecutionStarted<
 #[derive(Debug)]
 pub struct ResolverFunctionExecutionStarted<T> {
     stream: WebSocketStream<T>,
-    result: Option<ResolverFunctionResult>,
+    result: Option<FunctionResult<ResolverFunctionResultSuccess>>,
 }
 
 impl<T> ResolverFunctionExecutionStarted<T>
 where
     T: AsyncRead + AsyncWrite + Connection + Unpin + Send + 'static,
 {
-    pub async fn finish(self) -> Result<ResolverFunctionResult> {
+    pub async fn finish(self) -> Result<FunctionResult<ResolverFunctionResultSuccess>> {
         ResolverFunctionExecutionClosing::try_from(self)?
             .finish()
             .await
@@ -131,36 +131,34 @@ impl<T> Stream for ResolverFunctionExecutionStarted<T>
 where
     T: AsyncRead + AsyncWrite + Connection + Unpin + Send + 'static,
 {
-    type Item = Result<ResolverFunctionExecutingMessage>;
+    type Item = Result<ProgressMessage>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         match Pin::new(&mut self.stream.next()).poll(cx) {
             // We successfully got a websocket text message
             Poll::Ready(Some(Ok(WebSocketMessage::Text(json_str)))) => {
-                let msg = ResolverFunctionMessage::deserialize_from_str(&json_str)
+                let msg = Message::deserialize_from_str(&json_str)
                     .map_err(ResolverFunctionExecutionError::JSONDeserialize)?;
                 match msg {
                     // We got a heartbeat message, pass it on
-                    ResolverFunctionMessage::Heartbeat => {
-                        Poll::Ready(Some(Ok(ResolverFunctionExecutingMessage::Heartbeat)))
-                    }
+                    Message::Heartbeat => Poll::Ready(Some(Ok(ProgressMessage::Heartbeat))),
                     // We got an output message, pass it on
-                    ResolverFunctionMessage::OutputStream(output_stream) => Poll::Ready(Some(Ok(
-                        ResolverFunctionExecutingMessage::OutputStream(output_stream),
-                    ))),
+                    Message::OutputStream(output_stream) => {
+                        Poll::Ready(Some(Ok(ProgressMessage::OutputStream(output_stream))))
+                    }
                     // We got a funtion result message, save it and continue
-                    ResolverFunctionMessage::Result(function_result) => {
+                    Message::Result(function_result) => {
                         self.result = Some(function_result);
                         // TODO(fnichol): what is the right return here??
                         // (future fnichol): hey buddy! pretty sure you can:
                         // `cx.waker().wake_by_ref()` before returning Poll::Ready which immediatly
                         // re-wakes this stream to maybe pop another item off. cool huh? I think
                         // you're learning and that's great.
-                        Poll::Ready(Some(Ok(ResolverFunctionExecutingMessage::Heartbeat)))
+                        Poll::Ready(Some(Ok(ProgressMessage::Heartbeat)))
                         //Poll::Pending
                     }
                     // We got a finish message
-                    ResolverFunctionMessage::Finish => {
+                    Message::Finish => {
                         if self.result.is_some() {
                             // If we have saved the result, then close this stream out
                             Poll::Ready(None)
@@ -198,7 +196,7 @@ where
 #[derive(Debug)]
 pub struct ResolverFunctionExecutionClosing<T> {
     stream: WebSocketStream<T>,
-    result: ResolverFunctionResult,
+    result: FunctionResult<ResolverFunctionResultSuccess>,
 }
 
 impl<T> TryFrom<ResolverFunctionExecutionStarted<T>> for ResolverFunctionExecutionClosing<T> {
@@ -219,7 +217,7 @@ impl<T> ResolverFunctionExecutionClosing<T>
 where
     T: AsyncRead + AsyncWrite + Connection + Unpin + Send + 'static,
 {
-    async fn finish(mut self) -> Result<ResolverFunctionResult> {
+    async fn finish(mut self) -> Result<FunctionResult<ResolverFunctionResultSuccess>> {
         match self.stream.next().await {
             Some(Ok(WebSocketMessage::Close(_))) | None => Ok(self.result),
             Some(Ok(unexpected)) => Err(ResolverFunctionExecutionError::MessageAfterFinish(

@@ -1,6 +1,6 @@
 use deadpool_cyclone::{
-    instance::cyclone::LocalUdsInstanceSpec, CycloneClient, Manager, Pool,
-    ResolverFunctionExecutingMessage, ResolverFunctionRequest,
+    instance::cyclone::LocalUdsInstanceSpec, CycloneClient, Manager, Pool, ProgressMessage,
+    ResolverFunctionRequest,
 };
 use futures::StreamExt;
 use si_data::NatsClient;
@@ -134,10 +134,10 @@ async fn resolver_function_request(
 
     while let Some(msg) = progress.next().await {
         match msg {
-            Ok(ResolverFunctionExecutingMessage::OutputStream(output)) => {
+            Ok(ProgressMessage::OutputStream(output)) => {
                 publisher.publish_output(&output).await?;
             }
-            Ok(ResolverFunctionExecutingMessage::Heartbeat) => {
+            Ok(ProgressMessage::Heartbeat) => {
                 trace!("received heartbeat message");
             }
             Err(e) => todo!("deal with this: {:?}", e),

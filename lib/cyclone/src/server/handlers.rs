@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use axum::{
     extract::{
-        ws::{Message, WebSocket},
+        ws::{self, WebSocket},
         Extension, WebSocketUpgrade,
     },
     response::IntoResponse,
@@ -15,10 +15,9 @@ use super::{
     routes::{State, WatchKeepalive},
 };
 use crate::{
-    qualification_check::QualificationCheckMessage,
-    resolver_function::ResolverFunctionMessage,
     server::{qualification_check, resolver_function, watch},
-    LivenessStatus, ReadinessStatus,
+    LivenessStatus, Message, QualificationCheckResultSuccess, ReadinessStatus,
+    ResolverFunctionResultSuccess,
 };
 
 #[allow(clippy::unused_async)]
@@ -56,7 +55,7 @@ pub async fn ws_execute_ping(
     limit_request_guard: LimitRequestGuard,
 ) -> impl IntoResponse {
     async fn handle_socket(mut socket: WebSocket, _limit_request_guard: LimitRequestGuard) {
-        if let Err(ref err) = socket.send(Message::Text("pong".to_string())).await {
+        if let Err(ref err) = socket.send(ws::Message::Text("pong".to_string())).await {
             warn!("client disconnected; error={}", err);
         }
         if let Err(ref err) = socket.close().await {
@@ -114,8 +113,8 @@ async fn fail_execute_resolver(
     mut socket: WebSocket,
     message: impl Into<String>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let msg = ResolverFunctionMessage::fail(message).serialize_to_string()?;
-    socket.send(Message::Text(msg)).await?;
+    let msg = Message::<ResolverFunctionResultSuccess>::fail(message).serialize_to_string()?;
+    socket.send(ws::Message::Text(msg)).await?;
     socket.close().await?;
     Ok(())
 }
@@ -165,12 +164,13 @@ pub async fn ws_execute_qualification(
     wsu.on_upgrade(move |socket| handle_socket(socket, state, limit_request_guard))
 }
 
+// TODO(fnichol): guess what, these fail functions can now be generic, yay!
 async fn fail_qualification_check(
     mut socket: WebSocket,
     message: impl Into<String>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let msg = QualificationCheckMessage::fail(message).serialize_to_string()?;
-    socket.send(Message::Text(msg)).await?;
+    let msg = Message::<QualificationCheckResultSuccess>::fail(message).serialize_to_string()?;
+    socket.send(ws::Message::Text(msg)).await?;
     socket.close().await?;
     Ok(())
 }
