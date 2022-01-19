@@ -17,7 +17,7 @@ use crate::{
     standard_model, standard_model_accessor, standard_model_has_many, standard_model_many_to_many,
     BillingAccount, BillingAccountId, Component, HistoryActor, HistoryEventError, LabelEntry,
     LabelList, Organization, OrganizationId, PropError, StandardModel, StandardModelError, Tenancy,
-    Timestamp, Visibility, Workspace, WorkspaceId, WsEventError,
+    Timestamp, ValidationPrototypeError, Visibility, Workspace, WorkspaceId, WsEventError,
 };
 
 use crate::socket::SocketError;
@@ -58,6 +58,10 @@ pub enum SchemaError {
     Variant(#[from] SchemaVariantError),
     #[error("ws event error: {0}")]
     WsEvent(#[from] WsEventError),
+    #[error("missing a func in attribute update: {0} not found")]
+    MissingFunc(String),
+    #[error("validation prototype error: {0}")]
+    ValidationPrototype(#[from] ValidationPrototypeError),
 }
 
 pub type SchemaResult<T> = Result<T, SchemaError>;

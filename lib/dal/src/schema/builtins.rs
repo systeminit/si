@@ -1,8 +1,10 @@
+use crate::func::backend::validation::FuncBackendValidateStringValueArgs;
 use crate::schema::{SchemaResult, SchemaVariant, UiMenu};
 use crate::socket::{Socket, SocketArity, SocketEdgeKind};
 use crate::{
-    HistoryActor, Prop, PropKind, Schema, SchemaError, SchemaKind, SchematicKind, StandardModel,
-    Tenancy, Visibility,
+    validation_prototype::ValidationPrototypeContext, Func, HistoryActor, Prop, PropKind, Schema,
+    SchemaError, SchemaKind, SchematicKind, StandardModel, Tenancy, ValidationPrototype,
+    Visibility,
 };
 use si_data::{NatsTxn, PgTxn};
 
@@ -360,6 +362,28 @@ async fn docker_image(
     image_prop
         .add_schema_variant(txn, nats, visibility, history_actor, variant.id())
         .await?;
+
+    let func_name = "si:validateStringEquals".to_string();
+    let mut funcs = Func::find_by_attr(txn, tenancy, visibility, "name", &func_name).await?;
+    let func = funcs.pop().ok_or(SchemaError::MissingFunc(func_name))?;
+    let mut validation_prototype_ctx = ValidationPrototypeContext::default();
+    validation_prototype_ctx.set_prop_id(*image_prop.id());
+    validation_prototype_ctx.set_schema_id(*schema.id());
+    validation_prototype_ctx.set_schema_variant_id(*variant.id());
+    ValidationPrototype::new(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        *func.id(),
+        serde_json::to_value(&FuncBackendValidateStringValueArgs::new(
+            None,
+            "gambiarra".to_owned(),
+        ))?,
+        validation_prototype_ctx,
+    )
+    .await?;
 
     // Note: This is not right; each schema needs its own socket types.
     //       Also, they should clearly inherit from the core schema? Something
