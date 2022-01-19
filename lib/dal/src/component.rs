@@ -22,8 +22,8 @@ use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
     standard_model_has_many, AttributeResolver, AttributeResolverError, Func, FuncBackendKind,
     HistoryActor, HistoryEventError, Node, NodeError, Prop, PropId, PropKind, Schema, SchemaError,
-    SchemaId, StandardModel, StandardModelError, Tenancy, Timestamp, ValidationResolver,
-    ValidationResolverError, Visibility,
+    SchemaId, StandardModel, StandardModelError, Tenancy, Timestamp, ValidationPrototype,
+    ValidationPrototypeError, ValidationResolver, ValidationResolverError, Visibility,
 };
 
 #[derive(Error, Debug)]
@@ -64,6 +64,8 @@ pub enum ComponentError {
     FuncBinding(#[from] FuncBindingError),
     #[error("validation resolver error: {0}")]
     ValidationResolver(#[from] ValidationResolverError),
+    #[error("validation prototype error: {0}")]
+    ValidationPrototype(#[from] ValidationPrototypeError),
 }
 
 pub type ComponentResult<T> = Result<T, ComponentError>;
@@ -426,62 +428,87 @@ impl Component {
         )
         .await?;
 
-        if created {
-            let func_name = "si:validateStringEquals".to_string();
-            let mut funcs =
-                Func::find_by_attr(txn, tenancy, visibility, "name", &func_name).await?;
-            let func = funcs.pop().ok_or(ComponentError::MissingFunc(func_name))?;
-            let args = FuncBackendValidateStringValueArgs::new(Some(value), "poop".to_string());
-            let args_json = serde_json::to_value(args)?;
-            let (func_binding, binding_created) = FuncBinding::find_or_create(
-                txn,
-                nats,
-                tenancy,
-                visibility,
-                history_actor,
-                args_json,
-                *func.id(),
-                FuncBackendKind::ValidateStringValue,
-            )
-            .await?;
-            if binding_created {
-                func_binding.execute(txn, nats, veritech).await?;
-            }
-            let mut existing_validation_resolvers = ValidationResolver::find_by_attr(
-                txn,
-                tenancy,
-                visibility,
-                "name",
-                &format!("must be poop: {}", component.id()),
-            )
-            .await?;
+        let validators = ValidationPrototype::find_for_prop(
+            txn,
+            tenancy,
+            visibility,
+            *prop.id(),
+            UNSET_ID_VALUE.into(),
+        )
+        .await?;
 
-            // If we dont' have one, create the validation resolver. If we do, update the
-            // func binding id to point to the new value. Interesting to think about
-            // garbage collecting the left over funcbinding + func result value?
-            if existing_validation_resolvers.is_empty() {
-                let mut validation_resolver_context = ValidationResolverContext::new();
-                validation_resolver_context.set_prop_id(*prop.id());
-                validation_resolver_context.set_component_id(*component.id());
-                ValidationResolver::new(
+        for validator in validators {
+            let func = Func::get_by_id(txn, tenancy, visibility, &validator.func_id())
+                .await?
+                .ok_or_else(|| ComponentError::MissingFunc(validator.func_id().to_string()))?;
+            let func_binding = match func.backend_kind() {
+                FuncBackendKind::ValidateStringValue => {
+                    let mut args =
+                        FuncBackendValidateStringValueArgs::deserialize(validator.args())?;
+                    args.value = Some(value.clone());
+                    let args_json = serde_json::to_value(args)?;
+                    let (func_binding, binding_created) = FuncBinding::find_or_create(
+                        txn,
+                        nats,
+                        tenancy,
+                        visibility,
+                        history_actor,
+                        args_json,
+                        *func.id(),
+                        *func.backend_kind(),
+                    )
+                    .await?;
+                    if binding_created {
+                        func_binding.execute(txn, nats, veritech.clone()).await?;
+                    }
+                    func_binding
+                }
+                kind => unimplemented!("Validator Backend not supported yet: {}", kind),
+            };
+
+            if created {
+                let mut existing_validation_resolvers = ValidationResolver::find_by_attr(
                     txn,
-                    nats,
                     tenancy,
                     visibility,
-                    history_actor,
-                    format!("must be poop: {}", component.id()),
-                    *func.id(),
-                    *func_binding.id(),
-                    validation_resolver_context,
+                    "name",
+                    &format!("must be gambiarra: {}", component.id()), // TODO: this doesn't make sense
                 )
                 .await?;
-            } else {
-                let mut validation_resolver = existing_validation_resolvers
-                    .pop()
-                    .expect("we know there is one, we just checked");
-                validation_resolver
-                    .set_func_binding_id(txn, nats, visibility, history_actor, *func_binding.id())
+
+                // If we dont' have one, create the validation resolver. If we do, update the
+                // func binding id to point to the new value. Interesting to think about
+                // garbage collecting the left over funcbinding + func result value?
+                if existing_validation_resolvers.is_empty() {
+                    let mut validation_resolver_context = ValidationResolverContext::new();
+                    validation_resolver_context.set_prop_id(*prop.id());
+                    validation_resolver_context.set_component_id(*component.id());
+                    ValidationResolver::new(
+                        txn,
+                        nats,
+                        tenancy,
+                        visibility,
+                        history_actor,
+                        format!("must be gambiarra: {}", component.id()), // TODO: this doesn't make sense
+                        *func.id(),
+                        *func_binding.id(),
+                        validation_resolver_context,
+                    )
                     .await?;
+                } else {
+                    let mut validation_resolver = existing_validation_resolvers
+                        .pop()
+                        .expect("we know there is one, we just checked");
+                    validation_resolver
+                        .set_func_binding_id(
+                            txn,
+                            nats,
+                            visibility,
+                            history_actor,
+                            *func_binding.id(),
+                        )
+                        .await?;
+                }
             }
         }
 

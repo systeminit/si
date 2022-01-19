@@ -34,6 +34,7 @@ pub mod tenancy;
 pub mod test_harness;
 pub mod timestamp;
 pub mod user;
+pub mod validation_prototype;
 pub mod validation_resolver;
 pub mod visibility;
 pub mod workspace;
@@ -80,6 +81,9 @@ pub use system::{System, SystemError, SystemId, SystemPk, SystemResult};
 pub use tenancy::{Tenancy, TenancyError};
 pub use timestamp::{Timestamp, TimestampError};
 pub use user::{User, UserClaim, UserError, UserId, UserResult};
+pub use validation_prototype::{
+    ValidationPrototype, ValidationPrototypeError, ValidationPrototypeId,
+};
 pub use validation_resolver::{ValidationResolver, ValidationResolverError, ValidationResolverId};
 pub use visibility::{Visibility, VisibilityError};
 pub use workspace::{Workspace, WorkspaceError, WorkspaceId, WorkspacePk, WorkspaceResult};
@@ -120,8 +124,8 @@ pub async fn migrate_builtin_schemas(pg: &PgPool, nats: &NatsClient) -> ModelRes
     let mut conn = pg.get().await?;
     let txn = conn.transaction().await?;
     let nats = nats.transaction();
-    schema::builtins::migrate(&txn, &nats).await?;
     func::builtins::migrate(&txn, &nats).await?;
+    schema::builtins::migrate(&txn, &nats).await?;
     txn.commit().await?;
     nats.commit().await?;
     Ok(())
