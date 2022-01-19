@@ -111,13 +111,7 @@
 
 <script lang="ts">
 import { defineComponent } from "vue";
-import {
-  CreateAccountRequest,
-  CreateAccountResponse,
-  SignupService,
-} from "@/service/signup";
-import { ApiResponse } from "@/api/sdf";
-import { take, tap } from "rxjs";
+import { CreateAccountRequest, SignupService } from "@/service/signup";
 
 enum InputKind {
   BillingAccount = "billingAccount",

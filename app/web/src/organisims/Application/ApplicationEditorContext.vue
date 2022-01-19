@@ -93,6 +93,11 @@ const showDetails = ref<boolean>(false);
 const toggleDetails = () => {
   showDetails.value = !showDetails.value;
 };
+
+// TODO: Need to pass a real application in to this component, and down through to other places.
+const application = {
+  id: 1,
+};
 </script>
 
 <style scoped>
