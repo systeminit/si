@@ -20,12 +20,9 @@ use tokio_util::codec::{FramedRead, FramedWrite};
 
 use crate::{
     process::{self, ShutdownError},
-    resolver_function::{
-        OutputStream, ResolverFunctionMessage, ResolverFunctionRequest, ResolverFunctionResult,
-        ResolverFunctionResultFailure, ResolverFunctionResultFailureError,
-        ResolverFunctionResultSuccess,
-    },
     server::WebSocketMessage,
+    FunctionResult, FunctionResultFailure, FunctionResultFailureError, Message, OutputStream,
+    ResolverFunctionRequest, ResolverFunctionResultSuccess,
 };
 
 const TX_TIMEOUT_SECS: Duration = Duration::from_secs(2);
@@ -130,7 +127,7 @@ impl ResolverFunctionExecution {
     }
 
     async fn ws_send_start(ws: &mut WebSocket) -> Result<()> {
-        let msg = ResolverFunctionMessage::Start
+        let msg = Message::<ResolverFunctionResultSuccess>::Start
             .serialize_to_string()
             .map_err(ResolverFunctionError::JSONSerialize)?;
 
@@ -181,10 +178,10 @@ impl ResolverFunctionServerExecutionStarted {
             .map(|ls_result| match ls_result {
                 Ok(ls_msg) => match ls_msg {
                     LangServerResolverFunctionMessage::Output(output) => {
-                        Ok(ResolverFunctionMessage::OutputStream(output.into()))
+                        Ok(Message::OutputStream(output.into()))
                     }
                     LangServerResolverFunctionMessage::Result(result) => {
-                        Ok(ResolverFunctionMessage::Result(result.into()))
+                        Ok(Message::Result(result.into()))
                     }
                 },
                 Err(err) => Err(ResolverFunctionError::ChildRecvIO(err)),
@@ -259,7 +256,7 @@ impl ResolverFunctionServerExecutionClosing {
     }
 
     async fn ws_send_finish(ws: &mut WebSocket) -> Result<()> {
-        let msg = ResolverFunctionMessage::Finish
+        let msg = Message::<ResolverFunctionResultSuccess>::Finish
             .serialize_to_string()
             .map_err(ResolverFunctionError::JSONSerialize)?;
         time::timeout(TX_TIMEOUT_SECS, ws.send(WebSocketMessage::Text(msg)))
@@ -314,7 +311,7 @@ enum LangServerResult {
     Failure(LangServerFailure),
 }
 
-impl From<LangServerResult> for ResolverFunctionResult {
+impl From<LangServerResult> for FunctionResult<ResolverFunctionResultSuccess> {
     fn from(value: LangServerResult) -> Self {
         match value {
             LangServerResult::Success(success) => Self::Success(ResolverFunctionResultSuccess {
@@ -323,9 +320,9 @@ impl From<LangServerResult> for ResolverFunctionResult {
                 unset: success.unset,
                 timestamp: timestamp(),
             }),
-            LangServerResult::Failure(failure) => Self::Failure(ResolverFunctionResultFailure {
+            LangServerResult::Failure(failure) => Self::Failure(FunctionResultFailure {
                 execution_id: failure.execution_id,
-                error: ResolverFunctionResultFailureError {
+                error: FunctionResultFailureError {
                     kind: failure.error.kind,
                     message: failure.error.message,
                 },

@@ -23,11 +23,8 @@ pub use self::instance::{Instance, Spec};
 
 pub use cyclone::{
     client::{self, ResolverFunctionExecutionError},
-    resolver_function::{
-        OutputStream, ResolverFunctionExecutingMessage, ResolverFunctionRequest,
-        ResolverFunctionResult,
-    },
-    CycloneClient,
+    CycloneClient, OutputStream, ProgressMessage, QualificationCheckRequest,
+    ResolverFunctionRequest,
 };
 
 /// [`Instance`] implementations.

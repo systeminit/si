@@ -92,6 +92,7 @@ fn create_hardcoded_cyclone_spec() -> Result<CycloneSpec> {
             .try_lang_server_cmd_path(lang_server_cmd_path)
             .map_err(|err| ConfigError::CycloneSpecBuild(Box::new(err)))?
             .resolver()
+            .qualification()
             .build()
             .map_err(|err| ConfigError::CycloneSpecBuild(Box::new(err)))?,
     ))

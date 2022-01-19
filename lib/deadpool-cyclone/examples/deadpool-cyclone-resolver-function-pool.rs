@@ -4,7 +4,7 @@ use std::{
     sync::atomic::{AtomicU64, Ordering},
 };
 
-use cyclone::resolver_function::{ResolverFunctionExecutingMessage, ResolverFunctionResult};
+use cyclone::{FunctionResult, ProgressMessage};
 use deadpool_cyclone::{
     client::{CycloneClient, ResolverFunctionRequest},
     instance::{
@@ -111,8 +111,8 @@ async fn execute(
     let mut progress = instance.execute_resolver(request).await?.start().await?;
     while let Some(message) = progress.try_next().await? {
         match message {
-            ResolverFunctionExecutingMessage::Heartbeat => info!("heartbeat"),
-            ResolverFunctionExecutingMessage::OutputStream(output) => {
+            ProgressMessage::Heartbeat => info!("heartbeat"),
+            ProgressMessage::OutputStream(output) => {
                 info!(
                     execution_id = &output.execution_id.as_str(),
                     stream = &output.stream.as_str(),
@@ -126,13 +126,13 @@ async fn execute(
     }
     let result = progress.finish().await?;
     match result {
-        ResolverFunctionResult::Success(success) => info!(
+        FunctionResult::Success(success) => info!(
                 execution_id = &success.execution_id.as_str(),
                 data = ?success.data,
                 unset = success.unset,
                 timestamp = success.timestamp,
         ),
-        ResolverFunctionResult::Failure(failure) => error!(
+        FunctionResult::Failure(failure) => error!(
             execution_id = &failure.execution_id.as_str(),
             error_kind = &failure.error.kind.as_str(),
             error_message = &failure.error.message.as_str(),

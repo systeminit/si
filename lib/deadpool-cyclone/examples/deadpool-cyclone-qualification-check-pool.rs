@@ -4,7 +4,7 @@ use std::{
     sync::atomic::{AtomicU64, Ordering},
 };
 
-use cyclone::qualification_check::{QualificationCheckExecutingMessage, QualificationCheckResult};
+use cyclone::{FunctionResult, ProgressMessage};
 use deadpool_cyclone::{
     client::{CycloneClient, QualificationCheckRequest},
     instance::{
@@ -115,8 +115,8 @@ async fn execute(
         .await?;
     while let Some(message) = progress.try_next().await? {
         match message {
-            QualificationCheckExecutingMessage::Heartbeat => info!("heartbeat"),
-            QualificationCheckExecutingMessage::OutputStream(output) => {
+            ProgressMessage::Heartbeat => info!("heartbeat"),
+            ProgressMessage::OutputStream(output) => {
                 info!(
                     execution_id = &output.execution_id.as_str(),
                     stream = &output.stream.as_str(),
@@ -130,13 +130,13 @@ async fn execute(
     }
     let result = progress.finish().await?;
     match result {
-        QualificationCheckResult::Success(success) => info!(
+        FunctionResult::Success(success) => info!(
                 execution_id = &success.execution_id.as_str(),
                 qualified = success.qualified,
                 output = ?success.output,
                 timestamp = success.timestamp,
         ),
-        QualificationCheckResult::Failure(failure) => error!(
+        FunctionResult::Failure(failure) => error!(
             execution_id = &failure.execution_id.as_str(),
             error_kind = &failure.error.kind.as_str(),
             error_message = &failure.error.message.as_str(),

@@ -20,12 +20,9 @@ use tokio_util::codec::{FramedRead, FramedWrite};
 
 use crate::{
     process::{self, ShutdownError},
-    qualification_check::{
-        OutputStream, QualificationCheckMessage, QualificationCheckRequest,
-        QualificationCheckResult, QualificationCheckResultFailure,
-        QualificationCheckResultFailureError, QualificationCheckResultSuccess,
-    },
     server::WebSocketMessage,
+    FunctionResult, FunctionResultFailure, FunctionResultFailureError, Message, OutputStream,
+    QualificationCheckRequest, QualificationCheckResultSuccess,
 };
 
 const TX_TIMEOUT_SECS: Duration = Duration::from_secs(2);
@@ -133,7 +130,7 @@ impl QualificationCheckExecution {
     }
 
     async fn ws_send_start(ws: &mut WebSocket) -> Result<()> {
-        let msg = QualificationCheckMessage::Start
+        let msg = Message::<QualificationCheckResultSuccess>::Start
             .serialize_to_string()
             .map_err(QualificationCheckError::JSONSerialize)?;
 
@@ -184,10 +181,10 @@ impl QualificationCheckServerExecutionStarted {
             .map(|ls_result| match ls_result {
                 Ok(ls_msg) => match ls_msg {
                     LangServerQualificationCheckMessage::Output(output) => {
-                        Ok(QualificationCheckMessage::OutputStream(output.into()))
+                        Ok(Message::OutputStream(output.into()))
                     }
                     LangServerQualificationCheckMessage::Result(result) => {
-                        Ok(QualificationCheckMessage::Result(result.into()))
+                        Ok(Message::Result(result.into()))
                     }
                 },
                 Err(err) => Err(QualificationCheckError::ChildRecvIO(err)),
@@ -262,7 +259,7 @@ impl QualificationCheckServerExecutionClosing {
     }
 
     async fn ws_send_finish(ws: &mut WebSocket) -> Result<()> {
-        let msg = QualificationCheckMessage::Finish
+        let msg = Message::<QualificationCheckResultSuccess>::Finish
             .serialize_to_string()
             .map_err(QualificationCheckError::JSONSerialize)?;
         time::timeout(TX_TIMEOUT_SECS, ws.send(WebSocketMessage::Text(msg)))
@@ -317,7 +314,7 @@ enum LangServerResult {
     Failure(LangServerFailure),
 }
 
-impl From<LangServerResult> for QualificationCheckResult {
+impl From<LangServerResult> for FunctionResult<QualificationCheckResultSuccess> {
     fn from(value: LangServerResult) -> Self {
         match value {
             LangServerResult::Success(success) => Self::Success(QualificationCheckResultSuccess {
@@ -326,9 +323,9 @@ impl From<LangServerResult> for QualificationCheckResult {
                 output: success.output,
                 timestamp: timestamp(),
             }),
-            LangServerResult::Failure(failure) => Self::Failure(QualificationCheckResultFailure {
+            LangServerResult::Failure(failure) => Self::Failure(FunctionResultFailure {
                 execution_id: failure.execution_id,
-                error: QualificationCheckResultFailureError {
+                error: FunctionResultFailureError {
                     kind: failure.error.kind,
                     message: failure.error.message,
                 },

@@ -1,4 +1,6 @@
-use cyclone::resolver_function::{OutputStream, ResolverFunctionRequest, ResolverFunctionResult};
+use cyclone::{
+    FunctionResult, OutputStream, ResolverFunctionRequest, ResolverFunctionResultSuccess,
+};
 use futures::{StreamExt, TryStreamExt};
 use si_data::NatsClient;
 use telemetry::prelude::*;
@@ -38,16 +40,17 @@ impl Client {
         subject: impl Into<String>,
         output_tx: mpsc::Sender<OutputStream>,
         request: &ResolverFunctionRequest,
-    ) -> ClientResult<ResolverFunctionResult> {
+    ) -> ClientResult<FunctionResult<ResolverFunctionResultSuccess>> {
         let msg = serde_json::to_vec(request).map_err(ClientError::JSONSerialize)?;
         let reply_mailbox_root = self.nats.new_inbox();
 
         // Construct a subscription stream for the result
-        let mut result_subscription: Subscription<ResolverFunctionResult> = Subscription::new(
-            self.nats
-                .subscribe(reply_mailbox_for_result(&reply_mailbox_root))
-                .await?,
-        );
+        let mut result_subscription: Subscription<FunctionResult<ResolverFunctionResultSuccess>> =
+            Subscription::new(
+                self.nats
+                    .subscribe(reply_mailbox_for_result(&reply_mailbox_root))
+                    .await?,
+            );
 
         // Construct a subscription stream for output messages
         let output_subscription = Subscription::new(
@@ -288,12 +291,12 @@ mod tests {
             .expect("failed to execute resolver function");
 
         match result {
-            ResolverFunctionResult::Success(success) => {
+            FunctionResult::Success(success) => {
                 assert_eq!(success.execution_id, "1234");
                 assert_eq!(success.data, serde_json::json!("WAFFLES_ARE_NEAT"));
                 assert!(!success.unset);
             }
-            ResolverFunctionResult::Failure(failure) => {
+            FunctionResult::Failure(failure) => {
                 panic!("function did not succeed and should have: {:?}", failure)
             }
         }

@@ -13,9 +13,8 @@ use cyclone::{
         UnixStream, Watch, WatchError, WatchStarted,
     },
     process::{self, ShutdownError},
-    qualification_check::QualificationCheckRequest,
-    resolver_function::ResolverFunctionRequest,
-    Client, ClientError, CycloneClient, LivenessStatus, ReadinessStatus, UdsClient,
+    Client, ClientError, CycloneClient, LivenessStatus, QualificationCheckRequest, ReadinessStatus,
+    ResolverFunctionRequest, UdsClient,
 };
 use derive_builder::Builder;
 use futures::StreamExt;

@@ -1,4 +1,5 @@
-use deadpool_cyclone::{OutputStream, ResolverFunctionResult};
+use cyclone::FunctionResult;
+use deadpool_cyclone::OutputStream;
 use serde::Serialize;
 use si_data::NatsClient;
 use thiserror::Error;
@@ -53,7 +54,10 @@ impl<'a> Publisher<'a> {
             .map_err(|err| PublisherError::NatsPublish(err, self.reply_mailbox_output.clone()))
     }
 
-    pub async fn publish_result(&self, result: &impl Resultable) -> Result<()> {
+    pub async fn publish_result<R>(&self, result: &FunctionResult<R>) -> Result<()>
+    where
+        R: Serialize,
+    {
         let nats_msg = serde_json::to_string(result).map_err(PublisherError::JSONSerialize)?;
 
         self.nats
@@ -62,6 +66,3 @@ impl<'a> Publisher<'a> {
             .map_err(|err| PublisherError::NatsPublish(err, self.reply_mailbox_result.clone()))
     }
 }
-
-pub trait Resultable: Serialize {}
-impl Resultable for ResolverFunctionResult {}
