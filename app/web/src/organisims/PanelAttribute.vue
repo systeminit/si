@@ -28,6 +28,10 @@
         v-if="selectedComponentId"
         :component-id="selectedComponentId"
       />
+      <QualificationViewer
+        v-if="selectedComponentId"
+        :component-id="selectedComponentId"
+      />
     </template>
   </Panel>
 </template>
@@ -44,6 +48,7 @@ import { from } from "rxjs";
 import { ComponentService } from "@/service/component";
 import { GlobalErrorService } from "@/service/global_error";
 import AttributeViewer from "@/organisims/AttributeViewer.vue";
+import QualificationViewer from "@/organisims/QualificationViewer.vue";
 
 const isPinned = ref<boolean>(false);
 const selectedComponentId = ref<number | undefined>(undefined);
