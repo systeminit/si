@@ -34,8 +34,13 @@ pub type FuncResult<T> = Result<T, FuncError>;
 pk!(FuncPk);
 pk!(FuncId);
 
-// A `Func` is the declaration of the existence of a function. It has a name,
-// and corresponds to a given function backend (and its associated return types).
+/// A `Func` is the declaration of the existence of a function. It has a name,
+/// and corresponds to a given function backend (and its associated return types).
+///
+/// `handler` is the name of the entry point into the code in `code_base64`.
+/// For example, if we had a code block of
+/// `function myValidator(actual, expected) { return true; }` in `code_base64`,
+/// the `handler` value should be `myValidator`.
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct Func {
     pk: FuncPk,
