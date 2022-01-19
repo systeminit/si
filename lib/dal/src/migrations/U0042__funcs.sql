@@ -13,7 +13,9 @@ CREATE TABLE funcs
     updated_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     name                        text                     NOT NULL,
     backend_kind                text                     NOT NULL,
-    backend_response_type       text                     NOT NULL
+    backend_response_type       text                     NOT NULL,
+    handler                     text,
+    code_base64                 text
 );
 SELECT standard_model_table_constraints_v1('funcs');
 

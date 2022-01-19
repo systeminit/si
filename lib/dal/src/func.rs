@@ -43,6 +43,8 @@ pub struct Func {
     name: String,
     backend_kind: FuncBackendKind,
     backend_response_type: FuncBackendResponseType,
+    handler: Option<String>,
+    code_base64: Option<String>,
     #[serde(flatten)]
     tenancy: Tenancy,
     #[serde(flatten)]
@@ -105,4 +107,6 @@ impl Func {
         Enum(FuncBackendResponseType),
         FuncResult
     );
+    standard_model_accessor!(handler, Option<String>, FuncResult);
+    standard_model_accessor!(code_base64, Option<String>, FuncResult);
 }
