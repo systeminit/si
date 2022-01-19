@@ -9,7 +9,8 @@ use crate::{
     impl_standard_model, pk,
     standard_model::{self, objects_from_rows},
     standard_model_accessor, ComponentId, HistoryActor, HistoryEventError, PropId, SchemaId,
-    SchemaVariantId, StandardModel, StandardModelError, SystemId, Tenancy, Timestamp, Visibility,
+    SchemaVariantId, StandardModel, StandardModelError, SystemId, Tenancy, Timestamp,
+    ValidationPrototypeId, Visibility,
 };
 
 #[derive(Error, Debug)]
@@ -31,6 +32,8 @@ pub type ValidationResolverResult<T> = Result<T, ValidationResolverError>;
 pub const UNSET_ID_VALUE: i64 = -1;
 const FIND_VALUES_FOR_CONTEXT: &str =
     include_str!("./queries/validation_resolver_find_values_for_context.sql");
+const FIND_FOR_PROTOTYPE: &str =
+    include_str!("./queries/validation_resolver_find_for_prototype.sql");
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct ValidationResolverContext {
@@ -109,7 +112,7 @@ pk!(ValidationResolverId);
 pub struct ValidationResolver {
     pk: ValidationResolverPk,
     id: ValidationResolverId,
-    name: String,
+    validation_prototype_id: ValidationPrototypeId,
     func_id: FuncId,
     func_binding_id: FuncBindingId,
     #[serde(flatten)]
@@ -133,26 +136,25 @@ impl_standard_model! {
 
 impl ValidationResolver {
     #[allow(clippy::too_many_arguments)]
-    #[tracing::instrument(skip(txn, nats, name))]
+    #[tracing::instrument(skip(txn, nats))]
     pub async fn new(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
         tenancy: &Tenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
-        name: impl AsRef<str>,
+        validation_prototype_id: ValidationPrototypeId,
         func_id: FuncId,
         func_binding_id: FuncBindingId,
         context: ValidationResolverContext,
     ) -> ValidationResolverResult<Self> {
-        let name = name.as_ref();
         let row = txn
             .query_one(
                 "SELECT object FROM validation_resolver_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
                 &[
                     &tenancy,
                     &visibility,
-                    &name,
+                    &validation_prototype_id,
                     &func_id,
                     &func_binding_id,
                     &context.prop_id(),
@@ -175,7 +177,11 @@ impl ValidationResolver {
         Ok(object)
     }
 
-    standard_model_accessor!(name, String, ValidationResolverResult);
+    standard_model_accessor!(
+        validation_prototype_id,
+        Pk(ValidationPrototypeId),
+        ValidationResolverResult
+    );
     standard_model_accessor!(func_id, Pk(FuncId), ValidationResolverResult);
     standard_model_accessor!(func_binding_id, Pk(FuncBindingId), ValidationResolverResult);
 
@@ -219,7 +225,6 @@ impl ValidationResolver {
     //     Ok(object)
     // }
 
-    #[allow(clippy::too_many_arguments)]
     pub async fn find_values_for_prop_and_component(
         txn: &PgTxn<'_>,
         tenancy: &Tenancy,
@@ -232,6 +237,22 @@ impl ValidationResolver {
             .query(
                 FIND_VALUES_FOR_CONTEXT,
                 &[&tenancy, &visibility, &prop_id, &component_id, &system_id],
+            )
+            .await?;
+        let object = objects_from_rows(rows)?;
+        Ok(object)
+    }
+
+    pub async fn find_for_prototype(
+        txn: &PgTxn<'_>,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+        validation_prototype_id: &ValidationPrototypeId,
+    ) -> ValidationResolverResult<Vec<Self>> {
+        let rows = txn
+            .query(
+                FIND_FOR_PROTOTYPE,
+                &[&tenancy, &visibility, validation_prototype_id],
             )
             .await?;
         let object = objects_from_rows(rows)?;

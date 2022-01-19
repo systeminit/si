@@ -381,6 +381,21 @@ async fn docker_image(
             None,
             "gambiarra".to_owned(),
         ))?,
+        validation_prototype_ctx.clone(),
+    )
+    .await?;
+
+    ValidationPrototype::new(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        *func.id(),
+        serde_json::to_value(&FuncBackendValidateStringValueArgs::new(
+            None,
+            "Tupi or not Tupi, that is the question".to_owned(), // https://en.wikipedia.org/wiki/Manifesto_Antrop%C3%B3fago
+        ))?,
         validation_prototype_ctx,
     )
     .await?;

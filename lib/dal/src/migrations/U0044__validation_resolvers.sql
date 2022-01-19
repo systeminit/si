@@ -11,14 +11,14 @@ CREATE TABLE validation_resolvers
     visibility_deleted          bool,
     created_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     updated_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
-    name                        text                     NOT NULL,
+    validation_prototype_id     bigint                   NOT NULL,
     func_id                     bigint                   NOT NULL,
     func_binding_id             bigint                   NOT NULL,
-    prop_id                     bigint,
-    component_id                bigint,
-    schema_id                   bigint,
-    schema_variant_id           bigint,
-    system_id                   bigint
+    prop_id                     bigint                   NOT NULL,
+    component_id                bigint                   NOT NULL,
+    schema_id                   bigint                   NOT NULL,
+    schema_variant_id           bigint                   NOT NULL,
+    system_id                   bigint                   NOT NULL
 );
 SELECT standard_model_table_constraints_v1('validation_resolvers');
 
@@ -28,7 +28,7 @@ VALUES ('validation_resolvers', 'model', 'validation_resolver', 'validation Reso
 CREATE OR REPLACE FUNCTION validation_resolver_create_v1(
     this_tenancy jsonb,
     this_visibility jsonb,
-    this_name text,
+    this_validation_prototype_id bigint,
     this_func_id bigint,
     this_func_binding_id bigint,
     this_prop_id bigint,
@@ -53,7 +53,7 @@ BEGIN
                                      visibility_change_set_pk,
                                      visibility_edit_session_pk,
                                      visibility_deleted,
-                                     name,
+                                     validation_prototype_id,
                                      func_id,
                                      func_binding_id,
                                      prop_id,
@@ -68,7 +68,7 @@ BEGIN
             this_visibility_record.visibility_change_set_pk,
             this_visibility_record.visibility_edit_session_pk,
             this_visibility_record.visibility_deleted,
-            this_name,
+            this_validation_prototype_id,
             this_func_id,
             this_func_binding_id,
             this_prop_id,
@@ -85,7 +85,7 @@ $$ LANGUAGE PLPGSQL VOLATILE;
 -- CREATE OR REPLACE FUNCTION validation_resolver_upsert_v1(
 --     this_tenancy jsonb,
 --     this_visibility jsonb,
---     this_name text,
+--     this_validation_prototype_id bigint,
 --     this_func_id bigint,
 --     this_func_binding_id bigint,
 --     this_prop_id bigint,

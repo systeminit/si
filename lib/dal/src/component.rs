@@ -467,38 +467,18 @@ impl Component {
             };
 
             if created {
-                let mut existing_validation_resolvers = ValidationResolver::find_by_attr(
+                let mut existing_validation_resolvers = ValidationResolver::find_for_prototype(
                     txn,
                     tenancy,
                     visibility,
-                    "name",
-                    &format!("must be gambiarra: {}", component.id()), // TODO: this doesn't make sense
+                    validator.id(),
                 )
                 .await?;
 
                 // If we dont' have one, create the validation resolver. If we do, update the
                 // func binding id to point to the new value. Interesting to think about
                 // garbage collecting the left over funcbinding + func result value?
-                if existing_validation_resolvers.is_empty() {
-                    let mut validation_resolver_context = ValidationResolverContext::new();
-                    validation_resolver_context.set_prop_id(*prop.id());
-                    validation_resolver_context.set_component_id(*component.id());
-                    ValidationResolver::new(
-                        txn,
-                        nats,
-                        tenancy,
-                        visibility,
-                        history_actor,
-                        format!("must be gambiarra: {}", component.id()), // TODO: this doesn't make sense
-                        *func.id(),
-                        *func_binding.id(),
-                        validation_resolver_context,
-                    )
-                    .await?;
-                } else {
-                    let mut validation_resolver = existing_validation_resolvers
-                        .pop()
-                        .expect("we know there is one, we just checked");
+                if let Some(mut validation_resolver) = existing_validation_resolvers.pop() {
                     validation_resolver
                         .set_func_binding_id(
                             txn,
@@ -508,6 +488,22 @@ impl Component {
                             *func_binding.id(),
                         )
                         .await?;
+                } else {
+                    let mut validation_resolver_context = ValidationResolverContext::new();
+                    validation_resolver_context.set_prop_id(*prop.id());
+                    validation_resolver_context.set_component_id(*component.id());
+                    ValidationResolver::new(
+                        txn,
+                        nats,
+                        tenancy,
+                        visibility,
+                        history_actor,
+                        *validator.id(),
+                        *func.id(),
+                        *func_binding.id(),
+                        validation_resolver_context,
+                    )
+                    .await?;
                 }
             }
         }
