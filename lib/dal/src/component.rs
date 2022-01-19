@@ -344,7 +344,7 @@ impl Component {
             value,
             visibility_diff,
             vec![ValidationError {
-                message: "Aieeee! This name SUCKS!".to_string(),
+                message: "Aieeee! This should appear in the name field.".to_string(),
                 link: Some("https://placekitten.com".to_string()),
                 ..ValidationError::default()
             }], // TODO: actually validate to generate ValidationErrors
