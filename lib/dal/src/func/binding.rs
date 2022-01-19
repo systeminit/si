@@ -207,6 +207,8 @@ impl FuncBinding {
                 Some(return_value)
             }
             FuncBackendKind::Unset => None,
+            // TODO: Gonna need to ship this off to veritech to be handled externally.
+            FuncBackendKind::JsQualification => unimplemented!(),
             FuncBackendKind::ValidateStringValue => {
                 let args: FuncBackendValidateStringValueArgs =
                     serde_json::from_value(self.args.clone())?;
