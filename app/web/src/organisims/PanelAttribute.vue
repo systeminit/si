@@ -20,16 +20,29 @@
         />
       </div>
 
+      <div class="min-w-max">
+        <button @click="setToAttribute">
+          <VueFeather type="home" stroke="grey" size="1.5rem" />
+        </button>
+      </div>
+
+      <div class="min-w-max">
+        <button @click="setToQualification">
+          <VueFeather type="crosshair" stroke="grey" size="1.5rem" />
+        </button>
+      </div>
+
       <LockButton v-model="isPinned" />
     </template>
 
     <template #content>
+      <!-- FIXME(nick): there is a bug unrelated to the viewer buttons where EditFields will be undefined despite the component ID being valid -->
       <AttributeViewer
-        v-if="selectedComponentId"
+        v-if="selectedComponentId && activeView === 'attribute'"
         :component-id="selectedComponentId"
       />
       <QualificationViewer
-        v-if="selectedComponentId"
+        v-if="selectedComponentId && activeView === 'qualification'"
         :component-id="selectedComponentId"
       />
     </template>
@@ -49,10 +62,10 @@ import { ComponentService } from "@/service/component";
 import { GlobalErrorService } from "@/service/global_error";
 import AttributeViewer from "@/organisims/AttributeViewer.vue";
 import QualificationViewer from "@/organisims/QualificationViewer.vue";
+import VueFeather from "vue-feather";
 
 const isPinned = ref<boolean>(false);
 const selectedComponentId = ref<number | undefined>(undefined);
-// const attributeViewer = ref<typeof AttributeViewer | null>(null);
 
 defineProps({
   panelIndex: { type: Number, required: true },
@@ -63,6 +76,14 @@ defineProps({
   isVisible: Boolean,
   isMaximizedContainerEnabled: Boolean,
 });
+
+const activeView = ref<string>("attribute");
+const setToAttribute = () => {
+  activeView.value = "attribute";
+};
+const setToQualification = () => {
+  activeView.value = "qualification";
+};
 
 const componentNamesOnlyList = refFrom<LabelList<number>>(
   ComponentService.listComponentsNamesOnly().pipe(
@@ -77,13 +98,3 @@ const componentNamesOnlyList = refFrom<LabelList<number>>(
   ),
 );
 </script>
-
-<style scoped>
-.unlocked {
-  color: #c6c6c6;
-}
-
-.locked {
-  color: #e3ddba;
-}
-</style>

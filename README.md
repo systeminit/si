@@ -4,27 +4,32 @@ This is a monolithic repository containing the source for System Initiative (SI)
 
 ## Supported Developer Environments
 
-* Arch Linux `(x86_64 / amd64)`
-* Fedora `(x86_64 / amd64)`
-* macOS `(arm64 / aarch64)`
-* macOS `(x86_64 / amd64)`
-* Ubuntu `(x86_64 / amd64)`
-* WSL2 `(x86_64 / amd64)`
-
-> If your preferred environment is not listed, please feel free to add it once the following conditions have been met:
->
-> 1. It's been added to the idempotent [bootstrap script](./scripts/bootstrap.sh)
-> 2. The aforementioned script has been tested and remains idempotent
-> 3. Running the **Quickstart** steps below is successful and the UI is fully functional
->
-> _Please note:_ adding your preferred environment will also add you as a maintainer of its functionality throughout this repository.
-> If unsure where to start, you can look at a [PR from the past](https://github.com/systeminit/si/pull/589) to help.
+Environment | `x84_64 (amd64)` | `aarch64 (arm64)` | Validated On
+--- | --- | --- | ---
+Arch Linux | ✅ | 🚫 | desktop
+Fedora | ✅ | 🚫 | server-side (EC2)
+macOS | ✅ | ✅ | desktop
+Pop!_OS | ✅ | 🚫 | desktop
+Ubuntu | ✅ | 🚫 | desktop
+WSL2 | ✅ | 🚫 | desktop
 
 We recommend using the latest stable Rust toolchain and latest LTS Node toolchain for your environment.
 If unsure, the following tools are recommended to help manage your toolchains:
 
 * [**rustup**](https://rustup.rs) 🦀: Rust, `cargo`, etc.
 * [**volta**](https://volta.sh) ⚡: `node`, `npm`, etc.
+
+### Preferred Environment Not Listed
+
+If your preferred environment is not listed, please feel free to add it once the following conditions have been met:
+
+1. It's been added to the idempotent [bootstrap script](./scripts/bootstrap.sh)
+2. The aforementioned script has been tested and remains idempotent
+3. Running the **Quickstart** steps below is successful and the UI is fully functional
+
+_Please note:_ adding your preferred environment will also add you as a maintainer of its functionality throughout this repository.
+If unsure where to start, you can look at a [PR from the past](https://github.com/systeminit/si/pull/589) to help.
+If you are no longer using the environment, and you are the sole maintainer of the environment, you must remove it from the bootstrapper and the table above.
 
 ## Quickstart
 
@@ -90,7 +95,7 @@ make down
 ## Prepare Your Changes
 
 Navigate to the `Makefile` in the [ci](./ci) directory to see local development targets.
-These targets include code linting, formating, running CI locally, etc.
+These targets include code linting, formatting, running CI locally, etc.
 For instance, you can tidy up your Rust code before opening a pull request by executing the following:
 
 ```bash
@@ -189,4 +194,5 @@ Welcome to the team! A few handy links:
 
 * [Engineering Team Onboarding](https://docs.google.com/presentation/d/1Ypesl1iZ5KXI9KBxXINYPlo5TexAuln6Dg26yPXEqbM) - the foundation of our team
 * [Engineering Process](https://docs.google.com/document/d/1T3pMkTUX5fhzkBpG4NR3x6DrhZ18xXIjnSYl0g6Ld4o) - how we work together 
+* [Engineering Maxims](https://docs.google.com/document/d/1l-YCyMbXaVAG6VVDucZVJlO7VbJeTAAwt4jB-1usSQA) - some maxims we try to follow
 
