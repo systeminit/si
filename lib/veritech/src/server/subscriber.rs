@@ -4,6 +4,7 @@ use std::{
     task::{Context, Poll},
 };
 
+use cyclone::QualificationCheckRequest;
 use deadpool_cyclone::ResolverFunctionRequest;
 use futures::{Stream, StreamExt};
 use futures_lite::FutureExt;
@@ -38,6 +39,20 @@ impl Subscriber {
     ) -> Result<Subscription<ResolverFunctionRequest>> {
         let inner = nats
             .subscribe("veritech.function.resolver")
+            .await
+            .map_err(SubscriberError::NatsSubscribe)?;
+
+        Ok(Subscription {
+            inner,
+            _phantom: PhantomData,
+        })
+    }
+
+    pub async fn qualification_check(
+        nats: &NatsClient,
+    ) -> Result<Subscription<QualificationCheckRequest>> {
+        let inner = nats
+            .subscribe("veritech.function.qualification")
             .await
             .map_err(SubscriberError::NatsSubscribe)?;
 

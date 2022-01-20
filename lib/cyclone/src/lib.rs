@@ -23,7 +23,9 @@ pub use progress::{
     FunctionResult, FunctionResultFailure, FunctionResultFailureError, Message, OutputStream,
     ProgressMessage,
 };
-pub use qualification_check::{QualificationCheckRequest, QualificationCheckResultSuccess};
+pub use qualification_check::{
+    QualificationCheckComponent, QualificationCheckRequest, QualificationCheckResultSuccess,
+};
 pub use readiness::{ReadinessStatus, ReadinessStatusParseError};
 pub use resolver_function::{ResolverFunctionRequest, ResolverFunctionResultSuccess};
 

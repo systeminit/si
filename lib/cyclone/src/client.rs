@@ -410,7 +410,7 @@ mod tests {
 
     use super::*;
     use crate::{
-        qualification_check::Component,
+        qualification_check::QualificationCheckComponent,
         resolver_function::ResolverFunctionRequest,
         server::{Config, ConfigBuilder, UdsIncomingStream},
         FunctionResult, ProgressMessage, Server,
@@ -786,7 +786,7 @@ mod tests {
         let req = QualificationCheckRequest {
             execution_id: "1234".to_string(),
             handler: "checkit".to_string(),
-            component: Component {
+            component: QualificationCheckComponent {
                 name: "pringles".to_string(),
                 properties: HashMap::new(),
             },
@@ -867,7 +867,7 @@ mod tests {
         let req = QualificationCheckRequest {
             execution_id: "1234".to_string(),
             handler: "checkit".to_string(),
-            component: Component {
+            component: QualificationCheckComponent {
                 name: "pringles".to_string(),
                 properties: HashMap::new(),
             },
