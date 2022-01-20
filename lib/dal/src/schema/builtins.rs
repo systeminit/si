@@ -2,13 +2,18 @@ use crate::func::backend::validation::FuncBackendValidateStringValueArgs;
 use crate::schema::{SchemaResult, SchemaVariant, UiMenu};
 use crate::socket::{Socket, SocketArity, SocketEdgeKind};
 use crate::{
-    validation_prototype::ValidationPrototypeContext, Func, HistoryActor, Prop, PropKind, Schema,
-    SchemaError, SchemaKind, SchematicKind, StandardModel, Tenancy, ValidationPrototype,
-    Visibility,
+    attribute_resolver::AttributeResolverContext, func::binding::FuncBinding,
+    validation_prototype::ValidationPrototypeContext, AttributeResolver, Func, HistoryActor, Prop,
+    PropKind, Schema, SchemaError, SchemaKind, SchematicKind, StandardModel, Tenancy,
+    ValidationPrototype, Visibility,
 };
 use si_data::{NatsTxn, PgTxn};
 
-pub async fn migrate(txn: &PgTxn<'_>, nats: &NatsTxn) -> SchemaResult<()> {
+pub async fn migrate(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    veritech: veritech::Client,
+) -> SchemaResult<()> {
     let (tenancy, visibility, history_actor) = (
         Tenancy::new_universal(),
         Visibility::new_head(false),
@@ -18,7 +23,7 @@ pub async fn migrate(txn: &PgTxn<'_>, nats: &NatsTxn) -> SchemaResult<()> {
     application(txn, nats, &tenancy, &visibility, &history_actor).await?;
     service(txn, nats, &tenancy, &visibility, &history_actor).await?;
     kubernetes_service(txn, nats, &tenancy, &visibility, &history_actor).await?;
-    docker_image(txn, nats, &tenancy, &visibility, &history_actor).await?;
+    docker_image(txn, nats, &tenancy, &visibility, &history_actor, veritech).await?;
 
     Ok(())
 }
@@ -275,6 +280,7 @@ async fn docker_image(
     tenancy: &Tenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
+    veritech: veritech::Client,
 ) -> SchemaResult<()> {
     let name = "docker_image".to_string();
     let mut schema = match create_schema(
@@ -397,6 +403,56 @@ async fn docker_image(
             "Tupi or not Tupi, that is the question".to_owned(), // https://en.wikipedia.org/wiki/Manifesto_Antrop%C3%B3fago
         ))?,
         validation_prototype_ctx,
+    )
+    .await?;
+
+    let malandro_é_malandro_e_mané_é_mané_prop = Prop::new(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        "Malandro é malandro e mané é mané",
+        PropKind::String,
+    )
+    .await?;
+    malandro_é_malandro_e_mané_é_mané_prop
+        .add_schema_variant(txn, nats, visibility, history_actor, variant.id())
+        .await?;
+
+    let (func, func_binding) = match malandro_é_malandro_e_mané_é_mané_prop.kind() {
+        PropKind::String => {
+            let func_name = "si:totallyRandomString".to_string();
+            let mut funcs =
+                Func::find_by_attr(txn, tenancy, visibility, "name", &func_name).await?;
+            let func = funcs.pop().ok_or(SchemaError::MissingFunc(func_name))?;
+            let (func_binding, _) = FuncBinding::find_or_create(
+                txn,
+                nats,
+                tenancy,
+                visibility,
+                history_actor,
+                serde_json::to_value(Option::<()>::None)?,
+                *func.id(),
+                *func.backend_kind(),
+            )
+            .await?;
+
+            func_binding.execute(txn, nats, veritech.clone()).await?;
+            (func, func_binding)
+        }
+    };
+    let mut attribute_resolver_context = AttributeResolverContext::new();
+    attribute_resolver_context.set_prop_id(*malandro_é_malandro_e_mané_é_mané_prop.id());
+    AttributeResolver::upsert(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        *func.id(),
+        *func_binding.id(),
+        attribute_resolver_context,
     )
     .await?;
 

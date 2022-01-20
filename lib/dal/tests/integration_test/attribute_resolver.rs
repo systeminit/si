@@ -133,7 +133,8 @@ async fn find_value_for_prop_and_component() {
         .props(&txn, &visibility)
         .await
         .expect("cannot get props")
-        .pop()
+        .first()
+        .cloned()
         .expect("no prop found");
 
     let component = create_component_for_schema(

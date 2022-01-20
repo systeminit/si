@@ -1,11 +1,10 @@
-use std::io;
-
 use deadpool_cyclone::{
     instance::cyclone::LocalUdsInstanceSpec, CycloneClient, Manager, Pool, ProgressMessage,
     QualificationCheckRequest, ResolverFunctionRequest,
 };
 use futures::{channel::oneshot, join, StreamExt};
 use si_data::NatsClient;
+use std::io;
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::{

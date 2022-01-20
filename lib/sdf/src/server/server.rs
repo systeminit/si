@@ -138,9 +138,10 @@ impl Server<(), ()> {
         pg: &PgPool,
         nats: &NatsClient,
         jwt_secret_key: &JwtSecretKey,
+        veritech: veritech::Client,
     ) -> Result<()> {
         migrate(pg).await?;
-        migrate_builtin_schemas(pg, nats).await?;
+        migrate_builtin_schemas(pg, nats, veritech).await?;
 
         let mut conn = pg.get().await?;
         let txn = conn.transaction().await?;

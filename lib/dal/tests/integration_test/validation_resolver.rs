@@ -1,14 +1,11 @@
 use crate::test_setup;
 
 use dal::{
-    func::{
-        backend::{validation::FuncBackendValidateStringValueArgs, FuncBackendStringArgs},
-        binding::FuncBinding,
-    },
+    func::{backend::validation::FuncBackendValidateStringValueArgs, binding::FuncBinding},
     test_harness::{billing_account_signup, create_component_for_schema},
     validation_resolver::{ValidationResolverContext, UNSET_ID_VALUE},
-    AttributeResolver, Func, FuncBackendKind, FuncBackendResponseType, HistoryActor, Schema,
-    StandardModel, SystemId, Tenancy, ValidationResolver, Visibility,
+    Func, FuncBackendKind, FuncBackendResponseType, HistoryActor, Schema, StandardModel, SystemId,
+    Tenancy, ValidationResolver, Visibility,
 };
 
 #[tokio::test]
@@ -112,8 +109,6 @@ async fn find_for_prototype() {
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
     let veritech = veritech::Client::new(nats_conn.clone());
-
-    let unset_system_id: SystemId = UNSET_ID_VALUE.into();
 
     let schema = Schema::find_by_attr(
         &txn,

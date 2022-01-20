@@ -7,7 +7,7 @@ use dal::{
     },
     test_harness::{
         create_change_set, create_edit_session, create_func, create_func_binding,
-        create_visibility_change_set, create_visibility_edit_session,
+        create_visibility_edit_session,
     },
     Func, FuncBackendKind, FuncBackendResponseType, HistoryActor, StandardModel, Tenancy,
     Visibility, NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK,
@@ -104,7 +104,6 @@ async fn func_binding_find_or_create_head() {
 async fn func_binding_find_or_create_edit_session() {
     test_setup!(ctx, _secret_key, _pg, _conn, txn, _nats_conn, nats);
     let tenancy = Tenancy::new_universal();
-    let head_visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
     let mut change_set = create_change_set(&txn, &nats, &tenancy, &history_actor).await;
     let mut edit_session = create_edit_session(&txn, &nats, &history_actor, &change_set).await;

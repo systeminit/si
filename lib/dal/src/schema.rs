@@ -12,12 +12,14 @@ use crate::{
         EditFieldObjectKind, EditFields, HeaderWidget, SelectWidget, TextWidget, VisibilityDiff,
         Widget,
     },
+    func::binding::FuncBindingError,
     impl_standard_model, pk,
     schema::ui_menu::UiMenuId,
     standard_model, standard_model_accessor, standard_model_has_many, standard_model_many_to_many,
-    BillingAccount, BillingAccountId, Component, HistoryActor, HistoryEventError, LabelEntry,
-    LabelList, Organization, OrganizationId, PropError, StandardModel, StandardModelError, Tenancy,
-    Timestamp, ValidationPrototypeError, Visibility, Workspace, WorkspaceId, WsEventError,
+    AttributeResolverError, BillingAccount, BillingAccountId, Component, HistoryActor,
+    HistoryEventError, LabelEntry, LabelList, Organization, OrganizationId, PropError,
+    StandardModel, StandardModelError, Tenancy, Timestamp, ValidationPrototypeError, Visibility,
+    Workspace, WorkspaceId, WsEventError,
 };
 
 use crate::socket::SocketError;
@@ -62,6 +64,10 @@ pub enum SchemaError {
     MissingFunc(String),
     #[error("validation prototype error: {0}")]
     ValidationPrototype(#[from] ValidationPrototypeError),
+    #[error("attribute resolver error: {0}")]
+    AttributeResolver(#[from] AttributeResolverError),
+    #[error("func binding error: {0}")]
+    FuncBinding(#[from] FuncBindingError),
 }
 
 pub type SchemaResult<T> = Result<T, SchemaError>;

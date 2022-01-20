@@ -40,3 +40,4 @@ veritech = { path = "../../lib/veritech", features = ["client"] }
 
 [dev-dependencies]
 insta = "1.8.0"
+veritech = { path = "../../lib/veritech", features = ["client", "server"] }

@@ -120,12 +120,16 @@ pub async fn migrate(pg: &PgPool) -> ModelResult<()> {
 }
 
 #[instrument(skip_all)]
-pub async fn migrate_builtin_schemas(pg: &PgPool, nats: &NatsClient) -> ModelResult<()> {
+pub async fn migrate_builtin_schemas(
+    pg: &PgPool,
+    nats: &NatsClient,
+    veritech: veritech::Client,
+) -> ModelResult<()> {
     let mut conn = pg.get().await?;
     let txn = conn.transaction().await?;
     let nats = nats.transaction();
     func::builtins::migrate(&txn, &nats).await?;
-    schema::builtins::migrate(&txn, &nats).await?;
+    schema::builtins::migrate(&txn, &nats, veritech).await?;
     txn.commit().await?;
     nats.commit().await?;
     Ok(())
