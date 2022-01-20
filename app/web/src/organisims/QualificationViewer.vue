@@ -1,51 +1,58 @@
 <template>
   <div v-if="componentId" class="flex flex-col w-full">
-    <div
-      class="relative flex flex-row items-center justify-between h-10 pt-2 pb-2 pl-6 pr-6 text-white property-section-bg-color"
-    >
-      <div class="text-lg">COMPONENT_NAME Qualifications</div>
+    <div class="flex">
+      <div>
+        <div>Component ID {{ props.componentId }} Qualifications</div>
+      </div>
+
+      <div class="flex">
+        <button><VueFeather type="refresh-cw" size="1.5rem" /></button>
+        <VueFeather type="check-square" size="1.5rem" />
+      </div>
     </div>
 
-    <div class="flex">RefreshCwIcon CheckSquareIcon</div>
-  </div>
+    <div class="flex flex-col">
+      <div>QualificationChecks Here!</div>
 
-  <div class="flex flex-col mx-4 mt-2 border qualification-card">
-    <div class="px-2 py-2 text-xs font-medium align-middle title">
-      QualificationChecks
-    </div>
+      <div v-if="isSchema" class="flex">
+        <div class="flex flex-col">
+          <div
+            v-for="q in allQualifications"
+            :key="q.name"
+            class="flex flex-col"
+          >
+            <div class="flex flex-row">
+              <div v-if="showQualificationStarting" class="flex">
+                <VueFeather
+                  type="rotate-cw"
+                  animation="spin"
+                  animation-speed="slow"
+                  size="1.5rem"
+                />
+              </div>
+              <div v-else-if="showQualificationResult" class="flex">
+                <VueFeather type="smile" color="green" size="1.5rem" />
+                <VueFeather type="frown" color="red" size="1.5rem" />
+              </div>
+              <div v-else class="flex">
+                <VueFeather type="square" size="1.5rem" />
+              </div>
+              <div class="flex">title: {{ q.title }}</div>
+              <div v-if="showQualificationLink" class="flex">
+                <a target="_blank" :href="q.link">
+                  <VueFeather type="link" size="1.5rem" />
+                </a>
+              </div>
+              <div class="flex flex-grow"></div>
+            </div>
 
-    <div
-      v-if="!schemaEmpty"
-      class="flex w-full h-full pt-2 pb-4 overflow-auto background-color"
-    >
-      <div class="flex flex-col w-full">
-        <div
-          v-for="q in allQualifications"
-          :key="q.name"
-          class="flex flex-col py-1 mx-2 mt-2 text-sm border qualification-section"
-        >
-          <div class="flex flex-row items-center w-full pl-4 my-1">
-            <div v-if="showQualificationStarting" class="flex">VueLoading</div>
-            <div v-else-if="showQualificationResult" class="flex">
-              SmileOrFrownIcon
-            </div>
-            <div v-else class="flex">SquareIcon</div>
-            <div class="flex ml-2 text-xs qualification-check-title">
-              QualificationCheckTitle
-            </div>
-            <div v-if="showQualificationLink" class="flex ml-2">
-              <a target="_blank" :href="link"> InfoIcon </a>
-            </div>
-            <div class="flex justify-end flex-grow pr-4">
-              ToggleDescriptionButton
-            </div>
-          </div>
-        </div>
-
-        <div v-if="showDescription[q.name]" class="flex flex-col w-full">
-          <div v-if="showQualificationResult" class="flex flex-col w-full">
-            <div class="mt-1">
-              <QualificationOutput />
+            <!-- NOTE(nick): showing description should be toggleable. -->
+            <div v-if="q.description" class="flex flex-col">
+              <div v-if="q.result" class="flex flex-col">
+                <div class="border border-solid border-slate-100">
+                  <QualificationOutput :result="q.result" />
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -55,23 +62,20 @@
 </template>
 
 <script setup lang="ts">
-const showDescription = true;
+import { QualificationService } from "@/service/qualification";
+import QualificationOutput from "./QualificationViewer/QualificationOutput.vue";
+import VueFeather from "vue-feather";
+
 const showQualificationResult = true;
 const showQualificationStarting = true;
 const showQualificationLink = true;
-const schemaEmpty = true;
-const link = "https://bit.ly/3qHuTNh";
-
-const allQualifications = [
-  {
-    name: "foo",
-  },
-  {
-    name: "bar",
-  },
-];
+const isSchema = true;
 
 const props = defineProps<{
   componentId: number;
 }>();
+
+const allQualifications = QualificationService.listQualifications(
+  props.componentId,
+);
 </script>

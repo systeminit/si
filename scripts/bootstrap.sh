@@ -77,12 +77,16 @@ function ubuntu-bootstrap {
 }
 
 function perform-bootstrap {
-    if [ "$SI_OS" = "darwin" ] && ( [ "$SI_ARCH" = "x86_64" ] || [ "$SI_ARCH" = "arm64" ] ); then
+    if [ "$SI_OS" = "darwin" ] && [ "$SI_ARCH" = "x86_64" ]; then
+        darwin-bootstrap
+    elif [ "$SI_OS" = "darwin" ] && [ "$SI_ARCH" = "arm64" ]; then
         darwin-bootstrap
     elif [ "$SI_OS" = "arch" ] && [ "$SI_ARCH" = "x86_64" ]; then
         arch-bootstrap
     elif [ "$SI_OS" = "fedora" ] && [ "$SI_ARCH" = "x86_64" ]; then
         fedora-bootstrap
+    elif [ "$SI_OS" = "pop" ] && [ "$SI_ARCH" = "x86_64" ]; then
+        ubuntu-bootstrap
     elif [ "$SI_OS" = "ubuntu" ] && [ "$SI_ARCH" = "x86_64" ]; then
         ubuntu-bootstrap
     else
