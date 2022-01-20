@@ -1,8 +1,9 @@
+use cyclone::QualificationCheckRequest;
 use deadpool_cyclone::{
     instance::cyclone::LocalUdsInstanceSpec, CycloneClient, Manager, Pool, ProgressMessage,
     ResolverFunctionRequest,
 };
-use futures::StreamExt;
+use futures::{join, StreamExt};
 use si_data::NatsClient;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -15,12 +16,18 @@ use super::{
 pub enum ServerError {
     #[error(transparent)]
     Cyclone(#[from] deadpool_cyclone::client::ClientError),
+    #[error("cyclone pool error")]
+    CyclonePool(#[source] Box<dyn std::error::Error + Sync + Send + 'static>),
+    #[error("cyclone progress error")]
+    CycloneProgress(#[source] Box<dyn std::error::Error + Sync + Send + 'static>),
     #[error("cyclone spec builder error")]
     CycloneSpec(#[source] Box<dyn std::error::Error + Sync + Send + 'static>),
     #[error("error connecting to nats")]
     NatsConnect(#[source] si_data::NatsError),
     #[error(transparent)]
     Publisher(#[from] PublisherError),
+    #[error(transparent)]
+    QualificationCheck(#[from] deadpool_cyclone::client::QualificationCheckExecutionError),
     #[error(transparent)]
     ResolverFunction(#[from] deadpool_cyclone::client::ResolverFunctionExecutionError),
     #[error(transparent)]
@@ -84,27 +91,58 @@ impl Server {
 
 impl Server {
     pub async fn run(self) -> Result<()> {
-        let mut resolver_function_requests = Subscriber::resolver_function(&self.nats).await?;
-
-        while let Some(request) = resolver_function_requests.next().await {
-            match request {
-                Ok(request) => {
-                    // Spawn a task an process the request
-                    tokio::spawn(resolver_function_request_task(
-                        self.nats.clone(),
-                        self.cyclone_pool.clone(),
-                        request,
-                    ));
-                }
-                Err(err) => {
-                    warn!(error = ?err, "next resolver function request had error");
-                }
-            }
-        }
-        resolver_function_requests.unsubscribe().await?;
+        // TODO(fnichol): eventually veritech will be made configurable as to what requests it will
+        // service, so this will cease to be a `join!` macro, but likely a set of spawned tasks
+        // with a shutdown oneshot channel handler for graceful draining and teardown. However
+        // right this second we're going to service all known request types, so the join macro it
+        // is!
+        join!(
+            process_resolver_function_requests_task(self.nats.clone(), self.cyclone_pool.clone()),
+            process_qualification_check_requests_task(self.nats.clone(), self.cyclone_pool.clone()),
+        );
 
         Ok(())
     }
+}
+
+// NOTE(fnichol): the resolver_function and qualification_check paths are parallel and extremely
+// similar, so there is a lurking "unifying" refactor here. It felt like waiting until the third
+// time adding one of these would do the trick, and as a result the first 2 impls are here and not
+// split apart into their own modules.
+
+async fn process_resolver_function_requests_task(
+    nats: NatsClient,
+    cyclone_pool: Pool<LocalUdsInstanceSpec>,
+) {
+    if let Err(err) = process_resolver_function_requests(nats, cyclone_pool).await {
+        warn!(error = ?err, "processing resolver function requests failed");
+    }
+}
+
+async fn process_resolver_function_requests(
+    nats: NatsClient,
+    cyclone_pool: Pool<LocalUdsInstanceSpec>,
+) -> Result<()> {
+    let mut requests = Subscriber::resolver_function(&nats).await?;
+
+    while let Some(request) = requests.next().await {
+        match request {
+            Ok(request) => {
+                // Spawn a task an process the request
+                tokio::spawn(resolver_function_request_task(
+                    nats.clone(),
+                    cyclone_pool.clone(),
+                    request,
+                ));
+            }
+            Err(err) => {
+                warn!(error = ?err, "next resolver function request had error");
+            }
+        }
+    }
+    requests.unsubscribe().await?;
+
+    Ok(())
 }
 
 async fn resolver_function_request_task(
@@ -125,7 +163,10 @@ async fn resolver_function_request(
     let (reply_mailbox, cyclone_request) = request.into_parts();
 
     let publisher = Publisher::new(&nats, &reply_mailbox);
-    let mut client = cyclone_pool.get().await.expect("DODO");
+    let mut client = cyclone_pool
+        .get()
+        .await
+        .map_err(|err| ServerError::CyclonePool(Box::new(err)))?;
     let mut progress = client
         .execute_resolver(cyclone_request)
         .await?
@@ -140,7 +181,93 @@ async fn resolver_function_request(
             Ok(ProgressMessage::Heartbeat) => {
                 trace!("received heartbeat message");
             }
-            Err(e) => todo!("deal with this: {:?}", e),
+            Err(err) => {
+                warn!(error = ?err, "next progress message was an error, skipping to next message");
+            }
+        }
+    }
+    publisher.finalize_output().await?;
+
+    let function_result = progress.finish().await?;
+    publisher.publish_result(&function_result).await?;
+
+    Ok(())
+}
+
+async fn process_qualification_check_requests_task(
+    nats: NatsClient,
+    cyclone_pool: Pool<LocalUdsInstanceSpec>,
+) {
+    if let Err(err) = process_qualification_check_requests(nats, cyclone_pool).await {
+        warn!(error = ?err, "processing qualification check requests failed");
+    }
+}
+
+async fn process_qualification_check_requests(
+    nats: NatsClient,
+    cyclone_pool: Pool<LocalUdsInstanceSpec>,
+) -> Result<()> {
+    let mut requests = Subscriber::qualification_check(&nats).await?;
+
+    while let Some(request) = requests.next().await {
+        match request {
+            Ok(request) => {
+                // Spawn a task an process the request
+                tokio::spawn(qualification_check_request_task(
+                    nats.clone(),
+                    cyclone_pool.clone(),
+                    request,
+                ));
+            }
+            Err(err) => {
+                warn!(error = ?err, "next qualification check request had error");
+            }
+        }
+    }
+    requests.unsubscribe().await?;
+
+    Ok(())
+}
+
+async fn qualification_check_request_task(
+    nats: NatsClient,
+    cyclone_pool: Pool<LocalUdsInstanceSpec>,
+    request: Request<QualificationCheckRequest>,
+) {
+    if let Err(err) = qualification_check_request(nats, cyclone_pool, request).await {
+        warn!(error = ?err, "qualification check execution failed");
+    }
+}
+
+async fn qualification_check_request(
+    nats: NatsClient,
+    cyclone_pool: Pool<LocalUdsInstanceSpec>,
+    request: Request<QualificationCheckRequest>,
+) -> Result<()> {
+    let (reply_mailbox, cyclone_request) = request.into_parts();
+
+    let publisher = Publisher::new(&nats, &reply_mailbox);
+    let mut client = cyclone_pool
+        .get()
+        .await
+        .map_err(|err| ServerError::CyclonePool(Box::new(err)))?;
+    let mut progress = client
+        .execute_qualification(cyclone_request)
+        .await?
+        .start()
+        .await?;
+
+    while let Some(msg) = progress.next().await {
+        match msg {
+            Ok(ProgressMessage::OutputStream(output)) => {
+                publisher.publish_output(&output).await?;
+            }
+            Ok(ProgressMessage::Heartbeat) => {
+                trace!("received heartbeat message");
+            }
+            Err(err) => {
+                warn!(error = ?err, "next progress message was an error, skipping to next message");
+            }
         }
     }
     publisher.finalize_output().await?;

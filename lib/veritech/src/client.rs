@@ -1,7 +1,9 @@
 use cyclone::{
-    FunctionResult, OutputStream, ResolverFunctionRequest, ResolverFunctionResultSuccess,
+    FunctionResult, OutputStream, QualificationCheckRequest, QualificationCheckResultSuccess,
+    ResolverFunctionRequest, ResolverFunctionResultSuccess,
 };
 use futures::{StreamExt, TryStreamExt};
+use serde::{de::DeserializeOwned, Serialize};
 use si_data::NatsClient;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -41,16 +43,38 @@ impl Client {
         output_tx: mpsc::Sender<OutputStream>,
         request: &ResolverFunctionRequest,
     ) -> ClientResult<FunctionResult<ResolverFunctionResultSuccess>> {
+        self.execute_request(subject, output_tx, request).await
+    }
+
+    #[instrument(name = "client.execute_qualification_check", skip_all)]
+    pub async fn execute_qualification_check(
+        &self,
+        subject: impl Into<String>,
+        output_tx: mpsc::Sender<OutputStream>,
+        request: &QualificationCheckRequest,
+    ) -> ClientResult<FunctionResult<QualificationCheckResultSuccess>> {
+        self.execute_request(subject, output_tx, request).await
+    }
+
+    async fn execute_request<R, S>(
+        &self,
+        subject: impl Into<String>,
+        output_tx: mpsc::Sender<OutputStream>,
+        request: &R,
+    ) -> ClientResult<FunctionResult<S>>
+    where
+        R: Serialize,
+        S: DeserializeOwned,
+    {
         let msg = serde_json::to_vec(request).map_err(ClientError::JSONSerialize)?;
         let reply_mailbox_root = self.nats.new_inbox();
 
         // Construct a subscription stream for the result
-        let mut result_subscription: Subscription<FunctionResult<ResolverFunctionResultSuccess>> =
-            Subscription::new(
-                self.nats
-                    .subscribe(reply_mailbox_for_result(&reply_mailbox_root))
-                    .await?,
-            );
+        let mut result_subscription: Subscription<FunctionResult<S>> = Subscription::new(
+            self.nats
+                .subscribe(reply_mailbox_for_result(&reply_mailbox_root))
+                .await?,
+        );
 
         // Construct a subscription stream for output messages
         let output_subscription = Subscription::new(
@@ -207,7 +231,9 @@ mod subscription {
 mod tests {
     use std::{collections::HashMap, env};
 
+    use cyclone::QualificationCheckComponent;
     use deadpool_cyclone::{instance::cyclone::LocalUdsInstance, Instance};
+    use indoc::indoc;
     use si_data::NatsConfig;
     use si_settings::StandardConfig;
     use test_env_log::test;
@@ -295,6 +321,89 @@ mod tests {
                 assert_eq!(success.execution_id, "1234");
                 assert_eq!(success.data, serde_json::json!("WAFFLES_ARE_NEAT"));
                 assert!(!success.unset);
+            }
+            FunctionResult::Failure(failure) => {
+                panic!("function did not succeed and should have: {:?}", failure)
+            }
+        }
+    }
+
+    #[ignore = "at the moment this test blocks at the end and does not terminate"]
+    #[test(tokio::test)]
+    async fn executes_simple_qualification_check() {
+        run_server_for_uds_cyclone().await;
+        let client = client().await;
+
+        // Not going to check output here--we aren't emitting anything
+        let (tx, mut rx) = mpsc::channel(64);
+        tokio::spawn(async move {
+            while let Some(output) = rx.recv().await {
+                info!("output: {:?}", output)
+            }
+        });
+
+        let mut properties = HashMap::new();
+        properties.insert("pkg".to_string(), serde_json::json!("cider"));
+
+        let mut request = QualificationCheckRequest {
+            execution_id: "5678".to_string(),
+            handler: "check".to_string(),
+            component: QualificationCheckComponent {
+                name: "cider".to_string(),
+                properties,
+            },
+            code_base64: base64::encode(indoc! {r#"
+                function check(component) {
+                    const name = component.name;
+                    const pkg = component.properties?.pkg;
+
+                    if (name == pkg) {
+                        return { qualified: true };
+                    } else {
+                        return {
+                            qualified: false,
+                            output: "name '" + name + "' doesn't match pkg '" + pkg + "'",
+                        };
+                    }
+                }
+            "#}),
+        };
+
+        // Run a qualified check (i.e. qualification returns qualified == true)
+        let result = client
+            .execute_qualification_check("veritech.function.qualification", tx.clone(), &request)
+            .await
+            .expect("failed to execute qualification check");
+
+        match result {
+            FunctionResult::Success(success) => {
+                assert_eq!(success.execution_id, "5678");
+                assert!(success.qualified);
+                assert_eq!(success.output, None);
+            }
+            FunctionResult::Failure(failure) => {
+                panic!("function did not succeed and should have: {:?}", failure)
+            }
+        }
+
+        request.execution_id = "9012".to_string();
+        request.component.name = "emacs".to_string();
+
+        // Now update the request to re-run an unqualified check (i.e. qualification returning
+        // qualified == false)
+        let result = client
+            .execute_qualification_check("veritech.function.qualification", tx, &request)
+            .await
+            .expect("failed to execute qualification check");
+
+        match result {
+            FunctionResult::Success(success) => {
+                assert_eq!(success.execution_id, "9012");
+                assert!(!success.qualified);
+                assert_eq!(
+                    success.output,
+                    Some("name 'emacs' doesn't match pkg 'cider'".to_string())
+                );
             }
             FunctionResult::Failure(failure) => {
                 panic!("function did not succeed and should have: {:?}", failure)

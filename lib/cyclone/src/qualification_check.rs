@@ -8,7 +8,7 @@ use serde_json::Value;
 pub struct QualificationCheckRequest {
     pub execution_id: String,
     pub handler: String,
-    pub component: Component,
+    pub component: QualificationCheckComponent,
     pub code_base64: String,
 }
 
@@ -24,7 +24,7 @@ impl QualificationCheckRequest {
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Component {
+pub struct QualificationCheckComponent {
     pub name: String,
     pub properties: HashMap<String, Value>,
 }
