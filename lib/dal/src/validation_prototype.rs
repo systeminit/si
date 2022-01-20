@@ -30,8 +30,7 @@ pub enum ValidationPrototypeError {
 pub type ValidationPrototypeResult<T> = Result<T, ValidationPrototypeError>;
 
 pub const UNSET_ID_VALUE: i64 = -1;
-const FIND_VALUES_FOR_CONTEXT: &str =
-    include_str!("./queries/validation_prototype_find_for_context.sql");
+const FIND_FOR_CONTEXT: &str = include_str!("./queries/validation_prototype_find_for_context.sql");
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct ValidationPrototypeContext {
@@ -174,7 +173,7 @@ impl ValidationPrototype {
     ) -> ValidationPrototypeResult<Vec<Self>> {
         let rows = txn
             .query(
-                FIND_VALUES_FOR_CONTEXT,
+                FIND_FOR_CONTEXT,
                 &[&tenancy, &visibility, &prop_id, &system_id],
             )
             .await?;

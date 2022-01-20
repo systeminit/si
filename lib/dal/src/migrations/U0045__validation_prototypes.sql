@@ -14,9 +14,9 @@ CREATE TABLE validation_prototypes
     func_id                     bigint                   NOT NULL,
     args                        jsonb                    NOT NULL,
     prop_id                     bigint                   NOT NULL,
-    schema_id                   bigint,
-    schema_variant_id           bigint,
-    system_id                   bigint
+    schema_id                   bigint                   NOT NULL,
+    schema_variant_id           bigint                   NOT NULL,
+    system_id                   bigint                   NOT NULL
 );
 SELECT standard_model_table_constraints_v1('validation_prototypes');
 
