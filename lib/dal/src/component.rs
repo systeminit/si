@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use si_data::{NatsError, NatsTxn, PgError, PgTxn};
@@ -707,5 +709,44 @@ impl EditFieldAble for Component {
         }
 
         Ok(())
+    }
+}
+
+/// This is intended to be passed in to external language qualification functions,
+/// so they have the entire component to be able to run qualifications against.
+/// This is a read-only snapshot.
+#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ComponentQualificationView {
+    name: String,
+    properties: HashMap<String, Option<serde_json::Value>>,
+}
+
+impl ComponentQualificationView {
+    pub async fn new(
+        txn: &PgTxn<'_>,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+        id: &ComponentId,
+    ) -> ComponentResult<Self> {
+        let mut tenancy = tenancy.clone();
+        tenancy.universal = true;
+
+        let component = Component::get_by_id(txn, &tenancy, visibility, id)
+            .await?
+            .ok_or(ComponentError::NotFound(*id))?;
+
+        let mut qualification_view = Self {
+            name: component.name().into(),
+            properties: HashMap::new(),
+        };
+
+        for edit_field in Component::get_edit_fields(txn, &tenancy, visibility, id).await? {
+            qualification_view
+                .properties
+                .insert(edit_field.name, edit_field.value);
+        }
+
+        Ok(qualification_view)
     }
 }
