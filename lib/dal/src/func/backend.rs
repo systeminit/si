@@ -52,6 +52,7 @@ pub enum FuncBackendKind {
     Unset,
     //Json,
     //Js,
+    JsQualification,
     JsString,
     ValidateStringValue,
 }
@@ -78,6 +79,7 @@ pub enum FuncBackendResponseType {
     //Array,
     Unset,
     //Json,
+    Qualification,
     Validation,
 }
 
