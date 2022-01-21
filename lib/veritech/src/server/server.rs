@@ -1,12 +1,17 @@
-use cyclone::QualificationCheckRequest;
+use std::io;
+
 use deadpool_cyclone::{
     instance::cyclone::LocalUdsInstanceSpec, CycloneClient, Manager, Pool, ProgressMessage,
-    ResolverFunctionRequest,
+    QualificationCheckRequest, ResolverFunctionRequest,
 };
-use futures::{join, StreamExt};
+use futures::{channel::oneshot, join, StreamExt};
 use si_data::NatsClient;
 use telemetry::prelude::*;
 use thiserror::Error;
+use tokio::{
+    signal::unix,
+    sync::{broadcast, mpsc},
+};
 
 use super::{
     config::CycloneSpec, Config, Publisher, PublisherError, Request, Subscriber, SubscriberError,
@@ -30,6 +35,8 @@ pub enum ServerError {
     QualificationCheck(#[from] deadpool_cyclone::client::QualificationCheckExecutionError),
     #[error(transparent)]
     ResolverFunction(#[from] deadpool_cyclone::client::ResolverFunctionExecutionError),
+    #[error("failed to setup signal handler")]
+    Signal(#[source] io::Error),
     #[error(transparent)]
     Subscriber(#[from] SubscriberError),
     #[error("wrong cyclone spec type for {0} spec: {1:?}")]
@@ -41,6 +48,9 @@ type Result<T> = std::result::Result<T, ServerError>;
 pub struct Server {
     nats: NatsClient,
     cyclone_pool: Pool<LocalUdsInstanceSpec>,
+    shutdown_broadcast_tx: broadcast::Sender<()>,
+    shutdown_tx: mpsc::Sender<ShutdownSource>,
+    shutdown_rx: oneshot::Receiver<()>,
 }
 
 impl Server {
@@ -74,32 +84,59 @@ impl Server {
     pub async fn for_cyclone_uds(config: Config) -> Result<Server> {
         match config.cyclone_spec() {
             CycloneSpec::LocalUds(spec) => {
+                let (shutdown_tx, shutdown_rx) = mpsc::channel(4);
+                // Note the channel parameter corresponds to the number of channels that may be
+                // maintained when the sender is guaranteeing delivery. While this number may end
+                // of being related to the number of subscriptions, it's not
+                // necessarily the same number.
+                let (shutdown_broadcast_tx, _) = broadcast::channel(16);
+
                 let nats = connect_to_nats(&config).await?;
                 let manager = Manager::new(spec.clone());
                 let cyclone_pool = Pool::builder(manager)
                     .build()
                     .map_err(|err| ServerError::CycloneSpec(Box::new(err)))?;
 
-                Ok(Server { nats, cyclone_pool })
+                let graceful_shutdown_rx =
+                    prepare_graceful_shutdown(shutdown_rx, shutdown_broadcast_tx.clone())?;
+
+                Ok(Server {
+                    nats,
+                    cyclone_pool,
+                    shutdown_broadcast_tx,
+                    shutdown_tx,
+                    shutdown_rx: graceful_shutdown_rx,
+                })
             }
             wrong @ CycloneSpec::LocalHttp(_) => {
                 Err(ServerError::WrongCycloneSpec("LocalUds", wrong.clone()))
             }
         }
     }
+
+    /// Gets a sender handle to the server's shutdown channel.
+    pub fn shutdown_tx(&self) -> mpsc::Sender<ShutdownSource> {
+        self.shutdown_tx.clone()
+    }
 }
 
 impl Server {
     pub async fn run(self) -> Result<()> {
-        // TODO(fnichol): eventually veritech will be made configurable as to what requests it will
-        // service, so this will cease to be a `join!` macro, but likely a set of spawned tasks
-        // with a shutdown oneshot channel handler for graceful draining and teardown. However
-        // right this second we're going to service all known request types, so the join macro it
-        // is!
-        join!(
-            process_resolver_function_requests_task(self.nats.clone(), self.cyclone_pool.clone()),
-            process_qualification_check_requests_task(self.nats.clone(), self.cyclone_pool.clone()),
+        let _ = join!(
+            process_resolver_function_requests_task(
+                self.nats.clone(),
+                self.cyclone_pool.clone(),
+                self.shutdown_broadcast_tx.subscribe(),
+            ),
+            process_qualification_check_requests_task(
+                self.nats.clone(),
+                self.cyclone_pool.clone(),
+                self.shutdown_broadcast_tx.subscribe(),
+            ),
         );
+
+        let _ = self.shutdown_rx.await;
+        info!("received graceful shutdown, terminating server instance");
 
         Ok(())
     }
@@ -113,8 +150,11 @@ impl Server {
 async fn process_resolver_function_requests_task(
     nats: NatsClient,
     cyclone_pool: Pool<LocalUdsInstanceSpec>,
+    shutdown_broadcast_rx: broadcast::Receiver<()>,
 ) {
-    if let Err(err) = process_resolver_function_requests(nats, cyclone_pool).await {
+    if let Err(err) =
+        process_resolver_function_requests(nats, cyclone_pool, shutdown_broadcast_rx).await
+    {
         warn!(error = ?err, "processing resolver function requests failed");
     }
 }
@@ -122,24 +162,46 @@ async fn process_resolver_function_requests_task(
 async fn process_resolver_function_requests(
     nats: NatsClient,
     cyclone_pool: Pool<LocalUdsInstanceSpec>,
+    mut shutdown_broadcast_rx: broadcast::Receiver<()>,
 ) -> Result<()> {
     let mut requests = Subscriber::resolver_function(&nats).await?;
 
-    while let Some(request) = requests.next().await {
-        match request {
-            Ok(request) => {
-                // Spawn a task an process the request
-                tokio::spawn(resolver_function_request_task(
-                    nats.clone(),
-                    cyclone_pool.clone(),
-                    request,
-                ));
+    loop {
+        tokio::select! {
+            // Got a broadcasted shutdown message
+            _ = shutdown_broadcast_rx.recv() => {
+                trace!("process resolver function requests task received shutdown");
+                break;
             }
-            Err(err) => {
-                warn!(error = ?err, "next resolver function request had error");
+            // Got the next message on from the subscriber
+            request = requests.next() => {
+                match request {
+                    Some(Ok(request)) => {
+                        // Spawn a task an process the request
+                        tokio::spawn(resolver_function_request_task(
+                            nats.clone(),
+                            cyclone_pool.clone(),
+                            request,
+                        ));
+                    }
+                    Some(Err(err)) => {
+                        warn!(error = ?err, "next resolver function request had error");
+                    }
+                    None => {
+                        trace!("resolver function requests subscriber stream has closed");
+                        break;
+                    }
+                }
+            }
+            // All other arms are closed, nothing left to do but return
+            else => {
+                trace!("returning with all select arms closed");
+                break
             }
         }
     }
+
+    // Unsubscribe from subscription
     requests.unsubscribe().await?;
 
     Ok(())
@@ -197,8 +259,11 @@ async fn resolver_function_request(
 async fn process_qualification_check_requests_task(
     nats: NatsClient,
     cyclone_pool: Pool<LocalUdsInstanceSpec>,
+    shutdown_broadcast_rx: broadcast::Receiver<()>,
 ) {
-    if let Err(err) = process_qualification_check_requests(nats, cyclone_pool).await {
+    if let Err(err) =
+        process_qualification_check_requests(nats, cyclone_pool, shutdown_broadcast_rx).await
+    {
         warn!(error = ?err, "processing qualification check requests failed");
     }
 }
@@ -206,24 +271,46 @@ async fn process_qualification_check_requests_task(
 async fn process_qualification_check_requests(
     nats: NatsClient,
     cyclone_pool: Pool<LocalUdsInstanceSpec>,
+    mut shutdown_broadcast_rx: broadcast::Receiver<()>,
 ) -> Result<()> {
     let mut requests = Subscriber::qualification_check(&nats).await?;
 
-    while let Some(request) = requests.next().await {
-        match request {
-            Ok(request) => {
-                // Spawn a task an process the request
-                tokio::spawn(qualification_check_request_task(
-                    nats.clone(),
-                    cyclone_pool.clone(),
-                    request,
-                ));
+    loop {
+        tokio::select! {
+            // Got a broadcasted shutdown message
+            _ = shutdown_broadcast_rx.recv() => {
+                trace!("process qualification check requests task received shutdown");
+                break;
             }
-            Err(err) => {
-                warn!(error = ?err, "next qualification check request had error");
+            // Got the next message on from the subscriber
+            request = requests.next() => {
+                match request {
+                    Some(Ok(request)) => {
+                        // Spawn a task an process the request
+                        tokio::spawn(qualification_check_request_task(
+                            nats.clone(),
+                            cyclone_pool.clone(),
+                            request,
+                        ));
+                    }
+                    Some(Err(err)) => {
+                        warn!(error = ?err, "next qualification check request had error");
+                    }
+                    None => {
+                        trace!("qualification check requests subscriber stream has closed");
+                        break;
+                    }
+                }
+            }
+            // All other arms are closed, nothing left to do but return
+            else => {
+                trace!("returning with all select arms closed");
+                break
             }
         }
     }
+
+    // Unsubscribe from subscription
     requests.unsubscribe().await?;
 
     Ok(())
@@ -287,3 +374,52 @@ async fn connect_to_nats(config: &Config) -> Result<NatsClient> {
 
     Ok(nats)
 }
+
+fn prepare_graceful_shutdown(
+    mut shutdown_rx: mpsc::Receiver<ShutdownSource>,
+    shutdown_broadcast_tx: broadcast::Sender<()>,
+) -> Result<oneshot::Receiver<()>> {
+    let (graceful_shutdown_tx, graceful_shutdown_rx) = oneshot::channel::<()>();
+    let mut sigterm_stream =
+        unix::signal(unix::SignalKind::terminate()).map_err(ServerError::Signal)?;
+
+    tokio::spawn(async move {
+        fn send_graceful_shutdown(
+            tx: oneshot::Sender<()>,
+            shutdown_broadcast_tx: broadcast::Sender<()>,
+        ) {
+            // Send shutdown to all long running subscriptions, so they can cleanly terminate
+            if shutdown_broadcast_tx.send(()).is_err() {
+                error!("all broadcast shutdown receivers have already been dropped");
+            }
+            // Send graceful shutdown to main server thread which stops it from accepting requests.
+            // We'll do this step last so as to let all subscriptions have a chance to shutdown.
+            if tx.send(()).is_err() {
+                error!("the server graceful shutdown receiver has already dropped");
+            }
+        }
+
+        tokio::select! {
+            _ = sigterm_stream.recv() => {
+                info!("received SIGTERM signal, performing graceful shutdown");
+                send_graceful_shutdown(graceful_shutdown_tx, shutdown_broadcast_tx);
+            }
+            source = shutdown_rx.recv() => {
+                info!(
+                    "received internal shutdown, performing graceful shutdown; source={:?}",
+                    source,
+                );
+                send_graceful_shutdown(graceful_shutdown_tx, shutdown_broadcast_tx);
+            }
+            else => {
+                // All other arms are closed, nothing left to do but return
+                trace!("returning from graceful shutdown with all select arms closed");
+            }
+        };
+    });
+
+    Ok(graceful_shutdown_rx)
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub enum ShutdownSource {}

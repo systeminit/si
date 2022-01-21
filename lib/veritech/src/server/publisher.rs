@@ -1,5 +1,4 @@
-use cyclone::FunctionResult;
-use deadpool_cyclone::OutputStream;
+use deadpool_cyclone::{FunctionResult, OutputStream};
 use serde::Serialize;
 use si_data::NatsClient;
 use thiserror::Error;

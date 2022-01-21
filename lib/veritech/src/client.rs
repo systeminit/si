@@ -285,7 +285,6 @@ mod tests {
         tokio::spawn(server_for_uds_cyclone().await.run())
     }
 
-    #[ignore = "at the moment this test blocks at the end and does not terminate"]
     #[test(tokio::test)]
     async fn executes_simple_resolver_function() {
         run_server_for_uds_cyclone().await;
@@ -328,7 +327,6 @@ mod tests {
         }
     }
 
-    #[ignore = "at the moment this test blocks at the end and does not terminate"]
     #[test(tokio::test)]
     async fn executes_simple_qualification_check() {
         run_server_for_uds_cyclone().await;
