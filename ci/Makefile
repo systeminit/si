@@ -26,7 +26,7 @@ ci-web-lint:
 .PHONY: ci-web-lint
 
 ci-crates: teardown setup-crates
-	cd $(REPOPATH); cargo test
+	cd $(REPOPATH); cargo test --all-features
 .PHONY: ci-crates
 
 ci-web: teardown setup-web
