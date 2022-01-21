@@ -5,6 +5,7 @@ use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::mpsc;
+
 use veritech::{
     Client, FunctionResult, OutputStream, QualificationCheckComponent, QualificationCheckRequest,
     ResolverFunctionRequest,

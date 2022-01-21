@@ -23,7 +23,7 @@ CREATE TABLE validation_resolvers
 SELECT standard_model_table_constraints_v1('validation_resolvers');
 
 INSERT INTO standard_models (table_name, table_type, history_event_label_base, history_event_message_name)
-VALUES ('validation_resolvers', 'model', 'validation_resolver', 'validation Resolver');
+VALUES ('validation_resolvers', 'model', 'validation_resolver', 'Validation Resolver');
 
 CREATE OR REPLACE FUNCTION validation_resolver_create_v1(
     this_tenancy jsonb,
