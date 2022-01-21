@@ -55,8 +55,10 @@ async fn run(args: args::Args, mut telemetry: telemetry::Client) -> Result<()> {
 
     let pg_pool = Server::create_pg_pool(config.pg_pool()).await?;
 
+    let veritech = Server::create_veritech_client(nats.clone());
+
     if let MigrationMode::Run | MigrationMode::RunAndQuit = config.migration_mode() {
-        Server::migrate_database(&pg_pool, &nats, &jwt_secret_key).await?;
+        Server::migrate_database(&pg_pool, &nats, &jwt_secret_key, veritech.clone()).await?;
         if let MigrationMode::RunAndQuit = config.migration_mode() {
             info!(
                 "migration mode is {}, shutting down",
@@ -67,8 +69,6 @@ async fn run(args: args::Args, mut telemetry: telemetry::Client) -> Result<()> {
     } else {
         trace!("migration mode is skip, not running migrations");
     }
-
-    let veritech = Server::create_veritech_client(nats.clone());
 
     // TODO(fnichol): re-enable, which we shouldn't need in the long run
     if !disable_opentelemetry {

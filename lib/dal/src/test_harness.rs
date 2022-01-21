@@ -18,6 +18,7 @@ use crate::{
     QualificationCheck, Schema, SchemaId, SchemaKind, StandardModel, System, Tenancy, User,
     Visibility, Workspace, NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK,
 };
+use veritech::{Instance, StandardConfig};
 
 #[derive(Debug)]
 pub struct TestConfig {
@@ -132,6 +133,27 @@ impl TestContext {
     }
 }
 
+async fn veritech_server_for_uds_cyclone(nats_config: NatsConfig) -> veritech::Server {
+    let cyclone_spec = veritech::CycloneSpec::LocalUds(
+        veritech::LocalUdsInstance::spec()
+            .try_cyclone_cmd_path("../../target/debug/cyclone")
+            .expect("failed to setup cyclone_cmd_path")
+            .try_lang_server_cmd_path("../../bin/lang-js/target/lang-js")
+            .expect("failed to setup lang_js_cmd_path")
+            .resolver()
+            .build()
+            .expect("failed to build cyclone spec"),
+    );
+    let config = veritech::Config::builder()
+        .nats(nats_config)
+        .cyclone_spec(cyclone_spec)
+        .build()
+        .expect("failed to build spec");
+    veritech::Server::for_cyclone_uds(config)
+        .await
+        .expect("failed to create server")
+}
+
 pub async fn one_time_setup() -> Result<()> {
     let mut finished = INIT_PG_LOCK.lock().await;
     if *finished {
@@ -143,6 +165,14 @@ pub async fn one_time_setup() -> Result<()> {
     let nats_conn = NatsClient::new(&SETTINGS.nats)
         .await
         .expect("failed to connect to NATS");
+
+    // Note(paulo): is there a race condition here? (veritech server booting while we make requests to it)
+    tokio::spawn(
+        veritech_server_for_uds_cyclone(SETTINGS.nats.clone())
+            .await
+            .run(),
+    );
+    let veritech = veritech::Client::new(nats_conn.clone());
 
     let pg = PgPool::new(&SETTINGS.pg)
         .await
@@ -165,7 +195,7 @@ pub async fn one_time_setup() -> Result<()> {
     .await?;
     txn.commit().await?;
 
-    crate::migrate_builtin_schemas(&pg, &nats_conn).await?;
+    crate::migrate_builtin_schemas(&pg, &nats_conn, veritech).await?;
 
     *finished = true;
     Ok(())

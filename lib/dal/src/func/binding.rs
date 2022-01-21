@@ -29,6 +29,8 @@ use super::{
 pub enum FuncBindingError {
     #[error("unable to retrieve func for func binding: {0:?}")]
     FuncNotFound(FuncBindingPk),
+    #[error("unable to retrieve func for func binding: {0:?}")]
+    JsFuncNotFound(FuncBindingPk),
     #[error("func backend error: {0}")]
     FuncBackend(#[from] FuncBackendError),
     #[error("func backend return value error: {0}")]
@@ -184,21 +186,34 @@ impl FuncBinding {
         // this an argument to this function
         let history_actor = HistoryActor::SystemInit;
 
+        let func = self
+            .func(txn, &visibility)
+            .await?
+            .ok_or(FuncBindingError::FuncNotFound(self.pk))?;
+
         let return_value = match self.backend_kind() {
             FuncBackendKind::JsString => {
                 let (tx, rx) = mpsc::channel(64);
                 // TODO(fnichol): clearly we're going to do something with the output....
                 tokio::spawn(print_output_for_now_why_not(rx));
-                let handler = "upperCaseString";
-                let args: HashMap<String, serde_json::Value> =
-                    serde_json::from_value(self.args.clone())?;
-                let code_base64 = base64::encode(
-                    "function upperCaseString(params) { return params.value.toUpperCase(); }",
-                );
-                let return_value =
-                    FuncBackendJsString::new(veritech, tx, handler, args, code_base64)
-                        .execute()
-                        .await?;
+                let handler = func
+                    .handler()
+                    .ok_or(FuncBindingError::JsFuncNotFound(self.pk))?;
+                let code_base64 = func
+                    .code_base64()
+                    .ok_or(FuncBindingError::JsFuncNotFound(self.pk))?;
+                let mut map: HashMap<String, serde_json::Value> = HashMap::new();
+                map.insert("value".to_owned(), self.args.clone());
+
+                let return_value = FuncBackendJsString::new(
+                    veritech,
+                    tx,
+                    handler.to_owned(),
+                    map,
+                    code_base64.to_owned(),
+                )
+                .execute()
+                .await?;
                 Some(return_value)
             }
             FuncBackendKind::String => {
@@ -215,11 +230,6 @@ impl FuncBinding {
                 Some(FuncBackendValidateStringValue::new(args).execute()?)
             }
         };
-
-        let func = self
-            .func(txn, &visibility)
-            .await?
-            .ok_or(FuncBindingError::FuncNotFound(self.pk))?;
 
         FuncBindingReturnValue::new(
             txn,

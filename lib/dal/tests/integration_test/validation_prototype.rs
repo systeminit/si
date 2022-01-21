@@ -153,5 +153,5 @@ async fn find_for_prop() {
     .await
     .expect("cannot find values");
 
-    assert_eq!(validation_results.len(), 4);
+    assert_eq!(validation_results.len(), 2);
 }

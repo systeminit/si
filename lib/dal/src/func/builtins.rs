@@ -16,7 +16,58 @@ pub async fn migrate(txn: &PgTxn<'_>, nats: &NatsTxn) -> FuncResult<()> {
     si_unset(txn, nats, &tenancy, &visibility, &history_actor).await?;
     si_validate_string_equals(txn, nats, &tenancy, &visibility, &history_actor).await?;
     si_qualification_always_true(txn, nats, &tenancy, &visibility, &history_actor).await?;
+    si_totally_random_string(txn, nats, &tenancy, &visibility, &history_actor).await?;
 
+    Ok(())
+}
+
+async fn si_totally_random_string(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    tenancy: &Tenancy,
+    visibility: &Visibility,
+    history_actor: &HistoryActor,
+) -> FuncResult<()> {
+    let existing_func = Func::find_by_attr(
+        txn,
+        tenancy,
+        visibility,
+        "name",
+        &"si:totallyRandomString".to_string(),
+    )
+    .await?;
+    if existing_func.is_empty() {
+        let mut func = Func::new(
+            txn,
+            nats,
+            tenancy,
+            visibility,
+            history_actor,
+            "si:totallyRandomString",
+            FuncBackendKind::JsString,
+            FuncBackendResponseType::String,
+        )
+        .await
+        .expect("cannot create func");
+        func.set_handler(
+            txn,
+            nats,
+            visibility,
+            history_actor,
+            Some("totallyRandomString"),
+        )
+        .await?;
+        func.set_code_base64(
+            txn,
+            nats,
+            visibility,
+            history_actor,
+            Some(base64::encode(
+                "function totallyRandomString() { return \"4\"; }",
+            )),
+        )
+        .await?;
+    }
     Ok(())
 }
 
