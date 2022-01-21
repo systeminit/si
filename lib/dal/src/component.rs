@@ -13,7 +13,7 @@ use crate::edit_field::{
     EditFieldObjectKind, EditFields, TextWidget, Widget,
 };
 use crate::func::backend::validation::{FuncBackendValidateStringValueArgs, ValidationError};
-use crate::func::backend::FuncBackendStringArgs;
+use crate::func::backend::{FuncBackendJsQualificationArgs, FuncBackendStringArgs};
 use crate::func::binding::{FuncBinding, FuncBindingError};
 use crate::func::binding_return_value::FuncBindingReturnValue;
 use crate::node::NodeKind;
@@ -175,9 +175,37 @@ impl Component {
         component
             .set_schema_variant(txn, nats, visibility, history_actor, schema_variant.id())
             .await?;
+
+        // NOTE(nick): bind qualification function for docker image schema.
+        if schema.name() == "docker_image" {
+            let func_name = "si:qualificationDockerImageNameEqualsComponentName".to_string();
+            let mut funcs =
+                Func::find_by_attr(txn, tenancy, visibility, "name", &func_name).await?;
+            let func = funcs.pop().ok_or(ComponentError::MissingFunc(func_name))?;
+            let func_backend_args = serde_json::to_value(FuncBackendJsQualificationArgs {
+                component: ComponentQualificationView::new(
+                    txn,
+                    tenancy,
+                    visibility,
+                    component.id(),
+                )
+                .await?,
+            })?;
+            let (_func_binding, _created) = FuncBinding::find_or_create(
+                txn,
+                nats,
+                tenancy,
+                visibility,
+                history_actor,
+                func_backend_args,
+                *func.id(),
+                FuncBackendKind::JsQualification,
+            )
+            .await?;
+        }
+
         // Need to flesh out node so that the template data is also included in the node we
         // persist. But it isn't, - our node is anemic.
-
         let node = Node::new(
             txn,
             nats,
@@ -715,7 +743,7 @@ impl EditFieldAble for Component {
 /// This is intended to be passed in to external language qualification functions,
 /// so they have the entire component to be able to run qualifications against.
 /// This is a read-only snapshot.
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ComponentQualificationView {
     name: String,

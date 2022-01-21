@@ -7,7 +7,7 @@ use thiserror::Error;
 use tokio::sync::mpsc;
 use veritech::{Client, FunctionResult, OutputStream, ResolverFunctionRequest};
 
-use crate::{edit_field::ToSelectWidget, label_list::ToLabelList};
+use crate::{edit_field::ToSelectWidget, label_list::ToLabelList, ComponentQualificationView};
 
 pub mod validation;
 
@@ -212,4 +212,9 @@ impl FuncBackendJsString {
         span.record("si.func.result", &tracing::field::debug(&value));
         Ok(value)
     }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct FuncBackendJsQualificationArgs {
+    pub component: ComponentQualificationView,
 }
