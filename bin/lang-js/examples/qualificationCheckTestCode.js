@@ -11,7 +11,7 @@ function nameIsGood(component) {
   } else {
     return {
       qualified: false,
-      output: "name must be all lowercase",
+      message: "name must be all lowercase",
     };
   }
 }

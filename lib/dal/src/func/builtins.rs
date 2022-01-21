@@ -17,6 +17,14 @@ pub async fn migrate(txn: &PgTxn<'_>, nats: &NatsTxn) -> FuncResult<()> {
     si_validate_string_equals(txn, nats, &tenancy, &visibility, &history_actor).await?;
     si_qualification_always_true(txn, nats, &tenancy, &visibility, &history_actor).await?;
     si_totally_random_string(txn, nats, &tenancy, &visibility, &history_actor).await?;
+    si_qualification_docker_image_name_equals_component_name(
+        txn,
+        nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+    )
+    .await?;
 
     Ok(())
 }
@@ -189,6 +197,58 @@ async fn si_qualification_always_true(
                 visibility,
                 history_actor,
                 Some("alwaysGood".to_string()),
+            )
+            .await
+            .expect("cannot set handler");
+        new_func
+            .set_code_base64(
+                txn,
+                nats,
+                visibility,
+                history_actor,
+                Some(qualification_code),
+            )
+            .await
+            .expect("cannot set code");
+    }
+
+    Ok(())
+}
+
+async fn si_qualification_docker_image_name_equals_component_name(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    tenancy: &Tenancy,
+    visibility: &Visibility,
+    history_actor: &HistoryActor,
+) -> FuncResult<()> {
+    let func_name = "si:qualificationDockerImageNameEqualsComponentName".to_string();
+    let existing_func = Func::find_by_attr(txn, tenancy, visibility, "name", &func_name).await?;
+    if existing_func.is_empty() {
+        let mut new_func = Func::new(
+            txn,
+            nats,
+            tenancy,
+            visibility,
+            history_actor,
+            &func_name,
+            FuncBackendKind::JsQualification,
+            FuncBackendResponseType::Qualification,
+        )
+        .await
+        .expect("cannot create func");
+
+        let qualification_code = base64::encode(include_str!(
+            "./builtins/qualificationDockerImageNameEqualsComponentName.js"
+        ));
+
+        new_func
+            .set_handler(
+                txn,
+                nats,
+                visibility,
+                history_actor,
+                Some("dockerImageNameEqualsComponentName".to_string()),
             )
             .await
             .expect("cannot set handler");
