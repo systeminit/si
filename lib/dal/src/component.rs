@@ -180,7 +180,7 @@ impl Component {
         if schema.name() == "docker_image" {
             let func_name = "si:qualificationDockerImageNameEqualsComponentName".to_string();
             let mut funcs =
-                Func::find_by_attr(txn, tenancy, visibility, "name", &func_name).await?;
+                Func::find_by_attr(txn, &schema_tenancy, visibility, "name", &func_name).await?;
             let func = funcs.pop().ok_or(ComponentError::MissingFunc(func_name))?;
             let func_backend_args = serde_json::to_value(FuncBackendJsQualificationArgs {
                 component: ComponentQualificationView::new(
