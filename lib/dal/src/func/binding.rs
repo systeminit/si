@@ -7,8 +7,9 @@ use thiserror::Error;
 
 use serde_json::Value as JsonValue;
 use tokio::sync::mpsc;
-use veritech::{Client, OutputStream};
+use veritech::{Client, OutputStream, QualificationCheckComponent};
 
+use crate::func::backend::FuncBackendJsQualification;
 use crate::{
     func::backend::{
         validation::{FuncBackendValidateStringValue, FuncBackendValidateStringValueArgs},
@@ -222,8 +223,29 @@ impl FuncBinding {
                 Some(return_value)
             }
             FuncBackendKind::Unset => None,
-            // TODO: Gonna need to ship this off to veritech to be handled externally.
-            FuncBackendKind::JsQualification => unimplemented!(),
+            FuncBackendKind::JsQualification => {
+                let (tx, rx) = mpsc::channel(64);
+                tokio::spawn(print_output_for_now_why_not(rx));
+                let handler = func
+                    .handler()
+                    .ok_or(FuncBindingError::JsFuncNotFound(self.pk))?;
+                let code_base64 = func
+                    .code_base64()
+                    .ok_or(FuncBindingError::JsFuncNotFound(self.pk))?;
+
+                // NOTE(nick): deserialize value directly into the component that veritech expects.
+                let component = QualificationCheckComponent::deserialize(&self.args)?;
+                let return_value = FuncBackendJsQualification::new(
+                    veritech,
+                    tx,
+                    handler.to_owned(),
+                    component,
+                    code_base64.to_owned(),
+                )
+                .execute()
+                .await?;
+                Some(return_value)
+            }
             FuncBackendKind::ValidateStringValue => {
                 let args: FuncBackendValidateStringValueArgs =
                     serde_json::from_value(self.args.clone())?;

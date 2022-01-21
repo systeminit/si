@@ -33,6 +33,6 @@ pub struct QualificationCheckComponent {
 pub struct QualificationCheckResultSuccess {
     pub execution_id: String,
     pub qualified: bool,
-    pub output: Option<String>,
+    pub message: Option<String>,
     pub timestamp: u64,
 }

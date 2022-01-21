@@ -320,7 +320,7 @@ impl From<LangServerResult> for FunctionResult<QualificationCheckResultSuccess> 
             LangServerResult::Success(success) => Self::Success(QualificationCheckResultSuccess {
                 execution_id: success.execution_id,
                 qualified: success.qualified,
-                output: success.output,
+                message: success.message,
                 timestamp: timestamp(),
             }),
             LangServerResult::Failure(failure) => Self::Failure(FunctionResultFailure {
@@ -340,7 +340,7 @@ impl From<LangServerResult> for FunctionResult<QualificationCheckResultSuccess> 
 struct LangServerSuccess {
     execution_id: String,
     qualified: bool,
-    output: Option<String>,
+    message: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]

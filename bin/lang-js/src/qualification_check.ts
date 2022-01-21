@@ -32,12 +32,12 @@ export type QualificationCheckResult =
 
 export interface QualificationCheckResultSuccess extends ResultSuccess {
   qualified: boolean;
-  output?: string;
+  message?: string;
 }
 
 export interface QualificationCheckResultFailure extends ResultFailure {
   qualified?: never;
-  output?: never;
+  message?: never;
 }
 
 export function executeQualificationCheck(
@@ -100,17 +100,17 @@ function execute(
     };
   }
   if (
-    !_.isString(qualificationCheckResult["output"]) &&
-    !_.isUndefined(qualificationCheckResult["output"]) &&
-    !_.isNull(qualificationCheckResult["output"])
+    !_.isString(qualificationCheckResult["message"]) &&
+    !_.isUndefined(qualificationCheckResult["message"]) &&
+    !_.isNull(qualificationCheckResult["message"])
   ) {
     return {
       protocol: "result",
       status: "failure",
       executionId,
       error: {
-        kind: "OutputFieldWrongType",
-        message: "The output field type must be string, null, or undefined",
+        kind: "MessageFieldWrongType",
+        message: "The message field type must be string, null, or undefined",
       },
     };
   }
@@ -121,8 +121,8 @@ function execute(
     executionId,
     qualified: qualificationCheckResult["qualified"],
   };
-  if (qualificationCheckResult["output"]) {
-    result.output = qualificationCheckResult["output"];
+  if (qualificationCheckResult["message"]) {
+    result.message = qualificationCheckResult["message"];
   }
   return result;
 }
