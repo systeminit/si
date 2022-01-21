@@ -5,7 +5,7 @@ use serde_json::Value;
 ///
 /// An instance of this type typically maps to a single line of output from a process--either on
 /// standard output or standard error.
-#[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Debug, Deserialize, Eq, PartialEq, Serialize, Clone)]
 pub struct OutputStream {
     /// The stream name.
     ///
@@ -90,14 +90,14 @@ pub enum FunctionResult<S> {
     Failure(FunctionResultFailure),
 }
 
-#[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Debug, Deserialize, Eq, PartialEq, Serialize, Clone)]
 pub struct FunctionResultFailure {
     pub execution_id: String,
     pub error: FunctionResultFailureError,
     pub timestamp: u64,
 }
 
-#[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Debug, Deserialize, Eq, PartialEq, Serialize, Clone)]
 pub struct FunctionResultFailureError {
     pub kind: String,
     pub message: String,
