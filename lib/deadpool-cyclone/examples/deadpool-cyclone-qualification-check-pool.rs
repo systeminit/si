@@ -133,7 +133,7 @@ async fn execute(
         FunctionResult::Success(success) => info!(
                 execution_id = &success.execution_id.as_str(),
                 qualified = success.qualified,
-                output = ?success.output,
+                message = ?success.message,
                 timestamp = success.timestamp,
         ),
         FunctionResult::Failure(failure) => error!(

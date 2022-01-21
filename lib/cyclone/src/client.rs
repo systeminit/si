@@ -799,7 +799,7 @@ mod tests {
                     } else {
                         return {
                             qualified: false,
-                            output: "name is not tasty enough",
+                            message: "name is not tasty enough",
                         };
                     }
                 }"#,
@@ -849,7 +849,7 @@ mod tests {
         match result {
             FunctionResult::Success(success) => {
                 assert_eq!(success.qualified, true);
-                assert_eq!(success.output, None);
+                assert_eq!(success.message, None);
             }
             FunctionResult::Failure(failure) => {
                 panic!("result should be success; failure={:?}", failure)
@@ -880,7 +880,7 @@ mod tests {
                     } else {
                         return {
                             qualified: false,
-                            output: "name is not tasty enough",
+                            message: "name is not tasty enough",
                         };
                     }
                 }"#,
@@ -930,7 +930,7 @@ mod tests {
         match result {
             FunctionResult::Success(success) => {
                 assert_eq!(success.qualified, true);
-                assert_eq!(success.output, None);
+                assert_eq!(success.message, None);
             }
             FunctionResult::Failure(failure) => {
                 panic!("result should be success; failure={:?}", failure)

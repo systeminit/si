@@ -360,7 +360,7 @@ mod tests {
                     } else {
                         return {
                             qualified: false,
-                            output: "name '" + name + "' doesn't match pkg '" + pkg + "'",
+                            message: "name '" + name + "' doesn't match pkg '" + pkg + "'",
                         };
                     }
                 }
@@ -377,7 +377,7 @@ mod tests {
             FunctionResult::Success(success) => {
                 assert_eq!(success.execution_id, "5678");
                 assert!(success.qualified);
-                assert_eq!(success.output, None);
+                assert_eq!(success.message, None);
             }
             FunctionResult::Failure(failure) => {
                 panic!("function did not succeed and should have: {:?}", failure)
@@ -399,7 +399,7 @@ mod tests {
                 assert_eq!(success.execution_id, "9012");
                 assert!(!success.qualified);
                 assert_eq!(
-                    success.output,
+                    success.message,
                     Some("name 'emacs' doesn't match pkg 'cider'".to_string())
                 );
             }

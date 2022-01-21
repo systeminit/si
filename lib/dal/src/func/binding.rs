@@ -46,8 +46,6 @@ pub enum FuncBindingError {
     HistoryEvent(#[from] HistoryEventError),
     #[error("standard model error: {0}")]
     StandardModelError(#[from] StandardModelError),
-    #[error("unable to retrieve func for func binding: {0:?}")]
-    JsFuncNotFound(FuncBindingPk),
 }
 
 pub type FuncBindingResult<T> = Result<T, FuncBindingError>;
