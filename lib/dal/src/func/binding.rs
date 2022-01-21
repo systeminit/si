@@ -7,7 +7,7 @@ use thiserror::Error;
 
 use serde_json::Value as JsonValue;
 use tokio::sync::mpsc;
-use veritech::{Client, OutputStream, QualificationCheckComponent};
+use veritech::{Client, QualificationCheckComponent};
 
 use crate::func::backend::FuncBackendJsQualification;
 use crate::{
@@ -23,6 +23,7 @@ use crate::{
 use super::{
     backend::FuncBackendJsString,
     binding_return_value::{FuncBindingReturnValue, FuncBindingReturnValueError},
+    execution::{FuncExecution, FuncExecutionError},
     FuncId,
 };
 
@@ -46,6 +47,8 @@ pub enum FuncBindingError {
     HistoryEvent(#[from] HistoryEventError),
     #[error("standard model error: {0}")]
     StandardModelError(#[from] StandardModelError),
+    #[error("func execution tracking error: {0}")]
+    FuncExecutionError(#[from] FuncExecutionError),
 }
 
 pub type FuncBindingResult<T> = Result<T, FuncBindingError>;
@@ -192,11 +195,15 @@ impl FuncBinding {
             .await?
             .ok_or(FuncBindingError::FuncNotFound(self.pk))?;
 
+        let mut execution = FuncExecution::new(txn, nats, &tenancy, &func, self).await?;
+
         let return_value = match self.backend_kind() {
             FuncBackendKind::JsString => {
+                execution
+                    .set_state(txn, nats, super::execution::FuncExecutionState::Dispatch)
+                    .await?;
+
                 let (tx, rx) = mpsc::channel(64);
-                // TODO(fnichol): clearly we're going to do something with the output....
-                tokio::spawn(print_output_for_now_why_not(rx));
                 let handler = func
                     .handler()
                     .ok_or(FuncBindingError::JsFuncNotFound(self.pk))?;
@@ -205,6 +212,10 @@ impl FuncBinding {
                     .ok_or(FuncBindingError::JsFuncNotFound(self.pk))?;
                 let mut map: HashMap<String, serde_json::Value> = HashMap::new();
                 map.insert("value".to_owned(), self.args.clone());
+
+                execution
+                    .set_state(txn, nats, super::execution::FuncExecutionState::Run)
+                    .await?;
 
                 let return_value = FuncBackendJsString::new(
                     veritech,
@@ -215,17 +226,29 @@ impl FuncBinding {
                 )
                 .execute()
                 .await?;
+                execution.process_output(txn, nats, rx).await?;
                 Some(return_value)
             }
             FuncBackendKind::String => {
+                execution
+                    .set_state(txn, nats, super::execution::FuncExecutionState::Run)
+                    .await?;
                 let args: FuncBackendStringArgs = serde_json::from_value(self.args.clone())?;
                 let return_value = FuncBackendString::new(args).execute().await?;
                 Some(return_value)
             }
             FuncBackendKind::Unset => None,
             FuncBackendKind::JsQualification => {
+                execution
+                    .set_state(txn, nats, super::execution::FuncExecutionState::Dispatch)
+                    .await?;
+
                 let (tx, rx) = mpsc::channel(64);
-                tokio::spawn(print_output_for_now_why_not(rx));
+
+                execution
+                    .set_state(txn, nats, super::execution::FuncExecutionState::Run)
+                    .await?;
+
                 let handler = func
                     .handler()
                     .ok_or(FuncBindingError::JsFuncNotFound(self.pk))?;
@@ -244,16 +267,21 @@ impl FuncBinding {
                 )
                 .execute()
                 .await?;
+
+                execution.process_output(txn, nats, rx).await?;
                 Some(return_value)
             }
             FuncBackendKind::ValidateStringValue => {
+                execution
+                    .set_state(txn, nats, super::execution::FuncExecutionState::Run)
+                    .await?;
                 let args: FuncBackendValidateStringValueArgs =
                     serde_json::from_value(self.args.clone())?;
                 Some(FuncBackendValidateStringValue::new(args).execute()?)
             }
         };
 
-        FuncBindingReturnValue::new(
+        let fbrv = FuncBindingReturnValue::new(
             txn,
             nats,
             &tenancy,
@@ -264,13 +292,13 @@ impl FuncBinding {
             *func.id(),
             self.id,
         )
-        .await
-        .map_err(Into::into)
-    }
-}
+        .await?;
 
-async fn print_output_for_now_why_not(mut rx: mpsc::Receiver<OutputStream>) {
-    while let Some(output) = rx.recv().await {
-        debug!("output: {:?}", output);
+        execution.process_return_value(txn, nats, &fbrv).await?;
+        execution
+            .set_state(txn, nats, super::execution::FuncExecutionState::Success)
+            .await?;
+
+        Ok(fbrv)
     }
 }

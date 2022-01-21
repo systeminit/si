@@ -39,6 +39,9 @@ impl From<&HistoryActor> for HistoryActor {
 
 pk!(HistoryEventPk);
 
+/// HistoryEvents are the audit trail for things in SI. They track
+/// that a specific actor did something, and optionally store data
+/// associated with the activity for posterity.
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
 pub struct HistoryEvent {
     pub pk: HistoryEventPk,

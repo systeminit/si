@@ -6,6 +6,7 @@ mod component;
 mod edge;
 mod edit_session;
 mod func;
+mod func_execution;
 mod group;
 mod history_event;
 mod jwt_key;
