@@ -215,8 +215,43 @@ impl Subscription {
 
     fn next_message(&self) -> NextMessage {
         let inner = self.inner.clone();
+        let shutdown_rx = self.shutdown_rx.clone();
         NextMessage {
-            handle: spawn_blocking(move || inner.next()),
+            handle: spawn_blocking(move || {
+                // This blocking code will wait until either the next message arrives, or until a
+                // shutdown message is received on the shutdown channel. This select must happen
+                // within the blocking code body and therefore must also be a blocking select,
+                // hence the reason we're using crossbeam_channel here.
+                crossbeam_channel::select! {
+                    recv(shutdown_rx) -> _ => {
+                        trace!("subscription next message task received shutdown signal");
+                        None
+                    }
+                    recv(inner.receiver()) -> msg_result => {
+                        match msg_result {
+                            Ok(msg) => Some(msg),
+                            Err(err) => {
+                                // Unfortunately the underlying blocking API doesn't leave us with
+                                // many choices--we're in an error case but all we can do is return
+                                // Some(msg) or None and neither is strictly true. The upstream
+                                // crate "asynk" impl calls `msg.ok()` which would eat this error
+                                // and return None, so instead we're at least going to log this
+                                // event in case it causes more trouble. Silent errors are the root
+                                // of many long nights on call :(
+                                info!(
+                                    error = ?err,
+                                    concat!(
+                                        "crossbeam select error on next message, returning None. ",
+                                        "NOTE: this happens normally on subscription shutdown ",
+                                        "but should not happen normally."
+                                    ),
+                                );
+                                None
+                            }
+                        }
+                    }
+                }
+            }),
             metadata: self.metadata.as_connection_metadata(),
         }
     }

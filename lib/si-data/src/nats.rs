@@ -1,5 +1,6 @@
 use std::{fmt::Debug, io, sync::Arc, time::Duration};
 
+use crossbeam_channel::RecvError;
 use nats_client as nats;
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
@@ -25,6 +26,8 @@ pub enum Error {
     Async(#[from] task::JoinError),
     #[error("nats client error")]
     Nats(#[from] io::Error),
+    #[error("crossbeam select error")]
+    CrossBeamChannel(#[from] RecvError),
     #[error("error serializing object")]
     Serialize(#[source] serde_json::Error),
 }
