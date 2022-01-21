@@ -90,13 +90,13 @@ pub enum EditFieldBaggage {
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 pub struct EditField {
     id: String,
-    name: String,
+    pub name: String,
     path: Vec<String>,
     object_kind: EditFieldObjectKind,
     object_id: i64,
     data_type: EditFieldDataType,
     widget: Widget,
-    value: Option<serde_json::Value>,
+    pub value: Option<serde_json::Value>,
     visibility_diff: VisibilityDiff,
     validation_errors: Vec<ValidationError>,
     baggage: Option<EditFieldBaggage>,
