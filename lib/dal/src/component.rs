@@ -13,25 +13,33 @@ use crate::edit_field::{
     EditFieldObjectKind, EditFields, TextWidget, Widget,
 };
 use crate::func::backend::validation::{FuncBackendValidateStringValueArgs, ValidationError};
-use crate::func::backend::{FuncBackendJsQualificationArgs, FuncBackendStringArgs};
+use crate::func::backend::FuncBackendStringArgs;
 use crate::func::binding::{FuncBinding, FuncBindingError};
 use crate::func::binding_return_value::FuncBindingReturnValue;
 use crate::node::NodeKind;
+use crate::qualification_resolver::QualificationResolverContext;
 use crate::schema::variant::{SchemaVariantError, SchemaVariantId};
 use crate::schema::SchemaVariant;
 use crate::validation_resolver::ValidationResolverContext;
+
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
     standard_model_has_many, AttributeResolver, AttributeResolverError, Func, FuncBackendKind,
-    HistoryActor, HistoryEventError, Node, NodeError, Prop, PropId, PropKind, Schema, SchemaError,
-    SchemaId, StandardModel, StandardModelError, Tenancy, Timestamp, ValidationPrototype,
-    ValidationPrototypeError, ValidationResolver, ValidationResolverError, Visibility,
+    HistoryActor, HistoryEventError, Node, NodeError, Prop, PropId, PropKind,
+    QualificationPrototype, QualificationPrototypeError, QualificationResolver,
+    QualificationResolverError, Schema, SchemaError, SchemaId, StandardModel, StandardModelError,
+    Tenancy, Timestamp, ValidationPrototype, ValidationPrototypeError, ValidationResolver,
+    ValidationResolverError, Visibility,
 };
 
 #[derive(Error, Debug)]
 pub enum ComponentError {
     #[error("edit field error: {0}")]
     EditField(#[from] EditFieldError),
+    #[error("qualification prototype error: {0}")]
+    QualificationPrototype(#[from] QualificationPrototypeError),
+    #[error("qualification resolver error: {0}")]
+    QualificationResolver(#[from] QualificationResolverError),
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("pg error: {0}")]
@@ -176,32 +184,71 @@ impl Component {
             .set_schema_variant(txn, nats, visibility, history_actor, schema_variant.id())
             .await?;
 
-        // NOTE(nick): bind qualification function for docker image schema.
-        if schema.name() == "docker_image" {
-            let func_name = "si:qualificationDockerImageNameEqualsComponentName".to_string();
-            let mut funcs =
-                Func::find_by_attr(txn, &schema_tenancy, visibility, "name", &func_name).await?;
-            let func = funcs.pop().ok_or(ComponentError::MissingFunc(func_name))?;
-            let func_backend_args = serde_json::to_value(FuncBackendJsQualificationArgs {
-                component: ComponentQualificationView::new(
-                    txn,
-                    tenancy,
-                    visibility,
-                    component.id(),
-                )
-                .await?,
-            })?;
-            let (_func_binding, _created) = FuncBinding::find_or_create(
+        let qualification_prototypes = QualificationPrototype::find_for_component_id(
+            txn,
+            tenancy,
+            visibility,
+            *component.id(),
+            UNSET_ID_VALUE.into(),
+        )
+        .await?;
+
+        for prototype in qualification_prototypes {
+            let func = Func::get_by_id(txn, tenancy, visibility, &prototype.func_id())
+                .await?
+                .ok_or_else(|| ComponentError::MissingFunc(prototype.func_id().to_string()))?;
+
+            // NOTE(nick): func cannot be executed without veritech client.
+            let (func_binding, created) = FuncBinding::find_or_create(
                 txn,
                 nats,
                 tenancy,
                 visibility,
                 history_actor,
-                func_backend_args,
-                *func.id(),
-                FuncBackendKind::JsQualification,
+                prototype.args().clone(),
+                prototype.func_id(),
+                *func.backend_kind(),
             )
             .await?;
+
+            if created {
+                let mut existing_resolvers = QualificationResolver::find_for_prototype(
+                    txn,
+                    tenancy,
+                    visibility,
+                    prototype.id(),
+                )
+                .await?;
+
+                // If we do not have one, create the qualification resolver. If we do, update the
+                // func binding id to point to the new value.
+                if let Some(mut resolver) = existing_resolvers.pop() {
+                    resolver
+                        .set_func_binding_id(
+                            txn,
+                            nats,
+                            visibility,
+                            history_actor,
+                            *func_binding.id(),
+                        )
+                        .await?;
+                } else {
+                    let mut resolver_context = QualificationResolverContext::new();
+                    resolver_context.set_component_id(*component.id());
+                    QualificationResolver::new(
+                        txn,
+                        nats,
+                        tenancy,
+                        visibility,
+                        history_actor,
+                        *prototype.id(),
+                        *func.id(),
+                        *func_binding.id(),
+                        resolver_context,
+                    )
+                    .await?;
+                }
+            }
         }
 
         // Need to flesh out node so that the template data is also included in the node we

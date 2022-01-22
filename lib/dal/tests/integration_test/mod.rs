@@ -17,6 +17,8 @@ mod node_position;
 mod organization;
 mod prop;
 mod qualification_check;
+mod qualification_prototype;
+// mod qualification_resolver;
 mod schema;
 mod schematic;
 mod socket;

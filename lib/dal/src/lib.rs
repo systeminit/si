@@ -23,6 +23,8 @@ pub mod node_position;
 pub mod organization;
 pub mod prop;
 pub mod qualification_check;
+pub mod qualification_prototype;
+pub mod qualification_resolver;
 pub mod schema;
 pub mod schematic;
 pub mod socket;
@@ -71,6 +73,12 @@ pub use organization::{
 pub use prop::{Prop, PropError, PropId, PropKind, PropPk, PropResult};
 pub use qualification_check::{
     QualificationCheck, QualificationCheckError, QualificationCheckId, QualificationCheckPk,
+};
+pub use qualification_prototype::{
+    QualificationPrototype, QualificationPrototypeError, QualificationPrototypeId,
+};
+pub use qualification_resolver::{
+    QualificationResolver, QualificationResolverError, QualificationResolverId,
 };
 pub use schema::{
     Schema, SchemaError, SchemaId, SchemaKind, SchemaPk, SchemaVariant, SchemaVariantId,
