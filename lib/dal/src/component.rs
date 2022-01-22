@@ -194,7 +194,7 @@ impl Component {
         .await?;
 
         for prototype in qualification_prototypes {
-            let func = Func::get_by_id(txn, tenancy, visibility, &prototype.func_id())
+            let func = Func::get_by_id(txn, &schema_tenancy, visibility, &prototype.func_id())
                 .await?
                 .ok_or_else(|| ComponentError::MissingFunc(prototype.func_id().to_string()))?;
 
@@ -202,7 +202,7 @@ impl Component {
             let (func_binding, created) = FuncBinding::find_or_create(
                 txn,
                 nats,
-                tenancy,
+                &schema_tenancy,
                 visibility,
                 history_actor,
                 prototype.args().clone(),
@@ -212,6 +212,9 @@ impl Component {
             .await?;
 
             if created {
+                // TODO(paulo): we need to pass veritech client to this function (like we do with update_prop_...
+                //func_binding.execute(txn, nats, veritech.clone()).await?;
+
                 let mut existing_resolvers = QualificationResolver::find_for_prototype(
                     txn,
                     tenancy,
@@ -473,7 +476,7 @@ impl Component {
                     history_actor,
                     func_backend_string_args,
                     *func.id(),
-                    FuncBackendKind::String,
+                    *func.backend_kind(),
                 )
                 .await?;
 
@@ -579,6 +582,79 @@ impl Component {
                         *func.id(),
                         *func_binding.id(),
                         validation_resolver_context,
+                    )
+                    .await?;
+                }
+            }
+        }
+
+        let mut schema_tenancy = tenancy.clone();
+        schema_tenancy.universal = true;
+
+        let qualification_prototypes = QualificationPrototype::find_for_component_id(
+            txn,
+            tenancy,
+            visibility,
+            *component.id(),
+            UNSET_ID_VALUE.into(),
+        )
+        .await?;
+
+        for prototype in qualification_prototypes {
+            let func = Func::get_by_id(txn, &schema_tenancy, visibility, &prototype.func_id())
+                .await?
+                .ok_or_else(|| ComponentError::MissingFunc(prototype.func_id().to_string()))?;
+
+            // NOTE(nick): func cannot be executed without veritech client.
+            let (func_binding, created) = FuncBinding::find_or_create(
+                txn,
+                nats,
+                &schema_tenancy,
+                visibility,
+                history_actor,
+                prototype.args().clone(),
+                prototype.func_id(),
+                *func.backend_kind(),
+            )
+            .await?;
+
+            if created {
+                // TODO(paulo): FuncBinding execute is failing here, it's friday and it's late, I don't think we will be able to fix this now (nor should)
+                //func_binding.execute(txn, nats, veritech).await?;
+
+                let mut existing_resolvers = QualificationResolver::find_for_prototype(
+                    txn,
+                    tenancy,
+                    visibility,
+                    prototype.id(),
+                )
+                .await?;
+
+                // If we do not have one, create the qualification resolver. If we do, update the
+                // func binding id to point to the new value.
+                if let Some(mut resolver) = existing_resolvers.pop() {
+                    resolver
+                        .set_func_binding_id(
+                            txn,
+                            nats,
+                            visibility,
+                            history_actor,
+                            *func_binding.id(),
+                        )
+                        .await?;
+                } else {
+                    let mut resolver_context = QualificationResolverContext::new();
+                    resolver_context.set_component_id(*component.id());
+                    QualificationResolver::new(
+                        txn,
+                        nats,
+                        tenancy,
+                        visibility,
+                        history_actor,
+                        *prototype.id(),
+                        *func.id(),
+                        *func_binding.id(),
+                        resolver_context,
                     )
                     .await?;
                 }
