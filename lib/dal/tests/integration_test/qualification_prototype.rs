@@ -10,7 +10,7 @@ use dal::{
 
 #[tokio::test]
 async fn new() {
-    test_setup!(ctx, _secret_key, _pg, _conn, txn, nats_conn, nats);
+    test_setup!(ctx, _secret_key, _pg, _conn, txn, nats_conn, nats, veritech,);
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
@@ -24,6 +24,7 @@ async fn new() {
     let (component, _node) = Component::new_for_schema_with_node(
         &txn,
         &nats,
+        veritech,
         &tenancy,
         &visibility,
         &history_actor,
@@ -65,7 +66,7 @@ async fn new() {
 
 #[tokio::test]
 async fn find_for_component_id() {
-    test_setup!(ctx, secret_key, pg, _conn, txn, nats_conn, nats);
+    test_setup!(ctx, secret_key, pg, _conn, txn, nats_conn, nats, veritech);
     let (nba, _token) = billing_account_signup(&txn, &nats, secret_key).await;
     let mut tenancy = Tenancy::new_workspace(vec![*nba.workspace.id()]);
     tenancy.universal = true;
@@ -81,6 +82,7 @@ async fn find_for_component_id() {
     let (component, _node) = Component::new_for_schema_with_node(
         &txn,
         &nats,
+        veritech,
         &tenancy,
         &visibility,
         &history_actor,

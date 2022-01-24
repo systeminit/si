@@ -9,7 +9,16 @@ use serde_json::json;
 
 #[tokio::test]
 async fn new() {
-    test_setup!(ctx, _secret_key, _pg, _conn, txn, _nats_conn, nats);
+    test_setup!(
+        ctx,
+        _secret_key,
+        _pg,
+        _conn,
+        txn,
+        _nats_conn,
+        nats,
+        _veritech,
+    );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
@@ -27,7 +36,16 @@ async fn new() {
 
 #[tokio::test]
 async fn new_for_schema_variant_with_node() {
-    test_setup!(ctx, _secret_key, _pg, _conn, txn, _nats_conn, nats);
+    test_setup!(
+        ctx,
+        _secret_key,
+        _pg,
+        _conn,
+        txn,
+        _nats_conn,
+        nats,
+        _veritech,
+    );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
@@ -62,7 +80,16 @@ async fn new_for_schema_variant_with_node() {
 
 #[tokio::test]
 async fn schema_relationships() {
-    test_setup!(ctx, _secret_key, _pg, _conn, txn, _nats_conn, nats);
+    test_setup!(
+        ctx,
+        _secret_key,
+        _pg,
+        _conn,
+        txn,
+        _nats_conn,
+        nats,
+        _veritech,
+    );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
@@ -109,7 +136,16 @@ async fn schema_relationships() {
 
 #[tokio::test]
 async fn qualification_view() {
-    test_setup!(ctx, _secret_key, _pg, _conn, txn, _nats_conn, nats);
+    test_setup!(
+        ctx,
+        _secret_key,
+        _pg,
+        _conn,
+        txn,
+        _nats_conn,
+        nats,
+        _veritech,
+    );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;

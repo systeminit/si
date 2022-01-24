@@ -8,7 +8,7 @@ use dal::{HistoryActor, StandardModel, Tenancy, User};
 
 #[tokio::test]
 async fn new() {
-    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats);
+    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats, _veritech);
     let tenancy = Tenancy::new_universal();
     let history_actor = HistoryActor::SystemInit;
     let change_set = create_change_set(&txn, &nats, &tenancy, &history_actor).await;
@@ -30,7 +30,7 @@ async fn new() {
 
 #[tokio::test]
 async fn login() {
-    test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats);
+    test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats, _veritech);
     let tenancy = Tenancy::new_universal();
     let history_actor = HistoryActor::SystemInit;
     let visibility = create_visibility_head();
@@ -58,7 +58,7 @@ async fn login() {
 
 #[tokio::test]
 async fn find_by_email() {
-    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats);
+    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats, _veritech);
     let tenancy = Tenancy::new_universal();
     let history_actor = HistoryActor::SystemInit;
     let visibility = create_visibility_head();
@@ -99,7 +99,7 @@ async fn find_by_email() {
 
 #[tokio::test]
 async fn authorize() {
-    test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats);
+    test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats, _veritech);
     let history_actor = HistoryActor::SystemInit;
     let visibility = create_visibility_head();
 

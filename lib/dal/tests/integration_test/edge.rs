@@ -5,7 +5,16 @@ use dal::{Component, Edge, HistoryActor, Schema, StandardModel, Tenancy, Visibil
 
 #[tokio::test]
 async fn new() {
-    test_setup!(ctx, _secret_key, _pg, _conn, txn, _nats_conn, nats);
+    test_setup!(
+        ctx,
+        _secret_key,
+        _pg,
+        _conn,
+        txn,
+        _nats_conn,
+        nats,
+        veritech
+    );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
@@ -40,6 +49,7 @@ async fn new() {
     let (head_component, head_node) = Component::new_for_schema_with_node(
         &txn,
         &nats,
+        veritech.clone(),
         &tenancy,
         &visibility,
         &history_actor,
@@ -52,6 +62,7 @@ async fn new() {
     let (tail_component, tail_node) = Component::new_for_schema_with_node(
         &txn,
         &nats,
+        veritech,
         &tenancy,
         &visibility,
         &history_actor,

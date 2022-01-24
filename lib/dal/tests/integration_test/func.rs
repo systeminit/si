@@ -15,7 +15,16 @@ use dal::{
 
 #[tokio::test]
 async fn new() {
-    test_setup!(ctx, _secret_key, _pg, _conn, txn, _nats_conn, nats);
+    test_setup!(
+        ctx,
+        _secret_key,
+        _pg,
+        _conn,
+        txn,
+        _nats_conn,
+        nats,
+        _veritech,
+    );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
@@ -35,7 +44,16 @@ async fn new() {
 
 #[tokio::test]
 async fn func_binding_new() {
-    test_setup!(ctx, _secret_key, _pg, _conn, txn, _nats_conn, nats);
+    test_setup!(
+        ctx,
+        _secret_key,
+        _pg,
+        _conn,
+        txn,
+        _nats_conn,
+        nats,
+        _veritech,
+    );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
@@ -58,7 +76,16 @@ async fn func_binding_new() {
 
 #[tokio::test]
 async fn func_binding_find_or_create_head() {
-    test_setup!(ctx, _secret_key, _pg, _conn, txn, _nats_conn, nats);
+    test_setup!(
+        ctx,
+        _secret_key,
+        _pg,
+        _conn,
+        txn,
+        _nats_conn,
+        nats,
+        _veritech,
+    );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
@@ -102,7 +129,16 @@ async fn func_binding_find_or_create_head() {
 
 #[tokio::test]
 async fn func_binding_find_or_create_edit_session() {
-    test_setup!(ctx, _secret_key, _pg, _conn, txn, _nats_conn, nats);
+    test_setup!(
+        ctx,
+        _secret_key,
+        _pg,
+        _conn,
+        txn,
+        _nats_conn,
+        nats,
+        _veritech,
+    );
     let tenancy = Tenancy::new_universal();
     let history_actor = HistoryActor::SystemInit;
     let mut change_set = create_change_set(&txn, &nats, &tenancy, &history_actor).await;
@@ -226,7 +262,16 @@ async fn func_binding_find_or_create_edit_session() {
 
 #[tokio::test]
 async fn func_binding_return_value_new() {
-    test_setup!(ctx, _secret_key, _pg, _conn, txn, _nats_conn, nats);
+    test_setup!(
+        ctx,
+        _secret_key,
+        _pg,
+        _conn,
+        txn,
+        _nats_conn,
+        nats,
+        _veritech,
+    );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
@@ -263,11 +308,10 @@ async fn func_binding_return_value_new() {
 
 #[tokio::test]
 async fn func_binding_execute() {
-    test_setup!(ctx, _secret_key, _pg, _conn, txn, nats_conn, nats);
+    test_setup!(ctx, _secret_key, _pg, _conn, txn, nats_conn, nats, veritech,);
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
-    let veritech = veritech::Client::new(nats_conn.clone());
     let func = create_func(&txn, &nats, &tenancy, &visibility, &history_actor).await;
     let args = serde_json::to_value(FuncBackendStringArgs::new("funky".to_string()))
         .expect("cannot serialize args to json");
@@ -297,11 +341,10 @@ async fn func_binding_execute() {
 
 #[tokio::test]
 async fn func_binding_execute_unset() {
-    test_setup!(ctx, _secret_key, _pg, _conn, txn, nats_conn, nats);
+    test_setup!(ctx, _secret_key, _pg, _conn, txn, nats_conn, nats, veritech,);
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
-    let veritech = veritech::Client::new(nats_conn.clone());
     let name = dal::test_harness::generate_fake_name();
     let func = Func::new(
         &txn,

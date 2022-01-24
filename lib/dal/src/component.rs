@@ -134,10 +134,12 @@ impl Component {
         Ok(object)
     }
 
+    #[allow(clippy::too_many_arguments)]
     #[tracing::instrument(skip(txn, nats, name))]
     pub async fn new_for_schema_with_node(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
+        veritech: veritech::Client,
         tenancy: &Tenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
@@ -198,7 +200,6 @@ impl Component {
                 .await?
                 .ok_or_else(|| ComponentError::MissingFunc(prototype.func_id().to_string()))?;
 
-            // NOTE(nick): func cannot be executed without veritech client.
             let (func_binding, created) = FuncBinding::find_or_create(
                 txn,
                 nats,
@@ -212,8 +213,7 @@ impl Component {
             .await?;
 
             if created {
-                // TODO(paulo): we need to pass veritech client to this function (like we do with update_prop_...
-                //func_binding.execute(txn, nats, veritech.clone()).await?;
+                func_binding.execute(txn, nats, veritech.clone()).await?;
 
                 let mut existing_resolvers = QualificationResolver::find_for_prototype(
                     txn,
@@ -605,7 +605,6 @@ impl Component {
                 .await?
                 .ok_or_else(|| ComponentError::MissingFunc(prototype.func_id().to_string()))?;
 
-            // NOTE(nick): func cannot be executed without veritech client.
             let (func_binding, created) = FuncBinding::find_or_create(
                 txn,
                 nats,
@@ -619,8 +618,7 @@ impl Component {
             .await?;
 
             if created {
-                // TODO(paulo): FuncBinding execute is failing here, it's friday and it's late, I don't think we will be able to fix this now (nor should)
-                //func_binding.execute(txn, nats, veritech).await?;
+                func_binding.execute(txn, nats, veritech.clone()).await?;
 
                 let mut existing_resolvers = QualificationResolver::find_for_prototype(
                     txn,

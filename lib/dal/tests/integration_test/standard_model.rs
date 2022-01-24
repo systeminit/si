@@ -11,7 +11,7 @@ use dal::{
 
 #[tokio::test]
 async fn get_by_pk() {
-    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats);
+    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats, _veritech);
 
     let tenancy = Tenancy::new_universal();
     let history_actor = HistoryActor::SystemInit;
@@ -37,7 +37,7 @@ async fn get_by_pk() {
 
 #[tokio::test]
 async fn get_by_id() {
-    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats);
+    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats, _veritech);
 
     let tenancy = Tenancy::new_universal();
     let history_actor = HistoryActor::SystemInit;
@@ -143,7 +143,7 @@ async fn get_by_id() {
 
 #[tokio::test]
 async fn list() {
-    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats);
+    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats, _veritech);
 
     let tenancy = Tenancy::new_universal();
     let history_actor = HistoryActor::SystemInit;
@@ -286,7 +286,7 @@ async fn list() {
 
 #[tokio::test]
 async fn update() {
-    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats);
+    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats, _veritech);
 
     let tenancy = Tenancy::new_universal();
     let history_actor = HistoryActor::SystemInit;
@@ -319,7 +319,7 @@ async fn update() {
 
 #[tokio::test]
 async fn delete() {
-    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats);
+    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats, _veritech);
 
     let tenancy = Tenancy::new_universal();
     let history_actor = HistoryActor::SystemInit;
@@ -351,7 +351,7 @@ async fn delete() {
 
 #[tokio::test]
 async fn delete_with_bad_tenancy() {
-    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats);
+    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats, _veritech);
 
     let tenancy = Tenancy::new_universal();
     let history_actor = HistoryActor::SystemInit;
@@ -381,7 +381,7 @@ async fn delete_with_bad_tenancy() {
 
 #[tokio::test]
 async fn undelete() {
-    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats);
+    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats, _veritech);
 
     let tenancy = Tenancy::new_universal();
     let history_actor = HistoryActor::SystemInit;
@@ -425,7 +425,7 @@ async fn undelete() {
 
 #[tokio::test]
 async fn set_belongs_to() {
-    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats);
+    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats, _veritech);
 
     let tenancy = Tenancy::new_universal();
     let history_actor = HistoryActor::SystemInit;
@@ -478,7 +478,7 @@ async fn set_belongs_to() {
 
 #[tokio::test]
 async fn unset_belongs_to() {
-    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats);
+    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats, _veritech);
 
     let tenancy = Tenancy::new_universal();
     let history_actor = HistoryActor::SystemInit;
@@ -521,7 +521,7 @@ async fn unset_belongs_to() {
 
 #[tokio::test]
 async fn belongs_to() {
-    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats);
+    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats, _veritech);
 
     let tenancy = Tenancy::new_universal();
     let history_actor = HistoryActor::SystemInit;
@@ -655,7 +655,7 @@ async fn belongs_to() {
 
 #[tokio::test]
 async fn has_many() {
-    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats);
+    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats, _veritech);
 
     let tenancy = Tenancy::new_universal();
     let history_actor = HistoryActor::SystemInit;
@@ -743,7 +743,7 @@ async fn has_many() {
 
 #[tokio::test]
 async fn associate_many_to_many() {
-    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats);
+    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats, _veritech);
 
     let tenancy = Tenancy::new_universal();
     let history_actor = HistoryActor::SystemInit;
@@ -777,7 +777,7 @@ async fn associate_many_to_many() {
 
 #[tokio::test]
 async fn disassociate_many_to_many() {
-    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats);
+    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats, _veritech);
 
     let tenancy = Tenancy::new_universal();
     let history_actor = HistoryActor::SystemInit;
@@ -821,7 +821,7 @@ async fn disassociate_many_to_many() {
 
 #[tokio::test]
 async fn many_to_many() {
-    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats);
+    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats, _veritech);
 
     let tenancy = Tenancy::new_universal();
     let history_actor = HistoryActor::SystemInit;
@@ -961,7 +961,7 @@ async fn many_to_many() {
 
 #[tokio::test]
 async fn associate_many_to_many_no_repeat_entries() {
-    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats);
+    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats, _veritech);
 
     let tenancy = Tenancy::new_universal();
     let history_actor = HistoryActor::SystemInit;
@@ -994,7 +994,7 @@ async fn associate_many_to_many_no_repeat_entries() {
 
 #[tokio::test]
 async fn find_by_attr() {
-    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats);
+    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats, _veritech);
 
     let universal_tenancy = Tenancy::new_universal();
     let history_actor = HistoryActor::SystemInit;

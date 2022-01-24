@@ -1,4 +1,4 @@
-use crate::server::extract::{Authorization, NatsTxn, PgRwTxn};
+use crate::server::extract::{Authorization, NatsTxn, PgRwTxn, Veritech};
 use crate::service::schematic::{SchematicError, SchematicResult};
 use axum::Json;
 use dal::{
@@ -29,6 +29,7 @@ pub struct CreateNodeResponse {
 pub async fn create_node(
     mut txn: PgRwTxn,
     mut nats: NatsTxn,
+    Veritech(veritech): Veritech,
     Authorization(claim): Authorization,
     Json(request): Json<CreateNodeRequest>,
 ) -> SchematicResult<Json<CreateNodeResponse>> {
@@ -52,6 +53,7 @@ pub async fn create_node(
     let (component, node) = Component::new_for_schema_with_node(
         &txn,
         &nats,
+        veritech,
         &tenancy,
         &request.visibility,
         &history_actor,

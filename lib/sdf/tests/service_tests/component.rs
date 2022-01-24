@@ -17,6 +17,7 @@ async fn list_components_names_only() {
         txn,
         _nats_conn,
         nats,
+        _veritech,
         app,
         nba,
         auth_token

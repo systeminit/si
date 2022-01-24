@@ -10,7 +10,7 @@ use dal::{
 
 #[tokio::test]
 async fn new() {
-    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats);
+    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats, _veritech);
 
     let tenancy = Tenancy::new_universal();
     let history_actor = HistoryActor::SystemInit;
@@ -35,7 +35,7 @@ async fn new() {
 
 #[tokio::test]
 async fn apply() {
-    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats);
+    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats, _veritech);
 
     let tenancy = Tenancy::new_universal();
     let history_actor = HistoryActor::SystemInit;
@@ -87,7 +87,7 @@ async fn apply() {
 
 #[tokio::test]
 async fn list_open() {
-    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats);
+    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats, _veritech);
 
     let uv_tenancy = Tenancy::new_universal();
     let history_actor = HistoryActor::SystemInit;
@@ -135,7 +135,7 @@ async fn list_open() {
 
 #[tokio::test]
 async fn get_by_pk() {
-    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats);
+    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats, _veritech);
 
     let tenancy = Tenancy::new_universal();
     let history_actor = HistoryActor::SystemInit;
