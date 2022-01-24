@@ -32,6 +32,7 @@ async fn list_open_change_sets() {
         txn,
         _nats_conn,
         nats,
+        _veritech,
         app,
         nba,
         auth_token
@@ -61,6 +62,7 @@ async fn create_change_set() {
         _txn,
         _nats_conn,
         _nats,
+        _veritech,
         app,
         _nba,
         auth_token
@@ -93,6 +95,7 @@ async fn get_change_set() {
         txn,
         _nats_conn,
         nats,
+        _veritech,
         app,
         nba,
         auth_token
@@ -118,6 +121,7 @@ async fn start_edit_session() {
         txn,
         _nats_conn,
         nats,
+        _veritech,
         app,
         nba,
         auth_token
@@ -150,6 +154,7 @@ async fn cancel_edit_session() {
         txn,
         _nats_conn,
         nats,
+        _veritech,
         app,
         nba,
         auth_token
@@ -183,6 +188,7 @@ async fn save_edit_session() {
         txn,
         _nats_conn,
         nats,
+        _veritech,
         app,
         nba,
         auth_token
@@ -216,6 +222,7 @@ async fn apply_change_set() {
         txn,
         _nats_conn,
         nats,
+        _veritech,
         app,
         nba,
         auth_token

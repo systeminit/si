@@ -21,6 +21,7 @@ async fn create_schema() {
         _txn,
         _nats_conn,
         _nats,
+        _veritech,
         app,
         _nba,
         auth_token
@@ -53,6 +54,7 @@ async fn list_schemas() {
         txn,
         _nats_conn,
         nats,
+        _veritech,
         app,
         nba,
         auth_token
@@ -115,6 +117,7 @@ async fn get_schemas() {
         txn,
         _nats_conn,
         nats,
+        _veritech,
         app,
         nba,
         auth_token

@@ -11,7 +11,16 @@ use veritech::OutputStream;
 
 #[tokio::test]
 async fn new() {
-    test_setup!(ctx, _secret_key, _pg, _conn, txn, _nats_conn, nats);
+    test_setup!(
+        ctx,
+        _secret_key,
+        _pg,
+        _conn,
+        txn,
+        _nats_conn,
+        nats,
+        _veritech,
+    );
     let tenancy = Tenancy::new_universal();
     let visibility = create_visibility_head();
     let history_actor = HistoryActor::SystemInit;
@@ -37,7 +46,16 @@ async fn new() {
 
 #[tokio::test]
 async fn set_state() {
-    test_setup!(ctx, _secret_key, _pg, _conn, txn, _nats_conn, nats);
+    test_setup!(
+        ctx,
+        _secret_key,
+        _pg,
+        _conn,
+        txn,
+        _nats_conn,
+        nats,
+        _veritech,
+    );
     let tenancy = Tenancy::new_universal();
     let visibility = create_visibility_head();
     let history_actor = HistoryActor::SystemInit;
@@ -68,7 +86,16 @@ async fn set_state() {
 
 #[tokio::test]
 async fn set_output_stream() {
-    test_setup!(ctx, _secret_key, _pg, _conn, txn, _nats_conn, nats);
+    test_setup!(
+        ctx,
+        _secret_key,
+        _pg,
+        _conn,
+        txn,
+        _nats_conn,
+        nats,
+        _veritech,
+    );
     let tenancy = Tenancy::new_universal();
     let visibility = create_visibility_head();
     let history_actor = HistoryActor::SystemInit;
@@ -114,11 +141,10 @@ async fn set_output_stream() {
 
 #[tokio::test]
 async fn process_return_value() {
-    test_setup!(ctx, _secret_key, _pg, _conn, txn, nats_conn, nats);
+    test_setup!(ctx, _secret_key, _pg, _conn, txn, nats_conn, nats, veritech);
     let tenancy = Tenancy::new_universal();
     let visibility = create_visibility_head();
     let history_actor = HistoryActor::SystemInit;
-    let veritech = veritech::Client::new(nats_conn.clone());
 
     let func = create_func(&txn, &nats, &tenancy, &visibility, &history_actor).await;
     let args = FuncBackendStringArgs::new("slayer".to_string());

@@ -15,6 +15,7 @@ async fn login() {
         _txn,
         _nats_conn,
         _nats,
+        _veritech,
         app,
         nba,
         _auth_token
@@ -68,6 +69,7 @@ async fn restore_authentication() {
         _txn,
         _nats_conn,
         _nats,
+        _veritech,
         app,
         nba,
         auth_token
@@ -94,6 +96,7 @@ async fn get_defaults() {
         _txn,
         _nats_conn,
         _nats,
+        _veritech,
         app,
         nba,
         auth_token

@@ -33,7 +33,16 @@ mod workspace;
 
 #[macro_export]
 macro_rules! test_setup {
-    ($ctx:ident, $secret_key:ident, $pg:ident, $pgconn:ident, $pgtxn:ident, $nats_conn:ident, $nats:ident) => {
+    (
+        $ctx:ident,
+        $secret_key:ident,
+        $pg:ident,
+        $pgconn:ident,
+        $pgtxn:ident,
+        $nats_conn:ident,
+        $nats:ident,
+        $veritech:ident $(,)?
+    ) => {
         dal::test_harness::one_time_setup()
             .await
             .expect("one time setup failed");
@@ -42,5 +51,6 @@ macro_rules! test_setup {
         let $nats = $nats_conn.transaction();
         let mut $pgconn = $pg.get().await.expect("cannot connect to pg");
         let $pgtxn = $pgconn.transaction().await.expect("cannot create txn");
+        let $veritech = veritech::Client::new($nats_conn.clone());
     };
 }

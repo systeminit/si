@@ -6,7 +6,7 @@ use dal::{
 
 #[tokio::test]
 async fn get_schematic() {
-    test_setup!(ctx, _secret_key, _pg, conn, txn, _nats_conn, nats);
+    test_setup!(ctx, _secret_key, _pg, conn, txn, _nats_conn, nats, veritech,);
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
@@ -25,6 +25,7 @@ async fn get_schematic() {
     let (_component, root_node) = Component::new_for_schema_with_node(
         &txn,
         &nats,
+        veritech.clone(),
         &tenancy,
         &visibility,
         &history_actor,
@@ -43,6 +44,7 @@ async fn get_schematic() {
     let (_component, node) = Component::new_for_schema_with_node(
         &txn,
         &nats,
+        veritech,
         &tenancy,
         &visibility,
         &history_actor,
@@ -85,7 +87,16 @@ async fn get_schematic() {
 
 #[tokio::test]
 async fn create_connection() {
-    test_setup!(ctx, _secret_key, _pg, _conn, txn, _nats_conn, nats);
+    test_setup!(
+        ctx,
+        _secret_key,
+        _pg,
+        _conn,
+        txn,
+        _nats_conn,
+        nats,
+        veritech,
+    );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
@@ -120,6 +131,7 @@ async fn create_connection() {
     let (_head_component, head_node) = Component::new_for_schema_with_node(
         &txn,
         &nats,
+        veritech.clone(),
         &tenancy,
         &visibility,
         &history_actor,
@@ -132,6 +144,7 @@ async fn create_connection() {
     let (_tail_component, tail_node) = Component::new_for_schema_with_node(
         &txn,
         &nats,
+        veritech,
         &tenancy,
         &visibility,
         &history_actor,

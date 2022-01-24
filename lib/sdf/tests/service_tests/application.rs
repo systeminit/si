@@ -20,6 +20,7 @@ async fn create_application() {
         _txn,
         _nats_conn,
         _nats,
+        _veritech,
         app,
         nba,
         auth_token
@@ -51,6 +52,7 @@ async fn list_applications() {
         txn,
         _nats_conn,
         nats,
+        _veritech,
         app,
         nba,
         auth_token

@@ -102,7 +102,7 @@ async fn save() {
 
 #[tokio::test]
 async fn get_by_pk() {
-    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats);
+    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats, _veritech);
 
     let tenancy = Tenancy::new_universal();
     let history_actor = HistoryActor::SystemInit;
@@ -117,7 +117,7 @@ async fn get_by_pk() {
 
 #[tokio::test]
 async fn cancel() {
-    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats);
+    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats, _veritech);
 
     let tenancy = Tenancy::new_universal();
     let history_actor = HistoryActor::SystemInit;

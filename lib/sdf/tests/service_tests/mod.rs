@@ -165,16 +165,19 @@ pub async fn api_request_raw<Req: Serialize>(
 
 #[macro_export]
 macro_rules! test_setup {
-    ($ctx:ident,
-     $jwt_secret_key:ident,
-     $pg:ident,
-     $pgconn:ident,
-     $pgtxn:ident,
-     $nats_conn:ident,
-     $nats:ident,
-     $app:ident,
-     $nba:ident,
-     $auth_token:ident) => {
+    (
+        $ctx:ident,
+        $jwt_secret_key:ident,
+        $pg:ident,
+        $pgconn:ident,
+        $pgtxn:ident,
+        $nats_conn:ident,
+        $nats:ident,
+        $veritech:ident,
+        $app:ident,
+        $nba:ident,
+        $auth_token:ident $(,)?
+    ) => {
         dal::test_harness::one_time_setup()
             .await
             .expect("one time setup failed");
@@ -182,14 +185,14 @@ macro_rules! test_setup {
         let ($pg, $nats_conn, $jwt_secret_key) = $ctx.entries();
         let telemetry = $ctx.telemetry();
         let $nats = $nats_conn.transaction();
-        let veritech = veritech::Client::new($nats_conn.clone());
+        let $veritech = veritech::Client::new($nats_conn.clone());
         let mut $pgconn = $pg.get().await.expect("cannot connect to pg");
         let $pgtxn = $pgconn.transaction().await.expect("cannot create txn");
         let ($app, _) = sdf::build_service(
             telemetry,
             $pg.clone(),
             $nats_conn.clone(),
-            veritech,
+            $veritech.clone(),
             $jwt_secret_key.clone(),
         )
         .expect("cannot build new server");
