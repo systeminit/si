@@ -7,7 +7,7 @@ use thiserror::Error;
 
 use crate::{
     edit_field::{
-        value_and_visiblity_diff, value_and_visiblity_diff_copy, CheckboxWidget, EditField,
+        value_and_visibility_diff, value_and_visibility_diff_copy, CheckboxWidget, EditField,
         EditFieldAble, EditFieldDataType, EditFieldError, EditFieldObjectKind, EditFields,
         TextWidget, ToSelectWidget, Widget,
     },
@@ -160,7 +160,7 @@ impl Socket {
         let field_name = "name";
         let target_fn = Self::name;
 
-        let (value, visibility_diff) = value_and_visiblity_diff(
+        let (value, visibility_diff) = value_and_visibility_diff(
             visibility,
             Some(object),
             target_fn,
@@ -190,7 +190,7 @@ impl Socket {
         let field_name = "edge_kind";
         let target_fn = Self::edge_kind;
 
-        let (value, visibility_diff) = value_and_visiblity_diff(
+        let (value, visibility_diff) = value_and_visibility_diff(
             visibility,
             Some(object),
             target_fn,
@@ -220,7 +220,7 @@ impl Socket {
         let field_name = "arity";
         let target_fn = Self::arity;
 
-        let (value, visibility_diff) = value_and_visiblity_diff(
+        let (value, visibility_diff) = value_and_visibility_diff(
             visibility,
             Some(object),
             target_fn,
@@ -250,7 +250,7 @@ impl Socket {
         let field_name = "required";
         let target_fn = Self::required;
 
-        let (value, visibility_diff) = value_and_visiblity_diff_copy(
+        let (value, visibility_diff) = value_and_visibility_diff_copy(
             visibility,
             Some(object),
             target_fn,

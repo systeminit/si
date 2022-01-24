@@ -7,7 +7,7 @@ use telemetry::prelude::*;
 
 use crate::{
     edit_field::{
-        value_and_visiblity_diff, value_and_visiblity_diff_option, EditField, EditFieldAble,
+        value_and_visibility_diff, value_and_visibility_diff_option, EditField, EditFieldAble,
         EditFieldDataType, EditFieldError, EditFieldObjectKind, EditFields, SelectWidget,
         TextWidget, Widget,
     },
@@ -153,21 +153,21 @@ impl EditFieldAble for UiMenu {
         } else {
             None
         };
-        let (name_value, name_visibility_diff) = value_and_visiblity_diff_option(
+        let (name_value, name_visibility_diff) = value_and_visibility_diff_option(
             visibility,
             Some(&object),
             UiMenu::name,
             head_obj.as_ref(),
             change_set_obj.as_ref(),
         )?;
-        let (category_value, category_visibility_diff) = value_and_visiblity_diff_option(
+        let (category_value, category_visibility_diff) = value_and_visibility_diff_option(
             visibility,
             Some(&object),
             UiMenu::category,
             head_obj.as_ref(),
             change_set_obj.as_ref(),
         )?;
-        let (schematic_kind_value, schematic_kind_visibility_diff) = value_and_visiblity_diff(
+        let (schematic_kind_value, schematic_kind_visibility_diff) = value_and_visibility_diff(
             visibility,
             Some(&object),
             UiMenu::schematic_kind,

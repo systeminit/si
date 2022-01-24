@@ -256,7 +256,7 @@ pub trait EditFieldAble {
     ) -> Result<(), Self::Error>;
 }
 
-pub fn value_and_visiblity_diff_option<Obj, Value: Eq + Serialize + ?Sized>(
+pub fn value_and_visibility_diff_option<Obj, Value: Eq + Serialize + ?Sized>(
     visibility: &Visibility,
     target_obj: Option<&Obj>,
     target_fn: impl Fn(&Obj) -> Option<&Value> + Copy,
@@ -279,7 +279,7 @@ pub fn value_and_visiblity_diff_option<Obj, Value: Eq + Serialize + ?Sized>(
     Ok((value, visibility_diff))
 }
 
-pub fn value_and_visiblity_diff_json_option<Obj>(
+pub fn value_and_visibility_diff_json_option<Obj>(
     visibility: &Visibility,
     target_obj: Option<&Obj>,
     target_fn: impl Fn(&Obj) -> Option<&serde_json::Value> + Copy,
@@ -302,7 +302,7 @@ pub fn value_and_visiblity_diff_json_option<Obj>(
     Ok((value, visibility_diff))
 }
 
-pub fn value_and_visiblity_diff<Obj, Value: Eq + Serialize + ?Sized>(
+pub fn value_and_visibility_diff<Obj, Value: Eq + Serialize + ?Sized>(
     visibility: &Visibility,
     target_obj: Option<&Obj>,
     target_fn: impl Fn(&Obj) -> &Value + Copy,
@@ -325,7 +325,7 @@ pub fn value_and_visiblity_diff<Obj, Value: Eq + Serialize + ?Sized>(
     Ok((value, visibility_diff))
 }
 
-pub fn value_and_visiblity_diff_copy<Obj, Value: Eq + Serialize>(
+pub fn value_and_visibility_diff_copy<Obj, Value: Eq + Serialize>(
     visibility: &Visibility,
     target_obj: Option<&Obj>,
     target_fn: impl Fn(&Obj) -> Value + Copy,

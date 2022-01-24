@@ -8,7 +8,7 @@ use thiserror::Error;
 use self::variant::{SchemaVariantError, SchemaVariantResult};
 use crate::{
     edit_field::{
-        value_and_visiblity_diff, EditField, EditFieldAble, EditFieldDataType, EditFieldError,
+        value_and_visibility_diff, EditField, EditFieldAble, EditFieldDataType, EditFieldError,
         EditFieldObjectKind, EditFields, HeaderWidget, SelectWidget, TextWidget, VisibilityDiff,
         Widget,
     },
@@ -274,7 +274,7 @@ impl Schema {
         let target_fn = Self::name;
         let object_kind = EditFieldObjectKind::Schema;
 
-        let (value, visibility_diff) = value_and_visiblity_diff(
+        let (value, visibility_diff) = value_and_visibility_diff(
             visibility,
             Some(object),
             target_fn,
@@ -305,7 +305,7 @@ impl Schema {
         let target_fn = Self::kind;
         let object_kind = EditFieldObjectKind::Schema;
 
-        let (value, visibility_diff) = value_and_visiblity_diff(
+        let (value, visibility_diff) = value_and_visibility_diff(
             visibility,
             Some(object),
             target_fn,
