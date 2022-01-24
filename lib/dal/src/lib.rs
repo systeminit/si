@@ -22,6 +22,7 @@ pub mod node_menu;
 pub mod node_position;
 pub mod organization;
 pub mod prop;
+pub mod qualification;
 pub mod qualification_check;
 pub mod qualification_prototype;
 pub mod qualification_resolver;

@@ -14,7 +14,9 @@ export interface ListQualificationsArgs {
 
 export interface ListQualificationsRequest
   extends ListQualificationsArgs,
-    Visibility {}
+    Visibility {
+  workspaceId: number;
+}
 
 export type ListQualificationsResponse = Array<Qualification>;
 

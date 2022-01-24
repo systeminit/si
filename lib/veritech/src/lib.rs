@@ -28,7 +28,7 @@ pub use client::{Client, ClientError, ClientResult};
 #[cfg(feature = "client")]
 pub use cyclone::{
     FunctionResult, FunctionResultFailure, OutputStream, QualificationCheckComponent,
-    QualificationCheckRequest, ResolverFunctionRequest,
+    QualificationCheckRequest, QualificationCheckResultSuccess, ResolverFunctionRequest,
 };
 
 pub(crate) const FINAL_MESSAGE_HEADER_KEY: &str = "X-Final-Message";
