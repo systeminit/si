@@ -8,7 +8,7 @@ use thiserror::Error;
 
 use crate::attribute_resolver::{AttributeResolverContext, UNSET_ID_VALUE};
 use crate::edit_field::{
-    value_and_visiblity_diff, value_and_visiblity_diff_json_option, EditField, EditFieldAble,
+    value_and_visibility_diff, value_and_visibility_diff_json_option, EditField, EditFieldAble,
     EditFieldBaggage, EditFieldBaggageComponentProp, EditFieldDataType, EditFieldError,
     EditFieldObjectKind, EditFields, TextWidget, Widget,
 };
@@ -406,7 +406,7 @@ impl Component {
         let target_fn = Self::name;
         let object_kind = EditFieldObjectKind::Component;
 
-        let (value, visibility_diff) = value_and_visiblity_diff(
+        let (value, visibility_diff) = value_and_visibility_diff(
             visibility,
             Some(object),
             target_fn,
@@ -777,7 +777,7 @@ impl EditFieldAble for Component {
                 fbrv.value()
             }
 
-            let (value, visibility_diff) = value_and_visiblity_diff_json_option(
+            let (value, visibility_diff) = value_and_visibility_diff_json_option(
                 visibility,
                 current_value.as_ref(),
                 extract_value,

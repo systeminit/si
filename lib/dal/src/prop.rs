@@ -7,7 +7,7 @@ use thiserror::Error;
 
 use crate::{
     edit_field::{
-        value_and_visiblity_diff, EditField, EditFieldAble, EditFieldDataType, EditFieldError,
+        value_and_visibility_diff, EditField, EditFieldAble, EditFieldDataType, EditFieldError,
         EditFieldObjectKind, EditFields, TextWidget, ToSelectWidget, Widget,
     },
     impl_standard_model,
@@ -130,7 +130,7 @@ impl Prop {
         let field_name = "name";
         let target_fn = Self::name;
 
-        let (value, visibility_diff) = value_and_visiblity_diff(
+        let (value, visibility_diff) = value_and_visibility_diff(
             visibility,
             Some(object),
             target_fn,
@@ -160,7 +160,7 @@ impl Prop {
         let field_name = "kind";
         let target_fn = Self::kind;
 
-        let (value, visibility_diff) = value_and_visiblity_diff(
+        let (value, visibility_diff) = value_and_visibility_diff(
             visibility,
             Some(object),
             target_fn,
