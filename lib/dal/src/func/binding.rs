@@ -7,7 +7,7 @@ use thiserror::Error;
 
 use serde_json::Value as JsonValue;
 use tokio::sync::mpsc;
-use veritech::{Client, QualificationCheckComponent};
+use veritech::{Client, QualificationCheckComponent, QualificationCheckResultSuccess};
 
 use crate::func::backend::FuncBackendJsQualification;
 use crate::{
@@ -15,9 +15,11 @@ use crate::{
         validation::{FuncBackendValidateStringValue, FuncBackendValidateStringValueArgs},
         FuncBackendString, FuncBackendStringArgs,
     },
-    impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
-    Func, FuncBackendError, FuncBackendKind, HistoryActor, HistoryEvent, HistoryEventError,
-    StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
+    impl_standard_model, pk,
+    qualification::{QualificationError, QualificationResult},
+    standard_model, standard_model_accessor, standard_model_belongs_to, Func, FuncBackendError,
+    FuncBackendKind, HistoryActor, HistoryEvent, HistoryEventError, StandardModel,
+    StandardModelError, Tenancy, Timestamp, Visibility,
 };
 
 use super::{
@@ -268,8 +270,23 @@ impl FuncBinding {
                 .execute()
                 .await?;
 
+                let veritech_result = QualificationCheckResultSuccess::deserialize(&return_value)?;
+                let mut errors = vec![];
+                if !veritech_result.qualified {
+                    // TODO(paulo): veritech doesn't actually give us multiple errors, but we might execute multiple QualificationResolvers and concatenate their result (?), kinda hacky, but it seems better than having a QualificationResultList to collect all of them?
+                    errors = vec![QualificationError {
+                        message: veritech_result.message.unwrap_or_else(|| "🥸".to_owned()),
+                    }]
+                }
+
+                // TODO(paulo): we need to store this somewhere in the dal so we can fetch it in /component/list_qualifications
+                let qual_result = QualificationResult {
+                    success: veritech_result.qualified,
+                    errors,
+                };
+
                 execution.process_output(txn, nats, rx).await?;
-                Some(return_value)
+                Some(serde_json::to_value(&qual_result)?)
             }
             FuncBackendKind::ValidateStringValue => {
                 execution

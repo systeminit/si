@@ -9,6 +9,7 @@ use std::convert::Infallible;
 use thiserror::Error;
 
 pub mod list_components_names_only;
+pub mod list_qualifications;
 
 #[derive(Debug, Error)]
 pub enum ComponentError {
@@ -54,8 +55,13 @@ impl IntoResponse for ComponentError {
 }
 
 pub fn routes() -> Router {
-    Router::new().route(
-        "/list_components_names_only",
-        get(list_components_names_only::list_components_names_only),
-    )
+    Router::new()
+        .route(
+            "/list_components_names_only",
+            get(list_components_names_only::list_components_names_only),
+        )
+        .route(
+            "/list_qualifications",
+            get(list_qualifications::list_qualifications),
+        )
 }

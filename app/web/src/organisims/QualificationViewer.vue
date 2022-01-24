@@ -14,7 +14,7 @@
     <div class="flex flex-col">
       <div>QualificationChecks Here!</div>
 
-      <div v-if="isSchema" class="flex">
+      <div class="flex">
         <div class="flex flex-col">
           <div
             v-for="q in allQualifications"
@@ -62,20 +62,35 @@
 </template>
 
 <script setup lang="ts">
-import { QualificationService } from "@/service/qualification";
+import { ComponentService } from "@/service/component";
 import QualificationOutput from "./QualificationViewer/QualificationOutput.vue";
 import VueFeather from "vue-feather";
+import { refFrom } from "vuse-rx";
+import { from, switchMap } from "rxjs";
+import { GlobalErrorService } from "@/service/global_error";
+import { Qualification } from "@/api/sdf/dal/qualification";
+//import { ListQualificationsResponse } from "@/service/component/list_qualifications";
 
 const showQualificationResult = true;
 const showQualificationStarting = true;
 const showQualificationLink = true;
-const isSchema = true;
 
 const props = defineProps<{
   componentId: number;
 }>();
 
-const allQualifications = QualificationService.listQualifications(
-  props.componentId,
+const allQualifications = refFrom<Array<Qualification>>(
+  ComponentService.listQualifications({
+    componentId: props.componentId,
+  }).pipe(
+    switchMap((response) => {
+      if (response.error) {
+        GlobalErrorService.set(response);
+        return from([[]]);
+      } else {
+        return from([response]);
+      }
+    }),
+  ),
 );
 </script>
