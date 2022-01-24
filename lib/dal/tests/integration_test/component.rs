@@ -44,7 +44,7 @@ async fn new_for_schema_variant_with_node() {
         txn,
         _nats_conn,
         nats,
-        _veritech,
+        veritech,
     );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
@@ -68,6 +68,7 @@ async fn new_for_schema_variant_with_node() {
     let _component = Component::new_for_schema_variant_with_node(
         &txn,
         &nats,
+        veritech,
         &tenancy,
         &visibility,
         &history_actor,

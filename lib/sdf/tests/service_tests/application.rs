@@ -52,7 +52,7 @@ async fn list_applications() {
         txn,
         _nats_conn,
         nats,
-        _veritech,
+        veritech,
         app,
         nba,
         auth_token
@@ -64,6 +64,7 @@ async fn list_applications() {
     let (component, _node) = Component::new_application_with_node(
         &txn,
         &nats,
+        veritech,
         &tenancy,
         &visibility,
         &history_actor,

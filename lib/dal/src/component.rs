@@ -146,8 +146,6 @@ impl Component {
         name: impl AsRef<str>,
         schema_id: &SchemaId,
     ) -> ComponentResult<(Self, Node)> {
-        let name = name.as_ref();
-
         let mut schema_tenancy = tenancy.clone();
         schema_tenancy.universal = true;
 
@@ -158,10 +156,45 @@ impl Component {
         let schema_variant_id = schema
             .default_schema_variant_id()
             .ok_or(ComponentError::SchemaVariantNotFound)?;
+
+        Self::new_for_schema_variant_with_node(
+            txn,
+            nats,
+            veritech,
+            tenancy,
+            visibility,
+            history_actor,
+            name,
+            schema_variant_id,
+        )
+        .await
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    #[tracing::instrument(skip(txn, nats, name))]
+    pub async fn new_for_schema_variant_with_node(
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
+        veritech: veritech::Client,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+        history_actor: &HistoryActor,
+        name: impl AsRef<str>,
+        schema_variant_id: &SchemaVariantId,
+    ) -> ComponentResult<(Self, Node)> {
+        let name = name.as_ref();
+
+        let mut schema_tenancy = tenancy.clone();
+        schema_tenancy.universal = true;
+
         let schema_variant =
             SchemaVariant::get_by_id(txn, &schema_tenancy, visibility, schema_variant_id)
                 .await?
                 .ok_or(ComponentError::SchemaVariantNotFound)?;
+        let schema = schema_variant
+            .schema(txn, visibility)
+            .await?
+            .ok_or(ComponentError::SchemaNotFound)?;
 
         let row = txn
             .query_one(
@@ -213,6 +246,9 @@ impl Component {
             .await?;
 
             if created {
+                // Note for future humans - if this isn't a built in, then we need to
+                // think about execution time. Probably higher up than this? But just
+                // an FYI.
                 func_binding.execute(txn, nats, veritech.clone()).await?;
 
                 let mut existing_resolvers = QualificationResolver::find_for_prototype(
@@ -272,70 +308,10 @@ impl Component {
     }
 
     #[tracing::instrument(skip(txn, nats, name))]
-    pub async fn new_for_schema_variant_with_node(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        tenancy: &Tenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
-        name: impl AsRef<str>,
-        schema_variant_id: &SchemaVariantId,
-    ) -> ComponentResult<(Self, Node)> {
-        let name = name.as_ref();
-
-        let mut schema_tenancy = tenancy.clone();
-        schema_tenancy.universal = true;
-        let schema_variant =
-            SchemaVariant::get_by_id(txn, &schema_tenancy, visibility, schema_variant_id)
-                .await?
-                .ok_or(ComponentError::SchemaVariantNotFound)?;
-        let schema = schema_variant
-            .schema(txn, visibility)
-            .await?
-            .ok_or(ComponentError::SchemaNotFound)?;
-
-        let row = txn
-            .query_one(
-                "SELECT object FROM component_create_v1($1, $2, $3)",
-                &[&tenancy, &visibility, &name],
-            )
-            .await?;
-
-        let component: Component = standard_model::finish_create_from_row(
-            txn,
-            nats,
-            tenancy,
-            visibility,
-            history_actor,
-            row,
-        )
-        .await?;
-        component
-            .set_schema(txn, nats, visibility, history_actor, schema.id())
-            .await?;
-        component
-            .set_schema_variant(txn, nats, visibility, history_actor, schema_variant.id())
-            .await?;
-
-        let node = Node::new(
-            txn,
-            nats,
-            tenancy,
-            visibility,
-            history_actor,
-            &NodeKind::Component,
-        )
-        .await?;
-        node.set_component(txn, nats, visibility, history_actor, component.id())
-            .await?;
-
-        Ok((component, node))
-    }
-
-    #[tracing::instrument(skip(txn, nats, name))]
     pub async fn new_application_with_node(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
+        veritech: veritech::Client,
         tenancy: &Tenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
@@ -354,6 +330,7 @@ impl Component {
         let (component, node) = Component::new_for_schema_variant_with_node(
             txn,
             nats,
+            veritech,
             tenancy,
             visibility,
             history_actor,
@@ -538,6 +515,9 @@ impl Component {
                         *func.backend_kind(),
                     )
                     .await?;
+                    // Note for future humans - if this isn't a built in, then we need to
+                    // think about execution time. Probably higher up than this? But just
+                    // an FYI.
                     if binding_created {
                         func_binding.execute(txn, nats, veritech.clone()).await?;
                     }
@@ -618,6 +598,9 @@ impl Component {
             .await?;
 
             if created {
+                // Note for future humans - if this isn't a built in, then we need to
+                // think about execution time. Probably higher up than this? But just
+                // an FYI.
                 func_binding.execute(txn, nats, veritech.clone()).await?;
 
                 let mut existing_resolvers = QualificationResolver::find_for_prototype(
