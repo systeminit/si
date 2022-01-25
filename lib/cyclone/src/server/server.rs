@@ -2,7 +2,7 @@ use std::{io, net::SocketAddr, path::PathBuf};
 
 use axum::routing::{BoxRoute, IntoMakeService};
 use hyper::server::{accept::Accept, conn::AddrIncoming};
-use telemetry::prelude::*;
+use telemetry::{prelude::*, TelemetryLevel};
 use thiserror::Error;
 use tokio::{
     io::{AsyncRead, AsyncWrite},
@@ -35,10 +35,13 @@ pub struct Server<I, S> {
 }
 
 impl Server<(), ()> {
-    pub fn http(config: Config) -> Result<Server<AddrIncoming, SocketAddr>> {
+    pub fn http(
+        config: Config,
+        telemetry_level: Box<dyn TelemetryLevel>,
+    ) -> Result<Server<AddrIncoming, SocketAddr>> {
         match config.incoming_stream() {
             IncomingStream::HTTPSocket(socket_addr) => {
-                let (service, shutdown_rx) = build_service(&config)?;
+                let (service, shutdown_rx) = build_service(&config, telemetry_level)?;
 
                 debug!(socket = %socket_addr, "binding an http server");
                 let inner = axum::Server::bind(socket_addr).serve(service);
@@ -58,10 +61,13 @@ impl Server<(), ()> {
         }
     }
 
-    pub async fn uds(config: Config) -> Result<Server<UdsIncomingStream, PathBuf>> {
+    pub async fn uds(
+        config: Config,
+        telemetry_level: Box<dyn TelemetryLevel>,
+    ) -> Result<Server<UdsIncomingStream, PathBuf>> {
         match config.incoming_stream() {
             IncomingStream::UnixDomainSocket(path) => {
-                let (service, shutdown_rx) = build_service(&config)?;
+                let (service, shutdown_rx) = build_service(&config, telemetry_level)?;
 
                 debug!(socket = %path.display(), "binding a unix domain server");
                 let inner =
@@ -111,10 +117,13 @@ where
     }
 }
 
-fn build_service(config: &Config) -> Result<(IntoMakeService<BoxRoute>, oneshot::Receiver<()>)> {
+fn build_service(
+    config: &Config,
+    telemetry_level: Box<dyn TelemetryLevel>,
+) -> Result<(IntoMakeService<BoxRoute>, oneshot::Receiver<()>)> {
     let (shutdown_tx, shutdown_rx) = mpsc::channel(4);
 
-    let routes = routes(config, shutdown_tx)
+    let routes = routes(config, shutdown_tx, telemetry_level)
         // TODO(fnichol): customize http tracing further, using:
         // https://docs.rs/tower-http/0.1.1/tower_http/trace/index.html
         .layer(

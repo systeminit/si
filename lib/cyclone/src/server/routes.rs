@@ -5,7 +5,7 @@ use std::{
 };
 
 use axum::{handler::get, routing::BoxRoute, AddExtensionLayer, Router};
-use telemetry::prelude::*;
+use telemetry::{prelude::*, TelemetryLevel};
 use tokio::sync::mpsc;
 
 use super::{extract::RequestLimiter, handlers, server::ShutdownSource, Config};
@@ -47,7 +47,11 @@ impl WatchKeepalive {
 }
 
 #[must_use]
-pub fn routes(config: &Config, shutdown_tx: mpsc::Sender<ShutdownSource>) -> Router<BoxRoute> {
+pub fn routes(
+    config: &Config,
+    shutdown_tx: mpsc::Sender<ShutdownSource>,
+    telemetry_level: Box<dyn TelemetryLevel>,
+) -> Router<BoxRoute> {
     let shared_state = Arc::new(State::from(config));
 
     let mut router = Router::new()
@@ -84,7 +88,11 @@ pub fn routes(config: &Config, shutdown_tx: mpsc::Sender<ShutdownSource>) -> Rou
             .boxed();
     }
 
-    router.layer(AddExtensionLayer::new(shared_state)).boxed()
+    router = router
+        .layer(AddExtensionLayer::new(shared_state))
+        .layer(AddExtensionLayer::new(Arc::new(telemetry_level)))
+        .boxed();
+    router
 }
 
 fn execute_routes(config: &Config, shutdown_tx: mpsc::Sender<ShutdownSource>) -> Router<BoxRoute> {

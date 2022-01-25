@@ -30,9 +30,11 @@ async fn run(args: args::Args, mut telemetry: telemetry::Client) -> Result<()> {
 
     start_tracing_level_signal_handler_task(&telemetry)?;
 
+    let telemetry = Box::new(telemetry);
+
     match config.incoming_stream() {
-        IncomingStream::HTTPSocket(_) => Server::http(config)?.run().await?,
-        IncomingStream::UnixDomainSocket(_) => Server::uds(config).await?.run().await?,
+        IncomingStream::HTTPSocket(_) => Server::http(config, telemetry)?.run().await?,
+        IncomingStream::UnixDomainSocket(_) => Server::uds(config, telemetry).await?.run().await?,
     }
 
     Ok(())

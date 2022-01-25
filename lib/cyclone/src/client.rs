@@ -447,7 +447,9 @@ mod tests {
             .build()
             .expect("failed to build config");
 
-        Server::uds(config).await.expect("failed to init server")
+        Server::uds(config, Box::new(telemetry::NoopClient))
+            .await
+            .expect("failed to init server")
     }
 
     async fn uds_client_for_running_server(
@@ -469,7 +471,7 @@ mod tests {
             .build()
             .expect("failed to build config");
 
-        Server::http(config).expect("failed to init server")
+        Server::http(config, Box::new(telemetry::NoopClient)).expect("failed to init server")
     }
 
     async fn http_client_for_running_server(builder: &mut ConfigBuilder) -> HttpClient {

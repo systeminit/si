@@ -1,4 +1,4 @@
-use std::{borrow::Cow, result::Result};
+use std::{borrow::Cow, env, result::Result};
 
 use async_trait::async_trait;
 use thiserror::Error;
@@ -48,6 +48,11 @@ pub enum UpdateOpenTelemetry {
     Disable,
 }
 
+/// A telemetry client trait which can update tracing verbosity, toggle OpenTelemetry services,
+/// etc.
+///
+/// It is designed to be consumed by library authors without the need to depend on the entire
+/// binary/server infrastructure of tracing-rs/OpenTelemetry/etc.
 #[async_trait]
 pub trait TelemetryClient: Clone + Send + Sync + 'static {
     async fn set_verbosity(&mut self, updated: Verbosity) -> Result<(), ClientError>;
@@ -61,6 +66,12 @@ pub trait TelemetryClient: Clone + Send + Sync + 'static {
     async fn disable_opentelemetry(&mut self) -> Result<(), ClientError>;
 }
 
+/// A telemetry type that can report its tracing level.
+pub trait TelemetryLevel: Send + Sync {
+    fn is_debug_or_lower(&self) -> bool;
+}
+
+/// A telemetry client which holds handles to a process' tracing and OpenTelemetry setup.
 #[derive(Clone, Debug)]
 pub struct Client {
     app_modules: Vec<&'static str>,
@@ -153,6 +164,55 @@ impl TelemetryClient for Client {
     }
 }
 
+impl TelemetryLevel for Client {
+    fn is_debug_or_lower(&self) -> bool {
+        self.tracing_level.is_debug_or_lower()
+    }
+}
+
+/// A "no-nothing" telemetry client suitable for test code.
+///
+/// Note that it will respond to `is_debug_or_lower` if the `SI_TEST_VERBOSE` environment variable
+/// is set which may increase logging output in tests (typically useful when debugging).
+#[derive(Clone, Copy, Debug)]
+pub struct NoopClient;
+
+#[async_trait]
+impl TelemetryClient for NoopClient {
+    async fn set_verbosity(&mut self, _updated: Verbosity) -> Result<(), ClientError> {
+        Ok(())
+    }
+
+    async fn increase_verbosity(&mut self) -> Result<(), ClientError> {
+        Ok(())
+    }
+
+    async fn decrease_verbosity(&mut self) -> Result<(), ClientError> {
+        Ok(())
+    }
+
+    async fn set_custom_tracing(
+        &mut self,
+        _directives: impl Into<String> + Send + 'async_trait,
+    ) -> Result<(), ClientError> {
+        Ok(())
+    }
+
+    async fn enable_opentelemetry(&mut self) -> Result<(), ClientError> {
+        Ok(())
+    }
+
+    async fn disable_opentelemetry(&mut self) -> Result<(), ClientError> {
+        Ok(())
+    }
+}
+
+impl TelemetryLevel for NoopClient {
+    fn is_debug_or_lower(&self) -> bool {
+        env::var("SI_TEST_VERBOSE").is_ok()
+    }
+}
+
 #[derive(Debug, Error)]
 pub enum ClientError {
     #[error("custom tracing level has no verbosity")]
@@ -183,6 +243,13 @@ impl TracingLevel {
     pub fn custom(directives: impl Into<String>) -> Self {
         Self::Custom(directives.into())
     }
+
+    pub fn is_debug_or_lower(&self) -> bool {
+        match self {
+            Self::Verbosity { verbosity, .. } => verbosity.is_debug_or_lower(),
+            Self::Custom(string) => string.contains("debug") || string.contains("trace"),
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, PartialOrd)]
@@ -204,6 +271,10 @@ impl Verbosity {
     #[must_use]
     pub fn decrease(self) -> Self {
         self.as_usize().saturating_sub(1).into()
+    }
+
+    fn is_debug_or_lower(&self) -> bool {
+        !matches!(self, Self::InfoAll)
     }
 
     #[inline]

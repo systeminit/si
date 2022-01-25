@@ -24,5 +24,6 @@ pub use application::{
 mod library;
 #[cfg(feature = "library")]
 pub use library::{
-    prelude, Client, ClientError, TelemetryClient, TracingLevel, UpdateOpenTelemetry, Verbosity,
+    prelude, Client, ClientError, NoopClient, TelemetryClient, TelemetryLevel, TracingLevel,
+    UpdateOpenTelemetry, Verbosity,
 };
