@@ -56,6 +56,14 @@ pub(crate) struct Args {
     #[clap(long, group = "ping")]
     pub(crate) disable_ping: bool,
 
+    /// Enables qualification endpoint.
+    #[clap(long, group = "qualification")]
+    pub(crate) enable_qualification: bool,
+
+    /// Disables qualification endpoint.
+    #[clap(long, group = "qualification")]
+    pub(crate) disable_qualification: bool,
+
     /// Enables resolver endpoint.
     #[clap(long, group = "resolver")]
     pub(crate) enable_resolver: bool,
@@ -64,13 +72,13 @@ pub(crate) struct Args {
     #[clap(long, group = "resolver")]
     pub(crate) disable_resolver: bool,
 
-    /// Enables qualification endpoint.
-    #[clap(long, group = "qualification")]
-    pub(crate) enable_qualification: bool,
+    /// Enables sync endpoint.
+    #[clap(long, group = "sync")]
+    pub(crate) enable_sync: bool,
 
-    /// Disables qualification endpoint.
-    #[clap(long, group = "qualification")]
-    pub(crate) disable_qualification: bool,
+    /// Disables sync endpoint.
+    #[clap(long, group = "sync")]
+    pub(crate) disable_sync: bool,
 
     /// Path to the lang server program.
     #[clap(long, env = "SI_LANG_SERVER", setting = ArgSettings::HideEnvValues)]
@@ -110,16 +118,22 @@ impl TryFrom<Args> for Config {
             builder.enable_ping(false);
         }
 
+        if args.enable_qualification {
+            builder.enable_qualification(true);
+        } else if args.disable_qualification {
+            builder.enable_qualification(false);
+        }
+
         if args.enable_resolver {
             builder.enable_resolver(true);
         } else if args.disable_resolver {
             builder.enable_resolver(false);
         }
 
-        if args.enable_qualification {
-            builder.enable_qualification(true);
-        } else if args.disable_qualification {
-            builder.enable_qualification(false);
+        if args.enable_sync {
+            builder.enable_sync(true);
+        } else if args.disable_sync {
+            builder.enable_sync(false);
         }
 
         if args.lang_server.is_file() {

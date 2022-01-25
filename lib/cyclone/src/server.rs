@@ -10,6 +10,7 @@ pub(crate) mod extract;
 mod handlers;
 pub mod qualification_check;
 pub mod resolver_function;
+pub mod resource_sync;
 mod routes;
 mod server;
 pub(crate) mod tower;

@@ -17,6 +17,7 @@ mod progress;
 mod qualification_check;
 mod readiness;
 mod resolver_function;
+mod resource_sync;
 
 pub use liveness::{LivenessStatus, LivenessStatusParseError};
 pub use progress::{
@@ -28,6 +29,7 @@ pub use qualification_check::{
 };
 pub use readiness::{ReadinessStatus, ReadinessStatusParseError};
 pub use resolver_function::{ResolverFunctionRequest, ResolverFunctionResultSuccess};
+pub use resource_sync::{ResourceSyncRequest, ResourceSyncResultSuccess};
 
 #[cfg(feature = "process")]
 pub mod process;
