@@ -18,8 +18,8 @@ use crate::{
     standard_model, standard_model_accessor, standard_model_has_many, standard_model_many_to_many,
     AttributeResolverError, BillingAccount, BillingAccountId, Component, HistoryActor,
     HistoryEventError, LabelEntry, LabelList, Organization, OrganizationId, PropError,
-    StandardModel, StandardModelError, Tenancy, Timestamp, ValidationPrototypeError, Visibility,
-    Workspace, WorkspaceId, WsEventError,
+    QualificationPrototypeError, StandardModel, StandardModelError, Tenancy, Timestamp,
+    ValidationPrototypeError, Visibility, Workspace, WorkspaceId, WsEventError,
 };
 
 use crate::socket::SocketError;
@@ -68,6 +68,10 @@ pub enum SchemaError {
     AttributeResolver(#[from] AttributeResolverError),
     #[error("func binding error: {0}")]
     FuncBinding(#[from] FuncBindingError),
+    #[error("func not found: {0}")]
+    FuncNotFound(String),
+    #[error("qaulification prototype error: {0}")]
+    Qualification(#[from] QualificationPrototypeError),
 }
 
 pub type SchemaResult<T> = Result<T, SchemaError>;
