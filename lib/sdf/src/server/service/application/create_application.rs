@@ -1,5 +1,5 @@
 use super::{ApplicationError, ApplicationResult};
-use crate::server::extract::{Authorization, NatsTxn, PgRwTxn};
+use crate::server::extract::{Authorization, NatsTxn, PgRwTxn, Veritech};
 use axum::Json;
 use dal::{
     Component, HistoryActor, Schema, StandardModel, Tenancy, Visibility, Workspace, WorkspaceId,
@@ -26,6 +26,7 @@ pub struct CreateApplicationResponse {
 pub async fn create_application(
     mut txn: PgRwTxn,
     mut nats: NatsTxn,
+    Veritech(veritech): Veritech,
     Authorization(claim): Authorization,
     Json(request): Json<CreateApplicationRequest>,
 ) -> ApplicationResult<Json<CreateApplicationResponse>> {
@@ -50,6 +51,7 @@ pub async fn create_application(
     let (application, _application_node) = Component::new_application_with_node(
         &txn,
         &nats,
+        veritech.clone(),
         &tenancy,
         &visibility,
         &history_actor,
@@ -59,7 +61,7 @@ pub async fn create_application(
 
     // TODO(fnichol): we're going to create a service component here until we have "node add"
     // functionality in the frontend--then this extra code gets deleted
-    create_service_with_node(&txn, &nats, &tenancy, &visibility, &history_actor).await?;
+    create_service_with_node(&txn, &nats, veritech, &tenancy, &visibility, &history_actor).await?;
 
     // When we create something intentionally on head, we need to fake that a change
     // set has been applied.
@@ -79,6 +81,7 @@ pub async fn create_application(
 async fn create_service_with_node(
     txn: &PgTxn<'_>,
     nats: &si_data::NatsTxn,
+    veritech: veritech::Client,
     tenancy: &Tenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
@@ -91,6 +94,7 @@ async fn create_service_with_node(
     let (_component, _node) = Component::new_for_schema_variant_with_node(
         txn,
         nats,
+        veritech,
         tenancy,
         visibility,
         history_actor,
