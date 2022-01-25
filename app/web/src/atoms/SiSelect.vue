@@ -47,7 +47,7 @@ export interface SelectProps {
 
 const props = defineProps({
   styling: {
-    type: Object as PropType<Record<string, any>>,
+    type: Object as PropType<Record<string, unknown>>,
     default: null,
   },
   id: {
