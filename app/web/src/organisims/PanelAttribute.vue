@@ -9,57 +9,93 @@
     :is-maximized-container-enabled="props.isMaximizedContainerEnabled"
   >
     <template #menuButtons>
-      <div v-if="componentNamesOnlyList" class="min-w-max">
-        <SiSelect
-          id="nodeSelect"
-          v-model="selectedComponentId"
-          size="xs"
-          name="nodeSelect"
-          class="pl-1"
-          :value-as-number="true"
-          :options="componentNamesOnlyList"
-        />
-      </div>
+      <div class="flex flex-row items-center justify-between flex-grow">
+        <div class="flex flex-row">
+          <div class="min-w-max">
+            <SiSelect
+              id="nodeSelect"
+              v-model="selectedComponentId"
+              size="xs"
+              name="nodeSelect"
+              class="pl-1"
+              :value-as-number="true"
+              :options="componentNamesOnlyList"
+            />
+          </div>
+          <LockButton v-model="isPinned" />
+        </div>
 
-      <div class="min-w-max">
-        <button @click="setToAttribute">
-          <VueFeather type="home" stroke="grey" size="1.5rem" />
-        </button>
-      </div>
+        <div class="flex flex-row items-center">
+          <button class="pl-1 focus:outline-none" @click="setToAttribute">
+            <VueFeather
+              v-if="activeView === 'attribute'"
+              type="disc"
+              stroke="cyan"
+              size="1.5rem"
+            />
+            <VueFeather
+              v-else
+              type="disc"
+              class="text-gray-300"
+              size="1.5rem"
+            />
+          </button>
+          <button class="pl-1 focus:outline-none" @click="setToQualification">
+            <VueFeather
+              v-if="activeView === 'qualification'"
+              type="check-square"
+              stroke="cyan"
+              size="1.5rem"
+            />
+            <VueFeather
+              v-else
+              type="check-square"
+              class="text-gray-300"
+              size="1.5rem"
+            />
+          </button>
+        </div>
 
-      <div class="min-w-max">
-        <button @click="setToQualification">
-          <VueFeather type="crosshair" stroke="grey" size="1.5rem" />
-        </button>
+        <div class="flex items-center">
+          <button
+            class="pl-1 text-white focus:outline-none"
+            @click="setToResource"
+          >
+            <VueFeather
+              v-if="activeView === 'resource'"
+              type="box"
+              stroke="cyan"
+              size="1.5rem"
+            />
+            <VueFeather v-else type="box" class="text-gray-300" size="1.5rem" />
+          </button>
+        </div>
       </div>
-
-      <div class="min-w-max">
-        <button @click="setToResource">
-          <VueFeather type="box" stroke="grey" size="1.5rem" />
-        </button>
-      </div>
-
-      <LockButton v-model="isPinned" />
     </template>
 
     <template #content>
-      <AttributeViewer
-        v-if="selectedComponentId && activeView === 'attribute'"
-        :component-id="selectedComponentId"
-      />
-      <QualificationViewer
-        v-if="selectedComponentId && activeView === 'qualification'"
-        :component-id="selectedComponentId"
-      />
-      <ResourceViewer
-        v-if="selectedComponentId && activeView === 'resource'"
-        :component-id="selectedComponentId"
-      />
       <div
-        v-if="!selectedComponentId"
-        class="flex flex-col items-center justify-center w-full h-full align-middle"
+        v-if="selectedComponentId != null && selectedComponentId > -1"
+        class="flex flex-row w-full h-full"
       >
-        <img width="300" :src="cheechSvg" />
+        <AttributeViewer
+          v-if="activeView === 'attribute'"
+          :component-id="selectedComponentId"
+        />
+        <QualificationViewer
+          v-else-if="activeView === 'qualification'"
+          :component-id="selectedComponentId"
+        />
+        <ResourceViewer
+          v-if="activeView === 'resource'"
+          :component-id="selectedComponentId"
+        />
+        <div
+          v-else
+          class="flex flex-col items-center justify-center w-full h-full align-middle"
+        >
+          <img width="300" :src="cheechSvg" alt="Cheech and Chong!" />
+        </div>
       </div>
     </template>
   </Panel>
@@ -84,7 +120,7 @@ import _ from "lodash";
 import cheechSvg from "@/assets/images/cheech-and-chong.svg";
 
 const isPinned = ref<boolean>(false);
-const selectedComponentId = ref<number | "">("");
+const selectedComponentId = ref<number>(-1);
 
 const props = defineProps({
   panelIndex: { type: Number, required: true },
@@ -97,14 +133,14 @@ const props = defineProps({
 });
 
 const activeView = ref<string>("attribute");
-const setToResource = () => {
-  activeView.value = "resource";
-};
 const setToAttribute = () => {
   activeView.value = "attribute";
 };
 const setToQualification = () => {
   activeView.value = "qualification";
+};
+const setToResource = () => {
+  activeView.value = "resource";
 };
 
 const componentNamesOnlyList = refFrom<LabelList<number | "">>(
@@ -122,3 +158,21 @@ const componentNamesOnlyList = refFrom<LabelList<number | "">>(
   ),
 );
 </script>
+
+<style scoped>
+.menu-button-active {
+  color: #69e3d2;
+}
+
+.menu-button-inactive {
+  color: #c6c6c6;
+}
+
+.unlocked {
+  color: #c6c6c6;
+}
+
+.locked {
+  color: #e3ddba;
+}
+</style>

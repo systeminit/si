@@ -1,27 +1,22 @@
 <template>
-  <div>
-    <div v-if="props.result">
-      <div class="flex flex-row">
-        <div><VueFeather type="check" size="1.5rem" /></div>
-        <div class="flex flex-row">
-          <div>Qualification status: (</div>
-          <span v-if="props.result.success">success</span>
-          <span v-else>failure</span>
-          <div>)</div>
-        </div>
-      </div>
+  <div class="w-full pb-1">
+    <div v-if="parseKubevalOutput">
+      <div class="text-xs">TODO(nick): implement parseKubevalOutput</div>
+    </div>
 
+    <div
+      v-else-if="parseValidFieldsOutput"
+      class="pt-3 pb-4 border-t border-gray-800"
+    >
+      <div class="text-xs">TODO(nick): implement parseValidFieldsOutput</div>
+    </div>
+
+    <div v-else class="flex flex-col flex-grow border-t border-gray-800">
+      <div class="mt-2 mb-1 ml-2 text-xs font-medium output-title">Output</div>
       <div
-        v-for="error in props.result.errors"
-        :key="error.message"
-        class="flex flex-col flex-grow"
+        class="px-6 text-xs leading-relaxed whitespace-pre-line select-text output-lines"
       >
-        <div v-if="!props.result.success">
-          <div class="flex flex-row">
-            <VueFeather type="alert-triangle" size="1.5rem" />
-            <div>{{ error.message }}</div>
-          </div>
-        </div>
+        {{ data }}
       </div>
     </div>
   </div>
@@ -29,9 +24,48 @@
 
 <script setup lang="ts">
 import { QualificationResult } from "@/api/sdf/dal/qualification";
-import VueFeather from "vue-feather";
+import { computed } from "vue";
+
+// TODO(nick): remove dummy values.
+const parseKubevalOutput = false;
+const parseValidFieldsOutput = false;
+
+// TODO(nick): determine how to handle multiple errors since veritech only returns one error message (currently).
+const data = computed(() => {
+  let data = "";
+  for (let error of props.result.errors) {
+    if (data === "") {
+      data = error.message;
+    } else {
+      data = data + "\n" + error.message;
+    }
+  }
+  return data;
+});
 
 const props = defineProps<{
   result: QualificationResult;
 }>();
 </script>
+
+<style scoped>
+.success {
+  color: #4bde80;
+}
+
+.error {
+  color: #fb7185;
+}
+
+.unknown {
+  color: #969696;
+}
+
+.output-lines {
+  color: #e5decf;
+}
+
+.output-title {
+  color: #e5e5e5;
+}
+</style>
