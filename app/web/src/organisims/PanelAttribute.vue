@@ -54,7 +54,16 @@
               size="1.5rem"
             />
           </button>
-          <button class="pl-1 focus:outline-none" @click="setToResource">
+        </div>
+
+        <!-- NOTE(nick): old-web separates resource icon from attribute and qualification icons. This separate div is
+        intentional.
+        -->
+        <div class="flex items-center">
+          <button
+            class="pl-1 text-white focus:outline-none"
+            @click="setToResource"
+          >
             <VueFeather
               v-if="activeView === 'resource'"
               type="box"
@@ -68,6 +77,12 @@
     </template>
 
     <template #content>
+      <!-- NOTE(nick): CLion's Vue.js plugin version 213.6461.23 shows an incorrect warning message here.
+      Essentially, the IDE will say that "selectComponentId" can still be an empty string despite the "v-if" directive
+      checking the "truthiness" of it (either in the div or the viewer declarations). Due to the usage of the directive,
+      we know it will be a number and the warning is incorrect.
+      For more information: https://v3.vuejs.org/guide/conditional.html#v-if
+      -->
       <div v-if="selectedComponentId" class="flex flex-row w-full h-full">
         <AttributeViewer
           v-if="activeView === 'attribute'"
