@@ -4,9 +4,10 @@ import fs from "fs";
 import { Command } from "commander";
 import Debug from "debug";
 import { failureExecution, FunctionKind, function_kinds } from "./function";
-import { executeResolverFunction } from "./resolver_function";
 import { makeConsole } from "./sandbox/console";
 import { executeQualificationCheck } from "./qualification_check";
+import { executeResolverFunction } from "./resolver_function";
+import { executeResourceSync } from "./resource_sync";
 
 const debug = Debug("langJs");
 
@@ -52,6 +53,9 @@ function main() {
         break;
       case FunctionKind.ResolverFunction:
         executeResolverFunction(request);
+        break;
+      case FunctionKind.ResourceSync:
+        executeResourceSync(request);
         break;
       default:
         throw Error(`Unknown Kind variant: ${kind}`);

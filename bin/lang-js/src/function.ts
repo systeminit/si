@@ -1,10 +1,15 @@
 export enum FunctionKind {
   QualificationCheck = "qualificationcheck",
   ResolverFunction = "resolverfunction",
+  ResourceSync = "resourceSync",
 }
 
 export function function_kinds(): Array<string> {
-  return [FunctionKind.QualificationCheck, FunctionKind.ResolverFunction];
+  return [
+    FunctionKind.QualificationCheck,
+    FunctionKind.ResolverFunction,
+    FunctionKind.ResourceSync,
+  ];
 }
 
 export type Parameters = Record<string, unknown>;
