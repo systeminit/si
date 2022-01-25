@@ -18,7 +18,7 @@
       :type="type"
       :aria-required="required"
       :placeholder="placeholder"
-      :value="value"
+      :value="modelValue"
       :data-test="id"
       class="block w-full h-24 px-2 py-1 pr-8 leading-tight text-gray-400 border border-gray-800 border-solid shadow shadow-inner resize-y focus:outline-none bg-blueGray-700"
       @input="valueChanged"
