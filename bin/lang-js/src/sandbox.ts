@@ -22,6 +22,8 @@ function commonSandbox(executionId: string): Sandbox {
 
 const resolverFunctionSandbox = {};
 
+const resourceSyncSandbox = {};
+
 const qualificationCheckSandbox = {};
 
 export function createSandbox(
@@ -38,6 +40,11 @@ export function createSandbox(
       return {
         ...commonSandbox(executionId),
         ...qualificationCheckSandbox,
+      };
+    case FunctionKind.ResourceSync:
+      return {
+        ...commonSandbox(executionId),
+        ...resourceSyncSandbox,
       };
     default:
       throw new UnknownSandboxKind(kind);
