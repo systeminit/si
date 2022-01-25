@@ -36,22 +36,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref, defineProps } from "vue";
+import { ref, defineProps, toRefs } from "vue";
 import { Resource, ResourceHealth } from "@/api/sdf/dal/resource";
 import SiTextBox from "@/atoms/SiTextBox.vue";
 import { ResourceService } from "@/service/resource";
 import { GlobalErrorService } from "@/service/global_error";
 import { ChangeSetService } from "@/service/change_set";
-import { refFrom } from "vuse-rx";
+import { fromRef, refFrom } from "vuse-rx";
 import VueFeather from "vue-feather";
+import { combineLatest, from, ReplaySubject, switchMap } from "rxjs";
 
 const props = defineProps<{
   componentId: number;
 }>();
+const { componentId } = toRefs(props);
+
 const editMode = refFrom<boolean>(ChangeSetService.currentEditMode());
 const sync = ref<HTMLElement | null>(null);
-const resource = ref<Resource | null>(null);
-import { firstValueFrom } from "rxjs";
 
 const healthColor = () => {
   if (resource.value) {
@@ -81,18 +82,51 @@ const animateSyncButton = () => {
   }
 };
 
-const runSync = async () => {
-  animateSyncButton();
-  const reply = await firstValueFrom(
-    ResourceService.syncResource({ componentId: props.componentId }),
-  );
-  if (reply.error) {
-    GlobalErrorService.set(reply);
-  } else {
-    resource.value = reply.resource;
-  }
+// We need an observable stream of props.componentId. We also want
+// that stream to emit a value immediately (the first value, as well as all
+// subsequent values)
+const componentId$ = fromRef<number>(componentId, { immediate: true });
+
+// Then we need a replay subject that just emits true values. This is the
+// trigger for the 'sync' button to reload the data.
+const runSync$ = new ReplaySubject<true>(1);
+
+// We want it to be 'hot', meaning that any time this observable is subscribed
+// to, it has a value. So we prime it with `true`.
+runSync$.next(true);
+
+// When the user clicks the sync button, we emit a new `true` value.
+const runSync = () => {
+  runSync$.next(true);
 };
-runSync();
+
+// Compute the actual resource. First by listening to the two trigger
+// observables - the componentId$ and the runSync$. If either of those
+// emit a value, we are going to re run the pipeline that follows.
+//
+// The pipeline starts with calling the syncResource service, and switchMap-ing
+// to the result of that observable. (So now we are emitting a value every time
+// this observable emits)
+//
+// We then take the emitted value from that observable, which is the reply,
+// check it for errors (if there are errors, set the resource to null). Otherwise
+// we set the resource to the returned value, and we're done.
+const resource = refFrom<Resource | null>(
+  combineLatest([componentId$, runSync$]).pipe(
+    switchMap(([componentId]) => {
+      animateSyncButton();
+      return ResourceService.syncResource({ componentId });
+    }),
+    switchMap((reply) => {
+      if (reply.error) {
+        GlobalErrorService.set(reply);
+        return from([null]);
+      } else {
+        return from([reply.resource]);
+      }
+    }),
+  ),
+);
 </script>
 
 <style lang="scss" scoped>
