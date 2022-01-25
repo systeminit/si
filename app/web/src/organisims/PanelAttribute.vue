@@ -54,13 +54,7 @@
               size="1.5rem"
             />
           </button>
-        </div>
-
-        <div class="flex items-center">
-          <button
-            class="pl-1 text-white focus:outline-none"
-            @click="setToResource"
-          >
+          <button class="pl-1 focus:outline-none" @click="setToResource">
             <VueFeather
               v-if="activeView === 'resource'"
               type="box"
@@ -87,7 +81,7 @@
           :component-id="selectedComponentId"
         />
         <ResourceViewer
-          v-if="activeView === 'resource'"
+          v-else-if="activeView === 'resource'"
           :component-id="selectedComponentId"
         />
         <div
