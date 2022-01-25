@@ -19,6 +19,7 @@ mod prop;
 mod qualification_check;
 mod qualification_prototype;
 // mod qualification_resolver;
+mod resource;
 mod schema;
 mod schematic;
 mod socket;
