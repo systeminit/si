@@ -42,15 +42,21 @@ pub use self::resolver_function::{
     ResolverFunctionExecution, ResolverFunctionExecutionClosing, ResolverFunctionExecutionError,
     ResolverFunctionExecutionStarted,
 };
+pub use self::resource_sync::{
+    ResourceSyncExecution, ResourceSyncExecutionClosing, ResourceSyncExecutionError,
+    ResourceSyncExecutionStarted,
+};
 pub use self::watch::{Watch, WatchError, WatchStarted};
 pub use crate::{
     qualification_check::QualificationCheckRequest, resolver_function::ResolverFunctionRequest,
-    LivenessStatus, LivenessStatusParseError, ReadinessStatus, ReadinessStatusParseError,
+    resource_sync::ResourceSyncRequest, LivenessStatus, LivenessStatusParseError, ReadinessStatus,
+    ReadinessStatusParseError,
 };
 
 mod ping;
 mod qualification_check;
 mod resolver_function;
+mod resource_sync;
 mod watch;
 
 #[derive(Debug, Error)]
@@ -144,15 +150,20 @@ where
 
     async fn execute_ping(&mut self) -> result::Result<PingExecution<Strm>, ClientError>;
 
+    async fn execute_qualification(
+        &mut self,
+        request: QualificationCheckRequest,
+    ) -> result::Result<QualificationCheckExecution<Strm>, ClientError>;
+
     async fn execute_resolver(
         &mut self,
         request: ResolverFunctionRequest,
     ) -> result::Result<ResolverFunctionExecution<Strm>, ClientError>;
 
-    async fn execute_qualification(
+    async fn execute_sync(
         &mut self,
-        request: QualificationCheckRequest,
-    ) -> result::Result<QualificationCheckExecution<Strm>, ClientError>;
+        request: ResourceSyncRequest,
+    ) -> result::Result<ResourceSyncExecution<Strm>, ClientError>;
 }
 
 impl Client<(), (), ()> {
@@ -261,6 +272,13 @@ where
         let stream = self.websocket_stream("/execute/ping").await?;
         Ok(ping::execute(stream))
     }
+    async fn execute_qualification(
+        &mut self,
+        request: QualificationCheckRequest,
+    ) -> Result<QualificationCheckExecution<Strm>> {
+        let stream = self.websocket_stream("/execute/qualification").await?;
+        Ok(qualification_check::execute(stream, request))
+    }
 
     async fn execute_resolver(
         &mut self,
@@ -270,12 +288,12 @@ where
         Ok(resolver_function::execute(stream, request))
     }
 
-    async fn execute_qualification(
+    async fn execute_sync(
         &mut self,
-        request: QualificationCheckRequest,
-    ) -> Result<QualificationCheckExecution<Strm>> {
-        let stream = self.websocket_stream("/execute/qualification").await?;
-        Ok(qualification_check::execute(stream, request))
+        request: ResourceSyncRequest,
+    ) -> Result<ResourceSyncExecution<Strm>> {
+        let stream = self.websocket_stream("/execute/sync").await?;
+        Ok(resource_sync::execute(stream, request))
     }
 }
 
@@ -397,7 +415,7 @@ impl Default for ClientConfig {
     }
 }
 
-#[allow(clippy::panic)]
+#[allow(clippy::panic, clippy::assertions_on_constants)]
 #[cfg(test)]
 mod tests {
     use std::{borrow::Cow, collections::HashMap, env, path::Path};
@@ -500,7 +518,7 @@ mod tests {
         // Consume 3 pings
         for _ in 0..2 {
             match progress.next().await {
-                Some(Ok(v)) => assert_eq!(v, ()),
+                Some(Ok(_)) => assert!(true),
                 Some(Err(err)) => panic!("failed to receive ping; err={:?}", err),
                 None => panic!("stream ended early"),
             }
@@ -530,7 +548,7 @@ mod tests {
         // Consume 3 pings
         for _ in 0..2 {
             match progress.next().await {
-                Some(Ok(v)) => assert_eq!(v, ()),
+                Some(Ok(_)) => assert!(true),
                 Some(Err(err)) => panic!("failed to receive ping; err={:?}", err),
                 None => panic!("stream ended early"),
             }
@@ -699,7 +717,7 @@ mod tests {
         let result = progress.finish().await.expect("failed to return result");
         match result {
             FunctionResult::Success(success) => {
-                assert_eq!(success.unset, false);
+                assert!(!success.unset);
                 assert_eq!(success.data, json!({"a": "b"}));
             }
             FunctionResult::Failure(failure) => {
@@ -771,7 +789,7 @@ mod tests {
         let result = progress.finish().await.expect("failed to return result");
         match result {
             FunctionResult::Success(success) => {
-                assert_eq!(success.unset, false);
+                assert!(!success.unset);
                 assert_eq!(success.data, json!({"a": "b"}));
             }
             FunctionResult::Failure(failure) => {
@@ -850,7 +868,7 @@ mod tests {
         let result = progress.finish().await.expect("failed to return result");
         match result {
             FunctionResult::Success(success) => {
-                assert_eq!(success.qualified, true);
+                assert!(success.qualified);
                 assert_eq!(success.message, None);
             }
             FunctionResult::Failure(failure) => {
@@ -931,8 +949,146 @@ mod tests {
         let result = progress.finish().await.expect("failed to return result");
         match result {
             FunctionResult::Success(success) => {
-                assert_eq!(success.qualified, true);
+                assert!(success.qualified);
                 assert_eq!(success.message, None);
+            }
+            FunctionResult::Failure(failure) => {
+                panic!("result should be success; failure={:?}", failure)
+            }
+        }
+    }
+
+    #[test(tokio::test)]
+    async fn http_execute_sync() {
+        let mut builder = Config::builder();
+        let mut client = http_client_for_running_server(builder.enable_qualification(true)).await;
+
+        let req = ResourceSyncRequest {
+            execution_id: "1234".to_string(),
+            handler: "syncit".to_string(),
+            code_base64: base64::encode(
+                r#"function syncit() {
+                    console.log('n');
+                    console.log('sync');
+                    return {};
+                }"#,
+            ),
+        };
+
+        // Start the protocol
+        let mut progress = client
+            .execute_sync(req)
+            .await
+            .expect("failed to establish websocket stream")
+            .start()
+            .await
+            .expect("failed to start protocol");
+
+        // Consume the output messages
+        match progress.next().await {
+            Some(Ok(ProgressMessage::OutputStream(output))) => {
+                assert_eq!(output.message, "n")
+            }
+            Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
+            Some(Err(err)) => panic!("failed to receive 'i like' output: err={:?}", err),
+            None => panic!("output stream ended early"),
+        };
+        match progress.next().await {
+            Some(Ok(ProgressMessage::OutputStream(output))) => {
+                assert_eq!(output.message, "sync")
+            }
+            Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
+            Some(Err(err)) => panic!("failed to receive 'i like' output: err={:?}", err),
+            None => panic!("output stream ended early"),
+        };
+        // TODO(fnichol): until we've determined how to handle processing the result server side,
+        // we're going to see a heartbeat come back when a request is processed
+        match progress.next().await {
+            Some(Ok(ProgressMessage::Heartbeat)) => assert!(true),
+            Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
+            Some(Err(err)) => panic!("failed to receive heartbeat: err={:?}", err),
+            None => panic!("output stream ended early"),
+        }
+        match progress.next().await {
+            None => assert!(true),
+            Some(unexpected) => panic!("output stream should be done: {:?}", unexpected),
+        };
+        // Get the result
+        let result = progress.finish().await.expect("failed to return result");
+        match result {
+            FunctionResult::Success(success) => {
+                assert_eq!(success.execution_id, "1234");
+                // TODO(fnichol): check the future return value fields, pls
+            }
+            FunctionResult::Failure(failure) => {
+                panic!("result should be success; failure={:?}", failure)
+            }
+        }
+    }
+
+    #[test(tokio::test)]
+    async fn uds_execute_sync() {
+        let tmp_socket = rand_uds();
+        let mut builder = Config::builder();
+        let mut client =
+            uds_client_for_running_server(builder.enable_qualification(true), &tmp_socket).await;
+
+        let req = ResourceSyncRequest {
+            execution_id: "1234".to_string(),
+            handler: "syncit".to_string(),
+            code_base64: base64::encode(
+                r#"function syncit() {
+                    console.log('n');
+                    console.log('sync');
+                    return {};
+                }"#,
+            ),
+        };
+
+        // Start the protocol
+        let mut progress = client
+            .execute_sync(req)
+            .await
+            .expect("failed to establish websocket stream")
+            .start()
+            .await
+            .expect("failed to start protocol");
+
+        // Consume the output messages
+        match progress.next().await {
+            Some(Ok(ProgressMessage::OutputStream(output))) => {
+                assert_eq!(output.message, "n")
+            }
+            Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
+            Some(Err(err)) => panic!("failed to receive 'i like' output: err={:?}", err),
+            None => panic!("output stream ended early"),
+        };
+        match progress.next().await {
+            Some(Ok(ProgressMessage::OutputStream(output))) => {
+                assert_eq!(output.message, "sync")
+            }
+            Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
+            Some(Err(err)) => panic!("failed to receive 'i like' output: err={:?}", err),
+            None => panic!("output stream ended early"),
+        };
+        // TODO(fnichol): until we've determined how to handle processing the result server side,
+        // we're going to see a heartbeat come back when a request is processed
+        match progress.next().await {
+            Some(Ok(ProgressMessage::Heartbeat)) => assert!(true),
+            Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
+            Some(Err(err)) => panic!("failed to receive heartbeat: err={:?}", err),
+            None => panic!("output stream ended early"),
+        }
+        match progress.next().await {
+            None => assert!(true),
+            Some(unexpected) => panic!("output stream should be done: {:?}", unexpected),
+        };
+        // Get the result
+        let result = progress.finish().await.expect("failed to return result");
+        match result {
+            FunctionResult::Success(success) => {
+                assert_eq!(success.execution_id, "1234");
+                // TODO(fnichol): check the future return value fields, pls
             }
             FunctionResult::Failure(failure) => {
                 panic!("result should be success; failure={:?}", failure)

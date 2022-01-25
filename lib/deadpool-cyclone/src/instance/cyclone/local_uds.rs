@@ -10,11 +10,11 @@ use cyclone::{
     canonical_command::CanonicalCommand,
     client::{
         Connection, PingExecution, QualificationCheckExecution, ResolverFunctionExecution,
-        UnixStream, Watch, WatchError, WatchStarted,
+        ResourceSyncExecution, UnixStream, Watch, WatchError, WatchStarted,
     },
     process::{self, ShutdownError},
     Client, ClientError, CycloneClient, LivenessStatus, QualificationCheckRequest, ReadinessStatus,
-    ResolverFunctionRequest, UdsClient,
+    ResolverFunctionRequest, ResourceSyncRequest, UdsClient,
 };
 use derive_builder::Builder;
 use futures::StreamExt;
@@ -142,6 +142,20 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
         result
     }
 
+    async fn execute_qualification(
+        &mut self,
+        request: QualificationCheckRequest,
+    ) -> result::Result<QualificationCheckExecution<UnixStream>, ClientError> {
+        self.ensure_healthy_client()
+            .await
+            .map_err(ClientError::unhealthy)?;
+
+        let result = self.client.execute_qualification(request).await;
+        self.count_request();
+
+        result
+    }
+
     async fn execute_resolver(
         &mut self,
         request: ResolverFunctionRequest,
@@ -156,15 +170,15 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
         result
     }
 
-    async fn execute_qualification(
+    async fn execute_sync(
         &mut self,
-        request: QualificationCheckRequest,
-    ) -> result::Result<QualificationCheckExecution<UnixStream>, ClientError> {
+        request: ResourceSyncRequest,
+    ) -> result::Result<ResourceSyncExecution<UnixStream>, ClientError> {
         self.ensure_healthy_client()
             .await
             .map_err(ClientError::unhealthy)?;
 
-        let result = self.client.execute_qualification(request).await;
+        let result = self.client.execute_sync(request).await;
         self.count_request();
 
         result
@@ -228,13 +242,17 @@ pub struct LocalUdsInstanceSpec {
     #[builder(private, setter(name = "_ping"), default = "false")]
     ping: bool,
 
+    /// Enables the `qualification` execution endpoint for a spawned Cyclone server.
+    #[builder(private, setter(name = "_qualification"), default = "false")]
+    qualification: bool,
+
     /// Enables the `resolver` execution endpoint for a spawned Cyclone server.
     #[builder(private, setter(name = "_resolver"), default = "false")]
     resolver: bool,
 
-    /// Enables the `qualification` execution endpoint for a spawned Cyclone server.
-    #[builder(private, setter(name = "_qualification"), default = "false")]
-    qualification: bool,
+    /// Enables the `sync` execution endpoint for a spawned Cyclone server.
+    #[builder(private, setter(name = "_sync"), default = "false")]
+    sync: bool,
 }
 
 #[async_trait]
@@ -309,11 +327,14 @@ impl LocalUdsInstanceSpec {
         if self.ping {
             cmd.arg("--enable-ping");
         }
+        if self.qualification {
+            cmd.arg("--enable-qualification");
+        }
         if self.resolver {
             cmd.arg("--enable-resolver");
         }
-        if self.qualification {
-            cmd.arg("--enable-qualification");
+        if self.sync {
+            cmd.arg("--enable-sync");
         }
 
         cmd
@@ -340,14 +361,19 @@ impl LocalUdsInstanceSpecBuilder {
         self._ping(true)
     }
 
+    /// Enables the `qualification` execution endpoint for a spawned Cyclone server.
+    pub fn qualification(&mut self) -> &mut Self {
+        self._qualification(true)
+    }
+
     /// Enables the `resolver` execution endpoint for a spawned Cyclone server.
     pub fn resolver(&mut self) -> &mut Self {
         self._resolver(true)
     }
 
-    /// Enables the `qualification` execution endpoint for a spawned Cyclone server.
-    pub fn qualification(&mut self) -> &mut Self {
-        self._qualification(true)
+    /// Enables the `sync` execution endpoint for a spawned Cyclone server.
+    pub fn sync(&mut self) -> &mut Self {
+        self._sync(true)
     }
 }
 
