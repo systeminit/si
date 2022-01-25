@@ -104,16 +104,22 @@ fn execute_routes(config: &Config, shutdown_tx: mpsc::Sender<ShutdownSource>) ->
             .or(Router::new().route("/ping", get(handlers::ws_execute_ping)))
             .boxed();
     }
+    if config.enable_qualification() {
+        debug!("enabling qualification endpoint");
+        router = router
+            .or(Router::new().route("/qualification", get(handlers::ws_execute_qualification)))
+            .boxed();
+    }
     if config.enable_resolver() {
         debug!("enabling resolver endpoint");
         router = router
             .or(Router::new().route("/resolver", get(handlers::ws_execute_resolver)))
             .boxed();
     }
-    if config.enable_qualification() {
-        debug!("enabling qualification endpoint");
+    if config.enable_sync() {
+        debug!("enabling sync endpoint");
         router = router
-            .or(Router::new().route("/qualification", get(handlers::ws_execute_qualification)))
+            .or(Router::new().route("/sync", get(handlers::ws_execute_sync)))
             .boxed();
     }
 

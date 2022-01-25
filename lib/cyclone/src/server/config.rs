@@ -30,10 +30,13 @@ pub struct Config {
     enable_ping: bool,
 
     #[builder(default = "true")]
+    enable_qualification: bool,
+
+    #[builder(default = "true")]
     enable_resolver: bool,
 
     #[builder(default = "true")]
-    enable_qualification: bool,
+    enable_sync: bool,
 
     #[builder(default = "IncomingStream::default()")]
     incoming_stream: IncomingStream,
@@ -64,16 +67,22 @@ impl Config {
         self.enable_ping
     }
 
+    /// Gets a reference to the config's enable qualification.
+    #[must_use]
+    pub fn enable_qualification(&self) -> bool {
+        self.enable_qualification
+    }
+
     /// Gets a reference to the config's enable resolver.
     #[must_use]
     pub fn enable_resolver(&self) -> bool {
         self.enable_resolver
     }
 
-    /// Gets a reference to the config's enable qualification.
+    /// Gets a reference to the config's enable sync.
     #[must_use]
-    pub fn enable_qualification(&self) -> bool {
-        self.enable_qualification
+    pub fn enable_sync(&self) -> bool {
+        self.enable_sync
     }
 
     /// Gets a reference to the config's incoming stream.
