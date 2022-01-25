@@ -1,12 +1,10 @@
 use std::{env, sync::Arc};
 
 use anyhow::Result;
-use async_trait::async_trait;
 use lazy_static::lazy_static;
 use names::{Generator, Name};
-
 use si_data::{NatsClient, NatsConfig, NatsTxn, PgPool, PgPoolConfig, PgTxn};
-use telemetry::{ClientError, TelemetryClient, Verbosity};
+use veritech::{Instance, StandardConfig};
 
 use crate::{
     billing_account::BillingAccountSignup,
@@ -18,7 +16,6 @@ use crate::{
     QualificationCheck, Schema, SchemaId, SchemaKind, StandardModel, System, Tenancy, User,
     Visibility, Workspace, NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK,
 };
-use veritech::{Instance, StandardConfig};
 
 #[derive(Debug)]
 pub struct TestConfig {
@@ -55,39 +52,6 @@ lazy_static! {
         Arc::new(tokio::sync::Mutex::new(false));
 }
 
-#[derive(Clone, Copy, Debug)]
-pub struct NoopTelemetryClient;
-
-#[async_trait]
-impl TelemetryClient for NoopTelemetryClient {
-    async fn set_verbosity(&mut self, _updated: Verbosity) -> Result<(), ClientError> {
-        Ok(())
-    }
-
-    async fn increase_verbosity(&mut self) -> Result<(), ClientError> {
-        Ok(())
-    }
-
-    async fn decrease_verbosity(&mut self) -> Result<(), ClientError> {
-        Ok(())
-    }
-
-    async fn set_custom_tracing(
-        &mut self,
-        _directives: impl Into<String> + Send + 'async_trait,
-    ) -> Result<(), ClientError> {
-        Ok(())
-    }
-
-    async fn enable_opentelemetry(&mut self) -> Result<(), ClientError> {
-        Ok(())
-    }
-
-    async fn disable_opentelemetry(&mut self) -> Result<(), ClientError> {
-        Ok(())
-    }
-}
-
 pub struct TestContext {
     // we need to keep this in scope to keep the tempdir from auto-cleaning itself
     #[allow(dead_code)]
@@ -95,7 +59,7 @@ pub struct TestContext {
     pub pg: PgPool,
     pub nats_conn: NatsClient,
     pub jwt_secret_key: JwtSecretKey,
-    pub telemetry: NoopTelemetryClient,
+    pub telemetry: telemetry::NoopClient,
 }
 
 impl TestContext {
@@ -112,7 +76,7 @@ impl TestContext {
             .await
             .expect("failed to connect to NATS");
         let secret_key = settings.jwt_encrypt.clone();
-        let telemetry = NoopTelemetryClient;
+        let telemetry = telemetry::NoopClient;
 
         Self {
             tmp_event_log_fs_root,
@@ -128,7 +92,7 @@ impl TestContext {
     }
 
     /// Gets a reference to the test context's telemetry.
-    pub fn telemetry(&self) -> NoopTelemetryClient {
+    pub fn telemetry(&self) -> telemetry::NoopClient {
         self.telemetry
     }
 }

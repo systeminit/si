@@ -8,7 +8,7 @@ use axum::{
     response::IntoResponse,
 };
 use hyper::StatusCode;
-use telemetry::prelude::*;
+use telemetry::{prelude::*, TelemetryLevel};
 
 use super::{
     extract::LimitRequestGuard,
@@ -70,26 +70,31 @@ pub async fn ws_execute_ping(
 pub async fn ws_execute_resolver(
     wsu: WebSocketUpgrade,
     Extension(state): Extension<Arc<State>>,
+    Extension(telemetry_level): Extension<Arc<Box<dyn TelemetryLevel>>>,
     limit_request_guard: LimitRequestGuard,
 ) -> impl IntoResponse {
     async fn handle_socket(
         mut socket: WebSocket,
         state: Arc<State>,
+        lang_server_debugging: bool,
         _limit_request_guard: LimitRequestGuard,
     ) {
-        let proto = match resolver_function::execute(state.lang_server_path(), true)
-            .start(&mut socket)
-            .await
-        {
-            Ok(started) => started,
-            Err(err) => {
-                warn!(error = ?err, "failed to start protocol");
-                if let Err(err) = fail_execute_resolver(socket, "failed to start protocol").await {
-                    warn!(error = ?err, "failed to fail execute resolver");
-                };
-                return;
-            }
-        };
+        let proto =
+            match resolver_function::execute(state.lang_server_path(), lang_server_debugging)
+                .start(&mut socket)
+                .await
+            {
+                Ok(started) => started,
+                Err(err) => {
+                    warn!(error = ?err, "failed to start protocol");
+                    if let Err(err) =
+                        fail_execute_resolver(socket, "failed to start protocol").await
+                    {
+                        warn!(error = ?err, "failed to fail execute resolver");
+                    };
+                    return;
+                }
+            };
         let proto = match proto.process(&mut socket).await {
             Ok(processed) => processed,
             Err(err) => {
@@ -106,7 +111,14 @@ pub async fn ws_execute_resolver(
         }
     }
 
-    wsu.on_upgrade(move |socket| handle_socket(socket, state, limit_request_guard))
+    wsu.on_upgrade(move |socket| {
+        handle_socket(
+            socket,
+            state,
+            telemetry_level.is_debug_or_lower(),
+            limit_request_guard,
+        )
+    })
 }
 
 async fn fail_execute_resolver(
@@ -123,27 +135,31 @@ async fn fail_execute_resolver(
 pub async fn ws_execute_qualification(
     wsu: WebSocketUpgrade,
     Extension(state): Extension<Arc<State>>,
+    Extension(telemetry_level): Extension<Arc<Box<dyn TelemetryLevel>>>,
     limit_request_guard: LimitRequestGuard,
 ) -> impl IntoResponse {
     async fn handle_socket(
         mut socket: WebSocket,
         state: Arc<State>,
+        lang_server_debugging: bool,
         _limit_request_guard: LimitRequestGuard,
     ) {
-        let proto = match qualification_check::execute(state.lang_server_path(), true)
-            .start(&mut socket)
-            .await
-        {
-            Ok(started) => started,
-            Err(err) => {
-                warn!(error = ?err, "failed to start protocol");
-                if let Err(err) = fail_qualification_check(socket, "failed to start protocol").await
-                {
-                    warn!(error = ?err, "failed to fail execute qualification");
-                };
-                return;
-            }
-        };
+        let proto =
+            match qualification_check::execute(state.lang_server_path(), lang_server_debugging)
+                .start(&mut socket)
+                .await
+            {
+                Ok(started) => started,
+                Err(err) => {
+                    warn!(error = ?err, "failed to start protocol");
+                    if let Err(err) =
+                        fail_qualification_check(socket, "failed to start protocol").await
+                    {
+                        warn!(error = ?err, "failed to fail execute qualification");
+                    };
+                    return;
+                }
+            };
         let proto = match proto.process(&mut socket).await {
             Ok(processed) => processed,
             Err(err) => {
@@ -161,7 +177,14 @@ pub async fn ws_execute_qualification(
         }
     }
 
-    wsu.on_upgrade(move |socket| handle_socket(socket, state, limit_request_guard))
+    wsu.on_upgrade(move |socket| {
+        handle_socket(
+            socket,
+            state,
+            telemetry_level.is_debug_or_lower(),
+            limit_request_guard,
+        )
+    })
 }
 
 // TODO(fnichol): guess what, these fail functions can now be generic, yay!
