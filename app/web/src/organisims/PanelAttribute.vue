@@ -33,6 +33,12 @@
         </button>
       </div>
 
+      <div class="min-w-max">
+        <button @click="setToResource">
+          <VueFeather type="box" stroke="grey" size="1.5rem" />
+        </button>
+      </div>
+
       <LockButton v-model="isPinned" />
     </template>
 
@@ -43,6 +49,10 @@
       />
       <QualificationViewer
         v-if="selectedComponentId && activeView === 'qualification'"
+        :component-id="selectedComponentId"
+      />
+      <ResourceViewer
+        v-if="selectedComponentId && activeView === 'resource'"
         :component-id="selectedComponentId"
       />
       <div
@@ -68,6 +78,7 @@ import { ComponentService } from "@/service/component";
 import { GlobalErrorService } from "@/service/global_error";
 import AttributeViewer from "@/organisims/AttributeViewer.vue";
 import QualificationViewer from "@/organisims/QualificationViewer.vue";
+import ResourceViewer from "@/organisims/ResourceViewer.vue";
 import VueFeather from "vue-feather";
 import _ from "lodash";
 import cheechSvg from "@/assets/images/cheech-and-chong.svg";
@@ -86,6 +97,9 @@ const props = defineProps({
 });
 
 const activeView = ref<string>("attribute");
+const setToResource = () => {
+  activeView.value = "resource";
+};
 const setToAttribute = () => {
   activeView.value = "attribute";
 };
