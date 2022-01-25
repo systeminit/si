@@ -68,7 +68,7 @@
     "vue-loading-template": "^1.3.2",
     "vue-router": "^4.0.11",
     "vue-tsc": "^0.3.0",
-    "vuse-rx": "^0.13.1",
+    "vuse-rx": "systeminit/vuse-rx#bug/fix-options",
     "faker": "^5.5.3"
   },
   "eslintConfig": {

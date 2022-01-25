@@ -1,15 +1,15 @@
 <template>
-  <Widgets :edit-fields="editFields" />
+  <Widgets v-if="editFields" :edit-fields="editFields" />
 </template>
 
 <script setup lang="ts">
 import { PropType } from "vue";
 import { EditFieldObjectKind, EditFields } from "@/api/sdf/dal/edit_field";
-import { refFrom, fromRef } from "vuse-rx";
+import { fromRef, refFrom } from "vuse-rx";
 import { EditFieldService } from "@/service/edit_field";
 import { GlobalErrorService } from "@/service/global_error";
 import Widgets from "@/organisims/EditForm/Widgets.vue";
-import { from } from "rxjs";
+import { combineLatest, from } from "rxjs";
 import { switchMap } from "rxjs/operators";
 
 const props = defineProps({
@@ -23,11 +23,11 @@ const props = defineProps({
   },
 });
 
-const props$ = fromRef(props);
+const props$ = fromRef(props, { immediate: true, deep: true });
 
 const editFields = refFrom<EditFields>(
-  props$.pipe(
-    switchMap((props) => {
+  combineLatest([props$]).pipe(
+    switchMap(([props]) => {
       return EditFieldService.getEditFields({
         id: props.objectId,
         objectKind: props.objectKind,

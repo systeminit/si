@@ -1,12 +1,12 @@
 <template>
   <Panel
-    :panel-index="panelIndex"
-    :panel-ref="panelRef"
-    :panel-container-ref="panelContainerRef"
-    :initial-maximized-container="initialMaximizedContainer"
-    :initial-maximized-full="initialMaximizedFull"
-    :is-visible="isVisible"
-    :is-maximized-container-enabled="isMaximizedContainerEnabled"
+    :panel-index="props.panelIndex"
+    :panel-ref="props.panelRef"
+    :panel-container-ref="props.panelContainerRef"
+    :initial-maximized-container="props.initialMaximizedContainer"
+    :initial-maximized-full="props.initialMaximizedFull"
+    :is-visible="props.isVisible"
+    :is-maximized-container-enabled="props.isMaximizedContainerEnabled"
   >
     <template #menuButtons>
       <div v-if="componentNamesOnlyList" class="min-w-max">
@@ -16,6 +16,7 @@
           size="xs"
           name="nodeSelect"
           class="pl-1"
+          :value-as-number="true"
           :options="componentNamesOnlyList"
         />
       </div>
@@ -36,7 +37,6 @@
     </template>
 
     <template #content>
-      <!-- FIXME(nick): there is a bug unrelated to the viewer buttons where EditFields will be undefined despite the component ID being valid -->
       <AttributeViewer
         v-if="selectedComponentId && activeView === 'attribute'"
         :component-id="selectedComponentId"
@@ -45,6 +45,12 @@
         v-if="selectedComponentId && activeView === 'qualification'"
         :component-id="selectedComponentId"
       />
+      <div
+        v-if="!selectedComponentId"
+        class="flex flex-col items-center justify-center w-full h-full align-middle"
+      >
+        <img width="300" :src="cheechSvg" />
+      </div>
     </template>
   </Panel>
 </template>
@@ -63,11 +69,13 @@ import { GlobalErrorService } from "@/service/global_error";
 import AttributeViewer from "@/organisims/AttributeViewer.vue";
 import QualificationViewer from "@/organisims/QualificationViewer.vue";
 import VueFeather from "vue-feather";
+import _ from "lodash";
+import cheechSvg from "@/assets/images/cheech-and-chong.svg";
 
 const isPinned = ref<boolean>(false);
-const selectedComponentId = ref<number | undefined>(undefined);
+const selectedComponentId = ref<number | "">("");
 
-defineProps({
+const props = defineProps({
   panelIndex: { type: Number, required: true },
   panelRef: { type: String, required: true },
   panelContainerRef: { type: String, required: true },
@@ -85,14 +93,16 @@ const setToQualification = () => {
   activeView.value = "qualification";
 };
 
-const componentNamesOnlyList = refFrom<LabelList<number>>(
+const componentNamesOnlyList = refFrom<LabelList<number | "">>(
   ComponentService.listComponentsNamesOnly().pipe(
     switchMap((response) => {
       if (response.error) {
         GlobalErrorService.set(response);
         return from([[]]);
       } else {
-        return from([response.list]);
+        const list: LabelList<number | ""> = _.cloneDeep(response.list);
+        list.push({ label: "", value: "" });
+        return from([list]);
       }
     }),
   ),

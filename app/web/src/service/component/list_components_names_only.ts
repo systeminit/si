@@ -1,14 +1,8 @@
 import { ApiResponse, SDF } from "@/api/sdf";
-import {
-  combineLatest,
-  combineLatestWith,
-  from,
-  Observable,
-  share,
-} from "rxjs";
+import { combineLatest, combineLatestWith, from, Observable } from "rxjs";
 import { standardVisibilityTriggers$ } from "@/observable/visibility";
 import Bottle from "bottlejs";
-import { switchMap } from "rxjs/operators";
+import { shareReplay, switchMap } from "rxjs/operators";
 import { workspace$ } from "@/observable/workspace";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import _ from "lodash";
@@ -49,7 +43,7 @@ const componentNamesOnlyList$ = combineLatest([
       request,
     );
   }),
-  share(),
+  shareReplay({ bufferSize: 1, refCount: true }),
 );
 
 export function listComponentsNamesOnly(): Observable<
