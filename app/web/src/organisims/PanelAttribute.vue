@@ -74,10 +74,7 @@
     </template>
 
     <template #content>
-      <div
-        v-if="selectedComponentId != null && selectedComponentId > -1"
-        class="flex flex-row w-full h-full"
-      >
+      <div v-if="selectedComponentId" class="flex flex-row w-full h-full">
         <AttributeViewer
           v-if="activeView === 'attribute'"
           :component-id="selectedComponentId"
@@ -120,7 +117,7 @@ import _ from "lodash";
 import cheechSvg from "@/assets/images/cheech-and-chong.svg";
 
 const isPinned = ref<boolean>(false);
-const selectedComponentId = ref<number>(-1);
+const selectedComponentId = ref<number | "">("");
 
 const props = defineProps({
   panelIndex: { type: Number, required: true },
