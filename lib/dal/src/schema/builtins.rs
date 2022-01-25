@@ -1,4 +1,6 @@
 use crate::func::backend::validation::FuncBackendValidateStringValueArgs;
+use crate::func::backend::FuncBackendJsQualificationArgs;
+use crate::qualification_prototype::QualificationPrototypeContext;
 use crate::schema::{SchemaResult, SchemaVariant, UiMenu};
 use crate::socket::{Socket, SocketArity, SocketEdgeKind};
 use crate::{
@@ -7,6 +9,7 @@ use crate::{
     PropKind, Schema, SchemaError, SchemaKind, SchematicKind, StandardModel, Tenancy,
     ValidationPrototype, Visibility,
 };
+use crate::{ComponentQualificationView, QualificationPrototype};
 use si_data::{NatsTxn, PgTxn};
 
 pub async fn migrate(
@@ -488,6 +491,33 @@ async fn docker_image(
     variant
         .add_socket(txn, nats, visibility, history_actor, output_socket.id())
         .await?;
+
+    // Qualification Prototype
+    let qual_func_name = "si:qualificationDockerImageNameEqualsComponentName".to_string();
+    let mut qual_funcs =
+        Func::find_by_attr(txn, tenancy, visibility, "name", &qual_func_name).await?;
+    let qual_func = qual_funcs
+        .pop()
+        .ok_or(SchemaError::FuncNotFound(qual_func_name))?;
+    let qual_args = FuncBackendJsQualificationArgs {
+        component: ComponentQualificationView::empty(),
+    };
+    let qual_args_json = serde_json::to_value(&qual_args)?;
+    let mut qual_prototype_context = QualificationPrototypeContext::new();
+    qual_prototype_context.set_schema_variant_id(*variant.id());
+
+    let _prototype = QualificationPrototype::new(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        *qual_func.id(),
+        qual_args_json,
+        qual_prototype_context,
+    )
+    .await?;
+
     Ok(())
 }
 

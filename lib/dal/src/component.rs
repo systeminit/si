@@ -881,4 +881,12 @@ impl ComponentQualificationView {
 
         Ok(qualification_view)
     }
+
+    /// Create an empty componenent qualification view; useful for qualification prototypes.
+    pub fn empty() -> ComponentQualificationView {
+        ComponentQualificationView {
+            name: "".to_string(),
+            properties: HashMap::new(),
+        }
+    }
 }
