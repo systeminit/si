@@ -5,7 +5,7 @@ export enum SocketType {
   output = "output",
 }
 
-export class SocketConnector extends PIXI.Graphics {
+export class Connector extends PIXI.Graphics {
   id: string;
   type: SocketType;
   kind: string;

@@ -1,6 +1,26 @@
 import * as PIXI from "pixi.js";
 
-export class NodeTitle extends PIXI.Text {
+export class NodeTitle extends PIXI.Container {
+  constructor(textString: string, nodeWidth: number) {
+    super();
+
+    // this.setZIndex();
+    this.disableInteraction();
+
+    const background = new TitleBackground(nodeWidth);
+    background.zIndex = 0;
+    this.addChild(background);
+
+    const text = new TitleText(textString, nodeWidth);
+    text.zIndex = 1;
+    this.addChild(text);
+  }
+  disableInteraction(): void {
+    this.interactive = false;
+  }
+}
+
+class TitleText extends PIXI.Text {
   constructor(textString: string, nodeWidth: number) {
     const textStyle = new PIXI.TextStyle({
       fontFamily: "Source Code Pro",
@@ -11,21 +31,20 @@ export class NodeTitle extends PIXI.Text {
       align: "left",
     });
     super(textString, textStyle);
-    this.setPosition(nodeWidth);
-    this.setZIndex();
-    this.disableInteraction();
-  }
 
-  setPosition(nodeWidth: number): void {
     this.position.x = nodeWidth * 0.5 - this.width * 0.5;
     this.position.y = 5;
   }
+}
 
-  setZIndex(): void {
-    this.zIndex = 2;
-  }
+class TitleBackground extends PIXI.Graphics {
+  constructor(nodeWidth: number) {
+    super();
 
-  disableInteraction(): void {
-    this.interactive = false;
+    const backgroundHeight = 22;
+
+    this.beginFill(0x05b1bc);
+    this.drawRoundedRect(0, 0, nodeWidth, backgroundHeight, 0);
+    this.endFill();
   }
 }
