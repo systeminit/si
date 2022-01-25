@@ -31,27 +31,22 @@
               v-if="activeView === 'attribute'"
               type="disc"
               stroke="cyan"
-              size="1.5rem"
+              size="1.1em"
             />
-            <VueFeather
-              v-else
-              type="disc"
-              class="text-gray-300"
-              size="1.5rem"
-            />
+            <VueFeather v-else type="disc" class="text-gray-300" size="1.1em" />
           </button>
           <button class="pl-1 focus:outline-none" @click="setToQualification">
             <VueFeather
               v-if="activeView === 'qualification'"
               type="check-square"
               stroke="cyan"
-              size="1.5rem"
+              size="1.1em"
             />
             <VueFeather
               v-else
               type="check-square"
               class="text-gray-300"
-              size="1.5rem"
+              size="1.1em"
             />
           </button>
         </div>
@@ -68,9 +63,9 @@
               v-if="activeView === 'resource'"
               type="box"
               stroke="cyan"
-              size="1.5rem"
+              size="1.1em"
             />
-            <VueFeather v-else type="box" class="text-gray-300" size="1.5rem" />
+            <VueFeather v-else type="box" class="text-gray-300" size="1.1em" />
           </button>
         </div>
       </div>
