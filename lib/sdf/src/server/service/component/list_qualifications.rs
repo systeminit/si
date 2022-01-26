@@ -1,7 +1,7 @@
 use axum::extract::Query;
 use axum::Json;
 use dal::{
-    qualification::{QualificationError, QualificationResult, QualificationView},
+    qualification::QualificationView, qualification_resolver::UNSET_ID_VALUE, Component,
     ComponentId, StandardModel, Tenancy, Visibility, Workspace, WorkspaceId,
 };
 use serde::{Deserialize, Serialize};
@@ -18,11 +18,7 @@ pub struct ListQualificationsRequest {
     pub visibility: Visibility,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct QualificationResponse {
-    pub qualification: QualificationView,
-}
+pub type QualificationResponse = Vec<QualificationView>;
 
 pub async fn list_qualifications(
     mut txn: PgRoTxn,
@@ -39,25 +35,20 @@ pub async fn list_qualifications(
     )
     .await?
     .ok_or(ComponentError::InvalidRequest)?;
-    let _tenancy = Tenancy::new_workspace(vec![*workspace.id()]);
-    let qualification = QualificationView {
-        message: "I don't think this field needs to exist".to_owned(),
-        // If you run the beast catches you, if you stay the beast eats you
-        title: Some("Se correr o bicho pega, se ficar o bicho come".to_owned()),
-        link: Some("https://www.youtube.com/watch?v=Kw-6mm6Uu7c".to_owned()),
-        result: Some(QualificationResult {
-            success: false,
-            errors: vec![
-                QualificationError {
-                    message: "🥸".to_owned(),
-                },
-                QualificationError {
-                    message: "Run to the hills".to_owned(),
-                },
-            ],
-        }),
-        ..QualificationView::default()
-    };
+
+    // This is a "read tenancy" that includes schemas.
+    let mut tenancy = Tenancy::new_workspace(vec![*workspace.id()]);
+    tenancy.universal = true;
+
+    let qualifications = Component::list_qualifications_by_component_id(
+        &txn,
+        &tenancy,
+        &request.visibility,
+        request.component_id,
+        UNSET_ID_VALUE.into(),
+    )
+    .await?;
+
     txn.commit().await?;
-    Ok(Json(QualificationResponse { qualification }))
+    Ok(Json(qualifications))
 }
