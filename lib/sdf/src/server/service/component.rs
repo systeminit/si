@@ -1,15 +1,17 @@
 use axum::body::{Bytes, Full};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
-use axum::routing::get;
+use axum::routing::{get, post};
 use axum::Json;
 use axum::Router;
 use dal::{ComponentError as DalComponentError, SchemaError, StandardModelError, WsEventError};
 use std::convert::Infallible;
 use thiserror::Error;
 
+pub mod get_resource;
 pub mod list_components_names_only;
 pub mod list_qualifications;
+pub mod sync_resource;
 
 #[derive(Debug, Error)]
 pub enum ComponentError {
@@ -64,4 +66,6 @@ pub fn routes() -> Router {
             "/list_qualifications",
             get(list_qualifications::list_qualifications),
         )
+        .route("/get_resource", get(get_resource::get_resource))
+        .route("/sync_resource", post(sync_resource::sync_resource))
 }
