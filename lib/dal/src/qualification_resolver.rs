@@ -176,16 +176,22 @@ impl QualificationResolver {
         QualificationResolverResult
     );
 
-    pub async fn find_for_prototype(
+    pub async fn find_for_prototype_and_component(
         txn: &PgTxn<'_>,
         tenancy: &Tenancy,
         visibility: &Visibility,
         qualification_prototype_id: &QualificationPrototypeId,
+        component_id: &ComponentId,
     ) -> QualificationResolverResult<Vec<Self>> {
         let rows = txn
             .query(
                 FIND_FOR_PROTOTYPE,
-                &[&tenancy, &visibility, qualification_prototype_id],
+                &[
+                    &tenancy,
+                    &visibility,
+                    qualification_prototype_id,
+                    component_id,
+                ],
             )
             .await?;
         let object = objects_from_rows(rows)?;

@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::convert::TryFrom;
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -17,19 +18,20 @@ use crate::func::backend::{FuncBackendJsQualificationArgs, FuncBackendStringArgs
 use crate::func::binding::{FuncBinding, FuncBindingError};
 use crate::func::binding_return_value::FuncBindingReturnValue;
 use crate::node::NodeKind;
+use crate::qualification::QualificationView;
 use crate::qualification_resolver::QualificationResolverContext;
 use crate::schema::variant::{SchemaVariantError, SchemaVariantId};
 use crate::schema::SchemaVariant;
 use crate::validation_resolver::ValidationResolverContext;
 
 use crate::{
-    impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
-    standard_model_has_many, AttributeResolver, AttributeResolverError, Func, FuncBackendKind,
-    HistoryActor, HistoryEventError, Node, NodeError, Prop, PropId, PropKind,
-    QualificationPrototype, QualificationPrototypeError, QualificationResolver,
-    QualificationResolverError, Schema, SchemaError, SchemaId, StandardModel, StandardModelError,
-    Tenancy, Timestamp, ValidationPrototype, ValidationPrototypeError, ValidationResolver,
-    ValidationResolverError, Visibility,
+    impl_standard_model, pk, qualification::QualificationError, standard_model,
+    standard_model_accessor, standard_model_belongs_to, standard_model_has_many, AttributeResolver,
+    AttributeResolverError, Func, FuncBackendKind, HistoryActor, HistoryEventError, Node,
+    NodeError, Prop, PropId, PropKind, QualificationPrototype, QualificationPrototypeError,
+    QualificationResolver, QualificationResolverError, Schema, SchemaError, SchemaId,
+    StandardModel, StandardModelError, SystemId, Tenancy, Timestamp, ValidationPrototype,
+    ValidationPrototypeError, ValidationResolver, ValidationResolverError, Visibility,
 };
 
 #[derive(Error, Debug)]
@@ -76,9 +78,13 @@ pub enum ComponentError {
     ValidationResolver(#[from] ValidationResolverError),
     #[error("validation prototype error: {0}")]
     ValidationPrototype(#[from] ValidationPrototypeError),
+    #[error("qualification view error: {0}")]
+    QualificationView(#[from] QualificationError),
 }
 
 pub type ComponentResult<T> = Result<T, ComponentError>;
+
+const LIST_QUALIFICATIONS: &str = include_str!("./queries/component_list_qualifications.sql");
 
 pk!(ComponentPk);
 pk!(ComponentId);
@@ -414,6 +420,48 @@ impl Component {
         )
         .await?;
 
+        component
+            .check_validations(
+                txn,
+                nats,
+                veritech.clone(),
+                tenancy,
+                visibility,
+                history_actor,
+                &prop,
+                &value,
+                created,
+            )
+            .await?;
+
+        component
+            .check_qualifications(
+                txn,
+                nats,
+                veritech,
+                tenancy,
+                visibility,
+                history_actor,
+                UNSET_ID_VALUE.into(),
+            )
+            .await?;
+
+        Ok(())
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub async fn check_validations(
+        &self,
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
+        veritech: veritech::Client,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+        history_actor: &HistoryActor,
+        prop: &Prop,
+        value: &str, // This is obviously wrong, as we don't know what kind of value this is.
+        created: bool,
+    ) -> ComponentResult<()> {
         let validators = ValidationPrototype::find_for_prop(
             txn,
             tenancy,
@@ -431,7 +479,7 @@ impl Component {
                 FuncBackendKind::ValidateStringValue => {
                     let mut args =
                         FuncBackendValidateStringValueArgs::deserialize(validator.args())?;
-                    args.value = Some(value.clone());
+                    args.value = Some(value.to_string());
                     let args_json = serde_json::to_value(args)?;
                     let (func_binding, binding_created) = FuncBinding::find_or_create(
                         txn,
@@ -480,7 +528,7 @@ impl Component {
                 } else {
                     let mut validation_resolver_context = ValidationResolverContext::new();
                     validation_resolver_context.set_prop_id(*prop.id());
-                    validation_resolver_context.set_component_id(*component.id());
+                    validation_resolver_context.set_component_id(*self.id());
                     ValidationResolver::new(
                         txn,
                         nats,
@@ -496,27 +544,40 @@ impl Component {
                 }
             }
         }
+        Ok(())
+    }
 
+    #[allow(clippy::too_many_arguments)]
+    pub async fn check_qualifications(
+        &self,
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
+        veritech: veritech::Client,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+        history_actor: &HistoryActor,
+        system_id: SystemId,
+    ) -> ComponentResult<()> {
         let mut schema_tenancy = tenancy.clone();
         schema_tenancy.universal = true;
 
-        let schema = component
+        let schema = self
             .schema_with_tenancy(txn, &schema_tenancy, visibility)
             .await?
             .ok_or(ComponentError::SchemaNotFound)?;
-        let schema_variant = component
+        let schema_variant = self
             .schema_variant_with_tenancy(txn, &schema_tenancy, visibility)
             .await?
             .ok_or(ComponentError::SchemaVariantNotFound)?;
 
         let qualification_prototypes = QualificationPrototype::find_for_component(
             txn,
-            tenancy,
+            &schema_tenancy,
             visibility,
-            *component.id(),
+            *self.id(),
             *schema.id(),
             *schema_variant.id(),
-            UNSET_ID_VALUE.into(),
+            system_id,
         )
         .await?;
 
@@ -530,7 +591,7 @@ impl Component {
                     txn,
                     &schema_tenancy,
                     visibility,
-                    &component_id,
+                    self.id(),
                 )
                 .await?,
             };
@@ -554,13 +615,15 @@ impl Component {
                 // an FYI.
                 func_binding.execute(txn, nats, veritech.clone()).await?;
 
-                let mut existing_resolvers = QualificationResolver::find_for_prototype(
-                    txn,
-                    tenancy,
-                    visibility,
-                    prototype.id(),
-                )
-                .await?;
+                let mut existing_resolvers =
+                    QualificationResolver::find_for_prototype_and_component(
+                        txn,
+                        &schema_tenancy,
+                        visibility,
+                        prototype.id(),
+                        self.id(),
+                    )
+                    .await?;
 
                 // If we do not have one, create the qualification resolver. If we do, update the
                 // func binding id to point to the new value.
@@ -576,7 +639,7 @@ impl Component {
                         .await?;
                 } else {
                     let mut resolver_context = QualificationResolverContext::new();
-                    resolver_context.set_component_id(*component.id());
+                    resolver_context.set_component_id(*self.id());
                     QualificationResolver::new(
                         txn,
                         nats,
@@ -594,6 +657,58 @@ impl Component {
         }
 
         Ok(())
+    }
+
+    #[tracing::instrument(skip(txn))]
+    pub async fn list_qualifications(
+        &self,
+        txn: &PgTxn<'_>,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+        system_id: SystemId,
+    ) -> ComponentResult<Vec<QualificationView>> {
+        let rows = txn
+            .query(
+                LIST_QUALIFICATIONS,
+                &[&tenancy, &visibility, &self.id(), &system_id],
+            )
+            .await?;
+
+        let mut results: Vec<QualificationView> = Vec::new();
+        for row in rows.into_iter() {
+            let json: serde_json::Value = row.try_get("object")?;
+            let func_binding_return_value: FuncBindingReturnValue = serde_json::from_value(json)?;
+            let qual_view = QualificationView::try_from(func_binding_return_value)?;
+            results.push(qual_view);
+        }
+
+        Ok(results)
+    }
+
+    #[tracing::instrument(skip(txn))]
+    pub async fn list_qualifications_by_component_id(
+        txn: &PgTxn<'_>,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+        component_id: ComponentId,
+        system_id: SystemId,
+    ) -> ComponentResult<Vec<QualificationView>> {
+        let rows = txn
+            .query(
+                LIST_QUALIFICATIONS,
+                &[&tenancy, &visibility, &component_id, &system_id],
+            )
+            .await?;
+
+        let mut results: Vec<QualificationView> = Vec::new();
+        for row in rows.into_iter() {
+            let json: serde_json::Value = row.try_get("object")?;
+            let func_binding_return_value: FuncBindingReturnValue = serde_json::from_value(json)?;
+            let qual_view = QualificationView::try_from(func_binding_return_value)?;
+            results.push(qual_view);
+        }
+
+        Ok(results)
     }
 }
 
