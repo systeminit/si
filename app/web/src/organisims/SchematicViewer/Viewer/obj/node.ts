@@ -5,10 +5,12 @@ import * as MODEL from "../../model";
 
 import _ from "lodash";
 
+import { Card } from "./node/card";
+import { Sockets } from "./node/sockets";
 import { Connection } from "./connection";
-import { NodeTitle } from "./node/nodeTitle";
-import { NodeName } from "./node/nodeName";
-import { Socket, SocketType } from "./node/socket";
+import { SelectionStatus } from "./node/status";
+import { QualificationStatus } from "./node/status";
+import { ResourceStatus } from "./node/status/resource";
 
 interface Position {
   x: number;
@@ -34,7 +36,7 @@ export class Node extends PIXI.Container {
   id: string;
   title: string;
   connections: Array<Connection>;
-  selection?: PIXI.Graphics;
+  selection?: SelectionStatus;
 
   constructor(n: MODEL.Node) {
     super();
@@ -68,36 +70,61 @@ export class Node extends PIXI.Container {
 
     // Card object
     this.setCard(Math.max(n.input.length, n.output.length));
-    this.setTitle();
-    this.setName();
+    this.setSockets(n.input, n.output);
 
-    // Sockets
-    this.setInputSockets(n.input);
-    this.setOutputSockets(n.output);
+    // Selection status
+    this.setSelectionStatus(Math.max(n.input.length, n.output.length));
 
-    // Selection hilight
-    this.setSelection(Math.max(n.input.length, n.output.length));
+    this.setQualificationStatus();
+
+    this.setResourceStatus();
 
     // Shadow
     this.setShadows();
   }
 
   setCard(socketCount: number): void {
-    const card = new PIXI.Graphics()
-      .beginFill(0x282e30)
-      .drawRoundedRect(0, 0, NODE_WIDTH, this.nodeHeight(socketCount), 6)
-      .endFill();
-    card.zIndex = 1;
+    const card = new Card(
+      NODE_WIDTH,
+      this.nodeHeight(socketCount),
+      6,
+      this.title,
+      this.name,
+    );
+    card.zIndex = 0;
     this.addChild(card);
   }
 
-  setSelection(socketCount: number): void {
-    this.selection = new PIXI.Graphics()
-      .lineStyle(1, 0x4dfaff, 1, 0, false)
-      .drawRoundedRect(0, 0, NODE_WIDTH, this.nodeHeight(socketCount), 6);
-    this.selection.zIndex = 2;
+  setSelectionStatus(socketCount: number): void {
+    const status = new SelectionStatus(
+      NODE_WIDTH,
+      this.nodeHeight(socketCount),
+      6,
+    );
+    status.zIndex = 1;
+    this.selection = status;
     this.addChild(this.selection);
     this.deselect();
+  }
+
+  setQualificationStatus(): void {
+    const status = new QualificationStatus();
+    status.x = 100;
+    status.y = 78;
+    this.addChild(status);
+  }
+
+  setResourceStatus(): void {
+    const status = new ResourceStatus();
+    status.x = 120;
+    status.y = 78;
+    this.addChild(status);
+  }
+
+  setSockets(inputs: MODEL.Socket[], outputs: MODEL.Socket[]): void {
+    const sockets = new Sockets(this.id, inputs, outputs);
+    sockets.zIndex = 2;
+    this.addChild(sockets);
   }
 
   setShadows(): void {
@@ -109,61 +136,6 @@ export class Node extends PIXI.Container {
     dropShadow.alpha = 0.5;
     dropShadow.resolution = window.devicePixelRatio || 1;
     this.filters = [dropShadow];
-  }
-
-  setTitle(): void {
-    const title = new NodeTitle(this.title, NODE_WIDTH);
-    this.addChild(title);
-  }
-
-  setName(): void {
-    const name = new NodeName(this.name, NODE_WIDTH);
-    this.addChild(name);
-  }
-
-  setInputSockets(inputs: MODEL.Socket[]): void {
-    for (let i = 0; i < inputs.length; i++) {
-      const s = inputs[i];
-
-      let socketLabel = null;
-      if (s.name) {
-        socketLabel = s.name;
-      }
-
-      const socket = new Socket(
-        s.id,
-        this.id,
-        socketLabel,
-        SocketType.input,
-        {
-          x: 0,
-          y: INPUT_SOCKET_OFFSET + SOCKET_SPACING * i,
-        },
-        0xffdd44,
-      );
-      socket.zIndex = 3;
-      this.addChild(socket);
-    }
-  }
-
-  setOutputSockets(outputs: MODEL.Socket[]): void {
-    for (let i = 0; i < outputs.length; i++) {
-      const s = outputs[i];
-
-      const socket = new Socket(
-        s.id,
-        this.id,
-        null,
-        SocketType.output,
-        {
-          x: NODE_WIDTH,
-          y: OUTPUT_SOCKET_OFFSET,
-        },
-        0xeb44ff,
-      );
-      socket.zIndex = 3;
-      this.addChild(socket);
-    }
   }
 
   select(): void {

@@ -12,6 +12,7 @@ interface Point2D {
   y: number;
 }
 
+// TODO replace for smooth.SmoothGraphics?
 export class Connection extends PIXI.Graphics {
   id: string;
   kind: string;

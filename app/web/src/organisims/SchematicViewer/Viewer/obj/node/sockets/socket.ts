@@ -2,7 +2,7 @@ import * as PIXI from "pixi.js";
 
 import _ from "lodash";
 
-import { SocketConnector } from "./socketConnector";
+import { Connector } from "./connector";
 
 interface Position {
   x: number;
@@ -48,7 +48,7 @@ export class Socket extends PIXI.Container {
   }
 
   createConnector(id: string, type: SocketType, color: number): void {
-    const socket = new SocketConnector(id, type, color);
+    const socket = new Connector(id, type, color);
     this.addChild(socket);
   }
 
