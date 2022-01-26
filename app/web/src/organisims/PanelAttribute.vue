@@ -25,8 +25,14 @@
           <LockButton v-model="isPinned" />
         </div>
 
+        <!-- NOTE(nick): old-web adds items-center for this div.
+        More information: https://tailwindcss.com/docs/align-items#center
+        -->
         <div class="flex flex-row items-center">
-          <button class="pl-1 focus:outline-none" @click="setToAttribute">
+          <button
+            class="pl-1 focus:outline-none"
+            @click="setActiveView('attribute')"
+          >
             <VueFeather
               v-if="activeView === 'attribute'"
               type="disc"
@@ -35,7 +41,22 @@
             />
             <VueFeather v-else type="disc" class="text-gray-300" size="1.1em" />
           </button>
-          <button class="pl-1 focus:outline-none" @click="setToQualification">
+          <button
+            class="pl-1 focus:outline-none"
+            @click="setActiveView('code')"
+          >
+            <VueFeather
+              v-if="activeView === 'code'"
+              type="code"
+              stroke="cyan"
+              size="1.1em"
+            />
+            <VueFeather v-else type="code" class="text-gray-300" size="1.1em" />
+          </button>
+          <button
+            class="pl-1 focus:outline-none"
+            @click="setActiveView('qualification')"
+          >
             <VueFeather
               v-if="activeView === 'qualification'"
               type="check-square"
@@ -51,13 +72,65 @@
           </button>
         </div>
 
-        <!-- NOTE(nick): old-web separates resource icon from attribute and qualification icons. This separate div is
-        intentional.
+        <!-- NOTE(nick): old-web adds text-white for buttons in this div.
+        More information: https://tailwindcss.com/docs/text-color
+        -->
+        <div class="flex flex-row items-center">
+          <button
+            class="pl-1 text-white focus:outline-none"
+            @click="setActiveView('connection')"
+          >
+            <VueFeather
+              v-if="activeView === 'connection'"
+              type="link-2"
+              stroke="cyan"
+              size="1.1em"
+            />
+            <VueFeather
+              v-else
+              type="link-2"
+              class="text-gray-300"
+              size="1.1em"
+            />
+          </button>
+          <button
+            class="pl-1 text-white focus:outline-none"
+            @click="setActiveView('discovery')"
+          >
+            <VueFeather
+              v-if="activeView === 'discovery'"
+              type="at-sign"
+              stroke="cyan"
+              size="1.1em"
+            />
+            <VueFeather
+              v-else
+              type="at-sign"
+              class="text-gray-300"
+              size="1.1em"
+            />
+          </button>
+        </div>
+
+        <!-- NOTE(nick): old-web removes flex-row in this div and adds text-white for buttons in this div.
+        More information: https://tailwindcss.com/docs/flex-direction#row
         -->
         <div class="flex items-center">
           <button
             class="pl-1 text-white focus:outline-none"
-            @click="setToResource"
+            @click="setActiveView('action')"
+          >
+            <VueFeather
+              v-if="activeView === 'action'"
+              type="play"
+              stroke="cyan"
+              size="1.1em"
+            />
+            <VueFeather v-else type="play" class="text-gray-300" size="1.1em" />
+          </button>
+          <button
+            class="pl-1 text-white focus:outline-none"
+            @click="setActiveView('resource')"
           >
             <VueFeather
               v-if="activeView === 'resource'"
@@ -91,6 +164,18 @@
           v-else-if="activeView === 'resource'"
           :component-id="selectedComponentId"
         />
+        <div v-else-if="activeView === 'code'">
+          ActiveView "{{ activeView }}" not implemented
+        </div>
+        <div v-else-if="activeView === 'connection'">
+          ActiveView "{{ activeView }}" not implemented
+        </div>
+        <div v-else-if="activeView === 'discovery'">
+          ActiveView "{{ activeView }}" not implemented
+        </div>
+        <div v-else-if="activeView === 'action'">
+          ActiveView "{{ activeView }}" not implemented
+        </div>
         <div
           v-else
           class="flex flex-col items-center justify-center w-full h-full align-middle"
@@ -134,14 +219,8 @@ const props = defineProps({
 });
 
 const activeView = ref<string>("attribute");
-const setToAttribute = () => {
-  activeView.value = "attribute";
-};
-const setToQualification = () => {
-  activeView.value = "qualification";
-};
-const setToResource = () => {
-  activeView.value = "resource";
+const setActiveView = (view: string) => {
+  activeView.value = view;
 };
 
 const componentNamesOnlyList = refFrom<LabelList<number | "">>(

@@ -62,6 +62,7 @@ const { componentId } = toRefs(props);
 const editMode = refFrom<boolean>(ChangeSetService.currentEditMode());
 const sync = ref<HTMLElement | null>(null);
 
+// NOTE(nick): making this "computed" will result in the active view breaking for the attribute panel.
 const healthColor = () => {
   if (resource.value) {
     if (resource.value.health == ResourceHealth.Ok) {
