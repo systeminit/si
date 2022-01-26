@@ -1,3 +1,4 @@
+use cyclone::ResourceSyncRequest;
 use deadpool_cyclone::{
     instance::cyclone::LocalUdsInstanceSpec, CycloneClient, Manager, Pool, ProgressMessage,
     QualificationCheckRequest, ResolverFunctionRequest,
@@ -34,6 +35,8 @@ pub enum ServerError {
     QualificationCheck(#[from] deadpool_cyclone::client::QualificationCheckExecutionError),
     #[error(transparent)]
     ResolverFunction(#[from] deadpool_cyclone::client::ResolverFunctionExecutionError),
+    #[error(transparent)]
+    ResourceSync(#[from] deadpool_cyclone::client::ResourceSyncExecutionError),
     #[error("failed to setup signal handler")]
     Signal(#[source] io::Error),
     #[error(transparent)]
@@ -122,12 +125,17 @@ impl Server {
 impl Server {
     pub async fn run(self) -> Result<()> {
         let _ = join!(
+            process_qualification_check_requests_task(
+                self.nats.clone(),
+                self.cyclone_pool.clone(),
+                self.shutdown_broadcast_tx.subscribe(),
+            ),
             process_resolver_function_requests_task(
                 self.nats.clone(),
                 self.cyclone_pool.clone(),
                 self.shutdown_broadcast_tx.subscribe(),
             ),
-            process_qualification_check_requests_task(
+            process_resource_sync_requests_task(
                 self.nats.clone(),
                 self.cyclone_pool.clone(),
                 self.shutdown_broadcast_tx.subscribe(),
@@ -342,6 +350,111 @@ async fn qualification_check_request(
         .await?
         .start()
         .await?;
+
+    while let Some(msg) = progress.next().await {
+        match msg {
+            Ok(ProgressMessage::OutputStream(output)) => {
+                publisher.publish_output(&output).await?;
+            }
+            Ok(ProgressMessage::Heartbeat) => {
+                trace!("received heartbeat message");
+            }
+            Err(err) => {
+                warn!(error = ?err, "next progress message was an error, skipping to next message");
+            }
+        }
+    }
+    publisher.finalize_output().await?;
+
+    let function_result = progress.finish().await?;
+    publisher.publish_result(&function_result).await?;
+
+    Ok(())
+}
+
+async fn process_resource_sync_requests_task(
+    nats: NatsClient,
+    cyclone_pool: Pool<LocalUdsInstanceSpec>,
+    shutdown_broadcast_rx: broadcast::Receiver<()>,
+) {
+    if let Err(err) =
+        process_resource_sync_requests(nats, cyclone_pool, shutdown_broadcast_rx).await
+    {
+        warn!(error = ?err, "processing resource sync requests failed");
+    }
+}
+
+async fn process_resource_sync_requests(
+    nats: NatsClient,
+    cyclone_pool: Pool<LocalUdsInstanceSpec>,
+    mut shutdown_broadcast_rx: broadcast::Receiver<()>,
+) -> Result<()> {
+    let mut requests = Subscriber::resource_sync(&nats).await?;
+
+    loop {
+        tokio::select! {
+            // Got a broadcasted shutdown message
+            _ = shutdown_broadcast_rx.recv() => {
+                trace!("process resource sync requests task received shutdown");
+                break;
+            }
+            // Got the next message on from the subscriber
+            request = requests.next() => {
+                match request {
+                    Some(Ok(request)) => {
+                        // Spawn a task an process the request
+                        tokio::spawn(resource_sync_request_task(
+                            nats.clone(),
+                            cyclone_pool.clone(),
+                            request,
+                        ));
+                    }
+                    Some(Err(err)) => {
+                        warn!(error = ?err, "next resource sync request had error");
+                    }
+                    None => {
+                        trace!("resource sync requests subscriber stream has closed");
+                        break;
+                    }
+                }
+            }
+            // All other arms are closed, nothing left to do but return
+            else => {
+                trace!("returning with all select arms closed");
+                break
+            }
+        }
+    }
+
+    // Unsubscribe from subscription
+    requests.unsubscribe().await?;
+
+    Ok(())
+}
+
+async fn resource_sync_request_task(
+    nats: NatsClient,
+    cyclone_pool: Pool<LocalUdsInstanceSpec>,
+    request: Request<ResourceSyncRequest>,
+) {
+    if let Err(err) = resource_sync_request(nats, cyclone_pool, request).await {
+        warn!(error = ?err, "resource sync execution failed");
+    }
+}
+
+async fn resource_sync_request(
+    nats: NatsClient,
+    cyclone_pool: Pool<LocalUdsInstanceSpec>,
+    request: Request<ResourceSyncRequest>,
+) -> Result<()> {
+    let (reply_mailbox, cyclone_request) = request.into_parts();
+
+    let publisher = Publisher::new(&nats, &reply_mailbox);
+    let mut client = cyclone_pool
+        .get()
+        .await
+        .map_err(|err| ServerError::CyclonePool(Box::new(err)))?;
+    let mut progress = client.execute_sync(cyclone_request).await?.start().await?;
 
     while let Some(msg) = progress.next().await {
         match msg {
