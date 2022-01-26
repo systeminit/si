@@ -1,6 +1,7 @@
 use cyclone::{
     FunctionResult, OutputStream, QualificationCheckRequest, QualificationCheckResultSuccess,
-    ResolverFunctionRequest, ResolverFunctionResultSuccess,
+    ResolverFunctionRequest, ResolverFunctionResultSuccess, ResourceSyncRequest,
+    ResourceSyncResultSuccess,
 };
 use futures::{StreamExt, TryStreamExt};
 use serde::{de::DeserializeOwned, Serialize};
@@ -36,6 +37,16 @@ impl Client {
         Self { nats }
     }
 
+    #[instrument(name = "client.execute_qualification_check", skip_all)]
+    pub async fn execute_qualification_check(
+        &self,
+        subject: impl Into<String>,
+        output_tx: mpsc::Sender<OutputStream>,
+        request: &QualificationCheckRequest,
+    ) -> ClientResult<FunctionResult<QualificationCheckResultSuccess>> {
+        self.execute_request(subject, output_tx, request).await
+    }
+
     #[instrument(name = "client.execute_resolver_function", skip_all)]
     pub async fn execute_resolver_function(
         &self,
@@ -46,13 +57,13 @@ impl Client {
         self.execute_request(subject, output_tx, request).await
     }
 
-    #[instrument(name = "client.execute_qualification_check", skip_all)]
-    pub async fn execute_qualification_check(
+    #[instrument(name = "client.execute_resource_sync", skip_all)]
+    pub async fn execute_resource_sync(
         &self,
         subject: impl Into<String>,
         output_tx: mpsc::Sender<OutputStream>,
-        request: &QualificationCheckRequest,
-    ) -> ClientResult<FunctionResult<QualificationCheckResultSuccess>> {
+        request: &ResourceSyncRequest,
+    ) -> ClientResult<FunctionResult<ResourceSyncResultSuccess>> {
         self.execute_request(subject, output_tx, request).await
     }
 
@@ -402,6 +413,41 @@ mod tests {
                     success.message,
                     Some("name 'emacs' doesn't match pkg 'cider'".to_string())
                 );
+            }
+            FunctionResult::Failure(failure) => {
+                panic!("function did not succeed and should have: {:?}", failure)
+            }
+        }
+    }
+
+    #[test(tokio::test)]
+    async fn executes_simple_resource_sync() {
+        run_server_for_uds_cyclone().await;
+        let client = client().await;
+
+        // Not going to check output here--we aren't emitting anything
+        let (tx, mut rx) = mpsc::channel(64);
+        tokio::spawn(async move {
+            while let Some(output) = rx.recv().await {
+                info!("output: {:?}", output)
+            }
+        });
+
+        let request = ResourceSyncRequest {
+            execution_id: "7867".to_string(),
+            handler: "syncItOut".to_string(),
+            code_base64: base64::encode("function syncItOut() { return {}; }"),
+        };
+
+        let result = client
+            .execute_resource_sync("veritech.function.sync", tx, &request)
+            .await
+            .expect("failed to execute resource sync");
+
+        match result {
+            FunctionResult::Success(success) => {
+                assert_eq!(success.execution_id, "7867");
+                // TODO(fnichol): add more asserts once resource is filled in
             }
             FunctionResult::Failure(failure) => {
                 panic!("function did not succeed and should have: {:?}", failure)
