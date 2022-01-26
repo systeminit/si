@@ -8,7 +8,7 @@ use crate::{
     func::{binding::FuncBindingId, FuncId},
     impl_standard_model, pk,
     standard_model::{self, objects_from_rows},
-    standard_model_accessor, ComponentId, HistoryActor, HistoryEventError, PropId,
+    standard_model_accessor, ComponentId, HistoryActor, HistoryEventError,
     QualificationPrototypeId, SchemaId, SchemaVariantId, StandardModel, StandardModelError,
     SystemId, Tenancy, Timestamp, Visibility,
 };
@@ -35,7 +35,6 @@ const FIND_FOR_PROTOTYPE: &str =
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct QualificationResolverContext {
-    prop_id: PropId,
     component_id: ComponentId,
     schema_id: SchemaId,
     schema_variant_id: SchemaVariantId,
@@ -52,20 +51,11 @@ impl Default for QualificationResolverContext {
 impl QualificationResolverContext {
     pub fn new() -> Self {
         QualificationResolverContext {
-            prop_id: UNSET_ID_VALUE.into(),
             component_id: UNSET_ID_VALUE.into(),
             schema_id: UNSET_ID_VALUE.into(),
             schema_variant_id: UNSET_ID_VALUE.into(),
             system_id: UNSET_ID_VALUE.into(),
         }
-    }
-
-    pub fn prop_id(&self) -> PropId {
-        self.prop_id
-    }
-
-    pub fn set_prop_id(&mut self, prop_id: PropId) {
-        self.prop_id = prop_id;
     }
 
     pub fn component_id(&self) -> ComponentId {
@@ -148,14 +138,13 @@ impl QualificationResolver {
     ) -> QualificationResolverResult<Self> {
         let row = txn
             .query_one(
-                "SELECT object FROM qualification_resolver_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
+                "SELECT object FROM qualification_resolver_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9)",
                 &[
                     &tenancy,
                     &visibility,
                     &qualification_prototype_id,
                     &func_id,
                     &func_binding_id,
-                    &context.prop_id(),
                     &context.component_id(),
                     &context.schema_id(),
                     &context.schema_variant_id(),
@@ -212,8 +201,6 @@ mod test {
     fn context_builder() {
         let mut c = QualificationResolverContext::new();
         c.set_component_id(15.into());
-        c.set_prop_id(22.into());
         assert_eq!(c.component_id(), 15.into());
-        assert_eq!(c.prop_id(), 22.into());
     }
 }

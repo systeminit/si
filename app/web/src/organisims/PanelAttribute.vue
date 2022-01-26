@@ -11,7 +11,7 @@
     <template #menuButtons>
       <div class="flex flex-row items-center justify-between flex-grow">
         <div class="flex flex-row">
-          <div class="min-w-max">
+          <div v-if="componentNamesOnlyList" class="min-w-max">
             <SiSelect
               id="nodeSelect"
               v-model="selectedComponentId"
