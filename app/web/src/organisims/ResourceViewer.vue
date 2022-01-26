@@ -14,16 +14,24 @@
           class="flex items-center focus:outline-none button"
           @click="runSync()"
         >
-          <VueFeather type="refresh-cw" :stroke="healthColor()" size="1.5rem" />
+          <VueFeather type="refresh-cw" :stroke="healthColor()" size="1em" />
         </button>
-        <VueFeather v-else type="box" :stroke="healthColor()" size="1.5rem" />
+        <VueFeather v-else type="box" :stroke="healthColor()" size="1em" />
       </div>
     </div>
 
-    <div class="flex flex-row">
+    <div v-if="resource" class="flex flex-row">
       <div class="w-full h-full pt-2">
+        <div class="flex flex-row mx-2 my-1">
+          <div class="text-xs">
+            <VueFeather type="heart" :stroke="healthColor()" size="1.25em" />
+          </div>
+
+          <div class="ml-2 text-xs">
+            {{ new Date(parseInt(resource.timestamp)) }}
+          </div>
+        </div>
         <SiTextBox
-          v-if="resource"
           id="resourceJson"
           name="resourceJson"
           :placeholder="JSON.stringify(resource)"
@@ -39,12 +47,12 @@
 import { ref, defineProps, toRefs } from "vue";
 import { Resource, ResourceHealth } from "@/api/sdf/dal/resource";
 import SiTextBox from "@/atoms/SiTextBox.vue";
-import { ResourceService } from "@/service/resource";
+import { ComponentService } from "@/service/component";
 import { GlobalErrorService } from "@/service/global_error";
 import { ChangeSetService } from "@/service/change_set";
 import { fromRef, refFrom } from "vuse-rx";
 import VueFeather from "vue-feather";
-import { combineLatest, from, ReplaySubject, switchMap } from "rxjs";
+import { from, switchMap, combineLatest } from "rxjs";
 
 const props = defineProps<{
   componentId: number;
@@ -87,24 +95,29 @@ const animateSyncButton = () => {
 // subsequent values)
 const componentId$ = fromRef<number>(componentId, { immediate: true });
 
-// Then we need a replay subject that just emits true values. This is the
-// trigger for the 'sync' button to reload the data.
-const runSync$ = new ReplaySubject<true>(1);
-
-// We want it to be 'hot', meaning that any time this observable is subscribed
-// to, it has a value. So we prime it with `true`.
-runSync$.next(true);
-
-// When the user clicks the sync button, we emit a new `true` value.
 const runSync = () => {
-  runSync$.next(true);
+  animateSyncButton();
+  ComponentService.syncResource({ componentId: props.componentId }).subscribe(
+    (reply) => {
+      if (reply.error) {
+        GlobalErrorService.set(reply);
+      } else if (!reply.success) {
+        GlobalErrorService.set({
+          error: {
+            statusCode: 42,
+            code: 42,
+            message: "Sync failed silently",
+          },
+        });
+      }
+    },
+  );
 };
 
-// Compute the actual resource. First by listening to the two trigger
-// observables - the componentId$ and the runSync$. If either of those
-// emit a value, we are going to re run the pipeline that follows.
+// Fetches the resource. First by listening to componentId$.
+// If it emits a value, we are re run the pipeline that follows.
 //
-// The pipeline starts with calling the syncResource service, and switchMap-ing
+// The pipeline starts with calling the getResource service, and switchMap-ing
 // to the result of that observable. (So now we are emitting a value every time
 // this observable emits)
 //
@@ -112,13 +125,18 @@ const runSync = () => {
 // check it for errors (if there are errors, set the resource to null). Otherwise
 // we set the resource to the returned value, and we're done.
 const resource = refFrom<Resource | null>(
-  combineLatest([componentId$, runSync$]).pipe(
+  combineLatest([componentId$]).pipe(
     switchMap(([componentId]) => {
-      animateSyncButton();
-      return ResourceService.syncResource({ componentId });
+      if (componentId) {
+        return ComponentService.getResource({ componentId });
+      } else {
+        return from([null]);
+      }
     }),
     switchMap((reply) => {
-      if (reply.error) {
+      if (reply === null) {
+        return from([null]);
+      } else if (reply.error) {
         GlobalErrorService.set(reply);
         return from([null]);
       } else {
