@@ -640,6 +640,7 @@ dependencies = [
  "tokio-postgres",
  "tokio-stream",
  "url",
+ "uuid",
  "veritech",
 ]
 
@@ -3576,6 +3577,7 @@ dependencies = [
  "toml",
  "tracing",
  "tracing-subscriber",
+ "uuid",
 ]
 
 [[package]]

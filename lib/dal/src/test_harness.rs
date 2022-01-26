@@ -4,6 +4,7 @@ use anyhow::Result;
 use lazy_static::lazy_static;
 use names::{Generator, Name};
 use si_data::{NatsClient, NatsConfig, NatsTxn, PgPool, PgPoolConfig, PgTxn};
+use uuid::Uuid;
 use veritech::{Instance, StandardConfig};
 
 use crate::{
@@ -58,6 +59,7 @@ pub struct TestContext {
     tmp_event_log_fs_root: tempfile::TempDir,
     pub pg: PgPool,
     pub nats_conn: NatsClient,
+    pub veritech: veritech::Client,
     pub jwt_secret_key: JwtSecretKey,
     pub telemetry: telemetry::NoopClient,
 }
@@ -75,6 +77,14 @@ impl TestContext {
         let nats_conn = NatsClient::new(&settings.nats)
             .await
             .expect("failed to connect to NATS");
+        // Create a dedicated Veritech server with a unique subject prefix for each test
+        let nats_subject_prefix = nats_prefix();
+        let veritech_server =
+            veritech_server_for_uds_cyclone(settings.nats.clone(), nats_subject_prefix.clone())
+                .await;
+        tokio::spawn(veritech_server.run());
+        let veritech =
+            veritech::Client::with_subject_prefix(nats_conn.clone(), nats_subject_prefix);
         let secret_key = settings.jwt_encrypt.clone();
         let telemetry = telemetry::NoopClient;
 
@@ -82,13 +92,19 @@ impl TestContext {
             tmp_event_log_fs_root,
             pg,
             nats_conn,
+            veritech,
             jwt_secret_key: secret_key,
             telemetry,
         }
     }
 
-    pub fn entries(&self) -> (&PgPool, &NatsClient, &JwtSecretKey) {
-        (&self.pg, &self.nats_conn, &self.jwt_secret_key)
+    pub fn entries(&self) -> (&PgPool, &NatsClient, veritech::Client, &JwtSecretKey) {
+        (
+            &self.pg,
+            &self.nats_conn,
+            self.veritech.clone(),
+            &self.jwt_secret_key,
+        )
     }
 
     /// Gets a reference to the test context's telemetry.
@@ -97,25 +113,35 @@ impl TestContext {
     }
 }
 
-async fn veritech_server_for_uds_cyclone(nats_config: NatsConfig) -> veritech::Server {
+async fn veritech_server_for_uds_cyclone(
+    nats_config: NatsConfig,
+    subject_prefix: String,
+) -> veritech::Server {
     let cyclone_spec = veritech::CycloneSpec::LocalUds(
         veritech::LocalUdsInstance::spec()
             .try_cyclone_cmd_path("../../target/debug/cyclone")
             .expect("failed to setup cyclone_cmd_path")
             .try_lang_server_cmd_path("../../bin/lang-js/target/lang-js")
             .expect("failed to setup lang_js_cmd_path")
+            .qualification()
             .resolver()
+            .sync()
             .build()
             .expect("failed to build cyclone spec"),
     );
     let config = veritech::Config::builder()
         .nats(nats_config)
+        .subject_prefix(subject_prefix)
         .cyclone_spec(cyclone_spec)
         .build()
         .expect("failed to build spec");
     veritech::Server::for_cyclone_uds(config)
         .await
         .expect("failed to create server")
+}
+
+fn nats_prefix() -> String {
+    Uuid::new_v4().to_simple().to_string()
 }
 
 pub async fn one_time_setup() -> Result<()> {
@@ -130,13 +156,13 @@ pub async fn one_time_setup() -> Result<()> {
         .await
         .expect("failed to connect to NATS");
 
-    // Note(paulo): is there a race condition here? (veritech server booting while we make requests to it)
-    tokio::spawn(
-        veritech_server_for_uds_cyclone(SETTINGS.nats.clone())
-            .await
-            .run(),
-    );
-    let veritech = veritech::Client::new(nats_conn.clone());
+    // Start up a Veritech server as a task exclusively to allow the migrations to run
+    let nats_subject_prefix = nats_prefix();
+    let veritech_server =
+        veritech_server_for_uds_cyclone(SETTINGS.nats.clone(), nats_subject_prefix.clone()).await;
+    let veritech_server_handle = veritech_server.shutdown_handle();
+    tokio::spawn(veritech_server.run());
+    let veritech = veritech::Client::with_subject_prefix(nats_conn.clone(), nats_subject_prefix);
 
     let pg = PgPool::new(&SETTINGS.pg)
         .await
@@ -160,6 +186,10 @@ pub async fn one_time_setup() -> Result<()> {
     txn.commit().await?;
 
     crate::migrate_builtin_schemas(&pg, &nats_conn, veritech).await?;
+
+    // Shutdown the Veritech server (each test gets their own server instance with an exclusively
+    // unique subject prefix)
+    veritech_server_handle.shutdown().await;
 
     *finished = true;
     Ok(())

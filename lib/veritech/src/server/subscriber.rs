@@ -10,7 +10,12 @@ use futures_lite::FutureExt;
 use pin_project_lite::pin_project;
 use serde::de::DeserializeOwned;
 use si_data::{nats, NatsClient};
+use telemetry::prelude::*;
 use thiserror::Error;
+
+use crate::{
+    nats_qualification_check_subject, nats_resolver_function_subject, nats_resource_sync_subject,
+};
 
 #[derive(Error, Debug)]
 pub enum SubscriberError {
@@ -35,9 +40,15 @@ pub struct Subscriber;
 impl Subscriber {
     pub async fn qualification_check(
         nats: &NatsClient,
+        subject_prefix: Option<&str>,
     ) -> Result<Subscription<QualificationCheckRequest>> {
+        let subject = nats_qualification_check_subject(subject_prefix);
+        debug!(
+            messaging.destination = &subject.as_str(),
+            "subscribing for qualification check requests"
+        );
         let inner = nats
-            .subscribe("veritech.function.qualification")
+            .subscribe(subject)
             .await
             .map_err(SubscriberError::NatsSubscribe)?;
 
@@ -49,9 +60,15 @@ impl Subscriber {
 
     pub async fn resolver_function(
         nats: &NatsClient,
+        subject_prefix: Option<&str>,
     ) -> Result<Subscription<ResolverFunctionRequest>> {
+        let subject = nats_resolver_function_subject(subject_prefix);
+        debug!(
+            messaging.destination = &subject.as_str(),
+            "subscribing for resolver function requests"
+        );
         let inner = nats
-            .subscribe("veritech.function.resolver")
+            .subscribe(subject)
             .await
             .map_err(SubscriberError::NatsSubscribe)?;
 
@@ -61,9 +78,17 @@ impl Subscriber {
         })
     }
 
-    pub async fn resource_sync(nats: &NatsClient) -> Result<Subscription<ResourceSyncRequest>> {
+    pub async fn resource_sync(
+        nats: &NatsClient,
+        subject_prefix: Option<&str>,
+    ) -> Result<Subscription<ResourceSyncRequest>> {
+        let subject = nats_resource_sync_subject(subject_prefix);
+        debug!(
+            messaging.destination = &subject.as_str(),
+            "subscribing for resource sync requests"
+        );
         let inner = nats
-            .subscribe("veritech.function.sync")
+            .subscribe(subject)
             .await
             .map_err(SubscriberError::NatsSubscribe)?;
 

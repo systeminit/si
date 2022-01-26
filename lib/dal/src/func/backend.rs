@@ -191,7 +191,7 @@ impl FuncBackendJsString {
 
         let result = self
             .veritech
-            .execute_resolver_function("veritech.function.resolver", self.output_tx, &self.request)
+            .execute_resolver_function(self.output_tx, &self.request)
             .await
             .map_err(|err| span.record_err(err))?;
         let value = match result {
@@ -270,11 +270,7 @@ impl FuncBackendJsQualification {
 
         let result = self
             .veritech
-            .execute_qualification_check(
-                "veritech.function.qualification",
-                self.output_tx,
-                &self.request,
-            )
+            .execute_qualification_check(self.output_tx, &self.request)
             .await
             .map_err(|err| span.record_err(err))?;
         let value = match result {

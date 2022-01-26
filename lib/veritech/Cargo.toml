@@ -50,3 +50,4 @@ indoc = "1.0.3"
 test-env-log = { version = "0.2.7", default-features = false, features = ["trace"] }
 tracing = { version = "0.1" }
 tracing-subscriber = { version = "0.2.19", default-features = false, features = ["env-filter", "fmt"] }
+uuid = { version = "0.8.2", features = ["v4"] }

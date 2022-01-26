@@ -36,6 +36,9 @@ pub struct Config {
     #[builder(default = "NatsConfig::default()")]
     nats: NatsConfig,
 
+    #[builder(setter(into, strip_option), default)]
+    subject_prefix: Option<String>,
+
     cyclone_spec: CycloneSpec,
 }
 
@@ -108,6 +111,11 @@ impl Config {
     #[must_use]
     pub fn nats(&self) -> &NatsConfig {
         &self.nats
+    }
+
+    /// Gets a reference to the config's subject prefix.
+    pub fn subject_prefix(&self) -> Option<&str> {
+        self.subject_prefix.as_deref()
     }
 }
 
