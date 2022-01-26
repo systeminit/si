@@ -36,7 +36,7 @@ async fn run(args: args::Args, mut telemetry: telemetry::Client) -> Result<()> {
     // service boots??
     //
     // See: https://app.shortcut.com/systeminit/story/1934/sdf-mutex-poison-panic-on-launch-with-opentelemetry-exporter
-    let disable_opentelemetry = args.disable_opentelemetry;
+    let _disable_opentelemetry = args.disable_opentelemetry;
     telemetry.disable_opentelemetry().await?;
     // if args.disable_opentelemetry {
     //     telemetry.disable_opentelemetry().await?;
@@ -71,9 +71,9 @@ async fn run(args: args::Args, mut telemetry: telemetry::Client) -> Result<()> {
     }
 
     // TODO(fnichol): re-enable, which we shouldn't need in the long run
-    if !disable_opentelemetry {
-        telemetry.enable_opentelemetry().await?;
-    }
+    //if !disable_opentelemetry {
+    //    telemetry.enable_opentelemetry().await?;
+    //}
 
     start_tracing_level_signal_handler_task(&telemetry)?;
 

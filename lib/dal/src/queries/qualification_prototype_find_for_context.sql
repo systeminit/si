@@ -10,7 +10,9 @@ FROM qualification_prototypes
 WHERE in_tenancy_v1($1, qualification_prototypes.tenancy_universal, qualification_prototypes.tenancy_billing_account_ids, qualification_prototypes.tenancy_organization_ids,
     qualification_prototypes.tenancy_workspace_ids)
   AND is_visible_v1($2, qualification_prototypes.visibility_change_set_pk, qualification_prototypes.visibility_edit_session_pk, qualification_prototypes.visibility_deleted)
-  AND qualification_prototypes.component_id = $3
+  AND (qualification_prototypes.schema_id = $6
+          OR qualification_prototypes.schema_variant_id = $5
+          OR qualification_prototypes.component_id = $3)
   AND (qualification_prototypes.system_id = $4 OR qualification_prototypes.system_id = -1)
 ORDER BY qualification_prototypes.id,
     visibility_change_set_pk DESC,

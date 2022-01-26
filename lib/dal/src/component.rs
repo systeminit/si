@@ -13,7 +13,7 @@ use crate::edit_field::{
     EditFieldObjectKind, EditFields, TextWidget, Widget,
 };
 use crate::func::backend::validation::{FuncBackendValidateStringValueArgs, ValidationError};
-use crate::func::backend::FuncBackendStringArgs;
+use crate::func::backend::{FuncBackendJsQualificationArgs, FuncBackendStringArgs};
 use crate::func::binding::{FuncBinding, FuncBindingError};
 use crate::func::binding_return_value::FuncBindingReturnValue;
 use crate::node::NodeKind;
@@ -218,77 +218,6 @@ impl Component {
         component
             .set_schema_variant(txn, nats, visibility, history_actor, schema_variant.id())
             .await?;
-
-        let qualification_prototypes = QualificationPrototype::find_for_component_id(
-            txn,
-            tenancy,
-            visibility,
-            *component.id(),
-            UNSET_ID_VALUE.into(),
-        )
-        .await?;
-
-        for prototype in qualification_prototypes {
-            let func = Func::get_by_id(txn, &schema_tenancy, visibility, &prototype.func_id())
-                .await?
-                .ok_or_else(|| ComponentError::MissingFunc(prototype.func_id().to_string()))?;
-
-            let (func_binding, created) = FuncBinding::find_or_create(
-                txn,
-                nats,
-                &schema_tenancy,
-                visibility,
-                history_actor,
-                prototype.args().clone(),
-                prototype.func_id(),
-                *func.backend_kind(),
-            )
-            .await?;
-
-            if created {
-                // Note for future humans - if this isn't a built in, then we need to
-                // think about execution time. Probably higher up than this? But just
-                // an FYI.
-                func_binding.execute(txn, nats, veritech.clone()).await?;
-
-                let mut existing_resolvers = QualificationResolver::find_for_prototype(
-                    txn,
-                    tenancy,
-                    visibility,
-                    prototype.id(),
-                )
-                .await?;
-
-                // If we do not have one, create the qualification resolver. If we do, update the
-                // func binding id to point to the new value.
-                if let Some(mut resolver) = existing_resolvers.pop() {
-                    resolver
-                        .set_func_binding_id(
-                            txn,
-                            nats,
-                            visibility,
-                            history_actor,
-                            *func_binding.id(),
-                        )
-                        .await?;
-                } else {
-                    let mut resolver_context = QualificationResolverContext::new();
-                    resolver_context.set_component_id(*component.id());
-                    QualificationResolver::new(
-                        txn,
-                        nats,
-                        tenancy,
-                        visibility,
-                        history_actor,
-                        *prototype.id(),
-                        *func.id(),
-                        *func_binding.id(),
-                        resolver_context,
-                    )
-                    .await?;
-                }
-            }
-        }
 
         // Need to flesh out node so that the template data is also included in the node we
         // persist. But it isn't, - our node is anemic.
@@ -571,11 +500,22 @@ impl Component {
         let mut schema_tenancy = tenancy.clone();
         schema_tenancy.universal = true;
 
-        let qualification_prototypes = QualificationPrototype::find_for_component_id(
+        let schema = component
+            .schema_with_tenancy(txn, &schema_tenancy, visibility)
+            .await?
+            .ok_or(ComponentError::SchemaNotFound)?;
+        let schema_variant = component
+            .schema_variant_with_tenancy(txn, &schema_tenancy, visibility)
+            .await?
+            .ok_or(ComponentError::SchemaVariantNotFound)?;
+
+        let qualification_prototypes = QualificationPrototype::find_for_component(
             txn,
             tenancy,
             visibility,
             *component.id(),
+            *schema.id(),
+            *schema_variant.id(),
             UNSET_ID_VALUE.into(),
         )
         .await?;
@@ -585,13 +525,24 @@ impl Component {
                 .await?
                 .ok_or_else(|| ComponentError::MissingFunc(prototype.func_id().to_string()))?;
 
+            let args = FuncBackendJsQualificationArgs {
+                component: ComponentQualificationView::new(
+                    txn,
+                    &schema_tenancy,
+                    visibility,
+                    &component_id,
+                )
+                .await?,
+            };
+            let json_args = serde_json::to_value(args)?;
+
             let (func_binding, created) = FuncBinding::find_or_create(
                 txn,
                 nats,
                 &schema_tenancy,
                 visibility,
                 history_actor,
-                prototype.args().clone(),
+                json_args,
                 prototype.func_id(),
                 *func.backend_kind(),
             )
@@ -851,7 +802,26 @@ impl EditFieldAble for Component {
 #[serde(rename_all = "camelCase")]
 pub struct ComponentQualificationView {
     name: String,
-    properties: HashMap<String, Option<serde_json::Value>>,
+    properties: HashMap<String, serde_json::Value>,
+}
+
+// NOTE: These types are identical. I suspect we only need one. -- Adam
+impl From<veritech::QualificationCheckComponent> for ComponentQualificationView {
+    fn from(c: veritech::QualificationCheckComponent) -> Self {
+        ComponentQualificationView {
+            name: c.name,
+            properties: c.properties,
+        }
+    }
+}
+
+impl From<ComponentQualificationView> for veritech::QualificationCheckComponent {
+    fn from(c: ComponentQualificationView) -> Self {
+        veritech::QualificationCheckComponent {
+            name: c.name,
+            properties: c.properties,
+        }
+    }
 }
 
 impl ComponentQualificationView {
@@ -868,15 +838,31 @@ impl ComponentQualificationView {
             .await?
             .ok_or(ComponentError::NotFound(*id))?;
 
+        Self::from_component(txn, &tenancy, visibility, component).await
+    }
+
+    pub async fn from_component(
+        txn: &PgTxn<'_>,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+        component: Component,
+    ) -> ComponentResult<Self> {
+        let mut tenancy = tenancy.clone();
+        tenancy.universal = true;
+
         let mut qualification_view = Self {
             name: component.name().into(),
             properties: HashMap::new(),
         };
 
-        for edit_field in Component::get_edit_fields(txn, &tenancy, visibility, id).await? {
-            qualification_view
-                .properties
-                .insert(edit_field.name, edit_field.value);
+        for edit_field in
+            Component::get_edit_fields(txn, &tenancy, visibility, component.id()).await?
+        {
+            // This whole segment needs to be replaced with something that can handle the
+            // full complexity here.
+            if let Some(v) = edit_field.value {
+                qualification_view.properties.insert(edit_field.name, v);
+            }
         }
 
         Ok(qualification_view)

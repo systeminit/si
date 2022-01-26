@@ -221,7 +221,6 @@ async fn qualification_view() {
         json!({
             "name": "mastodon",
             "properties": {
-                "some_property": null,
                 "name": "mastodon"
             }
         }),

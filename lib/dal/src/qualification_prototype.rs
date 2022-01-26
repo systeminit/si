@@ -25,6 +25,14 @@ pub enum QualificationPrototypeError {
     HistoryEvent(#[from] HistoryEventError),
     #[error("standard model error: {0}")]
     StandardModelError(#[from] StandardModelError),
+    #[error("component not found: {0}")]
+    ComponentNotFound(ComponentId),
+    #[error("component error: {0}")]
+    Component(String),
+    #[error("schema not found")]
+    SchemaNotFound,
+    #[error("schema variant not found")]
+    SchemaVariantNotFound,
 }
 
 pub type QualificationPrototypeResult<T> = Result<T, QualificationPrototypeError>;
@@ -165,17 +173,26 @@ impl QualificationPrototype {
     standard_model_accessor!(args, Json<JsonValue>, QualificationPrototypeResult);
 
     #[allow(clippy::too_many_arguments)]
-    pub async fn find_for_component_id(
+    pub async fn find_for_component(
         txn: &PgTxn<'_>,
         tenancy: &Tenancy,
         visibility: &Visibility,
         component_id: ComponentId,
+        schema_id: SchemaId,
+        schema_variant_id: SchemaVariantId,
         system_id: SystemId,
     ) -> QualificationPrototypeResult<Vec<Self>> {
         let rows = txn
             .query(
                 FIND_FOR_CONTEXT,
-                &[&tenancy, &visibility, &component_id, &system_id],
+                &[
+                    &tenancy,
+                    &visibility,
+                    &component_id,
+                    &system_id,
+                    &schema_variant_id,
+                    &schema_id,
+                ],
             )
             .await?;
         let object = objects_from_rows(rows)?;

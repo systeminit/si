@@ -7,9 +7,9 @@ use thiserror::Error;
 
 use serde_json::Value as JsonValue;
 use tokio::sync::mpsc;
-use veritech::{Client, QualificationCheckComponent, QualificationCheckResultSuccess};
+use veritech::{Client, QualificationCheckResultSuccess};
 
-use crate::func::backend::FuncBackendJsQualification;
+use crate::func::backend::{FuncBackendJsQualification, FuncBackendJsQualificationArgs};
 use crate::{
     func::backend::{
         validation::{FuncBackendValidateStringValue, FuncBackendValidateStringValueArgs},
@@ -258,13 +258,13 @@ impl FuncBinding {
                     .code_base64()
                     .ok_or(FuncBindingError::JsFuncNotFound(self.pk))?;
 
-                // NOTE(nick): deserialize value directly into the component that veritech expects.
-                let component = QualificationCheckComponent::deserialize(&self.args)?;
+                let backend_args: FuncBackendJsQualificationArgs =
+                    serde_json::from_value(self.args.clone())?;
                 let return_value = FuncBackendJsQualification::new(
                     veritech,
                     tx,
                     handler.to_owned(),
-                    component,
+                    backend_args.component.into(),
                     code_base64.to_owned(),
                 )
                 .execute()
