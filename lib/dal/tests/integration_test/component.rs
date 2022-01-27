@@ -3,8 +3,7 @@ use crate::test_setup;
 use dal::qualification_resolver::UNSET_ID_VALUE;
 use dal::test_harness::{create_schema, create_schema_variant};
 use dal::{
-    Component, ComponentQualificationView, HistoryActor, Prop, PropKind, Schema, SchemaKind,
-    StandardModel, Tenancy, Visibility,
+    Component, HistoryActor, Prop, PropKind, Schema, SchemaKind, StandardModel, Tenancy, Visibility,
 };
 use serde_json::json;
 
@@ -211,14 +210,14 @@ async fn qualification_view() {
     .await
     .expect("cannot add schema variant for prop");
 
-    let component_qualification_view =
-        ComponentQualificationView::new(&txn, &tenancy, &visibility, component.id())
-            .await
-            .expect("cannot create ComponentQualificationView");
+    let qualification_check_component = component
+        .veritech_qualification_check_component(&txn, &tenancy, &visibility)
+        .await
+        .expect("cannot create QualificationCheckComponent");
 
     assert_eq!(
-        serde_json::to_value(&component_qualification_view)
-            .expect("cannot serialize ComponentQualificationView"),
+        serde_json::to_value(&qualification_check_component)
+            .expect("cannot serialize QualificationCheckComponent"),
         json!({
             "name": "mastodon",
             "properties": {

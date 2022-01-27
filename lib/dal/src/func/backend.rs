@@ -8,10 +8,10 @@ use tokio::sync::mpsc;
 
 use veritech::{
     Client, FunctionResult, OutputStream, QualificationCheckComponent, QualificationCheckRequest,
-    ResolverFunctionRequest,
+    ResolverFunctionRequest, ResourceSyncComponent, ResourceSyncRequest,
 };
 
-use crate::{edit_field::ToSelectWidget, label_list::ToLabelList, ComponentQualificationView};
+use crate::{edit_field::ToSelectWidget, label_list::ToLabelList};
 
 pub mod validation;
 
@@ -58,6 +58,7 @@ pub enum FuncBackendKind {
     //Js,
     JsQualification,
     JsString,
+    JsResourceSync,
     ValidateStringValue,
 }
 
@@ -85,6 +86,7 @@ pub enum FuncBackendResponseType {
     //Json,
     Qualification,
     Validation,
+    ResourceSync,
 }
 
 impl ToLabelList for FuncBackendKind {}
@@ -220,7 +222,7 @@ impl FuncBackendJsString {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct FuncBackendJsQualificationArgs {
-    pub component: ComponentQualificationView,
+    pub component: QualificationCheckComponent,
 }
 
 #[derive(Debug)]
@@ -271,6 +273,77 @@ impl FuncBackendJsQualification {
         let result = self
             .veritech
             .execute_qualification_check(self.output_tx, &self.request)
+            .await
+            .map_err(|err| span.record_err(err))?;
+        let value = match result {
+            FunctionResult::Success(check_result) => serde_json::to_value(&check_result)?,
+            FunctionResult::Failure(failure) => {
+                return Err(span.record_err(FuncBackendError::ResultFailure {
+                    kind: failure.error.kind,
+                    message: failure.error.message,
+                }));
+            }
+        };
+
+        span.record_ok();
+        span.record("si.func.result", &tracing::field::debug(&value));
+        Ok(value)
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct FuncBackendJsResourceSyncArgs {
+    pub component: ResourceSyncComponent,
+}
+
+#[derive(Debug)]
+pub struct FuncBackendJsResourceSync {
+    veritech: Client,
+    output_tx: mpsc::Sender<OutputStream>,
+    request: ResourceSyncRequest,
+}
+
+impl FuncBackendJsResourceSync {
+    pub fn new(
+        veritech: Client,
+        output_tx: mpsc::Sender<OutputStream>,
+        handler: impl Into<String>,
+        component: ResourceSyncComponent,
+        code_base64: impl Into<String>,
+    ) -> Self {
+        let request = ResourceSyncRequest {
+            // Once we start tracking the state of these executions, then this id will be useful,
+            // but for now it's passed along and back, and is opaue
+            execution_id: "rodrigosantoro".to_string(),
+            handler: handler.into(),
+            component,
+            code_base64: code_base64.into(),
+        };
+
+        Self {
+            veritech,
+            output_tx,
+            request,
+        }
+    }
+
+    #[instrument(
+        name = "funcbackendjssync.execute",
+        skip_all,
+        level = "debug",
+        fields(
+            otel.kind = %SpanKind::Client,
+            otel.status_code = Empty,
+            otel.status_message = Empty,
+            si.func.result = Empty
+        )
+    )]
+    pub async fn execute(self) -> FuncBackendResult<serde_json::Value> {
+        let span = Span::current();
+
+        let result = self
+            .veritech
+            .execute_resource_sync(self.output_tx, &self.request)
             .await
             .map_err(|err| span.record_err(err))?;
         let value = match result {
