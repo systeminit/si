@@ -85,6 +85,7 @@ pub enum ComponentError {
 pub type ComponentResult<T> = Result<T, ComponentError>;
 
 const LIST_QUALIFICATIONS: &str = include_str!("./queries/component_list_qualifications.sql");
+const LIST_FOR_RESOURCE_SYNC: &str = include_str!("./queries/component_list_for_resource_sync.sql");
 
 pk!(ComponentPk);
 pk!(ComponentId);
@@ -755,6 +756,21 @@ impl Component {
         }
 
         Ok(qualification_view)
+    }
+
+    #[tracing::instrument(skip(txn))]
+    pub async fn list_for_resource_sync(txn: &PgTxn<'_>) -> ComponentResult<Vec<Component>> {
+        let visibility = Visibility::new_head(false);
+        let rows = txn.query(LIST_FOR_RESOURCE_SYNC, &[&visibility]).await?;
+        let results = standard_model::objects_from_rows(rows)?;
+        Ok(results)
+    }
+
+    // TODO: Make this actully sync the resource, by looking up the protoype, building resolvers, etc.!
+    #[tracing::instrument]
+    pub async fn sync_resource(&self) -> ComponentResult<()> {
+        tracing::warn!("checking resource: {:?}", self);
+        Ok(())
     }
 }
 

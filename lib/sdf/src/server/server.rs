@@ -9,7 +9,7 @@ use axum::routing::IntoMakeService;
 use axum::Router;
 use dal::{
     jwt_key::{install_new_jwt_key, jwt_key_exists},
-    migrate, migrate_builtin_schemas,
+    migrate, migrate_builtin_schemas, ResourceScheduler,
 };
 use hyper::server::{accept::Accept, conn::AddrIncoming};
 use si_data::{NatsClient, NatsConfig, NatsError, PgError, PgPool, PgPoolConfig, PgPoolError};
@@ -152,6 +152,18 @@ impl Server<(), ()> {
         txn.commit().await?;
 
         Ok(())
+    }
+
+    /// Start the basic resource sync scheduler
+    pub async fn start_resource_sync_scheduler(
+        pg: PgPool,
+        nats: NatsClient,
+        veritech: veritech::Client,
+    ) {
+        tokio::spawn(async move {
+            let scheduler = ResourceScheduler::new(pg.clone(), nats.clone(), veritech.clone());
+            scheduler.start().await;
+        });
     }
 
     #[instrument(skip_all)]

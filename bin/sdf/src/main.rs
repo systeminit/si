@@ -77,6 +77,8 @@ async fn run(args: args::Args, mut telemetry: telemetry::Client) -> Result<()> {
 
     start_tracing_level_signal_handler_task(&telemetry)?;
 
+    Server::start_resource_sync_scheduler(pg_pool.clone(), nats.clone(), veritech.clone()).await;
+
     match config.incoming_stream() {
         IncomingStream::HTTPSocket(_) => {
             Server::http(config, telemetry, pg_pool, nats, veritech, jwt_secret_key)?
