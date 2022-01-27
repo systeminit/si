@@ -27,6 +27,7 @@ pub mod qualification_check;
 pub mod qualification_prototype;
 pub mod qualification_resolver;
 pub mod resource;
+pub mod resource_scheduler;
 pub mod schema;
 pub mod schematic;
 pub mod socket;
@@ -83,6 +84,7 @@ pub use qualification_resolver::{
     QualificationResolver, QualificationResolverError, QualificationResolverId,
 };
 pub use resource::{Resource, ResourceError};
+pub use resource_scheduler::{ResourceScheduler, ResourceSchedulerError};
 pub use schema::{
     Schema, SchemaError, SchemaId, SchemaKind, SchemaPk, SchemaVariant, SchemaVariantId,
 };
