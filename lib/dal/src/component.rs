@@ -587,13 +587,9 @@ impl Component {
                 .ok_or_else(|| ComponentError::MissingFunc(prototype.func_id().to_string()))?;
 
             let args = FuncBackendJsQualificationArgs {
-                component: ComponentQualificationView::new(
-                    txn,
-                    &schema_tenancy,
-                    visibility,
-                    self.id(),
-                )
-                .await?,
+                component: self
+                    .veritech_qualification_check_component(txn, &schema_tenancy, visibility)
+                    .await?,
             };
             let json_args = serde_json::to_value(args)?;
 
@@ -709,6 +705,56 @@ impl Component {
         }
 
         Ok(results)
+    }
+
+    pub async fn veritech_resource_sync_component(
+        &self,
+        txn: &PgTxn<'_>,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+    ) -> ComponentResult<veritech::ResourceSyncComponent> {
+        let mut tenancy = tenancy.clone();
+        tenancy.universal = true;
+
+        let mut qualification_view = veritech::ResourceSyncComponent {
+            name: self.name().into(),
+            properties: HashMap::new(),
+        };
+
+        for edit_field in Component::get_edit_fields(txn, &tenancy, visibility, self.id()).await? {
+            // This whole segment needs to be replaced with something that can handle the
+            // full complexity here.
+            if let Some(v) = edit_field.value {
+                qualification_view.properties.insert(edit_field.name, v);
+            }
+        }
+
+        Ok(qualification_view)
+    }
+
+    pub async fn veritech_qualification_check_component(
+        &self,
+        txn: &PgTxn<'_>,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+    ) -> ComponentResult<veritech::QualificationCheckComponent> {
+        let mut tenancy = tenancy.clone();
+        tenancy.universal = true;
+
+        let mut qualification_view = veritech::QualificationCheckComponent {
+            name: self.name().into(),
+            properties: HashMap::new(),
+        };
+
+        for edit_field in Component::get_edit_fields(txn, &tenancy, visibility, self.id()).await? {
+            // This whole segment needs to be replaced with something that can handle the
+            // full complexity here.
+            if let Some(v) = edit_field.value {
+                qualification_view.properties.insert(edit_field.name, v);
+            }
+        }
+
+        Ok(qualification_view)
     }
 }
 
@@ -907,87 +953,5 @@ impl EditFieldAble for Component {
         }
 
         Ok(())
-    }
-}
-
-/// This is intended to be passed in to external language qualification functions,
-/// so they have the entire component to be able to run qualifications against.
-/// This is a read-only snapshot.
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct ComponentQualificationView {
-    name: String,
-    properties: HashMap<String, serde_json::Value>,
-}
-
-// NOTE: These types are identical. I suspect we only need one. -- Adam
-impl From<veritech::QualificationCheckComponent> for ComponentQualificationView {
-    fn from(c: veritech::QualificationCheckComponent) -> Self {
-        ComponentQualificationView {
-            name: c.name,
-            properties: c.properties,
-        }
-    }
-}
-
-impl From<ComponentQualificationView> for veritech::QualificationCheckComponent {
-    fn from(c: ComponentQualificationView) -> Self {
-        veritech::QualificationCheckComponent {
-            name: c.name,
-            properties: c.properties,
-        }
-    }
-}
-
-impl ComponentQualificationView {
-    pub async fn new(
-        txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
-        visibility: &Visibility,
-        id: &ComponentId,
-    ) -> ComponentResult<Self> {
-        let mut tenancy = tenancy.clone();
-        tenancy.universal = true;
-
-        let component = Component::get_by_id(txn, &tenancy, visibility, id)
-            .await?
-            .ok_or(ComponentError::NotFound(*id))?;
-
-        Self::from_component(txn, &tenancy, visibility, component).await
-    }
-
-    pub async fn from_component(
-        txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
-        visibility: &Visibility,
-        component: Component,
-    ) -> ComponentResult<Self> {
-        let mut tenancy = tenancy.clone();
-        tenancy.universal = true;
-
-        let mut qualification_view = Self {
-            name: component.name().into(),
-            properties: HashMap::new(),
-        };
-
-        for edit_field in
-            Component::get_edit_fields(txn, &tenancy, visibility, component.id()).await?
-        {
-            // This whole segment needs to be replaced with something that can handle the
-            // full complexity here.
-            if let Some(v) = edit_field.value {
-                qualification_view.properties.insert(edit_field.name, v);
-            }
-        }
-
-        Ok(qualification_view)
-    }
-
-    /// Create an empty componenent qualification view; useful for qualification prototypes.
-    pub fn empty() -> ComponentQualificationView {
-        ComponentQualificationView {
-            name: "".to_string(),
-            properties: HashMap::new(),
-        }
     }
 }

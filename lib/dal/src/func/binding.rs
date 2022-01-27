@@ -7,9 +7,12 @@ use thiserror::Error;
 
 use serde_json::Value as JsonValue;
 use tokio::sync::mpsc;
-use veritech::{Client, QualificationCheckResultSuccess};
+use veritech::{Client, QualificationCheckResultSuccess, ResourceSyncResultSuccess};
 
-use crate::func::backend::{FuncBackendJsQualification, FuncBackendJsQualificationArgs};
+use crate::func::backend::{
+    FuncBackendJsQualification, FuncBackendJsQualificationArgs, FuncBackendJsResourceSync,
+    FuncBackendJsResourceSyncArgs,
+};
 use crate::{
     func::backend::{
         validation::{FuncBackendValidateStringValue, FuncBackendValidateStringValueArgs},
@@ -264,7 +267,7 @@ impl FuncBinding {
                     veritech,
                     tx,
                     handler.to_owned(),
-                    backend_args.component.into(),
+                    backend_args.component,
                     code_base64.to_owned(),
                 )
                 .execute()
@@ -287,6 +290,41 @@ impl FuncBinding {
 
                 execution.process_output(txn, nats, rx).await?;
                 Some(serde_json::to_value(&qual_result)?)
+            }
+            FuncBackendKind::JsResourceSync => {
+                execution
+                    .set_state(txn, nats, super::execution::FuncExecutionState::Dispatch)
+                    .await?;
+
+                let (tx, rx) = mpsc::channel(64);
+
+                execution
+                    .set_state(txn, nats, super::execution::FuncExecutionState::Run)
+                    .await?;
+
+                let handler = func
+                    .handler()
+                    .ok_or(FuncBindingError::JsFuncNotFound(self.pk))?;
+                let code_base64 = func
+                    .code_base64()
+                    .ok_or(FuncBindingError::JsFuncNotFound(self.pk))?;
+
+                let backend_args: FuncBackendJsResourceSyncArgs =
+                    serde_json::from_value(self.args.clone())?;
+                let return_value = FuncBackendJsResourceSync::new(
+                    veritech,
+                    tx,
+                    handler.to_owned(),
+                    backend_args.component,
+                    code_base64.to_owned(),
+                )
+                .execute()
+                .await?;
+
+                // TODO(paulo): what should be done with this?
+                let veritech_result = ResourceSyncResultSuccess::deserialize(&return_value)?;
+                execution.process_output(txn, nats, rx).await?;
+                Some(serde_json::to_value(&veritech_result)?)
             }
             FuncBackendKind::ValidateStringValue => {
                 execution

@@ -22,7 +22,7 @@ impl QualificationCheckRequest {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct QualificationCheckComponent {
     pub name: String,

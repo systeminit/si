@@ -43,7 +43,7 @@ export function getResource(
         {
           ...args,
           ...visibility,
-          systemId: system.id,
+          systemId: system?.id,
           workspaceId: workspace.id,
         },
       );

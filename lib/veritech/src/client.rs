@@ -327,7 +327,7 @@ mod subscription {
 mod tests {
     use std::{collections::HashMap, env};
 
-    use cyclone::QualificationCheckComponent;
+    use cyclone::{QualificationCheckComponent, ResourceSyncComponent};
     use deadpool_cyclone::{instance::cyclone::LocalUdsInstance, Instance};
     use indoc::indoc;
     use si_data::NatsConfig;
@@ -529,10 +529,16 @@ mod tests {
             }
         });
 
+        let mut properties = HashMap::new();
+        properties.insert("pkg".to_string(), serde_json::json!("cider"));
         let request = ResourceSyncRequest {
             execution_id: "7867".to_string(),
             handler: "syncItOut".to_string(),
-            code_base64: base64::encode("function syncItOut() { return {}; }"),
+            component: ResourceSyncComponent {
+                name: "cider".to_string(),
+                properties,
+            },
+            code_base64: base64::encode("function syncItOut(component) { return {}; }"),
         };
 
         let result = client

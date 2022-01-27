@@ -42,7 +42,7 @@ export function syncResource(
         {
           ...args,
           ...visibility,
-          systemId: system.id,
+          systemId: system?.id,
           workspaceId: workspace.id,
         },
       );

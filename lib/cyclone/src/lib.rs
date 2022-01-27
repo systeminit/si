@@ -29,7 +29,7 @@ pub use qualification_check::{
 };
 pub use readiness::{ReadinessStatus, ReadinessStatusParseError};
 pub use resolver_function::{ResolverFunctionRequest, ResolverFunctionResultSuccess};
-pub use resource_sync::{ResourceSyncRequest, ResourceSyncResultSuccess};
+pub use resource_sync::{ResourceSyncComponent, ResourceSyncRequest, ResourceSyncResultSuccess};
 
 #[cfg(feature = "process")]
 pub mod process;

@@ -16,7 +16,14 @@ const debug = Debug("langJs:resourceSync");
 
 export interface ResourceSyncRequest extends Request {
   handler: string;
+  component: Component;
   codeBase64: string;
+}
+
+export interface Component {
+  name: string;
+  // TODO(fnichol): Highly, highly, highly TBD!
+  properties: Record<string, unknown>;
 }
 
 export type ResourceSyncResult =
@@ -34,7 +41,7 @@ export interface ResourceSyncResultFailure extends ResultFailure {
 export function executeResourceSync(request: ResourceSyncRequest): void {
   const code = base64Decode(request.codeBase64);
   debug({ code });
-  const compiledCode = new VMScript(wrapCode(code, request.handler)).compile();
+  const compiledCode = new VMScript(wrapCode(code, request.handler, request.component)).compile();
   debug({ code: compiledCode.code });
   const sandbox = createSandbox(FunctionKind.ResourceSync, request.executionId);
   const vm = createVm(sandbox);
@@ -79,6 +86,6 @@ function execute(
   return result;
 }
 
-function wrapCode(code: string, handle: string): string {
-  return code + `\n${handle}();\n`;
+function wrapCode(code: string, handle: string, component: Component): string {
+  return code + `\n${handle}(${JSON.stringify(component)});\n`;
 }

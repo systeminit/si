@@ -3,9 +3,8 @@ use crate::test_setup;
 use dal::func::backend::FuncBackendJsQualificationArgs;
 use dal::qualification_prototype::QualificationPrototypeContext;
 use dal::{
-    qualification_prototype::UNSET_ID_VALUE, test_harness::billing_account_signup, Component,
-    ComponentQualificationView, Func, HistoryActor, QualificationPrototype, Schema, StandardModel,
-    Tenancy, Visibility,
+    qualification_prototype::UNSET_ID_VALUE, test_harness::billing_account_signup, Component, Func,
+    HistoryActor, QualificationPrototype, Schema, StandardModel, Tenancy, Visibility,
 };
 
 #[tokio::test]
@@ -43,7 +42,8 @@ async fn new() {
         .expect("Missing builtin function si:qualificationDockerImageNameEqualsComponentName");
 
     let args = FuncBackendJsQualificationArgs {
-        component: ComponentQualificationView::new(&txn, &tenancy, &visibility, component.id())
+        component: component
+            .veritech_qualification_check_component(&txn, &tenancy, &visibility)
             .await
             .expect("could not create component qualification view"),
     };

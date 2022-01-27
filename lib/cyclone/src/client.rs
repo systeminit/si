@@ -430,6 +430,7 @@ mod tests {
     use crate::{
         qualification_check::QualificationCheckComponent,
         resolver_function::ResolverFunctionRequest,
+        resource_sync::ResourceSyncComponent,
         server::{Config, ConfigBuilder, UdsIncomingStream},
         FunctionResult, ProgressMessage, Server,
     };
@@ -963,12 +964,17 @@ mod tests {
         let mut builder = Config::builder();
         let mut client = http_client_for_running_server(builder.enable_qualification(true)).await;
 
+        let component = ResourceSyncComponent {
+            name: "pringles".to_string(),
+            properties: HashMap::new(),
+        };
         let req = ResourceSyncRequest {
             execution_id: "1234".to_string(),
             handler: "syncit".to_string(),
+            component: component.clone(),
             code_base64: base64::encode(
-                r#"function syncit() {
-                    console.log('n');
+                r#"function syncit(component) {
+                    console.log(JSON.stringify(component));
                     console.log('sync');
                     return {};
                 }"#,
@@ -987,7 +993,11 @@ mod tests {
         // Consume the output messages
         match progress.next().await {
             Some(Ok(ProgressMessage::OutputStream(output))) => {
-                assert_eq!(output.message, "n")
+                assert_eq!(
+                    output.message,
+                    serde_json::to_string(&component)
+                        .expect("Unable to serialize ResourceSyncComponent")
+                )
             }
             Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
             Some(Err(err)) => panic!("failed to receive 'i like' output: err={:?}", err),
@@ -1033,12 +1043,17 @@ mod tests {
         let mut client =
             uds_client_for_running_server(builder.enable_qualification(true), &tmp_socket).await;
 
+        let component = ResourceSyncComponent {
+            name: "pringles".to_string(),
+            properties: HashMap::new(),
+        };
         let req = ResourceSyncRequest {
             execution_id: "1234".to_string(),
             handler: "syncit".to_string(),
+            component: component.clone(),
             code_base64: base64::encode(
-                r#"function syncit() {
-                    console.log('n');
+                r#"function syncit(component) {
+                    console.log(JSON.stringify(component));
                     console.log('sync');
                     return {};
                 }"#,
@@ -1057,7 +1072,11 @@ mod tests {
         // Consume the output messages
         match progress.next().await {
             Some(Ok(ProgressMessage::OutputStream(output))) => {
-                assert_eq!(output.message, "n")
+                assert_eq!(
+                    output.message,
+                    serde_json::to_string(&component)
+                        .expect("Unable to serialize ResourceSyncComponent")
+                )
             }
             Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
             Some(Err(err)) => panic!("failed to receive 'i like' output: err={:?}", err),

@@ -6,10 +6,9 @@ use crate::socket::{Socket, SocketArity, SocketEdgeKind};
 use crate::{
     attribute_resolver::AttributeResolverContext, func::binding::FuncBinding,
     validation_prototype::ValidationPrototypeContext, AttributeResolver, Func, HistoryActor, Prop,
-    PropKind, Schema, SchemaError, SchemaKind, SchematicKind, StandardModel, Tenancy,
-    ValidationPrototype, Visibility,
+    PropKind, QualificationPrototype, Schema, SchemaError, SchemaKind, SchematicKind,
+    StandardModel, Tenancy, ValidationPrototype, Visibility,
 };
-use crate::{ComponentQualificationView, QualificationPrototype};
 use si_data::{NatsTxn, PgTxn};
 
 pub async fn migrate(
@@ -614,7 +613,7 @@ async fn docker_image(
         .pop()
         .ok_or(SchemaError::FuncNotFound(qual_func_name))?;
     let qual_args = FuncBackendJsQualificationArgs {
-        component: ComponentQualificationView::empty(),
+        component: veritech::QualificationCheckComponent::default(),
     };
     let qual_args_json = serde_json::to_value(&qual_args)?;
     let mut qual_prototype_context = QualificationPrototypeContext::new();

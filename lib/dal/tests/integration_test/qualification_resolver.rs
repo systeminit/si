@@ -20,7 +20,7 @@
 //     func::binding::FuncBinding,
 //     qualification_resolver::{QualificationResolverContext, UNSET_ID_VALUE},
 //     test_harness::{billing_account_signup, create_component_for_schema},
-//     ComponentQualificationView, Func, HistoryActor, QualificationResolver, Schema, StandardModel,
+//     Func, HistoryActor, QualificationResolver, Schema, StandardModel,
 //     Tenancy, Visibility,
 // };
 //
@@ -57,7 +57,7 @@
 //         .expect("Missing builtin function si:qualificationDockerImageNameEqualsComponentName");
 //
 //     let args = FuncBackendJsQualificationArgs {
-//         component: ComponentQualificationView::new(&txn, &tenancy, &visibility, component.id())
+//         component: component.veritech_qualification_check_component(&txn, &tenancy, &visibility, component.id())
 //             .await
 //             .expect("could not create component qualification view"),
 //     };
@@ -130,7 +130,7 @@
 //         .expect("Missing builtin function si:qualificationDockerImageNameEqualsComponentName");
 //
 //     let args = FuncBackendJsQualificationArgs {
-//         component: ComponentQualificationView::new(&txn, &tenancy, &visibility, component.id())
+//         component: component.veritech_qualification_check_component(&txn, &tenancy, &visibility, component.id())
 //             .await
 //             .expect("could not create component qualification view"),
 //     };
