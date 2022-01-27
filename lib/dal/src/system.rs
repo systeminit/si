@@ -5,7 +5,8 @@ use thiserror::Error;
 
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
-    HistoryActor, HistoryEventError, StandardModel, StandardModelError, Tenancy, Timestamp,
+    standard_model_has_many, HistoryActor, HistoryEventError, Node, Schema, SchemaId,
+    SchemaVariant, SchemaVariantId, StandardModel, StandardModelError, Tenancy, Timestamp,
     Visibility, Workspace, WorkspaceId,
 };
 
@@ -78,6 +79,28 @@ impl System {
     standard_model_accessor!(name, String, SystemResult);
 
     standard_model_belongs_to!(
+        lookup_fn: schema,
+        set_fn: set_schema,
+        unset_fn: unset_schema,
+        table: "system_belongs_to_schema",
+        model_table: "schemas",
+        belongs_to_id: SchemaId,
+        returns: Schema,
+        result: SystemResult,
+    );
+
+    standard_model_belongs_to!(
+        lookup_fn: schema_variant,
+        set_fn: set_schema_variant,
+        unset_fn: unset_schema_variant,
+        table: "system_belongs_to_schema_variant",
+        model_table: "schema_variants",
+        belongs_to_id: SchemaVariantId,
+        returns: SchemaVariant,
+        result: SystemResult,
+    );
+
+    standard_model_belongs_to!(
         lookup_fn: workspace,
         set_fn: set_workspace,
         unset_fn: unset_workspace,
@@ -85,6 +108,14 @@ impl System {
         model_table: "workspaces",
         belongs_to_id: WorkspaceId,
         returns: Workspace,
+        result: SystemResult,
+    );
+
+    standard_model_has_many!(
+        lookup_fn: node,
+        table: "node_belongs_to_system",
+        model_table: "nodes",
+        returns: Node,
         result: SystemResult,
     );
 }
