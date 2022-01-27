@@ -25,6 +25,7 @@ pub async fn migrate(txn: &PgTxn<'_>, nats: &NatsTxn) -> FuncResult<()> {
         &history_actor,
     )
     .await?;
+    si_resource_sync_hammer(txn, nats, &tenancy, &visibility, &history_actor).await?;
 
     Ok(())
 }
@@ -197,6 +198,56 @@ async fn si_qualification_always_true(
                 visibility,
                 history_actor,
                 Some("alwaysGood".to_string()),
+            )
+            .await
+            .expect("cannot set handler");
+        new_func
+            .set_code_base64(
+                txn,
+                nats,
+                visibility,
+                history_actor,
+                Some(qualification_code),
+            )
+            .await
+            .expect("cannot set code");
+    }
+
+    Ok(())
+}
+
+async fn si_resource_sync_hammer(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    tenancy: &Tenancy,
+    visibility: &Visibility,
+    history_actor: &HistoryActor,
+) -> FuncResult<()> {
+    let func_name = "si:resourceSyncHammer".to_string();
+    let existing_func = Func::find_by_attr(txn, tenancy, visibility, "name", &func_name).await?;
+    if existing_func.is_empty() {
+        let mut new_func = Func::new(
+            txn,
+            nats,
+            tenancy,
+            visibility,
+            history_actor,
+            &func_name,
+            FuncBackendKind::JsResourceSync,
+            FuncBackendResponseType::ResourceSync,
+        )
+        .await
+        .expect("cannot create func");
+
+        let qualification_code = base64::encode(include_str!("./builtins/resourceSyncHammer.js",));
+
+        new_func
+            .set_handler(
+                txn,
+                nats,
+                visibility,
+                history_actor,
+                Some("resourceSyncHammer".to_string()),
             )
             .await
             .expect("cannot set handler");
