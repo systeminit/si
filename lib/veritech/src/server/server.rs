@@ -1,7 +1,6 @@
-use cyclone::ResourceSyncRequest;
 use deadpool_cyclone::{
     instance::cyclone::LocalUdsInstanceSpec, CycloneClient, Manager, Pool, ProgressMessage,
-    QualificationCheckRequest, ResolverFunctionRequest,
+    QualificationCheckRequest, ResolverFunctionRequest, ResourceSyncRequest
 };
 use futures::{channel::oneshot, join, StreamExt};
 use si_data::NatsClient;
