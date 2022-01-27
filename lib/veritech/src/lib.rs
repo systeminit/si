@@ -31,6 +31,10 @@ pub use cyclone::{
     QualificationCheckRequest, QualificationCheckResultSuccess, ResolverFunctionRequest,
 };
 
+const NATS_QUALIFICATION_CHECK_DEFAULT_SUBJECT: &str = "veritech.fn.qualificationcheck";
+const NATS_RESOLVER_FUNCTION_DEFAULT_SUBJECT: &str = "veritech.fn.resolverfunction";
+const NATS_RESOURCE_SYNC_DEFAULT_SUBJECT: &str = "veritech.fn.resourcesync";
+
 pub(crate) const FINAL_MESSAGE_HEADER_KEY: &str = "X-Final-Message";
 
 pub(crate) fn reply_mailbox_for_output(reply_mailbox: &str) -> String {
@@ -39,4 +43,24 @@ pub(crate) fn reply_mailbox_for_output(reply_mailbox: &str) -> String {
 
 pub(crate) fn reply_mailbox_for_result(reply_mailbox: &str) -> String {
     format!("{reply_mailbox}.result")
+}
+
+pub(crate) fn nats_qualification_check_subject(prefix: Option<&str>) -> String {
+    nats_subject(prefix, NATS_QUALIFICATION_CHECK_DEFAULT_SUBJECT)
+}
+
+pub(crate) fn nats_resolver_function_subject(prefix: Option<&str>) -> String {
+    nats_subject(prefix, NATS_RESOLVER_FUNCTION_DEFAULT_SUBJECT)
+}
+
+pub(crate) fn nats_resource_sync_subject(prefix: Option<&str>) -> String {
+    nats_subject(prefix, NATS_RESOURCE_SYNC_DEFAULT_SUBJECT)
+}
+
+pub(crate) fn nats_subject(prefix: Option<&str>, suffix: impl AsRef<str>) -> String {
+    let suffix = suffix.as_ref();
+    match prefix {
+        Some(prefix) => format!("{prefix}.{suffix}"),
+        None => suffix.to_string(),
+    }
 }

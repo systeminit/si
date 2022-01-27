@@ -1,6 +1,6 @@
 use deadpool_cyclone::{
     instance::cyclone::LocalUdsInstanceSpec, CycloneClient, Manager, Pool, ProgressMessage,
-    QualificationCheckRequest, ResolverFunctionRequest, ResourceSyncRequest
+    QualificationCheckRequest, ResolverFunctionRequest, ResourceSyncRequest,
 };
 use futures::{channel::oneshot, join, StreamExt};
 use si_data::NatsClient;
@@ -48,6 +48,7 @@ type Result<T> = std::result::Result<T, ServerError>;
 
 pub struct Server {
     nats: NatsClient,
+    subject_prefix: Option<String>,
     cyclone_pool: Pool<LocalUdsInstanceSpec>,
     shutdown_broadcast_tx: broadcast::Sender<()>,
     shutdown_tx: mpsc::Sender<ShutdownSource>,
@@ -103,6 +104,7 @@ impl Server {
 
                 Ok(Server {
                     nats,
+                    subject_prefix: config.subject_prefix().map(|s| s.to_string()),
                     cyclone_pool,
                     shutdown_broadcast_tx,
                     shutdown_tx,
@@ -115,9 +117,11 @@ impl Server {
         }
     }
 
-    /// Gets a sender handle to the server's shutdown channel.
-    pub fn shutdown_tx(&self) -> mpsc::Sender<ShutdownSource> {
-        self.shutdown_tx.clone()
+    /// Gets a shutdown handle that can trigger the server's graceful shutdown process.
+    pub fn shutdown_handle(&self) -> ShutdownHandle {
+        ShutdownHandle {
+            shutdown_tx: self.shutdown_tx.clone(),
+        }
     }
 }
 
@@ -126,16 +130,19 @@ impl Server {
         let _ = join!(
             process_qualification_check_requests_task(
                 self.nats.clone(),
+                self.subject_prefix.clone(),
                 self.cyclone_pool.clone(),
                 self.shutdown_broadcast_tx.subscribe(),
             ),
             process_resolver_function_requests_task(
                 self.nats.clone(),
+                self.subject_prefix.clone(),
                 self.cyclone_pool.clone(),
                 self.shutdown_broadcast_tx.subscribe(),
             ),
             process_resource_sync_requests_task(
                 self.nats.clone(),
+                self.subject_prefix.clone(),
                 self.cyclone_pool.clone(),
                 self.shutdown_broadcast_tx.subscribe(),
             ),
@@ -148,6 +155,18 @@ impl Server {
     }
 }
 
+pub struct ShutdownHandle {
+    shutdown_tx: mpsc::Sender<ShutdownSource>,
+}
+
+impl ShutdownHandle {
+    pub async fn shutdown(self) {
+        if let Err(err) = self.shutdown_tx.send(ShutdownSource::Handle).await {
+            warn!(error = ?err, "shutdown tx returned error, receiver is likely already closed");
+        }
+    }
+}
+
 // NOTE(fnichol): the resolver_function and qualification_check paths are parallel and extremely
 // similar, so there is a lurking "unifying" refactor here. It felt like waiting until the third
 // time adding one of these would do the trick, and as a result the first 2 impls are here and not
@@ -155,11 +174,17 @@ impl Server {
 
 async fn process_resolver_function_requests_task(
     nats: NatsClient,
+    subject_prefix: Option<String>,
     cyclone_pool: Pool<LocalUdsInstanceSpec>,
     shutdown_broadcast_rx: broadcast::Receiver<()>,
 ) {
-    if let Err(err) =
-        process_resolver_function_requests(nats, cyclone_pool, shutdown_broadcast_rx).await
+    if let Err(err) = process_resolver_function_requests(
+        nats,
+        subject_prefix,
+        cyclone_pool,
+        shutdown_broadcast_rx,
+    )
+    .await
     {
         warn!(error = ?err, "processing resolver function requests failed");
     }
@@ -167,10 +192,11 @@ async fn process_resolver_function_requests_task(
 
 async fn process_resolver_function_requests(
     nats: NatsClient,
+    subject_prefix: Option<String>,
     cyclone_pool: Pool<LocalUdsInstanceSpec>,
     mut shutdown_broadcast_rx: broadcast::Receiver<()>,
 ) -> Result<()> {
-    let mut requests = Subscriber::resolver_function(&nats).await?;
+    let mut requests = Subscriber::resolver_function(&nats, subject_prefix.as_deref()).await?;
 
     loop {
         tokio::select! {
@@ -264,11 +290,17 @@ async fn resolver_function_request(
 
 async fn process_qualification_check_requests_task(
     nats: NatsClient,
+    subject_prefix: Option<String>,
     cyclone_pool: Pool<LocalUdsInstanceSpec>,
     shutdown_broadcast_rx: broadcast::Receiver<()>,
 ) {
-    if let Err(err) =
-        process_qualification_check_requests(nats, cyclone_pool, shutdown_broadcast_rx).await
+    if let Err(err) = process_qualification_check_requests(
+        nats,
+        subject_prefix,
+        cyclone_pool,
+        shutdown_broadcast_rx,
+    )
+    .await
     {
         warn!(error = ?err, "processing qualification check requests failed");
     }
@@ -276,10 +308,11 @@ async fn process_qualification_check_requests_task(
 
 async fn process_qualification_check_requests(
     nats: NatsClient,
+    subject_prefix: Option<String>,
     cyclone_pool: Pool<LocalUdsInstanceSpec>,
     mut shutdown_broadcast_rx: broadcast::Receiver<()>,
 ) -> Result<()> {
-    let mut requests = Subscriber::qualification_check(&nats).await?;
+    let mut requests = Subscriber::qualification_check(&nats, subject_prefix.as_deref()).await?;
 
     loop {
         tokio::select! {
@@ -373,11 +406,13 @@ async fn qualification_check_request(
 
 async fn process_resource_sync_requests_task(
     nats: NatsClient,
+    subject_prefix: Option<String>,
     cyclone_pool: Pool<LocalUdsInstanceSpec>,
     shutdown_broadcast_rx: broadcast::Receiver<()>,
 ) {
     if let Err(err) =
-        process_resource_sync_requests(nats, cyclone_pool, shutdown_broadcast_rx).await
+        process_resource_sync_requests(nats, subject_prefix, cyclone_pool, shutdown_broadcast_rx)
+            .await
     {
         warn!(error = ?err, "processing resource sync requests failed");
     }
@@ -385,10 +420,11 @@ async fn process_resource_sync_requests_task(
 
 async fn process_resource_sync_requests(
     nats: NatsClient,
+    subject_prefix: Option<String>,
     cyclone_pool: Pool<LocalUdsInstanceSpec>,
     mut shutdown_broadcast_rx: broadcast::Receiver<()>,
 ) -> Result<()> {
-    let mut requests = Subscriber::resource_sync(&nats).await?;
+    let mut requests = Subscriber::resource_sync(&nats, subject_prefix.as_deref()).await?;
 
     loop {
         tokio::select! {
@@ -533,4 +569,12 @@ fn prepare_graceful_shutdown(
 }
 
 #[derive(Debug, Eq, PartialEq)]
-pub enum ShutdownSource {}
+pub enum ShutdownSource {
+    Handle,
+}
+
+impl Default for ShutdownSource {
+    fn default() -> Self {
+        Self::Handle
+    }
+}

@@ -11,7 +11,10 @@ use thiserror::Error;
 use tokio::sync::mpsc;
 
 use self::subscription::{Subscription, SubscriptionError};
-use crate::{reply_mailbox_for_output, reply_mailbox_for_result};
+use crate::{
+    nats_qualification_check_subject, nats_resolver_function_subject, nats_resource_sync_subject,
+    nats_subject, reply_mailbox_for_output, reply_mailbox_for_result,
+};
 
 #[derive(Error, Debug)]
 pub enum ClientError {
@@ -30,41 +33,109 @@ pub type ClientResult<T> = Result<T, ClientError>;
 #[derive(Clone, Debug)]
 pub struct Client {
     nats: NatsClient,
+    subject_prefix: Option<String>,
 }
 
 impl Client {
     pub fn new(nats: NatsClient) -> Self {
-        Self { nats }
+        Self {
+            nats,
+            subject_prefix: None,
+        }
+    }
+
+    pub fn with_subject_prefix(nats: NatsClient, subject_prefix: impl Into<String>) -> Self {
+        Self {
+            nats,
+            subject_prefix: Some(subject_prefix.into()),
+        }
     }
 
     #[instrument(name = "client.execute_qualification_check", skip_all)]
     pub async fn execute_qualification_check(
         &self,
-        subject: impl Into<String>,
         output_tx: mpsc::Sender<OutputStream>,
         request: &QualificationCheckRequest,
     ) -> ClientResult<FunctionResult<QualificationCheckResultSuccess>> {
-        self.execute_request(subject, output_tx, request).await
+        self.execute_request(
+            nats_qualification_check_subject(self.subject_prefix()),
+            output_tx,
+            request,
+        )
+        .await
+    }
+
+    #[instrument(name = "client.execute_qualification_check_with_subject", skip_all)]
+    pub async fn execute_qualification_check_with_subject(
+        &self,
+        output_tx: mpsc::Sender<OutputStream>,
+        request: &QualificationCheckRequest,
+        subject_suffix: impl AsRef<str>,
+    ) -> ClientResult<FunctionResult<QualificationCheckResultSuccess>> {
+        self.execute_request(
+            nats_subject(self.subject_prefix(), subject_suffix),
+            output_tx,
+            request,
+        )
+        .await
     }
 
     #[instrument(name = "client.execute_resolver_function", skip_all)]
     pub async fn execute_resolver_function(
         &self,
-        subject: impl Into<String>,
         output_tx: mpsc::Sender<OutputStream>,
         request: &ResolverFunctionRequest,
     ) -> ClientResult<FunctionResult<ResolverFunctionResultSuccess>> {
-        self.execute_request(subject, output_tx, request).await
+        self.execute_request(
+            nats_resolver_function_subject(self.subject_prefix()),
+            output_tx,
+            request,
+        )
+        .await
+    }
+
+    #[instrument(name = "client.execute_resolver_function_with_subject", skip_all)]
+    pub async fn execute_resolver_function_with_subject(
+        &self,
+        output_tx: mpsc::Sender<OutputStream>,
+        request: &ResolverFunctionRequest,
+        subject_suffix: impl AsRef<str>,
+    ) -> ClientResult<FunctionResult<ResolverFunctionResultSuccess>> {
+        self.execute_request(
+            nats_subject(self.subject_prefix(), subject_suffix),
+            output_tx,
+            request,
+        )
+        .await
     }
 
     #[instrument(name = "client.execute_resource_sync", skip_all)]
     pub async fn execute_resource_sync(
         &self,
-        subject: impl Into<String>,
         output_tx: mpsc::Sender<OutputStream>,
         request: &ResourceSyncRequest,
     ) -> ClientResult<FunctionResult<ResourceSyncResultSuccess>> {
-        self.execute_request(subject, output_tx, request).await
+        self.execute_request(
+            nats_resource_sync_subject(self.subject_prefix()),
+            output_tx,
+            request,
+        )
+        .await
+    }
+
+    #[instrument(name = "client.execute_resource_sync_with_subject", skip_all)]
+    pub async fn execute_resource_sync_with_subject(
+        &self,
+        output_tx: mpsc::Sender<OutputStream>,
+        request: &ResourceSyncRequest,
+        subject_suffix: impl AsRef<str>,
+    ) -> ClientResult<FunctionResult<ResourceSyncResultSuccess>> {
+        self.execute_request(
+            nats_subject(self.subject_prefix(), subject_suffix),
+            output_tx,
+            request,
+        )
+        .await
     }
 
     async fn execute_request<R, S>(
@@ -81,22 +152,31 @@ impl Client {
         let reply_mailbox_root = self.nats.new_inbox();
 
         // Construct a subscription stream for the result
-        let mut result_subscription: Subscription<FunctionResult<S>> = Subscription::new(
-            self.nats
-                .subscribe(reply_mailbox_for_result(&reply_mailbox_root))
-                .await?,
+        let result_subscription_subject = reply_mailbox_for_result(&reply_mailbox_root);
+        trace!(
+            messaging.destination = &result_subscription_subject.as_str(),
+            "subscribing for result messages"
         );
+        let mut result_subscription: Subscription<FunctionResult<S>> =
+            Subscription::new(self.nats.subscribe(result_subscription_subject).await?);
 
         // Construct a subscription stream for output messages
-        let output_subscription = Subscription::new(
-            self.nats
-                .subscribe(reply_mailbox_for_output(&reply_mailbox_root))
-                .await?,
+        let output_subscription_subject = reply_mailbox_for_output(&reply_mailbox_root);
+        trace!(
+            messaging.destination = &output_subscription_subject.as_str(),
+            "subscribing for output messages"
         );
+        let output_subscription =
+            Subscription::new(self.nats.subscribe(output_subscription_subject).await?);
         // Spawn a task to forward output to the sender provided by the caller
         tokio::spawn(forward_output_task(output_subscription, output_tx));
 
         // Submit the request message
+        let subject = subject.into();
+        trace!(
+            messaging.destination = &subject.as_str(),
+            "publishing message"
+        );
         self.nats
             .publish_with_reply_or_headers(subject, Some(reply_mailbox_root.as_str()), None, msg)
             .await?;
@@ -109,6 +189,11 @@ impl Client {
         result_subscription.unsubscribe().await?;
 
         Ok(result)
+    }
+
+    /// Gets a reference to the client's subject prefix.
+    pub fn subject_prefix(&self) -> Option<&str> {
+        self.subject_prefix.as_deref()
     }
 }
 
@@ -249,6 +334,7 @@ mod tests {
     use si_settings::StandardConfig;
     use test_env_log::test;
     use tokio::task::JoinHandle;
+    use uuid::Uuid;
 
     use super::*;
     use crate::{Config, CycloneSpec, Server, ServerError};
@@ -267,7 +353,11 @@ mod tests {
             .expect("failed to connect to NATS")
     }
 
-    async fn server_for_uds_cyclone() -> Server {
+    fn nats_prefix() -> String {
+        Uuid::new_v4().to_simple().to_string()
+    }
+
+    async fn veritech_server_for_uds_cyclone(subject_prefix: String) -> Server {
         let cyclone_spec = CycloneSpec::LocalUds(
             LocalUdsInstance::spec()
                 .try_cyclone_cmd_path("../../target/debug/cyclone")
@@ -280,6 +370,7 @@ mod tests {
         );
         let config = Config::builder()
             .nats(nats_config())
+            .subject_prefix(subject_prefix)
             .cyclone_spec(cyclone_spec)
             .build()
             .expect("failed to build spec");
@@ -288,18 +379,21 @@ mod tests {
             .expect("failed to create server")
     }
 
-    async fn client() -> Client {
-        Client::new(nats().await)
+    async fn client(subject_prefix: String) -> Client {
+        Client::with_subject_prefix(nats().await, subject_prefix)
     }
 
-    async fn run_server_for_uds_cyclone() -> JoinHandle<Result<(), ServerError>> {
-        tokio::spawn(server_for_uds_cyclone().await.run())
+    async fn run_veritech_server_for_uds_cyclone(
+        subject_prefix: String,
+    ) -> JoinHandle<Result<(), ServerError>> {
+        tokio::spawn(veritech_server_for_uds_cyclone(subject_prefix).await.run())
     }
 
     #[test(tokio::test)]
     async fn executes_simple_resolver_function() {
-        run_server_for_uds_cyclone().await;
-        let client = client().await;
+        let prefix = nats_prefix();
+        run_veritech_server_for_uds_cyclone(prefix.clone()).await;
+        let client = client(prefix).await;
 
         // Not going to check output here--we aren't emitting anything
         let (tx, mut rx) = mpsc::channel(64);
@@ -322,7 +416,7 @@ mod tests {
         };
 
         let result = client
-            .execute_resolver_function("veritech.function.resolver", tx, &request)
+            .execute_resolver_function(tx, &request)
             .await
             .expect("failed to execute resolver function");
 
@@ -340,8 +434,9 @@ mod tests {
 
     #[test(tokio::test)]
     async fn executes_simple_qualification_check() {
-        run_server_for_uds_cyclone().await;
-        let client = client().await;
+        let prefix = nats_prefix();
+        run_veritech_server_for_uds_cyclone(prefix.clone()).await;
+        let client = client(prefix).await;
 
         // Not going to check output here--we aren't emitting anything
         let (tx, mut rx) = mpsc::channel(64);
@@ -380,7 +475,7 @@ mod tests {
 
         // Run a qualified check (i.e. qualification returns qualified == true)
         let result = client
-            .execute_qualification_check("veritech.function.qualification", tx.clone(), &request)
+            .execute_qualification_check(tx.clone(), &request)
             .await
             .expect("failed to execute qualification check");
 
@@ -401,7 +496,7 @@ mod tests {
         // Now update the request to re-run an unqualified check (i.e. qualification returning
         // qualified == false)
         let result = client
-            .execute_qualification_check("veritech.function.qualification", tx, &request)
+            .execute_qualification_check(tx, &request)
             .await
             .expect("failed to execute qualification check");
 
@@ -422,8 +517,9 @@ mod tests {
 
     #[test(tokio::test)]
     async fn executes_simple_resource_sync() {
-        run_server_for_uds_cyclone().await;
-        let client = client().await;
+        let prefix = nats_prefix();
+        run_veritech_server_for_uds_cyclone(prefix.clone()).await;
+        let client = client(prefix).await;
 
         // Not going to check output here--we aren't emitting anything
         let (tx, mut rx) = mpsc::channel(64);
@@ -440,7 +536,7 @@ mod tests {
         };
 
         let result = client
-            .execute_resource_sync("veritech.function.sync", tx, &request)
+            .execute_resource_sync(tx, &request)
             .await
             .expect("failed to execute resource sync");
 

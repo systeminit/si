@@ -10,7 +10,7 @@ use dal::{BillingAccount, HistoryActor, StandardModel, Tenancy};
 async fn new() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
-    let (pg, nats_conn, _secret_key) = ctx.entries();
+    let (pg, nats_conn, _veritech, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
     let mut conn = pg.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
@@ -69,7 +69,7 @@ async fn get_by_pk() {
 async fn get_by_id() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
-    let (pg, nats_conn, _secret_key) = ctx.entries();
+    let (pg, nats_conn, _veritech, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
     let mut conn = pg.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
@@ -100,7 +100,7 @@ async fn get_by_id() {
 async fn set_name() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
-    let (pg, nats_conn, _secret_key) = ctx.entries();
+    let (pg, nats_conn, _veritech, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
     let mut conn = pg.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
@@ -133,7 +133,7 @@ async fn set_name() {
 async fn set_description() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
-    let (pg, nats_conn, _secret_key) = ctx.entries();
+    let (pg, nats_conn, _veritech, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
     let mut conn = pg.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
