@@ -198,18 +198,26 @@ impl Schematic {
                     )
                 }
                 NodeKind::System => {
-                    let system = node
-                        .system(txn, visibility)
-                        .await?
-                        .ok_or(SchematicError::SystemNotFound)?;
-                    let mut tenancy = tenancy.clone();
-                    tenancy.universal = true;
-                    let schema = system
-                        .schema_with_tenancy(txn, &tenancy, visibility)
-                        .await?
-                        .ok_or(SchematicError::SchemaNotFound)?;
+                    // We're going to skip all `NodeKind::System` nodes
+                    continue;
 
-                    (schema, system.name().to_owned(), SchematicKind::System)
+                    // TODO(fnichol): We were failing in `node.system()` with an `Error: dal
+                    // schematic error: system not found` error. For the moment we're going to
+                    // filter out system-backed nodes, but ultimately we might want to return all
+                    // node kinds back to the frontend for use.
+                    //
+                    // let system = node
+                    //     .system(txn, visibility)
+                    //     .await?
+                    //     .ok_or(SchematicError::SystemNotFound)?;
+                    // let mut tenancy = tenancy.clone();
+                    // tenancy.universal = true;
+                    // let schema = system
+                    //     .schema_with_tenancy(txn, &tenancy, visibility)
+                    //     .await?
+                    //     .ok_or(SchematicError::SchemaNotFound)?;
+
+                    // (schema, system.name().to_owned(), SchematicKind::System)
                 }
             };
 
