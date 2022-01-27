@@ -4,25 +4,24 @@
       class="relative flex flex-row items-center justify-between h-10 pt-2 pb-2 pl-6 pr-6 text-white property-section-bg-color"
     >
       <div class="text-lg">
-        Component number {{ props.componentId }}'s qualifications
+        Component ID {{ props.componentId }} Qualifications
       </div>
 
       <div class="flex">
         <button v-if="editMode" class="pl-1 focus:outline-none sync-button">
           <VueFeather
-            ref="sync"
             type="refresh-cw"
-            size="1.5rem"
             class="text-sm"
-            :class="refreshButtonClasses()"
+            :class="refreshButtonClasses"
+            size="1.1em"
           />
         </button>
         <VueFeather
           v-else
           type="check-square"
           class="text-base text-sm text-gray-300"
-          size="1.5rem"
-          :class="refreshButtonClasses()"
+          :class="refreshButtonClasses"
+          size="1.1em"
         />
       </div>
     </div>
@@ -32,11 +31,86 @@
         Qualification Checks
       </div>
 
-      <div
-        v-if="schema"
-        class="flex w-full h-full pt-2 pb-4 overflow-auto background-color"
-      >
+      <div class="flex w-full h-full pt-2 pb-4 overflow-auto background-color">
         <div class="flex flex-col w-full">
+          <!-- NOTE(nick): this was not present in old-web, but we need to account for null qualifications since they
+          are collected inside the viewer rather than by attribute panel (old-web behavior). Essentially, this
+          div is only rendered we either have no qualifications (default square) or if we know they are all valid
+          (happy face with all fields valid). This needs to appears BEFORE the other qualifications are displayed
+          iteratively. I'm sure we can _smush_ it back together and ensure "allFieldsValid" is frontloaded in the
+          future, but this works for the time being.
+          -->
+          <div
+            v-if="
+              !allQualifications ||
+              allQualifications.length < 1 ||
+              allFieldsValid
+            "
+            class="flex flex-col py-1 mx-2 mt-2 text-sm border qualification-section"
+          >
+            <div class="flex flex-row items-center w-full pl-4 my-1">
+              <div class="flex">
+                <VueFeather
+                  v-if="allFieldsValid"
+                  type="smile"
+                  class="text-green-300"
+                  size="1.1em"
+                />
+                <VueFeather
+                  v-else
+                  type="square"
+                  class="text-gray-700"
+                  size="1.1em"
+                />
+              </div>
+              <!-- NOTE(nick): there does not exist 1:1 behavior with old-web here, but the appearance should be the
+              same, barring the chevron icon being remove. This is because we won't have any descriptions or outputs
+              to display.
+              -->
+              <div class="flex flex-row text-xs w-full pl-4 my-1 text-gray-300">
+                All fields are valid
+              </div>
+
+              <!-- NOTE(nick): We only render the button div if all fields are valid. -->
+              <div
+                v-if="allFieldsValid"
+                class="flex justify-end flex-grow pr-4"
+              >
+                <button
+                  class="focus:outline-none"
+                  @click="toggleShowDescription('allFieldsValid')"
+                >
+                  <VueFeather
+                    v-if="showDescriptionMap['allFieldsValid'] === true"
+                    type="chevron-down"
+                    size="1.1em"
+                  />
+                  <VueFeather v-else type="chevron-right" size="1.1em" />
+                </button>
+              </div>
+            </div>
+
+            <div
+              v-if="
+                allFieldsValid && showDescriptionMap['allFieldsValid'] === true
+              "
+              class="flex flex-col w-full"
+            >
+              <div class="flex flex-col w-full">
+                <div class="mt-1">
+                  <QualificationOutput
+                    :kind="'allFieldsValid'"
+                    :data="'i liketh my buttocks'"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- NOTE(nick): okay, you with me? This is where we iterate over all qualifications found. Unlike old-web,
+          this DOES NOT include "allFieldsValid" because we collect qualifications within the viewer. Let's go through
+          them all and display as needed.
+          -->
           <div
             v-for="q in allQualifications"
             :key="q.name"
@@ -52,20 +126,21 @@
               </div>
               <div v-else-if="q.result" class="flex">
                 <VueFeather
-                  v-if="qualificationResultQualified(q)"
+                  v-if="qualificationResultQualified(q.result)"
                   type="smile"
                   class="text-green-300"
-                  size="1.5rem"
+                  size="1.1em"
                 />
+                <!-- NOTE(nick): frown is slightly smaller than smile. It has been slightly boosted to match the latter. -->
                 <VueFeather
                   v-else
                   type="frown"
                   class="text-xs error"
-                  size="1.5rem"
+                  size="1.3em"
                 />
               </div>
               <div v-else class="flex">
-                <VueFeather type="square" class="text-gray-700" size="1.5rem" />
+                <VueFeather type="square" class="text-gray-700" size="1.1em" />
               </div>
 
               <div
@@ -76,31 +151,41 @@
               </div>
               <div v-if="q.link" class="flex ml-2">
                 <a target="_blank" :href="q.link">
-                  <VueFeather type="link" class="info-button" size="1.5rem" />
+                  <VueFeather type="info" class="info-button" size="1.1em" />
                 </a>
               </div>
-              <div class="flex justify-end flex-grow pr-4">
+              <!-- NOTE(nick): We only render the button div if a description OR if a result exists
+              in order to avoid user confusion. In essence, we want to ensure that we actually
+              have something to show to the user.
+              -->
+              <div
+                v-if="q.description || q.result"
+                class="flex justify-end flex-grow pr-4"
+              >
                 <button
                   class="focus:outline-none"
-                  @click="setShowDescription(q.description)"
+                  @click="toggleShowDescription(q.name)"
                 >
                   <VueFeather
-                    v-if="showDescription"
-                    type="chevron-up"
-                    size="1.5rem"
+                    v-if="showDescriptionMap[q.name] === true"
+                    type="chevron-down"
+                    size="1.1em"
                   />
-                  <VueFeather v-else type="chevron-down" size="1.5rem" />
+                  <VueFeather v-else type="chevron-right" size="1.1em" />
                 </button>
               </div>
             </div>
 
             <div
-              v-if="showDescription && q.description"
+              v-if="showDescriptionMap[q.name] === true"
               class="flex flex-col w-full"
             >
               <div v-if="q.result" class="flex flex-col w-full">
                 <div class="mt-1">
-                  <QualificationOutput :result="q.result" />
+                  <QualificationOutput
+                    :kind="q.name"
+                    :data="qualificationResultMessage(q.result)"
+                  />
                 </div>
               </div>
             </div>
@@ -115,96 +200,161 @@
 import { ComponentService } from "@/service/component";
 import QualificationOutput from "./QualificationViewer/QualificationOutput.vue";
 import VueFeather from "vue-feather";
-import { refFrom } from "vuse-rx";
-import { from, switchMap } from "rxjs";
+import { fromRef, refFrom } from "vuse-rx";
+import { combineLatest, from, switchMap } from "rxjs";
 import { GlobalErrorService } from "@/service/global_error";
-import { Qualification } from "@/api/sdf/dal/qualification";
+import {
+  Qualification,
+  QualificationResult,
+} from "@/api/sdf/dal/qualification";
 import { VueLoading } from "vue-loading-template";
-import { ref } from "vue";
+import { computed, ref, toRefs } from "vue";
 import { ChangeSetService } from "@/service/change_set";
 //import { ListQualificationsResponse } from "@/service/component/list_qualifications";
 
 const editMode = refFrom<boolean>(ChangeSetService.currentEditMode());
 
-// TODO(nick): replace mock data and functions.
-const schema = true;
-
-// FIXME(nick): implement active state.
-function isQualifying() {
+// FIXME(nick): implement active state. Default to not starting for now.
+const qualificationStarting = (_qualification_name: string) => {
   return false;
-}
+};
 
-// FIXME(nick): implement active state.
-function qualificationStarting(_qualification_name: string) {
-  return false;
-}
-
-function qualificationResultQualified(qualification: Qualification) {
-  if (qualification.result) {
-    return qualification.result?.success;
-  }
-  return false;
-}
-
-function isQualified(qualifications: Array<Qualification>): boolean {
-  qualifications.forEach((q) => {
-    // Do nothing if the result is qualified or does not exist.
-    if (q.result && !q.result.success) {
-      return false;
+// FIXME(nick): concatenate the message of each error for now.
+const qualificationResultMessage = (result: QualificationResult) => {
+  let data = "";
+  result.errors.forEach((e) => {
+    if (e.message !== "") {
+      if (data === "") {
+        data = e.message;
+      } else {
+        data = data + "\n" + e.message;
+      }
     }
   });
+  return data;
+};
 
-  // All results are qualified, do not have an attached result, or a mixture of the two.
-  return true;
+enum QualifiedState {
+  Success,
+  Failure,
+  Unknown,
 }
 
-const showDescription = ref<boolean>(false);
-function setShowDescription(description: string) {
-  showDescription.value = description !== "";
-}
+const currentQualifiedState = ref<QualifiedState>(QualifiedState.Unknown);
+const getQualifiedState = (
+  qualifications: Array<Qualification>,
+): QualifiedState => {
+  let empty = true;
+  for (const q of qualifications) {
+    if (q.result) {
+      empty = false;
+      if (!q.result.success) {
+        return QualifiedState.Failure;
+      }
+    }
+  }
+  if (empty) {
+    return QualifiedState.Unknown;
+  }
+  return QualifiedState.Success;
+};
 
+const refreshButtonClasses = computed(() => {
+  const classes: Record<string, boolean> = {};
+  if (currentQualifiedState.value == QualifiedState.Success) {
+    classes["error"] = false;
+    classes["success"] = true;
+    classes["unknown"] = false;
+  } else if (currentQualifiedState.value === QualifiedState.Failure) {
+    classes["error"] = true;
+    classes["success"] = false;
+    classes["unknown"] = false;
+  } else {
+    classes["error"] = false;
+    classes["success"] = false;
+    classes["unknown"] = true;
+  }
+  return classes;
+});
+
+// Every qualification must produce a result and must be successful for this to be true. No ifs,
+// ands or buts.
+const allFieldsValid = computed((): boolean => {
+  if (allQualifications.value && allQualifications.value.length > 0) {
+    for (const q of allQualifications.value) {
+      if (q.result) {
+        if (!q.result.success) {
+          return false;
+        }
+      } else {
+        return false;
+      }
+    }
+    return true;
+  } else {
+    return false;
+  }
+});
+
+const qualificationResultQualified = (result: QualificationResult) => {
+  return result.success;
+};
+
+// Use a record to keep track of each qualification's description toggles. Maybe users want some
+// boxes and not others. Who knows? I can't blame them. I just know that Maps aren't necessarily
+// reactive, but Records are. By the gods, Vue!! TALOS GUIDE YOU.
+const showDescriptionMap = ref<Record<string, boolean>>({
+  allFieldsValid: false,
+});
+
+const toggleShowDescription = (name: string) => {
+  showDescriptionMap.value[name] = !showDescriptionMap.value[name];
+};
+
+const populateShowDescription = (qualifications: Array<Qualification>) => {
+  for (const q of qualifications) {
+    if (!showDescriptionMap.value[q.name]) {
+      showDescriptionMap.value[q.name] = false;
+    }
+  }
+};
+
+// We need an observable stream of props.componentId. We also want
+// that stream to emit a value immediately (the first value, as well as all
+// subsequent values)
 const props = defineProps<{
   componentId: number;
 }>();
+const { componentId } = toRefs(props);
+const componentId$ = fromRef<number>(componentId, { immediate: true });
 
-const allQualifications = refFrom<Array<Qualification>>(
-  ComponentService.listQualifications({
-    componentId: props.componentId,
-  }).pipe(
-    switchMap((response) => {
-      if (response.error) {
-        GlobalErrorService.set(response);
-        return from([[]]);
+const allQualifications = refFrom<Array<Qualification> | null>(
+  combineLatest([componentId$]).pipe(
+    switchMap(([componentId]) => {
+      // Reset qualified state before getting qualifications.
+      currentQualifiedState.value = QualifiedState.Unknown;
+      return ComponentService.listQualifications({
+        componentId: componentId,
+      });
+    }),
+    switchMap((reply) => {
+      if (reply.error) {
+        GlobalErrorService.set(reply);
+        return from([null]);
       } else {
-        return from([response]);
+        // Something something side effects... Let's rethink this someday.
+        currentQualifiedState.value = getQualifiedState(reply);
+        populateShowDescription(reply);
+        return from([reply]);
       }
     }),
   ),
 );
-
-function refreshButtonClasses(): Record<string, any> {
-  let classes: Record<string, any> = {};
-  if (allQualifications.value && allQualifications.value.length > 0) {
-    if (isQualifying()) {
-      classes["animation"] = "spin";
-      classes["success"] = false;
-      classes["error"] = false;
-      classes["qualifying"] = true;
-    }
-
-    if (isQualified(allQualifications.value)) {
-      classes["success"] = true;
-    } else {
-      classes["error"] = true;
-    }
-  } else {
-    classes["unknown"] = true;
-  }
-  return classes;
-}
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+$button-brightness: 1.1;
+
 .background-color {
   background-color: #151515;
 }
@@ -250,15 +400,23 @@ function refreshButtonClasses(): Record<string, any> {
   color: #a8cc5f;
 }
 
-/*.sync-button:hover {*/
-/*  filter: brightness($button-brightness);*/
-/*}*/
+.sync-button:hover {
+  filter: brightness($button-brightness);
+}
 
 .sync-button:focus {
   outline: none;
 }
 
-/*.sync-button:active {*/
-/*  filter: saturate(1.5) brightness($button-brightness);*/
-/*}*/
+.sync-button:active {
+  filter: saturate(1.5) brightness($button-brightness);
+}
+
+.property-section-bg-color {
+  background-color: #292c2d;
+}
+
+.header-background {
+  background-color: #1f2122;
+}
 </style>
