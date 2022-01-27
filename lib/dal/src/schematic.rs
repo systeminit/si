@@ -1,9 +1,8 @@
 use crate::edge::{Edge, EdgeId, EdgeKind, VertexObjectKind};
-use crate::EdgeError;
 use crate::{
-    node::NodeId, ComponentError, HistoryActor, Node, NodeError, NodeKind, NodePosition,
-    NodePositionError, NodeTemplate, NodeView, StandardModel, StandardModelError, SystemId,
-    Tenancy, Visibility,
+    node::NodeId, ComponentError, EdgeError, HistoryActor, Node, NodeError, NodeKind, NodePosition,
+    NodePositionError, NodeTemplate, NodeView, StandardModel, StandardModelError, SystemError,
+    SystemId, Tenancy, Visibility,
 };
 use serde::{Deserialize, Serialize};
 use strum_macros::{AsRefStr, Display, EnumString};
@@ -28,10 +27,14 @@ pub enum SchematicError {
     Edge(#[from] EdgeError),
     #[error("position not found")]
     PositionNotFound,
-    #[error("component not foundl")]
+    #[error("component not found")]
     ComponentNotFound,
-    #[error("schema not foundl")]
+    #[error("schema not found")]
     SchemaNotFound,
+    #[error("system error: {0}")]
+    System(#[from] SystemError),
+    #[error("system not found")]
+    SystemNotFound,
 }
 
 pub type SchematicResult<T> = Result<T, SchematicError>;
@@ -44,6 +47,7 @@ pub type SchematicResult<T> = Result<T, SchematicError>;
 pub enum SchematicKind {
     Component,
     Deployment,
+    System,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
@@ -192,6 +196,20 @@ impl Schematic {
                         component.name().to_owned(),
                         SchematicKind::Component,
                     )
+                }
+                NodeKind::System => {
+                    let system = node
+                        .system(txn, visibility)
+                        .await?
+                        .ok_or(SchematicError::SystemNotFound)?;
+                    let mut tenancy = tenancy.clone();
+                    tenancy.universal = true;
+                    let schema = system
+                        .schema_with_tenancy(txn, &tenancy, visibility)
+                        .await?
+                        .ok_or(SchematicError::SchemaNotFound)?;
+
+                    (schema, system.name().to_owned(), SchematicKind::System)
                 }
             };
 

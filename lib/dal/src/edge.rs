@@ -7,8 +7,8 @@ use thiserror::Error;
 use crate::node::NodeId;
 use crate::{
     impl_standard_model, pk, socket::SocketId, standard_model, standard_model_accessor,
-    HistoryActor, HistoryEventError, StandardModel, StandardModelError, Tenancy, Timestamp,
-    Visibility,
+    ComponentId, HistoryActor, HistoryEventError, StandardModel, StandardModelError, SystemId,
+    Tenancy, Timestamp, Visibility,
 };
 
 #[derive(Error, Debug)]
@@ -28,11 +28,16 @@ pub enum EdgeError {
 pub type EdgeResult<T> = Result<T, EdgeError>;
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Display, EnumString, AsRefStr)]
+#[serde(rename_all = "camelCase")]
+#[strum(serialize_all = "camelCase")]
 pub enum VertexObjectKind {
     Component,
+    System,
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone, Display, EnumString, AsRefStr)]
+#[serde(rename_all = "camelCase")]
+#[strum(serialize_all = "camelCase")]
 pub enum EdgeKind {
     Configures,
     Includes,
@@ -135,4 +140,33 @@ impl Edge {
     standard_model_accessor!(tail_object_kind, Enum(VertexObjectKind), EdgeResult);
     standard_model_accessor!(tail_object_id, i64, EdgeResult);
     standard_model_accessor!(tail_socket_id, Pk(SocketId), EdgeResult);
+
+    pub async fn include_component_in_system(
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+        history_actor: &HistoryActor,
+        component_id: &ComponentId,
+        system_id: &SystemId,
+    ) -> EdgeResult<Self> {
+        let row = txn
+            .query_one(
+                "SELECT object FROM edge_include_component_in_system_v1($1, $2, $3, $4)",
+                &[&tenancy, &visibility, component_id, system_id],
+            )
+            .await?;
+
+        let object = standard_model::finish_create_from_row(
+            txn,
+            nats,
+            tenancy,
+            visibility,
+            history_actor,
+            row,
+        )
+        .await?;
+
+        Ok(object)
+    }
 }

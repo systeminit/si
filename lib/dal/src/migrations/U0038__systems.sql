@@ -15,10 +15,14 @@ CREATE TABLE systems
 );
 SELECT standard_model_table_constraints_v1('systems');
 SELECT belongs_to_table_create_v1('system_belongs_to_workspace', 'systems', 'workspaces');
+SELECT belongs_to_table_create_v1('system_belongs_to_schema', 'systems', 'schemas');
+SELECT belongs_to_table_create_v1('system_belongs_to_schema_variant', 'systems', 'schema_variants');
 
 INSERT INTO standard_models (table_name, table_type, history_event_label_base, history_event_message_name)
 VALUES ('systems', 'model', 'system', 'System'),
-       ('system_belongs_to_workspace', 'belongs_to', 'system.workspace', 'System <> Workspace');
+       ('system_belongs_to_workspace', 'belongs_to', 'system.workspace', 'System <> Workspace'),
+       ('system_belongs_to_schema', 'belongs_to', 'system.schema', 'System <> Schema'),
+       ('system_belongs_to_schema_variant', 'belongs_to', 'system.schema_variant', 'System <> Schema Variant');
 
 CREATE OR REPLACE FUNCTION system_create_v1(
     this_tenancy jsonb,

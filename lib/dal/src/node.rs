@@ -9,8 +9,8 @@ use crate::socket::{Socket, SocketEdgeKind};
 use crate::{
     generate_name, impl_standard_model, pk, standard_model, standard_model_accessor,
     standard_model_belongs_to, Component, ComponentId, HistoryActor, HistoryEventError,
-    NodePosition, Schema, SchemaId, SchemaVariant, StandardModel, StandardModelError, Tenancy,
-    Timestamp, Visibility,
+    NodePosition, Schema, SchemaId, SchemaVariant, StandardModel, StandardModelError, System,
+    SystemId, Tenancy, Timestamp, Visibility,
 };
 
 #[derive(Error, Debug)]
@@ -56,6 +56,7 @@ pk!(NodeId);
 )]
 pub enum NodeKind {
     Component,
+    System,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
@@ -118,6 +119,17 @@ impl Node {
         model_table: "components",
         belongs_to_id: ComponentId,
         returns: Component,
+        result: NodeResult,
+    );
+
+    standard_model_belongs_to!(
+        lookup_fn: system,
+        set_fn: set_system,
+        unset_fn: unset_system,
+        table: "node_belongs_to_system",
+        model_table: "systems",
+        belongs_to_id: SystemId,
+        returns: System,
         result: NodeResult,
     );
 }

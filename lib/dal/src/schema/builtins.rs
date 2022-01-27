@@ -23,10 +23,64 @@ pub async fn migrate(
         HistoryActor::SystemInit,
     );
 
+    system(txn, nats, &tenancy, &visibility, &history_actor).await?;
     application(txn, nats, &tenancy, &visibility, &history_actor).await?;
     service(txn, nats, &tenancy, &visibility, &history_actor).await?;
     kubernetes_service(txn, nats, &tenancy, &visibility, &history_actor).await?;
     docker_image(txn, nats, &tenancy, &visibility, &history_actor, veritech).await?;
+
+    Ok(())
+}
+
+async fn system(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    tenancy: &Tenancy,
+    visibility: &Visibility,
+    history_actor: &HistoryActor,
+) -> SchemaResult<()> {
+    let name = "system".to_string();
+    let mut schema = match create_schema(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        &name,
+        &SchemaKind::Concept,
+    )
+    .await?
+    {
+        Some(schema) => schema,
+        None => return Ok(()),
+    };
+
+    schema
+        .set_ui_hidden(txn, nats, visibility, history_actor, true)
+        .await?;
+
+    let variant = SchemaVariant::new(txn, nats, tenancy, visibility, history_actor, "v0").await?;
+    variant
+        .set_schema(txn, nats, visibility, history_actor, schema.id())
+        .await?;
+    schema
+        .set_default_schema_variant_id(txn, nats, visibility, history_actor, Some(*variant.id()))
+        .await?;
+
+    let output_socket = Socket::new(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        "output",
+        &SocketEdgeKind::Output,
+        &SocketArity::Many,
+    )
+    .await?;
+    variant
+        .add_socket(txn, nats, visibility, history_actor, output_socket.id())
+        .await?;
 
     Ok(())
 }
@@ -94,6 +148,21 @@ async fn application(
     .await?;
     variant
         .add_socket(txn, nats, visibility, history_actor, output_socket.id())
+        .await?;
+
+    let includes_socket = Socket::new(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        "includes",
+        &SocketEdgeKind::Includes,
+        &SocketArity::Many,
+    )
+    .await?;
+    variant
+        .add_socket(txn, nats, visibility, history_actor, includes_socket.id())
         .await?;
 
     Ok(())
@@ -210,6 +279,21 @@ async fn service(
         .add_socket(txn, nats, visibility, history_actor, output_socket.id())
         .await?;
 
+    let includes_socket = Socket::new(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        "includes",
+        &SocketEdgeKind::Includes,
+        &SocketArity::Many,
+    )
+    .await?;
+    variant
+        .add_socket(txn, nats, visibility, history_actor, includes_socket.id())
+        .await?;
+
     Ok(())
 }
 
@@ -272,6 +356,21 @@ async fn kubernetes_service(
     .await?;
     variant
         .add_socket(txn, nats, visibility, history_actor, output_socket.id())
+        .await?;
+
+    let includes_socket = Socket::new(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        "includes",
+        &SocketEdgeKind::Includes,
+        &SocketArity::Many,
+    )
+    .await?;
+    variant
+        .add_socket(txn, nats, visibility, history_actor, includes_socket.id())
         .await?;
 
     Ok(())
@@ -490,6 +589,21 @@ async fn docker_image(
     .await?;
     variant
         .add_socket(txn, nats, visibility, history_actor, output_socket.id())
+        .await?;
+
+    let includes_socket = Socket::new(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        "includes",
+        &SocketEdgeKind::Includes,
+        &SocketArity::Many,
+    )
+    .await?;
+    variant
+        .add_socket(txn, nats, visibility, history_actor, includes_socket.id())
         .await?;
 
     // Qualification Prototype
