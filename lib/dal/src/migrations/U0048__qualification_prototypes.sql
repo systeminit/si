@@ -13,6 +13,8 @@ CREATE TABLE qualification_prototypes
     updated_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     func_id                     bigint                   NOT NULL,
     args                        jsonb                    NOT NULL,
+    title                       text                     NOT NULL,
+    link                        text,
     component_id                bigint                   NOT NULL,
     schema_id                   bigint                   NOT NULL,
     schema_variant_id           bigint                   NOT NULL,
@@ -32,6 +34,7 @@ CREATE OR REPLACE FUNCTION qualification_prototype_create_v1(
     this_schema_id bigint,
     this_schema_variant_id bigint,
     this_system_id bigint,
+    this_title text,
     OUT object json) AS
 $$
 DECLARE
@@ -51,6 +54,7 @@ BEGIN
                                        visibility_deleted,
                                        func_id,
                                        args,
+                                       title,
                                        component_id,
                                        schema_id,
                                        schema_variant_id,
@@ -64,6 +68,7 @@ BEGIN
             this_visibility_record.visibility_deleted,
             this_func_id,
             this_args,
+            this_title,
             this_component_id,
             this_schema_id,
             this_schema_variant_id,

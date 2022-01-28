@@ -62,6 +62,7 @@ async fn new() {
         *func.id(),
         serde_json::to_value(&args).expect("serialization failed"),
         prototype_context,
+        "docker image name must match component name",
     )
     .await
     .expect("cannot create new prototype");
