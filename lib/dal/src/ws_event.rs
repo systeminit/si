@@ -3,6 +3,7 @@ use thiserror::Error;
 
 use si_data::{NatsError, NatsTxn};
 
+use crate::resource::ResourceSyncId;
 use crate::{BillingAccountId, ChangeSetPk, HistoryActor, SchemaPk, Tenancy};
 
 #[derive(Error, Debug)]
@@ -23,6 +24,7 @@ pub enum WsPayload {
     ChangeSetCanceled(ChangeSetPk),
     EditSessionSaved(ChangeSetPk),
     SchemaCreated(SchemaPk),
+    ResourceSynced(ResourceSyncId),
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, Eq, PartialEq)]
