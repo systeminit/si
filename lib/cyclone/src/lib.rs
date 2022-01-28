@@ -26,6 +26,7 @@ pub use progress::{
 };
 pub use qualification_check::{
     QualificationCheckComponent, QualificationCheckRequest, QualificationCheckResultSuccess,
+    QualificationSubCheck, QualificationSubCheckStatus,
 };
 pub use readiness::{ReadinessStatus, ReadinessStatusParseError};
 pub use resolver_function::{ResolverFunctionRequest, ResolverFunctionResultSuccess};

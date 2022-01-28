@@ -20,6 +20,7 @@ use tokio_util::codec::{FramedRead, FramedWrite};
 
 use crate::{
     process::{self, ShutdownError},
+    qualification_check::QualificationSubCheck,
     server::WebSocketMessage,
     FunctionResult, FunctionResultFailure, FunctionResultFailureError, Message, OutputStream,
     QualificationCheckRequest, QualificationCheckResultSuccess,
@@ -321,6 +322,9 @@ impl From<LangServerResult> for FunctionResult<QualificationCheckResultSuccess> 
                 execution_id: success.execution_id,
                 qualified: success.qualified,
                 message: success.message,
+                title: success.title,
+                link: success.link,
+                sub_checks: success.sub_checks,
                 timestamp: timestamp(),
             }),
             LangServerResult::Failure(failure) => Self::Failure(FunctionResultFailure {
@@ -340,6 +344,9 @@ impl From<LangServerResult> for FunctionResult<QualificationCheckResultSuccess> 
 struct LangServerSuccess {
     execution_id: String,
     qualified: bool,
+    title: Option<String>,
+    link: Option<String>,
+    sub_checks: Option<Vec<QualificationSubCheck>>,
     message: Option<String>,
 }
 

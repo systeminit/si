@@ -33,84 +33,6 @@
 
       <div class="flex w-full h-full pt-2 pb-4 overflow-auto background-color">
         <div class="flex flex-col w-full">
-          <!-- NOTE(nick): this was not present in old-web, but we need to account for null qualifications since they
-          are collected inside the viewer rather than by attribute panel (old-web behavior). Essentially, this
-          div is only rendered we either have no qualifications (default square) or if we know they are all valid
-          (happy face with all fields valid). This needs to appears BEFORE the other qualifications are displayed
-          iteratively. I'm sure we can _smush_ it back together and ensure "allFieldsValid" is frontloaded in the
-          future, but this works for the time being.
-          -->
-          <div
-            v-if="
-              !allQualifications ||
-              allQualifications.length < 1 ||
-              allFieldsValid
-            "
-            class="flex flex-col py-1 mx-2 mt-2 text-sm border qualification-section"
-          >
-            <div class="flex flex-row items-center w-full pl-4 my-1">
-              <div class="flex">
-                <VueFeather
-                  v-if="allFieldsValid"
-                  type="smile"
-                  class="text-green-300"
-                  size="1.1em"
-                />
-                <VueFeather
-                  v-else
-                  type="square"
-                  class="text-gray-700"
-                  size="1.1em"
-                />
-              </div>
-              <!-- NOTE(nick): there does not exist 1:1 behavior with old-web here, but the appearance should be the
-              same, barring the chevron icon being remove. This is because we won't have any descriptions or outputs
-              to display.
-              -->
-              <div class="flex flex-row text-xs w-full pl-4 my-1 text-gray-300">
-                All fields are valid
-              </div>
-
-              <!-- NOTE(nick): We only render the button div if all fields are valid. -->
-              <div
-                v-if="allFieldsValid"
-                class="flex justify-end flex-grow pr-4"
-              >
-                <button
-                  class="focus:outline-none"
-                  @click="toggleShowDescription('allFieldsValid')"
-                >
-                  <VueFeather
-                    v-if="showDescriptionMap['allFieldsValid'] === true"
-                    type="chevron-down"
-                    size="1.1em"
-                  />
-                  <VueFeather v-else type="chevron-right" size="1.1em" />
-                </button>
-              </div>
-            </div>
-
-            <div
-              v-if="
-                allFieldsValid && showDescriptionMap['allFieldsValid'] === true
-              "
-              class="flex flex-col w-full"
-            >
-              <div class="flex flex-col w-full">
-                <div class="mt-1">
-                  <QualificationOutput
-                    :kind="'allFieldsValid'"
-                    :data="'i liketh my buttocks'"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- NOTE(nick): okay, you with me? This is where we iterate over all qualifications found. Unlike old-web,
-          this DOES NOT include "allFieldsValid" because we collect qualifications within the viewer. Let's go through
-          them all and display as needed.
-          -->
           <div
             v-for="q in allQualifications"
             :key="q.name"
@@ -182,10 +104,7 @@
             >
               <div v-if="q.result" class="flex flex-col w-full">
                 <div class="mt-1">
-                  <QualificationOutput
-                    :kind="q.name"
-                    :data="qualificationResultMessage(q.result)"
-                  />
+                  <QualificationOutput :result="q.result" />
                 </div>
               </div>
             </div>
@@ -217,21 +136,6 @@ const editMode = refFrom<boolean>(ChangeSetService.currentEditMode());
 // FIXME(nick): implement active state. Default to not starting for now.
 const qualificationStarting = (_qualification_name: string) => {
   return false;
-};
-
-// FIXME(nick): concatenate the message of each error for now.
-const qualificationResultMessage = (result: QualificationResult) => {
-  let data = "";
-  result.errors.forEach((e) => {
-    if (e.message !== "") {
-      if (data === "") {
-        data = e.message;
-      } else {
-        data = data + "\n" + e.message;
-      }
-    }
-  });
-  return data;
 };
 
 enum QualifiedState {
@@ -275,25 +179,6 @@ const refreshButtonClasses = computed(() => {
     classes["unknown"] = true;
   }
   return classes;
-});
-
-// Every qualification must produce a result and must be successful for this to be true. No ifs,
-// ands or buts.
-const allFieldsValid = computed((): boolean => {
-  if (allQualifications.value && allQualifications.value.length > 0) {
-    for (const q of allQualifications.value) {
-      if (q.result) {
-        if (!q.result.success) {
-          return false;
-        }
-      } else {
-        return false;
-      }
-    }
-    return true;
-  } else {
-    return false;
-  }
 });
 
 const qualificationResultQualified = (result: QualificationResult) => {
