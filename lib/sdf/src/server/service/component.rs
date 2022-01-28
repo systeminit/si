@@ -33,6 +33,8 @@ pub enum ComponentError {
     SchemaError(#[from] SchemaError),
     #[error("ws event error: {0}")]
     WsEvent(#[from] WsEventError),
+    #[error("component not found")]
+    ComponentNotFound,
 }
 
 pub type ComponentResult<T> = std::result::Result<T, ComponentError>;

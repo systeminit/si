@@ -14,12 +14,15 @@ use crate::edit_field::{
     EditFieldObjectKind, EditFields, TextWidget, Widget,
 };
 use crate::func::backend::validation::{FuncBackendValidateStringValueArgs, ValidationError};
-use crate::func::backend::{FuncBackendJsQualificationArgs, FuncBackendStringArgs};
+use crate::func::backend::{
+    FuncBackendJsQualificationArgs, FuncBackendJsResourceSyncArgs, FuncBackendStringArgs,
+};
 use crate::func::binding::{FuncBinding, FuncBindingError};
 use crate::func::binding_return_value::FuncBindingReturnValue;
 use crate::node::NodeKind;
 use crate::qualification::QualificationView;
 use crate::qualification_resolver::QualificationResolverContext;
+use crate::resource_resolver::ResourceResolverContext;
 use crate::schema::variant::{SchemaVariantError, SchemaVariantId};
 use crate::schema::SchemaVariant;
 use crate::validation_resolver::ValidationResolverContext;
@@ -29,9 +32,11 @@ use crate::{
     standard_model_accessor, standard_model_belongs_to, standard_model_has_many, AttributeResolver,
     AttributeResolverError, Func, FuncBackendKind, HistoryActor, HistoryEventError, Node,
     NodeError, Prop, PropId, PropKind, QualificationPrototype, QualificationPrototypeError,
-    QualificationResolver, QualificationResolverError, Schema, SchemaError, SchemaId,
-    StandardModel, StandardModelError, SystemId, Tenancy, Timestamp, ValidationPrototype,
-    ValidationPrototypeError, ValidationResolver, ValidationResolverError, Visibility,
+    QualificationResolver, QualificationResolverError, Resource, ResourceError, ResourcePrototype,
+    ResourcePrototypeError, ResourceResolver, ResourceResolverError, ResourceView, Schema,
+    SchemaError, SchemaId, StandardModel, StandardModelError, SystemId, Tenancy, Timestamp,
+    ValidationPrototype, ValidationPrototypeError, ValidationResolver, ValidationResolverError,
+    Visibility,
 };
 
 #[derive(Error, Debug)]
@@ -42,6 +47,10 @@ pub enum ComponentError {
     QualificationPrototype(#[from] QualificationPrototypeError),
     #[error("qualification resolver error: {0}")]
     QualificationResolver(#[from] QualificationResolverError),
+    #[error("resource prototype error: {0}")]
+    ResourcePrototype(#[from] ResourcePrototypeError),
+    #[error("resource resolver error: {0}")]
+    ResourceResolver(#[from] ResourceResolverError),
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("pg error: {0}")]
@@ -80,10 +89,15 @@ pub enum ComponentError {
     ValidationPrototype(#[from] ValidationPrototypeError),
     #[error("qualification view error: {0}")]
     QualificationView(#[from] QualificationError),
+    #[error("resource error: {0}")]
+    Resource(#[from] ResourceError),
+    #[error("resource not found")]
+    ResourceNotFound,
 }
 
 pub type ComponentResult<T> = Result<T, ComponentError>;
 
+const GET_RESOURCE: &str = include_str!("./queries/component_get_resource.sql");
 const LIST_QUALIFICATIONS: &str = include_str!("./queries/component_list_qualifications.sql");
 const LIST_FOR_RESOURCE_SYNC: &str = include_str!("./queries/component_list_for_resource_sync.sql");
 
@@ -683,6 +697,44 @@ impl Component {
     }
 
     #[tracing::instrument(skip(txn))]
+    pub async fn get_resource_by_component_and_system(
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+        history_actor: &HistoryActor,
+        component_id: ComponentId,
+        system_id: SystemId,
+    ) -> ComponentResult<ResourceView> {
+        // Note(paulo): This should not be an upsert, but we currently don't have a way to create resource attached to a system during Component creation
+        let resource = Resource::upsert(
+            txn,
+            nats,
+            tenancy,
+            visibility,
+            history_actor,
+            &component_id,
+            &system_id,
+        )
+        .await?;
+
+        let row = txn
+            .query_opt(
+                GET_RESOURCE,
+                &[&tenancy, &visibility, &component_id, &system_id],
+            )
+            .await?;
+
+        let json: Option<serde_json::Value> = row.map(|row| row.try_get("object")).transpose()?;
+
+        let func_binding_return_value: Option<FuncBindingReturnValue> =
+            json.map(serde_json::from_value).transpose()?;
+        let res_view = ResourceView::from((resource, func_binding_return_value));
+
+        Ok(res_view)
+    }
+
+    #[tracing::instrument(skip(txn))]
     pub async fn list_qualifications_by_component_id(
         txn: &PgTxn<'_>,
         tenancy: &Tenancy,
@@ -766,10 +818,113 @@ impl Component {
         Ok(results)
     }
 
-    // TODO: Make this actully sync the resource, by looking up the protoype, building resolvers, etc.!
     #[tracing::instrument]
-    pub async fn sync_resource(&self) -> ComponentResult<()> {
+    pub async fn sync_resource(
+        &self,
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
+        veritech: veritech::Client,
+        history_actor: &HistoryActor,
+        system_id: SystemId,
+    ) -> ComponentResult<()> {
         tracing::warn!("checking resource: {:?}", self);
+
+        // Note(paulo): we don't actually care about the Resource here, we only care about the ResourcePrototype, is this wrong?
+
+        let mut schema_tenancy = self.tenancy.clone();
+        schema_tenancy.universal = true;
+
+        let schema = self
+            .schema_with_tenancy(txn, &schema_tenancy, &self.visibility)
+            .await?
+            .ok_or(ComponentError::SchemaNotFound)?;
+        let schema_variant = self
+            .schema_variant_with_tenancy(txn, &schema_tenancy, &self.visibility)
+            .await?
+            .ok_or(ComponentError::SchemaVariantNotFound)?;
+
+        let resource_prototype = ResourcePrototype::get_for_component(
+            txn,
+            &schema_tenancy,
+            &self.visibility,
+            *self.id(),
+            *schema.id(),
+            *schema_variant.id(),
+            system_id,
+        )
+        .await?;
+
+        if let Some(prototype) = resource_prototype {
+            let func =
+                Func::get_by_id(txn, &schema_tenancy, &self.visibility, &prototype.func_id())
+                    .await?
+                    .ok_or_else(|| ComponentError::MissingFunc(prototype.func_id().to_string()))?;
+
+            let args = FuncBackendJsResourceSyncArgs {
+                component: self
+                    .veritech_resource_sync_component(txn, &schema_tenancy, &self.visibility)
+                    .await?,
+            };
+            let json_args = serde_json::to_value(args)?;
+
+            let (func_binding, _created) = FuncBinding::find_or_create(
+                txn,
+                nats,
+                &schema_tenancy,
+                &self.visibility,
+                history_actor,
+                json_args,
+                prototype.func_id(),
+                *func.backend_kind(),
+            )
+            .await?;
+
+            // Note: We need to execute the same func binding a bunch of times
+            func_binding.execute(txn, nats, veritech.clone()).await?;
+
+            // Note for future humans - if this isn't a built in, then we need to
+            // think about execution time. Probably higher up than this? But just
+            // an FYI.
+            let existing_resolver = ResourceResolver::get_for_prototype_and_component(
+                txn,
+                &schema_tenancy,
+                &self.visibility,
+                prototype.id(),
+                self.id(),
+            )
+            .await?;
+
+            // If we do not have one, create the resource resolver. If we do, update the
+            // func binding id to point to the new value.
+            let mut resolver = if let Some(resolver) = existing_resolver {
+                resolver
+            } else {
+                let mut resolver_context = ResourceResolverContext::new();
+                resolver_context.set_component_id(*self.id());
+                ResourceResolver::new(
+                    txn,
+                    nats,
+                    &self.tenancy,
+                    &self.visibility,
+                    history_actor,
+                    *prototype.id(),
+                    *func.id(),
+                    *func_binding.id(),
+                    resolver_context,
+                )
+                .await?
+            };
+            resolver
+                .set_func_binding_id(
+                    txn,
+                    nats,
+                    &self.visibility,
+                    history_actor,
+                    *func_binding.id(),
+                )
+                .await?;
+        }
+
         Ok(())
     }
 }

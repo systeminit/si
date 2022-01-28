@@ -25,6 +25,8 @@ pub type SystemResult<T> = Result<T, SystemError>;
 pk!(SystemPk);
 pk!(SystemId);
 
+pub const UNSET_ID_VALUE: i64 = -1;
+
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct System {
     pk: SystemPk,

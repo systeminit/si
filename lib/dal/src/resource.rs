@@ -1,13 +1,16 @@
+use std::time::SystemTime;
+
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use si_data::{NatsError, NatsTxn, PgError, PgTxn};
 use telemetry::prelude::*;
 use thiserror::Error;
 
+use crate::func::binding_return_value::FuncBindingReturnValue;
 use crate::{
-    impl_standard_model, pk,
-    standard_model::{self, objects_from_rows},
-    standard_model_belongs_to, Component, ComponentId, HistoryActor, HistoryEventError,
-    StandardModel, StandardModelError, System, SystemId, Tenancy, Timestamp, Visibility,
+    impl_standard_model, pk, standard_model, standard_model_belongs_to, Component, ComponentId,
+    HistoryActor, HistoryEventError, StandardModel, StandardModelError, System, SystemId, Tenancy,
+    Timestamp, Visibility,
 };
 
 #[derive(Error, Debug)]
@@ -26,8 +29,8 @@ pub enum ResourceError {
 
 pub type ResourceResult<T> = Result<T, ResourceError>;
 
-const FIND_FOR_COMPONENT_AND_SYSTEM: &str =
-    include_str!("./queries/resource_find_for_component_and_system.sql");
+const GET_BY_COMPONENT_AND_SYSTEM: &str =
+    include_str!("./queries/resource_get_by_component_and_system.sql");
 
 pk!(ResourcePk);
 pk!(ResourceId);
@@ -120,20 +123,101 @@ impl Resource {
     );
 
     #[allow(clippy::too_many_arguments)]
-    pub async fn find_for_component_id_and_system_id(
+    pub async fn get_by_component_id_and_system_id(
         txn: &PgTxn<'_>,
         tenancy: &Tenancy,
         visibility: &Visibility,
         component_id: &ComponentId,
         system_id: &SystemId,
-    ) -> ResourceResult<Vec<Self>> {
-        let rows = txn
-            .query(
-                FIND_FOR_COMPONENT_AND_SYSTEM,
+    ) -> ResourceResult<Option<Self>> {
+        let row = txn
+            .query_opt(
+                GET_BY_COMPONENT_AND_SYSTEM,
                 &[&tenancy, &visibility, component_id, system_id],
             )
             .await?;
-        let object = objects_from_rows(rows)?;
+        let object = standard_model::option_object_from_row(row)?;
         Ok(object)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub async fn upsert(
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+        history_actor: &HistoryActor,
+        component_id: &ComponentId,
+        system_id: &SystemId,
+    ) -> ResourceResult<Self> {
+        let mut schema_tenancy = tenancy.clone();
+        schema_tenancy.universal = true;
+
+        let resource = Resource::get_by_component_id_and_system_id(
+            txn,
+            &schema_tenancy,
+            visibility,
+            component_id,
+            system_id,
+        )
+        .await?;
+
+        if let Some(resource) = resource {
+            Ok(resource)
+        } else {
+            Resource::new(
+                txn,
+                nats,
+                tenancy,
+                visibility,
+                history_actor,
+                component_id,
+                system_id,
+            )
+            .await
+        }
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ResourceView {
+    pub id: ResourceId,
+    pub updated_at: DateTime<Utc>,
+    pub created_at: DateTime<Utc>,
+    pub error: Option<String>,
+    pub data: serde_json::Value,
+    pub health: String,
+    pub entity_type: String,
+}
+
+impl From<(Resource, Option<FuncBindingReturnValue>)> for ResourceView {
+    fn from((resource, fbrv): (Resource, Option<FuncBindingReturnValue>)) -> Self {
+        // TODO: actually fill all of the data dynamically, most fields don't make much sense for now
+
+        // TODO: do we want to have a special case for when the FuncBindingReturnValue is there, but the .value() returns None?
+        if let Some((fbrv, result_json)) = fbrv.and_then(|f| f.value().cloned().map(|v| (f, v))) {
+            Self {
+                id: *resource.id(),
+                created_at: fbrv.timestamp().created_at,
+                updated_at: fbrv.timestamp().updated_at,
+                error: Some("Boto Cor de Rosa Spotted at a Party".to_owned()),
+                data: result_json,
+                health: "warning".to_owned(),
+                entity_type: "idk bro".to_owned(),
+            }
+        } else {
+            // TODO: Time should actually be never here, how to represent?
+            let time = DateTime::<Utc>::from(SystemTime::now());
+            Self {
+                id: *resource.id(),
+                created_at: time,
+                updated_at: time,
+                error: Some("Boto Cor de Rosa Spotted at a Party".to_owned()),
+                data: serde_json::json!(null),
+                health: "warning".to_owned(),
+                entity_type: "idk bro".to_owned(),
+            }
+        }
     }
 }

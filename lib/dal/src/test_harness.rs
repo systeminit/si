@@ -14,8 +14,8 @@ use crate::{
     node::NodeKind,
     schema, socket, BillingAccount, ChangeSet, Component, EditSession, Func, FuncBackendKind,
     FuncBackendResponseType, Group, HistoryActor, KeyPair, Node, Organization, Prop, PropKind,
-    QualificationCheck, Schema, SchemaId, SchemaKind, StandardModel, System, Tenancy, User,
-    Visibility, Workspace, NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK,
+    QualificationCheck, Schema, SchemaId, SchemaKind, SchemaVariantId, StandardModel, System,
+    Tenancy, User, Visibility, Workspace, NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK,
 };
 
 #[derive(Debug)]
@@ -445,6 +445,25 @@ pub async fn create_component_and_schema(
         .await
         .expect("cannot create entity");
     entity
+}
+
+pub async fn create_component_for_schema_variant(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    tenancy: &Tenancy,
+    visibility: &Visibility,
+    history_actor: &HistoryActor,
+    schema_variant_id: &SchemaVariantId,
+) -> Component {
+    let name = generate_fake_name();
+    let component = Component::new(txn, nats, tenancy, visibility, history_actor, &name)
+        .await
+        .expect("cannot create component");
+    component
+        .set_schema_variant(txn, nats, visibility, history_actor, schema_variant_id)
+        .await
+        .expect("cannot set the schema for our component");
+    component
 }
 
 pub async fn create_component_for_schema(

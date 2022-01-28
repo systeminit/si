@@ -28,7 +28,7 @@
           </div>
 
           <div class="ml-2 text-xs">
-            {{ new Date(parseInt(resource.timestamp)) }}
+            {{ new Date(resource.updatedAt) }}
           </div>
         </div>
         <SiTextBox

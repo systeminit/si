@@ -22,7 +22,7 @@ impl ResourceSyncRequest {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ResourceSyncComponent {
     pub name: String,
@@ -33,4 +33,5 @@ pub struct ResourceSyncComponent {
 pub struct ResourceSyncResultSuccess {
     pub execution_id: String,
     pub timestamp: u64,
+    pub data: serde_json::Value,
 }

@@ -328,7 +328,7 @@ impl FuncBackendJsResourceSync {
     }
 
     #[instrument(
-        name = "funcbackendjssync.execute",
+        name = "funcbackendjsresourcesync.execute",
         skip_all,
         level = "debug",
         fields(
@@ -347,7 +347,7 @@ impl FuncBackendJsResourceSync {
             .await
             .map_err(|err| span.record_err(err))?;
         let value = match result {
-            FunctionResult::Success(check_result) => serde_json::to_value(&check_result)?,
+            FunctionResult::Success(result) => serde_json::to_value(&result)?,
             FunctionResult::Failure(failure) => {
                 return Err(span.record_err(FuncBackendError::ResultFailure {
                     kind: failure.error.kind,

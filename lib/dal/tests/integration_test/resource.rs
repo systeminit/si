@@ -52,7 +52,7 @@ async fn new() {
 }
 
 #[tokio::test]
-async fn find_for_component_and_system_id() {
+async fn get_by_component_and_system_id() {
     test_setup!(
         ctx,
         _secret_key,
@@ -119,7 +119,7 @@ async fn find_for_component_and_system_id() {
     .await
     .expect("cannot create resource for component/system");
 
-    // None of the following should be found by `Resource::find_for_component_id_and_system_id`.
+    // None of the following should be found by `Resource::get_by_component_id_and_system_id`.
     let _different_component_in_same_system = Resource::new(
         &txn,
         &nats,
@@ -154,7 +154,7 @@ async fn find_for_component_and_system_id() {
     .await
     .expect("cannot create resource for different component in different system");
 
-    let mut found_resources = Resource::find_for_component_id_and_system_id(
+    let found_resource = Resource::get_by_component_id_and_system_id(
         &txn,
         &tenancy,
         &visibility,
@@ -164,12 +164,9 @@ async fn find_for_component_and_system_id() {
     .await
     .expect("cannot retrieve resource for component/system");
 
-    assert_eq!(found_resources.len(), 1);
-    let found_resource = found_resources
-        .pop()
-        .expect("unable to pop resource from vec");
+    let found_resource = found_resource.expect("unable to get resource from component and system");
     assert_eq!(
         original_resource, found_resource,
-        "Resource::find_for_component_id_and_system_id needs to find the same resource we created"
+        "Resource::get_by_component_id_and_system_id needs to find the same resource we created"
     )
 }

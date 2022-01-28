@@ -1,10 +1,10 @@
 use crate::test_setup;
 
-use dal::func::backend::FuncBackendJsQualificationArgs;
-use dal::qualification_prototype::QualificationPrototypeContext;
+use dal::func::backend::FuncBackendJsResourceSyncArgs;
+use dal::resource_prototype::ResourcePrototypeContext;
 use dal::{
-    qualification_prototype::UNSET_ID_VALUE, test_harness::billing_account_signup, Component, Func,
-    HistoryActor, QualificationPrototype, Schema, StandardModel, Tenancy, Visibility,
+    resource_prototype::UNSET_ID_VALUE, test_harness::billing_account_signup, Component, Func,
+    HistoryActor, ResourcePrototype, Schema, StandardModel, Tenancy, Visibility,
 };
 
 #[tokio::test]
@@ -33,24 +33,24 @@ async fn new() {
     .await
     .expect("could not create component");
 
-    let func_name = "si:qualificationDockerImageNameEqualsComponentName".to_string();
+    let func_name = "si:resourceSyncHammer".to_string();
     let mut funcs = Func::find_by_attr(&txn, &tenancy, &visibility, "name", &func_name)
         .await
         .expect("Error fetching builtin function");
     let func = funcs
         .pop()
-        .expect("Missing builtin function si:qualificationDockerImageNameEqualsComponentName");
+        .expect("Missing builtin function si:resourceSyncHammer");
 
-    let args = FuncBackendJsQualificationArgs {
+    let args = FuncBackendJsResourceSyncArgs {
         component: component
-            .veritech_qualification_check_component(&txn, &tenancy, &visibility)
+            .veritech_resource_sync_component(&txn, &tenancy, &visibility)
             .await
-            .expect("could not create component qualification view"),
+            .expect("could not create component resource_sync view"),
     };
 
-    let mut prototype_context = QualificationPrototypeContext::new();
+    let mut prototype_context = ResourcePrototypeContext::new();
     prototype_context.set_component_id(*component.id());
-    let _prototype = QualificationPrototype::new(
+    let _prototype = ResourcePrototype::new(
         &txn,
         &nats,
         &tenancy,
@@ -100,7 +100,7 @@ async fn find_for_component() {
     .await
     .expect("cannot create new component");
 
-    let mut found_prototypes = QualificationPrototype::find_for_component(
+    let found_prototype = ResourcePrototype::get_for_component(
         &txn,
         &tenancy,
         &visibility,
@@ -110,9 +110,6 @@ async fn find_for_component() {
         UNSET_ID_VALUE.into(),
     )
     .await
-    .expect("could not create component qualification view");
-    assert_eq!(found_prototypes.len(), 1);
-    let _found = found_prototypes
-        .pop()
-        .expect("found no qualification prototypes");
+    .expect("could not create component resource_sync view");
+    let _found = found_prototype.expect("found no resource_sync prototypes");
 }
