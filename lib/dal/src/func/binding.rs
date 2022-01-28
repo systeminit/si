@@ -282,7 +282,6 @@ impl FuncBinding {
                     }]
                 }
 
-                // TODO(paulo): we need to store this somewhere in the dal so we can fetch it in /component/list_qualifications
                 let qual_result = QualificationResult {
                     success: veritech_result.qualified,
                     errors,
@@ -321,7 +320,6 @@ impl FuncBinding {
                 .execute()
                 .await?;
 
-                // TODO(paulo): what should be done with this?
                 let veritech_result = ResourceSyncResultSuccess::deserialize(&return_value)?;
                 execution.process_output(txn, nats, rx).await?;
                 Some(serde_json::to_value(&veritech_result)?)

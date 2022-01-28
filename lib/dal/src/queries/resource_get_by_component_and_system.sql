@@ -20,4 +20,5 @@ WHERE in_tenancy_v1($1, resources.tenancy_universal, resources.tenancy_billing_a
   AND resource_belongs_to_system.belongs_to_id = $4
 ORDER BY resources.id,
     resources.visibility_change_set_pk DESC,
-    resources.visibility_edit_session_pk DESC;
+    resources.visibility_edit_session_pk DESC
+LIMIT 1;

@@ -1,13 +1,15 @@
 use crate::func::backend::validation::FuncBackendValidateStringValueArgs;
 use crate::func::backend::FuncBackendJsQualificationArgs;
+use crate::func::backend::FuncBackendJsResourceSyncArgs;
 use crate::qualification_prototype::QualificationPrototypeContext;
+use crate::resource_prototype::ResourcePrototypeContext;
 use crate::schema::{SchemaResult, SchemaVariant, UiMenu};
 use crate::socket::{Socket, SocketArity, SocketEdgeKind};
 use crate::{
     attribute_resolver::AttributeResolverContext, func::binding::FuncBinding,
     validation_prototype::ValidationPrototypeContext, AttributeResolver, Func, HistoryActor, Prop,
-    PropKind, QualificationPrototype, Schema, SchemaError, SchemaKind, SchematicKind,
-    StandardModel, Tenancy, ValidationPrototype, Visibility,
+    PropKind, QualificationPrototype, ResourcePrototype, Schema, SchemaError, SchemaKind,
+    SchematicKind, StandardModel, Tenancy, ValidationPrototype, Visibility,
 };
 use si_data::{NatsTxn, PgTxn};
 
@@ -628,6 +630,32 @@ async fn docker_image(
         *qual_func.id(),
         qual_args_json,
         qual_prototype_context,
+    )
+    .await?;
+
+    // Resource Prototype
+    let resource_sync_func_name = "si:resourceSyncHammer".to_string();
+    let mut resource_sync_funcs =
+        Func::find_by_attr(txn, tenancy, visibility, "name", &resource_sync_func_name).await?;
+    let resource_sync_func = resource_sync_funcs
+        .pop()
+        .ok_or(SchemaError::FuncNotFound(resource_sync_func_name))?;
+    let resource_sync_args = FuncBackendJsResourceSyncArgs {
+        component: veritech::ResourceSyncComponent::default(),
+    };
+    let resource_sync_args_json = serde_json::to_value(&resource_sync_args)?;
+    let mut resource_sync_prototype_context = ResourcePrototypeContext::new();
+    resource_sync_prototype_context.set_schema_variant_id(*variant.id());
+
+    let _prototype = ResourcePrototype::new(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        *resource_sync_func.id(),
+        resource_sync_args_json,
+        resource_sync_prototype_context,
     )
     .await?;
 

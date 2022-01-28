@@ -312,6 +312,7 @@ impl From<LangServerResult> for FunctionResult<ResourceSyncResultSuccess> {
             LangServerResult::Success(success) => Self::Success(ResourceSyncResultSuccess {
                 execution_id: success.execution_id,
                 timestamp: timestamp(),
+                data: success.data,
             }),
             LangServerResult::Failure(failure) => Self::Failure(FunctionResultFailure {
                 execution_id: failure.execution_id,
@@ -330,6 +331,7 @@ impl From<LangServerResult> for FunctionResult<ResourceSyncResultSuccess> {
 struct LangServerSuccess {
     execution_id: String,
     message: Option<String>,
+    data: Value,
 }
 
 #[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]

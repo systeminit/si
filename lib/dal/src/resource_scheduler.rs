@@ -5,7 +5,8 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::time;
 
-use crate::{Component, ComponentError, HistoryEventError, StandardModelError};
+use crate::system::UNSET_ID_VALUE;
+use crate::{Component, ComponentError, HistoryActor, HistoryEventError, StandardModelError};
 
 #[derive(Error, Debug)]
 pub enum ResourceSchedulerError {
@@ -76,12 +77,44 @@ impl ResourceScheduler {
                     continue 'schedule;
                 }
             };
+
             'check: for component in components.into_iter() {
-                // likely we are passing in a transaction, etc here.
-                if let Err(error) = component.sync_resource().await {
+                let mut conn = match self.pg_pool.get().await {
+                    Ok(conn) => conn,
+                    Err(err) => {
+                        error!("Unable to get Pg Pool Connection: {:?}", err);
+                        continue 'check;
+                    }
+                };
+                let txn = match conn.transaction().await {
+                    Ok(txn) => txn,
+                    Err(err) => {
+                        error!("Unable to start Pg Transaction: {:?}", err);
+                        continue 'check;
+                    }
+                };
+                let nats = self.nats.transaction();
+                if let Err(error) = component
+                    .sync_resource(
+                        &txn,
+                        &nats,
+                        self.veritech.clone(),
+                        &HistoryActor::SystemInit,
+                        UNSET_ID_VALUE.into(),
+                    )
+                    .await
+                {
                     tracing::error!(?error, "Failed to sync component, moving to the next.");
                     continue 'check;
                 }
+                if let Err(err) = txn.commit().await {
+                    error!("Unable to commit Pg Transaction: {:?}", err);
+                    continue 'check;
+                };
+                if let Err(err) = nats.commit().await {
+                    error!("Unable to commit Nats Transaction: {:?}", err);
+                    continue 'check;
+                };
             }
         }
     }

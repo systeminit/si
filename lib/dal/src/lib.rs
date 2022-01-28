@@ -27,6 +27,8 @@ pub mod qualification_check;
 pub mod qualification_prototype;
 pub mod qualification_resolver;
 pub mod resource;
+pub mod resource_prototype;
+pub mod resource_resolver;
 pub mod resource_scheduler;
 pub mod schema;
 pub mod schematic;
@@ -83,7 +85,9 @@ pub use qualification_prototype::{
 pub use qualification_resolver::{
     QualificationResolver, QualificationResolverError, QualificationResolverId,
 };
-pub use resource::{Resource, ResourceError};
+pub use resource::{Resource, ResourceError, ResourceView};
+pub use resource_prototype::{ResourcePrototype, ResourcePrototypeError, ResourcePrototypeId};
+pub use resource_resolver::{ResourceResolver, ResourceResolverError, ResourceResolverId};
 pub use resource_scheduler::{ResourceScheduler, ResourceSchedulerError};
 pub use schema::{
     Schema, SchemaError, SchemaId, SchemaKind, SchemaPk, SchemaVariant, SchemaVariantId,

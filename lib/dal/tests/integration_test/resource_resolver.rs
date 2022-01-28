@@ -1,11 +1,11 @@
 use crate::test_setup;
 
-use dal::func::backend::FuncBackendJsQualificationArgs;
+use dal::func::backend::FuncBackendJsResourceSyncArgs;
 use dal::{
     func::binding::FuncBinding,
-    qualification_resolver::{QualificationResolverContext, UNSET_ID_VALUE},
+    resource_resolver::{ResourceResolverContext, UNSET_ID_VALUE},
     test_harness::{billing_account_signup, create_component_for_schema_variant},
-    Func, HistoryActor, QualificationResolver, Schema, StandardModel, Tenancy, Visibility,
+    Func, HistoryActor, ResourceResolver, Schema, StandardModel, Tenancy, Visibility,
 };
 
 #[tokio::test]
@@ -36,19 +36,19 @@ async fn new() {
     )
     .await;
 
-    let func_name = "si:qualificationDockerImageNameEqualsComponentName".to_string();
+    let func_name = "si:resourceSyncHammer".to_owned();
     let mut funcs = Func::find_by_attr(&txn, &tenancy, &visibility, "name", &func_name)
         .await
         .expect("Error fetching builtin function");
     let func = funcs
         .pop()
-        .expect("Missing builtin function si:qualificationDockerImageNameEqualsComponentName");
+        .expect("Missing builtin function si:resourceSyncHammer");
 
-    let args = FuncBackendJsQualificationArgs {
+    let args = FuncBackendJsResourceSyncArgs {
         component: component
-            .veritech_qualification_check_component(&txn, &tenancy, &visibility)
+            .veritech_resource_sync_component(&txn, &tenancy, &visibility)
             .await
-            .expect("could not create component qualification view"),
+            .expect("could not create component resource_sync view"),
     };
     let func_binding = FuncBinding::new(
         &txn,
@@ -67,9 +67,9 @@ async fn new() {
         .await
         .expect("failed to execute func binding");
 
-    let mut qualification_resolver_context = QualificationResolverContext::new();
-    qualification_resolver_context.set_component_id(*component.id());
-    let _qualification_resolver = QualificationResolver::new(
+    let mut resource_resolver_context = ResourceResolverContext::new();
+    resource_resolver_context.set_component_id(*component.id());
+    let _resource_esolver = ResourceResolver::new(
         &txn,
         &nats,
         &tenancy,
@@ -78,7 +78,7 @@ async fn new() {
         UNSET_ID_VALUE.into(),
         *func.id(),
         *func_binding.id(),
-        qualification_resolver_context,
+        resource_resolver_context,
     )
     .await
     .expect("cannot create new attribute resolver");
@@ -115,19 +115,19 @@ async fn find_for_prototype() {
     )
     .await;
 
-    let func_name = "si:qualificationDockerImageNameEqualsComponentName".to_string();
+    let func_name = "si:resourceSyncHammer".to_owned();
     let mut funcs = Func::find_by_attr(&txn, &tenancy, &visibility, "name", &func_name)
         .await
         .expect("Error fetching builtin function");
     let func = funcs
         .pop()
-        .expect("Missing builtin function si:qualificationDockerImageNameEqualsComponentName");
+        .expect("Missing builtin function si:resourceSyncHammer");
 
-    let args = FuncBackendJsQualificationArgs {
+    let args = FuncBackendJsResourceSyncArgs {
         component: component
-            .veritech_qualification_check_component(&txn, &tenancy, &visibility)
+            .veritech_resource_sync_component(&txn, &tenancy, &visibility)
             .await
-            .expect("could not create component qualification view"),
+            .expect("could not create component resource_sync view"),
     };
     let func_binding = FuncBinding::new(
         &txn,
@@ -146,9 +146,9 @@ async fn find_for_prototype() {
         .await
         .expect("failed to execute func binding");
 
-    let mut resolver_context = QualificationResolverContext::new();
+    let mut resolver_context = ResourceResolverContext::new();
     resolver_context.set_component_id(*component.id());
-    let created = QualificationResolver::new(
+    let created = ResourceResolver::new(
         &txn,
         &nats,
         &tenancy,
@@ -162,7 +162,7 @@ async fn find_for_prototype() {
     .await
     .expect("cannot create new attribute resolver");
 
-    let mut found_resolvers = QualificationResolver::find_for_prototype_and_component(
+    let found_resolver = ResourceResolver::get_for_prototype_and_component(
         &txn,
         &tenancy,
         &visibility,
@@ -171,9 +171,6 @@ async fn find_for_prototype() {
     )
     .await
     .expect("cannot find resolvers");
-    assert_eq!(found_resolvers.len(), 1);
-    let found = found_resolvers
-        .pop()
-        .expect("found no qualification resolvers");
+    let found = found_resolver.expect("found no resource_sync resolvers");
     assert_eq!(created, found);
 }

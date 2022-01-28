@@ -16,7 +16,8 @@ export enum ResourceStatus {
 export interface Resource {
   id: number;
   // unixTimestamp: string;
-  timestamp: string;
+  createdAt: string;
+  updatedAt: string;
   error?: string; // TODO: what is this?
   data: unknown; // TODO: what is this?
   // state: any;

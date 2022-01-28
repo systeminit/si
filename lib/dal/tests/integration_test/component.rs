@@ -3,7 +3,8 @@ use crate::test_setup;
 use dal::qualification_resolver::UNSET_ID_VALUE;
 use dal::test_harness::{create_schema, create_schema_variant};
 use dal::{
-    Component, HistoryActor, Prop, PropKind, Schema, SchemaKind, StandardModel, Tenancy, Visibility,
+    Component, HistoryActor, Prop, PropKind, Schema, SchemaKind, StandardModel, System, Tenancy,
+    Visibility,
 };
 use serde_json::json;
 
@@ -245,15 +246,6 @@ async fn list_qualifications() {
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
-    let schema = create_schema(
-        &txn,
-        &nats,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        &SchemaKind::Implementation,
-    )
-    .await;
 
     let schema = Schema::find_by_attr(
         &txn,
@@ -266,7 +258,7 @@ async fn list_qualifications() {
     .expect("cannot find docker image schema")
     .pop()
     .expect("no docker image schema found");
-    let (mut component, node) = Component::new_for_schema_with_node(
+    let (mut component, _node) = Component::new_for_schema_with_node(
         &txn,
         &nats,
         veritech.clone(),
@@ -318,15 +310,6 @@ async fn list_qualifications_by_component_id() {
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
-    let schema = create_schema(
-        &txn,
-        &nats,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        &SchemaKind::Implementation,
-    )
-    .await;
 
     let schema = Schema::find_by_attr(
         &txn,
@@ -339,7 +322,7 @@ async fn list_qualifications_by_component_id() {
     .expect("cannot find docker image schema")
     .pop()
     .expect("no docker image schema found");
-    let (mut component, node) = Component::new_for_schema_with_node(
+    let (mut component, _node) = Component::new_for_schema_with_node(
         &txn,
         &nats,
         veritech.clone(),
@@ -378,4 +361,94 @@ async fn list_qualifications_by_component_id() {
     .await
     .expect("cannot list qualifications");
     assert_eq!(qualifications.len(), 1);
+}
+
+// Also brittle, same reason
+#[tokio::test]
+async fn get_resource_by_component_id() {
+    test_setup!(
+        ctx,
+        _secret_key,
+        _pg,
+        _conn,
+        txn,
+        _nats_conn,
+        nats,
+        veritech,
+    );
+    let tenancy = Tenancy::new_universal();
+    let visibility = Visibility::new_head(false);
+    let history_actor = HistoryActor::SystemInit;
+
+    let schema = Schema::find_by_attr(
+        &txn,
+        &tenancy,
+        &visibility,
+        "name",
+        &"docker_image".to_string(),
+    )
+    .await
+    .expect("cannot find docker image schema")
+    .pop()
+    .expect("no docker image schema found");
+    let (mut component, _node) = Component::new_for_schema_with_node(
+        &txn,
+        &nats,
+        veritech.clone(),
+        &tenancy,
+        &visibility,
+        &history_actor,
+        "ash",
+        schema.id(),
+    )
+    .await
+    .expect("cannot create ash component");
+
+    component
+        .set_name(&txn, &nats, &visibility, &history_actor, "chvrches")
+        .await
+        .expect("cannot set name");
+
+    let system = System::new(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        "jonas-brothers-why-oh-why",
+    )
+    .await
+    .expect("cannot create system");
+
+    component
+        .sync_resource(&txn, &nats, veritech.clone(), &history_actor, *system.id())
+        .await
+        .expect("cannot sync resource");
+
+    let resource = Component::get_resource_by_component_and_system(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        *component.id(),
+        *system.id(),
+    )
+    .await
+    .expect("cannot get resource");
+    assert_eq!(
+        *resource
+            .data
+            .as_object()
+            .expect("None resource sync data")
+            .get("data")
+            .expect("Missing 'data' key from resource sync data")
+            .as_object()
+            .expect("Null 'data' key")
+            .get("data")
+            .expect("Missing 'data.data' key from resource sync data")
+            .get("name")
+            .expect("Missing name in resource sync data"),
+        serde_json::json!("Cant touch this: chvrches")
+    );
 }

@@ -31,7 +31,7 @@ export type ResourceSyncResult =
   | ResourceSyncResultFailure;
 
 export interface ResourceSyncResultSuccess extends ResultSuccess {
-  something?: string;
+  data?: string;
 }
 
 export interface ResourceSyncResultFailure extends ResultFailure {
@@ -81,6 +81,7 @@ function execute(
   const result: ResourceSyncResultSuccess = {
     protocol: "result",
     status: "success",
+    data: resourceSyncResult,
     executionId,
   };
   return result;
