@@ -110,6 +110,8 @@ pub struct QualificationPrototype {
     id: QualificationPrototypeId,
     func_id: FuncId,
     args: serde_json::Value,
+    title: String,
+    link: Option<String>,
     #[serde(flatten)]
     context: QualificationPrototypeContext,
     #[serde(flatten)]
@@ -131,7 +133,7 @@ impl_standard_model! {
 
 impl QualificationPrototype {
     #[allow(clippy::too_many_arguments)]
-    #[tracing::instrument(skip(txn, nats))]
+    #[tracing::instrument(skip(txn, nats, title))]
     pub async fn new(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
@@ -141,10 +143,12 @@ impl QualificationPrototype {
         func_id: FuncId,
         args: serde_json::Value,
         context: QualificationPrototypeContext,
+        title: impl Into<String>,
     ) -> QualificationPrototypeResult<Self> {
+        let title = title.into();
         let row = txn
             .query_one(
-                "SELECT object FROM qualification_prototype_create_v1($1, $2, $3, $4, $5, $6, $7, $8)",
+                "SELECT object FROM qualification_prototype_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9)",
                 &[
                     &tenancy,
                     &visibility,
@@ -154,6 +158,7 @@ impl QualificationPrototype {
                     &context.schema_id(),
                     &context.schema_variant_id(),
                     &context.system_id(),
+                    &title,
                 ],
             )
             .await?;
@@ -171,6 +176,8 @@ impl QualificationPrototype {
 
     standard_model_accessor!(func_id, Pk(FuncId), QualificationPrototypeResult);
     standard_model_accessor!(args, Json<JsonValue>, QualificationPrototypeResult);
+    standard_model_accessor!(title, String, QualificationPrototypeResult);
+    standard_model_accessor!(link, Option<String>, QualificationPrototypeResult);
 
     #[allow(clippy::too_many_arguments)]
     pub async fn find_for_component(

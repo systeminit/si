@@ -621,7 +621,7 @@ async fn docker_image(
     let mut qual_prototype_context = QualificationPrototypeContext::new();
     qual_prototype_context.set_schema_variant_id(*variant.id());
 
-    let _prototype = QualificationPrototype::new(
+    let mut prototype = QualificationPrototype::new(
         txn,
         nats,
         tenancy,
@@ -630,8 +630,18 @@ async fn docker_image(
         *qual_func.id(),
         qual_args_json,
         qual_prototype_context,
+        "docker image name must match the component name",
     )
     .await?;
+    prototype
+        .set_link(
+            txn,
+            nats,
+            visibility,
+            history_actor,
+            "http://docker.com".into(),
+        )
+        .await?;
 
     // Resource Prototype
     let resource_sync_func_name = "si:resourceSyncHammer".to_string();

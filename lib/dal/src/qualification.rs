@@ -24,10 +24,28 @@ pub struct QualificationResult {
     pub errors: Vec<QualificationErrorMessage>,
 }
 
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+pub enum QualificationSubCheckStatus {
+    Success,
+    Failure,
+    Unknown,
+}
+
+impl Default for QualificationSubCheckStatus {
+    fn default() -> Self {
+        QualificationSubCheckStatus::Unknown
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, Default, PartialEq, Eq)]
+pub struct QualificationSubCheck {
+    pub description: String,
+    pub status: QualificationSubCheckStatus,
+}
+
 #[derive(Deserialize, Serialize, Debug, Clone, Default, PartialEq, Eq)]
 pub struct QualificationView {
-    pub message: String,
-    pub title: Option<String>,
+    pub title: String,
     pub description: Option<String>,
     pub link: Option<String>,
     pub result: Option<QualificationResult>,
@@ -40,8 +58,7 @@ impl TryFrom<FuncBindingReturnValue> for QualificationView {
         if let Some(qual_result_json) = fbrv.value() {
             let result = serde_json::from_value(qual_result_json.clone())?;
             Ok(QualificationView {
-                message: "did it".to_string(),
-                title: None,
+                title: "Unknown (no title provided)".to_string(),
                 description: None,
                 link: None,
                 result: Some(result),

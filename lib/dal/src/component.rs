@@ -698,10 +698,22 @@ impl Component {
         visibility: &Visibility,
         system_id: SystemId,
     ) -> ComponentResult<Vec<QualificationView>> {
+        Self::list_qualifications_by_component_id(txn, tenancy, visibility, *self.id(), system_id)
+            .await
+    }
+
+    #[tracing::instrument(skip(txn))]
+    pub async fn list_qualifications_by_component_id(
+        txn: &PgTxn<'_>,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+        component_id: ComponentId,
+        system_id: SystemId,
+    ) -> ComponentResult<Vec<QualificationView>> {
         let rows = txn
             .query(
                 LIST_QUALIFICATIONS,
-                &[&tenancy, &visibility, &self.id(), &system_id],
+                &[&tenancy, &visibility, &component_id, &system_id],
             )
             .await?;
 
@@ -709,7 +721,11 @@ impl Component {
         for row in rows.into_iter() {
             let json: serde_json::Value = row.try_get("object")?;
             let func_binding_return_value: FuncBindingReturnValue = serde_json::from_value(json)?;
-            let qual_view = QualificationView::try_from(func_binding_return_value)?;
+            let mut qual_view = QualificationView::try_from(func_binding_return_value)?;
+            let title: String = row.try_get("title")?;
+            let link: Option<String> = row.try_get("link")?;
+            qual_view.title = title;
+            qual_view.link = link;
             results.push(qual_view);
         }
 
@@ -752,32 +768,6 @@ impl Component {
         let res_view = ResourceView::from((resource, func_binding_return_value));
 
         Ok(res_view)
-    }
-
-    #[tracing::instrument(skip(txn))]
-    pub async fn list_qualifications_by_component_id(
-        txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
-        visibility: &Visibility,
-        component_id: ComponentId,
-        system_id: SystemId,
-    ) -> ComponentResult<Vec<QualificationView>> {
-        let rows = txn
-            .query(
-                LIST_QUALIFICATIONS,
-                &[&tenancy, &visibility, &component_id, &system_id],
-            )
-            .await?;
-
-        let mut results: Vec<QualificationView> = Vec::new();
-        for row in rows.into_iter() {
-            let json: serde_json::Value = row.try_get("object")?;
-            let func_binding_return_value: FuncBindingReturnValue = serde_json::from_value(json)?;
-            let qual_view = QualificationView::try_from(func_binding_return_value)?;
-            results.push(qual_view);
-        }
-
-        Ok(results)
     }
 
     pub async fn veritech_resource_sync_component(
