@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::convert::TryFrom;
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -792,7 +791,11 @@ impl Component {
         for row in rows.into_iter() {
             let json: serde_json::Value = row.try_get("object")?;
             let func_binding_return_value: FuncBindingReturnValue = serde_json::from_value(json)?;
-            let mut qual_view = QualificationView::try_from(func_binding_return_value)?;
+            let mut qual_view = QualificationView::new_for_func_binding_return_value(
+                txn,
+                func_binding_return_value,
+            )
+            .await?;
             let title: String = row.try_get("title")?;
             let link: Option<String> = row.try_get("link")?;
             qual_view.title = title;

@@ -19,7 +19,7 @@ use crate::{
         FuncBackendString, FuncBackendStringArgs,
     },
     impl_standard_model, pk,
-    qualification::{QualificationErrorMessage, QualificationResult},
+    qualification::QualificationResult,
     standard_model, standard_model_accessor, standard_model_belongs_to, Func, FuncBackendError,
     FuncBackendKind, HistoryActor, HistoryEvent, HistoryEventError, StandardModel,
     StandardModelError, Tenancy, Timestamp, Visibility,
@@ -274,20 +274,11 @@ impl FuncBinding {
                 .await?;
 
                 let veritech_result = QualificationCheckResultSuccess::deserialize(&return_value)?;
-                let mut errors = vec![];
-                if !veritech_result.qualified {
-                    // TODO(paulo): veritech doesn't actually give us multiple errors, but we might execute multiple QualificationResolvers and concatenate their result (?), kinda hacky, but it seems better than having a QualificationResultList to collect all of them?
-                    errors = vec![QualificationErrorMessage {
-                        message: veritech_result.message.unwrap_or_else(|| "🥸".to_owned()),
-                    }]
-                }
-
                 let qual_result = QualificationResult {
                     success: veritech_result.qualified,
                     title: veritech_result.title,
                     link: veritech_result.link,
                     sub_checks: veritech_result.sub_checks,
-                    errors,
                 };
 
                 execution.process_output(txn, nats, rx).await?;
@@ -347,6 +338,7 @@ impl FuncBinding {
             return_value,
             *func.id(),
             self.id,
+            execution.pk(),
         )
         .await?;
 

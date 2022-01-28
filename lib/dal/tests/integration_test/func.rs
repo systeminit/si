@@ -1,5 +1,6 @@
 use crate::test_setup;
 
+use dal::func::execution::FuncExecution;
 use dal::{
     func::{
         backend::FuncBackendStringArgs, binding::FuncBinding,
@@ -291,6 +292,10 @@ async fn func_binding_return_value_new() {
     )
     .await;
 
+    let execution = FuncExecution::new(&txn, &nats, &tenancy, &func, &func_binding)
+        .await
+        .expect("cannot create a new func execution");
+
     let _func_binding_return_value = FuncBindingReturnValue::new(
         &txn,
         &nats,
@@ -301,6 +306,7 @@ async fn func_binding_return_value_new() {
         Some(serde_json::json!("funky")),
         *func.id(),
         *func_binding.id(),
+        execution.pk(),
     )
     .await
     .expect("failed to create return value");

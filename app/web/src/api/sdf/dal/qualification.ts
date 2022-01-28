@@ -4,19 +4,21 @@ export interface Qualification {
   link?: string;
   description?: string;
   result?: QualificationResult;
+  output?: Array<QualificationOutputStream>;
 }
 
 export interface QualificationResult {
   title?: string;
   link?: string;
+  success: boolean;
   sub_checks?: Array<{
     status: "Success" | "Failure" | "Unknown";
     description: string;
   }>;
-  output?: Array<string>;
-  success: boolean;
 }
 
-export interface QualificationError {
-  message: string;
+export interface QualificationOutputStream {
+  line: string;
+  stream: string;
+  level: string;
 }

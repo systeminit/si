@@ -183,3 +183,40 @@ async fn process_return_value() {
         func_binding_return_value.unprocessed_value(),
     );
 }
+
+// FIXME(nick,fletcher): re-add test once upsert is added.
+// #[tokio::test]
+// async fn execution_upserts_return_value() {
+//     test_setup!(ctx, _secret_key, _pg, _conn, txn, nats_conn, nats, veritech);
+//     let tenancy = Tenancy::new_universal();
+//     let visibility = create_visibility_head();
+//     let history_actor = HistoryActor::SystemInit;
+//
+//     let func = create_func(&txn, &nats, &tenancy, &visibility, &history_actor).await;
+//     let args = FuncBackendStringArgs::new("slayer".to_string());
+//     let args_json = serde_json::to_value(args).expect("cannot serialize args to json");
+//     let func_binding = create_func_binding(
+//         &txn,
+//         &nats,
+//         &tenancy,
+//         &visibility,
+//         &history_actor,
+//         args_json,
+//         *func.id(),
+//         *func.backend_kind(),
+//     )
+//         .await;
+//     let fbrv = func_binding
+//         .execute(&txn, &nats, veritech)
+//         .await
+//         .expect("cannot execute binding");
+//
+//     let _execution1 = FuncExecution::new(&txn, &nats, &tenancy, &func, &func_binding)
+//         .await
+//         .expect("cannot create a new func execution");
+//
+//     let  _execution2 = FuncExecution::new(&txn, &nats, &tenancy, &func, &func_binding)
+//         .await
+//         .expect("cannot create a new func execution");
+//
+// }

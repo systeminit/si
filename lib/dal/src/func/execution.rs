@@ -33,7 +33,6 @@ pub enum FuncExecutionError {
 pub type FuncExecutionResult<T> = Result<T, FuncExecutionError>;
 
 pk!(FuncExecutionPk);
-pk!(FuncExecutionId);
 
 // Are these the right states? -- Adam
 #[derive(
@@ -163,6 +162,10 @@ impl FuncExecution {
         self.output_stream.as_ref()
     }
 
+    pub fn into_output_stream(self) -> Option<Vec<OutputStream>> {
+        self.output_stream
+    }
+
     pub async fn set_output_stream(
         &mut self,
         txn: &PgTxn<'_>,
@@ -207,6 +210,23 @@ impl FuncExecution {
         std::mem::swap(self, &mut object);
 
         Ok(())
+    }
+
+    pub fn pk(&self) -> FuncExecutionPk {
+        self.pk
+    }
+
+    #[instrument(skip(txn))]
+    pub async fn get_by_pk(txn: &PgTxn<'_>, pk: &FuncExecutionPk) -> FuncExecutionResult<Self> {
+        let row = txn
+            .query_one(
+                "SELECT object FROM get_by_pk_v1($1, $2)",
+                &[&"func_executions", &pk],
+            )
+            .await?;
+        let json: serde_json::Value = row.try_get("object")?;
+        let object: Self = serde_json::from_value(json)?;
+        Ok(object)
     }
 
     pub fn func_binding_return_value_id(&self) -> Option<FuncBindingReturnValueId> {

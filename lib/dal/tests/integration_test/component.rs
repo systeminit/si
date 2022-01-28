@@ -556,3 +556,67 @@ async fn get_resource_by_component_id() {
         serde_json::json!("Cant touch this: chvrches")
     );
 }
+
+// FIXME(nick,adam): fix output stream test or figure out another way how to do this. This is
+// relatively low priority since it just checks if the output matches the expected between the
+// execution output stream itself and the view that was created afterwards.
+//
+// #[tokio::test]
+// async fn qualification_view_output_stream() {
+//     test_setup!(ctx, _secret_key, _pg, _conn, txn, nats_conn, nats, veritech);
+//     let tenancy = Tenancy::new_universal();
+//     let visibility = create_visibility_head();
+//     let history_actor = HistoryActor::SystemInit;
+//
+//     let func = Func::new(
+//         &txn,
+//         &nats,
+//         &tenancy,
+//         &visibility,
+//         &history_actor,
+//         "lateralus",
+//         FuncBackendKind::JsQualification,
+//         FuncBackendResponseType::Qualification,
+//     )
+//     .await
+//     .expect("cannot create func");
+//     let args = FuncBackendJsQualificationArgs::new();
+//     let args_json = serde_json::to_value(args).expect("cannot serialize args to json");
+//     let func_binding = FuncBinding::new(
+//         &txn,
+//         &nats,
+//         &tenancy,
+//         &visibility,
+//         &HistoryActor::SystemInit,
+//         Default::default(),
+//         *func.id(),
+//         FuncBackendKind::JsQualification,
+//     )
+//     .await
+//     .expect(
+//         "could not create func binding",
+//     );
+//
+//     let func_binding_return_value = func_binding
+//         .execute(&txn, &nats, veritech)
+//         .await
+//         .expect("cannot execute binding");
+//
+//     let output_stream = execution.into_output_stream().expect("output stream empty");
+//     let before = output_stream
+//         .into_iter()
+//         .map(|stream| stream.message)
+//         .collect::<HashSet<String>>();
+//
+//     let qualification_view = QualificationView::new(&txn, func_binding_return_value)
+//         .await
+//         .expect("could not create qualification view");
+//     let after = qualification_view
+//         .output
+//         .into_iter()
+//         .map(|view| view.line)
+//         .collect::<HashSet<String>>();
+//
+//     // NOTE(nick): HashSets are "sorted", so we can compare these directly.
+//     assert_eq!(before, after);
+// }
