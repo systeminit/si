@@ -8,9 +8,9 @@ use crate::standard_model::option_object_from_row;
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_has_many,
     Capability, CapabilityError, Group, GroupError, HistoryActor, HistoryEventError, KeyPair,
-    KeyPairError, Node, NodeError, NodeKind, Organization, OrganizationError, Schema, SchemaError,
-    SchemaVariant, StandardModel, StandardModelError, System, SystemError, Tenancy, Timestamp,
-    User, UserError, Visibility, Workspace, WorkspaceError,
+    KeyPairError, NodeError, Organization, OrganizationError, SchemaError, StandardModel,
+    StandardModelError, System, SystemError, Tenancy, Timestamp, User, UserError, Visibility,
+    Workspace, WorkspaceError,
 };
 
 const INITIAL_SYSTEM_NAME: &str = "production";
@@ -303,22 +303,7 @@ impl BillingAccount {
             vec![*workspace.id()],
         );
 
-        let mut schema_tenancy = organization_tenancy.clone();
-        schema_tenancy.universal = true;
-        let system_schema_variant_id =
-            Schema::default_schema_variant_id_for_name(txn, &schema_tenancy, visibility, "system")
-                .await?;
-        let system_schema_variant =
-            SchemaVariant::get_by_id(txn, &schema_tenancy, visibility, &system_schema_variant_id)
-                .await?
-                .ok_or(BillingAccountError::SchemaVariantNotFound)?;
-        let system_schema = system_schema_variant
-            .schema(txn, visibility)
-            .await?
-            .ok_or(BillingAccountError::SchemaNotFound)?;
-
-        // TODO: Everything about creating the system, with the schema/schema_variant/node really should be encapsulated elsewhere... once we're creating more than just the singular system.
-        let system = System::new(
+        let (system, _system_node) = System::new_with_node(
             txn,
             nats,
             &workspace_tenancy,
@@ -330,33 +315,6 @@ impl BillingAccount {
         system
             .set_workspace(txn, nats, visibility, &user_history_actor, workspace.id())
             .await?;
-        system
-            .set_schema(
-                txn,
-                nats,
-                visibility,
-                &user_history_actor,
-                system_schema.id(),
-            )
-            .await?;
-        system
-            .set_schema_variant(
-                txn,
-                nats,
-                visibility,
-                &user_history_actor,
-                system_schema_variant.id(),
-            )
-            .await?;
-        let _system_node = Node::new(
-            txn,
-            nats,
-            tenancy,
-            visibility,
-            history_actor,
-            &NodeKind::System,
-        )
-        .await?;
 
         Ok(BillingAccountSignup {
             billing_account,

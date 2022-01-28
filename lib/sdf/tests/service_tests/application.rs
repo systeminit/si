@@ -31,6 +31,7 @@ async fn create_application() {
         visibility,
         workspace_id: *nba.workspace.id(),
     };
+
     let response: CreateApplicationResponse = api_request_auth_json_body(
         app,
         Method::POST,
@@ -72,6 +73,7 @@ async fn list_applications() {
     )
     .await
     .expect("cannot create new application");
+    // TODO This commit is important to the test. We should probably figure out a way of doing this without requiring committing to the test DB.
     txn.commit().await.expect("cannot commit transaction");
 
     let request = ListApplicationRequest {

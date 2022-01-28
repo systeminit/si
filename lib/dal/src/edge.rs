@@ -150,10 +150,14 @@ impl Edge {
         component_id: &ComponentId,
         system_id: &SystemId,
     ) -> EdgeResult<Self> {
+        // TODO: We're creating a universal tenancy here, to make sure the DB function can find the schemas System Initiative has created, but that might not actually be the right thing to do here long term.
+        let mut schema_tenancy = tenancy.clone();
+        schema_tenancy.universal = true;
+
         let row = txn
             .query_one(
                 "SELECT object FROM edge_include_component_in_system_v1($1, $2, $3, $4)",
-                &[&tenancy, &visibility, component_id, system_id],
+                &[&schema_tenancy, &visibility, component_id, system_id],
             )
             .await?;
 

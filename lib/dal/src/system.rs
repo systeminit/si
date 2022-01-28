@@ -5,17 +5,23 @@ use thiserror::Error;
 
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
-    standard_model_has_many, HistoryActor, HistoryEventError, Node, Schema, SchemaId,
-    SchemaVariant, SchemaVariantId, StandardModel, StandardModelError, Tenancy, Timestamp,
-    Visibility, Workspace, WorkspaceId,
+    standard_model_has_many, HistoryActor, HistoryEventError, Node, NodeError, NodeKind, Schema,
+    SchemaError, SchemaId, SchemaVariant, SchemaVariantId, StandardModel, StandardModelError,
+    Tenancy, Timestamp, Visibility, Workspace, WorkspaceId,
 };
 
 #[derive(Error, Debug)]
 pub enum SystemError {
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
+    #[error("node error: {0}")]
+    Node(#[from] NodeError),
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
+    #[error("schema error: {0}")]
+    Schema(#[from] SchemaError),
+    #[error("schema not found")]
+    SchemaNotFound,
     #[error("standard model error: {0}")]
     StandardModelError(#[from] StandardModelError),
 }
@@ -120,4 +126,54 @@ impl System {
         returns: Node,
         result: SystemResult,
     );
+
+    #[tracing::instrument(skip(txn, nats, name))]
+    pub async fn new_with_node(
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+        history_actor: &HistoryActor,
+        name: impl AsRef<str>,
+    ) -> SystemResult<(Self, Node)> {
+        let name = name.as_ref();
+
+        let mut schema_tenancy = tenancy.clone();
+        schema_tenancy.universal = true;
+
+        let schema = Schema::find_by_attr(
+            txn,
+            &schema_tenancy,
+            visibility,
+            "name",
+            &"system".to_string(),
+        )
+        .await?
+        .pop()
+        .ok_or(SystemError::SchemaNotFound)?;
+        let schema_variant = schema
+            .default_variant(txn, &schema_tenancy, visibility)
+            .await?;
+
+        let system = Self::new(txn, nats, tenancy, visibility, history_actor, name).await?;
+        system
+            .set_schema(txn, nats, visibility, history_actor, schema.id())
+            .await?;
+        system
+            .set_schema_variant(txn, nats, visibility, history_actor, schema_variant.id())
+            .await?;
+        let node = Node::new(
+            txn,
+            nats,
+            tenancy,
+            visibility,
+            history_actor,
+            &NodeKind::System,
+        )
+        .await?;
+        node.set_system(txn, nats, visibility, history_actor, system.id())
+            .await?;
+
+        Ok((system, node))
+    }
 }

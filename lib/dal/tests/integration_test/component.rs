@@ -1,7 +1,8 @@
 use crate::test_setup;
 
 use dal::qualification_resolver::UNSET_ID_VALUE;
-use dal::test_harness::{create_schema, create_schema_variant};
+use dal::socket::{Socket, SocketArity, SocketEdgeKind};
+use dal::test_harness::{create_schema, create_schema_variant, find_or_create_production_system};
 use dal::{
     Component, HistoryActor, Prop, PropKind, Schema, SchemaKind, StandardModel, System, Tenancy,
     Visibility,
@@ -50,6 +51,9 @@ async fn new_for_schema_variant_with_node() {
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
+    let _ =
+        find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor).await;
+
     let schema = create_schema(
         &txn,
         &nats,
@@ -65,6 +69,28 @@ async fn new_for_schema_variant_with_node() {
         .set_schema(&txn, &nats, &visibility, &history_actor, schema.id())
         .await
         .expect("cannot set schema variant");
+    let includes_socket = Socket::new(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        "includes",
+        &SocketEdgeKind::Includes,
+        &SocketArity::Many,
+    )
+    .await
+    .expect("cannot create includes socket for schema variant");
+    schema_variant
+        .add_socket(
+            &txn,
+            &nats,
+            &visibility,
+            &history_actor,
+            includes_socket.id(),
+        )
+        .await
+        .expect("cannot add includes socket to schema variant");
 
     let _component = Component::new_for_schema_variant_with_node(
         &txn,
@@ -246,6 +272,8 @@ async fn list_qualifications() {
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
+    let _ =
+        find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor).await;
 
     let schema = Schema::find_by_attr(
         &txn,
@@ -310,6 +338,8 @@ async fn list_qualifications_by_component_id() {
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
+    let _ =
+        find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor).await;
 
     let schema = Schema::find_by_attr(
         &txn,
@@ -379,6 +409,8 @@ async fn get_resource_by_component_id() {
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
+    let _ =
+        find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor).await;
 
     let schema = Schema::find_by_attr(
         &txn,

@@ -547,6 +547,32 @@ pub async fn create_system(
         .expect("cannot create system")
 }
 
+pub async fn find_or_create_production_system(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    tenancy: &Tenancy,
+    visibility: &Visibility,
+    history_actor: &HistoryActor,
+) -> System {
+    let name = "production".to_string();
+
+    match System::find_by_attr(txn, tenancy, visibility, "name", &name)
+        .await
+        .expect("cannot find system")
+        .pop()
+    {
+        Some(s) => s,
+        None => {
+            let (system, _system_node) =
+                System::new_with_node(txn, nats, tenancy, visibility, history_actor, name)
+                    .await
+                    .expect("cannot create named system");
+
+            system
+        }
+    }
+}
+
 pub async fn create_prop(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,

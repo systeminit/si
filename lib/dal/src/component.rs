@@ -26,6 +26,7 @@ use crate::resource_resolver::ResourceResolverContext;
 use crate::schema::variant::{SchemaVariantError, SchemaVariantId};
 use crate::schema::SchemaVariant;
 use crate::validation_resolver::ValidationResolverContext;
+use crate::{Edge, EdgeError, System};
 
 use crate::{
     impl_standard_model, pk, qualification::QualificationError, standard_model,
@@ -43,6 +44,8 @@ use crate::{
 pub enum ComponentError {
     #[error("edit field error: {0}")]
     EditField(#[from] EditFieldError),
+    #[error("edge error: {0}")]
+    Edge(#[from] EdgeError),
     #[error("qualification prototype error: {0}")]
     QualificationPrototype(#[from] QualificationPrototypeError),
     #[error("qualification resolver error: {0}")]
@@ -73,6 +76,8 @@ pub enum ComponentError {
     SchemaNotFound,
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] SchemaVariantError),
+    #[error("unable to find system")]
+    SystemNotFound,
     #[error("attribute resolver error: {0}")]
     AttributeResolver(#[from] AttributeResolverError),
     #[error("missing a prop in attribute update: {0} not found")]
@@ -253,6 +258,21 @@ impl Component {
         .await?;
         node.set_component(txn, nats, visibility, history_actor, component.id())
             .await?;
+
+        // TODO: Eventually, we'll need the logic to be more complex than stuffing everything into the "production" system, but that's a problem for "a week or two from now" us.
+        let mut systems =
+            System::find_by_attr(txn, tenancy, visibility, "name", &"production").await?;
+        let system = systems.pop().ok_or(ComponentError::SystemNotFound)?;
+        let _edge = Edge::include_component_in_system(
+            txn,
+            nats,
+            tenancy,
+            visibility,
+            history_actor,
+            component.id(),
+            system.id(),
+        )
+        .await?;
 
         Ok((component, node))
     }
