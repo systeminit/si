@@ -4,8 +4,8 @@ use dal::qualification_resolver::UNSET_ID_VALUE;
 use dal::socket::{Socket, SocketArity, SocketEdgeKind};
 use dal::test_harness::{create_schema, create_schema_variant, find_or_create_production_system};
 use dal::{
-    Component, HistoryActor, Prop, PropKind, Schema, SchemaKind, StandardModel, System, Tenancy,
-    Visibility,
+    Component, HistoryActor, Prop, PropKind, Resource, Schema, SchemaKind, StandardModel, System,
+    Tenancy, Visibility,
 };
 use serde_json::json;
 
@@ -51,7 +51,7 @@ async fn new_for_schema_variant_with_node() {
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
-    let _ =
+    let system =
         find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor).await;
 
     let schema = create_schema(
@@ -92,7 +92,7 @@ async fn new_for_schema_variant_with_node() {
         .await
         .expect("cannot add includes socket to schema variant");
 
-    let _component = Component::new_for_schema_variant_with_node(
+    let (component, _node) = Component::new_for_schema_variant_with_node(
         &txn,
         &nats,
         veritech,
@@ -104,6 +104,37 @@ async fn new_for_schema_variant_with_node() {
     )
     .await
     .expect("cannot create component");
+
+    // All components get a Resource record when created.
+    let resource = Resource::get_by_component_id_and_system_id(
+        &txn,
+        &tenancy,
+        &visibility,
+        component.id(),
+        system.id(),
+    )
+    .await
+    .expect("cannot retrieve resource for Component & System");
+    assert!(resource.is_some());
+    let resource = resource.unwrap();
+    assert_eq!(
+        resource
+            .component(&txn, &visibility)
+            .await
+            .expect("cannot retrieve component for resource")
+            .expect("no component found for resource")
+            .id(),
+        component.id()
+    );
+    assert_eq!(
+        resource
+            .system(&txn, &visibility)
+            .await
+            .expect("cannot retrieve system for resource")
+            .expect("no system found for resource")
+            .id(),
+        system.id()
+    );
 }
 
 #[tokio::test]
@@ -409,7 +440,7 @@ async fn get_resource_by_component_id() {
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
-    let _ =
+    let system =
         find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor).await;
 
     let schema = Schema::find_by_attr(
@@ -440,17 +471,6 @@ async fn get_resource_by_component_id() {
         .set_name(&txn, &nats, &visibility, &history_actor, "chvrches")
         .await
         .expect("cannot set name");
-
-    let system = System::new(
-        &txn,
-        &nats,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        "jonas-brothers-why-oh-why",
-    )
-    .await
-    .expect("cannot create system");
 
     component
         .sync_resource(&txn, &nats, veritech.clone(), &history_actor, *system.id())

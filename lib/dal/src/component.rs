@@ -68,6 +68,8 @@ pub enum ComponentError {
     NodeError(#[from] NodeError),
     #[error("component not found: {0}")]
     NotFound(ComponentId),
+    #[error("resource not found for component ({0}) in system ({1})")]
+    ResourceNotFound(ComponentId, SystemId),
     #[error("schema error: {0}")]
     Schema(#[from] SchemaError),
     #[error("schema variant not found")]
@@ -96,8 +98,6 @@ pub enum ComponentError {
     QualificationView(#[from] QualificationError),
     #[error("resource error: {0}")]
     Resource(#[from] ResourceError),
-    #[error("resource not found")]
-    ResourceNotFound,
 }
 
 pub type ComponentResult<T> = Result<T, ComponentError>;
@@ -264,6 +264,20 @@ impl Component {
             System::find_by_attr(txn, tenancy, visibility, "name", &"production").await?;
         let system = systems.pop().ok_or(ComponentError::SystemNotFound)?;
         let _edge = Edge::include_component_in_system(
+            txn,
+            nats,
+            tenancy,
+            visibility,
+            history_actor,
+            component.id(),
+            system.id(),
+        )
+        .await?;
+
+        // NOTE: We may want to be a bit smarter about when we create the Resource
+        //       at some point in the future, by only creating it if there is also
+        //       a ResourcePrototype for the Component's SchemaVariant.
+        let _resource = Resource::new(
             txn,
             nats,
             tenancy,
@@ -742,17 +756,15 @@ impl Component {
         component_id: ComponentId,
         system_id: SystemId,
     ) -> ComponentResult<ResourceView> {
-        // Note(paulo): This should not be an upsert, but we currently don't have a way to create resource attached to a system during Component creation
-        let resource = Resource::upsert(
+        let resource = Resource::get_by_component_id_and_system_id(
             txn,
-            nats,
             tenancy,
             visibility,
-            history_actor,
             &component_id,
             &system_id,
         )
-        .await?;
+        .await?
+        .ok_or(ComponentError::ResourceNotFound(component_id, system_id))?;
 
         let row = txn
             .query_opt(
