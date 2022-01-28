@@ -319,7 +319,7 @@ async fn list_qualifications() {
         .list_qualifications(&txn, &tenancy, &visibility, UNSET_ID_VALUE.into())
         .await
         .expect("cannot list qualifications");
-    assert_eq!(qualifications.len(), 1);
+    assert_eq!(qualifications.len(), 2);
 }
 
 // Also brittle, same reason
@@ -390,7 +390,7 @@ async fn list_qualifications_by_component_id() {
     )
     .await
     .expect("cannot list qualifications");
-    assert_eq!(qualifications.len(), 1);
+    assert_eq!(qualifications.len(), 2);
 }
 
 // Also brittle, same reason

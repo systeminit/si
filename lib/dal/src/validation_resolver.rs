@@ -8,7 +8,7 @@ use crate::{
     func::{binding::FuncBindingId, binding_return_value::FuncBindingReturnValue, FuncId},
     impl_standard_model, pk,
     standard_model::{self, objects_from_rows},
-    standard_model_accessor, ComponentId, HistoryActor, HistoryEventError, PropId, SchemaId,
+    standard_model_accessor, ComponentId, HistoryActor, HistoryEventError, Prop, PropId, SchemaId,
     SchemaVariantId, StandardModel, StandardModelError, SystemId, Tenancy, Timestamp,
     ValidationPrototypeId, Visibility,
 };
@@ -25,6 +25,8 @@ pub enum ValidationResolverError {
     HistoryEvent(#[from] HistoryEventError),
     #[error("standard model error: {0}")]
     StandardModelError(#[from] StandardModelError),
+    #[error("invalid prop id")]
+    InvalidPropId,
 }
 
 pub type ValidationResolverResult<T> = Result<T, ValidationResolverError>;
@@ -32,6 +34,8 @@ pub type ValidationResolverResult<T> = Result<T, ValidationResolverError>;
 pub const UNSET_ID_VALUE: i64 = -1;
 const FIND_VALUES_FOR_CONTEXT: &str =
     include_str!("./queries/validation_resolver_find_values_for_context.sql");
+const FIND_VALUES_FOR_COMPONENT: &str =
+    include_str!("./queries/validation_resolver_find_values_for_component.sql");
 const FIND_FOR_PROTOTYPE: &str =
     include_str!("./queries/validation_resolver_find_for_prototype.sql");
 
@@ -224,6 +228,32 @@ impl ValidationResolver {
     //     .await?;
     //     Ok(object)
     // }
+
+    pub async fn list_values_for_component(
+        txn: &PgTxn<'_>,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+        component_id: ComponentId,
+        system_id: SystemId,
+    ) -> ValidationResolverResult<Vec<(Prop, FuncBindingReturnValue)>> {
+        let rows = txn
+            .query(
+                FIND_VALUES_FOR_COMPONENT,
+                &[&tenancy, &visibility, &component_id, &system_id],
+            )
+            .await?;
+        let mut result = Vec::new();
+        for row in rows.into_iter() {
+            let json: serde_json::Value = row.try_get("object")?;
+            let object: FuncBindingReturnValue = serde_json::from_value(json)?;
+            let prop_id: PropId = row.try_get("prop_id")?;
+            let prop = Prop::get_by_id(txn, tenancy, visibility, &prop_id)
+                .await?
+                .ok_or(ValidationResolverError::InvalidPropId)?;
+            result.push((prop, object));
+        }
+        Ok(result)
+    }
 
     pub async fn find_values_for_prop_and_component(
         txn: &PgTxn<'_>,

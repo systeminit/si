@@ -691,6 +691,36 @@ impl Component {
     }
 
     #[tracing::instrument(skip(txn))]
+    pub async fn list_validations_as_qualification_for_component_id(
+        txn: &PgTxn<'_>,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+        component_id: ComponentId,
+        system_id: SystemId,
+    ) -> ComponentResult<QualificationView> {
+        let validation_field_values = ValidationResolver::list_values_for_component(
+            txn,
+            tenancy,
+            visibility,
+            component_id,
+            system_id,
+        )
+        .await?;
+
+        let mut validation_errors: Vec<(Prop, Vec<ValidationError>)> = Vec::new();
+        for (prop, field_value) in validation_field_values.into_iter() {
+            if let Some(value_json) = field_value.value() {
+                // This clone shouldn't be neccessary, but we have no way to get to the owned value -- Adam
+                let internal_validation_errors: Vec<ValidationError> =
+                    serde_json::from_value(value_json.clone())?;
+                validation_errors.push((prop, internal_validation_errors));
+            }
+        }
+        let qualification_view = QualificationView::new_for_validation_errors(validation_errors);
+        Ok(qualification_view)
+    }
+
+    #[tracing::instrument(skip(txn))]
     pub async fn list_qualifications(
         &self,
         txn: &PgTxn<'_>,
@@ -710,14 +740,25 @@ impl Component {
         component_id: ComponentId,
         system_id: SystemId,
     ) -> ComponentResult<Vec<QualificationView>> {
+        let mut results: Vec<QualificationView> = Vec::new();
+
+        // This is the "All Fields Valid" universal qualification
+        let validation_qualification = Self::list_validations_as_qualification_for_component_id(
+            txn,
+            tenancy,
+            visibility,
+            component_id,
+            system_id,
+        )
+        .await?;
+        results.push(validation_qualification);
+
         let rows = txn
             .query(
                 LIST_QUALIFICATIONS,
                 &[&tenancy, &visibility, &component_id, &system_id],
             )
             .await?;
-
-        let mut results: Vec<QualificationView> = Vec::new();
         for row in rows.into_iter() {
             let json: serde_json::Value = row.try_get("object")?;
             let func_binding_return_value: FuncBindingReturnValue = serde_json::from_value(json)?;

@@ -7,7 +7,13 @@ export interface Qualification {
 }
 
 export interface QualificationResult {
-  errors: Array<QualificationError>;
+  title?: string;
+  link?: string;
+  sub_checks?: Array<{
+    status: "Success" | "Failure" | "Unknown";
+    description: string;
+  }>;
+  output?: Array<string>;
   success: boolean;
 }
 

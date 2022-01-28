@@ -284,6 +284,9 @@ impl FuncBinding {
 
                 let qual_result = QualificationResult {
                     success: veritech_result.qualified,
+                    title: veritech_result.title,
+                    link: veritech_result.link,
+                    sub_checks: veritech_result.sub_checks,
                     errors,
                 };
 
