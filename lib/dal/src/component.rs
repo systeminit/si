@@ -26,18 +26,20 @@ use crate::resource_resolver::ResourceResolverContext;
 use crate::schema::variant::{SchemaVariantError, SchemaVariantId};
 use crate::schema::SchemaVariant;
 use crate::validation_resolver::ValidationResolverContext;
+use crate::ws_event::{WsEvent, WsEventError};
 use crate::{Edge, EdgeError, System};
 
 use crate::{
     impl_standard_model, pk, qualification::QualificationError, standard_model,
     standard_model_accessor, standard_model_belongs_to, standard_model_has_many, AttributeResolver,
-    AttributeResolverError, Func, FuncBackendKind, HistoryActor, HistoryEventError, Node,
-    NodeError, Prop, PropId, PropKind, QualificationPrototype, QualificationPrototypeError,
-    QualificationResolver, QualificationResolverError, Resource, ResourceError, ResourcePrototype,
-    ResourcePrototypeError, ResourceResolver, ResourceResolverError, ResourceView, Schema,
-    SchemaError, SchemaId, StandardModel, StandardModelError, SystemId, Tenancy, Timestamp,
-    ValidationPrototype, ValidationPrototypeError, ValidationResolver, ValidationResolverError,
-    Visibility,
+    AttributeResolverError, BillingAccountId, Func, FuncBackendKind, HistoryActor,
+    HistoryEventError, Node, NodeError, OrganizationError, Prop, PropId, PropKind,
+    QualificationPrototype, QualificationPrototypeError, QualificationResolver,
+    QualificationResolverError, Resource, ResourceError, ResourcePrototype, ResourcePrototypeError,
+    ResourceResolver, ResourceResolverError, ResourceView, Schema, SchemaError, SchemaId,
+    StandardModel, StandardModelError, SystemId, Tenancy, Timestamp, ValidationPrototype,
+    ValidationPrototypeError, ValidationResolver, ValidationResolverError, Visibility, Workspace,
+    WorkspaceError,
 };
 
 #[derive(Error, Debug)]
@@ -98,10 +100,23 @@ pub enum ComponentError {
     QualificationView(#[from] QualificationError),
     #[error("resource error: {0}")]
     Resource(#[from] ResourceError),
+    #[error("workspace not found")]
+    WorkspaceNotFound,
+    #[error("organization not found")]
+    OrganizationNotFound,
+    #[error("billing account not found")]
+    BillingAccountNotFound,
+    #[error("ws event error: {0}")]
+    WsEvent(#[from] WsEventError),
+    #[error("workspace error: {0}")]
+    Workspace(#[from] WorkspaceError),
+    #[error("organization error: {0}")]
+    Organization(#[from] OrganizationError),
 }
 
 pub type ComponentResult<T> = Result<T, ComponentError>;
 
+const GET_WORKSPACE: &str = include_str!("./queries/component_get_workspace.sql");
 const GET_RESOURCE: &str = include_str!("./queries/component_get_resource.sql");
 const LIST_QUALIFICATIONS: &str = include_str!("./queries/component_list_qualifications.sql");
 const LIST_FOR_RESOURCE_SYNC: &str = include_str!("./queries/component_list_for_resource_sync.sql");
@@ -947,7 +962,61 @@ impl Component {
                 .await?;
         }
 
+        let billing_account_ids = self.billing_account_ids(txn).await?;
+        if billing_account_ids.is_empty() {
+            warn!("No billing accounts found for organization");
+            return Err(ComponentError::BillingAccountNotFound);
+        } else {
+            WsEvent::resource_synced(*self.id(), system_id, billing_account_ids, history_actor)
+                .publish(nats)
+                .await?;
+        }
+
         Ok(())
+    }
+
+    pub async fn workspaces(&self, txn: &PgTxn<'_>) -> ComponentResult<Vec<Workspace>> {
+        if self.tenancy.workspace_ids.is_empty() {
+            return Err(ComponentError::WorkspaceNotFound);
+        }
+
+        // TODO(paulo): this is super dangerous, but for now we can't actually get a workspace from a component (as we don't know its tenancy)
+        // Note(paulo): should we filter with visibility here too, or is the current way okayish?
+        let mut workspaces = Vec::with_capacity(self.tenancy.workspace_ids.len());
+        for workspace_id in &self.tenancy.workspace_ids {
+            let row = txn
+                .query_one(GET_WORKSPACE, &[workspace_id, &self.visibility])
+                .await?;
+            let object = standard_model::object_from_row(row)?;
+            workspaces.push(object);
+        }
+        Ok(workspaces)
+    }
+
+    pub async fn billing_account_ids(
+        &self,
+        txn: &PgTxn<'_>,
+    ) -> ComponentResult<Vec<BillingAccountId>> {
+        let workspaces = self.workspaces(txn).await?;
+        if workspaces.is_empty() {
+            warn!("No workspaces for {:?}", self.id());
+            return Err(ComponentError::WorkspaceNotFound);
+        }
+
+        let mut billing_accounts = vec![];
+        for workspace in workspaces {
+            if let Some(organization) = workspace.organization(txn, workspace.visibility()).await? {
+                billing_accounts.extend(WsEvent::billing_account_id_from_tenancy(
+                    organization.tenancy(),
+                ));
+            } else {
+                warn!("No organization for {:?}", workspace.id());
+                return Err(ComponentError::OrganizationNotFound);
+            }
+        }
+        // Note(paulo): We could use a hashset to avoid this
+        billing_accounts.dedup();
+        Ok(billing_accounts)
     }
 }
 

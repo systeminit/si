@@ -1,4 +1,5 @@
 import { HistoryActor } from "@/api/sdf/dal/history_actor";
+import { ResourceSyncId } from "@/observable/resource";
 
 export interface WsEvent<Payload extends WsPayload> {
   version: number;
@@ -32,8 +33,14 @@ export interface WsEditSessionSaved extends WsPayload {
   data: number;
 }
 
+export interface WsResourceSynced extends WsPayload {
+  kind: "ResourceSynced";
+  data: ResourceSyncId;
+}
+
 export type WsPayloadKinds =
   | WsEditSessionSaved
   | WsChangeSetCreated
   | WsChangeSetApplied
-  | WsChangeSetCanceled;
+  | WsChangeSetCanceled
+  | WsResourceSynced;

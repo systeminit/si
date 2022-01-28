@@ -8,9 +8,10 @@ use thiserror::Error;
 
 use crate::func::binding_return_value::FuncBindingReturnValue;
 use crate::{
-    impl_standard_model, pk, standard_model, standard_model_belongs_to, Component, ComponentId,
-    HistoryActor, HistoryEventError, StandardModel, StandardModelError, System, SystemId, Tenancy,
-    Timestamp, Visibility,
+    impl_standard_model, pk, standard_model, standard_model_belongs_to,
+    ws_event::{WsEvent, WsPayload},
+    BillingAccountId, Component, ComponentId, HistoryActor, HistoryEventError, StandardModel,
+    StandardModelError, System, SystemId, Tenancy, Timestamp, Visibility,
 };
 
 #[derive(Error, Debug)]
@@ -219,5 +220,30 @@ impl From<(Resource, Option<FuncBindingReturnValue>)> for ResourceView {
                 entity_type: "idk bro".to_owned(),
             }
         }
+    }
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ResourceSyncId {
+    component_id: ComponentId,
+    system_id: SystemId,
+}
+
+impl WsEvent {
+    pub fn resource_synced(
+        component_id: ComponentId,
+        system_id: SystemId,
+        billing_account_ids: Vec<BillingAccountId>,
+        history_actor: &HistoryActor,
+    ) -> Self {
+        WsEvent::new(
+            billing_account_ids,
+            history_actor.clone(),
+            WsPayload::ResourceSynced(ResourceSyncId {
+                component_id,
+                system_id,
+            }),
+        )
     }
 }

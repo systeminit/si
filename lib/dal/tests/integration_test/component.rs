@@ -4,8 +4,8 @@ use dal::qualification_resolver::UNSET_ID_VALUE;
 use dal::socket::{Socket, SocketArity, SocketEdgeKind};
 use dal::test_harness::{create_schema, create_schema_variant, find_or_create_production_system};
 use dal::{
-    Component, HistoryActor, Prop, PropKind, Resource, Schema, SchemaKind, StandardModel, System,
-    Tenancy, Visibility,
+    BillingAccount, Component, HistoryActor, Organization, Prop, PropKind, Resource, Schema,
+    SchemaKind, StandardModel, Tenancy, Visibility, Workspace,
 };
 use serde_json::json;
 
@@ -437,15 +437,63 @@ async fn get_resource_by_component_id() {
         nats,
         veritech,
     );
-    let tenancy = Tenancy::new_universal();
+
+    let billing_account_tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
-    let system =
-        find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor).await;
+
+    let billing_account = BillingAccount::new(
+        &txn,
+        &nats,
+        &billing_account_tenancy,
+        &visibility,
+        &history_actor,
+        "coheed",
+        Some(&"coheed and cambria".to_string()),
+    )
+    .await
+    .expect("cannot create new billing account");
+
+    let organization_tenancy = Tenancy::new_billing_account(vec![*billing_account.id()]);
+    let organization = Organization::new(
+        &txn,
+        &nats,
+        &organization_tenancy,
+        &visibility,
+        &history_actor,
+        "iron maiden",
+    )
+    .await
+    .expect("cannot create organization");
+
+    let mut workspace_tenancy = Tenancy::new_organization(vec![*organization.id()]);
+    workspace_tenancy
+        .billing_account_ids
+        .push(*billing_account.id());
+    let workspace = Workspace::new(
+        &txn,
+        &nats,
+        &workspace_tenancy,
+        &visibility,
+        &history_actor,
+        "iron maiden",
+    )
+    .await
+    .expect("cannot create workspace");
+
+    workspace
+        .set_organization(&txn, &nats, &visibility, &history_actor, organization.id())
+        .await
+        .expect("Unable to set organization to workspace");
+
+    let tenancy = Tenancy::new_workspace(vec![*workspace.id()]);
+
+    let mut schema_tenancy = tenancy.clone();
+    schema_tenancy.universal = true;
 
     let schema = Schema::find_by_attr(
         &txn,
-        &tenancy,
+        &schema_tenancy,
         &visibility,
         "name",
         &"docker_image".to_string(),
@@ -454,6 +502,10 @@ async fn get_resource_by_component_id() {
     .expect("cannot find docker image schema")
     .pop()
     .expect("no docker image schema found");
+
+    let system =
+        find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor).await;
+
     let (mut component, _node) = Component::new_for_schema_with_node(
         &txn,
         &nats,

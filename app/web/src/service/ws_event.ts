@@ -6,6 +6,7 @@ import {
   eventChangeSetCreated$,
 } from "@/observable/change_set";
 import { eventEditSessionSaved$ } from "@/observable/edit_session";
+import { eventResourceSynced$ } from "@/observable/resource";
 
 const eventMap: {
   [E in WsPayloadKinds["kind"]]: BehaviorSubject<any> | ReplaySubject<any>;
@@ -14,6 +15,7 @@ const eventMap: {
   ChangeSetApplied: eventChangeSetApplied$,
   ChangeSetCanceled: eventChangeSetCanceled$,
   EditSessionSaved: eventEditSessionSaved$,
+  ResourceSynced: eventResourceSynced$,
 };
 
 export function dispatch(wsEvent: WsEvent<WsPayloadKinds>) {

@@ -52,7 +52,8 @@ import { GlobalErrorService } from "@/service/global_error";
 import { ChangeSetService } from "@/service/change_set";
 import { fromRef, refFrom } from "vuse-rx";
 import VueFeather from "vue-feather";
-import { from, switchMap, combineLatest } from "rxjs";
+import { from, switchMap, combineLatest, ReplaySubject } from "rxjs";
+import { eventResourceSynced$ } from "@/observable/resource";
 
 const props = defineProps<{
   componentId: number;
@@ -115,6 +116,15 @@ const runSync = () => {
   );
 };
 
+const resourceSynced$ = new ReplaySubject<true>();
+resourceSynced$.next(true); // We must fetch on setup
+eventResourceSynced$.subscribe((resourceSyncId) => {
+  // TODO(paulo): check if system is the same (do we have to check for billing_account_id?)
+  if (props.componentId == resourceSyncId?.payload.data.componentId) {
+    resourceSynced$.next(true);
+  }
+});
+
 // Fetches the resource. First by listening to componentId$.
 // If it emits a value, we are re run the pipeline that follows.
 //
@@ -126,7 +136,7 @@ const runSync = () => {
 // check it for errors (if there are errors, set the resource to null). Otherwise
 // we set the resource to the returned value, and we're done.
 const resource = refFrom<Resource | null>(
-  combineLatest([componentId$]).pipe(
+  combineLatest([componentId$, resourceSynced$]).pipe(
     switchMap(([componentId]) => {
       if (componentId) {
         return ComponentService.getResource({ componentId });
