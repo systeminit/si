@@ -2,6 +2,7 @@ use crate::test_setup;
 
 use dal::func::backend::FuncBackendJsQualificationArgs;
 use dal::qualification_prototype::QualificationPrototypeContext;
+use dal::test_harness::find_or_create_production_system;
 use dal::{
     qualification_prototype::UNSET_ID_VALUE, test_harness::billing_account_signup, Component, Func,
     HistoryActor, QualificationPrototype, Schema, StandardModel, Tenancy, Visibility,
@@ -13,6 +14,8 @@ async fn new() {
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
+    let _ =
+        find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor).await;
 
     let name = "docker_image".to_string();
     let schema = Schema::find_by_attr(&txn, &tenancy, &visibility, "name", &name)

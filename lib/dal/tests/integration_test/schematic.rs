@@ -1,7 +1,7 @@
 use crate::test_setup;
 use dal::{
-    Component, Connection, HistoryActor, NodePosition, Schema, Schematic, SchematicKind,
-    StandardModel, SystemId, Tenancy, Visibility,
+    test_harness::find_or_create_production_system, Component, Connection, HistoryActor,
+    NodePosition, Schema, Schematic, SchematicKind, StandardModel, SystemId, Tenancy, Visibility,
 };
 
 #[tokio::test]
@@ -10,6 +10,8 @@ async fn get_schematic() {
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
+    let _ =
+        find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor).await;
 
     let application_schema = Schema::find_by_attr(
         &txn,
@@ -100,6 +102,8 @@ async fn create_connection() {
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
+    let _ =
+        find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor).await;
 
     let service_schema =
         Schema::find_by_attr(&txn, &tenancy, &visibility, "name", &"service".to_string())
