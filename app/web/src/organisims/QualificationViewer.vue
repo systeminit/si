@@ -102,9 +102,10 @@
               v-if="showDescriptionMap[q.name] === true"
               class="flex flex-col w-full"
             >
+              <!-- NOTE(nick): output is optional and can be empty. -->
               <div v-if="q.result" class="flex flex-col w-full">
                 <div class="mt-1">
-                  <QualificationOutput :result="q.result" />
+                  <QualificationOutput :result="q.result" :output="q.output" />
                 </div>
               </div>
             </div>

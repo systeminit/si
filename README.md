@@ -69,15 +69,21 @@ This will ensure that our database is running, our NATS server is running, the J
 Now, wait for the `postgres` database container to be running and ready to receive incoming client connection requests.
 If it is not ready, `sdf` database migration will fail.
 
-Once the database is ready, you can run `sdf`.
+Once the database is ready, you can run `veritech`.
+
+```bash
+make veritech-run
+```
+
+In another terminal pane, run `sdf`.
 
 ```bash
 make sdf-run
 ```
 
-_Note:_ you can run `sdf` again without running the prepare target if you are only making changes to `sdf` and the libraries it pulls in.
+_Note:_ you can run `veritech` and `sdf` again without running the prepare target.
 
-In another terminal pane, execute the following command:
+In a third terminal pane, execute the following command:
 
 ```bash
 make app-run

@@ -52,7 +52,8 @@ CREATE TABLE func_binding_return_values
     created_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     updated_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     unprocessed_value           jsonb,
-    value                       jsonb
+    value                       jsonb,
+    func_execution_pk           bigint
 );
 SELECT standard_model_table_constraints_v1('func_binding_return_values');
 SELECT belongs_to_table_create_v1('func_binding_return_value_belongs_to_func', 'func_binding_return_values', 'funcs');
@@ -228,6 +229,7 @@ CREATE OR REPLACE FUNCTION func_binding_return_value_create_v1(
     this_visibility jsonb,
     this_unprocessed_value jsonb,
     this_value jsonb,
+    this_func_execution_pk bigint,
     OUT object json) AS
 $$
 DECLARE
@@ -241,14 +243,15 @@ BEGIN
     INSERT INTO func_binding_return_values (tenancy_universal, tenancy_billing_account_ids, tenancy_organization_ids,
                                tenancy_workspace_ids,
                                visibility_change_set_pk, visibility_edit_session_pk, visibility_deleted,
-                               unprocessed_value, value)
+                               unprocessed_value, value, func_execution_pk)
     VALUES (this_tenancy_record.tenancy_universal, this_tenancy_record.tenancy_billing_account_ids,
             this_tenancy_record.tenancy_organization_ids, this_tenancy_record.tenancy_workspace_ids,
             this_visibility_record.visibility_change_set_pk, this_visibility_record.visibility_edit_session_pk,
-            this_visibility_record.visibility_deleted, this_unprocessed_value, this_value)
+            this_visibility_record.visibility_deleted, this_unprocessed_value, this_value, this_func_execution_pk)
     RETURNING * INTO this_new_row;
 
     object := row_to_json(this_new_row);
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
 
+-- TODO(nick,fletcher): we likely need "func_binding_return_value_create_or_update_v1" at some point.

@@ -27,12 +27,15 @@
       </div>
     </div>
 
-    <div v-if="output" class="flex flex-col flex-grow border-t border-gray-800">
+    <div
+      v-if="combined_output"
+      class="flex flex-col flex-grow border-t border-gray-800"
+    >
       <div class="mt-2 mb-1 ml-2 text-xs font-medium output-title">Output</div>
       <div
         class="px-6 text-xs leading-relaxed whitespace-pre-line select-text output-lines"
       >
-        {{ output }}
+        {{ combined_output }}
       </div>
     </div>
   </div>
@@ -40,14 +43,18 @@
 
 <script setup lang="ts">
 import VueFeather from "vue-feather";
-import { QualificationResult } from "@/api/sdf/dal/qualification";
+import {
+  QualificationOutputStream,
+  QualificationResult,
+} from "@/api/sdf/dal/qualification";
 import { computed, toRefs } from "vue";
 
 const props = defineProps<{
   result: QualificationResult;
+  output?: Array<QualificationOutputStream>;
 }>();
 
-const { result } = toRefs(props);
+const { result, output } = toRefs(props);
 
 const subChecks = computed(() => {
   if (result.value.sub_checks) {
@@ -71,12 +78,19 @@ const subChecks = computed(() => {
   }
 });
 
-const output = computed(() => {
-  if (result.value.output) {
-    return result.value.output.join("\n");
-  } else {
-    return "remove this mock output when we have real output!!!";
+const combined_output = computed((): string | false => {
+  if (output.value) {
+    let lines = "";
+    for (const stream of output.value) {
+      if (lines == "") {
+        lines = stream.line;
+      } else {
+        lines = lines + "\n" + stream.line;
+      }
+    }
+    return lines;
   }
+  return false;
 });
 </script>
 

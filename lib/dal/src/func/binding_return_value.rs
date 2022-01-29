@@ -3,7 +3,10 @@ use serde_json::Value as JsonValue;
 use si_data::{NatsError, NatsTxn, PgError, PgTxn};
 use telemetry::prelude::*;
 use thiserror::Error;
+use veritech::OutputStream;
 
+use crate::func::execution::FuncExecution;
+use crate::func::execution::{FuncExecutionError, FuncExecutionPk};
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
     Func, HistoryActor, HistoryEventError, StandardModel, StandardModelError, Tenancy, Timestamp,
@@ -27,6 +30,8 @@ pub enum FuncBindingReturnValueError {
     HistoryEvent(#[from] HistoryEventError),
     #[error("standard model error: {0}")]
     StandardModelError(#[from] StandardModelError),
+    #[error("function execution error: {0}")]
+    FuncExecutionError(#[from] FuncExecutionError),
 }
 
 pub type FuncBindingReturnValueResult<T> = Result<T, FuncBindingReturnValueError>;
@@ -44,6 +49,8 @@ pub struct FuncBindingReturnValue {
     unprocessed_value: Option<serde_json::Value>,
     // The processed return value.
     value: Option<serde_json::Value>,
+    // Function Execution IDs can be attached later for lookup and are optional.
+    func_execution_pk: FuncExecutionPk,
     #[serde(flatten)]
     tenancy: Tenancy,
     #[serde(flatten)]
@@ -79,11 +86,18 @@ impl FuncBindingReturnValue {
         value: Option<serde_json::Value>,
         func_id: FuncId,
         func_binding_id: FuncBindingId,
+        func_execution_pk: FuncExecutionPk,
     ) -> FuncBindingReturnValueResult<Self> {
         let row = txn
             .query_one(
-                "SELECT object FROM func_binding_return_value_create_v1($1, $2, $3, $4)",
-                &[&tenancy, &visibility, &unprocessed_value, &value],
+                "SELECT object FROM func_binding_return_value_create_v1($1, $2, $3, $4, $5)",
+                &[
+                    &tenancy,
+                    &visibility,
+                    &unprocessed_value,
+                    &value,
+                    &func_execution_pk,
+                ],
             )
             .await?;
         let object: FuncBindingReturnValue = standard_model::finish_create_from_row(
@@ -104,6 +118,42 @@ impl FuncBindingReturnValue {
 
         Ok(object)
     }
+
+    pub async fn get_output_stream(
+        &self,
+        txn: &PgTxn<'_>,
+    ) -> FuncBindingReturnValueResult<Option<Vec<OutputStream>>> {
+        let func_execution = FuncExecution::get_by_pk(txn, &self.func_execution_pk).await?;
+        Ok(func_execution.into_output_stream())
+    }
+
+    // NOTE(nick,fletcher): we might not need these. They might be DB-only.
+    // pub fn set_func_execution_op(&mut self, func_execution_id: Option<FuncExecutionId) {
+    //     self.func_execution_id = Some(func_execution_id);
+    // }
+    //
+    // pub fn unset_func_execution_id(&mut self) {/
+    //     self.func_execution_id = None;
+    // }
+    //
+    // pub fn func_execution_id(&self) -> Option<FuncExecutionId> {
+    //     self.func_execution_id
+    // }
+
+    // FIXME: replace with a formal SQL upsert. Return the object if found.
+    // pub fn upsert(
+    //     txn: &PgTxn<'_>,
+    //     nats: &NatsTxn,
+    //     tenancy: &Tenancy,
+    //     visibility: &Visibility,
+    //     history_actor: &HistoryActor,
+    //     unprocessed_value: Option<serde_json::Value>,
+    //     value: Option<serde_json::Value>,
+    //     func_id: FuncId,
+    //     func_binding_id: FuncBindingId,
+    // ) -> Self {
+    //     Self::find_by_attr(txn, tenancy, visibility, "id", &())
+    // }
 
     standard_model_accessor!(
         unprocessed_value,

@@ -225,6 +225,12 @@ backend: down
 	cd $(MAKEPATH)/deploy && $(MAKE) backend
 .PHONY: backend
 
+veritech-run:
+	cd $(MAKEPATH); cargo build
+	cd $(MAKEPATH); cargo build --bin cyclone
+	cd $(MAKEPATH)/bin/veritech; cargo run
+.PHONY: veritech-run
+
 sdf-run:
 	cd $(MAKEPATH); cargo build
 	cd $(MAKEPATH); cargo run --bin sdf -- --disable-opentelemetry
