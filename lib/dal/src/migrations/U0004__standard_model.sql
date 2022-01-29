@@ -198,6 +198,27 @@ CREATE OR REPLACE FUNCTION update_by_id_v1(this_table_text text,
                                            this_tenancy jsonb,
                                            this_visibility jsonb,
                                            this_id bigint,
+                                           this_value jsonb,
+                                           OUT updated_at timestamp with time zone)
+AS
+$$
+BEGIN
+    SELECT update_by_id_v1(this_table_text,
+                           this_column,
+                           this_tenancy,
+                           this_visibility,
+                           this_id,
+                           CAST(this_value as text))
+    INTO updated_at;
+END ;
+$$ LANGUAGE PLPGSQL VOLATILE;
+
+-- update_by_id_v1 (BOOL)
+CREATE OR REPLACE FUNCTION update_by_id_v1(this_table_text text,
+                                           this_column text,
+                                           this_tenancy jsonb,
+                                           this_visibility jsonb,
+                                           this_id bigint,
                                            this_value bool,
                                            OUT updated_at timestamp with time zone)
 AS
