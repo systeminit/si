@@ -788,6 +788,7 @@ impl Component {
                 &[&tenancy, &visibility, &component_id, &system_id],
             )
             .await?;
+        let no_qualification_results = rows.is_empty();
         for row in rows.into_iter() {
             let json: serde_json::Value = row.try_get("object")?;
             let func_binding_return_value: FuncBindingReturnValue = serde_json::from_value(json)?;
@@ -798,7 +799,36 @@ impl Component {
             qual_view.link = link;
             results.push(qual_view);
         }
-
+        // This is inefficient, but effective
+        if no_qualification_results {
+            let component = Component::get_by_id(txn, tenancy, visibility, &component_id)
+                .await?
+                .ok_or(ComponentError::NotFound(component_id))?;
+            let mut schema_tenancy = tenancy.clone();
+            schema_tenancy.universal = true;
+            let schema = component
+                .schema_with_tenancy(txn, tenancy, visibility)
+                .await?
+                .ok_or(ComponentError::SchemaNotFound)?;
+            let schema_variant = component
+                .schema_variant_with_tenancy(txn, tenancy, visibility)
+                .await?
+                .ok_or(ComponentError::SchemaVariantNotFound)?;
+            let prototypes = QualificationPrototype::find_for_component(
+                txn,
+                tenancy,
+                visibility,
+                component_id,
+                *schema.id(),
+                *schema_variant.id(),
+                system_id,
+            )
+            .await?;
+            for prototype in prototypes.into_iter() {
+                let qual_view = QualificationView::new_for_qualification_prototype(prototype);
+                results.push(qual_view);
+            }
+        }
         Ok(results)
     }
 
