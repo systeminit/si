@@ -5,7 +5,7 @@ use thiserror::Error;
 
 use crate::{
     func::{backend::validation::ValidationError, binding_return_value::FuncBindingReturnValue},
-    Prop,
+    Prop, QualificationPrototype,
 };
 
 use veritech::QualificationSubCheck;
@@ -71,6 +71,16 @@ impl QualificationView {
                 sub_checks: Some(sub_checks),
                 errors: Vec::new(),
             }),
+        }
+    }
+
+    pub fn new_for_qualification_prototype(prototype: QualificationPrototype) -> QualificationView {
+        QualificationView {
+            title: prototype.title().into(),
+            description: None,
+            link: None,
+            sub_checks: None,
+            result: None,
         }
     }
 }
