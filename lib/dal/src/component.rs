@@ -15,7 +15,8 @@ use crate::edit_field::{
 use crate::func::backend::integer::FuncBackendIntegerArgs;
 use crate::func::backend::validation::{FuncBackendValidateStringValueArgs, ValidationError};
 use crate::func::backend::{
-    FuncBackendJsQualificationArgs, FuncBackendJsResourceSyncArgs, FuncBackendStringArgs,
+    js_qualification::FuncBackendJsQualificationArgs, js_resource::FuncBackendJsResourceSyncArgs,
+    string::FuncBackendStringArgs,
 };
 use crate::func::binding::{FuncBinding, FuncBindingError};
 use crate::func::binding_return_value::FuncBindingReturnValue;

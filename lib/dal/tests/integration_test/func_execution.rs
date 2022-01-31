@@ -3,7 +3,7 @@ use dal::func::execution::FuncExecutionState;
 use dal::{func::execution::FuncExecution, StandardModel};
 
 use dal::{
-    func::backend::FuncBackendStringArgs,
+    func::backend::string::FuncBackendStringArgs,
     test_harness::{create_func, create_func_binding, create_visibility_head},
     HistoryActor, Tenancy,
 };

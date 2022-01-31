@@ -2,7 +2,7 @@ use crate::test_setup;
 
 use dal::{
     attribute_resolver::{AttributeResolverContext, UNSET_ID_VALUE},
-    func::{backend::FuncBackendStringArgs, binding::FuncBinding},
+    func::{backend::string::FuncBackendStringArgs, binding::FuncBinding},
     test_harness::{billing_account_signup, create_component_for_schema},
     AttributeResolver, Func, FuncBackendKind, FuncBackendResponseType, HistoryActor, Schema,
     StandardModel, SystemId, Tenancy, Visibility,

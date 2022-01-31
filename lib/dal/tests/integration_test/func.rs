@@ -3,7 +3,7 @@ use crate::test_setup;
 use dal::func::execution::FuncExecution;
 use dal::{
     func::{
-        backend::FuncBackendStringArgs, binding::FuncBinding,
+        backend::string::FuncBackendStringArgs, binding::FuncBinding,
         binding_return_value::FuncBindingReturnValue,
     },
     test_harness::{
