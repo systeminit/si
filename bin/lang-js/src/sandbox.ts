@@ -2,6 +2,7 @@ import _ from "lodash";
 
 import { FunctionKind } from "./function";
 import { makeConsole } from "./sandbox/console";
+import { makeExec } from "./sandbox/exec";
 
 export type Sandbox = Record<string, unknown>;
 
@@ -24,7 +25,11 @@ const resolverFunctionSandbox = {};
 
 const resourceSyncSandbox = {};
 
-const qualificationCheckSandbox = {};
+function qualificationCheckSandbox(executionId: string): Sandbox {
+  return {
+    siExec: makeExec(executionId),
+  };
+}
 
 export function createSandbox(
   kind: FunctionKind,
@@ -39,7 +44,7 @@ export function createSandbox(
     case FunctionKind.QualificationCheck:
       return {
         ...commonSandbox(executionId),
-        ...qualificationCheckSandbox,
+        ...qualificationCheckSandbox(executionId),
       };
     case FunctionKind.ResourceSync:
       return {
