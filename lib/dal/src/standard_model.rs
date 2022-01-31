@@ -35,6 +35,7 @@ pub enum TypeHint {
     Integer,
     SmallInt,
     Text,
+    JsonB,
 }
 
 #[instrument(skip(txn))]

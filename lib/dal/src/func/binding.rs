@@ -328,7 +328,7 @@ impl FuncBinding {
             }
         };
 
-        let fbrv = FuncBindingReturnValue::new(
+        let fbrv = FuncBindingReturnValue::upsert(
             txn,
             nats,
             &tenancy,

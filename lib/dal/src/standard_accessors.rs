@@ -746,7 +746,7 @@ macro_rules! standard_model_accessor {
         standard_model_accessor!(@set_column_with_option
             $column,
             $value_type,
-            $crate::standard_model::TypeHint::Text,
+            $crate::standard_model::TypeHint::JsonB,
             $result_type,
         );
     };
@@ -756,7 +756,7 @@ macro_rules! standard_model_accessor {
         standard_model_accessor!(@set_column
             $column,
             $value_type,
-            $crate::standard_model::TypeHint::Text,
+            $crate::standard_model::TypeHint::JsonB,
             $result_type,
         );
     };

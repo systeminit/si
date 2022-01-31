@@ -18,6 +18,9 @@ use super::{
     FuncId,
 };
 
+const GET_FOR_FUNC_BINDING: &str =
+    include_str!("../queries/func_binding_return_value_get_for_func_binding.sql");
+
 #[derive(Error, Debug)]
 pub enum FuncBindingReturnValueError {
     #[error("error serializing/deserializing json: {0}")]
@@ -140,21 +143,72 @@ impl FuncBindingReturnValue {
     //     self.func_execution_id
     // }
 
-    // FIXME: replace with a formal SQL upsert. Return the object if found.
-    // pub fn upsert(
-    //     txn: &PgTxn<'_>,
-    //     nats: &NatsTxn,
-    //     tenancy: &Tenancy,
-    //     visibility: &Visibility,
-    //     history_actor: &HistoryActor,
-    //     unprocessed_value: Option<serde_json::Value>,
-    //     value: Option<serde_json::Value>,
-    //     func_id: FuncId,
-    //     func_binding_id: FuncBindingId,
-    // ) -> Self {
-    //     Self::find_by_attr(txn, tenancy, visibility, "id", &())
-    // }
+    pub async fn get_by_func_binding_id(
+        txn: &PgTxn<'_>,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+        func_binding_id: FuncBindingId,
+    ) -> FuncBindingReturnValueResult<Option<Self>> {
+        let row = txn
+            .query_opt(
+                GET_FOR_FUNC_BINDING,
+                &[&tenancy, &visibility, &func_binding_id],
+            )
+            .await?;
+        let object = standard_model::option_object_from_row(row)?;
+        Ok(object)
+    }
 
+    // Note(paulo): this is dumb
+    #[allow(clippy::too_many_arguments)]
+    #[tracing::instrument(skip(txn, nats))]
+    pub async fn upsert(
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+        history_actor: &HistoryActor,
+        unprocessed_value: Option<serde_json::Value>,
+        value: Option<serde_json::Value>,
+        func_id: FuncId,
+        func_binding_id: FuncBindingId,
+        func_execution_pk: FuncExecutionPk,
+    ) -> FuncBindingReturnValueResult<Self> {
+        let return_value =
+            Self::get_by_func_binding_id(txn, tenancy, visibility, func_binding_id).await?;
+        if let Some(mut return_value) = return_value {
+            return_value
+                .set_value(txn, nats, visibility, history_actor, value)
+                .await?;
+            return_value
+                .set_unprocessed_value(txn, nats, visibility, history_actor, unprocessed_value)
+                .await?;
+            return_value
+                .set_func_execution_pk(txn, nats, visibility, history_actor, func_execution_pk)
+                .await?;
+            Ok(return_value)
+        } else {
+            Self::new(
+                txn,
+                nats,
+                tenancy,
+                visibility,
+                history_actor,
+                unprocessed_value,
+                value,
+                func_id,
+                func_binding_id,
+                func_execution_pk,
+            )
+            .await
+        }
+    }
+
+    standard_model_accessor!(
+        func_execution_pk,
+        Pk(FuncExecutionPk),
+        FuncBindingReturnValueResult
+    );
     standard_model_accessor!(
         unprocessed_value,
         OptionJson<JsonValue>,
