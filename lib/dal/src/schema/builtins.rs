@@ -523,28 +523,23 @@ async fn docker_image(
         .add_schema_variant(txn, nats, visibility, history_actor, variant.id())
         .await?;
 
-    let (func, func_binding) = match malandro_é_malandro_e_mané_é_mané_prop.kind() {
-        PropKind::String => {
-            let func_name = "si:totallyRandomString".to_string();
-            let mut funcs =
-                Func::find_by_attr(txn, tenancy, visibility, "name", &func_name).await?;
-            let func = funcs.pop().ok_or(SchemaError::MissingFunc(func_name))?;
-            let (func_binding, _) = FuncBinding::find_or_create(
-                txn,
-                nats,
-                tenancy,
-                visibility,
-                history_actor,
-                serde_json::to_value(Option::<()>::None)?,
-                *func.id(),
-                *func.backend_kind(),
-            )
-            .await?;
+    let func_name = "si:totallyRandomString".to_string();
+    let mut funcs = Func::find_by_attr(txn, tenancy, visibility, "name", &func_name).await?;
+    let func = funcs.pop().ok_or(SchemaError::MissingFunc(func_name))?;
+    let (func_binding, _) = FuncBinding::find_or_create(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        serde_json::to_value(Option::<()>::None)?,
+        *func.id(),
+        *func.backend_kind(),
+    )
+    .await?;
 
-            func_binding.execute(txn, nats, veritech.clone()).await?;
-            (func, func_binding)
-        }
-    };
+    func_binding.execute(txn, nats, veritech.clone()).await?;
+
     let mut attribute_resolver_context = AttributeResolverContext::new();
     attribute_resolver_context.set_prop_id(*malandro_é_malandro_e_mané_é_mané_prop.id());
     AttributeResolver::upsert(
