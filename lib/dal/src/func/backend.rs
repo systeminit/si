@@ -13,10 +13,13 @@ use veritech::{
 
 use crate::{edit_field::ToSelectWidget, label_list::ToLabelList};
 
+pub mod integer;
 pub mod validation;
 
 #[derive(Error, Debug)]
 pub enum FuncBackendError {
+    #[error("invalid data - expected an integer, got: {0}")]
+    InvalidIntegerData(serde_json::Value),
     #[error("invalid data - expected a string, got: {0}")]
     InvalidStringData(serde_json::Value),
     #[error("result failure: kind={kind}, message={message}")]
@@ -45,6 +48,7 @@ pub type FuncBackendResult<T> = Result<T, FuncBackendError>;
     Copy,
 )]
 pub enum FuncBackendKind {
+    Integer,
     String,
     // Commented out while we climb back up - Adam & Fletcher
     //Number,
@@ -76,6 +80,7 @@ pub enum FuncBackendKind {
     Copy,
 )]
 pub enum FuncBackendResponseType {
+    Integer,
     String,
     // Commented out while we climb back up - Adam & Fletcher
     //Number,

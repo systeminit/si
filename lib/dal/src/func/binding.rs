@@ -9,6 +9,7 @@ use serde_json::Value as JsonValue;
 use tokio::sync::mpsc;
 use veritech::{Client, QualificationCheckResultSuccess, ResourceSyncResultSuccess};
 
+use crate::func::backend::integer::{FuncBackendInteger, FuncBackendIntegerArgs};
 use crate::func::backend::{
     FuncBackendJsQualification, FuncBackendJsQualificationArgs, FuncBackendJsResourceSync,
     FuncBackendJsResourceSyncArgs,
@@ -232,6 +233,14 @@ impl FuncBinding {
                 .execute()
                 .await?;
                 execution.process_output(txn, nats, rx).await?;
+                Some(return_value)
+            }
+            FuncBackendKind::Integer => {
+                execution
+                    .set_state(txn, nats, super::execution::FuncExecutionState::Run)
+                    .await?;
+                let args: FuncBackendIntegerArgs = serde_json::from_value(self.args.clone())?;
+                let return_value = FuncBackendInteger::new(args).execute().await?;
                 Some(return_value)
             }
             FuncBackendKind::String => {

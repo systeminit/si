@@ -12,6 +12,7 @@ use crate::edit_field::{
     EditFieldBaggage, EditFieldBaggageComponentProp, EditFieldDataType, EditFieldError,
     EditFieldObjectKind, EditFields, TextWidget, Widget,
 };
+use crate::func::backend::integer::FuncBackendIntegerArgs;
 use crate::func::backend::validation::{FuncBackendValidateStringValueArgs, ValidationError};
 use crate::func::backend::{
     FuncBackendJsQualificationArgs, FuncBackendJsResourceSyncArgs, FuncBackendStringArgs,
@@ -427,7 +428,43 @@ impl Component {
             .ok_or(ComponentError::NotFound(component_id))?;
         // We shouldn't be leaking this value, because it may or may not be actually set. But
         // when you YOLO, YOLO hard. -- Adam
-        let (func, func_binding, created, value) = match (prop.kind(), value) {
+        let (func, func_binding, created) = match (prop.kind(), value.clone()) {
+            (PropKind::Integer, Some(value_json)) => {
+                let value = if !value_json.is_i64() {
+                    return Err(ComponentError::InvalidPropValue(
+                        "Integer".to_string(),
+                        value_json,
+                    ));
+                } else {
+                    value_json.as_i64().unwrap()
+                };
+
+                let func_name = "si:setInteger".to_string();
+                let mut funcs =
+                    Func::find_by_attr(txn, tenancy, visibility, "name", &func_name).await?;
+                let func = funcs.pop().ok_or(ComponentError::MissingFunc(func_name))?;
+                let func_backend_integer_args =
+                    serde_json::to_value(FuncBackendIntegerArgs::new(value))?;
+                let (func_binding, created) = FuncBinding::find_or_create(
+                    txn,
+                    nats,
+                    tenancy,
+                    visibility,
+                    history_actor,
+                    func_backend_integer_args,
+                    *func.id(),
+                    *func.backend_kind(),
+                )
+                .await?;
+
+                if created {
+                    func_binding.execute(txn, nats, veritech.clone()).await?;
+                }
+                (func, func_binding, created)
+            }
+            (PropKind::Integer, None) => {
+                todo!("We haven't dealt with unsetting an integer")
+            }
             (PropKind::String, Some(value_json)) => {
                 let value = if !value_json.is_string() {
                     return Err(ComponentError::InvalidPropValue(
@@ -461,7 +498,7 @@ impl Component {
                 if created {
                     func_binding.execute(txn, nats, veritech.clone()).await?;
                 }
-                (func, func_binding, created, value)
+                (func, func_binding, created)
             }
             (PropKind::String, None) => {
                 todo!("we haven't dealt with unseting a string");
@@ -522,7 +559,8 @@ impl Component {
         visibility: &Visibility,
         history_actor: &HistoryActor,
         prop: &Prop,
-        value: &str, // This is obviously wrong, as we don't know what kind of value this is.
+        value: &Option<serde_json::Value>,
+
         created: bool,
     ) -> ComponentResult<()> {
         let validators = ValidationPrototype::find_for_prop(
@@ -542,7 +580,19 @@ impl Component {
                 FuncBackendKind::ValidateStringValue => {
                     let mut args =
                         FuncBackendValidateStringValueArgs::deserialize(validator.args())?;
-                    args.value = Some(value.to_string());
+                    if let Some(json_value) = value {
+                        if json_value.is_string() {
+                            args.value = Some(json_value.to_string());
+                        } else {
+                            return Err(ComponentError::InvalidPropValue(
+                                "String".to_string(),
+                                json_value.clone(),
+                            ));
+                        }
+                    } else {
+                        // TODO: This might not be quite the right error to return here if we got a None.
+                        return Err(ComponentError::MissingProp(*prop.id()));
+                    };
                     let args_json = serde_json::to_value(args)?;
                     let (func_binding, binding_created) = FuncBinding::find_or_create(
                         txn,
