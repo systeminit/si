@@ -1,6 +1,6 @@
 use crate::test_setup;
 
-use dal::func::backend::FuncBackendJsQualificationArgs;
+use dal::func::backend::js_qualification::FuncBackendJsQualificationArgs;
 use dal::qualification_prototype::QualificationPrototypeContext;
 use dal::test_harness::find_or_create_production_system;
 use dal::{

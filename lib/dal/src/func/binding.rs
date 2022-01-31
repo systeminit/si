@@ -1,33 +1,32 @@
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
+use serde_json::Value as JsonValue;
 use si_data::{NatsError, NatsTxn, PgError, PgTxn};
 use telemetry::prelude::*;
 use thiserror::Error;
-
-use serde_json::Value as JsonValue;
 use tokio::sync::mpsc;
 use veritech::{Client, QualificationCheckResultSuccess, ResourceSyncResultSuccess};
 
 use crate::func::backend::integer::{FuncBackendInteger, FuncBackendIntegerArgs};
 use crate::func::backend::{
-    FuncBackendJsQualification, FuncBackendJsQualificationArgs, FuncBackendJsResourceSync,
-    FuncBackendJsResourceSyncArgs,
+    js_qualification::FuncBackendJsQualification,
+    js_qualification::FuncBackendJsQualificationArgs,
+    js_resource::FuncBackendJsResourceSync,
+    js_resource::FuncBackendJsResourceSyncArgs,
+    js_string::FuncBackendJsString,
+    string::FuncBackendString,
+    string::FuncBackendStringArgs,
+    validation::{FuncBackendValidateStringValue, FuncBackendValidateStringValueArgs},
 };
 use crate::{
-    func::backend::{
-        validation::{FuncBackendValidateStringValue, FuncBackendValidateStringValueArgs},
-        FuncBackendString, FuncBackendStringArgs,
-    },
-    impl_standard_model, pk,
-    qualification::QualificationResult,
-    standard_model, standard_model_accessor, standard_model_belongs_to, Func, FuncBackendError,
-    FuncBackendKind, HistoryActor, HistoryEvent, HistoryEventError, StandardModel,
-    StandardModelError, Tenancy, Timestamp, Visibility,
+    impl_standard_model, pk, qualification::QualificationResult, standard_model,
+    standard_model_accessor, standard_model_belongs_to, Func, FuncBackendError, FuncBackendKind,
+    HistoryActor, HistoryEvent, HistoryEventError, StandardModel, StandardModelError, Tenancy,
+    Timestamp, Visibility,
 };
 
 use super::{
-    backend::FuncBackendJsString,
     binding_return_value::{FuncBindingReturnValue, FuncBindingReturnValueError},
     execution::{FuncExecution, FuncExecutionError},
     FuncId,

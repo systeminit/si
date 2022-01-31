@@ -1,6 +1,6 @@
 use crate::test_setup;
 
-use dal::func::backend::FuncBackendJsQualificationArgs;
+use dal::func::backend::js_qualification::FuncBackendJsQualificationArgs;
 use dal::{
     func::binding::FuncBinding,
     qualification_resolver::{QualificationResolverContext, UNSET_ID_VALUE},

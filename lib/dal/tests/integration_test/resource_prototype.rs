@@ -1,6 +1,6 @@
 use crate::test_setup;
 
-use dal::func::backend::FuncBackendJsResourceSyncArgs;
+use dal::func::backend::js_resource::FuncBackendJsResourceSyncArgs;
 use dal::resource_prototype::ResourcePrototypeContext;
 use dal::test_harness::find_or_create_production_system;
 use dal::{

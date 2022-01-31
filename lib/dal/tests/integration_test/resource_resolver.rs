@@ -1,6 +1,6 @@
 use crate::test_setup;
 
-use dal::func::backend::FuncBackendJsResourceSyncArgs;
+use dal::func::backend::js_resource::FuncBackendJsResourceSyncArgs;
 use dal::{
     func::binding::FuncBinding,
     resource_resolver::{ResourceResolverContext, UNSET_ID_VALUE},
