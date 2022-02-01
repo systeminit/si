@@ -119,6 +119,8 @@ impl Connection {
             Err(e) => return Err(SchematicError::Edge(e)),
         };
 
+        // TODO: do we have to call Component::resolve_attribute for the head_component here?
+
         Ok(Self::from_edge(&edge))
     }
 

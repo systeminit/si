@@ -8,7 +8,7 @@ use serde_json::Value;
 pub struct ResolverFunctionRequest {
     pub execution_id: String,
     pub handler: String,
-    pub parameters: Option<HashMap<String, Value>>,
+    pub component: ResolverFunctionComponent,
     pub code_base64: String,
 }
 
@@ -20,6 +20,21 @@ impl ResolverFunctionRequest {
     pub fn serialize_to_string(&self) -> Result<String, serde_json::Error> {
         serde_json::to_string(self)
     }
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct ResolverFunctionParentComponent {
+    pub name: String,
+    pub properties: HashMap<String, Value>,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct ResolverFunctionComponent {
+    pub name: String,
+    pub properties: HashMap<String, Value>,
+    pub parents: Vec<ResolverFunctionParentComponent>,
 }
 
 #[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]

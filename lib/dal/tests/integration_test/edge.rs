@@ -97,6 +97,17 @@ async fn new() {
     )
     .await
     .expect("cannot create new edge");
+
+    let parents = Edge::find_component_configuration_parents(
+        &txn,
+        &tenancy,
+        &visibility,
+        head_component.id(),
+    )
+    .await
+    .expect("unable to find component's parents");
+    assert_eq!(parents.len(), 1);
+    assert_eq!(parents[0], *tail_component.id());
 }
 
 #[tokio::test]

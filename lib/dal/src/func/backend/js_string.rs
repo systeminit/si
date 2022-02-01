@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 use tokio::sync::mpsc;
@@ -9,7 +7,7 @@ use crate::func::backend::{FuncBackendError, FuncBackendResult};
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct FuncBackendJsStringArgs {
-    pub arguments: HashMap<String, serde_json::Value>,
+    pub component: veritech::ResolverFunctionComponent,
 }
 
 #[derive(Debug)]
@@ -24,7 +22,7 @@ impl FuncBackendJsString {
         veritech: Client,
         output_tx: mpsc::Sender<OutputStream>,
         handler: impl Into<String>,
-        args: HashMap<String, serde_json::Value>,
+        args: FuncBackendJsStringArgs,
         code_base64: impl Into<String>,
     ) -> Self {
         let request = ResolverFunctionRequest {
@@ -32,7 +30,7 @@ impl FuncBackendJsString {
             // but for now it's passed along and back, and is opaue
             execution_id: "tomcruise".to_string(),
             handler: handler.into(),
-            parameters: Some(args),
+            component: args.component,
             code_base64: code_base64.into(),
         };
 

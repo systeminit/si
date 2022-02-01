@@ -1,5 +1,8 @@
+use std::collections::HashMap;
+
 use crate::func::backend::js_qualification::FuncBackendJsQualificationArgs;
 use crate::func::backend::js_resource::FuncBackendJsResourceSyncArgs;
+use crate::func::backend::js_string::FuncBackendJsStringArgs;
 use crate::func::backend::validation::FuncBackendValidateStringValueArgs;
 use crate::qualification_prototype::QualificationPrototypeContext;
 use crate::resource_prototype::ResourcePrototypeContext;
@@ -509,21 +512,27 @@ async fn docker_image(
     )
     .await?;
 
-    let malandro_é_malandro_e_mané_é_mané_prop = Prop::new(
+    let number_of_parents_prop = Prop::new(
         txn,
         nats,
         tenancy,
         visibility,
         history_actor,
-        "Malandro é malandro e mané é mané",
-        PropKind::String,
+        "Number of Parents",
+        PropKind::String, // Should be integer, but the js integer backend isn't 100% there yet
     )
     .await?;
-    malandro_é_malandro_e_mané_é_mané_prop
+    number_of_parents_prop
         .add_schema_variant(txn, nats, visibility, history_actor, variant.id())
         .await?;
 
-    let func_name = "si:totallyRandomString".to_string();
+    // TODO: we don't have a component to have their props, but we can manually rebuild the props from what we created in this schema variant
+    // This means if someone updates this function the properties will be invalid
+    let mut properties = HashMap::new();
+    properties.insert("image".to_owned(), serde_json::json!(""));
+    properties.insert("Number of Parents".to_owned(), serde_json::json!("0"));
+
+    let func_name = "si:numberOfParents".to_string();
     let mut funcs = Func::find_by_attr(txn, tenancy, visibility, "name", &func_name).await?;
     let func = funcs.pop().ok_or(SchemaError::MissingFunc(func_name))?;
     let (func_binding, _) = FuncBinding::find_or_create(
@@ -532,7 +541,14 @@ async fn docker_image(
         tenancy,
         visibility,
         history_actor,
-        serde_json::to_value(Option::<()>::None)?,
+        serde_json::to_value(FuncBackendJsStringArgs {
+            component: veritech::ResolverFunctionComponent {
+                name: number_of_parents_prop.name().to_owned(),
+                properties,
+                // TODO: can there be a component connected to another during schema variant creation?
+                parents: vec![],
+            },
+        })?,
         *func.id(),
         *func.backend_kind(),
     )
@@ -541,7 +557,7 @@ async fn docker_image(
     func_binding.execute(txn, nats, veritech.clone()).await?;
 
     let mut attribute_resolver_context = AttributeResolverContext::new();
-    attribute_resolver_context.set_prop_id(*malandro_é_malandro_e_mané_é_mané_prop.id());
+    attribute_resolver_context.set_prop_id(*number_of_parents_prop.id());
     AttributeResolver::upsert(
         txn,
         nats,

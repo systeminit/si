@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use si_data::{NatsError, NatsTxn, PgError, PgTxn};
@@ -17,7 +15,7 @@ use crate::func::backend::{
     js_qualification::FuncBackendJsQualificationArgs,
     js_resource::FuncBackendJsResourceSync,
     js_resource::FuncBackendJsResourceSyncArgs,
-    js_string::FuncBackendJsString,
+    js_string::{FuncBackendJsString, FuncBackendJsStringArgs},
     string::FuncBackendString,
     string::FuncBackendStringArgs,
     validation::{FuncBackendValidateStringValue, FuncBackendValidateStringValueArgs},
@@ -198,8 +196,11 @@ impl FuncBinding {
         // this an argument to this function
         let history_actor = HistoryActor::SystemInit;
 
+        let mut schema_tenancy = self.tenancy.clone();
+        schema_tenancy.universal = true;
+
         let func = self
-            .func(txn, &visibility)
+            .func_with_tenancy(txn, &schema_tenancy, &visibility)
             .await?
             .ok_or(FuncBindingError::FuncNotFound(self.pk))?;
 
@@ -317,8 +318,8 @@ impl FuncBinding {
                 let code_base64 = func
                     .code_base64()
                     .ok_or(FuncBindingError::JsFuncNotFound(self.pk))?;
-                let mut map: HashMap<String, serde_json::Value> = HashMap::new();
-                map.insert("value".to_owned(), self.args.clone());
+
+                let args: FuncBackendJsStringArgs = serde_json::from_value(self.args.clone())?;
 
                 execution
                     .set_state(txn, nats, super::execution::FuncExecutionState::Run)
@@ -328,7 +329,7 @@ impl FuncBinding {
                     veritech,
                     tx,
                     handler.to_owned(),
-                    map,
+                    args,
                     code_base64.to_owned(),
                 )
                 .execute()

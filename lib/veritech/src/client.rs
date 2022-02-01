@@ -327,7 +327,10 @@ mod subscription {
 mod tests {
     use std::{collections::HashMap, env};
 
-    use cyclone::{QualificationCheckComponent, ResourceSyncComponent};
+    use cyclone::{
+        QualificationCheckComponent, ResolverFunctionComponent, ResolverFunctionParentComponent,
+        ResourceSyncComponent,
+    };
     use deadpool_cyclone::{instance::cyclone::LocalUdsInstance, Instance};
     use indoc::indoc;
     use si_data::NatsConfig;
@@ -403,15 +406,25 @@ mod tests {
             }
         });
 
-        let mut parameters = HashMap::new();
-        parameters.insert("value".to_string(), serde_json::json!("waffles_are_neat"));
-
         let request = ResolverFunctionRequest {
             execution_id: "1234".to_string(),
-            handler: "upperCaseString".to_string(),
-            parameters: Some(parameters),
+            handler: "numberOfParents".to_string(),
+            component: ResolverFunctionComponent {
+                name: "Child".to_owned(),
+                properties: HashMap::new(),
+                parents: vec![
+                    ResolverFunctionParentComponent {
+                        name: "Parent 1".to_owned(),
+                        properties: HashMap::new(),
+                    },
+                    ResolverFunctionParentComponent {
+                        name: "Parent 2".to_owned(),
+                        properties: HashMap::new(),
+                    },
+                ],
+            },
             code_base64: base64::encode(
-                "function upperCaseString(params) { return params.value.toUpperCase(); }",
+                "function numberOfParents(component) { return component.parents.length; }",
             ),
         };
 
@@ -423,7 +436,7 @@ mod tests {
         match result {
             FunctionResult::Success(success) => {
                 assert_eq!(success.execution_id, "1234");
-                assert_eq!(success.data, serde_json::json!("WAFFLES_ARE_NEAT"));
+                assert_eq!(success.data, serde_json::json!(2));
                 assert!(!success.unset);
             }
             FunctionResult::Failure(failure) => {
