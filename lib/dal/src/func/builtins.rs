@@ -12,6 +12,7 @@ pub async fn migrate(txn: &PgTxn<'_>, nats: &NatsTxn) -> FuncResult<()> {
         HistoryActor::SystemInit,
     );
 
+    si_set_array(txn, nats, &tenancy, &visibility, &history_actor).await?;
     si_set_boolean(txn, nats, &tenancy, &visibility, &history_actor).await?;
     si_set_string(txn, nats, &tenancy, &visibility, &history_actor).await?;
     si_set_integer(txn, nats, &tenancy, &visibility, &history_actor).await?;
@@ -79,6 +80,32 @@ async fn si_totally_random_string(
             )),
         )
         .await?;
+    }
+    Ok(())
+}
+
+async fn si_set_array(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    tenancy: &Tenancy,
+    visibility: &Visibility,
+    history_actor: &HistoryActor,
+) -> FuncResult<()> {
+    let existing_func =
+        Func::find_by_attr(txn, tenancy, visibility, "name", &"si:setArray".to_string()).await?;
+    if existing_func.is_empty() {
+        Func::new(
+            txn,
+            nats,
+            tenancy,
+            visibility,
+            history_actor,
+            "si:setArray",
+            FuncBackendKind::Array,
+            FuncBackendResponseType::Array,
+        )
+        .await
+        .expect("cannot create func");
     }
     Ok(())
 }

@@ -8,6 +8,7 @@ use thiserror::Error;
 use tokio::sync::mpsc;
 use veritech::{Client, QualificationCheckResultSuccess, ResourceSyncResultSuccess};
 
+use crate::func::backend::array::{FuncBackendArray, FuncBackendArrayArgs};
 use crate::func::backend::boolean::{FuncBackendBoolean, FuncBackendBooleanArgs};
 use crate::func::backend::integer::{FuncBackendInteger, FuncBackendIntegerArgs};
 use crate::func::backend::prop_object::{FuncBackendPropObject, FuncBackendPropObjectArgs};
@@ -205,6 +206,14 @@ impl FuncBinding {
         let mut execution = FuncExecution::new(txn, nats, &tenancy, &func, self).await?;
 
         let return_value = match self.backend_kind() {
+            FuncBackendKind::Array => {
+                execution
+                    .set_state(txn, nats, super::execution::FuncExecutionState::Run)
+                    .await?;
+                let args: FuncBackendArrayArgs = serde_json::from_value(self.args.clone())?;
+                let return_value = FuncBackendArray::new(args).execute().await?;
+                Some(return_value)
+            }
             FuncBackendKind::Boolean => {
                 execution
                     .set_state(txn, nats, super::execution::FuncExecutionState::Run)
