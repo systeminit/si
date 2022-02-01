@@ -9,6 +9,7 @@ pub mod integer;
 pub mod js_qualification;
 pub mod js_resource;
 pub mod js_string;
+pub mod prop_object;
 pub mod string;
 pub mod validation;
 
@@ -16,6 +17,8 @@ pub mod validation;
 pub enum FuncBackendError {
     #[error("invalid data - expected an integer, got: {0}")]
     InvalidIntegerData(serde_json::Value),
+    #[error("invalid data - expected a prop object, got: {0}")]
+    InvalidPropObjectData(serde_json::Value),
     #[error("invalid data - expected a string, got: {0}")]
     InvalidStringData(serde_json::Value),
     #[error("result failure: kind={kind}, message={message}")]
@@ -45,20 +48,20 @@ pub type FuncBackendResult<T> = Result<T, FuncBackendError>;
 )]
 pub enum FuncBackendKind {
     Integer,
+    JsQualification,
+    JsResourceSync,
+    JsString,
+    PropObject,
     String,
+    Unset,
     // Commented out while we climb back up - Adam & Fletcher
-    //Number,
+    //Number (Float?),
     //Boolean,
-    //Object,
     //Array,
     //EmptyObject,
     //EmptyArray,
-    Unset,
     //Json,
     //Js,
-    JsQualification,
-    JsString,
-    JsResourceSync,
     ValidateStringValue,
 }
 
@@ -77,17 +80,17 @@ pub enum FuncBackendKind {
 )]
 pub enum FuncBackendResponseType {
     Integer,
+    PropObject,
+    Qualification,
+    ResourceSync,
     String,
+    Unset,
     // Commented out while we climb back up - Adam & Fletcher
     //Number,
     //Boolean,
-    //Object,
     //Array,
-    Unset,
     //Json,
-    Qualification,
     Validation,
-    ResourceSync,
 }
 
 impl ToLabelList for FuncBackendKind {}

@@ -30,6 +30,7 @@ use crate::validation_resolver::ValidationResolverContext;
 use crate::ws_event::{WsEvent, WsEventError};
 use crate::{Edge, EdgeError, System};
 
+use crate::func::backend::prop_object::FuncBackendPropObjectArgs;
 use crate::{
     impl_standard_model, pk, qualification::QualificationError, standard_model,
     standard_model_accessor, standard_model_belongs_to, standard_model_has_many, AttributeResolver,
@@ -465,6 +466,43 @@ impl Component {
             }
             (PropKind::Integer, None) => {
                 todo!("We haven't dealt with unsetting an integer")
+            }
+            (PropKind::PropObject, Some(value_json)) => {
+                let value = match value_json.as_object() {
+                    Some(object) => object,
+                    None => {
+                        return Err(ComponentError::InvalidPropValue(
+                            "Object".to_string(),
+                            value_json,
+                        ))
+                    }
+                };
+
+                let func_name = "si:setPropObject".to_string();
+                let mut funcs =
+                    Func::find_by_attr(txn, tenancy, visibility, "name", &func_name).await?;
+                let func = funcs.pop().ok_or(ComponentError::MissingFunc(func_name))?;
+                let args = serde_json::to_value(FuncBackendPropObjectArgs::new(value.clone()))?;
+                let (func_binding, created) = FuncBinding::find_or_create(
+                    txn,
+                    nats,
+                    tenancy,
+                    visibility,
+                    history_actor,
+                    args,
+                    *func.id(),
+                    *func.backend_kind(),
+                )
+                .await?;
+
+                // FIXME(nick,jacob): add object nesting. This is incomplete!
+                if created {
+                    func_binding.execute(txn, nats, veritech.clone()).await?;
+                }
+                (func, func_binding, created)
+            }
+            (PropKind::PropObject, None) => {
+                todo!("We haven't dealt with unsetting an object")
             }
             (PropKind::String, Some(value_json)) => {
                 let value = if !value_json.is_string() {

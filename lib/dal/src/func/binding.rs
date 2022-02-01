@@ -9,6 +9,7 @@ use tokio::sync::mpsc;
 use veritech::{Client, QualificationCheckResultSuccess, ResourceSyncResultSuccess};
 
 use crate::func::backend::integer::{FuncBackendInteger, FuncBackendIntegerArgs};
+use crate::func::backend::prop_object::{FuncBackendPropObject, FuncBackendPropObjectArgs};
 use crate::func::backend::{
     js_qualification::FuncBackendJsQualification,
     js_qualification::FuncBackendJsQualificationArgs,
@@ -203,37 +204,6 @@ impl FuncBinding {
         let mut execution = FuncExecution::new(txn, nats, &tenancy, &func, self).await?;
 
         let return_value = match self.backend_kind() {
-            FuncBackendKind::JsString => {
-                execution
-                    .set_state(txn, nats, super::execution::FuncExecutionState::Dispatch)
-                    .await?;
-
-                let (tx, rx) = mpsc::channel(64);
-                let handler = func
-                    .handler()
-                    .ok_or(FuncBindingError::JsFuncNotFound(self.pk))?;
-                let code_base64 = func
-                    .code_base64()
-                    .ok_or(FuncBindingError::JsFuncNotFound(self.pk))?;
-                let mut map: HashMap<String, serde_json::Value> = HashMap::new();
-                map.insert("value".to_owned(), self.args.clone());
-
-                execution
-                    .set_state(txn, nats, super::execution::FuncExecutionState::Run)
-                    .await?;
-
-                let return_value = FuncBackendJsString::new(
-                    veritech,
-                    tx,
-                    handler.to_owned(),
-                    map,
-                    code_base64.to_owned(),
-                )
-                .execute()
-                .await?;
-                execution.process_output(txn, nats, rx).await?;
-                Some(return_value)
-            }
             FuncBackendKind::Integer => {
                 execution
                     .set_state(txn, nats, super::execution::FuncExecutionState::Run)
@@ -242,15 +212,6 @@ impl FuncBinding {
                 let return_value = FuncBackendInteger::new(args).execute().await?;
                 Some(return_value)
             }
-            FuncBackendKind::String => {
-                execution
-                    .set_state(txn, nats, super::execution::FuncExecutionState::Run)
-                    .await?;
-                let args: FuncBackendStringArgs = serde_json::from_value(self.args.clone())?;
-                let return_value = FuncBackendString::new(args).execute().await?;
-                Some(return_value)
-            }
-            FuncBackendKind::Unset => None,
             FuncBackendKind::JsQualification => {
                 execution
                     .set_state(txn, nats, super::execution::FuncExecutionState::Dispatch)
@@ -326,6 +287,54 @@ impl FuncBinding {
                 execution.process_output(txn, nats, rx).await?;
                 Some(serde_json::to_value(&veritech_result)?)
             }
+            FuncBackendKind::JsString => {
+                execution
+                    .set_state(txn, nats, super::execution::FuncExecutionState::Dispatch)
+                    .await?;
+
+                let (tx, rx) = mpsc::channel(64);
+                let handler = func
+                    .handler()
+                    .ok_or(FuncBindingError::JsFuncNotFound(self.pk))?;
+                let code_base64 = func
+                    .code_base64()
+                    .ok_or(FuncBindingError::JsFuncNotFound(self.pk))?;
+                let mut map: HashMap<String, serde_json::Value> = HashMap::new();
+                map.insert("value".to_owned(), self.args.clone());
+
+                execution
+                    .set_state(txn, nats, super::execution::FuncExecutionState::Run)
+                    .await?;
+
+                let return_value = FuncBackendJsString::new(
+                    veritech,
+                    tx,
+                    handler.to_owned(),
+                    map,
+                    code_base64.to_owned(),
+                )
+                .execute()
+                .await?;
+                execution.process_output(txn, nats, rx).await?;
+                Some(return_value)
+            }
+            FuncBackendKind::PropObject => {
+                execution
+                    .set_state(txn, nats, super::execution::FuncExecutionState::Run)
+                    .await?;
+                let args: FuncBackendPropObjectArgs = serde_json::from_value(self.args.clone())?;
+                let return_value = FuncBackendPropObject::new(args).execute().await?;
+                Some(return_value)
+            }
+            FuncBackendKind::String => {
+                execution
+                    .set_state(txn, nats, super::execution::FuncExecutionState::Run)
+                    .await?;
+                let args: FuncBackendStringArgs = serde_json::from_value(self.args.clone())?;
+                let return_value = FuncBackendString::new(args).execute().await?;
+                Some(return_value)
+            }
+            FuncBackendKind::Unset => None,
             FuncBackendKind::ValidateStringValue => {
                 execution
                     .set_state(txn, nats, super::execution::FuncExecutionState::Run)
