@@ -11,7 +11,7 @@ import { executeResourceSync } from "./resource_sync";
 
 const debug = Debug("langJs");
 
-function main() {
+async function main() {
   let kind;
 
   const program = new Command();
@@ -49,7 +49,7 @@ function main() {
 
     switch (kind) {
       case FunctionKind.QualificationCheck:
-        executeQualificationCheck(request);
+        await executeQualificationCheck(request);
         break;
       case FunctionKind.ResolverFunction:
         executeResolverFunction(request);

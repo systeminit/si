@@ -1,7 +1,7 @@
 import Debug from "debug";
 import _ from "lodash";
-import { VM, VMScript } from "vm2";
 import { base64Decode } from "./base64";
+import { NodeVM } from "vm2";
 import {
   failureExecution,
   FunctionKind,
@@ -10,7 +10,7 @@ import {
   ResultSuccess,
 } from "./function";
 import { createSandbox } from "./sandbox";
-import { createVm } from "./vm";
+import { createNodeVm } from "./vm";
 
 const debug = Debug("langJs:qualificationCheck");
 
@@ -46,35 +46,40 @@ export interface QualificationCheckResultFailure extends ResultFailure {
   message?: never;
 }
 
-export function executeQualificationCheck(
+export async function executeQualificationCheck(
   request: QualificationCheckRequest
-): void {
-  const code = base64Decode(request.codeBase64);
+): Promise<void> {
+  let code = base64Decode(request.codeBase64);
   debug({ code });
-  const compiledCode = new VMScript(
-    wrapCode(code, request.handler, request.component)
-  ).compile();
-  debug({ code: compiledCode.code });
+
+  code = wrapCode(code, request.handler);
+  debug({ code });
+
   const sandbox = createSandbox(
     FunctionKind.QualificationCheck,
     request.executionId
   );
-  const vm = createVm(sandbox);
+  const vm = createNodeVm(sandbox);
 
-  const result = execute(vm, compiledCode, request.executionId);
+  const result = await execute(vm, code, request.component, request.executionId);
   debug({ result });
 
   console.log(JSON.stringify(result));
 }
 
-function execute(
-  vm: VM,
-  code: VMScript,
+async function execute(
+  vm: NodeVM,
+  code: string,
+  component: Component,
   executionId: string
-): QualificationCheckResult {
-  let qualificationCheckResult;
+): Promise<QualificationCheckResult> {
+  let qualificationCheckResult: any;
   try {
-    qualificationCheckResult = vm.run(code);
+    const qualificationCheckRunner = vm.run(code);
+    // Node(paulo): NodeVM doesn't support async rejection, we need a better way of handling it
+    qualificationCheckResult = await new Promise((resolve) => {
+      qualificationCheckRunner(component, (resolution: unknown) => resolve(resolution));
+    });
   } catch (err) {
     return failureExecution(err, executionId);
   }
@@ -136,6 +141,19 @@ function execute(
   return result;
 }
 
-function wrapCode(code: string, handle: string, component: Component): string {
-  return code + `\n${handle}(${JSON.stringify(component)});\n`;
+// TODO(paulo): handle promise exceptions in a better way, VM2 sadly doesn't have a catch-like callback
+function wrapCode(code: string, handle: string): string {
+  const wrapped = `module.exports = function(component, callback) {
+    ${code}
+    ${handle}(component, callback)
+      .then((data) => callback(data))
+      .catch((err) => {
+        const message = "Uncaught throw in a promise, inside function ${handle}: " + JSON.stringify(err);
+        callback({
+          qualified: false,
+          message
+        })
+      });
+  };`;
+  return wrapped;
 }

@@ -1,6 +1,15 @@
-import { VM, VMScript } from "vm2";
+import { VM, NodeVM, VMScript } from "vm2";
 
 import { Sandbox } from "./sandbox";
+
+// This is needed to execute functions asynchronously (you have to export a default function for a module)
+export function createNodeVm(sandbox: Sandbox): NodeVM {
+  return new NodeVM({
+    sandbox,
+    eval: false,
+    wasm: false,
+  });
+}
 
 export function createVm(sandbox: Sandbox): VM {
   const timeout = 2000;
