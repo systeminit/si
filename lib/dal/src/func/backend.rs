@@ -5,6 +5,7 @@ use thiserror::Error;
 
 use crate::{edit_field::ToSelectWidget, label_list::ToLabelList};
 
+pub mod boolean;
 pub mod integer;
 pub mod js_qualification;
 pub mod js_resource;
@@ -15,6 +16,8 @@ pub mod validation;
 
 #[derive(Error, Debug)]
 pub enum FuncBackendError {
+    #[error("invalid data - expected a boolean, got: {0}")]
+    InvalidBooleanData(serde_json::Value),
     #[error("invalid data - expected an integer, got: {0}")]
     InvalidIntegerData(serde_json::Value),
     #[error("invalid data - expected a prop object, got: {0}")]
@@ -47,6 +50,7 @@ pub type FuncBackendResult<T> = Result<T, FuncBackendError>;
     Copy,
 )]
 pub enum FuncBackendKind {
+    Boolean,
     Integer,
     JsQualification,
     JsResourceSync,
@@ -79,6 +83,7 @@ pub enum FuncBackendKind {
     Copy,
 )]
 pub enum FuncBackendResponseType {
+    Boolean,
     Integer,
     PropObject,
     Qualification,

@@ -30,6 +30,7 @@ use crate::validation_resolver::ValidationResolverContext;
 use crate::ws_event::{WsEvent, WsEventError};
 use crate::{Edge, EdgeError, System};
 
+use crate::func::backend::boolean::FuncBackendBooleanArgs;
 use crate::func::backend::prop_object::FuncBackendPropObjectArgs;
 use crate::{
     impl_standard_model, pk, qualification::QualificationError, standard_model,
@@ -431,29 +432,65 @@ impl Component {
         // We shouldn't be leaking this value, because it may or may not be actually set. But
         // when you YOLO, YOLO hard. -- Adam
         let (func, func_binding, created) = match (prop.kind(), value.clone()) {
-            (PropKind::Integer, Some(value_json)) => {
-                let value = if !value_json.is_i64() {
-                    return Err(ComponentError::InvalidPropValue(
-                        "Integer".to_string(),
-                        value_json,
-                    ));
-                } else {
-                    value_json.as_i64().unwrap()
+            (PropKind::Boolean, Some(value_json)) => {
+                let value = match value_json.as_bool() {
+                    Some(boolean) => boolean,
+                    None => {
+                        return Err(ComponentError::InvalidPropValue(
+                            "Boolean".to_string(),
+                            value_json,
+                        ))
+                    }
                 };
 
-                let func_name = "si:setInteger".to_string();
+                let func_name = "si:setBoolean".to_string();
                 let mut funcs =
                     Func::find_by_attr(txn, tenancy, visibility, "name", &func_name).await?;
                 let func = funcs.pop().ok_or(ComponentError::MissingFunc(func_name))?;
-                let func_backend_integer_args =
-                    serde_json::to_value(FuncBackendIntegerArgs::new(value))?;
+                let args = serde_json::to_value(FuncBackendBooleanArgs::new(value))?;
                 let (func_binding, created) = FuncBinding::find_or_create(
                     txn,
                     nats,
                     tenancy,
                     visibility,
                     history_actor,
-                    func_backend_integer_args,
+                    args,
+                    *func.id(),
+                    *func.backend_kind(),
+                )
+                .await?;
+
+                if created {
+                    func_binding.execute(txn, nats, veritech.clone()).await?;
+                }
+                (func, func_binding, created)
+            }
+            (PropKind::Boolean, None) => {
+                todo!("We haven't dealt with unsetting a boolean")
+            }
+            (PropKind::Integer, Some(value_json)) => {
+                let value = match value_json.as_i64() {
+                    Some(integer) => integer,
+                    None => {
+                        return Err(ComponentError::InvalidPropValue(
+                            "Integer".to_string(),
+                            value_json,
+                        ))
+                    }
+                };
+
+                let func_name = "si:setInteger".to_string();
+                let mut funcs =
+                    Func::find_by_attr(txn, tenancy, visibility, "name", &func_name).await?;
+                let func = funcs.pop().ok_or(ComponentError::MissingFunc(func_name))?;
+                let args = serde_json::to_value(FuncBackendIntegerArgs::new(value))?;
+                let (func_binding, created) = FuncBinding::find_or_create(
+                    txn,
+                    nats,
+                    tenancy,
+                    visibility,
+                    history_actor,
+                    args,
                     *func.id(),
                     *func.backend_kind(),
                 )
@@ -505,27 +542,28 @@ impl Component {
                 todo!("We haven't dealt with unsetting an object")
             }
             (PropKind::String, Some(value_json)) => {
-                let value = if !value_json.is_string() {
-                    return Err(ComponentError::InvalidPropValue(
-                        "String".to_string(),
-                        value_json,
-                    ));
-                } else {
-                    value_json.as_str().unwrap().to_string()
+                let value = match value_json.as_str() {
+                    Some(string) => string.to_string(),
+                    None => {
+                        return Err(ComponentError::InvalidPropValue(
+                            "String".to_string(),
+                            value_json,
+                        ))
+                    }
                 };
+
                 let func_name = "si:setString".to_string();
                 let mut funcs =
                     Func::find_by_attr(txn, tenancy, visibility, "name", &func_name).await?;
                 let func = funcs.pop().ok_or(ComponentError::MissingFunc(func_name))?;
-                let func_backend_string_args =
-                    serde_json::to_value(FuncBackendStringArgs::new(value.clone()))?;
+                let args = serde_json::to_value(FuncBackendStringArgs::new(value.clone()))?;
                 let (func_binding, created) = FuncBinding::find_or_create(
                     txn,
                     nats,
                     tenancy,
                     visibility,
                     history_actor,
-                    func_backend_string_args,
+                    args,
                     *func.id(),
                     *func.backend_kind(),
                 )

@@ -42,6 +42,7 @@ pk!(PropId);
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]
 pub enum PropKind {
+    Boolean,
     Integer,
     PropObject,
     String,
