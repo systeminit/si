@@ -26,7 +26,7 @@ use crate::{
     QualificationCheckRequest, QualificationCheckResultSuccess,
 };
 
-const TX_TIMEOUT_SECS: Duration = Duration::from_secs(2);
+const TX_TIMEOUT_SECS: Duration = Duration::from_secs(5);
 
 pub fn execute(
     lang_server_path: impl Into<PathBuf>,

@@ -837,35 +837,38 @@ mod tests {
             .expect("failed to start protocol");
 
         // Consume the output messages
-        match progress.next().await {
-            Some(Ok(ProgressMessage::OutputStream(output))) => {
-                assert_eq!(output.message, "i like")
-            }
-            Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
-            Some(Err(err)) => panic!("failed to receive 'i like' output: err={:?}", err),
-            None => panic!("output stream ended early"),
-        };
-        match progress.next().await {
-            Some(Ok(ProgressMessage::OutputStream(output))) => {
-                assert_eq!(output.message, "my butt")
-            }
-            Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
-            Some(Err(err)) => panic!("failed to receive 'i like' output: err={:?}", err),
-            None => panic!("output stream ended early"),
-        };
-        // TODO(fnichol): until we've determined how to handle processing the result server side,
-        // we're going to see a heartbeat come back when a request is processed
-        match progress.next().await {
-            Some(Ok(ProgressMessage::Heartbeat)) => assert!(true),
-            Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
-            Some(Err(err)) => panic!("failed to receive heartbeat: err={:?}", err),
-            None => panic!("output stream ended early"),
+        loop {
+            match progress.next().await {
+                Some(Ok(ProgressMessage::OutputStream(output))) => {
+                    assert_eq!(output.message, "i like");
+                    break;
+                }
+                Some(Ok(ProgressMessage::Heartbeat)) => continue,
+                Some(Err(err)) => panic!("failed to receive 'i like' output: err={:?}", err),
+                None => panic!("output stream ended early"),
+            };
         }
-        match progress.next().await {
-            None => assert!(true),
-            Some(unexpected) => panic!("output stream should be done: {:?}", unexpected),
-        };
-        // Get the result
+        loop {
+            match progress.next().await {
+                Some(Ok(ProgressMessage::OutputStream(output))) => {
+                    assert_eq!(output.message, "my butt");
+                    break;
+                }
+                Some(Ok(ProgressMessage::Heartbeat)) => continue,
+                Some(Err(err)) => panic!("failed to receive 'i like' output: err={:?}", err),
+                None => panic!("output stream ended early"),
+            }
+        }
+        loop {
+            match progress.next().await {
+                None => {
+                    assert!(true);
+                    break;
+                }
+                Some(Ok(ProgressMessage::Heartbeat)) => continue,
+                Some(unexpected) => panic!("output stream should be done: {:?}", unexpected),
+            };
+        }
         let result = progress.finish().await.expect("failed to return result");
         match result {
             FunctionResult::Success(success) => {
@@ -918,34 +921,38 @@ mod tests {
             .expect("failed to start protocol");
 
         // Consume the output messages
-        match progress.next().await {
-            Some(Ok(ProgressMessage::OutputStream(output))) => {
-                assert_eq!(output.message, "i like")
-            }
-            Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
-            Some(Err(err)) => panic!("failed to receive 'i like' output: err={:?}", err),
-            None => panic!("output stream ended early"),
-        };
-        match progress.next().await {
-            Some(Ok(ProgressMessage::OutputStream(output))) => {
-                assert_eq!(output.message, "my butt")
-            }
-            Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
-            Some(Err(err)) => panic!("failed to receive 'i like' output: err={:?}", err),
-            None => panic!("output stream ended early"),
-        };
-        // TODO(fnichol): until we've determined how to handle processing the result server side,
-        // we're going to see a heartbeat come back when a request is processed
-        match progress.next().await {
-            Some(Ok(ProgressMessage::Heartbeat)) => assert!(true),
-            Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
-            Some(Err(err)) => panic!("failed to receive heartbeat: err={:?}", err),
-            None => panic!("output stream ended early"),
+        loop {
+            match progress.next().await {
+                Some(Ok(ProgressMessage::OutputStream(output))) => {
+                    assert_eq!(output.message, "i like");
+                    break;
+                }
+                Some(Ok(ProgressMessage::Heartbeat)) => continue,
+                Some(Err(err)) => panic!("failed to receive 'i like' output: err={:?}", err),
+                None => panic!("output stream ended early"),
+            };
         }
-        match progress.next().await {
-            None => assert!(true),
-            Some(unexpected) => panic!("output stream should be done: {:?}", unexpected),
-        };
+        loop {
+            match progress.next().await {
+                Some(Ok(ProgressMessage::OutputStream(output))) => {
+                    assert_eq!(output.message, "my butt");
+                    break;
+                }
+                Some(Ok(ProgressMessage::Heartbeat)) => continue,
+                Some(Err(err)) => panic!("failed to receive 'i like' output: err={:?}", err),
+                None => panic!("output stream ended early"),
+            };
+        }
+        loop {
+            match progress.next().await {
+                None => {
+                    assert!(true);
+                    break;
+                }
+                Some(Ok(ProgressMessage::Heartbeat)) => continue,
+                Some(unexpected) => panic!("output stream should be done: {:?}", unexpected),
+            };
+        }
         // Get the result
         let result = progress.finish().await.expect("failed to return result");
         match result {

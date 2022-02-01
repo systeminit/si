@@ -49,6 +49,7 @@ export interface QualificationCheckResultFailure extends ResultFailure {
 export async function executeQualificationCheck(
   request: QualificationCheckRequest
 ): Promise<void> {
+
   let code = base64Decode(request.codeBase64);
   debug({ code });
 
@@ -145,15 +146,19 @@ async function execute(
 function wrapCode(code: string, handle: string): string {
   const wrapped = `module.exports = function(component, callback) {
     ${code}
-    ${handle}(component, callback)
-      .then((data) => callback(data))
-      .catch((err) => {
-        const message = "Uncaught throw in a promise, inside function ${handle}: " + JSON.stringify(err);
-        callback({
-          qualified: false,
-          message
-        })
-      });
+    const returnValue = ${handle}(component, callback);
+    if (returnValue instanceof Promise) {
+      returnValue.then((data) => callback(data))
+        .catch((err) => {
+          const message = "Uncaught throw in a promise, inside function ${handle}: " + JSON.stringify(err);
+          callback({
+            qualified: false,
+            message
+          })
+        });
+    } else {
+      callback(returnValue);
+    }
   };`;
   return wrapped;
 }
