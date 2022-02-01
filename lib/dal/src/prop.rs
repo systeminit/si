@@ -43,6 +43,7 @@ pk!(PropId);
 #[strum(serialize_all = "camelCase")]
 pub enum PropKind {
     Integer,
+    PropObject,
     String,
 }
 
