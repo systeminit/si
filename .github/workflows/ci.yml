@@ -1,24 +1,13 @@
-name: CI (Web)
+name: ci
 on:
   push:
     branches-ignore:
       - "main"
-    paths:
-      - ".github/workflows/ci-web.yml"
-      - ".cargo/**"
-      - "Cargo.*"
-      - "**/*.rs"
-      - "rust-toolchain"
-      - "rustfmt.toml"
-      - "ci/**"
-      - "deploy/**"
-      - "app/web/**"
 jobs:
-
-  ci-web:
+  ci:
     runs-on: self-hosted
     steps:
-      - name: Git checkout
+      - name: Git Checkout
         uses: actions/checkout@v2
       - name: Install Rust
         uses: actions-rs/toolchain@v1
@@ -26,17 +15,19 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
+      - name: CI (1/3) [rust-lint]
+        run: ( source /data/runners/.profile; cd ci; make ci-rust-lint )
+      - name: NPM Install
+        run: ( source /data/runners/.profile; cd app/web; npm install )
+      - name: CI (2/3) [web-lint]
+        run: ( source /data/runners/.profile; cd ci; make ci-web-lint )
       - name: Login Docker
         id: login
         uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9 # pin@v1.10.0
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
-      - name: NPM Install
-        run: ( source /data/runners/.profile; cd app/web; npm install )
-      - name: Check formatting
-        run: ( source /data/runners/.profile; cd ci; make ci-web-lint )
-      - name: Execute CI target
-        run: ( source /data/runners/.profile; cd ci; make ci-web )
+      - name: CI (3/3) [si]
+        run: ( source /data/runners/.profile; cd ci; make ci-si )
         env:
           HONEYCOMB_TOKEN: ${{ secrets.HONEYCOMB_TOKEN }}

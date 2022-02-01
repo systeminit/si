@@ -25,38 +25,34 @@ ci-web-lint:
 	cd $(REPOPATH)/app/web; npm run eslint || exit 0
 .PHONY: ci-web-lint
 
-ci-crates: teardown setup-crates
+ci-si: setup-base ci-crates ci-web
+.PHONY: ci-si
+
+ci-crates: down
+	cd $(REPOPATH)/deploy && $(MAKE) partial
 	cd $(REPOPATH); cargo test --all-features
 .PHONY: ci-crates
 
-ci-web: teardown setup-web
-	$(MAKEPATH)/scripts/readiness-check.sh
-	cd $(REPOPATH)/app/web; env CYPRESS_BASE_URL='https://max:L0vesMiriya!@localhost' npm run cypress:run || exit 0
-.PHONY: ci-web
-
-setup-crates:
-	$(MAKEPATH)/scripts/init-compose-env.sh
-	cd $(REPOPATH)/bin/lang-js; npm ci
-	cd $(REPOPATH)/bin/lang-js; npm run package
-	cd $(REPOPATH)/deploy && $(MAKE) partial
-	cd $(REPOPATH); cargo build
-.PHONY: setup-crates
-
-setup-web:
-	$(MAKEPATH)/scripts/init-compose-env.sh
-	cd $(REPOPATH)/bin/lang-js; npm ci
-	cd $(REPOPATH)/bin/lang-js; npm run package
+ci-web: down
 	cd $(REPOPATH)/app/web; npm ci
 	cd $(REPOPATH)/app/web; env VUE_APP_SDF_BASE_HTTP_URL="https://localhost/api" \
 		VUE_APP_SDF_BASE_WS_URL="wss://localhost/api/ws/billing_account_updates" \
 		npm run build || exit 0;
-	cd $(REPOPATH); cargo build
 	cd $(REPOPATH)/deploy && $(MAKE) ci
-.PHONY: setup-web
+	$(MAKEPATH)/scripts/readiness-check.sh
+	cd $(REPOPATH)/app/web; env CYPRESS_BASE_URL='https://max:L0vesMiriya!@localhost' npm run cypress:run || exit 0
+.PHONY: ci-web
 
-teardown:
+setup-base: down
+	$(MAKEPATH)/scripts/init-compose-env.sh
+	cd $(REPOPATH)/bin/lang-js; npm ci
+	cd $(REPOPATH)/bin/lang-js; npm run package
+	cd $(REPOPATH); cargo build
+.PHONY: setup-base
+
+down:
 	-cd $(REPOPATH)/deploy && $(MAKE) down
-.PHONY: teardown
+.PHONY: down
 
 # TODO(nick): consider adding --all-targets --all-features to clippy
 tidy:
