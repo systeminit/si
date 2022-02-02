@@ -29,7 +29,7 @@ export class SdfWs {
   }
 }
 
-function onClose(ev: CloseEvent): any {
+function onClose(ev: CloseEvent): void {
   const bottle = Bottle.pop("default");
   const sdf = bottle.container.SDF;
   if (sdf.token) {
@@ -38,10 +38,10 @@ function onClose(ev: CloseEvent): any {
     if (sdf.update) {
       sdf.update
         .opened()
-        .then((_success: any) => {
+        .then((_success: unknown) => {
           // console.log("websocket connection re-established");
         })
-        .catch((_timeout: any) => {
+        .catch((_timeout: unknown) => {
           // console.log("reconnect failed - scheduling another go");
           setTimeout(() => {
             onClose(ev);

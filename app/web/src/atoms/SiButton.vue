@@ -53,12 +53,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineProps } from "vue";
+import { computed } from "vue";
 import VueFeather from "vue-feather";
 
 interface ButtonProps {
   kind: "standard" | "save" | "cancel";
-  label: null | string;
+  label: undefined | string;
   icon:
     | null
     | "play"
@@ -86,7 +86,7 @@ const props = defineProps({
   },
   icon: {
     type: String as () => ButtonProps["icon"],
-    required: true,
+    default: null,
   },
   size: {
     type: String as () => ButtonProps["size"],

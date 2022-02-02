@@ -52,7 +52,7 @@ export class InteractionManager {
   // interaction: Interaction;
   sceneManager: SceneManager;
   dataManager: SchematicDataManager;
-  stateService: Interpreter<any>;
+  stateService: Interpreter<unknown>;
   renderer: Renderer;
   selectionManager: SelectionManager;
   draggingManager: DraggingManager;
@@ -68,7 +68,7 @@ export class InteractionManager {
   constructor(
     sceneManager: SceneManager,
     dataManager: SchematicDataManager,
-    stateService: Interpreter<any>,
+    stateService: Interpreter<unknown>,
     renderer: Renderer,
     editorContext: EditorContext | null,
   ) {

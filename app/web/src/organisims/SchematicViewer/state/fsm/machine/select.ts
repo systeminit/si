@@ -22,35 +22,35 @@ export enum SelectState {
   DESELECTING = "deselecting",
 }
 
-export function activateSelecting(i: Interpreter<any>): void {
+export function activateSelecting(i: Interpreter<unknown>): void {
   i.send(SelectEventKind.ACTIVATE_SELECTING);
 }
 
-export function initiateSelecting(i: Interpreter<any>): void {
+export function initiateSelecting(i: Interpreter<unknown>): void {
   i.send(SelectEventKind.INITIATE_SELECTING);
 }
 
-export function readySelecting(i: Interpreter<any>): void {
+export function readySelecting(i: Interpreter<unknown>): void {
   i.send(SelectEventKind.ACTIVATE_SELECTING);
   i.send(SelectEventKind.INITIATE_SELECTING);
 }
 
-export function selecting(i: Interpreter<any>): void {
+export function selecting(i: Interpreter<unknown>): void {
   i.send(SelectEventKind.SELECTING);
 }
 
-export function deSelecting(i: Interpreter<any>): void {
+export function deSelecting(i: Interpreter<unknown>): void {
   i.send(SelectEventKind.DESELECTING);
 }
 
-export function deactivateSelecting(i: Interpreter<any>): void {
+export function deactivateSelecting(i: Interpreter<unknown>): void {
   i.send(SelectEventKind.DEACTIVATE_SELECTING);
 }
 
-export function isSelecting(i: Interpreter<any>): boolean {
+export function isSelecting(i: Interpreter<unknown>): boolean {
   return i.state.matches(SelectState.SELECTING);
 }
 
-export function isDeselecting(i: Interpreter<any>): boolean {
+export function isDeselecting(i: Interpreter<unknown>): boolean {
   return i.state.matches(SelectState.DESELECTING);
 }

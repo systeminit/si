@@ -9,6 +9,7 @@ import { eventEditSessionSaved$ } from "@/observable/edit_session";
 import { eventResourceSynced$ } from "@/observable/resource";
 
 const eventMap: {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [E in WsPayloadKinds["kind"]]: BehaviorSubject<any> | ReplaySubject<any>;
 } = {
   ChangeSetCreated: eventChangeSetCreated$,

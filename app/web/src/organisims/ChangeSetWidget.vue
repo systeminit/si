@@ -119,6 +119,7 @@ import SiModal from "@/molecules/SiModal.vue";
 import SiTextBox from "@/atoms/SiTextBox.vue";
 import SiError from "@/atoms/SiError.vue";
 import SiFormRow from "@/atoms/SiFormRow.vue";
+// @ts-ignore const doesn't appear in index.d.ts
 import { $vfm } from "vue-final-modal";
 
 import { LabelList } from "@/api/sdf/dal/label_list";
@@ -137,7 +138,7 @@ const editMode = refFrom<boolean>(ChangeSetService.currentEditMode());
 
 // Styling for the change set selector and buttons
 const changeSetSelectorStyling = () => {
-  let classes: Record<string, any> = {};
+  let classes: Record<string, boolean> = {};
   classes["bg-selector1"] = true;
   classes["text-gray-400"] = true;
   classes["border-gray-700"] = true;

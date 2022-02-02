@@ -39,7 +39,7 @@
             size="xs"
             label="Cancel"
             kind="cancel"
-            icon="null"
+            :icon="null"
             @click="cancel"
           />
         </div>
@@ -49,7 +49,7 @@
             size="xs"
             label="Create"
             kind="save"
-            icon="null"
+            :icon="null"
             @click="create"
           />
         </div>

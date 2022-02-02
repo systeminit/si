@@ -1,4 +1,4 @@
-const ENC: Record<string, any> = {
+const ENC: Record<string, string> = {
   "+": "-",
   "/": "_",
   "=": ".",

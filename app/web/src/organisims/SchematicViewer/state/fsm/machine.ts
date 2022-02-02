@@ -297,6 +297,7 @@ const NodeAddMachineState = {
  * Viewer state machine
  */
 export class ViewerStateMachine {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   machine: any;
 
   constructor() {

@@ -22,38 +22,38 @@ export enum ConnectState {
   CONNECTING_TO_SOCKET = "connectingToSocket",
 }
 
-export function activateConnecting(i: Interpreter<any>): void {
+export function activateConnecting(i: Interpreter<unknown>): void {
   i.send(ConnectEventKind.ACTIVATE_CONNECTING);
 }
 
-export function initiateConnecting(i: Interpreter<any>): void {
+export function initiateConnecting(i: Interpreter<unknown>): void {
   i.send(ConnectEventKind.INITIATE_CONNECTING);
 }
 
-export function connecting(i: Interpreter<any>): void {
+export function connecting(i: Interpreter<unknown>): void {
   i.send(ConnectEventKind.CONNECTING);
 }
 
-export function connectingToSocket(i: Interpreter<any>): void {
+export function connectingToSocket(i: Interpreter<unknown>): void {
   i.send(ConnectEventKind.CONNECTING_TO_SOCKET);
 }
 
-export function deactivateConnecting(i: Interpreter<any>): void {
+export function deactivateConnecting(i: Interpreter<unknown>): void {
   i.send(ConnectEventKind.DEACTIVATE_CONNECTING);
 }
 
-export function isConnectingActivated(i: Interpreter<any>): boolean {
+export function isConnectingActivated(i: Interpreter<unknown>): boolean {
   return i.state.matches(ConnectState.CONNECTING_ACTIVATED);
 }
 
-export function isConnectingInitiated(i: Interpreter<any>): boolean {
+export function isConnectingInitiated(i: Interpreter<unknown>): boolean {
   return i.state.matches(ConnectState.CONNECTING_INITIATED);
 }
 
-export function isConnecting(i: Interpreter<any>): boolean {
+export function isConnecting(i: Interpreter<unknown>): boolean {
   return i.state.matches(ConnectState.CONNECTING);
 }
 
-export function isConnectingToSocket(i: Interpreter<any>): boolean {
+export function isConnectingToSocket(i: Interpreter<unknown>): boolean {
   return i.state.matches(ConnectState.CONNECTING_TO_SOCKET);
 }

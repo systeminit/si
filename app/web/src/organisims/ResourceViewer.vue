@@ -44,7 +44,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, defineProps, toRefs } from "vue";
+import { ref, toRefs } from "vue";
 import { Resource, ResourceHealth } from "@/api/sdf/dal/resource";
 import SiTextBox from "@/atoms/SiTextBox.vue";
 import { ComponentService } from "@/service/component";

@@ -33,16 +33,14 @@
 </template>
 
 <script setup lang="ts">
-import { MenuFilter } from "@/api/sdf/dal/schematic";
+import { MenuFilter, MenuItem } from "@/api/sdf/dal/schematic";
 import NodeAddMenuCategory from "./NodeAddMenu/NodeAddMenuCategory.vue";
 import { onBeforeUnmount, PropType, ref } from "vue";
-import { refFrom } from "vuse-rx";
+import { refFrom, fromRef } from "vuse-rx";
 import _ from "lodash";
 import { SchematicService } from "@/service/schematic";
 import { GlobalErrorService } from "@/service/global_error";
-import { tap } from "rxjs";
-import { GetNodeAddMenuResponse } from "@/service/schematic/get_node_add_menu";
-import { ApiResponse } from "@/api/sdf";
+import { combineLatest, from, switchMap } from "rxjs";
 
 const props = defineProps({
   disabled: { type: Boolean, default: false },
@@ -61,6 +59,7 @@ const onSelect = (schemaId: number, event: MouseEvent) => {
   isOpen.value = false;
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const debounceIsOpen = _.debounce((component: any, isOpen: boolean) => {
   component.value = isOpen;
 }, 500);
@@ -71,33 +70,25 @@ const cancelClose = () => {
   debounceIsOpen.cancel();
 };
 
-const menuItems = refFrom(
-  SchematicService.getNodeAddMenu({ menuFilter: props.filter }).pipe(
-    tap((response: ApiResponse<GetNodeAddMenuResponse>) => {
+const props$ = fromRef(props, { immediate: true, deep: true });
+
+const menuItems = refFrom<MenuItem[] | undefined>(
+  combineLatest([props$]).pipe(
+    switchMap(([props]) => {
+      return SchematicService.getNodeAddMenu({ menuFilter: props.filter });
+    }),
+    switchMap((response) => {
       if (response.error) {
         GlobalErrorService.set(response);
+        return from([undefined]);
+      } else {
+        return from([response]);
       }
     }),
   ),
 );
 
-//    computed<MenuItem[]>(() => {
-//  return [
-//    {
-//      kind: "category",
-//      name: "Snoopy",
-//      items: [
-//        {
-//          kind: "item",
-//          name: "floopy",
-//          entityType: "floopy",
-//        },
-//      ],
-//    },
-//  ];
-//});
-
-const handleEscape = (e: any) => {
+const handleEscape = (e: KeyboardEvent) => {
   if (e.key === "Esc" || e.key === "Escape") {
     if (isOpen.value) {
       isOpen.value = false;
@@ -147,7 +138,7 @@ onBeforeUnmount(() => {
   margin-top: -1.305rem;
 }
 
-.menu-category:hover .category-items {
-  /* visibility: visible; */
-}
+/* .menu-category:hover .category-items { */
+/*   visibility: visible; */
+/* } */
 </style>

@@ -19,30 +19,30 @@ export enum ZoomState {
   ZOOMING = "zooming",
 }
 
-export function activateZooming(i: Interpreter<any>): void {
+export function activateZooming(i: Interpreter<unknown>): void {
   i.send(ZoomEventKind.ACTIVATE_ZOOMING);
 }
 
-export function initiateZooming(i: Interpreter<any>): void {
+export function initiateZooming(i: Interpreter<unknown>): void {
   i.send(ZoomEventKind.INITIATE_ZOOMING);
 }
 
-export function zooming(i: Interpreter<any>): void {
+export function zooming(i: Interpreter<unknown>): void {
   i.send(ZoomEventKind.ZOOMING);
 }
 
-export function deactivateZooming(i: Interpreter<any>): void {
+export function deactivateZooming(i: Interpreter<unknown>): void {
   i.send(ZoomEventKind.DEACTIVATE_ZOOMING);
 }
 
-export function isZoomingActivated(i: Interpreter<any>): boolean {
+export function isZoomingActivated(i: Interpreter<unknown>): boolean {
   return i.state.matches(ZoomState.ZOOMING_ACTIVATED);
 }
 
-export function isZoomingInitiated(i: Interpreter<any>): boolean {
+export function isZoomingInitiated(i: Interpreter<unknown>): boolean {
   return i.state.matches(ZoomState.ZOOMING_INITIATED);
 }
 
-export function isZooming(i: Interpreter<any>): boolean {
+export function isZooming(i: Interpreter<unknown>): boolean {
   return i.state.matches(ZoomState.ZOOMING);
 }

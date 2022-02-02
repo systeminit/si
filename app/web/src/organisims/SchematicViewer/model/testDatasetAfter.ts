@@ -132,9 +132,7 @@ const nodeB: Node = {
 
 const conn: Connection = {
   id: parseInt(generateUniqueId()),
-  classification: {
-    kind: ConnectionKind.DEPLOYMENT,
-  },
+  classification: ConnectionKind.DEPLOYMENT,
   source: {
     nodeId: nodeB.id,
     socketId: nodeB.output[0].id,

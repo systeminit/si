@@ -28,7 +28,7 @@
 </template>
 
 <script setup lang="ts">
-import { PropType, defineProps, defineEmits, computed } from "vue";
+import { PropType, computed } from "vue";
 import VueFeather from "vue-feather";
 
 export interface SelectPropsOption {
@@ -77,33 +77,40 @@ const props = defineProps({
   },
   dataTest: {
     type: String,
+    default: "",
     required: false,
   },
 });
 const emits = defineEmits(["update:modelValue"]);
 
-const selected = (event: any) => {
-  if (event.target.value === "") {
+const selected = (event: Event) => {
+  // https://v3.vuejs.org/guide/typescript-support.html#typing-event-handlers
+  const value = (event.target as HTMLInputElement).value;
+  if (value === "") {
     emits("update:modelValue", null);
   } else {
     if (props.valueAsNumber) {
-      emits("update:modelValue", Number(event.target.value));
+      emits("update:modelValue", Number(value));
     } else {
-      emits("update:modelValue", event.target.value);
+      emits("update:modelValue", value);
     }
   }
 };
 
-const isSelected = (optionValue: any, newValue: any) => {
+const isSelected = (
+  optionValue: unknown,
+  newValue: string | number | Record<string, unknown>,
+) => {
   let isSelected = false;
 
   if (newValue === null || newValue === undefined) {
     isSelected = optionValue === null;
+  } else if (typeof newValue === "string" || typeof newValue === "number") {
+    isSelected = optionValue == newValue;
   } else if (newValue.id) {
     isSelected = optionValue == newValue.id;
-  } else {
-    isSelected = optionValue == newValue;
   }
+
   return isSelected;
 };
 

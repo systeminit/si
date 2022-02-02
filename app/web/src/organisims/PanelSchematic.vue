@@ -122,7 +122,7 @@ const schematicKinds = computed(() => {
 });
 
 const schematicSelectorStyling = computed(() => {
-  let classes: Record<string, any> = {};
+  let classes: Record<string, boolean> = {};
   classes["bg-selectordark"] = true;
   classes["text-gray-400"] = true;
   classes["border-gray-800"] = true;

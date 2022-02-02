@@ -19,30 +19,30 @@ export enum NodeAddState {
   ADDING_NODE = "addingNode",
 }
 
-export function activateNodeAdd(i: Interpreter<any>): void {
+export function activateNodeAdd(i: Interpreter<unknown>): void {
   i.send(NodeAddEventKind.ACTIVATE_NODEADD);
 }
 
-export function initiateNodeAdd(i: Interpreter<any>): void {
+export function initiateNodeAdd(i: Interpreter<unknown>): void {
   i.send(NodeAddEventKind.INITIATE_NODEADD);
 }
 
-export function addingNode(i: Interpreter<any>): void {
+export function addingNode(i: Interpreter<unknown>): void {
   i.send(NodeAddEventKind.ADDING_NODE);
 }
 
-export function deactivateNodeAdd(i: Interpreter<any>): void {
+export function deactivateNodeAdd(i: Interpreter<unknown>): void {
   i.send(NodeAddEventKind.DEACTIVATE_NODEADD);
 }
 
-export function isNodeAddActivated(i: Interpreter<any>): boolean {
+export function isNodeAddActivated(i: Interpreter<unknown>): boolean {
   return i.state.matches(NodeAddState.NODEADD_ACTIVATED);
 }
 
-export function isNodeAddInitiated(i: Interpreter<any>): boolean {
+export function isNodeAddInitiated(i: Interpreter<unknown>): boolean {
   return i.state.matches(NodeAddState.NODEADD_INITIATED);
 }
 
-export function isAddingNode(i: Interpreter<any>): boolean {
+export function isAddingNode(i: Interpreter<unknown>): boolean {
   return i.state.matches(NodeAddState.ADDING_NODE);
 }
