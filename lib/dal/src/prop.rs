@@ -13,9 +13,10 @@ use crate::{
     },
     impl_standard_model,
     label_list::ToLabelList,
-    pk, standard_model, standard_model_accessor, standard_model_many_to_many, HistoryActor,
-    HistoryEventError, SchemaVariant, SchemaVariantId, StandardModel, StandardModelError, Tenancy,
-    Timestamp, Visibility,
+    pk, standard_model, standard_model_accessor, standard_model_belongs_to,
+    standard_model_has_many, standard_model_many_to_many, HistoryActor, HistoryEventError,
+    SchemaVariant, SchemaVariantId, StandardModel, StandardModelError, Tenancy, Timestamp,
+    Visibility,
 };
 
 #[derive(Error, Debug)]
@@ -30,6 +31,8 @@ pub enum PropError {
     Pg(#[from] PgError),
     #[error("standard model error: {0}")]
     StandardModelError(#[from] StandardModelError),
+    #[error("cannot set parent for a non object, array, or map prop: id {0} is a {1}. Bug!")]
+    ParentNotAllowed(PropId, PropKind),
 }
 
 pub type PropResult<T> = Result<T, PropError>;
@@ -56,8 +59,9 @@ pub enum PropKind {
     Array,
     Boolean,
     Integer,
-    PropObject,
+    Object,
     String,
+    Map,
 }
 
 impl ToLabelList for PropKind {}
@@ -69,6 +73,7 @@ pub struct Prop {
     id: PropId,
     name: String,
     kind: PropKind,
+    parent_prop_id: Option<PropId>,
     #[serde(flatten)]
     tenancy: Tenancy,
     #[serde(flatten)]
@@ -131,6 +136,46 @@ impl Prop {
         returns: SchemaVariant,
         result: PropResult,
     );
+
+    standard_model_belongs_to!(
+        lookup_fn: parent_prop,
+        set_fn: set_parent_prop_unchecked,
+        unset_fn: unset_parent_prop,
+        table: "prop_belongs_to_prop",
+        model_table: "props",
+        belongs_to_id: PropId,
+        returns: Prop,
+        result: PropResult,
+    );
+
+    standard_model_has_many!(
+        lookup_fn: child_props,
+        table: "prop_belongs_to_prop",
+        model_table: "props",
+        returns: Prop,
+        result: PropResult,
+    );
+
+    pub async fn set_parent_prop(
+        &self,
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
+        visibility: &Visibility,
+        history_actor: &HistoryActor,
+        parent_prop_id: PropId,
+    ) -> PropResult<()> {
+        let parent_prop = Prop::get_by_id(txn, self.tenancy(), visibility, &parent_prop_id)
+            .await?
+            .ok_or_else(|| PropError::NotFound(parent_prop_id, *visibility))?;
+        match parent_prop.kind() {
+            PropKind::Object | PropKind::Map | PropKind::Array => (),
+            kind => {
+                return Err(PropError::ParentNotAllowed(parent_prop_id, *kind));
+            }
+        }
+        self.set_parent_prop_unchecked(txn, nats, visibility, history_actor, &parent_prop_id)
+            .await
+    }
 
     fn edit_field_object_kind() -> EditFieldObjectKind {
         EditFieldObjectKind::Prop

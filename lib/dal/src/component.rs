@@ -541,7 +541,7 @@ impl Component {
             (PropKind::Integer, None) => {
                 todo!("We haven't dealt with unsetting an integer")
             }
-            (PropKind::PropObject, Some(value_json)) => {
+            (PropKind::Object, Some(value_json)) => {
                 let value = match value_json.as_object() {
                     Some(object) => object,
                     None => {
@@ -575,7 +575,7 @@ impl Component {
                 }
                 (func, func_binding, created)
             }
-            (PropKind::PropObject, None) => {
+            (PropKind::Object, None) => {
                 todo!("We haven't dealt with unsetting an object")
             }
             (PropKind::String, Some(value_json)) => {
@@ -616,6 +616,9 @@ impl Component {
             }
             (PropKind::String, None) => {
                 todo!("we haven't dealt with unseting a string");
+            }
+            (PropKind::Map, _) => {
+                todo!("deal with maps!");
             }
         };
 

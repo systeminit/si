@@ -50,7 +50,7 @@ impl FuncBackendArray {
                 } else if entry.is_i64() {
                     PropKind::Integer
                 } else if entry.is_object() {
-                    PropKind::PropObject
+                    PropKind::Object
                 } else if entry.is_boolean() {
                     PropKind::Boolean
                 } else {
