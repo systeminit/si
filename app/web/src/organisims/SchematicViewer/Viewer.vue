@@ -219,6 +219,10 @@ export default defineComponent({
 
     this.renderer.stage.addChild(this.sceneManager.scene as PIXI.Container);
 
+    if (this.schematicData) {
+      this.sceneManager.loadSceneData(this.schematicData);
+    }
+
     this.renderer.render(this.renderer.stage);
   },
   beforeUnmount(): void {

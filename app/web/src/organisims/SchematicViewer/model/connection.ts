@@ -1,6 +1,6 @@
 import { Color, SchematicObject } from "./common";
 
-/**  Replace string for correct connecion tyoe */
+/**  Replace string for correct connecion type */
 export enum ConnectionKind {
   CONFIGURES = "configures",
   INCLUDES = "includes",
@@ -8,9 +8,12 @@ export enum ConnectionKind {
   IMPLEMENTATION = "implementation",
 }
 
-interface ConnectionClassification {
-  kind: ConnectionKind;
-}
+// Backend schema doesn't match frontend schema.
+// Updating to match what the backend is sending.
+// interface ConnectionClassification {
+//   kind: ConnectionKind;
+// }
+type ConnectionClassification = ConnectionKind;
 
 /**  Display properties */
 interface ConnectionDisplay {
