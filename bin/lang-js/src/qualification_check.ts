@@ -150,7 +150,7 @@ function wrapCode(code: string, handle: string): string {
     if (returnValue instanceof Promise) {
       returnValue.then((data) => callback(data))
         .catch((err) => {
-          const message = "Uncaught throw in a promise, inside function ${handle}: " + JSON.stringify(err);
+          const message = "Uncaught throw in a promise, inside function ${handle}: " + err.message;
           callback({
             qualified: false,
             message

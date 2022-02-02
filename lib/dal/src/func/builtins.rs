@@ -22,14 +22,8 @@ pub async fn migrate(txn: &PgTxn<'_>, nats: &NatsTxn) -> FuncResult<()> {
     si_qualification_always_true(txn, nats, &tenancy, &visibility, &history_actor).await?;
     si_number_of_parents(txn, nats, &tenancy, &visibility, &history_actor).await?;
     si_generate_yaml(txn, nats, &tenancy, &visibility, &history_actor).await?;
-    si_qualification_docker_image_name_equals_component_name(
-        txn,
-        nats,
-        &tenancy,
-        &visibility,
-        &history_actor,
-    )
-    .await?;
+    si_qualification_docker_image_name_inspect(txn, nats, &tenancy, &visibility, &history_actor)
+        .await?;
     si_resource_sync_hammer(txn, nats, &tenancy, &visibility, &history_actor).await?;
 
     Ok(())
@@ -433,14 +427,14 @@ async fn si_resource_sync_hammer(
     Ok(())
 }
 
-async fn si_qualification_docker_image_name_equals_component_name(
+async fn si_qualification_docker_image_name_inspect(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
     tenancy: &Tenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
 ) -> FuncResult<()> {
-    let func_name = "si:qualificationDockerImageNameEqualsComponentName".to_string();
+    let func_name = "si:qualificationDockerImageNameInspect".to_string();
     let existing_func = Func::find_by_attr(txn, tenancy, visibility, "name", &func_name).await?;
     if existing_func.is_empty() {
         let mut new_func = Func::new(
@@ -457,7 +451,7 @@ async fn si_qualification_docker_image_name_equals_component_name(
         .expect("cannot create func");
 
         let qualification_code = base64::encode(include_str!(
-            "./builtins/qualificationDockerImageNameEqualsComponentName.js"
+            "./builtins/qualificationDockerImageNameInspect.js"
         ));
 
         new_func
@@ -466,7 +460,7 @@ async fn si_qualification_docker_image_name_equals_component_name(
                 nats,
                 visibility,
                 history_actor,
-                Some("dockerImageNameEqualsComponentName".to_string()),
+                Some("qualificationDockerImageNameInspect".to_string()),
             )
             .await
             .expect("cannot set handler");

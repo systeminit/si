@@ -56,24 +56,27 @@ function darwin-bootstrap {
     brew update
     brew upgrade
     brew cleanup
-    brew install bash make git
+    brew install bash make git skopeo
 }
 
 function arch-bootstrap {
-    sudo pacman -Syu --noconfirm base-devel make git
+    sudo pacman -Syu --noconfirm base-devel make git skopeo
 }
 
 function fedora-bootstrap {
     sudo dnf upgrade -y --refresh
     sudo dnf autoremove -y
-    sudo dnf install -y @development-tools make git lld
+    sudo dnf install -y @development-tools make git lld skopeo
 }
 
 function ubuntu-bootstrap {
+    . /etc/os-release
+    echo "deb https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_${VERSION_ID}/ /" | sudo tee /etc/apt/sources.list.d/devel:kubic:libcontainers:stable.list
+    curl -L https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_${VERSION_ID}/Release.key | sudo apt-key add -
     sudo apt update
     sudo apt upgrade -y
     sudo apt autoremove -y
-    sudo apt install -y build-essential make git lld
+    sudo apt install -y build-essential make git lld skopeo
 }
 
 function perform-bootstrap {
