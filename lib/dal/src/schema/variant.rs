@@ -7,8 +7,8 @@ use thiserror::Error;
 
 use crate::{
     edit_field::{
-        value_and_visibility_diff, EditField, EditFieldAble, EditFieldDataType, EditFieldError,
-        EditFieldObjectKind, EditFields, HeaderWidget, TextWidget, VisibilityDiff, Widget,
+        value_and_visibility_diff, widget::prelude::*, EditField, EditFieldAble, EditFieldDataType,
+        EditFieldError, EditFieldObjectKind, EditFields, VisibilityDiff,
     },
     impl_standard_model, pk,
     socket::{Socket, SocketError, SocketId},

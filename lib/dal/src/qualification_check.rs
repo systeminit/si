@@ -6,8 +6,8 @@ use thiserror::Error;
 
 use crate::{
     edit_field::{
-        value_and_visibility_diff, EditField, EditFieldAble, EditFieldDataType, EditFieldError,
-        EditFieldObjectKind, EditFields, TextWidget, Widget,
+        value_and_visibility_diff, widget::prelude::*, EditField, EditFieldAble, EditFieldDataType,
+        EditFieldError, EditFieldObjectKind, EditFields,
     },
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_many_to_many,
     HistoryActor, HistoryEventError, SchemaVariant, SchemaVariantId, StandardModel,

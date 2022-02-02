@@ -8,8 +8,8 @@ use thiserror::Error;
 
 use crate::{
     edit_field::{
-        value_and_visibility_diff, EditField, EditFieldAble, EditFieldDataType, EditFieldError,
-        EditFieldObjectKind, EditFields, TextWidget, ToSelectWidget, Widget,
+        value_and_visibility_diff, widget::prelude::*, EditField, EditFieldAble, EditFieldDataType,
+        EditFieldError, EditFieldObjectKind, EditFields,
     },
     impl_standard_model,
     label_list::ToLabelList,
