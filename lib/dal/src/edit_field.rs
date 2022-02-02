@@ -43,7 +43,7 @@ pub enum EditFieldDataType {
     Integer,
     Map,
     None,
-    PropObject,
+    Object,
     String,
 }
 
@@ -53,7 +53,8 @@ impl From<PropKind> for EditFieldDataType {
             PropKind::Array => EditFieldDataType::Array,
             PropKind::Boolean => EditFieldDataType::Boolean,
             PropKind::Integer => EditFieldDataType::Integer,
-            PropKind::PropObject => EditFieldDataType::PropObject,
+            PropKind::Map => EditFieldDataType::Map,
+            PropKind::Object => EditFieldDataType::Object,
             PropKind::String => EditFieldDataType::String,
         }
     }

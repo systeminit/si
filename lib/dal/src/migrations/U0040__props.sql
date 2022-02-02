@@ -17,9 +17,11 @@ CREATE TABLE props
 SELECT standard_model_table_constraints_v1('props');
 SELECT many_to_many_table_create_v1('prop_many_to_many_schema_variants', 'props',
                                     'schema_variants');
+SELECT belongs_to_table_create_v1('prop_belongs_to_prop', 'props', 'props');
 
 INSERT INTO standard_models (table_name, table_type, history_event_label_base, history_event_message_name)
 VALUES ('props', 'model', 'prop', 'Prop'),
+       ('prop_belongs_to_prop', 'belongs_to', 'prop.child_prop', 'Parent Prop <> Child Prop'),
        ('prop_many_to_many_schema_variants', 'many_to_many', 'prop.schema_variant', 'Prop <> Schema Variant');
 
 -- Limit values of props.kind to a known set of variants. Is this required? No! But such a constraint
