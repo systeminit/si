@@ -7,13 +7,13 @@ export enum EditFieldObjectKind {
 }
 
 export enum EditFieldDataType {
-  String = "String",
-  Number = "Number",
-  Object = "Object",
-  Boolean = "Boolean",
-  Map = "Map",
   Array = "Array",
+  Boolean = "Boolean",
+  Integer = "Integer",
+  Map = "Map",
   None = "None",
+  Object = "Object",
+  String = "String",
 }
 
 export interface CheckboxWidgetDal {

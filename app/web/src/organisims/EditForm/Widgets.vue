@@ -1,6 +1,6 @@
 <template>
   <div
-    v-for="editField in editFields"
+    v-for="editField in props.editFields"
     :key="editField.id"
     class="flex flex-row w-full"
   >
@@ -42,7 +42,7 @@ import SelectWidget from "@/organisims/EditForm/SelectWidget.vue";
 import HeaderWidget from "@/organisims/EditForm/HeaderWidget.vue";
 import ArrayWidget from "@/organisims/EditForm/ArrayWidget.vue";
 
-defineProps({
+const props = defineProps({
   editFields: {
     type: Array as PropType<EditFields>,
     required: true,
