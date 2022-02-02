@@ -1404,7 +1404,7 @@ impl EditFieldAble for Component {
                 vec!["properties".to_string()],
                 object_kind,
                 *id,
-                EditFieldDataType::String,
+                (*prop.kind()).into(),
                 Widget::Text(TextWidget::new()),
                 value,
                 visibility_diff,

@@ -38,7 +38,17 @@ pk!(PropPk);
 pk!(PropId);
 
 #[derive(
-    AsRefStr, Clone, Debug, Deserialize, Display, EnumIter, EnumString, Eq, PartialEq, Serialize,
+    AsRefStr,
+    Clone,
+    Copy,
+    Debug,
+    Deserialize,
+    Display,
+    EnumIter,
+    EnumString,
+    Eq,
+    PartialEq,
+    Serialize,
 )]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]

@@ -6,7 +6,7 @@ use thiserror::Error;
 
 use crate::{
     func::backend::validation::ValidationError, label_list::ToLabelList, HistoryActor, LabelList,
-    LabelListError, PropId, SystemId, Tenancy, Visibility,
+    LabelListError, PropId, PropKind, SystemId, Tenancy, Visibility,
 };
 
 #[derive(Error, Debug)]
@@ -35,15 +35,27 @@ impl EditFieldError {
 
 pub type EditFieldResult<T> = Result<T, EditFieldError>;
 
+// NOTE: This might not need to be its own thing. We might be able to use PropKind directly?
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 pub enum EditFieldDataType {
-    String,
-    Number,
-    Object,
-    Boolean,
-    Map,
     Array,
+    Boolean,
+    Integer,
+    Map,
     None,
+    PropObject,
+    String,
+}
+
+impl From<PropKind> for EditFieldDataType {
+    fn from(prop_kind: PropKind) -> Self {
+        match prop_kind {
+            PropKind::Boolean => EditFieldDataType::Boolean,
+            PropKind::Integer => EditFieldDataType::Integer,
+            PropKind::PropObject => EditFieldDataType::PropObject,
+            PropKind::String => EditFieldDataType::String,
+        }
+    }
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
