@@ -3,8 +3,9 @@ use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::{edit_field::ToSelectWidget, label_list::ToLabelList};
+use crate::{edit_field::ToSelectWidget, label_list::ToLabelList, PropKind};
 
+pub mod array;
 pub mod boolean;
 pub mod integer;
 pub mod js_qualification;
@@ -16,6 +17,10 @@ pub mod validation;
 
 #[derive(Error, Debug)]
 pub enum FuncBackendError {
+    #[error("invalid data - expected an array, got: {0}")]
+    InvalidArrayData(serde_json::Value),
+    #[error("invalid data - expected a valid array entry value, got: {0}")]
+    InvalidArrayEntryData(serde_json::Value),
     #[error("invalid data - expected a boolean, got: {0}")]
     InvalidBooleanData(serde_json::Value),
     #[error("invalid data - expected an integer, got: {0}")]
@@ -24,6 +29,8 @@ pub enum FuncBackendError {
     InvalidPropObjectData(serde_json::Value),
     #[error("invalid data - expected a string, got: {0}")]
     InvalidStringData(serde_json::Value),
+    #[error("expected same array entry prop kinds - expected {0}, found: {1}")]
+    DifferingArrayEntryPropKinds(PropKind, PropKind),
     #[error("result failure: kind={kind}, message={message}")]
     ResultFailure { kind: String, message: String },
     #[error("error serializing/deserializing json: {0}")]
@@ -50,6 +57,7 @@ pub type FuncBackendResult<T> = Result<T, FuncBackendError>;
     Copy,
 )]
 pub enum FuncBackendKind {
+    Array,
     Boolean,
     Integer,
     JsQualification,
@@ -60,8 +68,6 @@ pub enum FuncBackendKind {
     Unset,
     // Commented out while we climb back up - Adam & Fletcher
     //Number (Float?),
-    //Boolean,
-    //Array,
     //EmptyObject,
     //EmptyArray,
     //Json,
@@ -83,6 +89,7 @@ pub enum FuncBackendKind {
     Copy,
 )]
 pub enum FuncBackendResponseType {
+    Array,
     Boolean,
     Integer,
     PropObject,
@@ -91,9 +98,6 @@ pub enum FuncBackendResponseType {
     String,
     Unset,
     // Commented out while we climb back up - Adam & Fletcher
-    //Number,
-    //Boolean,
-    //Array,
     //Json,
     Validation,
 }

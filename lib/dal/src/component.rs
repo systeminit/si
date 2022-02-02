@@ -30,6 +30,7 @@ use crate::validation_resolver::ValidationResolverContext;
 use crate::ws_event::{WsEvent, WsEventError};
 use crate::{Edge, EdgeError, System};
 
+use crate::func::backend::array::FuncBackendArrayArgs;
 use crate::func::backend::boolean::FuncBackendBooleanArgs;
 use crate::func::backend::prop_object::FuncBackendPropObjectArgs;
 use crate::{
@@ -432,6 +433,42 @@ impl Component {
         // We shouldn't be leaking this value, because it may or may not be actually set. But
         // when you YOLO, YOLO hard. -- Adam
         let (func, func_binding, created) = match (prop.kind(), value.clone()) {
+            (PropKind::Array, Some(value_json)) => {
+                let value = match value_json.as_array() {
+                    Some(boolean) => boolean,
+                    None => {
+                        return Err(ComponentError::InvalidPropValue(
+                            "Array".to_string(),
+                            value_json,
+                        ))
+                    }
+                };
+
+                let func_name = "si:setArray".to_string();
+                let mut funcs =
+                    Func::find_by_attr(txn, tenancy, visibility, "name", &func_name).await?;
+                let func = funcs.pop().ok_or(ComponentError::MissingFunc(func_name))?;
+                let args = serde_json::to_value(FuncBackendArrayArgs::new(value.clone()))?;
+                let (func_binding, created) = FuncBinding::find_or_create(
+                    txn,
+                    nats,
+                    tenancy,
+                    visibility,
+                    history_actor,
+                    args,
+                    *func.id(),
+                    *func.backend_kind(),
+                )
+                .await?;
+
+                if created {
+                    func_binding.execute(txn, nats, veritech.clone()).await?;
+                }
+                (func, func_binding, created)
+            }
+            (PropKind::Array, None) => {
+                todo!("We haven't dealt with unsetting an array")
+            }
             (PropKind::Boolean, Some(value_json)) => {
                 let value = match value_json.as_bool() {
                     Some(boolean) => boolean,

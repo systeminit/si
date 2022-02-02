@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
+
 use si_data::{NatsTxn, PgError, PgTxn};
 use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
@@ -42,6 +43,7 @@ pk!(PropId);
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]
 pub enum PropKind {
+    Array,
     Boolean,
     Integer,
     PropObject,
