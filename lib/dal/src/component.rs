@@ -8,9 +8,9 @@ use thiserror::Error;
 
 use crate::attribute_resolver::{AttributeResolverContext, UNSET_ID_VALUE};
 use crate::edit_field::{
-    value_and_visibility_diff, value_and_visibility_diff_json_option, EditField, EditFieldAble,
-    EditFieldBaggage, EditFieldBaggageComponentProp, EditFieldDataType, EditFieldError,
-    EditFieldObjectKind, EditFields, TextWidget, Widget,
+    value_and_visibility_diff, value_and_visibility_diff_json_option, widget::prelude::*,
+    EditField, EditFieldAble, EditFieldBaggage, EditFieldBaggageComponentProp, EditFieldDataType,
+    EditFieldError, EditFieldObjectKind, EditFields,
 };
 use crate::func::backend::integer::FuncBackendIntegerArgs;
 use crate::func::backend::validation::{FuncBackendValidateStringValueArgs, ValidationError};

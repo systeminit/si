@@ -7,9 +7,8 @@ use thiserror::Error;
 
 use crate::{
     edit_field::{
-        value_and_visibility_diff, value_and_visibility_diff_copy, CheckboxWidget, EditField,
+        value_and_visibility_diff, value_and_visibility_diff_copy, widget::prelude::*, EditField,
         EditFieldAble, EditFieldDataType, EditFieldError, EditFieldObjectKind, EditFields,
-        TextWidget, ToSelectWidget, Widget,
     },
     impl_standard_model,
     label_list::ToLabelList,

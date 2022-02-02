@@ -8,9 +8,8 @@ use thiserror::Error;
 use self::variant::{SchemaVariantError, SchemaVariantResult};
 use crate::{
     edit_field::{
-        value_and_visibility_diff, EditField, EditFieldAble, EditFieldDataType, EditFieldError,
-        EditFieldObjectKind, EditFields, HeaderWidget, SelectWidget, TextWidget, VisibilityDiff,
-        Widget,
+        value_and_visibility_diff, widget::prelude::*, EditField, EditFieldAble, EditFieldDataType,
+        EditFieldError, EditFieldObjectKind, EditFields, VisibilityDiff,
     },
     func::binding::FuncBindingError,
     impl_standard_model, pk,

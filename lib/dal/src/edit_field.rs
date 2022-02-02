@@ -1,3 +1,5 @@
+pub mod widget;
+
 use serde::{Deserialize, Serialize};
 use si_data::{NatsTxn, PgTxn};
 use std::{future::Future, pin::Pin};
@@ -5,9 +7,11 @@ use strum_macros::{AsRefStr, Display, EnumString};
 use thiserror::Error;
 
 use crate::{
-    func::backend::validation::ValidationError, label_list::ToLabelList, HistoryActor, LabelList,
-    LabelListError, PropId, PropKind, SystemId, Tenancy, Visibility,
+    func::backend::validation::ValidationError, HistoryActor, LabelListError, PropId, PropKind,
+    SystemId, Tenancy, Visibility,
 };
+
+pub use widget::{ToSelectWidget, Widget};
 
 #[derive(Error, Debug)]
 pub enum EditFieldError {
@@ -58,16 +62,6 @@ impl From<PropKind> for EditFieldDataType {
             PropKind::String => EditFieldDataType::String,
         }
     }
-}
-
-#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
-#[serde(tag = "kind", content = "options")]
-pub enum Widget {
-    Array(ArrayWidget),
-    Checkbox(CheckboxWidget),
-    Header(HeaderWidget),
-    Select(SelectWidget),
-    Text(TextWidget),
 }
 
 #[derive(AsRefStr, Clone, Debug, Deserialize, Display, EnumString, Eq, PartialEq, Serialize)]
@@ -161,89 +155,6 @@ impl EditField {
 pub type EditFields = Vec<EditField>;
 
 pub type UpdateFunction = Box<dyn Fn(String) -> Pin<Box<dyn Future<Output = EditFieldResult<()>>>>>;
-
-#[derive(Default, Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
-pub struct CheckboxWidget {}
-
-impl CheckboxWidget {
-    pub fn new() -> Self {
-        Self::default()
-    }
-}
-
-#[derive(Default, Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
-pub struct TextWidget {}
-
-impl TextWidget {
-    pub fn new() -> Self {
-        Self::default()
-    }
-}
-
-#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
-pub struct SelectWidget {
-    options: LabelList<serde_json::Value>,
-    default: Option<serde_json::Value>,
-}
-
-impl SelectWidget {
-    pub fn new(options: LabelList<serde_json::Value>, default: Option<serde_json::Value>) -> Self {
-        SelectWidget { options, default }
-    }
-}
-
-pub trait ToSelectWidget: ToLabelList {
-    fn to_select_widget_with_no_default() -> EditFieldResult<SelectWidget> {
-        Ok(SelectWidget::new(Self::to_label_list()?, None))
-    }
-
-    fn to_select_widget_with<D>(default: D) -> EditFieldResult<SelectWidget>
-    where
-        D: Serialize,
-    {
-        Ok(SelectWidget::new(
-            Self::to_label_list()?,
-            Some(serde_json::to_value(default)?),
-        ))
-    }
-}
-
-pub trait ToSelectWidgetDefault: ToLabelList + Default {
-    fn to_select_widget_with_default() -> EditFieldResult<SelectWidget> {
-        Ok(SelectWidget::new(
-            Self::to_label_list()?,
-            Some(serde_json::to_value(Self::default())?),
-        ))
-    }
-}
-
-#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
-pub struct HeaderWidget {
-    edit_fields: EditFields,
-}
-
-impl HeaderWidget {
-    pub fn new(edit_fields: EditFields) -> Self {
-        HeaderWidget { edit_fields }
-    }
-}
-
-#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
-pub struct ArrayWidget {
-    entries: Vec<EditFields>,
-}
-
-impl ArrayWidget {
-    pub fn new(entries: Vec<EditFields>) -> Self {
-        ArrayWidget { entries }
-    }
-}
-
-impl From<Vec<EditFields>> for ArrayWidget {
-    fn from(entries: Vec<EditFields>) -> Self {
-        Self::new(entries)
-    }
-}
 
 #[async_trait::async_trait]
 pub trait EditFieldAble {
