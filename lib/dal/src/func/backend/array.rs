@@ -62,7 +62,7 @@ impl FuncBackendArray {
                 if let Some(v) = &first_kind_found {
                     if v != &entry_kind {
                         return Err(span.record_err(
-                            FuncBackendError::DifferingArrayEntryPropKinds(v.clone(), entry_kind),
+                            FuncBackendError::DifferingArrayEntryPropKinds(*v, entry_kind),
                         ));
                     }
                 } else {

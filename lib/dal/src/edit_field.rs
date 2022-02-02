@@ -50,6 +50,7 @@ pub enum EditFieldDataType {
 impl From<PropKind> for EditFieldDataType {
     fn from(prop_kind: PropKind) -> Self {
         match prop_kind {
+            PropKind::Array => EditFieldDataType::Array,
             PropKind::Boolean => EditFieldDataType::Boolean,
             PropKind::Integer => EditFieldDataType::Integer,
             PropKind::PropObject => EditFieldDataType::PropObject,
