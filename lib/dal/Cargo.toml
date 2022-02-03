@@ -7,6 +7,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+async-recursion = "1.0.0"
 base64 = "0.13.0"
 chrono = { version = "0.4.19", features = ["serde"] }
 futures = "0.3.13"

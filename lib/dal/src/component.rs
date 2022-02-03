@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use async_recursion::async_recursion;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use si_data::{NatsError, NatsTxn, PgError, PgTxn};
@@ -28,7 +29,7 @@ use crate::schema::variant::{SchemaVariantError, SchemaVariantId};
 use crate::schema::SchemaVariant;
 use crate::validation_resolver::ValidationResolverContext;
 use crate::ws_event::{WsEvent, WsEventError};
-use crate::{Edge, EdgeError, System};
+use crate::{Edge, EdgeError, PropError, System};
 
 use crate::func::backend::array::FuncBackendArrayArgs;
 use crate::func::backend::boolean::FuncBackendBooleanArgs;
@@ -74,6 +75,8 @@ pub enum ComponentError {
     NodeError(#[from] NodeError),
     #[error("component not found: {0}")]
     NotFound(ComponentId),
+    #[error("prop error: {0}")]
+    Prop(#[from] PropError),
     #[error("resource not found for component ({0}) in system ({1})")]
     ResourceNotFound(ComponentId, SystemId),
     #[error("schema error: {0}")]
@@ -1306,120 +1309,19 @@ impl EditFieldAble for Component {
 
         let props = schema_variant.props(txn, visibility).await?;
         for prop in props.iter() {
-            let system_id = UNSET_ID_VALUE.into();
-            let current_value: Option<FuncBindingReturnValue> =
-                match AttributeResolver::find_value_for_prop_and_component(
+            edit_fields.push(
+                edit_field_for_prop(
                     txn,
                     &tenancy,
                     visibility,
-                    *prop.id(),
-                    *component.id(),
-                    system_id,
-                )
-                .await
-                {
-                    Ok(v) => Some(v),
-                    Err(e) => {
-                        dbg!("missing attribute resolver; might be fine, might be a bug! who knows? only god.");
-                        dbg!(&e);
-                        None
-                    }
-                };
-            let head_value: Option<FuncBindingReturnValue> = if visibility.in_change_set() {
-                match AttributeResolver::find_value_for_prop_and_component(
-                    txn,
-                    &tenancy,
                     &head_visibility,
-                    *prop.id(),
-                    *component.id(),
-                    system_id,
-                )
-                .await
-                {
-                    Ok(v) => Some(v),
-                    Err(e) => {
-                        dbg!("missing attribute resolver; might be fine, might be a bug! who knows? only god.");
-                        dbg!(&e);
-                        None
-                    }
-                }
-            } else {
-                None
-            };
-            let change_set_value: Option<FuncBindingReturnValue> = if visibility.in_change_set() {
-                match AttributeResolver::find_value_for_prop_and_component(
-                    txn,
-                    &tenancy,
                     &change_set_visibility,
-                    *prop.id(),
-                    *component.id(),
-                    system_id,
+                    prop,
+                    &component,
+                    None,
                 )
-                .await
-                {
-                    Ok(v) => Some(v),
-                    Err(e) => {
-                        dbg!("missing attribute resolver; might be fine, might be a bug! who knows? only god.");
-                        dbg!(&e);
-                        None
-                    }
-                }
-            } else {
-                None
-            };
-
-            let field_name = prop.name();
-            let object_kind = EditFieldObjectKind::ComponentProp;
-
-            fn extract_value(fbrv: &FuncBindingReturnValue) -> Option<&serde_json::Value> {
-                fbrv.value()
-            }
-
-            let (value, visibility_diff) = value_and_visibility_diff_json_option(
-                visibility,
-                current_value.as_ref(),
-                extract_value,
-                head_value.as_ref(),
-                change_set_value.as_ref(),
-            )?;
-
-            let mut validation_errors = Vec::new();
-            let validation_field_values = ValidationResolver::find_values_for_prop_and_component(
-                txn,
-                &tenancy,
-                visibility,
-                *prop.id(),
-                *component.id(),
-                system_id,
-            )
-            .await?;
-            for field_value in validation_field_values.into_iter() {
-                if let Some(value_json) = field_value.value() {
-                    // This clone shouldn't be neccessary, but we have no way to get to the owned value -- Adam
-                    let mut validation_error: Vec<ValidationError> =
-                        serde_json::from_value(value_json.clone())?;
-                    validation_errors.append(&mut validation_error);
-                }
-            }
-
-            let mut edit_field = EditField::new(
-                field_name,
-                vec!["properties".to_string()],
-                object_kind,
-                *id,
-                (*prop.kind()).into(),
-                Widget::Text(TextWidget::new()),
-                value,
-                visibility_diff,
-                validation_errors,
+                .await?,
             );
-            edit_field.set_baggage(EditFieldBaggage::ComponentProp(
-                EditFieldBaggageComponentProp {
-                    prop_id: *prop.id(),
-                    system_id: None,
-                },
-            ));
-            edit_fields.push(edit_field);
         }
 
         Ok(edit_fields)
@@ -1457,4 +1359,178 @@ impl EditFieldAble for Component {
 
         Ok(())
     }
+}
+
+#[allow(clippy::too_many_arguments)]
+#[async_recursion]
+async fn edit_field_for_prop(
+    txn: &PgTxn<'_>,
+    tenancy: &Tenancy,
+    visibility: &Visibility,
+    head_visibility: &Visibility,
+    change_set_visibility: &Visibility,
+    prop: &Prop,
+    component: &Component,
+    edit_field_path: Option<Vec<String>>,
+) -> ComponentResult<EditField> {
+    let system_id = UNSET_ID_VALUE.into();
+    let current_value: Option<FuncBindingReturnValue> =
+        match AttributeResolver::find_value_for_prop_and_component(
+            txn,
+            tenancy,
+            visibility,
+            *prop.id(),
+            *component.id(),
+            system_id,
+        )
+        .await
+        {
+            Ok(v) => Some(v),
+            Err(e) => {
+                dbg!("missing attribute resolver; might be fine, might be a bug! who knows? only god.");
+                dbg!(&e);
+                None
+            }
+        };
+    let head_value: Option<FuncBindingReturnValue> = if visibility.in_change_set() {
+        match AttributeResolver::find_value_for_prop_and_component(
+            txn,
+            tenancy,
+            head_visibility,
+            *prop.id(),
+            *component.id(),
+            system_id,
+        )
+        .await
+        {
+            Ok(v) => Some(v),
+            Err(e) => {
+                dbg!("missing attribute resolver; might be fine, might be a bug! who knows? only god.");
+                dbg!(&e);
+                None
+            }
+        }
+    } else {
+        None
+    };
+    let change_set_value: Option<FuncBindingReturnValue> = if visibility.in_change_set() {
+        match AttributeResolver::find_value_for_prop_and_component(
+            txn,
+            tenancy,
+            change_set_visibility,
+            *prop.id(),
+            *component.id(),
+            system_id,
+        )
+        .await
+        {
+            Ok(v) => Some(v),
+            Err(e) => {
+                dbg!("missing attribute resolver; might be fine, might be a bug! who knows? only god.");
+                dbg!(&e);
+                None
+            }
+        }
+    } else {
+        None
+    };
+
+    let field_name = prop.name();
+    let object_kind = EditFieldObjectKind::ComponentProp;
+
+    fn extract_value(fbrv: &FuncBindingReturnValue) -> Option<&serde_json::Value> {
+        fbrv.value()
+    }
+
+    let (value, visibility_diff) = value_and_visibility_diff_json_option(
+        visibility,
+        current_value.as_ref(),
+        extract_value,
+        head_value.as_ref(),
+        change_set_value.as_ref(),
+    )?;
+
+    let mut validation_errors = Vec::new();
+    let validation_field_values = ValidationResolver::find_values_for_prop_and_component(
+        txn,
+        tenancy,
+        visibility,
+        *prop.id(),
+        *component.id(),
+        system_id,
+    )
+    .await?;
+    for field_value in validation_field_values.into_iter() {
+        if let Some(value_json) = field_value.value() {
+            // This clone shouldn't be neccessary, but we have no way to get to the owned value -- Adam
+            let mut validation_error: Vec<ValidationError> =
+                serde_json::from_value(value_json.clone())?;
+            validation_errors.append(&mut validation_error);
+        }
+    }
+
+    let current_edit_field_path = match edit_field_path {
+        None => vec!["properties".to_string()],
+        Some(path) => path,
+    };
+    let mut edit_field_path_for_children = current_edit_field_path.clone();
+    edit_field_path_for_children.push(field_name.to_string());
+
+    let widget = match prop.kind() {
+        PropKind::Integer | PropKind::String => Widget::Text(TextWidget::new()),
+        PropKind::Array | PropKind::Map | PropKind::Object => {
+            // NOTE: This ends up being ugly, and double checking what prop.kind() is
+            //       to avoid doing the child prop lookup if we're building the Widget
+            //       for a PropKind that "can't" have children. It may be worth taking
+            //       the hit and always looking up what the children are, even if
+            //       we're never going to use them, just to make this arm of the match
+            //       less gross.
+            let mut child_edit_fields = vec![];
+            for child_prop in prop.child_props(txn, tenancy, visibility).await? {
+                child_edit_fields.push(
+                    edit_field_for_prop(
+                        txn,
+                        tenancy,
+                        visibility,
+                        head_visibility,
+                        change_set_visibility,
+                        &child_prop,
+                        component,
+                        Some(edit_field_path_for_children.clone()),
+                    )
+                    .await?,
+                );
+            }
+
+            if *prop.kind() == PropKind::Array {
+                todo!("Need to handle Array props");
+            } else if *prop.kind() == PropKind::Map {
+                todo!("Need to handle Map props");
+            } else {
+                // Only option left is PropKind::Object
+                Widget::Header(HeaderWidget::new(child_edit_fields))
+            }
+        }
+        PropKind::Boolean => Widget::Checkbox(CheckboxWidget::new()),
+    };
+
+    let mut edit_field = EditField::new(
+        field_name,
+        current_edit_field_path,
+        object_kind,
+        *component.id(),
+        (*prop.kind()).into(),
+        widget,
+        value,
+        visibility_diff,
+        validation_errors,
+    );
+    edit_field.set_baggage(EditFieldBaggage::ComponentProp(
+        EditFieldBaggageComponentProp {
+            prop_id: *prop.id(),
+            system_id: None,
+        },
+    ));
+
+    Ok(edit_field)
 }
