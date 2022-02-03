@@ -1,6 +1,6 @@
 use dal::{
     test_harness::{create_prop, create_prop_of_kind, create_schema_variant},
-    HistoryActor, Prop, PropError, PropKind, StandardModel, Tenancy, Visibility,
+    HistoryActor, Prop, PropKind, StandardModel, Tenancy, Visibility,
 };
 
 use crate::test_setup;
