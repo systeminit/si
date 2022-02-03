@@ -9,6 +9,15 @@ services:
     entrypoint:
       - "/usr/local/bin/sdf"
 
+  veritech:
+    image: "fedora:latest"
+    volumes:
+      - "${REPOPATH:-..}/target/debug/veritech:/usr/local/bin/veritech"
+      - "${REPOPATH:-..}/target/debug/cyclone:/usr/local/bin/cyclone"
+      - "${REPOPATH:-..}/bin/lang-js/target/lang-js:/usr/local/bin/lang-js"
+    entrypoint:
+      - "/usr/local/bin/veritech"
+
   web:
     image: "nginx:1.21.4-alpine"
     # NOTE(nick): "dist" is a directory and the other mounts are files. This might help when debugging permissions errors
