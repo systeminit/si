@@ -29,8 +29,8 @@ pub use client::{Client, ClientError, ClientResult};
 pub use cyclone::{
     FunctionResult, FunctionResultFailure, OutputStream, QualificationCheckComponent,
     QualificationCheckRequest, QualificationCheckResultSuccess, QualificationSubCheck,
-    QualificationSubCheckStatus, ResolverFunctionRequest, ResourceSyncComponent,
-    ResourceSyncRequest, ResourceSyncResultSuccess,
+    QualificationSubCheckStatus, ResolverFunctionComponent, ResolverFunctionParentComponent,
+    ResolverFunctionRequest, ResourceSyncComponent, ResourceSyncRequest, ResourceSyncResultSuccess,
 };
 
 const NATS_QUALIFICATION_CHECK_DEFAULT_SUBJECT: &str = "veritech.fn.qualificationcheck";

@@ -11,6 +11,8 @@ use crate::{
     Tenancy, Timestamp, Visibility,
 };
 
+const FIND_PARENT_COMPONENTS: &str = include_str!("./queries/edge_find_parent_components.sql");
+
 #[derive(Error, Debug)]
 pub enum EdgeError {
     #[error("error serializing/deserializing json: {0}")]
@@ -140,6 +142,25 @@ impl Edge {
     standard_model_accessor!(tail_object_kind, Enum(VertexObjectKind), EdgeResult);
     standard_model_accessor!(tail_object_id, i64, EdgeResult);
     standard_model_accessor!(tail_socket_id, Pk(SocketId), EdgeResult);
+
+    pub async fn find_component_configuration_parents(
+        txn: &PgTxn<'_>,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+        component_id: &ComponentId,
+    ) -> EdgeResult<Vec<ComponentId>> {
+        let rows = txn
+            .query(
+                FIND_PARENT_COMPONENTS,
+                &[&tenancy, &visibility, &component_id],
+            )
+            .await?;
+        let objects = rows
+            .into_iter()
+            .map(|row| row.get("tail_object_id"))
+            .collect();
+        Ok(objects)
+    }
 
     pub async fn include_component_in_system(
         txn: &PgTxn<'_>,

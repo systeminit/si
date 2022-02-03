@@ -430,6 +430,7 @@ mod tests {
     use crate::{
         qualification_check::QualificationCheckComponent,
         resolver_function::ResolverFunctionRequest,
+        resolver_function::{ResolverFunctionComponent, ResolverFunctionParentComponent},
         resource_sync::ResourceSyncComponent,
         server::{Config, ConfigBuilder, UdsIncomingStream},
         FunctionResult, ProgressMessage, Server,
@@ -665,10 +666,23 @@ mod tests {
         let req = ResolverFunctionRequest {
             execution_id: "1234".to_string(),
             handler: "doit".to_string(),
-            parameters: None,
+            component: ResolverFunctionComponent {
+                name: "Child".to_owned(),
+                properties: HashMap::new(),
+                parents: vec![
+                    ResolverFunctionParentComponent {
+                        name: "Parent 1".to_owned(),
+                        properties: HashMap::new(),
+                    },
+                    ResolverFunctionParentComponent {
+                        name: "Parent 2".to_owned(),
+                        properties: HashMap::new(),
+                    },
+                ],
+            },
             code_base64: base64::encode(
-                r#"function doit(p) {
-                    console.log('i like');
+                r#"function doit(component) {
+                    console.log(`${component.parents.length}`);
                     console.log('my butt');
                     v = { a: 'b' };
                     return v;
@@ -688,7 +702,7 @@ mod tests {
         // Consume the output messages
         match progress.next().await {
             Some(Ok(ProgressMessage::OutputStream(output))) => {
-                assert_eq!(output.message, "i like")
+                assert_eq!(output.message, "2")
             }
             Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
             Some(Err(err)) => panic!("failed to receive 'i like' output: err={:?}", err),
@@ -737,10 +751,23 @@ mod tests {
         let req = ResolverFunctionRequest {
             execution_id: "1234".to_string(),
             handler: "doit".to_string(),
-            parameters: None,
+            component: ResolverFunctionComponent {
+                name: "Child".to_owned(),
+                properties: HashMap::new(),
+                parents: vec![
+                    ResolverFunctionParentComponent {
+                        name: "Parent 1".to_owned(),
+                        properties: HashMap::new(),
+                    },
+                    ResolverFunctionParentComponent {
+                        name: "Parent 2".to_owned(),
+                        properties: HashMap::new(),
+                    },
+                ],
+            },
             code_base64: base64::encode(
-                r#"function doit(p) {
-                    console.log('i like');
+                r#"function doit(component) {
+                    console.log(`${component.parents.length}`);
                     console.log('my butt');
                     v = { a: 'b' };
                     return v;
@@ -760,7 +787,7 @@ mod tests {
         // Consume the output messages
         match progress.next().await {
             Some(Ok(ProgressMessage::OutputStream(output))) => {
-                assert_eq!(output.message, "i like")
+                assert_eq!(output.message, "2")
             }
             Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
             Some(Err(err)) => panic!("failed to receive 'i like' output: err={:?}", err),

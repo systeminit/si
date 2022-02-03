@@ -17,7 +17,7 @@ use crate::func::backend::integer::FuncBackendIntegerArgs;
 use crate::func::backend::validation::{FuncBackendValidateStringValueArgs, ValidationError};
 use crate::func::backend::{
     js_qualification::FuncBackendJsQualificationArgs, js_resource::FuncBackendJsResourceSyncArgs,
-    string::FuncBackendStringArgs,
+    js_string::FuncBackendJsStringArgs, string::FuncBackendStringArgs,
 };
 use crate::func::binding::{FuncBinding, FuncBindingError};
 use crate::func::binding_return_value::FuncBindingReturnValue;
@@ -310,6 +310,8 @@ impl Component {
         )
         .await?;
 
+        // TODO: If an attribute resolver isn't idempotent we need to rerun them here
+
         Ok((component, node))
     }
 
@@ -333,7 +335,7 @@ impl Component {
         )
         .await?;
 
-        let (component, node) = Component::new_for_schema_variant_with_node(
+        let (component, node) = Self::new_for_schema_variant_with_node(
             txn,
             nats,
             veritech,
@@ -430,9 +432,70 @@ impl Component {
         let prop = Prop::get_by_id(txn, tenancy, visibility, &prop_id)
             .await?
             .ok_or(ComponentError::MissingProp(prop_id))?;
-        let component = Component::get_by_id(txn, tenancy, visibility, &component_id)
+        let component = Self::get_by_id(txn, tenancy, visibility, &component_id)
             .await?
             .ok_or(ComponentError::NotFound(component_id))?;
+
+        let (value, created) = component
+            .resolve_attribute(
+                txn,
+                nats,
+                veritech.clone(),
+                tenancy,
+                visibility,
+                history_actor,
+                &prop,
+                value,
+            )
+            .await?;
+
+        component
+            .check_validations(
+                txn,
+                nats,
+                veritech.clone(),
+                tenancy,
+                visibility,
+                history_actor,
+                &prop,
+                &value,
+                created,
+            )
+            .await?;
+
+        component
+            .check_qualifications(
+                txn,
+                nats,
+                veritech,
+                tenancy,
+                visibility,
+                history_actor,
+                UNSET_ID_VALUE.into(), // TODO: properly obtain a system_id
+            )
+            .await?;
+
+        Ok(())
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub async fn resolve_attribute(
+        &self,
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
+        veritech: veritech::Client,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+        history_actor: &HistoryActor,
+        prop: &Prop,
+        value: Option<serde_json::Value>,
+    ) -> ComponentResult<(Option<serde_json::Value>, bool)> {
+        let mut schema_tenancy = tenancy.clone();
+        schema_tenancy.universal = true;
+
+        let mut attribute_resolver_context = AttributeResolverContext::new();
+        attribute_resolver_context.set_prop_id(*prop.id());
+
         // We shouldn't be leaking this value, because it may or may not be actually set. But
         // when you YOLO, YOLO hard. -- Adam
         let (func, func_binding, created) = match (prop.kind(), value.clone()) {
@@ -485,7 +548,8 @@ impl Component {
 
                 let func_name = "si:setBoolean".to_string();
                 let mut funcs =
-                    Func::find_by_attr(txn, tenancy, visibility, "name", &func_name).await?;
+                    Func::find_by_attr(txn, &schema_tenancy, visibility, "name", &func_name)
+                        .await?;
                 let func = funcs.pop().ok_or(ComponentError::MissingFunc(func_name))?;
                 let args = serde_json::to_value(FuncBackendBooleanArgs::new(value))?;
                 let (func_binding, created) = FuncBinding::find_or_create(
@@ -542,7 +606,7 @@ impl Component {
                 (func, func_binding, created)
             }
             (PropKind::Integer, None) => {
-                todo!("We haven't dealt with unsetting an integer")
+                todo!("Unsetting a Integer PropKind isn't supported yet");
             }
             (PropKind::Object, Some(value_json)) => {
                 let value = match value_json.as_object() {
@@ -557,7 +621,8 @@ impl Component {
 
                 let func_name = "si:setPropObject".to_string();
                 let mut funcs =
-                    Func::find_by_attr(txn, tenancy, visibility, "name", &func_name).await?;
+                    Func::find_by_attr(txn, &schema_tenancy, visibility, "name", &func_name)
+                        .await?;
                 let func = funcs.pop().ok_or(ComponentError::MissingFunc(func_name))?;
                 let args = serde_json::to_value(FuncBackendPropObjectArgs::new(value.clone()))?;
                 let (func_binding, created) = FuncBinding::find_or_create(
@@ -618,7 +683,48 @@ impl Component {
                 (func, func_binding, created)
             }
             (PropKind::String, None) => {
-                todo!("we haven't dealt with unseting a string");
+                if let Some(resolver) = AttributeResolver::find_for_context(
+                    txn,
+                    &schema_tenancy,
+                    visibility,
+                    attribute_resolver_context.clone(),
+                )
+                .await?
+                {
+                    let func =
+                        Func::get_by_id(txn, &schema_tenancy, visibility, &resolver.func_id())
+                            .await?
+                            .ok_or_else(|| {
+                                ComponentError::MissingFunc(resolver.func_id().to_string())
+                            })?;
+                    let (func_binding, created) = FuncBinding::find_or_create(
+                        txn,
+                        nats,
+                        tenancy,
+                        visibility,
+                        history_actor,
+                        serde_json::to_value(FuncBackendJsStringArgs {
+                            component: self
+                                .veritech_attribute_resolver_component(
+                                    txn,
+                                    &schema_tenancy,
+                                    visibility,
+                                )
+                                .await?,
+                        })?,
+                        *func.id(),
+                        *func.backend_kind(),
+                    )
+                    .await?;
+
+                    if created {
+                        func_binding.execute(txn, nats, veritech.clone()).await?;
+                    }
+
+                    (func, func_binding, true)
+                } else {
+                    todo!("Unsetting a String PropKind without a fallback AttributeResolver isn't supported yet");
+                }
             }
             (PropKind::Map, _) => {
                 todo!("deal with maps!");
@@ -626,8 +732,8 @@ impl Component {
         };
 
         let mut attribute_resolver_context = AttributeResolverContext::new();
-        attribute_resolver_context.set_prop_id(prop_id);
-        attribute_resolver_context.set_component_id(component_id);
+        attribute_resolver_context.set_prop_id(*prop.id());
+        attribute_resolver_context.set_component_id(*self.id());
         AttributeResolver::upsert(
             txn,
             nats,
@@ -639,34 +745,7 @@ impl Component {
             attribute_resolver_context,
         )
         .await?;
-
-        component
-            .check_validations(
-                txn,
-                nats,
-                veritech.clone(),
-                tenancy,
-                visibility,
-                history_actor,
-                &prop,
-                &value,
-                created,
-            )
-            .await?;
-
-        component
-            .check_qualifications(
-                txn,
-                nats,
-                veritech,
-                tenancy,
-                visibility,
-                history_actor,
-                UNSET_ID_VALUE.into(),
-            )
-            .await?;
-
-        Ok(())
+        Ok((value, created))
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -680,7 +759,6 @@ impl Component {
         history_actor: &HistoryActor,
         prop: &Prop,
         value: &Option<serde_json::Value>,
-
         created: bool,
     ) -> ComponentResult<()> {
         let validators = ValidationPrototype::find_for_prop(
@@ -974,7 +1052,7 @@ impl Component {
         }
         // This is inefficient, but effective
         if no_qualification_results {
-            let component = Component::get_by_id(txn, tenancy, visibility, &component_id)
+            let component = Self::get_by_id(txn, tenancy, visibility, &component_id)
                 .await?
                 .ok_or(ComponentError::NotFound(component_id))?;
             let mut schema_tenancy = tenancy.clone();
@@ -1041,6 +1119,57 @@ impl Component {
         Ok(res_view)
     }
 
+    pub async fn veritech_attribute_resolver_component(
+        &self,
+        txn: &PgTxn<'_>,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+    ) -> ComponentResult<veritech::ResolverFunctionComponent> {
+        let mut tenancy = tenancy.clone();
+        tenancy.universal = true;
+
+        let parent_ids =
+            Edge::find_component_configuration_parents(txn, &tenancy, visibility, self.id())
+                .await?;
+        let mut parents = Vec::with_capacity(parent_ids.len());
+        for id in parent_ids {
+            let component = Self::get_by_id(txn, &tenancy, visibility, &id)
+                .await?
+                .ok_or(ComponentError::NotFound(id))?;
+            let mut view = veritech::ResolverFunctionParentComponent {
+                name: component.name().to_owned(),
+                properties: HashMap::new(),
+            };
+
+            for edit_field in
+                Self::get_edit_fields(txn, &tenancy, visibility, component.id()).await?
+            {
+                // This whole segment needs to be replaced with something that can handle the
+                // full complexity here.
+                if let Some(v) = edit_field.value {
+                    view.properties.insert(edit_field.name, v);
+                }
+            }
+            parents.push(view);
+        }
+
+        let mut component = veritech::ResolverFunctionComponent {
+            name: self.name().into(),
+            properties: HashMap::new(),
+            parents,
+        };
+
+        for edit_field in Self::get_edit_fields(txn, &tenancy, visibility, self.id()).await? {
+            // This whole segment needs to be replaced with something that can handle the
+            // full complexity here.
+            if let Some(v) = edit_field.value {
+                component.properties.insert(edit_field.name, v);
+            }
+        }
+
+        Ok(component)
+    }
+
     pub async fn veritech_resource_sync_component(
         &self,
         txn: &PgTxn<'_>,
@@ -1050,20 +1179,20 @@ impl Component {
         let mut tenancy = tenancy.clone();
         tenancy.universal = true;
 
-        let mut qualification_view = veritech::ResourceSyncComponent {
+        let mut component = veritech::ResourceSyncComponent {
             name: self.name().into(),
             properties: HashMap::new(),
         };
 
-        for edit_field in Component::get_edit_fields(txn, &tenancy, visibility, self.id()).await? {
+        for edit_field in Self::get_edit_fields(txn, &tenancy, visibility, self.id()).await? {
             // This whole segment needs to be replaced with something that can handle the
             // full complexity here.
             if let Some(v) = edit_field.value {
-                qualification_view.properties.insert(edit_field.name, v);
+                component.properties.insert(edit_field.name, v);
             }
         }
 
-        Ok(qualification_view)
+        Ok(component)
     }
 
     pub async fn veritech_qualification_check_component(
@@ -1080,7 +1209,7 @@ impl Component {
             properties: HashMap::new(),
         };
 
-        for edit_field in Component::get_edit_fields(txn, &tenancy, visibility, self.id()).await? {
+        for edit_field in Self::get_edit_fields(txn, &tenancy, visibility, self.id()).await? {
             // This whole segment needs to be replaced with something that can handle the
             // full complexity here.
             if let Some(v) = edit_field.value {
@@ -1281,16 +1410,16 @@ impl EditFieldAble for Component {
         let change_set_visibility =
             Visibility::new_change_set(visibility.change_set_pk, visibility.deleted);
 
-        let component = Component::get_by_id(txn, &tenancy, visibility, id)
+        let component = Self::get_by_id(txn, &tenancy, visibility, id)
             .await?
             .ok_or(ComponentError::NotFound(*id))?;
         let head_object: Option<Component> = if visibility.in_change_set() {
-            Component::get_by_id(txn, &tenancy, &head_visibility, id).await?
+            Self::get_by_id(txn, &tenancy, &head_visibility, id).await?
         } else {
             None
         };
         let change_set_object: Option<Component> = if visibility.in_change_set() {
-            Component::get_by_id(txn, &tenancy, &change_set_visibility, id).await?
+            Self::get_by_id(txn, &tenancy, &change_set_visibility, id).await?
         } else {
             None
         };
@@ -1338,7 +1467,7 @@ impl EditFieldAble for Component {
         value: Option<serde_json::Value>,
     ) -> ComponentResult<()> {
         let edit_field_id = edit_field_id.as_ref();
-        let mut component = Component::get_by_id(txn, tenancy, visibility, &id)
+        let mut component = Self::get_by_id(txn, tenancy, visibility, &id)
             .await?
             .ok_or(ComponentError::NotFound(id))?;
 

@@ -6,10 +6,9 @@ use thiserror::Error;
 
 use crate::{
     func::{binding::FuncBindingId, binding_return_value::FuncBindingReturnValue, FuncId},
-    impl_standard_model, pk,
-    standard_model::{self, object_from_row},
-    standard_model_accessor, ComponentId, HistoryActor, HistoryEventError, PropId, SchemaId,
-    SchemaVariantId, StandardModel, StandardModelError, SystemId, Tenancy, Timestamp, Visibility,
+    impl_standard_model, pk, standard_model, standard_model_accessor, ComponentId, HistoryActor,
+    HistoryEventError, PropId, SchemaId, SchemaVariantId, StandardModel, StandardModelError,
+    SystemId, Tenancy, Timestamp, Visibility,
 };
 
 #[derive(Error, Debug)]
@@ -29,6 +28,7 @@ pub enum AttributeResolverError {
 pub type AttributeResolverResult<T> = Result<T, AttributeResolverError>;
 
 pub const UNSET_ID_VALUE: i64 = -1;
+const FIND_FOR_CONTEXT: &str = include_str!("./queries/attribute_resolver_find_for_context.sql");
 const FIND_VALUE_FOR_CONTEXT: &str =
     include_str!("./queries/attribute_resolver_find_value_for_context.sql");
 
@@ -173,6 +173,31 @@ impl AttributeResolver {
     standard_model_accessor!(func_id, Pk(FuncId), AttributeResolverResult);
     standard_model_accessor!(func_binding_id, Pk(FuncBindingId), AttributeResolverResult);
 
+    #[tracing::instrument(skip(txn))]
+    pub async fn find_for_context(
+        txn: &PgTxn<'_>,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+        context: AttributeResolverContext,
+    ) -> AttributeResolverResult<Option<Self>> {
+        let row = txn
+            .query_opt(
+                FIND_FOR_CONTEXT,
+                &[
+                    &tenancy,
+                    &visibility,
+                    &context.prop_id(),
+                    &context.component_id(),
+                    &context.schema_id(),
+                    &context.schema_variant_id(),
+                    &context.system_id(),
+                ],
+            )
+            .await?;
+        let object = standard_model::option_object_from_row(row)?;
+        Ok(object)
+    }
+
     #[allow(clippy::too_many_arguments)]
     #[tracing::instrument(skip(txn, nats))]
     pub async fn upsert(
@@ -228,7 +253,7 @@ impl AttributeResolver {
                 &[&tenancy, &visibility, &prop_id, &component_id, &system_id],
             )
             .await?;
-        let object = object_from_row(row)?;
+        let object = standard_model::object_from_row(row)?;
         Ok(object)
     }
 }

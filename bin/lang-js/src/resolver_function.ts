@@ -5,7 +5,6 @@ import { base64Decode } from "./base64";
 import {
   failureExecution,
   FunctionKind,
-  Parameters,
   Request,
   ResultFailure,
   ResultSuccess,
@@ -15,9 +14,23 @@ import { createVm } from "./vm";
 
 const debug = Debug("langJs:resolverFunction");
 
+export interface ParentComponent {
+  name: string;
+  // TODO(fnichol): Highly, highly, highly TBD!
+  properties: Record<string, unknown>;
+}
+
+export interface Component {
+  name: string;
+  // TODO(fnichol): Highly, highly, highly TBD!
+  properties: Record<string, unknown>;
+  parents: Array<ParentComponent>,
+}
+
 export interface ResolverFunctionRequest extends Request {
   handler: string;
-  parameters?: Parameters;
+  // Should this be optional?
+  component: Component;
   codeBase64: string;
 }
 
@@ -40,7 +53,7 @@ export function executeResolverFunction(
 ): void {
   const code = base64Decode(request.codeBase64);
   const compiledCode = new VMScript(
-    wrapCode(code, request.handler, request.parameters)
+    wrapCode(code, request.handler, request.component)
   ).compile();
   debug({ code: compiledCode.code });
   const sandbox = createSandbox(
@@ -109,10 +122,7 @@ function execute(
 function wrapCode(
   code: string,
   handle: string,
-  parameters?: Parameters
+  component: Component,
 ): string {
-  if (!parameters) {
-    parameters = {};
-  }
-  return code + `\n${handle}(${JSON.stringify(parameters)});\n`;
+  return code + `\n${handle}(${JSON.stringify(component)});\n`;
 }

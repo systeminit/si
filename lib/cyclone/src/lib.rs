@@ -29,7 +29,10 @@ pub use qualification_check::{
     QualificationSubCheck, QualificationSubCheckStatus,
 };
 pub use readiness::{ReadinessStatus, ReadinessStatusParseError};
-pub use resolver_function::{ResolverFunctionRequest, ResolverFunctionResultSuccess};
+pub use resolver_function::{
+    ResolverFunctionComponent, ResolverFunctionParentComponent, ResolverFunctionRequest,
+    ResolverFunctionResultSuccess,
+};
 pub use resource_sync::{ResourceSyncComponent, ResourceSyncRequest, ResourceSyncResultSuccess};
 
 #[cfg(feature = "process")]

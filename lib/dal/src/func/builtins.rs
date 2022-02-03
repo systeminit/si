@@ -20,7 +20,7 @@ pub async fn migrate(txn: &PgTxn<'_>, nats: &NatsTxn) -> FuncResult<()> {
     si_unset(txn, nats, &tenancy, &visibility, &history_actor).await?;
     si_validate_string_equals(txn, nats, &tenancy, &visibility, &history_actor).await?;
     si_qualification_always_true(txn, nats, &tenancy, &visibility, &history_actor).await?;
-    si_totally_random_string(txn, nats, &tenancy, &visibility, &history_actor).await?;
+    si_number_of_parents(txn, nats, &tenancy, &visibility, &history_actor).await?;
     si_qualification_docker_image_name_equals_component_name(
         txn,
         nats,
@@ -34,7 +34,7 @@ pub async fn migrate(txn: &PgTxn<'_>, nats: &NatsTxn) -> FuncResult<()> {
     Ok(())
 }
 
-async fn si_totally_random_string(
+async fn si_number_of_parents(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
     tenancy: &Tenancy,
@@ -46,7 +46,7 @@ async fn si_totally_random_string(
         tenancy,
         visibility,
         "name",
-        &"si:totallyRandomString".to_string(),
+        &"si:numberOfParents".to_string(),
     )
     .await?;
     if existing_func.is_empty() {
@@ -56,8 +56,8 @@ async fn si_totally_random_string(
             tenancy,
             visibility,
             history_actor,
-            "si:totallyRandomString",
-            FuncBackendKind::JsString,
+            "si:numberOfParents",
+            FuncBackendKind::JsString, // Should be integer, but the js integer backend isn't 100% there yet and is being worked on in parallel
             FuncBackendResponseType::String,
         )
         .await
@@ -67,7 +67,7 @@ async fn si_totally_random_string(
             nats,
             visibility,
             history_actor,
-            Some("totallyRandomString"),
+            Some("numberOfParents"),
         )
         .await?;
         func.set_code_base64(
@@ -76,7 +76,7 @@ async fn si_totally_random_string(
             visibility,
             history_actor,
             Some(base64::encode(
-                "function totallyRandomString() { return \"4\"; }",
+                "function numberOfParents(component) { return `${component.parents.length}`; }",
             )),
         )
         .await?;
