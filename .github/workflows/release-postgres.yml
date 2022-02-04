@@ -3,13 +3,15 @@ name: release-postgres
 on:
   push:
     branches:
-      - main
+      - staging
+      - trying
     paths:
       - .github/workflows/release-postgres.yml
       - component/postgres/**
 
 jobs:
   release:
+    name: Release Postgres
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # pin@v2.3.4
@@ -65,4 +67,3 @@ jobs:
           channel: engineering
           status: failed
           color: "#f44336"
-

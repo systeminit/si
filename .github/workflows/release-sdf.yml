@@ -3,7 +3,8 @@ name: release-sdf
 on:
   push:
     branches:
-      - main
+      - staging
+      - trying
     paths:
       - .github/workflows/release-sdf.yml
       - .cargo/**
@@ -20,6 +21,7 @@ on:
 
 jobs:
   release:
+    name: Release SDF
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # pin@v2.3.4

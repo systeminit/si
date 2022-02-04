@@ -201,7 +201,7 @@ build() {
     args+=(--tag "$img:latest")
   fi
   if [[ "$ci_mode" == "true" ]]; then
-    args+=(--tag "$img:stable")
+    args+=(--tag "$img:sha-$revision")
   fi
   args+=(--cache-from "type=registry,ref=$img:buildcache")
   if [[ "$ci_mode" == "true" ]]; then
