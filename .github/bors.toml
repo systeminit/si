@@ -1,0 +1,12 @@
+status = [
+  "Pull Request Checks",
+  "Release %",
+]
+block_labels = [
+  "wip"
+]
+required_approvals = 0
+delete_merged_branches = true
+update_base_for_deletes = true
+up_to_date_approvals = true
+commit_title = "merge: ${PR_REFS}"

@@ -1,10 +1,20 @@
 name: ci
 on:
   push:
-    branches-ignore:
-      - "main"
+    branches:
+      - staging
+      - trying
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   ci:
+    name: Pull Request Checks
     runs-on: self-hosted
     steps:
       - name: Git Checkout
