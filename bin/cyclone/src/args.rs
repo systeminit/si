@@ -80,6 +80,14 @@ pub(crate) struct Args {
     #[clap(long, group = "sync")]
     pub(crate) disable_sync: bool,
 
+    /// Enables code generation endpoint.
+    #[clap(long, group = "code_generation")]
+    pub(crate) enable_code_generation: bool,
+
+    /// Disables code generation endpoint.
+    #[clap(long, group = "code_generation")]
+    pub(crate) disable_code_generation: bool,
+
     /// Path to the lang server program.
     #[clap(long, env = "SI_LANG_SERVER", setting = ArgSettings::HideEnvValues)]
     pub(crate) lang_server: PathBuf,
@@ -134,6 +142,12 @@ impl TryFrom<Args> for Config {
             builder.enable_sync(true);
         } else if args.disable_sync {
             builder.enable_sync(false);
+        }
+
+        if args.enable_code_generation {
+            builder.enable_code_generation(true);
+        } else if args.disable_code_generation {
+            builder.enable_code_generation(false);
         }
 
         if args.lang_server.is_file() {

@@ -126,6 +126,7 @@ async fn veritech_server_for_uds_cyclone(
             .qualification()
             .resolver()
             .sync()
+            .code_generation()
             .build()
             .expect("failed to build cyclone spec"),
     );
