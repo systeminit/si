@@ -1,7 +1,7 @@
 use cyclone::{
-    FunctionResult, OutputStream, QualificationCheckRequest, QualificationCheckResultSuccess,
-    ResolverFunctionRequest, ResolverFunctionResultSuccess, ResourceSyncRequest,
-    ResourceSyncResultSuccess,
+    CodeGenerationRequest, CodeGenerationResultSuccess, FunctionResult, OutputStream,
+    QualificationCheckRequest, QualificationCheckResultSuccess, ResolverFunctionRequest,
+    ResolverFunctionResultSuccess, ResourceSyncRequest, ResourceSyncResultSuccess,
 };
 use futures::{StreamExt, TryStreamExt};
 use serde::{de::DeserializeOwned, Serialize};
@@ -12,8 +12,8 @@ use tokio::sync::mpsc;
 
 use self::subscription::{Subscription, SubscriptionError};
 use crate::{
-    nats_qualification_check_subject, nats_resolver_function_subject, nats_resource_sync_subject,
-    nats_subject, reply_mailbox_for_output, reply_mailbox_for_result,
+    nats_code_generation_subject, nats_qualification_check_subject, nats_resolver_function_subject,
+    nats_resource_sync_subject, nats_subject, reply_mailbox_for_output, reply_mailbox_for_result,
 };
 
 #[derive(Error, Debug)]
@@ -101,6 +101,35 @@ impl Client {
         request: &ResolverFunctionRequest,
         subject_suffix: impl AsRef<str>,
     ) -> ClientResult<FunctionResult<ResolverFunctionResultSuccess>> {
+        self.execute_request(
+            nats_subject(self.subject_prefix(), subject_suffix),
+            output_tx,
+            request,
+        )
+        .await
+    }
+
+    #[instrument(name = "client.execute_code_generation", skip_all)]
+    pub async fn execute_code_generation(
+        &self,
+        output_tx: mpsc::Sender<OutputStream>,
+        request: &CodeGenerationRequest,
+    ) -> ClientResult<FunctionResult<CodeGenerationResultSuccess>> {
+        self.execute_request(
+            nats_code_generation_subject(self.subject_prefix()),
+            output_tx,
+            request,
+        )
+        .await
+    }
+
+    #[instrument(name = "client.execute_code_generation_with_subject", skip_all)]
+    pub async fn execute_code_generation_with_subject(
+        &self,
+        output_tx: mpsc::Sender<OutputStream>,
+        request: &CodeGenerationRequest,
+        subject_suffix: impl AsRef<str>,
+    ) -> ClientResult<FunctionResult<CodeGenerationResultSuccess>> {
         self.execute_request(
             nats_subject(self.subject_prefix(), subject_suffix),
             output_tx,
@@ -328,8 +357,8 @@ mod tests {
     use std::{collections::HashMap, env};
 
     use cyclone::{
-        QualificationCheckComponent, ResolverFunctionComponent, ResolverFunctionParentComponent,
-        ResourceSyncComponent,
+        CodeGenerationComponent, QualificationCheckComponent, ResolverFunctionComponent,
+        ResolverFunctionParentComponent, ResourceSyncComponent,
     };
     use deadpool_cyclone::{instance::cyclone::LocalUdsInstance, Instance};
     use indoc::indoc;
@@ -563,6 +592,51 @@ mod tests {
             FunctionResult::Success(success) => {
                 assert_eq!(success.execution_id, "7867");
                 // TODO(fnichol): add more asserts once resource is filled in
+            }
+            FunctionResult::Failure(failure) => {
+                panic!("function did not succeed and should have: {:?}", failure)
+            }
+        }
+    }
+
+    #[test(tokio::test)]
+    async fn executes_simple_code_generation() {
+        let prefix = nats_prefix();
+        run_veritech_server_for_uds_cyclone(prefix.clone()).await;
+        let client = client(prefix).await;
+
+        // Not going to check output here--we aren't emitting anything
+        let (tx, mut rx) = mpsc::channel(64);
+        tokio::spawn(async move {
+            while let Some(output) = rx.recv().await {
+                info!("output: {:?}", output)
+            }
+        });
+
+        let mut properties = HashMap::new();
+        properties.insert("pkg".to_string(), serde_json::json!("cider"));
+        let request = CodeGenerationRequest {
+            execution_id: "7868".to_string(),
+            handler: "generateItOut".to_string(),
+            component: CodeGenerationComponent {
+                name: "cider".to_string(),
+                properties,
+            },
+            code_base64: base64::encode("function generateItOut(component) { return { format: 'yaml', code: YAML.stringify(component) }; }"),
+        };
+
+        let result = client
+            .execute_code_generation(tx, &request)
+            .await
+            .expect("failed to execute code generation");
+
+        match result {
+            FunctionResult::Success(success) => {
+                assert_eq!(success.execution_id, "7868");
+                assert_eq!(
+                    success.data,
+                    serde_json::json!({ "format": "yaml", "code": "name: cider\nproperties:\n  pkg: cider\n" })
+                );
             }
             FunctionResult::Failure(failure) => {
                 panic!("function did not succeed and should have: {:?}", failure)

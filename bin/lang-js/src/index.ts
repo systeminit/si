@@ -8,6 +8,7 @@ import { makeConsole } from "./sandbox/console";
 import { executeQualificationCheck } from "./qualification_check";
 import { executeResolverFunction } from "./resolver_function";
 import { executeResourceSync } from "./resource_sync";
+import { executeCodeGeneration } from "./code_generation";
 
 const debug = Debug("langJs");
 
@@ -56,6 +57,9 @@ async function main() {
         break;
       case FunctionKind.ResourceSync:
         executeResourceSync(request);
+        break;
+      case FunctionKind.CodeGeneration:
+        executeCodeGeneration(request);
         break;
       default:
         throw Error(`Unknown Kind variant: ${kind}`);

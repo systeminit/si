@@ -7,6 +7,8 @@ pub mod attribute_resolver;
 pub mod billing_account;
 pub mod capability;
 pub mod change_set;
+pub mod code_generation_prototype;
+pub mod code_generation_resolver;
 pub mod component;
 pub mod edge;
 pub mod edit_field;
@@ -53,6 +55,12 @@ pub use billing_account::{
 };
 pub use capability::{Capability, CapabilityError, CapabilityId, CapabilityPk, CapabilityResult};
 pub use change_set::{ChangeSet, ChangeSetError, ChangeSetPk, ChangeSetStatus, NO_CHANGE_SET_PK};
+pub use code_generation_prototype::{
+    CodeGenerationPrototype, CodeGenerationPrototypeError, CodeGenerationPrototypeId,
+};
+pub use code_generation_resolver::{
+    CodeGenerationResolver, CodeGenerationResolverError, CodeGenerationResolverId,
+};
 pub use component::{Component, ComponentError, ComponentId};
 pub use edge::{Edge, EdgeError, EdgeResult};
 pub use edit_session::{

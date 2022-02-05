@@ -27,15 +27,17 @@ pub mod client;
 pub use client::{Client, ClientError, ClientResult};
 #[cfg(feature = "client")]
 pub use cyclone::{
-    FunctionResult, FunctionResultFailure, OutputStream, QualificationCheckComponent,
-    QualificationCheckRequest, QualificationCheckResultSuccess, QualificationSubCheck,
-    QualificationSubCheckStatus, ResolverFunctionComponent, ResolverFunctionParentComponent,
-    ResolverFunctionRequest, ResourceSyncComponent, ResourceSyncRequest, ResourceSyncResultSuccess,
+    CodeGenerationComponent, CodeGenerationRequest, CodeGenerationResultSuccess, FunctionResult,
+    FunctionResultFailure, OutputStream, QualificationCheckComponent, QualificationCheckRequest,
+    QualificationCheckResultSuccess, QualificationSubCheck, QualificationSubCheckStatus,
+    ResolverFunctionComponent, ResolverFunctionParentComponent, ResolverFunctionRequest,
+    ResourceSyncComponent, ResourceSyncRequest, ResourceSyncResultSuccess,
 };
 
 const NATS_QUALIFICATION_CHECK_DEFAULT_SUBJECT: &str = "veritech.fn.qualificationcheck";
 const NATS_RESOLVER_FUNCTION_DEFAULT_SUBJECT: &str = "veritech.fn.resolverfunction";
 const NATS_RESOURCE_SYNC_DEFAULT_SUBJECT: &str = "veritech.fn.resourcesync";
+const NATS_CODE_GENERATION_DEFAULT_SUBJECT: &str = "veritech.fn.codegeneration";
 
 pub(crate) const FINAL_MESSAGE_HEADER_KEY: &str = "X-Final-Message";
 
@@ -57,6 +59,10 @@ pub(crate) fn nats_resolver_function_subject(prefix: Option<&str>) -> String {
 
 pub(crate) fn nats_resource_sync_subject(prefix: Option<&str>) -> String {
     nats_subject(prefix, NATS_RESOURCE_SYNC_DEFAULT_SUBJECT)
+}
+
+pub(crate) fn nats_code_generation_subject(prefix: Option<&str>) -> String {
+    nats_subject(prefix, NATS_CODE_GENERATION_DEFAULT_SUBJECT)
 }
 
 pub(crate) fn nats_subject(prefix: Option<&str>, suffix: impl AsRef<str>) -> String {

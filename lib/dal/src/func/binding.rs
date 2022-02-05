@@ -4,13 +4,18 @@ use si_data::{NatsError, NatsTxn, PgError, PgTxn};
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::mpsc;
-use veritech::{Client, QualificationCheckResultSuccess, ResourceSyncResultSuccess};
+use veritech::{
+    Client, CodeGenerationResultSuccess, QualificationCheckResultSuccess, ResourceSyncResultSuccess,
+};
 
 use crate::func::backend::array::{FuncBackendArray, FuncBackendArrayArgs};
 use crate::func::backend::boolean::{FuncBackendBoolean, FuncBackendBooleanArgs};
 use crate::func::backend::integer::{FuncBackendInteger, FuncBackendIntegerArgs};
 use crate::func::backend::prop_object::{FuncBackendPropObject, FuncBackendPropObjectArgs};
 use crate::func::backend::{
+    js_code_generation::FuncBackendJsCodeGeneration,
+    js_code_generation::FuncBackendJsCodeGenerationArgs,
+    js_code_generation::FuncBackendJsCodeGenerationResult,
     js_qualification::FuncBackendJsQualification,
     js_qualification::FuncBackendJsQualificationArgs,
     js_resource::FuncBackendJsResourceSync,
@@ -230,6 +235,42 @@ impl FuncBinding {
                 let args: FuncBackendIntegerArgs = serde_json::from_value(self.args.clone())?;
                 let return_value = FuncBackendInteger::new(args).execute().await?;
                 Some(return_value)
+            }
+            FuncBackendKind::JsCodeGeneration => {
+                execution
+                    .set_state(txn, nats, super::execution::FuncExecutionState::Dispatch)
+                    .await?;
+
+                let (tx, rx) = mpsc::channel(64);
+
+                execution
+                    .set_state(txn, nats, super::execution::FuncExecutionState::Run)
+                    .await?;
+
+                let handler = func
+                    .handler()
+                    .ok_or(FuncBindingError::JsFuncNotFound(self.pk))?;
+                let code_base64 = func
+                    .code_base64()
+                    .ok_or(FuncBindingError::JsFuncNotFound(self.pk))?;
+
+                let backend_args: FuncBackendJsCodeGenerationArgs =
+                    serde_json::from_value(self.args.clone())?;
+                let return_value = FuncBackendJsCodeGeneration::new(
+                    veritech,
+                    tx,
+                    handler.to_owned(),
+                    backend_args.component,
+                    code_base64.to_owned(),
+                )
+                .execute()
+                .await?;
+
+                let veritech_result = CodeGenerationResultSuccess::deserialize(&return_value)?;
+                let result: FuncBackendJsCodeGenerationResult =
+                    serde_json::from_value(veritech_result.data)?;
+                execution.process_output(txn, nats, rx).await?;
+                Some(serde_json::to_value(&result)?)
             }
             FuncBackendKind::JsQualification => {
                 execution

@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use crate::code_generation_prototype::CodeGenerationPrototypeContext;
+use crate::func::backend::js_code_generation::FuncBackendJsCodeGenerationArgs;
 use crate::func::backend::js_qualification::FuncBackendJsQualificationArgs;
 use crate::func::backend::js_resource::FuncBackendJsResourceSyncArgs;
 use crate::func::backend::js_string::FuncBackendJsStringArgs;
@@ -10,9 +12,10 @@ use crate::schema::{SchemaResult, SchemaVariant, UiMenu};
 use crate::socket::{Socket, SocketArity, SocketEdgeKind};
 use crate::{
     attribute_resolver::AttributeResolverContext, func::binding::FuncBinding,
-    validation_prototype::ValidationPrototypeContext, AttributeResolver, Func, HistoryActor, Prop,
-    PropKind, QualificationPrototype, ResourcePrototype, Schema, SchemaError, SchemaKind,
-    SchematicKind, StandardModel, Tenancy, ValidationPrototype, Visibility,
+    validation_prototype::ValidationPrototypeContext, AttributeResolver, CodeGenerationPrototype,
+    Func, HistoryActor, Prop, PropKind, QualificationPrototype, ResourcePrototype, Schema,
+    SchemaError, SchemaKind, SchematicKind, StandardModel, Tenancy, ValidationPrototype,
+    Visibility,
 };
 use si_data::{NatsTxn, PgTxn};
 
@@ -677,6 +680,32 @@ async fn docker_image(
         *resource_sync_func.id(),
         resource_sync_args_json,
         resource_sync_prototype_context,
+    )
+    .await?;
+
+    // Code Generation Prototype
+    let code_generation_func_name = "si:generateYAML".to_owned();
+    let mut code_generation_funcs =
+        Func::find_by_attr(txn, tenancy, visibility, "name", &code_generation_func_name).await?;
+    let code_generation_func = code_generation_funcs
+        .pop()
+        .ok_or(SchemaError::FuncNotFound(code_generation_func_name))?;
+    let code_generation_args = FuncBackendJsCodeGenerationArgs {
+        component: veritech::CodeGenerationComponent::default(),
+    };
+    let code_generation_args_json = serde_json::to_value(&code_generation_args)?;
+    let mut code_generation_prototype_context = CodeGenerationPrototypeContext::new();
+    code_generation_prototype_context.set_schema_variant_id(*variant.id());
+
+    let _prototype = CodeGenerationPrototype::new(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        *code_generation_func.id(),
+        code_generation_args_json,
+        code_generation_prototype_context,
     )
     .await?;
 

@@ -2,6 +2,8 @@ mod attribute_resolver;
 mod billing_account;
 mod capability;
 mod change_set;
+mod code_generation_prototype;
+mod code_generation_resolver;
 mod component;
 mod edge;
 mod edit_session;
