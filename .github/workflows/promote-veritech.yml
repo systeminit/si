@@ -1,0 +1,30 @@
+name: promote-veritech
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/promote-image.yml
+      - .github/workflows/promote-veritech.yml
+      - .cargo/**
+      - Cargo.*
+      - bin/veritech/**
+      - lib/config-file/**
+      - lib/cyclone/**
+      - lib/si-data/**
+      - lib/si-settings/**
+      - lib/telemetry-rs/**
+      - lib/veritech/**
+      - rust-toolchain
+      - rustfmt.toml
+
+jobs:
+  promote:
+    uses: ./.github/workflows/promote-image.yml
+    with:
+      component_name: veritech
+    secrets:
+      SLACKBOT_TOKEN: ${{ secrets.SLACKBOT_TOKEN }}
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}

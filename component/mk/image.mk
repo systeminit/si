@@ -14,3 +14,8 @@ release: ## Builds and pushes the image and tags to the repository (uses ./scrip
 	@echo "--- [$(shell basename ${CURDIR})] $@"
 	env BASE_VERSION=${BASE_VERSION} IMG=${IMG} ./script/build-image.sh --ci
 .PHONY: release
+
+promote: ## Tags and pushes the current Git revision image as 'stable'  (uses ./script/promote-image.sh)
+	@echo "--- [$(shell basename ${CURDIR})] $@"
+	./script/promote-image.sh ${IMG} "$${SHA:-$$( git show -s --format=%H)}" stable
+.PHONY: promote

@@ -51,6 +51,7 @@ BUILDABLE = $(patsubst %,build//%,$(COMPONENTS))
 TESTABLE = $(patsubst %,test//%,$(COMPONENTS))
 CLEANABLE = $(patsubst %,clean//%,$(COMPONENTS))
 RELEASEABLE = $(patsubst %,release-%,$(RELEASEABLE_COMPONENTS))
+PROMOTABLE = $(patsubst %,promote-%,$(RELEASEABLE_COMPONENTS))
 IMAGEABLE = $(patsubst %,image//%,$(RELEASEABLE_COMPONENTS))
 WATCHABLE = $(patsubst %,watch//%,$(RUNNABLE_COMPONENTS))
 BUILDABLE_REGEX = $(shell echo $(COMPONENTS) | tr " " "|")
@@ -93,6 +94,9 @@ $(IMAGEABLE):
 $(RELEASEABLE):
 	cd bin/$(patsubst release-%,%,$@) && $(MAKE) release
 
+$(PROMOTABLE):
+	cd bin/$(patsubst promote-%,%,$@) && $(MAKE) promote
+
 release-postgres:
 	cd component/postgres && $(MAKE) release
 
@@ -104,6 +108,18 @@ release-otelcol:
 
 release-web:
 	cd app/web && $(MAKE) release
+
+promote-postgres:
+	cd component/postgres && $(MAKE) promote
+
+promote-nats:
+	cd component/nats && $(MAKE) promote
+
+promote-otelcol:
+	cd component/otelcol && $(MAKE) promote
+
+promote-web:
+	cd app/web && $(MAKE) promote
 
 $(WATCHABLE):
 	@ pushd $(patsubst watch//%,%,$@); $(MAKE) watch

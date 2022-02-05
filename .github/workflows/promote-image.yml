@@ -1,0 +1,60 @@
+name: promote-image
+
+on:
+  workflow_call:
+    inputs:
+      component_name:
+        required: true
+        type: string
+    secrets:
+      SLACKBOT_TOKEN:
+        required: true
+      DOCKERHUB_USERNAME:
+        required: true
+      DOCKERHUB_PASSWORD:
+        required: true
+
+jobs:
+  promote:
+    name: Promote ${{ inputs.component_name }}
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # pin@v2.3.4
+      - id: notify-slack
+        uses: voxmedia/github-action-slack-notify-build@212e9f7a9ca33368c8dd879d6053972128258985 # pin@v1.5.0
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACKBOT_TOKEN }}
+        with:
+          channel: engineering
+          status: executing
+          color: "#ffb74d"
+      - id: login
+        uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9 # pin@v1.10.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+      - id: promote
+        name: make promote-${{ inputs.component_name }}
+        run: |
+          : make ${{ inputs.component_name }}
+          echo "::group::Promoting image"
+          make promote-${{ inputs.component_name }}
+          echo "::endgroup::"
+      - uses: voxmedia/github-action-slack-notify-build@212e9f7a9ca33368c8dd879d6053972128258985 # pin@v1.5.0
+        if: success()
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACKBOT_TOKEN }}
+        with:
+          message_id: ${{ steps.notify-slack.outputs.message_id }}
+          channel: engineering
+          status: succeeded
+          color: "#8bc34a"
+      - uses: voxmedia/github-action-slack-notify-build@212e9f7a9ca33368c8dd879d6053972128258985 # pin@v1.5.0
+        if: failure()
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACKBOT_TOKEN }}
+        with:
+          message_id: ${{ steps.notify-slack.outputs.message_id }}
+          channel: engineering
+          status: failed
+          color: "#f44336"
