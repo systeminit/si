@@ -15,14 +15,6 @@ jobs:
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # pin@v2.3.4
-      - id: notify-slack
-        uses: voxmedia/github-action-slack-notify-build@212e9f7a9ca33368c8dd879d6053972128258985 # pin@v1.5.0
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACKBOT_TOKEN }}
-        with:
-          channel: engineering
-          status: executing
-          color: "#ffb74d"
       - id: buildx
         uses: docker/setup-buildx-action@94ab11c41e45d028884a99163086648e898eed25 # pin@v1.6.0
       - id: login
@@ -49,21 +41,3 @@ jobs:
           : report
           echo 'DockerHub URL: ${{ fromJSON(steps.release.outputs.manifest).image_url }}'
           echo 'GitHub Commit URL: ${{ fromJSON(steps.release.outputs.manifest).commit_url }}'
-      - uses: voxmedia/github-action-slack-notify-build@212e9f7a9ca33368c8dd879d6053972128258985 # pin@v1.5.0
-        if: success()
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACKBOT_TOKEN }}
-        with:
-          message_id: ${{ steps.notify-slack.outputs.message_id }}
-          channel: engineering
-          status: succeeded
-          color: "#8bc34a"
-      - uses: voxmedia/github-action-slack-notify-build@212e9f7a9ca33368c8dd879d6053972128258985 # pin@v1.5.0
-        if: failure()
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACKBOT_TOKEN }}
-        with:
-          message_id: ${{ steps.notify-slack.outputs.message_id }}
-          channel: engineering
-          status: failed
-          color: "#f44336"
