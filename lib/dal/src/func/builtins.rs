@@ -21,6 +21,7 @@ pub async fn migrate(txn: &PgTxn<'_>, nats: &NatsTxn) -> FuncResult<()> {
     si_validate_string_equals(txn, nats, &tenancy, &visibility, &history_actor).await?;
     si_qualification_always_true(txn, nats, &tenancy, &visibility, &history_actor).await?;
     si_number_of_parents(txn, nats, &tenancy, &visibility, &history_actor).await?;
+    si_generate_yaml(txn, nats, &tenancy, &visibility, &history_actor).await?;
     si_qualification_docker_image_name_equals_component_name(
         txn,
         nats,
@@ -31,6 +32,44 @@ pub async fn migrate(txn: &PgTxn<'_>, nats: &NatsTxn) -> FuncResult<()> {
     .await?;
     si_resource_sync_hammer(txn, nats, &tenancy, &visibility, &history_actor).await?;
 
+    Ok(())
+}
+
+async fn si_generate_yaml(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    tenancy: &Tenancy,
+    visibility: &Visibility,
+    history_actor: &HistoryActor,
+) -> FuncResult<()> {
+    let existing_func = Func::find_by_attr(
+        txn,
+        tenancy,
+        visibility,
+        "name",
+        &"si:generateYAML".to_string(),
+    )
+    .await?;
+    if existing_func.is_empty() {
+        let mut func = Func::new(
+            txn,
+            nats,
+            tenancy,
+            visibility,
+            history_actor,
+            "si:generateYAML",
+            FuncBackendKind::JsCodeGeneration,
+            FuncBackendResponseType::CodeGeneration,
+        )
+        .await
+        .expect("cannot create func");
+        func.set_handler(txn, nats, visibility, history_actor, Some("generateYAML"))
+            .await?;
+
+        let code = base64::encode(include_str!("./builtins/generateYAML.js",));
+        func.set_code_base64(txn, nats, visibility, history_actor, Some(code))
+            .await?;
+    }
     Ok(())
 }
 
