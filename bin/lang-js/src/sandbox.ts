@@ -1,5 +1,4 @@
 import _ from "lodash";
-import yaml from "js-yaml";
 
 import { FunctionKind } from "./function";
 import { makeConsole } from "./sandbox/console";
@@ -26,11 +25,6 @@ const resolverFunctionSandbox = {};
 
 const resourceSyncSandbox = {};
 
-const codeGenerationSandbox = {
-  // Is there any risk leaking this function plainly here? It smells like a risk for RCE outside of the sandbox
-  YAML: { stringify: yaml.dump }
-};
-
 function qualificationCheckSandbox(executionId: string): Sandbox {
   return {
     siExec: makeExec(executionId),
@@ -56,11 +50,6 @@ export function createSandbox(
       return {
         ...commonSandbox(executionId),
         ...resourceSyncSandbox,
-      };
-    case FunctionKind.CodeGeneration:
-      return {
-        ...commonSandbox(executionId),
-        ...codeGenerationSandbox,
       };
     default:
       throw new UnknownSandboxKind(kind);

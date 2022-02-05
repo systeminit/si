@@ -1,6 +1,6 @@
 use deadpool_cyclone::{
-    instance::cyclone::LocalUdsInstanceSpec, CodeGenerationRequest, CycloneClient, Manager, Pool,
-    ProgressMessage, QualificationCheckRequest, ResolverFunctionRequest, ResourceSyncRequest,
+    instance::cyclone::LocalUdsInstanceSpec, CycloneClient, Manager, Pool, ProgressMessage,
+    QualificationCheckRequest, ResolverFunctionRequest, ResourceSyncRequest,
 };
 use futures::{channel::oneshot, join, StreamExt};
 use si_data::NatsClient;
@@ -36,8 +36,6 @@ pub enum ServerError {
     ResolverFunction(#[from] deadpool_cyclone::client::ResolverFunctionExecutionError),
     #[error(transparent)]
     ResourceSync(#[from] deadpool_cyclone::client::ResourceSyncExecutionError),
-    #[error(transparent)]
-    CodeGeneration(#[from] deadpool_cyclone::client::CodeGenerationExecutionError),
     #[error("failed to setup signal handler")]
     Signal(#[source] io::Error),
     #[error(transparent)]
@@ -148,12 +146,6 @@ impl Server {
                 self.cyclone_pool.clone(),
                 self.shutdown_broadcast_tx.subscribe(),
             ),
-            process_code_generation_requests_task(
-                self.nats.clone(),
-                self.subject_prefix.clone(),
-                self.cyclone_pool.clone(),
-                self.shutdown_broadcast_tx.subscribe(),
-            ),
         );
 
         let _ = self.shutdown_rx.await;
@@ -175,7 +167,7 @@ impl ShutdownHandle {
     }
 }
 
-// NOTE(fnichol): the resolver_function, qualification_check, code_generation and resource_sync paths are parallel and extremely
+// NOTE(fnichol): the resolver_function and qualification_check paths are parallel and extremely
 // similar, so there is a lurking "unifying" refactor here. It felt like waiting until the third
 // time adding one of these would do the trick, and as a result the first 2 impls are here and not
 // split apart into their own modules.
@@ -498,118 +490,6 @@ async fn resource_sync_request(
         .await
         .map_err(|err| ServerError::CyclonePool(Box::new(err)))?;
     let mut progress = client.execute_sync(cyclone_request).await?.start().await?;
-
-    while let Some(msg) = progress.next().await {
-        match msg {
-            Ok(ProgressMessage::OutputStream(output)) => {
-                publisher.publish_output(&output).await?;
-            }
-            Ok(ProgressMessage::Heartbeat) => {
-                trace!("received heartbeat message");
-            }
-            Err(err) => {
-                warn!(error = ?err, "next progress message was an error, skipping to next message");
-            }
-        }
-    }
-    publisher.finalize_output().await?;
-
-    let function_result = progress.finish().await?;
-    publisher.publish_result(&function_result).await?;
-
-    Ok(())
-}
-
-async fn process_code_generation_requests_task(
-    nats: NatsClient,
-    subject_prefix: Option<String>,
-    cyclone_pool: Pool<LocalUdsInstanceSpec>,
-    shutdown_broadcast_rx: broadcast::Receiver<()>,
-) {
-    if let Err(err) =
-        process_code_generation_requests(nats, subject_prefix, cyclone_pool, shutdown_broadcast_rx)
-            .await
-    {
-        warn!(error = ?err, "processing resource sync requests failed");
-    }
-}
-
-async fn process_code_generation_requests(
-    nats: NatsClient,
-    subject_prefix: Option<String>,
-    cyclone_pool: Pool<LocalUdsInstanceSpec>,
-    mut shutdown_broadcast_rx: broadcast::Receiver<()>,
-) -> Result<()> {
-    let mut requests = Subscriber::code_generation(&nats, subject_prefix.as_deref()).await?;
-
-    loop {
-        tokio::select! {
-            // Got a broadcasted shutdown message
-            _ = shutdown_broadcast_rx.recv() => {
-                trace!("process resource sync requests task received shutdown");
-                break;
-            }
-            // Got the next message on from the subscriber
-            request = requests.next() => {
-                match request {
-                    Some(Ok(request)) => {
-                        // Spawn a task an process the request
-                        tokio::spawn(code_generation_request_task(
-                            nats.clone(),
-                            cyclone_pool.clone(),
-                            request,
-                        ));
-                    }
-                    Some(Err(err)) => {
-                        warn!(error = ?err, "next resource sync request had error");
-                    }
-                    None => {
-                        trace!("resource sync requests subscriber stream has closed");
-                        break;
-                    }
-                }
-            }
-            // All other arms are closed, nothing left to do but return
-            else => {
-                trace!("returning with all select arms closed");
-                break
-            }
-        }
-    }
-
-    // Unsubscribe from subscription
-    requests.unsubscribe().await?;
-
-    Ok(())
-}
-
-async fn code_generation_request_task(
-    nats: NatsClient,
-    cyclone_pool: Pool<LocalUdsInstanceSpec>,
-    request: Request<CodeGenerationRequest>,
-) {
-    if let Err(err) = code_generation_request(nats, cyclone_pool, request).await {
-        warn!(error = ?err, "resource sync execution failed");
-    }
-}
-
-async fn code_generation_request(
-    nats: NatsClient,
-    cyclone_pool: Pool<LocalUdsInstanceSpec>,
-    request: Request<CodeGenerationRequest>,
-) -> Result<()> {
-    let (reply_mailbox, cyclone_request) = request.into_parts();
-
-    let publisher = Publisher::new(&nats, &reply_mailbox);
-    let mut client = cyclone_pool
-        .get()
-        .await
-        .map_err(|err| ServerError::CyclonePool(Box::new(err)))?;
-    let mut progress = client
-        .execute_code_generation(cyclone_request)
-        .await?
-        .start()
-        .await?;
 
     while let Some(msg) = progress.next().await {
         match msg {

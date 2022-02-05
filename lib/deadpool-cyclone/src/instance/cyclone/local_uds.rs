@@ -9,14 +9,12 @@ use async_trait::async_trait;
 use cyclone::{
     canonical_command::CanonicalCommand,
     client::{
-        CodeGenerationExecution, Connection, PingExecution, QualificationCheckExecution,
-        ResolverFunctionExecution, ResourceSyncExecution, UnixStream, Watch, WatchError,
-        WatchStarted,
+        Connection, PingExecution, QualificationCheckExecution, ResolverFunctionExecution,
+        ResourceSyncExecution, UnixStream, Watch, WatchError, WatchStarted,
     },
     process::{self, ShutdownError},
-    Client, ClientError, CodeGenerationRequest, CycloneClient, LivenessStatus,
-    QualificationCheckRequest, ReadinessStatus, ResolverFunctionRequest, ResourceSyncRequest,
-    UdsClient,
+    Client, ClientError, CycloneClient, LivenessStatus, QualificationCheckRequest, ReadinessStatus,
+    ResolverFunctionRequest, ResourceSyncRequest, UdsClient,
 };
 use derive_builder::Builder;
 use futures::StreamExt;
@@ -185,20 +183,6 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
 
         result
     }
-
-    async fn execute_code_generation(
-        &mut self,
-        request: CodeGenerationRequest,
-    ) -> result::Result<CodeGenerationExecution<UnixStream>, ClientError> {
-        self.ensure_healthy_client()
-            .await
-            .map_err(ClientError::unhealthy)?;
-
-        let result = self.client.execute_code_generation(request).await;
-        self.count_request();
-
-        result
-    }
 }
 
 impl LocalUdsInstance {
@@ -269,10 +253,6 @@ pub struct LocalUdsInstanceSpec {
     /// Enables the `sync` execution endpoint for a spawned Cyclone server.
     #[builder(private, setter(name = "_sync"), default = "false")]
     sync: bool,
-
-    /// Enables the `code_generation` execution endpoint for a spawned Cyclone server.
-    #[builder(private, setter(name = "_code_generation"), default = "false")]
-    code_generation: bool,
 }
 
 #[async_trait]
@@ -394,11 +374,6 @@ impl LocalUdsInstanceSpecBuilder {
     /// Enables the `sync` execution endpoint for a spawned Cyclone server.
     pub fn sync(&mut self) -> &mut Self {
         self._sync(true)
-    }
-
-    /// Enables the `code_generation` execution endpoint for a spawned Cyclone server.
-    pub fn code_generation(&mut self) -> &mut Self {
-        self._code_generation(true)
     }
 }
 
