@@ -122,15 +122,6 @@ fn execute_routes(config: &Config, shutdown_tx: mpsc::Sender<ShutdownSource>) ->
             .or(Router::new().route("/sync", get(handlers::ws_execute_sync)))
             .boxed();
     }
-    if config.enable_code_generation() {
-        debug!("enabling code generation endpoint");
-        router = router
-            .or(Router::new().route(
-                "/code_generation",
-                get(handlers::ws_execute_code_generation),
-            ))
-            .boxed();
-    }
 
     let limit_requests = Arc::new(config.limit_requests().map(|i| i.into()));
 

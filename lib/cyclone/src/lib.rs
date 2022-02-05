@@ -12,7 +12,6 @@
 )]
 
 pub mod canonical_command;
-mod code_generation;
 mod liveness;
 mod progress;
 mod qualification_check;
@@ -20,9 +19,6 @@ mod readiness;
 mod resolver_function;
 mod resource_sync;
 
-pub use code_generation::{
-    CodeGenerationComponent, CodeGenerationRequest, CodeGenerationResultSuccess,
-};
 pub use liveness::{LivenessStatus, LivenessStatusParseError};
 pub use progress::{
     FunctionResult, FunctionResultFailure, FunctionResultFailureError, Message, OutputStream,

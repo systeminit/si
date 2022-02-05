@@ -1,9 +1,0 @@
-{
-  "executionId": "9012",
-  "handler": "generate",
-  "component": {
-    "name": "jane",
-    "properties": {}
-  },
-  "codeBase64": "Ly8gRW5jb2RlIHRoaXMgaW50byBCYXNlNjQgd2l0aDoKLy8KLy8gYGBgc2gKLy8gY2F0IGV4YW1wbGVzL2NvZGVHZW5lcmF0aW9uVGVzdENvZGUuanMgfCBiYXNlNjQgfCB0ciAtZCAnXG4nCi8vIGBgYAoKZnVuY3Rpb24gZ2VuZXJhdGUoY29tcG9uZW50KSB7CiAgY29uc29sZS5sb2coSlNPTi5zdHJpbmdpZnkoY29tcG9uZW50KSk7CiAgY29uc29sZS5sb2coImdlbmVyYXRpbmcgc29tZXRoaW5nLCByaWdodD8iKTsKICByZXR1cm4geyBmb3JtYXQ6ICJqc29uIiwgY29kZTogSlNPTi5zdHJpbmdpZnkoY29tcG9uZW50KSB9Owp9Cg=="
-}

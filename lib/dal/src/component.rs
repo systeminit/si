@@ -8,7 +8,6 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::attribute_resolver::{AttributeResolverContext, UNSET_ID_VALUE};
-use crate::code_generation_resolver::CodeGenerationResolverContext;
 use crate::edit_field::{
     value_and_visibility_diff, value_and_visibility_diff_json_option, widget::prelude::*,
     EditField, EditFieldAble, EditFieldBaggage, EditFieldBaggageComponentProp, EditFieldDataType,
@@ -17,7 +16,6 @@ use crate::edit_field::{
 use crate::func::backend::integer::FuncBackendIntegerArgs;
 use crate::func::backend::validation::{FuncBackendValidateStringValueArgs, ValidationError};
 use crate::func::backend::{
-    js_code_generation::FuncBackendJsCodeGenerationArgs,
     js_qualification::FuncBackendJsQualificationArgs, js_resource::FuncBackendJsResourceSyncArgs,
     js_string::FuncBackendJsStringArgs, string::FuncBackendStringArgs,
 };
@@ -39,10 +37,9 @@ use crate::func::backend::prop_object::FuncBackendPropObjectArgs;
 use crate::{
     impl_standard_model, pk, qualification::QualificationError, standard_model,
     standard_model_accessor, standard_model_belongs_to, standard_model_has_many, AttributeResolver,
-    AttributeResolverError, BillingAccountId, CodeGenerationPrototype,
-    CodeGenerationPrototypeError, CodeGenerationResolver, CodeGenerationResolverError, Func,
-    FuncBackendKind, HistoryActor, HistoryEventError, Node, NodeError, OrganizationError, Prop,
-    PropId, PropKind, QualificationPrototype, QualificationPrototypeError, QualificationResolver,
+    AttributeResolverError, BillingAccountId, Func, FuncBackendKind, HistoryActor,
+    HistoryEventError, Node, NodeError, OrganizationError, Prop, PropId, PropKind,
+    QualificationPrototype, QualificationPrototypeError, QualificationResolver,
     QualificationResolverError, Resource, ResourceError, ResourcePrototype, ResourcePrototypeError,
     ResourceResolver, ResourceResolverError, ResourceView, Schema, SchemaError, SchemaId,
     StandardModel, StandardModelError, SystemId, Tenancy, Timestamp, ValidationPrototype,
@@ -64,10 +61,6 @@ pub enum ComponentError {
     ResourcePrototype(#[from] ResourcePrototypeError),
     #[error("resource resolver error: {0}")]
     ResourceResolver(#[from] ResourceResolverError),
-    #[error("code generation prototype error: {0}")]
-    CodeGenerationPrototype(#[from] CodeGenerationPrototypeError),
-    #[error("code generation resolver error: {0}")]
-    CodeGenerationResolver(#[from] CodeGenerationResolverError),
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("pg error: {0}")]
@@ -472,18 +465,6 @@ impl Component {
 
         component
             .check_qualifications(
-                txn,
-                nats,
-                veritech.clone(),
-                tenancy,
-                visibility,
-                history_actor,
-                UNSET_ID_VALUE.into(), // TODO: properly obtain a system_id
-            )
-            .await?;
-
-        component
-            .generate_code(
                 txn,
                 nats,
                 veritech,
@@ -985,114 +966,6 @@ impl Component {
         Ok(())
     }
 
-    #[allow(clippy::too_many_arguments)]
-    pub async fn generate_code(
-        &self,
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        veritech: veritech::Client,
-        tenancy: &Tenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
-        system_id: SystemId,
-    ) -> ComponentResult<()> {
-        let mut schema_tenancy = tenancy.clone();
-        schema_tenancy.universal = true;
-
-        let schema = self
-            .schema_with_tenancy(txn, &schema_tenancy, visibility)
-            .await?
-            .ok_or(ComponentError::SchemaNotFound)?;
-        let schema_variant = self
-            .schema_variant_with_tenancy(txn, &schema_tenancy, visibility)
-            .await?
-            .ok_or(ComponentError::SchemaVariantNotFound)?;
-
-        let code_generation_prototypes = CodeGenerationPrototype::find_for_component(
-            txn,
-            &schema_tenancy,
-            visibility,
-            *self.id(),
-            *schema.id(),
-            *schema_variant.id(),
-            system_id,
-        )
-        .await?;
-
-        for prototype in code_generation_prototypes {
-            let func = Func::get_by_id(txn, &schema_tenancy, visibility, &prototype.func_id())
-                .await?
-                .ok_or_else(|| ComponentError::MissingFunc(prototype.func_id().to_string()))?;
-
-            let args = FuncBackendJsCodeGenerationArgs {
-                component: self
-                    .veritech_code_generation_component(txn, &schema_tenancy, visibility)
-                    .await?,
-            };
-            let json_args = serde_json::to_value(args)?;
-
-            let (func_binding, created) = FuncBinding::find_or_create(
-                txn,
-                nats,
-                &schema_tenancy,
-                visibility,
-                history_actor,
-                json_args,
-                prototype.func_id(),
-                *func.backend_kind(),
-            )
-            .await?;
-
-            if created {
-                // Note for future humans - if this isn't a built in, then we need to
-                // think about execution time. Probably higher up than this? But just
-                // an FYI.
-                func_binding.execute(txn, nats, veritech.clone()).await?;
-
-                let mut existing_resolvers =
-                    CodeGenerationResolver::find_for_prototype_and_component(
-                        txn,
-                        &schema_tenancy,
-                        visibility,
-                        prototype.id(),
-                        self.id(),
-                    )
-                    .await?;
-
-                // If we do not have one, create the code generation resolver. If we do, update the
-                // func binding id to point to the new value.
-                if let Some(mut resolver) = existing_resolvers.pop() {
-                    resolver
-                        .set_func_binding_id(
-                            txn,
-                            nats,
-                            visibility,
-                            history_actor,
-                            *func_binding.id(),
-                        )
-                        .await?;
-                } else {
-                    let mut resolver_context = CodeGenerationResolverContext::new();
-                    resolver_context.set_component_id(*self.id());
-                    CodeGenerationResolver::new(
-                        txn,
-                        nats,
-                        tenancy,
-                        visibility,
-                        history_actor,
-                        *prototype.id(),
-                        *func.id(),
-                        *func_binding.id(),
-                        resolver_context,
-                    )
-                    .await?;
-                }
-            }
-        }
-
-        Ok(())
-    }
-
     #[tracing::instrument(skip(txn))]
     pub async fn list_validations_as_qualification_for_component_id(
         txn: &PgTxn<'_>,
@@ -1284,31 +1157,6 @@ impl Component {
             name: self.name().into(),
             properties: HashMap::new(),
             parents,
-        };
-
-        for edit_field in Self::get_edit_fields(txn, &tenancy, visibility, self.id()).await? {
-            // This whole segment needs to be replaced with something that can handle the
-            // full complexity here.
-            if let Some(v) = edit_field.value {
-                component.properties.insert(edit_field.name, v);
-            }
-        }
-
-        Ok(component)
-    }
-
-    pub async fn veritech_code_generation_component(
-        &self,
-        txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
-        visibility: &Visibility,
-    ) -> ComponentResult<veritech::CodeGenerationComponent> {
-        let mut tenancy = tenancy.clone();
-        tenancy.universal = true;
-
-        let mut component = veritech::CodeGenerationComponent {
-            name: self.name().into(),
-            properties: HashMap::new(),
         };
 
         for edit_field in Self::get_edit_fields(txn, &tenancy, visibility, self.id()).await? {

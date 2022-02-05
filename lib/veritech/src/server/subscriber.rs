@@ -4,9 +4,7 @@ use std::{
     task::{Context, Poll},
 };
 
-use deadpool_cyclone::{
-    CodeGenerationRequest, QualificationCheckRequest, ResolverFunctionRequest, ResourceSyncRequest,
-};
+use deadpool_cyclone::{QualificationCheckRequest, ResolverFunctionRequest, ResourceSyncRequest};
 use futures::{Stream, StreamExt};
 use futures_lite::FutureExt;
 use pin_project_lite::pin_project;
@@ -16,8 +14,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
-    nats_code_generation_subject, nats_qualification_check_subject, nats_resolver_function_subject,
-    nats_resource_sync_subject,
+    nats_qualification_check_subject, nats_resolver_function_subject, nats_resource_sync_subject,
 };
 
 #[derive(Error, Debug)]
@@ -89,26 +86,6 @@ impl Subscriber {
         debug!(
             messaging.destination = &subject.as_str(),
             "subscribing for resource sync requests"
-        );
-        let inner = nats
-            .subscribe(subject)
-            .await
-            .map_err(SubscriberError::NatsSubscribe)?;
-
-        Ok(Subscription {
-            inner,
-            _phantom: PhantomData,
-        })
-    }
-
-    pub async fn code_generation(
-        nats: &NatsClient,
-        subject_prefix: Option<&str>,
-    ) -> Result<Subscription<CodeGenerationRequest>> {
-        let subject = nats_code_generation_subject(subject_prefix);
-        debug!(
-            messaging.destination = &subject.as_str(),
-            "subscribing for code generation requests"
         );
         let inner = nats
             .subscribe(subject)
