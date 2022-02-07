@@ -5,34 +5,31 @@
 * It's a single reserved c5d.9xlarge
 * Running the fedora AMI ami-0133ad8c5d900ddef
 * Using the standard si_key ssh key from 1password
-* It's named 'ci-1' in the aws console
-* It is instance id i-00f760653e6c5bbaa
+* They are named 'ci-1' and 'ci-2' in the aws console
 * Running in a separate VPC from everything else
-* ec2-3-145-212-22.us-east-2.compute.amazonaws.com
-* 3.145.212.2
 
 ## Basic Setup
 
 ```sh
-$ sudo dnf -y upgrade
-$ sudo dnf -y install nvme-cli lld clang cmake openssl libev libevent jq
-$ sudo dnf -y groupinstall 'Development Tools'
-$ sudo dnf -y install dnf-plugins-core
-$ sudo dnf config-manager --add-repo https://download.docker.com/linux/fedora/docker-ce.repo
-$ sudo dnf install -y docker-ce docker-ce-cli containerd.io docker-compose
-$ systemctl start docker
-$ systemctl enable docker
+sudo hostnamectl set-hostname ci-2
+sudo dnf -y upgrade
+sudo dnf -y install nvme-cli lld clang cmake openssl libev libevent jq skopeo dnf-plugins-core
+sudo dnf -y groupinstall 'Development Tools'
+sudo dnf config-manager --add-repo https://download.docker.com/linux/fedora/docker-ce.repo
+sudo dnf install -y docker-ce docker-ce-cli containerd.io docker-compose
+sudo systemctl start docker
+sudo systemctl enable docker
 ```
 
 ## Setting up ephemeral storage
 
 ```sh
-$ sudo parted /dev/nvme1n1
-(parted) mklabel gpt
-(parted) mkpart primary btrfs 0% 100%
-(parted) quit
-$ mkfs.btrfs /dev/nvme1n1p1
-$ mkdir -p /data
+sudo parted /dev/nvme1n1
+    (parted) mklabel gpt
+    (parted) mkpart primary btrfs 0% 100%
+    (parted) quit
+sudo mkfs.btrfs /dev/nvme1n1p1
+sudo mkdir -p /data
 ```
 
 Extract the `UUID` line from the mkfs output, and use it to add a line to fstab:
@@ -44,7 +41,7 @@ UUID=f5a67474-0763-4d11-8a93-ad6b67488a00 /data                   btrfs   compre
 Mount the drive:
 
 ```sh 
-$ mount /data
+sudo mount /data
 ```
 
 Confirm things are good:
@@ -69,42 +66,31 @@ And viola - you're gtg.
 ## Adding users
 
 ```sh 
-$ sudo useradd -r grunner
-$ sudo mkdir -p /data/runners
+sudo useradd -r grunner
+sudo mkdir -p /data/runners
 ```
 
-Add `grunner` and `fedora` to the `docker` group
+Use `vipw` to set the grunner users homedirectory to /data/runner
+
+Add `grunner` and `fedora` to the `docker` group (`vi /etc/group`)
 
 ## Installing the runners
 
 Follow the instructions at [github](https://github.com/systeminit/si/settings/actions/runners/new). 
 
-Install the runner to /data/runner/X, where X is the number of the runner. (1, for the first)
+Install the runner to /data/runners/X, where X is the number of the runner. (1, for the first - this number
+is the number of runners *on this host*; we may decide to run more than 1!).
 
-Then install it to systemd, with this file in /etc/systemd/system/actions.runner.systeminit-si.ci-1.service
+Follow the instructions at [github](https://docs.github.com/en/actions/hosting-your-own-runners/configuring-the-self-hosted-runner-application-as-a-service) to configure the self hosted runner as a service.
 
-```sh 
-[Unit]
-Description=GitHub Actions Runner (systeminit-si.ci-1-1)
-After=network.target
-
-[Service]
-ExecStart=/data/runners/1/runsvc.sh
-User=grunner
-WorkingDirectory=/data/runners/1
-KillMode=process
-KillSignal=SIGTERM
-TimeoutStopSec=5min
-
-[Install]
-WantedBy=multi-user.target
-```
+Edit the systemd unit file it generates to switch the required user to 'grunner' rather than 'fedora'
 
 Make sure you enable the selinux context:
 
 ```sh 
-$ restorecon -r -v /etc/systemd/system/actions.runner.*.service
-$ chcon system_u:object_r:usr_t:s0 runsvc.sh
+cd /data/runners/1
+sudo restorecon -r -v /etc/systemd/system/actions.runner.*.service
+sudo chcon system_u:object_r:usr_t:s0 runsvc.sh
 ```
 
 Then enable and start it:
@@ -112,5 +98,24 @@ Then enable and start it:
 ```sh
 $ systemctl enable actions.runner.systeminit-si.ci-1
 $ systemctl start actions.runner.systeminit-si.ci-1
+```
+
+# Complete the following as grunner
+
+```sh 
+sudo su - grunner
+```
+
+## Installing rust
+
+```sh 
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+
+## Installing volta
+
+```sh 
+curl https://get.volta.sh | bash
+volta install node typescript
 ```
 
