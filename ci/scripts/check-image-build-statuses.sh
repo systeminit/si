@@ -27,7 +27,7 @@ echo "::endgroup::"
 
 EXIT_STATUS=0
 
-if [ "${NATS_RUN}" == "true"]; then
+if [ "${NATS_RUN}" == "true" ]; then
   echo "::group::NATS build check"
   set -x
   if [ "${NATS_STATUS}" != "success" ]; then
