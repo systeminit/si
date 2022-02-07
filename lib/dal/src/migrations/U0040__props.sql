@@ -27,7 +27,7 @@ VALUES ('props', 'model', 'prop', 'Prop'),
 -- Limit values of props.kind to a known set of variants. Is this required? No! But such a constraint
 -- might be useful elsewhere
 ALTER TABLE props
-    ADD CONSTRAINT valid_kind_check CHECK (kind IN ('array', 'boolean', 'map', 'number', 'object', 'string'));
+    ADD CONSTRAINT valid_kind_check CHECK (kind IN ('array', 'boolean', 'map', 'integer', 'object', 'string'));
 
 CREATE OR REPLACE FUNCTION prop_create_v1(
     this_tenancy jsonb,

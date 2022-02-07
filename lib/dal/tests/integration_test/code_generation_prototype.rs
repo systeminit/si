@@ -18,12 +18,12 @@ async fn new() {
     let _ =
         find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor).await;
 
-    let name = "docker_image".to_string();
+    let name = "kubernetes_deployment".to_string();
     let schema = Schema::find_by_attr(&txn, &tenancy, &visibility, "name", &name)
         .await
-        .expect("cannot find docker image")
+        .expect("cannot find kubernetes deployment")
         .pop()
-        .expect("no docker image found");
+        .expect("no kubernetes deployment found");
     let (component, _node) = Component::new_for_schema_with_node(
         &txn,
         &nats,
@@ -70,7 +70,7 @@ async fn new() {
 
 #[tokio::test]
 async fn find_for_component() {
-    // TODO: This test is brittle, because it relies on the behavior of docker_image. I'm okay
+    // TODO: This test is brittle, because it relies on the behavior of kubernetes_deployment. I'm okay
     // with that for now, but not for long. If it breaks before we fix it - future person, I'm
     // sorry. ;)
 
@@ -81,12 +81,12 @@ async fn find_for_component() {
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
 
-    let name = "docker_image".to_string();
+    let name = "kubernetes_deployment".to_string();
     let schema = Schema::find_by_attr(&txn, &tenancy, &visibility, "name", &name)
         .await
-        .expect("cannot find docker image")
+        .expect("cannot find kubernetes deployment")
         .pop()
-        .expect("no docker image found");
+        .expect("no kubernetes deployment found");
     let default_schema_variant_id = schema
         .default_schema_variant_id()
         .expect("cannot get default schema variant id");

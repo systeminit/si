@@ -34,6 +34,7 @@ pub async fn migrate(
     application(txn, nats, &tenancy, &visibility, &history_actor).await?;
     service(txn, nats, &tenancy, &visibility, &history_actor).await?;
     kubernetes_service(txn, nats, &tenancy, &visibility, &history_actor).await?;
+    kubernetes_deployment(txn, nats, &tenancy, &visibility, &history_actor).await?;
     docker_image(txn, nats, &tenancy, &visibility, &history_actor, veritech).await?;
 
     Ok(())
@@ -383,6 +384,179 @@ async fn kubernetes_service(
     Ok(())
 }
 
+async fn kubernetes_deployment(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    tenancy: &Tenancy,
+    visibility: &Visibility,
+    history_actor: &HistoryActor,
+) -> SchemaResult<()> {
+    let name = "kubernetes_deployment".to_string();
+    let mut schema = match create_schema(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        &name,
+        &SchemaKind::Concept, // Note: what is this?
+    )
+    .await?
+    {
+        Some(schema) => schema,
+        None => return Ok(()),
+    };
+
+    let variant = SchemaVariant::new(txn, nats, tenancy, visibility, history_actor, "v0").await?;
+    variant
+        .set_schema(txn, nats, visibility, history_actor, schema.id())
+        .await?;
+    schema
+        .set_default_schema_variant_id(txn, nats, visibility, history_actor, Some(*variant.id()))
+        .await?;
+
+    let mut ui_menu = UiMenu::new(txn, nats, tenancy, visibility, history_actor).await?;
+    ui_menu
+        .set_name(
+            txn,
+            nats,
+            visibility,
+            history_actor,
+            Some(schema.name().to_string()),
+        )
+        .await?;
+
+    let application_name = "application".to_string();
+    ui_menu
+        .set_category(
+            txn,
+            nats,
+            visibility,
+            history_actor,
+            Some(application_name.clone()),
+        )
+        .await?;
+    ui_menu
+        .set_schematic_kind(
+            txn,
+            nats,
+            visibility,
+            history_actor,
+            SchematicKind::Deployment,
+        )
+        .await?;
+    ui_menu
+        .set_schema(txn, nats, visibility, history_actor, schema.id())
+        .await?;
+
+    let application_schema_results =
+        Schema::find_by_attr(txn, tenancy, visibility, "name", &application_name).await?;
+    let application_schema = application_schema_results
+        .first()
+        .ok_or(SchemaError::NotFoundByName(application_name))?;
+    ui_menu
+        .add_root_schematic(
+            txn,
+            nats,
+            visibility,
+            history_actor,
+            application_schema.id(),
+        )
+        .await?;
+
+    let replicas_prop = Prop::new(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        "replicas",
+        PropKind::Integer,
+    )
+    .await?;
+    replicas_prop
+        .add_schema_variant(txn, nats, visibility, history_actor, variant.id())
+        .await?;
+
+    // Code Generation Prototype
+    let code_generation_func_name = "si:generateYAML".to_owned();
+    let mut code_generation_funcs =
+        Func::find_by_attr(txn, tenancy, visibility, "name", &code_generation_func_name).await?;
+    let code_generation_func = code_generation_funcs
+        .pop()
+        .ok_or(SchemaError::FuncNotFound(code_generation_func_name))?;
+    let code_generation_args = FuncBackendJsCodeGenerationArgs {
+        component: veritech::CodeGenerationComponent::default(),
+    };
+    let code_generation_args_json = serde_json::to_value(&code_generation_args)?;
+    let mut code_generation_prototype_context = CodeGenerationPrototypeContext::new();
+    code_generation_prototype_context.set_schema_variant_id(*variant.id());
+
+    let _prototype = CodeGenerationPrototype::new(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        *code_generation_func.id(),
+        code_generation_args_json,
+        code_generation_prototype_context,
+    )
+    .await?;
+
+    // Note: This is not right; each schema needs its own socket types.
+    //       Also, they should clearly inherit from the core schema? Something
+    //       for later.
+    let input_socket = Socket::new(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        "input",
+        &SocketEdgeKind::Configures,
+        &SocketArity::Many,
+    )
+    .await?;
+    variant
+        .add_socket(txn, nats, visibility, history_actor, input_socket.id())
+        .await?;
+
+    let output_socket = Socket::new(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        "output",
+        &SocketEdgeKind::Output,
+        &SocketArity::Many,
+    )
+    .await?;
+    variant
+        .add_socket(txn, nats, visibility, history_actor, output_socket.id())
+        .await?;
+
+    let includes_socket = Socket::new(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        "includes",
+        &SocketEdgeKind::Includes,
+        &SocketArity::Many,
+    )
+    .await?;
+    variant
+        .add_socket(txn, nats, visibility, history_actor, includes_socket.id())
+        .await?;
+
+    // TODO: what validations & qualifications do we want here?
+
+    Ok(())
+}
+
 async fn docker_image(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
@@ -680,32 +854,6 @@ async fn docker_image(
         *resource_sync_func.id(),
         resource_sync_args_json,
         resource_sync_prototype_context,
-    )
-    .await?;
-
-    // Code Generation Prototype
-    let code_generation_func_name = "si:generateYAML".to_owned();
-    let mut code_generation_funcs =
-        Func::find_by_attr(txn, tenancy, visibility, "name", &code_generation_func_name).await?;
-    let code_generation_func = code_generation_funcs
-        .pop()
-        .ok_or(SchemaError::FuncNotFound(code_generation_func_name))?;
-    let code_generation_args = FuncBackendJsCodeGenerationArgs {
-        component: veritech::CodeGenerationComponent::default(),
-    };
-    let code_generation_args_json = serde_json::to_value(&code_generation_args)?;
-    let mut code_generation_prototype_context = CodeGenerationPrototypeContext::new();
-    code_generation_prototype_context.set_schema_variant_id(*variant.id());
-
-    let _prototype = CodeGenerationPrototype::new(
-        txn,
-        nats,
-        tenancy,
-        visibility,
-        history_actor,
-        *code_generation_func.id(),
-        code_generation_args_json,
-        code_generation_prototype_context,
     )
     .await?;
 
