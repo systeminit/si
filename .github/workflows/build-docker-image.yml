@@ -1,27 +1,20 @@
-name: release-veritech
+name: build-docker-image
 
 on:
-  push:
-    branches:
-      - staging
-      - trying
-    paths:
-      - .github/workflows/release-veritech.yml
-      - .cargo/**
-      - Cargo.*
-      - bin/veritech/**
-      - lib/config-file/**
-      - lib/cyclone/**
-      - lib/si-data/**
-      - lib/si-settings/**
-      - lib/telemetry-rs/**
-      - lib/veritech/**
-      - rust-toolchain
-      - rustfmt.toml
+  workflow_call:
+    inputs:
+      component_name:
+        required: true
+        type: string
+    secrets:
+      DOCKERHUB_USERNAME:
+        required: true
+      DOCKERHUB_PASSWORD:
+        required: true
 
 jobs:
-  release:
-    name: Release Veritech
+  build-image:
+    name: Build ${{ inputs.component_name }} Docker Image
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # pin@v2.3.4
@@ -33,17 +26,17 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
       - id: release
-        name: make ${{ github.workflow }}
+        name: make release-${{ inputs.component_name }}
         run: |
-          : make ${{ github.workflow }}
+          : make release-${{ inputs.component_name }}
           echo "::group::Building and publishing image"
-          make ${{ github.workflow }}
+          make release-${{ inputs.component_name }}
           echo "::endgroup::"
           echo "::group::Manifest info"
-          jq . <tmp/${{ github.workflow}}.manifest.json
+          jq . <tmp/release-${{ inputs.component_name }}.manifest.json
           echo "::endgroup::"
           echo "::set-output name=manifest::$(
-            cat tmp/${{ github.workflow}}.manifest.json
+            cat tmp/release-${{ inputs.component_name }}.manifest.json
           )"
       - name: report
         if: success()
