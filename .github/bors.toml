@@ -1,6 +1,6 @@
 status = [
   "Pull Request Checks",
-  "Release %",
+  "Docker Image Build Summary Status",
 ]
 block_labels = [
   "wip"

@@ -216,7 +216,7 @@ build() {
 
   echo "--- Building image '$img'"
   set -x
-  docker "${args[@]}"
+  docker "${args[@]}" || die "Docker build failed"
   set +x
 
   build_manifest "$img" "$build_version" "$revision" "$created" \
