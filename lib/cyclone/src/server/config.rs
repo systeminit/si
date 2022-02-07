@@ -38,6 +38,9 @@ pub struct Config {
     #[builder(default = "true")]
     enable_sync: bool,
 
+    #[builder(default = "true")]
+    enable_code_generation: bool,
+
     #[builder(default = "IncomingStream::default()")]
     incoming_stream: IncomingStream,
 
@@ -83,6 +86,12 @@ impl Config {
     #[must_use]
     pub fn enable_sync(&self) -> bool {
         self.enable_sync
+    }
+
+    /// Gets a reference to the config's enable sync.
+    #[must_use]
+    pub fn enable_code_generation(&self) -> bool {
+        self.enable_code_generation
     }
 
     /// Gets a reference to the config's incoming stream.

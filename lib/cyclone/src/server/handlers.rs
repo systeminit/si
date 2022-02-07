@@ -15,9 +15,9 @@ use super::{
     routes::{State, WatchKeepalive},
 };
 use crate::{
-    server::{qualification_check, resolver_function, resource_sync, watch},
-    LivenessStatus, Message, QualificationCheckResultSuccess, ReadinessStatus,
-    ResolverFunctionResultSuccess, ResourceSyncResultSuccess,
+    server::{code_generation, qualification_check, resolver_function, resource_sync, watch},
+    CodeGenerationResultSuccess, LivenessStatus, Message, QualificationCheckResultSuccess,
+    ReadinessStatus, ResolverFunctionResultSuccess, ResourceSyncResultSuccess,
 };
 
 #[allow(clippy::unused_async)]
@@ -254,6 +254,71 @@ async fn fail_resource_sync(
     message: impl Into<String>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let msg = Message::<ResourceSyncResultSuccess>::fail(message).serialize_to_string()?;
+    socket.send(ws::Message::Text(msg)).await?;
+    socket.close().await?;
+    Ok(())
+}
+
+#[allow(clippy::unused_async)]
+pub async fn ws_execute_code_generation(
+    wsu: WebSocketUpgrade,
+    Extension(state): Extension<Arc<State>>,
+    Extension(telemetry_level): Extension<Arc<Box<dyn TelemetryLevel>>>,
+    limit_request_guard: LimitRequestGuard,
+) -> impl IntoResponse {
+    async fn handle_socket(
+        mut socket: WebSocket,
+        state: Arc<State>,
+        lang_server_debugging: bool,
+        _limit_request_guard: LimitRequestGuard,
+    ) {
+        let proto = match code_generation::execute(state.lang_server_path(), lang_server_debugging)
+            .start(&mut socket)
+            .await
+        {
+            Ok(started) => started,
+            Err(err) => {
+                warn!(error = ?err, "failed to start protocol");
+                if let Err(err) =
+                    fail_resource_code_generation(socket, "failed to start protocol").await
+                {
+                    warn!(error = ?err, "failed to fail execute sync");
+                };
+                return;
+            }
+        };
+        let proto = match proto.process(&mut socket).await {
+            Ok(processed) => processed,
+            Err(err) => {
+                warn!(error = ?err, "failed to process protocol");
+                if let Err(err) =
+                    fail_resource_code_generation(socket, "failed to process protocol").await
+                {
+                    warn!(error = ?err, "failed to fail execute sync");
+                };
+                return;
+            }
+        };
+        if let Err(err) = proto.finish(socket).await {
+            warn!(error = ?err, "failed to finish protocol");
+        }
+    }
+
+    wsu.on_upgrade(move |socket| {
+        handle_socket(
+            socket,
+            state,
+            telemetry_level.is_debug_or_lower(),
+            limit_request_guard,
+        )
+    })
+}
+
+async fn fail_resource_code_generation(
+    mut socket: WebSocket,
+    message: impl Into<String>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let msg = Message::<CodeGenerationResultSuccess>::fail(message).serialize_to_string()?;
     socket.send(ws::Message::Text(msg)).await?;
     socket.close().await?;
     Ok(())

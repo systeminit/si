@@ -8,13 +8,13 @@ use async_trait::async_trait;
 use cyclone::{
     canonical_command::CanonicalCommand,
     client::{
-        Connection, PingExecution, QualificationCheckExecution, QualificationCheckRequest,
-        ResolverFunctionExecution, ResolverFunctionRequest, ResourceSyncExecution, Watch,
-        WatchError, WatchStarted,
+        CodeGenerationExecution, Connection, PingExecution, QualificationCheckExecution,
+        QualificationCheckRequest, ResolverFunctionExecution, ResolverFunctionRequest,
+        ResourceSyncExecution, Watch, WatchError, WatchStarted,
     },
     process::{self, ShutdownError},
-    Client, ClientError, CycloneClient, HttpClient, LivenessStatus, ReadinessStatus,
-    ResourceSyncRequest,
+    Client, ClientError, CodeGenerationRequest, CycloneClient, HttpClient, LivenessStatus,
+    ReadinessStatus, ResourceSyncRequest,
 };
 use derive_builder::Builder;
 use futures::StreamExt;
@@ -174,6 +174,20 @@ impl CycloneClient<TcpStream> for LocalHttpInstance {
             .map_err(ClientError::unhealthy)?;
 
         let result = self.client.execute_sync(request).await;
+        self.count_request();
+
+        result
+    }
+
+    async fn execute_code_generation(
+        &mut self,
+        request: CodeGenerationRequest,
+    ) -> result::Result<CodeGenerationExecution<TcpStream>, ClientError> {
+        self.ensure_healthy_client()
+            .await
+            .map_err(ClientError::unhealthy)?;
+
+        let result = self.client.execute_code_generation(request).await;
         self.count_request();
 
         result

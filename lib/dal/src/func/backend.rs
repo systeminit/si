@@ -8,6 +8,7 @@ use crate::{edit_field::ToSelectWidget, label_list::ToLabelList, PropKind};
 pub mod array;
 pub mod boolean;
 pub mod integer;
+pub mod js_code_generation;
 pub mod js_qualification;
 pub mod js_resource;
 pub mod js_string;
@@ -62,6 +63,7 @@ pub enum FuncBackendKind {
     Integer,
     JsQualification,
     JsResourceSync,
+    JsCodeGeneration,
     JsString,
     PropObject,
     String,
@@ -95,6 +97,7 @@ pub enum FuncBackendResponseType {
     PropObject,
     Qualification,
     ResourceSync,
+    CodeGeneration,
     String,
     Unset,
     // Commented out while we climb back up - Adam & Fletcher
