@@ -1074,7 +1074,7 @@ impl Component {
                 } else {
                     let mut resolver_context = CodeGenerationResolverContext::new();
                     resolver_context.set_component_id(*self.id());
-                    CodeGenerationResolver::new(
+                    let _resolver = CodeGenerationResolver::new(
                         txn,
                         nats,
                         tenancy,
