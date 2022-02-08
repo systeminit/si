@@ -32,6 +32,7 @@ pk!(SystemPk);
 pk!(SystemId);
 
 pub const UNSET_ID_VALUE: i64 = -1;
+pub const UNSET_SYSTEM_ID: SystemId = SystemId(-1_i64);
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct System {

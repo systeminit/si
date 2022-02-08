@@ -61,7 +61,7 @@ pub use code_generation_prototype::{
 pub use code_generation_resolver::{
     CodeGenerationResolver, CodeGenerationResolverError, CodeGenerationResolverId,
 };
-pub use component::{Component, ComponentError, ComponentId};
+pub use component::{Component, ComponentError, ComponentId, ComponentView};
 pub use edge::{Edge, EdgeError, EdgeResult};
 pub use edit_session::{
     EditSession, EditSessionError, EditSessionPk, EditSessionStatus, NO_EDIT_SESSION_PK,

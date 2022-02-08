@@ -12,10 +12,10 @@ use crate::{
     },
     impl_standard_model, pk,
     socket::{Socket, SocketError, SocketId},
-    standard_model, standard_model_accessor, standard_model_belongs_to,
-    standard_model_many_to_many, HistoryActor, HistoryEventError, Prop, PropError, PropId,
-    PropKind, Schema, SchemaId, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
-    WsEventError,
+    standard_model::{self, objects_from_rows},
+    standard_model_accessor, standard_model_belongs_to, standard_model_many_to_many, HistoryActor,
+    HistoryEventError, Prop, PropError, PropId, PropKind, Schema, SchemaId, StandardModel,
+    StandardModelError, Tenancy, Timestamp, Visibility, WsEventError,
 };
 
 #[derive(Error, Debug)]
@@ -43,6 +43,8 @@ pub enum SchemaVariantError {
 }
 
 pub type SchemaVariantResult<T> = Result<T, SchemaVariantError>;
+
+const ALL_PROPS: &str = include_str!("../queries/schema_variant_all_props.sql");
 
 pk!(SchemaVariantPk);
 pk!(SchemaVariantId);
@@ -138,6 +140,18 @@ impl SchemaVariant {
         returns: Prop,
         result: SchemaVariantResult,
     );
+
+    pub async fn all_props(
+        &self,
+        txn: &PgTxn<'_>,
+        visibility: &Visibility,
+    ) -> SchemaVariantResult<Vec<Prop>> {
+        let rows = txn
+            .query(ALL_PROPS, &[&self.tenancy(), &visibility, self.id()])
+            .await?;
+        let results = objects_from_rows(rows)?;
+        Ok(results)
+    }
 
     fn edit_field_object_kind() -> EditFieldObjectKind {
         EditFieldObjectKind::SchemaVariant

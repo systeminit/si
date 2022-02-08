@@ -7,7 +7,7 @@ use thiserror::Error;
 use crate::{
     func::{binding::FuncBindingId, binding_return_value::FuncBindingReturnValue, FuncId},
     impl_standard_model, pk, standard_model, standard_model_accessor, ComponentId, HistoryActor,
-    HistoryEventError, PropId, SchemaId, SchemaVariantId, StandardModel, StandardModelError,
+    HistoryEventError, Prop, PropId, SchemaId, SchemaVariantId, StandardModel, StandardModelError,
     SystemId, Tenancy, Timestamp, Visibility,
 };
 
@@ -31,6 +31,8 @@ pub const UNSET_ID_VALUE: i64 = -1;
 const FIND_FOR_CONTEXT: &str = include_str!("./queries/attribute_resolver_find_for_context.sql");
 const FIND_VALUE_FOR_CONTEXT: &str =
     include_str!("./queries/attribute_resolver_find_value_for_context.sql");
+const LIST_VALUES_FOR_COMPONENT: &str =
+    include_str!("./queries/attribute_resolver_list_values_for_component.sql");
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct AttributeResolverContext {
@@ -255,6 +257,31 @@ impl AttributeResolver {
             .await?;
         let object = standard_model::object_from_row(row)?;
         Ok(object)
+    }
+
+    pub async fn list_values_for_component(
+        txn: &PgTxn<'_>,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+        component_id: ComponentId,
+        system_id: SystemId,
+    ) -> AttributeResolverResult<Vec<(Prop, Option<PropId>, FuncBindingReturnValue)>> {
+        let rows = txn
+            .query(
+                LIST_VALUES_FOR_COMPONENT,
+                &[&tenancy, &visibility, &component_id, &system_id],
+            )
+            .await?;
+        let mut result = Vec::new();
+        for row in rows.into_iter() {
+            let json: serde_json::Value = row.try_get("object")?;
+            let object: FuncBindingReturnValue = serde_json::from_value(json)?;
+            let prop_json: serde_json::Value = row.try_get("prop_object")?;
+            let prop: Prop = serde_json::from_value(prop_json)?;
+            let parent_prop_id: Option<PropId> = row.try_get("parent_prop_id")?;
+            result.push((prop, parent_prop_id, object));
+        }
+        Ok(result)
     }
 }
 

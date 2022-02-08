@@ -617,6 +617,29 @@ pub async fn create_prop_of_kind(
     .expect("cannot create prop")
 }
 
+pub async fn create_prop_of_kind_with_name(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    tenancy: &Tenancy,
+    visibility: &Visibility,
+    history_actor: &HistoryActor,
+    prop_kind: PropKind,
+    name: impl AsRef<str>,
+) -> Prop {
+    let name = name.as_ref();
+    Prop::new(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        name,
+        prop_kind,
+    )
+    .await
+    .expect("cannot create prop")
+}
+
 pub async fn create_func(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
