@@ -4,14 +4,13 @@ This is a monolithic repository containing the source for System Initiative (SI)
 
 ## Supported Developer Environments
 
-Environment | `x84_64 (amd64)` | `aarch64 (arm64)` | Validated On
---- | --- | --- | ---
-Arch Linux | ✅ | 🚫 | desktop
-Fedora | ✅ | 🚫 | server-side (EC2)
-macOS | ✅ | ✅ | desktop
-Pop!_OS | ✅ | 🚫 | desktop
-Ubuntu | ✅ | 🚫 | desktop
-WSL2 | ✅ | 🚫 | desktop
+Environment | `x84_64 (amd64)` | `aarch64 (arm64)`
+--- | --- | ---
+Arch Linux | ✅ | 🚫
+Fedora | ✅ | 🚫
+macOS | ✅ | ✅
+Ubuntu | ✅ | 🚫
+WSL2 | ✅ | 🚫
 
 We recommend using the latest stable Rust toolchain and latest LTS Node toolchain for your environment.
 If unsure, the following tools are recommended to help manage your toolchains:
@@ -30,6 +29,19 @@ If your preferred environment is not listed, please feel free to add it once the
 _Please note:_ adding your preferred environment will also add you as a maintainer of its functionality throughout this repository.
 If unsure where to start, you can look at a [PR from the past](https://github.com/systeminit/si/pull/589) to help.
 If you are no longer using the environment, and you are the sole maintainer of the environment, you must remove it from the bootstrapper and the table above.
+
+### Notes on `aarch64 (arm64)`
+
+Few SI dependencies rely on using an `x86_64 (amd64)` host.
+Fortunately, a compatibility layer, such as [Rosetta 2 on macOS](https://support.apple.com/en-us/HT211861) should suffice during builds.
+You can install Rosetta 2 on macOS by executing the following:
+
+```bash
+softwareupdate --install-rosetta
+```
+
+Despite the above, if any dependency can be made to work on both `aarch64 (arm64)` and `x86_64 (amd64)`, we should do attempt to do so.
+Not only is flexibility between architectures useful for local development, but it may also be useful in CI and/or production.
 
 ## Quickstart
 
