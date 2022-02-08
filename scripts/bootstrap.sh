@@ -56,7 +56,7 @@ function darwin-bootstrap {
     brew update
     brew upgrade
     brew cleanup
-    brew install bash make git skopeo
+    brew install bash make git skopeo libtool automake
 }
 
 function arch-bootstrap {
@@ -88,8 +88,6 @@ function perform-bootstrap {
         arch-bootstrap
     elif [ "$SI_OS" = "fedora" ] && [ "$SI_ARCH" = "x86_64" ]; then
         fedora-bootstrap
-    elif [ "$SI_OS" = "pop" ] && [ "$SI_ARCH" = "x86_64" ]; then
-        ubuntu-bootstrap
     elif [ "$SI_OS" = "ubuntu" ] && [ "$SI_ARCH" = "x86_64" ]; then
         ubuntu-bootstrap
     else
