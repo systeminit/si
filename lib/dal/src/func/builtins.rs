@@ -14,9 +14,11 @@ pub async fn migrate(txn: &PgTxn<'_>, nats: &NatsTxn) -> FuncResult<()> {
 
     si_set_array(txn, nats, &tenancy, &visibility, &history_actor).await?;
     si_set_boolean(txn, nats, &tenancy, &visibility, &history_actor).await?;
-    si_set_string(txn, nats, &tenancy, &visibility, &history_actor).await?;
     si_set_integer(txn, nats, &tenancy, &visibility, &history_actor).await?;
+    si_set_map(txn, nats, &tenancy, &visibility, &history_actor).await?;
     si_set_prop_object(txn, nats, &tenancy, &visibility, &history_actor).await?;
+    si_set_string(txn, nats, &tenancy, &visibility, &history_actor).await?;
+
     si_unset(txn, nats, &tenancy, &visibility, &history_actor).await?;
     si_validate_string_equals(txn, nats, &tenancy, &visibility, &history_actor).await?;
     si_qualification_always_true(txn, nats, &tenancy, &visibility, &history_actor).await?;
@@ -175,38 +177,6 @@ async fn si_set_boolean(
     Ok(())
 }
 
-async fn si_set_string(
-    txn: &PgTxn<'_>,
-    nats: &NatsTxn,
-    tenancy: &Tenancy,
-    visibility: &Visibility,
-    history_actor: &HistoryActor,
-) -> FuncResult<()> {
-    let existing_func = Func::find_by_attr(
-        txn,
-        tenancy,
-        visibility,
-        "name",
-        &"si:setString".to_string(),
-    )
-    .await?;
-    if existing_func.is_empty() {
-        Func::new(
-            txn,
-            nats,
-            tenancy,
-            visibility,
-            history_actor,
-            "si:setString",
-            FuncBackendKind::String,
-            FuncBackendResponseType::String,
-        )
-        .await
-        .expect("cannot create func");
-    }
-    Ok(())
-}
-
 async fn si_set_integer(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
@@ -270,6 +240,65 @@ async fn si_set_prop_object(
         .expect("cannot create func");
     }
 
+    Ok(())
+}
+
+async fn si_set_map(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    tenancy: &Tenancy,
+    visibility: &Visibility,
+    history_actor: &HistoryActor,
+) -> FuncResult<()> {
+    let existing_func =
+        Func::find_by_attr(txn, tenancy, visibility, "name", &"si:setMap".to_string()).await?;
+    if existing_func.is_empty() {
+        Func::new(
+            txn,
+            nats,
+            tenancy,
+            visibility,
+            history_actor,
+            "si:setMap",
+            FuncBackendKind::Map,
+            FuncBackendResponseType::Map,
+        )
+        .await
+        .expect("cannot create func");
+    }
+
+    Ok(())
+}
+
+async fn si_set_string(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    tenancy: &Tenancy,
+    visibility: &Visibility,
+    history_actor: &HistoryActor,
+) -> FuncResult<()> {
+    let existing_func = Func::find_by_attr(
+        txn,
+        tenancy,
+        visibility,
+        "name",
+        &"si:setString".to_string(),
+    )
+    .await?;
+    if existing_func.is_empty() {
+        Func::new(
+            txn,
+            nats,
+            tenancy,
+            visibility,
+            history_actor,
+            "si:setString",
+            FuncBackendKind::String,
+            FuncBackendResponseType::String,
+        )
+        .await
+        .expect("cannot create func");
+    }
     Ok(())
 }
 

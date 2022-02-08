@@ -12,6 +12,7 @@ pub mod js_code_generation;
 pub mod js_qualification;
 pub mod js_resource;
 pub mod js_string;
+pub mod map;
 pub mod prop_object;
 pub mod string;
 pub mod validation;
@@ -26,6 +27,8 @@ pub enum FuncBackendError {
     InvalidBooleanData(serde_json::Value),
     #[error("invalid data - expected an integer, got: {0}")]
     InvalidIntegerData(serde_json::Value),
+    #[error("invalid data - expected a map, got: {0}")]
+    InvalidMapData(serde_json::Value),
     #[error("invalid data - expected a prop object, got: {0}")]
     InvalidPropObjectData(serde_json::Value),
     #[error("invalid data - expected a string, got: {0}")]
@@ -65,6 +68,7 @@ pub enum FuncBackendKind {
     JsResourceSync,
     JsCodeGeneration,
     JsString,
+    Map,
     PropObject,
     String,
     Unset,
@@ -94,6 +98,7 @@ pub enum FuncBackendResponseType {
     Array,
     Boolean,
     Integer,
+    Map,
     PropObject,
     Qualification,
     ResourceSync,

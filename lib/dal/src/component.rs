@@ -15,6 +15,7 @@ use crate::edit_field::{
     EditFieldError, EditFieldObjectKind, EditFields,
 };
 use crate::func::backend::integer::FuncBackendIntegerArgs;
+use crate::func::backend::map::FuncBackendMapArgs;
 use crate::func::backend::validation::{FuncBackendValidateStringValueArgs, ValidationError};
 use crate::func::backend::{
     js_code_generation::FuncBackendJsCodeGenerationArgs,
@@ -627,6 +628,42 @@ impl Component {
             (PropKind::Integer, None) => {
                 todo!("Unsetting a Integer PropKind isn't supported yet");
             }
+            (PropKind::Map, Some(value_json)) => {
+                let value = match value_json.as_object() {
+                    Some(map) => map,
+                    None => {
+                        return Err(ComponentError::InvalidPropValue(
+                            "Map".to_string(),
+                            value_json,
+                        ))
+                    }
+                };
+
+                let func_name = "si:setMap".to_string();
+                let mut funcs =
+                    Func::find_by_attr(txn, tenancy, visibility, "name", &func_name).await?;
+                let func = funcs.pop().ok_or(ComponentError::MissingFunc(func_name))?;
+                let args = serde_json::to_value(FuncBackendMapArgs::new(value.clone()))?;
+                let (func_binding, created) = FuncBinding::find_or_create(
+                    txn,
+                    nats,
+                    tenancy,
+                    visibility,
+                    history_actor,
+                    args,
+                    *func.id(),
+                    *func.backend_kind(),
+                )
+                .await?;
+
+                if created {
+                    func_binding.execute(txn, nats, veritech.clone()).await?;
+                }
+                (func, func_binding, created)
+            }
+            (PropKind::Map, None) => {
+                todo!("Unsetting a Map PropKind isn't supported yet");
+            }
             (PropKind::Object, Some(value_json)) => {
                 let value = match value_json.as_object() {
                     Some(object) => object,
@@ -744,9 +781,6 @@ impl Component {
                 } else {
                     todo!("Unsetting a String PropKind without a fallback AttributeResolver isn't supported yet");
                 }
-            }
-            (PropKind::Map, _) => {
-                todo!("deal with maps!");
             }
         };
 
