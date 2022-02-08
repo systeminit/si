@@ -11,6 +11,7 @@ use veritech::{
 use crate::func::backend::array::{FuncBackendArray, FuncBackendArrayArgs};
 use crate::func::backend::boolean::{FuncBackendBoolean, FuncBackendBooleanArgs};
 use crate::func::backend::integer::{FuncBackendInteger, FuncBackendIntegerArgs};
+use crate::func::backend::map::{FuncBackendMap, FuncBackendMapArgs};
 use crate::func::backend::prop_object::{FuncBackendPropObject, FuncBackendPropObjectArgs};
 use crate::func::backend::{
     js_code_generation::FuncBackendJsCodeGeneration,
@@ -376,6 +377,14 @@ impl FuncBinding {
                 .execute()
                 .await?;
                 execution.process_output(txn, nats, rx).await?;
+                Some(return_value)
+            }
+            FuncBackendKind::Map => {
+                execution
+                    .set_state(txn, nats, super::execution::FuncExecutionState::Run)
+                    .await?;
+                let args: FuncBackendMapArgs = serde_json::from_value(self.args.clone())?;
+                let return_value = FuncBackendMap::new(args).execute().await?;
                 Some(return_value)
             }
             FuncBackendKind::PropObject => {
