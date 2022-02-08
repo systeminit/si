@@ -1,10 +1,9 @@
 use std::collections::HashMap;
 
-use crate::code_generation_prototype::CodeGenerationPrototypeContext;
-use crate::func::backend::js_code_generation::FuncBackendJsCodeGenerationArgs;
 use crate::func::backend::js_qualification::FuncBackendJsQualificationArgs;
 use crate::func::backend::js_resource::FuncBackendJsResourceSyncArgs;
 use crate::func::backend::js_string::FuncBackendJsStringArgs;
+use crate::func::backend::string::FuncBackendStringArgs;
 use crate::func::backend::validation::FuncBackendValidateStringValueArgs;
 use crate::qualification_prototype::QualificationPrototypeContext;
 use crate::resource_prototype::ResourcePrototypeContext;
@@ -12,12 +11,19 @@ use crate::schema::{SchemaResult, SchemaVariant, UiMenu};
 use crate::socket::{Socket, SocketArity, SocketEdgeKind};
 use crate::{
     attribute_resolver::AttributeResolverContext, func::binding::FuncBinding,
-    validation_prototype::ValidationPrototypeContext, AttributeResolver, CodeGenerationPrototype,
-    Func, HistoryActor, Prop, PropKind, QualificationPrototype, ResourcePrototype, Schema,
-    SchemaError, SchemaKind, SchematicKind, StandardModel, Tenancy, ValidationPrototype,
-    Visibility,
+    validation_prototype::ValidationPrototypeContext, AttributeResolver, Func, HistoryActor, Prop,
+    PropId, PropKind, QualificationPrototype, ResourcePrototype, Schema, SchemaError, SchemaKind,
+    SchemaVariantId, SchematicKind, StandardModel, Tenancy, ValidationPrototype, Visibility,
 };
 use si_data::{NatsTxn, PgTxn};
+
+mod kubernetes_deployment;
+mod kubernetes_metadata;
+mod kubernetes_selector;
+mod kubernetes_spec;
+mod kubernetes_template;
+
+use self::kubernetes_deployment::kubernetes_deployment;
 
 pub async fn migrate(
     txn: &PgTxn<'_>,
@@ -34,7 +40,15 @@ pub async fn migrate(
     application(txn, nats, &tenancy, &visibility, &history_actor).await?;
     service(txn, nats, &tenancy, &visibility, &history_actor).await?;
     kubernetes_service(txn, nats, &tenancy, &visibility, &history_actor).await?;
-    kubernetes_deployment(txn, nats, &tenancy, &visibility, &history_actor).await?;
+    kubernetes_deployment(
+        txn,
+        nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        veritech.clone(),
+    )
+    .await?;
     docker_image(txn, nats, &tenancy, &visibility, &history_actor, veritech).await?;
 
     Ok(())
@@ -384,179 +398,6 @@ async fn kubernetes_service(
     Ok(())
 }
 
-async fn kubernetes_deployment(
-    txn: &PgTxn<'_>,
-    nats: &NatsTxn,
-    tenancy: &Tenancy,
-    visibility: &Visibility,
-    history_actor: &HistoryActor,
-) -> SchemaResult<()> {
-    let name = "kubernetes_deployment".to_string();
-    let mut schema = match create_schema(
-        txn,
-        nats,
-        tenancy,
-        visibility,
-        history_actor,
-        &name,
-        &SchemaKind::Concept, // Note: what is this?
-    )
-    .await?
-    {
-        Some(schema) => schema,
-        None => return Ok(()),
-    };
-
-    let variant = SchemaVariant::new(txn, nats, tenancy, visibility, history_actor, "v0").await?;
-    variant
-        .set_schema(txn, nats, visibility, history_actor, schema.id())
-        .await?;
-    schema
-        .set_default_schema_variant_id(txn, nats, visibility, history_actor, Some(*variant.id()))
-        .await?;
-
-    let mut ui_menu = UiMenu::new(txn, nats, tenancy, visibility, history_actor).await?;
-    ui_menu
-        .set_name(
-            txn,
-            nats,
-            visibility,
-            history_actor,
-            Some(schema.name().to_string()),
-        )
-        .await?;
-
-    let application_name = "application".to_string();
-    ui_menu
-        .set_category(
-            txn,
-            nats,
-            visibility,
-            history_actor,
-            Some(application_name.clone()),
-        )
-        .await?;
-    ui_menu
-        .set_schematic_kind(
-            txn,
-            nats,
-            visibility,
-            history_actor,
-            SchematicKind::Deployment,
-        )
-        .await?;
-    ui_menu
-        .set_schema(txn, nats, visibility, history_actor, schema.id())
-        .await?;
-
-    let application_schema_results =
-        Schema::find_by_attr(txn, tenancy, visibility, "name", &application_name).await?;
-    let application_schema = application_schema_results
-        .first()
-        .ok_or(SchemaError::NotFoundByName(application_name))?;
-    ui_menu
-        .add_root_schematic(
-            txn,
-            nats,
-            visibility,
-            history_actor,
-            application_schema.id(),
-        )
-        .await?;
-
-    let replicas_prop = Prop::new(
-        txn,
-        nats,
-        tenancy,
-        visibility,
-        history_actor,
-        "replicas",
-        PropKind::Integer,
-    )
-    .await?;
-    replicas_prop
-        .add_schema_variant(txn, nats, visibility, history_actor, variant.id())
-        .await?;
-
-    // Code Generation Prototype
-    let code_generation_func_name = "si:generateYAML".to_owned();
-    let mut code_generation_funcs =
-        Func::find_by_attr(txn, tenancy, visibility, "name", &code_generation_func_name).await?;
-    let code_generation_func = code_generation_funcs
-        .pop()
-        .ok_or(SchemaError::FuncNotFound(code_generation_func_name))?;
-    let code_generation_args = FuncBackendJsCodeGenerationArgs {
-        component: veritech::CodeGenerationComponent::default(),
-    };
-    let code_generation_args_json = serde_json::to_value(&code_generation_args)?;
-    let mut code_generation_prototype_context = CodeGenerationPrototypeContext::new();
-    code_generation_prototype_context.set_schema_variant_id(*variant.id());
-
-    let _prototype = CodeGenerationPrototype::new(
-        txn,
-        nats,
-        tenancy,
-        visibility,
-        history_actor,
-        *code_generation_func.id(),
-        code_generation_args_json,
-        code_generation_prototype_context,
-    )
-    .await?;
-
-    // Note: This is not right; each schema needs its own socket types.
-    //       Also, they should clearly inherit from the core schema? Something
-    //       for later.
-    let input_socket = Socket::new(
-        txn,
-        nats,
-        tenancy,
-        visibility,
-        history_actor,
-        "input",
-        &SocketEdgeKind::Configures,
-        &SocketArity::Many,
-    )
-    .await?;
-    variant
-        .add_socket(txn, nats, visibility, history_actor, input_socket.id())
-        .await?;
-
-    let output_socket = Socket::new(
-        txn,
-        nats,
-        tenancy,
-        visibility,
-        history_actor,
-        "output",
-        &SocketEdgeKind::Output,
-        &SocketArity::Many,
-    )
-    .await?;
-    variant
-        .add_socket(txn, nats, visibility, history_actor, output_socket.id())
-        .await?;
-
-    let includes_socket = Socket::new(
-        txn,
-        nats,
-        tenancy,
-        visibility,
-        history_actor,
-        "includes",
-        &SocketEdgeKind::Includes,
-        &SocketArity::Many,
-    )
-    .await?;
-    variant
-        .add_socket(txn, nats, visibility, history_actor, includes_socket.id())
-        .await?;
-
-    // TODO: what validations & qualifications do we want here?
-
-    Ok(())
-}
-
 async fn docker_image(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
@@ -897,4 +738,98 @@ async fn create_schema(
             Ok(Some(schema))
         }
     }
+}
+
+#[allow(clippy::too_many_arguments)]
+pub async fn create_prop(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    tenancy: &Tenancy,
+    visibility: &Visibility,
+    history_actor: &HistoryActor,
+    variant_id: &SchemaVariantId,
+    prop_name: &str,
+    prop_kind: PropKind,
+    parent_prop_id: Option<PropId>,
+) -> SchemaResult<Prop> {
+    let prop = Prop::new(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        prop_name,
+        prop_kind,
+    )
+    .await?;
+    prop.add_schema_variant(txn, nats, visibility, history_actor, variant_id)
+        .await?;
+    if let Some(parent_prop_id) = parent_prop_id {
+        prop.set_parent_prop(txn, nats, visibility, history_actor, parent_prop_id)
+            .await?;
+    }
+    Ok(prop)
+}
+
+#[allow(clippy::too_many_arguments)]
+pub async fn create_string_prop_with_default(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    tenancy: &Tenancy,
+    visibility: &Visibility,
+    history_actor: &HistoryActor,
+    variant_id: &SchemaVariantId,
+    prop_name: &str,
+    default_string: String,
+    parent_prop_id: Option<PropId>,
+    veritech: veritech::Client,
+) -> SchemaResult<Prop> {
+    let prop = create_prop(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        variant_id,
+        prop_name,
+        PropKind::String,
+        parent_prop_id,
+    )
+    .await?;
+
+    let func_name = "si:setString".to_string();
+    let mut funcs = Func::find_by_attr(txn, tenancy, visibility, "name", &func_name).await?;
+    let func = funcs.pop().ok_or(SchemaError::MissingFunc(func_name))?;
+    let (func_binding, created) = FuncBinding::find_or_create(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        serde_json::to_value(FuncBackendStringArgs {
+            value: default_string,
+        })?,
+        *func.id(),
+        *func.backend_kind(),
+    )
+    .await?;
+
+    if created {
+        func_binding.execute(txn, nats, veritech).await?;
+    }
+
+    let mut attribute_resolver_context = AttributeResolverContext::new();
+    attribute_resolver_context.set_prop_id(*prop.id());
+    AttributeResolver::upsert(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        *func.id(),
+        *func_binding.id(),
+        attribute_resolver_context,
+    )
+    .await?;
+    Ok(prop)
 }

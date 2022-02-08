@@ -1589,7 +1589,14 @@ impl EditFieldAble for Component {
             .ok_or(ComponentError::SchemaVariantNotFound)?;
 
         let props = schema_variant.props(txn, visibility).await?;
-        for prop in props.iter() {
+        for prop in &props {
+            // TODO: remove this as soon as edit fields are implemented
+            // But for now we need the boilerplate to setup the props even if not editable
+            // So it was breaking some tests
+            if *prop.kind() == PropKind::Array || *prop.kind() == PropKind::Map {
+                continue;
+            }
+
             edit_fields.push(
                 edit_field_for_prop(
                     txn,
@@ -1768,6 +1775,13 @@ async fn edit_field_for_prop(
             //       less gross.
             let mut child_edit_fields = vec![];
             for child_prop in prop.child_props(txn, tenancy, visibility).await? {
+                // TODO: remove this as soon as edit fields are implemented
+                // But for now we need the boilerplate to setup the props even if not editable
+                // So it was breaking some tests
+                if *child_prop.kind() == PropKind::Array || *child_prop.kind() == PropKind::Map {
+                    continue;
+                }
+
                 child_edit_fields.push(
                     edit_field_for_prop(
                         txn,
