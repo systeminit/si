@@ -489,7 +489,7 @@ mod tests {
         });
 
         let mut properties = HashMap::new();
-        properties.insert("pkg".to_string(), serde_json::json!("cider"));
+        properties.insert("image".to_owned(), serde_json::json!("systeminit/whiskers"));
 
         let mut request = QualificationCheckRequest {
             execution_id: "5678".to_string(),
@@ -499,18 +499,12 @@ mod tests {
                 properties,
             },
             code_base64: base64::encode(indoc! {r#"
-                function check(component) {
-                    const name = component.name;
-                    const pkg = component.properties?.pkg;
-
-                    if (name == pkg) {
-                        return { qualified: true };
-                    } else {
-                        return {
-                            qualified: false,
-                            message: "name '" + name + "' doesn't match pkg '" + pkg + "'",
-                        };
-                    }
+                async function check(component) {
+                    const child = await siExec.waitUntilEnd("skopeo", ["inspect", `docker://docker.io/${component.properties.image}`]);
+                    return {
+                        qualified: child.exitCode === 0,
+                        message: child.exitCode === 0 ? child.stdout : child.stderr,
+                    };
                 }
             "#}),
         };
@@ -524,8 +518,20 @@ mod tests {
         match result {
             FunctionResult::Success(success) => {
                 assert_eq!(success.execution_id, "5678");
+                // Note: this might be fragile, as skopeo stdout API might change (?)
+                assert_eq!(
+                    serde_json::from_str::<serde_json::Value>(
+                        &success.message.expect("Message is None")
+                    )
+                    .expect("Message is not a json")
+                    .as_object()
+                    .expect("Message isn't an object")
+                    .get("Name")
+                    .expect("Key Name wasn't found")
+                    .as_str(),
+                    Some("docker.io/systeminit/whiskers")
+                );
                 assert!(success.qualified);
-                assert_eq!(success.message, None);
             }
             FunctionResult::Failure(failure) => {
                 panic!("function did not succeed and should have: {:?}", failure)
@@ -534,6 +540,11 @@ mod tests {
 
         request.execution_id = "9012".to_string();
         request.component.name = "emacs".to_string();
+        *request
+            .component
+            .properties
+            .get_mut("image")
+            .expect("key image not found") = serde_json::json!("abc");
 
         // Now update the request to re-run an unqualified check (i.e. qualification returning
         // qualified == false)
@@ -546,10 +557,6 @@ mod tests {
             FunctionResult::Success(success) => {
                 assert_eq!(success.execution_id, "9012");
                 assert!(!success.qualified);
-                assert_eq!(
-                    success.message,
-                    Some("name 'emacs' doesn't match pkg 'cider'".to_string())
-                );
             }
             FunctionResult::Failure(failure) => {
                 panic!("function did not succeed and should have: {:?}", failure)

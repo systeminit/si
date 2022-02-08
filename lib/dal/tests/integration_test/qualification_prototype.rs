@@ -36,13 +36,13 @@ async fn new() {
     .await
     .expect("could not create component");
 
-    let func_name = "si:qualificationDockerImageNameEqualsComponentName".to_string();
+    let func_name = "si:qualificationDockerImageNameInspect".to_string();
     let mut funcs = Func::find_by_attr(&txn, &tenancy, &visibility, "name", &func_name)
         .await
         .expect("Error fetching builtin function");
     let func = funcs
         .pop()
-        .expect("Missing builtin function si:qualificationDockerImageNameEqualsComponentName");
+        .expect("Missing builtin function si:qualificationDockerImageNameInspect");
 
     let args = FuncBackendJsQualificationArgs {
         component: component

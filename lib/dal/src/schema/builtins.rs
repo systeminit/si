@@ -796,7 +796,7 @@ async fn docker_image(
         .await?;
 
     // Qualification Prototype
-    let qual_func_name = "si:qualificationDockerImageNameEqualsComponentName".to_string();
+    let qual_func_name = "si:qualificationDockerImageNameInspect".to_string();
     let mut qual_funcs =
         Func::find_by_attr(txn, tenancy, visibility, "name", &qual_func_name).await?;
     let qual_func = qual_funcs
