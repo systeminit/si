@@ -97,11 +97,14 @@ export class SceneManager {
   loadSceneData(data: SceneGraphData | null): void {
     this.initializeSceneData();
 
+    let render = false;
+
     if (data) {
       for (const n of data.nodes) {
         if (n.position.length > 0) {
           const node = new OBJ.Node(n);
           this.addNode(node);
+          render = true;
         } else {
           // console.error("Node didn't have a position:", n);
         }
@@ -109,31 +112,40 @@ export class SceneManager {
 
       if (data.connections.length > 0) {
         for (const connection of data.connections) {
-          const sourceSocketId = `${connection.source.nodeId}.${connection.source.socketId}`;
-          const sourceSocket = this.scene.getChildByName(sourceSocketId, true);
+          if (connection.classification === "configures") {
+            const sourceSocketId = `${connection.source.nodeId}.${connection.source.socketId}`;
+            const sourceSocket = this.scene.getChildByName(
+              sourceSocketId,
+              true,
+            );
 
-          const destinationSocketId = `${connection.destination.nodeId}.${connection.destination.socketId}`;
-          const destinationSocket = this.scene.getChildByName(
-            destinationSocketId,
-            true,
-          );
+            const destinationSocketId = `${connection.destination.nodeId}.${connection.destination.socketId}`;
+            const destinationSocket = this.scene.getChildByName(
+              destinationSocketId,
+              true,
+            );
 
-          this.createConnection(
-            sourceSocket.getGlobalPosition(),
-            destinationSocket.getGlobalPosition(),
-            sourceSocket.name,
-            destinationSocket.name,
-          );
+            this.createConnection(
+              sourceSocket.getGlobalPosition(),
+              destinationSocket.getGlobalPosition(),
+              sourceSocket.name,
+              destinationSocket.name,
+            );
+            render = true;
+          }
         }
       }
     }
-    this.renderer.renderStage();
+
+    if (render) {
+      this.renderer.renderStage();
+    }
   }
 
   reloadSceneData(data: SceneGraphData): void {
     this.initializeSceneData();
     this.loadSceneData(data);
-    this.renderer.renderStage();
+    // this.renderer.renderStage();
   }
 
   clearSceneData(): void {
@@ -191,7 +203,6 @@ export class SceneManager {
       destinationSocketId,
       _interactive,
     );
-
     let isConnectionUnique = true;
     if (this.group?.connections) {
       for (const c of this.group.connections.children) {
@@ -208,7 +219,6 @@ export class SceneManager {
       // this.renderConnection(connection); // causes an orphan edge to renders.
       return connection;
     } else {
-      console.log("connection already exist!");
       return null;
     }
   }
