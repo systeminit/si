@@ -28,14 +28,14 @@
     </div>
 
     <div
-      v-if="combined_output"
+      v-if="combinedOutput"
       class="flex flex-col flex-grow border-t border-gray-800"
     >
       <div class="mt-2 mb-1 ml-2 text-xs font-medium output-title">Output</div>
       <div
         class="px-6 text-xs leading-relaxed whitespace-pre-line select-text output-lines"
       >
-        {{ combined_output }}
+        {{ combinedOutput }}
       </div>
     </div>
   </div>
@@ -47,50 +47,40 @@ import {
   QualificationOutputStream,
   QualificationResult,
 } from "@/api/sdf/dal/qualification";
-import { computed, toRefs } from "vue";
+import { computed } from "vue";
 
 const props = defineProps<{
   result: QualificationResult;
   output?: Array<QualificationOutputStream>;
 }>();
 
-const { result, output } = toRefs(props);
-
 const subChecks = computed(() => {
-  if (result.value.sub_checks) {
-    return result.value.sub_checks;
+  if (props.result.sub_checks) {
+    return props.result.sub_checks;
+  } else if (props.result.success) {
+    return [
+      {
+        status: "Success",
+        description: "Qualification check succeeded",
+      },
+    ];
   } else {
-    if (result.value.success) {
-      return [
-        {
-          status: "Success",
-          description: "Qualification check succeeded",
-        },
-      ];
-    } else {
-      return [
-        {
-          status: "Failure",
-          description: "Qualification check failed",
-        },
-      ];
-    }
+    return [
+      {
+        status: "Failure",
+        description: "Qualification check failed",
+      },
+    ];
   }
 });
 
-const combined_output = computed((): string | false => {
-  if (output.value) {
-    let lines = "";
-    for (const stream of output.value) {
-      if (lines == "") {
-        lines = stream.line;
-      } else {
-        lines = lines + "\n" + stream.line;
-      }
-    }
-    return lines;
+const combinedOutput = computed((): string => {
+  if (props.output) {
+    const combined = props.output.map((entry) => entry.line).join("\n");
+    return combined;
+  } else {
+    return "";
   }
-  return false;
 });
 </script>
 

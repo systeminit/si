@@ -33,7 +33,7 @@ import { firstValueFrom } from "rxjs";
 
 const route = useRoute();
 const router = useRouter();
-const errorMessage = refFrom(
+const errorMessage = refFrom<string>(
   globalErrorMessage$.pipe(
     map((response) => {
       if (response?.error) {

@@ -1,5 +1,5 @@
 import { ReplaySubject } from "rxjs";
-import { WsResourceSyncedSaved, WsEvent } from "@/api/sdf/dal/ws_event";
+import { WsResourceSynced, WsEvent } from "@/api/sdf/dal/ws_event";
 
 export interface ResourceSyncId {
   componentId: number;

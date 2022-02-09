@@ -26,8 +26,8 @@ export interface TextWidgetDal {
 
 export interface SelectWidgetDal {
   kind: "Select";
-  options: LabelList<any>;
-  default?: any;
+  options: LabelList<unknown>;
+  default?: unknown;
 }
 
 export interface HeaderWidgetDal {
@@ -63,18 +63,20 @@ export interface VisibilityDiffNone {
 
 export interface VisibilityDiffHead {
   kind: "Head";
-  value: any;
+  value: unknown;
 }
 
 export interface VisibilityDiffChangeSet {
   kind: "ChangeSet";
-  value: any;
+  value: unknown;
 }
 
 export type VisibilityDiff =
   | VisibilityDiffNone
   | VisibilityDiffChangeSet
   | VisibilityDiffHead;
+
+export type EditFieldValues = null | boolean | number | string;
 
 export interface EditField {
   id: string;
@@ -84,10 +86,10 @@ export interface EditField {
   object_id: number;
   data_type: EditFieldDataType;
   widget: Widget;
-  value: any;
+  value?: EditFieldValues;
   visibility_diff: VisibilityDiff;
   validation_errors: ValidationErrors;
-  baggage?: any;
+  baggage?: unknown;
 }
 
 export type EditFields = Array<EditField>;

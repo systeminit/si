@@ -1,8 +1,8 @@
 import {
   BehaviorSubject,
   combineLatest,
-  Observable,
   share,
+  Subject,
   Subscription,
   tap,
 } from "rxjs";
@@ -12,11 +12,12 @@ export const sessionSaveEnabled$ = new BehaviorSubject<boolean>(false);
 export const sessionSubscriptions: {
   [key: string]: {
     subscription: Subscription;
-    observable: Observable<unknown>;
+    observable: Subject<unknown>;
   };
 } = {};
 
-export function persistToSession(key: string, obs: Observable<unknown>): void {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function persistToSession(key: string, obs: Subject<any>): void {
   const observable = combineLatest([obs, sessionSaveEnabled$]).pipe(
     tap(([obs, sessionSaveEnabled]) => {
       if (sessionSaveEnabled) {
@@ -29,7 +30,7 @@ export function persistToSession(key: string, obs: Observable<unknown>): void {
   sessionSubscriptions[key] = { observable: obs, subscription };
 }
 
-export function saveObservable(key: string, value: any): void {
+export function saveObservable(key: string, value: unknown): void {
   if (_.isUndefined(value)) {
     return;
   }
@@ -44,10 +45,10 @@ export function restoreFromSession(): void {
   sessionSaveEnabled$.next(true);
 }
 
-function restoreObservable(key: string, observable: any): void {
+function restoreObservable(key: string, obs: Subject<unknown>): void {
   const json = sessionStorage.getItem(key);
   if (json) {
     const data = JSON.parse(json);
-    observable.next(data);
+    obs.next(data);
   }
 }

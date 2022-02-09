@@ -45,7 +45,9 @@ const emit = defineEmits([
 ]);
 const panelType = ref<PanelType>(props.initialPanelType);
 
-const whichComponent = computed<any>(() => {
+const whichComponent = computed<
+  typeof PanelAttribute | typeof PanelSchematic | typeof PanelEmpty
+>(() => {
   if (panelType.value == "attribute") {
     return PanelAttribute;
   } else if (panelType.value == "schematic") {

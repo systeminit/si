@@ -19,30 +19,30 @@ export enum DragState {
   DRAGGING = "dragging",
 }
 
-export function activateDragging(i: Interpreter<any>): void {
+export function activateDragging(i: Interpreter<unknown>): void {
   i.send(DragEventKind.ACTIVATE_DRAGGING);
 }
 
-export function initiateDragging(i: Interpreter<any>): void {
+export function initiateDragging(i: Interpreter<unknown>): void {
   i.send(DragEventKind.INITIATE_DRAGGING);
 }
 
-export function dragging(i: Interpreter<any>): void {
+export function dragging(i: Interpreter<unknown>): void {
   i.send(DragEventKind.DRAGGING);
 }
 
-export function deactivateDragging(i: Interpreter<any>): void {
+export function deactivateDragging(i: Interpreter<unknown>): void {
   i.send(DragEventKind.DEACTIVATE_DRAGGING);
 }
 
-export function isDraggingActivated(i: Interpreter<any>): boolean {
+export function isDraggingActivated(i: Interpreter<unknown>): boolean {
   return i.state.matches(DragState.DRAGGING_ACTIVATED);
 }
 
-export function isDraggingInitiated(i: Interpreter<any>): boolean {
+export function isDraggingInitiated(i: Interpreter<unknown>): boolean {
   return i.state.matches(DragState.DRAGGING_INITIATED);
 }
 
-export function isDragging(i: Interpreter<any>): boolean {
+export function isDragging(i: Interpreter<unknown>): boolean {
   return i.state.matches(DragState.DRAGGING);
 }

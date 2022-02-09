@@ -4,7 +4,7 @@
   "scripts": {
     "dev": "vite",
     "start": "vite",
-    "type-check": "vue-tsc --noEmit",
+    "type-check": "vue-tsc --noEmit --skipLibCheck",
     "eslint": "eslint --ext .ts,.js,.vue --ignore-path .gitignore src",
     "build": "vite build",
     "build-pedantically": "vue-tsc --noEmit && vite build",
@@ -70,7 +70,7 @@
     "vue-loading-overlay": "^4.0.4",
     "vue-loading-template": "^1.3.2",
     "vue-router": "^4.0.11",
-    "vue-tsc": "^0.3.0",
+    "vue-tsc": "^0.31.1",
     "vuse-rx": "systeminit/vuse-rx#bug/fix-options"
   },
   "eslintConfig": {

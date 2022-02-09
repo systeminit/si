@@ -1,5 +1,5 @@
 <template>
-  <div v-if="isLoaded()">
+  <div v-if="schema">
     <div class="flex flex-col">
       <StatusBar />
       <SiChangeSetHeader>
@@ -7,10 +7,13 @@
       </SiChangeSetHeader>
     </div>
     <div>
-      <EditForm object-kind="Schema" :object-id="schemaId" />
+      <EditForm
+        :object-kind="EditFieldObjectKind.Schema"
+        :object-id="schemaId"
+      />
     </div>
   </div>
-  <div v-else-if="isNotFound()">
+  <div v-else>
     <NotFound></NotFound>
   </div>
 </template>
@@ -19,40 +22,31 @@
 import SiChangeSetHeader from "@/molecules/SiChangeSetHeader.vue";
 import NotFound from "@/pages/NotFound.vue";
 import { SchemaService } from "@/service/schema";
-import { refFrom } from "vuse-rx";
+import { fromRef, refFrom } from "vuse-rx";
 import { GlobalErrorService } from "@/service/global_error";
-import { tap } from "rxjs";
+import { combineLatest, switchMap, from } from "rxjs";
 import type { Schema } from "@/api/sdf/dal/schema";
-import { ApiResponse } from "@/api/sdf";
-import { ref } from "vue";
+import { EditFieldObjectKind } from "@/api/sdf/dal/edit_field";
 import EditForm from "@/organisims/EditForm.vue";
 import StatusBar from "@/molecules/StatusBar.vue";
 
-const props = defineProps({
-  schemaId: {
-    type: Number,
-    required: true,
-  },
-});
+const props = defineProps<{
+  schemaId: number;
+}>();
 
-enum ReadyState {
-  LOADING,
-  LOADED,
-  NOT_FOUND,
-}
+const props$ = fromRef(props, { immediate: true, deep: true });
 
-const ready = ref<ReadyState>(ReadyState.LOADING);
-const isLoaded = () => ready.value == ReadyState.LOADED;
-const isNotFound = () => ready.value == ReadyState.NOT_FOUND;
-
-const schema = refFrom<ApiResponse<Schema>>(
-  SchemaService.getSchema({ schemaId: props.schemaId.valueOf() }).pipe(
-    tap((response) => {
+const schema = refFrom<Schema | null>(
+  combineLatest([props$]).pipe(
+    switchMap(([props]) => {
+      return SchemaService.getSchema({ schemaId: props.schemaId });
+    }),
+    switchMap((response) => {
       if (response.error) {
         GlobalErrorService.set(response);
-        ready.value = ReadyState.NOT_FOUND;
+        return from([null]);
       } else {
-        ready.value = ReadyState.LOADED;
+        return from([response]);
       }
     }),
   ),

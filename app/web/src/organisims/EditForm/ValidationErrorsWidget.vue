@@ -26,20 +26,27 @@
 
 <script setup lang="ts">
 import VueFeather from "vue-feather";
-import type { ValidationErrors } from "@/api/sdf/dal/edit_field";
+import type {
+  ValidationError,
+  ValidationErrors,
+} from "@/api/sdf/dal/edit_field";
 
 const props = defineProps<{
   errors: ValidationErrors;
 }>();
 
-function strokeColorForLevel(level: string): string {
-  switch (level) {
-    case "warning":
-      return "yellow";
-    case "info":
-      return "grey";
-    default:
-      return "red";
+function strokeColorForLevel(level: ValidationError["level"]): string {
+  if (level === undefined) {
+    return "red";
+  } else {
+    switch (level) {
+      case "warning":
+        return "yellow";
+      case "info":
+        return "grey";
+      default:
+        return "red";
+    }
   }
 }
 </script>

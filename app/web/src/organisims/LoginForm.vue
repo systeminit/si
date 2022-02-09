@@ -131,8 +131,8 @@ export default defineComponent({
         }
       });
     },
-    inputStyling(inputKind: string): Record<string, any> {
-      let classes: Record<string, any> = {};
+    inputStyling(inputKind: string): Record<string, boolean> {
+      let classes: Record<string, boolean> = {};
 
       if (
         (inputKind == InputKind.BillingAccount &&
@@ -144,8 +144,8 @@ export default defineComponent({
       }
       return classes;
     },
-    loginButtonStyling(): Record<string, any> {
-      let classes: Record<string, any> = {};
+    loginButtonStyling(): Record<string, boolean> {
+      let classes: Record<string, boolean> = {};
 
       if (
         this.form.billingAccountName &&

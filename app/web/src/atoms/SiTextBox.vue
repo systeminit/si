@@ -41,7 +41,7 @@
 </template>
 
 <script setup lang="ts">
-import { defineProps, defineEmits, computed } from "vue";
+import { computed } from "vue";
 import VueFeather from "vue-feather";
 
 const props = defineProps({

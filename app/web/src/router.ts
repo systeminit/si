@@ -1,5 +1,11 @@
 import { config } from "@/config";
-import { createWebHistory, createRouter, RouteRecordRaw } from "vue-router";
+import {
+  createWebHistory,
+  createRouter,
+  RouteRecordRaw,
+  RouteLocationNormalized,
+  NavigationGuardNext,
+} from "vue-router";
 import { SessionService } from "@/service/session";
 import Home from "@/pages/Home.vue";
 import NotFoundPage from "@/pages/NotFound.vue";
@@ -133,7 +139,11 @@ const routes: RouteRecordRaw[] = [
   },
 ];
 
-export const routeCheck = async (to: any, _from: any, next: any) => {
+export const routeCheck = async (
+  to: RouteLocationNormalized,
+  _from: RouteLocationNormalized,
+  next: NavigationGuardNext,
+) => {
   if (to.path == "/authenticate/signup" || to.path == "/authenticate/login") {
     return next();
   }
@@ -154,8 +164,14 @@ const router = createRouter({
   routes,
 });
 
-router.beforeEach(async (to, from, next) => {
-  await routeCheck(to, from, next);
-});
+router.beforeEach(
+  async (
+    to: RouteLocationNormalized,
+    from: RouteLocationNormalized,
+    next: NavigationGuardNext,
+  ) => {
+    await routeCheck(to, from, next);
+  },
+);
 
 export default router;

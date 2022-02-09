@@ -476,7 +476,7 @@ const panelRefName = (panelIndex: number) => {
 };
 
 const resizerHolderClasses = () => {
-  let classes: Record<string, any> = {
+  let classes: Record<string, boolean> = {
     flex: true,
     "flex-grow": true,
     "justify-center": true,
@@ -494,7 +494,7 @@ const resizerHolderClasses = () => {
 };
 
 const resizerStyles = () => {
-  let styles: Record<string, any> = {};
+  let styles: Record<string, string> = {};
   if (props.panelContainer.orientation == "column") {
     styles["height"] = `${RESIZER_SIZE}px`;
     styles["min-height"] = `${RESIZER_SIZE}px`;
@@ -508,7 +508,7 @@ const resizerStyles = () => {
 };
 
 const resizerClasses = () => {
-  let classes: Record<string, any> = {};
+  let classes: Record<string, true> = {};
   if (props.panelContainer.orientation == "column") {
     classes["w-full"] = true;
   } else {
@@ -519,7 +519,7 @@ const resizerClasses = () => {
 };
 
 const panelContainerClasses = () => {
-  let classes: Record<string, any> = {};
+  let classes: Record<string, boolean> = {};
   classes["bg-gray-900"] = true;
   classes["w-full"] = true;
   classes["h-full"] = true;
@@ -534,7 +534,7 @@ const panelContainerClasses = () => {
 };
 
 const panelHolderClasses = (panelIndex: number) => {
-  let classes: Record<string, any> = {};
+  let classes: Record<string, boolean> = {};
   if (
     panelSize.value[`${panelIndex}`] &&
     panelSize.value[`${panelIndex}`].hidden
@@ -576,7 +576,7 @@ const panelHolderStyles = (panelIndex: number) => {
 };
 
 const panelClasses = (panelIndex: number) => {
-  let classes: Record<string, any> = {};
+  let classes: Record<string, boolean> = {};
   if (
     panelSize.value[`${panelIndex}`] &&
     panelSize.value[`${panelIndex}`].hidden

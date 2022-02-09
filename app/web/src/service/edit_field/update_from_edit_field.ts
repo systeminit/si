@@ -13,8 +13,8 @@ export interface UpdateFromEditFieldArgs {
   objectKind: EditFieldObjectKind;
   objectId: number;
   editFieldId: string;
-  value: any;
-  baggage?: any;
+  value: unknown;
+  baggage?: unknown;
 }
 
 export interface UpdateFromEditFieldRequest

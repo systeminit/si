@@ -165,7 +165,7 @@ const emits = defineEmits([
 ]);
 
 const panelSelectorStyling = () => {
-  let classes: Record<string, any> = {};
+  let classes: Record<string, boolean> = {};
   classes["bg-selectordark"] = true;
   classes["text-gray-400"] = true;
   classes["border-gray-800"] = true;
@@ -212,12 +212,12 @@ const minimizeFull = () => {
 };
 
 const panelClasses = computed(() => {
-  let classes: Record<string, any> = {};
+  let classes: Record<string, boolean> = {};
   classes["inactive-panel"] = !isActive.value;
   return classes;
 });
 const panelMenuClasses = computed(() => {
-  let classes: Record<string, any> = {};
+  let classes: Record<string, boolean> = {};
   classes["inactive-panel-menu"] = !isActive.value;
   return classes;
 });

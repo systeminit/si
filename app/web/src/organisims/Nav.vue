@@ -213,11 +213,14 @@ import VueFeather from "vue-feather";
 import SysinitIcon from "@/atoms/SysinitIcon.vue";
 import { SessionService } from "@/service/session";
 import { useRouter } from "vue-router";
-import { workspace$ } from "@/observable/workspace";
 import { organization$ } from "@/observable/organization";
+import { Workspace } from "@/api/sdf/dal/workspace";
+import { WorkspaceService } from "@/service/workspace";
 
 const isMaximized = ref(false);
-const currentWorkspace = refFrom(workspace$);
+const currentWorkspace = refFrom<Workspace | null>(
+  WorkspaceService.currentWorkspace(),
+);
 const currentOrganization = refFrom(organization$);
 
 const isLinkTitleVisible = computed(() => isMaximized.value);

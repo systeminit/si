@@ -8,14 +8,13 @@
     </div>
     <div
       v-if="success"
-      :data-testid="testId + '-okay'"
+      :data-testid="test + '-okay'"
       class="invisible w-0 h-0"
     ></div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { defineProps, defineEmits } from "vue";
 import VueFeather from "vue-feather";
 
 defineProps({

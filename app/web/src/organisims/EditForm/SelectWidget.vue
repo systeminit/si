@@ -15,7 +15,7 @@
       >
         <option
           v-for="option in widget.options"
-          :key="option.value"
+          :key="String(option.value)"
           :value="option.value"
         >
           {{ option.label }}

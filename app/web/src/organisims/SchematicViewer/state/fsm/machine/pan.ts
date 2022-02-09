@@ -19,35 +19,35 @@ export enum PanState {
   PANNING = "panning",
 }
 
-export function activatePanning(i: Interpreter<any>): void {
+export function activatePanning(i: Interpreter<unknown>): void {
   i.send(PanEventKind.ACTIVATE_PANNING);
 }
 
-export function initiatePanning(i: Interpreter<any>): void {
+export function initiatePanning(i: Interpreter<unknown>): void {
   i.send(PanEventKind.INITIATE_PANNING);
 }
 
-export function readyPanning(i: Interpreter<any>): void {
+export function readyPanning(i: Interpreter<unknown>): void {
   i.send(PanEventKind.ACTIVATE_PANNING);
   i.send(PanEventKind.INITIATE_PANNING);
 }
 
-export function panning(i: Interpreter<any>): void {
+export function panning(i: Interpreter<unknown>): void {
   i.send(PanEventKind.PANNING);
 }
 
-export function deactivatePanning(i: Interpreter<any>): void {
+export function deactivatePanning(i: Interpreter<unknown>): void {
   i.send(PanEventKind.DEACTIVATE_PANNING);
 }
 
-export function isPanningActivated(i: Interpreter<any>): boolean {
+export function isPanningActivated(i: Interpreter<unknown>): boolean {
   return i.state.matches(PanState.PANNING_ACTIVATED);
 }
 
-export function isPanningInitiated(i: Interpreter<any>): boolean {
+export function isPanningInitiated(i: Interpreter<unknown>): boolean {
   return i.state.matches(PanState.PANNING_INITIATED);
 }
 
-export function isPanning(i: Interpreter<any>): boolean {
+export function isPanning(i: Interpreter<unknown>): boolean {
   return i.state.matches(PanState.PANNING);
 }

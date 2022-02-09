@@ -152,8 +152,8 @@ export default defineComponent({
     async backToLogin() {
       this.$emit("back-to-login");
     },
-    inputStyling(inputKind: string): Record<string, any> {
-      let classes: Record<string, any> = {};
+    inputStyling(inputKind: string): Record<string, boolean> {
+      let classes: Record<string, boolean> = {};
 
       if (
         (inputKind == InputKind.BillingAccount &&
@@ -166,8 +166,8 @@ export default defineComponent({
       }
       return classes;
     },
-    signupButtonStyling(): Record<string, any> {
-      let classes: Record<string, any> = {};
+    signupButtonStyling(): Record<string, boolean> {
+      let classes: Record<string, boolean> = {};
 
       if (
         this.form.billingAccountName &&

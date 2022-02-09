@@ -52,7 +52,7 @@ const changeSet = refFrom<ChangeSet | null>(
 const editMode = refFrom<boolean>(ChangeSetService.currentEditMode());
 
 const editModeClasses = () => {
-  let classes: Record<string, any> = {};
+  let classes: Record<string, boolean> = {};
 
   if (editMode.value) {
     classes["mode-edit"] = true;

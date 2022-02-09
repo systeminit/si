@@ -104,6 +104,7 @@ export class SDF {
 
   get<T>(
     pathString: string,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     queryParams?: Record<string, any>,
   ): Observable<ApiResponse<T>> {
     const headers = this.standard_headers();
@@ -118,7 +119,7 @@ export class SDF {
             url.searchParams.set(key, "0");
           }
         } else {
-          url.searchParams.set(key, queryParams[key]);
+          url.searchParams.set(key, String(queryParams[key]));
         }
       });
     }
@@ -131,6 +132,7 @@ export class SDF {
 
   post<T>(
     pathString: string,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     args: Record<string, any>,
   ): Observable<ApiResponse<T>> {
     const headers = this.standard_headers();
@@ -145,7 +147,7 @@ export class SDF {
 
   patch<T>(
     pathString: string,
-    args: Record<string, any>,
+    args: Record<string, unknown>,
   ): Observable<ApiResponse<T>> {
     const headers = this.standard_headers();
     const url = this.requestUrl(pathString);

@@ -38,12 +38,25 @@ import { computed, PropType } from "vue";
 import type { EditField } from "@/api/sdf/dal/edit_field";
 import EditFormField from "./EditFormField.vue";
 import { ArrayWidgetDal } from "@/api/sdf/dal/edit_field";
-import Widgets from "@/organisims/EditForm/Widgets.vue";
 import VueFeather from "vue-feather";
 import { EditFieldService } from "@/service/edit_field";
 import { ApiResponse } from "@/api/sdf";
 import { UpdateFromEditFieldResponse } from "@/service/edit_field/update_from_edit_field";
 import { GlobalErrorService } from "@/service/global_error";
+import { defineAsyncComponent, DefineComponent } from "vue";
+import type { WidgetsProps } from "./Widgets.vue";
+
+// Eliminate the circular dependency of HeaderWidget -> Widgets -> HeaderWidget
+// by using `defineAsyncComponent` in a careful way to preserve the ability for
+// typeechecking to work with `tsc` and the `volar` language server used in
+// VSCode/NeoVim/Vim.
+//
+// See:
+// https://github.com/johnsoncodehk/volar/issues/644#issuecomment-1012716529
+const Widgets = defineAsyncComponent<DefineComponent<WidgetsProps>>(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  () => import("./Widgets.vue") as any,
+);
 
 const props = defineProps({
   show: {
