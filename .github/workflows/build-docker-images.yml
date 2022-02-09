@@ -74,7 +74,7 @@ jobs:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
   web:
-    name: "Build postgres image"
+    name: "Build web image"
     needs: check-changes
     if: needs.check-changes.outputs.web-changed == 'true'
     uses: ./.github/workflows/build-docker-image.yml
