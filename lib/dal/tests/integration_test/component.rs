@@ -9,6 +9,8 @@ use dal::{
 };
 use serde_json::json;
 
+mod view;
+
 #[tokio::test]
 async fn new() {
     test_setup!(

@@ -1,4 +1,7 @@
+mod view;
+
 use std::collections::HashMap;
+pub use view::ComponentView;
 
 use async_recursion::async_recursion;
 use async_trait::async_trait;
@@ -127,6 +130,8 @@ pub enum ComponentError {
     Workspace(#[from] WorkspaceError),
     #[error("organization error: {0}")]
     Organization(#[from] OrganizationError),
+    #[error("invalid json pointer: {0} for {1}")]
+    BadJsonPointer(String, String),
 }
 
 pub type ComponentResult<T> = Result<T, ComponentError>;
