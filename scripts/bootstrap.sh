@@ -56,27 +56,47 @@ function darwin-bootstrap {
     brew update
     brew upgrade
     brew cleanup
-    brew install bash make git skopeo libtool automake
+    brew tap instrumenta/instrumenta
+    brew install bash make git skopeo libtool automake kubeval
 }
 
 function arch-bootstrap {
     sudo pacman -Syu --noconfirm base-devel make git skopeo
+
+    mkdir -p /tmp/kubeval-download
+    wget https://github.com/instrumenta/kubeval/releases/latest/download/kubeval-linux-amd64.tar.gz -P /tmp/kubeval-download
+    tar -xf /tmp/kubeval-download/kubeval-linux-amd64.tar.gz --directory /tmp/kubeval-download
+    sudo cp /tmp/kubeval-download/kubeval /usr/local/bin
+    rm -rf /tmp/kubeval-download
 }
 
 function fedora-bootstrap {
     sudo dnf upgrade -y --refresh
     sudo dnf autoremove -y
     sudo dnf install -y @development-tools make git lld skopeo
+
+    mkdir -p /tmp/kubeval-download
+    wget https://github.com/instrumenta/kubeval/releases/latest/download/kubeval-linux-amd64.tar.gz -P /tmp/kubeval-download
+    tar -xf /tmp/kubeval-download/kubeval-linux-amd64.tar.gz --directory /tmp/kubeval-download
+    sudo cp /tmp/kubeval-download/kubeval /usr/local/bin
+    rm -rf /tmp/kubeval-download
 }
 
 function ubuntu-bootstrap {
     . /etc/os-release
     echo "deb https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_${VERSION_ID}/ /" | sudo tee /etc/apt/sources.list.d/devel:kubic:libcontainers:stable.list
     curl -L https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_${VERSION_ID}/Release.key | sudo apt-key add -
+
     sudo apt update
     sudo apt upgrade -y
     sudo apt autoremove -y
     sudo apt install -y build-essential make git lld skopeo
+
+    mkdir -p /tmp/kubeval-download
+    wget https://github.com/instrumenta/kubeval/releases/latest/download/kubeval-linux-amd64.tar.gz -P /tmp/kubeval-download
+    tar -xf /tmp/kubeval-download/kubeval-linux-amd64.tar.gz --directory /tmp/kubeval-download
+    sudo cp /tmp/kubeval-download/kubeval /usr/local/bin
+    rm -rf /tmp/kubeval-download
 }
 
 function perform-bootstrap {

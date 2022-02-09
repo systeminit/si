@@ -446,7 +446,7 @@ mod tests {
 
     use super::*;
     use crate::{
-        code_generation::CodeGenerationComponent,
+        code_generation::{CodeGenerated, CodeGenerationComponent},
         qualification_check::QualificationCheckComponent,
         resolver_function::ResolverFunctionRequest,
         resolver_function::{ResolverFunctionComponent, ResolverFunctionParentComponent},
@@ -856,6 +856,7 @@ mod tests {
             component: QualificationCheckComponent {
                 name: "pringles".to_string(),
                 properties: HashMap::new(),
+                codes: Vec::new(),
             },
             code_base64: base64::encode(
                 r#"function checkit(component) {
@@ -940,6 +941,7 @@ mod tests {
             component: QualificationCheckComponent {
                 name: "pringles".to_string(),
                 properties: HashMap::new(),
+                codes: Vec::new(),
             },
             code_base64: base64::encode(
                 r#"function checkit(component) {
@@ -1239,7 +1241,11 @@ mod tests {
                 assert_eq!(success.execution_id, "1234");
                 assert_eq!(
                     success.data,
-                    serde_json::json!({ "format": "json", "code": serde_json::to_string(&serde_json::json!({ "nome": "pringles" })).expect("unable to deserialize") })
+                    CodeGenerated {
+                        format: "json".to_owned(),
+                        code: serde_json::to_string(&serde_json::json!({ "nome": "pringles" }))
+                            .expect("unable to deserialize"),
+                    }
                 );
             }
             FunctionResult::Failure(failure) => {
@@ -1321,7 +1327,11 @@ mod tests {
                 assert_eq!(success.execution_id, "1234");
                 assert_eq!(
                     success.data,
-                    serde_json::json!({ "format": "json", "code": serde_json::to_string(&serde_json::json!({ "nome": "pringles" })).expect("unable to deserialize") })
+                    CodeGenerated {
+                        format: "json".to_owned(),
+                        code: serde_json::to_string(&serde_json::json!({ "nome": "pringles" }))
+                            .expect("unable to deserialize"),
+                    }
                 );
             }
             FunctionResult::Failure(failure) => {

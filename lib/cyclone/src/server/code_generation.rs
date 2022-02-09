@@ -21,8 +21,8 @@ use tokio_util::codec::{FramedRead, FramedWrite};
 use crate::{
     process::{self, ShutdownError},
     server::WebSocketMessage,
-    CodeGenerationRequest, CodeGenerationResultSuccess, FunctionResult, FunctionResultFailure,
-    FunctionResultFailureError, Message, OutputStream,
+    CodeGenerated, CodeGenerationRequest, CodeGenerationResultSuccess, FunctionResult,
+    FunctionResultFailure, FunctionResultFailureError, Message, OutputStream,
 };
 
 const TX_TIMEOUT_SECS: Duration = Duration::from_secs(2);
@@ -331,7 +331,7 @@ impl From<LangServerResult> for FunctionResult<CodeGenerationResultSuccess> {
 struct LangServerSuccess {
     execution_id: String,
     message: Option<String>,
-    data: Value,
+    data: CodeGenerated,
 }
 
 #[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]

@@ -1,5 +1,7 @@
 use crate::code_generation_prototype::CodeGenerationPrototypeContext;
 use crate::func::backend::js_code_generation::FuncBackendJsCodeGenerationArgs;
+use crate::func::backend::js_qualification::FuncBackendJsQualificationArgs;
+use crate::qualification_prototype::QualificationPrototypeContext;
 use crate::schema::builtins::kubernetes_metadata::create_metadata_prop;
 use crate::schema::builtins::kubernetes_selector::create_selector_prop;
 use crate::schema::builtins::kubernetes_template::create_template_prop;
@@ -7,8 +9,8 @@ use crate::schema::builtins::{create_prop, create_schema, create_string_prop_wit
 use crate::schema::{SchemaResult, SchemaVariant, UiMenu};
 use crate::socket::{Socket, SocketArity, SocketEdgeKind};
 use crate::{
-    CodeGenerationPrototype, Func, HistoryActor, PropKind, Schema, SchemaError, SchemaKind,
-    SchematicKind, StandardModel, Tenancy, Visibility,
+    CodeGenerationPrototype, Func, HistoryActor, PropKind, QualificationPrototype, Schema,
+    SchemaError, SchemaKind, SchematicKind, StandardModel, Tenancy, Visibility,
 };
 use si_data::{NatsTxn, PgTxn};
 
@@ -149,6 +151,33 @@ pub async fn kubernetes_deployment(
             .await?;
         }
     }
+
+    // Qualification Prototype
+    let qualification_func_name = "si:qualificationYamlKubeval".to_owned();
+    let mut qualification_funcs =
+        Func::find_by_attr(txn, tenancy, visibility, "name", &qualification_func_name).await?;
+    let qualification_func = qualification_funcs
+        .pop()
+        .ok_or(SchemaError::FuncNotFound(qualification_func_name))?;
+    let qualification_args = FuncBackendJsQualificationArgs {
+        component: veritech::QualificationCheckComponent::default(),
+    };
+    let qualification_args_json = serde_json::to_value(&qualification_args)?;
+    let mut qualification_prototype_context = QualificationPrototypeContext::new();
+    qualification_prototype_context.set_schema_variant_id(*variant.id());
+
+    let _prototype = QualificationPrototype::new(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        *qualification_func.id(),
+        qualification_args_json,
+        qualification_prototype_context,
+        "Kubeval YAML".to_owned(),
+    )
+    .await?;
 
     // Code Generation Prototype
     let code_generation_func_name = "si:generateYAML".to_owned();

@@ -16,7 +16,6 @@ use crate::func::backend::prop_object::{FuncBackendPropObject, FuncBackendPropOb
 use crate::func::backend::{
     js_code_generation::FuncBackendJsCodeGeneration,
     js_code_generation::FuncBackendJsCodeGenerationArgs,
-    js_code_generation::FuncBackendJsCodeGenerationResult,
     js_qualification::FuncBackendJsQualification,
     js_qualification::FuncBackendJsQualificationArgs,
     js_resource::FuncBackendJsResourceSync,
@@ -268,10 +267,8 @@ impl FuncBinding {
                 .await?;
 
                 let veritech_result = CodeGenerationResultSuccess::deserialize(&return_value)?;
-                let result: FuncBackendJsCodeGenerationResult =
-                    serde_json::from_value(veritech_result.data)?;
                 execution.process_output(txn, nats, rx).await?;
-                Some(serde_json::to_value(&result)?)
+                Some(serde_json::to_value(&veritech_result.data)?)
             }
             FuncBackendKind::JsQualification => {
                 execution
