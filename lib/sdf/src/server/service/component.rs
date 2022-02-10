@@ -8,6 +8,7 @@ use dal::{ComponentError as DalComponentError, SchemaError, StandardModelError, 
 use std::convert::Infallible;
 use thiserror::Error;
 
+pub mod get_component_metadata;
 pub mod get_resource;
 pub mod list_components_names_only;
 pub mod list_qualifications;
@@ -63,6 +64,10 @@ pub fn routes() -> Router {
         .route(
             "/list_components_names_only",
             get(list_components_names_only::list_components_names_only),
+        )
+        .route(
+            "/get_component_metadata",
+            get(get_component_metadata::get_component_metadata),
         )
         .route(
             "/list_qualifications",
