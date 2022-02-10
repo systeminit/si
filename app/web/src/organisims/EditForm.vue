@@ -1,9 +1,8 @@
 <template>
-  <Widgets v-if="editFields" :edit-fields="editFields" />
+  <Widgets v-if="editFields" :edit-fields="editFields" :indent-level="1" />
 </template>
 
 <script setup lang="ts">
-import { PropType } from "vue";
 import { EditFieldObjectKind, EditFields } from "@/api/sdf/dal/edit_field";
 import { fromRef, refFrom } from "vuse-rx";
 import { EditFieldService } from "@/service/edit_field";
@@ -12,16 +11,10 @@ import Widgets from "@/organisims/EditForm/Widgets.vue";
 import { combineLatest, from } from "rxjs";
 import { switchMap } from "rxjs/operators";
 
-const props = defineProps({
-  objectKind: {
-    type: String as PropType<EditFieldObjectKind>,
-    required: true,
-  },
-  objectId: {
-    type: Number,
-    required: true,
-  },
-});
+const props = defineProps<{
+  objectKind: EditFieldObjectKind;
+  objectId: number;
+}>();
 
 const props$ = fromRef(props, { immediate: true, deep: true });
 

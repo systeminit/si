@@ -13,14 +13,12 @@
         {{ editField.name }}
       </div>
     </div>
-    <div v-show="isOpen" class="flex w-full pt-1 pb-1 mt-2 text-sm text-white">
-      <Widgets :edit-fields="widgetEditFields" />
-    </div>
   </section>
+  <Widgets :edit-fields="widgetEditFields" :indent-level="indentLevel + 1" />
 </template>
 
 <script setup lang="ts">
-import { computed, PropType, ref } from "vue";
+import { computed, ref } from "vue";
 import { EditField, EditFields } from "@/api/sdf/dal/edit_field";
 import VueFeather from "vue-feather";
 import { defineAsyncComponent, DefineComponent } from "vue";
@@ -38,20 +36,13 @@ const Widgets = defineAsyncComponent<DefineComponent<WidgetsProps>>(
   () => import("./Widgets.vue") as any,
 );
 
-const props = defineProps({
-  show: {
-    type: Boolean,
-    required: true,
-  },
-  editField: {
-    type: Object as PropType<EditField>,
-    required: true,
-  },
-  backgroundColors: {
-    type: Array as PropType<number[][]>,
-    required: true,
-  },
-});
+const props = defineProps<{
+  show: boolean;
+  coreEditField: boolean;
+  indentLevel: number;
+  editField: EditField;
+  backgroundColors: number[][];
+}>();
 
 // const editMode = refFrom<boolean>(ChangeSetService.currentEditMode());
 
@@ -65,17 +56,14 @@ const widgetEditFields = computed<EditFields>(() => {
 
 const isOpen = ref<boolean>(true);
 
-const paddingLeft = computed<number>(() => {
-  const indentFactorPx = 10;
-  const indentCount = 1;
-  return indentCount * indentFactorPx;
-});
-
 const propObjectStyle = computed<string>(() => {
-  const rgb = props.backgroundColors[1].join(",");
-  let style = `background-color: rgb(${rgb})`;
-  style = `${style} padding-left: ${paddingLeft.value}px;`;
-  return style;
+  // const rgb = props.backgroundColors[1].join(",");
+  // let style = `background-color: rgb(${rgb})`;
+  // style = `${style} padding-left: ${paddingLeft.value}px;`;
+  // return style;
+  const backgroundColor = "background-color: rgb(50, 50, 50)";
+  const paddingLeft = `padding-left: ${props.indentLevel * 10}px`;
+  return `${backgroundColor}; ${paddingLeft};`;
 });
 </script>
 

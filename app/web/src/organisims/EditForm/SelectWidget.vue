@@ -1,5 +1,9 @@
 <template>
-  <EditFormField :show="show" :validation-errors="editField.validation_errors">
+  <EditFormField
+    :show="show"
+    :validation-errors="editField.validation_errors"
+    :core-edit-field="coreEditField"
+  >
     <template #name>
       {{ editField.name }}
     </template>
@@ -29,7 +33,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, PropType, ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import type { EditField, SelectWidgetDal } from "@/api/sdf/dal/edit_field";
 import EditFormField from "./EditFormField.vue";
 import { EditFieldService } from "@/service/edit_field";
@@ -37,16 +41,11 @@ import { GlobalErrorService } from "@/service/global_error";
 import { UpdateFromEditFieldResponse } from "@/service/edit_field/update_from_edit_field";
 import { ApiResponse } from "@/api/sdf";
 
-const props = defineProps({
-  show: {
-    type: Boolean,
-    required: true,
-  },
-  editField: {
-    type: Object as PropType<EditField>,
-    required: true,
-  },
-});
+const props = defineProps<{
+  show: boolean;
+  coreEditField: boolean;
+  editField: EditField;
+}>();
 
 const widget = computed<SelectWidgetDal>(() => {
   // Lies, damn lies, and statistics!

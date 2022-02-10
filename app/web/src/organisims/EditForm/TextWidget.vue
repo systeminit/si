@@ -1,5 +1,9 @@
 <template>
-  <EditFormField :show="show" :validation-errors="editField.validation_errors">
+  <EditFormField
+    :show="show"
+    :core-edit-field="coreEditField"
+    :validation-errors="editField.validation_errors"
+  >
     <template #name>
       {{ editField.name }}
     </template>
@@ -7,7 +11,7 @@
       <input
         v-model="currentValue"
         class="pl-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none input-bg-color-grey si-property disabled:opacity-50"
-        :class="borderColor"
+        :class="inputStyles"
         type="text"
         aria-label="name"
         placeholder="text"
@@ -23,7 +27,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, PropType, ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import type { EditField } from "@/api/sdf/dal/edit_field";
 import EditFormField from "./EditFormField.vue";
 import { EditFieldService } from "@/service/edit_field";
@@ -31,16 +35,11 @@ import { GlobalErrorService } from "@/service/global_error";
 import { UpdateFromEditFieldResponse } from "@/service/edit_field/update_from_edit_field";
 import { ApiResponse } from "@/api/sdf";
 
-const props = defineProps({
-  show: {
-    type: Boolean,
-    required: true,
-  },
-  editField: {
-    type: Object as PropType<EditField>,
-    required: true,
-  },
-});
+const props = defineProps<{
+  show: boolean;
+  coreEditField: boolean;
+  editField: EditField;
+}>();
 
 const updating = ref(false);
 const startValue = ref(props.editField.value);
@@ -79,13 +78,24 @@ watch(
   },
 );
 
-const borderColor = computed(
+const inputStyles = computed(
   (): Record<string, boolean> => {
+    let styles: Record<string, boolean> = {};
+
     if (props.editField.visibility_diff.kind != "None") {
-      return { "input-border-gold": true };
+      styles["input-border-gold"] = true;
+      styles["input-border-grey"] = false;
     } else {
-      return { "input-border-grey": true };
+      styles["input-border-gold"] = false;
+      styles["input-border-grey"] = true;
     }
+    if (props.coreEditField) {
+      styles["flex-grow"] = true;
+    } else {
+      styles["flex-grow"] = false;
+    }
+
+    return styles;
   },
 );
 const textColor = computed(
