@@ -7,24 +7,32 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
+    attribute_resolver::AttributeResolverContext,
     edit_field::{
         value_and_visibility_diff, widget::prelude::*, EditField, EditFieldAble, EditFieldDataType,
         EditFieldError, EditFieldObjectKind, EditFields,
     },
+    func::binding::{FuncBinding, FuncBindingError},
     impl_standard_model,
     label_list::ToLabelList,
     pk, standard_model, standard_model_accessor, standard_model_belongs_to,
-    standard_model_has_many, standard_model_many_to_many, HistoryActor, HistoryEventError,
-    SchemaVariant, SchemaVariantId, StandardModel, StandardModelError, Tenancy, Timestamp,
-    Visibility,
+    standard_model_has_many, standard_model_many_to_many, AttributeResolver,
+    AttributeResolverError, Func, HistoryActor, HistoryEventError, SchemaVariant, SchemaVariantId,
+    StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
 };
 
 #[derive(Error, Debug)]
 pub enum PropError {
+    #[error("AttributeResolver error: {0}")]
+    AttributeResolver(#[from] AttributeResolverError),
     #[error(transparent)]
     EditField(#[from] EditFieldError),
+    #[error("FuncBinding error: {0}")]
+    FuncBinding(#[from] FuncBindingError),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
+    #[error("missing a func: {0}")]
+    MissingFunc(String),
     #[error("prop not found: {0} ({1:?})")]
     NotFound(PropId, Visibility),
     #[error("pg error: {0}")]
@@ -96,7 +104,7 @@ impl Prop {
     pub async fn new(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
-        _veritech: veritech::Client,
+        veritech: veritech::Client,
         tenancy: &Tenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
@@ -109,7 +117,7 @@ impl Prop {
                 &[tenancy, visibility, &name.as_ref(), &kind.as_ref()],
             )
             .await?;
-        let object = standard_model::finish_create_from_row(
+        let object: Prop = standard_model::finish_create_from_row(
             txn,
             nats,
             tenancy,
@@ -118,6 +126,42 @@ impl Prop {
             row,
         )
         .await?;
+
+        if kind == PropKind::Array || kind == PropKind::Map || kind == PropKind::Object {
+            let func_name = "si:unset".to_string();
+            let mut funcs =
+                Func::find_by_attr(txn, tenancy, visibility, "name", &func_name).await?;
+            let func = funcs.pop().ok_or(PropError::MissingFunc(func_name))?;
+            let (func_binding, created) = FuncBinding::find_or_create(
+                txn,
+                nats,
+                tenancy,
+                visibility,
+                history_actor,
+                serde_json::json![null],
+                *func.id(),
+                *func.backend_kind(),
+            )
+            .await?;
+
+            if created {
+                func_binding.execute(txn, nats, veritech.clone()).await?;
+            }
+
+            let mut attribute_resolver_context = AttributeResolverContext::new();
+            attribute_resolver_context.set_prop_id(*object.id());
+            AttributeResolver::upsert(
+                txn,
+                nats,
+                tenancy,
+                visibility,
+                history_actor,
+                *func.id(),
+                *func_binding.id(),
+                attribute_resolver_context,
+            )
+            .await?;
+        }
 
         Ok(object)
     }
