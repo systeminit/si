@@ -72,7 +72,7 @@
         </div>
       </div>
     </div>
-    <div class="flex flex-grow w-full h-full overflow-auto">
+    <div class="flex flex-grow w-full h-full overflow-hidden">
       <slot name="content"></slot>
     </div>
   </div>

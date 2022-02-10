@@ -151,7 +151,10 @@
       we know it will be a number and the warning is incorrect.
       For more information: https://v3.vuejs.org/guide/conditional.html#v-if
       -->
-      <div v-if="selectedComponentId" class="flex flex-row w-full h-full">
+      <div
+        v-if="selectedComponentId"
+        class="flex flex-row w-full h-full overflow-auto"
+      >
         <AttributeViewer
           v-if="activeView === 'attribute'"
           :component-id="selectedComponentId"
