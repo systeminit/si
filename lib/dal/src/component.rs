@@ -885,7 +885,7 @@ impl Component {
                 )
                 .await?;
 
-                // If we dont' have one, create the validation resolver. If we do, update the
+                // If we don't have one, create the validation resolver. If we do, update the
                 // func binding id to point to the new value. Interesting to think about
                 // garbage collecting the left over funcbinding + func result value?
                 if let Some(mut validation_resolver) = existing_validation_resolvers.pop() {
@@ -1161,7 +1161,7 @@ impl Component {
         let mut validation_errors: Vec<(Prop, Vec<ValidationError>)> = Vec::new();
         for (prop, field_value) in validation_field_values.into_iter() {
             if let Some(value_json) = field_value.value() {
-                // This clone shouldn't be neccessary, but we have no way to get to the owned value -- Adam
+                // This clone shouldn't be necessary, but we have no way to get to the owned value -- Adam
                 let internal_validation_errors: Vec<ValidationError> =
                     serde_json::from_value(value_json.clone())?;
                 validation_errors.push((prop, internal_validation_errors));
@@ -1835,7 +1835,7 @@ async fn edit_field_for_prop(
     .await?;
     for field_value in validation_field_values.into_iter() {
         if let Some(value_json) = field_value.value() {
-            // This clone shouldn't be neccessary, but we have no way to get to the owned value -- Adam
+            // This clone shouldn't be necessary, but we have no way to get to the owned value -- Adam
             let mut validation_error: Vec<ValidationError> =
                 serde_json::from_value(value_json.clone())?;
             validation_errors.append(&mut validation_error);
