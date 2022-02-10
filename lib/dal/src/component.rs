@@ -104,6 +104,8 @@ pub enum ComponentError {
     AttributeResolver(#[from] AttributeResolverError),
     #[error("missing a prop in attribute update: {0} not found")]
     MissingProp(PropId),
+    #[error("missing a prop in attribute update: {0} not found")]
+    MissingPropByName(String),
     #[error("missing a func in attribute update: {0} not found")]
     MissingFunc(String),
     #[error("invalid prop value; expected {0} but got {1}")]
@@ -132,6 +134,15 @@ pub enum ComponentError {
     Organization(#[from] OrganizationError),
     #[error("invalid json pointer: {0} for {1}")]
     BadJsonPointer(String, String),
+
+    #[error("props do not match known child props for given prop object")]
+    /// The props found within a given prop value field for a PropObject do not match the known
+    /// child props with that prop as its parent.
+    ChildPropsDivergentForPropObject,
+    #[error("prop value does not have valid prop kind, but has known child props")]
+    InvalidPropKindHasKnownChildProps,
+    #[error("prop value has primitive kind ({0}), but has known child props")]
+    PrimitivePropKindHasKnownChildProps(PropKind),
 }
 
 pub type ComponentResult<T> = Result<T, ComponentError>;
@@ -504,6 +515,10 @@ impl Component {
     }
 
     #[allow(clippy::too_many_arguments)]
+    #[async_recursion]
+    /// Perform the actual value setting for a given prop. If the value passed in is empty, we
+    /// greedily search for an attribute resolver to set the prop's default value, but "unsetting"
+    /// is currently unsupported beyond the initial implementation for "PropKind::String".
     pub async fn resolve_attribute(
         &self,
         txn: &PgTxn<'_>,
@@ -525,6 +540,7 @@ impl Component {
         // when you YOLO, YOLO hard. -- Adam
         let (func, func_binding, created) = match (prop.kind(), value.clone()) {
             (PropKind::Array, Some(value_json)) => {
+                // FIXME(nick): handle nesting for Array.
                 let value = match value_json.as_array() {
                     Some(boolean) => boolean,
                     None => {
@@ -634,6 +650,7 @@ impl Component {
                 todo!("Unsetting a Integer PropKind isn't supported yet");
             }
             (PropKind::Map, Some(value_json)) => {
+                // FIXME(nick): handle nesting for Map.
                 let value = match value_json.as_object() {
                     Some(map) => map,
                     None => {
@@ -670,7 +687,7 @@ impl Component {
                 todo!("Unsetting a Map PropKind isn't supported yet");
             }
             (PropKind::Object, Some(value_json)) => {
-                let value = match value_json.as_object() {
+                let prop_object_map = match value_json.as_object() {
                     Some(object) => object,
                     None => {
                         return Err(ComponentError::InvalidPropValue(
@@ -680,12 +697,112 @@ impl Component {
                     }
                 };
 
+                // FIXME(nick): cache props list call since this might be expensive. It could likely
+                // be much faster to perform a new, direct query, but this will work for now.
+                let all_props_in_existence = Prop::list(txn, tenancy, visibility).await?;
+
+                // We need to perform recursive attribute resolution for each prop found in our
+                // PropObject. If the value has the potential to have child props, we may need to
+                // check if the value's shape matches that of all known child props (e.g. if three
+                // fields of "PropKind::Boolean" are provided, we need to ensure the same three,
+                // and exactly three, fields are known child props).
+                for (prop_name, prop_value) in prop_object_map {
+                    let mut props =
+                        Prop::find_by_attr(txn, tenancy, visibility, "name", prop_name).await?;
+                    let prop = props
+                        .pop()
+                        .ok_or_else(|| ComponentError::MissingPropByName(prop_name.clone()))?;
+
+                    // Find all child props for the given prop (key and value) in our prop object.
+                    // We need to ensure that the shape of our value for the current prop matches
+                    // the shape of all the children combined for that given prop.
+                    let mut child_props: HashMap<String, PropKind> = HashMap::new();
+                    for current in &all_props_in_existence {
+                        if let Some(parent) = current.parent_prop(txn, visibility).await? {
+                            if parent.id() == prop.id() {
+                                child_props.insert(current.name().to_string(), *current.kind());
+                            }
+                        }
+                    }
+
+                    // TLDR:
+                    // For onlookers, the main thing to know is this: the following text block is
+                    // purely intended for _checks_ and does not include mutation logic. If there
+                    // are no known child props or all checks pass, the recursive attribute
+                    // resolution is performed.
+                    //
+                    // DETAILS:
+                    // If there is at least one child prop, we know that our given value must be an
+                    // array, map or prop object. Or... at least, we must assume so. Thus, we need
+                    // to check if that nested object's shape matches that of the child props.
+                    //
+                    // If our value is a PropObject, convert the "serde_json::Map" to a HashMap with
+                    // the same type as the child props HashMap. We will use this for direct
+                    // comparison between known child props and those introduced in the current prop
+                    // of the prop object.
+                    //
+                    // We are _ignoring_ ordering for now, but once we have built our HashMap, we
+                    // perform an equivalence comparison. If the HashMap objects are not the same,
+                    // then we know that our known child props are not the same as those found in
+                    // the current prop value.
+                    if !child_props.is_empty() {
+                        // FIXME(nick): we are not discerning between map and prop object here.
+                        if let Some(map) = prop_value.as_object() {
+                            let mut new_map: HashMap<String, PropKind> = HashMap::new();
+                            for (key, value) in map {
+                                let kind = match PropKind::from(value) {
+                                    Some(v) => v,
+                                    None => {
+                                        return Err(
+                                            ComponentError::ChildPropsDivergentForPropObject,
+                                        )
+                                    }
+                                };
+                                new_map.insert(key.clone(), kind);
+                            }
+                            if child_props != new_map {
+                                return Err(ComponentError::ChildPropsDivergentForPropObject);
+                            }
+                        } else if let Some(_v) = prop_value.as_array() {
+                            // FIXME(nick): we need to handle arrays in the future.
+                            continue;
+                        } else {
+                            match PropKind::from(prop_value) {
+                                Some(kind) => {
+                                    return Err(
+                                        ComponentError::PrimitivePropKindHasKnownChildProps(kind),
+                                    )
+                                }
+                                None => {
+                                    return Err(ComponentError::InvalidPropKindHasKnownChildProps)
+                                }
+                            }
+                        }
+                    }
+
+                    // If everything is all gravy baby, we perform a recursive call with the
+                    // current prop we are observing and its value. This handles the "nesting" case
+                    // for the PropObject.
+                    self.resolve_attribute(
+                        txn,
+                        nats,
+                        veritech.clone(),
+                        tenancy,
+                        visibility,
+                        history_actor,
+                        &prop,
+                        Some(prop_value.clone()),
+                    )
+                    .await?;
+                }
+
                 let func_name = "si:setPropObject".to_string();
                 let mut funcs =
                     Func::find_by_attr(txn, &schema_tenancy, visibility, "name", &func_name)
                         .await?;
                 let func = funcs.pop().ok_or(ComponentError::MissingFunc(func_name))?;
-                let args = serde_json::to_value(FuncBackendPropObjectArgs::new(value.clone()))?;
+                let args =
+                    serde_json::to_value(FuncBackendPropObjectArgs::new(prop_object_map.clone()))?;
                 let (func_binding, created) = FuncBinding::find_or_create(
                     txn,
                     nats,
@@ -698,7 +815,6 @@ impl Component {
                 )
                 .await?;
 
-                // FIXME(nick,jacob): add object nesting. This is incomplete!
                 if created {
                     func_binding.execute(txn, nats, veritech.clone()).await?;
                 }
@@ -789,9 +905,9 @@ impl Component {
             }
         };
 
-        let mut attribute_resolver_context = AttributeResolverContext::new();
-        attribute_resolver_context.set_prop_id(*prop.id());
-        attribute_resolver_context.set_component_id(*self.id());
+        let mut attribute_resolver_context_for_component = AttributeResolverContext::new();
+        attribute_resolver_context_for_component.set_prop_id(*prop.id());
+        attribute_resolver_context_for_component.set_component_id(*self.id());
         AttributeResolver::upsert(
             txn,
             nats,
@@ -800,7 +916,7 @@ impl Component {
             history_actor,
             *func.id(),
             *func_binding.id(),
-            attribute_resolver_context,
+            attribute_resolver_context_for_component,
         )
         .await?;
         Ok((value, created))
@@ -1804,23 +1920,19 @@ async fn edit_field_for_prop(
     edit_field_path_for_children.push(field_name.to_string());
 
     let widget = match prop.kind() {
+        PropKind::Boolean => Widget::Checkbox(CheckboxWidget::new()),
         PropKind::Integer | PropKind::String => Widget::Text(TextWidget::new()),
-        PropKind::Array | PropKind::Map | PropKind::Object => {
-            // NOTE: This ends up being ugly, and double checking what prop.kind() is
-            //       to avoid doing the child prop lookup if we're building the Widget
-            //       for a PropKind that "can't" have children. It may be worth taking
-            //       the hit and always looking up what the children are, even if
-            //       we're never going to use them, just to make this arm of the match
-            //       less gross.
+        PropKind::Array => {
+            // FIXME(nick): need to handle Array props
+            Widget::Text(TextWidget::new())
+        }
+        PropKind::Map => {
+            // FIXME(nick): need to handle Map props. Create dummy widget for now.
+            Widget::Text(TextWidget::new())
+        }
+        PropKind::Object => {
             let mut child_edit_fields = vec![];
             for child_prop in prop.child_props(txn, tenancy, visibility).await? {
-                // TODO: remove this as soon as edit fields are implemented
-                // But for now we need the boilerplate to setup the props even if not editable
-                // So it was breaking some tests
-                if *child_prop.kind() == PropKind::Array || *child_prop.kind() == PropKind::Map {
-                    continue;
-                }
-
                 child_edit_fields.push(
                     edit_field_for_prop(
                         txn,
@@ -1835,17 +1947,8 @@ async fn edit_field_for_prop(
                     .await?,
                 );
             }
-
-            if *prop.kind() == PropKind::Array {
-                todo!("Need to handle Array props");
-            } else if *prop.kind() == PropKind::Map {
-                todo!("Need to handle Map props");
-            } else {
-                // Only option left is PropKind::Object
-                Widget::Header(HeaderWidget::new(child_edit_fields))
-            }
+            Widget::Header(HeaderWidget::new(child_edit_fields))
         }
-        PropKind::Boolean => Widget::Checkbox(CheckboxWidget::new()),
     };
 
     let mut edit_field = EditField::new(

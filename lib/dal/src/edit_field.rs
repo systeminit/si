@@ -66,7 +66,9 @@ impl From<PropKind> for EditFieldDataType {
 
 #[derive(AsRefStr, Clone, Debug, Deserialize, Display, EnumString, Eq, PartialEq, Serialize)]
 pub enum EditFieldObjectKind {
+    /// Update the Component itself.
     Component,
+    /// Update a property on the Component (and not the Component itself).
     ComponentProp,
     Prop,
     QualificationCheck,
@@ -99,6 +101,7 @@ pub enum EditFieldBaggage {
 pub struct EditField {
     id: String,
     pub name: String,
+    /// A descendant edit field can be specified using "path" (e.g. "metadata.name").
     path: Vec<String>,
     object_kind: EditFieldObjectKind,
     object_id: i64,

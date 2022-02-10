@@ -64,6 +64,26 @@ pub enum PropKind {
     Map,
 }
 
+impl PropKind {
+    /// Determine the "PropKind" based on the "serde_json::Value". Returns "None" if there is not a
+    /// direct match. FIXME(nick): object returns object and _does not_ account for maps.
+    pub fn from(value: &serde_json::Value) -> Option<PropKind> {
+        if value.is_array() {
+            Some(PropKind::Array)
+        } else if value.is_i64() {
+            Some(PropKind::Integer)
+        } else if value.is_boolean() {
+            Some(PropKind::Boolean)
+        } else if value.is_string() {
+            Some(PropKind::String)
+        } else if value.is_object() {
+            Some(PropKind::Object)
+        } else {
+            None
+        }
+    }
+}
+
 impl ToLabelList for PropKind {}
 impl ToSelectWidget for PropKind {}
 
