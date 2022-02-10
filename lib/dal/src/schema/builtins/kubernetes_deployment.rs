@@ -30,7 +30,7 @@ pub async fn kubernetes_deployment(
         visibility,
         history_actor,
         &name,
-        &SchemaKind::Concept, // Note: what is this?
+        &SchemaKind::Concrete,
     )
     .await?
     {
