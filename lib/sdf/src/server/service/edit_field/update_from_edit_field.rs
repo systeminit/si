@@ -50,6 +50,7 @@ pub async fn update_from_edit_field(
             Component::update_from_edit_field(
                 &txn,
                 &nats,
+                veritech,
                 &tenancy,
                 &request.visibility,
                 &history_actor,
@@ -83,6 +84,7 @@ pub async fn update_from_edit_field(
             Prop::update_from_edit_field(
                 &txn,
                 &nats,
+                veritech,
                 &tenancy,
                 &request.visibility,
                 &history_actor,
@@ -96,6 +98,7 @@ pub async fn update_from_edit_field(
             QualificationCheck::update_from_edit_field(
                 &txn,
                 &nats,
+                veritech,
                 &tenancy,
                 &request.visibility,
                 &history_actor,
@@ -109,6 +112,7 @@ pub async fn update_from_edit_field(
             Schema::update_from_edit_field(
                 &txn,
                 &nats,
+                veritech,
                 &tenancy,
                 &request.visibility,
                 &history_actor,
@@ -122,6 +126,7 @@ pub async fn update_from_edit_field(
             schema::UiMenu::update_from_edit_field(
                 &txn,
                 &nats,
+                veritech,
                 &tenancy,
                 &request.visibility,
                 &history_actor,
@@ -135,6 +140,7 @@ pub async fn update_from_edit_field(
             SchemaVariant::update_from_edit_field(
                 &txn,
                 &nats,
+                veritech,
                 &tenancy,
                 &request.visibility,
                 &history_actor,
@@ -148,6 +154,7 @@ pub async fn update_from_edit_field(
             Socket::update_from_edit_field(
                 &txn,
                 &nats,
+                veritech,
                 &tenancy,
                 &request.visibility,
                 &history_actor,

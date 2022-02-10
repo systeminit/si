@@ -99,6 +99,7 @@ pub async fn kubernetes_deployment(
         let spec_prop = create_prop(
             txn,
             nats,
+            veritech.clone(),
             tenancy,
             visibility,
             history_actor,
@@ -113,6 +114,7 @@ pub async fn kubernetes_deployment(
             let _replicas_prop = create_prop(
                 txn,
                 nats,
+                veritech.clone(),
                 tenancy,
                 visibility,
                 history_actor,
@@ -128,6 +130,7 @@ pub async fn kubernetes_deployment(
             let _selector_prop = create_selector_prop(
                 txn,
                 nats,
+                veritech.clone(),
                 tenancy,
                 visibility,
                 history_actor,

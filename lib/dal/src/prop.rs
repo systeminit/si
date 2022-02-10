@@ -92,9 +92,11 @@ impl_standard_model! {
 }
 
 impl Prop {
+    #[allow(clippy::too_many_arguments)]
     pub async fn new(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
+        _veritech: veritech::Client,
         tenancy: &Tenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
@@ -281,6 +283,7 @@ impl EditFieldAble for Prop {
     async fn update_from_edit_field(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
+        _veritech: veritech::Client,
         tenancy: &Tenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,

@@ -5,9 +5,11 @@ use crate::{
 };
 use si_data::{NatsTxn, PgTxn};
 
+#[allow(clippy::too_many_arguments)]
 pub async fn create_selector_prop(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
+    veritech: veritech::Client,
     tenancy: &Tenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
@@ -17,6 +19,7 @@ pub async fn create_selector_prop(
     let selector_prop = create_prop(
         txn,
         nats,
+        veritech.clone(),
         tenancy,
         visibility,
         history_actor,
@@ -31,6 +34,7 @@ pub async fn create_selector_prop(
         let match_expressions_prop = create_prop(
             txn,
             nats,
+            veritech.clone(),
             tenancy,
             visibility,
             history_actor,
@@ -45,6 +49,7 @@ pub async fn create_selector_prop(
             let _key_prop = create_prop(
                 txn,
                 nats,
+                veritech.clone(),
                 tenancy,
                 visibility,
                 history_actor,
@@ -62,6 +67,7 @@ pub async fn create_selector_prop(
             let _operator_prop = create_prop(
                 txn,
                 nats,
+                veritech.clone(),
                 tenancy,
                 visibility,
                 history_actor,
@@ -77,6 +83,7 @@ pub async fn create_selector_prop(
             let _values_prop = create_prop(
                 txn,
                 nats,
+                veritech.clone(),
                 tenancy,
                 visibility,
                 history_actor,
@@ -93,6 +100,7 @@ pub async fn create_selector_prop(
         let _match_labels_prop = create_prop(
             txn,
             nats,
+            veritech,
             tenancy,
             visibility,
             history_actor,

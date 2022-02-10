@@ -18,6 +18,7 @@ use crate::test_setup;
 pub async fn create_schema_with_object_and_string_prop(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
+    veritech: veritech::Client,
 ) -> SchemaVariant {
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
@@ -51,6 +52,7 @@ pub async fn create_schema_with_object_and_string_prop(
     let bohemian_prop = create_prop_of_kind_with_name(
         txn,
         nats,
+        veritech.clone(),
         &tenancy,
         &visibility,
         &history_actor,
@@ -62,6 +64,7 @@ pub async fn create_schema_with_object_and_string_prop(
     let killer_prop = create_prop_of_kind_with_name(
         txn,
         nats,
+        veritech.clone(),
         &tenancy,
         &visibility,
         &history_actor,
@@ -73,6 +76,7 @@ pub async fn create_schema_with_object_and_string_prop(
     let queen_prop = create_prop_of_kind_with_name(
         txn,
         nats,
+        veritech,
         &tenancy,
         &visibility,
         &history_actor,
@@ -103,6 +107,7 @@ pub async fn create_schema_with_object_and_string_prop(
 pub async fn create_schema_with_nested_objects_and_string_prop(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
+    veritech: veritech::Client,
 ) -> SchemaVariant {
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
@@ -136,6 +141,7 @@ pub async fn create_schema_with_nested_objects_and_string_prop(
     let bohemian_prop = create_prop_of_kind_with_name(
         txn,
         nats,
+        veritech.clone(),
         &tenancy,
         &visibility,
         &history_actor,
@@ -147,6 +153,7 @@ pub async fn create_schema_with_nested_objects_and_string_prop(
     let killer_prop = create_prop_of_kind_with_name(
         txn,
         nats,
+        veritech.clone(),
         &tenancy,
         &visibility,
         &history_actor,
@@ -158,6 +165,7 @@ pub async fn create_schema_with_nested_objects_and_string_prop(
     let pressure_prop = create_prop_of_kind_with_name(
         txn,
         nats,
+        veritech.clone(),
         &tenancy,
         &visibility,
         &history_actor,
@@ -169,6 +177,7 @@ pub async fn create_schema_with_nested_objects_and_string_prop(
     let dust_prop = create_prop_of_kind_with_name(
         txn,
         nats,
+        veritech.clone(),
         &tenancy,
         &visibility,
         &history_actor,
@@ -184,6 +193,7 @@ pub async fn create_schema_with_nested_objects_and_string_prop(
     let queen_prop = create_prop_of_kind_with_name(
         txn,
         nats,
+        veritech,
         &tenancy,
         &visibility,
         &history_actor,
@@ -215,7 +225,11 @@ pub async fn create_schema_with_nested_objects_and_string_prop(
 /// ```json
 /// { "bohemian_rhapsody": "", "killer_queen": "" }
 /// ```
-pub async fn create_schema_with_string_props(txn: &PgTxn<'_>, nats: &NatsTxn) -> SchemaVariant {
+pub async fn create_schema_with_string_props(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    veritech: veritech::Client,
+) -> SchemaVariant {
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
@@ -248,6 +262,7 @@ pub async fn create_schema_with_string_props(txn: &PgTxn<'_>, nats: &NatsTxn) ->
     let bohemian_prop = create_prop_of_kind_with_name(
         txn,
         nats,
+        veritech.clone(),
         &tenancy,
         &visibility,
         &history_actor,
@@ -263,6 +278,7 @@ pub async fn create_schema_with_string_props(txn: &PgTxn<'_>, nats: &NatsTxn) ->
     let killer_prop = create_prop_of_kind_with_name(
         txn,
         nats,
+        veritech,
         &tenancy,
         &visibility,
         &history_actor,
@@ -292,7 +308,7 @@ async fn only_string_props() {
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
-    let schema_variant = create_schema_with_string_props(&txn, &nats).await;
+    let schema_variant = create_schema_with_string_props(&txn, &nats, veritech.clone()).await;
     let component = create_component_for_schema_variant(
         &txn,
         &nats,
@@ -353,7 +369,8 @@ async fn one_object_prop() {
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
-    let schema_variant = create_schema_with_object_and_string_prop(&txn, &nats).await;
+    let schema_variant =
+        create_schema_with_object_and_string_prop(&txn, &nats, veritech.clone()).await;
     let component = create_component_for_schema_variant(
         &txn,
         &nats,
@@ -431,7 +448,8 @@ async fn nested_object_prop() {
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
-    let schema_variant = create_schema_with_nested_objects_and_string_prop(&txn, &nats).await;
+    let schema_variant =
+        create_schema_with_nested_objects_and_string_prop(&txn, &nats, veritech.clone()).await;
     let component = create_component_for_schema_variant(
         &txn,
         &nats,

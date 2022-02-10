@@ -21,6 +21,7 @@ pub async fn create_metadata_prop(
     let metadata_prop = create_prop(
         txn,
         nats,
+        veritech.clone(),
         tenancy,
         visibility,
         history_actor,
@@ -58,13 +59,14 @@ pub async fn create_metadata_prop(
                 "name",
                 schema_name,
                 Some(*metadata_prop.id()),
-                veritech,
+                veritech.clone(),
             )
             .await?;
         } else {
             create_prop(
                 txn,
                 nats,
+                veritech.clone(),
                 tenancy,
                 visibility,
                 history_actor,
@@ -81,6 +83,7 @@ pub async fn create_metadata_prop(
         let _generate_name_prop = create_prop(
             txn,
             nats,
+            veritech.clone(),
             tenancy,
             visibility,
             history_actor,
@@ -97,6 +100,7 @@ pub async fn create_metadata_prop(
         let _namespace_prop = create_prop(
             txn,
             nats,
+            veritech.clone(),
             tenancy,
             visibility,
             history_actor,
@@ -112,6 +116,7 @@ pub async fn create_metadata_prop(
         let _labels_prop = create_prop(
             txn,
             nats,
+            veritech.clone(),
             tenancy,
             visibility,
             history_actor,
@@ -127,6 +132,7 @@ pub async fn create_metadata_prop(
         let _annotations_prop = create_prop(
             txn,
             nats,
+            veritech,
             tenancy,
             visibility,
             history_actor,

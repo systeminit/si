@@ -293,6 +293,7 @@ impl EditFieldAble for SchemaVariant {
     async fn update_from_edit_field(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
+        veritech: veritech::Client,
         tenancy: &Tenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
@@ -322,6 +323,7 @@ impl EditFieldAble for SchemaVariant {
                 let prop = Prop::new(
                     txn,
                     nats,
+                    veritech,
                     tenancy,
                     visibility,
                     history_actor,
