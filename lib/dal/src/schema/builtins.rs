@@ -493,6 +493,21 @@ async fn docker_image(
         .add_schema_variant(txn, nats, visibility, history_actor, variant.id())
         .await?;
 
+    // TODO: required, validate regex: "\\d+\\/(tcp|udp)", message: "invalid exposed port entry; must be [numeric]/(tcp|udp)",
+    let exposed_ports_prop = Prop::new(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        "ExposedPorts",
+        PropKind::Array, // Note: we should have a way to specify that this is an array of Integer
+    )
+    .await?;
+    exposed_ports_prop
+        .add_schema_variant(txn, nats, visibility, history_actor, variant.id())
+        .await?;
+
     let func_name = "si:validateStringEquals".to_string();
     let mut funcs = Func::find_by_attr(txn, tenancy, visibility, "name", &func_name).await?;
     let func = funcs.pop().ok_or(SchemaError::MissingFunc(func_name))?;
