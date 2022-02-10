@@ -29,9 +29,15 @@ pub struct CodeGenerationComponent {
     pub properties: HashMap<String, Value>,
 }
 
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct CodeGenerated {
+    pub format: String,
+    pub code: String,
+}
+
 #[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct CodeGenerationResultSuccess {
     pub execution_id: String,
     pub timestamp: u64,
-    pub data: serde_json::Value,
+    pub data: CodeGenerated,
 }

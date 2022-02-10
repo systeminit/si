@@ -46,7 +46,12 @@ async fn new() {
 
     let args = FuncBackendJsQualificationArgs {
         component: component
-            .veritech_qualification_check_component(&txn, &tenancy, &visibility)
+            .veritech_qualification_check_component(
+                &txn,
+                &tenancy,
+                &visibility,
+                UNSET_ID_VALUE.into(),
+            )
             .await
             .expect("could not create component qualification view"),
     };
@@ -125,7 +130,12 @@ async fn find_for_prototype() {
 
     let args = FuncBackendJsQualificationArgs {
         component: component
-            .veritech_qualification_check_component(&txn, &tenancy, &visibility)
+            .veritech_qualification_check_component(
+                &txn,
+                &tenancy,
+                &visibility,
+                UNSET_ID_VALUE.into(),
+            )
             .await
             .expect("could not create component qualification view"),
     };

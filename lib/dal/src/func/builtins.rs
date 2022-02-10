@@ -27,6 +27,7 @@ pub async fn migrate(txn: &PgTxn<'_>, nats: &NatsTxn) -> FuncResult<()> {
     si_qualification_docker_image_name_inspect(txn, nats, &tenancy, &visibility, &history_actor)
         .await?;
     si_resource_sync_hammer(txn, nats, &tenancy, &visibility, &history_actor).await?;
+    si_qualification_yaml_kubeval(txn, nats, &tenancy, &visibility, &history_actor).await?;
 
     Ok(())
 }
@@ -490,6 +491,57 @@ async fn si_qualification_docker_image_name_inspect(
                 visibility,
                 history_actor,
                 Some("qualificationDockerImageNameInspect".to_string()),
+            )
+            .await
+            .expect("cannot set handler");
+        new_func
+            .set_code_base64(
+                txn,
+                nats,
+                visibility,
+                history_actor,
+                Some(qualification_code),
+            )
+            .await
+            .expect("cannot set code");
+    }
+
+    Ok(())
+}
+
+async fn si_qualification_yaml_kubeval(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    tenancy: &Tenancy,
+    visibility: &Visibility,
+    history_actor: &HistoryActor,
+) -> FuncResult<()> {
+    let func_name = "si:qualificationYamlKubeval".to_string();
+    let existing_func = Func::find_by_attr(txn, tenancy, visibility, "name", &func_name).await?;
+    if existing_func.is_empty() {
+        let mut new_func = Func::new(
+            txn,
+            nats,
+            tenancy,
+            visibility,
+            history_actor,
+            &func_name,
+            FuncBackendKind::JsQualification,
+            FuncBackendResponseType::Qualification,
+        )
+        .await
+        .expect("cannot create func");
+
+        let qualification_code =
+            base64::encode(include_str!("./builtins/qualificationYamlKubeval.js"));
+
+        new_func
+            .set_handler(
+                txn,
+                nats,
+                visibility,
+                history_actor,
+                Some("qualificationYamlKubeval".to_string()),
             )
             .await
             .expect("cannot set handler");

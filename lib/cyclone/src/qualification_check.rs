@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use crate::CodeGenerated;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -27,6 +28,7 @@ impl QualificationCheckRequest {
 pub struct QualificationCheckComponent {
     pub name: String,
     pub properties: HashMap<String, Value>,
+    pub codes: Vec<CodeGenerated>,
 }
 
 // Note: these map 1:1 to the DAL qualificationsubcheck data in the qualification view.

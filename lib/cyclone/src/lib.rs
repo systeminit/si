@@ -21,7 +21,7 @@ mod resolver_function;
 mod resource_sync;
 
 pub use code_generation::{
-    CodeGenerationComponent, CodeGenerationRequest, CodeGenerationResultSuccess,
+    CodeGenerated, CodeGenerationComponent, CodeGenerationRequest, CodeGenerationResultSuccess,
 };
 pub use liveness::{LivenessStatus, LivenessStatusParseError};
 pub use progress::{

@@ -357,8 +357,8 @@ mod tests {
     use std::{collections::HashMap, env};
 
     use cyclone::{
-        CodeGenerationComponent, QualificationCheckComponent, ResolverFunctionComponent,
-        ResolverFunctionParentComponent, ResourceSyncComponent,
+        CodeGenerated, CodeGenerationComponent, QualificationCheckComponent,
+        ResolverFunctionComponent, ResolverFunctionParentComponent, ResourceSyncComponent,
     };
     use deadpool_cyclone::{instance::cyclone::LocalUdsInstance, Instance};
     use indoc::indoc;
@@ -497,14 +497,29 @@ mod tests {
             component: QualificationCheckComponent {
                 name: "cider".to_string(),
                 properties,
+                codes: vec![CodeGenerated {
+                    format: "yaml".to_owned(),
+                    code: "generateName: asd\nname: kubernetes_deployment\napiVersion: apps/v1\nkind: Deployment\n".to_owned()
+                }],
             },
             code_base64: base64::encode(indoc! {r#"
                 async function check(component) {
-                    const child = await siExec.waitUntilEnd("skopeo", ["inspect", `docker://docker.io/${component.properties.image}`]);
-                    return {
-                        qualified: child.exitCode === 0,
-                        message: child.exitCode === 0 ? child.stdout : child.stderr,
-                    };
+                    const skopeoChild = await siExec.waitUntilEnd("skopeo", ["inspect", `docker://docker.io/${component.properties.image}`]);
+
+                    const code = component.codes[0];
+                    const file = path.join(os.tmpdir(), "veritech-kubeval-test.yaml");
+                    fs.writeFileSync(file, code.code);
+
+                    try {
+                        const child = await siExec.waitUntilEnd("kubeval", [file]);
+
+                        return {
+                          qualified: skopeoChild.exitCode === 0 && child.exitCode === 0,
+                          message: JSON.stringify({ skopeoStdout: skopeoChild.stdout, skopeoStderr: skopeoChild.stderr, kubevalStdout: child.stdout, kubevalStderr: child.stderr }),
+                        };
+                    } finally {
+                        fs.unlinkSync(file);
+                    }
                 }
             "#}),
         };
@@ -519,17 +534,57 @@ mod tests {
             FunctionResult::Success(success) => {
                 assert_eq!(success.execution_id, "5678");
                 // Note: this might be fragile, as skopeo stdout API might change (?)
+                let message = success.message.expect("no message available");
                 assert_eq!(
                     serde_json::from_str::<serde_json::Value>(
-                        &success.message.expect("Message is None")
+                        &serde_json::from_str::<serde_json::Value>(&message,)
+                            .expect("Message is not json")
+                            .as_object()
+                            .expect("Message isn't an object")
+                            .get("skopeoStdout")
+                            .expect("Key skopeoStdout wasn't found")
+                            .as_str()
+                            .expect("skopeoStdout is not a string")
                     )
-                    .expect("Message is not a json")
+                    .expect("skopeoStdout is not json")
                     .as_object()
-                    .expect("Message isn't an object")
+                    .expect("skopeoStdout isn't an object")
                     .get("Name")
                     .expect("Key Name wasn't found")
                     .as_str(),
                     Some("docker.io/systeminit/whiskers")
+                );
+                assert_eq!(
+                    serde_json::from_str::<serde_json::Value>(&message,)
+                        .expect("Message is not json")
+                        .as_object()
+                        .expect("Message isn't an object")
+                        .get("skopeoStderr")
+                        .expect("Key skopeoStderr wasn't found")
+                        .as_str(),
+                    Some("")
+                );
+                assert_eq!(
+                    serde_json::from_str::<serde_json::Value>(
+                        &message,
+                    )
+                    .expect("Message is not json")
+                    .as_object()
+                    .expect("Message isn't an object")
+                    .get("kubevalStdout")
+                    .expect("Key kubevalStdout wasn't found")
+                    .as_str(),
+                    Some("PASS - /tmp/veritech-kubeval-test.yaml contains a valid Deployment (unknown)")
+                );
+                assert_eq!(
+                    serde_json::from_str::<serde_json::Value>(&message,)
+                        .expect("Message is not json")
+                        .as_object()
+                        .expect("Message isn't an object")
+                        .get("kubevalStderr")
+                        .expect("Key kubevalStderr wasn't found")
+                        .as_str(),
+                    Some("")
                 );
                 assert!(success.qualified);
             }
@@ -642,7 +697,10 @@ mod tests {
                 assert_eq!(success.execution_id, "7868");
                 assert_eq!(
                     success.data,
-                    serde_json::json!({ "format": "yaml", "code": "name: cider\nproperties:\n  pkg: cider\n" })
+                    CodeGenerated {
+                        format: "yaml".to_owned(),
+                        code: "name: cider\nproperties:\n  pkg: cider\n".to_owned(),
+                    }
                 );
             }
             FunctionResult::Failure(failure) => {

@@ -72,6 +72,8 @@ pub enum ComponentError {
     CodeGenerationPrototype(#[from] CodeGenerationPrototypeError),
     #[error("code generation resolver error: {0}")]
     CodeGenerationResolver(#[from] CodeGenerationResolverError),
+    #[error("unable to find code generated")]
+    CodeGeneratedNotFound,
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("pg error: {0}")]
@@ -139,6 +141,7 @@ pub type ComponentResult<T> = Result<T, ComponentError>;
 const GET_WORKSPACE: &str = include_str!("./queries/component_get_workspace.sql");
 const GET_RESOURCE: &str = include_str!("./queries/component_get_resource.sql");
 const LIST_QUALIFICATIONS: &str = include_str!("./queries/component_list_qualifications.sql");
+const LIST_CODE_GENERATED: &str = include_str!("./queries/component_list_code_generated.sql");
 const LIST_FOR_RESOURCE_SYNC: &str = include_str!("./queries/component_list_for_resource_sync.sql");
 
 pk!(ComponentPk);
@@ -476,8 +479,9 @@ impl Component {
             )
             .await?;
 
+        // Some qualifications depend on code generation, so we have to generate first
         component
-            .check_qualifications(
+            .generate_code(
                 txn,
                 nats,
                 veritech.clone(),
@@ -489,7 +493,7 @@ impl Component {
             .await?;
 
         component
-            .generate_code(
+            .check_qualifications(
                 txn,
                 nats,
                 veritech,
@@ -957,7 +961,12 @@ impl Component {
 
             let args = FuncBackendJsQualificationArgs {
                 component: self
-                    .veritech_qualification_check_component(txn, &schema_tenancy, visibility)
+                    .veritech_qualification_check_component(
+                        txn,
+                        &schema_tenancy,
+                        visibility,
+                        system_id,
+                    )
                     .await?,
             };
             let json_args = serde_json::to_value(args)?;
@@ -1160,6 +1169,34 @@ impl Component {
         }
         let qualification_view = QualificationView::new_for_validation_errors(validation_errors);
         Ok(qualification_view)
+    }
+
+    #[tracing::instrument(skip(txn))]
+    pub async fn list_code_generated_by_component_id(
+        txn: &PgTxn<'_>,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+        component_id: ComponentId,
+        system_id: SystemId,
+    ) -> ComponentResult<Vec<veritech::CodeGenerated>> {
+        let mut results: Vec<veritech::CodeGenerated> = Vec::new();
+
+        let rows = txn
+            .query(
+                LIST_CODE_GENERATED,
+                &[&tenancy, &visibility, &component_id, &system_id],
+            )
+            .await?;
+        for row in rows.into_iter() {
+            let json: serde_json::Value = row.try_get("object")?;
+            let func_binding_return_value: FuncBindingReturnValue = serde_json::from_value(json)?;
+            let value = func_binding_return_value
+                .value()
+                .ok_or(ComponentError::CodeGeneratedNotFound)?;
+            let code_generated = veritech::CodeGenerated::deserialize(value)?;
+            results.push(code_generated);
+        }
+        Ok(results)
     }
 
     #[tracing::instrument(skip(txn))]
@@ -1391,6 +1428,7 @@ impl Component {
         txn: &PgTxn<'_>,
         tenancy: &Tenancy,
         visibility: &Visibility,
+        system_id: SystemId,
     ) -> ComponentResult<veritech::QualificationCheckComponent> {
         let mut tenancy = tenancy.clone();
         tenancy.universal = true;
@@ -1398,6 +1436,14 @@ impl Component {
         let mut qualification_view = veritech::QualificationCheckComponent {
             name: self.name().into(),
             properties: HashMap::new(),
+            codes: Self::list_code_generated_by_component_id(
+                txn,
+                &tenancy,
+                visibility,
+                *self.id(),
+                system_id,
+            )
+            .await?,
         };
 
         for edit_field in Self::get_edit_fields(txn, &tenancy, visibility, self.id()).await? {

@@ -8,12 +8,6 @@ use veritech::{
 use crate::func::backend::{FuncBackendError, FuncBackendResult};
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct FuncBackendJsCodeGenerationResult {
-    format: String,
-    code: String,
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct FuncBackendJsCodeGenerationArgs {
     pub component: CodeGenerationComponent,
 }

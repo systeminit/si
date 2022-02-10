@@ -271,7 +271,7 @@ async fn qualification_view() {
     .expect("cannot add schema variant for prop");
 
     let qualification_check_component = component
-        .veritech_qualification_check_component(&txn, &tenancy, &visibility)
+        .veritech_qualification_check_component(&txn, &tenancy, &visibility, UNSET_ID_VALUE.into())
         .await
         .expect("cannot create QualificationCheckComponent");
 
@@ -282,7 +282,8 @@ async fn qualification_view() {
             "name": "mastodon",
             "properties": {
                 "name": "mastodon"
-            }
+            },
+            "codes": []
         }),
     );
 }
