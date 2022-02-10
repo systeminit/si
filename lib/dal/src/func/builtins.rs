@@ -18,8 +18,8 @@ pub async fn migrate(txn: &PgTxn<'_>, nats: &NatsTxn) -> FuncResult<()> {
     si_set_map(txn, nats, &tenancy, &visibility, &history_actor).await?;
     si_set_prop_object(txn, nats, &tenancy, &visibility, &history_actor).await?;
     si_set_string(txn, nats, &tenancy, &visibility, &history_actor).await?;
-
     si_unset(txn, nats, &tenancy, &visibility, &history_actor).await?;
+
     si_validate_string_equals(txn, nats, &tenancy, &visibility, &history_actor).await?;
     si_qualification_always_true(txn, nats, &tenancy, &visibility, &history_actor).await?;
     si_number_of_parents(txn, nats, &tenancy, &visibility, &history_actor).await?;

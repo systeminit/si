@@ -482,6 +482,7 @@ async fn docker_image(
     let image_prop = Prop::new(
         txn,
         nats,
+        veritech.clone(),
         tenancy,
         visibility,
         history_actor,
@@ -497,6 +498,7 @@ async fn docker_image(
     let exposed_ports_prop = Prop::new(
         txn,
         nats,
+        veritech.clone(),
         tenancy,
         visibility,
         history_actor,
@@ -548,6 +550,7 @@ async fn docker_image(
     let number_of_parents_prop = Prop::new(
         txn,
         nats,
+        veritech.clone(),
         tenancy,
         visibility,
         history_actor,
@@ -759,6 +762,7 @@ async fn create_schema(
 pub async fn create_prop(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
+    veritech: veritech::Client,
     tenancy: &Tenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
@@ -770,6 +774,7 @@ pub async fn create_prop(
     let prop = Prop::new(
         txn,
         nats,
+        veritech,
         tenancy,
         visibility,
         history_actor,
@@ -802,6 +807,7 @@ pub async fn create_string_prop_with_default(
     let prop = create_prop(
         txn,
         nats,
+        veritech.clone(),
         tenancy,
         visibility,
         history_actor,

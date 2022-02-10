@@ -175,6 +175,7 @@ pub trait EditFieldAble {
     async fn update_from_edit_field(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
+        veritech: veritech::Client,
         tenancy: &Tenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,

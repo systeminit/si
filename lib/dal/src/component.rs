@@ -1711,6 +1711,7 @@ impl EditFieldAble for Component {
     async fn update_from_edit_field(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
+        _veritech: veritech::Client,
         tenancy: &Tenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
