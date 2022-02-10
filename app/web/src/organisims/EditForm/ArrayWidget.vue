@@ -1,5 +1,9 @@
 <template>
-  <EditFormField :show="show" :validation-errors="editField.validation_errors">
+  <EditFormField
+    :show="show"
+    :validation-errors="editField.validation_errors"
+    :core-edit-field="coreEditField"
+  >
     <template #name>
       {{ editField.name }}
     </template>
@@ -10,7 +14,7 @@
           :key="index"
           class="flex flex-col justify-between w-full p-1 border border-gray-500"
         >
-          <Widgets :edit-fields="editFields" />
+          <Widgets :edit-fields="editFields" :indent-level="indentLevel + 1" />
         </div>
         <div class="flex flex-row mt-1 ml-1">
           <button @click="addToArray">
@@ -26,7 +30,7 @@
           :key="index"
           class="flex flex-col justify-between w-full mx-1 border border-gray-500"
         >
-          <Widgets :edit-fields="editFields" />
+          <Widgets :edit-fields="editFields" :indent-level="indentLevel + 1" />
         </div>
       </div>
     </template>
@@ -34,7 +38,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, PropType } from "vue";
+import { computed } from "vue";
 import type { EditField } from "@/api/sdf/dal/edit_field";
 import EditFormField from "./EditFormField.vue";
 import { ArrayWidgetDal } from "@/api/sdf/dal/edit_field";
@@ -58,16 +62,12 @@ const Widgets = defineAsyncComponent<DefineComponent<WidgetsProps>>(
   () => import("./Widgets.vue") as any,
 );
 
-const props = defineProps({
-  show: {
-    type: Boolean,
-    required: true,
-  },
-  editField: {
-    type: Object as PropType<EditField>,
-    required: true,
-  },
-});
+const props = defineProps<{
+  show: boolean;
+  coreEditField: boolean;
+  indentLevel: number;
+  editField: EditField;
+}>();
 
 const widget = computed<ArrayWidgetDal>(() => {
   return props.editField.widget as ArrayWidgetDal;
