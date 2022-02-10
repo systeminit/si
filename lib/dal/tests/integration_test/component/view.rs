@@ -1,5 +1,5 @@
 use dal::{
-    system::{UNSET_ID_VALUE, UNSET_SYSTEM_ID},
+    system::UNSET_SYSTEM_ID,
     test_harness::{
         create_component_for_schema_variant, create_prop_of_kind_with_name, create_schema,
         create_schema_variant,
