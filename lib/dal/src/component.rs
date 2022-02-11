@@ -508,6 +508,9 @@ impl Component {
     }
 
     #[allow(clippy::too_many_arguments)]
+    /// Perform the actual value setting for a given prop. If the value passed in is empty, we
+    /// greedily search for an attribute resolver to set the prop's default value, but "unsetting"
+    /// is currently unsupported beyond the initial implementation for "PropKind::String".
     pub async fn resolve_attribute(
         &self,
         txn: &PgTxn<'_>,
@@ -529,6 +532,7 @@ impl Component {
         // when you YOLO, YOLO hard. -- Adam
         let (func, func_binding, created) = match (prop.kind(), value.clone()) {
             (PropKind::Array, Some(value_json)) => {
+                // FIXME(nick): handle nesting for Map.
                 let value = match value_json.as_array() {
                     Some(boolean) => boolean,
                     None => {
@@ -638,6 +642,7 @@ impl Component {
                 todo!("Unsetting a Integer PropKind isn't supported yet");
             }
             (PropKind::Map, Some(value_json)) => {
+                // FIXME(nick): handle nesting for Map.
                 let value = match value_json.as_object() {
                     Some(map) => map,
                     None => {
@@ -674,6 +679,8 @@ impl Component {
                 todo!("Unsetting a Map PropKind isn't supported yet");
             }
             (PropKind::Object, Some(value_json)) => {
+                // FIXME(nick): deny objects that aren't empty here. The value must be empty
+                // for a PropObject.
                 let value = match value_json.as_object() {
                     Some(object) => object,
                     None => {
