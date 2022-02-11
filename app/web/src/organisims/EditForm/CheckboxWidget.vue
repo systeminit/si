@@ -7,7 +7,7 @@
     <template #name>{{ editField.name }}</template>
     <template #edit>
       <input
-        v-model="value"
+        v-model="inputValue"
         class="pl-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none input-bg-color-grey si-property disabled:opacity-50"
         :class="borderColor"
         type="checkbox"
@@ -73,13 +73,22 @@ watch(
   },
 );
 
-const value = computed((): boolean | undefined => {
+const inputValue = computed((): boolean | undefined => {
   if (
     currentValue.value === undefined ||
     typeof currentValue.value === "boolean"
   ) {
+    // We'd expect the optional value to be undefined if not provided or a
+    // boolean
     return currentValue.value;
+  } else if (currentValue.value === null) {
+    // Or, getting a `null` implies this value has not yet been set on a
+    // Component, as in "unset"
+    return false;
   } else {
+    // Otherwise, this is a deeply unexpected value type and we're not going to
+    // let JavaScript coerce something invalid into a `bool` so, throw an error
+    // instead
     throw new Error(
       `Current editField prop must be a boolean | undefined: '${JSON.stringify(
         currentValue.value,
