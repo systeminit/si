@@ -534,10 +534,8 @@ async fn get_resource_by_component_id() {
 
     let resource = Component::get_resource_by_component_and_system(
         &txn,
-        &nats,
         &tenancy,
         &visibility,
-        &history_actor,
         *component.id(),
         *system.id(),
     )
@@ -545,6 +543,7 @@ async fn get_resource_by_component_id() {
     .expect("cannot get resource");
     assert_eq!(
         *resource
+            .expect("Resource missing")
             .data
             .as_object()
             .expect("None resource sync data")

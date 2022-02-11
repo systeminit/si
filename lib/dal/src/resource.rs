@@ -1,8 +1,7 @@
-use std::time::SystemTime;
-
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use si_data::{NatsError, NatsTxn, PgError, PgTxn};
+use strum_macros::Display;
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -180,6 +179,16 @@ impl Resource {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Display, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+#[strum(serialize_all = "camelCase")]
+pub enum ResourceHealth {
+    Ok,
+    Warning,
+    Error,
+    Unknown,
+}
+
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct ResourceView {
@@ -188,7 +197,7 @@ pub struct ResourceView {
     pub created_at: DateTime<Utc>,
     pub error: Option<String>,
     pub data: serde_json::Value,
-    pub health: String,
+    pub health: ResourceHealth,
     pub entity_type: String,
 }
 
@@ -204,19 +213,17 @@ impl From<(Resource, Option<FuncBindingReturnValue>)> for ResourceView {
                 updated_at: fbrv.timestamp().updated_at,
                 error: Some("Boto Cor de Rosa Spotted at a Party".to_owned()),
                 data: result_json,
-                health: "warning".to_owned(),
+                health: ResourceHealth::Error,
                 entity_type: "idk bro".to_owned(),
             }
         } else {
-            // TODO: Time should actually be never here, how to represent?
-            let time = DateTime::<Utc>::from(SystemTime::now());
             Self {
                 id: *resource.id(),
-                created_at: time,
-                updated_at: time,
+                created_at: resource.timestamp().created_at,
+                updated_at: resource.timestamp().updated_at,
                 error: Some("Boto Cor de Rosa Spotted at a Party".to_owned()),
                 data: serde_json::json!(null),
-                health: "warning".to_owned(),
+                health: ResourceHealth::Warning,
                 entity_type: "idk bro".to_owned(),
             }
         }

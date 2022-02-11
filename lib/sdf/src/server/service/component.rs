@@ -4,7 +4,10 @@ use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::Json;
 use axum::Router;
-use dal::{ComponentError as DalComponentError, SchemaError, StandardModelError, WsEventError};
+use dal::{
+    ComponentError as DalComponentError, ComponentId, SchemaError, StandardModelError, SystemId,
+    WsEventError,
+};
 use std::convert::Infallible;
 use thiserror::Error;
 
@@ -36,6 +39,8 @@ pub enum ComponentError {
     WsEvent(#[from] WsEventError),
     #[error("component not found")]
     ComponentNotFound,
+    #[error("resource not found")]
+    ResourceNotFound(ComponentId, SystemId),
 }
 
 pub type ComponentResult<T> = std::result::Result<T, ComponentError>;

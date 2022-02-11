@@ -1296,13 +1296,11 @@ impl Component {
     #[tracing::instrument(skip(txn))]
     pub async fn get_resource_by_component_and_system(
         txn: &PgTxn<'_>,
-        nats: &NatsTxn,
         tenancy: &Tenancy,
         visibility: &Visibility,
-        history_actor: &HistoryActor,
         component_id: ComponentId,
         system_id: SystemId,
-    ) -> ComponentResult<ResourceView> {
+    ) -> ComponentResult<Option<ResourceView>> {
         let resource = Resource::get_by_component_id_and_system_id(
             txn,
             tenancy,
@@ -1310,8 +1308,11 @@ impl Component {
             &component_id,
             &system_id,
         )
-        .await?
-        .ok_or(ComponentError::ResourceNotFound(component_id, system_id))?;
+        .await?;
+        let resource = match resource {
+            Some(r) => r,
+            None => return Ok(None),
+        };
 
         let row = txn
             .query_opt(
@@ -1326,7 +1327,7 @@ impl Component {
             json.map(serde_json::from_value).transpose()?;
         let res_view = ResourceView::from((resource, func_binding_return_value));
 
-        Ok(res_view)
+        Ok(Some(res_view))
     }
 
     pub async fn veritech_attribute_resolver_component(

@@ -9,6 +9,7 @@ import _ from "lodash";
 
 export interface GetComponentMetadataArgs {
   componentId: number;
+  systemId: number;
 }
 
 export interface GetComponentMetadataRequest
@@ -19,6 +20,8 @@ export interface GetComponentMetadataRequest
 
 export interface GetComponentMetadataResponse {
   schemaName: string;
+  qualified?: boolean;
+  resourceHealth?: string;
 }
 
 export function getComponentMetadata(
@@ -42,8 +45,8 @@ export function getComponentMetadata(
       }
       const request: GetComponentMetadataRequest = {
         ...visibility,
+        ...args,
         workspaceId: workspace.id,
-        componentId: args.componentId,
       };
       return sdf.get<ApiResponse<GetComponentMetadataResponse>>(
         "component/get_component_metadata",

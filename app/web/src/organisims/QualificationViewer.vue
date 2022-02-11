@@ -214,6 +214,7 @@ const props = defineProps<{
 const { componentId } = toRefs(props);
 const componentId$ = fromRef<number>(componentId, { immediate: true });
 
+// TODO: we should fetch the qualifications when they change
 const allQualifications = refFrom<Array<Qualification> | null>(
   combineLatest([componentId$]).pipe(
     switchMap(([componentId]) => {
