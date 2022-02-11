@@ -1,6 +1,9 @@
 use axum::extract::Query;
 use axum::Json;
-use dal::{Component, ComponentId, StandardModel, Tenancy, Visibility, Workspace, WorkspaceId};
+use dal::{
+    resource::ResourceHealth, system::UNSET_SYSTEM_ID, Component, ComponentId, StandardModel,
+    SystemId, Tenancy, Visibility, Workspace, WorkspaceId,
+};
 use serde::{Deserialize, Serialize};
 
 use super::{ComponentError, ComponentResult};
@@ -10,7 +13,7 @@ use crate::server::extract::{Authorization, PgRoTxn};
 #[serde(rename_all = "camelCase")]
 pub struct GetComponentMetadataRequest {
     pub component_id: ComponentId,
-    //pub system_id: SystemId,
+    pub system_id: Option<SystemId>,
     pub workspace_id: WorkspaceId,
     #[serde(flatten)]
     pub visibility: Visibility,
@@ -20,7 +23,8 @@ pub struct GetComponentMetadataRequest {
 #[serde(rename_all = "camelCase")]
 pub struct GetComponentMetadataResponse {
     pub schema_name: String,
-    //pub resource_state: Option<()>
+    pub qualified: Option<bool>,
+    pub resource_health: Option<ResourceHealth>,
 }
 
 pub async fn get_component_metadata(
@@ -38,21 +42,51 @@ pub async fn get_component_metadata(
     )
     .await?
     .ok_or(ComponentError::InvalidRequest)?;
-    let tenancy = Tenancy::new_workspace(vec![*workspace.id()]);
+
+    // This is a "read tenancy" that includes schemas.
+    let mut tenancy = Tenancy::new_workspace(vec![*workspace.id()]);
+    tenancy.universal = true;
 
     let component =
         Component::get_by_id(&txn, &tenancy, &request.visibility, &request.component_id)
             .await?
             .ok_or(ComponentError::NotFound)?;
-    let mut schema_tenancy = tenancy.clone();
-    schema_tenancy.universal = true;
 
     let schema = component
-        .schema_with_tenancy(&txn, &schema_tenancy, &request.visibility)
+        .schema_with_tenancy(&txn, &tenancy, &request.visibility)
         .await?
         .ok_or(ComponentError::SchemaNotFound)?;
+
+    let system_id = request.system_id.unwrap_or(UNSET_SYSTEM_ID);
+
+    let qualifications = Component::list_qualifications_by_component_id(
+        &txn,
+        &tenancy,
+        &request.visibility,
+        *component.id(),
+        system_id,
+    )
+    .await?;
+
+    let qualified = qualifications
+        .into_iter()
+        .map(|q| q.result.map(|r| r.success))
+        .flatten()
+        .reduce(|q, acc| acc && q);
+
+    let resource = Component::get_resource_by_component_and_system(
+        &txn,
+        &tenancy,
+        &request.visibility,
+        request.component_id,
+        system_id,
+    )
+    .await?;
+
     let response = GetComponentMetadataResponse {
         schema_name: schema.name().to_owned(),
+        qualified,
+        resource_health: resource.map(|r| r.health),
     };
     Ok(Json(response))
 }

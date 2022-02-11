@@ -14,9 +14,9 @@
           class="flex items-center focus:outline-none button"
           @click="runSync()"
         >
-          <VueFeather type="refresh-cw" :stroke="healthColor()" size="1em" />
+          <VueFeather type="refresh-cw" :stroke="healthColor" size="1em" />
         </button>
-        <VueFeather v-else type="box" :stroke="healthColor()" size="1em" />
+        <VueFeather v-else type="box" :stroke="healthColor" size="1em" />
       </div>
     </div>
 
@@ -24,7 +24,7 @@
       <div class="w-full h-full pt-2">
         <div class="flex flex-row mx-2 my-1">
           <div class="text-xs">
-            <VueFeather type="heart" :stroke="healthColor()" size="1.25em" />
+            <VueFeather type="heart" :stroke="healthColor" size="1.25em" />
           </div>
 
           <div class="ml-2 text-xs">
@@ -44,7 +44,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, toRefs } from "vue";
+import { ref, toRefs, computed } from "vue";
 import { Resource, ResourceHealth } from "@/api/sdf/dal/resource";
 import SiTextBox from "@/atoms/SiTextBox.vue";
 import { ComponentService } from "@/service/component";
@@ -52,7 +52,9 @@ import { GlobalErrorService } from "@/service/global_error";
 import { ChangeSetService } from "@/service/change_set";
 import { fromRef, refFrom } from "vuse-rx";
 import VueFeather from "vue-feather";
-import { from, switchMap, combineLatest, ReplaySubject } from "rxjs";
+import { system$ } from "@/observable/system";
+import { from, combineLatest, ReplaySubject } from "rxjs";
+import { switchMap } from "rxjs/operators";
 import { eventResourceSynced$ } from "@/observable/resource";
 
 const props = defineProps<{
@@ -64,7 +66,7 @@ const editMode = refFrom<boolean>(ChangeSetService.currentEditMode());
 const sync = ref<HTMLElement | null>(null);
 
 // NOTE(nick): making this "computed" will result in the active view breaking for the attribute panel.
-const healthColor = () => {
+const healthColor = computed(() => {
   if (resource.value) {
     if (resource.value.health == ResourceHealth.Ok) {
       return "#86f0ad";
@@ -77,7 +79,7 @@ const healthColor = () => {
     }
   }
   return "#bbbbbb";
-};
+});
 
 const animateSyncButton = () => {
   const button = sync.value;
@@ -119,10 +121,16 @@ const runSync = () => {
 const resourceSynced$ = new ReplaySubject<true>();
 resourceSynced$.next(true); // We must fetch on setup
 eventResourceSynced$.subscribe((resourceSyncId) => {
-  // TODO(paulo): check if system is the same (do we have to check for billing_account_id?)
-  if (props.componentId == resourceSyncId?.payload.data.componentId) {
-    resourceSynced$.next(true);
-  }
+  combineLatest([system$]).pipe(
+    switchMap(([system]) => {
+      const data = resourceSyncId?.payload.data;
+      const sameComponent = props.componentId === data?.componentId;
+      const sameSystem = system?.id === data?.systemId;
+      if (sameComponent && sameSystem) {
+        resourceSynced$.next(true);
+      }
+    }),
+  );
 });
 
 // Fetches the resource. First by listening to componentId$.

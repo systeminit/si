@@ -6,6 +6,19 @@
       <div v-if="componentMetadata?.schemaName" class="text-lg">
         {{ componentMetadata.schemaName }}
       </div>
+
+      <div class="ml-2 text-base">
+        <VueFeather
+          type="check-square"
+          size="1em"
+          :class="qualificationStatus"
+        />
+      </div>
+
+      <div class="ml-2 text-base">
+        <VueFeather type="box" size="1em" :stroke="resourceSyncStatus" />
+      </div>
+
       <div
         class="flex flow-row items-center justify-end flex-grow h-full text-xs text-center"
       >
@@ -23,14 +36,17 @@
 import EditFormComponent from "@/organisims/EditFormComponent.vue";
 import { ComponentService } from "@/service/component";
 import { GetComponentMetadataResponse } from "@/service/component/get_component_metadata";
-import { computed, toRefs } from "vue";
+import { toRefs, computed } from "vue";
 import { fromRef, refFrom } from "vuse-rx";
-import { from, combineLatest } from "rxjs";
+import { from, combineLatest, ReplaySubject } from "rxjs";
 import { switchMap } from "rxjs/operators";
+import { system$ } from "@/observable/system";
+import { eventResourceSynced$ } from "@/observable/resource";
 import { GlobalErrorService } from "@/service/global_error";
 import VueFeather from "vue-feather";
 import { EditFieldObjectKind, EditFields } from "@/api/sdf/dal/edit_field";
 import { EditFieldService } from "@/service/edit_field";
+import { ResourceHealth } from "@/api/sdf/dal/resource";
 
 const props = defineProps<{
   componentId: number;
@@ -62,11 +78,30 @@ const editFields = refFrom<EditFields | undefined>(
   ),
 );
 
+// TODO: we should re-fetch the metadata when qualifications change
+
+// We should re-fetch the metadata if the resource was synced
+const resourceSynced$ = new ReplaySubject<true>();
+resourceSynced$.next(true); // We must fetch on setup
+eventResourceSynced$.subscribe((resourceSyncId) => {
+  combineLatest([system$]).pipe(
+    switchMap(([system]) => {
+      const data = resourceSyncId?.payload.data;
+      const sameComponent = props.componentId === data?.componentId;
+      const sameSystem = system?.id === data?.systemId;
+      if (sameComponent && sameSystem) {
+        resourceSynced$.next(true);
+      }
+    }),
+  );
+});
+
 const componentMetadata = refFrom<GetComponentMetadataResponse | undefined>(
-  combineLatest([componentId$]).pipe(
-    switchMap(([componentId]) => {
+  combineLatest([componentId$, system$, resourceSynced$]).pipe(
+    switchMap(([componentId, system]) => {
       return ComponentService.getComponentMetadata({
         componentId,
+        systemId: system?.id,
       });
     }),
     switchMap((response) => {
@@ -99,6 +134,43 @@ const editCount = computed(() => {
     return 666;
   }
 });
+
+const qualificationStatus = computed(() => {
+  let style: Record<string, boolean> = {};
+
+  if (componentMetadata.value?.qualified ?? undefined !== undefined) {
+    if (componentMetadata.value.qualified) {
+      style["ok"] = true;
+    } else {
+      style["error"] = true;
+    }
+  } else {
+    style["unknown"] = true;
+  }
+
+  return style;
+});
+
+const resourceSyncStatus = computed(() => {
+  let style: Record<string, boolean> = {};
+
+  if ((componentMetadata.value?.resourceHealth ?? undefined) !== undefined) {
+    const health = componentMetadata.value.resourceHealth;
+    if (health == ResourceHealth.Ok) {
+      return "#86f0ad";
+    } else if (health == ResourceHealth.Warning) {
+      return "#f0d286";
+    } else if (health == ResourceHealth.Error) {
+      return "#f08686";
+    } else if (health == ResourceHealth.Unknown) {
+      return "#bbbbbb";
+    }
+  } else {
+    return "#bbbbbb";
+  }
+
+  return style;
+});
 </script>
 
 <style scoped>
@@ -117,5 +189,21 @@ const editCount = computed(() => {
 
 .property-section-bg-color {
   background-color: #292c2d;
+}
+
+.ok {
+  color: #86f0ad;
+}
+
+.warning {
+  color: #f0d286;
+}
+
+.error {
+  color: #f08686;
+}
+
+.unknown {
+  color: #5b6163;
 }
 </style>

@@ -3,7 +3,7 @@ import { WsResourceSynced, WsEvent } from "@/api/sdf/dal/ws_event";
 
 export interface ResourceSyncId {
   componentId: number;
-  resourceId: number;
+  systemId: number;
 }
 
 /**

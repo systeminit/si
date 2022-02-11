@@ -139,6 +139,7 @@ async fn get_component_metadata() {
         visibility,
         component_id: *component.id(),
         workspace_id: *nba.workspace.id(),
+        system_id: None,
     };
     let response: GetComponentMetadataResponse = api_request_auth_query(
         app,
