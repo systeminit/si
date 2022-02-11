@@ -2,7 +2,7 @@ import { ApiResponse, SDF } from "@/api/sdf";
 import { combineLatest, combineLatestWith, from, Observable } from "rxjs";
 import { standardVisibilityTriggers$ } from "@/observable/visibility";
 import Bottle from "bottlejs";
-import { shareReplay, switchMap } from "rxjs/operators";
+import { switchMap } from "rxjs/operators";
 import { workspace$ } from "@/observable/workspace";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import _ from "lodash";

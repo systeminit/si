@@ -17,7 +17,8 @@ import { ComponentService } from "@/service/component";
 import { GetComponentMetadataResponse } from "@/service/component/get_component_metadata";
 import { toRefs } from "vue";
 import { fromRef, refFrom } from "vuse-rx";
-import { from, switchMap, combineLatest } from "rxjs";
+import { from, combineLatest } from "rxjs";
+import { switchMap } from "rxjs/operators";
 import { GlobalErrorService } from "@/service/global_error";
 
 const props = defineProps<{
@@ -41,7 +42,7 @@ const componentMetadata = refFrom<GetComponentMetadataResponse | undefined>(
     switchMap((response) => {
       if (response.error) {
         GlobalErrorService.set(response);
-        return from([null]);
+        return from([undefined]);
       } else {
         return from([response]);
       }
