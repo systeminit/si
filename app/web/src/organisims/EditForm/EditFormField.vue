@@ -36,9 +36,7 @@
               @keyup.stop
               @keydown.stop
             >
-              <div class="flex flex-row">
-                <slot name="edit" />
-              </div>
+              <slot name="edit" />
             </div>
 
             <div v-else class="flex mx-2 text-sm leading-tight text-gray-400">
@@ -47,6 +45,7 @@
             </div>
           </div>
         </div>
+
         <div class="flex flex-wrap">
           <ValidationErrorsWidget
             :errors="props.validationErrors"
@@ -72,5 +71,3 @@ const props = defineProps<{
 
 const editMode = refFrom(ChangeSetService.currentEditMode());
 </script>
-
-<style scoped></style>

@@ -12,7 +12,6 @@
         v-model="currentValue"
         class="pl-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none input-bg-color-grey si-property disabled:opacity-50"
         :class="borderColor"
-        placeholder="text"
         @change="onBlur"
         @focus="onFocus"
         @blur="onBlur"
