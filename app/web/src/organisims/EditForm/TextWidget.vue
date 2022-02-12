@@ -1,4 +1,5 @@
 <template>
+  <!-- NOTE(nick): "EditFormField" is the same as "Field" from demo v0.4 -->
   <EditFormField
     :show="show"
     :core-edit-field="coreEditField"
