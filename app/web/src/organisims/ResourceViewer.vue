@@ -54,7 +54,7 @@ import { fromRef, refFrom } from "vuse-rx";
 import VueFeather from "vue-feather";
 import { system$ } from "@/observable/system";
 import { from, combineLatest, ReplaySubject } from "rxjs";
-import { switchMap } from "rxjs/operators";
+import { switchMap, tap } from "rxjs/operators";
 import { eventResourceSynced$ } from "@/observable/resource";
 
 const props = defineProps<{
@@ -122,7 +122,7 @@ const resourceSynced$ = new ReplaySubject<true>();
 resourceSynced$.next(true); // We must fetch on setup
 eventResourceSynced$.subscribe((resourceSyncId) => {
   combineLatest([system$]).pipe(
-    switchMap(([system]) => {
+    tap(([system]) => {
       const data = resourceSyncId?.payload.data;
       const sameComponent = props.componentId === data?.componentId;
       const sameSystem = system?.id === data?.systemId;

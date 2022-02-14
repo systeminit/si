@@ -16,7 +16,7 @@
       </div>
 
       <div class="ml-2 text-base">
-        <VueFeather type="box" size="1em" :stroke="resourceSyncStatus" />
+        <VueFeather type="box" size="1em" :stroke="resourceSyncStatusStroke" />
       </div>
 
       <div
@@ -39,7 +39,7 @@ import { GetComponentMetadataResponse } from "@/service/component/get_component_
 import { toRefs, computed } from "vue";
 import { fromRef, refFrom } from "vuse-rx";
 import { from, combineLatest, ReplaySubject } from "rxjs";
-import { switchMap } from "rxjs/operators";
+import { switchMap, tap } from "rxjs/operators";
 import { system$ } from "@/observable/system";
 import { eventResourceSynced$ } from "@/observable/resource";
 import { GlobalErrorService } from "@/service/global_error";
@@ -85,7 +85,7 @@ const resourceSynced$ = new ReplaySubject<true>();
 resourceSynced$.next(true); // We must fetch on setup
 eventResourceSynced$.subscribe((resourceSyncId) => {
   combineLatest([system$]).pipe(
-    switchMap(([system]) => {
+    tap(([system]) => {
       const data = resourceSyncId?.payload.data;
       const sameComponent = props.componentId === data?.componentId;
       const sameSystem = system?.id === data?.systemId;
@@ -99,13 +99,19 @@ eventResourceSynced$.subscribe((resourceSyncId) => {
 const componentMetadata = refFrom<GetComponentMetadataResponse | undefined>(
   combineLatest([componentId$, system$, resourceSynced$]).pipe(
     switchMap(([componentId, system]) => {
-      return ComponentService.getComponentMetadata({
-        componentId,
-        systemId: system?.id,
-      });
+      if (system) {
+        return ComponentService.getComponentMetadata({
+          componentId,
+          systemId: system.id,
+        });
+      } else {
+        return from([null]);
+      }
     }),
     switchMap((response) => {
-      if (response.error) {
+      if (response === null) {
+        return from([undefined]);
+      } else if (response.error) {
         GlobalErrorService.set(response);
         return from([undefined]);
       } else {
@@ -138,38 +144,38 @@ const editCount = computed(() => {
 const qualificationStatus = computed(() => {
   let style: Record<string, boolean> = {};
 
-  if (componentMetadata.value?.qualified ?? undefined !== undefined) {
-    if (componentMetadata.value.qualified) {
-      style["ok"] = true;
-    } else {
-      style["error"] = true;
-    }
-  } else {
+  if (
+    componentMetadata.value === undefined ||
+    componentMetadata.value.qualified === undefined
+  ) {
     style["unknown"] = true;
+  } else if (componentMetadata.value.qualified) {
+    style["ok"] = true;
+  } else {
+    style["error"] = true;
   }
 
   return style;
 });
 
-const resourceSyncStatus = computed(() => {
-  let style: Record<string, boolean> = {};
-
-  if ((componentMetadata.value?.resourceHealth ?? undefined) !== undefined) {
-    const health = componentMetadata.value.resourceHealth;
-    if (health == ResourceHealth.Ok) {
-      return "#86f0ad";
-    } else if (health == ResourceHealth.Warning) {
-      return "#f0d286";
-    } else if (health == ResourceHealth.Error) {
-      return "#f08686";
-    } else if (health == ResourceHealth.Unknown) {
-      return "#bbbbbb";
-    }
-  } else {
+const resourceSyncStatusStroke = computed(() => {
+  if (
+    componentMetadata.value === undefined ||
+    componentMetadata.value.resourceHealth === undefined
+  ) {
     return "#bbbbbb";
   }
 
-  return style;
+  const health = componentMetadata.value.resourceHealth;
+  if (health == ResourceHealth.Ok) {
+    return "#86f0ad";
+  } else if (health == ResourceHealth.Warning) {
+    return "#f0d286";
+  } else if (health == ResourceHealth.Error) {
+    return "#f08686";
+  } else {
+    return "#bbbbbb";
+  }
 });
 </script>
 
