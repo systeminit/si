@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 set -e
 
+# NOTE: when making changes to this file, its execution must remain idempotent, barring force
+# updates. It is acceptable for some steps to be wasteful (e.g. re-installing a package without
+# checking version) so long as the spirit of an idempotency guarantee remains. This script's
+# definition of "idempotency" extends to force updating packages that may already exist, which
+# is not truly "idempotent". However, we may make this concession in scenarios where we may have
+# to force update a package in lieu of a package manager (e.g. using a "latest" GitHub release).
+
 SI_USER="unknown"
 SI_OS="unknown"
 SI_LINUX="unknown"
@@ -61,42 +68,26 @@ function darwin-bootstrap {
 }
 
 function arch-bootstrap {
-    sudo pacman -Syu --noconfirm base-devel make git skopeo
-
-    mkdir -p /tmp/kubeval-download
-    wget https://github.com/instrumenta/kubeval/releases/latest/download/kubeval-linux-amd64.tar.gz -P /tmp/kubeval-download
-    tar -xf /tmp/kubeval-download/kubeval-linux-amd64.tar.gz --directory /tmp/kubeval-download
-    sudo cp /tmp/kubeval-download/kubeval /usr/local/bin
-    rm -rf /tmp/kubeval-download
+    sudo pacman -Syu --noconfirm base-devel make git skopeo wget
+    install-kubeval-linux-amd64
 }
 
 function fedora-bootstrap {
     sudo dnf upgrade -y --refresh
     sudo dnf autoremove -y
-    sudo dnf install -y @development-tools make git lld skopeo
-
-    mkdir -p /tmp/kubeval-download
-    wget https://github.com/instrumenta/kubeval/releases/latest/download/kubeval-linux-amd64.tar.gz -P /tmp/kubeval-download
-    tar -xf /tmp/kubeval-download/kubeval-linux-amd64.tar.gz --directory /tmp/kubeval-download
-    sudo cp /tmp/kubeval-download/kubeval /usr/local/bin
-    rm -rf /tmp/kubeval-download
+    sudo dnf install -y @development-tools make git lld skopeo wget
+    install-kubeval-linux-amd64
 }
 
 function ubuntu-bootstrap {
     . /etc/os-release
     echo "deb https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_${VERSION_ID}/ /" | sudo tee /etc/apt/sources.list.d/devel:kubic:libcontainers:stable.list
     curl -L https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_${VERSION_ID}/Release.key | sudo apt-key add -
-
     sudo apt update
     sudo apt upgrade -y
     sudo apt autoremove -y
-    sudo apt install -y build-essential make git lld skopeo
-
-    mkdir -p /tmp/kubeval-download
-    wget https://github.com/instrumenta/kubeval/releases/latest/download/kubeval-linux-amd64.tar.gz -P /tmp/kubeval-download
-    tar -xf /tmp/kubeval-download/kubeval-linux-amd64.tar.gz --directory /tmp/kubeval-download
-    sudo cp /tmp/kubeval-download/kubeval /usr/local/bin
-    rm -rf /tmp/kubeval-download
+    sudo apt install -y build-essential make git lld skopeo wget
+    install-kubeval-linux-amd64
 }
 
 function perform-bootstrap {
@@ -123,8 +114,22 @@ have not yet been validated
     fi
 }
 
+function install-kubeval-linux-amd64 {
+    if [ -d /tmp/kubeval-download ]; then
+        rm -rf /tmp/kubeval-download
+    fi
+    mkdir -p /tmp/kubeval-download
+    wget https://github.com/instrumenta/kubeval/releases/latest/download/kubeval-linux-amd64.tar.gz -P /tmp/kubeval-download
+    tar -xf /tmp/kubeval-download/kubeval-linux-amd64.tar.gz --directory /tmp/kubeval-download
+    if [ -f /usr/local/bin/kubeval ]; then
+        rm -f /usr/local/bin/kubeval
+    fi
+    sudo cp /tmp/kubeval-download/kubeval /usr/local/bin
+    rm -rf /tmp/kubeval-download
+}
+
 function check-binaries {
-    for BINARY in "cargo" "node" "npm" "docker" "docker-compose"; do
+    for BINARY in "cargo" "node" "npm" "docker" "docker-compose" "skopeo" "kubeval"; do
         if ! [ "$(command -v ${BINARY})" ]; then
             die "\"$BINARY\" must be installed and in PATH"
         fi
