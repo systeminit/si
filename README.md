@@ -22,8 +22,8 @@ If unsure, the following tools are recommended to help manage your toolchains:
 
 If your preferred environment is not listed, please feel free to add it once the following conditions have been met:
 
-1. It's been added to the idempotent [bootstrap script](./scripts/bootstrap.sh)
-2. The aforementioned script has been tested and remains idempotent
+1. It's been added to the (mostly) idempotent [bootstrap script](./scripts/bootstrap.sh)
+2. The aforementioned script has been tested and remains (mostly) idempotent
 3. Running the **Quickstart** steps below is successful and the UI is fully functional
 
 _Please note:_ adding your preferred environment will also add you as a maintainer of its functionality throughout this repository.
@@ -51,7 +51,7 @@ Not only is flexibility between architectures useful for local development, but 
 ./scripts/bootstrap.sh
 ```
 
-The bootstrapper is idempotent, so feel free to run it as many times as you like!
+The bootstrapper is (mostly) idempotent, so feel free to run it as many times as you like!
 However, it _will_ upgrade existing packages without confirmations, so ensure that you are ready to do so.
 
 **Login:** now, we need to ensure that we are [logged into Docker locally](https://docs.docker.com/engine/reference/commandline/login/) and that the corresponding account can pull images from our [private repositories](https://hub.docker.com/orgs/systeminit/repositories).
