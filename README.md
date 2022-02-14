@@ -157,6 +157,16 @@ You can teardown everything with the same target that the **Quickstart** guide u
 make down
 ```
 
+## Troubleshooting
+
+Having trouble running SI or its tests?
+Want to go back to the beginning and wipe the slate clean?
+We have a `make` target for that.
+
+```bash
+make troubleshoot
+```
+
 ## Architecture
 
 The diagram below illustrates a _very_ high-level overview of SI's calling stack.

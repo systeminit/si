@@ -258,9 +258,12 @@ app-run:
 	cd $(MAKEPATH)/app/web; npm run dev
 .PHONY: app-run
 
-cargo-clean:
+troubleshoot: down
+	cd $(MAKEPATH)/app/web; npm install
+	cd $(MAKEPATH)/app/web; npm run vite-clean
 	cd $(MAKEPATH); cargo clean
-.PHONY: clean-cargo
+	$(MAKEPATH)/scripts/bootstrap.sh
+.PHONY: troubleshoot
 
 deploy-prod:
 	@$(MAKEPATH)/scripts/deploy-prod.sh
