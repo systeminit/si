@@ -1,5 +1,7 @@
 <template>
   <div class="flex flex-row w-full h-full">
+    <!-- FIXME(nick): noticed that "whichComponent" has the following warning (but does not seem to matter right now) -->
+    <!-- "Type {} is not assignable to type string | ComponentDefinition" -->
     <component
       :is="whichComponent"
       :is-visible="isVisible"
@@ -26,6 +28,7 @@ import PanelEmpty from "@/organisims/PanelEmpty.vue";
 
 import PanelAttribute from "@/organisims/PanelAttribute.vue";
 import PanelSchematic from "@/organisims/PanelSchematic.vue";
+import PanelSecret from "@/organisims/PanelSecret.vue";
 
 const props = defineProps({
   panelIndex: { type: Number, required: true },
@@ -46,12 +49,17 @@ const emit = defineEmits([
 const panelType = ref<PanelType>(props.initialPanelType);
 
 const whichComponent = computed<
-  typeof PanelAttribute | typeof PanelSchematic | typeof PanelEmpty
+  | typeof PanelAttribute
+  | typeof PanelSchematic
+  | typeof PanelSecret
+  | typeof PanelEmpty
 >(() => {
   if (panelType.value == "attribute") {
     return PanelAttribute;
   } else if (panelType.value == "schematic") {
     return PanelSchematic;
+  } else if (panelType.value == "secret") {
+    return PanelSecret;
   } else {
     return PanelEmpty;
   }
