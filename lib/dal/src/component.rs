@@ -35,7 +35,7 @@ use crate::schema::variant::{SchemaVariantError, SchemaVariantId};
 use crate::schema::SchemaVariant;
 use crate::validation_resolver::ValidationResolverContext;
 use crate::ws_event::{WsEvent, WsEventError};
-use crate::{Edge, EdgeError, PropError, System};
+use crate::{AttributeResolverId, Edge, EdgeError, PropError, System};
 
 use crate::func::backend::array::FuncBackendArrayArgs;
 use crate::func::backend::boolean::FuncBackendBooleanArgs;
@@ -452,7 +452,7 @@ impl Component {
             .await?
             .ok_or(ComponentError::NotFound(component_id))?;
 
-        let (value, created) = component
+        let (value, _attribute_resolver_id, created) = component
             .resolve_attribute(
                 txn,
                 nats,
@@ -462,6 +462,7 @@ impl Component {
                 history_actor,
                 &prop,
                 value,
+                None,
             )
             .await?;
 
@@ -521,7 +522,8 @@ impl Component {
         history_actor: &HistoryActor,
         prop: &Prop,
         value: Option<serde_json::Value>,
-    ) -> ComponentResult<(Option<serde_json::Value>, bool)> {
+        parent_attribute_resolver_id: Option<AttributeResolverId>,
+    ) -> ComponentResult<(Option<serde_json::Value>, AttributeResolverId, bool)> {
         let mut schema_tenancy = tenancy.clone();
         schema_tenancy.universal = true;
 
@@ -803,18 +805,49 @@ impl Component {
         let mut attribute_resolver_context = AttributeResolverContext::new();
         attribute_resolver_context.set_prop_id(*prop.id());
         attribute_resolver_context.set_component_id(*self.id());
-        AttributeResolver::upsert(
-            txn,
-            nats,
-            tenancy,
-            visibility,
-            history_actor,
-            *func.id(),
-            *func_binding.id(),
-            attribute_resolver_context,
-        )
-        .await?;
-        Ok((value, created))
+
+        let parent_prop = prop.parent_prop(txn, visibility).await?;
+        let attribute_resolver = if let (Some(_parent_prop), Some(parent_attribute_resolver_id)) =
+            (parent_prop, parent_attribute_resolver_id)
+        {
+            let attribute_resolver = AttributeResolver::new(
+                txn,
+                nats,
+                tenancy,
+                visibility,
+                history_actor,
+                *func.id(),
+                *func_binding.id(),
+                attribute_resolver_context,
+            )
+            .await?;
+
+            attribute_resolver
+                .set_parent_attribute_resolver(
+                    txn,
+                    nats,
+                    visibility,
+                    history_actor,
+                    parent_attribute_resolver_id,
+                )
+                .await?;
+
+            attribute_resolver
+        } else {
+            AttributeResolver::upsert(
+                txn,
+                nats,
+                tenancy,
+                visibility,
+                history_actor,
+                *func.id(),
+                *func_binding.id(),
+                attribute_resolver_context,
+            )
+            .await?
+        };
+
+        Ok((value, *attribute_resolver.id(), created))
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -892,7 +925,7 @@ impl Component {
                 )
                 .await?;
 
-                // If we dont' have one, create the validation resolver. If we do, update the
+                // If we don't have one, create the validation resolver. If we do, update the
                 // func binding id to point to the new value. Interesting to think about
                 // garbage collecting the left over funcbinding + func result value?
                 if let Some(mut validation_resolver) = existing_validation_resolvers.pop() {
@@ -1168,7 +1201,7 @@ impl Component {
         let mut validation_errors: Vec<(Prop, Vec<ValidationError>)> = Vec::new();
         for (prop, field_value) in validation_field_values.into_iter() {
             if let Some(value_json) = field_value.value() {
-                // This clone shouldn't be neccessary, but we have no way to get to the owned value -- Adam
+                // This clone shouldn't be necessary, but we have no way to get to the owned value -- Adam
                 let internal_validation_errors: Vec<ValidationError> =
                     serde_json::from_value(value_json.clone())?;
                 validation_errors.push((prop, internal_validation_errors));
@@ -1711,6 +1744,7 @@ impl EditFieldAble for Component {
     async fn update_from_edit_field(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
+        _veritech: veritech::Client,
         tenancy: &Tenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
@@ -1843,7 +1877,7 @@ async fn edit_field_for_prop(
     .await?;
     for field_value in validation_field_values.into_iter() {
         if let Some(value_json) = field_value.value() {
-            // This clone shouldn't be neccessary, but we have no way to get to the owned value -- Adam
+            // This clone shouldn't be necessary, but we have no way to get to the owned value -- Adam
             let mut validation_error: Vec<ValidationError> =
                 serde_json::from_value(value_json.clone())?;
             validation_errors.append(&mut validation_error);

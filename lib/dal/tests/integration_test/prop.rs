@@ -15,7 +15,7 @@ async fn new() {
         txn,
         _nats_conn,
         nats,
-        _veritech
+        veritech
     );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
@@ -23,6 +23,7 @@ async fn new() {
     let prop = Prop::new(
         &txn,
         &nats,
+        veritech,
         &tenancy,
         &visibility,
         &history_actor,
@@ -45,14 +46,14 @@ async fn schema_variants() {
         txn,
         _nats_conn,
         nats,
-        _veritech
+        veritech
     );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
     let schema_variant =
         create_schema_variant(&txn, &nats, &tenancy, &visibility, &history_actor).await;
-    let prop = create_prop(&txn, &nats, &tenancy, &visibility, &history_actor).await;
+    let prop = create_prop(&txn, &nats, veritech, &tenancy, &visibility, &history_actor).await;
 
     prop.add_schema_variant(
         &txn,
@@ -97,7 +98,7 @@ async fn parent_props() {
         txn,
         _nats_conn,
         nats,
-        _veritech
+        veritech
     );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
@@ -105,6 +106,7 @@ async fn parent_props() {
     let parent_prop = create_prop_of_kind(
         &txn,
         &nats,
+        veritech.clone(),
         &tenancy,
         &visibility,
         &history_actor,
@@ -114,6 +116,7 @@ async fn parent_props() {
     let child_prop = create_prop_of_kind(
         &txn,
         &nats,
+        veritech,
         &tenancy,
         &visibility,
         &history_actor,
@@ -149,7 +152,7 @@ async fn parent_props_wrong_prop_kinds() {
         txn,
         _nats_conn,
         nats,
-        _veritech
+        veritech
     );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
@@ -157,6 +160,7 @@ async fn parent_props_wrong_prop_kinds() {
     let parent_prop = create_prop_of_kind(
         &txn,
         &nats,
+        veritech.clone(),
         &tenancy,
         &visibility,
         &history_actor,
@@ -166,6 +170,7 @@ async fn parent_props_wrong_prop_kinds() {
     let child_prop = create_prop_of_kind(
         &txn,
         &nats,
+        veritech,
         &tenancy,
         &visibility,
         &history_actor,

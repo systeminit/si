@@ -5,9 +5,11 @@ use crate::{
 };
 use si_data::{NatsTxn, PgTxn};
 
+#[allow(clippy::too_many_arguments)]
 pub async fn create_spec_prop(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
+    veritech: veritech::Client,
     tenancy: &Tenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
@@ -17,6 +19,7 @@ pub async fn create_spec_prop(
     let spec_prop = create_prop(
         txn,
         nats,
+        veritech.clone(),
         tenancy,
         visibility,
         history_actor,
@@ -31,6 +34,7 @@ pub async fn create_spec_prop(
         let containers_prop = create_prop(
             txn,
             nats,
+            veritech.clone(),
             tenancy,
             visibility,
             history_actor,
@@ -46,6 +50,7 @@ pub async fn create_spec_prop(
             let _name_prop = create_prop(
                 txn,
                 nats,
+                veritech.clone(),
                 tenancy,
                 visibility,
                 history_actor,
@@ -61,6 +66,7 @@ pub async fn create_spec_prop(
             let _image_prop = create_prop(
                 txn,
                 nats,
+                veritech.clone(),
                 tenancy,
                 visibility,
                 history_actor,
@@ -77,6 +83,7 @@ pub async fn create_spec_prop(
             let env_prop = create_prop(
                 txn,
                 nats,
+                veritech.clone(),
                 tenancy,
                 visibility,
                 history_actor,
@@ -91,6 +98,7 @@ pub async fn create_spec_prop(
                 let _name_prop = create_prop(
                     txn,
                     nats,
+                    veritech.clone(),
                     tenancy,
                     visibility,
                     history_actor,
@@ -106,6 +114,7 @@ pub async fn create_spec_prop(
                 let _value_prop = create_prop(
                     txn,
                     nats,
+                    veritech.clone(),
                     tenancy,
                     visibility,
                     history_actor,
@@ -121,6 +130,7 @@ pub async fn create_spec_prop(
                 let _value_from_prop = create_prop(
                     txn,
                     nats,
+                    veritech.clone(),
                     tenancy,
                     visibility,
                     history_actor,
@@ -135,6 +145,7 @@ pub async fn create_spec_prop(
                     let _secret_key_ref_prop = create_prop(
                         txn,
                         nats,
+                        veritech.clone(),
                         tenancy,
                         visibility,
                         history_actor,
@@ -149,6 +160,7 @@ pub async fn create_spec_prop(
                         let _name_prop = create_prop(
                             txn,
                             nats,
+                            veritech.clone(),
                             tenancy,
                             visibility,
                             history_actor,
@@ -164,6 +176,7 @@ pub async fn create_spec_prop(
                         let _key_prop = create_prop(
                             txn,
                             nats,
+                            veritech.clone(),
                             tenancy,
                             visibility,
                             history_actor,
@@ -179,6 +192,7 @@ pub async fn create_spec_prop(
                         let _optional_prop = create_prop(
                             txn,
                             nats,
+                            veritech.clone(),
                             tenancy,
                             visibility,
                             history_actor,
@@ -195,6 +209,7 @@ pub async fn create_spec_prop(
                     let _config_map_ref_prop = create_prop(
                         txn,
                         nats,
+                        veritech.clone(),
                         tenancy,
                         visibility,
                         history_actor,
@@ -209,6 +224,7 @@ pub async fn create_spec_prop(
                         let _name_prop = create_prop(
                             txn,
                             nats,
+                            veritech.clone(),
                             tenancy,
                             visibility,
                             history_actor,
@@ -224,6 +240,7 @@ pub async fn create_spec_prop(
                         let _key_prop = create_prop(
                             txn,
                             nats,
+                            veritech.clone(),
                             tenancy,
                             visibility,
                             history_actor,
@@ -239,6 +256,7 @@ pub async fn create_spec_prop(
                         let _optional_prop = create_prop(
                             txn,
                             nats,
+                            veritech.clone(),
                             tenancy,
                             visibility,
                             history_actor,
@@ -255,6 +273,7 @@ pub async fn create_spec_prop(
                     let _resource_field_ref_prop = create_prop(
                         txn,
                         nats,
+                        veritech.clone(),
                         tenancy,
                         visibility,
                         history_actor,
@@ -269,6 +288,7 @@ pub async fn create_spec_prop(
                         let _container_name_prop = create_prop(
                             txn,
                             nats,
+                            veritech.clone(),
                             tenancy,
                             visibility,
                             history_actor,
@@ -284,6 +304,7 @@ pub async fn create_spec_prop(
                         let _resource_prop = create_prop(
                             txn,
                             nats,
+                            veritech.clone(),
                             tenancy,
                             visibility,
                             history_actor,
@@ -299,6 +320,7 @@ pub async fn create_spec_prop(
                         let _divisor_prop = create_prop(
                             txn,
                             nats,
+                            veritech.clone(),
                             tenancy,
                             visibility,
                             history_actor,
@@ -315,6 +337,7 @@ pub async fn create_spec_prop(
                     let _field_ref_prop = create_prop(
                         txn,
                         nats,
+                        veritech.clone(),
                         tenancy,
                         visibility,
                         history_actor,
@@ -330,6 +353,7 @@ pub async fn create_spec_prop(
                         let _api_version_prop = create_prop(
                             txn,
                             nats,
+                            veritech.clone(),
                             tenancy,
                             visibility,
                             history_actor,
@@ -345,6 +369,7 @@ pub async fn create_spec_prop(
                         let _field_path_prop = create_prop(
                             txn,
                             nats,
+                            veritech.clone(),
                             tenancy,
                             visibility,
                             history_actor,
@@ -366,6 +391,7 @@ pub async fn create_spec_prop(
             let _image_pull_policy_prop = create_prop(
                 txn,
                 nats,
+                veritech.clone(),
                 tenancy,
                 visibility,
                 history_actor,
@@ -381,6 +407,7 @@ pub async fn create_spec_prop(
             let ports_prop = create_prop(
                 txn,
                 nats,
+                veritech.clone(),
                 tenancy,
                 visibility,
                 history_actor,
@@ -395,6 +422,7 @@ pub async fn create_spec_prop(
                 let _name_prop = create_prop(
                     txn,
                     nats,
+                    veritech.clone(),
                     tenancy,
                     visibility,
                     history_actor,
@@ -411,6 +439,7 @@ pub async fn create_spec_prop(
                 let _container_port_prop = create_prop(
                     txn,
                     nats,
+                    veritech.clone(),
                     tenancy,
                     visibility,
                     history_actor,
@@ -426,6 +455,7 @@ pub async fn create_spec_prop(
                 let _host_ip_prop = create_prop(
                     txn,
                     nats,
+                    veritech.clone(),
                     tenancy,
                     visibility,
                     history_actor,
@@ -442,6 +472,7 @@ pub async fn create_spec_prop(
                 let _host_port_prop = create_prop(
                     txn,
                     nats,
+                    veritech.clone(),
                     tenancy,
                     visibility,
                     history_actor,
@@ -459,6 +490,7 @@ pub async fn create_spec_prop(
                 let _protocol_prop = create_prop(
                     txn,
                     nats,
+                    veritech.clone(),
                     tenancy,
                     visibility,
                     history_actor,
@@ -475,6 +507,7 @@ pub async fn create_spec_prop(
             let volume_mounts_prop = create_prop(
                 txn,
                 nats,
+                veritech.clone(),
                 tenancy,
                 visibility,
                 history_actor,
@@ -489,6 +522,7 @@ pub async fn create_spec_prop(
                 let _name_prop = create_prop(
                     txn,
                     nats,
+                    veritech.clone(),
                     tenancy,
                     visibility,
                     history_actor,
@@ -504,6 +538,7 @@ pub async fn create_spec_prop(
                 let _mount_path_prop = create_prop(
                     txn,
                     nats,
+                    veritech.clone(),
                     tenancy,
                     visibility,
                     history_actor,
@@ -521,6 +556,7 @@ pub async fn create_spec_prop(
         let volumes_prop = create_prop(
             txn,
             nats,
+            veritech.clone(),
             tenancy,
             visibility,
             history_actor,
@@ -535,6 +571,7 @@ pub async fn create_spec_prop(
             let _name_prop = create_prop(
                 txn,
                 nats,
+                veritech.clone(),
                 tenancy,
                 visibility,
                 history_actor,
@@ -550,6 +587,7 @@ pub async fn create_spec_prop(
             let config_map_prop = create_prop(
                 txn,
                 nats,
+                veritech.clone(),
                 tenancy,
                 visibility,
                 history_actor,
@@ -564,6 +602,7 @@ pub async fn create_spec_prop(
                 let _name_prop = create_prop(
                     txn,
                     nats,
+                    veritech.clone(),
                     tenancy,
                     visibility,
                     history_actor,
@@ -581,6 +620,7 @@ pub async fn create_spec_prop(
         let image_pull_secrets_prop = create_prop(
             txn,
             nats,
+            veritech.clone(),
             tenancy,
             visibility,
             history_actor,
@@ -595,6 +635,7 @@ pub async fn create_spec_prop(
             let _name_prop = create_prop(
                 txn,
                 nats,
+                veritech,
                 tenancy,
                 visibility,
                 history_actor,

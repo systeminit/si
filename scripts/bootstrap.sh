@@ -81,13 +81,28 @@ function fedora-bootstrap {
 
 function ubuntu-bootstrap {
     . /etc/os-release
-    echo "deb https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_${VERSION_ID}/ /" | sudo tee /etc/apt/sources.list.d/devel:kubic:libcontainers:stable.list
-    curl -L https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_${VERSION_ID}/Release.key | sudo apt-key add -
+    # Kubic provides skopeo packages for 20.04, but it's available in the main Ubuntu repository in >= 20.10.
+    if [ "${VERSION_OD}" == "20.04" ]; then
+        echo "deb https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_${VERSION_ID}/ /" | sudo tee /etc/apt/sources.list.d/devel:kubic:libcontainers:stable.list
+        curl -L https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_${VERSION_ID}/Release.key | sudo apt-key add -
+    fi
+
     sudo apt update
     sudo apt upgrade -y
     sudo apt autoremove -y
     sudo apt install -y build-essential make git lld skopeo wget
     install-kubeval-linux-amd64
+
+    if [ "${SI_WSL2}" == "false" ]; then
+        echo "========================================= NOTE ========================================="
+        echo "Versions of Docker server <20.10.12 (the currently packaged versions for Ubuntu <= 21.10"
+        echo "have issues that cause the networking to become unreliable at moderate levels of"
+        echo "concurrency (>= 46 parallel test threads)."
+        echo
+        echo "Please follow the directions at https://docs.docker.com/engine/install/ubuntu/ to"
+        echo "install the latest version of Docker."
+        echo "========================================= NOTE ========================================="
+    fi
 }
 
 function perform-bootstrap {

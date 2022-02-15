@@ -1,9 +1,11 @@
+use std::collections::HashMap;
+
 use si_data::PgTxn;
 
 use crate::{
-    func::binding_return_value::FuncBindingReturnValue, system::UNSET_SYSTEM_ID, AttributeResolver,
-    Component, ComponentError, ComponentId, Prop, PropId, PropKind, StandardModel, System,
-    SystemId, Tenancy, Visibility,
+    system::UNSET_SYSTEM_ID, AttributeResolver, AttributeResolverId, AttributeResolverValue,
+    Component, ComponentError, ComponentId, PropId, PropKind, StandardModel, System, SystemId,
+    Tenancy, Visibility,
 };
 
 use super::ComponentResult;
@@ -32,6 +34,7 @@ impl ComponentView {
         } else {
             System::get_by_id(txn, tenancy, visibility, &system_id).await?
         };
+
         let mut work_queue = AttributeResolver::list_values_for_component(
             txn,
             tenancy,
@@ -40,23 +43,68 @@ impl ComponentView {
             system_id,
         )
         .await?;
+        // `AttributeResolverId -> serde_json pointer` so when we have a parent_attribute_resolver_id,
+        // we know _exactly_ where in the structure we need to insert, when we have a
+        // parent_attribute_resolver_id.
+        let mut json_pointer_for_attribute_resolver_id: HashMap<AttributeResolverId, String> =
+            HashMap::new();
+
+        // We sort the work queue according to the order of every nested IndexMap. This ensures that
+        // when we reconstruct the final properties data, we don't have to worry about the order things
+        // appear in - they are certain to be the right order.
+        let attribute_resolver_order: Vec<AttributeResolverId> = work_queue
+            .iter()
+            .filter_map(|arv| arv.attribute_resolver.index_map())
+            .map(|index_map| index_map.order())
+            .flatten()
+            .copied()
+            .collect();
+        work_queue.sort_by_cached_key(|arv| {
+            attribute_resolver_order
+                .iter()
+                .position(|attribute_resolver_id| {
+                    attribute_resolver_id == arv.attribute_resolver.id()
+                })
+                .or(Some(0))
+                .unwrap()
+        });
+
         let mut properties = serde_json::json![{}];
         let mut root_stack: Vec<(Option<PropId>, String)> = vec![(None, "".to_string())];
 
         while !work_queue.is_empty() {
-            let mut unprocessed: Vec<(Prop, Option<PropId>, FuncBindingReturnValue)> = vec![];
+            let mut unprocessed: Vec<AttributeResolverValue> = vec![];
             let (root_id, json_pointer) = root_stack
                 .pop()
                 .expect("the root prop id queue cannot be empty while work_queue is not empty");
 
-            while let Some((prop, parent_prop_id, fbrv)) = work_queue.pop() {
+            while let Some(AttributeResolverValue {
+                prop,
+                parent_prop_id,
+                fbrv,
+                attribute_resolver,
+                parent_attribute_resolver_id,
+            }) = work_queue.pop()
+            {
                 if let Some(value) = fbrv.value() {
                     if root_id == parent_prop_id {
-                        let write_location = match properties.pointer_mut(&json_pointer) {
+                        let insertion_pointer =
+                            if let Some(parent_ari) = parent_attribute_resolver_id {
+                                match json_pointer_for_attribute_resolver_id.get(&parent_ari) {
+                                    Some(ptr) => ptr.clone(),
+                                    // A `None` here would mean that we're trying to process a child before we've handled its parent,
+                                    // and that shouldn't be possible given how we're going through the work_queue.
+                                    None => unreachable!(),
+                                }
+                            } else {
+                                // After we've processed the "root" properties, we shouldn't hit this case any more.
+                                json_pointer.clone()
+                            };
+                        let write_location = match properties.pointer_mut(&insertion_pointer) {
                             Some(write_location) => write_location,
                             None => {
                                 return Err(ComponentError::BadJsonPointer(
-                                    json_pointer.clone(),
+                                    insertion_pointer.clone(),
                                     properties.to_string(),
                                 ))
                             }
@@ -66,17 +114,21 @@ impl ComponentView {
                                 .as_object_mut()
                                 .unwrap()
                                 .insert(prop.name().to_string(), value.clone());
-                            format!("{}/{}", json_pointer, prop.name())
+                            format!("{}/{}", insertion_pointer, prop.name())
                         } else if write_location.is_array() {
-                            // This is wrong - we need to check the fbrv for what the
-                            // actual index should be. Tomorrows problem. -- Adam
+                            // This code can just push, because we ordered the work queue above.
+                            // Magic!
                             let array = write_location.as_array_mut().unwrap();
                             array.push(value.clone());
-                            format!("{}/{}", json_pointer, array.len())
+                            format!("{}/{}", insertion_pointer, array.len() - 1)
                         } else {
                             // Note: this shouldn't ever actually get used.
-                            json_pointer.to_string()
+                            insertion_pointer.to_string()
                         };
+                        // Record the json pointer path to *this* specific attribute resolver's location.
+                        json_pointer_for_attribute_resolver_id
+                            .insert(*attribute_resolver.id(), next_json_pointer.clone());
+
                         match prop.kind() {
                             &PropKind::Object | &PropKind::Array | &PropKind::Map => {
                                 root_stack.push((Some(*prop.id()), next_json_pointer));
@@ -84,7 +136,13 @@ impl ComponentView {
                             _ => {}
                         }
                     } else {
-                        unprocessed.push((prop, parent_prop_id, fbrv));
+                        unprocessed.push(AttributeResolverValue::new(
+                            prop,
+                            parent_prop_id,
+                            fbrv,
+                            attribute_resolver,
+                            parent_attribute_resolver_id,
+                        ));
                     }
                 }
             }

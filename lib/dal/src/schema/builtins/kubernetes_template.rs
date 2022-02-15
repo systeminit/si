@@ -21,6 +21,7 @@ pub async fn create_template_prop(
     let template_prop = create_prop(
         txn,
         nats,
+        veritech.clone(),
         tenancy,
         visibility,
         history_actor,
@@ -51,6 +52,7 @@ pub async fn create_template_prop(
         let _spec_prop = create_spec_prop(
             txn,
             nats,
+            veritech,
             tenancy,
             visibility,
             history_actor,

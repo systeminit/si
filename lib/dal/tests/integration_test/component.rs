@@ -205,7 +205,7 @@ async fn qualification_view() {
         txn,
         _nats_conn,
         nats,
-        _veritech,
+        veritech,
     );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
@@ -252,6 +252,7 @@ async fn qualification_view() {
     let prop = Prop::new(
         &txn,
         &nats,
+        veritech,
         &tenancy,
         &visibility,
         &history_actor,

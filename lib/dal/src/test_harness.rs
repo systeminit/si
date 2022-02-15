@@ -577,6 +577,7 @@ pub async fn find_or_create_production_system(
 pub async fn create_prop(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
+    veritech: veritech::Client,
     tenancy: &Tenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
@@ -585,6 +586,7 @@ pub async fn create_prop(
     Prop::new(
         txn,
         nats,
+        veritech,
         tenancy,
         visibility,
         history_actor,
@@ -598,6 +600,7 @@ pub async fn create_prop(
 pub async fn create_prop_of_kind(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
+    veritech: veritech::Client,
     tenancy: &Tenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
@@ -607,6 +610,7 @@ pub async fn create_prop_of_kind(
     Prop::new(
         txn,
         nats,
+        veritech,
         tenancy,
         visibility,
         history_actor,
@@ -617,9 +621,11 @@ pub async fn create_prop_of_kind(
     .expect("cannot create prop")
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn create_prop_of_kind_with_name(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
+    veritech: veritech::Client,
     tenancy: &Tenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
@@ -630,6 +636,7 @@ pub async fn create_prop_of_kind_with_name(
     Prop::new(
         txn,
         nats,
+        veritech,
         tenancy,
         visibility,
         history_actor,
