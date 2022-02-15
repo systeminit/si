@@ -1,11 +1,11 @@
 <template>
   <EditFormField
     :show="show"
-    :validation-errors="editField.validation_errors"
+    :validation-errors="props.editField.validation_errors"
     :core-edit-field="coreEditField"
   >
     <template #name>
-      {{ editField.name }}
+      {{ props.editField.name }}
     </template>
     <template #edit>
       <div class="flex flex-col mt-1">
@@ -20,6 +20,9 @@
           <button @click="addToArray">
             <VueFeather type="plus" />
           </button>
+        </div>
+        <div class="flex flex-row items-center w-10 ml-1 bg-red">
+          <Unset :edit-value="props.editField.value" :unset="unset" />
         </div>
       </div>
     </template>
@@ -41,6 +44,7 @@
 import { computed } from "vue";
 import type { EditField } from "@/api/sdf/dal/edit_field";
 import EditFormField from "./EditFormField.vue";
+import Unset from "@/atoms/Unset.vue";
 import { ArrayWidgetDal } from "@/api/sdf/dal/edit_field";
 import VueFeather from "vue-feather";
 import { EditFieldService } from "@/service/edit_field";
@@ -74,6 +78,20 @@ const widget = computed<ArrayWidgetDal>(() => {
 });
 
 const addToArray = () => {
+  EditFieldService.updateFromEditField({
+    objectKind: props.editField.object_kind,
+    objectId: props.editField.object_id,
+    editFieldId: props.editField.id,
+    value: null,
+    baggage: props.editField.baggage,
+  }).subscribe((response: ApiResponse<UpdateFromEditFieldResponse>) => {
+    if (response.error) {
+      GlobalErrorService.set(response);
+    }
+  });
+};
+
+const unset = () => {
   EditFieldService.updateFromEditField({
     objectKind: props.editField.object_kind,
     objectId: props.editField.object_id,
