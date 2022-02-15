@@ -16,7 +16,7 @@ use crate::{
     schema::ui_menu::UiMenuId,
     standard_model, standard_model_accessor, standard_model_has_many, standard_model_many_to_many,
     AttributeResolverError, BillingAccount, BillingAccountId, CodeGenerationPrototypeError,
-    Component, HistoryActor, HistoryEventError, LabelEntry, LabelList, Organization,
+    Component, FuncError, HistoryActor, HistoryEventError, LabelEntry, LabelList, Organization,
     OrganizationId, PropError, QualificationPrototypeError, ResourcePrototypeError, StandardModel,
     StandardModelError, Tenancy, Timestamp, ValidationPrototypeError, Visibility, Workspace,
     WorkspaceId, WsEventError,
@@ -76,6 +76,8 @@ pub enum SchemaError {
     ResourcePrototype(#[from] ResourcePrototypeError),
     #[error("code generation prototype error: {0}")]
     CodeGenerationPrototype(#[from] CodeGenerationPrototypeError),
+    #[error("func error: {0}")]
+    Func(#[from] FuncError),
 }
 
 pub type SchemaResult<T> = Result<T, SchemaError>;
