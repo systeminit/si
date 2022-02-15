@@ -3,10 +3,10 @@
   <EditFormField
     :show="show"
     :core-edit-field="coreEditField"
-    :validation-errors="editField.validation_errors"
+    :validation-errors="props.editField.validation_errors"
   >
     <template #name>
-      {{ editField.name }}
+      {{ props.editField.name }}
     </template>
     <template #edit>
       <input
@@ -20,9 +20,12 @@
         @focus="onFocus"
         @blur="onBlur"
       />
+      <div class="flex flex-row items-center w-10 ml-1 bg-red">
+        <Unset :edit-value="props.editField.value" :unset="unset" />
+      </div>
     </template>
     <template #show>
-      <span :class="textColor">{{ editField.value }}</span>
+      <span :class="textColor">{{ props.editField.value }}</span>
     </template>
   </EditFormField>
 </template>
@@ -31,6 +34,7 @@
 import { computed, ref, watch } from "vue";
 import type { EditField } from "@/api/sdf/dal/edit_field";
 import EditFormField from "./EditFormField.vue";
+import Unset from "@/atoms/Unset.vue";
 import { EditFieldService } from "@/service/edit_field";
 import { GlobalErrorService } from "@/service/global_error";
 import { UpdateFromEditFieldResponse } from "@/service/edit_field/update_from_edit_field";
@@ -70,6 +74,21 @@ const onKeyEnter = (event: KeyboardEvent) => {
     event.target.blur();
   }
 };
+
+const unset = () => {
+  EditFieldService.updateFromEditField({
+    objectKind: props.editField.object_kind,
+    objectId: props.editField.object_id,
+    editFieldId: props.editField.id,
+    value: null,
+    baggage: props.editField.baggage,
+  }).subscribe((response: ApiResponse<UpdateFromEditFieldResponse>) => {
+    if (response.error) {
+      GlobalErrorService.set(response);
+    }
+  });
+};
+
 watch(
   () => props.editField,
   (editField, _prevEditField) => {
