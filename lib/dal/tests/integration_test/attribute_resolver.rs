@@ -184,7 +184,7 @@ async fn find_value_for_prop_and_component() {
         .expect("failed to execute func binding");
     let mut attribute_resolver_context = AttributeResolverContext::new();
     attribute_resolver_context.set_prop_id(*first_prop.id());
-    let _attribute_resolver = AttributeResolver::new(
+    let _attribute_resolver = AttributeResolver::upsert(
         &txn,
         &nats,
         &tenancy,
