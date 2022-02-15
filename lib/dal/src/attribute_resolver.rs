@@ -6,9 +6,11 @@ use thiserror::Error;
 
 use crate::{
     func::{binding::FuncBindingId, binding_return_value::FuncBindingReturnValue, FuncId},
-    impl_standard_model, pk, standard_model, standard_model_accessor, ComponentId, HistoryActor,
-    HistoryEventError, Prop, PropId, SchemaId, SchemaVariantId, StandardModel, StandardModelError,
-    SystemId, Tenancy, Timestamp, Visibility,
+    impl_standard_model, pk,
+    standard_model::{self, TypeHint},
+    standard_model_accessor, standard_model_belongs_to, ComponentId, HistoryActor,
+    HistoryEventError, IndexMap, Prop, PropError, PropId, PropKind, SchemaId, SchemaVariantId,
+    StandardModel, StandardModelError, SystemId, Tenancy, Timestamp, Visibility,
 };
 
 #[derive(Error, Debug)]
@@ -23,6 +25,16 @@ pub enum AttributeResolverError {
     HistoryEvent(#[from] HistoryEventError),
     #[error("standard model error: {0}")]
     StandardModelError(#[from] StandardModelError),
+    #[error("attribute resolvers must have an associated prop, and this one does not. bug!")]
+    MissingProp,
+    #[error("attribute resolver not found: {0} ({1:?})")]
+    NotFound(AttributeResolverId, Visibility),
+    #[error(
+        "parent must be for an array, map, or object prop: attribute resolver id {0} is for a {1}"
+    )]
+    ParentNotAllowed(AttributeResolverId, PropKind),
+    #[error("prop error: {0}")]
+    Prop(#[from] PropError),
 }
 
 pub type AttributeResolverResult<T> = Result<T, AttributeResolverError>;
@@ -33,6 +45,33 @@ const FIND_VALUE_FOR_CONTEXT: &str =
     include_str!("./queries/attribute_resolver_find_value_for_context.sql");
 const LIST_VALUES_FOR_COMPONENT: &str =
     include_str!("./queries/attribute_resolver_list_values_for_component.sql");
+
+#[derive(Debug)]
+pub struct AttributeResolverValue {
+    pub prop: Prop,
+    pub parent_prop_id: Option<PropId>,
+    pub fbrv: FuncBindingReturnValue,
+    pub attribute_resolver: AttributeResolver,
+    pub parent_attribute_resolver_id: Option<AttributeResolverId>,
+}
+
+impl AttributeResolverValue {
+    pub fn new(
+        prop: Prop,
+        parent_prop_id: Option<PropId>,
+        fbrv: FuncBindingReturnValue,
+        attribute_resolver: AttributeResolver,
+        parent_attribute_resolver_id: Option<AttributeResolverId>,
+    ) -> Self {
+        AttributeResolverValue {
+            prop,
+            parent_prop_id,
+            fbrv,
+            attribute_resolver,
+            parent_attribute_resolver_id,
+        }
+    }
+}
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct AttributeResolverContext {
@@ -112,8 +151,9 @@ pub struct AttributeResolver {
     id: AttributeResolverId,
     func_id: FuncId,
     func_binding_id: FuncBindingId,
+    pub index_map: Option<IndexMap>,
     #[serde(flatten)]
-    context: AttributeResolverContext,
+    pub context: AttributeResolverContext,
     #[serde(flatten)]
     tenancy: Tenancy,
     #[serde(flatten)]
@@ -160,7 +200,7 @@ impl AttributeResolver {
                 ],
             )
             .await?;
-        let object = standard_model::finish_create_from_row(
+        let object: AttributeResolver = standard_model::finish_create_from_row(
             txn,
             nats,
             tenancy,
@@ -169,11 +209,134 @@ impl AttributeResolver {
             row,
         )
         .await?;
+        object
+            .update_parent_index_map(txn, tenancy, visibility)
+            .await?;
         Ok(object)
     }
 
     standard_model_accessor!(func_id, Pk(FuncId), AttributeResolverResult);
     standard_model_accessor!(func_binding_id, Pk(FuncBindingId), AttributeResolverResult);
+    standard_model_accessor!(index_map, Option<IndexMap>, AttributeResolverResult);
+
+    standard_model_belongs_to!(
+        lookup_fn: parent_attribute_resolver,
+        set_fn: set_parent_attribute_resolver_unchecked,
+        unset_fn: unset_parent_attribute_resolver,
+        table: "attribute_resolver_belongs_to_attribute_resolver",
+        model_table: "attribute_resolvers",
+        belongs_to_id: AttributeResolverId,
+        returns: AttributeResolver,
+        result: AttributeResolverResult,
+    );
+
+    pub async fn set_parent_attribute_resolver(
+        &self,
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
+        visibility: &Visibility,
+        history_actor: &HistoryActor,
+        parent_attribute_resolver_id: AttributeResolverId,
+    ) -> AttributeResolverResult<()> {
+        let parent_attribute_resolver = Self::get_by_id(
+            txn,
+            self.tenancy(),
+            visibility,
+            &parent_attribute_resolver_id,
+        )
+        .await?
+        .ok_or_else(|| {
+            AttributeResolverError::NotFound(parent_attribute_resolver_id, *visibility)
+        })?;
+        let parent_prop = Prop::get_by_id(
+            txn,
+            self.tenancy(),
+            visibility,
+            &parent_attribute_resolver.context.prop_id,
+        )
+        .await?
+        .ok_or(AttributeResolverError::MissingProp)?;
+
+        match parent_prop.kind() {
+            PropKind::Array | PropKind::Map | PropKind::Object => (),
+            kind => {
+                return Err(AttributeResolverError::ParentNotAllowed(
+                    *parent_attribute_resolver.id(),
+                    *kind,
+                ));
+            }
+        }
+
+        self.set_parent_attribute_resolver_unchecked(
+            txn,
+            nats,
+            visibility,
+            history_actor,
+            &parent_attribute_resolver_id,
+        )
+        .await
+    }
+
+    pub fn index_map_mut(&mut self) -> Option<&mut IndexMap> {
+        self.index_map.as_mut()
+    }
+
+    pub async fn update_stored_index_map(&self, txn: &PgTxn<'_>) -> AttributeResolverResult<()> {
+        standard_model::update(
+            txn,
+            "attribute_resolvers",
+            "index_map",
+            self.tenancy(),
+            self.visibility(),
+            self.id(),
+            &self.index_map,
+            TypeHint::JsonB,
+        )
+        .await?;
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(txn))]
+    pub async fn update_parent_index_map(
+        &self,
+        txn: &PgTxn<'_>,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+    ) -> AttributeResolverResult<()> {
+        let prop = Prop::get_by_id(txn, tenancy, visibility, &self.context.prop_id())
+            .await?
+            .ok_or(AttributeResolverError::MissingProp)?;
+        if let Some(parent) = prop.parent_prop(txn, visibility).await? {
+            match parent.kind() {
+                PropKind::Array | PropKind::Map => {
+                    let mut parent_context = self.context.clone();
+                    parent_context.set_prop_id(*parent.id());
+                    if let Some(mut parent_attr_resolver) = AttributeResolver::find_for_context(
+                        txn,
+                        tenancy,
+                        visibility,
+                        parent_context,
+                    )
+                    .await?
+                    {
+                        match parent_attr_resolver.index_map_mut() {
+                            Some(index_map) => {
+                                index_map.push(*self.id(), None);
+                            }
+                            None => {
+                                let mut index_map = IndexMap::new();
+                                index_map.push(*self.id(), None);
+                                parent_attr_resolver.index_map = Some(index_map);
+                            }
+                        }
+                        parent_attr_resolver.update_stored_index_map(txn).await?;
+                    }
+                }
+                _ => {}
+            }
+        }
+        Ok(())
+    }
 
     #[tracing::instrument(skip(txn))]
     pub async fn find_for_context(
@@ -228,7 +391,7 @@ impl AttributeResolver {
                 ],
             )
             .await?;
-        let object = standard_model::finish_create_from_row(
+        let object: Self = standard_model::finish_create_from_row(
             txn,
             nats,
             tenancy,
@@ -237,6 +400,9 @@ impl AttributeResolver {
             row,
         )
         .await?;
+        object
+            .update_parent_index_map(txn, tenancy, visibility)
+            .await?;
         Ok(object)
     }
 
@@ -259,13 +425,15 @@ impl AttributeResolver {
         Ok(object)
     }
 
+    /// List all the AttributeResolvers, along with their corresponding prop,
+    /// parent prop id, and current value.
     pub async fn list_values_for_component(
         txn: &PgTxn<'_>,
         tenancy: &Tenancy,
         visibility: &Visibility,
         component_id: ComponentId,
         system_id: SystemId,
-    ) -> AttributeResolverResult<Vec<(Prop, Option<PropId>, FuncBindingReturnValue)>> {
+    ) -> AttributeResolverResult<Vec<AttributeResolverValue>> {
         let rows = txn
             .query(
                 LIST_VALUES_FOR_COMPONENT,
@@ -274,12 +442,24 @@ impl AttributeResolver {
             .await?;
         let mut result = Vec::new();
         for row in rows.into_iter() {
-            let json: serde_json::Value = row.try_get("object")?;
-            let object: FuncBindingReturnValue = serde_json::from_value(json)?;
+            let fbrv_json: serde_json::Value = row.try_get("object")?;
+            let fbrv: FuncBindingReturnValue = serde_json::from_value(fbrv_json)?;
             let prop_json: serde_json::Value = row.try_get("prop_object")?;
             let prop: Prop = serde_json::from_value(prop_json)?;
             let parent_prop_id: Option<PropId> = row.try_get("parent_prop_id")?;
-            result.push((prop, parent_prop_id, object));
+            let attribute_resolver_json: serde_json::Value =
+                row.try_get("attribute_resolver_object")?;
+            let attribute_resolver: AttributeResolver =
+                serde_json::from_value(attribute_resolver_json)?;
+            let parent_attribute_resolver_id: Option<AttributeResolverId> =
+                row.try_get("parent_attribute_resolver_id")?;
+            result.push(AttributeResolverValue::new(
+                prop,
+                parent_prop_id,
+                fbrv,
+                attribute_resolver,
+                parent_attribute_resolver_id,
+            ));
         }
         Ok(result)
     }

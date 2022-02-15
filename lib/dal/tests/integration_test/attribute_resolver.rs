@@ -2,10 +2,16 @@ use crate::test_setup;
 
 use dal::{
     attribute_resolver::{AttributeResolverContext, UNSET_ID_VALUE},
-    func::{backend::string::FuncBackendStringArgs, binding::FuncBinding},
-    test_harness::{billing_account_signup, create_component_for_schema},
-    AttributeResolver, Func, FuncBackendKind, FuncBackendResponseType, HistoryActor, Schema,
-    StandardModel, SystemId, Tenancy, Visibility,
+    func::{
+        backend::{array::FuncBackendArrayArgs, string::FuncBackendStringArgs},
+        binding::FuncBinding,
+    },
+    test_harness::{
+        billing_account_signup, create_component_for_schema, create_component_for_schema_variant,
+        create_prop_of_kind_with_name, create_schema, create_schema_variant,
+    },
+    AttributeResolver, Func, FuncBackendKind, FuncBackendResponseType, HistoryActor, PropKind,
+    Schema, SchemaKind, StandardModel, SystemId, Tenancy, Visibility,
 };
 
 #[tokio::test]
@@ -515,4 +521,184 @@ async fn upsert() {
         second_attribute_resolver.func_binding_id(),
         *second_func_binding.id()
     );
+}
+
+#[tokio::test]
+async fn update_parent_index_map() {
+    test_setup!(ctx, _secret_key, _pg, _conn, txn, nats_conn, nats, veritech);
+    let tenancy = Tenancy::new_universal();
+    let visibility = Visibility::new_head(false);
+    let history_actor = HistoryActor::SystemInit;
+    let schema = create_schema(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        &SchemaKind::Implementation,
+    )
+    .await;
+    let schema_variant =
+        create_schema_variant(&txn, &nats, &tenancy, &visibility, &history_actor).await;
+    schema_variant
+        .set_schema(&txn, &nats, &visibility, &history_actor, schema.id())
+        .await
+        .expect("cannot set schema");
+
+    let component = create_component_for_schema_variant(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        schema_variant.id(),
+    )
+    .await;
+
+    let prop_array_spiritbox = create_prop_of_kind_with_name(
+        &txn,
+        &nats,
+        veritech.clone(),
+        &tenancy,
+        &visibility,
+        &history_actor,
+        PropKind::Array,
+        "spiritbox",
+    )
+    .await;
+
+    prop_array_spiritbox
+        .add_schema_variant(
+            &txn,
+            &nats,
+            &visibility,
+            &history_actor,
+            schema_variant.id(),
+        )
+        .await
+        .expect("cannot add prop to schema variant");
+
+    let set_array_func = Func::find_by_attr(
+        &txn,
+        &tenancy,
+        &visibility,
+        "name",
+        &"si:setArray".to_string(),
+    )
+    .await
+    .expect("cannot find function")
+    .pop()
+    .expect("returned no function");
+
+    let array_args = FuncBackendArrayArgs::new(Vec::new());
+    let array_func_binding = FuncBinding::new(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        serde_json::to_value(array_args).expect("cannot turn args into json"),
+        *set_array_func.id(),
+        *set_array_func.backend_kind(),
+    )
+    .await
+    .expect("cannot create function binding");
+    array_func_binding
+        .execute(&txn, &nats, veritech.clone())
+        .await
+        .expect("failed to execute func binding");
+
+    let mut array_attribute_resolver_context = AttributeResolverContext::new();
+    array_attribute_resolver_context.set_prop_id(*prop_array_spiritbox.id());
+    array_attribute_resolver_context.set_component_id(*component.id());
+    let array_attribute_resolver = AttributeResolver::upsert(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        *set_array_func.id(),
+        *array_func_binding.id(),
+        array_attribute_resolver_context.clone(),
+    )
+    .await
+    .expect("cannot create new attribute resolver");
+
+    let prop_string = create_prop_of_kind_with_name(
+        &txn,
+        &nats,
+        veritech.clone(),
+        &tenancy,
+        &visibility,
+        &history_actor,
+        PropKind::String,
+        "stringbean",
+    )
+    .await;
+    prop_string
+        .set_parent_prop(
+            &txn,
+            &nats,
+            &visibility,
+            &history_actor,
+            *prop_array_spiritbox.id(),
+        )
+        .await
+        .expect("cannot set parent prop");
+
+    let set_string_func = Func::find_by_attr(
+        &txn,
+        &tenancy,
+        &visibility,
+        "name",
+        &"si:setString".to_string(),
+    )
+    .await
+    .expect("cannot find function")
+    .pop()
+    .expect("returned no function");
+
+    let string_args = FuncBackendStringArgs::new("wonderful".to_string());
+    let string_func_binding = FuncBinding::new(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        serde_json::to_value(string_args).expect("cannot turn args into json"),
+        *set_string_func.id(),
+        *set_string_func.backend_kind(),
+    )
+    .await
+    .expect("cannot create function binding");
+    string_func_binding
+        .execute(&txn, &nats, veritech.clone())
+        .await
+        .expect("failed to execute func binding");
+
+    let mut string_attribute_resolver_context = AttributeResolverContext::new();
+    string_attribute_resolver_context.set_prop_id(*prop_string.id());
+    string_attribute_resolver_context.set_component_id(*component.id());
+    let string_attribute_resolver = AttributeResolver::upsert(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        *set_string_func.id(),
+        *string_func_binding.id(),
+        string_attribute_resolver_context.clone(),
+    )
+    .await
+    .expect("cannot create new attribute resolver");
+
+    let fetched_array_attribute_resolver =
+        AttributeResolver::get_by_id(&txn, &tenancy, &visibility, array_attribute_resolver.id())
+            .await
+            .expect("cannot get attribute resolver")
+            .expect("attribute resolve was not found");
+    let index_map = fetched_array_attribute_resolver
+        .index_map()
+        .expect("there must be an index map now");
+    assert_eq!(index_map.order(), &[*string_attribute_resolver.id()]);
 }

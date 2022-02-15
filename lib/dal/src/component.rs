@@ -35,7 +35,7 @@ use crate::schema::variant::{SchemaVariantError, SchemaVariantId};
 use crate::schema::SchemaVariant;
 use crate::validation_resolver::ValidationResolverContext;
 use crate::ws_event::{WsEvent, WsEventError};
-use crate::{Edge, EdgeError, PropError, System};
+use crate::{AttributeResolverId, Edge, EdgeError, PropError, System};
 
 use crate::func::backend::array::FuncBackendArrayArgs;
 use crate::func::backend::boolean::FuncBackendBooleanArgs;
@@ -452,7 +452,7 @@ impl Component {
             .await?
             .ok_or(ComponentError::NotFound(component_id))?;
 
-        let (value, created) = component
+        let (value, _attribute_resolver_id, created) = component
             .resolve_attribute(
                 txn,
                 nats,
@@ -462,6 +462,7 @@ impl Component {
                 history_actor,
                 &prop,
                 value,
+                None,
             )
             .await?;
 
@@ -521,7 +522,8 @@ impl Component {
         history_actor: &HistoryActor,
         prop: &Prop,
         value: Option<serde_json::Value>,
-    ) -> ComponentResult<(Option<serde_json::Value>, bool)> {
+        parent_attribute_resolver_id: Option<AttributeResolverId>,
+    ) -> ComponentResult<(Option<serde_json::Value>, AttributeResolverId, bool)> {
         let mut schema_tenancy = tenancy.clone();
         schema_tenancy.universal = true;
 
@@ -803,18 +805,49 @@ impl Component {
         let mut attribute_resolver_context = AttributeResolverContext::new();
         attribute_resolver_context.set_prop_id(*prop.id());
         attribute_resolver_context.set_component_id(*self.id());
-        AttributeResolver::upsert(
-            txn,
-            nats,
-            tenancy,
-            visibility,
-            history_actor,
-            *func.id(),
-            *func_binding.id(),
-            attribute_resolver_context,
-        )
-        .await?;
-        Ok((value, created))
+
+        let parent_prop = prop.parent_prop(txn, visibility).await?;
+        let attribute_resolver = if let (Some(_parent_prop), Some(parent_attribute_resolver_id)) =
+            (parent_prop, parent_attribute_resolver_id)
+        {
+            let attribute_resolver = AttributeResolver::new(
+                txn,
+                nats,
+                tenancy,
+                visibility,
+                history_actor,
+                *func.id(),
+                *func_binding.id(),
+                attribute_resolver_context,
+            )
+            .await?;
+
+            attribute_resolver
+                .set_parent_attribute_resolver(
+                    txn,
+                    nats,
+                    visibility,
+                    history_actor,
+                    parent_attribute_resolver_id,
+                )
+                .await?;
+
+            attribute_resolver
+        } else {
+            AttributeResolver::upsert(
+                txn,
+                nats,
+                tenancy,
+                visibility,
+                history_actor,
+                *func.id(),
+                *func_binding.id(),
+                attribute_resolver_context,
+            )
+            .await?
+        };
+
+        Ok((value, *attribute_resolver.id(), created))
     }
 
     #[allow(clippy::too_many_arguments)]

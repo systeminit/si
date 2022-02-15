@@ -17,12 +17,15 @@ CREATE TABLE attribute_resolvers
     component_id                bigint,
     schema_id                   bigint,
     schema_variant_id           bigint,
-    system_id                   bigint
+    system_id                   bigint,
+    index_map                   jsonb
 );
 SELECT standard_model_table_constraints_v1('attribute_resolvers');
+select belongs_to_table_create_v1('attribute_resolver_belongs_to_attribute_resolver', 'attribute_resolvers', 'attribute_resolvers');
 
 INSERT INTO standard_models (table_name, table_type, history_event_label_base, history_event_message_name)
-VALUES ('attribute_resolvers', 'model', 'attribute_resolver', 'Attribute Resolver');
+VALUES ('attribute_resolvers', 'model', 'attribute_resolver', 'Attribute Resolver'),
+       ('attribute_resolver_belongs_to_attribute_resolver', 'belongs_to', 'attribute_resolver.child_attribute_resolver', 'Parent Attribute Resolver <> Child Attribute Resolver');
 
 CREATE OR REPLACE FUNCTION attribute_resolver_create_v1(
     this_tenancy jsonb,

@@ -7,6 +7,7 @@ macro_rules! pk {
             PartialEq,
             Copy,
             Clone,
+            Hash,
             derive_more::From,
             derive_more::Into,
             derive_more::Display,

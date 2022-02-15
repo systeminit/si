@@ -16,6 +16,7 @@ pub mod edit_session;
 pub mod func;
 pub mod group;
 pub mod history_event;
+pub mod index_map;
 pub mod jwt_key;
 pub mod key_pair;
 pub mod label_list;
@@ -49,7 +50,9 @@ pub mod visibility;
 pub mod workspace;
 pub mod ws_event;
 
-pub use attribute_resolver::{AttributeResolver, AttributeResolverError, AttributeResolverId};
+pub use attribute_resolver::{
+    AttributeResolver, AttributeResolverError, AttributeResolverId, AttributeResolverValue,
+};
 pub use billing_account::{
     BillingAccount, BillingAccountDefaults, BillingAccountError, BillingAccountId, BillingAccountPk,
 };
@@ -72,6 +75,7 @@ pub use func::{
 };
 pub use group::{Group, GroupError, GroupId, GroupResult};
 pub use history_event::{HistoryActor, HistoryEvent, HistoryEventError};
+pub use index_map::IndexMap;
 pub use jwt_key::{create_jwt_key_if_missing, JwtSecretKey};
 pub use key_pair::{KeyPair, KeyPairError, KeyPairResult};
 pub use label_list::{LabelEntry, LabelList, LabelListError};
