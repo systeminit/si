@@ -2,7 +2,7 @@ use dal::{
     system::UNSET_SYSTEM_ID,
     test_harness::{
         create_component_for_schema_variant, create_prop_of_kind_with_name, create_schema,
-        create_schema_variant,
+        create_schema_variant, find_or_create_production_system,
     },
     ComponentView, HistoryActor, Prop, PropKind, SchemaKind, SchemaVariant, StandardModel, Tenancy,
     Visibility,
@@ -599,6 +599,8 @@ async fn one_object_prop() {
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
+    let _ =
+        find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor).await;
     let schema_variant =
         create_schema_with_object_and_string_prop(&txn, &nats, veritech.clone()).await;
     let component = create_component_for_schema_variant(
@@ -680,6 +682,8 @@ async fn nested_object_prop() {
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
+    let _ =
+        find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor).await;
     let (schema_variant, queen_prop, bohemian_prop, killer_prop, pressure_prop, dust_prop) =
         create_schema_with_nested_objects_and_string_prop(&txn, &nats, veritech.clone()).await;
     let component = create_component_for_schema_variant(
@@ -793,6 +797,8 @@ async fn simple_array_of_strings() {
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
+    let _ =
+        find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor).await;
     let schema_variant =
         create_schema_with_array_of_string_props(&txn, &nats, veritech.clone()).await;
     let component = create_component_for_schema_variant(
@@ -866,7 +872,7 @@ async fn simple_array_of_strings() {
     )
     .await
     .expect("cannot get component view");
-    txn.commit().await.expect("cannot commit txn");
+    // txn.commit().await.expect("cannot commit txn");
     assert_eq!(component_view.name, component.name());
     assert_eq!(
         component_view.properties,
@@ -889,6 +895,8 @@ async fn complex_nested_array_of_objects() {
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
+    let _ =
+        find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor).await;
     let (
         schema_variant,
         sammy_prop,
@@ -1069,7 +1077,7 @@ async fn complex_nested_array_of_objects() {
     )
     .await
     .expect("cannot get component view");
-    txn.commit().await.expect("cannot commit txn");
+    // txn.commit().await.expect("cannot commit txn");
     assert_eq!(component_view.name, component.name());
     assert_eq_sorted!(
         serde_json::json![

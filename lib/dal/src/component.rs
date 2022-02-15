@@ -104,6 +104,10 @@ pub enum ComponentError {
     SystemNotFound,
     #[error("attribute resolver error: {0}")]
     AttributeResolver(#[from] AttributeResolverError),
+    #[error("missing attribute resolver: {0}")]
+    MissingAttributeResolver(AttributeResolverId),
+    #[error("missing parent attribute resolver for: {0}")]
+    MissingParentAttributeResolver(AttributeResolverId),
     #[error("missing a prop in attribute update: {0} not found")]
     MissingProp(PropId),
     #[error("missing a func in attribute update: {0} not found")]
@@ -509,6 +513,7 @@ impl Component {
     }
 
     #[allow(clippy::too_many_arguments)]
+    #[async_recursion]
     /// Perform the actual value setting for a given prop. If the value passed in is empty, we
     /// greedily search for an attribute resolver to set the prop's default value, but "unsetting"
     /// is currently unsupported beyond the initial implementation for "PropKind::String".
@@ -641,7 +646,7 @@ impl Component {
                 set_value(
                     txn,
                     nats,
-                    veritech,
+                    veritech.clone(),
                     tenancy,
                     visibility,
                     history_actor,
@@ -655,7 +660,7 @@ impl Component {
                 set_value(
                     txn,
                     nats,
-                    veritech,
+                    veritech.clone(),
                     tenancy,
                     visibility,
                     history_actor,
@@ -669,7 +674,7 @@ impl Component {
                 set_value(
                     txn,
                     nats,
-                    veritech,
+                    veritech.clone(),
                     tenancy,
                     visibility,
                     history_actor,
@@ -685,7 +690,7 @@ impl Component {
                 set_value(
                     txn,
                     nats,
-                    veritech,
+                    veritech.clone(),
                     tenancy,
                     visibility,
                     history_actor,
@@ -702,7 +707,7 @@ impl Component {
                 set_value(
                     txn,
                     nats,
-                    veritech,
+                    veritech.clone(),
                     tenancy,
                     visibility,
                     history_actor,
@@ -717,7 +722,7 @@ impl Component {
                 set_value(
                     txn,
                     nats,
-                    veritech,
+                    veritech.clone(),
                     tenancy,
                     visibility,
                     history_actor,
@@ -735,7 +740,7 @@ impl Component {
                 unset_value(
                     txn,
                     nats,
-                    veritech,
+                    veritech.clone(),
                     tenancy,
                     visibility,
                     history_actor,
@@ -751,7 +756,7 @@ impl Component {
         attribute_resolver_context.set_component_id(*self.id());
 
         let parent_prop = prop.parent_prop(txn, visibility).await?;
-        let attribute_resolver = if let (Some(_parent_prop), Some(parent_attribute_resolver_id)) =
+        let attribute_resolver = if let (Some(parent_prop), Some(parent_attribute_resolver_id)) =
             (parent_prop, parent_attribute_resolver_id)
         {
             let attribute_resolver = AttributeResolver::new(
@@ -775,6 +780,65 @@ impl Component {
                     parent_attribute_resolver_id,
                 )
                 .await?;
+
+            // Next we make sure that our parent AttributeResolver resolves to an appropriate
+            // "empty" value for the PropKind, as long as we have a value.
+            // In the case where our value is `unset`, and there are no other children of our
+            // parent with a value (we were the last child that had a non-`unset` value), then
+            // we want to set our parent's value to be `unset` as well.
+
+            // TODO: Eventually, we'll need the logic to be more complex than stuffing everything into the "production" system, but that's a problem for "a week or two from now" us.
+            let mut systems =
+                System::find_by_attr(txn, tenancy, visibility, "name", &"production").await?;
+            let system = systems.pop().ok_or(ComponentError::SystemNotFound)?;
+            let current_parent_value = AttributeResolver::find_value_for_prop_and_component(
+                txn,
+                tenancy,
+                visibility,
+                *parent_prop.id(),
+                *self.id(),
+                *system.id(),
+            )
+            .await?;
+            // TODO: This should really only be `None` if no other children of our parent are set.
+            let new_parent_prop_value = if value.is_some() {
+                match parent_prop.kind() {
+                    PropKind::Array => Some(serde_json::json![[]]),
+                    PropKind::Map | PropKind::Object => Some(serde_json::json![{}]),
+                    _ => None,
+                }
+            } else {
+                None
+            };
+            if current_parent_value.value().cloned() != new_parent_prop_value {
+                let parent_attribute_resolver = AttributeResolver::get_by_id(
+                    txn,
+                    tenancy,
+                    visibility,
+                    &parent_attribute_resolver_id,
+                )
+                .await?
+                .ok_or(ComponentError::MissingAttributeResolver(
+                    parent_attribute_resolver_id,
+                ))?;
+                let parent_parent_attribute_resolver_id = parent_attribute_resolver
+                    .parent_attribute_resolver(txn, visibility)
+                    .await?
+                    .map(|ar| *ar.id());
+
+                self.resolve_attribute(
+                    txn,
+                    nats,
+                    veritech,
+                    tenancy,
+                    visibility,
+                    history_actor,
+                    &parent_prop,
+                    new_parent_prop_value,
+                    parent_parent_attribute_resolver_id,
+                )
+                .await?;
+            }
 
             attribute_resolver
         } else {
