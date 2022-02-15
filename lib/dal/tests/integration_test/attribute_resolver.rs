@@ -206,8 +206,8 @@ async fn find_value_for_prop_and_component() {
     .await
     .expect("cannot get return value for prop and component");
     assert_eq!(
+        Some(&serde_json::json!["prop"]),
         func_binding_return_value.value(),
-        Some(&serde_json::json!["prop"])
     );
 
     let args = FuncBackendStringArgs::new("prop_and_schema".to_string());
@@ -253,8 +253,8 @@ async fn find_value_for_prop_and_component() {
     .await
     .expect("cannot get return value for prop and component");
     assert_eq!(
+        Some(&serde_json::json!["prop_and_schema"]),
         func_binding_return_value.value(),
-        Some(&serde_json::json!["prop_and_schema"])
     );
 
     let args = FuncBackendStringArgs::new("prop_and_schema_variant".to_string());
@@ -300,8 +300,8 @@ async fn find_value_for_prop_and_component() {
     .await
     .expect("cannot get return value for prop and component");
     assert_eq!(
+        Some(&serde_json::json!["prop_and_schema_variant"]),
         func_binding_return_value.value(),
-        Some(&serde_json::json!["prop_and_schema_variant"])
     );
 
     let args = FuncBackendStringArgs::new("prop_and_schema_variant".to_string());
@@ -347,8 +347,8 @@ async fn find_value_for_prop_and_component() {
     .await
     .expect("cannot get return value for prop and component");
     assert_eq!(
+        Some(&serde_json::json!["prop_and_schema_variant"]),
         func_binding_return_value.value(),
-        Some(&serde_json::json!["prop_and_schema_variant"])
     );
 
     let args = FuncBackendStringArgs::new("prop_and_component".to_string());
@@ -394,8 +394,8 @@ async fn find_value_for_prop_and_component() {
     .await
     .expect("cannot get return value for prop and component");
     assert_eq!(
+        Some(&serde_json::json!["prop_and_component"]),
         func_binding_return_value.value(),
-        Some(&serde_json::json!["prop_and_component"])
     );
 }
 
@@ -518,8 +518,8 @@ async fn upsert() {
     .expect("cannot create new attribute resolver");
 
     assert_eq!(
+        *second_func_binding.id(),
         second_attribute_resolver.func_binding_id(),
-        *second_func_binding.id()
     );
 }
 
@@ -700,5 +700,5 @@ async fn update_parent_index_map() {
     let index_map = fetched_array_attribute_resolver
         .index_map()
         .expect("there must be an index map now");
-    assert_eq!(index_map.order(), &[*string_attribute_resolver.id()]);
+    assert_eq!(&[*string_attribute_resolver.id()], index_map.order());
 }
