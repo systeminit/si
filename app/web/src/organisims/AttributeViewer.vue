@@ -47,6 +47,7 @@ import VueFeather from "vue-feather";
 import { EditFieldObjectKind, EditFields } from "@/api/sdf/dal/edit_field";
 import { EditFieldService } from "@/service/edit_field";
 import { ResourceHealth } from "@/api/sdf/dal/resource";
+import { ChangedEditFieldCounterVisitor } from "@/utils/edit_field_visitor";
 
 const props = defineProps<{
   componentId: number;
@@ -122,22 +123,12 @@ const componentMetadata = refFrom<GetComponentMetadataResponse | undefined>(
 );
 
 const editCount = computed(() => {
-  if (editFields === undefined) {
+  if (editFields.value === undefined) {
     return undefined;
   } else {
-    // TODO(fnichol): Implement the logic to count edited fields.
-    //
-    // To accomplish this, we can interate through each `EditField` and filter
-    // only entries that have:
-    //
-    // `editField.visibility_diff != VisibilityDiffNone`
-    //
-    // The tricky part is that `EditField`s nest, so we need to visit and count
-    // inside of each `PropObject`, `PropArray`, and `PropMap` type. That's the
-    // same traversal/visit logic needed for other info such as computing the
-    // deepest path in a Component, so I suspect there's something
-    // generalizable once we get the first iteration of an implementation.
-    return 666;
+    const counter = new ChangedEditFieldCounterVisitor();
+    counter.visitEditFields(editFields.value);
+    return counter.count();
   }
 });
 
