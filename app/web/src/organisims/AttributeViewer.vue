@@ -16,7 +16,7 @@
       </div>
 
       <div class="ml-2 text-base">
-        <VueFeather type="box" size="1em" :stroke="resourceSyncStatus" />
+        <VueFeather type="box" size="1em" :stroke="resourceSyncStatusStroke" />
       </div>
 
       <div
@@ -39,7 +39,7 @@ import { GetComponentMetadataResponse } from "@/service/component/get_component_
 import { toRefs, computed } from "vue";
 import { fromRef, refFrom } from "vuse-rx";
 import { from, combineLatest, ReplaySubject } from "rxjs";
-import { switchMap } from "rxjs/operators";
+import { switchMap, tap } from "rxjs/operators";
 import { system$ } from "@/observable/system";
 import { eventResourceSynced$ } from "@/observable/resource";
 import { GlobalErrorService } from "@/service/global_error";
@@ -47,6 +47,7 @@ import VueFeather from "vue-feather";
 import { EditFieldObjectKind, EditFields } from "@/api/sdf/dal/edit_field";
 import { EditFieldService } from "@/service/edit_field";
 import { ResourceHealth } from "@/api/sdf/dal/resource";
+import { ChangedEditFieldCounterVisitor } from "@/utils/edit_field_visitor";
 
 const props = defineProps<{
   componentId: number;
@@ -85,7 +86,7 @@ const resourceSynced$ = new ReplaySubject<true>();
 resourceSynced$.next(true); // We must fetch on setup
 eventResourceSynced$.subscribe((resourceSyncId) => {
   combineLatest([system$]).pipe(
-    switchMap(([system]) => {
+    tap(([system]) => {
       const data = resourceSyncId?.payload.data;
       const sameComponent = props.componentId === data?.componentId;
       const sameSystem = system?.id === data?.systemId;
@@ -99,13 +100,19 @@ eventResourceSynced$.subscribe((resourceSyncId) => {
 const componentMetadata = refFrom<GetComponentMetadataResponse | undefined>(
   combineLatest([componentId$, system$, resourceSynced$]).pipe(
     switchMap(([componentId, system]) => {
-      return ComponentService.getComponentMetadata({
-        componentId,
-        systemId: system?.id,
-      });
+      if (system) {
+        return ComponentService.getComponentMetadata({
+          componentId,
+          systemId: system.id,
+        });
+      } else {
+        return from([null]);
+      }
     }),
     switchMap((response) => {
-      if (response.error) {
+      if (response === null) {
+        return from([undefined]);
+      } else if (response.error) {
         GlobalErrorService.set(response);
         return from([undefined]);
       } else {
@@ -116,60 +123,50 @@ const componentMetadata = refFrom<GetComponentMetadataResponse | undefined>(
 );
 
 const editCount = computed(() => {
-  if (editFields === undefined) {
+  if (editFields.value === undefined) {
     return undefined;
   } else {
-    // TODO(fnichol): Implement the logic to count edited fields.
-    //
-    // To accomplish this, we can interate through each `EditField` and filter
-    // only entries that have:
-    //
-    // `editField.visibility_diff != VisibilityDiffNone`
-    //
-    // The tricky part is that `EditField`s nest, so we need to visit and count
-    // inside of each `PropObject`, `PropArray`, and `PropMap` type. That's the
-    // same traversal/visit logic needed for other info such as computing the
-    // deepest path in a Component, so I suspect there's something
-    // generalizable once we get the first iteration of an implementation.
-    return 666;
+    const counter = new ChangedEditFieldCounterVisitor();
+    counter.visitEditFields(editFields.value);
+    return counter.count();
   }
 });
 
 const qualificationStatus = computed(() => {
   let style: Record<string, boolean> = {};
 
-  if (componentMetadata.value?.qualified ?? undefined !== undefined) {
-    if (componentMetadata.value.qualified) {
-      style["ok"] = true;
-    } else {
-      style["error"] = true;
-    }
-  } else {
+  if (
+    componentMetadata.value === undefined ||
+    componentMetadata.value.qualified === undefined
+  ) {
     style["unknown"] = true;
+  } else if (componentMetadata.value.qualified) {
+    style["ok"] = true;
+  } else {
+    style["error"] = true;
   }
 
   return style;
 });
 
-const resourceSyncStatus = computed(() => {
-  let style: Record<string, boolean> = {};
-
-  if ((componentMetadata.value?.resourceHealth ?? undefined) !== undefined) {
-    const health = componentMetadata.value.resourceHealth;
-    if (health == ResourceHealth.Ok) {
-      return "#86f0ad";
-    } else if (health == ResourceHealth.Warning) {
-      return "#f0d286";
-    } else if (health == ResourceHealth.Error) {
-      return "#f08686";
-    } else if (health == ResourceHealth.Unknown) {
-      return "#bbbbbb";
-    }
-  } else {
+const resourceSyncStatusStroke = computed(() => {
+  if (
+    componentMetadata.value === undefined ||
+    componentMetadata.value.resourceHealth === undefined
+  ) {
     return "#bbbbbb";
   }
 
-  return style;
+  const health = componentMetadata.value.resourceHealth;
+  if (health == ResourceHealth.Ok) {
+    return "#86f0ad";
+  } else if (health == ResourceHealth.Warning) {
+    return "#f0d286";
+  } else if (health == ResourceHealth.Error) {
+    return "#f08686";
+  } else {
+    return "#bbbbbb";
+  }
 });
 </script>
 
