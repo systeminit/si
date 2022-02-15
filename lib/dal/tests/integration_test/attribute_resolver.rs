@@ -13,6 +13,7 @@ use dal::{
     AttributeResolver, Func, FuncBackendKind, FuncBackendResponseType, HistoryActor, PropKind,
     Schema, SchemaKind, StandardModel, SystemId, Tenancy, Visibility,
 };
+use pretty_assertions_sorted::assert_eq;
 
 #[tokio::test]
 async fn new() {
