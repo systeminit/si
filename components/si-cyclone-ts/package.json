@@ -39,7 +39,7 @@
     "si-inference": "file:../si-inference",
     "si-registry": "file:../si-registry",
     "debug": "^4.3.1",
-    "vm2": "^3.9.4"
+    "vm2": "^3.9.6"
   },
   "volta": {
     "node": "16.5.0",
