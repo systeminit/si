@@ -8,10 +8,10 @@ use crate::{edit_field::ToSelectWidget, label_list::ToLabelList, PropKind};
 pub mod array;
 pub mod boolean;
 pub mod integer;
+pub mod js_attribute;
 pub mod js_code_generation;
 pub mod js_qualification;
 pub mod js_resource;
-pub mod js_string;
 pub mod map;
 pub mod prop_object;
 pub mod string;
@@ -67,7 +67,7 @@ pub enum FuncBackendKind {
     JsQualification,
     JsResourceSync,
     JsCodeGeneration,
-    JsString,
+    JsAttribute,
     Map,
     PropObject,
     String,

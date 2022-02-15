@@ -21,7 +21,10 @@
             <VueFeather type="plus" />
           </button>
         </div>
-        <div class="flex flex-row items-center w-10 ml-1 bg-red">
+        <div
+          v-if="!coreEditField"
+          class="flex flex-row items-center w-10 ml-1 bg-red"
+        >
           <Unset :edit-value="props.editField.value" :unset="unset" />
         </div>
       </div>

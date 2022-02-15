@@ -93,7 +93,7 @@ async fn si_number_of_parents(
             visibility,
             history_actor,
             "si:numberOfParents",
-            FuncBackendKind::JsString, // Should be integer, but the js integer backend isn't 100% there yet and is being worked on in parallel
+            FuncBackendKind::JsAttribute, // Should be integer, but the js integer backend isn't 100% there yet and is being worked on in parallel
             FuncBackendResponseType::String,
         )
         .await

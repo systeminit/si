@@ -14,13 +14,13 @@ use crate::func::backend::integer::{FuncBackendInteger, FuncBackendIntegerArgs};
 use crate::func::backend::map::{FuncBackendMap, FuncBackendMapArgs};
 use crate::func::backend::prop_object::{FuncBackendPropObject, FuncBackendPropObjectArgs};
 use crate::func::backend::{
+    js_attribute::{FuncBackendJsAttribute, FuncBackendJsAttributeArgs},
     js_code_generation::FuncBackendJsCodeGeneration,
     js_code_generation::FuncBackendJsCodeGenerationArgs,
     js_qualification::FuncBackendJsQualification,
     js_qualification::FuncBackendJsQualificationArgs,
     js_resource::FuncBackendJsResourceSync,
     js_resource::FuncBackendJsResourceSyncArgs,
-    js_string::{FuncBackendJsString, FuncBackendJsStringArgs},
     string::FuncBackendString,
     string::FuncBackendStringArgs,
     validation::{FuncBackendValidateStringValue, FuncBackendValidateStringValueArgs},
@@ -345,7 +345,7 @@ impl FuncBinding {
                 execution.process_output(txn, nats, rx).await?;
                 Some(serde_json::to_value(&veritech_result)?)
             }
-            FuncBackendKind::JsString => {
+            FuncBackendKind::JsAttribute => {
                 execution
                     .set_state(txn, nats, super::execution::FuncExecutionState::Dispatch)
                     .await?;
@@ -358,13 +358,13 @@ impl FuncBinding {
                     .code_base64()
                     .ok_or(FuncBindingError::JsFuncNotFound(self.pk))?;
 
-                let args: FuncBackendJsStringArgs = serde_json::from_value(self.args.clone())?;
+                let args: FuncBackendJsAttributeArgs = serde_json::from_value(self.args.clone())?;
 
                 execution
                     .set_state(txn, nats, super::execution::FuncExecutionState::Run)
                     .await?;
 
-                let return_value = FuncBackendJsString::new(
+                let return_value = FuncBackendJsAttribute::new(
                     veritech,
                     tx,
                     handler.to_owned(),

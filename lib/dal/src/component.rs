@@ -21,9 +21,9 @@ use crate::func::backend::integer::FuncBackendIntegerArgs;
 use crate::func::backend::map::FuncBackendMapArgs;
 use crate::func::backend::validation::{FuncBackendValidateStringValueArgs, ValidationError};
 use crate::func::backend::{
-    js_code_generation::FuncBackendJsCodeGenerationArgs,
+    js_attribute::FuncBackendJsAttributeArgs, js_code_generation::FuncBackendJsCodeGenerationArgs,
     js_qualification::FuncBackendJsQualificationArgs, js_resource::FuncBackendJsResourceSyncArgs,
-    js_string::FuncBackendJsStringArgs, string::FuncBackendStringArgs,
+    string::FuncBackendStringArgs,
 };
 use crate::func::binding::{FuncBinding, FuncBindingError};
 use crate::func::binding_return_value::FuncBindingReturnValue;
@@ -527,278 +527,222 @@ impl Component {
         let mut schema_tenancy = tenancy.clone();
         schema_tenancy.universal = true;
 
+        // Allows for finding the default Attribute Resolver for a Prop
         let mut attribute_resolver_context = AttributeResolverContext::new();
         attribute_resolver_context.set_prop_id(*prop.id());
+
+        fn as_type<T: serde::de::DeserializeOwned>(json: serde_json::Value) -> ComponentResult<T> {
+            T::deserialize(&json).map_err(|_| {
+                ComponentError::InvalidPropValue(std::any::type_name::<T>().to_owned(), json)
+            })
+        }
+
+        async fn set_value<T: Serialize>(
+            txn: &PgTxn<'_>,
+            nats: &NatsTxn,
+            veritech: veritech::Client,
+            tenancy: &Tenancy,
+            visibility: &Visibility,
+            history_actor: &HistoryActor,
+            func_name: &str,
+            args: T,
+        ) -> ComponentResult<(Func, FuncBinding, bool)> {
+            let mut schema_tenancy = tenancy.clone();
+            schema_tenancy.universal = true;
+
+            let func_name = func_name.to_owned();
+            let mut funcs =
+                Func::find_by_attr(txn, &schema_tenancy, visibility, "name", &func_name).await?;
+            let func = funcs.pop().ok_or(ComponentError::MissingFunc(func_name))?;
+            let (func_binding, created) = FuncBinding::find_or_create(
+                txn,
+                nats,
+                tenancy,
+                visibility,
+                history_actor,
+                serde_json::to_value(args)?,
+                *func.id(),
+                *func.backend_kind(),
+            )
+            .await?;
+
+            // Note for future humans - if this isn't a built in, then we need to
+            // think about execution time. Probably higher up than this? But just
+            // an FYI.
+            if created {
+                func_binding.execute(txn, nats, veritech).await?;
+            }
+            Ok((func, func_binding, created))
+        }
+
+        async fn unset_value(
+            txn: &PgTxn<'_>,
+            nats: &NatsTxn,
+            veritech: veritech::Client,
+            tenancy: &Tenancy,
+            visibility: &Visibility,
+            history_actor: &HistoryActor,
+            args_default: FuncBackendJsAttributeArgs,
+            attribute_resolver_context: AttributeResolverContext,
+        ) -> ComponentResult<(Func, FuncBinding, bool)> {
+            let mut schema_tenancy = tenancy.clone();
+            schema_tenancy.universal = true;
+
+            if let Some(resolver) = AttributeResolver::find_for_context(
+                txn,
+                &schema_tenancy,
+                visibility,
+                attribute_resolver_context,
+            )
+            .await?
+            {
+                let func = Func::get_by_id(txn, &schema_tenancy, visibility, &resolver.func_id())
+                    .await?
+                    .ok_or_else(|| ComponentError::MissingFunc(resolver.func_id().to_string()))?;
+                let (func_binding, created) = FuncBinding::find_or_create(
+                    txn,
+                    nats,
+                    tenancy,
+                    visibility,
+                    history_actor,
+                    serde_json::to_value(&args_default)?,
+                    *func.id(),
+                    *func.backend_kind(),
+                )
+                .await?;
+
+                if created {
+                    func_binding.execute(txn, nats, veritech).await?;
+                }
+
+                Ok((func, func_binding, created))
+            } else {
+                set_value(
+                    txn,
+                    nats,
+                    veritech,
+                    tenancy,
+                    visibility,
+                    history_actor,
+                    "si:unset",
+                    (),
+                )
+                .await
+            }
+        }
 
         // We shouldn't be leaking this value, because it may or may not be actually set. But
         // when you YOLO, YOLO hard. -- Adam
         let (func, func_binding, created) = match (prop.kind(), value.clone()) {
             (PropKind::Array, Some(value_json)) => {
-                // FIXME(nick): handle nesting for Map.
-                let value = match value_json.as_array() {
-                    Some(boolean) => boolean,
-                    None => {
-                        return Err(ComponentError::InvalidPropValue(
-                            "Array".to_string(),
-                            value_json,
-                        ))
-                    }
-                };
+                // FIXME(nick): handle nesting for Array.
 
-                let func_name = "si:setArray".to_string();
-                let mut funcs =
-                    Func::find_by_attr(txn, tenancy, visibility, "name", &func_name).await?;
-                let func = funcs.pop().ok_or(ComponentError::MissingFunc(func_name))?;
-                let args = serde_json::to_value(FuncBackendArrayArgs::new(value.clone()))?;
-                let (func_binding, created) = FuncBinding::find_or_create(
+                let value: Vec<serde_json::Value> = as_type(value_json)?;
+                set_value(
                     txn,
                     nats,
+                    veritech,
                     tenancy,
                     visibility,
                     history_actor,
-                    args,
-                    *func.id(),
-                    *func.backend_kind(),
+                    "si:setArray",
+                    FuncBackendArrayArgs::new(value),
                 )
-                .await?;
-
-                if created {
-                    func_binding.execute(txn, nats, veritech.clone()).await?;
-                }
-                (func, func_binding, created)
-            }
-            (PropKind::Array, None) => {
-                todo!("We haven't dealt with unsetting an array")
+                .await?
             }
             (PropKind::Boolean, Some(value_json)) => {
-                let value = match value_json.as_bool() {
-                    Some(boolean) => boolean,
-                    None => {
-                        return Err(ComponentError::InvalidPropValue(
-                            "Boolean".to_string(),
-                            value_json,
-                        ))
-                    }
-                };
-
-                let func_name = "si:setBoolean".to_string();
-                let mut funcs =
-                    Func::find_by_attr(txn, &schema_tenancy, visibility, "name", &func_name)
-                        .await?;
-                let func = funcs.pop().ok_or(ComponentError::MissingFunc(func_name))?;
-                let args = serde_json::to_value(FuncBackendBooleanArgs::new(value))?;
-                let (func_binding, created) = FuncBinding::find_or_create(
+                let value: bool = as_type(value_json)?;
+                set_value(
                     txn,
                     nats,
+                    veritech,
                     tenancy,
                     visibility,
                     history_actor,
-                    args,
-                    *func.id(),
-                    *func.backend_kind(),
+                    "si:setBoolean",
+                    FuncBackendBooleanArgs::new(value),
                 )
-                .await?;
-
-                if created {
-                    func_binding.execute(txn, nats, veritech.clone()).await?;
-                }
-                (func, func_binding, created)
-            }
-            (PropKind::Boolean, None) => {
-                todo!("We haven't dealt with unsetting a boolean")
+                .await?
             }
             (PropKind::Integer, Some(value_json)) => {
-                let value = match value_json.as_i64() {
-                    Some(integer) => integer,
-                    None => {
-                        return Err(ComponentError::InvalidPropValue(
-                            "Integer".to_string(),
-                            value_json,
-                        ))
-                    }
-                };
-
-                let func_name = "si:setInteger".to_string();
-                let mut funcs =
-                    Func::find_by_attr(txn, tenancy, visibility, "name", &func_name).await?;
-                let func = funcs.pop().ok_or(ComponentError::MissingFunc(func_name))?;
-                let args = serde_json::to_value(FuncBackendIntegerArgs::new(value))?;
-                let (func_binding, created) = FuncBinding::find_or_create(
+                let value: i64 = as_type(value_json)?;
+                set_value(
                     txn,
                     nats,
+                    veritech,
                     tenancy,
                     visibility,
                     history_actor,
-                    args,
-                    *func.id(),
-                    *func.backend_kind(),
+                    "si:setInteger",
+                    FuncBackendIntegerArgs::new(value),
                 )
-                .await?;
-
-                if created {
-                    func_binding.execute(txn, nats, veritech.clone()).await?;
-                }
-                (func, func_binding, created)
-            }
-            (PropKind::Integer, None) => {
-                todo!("Unsetting a Integer PropKind isn't supported yet");
+                .await?
             }
             (PropKind::Map, Some(value_json)) => {
                 // FIXME(nick): handle nesting for Map.
-                let value = match value_json.as_object() {
-                    Some(map) => map,
-                    None => {
-                        return Err(ComponentError::InvalidPropValue(
-                            "Map".to_string(),
-                            value_json,
-                        ))
-                    }
-                };
 
-                let func_name = "si:setMap".to_string();
-                let mut funcs =
-                    Func::find_by_attr(txn, tenancy, visibility, "name", &func_name).await?;
-                let func = funcs.pop().ok_or(ComponentError::MissingFunc(func_name))?;
-                let args = serde_json::to_value(FuncBackendMapArgs::new(value.clone()))?;
-                let (func_binding, created) = FuncBinding::find_or_create(
+                let value: serde_json::Map<String, serde_json::Value> = as_type(value_json)?;
+                set_value(
                     txn,
                     nats,
+                    veritech,
                     tenancy,
                     visibility,
                     history_actor,
-                    args,
-                    *func.id(),
-                    *func.backend_kind(),
-                )
-                .await?;
-
-                if created {
-                    func_binding.execute(txn, nats, veritech.clone()).await?;
-                }
-                (func, func_binding, created)
-            }
-            (PropKind::Map, None) => {
-                todo!("Unsetting a Map PropKind isn't supported yet");
-            }
-            (PropKind::Object, Some(value_json)) => {
-                // FIXME(nick): deny objects that aren't empty here. The value must be empty
-                // for a PropObject.
-                let value = match value_json.as_object() {
-                    Some(object) => object,
-                    None => {
-                        return Err(ComponentError::InvalidPropValue(
-                            "Object".to_string(),
-                            value_json,
-                        ))
-                    }
-                };
-
-                let func_name = "si:setPropObject".to_string();
-                let mut funcs =
-                    Func::find_by_attr(txn, &schema_tenancy, visibility, "name", &func_name)
-                        .await?;
-                let func = funcs.pop().ok_or(ComponentError::MissingFunc(func_name))?;
-                let args = serde_json::to_value(FuncBackendPropObjectArgs::new(value.clone()))?;
-                let (func_binding, created) = FuncBinding::find_or_create(
-                    txn,
-                    nats,
-                    tenancy,
-                    visibility,
-                    history_actor,
-                    args,
-                    *func.id(),
-                    *func.backend_kind(),
-                )
-                .await?;
-
-                // FIXME(nick,jacob): add object nesting. This is incomplete!
-                if created {
-                    func_binding.execute(txn, nats, veritech.clone()).await?;
-                }
-                (func, func_binding, created)
-            }
-            (PropKind::Object, None) => {
-                todo!("We haven't dealt with unsetting an object")
-            }
-            (PropKind::String, Some(value_json)) => {
-                let value = match value_json.as_str() {
-                    Some(string) => string.to_string(),
-                    None => {
-                        return Err(ComponentError::InvalidPropValue(
-                            "String".to_string(),
-                            value_json,
-                        ))
-                    }
-                };
-
-                let func_name = "si:setString".to_string();
-                let mut funcs =
-                    Func::find_by_attr(txn, tenancy, visibility, "name", &func_name).await?;
-                let func = funcs.pop().ok_or(ComponentError::MissingFunc(func_name))?;
-                let args = serde_json::to_value(FuncBackendStringArgs::new(value.clone()))?;
-                let (func_binding, created) = FuncBinding::find_or_create(
-                    txn,
-                    nats,
-                    tenancy,
-                    visibility,
-                    history_actor,
-                    args,
-                    *func.id(),
-                    *func.backend_kind(),
-                )
-                .await?;
-
-                // Note for future humans - if this isn't a built in, then we need to
-                // think about execution time. Probably higher up than this? But just
-                // an FYI.
-                if created {
-                    func_binding.execute(txn, nats, veritech.clone()).await?;
-                }
-                (func, func_binding, created)
-            }
-            (PropKind::String, None) => {
-                if let Some(resolver) = AttributeResolver::find_for_context(
-                    txn,
-                    &schema_tenancy,
-                    visibility,
-                    attribute_resolver_context.clone(),
+                    "si:setMap",
+                    FuncBackendMapArgs::new(value),
                 )
                 .await?
-                {
-                    let func =
-                        Func::get_by_id(txn, &schema_tenancy, visibility, &resolver.func_id())
-                            .await?
-                            .ok_or_else(|| {
-                                ComponentError::MissingFunc(resolver.func_id().to_string())
-                            })?;
-                    let (func_binding, created) = FuncBinding::find_or_create(
-                        txn,
-                        nats,
-                        tenancy,
-                        visibility,
-                        history_actor,
-                        serde_json::to_value(FuncBackendJsStringArgs {
-                            component: self
-                                .veritech_attribute_resolver_component(
-                                    txn,
-                                    &schema_tenancy,
-                                    visibility,
-                                )
-                                .await?,
-                        })?,
-                        *func.id(),
-                        *func.backend_kind(),
-                    )
-                    .await?;
+            }
+            (PropKind::Object, Some(value_json)) => {
+                // FIXME(nick): deny objects that aren't empty here. The value must be empty for a PropObject.
+                // FIXME(nick,jacob): add object nesting. This is incomplete!
 
-                    if created {
-                        func_binding.execute(txn, nats, veritech.clone()).await?;
-                    }
+                let value: serde_json::Map<String, serde_json::Value> = as_type(value_json)?;
+                set_value(
+                    txn,
+                    nats,
+                    veritech,
+                    tenancy,
+                    visibility,
+                    history_actor,
+                    "si:setPropObject",
+                    FuncBackendPropObjectArgs::new(value),
+                )
+                .await?
+            }
+            (PropKind::String, Some(value_json)) => {
+                let value: String = as_type(value_json)?;
 
-                    (func, func_binding, true)
-                } else {
-                    todo!("Unsetting a String PropKind without a fallback AttributeResolver isn't supported yet");
-                }
+                set_value(
+                    txn,
+                    nats,
+                    veritech,
+                    tenancy,
+                    visibility,
+                    history_actor,
+                    "si:setString",
+                    FuncBackendStringArgs::new(value),
+                )
+                .await?
+            }
+            (_, None) => {
+                let args_default = FuncBackendJsAttributeArgs {
+                    component: self
+                        .veritech_attribute_resolver_component(txn, &schema_tenancy, visibility)
+                        .await?,
+                };
+                unset_value(
+                    txn,
+                    nats,
+                    veritech,
+                    tenancy,
+                    visibility,
+                    history_actor,
+                    args_default,
+                    attribute_resolver_context,
+                )
+                .await?
             }
         };
 

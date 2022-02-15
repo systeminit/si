@@ -1,9 +1,8 @@
 use std::collections::HashMap;
 
+use crate::func::backend::js_attribute::FuncBackendJsAttributeArgs;
 use crate::func::backend::js_qualification::FuncBackendJsQualificationArgs;
 use crate::func::backend::js_resource::FuncBackendJsResourceSyncArgs;
-use crate::func::backend::js_string::FuncBackendJsStringArgs;
-use crate::func::backend::string::FuncBackendStringArgs;
 use crate::func::backend::validation::FuncBackendValidateStringValueArgs;
 use crate::qualification_prototype::QualificationPrototypeContext;
 use crate::resource_prototype::ResourcePrototypeContext;
@@ -11,9 +10,10 @@ use crate::schema::{SchemaResult, SchemaVariant, UiMenu};
 use crate::socket::{Socket, SocketArity, SocketEdgeKind};
 use crate::{
     attribute_resolver::AttributeResolverContext, func::binding::FuncBinding,
-    validation_prototype::ValidationPrototypeContext, AttributeResolver, Func, HistoryActor, Prop,
-    PropId, PropKind, QualificationPrototype, ResourcePrototype, Schema, SchemaError, SchemaKind,
-    SchemaVariantId, SchematicKind, StandardModel, Tenancy, ValidationPrototype, Visibility,
+    validation_prototype::ValidationPrototypeContext, AttributeResolver, Func, FuncBackendKind,
+    FuncBackendResponseType, HistoryActor, Prop, PropId, PropKind, QualificationPrototype,
+    ResourcePrototype, Schema, SchemaError, SchemaKind, SchemaVariantId, SchematicKind,
+    StandardModel, Tenancy, ValidationPrototype, Visibility,
 };
 use si_data::{NatsTxn, PgTxn};
 
@@ -577,7 +577,7 @@ async fn docker_image(
         tenancy,
         visibility,
         history_actor,
-        serde_json::to_value(FuncBackendJsStringArgs {
+        serde_json::to_value(FuncBackendJsAttributeArgs {
             component: veritech::ResolverFunctionComponent {
                 name: number_of_parents_prop.name().to_owned(),
                 properties,
@@ -818,17 +818,44 @@ pub async fn create_string_prop_with_default(
     )
     .await?;
 
-    let func_name = "si:setString".to_string();
-    let mut funcs = Func::find_by_attr(txn, tenancy, visibility, "name", &func_name).await?;
-    let func = funcs.pop().ok_or(SchemaError::MissingFunc(func_name))?;
+    let mut func = Func::new(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        &format!("si:setDefaultToProp{}", prop.id()),
+        FuncBackendKind::JsAttribute,
+        FuncBackendResponseType::String,
+    )
+    .await
+    .expect("cannot create func");
+    func.set_handler(txn, nats, visibility, history_actor, Some("defaultValue"))
+        .await?;
+    func.set_code_base64(
+        txn,
+        nats,
+        visibility,
+        history_actor,
+        Some(base64::encode(&format!(
+            "function defaultValue(component) {{ return \"{default_string}\"; }}"
+        ))),
+    )
+    .await?;
+
     let (func_binding, created) = FuncBinding::find_or_create(
         txn,
         nats,
         tenancy,
         visibility,
         history_actor,
-        serde_json::to_value(FuncBackendStringArgs {
-            value: default_string,
+        // The default run doesn't have useful information, but it's just a reference for future reruns
+        serde_json::to_value(FuncBackendJsAttributeArgs {
+            component: veritech::ResolverFunctionComponent {
+                name: prop.name().to_owned(),
+                properties: HashMap::new(),
+                parents: vec![],
+            },
         })?,
         *func.id(),
         *func.backend_kind(),

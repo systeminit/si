@@ -6,23 +6,23 @@ use veritech::{Client, FunctionResult, OutputStream, ResolverFunctionRequest};
 use crate::func::backend::{FuncBackendError, FuncBackendResult};
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct FuncBackendJsStringArgs {
+pub struct FuncBackendJsAttributeArgs {
     pub component: veritech::ResolverFunctionComponent,
 }
 
 #[derive(Debug)]
-pub struct FuncBackendJsString {
+pub struct FuncBackendJsAttribute {
     veritech: Client,
     output_tx: mpsc::Sender<OutputStream>,
     request: ResolverFunctionRequest,
 }
 
-impl FuncBackendJsString {
+impl FuncBackendJsAttribute {
     pub fn new(
         veritech: Client,
         output_tx: mpsc::Sender<OutputStream>,
         handler: impl Into<String>,
-        args: FuncBackendJsStringArgs,
+        args: FuncBackendJsAttributeArgs,
         code_base64: impl Into<String>,
     ) -> Self {
         let request = ResolverFunctionRequest {
