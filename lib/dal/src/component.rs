@@ -810,7 +810,7 @@ impl Component {
             } else {
                 None
             };
-            if current_parent_value.value().cloned() != new_parent_prop_value {
+            if current_parent_value.value() != new_parent_prop_value.as_ref() {
                 let parent_attribute_resolver = AttributeResolver::get_by_id(
                     txn,
                     tenancy,
