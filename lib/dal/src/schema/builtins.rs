@@ -9,11 +9,11 @@ use crate::resource_prototype::ResourcePrototypeContext;
 use crate::schema::{SchemaResult, SchemaVariant, UiMenu};
 use crate::socket::{Socket, SocketArity, SocketEdgeKind};
 use crate::{
-    attribute_resolver::AttributeResolverContext, func::binding::FuncBinding,
-    validation_prototype::ValidationPrototypeContext, AttributeResolver, Func, FuncBackendKind,
-    FuncBackendResponseType, HistoryActor, Prop, PropId, PropKind, QualificationPrototype,
-    ResourcePrototype, Schema, SchemaError, SchemaKind, SchemaVariantId, SchematicKind,
-    StandardModel, Tenancy, ValidationPrototype, Visibility,
+    attribute_resolver::AttributeResolverContext, edit_field::widget::*,
+    func::binding::FuncBinding, validation_prototype::ValidationPrototypeContext,
+    AttributeResolver, Func, FuncBackendKind, FuncBackendResponseType, HistoryActor, Prop, PropId,
+    PropKind, QualificationPrototype, ResourcePrototype, Schema, SchemaError, SchemaKind,
+    SchemaVariantId, SchematicKind, StandardModel, Tenancy, ValidationPrototype, Visibility,
 };
 use si_data::{NatsTxn, PgTxn};
 
@@ -49,7 +49,16 @@ pub async fn migrate(
         veritech.clone(),
     )
     .await?;
-    docker_image(txn, nats, &tenancy, &visibility, &history_actor, veritech).await?;
+    docker_image(
+        txn,
+        nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        veritech.clone(),
+    )
+    .await?;
+    docker_hub_credential(txn, nats, &tenancy, &visibility, &history_actor, veritech).await?;
 
     Ok(())
 }
@@ -398,6 +407,164 @@ async fn kubernetes_service(
     Ok(())
 }
 
+async fn docker_hub_credential(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    tenancy: &Tenancy,
+    visibility: &Visibility,
+    history_actor: &HistoryActor,
+    veritech: veritech::Client,
+) -> SchemaResult<()> {
+    let name = "docker_hub_credential".to_string();
+    let mut schema = match create_schema(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        &name,
+        &SchemaKind::Concrete,
+    )
+    .await?
+    {
+        Some(schema) => schema,
+        None => return Ok(()),
+    };
+
+    let variant = SchemaVariant::new(txn, nats, tenancy, visibility, history_actor, "v0").await?;
+    variant
+        .set_schema(txn, nats, visibility, history_actor, schema.id())
+        .await?;
+    schema
+        .set_default_schema_variant_id(txn, nats, visibility, history_actor, Some(*variant.id()))
+        .await?;
+
+    let mut ui_menu = UiMenu::new(txn, nats, tenancy, visibility, history_actor).await?;
+    ui_menu
+        .set_name(
+            txn,
+            nats,
+            visibility,
+            history_actor,
+            Some(schema.name().to_string()),
+        )
+        .await?;
+
+    let application_name = "application".to_string();
+    ui_menu
+        .set_category(
+            txn,
+            nats,
+            visibility,
+            history_actor,
+            Some(application_name.clone()),
+        )
+        .await?;
+    ui_menu
+        .set_schematic_kind(
+            txn,
+            nats,
+            visibility,
+            history_actor,
+            SchematicKind::Deployment, // Note: This isn't right, but we are not fixing the SchematicKind::Component UI in this PR
+        )
+        .await?;
+    ui_menu
+        .set_schema(txn, nats, visibility, history_actor, schema.id())
+        .await?;
+
+    let application_schema_results =
+        Schema::find_by_attr(txn, tenancy, visibility, "name", &application_name).await?;
+    let application_schema = application_schema_results
+        .first()
+        .ok_or(SchemaError::NotFoundByName(application_name))?;
+
+    ui_menu
+        .add_root_schematic(
+            txn,
+            nats,
+            visibility,
+            history_actor,
+            application_schema.id(),
+        )
+        .await?;
+
+    let mut secret_prop = Prop::new(
+        txn,
+        nats,
+        veritech.clone(),
+        tenancy,
+        visibility,
+        history_actor,
+        "secret",
+        PropKind::String,
+    )
+    .await?;
+    secret_prop
+        .add_schema_variant(txn, nats, visibility, history_actor, variant.id())
+        .await?;
+
+    secret_prop
+        .set_widget_kind(
+            txn,
+            nats,
+            visibility,
+            history_actor,
+            WidgetKind::SecretSelect,
+        )
+        .await?;
+
+    // Note: This is not right; each schema needs its own socket types.
+    //       Also, they should clearly inherit from the core schema? Something
+    //       for later.
+    let input_socket = Socket::new(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        "input",
+        &SocketEdgeKind::Configures,
+        &SocketArity::Many,
+    )
+    .await?;
+    variant
+        .add_socket(txn, nats, visibility, history_actor, input_socket.id())
+        .await?;
+
+    let output_socket = Socket::new(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        "output",
+        &SocketEdgeKind::Output,
+        &SocketArity::Many,
+    )
+    .await?;
+    variant
+        .add_socket(txn, nats, visibility, history_actor, output_socket.id())
+        .await?;
+
+    let includes_socket = Socket::new(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        "includes",
+        &SocketEdgeKind::Includes,
+        &SocketArity::Many,
+    )
+    .await?;
+    variant
+        .add_socket(txn, nats, visibility, history_actor, includes_socket.id())
+        .await?;
+
+    Ok(())
+}
+
 async fn docker_image(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
@@ -581,7 +748,6 @@ async fn docker_image(
             component: veritech::ResolverFunctionComponent {
                 name: number_of_parents_prop.name().to_owned(),
                 properties,
-                // TODO: can there be a component connected to another during schema variant creation?
                 parents: vec![],
             },
         })?,

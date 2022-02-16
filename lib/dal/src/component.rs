@@ -33,6 +33,7 @@ use crate::qualification_resolver::QualificationResolverContext;
 use crate::resource_resolver::ResourceResolverContext;
 use crate::schema::variant::{SchemaVariantError, SchemaVariantId};
 use crate::schema::SchemaVariant;
+use crate::secret::Secret;
 use crate::validation_resolver::ValidationResolverContext;
 use crate::ws_event::{WsEvent, WsEventError};
 use crate::{AttributeResolverId, Edge, EdgeError, PropError, System};
@@ -45,13 +46,13 @@ use crate::{
     standard_model_accessor, standard_model_belongs_to, standard_model_has_many, AttributeResolver,
     AttributeResolverError, BillingAccountId, CodeGenerationPrototype,
     CodeGenerationPrototypeError, CodeGenerationResolver, CodeGenerationResolverError, Func,
-    FuncBackendKind, HistoryActor, HistoryEventError, Node, NodeError, OrganizationError, Prop,
-    PropId, PropKind, QualificationPrototype, QualificationPrototypeError, QualificationResolver,
-    QualificationResolverError, Resource, ResourceError, ResourcePrototype, ResourcePrototypeError,
-    ResourceResolver, ResourceResolverError, ResourceView, Schema, SchemaError, SchemaId,
-    StandardModel, StandardModelError, SystemId, Tenancy, Timestamp, ValidationPrototype,
-    ValidationPrototypeError, ValidationResolver, ValidationResolverError, Visibility, Workspace,
-    WorkspaceError,
+    FuncBackendKind, HistoryActor, HistoryEventError, LabelEntry, LabelList, Node, NodeError,
+    OrganizationError, Prop, PropId, PropKind, QualificationPrototype, QualificationPrototypeError,
+    QualificationResolver, QualificationResolverError, Resource, ResourceError, ResourcePrototype,
+    ResourcePrototypeError, ResourceResolver, ResourceResolverError, ResourceView, Schema,
+    SchemaError, SchemaId, StandardModel, StandardModelError, SystemId, Tenancy, Timestamp,
+    ValidationPrototype, ValidationPrototypeError, ValidationResolver, ValidationResolverError,
+    Visibility, Workspace, WorkspaceError,
 };
 
 #[derive(Error, Debug)]
@@ -1417,6 +1418,8 @@ impl Component {
             parents,
         };
 
+        // TODO: pass widget data to veritech component
+
         for edit_field in Self::get_edit_fields(txn, &tenancy, visibility, self.id()).await? {
             // This whole segment needs to be replaced with something that can handle the
             // full complexity here.
@@ -1905,9 +1908,20 @@ async fn edit_field_for_prop(
     let mut edit_field_path_for_children = current_edit_field_path.clone();
     edit_field_path_for_children.push(field_name.to_string());
 
-    let widget = match prop.kind() {
-        PropKind::Integer | PropKind::String => Widget::Text(TextWidget::new()),
-        PropKind::Array | PropKind::Map | PropKind::Object => {
+    let widget = match prop.widget_kind() {
+        WidgetKind::SecretSelect => {
+            let mut entries = Vec::new();
+
+            for secret in Secret::all() {
+                entries.push(LabelEntry::new(
+                    secret.to_string(),
+                    serde_json::to_value(secret)?,
+                ));
+            }
+            Widget::Select(SelectWidget::new(LabelList::new(entries), None))
+        }
+        WidgetKind::Text => Widget::Text(TextWidget::new()),
+        WidgetKind::Array | WidgetKind::Header => {
             // NOTE: This ends up being ugly, and double checking what prop.kind() is
             //       to avoid doing the child prop lookup if we're building the Widget
             //       for a PropKind that "can't" have children. It may be worth taking
@@ -1947,7 +1961,7 @@ async fn edit_field_for_prop(
                 Widget::Header(HeaderWidget::new(child_edit_fields))
             }
         }
-        PropKind::Boolean => Widget::Checkbox(CheckboxWidget::new()),
+        WidgetKind::Checkbox => Widget::Checkbox(CheckboxWidget::new()),
     };
 
     let mut edit_field = EditField::new(

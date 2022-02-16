@@ -76,6 +76,17 @@ pub enum PropKind {
 impl ToLabelList for PropKind {}
 impl ToSelectWidget for PropKind {}
 
+impl From<PropKind> for WidgetKind {
+    fn from(prop: PropKind) -> Self {
+        match prop {
+            PropKind::Array => Self::Array,
+            PropKind::Boolean => Self::Checkbox,
+            PropKind::String | PropKind::Integer => Self::Text,
+            PropKind::Object | PropKind::Map => Self::Header,
+        }
+    }
+}
+
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct Prop {
     pk: PropPk,
@@ -83,6 +94,7 @@ pub struct Prop {
     name: String,
     kind: PropKind,
     parent_prop_id: Option<PropId>,
+    widget_kind: WidgetKind,
     #[serde(flatten)]
     tenancy: Tenancy,
     #[serde(flatten)]
@@ -112,10 +124,17 @@ impl Prop {
         name: impl AsRef<str>,
         kind: PropKind,
     ) -> PropResult<Self> {
+        let widget_kind = WidgetKind::from(kind);
         let row = txn
             .query_one(
-                "SELECT object FROM prop_create_v1($1, $2, $3, $4)",
-                &[tenancy, visibility, &name.as_ref(), &kind.as_ref()],
+                "SELECT object FROM prop_create_v1($1, $2, $3, $4, $5)",
+                &[
+                    tenancy,
+                    visibility,
+                    &name.as_ref(),
+                    &kind.as_ref(),
+                    &widget_kind.as_ref(),
+                ],
             )
             .await?;
         let object: Prop = standard_model::finish_create_from_row(
@@ -128,6 +147,7 @@ impl Prop {
         )
         .await?;
 
+        // Set default prop value as 'unset'
         let func_name = "si:unset".to_string();
         let mut funcs = Func::find_by_attr(txn, tenancy, visibility, "name", &func_name).await?;
         let func = funcs.pop().ok_or(PropError::MissingFunc(func_name))?;
@@ -168,6 +188,7 @@ impl Prop {
 
     standard_model_accessor!(name, String, PropResult);
     standard_model_accessor!(kind, Enum(PropKind), PropResult);
+    standard_model_accessor!(widget_kind, Enum(WidgetKind), PropResult);
 
     standard_model_many_to_many!(
         lookup_fn: schema_variants,
