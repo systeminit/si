@@ -35,6 +35,7 @@ pub struct ResolverFunctionComponent {
     pub name: String,
     pub properties: HashMap<String, Value>,
     pub parents: Vec<ResolverFunctionParentComponent>,
+    // TODO: add widget data here (for example select's options)
 }
 
 #[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]

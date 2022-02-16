@@ -35,6 +35,7 @@ pub mod resource_resolver;
 pub mod resource_scheduler;
 pub mod schema;
 pub mod schematic;
+pub mod secret;
 pub mod socket;
 pub mod standard_accessors;
 pub mod standard_model;

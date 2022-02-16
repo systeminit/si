@@ -471,7 +471,7 @@ macro_rules! standard_model_accessor {
                 history_actor: &$crate::HistoryActor,
                 value: Option<impl Into<$value_type>>,
             ) -> $result_type<()> {
-                let value: Option<$value_type> = value.map(|v| v.into());
+                let value: Option<$value_type> = value.map(Into::into);
                 let updated_at = standard_model::update(
                     &txn,
                     Self::table_name(),
@@ -523,6 +523,49 @@ macro_rules! standard_model_accessor {
                     visibility,
                     self.id(),
                     &value.as_ref(),
+                    $hint,
+                ).await?;
+                let _history_event = $crate::HistoryEvent::new(
+                    &txn,
+                    &nats,
+                    &Self::history_event_label(vec!["updated"]),
+                    &history_actor,
+                    &Self::history_event_message("updated"),
+                    &serde_json::json![{
+                        "pk": self.pk,
+                        "field": stringify!($column),
+                        "value": &value,
+                    }],
+                    &self.tenancy(),
+                )
+                .await?;
+                self.timestamp.updated_at = updated_at;
+                self.$column = value;
+                Ok(())
+            }
+        }
+    };
+
+    (@set_column_with_option_as_ref $column:ident, $value_type:ident, $hint:ty, $result_type:ident $(,)?) => {
+        paste::paste! {
+            #[telemetry::tracing::instrument(skip_all)]
+            pub async fn [<set_ $column>](
+                &mut self,
+                txn: &si_data::PgTxn<'_>,
+                nats: &si_data::NatsTxn,
+                visibility: &$crate::Visibility,
+                history_actor: &$crate::HistoryActor,
+                value: Option<impl Into<$value_type>>,
+            ) -> $result_type<()> {
+                let value: Option<$value_type> = value.map(Into::into);
+                let updated_at = standard_model::update(
+                    &txn,
+                    Self::table_name(),
+                    stringify!($column),
+                    &self.tenancy(),
+                    visibility,
+                    self.id(),
+                    &value.as_ref().map(|v| v.as_ref()),
                     $hint,
                 ).await?;
                 let _history_event = $crate::HistoryEvent::new(
@@ -714,6 +757,16 @@ macro_rules! standard_model_accessor {
     ($column:ident, $value_type:ident, $result_type:ident $(,)?) => {
         standard_model_accessor!(@get_column_as_str $column);
         standard_model_accessor!(@set_column
+            $column,
+            $value_type,
+            $crate::standard_model::TypeHint::Text,
+            $result_type,
+        );
+    };
+
+    ($column:ident, Option<Enum($value_type:ident)>, $result_type:ident $(,)?) => {
+        standard_model_accessor!(@get_column_as_option $column, $value_type);
+        standard_model_accessor!(@set_column_with_option_as_ref
             $column,
             $value_type,
             $crate::standard_model::TypeHint::Text,
