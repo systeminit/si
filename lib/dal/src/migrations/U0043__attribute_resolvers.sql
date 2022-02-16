@@ -18,7 +18,8 @@ CREATE TABLE attribute_resolvers
     schema_id                   bigint,
     schema_variant_id           bigint,
     system_id                   bigint,
-    index_map                   jsonb
+    index_map                   jsonb,
+    key                         text
 );
 SELECT standard_model_table_constraints_v1('attribute_resolvers');
 select belongs_to_table_create_v1('attribute_resolver_belongs_to_attribute_resolver', 'attribute_resolvers', 'attribute_resolvers');
@@ -37,6 +38,7 @@ CREATE OR REPLACE FUNCTION attribute_resolver_create_v1(
     this_schema_id bigint,
     this_schema_variant_id bigint,
     this_system_id bigint,
+    this_key text,
     OUT object json) AS
 $$
 DECLARE
@@ -60,7 +62,8 @@ BEGIN
                                      component_id,
                                      schema_id,
                                      schema_variant_id,
-                                     system_id)
+                                     system_id, 
+                                     key)
     VALUES (this_tenancy_record.tenancy_universal,
             this_tenancy_record.tenancy_billing_account_ids,
             this_tenancy_record.tenancy_organization_ids,
@@ -74,7 +77,8 @@ BEGIN
             this_component_id,
             this_schema_id,
             this_schema_variant_id,
-            this_system_id)
+            this_system_id,
+            this_key)
     RETURNING * INTO this_new_row;
 
     object := row_to_json(this_new_row);
@@ -91,6 +95,7 @@ CREATE OR REPLACE FUNCTION attribute_resolver_upsert_v1(
     this_schema_id bigint,
     this_schema_variant_id bigint,
     this_system_id bigint,
+    this_key text,
     OUT object json, OUT created boolean) AS
 $$
 DECLARE
@@ -167,7 +172,8 @@ BEGIN
                 this_component_id,
                 this_schema_id,
                 this_schema_variant_id,
-                this_system_id
+                this_system_id,
+                this_key
             )
         INTO object;
     ELSE

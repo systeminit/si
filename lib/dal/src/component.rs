@@ -448,6 +448,7 @@ impl Component {
         prop_id: PropId,
         _edit_field_id: String,
         value: Option<serde_json::Value>,
+        key: Option<String>,
     ) -> ComponentResult<()> {
         let prop = Prop::get_by_id(txn, tenancy, visibility, &prop_id)
             .await?
@@ -467,6 +468,7 @@ impl Component {
                 &prop,
                 value,
                 None,
+                key,
             )
             .await?;
 
@@ -528,6 +530,7 @@ impl Component {
         prop: &Prop,
         value: Option<serde_json::Value>,
         parent_attribute_resolver_id: Option<AttributeResolverId>,
+        key: Option<String>,
     ) -> ComponentResult<(Option<serde_json::Value>, AttributeResolverId, bool)> {
         let mut schema_tenancy = tenancy.clone();
         schema_tenancy.universal = true;
@@ -768,6 +771,7 @@ impl Component {
                 *func.id(),
                 *func_binding.id(),
                 attribute_resolver_context,
+                key.clone(),
             )
             .await?;
 
@@ -836,6 +840,7 @@ impl Component {
                     &parent_prop,
                     new_parent_prop_value,
                     parent_parent_attribute_resolver_id,
+                    key,
                 )
                 .await?;
             }
@@ -851,6 +856,7 @@ impl Component {
                 *func.id(),
                 *func_binding.id(),
                 attribute_resolver_context,
+                key,
             )
             .await?
         };

@@ -77,6 +77,7 @@ pub async fn update_from_edit_field(
                 baggage.prop_id,
                 request.edit_field_id,
                 request.value,
+                None, // TODO: Eventually, pass the key! -- Adam
             )
             .await?
         }
