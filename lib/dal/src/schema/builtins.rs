@@ -603,6 +603,7 @@ async fn docker_image(
         *func.id(),
         *func_binding.id(),
         attribute_resolver_context,
+        None,
     )
     .await?;
 
@@ -877,6 +878,7 @@ pub async fn create_string_prop_with_default(
         *func.id(),
         *func_binding.id(),
         attribute_resolver_context,
+        None,
     )
     .await?;
     Ok(prop)

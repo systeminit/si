@@ -158,6 +158,7 @@ impl Prop {
             *func.id(),
             *func_binding.id(),
             attribute_resolver_context,
+            None,
         )
         .await
         .map_err(|e| PropError::AttributeResolver(format!("{e}")))?;

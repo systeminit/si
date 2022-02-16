@@ -99,6 +99,7 @@ async fn new() {
         *func.id(),
         *func_binding.id(),
         attribute_resolver_context,
+        None,
     )
     .await
     .expect("cannot create new attribute resolver");
@@ -193,6 +194,7 @@ async fn find_value_for_prop_and_component() {
         *func.id(),
         *func_binding.id(),
         attribute_resolver_context,
+        None,
     )
     .await
     .expect("cannot create attribute resolver");
@@ -240,6 +242,7 @@ async fn find_value_for_prop_and_component() {
         *func.id(),
         *func_binding.id(),
         attribute_resolver_context,
+        None,
     )
     .await
     .expect("cannot create attribute resolver");
@@ -287,6 +290,7 @@ async fn find_value_for_prop_and_component() {
         *func.id(),
         *func_binding.id(),
         attribute_resolver_context,
+        None,
     )
     .await
     .expect("cannot create attribute resolver");
@@ -334,6 +338,7 @@ async fn find_value_for_prop_and_component() {
         *func.id(),
         *func_binding.id(),
         attribute_resolver_context,
+        None,
     )
     .await
     .expect("cannot create attribute resolver");
@@ -381,6 +386,7 @@ async fn find_value_for_prop_and_component() {
         *func.id(),
         *func_binding.id(),
         attribute_resolver_context,
+        None,
     )
     .await
     .expect("cannot create attribute resolver");
@@ -484,6 +490,7 @@ async fn upsert() {
         *func.id(),
         *func_binding.id(),
         attribute_resolver_context.clone(),
+        None,
     )
     .await
     .expect("cannot create new attribute resolver");
@@ -514,6 +521,7 @@ async fn upsert() {
         *func.id(),
         *second_func_binding.id(),
         attribute_resolver_context,
+        None,
     )
     .await
     .expect("cannot create new attribute resolver");
@@ -621,6 +629,7 @@ async fn update_parent_index_map() {
         *set_array_func.id(),
         *array_func_binding.id(),
         array_attribute_resolver_context.clone(),
+        None,
     )
     .await
     .expect("cannot create new attribute resolver");
@@ -689,6 +698,7 @@ async fn update_parent_index_map() {
         *set_string_func.id(),
         *string_func_binding.id(),
         string_attribute_resolver_context.clone(),
+        None,
     )
     .await
     .expect("cannot create new attribute resolver");

@@ -152,6 +152,7 @@ pub struct AttributeResolver {
     func_id: FuncId,
     func_binding_id: FuncBindingId,
     pub index_map: Option<IndexMap>,
+    pub key: Option<String>,
     #[serde(flatten)]
     pub context: AttributeResolverContext,
     #[serde(flatten)]
@@ -183,10 +184,11 @@ impl AttributeResolver {
         func_id: FuncId,
         func_binding_id: FuncBindingId,
         context: AttributeResolverContext,
+        key: Option<String>,
     ) -> AttributeResolverResult<Self> {
         let row = txn
             .query_one(
-                "SELECT object FROM attribute_resolver_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+                "SELECT object FROM attribute_resolver_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
                 &[
                     &tenancy,
                     &visibility,
@@ -197,6 +199,7 @@ impl AttributeResolver {
                     &context.schema_id(),
                     &context.schema_variant_id(),
                     &context.system_id(),
+                    &key,
                 ],
             )
             .await?;
@@ -218,6 +221,7 @@ impl AttributeResolver {
     standard_model_accessor!(func_id, Pk(FuncId), AttributeResolverResult);
     standard_model_accessor!(func_binding_id, Pk(FuncBindingId), AttributeResolverResult);
     standard_model_accessor!(index_map, Option<IndexMap>, AttributeResolverResult);
+    standard_model_accessor!(key, Option<String>, AttributeResolverResult);
 
     standard_model_belongs_to!(
         lookup_fn: parent_attribute_resolver,
@@ -321,11 +325,11 @@ impl AttributeResolver {
                     {
                         match parent_attr_resolver.index_map_mut() {
                             Some(index_map) => {
-                                index_map.push(*self.id(), None);
+                                index_map.push(*self.id(), self.key.clone());
                             }
                             None => {
                                 let mut index_map = IndexMap::new();
-                                index_map.push(*self.id(), None);
+                                index_map.push(*self.id(), self.key.clone());
                                 parent_attr_resolver.index_map = Some(index_map);
                             }
                         }
@@ -374,10 +378,11 @@ impl AttributeResolver {
         func_id: FuncId,
         func_binding_id: FuncBindingId,
         context: AttributeResolverContext,
+        key: Option<String>,
     ) -> AttributeResolverResult<Self> {
         let row = txn
             .query_one(
-                "SELECT object FROM attribute_resolver_upsert_v1($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+                "SELECT object FROM attribute_resolver_upsert_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
                 &[
                     &tenancy,
                     &visibility,
@@ -388,6 +393,7 @@ impl AttributeResolver {
                     &context.schema_id(),
                     &context.schema_variant_id(),
                     &context.system_id(),
+                    &key,
                 ],
             )
             .await?;

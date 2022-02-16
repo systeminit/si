@@ -523,6 +523,248 @@ pub async fn create_schema_with_nested_array_objects(
     )
 }
 
+/// Create a schema that looks like this (its a map!):
+/// ```json
+/// "albums": {
+///   "black_dahlia": "nocturnal",
+///   "meshuggah": "destroy erase improve"
+/// }
+/// ```
+pub async fn create_simple_map(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    veritech: veritech::Client,
+) -> (SchemaVariant, Prop, Prop) {
+    let tenancy = Tenancy::new_universal();
+    let visibility = Visibility::new_head(false);
+    let history_actor = HistoryActor::SystemInit;
+    let mut schema = create_schema(
+        txn,
+        nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        &SchemaKind::Concrete,
+    )
+    .await;
+    let schema_variant =
+        create_schema_variant(txn, nats, &tenancy, &visibility, &history_actor).await;
+    schema_variant
+        .set_schema(txn, nats, &visibility, &history_actor, schema.id())
+        .await
+        .expect("cannot associate variant with schema");
+    schema
+        .set_default_schema_variant_id(
+            txn,
+            nats,
+            &visibility,
+            &history_actor,
+            Some(*schema_variant.id()),
+        )
+        .await
+        .expect("cannot set default schema variant");
+
+    let album_prop = create_prop_of_kind_with_name(
+        txn,
+        nats,
+        veritech.clone(),
+        &tenancy,
+        &visibility,
+        &history_actor,
+        PropKind::Map,
+        "albums",
+    )
+    .await;
+    album_prop
+        .add_schema_variant(txn, nats, &visibility, &history_actor, schema_variant.id())
+        .await
+        .expect("cannot associate prop with schema variant");
+
+    let album_item_prop = create_prop_of_kind_with_name(
+        txn,
+        nats,
+        veritech.clone(),
+        &tenancy,
+        &visibility,
+        &history_actor,
+        PropKind::String,
+        "album_ignore",
+    )
+    .await;
+    album_item_prop
+        .set_parent_prop(txn, nats, &visibility, &history_actor, *album_prop.id())
+        .await
+        .expect("cannot set parent");
+
+    (schema_variant, album_prop, album_item_prop)
+}
+
+/// Create a schema that looks like this:
+/// ```json
+/// { "sammy_hagar": [
+///    {"album": "standing_hampton", "songs": [{ "fall in love again": "good", surrender": "ok"}]},
+///   ]
+/// }
+/// ```
+pub async fn create_schema_with_nested_array_objects_and_a_map(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    veritech: veritech::Client,
+) -> (SchemaVariant, Prop, Prop, Prop, Prop, Prop, Prop) {
+    let tenancy = Tenancy::new_universal();
+    let visibility = Visibility::new_head(false);
+    let history_actor = HistoryActor::SystemInit;
+    let mut schema = create_schema(
+        txn,
+        nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        &SchemaKind::Concrete,
+    )
+    .await;
+    let schema_variant =
+        create_schema_variant(txn, nats, &tenancy, &visibility, &history_actor).await;
+    schema_variant
+        .set_schema(txn, nats, &visibility, &history_actor, schema.id())
+        .await
+        .expect("cannot associate variant with schema");
+    schema
+        .set_default_schema_variant_id(
+            txn,
+            nats,
+            &visibility,
+            &history_actor,
+            Some(*schema_variant.id()),
+        )
+        .await
+        .expect("cannot set default schema variant");
+
+    let sammy_prop = create_prop_of_kind_with_name(
+        txn,
+        nats,
+        veritech.clone(),
+        &tenancy,
+        &visibility,
+        &history_actor,
+        PropKind::Array,
+        "sammy_hagar",
+    )
+    .await;
+    sammy_prop
+        .add_schema_variant(txn, nats, &visibility, &history_actor, schema_variant.id())
+        .await
+        .expect("cannot associate prop with schema variant");
+
+    let album_object_prop = create_prop_of_kind_with_name(
+        txn,
+        nats,
+        veritech.clone(),
+        &tenancy,
+        &visibility,
+        &history_actor,
+        PropKind::Object,
+        "album_ignore",
+    )
+    .await;
+    album_object_prop
+        .set_parent_prop(txn, nats, &visibility, &history_actor, *sammy_prop.id())
+        .await
+        .expect("cannot set parent");
+
+    let album_string_prop = create_prop_of_kind_with_name(
+        txn,
+        nats,
+        veritech.clone(),
+        &tenancy,
+        &visibility,
+        &history_actor,
+        PropKind::String,
+        "album",
+    )
+    .await;
+    album_string_prop
+        .set_parent_prop(
+            txn,
+            nats,
+            &visibility,
+            &history_actor,
+            *album_object_prop.id(),
+        )
+        .await
+        .expect("cannot set parent");
+
+    let songs_array_prop = create_prop_of_kind_with_name(
+        txn,
+        nats,
+        veritech.clone(),
+        &tenancy,
+        &visibility,
+        &history_actor,
+        PropKind::Array,
+        "songs",
+    )
+    .await;
+    songs_array_prop
+        .set_parent_prop(
+            txn,
+            nats,
+            &visibility,
+            &history_actor,
+            *album_object_prop.id(),
+        )
+        .await
+        .expect("cannot set parent");
+
+    let song_map_prop = create_prop_of_kind_with_name(
+        txn,
+        nats,
+        veritech.clone(),
+        &tenancy,
+        &visibility,
+        &history_actor,
+        PropKind::Map,
+        "song_map_ignore",
+    )
+    .await;
+    song_map_prop
+        .set_parent_prop(
+            txn,
+            nats,
+            &visibility,
+            &history_actor,
+            *songs_array_prop.id(),
+        )
+        .await
+        .expect("cannot set parent");
+
+    let song_map_item_prop = create_prop_of_kind_with_name(
+        txn,
+        nats,
+        veritech.clone(),
+        &tenancy,
+        &visibility,
+        &history_actor,
+        PropKind::String,
+        "song_map_item_ignore",
+    )
+    .await;
+    song_map_item_prop
+        .set_parent_prop(txn, nats, &visibility, &history_actor, *song_map_prop.id())
+        .await
+        .expect("cannot set parent");
+
+    (
+        schema_variant,
+        sammy_prop,
+        album_object_prop,
+        album_string_prop,
+        songs_array_prop,
+        song_map_prop,
+        song_map_item_prop,
+    )
+}
+
 #[tokio::test]
 async fn only_string_props() {
     test_setup!(
@@ -563,6 +805,7 @@ async fn only_string_props() {
                 &history_actor,
                 prop,
                 Some(serde_json::json!["woohoo"]),
+                None,
                 None,
             )
             .await
@@ -632,6 +875,7 @@ async fn one_object_prop() {
             object_prop,
             Some(serde_json::json![{}]),
             None,
+            None,
         )
         .await
         .expect("cannot resolve object attribute to empty object");
@@ -647,6 +891,7 @@ async fn one_object_prop() {
                 prop,
                 Some(serde_json::json!["woohoo"]),
                 Some(object_attribute_resolver_id),
+                None,
             )
             .await
             .expect("cannot resolve the attributes for the component");
@@ -706,6 +951,7 @@ async fn nested_object_prop() {
             &queen_prop,
             Some(serde_json::json![{}]),
             None,
+            None,
         )
         .await
         .expect("cannot resolve queen object prop");
@@ -720,6 +966,7 @@ async fn nested_object_prop() {
             &bohemian_prop,
             Some(serde_json::json!["scaramouche"]),
             Some(queen_object_resolver_id),
+            None,
         )
         .await
         .expect("cannot resolve bohemian prop");
@@ -734,6 +981,7 @@ async fn nested_object_prop() {
             &killer_prop,
             Some(serde_json::json!["cake"]),
             Some(queen_object_resolver_id),
+            None,
         )
         .await
         .expect("cannot resolve killer prop");
@@ -748,6 +996,7 @@ async fn nested_object_prop() {
             &pressure_prop,
             Some(serde_json::json![{}]),
             Some(queen_object_resolver_id),
+            None,
         )
         .await
         .expect("cannot resolve pressure prop");
@@ -762,6 +1011,7 @@ async fn nested_object_prop() {
             &dust_prop,
             Some(serde_json::json!["another one gone"]),
             Some(pressure_object_resolver_id),
+            None,
         )
         .await
         .expect("cannot resolve dust prop");
@@ -830,6 +1080,7 @@ async fn simple_array_of_strings() {
             array_prop,
             Some(serde_json::json![[]]),
             None,
+            None,
         )
         .await
         .expect("cannot resolve the attributes for the component");
@@ -845,6 +1096,7 @@ async fn simple_array_of_strings() {
                 prop,
                 Some(serde_json::json!["standing_hampton"]),
                 Some(array_attribute_resolver_id),
+                None,
             )
             .await
             .expect("cannot resolve the attributes for the component");
@@ -859,6 +1111,7 @@ async fn simple_array_of_strings() {
                 prop,
                 Some(serde_json::json!["voa"]),
                 Some(array_attribute_resolver_id),
+                None,
             )
             .await
             .expect("cannot resolve the attributes for the component");
@@ -925,6 +1178,7 @@ async fn complex_nested_array_of_objects() {
             &sammy_prop,
             Some(serde_json::json![[]]),
             None,
+            None,
         )
         .await
         .expect("cannot resolve sammy prop");
@@ -939,6 +1193,7 @@ async fn complex_nested_array_of_objects() {
             &album_object_prop,
             Some(serde_json::json![{}]),
             Some(sammy_resolver_id),
+            None,
         )
         .await
         .expect("cannot resolve album object prop");
@@ -953,6 +1208,7 @@ async fn complex_nested_array_of_objects() {
             &album_string_prop,
             Some(serde_json::json!["standing_hampton"]),
             Some(standing_hampton_album_resolver_id),
+            None,
         )
         .await
         .expect("cannot resolve album name for standing hampton");
@@ -967,6 +1223,7 @@ async fn complex_nested_array_of_objects() {
             &songs_array_prop,
             Some(serde_json::json![[]]),
             Some(standing_hampton_album_resolver_id),
+            None,
         )
         .await
         .expect("cannot resolve songs prop for standing hampton");
@@ -981,6 +1238,7 @@ async fn complex_nested_array_of_objects() {
             &song_name_prop,
             Some(serde_json::json!["fall in love again"]),
             Some(standing_hampton_songs_resolver_id),
+            None,
         )
         .await
         .expect("cannot resolve song for standing hampton");
@@ -995,6 +1253,7 @@ async fn complex_nested_array_of_objects() {
             &song_name_prop,
             Some(serde_json::json!["surrender"]),
             Some(standing_hampton_songs_resolver_id),
+            None,
         )
         .await
         .expect("cannot resolve song for standing hampton");
@@ -1009,6 +1268,7 @@ async fn complex_nested_array_of_objects() {
             &album_object_prop,
             Some(serde_json::json![{}]),
             Some(sammy_resolver_id),
+            None,
         )
         .await
         .expect("cannot resolve voa album object");
@@ -1023,6 +1283,7 @@ async fn complex_nested_array_of_objects() {
             &album_string_prop,
             Some(serde_json::json!["voa"]),
             Some(voa_album_resolver_id),
+            None,
         )
         .await
         .expect("cannot resolve voa album name");
@@ -1037,6 +1298,7 @@ async fn complex_nested_array_of_objects() {
             &songs_array_prop,
             Some(serde_json::json![[]]),
             Some(voa_album_resolver_id),
+            None,
         )
         .await
         .expect("cannot resolve voa songs array prop");
@@ -1051,6 +1313,7 @@ async fn complex_nested_array_of_objects() {
             &song_name_prop,
             Some(serde_json::json!["eagles fly"]),
             Some(voa_songs_resolver_id),
+            None,
         )
         .await
         .expect("could not resolve eagles fly");
@@ -1065,6 +1328,7 @@ async fn complex_nested_array_of_objects() {
             &song_name_prop,
             Some(serde_json::json!["can't drive 55"]),
             Some(voa_songs_resolver_id),
+            None,
         )
         .await
         .expect("could not resolve driving 55");
@@ -1097,6 +1361,274 @@ async fn complex_nested_array_of_objects() {
                             "can't drive 55"
                         ]
                     }
+                ]
+            }
+        ], // expected
+        component_view.properties, // actual
+    );
+}
+
+#[tokio::test]
+async fn simple_map() {
+    test_setup!(
+        ctx,
+        _secret_key,
+        _pg,
+        _conn,
+        txn,
+        _nats_conn,
+        nats,
+        veritech,
+    );
+    let tenancy = Tenancy::new_universal();
+    let visibility = Visibility::new_head(false);
+    let history_actor = HistoryActor::SystemInit;
+    let _ =
+        find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor).await;
+    let (schema_variant, album_prop, album_item_prop) =
+        create_simple_map(&txn, &nats, veritech.clone()).await;
+    let component = create_component_for_schema_variant(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        schema_variant.id(),
+    )
+    .await;
+    let (_, album_resolver_id, _) = component
+        .resolve_attribute(
+            &txn,
+            &nats,
+            veritech.clone(),
+            &tenancy,
+            &visibility,
+            &history_actor,
+            &album_prop,
+            Some(serde_json::json![{}]),
+            None,
+            None,
+        )
+        .await
+        .expect("cannot resolve sammy prop");
+    component
+        .resolve_attribute(
+            &txn,
+            &nats,
+            veritech.clone(),
+            &tenancy,
+            &visibility,
+            &history_actor,
+            &album_item_prop,
+            Some(serde_json::json!["nocturnal"]),
+            Some(album_resolver_id),
+            Some("black_dahlia".to_string()),
+        )
+        .await
+        .expect("cannot resolve album object prop");
+    component
+        .resolve_attribute(
+            &txn,
+            &nats,
+            veritech.clone(),
+            &tenancy,
+            &visibility,
+            &history_actor,
+            &album_item_prop,
+            Some(serde_json::json!["destroy erase improve"]),
+            Some(album_resolver_id),
+            Some("meshuggah".to_string()),
+        )
+        .await
+        .expect("cannot resolve album object prop");
+
+    let component_view = ComponentView::for_component_and_system(
+        &txn,
+        &tenancy,
+        &visibility,
+        *component.id(),
+        UNSET_SYSTEM_ID,
+    )
+    .await
+    .expect("cannot get component view");
+    // txn.commit().await.expect("cannot commit txn");
+    assert_eq!(component_view.name, component.name());
+    assert_eq_sorted!(
+        serde_json::json![
+            {
+                "albums": {
+                    "black_dahlia": "nocturnal",
+                    "meshuggah": "destroy erase improve",
+                }
+            }
+        ], // expected
+        component_view.properties, // actual
+    );
+}
+
+#[tokio::test]
+async fn complex_nested_array_of_objects_with_a_map() {
+    test_setup!(
+        ctx,
+        _secret_key,
+        _pg,
+        _conn,
+        txn,
+        _nats_conn,
+        nats,
+        veritech,
+    );
+    let tenancy = Tenancy::new_universal();
+    let visibility = Visibility::new_head(false);
+    let history_actor = HistoryActor::SystemInit;
+    let _ =
+        find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor).await;
+    let (
+        schema_variant,
+        sammy_prop,
+        album_object_prop,
+        album_string_prop,
+        songs_array_prop,
+        song_map_prop,
+        song_map_item_prop,
+    ) = create_schema_with_nested_array_objects_and_a_map(&txn, &nats, veritech.clone()).await;
+    let component = create_component_for_schema_variant(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        schema_variant.id(),
+    )
+    .await;
+    let (_, sammy_resolver_id, _) = component
+        .resolve_attribute(
+            &txn,
+            &nats,
+            veritech.clone(),
+            &tenancy,
+            &visibility,
+            &history_actor,
+            &sammy_prop,
+            Some(serde_json::json![[]]),
+            None,
+            None,
+        )
+        .await
+        .expect("cannot resolve sammy prop");
+    let (_, standing_hampton_album_resolver_id, _) = component
+        .resolve_attribute(
+            &txn,
+            &nats,
+            veritech.clone(),
+            &tenancy,
+            &visibility,
+            &history_actor,
+            &album_object_prop,
+            Some(serde_json::json![{}]),
+            Some(sammy_resolver_id),
+            None,
+        )
+        .await
+        .expect("cannot resolve album object prop");
+    component
+        .resolve_attribute(
+            &txn,
+            &nats,
+            veritech.clone(),
+            &tenancy,
+            &visibility,
+            &history_actor,
+            &album_string_prop,
+            Some(serde_json::json!["standing_hampton"]),
+            Some(standing_hampton_album_resolver_id),
+            None,
+        )
+        .await
+        .expect("cannot resolve album name for standing hampton");
+    let (_, standing_hampton_songs_resolver_id, _) = component
+        .resolve_attribute(
+            &txn,
+            &nats,
+            veritech.clone(),
+            &tenancy,
+            &visibility,
+            &history_actor,
+            &songs_array_prop,
+            Some(serde_json::json![[]]),
+            Some(standing_hampton_album_resolver_id),
+            None,
+        )
+        .await
+        .expect("cannot resolve songs prop for standing hampton");
+    let (_, standing_hampton_songs_first_map_resolver_id, _) = component
+        .resolve_attribute(
+            &txn,
+            &nats,
+            veritech.clone(),
+            &tenancy,
+            &visibility,
+            &history_actor,
+            &song_map_prop,
+            Some(serde_json::json![{}]),
+            Some(standing_hampton_songs_resolver_id),
+            None,
+        )
+        .await
+        .expect("cannot resolve songs map prop for standing hampton");
+    component
+        .resolve_attribute(
+            &txn,
+            &nats,
+            veritech.clone(),
+            &tenancy,
+            &visibility,
+            &history_actor,
+            &song_map_item_prop,
+            Some(serde_json::json!["good"]),
+            Some(standing_hampton_songs_first_map_resolver_id),
+            Some("fall in love again".to_string()),
+        )
+        .await
+        .expect("cannot resolve songs map prop for standing hampton");
+    component
+        .resolve_attribute(
+            &txn,
+            &nats,
+            veritech.clone(),
+            &tenancy,
+            &visibility,
+            &history_actor,
+            &song_map_item_prop,
+            Some(serde_json::json!["ok"]),
+            Some(standing_hampton_songs_first_map_resolver_id),
+            Some("surrender".to_string()),
+        )
+        .await
+        .expect("cannot resolve songs map prop for standing hampton");
+
+    let component_view = ComponentView::for_component_and_system(
+        &txn,
+        &tenancy,
+        &visibility,
+        *component.id(),
+        UNSET_SYSTEM_ID,
+    )
+    .await
+    .expect("cannot get component view");
+
+    // txn.commit().await.expect("cannot commit txn");
+    assert_eq!(component_view.name, component.name());
+    assert_eq_sorted!(
+        serde_json::json![
+            {
+                "sammy_hagar": [
+                    {
+                        "album": "standing_hampton",
+                        "songs": [
+                            { "fall in love again": "good", "surrender": "ok"},
+                        ]
+                    },
                 ]
             }
         ], // expected

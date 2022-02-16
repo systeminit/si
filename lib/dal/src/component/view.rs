@@ -109,22 +109,30 @@ impl ComponentView {
                                 ))
                             }
                         };
-                        let next_json_pointer = if write_location.is_object() {
-                            write_location
-                                .as_object_mut()
-                                .unwrap()
-                                .insert(prop.name().to_string(), value.clone());
-                            format!("{}/{}", insertion_pointer, prop.name())
-                        } else if write_location.is_array() {
-                            // This code can just push, because we ordered the work queue above.
-                            // Magic!
-                            let array = write_location.as_array_mut().unwrap();
-                            array.push(value.clone());
-                            format!("{}/{}", insertion_pointer, array.len() - 1)
-                        } else {
-                            // Note: this shouldn't ever actually get used.
-                            insertion_pointer.to_string()
-                        };
+                        let next_json_pointer =
+                            if write_location.is_object() && attribute_resolver.key().is_some() {
+                                let key = attribute_resolver.key().unwrap();
+                                write_location
+                                    .as_object_mut()
+                                    .unwrap()
+                                    .insert(key.to_string(), value.clone());
+                                format!("{}/{}", insertion_pointer, key)
+                            } else if write_location.is_object() {
+                                write_location
+                                    .as_object_mut()
+                                    .unwrap()
+                                    .insert(prop.name().to_string(), value.clone());
+                                format!("{}/{}", insertion_pointer, prop.name())
+                            } else if write_location.is_array() {
+                                // This code can just push, because we ordered the work queue above.
+                                // Magic!
+                                let array = write_location.as_array_mut().unwrap();
+                                array.push(value.clone());
+                                format!("{}/{}", insertion_pointer, array.len() - 1)
+                            } else {
+                                // Note: this shouldn't ever actually get used.
+                                insertion_pointer.to_string()
+                            };
                         // Record the json pointer path to *this* specific attribute resolver's location.
                         json_pointer_for_attribute_resolver_id
                             .insert(*attribute_resolver.id(), next_json_pointer.clone());
