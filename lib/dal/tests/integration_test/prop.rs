@@ -1,7 +1,8 @@
 use dal::{
     test_harness::{create_prop, create_prop_of_kind, create_schema_variant},
-    HistoryActor, Prop, PropKind, StandardModel, Tenancy, Visibility,
+    AttributeResolver, HistoryActor, Prop, PropKind, StandardModel, Tenancy, Visibility,
 };
+use pretty_assertions_sorted::assert_eq;
 
 use crate::test_setup;
 
@@ -182,4 +183,46 @@ async fn parent_props_wrong_prop_kinds() {
         .set_parent_prop(&txn, &nats, &visibility, &history_actor, *parent_prop.id())
         .await;
     result.expect_err("should have errored, and it did not");
+}
+
+#[tokio::test]
+async fn new_creates_default_unset_binding() {
+    test_setup!(
+        ctx,
+        _secret_key,
+        _pg,
+        _conn,
+        txn,
+        _nats_conn,
+        nats,
+        veritech,
+    );
+    let tenancy = Tenancy::new_universal();
+    let visibility = Visibility::new_head(false);
+    let history_actor = HistoryActor::SystemInit;
+    let prop = Prop::new(
+        &txn,
+        &nats,
+        veritech,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        "not set by default",
+        PropKind::String,
+    )
+    .await
+    .expect("cannot create prop");
+
+    let func_binding_return_value = AttributeResolver::find_value_for_prop_and_component(
+        &txn,
+        &tenancy,
+        &visibility,
+        *prop.id(),
+        (-1).into(),
+        (-1).into(),
+    )
+    .await
+    .expect("cannot retrieve value for prop");
+    dbg!(&func_binding_return_value);
+    assert_eq!(None, func_binding_return_value.value(),);
 }
