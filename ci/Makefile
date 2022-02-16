@@ -54,7 +54,7 @@ down:
 	-cd $(REPOPATH)/deploy && $(MAKE) down
 .PHONY: down
 
-tidy: tidy-app tidy-crates
+tidy: tidy-web tidy-crates
 .PHONY: tidy
 
 # TODO(nick): consider adding --all-targets --all-features to clippy
@@ -64,6 +64,6 @@ tidy-crates:
 	cd $(REPOPATH); cargo clippy
 .PHONY: tidy-crates
 
-tidy-app:
+tidy-web:
 	cd $(REPOPATH)/app/web/; npm run format
 .PHONY: tidy-app

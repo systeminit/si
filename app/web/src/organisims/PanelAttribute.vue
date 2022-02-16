@@ -211,15 +211,15 @@ import cheechSvg from "@/assets/images/cheech-and-chong.svg";
 const isPinned = ref<boolean>(false);
 const selectedComponentId = ref<number | "">("");
 
-const props = defineProps({
-  panelIndex: { type: Number, required: true },
-  panelRef: { type: String, required: true },
-  panelContainerRef: { type: String, required: true },
-  initialMaximizedFull: Boolean,
-  initialMaximizedContainer: Boolean,
-  isVisible: Boolean,
-  isMaximizedContainerEnabled: Boolean,
-});
+const props = defineProps<{
+  panelIndex: number;
+  panelRef: string;
+  panelContainerRef: string;
+  initialMaximizedFull?: boolean;
+  initialMaximizedContainer?: boolean;
+  isVisible?: boolean;
+  isMaximizedContainerEnabled?: boolean;
+}>();
 
 const activeView = ref<string>("attribute");
 const setActiveView = (view: string) => {
