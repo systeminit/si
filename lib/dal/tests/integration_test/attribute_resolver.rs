@@ -1,18 +1,19 @@
 use crate::test_setup;
 
 use dal::{
-    attribute_resolver::{AttributeResolverContext, UNSET_ID_VALUE},
+    attribute_resolver::AttributeResolverContext,
     func::{
         backend::{array::FuncBackendArrayArgs, string::FuncBackendStringArgs},
         binding::FuncBinding,
     },
+    system::UNSET_SYSTEM_ID,
     test_harness::{
         billing_account_signup, create_component_for_schema, create_component_for_schema_variant,
         create_prop_of_kind_with_name, create_schema, create_schema_variant,
         find_or_create_production_system,
     },
     AttributeResolver, Func, FuncBackendKind, FuncBackendResponseType, HistoryActor, PropKind,
-    Schema, SchemaKind, StandardModel, SystemId, Tenancy, Visibility,
+    Schema, SchemaKind, StandardModel, Tenancy, Visibility,
 };
 use pretty_assertions_sorted::assert_eq;
 
@@ -116,8 +117,6 @@ async fn find_value_for_prop_and_component() {
     tenancy.universal = true;
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
-
-    let _unset_system_id: SystemId = UNSET_ID_VALUE.into();
 
     let schema = Schema::find_by_attr(
         &txn,
@@ -835,6 +834,7 @@ async fn siblings_have_values() {
             Some(serde_json::json![{}]),
             None,
             None,
+            UNSET_SYSTEM_ID,
         )
         .await
         .expect("cannot resolve object prop");
@@ -851,6 +851,7 @@ async fn siblings_have_values() {
             None,
             Some(object_attribute_resolver_id),
             None,
+            UNSET_SYSTEM_ID,
         )
         .await
         .expect("cannot resolve child prop one");
@@ -867,6 +868,7 @@ async fn siblings_have_values() {
             None,
             Some(object_attribute_resolver_id),
             None,
+            UNSET_SYSTEM_ID,
         )
         .await
         .expect("cannot resolve child prop two");
@@ -895,6 +897,7 @@ async fn siblings_have_values() {
             Some(serde_json::json!("second child's value")),
             Some(object_attribute_resolver_id),
             None,
+            UNSET_SYSTEM_ID,
         )
         .await
         .expect("cannot resolve child prop two with a value");

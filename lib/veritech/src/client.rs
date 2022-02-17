@@ -357,8 +357,7 @@ mod tests {
     use std::{collections::HashMap, env};
 
     use cyclone::{
-        CodeGenerated, CodeGenerationComponent, QualificationCheckComponent,
-        ResolverFunctionComponent, ResolverFunctionParentComponent, ResourceSyncComponent,
+        CodeGenerated, ComponentView, QualificationCheckComponent, ResolverFunctionComponent,
     };
     use deadpool_cyclone::{instance::cyclone::LocalUdsInstance, Instance};
     use indoc::indoc;
@@ -439,16 +438,21 @@ mod tests {
             execution_id: "1234".to_string(),
             handler: "numberOfParents".to_string(),
             component: ResolverFunctionComponent {
-                name: "Child".to_owned(),
-                properties: HashMap::new(),
+                data: ComponentView {
+                    name: "Child".to_owned(),
+                    properties: serde_json::json!({}),
+                    system: None,
+                },
                 parents: vec![
-                    ResolverFunctionParentComponent {
+                    ComponentView {
                         name: "Parent 1".to_owned(),
-                        properties: HashMap::new(),
+                        properties: serde_json::json!({}),
+                        system: None,
                     },
-                    ResolverFunctionParentComponent {
+                    ComponentView {
                         name: "Parent 2".to_owned(),
-                        properties: HashMap::new(),
+                        properties: serde_json::json!({}),
+                        system: None,
                     },
                 ],
             },
@@ -488,15 +492,15 @@ mod tests {
             }
         });
 
-        let mut properties = HashMap::new();
-        properties.insert("image".to_owned(), serde_json::json!("systeminit/whiskers"));
-
         let mut request = QualificationCheckRequest {
             execution_id: "5678".to_string(),
             handler: "check".to_string(),
             component: QualificationCheckComponent {
-                name: "cider".to_string(),
-                properties,
+                data: ComponentView {
+                    name: "cider".to_string(),
+                    properties: serde_json::json!({"image": "systeminit/whiskers"}),
+                    system: None
+                },
                 codes: vec![CodeGenerated {
                     format: "yaml".to_owned(),
                     code: "generateName: asd\nname: kubernetes_deployment\napiVersion: apps/v1\nkind: Deployment\n".to_owned()
@@ -504,7 +508,7 @@ mod tests {
             },
             code_base64: base64::encode(indoc! {r#"
                 async function check(component) {
-                    const skopeoChild = await siExec.waitUntilEnd("skopeo", ["inspect", `docker://docker.io/${component.properties.image}`]);
+                    const skopeoChild = await siExec.waitUntilEnd("skopeo", ["inspect", `docker://docker.io/${component.data.properties.image}`]);
 
                     const code = component.codes[0];
                     const file = path.join(os.tmpdir(), "veritech-kubeval-test.yaml");
@@ -565,16 +569,22 @@ mod tests {
                     Some("")
                 );
                 assert_eq!(
-                    serde_json::from_str::<serde_json::Value>(
-                        &message,
+                    serde_json::from_str::<serde_json::Value>(&message,)
+                        .expect("Message is not json")
+                        .as_object()
+                        .expect("Message isn't an object")
+                        .get("kubevalStdout")
+                        .expect("Key kubevalStdout wasn't found")
+                        .as_str(),
+                    Some(
+                        format!(
+                            "PASS - {} contains a valid Deployment (unknown)",
+                            std::env::temp_dir()
+                                .join("veritech-kubeval-test.yaml")
+                                .display()
+                        )
+                        .as_str()
                     )
-                    .expect("Message is not json")
-                    .as_object()
-                    .expect("Message isn't an object")
-                    .get("kubevalStdout")
-                    .expect("Key kubevalStdout wasn't found")
-                    .as_str(),
-                    Some("PASS - /tmp/veritech-kubeval-test.yaml contains a valid Deployment (unknown)")
                 );
                 assert_eq!(
                     serde_json::from_str::<serde_json::Value>(&message,)
@@ -594,12 +604,12 @@ mod tests {
         }
 
         request.execution_id = "9012".to_string();
-        request.component.name = "emacs".to_string();
-        *request
-            .component
-            .properties
-            .get_mut("image")
-            .expect("key image not found") = serde_json::json!("abc");
+        request.component.data.name = "emacs".to_string();
+        request.component.data = ComponentView {
+            name: "cider".to_string(),
+            properties: serde_json::json!({"image": "abc"}),
+            system: None,
+        };
 
         // Now update the request to re-run an unqualified check (i.e. qualification returning
         // qualified == false)
@@ -633,14 +643,13 @@ mod tests {
             }
         });
 
-        let mut properties = HashMap::new();
-        properties.insert("pkg".to_string(), serde_json::json!("cider"));
         let request = ResourceSyncRequest {
             execution_id: "7867".to_string(),
             handler: "syncItOut".to_string(),
-            component: ResourceSyncComponent {
+            component: ComponentView {
                 name: "cider".to_string(),
-                properties,
+                properties: serde_json::json!({"pkg": "cider"}),
+                system: None,
             },
             code_base64: base64::encode("function syncItOut(component) { return {}; }"),
         };
@@ -680,9 +689,10 @@ mod tests {
         let request = CodeGenerationRequest {
             execution_id: "7868".to_string(),
             handler: "generateItOut".to_string(),
-            component: CodeGenerationComponent {
+            component: ComponentView {
                 name: "cider".to_string(),
-                properties,
+                properties: serde_json::json!({"pkg": "cider"}),
+                system: None,
             },
             code_base64: base64::encode("function generateItOut(component) { return { format: 'yaml', code: YAML.stringify(component) }; }"),
         };
@@ -699,7 +709,7 @@ mod tests {
                     success.data,
                     CodeGenerated {
                         format: "yaml".to_owned(),
-                        code: "name: cider\nproperties:\n  pkg: cider\n".to_owned(),
+                        code: "name: cider\nsystem: null\nproperties:\n  pkg: cider\n".to_owned(),
                     }
                 );
             }

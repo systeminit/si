@@ -5,7 +5,7 @@ use veritech::{Client, FunctionResult, OutputStream, ResolverFunctionRequest};
 
 use crate::func::backend::{FuncBackendError, FuncBackendResult};
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone, Default)]
 pub struct FuncBackendJsAttributeArgs {
     pub component: veritech::ResolverFunctionComponent,
 }

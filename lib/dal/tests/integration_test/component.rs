@@ -280,9 +280,10 @@ async fn qualification_view() {
         serde_json::to_value(&qualification_check_component)
             .expect("cannot serialize QualificationCheckComponent"),
         json!({
-            "name": "mastodon",
-            "properties": {
-                "name": "mastodon"
+            "data": {
+                "name": "mastodon",
+                "system": null,
+                "properties": {},
             },
             "codes": []
         }),

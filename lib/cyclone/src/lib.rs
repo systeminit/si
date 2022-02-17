@@ -13,6 +13,7 @@
 
 pub mod canonical_command;
 mod code_generation;
+mod component_view;
 mod liveness;
 mod progress;
 mod qualification_check;
@@ -20,9 +21,8 @@ mod readiness;
 mod resolver_function;
 mod resource_sync;
 
-pub use code_generation::{
-    CodeGenerated, CodeGenerationComponent, CodeGenerationRequest, CodeGenerationResultSuccess,
-};
+pub use code_generation::{CodeGenerated, CodeGenerationRequest, CodeGenerationResultSuccess};
+pub use component_view::{ComponentView, SystemView};
 pub use liveness::{LivenessStatus, LivenessStatusParseError};
 pub use progress::{
     FunctionResult, FunctionResultFailure, FunctionResultFailureError, Message, OutputStream,
@@ -34,10 +34,9 @@ pub use qualification_check::{
 };
 pub use readiness::{ReadinessStatus, ReadinessStatusParseError};
 pub use resolver_function::{
-    ResolverFunctionComponent, ResolverFunctionParentComponent, ResolverFunctionRequest,
-    ResolverFunctionResultSuccess,
+    ResolverFunctionComponent, ResolverFunctionRequest, ResolverFunctionResultSuccess,
 };
-pub use resource_sync::{ResourceSyncComponent, ResourceSyncRequest, ResourceSyncResultSuccess};
+pub use resource_sync::{ResourceSyncRequest, ResourceSyncResultSuccess};
 
 #[cfg(feature = "process")]
 pub mod process;

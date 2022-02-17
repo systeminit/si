@@ -1,14 +1,12 @@
-use std::collections::HashMap;
-
+use crate::ComponentView;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CodeGenerationRequest {
     pub execution_id: String,
     pub handler: String,
-    pub component: CodeGenerationComponent,
+    pub component: ComponentView,
     pub code_base64: String,
 }
 
@@ -20,13 +18,6 @@ impl CodeGenerationRequest {
     pub fn serialize_to_string(&self) -> Result<String, serde_json::Error> {
         serde_json::to_string(self)
     }
-}
-
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct CodeGenerationComponent {
-    pub name: String,
-    pub properties: HashMap<String, Value>,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]

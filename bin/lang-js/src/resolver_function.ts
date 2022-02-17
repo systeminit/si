@@ -11,26 +11,19 @@ import {
 } from "./function";
 import { createSandbox } from "./sandbox";
 import { createVm } from "./vm";
+import { Component } from "./component";
 
 const debug = Debug("langJs:resolverFunction");
 
-export interface ParentComponent {
-  name: string;
-  // TODO(fnichol): Highly, highly, highly TBD!
-  properties: Record<string, unknown>;
-}
-
-export interface Component {
-  name: string;
-  // TODO(fnichol): Highly, highly, highly TBD!
-  properties: Record<string, unknown>;
-  parents: Array<ParentComponent>,
+export interface ResolverComponent {
+  data: Component;
+  parents: Array<Component>,
 }
 
 export interface ResolverFunctionRequest extends Request {
   handler: string;
   // Should this be optional?
-  component: Component;
+  component: ResolverComponent;
   codeBase64: string;
 }
 
@@ -122,7 +115,7 @@ function execute(
 function wrapCode(
   code: string,
   handle: string,
-  component: Component,
+  component: ResolverComponent,
 ): string {
   return code + `\n${handle}(${JSON.stringify(component)});\n`;
 }

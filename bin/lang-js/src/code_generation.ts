@@ -11,6 +11,7 @@ import {
 } from "./function";
 import { createSandbox } from "./sandbox";
 import { createVm } from "./vm";
+import { Component } from "./component";
 
 const debug = Debug("langJs:codeGeneration");
 
@@ -18,12 +19,6 @@ export interface CodeGenerationRequest extends Request {
   handler: string;
   component: Component;
   codeBase64: string;
-}
-
-export interface Component {
-  name: string;
-  // TODO(fnichol): Highly, highly, highly TBD!
-  properties: Record<string, unknown>;
 }
 
 export type CodeGenerationResult =

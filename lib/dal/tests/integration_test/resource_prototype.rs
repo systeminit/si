@@ -46,7 +46,7 @@ async fn new() {
 
     let args = FuncBackendJsResourceSyncArgs {
         component: component
-            .veritech_resource_sync_component(&txn, &tenancy, &visibility)
+            .veritech_resource_sync_component(&txn, &tenancy, &visibility, UNSET_ID_VALUE.into())
             .await
             .expect("could not create component resource_sync view"),
     };

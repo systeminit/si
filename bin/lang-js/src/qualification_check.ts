@@ -11,19 +11,24 @@ import {
 } from "./function";
 import { createSandbox } from "./sandbox";
 import { createNodeVm } from "./vm";
+import { Component } from "./component";
 
 const debug = Debug("langJs:qualificationCheck");
 
 export interface QualificationCheckRequest extends Request {
   handler: string;
-  component: Component;
+  component: QualificationComponent;
   codeBase64: string;
 }
 
-export interface Component {
-  name: string;
-  // TODO(fnichol): Highly, highly, highly TBD!
-  properties: Record<string, unknown>;
+export interface Code {
+  format: string;
+  code: string;
+}
+
+export interface QualificationComponent {
+  data: Component;
+  codes: Array<Code>;
 }
 
 export type QualificationCheckResult =
@@ -71,7 +76,7 @@ export async function executeQualificationCheck(
 async function execute(
   vm: NodeVM,
   code: string,
-  component: Component,
+  component: QualificationComponent,
   executionId: string
 ): Promise<QualificationCheckResult> {
   let qualificationCheckResult: any;

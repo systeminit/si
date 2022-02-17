@@ -1,5 +1,4 @@
-use std::collections::HashMap;
-
+use crate::ComponentView;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -24,17 +23,9 @@ impl ResolverFunctionRequest {
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize, Default)]
 #[serde(rename_all = "camelCase")]
-pub struct ResolverFunctionParentComponent {
-    pub name: String,
-    pub properties: HashMap<String, Value>,
-}
-
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize, Default)]
-#[serde(rename_all = "camelCase")]
 pub struct ResolverFunctionComponent {
-    pub name: String,
-    pub properties: HashMap<String, Value>,
-    pub parents: Vec<ResolverFunctionParentComponent>,
+    pub data: ComponentView,
+    pub parents: Vec<ComponentView>,
     // TODO: add widget data here (for example select's options)
 }
 

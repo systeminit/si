@@ -1,8 +1,5 @@
-use std::collections::HashMap;
-
-use crate::CodeGenerated;
+use crate::{CodeGenerated, ComponentView};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -26,8 +23,7 @@ impl QualificationCheckRequest {
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct QualificationCheckComponent {
-    pub name: String,
-    pub properties: HashMap<String, Value>,
+    pub data: ComponentView,
     pub codes: Vec<CodeGenerated>,
 }
 

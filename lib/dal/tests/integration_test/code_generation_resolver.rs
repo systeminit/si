@@ -46,7 +46,7 @@ async fn new() {
 
     let args = FuncBackendJsCodeGenerationArgs {
         component: component
-            .veritech_code_generation_component(&txn, &tenancy, &visibility)
+            .veritech_code_generation_component(&txn, &tenancy, &visibility, UNSET_ID_VALUE.into())
             .await
             .expect("could not create component code_generation view"),
     };
@@ -125,7 +125,7 @@ async fn find_for_prototype() {
 
     let args = FuncBackendJsCodeGenerationArgs {
         component: component
-            .veritech_code_generation_component(&txn, &tenancy, &visibility)
+            .veritech_code_generation_component(&txn, &tenancy, &visibility, UNSET_ID_VALUE.into())
             .await
             .expect("could not create component code_generation view"),
     };

@@ -2,8 +2,10 @@
   "executionId": "52837",
   "handler": "exec",
   "component": {
-    "name": "jack",
-    "properties": {}
+    "data": {
+      "name": "jack",
+      "properties": {}
+    }
   },
-  "codeBase64": "Ly8gRW5jb2RlIHRoaXMgaW50byBCYXNlNjQgd2l0aDoKLy8KLy8gYGBgc2gKLy8gY2F0IGV4YW1wbGVzL3F1YWxpZmljYXRpb25DaGVja0V4ZWNUZXN0Q29kZS5qcyB8IGJhc2U2NCB8IHRyIC1kICdcbicKLy8gYGBgCgphc3luYyBmdW5jdGlvbiBleGVjKGNvbXBvbmVudCkgewogIGNvbnN0IGNoaWxkID0gYXdhaXQgc2lFeGVjLndhaXRVbnRpbEVuZCgiZWNobyIsIFtgQ29tcG9uZW50ICR7Y29tcG9uZW50Lm5hbWV9IHNheXM6IHRoaXMgd2lsbCBiZSBteSBsb25nZXN0IHllYWFhaGhoaGhoaGhoaGggYm95eXl5eXl5eXl5eSBldmVyYF0pOwogIHJldHVybiB7CiAgICBxdWFsaWZpZWQ6IGNoaWxkLmV4aXRDb2RlID09PSAwLAogICAgbWVzc2FnZTogY2hpbGQuc3Rkb3V0LAogIH07Cn0K"
+  "codeBase64": "Ly8gRW5jb2RlIHRoaXMgaW50byBCYXNlNjQgd2l0aDoKLy8KLy8gYGBgc2gKLy8gY2F0IGV4YW1wbGVzL3F1YWxpZmljYXRpb25DaGVja0V4ZWNUZXN0Q29kZS5qcyB8IGJhc2U2NCB8IHRyIC1kICdcbicKLy8gYGBgCgphc3luYyBmdW5jdGlvbiBleGVjKGNvbXBvbmVudCkgewogIGNvbnN0IGNoaWxkID0gYXdhaXQgc2lFeGVjLndhaXRVbnRpbEVuZCgiZWNobyIsIFtgQ29tcG9uZW50ICR7Y29tcG9uZW50LmRhdGEubmFtZX0gc2F5czogdGhpcyB3aWxsIGJlIG15IGxvbmdlc3QgeWVhYWFoaGhoaGhoaGhoaCBib3l5eXl5eXl5eXl5IGV2ZXJgXSk7CiAgcmV0dXJuIHsKICAgIHF1YWxpZmllZDogY2hpbGQuZXhpdENvZGUgPT09IDAsCiAgICBtZXNzYWdlOiBjaGlsZC5zdGRvdXQsCiAgfTsKfQo="
 }
