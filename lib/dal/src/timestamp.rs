@@ -12,3 +12,13 @@ pub struct Timestamp {
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
+
+impl Timestamp {
+    pub fn now() -> Self {
+        let now = Utc::now();
+        Self {
+            created_at: now,
+            updated_at: now,
+        }
+    }
+}

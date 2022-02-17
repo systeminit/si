@@ -102,6 +102,22 @@ impl KeyPair {
         Ok(object)
     }
 
+    pub async fn get_current(
+        txn: &PgTxn<'_>,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+        billing_account_id: &BillingAccountId,
+    ) -> KeyPairResult<Self> {
+        let row = txn
+            .query_one(
+                PUBLIC_KEY_GET_CURRENT,
+                &[&tenancy, &visibility, &billing_account_id],
+            )
+            .await?;
+        let object = standard_model::object_from_row(row)?;
+        Ok(object)
+    }
+
     standard_model_accessor!(name, String, KeyPairResult);
     standard_model_accessor_ro!(public_key, BoxPublicKey);
     standard_model_accessor_ro!(secret_key, BoxSecretKey);

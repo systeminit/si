@@ -78,7 +78,7 @@ pub use group::{Group, GroupError, GroupId, GroupResult};
 pub use history_event::{HistoryActor, HistoryEvent, HistoryEventError};
 pub use index_map::IndexMap;
 pub use jwt_key::{create_jwt_key_if_missing, JwtSecretKey};
-pub use key_pair::{KeyPair, KeyPairError, KeyPairResult};
+pub use key_pair::{KeyPair, KeyPairError, KeyPairResult, PublicKey};
 pub use label_list::{LabelEntry, LabelList, LabelListError};
 pub use node::{Node, NodeError, NodeKind, NodeTemplate, NodeView};
 pub use node_menu::{MenuFilter, NodeMenuError};
@@ -106,6 +106,10 @@ pub use schema::{
     Schema, SchemaError, SchemaId, SchemaKind, SchemaPk, SchemaVariant, SchemaVariantId,
 };
 pub use schematic::{Connection, Schematic, SchematicError, SchematicKind};
+pub use secret::{
+    DecryptedSecret, EncryptedSecret, Secret, SecretAlgorithm, SecretError, SecretId, SecretKind,
+    SecretObjectType, SecretPk, SecretResult, SecretVersion,
+};
 pub use standard_model::{StandardModel, StandardModelError, StandardModelResult};
 pub use system::{System, SystemError, SystemId, SystemPk, SystemResult};
 pub use tenancy::{Tenancy, TenancyError};
