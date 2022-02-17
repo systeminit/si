@@ -11,11 +11,13 @@ use crate::{
     billing_account::BillingAccountSignup,
     func::{binding::FuncBinding, FuncId},
     jwt_key::JwtSecretKey,
+    key_pair::KeyPairId,
     node::NodeKind,
-    schema, socket, BillingAccount, ChangeSet, Component, EditSession, Func, FuncBackendKind,
-    FuncBackendResponseType, Group, HistoryActor, KeyPair, Node, Organization, Prop, PropKind,
-    QualificationCheck, Schema, SchemaId, SchemaKind, SchemaVariantId, StandardModel, System,
-    Tenancy, User, Visibility, Workspace, NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK,
+    schema, socket, BillingAccount, ChangeSet, Component, EditSession, EncryptedSecret, Func,
+    FuncBackendKind, FuncBackendResponseType, Group, HistoryActor, KeyPair, Node, Organization,
+    Prop, PropKind, QualificationCheck, Schema, SchemaId, SchemaKind, SchemaVariantId, Secret,
+    SecretKind, SecretObjectType, StandardModel, System, Tenancy, User, Visibility, Workspace,
+    NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK,
 };
 
 #[derive(Debug)]
@@ -692,4 +694,85 @@ pub async fn create_func_binding(
     )
     .await
     .expect("cannot create func")
+}
+
+pub async fn encrypt_message(
+    txn: &PgTxn<'_>,
+    tenancy: &Tenancy,
+    visibility: &Visibility,
+    key_pair_id: KeyPairId,
+    message: &serde_json::Value,
+) -> Vec<u8> {
+    let public_key = KeyPair::get_by_id(txn, tenancy, visibility, &key_pair_id)
+        .await
+        .expect("failed to fetch key pair")
+        .expect("failed to find key pair");
+
+    let crypted = sodiumoxide::crypto::sealedbox::seal(
+        &serde_json::to_vec(message).expect("failed to serialize message"),
+        public_key.public_key(),
+    );
+    crypted
+}
+
+pub async fn create_secret(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    tenancy: &Tenancy,
+    visibility: &Visibility,
+    history_actor: &HistoryActor,
+    key_pair_id: KeyPairId,
+) -> Secret {
+    let name = generate_fake_name();
+    EncryptedSecret::new(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        &name,
+        SecretObjectType::Credential,
+        SecretKind::DockerHub,
+        &encrypt_message(
+            txn,
+            tenancy,
+            visibility,
+            key_pair_id,
+            &serde_json::json!({ "name": name }),
+        )
+        .await,
+        key_pair_id,
+        Default::default(),
+        Default::default(),
+    )
+    .await
+    .expect("cannot create secret")
+}
+
+pub async fn create_secret_with_message(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    tenancy: &Tenancy,
+    visibility: &Visibility,
+    history_actor: &HistoryActor,
+    key_pair_id: KeyPairId,
+    message: &serde_json::Value,
+) -> Secret {
+    let name = generate_fake_name();
+    EncryptedSecret::new(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        &name,
+        SecretObjectType::Credential,
+        SecretKind::DockerHub,
+        &encrypt_message(txn, tenancy, visibility, key_pair_id, message).await,
+        key_pair_id,
+        Default::default(),
+        Default::default(),
+    )
+    .await
+    .expect("cannot create secret")
 }

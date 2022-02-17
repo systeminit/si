@@ -32,9 +32,9 @@ use crate::qualification_resolver::QualificationResolverContext;
 use crate::resource_resolver::ResourceResolverContext;
 use crate::schema::variant::{SchemaVariantError, SchemaVariantId};
 use crate::schema::SchemaVariant;
-use crate::secret::Secret;
 use crate::validation_resolver::ValidationResolverContext;
 use crate::ws_event::{WsEvent, WsEventError};
+use crate::Secret;
 use crate::{AttributeResolverId, Edge, EdgeError, PropError, System};
 
 use crate::func::backend::array::FuncBackendArrayArgs;
@@ -1899,11 +1899,12 @@ async fn edit_field_for_prop(
     let widget = match prop.widget_kind() {
         WidgetKind::SecretSelect => {
             let mut entries = Vec::new();
+            let secrets = Secret::list(txn, tenancy, visibility).await?;
 
-            for secret in Secret::all() {
+            for secret in secrets.into_iter() {
                 entries.push(LabelEntry::new(
-                    secret.to_string(),
-                    serde_json::to_value(secret)?,
+                    secret.name(),
+                    serde_json::json!(i64::from(*secret.id())),
                 ));
             }
             Widget::Select(SelectWidget::new(LabelList::new(entries), None))

@@ -26,6 +26,7 @@ mod resource_prototype;
 mod resource_resolver;
 mod schema;
 mod schematic;
+mod secret;
 mod socket;
 mod standard_model;
 mod system;
