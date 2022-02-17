@@ -4,6 +4,7 @@ pub mod component;
 pub mod edit_field;
 pub mod schema;
 pub mod schematic;
+pub mod secret;
 pub mod session;
 pub mod signup;
 pub mod test;

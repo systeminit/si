@@ -131,6 +131,26 @@ impl Secret {
     );
 }
 
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SecretView {
+    pub id: SecretId,
+    pub name: String,
+    pub object_type: SecretObjectType,
+    pub kind: SecretKind,
+}
+
+impl From<Secret> for SecretView {
+    fn from(secret: Secret) -> Self {
+        Self {
+            id: *secret.id(),
+            name: secret.name().to_owned(),
+            object_type: *secret.object_type(),
+            kind: *secret.kind(),
+        }
+    }
+}
+
 /// A database-persisted encrypted secret.
 ///
 /// This type contains the raw encrypted payload as well as the necessary encryption metadata and
