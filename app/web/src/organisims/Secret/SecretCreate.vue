@@ -1,20 +1,20 @@
 <template>
   <div class="flex flex-col w-full">
-    <SiError
-      v-if="placeholderShowError"
-      :test="placeholderString"
-      :message="placeholderString"
-      :success="true"
-      @clear="placeholderFunc"
-    />
+    <!--    <SiError-->
+    <!--      v-if="showError"-->
+    <!--      :test="placeholderString"-->
+    <!--      :message="placeholderString"-->
+    <!--      :success="true"-->
+    <!--      @clear="placeholderFunc"-->
+    <!--    />-->
     <div class="flex flex-row items-center w-full pb-2">
       <div class="w-1/2 pr-2 text-sm text-right text-gray-400 align-middle">
-        <label for="placeholderString">Secret Name:</label>
+        <label for="secret-name-textbox">Secret Name:</label>
       </div>
       <div class="w-1/2 align-middle">
         <SiTextBox
-          id="placeholderString"
-          v-model="placeholderForm.secretName"
+          id="secret-name-textbox"
+          v-model="nameField"
           size="xs"
           name="secretName"
           placeholder="secret name"
@@ -25,22 +25,23 @@
     </div>
     <div class="flex flex-row items-center w-full pb-2">
       <div class="w-1/2 pr-2 text-sm text-right text-gray-400 align-middle">
-        <label for="placeholderString">Secret Kind:</label>
+        <label for="secret-password-textbox">Secret Kind:</label>
       </div>
       <div class="w-1/2 align-middle">
         <SiSelect
-          id="placeholderString"
-          v-model="selectedSecretKind"
+          id="secret-password-textbox"
+          v-model="selectedSecretKindName"
           size="xs"
           name="secretKind"
-          :options="secretKinds"
+          :options="secretKindOptions"
           required
         />
       </div>
     </div>
 
-    <DockerHubCredential
-      v-if="selectedSecretKind === SecretKind.DockerHubCredential"
+    <SecretCreateFields
+      v-if="selectedSecretKind"
+      :secret-kind="selectedSecretKind"
       @input="placeholderFunc"
     />
 
@@ -50,17 +51,21 @@
           size="xs"
           label="Cancel"
           kind="cancel"
-          icon="null"
-          @click="placeholderFunc"
+          :icon="null"
+          @click="returnToListView"
         />
       </div>
       <div>
+        <!-- NOTE(nick): disable the create button if the user exits edit mode. We will still keep
+        this component alive in case that was an accident.
+        -->
         <SiButton
           size="xs"
           label="Create"
           kind="save"
-          icon="null"
-          @click="placeholderFunc"
+          :icon="null"
+          :disabled="!editMode"
+          @click="returnToListView"
         />
       </div>
     </div>
@@ -69,38 +74,62 @@
 
 <script setup lang="ts">
 import SiButton from "@/atoms/SiButton.vue";
-import SiError from "@/atoms/SiError.vue";
+// import SiError from "@/atoms/SiError.vue";
 import SiSelect, { SelectPropsOption } from "@/atoms/SiSelect.vue";
 import SiTextBox from "@/atoms/SiTextBox.vue";
-import DockerHubCredential from "@/organisims/Secret/Create/DockerHubCredential.vue";
-import { ref } from "vue";
+import { computed, ref } from "vue";
+import { SecretService } from "@/service/secret";
+import { SecretKind } from "@/api/sdf/dal/secret";
+import SecretCreateFields from "@/organisims/Secret/SecretCreateFields.vue";
+import { refFrom } from "vuse-rx";
+import { ChangeSetService } from "@/service/change_set";
 
-enum SecretKind {
-  DockerHubCredential = "DockerHub Credential",
-  Empty = "",
-}
+defineProps<{
+  modelValue: string;
+}>();
 
-// FIXME(nick): change this to only be calculated once and dynamically loaded.
-const secretKinds: SelectPropsOption[] = [
-  {
-    value: SecretKind.DockerHubCredential,
-    label: SecretKind.DockerHubCredential,
-  },
-  { value: SecretKind.Empty, label: SecretKind.Empty },
-];
+const editMode = refFrom<boolean>(ChangeSetService.currentEditMode());
 
-const selectedSecretKind = ref<SecretKind>(SecretKind.Empty);
+// NOTE(nick): this is a tad "hacky", but ensures we get the actual kind for a given name.
+// Reactivity was not behaving as intended with "SecretKind", so we are using "string" instead.
+// Even if we switch back to using "SecretKind", we need to ensure our core variable defaults to
+// "unset" or equivalent.
+const selectedSecretKindName = ref<string>("");
+const selectedSecretKind = computed((): SecretKind | null => {
+  if (!selectedSecretKindName.value) {
+    return null;
+  }
+  for (const kind of secretKinds.value) {
+    if (kind.name === selectedSecretKindName.value) {
+      return kind;
+    }
+  }
+  return null;
+});
 
-const placeholderShowError = false;
-const placeholderString = "ilikemybutt";
-const placeholderSecretKind = SecretKind.DockerHubCredential;
+const secretKinds = computed((): SecretKind[] => {
+  return SecretService.listSecretKinds();
+});
+
+// These are used for options to display in the creation dropdown.
+// Our first entry in the array is the "unset" dropdown option.
+const secretKindOptions = computed((): SelectPropsOption[] => {
+  let options: SelectPropsOption[] = [{ label: "", value: "" }];
+  for (const kind of secretKinds.value) {
+    options.push({ label: kind.name, value: kind.name });
+  }
+  return options;
+});
+
+const nameField = "";
 const placeholderFunc = () => {
-  console.log(placeholderString);
+  console.log(nameField);
 };
-const placeholderForm = {
-  secretName: placeholderString,
-  secretKind: SecretKind.DockerHubCredential,
-  message: placeholderString,
+
+// Use "emits" to switch back to "list" view.
+const emits = defineEmits(["update:modelValue"]);
+const returnToListView = () => {
+  emits("update:modelValue", "list");
 };
 </script>
 
