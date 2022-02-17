@@ -6,7 +6,7 @@
 
 function nameIsGood(component) {
   // For our purposes, a "good" name is one that is all lowercase
-  if (component["name"].toLowerCase() == component["name"]) {
+  if (component.data.name.toLowerCase() == component.data.name) {
     return { qualified: true };
   } else {
     return {

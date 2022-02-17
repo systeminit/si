@@ -260,7 +260,7 @@ impl FuncBinding {
                     veritech,
                     tx,
                     handler.to_owned(),
-                    backend_args.component,
+                    backend_args,
                     code_base64.to_owned(),
                 )
                 .execute()
@@ -294,7 +294,7 @@ impl FuncBinding {
                     veritech,
                     tx,
                     handler.to_owned(),
-                    backend_args.component,
+                    backend_args,
                     code_base64.to_owned(),
                 )
                 .execute()
@@ -335,7 +335,7 @@ impl FuncBinding {
                     veritech,
                     tx,
                     handler.to_owned(),
-                    backend_args.component,
+                    backend_args,
                     code_base64.to_owned(),
                 )
                 .execute()

@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 use si_data::PgTxn;
@@ -9,7 +10,15 @@ use crate::{
 };
 
 use super::ComponentResult;
+use thiserror::Error;
 
+#[derive(Error, Debug)]
+pub enum ComponentViewError {
+    #[error("error serializing/deserializing json: {0}")]
+    SerdeJson(#[from] serde_json::Error),
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, Default)]
 pub struct ComponentView {
     pub name: String,
     pub system: Option<System>,
@@ -161,5 +170,19 @@ impl ComponentView {
             system,
             properties,
         })
+    }
+}
+
+impl From<ComponentView> for veritech::ComponentView {
+    fn from(view: ComponentView) -> Self {
+        Self {
+            name: view.name,
+            // Filters internal data out, leaving only what is useful
+            system: view.system.map(|system| veritech::SystemView {
+                name: system.name().to_owned(),
+            }),
+            properties: serde_json::to_value(view.properties)
+                .expect("HashMap<String, Value> shouldn't fail to serialize to Value"),
+        }
     }
 }

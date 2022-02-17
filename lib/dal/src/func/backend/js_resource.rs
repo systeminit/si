@@ -1,13 +1,14 @@
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 use tokio::sync::mpsc;
-use veritech::{Client, FunctionResult, OutputStream, ResourceSyncComponent, ResourceSyncRequest};
+use veritech::{Client, FunctionResult, OutputStream, ResourceSyncRequest};
 
 use crate::func::backend::{FuncBackendError, FuncBackendResult};
+use crate::ComponentView;
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone, Default)]
 pub struct FuncBackendJsResourceSyncArgs {
-    pub component: ResourceSyncComponent,
+    pub component: ComponentView,
 }
 
 #[derive(Debug)]
@@ -22,7 +23,7 @@ impl FuncBackendJsResourceSync {
         veritech: Client,
         output_tx: mpsc::Sender<OutputStream>,
         handler: impl Into<String>,
-        component: ResourceSyncComponent,
+        args: FuncBackendJsResourceSyncArgs,
         code_base64: impl Into<String>,
     ) -> Self {
         let request = ResourceSyncRequest {
@@ -30,7 +31,7 @@ impl FuncBackendJsResourceSync {
             // but for now it's passed along and back, and is opaue
             execution_id: "rodrigosantoro".to_string(),
             handler: handler.into(),
-            component,
+            component: args.component.into(),
             code_base64: code_base64.into(),
         };
 

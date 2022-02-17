@@ -13,7 +13,7 @@ function calcBigObject(component) {
   console.log("I know you do");
 
   // Parameters can now be used and defaults to {}
-  const total = component.parameters["left"] + component.parameters["right"];
+  const total = component.data.parameters["left"] + component.data.parameters["right"];
 
   const f = {
     poop: {
@@ -27,7 +27,7 @@ function calcBigObject(component) {
       },
       arraymonster: ["foo", "bar", "baz"],
     },
-    name: component.name,
+    name: component.data.name,
     parents: component.parents.length,
     total,
   };
@@ -44,12 +44,12 @@ function setString(component) {
 
 function stringJoin(component) {
   // More complicated code can be used
-  const items = component.parameters.items;
+  const items = component.data.parameters.items;
   // Including maybe optional or important parameters? If you need to bail,
   // then throw an exception--the lang server interprets this as an execution
   // failure and reports the error upstack
   if (!items) {
-    throw Error(`missing: component.parameters["value"]`);
+    throw Error(`missing: component.data.parameters["value"]`);
   }
   // Console debugging also supported--it sets the level to debug and sets the
   // output stream to stderr

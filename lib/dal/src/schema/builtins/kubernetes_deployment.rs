@@ -87,7 +87,6 @@ pub async fn kubernetes_deployment(
             visibility,
             history_actor,
             variant.id(),
-            Some(schema.name().to_owned()),
             true, // is name required, note: bool is not ideal here tho
             None,
             veritech.clone(),
@@ -162,9 +161,7 @@ pub async fn kubernetes_deployment(
     let qualification_func = qualification_funcs
         .pop()
         .ok_or(SchemaError::FuncNotFound(qualification_func_name))?;
-    let qualification_args = FuncBackendJsQualificationArgs {
-        component: veritech::QualificationCheckComponent::default(),
-    };
+    let qualification_args = FuncBackendJsQualificationArgs::default();
     let qualification_args_json = serde_json::to_value(&qualification_args)?;
     let mut qualification_prototype_context = QualificationPrototypeContext::new();
     qualification_prototype_context.set_schema_variant_id(*variant.id());
@@ -189,9 +186,7 @@ pub async fn kubernetes_deployment(
     let code_generation_func = code_generation_funcs
         .pop()
         .ok_or(SchemaError::FuncNotFound(code_generation_func_name))?;
-    let code_generation_args = FuncBackendJsCodeGenerationArgs {
-        component: veritech::CodeGenerationComponent::default(),
-    };
+    let code_generation_args = FuncBackendJsCodeGenerationArgs::default();
     let code_generation_args_json = serde_json::to_value(&code_generation_args)?;
     let mut code_generation_prototype_context = CodeGenerationPrototypeContext::new();
     code_generation_prototype_context.set_schema_variant_id(*variant.id());

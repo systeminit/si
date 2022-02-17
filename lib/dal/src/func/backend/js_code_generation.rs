@@ -1,15 +1,14 @@
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
 use tokio::sync::mpsc;
-use veritech::{
-    Client, CodeGenerationComponent, CodeGenerationRequest, FunctionResult, OutputStream,
-};
+use veritech::{Client, CodeGenerationRequest, FunctionResult, OutputStream};
 
 use crate::func::backend::{FuncBackendError, FuncBackendResult};
+use crate::ComponentView;
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone, Default)]
 pub struct FuncBackendJsCodeGenerationArgs {
-    pub component: CodeGenerationComponent,
+    pub component: ComponentView,
 }
 
 #[derive(Debug)]
@@ -24,7 +23,7 @@ impl FuncBackendJsCodeGeneration {
         veritech: Client,
         output_tx: mpsc::Sender<OutputStream>,
         handler: impl Into<String>,
-        component: CodeGenerationComponent,
+        args: FuncBackendJsCodeGenerationArgs,
         code_base64: impl Into<String>,
     ) -> Self {
         let request = CodeGenerationRequest {
@@ -32,7 +31,7 @@ impl FuncBackendJsCodeGeneration {
             // but for now it's passed along and back, and is opaue
             execution_id: "wagnermoura".to_string(),
             handler: handler.into(),
-            component,
+            component: args.component.into(),
             code_base64: code_base64.into(),
         };
 

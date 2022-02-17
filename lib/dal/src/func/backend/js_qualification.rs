@@ -7,7 +7,7 @@ use veritech::{
 
 use crate::func::backend::{FuncBackendError, FuncBackendResult};
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone, Default)]
 pub struct FuncBackendJsQualificationArgs {
     pub component: QualificationCheckComponent,
 }
@@ -24,7 +24,7 @@ impl FuncBackendJsQualification {
         veritech: Client,
         output_tx: mpsc::Sender<OutputStream>,
         handler: impl Into<String>,
-        component: QualificationCheckComponent,
+        args: FuncBackendJsQualificationArgs,
         code_base64: impl Into<String>,
     ) -> Self {
         let request = QualificationCheckRequest {
@@ -32,7 +32,7 @@ impl FuncBackendJsQualification {
             // but for now it's passed along and back, and is opaue
             execution_id: "danielcraig".to_string(),
             handler: handler.into(),
-            component,
+            component: args.component,
             code_base64: code_base64.into(),
         };
 

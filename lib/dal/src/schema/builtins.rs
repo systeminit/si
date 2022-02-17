@@ -746,8 +746,11 @@ async fn docker_image(
         history_actor,
         serde_json::to_value(FuncBackendJsAttributeArgs {
             component: veritech::ResolverFunctionComponent {
-                name: number_of_parents_prop.name().to_owned(),
-                properties,
+                data: veritech::ComponentView {
+                    name: number_of_parents_prop.name().to_owned(),
+                    properties: serde_json::to_value(properties)?,
+                    system: None,
+                },
                 parents: vec![],
             },
         })?,
@@ -828,9 +831,7 @@ async fn docker_image(
     let qual_func = qual_funcs
         .pop()
         .ok_or(SchemaError::FuncNotFound(qual_func_name))?;
-    let qual_args = FuncBackendJsQualificationArgs {
-        component: veritech::QualificationCheckComponent::default(),
-    };
+    let qual_args = FuncBackendJsQualificationArgs::default();
     let qual_args_json = serde_json::to_value(&qual_args)?;
     let mut qual_prototype_context = QualificationPrototypeContext::new();
     qual_prototype_context.set_schema_variant_id(*variant.id());
@@ -864,9 +865,7 @@ async fn docker_image(
     let resource_sync_func = resource_sync_funcs
         .pop()
         .ok_or(SchemaError::FuncNotFound(resource_sync_func_name))?;
-    let resource_sync_args = FuncBackendJsResourceSyncArgs {
-        component: veritech::ResourceSyncComponent::default(),
-    };
+    let resource_sync_args = FuncBackendJsResourceSyncArgs::default();
     let resource_sync_args_json = serde_json::to_value(&resource_sync_args)?;
     let mut resource_sync_prototype_context = ResourcePrototypeContext::new();
     resource_sync_prototype_context.set_schema_variant_id(*variant.id());
@@ -1019,8 +1018,11 @@ pub async fn create_string_prop_with_default(
         // The default run doesn't have useful information, but it's just a reference for future reruns
         serde_json::to_value(FuncBackendJsAttributeArgs {
             component: veritech::ResolverFunctionComponent {
-                name: prop.name().to_owned(),
-                properties: HashMap::new(),
+                data: veritech::ComponentView {
+                    name: prop.name().to_owned(),
+                    properties: serde_json::json!({}),
+                    system: None,
+                },
                 parents: vec![],
             },
         })?,

@@ -1,4 +1,4 @@
-use crate::schema::builtins::{create_prop, create_string_prop_with_default};
+use crate::schema::builtins::create_prop;
 use crate::schema::SchemaResult;
 use crate::{
     HistoryActor, Prop, PropId, PropKind, SchemaVariantId, StandardModel, Tenancy, Visibility,
@@ -13,8 +13,7 @@ pub async fn create_metadata_prop(
     visibility: &Visibility,
     history_actor: &HistoryActor,
     variant_id: &SchemaVariantId,
-    schema_name: Option<String>,
-    is_schema_name_required: bool,
+    is_name_required: bool,
     parent_prop_id: Option<PropId>,
     veritech: veritech::Client,
 ) -> SchemaResult<Prop> {
@@ -43,40 +42,23 @@ pub async fn create_metadata_prop(
         //      "https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-subdomain-names",
         //  },
         //],
-        if is_schema_name_required {
+        if is_name_required {
             // TODO: add a required field validation here
         }
 
-        let _name_prop = if let Some(schema_name) = schema_name {
-            // Note: do we actually want this branch to exist?
-            create_string_prop_with_default(
-                txn,
-                nats,
-                tenancy,
-                visibility,
-                history_actor,
-                variant_id,
-                "name",
-                schema_name,
-                Some(*metadata_prop.id()),
-                veritech.clone(),
-            )
-            .await?;
-        } else {
-            create_prop(
-                txn,
-                nats,
-                veritech.clone(),
-                tenancy,
-                visibility,
-                history_actor,
-                variant_id,
-                "name",
-                PropKind::String,
-                Some(*metadata_prop.id()),
-            )
-            .await?;
-        };
+        let _name_prop = create_prop(
+            txn,
+            nats,
+            veritech.clone(),
+            tenancy,
+            visibility,
+            history_actor,
+            variant_id,
+            "name",
+            PropKind::String,
+            Some(*metadata_prop.id()),
+        )
+        .await?;
     }
 
     {

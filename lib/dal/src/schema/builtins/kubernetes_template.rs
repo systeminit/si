@@ -40,7 +40,6 @@ pub async fn create_template_prop(
             visibility,
             history_actor,
             variant_id,
-            None,
             false,
             Some(*template_prop.id()),
             veritech.clone(),

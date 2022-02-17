@@ -436,7 +436,7 @@ impl Default for ClientConfig {
 #[allow(clippy::panic, clippy::assertions_on_constants)]
 #[cfg(test)]
 mod tests {
-    use std::{borrow::Cow, collections::HashMap, env, path::Path};
+    use std::{borrow::Cow, env, path::Path};
 
     use futures::StreamExt;
     use hyper::server::conn::AddrIncoming;
@@ -446,13 +446,12 @@ mod tests {
 
     use super::*;
     use crate::{
-        code_generation::{CodeGenerated, CodeGenerationComponent},
+        code_generation::CodeGenerated,
         qualification_check::QualificationCheckComponent,
+        resolver_function::ResolverFunctionComponent,
         resolver_function::ResolverFunctionRequest,
-        resolver_function::{ResolverFunctionComponent, ResolverFunctionParentComponent},
-        resource_sync::ResourceSyncComponent,
         server::{Config, ConfigBuilder, UdsIncomingStream},
-        FunctionResult, ProgressMessage, Server,
+        ComponentView, FunctionResult, ProgressMessage, Server,
     };
 
     fn rand_uds() -> TempPath {
@@ -686,16 +685,21 @@ mod tests {
             execution_id: "1234".to_string(),
             handler: "doit".to_string(),
             component: ResolverFunctionComponent {
-                name: "Child".to_owned(),
-                properties: HashMap::new(),
+                data: ComponentView {
+                    name: "Child".to_owned(),
+                    properties: serde_json::json!({}),
+                    system: None,
+                },
                 parents: vec![
-                    ResolverFunctionParentComponent {
+                    ComponentView {
                         name: "Parent 1".to_owned(),
-                        properties: HashMap::new(),
+                        properties: serde_json::json!({}),
+                        system: None,
                     },
-                    ResolverFunctionParentComponent {
+                    ComponentView {
                         name: "Parent 2".to_owned(),
-                        properties: HashMap::new(),
+                        properties: serde_json::json!({}),
+                        system: None,
                     },
                 ],
             },
@@ -771,16 +775,21 @@ mod tests {
             execution_id: "1234".to_string(),
             handler: "doit".to_string(),
             component: ResolverFunctionComponent {
-                name: "Child".to_owned(),
-                properties: HashMap::new(),
+                data: ComponentView {
+                    name: "Child".to_owned(),
+                    properties: serde_json::json!({}),
+                    system: None,
+                },
                 parents: vec![
-                    ResolverFunctionParentComponent {
+                    ComponentView {
                         name: "Parent 1".to_owned(),
-                        properties: HashMap::new(),
+                        properties: serde_json::json!({}),
+                        system: None,
                     },
-                    ResolverFunctionParentComponent {
+                    ComponentView {
                         name: "Parent 2".to_owned(),
-                        properties: HashMap::new(),
+                        properties: serde_json::json!({}),
+                        system: None,
                     },
                 ],
             },
@@ -854,15 +863,18 @@ mod tests {
             execution_id: "1234".to_string(),
             handler: "checkit".to_string(),
             component: QualificationCheckComponent {
-                name: "pringles".to_string(),
-                properties: HashMap::new(),
+                data: ComponentView {
+                    name: "pringles".to_owned(),
+                    properties: serde_json::json!({}),
+                    system: None,
+                },
                 codes: Vec::new(),
             },
             code_base64: base64::encode(
                 r#"function checkit(component) {
                     console.log('i like');
                     console.log('my butt');
-                    if (component["name"] == "pringles") {
+                    if (component.data.name == "pringles") {
                         return { qualified: true };
                     } else {
                         return {
@@ -939,15 +951,18 @@ mod tests {
             execution_id: "1234".to_string(),
             handler: "checkit".to_string(),
             component: QualificationCheckComponent {
-                name: "pringles".to_string(),
-                properties: HashMap::new(),
+                data: ComponentView {
+                    name: "pringles".to_owned(),
+                    properties: serde_json::json!({}),
+                    system: None,
+                },
                 codes: Vec::new(),
             },
             code_base64: base64::encode(
                 r#"function checkit(component) {
                     console.log('i like');
                     console.log('my butt');
-                    if (component["name"] == "pringles") {
+                    if (component.data.name == "pringles") {
                         return { qualified: true };
                     } else {
                         return {
@@ -1019,9 +1034,10 @@ mod tests {
         let mut builder = Config::builder();
         let mut client = http_client_for_running_server(builder.enable_qualification(true)).await;
 
-        let component = ResourceSyncComponent {
+        let component = ComponentView {
             name: "pringles".to_string(),
-            properties: HashMap::new(),
+            properties: serde_json::json!({}),
+            system: None,
         };
         let req = ResourceSyncRequest {
             execution_id: "1234".to_string(),
@@ -1050,8 +1066,7 @@ mod tests {
             Some(Ok(ProgressMessage::OutputStream(output))) => {
                 assert_eq!(
                     output.message,
-                    serde_json::to_string(&component)
-                        .expect("Unable to serialize ResourceSyncComponent")
+                    serde_json::to_string(&component).expect("Unable to serialize ComponentView")
                 )
             }
             Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
@@ -1098,9 +1113,10 @@ mod tests {
         let mut client =
             uds_client_for_running_server(builder.enable_qualification(true), &tmp_socket).await;
 
-        let component = ResourceSyncComponent {
+        let component = ComponentView {
             name: "pringles".to_string(),
-            properties: HashMap::new(),
+            properties: serde_json::json!({}),
+            system: None,
         };
         let req = ResourceSyncRequest {
             execution_id: "1234".to_string(),
@@ -1129,8 +1145,7 @@ mod tests {
             Some(Ok(ProgressMessage::OutputStream(output))) => {
                 assert_eq!(
                     output.message,
-                    serde_json::to_string(&component)
-                        .expect("Unable to serialize ResourceSyncComponent")
+                    serde_json::to_string(&component).expect("Unable to serialize ComponentView")
                 )
             }
             Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
@@ -1175,9 +1190,10 @@ mod tests {
         let mut builder = Config::builder();
         let mut client = http_client_for_running_server(builder.enable_qualification(true)).await;
 
-        let component = CodeGenerationComponent {
+        let component = ComponentView {
             name: "pringles".to_string(),
-            properties: HashMap::new(),
+            properties: serde_json::json!({}),
+            system: None,
         };
         let req = CodeGenerationRequest {
             execution_id: "1234".to_string(),
@@ -1206,8 +1222,7 @@ mod tests {
             Some(Ok(ProgressMessage::OutputStream(output))) => {
                 assert_eq!(
                     output.message,
-                    serde_json::to_string(&component)
-                        .expect("Unable to serialize CodeGenerationComponent")
+                    serde_json::to_string(&component).expect("Unable to serialize ComponentView")
                 )
             }
             Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
@@ -1261,9 +1276,10 @@ mod tests {
         let mut client =
             uds_client_for_running_server(builder.enable_qualification(true), &tmp_socket).await;
 
-        let component = CodeGenerationComponent {
+        let component = ComponentView {
             name: "pringles".to_string(),
-            properties: HashMap::new(),
+            properties: serde_json::json!({}),
+            system: None,
         };
         let req = CodeGenerationRequest {
             execution_id: "1234".to_string(),
@@ -1292,8 +1308,7 @@ mod tests {
             Some(Ok(ProgressMessage::OutputStream(output))) => {
                 assert_eq!(
                     output.message,
-                    serde_json::to_string(&component)
-                        .expect("Unable to serialize CodeGenerationComponent")
+                    serde_json::to_string(&component).expect("Unable to serialize ComponentView")
                 )
             }
             Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),

@@ -1,6 +1,5 @@
 mod view;
 
-use std::collections::HashMap;
 pub use view::ComponentView;
 
 use async_recursion::async_recursion;
@@ -331,8 +330,6 @@ impl Component {
         )
         .await?;
 
-        // TODO: If an attribute resolver isn't idempotent we need to rerun them here
-
         Ok((component, node))
     }
 
@@ -458,6 +455,11 @@ impl Component {
             .await?
             .ok_or(ComponentError::NotFound(component_id))?;
 
+        // TODO: Eventually, we'll need the logic to be more complex than stuffing everything into the "production" system, but that's a problem for "a week or two from now" us.
+        let mut systems =
+            System::find_by_attr(txn, tenancy, visibility, "name", &"production").await?;
+        let system = systems.pop().ok_or(ComponentError::SystemNotFound)?;
+
         let (value, _attribute_resolver_id, created) = component
             .resolve_attribute(
                 txn,
@@ -470,6 +472,7 @@ impl Component {
                 value,
                 None,
                 key,
+                *system.id(),
             )
             .await?;
 
@@ -532,6 +535,7 @@ impl Component {
         value: Option<serde_json::Value>,
         parent_attribute_resolver_id: Option<AttributeResolverId>,
         key: Option<String>,
+        system_id: SystemId,
     ) -> ComponentResult<(Option<serde_json::Value>, AttributeResolverId, bool)> {
         let mut schema_tenancy = tenancy.clone();
         schema_tenancy.universal = true;
@@ -738,7 +742,12 @@ impl Component {
             (_, None) => {
                 let args_default = FuncBackendJsAttributeArgs {
                     component: self
-                        .veritech_attribute_resolver_component(txn, &schema_tenancy, visibility)
+                        .veritech_attribute_resolver_component(
+                            txn,
+                            &schema_tenancy,
+                            visibility,
+                            system_id,
+                        )
                         .await?,
                 };
                 unset_value(
@@ -842,6 +851,7 @@ impl Component {
                     new_parent_prop_value,
                     parent_parent_attribute_resolver_id,
                     key,
+                    *system.id(),
                 )
                 .await?;
             }
@@ -1129,7 +1139,7 @@ impl Component {
 
             let args = FuncBackendJsCodeGenerationArgs {
                 component: self
-                    .veritech_code_generation_component(txn, &schema_tenancy, visibility)
+                    .veritech_code_generation_component(txn, &schema_tenancy, visibility, system_id)
                     .await?,
             };
             let json_args = serde_json::to_value(args)?;
@@ -1383,6 +1393,7 @@ impl Component {
         txn: &PgTxn<'_>,
         tenancy: &Tenancy,
         visibility: &Visibility,
+        system_id: SystemId,
     ) -> ComponentResult<veritech::ResolverFunctionComponent> {
         let mut tenancy = tenancy.clone();
         tenancy.universal = true;
@@ -1392,42 +1403,24 @@ impl Component {
                 .await?;
         let mut parents = Vec::with_capacity(parent_ids.len());
         for id in parent_ids {
-            let component = Self::get_by_id(txn, &tenancy, visibility, &id)
-                .await?
-                .ok_or(ComponentError::NotFound(id))?;
-            let mut view = veritech::ResolverFunctionParentComponent {
-                name: component.name().to_owned(),
-                properties: HashMap::new(),
-            };
-
-            for edit_field in
-                Self::get_edit_fields(txn, &tenancy, visibility, component.id()).await?
-            {
-                // This whole segment needs to be replaced with something that can handle the
-                // full complexity here.
-                if let Some(v) = edit_field.value {
-                    view.properties.insert(edit_field.name, v);
-                }
-            }
-            parents.push(view);
+            let view =
+                ComponentView::for_component_and_system(txn, &tenancy, visibility, id, system_id)
+                    .await?;
+            parents.push(veritech::ComponentView::from(view));
         }
 
-        let mut component = veritech::ResolverFunctionComponent {
-            name: self.name().into(),
-            properties: HashMap::new(),
+        let component = veritech::ResolverFunctionComponent {
+            data: ComponentView::for_component_and_system(
+                txn,
+                &tenancy,
+                visibility,
+                *self.id(),
+                system_id,
+            )
+            .await?
+            .into(),
             parents,
         };
-
-        // TODO: pass widget data to veritech component
-
-        for edit_field in Self::get_edit_fields(txn, &tenancy, visibility, self.id()).await? {
-            // This whole segment needs to be replaced with something that can handle the
-            // full complexity here.
-            if let Some(v) = edit_field.value {
-                component.properties.insert(edit_field.name, v);
-            }
-        }
-
         Ok(component)
     }
 
@@ -1436,23 +1429,19 @@ impl Component {
         txn: &PgTxn<'_>,
         tenancy: &Tenancy,
         visibility: &Visibility,
-    ) -> ComponentResult<veritech::CodeGenerationComponent> {
+        system_id: SystemId,
+    ) -> ComponentResult<ComponentView> {
         let mut tenancy = tenancy.clone();
         tenancy.universal = true;
 
-        let mut component = veritech::CodeGenerationComponent {
-            name: self.name().into(),
-            properties: HashMap::new(),
-        };
-
-        for edit_field in Self::get_edit_fields(txn, &tenancy, visibility, self.id()).await? {
-            // This whole segment needs to be replaced with something that can handle the
-            // full complexity here.
-            if let Some(v) = edit_field.value {
-                component.properties.insert(edit_field.name, v);
-            }
-        }
-
+        let component = ComponentView::for_component_and_system(
+            txn,
+            &tenancy,
+            visibility,
+            *self.id(),
+            system_id,
+        )
+        .await?;
         Ok(component)
     }
 
@@ -1461,23 +1450,19 @@ impl Component {
         txn: &PgTxn<'_>,
         tenancy: &Tenancy,
         visibility: &Visibility,
-    ) -> ComponentResult<veritech::ResourceSyncComponent> {
+        system_id: SystemId,
+    ) -> ComponentResult<ComponentView> {
         let mut tenancy = tenancy.clone();
         tenancy.universal = true;
 
-        let mut component = veritech::ResourceSyncComponent {
-            name: self.name().into(),
-            properties: HashMap::new(),
-        };
-
-        for edit_field in Self::get_edit_fields(txn, &tenancy, visibility, self.id()).await? {
-            // This whole segment needs to be replaced with something that can handle the
-            // full complexity here.
-            if let Some(v) = edit_field.value {
-                component.properties.insert(edit_field.name, v);
-            }
-        }
-
+        let component = ComponentView::for_component_and_system(
+            txn,
+            &tenancy,
+            visibility,
+            *self.id(),
+            system_id,
+        )
+        .await?;
         Ok(component)
     }
 
@@ -1491,9 +1476,16 @@ impl Component {
         let mut tenancy = tenancy.clone();
         tenancy.universal = true;
 
-        let mut qualification_view = veritech::QualificationCheckComponent {
-            name: self.name().into(),
-            properties: HashMap::new(),
+        let qualification_view = veritech::QualificationCheckComponent {
+            data: ComponentView::for_component_and_system(
+                txn,
+                &tenancy,
+                visibility,
+                *self.id(),
+                system_id,
+            )
+            .await?
+            .into(),
             codes: Self::list_code_generated_by_component_id(
                 txn,
                 &tenancy,
@@ -1503,15 +1495,6 @@ impl Component {
             )
             .await?,
         };
-
-        for edit_field in Self::get_edit_fields(txn, &tenancy, visibility, self.id()).await? {
-            // This whole segment needs to be replaced with something that can handle the
-            // full complexity here.
-            if let Some(v) = edit_field.value {
-                qualification_view.properties.insert(edit_field.name, v);
-            }
-        }
-
         Ok(qualification_view)
     }
 
@@ -1567,7 +1550,12 @@ impl Component {
 
             let args = FuncBackendJsResourceSyncArgs {
                 component: self
-                    .veritech_resource_sync_component(txn, &schema_tenancy, &self.visibility)
+                    .veritech_resource_sync_component(
+                        txn,
+                        &schema_tenancy,
+                        &self.visibility,
+                        system_id,
+                    )
                     .await?,
             };
             let json_args = serde_json::to_value(args)?;
