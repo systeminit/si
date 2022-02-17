@@ -7,6 +7,7 @@ export function listSecrets(): Secret[] {
       name: "ilikemybutt",
       kind: "DockerHub",
       objectType: "Credential",
+      contents: [0],
     },
   ];
 }

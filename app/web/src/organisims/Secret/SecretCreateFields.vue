@@ -5,37 +5,37 @@
         class="w-1/2 pr-2 text-sm text-right text-gray-400 align-middle border-blue-100"
       >
         <label :for="idFor(field.name, field.password)"
-          >{{ field.name }}:</label
+          >{{ field.displayName }}:</label
         >
       </div>
       <div class="w-1/2 align-middle">
         <SiTextBox
           :id="idFor(field.name, field.password)"
-          v-model="password"
+          v-model="createFields[field.name]"
           size="xs"
           placeholder=""
           :is-show-type="false"
           required
           type="password"
-          @input="updatePassword(password)"
+          @input="updateInput"
         />
       </div>
     </div>
     <div v-else class="flex flex-row items-center w-full pb-2">
       <div class="w-1/2 pr-2 text-sm text-right text-gray-400 align-middle">
         <label :for="idFor(field.name, field.password)"
-          >{{ field.name }}:</label
+          >{{ field.displayName }}:</label
         >
       </div>
       <div class="w-1/2 align-middle">
         <SiTextBox
           :id="idFor(field.name, field.password)"
-          v-model="username"
+          v-model="createFields[field.name]"
           size="xs"
           placeholder=""
           :is-show-type="false"
           required
-          @input="updateUsername(username)"
+          @input="updateInput"
         />
       </div>
     </div>
@@ -49,6 +49,7 @@ import { SecretKind } from "@/api/sdf/dal/secret";
 
 const props = defineProps<{
   secretKind: SecretKind;
+  modelValue: Record<string, string>;
 }>();
 
 const idFor = (name: string, password: boolean): string => {
@@ -58,13 +59,10 @@ const idFor = (name: string, password: boolean): string => {
   return "secret-text-" + name;
 };
 
-// FIXME(nick): these fields need to actually work and become dynamic for what fields are passed in.
-const username = ref<string>("username");
-const password = ref<string>("");
-const updateUsername = (input: string) => {
-  username.value = input;
-};
-const updatePassword = (input: string) => {
-  password.value = input;
+const createFields = ref<Record<string, string>>({});
+
+const emits = defineEmits(["update:modelValue"]);
+const updateInput = () => {
+  emits("update:modelValue", createFields);
 };
 </script>

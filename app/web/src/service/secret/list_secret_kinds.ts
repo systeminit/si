@@ -4,14 +4,16 @@ export function listSecretKinds(): SecretKind[] {
   return [
     {
       name: "Docker Hub",
-      type: "Credential",
+      objectType: "Credential",
       fields: [
         {
-          name: "Docker Hub Username",
+          name: "username",
+          displayName: "Docker Hub Username",
           password: false,
         },
         {
-          name: "Docker Hub Password",
+          name: "password",
+          displayName: "Docker Hub Password",
           password: true,
         },
       ],

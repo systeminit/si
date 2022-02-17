@@ -26,6 +26,7 @@
     "pixi-filters": "^4.1.5",
     "pixi.js": "^6.2.0",
     "rxjs": "^7.4.0",
+    "tweetnacl-sealedbox-js": "github:systeminit/tweetnacl-sealed-box#master",
     "vue": "^3.2.22",
     "vuse-rx": "systeminit/vuse-rx#bug/fix-options",
     "xstate": "^4.26.0"
@@ -60,7 +61,6 @@
     "rxjs": "^7.4.0",
     "sass": "^1.43.2",
     "tailwindcss": "^2.2.17",
-    "tweetnacl-sealedbox-js": "^1.2.0",
     "typescript": "^4.4.3",
     "vite": "^2.6.4",
     "vite-plugin-eslint": "^1.3.0",

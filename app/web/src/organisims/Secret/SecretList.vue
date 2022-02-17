@@ -16,7 +16,8 @@
           <div class="w-3/12 px-2 py-1 text-center table-border">Type</div>
         </div>
 
-        <div class="flex flex-col overflow-y-scroll text-xs text-gray-300">
+        <!-- NOTE(nick): removed scrollbar that was found in old-web. -->
+        <div class="flex flex-col text-xs text-gray-300">
           <div
             v-for="secret in secrets"
             :key="secret.id"

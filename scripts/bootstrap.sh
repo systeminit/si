@@ -137,7 +137,7 @@ function install-kubeval-linux-amd64 {
     wget https://github.com/instrumenta/kubeval/releases/latest/download/kubeval-linux-amd64.tar.gz -P /tmp/kubeval-download
     tar -xf /tmp/kubeval-download/kubeval-linux-amd64.tar.gz --directory /tmp/kubeval-download
     if [ -f /usr/local/bin/kubeval ]; then
-        rm -f /usr/local/bin/kubeval
+        sudo rm -f /usr/local/bin/kubeval
     fi
     sudo cp /tmp/kubeval-download/kubeval /usr/local/bin
     rm -rf /tmp/kubeval-download
