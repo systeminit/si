@@ -9,6 +9,7 @@ use dal::{
     test_harness::{
         billing_account_signup, create_component_for_schema, create_component_for_schema_variant,
         create_prop_of_kind_with_name, create_schema, create_schema_variant,
+        find_or_create_production_system,
     },
     AttributeResolver, Func, FuncBackendKind, FuncBackendResponseType, HistoryActor, PropKind,
     Schema, SchemaKind, StandardModel, SystemId, Tenancy, Visibility,
@@ -712,4 +713,212 @@ async fn update_parent_index_map() {
         .index_map()
         .expect("there must be an index map now");
     assert_eq!(&[*string_attribute_resolver.id()], index_map.order());
+}
+
+#[tokio::test]
+async fn siblings_have_values() {
+    test_setup!(
+        ctx,
+        _secret_key,
+        _pg,
+        _conn,
+        txn,
+        _nats_conn,
+        nats,
+        veritech
+    );
+    let tenancy = Tenancy::new_universal();
+    let visibility = Visibility::new_head(false);
+    let history_actor = HistoryActor::SystemInit;
+    let _ =
+        find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor).await;
+
+    let mut schema = create_schema(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        &SchemaKind::Concrete,
+    )
+    .await;
+    let schema_variant =
+        create_schema_variant(&txn, &nats, &tenancy, &visibility, &history_actor).await;
+    schema_variant
+        .set_schema(&txn, &nats, &visibility, &history_actor, schema.id())
+        .await
+        .expect("cannot associate variant with schema");
+    schema
+        .set_default_schema_variant_id(
+            &txn,
+            &nats,
+            &visibility,
+            &history_actor,
+            Some(*schema_variant.id()),
+        )
+        .await
+        .expect("cannot set default schema variant");
+
+    let object_prop = create_prop_of_kind_with_name(
+        &txn,
+        &nats,
+        veritech.clone(),
+        &tenancy,
+        &visibility,
+        &history_actor,
+        PropKind::Object,
+        "top-level_object",
+    )
+    .await;
+    object_prop
+        .add_schema_variant(
+            &txn,
+            &nats,
+            &visibility,
+            &history_actor,
+            schema_variant.id(),
+        )
+        .await
+        .expect("cannot associate prop with schema variant");
+
+    let child_prop_one = create_prop_of_kind_with_name(
+        &txn,
+        &nats,
+        veritech.clone(),
+        &tenancy,
+        &visibility,
+        &history_actor,
+        PropKind::String,
+        "some child prop",
+    )
+    .await;
+    child_prop_one
+        .set_parent_prop(&txn, &nats, &visibility, &history_actor, *object_prop.id())
+        .await
+        .expect("cannot set parent prop for child one");
+
+    let child_prop_two = create_prop_of_kind_with_name(
+        &txn,
+        &nats,
+        veritech.clone(),
+        &tenancy,
+        &visibility,
+        &history_actor,
+        PropKind::String,
+        "another child prop",
+    )
+    .await;
+    child_prop_two
+        .set_parent_prop(&txn, &nats, &visibility, &history_actor, *object_prop.id())
+        .await
+        .expect("cannot set parent prop for child two");
+
+    let component = create_component_for_schema_variant(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        schema_variant.id(),
+    )
+    .await;
+
+    let (_, object_attribute_resolver_id, _) = component
+        .resolve_attribute(
+            &txn,
+            &nats,
+            veritech.clone(),
+            &tenancy,
+            &visibility,
+            &history_actor,
+            &object_prop,
+            Some(serde_json::json![{}]),
+            None,
+            None,
+        )
+        .await
+        .expect("cannot resolve object prop");
+
+    let (_, child_one_attribute_resolver_id, _) = component
+        .resolve_attribute(
+            &txn,
+            &nats,
+            veritech.clone(),
+            &tenancy,
+            &visibility,
+            &history_actor,
+            &child_prop_one,
+            None,
+            Some(object_attribute_resolver_id),
+            None,
+        )
+        .await
+        .expect("cannot resolve child prop one");
+
+    component
+        .resolve_attribute(
+            &txn,
+            &nats,
+            veritech.clone(),
+            &tenancy,
+            &visibility,
+            &history_actor,
+            &child_prop_two,
+            None,
+            Some(object_attribute_resolver_id),
+            None,
+        )
+        .await
+        .expect("cannot resolve child prop two");
+
+    assert!(
+        !AttributeResolver::any_siblings_are_set(
+            &txn,
+            &tenancy,
+            &visibility,
+            child_one_attribute_resolver_id
+        )
+        .await
+        .expect("cannot check siblings for values"),
+        "no siblings should have a value"
+    );
+
+    let (_, child_two_attribute_resolver_id, _) = component
+        .resolve_attribute(
+            &txn,
+            &nats,
+            veritech.clone(),
+            &tenancy,
+            &visibility,
+            &history_actor,
+            &child_prop_two,
+            Some(serde_json::json!("second child's value")),
+            Some(object_attribute_resolver_id),
+            None,
+        )
+        .await
+        .expect("cannot resolve child prop two with a value");
+
+    assert!(
+        AttributeResolver::any_siblings_are_set(
+            &txn,
+            &tenancy,
+            &visibility,
+            child_one_attribute_resolver_id
+        )
+        .await
+        .expect("cannot check siblings for values"),
+        "siblings of child one should have a value"
+    );
+    assert!(
+        !AttributeResolver::any_siblings_are_set(
+            &txn,
+            &tenancy,
+            &visibility,
+            child_two_attribute_resolver_id
+        )
+        .await
+        .expect("cannot check siblings for values"),
+        "no siblings of child two should have a value"
+    );
 }

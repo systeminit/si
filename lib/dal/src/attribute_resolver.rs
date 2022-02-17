@@ -45,6 +45,8 @@ const FIND_VALUE_FOR_CONTEXT: &str =
     include_str!("./queries/attribute_resolver_find_value_for_context.sql");
 const LIST_VALUES_FOR_COMPONENT: &str =
     include_str!("./queries/attribute_resolver_list_values_for_component.sql");
+const SIBLINGS_HAVE_SET_VALUES: &str =
+    include_str!("./queries/attribute_resolver_siblings_have_set_values.sql");
 
 #[derive(Debug)]
 pub struct AttributeResolverValue {
@@ -468,6 +470,25 @@ impl AttributeResolver {
             ));
         }
         Ok(result)
+    }
+
+    /// Check if there are any [`AttributeResolver`]s that are also children of the provided `AttributeResolverId`'s
+    /// parent (siblings of the provided `AttributeResolverId`) that have a value other than `FuncBackendKind::Unset`.
+    pub async fn any_siblings_are_set(
+        txn: &PgTxn<'_>,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+        attribute_resolver_id: AttributeResolverId,
+    ) -> AttributeResolverResult<bool> {
+        let row = txn
+            .query_one(
+                SIBLINGS_HAVE_SET_VALUES,
+                &[&tenancy, &visibility, &attribute_resolver_id],
+            )
+            .await?;
+        let siblings_have_values: bool = row.try_get("siblings_are_set")?;
+
+        Ok(siblings_have_values)
     }
 }
 
