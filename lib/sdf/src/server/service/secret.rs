@@ -4,10 +4,11 @@ use axum::response::IntoResponse;
 use axum::routing::get;
 use axum::Json;
 use axum::Router;
-use dal::StandardModelError;
+use dal::{KeyPairError, StandardModelError};
 use std::convert::Infallible;
 use thiserror::Error;
 
+pub mod get_public_key;
 pub mod list_secrets;
 
 #[derive(Debug, Error)]
@@ -18,6 +19,8 @@ pub enum SecretError {
     Pg(#[from] si_data::PgError),
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
+    #[error(transparent)]
+    KeyPairError(#[from] KeyPairError),
 }
 
 pub type SecretResult<T> = std::result::Result<T, SecretError>;
@@ -41,5 +44,7 @@ impl IntoResponse for SecretError {
 }
 
 pub fn routes() -> Router {
-    Router::new().route("/list_secrets", get(list_secrets::list_secrets))
+    Router::new()
+        .route("/get_public_key", get(get_public_key::get_public_key))
+        .route("/list_secrets", get(list_secrets::list_secrets))
 }

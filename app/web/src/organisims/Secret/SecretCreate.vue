@@ -85,8 +85,10 @@ import { refFrom } from "vuse-rx";
 import { ChangeSetService } from "@/service/change_set";
 // NOTE(nick): we have our own "tweetnacl-sealedbox-js" with types for TS.
 // @ts-ignore
-// import sealedBox from "tweetnacl-sealedbox-js";
+import sealedBox from "tweetnacl-sealedbox-js";
 import { Secret } from "@/api/sdf/dal/secret";
+import { Base64 } from "js-base64";
+import { GlobalErrorService } from "@/service/global_error";
 
 defineProps<{
   modelValue: string;
@@ -133,33 +135,35 @@ const secretKindOptions = computed((): SelectPropsOption[] => {
 // We need to get user input from our child create fields component;
 const createFields = ref<Record<string, string>>({});
 
-const createSecret = (
+const createSecret = async (
   message: Record<string, string>,
   kind: SecretKind,
   secretName: string,
 ) => {
-  // FIXME(nick): this needs to come from the DAL. The encryption currently fails without a valid key.
-  const publicKey: Uint8Array = new Uint8Array(0);
-  const encrypted = encryptMessage(message, publicKey);
-  const secret: Secret = {
-    id: 1,
-    name: secretName,
-    kind: kind.name,
-    objectType: kind.objectType,
-    contents: encrypted,
-  };
-  SecretService.createSecret(secret);
-  returnToListView();
+  const reply = await SecretService.getPublicKeyRaw();
+  if (reply.error) {
+    GlobalErrorService.set(reply);
+  } else {
+    const publicKeyDecoded = Base64.toUint8Array(reply.public_key);
+
+    const encrypted = encryptMessage(message, publicKeyDecoded);
+    const secret: Secret = {
+      id: 1,
+      name: secretName,
+      kind: kind.name,
+      objectType: kind.objectType,
+      contents: encrypted,
+    };
+    SecretService.createSecret(secret);
+    returnToListView();
+  }
 };
 
 const encryptMessage = (
   message: Record<string, string>,
-  _publicKey: Uint8Array,
+  publicKey: Uint8Array,
 ): number[] => {
-  // FIXME(nick): the real code _will fail_ without a valid public key. Thus, we don't perform
-  // the actual encryption yet.
-  return Array.from(serializeMessage(message));
-  // return Array.from(sealedBox.seal(serializeMessage(message), publicKey));
+  return Array.from(sealedBox.seal(serializeMessage(message), publicKey));
 };
 
 const serializeMessage = (message: Record<string, string>): Uint8Array => {

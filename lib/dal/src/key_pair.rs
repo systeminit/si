@@ -149,11 +149,16 @@ fn encode_secret_key(key: &BoxSecretKey) -> String {
 ///
 /// This type only contains the public half of the underlying key pair and is therefore safe to
 /// expose via external API.
+///
+/// The field "public_key" is base64 encoded into a string when this struct is serialized, and
+/// decoded when deserialized. Thus, the DAL "PublicKey" (this struct) must be used for transport
+/// between SI components rather than the nested "BoxPublicKey".
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct PublicKey {
     pk: KeyPairPk,
     id: KeyPairId,
     name: String,
+    /// This field is base64 encoded into a string. Consumers will have to base64 decode it.
     #[serde(with = "key_pair_box_public_key_serde")]
     public_key: BoxPublicKey,
     created_lamport_clock: u64,
