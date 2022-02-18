@@ -14,7 +14,7 @@
       <div class="w-1/2 align-middle">
         <SiTextBox
           id="secret-name-textbox"
-          v-model="nameField"
+          v-model="secretName"
           size="xs"
           name="secretName"
           placeholder="secret name"
@@ -41,8 +41,8 @@
 
     <SecretCreateFields
       v-if="selectedSecretKind"
+      v-model="createFields"
       :secret-kind="selectedSecretKind"
-      @input="placeholderFunc"
     />
 
     <div class="flex justify-end w-full">
@@ -64,8 +64,8 @@
           label="Create"
           kind="save"
           :icon="null"
-          :disabled="!editMode"
-          @click="returnToListView"
+          :disabled="!enableCreateButton"
+          @click="createSecret(createFields, selectedSecretKind, secretName)"
         />
       </div>
     </div>
@@ -83,6 +83,10 @@ import { SecretKind } from "@/api/sdf/dal/secret";
 import SecretCreateFields from "@/organisims/Secret/SecretCreateFields.vue";
 import { refFrom } from "vuse-rx";
 import { ChangeSetService } from "@/service/change_set";
+// NOTE(nick): we have our own "tweetnacl-sealedbox-js" with types for TS.
+// @ts-ignore
+// import sealedBox from "tweetnacl-sealedbox-js";
+import { Secret } from "@/api/sdf/dal/secret";
 
 defineProps<{
   modelValue: string;
@@ -107,6 +111,11 @@ const selectedSecretKind = computed((): SecretKind | null => {
   return null;
 });
 
+// NOTE(nick): in-line comparison is not reactive for some reason still... using computed helper.
+const enableCreateButton = computed((): boolean => {
+  return editMode && selectedSecretKind.value !== null;
+});
+
 const secretKinds = computed((): SecretKind[] => {
   return SecretService.listSecretKinds();
 });
@@ -121,10 +130,48 @@ const secretKindOptions = computed((): SelectPropsOption[] => {
   return options;
 });
 
-const nameField = "";
-const placeholderFunc = () => {
-  console.log(nameField);
+// We need to get user input from our child create fields component;
+const createFields = ref<Record<string, string>>({});
+
+const createSecret = (
+  message: Record<string, string>,
+  kind: SecretKind,
+  secretName: string,
+) => {
+  // FIXME(nick): this needs to come from the DAL. The encryption currently fails without a valid key.
+  const publicKey: Uint8Array = new Uint8Array(0);
+  const encrypted = encryptMessage(message, publicKey);
+  const secret: Secret = {
+    id: 1,
+    name: secretName,
+    kind: kind.name,
+    objectType: kind.objectType,
+    contents: encrypted,
+  };
+  SecretService.createSecret(secret);
+  returnToListView();
 };
+
+const encryptMessage = (
+  message: Record<string, string>,
+  _publicKey: Uint8Array,
+): number[] => {
+  // FIXME(nick): the real code _will fail_ without a valid public key. Thus, we don't perform
+  // the actual encryption yet.
+  return Array.from(serializeMessage(message));
+  // return Array.from(sealedBox.seal(serializeMessage(message), publicKey));
+};
+
+const serializeMessage = (message: Record<string, string>): Uint8Array => {
+  const json = JSON.stringify(message, null, 0);
+  const result = new Uint8Array(json.length);
+  for (let i = 0; i < json.length; i++) {
+    result[i] = json.charCodeAt(i);
+  }
+  return result;
+};
+
+const secretName = ref<string>("");
 
 // Use "emits" to switch back to "list" view.
 const emits = defineEmits(["update:modelValue"]);

@@ -7,15 +7,17 @@ export interface Secret {
   name: string;
   kind: string;
   objectType: string;
+  contents: number[];
 }
 
 export interface SecretKind {
   name: string;
-  type: string;
-  fields?: SecretField[];
+  objectType: string;
+  fields: SecretField[];
 }
 
 export interface SecretField {
   name: string;
+  displayName: string;
   password: boolean;
 }
