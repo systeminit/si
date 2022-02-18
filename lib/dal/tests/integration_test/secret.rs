@@ -165,7 +165,7 @@ async fn encrypt_decrypt_round_trip() {
         .await
         .expect("failed to fetch encrypted secret")
         .expect("failed to find encrypted secret for tenancy and/or visibility")
-        .decrypt(&txn, &visibility)
+        .decrypt(&txn, &visibility, *nba.billing_account.id())
         .await
         .expect("failed to decrypt encrypted secret");
     assert_eq!(decrypted.name(), secret.name());

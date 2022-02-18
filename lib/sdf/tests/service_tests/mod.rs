@@ -9,6 +9,7 @@ mod application;
 mod change_set;
 mod component;
 mod schema;
+mod secret;
 mod session;
 mod signup;
 
