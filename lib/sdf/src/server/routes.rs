@@ -70,6 +70,7 @@ pub fn routes(
             crate::server::service::change_set::routes(),
         )
         .nest("/api/schema", crate::server::service::schema::routes())
+        .nest("/api/secret", crate::server::service::secret::routes())
         .nest(
             "/api/schematic",
             crate::server::service::schematic::routes(),

@@ -47,13 +47,11 @@
 
 <script setup lang="ts">
 // import SiError from "@/atoms/SiError.vue";
-import { computed } from "vue";
+import { refFrom } from "vuse-rx";
 import { Secret } from "@/api/sdf/dal/secret";
 import { SecretService } from "@/service/secret";
 
-const secrets = computed((): Secret[] => {
-  return SecretService.listSecrets();
-});
+const secrets = refFrom<Secret[]>(SecretService.listSecrets());
 </script>
 
 <style scoped>
