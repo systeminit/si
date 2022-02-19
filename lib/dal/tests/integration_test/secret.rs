@@ -29,6 +29,7 @@ async fn new_encrypted_secret() {
         *nba.key_pair.id(),
         SecretVersion::V1,
         SecretAlgorithm::Sealedbox,
+        *nba.billing_account.id(),
     )
     .await
     .expect("failed to create secret");
@@ -60,6 +61,7 @@ async fn secret_get_by_id() {
         &visibility,
         &history_actor,
         *nba.key_pair.id(),
+        *nba.billing_account.id(),
     )
     .await;
 
@@ -85,6 +87,7 @@ async fn encrypted_secret_get_by_id() {
         &visibility,
         &history_actor,
         *nba.key_pair.id(),
+        *nba.billing_account.id(),
     )
     .await;
 
@@ -114,6 +117,7 @@ async fn secret_update_name() {
         &visibility,
         &history_actor,
         *nba.key_pair.id(),
+        *nba.billing_account.id(),
     )
     .await;
 
@@ -157,6 +161,7 @@ async fn encrypt_decrypt_round_trip() {
         *nba.key_pair.id(),
         Default::default(),
         Default::default(),
+        *nba.billing_account.id(),
     )
     .await
     .expect("failed to create encrypted secret");
@@ -165,7 +170,7 @@ async fn encrypt_decrypt_round_trip() {
         .await
         .expect("failed to fetch encrypted secret")
         .expect("failed to find encrypted secret for tenancy and/or visibility")
-        .decrypt(&txn, &visibility, *nba.billing_account.id())
+        .decrypt(&txn, &visibility)
         .await
         .expect("failed to decrypt encrypted secret");
     assert_eq!(decrypted.name(), secret.name());

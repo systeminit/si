@@ -54,6 +54,7 @@ pub async fn create_secret(
         request.key_pair_id,
         request.version,
         request.algorithm,
+        claim.billing_account_id,
     )
     .await?;
 

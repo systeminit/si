@@ -26,10 +26,10 @@ use crate::func::backend::{
     validation::{FuncBackendValidateStringValue, FuncBackendValidateStringValueArgs},
 };
 use crate::{
-    impl_standard_model, pk, qualification::QualificationResult, standard_model,
-    standard_model_accessor, standard_model_belongs_to, Func, FuncBackendError, FuncBackendKind,
-    HistoryActor, HistoryEvent, HistoryEventError, StandardModel, StandardModelError, Tenancy,
-    Timestamp, Visibility,
+    component::ComponentViewError, impl_standard_model, pk, qualification::QualificationResult,
+    standard_model, standard_model_accessor, standard_model_belongs_to, ComponentView, Func,
+    FuncBackendError, FuncBackendKind, HistoryActor, HistoryEvent, HistoryEventError,
+    StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
 };
 
 use super::{
@@ -60,6 +60,8 @@ pub enum FuncBindingError {
     StandardModelError(#[from] StandardModelError),
     #[error("func execution tracking error: {0}")]
     FuncExecutionError(#[from] FuncExecutionError),
+    #[error("component view error: {0}")]
+    ComponentView(#[from] ComponentViewError),
 }
 
 pub type FuncBindingResult<T> = Result<T, FuncBindingError>;
@@ -254,13 +256,13 @@ impl FuncBinding {
                     .code_base64()
                     .ok_or(FuncBindingError::JsFuncNotFound(self.pk))?;
 
-                let backend_args: FuncBackendJsCodeGenerationArgs =
+                let args: FuncBackendJsCodeGenerationArgs =
                     serde_json::from_value(self.args.clone())?;
                 let return_value = FuncBackendJsCodeGeneration::new(
                     veritech,
                     tx,
                     handler.to_owned(),
-                    backend_args,
+                    args,
                     code_base64.to_owned(),
                 )
                 .execute()
@@ -288,13 +290,24 @@ impl FuncBinding {
                     .code_base64()
                     .ok_or(FuncBindingError::JsFuncNotFound(self.pk))?;
 
-                let backend_args: FuncBackendJsQualificationArgs =
+                let mut args: FuncBackendJsQualificationArgs =
                     serde_json::from_value(self.args.clone())?;
+                ComponentView::decrypt_secrets(
+                    txn,
+                    &tenancy,
+                    &visibility,
+                    &mut args.component.data,
+                )
+                .await?;
+                for parent in &mut args.component.parents {
+                    ComponentView::decrypt_secrets(txn, &tenancy, &visibility, parent).await?;
+                }
+
                 let return_value = FuncBackendJsQualification::new(
                     veritech,
                     tx,
                     handler.to_owned(),
-                    backend_args,
+                    args,
                     code_base64.to_owned(),
                 )
                 .execute()
@@ -329,19 +342,20 @@ impl FuncBinding {
                     .code_base64()
                     .ok_or(FuncBindingError::JsFuncNotFound(self.pk))?;
 
-                let backend_args: FuncBackendJsResourceSyncArgs =
+                let args: FuncBackendJsResourceSyncArgs =
                     serde_json::from_value(self.args.clone())?;
                 let return_value = FuncBackendJsResourceSync::new(
                     veritech,
                     tx,
                     handler.to_owned(),
-                    backend_args,
+                    args,
                     code_base64.to_owned(),
                 )
                 .execute()
                 .await?;
 
                 let veritech_result = ResourceSyncResultSuccess::deserialize(&return_value)?;
+
                 execution.process_output(txn, nats, rx).await?;
                 Some(serde_json::to_value(&veritech_result)?)
             }
@@ -358,7 +372,18 @@ impl FuncBinding {
                     .code_base64()
                     .ok_or(FuncBindingError::JsFuncNotFound(self.pk))?;
 
-                let args: FuncBackendJsAttributeArgs = serde_json::from_value(self.args.clone())?;
+                let mut args: FuncBackendJsAttributeArgs =
+                    serde_json::from_value(self.args.clone())?;
+                ComponentView::decrypt_secrets(
+                    txn,
+                    &tenancy,
+                    &visibility,
+                    &mut args.component.data,
+                )
+                .await?;
+                for parent in &mut args.component.parents {
+                    ComponentView::decrypt_secrets(txn, &tenancy, &visibility, parent).await?;
+                }
 
                 execution
                     .set_state(txn, nats, super::execution::FuncExecutionState::Run)
@@ -373,6 +398,7 @@ impl FuncBinding {
                 )
                 .execute()
                 .await?;
+
                 execution.process_output(txn, nats, rx).await?;
                 Some(return_value)
             }

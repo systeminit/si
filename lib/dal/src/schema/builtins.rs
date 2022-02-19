@@ -9,7 +9,7 @@ use crate::resource_prototype::ResourcePrototypeContext;
 use crate::schema::{SchemaResult, SchemaVariant, UiMenu};
 use crate::socket::{Socket, SocketArity, SocketEdgeKind};
 use crate::{
-    attribute_resolver::AttributeResolverContext, edit_field::widget::*,
+    attribute_resolver::AttributeResolverContext, component::ComponentKind, edit_field::widget::*,
     func::binding::FuncBinding, validation_prototype::ValidationPrototypeContext,
     AttributeResolver, Func, FuncBackendKind, FuncBackendResponseType, HistoryActor, Prop, PropId,
     PropKind, QualificationPrototype, ResourcePrototype, Schema, SchemaError, SchemaKind,
@@ -430,6 +430,15 @@ async fn docker_hub_credential(
         Some(schema) => schema,
         None => return Ok(()),
     };
+    schema
+        .set_component_kind(
+            txn,
+            nats,
+            visibility,
+            history_actor,
+            ComponentKind::Credential,
+        )
+        .await?;
 
     let variant = SchemaVariant::new(txn, nats, tenancy, visibility, history_actor, "v0").await?;
     variant
@@ -497,7 +506,7 @@ async fn docker_hub_credential(
         visibility,
         history_actor,
         "secret",
-        PropKind::String,
+        PropKind::Integer,
     )
     .await?;
     secret_prop
@@ -748,7 +757,8 @@ async fn docker_image(
             component: veritech::ResolverFunctionComponent {
                 data: veritech::ComponentView {
                     name: number_of_parents_prop.name().to_owned(),
-                    properties: serde_json::to_value(properties)?,
+                    properties: veritech::MaybeSensitive::Plain(serde_json::to_value(properties)?),
+                    kind: veritech::ComponentKind::Standard,
                     system: None,
                 },
                 parents: vec![],
@@ -917,6 +927,7 @@ async fn create_schema(
                 history_actor,
                 schema_name,
                 schema_kind,
+                &ComponentKind::Standard,
             )
             .await?;
             Ok(Some(schema))
@@ -1020,8 +1031,9 @@ pub async fn create_string_prop_with_default(
             component: veritech::ResolverFunctionComponent {
                 data: veritech::ComponentView {
                     name: prop.name().to_owned(),
-                    properties: serde_json::json!({}),
+                    properties: veritech::MaybeSensitive::Plain(serde_json::json!({})),
                     system: None,
+                    kind: veritech::ComponentKind::Standard,
                 },
                 parents: vec![],
             },

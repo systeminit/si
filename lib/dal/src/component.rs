@@ -1,11 +1,12 @@
 mod view;
 
-pub use view::ComponentView;
+pub use view::{ComponentView, ComponentViewError};
 
 use async_recursion::async_recursion;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use si_data::{NatsError, NatsTxn, PgError, PgTxn};
+use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -151,11 +152,38 @@ const LIST_FOR_RESOURCE_SYNC: &str = include_str!("./queries/component_list_for_
 pk!(ComponentPk);
 pk!(ComponentId);
 
+#[derive(
+    AsRefStr,
+    Clone,
+    Copy,
+    Debug,
+    Deserialize,
+    Display,
+    EnumIter,
+    EnumString,
+    Eq,
+    PartialEq,
+    Serialize,
+)]
+#[serde(rename_all = "camelCase")]
+#[strum(serialize_all = "camelCase")]
+pub enum ComponentKind {
+    Standard,
+    Credential,
+}
+
+impl Default for ComponentKind {
+    fn default() -> Self {
+        Self::Standard
+    }
+}
+
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct Component {
     pk: ComponentPk,
     id: ComponentId,
     name: String,
+    kind: ComponentKind,
     #[serde(flatten)]
     tenancy: Tenancy,
     #[serde(flatten)]
@@ -186,8 +214,13 @@ impl Component {
         let name = name.as_ref();
         let row = txn
             .query_one(
-                "SELECT object FROM component_create_v1($1, $2, $3)",
-                &[&tenancy, &visibility, &name],
+                "SELECT object FROM component_create_v1($1, $2, $3, $4)",
+                &[
+                    &tenancy,
+                    &visibility,
+                    &name,
+                    &ComponentKind::Standard.as_ref(),
+                ],
             )
             .await?;
         let object = standard_model::finish_create_from_row(
@@ -266,8 +299,13 @@ impl Component {
 
         let row = txn
             .query_one(
-                "SELECT object FROM component_create_v1($1, $2, $3)",
-                &[&tenancy, &visibility, &name],
+                "SELECT object FROM component_create_v1($1, $2, $3, $4)",
+                &[
+                    &tenancy,
+                    &visibility,
+                    &name,
+                    &schema.component_kind().as_ref(),
+                ],
             )
             .await?;
 
@@ -368,6 +406,7 @@ impl Component {
     }
 
     standard_model_accessor!(name, String, ComponentResult);
+    standard_model_accessor!(kind, Enum(ComponentKind), ComponentResult);
 
     standard_model_belongs_to!(
         lookup_fn: schema,
@@ -1048,8 +1087,8 @@ impl Component {
                     )
                     .await?,
             };
-            let json_args = serde_json::to_value(args)?;
 
+            let json_args = serde_json::to_value(args)?;
             let (func_binding, created) = FuncBinding::find_or_create(
                 txn,
                 nats,
@@ -1490,6 +1529,18 @@ impl Component {
         let mut tenancy = tenancy.clone();
         tenancy.universal = true;
 
+        let parent_ids =
+            Edge::find_component_configuration_parents(txn, &tenancy, visibility, self.id())
+                .await?;
+
+        let mut parents = Vec::new();
+        for id in parent_ids {
+            let view =
+                ComponentView::for_component_and_system(txn, &tenancy, visibility, id, system_id)
+                    .await?;
+            parents.push(veritech::ComponentView::from(view));
+        }
+
         let qualification_view = veritech::QualificationCheckComponent {
             data: ComponentView::for_component_and_system(
                 txn,
@@ -1508,6 +1559,7 @@ impl Component {
                 system_id,
             )
             .await?,
+            parents,
         };
         Ok(qualification_view)
     }
@@ -1572,7 +1624,6 @@ impl Component {
                     )
                     .await?,
             };
-            let json_args = serde_json::to_value(args)?;
 
             let (func_binding, _created) = FuncBinding::find_or_create(
                 txn,
@@ -1580,7 +1631,7 @@ impl Component {
                 &schema_tenancy,
                 &self.visibility,
                 history_actor,
-                json_args,
+                serde_json::to_value(args)?,
                 prototype.func_id(),
                 *func.backend_kind(),
             )

@@ -368,7 +368,7 @@ mod tests {
     use uuid::Uuid;
 
     use super::*;
-    use crate::{Config, CycloneSpec, Server, ServerError};
+    use crate::{ComponentKind, Config, CycloneSpec, MaybeSensitive, Server, ServerError};
 
     fn nats_config() -> NatsConfig {
         let mut config = NatsConfig::default();
@@ -440,19 +440,22 @@ mod tests {
             component: ResolverFunctionComponent {
                 data: ComponentView {
                     name: "Child".to_owned(),
-                    properties: serde_json::json!({}),
+                    properties: MaybeSensitive::Plain(serde_json::json!({})),
                     system: None,
+                    kind: ComponentKind::Standard,
                 },
                 parents: vec![
                     ComponentView {
                         name: "Parent 1".to_owned(),
-                        properties: serde_json::json!({}),
+                        properties: MaybeSensitive::Plain(serde_json::json!({})),
                         system: None,
+                        kind: ComponentKind::Standard,
                     },
                     ComponentView {
                         name: "Parent 2".to_owned(),
-                        properties: serde_json::json!({}),
+                        properties: MaybeSensitive::Plain(serde_json::json!({})),
                         system: None,
+                        kind: ComponentKind::Standard,
                     },
                 ],
             },
@@ -498,13 +501,15 @@ mod tests {
             component: QualificationCheckComponent {
                 data: ComponentView {
                     name: "cider".to_string(),
-                    properties: serde_json::json!({"image": "systeminit/whiskers"}),
-                    system: None
+                    properties: MaybeSensitive::Plain(serde_json::json!({"image": "systeminit/whiskers"})),
+                    system: None,
+                    kind: ComponentKind::Standard,
                 },
                 codes: vec![CodeGenerated {
                     format: "yaml".to_owned(),
                     code: "generateName: asd\nname: kubernetes_deployment\napiVersion: apps/v1\nkind: Deployment\n".to_owned()
                 }],
+                parents: Vec::new(),
             },
             code_base64: base64::encode(indoc! {r#"
                 async function check(component) {
@@ -607,8 +612,9 @@ mod tests {
         request.component.data.name = "emacs".to_string();
         request.component.data = ComponentView {
             name: "cider".to_string(),
-            properties: serde_json::json!({"image": "abc"}),
+            properties: MaybeSensitive::Plain(serde_json::json!({"image": "abc"})),
             system: None,
+            kind: ComponentKind::Standard,
         };
 
         // Now update the request to re-run an unqualified check (i.e. qualification returning
@@ -648,8 +654,9 @@ mod tests {
             handler: "syncItOut".to_string(),
             component: ComponentView {
                 name: "cider".to_string(),
-                properties: serde_json::json!({"pkg": "cider"}),
+                properties: MaybeSensitive::Plain(serde_json::json!({"pkg": "cider"})),
                 system: None,
+                kind: ComponentKind::Standard,
             },
             code_base64: base64::encode("function syncItOut(component) { return {}; }"),
         };
@@ -691,10 +698,11 @@ mod tests {
             handler: "generateItOut".to_string(),
             component: ComponentView {
                 name: "cider".to_string(),
-                properties: serde_json::json!({"pkg": "cider"}),
+                properties: MaybeSensitive::Plain(serde_json::json!({"pkg": "cider"})),
                 system: None,
+                kind: ComponentKind::Standard,
             },
-            code_base64: base64::encode("function generateItOut(component) { return { format: 'yaml', code: YAML.stringify(component) }; }"),
+            code_base64: base64::encode("function generateItOut(component) { return { format: 'yaml', code: YAML.stringify(component.properties) }; }"),
         };
 
         let result = client
@@ -709,7 +717,7 @@ mod tests {
                     success.data,
                     CodeGenerated {
                         format: "yaml".to_owned(),
-                        code: "name: cider\nsystem: null\nproperties:\n  pkg: cider\n".to_owned(),
+                        code: "pkg: cider\n".to_owned(),
                     }
                 );
             }

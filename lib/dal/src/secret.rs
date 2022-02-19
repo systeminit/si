@@ -165,6 +165,7 @@ pub struct EncryptedSecret {
     name: String,
     object_type: SecretObjectType,
     kind: SecretKind,
+    billing_account_id: BillingAccountId,
     #[serde(with = "crypted_serde")]
     crypted: Vec<u8>,
     version: SecretVersion,
@@ -219,12 +220,13 @@ impl EncryptedSecret {
         key_pair_id: KeyPairId,
         version: SecretVersion,
         algorithm: SecretAlgorithm,
+        billing_account_id: BillingAccountId,
     ) -> SecretResult<Secret> {
         let name = name.as_ref();
 
         let row = txn
             .query_one(
-                "SELECT object FROM encrypted_secret_create_v1($1, $2, $3, $4, $5, $6, $7, $8)",
+                "SELECT object FROM encrypted_secret_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9)",
                 &[
                     tenancy,
                     visibility,
@@ -234,6 +236,7 @@ impl EncryptedSecret {
                     &encode_crypted(crypted),
                     &version.as_ref(),
                     &algorithm.as_ref(),
+                    &billing_account_id,
                 ],
             )
             .await?;
@@ -279,12 +282,11 @@ impl EncryptedSecret {
         self,
         txn: &PgTxn<'_>,
         visibility: &Visibility,
-        billing_account_id: BillingAccountId,
     ) -> SecretResult<DecryptedSecret> {
         let mut key_pair_tenancy = self.tenancy().clone();
         key_pair_tenancy
             .billing_account_ids
-            .push(billing_account_id);
+            .push(self.billing_account_id);
 
         let key_pair = self
             .key_pair_with_tenancy(txn, &key_pair_tenancy, visibility)
@@ -458,6 +460,7 @@ mod tests {
             object_type: SecretObjectType,
             kind: SecretKind,
             crypted: impl Into<Vec<u8>>,
+            billing_account_id: BillingAccountId,
         ) -> EncryptedSecret {
             let name = name.into();
             let crypted = crypted.into();
@@ -468,6 +471,7 @@ mod tests {
                 name,
                 object_type,
                 kind,
+                billing_account_id,
                 crypted,
                 version: Default::default(),
                 algorithm: Default::default(),
@@ -501,6 +505,7 @@ mod tests {
                 SecretObjectType::Credential,
                 SecretKind::DockerHub,
                 crypted,
+                1.into(),
             );
             let decrypted = encrypted
                 .into_decrypted(&pkey, &skey)

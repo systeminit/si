@@ -27,11 +27,12 @@ pub mod client;
 pub use client::{Client, ClientError, ClientResult};
 #[cfg(feature = "client")]
 pub use cyclone::{
-    CodeGenerated, CodeGenerationRequest, CodeGenerationResultSuccess, ComponentView,
-    FunctionResult, FunctionResultFailure, OutputStream, QualificationCheckComponent,
-    QualificationCheckRequest, QualificationCheckResultSuccess, QualificationSubCheck,
-    QualificationSubCheckStatus, ResolverFunctionComponent, ResolverFunctionRequest,
-    ResourceSyncRequest, ResourceSyncResultSuccess, SystemView,
+    CodeGenerated, CodeGenerationRequest, CodeGenerationResultSuccess, ComponentKind,
+    ComponentView, FunctionResult, FunctionResultFailure, MaybeSensitive, OutputStream,
+    QualificationCheckComponent, QualificationCheckRequest, QualificationCheckResultSuccess,
+    QualificationSubCheck, QualificationSubCheckStatus, ResolverFunctionComponent,
+    ResolverFunctionRequest, ResourceSyncRequest, ResourceSyncResultSuccess, SensitiveContainer,
+    SystemView,
 };
 
 const NATS_QUALIFICATION_CHECK_DEFAULT_SUBJECT: &str = "veritech.fn.qualificationcheck";

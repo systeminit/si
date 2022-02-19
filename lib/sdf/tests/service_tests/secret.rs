@@ -63,7 +63,7 @@ async fn create_secret() {
     .await
     .expect("failed to fetch encrypted secret")
     .expect("failed to find encrypted secret in tenancy and/or visibility")
-    .decrypt(&txn, &visibility, *nba.billing_account.id())
+    .decrypt(&txn, &visibility)
     .await
     .expect("failed to decrypt secret");
 

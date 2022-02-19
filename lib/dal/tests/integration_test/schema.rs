@@ -2,7 +2,7 @@ use crate::test_setup;
 
 use dal::schema::SchemaKind;
 use dal::test_harness::{billing_account_signup, create_schema, create_schema_ui_menu};
-use dal::{HistoryActor, Schema, StandardModel, Tenancy, Visibility};
+use dal::{component::ComponentKind, HistoryActor, Schema, StandardModel, Tenancy, Visibility};
 
 pub mod ui_menu;
 pub mod variant;
@@ -30,6 +30,7 @@ async fn new() {
         &history_actor,
         "mastodon",
         &SchemaKind::Concrete,
+        &ComponentKind::Standard,
     )
     .await
     .expect("cannot create schema");
@@ -50,6 +51,7 @@ async fn billing_accounts() {
         &history_actor,
         "mastodon",
         &SchemaKind::Concrete,
+        &ComponentKind::Standard,
     )
     .await
     .expect("cannot create schema");
@@ -102,6 +104,7 @@ async fn organizations() {
         &history_actor,
         "mastodon",
         &SchemaKind::Concrete,
+        &ComponentKind::Standard,
     )
     .await
     .expect("cannot create schema");
@@ -154,6 +157,7 @@ async fn workspaces() {
         &history_actor,
         "mastodon",
         &SchemaKind::Concrete,
+        &ComponentKind::Standard,
     )
     .await
     .expect("cannot create schema");
