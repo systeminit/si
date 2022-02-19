@@ -12,10 +12,10 @@ use dal::{
         create_prop_of_kind_with_name, create_schema, create_schema_variant,
         find_or_create_production_system,
     },
-    AttributeResolver, Func, FuncBackendKind, FuncBackendResponseType, HistoryActor, PropKind,
-    Schema, SchemaKind, StandardModel, Tenancy, Visibility,
+    AttributeResolver, ComponentView, Func, FuncBackendKind, FuncBackendResponseType, HistoryActor,
+    PropKind, Schema, SchemaKind, StandardModel, Tenancy, Visibility,
 };
-use pretty_assertions_sorted::assert_eq;
+use pretty_assertions_sorted::{assert_eq, assert_eq_sorted};
 
 #[tokio::test]
 async fn new() {
@@ -924,4 +924,299 @@ async fn siblings_have_values() {
         .expect("cannot check siblings for values"),
         "no siblings of child two should have a value"
     );
+}
+
+#[tokio::test]
+async fn update_for_context_will_unset_parent_resolvers() {
+    test_setup!(
+        ctx,
+        _secret_key,
+        _pg,
+        _conn,
+        txn,
+        _nats_conn,
+        nats,
+        veritech,
+    );
+
+    let tenancy = Tenancy::new_universal();
+    let visibility = Visibility::new_head(false);
+    let history_actor = HistoryActor::SystemInit;
+    let prod_system =
+        find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor).await;
+
+    // ["
+    //    { "name": "Astro-Creep: 2000", "release_year": "1995" }
+    // ]
+    let mut schema = create_schema(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        &SchemaKind::Concrete,
+    )
+    .await;
+    let schema_variant =
+        create_schema_variant(&txn, &nats, &tenancy, &visibility, &history_actor).await;
+    schema_variant
+        .set_schema(&txn, &nats, &visibility, &history_actor, schema.id())
+        .await
+        .expect("cannot associate variant with schema");
+    schema
+        .set_default_schema_variant_id(
+            &txn,
+            &nats,
+            &visibility,
+            &history_actor,
+            Some(*schema_variant.id()),
+        )
+        .await
+        .expect("cannot set default schema variant");
+
+    let albums_array_prop = create_prop_of_kind_with_name(
+        &txn,
+        &nats,
+        veritech.clone(),
+        &tenancy,
+        &visibility,
+        &history_actor,
+        PropKind::Array,
+        "albums_array",
+    )
+    .await;
+    albums_array_prop
+        .add_schema_variant(
+            &txn,
+            &nats,
+            &visibility,
+            &history_actor,
+            schema_variant.id(),
+        )
+        .await
+        .expect("cannot associate root array with schema variant");
+
+    let album_object_prop = create_prop_of_kind_with_name(
+        &txn,
+        &nats,
+        veritech.clone(),
+        &tenancy,
+        &visibility,
+        &history_actor,
+        PropKind::Object,
+        "album_object",
+    )
+    .await;
+    album_object_prop
+        .set_parent_prop(
+            &txn,
+            &nats,
+            &visibility,
+            &history_actor,
+            *albums_array_prop.id(),
+        )
+        .await
+        .expect("cannot set parent prop for album object");
+
+    let album_name_prop = create_prop_of_kind_with_name(
+        &txn,
+        &nats,
+        veritech.clone(),
+        &tenancy,
+        &visibility,
+        &history_actor,
+        PropKind::String,
+        "album_name",
+    )
+    .await;
+    album_name_prop
+        .set_parent_prop(
+            &txn,
+            &nats,
+            &visibility,
+            &history_actor,
+            *album_object_prop.id(),
+        )
+        .await
+        .expect("cannot set parent prop for album name");
+
+    let album_release_year_prop = create_prop_of_kind_with_name(
+        &txn,
+        &nats,
+        veritech.clone(),
+        &tenancy,
+        &visibility,
+        &history_actor,
+        PropKind::String,
+        "release_year",
+    )
+    .await;
+    album_release_year_prop
+        .set_parent_prop(
+            &txn,
+            &nats,
+            &visibility,
+            &history_actor,
+            *album_object_prop.id(),
+        )
+        .await
+        .expect("cannot set parent prop for album release year");
+
+    let component = create_component_for_schema_variant(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        schema_variant.id(),
+    )
+    .await;
+
+    let mut albums_resolver_context = AttributeResolverContext::new();
+    albums_resolver_context.set_prop_id(*albums_array_prop.id());
+    let albums_resolver =
+        AttributeResolver::find_for_context(&txn, &tenancy, &visibility, albums_resolver_context)
+            .await
+            .expect("cannot retrieve resolver for albums array")
+            .expect("resolver for albums array not found");
+    let mut astro_creep_album_resolver_context = AttributeResolverContext::new();
+    astro_creep_album_resolver_context.set_prop_id(*album_object_prop.id());
+    astro_creep_album_resolver_context.set_component_id(*component.id());
+    astro_creep_album_resolver_context.set_system_id(*prod_system.id());
+    let (_, astro_creep_album_resolver_id) = AttributeResolver::insert_for_context(
+        &txn,
+        &nats,
+        veritech.clone(),
+        &tenancy,
+        &visibility,
+        &history_actor,
+        astro_creep_album_resolver_context,
+        *albums_resolver.id(),
+        Some(serde_json::json![()]),
+        None,
+    )
+    .await
+    .expect("cannot insert a new album");
+
+    let mut astro_creep_album_name_resolver_context = AttributeResolverContext::new();
+    astro_creep_album_name_resolver_context.set_prop_id(*album_name_prop.id());
+    astro_creep_album_name_resolver_context.set_component_id(*component.id());
+    astro_creep_album_name_resolver_context.set_system_id(*prod_system.id());
+    let (_, astro_creep_album_name_resolver_id) = AttributeResolver::insert_for_context(
+        &txn,
+        &nats,
+        veritech.clone(),
+        &tenancy,
+        &visibility,
+        &history_actor,
+        astro_creep_album_name_resolver_context.clone(),
+        astro_creep_album_resolver_id,
+        Some(serde_json::json!["Astro-Creep: 2000"]),
+        None,
+    )
+    .await
+    .expect("cannot insert album name");
+
+    let mut astro_creep_album_release_year_resolver_context = AttributeResolverContext::new();
+    astro_creep_album_release_year_resolver_context.set_prop_id(*album_release_year_prop.id());
+    astro_creep_album_release_year_resolver_context.set_component_id(*component.id());
+    astro_creep_album_release_year_resolver_context.set_system_id(*prod_system.id());
+    let (_, astro_creep_album_release_year_resolver_id) = AttributeResolver::insert_for_context(
+        &txn,
+        &nats,
+        veritech.clone(),
+        &tenancy,
+        &visibility,
+        &history_actor,
+        astro_creep_album_release_year_resolver_context.clone(),
+        astro_creep_album_resolver_id,
+        Some(serde_json::json!["1995"]),
+        None,
+    )
+    .await
+    .expect("cannot insert album release year");
+
+    let component_view = ComponentView::for_component_and_system(
+        &txn,
+        &tenancy,
+        &visibility,
+        *component.id(),
+        *prod_system.id(),
+    )
+    .await
+    .expect("cannot get component view");
+
+    assert_eq_sorted!(
+        serde_json::json![
+            {
+                "albums_array": [
+                    { "album_name": "Astro-Creep: 2000", "release_year": "1995" }
+                ]
+            }
+        ],
+        component_view.properties,
+    );
+
+    AttributeResolver::update_for_context(
+        &txn,
+        &nats,
+        veritech.clone(),
+        &tenancy,
+        &visibility,
+        &history_actor,
+        astro_creep_album_release_year_resolver_id,
+        astro_creep_album_release_year_resolver_context,
+        None,
+        None,
+    )
+    .await
+    .expect("could not unset album release year");
+
+    let component_view = ComponentView::for_component_and_system(
+        &txn,
+        &tenancy,
+        &visibility,
+        *component.id(),
+        *prod_system.id(),
+    )
+    .await
+    .expect("cannot get component view");
+
+    assert_eq_sorted!(
+        serde_json::json![
+            {
+                "albums_array": [
+                    { "album_name": "Astro-Creep: 2000" }
+                ]
+            }
+        ],
+        component_view.properties,
+    );
+
+    AttributeResolver::update_for_context(
+        &txn,
+        &nats,
+        veritech,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        astro_creep_album_name_resolver_id,
+        astro_creep_album_name_resolver_context,
+        None,
+        None,
+    )
+    .await
+    .expect("could not unset album name");
+
+    let component_view = ComponentView::for_component_and_system(
+        &txn,
+        &tenancy,
+        &visibility,
+        *component.id(),
+        *prod_system.id(),
+    )
+    .await
+    .expect("cannot get component view");
+
+    assert_eq_sorted!(serde_json::json![{}], component_view.properties,);
 }

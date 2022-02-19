@@ -814,17 +814,31 @@ impl Component {
                 *system.id(),
             )
             .await?;
-            // TODO: This should really only be `None` if no other children of our parent are set.
-            let new_parent_prop_value = if value.is_some() {
+            let (should_change_parent, new_parent_prop_value) = if value.is_some() {
                 match parent_prop.kind() {
-                    PropKind::Array => Some(serde_json::json![[]]),
-                    PropKind::Map | PropKind::Object => Some(serde_json::json![{}]),
-                    _ => None,
+                    PropKind::Array => (true, Some(serde_json::json![[]])),
+                    PropKind::Map | PropKind::Object => (true, Some(serde_json::json![{}])),
+                    _ => (false, None),
                 }
             } else {
-                None
+                // If we're setting an AttributeResolver to Unset, we should only ever set the parent AttributeResolver
+                // to unset if this is the only remaining AttributeResolver that wasn't already Unset.
+                if AttributeResolver::any_siblings_are_set(
+                    txn,
+                    tenancy,
+                    visibility,
+                    *attribute_resolver.id(),
+                )
+                .await?
+                {
+                    (false, None)
+                } else {
+                    (true, None)
+                }
             };
-            if current_parent_value.value() != new_parent_prop_value.as_ref() {
+            if should_change_parent
+                && current_parent_value.value() != new_parent_prop_value.as_ref()
+            {
                 let parent_attribute_resolver = AttributeResolver::get_by_id(
                     txn,
                     tenancy,
