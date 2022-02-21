@@ -1,6 +1,8 @@
 use deadpool_cyclone::{
-    instance::cyclone::LocalUdsInstanceSpec, CodeGenerationRequest, CycloneClient, Manager, Pool,
-    ProgressMessage, QualificationCheckRequest, ResolverFunctionRequest, ResourceSyncRequest,
+    instance::cyclone::LocalUdsInstanceSpec, CodeGenerationRequest, CodeGenerationResultSuccess,
+    CycloneClient, Manager, Pool, ProgressMessage, QualificationCheckRequest,
+    QualificationCheckResultSuccess, ResolverFunctionRequest, ResolverFunctionResultSuccess,
+    ResourceSyncRequest, ResourceSyncResultSuccess,
 };
 use futures::{channel::oneshot, join, StreamExt};
 use si_data::NatsClient;
@@ -31,13 +33,17 @@ pub enum ServerError {
     #[error(transparent)]
     Publisher(#[from] PublisherError),
     #[error(transparent)]
-    QualificationCheck(#[from] deadpool_cyclone::client::QualificationCheckExecutionError),
+    QualificationCheck(
+        #[from] deadpool_cyclone::client::ExecutionError<QualificationCheckResultSuccess>,
+    ),
     #[error(transparent)]
-    ResolverFunction(#[from] deadpool_cyclone::client::ResolverFunctionExecutionError),
+    ResolverFunction(
+        #[from] deadpool_cyclone::client::ExecutionError<ResolverFunctionResultSuccess>,
+    ),
     #[error(transparent)]
-    ResourceSync(#[from] deadpool_cyclone::client::ResourceSyncExecutionError),
+    ResourceSync(#[from] deadpool_cyclone::client::ExecutionError<ResourceSyncResultSuccess>),
     #[error(transparent)]
-    CodeGeneration(#[from] deadpool_cyclone::client::CodeGenerationExecutionError),
+    CodeGeneration(#[from] deadpool_cyclone::client::ExecutionError<CodeGenerationResultSuccess>),
     #[error("failed to setup signal handler")]
     Signal(#[source] io::Error),
     #[error(transparent)]

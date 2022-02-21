@@ -9,14 +9,13 @@ use async_trait::async_trait;
 use cyclone::{
     canonical_command::CanonicalCommand,
     client::{
-        CodeGenerationExecution, Connection, PingExecution, QualificationCheckExecution,
-        ResolverFunctionExecution, ResourceSyncExecution, UnixStream, Watch, WatchError,
-        WatchStarted,
+        CodeGenerationRequest, CodeGenerationResultSuccess, Connection, Execution, PingExecution,
+        QualificationCheckRequest, QualificationCheckResultSuccess, ResolverFunctionRequest,
+        ResolverFunctionResultSuccess, ResourceSyncRequest, ResourceSyncResultSuccess, UnixStream,
+        Watch, WatchError, WatchStarted,
     },
     process::{self, ShutdownError},
-    Client, ClientError, CodeGenerationRequest, CycloneClient, LivenessStatus,
-    QualificationCheckRequest, ReadinessStatus, ResolverFunctionRequest, ResourceSyncRequest,
-    UdsClient,
+    Client, ClientError, CycloneClient, LivenessStatus, ReadinessStatus, UdsClient,
 };
 use derive_builder::Builder;
 use futures::StreamExt;
@@ -147,7 +146,10 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
     async fn execute_qualification(
         &mut self,
         request: QualificationCheckRequest,
-    ) -> result::Result<QualificationCheckExecution<UnixStream>, ClientError> {
+    ) -> result::Result<
+        Execution<UnixStream, QualificationCheckRequest, QualificationCheckResultSuccess>,
+        ClientError,
+    > {
         self.ensure_healthy_client()
             .await
             .map_err(ClientError::unhealthy)?;
@@ -161,7 +163,10 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
     async fn execute_resolver(
         &mut self,
         request: ResolverFunctionRequest,
-    ) -> result::Result<ResolverFunctionExecution<UnixStream>, ClientError> {
+    ) -> result::Result<
+        Execution<UnixStream, ResolverFunctionRequest, ResolverFunctionResultSuccess>,
+        ClientError,
+    > {
         self.ensure_healthy_client()
             .await
             .map_err(ClientError::unhealthy)?;
@@ -175,7 +180,10 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
     async fn execute_sync(
         &mut self,
         request: ResourceSyncRequest,
-    ) -> result::Result<ResourceSyncExecution<UnixStream>, ClientError> {
+    ) -> result::Result<
+        Execution<UnixStream, ResourceSyncRequest, ResourceSyncResultSuccess>,
+        ClientError,
+    > {
         self.ensure_healthy_client()
             .await
             .map_err(ClientError::unhealthy)?;
@@ -189,7 +197,10 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
     async fn execute_code_generation(
         &mut self,
         request: CodeGenerationRequest,
-    ) -> result::Result<CodeGenerationExecution<UnixStream>, ClientError> {
+    ) -> result::Result<
+        Execution<UnixStream, CodeGenerationRequest, CodeGenerationResultSuccess>,
+        ClientError,
+    > {
         self.ensure_healthy_client()
             .await
             .map_err(ClientError::unhealthy)?;

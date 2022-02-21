@@ -65,20 +65,27 @@ pub enum Message<R> {
     Result(FunctionResult<R>),
 }
 
-impl<R> Message<R>
-where
-    R: Serialize + DeserializeOwned,
-{
+impl<R> Message<R> {
     pub fn fail(message: impl Into<String>) -> Self {
         Self::Fail(Fail {
             message: message.into(),
         })
     }
+}
 
+impl<R> Message<R>
+where
+    R: DeserializeOwned,
+{
     pub fn deserialize_from_str(s: &str) -> Result<Self, serde_json::Error> {
         serde_json::from_str(s)
     }
+}
 
+impl<R> Message<R>
+where
+    R: Serialize,
+{
     pub fn serialize_to_string(&self) -> Result<String, serde_json::Error> {
         serde_json::to_string(self)
     }
