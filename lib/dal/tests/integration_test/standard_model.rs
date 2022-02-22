@@ -5,8 +5,9 @@ use dal::test_harness::{
     create_visibility_change_set, create_visibility_edit_session, create_visibility_head,
 };
 use dal::{
-    standard_model, BillingAccount, Group, GroupId, HistoryActor, KeyPair, Schema, SchemaKind,
-    StandardModel, Tenancy, User, UserId, NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK,
+    component::ComponentKind, standard_model, BillingAccount, Group, GroupId, HistoryActor,
+    KeyPair, Schema, SchemaKind, StandardModel, Tenancy, User, UserId, NO_CHANGE_SET_PK,
+    NO_EDIT_SESSION_PK,
 };
 
 #[tokio::test]
@@ -1061,6 +1062,7 @@ async fn find_by_attr() {
         &history_actor,
         schema_one.name(),
         schema_one.kind(),
+        &ComponentKind::Standard,
     )
     .await
     .expect("cannot create another schema with the same name");

@@ -33,9 +33,14 @@ export interface CodeGenerationResultFailure extends ResultFailure {
   something?: never;
 }
 
-  export function executeCodeGeneration(request: CodeGenerationRequest): void {
+export function executeCodeGeneration(request: CodeGenerationRequest): void {
   const code = base64Decode(request.codeBase64);
+
   debug({ code });
+
+  // TODO: remove this, needed for now as it's messing with the generated yaml
+  request.component.properties.maybe_sensitive_container_kind = undefined;
+
   const compiledCode = new VMScript(wrapCode(code, request.handler, request.component)).compile();
   debug({ code: compiledCode.code });
   const sandbox = createSandbox(FunctionKind.CodeGeneration, request.executionId);

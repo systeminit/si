@@ -14,6 +14,7 @@ pub struct QualificationCheckRequest {
 #[serde(rename_all = "camelCase")]
 pub struct QualificationCheckComponent {
     pub data: ComponentView,
+    pub parents: Vec<ComponentView>,
     pub codes: Vec<CodeGenerated>,
 }
 

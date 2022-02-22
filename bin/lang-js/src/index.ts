@@ -39,6 +39,7 @@ async function main() {
   try {
     const requestJson = fs.readFileSync(0, "utf8");
     const request = JSON.parse(requestJson);
+    // TODO: we should filter credentials, at least they won't appear here as component/parents is logged as [Array]
     debug({ request });
     if (request.executionId) {
       executionId = request.executionId;

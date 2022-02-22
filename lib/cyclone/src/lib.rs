@@ -20,9 +20,10 @@ mod qualification_check;
 mod readiness;
 mod resolver_function;
 mod resource_sync;
+mod sensitive_container;
 
 pub use code_generation::{CodeGenerated, CodeGenerationRequest, CodeGenerationResultSuccess};
-pub use component_view::{ComponentView, SystemView};
+pub use component_view::{ComponentKind, ComponentView, SystemView};
 pub use liveness::{LivenessStatus, LivenessStatusParseError};
 pub use progress::{
     FunctionResult, FunctionResultFailure, FunctionResultFailureError, Message, OutputStream,
@@ -37,6 +38,7 @@ pub use resolver_function::{
     ResolverFunctionComponent, ResolverFunctionRequest, ResolverFunctionResultSuccess,
 };
 pub use resource_sync::{ResourceSyncRequest, ResourceSyncResultSuccess};
+pub use sensitive_container::{MaybeSensitive, SensitiveContainer};
 
 #[cfg(feature = "process")]
 pub mod process;

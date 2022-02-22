@@ -442,11 +442,12 @@ mod tests {
     use super::*;
     use crate::{
         code_generation::CodeGenerated,
+        component_view::ComponentKind,
         qualification_check::QualificationCheckComponent,
         resolver_function::ResolverFunctionComponent,
         resolver_function::ResolverFunctionRequest,
         server::{Config, ConfigBuilder, UdsIncomingStream},
-        ComponentView, FunctionResult, ProgressMessage, Server,
+        ComponentView, FunctionResult, MaybeSensitive, ProgressMessage, Server,
     };
 
     fn rand_uds() -> TempPath {
@@ -682,19 +683,22 @@ mod tests {
             component: ResolverFunctionComponent {
                 data: ComponentView {
                     name: "Child".to_owned(),
-                    properties: serde_json::json!({}),
+                    properties: MaybeSensitive::Plain(serde_json::json!({})),
                     system: None,
+                    kind: ComponentKind::Standard,
                 },
                 parents: vec![
                     ComponentView {
                         name: "Parent 1".to_owned(),
-                        properties: serde_json::json!({}),
+                        properties: MaybeSensitive::Plain(serde_json::json!({})),
                         system: None,
+                        kind: ComponentKind::Standard,
                     },
                     ComponentView {
                         name: "Parent 2".to_owned(),
-                        properties: serde_json::json!({}),
+                        properties: MaybeSensitive::Plain(serde_json::json!({})),
                         system: None,
+                        kind: ComponentKind::Standard,
                     },
                 ],
             },
@@ -772,19 +776,22 @@ mod tests {
             component: ResolverFunctionComponent {
                 data: ComponentView {
                     name: "Child".to_owned(),
-                    properties: serde_json::json!({}),
+                    properties: MaybeSensitive::Plain(serde_json::json!({})),
                     system: None,
+                    kind: ComponentKind::Standard,
                 },
                 parents: vec![
                     ComponentView {
                         name: "Parent 1".to_owned(),
-                        properties: serde_json::json!({}),
+                        properties: MaybeSensitive::Plain(serde_json::json!({})),
                         system: None,
+                        kind: ComponentKind::Standard,
                     },
                     ComponentView {
                         name: "Parent 2".to_owned(),
-                        properties: serde_json::json!({}),
+                        properties: MaybeSensitive::Plain(serde_json::json!({})),
                         system: None,
+                        kind: ComponentKind::Standard,
                     },
                 ],
             },
@@ -860,10 +867,12 @@ mod tests {
             component: QualificationCheckComponent {
                 data: ComponentView {
                     name: "pringles".to_owned(),
-                    properties: serde_json::json!({}),
+                    properties: MaybeSensitive::Plain(serde_json::json!({})),
                     system: None,
+                    kind: ComponentKind::Standard,
                 },
                 codes: Vec::new(),
+                parents: Vec::new(),
             },
             code_base64: base64::encode(
                 r#"function checkit(component) {
@@ -948,10 +957,12 @@ mod tests {
             component: QualificationCheckComponent {
                 data: ComponentView {
                     name: "pringles".to_owned(),
-                    properties: serde_json::json!({}),
+                    properties: MaybeSensitive::Plain(serde_json::json!({})),
                     system: None,
+                    kind: ComponentKind::Standard,
                 },
                 codes: Vec::new(),
+                parents: Vec::new(),
             },
             code_base64: base64::encode(
                 r#"function checkit(component) {
@@ -1031,8 +1042,9 @@ mod tests {
 
         let component = ComponentView {
             name: "pringles".to_string(),
-            properties: serde_json::json!({}),
+            properties: MaybeSensitive::Plain(serde_json::json!({})),
             system: None,
+            kind: ComponentKind::Standard,
         };
         let req = ResourceSyncRequest {
             execution_id: "1234".to_string(),
@@ -1110,8 +1122,9 @@ mod tests {
 
         let component = ComponentView {
             name: "pringles".to_string(),
-            properties: serde_json::json!({}),
+            properties: MaybeSensitive::Plain(serde_json::json!({})),
             system: None,
+            kind: ComponentKind::Standard,
         };
         let req = ResourceSyncRequest {
             execution_id: "1234".to_string(),
@@ -1187,8 +1200,9 @@ mod tests {
 
         let component = ComponentView {
             name: "pringles".to_string(),
-            properties: serde_json::json!({}),
+            properties: MaybeSensitive::Plain(serde_json::json!({})),
             system: None,
+            kind: ComponentKind::Standard,
         };
         let req = CodeGenerationRequest {
             execution_id: "1234".to_string(),
@@ -1198,7 +1212,7 @@ mod tests {
                 r#"function portugueseJsonGeneration(component) {
                     console.log(JSON.stringify(component));
                     console.log('generate');
-                    return { format: "json", code: JSON.stringify({nome: component.name}) };
+                    return { format: "json", code: JSON.stringify({nome: component.name }) };
                 }"#,
             ),
         };
@@ -1216,8 +1230,9 @@ mod tests {
         match progress.next().await {
             Some(Ok(ProgressMessage::OutputStream(output))) => {
                 assert_eq!(
-                    output.message,
-                    serde_json::to_string(&component).expect("Unable to serialize ComponentView")
+                    serde_json::from_str::<serde_json::Value>(&output.message)
+                        .expect("Unable to serialize output to json"),
+                    serde_json::json!({"name": component.name, "properties": {}, "system": null, "kind": "standard" })
                 )
             }
             Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
@@ -1273,8 +1288,9 @@ mod tests {
 
         let component = ComponentView {
             name: "pringles".to_string(),
-            properties: serde_json::json!({}),
+            properties: MaybeSensitive::Plain(serde_json::json!({})),
             system: None,
+            kind: ComponentKind::Standard,
         };
         let req = CodeGenerationRequest {
             execution_id: "1234".to_string(),
@@ -1302,8 +1318,9 @@ mod tests {
         match progress.next().await {
             Some(Ok(ProgressMessage::OutputStream(output))) => {
                 assert_eq!(
-                    output.message,
-                    serde_json::to_string(&component).expect("Unable to serialize ComponentView")
+                    serde_json::from_str::<serde_json::Value>(&output.message)
+                        .expect("Unable to serialize output to json"),
+                    serde_json::json!({"name": component.name, "properties": {}, "system": null, "kind": "standard" })
                 )
             }
             Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),

@@ -4,9 +4,10 @@ use std::collections::HashMap;
 use si_data::PgTxn;
 
 use crate::{
-    system::UNSET_SYSTEM_ID, AttributeResolver, AttributeResolverId, AttributeResolverValue,
-    Component, ComponentError, ComponentId, PropId, PropKind, StandardModel, System, SystemId,
-    Tenancy, Visibility,
+    component::ComponentKind, system::UNSET_SYSTEM_ID, AttributeResolver, AttributeResolverId,
+    AttributeResolverValue, Component, ComponentError, ComponentId, EncryptedSecret, PropId,
+    PropKind, SecretError, SecretId, StandardModel, StandardModelError, System, SystemId, Tenancy,
+    Visibility,
 };
 
 use super::ComponentResult;
@@ -16,13 +17,31 @@ use thiserror::Error;
 pub enum ComponentViewError {
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
+    #[error("standard model error: {0}")]
+    StandardModel(#[from] StandardModelError),
+    #[error("secret error: {0}")]
+    Secret(#[from] SecretError),
+    #[error("secret not found: {0}")]
+    SecretNotFound(SecretId),
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone, Default)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct ComponentView {
     pub name: String,
     pub system: Option<System>,
+    pub kind: ComponentKind,
     pub properties: serde_json::Value,
+}
+
+impl Default for ComponentView {
+    fn default() -> Self {
+        Self {
+            name: Default::default(),
+            system: Default::default(),
+            kind: Default::default(),
+            properties: serde_json::json!({}),
+        }
+    }
 }
 
 impl ComponentView {
@@ -168,8 +187,58 @@ impl ComponentView {
         Ok(ComponentView {
             name: component.name().to_string(),
             system,
+            kind: *component.kind(),
             properties,
         })
+    }
+
+    pub async fn decrypt_secrets(
+        txn: &PgTxn<'_>,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+        component: &mut veritech::ComponentView,
+    ) -> Result<(), ComponentViewError> {
+        if component.kind != veritech::ComponentKind::Credential {
+            return Ok(());
+        }
+
+        let value = std::mem::replace(
+            &mut component.properties,
+            veritech::MaybeSensitive::Sensitive(Default::default()),
+        );
+        // If it's a credential it's already unencrypted
+        component.properties = if let veritech::MaybeSensitive::Plain(mut value) = value {
+            if let Some(object) = value.as_object_mut() {
+                // Note: we can't know which fields are WidgetKind::SecretSelect as we lose information by being so low on the stack
+                // So for now we will try to decrypt every integer root field, which kinda suck
+                //
+                // TODO: traverse tree and decrypt leafs
+                for (_key, value) in object {
+                    if let Some(raw_id) = value.as_i64() {
+                        let decrypted_secret =
+                            EncryptedSecret::get_by_id(txn, tenancy, visibility, &raw_id.into())
+                                .await?
+                                .ok_or_else(|| ComponentViewError::SecretNotFound(raw_id.into()))?
+                                .decrypt(txn, visibility)
+                                .await?;
+                        *value = serde_json::to_value(decrypted_secret)?;
+                    }
+                }
+            }
+            veritech::MaybeSensitive::Sensitive(value.into())
+        } else {
+            value
+        };
+        Ok(())
+    }
+}
+
+impl From<ComponentKind> for veritech::ComponentKind {
+    fn from(view: ComponentKind) -> Self {
+        match view {
+            ComponentKind::Standard => Self::Standard,
+            ComponentKind::Credential => Self::Credential,
+        }
     }
 }
 
@@ -181,8 +250,8 @@ impl From<ComponentView> for veritech::ComponentView {
             system: view.system.map(|system| veritech::SystemView {
                 name: system.name().to_owned(),
             }),
-            properties: serde_json::to_value(view.properties)
-                .expect("HashMap<String, Value> shouldn't fail to serialize to Value"),
+            kind: view.kind.into(),
+            properties: veritech::MaybeSensitive::Plain(view.properties),
         }
     }
 }

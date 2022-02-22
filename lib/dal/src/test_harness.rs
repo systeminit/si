@@ -9,15 +9,16 @@ use veritech::{Instance, StandardConfig};
 
 use crate::{
     billing_account::BillingAccountSignup,
+    component::ComponentKind,
     func::{binding::FuncBinding, FuncId},
     jwt_key::JwtSecretKey,
     key_pair::KeyPairId,
     node::NodeKind,
-    schema, socket, BillingAccount, ChangeSet, Component, EditSession, EncryptedSecret, Func,
-    FuncBackendKind, FuncBackendResponseType, Group, HistoryActor, KeyPair, Node, Organization,
-    Prop, PropKind, QualificationCheck, Schema, SchemaId, SchemaKind, SchemaVariantId, Secret,
-    SecretKind, SecretObjectType, StandardModel, System, Tenancy, User, Visibility, Workspace,
-    NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK,
+    schema, socket, BillingAccount, BillingAccountId, ChangeSet, Component, EditSession,
+    EncryptedSecret, Func, FuncBackendKind, FuncBackendResponseType, Group, HistoryActor, KeyPair,
+    Node, Organization, Prop, PropKind, QualificationCheck, Schema, SchemaId, SchemaKind,
+    SchemaVariantId, Secret, SecretKind, SecretObjectType, StandardModel, System, Tenancy, User,
+    Visibility, Workspace, NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK,
 };
 
 #[derive(Debug)]
@@ -392,9 +393,18 @@ pub async fn create_schema(
     kind: &SchemaKind,
 ) -> Schema {
     let name = generate_fake_name();
-    Schema::new(txn, nats, tenancy, visibility, history_actor, &name, kind)
-        .await
-        .expect("cannot create schema")
+    Schema::new(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        &name,
+        kind,
+        &ComponentKind::Standard,
+    )
+    .await
+    .expect("cannot create schema")
 }
 
 pub async fn create_schema_ui_menu(
@@ -722,6 +732,7 @@ pub async fn create_secret(
     visibility: &Visibility,
     history_actor: &HistoryActor,
     key_pair_id: KeyPairId,
+    billing_account_id: BillingAccountId,
 ) -> Secret {
     let name = generate_fake_name();
     EncryptedSecret::new(
@@ -744,11 +755,13 @@ pub async fn create_secret(
         key_pair_id,
         Default::default(),
         Default::default(),
+        billing_account_id,
     )
     .await
     .expect("cannot create secret")
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn create_secret_with_message(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
@@ -757,6 +770,7 @@ pub async fn create_secret_with_message(
     history_actor: &HistoryActor,
     key_pair_id: KeyPairId,
     message: &serde_json::Value,
+    billing_account_id: BillingAccountId,
 ) -> Secret {
     let name = generate_fake_name();
     EncryptedSecret::new(
@@ -772,6 +786,7 @@ pub async fn create_secret_with_message(
         key_pair_id,
         Default::default(),
         Default::default(),
+        billing_account_id,
     )
     .await
     .expect("cannot create secret")

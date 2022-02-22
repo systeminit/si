@@ -1,7 +1,7 @@
 use super::SchemaResult;
 use crate::server::extract::{Authorization, NatsTxn, PgRwTxn};
 use axum::Json;
-use dal::{HistoryActor, Schema, SchemaKind, Tenancy, Visibility};
+use dal::{component::ComponentKind, HistoryActor, Schema, SchemaKind, Tenancy, Visibility};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -37,6 +37,7 @@ pub async fn create_schema(
         &history_actor,
         &request.name,
         &request.kind,
+        &ComponentKind::Standard,
     )
     .await?;
     txn.commit().await?;

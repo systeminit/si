@@ -7,6 +7,7 @@ use thiserror::Error;
 
 use self::variant::{SchemaVariantError, SchemaVariantResult};
 use crate::{
+    component::ComponentKind,
     edit_field::{
         value_and_visibility_diff, widget::prelude::*, EditField, EditFieldAble, EditFieldDataType,
         EditFieldError, EditFieldObjectKind, EditFields, VisibilityDiff,
@@ -108,6 +109,7 @@ pub struct Schema {
     visibility: Visibility,
     ui_hidden: bool,
     default_schema_variant_id: Option<SchemaVariantId>,
+    component_kind: ComponentKind,
 }
 
 impl_standard_model! {
@@ -121,6 +123,7 @@ impl_standard_model! {
 
 impl Schema {
     #[tracing::instrument(skip(txn, nats, name))]
+    #[allow(clippy::too_many_arguments)]
     pub async fn new(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
@@ -129,12 +132,19 @@ impl Schema {
         history_actor: &HistoryActor,
         name: impl AsRef<str>,
         kind: &SchemaKind,
+        component_kind: &ComponentKind,
     ) -> SchemaResult<Self> {
         let name = name.as_ref();
         let row = txn
             .query_one(
-                "SELECT object FROM schema_create_v1($1, $2, $3, $4)",
-                &[&tenancy, &visibility, &name, &kind.as_ref()],
+                "SELECT object FROM schema_create_v1($1, $2, $3, $4, $5)",
+                &[
+                    &tenancy,
+                    &visibility,
+                    &name,
+                    &kind.as_ref(),
+                    &component_kind.as_ref(),
+                ],
             )
             .await?;
         let object = standard_model::finish_create_from_row(
@@ -151,6 +161,7 @@ impl Schema {
 
     standard_model_accessor!(name, String, SchemaResult);
     standard_model_accessor!(kind, Enum(SchemaKind), SchemaResult);
+    standard_model_accessor!(component_kind, Enum(ComponentKind), SchemaResult);
     standard_model_accessor!(ui_hidden, bool, SchemaResult);
     standard_model_accessor!(
         default_schema_variant_id,

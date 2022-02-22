@@ -283,8 +283,12 @@ async fn qualification_view() {
             "data": {
                 "name": "mastodon",
                 "system": null,
-                "properties": {},
+                "kind": "standard",
+                "properties": {
+                    "maybe_sensitive_container_kind": "Plain"
+                }
             },
+            "parents": [],
             "codes": []
         }),
     );

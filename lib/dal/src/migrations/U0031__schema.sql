@@ -16,7 +16,8 @@ CREATE TABLE schemas
     ui_menu_name                text,
     ui_menu_category            ltree,
     ui_hidden                   boolean                  NOT NULL DEFAULT false,
-    default_schema_variant_id   bigint
+    default_schema_variant_id   bigint,
+    component_kind              text                     NOT NULL
 );
 SELECT standard_model_table_constraints_v1('schemas');
 SELECT many_to_many_table_create_v1('schema_many_to_many_billing_account', 'schemas', 'billing_accounts');
@@ -39,6 +40,7 @@ CREATE OR REPLACE FUNCTION schema_create_v1(
     this_visibility jsonb,
     this_name text,
     this_kind text,
+    this_component_kind text,
     OUT object json) AS
 $$
 DECLARE
@@ -51,11 +53,11 @@ BEGIN
 
     INSERT INTO schemas (tenancy_universal, tenancy_billing_account_ids, tenancy_organization_ids,
                          tenancy_workspace_ids,
-                         visibility_change_set_pk, visibility_edit_session_pk, visibility_deleted, name, kind)
+                         visibility_change_set_pk, visibility_edit_session_pk, visibility_deleted, name, kind, component_kind)
     VALUES (this_tenancy_record.tenancy_universal, this_tenancy_record.tenancy_billing_account_ids,
             this_tenancy_record.tenancy_organization_ids, this_tenancy_record.tenancy_workspace_ids,
             this_visibility_record.visibility_change_set_pk, this_visibility_record.visibility_edit_session_pk,
-            this_visibility_record.visibility_deleted, this_name, this_kind)
+            this_visibility_record.visibility_deleted, this_name, this_kind, this_component_kind)
     RETURNING * INTO this_new_row;
 
     object := row_to_json(this_new_row);
