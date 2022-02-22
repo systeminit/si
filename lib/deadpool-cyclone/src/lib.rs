@@ -22,10 +22,10 @@ use thiserror::Error;
 pub use self::instance::{Instance, Spec};
 
 pub use cyclone::{
-    client::{self, ResolverFunctionExecutionError},
-    CodeGenerationRequest, ComponentView, CycloneClient, FunctionResult, OutputStream,
-    ProgressMessage, QualificationCheckRequest, ResolverFunctionRequest, ResourceSyncRequest,
-    SystemView,
+    client, CodeGenerationRequest, CodeGenerationResultSuccess, ComponentView, CycloneClient,
+    FunctionResult, OutputStream, ProgressMessage, QualificationCheckRequest,
+    QualificationCheckResultSuccess, ResolverFunctionRequest, ResolverFunctionResultSuccess,
+    ResourceSyncRequest, ResourceSyncResultSuccess, SystemView,
 };
 
 /// [`Instance`] implementations.

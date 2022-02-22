@@ -8,13 +8,13 @@ use async_trait::async_trait;
 use cyclone::{
     canonical_command::CanonicalCommand,
     client::{
-        CodeGenerationExecution, Connection, PingExecution, QualificationCheckExecution,
-        QualificationCheckRequest, ResolverFunctionExecution, ResolverFunctionRequest,
-        ResourceSyncExecution, Watch, WatchError, WatchStarted,
+        CodeGenerationRequest, CodeGenerationResultSuccess, Connection, Execution, PingExecution,
+        QualificationCheckRequest, QualificationCheckResultSuccess, ResolverFunctionRequest,
+        ResolverFunctionResultSuccess, ResourceSyncRequest, ResourceSyncResultSuccess, Watch,
+        WatchError, WatchStarted,
     },
     process::{self, ShutdownError},
-    Client, ClientError, CodeGenerationRequest, CycloneClient, HttpClient, LivenessStatus,
-    ReadinessStatus, ResourceSyncRequest,
+    Client, ClientError, CycloneClient, HttpClient, LivenessStatus, ReadinessStatus,
 };
 use derive_builder::Builder;
 use futures::StreamExt;
@@ -140,7 +140,10 @@ impl CycloneClient<TcpStream> for LocalHttpInstance {
     async fn execute_qualification(
         &mut self,
         request: QualificationCheckRequest,
-    ) -> result::Result<QualificationCheckExecution<TcpStream>, ClientError> {
+    ) -> result::Result<
+        Execution<TcpStream, QualificationCheckRequest, QualificationCheckResultSuccess>,
+        ClientError,
+    > {
         self.ensure_healthy_client()
             .await
             .map_err(ClientError::unhealthy)?;
@@ -154,7 +157,10 @@ impl CycloneClient<TcpStream> for LocalHttpInstance {
     async fn execute_resolver(
         &mut self,
         request: ResolverFunctionRequest,
-    ) -> result::Result<ResolverFunctionExecution<TcpStream>, ClientError> {
+    ) -> result::Result<
+        Execution<TcpStream, ResolverFunctionRequest, ResolverFunctionResultSuccess>,
+        ClientError,
+    > {
         self.ensure_healthy_client()
             .await
             .map_err(ClientError::unhealthy)?;
@@ -168,7 +174,10 @@ impl CycloneClient<TcpStream> for LocalHttpInstance {
     async fn execute_sync(
         &mut self,
         request: ResourceSyncRequest,
-    ) -> result::Result<ResourceSyncExecution<TcpStream>, ClientError> {
+    ) -> result::Result<
+        Execution<TcpStream, ResourceSyncRequest, ResourceSyncResultSuccess>,
+        ClientError,
+    > {
         self.ensure_healthy_client()
             .await
             .map_err(ClientError::unhealthy)?;
@@ -182,7 +191,10 @@ impl CycloneClient<TcpStream> for LocalHttpInstance {
     async fn execute_code_generation(
         &mut self,
         request: CodeGenerationRequest,
-    ) -> result::Result<CodeGenerationExecution<TcpStream>, ClientError> {
+    ) -> result::Result<
+        Execution<TcpStream, CodeGenerationRequest, CodeGenerationResultSuccess>,
+        ClientError,
+    > {
         self.ensure_healthy_client()
             .await
             .map_err(ClientError::unhealthy)?;

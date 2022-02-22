@@ -8,6 +8,8 @@ use axum::{
     response::IntoResponse,
 };
 use hyper::StatusCode;
+use serde::{de::DeserializeOwned, Serialize};
+use std::marker::{PhantomData, Unpin};
 use telemetry::{prelude::*, TelemetryLevel};
 
 use super::{
@@ -15,9 +17,11 @@ use super::{
     routes::{State, WatchKeepalive},
 };
 use crate::{
-    server::{code_generation, qualification_check, resolver_function, resource_sync, watch},
-    CodeGenerationResultSuccess, LivenessStatus, Message, QualificationCheckResultSuccess,
-    ReadinessStatus, ResolverFunctionResultSuccess, ResourceSyncResultSuccess,
+    server::{execution, execution::Execution, watch},
+    CodeGenerationRequest, CodeGenerationResultSuccess, LivenessStatus, Message,
+    QualificationCheckRequest, QualificationCheckResultSuccess, ReadinessStatus,
+    ResolverFunctionRequest, ResolverFunctionResultSuccess, ResourceSyncRequest,
+    ResourceSyncResultSuccess,
 };
 
 #[allow(clippy::unused_async)]
@@ -73,62 +77,19 @@ pub async fn ws_execute_resolver(
     Extension(telemetry_level): Extension<Arc<Box<dyn TelemetryLevel>>>,
     limit_request_guard: LimitRequestGuard,
 ) -> impl IntoResponse {
-    async fn handle_socket(
-        mut socket: WebSocket,
-        state: Arc<State>,
-        lang_server_debugging: bool,
-        _limit_request_guard: LimitRequestGuard,
-    ) {
-        let proto =
-            match resolver_function::execute(state.lang_server_path(), lang_server_debugging)
-                .start(&mut socket)
-                .await
-            {
-                Ok(started) => started,
-                Err(err) => {
-                    warn!(error = ?err, "failed to start protocol");
-                    if let Err(err) =
-                        fail_execute_resolver(socket, "failed to start protocol").await
-                    {
-                        warn!(error = ?err, "failed to fail execute resolver");
-                    };
-                    return;
-                }
-            };
-        let proto = match proto.process(&mut socket).await {
-            Ok(processed) => processed,
-            Err(err) => {
-                warn!(error = ?err, "failed to process protocol");
-                if let Err(err) = fail_execute_resolver(socket, "failed to process protocol").await
-                {
-                    warn!(error = ?err, "failed to fail execute resolver");
-                };
-                return;
-            }
-        };
-        if let Err(err) = proto.finish(socket).await {
-            warn!(error = ?err, "failed to finish protocol");
-        }
-    }
-
     wsu.on_upgrade(move |socket| {
+        let request: PhantomData<ResolverFunctionRequest> = PhantomData;
+        let success: PhantomData<ResolverFunctionResultSuccess> = PhantomData;
         handle_socket(
             socket,
             state,
             telemetry_level.is_debug_or_lower(),
             limit_request_guard,
+            "resolverfunction".to_owned(),
+            request,
+            success,
         )
     })
-}
-
-async fn fail_execute_resolver(
-    mut socket: WebSocket,
-    message: impl Into<String>,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let msg = Message::<ResolverFunctionResultSuccess>::fail(message).serialize_to_string()?;
-    socket.send(ws::Message::Text(msg)).await?;
-    socket.close().await?;
-    Ok(())
 }
 
 #[allow(clippy::unused_async)]
@@ -138,64 +99,19 @@ pub async fn ws_execute_qualification(
     Extension(telemetry_level): Extension<Arc<Box<dyn TelemetryLevel>>>,
     limit_request_guard: LimitRequestGuard,
 ) -> impl IntoResponse {
-    async fn handle_socket(
-        mut socket: WebSocket,
-        state: Arc<State>,
-        lang_server_debugging: bool,
-        _limit_request_guard: LimitRequestGuard,
-    ) {
-        let proto =
-            match qualification_check::execute(state.lang_server_path(), lang_server_debugging)
-                .start(&mut socket)
-                .await
-            {
-                Ok(started) => started,
-                Err(err) => {
-                    warn!(error = ?err, "failed to start protocol");
-                    if let Err(err) =
-                        fail_qualification_check(socket, "failed to start protocol").await
-                    {
-                        warn!(error = ?err, "failed to fail execute qualification");
-                    };
-                    return;
-                }
-            };
-        let proto = match proto.process(&mut socket).await {
-            Ok(processed) => processed,
-            Err(err) => {
-                warn!(error = ?err, "failed to process protocol");
-                if let Err(err) =
-                    fail_qualification_check(socket, "failed to process protocol").await
-                {
-                    warn!(error = ?err, "failed to fail execute qualification");
-                };
-                return;
-            }
-        };
-        if let Err(err) = proto.finish(socket).await {
-            warn!(error = ?err, "failed to finish protocol");
-        }
-    }
-
     wsu.on_upgrade(move |socket| {
+        let request: PhantomData<QualificationCheckRequest> = PhantomData;
+        let success: PhantomData<QualificationCheckResultSuccess> = PhantomData;
         handle_socket(
             socket,
             state,
             telemetry_level.is_debug_or_lower(),
             limit_request_guard,
+            "qualificationcheck".to_owned(),
+            request,
+            success,
         )
     })
-}
-
-// TODO(fnichol): guess what, these fail functions can now be generic, yay!
-async fn fail_qualification_check(
-    mut socket: WebSocket,
-    message: impl Into<String>,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let msg = Message::<QualificationCheckResultSuccess>::fail(message).serialize_to_string()?;
-    socket.send(ws::Message::Text(msg)).await?;
-    socket.close().await?;
-    Ok(())
 }
 
 #[allow(clippy::unused_async)]
@@ -205,58 +121,19 @@ pub async fn ws_execute_sync(
     Extension(telemetry_level): Extension<Arc<Box<dyn TelemetryLevel>>>,
     limit_request_guard: LimitRequestGuard,
 ) -> impl IntoResponse {
-    async fn handle_socket(
-        mut socket: WebSocket,
-        state: Arc<State>,
-        lang_server_debugging: bool,
-        _limit_request_guard: LimitRequestGuard,
-    ) {
-        let proto = match resource_sync::execute(state.lang_server_path(), lang_server_debugging)
-            .start(&mut socket)
-            .await
-        {
-            Ok(started) => started,
-            Err(err) => {
-                warn!(error = ?err, "failed to start protocol");
-                if let Err(err) = fail_resource_sync(socket, "failed to start protocol").await {
-                    warn!(error = ?err, "failed to fail execute sync");
-                };
-                return;
-            }
-        };
-        let proto = match proto.process(&mut socket).await {
-            Ok(processed) => processed,
-            Err(err) => {
-                warn!(error = ?err, "failed to process protocol");
-                if let Err(err) = fail_resource_sync(socket, "failed to process protocol").await {
-                    warn!(error = ?err, "failed to fail execute sync");
-                };
-                return;
-            }
-        };
-        if let Err(err) = proto.finish(socket).await {
-            warn!(error = ?err, "failed to finish protocol");
-        }
-    }
-
     wsu.on_upgrade(move |socket| {
+        let request: PhantomData<ResourceSyncRequest> = PhantomData;
+        let success: PhantomData<ResourceSyncResultSuccess> = PhantomData;
         handle_socket(
             socket,
             state,
             telemetry_level.is_debug_or_lower(),
             limit_request_guard,
+            "resourceSync".to_owned(),
+            request,
+            success,
         )
     })
-}
-
-async fn fail_resource_sync(
-    mut socket: WebSocket,
-    message: impl Into<String>,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let msg = Message::<ResourceSyncResultSuccess>::fail(message).serialize_to_string()?;
-    socket.send(ws::Message::Text(msg)).await?;
-    socket.close().await?;
-    Ok(())
 }
 
 #[allow(clippy::unused_async)]
@@ -266,59 +143,72 @@ pub async fn ws_execute_code_generation(
     Extension(telemetry_level): Extension<Arc<Box<dyn TelemetryLevel>>>,
     limit_request_guard: LimitRequestGuard,
 ) -> impl IntoResponse {
-    async fn handle_socket(
-        mut socket: WebSocket,
-        state: Arc<State>,
-        lang_server_debugging: bool,
-        _limit_request_guard: LimitRequestGuard,
-    ) {
-        let proto = match code_generation::execute(state.lang_server_path(), lang_server_debugging)
-            .start(&mut socket)
-            .await
-        {
-            Ok(started) => started,
-            Err(err) => {
-                warn!(error = ?err, "failed to start protocol");
-                if let Err(err) =
-                    fail_resource_code_generation(socket, "failed to start protocol").await
-                {
-                    warn!(error = ?err, "failed to fail execute sync");
-                };
-                return;
-            }
-        };
-        let proto = match proto.process(&mut socket).await {
-            Ok(processed) => processed,
-            Err(err) => {
-                warn!(error = ?err, "failed to process protocol");
-                if let Err(err) =
-                    fail_resource_code_generation(socket, "failed to process protocol").await
-                {
-                    warn!(error = ?err, "failed to fail execute sync");
-                };
-                return;
-            }
-        };
-        if let Err(err) = proto.finish(socket).await {
-            warn!(error = ?err, "failed to finish protocol");
-        }
-    }
-
     wsu.on_upgrade(move |socket| {
+        let request: PhantomData<CodeGenerationRequest> = PhantomData;
+        let success: PhantomData<CodeGenerationResultSuccess> = PhantomData;
         handle_socket(
             socket,
             state,
             telemetry_level.is_debug_or_lower(),
             limit_request_guard,
+            "codeGeneration".to_owned(),
+            request,
+            success,
         )
     })
 }
 
-async fn fail_resource_code_generation(
+async fn handle_socket<
+    Request: Serialize + DeserializeOwned + Unpin,
+    Success: Serialize + DeserializeOwned + Unpin,
+>(
+    mut socket: WebSocket,
+    state: Arc<State>,
+    lang_server_debugging: bool,
+    _limit_request_guard: LimitRequestGuard,
+    sub_command: String,
+    _request_marker: PhantomData<Request>,
+    success_marker: PhantomData<Success>,
+) {
+    let proto = {
+        let execution: Execution<Request, Success> =
+            execution::execute(state.lang_server_path(), lang_server_debugging, sub_command);
+        match execution.start(&mut socket).await {
+            Ok(started) => started,
+            Err(err) => {
+                warn!(error = ?err, "failed to start protocol");
+                if let Err(err) =
+                    fail_to_process(socket, "failed to start protocol", success_marker).await
+                {
+                    warn!(error = ?err, kind = std::any::type_name::<Request>(), "failed to fail execute function");
+                };
+                return;
+            }
+        }
+    };
+    let proto = match proto.process(&mut socket).await {
+        Ok(processed) => processed,
+        Err(err) => {
+            warn!(error = ?err, "failed to process protocol");
+            if let Err(err) =
+                fail_to_process(socket, "failed to process protocol", success_marker).await
+            {
+                warn!(error = ?err, kind = std::any::type_name::<Request>(), "failed to fail execute function");
+            };
+            return;
+        }
+    };
+    if let Err(err) = proto.finish(socket).await {
+        warn!(error = ?err, "failed to finish protocol");
+    }
+}
+
+async fn fail_to_process<Success: Serialize>(
     mut socket: WebSocket,
     message: impl Into<String>,
+    _success_marker: PhantomData<Success>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let msg = Message::<CodeGenerationResultSuccess>::fail(message).serialize_to_string()?;
+    let msg = Message::<Success>::fail(message).serialize_to_string()?;
     socket.send(ws::Message::Text(msg)).await?;
     socket.close().await?;
     Ok(())

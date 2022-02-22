@@ -33,35 +33,18 @@ pub use tokio_tungstenite::tungstenite::{
     protocol::frame::CloseFrame as WebSocketCloseFrame, Message as WebSocketMessage,
 };
 
-pub use self::code_generation::{
-    CodeGenerationExecution, CodeGenerationExecutionClosing, CodeGenerationExecutionError,
-    CodeGenerationExecutionStarted,
-};
+pub use self::execution::{Execution, ExecutionError};
 pub use self::ping::{PingExecution, PingExecutionError};
-pub use self::qualification_check::{
-    QualificationCheckExecution, QualificationCheckExecutionClosing,
-    QualificationCheckExecutionError, QualificationCheckExecutionStarted,
-};
-pub use self::resolver_function::{
-    ResolverFunctionExecution, ResolverFunctionExecutionClosing, ResolverFunctionExecutionError,
-    ResolverFunctionExecutionStarted,
-};
-pub use self::resource_sync::{
-    ResourceSyncExecution, ResourceSyncExecutionClosing, ResourceSyncExecutionError,
-    ResourceSyncExecutionStarted,
-};
 pub use self::watch::{Watch, WatchError, WatchStarted};
 pub use crate::{
-    code_generation::CodeGenerationRequest, qualification_check::QualificationCheckRequest,
-    resolver_function::ResolverFunctionRequest, resource_sync::ResourceSyncRequest, LivenessStatus,
-    LivenessStatusParseError, ReadinessStatus, ReadinessStatusParseError,
+    CodeGenerationRequest, CodeGenerationResultSuccess, LivenessStatus, LivenessStatusParseError,
+    QualificationCheckRequest, QualificationCheckResultSuccess, ReadinessStatus,
+    ReadinessStatusParseError, ResolverFunctionRequest, ResolverFunctionResultSuccess,
+    ResourceSyncRequest, ResourceSyncResultSuccess,
 };
 
-mod code_generation;
+mod execution;
 mod ping;
-mod qualification_check;
-mod resolver_function;
-mod resource_sync;
 mod watch;
 
 #[derive(Debug, Error)]
@@ -158,22 +141,31 @@ where
     async fn execute_qualification(
         &mut self,
         request: QualificationCheckRequest,
-    ) -> result::Result<QualificationCheckExecution<Strm>, ClientError>;
+    ) -> result::Result<
+        Execution<Strm, QualificationCheckRequest, QualificationCheckResultSuccess>,
+        ClientError,
+    >;
 
     async fn execute_resolver(
         &mut self,
         request: ResolverFunctionRequest,
-    ) -> result::Result<ResolverFunctionExecution<Strm>, ClientError>;
+    ) -> result::Result<
+        Execution<Strm, ResolverFunctionRequest, ResolverFunctionResultSuccess>,
+        ClientError,
+    >;
 
     async fn execute_sync(
         &mut self,
         request: ResourceSyncRequest,
-    ) -> result::Result<ResourceSyncExecution<Strm>, ClientError>;
+    ) -> result::Result<Execution<Strm, ResourceSyncRequest, ResourceSyncResultSuccess>, ClientError>;
 
     async fn execute_code_generation(
         &mut self,
         request: CodeGenerationRequest,
-    ) -> result::Result<CodeGenerationExecution<Strm>, ClientError>;
+    ) -> result::Result<
+        Execution<Strm, CodeGenerationRequest, CodeGenerationResultSuccess>,
+        ClientError,
+    >;
 }
 
 impl Client<(), (), ()> {
@@ -285,33 +277,36 @@ where
     async fn execute_qualification(
         &mut self,
         request: QualificationCheckRequest,
-    ) -> Result<QualificationCheckExecution<Strm>> {
+    ) -> Result<Execution<Strm, QualificationCheckRequest, QualificationCheckResultSuccess>> {
         let stream = self.websocket_stream("/execute/qualification").await?;
-        Ok(qualification_check::execute(stream, request))
+        Ok(execution::execute(stream, request))
     }
 
     async fn execute_resolver(
         &mut self,
         request: ResolverFunctionRequest,
-    ) -> Result<ResolverFunctionExecution<Strm>> {
+    ) -> Result<Execution<Strm, ResolverFunctionRequest, ResolverFunctionResultSuccess>> {
         let stream = self.websocket_stream("/execute/resolver").await?;
-        Ok(resolver_function::execute(stream, request))
+        Ok(execution::execute(stream, request))
     }
 
     async fn execute_sync(
         &mut self,
         request: ResourceSyncRequest,
-    ) -> Result<ResourceSyncExecution<Strm>> {
+    ) -> Result<Execution<Strm, ResourceSyncRequest, ResourceSyncResultSuccess>> {
         let stream = self.websocket_stream("/execute/sync").await?;
-        Ok(resource_sync::execute(stream, request))
+        Ok(execution::execute(stream, request))
     }
 
     async fn execute_code_generation(
         &mut self,
         request: CodeGenerationRequest,
-    ) -> result::Result<CodeGenerationExecution<Strm>, ClientError> {
+    ) -> result::Result<
+        Execution<Strm, CodeGenerationRequest, CodeGenerationResultSuccess>,
+        ClientError,
+    > {
         let stream = self.websocket_stream("/execute/code_generation").await?;
-        Ok(code_generation::execute(stream, request))
+        Ok(execution::execute(stream, request))
     }
 }
 

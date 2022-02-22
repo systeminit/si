@@ -1,31 +1,35 @@
 use std::{
+    marker::PhantomData,
     pin::Pin,
     task::{Context, Poll},
 };
 
 use futures::{Future, SinkExt, Stream, StreamExt};
 use hyper::client::connect::Connection;
+use serde::{de::DeserializeOwned, Serialize};
 use thiserror::Error;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_tungstenite::WebSocketStream;
 
-use crate::{
-    FunctionResult, Message, ProgressMessage, ResourceSyncRequest, ResourceSyncResultSuccess,
-};
+use crate::{FunctionResult, Message, ProgressMessage};
 
 pub use tokio_tungstenite::tungstenite::{
     protocol::frame::CloseFrame as WebSocketCloseFrame, Message as WebSocketMessage,
 };
 
-pub fn execute<T>(
+pub fn execute<T, Request, Success>(
     stream: WebSocketStream<T>,
-    request: ResourceSyncRequest,
-) -> ResourceSyncExecution<T> {
-    ResourceSyncExecution { stream, request }
+    request: Request,
+) -> Execution<T, Request, Success> {
+    Execution {
+        stream,
+        request,
+        success_marker: PhantomData,
+    }
 }
 
 #[derive(Debug, Error)]
-pub enum ResourceSyncExecutionError {
+pub enum ExecutionError<Success> {
     #[error("closing execution stream without a result")]
     ClosingWithoutResult,
     #[error("finish message received before result message was received")]
@@ -36,8 +40,8 @@ pub enum ResourceSyncExecutionError {
     JSONSerialize(#[source] serde_json::Error),
     #[error("unexpected websocket message after finish was sent: {0}")]
     MessageAfterFinish(WebSocketMessage),
-    #[error("unexpected qualification check message before start was sent: {0:?}")]
-    MessageBeforeStart(Message<ResourceSyncResultSuccess>),
+    #[error("unexpected message before start was sent: {0:?}")]
+    MessageBeforeStart(Message<Success>),
     #[error("unexpected websocket message type: {0}")]
     UnexpectedMessageType(WebSocketMessage),
     #[error("websocket stream is closed, but finish was not sent")]
@@ -50,56 +54,49 @@ pub enum ResourceSyncExecutionError {
     WSSendIO(#[source] tokio_tungstenite::tungstenite::Error),
 }
 
-type Result<T> = std::result::Result<T, ResourceSyncExecutionError>;
-
 #[derive(Debug)]
-pub struct ResourceSyncExecution<T> {
+pub struct Execution<T, Request, Success> {
     stream: WebSocketStream<T>,
-    request: ResourceSyncRequest,
+    request: Request,
+    // Are we sure this is the right variance?
+    success_marker: PhantomData<Success>,
 }
 
-impl<T> ResourceSyncExecution<T>
+impl<T, Request, Success> Execution<T, Request, Success>
 where
     T: AsyncRead + AsyncWrite + Connection + Unpin + Send + 'static,
+    Success: DeserializeOwned,
+    Request: Serialize,
 {
-    pub async fn start(mut self) -> Result<ResourceSyncExecutionStarted<T>> {
+    pub async fn start(mut self) -> Result<ExecutionStarted<T, Success>, ExecutionError<Success>> {
         match self.stream.next().await {
             Some(Ok(WebSocketMessage::Text(json_str))) => {
                 let msg = Message::deserialize_from_str(&json_str)
-                    .map_err(ResourceSyncExecutionError::JSONDeserialize)?;
+                    .map_err(ExecutionError::JSONDeserialize)?;
                 match msg {
                     Message::Start => {
                         // received correct message, so proceed
                     }
-                    unexpected => {
-                        return Err(ResourceSyncExecutionError::MessageBeforeStart(unexpected))
-                    }
+                    unexpected => return Err(ExecutionError::MessageBeforeStart(unexpected)),
                 }
             }
-            Some(Ok(unexpected)) => {
-                return Err(ResourceSyncExecutionError::UnexpectedMessageType(
-                    unexpected,
-                ))
-            }
-            Some(Err(err)) => return Err(ResourceSyncExecutionError::WSReadIO(err)),
-            None => return Err(ResourceSyncExecutionError::WSClosedBeforeStart),
+            Some(Ok(unexpected)) => return Err(ExecutionError::UnexpectedMessageType(unexpected)),
+            Some(Err(err)) => return Err(ExecutionError::WSReadIO(err)),
+            None => return Err(ExecutionError::WSClosedBeforeStart),
         }
 
-        let msg = self
-            .request
-            .serialize_to_string()
-            .map_err(ResourceSyncExecutionError::JSONSerialize)?;
+        let msg = serde_json::to_string(&self.request).map_err(ExecutionError::JSONSerialize)?;
         self.stream
             .send(WebSocketMessage::Text(msg))
             .await
-            .map_err(ResourceSyncExecutionError::WSSendIO)?;
+            .map_err(ExecutionError::WSSendIO)?;
 
         Ok(self.into())
     }
 }
 
-impl<T> From<ResourceSyncExecution<T>> for ResourceSyncExecutionStarted<T> {
-    fn from(value: ResourceSyncExecution<T>) -> Self {
+impl<T, Request, Success> From<Execution<T, Request, Success>> for ExecutionStarted<T, Success> {
+    fn from(value: Execution<T, Request, Success>) -> Self {
         Self {
             stream: value.stream,
             result: None,
@@ -108,32 +105,33 @@ impl<T> From<ResourceSyncExecution<T>> for ResourceSyncExecutionStarted<T> {
 }
 
 #[derive(Debug)]
-pub struct ResourceSyncExecutionStarted<T> {
+pub struct ExecutionStarted<T, Success> {
     stream: WebSocketStream<T>,
-    result: Option<FunctionResult<ResourceSyncResultSuccess>>,
+    result: Option<FunctionResult<Success>>,
 }
 
-impl<T> ResourceSyncExecutionStarted<T>
+impl<T, Success> ExecutionStarted<T, Success>
 where
     T: AsyncRead + AsyncWrite + Connection + Unpin + Send + 'static,
 {
-    pub async fn finish(self) -> Result<FunctionResult<ResourceSyncResultSuccess>> {
-        ResourceSyncExecutionClosing::try_from(self)?.finish().await
+    pub async fn finish(self) -> Result<FunctionResult<Success>, ExecutionError<Success>> {
+        ExecutionClosing::try_from(self)?.finish().await
     }
 }
 
-impl<T> Stream for ResourceSyncExecutionStarted<T>
+impl<T, Success> Stream for ExecutionStarted<T, Success>
 where
     T: AsyncRead + AsyncWrite + Connection + Unpin + Send + 'static,
+    Success: DeserializeOwned + std::marker::Unpin,
 {
-    type Item = Result<ProgressMessage>;
+    type Item = Result<ProgressMessage, ExecutionError<Success>>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         match Pin::new(&mut self.stream.next()).poll(cx) {
             // We successfully got a websocket text message
             Poll::Ready(Some(Ok(WebSocketMessage::Text(json_str)))) => {
                 let msg = Message::deserialize_from_str(&json_str)
-                    .map_err(ResourceSyncExecutionError::JSONDeserialize)?;
+                    .map_err(ExecutionError::JSONDeserialize)?;
                 match msg {
                     // We got a heartbeat message, pass it on
                     Message::Heartbeat => Poll::Ready(Some(Ok(ProgressMessage::Heartbeat))),
@@ -159,27 +157,23 @@ where
                             Poll::Ready(None)
                         } else {
                             // Otherwise we got a finish before seeing the result
-                            Poll::Ready(Some(Err(ResourceSyncExecutionError::FinishBeforeResult)))
+                            Poll::Ready(Some(Err(ExecutionError::FinishBeforeResult)))
                         }
                     }
                     // We got an unexpected message
-                    unexpected => Poll::Ready(Some(Err(
-                        ResourceSyncExecutionError::MessageBeforeStart(unexpected),
-                    ))),
+                    unexpected => {
+                        Poll::Ready(Some(Err(ExecutionError::MessageBeforeStart(unexpected))))
+                    }
                 }
             }
             // We successfully got an unexpected websocket message type that was not text
-            Poll::Ready(Some(Ok(unexpected))) => Poll::Ready(Some(Err(
-                ResourceSyncExecutionError::UnexpectedMessageType(unexpected),
-            ))),
+            Poll::Ready(Some(Ok(unexpected))) => {
+                Poll::Ready(Some(Err(ExecutionError::UnexpectedMessageType(unexpected))))
+            }
             // We failed to get the next websocket message
-            Poll::Ready(Some(Err(err))) => {
-                Poll::Ready(Some(Err(ResourceSyncExecutionError::WSReadIO(err))))
-            }
+            Poll::Ready(Some(Err(err))) => Poll::Ready(Some(Err(ExecutionError::WSReadIO(err)))),
             // We see the end of the websocket stream, but finish was never sent
-            Poll::Ready(None) => {
-                Poll::Ready(Some(Err(ResourceSyncExecutionError::WSClosedBeforeFinish)))
-            }
+            Poll::Ready(None) => Poll::Ready(Some(Err(ExecutionError::WSClosedBeforeFinish))),
             // Not ready, so...not ready!
             Poll::Pending => Poll::Pending,
         }
@@ -187,15 +181,15 @@ where
 }
 
 #[derive(Debug)]
-pub struct ResourceSyncExecutionClosing<T> {
+pub struct ExecutionClosing<T, Success> {
     stream: WebSocketStream<T>,
-    result: FunctionResult<ResourceSyncResultSuccess>,
+    result: FunctionResult<Success>,
 }
 
-impl<T> TryFrom<ResourceSyncExecutionStarted<T>> for ResourceSyncExecutionClosing<T> {
-    type Error = ResourceSyncExecutionError;
+impl<T, Success> TryFrom<ExecutionStarted<T, Success>> for ExecutionClosing<T, Success> {
+    type Error = ExecutionError<Success>;
 
-    fn try_from(value: ResourceSyncExecutionStarted<T>) -> Result<Self> {
+    fn try_from(value: ExecutionStarted<T, Success>) -> Result<Self, Self::Error> {
         match value.result {
             Some(result) => Ok(Self {
                 stream: value.stream,
@@ -206,15 +200,15 @@ impl<T> TryFrom<ResourceSyncExecutionStarted<T>> for ResourceSyncExecutionClosin
     }
 }
 
-impl<T> ResourceSyncExecutionClosing<T>
+impl<T, Success> ExecutionClosing<T, Success>
 where
     T: AsyncRead + AsyncWrite + Connection + Unpin + Send + 'static,
 {
-    async fn finish(mut self) -> Result<FunctionResult<ResourceSyncResultSuccess>> {
+    async fn finish(mut self) -> Result<FunctionResult<Success>, ExecutionError<Success>> {
         match self.stream.next().await {
             Some(Ok(WebSocketMessage::Close(_))) | None => Ok(self.result),
-            Some(Ok(unexpected)) => Err(ResourceSyncExecutionError::MessageAfterFinish(unexpected)),
-            Some(Err(err)) => Err(ResourceSyncExecutionError::WSReadIO(err)),
+            Some(Ok(unexpected)) => Err(ExecutionError::MessageAfterFinish(unexpected)),
+            Some(Err(err)) => Err(ExecutionError::WSReadIO(err)),
         }
     }
 }

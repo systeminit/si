@@ -50,3 +50,9 @@ pub use server::{Config, ConfigError, IncomingStream, Server};
 pub mod client;
 #[cfg(feature = "client")]
 pub use client::{Client, ClientError, CycloneClient, HttpClient, UdsClient};
+
+use chrono::Utc;
+
+pub fn timestamp() -> u64 {
+    u64::try_from(std::cmp::max(Utc::now().timestamp(), 0)).expect("timestamp not be negative")
+}
