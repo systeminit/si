@@ -16,9 +16,9 @@ use crate::{
     key_pair::KeyPairId,
     pk,
     standard_model::{self, TypeHint},
-    standard_model_accessor, standard_model_accessor_ro, standard_model_belongs_to, HistoryActor,
-    HistoryEvent, HistoryEventError, KeyPair, KeyPairError, StandardModel, StandardModelError,
-    Tenancy, Timestamp, Visibility,
+    standard_model_accessor, standard_model_accessor_ro, standard_model_belongs_to,
+    BillingAccountId, HistoryActor, HistoryEvent, HistoryEventError, KeyPair, KeyPairError,
+    StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
 };
 
 /// Error type for Secrets.
@@ -279,9 +279,15 @@ impl EncryptedSecret {
         self,
         txn: &PgTxn<'_>,
         visibility: &Visibility,
+        billing_account_id: BillingAccountId,
     ) -> SecretResult<DecryptedSecret> {
+        let mut key_pair_tenancy = self.tenancy().clone();
+        key_pair_tenancy
+            .billing_account_ids
+            .push(billing_account_id);
+
         let key_pair = self
-            .key_pair(txn, visibility)
+            .key_pair_with_tenancy(txn, &key_pair_tenancy, visibility)
             .await?
             .ok_or(SecretError::KeyPairNotFound)?;
         self.into_decrypted(key_pair.public_key(), key_pair.secret_key())
