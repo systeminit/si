@@ -223,6 +223,10 @@ impl Prop {
         result: PropResult,
     );
 
+    // FIXME(nick,jacob): this needs to be able to automatically set the parent attribute resolver as well.
+    // See `integration_test::attribute_resolver::remove_for_context` for more details since its test setup
+    // involves setting parent attribute resolvers for two child string props in a prop object even though
+    // they have the prop object as their parent prop.
     pub async fn set_parent_prop(
         &self,
         txn: &PgTxn<'_>,
