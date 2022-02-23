@@ -290,7 +290,8 @@ async fn resolver_function_request(
                 trace!("received heartbeat message");
             }
             Err(err) => {
-                warn!(error = ?err, "next progress message was an error, skipping to next message");
+                warn!(error = ?err, "next progress message was an error, bailing out");
+                break;
             }
         }
     }
@@ -406,7 +407,8 @@ async fn qualification_check_request(
                 trace!("received heartbeat message");
             }
             Err(err) => {
-                warn!(error = ?err, "next progress message was an error, skipping to next message");
+                warn!(error = ?err, "next progress message was an error, bailing out");
+                break;
             }
         }
     }
@@ -514,7 +516,8 @@ async fn resource_sync_request(
                 trace!("received heartbeat message");
             }
             Err(err) => {
-                warn!(error = ?err, "next progress message was an error, skipping to next message");
+                warn!(error = ?err, "next progress message was an error, bailing out");
+                break;
             }
         }
     }
@@ -626,7 +629,8 @@ async fn code_generation_request(
                 trace!("received heartbeat message");
             }
             Err(err) => {
-                warn!(error = ?err, "next progress message was an error, skipping to next message");
+                warn!(error = ?err, "next progress message was an error, bailing out");
+                break;
             }
         }
     }

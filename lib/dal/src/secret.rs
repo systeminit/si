@@ -302,7 +302,7 @@ impl EncryptedSecret {
             (SecretVersion::V1, SecretAlgorithm::Sealedbox) => Ok(DecryptedSecret {
                 name: self.name,
                 object_type: self.object_type,
-                kind: self.kind,
+                secret_kind: self.kind,
                 message: serde_json::from_slice(
                     &sealedbox::open(&self.crypted, pkey, skey)
                         .map_err(|_| SecretError::DecryptionFailed)?,
@@ -325,7 +325,7 @@ impl EncryptedSecret {
 pub struct DecryptedSecret {
     name: String,
     object_type: SecretObjectType,
-    kind: SecretKind,
+    secret_kind: SecretKind,
     message: Value,
 }
 
@@ -342,7 +342,7 @@ impl DecryptedSecret {
 
     /// Gets the decrypted secret's kind.
     pub fn kind(&self) -> SecretKind {
-        self.kind
+        self.secret_kind
     }
 }
 
@@ -351,7 +351,7 @@ impl fmt::Debug for DecryptedSecret {
         f.debug_struct("DecryptedSecret")
             .field("name", &self.name)
             .field("object_type", &self.object_type)
-            .field("kind", &self.kind)
+            .field("secret_kind", &self.secret_kind)
             .finish_non_exhaustive()
     }
 }
@@ -513,7 +513,7 @@ mod tests {
 
             assert_eq!("the-cadillac-three", decrypted.name);
             assert_eq!(SecretObjectType::Credential, decrypted.object_type);
-            assert_eq!(SecretKind::DockerHub, decrypted.kind);
+            assert_eq!(SecretKind::DockerHub, decrypted.secret_kind);
             assert_eq!(message, decrypted.message);
         }
     }
