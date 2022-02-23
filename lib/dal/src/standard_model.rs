@@ -497,12 +497,12 @@ pub trait StandardModel {
             crate::standard_model::delete(txn, Self::table_name(), self.tenancy(), self.pk())
                 .await?;
         // TODO(fnichol): I think that mutating our own visibility is likely okay in this
-        // situation, as opposed to passing in an explicit visbility. The consequence is that
+        // situation, as opposed to passing in an explicit visibility. The consequence is that
         // you'll be setting *this* object to be in a deleted state, no matter its current
-        // visibility. This may prove to be sufficiently unsafe and warrents an explicitly passed
+        // visibility. This may prove to be sufficiently unsafe and warrants an explicitly passed
         // visibility when deleting. As it stands right now, it would be maximally safe to fetch
         // this object by id for the target visibility (with `deleted = false`) and then delete
-        // *taht* instance.
+        // *that* instance.
         self.visibility_mut().deleted = true;
         self.timestamp_mut().updated_at = updated_at;
         let _history_event = crate::HistoryEvent::new(

@@ -1,3 +1,5 @@
+//! The Data Access Layer (DAL) for System Initiative.
+
 use rand::Rng;
 use si_data::{NatsClient, NatsError, PgError, PgPool, PgPoolError};
 use telemetry::prelude::*;

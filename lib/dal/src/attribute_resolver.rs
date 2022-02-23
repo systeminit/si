@@ -91,6 +91,8 @@ impl AttributeResolverValue {
     }
 }
 
+/// Prop and Component IDs might both be set, unset, or a combination of the two. In fact, by
+/// default, [`AttributeResolverContext`] is created with _all_ IDs as [`UNSET_ID_VALUE`].
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct AttributeResolverContext {
     prop_id: PropId,
@@ -190,6 +192,13 @@ impl_standard_model! {
     history_event_message_name: "Attribute Resolver"
 }
 
+/// Some methods worth pointing out for this impl:
+/// - [`insert_for_context()`](AttributeResolver::insert_for_context()): add new element to array,
+///   key to map, etc.
+/// - [`update_for_context()`](AttributeResolver::update_for_context()): set a value (including the
+///   value of unset)
+/// - [`remove_for_context()`](AttributeResolver::remove_for_context()): remove a value (including
+///   the value of unset) that has already been set
 impl AttributeResolver {
     #[allow(clippy::too_many_arguments)]
     #[tracing::instrument(skip(txn, nats))]
@@ -508,10 +517,55 @@ impl AttributeResolver {
         Ok(siblings_have_values)
     }
 
+    /// Mark the given [`AttributeResolver`] as deleted if it exists for the specified context. This
+    /// is useful when removing an override set by [`update_for_context()`](AttributeResolver::update_for_context()).
+    /// This function does not remove parent resolvers, unlike the aforementioned update function.
+    ///
+    /// Some thoughts on why this method exists (written by [@jhelwig](https://github.com/jhelwig) and
+    /// transposed by [@nickgerace](https://github.com/nickgerace)):
+    /// if there's a value set at a less-specific precedence (e.g. [`AttributeResolverContext`] with a
+    /// [`PropId`]), and another value set at a more-specific precedence (e.g. [`AttributeResolverContext`]
+    /// with a [`PropId`] and a [`ComponentId`]), if you want to remove the override set at the more-specific
+    /// precedence, you cannot do that by setting an [`AttributeResolver`] with an even more specific
+    /// precedence, you need to remove the [`AttributeResolver`] that's set with the [`PropId`] and
+    /// [`ComponentId`] context so that the [`PropId`]-only context will be used.
+    #[allow(clippy::too_many_arguments)]
+    #[async_recursion]
+    pub async fn remove_for_context(
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+        history_actor: &HistoryActor,
+        attribute_resolver_id: AttributeResolverId,
+        attribute_resolver_context: AttributeResolverContext,
+    ) -> AttributeResolverResult<()> {
+        let mut given_attribute_resolver =
+            Self::get_by_id(txn, tenancy, visibility, &attribute_resolver_id)
+                .await?
+                .ok_or_else(|| {
+                    AttributeResolverError::NotFound(attribute_resolver_id, *visibility)
+                })?;
+        if given_attribute_resolver.context != attribute_resolver_context {
+            return Err(AttributeResolverError::NotFound(
+                attribute_resolver_id,
+                *visibility,
+            ));
+        }
+        Ok(given_attribute_resolver
+            .delete(txn, nats, history_actor)
+            .await?)
+    }
+
     /// Update the [`Func`] & [`FuncBinding`] of an [`AttributeResolver`] for a given
     /// [`AttributeResolverContext`]. If the [`AttributeResolver`] exists, but is not specific to the given
     /// [`AttributeResolverContext`], then a new [`AttributeResolver`] is created, specific to that
     /// [`AttributeResolverContext`].
+    ///
+    /// By passing in [`None`] as the "value" argument, the caller is specifically saying "there is
+    /// no value for this property in this context". This is (potentially) explicitly overriding
+    /// what the prop itself says in the context of its schema variant. This is direct unset by
+    /// override. TLDR: "there is no value" is a type of value.
     #[allow(clippy::too_many_arguments)]
     #[async_recursion]
     pub async fn update_for_context(
@@ -635,6 +689,10 @@ impl AttributeResolver {
             .set_key(txn, nats, visibility, history_actor, key)
             .await?;
 
+        // This check only passes if we are the child of another prop. This handles the nesting
+        // scenario where a component has had nothing set on it yet, but it has a deeply nested
+        // child that has been set (this prop). Now, we can determine our standing (indices
+        // included) in relation to the root prop.
         if let (Some(parent_prop), Some(parent_attribute_resolver)) = (
             prop.parent_prop(txn, visibility).await?,
             attribute_resolver
@@ -702,7 +760,8 @@ impl AttributeResolver {
     /// Insert a new value for [`Prop`] in the given [`AttributeResolverContext`]. This is mostly only useful for
     /// adding elements to a [`PropKind::Array`], or [`PropKind::Map`]. All other [`PropKind`] should be able to
     /// directly use [`update_for_context()`](AttributeResolver::update_for_context()), as there will already be an
-    /// appropriate [`AttributeResolver`] to use.
+    /// appropriate [`AttributeResolver`] to use. By using this function, [`update_for_context()`](AttributeResolver::update_for_context())
+    /// is called after we have created an appropriate [`AttributeResolver`] to use.
     #[allow(clippy::too_many_arguments)]
     pub async fn insert_for_context(
         txn: &PgTxn<'_>,
