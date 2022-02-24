@@ -1,12 +1,5 @@
 <template>
   <div class="flex flex-col w-full">
-    <!--    <SiError-->
-    <!--      v-if="showError"-->
-    <!--      :test="placeholderString"-->
-    <!--      :message="placeholderString"-->
-    <!--      :success="true"-->
-    <!--      @clear="placeholderFunc"-->
-    <!--    />-->
     <div class="flex flex-row items-center w-full pb-2">
       <div class="w-1/2 pr-2 text-sm text-right text-gray-400 align-middle">
         <label for="secret-name-textbox">Secret Name:</label>
@@ -30,19 +23,19 @@
       <div class="w-1/2 align-middle">
         <SiSelect
           id="secret-password-textbox"
-          v-model="selectedSecretKindName"
+          v-model="secretKind"
           size="xs"
           name="secretKind"
-          :options="secretKindOptions"
+          :options="secretKindOptionList"
           required
         />
       </div>
     </div>
 
     <SecretCreateFields
-      v-if="selectedSecretKind"
-      v-model="createFields"
-      :secret-kind="selectedSecretKind"
+      v-if="secretKindFields"
+      v-model="secretMessage"
+      :secret-kind-fields="secretKindFields"
     />
 
     <div class="flex justify-end w-full">
@@ -52,20 +45,17 @@
           label="Cancel"
           kind="cancel"
           :icon="null"
-          @click="returnToListView"
+          @click="cancel"
         />
       </div>
       <div>
-        <!-- NOTE(nick): disable the create button if the user exits edit mode. We will still keep
-        this component alive in case that was an accident.
-        -->
         <SiButton
           size="xs"
           label="Create"
           kind="save"
           :icon="null"
           :disabled="!enableCreateButton"
-          @click="createSecret(createFields, selectedSecretKind, secretName)"
+          @click="create"
         />
       </div>
     </div>
@@ -73,89 +63,165 @@
 </template>
 
 <script setup lang="ts">
-import SiButton from "@/atoms/SiButton.vue";
-// import SiError from "@/atoms/SiError.vue";
-import SiSelect, { SelectPropsOption } from "@/atoms/SiSelect.vue";
-import SiTextBox from "@/atoms/SiTextBox.vue";
-import { computed, ref } from "vue";
-import { SecretService } from "@/service/secret";
-import { SecretKind } from "@/api/sdf/dal/secret";
-import SecretCreateFields from "@/organisims/Secret/SecretCreateFields.vue";
-import { refFrom } from "vuse-rx";
-import { ChangeSetService } from "@/service/change_set";
+import { Base64 } from "js-base64";
+import _ from "lodash";
 // NOTE(nick): we have our own "tweetnacl-sealedbox-js" with types for TS.
 // @ts-ignore
 import sealedBox from "tweetnacl-sealedbox-js";
-import { Secret } from "@/api/sdf/dal/secret";
-import { Base64 } from "js-base64";
+import { from } from "rxjs";
+import { switchMap } from "rxjs/operators";
+import { computed, ref, watch } from "vue";
+import { refFrom } from "vuse-rx";
+import {
+  SecretAlgorithm,
+  SecretKind,
+  SecretKindFields,
+  SecretObjectType,
+  SecretVersion,
+} from "@/api/sdf/dal/secret";
+import SiButton from "@/atoms/SiButton.vue";
+import SiSelect, { SelectPropsOption } from "@/atoms/SiSelect.vue";
+import SiTextBox from "@/atoms/SiTextBox.vue";
+import SecretCreateFields from "@/organisims/Secret/SecretCreateFields.vue";
+import { ChangeSetService } from "@/service/change_set";
 import { GlobalErrorService } from "@/service/global_error";
+import { SecretService } from "@/service/secret";
 
-defineProps<{
-  modelValue: string;
-}>();
+const emit = defineEmits(["cancel", "submit"]);
 
-const editMode = refFrom<boolean>(ChangeSetService.currentEditMode());
+const editMode = refFrom<boolean | undefined>(
+  ChangeSetService.currentEditMode(),
+);
 
-// NOTE(nick): this is a tad "hacky", but ensures we get the actual kind for a given name.
-// Reactivity was not behaving as intended with "SecretKind", so we are using "string" instead.
-// Even if we switch back to using "SecretKind", we need to ensure our core variable defaults to
-// "unset" or equivalent.
-const selectedSecretKindName = ref<string>("");
-const selectedSecretKind = computed((): SecretKind | null => {
-  if (!selectedSecretKindName.value) {
-    return null;
+const secretName = ref<string>("");
+
+const secretKind = ref<SecretKind | undefined>(undefined);
+
+const secretMessage = ref<Record<string, string>>({});
+
+const secretKindFields = computed((): SecretKindFields | undefined => {
+  if (!secretKind.value || !allSecretKindFields.value) {
+    return undefined;
   }
-  for (const kind of secretKinds.value) {
-    if (kind.name === selectedSecretKindName.value) {
-      return kind;
+
+  // Find the entry for the selected `SecretKind`--if not found, then
+  // `undefined` is returned
+  const secretKindFields = _.find(
+    allSecretKindFields.value,
+    (secretKindFields) => secretKindFields.secretKind == secretKind.value,
+  );
+  return secretKindFields;
+});
+
+const enableCreateButton = computed((): boolean => {
+  // Early return if any form fields have missing or empty values in the
+  // message
+  if (!secretKindFields.value) {
+    return false;
+  } else {
+    for (const field of secretKindFields.value.fields) {
+      if (!secretMessage.value[field.keyName]) {
+        // Key is not yet set for this field in the message
+        return false;
+      } else if (secretMessage.value[field.keyName].length == 0) {
+        // The value for this field is empty
+        return false;
+      }
     }
   }
-  return null;
+
+  const inEditMode = editMode.value != undefined && editMode.value;
+  const secretKindSelected = secretKind.value != undefined;
+  const namePopulated = secretName.value.length > 0;
+
+  return inEditMode && namePopulated && secretKindSelected;
 });
 
-// NOTE(nick): in-line comparison is not reactive for some reason still... using computed helper.
-const enableCreateButton = computed((): boolean => {
-  return editMode && selectedSecretKind.value !== null;
-});
+const allSecretKindFields = refFrom<SecretKindFields[] | undefined>(
+  SecretService.listSecretKindFields().pipe(
+    switchMap((response) => {
+      if (response.error) {
+        GlobalErrorService.set(response);
+        return from([undefined]);
+      } else {
+        return from([response.fields]);
+      }
+    }),
+  ),
+);
 
-const secretKinds = computed((): SecretKind[] => {
-  return SecretService.listSecretKinds();
-});
-
-// These are used for options to display in the creation dropdown.
-// Our first entry in the array is the "unset" dropdown option.
-const secretKindOptions = computed((): SelectPropsOption[] => {
+const secretKindOptionList = computed((): SelectPropsOption[] => {
   let options: SelectPropsOption[] = [{ label: "", value: "" }];
-  for (const kind of secretKinds.value) {
-    options.push({ label: kind.name, value: kind.name });
+  if (allSecretKindFields.value) {
+    for (const kindFields of allSecretKindFields.value) {
+      options.push({
+        label: kindFields.displayName,
+        value: String(kindFields.secretKind),
+      });
+    }
   }
   return options;
 });
 
-// We need to get user input from our child create fields component;
-const createFields = ref<Record<string, string>>({});
+const clear = () => {
+  secretName.value = "";
+  secretKind.value = undefined;
+  for (const key of Object.keys(secretMessage.value)) {
+    delete secretMessage.value[key];
+  }
+};
 
-const createSecret = async (
-  message: Record<string, string>,
-  kind: SecretKind,
-  secretName: string,
-) => {
+const cancel = () => {
+  clear();
+  emit("cancel");
+};
+
+const create = async (): Promise<void> => {
+  const kind = secretKind.value;
+  if (!kind) {
+    return;
+  }
+  const publicKey = await getPublicKey();
+  if (!publicKey) {
+    return;
+  }
+  const crypted = encryptMessage(secretMessage.value, publicKey.pkey);
+
+  SecretService.createSecret({
+    name: secretName.value,
+    objectType: SecretObjectType.Credential,
+    kind,
+    crypted,
+    keyPairId: publicKey.id,
+    version: SecretVersion.V1,
+    algorithm: SecretAlgorithm.Sealedbox,
+  }).subscribe((response) => {
+    if (response.error) {
+      GlobalErrorService.set(response);
+    }
+    clear();
+    emit("submit");
+  });
+};
+
+watch(secretKind, (_current, _old) => {
+  // Delete all entries in `secretMessage` as they may not apply to other
+  // secret kinds and should *not* persist
+  for (const key of Object.keys(secretMessage.value)) {
+    delete secretMessage.value[key];
+  }
+});
+
+const getPublicKey = async (): Promise<{
+  id: number;
+  pkey: Uint8Array;
+} | null> => {
   const reply = await SecretService.getPublicKeyRaw();
   if (reply.error) {
     GlobalErrorService.set(reply);
+    return null;
   } else {
-    const publicKeyDecoded = Base64.toUint8Array(reply.public_key);
-
-    const encrypted = encryptMessage(message, publicKeyDecoded);
-    const secret: Secret = {
-      id: 1,
-      name: secretName,
-      kind: kind.name,
-      objectType: kind.objectType,
-      contents: encrypted,
-    };
-    SecretService.createSecret(secret);
-    returnToListView();
+    return { id: reply.id, pkey: Base64.toUint8Array(reply.public_key) };
   }
 };
 
@@ -173,14 +239,6 @@ const serializeMessage = (message: Record<string, string>): Uint8Array => {
     result[i] = json.charCodeAt(i);
   }
   return result;
-};
-
-const secretName = ref<string>("");
-
-// Use "emits" to switch back to "list" view.
-const emits = defineEmits(["update:modelValue"]);
-const returnToListView = () => {
-  emits("update:modelValue", "list");
 };
 </script>
 

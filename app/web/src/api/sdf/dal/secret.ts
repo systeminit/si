@@ -1,23 +1,32 @@
-// import {StandardModel} from "@/api/sdf/dal/standard_model";
+import { StandardModel } from "@/api/sdf/dal/standard_model";
 
-// FIXME(nick): remove "id" field once Secret extends standard model. If it will ultimately not extend standard model,
-// then we should remove "id" and use name for key-ing through "Secret[]" objects.
-export interface Secret {
-  id: number;
+export interface Secret extends StandardModel {
   name: string;
-  kind: string;
-  objectType: string;
-  contents: number[];
+  objectType: SecretObjectType;
+  kind: SecretKind;
 }
 
-export interface SecretKind {
-  name: string;
-  objectType: string;
-  fields: SecretField[];
+export enum SecretObjectType {
+  Credential = "credential",
 }
 
-export interface SecretField {
-  name: string;
+export enum SecretKind {
+  DockerHub = "dockerHub",
+  AwsAccessKey = "awsAccessKey",
+  HelmRepo = "helmRepo",
+  AzureServicePrincipal = "azureServicePrincipal",
+}
+
+export enum SecretVersion {
+  V1 = "v1",
+}
+
+export enum SecretAlgorithm {
+  Sealedbox = "sealedbox",
+}
+
+export interface SecretKindFields {
+  secretKind: SecretKind;
   displayName: string;
-  password: boolean;
+  fields: { keyName: string; displayName: string; password: boolean }[];
 }

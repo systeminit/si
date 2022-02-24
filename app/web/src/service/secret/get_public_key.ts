@@ -7,7 +7,13 @@ import { PublicKey } from "@/api/sdf/dal/key_pair";
 // or equivalent.
 export type GetPublicKeyResponse = PublicKey;
 
-// This is a blocking call, unlike most service calls. It does not return an observable.
+/**
+ * Returns the current `PublicKey` for the corresponding logged in billing
+ * account
+ *
+ * **Note**: This is a blocking call, unlike most service calls--it does not
+ * return an observable.
+ */
 export async function getPublicKeyRaw(): Promise<
   ApiResponse<GetPublicKeyResponse>
 > {

@@ -10,6 +10,7 @@ use crate::server::extract::{Authorization, NatsTxn, PgRwTxn};
 use super::SecretResult;
 
 #[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateSecretRequest {
     pub name: String,
     pub object_type: SecretObjectType,

@@ -1,34 +1,55 @@
-import { Secret } from "@/api/sdf/dal/secret";
-import { ApiResponse, SDF } from "@/api/sdf";
-import { combineLatest, combineLatestWith, from, Observable } from "rxjs";
-import { standardVisibilityTriggers$ } from "@/observable/visibility";
 import Bottle from "bottlejs";
-import { switchMap } from "rxjs/operators";
-import { workspace$ } from "@/observable/workspace";
 import _ from "lodash";
+import {
+  combineLatest,
+  combineLatestWith,
+  from,
+  Observable,
+  share,
+} from "rxjs";
+import { switchMap } from "rxjs/operators";
+import { ApiResponse, SDF } from "@/api/sdf";
+import { Secret } from "@/api/sdf/dal/secret";
+import { Visibility } from "@/api/sdf/dal/visibility";
+import { standardVisibilityTriggers$ } from "@/observable/visibility";
+import { workspace$ } from "@/observable/workspace";
 
-export type ListSecretsResponse = Secret[];
+export interface ListSecretRequest extends Visibility {
+  workspaceId: number;
+}
 
-export function listSecrets(): Observable<ApiResponse<ListSecretsResponse>> {
-  return combineLatest([standardVisibilityTriggers$]).pipe(
-    combineLatestWith(workspace$),
-    switchMap(([[[visibility]], workspace]) => {
-      const bottle = Bottle.pop("default");
-      const sdf: SDF = bottle.container.SDF;
-      if (_.isNull(workspace)) {
-        return from([
-          {
-            error: {
-              statusCode: 10,
-              message: "cannot make call without a workspace; bug!",
-              code: 10,
-            },
+export interface ListSecretResponse {
+  list: Secret[];
+}
+
+const secretList$ = combineLatest([standardVisibilityTriggers$]).pipe(
+  combineLatestWith(workspace$),
+  switchMap(([[[visibility]], workspace]) => {
+    const bottle = Bottle.pop("default");
+    const sdf: SDF = bottle.container.SDF;
+    if (_.isNull(workspace)) {
+      return from([
+        {
+          error: {
+            statusCode: 10,
+            message: "cannot make call without a workspace; bug!",
+            code: 10,
           },
-        ]);
-      }
-      return sdf.get<ApiResponse<ListSecretsResponse>>("secret/list_secrets", {
-        ...visibility,
-      });
-    }),
-  );
+        },
+      ]);
+    }
+    const request: ListSecretRequest = {
+      ...visibility,
+      workspaceId: workspace.id,
+    };
+    return sdf.get<ApiResponse<ListSecretResponse>>(
+      "secret/list_secrets",
+      request,
+    );
+  }),
+  share(),
+);
+
+export function listSecrets(): Observable<ApiResponse<ListSecretResponse>> {
+  return secretList$;
 }

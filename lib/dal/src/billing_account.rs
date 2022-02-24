@@ -3,14 +3,14 @@ use si_data::{NatsError, NatsTxn, PgError, PgTxn};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::schema::variant::SchemaVariantError;
-use crate::standard_model::option_object_from_row;
 use crate::{
-    impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_has_many,
-    Capability, CapabilityError, EncryptedSecret, Group, GroupError, HistoryActor,
-    HistoryEventError, KeyPair, KeyPairError, NodeError, Organization, OrganizationError,
-    SchemaError, SecretKind, SecretObjectType, StandardModel, StandardModelError, System,
-    SystemError, Tenancy, Timestamp, User, UserError, Visibility, Workspace, WorkspaceError,
+    impl_standard_model, pk,
+    schema::variant::SchemaVariantError,
+    standard_model::{self, option_object_from_row},
+    standard_model_accessor, standard_model_has_many, Capability, CapabilityError, Group,
+    GroupError, HistoryActor, HistoryEventError, KeyPair, KeyPairError, NodeError, Organization,
+    OrganizationError, SchemaError, StandardModel, StandardModelError, System, SystemError,
+    Tenancy, Timestamp, User, UserError, Visibility, Workspace, WorkspaceError,
 };
 
 const INITIAL_SYSTEM_NAME: &str = "production";
@@ -315,31 +315,6 @@ impl BillingAccount {
         system
             .set_workspace(txn, nats, visibility, &user_history_actor, workspace.id())
             .await?;
-
-        let message = serde_json::json!({"song": "país tropical"});
-        let crypted = sodiumoxide::crypto::sealedbox::seal(
-            &serde_json::to_vec(&message)?,
-            key_pair.public_key(),
-        );
-
-        // TODO: remove this dummy secret
-        let _secret = EncryptedSecret::new(
-            txn,
-            nats,
-            &workspace_tenancy,
-            visibility,
-            &user_history_actor,
-            "abençoado por deus e bonito por natureza",
-            SecretObjectType::Credential,
-            SecretKind::DockerHub,
-            &crypted,
-            *key_pair.id(),
-            Default::default(),
-            Default::default(),
-            *billing_account.id(),
-        )
-        .await
-        .expect("Unable to create encrypted secret");
 
         Ok(BillingAccountSignup {
             billing_account,

@@ -1,22 +1,34 @@
-import { SecretKind } from "@/api/sdf/dal/secret";
+import { ApiResponse } from "@/api/sdf";
+import { SecretKind, SecretKindFields } from "@/api/sdf/dal/secret";
+import { Observable } from "rxjs";
 
-export function listSecretKinds(): SecretKind[] {
-  return [
-    {
-      name: "Docker Hub",
-      objectType: "Credential",
+export interface ListSecretKindFieldsResponse {
+  fields: SecretKindFields[];
+}
+
+export function listSecretKindFields(): Observable<
+  ApiResponse<ListSecretKindFieldsResponse>
+> {
+  return new Observable((subscriber) => {
+    subscriber.next({
       fields: [
         {
-          name: "username",
-          displayName: "Docker Hub Username",
-          password: false,
-        },
-        {
-          name: "password",
-          displayName: "Docker Hub Password",
-          password: true,
+          secretKind: SecretKind.DockerHub,
+          displayName: "Docker Hub",
+          fields: [
+            {
+              keyName: "username",
+              displayName: "Docker Hub Username",
+              password: false,
+            },
+            {
+              keyName: "password",
+              displayName: "Docker Hub Password",
+              password: true,
+            },
+          ],
         },
       ],
-    },
-  ];
+    });
+  });
 }
