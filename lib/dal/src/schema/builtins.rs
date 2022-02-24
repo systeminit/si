@@ -523,6 +523,39 @@ async fn docker_hub_credential(
         )
         .await?;
 
+    // Qualification Prototype
+    let qual_func_name = "si:qualificationDockerHubLogin".to_string();
+    let qual_func = Func::find_by_attr(txn, tenancy, visibility, "name", &qual_func_name)
+        .await?
+        .pop()
+        .ok_or(SchemaError::FuncNotFound(qual_func_name))?;
+    let qual_args = FuncBackendJsQualificationArgs::default();
+    let qual_args_json = serde_json::to_value(&qual_args)?;
+    let mut qual_prototype_context = QualificationPrototypeContext::new();
+    qual_prototype_context.set_schema_variant_id(*variant.id());
+
+    let mut prototype = QualificationPrototype::new(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        *qual_func.id(),
+        qual_args_json,
+        qual_prototype_context,
+        "docker hub login credentials must work",
+    )
+    .await?;
+    prototype
+        .set_link(
+            txn,
+            nats,
+            visibility,
+            history_actor,
+            "http://hub.docker.com".into(),
+        )
+        .await?;
+
     // Note: This is not right; each schema needs its own socket types.
     //       Also, they should clearly inherit from the core schema? Something
     //       for later.
