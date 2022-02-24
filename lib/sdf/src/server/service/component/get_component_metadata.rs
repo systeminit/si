@@ -70,8 +70,7 @@ pub async fn get_component_metadata(
 
     let qualified = qualifications
         .into_iter()
-        .map(|q| q.result.map(|r| r.success))
-        .flatten()
+        .flat_map(|q| q.result.map(|r| r.success))
         .reduce(|q, acc| acc && q);
 
     let resource = Component::get_resource_by_component_and_system(

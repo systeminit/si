@@ -146,8 +146,7 @@ mod billing_account_updates {
                 if let Err(err) = ws.send(msg).await {
                     match err
                         .source()
-                        .map(|err| err.downcast_ref::<tungstenite::Error>())
-                        .flatten()
+                        .and_then(|err| err.downcast_ref::<tungstenite::Error>())
                     {
                         Some(ws_err) => match ws_err {
                             // If the websocket has cleanly closed, we should cleanly finish as

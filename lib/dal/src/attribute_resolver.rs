@@ -276,9 +276,10 @@ impl AttributeResolver {
             &parent_attribute_resolver_id,
         )
         .await?
-        .ok_or_else(|| {
-            AttributeResolverError::NotFound(parent_attribute_resolver_id, *visibility)
-        })?;
+        .ok_or(AttributeResolverError::NotFound(
+            parent_attribute_resolver_id,
+            *visibility,
+        ))?;
         let parent_prop = Prop::get_by_id(
             txn,
             self.tenancy(),
@@ -543,9 +544,10 @@ impl AttributeResolver {
         let mut given_attribute_resolver =
             Self::get_by_id(txn, tenancy, visibility, &attribute_resolver_id)
                 .await?
-                .ok_or_else(|| {
-                    AttributeResolverError::NotFound(attribute_resolver_id, *visibility)
-                })?;
+                .ok_or(AttributeResolverError::NotFound(
+                    attribute_resolver_id,
+                    *visibility,
+                ))?;
         if given_attribute_resolver.context != attribute_resolver_context {
             return Err(AttributeResolverError::NotFound(
                 attribute_resolver_id,
@@ -584,9 +586,10 @@ impl AttributeResolver {
         let given_attribute_resolver =
             Self::get_by_id(txn, tenancy, visibility, &attribute_resolver_id)
                 .await?
-                .ok_or_else(|| {
-                    AttributeResolverError::NotFound(attribute_resolver_id, *visibility)
-                })?;
+                .ok_or(AttributeResolverError::NotFound(
+                    attribute_resolver_id,
+                    *visibility,
+                ))?;
 
         // If the context isn't the _specific_ context that we're trying to update, make a new one.
         // This is necessary, since the one that we were given might be the "default" one that is directly

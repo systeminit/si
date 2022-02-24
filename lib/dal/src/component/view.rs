@@ -83,8 +83,7 @@ impl ComponentView {
         let attribute_resolver_order: Vec<AttributeResolverId> = work_queue
             .iter()
             .filter_map(|arv| arv.attribute_resolver.index_map())
-            .map(|index_map| index_map.order())
-            .flatten()
+            .flat_map(|index_map| index_map.order())
             .copied()
             .collect();
         work_queue.sort_by_cached_key(|arv| {
