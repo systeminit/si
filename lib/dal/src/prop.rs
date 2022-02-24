@@ -237,7 +237,7 @@ impl Prop {
     ) -> PropResult<()> {
         let parent_prop = Prop::get_by_id(txn, self.tenancy(), visibility, &parent_prop_id)
             .await?
-            .ok_or_else(|| PropError::NotFound(parent_prop_id, *visibility))?;
+            .ok_or(PropError::NotFound(parent_prop_id, *visibility))?;
         match parent_prop.kind() {
             PropKind::Object | PropKind::Map | PropKind::Array => (),
             kind => {
