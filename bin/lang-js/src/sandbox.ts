@@ -1,6 +1,7 @@
 import os from "os";
 import fs from "fs";
 import path from "path";
+import fetch from 'node-fetch';
 
 import _ from "lodash";
 import yaml from "js-yaml";
@@ -38,6 +39,7 @@ const codeGenerationSandbox = {
 function qualificationCheckSandbox(executionId: string): Sandbox {
   return {
     siExec: makeExec(executionId),
+    fetch,
     os, // This certainly is bad
     fs, // This certainly is bad
     path, // This certainly is bad

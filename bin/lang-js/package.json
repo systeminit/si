@@ -41,6 +41,7 @@
     "@types/js-yaml": "^4.0.5",
     "@typescript-eslint/eslint-plugin": "^4.17.0",
     "@typescript-eslint/parser": "^4.17.0",
+    "@types/node-fetch": "^2.6.1",
     "eslint": "^7.21.0",
     "eslint-config-prettier": "^8.1.0",
     "eslint-plugin-jest": "^24.1.9",
@@ -57,7 +58,8 @@
     "lodash": "^4.17.21",
     "vm2": "^3.9.6",
     "execa": "^4.1.0",
-    "js-yaml": "^4.1.0"
+    "js-yaml": "^4.1.0",
+    "node-fetch": "^2.6.1"
   },
   "volta": {
     "node": "16.5.0",
