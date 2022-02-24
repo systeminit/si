@@ -20,6 +20,7 @@ pub async fn migrate(txn: &PgTxn<'_>, nats: &NatsTxn) -> FuncResult<()> {
     si_set_string(txn, nats, &tenancy, &visibility, &history_actor).await?;
     si_unset(txn, nats, &tenancy, &visibility, &history_actor).await?;
 
+    si_component_name(txn, nats, &tenancy, &visibility, &history_actor).await?;
     si_validate_string_equals(txn, nats, &tenancy, &visibility, &history_actor).await?;
     si_qualification_always_true(txn, nats, &tenancy, &visibility, &history_actor).await?;
     si_number_of_parents(txn, nats, &tenancy, &visibility, &history_actor).await?;
@@ -404,6 +405,44 @@ async fn si_qualification_always_true(
             .expect("cannot set code");
     }
 
+    Ok(())
+}
+
+async fn si_component_name(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    tenancy: &Tenancy,
+    visibility: &Visibility,
+    history_actor: &HistoryActor,
+) -> FuncResult<()> {
+    let func_name = "si:componentName".to_string();
+    let existing_func = Func::find_by_attr(txn, tenancy, visibility, "name", &func_name).await?;
+    if existing_func.is_empty() {
+        let mut func = Func::new(
+            txn,
+            nats,
+            tenancy,
+            visibility,
+            history_actor,
+            func_name,
+            FuncBackendKind::JsAttribute,
+            FuncBackendResponseType::String,
+        )
+        .await
+        .expect("cannot create func");
+        func.set_handler(txn, nats, visibility, history_actor, Some("componentName"))
+            .await?;
+        func.set_code_base64(
+            txn,
+            nats,
+            visibility,
+            history_actor,
+            Some(base64::encode(
+                "function componentName(component) { return component.data.name; }",
+            )),
+        )
+        .await?;
+    }
     Ok(())
 }
 

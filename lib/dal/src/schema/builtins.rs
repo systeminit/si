@@ -892,6 +892,64 @@ async fn docker_image(
     )
     .await?;
 
+    // Set the docker image "name" field from the component's "name" field.
+    let image_from_component_func_name = "si:componentName".to_string();
+    let mut image_from_component_funcs = Func::find_by_attr(
+        txn,
+        tenancy,
+        visibility,
+        "name",
+        &image_from_component_func_name,
+    )
+    .await?;
+    let image_from_component_func = image_from_component_funcs
+        .pop()
+        .ok_or(SchemaError::FuncNotFound(image_from_component_func_name))?;
+    let image_from_component_args = FuncBackendJsResourceSyncArgs::default();
+    let image_from_component_args_json = serde_json::to_value(&image_from_component_args)?;
+
+    // let func_name = "si:numberOfParents".to_string();
+    // let mut funcs = Func::find_by_attr(txn, tenancy, visibility, "name", &func_name).await?;
+    // let func = funcs.pop().ok_or(SchemaError::MissingFunc(func_name))?;
+    // let (func_binding, _) = FuncBinding::find_or_create(
+    //     txn,
+    //     nats,
+    //     tenancy,
+    //     visibility,
+    //     history_actor,
+    //     serde_json::to_value(FuncBackendJsAttributeArgs {
+    //         component: veritech::ResolverFunctionComponent {
+    //             data: veritech::ComponentView {
+    //                 name: number_of_parents_prop.name().to_owned(),
+    //                 properties: veritech::MaybeSensitive::Plain(serde_json::to_value(properties)?),
+    //                 kind: veritech::ComponentKind::Standard,
+    //                 system: None,
+    //             },
+    //             parents: vec![],
+    //         },
+    //     })?,
+    //     *func.id(),
+    //     *func.backend_kind(),
+    // )
+    // .await?;
+
+    // func_binding.execute(txn, nats, veritech.clone()).await?;
+
+    // let mut attribute_resolver_context = AttributeResolverContext::new();
+    // attribute_resolver_context.set_prop_id(*number_of_parents_prop.id());
+    // AttributeResolver::upsert(
+    //     txn,
+    //     nats,
+    //     tenancy,
+    //     visibility,
+    //     history_actor,
+    //     *func.id(),
+    //     *func_binding.id(),
+    //     attribute_resolver_context,
+    //     None,
+    // )
+    // .await?;
+
     Ok(())
 }
 

@@ -368,6 +368,11 @@ impl Component {
         )
         .await?;
 
+        // FIXME(nick): foo.
+        component
+            .execute_all_functions(txn, nats, veritech, tenancy, visibility, history_actor)
+            .await?;
+
         Ok((component, node))
     }
 
@@ -1739,6 +1744,94 @@ impl Component {
         billing_accounts.dedup();
         Ok(billing_accounts)
     }
+
+    /// Iterates over all [`Prop`]s and their children via work queue to execute all functions for
+    /// each attribute. Functions are only executed if a new [`FuncBinding`] was created.
+    pub async fn execute_all_functions(
+        &self,
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
+        veritech: veritech::Client,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+        history_actor: &HistoryActor,
+    ) -> ComponentResult<()> {
+        let mut read_tenancy = tenancy.clone();
+        read_tenancy.universal = true;
+        let schema_variant = self
+            .schema_variant_with_tenancy(txn, &read_tenancy, visibility)
+            .await?
+            .unwrap();
+
+        let mut work_queue = schema_variant.all_props(txn, visibility).await?;
+        while let Some(work) = work_queue.pop() {
+            let children = work.child_props(txn, &read_tenancy, visibility).await?;
+            if !children.is_empty() {
+                work_queue.extend(children);
+            }
+
+            let mut context = AttributeResolverContext::new();
+            context.set_prop_id(*work.id());
+            context.set_component_id(*self.id());
+
+            let found_resolver = AttributeResolver::find_for_context(
+                txn,
+                &read_tenancy,
+                visibility,
+                context.clone(),
+            )
+            .await?
+            .unwrap();
+            let mut resolver = if found_resolver.context == context {
+                found_resolver
+            } else {
+                AttributeResolver::new(
+                    txn,
+                    nats,
+                    tenancy,
+                    visibility,
+                    history_actor,
+                    found_resolver.func_id(),
+                    found_resolver.func_binding_id(),
+                    context.clone(),
+                    found_resolver.key,
+                )
+                .await?
+            };
+
+            // FIXME(nick): actually use the correct system ID.
+            let args = FuncBackendJsAttributeArgs {
+                component: self
+                    .veritech_attribute_resolver_component(
+                        txn,
+                        tenancy,
+                        visibility,
+                        UNSET_ID_VALUE.into(),
+                    )
+                    .await?,
+            };
+
+            let (func_binding, created) = FuncBinding::find_or_create(
+                txn,
+                nats,
+                tenancy,
+                visibility,
+                history_actor,
+                serde_json::to_value(args)?,
+                resolver.func_id(),
+                FuncBackendKind::JsAttribute,
+            )
+            .await?;
+
+            if created {
+                let _fbrv = func_binding.execute(txn, nats, veritech.clone()).await?;
+            }
+            resolver
+                .set_func_binding_id(txn, nats, visibility, history_actor, *func_binding.id())
+                .await?;
+        }
+        Ok(())
+    }
 }
 
 #[async_trait]
@@ -1814,7 +1907,7 @@ impl EditFieldAble for Component {
     async fn update_from_edit_field(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
-        _veritech: veritech::Client,
+        veritech: veritech::Client,
         tenancy: &Tenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
@@ -1835,6 +1928,16 @@ impl EditFieldAble for Component {
                     )?;
                     component
                         .set_name(txn, nats, visibility, history_actor, value)
+                        .await?;
+                    component
+                        .execute_all_functions(
+                            txn,
+                            nats,
+                            veritech,
+                            tenancy,
+                            visibility,
+                            history_actor,
+                        )
                         .await?;
                 }
                 None => return Err(EditFieldError::MissingValue.into()),
