@@ -1,4 +1,4 @@
-use crate::{CodeGenerated, ComponentView};
+use crate::{sensitive_container::ListSecrets, CodeGenerated, ComponentView, SensitiveString};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -16,6 +16,19 @@ pub struct QualificationCheckComponent {
     pub data: ComponentView,
     pub parents: Vec<ComponentView>,
     pub codes: Vec<CodeGenerated>,
+}
+
+impl ListSecrets for QualificationCheckRequest {
+    fn list_secrets(&self) -> Vec<SensitiveString> {
+        let mut secrets = self.component.data.list_secrets();
+        secrets.extend(
+            self.component
+                .parents
+                .iter()
+                .flat_map(ListSecrets::list_secrets),
+        );
+        secrets
+    }
 }
 
 // Note: these map 1:1 to the DAL qualificationsubcheck data in the qualification view.

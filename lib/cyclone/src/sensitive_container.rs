@@ -3,6 +3,13 @@ use std::{fmt, ops::Deref, ops::DerefMut};
 
 // Note: Should this file be here or in si-data? (and make cyclone depend on si-data too)
 
+pub trait ListSecrets {
+    fn list_secrets(&self) -> Vec<SensitiveString>;
+}
+
+// FIXME: for now ser/de for MaybeSensitive<SensitiveString> is broken
+pub type SensitiveString = SensitiveContainer<String>;
+
 #[derive(Debug, Clone, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Copy)]
 #[serde(tag = "maybe_sensitive_container_kind")]
 pub enum MaybeSensitive<T> {

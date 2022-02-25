@@ -17,6 +17,7 @@ use super::{
     routes::{State, WatchKeepalive},
 };
 use crate::{
+    sensitive_container::ListSecrets,
     server::{execution, execution::Execution, watch},
     CodeGenerationRequest, CodeGenerationResultSuccess, LivenessStatus, Message,
     QualificationCheckRequest, QualificationCheckResultSuccess, ReadinessStatus,
@@ -159,7 +160,7 @@ pub async fn ws_execute_code_generation(
 }
 
 async fn handle_socket<
-    Request: Serialize + DeserializeOwned + Unpin,
+    Request: ListSecrets + Serialize + DeserializeOwned + Unpin,
     Success: Serialize + DeserializeOwned + Unpin,
 >(
     mut socket: WebSocket,

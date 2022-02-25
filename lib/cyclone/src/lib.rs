@@ -38,7 +38,7 @@ pub use resolver_function::{
     ResolverFunctionComponent, ResolverFunctionRequest, ResolverFunctionResultSuccess,
 };
 pub use resource_sync::{ResourceSyncRequest, ResourceSyncResultSuccess};
-pub use sensitive_container::{MaybeSensitive, SensitiveContainer};
+pub use sensitive_container::{MaybeSensitive, SensitiveContainer, SensitiveString};
 
 #[cfg(feature = "process")]
 pub mod process;
