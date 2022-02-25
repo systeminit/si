@@ -9,9 +9,6 @@
     :is-maximized-container-enabled="props.isMaximizedContainerEnabled"
   >
     <template #menuButtons>
-      <!-- FIXME(nick): took some liberties here with the classes since old-web does not display
-      this button cleanly. At the same time, this should get re-evaluated as we clean things up.
-      -->
       <div class="justify-start flew flex-grow">
         <div class="min-w-max pl-2 align-middle">
           <SiButton
@@ -19,26 +16,25 @@
             label="new"
             size="xs"
             class="pl-2 align-middle"
-            :disabled="!editMode || isCreateActiveView"
-            @click="setActiveView('create')"
+            :disabled="!enableNewSecretButton"
+            @click="newSecretClick"
           />
         </div>
       </div>
     </template>
     <template #content>
       <div class="w-full">
-        <SecretList v-if="isListActiveView" />
+        <SecretList v-if="renderView == 'list'" />
         <div
-          v-else-if="isCreateActiveView"
+          v-else-if="renderView == 'create'"
           class="flex items-center justify-center"
         >
           <div
             class="flex flex-grow px-4 py-4 mx-8 mt-8 border border-gray-700"
           >
             <SecretCreate
-              v-model="activeView"
-              @cancel="isListActiveView"
-              @submit="isListActiveView"
+              @cancel="secretCreateCancel"
+              @submit="secretCreateSubmit"
             />
           </div>
         </div>
@@ -66,18 +62,28 @@ const props = defineProps<{
   isMaximizedContainerEnabled?: boolean;
 }>();
 
-const editMode = refFrom<boolean>(ChangeSetService.currentEditMode());
-const activeView = ref<string>("list");
-const setActiveView = (view: string) => {
-  activeView.value = view;
+const editMode = refFrom<boolean | undefined>(
+  ChangeSetService.currentEditMode(),
+);
+
+const renderView = ref<"create" | "list">("list");
+
+const newSecretClick = () => {
+  renderView.value = "create";
 };
 
-// We use these computed booleans for reactivity. If the "activeView" changes, so do these variables.
-// NOTE(nick): there is likely a more elegant way of handling reactivity, but THIS WORKS DAMMIT.
-const isCreateActiveView = computed((): boolean => {
-  return activeView.value === "create";
-});
-const isListActiveView = computed((): boolean => {
-  return activeView.value === "list";
+const secretCreateSubmit = () => {
+  renderView.value = "list";
+};
+
+const secretCreateCancel = () => {
+  renderView.value = "list";
+};
+
+const enableNewSecretButton = computed((): boolean => {
+  const inEditMode = editMode.value != undefined && editMode.value;
+  const notInCreateSecretView = renderView.value != "create";
+
+  return inEditMode && notInCreateSecretView;
 });
 </script>

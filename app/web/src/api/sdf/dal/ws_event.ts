@@ -38,9 +38,15 @@ export interface WsResourceSynced extends WsPayload {
   data: ResourceSyncId;
 }
 
+export interface WsSecretCreated extends WsPayload {
+  kind: "SecretCreated";
+  data: number;
+}
+
 export type WsPayloadKinds =
   | WsEditSessionSaved
   | WsChangeSetCreated
   | WsChangeSetApplied
   | WsChangeSetCanceled
-  | WsResourceSynced;
+  | WsResourceSynced
+  | WsSecretCreated;
