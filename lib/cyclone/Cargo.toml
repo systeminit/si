@@ -18,7 +18,6 @@ process = [
 # The client implementation for a cyclone server.
 client = [
   "async-trait",
-  "chrono",
   "futures",
   "futures-lite",
   "http",
@@ -34,7 +33,6 @@ server = [
   "async-trait",
   "axum",
   "bytes-lines-codec",
-  "chrono",
   "derive_builder",
   "futures",
   "hyper",
@@ -55,6 +53,13 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", features = ["preserve_order"] }
 telemetry = { path = "../../lib/telemetry-rs" }
 thiserror = { version = "1.0" }
+# These are not optional because they are used in tests too, being optional breaks `cargo test`
+chrono = "0.4.19"
+# Note: I'm pretty sure this should only be needed in the server part,
+# but the datastructures that wrap them are used in the client too
+sodiumoxide = "0.2.6"
+once_cell = "1.9.0"
+base64 = "0.13.0"
 
 # for process shutdown behavior
 nix = { version = "0.23.0", optional = true }
@@ -65,7 +70,6 @@ futures = { version = "0.3.17", optional = true }
 hyper = { version = "0.14", features = ["client", "http1", "runtime", "server"], optional = true }
 tokio = { version = "1.12.0", features = ["full"], optional = true }
 uuid = { version = "0.8.2", features = ["serde", "v4"], optional = true }
-chrono = { version = "0.4.19", optional = true }
 
 # client only
 futures-lite = { version = "1.12.0", optional = true }
@@ -84,7 +88,6 @@ tower = { version = "0.4.8", optional = true }
 tower-http = { version = "0.1", features = ["trace"], optional = true }
 
 [dev-dependencies]
-base64 = "0.13.0"
 tempfile = { version = "3.2.0" }
 test-env-log = { version = "0.2.7", default-features = false, features = ["trace"] }
 tracing = { version = "0.1" }

@@ -14,6 +14,7 @@
 pub mod canonical_command;
 mod code_generation;
 mod component_view;
+pub(crate) mod key_pair;
 mod liveness;
 mod progress;
 mod qualification_check;
@@ -38,7 +39,7 @@ pub use resolver_function::{
     ResolverFunctionComponent, ResolverFunctionRequest, ResolverFunctionResultSuccess,
 };
 pub use resource_sync::{ResourceSyncRequest, ResourceSyncResultSuccess};
-pub use sensitive_container::{MaybeSensitive, SensitiveContainer, SensitiveString};
+pub use sensitive_container::{SensitiveContainer, SensitiveString};
 
 #[cfg(feature = "process")]
 pub mod process;

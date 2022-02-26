@@ -1,4 +1,5 @@
 use dal::{
+    cyclone_public_key::CYCLONE_PUBLIC_KEY,
     system::UNSET_SYSTEM_ID,
     test_harness::{
         create_component_for_schema_variant, create_prop_of_kind_with_name, create_schema,
@@ -9,6 +10,7 @@ use dal::{
 };
 use pretty_assertions_sorted::{assert_eq, assert_eq_sorted};
 use si_data::{NatsTxn, PgTxn};
+use tokio::sync::mpsc;
 
 use crate::test_setup;
 
@@ -1666,4 +1668,60 @@ async fn complex_nested_array_of_objects_with_a_map() {
         ], // expected
         component_view.properties, // actual
     );
+}
+
+#[tokio::test]
+async fn cyclone_crypto_e2e() {
+    test_setup!(
+        _ctx,
+        _secret_key,
+        _pg,
+        _conn,
+        _txn,
+        _nats_conn,
+        _nats,
+        veritech,
+    );
+    let (tx, _rx) = mpsc::channel(64);
+    let secret_value = "Beware Cuca will catch you";
+    let secret = serde_json::to_string(&serde_json::json!({
+        "key": secret_value,
+    }))
+    .expect("Secret serialization failed");
+    let encrypted_secret = CYCLONE_PUBLIC_KEY
+        .get()
+        .expect("No cyclone public key was set, we can't communicate with cyclone without it")
+        .encrypt_and_encode(&secret);
+    let code = format!("function testE2ECrypto(component) {{ return component.data.properties.secret.message.key === '{secret_value}'; }}");
+    let request = veritech::ResolverFunctionRequest {
+        execution_id: "seujorge".to_owned(),
+        handler: "testE2ECrypto".to_owned(),
+        component: veritech::ResolverFunctionComponent {
+            data: veritech::ComponentView {
+                name: "testE2ECrypto".to_owned(),
+                kind: veritech::ComponentKind::Credential,
+                system: None,
+                properties: serde_json::json!({
+                    "secret": {
+                        "name": "ufo",
+                        "secret_kind": "dockerHub",
+                        "object_type": "credential",
+                        "message": { "cycloneEncryptedDataMarker": true, "encryptedSecret": encrypted_secret },
+                    },
+                }),
+            },
+            parents: Vec::new(),
+        },
+        code_base64: base64::encode(&code),
+    };
+    let result = veritech
+        .execute_resolver_function(tx, &request)
+        .await
+        .expect("Veritech run failed");
+    match result {
+        veritech::FunctionResult::Success(result) => {
+            assert_eq!(result.data, serde_json::Value::Bool(true))
+        }
+        veritech::FunctionResult::Failure(err) => panic!("Veritech run failed: {:?}", err),
+    }
 }

@@ -6,6 +6,7 @@ services:
     volumes:
       - "${REPOPATH:-..}/target/debug/sdf:/usr/local/bin/sdf"
       - "${REPOPATH:-..}/bin/sdf/src/dev.jwt_secret_key.bin:/run/sdf/jwt_secret_key.bin:ro"
+      - "${REPOPATH:-..}/lib/cyclone/src/dev.public_key.pub:/run/sdf/cyclone_public_key.pub:ro"
     entrypoint:
       - "/usr/local/bin/sdf"
 
@@ -14,6 +15,8 @@ services:
     volumes:
       - "${REPOPATH:-..}/target/debug/veritech:/usr/local/bin/veritech"
       - "${REPOPATH:-..}/target/debug/cyclone:/usr/local/bin/cyclone"
+      - "${REPOPATH:-..}/lib/cyclone/src/dev.secret_key.bin:/run/veritech/secret_key.bin:ro"
+      - "${REPOPATH:-..}/lib/cyclone/src/dev.public_key.pub:/run/veritech/public_key.pub:ro"
       - "${REPOPATH:-..}/bin/lang-js/target/lang-js:/usr/local/bin/lang-js"
     entrypoint:
       - "/usr/local/bin/veritech"

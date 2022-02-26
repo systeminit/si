@@ -10,6 +10,7 @@ use sodiumoxide::crypto::{
 use strum_macros::{AsRefStr, Display, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
+use veritech::SensitiveContainer;
 
 use crate::{
     impl_standard_model,
@@ -333,6 +334,10 @@ impl DecryptedSecret {
     /// Gets a reference to the decrypted secret's name.
     pub fn name(&self) -> &str {
         self.name.as_ref()
+    }
+
+    pub fn message(&self) -> SensitiveContainer<Value> {
+        self.message.clone().into()
     }
 
     /// Gets the decrypted secret's object type.

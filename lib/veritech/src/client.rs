@@ -368,7 +368,7 @@ mod tests {
     use uuid::Uuid;
 
     use super::*;
-    use crate::{ComponentKind, Config, CycloneSpec, MaybeSensitive, Server, ServerError};
+    use crate::{ComponentKind, Config, CycloneSpec, Server, ServerError};
 
     fn nats_config() -> NatsConfig {
         let mut config = NatsConfig::default();
@@ -440,20 +440,20 @@ mod tests {
             component: ResolverFunctionComponent {
                 data: ComponentView {
                     name: "Child".to_owned(),
-                    properties: MaybeSensitive::Plain(serde_json::json!({})),
+                    properties: serde_json::json!({}),
                     system: None,
                     kind: ComponentKind::Standard,
                 },
                 parents: vec![
                     ComponentView {
                         name: "Parent 1".to_owned(),
-                        properties: MaybeSensitive::Plain(serde_json::json!({})),
+                        properties: serde_json::json!({}),
                         system: None,
                         kind: ComponentKind::Standard,
                     },
                     ComponentView {
                         name: "Parent 2".to_owned(),
-                        properties: MaybeSensitive::Plain(serde_json::json!({})),
+                        properties: serde_json::json!({}),
                         system: None,
                         kind: ComponentKind::Standard,
                     },
@@ -501,7 +501,7 @@ mod tests {
             component: QualificationCheckComponent {
                 data: ComponentView {
                     name: "cider".to_string(),
-                    properties: MaybeSensitive::Plain(serde_json::json!({"image": "systeminit/whiskers"})),
+                    properties: serde_json::json!({"image": "systeminit/whiskers"}),
                     system: None,
                     kind: ComponentKind::Standard,
                 },
@@ -612,7 +612,7 @@ mod tests {
         request.component.data.name = "emacs".to_string();
         request.component.data = ComponentView {
             name: "cider".to_string(),
-            properties: MaybeSensitive::Plain(serde_json::json!({"image": "abc"})),
+            properties: serde_json::json!({"image": "abc"}),
             system: None,
             kind: ComponentKind::Standard,
         };
@@ -654,7 +654,7 @@ mod tests {
             handler: "syncItOut".to_string(),
             component: ComponentView {
                 name: "cider".to_string(),
-                properties: MaybeSensitive::Plain(serde_json::json!({"pkg": "cider"})),
+                properties: serde_json::json!({"pkg": "cider"}),
                 system: None,
                 kind: ComponentKind::Standard,
             },
@@ -698,7 +698,7 @@ mod tests {
             handler: "generateItOut".to_string(),
             component: ComponentView {
                 name: "cider".to_string(),
-                properties: MaybeSensitive::Plain(serde_json::json!({"pkg": "cider"})),
+                properties: serde_json::json!({"pkg": "cider"}),
                 system: None,
                 kind: ComponentKind::Standard,
             },

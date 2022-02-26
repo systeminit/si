@@ -4,10 +4,10 @@ use std::collections::HashMap;
 use si_data::PgTxn;
 
 use crate::{
-    component::ComponentKind, system::UNSET_SYSTEM_ID, AttributeResolver, AttributeResolverId,
-    AttributeResolverValue, Component, ComponentError, ComponentId, EncryptedSecret, PropId,
-    PropKind, SecretError, SecretId, StandardModel, StandardModelError, System, SystemId, Tenancy,
-    Visibility,
+    component::ComponentKind, cyclone_public_key::CYCLONE_PUBLIC_KEY, system::UNSET_SYSTEM_ID,
+    AttributeResolver, AttributeResolverId, AttributeResolverValue, Component, ComponentError,
+    ComponentId, EncryptedSecret, PropId, PropKind, SecretError, SecretId, StandardModel,
+    StandardModelError, System, SystemId, Tenancy, Visibility,
 };
 
 use super::ComponentResult;
@@ -23,6 +23,8 @@ pub enum ComponentViewError {
     Secret(#[from] SecretError),
     #[error("secret not found: {0}")]
     SecretNotFound(SecretId),
+    #[error("json pointer not found: {1} at {:0?}")]
+    JSONPointerNotFound(serde_json::Value, String),
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -201,33 +203,41 @@ impl ComponentView {
             return Ok(());
         }
 
-        let value = std::mem::replace(
-            &mut component.properties,
-            veritech::MaybeSensitive::Sensitive(Default::default()),
-        );
         // If it's a credential it's already unencrypted
-        component.properties = if let veritech::MaybeSensitive::Plain(mut value) = value {
-            if let Some(object) = value.as_object_mut() {
-                // Note: we can't know which fields are WidgetKind::SecretSelect as we lose information by being so low on the stack
-                // So for now we will try to decrypt every integer root field, which kinda suck
-                //
-                // TODO: traverse tree and decrypt leafs
-                for (_key, value) in object {
-                    if let Some(raw_id) = value.as_i64() {
-                        let decrypted_secret =
-                            EncryptedSecret::get_by_id(txn, tenancy, visibility, &raw_id.into())
-                                .await?
-                                .ok_or_else(|| ComponentViewError::SecretNotFound(raw_id.into()))?
-                                .decrypt(txn, visibility)
-                                .await?;
-                        *value = serde_json::to_value(decrypted_secret)?;
+        if let Some(object) = component.properties.as_object_mut() {
+            // Note: we can't know which fields are WidgetKind::SecretSelect as we lose information by being so low on the stack
+            // So for now we will try to decrypt every integer root field, which kinda suck
+            //
+            // TODO: traverse tree and decrypt leafs
+            for (_key, value) in object {
+                if let Some(raw_id) = value.as_i64() {
+                    let decrypted_secret =
+                        EncryptedSecret::get_by_id(txn, tenancy, visibility, &raw_id.into())
+                            .await?
+                            .ok_or_else(|| ComponentViewError::SecretNotFound(raw_id.into()))?
+                            .decrypt(txn, visibility)
+                            .await?;
+                    let encrypted_message = CYCLONE_PUBLIC_KEY.get().expect("No cyclone public key was set, we can't communicate with cyclone without it")
+                        .encrypt_and_encode(&serde_json::to_string(&decrypted_secret.message())?);
+
+                    *value = serde_json::to_value(&decrypted_secret)?;
+                    match value.pointer_mut("/message") {
+                        Some(v) => {
+                            *v = serde_json::json!({
+                                "cycloneEncryptedDataMarker": true,
+                                "encryptedSecret": encrypted_message
+                            })
+                        }
+                        None => {
+                            return Err(ComponentViewError::JSONPointerNotFound(
+                                value.clone(),
+                                "/message".to_owned(),
+                            ))
+                        }
                     }
                 }
             }
-            veritech::MaybeSensitive::Sensitive(value.into())
-        } else {
-            value
-        };
+        }
         Ok(())
     }
 }
@@ -250,7 +260,7 @@ impl From<ComponentView> for veritech::ComponentView {
                 name: system.name().to_owned(),
             }),
             kind: view.kind.into(),
-            properties: veritech::MaybeSensitive::Plain(view.properties),
+            properties: view.properties,
         }
     }
 }

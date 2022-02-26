@@ -15,6 +15,7 @@ use tokio_serde::{formats::SymmetricalJson, Deserializer, Framed, SymmetricallyF
 use tokio_util::codec::{Decoder, FramedRead, FramedWrite};
 
 use crate::{
+    key_pair::{DecryptRequest, KeyPairError},
     process::{self, ShutdownError},
     sensitive_container::ListSecrets,
     server::WebSocketMessage,
@@ -66,6 +67,8 @@ pub enum ExecutionError {
     WSSendIO(#[source] axum::Error),
     #[error("unexpected websocket message type: {0:?}")]
     UnexpectedMessageType(WebSocketMessage),
+    #[error("key pair error: {0}")]
+    KeyPair(#[from] KeyPairError),
 }
 
 type Result<T> = std::result::Result<T, ExecutionError>;
@@ -81,13 +84,13 @@ pub struct Execution<Request, Success> {
 
 impl<Request, Success> Execution<Request, Success>
 where
-    Request: ListSecrets + Serialize + DeserializeOwned + std::marker::Unpin,
+    Request: DecryptRequest + ListSecrets + Serialize + DeserializeOwned + std::marker::Unpin,
     Success: Serialize + DeserializeOwned,
 {
     pub async fn start(self, ws: &mut WebSocket) -> Result<ExecutionStarted<Success>> {
         Self::ws_send_start(ws).await?;
         let request = Self::read_request(ws).await?;
-        let credentials: Vec<SensitiveString> = request.list_secrets();
+        let credentials: Vec<SensitiveString> = request.list_secrets()?;
 
         let mut command = Command::new(&self.lang_server_path);
         command
@@ -156,10 +159,12 @@ where
     }
 
     async fn child_send_function_request(stdin: ChildStdin, request: Request) -> Result<()> {
+        let value = request.decrypt_request()?;
+
         let codec = FramedWrite::new(stdin, BytesLinesCodec::new());
         let mut stdin = SymmetricallyFramed::new(codec, SymmetricalJson::default());
 
-        time::timeout(TX_TIMEOUT_SECS, stdin.send(request))
+        time::timeout(TX_TIMEOUT_SECS, stdin.send(value))
             .await
             .map_err(ExecutionError::SendTimeout)?
             .map_err(ExecutionError::ChildSendIO)?;
@@ -210,7 +215,6 @@ async fn handle_stderr(
     }
     if let Err(error) = handle_stderr_fallible(stderr, credentials).await {
         error!("Unable to collect stderr: {}", error);
-        todo!();
     }
 }
 

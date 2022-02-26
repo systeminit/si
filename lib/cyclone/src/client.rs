@@ -447,7 +447,7 @@ mod tests {
         resolver_function::ResolverFunctionComponent,
         resolver_function::ResolverFunctionRequest,
         server::{Config, ConfigBuilder, UdsIncomingStream},
-        ComponentView, FunctionResult, MaybeSensitive, ProgressMessage, Server,
+        ComponentView, FunctionResult, ProgressMessage, Server,
     };
 
     fn rand_uds() -> TempPath {
@@ -683,20 +683,20 @@ mod tests {
             component: ResolverFunctionComponent {
                 data: ComponentView {
                     name: "Child".to_owned(),
-                    properties: MaybeSensitive::Plain(serde_json::json!({})),
+                    properties: serde_json::json!({}),
                     system: None,
                     kind: ComponentKind::Standard,
                 },
                 parents: vec![
                     ComponentView {
                         name: "Parent 1".to_owned(),
-                        properties: MaybeSensitive::Plain(serde_json::json!({})),
+                        properties: serde_json::json!({}),
                         system: None,
                         kind: ComponentKind::Standard,
                     },
                     ComponentView {
                         name: "Parent 2".to_owned(),
-                        properties: MaybeSensitive::Plain(serde_json::json!({})),
+                        properties: serde_json::json!({}),
                         system: None,
                         kind: ComponentKind::Standard,
                     },
@@ -776,20 +776,20 @@ mod tests {
             component: ResolverFunctionComponent {
                 data: ComponentView {
                     name: "Child".to_owned(),
-                    properties: MaybeSensitive::Plain(serde_json::json!({})),
+                    properties: serde_json::json!({}),
                     system: None,
                     kind: ComponentKind::Standard,
                 },
                 parents: vec![
                     ComponentView {
                         name: "Parent 1".to_owned(),
-                        properties: MaybeSensitive::Plain(serde_json::json!({})),
+                        properties: serde_json::json!({}),
                         system: None,
                         kind: ComponentKind::Standard,
                     },
                     ComponentView {
                         name: "Parent 2".to_owned(),
-                        properties: MaybeSensitive::Plain(serde_json::json!({})),
+                        properties: serde_json::json!({}),
                         system: None,
                         kind: ComponentKind::Standard,
                     },
@@ -867,7 +867,7 @@ mod tests {
             component: QualificationCheckComponent {
                 data: ComponentView {
                     name: "pringles".to_owned(),
-                    properties: MaybeSensitive::Plain(serde_json::json!({})),
+                    properties: serde_json::json!({}),
                     system: None,
                     kind: ComponentKind::Standard,
                 },
@@ -957,7 +957,7 @@ mod tests {
             component: QualificationCheckComponent {
                 data: ComponentView {
                     name: "pringles".to_owned(),
-                    properties: MaybeSensitive::Plain(serde_json::json!({})),
+                    properties: serde_json::json!({}),
                     system: None,
                     kind: ComponentKind::Standard,
                 },
@@ -1042,7 +1042,7 @@ mod tests {
 
         let component = ComponentView {
             name: "pringles".to_string(),
-            properties: MaybeSensitive::Plain(serde_json::json!({})),
+            properties: serde_json::json!({}),
             system: None,
             kind: ComponentKind::Standard,
         };
@@ -1122,7 +1122,7 @@ mod tests {
 
         let component = ComponentView {
             name: "pringles".to_string(),
-            properties: MaybeSensitive::Plain(serde_json::json!({})),
+            properties: serde_json::json!({}),
             system: None,
             kind: ComponentKind::Standard,
         };
@@ -1200,7 +1200,7 @@ mod tests {
 
         let component = ComponentView {
             name: "pringles".to_string(),
-            properties: MaybeSensitive::Plain(serde_json::json!({})),
+            properties: serde_json::json!({}),
             system: None,
             kind: ComponentKind::Standard,
         };
@@ -1288,7 +1288,7 @@ mod tests {
 
         let component = ComponentView {
             name: "pringles".to_string(),
-            properties: MaybeSensitive::Plain(serde_json::json!({})),
+            properties: serde_json::json!({}),
             system: None,
             kind: ComponentKind::Standard,
         };

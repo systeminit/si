@@ -1,4 +1,5 @@
-use crate::{sensitive_container::ListSecrets, MaybeSensitive, SensitiveString};
+use crate::key_pair::{DecryptRequest, KeyPairError, KEY_PAIR};
+use crate::sensitive_container::{ListSecrets, SensitiveString};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -27,69 +28,120 @@ pub struct ComponentView {
     pub name: String,
     pub system: Option<SystemView>,
     pub kind: ComponentKind,
-    pub properties: MaybeSensitive<Value>,
+    pub properties: Value,
 }
 
 impl ListSecrets for ComponentView {
-    // TODO: in the future we will want to only filter the props with WidgetKind::SecretSelect
-    // For now we don't have the metadata, so we try to find a DecryptedSecret from a ComponentKind::Credential
-    // We only censor some critical DecryptedSecret metadata and the secret's JSON values
-    fn list_secrets(&self) -> Vec<SensitiveString> {
-        if let MaybeSensitive::Sensitive(properties) = &self.properties {
-            let mut credentials: Vec<SensitiveString> = vec![];
+    fn list_secrets(&self) -> Result<Vec<SensitiveString>, KeyPairError> {
+        if self.kind != ComponentKind::Credential {
+            return Ok(vec![]);
+        }
 
-            // We need to first parse the tree for the secrets and then list them
-            let mut secret_objects = vec![];
-            let mut is_inside_secret_object = false;
+        let mut credentials: Vec<SensitiveString> = vec![];
 
-            let mut work_queue = vec![&**properties];
+        // We need to first parse the tree for the secrets and then list them
+        let mut secret_objects = vec![];
+        let mut is_inside_secret_object = false;
 
-            while let Some(work) = work_queue.pop() {
-                match work {
-                    Value::Array(values) => work_queue.extend(values),
-                    Value::Object(object) => {
-                        // We try to find DecryptedSecret from its keys as we lack the proper metadata
-                        // Note: if we ever edit dal::DecryptedSecret we will have to edit this function too
-                        let is_decrypted_secret =
-                            object.get("secret_kind").map_or(false, |v| v.is_string())
-                                && object.get("object_type").map_or(false, |v| v.is_string())
-                                && object.get("message").map_or(false, |v| v.is_object())
-                                && object.get("name").map_or(false, |v| v.is_string());
+        let mut work_queue = vec![self.properties.clone()];
 
-                        if !is_inside_secret_object && is_decrypted_secret {
-                            // We only want to censor message of a DecryptedSecret
-                            // But message will be a Value::Object, so we need to encrypt it's values too
-                            // Note: do we want to encrypt the message's keys?
-                            secret_objects.push(&object["message"]);
-                        } else {
-                            object.values().for_each(|v| work_queue.push(v));
-                        }
+        while let Some(work) = work_queue.pop() {
+            match work {
+                Value::Array(values) => work_queue.extend(values),
+                Value::Object(object) => {
+                    let is_decrypted_secret = object
+                        .get("cycloneEncryptedDataMarker")
+                        .map_or(false, |v| v.as_bool() == Some(true))
+                        && object
+                            .get("encryptedSecret")
+                            .map_or(false, |v| v.is_string());
+
+                    if !is_inside_secret_object && is_decrypted_secret {
+                        let encrypted = object["encryptedSecret"]
+                            .as_str()
+                            .ok_or(KeyPairError::EncryptedSecretNotFound)?;
+                        let decrypted = KEY_PAIR.decrypt(&base64::decode(encrypted)?)?;
+                        secret_objects.push(serde_json::de::from_slice::<Value>(&decrypted)?);
+                    } else {
+                        object.into_iter().for_each(|(_, v)| work_queue.push(v));
                     }
-
-                    // Scalar values don't make sense outside of a secret's message JSON object
-                    Value::String(value) if is_inside_secret_object => {
-                        credentials.push(value.clone().into())
-                    }
-                    Value::String(_) => {}
-
-                    // For now credentials can only be strings, although we should reconsider it
-                    Value::Null => {}
-                    Value::Bool(_) => {}
-                    Value::Number(_) => {}
                 }
 
-                // We should only process secrets at the end, as they behave differently
-                if work_queue.is_empty() {
-                    if let Some(obj) = secret_objects.pop() {
-                        is_inside_secret_object = true;
-                        work_queue.push(obj);
-                    }
+                Value::String(value) if is_inside_secret_object => {
+                    credentials.push(value.clone().into())
+                }
+                // We don't care for scalar values outside of a secret's message JSON object
+                Value::String(_) => {}
+
+                // For now credentials can only be strings, although we should reconsider it
+                Value::Null => {}
+                Value::Bool(_) => {}
+                Value::Number(_) => {}
+            }
+
+            // We should only process secrets at the end, as they behave differently
+            if work_queue.is_empty() {
+                if let Some(obj) = secret_objects.pop() {
+                    is_inside_secret_object = true;
+                    work_queue.push(obj);
                 }
             }
-            credentials
-        } else {
-            vec![]
         }
+        Ok(credentials)
+    }
+}
+
+impl DecryptRequest for ComponentView {
+    fn decrypt_request(self) -> Result<Value, KeyPairError> {
+        let mut value = serde_json::to_value(&self)?;
+        if self.kind != ComponentKind::Credential {
+            return Ok(value);
+        }
+
+        let mut work_queue = vec!["".to_owned()]; // JSON pointers
+        while let Some(pointer) = work_queue.pop() {
+            let new_value = match value.pointer(&pointer) {
+                None => return Err(KeyPairError::JSONPointerNotFound(value, pointer)),
+                Some(Value::Array(values)) => {
+                    let iter = values
+                        .iter()
+                        .enumerate()
+                        .map(|(index, _)| format!("{pointer}/{index}"));
+                    work_queue.extend(iter);
+                    continue;
+                }
+                Some(Value::Object(object)) => {
+                    let is_decrypted_secret = object
+                        .get("cycloneEncryptedDataMarker")
+                        .map_or(false, |v| v.as_bool() == Some(true))
+                        && object
+                            .get("encryptedSecret")
+                            .map_or(false, |v| v.is_string());
+
+                    if is_decrypted_secret {
+                        let encrypted = object["encryptedSecret"]
+                            .as_str()
+                            .ok_or(KeyPairError::EncryptedSecretNotFound)?;
+                        let decrypted = KEY_PAIR.decrypt(&base64::decode(encrypted)?)?;
+                        serde_json::de::from_slice(&decrypted)?
+                    } else {
+                        work_queue.extend(object.iter().map(|(key, _)| format!("{pointer}/{key}")));
+                        continue;
+                    }
+                }
+
+                // Scalar values will never be decrypted
+                Some(Value::String(_)) => continue,
+                Some(Value::Null) => continue,
+                Some(Value::Bool(_)) => continue,
+                Some(Value::Number(_)) => continue,
+            };
+            match value.pointer_mut(&pointer) {
+                Some(v) => *v = new_value,
+                None => return Err(KeyPairError::JSONPointerNotFound(value, pointer)),
+            };
+        }
+        Ok(value)
     }
 }
 
@@ -99,36 +151,90 @@ impl Default for ComponentView {
             name: Default::default(),
             system: Default::default(),
             kind: Default::default(),
-            properties: MaybeSensitive::Plain(serde_json::json!({})),
+            properties: serde_json::json!({}),
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{sensitive_container::ListSecrets, ComponentKind, ComponentView, MaybeSensitive};
+    use super::*;
 
-    #[tokio::test]
-    async fn redact() {
+    #[test]
+    fn redact() {
+        let secret = serde_json::to_string(&serde_json::json!({
+            "my-super-secret": "Varginha's UFO",
+        }))
+        .expect("Unable to serialize secret");
+        let encrypted =
+            sodiumoxide::crypto::sealedbox::seal(secret.as_bytes(), &KEY_PAIR.public_key);
+        assert_eq!(
+            KEY_PAIR.decrypt(&encrypted).expect("Unable to decrypt"),
+            secret.as_bytes()
+        );
+        let encrypted = base64::encode(&encrypted);
+
         let secrets = ComponentView {
             name: "Redacting".to_owned(),
             system: None,
             kind: ComponentKind::Credential,
-            properties: MaybeSensitive::Sensitive(
-                serde_json::json!({
-                    "secret": {
-                        "name": "ufo",
-                        "secret_kind": "dockerHub",
-                        "object_type": "credential",
-                        "message": {
-                            "my-super-secret": "Varginha's UFO",
-                        },
-                    },
-                })
-                .into(),
-            ),
+            properties: serde_json::json!({
+                "secret": {
+                    "name": "ufo",
+                    "secret_kind": "dockerHub",
+                    "object_type": "credential",
+                    "message": { "cycloneEncryptedDataMarker": true, "encryptedSecret": encrypted },
+                },
+            }),
         }
-        .list_secrets();
+        .list_secrets()
+        .expect("Unable to list secrets");
         assert_eq!(secrets[0].as_str(), "Varginha's UFO");
+    }
+
+    #[test]
+    fn decrypt() {
+        let secret_json = serde_json::json!({
+            "my-super-secret": "Varginha's UFO",
+        });
+        let secret = serde_json::to_string(&secret_json).expect("Unable to serialize secret");
+        let encrypted =
+            sodiumoxide::crypto::sealedbox::seal(secret.as_bytes(), &KEY_PAIR.public_key);
+        assert_eq!(
+            KEY_PAIR.decrypt(&encrypted).expect("Unable to decrypt"),
+            secret.as_bytes(),
+        );
+        let encrypted = base64::encode(&encrypted);
+
+        let json = ComponentView {
+            name: "Decrypting".to_owned(),
+            system: None,
+            kind: ComponentKind::Credential,
+            properties: serde_json::json!({
+                "secret": {
+                    "name": "ufo",
+                    "secret_kind": "dockerHub",
+                    "object_type": "credential",
+                    "message": { "cycloneEncryptedDataMarker": true, "encryptedSecret": encrypted },
+                },
+            }),
+        }
+        .decrypt_request()
+        .expect("Unable to decrypt component view");
+
+        let decrypted_json = serde_json::json!({
+            "name": "Decrypting",
+            "system": null,
+            "kind": "credential",
+            "properties": {
+                "secret": {
+                    "name": "ufo",
+                    "secret_kind": "dockerHub",
+                    "object_type": "credential",
+                    "message": secret_json,
+                },
+            },
+        });
+        assert_eq!(json, decrypted_json);
     }
 }

@@ -4,10 +4,11 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crate::server::config::JwtSecretKey;
+use crate::server::config::{CyclonePublicKey, JwtSecretKey};
 use axum::routing::IntoMakeService;
 use axum::Router;
 use dal::{
+    cyclone_public_key::CyclonePublicKeyError,
     jwt_key::{install_new_jwt_key, jwt_key_exists},
     migrate, migrate_builtin_schemas, ResourceScheduler,
 };
@@ -44,8 +45,12 @@ pub enum ServerError {
     Signal(#[source] io::Error),
     #[error(transparent)]
     Uds(#[from] UdsIncomingStreamError),
+    #[error("cyclone public key error: {0}")]
+    CyclonePublicKeyErr(#[from] CyclonePublicKeyError),
     #[error("wrong incoming stream for {0} server: {1:?}")]
     WrongIncomingStream(&'static str, IncomingStream),
+    #[error("cyclone public key already set")]
+    CyclonePublicKeyAlreadySet,
 }
 
 pub type Result<T> = std::result::Result<T, ServerError>;
@@ -65,7 +70,12 @@ impl Server<(), ()> {
         nats: NatsClient,
         veritech: veritech::Client,
         jwt_secret_key: JwtSecretKey,
+        cyclone_public_key: CyclonePublicKey,
     ) -> Result<Server<AddrIncoming, SocketAddr>> {
+        dal::cyclone_public_key::CYCLONE_PUBLIC_KEY
+            .set(cyclone_public_key)
+            .map_err(|_| ServerError::CyclonePublicKeyAlreadySet)?;
+
         match config.incoming_stream() {
             IncomingStream::HTTPSocket(socket_addr) => {
                 let (service, shutdown_rx) =
@@ -95,7 +105,12 @@ impl Server<(), ()> {
         nats: NatsClient,
         veritech: veritech::Client,
         jwt_secret_key: JwtSecretKey,
+        cyclone_public_key: CyclonePublicKey,
     ) -> Result<Server<UdsIncomingStream, PathBuf>> {
+        dal::cyclone_public_key::CYCLONE_PUBLIC_KEY
+            .set(cyclone_public_key)
+            .map_err(|_| ServerError::CyclonePublicKeyAlreadySet)?;
+
         match config.incoming_stream() {
             IncomingStream::UnixDomainSocket(path) => {
                 let (service, shutdown_rx) =
@@ -125,12 +140,25 @@ impl Server<(), ()> {
 
     #[instrument(skip_all)]
     pub async fn generate_jwt_secret_key(path: impl AsRef<Path>) -> Result<JwtSecretKey> {
-        JwtSecretKey::create(path).await.map_err(Into::into)
+        Ok(JwtSecretKey::create(path).await?)
+    }
+
+    #[instrument(skip_all)]
+    pub async fn generate_cyclone_keypair(
+        secret_key_path: impl AsRef<Path>,
+        public_key_path: impl AsRef<Path>,
+    ) -> Result<CyclonePublicKey> {
+        Ok(CyclonePublicKey::create(secret_key_path, public_key_path).await?)
     }
 
     #[instrument(skip_all)]
     pub async fn load_jwt_secret_key(path: impl AsRef<Path>) -> Result<JwtSecretKey> {
-        JwtSecretKey::load(path).await.map_err(Into::into)
+        Ok(JwtSecretKey::load(path).await?)
+    }
+
+    #[instrument(skip_all)]
+    pub async fn load_cyclone_public_key(path: impl AsRef<Path>) -> Result<CyclonePublicKey> {
+        Ok(CyclonePublicKey::load(path).await?)
     }
 
     #[instrument(skip_all)]
@@ -168,16 +196,16 @@ impl Server<(), ()> {
 
     #[instrument(skip_all)]
     pub async fn create_pg_pool(pg_pool_config: &PgPoolConfig) -> Result<PgPool> {
-        let pool = PgPool::new(pg_pool_config).await.map_err(Into::into);
+        let pool = PgPool::new(pg_pool_config).await?;
         debug!("successfully started pg pool (note that not all connections may be healthy)");
-        pool
+        Ok(pool)
     }
 
     #[instrument(skip_all)]
     pub async fn connect_to_nats(nats_config: &NatsConfig) -> Result<NatsClient> {
-        let client = NatsClient::new(nats_config).await.map_err(Into::into);
+        let client = NatsClient::new(nats_config).await?;
         debug!("successfully connected nats client");
-        client
+        Ok(client)
     }
 
     pub fn create_veritech_client(nats: NatsClient) -> veritech::Client {
