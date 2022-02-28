@@ -16,13 +16,16 @@ use crate::{
     impl_standard_model,
     label_list::ToLabelList,
     pk, standard_model, standard_model_accessor, standard_model_belongs_to,
-    standard_model_has_many, standard_model_many_to_many, AttributeResolver, Func, HistoryActor,
-    HistoryEventError, SchemaVariant, SchemaVariantId, StandardModel, StandardModelError, Tenancy,
-    Timestamp, Visibility,
+    standard_model_has_many, standard_model_many_to_many, AttributePrototype, AttributeResolver,
+    Func, HistoryActor, HistoryEventError, SchemaVariant, SchemaVariantId, StandardModel,
+    StandardModelError, Tenancy, Timestamp, Visibility,
 };
 
 #[derive(Error, Debug)]
 pub enum PropError {
+    // Can't #[from] here, or we'll end up with circular error definitions.
+    #[error("AttributePrototype error: {0}")]
+    AttributePrototype(String),
     // Can't #[from] here, or we'll end up with circular error definitions.
     #[error("AttributeResolver error: {0}")]
     AttributeResolver(String),
@@ -177,11 +180,25 @@ impl Prop {
             history_actor,
             *func.id(),
             *func_binding.id(),
-            attribute_resolver_context,
+            attribute_resolver_context.clone(),
             None,
         )
         .await
         .map_err(|e| PropError::AttributeResolver(format!("{e}")))?;
+
+        AttributePrototype::new(
+            txn,
+            nats,
+            tenancy,
+            visibility,
+            history_actor,
+            *func.id(),
+            *func_binding.id(),
+            attribute_resolver_context,
+            None,
+        )
+        .await
+        .map_err(|e| PropError::AttributePrototype(format!("{e}")))?;
 
         Ok(object)
     }

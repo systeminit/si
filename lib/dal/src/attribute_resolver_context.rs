@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-
 use std::default::Default;
 
 use crate::attribute_resolver::UNSET_ID_VALUE;
