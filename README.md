@@ -157,6 +157,19 @@ You can teardown everything with the same target that the **Quickstart** guide u
 make down
 ```
 
+## Writing Documentation
+
+### Rust Documentation (`rustdoc`)
+
+We try to follow the official ["How to write documentation"](https://doc.rust-lang.org/rustdoc/how-to-write-documentation.html) guide from `rustdoc` as closely as possible.
+Older areas of the codebase may not follow the guide and conventions derived from it.
+We encourage updating older documentation as whilst navigating through SI crates.
+
+**Additional resources:**
+
+* [RFC-1574](https://github.com/rust-lang/rfcs/blob/master/text/1574-more-api-documentation-conventions.md#appendix-a-full-conventions-text): more API documentation conventions for `rust-lang`
+* ["Making Useful Documentation Comments" from "The Book"](https://doc.rust-lang.org/book/ch14-02-publishing-to-crates-io.html#making-useful-documentation-comments): a section of "The Book" covering useful documentation in the context of crate publishing
+
 ## Troubleshooting
 
 Having trouble running SI or its tests?
