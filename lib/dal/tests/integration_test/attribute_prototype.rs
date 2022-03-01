@@ -10,6 +10,7 @@ use dal::{
     AttributePrototype, Func, FuncBackendKind, FuncBackendResponseType, HistoryActor, PropKind,
     Schema, SchemaKind, StandardModel, Tenancy, Visibility,
 };
+use pretty_assertions_sorted::{assert_eq, assert_eq_sorted};
 
 #[tokio::test]
 async fn new() {
@@ -102,7 +103,7 @@ async fn new() {
 }
 
 #[tokio::test]
-async fn find_for_context() {
+async fn list_for_context() {
     test_setup!(ctx, _secret_key, _pg, _conn, txn, nats_conn, nats, veritech);
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
@@ -171,7 +172,7 @@ async fn find_for_context() {
     albums_prototype_context.set_schema_id(*schema.id());
     albums_prototype_context.set_schema_variant_id(*schema_variant.id());
 
-    let albums_prop_prototype = AttributePrototype::find_for_context(
+    let albums_prop_prototype = AttributePrototype::list_for_context(
         &txn,
         &tenancy,
         &visibility,
@@ -179,6 +180,7 @@ async fn find_for_context() {
     )
     .await
     .expect("cannot retrieve attribute prototype for album")
+    .pop()
     .expect("no attribute prototype found for albums");
 
     let album_prop = create_prop_of_kind_with_name(
@@ -200,7 +202,7 @@ async fn find_for_context() {
     let mut album_prototype_context = base_prototype_context.clone();
     album_prototype_context.set_prop_id(*album_prop.id());
 
-    let album_prop_prototype = AttributePrototype::find_for_context(
+    let album_prop_prototype = AttributePrototype::list_for_context(
         &txn,
         &tenancy,
         &visibility,
@@ -208,6 +210,7 @@ async fn find_for_context() {
     )
     .await
     .expect("cannot retrieve attribute prototype for album")
+    .pop()
     .expect("no attribute prototype found for album");
     album_prop_prototype
         .set_parent_attribute_prototype(
@@ -239,7 +242,7 @@ async fn find_for_context() {
     let mut album_name_prototype_context = base_prototype_context.clone();
     album_name_prototype_context.set_prop_id(*name_prop.id());
 
-    let album_name_prototype = AttributePrototype::find_for_context(
+    let album_name_prototype = AttributePrototype::list_for_context(
         &txn,
         &tenancy,
         &visibility,
@@ -247,6 +250,7 @@ async fn find_for_context() {
     )
     .await
     .expect("cannot retrieve attribute prototype for album name")
+    .pop()
     .expect("no attribute prototype found for album name");
     album_name_prototype
         .set_parent_attribute_prototype(
@@ -278,7 +282,7 @@ async fn find_for_context() {
     let mut album_artist_prototype_context = base_prototype_context.clone();
     album_artist_prototype_context.set_prop_id(*artist_prop.id());
 
-    let album_artist_prototype = AttributePrototype::find_for_context(
+    let album_artist_prototype = AttributePrototype::list_for_context(
         &txn,
         &tenancy,
         &visibility,
@@ -286,6 +290,7 @@ async fn find_for_context() {
     )
     .await
     .expect("cannot retrieve attribute prototype for album artist")
+    .pop()
     .expect("no attribute prototype found for album artist");
 
     let component = create_component_for_schema(
@@ -346,7 +351,7 @@ async fn find_for_context() {
     .await
     .expect("cannot create attribute prototype for component album name");
 
-    let found_album_name_prototype = AttributePrototype::find_for_context(
+    let found_album_name_prototype = AttributePrototype::list_for_context(
         &txn,
         &tenancy,
         &visibility,
@@ -354,11 +359,12 @@ async fn find_for_context() {
     )
     .await
     .expect("could not retrieve album name prototype")
+    .pop()
     .expect("no album name prototype found");
 
     assert_eq!(album_name_prototype, found_album_name_prototype,);
 
-    let found_component_album_name_prototype = AttributePrototype::find_for_context(
+    let found_component_album_name_prototype = AttributePrototype::list_for_context(
         &txn,
         &tenancy,
         &visibility,
@@ -366,10 +372,364 @@ async fn find_for_context() {
     )
     .await
     .expect("could not retrieve album name prototype")
+    .pop()
     .expect("no album name prototype found");
 
     assert_eq!(
         component_album_name_prototype,
         found_component_album_name_prototype,
+    );
+}
+
+#[tokio::test]
+async fn list_for_context_with_a_hash() {
+    test_setup!(ctx, _secret_key, _pg, _conn, txn, nats_conn, nats, veritech);
+    let tenancy = Tenancy::new_universal();
+    let visibility = Visibility::new_head(false);
+    let history_actor = HistoryActor::SystemInit;
+
+    let mut schema = create_schema(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        &SchemaKind::Concrete,
+    )
+    .await;
+
+    let schema_variant =
+        create_schema_variant(&txn, &nats, &tenancy, &visibility, &history_actor).await;
+    schema_variant
+        .set_schema(&txn, &nats, &visibility, &history_actor, schema.id())
+        .await
+        .expect("cannot associate variant with schema");
+    schema
+        .set_default_schema_variant_id(
+            &txn,
+            &nats,
+            &visibility,
+            &history_actor,
+            Some(*schema_variant.id()),
+        )
+        .await
+        .expect("cannot set default schema variant");
+
+    let mut base_prototype_context = AttributeResolverContext::new();
+    base_prototype_context.set_schema_id(*schema.id());
+    base_prototype_context.set_schema_variant_id(*schema_variant.id());
+
+    // {
+    //   albums: [
+    //     { String: String, },
+    //   ]
+    // }
+    let albums_prop = create_prop_of_kind_with_name(
+        &txn,
+        &nats,
+        veritech.clone(),
+        &tenancy,
+        &visibility,
+        &history_actor,
+        PropKind::Array,
+        "albums_array",
+    )
+    .await;
+    albums_prop
+        .add_schema_variant(
+            &txn,
+            &nats,
+            &visibility,
+            &history_actor,
+            schema_variant.id(),
+        )
+        .await
+        .expect("cannot set schema variant for album object");
+
+    let mut albums_prototype_context = AttributeResolverContext::new();
+    albums_prototype_context.set_prop_id(*albums_prop.id());
+    albums_prototype_context.set_schema_id(*schema.id());
+    albums_prototype_context.set_schema_variant_id(*schema_variant.id());
+
+    let albums_prop_prototype = AttributePrototype::list_for_context(
+        &txn,
+        &tenancy,
+        &visibility,
+        albums_prototype_context.clone(),
+    )
+    .await
+    .expect("cannot retrieve attribute prototype for album")
+    .pop()
+    .expect("no attribute prototype found for albums");
+
+    let album_prop = create_prop_of_kind_with_name(
+        &txn,
+        &nats,
+        veritech.clone(),
+        &tenancy,
+        &visibility,
+        &history_actor,
+        PropKind::Object,
+        "album_object",
+    )
+    .await;
+    album_prop
+        .set_parent_prop(&txn, &nats, &visibility, &history_actor, *albums_prop.id())
+        .await
+        .expect("cannot set parent prop for album object");
+
+    let mut album_prototype_context = base_prototype_context.clone();
+    album_prototype_context.set_prop_id(*album_prop.id());
+
+    let album_prop_prototype = AttributePrototype::list_for_context(
+        &txn,
+        &tenancy,
+        &visibility,
+        album_prototype_context.clone(),
+    )
+    .await
+    .expect("cannot retrieve attribute prototype for album")
+    .pop()
+    .expect("no attribute prototype found for album");
+    album_prop_prototype
+        .set_parent_attribute_prototype(
+            &txn,
+            &nats,
+            &visibility,
+            &history_actor,
+            *albums_prop_prototype.id(),
+        )
+        .await
+        .expect("cannot set parent attribute prototype for album prototype");
+
+    let hash_key_prop = create_prop_of_kind_with_name(
+        &txn,
+        &nats,
+        veritech.clone(),
+        &tenancy,
+        &visibility,
+        &history_actor,
+        PropKind::String,
+        "album_hash_key",
+    )
+    .await;
+    hash_key_prop
+        .set_parent_prop(&txn, &nats, &visibility, &history_actor, *album_prop.id())
+        .await
+        .expect("cannot set parent prop for album hash key");
+
+    let mut prop_hash_key_prototype_context = base_prototype_context.clone();
+    prop_hash_key_prototype_context.set_prop_id(*hash_key_prop.id());
+
+    let prop_hash_key_prototype = AttributePrototype::list_for_context(
+        &txn,
+        &tenancy,
+        &visibility,
+        prop_hash_key_prototype_context.clone(),
+    )
+    .await
+    .expect("cannot retrieve attribute prototype for album hash key")
+    .pop()
+    .expect("no attribute prototype found for album hash key");
+    prop_hash_key_prototype
+        .set_parent_attribute_prototype(
+            &txn,
+            &nats,
+            &visibility,
+            &history_actor,
+            *album_prop_prototype.id(),
+        )
+        .await
+        .expect("cannot set parent attribute prototype for album hash key prototype");
+
+    let func = Func::new(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        "si:setString",
+        FuncBackendKind::String,
+        FuncBackendResponseType::String,
+    )
+    .await
+    .expect("cannot create func");
+
+    let undertow_prop_func_binding = FuncBinding::new(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        serde_json::to_value(FuncBackendStringArgs::new("1993".to_string()))
+            .expect("cannot turn args into json"),
+        *func.id(),
+        *func.backend_kind(),
+    )
+    .await
+    .expect("cannot create func binding");
+    undertow_prop_func_binding
+        .execute(&txn, &nats, veritech.clone())
+        .await
+        .expect("failed to execute func binding");
+
+    let undertow_prop_prototype = AttributePrototype::new(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        *func.id(),
+        *undertow_prop_func_binding.id(),
+        prop_hash_key_prototype_context.clone(),
+        Some("Undertow".to_string()),
+    )
+    .await
+    .expect("cannot create attribute prototype for component album name");
+
+    let lateralus_prop_func_binding = FuncBinding::new(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        serde_json::to_value(FuncBackendStringArgs::new("2001".to_string()))
+            .expect("cannot turn args into json"),
+        *func.id(),
+        *func.backend_kind(),
+    )
+    .await
+    .expect("cannot create func binding");
+    lateralus_prop_func_binding
+        .execute(&txn, &nats, veritech.clone())
+        .await
+        .expect("failed to execute func binding");
+
+    let lateralus_prop_prototype = AttributePrototype::new(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        *func.id(),
+        *lateralus_prop_func_binding.id(),
+        prop_hash_key_prototype_context.clone(),
+        Some("Lateralus".to_string()),
+    )
+    .await
+    .expect("cannot create attribute prototype for component album name");
+
+    let component = create_component_for_schema(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        schema.id(),
+    )
+    .await;
+
+    let mut component_hash_key_prototype_context = prop_hash_key_prototype_context.clone();
+    component_hash_key_prototype_context.set_component_id(*component.id());
+
+    let lateralus_component_func_binding = FuncBinding::new(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        serde_json::to_value(FuncBackendStringArgs::new("The Early 2000s".to_string()))
+            .expect("cannot turn args into json"),
+        *func.id(),
+        *func.backend_kind(),
+    )
+    .await
+    .expect("cannot create func binding");
+    lateralus_component_func_binding
+        .execute(&txn, &nats, veritech.clone())
+        .await
+        .expect("failed to execute func binding");
+
+    let lateralus_component_prototype = AttributePrototype::new(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        *func.id(),
+        *lateralus_component_func_binding.id(),
+        component_hash_key_prototype_context.clone(),
+        Some("Lateralus".to_string()),
+    )
+    .await
+    .expect("cannot create attribute prototype for component album name");
+
+    let fear_inoculum_component_func_binding = FuncBinding::new(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        serde_json::to_value(FuncBackendStringArgs::new("2019".to_string()))
+            .expect("cannot turn args into json"),
+        *func.id(),
+        *func.backend_kind(),
+    )
+    .await
+    .expect("cannot create func binding");
+    fear_inoculum_component_func_binding
+        .execute(&txn, &nats, veritech.clone())
+        .await
+        .expect("failed to execute func binding");
+
+    let fear_inoculum_component_prototype = AttributePrototype::new(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        *func.id(),
+        *fear_inoculum_component_func_binding.id(),
+        component_hash_key_prototype_context.clone(),
+        Some("Fear Inoculum".to_string()),
+    )
+    .await
+    .expect("cannot create attribute prototype for component album name");
+
+    let found_hash_key_prototypes = AttributePrototype::list_for_context(
+        &txn,
+        &tenancy,
+        &visibility,
+        component_hash_key_prototype_context,
+    )
+    .await
+    .expect("could not retrieve component prototypes");
+
+    assert_eq!(
+        vec![
+            fear_inoculum_component_prototype,
+            lateralus_component_prototype,
+            undertow_prop_prototype.clone(),
+            prop_hash_key_prototype.clone(),
+        ],
+        found_hash_key_prototypes,
+    );
+
+    let found_hash_key_prototypes = AttributePrototype::list_for_context(
+        &txn,
+        &tenancy,
+        &visibility,
+        prop_hash_key_prototype_context,
+    )
+    .await
+    .expect("could not retrieve prop prototypes");
+
+    assert_eq!(
+        vec![
+            lateralus_prop_prototype,
+            undertow_prop_prototype,
+            prop_hash_key_prototype,
+        ],
+        found_hash_key_prototypes,
     );
 }

@@ -13,7 +13,7 @@ use crate::{
     PropError, PropKind, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
 };
 
-const FIND_FOR_CONTEXT: &str = include_str!("./queries/attribute_prototype_find_for_context.sql");
+const FIND_FOR_CONTEXT: &str = include_str!("./queries/attribute_prototype_list_for_context.sql");
 
 #[derive(Error, Debug)]
 pub enum AttributePrototypeError {
@@ -183,14 +183,14 @@ impl AttributePrototype {
     }
 
     #[tracing::instrument(skip(txn))]
-    pub async fn find_for_context(
+    pub async fn list_for_context(
         txn: &PgTxn<'_>,
         tenancy: &Tenancy,
         visibility: &Visibility,
         context: AttributeResolverContext,
-    ) -> AttributePrototypeResult<Option<Self>> {
-        let row = txn
-            .query_opt(
+    ) -> AttributePrototypeResult<Vec<Self>> {
+        let rows = txn
+            .query(
                 FIND_FOR_CONTEXT,
                 &[
                     &tenancy,
@@ -203,7 +203,7 @@ impl AttributePrototype {
                 ],
             )
             .await?;
-        let object = standard_model::option_object_from_row(row)?;
+        let object = standard_model::objects_from_rows(rows)?;
         Ok(object)
     }
 }

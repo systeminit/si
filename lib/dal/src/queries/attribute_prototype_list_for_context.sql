@@ -1,5 +1,6 @@
-SELECT DISTINCT ON (attribute_prototypes.prop_id) attribute_prototypes.id,
+SELECT DISTINCT ON (attribute_prototypes.prop_id, attribute_prototypes.key) attribute_prototypes.id,
                               attribute_prototypes.prop_id,
+                              attribute_prototypes.key,
                               attribute_prototypes.visibility_change_set_pk,
                               attribute_prototypes.visibility_edit_session_pk,
                               attribute_prototypes.component_id,
@@ -17,10 +18,10 @@ WHERE in_tenancy_v1($1, attribute_prototypes.tenancy_universal, attribute_protot
   AND (attribute_prototypes.schema_variant_id = $6 OR attribute_prototypes.schema_variant_id = -1)
   AND (attribute_prototypes.system_id = $7 OR attribute_prototypes.system_id = -1)
 ORDER BY prop_id,
+         key,
          visibility_change_set_pk DESC,
          visibility_edit_session_pk DESC,
          component_id DESC,
          system_id DESC,
          schema_variant_id DESC,
-         schema_id DESC
-LIMIT 1;
+         schema_id DESC;
