@@ -1,4 +1,4 @@
-use std::{env, sync::Arc};
+use std::{env, path::PathBuf, sync::Arc};
 
 use anyhow::Result;
 use lazy_static::lazy_static;
@@ -10,6 +10,7 @@ use veritech::{Instance, StandardConfig};
 use crate::{
     billing_account::BillingAccountSignup,
     component::ComponentKind,
+    cyclone_public_key::{CyclonePublicKey, CYCLONE_PUBLIC_KEY},
     func::{binding::FuncBinding, FuncId},
     jwt_key::JwtSecretKey,
     key_pair::KeyPairId,
@@ -155,6 +156,15 @@ pub async fn one_time_setup() -> Result<()> {
     }
 
     sodiumoxide::init().expect("crypto failed to init");
+
+    let cyclone_public_key_dev_path =
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../cyclone/src/dev.public_key.pub");
+    let cyclone_public_key = CyclonePublicKey::load(cyclone_public_key_dev_path)
+        .await
+        .expect("Unable to load");
+    CYCLONE_PUBLIC_KEY
+        .set(cyclone_public_key)
+        .expect("CYCLONE_PUBLIC_KEY has already been set");
 
     let nats_conn = NatsClient::new(&SETTINGS.nats)
         .await

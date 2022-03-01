@@ -28,7 +28,7 @@ pub use client::{Client, ClientError, ClientResult};
 #[cfg(feature = "client")]
 pub use cyclone::{
     CodeGenerated, CodeGenerationRequest, CodeGenerationResultSuccess, ComponentKind,
-    ComponentView, FunctionResult, FunctionResultFailure, MaybeSensitive, OutputStream,
+    ComponentView, FunctionResult, FunctionResultFailure, OutputStream,
     QualificationCheckComponent, QualificationCheckRequest, QualificationCheckResultSuccess,
     QualificationSubCheck, QualificationSubCheckStatus, ResolverFunctionComponent,
     ResolverFunctionRequest, ResourceSyncRequest, ResourceSyncResultSuccess, SensitiveContainer,

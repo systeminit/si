@@ -790,7 +790,7 @@ async fn docker_image(
             component: veritech::ResolverFunctionComponent {
                 data: veritech::ComponentView {
                     name: number_of_parents_prop.name().to_owned(),
-                    properties: veritech::MaybeSensitive::Plain(serde_json::to_value(properties)?),
+                    properties: serde_json::to_value(properties)?,
                     kind: veritech::ComponentKind::Standard,
                     system: None,
                 },
@@ -1064,7 +1064,7 @@ pub async fn create_string_prop_with_default(
             component: veritech::ResolverFunctionComponent {
                 data: veritech::ComponentView {
                     name: prop.name().to_owned(),
-                    properties: veritech::MaybeSensitive::Plain(serde_json::json!({})),
+                    properties: serde_json::json!({}),
                     system: None,
                     kind: veritech::ComponentKind::Standard,
                 },

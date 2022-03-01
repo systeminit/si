@@ -14,6 +14,7 @@ pub mod change_set;
 pub mod code_generation_prototype;
 pub mod code_generation_resolver;
 pub mod component;
+pub mod cyclone_public_key;
 pub mod edge;
 pub mod edit_field;
 pub mod edit_session;
@@ -71,6 +72,7 @@ pub use code_generation_resolver::{
     CodeGenerationResolver, CodeGenerationResolverError, CodeGenerationResolverId,
 };
 pub use component::{Component, ComponentError, ComponentId, ComponentView};
+pub use cyclone_public_key::CyclonePublicKey;
 pub use edge::{Edge, EdgeError, EdgeResult};
 pub use edit_session::{
     EditSession, EditSessionError, EditSessionPk, EditSessionStatus, NO_EDIT_SESSION_PK,

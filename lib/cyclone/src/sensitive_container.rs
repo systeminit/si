@@ -1,30 +1,14 @@
+use crate::key_pair::KeyPairError;
 use serde::{Deserialize, Serialize};
 use std::{fmt, ops::Deref, ops::DerefMut};
 
 // Note: Should this file be here or in si-data? (and make cyclone depend on si-data too)
 
 pub trait ListSecrets {
-    fn list_secrets(&self) -> Vec<SensitiveString>;
+    fn list_secrets(&self) -> Result<Vec<SensitiveString>, KeyPairError>;
 }
 
-// FIXME: for now ser/de for MaybeSensitive<SensitiveString> is broken
 pub type SensitiveString = SensitiveContainer<String>;
-
-#[derive(Debug, Clone, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Copy)]
-#[serde(tag = "maybe_sensitive_container_kind")]
-pub enum MaybeSensitive<T> {
-    Sensitive(SensitiveContainer<T>),
-    Plain(T),
-}
-
-impl<T: fmt::Display> fmt::Display for MaybeSensitive<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Sensitive(container) => container.fmt(f),
-            Self::Plain(value) => value.fmt(f),
-        }
-    }
-}
 
 /// A display/debug redacting [`T`].
 ///

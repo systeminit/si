@@ -54,7 +54,6 @@ export interface QualificationCheckResultFailure extends ResultFailure {
 export async function executeQualificationCheck(
   request: QualificationCheckRequest
 ): Promise<void> {
-
   let code = base64Decode(request.codeBase64);
   debug({ code });
 

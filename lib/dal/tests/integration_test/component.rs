@@ -284,9 +284,7 @@ async fn qualification_view() {
                 "name": "mastodon",
                 "system": null,
                 "kind": "standard",
-                "properties": {
-                    "maybe_sensitive_container_kind": "Plain"
-                }
+                "properties": {}
             },
             "parents": [],
             "codes": []

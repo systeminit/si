@@ -43,13 +43,26 @@ async fn run(args: args::Args, mut telemetry: telemetry::Client) -> Result<()> {
     // }
 
     if let Some(path) = args.generate_jwt_secret_key {
+        info!("Generating JWT secret at: {}", path.display());
         let _key = Server::generate_jwt_secret_key(path).await?;
         return Ok(());
+    }
+
+    match (&args.generate_cyclone_secret_key_path, &args.generate_cyclone_public_key_path) {
+        (Some(secret_key_path), Some(public_key_path)) => {
+            info!("Generating Cyclone key pair at: (secret = {}, public = {})", secret_key_path.display(), public_key_path.display());
+            let _key = Server::generate_cyclone_keypair(secret_key_path, public_key_path).await?;
+            return Ok(());
+        }
+        (None, None) => {}
+        _ => panic!("Both `generate_cyclone_secret_key_path` and `generate_cyclone_public_key_path` should either be set, or unset"),
     }
 
     let config = Config::try_from(args)?;
 
     let jwt_secret_key = Server::load_jwt_secret_key(config.jwt_secret_key_path()).await?;
+    let cyclone_public_key =
+        Server::load_cyclone_public_key(config.cyclone_public_key_path()).await?;
 
     let nats = Server::connect_to_nats(config.nats()).await?;
 
@@ -81,15 +94,31 @@ async fn run(args: args::Args, mut telemetry: telemetry::Client) -> Result<()> {
 
     match config.incoming_stream() {
         IncomingStream::HTTPSocket(_) => {
-            Server::http(config, telemetry, pg_pool, nats, veritech, jwt_secret_key)?
-                .run()
-                .await?;
+            Server::http(
+                config,
+                telemetry,
+                pg_pool,
+                nats,
+                veritech,
+                jwt_secret_key,
+                cyclone_public_key,
+            )?
+            .run()
+            .await?;
         }
         IncomingStream::UnixDomainSocket(_) => {
-            Server::uds(config, telemetry, pg_pool, nats, veritech, jwt_secret_key)
-                .await?
-                .run()
-                .await?;
+            Server::uds(
+                config,
+                telemetry,
+                pg_pool,
+                nats,
+                veritech,
+                jwt_secret_key,
+                cyclone_public_key,
+            )
+            .await?
+            .run()
+            .await?;
         }
     }
 

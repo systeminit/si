@@ -55,13 +55,27 @@ pub(crate) struct Args {
     #[clap(long)]
     pub(crate) disable_opentelemetry: bool,
 
-    /// JWT secret key file location [default: /run/sdf/jwt_secret_key_path.bin]
+    /// JWT secret key file location [default: /run/sdf/jwt_secret_key.bin]
     #[clap(long)]
     pub(crate) jwt_secret_key_path: Option<String>,
 
     /// Generates a JWT secret key file (does not run server)
     #[clap(long)]
     pub(crate) generate_jwt_secret_key: Option<PathBuf>,
+
+    /// Cyclone public key file location [default: /run/cyclone/public_key.pub]
+    #[clap(long)]
+    pub(crate) cyclone_public_key_path: Option<String>,
+
+    /// Generates cyclone secret key file (does not run server)
+    /// Will error if set when `generate_cyclone_public_key_path` is not set
+    #[clap(long)]
+    pub(crate) generate_cyclone_secret_key_path: Option<PathBuf>,
+
+    /// Generates cyclone public key file (does not run server)
+    /// Will error if set when `generate_cyclone_secret_key_path` is not set
+    #[clap(long)]
+    pub(crate) generate_cyclone_public_key_path: Option<PathBuf>,
 }
 
 impl TryFrom<Args> for Config {
@@ -92,6 +106,9 @@ impl TryFrom<Args> for Config {
             }
             if let Some(jwt_secret_key_path) = args.jwt_secret_key_path {
                 config_map.set("jwt_secret_key_path", jwt_secret_key_path);
+            }
+            if let Some(cyclone_public_key_path) = args.cyclone_public_key_path {
+                config_map.set("cyclone_public_key_path", cyclone_public_key_path);
             }
         })?
         .try_into()

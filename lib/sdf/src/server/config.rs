@@ -10,7 +10,7 @@ use si_data::{NatsConfig, PgPoolConfig};
 use strum_macros::{Display, EnumString, EnumVariantNames};
 use thiserror::Error;
 
-pub use dal::JwtSecretKey;
+pub use dal::{CyclonePublicKey, JwtSecretKey};
 pub use si_settings::{StandardConfig, StandardConfigFile};
 
 use crate::canonical_file::{CanonicalFile, CanonicalFileError};
@@ -46,6 +46,7 @@ pub struct Config {
     migration_mode: MigrationMode,
 
     jwt_secret_key_path: CanonicalFile,
+    cyclone_public_key_path: CanonicalFile,
 }
 
 impl StandardConfig for Config {
@@ -82,6 +83,12 @@ impl Config {
     pub fn jwt_secret_key_path(&self) -> &Path {
         self.jwt_secret_key_path.as_path()
     }
+
+    /// Gets a reference to the config's cyclone public key path.
+    #[must_use]
+    pub fn cyclone_public_key_path(&self) -> &Path {
+        self.cyclone_public_key_path.as_path()
+    }
 }
 
 impl ConfigBuilder {
@@ -100,11 +107,13 @@ pub struct ConfigFile {
     nats: NatsConfig,
     migration_mode: MigrationMode,
     jwt_secret_key_path: String,
+    cyclone_public_key_path: String,
 }
 
 impl Default for ConfigFile {
     fn default() -> Self {
         let mut jwt_secret_key_path = "/run/sdf/jwt_secret_key.bin".to_string();
+        let mut cyclone_public_key_path = "/run/sdf/cyclone_public_key.pub".to_string();
 
         // TODO(fnichol): okay, this goes away/changes when we determine where the key would be by
         // default, etc.
@@ -113,9 +122,16 @@ impl Default for ConfigFile {
                 .join("src/dev.jwt_secret_key.bin")
                 .to_string_lossy()
                 .to_string();
+            // In development we just take the keys cyclone is using (it needs both public and secret)
+            // The dal integration tests will also need it
+            cyclone_public_key_path = Path::new(&dir)
+                .join("../../lib/cyclone/src/dev.public_key.pub")
+                .to_string_lossy()
+                .to_string();
             telemetry::tracing::warn!(
                 jwt_secret_key_path = jwt_secret_key_path.as_str(),
-                "detected cargo run, setting *default* jwt secret key path from sources"
+                cyclone_public_key_path = cyclone_public_key_path.as_str(),
+                "detected cargo run, setting *default* jwt secret and cyclone public key path from sources"
             );
         }
 
@@ -124,6 +140,7 @@ impl Default for ConfigFile {
             nats: Default::default(),
             migration_mode: Default::default(),
             jwt_secret_key_path,
+            cyclone_public_key_path,
         }
     }
 }
@@ -141,6 +158,7 @@ impl TryFrom<ConfigFile> for Config {
         config.nats(value.nats);
         config.migration_mode(value.migration_mode);
         config.jwt_secret_key_path(value.jwt_secret_key_path.try_into()?);
+        config.cyclone_public_key_path(value.cyclone_public_key_path.try_into()?);
         config.build().map_err(Into::into)
     }
 }
