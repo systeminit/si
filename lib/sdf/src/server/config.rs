@@ -7,13 +7,12 @@ use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 use serde_with::{DeserializeFromStr, SerializeDisplay};
 use si_data::{NatsConfig, PgPoolConfig};
+use si_settings::{CanonicalFile, CanonicalFileError};
 use strum_macros::{Display, EnumString, EnumVariantNames};
 use thiserror::Error;
 
-pub use dal::{CyclonePublicKey, JwtSecretKey};
+pub use dal::{CycloneKeyPair, JwtSecretKey};
 pub use si_settings::{StandardConfig, StandardConfigFile};
-
-use crate::canonical_file::{CanonicalFile, CanonicalFileError};
 
 #[derive(Debug, Error)]
 pub enum ConfigError {
@@ -46,7 +45,7 @@ pub struct Config {
     migration_mode: MigrationMode,
 
     jwt_secret_key_path: CanonicalFile,
-    cyclone_public_key_path: CanonicalFile,
+    cyclone_encryption_key_path: CanonicalFile,
 }
 
 impl StandardConfig for Config {
@@ -86,8 +85,8 @@ impl Config {
 
     /// Gets a reference to the config's cyclone public key path.
     #[must_use]
-    pub fn cyclone_public_key_path(&self) -> &Path {
-        self.cyclone_public_key_path.as_path()
+    pub fn cyclone_encryption_key_path(&self) -> &Path {
+        self.cyclone_encryption_key_path.as_path()
     }
 }
 
@@ -107,13 +106,13 @@ pub struct ConfigFile {
     nats: NatsConfig,
     migration_mode: MigrationMode,
     jwt_secret_key_path: String,
-    cyclone_public_key_path: String,
+    cyclone_encryption_key_path: String,
 }
 
 impl Default for ConfigFile {
     fn default() -> Self {
         let mut jwt_secret_key_path = "/run/sdf/jwt_secret_key.bin".to_string();
-        let mut cyclone_public_key_path = "/run/sdf/cyclone_public_key.pub".to_string();
+        let mut cyclone_encryption_key_path = "/run/sdf/cyclone_encryption.key".to_string();
 
         // TODO(fnichol): okay, this goes away/changes when we determine where the key would be by
         // default, etc.
@@ -124,14 +123,14 @@ impl Default for ConfigFile {
                 .to_string();
             // In development we just take the keys cyclone is using (it needs both public and secret)
             // The dal integration tests will also need it
-            cyclone_public_key_path = Path::new(&dir)
-                .join("../../lib/cyclone/src/dev.public_key.pub")
+            cyclone_encryption_key_path = Path::new(&dir)
+                .join("../../lib/cyclone/src/dev.encryption.key")
                 .to_string_lossy()
                 .to_string();
             telemetry::tracing::warn!(
                 jwt_secret_key_path = jwt_secret_key_path.as_str(),
-                cyclone_public_key_path = cyclone_public_key_path.as_str(),
-                "detected cargo run, setting *default* jwt secret and cyclone public key path from sources"
+                cyclone_encryption_key_path = cyclone_encryption_key_path.as_str(),
+                "detected cargo run, setting *default* key paths from sources"
             );
         }
 
@@ -140,7 +139,7 @@ impl Default for ConfigFile {
             nats: Default::default(),
             migration_mode: Default::default(),
             jwt_secret_key_path,
-            cyclone_public_key_path,
+            cyclone_encryption_key_path,
         }
     }
 }
@@ -158,7 +157,7 @@ impl TryFrom<ConfigFile> for Config {
         config.nats(value.nats);
         config.migration_mode(value.migration_mode);
         config.jwt_secret_key_path(value.jwt_secret_key_path.try_into()?);
-        config.cyclone_public_key_path(value.cyclone_public_key_path.try_into()?);
+        config.cyclone_encryption_key_path(value.cyclone_encryption_key_path.try_into()?);
         config.build().map_err(Into::into)
     }
 }

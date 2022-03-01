@@ -11,7 +11,7 @@ use tower::ServiceExt;
 async fn create_account() {
     one_time_setup().await.expect("cannot setup tests");
     let ctx = TestContext::init().await;
-    let (pg, nats, _veritech, jwt_secret_key) = ctx.entries();
+    let (pg, nats, _veritech, encr_key, jwt_secret_key) = ctx.entries();
     let veritech = veritech::Client::new(nats.clone());
     let telemetry = ctx.telemetry();
     let (app, _) = sdf::build_service(
@@ -19,6 +19,7 @@ async fn create_account() {
         pg.clone(),
         nats.clone(),
         veritech,
+        *encr_key,
         jwt_secret_key.clone(),
     )
     .expect("cannot build new server");

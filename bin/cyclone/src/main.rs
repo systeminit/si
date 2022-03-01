@@ -26,6 +26,9 @@ async fn run(args: args::Args, mut telemetry: telemetry::Client) -> Result<()> {
     if args.disable_opentelemetry {
         telemetry.disable_opentelemetry().await?;
     }
+
+    let decryption_key = Server::load_decryption_key(&args.decryption_key).await?;
+
     let config = Config::try_from(args)?;
 
     start_tracing_level_signal_handler_task(&telemetry)?;
@@ -33,8 +36,17 @@ async fn run(args: args::Args, mut telemetry: telemetry::Client) -> Result<()> {
     let telemetry = Box::new(telemetry);
 
     match config.incoming_stream() {
-        IncomingStream::HTTPSocket(_) => Server::http(config, telemetry)?.run().await?,
-        IncomingStream::UnixDomainSocket(_) => Server::uds(config, telemetry).await?.run().await?,
+        IncomingStream::HTTPSocket(_) => {
+            Server::http(config, telemetry, decryption_key)?
+                .run()
+                .await?
+        }
+        IncomingStream::UnixDomainSocket(_) => {
+            Server::uds(config, telemetry, decryption_key)
+                .await?
+                .run()
+                .await?
+        }
     }
 
     Ok(())

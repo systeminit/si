@@ -8,7 +8,7 @@ use jwt_simple::algorithms::RSAKeyPairLike;
 async fn get_jwt_signing_key() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
-    let (pg, _nats_conn, _veritech, secret_key) = ctx.entries();
+    let (pg, _nats_conn, _veritech, _encr_key, secret_key) = ctx.entries();
     let mut conn = pg.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
@@ -21,7 +21,7 @@ async fn get_jwt_signing_key() {
 async fn get_jwt_validation_key() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
-    let (pg, _nats_conn, _veritech, secret_key) = ctx.entries();
+    let (pg, _nats_conn, _veritech, _encr_key, secret_key) = ctx.entries();
     let mut conn = pg.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 

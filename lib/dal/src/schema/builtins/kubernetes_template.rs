@@ -6,6 +6,7 @@ use crate::{
     HistoryActor, Prop, PropId, PropKind, SchemaVariantId, StandardModel, Tenancy, Visibility,
 };
 use si_data::{NatsTxn, PgTxn};
+use veritech::EncryptionKey;
 
 #[allow(clippy::too_many_arguments)]
 pub async fn create_template_prop(
@@ -17,11 +18,13 @@ pub async fn create_template_prop(
     variant_id: &SchemaVariantId,
     parent_prop_id: Option<PropId>,
     veritech: veritech::Client,
+    encryption_key: &EncryptionKey,
 ) -> SchemaResult<Prop> {
     let template_prop = create_prop(
         txn,
         nats,
         veritech.clone(),
+        encryption_key,
         tenancy,
         visibility,
         history_actor,
@@ -43,6 +46,7 @@ pub async fn create_template_prop(
             false,
             Some(*template_prop.id()),
             veritech.clone(),
+            encryption_key,
         )
         .await?;
     }
@@ -52,6 +56,7 @@ pub async fn create_template_prop(
             txn,
             nats,
             veritech,
+            encryption_key,
             tenancy,
             visibility,
             history_actor,

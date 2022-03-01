@@ -9,7 +9,17 @@ use dal::{BillingAccount, HistoryActor, KeyPair, StandardModel, Tenancy};
 
 #[tokio::test]
 async fn new() {
-    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats, _veritech);
+    test_setup!(
+        ctx,
+        _secret_key,
+        pg,
+        conn,
+        txn,
+        nats_conn,
+        nats,
+        _veritech,
+        _encr_key
+    );
     let tenancy = Tenancy::new_universal();
     let history_actor = HistoryActor::SystemInit;
     let change_set = create_change_set(&txn, &nats, &tenancy, &history_actor).await;
@@ -22,7 +32,17 @@ async fn new() {
 
 #[tokio::test]
 async fn belongs_to() {
-    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats, _veritech);
+    test_setup!(
+        ctx,
+        _secret_key,
+        pg,
+        conn,
+        txn,
+        nats_conn,
+        nats,
+        _veritech,
+        _encr_key
+    );
     let tenancy = Tenancy::new_universal();
     let history_actor = HistoryActor::SystemInit;
     let change_set = create_change_set(&txn, &nats, &tenancy, &history_actor).await;
@@ -67,7 +87,17 @@ async fn belongs_to() {
 
 #[tokio::test]
 async fn public_key_get_current() {
-    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats, _veritech);
+    test_setup!(
+        ctx,
+        _secret_key,
+        pg,
+        conn,
+        txn,
+        nats_conn,
+        nats,
+        _veritech,
+        _encr_key
+    );
     let tenancy = Tenancy::new_universal();
     let history_actor = HistoryActor::SystemInit;
     let change_set = create_change_set(&txn, &nats, &tenancy, &history_actor).await;

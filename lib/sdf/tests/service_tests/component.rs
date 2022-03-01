@@ -22,6 +22,7 @@ async fn list_components_names_only() {
         _nats_conn,
         nats,
         _veritech,
+        _encr_key,
         app,
         nba,
         auth_token
@@ -82,6 +83,7 @@ async fn get_component_metadata() {
         _nats_conn,
         nats,
         veritech,
+        _encr_key,
         app,
         nba,
         auth_token

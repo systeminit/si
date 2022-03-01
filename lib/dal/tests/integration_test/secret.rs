@@ -8,7 +8,7 @@ use crate::test_setup;
 
 #[tokio::test]
 async fn new_encrypted_secret() {
-    test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats, _veritech);
+    test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats, _veritech, _encr_key);
     let (nba, _token) = billing_account_signup(&txn, &nats, secret_key).await;
     let tenancy = Tenancy::new_billing_account(vec![*nba.billing_account.id()]);
     let visibility = Visibility::new_head(false);
@@ -48,7 +48,7 @@ async fn new_encrypted_secret() {
 
 #[tokio::test]
 async fn secret_get_by_id() {
-    test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats, _veritech);
+    test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats, _veritech, _encr_key);
     let (nba, _token) = billing_account_signup(&txn, &nats, secret_key).await;
     let tenancy = Tenancy::new_billing_account(vec![*nba.billing_account.id()]);
     let visibility = Visibility::new_head(false);
@@ -74,7 +74,7 @@ async fn secret_get_by_id() {
 
 #[tokio::test]
 async fn encrypted_secret_get_by_id() {
-    test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats, _veritech);
+    test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats, _veritech, _encr_key);
     let (nba, _token) = billing_account_signup(&txn, &nats, secret_key).await;
     let tenancy = Tenancy::new_billing_account(vec![*nba.billing_account.id()]);
     let visibility = Visibility::new_head(false);
@@ -104,7 +104,7 @@ async fn encrypted_secret_get_by_id() {
 
 #[tokio::test]
 async fn secret_update_name() {
-    test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats, _veritech);
+    test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats, _veritech, _encr_key);
     let (nba, _token) = billing_account_signup(&txn, &nats, secret_key).await;
     let tenancy = Tenancy::new_billing_account(vec![*nba.billing_account.id()]);
     let visibility = Visibility::new_head(false);
@@ -133,7 +133,7 @@ async fn secret_update_name() {
 
 #[tokio::test]
 async fn encrypt_decrypt_round_trip() {
-    test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats, _veritech);
+    test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats, _veritech, _encr_key);
     let (nba, _token) = billing_account_signup(&txn, &nats, secret_key).await;
     let tenancy = Tenancy::new_billing_account(vec![*nba.billing_account.id()]);
     let visibility = Visibility::new_head(false);

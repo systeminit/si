@@ -14,7 +14,6 @@
 pub mod canonical_command;
 mod code_generation;
 mod component_view;
-pub(crate) mod key_pair;
 mod liveness;
 mod progress;
 mod qualification_check;
@@ -52,10 +51,6 @@ pub use server::{Config, ConfigError, IncomingStream, Server};
 #[cfg(feature = "client")]
 pub mod client;
 #[cfg(feature = "client")]
-pub use client::{Client, ClientError, CycloneClient, HttpClient, UdsClient};
-
-use chrono::Utc;
-
-pub fn timestamp() -> u64 {
-    u64::try_from(std::cmp::max(Utc::now().timestamp(), 0)).expect("timestamp not be negative")
-}
+pub use client::{
+    Client, ClientError, CycloneClient, EncryptionKey, EncryptionKeyError, HttpClient, UdsClient,
+};

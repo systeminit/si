@@ -6,7 +6,17 @@ use dal::{
 
 #[tokio::test]
 async fn get_schematic() {
-    test_setup!(ctx, _secret_key, _pg, conn, txn, _nats_conn, nats, veritech,);
+    test_setup!(
+        ctx,
+        _secret_key,
+        _pg,
+        conn,
+        txn,
+        _nats_conn,
+        nats,
+        veritech,
+        _encr_key
+    );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
@@ -98,6 +108,7 @@ async fn create_connection() {
         _nats_conn,
         nats,
         veritech,
+        _encr_key,
     );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
@@ -164,9 +175,9 @@ async fn create_connection() {
         &tenancy,
         &visibility,
         &history_actor,
-        &head_node.id(),
+        head_node.id(),
         output_socket.id(),
-        &tail_node.id(),
+        tail_node.id(),
         input_socket.id(),
     )
     .await

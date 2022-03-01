@@ -25,6 +25,7 @@ async fn new() {
         _nats_conn,
         nats,
         _veritech,
+        _encr_key,
     );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
@@ -54,6 +55,7 @@ async fn func_binding_new() {
         _nats_conn,
         nats,
         _veritech,
+        _encr_key,
     );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
@@ -86,6 +88,7 @@ async fn func_binding_find_or_create_head() {
         _nats_conn,
         nats,
         _veritech,
+        _encr_key,
     );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
@@ -139,6 +142,7 @@ async fn func_binding_find_or_create_edit_session() {
         _nats_conn,
         nats,
         _veritech,
+        _encr_key,
     );
     let tenancy = Tenancy::new_universal();
     let history_actor = HistoryActor::SystemInit;
@@ -272,6 +276,7 @@ async fn func_binding_return_value_new() {
         _nats_conn,
         nats,
         _veritech,
+        _encr_key,
     );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
@@ -314,7 +319,17 @@ async fn func_binding_return_value_new() {
 
 #[tokio::test]
 async fn func_binding_execute() {
-    test_setup!(ctx, _secret_key, _pg, _conn, txn, nats_conn, nats, veritech,);
+    test_setup!(
+        ctx,
+        _secret_key,
+        _pg,
+        _conn,
+        txn,
+        nats_conn,
+        nats,
+        veritech,
+        encr_key
+    );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
@@ -335,7 +350,7 @@ async fn func_binding_execute() {
     .await;
 
     let return_value = func_binding
-        .execute(&txn, &nats, veritech)
+        .execute(&txn, &nats, veritech, encr_key)
         .await
         .expect("failed to execute func binding");
     assert_eq!(return_value.value(), Some(&serde_json::json!["funky"]));
@@ -347,7 +362,17 @@ async fn func_binding_execute() {
 
 #[tokio::test]
 async fn func_binding_execute_unset() {
-    test_setup!(ctx, _secret_key, _pg, _conn, txn, nats_conn, nats, veritech,);
+    test_setup!(
+        ctx,
+        _secret_key,
+        _pg,
+        _conn,
+        txn,
+        nats_conn,
+        nats,
+        veritech,
+        encr_key
+    );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
@@ -379,7 +404,7 @@ async fn func_binding_execute_unset() {
     .await;
 
     let return_value = func_binding
-        .execute(&txn, &nats, veritech)
+        .execute(&txn, &nats, veritech, encr_key)
         .await
         .expect("failed to execute func binding");
     assert_eq!(return_value.value(), None);

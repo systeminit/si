@@ -16,7 +16,7 @@ pub mod code_generation_prototype;
 pub mod code_generation_resolver;
 pub mod code_view;
 pub mod component;
-pub mod cyclone_public_key;
+pub mod cyclone_key_pair;
 pub mod edge;
 pub mod edit_field;
 pub mod edit_session;
@@ -75,7 +75,7 @@ pub use code_generation_resolver::{
 };
 pub use code_view::{CodeLanguage, CodeView};
 pub use component::{Component, ComponentError, ComponentId, ComponentView};
-pub use cyclone_public_key::CyclonePublicKey;
+pub use cyclone_key_pair::CycloneKeyPair;
 pub use edge::{Edge, EdgeError, EdgeResult};
 pub use edit_session::{
     EditSession, EditSessionError, EditSessionPk, EditSessionStatus, NO_EDIT_SESSION_PK,
@@ -129,6 +129,7 @@ pub use validation_prototype::{
     ValidationPrototype, ValidationPrototypeError, ValidationPrototypeId,
 };
 pub use validation_resolver::{ValidationResolver, ValidationResolverError, ValidationResolverId};
+use veritech::EncryptionKey;
 pub use visibility::{Visibility, VisibilityError};
 pub use workspace::{Workspace, WorkspaceError, WorkspaceId, WorkspacePk, WorkspaceResult};
 pub use ws_event::{WsEvent, WsEventError, WsPayload};
@@ -168,12 +169,13 @@ pub async fn migrate_builtin_schemas(
     pg: &PgPool,
     nats: &NatsClient,
     veritech: veritech::Client,
+    encryption_key: &EncryptionKey,
 ) -> ModelResult<()> {
     let mut conn = pg.get().await?;
     let txn = conn.transaction().await?;
     let nats = nats.transaction();
     func::builtins::migrate(&txn, &nats).await?;
-    schema::builtins::migrate(&txn, &nats, veritech).await?;
+    schema::builtins::migrate(&txn, &nats, veritech, encryption_key).await?;
     txn.commit().await?;
     nats.commit().await?;
     Ok(())

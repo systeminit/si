@@ -4,11 +4,11 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crate::server::config::{CyclonePublicKey, JwtSecretKey};
+use crate::server::config::{CycloneKeyPair, JwtSecretKey};
 use axum::routing::IntoMakeService;
 use axum::Router;
 use dal::{
-    cyclone_public_key::CyclonePublicKeyError,
+    cyclone_key_pair::CycloneKeyPairError,
     jwt_key::{install_new_jwt_key, jwt_key_exists},
     migrate, migrate_builtin_schemas, ResourceScheduler,
 };
@@ -46,11 +46,13 @@ pub enum ServerError {
     #[error(transparent)]
     Uds(#[from] UdsIncomingStreamError),
     #[error("cyclone public key error: {0}")]
-    CyclonePublicKeyErr(#[from] CyclonePublicKeyError),
+    CyclonePublicKeyErr(#[from] CycloneKeyPairError),
     #[error("wrong incoming stream for {0} server: {1:?}")]
     WrongIncomingStream(&'static str, IncomingStream),
     #[error("cyclone public key already set")]
     CyclonePublicKeyAlreadySet,
+    #[error("error when loading encryption key: {0}")]
+    EncryptionKey(#[from] veritech::EncryptionKeyError),
 }
 
 pub type Result<T> = std::result::Result<T, ServerError>;
@@ -69,17 +71,19 @@ impl Server<(), ()> {
         pg_pool: PgPool,
         nats: NatsClient,
         veritech: veritech::Client,
+        encryption_key: veritech::EncryptionKey,
         jwt_secret_key: JwtSecretKey,
-        cyclone_public_key: CyclonePublicKey,
     ) -> Result<Server<AddrIncoming, SocketAddr>> {
-        dal::cyclone_public_key::CYCLONE_PUBLIC_KEY
-            .set(cyclone_public_key)
-            .map_err(|_| ServerError::CyclonePublicKeyAlreadySet)?;
-
         match config.incoming_stream() {
             IncomingStream::HTTPSocket(socket_addr) => {
-                let (service, shutdown_rx) =
-                    build_service(telemetry, pg_pool, nats, veritech, jwt_secret_key)?;
+                let (service, shutdown_rx) = build_service(
+                    telemetry,
+                    pg_pool,
+                    nats,
+                    veritech,
+                    encryption_key,
+                    jwt_secret_key,
+                )?;
 
                 info!("binding to HTTP socket; socket_addr={}", &socket_addr);
                 let inner = axum::Server::bind(socket_addr).serve(service.into_make_service());
@@ -104,17 +108,19 @@ impl Server<(), ()> {
         pg_pool: PgPool,
         nats: NatsClient,
         veritech: veritech::Client,
+        encryption_key: veritech::EncryptionKey,
         jwt_secret_key: JwtSecretKey,
-        cyclone_public_key: CyclonePublicKey,
     ) -> Result<Server<UdsIncomingStream, PathBuf>> {
-        dal::cyclone_public_key::CYCLONE_PUBLIC_KEY
-            .set(cyclone_public_key)
-            .map_err(|_| ServerError::CyclonePublicKeyAlreadySet)?;
-
         match config.incoming_stream() {
             IncomingStream::UnixDomainSocket(path) => {
-                let (service, shutdown_rx) =
-                    build_service(telemetry, pg_pool, nats, veritech, jwt_secret_key)?;
+                let (service, shutdown_rx) = build_service(
+                    telemetry,
+                    pg_pool,
+                    nats,
+                    veritech,
+                    encryption_key,
+                    jwt_secret_key,
+                )?;
 
                 info!("binding to Unix domain socket; path={}", path.display());
                 let inner = axum::Server::builder(UdsIncomingStream::create(path).await?)
@@ -144,11 +150,13 @@ impl Server<(), ()> {
     }
 
     #[instrument(skip_all)]
-    pub async fn generate_cyclone_keypair(
+    pub async fn generate_cyclone_key_pair(
         secret_key_path: impl AsRef<Path>,
         public_key_path: impl AsRef<Path>,
-    ) -> Result<CyclonePublicKey> {
-        Ok(CyclonePublicKey::create(secret_key_path, public_key_path).await?)
+    ) -> Result<()> {
+        CycloneKeyPair::create(secret_key_path, public_key_path)
+            .await
+            .map_err(Into::into)
     }
 
     #[instrument(skip_all)]
@@ -157,8 +165,8 @@ impl Server<(), ()> {
     }
 
     #[instrument(skip_all)]
-    pub async fn load_cyclone_public_key(path: impl AsRef<Path>) -> Result<CyclonePublicKey> {
-        Ok(CyclonePublicKey::load(path).await?)
+    pub async fn load_encryption_key(path: impl AsRef<Path>) -> Result<veritech::EncryptionKey> {
+        Ok(veritech::EncryptionKey::load(path).await?)
     }
 
     #[instrument(skip_all)]
@@ -167,9 +175,10 @@ impl Server<(), ()> {
         nats: &NatsClient,
         jwt_secret_key: &JwtSecretKey,
         veritech: veritech::Client,
+        encryption_key: &veritech::EncryptionKey,
     ) -> Result<()> {
         migrate(pg).await?;
-        migrate_builtin_schemas(pg, nats, veritech).await?;
+        migrate_builtin_schemas(pg, nats, veritech, encryption_key).await?;
 
         let mut conn = pg.get().await?;
         let txn = conn.transaction().await?;
@@ -187,11 +196,10 @@ impl Server<(), ()> {
         pg: PgPool,
         nats: NatsClient,
         veritech: veritech::Client,
+        encryption_key: veritech::EncryptionKey,
     ) {
-        tokio::spawn(async move {
-            let scheduler = ResourceScheduler::new(pg.clone(), nats.clone(), veritech.clone());
-            scheduler.start().await;
-        });
+        let scheduler = ResourceScheduler::new(pg, nats, veritech, encryption_key);
+        tokio::spawn(scheduler.start());
     }
 
     #[instrument(skip_all)]
@@ -246,6 +254,7 @@ pub fn build_service(
     pg_pool: PgPool,
     nats: NatsClient,
     veritech: veritech::Client,
+    encryption_key: veritech::EncryptionKey,
     jwt_secret_key: JwtSecretKey,
 ) -> Result<(Router, oneshot::Receiver<()>)> {
     let (shutdown_tx, shutdown_rx) = mpsc::channel(4);
@@ -259,6 +268,7 @@ pub fn build_service(
         pg_pool,
         nats,
         veritech,
+        encryption_key,
         jwt_secret_key,
         shutdown_tx,
         shutdown_broadcast_tx.clone(),

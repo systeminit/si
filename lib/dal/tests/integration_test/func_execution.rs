@@ -20,6 +20,7 @@ async fn new() {
         _nats_conn,
         nats,
         _veritech,
+        _encr_key,
     );
     let tenancy = Tenancy::new_universal();
     let visibility = create_visibility_head();
@@ -55,6 +56,7 @@ async fn set_state() {
         _nats_conn,
         nats,
         _veritech,
+        _encr_key,
     );
     let tenancy = Tenancy::new_universal();
     let visibility = create_visibility_head();
@@ -95,6 +97,7 @@ async fn set_output_stream() {
         _nats_conn,
         nats,
         _veritech,
+        _encr_key,
     );
     let tenancy = Tenancy::new_universal();
     let visibility = create_visibility_head();
@@ -141,7 +144,17 @@ async fn set_output_stream() {
 
 #[tokio::test]
 async fn process_return_value() {
-    test_setup!(ctx, _secret_key, _pg, _conn, txn, nats_conn, nats, veritech);
+    test_setup!(
+        ctx,
+        _secret_key,
+        _pg,
+        _conn,
+        txn,
+        nats_conn,
+        nats,
+        veritech,
+        encr_key
+    );
     let tenancy = Tenancy::new_universal();
     let visibility = create_visibility_head();
     let history_actor = HistoryActor::SystemInit;
@@ -161,7 +174,7 @@ async fn process_return_value() {
     )
     .await;
     let func_binding_return_value = func_binding
-        .execute(&txn, &nats, veritech)
+        .execute(&txn, &nats, veritech, encr_key)
         .await
         .expect("cannot execute binding");
 
@@ -187,7 +200,7 @@ async fn process_return_value() {
 // FIXME(nick,fletcher): re-add test once upsert is added.
 // #[tokio::test]
 // async fn execution_upserts_return_value() {
-//     test_setup!(ctx, _secret_key, _pg, _conn, txn, nats_conn, nats, veritech);
+//     test_setup!(ctx, _secret_key, _pg, _conn, txn, nats_conn, nats, veritech, _encr_key);
 //     let tenancy = Tenancy::new_universal();
 //     let visibility = create_visibility_head();
 //     let history_actor = HistoryActor::SystemInit;

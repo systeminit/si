@@ -5,6 +5,7 @@ use si_data::{NatsTxn, PgTxn};
 use std::{future::Future, pin::Pin};
 use strum_macros::{AsRefStr, Display, EnumString};
 use thiserror::Error;
+use veritech::EncryptionKey;
 
 use crate::{
     func::backend::validation::ValidationError, HistoryActor, LabelListError, PropId, PropKind,
@@ -176,6 +177,7 @@ pub trait EditFieldAble {
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
         veritech: veritech::Client,
+        encryption_key: &EncryptionKey,
         tenancy: &Tenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,

@@ -598,10 +598,10 @@ dependencies = [
  "hyper",
  "hyperlocal",
  "nix",
- "once_cell",
  "pin-project-lite",
  "serde",
  "serde_json",
+ "si-settings",
  "sodiumoxide",
  "telemetry",
  "tempfile",
@@ -644,7 +644,6 @@ dependencies = [
  "jwt-simple",
  "lazy_static",
  "names",
- "once_cell",
  "paste",
  "petgraph 0.6.0",
  "postgres-types",
@@ -2900,6 +2899,7 @@ version = "0.1.0"
 dependencies = [
  "config-file",
  "serde",
+ "serde_with",
  "sodiumoxide",
  "thiserror",
 ]

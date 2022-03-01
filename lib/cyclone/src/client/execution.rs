@@ -42,6 +42,8 @@ pub enum ExecutionError<Success> {
     MessageAfterFinish(WebSocketMessage),
     #[error("unexpected message before start was sent: {0:?}")]
     MessageBeforeStart(Message<Success>),
+    #[error("unexpected message: {0:?}")]
+    UnexpectedMessage(Message<Success>),
     #[error("unexpected websocket message type: {0}")]
     UnexpectedMessageType(WebSocketMessage),
     #[error("websocket stream is closed, but finish was not sent")]
@@ -122,7 +124,7 @@ where
 impl<T, Success> Stream for ExecutionStarted<T, Success>
 where
     T: AsyncRead + AsyncWrite + Connection + Unpin + Send + 'static,
-    Success: DeserializeOwned + std::marker::Unpin,
+    Success: DeserializeOwned + std::marker::Unpin + std::fmt::Debug,
 {
     type Item = Result<ProgressMessage, ExecutionError<Success>>;
 
@@ -162,7 +164,7 @@ where
                     }
                     // We got an unexpected message
                     unexpected => {
-                        Poll::Ready(Some(Err(ExecutionError::MessageBeforeStart(unexpected))))
+                        Poll::Ready(Some(Err(ExecutionError::UnexpectedMessage(unexpected))))
                     }
                 }
             }

@@ -1,16 +1,15 @@
-use std::{env, path::PathBuf, sync::Arc};
+use std::{env, path::Path, sync::Arc};
 
 use anyhow::Result;
 use lazy_static::lazy_static;
 use names::{Generator, Name};
 use si_data::{NatsClient, NatsConfig, NatsTxn, PgPool, PgPoolConfig, PgTxn};
 use uuid::Uuid;
-use veritech::{Instance, StandardConfig};
+use veritech::{EncryptionKey, Instance, StandardConfig};
 
 use crate::{
     billing_account::BillingAccountSignup,
     component::ComponentKind,
-    cyclone_public_key::{CyclonePublicKey, CYCLONE_PUBLIC_KEY},
     func::{binding::FuncBinding, FuncId},
     jwt_key::JwtSecretKey,
     key_pair::KeyPairId,
@@ -64,6 +63,7 @@ pub struct TestContext {
     pub pg: PgPool,
     pub nats_conn: NatsClient,
     pub veritech: veritech::Client,
+    pub encryption_key: EncryptionKey,
     pub jwt_secret_key: JwtSecretKey,
     pub telemetry: telemetry::NoopClient,
 }
@@ -89,6 +89,11 @@ impl TestContext {
         tokio::spawn(veritech_server.run());
         let veritech =
             veritech::Client::with_subject_prefix(nats_conn.clone(), nats_subject_prefix);
+        let encryption_key = EncryptionKey::load(
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("../cyclone/src/dev.encryption.key"),
+        )
+        .await
+        .expect("failed to load dev encryption key");
         let secret_key = settings.jwt_encrypt.clone();
         let telemetry = telemetry::NoopClient;
 
@@ -97,16 +102,26 @@ impl TestContext {
             pg,
             nats_conn,
             veritech,
+            encryption_key,
             jwt_secret_key: secret_key,
             telemetry,
         }
     }
 
-    pub fn entries(&self) -> (&PgPool, &NatsClient, veritech::Client, &JwtSecretKey) {
+    pub fn entries(
+        &self,
+    ) -> (
+        &PgPool,
+        &NatsClient,
+        veritech::Client,
+        &EncryptionKey,
+        &JwtSecretKey,
+    ) {
         (
             &self.pg,
             &self.nats_conn,
             self.veritech.clone(),
+            &self.encryption_key,
             &self.jwt_secret_key,
         )
     }
@@ -125,6 +140,7 @@ async fn veritech_server_for_uds_cyclone(
         veritech::LocalUdsInstance::spec()
             .try_cyclone_cmd_path("../../target/debug/cyclone")
             .expect("failed to setup cyclone_cmd_path")
+            .cyclone_decryption_key_path("../../lib/cyclone/src/dev.decryption.key")
             .try_lang_server_cmd_path("../../bin/lang-js/target/lang-js")
             .expect("failed to setup lang_js_cmd_path")
             .qualification()
@@ -157,14 +173,11 @@ pub async fn one_time_setup() -> Result<()> {
 
     sodiumoxide::init().expect("crypto failed to init");
 
-    let cyclone_public_key_dev_path =
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../cyclone/src/dev.public_key.pub");
-    let cyclone_public_key = CyclonePublicKey::load(cyclone_public_key_dev_path)
-        .await
-        .expect("Unable to load");
-    CYCLONE_PUBLIC_KEY
-        .set(cyclone_public_key)
-        .expect("CYCLONE_PUBLIC_KEY has already been set");
+    let encryption_key = EncryptionKey::load(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../cyclone/src/dev.encryption.key"),
+    )
+    .await
+    .expect("failed to load dev encryption key");
 
     let nats_conn = NatsClient::new(&SETTINGS.nats)
         .await
@@ -199,7 +212,7 @@ pub async fn one_time_setup() -> Result<()> {
     .await?;
     txn.commit().await?;
 
-    crate::migrate_builtin_schemas(&pg, &nats_conn, veritech).await?;
+    crate::migrate_builtin_schemas(&pg, &nats_conn, veritech, &encryption_key).await?;
 
     // Shutdown the Veritech server (each test gets their own server instance with an exclusively
     // unique subject prefix)
@@ -600,6 +613,7 @@ pub async fn create_prop(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
     veritech: veritech::Client,
+    encryption_key: &EncryptionKey,
     tenancy: &Tenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
@@ -609,6 +623,7 @@ pub async fn create_prop(
         txn,
         nats,
         veritech,
+        encryption_key,
         tenancy,
         visibility,
         history_actor,
@@ -619,10 +634,12 @@ pub async fn create_prop(
     .expect("cannot create prop")
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn create_prop_of_kind(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
     veritech: veritech::Client,
+    encryption_key: &EncryptionKey,
     tenancy: &Tenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
@@ -633,6 +650,7 @@ pub async fn create_prop_of_kind(
         txn,
         nats,
         veritech,
+        encryption_key,
         tenancy,
         visibility,
         history_actor,
@@ -648,6 +666,7 @@ pub async fn create_prop_of_kind_with_name(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
     veritech: veritech::Client,
+    encryption_key: &EncryptionKey,
     tenancy: &Tenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
@@ -659,6 +678,7 @@ pub async fn create_prop_of_kind_with_name(
         txn,
         nats,
         veritech,
+        encryption_key,
         tenancy,
         visibility,
         history_actor,

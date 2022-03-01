@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use si_data::{NatsTxn, PgError, PgTxn};
 use telemetry::prelude::*;
 use thiserror::Error;
+use veritech::EncryptionKey;
 
 use crate::{
     edit_field::{
@@ -177,6 +178,7 @@ impl EditFieldAble for QualificationCheck {
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
         _veritech: veritech::Client,
+        _encryption_key: &EncryptionKey,
         tenancy: &Tenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,

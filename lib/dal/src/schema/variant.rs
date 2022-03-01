@@ -4,6 +4,7 @@ use serde_json::Value;
 use si_data::{NatsError, NatsTxn, PgError, PgTxn};
 use telemetry::prelude::*;
 use thiserror::Error;
+use veritech::EncryptionKey;
 
 use crate::{
     edit_field::{
@@ -294,6 +295,7 @@ impl EditFieldAble for SchemaVariant {
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
         veritech: veritech::Client,
+        encryption_key: &EncryptionKey,
         tenancy: &Tenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
@@ -324,6 +326,7 @@ impl EditFieldAble for SchemaVariant {
                     txn,
                     nats,
                     veritech,
+                    encryption_key,
                     tenancy,
                     visibility,
                     history_actor,

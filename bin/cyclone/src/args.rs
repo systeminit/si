@@ -99,6 +99,10 @@ pub(crate) struct Args {
     /// Limits execution requests to the given value before shutting down
     #[clap(long, group = "limit_requests")]
     pub(crate) limit_requests: Option<u32>,
+
+    /// Cyclone decryption key file location [example: /run/cyclone/cyclone.key]
+    #[clap(long)]
+    pub(crate) decryption_key: PathBuf,
 }
 
 impl TryFrom<Args> for Config {
@@ -113,6 +117,8 @@ impl TryFrom<Args> for Config {
         if let Some(pathbuf) = args.bind_uds {
             builder.incoming_stream(IncomingStream::UnixDomainSocket(pathbuf));
         }
+
+        builder.try_lang_server_path(args.lang_server)?;
 
         if args.enable_watch {
             builder.watch(Some(Duration::from_secs(args.watch_timeout)));
@@ -148,12 +154,6 @@ impl TryFrom<Args> for Config {
             builder.enable_code_generation(true);
         } else if args.disable_code_generation {
             builder.enable_code_generation(false);
-        }
-
-        if args.lang_server.is_file() {
-            builder.lang_server_path(args.lang_server);
-        } else {
-            return Err(ConfigError::LangServerProgramNotFound(args.lang_server));
         }
 
         if args.oneshot {

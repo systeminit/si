@@ -18,6 +18,7 @@ async fn new() {
         nats_conn,
         nats,
         _veritech,
+        _encr_key,
     );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
@@ -76,7 +77,7 @@ async fn new() {
 
 #[tokio::test]
 async fn find_for_prop() {
-    test_setup!(ctx, secret_key, pg, _conn, txn, nats_conn, nats, _veritech);
+    test_setup!(ctx, secret_key, pg, _conn, txn, nats_conn, nats, _veritech, _encr_key);
     let (nba, _token) = billing_account_signup(&txn, &nats, secret_key).await;
     let mut tenancy = Tenancy::new_workspace(vec![*nba.workspace.id()]);
     tenancy.universal = true;

@@ -5,7 +5,7 @@ use dal::{HistoryActor, HistoryEvent, Tenancy};
 async fn new() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
-    let (pg, nats_conn, _veritech, _secret_key) = ctx.entries();
+    let (pg, nats_conn, _veritech, _encr_key, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
     let mut conn = pg.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");

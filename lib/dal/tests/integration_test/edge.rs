@@ -17,7 +17,8 @@ async fn new() {
         txn,
         _nats_conn,
         nats,
-        veritech
+        veritech,
+        _encr_key,
     );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
@@ -120,7 +121,8 @@ async fn include_component_in_system() {
         txn,
         _nats_conn,
         nats,
-        veritech
+        veritech,
+        _ency_key,
     );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
@@ -196,7 +198,8 @@ async fn include_component_in_system_with_edit_sessions() {
         txn,
         _nats_conn,
         nats,
-        veritech
+        veritech,
+        _encr_key,
     );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);

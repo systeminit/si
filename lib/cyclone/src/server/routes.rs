@@ -8,25 +8,22 @@ use axum::{handler::get, routing::BoxRoute, AddExtensionLayer, Router};
 use telemetry::{prelude::*, TelemetryLevel};
 use tokio::sync::mpsc;
 
-use super::{extract::RequestLimiter, handlers, server::ShutdownSource, Config};
+use super::{
+    decryption_key::DecryptionKey, extract::RequestLimiter, handlers, server::ShutdownSource,
+    Config,
+};
 use crate::server::watch;
 
-pub struct State {
-    lang_server_path: PathBuf,
-}
+#[derive(Debug)]
+pub struct LangServerPath(PathBuf);
 
-impl State {
-    /// Gets a reference to the state's lang server path.
-    pub fn lang_server_path(&self) -> &Path {
-        &self.lang_server_path
+impl LangServerPath {
+    pub fn new(path: impl Into<PathBuf>) -> Self {
+        Self(path.into())
     }
-}
 
-impl From<&Config> for State {
-    fn from(value: &Config) -> Self {
-        Self {
-            lang_server_path: value.lang_server_path().to_path_buf(),
-        }
+    pub fn as_path(&self) -> &Path {
+        self.0.as_path()
     }
 }
 
@@ -51,8 +48,9 @@ pub fn routes(
     config: &Config,
     shutdown_tx: mpsc::Sender<ShutdownSource>,
     telemetry_level: Box<dyn TelemetryLevel>,
+    decryption_key: DecryptionKey,
 ) -> Router<BoxRoute> {
-    let shared_state = Arc::new(State::from(config));
+    let lang_server_path = LangServerPath::new(config.lang_server_path());
 
     let mut router = Router::new()
         .route(
@@ -89,7 +87,8 @@ pub fn routes(
     }
 
     router = router
-        .layer(AddExtensionLayer::new(shared_state))
+        .layer(AddExtensionLayer::new(Arc::new(lang_server_path)))
+        .layer(AddExtensionLayer::new(Arc::new(decryption_key)))
         .layer(AddExtensionLayer::new(Arc::new(telemetry_level)))
         .boxed();
     router

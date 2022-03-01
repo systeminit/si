@@ -19,7 +19,17 @@ use pretty_assertions_sorted::{assert_eq, assert_eq_sorted};
 
 #[tokio::test]
 async fn new() {
-    test_setup!(ctx, _secret_key, _pg, _conn, txn, nats_conn, nats, veritech);
+    test_setup!(
+        ctx,
+        _secret_key,
+        _pg,
+        _conn,
+        txn,
+        nats_conn,
+        nats,
+        veritech,
+        encr_key
+    );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
@@ -85,7 +95,7 @@ async fn new() {
     .await
     .expect("cannot create function binding");
     func_binding
-        .execute(&txn, &nats, veritech)
+        .execute(&txn, &nats, veritech, encr_key)
         .await
         .expect("failed to execute func binding");
 
@@ -111,7 +121,7 @@ async fn new() {
 // nuts.
 #[tokio::test]
 async fn find_value_for_prop_and_component() {
-    test_setup!(ctx, secret_key, pg, _conn, txn, nats_conn, nats, veritech);
+    test_setup!(ctx, secret_key, pg, _conn, txn, nats_conn, nats, veritech, encr_key);
     let (nba, _token) = billing_account_signup(&txn, &nats, secret_key).await;
     let mut tenancy = Tenancy::new_workspace(vec![*nba.workspace.id()]);
     tenancy.universal = true;
@@ -180,7 +190,7 @@ async fn find_value_for_prop_and_component() {
     .await
     .expect("cannot create function binding");
     func_binding
-        .execute(&txn, &nats, veritech.clone())
+        .execute(&txn, &nats, veritech.clone(), encr_key)
         .await
         .expect("failed to execute func binding");
     let mut attribute_resolver_context = AttributeResolverContext::new();
@@ -227,7 +237,7 @@ async fn find_value_for_prop_and_component() {
     .await
     .expect("cannot create function binding");
     func_binding
-        .execute(&txn, &nats, veritech.clone())
+        .execute(&txn, &nats, veritech.clone(), encr_key)
         .await
         .expect("failed to execute func binding");
     let mut attribute_resolver_context = AttributeResolverContext::new();
@@ -275,7 +285,7 @@ async fn find_value_for_prop_and_component() {
     .await
     .expect("cannot create function binding");
     func_binding
-        .execute(&txn, &nats, veritech.clone())
+        .execute(&txn, &nats, veritech.clone(), encr_key)
         .await
         .expect("failed to execute func binding");
     let mut attribute_resolver_context = AttributeResolverContext::new();
@@ -323,7 +333,7 @@ async fn find_value_for_prop_and_component() {
     .await
     .expect("cannot create function binding");
     func_binding
-        .execute(&txn, &nats, veritech.clone())
+        .execute(&txn, &nats, veritech.clone(), encr_key)
         .await
         .expect("failed to execute func binding");
     let mut attribute_resolver_context = AttributeResolverContext::new();
@@ -371,7 +381,7 @@ async fn find_value_for_prop_and_component() {
     .await
     .expect("cannot create function binding");
     func_binding
-        .execute(&txn, &nats, veritech)
+        .execute(&txn, &nats, veritech, encr_key)
         .await
         .expect("failed to execute func binding");
     let mut attribute_resolver_context = AttributeResolverContext::new();
@@ -408,7 +418,17 @@ async fn find_value_for_prop_and_component() {
 
 #[tokio::test]
 async fn upsert() {
-    test_setup!(ctx, _secret_key, _pg, _conn, txn, nats_conn, nats, veritech);
+    test_setup!(
+        ctx,
+        _secret_key,
+        _pg,
+        _conn,
+        txn,
+        nats_conn,
+        nats,
+        veritech,
+        encr_key
+    );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
@@ -474,7 +494,7 @@ async fn upsert() {
     .await
     .expect("cannot create function binding");
     func_binding
-        .execute(&txn, &nats, veritech.clone())
+        .execute(&txn, &nats, veritech.clone(), encr_key)
         .await
         .expect("failed to execute func binding");
 
@@ -509,7 +529,7 @@ async fn upsert() {
     .await
     .expect("cannot create function binding");
     second_func_binding
-        .execute(&txn, &nats, veritech)
+        .execute(&txn, &nats, veritech, encr_key)
         .await
         .expect("failed to execute func binding");
     let second_attribute_resolver = AttributeResolver::upsert(
@@ -534,7 +554,17 @@ async fn upsert() {
 
 #[tokio::test]
 async fn update_parent_index_map() {
-    test_setup!(ctx, _secret_key, _pg, _conn, txn, nats_conn, nats, veritech);
+    test_setup!(
+        ctx,
+        _secret_key,
+        _pg,
+        _conn,
+        txn,
+        nats_conn,
+        nats,
+        veritech,
+        encr_key
+    );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
@@ -568,6 +598,7 @@ async fn update_parent_index_map() {
         &txn,
         &nats,
         veritech.clone(),
+        encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -613,7 +644,7 @@ async fn update_parent_index_map() {
     .await
     .expect("cannot create function binding");
     array_func_binding
-        .execute(&txn, &nats, veritech.clone())
+        .execute(&txn, &nats, veritech.clone(), encr_key)
         .await
         .expect("failed to execute func binding");
 
@@ -638,6 +669,7 @@ async fn update_parent_index_map() {
         &txn,
         &nats,
         veritech.clone(),
+        encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -682,7 +714,7 @@ async fn update_parent_index_map() {
     .await
     .expect("cannot create function binding");
     string_func_binding
-        .execute(&txn, &nats, veritech.clone())
+        .execute(&txn, &nats, veritech.clone(), encr_key)
         .await
         .expect("failed to execute func binding");
 
@@ -724,7 +756,8 @@ async fn siblings_have_values() {
         txn,
         _nats_conn,
         nats,
-        veritech
+        veritech,
+        encr_key,
     );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
@@ -762,6 +795,7 @@ async fn siblings_have_values() {
         &txn,
         &nats,
         veritech.clone(),
+        encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -784,6 +818,7 @@ async fn siblings_have_values() {
         &txn,
         &nats,
         veritech.clone(),
+        encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -800,6 +835,7 @@ async fn siblings_have_values() {
         &txn,
         &nats,
         veritech.clone(),
+        encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -827,6 +863,7 @@ async fn siblings_have_values() {
             &txn,
             &nats,
             veritech.clone(),
+            encr_key,
             &tenancy,
             &visibility,
             &history_actor,
@@ -844,6 +881,7 @@ async fn siblings_have_values() {
             &txn,
             &nats,
             veritech.clone(),
+            encr_key,
             &tenancy,
             &visibility,
             &history_actor,
@@ -861,6 +899,7 @@ async fn siblings_have_values() {
             &txn,
             &nats,
             veritech.clone(),
+            encr_key,
             &tenancy,
             &visibility,
             &history_actor,
@@ -890,6 +929,7 @@ async fn siblings_have_values() {
             &txn,
             &nats,
             veritech.clone(),
+            encr_key,
             &tenancy,
             &visibility,
             &history_actor,
@@ -937,6 +977,7 @@ async fn update_for_context_will_unset_parent_resolvers() {
         _nats_conn,
         nats,
         veritech,
+        encr_key,
     );
 
     let tenancy = Tenancy::new_universal();
@@ -978,6 +1019,7 @@ async fn update_for_context_will_unset_parent_resolvers() {
         &txn,
         &nats,
         veritech.clone(),
+        encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -1000,6 +1042,7 @@ async fn update_for_context_will_unset_parent_resolvers() {
         &txn,
         &nats,
         veritech.clone(),
+        encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -1022,6 +1065,7 @@ async fn update_for_context_will_unset_parent_resolvers() {
         &txn,
         &nats,
         veritech.clone(),
+        encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -1044,6 +1088,7 @@ async fn update_for_context_will_unset_parent_resolvers() {
         &txn,
         &nats,
         veritech.clone(),
+        encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -1087,6 +1132,7 @@ async fn update_for_context_will_unset_parent_resolvers() {
         &txn,
         &nats,
         veritech.clone(),
+        encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -1106,6 +1152,7 @@ async fn update_for_context_will_unset_parent_resolvers() {
         &txn,
         &nats,
         veritech.clone(),
+        encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -1125,6 +1172,7 @@ async fn update_for_context_will_unset_parent_resolvers() {
         &txn,
         &nats,
         veritech.clone(),
+        encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -1161,6 +1209,7 @@ async fn update_for_context_will_unset_parent_resolvers() {
         &txn,
         &nats,
         veritech.clone(),
+        encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -1197,6 +1246,7 @@ async fn update_for_context_will_unset_parent_resolvers() {
         &txn,
         &nats,
         veritech,
+        encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -1236,6 +1286,7 @@ async fn remove_for_context() {
         _nats_conn,
         nats,
         veritech,
+        encr_key,
     );
 
     let tenancy = Tenancy::new_universal();
@@ -1275,6 +1326,7 @@ async fn remove_for_context() {
         &txn,
         &nats,
         veritech.clone(),
+        encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -1297,6 +1349,7 @@ async fn remove_for_context() {
         &txn,
         &nats,
         veritech.clone(),
+        encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -1319,6 +1372,7 @@ async fn remove_for_context() {
         &txn,
         &nats,
         veritech.clone(),
+        encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -1397,6 +1451,7 @@ async fn remove_for_context() {
         &txn,
         &nats,
         veritech.clone(),
+        encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -1412,6 +1467,7 @@ async fn remove_for_context() {
         &txn,
         &nats,
         veritech.clone(),
+        encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -1457,6 +1513,7 @@ async fn remove_for_context() {
         &txn,
         &nats,
         veritech.clone(),
+        encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -1474,6 +1531,7 @@ async fn remove_for_context() {
         &txn,
         &nats,
         veritech.clone(),
+        encr_key,
         &tenancy,
         &visibility,
         &history_actor,

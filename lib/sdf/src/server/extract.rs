@@ -1,15 +1,17 @@
-use axum::extract::Query;
+use std::{collections::HashMap, sync::Arc};
+
 use axum::{
     async_trait,
-    extract::{Extension, FromRequest, RequestParts},
+    extract::{Extension, FromRequest, Query, RequestParts},
     Json,
 };
-use dal::{ChangeSetPk, EditSessionPk, StandardModel, User, Workspace, WorkspaceId};
-use dal::{Tenancy, UserClaim, Visibility};
+use dal::{
+    ChangeSetPk, EditSessionPk, StandardModel, Tenancy, User, UserClaim, Visibility, Workspace,
+    WorkspaceId,
+};
 use hyper::StatusCode;
 use serde::Serialize;
 use si_data::{nats, pg};
-use std::collections::HashMap;
 
 pub struct PgPool(pub pg::PgPool);
 
@@ -138,6 +140,24 @@ where
             .await
             .map_err(internal_error)?;
         Ok(Self(veritech))
+    }
+}
+
+pub struct EncryptionKey(pub Arc<veritech::EncryptionKey>);
+
+#[async_trait]
+impl<P> FromRequest<P> for EncryptionKey
+where
+    P: Send,
+{
+    type Rejection = (StatusCode, Json<InternalError>);
+
+    async fn from_request(req: &mut RequestParts<P>) -> Result<Self, Self::Rejection> {
+        let Extension(encryption_key) =
+            Extension::<Arc<veritech::EncryptionKey>>::from_request(req)
+                .await
+                .map_err(internal_error)?;
+        Ok(Self(encryption_key))
     }
 }
 

@@ -1,10 +1,10 @@
+---
 version: "3"
 services:
   sdf:
     volumes:
       - "${REPOPATH:-..}/bin/sdf/src/dev.jwt_secret_key.bin:/run/sdf/jwt_secret_key.bin:ro"
-      - "${REPOPATH:-..}/lib/cyclone/src/dev.public_key.pub:/run/sdf/cyclone_public_key.pub:ro"
+      - "${REPOPATH:-..}/lib/cyclone/src/dev.encryption.key:/run/sdf/cyclone_encryption.key:ro"
   veritech:
     volumes:
-      - "${REPOPATH:-..}/lib/cyclone/src/dev.secret_key.bin:/run/veritech/secret_key.bin:ro"
-      - "${REPOPATH:-..}/lib/cyclone/src/dev.public_key.pub:/run/veritech/public_key.pub:ro"
+      - "${REPOPATH:-..}/lib/cyclone/src/dev.decryption.key:/run/cyclone/decryption.key:ro"

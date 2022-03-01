@@ -4,12 +4,14 @@ use crate::{
     HistoryActor, Prop, PropId, PropKind, SchemaVariantId, StandardModel, Tenancy, Visibility,
 };
 use si_data::{NatsTxn, PgTxn};
+use veritech::EncryptionKey;
 
 #[allow(clippy::too_many_arguments)]
 pub async fn create_selector_prop(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
     veritech: veritech::Client,
+    encryption_key: &EncryptionKey,
     tenancy: &Tenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
@@ -20,6 +22,7 @@ pub async fn create_selector_prop(
         txn,
         nats,
         veritech.clone(),
+        encryption_key,
         tenancy,
         visibility,
         history_actor,
@@ -35,6 +38,7 @@ pub async fn create_selector_prop(
             txn,
             nats,
             veritech.clone(),
+            encryption_key,
             tenancy,
             visibility,
             history_actor,
@@ -50,6 +54,7 @@ pub async fn create_selector_prop(
                 txn,
                 nats,
                 veritech.clone(),
+                encryption_key,
                 tenancy,
                 visibility,
                 history_actor,
@@ -68,6 +73,7 @@ pub async fn create_selector_prop(
                 txn,
                 nats,
                 veritech.clone(),
+                encryption_key,
                 tenancy,
                 visibility,
                 history_actor,
@@ -84,6 +90,7 @@ pub async fn create_selector_prop(
                 txn,
                 nats,
                 veritech.clone(),
+                encryption_key,
                 tenancy,
                 visibility,
                 history_actor,
@@ -101,6 +108,7 @@ pub async fn create_selector_prop(
             txn,
             nats,
             veritech,
+            encryption_key,
             tenancy,
             visibility,
             history_actor,

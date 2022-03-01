@@ -4,6 +4,7 @@ use si_data::{NatsError, NatsTxn, PgError, PgTxn};
 use strum_macros::{AsRefStr, Display, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
+use veritech::EncryptionKey;
 
 use self::variant::{SchemaVariantError, SchemaVariantResult};
 use crate::{
@@ -490,6 +491,7 @@ impl EditFieldAble for Schema {
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
         _veritech: veritech::Client,
+        _encryption_key: &EncryptionKey,
         tenancy: &Tenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,

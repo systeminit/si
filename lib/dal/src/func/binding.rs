@@ -5,7 +5,8 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::mpsc;
 use veritech::{
-    Client, CodeGenerationResultSuccess, QualificationCheckResultSuccess, ResourceSyncResultSuccess,
+    Client, CodeGenerationResultSuccess, EncryptionKey, QualificationCheckResultSuccess,
+    ResourceSyncResultSuccess,
 };
 
 use crate::func::backend::array::{FuncBackendArray, FuncBackendArrayArgs};
@@ -193,6 +194,7 @@ impl FuncBinding {
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
         veritech: Client,
+        encryption_key: &EncryptionKey,
     ) -> FuncBindingResult<FuncBindingReturnValue> {
         // NOTE: for now (subject to change), we are using the same visibility and tenancy to
         // create a return value. This seems to make sense as why would a return value be in a
@@ -293,15 +295,23 @@ impl FuncBinding {
 
                 let mut args: FuncBackendJsQualificationArgs =
                     serde_json::from_value(self.args.clone())?;
-                ComponentView::decrypt_secrets(
+                ComponentView::reencrypt_secrets(
                     txn,
                     &tenancy,
                     &visibility,
+                    encryption_key,
                     &mut args.component.data,
                 )
                 .await?;
                 for parent in &mut args.component.parents {
-                    ComponentView::decrypt_secrets(txn, &tenancy, &visibility, parent).await?;
+                    ComponentView::reencrypt_secrets(
+                        txn,
+                        &tenancy,
+                        &visibility,
+                        encryption_key,
+                        parent,
+                    )
+                    .await?;
                 }
 
                 let return_value = FuncBackendJsQualification::new(
@@ -375,15 +385,23 @@ impl FuncBinding {
 
                 let mut args: FuncBackendJsAttributeArgs =
                     serde_json::from_value(self.args.clone())?;
-                ComponentView::decrypt_secrets(
+                ComponentView::reencrypt_secrets(
                     txn,
                     &tenancy,
                     &visibility,
+                    encryption_key,
                     &mut args.component.data,
                 )
                 .await?;
                 for parent in &mut args.component.parents {
-                    ComponentView::decrypt_secrets(txn, &tenancy, &visibility, parent).await?;
+                    ComponentView::reencrypt_secrets(
+                        txn,
+                        &tenancy,
+                        &visibility,
+                        encryption_key,
+                        parent,
+                    )
+                    .await?;
                 }
 
                 execution

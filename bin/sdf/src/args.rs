@@ -63,18 +63,18 @@ pub(crate) struct Args {
     #[clap(long)]
     pub(crate) generate_jwt_secret_key: Option<PathBuf>,
 
-    /// Cyclone public key file location [default: /run/cyclone/public_key.pub]
+    /// Cyclone encryption key file location [default: /run/sdf/cyclone_encryption.key]
     #[clap(long)]
-    pub(crate) cyclone_public_key_path: Option<String>,
+    pub(crate) cyclone_encryption_key_path: Option<String>,
 
     /// Generates cyclone secret key file (does not run server)
     /// Will error if set when `generate_cyclone_public_key_path` is not set
-    #[clap(long)]
+    #[clap(long, requires = "generate-cyclone-public-key-path")]
     pub(crate) generate_cyclone_secret_key_path: Option<PathBuf>,
 
     /// Generates cyclone public key file (does not run server)
     /// Will error if set when `generate_cyclone_secret_key_path` is not set
-    #[clap(long)]
+    #[clap(long, requires = "generate-cyclone-secret-key-path")]
     pub(crate) generate_cyclone_public_key_path: Option<PathBuf>,
 }
 
@@ -107,8 +107,8 @@ impl TryFrom<Args> for Config {
             if let Some(jwt_secret_key_path) = args.jwt_secret_key_path {
                 config_map.set("jwt_secret_key_path", jwt_secret_key_path);
             }
-            if let Some(cyclone_public_key_path) = args.cyclone_public_key_path {
-                config_map.set("cyclone_public_key_path", cyclone_public_key_path);
+            if let Some(cyclone_encyption_key_path) = args.cyclone_encryption_key_path {
+                config_map.set("cyclone_encryption_key_path", cyclone_encyption_key_path);
             }
         })?
         .try_into()

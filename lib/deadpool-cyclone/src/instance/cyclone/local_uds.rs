@@ -249,6 +249,10 @@ pub struct LocalUdsInstanceSpec {
     #[builder(try_setter, setter(into))]
     cyclone_cmd_path: CanonicalCommand,
 
+    /// Canonical path to Cyclone's secret key file.
+    #[builder(setter(into))]
+    cyclone_decryption_key_path: String,
+
     /// Canonical path to the language server program.
     #[builder(try_setter, setter(into))]
     lang_server_cmd_path: CanonicalCommand,
@@ -345,6 +349,8 @@ impl LocalUdsInstanceSpec {
         let mut cmd = Command::new(&self.cyclone_cmd_path);
         cmd.arg("--bind-uds")
             .arg(&socket)
+            .arg("--decryption-key")
+            .arg(&self.cyclone_decryption_key_path)
             .arg("--lang-server")
             .arg(&self.lang_server_cmd_path)
             .arg("--enable-watch");

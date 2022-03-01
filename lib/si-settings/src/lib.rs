@@ -4,6 +4,10 @@ use config_file::ConfigMap;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use thiserror::Error;
 
+mod canonical_file;
+
+pub use canonical_file::{CanonicalFile, CanonicalFileError};
+
 #[derive(Error, Debug)]
 pub enum SettingsError {
     #[error(transparent)]

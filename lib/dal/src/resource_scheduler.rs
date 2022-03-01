@@ -4,6 +4,7 @@ use si_data::{NatsClient, NatsError, PgError, PgPool, PgPoolError};
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::time;
+use veritech::EncryptionKey;
 
 use crate::system::UNSET_ID_VALUE;
 use crate::{Component, ComponentError, HistoryActor, HistoryEventError, StandardModelError};
@@ -33,21 +34,26 @@ pub type ResourceSchedulerResult<T> = Result<T, ResourceSchedulerError>;
 /// parallelize, it might be extracted to a fully separate service, etc etc. For now,
 /// it is the dumbest thing that could possibly work - no more often than every 30
 /// seconds, it will ask a component to sync_resource.
-// TODO: Remove this dead_code call once we implement the rest...
-#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct ResourceScheduler {
     pg_pool: PgPool,
     nats: NatsClient,
     veritech: veritech::Client,
+    encryption_key: EncryptionKey,
 }
 
 impl ResourceScheduler {
-    pub fn new(pg_pool: PgPool, nats: NatsClient, veritech: veritech::Client) -> ResourceScheduler {
+    pub fn new(
+        pg_pool: PgPool,
+        nats: NatsClient,
+        veritech: veritech::Client,
+        encryption_key: EncryptionKey,
+    ) -> ResourceScheduler {
         ResourceScheduler {
             pg_pool,
             nats,
             veritech,
+            encryption_key,
         }
     }
 
@@ -99,6 +105,7 @@ impl ResourceScheduler {
                         &txn,
                         &nats,
                         self.veritech.clone(),
+                        &self.encryption_key,
                         &HistoryActor::SystemInit,
                         UNSET_ID_VALUE.into(),
                     )

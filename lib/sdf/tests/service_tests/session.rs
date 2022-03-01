@@ -16,6 +16,7 @@ async fn login() {
         _nats_conn,
         _nats,
         _veritech,
+        _encr_key,
         app,
         nba,
         _auth_token
@@ -70,6 +71,7 @@ async fn restore_authentication() {
         _nats_conn,
         _nats,
         _veritech,
+        _encr_key,
         app,
         nba,
         auth_token
@@ -97,6 +99,7 @@ async fn get_defaults() {
         _nats_conn,
         _nats,
         _veritech,
+        _encr_key,
         app,
         nba,
         auth_token
