@@ -167,9 +167,10 @@
           v-else-if="activeView === 'resource'"
           :component-id="selectedComponentId"
         />
-        <div v-else-if="activeView === 'code'">
-          ActiveView "{{ activeView }}" not implemented
-        </div>
+        <CodeViewer
+          v-else-if="activeView === 'code'"
+          :component-id="selectedComponentId"
+        />
         <div v-else-if="activeView === 'connection'">
           ActiveView "{{ activeView }}" not implemented
         </div>
@@ -204,6 +205,7 @@ import { GlobalErrorService } from "@/service/global_error";
 import AttributeViewer from "@/organisims/AttributeViewer.vue";
 import QualificationViewer from "@/organisims/QualificationViewer.vue";
 import ResourceViewer from "@/organisims/ResourceViewer.vue";
+import CodeViewer from "@/organisims/CodeViewer.vue";
 import VueFeather from "vue-feather";
 import _ from "lodash";
 import cheechSvg from "@/assets/images/cheech-and-chong.svg";

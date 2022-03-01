@@ -73,6 +73,7 @@ pub type FuncBindingResult<T> = Result<T, FuncBindingError>;
 pk!(FuncBindingPk);
 pk!(FuncBindingId);
 
+// NOTE(nick,jacob): the [`HashMap`] of input sockets will likely live here in the future.
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct FuncBinding {
     pk: FuncBindingPk,
