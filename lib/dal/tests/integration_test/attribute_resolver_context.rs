@@ -3,12 +3,92 @@ use dal::{
     ComponentId, PropId, SchemaId, SchemaVariantId, SystemId,
 };
 
+use pretty_assertions_sorted::assert_eq;
+
 // NOTE(nick): there are only error permutations tests for fields that have at least two prerequisite
 // fields. Thus, SystemId, ComponentId, and SchemaVariantId have error permutations tests and SchemaId
 // and PropId do not.
 
 const SET_ID_VALUE: i64 = 1;
 const UNSET_ID_VALUE: i64 = -1;
+
+#[tokio::test]
+async fn less_specific() {
+    let context = AttributeResolverContextBuilder::new()
+        .set_prop_id(1.into())
+        .set_schema_id(2.into())
+        .set_schema_variant_id(3.into())
+        .set_component_id(4.into())
+        .set_system_id(5.into())
+        .to_context()
+        .expect("cannot build resolver context");
+
+    let new_context = context
+        .less_specific()
+        .expect("cannot create less specific context");
+
+    assert_eq!(
+        AttributeResolverContextBuilder::new()
+            .set_prop_id(1.into())
+            .set_schema_id(2.into())
+            .set_schema_variant_id(3.into())
+            .set_component_id(4.into())
+            .to_context()
+            .expect("cannot create expected context"),
+        new_context,
+    );
+
+    let new_context = new_context
+        .less_specific()
+        .expect("cannot create less specific context");
+
+    assert_eq!(
+        AttributeResolverContextBuilder::new()
+            .set_prop_id(1.into())
+            .set_schema_id(2.into())
+            .set_schema_variant_id(3.into())
+            .to_context()
+            .expect("cannot create expected context"),
+        new_context,
+    );
+
+    let new_context = new_context
+        .less_specific()
+        .expect("cannot create less specific context");
+
+    assert_eq!(
+        AttributeResolverContextBuilder::new()
+            .set_prop_id(1.into())
+            .set_schema_id(2.into())
+            .to_context()
+            .expect("cannot create expected context"),
+        new_context,
+    );
+
+    let new_context = new_context
+        .less_specific()
+        .expect("cannot create less specific context");
+
+    assert_eq!(
+        AttributeResolverContextBuilder::new()
+            .set_prop_id(1.into())
+            .to_context()
+            .expect("cannot create expected context"),
+        new_context,
+    );
+
+    let new_context = new_context
+        .less_specific()
+        .expect("cannot create less specific context");
+
+    assert_eq!(
+        AttributeResolverContextBuilder::new()
+            .set_prop_id(1.into())
+            .to_context()
+            .expect("cannot create expected context"),
+        new_context,
+    );
+}
 
 #[tokio::test]
 async fn builder_new() {
