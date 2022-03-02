@@ -261,8 +261,15 @@ impl Prop {
                 return Err(PropError::ParentNotAllowed(parent_prop_id, *kind));
             }
         }
-        self.set_parent_prop_unchecked(txn, nats, visibility, history_actor, &parent_prop_id)
-            .await
+        let result = self
+            .set_parent_prop_unchecked(txn, nats, visibility, history_actor, &parent_prop_id)
+            .await;
+
+        // TODO: Get parent prop's AttributePrototype & set parent_attribute_prototype on our AttributePrototype
+        //       We need to extend this to take understand whether the parent is being set in the context of
+        //       a SchemaVariant or not.
+
+        result
     }
 
     fn edit_field_object_kind() -> EditFieldObjectKind {
