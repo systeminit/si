@@ -1,5 +1,6 @@
 mod attribute_prototype;
 mod attribute_resolver;
+mod attribute_resolver_context;
 mod billing_account;
 mod capability;
 mod change_set;
