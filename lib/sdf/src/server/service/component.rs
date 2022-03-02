@@ -11,6 +11,7 @@ use dal::{
 use std::convert::Infallible;
 use thiserror::Error;
 
+pub mod get_code;
 pub mod get_component_metadata;
 pub mod get_resource;
 pub mod list_components_names_only;
@@ -80,4 +81,5 @@ pub fn routes() -> Router {
         )
         .route("/get_resource", get(get_resource::get_resource))
         .route("/sync_resource", post(sync_resource::sync_resource))
+        .route("/get_code", get(get_code::get_code))
 }

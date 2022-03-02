@@ -14,6 +14,7 @@ pub mod capability;
 pub mod change_set;
 pub mod code_generation_prototype;
 pub mod code_generation_resolver;
+pub mod code_view;
 pub mod component;
 pub mod cyclone_public_key;
 pub mod edge;
@@ -72,6 +73,7 @@ pub use code_generation_prototype::{
 pub use code_generation_resolver::{
     CodeGenerationResolver, CodeGenerationResolverError, CodeGenerationResolverId,
 };
+pub use code_view::{CodeLanguage, CodeView};
 pub use component::{Component, ComponentError, ComponentId, ComponentView};
 pub use cyclone_public_key::CyclonePublicKey;
 pub use edge::{Edge, EdgeError, EdgeResult};
