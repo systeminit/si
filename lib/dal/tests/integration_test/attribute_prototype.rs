@@ -10,7 +10,7 @@ use dal::{
     AttributePrototype, Func, FuncBackendKind, FuncBackendResponseType, HistoryActor, PropKind,
     Schema, SchemaKind, StandardModel, Tenancy, Visibility,
 };
-use pretty_assertions_sorted::{assert_eq, assert_eq_sorted};
+use pretty_assertions_sorted::assert_eq;
 
 #[tokio::test]
 async fn new() {
@@ -282,7 +282,7 @@ async fn list_for_context() {
     let mut album_artist_prototype_context = base_prototype_context.clone();
     album_artist_prototype_context.set_prop_id(*artist_prop.id());
 
-    let album_artist_prototype = AttributePrototype::list_for_context(
+    let _album_artist_prototype = AttributePrototype::list_for_context(
         &txn,
         &tenancy,
         &visibility,
