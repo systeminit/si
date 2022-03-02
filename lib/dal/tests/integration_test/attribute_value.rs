@@ -92,7 +92,7 @@ async fn update_proxied_value() {
         &tenancy,
         &visibility,
         &history_actor,
-        *func_binding_return_value.id(),
+        Some(*func_binding_return_value.id()),
         original_context,
         None,
     )
