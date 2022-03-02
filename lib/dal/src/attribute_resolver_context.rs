@@ -17,6 +17,14 @@ use thiserror::Error;
 use crate::attribute_resolver::UNSET_ID_VALUE;
 use crate::{ComponentId, PropId, SchemaId, SchemaVariantId, SystemId};
 
+#[derive(Error, Debug)]
+pub enum AttributeResolverContextError {
+    #[error("attribute resolver context builder error: {0}")]
+    AttributeResolverContextBuilder(#[from] AttributeResolverContextBuilderError),
+}
+
+pub type AttributeResolverContextResult<T> = Result<T, AttributeResolverContextError>;
+
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct AttributeResolverContext {
     prop_id: PropId,
@@ -81,6 +89,26 @@ impl AttributeResolverContext {
 
     pub fn set_system_id(&mut self, system_id: SystemId) {
         self.system_id = system_id;
+    }
+
+    /// Return a new [`AttributeResolverContext`] with the most specific piece of the current
+    /// [`AttributeResolverContext`] unset, widening the scope of the context by one step. If widening the
+    /// context would result in everything being unset, it will return a new copy of the current
+    /// [`AttributeResolverContext`].
+    pub fn less_specific(&self) -> AttributeResolverContextResult<Self> {
+        let mut builder = AttributeResolverContextBuilder::from_context(self);
+
+        if self.system_id() != UNSET_ID_VALUE.into() {
+            builder.unset_system_id();
+        } else if self.component_id() != UNSET_ID_VALUE.into() {
+            builder.unset_component_id();
+        } else if self.schema_variant_id() != UNSET_ID_VALUE.into() {
+            builder.unset_schema_variant_id();
+        } else if self.schema_id() != UNSET_ID_VALUE.into() {
+            builder.unset_schema_id();
+        }
+
+        Ok(builder.to_context()?)
     }
 }
 
