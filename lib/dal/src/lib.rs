@@ -8,6 +8,7 @@ use thiserror::Error;
 pub mod attribute_prototype;
 pub mod attribute_resolver;
 pub mod attribute_resolver_context;
+pub mod attribute_value;
 pub mod billing_account;
 pub mod capability;
 pub mod change_set;
