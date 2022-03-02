@@ -5,20 +5,27 @@ use thiserror::Error;
 
 use crate::{
     attribute_resolver_context::AttributeResolverContext,
-    func::binding::{FuncBindingError, FuncBindingId},
-    func::FuncId,
-    impl_standard_model, pk,
-    standard_model::{self},
-    standard_model_accessor, standard_model_belongs_to, HistoryActor, HistoryEventError, Prop,
-    PropError, PropKind, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
+    attribute_value::AttributeValue,
+    func::{
+        binding::{FuncBindingError, FuncBindingId},
+        binding_return_value::FuncBindingReturnValueError,
+    },
+    func::{binding_return_value::FuncBindingReturnValue, FuncId},
+    impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
+    HistoryActor, HistoryEventError, Prop, PropError, PropKind, StandardModel, StandardModelError,
+    Tenancy, Timestamp, Visibility,
 };
 
 const FIND_FOR_CONTEXT: &str = include_str!("./queries/attribute_prototype_list_for_context.sql");
 
 #[derive(Error, Debug)]
 pub enum AttributePrototypeError {
+    #[error("attribute value error: {0}")]
+    AttributeValue(String),
     #[error("func binding error: {0}")]
     FuncBinding(#[from] FuncBindingError),
+    #[error("func binding return value error: {0}")]
+    FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
     #[error("invalid prop value; expected {0} but got {1}")]
@@ -116,6 +123,33 @@ impl AttributePrototype {
             row,
         )
         .await?;
+
+        let fbrv = FuncBindingReturnValue::get_by_func_binding_id(
+            txn,
+            tenancy,
+            visibility,
+            func_binding_id,
+        )
+        .await?
+        .map(|fbrv| *fbrv.id());
+
+        let attribute_value = AttributeValue::new(
+            txn,
+            nats,
+            tenancy,
+            visibility,
+            history_actor,
+            fbrv,
+            context,
+            key,
+        )
+        .await
+        .map_err(|e| AttributePrototypeError::AttributeValue(format!("{e}")))?;
+        attribute_value
+            .set_attribute_prototype(txn, nats, visibility, history_actor, object.id())
+            .await
+            .map_err(|e| AttributePrototypeError::AttributeValue(format!("{e}")))?;
+
         Ok(object)
     }
 

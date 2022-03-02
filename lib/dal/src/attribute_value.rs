@@ -96,7 +96,7 @@ impl AttributeValue {
         tenancy: &Tenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
-        func_binding_return_value_id: FuncBindingReturnValueId,
+        func_binding_return_value_id: Option<FuncBindingReturnValueId>,
         context: AttributeResolverContext,
         key: Option<String>,
     ) -> AttributeValueResult<Self> {
