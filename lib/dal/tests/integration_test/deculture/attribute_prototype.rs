@@ -1,5 +1,6 @@
 use crate::test_setup;
 
+use dal::deculture::attribute_prototype::AttributePrototype;
 use dal::{
     attribute_resolver_context::AttributeResolverContext,
     func::{backend::string::FuncBackendStringArgs, binding::FuncBinding},
@@ -7,8 +8,8 @@ use dal::{
         create_component_for_schema, create_prop_of_kind_with_name, create_schema,
         create_schema_variant,
     },
-    AttributePrototype, Func, FuncBackendKind, FuncBackendResponseType, HistoryActor, PropKind,
-    Schema, SchemaKind, StandardModel, Tenancy, Visibility,
+    Func, FuncBackendKind, FuncBackendResponseType, HistoryActor, PropKind, Schema, SchemaKind,
+    StandardModel, Tenancy, Visibility,
 };
 use pretty_assertions_sorted::assert_eq;
 
@@ -106,6 +107,7 @@ async fn new() {
         *func.id(),
         *func_binding.id(),
         context,
+        None,
         None,
     )
     .await
@@ -351,6 +353,7 @@ async fn list_for_context() {
         *func_binding.id(),
         component_name_prototype_context.clone(),
         None,
+        None,
     )
     .await
     .expect("cannot create attribute prototype for component album name");
@@ -580,6 +583,7 @@ async fn list_for_context_with_a_hash() {
         *undertow_prop_func_binding.id(),
         prop_hash_key_prototype_context.clone(),
         Some("Undertow".to_string()),
+        None,
     )
     .await
     .expect("cannot create attribute prototype for component album name");
@@ -612,6 +616,7 @@ async fn list_for_context_with_a_hash() {
         *lateralus_prop_func_binding.id(),
         prop_hash_key_prototype_context.clone(),
         Some("Lateralus".to_string()),
+        None,
     )
     .await
     .expect("cannot create attribute prototype for component album name");
@@ -657,6 +662,7 @@ async fn list_for_context_with_a_hash() {
         *lateralus_component_func_binding.id(),
         component_hash_key_prototype_context.clone(),
         Some("Lateralus".to_string()),
+        None,
     )
     .await
     .expect("cannot create attribute prototype for component album name");
@@ -689,6 +695,7 @@ async fn list_for_context_with_a_hash() {
         *fear_inoculum_component_func_binding.id(),
         component_hash_key_prototype_context.clone(),
         Some("Fear Inoculum".to_string()),
+        None,
     )
     .await
     .expect("cannot create attribute prototype for component album name");

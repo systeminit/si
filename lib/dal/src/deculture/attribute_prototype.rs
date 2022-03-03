@@ -3,6 +3,7 @@ use si_data::{NatsError, NatsTxn, PgError, PgTxn};
 use telemetry::prelude::*;
 use thiserror::Error;
 
+use crate::deculture::attribute_value::{AttributeValue, AttributeValueError, AttributeValueId};
 use crate::{
     attribute_resolver_context::AttributeResolverContext,
     func::binding::{FuncBindingError, FuncBindingId},
@@ -13,10 +14,12 @@ use crate::{
     StandardModelError, Tenancy, Timestamp, Visibility,
 };
 
-const FIND_FOR_CONTEXT: &str = include_str!("./queries/attribute_prototype_list_for_context.sql");
+const FIND_FOR_CONTEXT: &str = include_str!("../queries/attribute_prototype_list_for_context.sql");
 
 #[derive(Error, Debug)]
 pub enum AttributePrototypeError {
+    #[error("attribute value error: {0}")]
+    AttributeValue(#[from] AttributeValueError),
     #[error("func binding error: {0}")]
     FuncBinding(#[from] FuncBindingError),
     #[error("history event error: {0}")]
@@ -89,6 +92,7 @@ impl AttributePrototype {
         func_binding_id: FuncBindingId,
         context: AttributeResolverContext,
         key: Option<String>,
+        parent_attribute_value_id: Option<AttributeValueId>,
     ) -> AttributePrototypeResult<Self> {
         let row = txn
             .query_one(
@@ -116,6 +120,35 @@ impl AttributePrototype {
             row,
         )
         .await?;
+
+        let value = AttributeValue::new(
+            txn,
+            nats,
+            tenancy,
+            visibility,
+            history_actor,
+            None,
+            context,
+            key,
+        )
+        .await?;
+
+        if let Some(parent_attribute_value_id) = parent_attribute_value_id {
+            value
+                .set_parent_attribute_value(
+                    txn,
+                    nats,
+                    visibility,
+                    history_actor,
+                    &parent_attribute_value_id,
+                )
+                .await?;
+        }
+
+        // while !context.is_least_specific() {
+        //     context = context.less_specific();
+        // }
+
         Ok(object)
     }
 
