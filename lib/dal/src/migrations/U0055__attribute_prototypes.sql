@@ -21,11 +21,9 @@ CREATE TABLE attribute_prototypes
     key                         text
 );
 SELECT standard_model_table_constraints_v1('attribute_prototypes');
-select belongs_to_table_create_v1('attribute_prototype_belongs_to_attribute_prototype', 'attribute_prototypes', 'attribute_prototypes');
 
 INSERT INTO standard_models (table_name, table_type, history_event_label_base, history_event_message_name)
-VALUES ('attribute_prototypes', 'model', 'attribute_prototype', 'Attribute Prototype'),
-       ('attribute_prototype_belongs_to_attribute_prototype', 'belongs_to', 'attribute_prototype.child_attribute_prototype', 'Parent Attribute Prototype <> Child Attribute Prototype');
+VALUES ('attribute_prototypes', 'model', 'attribute_prototype', 'Attribute Prototype');
 
 CREATE OR REPLACE FUNCTION attribute_prototype_create_v1(
     this_tenancy jsonb,

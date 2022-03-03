@@ -9,8 +9,8 @@ use crate::{
     func::FuncId,
     impl_standard_model, pk,
     standard_model::{self},
-    standard_model_accessor, standard_model_belongs_to, HistoryActor, HistoryEventError, Prop,
-    PropError, PropKind, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
+    standard_model_accessor, HistoryActor, HistoryEventError, PropError, PropKind, StandardModel,
+    StandardModelError, Tenancy, Timestamp, Visibility,
 };
 
 const FIND_FOR_CONTEXT: &str = include_str!("./queries/attribute_prototype_list_for_context.sql");
@@ -122,65 +122,6 @@ impl AttributePrototype {
     standard_model_accessor!(func_id, Pk(FuncId), AttributePrototypeResult);
     standard_model_accessor!(func_binding_id, Pk(FuncBindingId), AttributePrototypeResult);
     standard_model_accessor!(key, Option<String>, AttributePrototypeResult);
-
-    standard_model_belongs_to!(
-        lookup_fn: parent_attribute_prototype,
-        set_fn: set_parent_attribute_prototype_unchecked,
-        unset_fn: unset_parent_attribute_prototype,
-        table: "attribute_prototype_belongs_to_attribute_prototype",
-        model_table: "attribute_prototypes",
-        belongs_to_id: AttributePrototypeId,
-        returns: AttributePrototype,
-        result: AttributePrototypeResult,
-    );
-
-    pub async fn set_parent_attribute_prototype(
-        &self,
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
-        parent_attribute_prototype_id: AttributePrototypeId,
-    ) -> AttributePrototypeResult<()> {
-        let parent_attribute_prototype = Self::get_by_id(
-            txn,
-            self.tenancy(),
-            visibility,
-            &parent_attribute_prototype_id,
-        )
-        .await?
-        .ok_or(AttributePrototypeError::NotFound(
-            parent_attribute_prototype_id,
-            *visibility,
-        ))?;
-        let parent_prop = Prop::get_by_id(
-            txn,
-            self.tenancy(),
-            visibility,
-            &parent_attribute_prototype.context.prop_id(),
-        )
-        .await?
-        .ok_or(AttributePrototypeError::MissingProp)?;
-
-        match parent_prop.kind() {
-            PropKind::Array | PropKind::Map | PropKind::Object => (),
-            kind => {
-                return Err(AttributePrototypeError::ParentNotAllowed(
-                    *parent_attribute_prototype.id(),
-                    *kind,
-                ));
-            }
-        }
-
-        self.set_parent_attribute_prototype_unchecked(
-            txn,
-            nats,
-            visibility,
-            history_actor,
-            &parent_attribute_prototype_id,
-        )
-        .await
-    }
 
     #[tracing::instrument(skip(txn))]
     pub async fn list_for_context(
