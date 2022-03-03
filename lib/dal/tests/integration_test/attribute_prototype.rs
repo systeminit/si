@@ -212,16 +212,6 @@ async fn list_for_context() {
     .expect("cannot retrieve attribute prototype for album")
     .pop()
     .expect("no attribute prototype found for album");
-    album_prop_prototype
-        .set_parent_attribute_prototype(
-            &txn,
-            &nats,
-            &visibility,
-            &history_actor,
-            *albums_prop_prototype.id(),
-        )
-        .await
-        .expect("cannot set parent attribute prototype for album prototype");
 
     let name_prop = create_prop_of_kind_with_name(
         &txn,
@@ -252,16 +242,6 @@ async fn list_for_context() {
     .expect("cannot retrieve attribute prototype for album name")
     .pop()
     .expect("no attribute prototype found for album name");
-    album_name_prototype
-        .set_parent_attribute_prototype(
-            &txn,
-            &nats,
-            &visibility,
-            &history_actor,
-            *album_prop_prototype.id(),
-        )
-        .await
-        .expect("cannot set parent attribute prototype for album name prototype");
 
     let artist_prop = create_prop_of_kind_with_name(
         &txn,
@@ -491,16 +471,6 @@ async fn list_for_context_with_a_hash() {
     .expect("cannot retrieve attribute prototype for album")
     .pop()
     .expect("no attribute prototype found for album");
-    album_prop_prototype
-        .set_parent_attribute_prototype(
-            &txn,
-            &nats,
-            &visibility,
-            &history_actor,
-            *albums_prop_prototype.id(),
-        )
-        .await
-        .expect("cannot set parent attribute prototype for album prototype");
 
     let hash_key_prop = create_prop_of_kind_with_name(
         &txn,
@@ -531,16 +501,6 @@ async fn list_for_context_with_a_hash() {
     .expect("cannot retrieve attribute prototype for album hash key")
     .pop()
     .expect("no attribute prototype found for album hash key");
-    prop_hash_key_prototype
-        .set_parent_attribute_prototype(
-            &txn,
-            &nats,
-            &visibility,
-            &history_actor,
-            *album_prop_prototype.id(),
-        )
-        .await
-        .expect("cannot set parent attribute prototype for album hash key prototype");
 
     let func = Func::new(
         &txn,
