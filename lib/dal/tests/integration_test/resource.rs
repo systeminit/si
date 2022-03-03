@@ -1,6 +1,7 @@
 use crate::test_setup;
 
-use dal::{Component, HistoryActor, Resource, StandardModel, System, Tenancy, Visibility};
+use dal::test_harness::create_component_and_schema;
+use dal::{HistoryActor, Resource, StandardModel, System, Tenancy, Visibility};
 
 #[tokio::test]
 async fn new() {
@@ -12,22 +13,22 @@ async fn new() {
         txn,
         _nats_conn,
         nats,
-        _veritech,
-        _encr_key,
+        veritech,
+        encr_key,
     );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
-    let component = Component::new(
+    let component = create_component_and_schema(
         &txn,
         &nats,
+        veritech,
+        &encr_key,
         &tenancy,
         &visibility,
         &history_actor,
-        "mastodon",
     )
-    .await
-    .expect("cannot create component");
+    .await;
     let system = System::new(
         &txn,
         &nats,
@@ -62,32 +63,32 @@ async fn get_by_component_and_system_id() {
         txn,
         _nats_conn,
         nats,
-        _veritech,
-        _encr_key,
+        veritech,
+        encr_key,
     );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
-    let mastodon_component = Component::new(
+    let mastodon_component = create_component_and_schema(
         &txn,
         &nats,
+        veritech.clone(),
+        &encr_key,
         &tenancy,
         &visibility,
         &history_actor,
-        "mastodon",
     )
-    .await
-    .expect("cannot create component");
-    let blue_oyster_component = Component::new(
+    .await;
+    let blue_oyster_component = create_component_and_schema(
         &txn,
         &nats,
+        veritech,
+        &encr_key,
         &tenancy,
         &visibility,
         &history_actor,
-        "Blue Öyster Cult",
     )
-    .await
-    .expect("cannot create component");
+    .await;
     let production_system = System::new(
         &txn,
         &nats,

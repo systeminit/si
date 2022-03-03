@@ -714,20 +714,17 @@ mod tests {
             handler: "doit".to_string(),
             component: ResolverFunctionComponent {
                 data: ComponentView {
-                    name: "Child".to_owned(),
                     properties: serde_json::json!({}),
                     system: None,
                     kind: ComponentKind::Standard,
                 },
                 parents: vec![
                     ComponentView {
-                        name: "Parent 1".to_owned(),
                         properties: serde_json::json!({}),
                         system: None,
                         kind: ComponentKind::Standard,
                     },
                     ComponentView {
-                        name: "Parent 2".to_owned(),
                         properties: serde_json::json!({}),
                         system: None,
                         kind: ComponentKind::Standard,
@@ -808,20 +805,17 @@ mod tests {
             handler: "doit".to_string(),
             component: ResolverFunctionComponent {
                 data: ComponentView {
-                    name: "Child".to_owned(),
                     properties: serde_json::json!({}),
                     system: None,
                     kind: ComponentKind::Standard,
                 },
                 parents: vec![
                     ComponentView {
-                        name: "Parent 1".to_owned(),
                         properties: serde_json::json!({}),
                         system: None,
                         kind: ComponentKind::Standard,
                     },
                     ComponentView {
-                        name: "Parent 2".to_owned(),
                         properties: serde_json::json!({}),
                         system: None,
                         kind: ComponentKind::Standard,
@@ -901,8 +895,7 @@ mod tests {
             handler: "checkit".to_string(),
             component: QualificationCheckComponent {
                 data: ComponentView {
-                    name: "pringles".to_owned(),
-                    properties: serde_json::json!({}),
+                    properties: serde_json::json!({ "si": { "name": "Aipim Frito" } }),
                     system: None,
                     kind: ComponentKind::Standard,
                 },
@@ -913,7 +906,7 @@ mod tests {
                 r#"function checkit(component) {
                     console.log('i like');
                     console.log('my butt');
-                    if (component.data.name == "pringles") {
+                    if (component.data.properties.si.name == "Aipim Frito") {
                         return { qualified: true };
                     } else {
                         return {
@@ -993,8 +986,7 @@ mod tests {
             handler: "checkit".to_string(),
             component: QualificationCheckComponent {
                 data: ComponentView {
-                    name: "pringles".to_owned(),
-                    properties: serde_json::json!({}),
+                    properties: serde_json::json!({ "si": { "name": "Aipim Frito" } }),
                     system: None,
                     kind: ComponentKind::Standard,
                 },
@@ -1005,7 +997,7 @@ mod tests {
                 r#"function checkit(component) {
                     console.log('i like');
                     console.log('my butt');
-                    if (component.data.name == "pringles") {
+                    if (component.data.properties.si.name == "Aipim Frito") {
                         return { qualified: true };
                     } else {
                         return {
@@ -1080,7 +1072,6 @@ mod tests {
             http_client_for_running_server(builder.enable_qualification(true), key).await;
 
         let component = ComponentView {
-            name: "pringles".to_string(),
             properties: serde_json::json!({}),
             system: None,
             kind: ComponentKind::Standard,
@@ -1162,7 +1153,6 @@ mod tests {
                 .await;
 
         let component = ComponentView {
-            name: "pringles".to_string(),
             properties: serde_json::json!({}),
             system: None,
             kind: ComponentKind::Standard,
@@ -1242,8 +1232,7 @@ mod tests {
             http_client_for_running_server(builder.enable_qualification(true), key).await;
 
         let component = ComponentView {
-            name: "pringles".to_string(),
-            properties: serde_json::json!({}),
+            properties: serde_json::json!({ "si": { "name": "Ablublubé"}}),
             system: None,
             kind: ComponentKind::Standard,
         };
@@ -1255,7 +1244,7 @@ mod tests {
                 r#"function portugueseJsonGeneration(component) {
                     console.log(JSON.stringify(component));
                     console.log('generate');
-                    return { format: "json", code: JSON.stringify({nome: component.name }) };
+                    return { format: "json", code: JSON.stringify({nome: component.properties.si.name }) };
                 }"#,
             ),
         };
@@ -1275,7 +1264,7 @@ mod tests {
                 assert_eq!(
                     serde_json::from_str::<serde_json::Value>(&output.message)
                         .expect("Unable to serialize output to json"),
-                    serde_json::json!({"name": component.name, "properties": {}, "system": null, "kind": "standard" })
+                    serde_json::json!({"properties": { "si": { "name": "Ablublubé" } }, "system": null, "kind": "standard" })
                 )
             }
             Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
@@ -1311,7 +1300,7 @@ mod tests {
                     success.data,
                     CodeGenerated {
                         format: "json".to_owned(),
-                        code: serde_json::to_string(&serde_json::json!({ "nome": "pringles" }))
+                        code: serde_json::to_string(&serde_json::json!({ "nome": "Ablublubé" }))
                             .expect("unable to deserialize"),
                     }
                 );
@@ -1332,8 +1321,7 @@ mod tests {
                 .await;
 
         let component = ComponentView {
-            name: "pringles".to_string(),
-            properties: serde_json::json!({}),
+            properties: serde_json::json!({ "si": { "name": "Ablublubé"}}),
             system: None,
             kind: ComponentKind::Standard,
         };
@@ -1345,7 +1333,7 @@ mod tests {
                 r#"function portugueseJsonGeneration(component) {
                     console.log(JSON.stringify(component));
                     console.log('generate');
-                    return { format: "json", code: JSON.stringify({nome: component.name}) };
+                    return { format: "json", code: JSON.stringify({nome: component.properties.si.name }) };
                 }"#,
             ),
         };
@@ -1365,7 +1353,7 @@ mod tests {
                 assert_eq!(
                     serde_json::from_str::<serde_json::Value>(&output.message)
                         .expect("Unable to serialize output to json"),
-                    serde_json::json!({"name": component.name, "properties": {}, "system": null, "kind": "standard" })
+                    serde_json::json!({"properties": { "si": { "name": "Ablublubé" } }, "system": null, "kind": "standard" })
                 )
             }
             Some(Ok(unexpected)) => panic!("unexpected msg kind: {:?}", unexpected),
@@ -1401,7 +1389,7 @@ mod tests {
                     success.data,
                     CodeGenerated {
                         format: "json".to_owned(),
-                        code: serde_json::to_string(&serde_json::json!({ "nome": "pringles" }))
+                        code: serde_json::to_string(&serde_json::json!({ "nome": "Ablublubé" }))
                             .expect("unable to deserialize"),
                     }
                 );

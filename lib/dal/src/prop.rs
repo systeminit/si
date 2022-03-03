@@ -98,7 +98,6 @@ pub struct Prop {
     id: PropId,
     name: String,
     kind: PropKind,
-    parent_prop_id: Option<PropId>,
     widget_kind: WidgetKind,
     #[serde(flatten)]
     tenancy: Tenancy,
@@ -119,6 +118,7 @@ impl_standard_model! {
 
 impl Prop {
     #[allow(clippy::too_many_arguments)]
+    #[tracing::instrument(skip(txn, nats, name))]
     pub async fn new(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
@@ -130,6 +130,8 @@ impl Prop {
         name: impl AsRef<str>,
         kind: PropKind,
     ) -> PropResult<Self> {
+        let name = name.as_ref();
+        info!("Create: {}", name);
         let widget_kind = WidgetKind::from(kind);
         let row = txn
             .query_one(
@@ -137,7 +139,7 @@ impl Prop {
                 &[
                     tenancy,
                     visibility,
-                    &name.as_ref(),
+                    &name,
                     &kind.as_ref(),
                     &widget_kind.as_ref(),
                 ],
@@ -154,8 +156,11 @@ impl Prop {
         .await?;
 
         // Set default prop value as 'unset'
+        let mut schema_tenancy = tenancy.clone();
+        schema_tenancy.universal = true;
         let func_name = "si:unset".to_string();
-        let mut funcs = Func::find_by_attr(txn, tenancy, visibility, "name", &func_name).await?;
+        let mut funcs =
+            Func::find_by_attr(txn, &schema_tenancy, visibility, "name", &func_name).await?;
         let func = funcs.pop().ok_or(PropError::MissingFunc(func_name))?;
         let (func_binding, created) = FuncBinding::find_or_create(
             txn,
@@ -227,6 +232,7 @@ impl Prop {
         result: PropResult,
     );
 
+    // TODO: Turn the next two into many to many
     standard_model_belongs_to!(
         lookup_fn: parent_prop,
         set_fn: set_parent_prop_unchecked,

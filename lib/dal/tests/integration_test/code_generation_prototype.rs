@@ -20,7 +20,7 @@ async fn new() {
         nats_conn,
         nats,
         veritech,
-        _encr_key
+        encr_key
     );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
@@ -38,6 +38,7 @@ async fn new() {
         &txn,
         &nats,
         veritech,
+        &encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -84,7 +85,7 @@ async fn find_for_component() {
     // with that for now, but not for long. If it breaks before we fix it - future person, I'm
     // sorry. ;)
 
-    test_setup!(ctx, secret_key, pg, _conn, txn, nats_conn, nats, veritech, _encr_key);
+    test_setup!(ctx, secret_key, pg, _conn, txn, nats_conn, nats, veritech, encr_key);
     let (nba, _token) = billing_account_signup(&txn, &nats, secret_key).await;
     let mut tenancy = Tenancy::new_workspace(vec![*nba.workspace.id()]);
     tenancy.universal = true;
@@ -105,6 +106,7 @@ async fn find_for_component() {
         &txn,
         &nats,
         veritech,
+        &encr_key,
         &tenancy,
         &visibility,
         &history_actor,

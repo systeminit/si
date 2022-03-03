@@ -52,6 +52,8 @@ async fn new() {
     let component = create_component_for_schema(
         &txn,
         &nats,
+        veritech.clone(),
+        &encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -145,6 +147,8 @@ async fn find_for_prototype() {
     let component = create_component_for_schema(
         &txn,
         &nats,
+        veritech.clone(),
+        &encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -281,6 +285,8 @@ async fn find_values_for_prop_and_component() {
     let component = create_component_for_schema(
         &txn,
         &nats,
+        veritech.clone(),
+        &encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -423,6 +429,8 @@ async fn find_values_for_prop_and_component_override() {
     let component = create_component_for_schema(
         &txn,
         &nats,
+        veritech.clone(),
+        &encr_key,
         &tenancy,
         &visibility,
         &history_actor,

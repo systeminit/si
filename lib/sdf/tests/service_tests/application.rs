@@ -16,8 +16,8 @@ async fn create_application() {
         _ctx,
         _secret_key,
         _pg,
-        _conn,
-        _txn,
+        conn,
+        txn,
         _nats_conn,
         _nats,
         _veritech,
@@ -41,7 +41,16 @@ async fn create_application() {
         &request,
     )
     .await;
-    assert_eq!(response.application.name(), "fancyPants");
+
+    let tenancy = Tenancy::new_workspace(vec![*nba.workspace.id()]);
+    assert_eq!(
+        response
+            .application
+            .find_prop_value_by_json_pointer::<String>(&txn, &tenancy, &visibility, "/root/si/name")
+            .await
+            .expect("No name prop in application"),
+        Some("fancyPants".to_owned())
+    );
 }
 
 #[tokio::test]
@@ -50,12 +59,12 @@ async fn list_applications() {
         _ctx,
         _secret_key,
         _pg,
-        _conn,
+        conn,
         txn,
         _nats_conn,
         nats,
         veritech,
-        _encr_key,
+        encr_key,
         app,
         nba,
         auth_token
@@ -64,14 +73,15 @@ async fn list_applications() {
     let tenancy = Tenancy::new_workspace(vec![*nba.workspace.id()]);
     let history_actor = HistoryActor::SystemInit;
 
-    let (component, _node) = Component::new_application_with_node(
+    let (_component, _node) = Component::new_application_with_node(
         &txn,
         &nats,
         veritech,
+        &encr_key,
         &tenancy,
         &visibility,
         &history_actor,
-        "poop",
+        "fancyPants",
     )
     .await
     .expect("cannot create new application");
@@ -90,5 +100,17 @@ async fn list_applications() {
     )
     .await;
     assert_eq!(response.list.len(), 1);
-    assert_eq!(response.list[0].application.name(), component.name());
+
+    let txn = conn
+        .transaction()
+        .await
+        .expect("Unable to create transaction");
+    assert_eq!(
+        response.list[0]
+            .application
+            .find_prop_value_by_json_pointer::<String>(&txn, &tenancy, &visibility, "/root/si/name")
+            .await
+            .expect("Unable to find name"),
+        Some("fancyPants".to_owned())
+    );
 }

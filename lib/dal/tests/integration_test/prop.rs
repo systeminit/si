@@ -55,8 +55,16 @@ async fn schema_variants() {
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
-    let schema_variant =
-        create_schema_variant(&txn, &nats, &tenancy, &visibility, &history_actor).await;
+    let schema_variant = create_schema_variant(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        veritech.clone(),
+        encr_key,
+    )
+    .await;
     let prop = create_prop(
         &txn,
         &nats,

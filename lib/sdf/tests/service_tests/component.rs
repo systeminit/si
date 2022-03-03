@@ -2,7 +2,9 @@ use std::collections::HashSet;
 
 use crate::service_tests::api_request_auth_query;
 use crate::test_setup;
-use dal::test_harness::{create_schema, create_schema_variant};
+use dal::test_harness::{
+    create_component_for_schema_variant, create_schema, create_schema_variant,
+};
 use dal::{Component, HistoryActor, SchemaKind, StandardModel, Tenancy, Visibility};
 use sdf::service::component::get_component_metadata::{
     GetComponentMetadataRequest, GetComponentMetadataResponse,
@@ -21,8 +23,8 @@ async fn list_components_names_only() {
         txn,
         _nats_conn,
         nats,
-        _veritech,
-        _encr_key,
+        veritech,
+        encr_key,
         app,
         nba,
         auth_token
@@ -31,12 +33,46 @@ async fn list_components_names_only() {
     let tenancy = Tenancy::new_workspace(vec![*nba.workspace.id()]);
     let history_actor = HistoryActor::SystemInit;
 
+    let schema = create_schema(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        &SchemaKind::Concept,
+    )
+    .await;
+    let schema_variant = create_schema_variant(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        veritech.clone(),
+        encr_key,
+    )
+    .await;
+    schema_variant
+        .set_schema(&txn, &nats, &visibility, &history_actor, schema.id())
+        .await
+        .expect("Unable to set schema");
+
     let component_name1 = "poop";
     let component_name2 = "ilikemybutt";
     for name in &[component_name1, component_name2] {
-        let _component = Component::new(&txn, &nats, &tenancy, &visibility, &history_actor, &name)
-            .await
-            .expect("cannot create new component");
+        let _component = Component::new_for_schema_variant_with_node(
+            &txn,
+            &nats,
+            veritech.clone(),
+            &encr_key,
+            &tenancy,
+            &visibility,
+            &history_actor,
+            &name,
+            schema_variant.id(),
+        )
+        .await
+        .expect("cannot create new component");
     }
     txn.commit().await.expect("cannot commit transaction");
 
@@ -83,7 +119,7 @@ async fn get_component_metadata() {
         _nats_conn,
         nats,
         veritech,
-        _encr_key,
+        encr_key,
         app,
         nba,
         auth_token
@@ -104,37 +140,32 @@ async fn get_component_metadata() {
     )
     .await;
 
-    let schema_variant =
-        create_schema_variant(&txn, &nats, &schema_tenancy, &visibility, &history_actor).await;
-    schema_variant
-        .set_schema(&txn, &nats, &visibility, &history_actor, schema.id())
-        .await
-        .expect("cannot set schema variant");
-
-    let component = Component::new(
+    let schema_variant = create_schema_variant(
         &txn,
         &nats,
         &tenancy,
         &visibility,
         &history_actor,
-        "hello friend",
+        veritech.clone(),
+        encr_key,
     )
-    .await
-    .expect("cannot create new component");
-    component
+    .await;
+    schema_variant
         .set_schema(&txn, &nats, &visibility, &history_actor, schema.id())
         .await
-        .expect("Cannot attach component to schema");
-    component
-        .set_schema_variant(
-            &txn,
-            &nats,
-            &visibility,
-            &history_actor,
-            schema_variant.id(),
-        )
-        .await
-        .expect("Cannot attach component to schema variant");
+        .expect("cannot set schema variant");
+
+    let component = create_component_for_schema_variant(
+        &txn,
+        &nats,
+        veritech.clone(),
+        &encr_key,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        schema_variant.id(),
+    )
+    .await;
     txn.commit().await.expect("cannot commit transaction");
 
     let request = GetComponentMetadataRequest {

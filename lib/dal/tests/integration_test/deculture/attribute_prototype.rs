@@ -59,6 +59,8 @@ async fn new() {
     let component = create_component_for_schema(
         &txn,
         &nats,
+        veritech.clone(),
+        &encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -147,8 +149,16 @@ async fn list_for_context() {
     )
     .await;
 
-    let schema_variant =
-        create_schema_variant(&txn, &nats, &tenancy, &visibility, &history_actor).await;
+    let schema_variant = create_schema_variant(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        veritech.clone(),
+        encr_key,
+    )
+    .await;
     schema_variant
         .set_schema(&txn, &nats, &visibility, &history_actor, schema.id())
         .await
@@ -312,6 +322,8 @@ async fn list_for_context() {
     let component = create_component_for_schema(
         &txn,
         &nats,
+        veritech.clone(),
+        &encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -428,8 +440,16 @@ async fn list_for_context_with_a_hash() {
     )
     .await;
 
-    let schema_variant =
-        create_schema_variant(&txn, &nats, &tenancy, &visibility, &history_actor).await;
+    let schema_variant = create_schema_variant(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        veritech.clone(),
+        encr_key,
+    )
+    .await;
     schema_variant
         .set_schema(&txn, &nats, &visibility, &history_actor, schema.id())
         .await
@@ -637,6 +657,8 @@ async fn list_for_context_with_a_hash() {
     let component = create_component_for_schema(
         &txn,
         &nats,
+        veritech.clone(),
+        &encr_key,
         &tenancy,
         &visibility,
         &history_actor,

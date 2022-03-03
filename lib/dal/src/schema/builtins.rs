@@ -16,6 +16,7 @@ use crate::{
     SchemaVariantId, SchematicKind, StandardModel, Tenancy, ValidationPrototype, Visibility,
 };
 use si_data::{NatsTxn, PgTxn};
+use telemetry::prelude::*;
 use veritech::EncryptionKey;
 
 mod kubernetes_deployment;
@@ -38,10 +39,46 @@ pub async fn migrate(
         HistoryActor::SystemInit,
     );
 
-    system(txn, nats, &tenancy, &visibility, &history_actor).await?;
-    application(txn, nats, &tenancy, &visibility, &history_actor).await?;
-    service(txn, nats, &tenancy, &visibility, &history_actor).await?;
-    kubernetes_service(txn, nats, &tenancy, &visibility, &history_actor).await?;
+    system(
+        txn,
+        nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        veritech.clone(),
+        encryption_key,
+    )
+    .await?;
+    application(
+        txn,
+        nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        veritech.clone(),
+        encryption_key,
+    )
+    .await?;
+    service(
+        txn,
+        nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        veritech.clone(),
+        encryption_key,
+    )
+    .await?;
+    kubernetes_service(
+        txn,
+        nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        veritech.clone(),
+        encryption_key,
+    )
+    .await?;
     kubernetes_deployment(
         txn,
         nats,
@@ -82,6 +119,8 @@ async fn system(
     tenancy: &Tenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
+    veritech: veritech::Client,
+    encryption_key: &EncryptionKey,
 ) -> SchemaResult<()> {
     let name = "system".to_string();
     let mut schema = match create_schema(
@@ -103,7 +142,17 @@ async fn system(
         .set_ui_hidden(txn, nats, visibility, history_actor, true)
         .await?;
 
-    let variant = SchemaVariant::new(txn, nats, tenancy, visibility, history_actor, "v0").await?;
+    let (variant, _) = SchemaVariant::new(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        "v0",
+        veritech,
+        encryption_key,
+    )
+    .await?;
     variant
         .set_schema(txn, nats, visibility, history_actor, schema.id())
         .await?;
@@ -135,6 +184,8 @@ async fn application(
     tenancy: &Tenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
+    veritech: veritech::Client,
+    encryption_key: &EncryptionKey,
 ) -> SchemaResult<()> {
     let name = "application".to_string();
     let mut schema = match create_schema(
@@ -156,7 +207,17 @@ async fn application(
         .set_ui_hidden(txn, nats, visibility, history_actor, true)
         .await?;
 
-    let variant = SchemaVariant::new(txn, nats, tenancy, visibility, history_actor, "v0").await?;
+    let (variant, _) = SchemaVariant::new(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        "v0",
+        veritech,
+        encryption_key,
+    )
+    .await?;
     variant
         .set_schema(txn, nats, visibility, history_actor, schema.id())
         .await?;
@@ -218,6 +279,8 @@ async fn service(
     tenancy: &Tenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
+    veritech: veritech::Client,
+    encryption_key: &EncryptionKey,
 ) -> SchemaResult<()> {
     let name = "service".to_string();
     let mut schema = match create_schema(
@@ -285,7 +348,17 @@ async fn service(
         )
         .await?;
 
-    let variant = SchemaVariant::new(txn, nats, tenancy, visibility, history_actor, "v0").await?;
+    let (variant, _) = SchemaVariant::new(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        "v0",
+        veritech,
+        encryption_key,
+    )
+    .await?;
     variant
         .set_schema(txn, nats, visibility, history_actor, schema.id())
         .await?;
@@ -347,6 +420,8 @@ async fn kubernetes_service(
     tenancy: &Tenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
+    veritech: veritech::Client,
+    encryption_key: &EncryptionKey,
 ) -> SchemaResult<()> {
     let name = "kubernetes_service".to_string();
     let mut schema = match create_schema(
@@ -364,7 +439,17 @@ async fn kubernetes_service(
         None => return Ok(()),
     };
 
-    let variant = SchemaVariant::new(txn, nats, tenancy, visibility, history_actor, "v0").await?;
+    let (variant, _) = SchemaVariant::new(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        "v0",
+        veritech,
+        encryption_key,
+    )
+    .await?;
     variant
         .set_schema(txn, nats, visibility, history_actor, schema.id())
         .await?;
@@ -454,62 +539,22 @@ async fn docker_hub_credential(
         )
         .await?;
 
-    let variant = SchemaVariant::new(txn, nats, tenancy, visibility, history_actor, "v0").await?;
+    let (variant, root_prop) = SchemaVariant::new(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        "v0",
+        veritech.clone(),
+        encryption_key,
+    )
+    .await?;
     variant
         .set_schema(txn, nats, visibility, history_actor, schema.id())
         .await?;
     schema
         .set_default_schema_variant_id(txn, nats, visibility, history_actor, Some(*variant.id()))
-        .await?;
-
-    let mut ui_menu = UiMenu::new(txn, nats, tenancy, visibility, history_actor).await?;
-    ui_menu
-        .set_name(
-            txn,
-            nats,
-            visibility,
-            history_actor,
-            Some(schema.name().to_string()),
-        )
-        .await?;
-
-    let application_name = "application".to_string();
-    ui_menu
-        .set_category(
-            txn,
-            nats,
-            visibility,
-            history_actor,
-            Some(application_name.clone()),
-        )
-        .await?;
-    ui_menu
-        .set_schematic_kind(
-            txn,
-            nats,
-            visibility,
-            history_actor,
-            SchematicKind::Deployment, // Note: This isn't right, but we are not fixing the SchematicKind::Component UI in this PR
-        )
-        .await?;
-    ui_menu
-        .set_schema(txn, nats, visibility, history_actor, schema.id())
-        .await?;
-
-    let application_schema_results =
-        Schema::find_by_attr(txn, tenancy, visibility, "name", &application_name).await?;
-    let application_schema = application_schema_results
-        .first()
-        .ok_or(SchemaError::NotFoundByName(application_name))?;
-
-    ui_menu
-        .add_root_schematic(
-            txn,
-            nats,
-            visibility,
-            history_actor,
-            application_schema.id(),
-        )
         .await?;
 
     let mut secret_prop = Prop::new(
@@ -527,7 +572,15 @@ async fn docker_hub_credential(
     secret_prop
         .add_schema_variant(txn, nats, visibility, history_actor, variant.id())
         .await?;
-
+    secret_prop
+        .set_parent_prop(
+            txn,
+            nats,
+            visibility,
+            history_actor,
+            root_prop.domain_prop_id,
+        )
+        .await?;
     secret_prop
         .set_widget_kind(
             txn,
@@ -619,6 +672,56 @@ async fn docker_hub_credential(
         .add_socket(txn, nats, visibility, history_actor, includes_socket.id())
         .await?;
 
+    let mut ui_menu = UiMenu::new(txn, nats, tenancy, visibility, history_actor).await?;
+    ui_menu
+        .set_name(
+            txn,
+            nats,
+            visibility,
+            history_actor,
+            Some(schema.name().to_string()),
+        )
+        .await?;
+
+    let application_name = "application".to_string();
+    ui_menu
+        .set_category(
+            txn,
+            nats,
+            visibility,
+            history_actor,
+            Some(application_name.clone()),
+        )
+        .await?;
+    ui_menu
+        .set_schematic_kind(
+            txn,
+            nats,
+            visibility,
+            history_actor,
+            SchematicKind::Deployment, // Note: This isn't right, but we are not fixing the SchematicKind::Component UI in this PR
+        )
+        .await?;
+    ui_menu
+        .set_schema(txn, nats, visibility, history_actor, schema.id())
+        .await?;
+
+    let application_schema_results =
+        Schema::find_by_attr(txn, tenancy, visibility, "name", &application_name).await?;
+    let application_schema = application_schema_results
+        .first()
+        .ok_or(SchemaError::NotFoundByName(application_name))?;
+
+    ui_menu
+        .add_root_schematic(
+            txn,
+            nats,
+            visibility,
+            history_actor,
+            application_schema.id(),
+        )
+        .await?;
+
     Ok(())
 }
 
@@ -647,7 +750,17 @@ async fn docker_image(
         None => return Ok(()),
     };
 
-    let variant = SchemaVariant::new(txn, nats, tenancy, visibility, history_actor, "v0").await?;
+    let (variant, root_prop) = SchemaVariant::new(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        "v0",
+        veritech.clone(),
+        encryption_key,
+    )
+    .await?;
     variant
         .set_schema(txn, nats, visibility, history_actor, schema.id())
         .await?;
@@ -719,6 +832,15 @@ async fn docker_image(
     image_prop
         .add_schema_variant(txn, nats, visibility, history_actor, variant.id())
         .await?;
+    image_prop
+        .set_parent_prop(
+            txn,
+            nats,
+            visibility,
+            history_actor,
+            root_prop.domain_prop_id,
+        )
+        .await?;
 
     // TODO: required, validate regex: "\\d+\\/(tcp|udp)", message: "invalid exposed port entry; must be [numeric]/(tcp|udp)",
     let exposed_ports_prop = Prop::new(
@@ -735,6 +857,15 @@ async fn docker_image(
     .await?;
     exposed_ports_prop
         .add_schema_variant(txn, nats, visibility, history_actor, variant.id())
+        .await?;
+    exposed_ports_prop
+        .set_parent_prop(
+            txn,
+            nats,
+            visibility,
+            history_actor,
+            root_prop.domain_prop_id,
+        )
         .await?;
 
     let func_name = "si:validateStringEquals".to_string();
@@ -789,6 +920,15 @@ async fn docker_image(
     number_of_parents_prop
         .add_schema_variant(txn, nats, visibility, history_actor, variant.id())
         .await?;
+    number_of_parents_prop
+        .set_parent_prop(
+            txn,
+            nats,
+            visibility,
+            history_actor,
+            root_prop.domain_prop_id,
+        )
+        .await?;
 
     // TODO: we don't have a component to have their props, but we can manually rebuild the props from what we created in this schema variant
     // This means if someone updates this function the properties will be invalid
@@ -808,7 +948,6 @@ async fn docker_image(
         serde_json::to_value(FuncBackendJsAttributeArgs {
             component: veritech::ResolverFunctionComponent {
                 data: veritech::ComponentView {
-                    name: number_of_parents_prop.name().to_owned(),
                     properties: serde_json::to_value(properties)?,
                     kind: veritech::ComponentKind::Standard,
                     system: None,
@@ -1088,7 +1227,6 @@ pub async fn create_string_prop_with_default(
         serde_json::to_value(FuncBackendJsAttributeArgs {
             component: veritech::ResolverFunctionComponent {
                 data: veritech::ComponentView {
-                    name: prop.name().to_owned(),
                     properties: serde_json::json!({}),
                     system: None,
                     kind: veritech::ComponentKind::Standard,
@@ -1122,4 +1260,169 @@ pub async fn create_string_prop_with_default(
     )
     .await?;
     Ok(prop)
+}
+
+pub struct RootProp {
+    pub si_prop_id: PropId,
+    pub domain_prop_id: PropId,
+}
+
+/// Returns si-specific prop id and domain-specific prop id, respectfully
+#[tracing::instrument(skip(txn, nats))]
+#[allow(clippy::too_many_arguments)]
+pub async fn create_root_prop(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    tenancy: &Tenancy,
+    visibility: &Visibility,
+    history_actor: &HistoryActor,
+    variant_id: &SchemaVariantId,
+    veritech: veritech::Client,
+    encryption_key: &EncryptionKey,
+) -> SchemaResult<RootProp> {
+    let mut schema_tenancy = tenancy.clone();
+    schema_tenancy.universal = true;
+    let func_name = "si:setPropObject".to_string();
+    let mut funcs =
+        Func::find_by_attr(txn, &schema_tenancy, visibility, "name", &func_name).await?;
+    let func = funcs.pop().ok_or(SchemaError::MissingFunc(func_name))?;
+
+    let (func_binding, created) = FuncBinding::find_or_create(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        // Note: this 'value' property shouldn't need to exist, but it's deserialized to FuncBackendPropObjectArgs
+        serde_json::json!({ "value": {} }),
+        *func.id(),
+        *func.backend_kind(),
+    )
+    .await?;
+
+    if created {
+        func_binding
+            .execute(txn, nats, veritech.clone(), encryption_key)
+            .await?;
+    }
+
+    let root_prop = Prop::new(
+        txn,
+        nats,
+        veritech.clone(),
+        encryption_key,
+        tenancy,
+        visibility,
+        history_actor,
+        "root",
+        PropKind::Object,
+    )
+    .await?;
+    root_prop
+        .add_schema_variant(txn, nats, visibility, history_actor, variant_id)
+        .await?;
+
+    let mut attribute_resolver_context = AttributeResolverContext::new();
+    attribute_resolver_context.set_prop_id(*root_prop.id());
+    AttributeResolver::upsert(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        *func.id(),
+        *func_binding.id(),
+        attribute_resolver_context,
+        None,
+    )
+    .await?;
+
+    let si_specific_prop = Prop::new(
+        txn,
+        nats,
+        veritech.clone(),
+        encryption_key,
+        tenancy,
+        visibility,
+        history_actor,
+        "si",
+        PropKind::Object,
+    )
+    .await?;
+    si_specific_prop
+        .add_schema_variant(txn, nats, visibility, history_actor, variant_id)
+        .await?;
+    si_specific_prop
+        .set_parent_prop(txn, nats, visibility, history_actor, *root_prop.id())
+        .await?;
+    let mut attribute_resolver_context = AttributeResolverContext::new();
+    attribute_resolver_context.set_prop_id(*si_specific_prop.id());
+    AttributeResolver::upsert(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        *func.id(),
+        *func_binding.id(),
+        attribute_resolver_context,
+        None,
+    )
+    .await?;
+
+    let si_name_prop = Prop::new(
+        txn,
+        nats,
+        veritech.clone(),
+        encryption_key,
+        tenancy,
+        visibility,
+        history_actor,
+        "name",
+        PropKind::String,
+    )
+    .await?;
+    si_name_prop
+        .add_schema_variant(txn, nats, visibility, history_actor, variant_id)
+        .await?;
+    si_name_prop
+        .set_parent_prop(txn, nats, visibility, history_actor, *si_specific_prop.id())
+        .await?;
+
+    let domain_specific_prop = Prop::new(
+        txn,
+        nats,
+        veritech.clone(),
+        encryption_key,
+        tenancy,
+        visibility,
+        history_actor,
+        "domain",
+        PropKind::Object,
+    )
+    .await?;
+    domain_specific_prop
+        .add_schema_variant(txn, nats, visibility, history_actor, variant_id)
+        .await?;
+    domain_specific_prop
+        .set_parent_prop(txn, nats, visibility, history_actor, *root_prop.id())
+        .await?;
+    let mut attribute_resolver_context = AttributeResolverContext::new();
+    attribute_resolver_context.set_prop_id(*domain_specific_prop.id());
+    AttributeResolver::upsert(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        *func.id(),
+        *func_binding.id(),
+        attribute_resolver_context,
+        None,
+    )
+    .await?;
+    Ok(RootProp {
+        si_prop_id: *si_specific_prop.id(),
+        domain_prop_id: *domain_specific_prop.id(),
+    })
 }

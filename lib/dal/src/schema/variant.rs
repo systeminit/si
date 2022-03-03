@@ -12,6 +12,8 @@ use crate::{
         EditFieldError, EditFieldObjectKind, EditFields, VisibilityDiff,
     },
     impl_standard_model, pk,
+    schema::builtins::{create_root_prop, RootProp},
+    schema::SchemaError,
     socket::{Socket, SocketError, SocketId},
     standard_model::{self, objects_from_rows},
     standard_model_accessor, standard_model_belongs_to, standard_model_many_to_many, HistoryActor,
@@ -41,6 +43,8 @@ pub enum SchemaVariantError {
     StandardModel(#[from] StandardModelError),
     #[error("ws event error: {0}")]
     WsEvent(#[from] WsEventError),
+    #[error("schema error: {0}")]
+    Schema(#[from] Box<SchemaError>),
 }
 
 pub type SchemaVariantResult<T> = Result<T, SchemaVariantError>;
@@ -74,6 +78,7 @@ impl_standard_model! {
 
 impl SchemaVariant {
     #[instrument(skip_all)]
+    #[allow(clippy::too_many_arguments)]
     pub async fn new(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
@@ -81,7 +86,9 @@ impl SchemaVariant {
         visibility: &Visibility,
         history_actor: &HistoryActor,
         name: impl AsRef<str>,
-    ) -> SchemaVariantResult<Self> {
+        veritech: veritech::Client,
+        encryption_key: &EncryptionKey,
+    ) -> SchemaVariantResult<(Self, RootProp)> {
         let name = name.as_ref();
         let row = txn
             .query_one(
@@ -89,7 +96,7 @@ impl SchemaVariant {
                 &[tenancy, visibility, &name],
             )
             .await?;
-        let object = standard_model::finish_create_from_row(
+        let object: SchemaVariant = standard_model::finish_create_from_row(
             txn,
             nats,
             tenancy,
@@ -98,7 +105,19 @@ impl SchemaVariant {
             row,
         )
         .await?;
-        Ok(object)
+        let root_prop = create_root_prop(
+            txn,
+            nats,
+            tenancy,
+            visibility,
+            history_actor,
+            object.id(),
+            veritech,
+            encryption_key,
+        )
+        .await
+        .map_err(Box::new)?;
+        Ok((object, root_prop))
     }
 
     standard_model_accessor!(name, String, SchemaVariantResult);

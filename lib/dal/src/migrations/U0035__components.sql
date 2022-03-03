@@ -11,7 +11,6 @@ CREATE TABLE components
     visibility_deleted          bool,
     created_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     updated_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
-    name                        text                     NOT NULL,
     kind                        text                     NOT NULL
 );
 SELECT standard_model_table_constraints_v1('components');
@@ -27,7 +26,6 @@ VALUES ('components', 'model', 'component', 'Component'),
 CREATE OR REPLACE FUNCTION component_create_v1(
     this_tenancy jsonb,
     this_visibility jsonb,
-    this_name text,
     this_kind text,
     OUT object json) AS
 $$
@@ -41,11 +39,11 @@ BEGIN
 
     INSERT INTO components (tenancy_universal, tenancy_billing_account_ids, tenancy_organization_ids,
                           tenancy_workspace_ids,
-                          visibility_change_set_pk, visibility_edit_session_pk, visibility_deleted, name, kind)
+                          visibility_change_set_pk, visibility_edit_session_pk, visibility_deleted, kind)
     VALUES (this_tenancy_record.tenancy_universal, this_tenancy_record.tenancy_billing_account_ids,
             this_tenancy_record.tenancy_organization_ids, this_tenancy_record.tenancy_workspace_ids,
             this_visibility_record.visibility_change_set_pk, this_visibility_record.visibility_edit_session_pk,
-            this_visibility_record.visibility_deleted, this_name, this_kind)
+            this_visibility_record.visibility_deleted, this_kind)
     RETURNING * INTO this_new_row;
 
     object := row_to_json(this_new_row);

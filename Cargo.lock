@@ -664,6 +664,7 @@ dependencies = [
  "tokio",
  "tokio-postgres",
  "tokio-stream",
+ "tracing-subscriber",
  "url",
  "uuid",
  "veritech",

@@ -51,13 +51,21 @@ pub async fn list_components_names_only(
     let tenancy = Tenancy::new_workspace(vec![*workspace.id()]);
 
     let components = Component::list(&txn, &tenancy, &request.visibility).await?;
-    let label_entries: Vec<LabelEntry<ComponentId>> = components
-        .into_iter()
-        .map(|component| LabelEntry {
-            label: component.name().to_string(),
+    let mut label_entries = Vec::with_capacity(components.len());
+    for component in components {
+        label_entries.push(LabelEntry {
+            label: component
+                .find_prop_value_by_json_pointer::<String>(
+                    &txn,
+                    &tenancy,
+                    &request.visibility,
+                    "/root/si/name",
+                )
+                .await?
+                .ok_or(ComponentError::ComponentNameNotFound)?,
             value: *component.id(),
-        })
-        .collect();
+        });
+    }
     let list = LabelList::from(label_entries);
     let response = ListComponentNamesOnlyResponse { list };
     Ok(Json(response))

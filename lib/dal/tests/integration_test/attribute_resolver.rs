@@ -9,11 +9,11 @@ use dal::{
     system::UNSET_SYSTEM_ID,
     test_harness::{
         billing_account_signup, create_component_for_schema, create_component_for_schema_variant,
-        create_prop_of_kind_with_name, create_schema, create_schema_variant,
+        create_prop_of_kind_with_name, create_schema, create_schema_variant_with_root,
         find_or_create_production_system,
     },
-    AttributeResolver, ComponentView, Func, FuncBackendKind, FuncBackendResponseType, HistoryActor,
-    PropKind, Schema, SchemaKind, StandardModel, Tenancy, Visibility,
+    AttributeResolver, Component, ComponentView, Func, FuncBackendKind, FuncBackendResponseType,
+    HistoryActor, PropKind, Schema, SchemaKind, StandardModel, Tenancy, Visibility,
 };
 use pretty_assertions_sorted::{assert_eq, assert_eq_sorted};
 
@@ -61,6 +61,8 @@ async fn new() {
     let component = create_component_for_schema(
         &txn,
         &nats,
+        veritech.clone(),
+        &encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -156,6 +158,8 @@ async fn find_value_for_prop_and_component() {
     let component = create_component_for_schema(
         &txn,
         &nats,
+        veritech.clone(),
+        &encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -460,6 +464,8 @@ async fn upsert() {
     let component = create_component_for_schema(
         &txn,
         &nats,
+        veritech.clone(),
+        &encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -577,8 +583,16 @@ async fn update_parent_index_map() {
         &SchemaKind::Implementation,
     )
     .await;
-    let schema_variant =
-        create_schema_variant(&txn, &nats, &tenancy, &visibility, &history_actor).await;
+    let (schema_variant, _) = create_schema_variant_with_root(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        veritech.clone(),
+        encr_key,
+    )
+    .await;
     schema_variant
         .set_schema(&txn, &nats, &visibility, &history_actor, schema.id())
         .await
@@ -587,6 +601,8 @@ async fn update_parent_index_map() {
     let component = create_component_for_schema_variant(
         &txn,
         &nats,
+        veritech.clone(),
+        &encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -774,8 +790,16 @@ async fn siblings_have_values() {
         &SchemaKind::Concrete,
     )
     .await;
-    let schema_variant =
-        create_schema_variant(&txn, &nats, &tenancy, &visibility, &history_actor).await;
+    let (schema_variant, _) = create_schema_variant_with_root(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        veritech.clone(),
+        encr_key,
+    )
+    .await;
     schema_variant
         .set_schema(&txn, &nats, &visibility, &history_actor, schema.id())
         .await
@@ -851,6 +875,8 @@ async fn siblings_have_values() {
     let component = create_component_for_schema_variant(
         &txn,
         &nats,
+        veritech.clone(),
+        &encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -998,8 +1024,16 @@ async fn update_for_context_will_unset_parent_resolvers() {
         &SchemaKind::Concrete,
     )
     .await;
-    let schema_variant =
-        create_schema_variant(&txn, &nats, &tenancy, &visibility, &history_actor).await;
+    let (schema_variant, root) = create_schema_variant_with_root(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        veritech.clone(),
+        encr_key,
+    )
+    .await;
     schema_variant
         .set_schema(&txn, &nats, &visibility, &history_actor, schema.id())
         .await
@@ -1027,6 +1061,16 @@ async fn update_for_context_will_unset_parent_resolvers() {
         "albums_array",
     )
     .await;
+    albums_array_prop
+        .set_parent_prop(
+            &txn,
+            &nats,
+            &visibility,
+            &history_actor,
+            root.domain_prop_id,
+        )
+        .await
+        .expect("cannot set album array prop parent to root domain");
     albums_array_prop
         .add_schema_variant(
             &txn,
@@ -1107,15 +1151,19 @@ async fn update_for_context_will_unset_parent_resolvers() {
         .await
         .expect("cannot set parent prop for album release year");
 
-    let component = create_component_for_schema_variant(
+    let (component, _) = Component::new_for_schema_variant_with_node(
         &txn,
         &nats,
+        veritech.clone(),
+        &encr_key,
         &tenancy,
         &visibility,
         &history_actor,
+        "Bezerra da Silva".to_owned(),
         schema_variant.id(),
     )
-    .await;
+    .await
+    .expect("Unable to create component");
 
     let mut albums_resolver_context = AttributeResolverContext::new();
     albums_resolver_context.set_prop_id(*albums_array_prop.id());
@@ -1195,13 +1243,14 @@ async fn update_for_context_will_unset_parent_resolvers() {
     .expect("cannot get component view");
 
     assert_eq_sorted!(
-        serde_json::json![
-            {
+        serde_json::json![{
+            "si": {"name": "Bezerra da Silva" },
+            "domain": {
                 "albums_array": [
                     { "album_name": "Astro-Creep: 2000", "release_year": "1995" }
                 ]
             }
-        ],
+        }],
         component_view.properties,
     );
 
@@ -1232,13 +1281,14 @@ async fn update_for_context_will_unset_parent_resolvers() {
     .expect("cannot get component view");
 
     assert_eq_sorted!(
-        serde_json::json![
-            {
+        serde_json::json![{
+            "si": {"name": "Bezerra da Silva" },
+            "domain": {
                 "albums_array": [
                     { "album_name": "Astro-Creep: 2000" }
                 ]
             }
-        ],
+        }],
         component_view.properties,
     );
 
@@ -1268,7 +1318,10 @@ async fn update_for_context_will_unset_parent_resolvers() {
     .await
     .expect("cannot get component view");
 
-    assert_eq_sorted!(serde_json::json![{}], component_view.properties,);
+    assert_eq_sorted!(
+        serde_json::json![{"domain": {}, "si": { "name": "Bezerra da Silva" }}],
+        component_view.properties,
+    );
 }
 
 /// Set default values for two prop strings in a prop object. We use the prototype attribute
@@ -1305,8 +1358,16 @@ async fn remove_for_context() {
         &SchemaKind::Concrete,
     )
     .await;
-    let schema_variant =
-        create_schema_variant(&txn, &nats, &tenancy, &visibility, &history_actor).await;
+    let (schema_variant, root) = create_schema_variant_with_root(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        veritech.clone(),
+        encr_key,
+    )
+    .await;
     schema_variant
         .set_schema(&txn, &nats, &visibility, &history_actor, schema.id())
         .await
@@ -1334,6 +1395,16 @@ async fn remove_for_context() {
         "album_object",
     )
     .await;
+    album_object_prop
+        .set_parent_prop(
+            &txn,
+            &nats,
+            &visibility,
+            &history_actor,
+            root.domain_prop_id,
+        )
+        .await
+        .expect("cannot set album object prop to root.domain");
     album_object_prop
         .add_schema_variant(
             &txn,
@@ -1479,15 +1550,19 @@ async fn remove_for_context() {
     .await
     .expect("cannot insert album release year");
 
-    let component = create_component_for_schema_variant(
+    let (component, _) = Component::new_for_schema_variant_with_node(
         &txn,
         &nats,
+        veritech.clone(),
+        &encr_key,
         &tenancy,
         &visibility,
         &history_actor,
+        "Charlie Brown Jr".to_owned(),
         schema_variant.id(),
     )
-    .await;
+    .await
+    .expect("Unable to create component");
 
     let component_view = ComponentView::for_component_and_system(
         &txn,
@@ -1500,10 +1575,10 @@ async fn remove_for_context() {
     .expect("cannot get component view");
 
     assert_eq_sorted!(
-        serde_json::json![
-            { "album_object":
-                    { "album_name": "Lateralus", "release_year": "2001" } }
-        ],
+        serde_json::json![{
+            "si": { "name": "Charlie Brown Jr" },
+            "domain": { "album_object": { "album_name": "Lateralus", "release_year": "2001" } }
+        }],
         component_view.properties,
     );
 
@@ -1554,10 +1629,10 @@ async fn remove_for_context() {
     .expect("cannot get component view");
 
     assert_eq_sorted!(
-        serde_json::json![
-            { "album_object":
-                    { "album_name": "Astro-Creep: 2000", "release_year": "1995" } }
-        ],
+        serde_json::json![{
+            "si": { "name": "Charlie Brown Jr" },
+            "domain": { "album_object": { "album_name": "Astro-Creep: 2000", "release_year": "1995" } }
+        }],
         component_view.properties,
     );
 
@@ -1584,10 +1659,10 @@ async fn remove_for_context() {
     .expect("cannot get component view");
 
     assert_eq_sorted!(
-        serde_json::json![
-            { "album_object":
-                    { "album_name": "Lateralus", "release_year": "1995" } }
-        ],
+        serde_json::json![{
+            "si": { "name": "Charlie Brown Jr" },
+            "domain": { "album_object": { "album_name": "Lateralus", "release_year": "1995" } }
+        }],
         component_view.properties,
     );
 
@@ -1614,10 +1689,10 @@ async fn remove_for_context() {
     .expect("cannot get component view");
 
     assert_eq_sorted!(
-        serde_json::json![
-            { "album_object":
-                    { "album_name": "Lateralus", "release_year": "2001" } }
-        ],
+        serde_json::json![{
+            "si": { "name": "Charlie Brown Jr" },
+            "domain": { "album_object": { "album_name": "Lateralus", "release_year": "2001" } }
+        }],
         component_view.properties,
     );
 }
