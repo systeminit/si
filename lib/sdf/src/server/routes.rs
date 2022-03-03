@@ -41,11 +41,13 @@ impl ShutdownBroadcast {
 }
 
 #[must_use]
+#[allow(clippy::too_many_arguments)]
 pub fn routes(
     telemetry: impl TelemetryClient,
     pg_pool: pg::PgPool,
     nats: nats::Client,
     veritech: veritech::Client,
+    encryption_key: veritech::EncryptionKey,
     jwt_secret_key: JwtSecretKey,
     shutdown_tx: mpsc::Sender<ShutdownSource>,
     shutdown_broadcast_tx: broadcast::Sender<()>,
@@ -87,6 +89,7 @@ pub fn routes(
         .layer(AddExtensionLayer::new(pg_pool))
         .layer(AddExtensionLayer::new(nats))
         .layer(AddExtensionLayer::new(veritech))
+        .layer(AddExtensionLayer::new(Arc::new(encryption_key)))
         .layer(AddExtensionLayer::new(jwt_secret_key))
         .layer(AddExtensionLayer::new(ShutdownBroadcast(
             shutdown_broadcast_tx,

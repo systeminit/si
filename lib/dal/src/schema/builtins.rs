@@ -16,6 +16,7 @@ use crate::{
     SchemaVariantId, SchematicKind, StandardModel, Tenancy, ValidationPrototype, Visibility,
 };
 use si_data::{NatsTxn, PgTxn};
+use veritech::EncryptionKey;
 
 mod kubernetes_deployment;
 mod kubernetes_metadata;
@@ -29,6 +30,7 @@ pub async fn migrate(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
     veritech: veritech::Client,
+    encryption_key: &EncryptionKey,
 ) -> SchemaResult<()> {
     let (tenancy, visibility, history_actor) = (
         Tenancy::new_universal(),
@@ -47,6 +49,7 @@ pub async fn migrate(
         &visibility,
         &history_actor,
         veritech.clone(),
+        encryption_key,
     )
     .await?;
     docker_image(
@@ -56,9 +59,19 @@ pub async fn migrate(
         &visibility,
         &history_actor,
         veritech.clone(),
+        encryption_key,
     )
     .await?;
-    docker_hub_credential(txn, nats, &tenancy, &visibility, &history_actor, veritech).await?;
+    docker_hub_credential(
+        txn,
+        nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        veritech,
+        encryption_key,
+    )
+    .await?;
 
     Ok(())
 }
@@ -414,6 +427,7 @@ async fn docker_hub_credential(
     visibility: &Visibility,
     history_actor: &HistoryActor,
     veritech: veritech::Client,
+    encryption_key: &EncryptionKey,
 ) -> SchemaResult<()> {
     let name = "docker_hub_credential".to_string();
     let mut schema = match create_schema(
@@ -502,6 +516,7 @@ async fn docker_hub_credential(
         txn,
         nats,
         veritech.clone(),
+        encryption_key,
         tenancy,
         visibility,
         history_actor,
@@ -614,6 +629,7 @@ async fn docker_image(
     visibility: &Visibility,
     history_actor: &HistoryActor,
     veritech: veritech::Client,
+    encryption_key: &EncryptionKey,
 ) -> SchemaResult<()> {
     let name = "docker_image".to_string();
     let mut schema = match create_schema(
@@ -692,6 +708,7 @@ async fn docker_image(
         txn,
         nats,
         veritech.clone(),
+        encryption_key,
         tenancy,
         visibility,
         history_actor,
@@ -708,6 +725,7 @@ async fn docker_image(
         txn,
         nats,
         veritech.clone(),
+        encryption_key,
         tenancy,
         visibility,
         history_actor,
@@ -760,6 +778,7 @@ async fn docker_image(
         txn,
         nats,
         veritech.clone(),
+        encryption_key,
         tenancy,
         visibility,
         history_actor,
@@ -802,7 +821,9 @@ async fn docker_image(
     )
     .await?;
 
-    func_binding.execute(txn, nats, veritech.clone()).await?;
+    func_binding
+        .execute(txn, nats, veritech.clone(), encryption_key)
+        .await?;
 
     let mut attribute_resolver_context = AttributeResolverContext::new();
     attribute_resolver_context.set_prop_id(*number_of_parents_prop.id());
@@ -973,6 +994,7 @@ pub async fn create_prop(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
     veritech: veritech::Client,
+    encryption_key: &EncryptionKey,
     tenancy: &Tenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
@@ -985,6 +1007,7 @@ pub async fn create_prop(
         txn,
         nats,
         veritech,
+        encryption_key,
         tenancy,
         visibility,
         history_actor,
@@ -1013,11 +1036,13 @@ pub async fn create_string_prop_with_default(
     default_string: String,
     parent_prop_id: Option<PropId>,
     veritech: veritech::Client,
+    encryption_key: &EncryptionKey,
 ) -> SchemaResult<Prop> {
     let prop = create_prop(
         txn,
         nats,
         veritech.clone(),
+        encryption_key,
         tenancy,
         visibility,
         history_actor,
@@ -1077,7 +1102,9 @@ pub async fn create_string_prop_with_default(
     .await?;
 
     if created {
-        func_binding.execute(txn, nats, veritech).await?;
+        func_binding
+            .execute(txn, nats, veritech, encryption_key)
+            .await?;
     }
 
     let mut attribute_resolver_context = AttributeResolverContext::new();

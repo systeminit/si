@@ -5,6 +5,7 @@ use si_data::{NatsTxn, PgError, PgTxn};
 use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
+use veritech::EncryptionKey;
 
 use crate::{
     attribute_resolver::AttributeResolverContext,
@@ -121,6 +122,7 @@ impl Prop {
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
         veritech: veritech::Client,
+        encryption_key: &EncryptionKey,
         tenancy: &Tenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
@@ -167,7 +169,9 @@ impl Prop {
         .await?;
 
         if created {
-            func_binding.execute(txn, nats, veritech.clone()).await?;
+            func_binding
+                .execute(txn, nats, veritech.clone(), encryption_key)
+                .await?;
         }
 
         let mut attribute_resolver_context = AttributeResolverContext::new();
@@ -370,6 +374,7 @@ impl EditFieldAble for Prop {
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
         _veritech: veritech::Client,
+        _encryption_key: &EncryptionKey,
         tenancy: &Tenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,

@@ -1,5 +1,6 @@
 mod view;
 
+use veritech::EncryptionKey;
 pub use view::{ComponentView, ComponentViewError};
 
 use async_recursion::async_recursion;
@@ -478,6 +479,7 @@ impl Component {
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
         veritech: veritech::Client,
+        encryption_key: &EncryptionKey,
         tenancy: &Tenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
@@ -494,7 +496,8 @@ impl Component {
             .await?
             .ok_or(ComponentError::NotFound(component_id))?;
 
-        // TODO: Eventually, we'll need the logic to be more complex than stuffing everything into the "production" system, but that's a problem for "a week or two from now" us.
+        // TODO: Eventually, we'll need the logic to be more complex than stuffing everything into
+        // the "production" system, but that's a problem for "a week or two from now" us.
         let mut systems =
             System::find_by_attr(txn, tenancy, visibility, "name", &"production").await?;
         let system = systems.pop().ok_or(ComponentError::SystemNotFound)?;
@@ -504,6 +507,7 @@ impl Component {
                 txn,
                 nats,
                 veritech.clone(),
+                encryption_key,
                 tenancy,
                 visibility,
                 history_actor,
@@ -520,6 +524,7 @@ impl Component {
                 txn,
                 nats,
                 veritech.clone(),
+                encryption_key,
                 tenancy,
                 visibility,
                 history_actor,
@@ -535,6 +540,7 @@ impl Component {
                 txn,
                 nats,
                 veritech.clone(),
+                encryption_key,
                 tenancy,
                 visibility,
                 history_actor,
@@ -547,6 +553,7 @@ impl Component {
                 txn,
                 nats,
                 veritech,
+                encryption_key,
                 tenancy,
                 visibility,
                 history_actor,
@@ -567,6 +574,7 @@ impl Component {
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
         veritech: veritech::Client,
+        encryption_key: &EncryptionKey,
         tenancy: &Tenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
@@ -593,6 +601,7 @@ impl Component {
             txn: &PgTxn<'_>,
             nats: &NatsTxn,
             veritech: veritech::Client,
+            encryption_key: &EncryptionKey,
             tenancy: &Tenancy,
             visibility: &Visibility,
             history_actor: &HistoryActor,
@@ -622,7 +631,9 @@ impl Component {
             // think about execution time. Probably higher up than this? But just
             // an FYI.
             if created {
-                func_binding.execute(txn, nats, veritech).await?;
+                func_binding
+                    .execute(txn, nats, veritech, encryption_key)
+                    .await?;
             }
             Ok((func, func_binding, created))
         }
@@ -631,6 +642,7 @@ impl Component {
             txn: &PgTxn<'_>,
             nats: &NatsTxn,
             veritech: veritech::Client,
+            encryption_key: &EncryptionKey,
             tenancy: &Tenancy,
             visibility: &Visibility,
             history_actor: &HistoryActor,
@@ -664,7 +676,9 @@ impl Component {
                 .await?;
 
                 if created {
-                    func_binding.execute(txn, nats, veritech).await?;
+                    func_binding
+                        .execute(txn, nats, veritech, encryption_key)
+                        .await?;
                 }
 
                 Ok((func, func_binding, created))
@@ -673,6 +687,7 @@ impl Component {
                     txn,
                     nats,
                     veritech,
+                    encryption_key,
                     tenancy,
                     visibility,
                     history_actor,
@@ -694,6 +709,7 @@ impl Component {
                     txn,
                     nats,
                     veritech.clone(),
+                    encryption_key,
                     tenancy,
                     visibility,
                     history_actor,
@@ -708,6 +724,7 @@ impl Component {
                     txn,
                     nats,
                     veritech.clone(),
+                    encryption_key,
                     tenancy,
                     visibility,
                     history_actor,
@@ -722,6 +739,7 @@ impl Component {
                     txn,
                     nats,
                     veritech.clone(),
+                    encryption_key,
                     tenancy,
                     visibility,
                     history_actor,
@@ -738,6 +756,7 @@ impl Component {
                     txn,
                     nats,
                     veritech.clone(),
+                    encryption_key,
                     tenancy,
                     visibility,
                     history_actor,
@@ -755,6 +774,7 @@ impl Component {
                     txn,
                     nats,
                     veritech.clone(),
+                    encryption_key,
                     tenancy,
                     visibility,
                     history_actor,
@@ -770,6 +790,7 @@ impl Component {
                     txn,
                     nats,
                     veritech.clone(),
+                    encryption_key,
                     tenancy,
                     visibility,
                     history_actor,
@@ -793,6 +814,7 @@ impl Component {
                     txn,
                     nats,
                     veritech.clone(),
+                    encryption_key,
                     tenancy,
                     visibility,
                     history_actor,
@@ -897,6 +919,7 @@ impl Component {
                     txn,
                     nats,
                     veritech,
+                    encryption_key,
                     tenancy,
                     visibility,
                     history_actor,
@@ -934,6 +957,7 @@ impl Component {
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
         veritech: veritech::Client,
+        encryption_key: &EncryptionKey,
         tenancy: &Tenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
@@ -987,7 +1011,9 @@ impl Component {
                     // think about execution time. Probably higher up than this? But just
                     // an FYI.
                     if binding_created {
-                        func_binding.execute(txn, nats, veritech.clone()).await?;
+                        func_binding
+                            .execute(txn, nats, veritech.clone(), encryption_key)
+                            .await?;
                     }
                     func_binding
                 }
@@ -1044,6 +1070,7 @@ impl Component {
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
         veritech: veritech::Client,
+        encryption_key: &EncryptionKey,
         tenancy: &Tenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
@@ -1105,7 +1132,9 @@ impl Component {
                 // Note for future humans - if this isn't a built in, then we need to
                 // think about execution time. Probably higher up than this? But just
                 // an FYI.
-                func_binding.execute(txn, nats, veritech.clone()).await?;
+                func_binding
+                    .execute(txn, nats, veritech.clone(), encryption_key)
+                    .await?;
 
                 let mut existing_resolvers =
                     QualificationResolver::find_for_prototype_and_component(
@@ -1157,6 +1186,7 @@ impl Component {
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
         veritech: veritech::Client,
+        encryption_key: &EncryptionKey,
         tenancy: &Tenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
@@ -1213,7 +1243,9 @@ impl Component {
                 // Note for future humans - if this isn't a built in, then we need to
                 // think about execution time. Probably higher up than this? But just
                 // an FYI.
-                func_binding.execute(txn, nats, veritech.clone()).await?;
+                func_binding
+                    .execute(txn, nats, veritech.clone(), encryption_key)
+                    .await?;
 
                 let mut existing_resolvers =
                     CodeGenerationResolver::find_for_prototype_and_component(
@@ -1578,6 +1610,7 @@ impl Component {
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
         veritech: veritech::Client,
+        encryption_key: &EncryptionKey,
         history_actor: &HistoryActor,
         system_id: SystemId,
     ) -> ComponentResult<()> {
@@ -1638,7 +1671,9 @@ impl Component {
             .await?;
 
             // Note: We need to execute the same func binding a bunch of times
-            func_binding.execute(txn, nats, veritech.clone()).await?;
+            func_binding
+                .execute(txn, nats, veritech.clone(), encryption_key)
+                .await?;
 
             // Note for future humans - if this isn't a built in, then we need to
             // think about execution time. Probably higher up than this? But just
@@ -1815,6 +1850,7 @@ impl EditFieldAble for Component {
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
         _veritech: veritech::Client,
+        _encryption_key: &EncryptionKey,
         tenancy: &Tenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,

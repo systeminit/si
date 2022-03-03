@@ -21,6 +21,7 @@ async fn create_application() {
         _nats_conn,
         _nats,
         _veritech,
+        _encr_key,
         app,
         nba,
         auth_token
@@ -54,6 +55,7 @@ async fn list_applications() {
         _nats_conn,
         nats,
         veritech,
+        _encr_key,
         app,
         nba,
         auth_token

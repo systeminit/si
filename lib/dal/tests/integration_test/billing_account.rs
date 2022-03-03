@@ -10,7 +10,7 @@ use dal::{BillingAccount, HistoryActor, StandardModel, Tenancy};
 async fn new() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
-    let (pg, nats_conn, _veritech, _secret_key) = ctx.entries();
+    let (pg, nats_conn, _veritech, _encr_key, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
     let mut conn = pg.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
@@ -41,7 +41,17 @@ async fn new() {
 
 #[tokio::test]
 async fn get_by_pk() {
-    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats, _veritech);
+    test_setup!(
+        ctx,
+        _secret_key,
+        pg,
+        conn,
+        txn,
+        nats_conn,
+        nats,
+        _veritech,
+        _encr_key
+    );
 
     let tenancy = Tenancy::new_universal();
     let history_actor = HistoryActor::SystemInit;
@@ -69,7 +79,7 @@ async fn get_by_pk() {
 async fn get_by_id() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
-    let (pg, nats_conn, _veritech, _secret_key) = ctx.entries();
+    let (pg, nats_conn, _veritech, _encr_key, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
     let mut conn = pg.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
@@ -100,7 +110,7 @@ async fn get_by_id() {
 async fn set_name() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
-    let (pg, nats_conn, _veritech, _secret_key) = ctx.entries();
+    let (pg, nats_conn, _veritech, _encr_key, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
     let mut conn = pg.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
@@ -133,7 +143,7 @@ async fn set_name() {
 async fn set_description() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
-    let (pg, nats_conn, _veritech, _secret_key) = ctx.entries();
+    let (pg, nats_conn, _veritech, _encr_key, _secret_key) = ctx.entries();
     let nats = nats_conn.transaction();
     let mut conn = pg.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
@@ -169,7 +179,17 @@ async fn set_description() {
 
 #[tokio::test]
 async fn find_by_name() {
-    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats, _veritech);
+    test_setup!(
+        ctx,
+        _secret_key,
+        pg,
+        conn,
+        txn,
+        nats_conn,
+        nats,
+        _veritech,
+        _encr_key
+    );
     let tenancy = Tenancy::new_universal();
     let history_actor = HistoryActor::SystemInit;
     let visibility = create_visibility_head();
@@ -188,7 +208,7 @@ async fn find_by_name() {
 
 #[tokio::test]
 async fn get_defaults() {
-    test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats, _veritech);
+    test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats, _veritech, _encr_key);
     let (nba, _auth_token) = billing_account_signup(&txn, &nats, secret_key).await;
     let visibility = create_visibility_head();
     let tenancy = Tenancy::new_billing_account(vec![*nba.billing_account.id()]);

@@ -393,6 +393,7 @@ mod tests {
             LocalUdsInstance::spec()
                 .try_cyclone_cmd_path("../../target/debug/cyclone")
                 .expect("failed to setup cyclone_cmd_path")
+                .cyclone_decryption_key_path("../../lib/cyclone/src/dev.decryption.key")
                 .try_lang_server_cmd_path("../../bin/lang-js/target/lang-js")
                 .expect("failed to setup lang_js_cmd_path")
                 .resolver()
@@ -546,7 +547,7 @@ mod tests {
                 let message = success.message.expect("no message available");
                 assert_eq!(
                     serde_json::from_str::<serde_json::Value>(
-                        &serde_json::from_str::<serde_json::Value>(&message,)
+                        serde_json::from_str::<serde_json::Value>(&message,)
                             .expect("Message is not json")
                             .as_object()
                             .expect("Message isn't an object")

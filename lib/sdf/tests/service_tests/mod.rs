@@ -175,6 +175,7 @@ macro_rules! test_setup {
         $nats_conn:ident,
         $nats:ident,
         $veritech:ident,
+        $encr_key:ident,
         $app:ident,
         $nba:ident,
         $auth_token:ident $(,)?
@@ -183,7 +184,7 @@ macro_rules! test_setup {
             .await
             .expect("one time setup failed");
         let $ctx = dal::test_harness::TestContext::init().await;
-        let ($pg, $nats_conn, $veritech, $jwt_secret_key) = $ctx.entries();
+        let ($pg, $nats_conn, $veritech, $encr_key, $jwt_secret_key) = $ctx.entries();
         let telemetry = $ctx.telemetry();
         let $nats = $nats_conn.transaction();
         let mut $pgconn = $pg.get().await.expect("cannot connect to pg");
@@ -193,6 +194,7 @@ macro_rules! test_setup {
             $pg.clone(),
             $nats_conn.clone(),
             $veritech.clone(),
+            $encr_key.clone(),
             $jwt_secret_key.clone(),
         )
         .expect("cannot build new server");

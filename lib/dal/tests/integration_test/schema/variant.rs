@@ -17,6 +17,7 @@ async fn new() {
         _nats_conn,
         nats,
         _veritech,
+        _encr_key,
     );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
@@ -38,6 +39,7 @@ async fn set_schema() {
         _nats_conn,
         nats,
         _veritech,
+        _encr_key,
     );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);

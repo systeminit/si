@@ -22,6 +22,7 @@ async fn new() {
         _nats_conn,
         nats,
         _veritech,
+        _encr_key,
     );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
@@ -49,6 +50,7 @@ async fn new_for_schema_variant_with_node() {
         _nats_conn,
         nats,
         veritech,
+        _encr_key,
     );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
@@ -150,6 +152,7 @@ async fn schema_relationships() {
         _nats_conn,
         nats,
         _veritech,
+        _encr_key,
     );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
@@ -206,6 +209,7 @@ async fn qualification_view() {
         _nats_conn,
         nats,
         veritech,
+        encr_key,
     );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
@@ -253,6 +257,7 @@ async fn qualification_view() {
         &txn,
         &nats,
         veritech,
+        encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -306,6 +311,7 @@ async fn list_qualifications() {
         _nats_conn,
         nats,
         veritech,
+        encr_key,
     );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
@@ -346,6 +352,7 @@ async fn list_qualifications() {
             &txn,
             &nats,
             veritech.clone(),
+            encr_key,
             &tenancy,
             &visibility,
             &history_actor,
@@ -372,6 +379,7 @@ async fn list_qualifications_by_component_id() {
         _nats_conn,
         nats,
         veritech,
+        encr_key,
     );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
@@ -412,6 +420,7 @@ async fn list_qualifications_by_component_id() {
             &txn,
             &nats,
             veritech.clone(),
+            encr_key,
             &tenancy,
             &visibility,
             &history_actor,
@@ -443,6 +452,7 @@ async fn get_resource_by_component_id() {
         _nats_conn,
         nats,
         veritech,
+        encr_key,
     );
 
     let billing_account_tenancy = Tenancy::new_universal();
@@ -532,7 +542,14 @@ async fn get_resource_by_component_id() {
         .expect("cannot set name");
 
     component
-        .sync_resource(&txn, &nats, veritech.clone(), &history_actor, *system.id())
+        .sync_resource(
+            &txn,
+            &nats,
+            veritech.clone(),
+            encr_key,
+            &history_actor,
+            *system.id(),
+        )
         .await
         .expect("cannot sync resource");
 
@@ -569,7 +586,7 @@ async fn get_resource_by_component_id() {
 //
 // #[tokio::test]
 // async fn qualification_view_output_stream() {
-//     test_setup!(ctx, _secret_key, _pg, _conn, txn, nats_conn, nats, veritech);
+//     test_setup!(ctx, _secret_key, _pg, _conn, txn, nats_conn, nats, veritech, _encr_key);
 //     let tenancy = Tenancy::new_universal();
 //     let visibility = create_visibility_head();
 //     let history_actor = HistoryActor::SystemInit;

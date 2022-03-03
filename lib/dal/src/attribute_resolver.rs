@@ -3,6 +3,7 @@ use si_data::{NatsError, NatsTxn, PgError, PgTxn};
 
 use telemetry::prelude::*;
 use thiserror::Error;
+use veritech::EncryptionKey;
 
 use crate::{
     func::{
@@ -508,6 +509,7 @@ impl AttributeResolver {
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
         veritech: veritech::Client,
+        encryption_key: &EncryptionKey,
         tenancy: &Tenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
@@ -608,6 +610,7 @@ impl AttributeResolver {
             txn,
             nats,
             veritech.clone(),
+            encryption_key,
             tenancy,
             visibility,
             history_actor,
@@ -666,6 +669,7 @@ impl AttributeResolver {
                     txn,
                     nats,
                     veritech,
+                    encryption_key,
                     tenancy,
                     visibility,
                     history_actor,
@@ -704,6 +708,7 @@ impl AttributeResolver {
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
         veritech: veritech::Client,
+        encryption_key: &EncryptionKey,
         tenancy: &Tenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
@@ -729,6 +734,7 @@ impl AttributeResolver {
             txn,
             nats,
             veritech.clone(),
+            encryption_key,
             tenancy,
             visibility,
             history_actor,
@@ -783,6 +789,7 @@ impl AttributeResolver {
             txn,
             nats,
             veritech,
+            encryption_key,
             tenancy,
             visibility,
             history_actor,
@@ -806,6 +813,7 @@ async fn set_value(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
     veritech: veritech::Client,
+    encryption_key: &EncryptionKey,
     tenancy: &Tenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
@@ -834,7 +842,9 @@ async fn set_value(
     .await?;
 
     if created {
-        func_binding.execute(txn, nats, veritech).await?;
+        func_binding
+            .execute(txn, nats, veritech, encryption_key)
+            .await?;
     }
 
     Ok((func, func_binding, created))

@@ -4,6 +4,7 @@ use crate::{
     HistoryActor, Prop, PropId, PropKind, SchemaVariantId, StandardModel, Tenancy, Visibility,
 };
 use si_data::{NatsTxn, PgTxn};
+use veritech::EncryptionKey;
 
 #[allow(clippy::too_many_arguments)]
 pub async fn create_metadata_prop(
@@ -16,11 +17,13 @@ pub async fn create_metadata_prop(
     is_name_required: bool,
     parent_prop_id: Option<PropId>,
     veritech: veritech::Client,
+    encryption_key: &EncryptionKey,
 ) -> SchemaResult<Prop> {
     let metadata_prop = create_prop(
         txn,
         nats,
         veritech.clone(),
+        encryption_key,
         tenancy,
         visibility,
         history_actor,
@@ -50,6 +53,7 @@ pub async fn create_metadata_prop(
             txn,
             nats,
             veritech.clone(),
+            encryption_key,
             tenancy,
             visibility,
             history_actor,
@@ -66,6 +70,7 @@ pub async fn create_metadata_prop(
             txn,
             nats,
             veritech.clone(),
+            encryption_key,
             tenancy,
             visibility,
             history_actor,
@@ -83,6 +88,7 @@ pub async fn create_metadata_prop(
             txn,
             nats,
             veritech.clone(),
+            encryption_key,
             tenancy,
             visibility,
             history_actor,
@@ -99,6 +105,7 @@ pub async fn create_metadata_prop(
             txn,
             nats,
             veritech.clone(),
+            encryption_key,
             tenancy,
             visibility,
             history_actor,
@@ -115,6 +122,7 @@ pub async fn create_metadata_prop(
             txn,
             nats,
             veritech,
+            encryption_key,
             tenancy,
             visibility,
             history_actor,

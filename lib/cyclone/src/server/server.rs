@@ -1,7 +1,12 @@
-use std::{io, net::SocketAddr, path::PathBuf};
+use std::{
+    io,
+    net::SocketAddr,
+    path::{Path, PathBuf},
+};
 
 use axum::routing::{BoxRoute, IntoMakeService};
 use hyper::server::{accept::Accept, conn::AddrIncoming};
+use si_settings::{CanonicalFile, CanonicalFileError};
 use telemetry::{prelude::*, TelemetryLevel};
 use thiserror::Error;
 use tokio::{
@@ -11,10 +16,17 @@ use tokio::{
 };
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 
-use super::{routes, Config, IncomingStream, UdsIncomingStream, UdsIncomingStreamError};
+use super::{
+    routes, Config, DecryptionKey, DecryptionKeyError, IncomingStream, UdsIncomingStream,
+    UdsIncomingStreamError,
+};
 
 #[derive(Debug, Error)]
 pub enum ServerError {
+    #[error(transparent)]
+    CanonicalFile(#[from] CanonicalFileError),
+    #[error(transparent)]
+    DecryptionKey(#[from] DecryptionKeyError),
     #[error("hyper server error")]
     Hyper(#[from] hyper::Error),
     #[error("failed to setup signal handler")]
@@ -38,10 +50,12 @@ impl Server<(), ()> {
     pub fn http(
         config: Config,
         telemetry_level: Box<dyn TelemetryLevel>,
+        decryption_key: DecryptionKey,
     ) -> Result<Server<AddrIncoming, SocketAddr>> {
         match config.incoming_stream() {
             IncomingStream::HTTPSocket(socket_addr) => {
-                let (service, shutdown_rx) = build_service(&config, telemetry_level)?;
+                let (service, shutdown_rx) =
+                    build_service(&config, telemetry_level, decryption_key)?;
 
                 debug!(socket = %socket_addr, "binding an http server");
                 let inner = axum::Server::bind(socket_addr).serve(service);
@@ -64,10 +78,12 @@ impl Server<(), ()> {
     pub async fn uds(
         config: Config,
         telemetry_level: Box<dyn TelemetryLevel>,
+        decryption_key: DecryptionKey,
     ) -> Result<Server<UdsIncomingStream, PathBuf>> {
         match config.incoming_stream() {
             IncomingStream::UnixDomainSocket(path) => {
-                let (service, shutdown_rx) = build_service(&config, telemetry_level)?;
+                let (service, shutdown_rx) =
+                    build_service(&config, telemetry_level, decryption_key)?;
 
                 debug!(socket = %path.display(), "binding a unix domain server");
                 let inner =
@@ -86,6 +102,14 @@ impl Server<(), ()> {
                 Err(ServerError::WrongIncomingStream("http", wrong.clone()))
             }
         }
+    }
+
+    pub async fn load_decryption_key(key_path: &Path) -> Result<DecryptionKey> {
+        // Ensure the key path is canonicalized and exists
+        let path = CanonicalFile::try_from(key_path)?;
+
+        let key = DecryptionKey::load(path.as_path()).await?;
+        Ok(key)
     }
 }
 
@@ -120,10 +144,11 @@ where
 fn build_service(
     config: &Config,
     telemetry_level: Box<dyn TelemetryLevel>,
+    decryption_key: DecryptionKey,
 ) -> Result<(IntoMakeService<BoxRoute>, oneshot::Receiver<()>)> {
     let (shutdown_tx, shutdown_rx) = mpsc::channel(4);
 
-    let routes = routes(config, shutdown_tx, telemetry_level)
+    let routes = routes(config, shutdown_tx, telemetry_level, decryption_key)
         // TODO(fnichol): customize http tracing further, using:
         // https://docs.rs/tower-http/0.1.1/tower_http/trace/index.html
         .layer(

@@ -13,6 +13,7 @@ use crate::{
     SchemaError, SchemaKind, SchematicKind, StandardModel, Tenancy, Visibility,
 };
 use si_data::{NatsTxn, PgTxn};
+use veritech::EncryptionKey;
 
 pub async fn kubernetes_deployment(
     txn: &PgTxn<'_>,
@@ -21,6 +22,7 @@ pub async fn kubernetes_deployment(
     visibility: &Visibility,
     history_actor: &HistoryActor,
     veritech: veritech::Client,
+    encryption_key: &EncryptionKey,
 ) -> SchemaResult<()> {
     let name = "kubernetes_deployment".to_string();
     let mut schema = match create_schema(
@@ -59,6 +61,7 @@ pub async fn kubernetes_deployment(
             "apps/v1".to_owned(),
             None,
             veritech.clone(),
+            encryption_key,
         )
         .await?;
     }
@@ -75,6 +78,7 @@ pub async fn kubernetes_deployment(
             "Deployment".to_owned(),
             None,
             veritech.clone(),
+            encryption_key,
         )
         .await?;
     }
@@ -90,6 +94,7 @@ pub async fn kubernetes_deployment(
             true, // is name required, note: bool is not ideal here tho
             None,
             veritech.clone(),
+            encryption_key,
         )
         .await?;
     }
@@ -99,6 +104,7 @@ pub async fn kubernetes_deployment(
             txn,
             nats,
             veritech.clone(),
+            encryption_key,
             tenancy,
             visibility,
             history_actor,
@@ -114,6 +120,7 @@ pub async fn kubernetes_deployment(
                 txn,
                 nats,
                 veritech.clone(),
+                encryption_key,
                 tenancy,
                 visibility,
                 history_actor,
@@ -130,6 +137,7 @@ pub async fn kubernetes_deployment(
                 txn,
                 nats,
                 veritech.clone(),
+                encryption_key,
                 tenancy,
                 visibility,
                 history_actor,
@@ -149,6 +157,7 @@ pub async fn kubernetes_deployment(
                 variant.id(),
                 Some(*spec_prop.id()),
                 veritech.clone(),
+                encryption_key,
             )
             .await?;
         }

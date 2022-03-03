@@ -48,21 +48,23 @@ async fn run(args: args::Args, mut telemetry: telemetry::Client) -> Result<()> {
         return Ok(());
     }
 
-    match (&args.generate_cyclone_secret_key_path, &args.generate_cyclone_public_key_path) {
-        (Some(secret_key_path), Some(public_key_path)) => {
-            info!("Generating Cyclone key pair at: (secret = {}, public = {})", secret_key_path.display(), public_key_path.display());
-            let _key = Server::generate_cyclone_keypair(secret_key_path, public_key_path).await?;
-            return Ok(());
-        }
-        (None, None) => {}
-        _ => panic!("Both `generate_cyclone_secret_key_path` and `generate_cyclone_public_key_path` should either be set, or unset"),
+    if let (Some(secret_key_path), Some(public_key_path)) = (
+        &args.generate_cyclone_secret_key_path,
+        &args.generate_cyclone_public_key_path,
+    ) {
+        info!(
+            "Generating Cyclone key pair at: (secret = {}, public = {})",
+            secret_key_path.display(),
+            public_key_path.display()
+        );
+        Server::generate_cyclone_key_pair(secret_key_path, public_key_path).await?;
+        return Ok(());
     }
 
     let config = Config::try_from(args)?;
 
     let jwt_secret_key = Server::load_jwt_secret_key(config.jwt_secret_key_path()).await?;
-    let cyclone_public_key =
-        Server::load_cyclone_public_key(config.cyclone_public_key_path()).await?;
+    let encryption_key = Server::load_encryption_key(config.cyclone_encryption_key_path()).await?;
 
     let nats = Server::connect_to_nats(config.nats()).await?;
 
@@ -71,7 +73,14 @@ async fn run(args: args::Args, mut telemetry: telemetry::Client) -> Result<()> {
     let veritech = Server::create_veritech_client(nats.clone());
 
     if let MigrationMode::Run | MigrationMode::RunAndQuit = config.migration_mode() {
-        Server::migrate_database(&pg_pool, &nats, &jwt_secret_key, veritech.clone()).await?;
+        Server::migrate_database(
+            &pg_pool,
+            &nats,
+            &jwt_secret_key,
+            veritech.clone(),
+            &encryption_key,
+        )
+        .await?;
         if let MigrationMode::RunAndQuit = config.migration_mode() {
             info!(
                 "migration mode is {}, shutting down",
@@ -90,7 +99,13 @@ async fn run(args: args::Args, mut telemetry: telemetry::Client) -> Result<()> {
 
     start_tracing_level_signal_handler_task(&telemetry)?;
 
-    Server::start_resource_sync_scheduler(pg_pool.clone(), nats.clone(), veritech.clone()).await;
+    Server::start_resource_sync_scheduler(
+        pg_pool.clone(),
+        nats.clone(),
+        veritech.clone(),
+        encryption_key,
+    )
+    .await;
 
     match config.incoming_stream() {
         IncomingStream::HTTPSocket(_) => {
@@ -100,8 +115,8 @@ async fn run(args: args::Args, mut telemetry: telemetry::Client) -> Result<()> {
                 pg_pool,
                 nats,
                 veritech,
+                encryption_key,
                 jwt_secret_key,
-                cyclone_public_key,
             )?
             .run()
             .await?;
@@ -113,8 +128,8 @@ async fn run(args: args::Args, mut telemetry: telemetry::Client) -> Result<()> {
                 pg_pool,
                 nats,
                 veritech,
+                encryption_key,
                 jwt_secret_key,
-                cyclone_public_key,
             )
             .await?
             .run()

@@ -18,6 +18,7 @@ async fn create_secret() {
         _nats_conn,
         _nats,
         _veritech,
+        _encr_key,
         app,
         nba,
         auth_token

@@ -1,13 +1,14 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use veritech::EncryptionKey;
 
 use si_data::PgTxn;
 
 use crate::{
-    component::ComponentKind, cyclone_public_key::CYCLONE_PUBLIC_KEY, system::UNSET_SYSTEM_ID,
-    AttributeResolver, AttributeResolverId, AttributeResolverValue, Component, ComponentError,
-    ComponentId, EncryptedSecret, PropId, PropKind, SecretError, SecretId, StandardModel,
-    StandardModelError, System, SystemId, Tenancy, Visibility,
+    component::ComponentKind, system::UNSET_SYSTEM_ID, AttributeResolver, AttributeResolverId,
+    AttributeResolverValue, Component, ComponentError, ComponentId, EncryptedSecret, PropId,
+    PropKind, SecretError, SecretId, StandardModel, StandardModelError, System, SystemId, Tenancy,
+    Visibility,
 };
 
 use super::ComponentResult;
@@ -193,10 +194,11 @@ impl ComponentView {
         })
     }
 
-    pub async fn decrypt_secrets(
+    pub async fn reencrypt_secrets(
         txn: &PgTxn<'_>,
         tenancy: &Tenancy,
         visibility: &Visibility,
+        encryption_key: &EncryptionKey,
         component: &mut veritech::ComponentView,
     ) -> Result<(), ComponentViewError> {
         if component.kind != veritech::ComponentKind::Credential {
@@ -217,7 +219,7 @@ impl ComponentView {
                             .ok_or_else(|| ComponentViewError::SecretNotFound(raw_id.into()))?
                             .decrypt(txn, visibility)
                             .await?;
-                    let encrypted_message = CYCLONE_PUBLIC_KEY.get().expect("No cyclone public key was set, we can't communicate with cyclone without it")
+                    let encoded = encryption_key
                         .encrypt_and_encode(&serde_json::to_string(&decrypted_secret.message())?);
 
                     *value = serde_json::to_value(&decrypted_secret)?;
@@ -225,7 +227,7 @@ impl ComponentView {
                         Some(v) => {
                             *v = serde_json::json!({
                                 "cycloneEncryptedDataMarker": true,
-                                "encryptedSecret": encrypted_message
+                                "encryptedSecret": encoded
                             })
                         }
                         None => {

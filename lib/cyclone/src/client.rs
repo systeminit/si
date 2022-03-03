@@ -33,6 +33,7 @@ pub use tokio_tungstenite::tungstenite::{
     protocol::frame::CloseFrame as WebSocketCloseFrame, Message as WebSocketMessage,
 };
 
+pub use self::encryption_key::{EncryptionKey, EncryptionKeyError};
 pub use self::execution::{Execution, ExecutionError};
 pub use self::ping::{PingExecution, PingExecutionError};
 pub use self::watch::{Watch, WatchError, WatchStarted};
@@ -43,6 +44,7 @@ pub use crate::{
     ResourceSyncRequest, ResourceSyncResultSuccess,
 };
 
+mod encryption_key;
 mod execution;
 mod ping;
 mod watch;
@@ -436,6 +438,7 @@ mod tests {
     use futures::StreamExt;
     use hyper::server::conn::AddrIncoming;
     use serde_json::json;
+    use sodiumoxide::crypto::box_::PublicKey;
     use tempfile::{NamedTempFile, TempPath};
     use test_env_log::test;
 
@@ -446,9 +449,14 @@ mod tests {
         qualification_check::QualificationCheckComponent,
         resolver_function::ResolverFunctionComponent,
         resolver_function::ResolverFunctionRequest,
-        server::{Config, ConfigBuilder, UdsIncomingStream},
+        server::{Config, ConfigBuilder, DecryptionKey, UdsIncomingStream},
         ComponentView, FunctionResult, ProgressMessage, Server,
     };
+
+    fn gen_keys() -> (PublicKey, DecryptionKey) {
+        let (pkey, skey) = sodiumoxide::crypto::box_::gen_keypair();
+        (pkey, DecryptionKey::from(skey))
+    }
 
     fn rand_uds() -> TempPath {
         NamedTempFile::new()
@@ -474,14 +482,16 @@ mod tests {
     async fn uds_server(
         builder: &mut ConfigBuilder,
         tmp_socket: &TempPath,
+        key: DecryptionKey,
     ) -> Server<UdsIncomingStream, PathBuf> {
         let config = builder
             .unix_domain_socket(tmp_socket)
-            .lang_server_path(lang_server_path().to_string())
+            .try_lang_server_path(lang_server_path().to_string())
+            .expect("failed to resolve lang server path")
             .build()
             .expect("failed to build config");
 
-        Server::uds(config, Box::new(telemetry::NoopClient))
+        Server::uds(config, Box::new(telemetry::NoopClient), key)
             .await
             .expect("failed to init server")
     }
@@ -489,27 +499,35 @@ mod tests {
     async fn uds_client_for_running_server(
         builder: &mut ConfigBuilder,
         tmp_socket: &TempPath,
+        key: DecryptionKey,
     ) -> UdsClient {
-        let server = uds_server(builder, tmp_socket).await;
+        let server = uds_server(builder, tmp_socket, key).await;
         let path = server.local_socket().clone();
         tokio::spawn(async move { server.run().await });
 
         Client::uds(path).expect("failed to create uds client")
     }
 
-    async fn http_server(builder: &mut ConfigBuilder) -> Server<AddrIncoming, SocketAddr> {
+    async fn http_server(
+        builder: &mut ConfigBuilder,
+        key: DecryptionKey,
+    ) -> Server<AddrIncoming, SocketAddr> {
         let config = builder
             .http_socket("127.0.0.1:0")
             .expect("failed to resolve socket addr")
-            .lang_server_path(lang_server_path().to_string())
+            .try_lang_server_path(lang_server_path().to_string())
+            .expect("failed to resolve lang server path")
             .build()
             .expect("failed to build config");
 
-        Server::http(config, Box::new(telemetry::NoopClient)).expect("failed to init server")
+        Server::http(config, Box::new(telemetry::NoopClient), key).expect("failed to init server")
     }
 
-    async fn http_client_for_running_server(builder: &mut ConfigBuilder) -> HttpClient {
-        let server = http_server(builder).await;
+    async fn http_client_for_running_server(
+        builder: &mut ConfigBuilder,
+        key: DecryptionKey,
+    ) -> HttpClient {
+        let server = http_server(builder, key).await;
         let socket = *server.local_socket();
         tokio::spawn(async move { server.run().await });
 
@@ -518,9 +536,10 @@ mod tests {
 
     #[test(tokio::test)]
     async fn http_watch() {
+        let (_, key) = gen_keys();
         let mut builder = Config::builder();
         let mut client =
-            http_client_for_running_server(builder.watch(Some(Duration::from_secs(2)))).await;
+            http_client_for_running_server(builder.watch(Some(Duration::from_secs(2))), key).await;
 
         // Start the protocol
         let mut progress = client
@@ -546,11 +565,15 @@ mod tests {
 
     #[test(tokio::test)]
     async fn uds_watch() {
+        let (_, key) = gen_keys();
         let tmp_socket = rand_uds();
         let mut builder = Config::builder();
-        let mut client =
-            uds_client_for_running_server(builder.watch(Some(Duration::from_secs(2))), &tmp_socket)
-                .await;
+        let mut client = uds_client_for_running_server(
+            builder.watch(Some(Duration::from_secs(2))),
+            &tmp_socket,
+            key,
+        )
+        .await;
 
         // Start the protocol
         let mut progress = client
@@ -576,8 +599,9 @@ mod tests {
 
     #[test(tokio::test)]
     async fn http_liveness() {
+        let (_, key) = gen_keys();
         let mut builder = Config::builder();
-        let mut client = http_client_for_running_server(&mut builder).await;
+        let mut client = http_client_for_running_server(&mut builder, key).await;
 
         let response = client.liveness().await.expect("failed to get liveness");
 
@@ -586,9 +610,10 @@ mod tests {
 
     #[test(tokio::test)]
     async fn uds_liveness() {
+        let (_, key) = gen_keys();
         let tmp_socket = rand_uds();
         let mut builder = Config::builder();
-        let mut client = uds_client_for_running_server(&mut builder, &tmp_socket).await;
+        let mut client = uds_client_for_running_server(&mut builder, &tmp_socket, key).await;
 
         let response = client.liveness().await.expect("failed to get liveness");
 
@@ -597,8 +622,9 @@ mod tests {
 
     #[test(tokio::test)]
     async fn http_readiness() {
+        let (_, key) = gen_keys();
         let mut builder = Config::builder();
-        let mut client = http_client_for_running_server(&mut builder).await;
+        let mut client = http_client_for_running_server(&mut builder, key).await;
 
         let response = client.readiness().await.expect("failed to get readiness");
 
@@ -607,9 +633,10 @@ mod tests {
 
     #[test(tokio::test)]
     async fn uds_readiness() {
+        let (_, key) = gen_keys();
         let tmp_socket = rand_uds();
         let mut builder = Config::builder();
-        let mut client = uds_client_for_running_server(&mut builder, &tmp_socket).await;
+        let mut client = uds_client_for_running_server(&mut builder, &tmp_socket, key).await;
 
         let response = client.readiness().await.expect("failed to get readiness");
 
@@ -618,8 +645,9 @@ mod tests {
 
     #[test(tokio::test)]
     async fn http_execute_ping() {
+        let (_, key) = gen_keys();
         let mut builder = Config::builder();
-        let mut client = http_client_for_running_server(builder.enable_ping(true)).await;
+        let mut client = http_client_for_running_server(builder.enable_ping(true), key).await;
 
         client
             .execute_ping()
@@ -632,8 +660,9 @@ mod tests {
 
     #[test(tokio::test)]
     async fn http_execute_ping_not_enabled() {
+        let (_, key) = gen_keys();
         let mut builder = Config::builder();
-        let mut client = http_client_for_running_server(builder.enable_ping(false)).await;
+        let mut client = http_client_for_running_server(builder.enable_ping(false), key).await;
 
         match client.execute_ping().await {
             Err(ClientError::WebsocketConnection(_)) => assert!(true),
@@ -644,10 +673,11 @@ mod tests {
 
     #[test(tokio::test)]
     async fn uds_execute_ping() {
+        let (_, key) = gen_keys();
         let tmp_socket = rand_uds();
         let mut builder = Config::builder();
         let mut client =
-            uds_client_for_running_server(builder.enable_ping(true), &tmp_socket).await;
+            uds_client_for_running_server(builder.enable_ping(true), &tmp_socket, key).await;
 
         client
             .execute_ping()
@@ -660,10 +690,11 @@ mod tests {
 
     #[test(tokio::test)]
     async fn uds_execute_ping_not_enabled() {
+        let (_, key) = gen_keys();
         let tmp_socket = rand_uds();
         let mut builder = Config::builder();
         let mut client =
-            uds_client_for_running_server(builder.enable_ping(false), &tmp_socket).await;
+            uds_client_for_running_server(builder.enable_ping(false), &tmp_socket, key).await;
 
         match client.execute_ping().await {
             Err(ClientError::WebsocketConnection(_)) => assert!(true),
@@ -674,8 +705,9 @@ mod tests {
 
     #[test(tokio::test)]
     async fn http_execute_resolver() {
+        let (_, key) = gen_keys();
         let mut builder = Config::builder();
-        let mut client = http_client_for_running_server(builder.enable_resolver(true)).await;
+        let mut client = http_client_for_running_server(builder.enable_resolver(true), key).await;
 
         let req = ResolverFunctionRequest {
             execution_id: "1234".to_string(),
@@ -765,10 +797,11 @@ mod tests {
 
     #[test(tokio::test)]
     async fn uds_execute_resolver() {
+        let (_, key) = gen_keys();
         let tmp_socket = rand_uds();
         let mut builder = Config::builder();
         let mut client =
-            uds_client_for_running_server(builder.enable_resolver(true), &tmp_socket).await;
+            uds_client_for_running_server(builder.enable_resolver(true), &tmp_socket, key).await;
 
         let req = ResolverFunctionRequest {
             execution_id: "1234".to_string(),
@@ -858,8 +891,10 @@ mod tests {
 
     #[test(tokio::test)]
     async fn http_execute_qualification() {
+        let (_, key) = gen_keys();
         let mut builder = Config::builder();
-        let mut client = http_client_for_running_server(builder.enable_qualification(true)).await;
+        let mut client =
+            http_client_for_running_server(builder.enable_qualification(true), key).await;
 
         let req = QualificationCheckRequest {
             execution_id: "1234".to_string(),
@@ -946,10 +981,12 @@ mod tests {
 
     #[test(tokio::test)]
     async fn uds_execute_qualification() {
+        let (_, key) = gen_keys();
         let tmp_socket = rand_uds();
         let mut builder = Config::builder();
         let mut client =
-            uds_client_for_running_server(builder.enable_qualification(true), &tmp_socket).await;
+            uds_client_for_running_server(builder.enable_qualification(true), &tmp_socket, key)
+                .await;
 
         let req = QualificationCheckRequest {
             execution_id: "1234".to_string(),
@@ -1037,8 +1074,10 @@ mod tests {
 
     #[test(tokio::test)]
     async fn http_execute_sync() {
+        let (_, key) = gen_keys();
         let mut builder = Config::builder();
-        let mut client = http_client_for_running_server(builder.enable_qualification(true)).await;
+        let mut client =
+            http_client_for_running_server(builder.enable_qualification(true), key).await;
 
         let component = ComponentView {
             name: "pringles".to_string(),
@@ -1115,10 +1154,12 @@ mod tests {
 
     #[test(tokio::test)]
     async fn uds_execute_sync() {
+        let (_, key) = gen_keys();
         let tmp_socket = rand_uds();
         let mut builder = Config::builder();
         let mut client =
-            uds_client_for_running_server(builder.enable_qualification(true), &tmp_socket).await;
+            uds_client_for_running_server(builder.enable_qualification(true), &tmp_socket, key)
+                .await;
 
         let component = ComponentView {
             name: "pringles".to_string(),
@@ -1195,8 +1236,10 @@ mod tests {
 
     #[test(tokio::test)]
     async fn http_execute_code_generation() {
+        let (_, key) = gen_keys();
         let mut builder = Config::builder();
-        let mut client = http_client_for_running_server(builder.enable_qualification(true)).await;
+        let mut client =
+            http_client_for_running_server(builder.enable_qualification(true), key).await;
 
         let component = ComponentView {
             name: "pringles".to_string(),
@@ -1281,10 +1324,12 @@ mod tests {
 
     #[test(tokio::test)]
     async fn uds_execute_code_generation() {
+        let (_, key) = gen_keys();
         let tmp_socket = rand_uds();
         let mut builder = Config::builder();
         let mut client =
-            uds_client_for_running_server(builder.enable_qualification(true), &tmp_socket).await;
+            uds_client_for_running_server(builder.enable_qualification(true), &tmp_socket, key)
+                .await;
 
         let component = ComponentView {
             name: "pringles".to_string(),

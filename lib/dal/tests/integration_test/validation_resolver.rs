@@ -10,7 +10,17 @@ use dal::{
 
 #[tokio::test]
 async fn new() {
-    test_setup!(ctx, _secret_key, _pg, _conn, txn, nats_conn, nats, veritech,);
+    test_setup!(
+        ctx,
+        _secret_key,
+        _pg,
+        _conn,
+        txn,
+        nats_conn,
+        nats,
+        veritech,
+        encr_key
+    );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
@@ -77,7 +87,7 @@ async fn new() {
     .await
     .expect("cannot create function binding");
     func_binding
-        .execute(&txn, &nats, veritech)
+        .execute(&txn, &nats, veritech, encr_key)
         .await
         .expect("failed to execute func binding");
 
@@ -101,7 +111,7 @@ async fn new() {
 
 #[tokio::test]
 async fn find_for_prototype() {
-    test_setup!(ctx, secret_key, pg, _conn, txn, nats_conn, nats, veritech);
+    test_setup!(ctx, secret_key, pg, _conn, txn, nats_conn, nats, veritech, encr_key);
     let (nba, _token) = billing_account_signup(&txn, &nats, secret_key).await;
     let mut tenancy = Tenancy::new_workspace(vec![*nba.workspace.id()]);
     tenancy.universal = true;
@@ -170,7 +180,7 @@ async fn find_for_prototype() {
     .await
     .expect("cannot create function binding");
     first_func_binding
-        .execute(&txn, &nats, veritech.clone())
+        .execute(&txn, &nats, veritech.clone(), encr_key)
         .await
         .expect("failed to execute func binding");
     let mut validation_resolver_context = ValidationResolverContext::new();
@@ -205,7 +215,7 @@ async fn find_for_prototype() {
     .await
     .expect("cannot create function binding");
     second_func_binding
-        .execute(&txn, &nats, veritech)
+        .execute(&txn, &nats, veritech, encr_key)
         .await
         .expect("failed to execute func binding");
     let mut validation_resolver_context = ValidationResolverContext::new();
@@ -235,7 +245,7 @@ async fn find_for_prototype() {
 
 #[tokio::test]
 async fn find_values_for_prop_and_component() {
-    test_setup!(ctx, secret_key, pg, _conn, txn, nats_conn, nats, veritech);
+    test_setup!(ctx, secret_key, pg, _conn, txn, nats_conn, nats, veritech, encr_key);
     let (nba, _token) = billing_account_signup(&txn, &nats, secret_key).await;
     let mut tenancy = Tenancy::new_workspace(vec![*nba.workspace.id()]);
     tenancy.universal = true;
@@ -306,7 +316,7 @@ async fn find_values_for_prop_and_component() {
     .await
     .expect("cannot create function binding");
     first_func_binding
-        .execute(&txn, &nats, veritech.clone())
+        .execute(&txn, &nats, veritech.clone(), encr_key)
         .await
         .expect("failed to execute func binding");
     let mut validation_resolver_context = ValidationResolverContext::new();
@@ -341,7 +351,7 @@ async fn find_values_for_prop_and_component() {
     .await
     .expect("cannot create function binding");
     second_func_binding
-        .execute(&txn, &nats, veritech)
+        .execute(&txn, &nats, veritech, encr_key)
         .await
         .expect("failed to execute func binding");
     let mut validation_resolver_context = ValidationResolverContext::new();
@@ -377,7 +387,7 @@ async fn find_values_for_prop_and_component() {
 
 #[tokio::test]
 async fn find_values_for_prop_and_component_override() {
-    test_setup!(ctx, secret_key, pg, _conn, txn, nats_conn, nats, veritech);
+    test_setup!(ctx, secret_key, pg, _conn, txn, nats_conn, nats, veritech, encr_key);
     let (nba, _token) = billing_account_signup(&txn, &nats, secret_key).await;
     let mut tenancy = Tenancy::new_workspace(vec![*nba.workspace.id()]);
     tenancy.universal = true;
@@ -448,7 +458,7 @@ async fn find_values_for_prop_and_component_override() {
     .await
     .expect("cannot create function binding");
     first_func_binding
-        .execute(&txn, &nats, veritech.clone())
+        .execute(&txn, &nats, veritech.clone(), encr_key)
         .await
         .expect("failed to execute func binding");
     let mut validation_resolver_context = ValidationResolverContext::new();
@@ -483,7 +493,7 @@ async fn find_values_for_prop_and_component_override() {
     .await
     .expect("cannot create function binding");
     second_func_binding
-        .execute(&txn, &nats, veritech)
+        .execute(&txn, &nats, veritech, encr_key)
         .await
         .expect("failed to execute func binding");
     let mut validation_resolver_context = ValidationResolverContext::new();

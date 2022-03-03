@@ -22,6 +22,7 @@ async fn create_schema() {
         _nats_conn,
         _nats,
         _veritech,
+        _encr_key,
         app,
         _nba,
         auth_token
@@ -55,6 +56,7 @@ async fn list_schemas() {
         _nats_conn,
         nats,
         _veritech,
+        _encr_key,
         app,
         nba,
         auth_token
@@ -118,6 +120,7 @@ async fn get_schemas() {
         _nats_conn,
         nats,
         _veritech,
+        _encr_key,
         app,
         nba,
         auth_token

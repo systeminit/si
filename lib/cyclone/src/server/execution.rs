@@ -1,4 +1,11 @@
-use std::{io, marker::PhantomData, path::PathBuf, process::Stdio, time::Duration};
+use std::{
+    fmt, io,
+    marker::{PhantomData, Unpin},
+    path::PathBuf,
+    process::Stdio,
+    sync::Arc,
+    time::Duration,
+};
 
 use axum::extract::ws::WebSocket;
 use bytes_lines_codec::BytesLinesCodec;
@@ -15,26 +22,31 @@ use tokio_serde::{formats::SymmetricalJson, Deserializer, Framed, SymmetricallyF
 use tokio_util::codec::{Decoder, FramedRead, FramedWrite};
 
 use crate::{
-    key_pair::{DecryptRequest, KeyPairError},
     process::{self, ShutdownError},
-    sensitive_container::ListSecrets,
-    server::WebSocketMessage,
+    server::{
+        decryption_key::{DecryptionKey, DecryptionKeyError},
+        request::{DecryptRequest, ListSecrets},
+        WebSocketMessage,
+    },
     FunctionResult, FunctionResultFailure, FunctionResultFailureError, Message, OutputStream,
     SensitiveString,
 };
 
 const TX_TIMEOUT_SECS: Duration = Duration::from_secs(5);
 
-pub fn execute<Request, Success>(
+pub fn new<Request, LangServerSuccess, Success>(
     lang_server_path: impl Into<PathBuf>,
     lang_server_debugging: bool,
+    key: Arc<DecryptionKey>,
     command: String,
-) -> Execution<Request, Success> {
+) -> Execution<Request, LangServerSuccess, Success> {
     Execution {
         lang_server_path: lang_server_path.into(),
         lang_server_debugging,
+        key,
         command,
         request_marker: PhantomData,
+        lang_server_success_marker: PhantomData,
         success_marker: PhantomData,
     }
 }
@@ -68,29 +80,35 @@ pub enum ExecutionError {
     #[error("unexpected websocket message type: {0:?}")]
     UnexpectedMessageType(WebSocketMessage),
     #[error("key pair error: {0}")]
-    KeyPair(#[from] KeyPairError),
+    KeyPair(#[from] DecryptionKeyError),
 }
 
 type Result<T> = std::result::Result<T, ExecutionError>;
 
 #[derive(Debug)]
-pub struct Execution<Request, Success> {
+pub struct Execution<Request, LangServerSuccess, Success> {
     lang_server_path: PathBuf,
     lang_server_debugging: bool,
+    key: Arc<DecryptionKey>,
     command: String,
     request_marker: PhantomData<Request>,
+    lang_server_success_marker: PhantomData<LangServerSuccess>,
     success_marker: PhantomData<Success>,
 }
 
-impl<Request, Success> Execution<Request, Success>
+impl<Request, LangServerSuccess, Success> Execution<Request, LangServerSuccess, Success>
 where
-    Request: DecryptRequest + ListSecrets + Serialize + DeserializeOwned + std::marker::Unpin,
-    Success: Serialize + DeserializeOwned,
+    Request: DecryptRequest + ListSecrets + Serialize + DeserializeOwned + Unpin,
+    LangServerSuccess: DeserializeOwned,
+    Success: Serialize,
 {
-    pub async fn start(self, ws: &mut WebSocket) -> Result<ExecutionStarted<Success>> {
+    pub async fn start(
+        self,
+        ws: &mut WebSocket,
+    ) -> Result<ExecutionStarted<LangServerSuccess, Success>> {
         Self::ws_send_start(ws).await?;
         let request = Self::read_request(ws).await?;
-        let credentials: Vec<SensitiveString> = request.list_secrets()?;
+        let credentials: Vec<SensitiveString> = request.list_secrets(&self.key)?;
 
         let mut command = Command::new(&self.lang_server_path);
         command
@@ -107,7 +125,7 @@ where
             .map_err(|err| ExecutionError::ChildSpawn(err, self.lang_server_path.clone()))?;
 
         let stdin = child.stdin.take().ok_or(ExecutionError::ChildIO("stdin"))?;
-        Self::child_send_function_request(stdin, request).await?;
+        Self::child_send_function_request(stdin, request, &self.key).await?;
 
         let stderr = {
             let stderr = child
@@ -131,6 +149,7 @@ where
             stdout,
             stderr,
             credentials,
+            success_marker: self.success_marker,
         })
     }
 
@@ -158,8 +177,12 @@ where
         Ok(())
     }
 
-    async fn child_send_function_request(stdin: ChildStdin, request: Request) -> Result<()> {
-        let value = request.decrypt_request()?;
+    async fn child_send_function_request(
+        stdin: ChildStdin,
+        request: Request,
+        key: &DecryptionKey,
+    ) -> Result<()> {
+        let value = request.decrypt_request(key)?;
 
         let codec = FramedWrite::new(stdin, BytesLinesCodec::new());
         let mut stdin = SymmetricallyFramed::new(codec, SymmetricalJson::default());
@@ -183,11 +206,12 @@ type SiDecoderError = <BytesLinesCodec as Decoder>::Error;
 type SiJsonError<S> = <SymmetricalJson<SiMessage<S>> as Deserializer<SiMessage<S>>>::Error;
 
 #[derive(Debug)]
-pub struct ExecutionStarted<Success> {
+pub struct ExecutionStarted<LangServerSuccess, Success> {
     child: Child,
-    stdout: SiFramed<SiMessage<Success>>,
+    stdout: SiFramed<SiMessage<LangServerSuccess>>,
     stderr: FramedRead<ChildStderr, BytesLinesCodec>,
     credentials: Vec<SensitiveString>,
+    success_marker: PhantomData<Success>,
 }
 
 // TODO: implement shutdown oneshot
@@ -203,8 +227,9 @@ async fn handle_stderr(
             let line = line.map_err(ExecutionError::ChildRecvIO)?;
             let mut line = String::from_utf8_lossy(line.as_ref());
             for credential in &credentials {
-                // Note: This brings a possibility of random substrings being matched out of context, exposing that we have a secret by censoring it
-                // But trying to infer word boundary might leak the plaintext credential which is arguably worse
+                // Note: This brings a possibility of random substrings being matched out of
+                // context, exposing that we have a secret by censoring it But trying to infer word
+                // boundary might leak the plaintext credential which is arguably worse
                 if line.contains(credential.as_str()) {
                     line = line.replace(credential.as_str(), "[redacted]").into();
                 }
@@ -218,11 +243,12 @@ async fn handle_stderr(
     }
 }
 
-impl<Success> ExecutionStarted<Success>
+impl<LangServerSuccess, Success> ExecutionStarted<LangServerSuccess, Success>
 where
-    Success: Serialize + DeserializeOwned + std::marker::Unpin,
-    SymmetricalJson<SiMessage<Success>>: Deserializer<SiMessage<Success>>,
-    SiDecoderError: From<SiJsonError<Success>>,
+    Success: Serialize + Unpin + fmt::Debug,
+    LangServerSuccess: Serialize + DeserializeOwned + Unpin + fmt::Debug + Into<Success>,
+    SymmetricalJson<SiMessage<LangServerSuccess>>: Deserializer<SiMessage<LangServerSuccess>>,
+    SiDecoderError: From<SiJsonError<LangServerSuccess>>,
 {
     pub async fn process(self, ws: &mut WebSocket) -> Result<ExecutionClosing<Success>> {
         tokio::spawn(handle_stderr(self.stderr, self.credentials.clone()));
@@ -232,72 +258,11 @@ where
             .map(|ls_result| match ls_result {
                 Ok(ls_msg) => match ls_msg {
                     LangServerMessage::Output(mut output) => {
-                        let mut data_value = output
-                            .data
-                            .as_ref()
-                            .map(serde_json::to_value)
-                            .transpose()
-                            .map_err(ExecutionError::JSONSerialize)?;
-                        // Note: This brings a possibility of random substrings being matched out of context, exposing that we have a secret by censoring it
-                        // But trying to infer word boundary might leak the plaintext credential which is arguably worse
-                        for credential in &self.credentials {
-                            if output.message.contains(credential.as_str()) {
-                                output.message =
-                                    output.message.replace(credential.as_str(), "[redacted]");
-                            }
-                            if let Some(value) = &mut data_value {
-                                let mut work_queue = vec![value];
-                                while let Some(work) = work_queue.pop() {
-                                    match work {
-                                        Value::Array(values) => work_queue.extend(values),
-                                        Value::Object(object) => {
-                                            object.values_mut().for_each(|v| work_queue.push(v))
-                                        }
-                                        Value::String(v) if v.contains(credential.as_str()) => {
-                                            *v = v.replace(credential.as_str(), "[redacted]");
-                                        }
-                                        Value::String(_) => {}
-                                        // For now credentials can only be strings, although we should reconsider it
-                                        Value::Null => {}
-                                        Value::Number(_) => {}
-                                        Value::Bool(_) => {}
-                                    }
-                                }
-                            }
-                        }
-                        output.data = data_value
-                            .map(serde_json::from_value)
-                            .transpose()
-                            .map_err(ExecutionError::JSONDeserialize)?;
+                        Self::filter_output(&mut output, &self.credentials)?;
                         Ok(Message::OutputStream(output.into()))
                     }
-                    LangServerMessage::Result(result) => {
-                        // Should we not filter results?
-                        let mut value =
-                            serde_json::to_value(&result).map_err(ExecutionError::JSONSerialize)?;
-                        // Note: This brings a possibility of random substrings being matched out of context, exposing that we have a secret by censoring it
-                        // But trying to infer word boundary might leak the plaintext credential which is arguably worse
-                        for credential in &self.credentials {
-                            let mut work_queue = vec![&mut value];
-                            while let Some(work) = work_queue.pop() {
-                                match work {
-                                    Value::Array(values) => work_queue.extend(values),
-                                    Value::Object(object) => {
-                                        object.values_mut().for_each(|v| work_queue.push(v))
-                                    }
-                                    Value::String(v) if v.contains(credential.as_str()) => {
-                                        *v = v.replace(credential.as_str(), "[redacted]");
-                                    }
-                                    Value::String(_) => {}
-                                    // For now credentials can only be strings, although we should reconsider it
-                                    Value::Null => {}
-                                    Value::Number(_) => {}
-                                    Value::Bool(_) => {}
-                                }
-                            }
-                        }
-                        let result: LangServerResult<Success> = serde_json::from_value(value)
-                            .map_err(ExecutionError::JSONDeserialize)?;
+                    LangServerMessage::Result(mut result) => {
+                        Self::filter_result(&mut result, &self.credentials)?;
                         Ok(Message::Result(result.into()))
                     }
                 },
@@ -323,6 +288,80 @@ where
             success_marker: PhantomData,
         })
     }
+
+    fn filter_output(output: &mut LangServerOutput, credentials: &[SensitiveString]) -> Result<()> {
+        let mut data_value = output
+            .data
+            .as_ref()
+            .map(serde_json::to_value)
+            .transpose()
+            .map_err(ExecutionError::JSONSerialize)?;
+        // Note: This brings a possibility of random substrings being matched out of context,
+        // exposing that we have a secret by censoring it But trying to infer word boundary might
+        // leak the plaintext credential which is arguably worse
+        for credential in credentials {
+            if output.message.contains(credential.as_str()) {
+                output.message = output.message.replace(credential.as_str(), "[redacted]");
+            }
+            if let Some(value) = &mut data_value {
+                let mut work_queue = vec![value];
+                while let Some(work) = work_queue.pop() {
+                    match work {
+                        Value::Array(values) => work_queue.extend(values),
+                        Value::Object(object) => {
+                            object.values_mut().for_each(|v| work_queue.push(v))
+                        }
+                        Value::String(v) if v.contains(credential.as_str()) => {
+                            *v = v.replace(credential.as_str(), "[redacted]");
+                        }
+                        Value::String(_) => {}
+                        // For now credentials can only be strings, although we should reconsider
+                        // it
+                        Value::Null => {}
+                        Value::Number(_) => {}
+                        Value::Bool(_) => {}
+                    }
+                }
+            }
+        }
+        output.data = data_value
+            .map(serde_json::from_value)
+            .transpose()
+            .map_err(ExecutionError::JSONDeserialize)?;
+
+        Ok(())
+    }
+
+    fn filter_result(
+        result: &mut LangServerResult<LangServerSuccess>,
+        credentials: &[SensitiveString],
+    ) -> Result<()> {
+        let mut value = serde_json::to_value(&result).map_err(ExecutionError::JSONSerialize)?;
+        // Note: This brings a possibility of random substrings being matched out of context,
+        // exposing that we have a secret by censoring it But trying to infer word boundary might
+        // leak the plaintext credential which is arguably worse
+        for credential in credentials {
+            let mut work_queue = vec![&mut value];
+            while let Some(work) = work_queue.pop() {
+                match work {
+                    Value::Array(values) => work_queue.extend(values),
+                    Value::Object(object) => object.values_mut().for_each(|v| work_queue.push(v)),
+                    Value::String(v) if v.contains(credential.as_str()) => {
+                        *v = v.replace(credential.as_str(), "[redacted]");
+                    }
+                    Value::String(_) => {}
+                    // For now credentials can only be strings, although we should reconsider it
+                    Value::Null => {}
+                    Value::Number(_) => {}
+                    Value::Bool(_) => {}
+                }
+            }
+        }
+        let mut filtered_result: LangServerResult<LangServerSuccess> =
+            serde_json::from_value(value).map_err(ExecutionError::JSONDeserialize)?;
+        std::mem::swap(result, &mut filtered_result);
+        Ok(())
+    }
 }
 
 #[derive(Debug)]
@@ -333,7 +372,7 @@ pub struct ExecutionClosing<Success> {
 
 impl<Success> ExecutionClosing<Success>
 where
-    Success: Serialize + DeserializeOwned,
+    Success: Serialize,
 {
     pub async fn finish(mut self, mut ws: WebSocket) -> Result<()> {
         let finished = Self::ws_send_finish(&mut ws).await;
@@ -421,7 +460,7 @@ impl From<LangServerOutput> for OutputStream {
             group: value.group,
             data: value.data,
             message: value.message,
-            timestamp: crate::timestamp(),
+            timestamp: crate::server::timestamp(),
         }
     }
 }
@@ -433,17 +472,21 @@ pub enum LangServerResult<Success> {
     Failure(LangServerFailure),
 }
 
-impl<Success> From<LangServerResult<Success>> for FunctionResult<Success> {
-    fn from(value: LangServerResult<Success>) -> Self {
+impl<LangServerSuccess, Success> From<LangServerResult<LangServerSuccess>>
+    for FunctionResult<Success>
+where
+    LangServerSuccess: Into<Success>,
+{
+    fn from(value: LangServerResult<LangServerSuccess>) -> Self {
         match value {
-            LangServerResult::Success(success) => Self::Success(success),
+            LangServerResult::Success(success) => Self::Success(success.into()),
             LangServerResult::Failure(failure) => Self::Failure(FunctionResultFailure {
                 execution_id: failure.execution_id,
                 error: FunctionResultFailureError {
                     kind: failure.error.kind,
                     message: failure.error.message,
                 },
-                timestamp: crate::timestamp(),
+                timestamp: crate::server::timestamp(),
             }),
         }
     }

@@ -14,7 +14,17 @@ use pretty_assertions_sorted::assert_eq;
 
 #[tokio::test]
 async fn new() {
-    test_setup!(ctx, _secret_key, _pg, _conn, txn, nats_conn, nats, veritech);
+    test_setup!(
+        ctx,
+        _secret_key,
+        _pg,
+        _conn,
+        txn,
+        nats_conn,
+        nats,
+        veritech,
+        encr_key
+    );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
@@ -80,7 +90,7 @@ async fn new() {
     .await
     .expect("cannot create function binding");
     func_binding
-        .execute(&txn, &nats, veritech)
+        .execute(&txn, &nats, veritech, encr_key)
         .await
         .expect("failed to execute func binding");
 
@@ -104,7 +114,17 @@ async fn new() {
 
 #[tokio::test]
 async fn list_for_context() {
-    test_setup!(ctx, _secret_key, _pg, _conn, txn, nats_conn, nats, veritech);
+    test_setup!(
+        ctx,
+        _secret_key,
+        _pg,
+        _conn,
+        txn,
+        nats_conn,
+        nats,
+        veritech,
+        encr_key
+    );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
@@ -149,6 +169,7 @@ async fn list_for_context() {
         &txn,
         &nats,
         veritech.clone(),
+        encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -187,6 +208,7 @@ async fn list_for_context() {
         &txn,
         &nats,
         veritech.clone(),
+        encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -217,6 +239,7 @@ async fn list_for_context() {
         &txn,
         &nats,
         veritech.clone(),
+        encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -247,6 +270,7 @@ async fn list_for_context() {
         &txn,
         &nats,
         veritech.clone(),
+        encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -310,7 +334,7 @@ async fn list_for_context() {
     .await
     .expect("cannot create func binding");
     func_binding
-        .execute(&txn, &nats, veritech)
+        .execute(&txn, &nats, veritech, encr_key)
         .await
         .expect("failed to execute func binding");
 
@@ -363,7 +387,17 @@ async fn list_for_context() {
 
 #[tokio::test]
 async fn list_for_context_with_a_hash() {
-    test_setup!(ctx, _secret_key, _pg, _conn, txn, nats_conn, nats, veritech);
+    test_setup!(
+        ctx,
+        _secret_key,
+        _pg,
+        _conn,
+        txn,
+        nats_conn,
+        nats,
+        veritech,
+        encr_key
+    );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
@@ -408,6 +442,7 @@ async fn list_for_context_with_a_hash() {
         &txn,
         &nats,
         veritech.clone(),
+        encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -446,6 +481,7 @@ async fn list_for_context_with_a_hash() {
         &txn,
         &nats,
         veritech.clone(),
+        encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -476,6 +512,7 @@ async fn list_for_context_with_a_hash() {
         &txn,
         &nats,
         veritech.clone(),
+        encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -529,7 +566,7 @@ async fn list_for_context_with_a_hash() {
     .await
     .expect("cannot create func binding");
     undertow_prop_func_binding
-        .execute(&txn, &nats, veritech.clone())
+        .execute(&txn, &nats, veritech.clone(), encr_key)
         .await
         .expect("failed to execute func binding");
 
@@ -561,7 +598,7 @@ async fn list_for_context_with_a_hash() {
     .await
     .expect("cannot create func binding");
     lateralus_prop_func_binding
-        .execute(&txn, &nats, veritech.clone())
+        .execute(&txn, &nats, veritech.clone(), encr_key)
         .await
         .expect("failed to execute func binding");
 
@@ -606,7 +643,7 @@ async fn list_for_context_with_a_hash() {
     .await
     .expect("cannot create func binding");
     lateralus_component_func_binding
-        .execute(&txn, &nats, veritech.clone())
+        .execute(&txn, &nats, veritech.clone(), encr_key)
         .await
         .expect("failed to execute func binding");
 
@@ -638,7 +675,7 @@ async fn list_for_context_with_a_hash() {
     .await
     .expect("cannot create func binding");
     fear_inoculum_component_func_binding
-        .execute(&txn, &nats, veritech.clone())
+        .execute(&txn, &nats, veritech.clone(), encr_key)
         .await
         .expect("failed to execute func binding");
 

@@ -1,6 +1,6 @@
 use std::{
     net::{SocketAddr, ToSocketAddrs},
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
 use deadpool_cyclone::{
@@ -78,21 +78,51 @@ fn create_hardcoded_cyclone_spec() -> Result<CycloneSpec> {
 
     // TODO(fnichol): okay, this goes away/changes when we determine what the right developer
     // defaults are vs. the right production/artifact defaults are
-    let (cyclone_cmd_path, lang_server_cmd_path) = match std::env::var("CARGO_MANIFEST_DIR") {
-        Ok(_) => {
-            warn!("detected cargo run, setting *default* cyclone and lang-js paths under target");
-            (
-                "../../target/debug/cyclone",
-                "../../bin/lang-js/target/lang-js",
-            )
+    #[derive(Debug)]
+    struct Cfg {
+        cyclone_cmd_path: String,
+        cyclone_decryption_key_path: String,
+        lang_server_cmd_path: String,
+    }
+    let cfg = if let Ok(dir) = std::env::var("CARGO_MANIFEST_DIR") {
+        let cfg = Cfg {
+            cyclone_cmd_path: Path::new(&dir)
+                .join("../../target/debug/cyclone")
+                .canonicalize()
+                .expect("failed to canonicalize local dev build of <root>/target/debug/cyclone")
+                .to_string_lossy()
+                .to_string(),
+            cyclone_decryption_key_path: Path::new(&dir)
+                .join("../../lib/cyclone/src/dev.decryption.key")
+                .canonicalize()
+                .expect("failed to canonicalize local dev build of <root>/target/debug/cyclone")
+                .to_string_lossy()
+                .to_string(),
+            lang_server_cmd_path: Path::new(&dir)
+                .join("../../bin/lang-js/target/lang-js")
+                .canonicalize()
+                .expect(
+                    "failed to canonicalize local dev build of <root>/bin/lang-js/target/lang-js",
+                )
+                .to_string_lossy()
+                .to_string(),
+        };
+        warn!("detected cargo run, setting *default* cyclone and lang-js paths under target");
+        cfg
+    } else {
+        Cfg {
+            cyclone_cmd_path: "/usr/local/bin/cyclone".to_string(),
+            cyclone_decryption_key_path: "/run/cyclone/decryption.key".to_string(),
+            lang_server_cmd_path: "/usr/local/bin/lang-js".to_string(),
         }
-        Err(_) => ("/usr/local/bin/cyclone", "/usr/local/bin/lang-js"),
     };
+
     Ok(CycloneSpec::LocalUds(
         LocalUdsInstance::spec()
-            .try_cyclone_cmd_path(cyclone_cmd_path)
+            .try_cyclone_cmd_path(cfg.cyclone_cmd_path)
             .map_err(|err| ConfigError::CycloneSpecBuild(Box::new(err)))?
-            .try_lang_server_cmd_path(lang_server_cmd_path)
+            .cyclone_decryption_key_path(cfg.cyclone_decryption_key_path)
+            .try_lang_server_cmd_path(cfg.lang_server_cmd_path)
             .map_err(|err| ConfigError::CycloneSpecBuild(Box::new(err)))?
             .resolver()
             .qualification()

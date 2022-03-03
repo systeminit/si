@@ -1,5 +1,4 @@
 use dal::{
-    cyclone_public_key::CYCLONE_PUBLIC_KEY,
     system::UNSET_SYSTEM_ID,
     test_harness::{
         create_component_for_schema_variant, create_prop_of_kind_with_name, create_schema,
@@ -11,6 +10,7 @@ use dal::{
 use pretty_assertions_sorted::{assert_eq, assert_eq_sorted};
 use si_data::{NatsTxn, PgTxn};
 use tokio::sync::mpsc;
+use veritech::EncryptionKey;
 
 use crate::test_setup;
 
@@ -22,6 +22,7 @@ pub async fn create_schema_with_object_and_string_prop(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
     veritech: veritech::Client,
+    encryption_key: &EncryptionKey,
 ) -> SchemaVariant {
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
@@ -56,6 +57,7 @@ pub async fn create_schema_with_object_and_string_prop(
         txn,
         nats,
         veritech.clone(),
+        encryption_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -68,6 +70,7 @@ pub async fn create_schema_with_object_and_string_prop(
         txn,
         nats,
         veritech.clone(),
+        encryption_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -80,6 +83,7 @@ pub async fn create_schema_with_object_and_string_prop(
         txn,
         nats,
         veritech,
+        encryption_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -111,6 +115,7 @@ pub async fn create_schema_with_nested_objects_and_string_prop(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
     veritech: veritech::Client,
+    encryption_key: &EncryptionKey,
 ) -> (SchemaVariant, Prop, Prop, Prop, Prop, Prop) {
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
@@ -145,6 +150,7 @@ pub async fn create_schema_with_nested_objects_and_string_prop(
         txn,
         nats,
         veritech.clone(),
+        encryption_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -157,6 +163,7 @@ pub async fn create_schema_with_nested_objects_and_string_prop(
         txn,
         nats,
         veritech.clone(),
+        encryption_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -169,6 +176,7 @@ pub async fn create_schema_with_nested_objects_and_string_prop(
         txn,
         nats,
         veritech.clone(),
+        encryption_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -181,6 +189,7 @@ pub async fn create_schema_with_nested_objects_and_string_prop(
         txn,
         nats,
         veritech.clone(),
+        encryption_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -197,6 +206,7 @@ pub async fn create_schema_with_nested_objects_and_string_prop(
         txn,
         nats,
         veritech,
+        encryption_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -239,6 +249,7 @@ pub async fn create_schema_with_string_props(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
     veritech: veritech::Client,
+    encryption_key: &EncryptionKey,
 ) -> SchemaVariant {
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
@@ -273,6 +284,7 @@ pub async fn create_schema_with_string_props(
         txn,
         nats,
         veritech.clone(),
+        encryption_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -289,6 +301,7 @@ pub async fn create_schema_with_string_props(
         txn,
         nats,
         veritech,
+        encryption_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -311,6 +324,7 @@ pub async fn create_schema_with_array_of_string_props(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
     veritech: veritech::Client,
+    encryption_key: &EncryptionKey,
 ) -> SchemaVariant {
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
@@ -345,6 +359,7 @@ pub async fn create_schema_with_array_of_string_props(
         txn,
         nats,
         veritech.clone(),
+        encryption_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -361,6 +376,7 @@ pub async fn create_schema_with_array_of_string_props(
         txn,
         nats,
         veritech,
+        encryption_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -387,6 +403,7 @@ pub async fn create_schema_with_nested_array_objects(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
     veritech: veritech::Client,
+    encryption_key: &EncryptionKey,
 ) -> (SchemaVariant, Prop, Prop, Prop, Prop, Prop) {
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
@@ -421,6 +438,7 @@ pub async fn create_schema_with_nested_array_objects(
         txn,
         nats,
         veritech.clone(),
+        encryption_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -437,6 +455,7 @@ pub async fn create_schema_with_nested_array_objects(
         txn,
         nats,
         veritech.clone(),
+        encryption_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -453,6 +472,7 @@ pub async fn create_schema_with_nested_array_objects(
         txn,
         nats,
         veritech.clone(),
+        encryption_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -475,6 +495,7 @@ pub async fn create_schema_with_nested_array_objects(
         txn,
         nats,
         veritech.clone(),
+        encryption_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -497,6 +518,7 @@ pub async fn create_schema_with_nested_array_objects(
         txn,
         nats,
         veritech.clone(),
+        encryption_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -536,6 +558,7 @@ pub async fn create_simple_map(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
     veritech: veritech::Client,
+    encryption_key: &EncryptionKey,
 ) -> (SchemaVariant, Prop, Prop) {
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
@@ -570,6 +593,7 @@ pub async fn create_simple_map(
         txn,
         nats,
         veritech.clone(),
+        encryption_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -586,6 +610,7 @@ pub async fn create_simple_map(
         txn,
         nats,
         veritech.clone(),
+        encryption_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -612,6 +637,7 @@ pub async fn create_schema_with_nested_array_objects_and_a_map(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
     veritech: veritech::Client,
+    encryption_key: &EncryptionKey,
 ) -> (SchemaVariant, Prop, Prop, Prop, Prop, Prop, Prop) {
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
@@ -646,6 +672,7 @@ pub async fn create_schema_with_nested_array_objects_and_a_map(
         txn,
         nats,
         veritech.clone(),
+        encryption_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -662,6 +689,7 @@ pub async fn create_schema_with_nested_array_objects_and_a_map(
         txn,
         nats,
         veritech.clone(),
+        encryption_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -678,6 +706,7 @@ pub async fn create_schema_with_nested_array_objects_and_a_map(
         txn,
         nats,
         veritech.clone(),
+        encryption_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -700,6 +729,7 @@ pub async fn create_schema_with_nested_array_objects_and_a_map(
         txn,
         nats,
         veritech.clone(),
+        encryption_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -722,6 +752,7 @@ pub async fn create_schema_with_nested_array_objects_and_a_map(
         txn,
         nats,
         veritech.clone(),
+        encryption_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -744,6 +775,7 @@ pub async fn create_schema_with_nested_array_objects_and_a_map(
         txn,
         nats,
         veritech.clone(),
+        encryption_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -778,11 +810,13 @@ async fn only_string_props() {
         _nats_conn,
         nats,
         veritech,
+        encr_key,
     );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
-    let schema_variant = create_schema_with_string_props(&txn, &nats, veritech.clone()).await;
+    let schema_variant =
+        create_schema_with_string_props(&txn, &nats, veritech.clone(), encr_key).await;
     let component = create_component_for_schema_variant(
         &txn,
         &nats,
@@ -802,6 +836,7 @@ async fn only_string_props() {
                 &txn,
                 &nats,
                 veritech.clone(),
+                encr_key,
                 &tenancy,
                 &visibility,
                 &history_actor,
@@ -841,6 +876,7 @@ async fn one_object_prop() {
         _nats_conn,
         nats,
         veritech,
+        encr_key,
     );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
@@ -848,7 +884,7 @@ async fn one_object_prop() {
     let _ =
         find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor).await;
     let schema_variant =
-        create_schema_with_object_and_string_prop(&txn, &nats, veritech.clone()).await;
+        create_schema_with_object_and_string_prop(&txn, &nats, veritech.clone(), encr_key).await;
     let component = create_component_for_schema_variant(
         &txn,
         &nats,
@@ -872,6 +908,7 @@ async fn one_object_prop() {
             &txn,
             &nats,
             veritech.clone(),
+            encr_key,
             &tenancy,
             &visibility,
             &history_actor,
@@ -889,6 +926,7 @@ async fn one_object_prop() {
                 &txn,
                 &nats,
                 veritech.clone(),
+                encr_key,
                 &tenancy,
                 &visibility,
                 &history_actor,
@@ -928,6 +966,7 @@ async fn nested_object_prop() {
         _nats_conn,
         nats,
         veritech,
+        encr_key,
     );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
@@ -935,7 +974,8 @@ async fn nested_object_prop() {
     let _ =
         find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor).await;
     let (schema_variant, queen_prop, bohemian_prop, killer_prop, pressure_prop, dust_prop) =
-        create_schema_with_nested_objects_and_string_prop(&txn, &nats, veritech.clone()).await;
+        create_schema_with_nested_objects_and_string_prop(&txn, &nats, veritech.clone(), encr_key)
+            .await;
     let component = create_component_for_schema_variant(
         &txn,
         &nats,
@@ -950,6 +990,7 @@ async fn nested_object_prop() {
             &txn,
             &nats,
             veritech.clone(),
+            encr_key,
             &tenancy,
             &visibility,
             &history_actor,
@@ -966,6 +1007,7 @@ async fn nested_object_prop() {
             &txn,
             &nats,
             veritech.clone(),
+            encr_key,
             &tenancy,
             &visibility,
             &history_actor,
@@ -982,6 +1024,7 @@ async fn nested_object_prop() {
             &txn,
             &nats,
             veritech.clone(),
+            encr_key,
             &tenancy,
             &visibility,
             &history_actor,
@@ -998,6 +1041,7 @@ async fn nested_object_prop() {
             &txn,
             &nats,
             veritech.clone(),
+            encr_key,
             &tenancy,
             &visibility,
             &history_actor,
@@ -1014,6 +1058,7 @@ async fn nested_object_prop() {
             &txn,
             &nats,
             veritech.clone(),
+            encr_key,
             &tenancy,
             &visibility,
             &history_actor,
@@ -1053,6 +1098,7 @@ async fn simple_array_of_strings() {
         _nats_conn,
         nats,
         veritech,
+        encr_key,
     );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
@@ -1060,7 +1106,7 @@ async fn simple_array_of_strings() {
     let _ =
         find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor).await;
     let schema_variant =
-        create_schema_with_array_of_string_props(&txn, &nats, veritech.clone()).await;
+        create_schema_with_array_of_string_props(&txn, &nats, veritech.clone(), encr_key).await;
     let component = create_component_for_schema_variant(
         &txn,
         &nats,
@@ -1084,6 +1130,7 @@ async fn simple_array_of_strings() {
             &txn,
             &nats,
             veritech.clone(),
+            encr_key,
             &tenancy,
             &visibility,
             &history_actor,
@@ -1101,6 +1148,7 @@ async fn simple_array_of_strings() {
                 &txn,
                 &nats,
                 veritech.clone(),
+                encr_key,
                 &tenancy,
                 &visibility,
                 &history_actor,
@@ -1117,6 +1165,7 @@ async fn simple_array_of_strings() {
                 &txn,
                 &nats,
                 veritech.clone(),
+                encr_key,
                 &tenancy,
                 &visibility,
                 &history_actor,
@@ -1157,6 +1206,7 @@ async fn complex_nested_array_of_objects() {
         _nats_conn,
         nats,
         veritech,
+        encr_key,
     );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
@@ -1170,7 +1220,7 @@ async fn complex_nested_array_of_objects() {
         album_string_prop,
         songs_array_prop,
         song_name_prop,
-    ) = create_schema_with_nested_array_objects(&txn, &nats, veritech.clone()).await;
+    ) = create_schema_with_nested_array_objects(&txn, &nats, veritech.clone(), encr_key).await;
     let component = create_component_for_schema_variant(
         &txn,
         &nats,
@@ -1185,6 +1235,7 @@ async fn complex_nested_array_of_objects() {
             &txn,
             &nats,
             veritech.clone(),
+            encr_key,
             &tenancy,
             &visibility,
             &history_actor,
@@ -1201,6 +1252,7 @@ async fn complex_nested_array_of_objects() {
             &txn,
             &nats,
             veritech.clone(),
+            encr_key,
             &tenancy,
             &visibility,
             &history_actor,
@@ -1217,6 +1269,7 @@ async fn complex_nested_array_of_objects() {
             &txn,
             &nats,
             veritech.clone(),
+            encr_key,
             &tenancy,
             &visibility,
             &history_actor,
@@ -1233,6 +1286,7 @@ async fn complex_nested_array_of_objects() {
             &txn,
             &nats,
             veritech.clone(),
+            encr_key,
             &tenancy,
             &visibility,
             &history_actor,
@@ -1249,6 +1303,7 @@ async fn complex_nested_array_of_objects() {
             &txn,
             &nats,
             veritech.clone(),
+            encr_key,
             &tenancy,
             &visibility,
             &history_actor,
@@ -1265,6 +1320,7 @@ async fn complex_nested_array_of_objects() {
             &txn,
             &nats,
             veritech.clone(),
+            encr_key,
             &tenancy,
             &visibility,
             &history_actor,
@@ -1281,6 +1337,7 @@ async fn complex_nested_array_of_objects() {
             &txn,
             &nats,
             veritech.clone(),
+            encr_key,
             &tenancy,
             &visibility,
             &history_actor,
@@ -1297,6 +1354,7 @@ async fn complex_nested_array_of_objects() {
             &txn,
             &nats,
             veritech.clone(),
+            encr_key,
             &tenancy,
             &visibility,
             &history_actor,
@@ -1313,6 +1371,7 @@ async fn complex_nested_array_of_objects() {
             &txn,
             &nats,
             veritech.clone(),
+            encr_key,
             &tenancy,
             &visibility,
             &history_actor,
@@ -1329,6 +1388,7 @@ async fn complex_nested_array_of_objects() {
             &txn,
             &nats,
             veritech.clone(),
+            encr_key,
             &tenancy,
             &visibility,
             &history_actor,
@@ -1345,6 +1405,7 @@ async fn complex_nested_array_of_objects() {
             &txn,
             &nats,
             veritech.clone(),
+            encr_key,
             &tenancy,
             &visibility,
             &history_actor,
@@ -1403,6 +1464,7 @@ async fn simple_map() {
         _nats_conn,
         nats,
         veritech,
+        encr_key,
     );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
@@ -1410,7 +1472,7 @@ async fn simple_map() {
     let _ =
         find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor).await;
     let (schema_variant, album_prop, album_item_prop) =
-        create_simple_map(&txn, &nats, veritech.clone()).await;
+        create_simple_map(&txn, &nats, veritech.clone(), encr_key).await;
     let component = create_component_for_schema_variant(
         &txn,
         &nats,
@@ -1425,6 +1487,7 @@ async fn simple_map() {
             &txn,
             &nats,
             veritech.clone(),
+            encr_key,
             &tenancy,
             &visibility,
             &history_actor,
@@ -1441,6 +1504,7 @@ async fn simple_map() {
             &txn,
             &nats,
             veritech.clone(),
+            encr_key,
             &tenancy,
             &visibility,
             &history_actor,
@@ -1457,6 +1521,7 @@ async fn simple_map() {
             &txn,
             &nats,
             veritech.clone(),
+            encr_key,
             &tenancy,
             &visibility,
             &history_actor,
@@ -1504,6 +1569,7 @@ async fn complex_nested_array_of_objects_with_a_map() {
         _nats_conn,
         nats,
         veritech,
+        encr_key,
     );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
@@ -1518,7 +1584,8 @@ async fn complex_nested_array_of_objects_with_a_map() {
         songs_array_prop,
         song_map_prop,
         song_map_item_prop,
-    ) = create_schema_with_nested_array_objects_and_a_map(&txn, &nats, veritech.clone()).await;
+    ) = create_schema_with_nested_array_objects_and_a_map(&txn, &nats, veritech.clone(), encr_key)
+        .await;
     let component = create_component_for_schema_variant(
         &txn,
         &nats,
@@ -1533,6 +1600,7 @@ async fn complex_nested_array_of_objects_with_a_map() {
             &txn,
             &nats,
             veritech.clone(),
+            encr_key,
             &tenancy,
             &visibility,
             &history_actor,
@@ -1549,6 +1617,7 @@ async fn complex_nested_array_of_objects_with_a_map() {
             &txn,
             &nats,
             veritech.clone(),
+            encr_key,
             &tenancy,
             &visibility,
             &history_actor,
@@ -1565,6 +1634,7 @@ async fn complex_nested_array_of_objects_with_a_map() {
             &txn,
             &nats,
             veritech.clone(),
+            encr_key,
             &tenancy,
             &visibility,
             &history_actor,
@@ -1581,6 +1651,7 @@ async fn complex_nested_array_of_objects_with_a_map() {
             &txn,
             &nats,
             veritech.clone(),
+            encr_key,
             &tenancy,
             &visibility,
             &history_actor,
@@ -1597,6 +1668,7 @@ async fn complex_nested_array_of_objects_with_a_map() {
             &txn,
             &nats,
             veritech.clone(),
+            encr_key,
             &tenancy,
             &visibility,
             &history_actor,
@@ -1613,6 +1685,7 @@ async fn complex_nested_array_of_objects_with_a_map() {
             &txn,
             &nats,
             veritech.clone(),
+            encr_key,
             &tenancy,
             &visibility,
             &history_actor,
@@ -1629,6 +1702,7 @@ async fn complex_nested_array_of_objects_with_a_map() {
             &txn,
             &nats,
             veritech.clone(),
+            encr_key,
             &tenancy,
             &visibility,
             &history_actor,
@@ -1681,6 +1755,7 @@ async fn cyclone_crypto_e2e() {
         _nats_conn,
         _nats,
         veritech,
+        encr_key,
     );
     let (tx, _rx) = mpsc::channel(64);
     let secret_value = "Beware Cuca will catch you";
@@ -1688,10 +1763,7 @@ async fn cyclone_crypto_e2e() {
         "key": secret_value,
     }))
     .expect("Secret serialization failed");
-    let encrypted_secret = CYCLONE_PUBLIC_KEY
-        .get()
-        .expect("No cyclone public key was set, we can't communicate with cyclone without it")
-        .encrypt_and_encode(&secret);
+    let encoded = encr_key.encrypt_and_encode(&secret);
     let code = format!("function testE2ECrypto(component) {{ return component.data.properties.secret.message.key === '{secret_value}'; }}");
     let request = veritech::ResolverFunctionRequest {
         execution_id: "seujorge".to_owned(),
@@ -1706,7 +1778,10 @@ async fn cyclone_crypto_e2e() {
                         "name": "ufo",
                         "secret_kind": "dockerHub",
                         "object_type": "credential",
-                        "message": { "cycloneEncryptedDataMarker": true, "encryptedSecret": encrypted_secret },
+                        "message": {
+                            "cycloneEncryptedDataMarker": true,
+                            "encryptedSecret": encoded,
+                        },
                     },
                 }),
             },

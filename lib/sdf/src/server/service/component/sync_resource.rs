@@ -7,7 +7,7 @@ use dal::{
 use serde::{Deserialize, Serialize};
 
 use super::{ComponentError, ComponentResult};
-use crate::server::extract::{Authorization, NatsTxn, PgRwTxn, Veritech};
+use crate::server::extract::{Authorization, EncryptionKey, NatsTxn, PgRwTxn, Veritech};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -29,6 +29,7 @@ pub async fn sync_resource(
     mut txn: PgRwTxn,
     mut nats: NatsTxn,
     Veritech(veritech): Veritech,
+    EncryptionKey(encryption_key): EncryptionKey,
     Authorization(claim): Authorization,
     Json(request): Json<SyncResourceRequest>,
 ) -> ComponentResult<Json<SyncResourceResponse>> {
@@ -56,6 +57,7 @@ pub async fn sync_resource(
             &txn,
             &nats,
             veritech,
+            &encryption_key,
             &history_actor,
             request.system_id.unwrap_or_else(|| UNSET_ID_VALUE.into()),
         )

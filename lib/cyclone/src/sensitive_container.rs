@@ -1,12 +1,5 @@
-use crate::key_pair::KeyPairError;
 use serde::{Deserialize, Serialize};
 use std::{fmt, ops::Deref, ops::DerefMut};
-
-// Note: Should this file be here or in si-data? (and make cyclone depend on si-data too)
-
-pub trait ListSecrets {
-    fn list_secrets(&self) -> Result<Vec<SensitiveString>, KeyPairError>;
-}
 
 pub type SensitiveString = SensitiveContainer<String>;
 

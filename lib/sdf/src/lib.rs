@@ -11,7 +11,6 @@
     clippy::module_name_repetitions
 )]
 
-mod canonical_file;
 mod server;
 pub use server::{
     build_service, service, Config, ConfigError, ConfigFile, IncomingStream, JwtSecretKey,

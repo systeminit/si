@@ -49,13 +49,14 @@ macro_rules! test_setup {
         $pgtxn:ident,
         $nats_conn:ident,
         $nats:ident,
-        $veritech:ident $(,)?
+        $veritech:ident,
+        $encryption_key:ident $(,)?
     ) => {
         dal::test_harness::one_time_setup()
             .await
             .expect("one time setup failed");
         let $ctx = dal::test_harness::TestContext::init().await;
-        let ($pg, $nats_conn, $veritech, $secret_key) = $ctx.entries();
+        let ($pg, $nats_conn, $veritech, $encryption_key, $secret_key) = $ctx.entries();
         let $nats = $nats_conn.transaction();
         let mut $pgconn = $pg.get().await.expect("cannot connect to pg");
         let $pgtxn = $pgconn.transaction().await.expect("cannot create txn");

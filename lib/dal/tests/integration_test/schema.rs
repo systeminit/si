@@ -18,6 +18,7 @@ async fn new() {
         _nats_conn,
         nats,
         _veritech,
+        _encr_key,
     );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
@@ -38,7 +39,7 @@ async fn new() {
 
 #[tokio::test]
 async fn billing_accounts() {
-    test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats, _veritech);
+    test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats, _veritech, _encr_key);
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
@@ -91,7 +92,7 @@ async fn billing_accounts() {
 
 #[tokio::test]
 async fn organizations() {
-    test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats, _veritech);
+    test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats, _veritech, _encr_key);
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
@@ -144,7 +145,7 @@ async fn organizations() {
 
 #[tokio::test]
 async fn workspaces() {
-    test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats, _veritech);
+    test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats, _veritech, _encr_key);
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
@@ -185,7 +186,17 @@ async fn workspaces() {
 
 #[tokio::test]
 async fn ui_menus() {
-    test_setup!(ctx, _secret_key, pg, conn, txn, nats_conn, nats, _veritech);
+    test_setup!(
+        ctx,
+        _secret_key,
+        pg,
+        conn,
+        txn,
+        nats_conn,
+        nats,
+        _veritech,
+        _encr_key
+    );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;

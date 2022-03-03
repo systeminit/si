@@ -16,7 +16,8 @@ async fn new() {
         txn,
         _nats_conn,
         nats,
-        veritech
+        veritech,
+        encr_key,
     );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
@@ -25,6 +26,7 @@ async fn new() {
         &txn,
         &nats,
         veritech,
+        encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -47,14 +49,24 @@ async fn schema_variants() {
         txn,
         _nats_conn,
         nats,
-        veritech
+        veritech,
+        encr_key,
     );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
     let schema_variant =
         create_schema_variant(&txn, &nats, &tenancy, &visibility, &history_actor).await;
-    let prop = create_prop(&txn, &nats, veritech, &tenancy, &visibility, &history_actor).await;
+    let prop = create_prop(
+        &txn,
+        &nats,
+        veritech,
+        encr_key,
+        &tenancy,
+        &visibility,
+        &history_actor,
+    )
+    .await;
 
     prop.add_schema_variant(
         &txn,
@@ -99,7 +111,8 @@ async fn parent_props() {
         txn,
         _nats_conn,
         nats,
-        veritech
+        veritech,
+        encr_key,
     );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
@@ -108,6 +121,7 @@ async fn parent_props() {
         &txn,
         &nats,
         veritech.clone(),
+        encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -118,6 +132,7 @@ async fn parent_props() {
         &txn,
         &nats,
         veritech,
+        encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -153,7 +168,8 @@ async fn parent_props_wrong_prop_kinds() {
         txn,
         _nats_conn,
         nats,
-        veritech
+        veritech,
+        encr_key,
     );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
@@ -162,6 +178,7 @@ async fn parent_props_wrong_prop_kinds() {
         &txn,
         &nats,
         veritech.clone(),
+        encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -172,6 +189,7 @@ async fn parent_props_wrong_prop_kinds() {
         &txn,
         &nats,
         veritech,
+        encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -196,6 +214,7 @@ async fn new_creates_default_unset_binding() {
         _nats_conn,
         nats,
         veritech,
+        encr_key,
     );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
@@ -204,6 +223,7 @@ async fn new_creates_default_unset_binding() {
         &txn,
         &nats,
         veritech,
+        encr_key,
         &tenancy,
         &visibility,
         &history_actor,

@@ -4,6 +4,7 @@ use si_data::{NatsTxn, PgError, PgTxn};
 use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
+use veritech::EncryptionKey;
 
 use crate::{
     edit_field::{
@@ -314,6 +315,7 @@ impl EditFieldAble for Socket {
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
         _veritech: veritech::Client,
+        _encryption_key: &EncryptionKey,
         tenancy: &Tenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,

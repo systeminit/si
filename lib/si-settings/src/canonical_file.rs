@@ -7,7 +7,6 @@ use std::{
 };
 
 use serde_with::{DeserializeFromStr, SerializeDisplay};
-use telemetry::prelude::*;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -90,6 +89,15 @@ impl TryFrom<OsString> for CanonicalFile {
     }
 }
 
+impl TryFrom<&Path> for CanonicalFile {
+    type Error = CanonicalFileError;
+
+    fn try_from(value: &Path) -> Result<Self, Self::Error> {
+        let command = canonicalize_path(value)?;
+        Ok(Self(command))
+    }
+}
+
 impl TryFrom<String> for CanonicalFile {
     type Error = CanonicalFileError;
 
@@ -128,12 +136,9 @@ impl FromStr for CanonicalFile {
 
 fn canonicalize_path(os_str: impl AsRef<OsStr>) -> Result<PathBuf, CanonicalFileError> {
     let path = Path::new(&os_str);
-    // if path.is_relative() {
-    // }
     let path_buf = path.canonicalize().map_err(|err| {
         CanonicalFileError::Canonicalize(err, os_str.as_ref().to_string_lossy().to_string())
     })?;
-    trace!(path = path_buf.to_string_lossy().as_ref());
     if !path_buf.is_file() {
         return Err(CanonicalFileError::FileNotFound(
             path_buf.to_string_lossy().to_string(),

@@ -1,4 +1,9 @@
-use std::sync::Arc;
+use std::{
+    fmt,
+    marker::{PhantomData, Unpin},
+    path::PathBuf,
+    sync::Arc,
+};
 
 use axum::{
     extract::{
@@ -9,17 +14,23 @@ use axum::{
 };
 use hyper::StatusCode;
 use serde::{de::DeserializeOwned, Serialize};
-use std::marker::{PhantomData, Unpin};
 use telemetry::{prelude::*, TelemetryLevel};
 
 use super::{
     extract::LimitRequestGuard,
-    routes::{State, WatchKeepalive},
+    routes::{LangServerPath, WatchKeepalive},
 };
 use crate::{
-    key_pair::DecryptRequest,
-    sensitive_container::ListSecrets,
-    server::{execution, execution::Execution, watch},
+    code_generation::server::LangServerCodeGenerationResultSuccess,
+    qualification_check::server::LangServerQualificationCheckResultSuccess,
+    resolver_function::server::LangServerResolverFunctionResultSuccess,
+    resource_sync::server::LangServerResourceSyncResultSuccess,
+    server::{
+        decryption_key::DecryptionKey,
+        execution::{self, Execution},
+        request::{DecryptRequest, ListSecrets},
+        watch,
+    },
     CodeGenerationRequest, CodeGenerationResultSuccess, LivenessStatus, Message,
     QualificationCheckRequest, QualificationCheckResultSuccess, ReadinessStatus,
     ResolverFunctionRequest, ResolverFunctionResultSuccess, ResourceSyncRequest,
@@ -75,20 +86,25 @@ pub async fn ws_execute_ping(
 #[allow(clippy::unused_async)]
 pub async fn ws_execute_resolver(
     wsu: WebSocketUpgrade,
-    Extension(state): Extension<Arc<State>>,
+    Extension(lang_server_path): Extension<Arc<LangServerPath>>,
+    Extension(key): Extension<Arc<DecryptionKey>>,
     Extension(telemetry_level): Extension<Arc<Box<dyn TelemetryLevel>>>,
     limit_request_guard: LimitRequestGuard,
 ) -> impl IntoResponse {
+    let lang_server_path = lang_server_path.as_path().to_path_buf();
     wsu.on_upgrade(move |socket| {
         let request: PhantomData<ResolverFunctionRequest> = PhantomData;
+        let lang_server_success: PhantomData<LangServerResolverFunctionResultSuccess> = PhantomData;
         let success: PhantomData<ResolverFunctionResultSuccess> = PhantomData;
         handle_socket(
             socket,
-            state,
+            lang_server_path,
             telemetry_level.is_debug_or_lower(),
+            key,
             limit_request_guard,
             "resolverfunction".to_owned(),
             request,
+            lang_server_success,
             success,
         )
     })
@@ -97,20 +113,26 @@ pub async fn ws_execute_resolver(
 #[allow(clippy::unused_async)]
 pub async fn ws_execute_qualification(
     wsu: WebSocketUpgrade,
-    Extension(state): Extension<Arc<State>>,
+    Extension(lang_server_path): Extension<Arc<LangServerPath>>,
+    Extension(key): Extension<Arc<DecryptionKey>>,
     Extension(telemetry_level): Extension<Arc<Box<dyn TelemetryLevel>>>,
     limit_request_guard: LimitRequestGuard,
 ) -> impl IntoResponse {
+    let lang_server_path = lang_server_path.as_path().to_path_buf();
     wsu.on_upgrade(move |socket| {
         let request: PhantomData<QualificationCheckRequest> = PhantomData;
+        let lang_server_success: PhantomData<LangServerQualificationCheckResultSuccess> =
+            PhantomData;
         let success: PhantomData<QualificationCheckResultSuccess> = PhantomData;
         handle_socket(
             socket,
-            state,
+            lang_server_path,
             telemetry_level.is_debug_or_lower(),
+            key,
             limit_request_guard,
             "qualificationcheck".to_owned(),
             request,
+            lang_server_success,
             success,
         )
     })
@@ -119,20 +141,25 @@ pub async fn ws_execute_qualification(
 #[allow(clippy::unused_async)]
 pub async fn ws_execute_sync(
     wsu: WebSocketUpgrade,
-    Extension(state): Extension<Arc<State>>,
+    Extension(lang_server_path): Extension<Arc<LangServerPath>>,
+    Extension(key): Extension<Arc<DecryptionKey>>,
     Extension(telemetry_level): Extension<Arc<Box<dyn TelemetryLevel>>>,
     limit_request_guard: LimitRequestGuard,
 ) -> impl IntoResponse {
+    let lang_server_path = lang_server_path.as_path().to_path_buf();
     wsu.on_upgrade(move |socket| {
         let request: PhantomData<ResourceSyncRequest> = PhantomData;
+        let lang_server_success: PhantomData<LangServerResourceSyncResultSuccess> = PhantomData;
         let success: PhantomData<ResourceSyncResultSuccess> = PhantomData;
         handle_socket(
             socket,
-            state,
+            lang_server_path,
             telemetry_level.is_debug_or_lower(),
+            key,
             limit_request_guard,
             "resourceSync".to_owned(),
             request,
+            lang_server_success,
             success,
         )
     })
@@ -141,40 +168,49 @@ pub async fn ws_execute_sync(
 #[allow(clippy::unused_async)]
 pub async fn ws_execute_code_generation(
     wsu: WebSocketUpgrade,
-    Extension(state): Extension<Arc<State>>,
+    Extension(lang_server_path): Extension<Arc<LangServerPath>>,
+    Extension(key): Extension<Arc<DecryptionKey>>,
     Extension(telemetry_level): Extension<Arc<Box<dyn TelemetryLevel>>>,
     limit_request_guard: LimitRequestGuard,
 ) -> impl IntoResponse {
+    let lang_server_path = lang_server_path.as_path().to_path_buf();
     wsu.on_upgrade(move |socket| {
         let request: PhantomData<CodeGenerationRequest> = PhantomData;
+        let lang_server_success: PhantomData<LangServerCodeGenerationResultSuccess> = PhantomData;
         let success: PhantomData<CodeGenerationResultSuccess> = PhantomData;
         handle_socket(
             socket,
-            state,
+            lang_server_path,
             telemetry_level.is_debug_or_lower(),
+            key,
             limit_request_guard,
             "codeGeneration".to_owned(),
             request,
+            lang_server_success,
             success,
         )
     })
 }
 
-async fn handle_socket<
-    Request: DecryptRequest + ListSecrets + Serialize + DeserializeOwned + Unpin,
-    Success: Serialize + DeserializeOwned + Unpin,
->(
+#[allow(clippy::too_many_arguments)]
+async fn handle_socket<Request, LangServerSuccess, Success>(
     mut socket: WebSocket,
-    state: Arc<State>,
+    lang_server_path: PathBuf,
     lang_server_debugging: bool,
+    key: Arc<DecryptionKey>,
     _limit_request_guard: LimitRequestGuard,
     sub_command: String,
     _request_marker: PhantomData<Request>,
+    _lang_server_success_marker: PhantomData<LangServerSuccess>,
     success_marker: PhantomData<Success>,
-) {
+) where
+    Request: DecryptRequest + ListSecrets + Serialize + DeserializeOwned + Unpin + fmt::Debug,
+    Success: Serialize + Unpin + fmt::Debug,
+    LangServerSuccess: Serialize + DeserializeOwned + Unpin + fmt::Debug + Into<Success>,
+{
     let proto = {
-        let execution: Execution<Request, Success> =
-            execution::execute(state.lang_server_path(), lang_server_debugging, sub_command);
+        let execution: Execution<Request, LangServerSuccess, Success> =
+            execution::new(lang_server_path, lang_server_debugging, key, sub_command);
         match execution.start(&mut socket).await {
             Ok(started) => started,
             Err(err) => {
