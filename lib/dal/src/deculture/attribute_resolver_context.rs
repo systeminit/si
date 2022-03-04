@@ -25,13 +25,42 @@ pub enum AttributeResolverContextError {
 
 pub type AttributeResolverContextResult<T> = Result<T, AttributeResolverContextError>;
 
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AttributeResolverContext {
     prop_id: PropId,
     schema_id: SchemaId,
     schema_variant_id: SchemaVariantId,
     component_id: ComponentId,
     system_id: SystemId,
+}
+
+impl From<crate::attribute_resolver_context::AttributeResolverContext>
+    for AttributeResolverContext
+{
+    fn from(
+        old_context: crate::attribute_resolver_context::AttributeResolverContext,
+    ) -> AttributeResolverContext {
+        AttributeResolverContextBuilder::new()
+            .set_prop_id(old_context.prop_id())
+            .set_schema_id(old_context.schema_id())
+            .set_schema_variant_id(old_context.schema_variant_id())
+            .set_component_id(old_context.component_id())
+            .set_system_id(old_context.system_id())
+            .to_context()
+            .unwrap_or_else(|_| panic!("Failed to convert an AttributeResolverContext to a deculture::AttributeResolverContext: {:?}", old_context))
+    }
+}
+
+impl From<AttributeResolverContext> for AttributeResolverContextBuilder {
+    fn from(from_context: AttributeResolverContext) -> AttributeResolverContextBuilder {
+        AttributeResolverContextBuilder {
+            prop_id: from_context.prop_id(),
+            schema_id: from_context.schema_id(),
+            schema_variant_id: from_context.schema_variant_id(),
+            component_id: from_context.component_id(),
+            system_id: from_context.system_id(),
+        }
+    }
 }
 
 impl AttributeResolverContext {

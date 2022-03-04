@@ -199,7 +199,7 @@ impl Prop {
             history_actor,
             *func.id(),
             *func_binding.id(),
-            attribute_resolver_context,
+            attribute_resolver_context.into(),
             None,
             None,
         )
