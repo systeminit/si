@@ -5,10 +5,8 @@ use si_data::{NatsClient, NatsError, PgError, PgPool, PgPoolError};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-pub mod attribute_prototype;
 pub mod attribute_resolver;
 pub mod attribute_resolver_context;
-pub mod attribute_value;
 pub mod billing_account;
 pub mod capability;
 pub mod change_set;
@@ -17,6 +15,7 @@ pub mod code_generation_resolver;
 pub mod code_view;
 pub mod component;
 pub mod cyclone_key_pair;
+pub mod deculture;
 pub mod edge;
 pub mod edit_field;
 pub mod edit_session;
@@ -58,7 +57,6 @@ pub mod visibility;
 pub mod workspace;
 pub mod ws_event;
 
-pub use attribute_prototype::{AttributePrototype, AttributePrototypeError, AttributePrototypeId};
 pub use attribute_resolver::{
     AttributeResolver, AttributeResolverError, AttributeResolverId, AttributeResolverValue,
 };

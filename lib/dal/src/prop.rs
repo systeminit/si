@@ -7,6 +7,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use veritech::EncryptionKey;
 
+use crate::deculture::attribute_prototype::AttributePrototype;
 use crate::{
     attribute_resolver::AttributeResolverContext,
     edit_field::{
@@ -17,9 +18,9 @@ use crate::{
     impl_standard_model,
     label_list::ToLabelList,
     pk, standard_model, standard_model_accessor, standard_model_belongs_to,
-    standard_model_has_many, standard_model_many_to_many, AttributePrototype, AttributeResolver,
-    Func, HistoryActor, HistoryEventError, SchemaVariant, SchemaVariantId, StandardModel,
-    StandardModelError, Tenancy, Timestamp, Visibility,
+    standard_model_has_many, standard_model_many_to_many, AttributeResolver, Func, HistoryActor,
+    HistoryEventError, SchemaVariant, SchemaVariantId, StandardModel, StandardModelError, Tenancy,
+    Timestamp, Visibility,
 };
 
 #[derive(Error, Debug)]
@@ -198,7 +199,8 @@ impl Prop {
             history_actor,
             *func.id(),
             *func_binding.id(),
-            attribute_resolver_context,
+            attribute_resolver_context.into(),
+            None,
             None,
         )
         .await

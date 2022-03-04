@@ -5,14 +5,19 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
-    attribute_resolver_context::AttributeResolverContext,
+    deculture::{
+        attribute_prototype::{AttributePrototype, AttributePrototypeId},
+        attribute_resolver_context::AttributeResolverContext,
+    },
     func::{binding::FuncBindingError, binding_return_value::FuncBindingReturnValueId},
     impl_standard_model, pk,
     standard_model::{self, TypeHint},
-    standard_model_accessor, standard_model_belongs_to, AttributePrototype, AttributePrototypeId,
-    HistoryActor, HistoryEventError, IndexMap, PropError, PropKind, StandardModel,
-    StandardModelError, Tenancy, Timestamp, Visibility,
+    standard_model_accessor, standard_model_belongs_to, HistoryActor, HistoryEventError, IndexMap,
+    PropError, PropKind, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
 };
+
+const FIND_WITH_PARENT_AND_PROTOTYPE_FOR_CONTEXT: &str =
+    include_str!("../queries/attribute_value_find_with_parent_and_protype_for_context.sql");
 
 #[derive(Error, Debug)]
 pub enum AttributeValueError {
@@ -96,7 +101,7 @@ impl AttributeValue {
         tenancy: &Tenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
-        func_binding_return_value_id: FuncBindingReturnValueId,
+        func_binding_return_value_id: Option<FuncBindingReturnValueId>,
         context: AttributeResolverContext,
         key: Option<String>,
     ) -> AttributeValueResult<Self> {
@@ -130,6 +135,26 @@ impl AttributeValue {
         // object
         //     .update_parent_index_map(txn, tenancy, visibility)
         //     .await?;
+
+        // for a prop in an object in an array...
+        // important: if anything in grandparent to root is a map or an array, you need to know which attribute value is your parent
+        // (there could be multiple)
+        //
+        // if you are in a component, the root will never be map or array, but free floating prop could be map or array
+        //
+        // why: if a parent is a map or an array, the value is just a value or an array, but
+        // in the other scenario, you need to know which element or map value you are a child of.
+        //
+        // {
+        //
+        //
+        //
+        //
+
+        // let mut
+        // let contexts = vec![context];
+        // context.less_specific()
+
         Ok(object)
     }
 
@@ -186,6 +211,40 @@ impl AttributeValue {
         )
         .await?;
         Ok(())
+    }
+
+    pub async fn find_with_parent_and_prototype_for_context(
+        txn: &PgTxn<'_>,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+        parent_attribute_value_id: Option<AttributeValueId>,
+        attribute_prototype_id: AttributePrototypeId,
+        context: AttributeResolverContext,
+    ) -> AttributeValueResult<Option<Self>> {
+        // We need...
+        // - context
+        // - prototype (need elements in array / values in map)
+        // - parent (AttributeValue)
+        //   - if None, must not have parent in same visibility, tenancy, etc.
+        //   - if Some, must have same parent
+        let row = txn
+            .query_opt(
+                FIND_WITH_PARENT_AND_PROTOTYPE_FOR_CONTEXT,
+                &[
+                    &tenancy,
+                    &visibility,
+                    &attribute_prototype_id,
+                    &parent_attribute_value_id,
+                    &context.prop_id(),
+                    &context.schema_id(),
+                    &context.schema_variant_id(),
+                    &context.component_id(),
+                    &context.system_id(),
+                ],
+            )
+            .await?;
+
+        Ok(standard_model::option_object_from_row(row)?)
     }
 
     // pub async fn update_proxies(
