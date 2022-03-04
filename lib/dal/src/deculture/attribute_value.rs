@@ -17,7 +17,7 @@ use crate::{
 };
 
 const FIND_WITH_PARENT_AND_PROTOTYPE_FOR_CONTEXT: &str =
-    include_str!("../queries/attribute_value_find_with_parent_and_protype_for_context.sql");
+    include_str!("./queries/attribute_value_find_with_parent_and_protype_for_context.sql");
 
 #[derive(Error, Debug)]
 pub enum AttributeValueError {
@@ -135,26 +135,6 @@ impl AttributeValue {
         // object
         //     .update_parent_index_map(txn, tenancy, visibility)
         //     .await?;
-
-        // for a prop in an object in an array...
-        // important: if anything in grandparent to root is a map or an array, you need to know which attribute value is your parent
-        // (there could be multiple)
-        //
-        // if you are in a component, the root will never be map or array, but free floating prop could be map or array
-        //
-        // why: if a parent is a map or an array, the value is just a value or an array, but
-        // in the other scenario, you need to know which element or map value you are a child of.
-        //
-        // {
-        //
-        //
-        //
-        //
-
-        // let mut
-        // let contexts = vec![context];
-        // context.less_specific()
-
         Ok(object)
     }
 
@@ -221,12 +201,6 @@ impl AttributeValue {
         attribute_prototype_id: AttributePrototypeId,
         context: AttributeResolverContext,
     ) -> AttributeValueResult<Option<Self>> {
-        // We need...
-        // - context
-        // - prototype (need elements in array / values in map)
-        // - parent (AttributeValue)
-        //   - if None, must not have parent in same visibility, tenancy, etc.
-        //   - if Some, must have same parent
         let row = txn
             .query_opt(
                 FIND_WITH_PARENT_AND_PROTOTYPE_FOR_CONTEXT,

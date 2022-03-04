@@ -88,7 +88,8 @@ impl AttributeResolverContext {
         self.system_id
     }
 
-    /// Determines if the context is "least specific" or everything is unset.
+    /// Determines if the context is "least specific" ([`PropId`] is set) or everything is
+    /// unset ([`PropId`] is unset).
     pub fn is_least_specific(&self) -> bool {
         self.system_id == UNSET_ID_VALUE.into()
             && self.component_id == UNSET_ID_VALUE.into()
@@ -157,7 +158,7 @@ impl AttributeResolverContextBuilder {
 
     /// Converts [`Self`] to [`AttributeResolverContext`]. This method will fail if the order of
     /// precedence is broken (i.e. more-specific fields are set, but one-to-all less-specific
-    /// fields are unset).
+    /// fields are unset) or if the field of least specificity, [`PropId`], is unset.
     pub fn to_context(&self) -> AttributeResolverContextBuilderResult<AttributeResolverContext> {
         let mut unset_prerequisite_fields = Vec::new();
 
@@ -178,12 +179,9 @@ impl AttributeResolverContextBuilder {
         {
             unset_prerequisite_fields.push("SchemaId");
         }
-        if self.prop_id == UNSET_ID_VALUE.into()
-            && (self.schema_id != UNSET_ID_VALUE.into()
-                || self.schema_variant_id != UNSET_ID_VALUE.into()
-                || self.component_id != UNSET_ID_VALUE.into()
-                || self.system_id != UNSET_ID_VALUE.into())
-        {
+
+        // [`PropId`] must always be set.
+        if self.prop_id == UNSET_ID_VALUE.into() {
             unset_prerequisite_fields.push("PropId");
         }
 
@@ -283,5 +281,369 @@ impl AttributeResolverContextBuilder {
     pub fn unset_system_id(&mut self) -> &mut Self {
         self.system_id = UNSET_ID_VALUE.into();
         self
+    }
+}
+
+// NOTE(nick): there are only error permutations tests for fields that have at least two prerequisite
+// fields. Thus, SystemId, ComponentId, and SchemaVariantId have error permutations tests and SchemaId
+// and PropId do not.
+
+// TODO(nick): for the aforementioned error permutations tests, when/if more "layers" are added, we will likely
+// need a helper to "flip" values from set to unset (and vice versa) to automatically test every condition.
+// Currently, all error permutations are manually written. In an example using an automatic setup, the
+// helper could provide an iteration method that flips each fields value from [`UNSET_ID_VALUE`] to
+// "1.into()" and vice versa. Then, the test writer could supply contraints to indicate when the helper
+// should expect failure or success upon iteration.
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn less_specific() {
+        let context = AttributeResolverContextBuilder::new()
+            .set_prop_id(1.into())
+            .set_schema_id(2.into())
+            .set_schema_variant_id(3.into())
+            .set_component_id(4.into())
+            .set_system_id(5.into())
+            .to_context()
+            .expect("cannot build resolver context");
+
+        let new_context = context
+            .less_specific()
+            .expect("cannot create less specific context");
+
+        assert_eq!(
+            AttributeResolverContextBuilder::new()
+                .set_prop_id(1.into())
+                .set_schema_id(2.into())
+                .set_schema_variant_id(3.into())
+                .set_component_id(4.into())
+                .to_context()
+                .expect("cannot create expected context"),
+            new_context,
+        );
+
+        let new_context = new_context
+            .less_specific()
+            .expect("cannot create less specific context");
+
+        assert_eq!(
+            AttributeResolverContextBuilder::new()
+                .set_prop_id(1.into())
+                .set_schema_id(2.into())
+                .set_schema_variant_id(3.into())
+                .to_context()
+                .expect("cannot create expected context"),
+            new_context,
+        );
+
+        let new_context = new_context
+            .less_specific()
+            .expect("cannot create less specific context");
+
+        assert_eq!(
+            AttributeResolverContextBuilder::new()
+                .set_prop_id(1.into())
+                .set_schema_id(2.into())
+                .to_context()
+                .expect("cannot create expected context"),
+            new_context,
+        );
+
+        let new_context = new_context
+            .less_specific()
+            .expect("cannot create less specific context");
+
+        assert_eq!(
+            AttributeResolverContextBuilder::new()
+                .set_prop_id(1.into())
+                .to_context()
+                .expect("cannot create expected context"),
+            new_context,
+        );
+
+        let new_context = new_context
+            .less_specific()
+            .expect("cannot create less specific context");
+
+        assert_eq!(
+            AttributeResolverContextBuilder::new()
+                .set_prop_id(1.into())
+                .to_context()
+                .expect("cannot create expected context"),
+            new_context,
+        );
+    }
+
+    #[test]
+    fn builder_new() {
+        let prop_id: PropId = 1.into();
+        let schema_id: SchemaId = 1.into();
+        let schema_variant_id: SchemaVariantId = 1.into();
+        let component_id: ComponentId = 1.into();
+        let system_id: SystemId = 1.into();
+
+        let mut builder = AttributeResolverContextBuilder::new();
+
+        // Empty (FAIL)
+        assert!(builder.to_context().is_err());
+
+        // SchemaId (FAIL) --> PropId (PASS)
+        builder.set_schema_id(schema_id);
+        assert!(builder.to_context().is_err());
+        builder.unset_schema_id();
+        builder.set_prop_id(prop_id);
+        assert!(builder.to_context().is_ok(),);
+
+        // SchemaVariantId (FAIL) --> SchemaId (PASS)
+        builder.set_schema_variant_id(schema_variant_id);
+        assert!(builder.to_context().is_err());
+        builder.unset_schema_variant_id();
+        builder.set_schema_id(schema_id);
+        assert!(builder.to_context().is_ok(),);
+
+        // ComponentId (FAIL) --> SchemaVariantId (PASS)
+        builder.set_component_id(component_id);
+        assert!(builder.to_context().is_err());
+        builder.unset_component_id();
+        builder.set_schema_variant_id(schema_variant_id);
+        assert!(builder.to_context().is_ok(),);
+
+        // SystemId (FAIL) --> ComponentId (PASS)
+        builder.set_system_id(system_id);
+        assert!(builder.to_context().is_err());
+        builder.unset_system_id();
+        builder.set_component_id(component_id);
+        assert!(builder.to_context().is_ok());
+
+        // SystemId (PASS)
+        builder.set_system_id(system_id);
+        assert!(builder.to_context().is_ok(),);
+    }
+
+    #[test]
+    fn builder_system_id_error_permutations() {
+        let prop_id: PropId = 1.into();
+        let schema_id: SchemaId = 1.into();
+        let schema_variant_id: SchemaVariantId = 1.into();
+        let component_id: ComponentId = 1.into();
+        let system_id: SystemId = 1.into();
+
+        // ----------------
+        // Prerequisites: 0
+        // ----------------
+
+        // ComponentId [ ] --> SchemaVariantId [ ] --> SchemaId [ ] --> PropId [ ]
+        let mut builder = AttributeResolverContextBuilder::new();
+        builder.set_system_id(system_id);
+        assert!(builder.to_context().is_err());
+
+        // ----------------
+        // Prerequisites: 1
+        // ----------------
+
+        // ComponentId [x] --> SchemaVariantId [ ] --> SchemaId [ ] --> PropId [ ]
+        let mut builder = AttributeResolverContextBuilder::new();
+        builder.set_system_id(system_id);
+        builder.set_component_id(component_id);
+        assert!(builder.to_context().is_err());
+
+        // ComponentId [ ] --> SchemaVariantId [x] --> SchemaId [ ] --> PropId [ ]
+        let mut builder = AttributeResolverContextBuilder::new();
+        builder.set_system_id(system_id);
+        builder.set_schema_variant_id(schema_variant_id);
+        assert!(builder.to_context().is_err());
+
+        // ComponentId [ ] --> SchemaVariantId [ ] --> SchemaId [x] --> PropId [ ]
+        let mut builder = AttributeResolverContextBuilder::new();
+        builder.set_system_id(system_id);
+        builder.set_schema_id(schema_id);
+        assert!(builder.to_context().is_err());
+
+        // ComponentId [ ] --> SchemaVariantId [ ] --> SchemaId [ ] --> PropId [x]
+        let mut builder = AttributeResolverContextBuilder::new();
+        builder.set_system_id(system_id);
+        builder.set_prop_id(prop_id);
+        assert!(builder.to_context().is_err());
+
+        // ----------------
+        // Prerequisites: 2
+        // ----------------
+
+        // ComponentId [x] --> SchemaVariantId [x] --> SchemaId [ ] --> PropId [ ]
+        let mut builder = AttributeResolverContextBuilder::new();
+        builder.set_system_id(system_id);
+        builder.set_component_id(component_id);
+        builder.set_schema_variant_id(schema_variant_id);
+        assert!(builder.to_context().is_err());
+
+        // ComponentId [x] --> SchemaVariantId [ ] --> SchemaId [x] --> PropId [ ]
+        let mut builder = AttributeResolverContextBuilder::new();
+        builder.set_system_id(system_id);
+        builder.set_component_id(component_id);
+        builder.set_schema_id(schema_id);
+        assert!(builder.to_context().is_err());
+
+        // ComponentId [x] --> SchemaVariantId [ ] --> SchemaId [ ] --> PropId [x]
+        let mut builder = AttributeResolverContextBuilder::new();
+        builder.set_system_id(system_id);
+        builder.set_component_id(component_id);
+        builder.set_prop_id(prop_id);
+        assert!(builder.to_context().is_err());
+
+        // ComponentId [ ] --> SchemaVariantId [x] --> SchemaId [x] --> PropId [ ]
+        let mut builder = AttributeResolverContextBuilder::new();
+        builder.set_system_id(system_id);
+        builder.set_schema_variant_id(schema_variant_id);
+        builder.set_schema_id(schema_id);
+        assert!(builder.to_context().is_err());
+
+        // ComponentId [ ] --> SchemaVariantId [x] --> SchemaId [ ] --> PropId [x]
+        let mut builder = AttributeResolverContextBuilder::new();
+        builder.set_system_id(system_id);
+        builder.set_schema_variant_id(schema_variant_id);
+        builder.set_prop_id(prop_id);
+        assert!(builder.to_context().is_err());
+
+        // ComponentId [ ] --> SchemaVariantId [ ] --> SchemaId [x] --> PropId [x]
+        let mut builder = AttributeResolverContextBuilder::new();
+        builder.set_system_id(system_id);
+        builder.set_schema_id(schema_id);
+        builder.set_prop_id(prop_id);
+        assert!(builder.to_context().is_err());
+
+        // ----------------
+        // Prerequisites: 3
+        // ----------------
+
+        // ComponentId [x] --> SchemaVariantId [x] --> SchemaId [x] --> PropId [ ]
+        let mut builder = AttributeResolverContextBuilder::new();
+        builder.set_system_id(system_id);
+        builder.set_component_id(component_id);
+        builder.set_schema_variant_id(schema_variant_id);
+        builder.set_schema_id(schema_id);
+        assert!(builder.to_context().is_err());
+
+        // ComponentId [x] --> SchemaVariantId [ ] --> SchemaId [x] --> PropId [x]
+        let mut builder = AttributeResolverContextBuilder::new();
+        builder.set_system_id(system_id);
+        builder.set_component_id(component_id);
+        builder.set_schema_id(schema_id);
+        builder.set_prop_id(prop_id);
+        assert!(builder.to_context().is_err());
+
+        // ComponentId [x] --> SchemaVariantId [x] --> SchemaId [ ] --> PropId [x]
+        let mut builder = AttributeResolverContextBuilder::new();
+        builder.set_system_id(system_id);
+        builder.set_component_id(component_id);
+        builder.set_schema_variant_id(schema_variant_id);
+        builder.set_prop_id(prop_id);
+        assert!(builder.to_context().is_err());
+
+        // ComponentId [ ] --> SchemaVariantId [x] --> SchemaId [x] --> PropId [x]
+        let mut builder = AttributeResolverContextBuilder::new();
+        builder.set_system_id(system_id);
+        builder.set_schema_variant_id(schema_variant_id);
+        builder.set_schema_id(schema_id);
+        builder.set_prop_id(prop_id);
+        assert!(builder.to_context().is_err());
+    }
+
+    #[test]
+    fn builder_component_id_error_permutations() {
+        let prop_id: PropId = 1.into();
+        let schema_id: SchemaId = 1.into();
+        let schema_variant_id: SchemaVariantId = 1.into();
+        let component_id: ComponentId = 1.into();
+
+        // ----------------
+        // Prerequisites: 0
+        // ----------------
+
+        // SchemaVariantId [ ] --> SchemaId [ ] --> PropId [ ]
+        let mut builder = AttributeResolverContextBuilder::new();
+        builder.set_component_id(component_id);
+        assert!(builder.to_context().is_err());
+
+        // ----------------
+        // Prerequisites: 1
+        // ----------------
+
+        // SchemaVariantId [x] --> SchemaId [ ] --> PropId [ ]
+        let mut builder = AttributeResolverContextBuilder::new();
+        builder.set_component_id(component_id);
+        builder.set_schema_variant_id(schema_variant_id);
+        assert!(builder.to_context().is_err());
+
+        // SchemaVariantId [ ] --> SchemaId [x] --> PropId [ ]
+        let mut builder = AttributeResolverContextBuilder::new();
+        builder.set_component_id(component_id);
+        builder.set_schema_id(schema_id);
+        assert!(builder.to_context().is_err());
+
+        // SchemaVariantId [ ] --> SchemaId [ ] --> PropId [x]
+        let mut builder = AttributeResolverContextBuilder::new();
+        builder.set_component_id(component_id);
+        builder.set_prop_id(prop_id);
+        assert!(builder.to_context().is_err());
+
+        // ----------------
+        // Prerequisites: 2
+        // ----------------
+
+        // SchemaVariantId [x] --> SchemaId [x] --> PropId [ ]
+        let mut builder = AttributeResolverContextBuilder::new();
+        builder.set_component_id(component_id);
+        builder.set_schema_variant_id(schema_variant_id);
+        builder.set_schema_id(schema_id);
+        assert!(builder.to_context().is_err());
+
+        // SchemaVariantId [x] --> SchemaId [ ] --> PropId [x]
+        let mut builder = AttributeResolverContextBuilder::new();
+        builder.set_component_id(component_id);
+        builder.set_schema_variant_id(schema_variant_id);
+        builder.set_prop_id(prop_id);
+        assert!(builder.to_context().is_err());
+
+        // SchemaVariantId [ ] --> SchemaId [x] --> PropId [x]
+        let mut builder = AttributeResolverContextBuilder::new();
+        builder.set_component_id(component_id);
+        builder.set_schema_id(schema_id);
+        builder.set_prop_id(prop_id);
+        assert!(builder.to_context().is_err());
+    }
+
+    #[test]
+    fn builder_schema_variant_id_error_permutations() {
+        let prop_id: PropId = 1.into();
+        let schema_id: SchemaId = 1.into();
+        let schema_variant_id: SchemaVariantId = 1.into();
+
+        // ----------------
+        // Prerequisites: 0
+        // ----------------
+
+        // SchemaId [ ] --> PropId [ ]
+        let mut builder = AttributeResolverContextBuilder::new();
+        builder.set_schema_variant_id(schema_variant_id);
+        assert!(builder.to_context().is_err());
+
+        // ----------------
+        // Prerequisites: 1
+        // ----------------
+
+        // SchemaId [x] --> PropId [ ]
+        let mut builder = AttributeResolverContextBuilder::new();
+        builder.set_schema_variant_id(schema_variant_id);
+        builder.set_schema_id(schema_id);
+        assert!(builder.to_context().is_err());
+
+        // SchemaId [ ] --> PropId [x]
+        let mut builder = AttributeResolverContextBuilder::new();
+        builder.set_schema_variant_id(schema_variant_id);
+        builder.set_prop_id(prop_id);
+        assert!(builder.to_context().is_err());
     }
 }

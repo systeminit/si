@@ -18,7 +18,7 @@ use crate::{
     StandardModelError, Tenancy, Timestamp, Visibility,
 };
 
-const FIND_FOR_CONTEXT: &str = include_str!("../queries/attribute_prototype_list_for_context.sql");
+const LIST_FOR_CONTEXT: &str = include_str!("./queries/attribute_prototype_list_for_context.sql");
 const FIND_WITH_PARENT_VALUE_AND_KEY_FOR_CONTEXT: &str =
     include_str!("./queries/attribute_prototype_find_with_parent_value_and_key_for_context.sql");
 
@@ -202,7 +202,7 @@ impl AttributePrototype {
     ) -> AttributePrototypeResult<Vec<Self>> {
         let rows = txn
             .query(
-                FIND_FOR_CONTEXT,
+                LIST_FOR_CONTEXT,
                 &[
                     &tenancy,
                     &visibility,
