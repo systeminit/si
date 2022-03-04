@@ -3,9 +3,12 @@ use si_data::{NatsError, NatsTxn, PgError, PgTxn};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::deculture::attribute_value::{AttributeValue, AttributeValueError, AttributeValueId};
 use crate::{
-    attribute_resolver_context::AttributeResolverContext,
+    deculture::{
+        attribute_resolver_context::AttributeResolverContext,
+        attribute_resolver_context::AttributeResolverContextError,
+        attribute_value::{AttributeValue, AttributeValueError, AttributeValueId},
+    },
     func::binding::{FuncBindingError, FuncBindingId},
     func::FuncId,
     impl_standard_model, pk,

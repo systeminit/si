@@ -4,9 +4,11 @@ use si_data::{NatsError, NatsTxn, PgError, PgTxn};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::deculture::attribute_prototype::{AttributePrototype, AttributePrototypeId};
 use crate::{
-    attribute_resolver_context::AttributeResolverContext,
+    deculture::{
+        attribute_prototype::{AttributePrototype, AttributePrototypeId},
+        attribute_resolver_context::AttributeResolverContext,
+    },
     func::{binding::FuncBindingError, binding_return_value::FuncBindingReturnValueId},
     impl_standard_model, pk,
     standard_model::{self, TypeHint},

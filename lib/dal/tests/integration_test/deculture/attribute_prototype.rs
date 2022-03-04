@@ -1,8 +1,10 @@
 use crate::test_setup;
 
-use dal::deculture::attribute_prototype::AttributePrototype;
 use dal::{
-    attribute_resolver_context::AttributeResolverContext,
+    deculture::{
+        attribute_prototype::AttributePrototype,
+        attribute_resolver_context::{AttributeResolverContext, AttributeResolverContextBuilder},
+    },
     func::{backend::string::FuncBackendStringArgs, binding::FuncBinding},
     test_harness::{
         create_component_for_schema, create_prop_of_kind_with_name, create_schema,
@@ -95,9 +97,13 @@ async fn new() {
         .await
         .expect("failed to execute func binding");
 
-    let mut context = AttributeResolverContext::new();
-    context.set_prop_id(*first_prop.id());
-    context.set_component_id(*component.id());
+    let context = AttributeResolverContext::builder()
+        .set_prop_id(*first_prop.id())
+        .set_schema_id(*schema.id())
+        .set_schema_variant_id(*default_variant.id())
+        .set_component_id(*component.id())
+        .to_context()
+        .expect("cannot create context");
     let _attribute_prototype = AttributePrototype::new(
         &txn,
         &nats,
@@ -158,9 +164,10 @@ async fn list_for_context() {
         .await
         .expect("cannot set default schema variant");
 
-    let mut base_prototype_context = AttributeResolverContext::new();
-    base_prototype_context.set_schema_id(*schema.id());
-    base_prototype_context.set_schema_variant_id(*schema_variant.id());
+    let mut base_prototype_context = AttributeResolverContext::builder();
+    base_prototype_context
+        .set_schema_id(*schema.id())
+        .set_schema_variant_id(*schema_variant.id());
 
     // {
     //   albums: [
@@ -190,16 +197,18 @@ async fn list_for_context() {
         .await
         .expect("cannot set schema variant for album object");
 
-    let mut albums_prototype_context = AttributeResolverContext::new();
-    albums_prototype_context.set_prop_id(*albums_prop.id());
-    albums_prototype_context.set_schema_id(*schema.id());
-    albums_prototype_context.set_schema_variant_id(*schema_variant.id());
+    let albums_prototype_context = AttributeResolverContext::builder()
+        .set_prop_id(*albums_prop.id())
+        .set_schema_id(*schema.id())
+        .set_schema_variant_id(*schema_variant.id())
+        .to_context()
+        .expect("cannot create attribute context");
 
     let albums_prop_prototype = AttributePrototype::list_for_context(
         &txn,
         &tenancy,
         &visibility,
-        albums_prototype_context.clone(),
+        albums_prototype_context,
     )
     .await
     .expect("cannot retrieve attribute prototype for album")
@@ -223,14 +232,17 @@ async fn list_for_context() {
         .await
         .expect("cannot set parent prop for album object");
 
-    let mut album_prototype_context = base_prototype_context.clone();
-    album_prototype_context.set_prop_id(*album_prop.id());
+    let album_prototype_context = base_prototype_context
+        .clone()
+        .set_prop_id(*album_prop.id())
+        .to_context()
+        .expect("cannot create attribute context");
 
     let album_prop_prototype = AttributePrototype::list_for_context(
         &txn,
         &tenancy,
         &visibility,
-        album_prototype_context.clone(),
+        album_prototype_context,
     )
     .await
     .expect("cannot retrieve attribute prototype for album")
@@ -254,14 +266,17 @@ async fn list_for_context() {
         .await
         .expect("cannot set parent prop for album name");
 
-    let mut album_name_prototype_context = base_prototype_context.clone();
-    album_name_prototype_context.set_prop_id(*name_prop.id());
+    let album_name_prototype_context = base_prototype_context
+        .clone()
+        .set_prop_id(*name_prop.id())
+        .to_context()
+        .expect("cannot create attribute context");
 
     let album_name_prototype = AttributePrototype::list_for_context(
         &txn,
         &tenancy,
         &visibility,
-        album_name_prototype_context.clone(),
+        album_name_prototype_context,
     )
     .await
     .expect("cannot retrieve attribute prototype for album name")
@@ -285,14 +300,17 @@ async fn list_for_context() {
         .await
         .expect("cannot set parent prop for album artist");
 
-    let mut album_artist_prototype_context = base_prototype_context.clone();
-    album_artist_prototype_context.set_prop_id(*artist_prop.id());
+    let album_artist_prototype_context = base_prototype_context
+        .clone()
+        .set_prop_id(*artist_prop.id())
+        .to_context()
+        .expect("cannot create attribute context");
 
     let _album_artist_prototype = AttributePrototype::list_for_context(
         &txn,
         &tenancy,
         &visibility,
-        album_artist_prototype_context.clone(),
+        album_artist_prototype_context,
     )
     .await
     .expect("cannot retrieve attribute prototype for album artist")
@@ -340,8 +358,10 @@ async fn list_for_context() {
         .await
         .expect("failed to execute func binding");
 
-    let mut component_name_prototype_context = base_prototype_context.clone();
-    component_name_prototype_context.set_component_id(*component.id());
+    let component_name_prototype_context = AttributeResolverContextBuilder::from(album_name_prototype_context)
+        .set_component_id(*component.id())
+        .to_context()
+        .expect("cannot create attribute context");
 
     let component_album_name_prototype = AttributePrototype::new(
         &txn,
@@ -351,7 +371,7 @@ async fn list_for_context() {
         &history_actor,
         *func.id(),
         *func_binding.id(),
-        component_name_prototype_context.clone(),
+        component_name_prototype_context,
         None,
         None,
     )
@@ -432,9 +452,10 @@ async fn list_for_context_with_a_hash() {
         .await
         .expect("cannot set default schema variant");
 
-    let mut base_prototype_context = AttributeResolverContext::new();
-    base_prototype_context.set_schema_id(*schema.id());
-    base_prototype_context.set_schema_variant_id(*schema_variant.id());
+    let mut base_prototype_context = AttributeResolverContext::builder();
+    base_prototype_context
+        .set_schema_id(*schema.id())
+        .set_schema_variant_id(*schema_variant.id());
 
     // {
     //   albums: [
@@ -464,16 +485,17 @@ async fn list_for_context_with_a_hash() {
         .await
         .expect("cannot set schema variant for album object");
 
-    let mut albums_prototype_context = AttributeResolverContext::new();
-    albums_prototype_context.set_prop_id(*albums_prop.id());
-    albums_prototype_context.set_schema_id(*schema.id());
-    albums_prototype_context.set_schema_variant_id(*schema_variant.id());
+    let albums_prototype_context = base_prototype_context
+        .clone()
+        .set_prop_id(*albums_prop.id())
+        .to_context()
+        .expect("cannot build attribute context");
 
     let albums_prop_prototype = AttributePrototype::list_for_context(
         &txn,
         &tenancy,
         &visibility,
-        albums_prototype_context.clone(),
+        albums_prototype_context,
     )
     .await
     .expect("cannot retrieve attribute prototype for album")
@@ -497,14 +519,17 @@ async fn list_for_context_with_a_hash() {
         .await
         .expect("cannot set parent prop for album object");
 
-    let mut album_prototype_context = base_prototype_context.clone();
-    album_prototype_context.set_prop_id(*album_prop.id());
+    let album_prototype_context = base_prototype_context
+        .clone()
+        .set_prop_id(*album_prop.id())
+        .to_context()
+        .expect("cannot build attribute context");
 
     let album_prop_prototype = AttributePrototype::list_for_context(
         &txn,
         &tenancy,
         &visibility,
-        album_prototype_context.clone(),
+        album_prototype_context,
     )
     .await
     .expect("cannot retrieve attribute prototype for album")
@@ -528,14 +553,17 @@ async fn list_for_context_with_a_hash() {
         .await
         .expect("cannot set parent prop for album hash key");
 
-    let mut prop_hash_key_prototype_context = base_prototype_context.clone();
-    prop_hash_key_prototype_context.set_prop_id(*hash_key_prop.id());
+    let prop_hash_key_prototype_context = base_prototype_context
+        .clone()
+        .set_prop_id(*hash_key_prop.id())
+        .to_context()
+        .expect("cannot build attribute context");
 
     let prop_hash_key_prototype = AttributePrototype::list_for_context(
         &txn,
         &tenancy,
         &visibility,
-        prop_hash_key_prototype_context.clone(),
+        prop_hash_key_prototype_context,
     )
     .await
     .expect("cannot retrieve attribute prototype for album hash key")
@@ -581,7 +609,7 @@ async fn list_for_context_with_a_hash() {
         &history_actor,
         *func.id(),
         *undertow_prop_func_binding.id(),
-        prop_hash_key_prototype_context.clone(),
+        prop_hash_key_prototype_context,
         Some("Undertow".to_string()),
         None,
     )
@@ -614,7 +642,7 @@ async fn list_for_context_with_a_hash() {
         &history_actor,
         *func.id(),
         *lateralus_prop_func_binding.id(),
-        prop_hash_key_prototype_context.clone(),
+        prop_hash_key_prototype_context,
         Some("Lateralus".to_string()),
         None,
     )
@@ -631,8 +659,11 @@ async fn list_for_context_with_a_hash() {
     )
     .await;
 
-    let mut component_hash_key_prototype_context = prop_hash_key_prototype_context.clone();
-    component_hash_key_prototype_context.set_component_id(*component.id());
+    let component_hash_key_prototype_context =
+        AttributeResolverContextBuilder::from(prop_hash_key_prototype_context)
+            .set_component_id(*component.id())
+            .to_context()
+            .expect("cannot create attribute context");
 
     let lateralus_component_func_binding = FuncBinding::new(
         &txn,
@@ -660,7 +691,7 @@ async fn list_for_context_with_a_hash() {
         &history_actor,
         *func.id(),
         *lateralus_component_func_binding.id(),
-        component_hash_key_prototype_context.clone(),
+        component_hash_key_prototype_context,
         Some("Lateralus".to_string()),
         None,
     )
@@ -693,7 +724,7 @@ async fn list_for_context_with_a_hash() {
         &history_actor,
         *func.id(),
         *fear_inoculum_component_func_binding.id(),
-        component_hash_key_prototype_context.clone(),
+        component_hash_key_prototype_context,
         Some("Fear Inoculum".to_string()),
         None,
     )
