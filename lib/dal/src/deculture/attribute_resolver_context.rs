@@ -1,9 +1,9 @@
 //! This module contains the [`AttributeResolverContext`], and its corresponding builder, [`AttributeResolverContextBuilder`].
-//! The context can be scoped with varying levels of specificity, using an order of precendence.
+//! The context can be scoped with varying levels of specificity, using an order of precedence.
 //! The builder ensures the correct order of precedence is maintained whilst setting and unsetting
 //! fields of specificity.
 //!
-//! The order of precendence is as follows (from least to most "specificity"):
+//! The order of precedence is as follows (from least to most "specificity"):
 //! - [`PropId`]
 //! - [`SchemaId`]
 //! - [`SchemaVariantId`]
