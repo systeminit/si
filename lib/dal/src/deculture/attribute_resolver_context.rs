@@ -64,6 +64,10 @@ impl From<AttributeResolverContext> for AttributeResolverContextBuilder {
 }
 
 impl AttributeResolverContext {
+    pub fn builder() -> AttributeResolverContextBuilder {
+        AttributeResolverContextBuilder::new()
+    }
+
     pub fn prop_id(&self) -> PropId {
         self.prop_id
     }
