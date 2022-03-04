@@ -204,16 +204,12 @@ async fn list_for_context() {
         .to_context()
         .expect("cannot create attribute context");
 
-    let albums_prop_prototype = AttributePrototype::list_for_context(
-        &txn,
-        &tenancy,
-        &visibility,
-        albums_prototype_context,
-    )
-    .await
-    .expect("cannot retrieve attribute prototype for album")
-    .pop()
-    .expect("no attribute prototype found for albums");
+    let _albums_prop_prototype =
+        AttributePrototype::list_for_context(&txn, &tenancy, &visibility, albums_prototype_context)
+            .await
+            .expect("cannot retrieve attribute prototype for album")
+            .pop()
+            .expect("no attribute prototype found for albums");
 
     let album_prop = create_prop_of_kind_with_name(
         &txn,
@@ -238,16 +234,12 @@ async fn list_for_context() {
         .to_context()
         .expect("cannot create attribute context");
 
-    let album_prop_prototype = AttributePrototype::list_for_context(
-        &txn,
-        &tenancy,
-        &visibility,
-        album_prototype_context,
-    )
-    .await
-    .expect("cannot retrieve attribute prototype for album")
-    .pop()
-    .expect("no attribute prototype found for album");
+    let _album_prop_prototype =
+        AttributePrototype::list_for_context(&txn, &tenancy, &visibility, album_prototype_context)
+            .await
+            .expect("cannot retrieve attribute prototype for album")
+            .pop()
+            .expect("no attribute prototype found for album");
 
     let name_prop = create_prop_of_kind_with_name(
         &txn,
@@ -358,10 +350,11 @@ async fn list_for_context() {
         .await
         .expect("failed to execute func binding");
 
-    let component_name_prototype_context = AttributeResolverContextBuilder::from(album_name_prototype_context)
-        .set_component_id(*component.id())
-        .to_context()
-        .expect("cannot create attribute context");
+    let component_name_prototype_context =
+        AttributeResolverContextBuilder::from(album_name_prototype_context)
+            .set_component_id(*component.id())
+            .to_context()
+            .expect("cannot create attribute context");
 
     let component_album_name_prototype = AttributePrototype::new(
         &txn,
@@ -491,16 +484,12 @@ async fn list_for_context_with_a_hash() {
         .to_context()
         .expect("cannot build attribute context");
 
-    let albums_prop_prototype = AttributePrototype::list_for_context(
-        &txn,
-        &tenancy,
-        &visibility,
-        albums_prototype_context,
-    )
-    .await
-    .expect("cannot retrieve attribute prototype for album")
-    .pop()
-    .expect("no attribute prototype found for albums");
+    let _albums_prop_prototype =
+        AttributePrototype::list_for_context(&txn, &tenancy, &visibility, albums_prototype_context)
+            .await
+            .expect("cannot retrieve attribute prototype for album")
+            .pop()
+            .expect("no attribute prototype found for albums");
 
     let album_prop = create_prop_of_kind_with_name(
         &txn,
@@ -525,16 +514,12 @@ async fn list_for_context_with_a_hash() {
         .to_context()
         .expect("cannot build attribute context");
 
-    let album_prop_prototype = AttributePrototype::list_for_context(
-        &txn,
-        &tenancy,
-        &visibility,
-        album_prototype_context,
-    )
-    .await
-    .expect("cannot retrieve attribute prototype for album")
-    .pop()
-    .expect("no attribute prototype found for album");
+    let _album_prop_prototype =
+        AttributePrototype::list_for_context(&txn, &tenancy, &visibility, album_prototype_context)
+            .await
+            .expect("cannot retrieve attribute prototype for album")
+            .pop()
+            .expect("no attribute prototype found for album");
 
     let hash_key_prop = create_prop_of_kind_with_name(
         &txn,

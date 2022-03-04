@@ -1,3 +1,4 @@
+use async_recursion::async_recursion;
 use serde::{Deserialize, Serialize};
 use si_data::{NatsError, NatsTxn, PgError, PgTxn};
 use telemetry::prelude::*;
@@ -18,9 +19,13 @@ use crate::{
 };
 
 const FIND_FOR_CONTEXT: &str = include_str!("../queries/attribute_prototype_list_for_context.sql");
+const FIND_WITH_PARENT_VALUE_AND_KEY_FOR_CONTEXT: &str =
+    include_str!("./queries/attribute_prototype_find_with_parent_value_and_key_for_context.sql");
 
 #[derive(Error, Debug)]
 pub enum AttributePrototypeError {
+    #[error("attribute resolver context builder error: {0}")]
+    AttributeResolverContextBuilder(#[from] AttributeResolverContextError),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
     #[error("func binding error: {0}")]
@@ -35,6 +40,13 @@ pub enum AttributePrototypeError {
     MissingFunc(String),
     #[error("attribute prototypes must have an associated prop, and this one does not. bug!")]
     MissingProp,
+    #[error("missing attribute value for tenancy {0:?}, visibility {1:?}, prototype {2:?}, with parent attribute value {3:?}")]
+    MissingValue(
+        Tenancy,
+        Visibility,
+        AttributePrototypeId,
+        Option<AttributeValueId>,
+    ),
     #[error("attribute prototype not found: {0} ({1:?})")]
     NotFound(AttributePrototypeId, Visibility),
     #[error(
@@ -132,7 +144,7 @@ impl AttributePrototype {
             history_actor,
             None,
             context,
-            key,
+            key.clone(),
         )
         .await?;
 
@@ -148,9 +160,31 @@ impl AttributePrototype {
                 .await?;
         }
 
-        // while !context.is_least_specific() {
-        //     context = context.less_specific();
-        // }
+        if !context.is_least_specific() {
+            let original_prototype = Self::find_with_parent_value_and_key_for_context(
+                txn,
+                tenancy,
+                visibility,
+                parent_attribute_value_id,
+                key,
+                context.less_specific()?,
+            )
+            .await?;
+
+            if let Some(original_prototype) = original_prototype {
+                Self::create_intermediate_proxy_values(
+                    txn,
+                    nats,
+                    tenancy,
+                    visibility,
+                    history_actor,
+                    parent_attribute_value_id,
+                    *original_prototype.id(),
+                    context.less_specific()?,
+                )
+                .await?;
+            }
+        }
 
         Ok(object)
     }
@@ -182,5 +216,122 @@ impl AttributePrototype {
             .await?;
         let object = standard_model::objects_from_rows(rows)?;
         Ok(object)
+    }
+
+    #[tracing::instrument(skip(txn))]
+    pub async fn find_with_parent_value_and_key_for_context(
+        txn: &PgTxn<'_>,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+        parent_attribute_value_id: Option<AttributeValueId>,
+        key: Option<String>,
+        context: AttributeResolverContext,
+    ) -> AttributePrototypeResult<Option<Self>> {
+        let row = txn
+            .query_opt(
+                FIND_WITH_PARENT_VALUE_AND_KEY_FOR_CONTEXT,
+                &[
+                    &tenancy,
+                    &visibility,
+                    &parent_attribute_value_id,
+                    &key,
+                    &context.prop_id(),
+                    &context.schema_id(),
+                    &context.schema_variant_id(),
+                    &context.component_id(),
+                    &context.system_id(),
+                ],
+            )
+            .await?;
+
+        Ok(standard_model::option_object_from_row(row)?)
+    }
+
+    #[tracing::instrument(skip(txn))]
+    #[allow(clippy::too_many_arguments)]
+    #[async_recursion]
+    async fn create_intermediate_proxy_values(
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+        history_actor: &HistoryActor,
+        parent_attribute_value_id: Option<AttributeValueId>,
+        prototype_id: AttributePrototypeId,
+        context: AttributeResolverContext,
+    ) -> AttributePrototypeResult<()> {
+        if context.is_least_specific() {
+            return Ok(());
+        }
+
+        if (AttributeValue::find_with_parent_and_prototype_for_context(
+            txn,
+            tenancy,
+            visibility,
+            parent_attribute_value_id,
+            prototype_id,
+            context,
+        )
+        .await?)
+            .is_none()
+        {
+            // Need to create a proxy to the next lowest level
+            Self::create_intermediate_proxy_values(
+                txn,
+                nats,
+                tenancy,
+                visibility,
+                history_actor,
+                parent_attribute_value_id,
+                prototype_id,
+                context.less_specific()?,
+            )
+            .await?;
+
+            if let Some(proxy_target) = AttributeValue::find_with_parent_and_prototype_for_context(
+                txn,
+                tenancy,
+                visibility,
+                parent_attribute_value_id,
+                prototype_id,
+                context.less_specific()?,
+            )
+            .await?
+            {
+                // Create the proxy at this level
+                let mut proxy_attribute_value = AttributeValue::new(
+                    txn,
+                    nats,
+                    tenancy,
+                    visibility,
+                    history_actor,
+                    proxy_target.func_binding_return_value_id().copied(),
+                    context,
+                    proxy_target.key().map(|k| k.to_string()),
+                )
+                .await?;
+                proxy_attribute_value
+                    .set_proxy_for_attribute_value_id(
+                        txn,
+                        nats,
+                        visibility,
+                        history_actor,
+                        Some(*proxy_target.id()),
+                    )
+                    .await?;
+                proxy_attribute_value
+                    .set_attribute_prototype(txn, nats, visibility, history_actor, &prototype_id)
+                    .await?
+            } else {
+                return Err(AttributePrototypeError::MissingValue(
+                    tenancy.clone(),
+                    *visibility,
+                    prototype_id,
+                    parent_attribute_value_id,
+                ));
+            }
+        }
+
+        Ok(())
     }
 }

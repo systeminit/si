@@ -68,5 +68,4 @@ WHERE in_tenancy_v1($1, attribute_values.tenancy_universal, attribute_values.ten
       schema_id DESC
       schema_variant_id DESC, 
       component_id DESC, 
-      system_id DESC, 
-  LIMIT 1;
+      system_id DESC;

@@ -16,7 +16,8 @@ use crate::{
     PropError, PropKind, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
 };
 
-// const FIND_FOR_CONTEXT_WITH_PARENT: &str = include_str!("../queries/attribute_value_find_for_context_with_parent.sql");
+const FIND_WITH_PARENT_AND_PROTOTYPE_FOR_CONTEXT: &str =
+    include_str!("../queries/attribute_value_find_with_parent_and_protype_for_context.sql");
 
 #[derive(Error, Debug)]
 pub enum AttributeValueError {
@@ -212,13 +213,39 @@ impl AttributeValue {
         Ok(())
     }
 
-    // We need...
-    // - context
-    // - prototype (need elements in array / values in map)
-    // - parent (AttributeValue)
-    //   - if None, must not have parent in same visibility, tenancy, etc.
-    //   - if Some, must have same parent
-    pub async fn find() {}
+    pub async fn find_with_parent_and_prototype_for_context(
+        txn: &PgTxn<'_>,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+        parent_attribute_value_id: Option<AttributeValueId>,
+        attribute_prototype_id: AttributePrototypeId,
+        context: AttributeResolverContext,
+    ) -> AttributeValueResult<Option<Self>> {
+        // We need...
+        // - context
+        // - prototype (need elements in array / values in map)
+        // - parent (AttributeValue)
+        //   - if None, must not have parent in same visibility, tenancy, etc.
+        //   - if Some, must have same parent
+        let row = txn
+            .query_opt(
+                FIND_WITH_PARENT_AND_PROTOTYPE_FOR_CONTEXT,
+                &[
+                    &tenancy,
+                    &visibility,
+                    &attribute_prototype_id,
+                    &parent_attribute_value_id,
+                    &context.prop_id(),
+                    &context.schema_id(),
+                    &context.schema_variant_id(),
+                    &context.component_id(),
+                    &context.system_id(),
+                ],
+            )
+            .await?;
+
+        Ok(standard_model::option_object_from_row(row)?)
+    }
 
     // pub async fn update_proxies(
     //     &mut self,
