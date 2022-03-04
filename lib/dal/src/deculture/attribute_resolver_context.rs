@@ -101,7 +101,7 @@ impl AttributeResolverContext {
     /// context would result in everything being unset, it will return a new copy of the current
     /// [`AttributeResolverContext`].
     pub fn less_specific(&self) -> AttributeResolverContextResult<Self> {
-        let mut builder = AttributeResolverContextBuilder::from_context(self);
+        let mut builder = AttributeResolverContextBuilder::from(*self);
 
         if self.system_id() != UNSET_ID_VALUE.into() {
             builder.unset_system_id();
@@ -152,17 +152,6 @@ impl AttributeResolverContextBuilder {
             schema_variant_id: UNSET_ID_VALUE.into(),
             component_id: UNSET_ID_VALUE.into(),
             system_id: UNSET_ID_VALUE.into(),
-        }
-    }
-
-    /// Converts [`AttributeResolverContext`] to [`Self`].
-    pub fn from_context(context: &AttributeResolverContext) -> Self {
-        Self {
-            prop_id: context.prop_id(),
-            schema_id: context.schema_id(),
-            schema_variant_id: context.schema_variant_id(),
-            component_id: context.component_id(),
-            system_id: context.system_id(),
         }
     }
 
