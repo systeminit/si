@@ -27,10 +27,15 @@ pub type AttributeResolverContextResult<T> = Result<T, AttributeResolverContextE
 
 #[derive(Deserialize, Serialize, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AttributeResolverContext {
+    #[serde(rename = "attribute_context_prop_id")]
     prop_id: PropId,
+    #[serde(rename = "attribute_context_schema_id")]
     schema_id: SchemaId,
+    #[serde(rename = "attribute_context_schema_variant_id")]
     schema_variant_id: SchemaVariantId,
+    #[serde(rename = "attribute_context_component_id")]
     component_id: ComponentId,
+    #[serde(rename = "attribute_context_system_id")]
     system_id: SystemId,
 }
 
@@ -281,6 +286,36 @@ impl AttributeResolverContextBuilder {
     pub fn unset_system_id(&mut self) -> &mut Self {
         self.system_id = UNSET_ID_VALUE.into();
         self
+    }
+}
+
+impl postgres_types::ToSql for AttributeResolverContext {
+    fn to_sql(
+        &self,
+        ty: &postgres_types::Type,
+        out: &mut postgres_types::private::BytesMut,
+    ) -> Result<postgres_types::IsNull, Box<dyn std::error::Error + Sync + Send>>
+    where
+        Self: Sized,
+    {
+        let json = serde_json::to_value(self)?;
+        postgres_types::ToSql::to_sql(&json, ty, out)
+    }
+
+    fn accepts(ty: &postgres_types::Type) -> bool
+    where
+        Self: Sized,
+    {
+        ty == &postgres_types::Type::JSONB
+    }
+
+    fn to_sql_checked(
+        &self,
+        ty: &postgres_types::Type,
+        out: &mut postgres_types::private::BytesMut,
+    ) -> Result<postgres_types::IsNull, Box<dyn std::error::Error + Sync + Send>> {
+        let json = serde_json::to_value(self)?;
+        postgres_types::ToSql::to_sql(&json, ty, out)
     }
 }
 

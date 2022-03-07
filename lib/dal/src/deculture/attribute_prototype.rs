@@ -111,17 +111,13 @@ impl AttributePrototype {
     ) -> AttributePrototypeResult<Self> {
         let row = txn
             .query_one(
-                "SELECT object FROM attribute_prototype_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
+                "SELECT object FROM attribute_prototype_create_v1($1, $2, $3, $4, $5, $6)",
                 &[
                     &tenancy,
                     &visibility,
+                    &context,
                     &func_id,
                     &func_binding_id,
-                    &context.prop_id(),
-                    &context.component_id(),
-                    &context.schema_id(),
-                    &context.schema_variant_id(),
-                    &context.system_id(),
                     &key,
                 ],
             )
@@ -203,15 +199,7 @@ impl AttributePrototype {
         let rows = txn
             .query(
                 LIST_FOR_CONTEXT,
-                &[
-                    &tenancy,
-                    &visibility,
-                    &context.prop_id(),
-                    &context.component_id(),
-                    &context.schema_id(),
-                    &context.schema_variant_id(),
-                    &context.system_id(),
-                ],
+                &[&tenancy, &visibility, &context, &context.prop_id()],
             )
             .await?;
         let object = standard_model::objects_from_rows(rows)?;
@@ -233,13 +221,9 @@ impl AttributePrototype {
                 &[
                     &tenancy,
                     &visibility,
+                    &context,
                     &parent_attribute_value_id,
                     &key,
-                    &context.prop_id(),
-                    &context.schema_id(),
-                    &context.schema_variant_id(),
-                    &context.component_id(),
-                    &context.system_id(),
                 ],
             )
             .await?;
