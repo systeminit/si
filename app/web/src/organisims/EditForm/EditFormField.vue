@@ -1,6 +1,6 @@
 <template>
   <template v-if="props.coreEditField">
-    <div class="flex flex-row items-center mx-6 mt-2">
+    <div v-show="show" class="flex flex-row items-center mx-6 mt-2">
       <div class="text-sm leading-tight text-right text-white w-28">
         <slot name="name"></slot>
       </div>
@@ -21,7 +21,7 @@
     </div>
   </template>
   <template v-else>
-    <div v-if="props.show" class="flex flex-row items-center w-full">
+    <div v-show="show" class="flex flex-row items-center w-full">
       <div class="flex flex-col w-full">
         <div class="flex flex-row items-center">
           <div

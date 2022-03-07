@@ -1,36 +1,39 @@
 <template>
   <HeaderWidget
     v-if="editField.widget.kind === 'Header'"
-    :show="true"
-    :edit-field="editField"
+    :show="props.show"
+    :edit-field="props.editField"
     :background-colors="backgroundColors"
-    :core-edit-field="coreEditField"
-    :indent-level="indentLevel"
+    :core-edit-field="props.coreEditField"
+    :indent-level="props.indentLevel"
+    :tree-open-state="props.treeOpenState"
+    @toggle-header="toggleHeader"
   />
   <ArrayWidget
     v-else-if="editField.widget.kind === 'Array'"
-    :show="true"
-    :edit-field="editField"
-    :core-edit-field="coreEditField"
-    :indent-level="indentLevel"
+    :show="props.show"
+    :edit-field="props.editField"
+    :core-edit-field="props.coreEditField"
+    :indent-level="props.indentLevel"
+    :tree-open-state="treeOpenState"
   />
   <TextWidget
     v-else-if="editField.widget.kind === 'Text'"
-    :show="true"
-    :edit-field="editField"
-    :core-edit-field="coreEditField"
+    :show="props.show"
+    :edit-field="props.editField"
+    :core-edit-field="props.coreEditField"
   />
   <CheckboxWidget
     v-else-if="editField.widget.kind === 'Checkbox'"
-    :show="true"
-    :edit-field="editField"
-    :core-edit-field="coreEditField"
+    :show="props.show"
+    :edit-field="props.editField"
+    :core-edit-field="props.coreEditField"
   />
   <SelectWidget
     v-else-if="editField.widget.kind === 'Select'"
-    :show="true"
-    :edit-field="editField"
-    :core-edit-field="coreEditField"
+    :show="props.show"
+    :edit-field="props.editField"
+    :core-edit-field="props.coreEditField"
   />
 </template>
 
@@ -41,11 +44,22 @@ import TextWidget from "@/organisims/EditForm/TextWidget.vue";
 import SelectWidget from "@/organisims/EditForm/SelectWidget.vue";
 import HeaderWidget from "@/organisims/EditForm/HeaderWidget.vue";
 import ArrayWidget from "@/organisims/EditForm/ArrayWidget.vue";
+import { ITreeOpenState } from "@/utils/edit_field_visitor";
 
-defineProps<{
+const props = defineProps<{
+  show: boolean;
   coreEditField: boolean;
   indentLevel: number;
   editField: EditField;
+  treeOpenState: ITreeOpenState;
   backgroundColors: number[][];
 }>();
+
+const emit = defineEmits<{
+  (e: "toggleHeader", fieldId: string): void;
+}>();
+
+const toggleHeader = (fieldId: string) => {
+  emit("toggleHeader", fieldId);
+};
 </script>

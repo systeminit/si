@@ -1,5 +1,11 @@
 <template>
-  <Widgets v-if="editFields" :edit-fields="editFields" :indent-level="1" />
+  <Widgets
+    v-if="editFields"
+    :show="true"
+    :edit-fields="editFields"
+    :indent-level="1"
+    :tree-open-state="{}"
+  />
 </template>
 
 <script setup lang="ts">

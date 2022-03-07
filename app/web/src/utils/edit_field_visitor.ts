@@ -61,6 +61,7 @@ export class ChangedEditFieldCounterVisitor implements EditFieldVisitor {
       this.n += 1;
     }
   }
+
   visitEditFields(editFields: EditFields) {
     for (const editField of editFields) {
       visitEditField(this, editField);
@@ -119,6 +120,89 @@ export class ChangedEditFieldCounterVisitor implements EditFieldVisitor {
 
   visitString(field: StringEditField) {
     this.countIfChanged(field.visibility_diff);
+  }
+}
+
+export type ITreeOpenState = Record<string, boolean>;
+
+export class InitialTreeOpenStateVisitor implements EditFieldVisitor {
+  private state: ITreeOpenState = {};
+  private currentFieldId: string | undefined = undefined;
+
+  initialTreeState(): ITreeOpenState {
+    return this.state;
+  }
+
+  private markOpenIfChildIsSet(field: EditField) {
+    if (this.currentFieldId && field.value) {
+      if (this.state[this.currentFieldId]) {
+        this.state[this.currentFieldId] = true;
+      } else {
+        throw new Error(
+          `Entry for header '${this.currentFieldId}' not set, this is a bug!`,
+        );
+      }
+    }
+  }
+
+  visitEditFields(editFields: EditFields) {
+    for (const editField of editFields) {
+      visitEditField(this, editField);
+    }
+  }
+
+  visitArray(field: ArrayEditField) {
+    if (field.widget.kind == "Array") {
+      for (const entry of field.widget.options.entries) {
+        for (const editField of entry) {
+          visitEditField(this, editField);
+        }
+      }
+    } else {
+      throw new Error(
+        `Invalid Widget for an Array EditField: '${field.widget.kind}`,
+      );
+    }
+  }
+
+  visitBoolean(field: BooleanEditField) {
+    this.markOpenIfChildIsSet(field);
+  }
+
+  visitInteger(field: IntegerEditField) {
+    this.markOpenIfChildIsSet(field);
+  }
+
+  visitMap(_field: MapEditField) {
+    // TODO(fnichol): implement support of maps once we have a reasonable
+    // widget type
+    throw new Error("Map kinds are not yet supported, sorry!");
+  }
+
+  visitNone(field: NoneEditField) {
+    this.markOpenIfChildIsSet(field);
+  }
+
+  visitObject(field: ObjectEditField) {
+    const headerId = field.id;
+    this.state[headerId] = false;
+    this.currentFieldId = headerId;
+
+    if (field.widget.kind == "Header") {
+      for (const editField of field.widget.options.edit_fields) {
+        visitEditField(this, editField);
+      }
+    } else {
+      throw new Error(
+        `Invalid Widget for an Object EditField: '${field.widget.kind}`,
+      );
+    }
+
+    this.currentFieldId = undefined;
+  }
+
+  visitString(field: StringEditField) {
+    this.markOpenIfChildIsSet(field);
   }
 }
 

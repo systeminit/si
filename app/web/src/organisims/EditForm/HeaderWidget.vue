@@ -1,10 +1,11 @@
 <template>
-  <section>
+  <section v-show="show">
     <div
-      class="flex w-full pt-1 pb-1 mt-2 text-sm text-white"
+      class="flex w-full pt-1 pb-1 mt-2 text-sm text-white cursor-pointer"
       :style="propObjectStyle"
+      @click="toggleHeader"
     >
-      <div v-if="isOpen" class="flex" :style="propObjectStyle">
+      <div v-if="openState" class="flex" :style="propObjectStyle">
         <VueFeather type="chevron-down" />
         {{ editField.name }}
       </div>
@@ -14,15 +15,22 @@
       </div>
     </div>
   </section>
-  <Widgets :edit-fields="widgetEditFields" :indent-level="indentLevel + 1" />
+  <Widgets
+    :show="showChildren"
+    :edit-fields="widgetEditFields"
+    :indent-level="indentLevel + 1"
+    :tree-open-state="treeOpenState"
+    @toggle-header="bubbleToggleHeader"
+  />
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed } from "vue";
 import { EditField, EditFields } from "@/api/sdf/dal/edit_field";
 import VueFeather from "vue-feather";
 import { defineAsyncComponent, DefineComponent } from "vue";
 import type { WidgetsProps } from "./Widgets.vue";
+import { ITreeOpenState } from "@/utils/edit_field_visitor";
 
 // Eliminate the circular dependency of HeaderWidget -> Widgets -> HeaderWidget
 // by using `defineAsyncComponent` in a careful way to preserve the ability for
@@ -41,7 +49,12 @@ const props = defineProps<{
   coreEditField: boolean;
   indentLevel: number;
   editField: EditField;
+  treeOpenState: ITreeOpenState;
   backgroundColors: number[][];
+}>();
+
+const emit = defineEmits<{
+  (e: "toggleHeader", fieldId: string): void;
 }>();
 
 // const editMode = refFrom<boolean>(ChangeSetService.currentEditMode());
@@ -54,7 +67,31 @@ const widgetEditFields = computed<EditFields>(() => {
   }
 });
 
-const isOpen = ref<boolean>(true);
+const fieldId = computed<string>(() => {
+  return props.editField.id;
+});
+
+const openState = computed<boolean>(() => {
+  const state = props.treeOpenState[fieldId.value];
+  if (state === undefined) {
+    throw new Error(
+      `No open state for fieldId '${fieldId.value}; this is a bug!`,
+    );
+  }
+  return state;
+});
+
+const showChildren = computed<boolean>(() => {
+  return props.show && openState.value;
+});
+
+const toggleHeader = () => {
+  emit("toggleHeader", fieldId.value);
+};
+
+const bubbleToggleHeader = (fieldId: string) => {
+  emit("toggleHeader", fieldId);
+};
 
 const propObjectStyle = computed<string>(() => {
   // const rgb = props.backgroundColors[1].join(",");

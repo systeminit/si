@@ -14,7 +14,12 @@
           :key="index"
           class="flex flex-col justify-between w-full p-1 border border-gray-500"
         >
-          <Widgets :edit-fields="editFields" :indent-level="indentLevel + 1" />
+          <Widgets
+            :show="show"
+            :edit-fields="editFields"
+            :indent-level="indentLevel + 1"
+            :tree-open-state="treeOpenState"
+          />
         </div>
         <div class="flex flex-row mt-1 ml-1">
           <button @click="addToArray">
@@ -36,7 +41,12 @@
           :key="index"
           class="flex flex-col justify-between w-full mx-1 border border-gray-500"
         >
-          <Widgets :edit-fields="editFields" :indent-level="indentLevel + 1" />
+          <Widgets
+            :show="show"
+            :edit-fields="editFields"
+            :indent-level="indentLevel + 1"
+            :tree-open-state="treeOpenState"
+          />
         </div>
       </div>
     </template>
@@ -56,6 +66,7 @@ import { UpdateFromEditFieldResponse } from "@/service/edit_field/update_from_ed
 import { GlobalErrorService } from "@/service/global_error";
 import { defineAsyncComponent, DefineComponent } from "vue";
 import type { WidgetsProps } from "./Widgets.vue";
+import { ITreeOpenState } from "@/utils/edit_field_visitor";
 
 // Eliminate the circular dependency of HeaderWidget -> Widgets -> HeaderWidget
 // by using `defineAsyncComponent` in a careful way to preserve the ability for
@@ -74,6 +85,7 @@ const props = defineProps<{
   coreEditField: boolean;
   indentLevel: number;
   editField: EditField;
+  treeOpenState: ITreeOpenState;
 }>();
 
 const widget = computed<ArrayWidgetDal>(() => {
