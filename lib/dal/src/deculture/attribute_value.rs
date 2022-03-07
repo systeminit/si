@@ -107,16 +107,12 @@ impl AttributeValue {
     ) -> AttributeValueResult<Self> {
         let row = txn
             .query_one(
-                "SELECT object FROM attribute_value_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+                "SELECT object FROM attribute_value_create_v1($1, $2, $3, $4, $5)",
                 &[
                     &tenancy,
                     &visibility,
+                    &context,
                     &func_binding_return_value_id,
-                    &context.prop_id(),
-                    &context.component_id(),
-                    &context.schema_id(),
-                    &context.schema_variant_id(),
-                    &context.system_id(),
                     &key,
                 ],
             )
@@ -207,13 +203,9 @@ impl AttributeValue {
                 &[
                     &tenancy,
                     &visibility,
+                    &context,
                     &attribute_prototype_id,
                     &parent_attribute_value_id,
-                    &context.prop_id(),
-                    &context.schema_id(),
-                    &context.schema_variant_id(),
-                    &context.component_id(),
-                    &context.system_id(),
                 ],
             )
             .await?;
