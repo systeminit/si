@@ -1,4 +1,4 @@
-use crate::server::extract::{Authorization, NatsTxn, PgRwTxn, Veritech};
+use crate::server::extract::{Authorization, EncryptionKey, NatsTxn, PgRwTxn, Veritech};
 use crate::service::schematic::{SchematicError, SchematicResult};
 use axum::Json;
 use dal::{
@@ -30,6 +30,7 @@ pub async fn create_node(
     mut txn: PgRwTxn,
     mut nats: NatsTxn,
     Veritech(veritech): Veritech,
+    EncryptionKey(encryption_key): EncryptionKey,
     Authorization(claim): Authorization,
     Json(request): Json<CreateNodeRequest>,
 ) -> SchematicResult<Json<CreateNodeResponse>> {
@@ -50,10 +51,11 @@ pub async fn create_node(
 
     let name = generate_name(None);
 
-    let (component, node) = Component::new_for_schema_with_node(
+    let (_component, node) = Component::new_for_schema_with_node(
         &txn,
         &nats,
         veritech,
+        &encryption_key,
         &tenancy,
         &request.visibility,
         &history_actor,
@@ -99,7 +101,7 @@ pub async fn create_node(
     position
         .set_node(&txn, &nats, &request.visibility, &history_actor, node.id())
         .await?;
-    let node_view = NodeView::new(component.name(), node, vec![position], node_template);
+    let node_view = NodeView::new(name, node, vec![position], node_template);
 
     txn.commit().await?;
     nats.commit().await?;

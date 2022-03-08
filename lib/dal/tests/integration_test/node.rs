@@ -44,14 +44,22 @@ async fn component_relationships() {
         txn,
         _nats_conn,
         nats,
-        _veritech,
-        _encr_key,
+        veritech,
+        encr_key,
     );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
-    let component =
-        create_component_and_schema(&txn, &nats, &tenancy, &visibility, &history_actor).await;
+    let component = create_component_and_schema(
+        &txn,
+        &nats,
+        veritech,
+        &encr_key,
+        &tenancy,
+        &visibility,
+        &history_actor,
+    )
+    .await;
     let node = create_node(
         &txn,
         &nats,
@@ -82,8 +90,8 @@ async fn new_node_template() {
         txn,
         _nats_conn,
         nats,
-        _veritech,
-        _encr_key,
+        veritech,
+        encr_key,
     );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
@@ -98,8 +106,16 @@ async fn new_node_template() {
         &SchemaKind::Concept,
     )
     .await;
-    let schema_variant =
-        create_schema_variant(&txn, &nats, &tenancy, &visibility, &history_actor).await;
+    let schema_variant = create_schema_variant(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        veritech,
+        encr_key,
+    )
+    .await;
     schema_variant
         .set_schema(&txn, &nats, &visibility, &history_actor, schema.id())
         .await

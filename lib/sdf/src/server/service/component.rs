@@ -40,6 +40,8 @@ pub enum ComponentError {
     WsEvent(#[from] WsEventError),
     #[error("component not found")]
     ComponentNotFound,
+    #[error("component name not found")]
+    ComponentNameNotFound,
     #[error("resource not found")]
     ResourceNotFound(ComponentId, SystemId),
 }

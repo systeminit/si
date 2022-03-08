@@ -1,36 +1,36 @@
 <template>
   <HeaderWidget
-    v-if="editField.widget.kind === 'Header'"
+    v-if="props.editField.widget.kind === 'Header'"
     :show="props.show"
     :edit-field="props.editField"
-    :background-colors="backgroundColors"
+    :background-colors="props.backgroundColors"
     :core-edit-field="props.coreEditField"
     :indent-level="props.indentLevel"
     :tree-open-state="props.treeOpenState"
     @toggle-header="toggleHeader"
   />
   <ArrayWidget
-    v-else-if="editField.widget.kind === 'Array'"
+    v-else-if="props.editField.widget.kind === 'Array'"
     :show="props.show"
     :edit-field="props.editField"
     :core-edit-field="props.coreEditField"
     :indent-level="props.indentLevel"
-    :tree-open-state="treeOpenState"
+    :tree-open-state="props.treeOpenState"
   />
   <TextWidget
-    v-else-if="editField.widget.kind === 'Text'"
+    v-else-if="props.editField.widget.kind === 'Text'"
     :show="props.show"
     :edit-field="props.editField"
     :core-edit-field="props.coreEditField"
   />
   <CheckboxWidget
-    v-else-if="editField.widget.kind === 'Checkbox'"
+    v-else-if="props.editField.widget.kind === 'Checkbox'"
     :show="props.show"
     :edit-field="props.editField"
     :core-edit-field="props.coreEditField"
   />
   <SelectWidget
-    v-else-if="editField.widget.kind === 'Select'"
+    v-else-if="props.editField.widget.kind === 'Select'"
     :show="props.show"
     :edit-field="props.editField"
     :core-edit-field="props.coreEditField"

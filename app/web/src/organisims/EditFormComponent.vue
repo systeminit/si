@@ -26,9 +26,8 @@
 
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { EditFieldObjectKind, EditFields } from "@/api/sdf/dal/edit_field";
+import { EditFields } from "@/api/sdf/dal/edit_field";
 import Widgets from "@/organisims/EditForm/Widgets.vue";
-import _ from "lodash";
 import {
   InitialTreeOpenStateVisitor,
   ITreeOpenState,
@@ -42,20 +41,26 @@ const props = defineProps<{
  * Returns core edit fields that are *not* component properties
  */
 const coreEditFields = computed(() => {
-  return _.filter(
-    props.editFields,
-    (field) => field.object_kind == EditFieldObjectKind.Component,
+  let fields = [];
+  props.editFields.forEach((root) =>
+    root.widget.options.edit_fields
+      .filter((p) => p.id === "root.si")
+      .forEach((p) => (fields = fields.concat(p.widget.options.edit_fields))),
   );
+  return fields;
 });
 
 /**
  * Returns edit fields are component properties
  */
 const propertyEditFields = computed(() => {
-  return _.filter(
-    props.editFields,
-    (field) => field.object_kind == EditFieldObjectKind.ComponentProp,
+  let fields = [];
+  props.editFields.forEach((root) =>
+    root.widget.options.edit_fields
+      .filter((p) => p.id === "root.domain")
+      .forEach((p) => (fields = fields.concat(p.widget.options.edit_fields))),
   );
+  return fields;
 });
 
 const initialTreeOpenState = computed(

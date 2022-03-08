@@ -18,7 +18,7 @@ async fn new() {
         _nats_conn,
         nats,
         veritech,
-        _encr_key,
+        encr_key,
     );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
@@ -58,6 +58,7 @@ async fn new() {
         &txn,
         &nats,
         veritech.clone(),
+        &encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -71,6 +72,7 @@ async fn new() {
         &txn,
         &nats,
         veritech,
+        &encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -122,7 +124,7 @@ async fn include_component_in_system() {
         _nats_conn,
         nats,
         veritech,
-        _ency_key,
+        encr_key,
     );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
@@ -149,6 +151,7 @@ async fn include_component_in_system() {
         &txn,
         &nats,
         veritech.clone(),
+        &encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -162,6 +165,7 @@ async fn include_component_in_system() {
         &txn,
         &nats,
         veritech,
+        &encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -199,7 +203,7 @@ async fn include_component_in_system_with_edit_sessions() {
         _nats_conn,
         nats,
         veritech,
-        _encr_key,
+        encr_key,
     );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
@@ -229,6 +233,7 @@ async fn include_component_in_system_with_edit_sessions() {
         &txn,
         &nats,
         veritech.clone(),
+        &encr_key,
         &tenancy,
         &edit_session_visibility,
         &history_actor,
@@ -242,6 +247,7 @@ async fn include_component_in_system_with_edit_sessions() {
         &txn,
         &nats,
         veritech,
+        &encr_key,
         &tenancy,
         &edit_session_visibility,
         &history_actor,

@@ -39,6 +39,8 @@ async fn new() {
     let component = create_component_for_schema_variant(
         &txn,
         &nats,
+        veritech.clone(),
+        &encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -118,6 +120,8 @@ async fn find_for_prototype() {
     let component = create_component_for_schema_variant(
         &txn,
         &nats,
+        veritech.clone(),
+        &encr_key,
         &tenancy,
         &visibility,
         &history_actor,

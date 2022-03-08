@@ -30,7 +30,6 @@ pub enum ComponentViewError {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct ComponentView {
-    pub name: String,
     pub system: Option<System>,
     pub kind: ComponentKind,
     pub properties: serde_json::Value,
@@ -39,7 +38,6 @@ pub struct ComponentView {
 impl Default for ComponentView {
     fn default() -> Self {
         Self {
-            name: Default::default(),
             system: Default::default(),
             kind: Default::default(),
             properties: serde_json::json!({}),
@@ -187,10 +185,9 @@ impl ComponentView {
             work_queue = unprocessed;
         }
         Ok(ComponentView {
-            name: component.name().to_string(),
             system,
             kind: *component.kind(),
-            properties,
+            properties: properties["root"].clone(),
         })
     }
 
@@ -206,7 +203,11 @@ impl ComponentView {
         }
 
         // If it's a credential it's already unencrypted
-        if let Some(object) = component.properties.as_object_mut() {
+        if let Some(object) = component
+            .properties
+            .as_object_mut()
+            .and_then(|obj| obj.get_mut("root").and_then(|obj| obj.as_object_mut()))
+        {
             // Note: we can't know which fields are WidgetKind::SecretSelect as we lose information by being so low on the stack
             // So for now we will try to decrypt every integer root field, which kinda suck
             //
@@ -256,7 +257,6 @@ impl From<ComponentKind> for veritech::ComponentKind {
 impl From<ComponentView> for veritech::ComponentView {
     fn from(view: ComponentView) -> Self {
         Self {
-            name: view.name,
             // Filters internal data out, leaving only what is useful
             system: view.system.map(|system| veritech::SystemView {
                 name: system.name().to_owned(),

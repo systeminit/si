@@ -40,7 +40,17 @@ pub async fn kubernetes_deployment(
         None => return Ok(()),
     };
 
-    let variant = SchemaVariant::new(txn, nats, tenancy, visibility, history_actor, "v0").await?;
+    let (variant, root_prop) = SchemaVariant::new(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        "v0",
+        veritech.clone(),
+        encryption_key,
+    )
+    .await?;
     variant
         .set_schema(txn, nats, visibility, history_actor, schema.id())
         .await?;
@@ -59,7 +69,7 @@ pub async fn kubernetes_deployment(
             variant.id(),
             "apiVersion",
             "apps/v1".to_owned(),
-            None,
+            Some(root_prop.domain_prop_id),
             veritech.clone(),
             encryption_key,
         )
@@ -76,7 +86,7 @@ pub async fn kubernetes_deployment(
             variant.id(),
             "kind",
             "Deployment".to_owned(),
-            None,
+            Some(root_prop.domain_prop_id),
             veritech.clone(),
             encryption_key,
         )
@@ -92,7 +102,7 @@ pub async fn kubernetes_deployment(
             history_actor,
             variant.id(),
             true, // is name required, note: bool is not ideal here tho
-            None,
+            Some(root_prop.domain_prop_id),
             veritech.clone(),
             encryption_key,
         )
@@ -111,7 +121,7 @@ pub async fn kubernetes_deployment(
             variant.id(),
             "spec",
             PropKind::Object,
-            None,
+            Some(root_prop.domain_prop_id),
         )
         .await?;
 

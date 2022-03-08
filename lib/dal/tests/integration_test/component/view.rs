@@ -1,11 +1,11 @@
 use dal::{
     system::UNSET_SYSTEM_ID,
     test_harness::{
-        create_component_for_schema_variant, create_prop_of_kind_with_name, create_schema,
-        create_schema_variant, find_or_create_production_system,
+        create_prop_of_kind_with_name, create_schema, create_schema_variant_with_root,
+        find_or_create_production_system,
     },
-    ComponentView, HistoryActor, Prop, PropKind, SchemaKind, SchemaVariant, StandardModel, Tenancy,
-    Visibility,
+    Component, ComponentView, HistoryActor, Prop, PropKind, SchemaKind, SchemaVariant,
+    StandardModel, Tenancy, Visibility,
 };
 use pretty_assertions_sorted::{assert_eq, assert_eq_sorted};
 use si_data::{NatsTxn, PgTxn};
@@ -36,8 +36,16 @@ pub async fn create_schema_with_object_and_string_prop(
         &SchemaKind::Concrete,
     )
     .await;
-    let schema_variant =
-        create_schema_variant(txn, nats, &tenancy, &visibility, &history_actor).await;
+    let (schema_variant, root) = create_schema_variant_with_root(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        veritech.clone(),
+        encryption_key,
+    )
+    .await;
     schema_variant
         .set_schema(txn, nats, &visibility, &history_actor, schema.id())
         .await
@@ -95,6 +103,10 @@ pub async fn create_schema_with_object_and_string_prop(
         .add_schema_variant(txn, nats, &visibility, &history_actor, schema_variant.id())
         .await
         .expect("cannot associate prop with schema variant");
+    queen_prop
+        .set_parent_prop(txn, nats, &visibility, &history_actor, root.domain_prop_id)
+        .await
+        .expect("cannot set parent prop");
     killer_prop
         .set_parent_prop(txn, nats, &visibility, &history_actor, *queen_prop.id())
         .await
@@ -129,8 +141,16 @@ pub async fn create_schema_with_nested_objects_and_string_prop(
         &SchemaKind::Concrete,
     )
     .await;
-    let schema_variant =
-        create_schema_variant(txn, nats, &tenancy, &visibility, &history_actor).await;
+    let (schema_variant, root) = create_schema_variant_with_root(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        veritech.clone(),
+        encryption_key,
+    )
+    .await;
     schema_variant
         .set_schema(txn, nats, &visibility, &history_actor, schema.id())
         .await
@@ -218,6 +238,10 @@ pub async fn create_schema_with_nested_objects_and_string_prop(
         .add_schema_variant(txn, nats, &visibility, &history_actor, schema_variant.id())
         .await
         .expect("cannot associate prop with schema variant");
+    queen_prop
+        .set_parent_prop(txn, nats, &visibility, &history_actor, root.domain_prop_id)
+        .await
+        .expect("cannot set parent prop");
     killer_prop
         .set_parent_prop(txn, nats, &visibility, &history_actor, *queen_prop.id())
         .await
@@ -263,8 +287,16 @@ pub async fn create_schema_with_string_props(
         &SchemaKind::Concrete,
     )
     .await;
-    let schema_variant =
-        create_schema_variant(txn, nats, &tenancy, &visibility, &history_actor).await;
+    let (schema_variant, root) = create_schema_variant_with_root(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        veritech.clone(),
+        encryption_key,
+    )
+    .await;
     schema_variant
         .set_schema(txn, nats, &visibility, &history_actor, schema.id())
         .await
@@ -296,6 +328,10 @@ pub async fn create_schema_with_string_props(
         .add_schema_variant(txn, nats, &visibility, &history_actor, schema_variant.id())
         .await
         .expect("cannot associate prop with schema variant");
+    bohemian_prop
+        .set_parent_prop(txn, nats, &visibility, &history_actor, root.domain_prop_id)
+        .await
+        .expect("cannot set parent prop");
 
     let killer_prop = create_prop_of_kind_with_name(
         txn,
@@ -313,6 +349,10 @@ pub async fn create_schema_with_string_props(
         .add_schema_variant(txn, nats, &visibility, &history_actor, schema_variant.id())
         .await
         .expect("cannot associate prop with schema variant");
+    killer_prop
+        .set_parent_prop(txn, nats, &visibility, &history_actor, root.domain_prop_id)
+        .await
+        .expect("cannot set parent prop");
     schema_variant
 }
 
@@ -338,8 +378,16 @@ pub async fn create_schema_with_array_of_string_props(
         &SchemaKind::Concrete,
     )
     .await;
-    let schema_variant =
-        create_schema_variant(txn, nats, &tenancy, &visibility, &history_actor).await;
+    let (schema_variant, root) = create_schema_variant_with_root(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        veritech.clone(),
+        encryption_key,
+    )
+    .await;
     schema_variant
         .set_schema(txn, nats, &visibility, &history_actor, schema.id())
         .await
@@ -371,6 +419,10 @@ pub async fn create_schema_with_array_of_string_props(
         .add_schema_variant(txn, nats, &visibility, &history_actor, schema_variant.id())
         .await
         .expect("cannot associate prop with schema variant");
+    sammy_prop
+        .set_parent_prop(txn, nats, &visibility, &history_actor, root.domain_prop_id)
+        .await
+        .expect("cannot set parent");
 
     let album_string_prop = create_prop_of_kind_with_name(
         txn,
@@ -417,8 +469,16 @@ pub async fn create_schema_with_nested_array_objects(
         &SchemaKind::Concrete,
     )
     .await;
-    let schema_variant =
-        create_schema_variant(txn, nats, &tenancy, &visibility, &history_actor).await;
+    let (schema_variant, root) = create_schema_variant_with_root(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        veritech.clone(),
+        encryption_key,
+    )
+    .await;
     schema_variant
         .set_schema(txn, nats, &visibility, &history_actor, schema.id())
         .await
@@ -450,6 +510,10 @@ pub async fn create_schema_with_nested_array_objects(
         .add_schema_variant(txn, nats, &visibility, &history_actor, schema_variant.id())
         .await
         .expect("cannot associate prop with schema variant");
+    sammy_prop
+        .set_parent_prop(txn, nats, &visibility, &history_actor, root.domain_prop_id)
+        .await
+        .expect("cannot set parent");
 
     let album_object_prop = create_prop_of_kind_with_name(
         txn,
@@ -572,8 +636,16 @@ pub async fn create_simple_map(
         &SchemaKind::Concrete,
     )
     .await;
-    let schema_variant =
-        create_schema_variant(txn, nats, &tenancy, &visibility, &history_actor).await;
+    let (schema_variant, root) = create_schema_variant_with_root(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        veritech.clone(),
+        encryption_key,
+    )
+    .await;
     schema_variant
         .set_schema(txn, nats, &visibility, &history_actor, schema.id())
         .await
@@ -605,6 +677,10 @@ pub async fn create_simple_map(
         .add_schema_variant(txn, nats, &visibility, &history_actor, schema_variant.id())
         .await
         .expect("cannot associate prop with schema variant");
+    album_prop
+        .set_parent_prop(txn, nats, &visibility, &history_actor, root.domain_prop_id)
+        .await
+        .expect("cannot set parent");
 
     let album_item_prop = create_prop_of_kind_with_name(
         txn,
@@ -651,8 +727,16 @@ pub async fn create_schema_with_nested_array_objects_and_a_map(
         &SchemaKind::Concrete,
     )
     .await;
-    let schema_variant =
-        create_schema_variant(txn, nats, &tenancy, &visibility, &history_actor).await;
+    let (schema_variant, root) = create_schema_variant_with_root(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        veritech.clone(),
+        encryption_key,
+    )
+    .await;
     schema_variant
         .set_schema(txn, nats, &visibility, &history_actor, schema.id())
         .await
@@ -684,6 +768,10 @@ pub async fn create_schema_with_nested_array_objects_and_a_map(
         .add_schema_variant(txn, nats, &visibility, &history_actor, schema_variant.id())
         .await
         .expect("cannot associate prop with schema variant");
+    sammy_prop
+        .set_parent_prop(txn, nats, &visibility, &history_actor, root.domain_prop_id)
+        .await
+        .expect("cannot set parent");
 
     let album_object_prop = create_prop_of_kind_with_name(
         txn,
@@ -815,22 +903,31 @@ async fn only_string_props() {
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
+    let _ =
+        find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor).await;
     let schema_variant =
         create_schema_with_string_props(&txn, &nats, veritech.clone(), encr_key).await;
-    let component = create_component_for_schema_variant(
+    let (component, _) = Component::new_for_schema_variant_with_node(
         &txn,
         &nats,
+        veritech.clone(),
+        &encr_key,
         &tenancy,
         &visibility,
         &history_actor,
+        "capoeira",
         schema_variant.id(),
     )
-    .await;
+    .await
+    .expect("Unable to create component");
     let props = schema_variant
         .props(&txn, &visibility)
         .await
         .expect("cannot get props for schema_variant");
-    for prop in props.iter() {
+    for prop in props
+        .iter()
+        .filter(|p| !["root", "si", "domain", "name"].contains(&p.name()))
+    {
         component
             .resolve_attribute(
                 &txn,
@@ -858,10 +955,9 @@ async fn only_string_props() {
     )
     .await
     .expect("cannot get component view");
-    assert_eq!(component_view.name, component.name());
     assert_eq!(
         component_view.properties,
-        serde_json::json![{"bohemian_rhapsody": "woohoo", "killer_queen": "woohoo"}]
+        serde_json::json![{ "si": { "name": "capoeira" }, "domain": { "bohemian_rhapsody": "woohoo", "killer_queen": "woohoo" } }]
     );
 }
 
@@ -885,15 +981,19 @@ async fn one_object_prop() {
         find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor).await;
     let schema_variant =
         create_schema_with_object_and_string_prop(&txn, &nats, veritech.clone(), encr_key).await;
-    let component = create_component_for_schema_variant(
+    let (component, _) = Component::new_for_schema_variant_with_node(
         &txn,
         &nats,
+        veritech.clone(),
+        &encr_key,
         &tenancy,
         &visibility,
         &history_actor,
+        "santos dumont",
         schema_variant.id(),
     )
-    .await;
+    .await
+    .expect("Unable to create component");
     let props = schema_variant
         .all_props(&txn, &visibility)
         .await
@@ -920,7 +1020,10 @@ async fn one_object_prop() {
         )
         .await
         .expect("cannot resolve object attribute to empty object");
-    for prop in props.iter().filter(|p| p.name() != "queen") {
+    for prop in props
+        .iter()
+        .filter(|p| !["queen", "root", "si", "domain", "name"].contains(&p.name()))
+    {
         component
             .resolve_attribute(
                 &txn,
@@ -948,10 +1051,12 @@ async fn one_object_prop() {
     )
     .await
     .expect("cannot get component view");
-    assert_eq!(component_view.name, component.name());
-    assert_eq!(
+    assert_eq_sorted!(
         component_view.properties,
-        serde_json::json![{"queen": {"bohemian_rhapsody": "woohoo", "killer_queen": "woohoo"}}]
+        serde_json::json![{
+            "si": { "name": "santos dumont" },
+            "domain": { "queen": { "bohemian_rhapsody": "woohoo", "killer_queen": "woohoo" } }
+        }]
     );
 }
 
@@ -976,15 +1081,19 @@ async fn nested_object_prop() {
     let (schema_variant, queen_prop, bohemian_prop, killer_prop, pressure_prop, dust_prop) =
         create_schema_with_nested_objects_and_string_prop(&txn, &nats, veritech.clone(), encr_key)
             .await;
-    let component = create_component_for_schema_variant(
+    let (component, _) = Component::new_for_schema_variant_with_node(
         &txn,
         &nats,
+        veritech.clone(),
+        &encr_key,
         &tenancy,
         &visibility,
         &history_actor,
+        "free ronaldinho",
         schema_variant.id(),
     )
-    .await;
+    .await
+    .expect("Unable to create component");
     let (_, queen_object_resolver_id, _) = component
         .resolve_attribute(
             &txn,
@@ -1080,10 +1189,9 @@ async fn nested_object_prop() {
     )
     .await
     .expect("cannot get component view");
-    assert_eq!(component_view.name, component.name());
     assert_eq!(
         component_view.properties,
-        serde_json::json![{"queen": {"bohemian_rhapsody": "scaramouche", "killer_queen": "cake", "under_pressure": { "another_one_bites_the_dust": "another one gone"}}}]
+        serde_json::json![{ "si": { "name": "free ronaldinho" }, "domain": {"queen": {"bohemian_rhapsody": "scaramouche", "killer_queen": "cake", "under_pressure": { "another_one_bites_the_dust": "another one gone"}}}}]
     );
 }
 
@@ -1107,15 +1215,19 @@ async fn simple_array_of_strings() {
         find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor).await;
     let schema_variant =
         create_schema_with_array_of_string_props(&txn, &nats, veritech.clone(), encr_key).await;
-    let component = create_component_for_schema_variant(
+    let (component, _) = Component::new_for_schema_variant_with_node(
         &txn,
         &nats,
+        veritech.clone(),
+        &encr_key,
         &tenancy,
         &visibility,
         &history_actor,
+        "tim maia",
         schema_variant.id(),
     )
-    .await;
+    .await
+    .expect("Unable to create component");
     let props = schema_variant
         .all_props(&txn, &visibility)
         .await
@@ -1142,7 +1254,10 @@ async fn simple_array_of_strings() {
         )
         .await
         .expect("cannot resolve the attributes for the component");
-    for prop in props.iter().filter(|p| p.name() != "sammy_hagar") {
+    for prop in props
+        .iter()
+        .filter(|p| !["sammy_hagar", "root", "si", "domain", "name"].contains(&p.name()))
+    {
         component
             .resolve_attribute(
                 &txn,
@@ -1188,10 +1303,9 @@ async fn simple_array_of_strings() {
     .await
     .expect("cannot get component view");
     // txn.commit().await.expect("cannot commit txn");
-    assert_eq!(component_view.name, component.name());
     assert_eq!(
         component_view.properties,
-        serde_json::json![{"sammy_hagar": ["standing_hampton", "voa"]}]
+        serde_json::json![{"si": {"name": "tim maia" }, "domain": {"sammy_hagar": ["standing_hampton", "voa"]}}]
     );
 }
 
@@ -1221,15 +1335,19 @@ async fn complex_nested_array_of_objects() {
         songs_array_prop,
         song_name_prop,
     ) = create_schema_with_nested_array_objects(&txn, &nats, veritech.clone(), encr_key).await;
-    let component = create_component_for_schema_variant(
+    let (component, _) = Component::new_for_schema_variant_with_node(
         &txn,
         &nats,
+        veritech.clone(),
+        &encr_key,
         &tenancy,
         &visibility,
         &history_actor,
+        "An Integralist Doesn't Run, It Flies",
         schema_variant.id(),
     )
-    .await;
+    .await
+    .expect("Unable to create component");
     let (_, sammy_resolver_id, _) = component
         .resolve_attribute(
             &txn,
@@ -1427,10 +1545,10 @@ async fn complex_nested_array_of_objects() {
     .await
     .expect("cannot get component view");
     // txn.commit().await.expect("cannot commit txn");
-    assert_eq!(component_view.name, component.name());
     assert_eq_sorted!(
-        serde_json::json![
-            {
+        serde_json::json![{
+            "si": {"name": "An Integralist Doesn't Run, It Flies"},
+            "domain": {
                 "sammy_hagar": [
                     {
                         "album": "standing_hampton",
@@ -1448,7 +1566,7 @@ async fn complex_nested_array_of_objects() {
                     }
                 ]
             }
-        ], // expected
+        }], // expected
         component_view.properties, // actual
     );
 }
@@ -1473,15 +1591,19 @@ async fn simple_map() {
         find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor).await;
     let (schema_variant, album_prop, album_item_prop) =
         create_simple_map(&txn, &nats, veritech.clone(), encr_key).await;
-    let component = create_component_for_schema_variant(
+    let (component, _) = Component::new_for_schema_variant_with_node(
         &txn,
         &nats,
+        veritech.clone(),
+        &encr_key,
         &tenancy,
         &visibility,
         &history_actor,
+        "E como isso afeta o Grêmio?",
         schema_variant.id(),
     )
-    .await;
+    .await
+    .expect("Unable to create component");
     let (_, album_resolver_id, _) = component
         .resolve_attribute(
             &txn,
@@ -1544,16 +1666,16 @@ async fn simple_map() {
     .await
     .expect("cannot get component view");
     // txn.commit().await.expect("cannot commit txn");
-    assert_eq!(component_view.name, component.name());
     assert_eq_sorted!(
-        serde_json::json![
-            {
+        serde_json::json![{
+            "si": {"name": "E como isso afeta o Grêmio?"},
+            "domain": {
                 "albums": {
                     "black_dahlia": "nocturnal",
                     "meshuggah": "destroy erase improve",
                 }
             }
-        ], // expected
+        }], // expected
         component_view.properties, // actual
     );
 }
@@ -1586,15 +1708,19 @@ async fn complex_nested_array_of_objects_with_a_map() {
         song_map_item_prop,
     ) = create_schema_with_nested_array_objects_and_a_map(&txn, &nats, veritech.clone(), encr_key)
         .await;
-    let component = create_component_for_schema_variant(
+    let (component, _) = Component::new_for_schema_variant_with_node(
         &txn,
         &nats,
+        veritech.clone(),
+        &encr_key,
         &tenancy,
         &visibility,
         &history_actor,
+        "E como isso afeta o Grêmio?",
         schema_variant.id(),
     )
-    .await;
+    .await
+    .expect("Unable to create component");
     let (_, sammy_resolver_id, _) = component
         .resolve_attribute(
             &txn,
@@ -1726,10 +1852,10 @@ async fn complex_nested_array_of_objects_with_a_map() {
     .expect("cannot get component view");
 
     // txn.commit().await.expect("cannot commit txn");
-    assert_eq!(component_view.name, component.name());
     assert_eq_sorted!(
-        serde_json::json![
-            {
+        serde_json::json![{
+            "si": { "name": "E como isso afeta o Grêmio?" },
+            "domain": {
                 "sammy_hagar": [
                     {
                         "album": "standing_hampton",
@@ -1739,7 +1865,7 @@ async fn complex_nested_array_of_objects_with_a_map() {
                     },
                 ]
             }
-        ], // expected
+        }], // expected
         component_view.properties, // actual
     );
 }
@@ -1770,7 +1896,6 @@ async fn cyclone_crypto_e2e() {
         handler: "testE2ECrypto".to_owned(),
         component: veritech::ResolverFunctionComponent {
             data: veritech::ComponentView {
-                name: "testE2ECrypto".to_owned(),
                 kind: veritech::ComponentKind::Credential,
                 system: None,
                 properties: serde_json::json!({

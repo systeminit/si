@@ -490,8 +490,8 @@ impl EditFieldAble for Schema {
     async fn update_from_edit_field(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
-        _veritech: veritech::Client,
-        _encryption_key: &EncryptionKey,
+        veritech: veritech::Client,
+        encryption_key: &EncryptionKey,
         tenancy: &Tenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
@@ -528,13 +528,15 @@ impl EditFieldAble for Schema {
                 None => return Err(EditFieldError::MissingValue.into()),
             },
             "variants.schemaVariants" => {
-                let variant = SchemaVariant::new(
+                let (variant, _) = SchemaVariant::new(
                     txn,
                     nats,
                     tenancy,
                     visibility,
                     history_actor,
                     "TODO: name me!",
+                    veritech,
+                    encryption_key,
                 )
                 .await?;
                 variant

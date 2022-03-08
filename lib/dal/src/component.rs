@@ -14,9 +14,9 @@ use thiserror::Error;
 use crate::attribute_resolver::{AttributeResolverContext, UNSET_ID_VALUE};
 use crate::code_generation_resolver::CodeGenerationResolverContext;
 use crate::edit_field::{
-    value_and_visibility_diff, value_and_visibility_diff_json_option, widget::prelude::*,
-    EditField, EditFieldAble, EditFieldBaggage, EditFieldBaggageComponentProp, EditFieldDataType,
-    EditFieldError, EditFieldObjectKind, EditFields,
+    value_and_visibility_diff_json_option, widget::prelude::*, EditField, EditFieldAble,
+    EditFieldBaggage, EditFieldBaggageComponentProp, EditFieldError, EditFieldObjectKind,
+    EditFields,
 };
 use crate::func::backend::integer::FuncBackendIntegerArgs;
 use crate::func::backend::map::FuncBackendMapArgs;
@@ -112,6 +112,8 @@ pub enum ComponentError {
     MissingParentAttributeResolver(AttributeResolverId),
     #[error("missing a prop in attribute update: {0} not found")]
     MissingProp(PropId),
+    #[error("missing a prop in attribute update: {0} not found")]
+    PropNotFound(String),
     #[error("missing a func in attribute update: {0} not found")]
     MissingFunc(String),
     #[error("invalid prop value; expected {0} but got {1}")]
@@ -183,7 +185,6 @@ impl Default for ComponentKind {
 pub struct Component {
     pk: ComponentPk,
     id: ComponentId,
-    name: String,
     kind: ComponentKind,
     #[serde(flatten)]
     tenancy: Tenancy,
@@ -203,45 +204,13 @@ impl_standard_model! {
 }
 
 impl Component {
-    #[tracing::instrument(skip(txn, nats, name))]
-    pub async fn new(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        tenancy: &Tenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
-        name: impl AsRef<str>,
-    ) -> ComponentResult<Self> {
-        let name = name.as_ref();
-        let row = txn
-            .query_one(
-                "SELECT object FROM component_create_v1($1, $2, $3, $4)",
-                &[
-                    &tenancy,
-                    &visibility,
-                    &name,
-                    &ComponentKind::Standard.as_ref(),
-                ],
-            )
-            .await?;
-        let object = standard_model::finish_create_from_row(
-            txn,
-            nats,
-            tenancy,
-            visibility,
-            history_actor,
-            row,
-        )
-        .await?;
-        Ok(object)
-    }
-
     #[allow(clippy::too_many_arguments)]
     #[tracing::instrument(skip(txn, nats, name))]
     pub async fn new_for_schema_with_node(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
         veritech: veritech::Client,
+        encryption_key: &EncryptionKey,
         tenancy: &Tenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
@@ -263,6 +232,7 @@ impl Component {
             txn,
             nats,
             veritech,
+            encryption_key,
             tenancy,
             visibility,
             history_actor,
@@ -278,14 +248,13 @@ impl Component {
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
         veritech: veritech::Client,
+        encryption_key: &EncryptionKey,
         tenancy: &Tenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
         name: impl AsRef<str>,
         schema_variant_id: &SchemaVariantId,
     ) -> ComponentResult<(Self, Node)> {
-        let name = name.as_ref();
-
         let mut schema_tenancy = tenancy.clone();
         schema_tenancy.universal = true;
 
@@ -300,13 +269,8 @@ impl Component {
 
         let row = txn
             .query_one(
-                "SELECT object FROM component_create_v1($1, $2, $3, $4)",
-                &[
-                    &tenancy,
-                    &visibility,
-                    &name,
-                    &schema.component_kind().as_ref(),
-                ],
+                "SELECT object FROM component_create_v1($1, $2, $3)",
+                &[&tenancy, &visibility, &schema.component_kind().as_ref()],
             )
             .await?;
 
@@ -369,14 +333,31 @@ impl Component {
         )
         .await?;
 
+        let name: &str = name.as_ref();
+        component
+            .set_prop_value_by_json_pointer(
+                txn,
+                nats,
+                veritech,
+                encryption_key,
+                tenancy,
+                history_actor,
+                visibility,
+                "/root/si/name",
+                Some(name),
+            )
+            .await?;
+
         Ok((component, node))
     }
 
     #[tracing::instrument(skip(txn, nats, name))]
+    #[allow(clippy::too_many_arguments)]
     pub async fn new_application_with_node(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
         veritech: veritech::Client,
+        encryption_key: &EncryptionKey,
         tenancy: &Tenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
@@ -396,6 +377,7 @@ impl Component {
             txn,
             nats,
             veritech,
+            encryption_key,
             tenancy,
             visibility,
             history_actor,
@@ -406,7 +388,6 @@ impl Component {
         Ok((component, node))
     }
 
-    standard_model_accessor!(name, String, ComponentResult);
     standard_model_accessor!(kind, Enum(ComponentKind), ComponentResult);
 
     standard_model_belongs_to!(
@@ -439,42 +420,8 @@ impl Component {
         result: ComponentResult,
     );
 
-    fn name_edit_field(
-        visibility: &Visibility,
-        object: &Self,
-        head_object: &Option<Self>,
-        change_set_object: &Option<Self>,
-    ) -> ComponentResult<EditField> {
-        let field_name = "name";
-        let target_fn = Self::name;
-        let object_kind = EditFieldObjectKind::Component;
-
-        let (value, visibility_diff) = value_and_visibility_diff(
-            visibility,
-            Some(object),
-            target_fn,
-            head_object.as_ref(),
-            change_set_object.as_ref(),
-        )?;
-
-        Ok(EditField::new(
-            field_name,
-            vec![],
-            object_kind,
-            object.id,
-            EditFieldDataType::String,
-            Widget::Text(TextWidget::new()),
-            value,
-            visibility_diff,
-            vec![ValidationError {
-                message: "Aieeee! This should appear in the name field.".to_string(),
-                link: Some("https://placekitten.com".to_string()),
-                ..ValidationError::default()
-            }], // TODO: actually validate to generate ValidationErrors
-        ))
-    }
-
     #[allow(clippy::too_many_arguments)]
+    #[tracing::instrument(skip(txn, nats))]
     pub async fn update_prop_from_edit_field(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
@@ -489,7 +436,9 @@ impl Component {
         value: Option<serde_json::Value>,
         key: Option<String>,
     ) -> ComponentResult<()> {
-        let prop = Prop::get_by_id(txn, tenancy, visibility, &prop_id)
+        let mut schema_tenancy = tenancy.clone();
+        schema_tenancy.universal = true;
+        let prop = Prop::get_by_id(txn, &schema_tenancy, visibility, &prop_id)
             .await?
             .ok_or(ComponentError::MissingProp(prop_id))?;
         let component = Self::get_by_id(txn, tenancy, visibility, &component_id)
@@ -569,6 +518,7 @@ impl Component {
     /// Perform the actual value setting for a given prop. If the value passed in is empty, we
     /// greedily search for an attribute resolver to set the prop's default value, but "unsetting"
     /// is currently unsupported beyond the initial implementation for "PropKind::String".
+    #[tracing::instrument(skip(txn, nats))]
     pub async fn resolve_attribute(
         &self,
         txn: &PgTxn<'_>,
@@ -1614,7 +1564,7 @@ impl Component {
         history_actor: &HistoryActor,
         system_id: SystemId,
     ) -> ComponentResult<()> {
-        tracing::warn!("checking resource: {:?}", self);
+        warn!("checking resource: {:?}", self);
 
         // Note(paulo): we don't actually care about the Resource here, we only care about the ResourcePrototype, is this wrong?
 
@@ -1774,6 +1724,123 @@ impl Component {
         billing_accounts.dedup();
         Ok(billing_accounts)
     }
+
+    // Note: Won't work for arrays and maps
+    #[tracing::instrument(skip(txn, nats))]
+    #[allow(clippy::too_many_arguments)]
+    pub async fn set_prop_value_by_json_pointer<T: Serialize + std::fmt::Debug>(
+        &self,
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
+        veritech: veritech::Client,
+        encryption_key: &EncryptionKey,
+        tenancy: &Tenancy,
+        history_actor: &HistoryActor,
+        visibility: &Visibility,
+        json_pointer: &str,
+        value: Option<T>,
+    ) -> ComponentResult<Option<T>> {
+        let prop = self
+            .find_prop_by_json_pointer(txn, tenancy, visibility, json_pointer)
+            .await?;
+
+        if let Some(prop) = prop {
+            // This was copied from sdf's update_from_edit_field service
+            Self::update_prop_from_edit_field(
+                txn,
+                nats,
+                veritech,
+                encryption_key,
+                tenancy,
+                visibility,
+                history_actor,
+                *self.id(),
+                *prop.id(),
+                json_pointer[1..].replace('/', "."),
+                value.as_ref().map(serde_json::to_value).transpose()?,
+                None, // TODO: Eventually, pass the key! -- Adam
+            )
+            .await?;
+            Ok(value)
+        } else {
+            Err(ComponentError::PropNotFound(json_pointer.to_owned()))
+        }
+    }
+
+    #[tracing::instrument(skip(txn))]
+    pub async fn find_prop_by_json_pointer(
+        &self,
+        txn: &PgTxn<'_>,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+        json_pointer: &str,
+    ) -> ComponentResult<Option<Prop>> {
+        let mut schema_tenancy = tenancy.clone();
+        schema_tenancy.universal = true;
+        let schema_variant = self
+            .schema_variant_with_tenancy(txn, &schema_tenancy, visibility)
+            .await?
+            .ok_or(ComponentError::SchemaVariantNotFound)?;
+
+        let mut hierarchy = json_pointer.split('/');
+        hierarchy.next(); // Ignores empty part
+
+        let mut next = match hierarchy.next() {
+            Some(n) => n,
+            None => return Ok(None),
+        };
+
+        let mut work_queue = schema_variant.props(txn, visibility).await?;
+        while let Some(prop) = work_queue.pop() {
+            if prop.name() == next {
+                next = match hierarchy.next() {
+                    Some(n) => n,
+                    None => return Ok(Some(prop)),
+                };
+                work_queue.clear();
+                work_queue.extend(prop.child_props(txn, &schema_tenancy, visibility).await?);
+            }
+        }
+        Ok(None)
+    }
+
+    #[tracing::instrument(skip(txn))]
+    pub async fn find_prop_value_by_json_pointer<
+        T: serde::de::DeserializeOwned + std::fmt::Debug,
+    >(
+        &self,
+        txn: &PgTxn<'_>,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+        json_pointer: &str,
+    ) -> ComponentResult<Option<T>> {
+        let prop = self
+            .find_prop_by_json_pointer(txn, tenancy, visibility, json_pointer)
+            .await?;
+        if let Some(prop) = prop {
+            // Copied from edit_field_for_prop, this is bad tho
+            let system_id = UNSET_ID_VALUE.into();
+            match AttributeResolver::find_value_for_prop_and_component(
+                txn,
+                tenancy,
+                visibility,
+                *prop.id(),
+                *self.id(),
+                system_id,
+            )
+            .await
+            {
+                Ok(v) => Ok(v.value().cloned().map(serde_json::from_value).transpose()?),
+                Err(e) => {
+                    dbg!("missing attribute resolver; might be fine, might be a bug! who knows? only god.");
+                    dbg!(&e);
+                    Ok(None)
+                }
+            }
+        } else {
+            Ok(None)
+        }
+    }
 }
 
 #[async_trait]
@@ -1796,24 +1863,8 @@ impl EditFieldAble for Component {
         let component = Self::get_by_id(txn, &tenancy, visibility, id)
             .await?
             .ok_or(ComponentError::NotFound(*id))?;
-        let head_object: Option<Component> = if visibility.in_change_set() {
-            Self::get_by_id(txn, &tenancy, &head_visibility, id).await?
-        } else {
-            None
-        };
-        let change_set_object: Option<Component> = if visibility.in_change_set() {
-            Self::get_by_id(txn, &tenancy, &change_set_visibility, id).await?
-        } else {
-            None
-        };
 
-        let mut edit_fields: EditFields = vec![Self::name_edit_field(
-            visibility,
-            &component,
-            &head_object,
-            &change_set_object,
-        )?];
-
+        let mut edit_fields = vec![];
         let schema_variant = component
             .schema_variant_with_tenancy(txn, &tenancy, visibility)
             .await?
@@ -1825,6 +1876,12 @@ impl EditFieldAble for Component {
             // But for now we need the boilerplate to setup the props even if not editable
             // So it was breaking some tests
             if *prop.kind() == PropKind::Array || *prop.kind() == PropKind::Map {
+                continue;
+            }
+
+            // Note: this is kinda expensive, but we should only send root
+            // props as objects edit fields have their children in them
+            if prop.parent_prop(txn, visibility).await?.is_some() {
                 continue;
             }
 
@@ -1847,38 +1904,18 @@ impl EditFieldAble for Component {
     }
 
     async fn update_from_edit_field(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
+        _txn: &PgTxn<'_>,
+        _nats: &NatsTxn,
         _veritech: veritech::Client,
         _encryption_key: &EncryptionKey,
-        tenancy: &Tenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
-        id: Self::Id,
+        _tenancy: &Tenancy,
+        _visibility: &Visibility,
+        _history_actor: &HistoryActor,
+        _id: Self::Id,
         edit_field_id: String,
-        value: Option<serde_json::Value>,
+        _value: Option<serde_json::Value>,
     ) -> ComponentResult<()> {
-        let edit_field_id = edit_field_id.as_ref();
-        let mut component = Self::get_by_id(txn, tenancy, visibility, &id)
-            .await?
-            .ok_or(ComponentError::NotFound(id))?;
-
-        match edit_field_id {
-            "name" => match value {
-                Some(json_value) => {
-                    let value = json_value.as_str().map(|s| s.to_string()).ok_or(
-                        Self::Error::EditField(EditFieldError::InvalidValueType("string")),
-                    )?;
-                    component
-                        .set_name(txn, nats, visibility, history_actor, value)
-                        .await?;
-                }
-                None => return Err(EditFieldError::MissingValue.into()),
-            },
-            invalid => return Err(EditFieldError::invalid_field(invalid).into()),
-        }
-
-        Ok(())
+        Err(EditFieldError::invalid_field(edit_field_id).into())
     }
 }
 
@@ -1991,7 +2028,7 @@ async fn edit_field_for_prop(
     }
 
     let current_edit_field_path = match edit_field_path {
-        None => vec!["properties".to_string()],
+        None => vec!["properties".to_owned()],
         Some(path) => path,
     };
     let mut edit_field_path_for_children = current_edit_field_path.clone();

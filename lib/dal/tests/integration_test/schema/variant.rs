@@ -1,7 +1,6 @@
 use dal::{
-    schema::SchemaVariant,
-    test_harness::{create_schema, create_schema_variant},
-    HistoryActor, SchemaKind, StandardModel, Tenancy, Visibility,
+    schema::SchemaVariant, test_harness::create_schema, HistoryActor, SchemaKind, StandardModel,
+    Tenancy, Visibility,
 };
 
 use crate::test_setup;
@@ -16,15 +15,24 @@ async fn new() {
         txn,
         _nats_conn,
         nats,
-        _veritech,
-        _encr_key,
+        veritech,
+        encr_key,
     );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
-    let variant = SchemaVariant::new(&txn, &nats, &tenancy, &visibility, &history_actor, "ringo")
-        .await
-        .expect("cannot create schema ui menu");
+    let (variant, _) = SchemaVariant::new(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        "ringo",
+        veritech,
+        encr_key,
+    )
+    .await
+    .expect("cannot create schema ui menu");
     assert_eq!(variant.name(), "ringo");
 }
 
@@ -38,8 +46,8 @@ async fn set_schema() {
         txn,
         _nats_conn,
         nats,
-        _veritech,
-        _encr_key,
+        veritech,
+        encr_key,
     );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
@@ -53,7 +61,18 @@ async fn set_schema() {
         &SchemaKind::Concrete,
     )
     .await;
-    let variant = create_schema_variant(&txn, &nats, &tenancy, &visibility, &history_actor).await;
+    let (variant, _) = SchemaVariant::new(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        "v0",
+        veritech,
+        encr_key,
+    )
+    .await
+    .expect("cannot create schema ui menu");
 
     variant
         .set_schema(&txn, &nats, &visibility, &history_actor, schema.id())

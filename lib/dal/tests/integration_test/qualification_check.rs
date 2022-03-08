@@ -44,8 +44,8 @@ async fn schema_variants() {
         txn,
         _nats_conn,
         nats,
-        _veritech,
-        _encr_key,
+        veritech,
+        encr_key,
     );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
@@ -61,7 +61,16 @@ async fn schema_variants() {
         &SchemaKind::Concrete,
     )
     .await;
-    let variant = create_schema_variant(&txn, &nats, &tenancy, &visibility, &history_actor).await;
+    let variant = create_schema_variant(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        veritech,
+        encr_key,
+    )
+    .await;
     variant
         .set_schema(&txn, &nats, &visibility, &history_actor, schema.id())
         .await

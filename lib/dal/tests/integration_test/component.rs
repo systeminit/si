@@ -1,12 +1,15 @@
 use crate::test_setup;
 
 use dal::qualification_resolver::UNSET_ID_VALUE;
-use dal::socket::{Socket, SocketArity, SocketEdgeKind};
-use dal::test_harness::{create_schema, create_schema_variant, find_or_create_production_system};
+use dal::test_harness::{
+    create_component_and_schema, create_component_for_schema_variant, create_schema,
+    create_schema_variant, create_schema_variant_with_root, find_or_create_production_system,
+};
 use dal::{
     BillingAccount, Component, HistoryActor, Organization, Prop, PropKind, Resource, Schema,
     SchemaKind, StandardModel, Tenancy, Visibility, Workspace,
 };
+use pretty_assertions_sorted::{assert_eq, assert_eq_sorted};
 use serde_json::json;
 
 mod view;
@@ -21,22 +24,22 @@ async fn new() {
         txn,
         _nats_conn,
         nats,
-        _veritech,
-        _encr_key,
+        veritech,
+        encr_key,
     );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
-    let _component = Component::new(
+    let _component = create_component_and_schema(
         &txn,
         &nats,
+        veritech,
+        &encr_key,
         &tenancy,
         &visibility,
         &history_actor,
-        "mastodon",
     )
-    .await
-    .expect("cannot create entity");
+    .await;
 }
 
 #[tokio::test]
@@ -50,7 +53,7 @@ async fn new_for_schema_variant_with_node() {
         _nats_conn,
         nats,
         veritech,
-        _encr_key,
+        encr_key,
     );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
@@ -67,39 +70,26 @@ async fn new_for_schema_variant_with_node() {
         &SchemaKind::Concept,
     )
     .await;
-    let schema_variant =
-        create_schema_variant(&txn, &nats, &tenancy, &visibility, &history_actor).await;
-    schema_variant
-        .set_schema(&txn, &nats, &visibility, &history_actor, schema.id())
-        .await
-        .expect("cannot set schema variant");
-    let includes_socket = Socket::new(
+    let schema_variant = create_schema_variant(
         &txn,
         &nats,
         &tenancy,
         &visibility,
         &history_actor,
-        "includes",
-        &SocketEdgeKind::Includes,
-        &SocketArity::Many,
+        veritech.clone(),
+        encr_key,
     )
-    .await
-    .expect("cannot create includes socket for schema variant");
+    .await;
     schema_variant
-        .add_socket(
-            &txn,
-            &nats,
-            &visibility,
-            &history_actor,
-            includes_socket.id(),
-        )
+        .set_schema(&txn, &nats, &visibility, &history_actor, schema.id())
         .await
-        .expect("cannot add includes socket to schema variant");
+        .expect("cannot set schema variant");
 
     let (component, _node) = Component::new_for_schema_variant_with_node(
         &txn,
         &nats,
         veritech,
+        &encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -151,8 +141,8 @@ async fn schema_relationships() {
         txn,
         _nats_conn,
         nats,
-        _veritech,
-        _encr_key,
+        veritech,
+        encr_key,
     );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
@@ -166,36 +156,31 @@ async fn schema_relationships() {
         &SchemaKind::Implementation,
     )
     .await;
-    let schema_variant =
-        create_schema_variant(&txn, &nats, &tenancy, &visibility, &history_actor).await;
-    schema_variant
-        .set_schema(&txn, &nats, &visibility, &history_actor, schema.id())
-        .await
-        .expect("cannot set schema variant to schema");
-    let component = Component::new(
+    let schema_variant = create_schema_variant(
         &txn,
         &nats,
         &tenancy,
         &visibility,
         &history_actor,
-        "mastodon",
+        veritech.clone(),
+        encr_key,
     )
-    .await
-    .expect("cannot create entity");
-    component
+    .await;
+    schema_variant
         .set_schema(&txn, &nats, &visibility, &history_actor, schema.id())
         .await
-        .expect("cannot set schema for entity");
-    component
-        .set_schema_variant(
-            &txn,
-            &nats,
-            &visibility,
-            &history_actor,
-            schema_variant.id(),
-        )
-        .await
-        .expect("cannot set schema for entity");
+        .expect("cannot set schema variant to schema");
+    let _component = create_component_for_schema_variant(
+        &txn,
+        &nats,
+        veritech,
+        &encr_key,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        schema_variant.id(),
+    )
+    .await;
 }
 
 #[tokio::test]
@@ -214,6 +199,8 @@ async fn qualification_view() {
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
+    let _ =
+        find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor).await;
     let schema = create_schema(
         &txn,
         &nats,
@@ -223,36 +210,34 @@ async fn qualification_view() {
         &SchemaKind::Implementation,
     )
     .await;
-    let schema_variant =
-        create_schema_variant(&txn, &nats, &tenancy, &visibility, &history_actor).await;
-    schema_variant
-        .set_schema(&txn, &nats, &visibility, &history_actor, schema.id())
-        .await
-        .expect("cannot set schema variant to schema");
-    let component = Component::new(
+    let (schema_variant, root) = create_schema_variant_with_root(
         &txn,
         &nats,
         &tenancy,
         &visibility,
         &history_actor,
-        "mastodon",
+        veritech.clone(),
+        encr_key,
     )
-    .await
-    .expect("cannot create entity");
-    component
+    .await;
+    schema_variant
         .set_schema(&txn, &nats, &visibility, &history_actor, schema.id())
         .await
-        .expect("cannot set schema for entity");
-    component
-        .set_schema_variant(
-            &txn,
-            &nats,
-            &visibility,
-            &history_actor,
-            schema_variant.id(),
-        )
-        .await
-        .expect("cannot set schema for entity");
+        .expect("cannot set schema variant to schema");
+    let (component, _) = Component::new_for_schema_variant_with_node(
+        &txn,
+        &nats,
+        veritech.clone(),
+        &encr_key,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        "mastodon",
+        schema_variant.id(),
+    )
+    .await
+    .expect("Unable to create component");
+
     let prop = Prop::new(
         &txn,
         &nats,
@@ -266,6 +251,15 @@ async fn qualification_view() {
     )
     .await
     .expect("cannot create prop");
+    prop.set_parent_prop(
+        &txn,
+        &nats,
+        &visibility,
+        &history_actor,
+        root.domain_prop_id,
+    )
+    .await
+    .expect("Unable to set some_property parent to root.domain");
     prop.add_schema_variant(
         &txn,
         &nats,
@@ -281,15 +275,14 @@ async fn qualification_view() {
         .await
         .expect("cannot create QualificationCheckComponent");
 
-    assert_eq!(
+    assert_eq_sorted!(
         serde_json::to_value(&qualification_check_component)
             .expect("cannot serialize QualificationCheckComponent"),
         json!({
             "data": {
-                "name": "mastodon",
                 "system": null,
                 "kind": "standard",
-                "properties": {}
+                "properties": { "si": { "name": "mastodon" }, "domain": {} }
             },
             "parents": [],
             "codes": []
@@ -330,10 +323,11 @@ async fn list_qualifications() {
     .expect("cannot find docker image schema")
     .pop()
     .expect("no docker image schema found");
-    let (mut component, _node) = Component::new_for_schema_with_node(
+    let (component, _node) = Component::new_for_schema_with_node(
         &txn,
         &nats,
         veritech.clone(),
+        &encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -343,10 +337,6 @@ async fn list_qualifications() {
     .await
     .expect("cannot create docker_image component");
 
-    component
-        .set_name(&txn, &nats, &visibility, &history_actor, "chvrches")
-        .await
-        .expect("cannot set name");
     component
         .check_qualifications(
             &txn,
@@ -398,10 +388,11 @@ async fn list_qualifications_by_component_id() {
     .expect("cannot find docker image schema")
     .pop()
     .expect("no docker image schema found");
-    let (mut component, _node) = Component::new_for_schema_with_node(
+    let (component, _node) = Component::new_for_schema_with_node(
         &txn,
         &nats,
         veritech.clone(),
+        &encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -411,10 +402,6 @@ async fn list_qualifications_by_component_id() {
     .await
     .expect("cannot create docker_image component");
 
-    component
-        .set_name(&txn, &nats, &visibility, &history_actor, "chvrches")
-        .await
-        .expect("cannot set name");
     component
         .check_qualifications(
             &txn,
@@ -523,23 +510,19 @@ async fn get_resource_by_component_id() {
     let system =
         find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor).await;
 
-    let (mut component, _node) = Component::new_for_schema_with_node(
+    let (component, _node) = Component::new_for_schema_with_node(
         &txn,
         &nats,
         veritech.clone(),
+        &encr_key,
         &tenancy,
         &visibility,
         &history_actor,
-        "ash",
+        "chvrches",
         schema.id(),
     )
     .await
     .expect("cannot create ash component");
-
-    component
-        .set_name(&txn, &nats, &visibility, &history_actor, "chvrches")
-        .await
-        .expect("cannot set name");
 
     component
         .sync_resource(

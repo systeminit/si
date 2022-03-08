@@ -4,8 +4,11 @@ use anyhow::Result;
 use lazy_static::lazy_static;
 use names::{Generator, Name};
 use si_data::{NatsClient, NatsConfig, NatsTxn, PgPool, PgPoolConfig, PgTxn};
+use telemetry::prelude::*;
 use uuid::Uuid;
 use veritech::{EncryptionKey, Instance, StandardConfig};
+
+use tracing_subscriber::{fmt, prelude::*, EnvFilter, Registry};
 
 use crate::{
     billing_account::BillingAccountSignup,
@@ -14,11 +17,13 @@ use crate::{
     jwt_key::JwtSecretKey,
     key_pair::KeyPairId,
     node::NodeKind,
-    schema, socket, BillingAccount, BillingAccountId, ChangeSet, Component, EditSession,
-    EncryptedSecret, Func, FuncBackendKind, FuncBackendResponseType, Group, HistoryActor, KeyPair,
-    Node, Organization, Prop, PropKind, QualificationCheck, Schema, SchemaId, SchemaKind,
-    SchemaVariantId, Secret, SecretKind, SecretObjectType, StandardModel, System, Tenancy, User,
-    Visibility, Workspace, NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK,
+    schema, socket,
+    socket::{Socket, SocketArity, SocketEdgeKind},
+    BillingAccount, BillingAccountId, ChangeSet, Component, EditSession, EncryptedSecret, Func,
+    FuncBackendKind, FuncBackendResponseType, Group, HistoryActor, KeyPair, Node, Organization,
+    Prop, PropKind, QualificationCheck, Schema, SchemaId, SchemaKind, SchemaVariantId, Secret,
+    SecretKind, SecretObjectType, StandardModel, System, Tenancy, User, Visibility, Workspace,
+    NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK,
 };
 
 #[derive(Debug)]
@@ -136,12 +141,31 @@ async fn veritech_server_for_uds_cyclone(
     nats_config: NatsConfig,
     subject_prefix: String,
 ) -> veritech::Server {
+    let dir = Path::new(env!("CARGO_MANIFEST_DIR"));
     let cyclone_spec = veritech::CycloneSpec::LocalUds(
         veritech::LocalUdsInstance::spec()
-            .try_cyclone_cmd_path("../../target/debug/cyclone")
+            .try_cyclone_cmd_path(
+                dir.join("../../target/debug/cyclone")
+                    .canonicalize()
+                    .expect("failed to canonicalize cyclone bin path")
+                    .to_string_lossy()
+                    .to_string(),
+            )
             .expect("failed to setup cyclone_cmd_path")
-            .cyclone_decryption_key_path("../../lib/cyclone/src/dev.decryption.key")
-            .try_lang_server_cmd_path("../../bin/lang-js/target/lang-js")
+            .cyclone_decryption_key_path(
+                dir.join("../../lib/cyclone/src/dev.decryption.key")
+                    .canonicalize()
+                    .expect("failed to canonicalize cyclone decryption key path")
+                    .to_string_lossy()
+                    .to_string(),
+            )
+            .try_lang_server_cmd_path(
+                dir.join("../../bin/lang-js/target/lang-js")
+                    .canonicalize()
+                    .expect("failed to canonicalize lang-js path")
+                    .to_string_lossy()
+                    .to_string(),
+            )
             .expect("failed to setup lang_js_cmd_path")
             .qualification()
             .resolver()
@@ -171,53 +195,87 @@ pub async fn one_time_setup() -> Result<()> {
         return Ok(());
     }
 
+    if let Ok(filter) = EnvFilter::try_from_env("SI_LOG") {
+        Registry::default()
+            .with(filter)
+            .with(fmt::layer())
+            .try_init()?;
+    }
+
     sodiumoxide::init().expect("crypto failed to init");
+    info!("Initializing tests");
 
-    let encryption_key = EncryptionKey::load(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("../cyclone/src/dev.encryption.key"),
-    )
+    // The stack seems to get too deep here, so we create a new one just for the migrations
+    tokio::task::spawn(async {
+        let encryption_key = EncryptionKey::load(
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("../cyclone/src/dev.encryption.key"),
+        )
+        .await
+        .expect("failed to load dev encryption key");
+
+        let nats_conn = NatsClient::new(&SETTINGS.nats)
+            .await
+            .expect("failed to connect to NATS");
+
+        // Start up a Veritech server as a task exclusively to allow the migrations to run
+        let nats_subject_prefix = nats_prefix();
+        let veritech_server =
+            veritech_server_for_uds_cyclone(SETTINGS.nats.clone(), nats_subject_prefix.clone())
+                .await;
+        let veritech_server_handle = veritech_server.shutdown_handle();
+        tokio::spawn(veritech_server.run());
+        let veritech =
+            veritech::Client::with_subject_prefix(nats_conn.clone(), nats_subject_prefix);
+        let pg = PgPool::new(&SETTINGS.pg)
+            .await
+            .expect("failed to connect to postgres");
+        pg.drop_and_create_public_schema()
+            .await
+            .expect("failed to drop the database");
+
+        crate::migrate(&pg).await.expect("migration failed!");
+
+        let mut conn = pg.get().await.expect("Unable to get pg connection");
+        let txn = conn
+            .transaction()
+            .await
+            .expect("Unable to start pg transaction");
+
+        crate::create_jwt_key_if_missing(
+            &txn,
+            concat!(env!("CARGO_MANIFEST_DIR"), "/", "config/public.pem"),
+            concat!(env!("CARGO_MANIFEST_DIR"), "/", "config/private.pem"),
+            &SETTINGS.jwt_encrypt.key,
+        )
+        .await
+        .expect("Unable to initialize jwt if missing");
+        txn.commit().await.expect("Unable to commit transaction");
+
+        crate::migrate_builtin_schemas(&pg, &nats_conn, veritech, &encryption_key)
+            .await
+            .expect("Failed to migrate builtins");
+
+        let visibility = Visibility::new_head(false);
+        let history_actor = HistoryActor::SystemInit;
+        let tenancy = Tenancy::new_universal();
+        let txn = conn
+            .transaction()
+            .await
+            .expect("Unable to start pg transaction");
+        let nats = nats_conn.transaction();
+        let _ =
+            find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor)
+                .await;
+        txn.commit().await.expect("Unable to commit transaction");
+
+        // Shutdown the Veritech server (each test gets their own server instance with an exclusively
+        // unique subject prefix)
+        veritech_server_handle.shutdown().await;
+    })
     .await
-    .expect("failed to load dev encryption key");
+    .expect("Postgres initialization failed");
 
-    let nats_conn = NatsClient::new(&SETTINGS.nats)
-        .await
-        .expect("failed to connect to NATS");
-
-    // Start up a Veritech server as a task exclusively to allow the migrations to run
-    let nats_subject_prefix = nats_prefix();
-    let veritech_server =
-        veritech_server_for_uds_cyclone(SETTINGS.nats.clone(), nats_subject_prefix.clone()).await;
-    let veritech_server_handle = veritech_server.shutdown_handle();
-    tokio::spawn(veritech_server.run());
-    let veritech = veritech::Client::with_subject_prefix(nats_conn.clone(), nats_subject_prefix);
-
-    let pg = PgPool::new(&SETTINGS.pg)
-        .await
-        .expect("failed to connect to postgres");
-    pg.drop_and_create_public_schema()
-        .await
-        .expect("failed to drop the database");
-
-    crate::migrate(&pg).await.expect("migration failed!");
-
-    let mut conn = pg.get().await?;
-    let txn = conn.transaction().await?;
-
-    crate::create_jwt_key_if_missing(
-        &txn,
-        concat!(env!("CARGO_MANIFEST_DIR"), "/", "config/public.pem"),
-        concat!(env!("CARGO_MANIFEST_DIR"), "/", "config/private.pem"),
-        &SETTINGS.jwt_encrypt.key,
-    )
-    .await?;
-    txn.commit().await?;
-
-    crate::migrate_builtin_schemas(&pg, &nats_conn, veritech, &encryption_key).await?;
-
-    // Shutdown the Veritech server (each test gets their own server instance with an exclusively
-    // unique subject prefix)
-    veritech_server_handle.shutdown().await;
-
+    info!("Initialized tests");
     *finished = true;
     Ok(())
 }
@@ -442,22 +500,111 @@ pub async fn create_schema_ui_menu(
         .expect("cannot create schema ui menu")
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn create_schema_variant(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
     tenancy: &Tenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
+    veritech: veritech::Client,
+    encryption_key: &EncryptionKey,
 ) -> schema::SchemaVariant {
+    create_schema_variant_with_root(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        veritech,
+        encryption_key,
+    )
+    .await
+    .0
+}
+
+#[allow(clippy::too_many_arguments)]
+pub async fn create_schema_variant_with_root(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    tenancy: &Tenancy,
+    visibility: &Visibility,
+    history_actor: &HistoryActor,
+    veritech: veritech::Client,
+    encryption_key: &EncryptionKey,
+) -> (schema::SchemaVariant, schema::builtins::RootProp) {
     let name = generate_fake_name();
-    schema::SchemaVariant::new(txn, nats, tenancy, visibility, history_actor, name)
+    let (variant, root) = schema::SchemaVariant::new(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        name,
+        veritech,
+        encryption_key,
+    )
+    .await
+    .expect("cannot create schema variant");
+
+    let input_socket = Socket::new(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        "input",
+        &SocketEdgeKind::Configures,
+        &SocketArity::Many,
+    )
+    .await
+    .expect("Unable to create socket");
+    variant
+        .add_socket(txn, nats, visibility, history_actor, input_socket.id())
         .await
-        .expect("cannot create schema variant")
+        .expect("Unable to add socket to variant");
+
+    let output_socket = Socket::new(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        "output",
+        &SocketEdgeKind::Output,
+        &SocketArity::Many,
+    )
+    .await
+    .expect("Unable to create socket");
+    variant
+        .add_socket(txn, nats, visibility, history_actor, output_socket.id())
+        .await
+        .expect("Unable to add socket to variant");
+
+    let includes_socket = Socket::new(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        "includes",
+        &SocketEdgeKind::Includes,
+        &SocketArity::Many,
+    )
+    .await
+    .expect("Unable to create socket");
+    variant
+        .add_socket(txn, nats, visibility, history_actor, includes_socket.id())
+        .await
+        .expect("Unable to add socket to variant");
+    (variant, root)
 }
 
 pub async fn create_component_and_schema(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
+    veritech: veritech::Client,
+    encryption_key: &EncryptionKey,
     tenancy: &Tenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
@@ -471,49 +618,90 @@ pub async fn create_component_and_schema(
         &SchemaKind::Concept,
     )
     .await;
-    let schema_variant = create_schema_variant(txn, nats, tenancy, visibility, history_actor).await;
+    let schema_variant = create_schema_variant(
+        txn,
+        nats,
+        tenancy,
+        visibility,
+        history_actor,
+        veritech.clone(),
+        encryption_key,
+    )
+    .await;
     schema_variant
         .set_schema(txn, nats, visibility, history_actor, schema.id())
         .await
         .expect("cannot set schema variant");
     let name = generate_fake_name();
-    let entity = Component::new(txn, nats, tenancy, visibility, history_actor, &name)
-        .await
-        .expect("cannot create entity");
+    let (entity, _) = Component::new_for_schema_variant_with_node(
+        txn,
+        nats,
+        veritech,
+        encryption_key,
+        tenancy,
+        visibility,
+        history_actor,
+        &name,
+        schema_variant.id(),
+    )
+    .await
+    .expect("cannot create entity");
     entity
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn create_component_for_schema_variant(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
+    veritech: veritech::Client,
+    encryption_key: &EncryptionKey,
     tenancy: &Tenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
     schema_variant_id: &SchemaVariantId,
 ) -> Component {
     let name = generate_fake_name();
-    let component = Component::new(txn, nats, tenancy, visibility, history_actor, &name)
-        .await
-        .expect("cannot create component");
-    component
-        .set_schema_variant(txn, nats, visibility, history_actor, schema_variant_id)
-        .await
-        .expect("cannot set the schema for our component");
+    let (component, _) = Component::new_for_schema_variant_with_node(
+        txn,
+        nats,
+        veritech,
+        encryption_key,
+        tenancy,
+        visibility,
+        history_actor,
+        &name,
+        schema_variant_id,
+    )
+    .await
+    .expect("cannot create component");
     component
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn create_component_for_schema(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
+    veritech: veritech::Client,
+    encryption_key: &EncryptionKey,
     tenancy: &Tenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
     schema_id: &SchemaId,
 ) -> Component {
     let name = generate_fake_name();
-    let component = Component::new(txn, nats, tenancy, visibility, history_actor, &name)
-        .await
-        .expect("cannot create component");
+    let (component, _) = Component::new_for_schema_with_node(
+        txn,
+        nats,
+        veritech,
+        encryption_key,
+        tenancy,
+        visibility,
+        history_actor,
+        &name,
+        schema_id,
+    )
+    .await
+    .expect("cannot create component");
     component
         .set_schema(txn, nats, visibility, history_actor, schema_id)
         .await

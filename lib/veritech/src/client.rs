@@ -354,7 +354,7 @@ mod subscription {
 #[allow(clippy::panic)]
 #[cfg(test)]
 mod tests {
-    use std::{collections::HashMap, env};
+    use std::env;
 
     use cyclone::{
         CodeGenerated, ComponentView, QualificationCheckComponent, ResolverFunctionComponent,
@@ -440,20 +440,17 @@ mod tests {
             handler: "numberOfParents".to_string(),
             component: ResolverFunctionComponent {
                 data: ComponentView {
-                    name: "Child".to_owned(),
                     properties: serde_json::json!({}),
                     system: None,
                     kind: ComponentKind::Standard,
                 },
                 parents: vec![
                     ComponentView {
-                        name: "Parent 1".to_owned(),
                         properties: serde_json::json!({}),
                         system: None,
                         kind: ComponentKind::Standard,
                     },
                     ComponentView {
-                        name: "Parent 2".to_owned(),
                         properties: serde_json::json!({}),
                         system: None,
                         kind: ComponentKind::Standard,
@@ -501,7 +498,6 @@ mod tests {
             handler: "check".to_string(),
             component: QualificationCheckComponent {
                 data: ComponentView {
-                    name: "cider".to_string(),
                     properties: serde_json::json!({"image": "systeminit/whiskers"}),
                     system: None,
                     kind: ComponentKind::Standard,
@@ -610,9 +606,7 @@ mod tests {
         }
 
         request.execution_id = "9012".to_string();
-        request.component.data.name = "emacs".to_string();
         request.component.data = ComponentView {
-            name: "cider".to_string(),
             properties: serde_json::json!({"image": "abc"}),
             system: None,
             kind: ComponentKind::Standard,
@@ -654,7 +648,6 @@ mod tests {
             execution_id: "7867".to_string(),
             handler: "syncItOut".to_string(),
             component: ComponentView {
-                name: "cider".to_string(),
                 properties: serde_json::json!({"pkg": "cider"}),
                 system: None,
                 kind: ComponentKind::Standard,
@@ -692,13 +685,10 @@ mod tests {
             }
         });
 
-        let mut properties = HashMap::new();
-        properties.insert("pkg".to_string(), serde_json::json!("cider"));
         let request = CodeGenerationRequest {
             execution_id: "7868".to_string(),
             handler: "generateItOut".to_string(),
             component: ComponentView {
-                name: "cider".to_string(),
                 properties: serde_json::json!({"pkg": "cider"}),
                 system: None,
                 kind: ComponentKind::Standard,

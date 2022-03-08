@@ -363,7 +363,7 @@ macro_rules! standard_model_belongs_to {
 
 #[macro_export]
 macro_rules! standard_model_accessor_ro {
-    ($column:ident, $value_type:ident) => {
+    ($column:ident, $value_type:ty) => {
         pub fn $column(&self) -> &$value_type {
             &self.$column
         }

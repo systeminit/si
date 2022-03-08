@@ -7,19 +7,20 @@
     >
       <div v-if="openState" class="flex" :style="propObjectStyle">
         <VueFeather type="chevron-down" />
-        {{ editField.name }}
+        {{ props.editField.name }}
       </div>
       <div v-else class="flex" :style="propObjectStyle">
         <VueFeather type="chevron-right" />
-        {{ editField.name }}
+        {{ props.editField.name }}
       </div>
     </div>
   </section>
   <Widgets
     :show="showChildren"
     :edit-fields="widgetEditFields"
-    :indent-level="indentLevel + 1"
-    :tree-open-state="treeOpenState"
+    :core-edit-fields="props.coreEditField"
+    :indent-level="props.indentLevel + 1"
+    :tree-open-state="props.treeOpenState"
     @toggle-header="bubbleToggleHeader"
   />
 </template>
@@ -56,8 +57,6 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: "toggleHeader", fieldId: string): void;
 }>();
-
-// const editMode = refFrom<boolean>(ChangeSetService.currentEditMode());
 
 const widgetEditFields = computed<EditFields>(() => {
   if (props.editField.widget.kind == "Header") {

@@ -129,7 +129,6 @@ impl JwtSecretKey {
     }
 }
 
-#[tracing::instrument(skip(txn, jwt_id))]
 pub async fn get_jwt_validation_key(
     txn: &PgTxn<'_>,
     jwt_id: impl AsRef<str>,
@@ -143,14 +142,9 @@ pub async fn get_jwt_validation_key(
     tokio::task::spawn_blocking(move || {
         RS256PublicKey::from_pem(&key).map_err(|err| JwtKeyError::KeyFromPem(format!("{}", err)))
     })
-    .instrument(info_span!(
-        "from_pem",
-        code.namespace = "jwt_simple::algorithms::RS256PublicKey"
-    ))
     .await?
 }
 
-#[tracing::instrument(skip(txn, bearer_token))]
 pub async fn validate_bearer_token(
     txn: &PgTxn<'_>,
     bearer_token: impl AsRef<str>,
@@ -173,10 +167,6 @@ pub async fn validate_bearer_token(
             .verify_token::<UserClaim>(&token, None)
             .map_err(|err| JwtKeyError::Verify(format!("{}", err)))
     })
-    .instrument(info_span!(
-        "verify_token",
-        code.namespace = "jwt_simple::algorithms::RSAPublicKeyLike"
-    ))
     .await??;
     Ok(claims)
 }

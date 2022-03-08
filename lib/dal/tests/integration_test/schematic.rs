@@ -15,7 +15,7 @@ async fn get_schematic() {
         _nats_conn,
         nats,
         veritech,
-        _encr_key
+        encr_key
     );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
@@ -38,6 +38,7 @@ async fn get_schematic() {
         &txn,
         &nats,
         veritech.clone(),
+        &encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -57,6 +58,7 @@ async fn get_schematic() {
         &txn,
         &nats,
         veritech,
+        &encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -108,7 +110,7 @@ async fn create_connection() {
         _nats_conn,
         nats,
         veritech,
-        _encr_key,
+        encr_key,
     );
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
@@ -147,6 +149,7 @@ async fn create_connection() {
         &txn,
         &nats,
         veritech.clone(),
+        &encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -160,6 +163,7 @@ async fn create_connection() {
         &txn,
         &nats,
         veritech,
+        &encr_key,
         &tenancy,
         &visibility,
         &history_actor,

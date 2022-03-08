@@ -7,7 +7,7 @@ use crate::test_setup;
 
 #[tokio::test]
 async fn get_node_menu() {
-    test_setup!(ctx, secret_key, _pg, _conn, txn, _nats_conn, nats, _veritech, _encr_key);
+    test_setup!(ctx, secret_key, _pg, _conn, txn, _nats_conn, nats, veritech, encr_key);
     let (nba, _key) = billing_account_signup(&txn, &nats, secret_key).await;
     let visibility = Visibility::new_head(false);
     let tenancy = Tenancy::new_workspace(vec![*nba.workspace.id()]);
@@ -31,6 +31,8 @@ async fn get_node_menu() {
     let application = create_component_for_schema(
         &txn,
         &nats,
+        veritech,
+        &encr_key,
         &tenancy,
         &visibility,
         &history_actor,

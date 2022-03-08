@@ -215,9 +215,12 @@ impl AttributeResolver {
             parent_attribute_resolver_id,
             *visibility,
         ))?;
+
+        let mut schema_tenancy = self.tenancy.clone();
+        schema_tenancy.universal = true;
         let parent_prop = Prop::get_by_id(
             txn,
-            self.tenancy(),
+            &schema_tenancy,
             visibility,
             &parent_attribute_resolver.context.prop_id(),
         )
@@ -270,7 +273,9 @@ impl AttributeResolver {
         tenancy: &Tenancy,
         visibility: &Visibility,
     ) -> AttributeResolverResult<()> {
-        let prop = Prop::get_by_id(txn, tenancy, visibility, &self.context.prop_id())
+        let mut schema_tenancy = tenancy.clone();
+        schema_tenancy.universal = true;
+        let prop = Prop::get_by_id(txn, &schema_tenancy, visibility, &self.context.prop_id())
             .await?
             .ok_or(AttributeResolverError::MissingProp)?;
         if let Some(parent) = prop.parent_prop(txn, visibility).await? {
@@ -549,9 +554,11 @@ impl AttributeResolver {
                 .await?
             };
 
+        let mut schema_tenancy = tenancy.clone();
+        schema_tenancy.universal = true;
         let prop = Prop::get_by_id(
             txn,
-            tenancy,
+            &schema_tenancy,
             visibility,
             &attribute_resolver.context.prop_id(),
         )

@@ -49,9 +49,7 @@ const toggleHeader = (fieldId: string) => {
   emit("toggleHeader", fieldId);
 };
 
-const isCoreEditField = computed(() =>
-  props.coreEditFields === undefined ? false : props.coreEditFields,
-);
+const isCoreEditField = computed(() => props.coreEditFields ?? false);
 
 const backgroundColors = computed(() => {
   const longestProp = 50;

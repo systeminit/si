@@ -29,6 +29,8 @@ pub enum SchematicError {
     PositionNotFound,
     #[error("component not found")]
     ComponentNotFound,
+    #[error("component name not found")]
+    ComponentNameNotFound,
     #[error("schema not found")]
     SchemaNotFound,
     #[error("system error: {0}")]
@@ -195,7 +197,15 @@ impl Schematic {
                         .ok_or(SchematicError::SchemaNotFound)?;
                     (
                         schema,
-                        component.name().to_owned(),
+                        component
+                            .find_prop_value_by_json_pointer::<String>(
+                                txn,
+                                &tenancy,
+                                visibility,
+                                "/root/si/name",
+                            )
+                            .await?
+                            .ok_or(SchematicError::ComponentNameNotFound)?,
                         SchematicKind::Component,
                     )
                 }
