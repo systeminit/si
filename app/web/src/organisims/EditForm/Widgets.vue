@@ -1,20 +1,24 @@
 <template>
-  <template v-for="editField in editFields" :key="editField.id">
+  <template v-for="editField in props.editFields" :key="editField.id">
     <Widget
       v-if="isCoreEditField"
-      :show="true"
+      :show="props.show"
       :edit-field="editField"
       :background-colors="backgroundColors"
       :core-edit-field="isCoreEditField"
-      :indent-level="indentLevel"
+      :indent-level="props.indentLevel"
+      :tree-open-state="props.treeOpenState"
+      @toggle-header="toggleHeader"
     />
     <div v-else class="my-2">
       <Widget
-        :show="true"
+        :show="props.show"
         :edit-field="editField"
         :background-colors="backgroundColors"
         :core-edit-field="isCoreEditField"
-        :indent-level="indentLevel"
+        :indent-level="props.indentLevel"
+        :tree-open-state="props.treeOpenState"
+        @toggle-header="toggleHeader"
       />
     </div>
   </template>
@@ -25,13 +29,25 @@ import { computed } from "vue";
 import { EditFields } from "@/api/sdf/dal/edit_field";
 import Widget from "@/organisims/EditForm/Widget.vue";
 import { interpolateColors } from "@/utils/interpolateColors";
+import { ITreeOpenState } from "@/utils/edit_field_visitor";
 
 export interface WidgetsProps {
+  show: boolean;
   editFields: EditFields;
   coreEditFields?: boolean;
   indentLevel: number;
+  treeOpenState: ITreeOpenState;
 }
+
 const props = defineProps<WidgetsProps>();
+
+const emit = defineEmits<{
+  (e: "toggleHeader", fieldId: string): void;
+}>();
+
+const toggleHeader = (fieldId: string) => {
+  emit("toggleHeader", fieldId);
+};
 
 const isCoreEditField = computed(() =>
   props.coreEditFields === undefined ? false : props.coreEditFields,
