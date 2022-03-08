@@ -15,7 +15,8 @@ CREATE TABLE input_sockets
     attribute_context_component_id bigint,
     attribute_context_system_id bigint,
     name text,
-    internal_only bool NOT NULL DEFAULT FALSE
+    internal_only bool NOT NULL DEFAULT FALSE,
+    type_definition text
 );
 SELECT standard_model_table_constraints_v1('input_sockets');
 

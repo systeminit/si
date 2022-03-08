@@ -49,6 +49,7 @@ pub struct InputSocket {
     context: AttributeResolverContext,
     name: Option<String>,
     internal_only: bool,
+    type_definition: Option<String>,
 }
 
 impl InputSocket {
@@ -83,4 +84,5 @@ impl InputSocket {
 
     standard_model_accessor!(name, Option<String>, InputSocketResult);
     standard_model_accessor_ro!(internal_only, bool);
+    standard_model_accessor!(type_definition, Option<String>, InputSocketResult);
 }
