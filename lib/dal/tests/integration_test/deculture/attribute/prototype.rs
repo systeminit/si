@@ -2,8 +2,8 @@ use crate::test_setup;
 
 use dal::{
     deculture::{
-        attribute_prototype::AttributePrototype,
-        attribute_resolver_context::{AttributeResolverContext, AttributeResolverContextBuilder},
+        attribute::context::{AttributeContext, AttributeContextBuilder},
+        attribute::prototype::AttributePrototype,
     },
     func::{backend::string::FuncBackendStringArgs, binding::FuncBinding},
     test_harness::{
@@ -99,7 +99,7 @@ async fn new() {
         .await
         .expect("failed to execute func binding");
 
-    let context = AttributeResolverContext::builder()
+    let context = AttributeContext::builder()
         .set_prop_id(*first_prop.id())
         .set_schema_id(*schema.id())
         .set_schema_variant_id(*default_variant.id())
@@ -174,7 +174,7 @@ async fn list_for_context() {
         .await
         .expect("cannot set default schema variant");
 
-    let mut base_prototype_context = AttributeResolverContext::builder();
+    let mut base_prototype_context = AttributeContext::builder();
     base_prototype_context
         .set_schema_id(*schema.id())
         .set_schema_variant_id(*schema_variant.id());
@@ -207,7 +207,7 @@ async fn list_for_context() {
         .await
         .expect("cannot set schema variant for album object");
 
-    let albums_prototype_context = AttributeResolverContext::builder()
+    let albums_prototype_context = AttributeContext::builder()
         .set_prop_id(*albums_prop.id())
         .set_schema_id(*schema.id())
         .set_schema_variant_id(*schema_variant.id())
@@ -363,7 +363,7 @@ async fn list_for_context() {
         .expect("failed to execute func binding");
 
     let component_name_prototype_context =
-        AttributeResolverContextBuilder::from(album_name_prototype_context)
+        AttributeContextBuilder::from(album_name_prototype_context)
             .set_component_id(*component.id())
             .to_context()
             .expect("cannot create attribute context");
@@ -465,7 +465,7 @@ async fn list_for_context_with_a_hash() {
         .await
         .expect("cannot set default schema variant");
 
-    let mut base_prototype_context = AttributeResolverContext::builder();
+    let mut base_prototype_context = AttributeContext::builder();
     base_prototype_context
         .set_schema_id(*schema.id())
         .set_schema_variant_id(*schema_variant.id());
@@ -667,7 +667,7 @@ async fn list_for_context_with_a_hash() {
     .await;
 
     let component_hash_key_prototype_context =
-        AttributeResolverContextBuilder::from(prop_hash_key_prototype_context)
+        AttributeContextBuilder::from(prop_hash_key_prototype_context)
             .set_component_id(*component.id())
             .to_context()
             .expect("cannot create attribute context");

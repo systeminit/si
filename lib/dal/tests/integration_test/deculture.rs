@@ -1,1 +1,1 @@
-mod attribute_prototype;
+mod attribute;

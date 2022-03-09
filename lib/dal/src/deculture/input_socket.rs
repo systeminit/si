@@ -4,9 +4,9 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
-    deculture::attribute_resolver_context::AttributeResolverContext, impl_standard_model, pk,
-    standard_model, standard_model_accessor, standard_model_accessor_ro, HistoryActor,
-    HistoryEventError, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
+    deculture::attribute::context::AttributeContext, impl_standard_model, pk, standard_model,
+    standard_model_accessor, standard_model_accessor_ro, HistoryActor, HistoryEventError,
+    StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
 };
 
 #[derive(Error, Debug)]
@@ -46,7 +46,7 @@ pub struct InputSocket {
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
-    context: AttributeResolverContext,
+    context: AttributeContext,
     name: Option<String>,
     internal_only: bool,
     type_definition: Option<String>,
@@ -61,7 +61,7 @@ impl InputSocket {
         tenancy: &Tenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
-        context: AttributeResolverContext,
+        context: AttributeContext,
         name: Option<String>,
         internal_only: bool,
     ) -> InputSocketResult<Self> {

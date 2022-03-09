@@ -7,9 +7,12 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use veritech::EncryptionKey;
 
-use crate::deculture::attribute_prototype::AttributePrototype;
 use crate::{
     attribute_resolver::AttributeResolverContext,
+    deculture::{
+        attribute::prototype::AttributePrototype, attribute::value::AttributeValue,
+        AttributeContextBuilderError,
+    },
     edit_field::{
         value_and_visibility_diff, widget::prelude::*, EditField, EditFieldAble, EditFieldDataType,
         EditFieldError, EditFieldObjectKind, EditFields,
@@ -25,12 +28,16 @@ use crate::{
 
 #[derive(Error, Debug)]
 pub enum PropError {
+    #[error("AttributeContext error: {0}")]
+    AttributeContext(#[from] AttributeContextBuilderError),
     // Can't #[from] here, or we'll end up with circular error definitions.
     #[error("AttributePrototype error: {0}")]
     AttributePrototype(String),
     // Can't #[from] here, or we'll end up with circular error definitions.
     #[error("AttributeResolver error: {0}")]
     AttributeResolver(String),
+    #[error("AttributeValue error: {0}")]
+    AttributeValue(String),
     #[error(transparent)]
     EditField(#[from] EditFieldError),
     #[error("FuncBinding error: {0}")]
@@ -232,7 +239,6 @@ impl Prop {
         result: PropResult,
     );
 
-    // TODO: Turn the next two into many to many
     standard_model_belongs_to!(
         lookup_fn: parent_prop,
         set_fn: set_parent_prop_unchecked,
@@ -273,6 +279,26 @@ impl Prop {
                 return Err(PropError::ParentNotAllowed(parent_prop_id, *kind));
             }
         }
+
+        let our_attribute_value =
+            AttributeValue::find_for_prop(txn, self.tenancy(), visibility, *self.id())
+                .await
+                .map_err(|e| PropError::AttributeValue(format!("{e}")))?;
+        let parent_attribute_value =
+            AttributeValue::find_for_prop(txn, self.tenancy(), visibility, parent_prop_id)
+                .await
+                .map_err(|e| PropError::AttributeValue(format!("{e}")))?;
+        our_attribute_value
+            .set_parent_attribute_value(
+                txn,
+                nats,
+                visibility,
+                history_actor,
+                parent_attribute_value.id(),
+            )
+            .await
+            .map_err(|e| PropError::AttributeValue(format!("{e}")))?;
+
         self.set_parent_prop_unchecked(txn, nats, visibility, history_actor, &parent_prop_id)
             .await
     }

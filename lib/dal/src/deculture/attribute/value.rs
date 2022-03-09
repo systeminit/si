@@ -6,21 +6,24 @@ use thiserror::Error;
 
 use crate::{
     deculture::{
-        attribute_prototype::{AttributePrototype, AttributePrototypeId},
-        attribute_resolver_context::AttributeResolverContext,
+        attribute::context::{AttributeContext, AttributeContextBuilderError},
+        attribute::prototype::{AttributePrototype, AttributePrototypeId},
     },
     func::{binding::FuncBindingError, binding_return_value::FuncBindingReturnValueId},
     impl_standard_model, pk,
     standard_model::{self, TypeHint},
     standard_model_accessor, standard_model_belongs_to, HistoryActor, HistoryEventError, IndexMap,
-    PropError, PropKind, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
+    PropError, PropId, PropKind, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
 };
 
 const FIND_WITH_PARENT_AND_PROTOTYPE_FOR_CONTEXT: &str =
-    include_str!("./queries/attribute_value_find_with_parent_and_protype_for_context.sql");
+    include_str!("../queries/attribute_value_find_with_parent_and_protype_for_context.sql");
+const FIND_FOR_PROP: &str = include_str!("../queries/attribute_value_find_for_prop.sql");
 
 #[derive(Error, Debug)]
 pub enum AttributeValueError {
+    #[error("AttributeContextBuilder error: {0}")]
+    AttributeContextBuilder(#[from] AttributeContextBuilderError),
     #[error("func binding error: {0}")]
     FuncBinding(#[from] FuncBindingError),
     #[error("history event error: {0}")]
@@ -65,8 +68,8 @@ pub struct AttributeValue {
     /// [`AttributePrototype`] has not yet generated a [`FuncBindingReturnValueId`] for its
     /// [`FuncBinding`](crate::func::binding::FuncBinding).
     func_binding_return_value_id: Option<FuncBindingReturnValueId>,
-    /// The [`AttributeValueId`] (from a less-specific [`AttributeResolverContext`]) that this
-    /// [`AttributeValue`] is standing in for in this more-specific [`AttributeResolverContext`].
+    /// The [`AttributeValueId`] (from a less-specific [`AttributeContext`]) that this
+    /// [`AttributeValue`] is standing in for in this more-specific [`AttributeContext`].
     proxy_for_attribute_value_id: Option<AttributeValueId>,
     /// If this is a `sealed_proxy`, then it should **not** update its [`FuncBindingReturnValueId`] from the
     /// [`AttributeValue`] referenced to in `proxy_for_attribute_value_id`.
@@ -74,7 +77,7 @@ pub struct AttributeValue {
     pub index_map: Option<IndexMap>,
     pub key: Option<String>,
     #[serde(flatten)]
-    pub context: AttributeResolverContext,
+    pub context: AttributeContext,
     #[serde(flatten)]
     tenancy: Tenancy,
     #[serde(flatten)]
@@ -102,7 +105,7 @@ impl AttributeValue {
         visibility: &Visibility,
         history_actor: &HistoryActor,
         func_binding_return_value_id: Option<FuncBindingReturnValueId>,
-        context: AttributeResolverContext,
+        context: AttributeContext,
         key: Option<String>,
     ) -> AttributeValueResult<Self> {
         let row = txn
@@ -195,7 +198,7 @@ impl AttributeValue {
         visibility: &Visibility,
         parent_attribute_value_id: Option<AttributeValueId>,
         attribute_prototype_id: AttributePrototypeId,
-        context: AttributeResolverContext,
+        context: AttributeContext,
     ) -> AttributeValueResult<Option<Self>> {
         let row = txn
             .query_opt(
@@ -211,6 +214,23 @@ impl AttributeValue {
             .await?;
 
         Ok(standard_model::option_object_from_row(row)?)
+    }
+
+    pub async fn find_for_prop(
+        txn: &PgTxn<'_>,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+        prop_id: PropId,
+    ) -> AttributeValueResult<Self> {
+        let prop_context = AttributeContext::builder()
+            .set_prop_id(prop_id)
+            .to_context()?;
+
+        let row = txn
+            .query_one(FIND_FOR_PROP, &[&tenancy, &visibility, &prop_context])
+            .await?;
+
+        Ok(standard_model::object_from_row(row)?)
     }
 
     // pub async fn update_proxies(
