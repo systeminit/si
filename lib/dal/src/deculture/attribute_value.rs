@@ -7,20 +7,25 @@ use thiserror::Error;
 use crate::{
     deculture::{
         attribute_prototype::{AttributePrototype, AttributePrototypeId},
-        attribute_resolver_context::AttributeResolverContext,
+        attribute_resolver_context::{
+            AttributeResolverContext, AttributeResolverContextBuilderError,
+        },
     },
     func::{binding::FuncBindingError, binding_return_value::FuncBindingReturnValueId},
     impl_standard_model, pk,
     standard_model::{self, TypeHint},
     standard_model_accessor, standard_model_belongs_to, HistoryActor, HistoryEventError, IndexMap,
-    PropError, PropKind, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
+    PropError, PropId, PropKind, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
 };
 
 const FIND_WITH_PARENT_AND_PROTOTYPE_FOR_CONTEXT: &str =
     include_str!("./queries/attribute_value_find_with_parent_and_protype_for_context.sql");
+const FIND_FOR_PROP: &str = include_str!("./queries/attribute_value_find_for_prop.sql");
 
 #[derive(Error, Debug)]
 pub enum AttributeValueError {
+    #[error("AttributeResolverContextBuilder error: {0}")]
+    AttributeResolverContextBuilder(#[from] AttributeResolverContextBuilderError),
     #[error("func binding error: {0}")]
     FuncBinding(#[from] FuncBindingError),
     #[error("history event error: {0}")]
@@ -211,6 +216,23 @@ impl AttributeValue {
             .await?;
 
         Ok(standard_model::option_object_from_row(row)?)
+    }
+
+    pub async fn find_for_prop(
+        txn: &PgTxn<'_>,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+        prop_id: PropId,
+    ) -> AttributeValueResult<Self> {
+        let prop_context = AttributeResolverContext::builder()
+            .set_prop_id(prop_id)
+            .to_context()?;
+
+        let row = txn
+            .query_one(FIND_FOR_PROP, &[&tenancy, &visibility, &prop_context])
+            .await?;
+
+        Ok(standard_model::object_from_row(row)?)
     }
 
     // pub async fn update_proxies(
