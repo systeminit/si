@@ -1879,8 +1879,7 @@ impl EditFieldAble for Component {
                 continue;
             }
 
-            // Note: this is kinda expensive, but we should only send root
-            // props as objects edit fields have their children in them
+            // schema_variant.props returns all props, even if not root, this is a hotfix
             if prop.parent_prop(txn, visibility).await?.is_some() {
                 continue;
             }
