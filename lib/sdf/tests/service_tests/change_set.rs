@@ -21,8 +21,9 @@ use sdf::service::change_set::save_edit_session::{
 use sdf::service::change_set::start_edit_session::{
     StartEditSessionRequest, StartEditSessionResponse,
 };
+use test_env_log::test;
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn list_open_change_sets() {
     test_setup!(
         _ctx,
@@ -53,7 +54,7 @@ async fn list_open_change_sets() {
     assert_eq!(response.list.len(), 2);
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn create_change_set() {
     test_setup!(
         _ctx,
@@ -87,7 +88,7 @@ async fn create_change_set() {
     );
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn get_change_set() {
     test_setup!(
         _ctx,
@@ -114,7 +115,7 @@ async fn get_change_set() {
     assert_eq!(&response.change_set, &change_set);
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn start_edit_session() {
     test_setup!(
         _ctx,
@@ -148,7 +149,7 @@ async fn start_edit_session() {
     .await;
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn cancel_edit_session() {
     test_setup!(
         _ctx,
@@ -183,7 +184,7 @@ async fn cancel_edit_session() {
     .await;
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn save_edit_session() {
     test_setup!(
         _ctx,
@@ -218,7 +219,7 @@ async fn save_edit_session() {
     .await;
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn apply_change_set() {
     test_setup!(
         _ctx,

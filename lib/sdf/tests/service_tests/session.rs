@@ -4,8 +4,9 @@ use axum::http::{Method, StatusCode};
 use sdf::service::session::get_defaults::GetDefaultsResponse;
 use sdf::service::session::login::{LoginRequest, LoginResponse};
 use sdf::service::session::restore_authentication::RestoreAuthenticationResponse;
+use test_env_log::test;
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn login() {
     test_setup!(
         _ctx,
@@ -60,7 +61,7 @@ async fn login() {
     assert_eq!(wrong_password_response["error"]["message"], "login failed");
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn restore_authentication() {
     test_setup!(
         _ctx,
@@ -88,7 +89,7 @@ async fn restore_authentication() {
     assert_eq!(nba.user, response.user);
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn get_defaults() {
     test_setup!(
         _ctx,

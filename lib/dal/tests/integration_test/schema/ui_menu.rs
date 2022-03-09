@@ -3,8 +3,9 @@ use crate::test_setup;
 use dal::schema::SchemaKind;
 use dal::test_harness::{create_schema, create_schema_ui_menu};
 use dal::{schema::UiMenu, HistoryActor, SchematicKind, StandardModel, Tenancy, Visibility};
+use test_env_log::test;
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn new() {
     test_setup!(
         ctx,
@@ -28,7 +29,7 @@ async fn new() {
     assert_eq!(schema_ui_menu.schematic_kind(), &SchematicKind::Component);
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn set_schema() {
     test_setup!(
         ctx,
@@ -78,7 +79,7 @@ async fn set_schema() {
     assert_eq!(attached_schema, None);
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn root_schematics() {
     test_setup!(
         ctx,

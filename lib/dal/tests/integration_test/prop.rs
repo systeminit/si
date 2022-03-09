@@ -3,10 +3,11 @@ use dal::{
     AttributeResolver, HistoryActor, Prop, PropKind, StandardModel, Tenancy, Visibility,
 };
 use pretty_assertions_sorted::assert_eq;
+use test_env_log::test;
 
 use crate::test_setup;
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn new() {
     test_setup!(
         ctx,
@@ -39,7 +40,7 @@ async fn new() {
     assert_eq!(prop.kind(), &PropKind::String);
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn schema_variants() {
     test_setup!(
         ctx,
@@ -109,7 +110,7 @@ async fn schema_variants() {
     assert_eq!(relations, vec![]);
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn parent_props() {
     test_setup!(
         ctx,
@@ -166,7 +167,7 @@ async fn parent_props() {
     assert_eq!(children, vec![child_prop]);
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn parent_props_wrong_prop_kinds() {
     test_setup!(
         ctx,
@@ -211,7 +212,7 @@ async fn parent_props_wrong_prop_kinds() {
     result.expect_err("should have errored, and it did not");
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn new_creates_default_unset_binding() {
     test_setup!(
         ctx,

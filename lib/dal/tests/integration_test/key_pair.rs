@@ -6,8 +6,9 @@ use dal::test_harness::{
     create_visibility_edit_session,
 };
 use dal::{BillingAccount, HistoryActor, KeyPair, StandardModel, Tenancy};
+use test_env_log::test;
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn new() {
     test_setup!(
         ctx,
@@ -30,7 +31,7 @@ async fn new() {
         .expect("cannot create key_pair");
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn belongs_to() {
     test_setup!(
         ctx,
@@ -85,7 +86,7 @@ async fn belongs_to() {
     );
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn public_key_get_current() {
     test_setup!(
         ctx,

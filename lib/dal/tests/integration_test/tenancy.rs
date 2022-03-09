@@ -1,7 +1,8 @@
 use crate::test_setup;
 use dal::Tenancy;
+use test_env_log::test;
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn check_universal() {
     test_setup!(
         ctx,
@@ -25,7 +26,7 @@ async fn check_universal() {
     assert!(check);
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn check_empty_always_fails() {
     test_setup!(
         ctx,
@@ -49,7 +50,7 @@ async fn check_empty_always_fails() {
     assert!(!check);
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn check_billing_account_pk_identical() {
     test_setup!(
         ctx,
@@ -73,7 +74,7 @@ async fn check_billing_account_pk_identical() {
     assert!(check);
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn check_billing_account_pk_overlapping() {
     test_setup!(
         ctx,
@@ -104,7 +105,7 @@ async fn check_billing_account_pk_overlapping() {
     assert!(check);
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn check_billing_account_pk_mismatched() {
     test_setup!(
         ctx,
@@ -128,7 +129,7 @@ async fn check_billing_account_pk_mismatched() {
     assert!(!check);
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn check_billing_account_pk_mismatched_level() {
     test_setup!(
         ctx,
@@ -152,7 +153,7 @@ async fn check_billing_account_pk_mismatched_level() {
     assert!(!check);
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn check_organization_pk_identical() {
     test_setup!(
         ctx,
@@ -176,7 +177,7 @@ async fn check_organization_pk_identical() {
     assert!(check);
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn check_organization_pk_overlapping() {
     test_setup!(
         ctx,
@@ -207,7 +208,7 @@ async fn check_organization_pk_overlapping() {
     assert!(check);
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn check_organization_pk_mismatched() {
     test_setup!(
         ctx,
@@ -231,7 +232,7 @@ async fn check_organization_pk_mismatched() {
     assert!(!check);
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn check_workspace_pk_identical() {
     test_setup!(
         ctx,
@@ -255,7 +256,7 @@ async fn check_workspace_pk_identical() {
     assert!(check);
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn check_workspace_pk_overlapping() {
     test_setup!(
         ctx,
@@ -286,7 +287,7 @@ async fn check_workspace_pk_overlapping() {
     assert!(check);
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn check_workspace_pk_mismatched() {
     test_setup!(
         ctx,

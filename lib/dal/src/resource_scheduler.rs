@@ -60,7 +60,6 @@ impl ResourceScheduler {
     /// Starts the scheduler. It returns the join handle to the spawned scheduler, and
     /// consumes itself. The caller should check for errors and restart the scheduler if
     /// it ever returns an error.
-    #[tracing::instrument]
     pub async fn start(self) {
         tokio::spawn(async move { self.start_task().await });
     }
@@ -68,7 +67,7 @@ impl ResourceScheduler {
     /// The internal task spawned by `start`. No more frequently than every 30
     /// seconds, it will iterate over all the components in the database and
     /// schedule them to sync their resources.
-    #[tracing::instrument]
+    #[instrument(name = "resource_scheduler.start_task", skip_all, level = "debug")]
     async fn start_task(&self) {
         let mut interval = time::interval(Duration::from_secs(30));
         'schedule: loop {
@@ -76,7 +75,7 @@ impl ResourceScheduler {
             let components = match self.components_to_check().await {
                 Ok(r) => r,
                 Err(error) => {
-                    tracing::error!(
+                    error!(
                         ?error,
                         "Failed to fetch components; aborting scheduled interval check"
                     );
@@ -111,7 +110,7 @@ impl ResourceScheduler {
                     )
                     .await
                 {
-                    tracing::error!(?error, "Failed to sync component, moving to the next.");
+                    error!(?error, "Failed to sync component, moving to the next.");
                     continue 'check;
                 }
                 if let Err(err) = txn.commit().await {
@@ -127,7 +126,7 @@ impl ResourceScheduler {
     }
 
     /// Gets a list of all the components in the database.
-    #[tracing::instrument]
+    #[instrument(skip_all, level = "debug")]
     async fn components_to_check(&self) -> ResourceSchedulerResult<Vec<Component>> {
         let mut conn = self.pg_pool.get().await?;
         let txn = conn.transaction().await?;

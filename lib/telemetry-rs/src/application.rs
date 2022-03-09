@@ -202,8 +202,7 @@ fn tracing_subscriber(
         .with(
             tracing_subscriber::fmt::layer()
                 .with_thread_ids(true)
-                .with_thread_names(true)
-                .with_span_events(FmtSpan::NEW | FmtSpan::CLOSE),
+                .with_span_events(FmtSpan::NONE),
         );
 
     Ok((registry, env_handle, otel_handle, inner_otel_layer))

@@ -100,7 +100,7 @@ impl_standard_model! {
 
 impl FuncBinding {
     #[allow(clippy::too_many_arguments)]
-    #[tracing::instrument(skip(txn, nats))]
+    #[instrument(skip_all)]
     pub async fn new(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
@@ -133,7 +133,7 @@ impl FuncBinding {
     }
 
     #[allow(clippy::too_many_arguments)]
-    #[tracing::instrument(skip(txn, nats))]
+    #[instrument(skip_all)]
     pub async fn find_or_create(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,

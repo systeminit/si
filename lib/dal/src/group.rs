@@ -52,7 +52,7 @@ impl_standard_model! {
 }
 
 impl Group {
-    #[tracing::instrument(skip(txn, nats, name))]
+    #[instrument(skip_all)]
     pub async fn new(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,

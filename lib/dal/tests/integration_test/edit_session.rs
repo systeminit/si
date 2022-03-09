@@ -8,8 +8,9 @@ use dal::{
     BillingAccount, ChangeSet, EditSessionStatus, HistoryActor, StandardModel, Tenancy,
     NO_EDIT_SESSION_PK,
 };
+use test_env_log::test;
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn new() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
@@ -44,7 +45,7 @@ async fn new() {
     .expect("cannot create edit session");
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn save() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
@@ -100,7 +101,7 @@ async fn save() {
     );
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn get_by_pk() {
     test_setup!(
         ctx,
@@ -125,7 +126,7 @@ async fn get_by_pk() {
     assert_eq!(&edit_session, &result);
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn cancel() {
     test_setup!(
         ctx,

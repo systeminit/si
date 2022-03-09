@@ -1,7 +1,8 @@
 use dal::test_harness::{one_time_setup, TestContext};
 use dal::{HistoryActor, HistoryEvent, Tenancy};
+use test_env_log::test;
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn new() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;

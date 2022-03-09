@@ -51,7 +51,7 @@ impl_standard_model! {
 }
 
 impl Organization {
-    #[tracing::instrument(skip(txn, nats, name))]
+    #[instrument(skip_all)]
     pub async fn new(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,

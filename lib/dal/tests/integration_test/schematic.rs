@@ -3,8 +3,9 @@ use dal::{
     test_harness::find_or_create_production_system, Component, Connection, HistoryActor,
     NodePosition, Schema, Schematic, SchematicKind, StandardModel, SystemId, Tenancy, Visibility,
 };
+use test_env_log::test;
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn get_schematic() {
     test_setup!(
         ctx,
@@ -99,7 +100,7 @@ async fn get_schematic() {
     assert_eq!(schematic.nodes()[1].positions()[0].y(), node_position.y());
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn create_connection() {
     test_setup!(
         ctx,

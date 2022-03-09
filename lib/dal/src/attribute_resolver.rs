@@ -136,7 +136,7 @@ impl_standard_model! {
 ///   the value of unset) that has already been set
 impl AttributeResolver {
     #[allow(clippy::too_many_arguments)]
-    #[tracing::instrument(skip(txn, nats))]
+    #[instrument(skip_all)]
     pub async fn new(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
@@ -266,7 +266,7 @@ impl AttributeResolver {
         Ok(())
     }
 
-    #[tracing::instrument(skip(txn))]
+    #[instrument(skip_all)]
     pub async fn update_parent_index_map(
         &self,
         txn: &PgTxn<'_>,
@@ -310,7 +310,7 @@ impl AttributeResolver {
         Ok(())
     }
 
-    #[tracing::instrument(skip(txn))]
+    #[instrument(skip_all)]
     pub async fn find_for_context(
         txn: &PgTxn<'_>,
         tenancy: &Tenancy,
@@ -336,7 +336,7 @@ impl AttributeResolver {
     }
 
     #[allow(clippy::too_many_arguments)]
-    #[tracing::instrument(skip(txn, nats))]
+    #[instrument(skip_all)]
     pub async fn upsert(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,

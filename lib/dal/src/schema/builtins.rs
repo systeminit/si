@@ -1268,7 +1268,7 @@ pub struct RootProp {
 }
 
 /// Returns si-specific prop id and domain-specific prop id, respectfully
-#[tracing::instrument(skip(txn, nats))]
+#[instrument(skip_all)]
 #[allow(clippy::too_many_arguments)]
 pub async fn create_root_prop(
     txn: &PgTxn<'_>,

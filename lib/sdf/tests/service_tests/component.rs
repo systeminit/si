@@ -12,8 +12,9 @@ use sdf::service::component::get_component_metadata::{
 use sdf::service::component::list_components_names_only::{
     ListComponentNamesOnlyRequest, ListComponentNamesOnlyResponse,
 };
+use test_env_log::test;
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn list_components_names_only() {
     test_setup!(
         _ctx,
@@ -108,7 +109,7 @@ async fn list_components_names_only() {
     );
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn get_component_metadata() {
     test_setup!(
         _ctx,

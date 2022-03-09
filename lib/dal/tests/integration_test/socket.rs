@@ -3,10 +3,11 @@ use dal::{
     test_harness::create_socket,
     HistoryActor, Tenancy, Visibility,
 };
+use test_env_log::test;
 
 use crate::test_setup;
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn new() {
     test_setup!(
         ctx,
@@ -39,7 +40,7 @@ async fn new() {
     assert_eq!(socket.arity(), &SocketArity::Many);
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn set_required() {
     test_setup!(
         ctx,

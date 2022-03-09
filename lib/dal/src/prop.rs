@@ -125,7 +125,7 @@ impl_standard_model! {
 
 impl Prop {
     #[allow(clippy::too_many_arguments)]
-    #[tracing::instrument(skip(txn, nats, name))]
+    #[instrument(skip_all)]
     pub async fn new(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
@@ -138,7 +138,6 @@ impl Prop {
         kind: PropKind,
     ) -> PropResult<Self> {
         let name = name.as_ref();
-        info!("Create: {}", name);
         let widget_kind = WidgetKind::from(kind);
         let row = txn
             .query_one(

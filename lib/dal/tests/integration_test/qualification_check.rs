@@ -2,10 +2,11 @@ use dal::{
     test_harness::{create_qualification_check, create_schema, create_schema_variant},
     HistoryActor, QualificationCheck, SchemaKind, StandardModel, Tenancy, Visibility,
 };
+use test_env_log::test;
 
 use crate::test_setup;
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn new() {
     test_setup!(
         ctx,
@@ -34,7 +35,7 @@ async fn new() {
     assert_eq!(qualification_check.name(), "checkit");
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn schema_variants() {
     test_setup!(
         ctx,

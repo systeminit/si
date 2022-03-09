@@ -7,8 +7,9 @@ use dal::{
     BillingAccount, ChangeSet, ChangeSetStatus, HistoryActor, StandardModel, Tenancy, Visibility,
     NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK,
 };
+use test_env_log::test;
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn new() {
     test_setup!(
         ctx,
@@ -43,7 +44,7 @@ async fn new() {
     assert_eq!(&change_set.tenancy, &tenancy);
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn apply() {
     test_setup!(
         ctx,
@@ -105,7 +106,7 @@ async fn apply() {
     );
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn list_open() {
     test_setup!(
         ctx,
@@ -163,7 +164,7 @@ async fn list_open() {
     );
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn get_by_pk() {
     test_setup!(
         ctx,

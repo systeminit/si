@@ -40,9 +40,10 @@ paste = "1.0"
 async-trait = "0.1.51"
 veritech = { path = "../../lib/veritech", features = ["client"] }
 
-tracing-subscriber = { version = "0.2.19", default-features = false, features = ["env-filter", "fmt"] }
-
 [dev-dependencies]
 insta = "1.8.0"
-veritech = { path = "../../lib/veritech", features = ["client", "server"] }
 pretty_assertions_sorted = "1.1.2"
+test-env-log = { version = "0.2.7", default-features = false, features = ["trace"] }
+tracing = { version = "0.1" }
+tracing-subscriber = { version = "0.2.19", default-features = false, features = ["env-filter", "fmt"] }
+veritech = { path = "../../lib/veritech", features = ["client", "server"] }

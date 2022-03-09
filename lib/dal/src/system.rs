@@ -128,7 +128,7 @@ impl System {
         result: SystemResult,
     );
 
-    #[tracing::instrument(skip(txn, nats, name))]
+    #[instrument(skip_all)]
     pub async fn new_with_node(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,

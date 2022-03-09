@@ -133,7 +133,7 @@ impl ChangeSet {
         Ok(())
     }
 
-    #[tracing::instrument(skip(txn))]
+    #[instrument(skip_all)]
     pub async fn list_open(
         txn: &PgTxn<'_>,
         tenancy: &Tenancy,
@@ -143,7 +143,7 @@ impl ChangeSet {
         Ok(results)
     }
 
-    #[tracing::instrument(skip(txn))]
+    #[instrument(skip_all)]
     pub async fn get_by_pk(
         txn: &PgTxn<'_>,
         tenancy: &Tenancy,

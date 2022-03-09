@@ -5,8 +5,9 @@ use dal::test_harness::{
     one_time_setup, TestContext,
 };
 use dal::{BillingAccount, HistoryActor, StandardModel, Tenancy};
+use test_env_log::test;
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn new() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
@@ -39,7 +40,7 @@ async fn new() {
     assert_eq!(billing_account.visibility(), &visibility);
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn get_by_pk() {
     test_setup!(
         ctx,
@@ -75,7 +76,7 @@ async fn get_by_pk() {
     assert_eq!(billing_account, retrieved);
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn get_by_id() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
@@ -106,7 +107,7 @@ async fn get_by_id() {
     assert_eq!(billing_account, retrieved);
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn set_name() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
@@ -139,7 +140,7 @@ async fn set_name() {
     txn.commit().await.expect("fuck");
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn set_description() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
@@ -177,7 +178,7 @@ async fn set_description() {
     txn.commit().await.expect("fuck");
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn find_by_name() {
     test_setup!(
         ctx,
@@ -206,7 +207,7 @@ async fn find_by_name() {
     );
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn get_defaults() {
     test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats, _veritech, _encr_key);
     let (nba, _auth_token) = billing_account_signup(&txn, &nats, secret_key).await;
