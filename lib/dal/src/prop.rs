@@ -9,7 +9,10 @@ use veritech::EncryptionKey;
 
 use crate::{
     attribute_resolver::AttributeResolverContext,
-    deculture::{self, attribute_prototype::AttributePrototype, attribute_value::AttributeValue},
+    deculture::{
+        attribute::prototype::AttributePrototype, attribute::value::AttributeValue,
+        AttributeContextBuilderError,
+    },
     edit_field::{
         value_and_visibility_diff, widget::prelude::*, EditField, EditFieldAble, EditFieldDataType,
         EditFieldError, EditFieldObjectKind, EditFields,
@@ -26,7 +29,7 @@ use crate::{
 #[derive(Error, Debug)]
 pub enum PropError {
     #[error("AttributeContext error: {0}")]
-    AttributeContext(#[from] deculture::AttributeResolverContextBuilderError),
+    AttributeContext(#[from] AttributeContextBuilderError),
     // Can't #[from] here, or we'll end up with circular error definitions.
     #[error("AttributePrototype error: {0}")]
     AttributePrototype(String),

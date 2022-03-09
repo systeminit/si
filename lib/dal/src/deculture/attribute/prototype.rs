@@ -6,9 +6,9 @@ use thiserror::Error;
 
 use crate::{
     deculture::{
-        attribute_resolver_context::AttributeResolverContext,
-        attribute_resolver_context::AttributeResolverContextError,
-        attribute_value::{AttributeValue, AttributeValueError, AttributeValueId},
+        attribute::context::AttributeContext,
+        attribute::context::AttributeContextError,
+        attribute::value::{AttributeValue, AttributeValueError, AttributeValueId},
     },
     func::binding::{FuncBindingError, FuncBindingId},
     func::FuncId,
@@ -18,14 +18,14 @@ use crate::{
     StandardModelError, Tenancy, Timestamp, Visibility,
 };
 
-const LIST_FOR_CONTEXT: &str = include_str!("./queries/attribute_prototype_list_for_context.sql");
+const LIST_FOR_CONTEXT: &str = include_str!("../queries/attribute_prototype_list_for_context.sql");
 const FIND_WITH_PARENT_VALUE_AND_KEY_FOR_CONTEXT: &str =
-    include_str!("./queries/attribute_prototype_find_with_parent_value_and_key_for_context.sql");
+    include_str!("../queries/attribute_prototype_find_with_parent_value_and_key_for_context.sql");
 
 #[derive(Error, Debug)]
 pub enum AttributePrototypeError {
     #[error("attribute resolver context builder error: {0}")]
-    AttributeResolverContextBuilder(#[from] AttributeResolverContextError),
+    AttributeContextBuilder(#[from] AttributeContextError),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
     #[error("func binding error: {0}")]
@@ -80,7 +80,7 @@ pub struct AttributePrototype {
     func_binding_id: FuncBindingId,
     pub key: Option<String>,
     #[serde(flatten)]
-    pub context: AttributeResolverContext,
+    pub context: AttributeContext,
     #[serde(flatten)]
     timestamp: Timestamp,
 }
@@ -105,7 +105,7 @@ impl AttributePrototype {
         history_actor: &HistoryActor,
         func_id: FuncId,
         func_binding_id: FuncBindingId,
-        context: AttributeResolverContext,
+        context: AttributeContext,
         key: Option<String>,
         parent_attribute_value_id: Option<AttributeValueId>,
     ) -> AttributePrototypeResult<Self> {
@@ -194,7 +194,7 @@ impl AttributePrototype {
         txn: &PgTxn<'_>,
         tenancy: &Tenancy,
         visibility: &Visibility,
-        context: AttributeResolverContext,
+        context: AttributeContext,
     ) -> AttributePrototypeResult<Vec<Self>> {
         let rows = txn
             .query(
@@ -213,7 +213,7 @@ impl AttributePrototype {
         visibility: &Visibility,
         parent_attribute_value_id: Option<AttributeValueId>,
         key: Option<String>,
-        context: AttributeResolverContext,
+        context: AttributeContext,
     ) -> AttributePrototypeResult<Option<Self>> {
         let row = txn
             .query_opt(
@@ -242,7 +242,7 @@ impl AttributePrototype {
         history_actor: &HistoryActor,
         parent_attribute_value_id: Option<AttributeValueId>,
         prototype_id: AttributePrototypeId,
-        context: AttributeResolverContext,
+        context: AttributeContext,
     ) -> AttributePrototypeResult<()> {
         if context.is_least_specific() {
             return Ok(());

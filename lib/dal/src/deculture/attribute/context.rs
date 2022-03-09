@@ -1,4 +1,4 @@
-//! This module contains the [`AttributeResolverContext`], and its corresponding builder, [`AttributeResolverContextBuilder`].
+//! This module contains the [`AttributeContext`], and its corresponding builder, [`AttributeContextBuilder`].
 //! The context can be scoped with varying levels of specificity, using an order of precedence.
 //! The builder ensures the correct order of precedence is maintained whilst setting and unsetting
 //! fields of specificity.
@@ -18,15 +18,15 @@ use crate::attribute_resolver::UNSET_ID_VALUE;
 use crate::{ComponentId, PropId, SchemaId, SchemaVariantId, SystemId};
 
 #[derive(Error, Debug)]
-pub enum AttributeResolverContextError {
+pub enum AttributeContextError {
     #[error("attribute resolver context builder error: {0}")]
-    AttributeResolverContextBuilder(#[from] AttributeResolverContextBuilderError),
+    AttributeContextBuilder(#[from] AttributeContextBuilderError),
 }
 
-pub type AttributeResolverContextResult<T> = Result<T, AttributeResolverContextError>;
+pub type AttributeContextResult<T> = Result<T, AttributeContextError>;
 
 #[derive(Deserialize, Serialize, Debug, Clone, Copy, PartialEq, Eq)]
-pub struct AttributeResolverContext {
+pub struct AttributeContext {
     #[serde(rename = "attribute_context_prop_id")]
     prop_id: PropId,
     #[serde(rename = "attribute_context_schema_id")]
@@ -39,26 +39,24 @@ pub struct AttributeResolverContext {
     system_id: SystemId,
 }
 
-impl From<crate::attribute_resolver_context::AttributeResolverContext>
-    for AttributeResolverContext
-{
+impl From<crate::attribute_resolver_context::AttributeResolverContext> for AttributeContext {
     fn from(
         old_context: crate::attribute_resolver_context::AttributeResolverContext,
-    ) -> AttributeResolverContext {
-        AttributeResolverContextBuilder::new()
+    ) -> AttributeContext {
+        AttributeContextBuilder::new()
             .set_prop_id(old_context.prop_id())
             .set_schema_id(old_context.schema_id())
             .set_schema_variant_id(old_context.schema_variant_id())
             .set_component_id(old_context.component_id())
             .set_system_id(old_context.system_id())
             .to_context()
-            .unwrap_or_else(|_| panic!("Failed to convert an AttributeResolverContext to a deculture::AttributeResolverContext: {:?}", old_context))
+            .unwrap_or_else(|_| panic!("Failed to convert an AttributeResolverContext to a deculture::AttributeContext: {:?}", old_context))
     }
 }
 
-impl From<AttributeResolverContext> for AttributeResolverContextBuilder {
-    fn from(from_context: AttributeResolverContext) -> AttributeResolverContextBuilder {
-        AttributeResolverContextBuilder {
+impl From<AttributeContext> for AttributeContextBuilder {
+    fn from(from_context: AttributeContext) -> AttributeContextBuilder {
+        AttributeContextBuilder {
             prop_id: from_context.prop_id(),
             schema_id: from_context.schema_id(),
             schema_variant_id: from_context.schema_variant_id(),
@@ -68,9 +66,9 @@ impl From<AttributeResolverContext> for AttributeResolverContextBuilder {
     }
 }
 
-impl AttributeResolverContext {
-    pub fn builder() -> AttributeResolverContextBuilder {
-        AttributeResolverContextBuilder::new()
+impl AttributeContext {
+    pub fn builder() -> AttributeContextBuilder {
+        AttributeContextBuilder::new()
     }
 
     pub fn prop_id(&self) -> PropId {
@@ -93,8 +91,8 @@ impl AttributeResolverContext {
         self.system_id
     }
 
-    /// Determines if the context is "least specific" ([`PropId`] is set) or everything is
-    /// unset ([`PropId`] is unset).
+    /// Determines if the context is "least specific" ([`PropId`] is
+    /// set) or everything is unset ([`PropId`] is unset).
     pub fn is_least_specific(&self) -> bool {
         self.system_id == UNSET_ID_VALUE.into()
             && self.component_id == UNSET_ID_VALUE.into()
@@ -102,12 +100,13 @@ impl AttributeResolverContext {
             && self.schema_id == UNSET_ID_VALUE.into()
     }
 
-    /// Return a new [`AttributeResolverContext`] with the most specific piece of the current
-    /// [`AttributeResolverContext`] unset, widening the scope of the context by one step. If widening the
-    /// context would result in everything being unset, it will return a new copy of the current
-    /// [`AttributeResolverContext`].
-    pub fn less_specific(&self) -> AttributeResolverContextResult<Self> {
-        let mut builder = AttributeResolverContextBuilder::from(*self);
+    /// Return a new [`AttributeContext`] with the most specific piece
+    /// of the current [`AttributeContext`] unset, widening the scope
+    /// of the context by one step. If widening the context would
+    /// result in everything being unset, it will return a new copy of
+    /// the current [`AttributeContext`].
+    pub fn less_specific(&self) -> AttributeContextResult<Self> {
+        let mut builder = AttributeContextBuilder::from(*self);
 
         if self.system_id() != UNSET_ID_VALUE.into() {
             builder.unset_system_id();
@@ -124,17 +123,17 @@ impl AttributeResolverContext {
 }
 
 #[derive(Error, Debug)]
-pub enum AttributeResolverContextBuilderError {
+pub enum AttributeContextBuilderError {
     #[error("for builder {0:?}, the following fields must be set: {1:?}")]
-    PrerequisteFieldsUnset(AttributeResolverContextBuilder, Vec<&'static str>),
+    PrerequisteFieldsUnset(AttributeContextBuilder, Vec<&'static str>),
 }
 
-pub type AttributeResolverContextBuilderResult<T> = Result<T, AttributeResolverContextBuilderError>;
+pub type AttributeContextBuilderResult<T> = Result<T, AttributeContextBuilderError>;
 
-/// A builder with non-consuming "setter" and "unsetter" methods that verify the order of
-/// precedence for [`AttributeResolverContext`].
+/// A builder with non-consuming "setter" and "unsetter" methods that
+/// verify the order of precedence for [`AttributeContext`].
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Copy)]
-pub struct AttributeResolverContextBuilder {
+pub struct AttributeContextBuilder {
     prop_id: PropId,
     schema_id: SchemaId,
     schema_variant_id: SchemaVariantId,
@@ -143,13 +142,13 @@ pub struct AttributeResolverContextBuilder {
 }
 
 /// Returns [`Self::new()`].
-impl Default for AttributeResolverContextBuilder {
+impl Default for AttributeContextBuilder {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl AttributeResolverContextBuilder {
+impl AttributeContextBuilder {
     /// Creates [`Self`] with all fields set to [`UNSET_ID_VALUE`].
     pub fn new() -> Self {
         Self {
@@ -161,10 +160,11 @@ impl AttributeResolverContextBuilder {
         }
     }
 
-    /// Converts [`Self`] to [`AttributeResolverContext`]. This method will fail if the order of
-    /// precedence is broken (i.e. more-specific fields are set, but one-to-all less-specific
-    /// fields are unset) or if the field of least specificity, [`PropId`], is unset.
-    pub fn to_context(&self) -> AttributeResolverContextBuilderResult<AttributeResolverContext> {
+    /// Converts [`Self`] to [`AttributeContext`]. This method will
+    /// fail if the order of precedence is broken (i.e. more-specific
+    /// fields are set, but one-to-all less-specific fields are unset)
+    /// or if the field of least specificity, [`PropId`], is unset.
+    pub fn to_context(&self) -> AttributeContextBuilderResult<AttributeContext> {
         let mut unset_prerequisite_fields = Vec::new();
 
         // Start with the second highest specificty and work our way down.
@@ -191,15 +191,13 @@ impl AttributeResolverContextBuilder {
         }
 
         if !unset_prerequisite_fields.is_empty() {
-            return Err(
-                AttributeResolverContextBuilderError::PrerequisteFieldsUnset(
-                    *self,
-                    unset_prerequisite_fields,
-                ),
-            );
+            return Err(AttributeContextBuilderError::PrerequisteFieldsUnset(
+                *self,
+                unset_prerequisite_fields,
+            ));
         }
 
-        Ok(AttributeResolverContext {
+        Ok(AttributeContext {
             prop_id: self.prop_id,
             schema_id: self.schema_id,
             schema_variant_id: self.schema_variant_id,
@@ -289,7 +287,7 @@ impl AttributeResolverContextBuilder {
     }
 }
 
-impl postgres_types::ToSql for AttributeResolverContext {
+impl postgres_types::ToSql for AttributeContext {
     fn to_sql(
         &self,
         ty: &postgres_types::Type,
@@ -336,7 +334,7 @@ mod tests {
 
     #[test]
     fn less_specific() {
-        let context = AttributeResolverContextBuilder::new()
+        let context = AttributeContextBuilder::new()
             .set_prop_id(1.into())
             .set_schema_id(2.into())
             .set_schema_variant_id(3.into())
@@ -350,7 +348,7 @@ mod tests {
             .expect("cannot create less specific context");
 
         assert_eq!(
-            AttributeResolverContextBuilder::new()
+            AttributeContextBuilder::new()
                 .set_prop_id(1.into())
                 .set_schema_id(2.into())
                 .set_schema_variant_id(3.into())
@@ -365,7 +363,7 @@ mod tests {
             .expect("cannot create less specific context");
 
         assert_eq!(
-            AttributeResolverContextBuilder::new()
+            AttributeContextBuilder::new()
                 .set_prop_id(1.into())
                 .set_schema_id(2.into())
                 .set_schema_variant_id(3.into())
@@ -379,7 +377,7 @@ mod tests {
             .expect("cannot create less specific context");
 
         assert_eq!(
-            AttributeResolverContextBuilder::new()
+            AttributeContextBuilder::new()
                 .set_prop_id(1.into())
                 .set_schema_id(2.into())
                 .to_context()
@@ -392,7 +390,7 @@ mod tests {
             .expect("cannot create less specific context");
 
         assert_eq!(
-            AttributeResolverContextBuilder::new()
+            AttributeContextBuilder::new()
                 .set_prop_id(1.into())
                 .to_context()
                 .expect("cannot create expected context"),
@@ -404,7 +402,7 @@ mod tests {
             .expect("cannot create less specific context");
 
         assert_eq!(
-            AttributeResolverContextBuilder::new()
+            AttributeContextBuilder::new()
                 .set_prop_id(1.into())
                 .to_context()
                 .expect("cannot create expected context"),
@@ -420,7 +418,7 @@ mod tests {
         let component_id: ComponentId = 1.into();
         let system_id: SystemId = 1.into();
 
-        let mut builder = AttributeResolverContextBuilder::new();
+        let mut builder = AttributeContextBuilder::new();
 
         // Empty (FAIL)
         assert!(builder.to_context().is_err());
@@ -471,7 +469,7 @@ mod tests {
         // ----------------
 
         // ComponentId [ ] --> SchemaVariantId [ ] --> SchemaId [ ] --> PropId [ ]
-        let mut builder = AttributeResolverContextBuilder::new();
+        let mut builder = AttributeContextBuilder::new();
         builder.set_system_id(system_id);
         assert!(builder.to_context().is_err());
 
@@ -480,25 +478,25 @@ mod tests {
         // ----------------
 
         // ComponentId [x] --> SchemaVariantId [ ] --> SchemaId [ ] --> PropId [ ]
-        let mut builder = AttributeResolverContextBuilder::new();
+        let mut builder = AttributeContextBuilder::new();
         builder.set_system_id(system_id);
         builder.set_component_id(component_id);
         assert!(builder.to_context().is_err());
 
         // ComponentId [ ] --> SchemaVariantId [x] --> SchemaId [ ] --> PropId [ ]
-        let mut builder = AttributeResolverContextBuilder::new();
+        let mut builder = AttributeContextBuilder::new();
         builder.set_system_id(system_id);
         builder.set_schema_variant_id(schema_variant_id);
         assert!(builder.to_context().is_err());
 
         // ComponentId [ ] --> SchemaVariantId [ ] --> SchemaId [x] --> PropId [ ]
-        let mut builder = AttributeResolverContextBuilder::new();
+        let mut builder = AttributeContextBuilder::new();
         builder.set_system_id(system_id);
         builder.set_schema_id(schema_id);
         assert!(builder.to_context().is_err());
 
         // ComponentId [ ] --> SchemaVariantId [ ] --> SchemaId [ ] --> PropId [x]
-        let mut builder = AttributeResolverContextBuilder::new();
+        let mut builder = AttributeContextBuilder::new();
         builder.set_system_id(system_id);
         builder.set_prop_id(prop_id);
         assert!(builder.to_context().is_err());
@@ -508,42 +506,42 @@ mod tests {
         // ----------------
 
         // ComponentId [x] --> SchemaVariantId [x] --> SchemaId [ ] --> PropId [ ]
-        let mut builder = AttributeResolverContextBuilder::new();
+        let mut builder = AttributeContextBuilder::new();
         builder.set_system_id(system_id);
         builder.set_component_id(component_id);
         builder.set_schema_variant_id(schema_variant_id);
         assert!(builder.to_context().is_err());
 
         // ComponentId [x] --> SchemaVariantId [ ] --> SchemaId [x] --> PropId [ ]
-        let mut builder = AttributeResolverContextBuilder::new();
+        let mut builder = AttributeContextBuilder::new();
         builder.set_system_id(system_id);
         builder.set_component_id(component_id);
         builder.set_schema_id(schema_id);
         assert!(builder.to_context().is_err());
 
         // ComponentId [x] --> SchemaVariantId [ ] --> SchemaId [ ] --> PropId [x]
-        let mut builder = AttributeResolverContextBuilder::new();
+        let mut builder = AttributeContextBuilder::new();
         builder.set_system_id(system_id);
         builder.set_component_id(component_id);
         builder.set_prop_id(prop_id);
         assert!(builder.to_context().is_err());
 
         // ComponentId [ ] --> SchemaVariantId [x] --> SchemaId [x] --> PropId [ ]
-        let mut builder = AttributeResolverContextBuilder::new();
+        let mut builder = AttributeContextBuilder::new();
         builder.set_system_id(system_id);
         builder.set_schema_variant_id(schema_variant_id);
         builder.set_schema_id(schema_id);
         assert!(builder.to_context().is_err());
 
         // ComponentId [ ] --> SchemaVariantId [x] --> SchemaId [ ] --> PropId [x]
-        let mut builder = AttributeResolverContextBuilder::new();
+        let mut builder = AttributeContextBuilder::new();
         builder.set_system_id(system_id);
         builder.set_schema_variant_id(schema_variant_id);
         builder.set_prop_id(prop_id);
         assert!(builder.to_context().is_err());
 
         // ComponentId [ ] --> SchemaVariantId [ ] --> SchemaId [x] --> PropId [x]
-        let mut builder = AttributeResolverContextBuilder::new();
+        let mut builder = AttributeContextBuilder::new();
         builder.set_system_id(system_id);
         builder.set_schema_id(schema_id);
         builder.set_prop_id(prop_id);
@@ -554,7 +552,7 @@ mod tests {
         // ----------------
 
         // ComponentId [x] --> SchemaVariantId [x] --> SchemaId [x] --> PropId [ ]
-        let mut builder = AttributeResolverContextBuilder::new();
+        let mut builder = AttributeContextBuilder::new();
         builder.set_system_id(system_id);
         builder.set_component_id(component_id);
         builder.set_schema_variant_id(schema_variant_id);
@@ -562,7 +560,7 @@ mod tests {
         assert!(builder.to_context().is_err());
 
         // ComponentId [x] --> SchemaVariantId [ ] --> SchemaId [x] --> PropId [x]
-        let mut builder = AttributeResolverContextBuilder::new();
+        let mut builder = AttributeContextBuilder::new();
         builder.set_system_id(system_id);
         builder.set_component_id(component_id);
         builder.set_schema_id(schema_id);
@@ -570,7 +568,7 @@ mod tests {
         assert!(builder.to_context().is_err());
 
         // ComponentId [x] --> SchemaVariantId [x] --> SchemaId [ ] --> PropId [x]
-        let mut builder = AttributeResolverContextBuilder::new();
+        let mut builder = AttributeContextBuilder::new();
         builder.set_system_id(system_id);
         builder.set_component_id(component_id);
         builder.set_schema_variant_id(schema_variant_id);
@@ -578,7 +576,7 @@ mod tests {
         assert!(builder.to_context().is_err());
 
         // ComponentId [ ] --> SchemaVariantId [x] --> SchemaId [x] --> PropId [x]
-        let mut builder = AttributeResolverContextBuilder::new();
+        let mut builder = AttributeContextBuilder::new();
         builder.set_system_id(system_id);
         builder.set_schema_variant_id(schema_variant_id);
         builder.set_schema_id(schema_id);
@@ -598,7 +596,7 @@ mod tests {
         // ----------------
 
         // SchemaVariantId [ ] --> SchemaId [ ] --> PropId [ ]
-        let mut builder = AttributeResolverContextBuilder::new();
+        let mut builder = AttributeContextBuilder::new();
         builder.set_component_id(component_id);
         assert!(builder.to_context().is_err());
 
@@ -607,19 +605,19 @@ mod tests {
         // ----------------
 
         // SchemaVariantId [x] --> SchemaId [ ] --> PropId [ ]
-        let mut builder = AttributeResolverContextBuilder::new();
+        let mut builder = AttributeContextBuilder::new();
         builder.set_component_id(component_id);
         builder.set_schema_variant_id(schema_variant_id);
         assert!(builder.to_context().is_err());
 
         // SchemaVariantId [ ] --> SchemaId [x] --> PropId [ ]
-        let mut builder = AttributeResolverContextBuilder::new();
+        let mut builder = AttributeContextBuilder::new();
         builder.set_component_id(component_id);
         builder.set_schema_id(schema_id);
         assert!(builder.to_context().is_err());
 
         // SchemaVariantId [ ] --> SchemaId [ ] --> PropId [x]
-        let mut builder = AttributeResolverContextBuilder::new();
+        let mut builder = AttributeContextBuilder::new();
         builder.set_component_id(component_id);
         builder.set_prop_id(prop_id);
         assert!(builder.to_context().is_err());
@@ -629,21 +627,21 @@ mod tests {
         // ----------------
 
         // SchemaVariantId [x] --> SchemaId [x] --> PropId [ ]
-        let mut builder = AttributeResolverContextBuilder::new();
+        let mut builder = AttributeContextBuilder::new();
         builder.set_component_id(component_id);
         builder.set_schema_variant_id(schema_variant_id);
         builder.set_schema_id(schema_id);
         assert!(builder.to_context().is_err());
 
         // SchemaVariantId [x] --> SchemaId [ ] --> PropId [x]
-        let mut builder = AttributeResolverContextBuilder::new();
+        let mut builder = AttributeContextBuilder::new();
         builder.set_component_id(component_id);
         builder.set_schema_variant_id(schema_variant_id);
         builder.set_prop_id(prop_id);
         assert!(builder.to_context().is_err());
 
         // SchemaVariantId [ ] --> SchemaId [x] --> PropId [x]
-        let mut builder = AttributeResolverContextBuilder::new();
+        let mut builder = AttributeContextBuilder::new();
         builder.set_component_id(component_id);
         builder.set_schema_id(schema_id);
         builder.set_prop_id(prop_id);
@@ -661,7 +659,7 @@ mod tests {
         // ----------------
 
         // SchemaId [ ] --> PropId [ ]
-        let mut builder = AttributeResolverContextBuilder::new();
+        let mut builder = AttributeContextBuilder::new();
         builder.set_schema_variant_id(schema_variant_id);
         assert!(builder.to_context().is_err());
 
@@ -670,13 +668,13 @@ mod tests {
         // ----------------
 
         // SchemaId [x] --> PropId [ ]
-        let mut builder = AttributeResolverContextBuilder::new();
+        let mut builder = AttributeContextBuilder::new();
         builder.set_schema_variant_id(schema_variant_id);
         builder.set_schema_id(schema_id);
         assert!(builder.to_context().is_err());
 
         // SchemaId [ ] --> PropId [x]
-        let mut builder = AttributeResolverContextBuilder::new();
+        let mut builder = AttributeContextBuilder::new();
         builder.set_schema_variant_id(schema_variant_id);
         builder.set_prop_id(prop_id);
         assert!(builder.to_context().is_err());
