@@ -236,7 +236,6 @@ impl Prop {
         result: PropResult,
     );
 
-    // TODO: Turn the next two into many to many
     standard_model_belongs_to!(
         lookup_fn: parent_prop,
         set_fn: set_parent_prop_unchecked,
