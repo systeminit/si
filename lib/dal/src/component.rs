@@ -205,7 +205,7 @@ impl_standard_model! {
 
 impl Component {
     #[allow(clippy::too_many_arguments)]
-    #[tracing::instrument(skip(txn, nats, name))]
+    #[instrument(skip_all)]
     pub async fn new_for_schema_with_node(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
@@ -243,7 +243,7 @@ impl Component {
     }
 
     #[allow(clippy::too_many_arguments)]
-    #[tracing::instrument(skip(txn, nats, name))]
+    #[instrument(skip_all)]
     pub async fn new_for_schema_variant_with_node(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
@@ -351,7 +351,7 @@ impl Component {
         Ok((component, node))
     }
 
-    #[tracing::instrument(skip(txn, nats, name))]
+    #[instrument(skip_all)]
     #[allow(clippy::too_many_arguments)]
     pub async fn new_application_with_node(
         txn: &PgTxn<'_>,
@@ -421,7 +421,7 @@ impl Component {
     );
 
     #[allow(clippy::too_many_arguments)]
-    #[tracing::instrument(skip(txn, nats))]
+    #[instrument(skip_all)]
     pub async fn update_prop_from_edit_field(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
@@ -518,7 +518,7 @@ impl Component {
     /// Perform the actual value setting for a given prop. If the value passed in is empty, we
     /// greedily search for an attribute resolver to set the prop's default value, but "unsetting"
     /// is currently unsupported beyond the initial implementation for "PropKind::String".
-    #[tracing::instrument(skip(txn, nats))]
+    #[instrument(skip_all)]
     pub async fn resolve_attribute(
         &self,
         txn: &PgTxn<'_>,
@@ -1241,7 +1241,7 @@ impl Component {
         Ok(())
     }
 
-    #[tracing::instrument(skip(txn))]
+    #[instrument(skip_all)]
     pub async fn list_validations_as_qualification_for_component_id(
         txn: &PgTxn<'_>,
         tenancy: &Tenancy,
@@ -1271,7 +1271,7 @@ impl Component {
         Ok(qualification_view)
     }
 
-    #[tracing::instrument(skip(txn))]
+    #[instrument(skip_all)]
     pub async fn list_code_generated_by_component_id(
         txn: &PgTxn<'_>,
         tenancy: &Tenancy,
@@ -1299,7 +1299,7 @@ impl Component {
         Ok(results)
     }
 
-    #[tracing::instrument(skip(txn))]
+    #[instrument(skip_all)]
     pub async fn list_qualifications(
         &self,
         txn: &PgTxn<'_>,
@@ -1311,7 +1311,7 @@ impl Component {
             .await
     }
 
-    #[tracing::instrument(skip(txn))]
+    #[instrument(skip_all)]
     pub async fn list_qualifications_by_component_id(
         txn: &PgTxn<'_>,
         tenancy: &Tenancy,
@@ -1386,7 +1386,7 @@ impl Component {
         Ok(results)
     }
 
-    #[tracing::instrument(skip(txn))]
+    #[instrument(skip_all)]
     pub async fn get_resource_by_component_and_system(
         txn: &PgTxn<'_>,
         tenancy: &Tenancy,
@@ -1546,7 +1546,7 @@ impl Component {
         Ok(qualification_view)
     }
 
-    #[tracing::instrument(skip(txn))]
+    #[instrument(skip_all)]
     pub async fn list_for_resource_sync(txn: &PgTxn<'_>) -> ComponentResult<Vec<Component>> {
         let visibility = Visibility::new_head(false);
         let rows = txn.query(LIST_FOR_RESOURCE_SYNC, &[&visibility]).await?;
@@ -1554,7 +1554,7 @@ impl Component {
         Ok(results)
     }
 
-    #[tracing::instrument]
+    #[instrument(skip_all)]
     pub async fn sync_resource(
         &self,
         txn: &PgTxn<'_>,
@@ -1564,8 +1564,6 @@ impl Component {
         history_actor: &HistoryActor,
         system_id: SystemId,
     ) -> ComponentResult<()> {
-        warn!("checking resource: {:?}", self);
-
         // Note(paulo): we don't actually care about the Resource here, we only care about the ResourcePrototype, is this wrong?
 
         let mut schema_tenancy = self.tenancy.clone();
@@ -1726,7 +1724,7 @@ impl Component {
     }
 
     // Note: Won't work for arrays and maps
-    #[tracing::instrument(skip(txn, nats))]
+    #[instrument(skip_all)]
     #[allow(clippy::too_many_arguments)]
     pub async fn set_prop_value_by_json_pointer<T: Serialize + std::fmt::Debug>(
         &self,
@@ -1767,7 +1765,7 @@ impl Component {
         }
     }
 
-    #[tracing::instrument(skip(txn))]
+    #[instrument(skip_all)]
     pub async fn find_prop_by_json_pointer(
         &self,
         txn: &PgTxn<'_>,
@@ -1804,7 +1802,7 @@ impl Component {
         Ok(None)
     }
 
-    #[tracing::instrument(skip(txn))]
+    #[instrument(skip_all)]
     pub async fn find_prop_value_by_json_pointer<
         T: serde::de::DeserializeOwned + std::fmt::Debug,
     >(

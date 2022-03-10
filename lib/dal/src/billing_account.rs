@@ -87,7 +87,7 @@ impl_standard_model! {
 }
 
 impl BillingAccount {
-    #[tracing::instrument(skip(txn, nats, name, description))]
+    #[instrument(skip_all)]
     pub async fn new(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,

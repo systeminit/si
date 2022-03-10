@@ -144,12 +144,12 @@ impl Server<(), ()> {
         sodiumoxide::init().map_err(|_| ServerError::Init)
     }
 
-    #[instrument(skip_all)]
+    #[instrument(name = "sdf.init.generate_jwt_secret_key", skip_all)]
     pub async fn generate_jwt_secret_key(path: impl AsRef<Path>) -> Result<JwtSecretKey> {
         Ok(JwtSecretKey::create(path).await?)
     }
 
-    #[instrument(skip_all)]
+    #[instrument(name = "sdf.init.generate_cyclone_key_pair", skip_all)]
     pub async fn generate_cyclone_key_pair(
         secret_key_path: impl AsRef<Path>,
         public_key_path: impl AsRef<Path>,
@@ -159,17 +159,17 @@ impl Server<(), ()> {
             .map_err(Into::into)
     }
 
-    #[instrument(skip_all)]
+    #[instrument(name = "sdf.init.load_jwt_secret_key", skip_all)]
     pub async fn load_jwt_secret_key(path: impl AsRef<Path>) -> Result<JwtSecretKey> {
         Ok(JwtSecretKey::load(path).await?)
     }
 
-    #[instrument(skip_all)]
+    #[instrument(name = "sdf.init.load_encryption_key", skip_all)]
     pub async fn load_encryption_key(path: impl AsRef<Path>) -> Result<veritech::EncryptionKey> {
         Ok(veritech::EncryptionKey::load(path).await?)
     }
 
-    #[instrument(skip_all)]
+    #[instrument(name = "sdf.init.migrate_database", skip_all)]
     pub async fn migrate_database(
         pg: &PgPool,
         nats: &NatsClient,
@@ -202,14 +202,14 @@ impl Server<(), ()> {
         tokio::spawn(scheduler.start());
     }
 
-    #[instrument(skip_all)]
+    #[instrument(name = "sdf.init.create_pg_pool", skip_all)]
     pub async fn create_pg_pool(pg_pool_config: &PgPoolConfig) -> Result<PgPool> {
         let pool = PgPool::new(pg_pool_config).await?;
         debug!("successfully started pg pool (note that not all connections may be healthy)");
         Ok(pool)
     }
 
-    #[instrument(skip_all)]
+    #[instrument(name = "sdf.init.connect_to_nats", skip_all)]
     pub async fn connect_to_nats(nats_config: &NatsConfig) -> Result<NatsClient> {
         let client = NatsClient::new(nats_config).await?;
         debug!("successfully connected nats client");

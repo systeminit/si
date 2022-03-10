@@ -7,8 +7,9 @@ use dal::{
     resource_prototype::UNSET_ID_VALUE, test_harness::billing_account_signup, Component, Func,
     HistoryActor, ResourcePrototype, Schema, StandardModel, Tenancy, Visibility,
 };
+use test_env_log::test;
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn new() {
     test_setup!(
         ctx,
@@ -78,7 +79,7 @@ async fn new() {
     .expect("cannot create new prototype");
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn find_for_component() {
     // TODO: This test is brittle, because it relies on the behavior of docker_image. I'm okay
     // with that for now, but not for long. If it breaks before we fix it - future person, I'm

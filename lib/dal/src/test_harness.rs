@@ -8,8 +8,6 @@ use telemetry::prelude::*;
 use uuid::Uuid;
 use veritech::{EncryptionKey, Instance, StandardConfig};
 
-use tracing_subscriber::{fmt, prelude::*, EnvFilter, Registry};
-
 use crate::{
     billing_account::BillingAccountSignup,
     component::ComponentKind,
@@ -193,13 +191,6 @@ pub async fn one_time_setup() -> Result<()> {
     let mut finished = INIT_PG_LOCK.lock().await;
     if *finished {
         return Ok(());
-    }
-
-    if let Ok(filter) = EnvFilter::try_from_env("SI_LOG") {
-        Registry::default()
-            .with(filter)
-            .with(fmt::layer())
-            .try_init()?;
     }
 
     sodiumoxide::init().expect("crypto failed to init");

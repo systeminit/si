@@ -64,7 +64,7 @@ impl Resource {
     /// which [`Component`] it is the "real world" representation of, and also
     /// the [`System`] in which that component being referred to.
     #[allow(clippy::too_many_arguments)]
-    #[tracing::instrument(skip(txn, nats))]
+    #[instrument(skip_all)]
     pub async fn new(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,

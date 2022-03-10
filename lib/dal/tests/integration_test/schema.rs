@@ -3,11 +3,12 @@ use crate::test_setup;
 use dal::schema::SchemaKind;
 use dal::test_harness::{billing_account_signup, create_schema, create_schema_ui_menu};
 use dal::{component::ComponentKind, HistoryActor, Schema, StandardModel, Tenancy, Visibility};
+use test_env_log::test;
 
 pub mod ui_menu;
 pub mod variant;
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn new() {
     test_setup!(
         ctx,
@@ -37,7 +38,7 @@ async fn new() {
     .expect("cannot create schema");
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn billing_accounts() {
     test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats, _veritech, _encr_key);
     let tenancy = Tenancy::new_universal();
@@ -90,7 +91,7 @@ async fn billing_accounts() {
     assert_eq!(relations, vec![]);
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn organizations() {
     test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats, _veritech, _encr_key);
     let tenancy = Tenancy::new_universal();
@@ -143,7 +144,7 @@ async fn organizations() {
     assert_eq!(relations, vec![]);
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn workspaces() {
     test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats, _veritech, _encr_key);
     let tenancy = Tenancy::new_universal();
@@ -184,7 +185,7 @@ async fn workspaces() {
     assert_eq!(relations, vec![]);
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn ui_menus() {
     test_setup!(
         ctx,

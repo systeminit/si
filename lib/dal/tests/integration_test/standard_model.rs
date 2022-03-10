@@ -9,8 +9,9 @@ use dal::{
     KeyPair, Schema, SchemaKind, StandardModel, Tenancy, User, UserId, NO_CHANGE_SET_PK,
     NO_EDIT_SESSION_PK,
 };
+use test_env_log::test;
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn get_by_pk() {
     test_setup!(
         ctx,
@@ -46,7 +47,7 @@ async fn get_by_pk() {
     assert_eq!(billing_account, retrieved);
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn get_by_id() {
     test_setup!(
         ctx,
@@ -162,7 +163,7 @@ async fn get_by_id() {
     assert_eq!(&for_head.visibility().edit_session_pk, &NO_EDIT_SESSION_PK);
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn list() {
     test_setup!(
         ctx,
@@ -315,7 +316,7 @@ async fn list() {
     );
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn update() {
     test_setup!(
         ctx,
@@ -358,7 +359,7 @@ async fn update() {
     .expect("cannot update field");
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn delete() {
     test_setup!(
         ctx,
@@ -400,7 +401,7 @@ async fn delete() {
     assert_eq!(soft_deleted.visibility().deleted, true);
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn delete_with_bad_tenancy() {
     test_setup!(
         ctx,
@@ -440,7 +441,7 @@ async fn delete_with_bad_tenancy() {
     assert!(has_err.is_err(), "cannot delete when the tenancy is wrong");
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn undelete() {
     test_setup!(
         ctx,
@@ -494,7 +495,7 @@ async fn undelete() {
     assert_eq!(soft_undeleted.visibility().deleted, false);
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn set_belongs_to() {
     test_setup!(
         ctx,
@@ -557,7 +558,7 @@ async fn set_belongs_to() {
     .expect("cannot set billing account for key pair");
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn unset_belongs_to() {
     test_setup!(
         ctx,
@@ -610,7 +611,7 @@ async fn unset_belongs_to() {
     .expect("cannot set billing account for key pair");
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn belongs_to() {
     test_setup!(
         ctx,
@@ -754,7 +755,7 @@ async fn belongs_to() {
     );
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn has_many() {
     test_setup!(
         ctx,
@@ -852,7 +853,7 @@ async fn has_many() {
     assert_eq!(&key_pairs, &vec![a_key_pair, b_key_pair]);
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn associate_many_to_many() {
     test_setup!(
         ctx,
@@ -896,7 +897,7 @@ async fn associate_many_to_many() {
     .expect("cannot associate many to many");
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn disassociate_many_to_many() {
     test_setup!(
         ctx,
@@ -950,7 +951,7 @@ async fn disassociate_many_to_many() {
     .expect("cannot disassociate many to many");
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn many_to_many() {
     test_setup!(
         ctx,
@@ -1100,7 +1101,7 @@ async fn many_to_many() {
     assert_eq!(user_two_groups, vec![group_one.clone(), group_two.clone()]);
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn associate_many_to_many_no_repeat_entries() {
     test_setup!(
         ctx,
@@ -1143,7 +1144,7 @@ async fn associate_many_to_many_no_repeat_entries() {
     assert!(result.is_err(), "should error");
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn find_by_attr() {
     test_setup!(
         ctx,

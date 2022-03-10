@@ -5,8 +5,9 @@ use dal::test_harness::{
     create_visibility_edit_session, create_visibility_head,
 };
 use dal::{HistoryActor, StandardModel, Tenancy, User};
+use test_env_log::test;
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn new() {
     test_setup!(
         ctx,
@@ -38,7 +39,7 @@ async fn new() {
     .expect("cannot create user");
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn login() {
     test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats, _veritech, _encr_key);
     let tenancy = Tenancy::new_universal();
@@ -66,7 +67,7 @@ async fn login() {
         .expect("cannot get jwt");
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn find_by_email() {
     test_setup!(
         ctx,
@@ -117,7 +118,7 @@ async fn find_by_email() {
     );
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn authorize() {
     test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats, _veritech, _encr_key);
     let history_actor = HistoryActor::SystemInit;

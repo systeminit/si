@@ -7,8 +7,9 @@ use dal::{
     test_harness::{billing_account_signup, create_component_for_schema_variant},
     Func, HistoryActor, QualificationResolver, Schema, StandardModel, Tenancy, Visibility,
 };
+use test_env_log::test;
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn new() {
     test_setup!(
         ctx,
@@ -101,7 +102,7 @@ async fn new() {
     .expect("cannot create new attribute resolver");
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn find_for_prototype() {
     test_setup!(ctx, secret_key, pg, _conn, txn, nats_conn, nats, veritech, encr_key);
     let (nba, _token) = billing_account_signup(&txn, &nats, secret_key).await;

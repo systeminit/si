@@ -9,8 +9,9 @@ use sdf::service::application::create_application::{
 use sdf::service::application::list_applications::{
     ListApplicationRequest, ListApplicationResponse,
 };
+use test_env_log::test;
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn create_application() {
     test_setup!(
         _ctx,
@@ -53,7 +54,7 @@ async fn create_application() {
     );
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn list_applications() {
     test_setup!(
         _ctx,

@@ -4,10 +4,11 @@ use dal::{
 };
 use hyper::Method;
 use sdf::service::secret::create_secret::{CreateSecretRequest, CreateSecretResponse};
+use test_env_log::test;
 
 use crate::{service_tests::api_request_auth_json_body, test_setup};
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn create_secret() {
     test_setup!(
         _ctx,

@@ -43,15 +43,15 @@ impl FuncBackendJsResourceSync {
     }
 
     #[instrument(
-    name = "funcbackendjsresourcesync.execute",
-    skip_all,
-    level = "debug",
-    fields(
-    otel.kind = %SpanKind::Client,
-    otel.status_code = Empty,
-    otel.status_message = Empty,
-    si.func.result = Empty
-    )
+        name = "funcbackendjsresourcesync.execute",
+        skip_all,
+        level = "debug",
+        fields(
+            otel.kind = %SpanKind::Client,
+            otel.status_code = Empty,
+            otel.status_message = Empty,
+            si.func.result = Empty
+        )
     )]
     pub async fn execute(self) -> FuncBackendResult<serde_json::Value> {
         let span = Span::current();

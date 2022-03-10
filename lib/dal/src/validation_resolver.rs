@@ -140,7 +140,7 @@ impl_standard_model! {
 
 impl ValidationResolver {
     #[allow(clippy::too_many_arguments)]
-    #[tracing::instrument(skip(txn, nats))]
+    #[instrument(skip_all)]
     pub async fn new(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
@@ -190,7 +190,7 @@ impl ValidationResolver {
     standard_model_accessor!(func_binding_id, Pk(FuncBindingId), ValidationResolverResult);
 
     // #[allow(clippy::too_many_arguments)]
-    // #[tracing::instrument(skip(txn, nats))]
+    // #[instrument(skip_all)]
     // pub async fn upsert(
     //     txn: &PgTxn<'_>,
     //     nats: &NatsTxn,

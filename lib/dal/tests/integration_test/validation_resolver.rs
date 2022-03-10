@@ -7,8 +7,9 @@ use dal::{
     Func, FuncBackendKind, FuncBackendResponseType, HistoryActor, Schema, StandardModel, SystemId,
     Tenancy, ValidationResolver, Visibility,
 };
+use test_env_log::test;
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn new() {
     test_setup!(
         ctx,
@@ -111,7 +112,7 @@ async fn new() {
     .expect("cannot create new attribute resolver");
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn find_for_prototype() {
     test_setup!(ctx, secret_key, pg, _conn, txn, nats_conn, nats, veritech, encr_key);
     let (nba, _token) = billing_account_signup(&txn, &nats, secret_key).await;
@@ -247,7 +248,7 @@ async fn find_for_prototype() {
     assert_eq!(validation_results.len(), 2);
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn find_values_for_prop_and_component() {
     test_setup!(ctx, secret_key, pg, _conn, txn, nats_conn, nats, veritech, encr_key);
     let (nba, _token) = billing_account_signup(&txn, &nats, secret_key).await;
@@ -391,7 +392,7 @@ async fn find_values_for_prop_and_component() {
     assert_eq!(validation_results.len(), 2);
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn find_values_for_prop_and_component_override() {
     test_setup!(ctx, secret_key, pg, _conn, txn, nats_conn, nats, veritech, encr_key);
     let (nba, _token) = billing_account_signup(&txn, &nats, secret_key).await;

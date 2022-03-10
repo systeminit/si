@@ -72,7 +72,7 @@ impl_standard_model! {
 
 impl User {
     #[allow(clippy::too_many_arguments)]
-    #[tracing::instrument(skip_all)]
+    #[instrument(skip_all)]
     pub async fn new(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
@@ -200,7 +200,7 @@ impl UserClaim {
     }
 }
 
-#[tracing::instrument(skip(password))]
+#[instrument(skip_all)]
 pub async fn encrypt_password(
     password: impl Into<String>,
 ) -> UserResult<argon2id13::HashedPassword> {
@@ -219,7 +219,7 @@ pub async fn encrypt_password(
     password_hash
 }
 
-#[tracing::instrument(skip(password, password_hash))]
+#[instrument(skip_all)]
 pub async fn verify_password(
     password: impl Into<String>,
     password_hash: impl Into<Vec<u8>>,

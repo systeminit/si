@@ -123,7 +123,7 @@ impl_standard_model! {
 }
 
 impl Schema {
-    #[tracing::instrument(skip(txn, nats, name))]
+    #[instrument(skip_all)]
     #[allow(clippy::too_many_arguments)]
     pub async fn new(
         txn: &PgTxn<'_>,

@@ -2,10 +2,11 @@ use dal::{
     schema::SchemaVariant, test_harness::create_schema, HistoryActor, SchemaKind, StandardModel,
     Tenancy, Visibility,
 };
+use test_env_log::test;
 
 use crate::test_setup;
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn new() {
     test_setup!(
         ctx,
@@ -36,7 +37,7 @@ async fn new() {
     assert_eq!(variant.name(), "ringo");
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn set_schema() {
     test_setup!(
         ctx,

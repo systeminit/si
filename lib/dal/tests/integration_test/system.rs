@@ -2,10 +2,11 @@ use dal::{
     test_harness::{create_system, create_workspace},
     HistoryActor, StandardModel, System, Tenancy, Visibility,
 };
+use test_env_log::test;
 
 use crate::test_setup;
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn new() {
     test_setup!(
         ctx,
@@ -34,7 +35,7 @@ async fn new() {
     assert_eq!(system.name(), "jonas-brothers-why-oh-why");
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn set_workspace() {
     test_setup!(
         ctx,

@@ -96,7 +96,7 @@ impl_standard_model! {
 
 impl AttributePrototype {
     #[allow(clippy::too_many_arguments)]
-    #[tracing::instrument(skip(txn, nats))]
+    #[instrument(skip_all)]
     pub async fn new(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
@@ -189,7 +189,7 @@ impl AttributePrototype {
     standard_model_accessor!(func_binding_id, Pk(FuncBindingId), AttributePrototypeResult);
     standard_model_accessor!(key, Option<String>, AttributePrototypeResult);
 
-    #[tracing::instrument(skip(txn))]
+    #[instrument(skip_all)]
     pub async fn list_for_context(
         txn: &PgTxn<'_>,
         tenancy: &Tenancy,
@@ -206,7 +206,7 @@ impl AttributePrototype {
         Ok(object)
     }
 
-    #[tracing::instrument(skip(txn))]
+    #[tracing::instrument(skip_all)]
     pub async fn find_with_parent_value_and_key_for_context(
         txn: &PgTxn<'_>,
         tenancy: &Tenancy,
@@ -231,7 +231,7 @@ impl AttributePrototype {
         Ok(standard_model::option_object_from_row(row)?)
     }
 
-    #[tracing::instrument(skip(txn))]
+    #[instrument(skip_all)]
     #[allow(clippy::too_many_arguments)]
     #[async_recursion]
     async fn create_intermediate_proxy_values(

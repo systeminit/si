@@ -7,11 +7,12 @@ use dal::{HistoryActor, SchemaKind, StandardModel, Tenancy, Visibility};
 use sdf::service::schema::create_schema::{CreateSchemaRequest, CreateSchemaResponse};
 use sdf::service::schema::get_schema::{GetSchemaRequest, GetSchemaResponse};
 use sdf::service::schema::list_schemas::{ListSchemaRequest, ListSchemaResponse};
+use test_env_log::test;
 
 use crate::service_tests::{api_request_auth_json_body, api_request_auth_query};
 use crate::test_setup;
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn create_schema() {
     test_setup!(
         _ctx,
@@ -45,7 +46,7 @@ async fn create_schema() {
     assert_eq!(response.schema.kind(), &SchemaKind::Concrete);
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn list_schemas() {
     test_setup!(
         _ctx,
@@ -109,7 +110,7 @@ async fn list_schemas() {
     );
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn get_schemas() {
     test_setup!(
         _ctx,

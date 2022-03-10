@@ -106,6 +106,7 @@ impl PgPool {
     #[instrument(
         name = "pg_pool::new",
         skip_all,
+        level = "debug",
         fields(
             db.system = Empty,
             db.connection_string = Empty,
@@ -200,6 +201,7 @@ impl PgPool {
     #[instrument(
         name = "pool.get",
         skip_all,
+        level = "debug",
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -231,6 +233,7 @@ impl PgPool {
     #[instrument(
         name = "pool.migrate",
         skip_all,
+        level = "debug",
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -261,7 +264,7 @@ impl PgPool {
         }
     }
 
-    #[instrument(name = "pool.drop_and_create_public_schema", skip_all)]
+    #[instrument(name = "pool.drop_and_create_public_schema", skip_all, level = "debug")]
     pub async fn drop_and_create_public_schema(&self) -> PgPoolResult<()> {
         let conn = self.get().await?;
         conn.execute("DROP SCHEMA IF EXISTS public CASCADE", &[])
@@ -283,6 +286,7 @@ impl InstrumentedClient {
     #[instrument(
         name = "client.prepare_cached",
         skip_all,
+        level = "debug",
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -304,6 +308,7 @@ impl InstrumentedClient {
     #[instrument(
         name = "client.prepare_typed_cached",
         skip_all,
+        level = "debug",
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -330,6 +335,7 @@ impl InstrumentedClient {
     #[instrument(
         name = "client.transaction",
         skip_all,
+        level = "debug",
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -355,20 +361,6 @@ impl InstrumentedClient {
     /// Unlike the `transaction` method, the builder can be used to control the transaction's
     /// isolation level and other
     /// attributes.
-    #[instrument(
-        name = "client.build_transaction",
-        skip_all,
-        fields(
-            db.system = %self.metadata.db_system,
-            db.connection_string = %self.metadata.db_connection_string,
-            db.name = %self.metadata.db_name,
-            db.user = %self.metadata.db_user,
-            db.pool.max_size = %self.metadata.db_pool_max_size,
-            net.peer.ip = %self.metadata.net_peer_ip,
-            net.peer.port = %self.metadata.net_peer_port,
-            net.transport = %self.metadata.net_transport,
-        )
-    )]
     pub fn build_transaction(&mut self) -> InstrumentedTransactionBuilder {
         InstrumentedTransactionBuilder {
             inner: self.inner.build_transaction(),
@@ -384,6 +376,7 @@ impl InstrumentedClient {
     #[instrument(
         name = "client.prepare",
         skip_all,
+        level = "debug",
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -408,6 +401,7 @@ impl InstrumentedClient {
     #[instrument(
         name = "client.prepare_typed",
         skip_all,
+        level = "debug",
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -443,6 +437,7 @@ impl InstrumentedClient {
     #[instrument(
         name = "client.query",
         skip_all,
+        level = "debug",
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -485,6 +480,7 @@ impl InstrumentedClient {
     #[instrument(
         name = "client.query_one",
         skip_all,
+        level = "debug",
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -527,6 +523,7 @@ impl InstrumentedClient {
     #[instrument(
         name = "client.query_opt",
         skip_all,
+        level = "debug",
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -575,6 +572,7 @@ impl InstrumentedClient {
     #[instrument(
         name = "client.query_raw",
         skip_all,
+        level = "debug",
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -613,6 +611,7 @@ impl InstrumentedClient {
     #[instrument(
         name = "client.execute",
         skip_all,
+        level = "debug",
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -650,6 +649,7 @@ impl InstrumentedClient {
     #[instrument(
         name = "client.execute_raw",
         skip_all,
+        level = "debug",
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -683,6 +683,7 @@ impl InstrumentedClient {
     #[instrument(
         name = "client.copy_in",
         skip_all,
+        level = "debug",
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -713,6 +714,7 @@ impl InstrumentedClient {
     #[instrument(
         name = "client.copy_out",
         skip_all,
+        level = "debug",
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -749,6 +751,7 @@ impl InstrumentedClient {
     #[instrument(
         name = "client.simple_query",
         skip_all,
+        level = "debug",
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -779,6 +782,7 @@ impl InstrumentedClient {
     #[instrument(
         name = "client.batch_execute",
         skip_all,
+        level = "debug",
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -797,20 +801,6 @@ impl InstrumentedClient {
 
     /// Constructs a cancellation token that can later be used to request cancellation of a query
     /// running on the connection associated with this client.
-    #[instrument(
-        name = "client.cancel_token",
-        skip_all,
-        fields(
-            db.system = %self.metadata.db_system,
-            db.connection_string = %self.metadata.db_connection_string,
-            db.name = %self.metadata.db_name,
-            db.user = %self.metadata.db_user,
-            db.pool.max_size = %self.metadata.db_pool_max_size,
-            net.peer.ip = %self.metadata.net_peer_ip,
-            net.peer.port = %self.metadata.net_peer_port,
-            net.transport = %self.metadata.net_transport,
-        )
-    )]
     pub fn cancel_token(&self) -> CancelToken {
         self.inner.cancel_token()
     }
@@ -824,6 +814,7 @@ impl InstrumentedClient {
     #[instrument(
         name = "client.clear_type_cache",
         skip_all,
+        level = "debug",
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -842,20 +833,6 @@ impl InstrumentedClient {
     /// Determines if the connection to the server has already closed.
     ///
     /// In that case, all future queries will fail.
-    #[instrument(
-        name = "client.is_closed",
-        skip_all,
-        fields(
-            db.system = %self.metadata.db_system,
-            db.connection_string = %self.metadata.db_connection_string,
-            db.name = %self.metadata.db_name,
-            db.user = %self.metadata.db_user,
-            db.pool.max_size = %self.metadata.db_pool_max_size,
-            net.peer.ip = %self.metadata.net_peer_ip,
-            net.peer.port = %self.metadata.net_peer_port,
-            net.transport = %self.metadata.net_transport,
-        )
-    )]
     pub fn is_closed(&self) -> bool {
         self.inner.is_closed()
     }
@@ -889,6 +866,7 @@ impl<'a> InstrumentedTransaction<'a> {
     #[instrument(
         name = "transaction.prepare_cached",
         skip_all,
+        level = "debug",
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -914,6 +892,7 @@ impl<'a> InstrumentedTransaction<'a> {
     #[instrument(
         name = "transaction.prepare_typed_cached",
         skip_all,
+        level = "debug",
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -942,6 +921,7 @@ impl<'a> InstrumentedTransaction<'a> {
     #[instrument(
         name = "transaction.commit",
         skip_all,
+        level = "debug",
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -968,6 +948,7 @@ impl<'a> InstrumentedTransaction<'a> {
     #[instrument(
         name = "transaction.rollback",
         skip_all,
+        level = "debug",
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -995,6 +976,7 @@ impl<'a> InstrumentedTransaction<'a> {
     #[instrument(
         name = "transaction.prepare",
         skip_all,
+        level = "debug",
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -1023,6 +1005,7 @@ impl<'a> InstrumentedTransaction<'a> {
     #[instrument(
         name = "transaction.prepare_typed",
         skip_all,
+        level = "debug",
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -1062,6 +1045,7 @@ impl<'a> InstrumentedTransaction<'a> {
     #[instrument(
         name = "transaction.query",
         skip_all,
+        level = "debug",
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -1109,6 +1093,7 @@ impl<'a> InstrumentedTransaction<'a> {
     #[instrument(
         name = "transaction.query_one",
         skip_all,
+        level = "debug",
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -1156,6 +1141,7 @@ impl<'a> InstrumentedTransaction<'a> {
     #[instrument(
         name = "transaction.query_opt",
         skip_all,
+        level = "debug",
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -1209,6 +1195,7 @@ impl<'a> InstrumentedTransaction<'a> {
     #[instrument(
         name = "transaction.query_raw",
         skip_all,
+        level = "debug",
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -1251,6 +1238,7 @@ impl<'a> InstrumentedTransaction<'a> {
     #[instrument(
         name = "transaction.execute",
         skip_all,
+        level = "debug",
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -1292,6 +1280,7 @@ impl<'a> InstrumentedTransaction<'a> {
     #[instrument(
         name = "transaction.execute_raw",
         skip_all,
+        level = "debug",
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -1329,6 +1318,7 @@ impl<'a> InstrumentedTransaction<'a> {
     #[instrument(
         name = "transaction.bind",
         skip_all,
+        level = "debug",
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -1361,6 +1351,7 @@ impl<'a> InstrumentedTransaction<'a> {
     #[instrument(
         name = "transaction.bind_raw",
         skip_all,
+        level = "debug",
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -1394,6 +1385,7 @@ impl<'a> InstrumentedTransaction<'a> {
     #[instrument(
         name = "transaction.query_portal",
         skip_all,
+        level = "debug",
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -1419,6 +1411,7 @@ impl<'a> InstrumentedTransaction<'a> {
     #[instrument(
         name = "transaction.query_portal_raw",
         skip_all,
+        level = "debug",
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -1454,6 +1447,7 @@ impl<'a> InstrumentedTransaction<'a> {
     #[instrument(
         name = "transaction.copy_in",
         skip_all,
+        level = "debug",
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -1488,6 +1482,7 @@ impl<'a> InstrumentedTransaction<'a> {
     #[instrument(
         name = "transaction.copy_out",
         skip_all,
+        level = "debug",
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -1528,6 +1523,7 @@ impl<'a> InstrumentedTransaction<'a> {
     #[instrument(
         name = "transaction.simple_query",
         skip_all,
+        level = "debug",
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -1562,6 +1558,7 @@ impl<'a> InstrumentedTransaction<'a> {
     #[instrument(
         name = "transaction.batch_execute",
         skip_all,
+        level = "debug",
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -1587,6 +1584,7 @@ impl<'a> InstrumentedTransaction<'a> {
     #[instrument(
         name = "transaction.cancel_token",
         skip_all,
+        level = "debug",
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -1607,6 +1605,7 @@ impl<'a> InstrumentedTransaction<'a> {
     #[instrument(
         name = "transaction.transaction",
         skip_all,
+        level = "debug",
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -1634,6 +1633,7 @@ impl<'a> InstrumentedTransaction<'a> {
     #[instrument(
         name = "transaction.savepoint",
         skip_all,
+        level = "debug",
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -1663,6 +1663,7 @@ impl<'a> InstrumentedTransaction<'a> {
     #[instrument(
         name = "transaction.client",
         skip_all,
+        level = "debug",
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -1697,7 +1698,6 @@ impl<'a> InstrumentedTransactionBuilder<'a> {
     /// Sets the isolation level of the transaction.
     ///
     /// Like `tokio_postgres::TransactionBuilder::isolation_level`
-    #[instrument(skip_all)]
     pub fn isolation_level(self, isolation_level: IsolationLevel) -> Self {
         Self {
             inner: self.inner.isolation_level(isolation_level),
@@ -1708,7 +1708,6 @@ impl<'a> InstrumentedTransactionBuilder<'a> {
     /// Sets the access mode of the transaction.
     ///
     /// Like `tokio_postgres::TransactionBuilder::read_only`
-    #[instrument(skip_all)]
     pub fn read_only(self, read_only: bool) -> Self {
         Self {
             inner: self.inner.read_only(read_only),
@@ -1723,7 +1722,6 @@ impl<'a> InstrumentedTransactionBuilder<'a> {
     /// guarantee that it will not be aborted due to serialization failure.
     ///
     /// Like `tokio_postgres::TransactionBuilder::deferrable`
-    #[instrument(skip_all)]
     pub fn deferrable(self, deferrable: bool) -> Self {
         Self {
             inner: self.inner.deferrable(deferrable),
@@ -1740,6 +1738,7 @@ impl<'a> InstrumentedTransactionBuilder<'a> {
     #[instrument(
         name = "transaction_builder.start",
         skip_all,
+        level = "debug",
         fields(
             db.system = %self.metadata.db_system,
             db.connection_string = %self.metadata.db_connection_string,
@@ -1768,7 +1767,7 @@ impl<'a> fmt::Debug for InstrumentedTransactionBuilder<'a> {
     }
 }
 
-#[instrument(skip_all)]
+#[instrument(skip_all, level = "debug")]
 async fn test_connection_task(check_pool: PgPool) {
     const QUERY: &str = "SELECT 1";
     let conn = match check_pool.get().await {

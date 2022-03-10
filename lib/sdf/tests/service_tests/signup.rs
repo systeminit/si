@@ -5,9 +5,10 @@ use axum::{
 };
 use dal::test_harness::{one_time_setup, TestContext};
 use sdf::service::signup::{self, create_account::CreateAccountResponse};
+use test_env_log::test;
 use tower::ServiceExt;
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn create_account() {
     one_time_setup().await.expect("cannot setup tests");
     let ctx = TestContext::init().await;

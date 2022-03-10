@@ -5,8 +5,9 @@ use dal::test_harness::{
     create_component_and_schema, create_node, create_schema, create_schema_variant,
 };
 use dal::{HistoryActor, Node, SchemaKind, StandardModel, Tenancy, Visibility};
+use test_env_log::test;
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn new() {
     test_setup!(
         ctx,
@@ -34,7 +35,7 @@ async fn new() {
     .expect("cannot create node");
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn component_relationships() {
     test_setup!(
         ctx,
@@ -80,7 +81,7 @@ async fn component_relationships() {
     assert_eq!(&retrieved_component, &component);
 }
 
-#[tokio::test]
+#[test(tokio::test)]
 async fn new_node_template() {
     test_setup!(
         ctx,

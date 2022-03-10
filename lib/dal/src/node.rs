@@ -82,7 +82,7 @@ impl_standard_model! {
 }
 
 impl Node {
-    #[tracing::instrument(skip(txn, nats))]
+    #[instrument(skip_all)]
     pub async fn new(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,

@@ -52,7 +52,7 @@ impl_standard_model! {
 }
 
 impl Capability {
-    #[tracing::instrument(skip(txn, nats, subject, action))]
+    #[instrument(skip_all)]
     pub async fn new(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
