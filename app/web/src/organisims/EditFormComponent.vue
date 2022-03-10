@@ -44,7 +44,7 @@ const coreEditFields = computed(() => {
   let fields = [];
   props.editFields.forEach((root) =>
     root.widget.options.edit_fields
-      .filter((p) => p.id === "root.si")
+      .filter((p) => p.name === "si")
       .forEach((p) => (fields = fields.concat(p.widget.options.edit_fields))),
   );
   return fields;
@@ -57,7 +57,7 @@ const propertyEditFields = computed(() => {
   let fields = [];
   props.editFields.forEach((root) =>
     root.widget.options.edit_fields
-      .filter((p) => p.id === "root.domain")
+      .filter((p) => p.name === "domain")
       .forEach((p) => (fields = fields.concat(p.widget.options.edit_fields))),
   );
   return fields;
