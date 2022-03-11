@@ -41,8 +41,6 @@ mod tests {
 
     use super::*;
 
-    // TODO(fnichol): fix--decryption not working??
-    #[ignore]
     #[tokio::test]
     async fn create() {
         sodiumoxide::init().expect("failed to init sodiumoxide");
@@ -65,18 +63,18 @@ mod tests {
             .read_to_end(&mut buf)
             .await
             .expect("failed to read from secret key file");
-        let public_key =
-            box_::PublicKey::from_slice(&buf).expect("unable to parse secret key from bytes");
+        let secret_key =
+            box_::SecretKey::from_slice(&buf).expect("unable to parse secret key from bytes");
 
-        let mut buf = Vec::new();
+        buf.clear();
         File::open(&public_key_path)
             .await
             .expect("unable to open public key file")
             .read_to_end(&mut buf)
             .await
             .expect("failed to read from public key file");
-        let secret_key =
-            box_::SecretKey::from_slice(&buf).expect("unable to parse public key from bytes");
+        let public_key =
+            box_::PublicKey::from_slice(&buf).expect("unable to parse public key from bytes");
 
         // Attempt an encryption/decryption round trip to ensure that both keys are related
         let message = "our-lady-peace".to_string();

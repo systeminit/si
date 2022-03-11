@@ -86,12 +86,12 @@ impl Tenancy {
     }
 
     #[instrument(skip_all)]
-    pub async fn check(&self, txn: &PgTxn<'_>, check_tenancy: &Tenancy) -> TenancyResult<bool> {
+    pub async fn check(&self, txn: &PgTxn<'_>, read_tenancy: &Tenancy) -> TenancyResult<bool> {
         let row = txn
             .query_one(
                 "SELECT result FROM in_tenancy_v1($1, $2, $3, $4, $5)",
                 &[
-                    &check_tenancy,
+                    read_tenancy,
                     &self.universal,
                     &self.billing_account_ids,
                     &self.organization_ids,

@@ -470,6 +470,16 @@ async fn get_resource_by_component_id() {
     )
     .await
     .expect("cannot create organization");
+    organization
+        .set_billing_account(
+            &txn,
+            &nats,
+            &visibility,
+            &history_actor,
+            billing_account.id(),
+        )
+        .await
+        .expect("unable to set organization billing account");
 
     let mut workspace_tenancy = Tenancy::new_organization(vec![*organization.id()]);
     workspace_tenancy

@@ -35,6 +35,7 @@ pub mod qualification;
 pub mod qualification_check;
 pub mod qualification_prototype;
 pub mod qualification_resolver;
+pub mod read_tenancy;
 pub mod resource;
 pub mod resource_prototype;
 pub mod resource_resolver;
@@ -106,6 +107,7 @@ pub use qualification_prototype::{
 pub use qualification_resolver::{
     QualificationResolver, QualificationResolverError, QualificationResolverId,
 };
+pub use read_tenancy::{ReadTenancy, ReadTenancyError};
 pub use resource::{Resource, ResourceError, ResourceView};
 pub use resource_prototype::{ResourcePrototype, ResourcePrototypeError, ResourcePrototypeId};
 pub use resource_resolver::{ResourceResolver, ResourceResolverError, ResourceResolverId};
