@@ -56,6 +56,7 @@ pub mod validation_prototype;
 pub mod validation_resolver;
 pub mod visibility;
 pub mod workspace;
+pub mod write_tenancy;
 pub mod ws_event;
 
 pub use attribute_resolver::{
@@ -132,6 +133,7 @@ pub use validation_resolver::{ValidationResolver, ValidationResolverError, Valid
 use veritech::EncryptionKey;
 pub use visibility::{Visibility, VisibilityError};
 pub use workspace::{Workspace, WorkspaceError, WorkspaceId, WorkspacePk, WorkspaceResult};
+pub use write_tenancy::{WriteTenancy, WriteTenancyError};
 pub use ws_event::{WsEvent, WsEventError, WsPayload};
 
 mod embedded {
