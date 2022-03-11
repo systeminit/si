@@ -17,6 +17,9 @@ use thiserror::Error;
 use crate::attribute_resolver::UNSET_ID_VALUE;
 use crate::{ComponentId, PropId, SchemaId, SchemaVariantId, SystemId};
 
+pub mod read;
+pub use read::AttributeReadContext;
+
 #[derive(Error, Debug)]
 pub enum AttributeContextError {
     #[error("attribute resolver context builder error: {0}")]

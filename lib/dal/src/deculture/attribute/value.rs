@@ -6,19 +6,27 @@ use thiserror::Error;
 
 use crate::{
     deculture::{
-        attribute::context::{AttributeContext, AttributeContextBuilderError},
+        attribute::context::{
+            AttributeContext, AttributeContextBuilderError, AttributeReadContext,
+        },
         attribute::prototype::{AttributePrototype, AttributePrototypeId},
+        IndexMap,
     },
-    func::{binding::FuncBindingError, binding_return_value::FuncBindingReturnValueId},
+    func::{
+        binding::FuncBindingError,
+        binding_return_value::{FuncBindingReturnValue, FuncBindingReturnValueId},
+    },
     impl_standard_model, pk,
     standard_model::{self, TypeHint},
-    standard_model_accessor, standard_model_belongs_to, HistoryActor, HistoryEventError, IndexMap,
+    standard_model_accessor, standard_model_belongs_to, HistoryActor, HistoryEventError, Prop,
     PropError, PropId, PropKind, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
 };
 
 const FIND_WITH_PARENT_AND_PROTOTYPE_FOR_CONTEXT: &str =
     include_str!("../queries/attribute_value_find_with_parent_and_protype_for_context.sql");
 const FIND_FOR_PROP: &str = include_str!("../queries/attribute_value_find_for_prop.sql");
+const LIST_PAYLOAD_FOR_READ_CONTEXT: &str =
+    include_str!("../queries/attribute_value_list_payload_for_read_context.sql");
 
 #[derive(Error, Debug)]
 pub enum AttributeValueError {
@@ -233,6 +241,45 @@ impl AttributeValue {
         Ok(standard_model::object_from_row(row)?)
     }
 
+    pub async fn list_payload_for_read_context(
+        txn: &PgTxn<'_>,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+        context: AttributeReadContext,
+    ) -> AttributeValueResult<Vec<AttributeValuePayload>> {
+        let rows = txn
+            .query(
+                LIST_PAYLOAD_FOR_READ_CONTEXT,
+                &[&tenancy, &visibility, &context],
+            )
+            .await?;
+        let mut result = Vec::new();
+        for row in rows.into_iter() {
+            let fbrv_json: serde_json::Value = row.try_get("object")?;
+            let fbrv: Option<FuncBindingReturnValue> = serde_json::from_value(fbrv_json)?;
+
+            let prop_json: serde_json::Value = row.try_get("prop_object")?;
+            let prop: Prop = serde_json::from_value(prop_json)?;
+
+            let parent_prop_id: Option<PropId> = row.try_get("parent_prop_id")?;
+
+            let attribute_value_json: serde_json::Value = row.try_get("attribute_value_object")?;
+            let attribute_value: AttributeValue = serde_json::from_value(attribute_value_json)?;
+
+            let parent_attribute_value_id: Option<AttributeValueId> =
+                row.try_get("parent_attribute_value_id")?;
+
+            result.push(AttributeValuePayload::new(
+                prop,
+                parent_prop_id,
+                fbrv,
+                attribute_value,
+                parent_attribute_value_id,
+            ));
+        }
+        Ok(result)
+    }
+
     // pub async fn update_proxies(
     //     &mut self,
     //     txn: &PgTxn<'_>,
@@ -284,4 +331,31 @@ impl AttributeValue {
 
     //     Ok(())
     // }
+}
+
+#[derive(Debug)]
+pub struct AttributeValuePayload {
+    pub prop: Prop,
+    pub parent_prop_id: Option<PropId>,
+    pub fbrv: Option<FuncBindingReturnValue>,
+    pub attribute_value: AttributeValue,
+    pub parent_attribute_value_id: Option<AttributeValueId>,
+}
+
+impl AttributeValuePayload {
+    pub fn new(
+        prop: Prop,
+        parent_prop_id: Option<PropId>,
+        fbrv: Option<FuncBindingReturnValue>,
+        attribute_value: AttributeValue,
+        parent_attribute_value_id: Option<AttributeValueId>,
+    ) -> Self {
+        Self {
+            prop,
+            parent_prop_id,
+            fbrv,
+            attribute_value,
+            parent_attribute_value_id,
+        }
+    }
 }
