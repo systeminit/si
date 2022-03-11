@@ -13,6 +13,7 @@ use thiserror::Error;
 
 use crate::attribute_resolver::{AttributeResolverContext, UNSET_ID_VALUE};
 use crate::code_generation_resolver::CodeGenerationResolverContext;
+use crate::deculture::attribute::value::AttributeValueError;
 use crate::edit_field::{
     value_and_visibility_diff_json_option, widget::prelude::*, EditField, EditFieldAble,
     EditFieldBaggage, EditFieldBaggageComponentProp, EditFieldError, EditFieldObjectKind,
@@ -58,6 +59,8 @@ use crate::{
 
 #[derive(Error, Debug)]
 pub enum ComponentError {
+    #[error("AttributeValue error: {0}")]
+    AttributeValue(#[from] AttributeValueError),
     #[error("edit field error: {0}")]
     EditField(#[from] EditFieldError),
     #[error("edge error: {0}")]
@@ -142,6 +145,8 @@ pub enum ComponentError {
     Organization(#[from] OrganizationError),
     #[error("invalid json pointer: {0} for {1}")]
     BadJsonPointer(String, String),
+    #[error("invalid AttributeReadContext: {0}")]
+    BadAttributeReadContext(String),
 }
 
 pub type ComponentResult<T> = Result<T, ComponentError>;
