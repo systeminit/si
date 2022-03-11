@@ -5,7 +5,7 @@ use thiserror::Error;
 
 use crate::{
     standard_model, BillingAccount, BillingAccountId, OrganizationId, StandardModel,
-    StandardModelError, Tenancy, Workspace, WorkspaceError, WorkspaceId,
+    StandardModelError, Workspace, WorkspaceError, WorkspaceId,
 };
 
 const GET_WORKSPACE: &str = include_str!("./queries/read_tenancy_get_workspace.sql");
@@ -116,24 +116,6 @@ impl ReadTenancy {
         let mut tenancy = Self::new_organization(txn, organization_ids).await?;
         tenancy.workspace_ids = workspace_ids;
         Ok(tenancy)
-    }
-
-    #[instrument(skip_all)]
-    pub async fn check(&self, txn: &PgTxn<'_>, check_tenancy: &Tenancy) -> ReadTenancyResult<bool> {
-        let row = txn
-            .query_one(
-                "SELECT result FROM in_tenancy_v1($1, $2, $3, $4, $5)",
-                &[
-                    self,
-                    &check_tenancy.universal,
-                    &check_tenancy.billing_account_ids,
-                    &check_tenancy.organization_ids,
-                    &check_tenancy.workspace_ids,
-                ],
-            )
-            .await?;
-        let result = row.try_get("result")?;
-        Ok(result)
     }
 }
 

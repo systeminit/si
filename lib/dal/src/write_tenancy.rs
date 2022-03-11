@@ -3,49 +3,35 @@ use si_data::{PgError, PgTxn};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::{BillingAccountId, OrganizationId, WorkspaceId};
+use crate::{BillingAccountId, OrganizationId, ReadTenancy, WorkspaceId};
 
 #[derive(Error, Debug)]
-pub enum TenancyError {
+pub enum WriteTenancyError {
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
 }
 
-pub type TenancyResult<T> = Result<T, TenancyError>;
+pub type WriteTenancyResult<T> = Result<T, WriteTenancyError>;
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
-pub struct Tenancy {
+pub struct WriteTenancy {
     #[serde(rename = "tenancy_universal")]
-    pub universal: bool,
+    universal: bool,
     #[serde(rename = "tenancy_billing_account_ids")]
-    pub billing_account_ids: Vec<BillingAccountId>,
+    billing_account_ids: Vec<BillingAccountId>,
     #[serde(rename = "tenancy_organization_ids")]
-    pub organization_ids: Vec<OrganizationId>,
+    organization_ids: Vec<OrganizationId>,
     #[serde(rename = "tenancy_workspace_ids")]
-    pub workspace_ids: Vec<WorkspaceId>,
+    workspace_ids: Vec<WorkspaceId>,
 }
 
-impl Tenancy {
-    pub fn new(
-        universal: bool,
-        billing_account_ids: Vec<BillingAccountId>,
-        organization_ids: Vec<OrganizationId>,
-        workspace_ids: Vec<WorkspaceId>,
-    ) -> Self {
+impl WriteTenancy {
+    pub fn into_universal(self) -> Self {
         Self {
-            universal,
-            billing_account_ids,
-            organization_ids,
-            workspace_ids,
-        }
-    }
-
-    pub fn new_empty() -> Self {
-        Self {
-            universal: false,
-            billing_account_ids: Vec::new(),
-            organization_ids: Vec::new(),
-            workspace_ids: Vec::new(),
+            universal: true,
+            billing_account_ids: self.billing_account_ids,
+            organization_ids: self.organization_ids,
+            workspace_ids: self.workspace_ids,
         }
     }
 
@@ -58,35 +44,39 @@ impl Tenancy {
         }
     }
 
-    pub fn new_billing_account(billing_account_ids: Vec<BillingAccountId>) -> Self {
+    pub fn new_billing_account(id: BillingAccountId) -> Self {
         Self {
             universal: false,
-            billing_account_ids,
+            billing_account_ids: vec![id],
             organization_ids: Vec::new(),
             workspace_ids: Vec::new(),
         }
     }
 
-    pub fn new_organization(organization_ids: Vec<OrganizationId>) -> Self {
+    pub fn new_organization(id: OrganizationId) -> Self {
         Self {
             universal: false,
             billing_account_ids: Vec::new(),
-            organization_ids,
+            organization_ids: vec![id],
             workspace_ids: Vec::new(),
         }
     }
 
-    pub fn new_workspace(workspace_ids: Vec<WorkspaceId>) -> Self {
+    pub fn new_workspace(id: WorkspaceId) -> Self {
         Self {
             universal: false,
             billing_account_ids: Vec::new(),
             organization_ids: Vec::new(),
-            workspace_ids,
+            workspace_ids: vec![id],
         }
     }
 
     #[instrument(skip_all)]
-    pub async fn check(&self, txn: &PgTxn<'_>, read_tenancy: &Self) -> TenancyResult<bool> {
+    pub async fn check(
+        &self,
+        txn: &PgTxn<'_>,
+        read_tenancy: &ReadTenancy,
+    ) -> WriteTenancyResult<bool> {
         let row = txn
             .query_one(
                 "SELECT result FROM in_tenancy_v1($1, $2, $3, $4, $5)",
@@ -104,7 +94,7 @@ impl Tenancy {
     }
 }
 
-impl postgres_types::ToSql for Tenancy {
+impl postgres_types::ToSql for WriteTenancy {
     fn to_sql(
         &self,
         ty: &postgres_types::Type,
