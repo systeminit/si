@@ -117,13 +117,13 @@ These targets include code linting, formatting, running CI locally, etc.
 For instance, you can tidy up your Rust code before opening a pull request by executing the following:
 
 ```bash
-( cd ci; make tidy )
+make tidy
 ```
 
 To verify that all lints will pass in CI, execute the following target:
 
 ```bash
-( cd ci; make ci-lint )
+make lint
 ```
 
 You can also run individual tests before bringing up the entire SI stack, as neeeded.
@@ -133,28 +133,6 @@ This can be done in the root of the repository:
 make prepare
 cargo build
 RUST_BACKTRACE=1 cargo test <your-test-name>
-```
-
-## UI Development
-
-Are you only working on the UI?
-You can execute the following target to get started:
-
-```bash
-make backend
-```
-
-Now, everything but the web application should be running.
-You can run the web application manually, or with the following target:
-
-```bash
-make app-run
-```
-
-You can teardown everything with the same target that the **Quickstart** guide uses.
-
-```bash
-make down
 ```
 
 ## Writing Documentation
