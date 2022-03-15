@@ -221,9 +221,8 @@ clean-containers: clean-dev-deps
 	cd ./components/si-web-app && $(MAKE) clean-container
 .PHONY: clean-containers
 
-# TODO(nick): The below targets are to be used during the transition period between the
-# Vue 2 to Vue 3 rewrite. These targets should be merged into existing ones once the transition is
-# complete.
+# TODO(nick): The below targets are to be used during the transition period between the Vue 2 to
+# Vue 3 rewrite. These targets should be merged into existing ones once the transition is complete.
 
 down:
 	-cd $(MAKEPATH)/deploy && $(MAKE) down
@@ -235,20 +234,14 @@ prepare: down
 	cd $(MAKEPATH)/deploy && $(MAKE) partial
 .PHONY: prepare
 
-backend: down
-	cd $(MAKEPATH)/bin/lang-js; npm install
-	cd $(MAKEPATH)/bin/lang-js; npm run package
-	cd $(MAKEPATH)/deploy && $(MAKE) backend
-.PHONY: backend
-
 veritech-run:
-	cd $(MAKEPATH); cargo build
+	cd $(MAKEPATH); cargo build --all
 	cd $(MAKEPATH); cargo build --bin cyclone
 	cd $(MAKEPATH)/bin/veritech; cargo run
 .PHONY: veritech-run
 
 sdf-run:
-	cd $(MAKEPATH); cargo build
+	cd $(MAKEPATH); cargo build --all
 	cd $(MAKEPATH); cargo run --bin sdf -- --disable-opentelemetry
 .PHONY: sdf-run
 
@@ -268,3 +261,11 @@ troubleshoot: down
 deploy-prod:
 	@$(MAKEPATH)/scripts/deploy-prod.sh
 .PHONY: deploy-prod
+
+lint:
+	cd $(MAKEPATH)/ci && $(MAKE) ci-lint
+.PHONY: lint
+
+tidy:
+	cd $(MAKEPATH)/ci && $(MAKE) tidy
+.PHONY: tidy
