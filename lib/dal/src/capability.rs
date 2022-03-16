@@ -6,7 +6,7 @@ use thiserror::Error;
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
     Group, GroupId, HistoryActor, HistoryEventError, StandardModel, StandardModelError, Tenancy,
-    Timestamp, Visibility,
+    Timestamp, Visibility, WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -56,7 +56,7 @@ impl Capability {
     pub async fn new(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
-        tenancy: &Tenancy,
+        write_tenancy: &WriteTenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
         subject: impl AsRef<str>,
@@ -67,13 +67,13 @@ impl Capability {
         let row = txn
             .query_one(
                 "SELECT object FROM capability_create_v1($1, $2, $3, $4)",
-                &[tenancy, visibility, &subject, &action],
+                &[write_tenancy, visibility, &subject, &action],
             )
             .await?;
         let object = standard_model::finish_create_from_row(
             txn,
             nats,
-            tenancy,
+            &write_tenancy.into(),
             visibility,
             history_actor,
             row,

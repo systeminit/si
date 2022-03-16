@@ -369,7 +369,7 @@ pub async fn create_workspace(
     history_actor: &HistoryActor,
 ) -> Workspace {
     let name = generate_fake_name();
-    Workspace::new(txn, nats, tenancy, visibility, history_actor, &name)
+    Workspace::new(txn, nats, &tenancy.into(), visibility, history_actor, &name)
         .await
         .expect("cannot create workspace")
 }
@@ -382,7 +382,7 @@ pub async fn create_key_pair(
     history_actor: &HistoryActor,
 ) -> KeyPair {
     let name = generate_fake_name();
-    KeyPair::new(txn, nats, tenancy, visibility, history_actor, &name)
+    KeyPair::new(txn, nats, &tenancy.into(), visibility, history_actor, &name)
         .await
         .expect("cannot create key_pair")
 }
@@ -398,7 +398,7 @@ pub async fn create_user(
     User::new(
         txn,
         nats,
-        tenancy,
+        &tenancy.into(),
         visibility,
         history_actor,
         &name,
@@ -417,7 +417,7 @@ pub async fn create_group(
     history_actor: &HistoryActor,
 ) -> Group {
     let name = generate_fake_name();
-    Group::new(txn, nats, tenancy, visibility, history_actor, &name)
+    Group::new(txn, nats, &tenancy.into(), visibility, history_actor, &name)
         .await
         .expect("cannot create group")
 }
@@ -764,7 +764,7 @@ pub async fn create_system(
     history_actor: &HistoryActor,
 ) -> System {
     let name = generate_fake_name();
-    System::new(txn, nats, tenancy, visibility, history_actor, name)
+    System::new(txn, nats, &tenancy.into(), visibility, history_actor, name)
         .await
         .expect("cannot create system")
 }
@@ -786,7 +786,7 @@ pub async fn find_or_create_production_system(
         Some(s) => s,
         None => {
             let (system, _system_node) =
-                System::new_with_node(txn, nats, tenancy, visibility, history_actor, name)
+                System::new_with_node(txn, nats, &tenancy.into(), visibility, history_actor, name)
                     .await
                     .expect("cannot create named system");
 
@@ -954,7 +954,7 @@ pub async fn create_secret(
     EncryptedSecret::new(
         txn,
         nats,
-        tenancy,
+        &tenancy.into(),
         visibility,
         history_actor,
         &name,
@@ -992,7 +992,7 @@ pub async fn create_secret_with_message(
     EncryptedSecret::new(
         txn,
         nats,
-        tenancy,
+        &tenancy.into(),
         visibility,
         history_actor,
         &name,

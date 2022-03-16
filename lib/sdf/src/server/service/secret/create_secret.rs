@@ -1,7 +1,7 @@
 use axum::Json;
 use dal::{
     key_pair::KeyPairId, EncryptedSecret, HistoryActor, Secret, SecretAlgorithm, SecretKind,
-    SecretObjectType, SecretVersion, Tenancy, Visibility, WorkspaceId,
+    SecretObjectType, SecretVersion, Visibility, WorkspaceId, WriteTenancy,
 };
 use serde::{Deserialize, Serialize};
 
@@ -40,12 +40,12 @@ pub async fn create_secret(
     let nats = nats.start().await?;
 
     let history_actor = HistoryActor::from(claim.user_id);
-    let tenancy = Tenancy::new_workspace(vec![request.workspace_id]);
+    let write_tenancy = WriteTenancy::new_workspace(request.workspace_id);
 
     let secret = EncryptedSecret::new(
         &txn,
         &nats,
-        &tenancy,
+        &write_tenancy,
         &request.visibility,
         &history_actor,
         request.name,

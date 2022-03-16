@@ -1,6 +1,6 @@
 use dal::{
     test_harness::{create_system, create_workspace},
-    HistoryActor, StandardModel, System, Tenancy, Visibility,
+    HistoryActor, StandardModel, System, Tenancy, Visibility, WriteTenancy,
 };
 use test_env_log::test;
 
@@ -19,13 +19,13 @@ async fn new() {
         _veritech,
         _encr_key,
     );
-    let tenancy = Tenancy::new_universal();
+    let write_tenancy = WriteTenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
     let system = System::new(
         &txn,
         &nats,
-        &tenancy,
+        &write_tenancy,
         &visibility,
         &history_actor,
         "jonas-brothers-why-oh-why",

@@ -1,7 +1,7 @@
 use dal::{
     test_harness::{billing_account_signup, create_secret, generate_fake_name},
     EncryptedSecret, HistoryActor, Secret, SecretAlgorithm, SecretKind, SecretObjectType,
-    SecretVersion, StandardModel, Tenancy, Visibility,
+    SecretVersion, StandardModel, Tenancy, Visibility, WriteTenancy,
 };
 use test_env_log::test;
 
@@ -11,7 +11,7 @@ use crate::test_setup;
 async fn new_encrypted_secret() {
     test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats, _veritech, _encr_key);
     let (nba, _token) = billing_account_signup(&txn, &nats, secret_key).await;
-    let tenancy = Tenancy::new_billing_account(vec![*nba.billing_account.id()]);
+    let write_tenancy = WriteTenancy::new_billing_account(*nba.billing_account.id());
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
 
@@ -20,7 +20,7 @@ async fn new_encrypted_secret() {
     let secret = EncryptedSecret::new(
         &txn,
         &nats,
-        &tenancy,
+        &write_tenancy,
         &visibility,
         &history_actor,
         &name,
@@ -136,7 +136,7 @@ async fn secret_update_name() {
 async fn encrypt_decrypt_round_trip() {
     test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats, _veritech, _encr_key);
     let (nba, _token) = billing_account_signup(&txn, &nats, secret_key).await;
-    let tenancy = Tenancy::new_billing_account(vec![*nba.billing_account.id()]);
+    let write_tenancy = WriteTenancy::new_billing_account(*nba.billing_account.id());
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
 
@@ -152,7 +152,7 @@ async fn encrypt_decrypt_round_trip() {
     let secret = EncryptedSecret::new(
         &txn,
         &nats,
-        &tenancy,
+        &write_tenancy,
         &visibility,
         &history_actor,
         &name,
@@ -167,13 +167,18 @@ async fn encrypt_decrypt_round_trip() {
     .await
     .expect("failed to create encrypted secret");
 
-    let decrypted = EncryptedSecret::get_by_id(&txn, &tenancy, &visibility, secret.id())
+    let read_tenancy = write_tenancy
+        .clone_into_read_tenancy(&txn)
         .await
-        .expect("failed to fetch encrypted secret")
-        .expect("failed to find encrypted secret for tenancy and/or visibility")
-        .decrypt(&txn, &visibility)
-        .await
-        .expect("failed to decrypt encrypted secret");
+        .expect("unable to generate read tenancy");
+    let decrypted =
+        EncryptedSecret::get_by_id(&txn, &(&read_tenancy).into(), &visibility, secret.id())
+            .await
+            .expect("failed to fetch encrypted secret")
+            .expect("failed to find encrypted secret for tenancy and/or visibility")
+            .decrypt(&txn, &visibility)
+            .await
+            .expect("failed to decrypt encrypted secret");
     assert_eq!(decrypted.name(), secret.name());
     assert_eq!(decrypted.object_type(), *secret.object_type());
     assert_eq!(decrypted.kind(), *secret.kind());

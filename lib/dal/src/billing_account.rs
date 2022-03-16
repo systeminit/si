@@ -9,8 +9,9 @@ use crate::{
     standard_model::{self, option_object_from_row},
     standard_model_accessor, standard_model_has_many, Capability, CapabilityError, Group,
     GroupError, HistoryActor, HistoryEventError, KeyPair, KeyPairError, NodeError, Organization,
-    OrganizationError, SchemaError, StandardModel, StandardModelError, System, SystemError,
-    Tenancy, Timestamp, User, UserError, Visibility, Workspace, WorkspaceError,
+    OrganizationError, ReadTenancy, ReadTenancyError, SchemaError, StandardModel,
+    StandardModelError, System, SystemError, Tenancy, Timestamp, User, UserError, Visibility,
+    Workspace, WorkspaceError, WriteTenancy,
 };
 
 const INITIAL_SYSTEM_NAME: &str = "production";
@@ -56,6 +57,8 @@ pub enum BillingAccountError {
     System(#[from] SystemError),
     #[error("workspace error: {0}")]
     Workspace(#[from] WorkspaceError),
+    #[error("read tenancy error: {0}")]
+    ReadTenancy(#[from] ReadTenancyError),
 }
 
 pub type BillingAccountResult<T> = Result<T, BillingAccountError>;
@@ -166,7 +169,7 @@ impl BillingAccount {
         )
         .await?;
 
-        let billing_account_tenancy = Tenancy::new_billing_account(vec![*billing_account.id()]);
+        let billing_account_tenancy = WriteTenancy::new_billing_account(*billing_account.id());
 
         let key_pair = KeyPair::new(
             txn,
@@ -254,7 +257,7 @@ impl BillingAccount {
         let organization = Organization::new(
             txn,
             nats,
-            &(&billing_account_tenancy).into(),
+            &billing_account_tenancy,
             visibility,
             &user_history_actor,
             "default",
@@ -270,13 +273,12 @@ impl BillingAccount {
             )
             .await?;
 
-        let organization_tenancy = Tenancy::new(
-            false,
-            billing_account_tenancy.billing_account_ids.clone(),
-            vec![*organization.id()],
-            vec![],
-        );
-
+        // Note: ideally write tenancies only contain the less specific
+        // But at sdf/src/server/extract.rs we obtain the workspace from the billing account
+        // Bypassing this assumption, so we cheat on the write tenancy restrictions here
+        let organization_tenancy =
+            Tenancy::from(&ReadTenancy::new_organization(txn, vec![*organization.id()]).await?);
+        let organization_tenancy = WriteTenancy::from(&organization_tenancy);
         let workspace = Workspace::new(
             txn,
             nats,
@@ -296,13 +298,12 @@ impl BillingAccount {
             )
             .await?;
 
-        let workspace_tenancy = Tenancy::new(
-            false,
-            organization_tenancy.billing_account_ids.clone(),
-            organization_tenancy.organization_ids.clone(),
-            vec![*workspace.id()],
-        );
-
+        // Note: ideally write tenancies only contain the less specific
+        // But at dal/src/billing_account.rs we obtain the system from the billing account
+        // Bypassing this assumption, so we cheat on the write tenancy restrictions here
+        let workspace_tenancy =
+            Tenancy::from(&ReadTenancy::new_workspace(txn, vec![*workspace.id()]).await?);
+        let workspace_tenancy = WriteTenancy::from(&workspace_tenancy);
         let (system, _system_node) = System::new_with_node(
             txn,
             nats,

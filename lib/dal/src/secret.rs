@@ -19,7 +19,7 @@ use crate::{
     standard_model::{self, TypeHint},
     standard_model_accessor, standard_model_accessor_ro, standard_model_belongs_to,
     BillingAccountId, HistoryActor, HistoryEvent, HistoryEventError, KeyPair, KeyPairError,
-    StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
+    StandardModel, StandardModelError, Tenancy, Timestamp, Visibility, WriteTenancy,
 };
 
 /// Error type for Secrets.
@@ -211,7 +211,7 @@ impl EncryptedSecret {
     pub async fn new(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
-        tenancy: &Tenancy,
+        write_tenancy: &WriteTenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
         name: impl AsRef<str>,
@@ -229,7 +229,7 @@ impl EncryptedSecret {
             .query_one(
                 "SELECT object FROM encrypted_secret_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9)",
                 &[
-                    tenancy,
+                    write_tenancy,
                     visibility,
                     &name,
                     &object_type.as_ref(),
@@ -244,7 +244,7 @@ impl EncryptedSecret {
         let object: Secret = standard_model::finish_create_from_row(
             txn,
             nats,
-            tenancy,
+            &write_tenancy.into(),
             visibility,
             history_actor,
             row,

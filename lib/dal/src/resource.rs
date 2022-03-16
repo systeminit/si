@@ -9,8 +9,9 @@ use crate::func::binding_return_value::FuncBindingReturnValue;
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_belongs_to,
     ws_event::{WsEvent, WsPayload},
-    BillingAccountId, Component, ComponentId, HistoryActor, HistoryEventError, StandardModel,
-    StandardModelError, System, SystemId, Tenancy, Timestamp, Visibility,
+    BillingAccountId, Component, ComponentId, HistoryActor, HistoryEventError, ReadTenancy,
+    ReadTenancyError, StandardModel, StandardModelError, System, SystemId, Tenancy, Timestamp,
+    Visibility, WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -24,7 +25,9 @@ pub enum ResourceError {
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
     #[error("standard model error: {0}")]
-    StandardModelError(#[from] StandardModelError),
+    StandardModel(#[from] StandardModelError),
+    #[error("read tenancy error: {0}")]
+    ReadTenancy(#[from] ReadTenancyError),
 }
 
 pub type ResourceResult<T> = Result<T, ResourceError>;
@@ -68,7 +71,7 @@ impl Resource {
     pub async fn new(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
-        tenancy: &Tenancy,
+        write_tenancy: &WriteTenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
         component_id: &ComponentId,
@@ -77,13 +80,13 @@ impl Resource {
         let row = txn
             .query_one(
                 "SELECT object FROM resource_create_v1($1, $2)",
-                &[&tenancy, &visibility],
+                &[write_tenancy, &visibility],
             )
             .await?;
         let object: Self = standard_model::finish_create_from_row(
             txn,
             nats,
-            tenancy,
+            &write_tenancy.into(),
             visibility,
             history_actor,
             row,
@@ -125,7 +128,7 @@ impl Resource {
     #[allow(clippy::too_many_arguments)]
     pub async fn get_by_component_id_and_system_id(
         txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
+        read_tenancy: &ReadTenancy,
         visibility: &Visibility,
         component_id: &ComponentId,
         system_id: &SystemId,
@@ -133,7 +136,7 @@ impl Resource {
         let row = txn
             .query_opt(
                 GET_BY_COMPONENT_AND_SYSTEM,
-                &[&tenancy, &visibility, component_id, system_id],
+                &[read_tenancy, &visibility, component_id, system_id],
             )
             .await?;
         let object = standard_model::option_object_from_row(row)?;
@@ -144,18 +147,17 @@ impl Resource {
     pub async fn upsert(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
-        tenancy: &Tenancy,
+        write_tenancy: &WriteTenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
         component_id: &ComponentId,
         system_id: &SystemId,
     ) -> ResourceResult<Self> {
-        let mut schema_tenancy = tenancy.clone();
-        schema_tenancy.universal = true;
+        let read_tenancy = write_tenancy.clone_into_read_tenancy(txn).await?;
 
         let resource = Resource::get_by_component_id_and_system_id(
             txn,
-            &schema_tenancy,
+            &read_tenancy,
             visibility,
             component_id,
             system_id,
@@ -168,7 +170,7 @@ impl Resource {
             Resource::new(
                 txn,
                 nats,
-                tenancy,
+                write_tenancy,
                 visibility,
                 history_actor,
                 component_id,

@@ -5,9 +5,9 @@ use thiserror::Error;
 
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
-    standard_model_has_many, HistoryActor, HistoryEventError, Node, NodeError, NodeKind, Schema,
-    SchemaError, SchemaId, SchemaVariant, SchemaVariantId, StandardModel, StandardModelError,
-    Tenancy, Timestamp, Visibility, Workspace, WorkspaceId,
+    standard_model_has_many, HistoryActor, HistoryEventError, Node, NodeError, NodeKind,
+    ReadTenancyError, Schema, SchemaError, SchemaId, SchemaVariant, SchemaVariantId, StandardModel,
+    StandardModelError, Tenancy, Timestamp, Visibility, Workspace, WorkspaceId, WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -23,7 +23,9 @@ pub enum SystemError {
     #[error("schema not found")]
     SchemaNotFound,
     #[error("standard model error: {0}")]
-    StandardModelError(#[from] StandardModelError),
+    StandardModel(#[from] StandardModelError),
+    #[error("read tenancy error: {0}")]
+    ReadTenancy(#[from] ReadTenancyError),
 }
 
 pub type SystemResult<T> = Result<T, SystemError>;
@@ -60,7 +62,7 @@ impl System {
     pub async fn new(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
-        tenancy: &Tenancy,
+        write_tenancy: &WriteTenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
         name: impl AsRef<str>,
@@ -69,13 +71,13 @@ impl System {
         let row = txn
             .query_one(
                 "SELECT object FROM system_create_v1($1, $2, $3)",
-                &[tenancy, visibility, &name],
+                &[write_tenancy, visibility, &name],
             )
             .await?;
         let object = standard_model::finish_create_from_row(
             txn,
             nats,
-            tenancy,
+            &write_tenancy.into(),
             visibility,
             history_actor,
             row,
@@ -132,19 +134,17 @@ impl System {
     pub async fn new_with_node(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
-        tenancy: &Tenancy,
+        write_tenancy: &WriteTenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
         name: impl AsRef<str>,
     ) -> SystemResult<(Self, Node)> {
         let name = name.as_ref();
-
-        let mut schema_tenancy = tenancy.clone();
-        schema_tenancy.universal = true;
+        let read_tenancy = write_tenancy.clone_into_read_tenancy(txn).await?;
 
         let schema = Schema::find_by_attr(
             txn,
-            &schema_tenancy,
+            &(&read_tenancy).into(),
             visibility,
             "name",
             &"system".to_string(),
@@ -153,10 +153,10 @@ impl System {
         .pop()
         .ok_or(SystemError::SchemaNotFound)?;
         let schema_variant = schema
-            .default_variant(txn, &schema_tenancy, visibility)
+            .default_variant(txn, &(&read_tenancy).into(), visibility)
             .await?;
 
-        let system = Self::new(txn, nats, tenancy, visibility, history_actor, name).await?;
+        let system = Self::new(txn, nats, write_tenancy, visibility, history_actor, name).await?;
         system
             .set_schema(txn, nats, visibility, history_actor, schema.id())
             .await?;
@@ -166,7 +166,7 @@ impl System {
         let node = Node::new(
             txn,
             nats,
-            &tenancy.into(),
+            write_tenancy,
             visibility,
             history_actor,
             &NodeKind::System,

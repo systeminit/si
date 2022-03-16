@@ -1,7 +1,7 @@
 use crate::test_setup;
 
 use dal::test_harness::create_component_and_schema;
-use dal::{HistoryActor, Resource, StandardModel, System, Tenancy, Visibility};
+use dal::{HistoryActor, Resource, StandardModel, System, Tenancy, Visibility, WriteTenancy};
 use test_env_log::test;
 
 #[test(tokio::test)]
@@ -33,7 +33,7 @@ async fn new() {
     let system = System::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         "production system",
@@ -44,7 +44,7 @@ async fn new() {
     let _resource = Resource::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         component.id(),
@@ -90,10 +90,16 @@ async fn get_by_component_and_system_id() {
         &history_actor,
     )
     .await;
+
+    let write_tenancy = WriteTenancy::from(&tenancy);
+    let read_tenancy = write_tenancy
+        .clone_into_read_tenancy(&txn)
+        .await
+        .expect("failed to generate read tenancy");
     let production_system = System::new(
         &txn,
         &nats,
-        &tenancy,
+        &write_tenancy,
         &visibility,
         &history_actor,
         "production system",
@@ -103,18 +109,17 @@ async fn get_by_component_and_system_id() {
     let staging_system = System::new(
         &txn,
         &nats,
-        &tenancy,
+        &write_tenancy,
         &visibility,
         &history_actor,
         "staging system",
     )
     .await
     .expect("cannot create staging system");
-
     let original_resource = Resource::new(
         &txn,
         &nats,
-        &tenancy,
+        &write_tenancy,
         &visibility,
         &history_actor,
         mastodon_component.id(),
@@ -127,7 +132,7 @@ async fn get_by_component_and_system_id() {
     let _different_component_in_same_system = Resource::new(
         &txn,
         &nats,
-        &tenancy,
+        &write_tenancy,
         &visibility,
         &history_actor,
         blue_oyster_component.id(),
@@ -138,7 +143,7 @@ async fn get_by_component_and_system_id() {
     let _same_component_in_different_system = Resource::new(
         &txn,
         &nats,
-        &tenancy,
+        &write_tenancy,
         &visibility,
         &history_actor,
         mastodon_component.id(),
@@ -149,7 +154,7 @@ async fn get_by_component_and_system_id() {
     let _different_component_in_different_system = Resource::new(
         &txn,
         &nats,
-        &tenancy,
+        &write_tenancy,
         &visibility,
         &history_actor,
         blue_oyster_component.id(),
@@ -160,7 +165,7 @@ async fn get_by_component_and_system_id() {
 
     let found_resource = Resource::get_by_component_id_and_system_id(
         &txn,
-        &tenancy,
+        &read_tenancy,
         &visibility,
         mastodon_component.id(),
         production_system.id(),

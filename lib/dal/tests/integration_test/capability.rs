@@ -1,7 +1,7 @@
 use crate::test_setup;
 
 use dal::test_harness::{create_change_set, create_edit_session, create_visibility_edit_session};
-use dal::{Capability, HistoryActor, Tenancy};
+use dal::{Capability, HistoryActor, WriteTenancy};
 use test_env_log::test;
 
 #[test(tokio::test)]
@@ -17,15 +17,15 @@ async fn new() {
         _veritech,
         _encr_key
     );
-    let tenancy = Tenancy::new_universal();
+    let write_tenancy = WriteTenancy::new_universal();
     let history_actor = HistoryActor::SystemInit;
-    let change_set = create_change_set(&txn, &nats, &tenancy, &history_actor).await;
+    let change_set = create_change_set(&txn, &nats, &(&write_tenancy).into(), &history_actor).await;
     let edit_session = create_edit_session(&txn, &nats, &history_actor, &change_set).await;
     let visibility = create_visibility_edit_session(&change_set, &edit_session);
     let _capability = Capability::new(
         &txn,
         &nats,
-        &tenancy,
+        &write_tenancy,
         &visibility,
         &history_actor,
         "monkey",

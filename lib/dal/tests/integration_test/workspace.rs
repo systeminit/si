@@ -25,7 +25,7 @@ async fn new() {
     let _ = Workspace::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         "iron maiden",

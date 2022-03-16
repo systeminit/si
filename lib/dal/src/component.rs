@@ -331,7 +331,7 @@ impl Component {
         let _resource = Resource::new(
             txn,
             nats,
-            tenancy,
+            &tenancy.into(),
             visibility,
             history_actor,
             component.id(),
@@ -1402,7 +1402,7 @@ impl Component {
     ) -> ComponentResult<Option<ResourceView>> {
         let resource = Resource::get_by_component_id_and_system_id(
             txn,
-            tenancy,
+            &tenancy.clone_into_read_tenancy(txn).await?,
             visibility,
             &component_id,
             &system_id,
