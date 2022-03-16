@@ -64,12 +64,9 @@ pub async fn create_node(
     )
     .await?;
 
-    let mut schema_tenancy = tenancy.clone();
-    schema_tenancy.universal = true;
-
     let node_template = NodeTemplate::new_from_schema_id(
         &txn,
-        &schema_tenancy,
+        &tenancy.clone_into_read_tenancy(&txn).await?,
         &request.visibility,
         request.schema_id,
     )
@@ -78,7 +75,7 @@ pub async fn create_node(
     let mut position = NodePosition::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &request.visibility,
         &history_actor,
         SchematicKind::Component,

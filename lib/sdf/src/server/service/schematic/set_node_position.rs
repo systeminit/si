@@ -4,7 +4,7 @@ use axum::Json;
 use dal::node::NodeId;
 use dal::{
     HistoryActor, NodePosition, SchematicKind, StandardModel, SystemId, Tenancy, Visibility,
-    Workspace, WorkspaceId,
+    Workspace, WorkspaceId, WriteTenancy,
 };
 use serde::{Deserialize, Serialize};
 
@@ -47,12 +47,12 @@ pub async fn set_node_position(
     )
     .await?
     .ok_or(SchematicError::InvalidRequest)?;
-    let tenancy = Tenancy::new_workspace(vec![*workspace.id()]);
 
+    let write_tenancy = WriteTenancy::new_workspace(*workspace.id());
     let position = NodePosition::upsert_by_node_id(
         &txn,
         &nats,
-        &tenancy,
+        &write_tenancy,
         &request.visibility,
         &history_actor,
         request.schematic_kind,

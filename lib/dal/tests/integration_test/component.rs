@@ -7,7 +7,7 @@ use dal::test_harness::{
 };
 use dal::{
     BillingAccount, Component, HistoryActor, Organization, Prop, PropKind, Resource, Schema,
-    SchemaKind, StandardModel, Tenancy, Visibility, Workspace,
+    SchemaKind, StandardModel, Tenancy, Visibility, Workspace, WriteTenancy,
 };
 use pretty_assertions_sorted::{assert_eq, assert_eq_sorted};
 use serde_json::json;
@@ -459,7 +459,7 @@ async fn get_resource_by_component_id() {
     .await
     .expect("cannot create new billing account");
 
-    let organization_tenancy = Tenancy::new_billing_account(vec![*billing_account.id()]);
+    let organization_tenancy = WriteTenancy::new_billing_account(*billing_account.id());
     let organization = Organization::new(
         &txn,
         &nats,

@@ -72,7 +72,7 @@ async fn get_schematic() {
     let node_position = NodePosition::upsert_by_node_id(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         SchematicKind::Component,
@@ -87,7 +87,10 @@ async fn get_schematic() {
 
     let schematic = Schematic::find(
         &txn,
-        &tenancy,
+        &tenancy
+            .clone_into_read_tenancy(&txn)
+            .await
+            .expect("unable to generate read tenancy"),
         &visibility,
         Some(SystemId::from(1)),
         *root_node.id(),
@@ -177,7 +180,7 @@ async fn create_connection() {
     let connection = Connection::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         head_node.id(),

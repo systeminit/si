@@ -5,8 +5,8 @@ use axum::routing::{get, post};
 use axum::Json;
 use axum::Router;
 use dal::{
-    ComponentError, NodeError, NodeMenuError, NodePositionError, SchemaError as DalSchemaError,
-    SchematicError as DalSchematicError, StandardModelError,
+    ComponentError, NodeError, NodeMenuError, NodePositionError, ReadTenancyError,
+    SchemaError as DalSchemaError, SchematicError as DalSchematicError, StandardModelError,
 };
 use std::convert::Infallible;
 use thiserror::Error;
@@ -43,6 +43,10 @@ pub enum SchematicError {
     NodePosition(#[from] NodePositionError),
     #[error("dal schematic error: {0}")]
     SchematicError(#[from] DalSchematicError),
+    #[error("read tenancy error: {0}")]
+    ReadTenancy(#[from] ReadTenancyError),
+    #[error("not authorized")]
+    NotAuthorized,
 }
 
 pub type SchematicResult<T> = std::result::Result<T, SchematicError>;
