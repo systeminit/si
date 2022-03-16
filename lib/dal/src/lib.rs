@@ -14,6 +14,7 @@ pub mod code_generation_prototype;
 pub mod code_generation_resolver;
 pub mod code_view;
 pub mod component;
+pub mod context;
 pub mod cyclone_key_pair;
 pub mod deculture;
 pub mod edge;
