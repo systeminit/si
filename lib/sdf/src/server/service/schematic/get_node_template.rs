@@ -1,10 +1,10 @@
 use axum::extract::Query;
 use axum::Json;
 use dal::node::NodeTemplate;
-use dal::{SchemaId, Tenancy, Visibility, WorkspaceId};
+use dal::{ReadTenancy, SchemaId, Visibility, WorkspaceId};
 use serde::{Deserialize, Serialize};
 
-use super::SchematicResult;
+use super::{SchematicError, SchematicResult};
 use crate::server::extract::{Authorization, PgRoTxn};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -24,13 +24,21 @@ pub async fn get_node_template(
     Query(request): Query<GetNodeTemplateRequest>,
 ) -> SchematicResult<Json<GetNodeTemplateResponse>> {
     let txn = txn.start().await?;
-    let mut tenancy = Tenancy::new_billing_account(vec![claim.billing_account_id]);
-    tenancy.workspace_ids = vec![request.workspace_id];
-    tenancy.universal = true;
+    let read_tenancy = ReadTenancy::new_workspace(&txn, vec![request.workspace_id]).await?;
+    if !read_tenancy
+        .billing_accounts()
+        .contains(&claim.billing_account_id)
+    {
+        return Err(SchematicError::NotAuthorized);
+    }
 
-    let response =
-        NodeTemplate::new_from_schema_id(&txn, &tenancy, &request.visibility, request.schema_id)
-            .await?;
+    let response = NodeTemplate::new_from_schema_id(
+        &txn,
+        &read_tenancy,
+        &request.visibility,
+        request.schema_id,
+    )
+    .await?;
 
     Ok(Json(response))
 }

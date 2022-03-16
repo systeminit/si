@@ -166,7 +166,7 @@ impl System {
         let node = Node::new(
             txn,
             nats,
-            tenancy,
+            &tenancy.into(),
             visibility,
             history_actor,
             &NodeKind::System,

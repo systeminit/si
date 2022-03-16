@@ -3,7 +3,7 @@ use si_data::{PgError, PgTxn};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::{BillingAccountId, OrganizationId, WorkspaceId};
+use crate::{BillingAccountId, OrganizationId, ReadTenancy, ReadTenancyError, WorkspaceId};
 
 #[derive(Error, Debug)]
 pub enum TenancyError {
@@ -101,6 +101,18 @@ impl Tenancy {
             .await?;
         let result = row.try_get("result")?;
         Ok(result)
+    }
+
+    pub fn into_universal(mut self) -> Self {
+        self.universal = true;
+        self
+    }
+
+    pub async fn clone_into_read_tenancy(
+        &self,
+        txn: &PgTxn<'_>,
+    ) -> Result<ReadTenancy, ReadTenancyError> {
+        ReadTenancy::try_from_tenancy(txn, self.clone()).await
     }
 }
 

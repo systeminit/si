@@ -5,7 +5,7 @@ use thiserror::Error;
 
 use crate::{
     standard_model, BillingAccount, BillingAccountId, OrganizationId, StandardModel,
-    StandardModelError, Workspace, WorkspaceError, WorkspaceId,
+    StandardModelError, Tenancy, Workspace, WorkspaceError, WorkspaceId,
 };
 
 const GET_WORKSPACE: &str = include_str!("./queries/read_tenancy_get_workspace.sql");
@@ -117,6 +117,35 @@ impl ReadTenancy {
         tenancy.workspace_ids = workspace_ids;
         Ok(tenancy)
     }
+
+    pub async fn try_from_tenancy(txn: &PgTxn<'_>, from: Tenancy) -> ReadTenancyResult<Self> {
+        let mut read = Self::new_universal();
+        if !from.workspace_ids.is_empty() {
+            read = Self::new_workspace(txn, from.workspace_ids).await?;
+        }
+        if !from.organization_ids.is_empty() {
+            let organization_ids = from
+                .organization_ids
+                .into_iter()
+                .filter(|id| !read.organization_ids.contains(id))
+                .collect();
+            let org_read = Self::new_organization(txn, organization_ids).await?;
+            read.organization_ids.extend(org_read.organization_ids);
+            read.billing_account_ids
+                .extend(org_read.billing_account_ids);
+        }
+        if !from.billing_account_ids.is_empty() {
+            let billing_account_ids = from
+                .billing_account_ids
+                .into_iter()
+                .filter(|id| !read.billing_account_ids.contains(id))
+                .collect();
+            let bill_read = Self::new_billing_account(billing_account_ids);
+            read.billing_account_ids
+                .extend(bill_read.billing_account_ids);
+        }
+        Ok(read)
+    }
 }
 
 impl postgres_types::ToSql for ReadTenancy {
@@ -146,5 +175,16 @@ impl postgres_types::ToSql for ReadTenancy {
     ) -> Result<postgres_types::IsNull, Box<dyn std::error::Error + Sync + Send>> {
         let json = serde_json::to_value(self)?;
         postgres_types::ToSql::to_sql(&json, ty, out)
+    }
+}
+
+impl From<&ReadTenancy> for Tenancy {
+    fn from(from: &ReadTenancy) -> Self {
+        Self {
+            universal: from.universal,
+            billing_account_ids: from.billing_account_ids.clone(),
+            organization_ids: from.organization_ids.clone(),
+            workspace_ids: from.workspace_ids.clone(),
+        }
     }
 }

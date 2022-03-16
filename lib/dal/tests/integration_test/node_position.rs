@@ -34,7 +34,7 @@ async fn new() {
     let node_position = NodePosition::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         SchematicKind::Component,
@@ -85,7 +85,7 @@ async fn set_node() {
     let node_position = NodePosition::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         SchematicKind::Component,
@@ -151,7 +151,7 @@ async fn set_node_position() {
     let node_position = NodePosition::upsert_by_node_id(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         SchematicKind::Component,
@@ -182,7 +182,7 @@ async fn set_node_position() {
     let node_position = NodePosition::upsert_by_node_id(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         SchematicKind::Component,

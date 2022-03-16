@@ -1,8 +1,8 @@
 use crate::edge::{Edge, EdgeId, EdgeKind, VertexObjectKind};
 use crate::{
     node::NodeId, ComponentError, EdgeError, HistoryActor, Node, NodeError, NodeKind, NodePosition,
-    NodePositionError, NodeTemplate, NodeView, StandardModel, StandardModelError, SystemError,
-    SystemId, Tenancy, Visibility,
+    NodePositionError, NodeTemplate, NodeView, ReadTenancy, ReadTenancyError, StandardModel,
+    StandardModelError, SystemError, SystemId, Visibility, WriteTenancy,
 };
 use serde::{Deserialize, Serialize};
 use strum_macros::{AsRefStr, Display, EnumString};
@@ -19,6 +19,8 @@ pub enum SchematicError {
     StandardModel(#[from] StandardModelError),
     #[error("node error: {0}")]
     Node(#[from] NodeError),
+    #[error("read tenancy error: {0}")]
+    ReadTenancy(#[from] ReadTenancyError),
     #[error("node position error: {0}")]
     NodePosition(#[from] NodePositionError),
     #[error("component error: {0}")]
@@ -73,7 +75,7 @@ impl Connection {
     pub async fn new(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
-        tenancy: &Tenancy,
+        write_tenancy: &WriteTenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
         head_node_id: &NodeId,
@@ -81,10 +83,10 @@ impl Connection {
         tail_node_id: &NodeId,
         tail_socket_id: &SocketId,
     ) -> SchematicResult<Self> {
-        let head_node = Node::get_by_id(txn, tenancy, visibility, head_node_id)
+        let head_node = Node::get_by_id(txn, &write_tenancy.into(), visibility, head_node_id)
             .await?
             .ok_or(SchematicError::Node(NodeError::NotFound(*head_node_id)))?;
-        let tail_node = Node::get_by_id(txn, tenancy, visibility, tail_node_id)
+        let tail_node = Node::get_by_id(txn, &write_tenancy.into(), visibility, tail_node_id)
             .await?
             .ok_or(SchematicError::Node(NodeError::NotFound(*tail_node_id)))?;
 
@@ -102,7 +104,7 @@ impl Connection {
         let edge = match Edge::new(
             txn,
             nats,
-            tenancy,
+            write_tenancy,
             visibility,
             history_actor,
             EdgeKind::Configures,
@@ -128,10 +130,10 @@ impl Connection {
 
     pub async fn list(
         txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
+        read_tenancy: &ReadTenancy,
         visibility: &Visibility,
     ) -> SchematicResult<Vec<Self>> {
-        let edges = Edge::list(txn, tenancy, visibility).await?;
+        let edges = Edge::list(txn, &read_tenancy.into(), visibility).await?;
         let connections = edges.iter().map(Self::from_edge).collect::<Vec<Self>>();
         Ok(connections)
     }
@@ -174,12 +176,12 @@ pub struct Schematic {
 impl Schematic {
     pub async fn find(
         txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
+        read_tenancy: &ReadTenancy,
         visibility: &Visibility,
         system_id: Option<SystemId>,
         root_node_id: NodeId,
     ) -> SchematicResult<Self> {
-        let nodes: Vec<Node> = Node::list(txn, tenancy, visibility).await?;
+        let nodes: Vec<Node> = Node::list(txn, &read_tenancy.into(), visibility).await?;
 
         let mut node_views = Vec::with_capacity(nodes.len());
         for node in nodes {
@@ -189,10 +191,8 @@ impl Schematic {
                         .component(txn, visibility)
                         .await?
                         .ok_or(SchematicError::ComponentNotFound)?;
-                    let mut tenancy = tenancy.clone();
-                    tenancy.universal = true;
                     let schema = component
-                        .schema_with_tenancy(txn, &tenancy, visibility)
+                        .schema_with_tenancy(txn, &read_tenancy.into(), visibility)
                         .await?
                         .ok_or(SchematicError::SchemaNotFound)?;
                     (
@@ -200,7 +200,7 @@ impl Schematic {
                         component
                             .find_prop_value_by_json_pointer::<String>(
                                 txn,
-                                &tenancy,
+                                &read_tenancy.into(),
                                 visibility,
                                 "/root/si/name",
                             )
@@ -235,7 +235,7 @@ impl Schematic {
 
             let position = NodePosition::find_by_node_id(
                 txn,
-                tenancy,
+                read_tenancy,
                 visibility,
                 schematic_kind,
                 &system_id,
@@ -244,12 +244,13 @@ impl Schematic {
             )
             .await?;
             let template =
-                NodeTemplate::new_from_schema_id(txn, tenancy, visibility, *schema.id()).await?;
+                NodeTemplate::new_from_schema_id(txn, read_tenancy, visibility, *schema.id())
+                    .await?;
             let view = NodeView::new(name, node, position.map_or(vec![], |p| vec![p]), template);
             node_views.push(view);
         }
 
-        let connections = Connection::list(txn, tenancy, visibility).await?;
+        let connections = Connection::list(txn, read_tenancy, visibility).await?;
         Ok(Self {
             nodes: node_views,
             connections,

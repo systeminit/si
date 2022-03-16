@@ -1,8 +1,10 @@
 use axum::{extract::Query, Json};
-use dal::{node::NodeId, schematic::Schematic, system::SystemId, Tenancy, Visibility, WorkspaceId};
+use dal::{
+    node::NodeId, schematic::Schematic, system::SystemId, ReadTenancy, Visibility, WorkspaceId,
+};
 use serde::{Deserialize, Serialize};
 
-use super::SchematicResult;
+use super::{SchematicError, SchematicResult};
 use crate::server::extract::{Authorization, PgRoTxn};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -23,13 +25,17 @@ pub async fn get_schematic(
     Query(request): Query<GetSchematicRequest>,
 ) -> SchematicResult<Json<GetSchematicResponse>> {
     let txn = txn.start().await?;
-    let mut tenancy = Tenancy::new_workspace(vec![request.workspace_id]);
-    tenancy.billing_account_ids = vec![claim.billing_account_id];
-    tenancy.universal = true;
+    let read_tenancy = ReadTenancy::new_workspace(&txn, vec![request.workspace_id]).await?;
+    if !read_tenancy
+        .billing_accounts()
+        .contains(&claim.billing_account_id)
+    {
+        return Err(SchematicError::NotAuthorized);
+    }
 
     let response = Schematic::find(
         &txn,
-        &tenancy,
+        &read_tenancy,
         &request.visibility,
         request.system_id,
         request.root_node_id,

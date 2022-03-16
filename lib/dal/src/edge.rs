@@ -7,8 +7,8 @@ use thiserror::Error;
 use crate::node::NodeId;
 use crate::{
     impl_standard_model, pk, socket::SocketId, standard_model, standard_model_accessor,
-    ComponentId, HistoryActor, HistoryEventError, StandardModel, StandardModelError, SystemId,
-    Tenancy, Timestamp, Visibility,
+    ComponentId, HistoryActor, HistoryEventError, ReadTenancy, ReadTenancyError, StandardModel,
+    StandardModelError, SystemId, Tenancy, Timestamp, Visibility, WriteTenancy,
 };
 
 const FIND_PARENT_COMPONENTS: &str = include_str!("./queries/edge_find_parent_components.sql");
@@ -24,7 +24,9 @@ pub enum EdgeError {
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
     #[error("standard model error: {0}")]
-    StandardModelError(#[from] StandardModelError),
+    StandardModel(#[from] StandardModelError),
+    #[error("standard model error: {0}")]
+    ReadTenancy(#[from] ReadTenancyError),
 }
 
 pub type EdgeResult<T> = Result<T, EdgeError>;
@@ -88,7 +90,7 @@ impl Edge {
     pub async fn new(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
-        tenancy: &Tenancy,
+        write_tenancy: &WriteTenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
         kind: EdgeKind,
@@ -105,7 +107,7 @@ impl Edge {
             .query_one(
                 "SELECT object FROM edge_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)",
                 &[
-                    &tenancy,
+                    write_tenancy,
                     &visibility,
                     &kind.to_string(),
                     &head_node_id,
@@ -122,7 +124,7 @@ impl Edge {
         let object = standard_model::finish_create_from_row(
             txn,
             nats,
-            tenancy,
+            &write_tenancy.into(),
             visibility,
             history_actor,
             row,
@@ -145,14 +147,14 @@ impl Edge {
 
     pub async fn find_component_configuration_parents(
         txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
+        read_tenancy: &ReadTenancy,
         visibility: &Visibility,
         component_id: &ComponentId,
     ) -> EdgeResult<Vec<ComponentId>> {
         let rows = txn
             .query(
                 FIND_PARENT_COMPONENTS,
-                &[&tenancy, &visibility, &component_id],
+                &[read_tenancy, &visibility, &component_id],
             )
             .await?;
         let objects = rows
@@ -165,27 +167,25 @@ impl Edge {
     pub async fn include_component_in_system(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
-        tenancy: &Tenancy,
+        write_tenancy: &WriteTenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
         component_id: &ComponentId,
         system_id: &SystemId,
     ) -> EdgeResult<Self> {
-        // TODO: We're creating a universal tenancy here, to make sure the DB function can find the schemas System Initiative has created, but that might not actually be the right thing to do here long term.
-        let mut schema_tenancy = tenancy.clone();
-        schema_tenancy.universal = true;
+        let read_tenancy = write_tenancy.clone_into_read_tenancy(txn).await?;
 
         let row = txn
             .query_one(
                 "SELECT object FROM edge_include_component_in_system_v1($1, $2, $3, $4)",
-                &[&schema_tenancy, &visibility, component_id, system_id],
+                &[&read_tenancy, &visibility, component_id, system_id],
             )
             .await?;
 
         let object = standard_model::finish_create_from_row(
             txn,
             nats,
-            tenancy,
+            &(&read_tenancy).into(),
             visibility,
             history_actor,
             row,

@@ -5,8 +5,9 @@ use thiserror::Error;
 
 use crate::{
     impl_standard_model, node::NodeId, pk, standard_model, standard_model_accessor,
-    standard_model_belongs_to, HistoryActor, HistoryEventError, Node, SchematicKind, StandardModel,
-    StandardModelError, SystemId, Tenancy, Timestamp, Visibility,
+    standard_model_belongs_to, HistoryActor, HistoryEventError, Node, ReadTenancy,
+    ReadTenancyError, SchematicKind, StandardModel, StandardModelError, SystemId, Tenancy,
+    Timestamp, Visibility, WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -16,7 +17,9 @@ pub enum NodePositionError {
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
     #[error("standard model error: {0}")]
-    StandardModelError(#[from] StandardModelError),
+    StandardModel(#[from] StandardModelError),
+    #[error("read tenancy error: {0}")]
+    ReadTenancy(#[from] ReadTenancyError),
 }
 
 const FIND_NODE_POSITION_BY_NODE_ID: &str =
@@ -58,7 +61,7 @@ impl NodePosition {
     pub async fn new(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
-        tenancy: &Tenancy,
+        write_tenancy: &WriteTenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
         schematic_kind: SchematicKind,
@@ -70,7 +73,7 @@ impl NodePosition {
             .query_one(
                 "SELECT object FROM node_position_create_v1($1, $2, $3, $4, $5, $6)",
                 &[
-                    tenancy,
+                    write_tenancy,
                     visibility,
                     &schematic_kind.as_ref(),
                     &root_node_id,
@@ -82,7 +85,8 @@ impl NodePosition {
         let object = standard_model::finish_create_from_row(
             txn,
             nats,
-            tenancy,
+            // the standard model uses Tenancy for interoperability with what hasn't been refactored yet
+            &write_tenancy.into(),
             visibility,
             history_actor,
             row,
@@ -94,7 +98,7 @@ impl NodePosition {
 
     pub async fn find_by_node_id(
         txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
+        read_tenancy: &ReadTenancy,
         visibility: &Visibility,
         schematic_kind: SchematicKind,
         system_id: &Option<SystemId>,
@@ -108,7 +112,7 @@ impl NodePosition {
             .query_opt(
                 FIND_NODE_POSITION_BY_NODE_ID,
                 &[
-                    tenancy,
+                    read_tenancy,
                     visibility,
                     &schematic_kind.as_ref(),
                     &system_id,
@@ -125,7 +129,7 @@ impl NodePosition {
     pub async fn upsert_by_node_id(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
-        tenancy: &Tenancy,
+        write_tenancy: &WriteTenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
         schematic_kind: SchematicKind,
@@ -135,9 +139,10 @@ impl NodePosition {
         x: impl AsRef<str>,
         y: impl AsRef<str>,
     ) -> NodePositionResult<Self> {
+        let read_tenancy = write_tenancy.clone_into_read_tenancy(txn).await?;
         if let Some(mut position) = Self::find_by_node_id(
             txn,
-            tenancy,
+            &read_tenancy,
             visibility,
             schematic_kind,
             system_id,
@@ -157,7 +162,7 @@ impl NodePosition {
             let mut obj = Self::new(
                 txn,
                 nats,
-                tenancy,
+                write_tenancy,
                 visibility,
                 history_actor,
                 schematic_kind,

@@ -3,7 +3,10 @@ use crate::service::schematic::{SchematicError, SchematicResult};
 use axum::Json;
 use dal::node::NodeId;
 use dal::socket::SocketId;
-use dal::{Connection, HistoryActor, StandardModel, Tenancy, Visibility, Workspace, WorkspaceId};
+use dal::{
+    Connection, HistoryActor, StandardModel, Tenancy, Visibility, Workspace, WorkspaceId,
+    WriteTenancy,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -43,12 +46,12 @@ pub async fn create_connection(
     )
     .await?
     .ok_or(SchematicError::InvalidRequest)?;
-    let tenancy = Tenancy::new_workspace(vec![*workspace.id()]);
+    let write_tenancy = WriteTenancy::new_workspace(*workspace.id());
 
     let connection = Connection::new(
         &txn,
         &nats,
-        &tenancy,
+        &write_tenancy,
         &request.visibility,
         &history_actor,
         &request.head_node_id,

@@ -254,7 +254,7 @@ impl BillingAccount {
         let organization = Organization::new(
             txn,
             nats,
-            &billing_account_tenancy,
+            &(&billing_account_tenancy).into(),
             visibility,
             &user_history_actor,
             "default",

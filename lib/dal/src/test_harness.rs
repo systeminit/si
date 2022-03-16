@@ -356,7 +356,7 @@ pub async fn create_organization(
     history_actor: &HistoryActor,
 ) -> Organization {
     let name = generate_fake_name();
-    Organization::new(txn, nats, tenancy, visibility, history_actor, &name)
+    Organization::new(txn, nats, &tenancy.into(), visibility, history_actor, &name)
         .await
         .expect("cannot create organization")
 }
@@ -708,9 +708,16 @@ pub async fn create_node(
     history_actor: &HistoryActor,
     node_kind: &NodeKind,
 ) -> Node {
-    let node = Node::new(txn, nats, tenancy, visibility, history_actor, node_kind)
-        .await
-        .expect("cannot create node");
+    let node = Node::new(
+        txn,
+        nats,
+        &tenancy.into(),
+        visibility,
+        history_actor,
+        node_kind,
+    )
+    .await
+    .expect("cannot create node");
     node
 }
 

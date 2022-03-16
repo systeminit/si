@@ -9,8 +9,8 @@ use crate::socket::{Socket, SocketEdgeKind};
 use crate::{
     generate_name, impl_standard_model, pk, standard_model, standard_model_accessor,
     standard_model_belongs_to, Component, ComponentId, HistoryActor, HistoryEventError,
-    NodePosition, Schema, SchemaId, SchemaVariant, StandardModel, StandardModelError, System,
-    SystemId, Tenancy, Timestamp, Visibility,
+    NodePosition, ReadTenancy, ReadTenancyError, Schema, SchemaId, SchemaVariant, StandardModel,
+    StandardModelError, System, SystemId, Tenancy, Timestamp, Visibility, WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -31,6 +31,8 @@ pub enum NodeError {
     SchemaMissingDefaultVariant,
     #[error("schema variant error: {0}")]
     SchemaVariant(#[from] SchemaVariantError),
+    #[error("read tenancy error: {0}")]
+    ReadTenancy(#[from] ReadTenancyError),
     #[error("component is None")]
     ComponentIsNone,
     #[error("could not find node with ID: {0}")]
@@ -86,7 +88,7 @@ impl Node {
     pub async fn new(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
-        tenancy: &Tenancy,
+        write_tenancy: &WriteTenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
         kind: &NodeKind,
@@ -94,13 +96,13 @@ impl Node {
         let row = txn
             .query_one(
                 "SELECT object FROM node_create_v1($1, $2, $3)",
-                &[&tenancy, &visibility, &kind.to_string()],
+                &[write_tenancy, &visibility, &kind.to_string()],
             )
             .await?;
         let object = standard_model::finish_create_from_row(
             txn,
             nats,
-            tenancy,
+            &Tenancy::from(write_tenancy),
             visibility,
             history_actor,
             row,
@@ -172,19 +174,20 @@ pub struct NodeTemplate {
 impl NodeTemplate {
     pub async fn new_from_schema_id(
         txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
+        read_tenancy: &ReadTenancy,
         visibility: &Visibility,
         schema_id: SchemaId,
     ) -> NodeResult<Self> {
-        let schema = Schema::get_by_id(txn, tenancy, visibility, &schema_id)
+        let schema = Schema::get_by_id(txn, &read_tenancy.into(), visibility, &schema_id)
             .await?
             .ok_or(NodeError::SchemaIdNotFound)?;
         let schema_variant_id = schema
             .default_schema_variant_id()
             .ok_or(NodeError::SchemaMissingDefaultVariant)?;
-        let schema_variant = SchemaVariant::get_by_id(txn, tenancy, visibility, schema_variant_id)
-            .await?
-            .ok_or(NodeError::SchemaMissingDefaultVariant)?;
+        let schema_variant =
+            SchemaVariant::get_by_id(txn, &read_tenancy.into(), visibility, schema_variant_id)
+                .await?
+                .ok_or(NodeError::SchemaMissingDefaultVariant)?;
 
         let sockets = schema_variant.sockets(txn, visibility).await?;
         let mut outputs = vec![];

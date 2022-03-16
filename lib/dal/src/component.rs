@@ -301,7 +301,7 @@ impl Component {
         let node = Node::new(
             txn,
             nats,
-            tenancy,
+            &tenancy.into(),
             visibility,
             history_actor,
             &NodeKind::Component,
@@ -317,7 +317,7 @@ impl Component {
         let _edge = Edge::include_component_in_system(
             txn,
             nats,
-            tenancy,
+            &tenancy.into(),
             visibility,
             history_actor,
             component.id(),
@@ -1439,9 +1439,13 @@ impl Component {
         let mut tenancy = tenancy.clone();
         tenancy.universal = true;
 
-        let parent_ids =
-            Edge::find_component_configuration_parents(txn, &tenancy, visibility, self.id())
-                .await?;
+        let parent_ids = Edge::find_component_configuration_parents(
+            txn,
+            &tenancy.clone_into_read_tenancy(txn).await?,
+            visibility,
+            self.id(),
+        )
+        .await?;
         let mut parents = Vec::with_capacity(parent_ids.len());
         for id in parent_ids {
             let view =
@@ -1517,9 +1521,13 @@ impl Component {
         let mut tenancy = tenancy.clone();
         tenancy.universal = true;
 
-        let parent_ids =
-            Edge::find_component_configuration_parents(txn, &tenancy, visibility, self.id())
-                .await?;
+        let parent_ids = Edge::find_component_configuration_parents(
+            txn,
+            &tenancy.clone_into_read_tenancy(txn).await?,
+            visibility,
+            self.id(),
+        )
+        .await?;
 
         let mut parents = Vec::new();
         for id in parent_ids {

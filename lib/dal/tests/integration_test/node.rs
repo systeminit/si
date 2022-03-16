@@ -4,7 +4,7 @@ use dal::node::{NodeKind, NodeTemplate};
 use dal::test_harness::{
     create_component_and_schema, create_node, create_schema, create_schema_variant,
 };
-use dal::{HistoryActor, Node, SchemaKind, StandardModel, Tenancy, Visibility};
+use dal::{HistoryActor, Node, SchemaKind, StandardModel, Tenancy, Visibility, WriteTenancy};
 use test_env_log::test;
 
 #[test(tokio::test)]
@@ -20,13 +20,13 @@ async fn new() {
         _veritech,
         _encr_key,
     );
-    let tenancy = Tenancy::new_universal();
+    let write_tenancy = WriteTenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
     let _node = Node::new(
         &txn,
         &nats,
-        &tenancy,
+        &write_tenancy,
         &visibility,
         &history_actor,
         &NodeKind::Component,
@@ -132,8 +132,13 @@ async fn new_node_template() {
         .await
         .expect("cannot set default schema variant");
 
-    let node_template = NodeTemplate::new_from_schema_id(&txn, &tenancy, &visibility, *schema.id())
+    let read_tenancy = tenancy
+        .clone_into_read_tenancy(&txn)
         .await
-        .expect("cannot create node template");
+        .expect("unable to generate read tenancy");
+    let node_template =
+        NodeTemplate::new_from_schema_id(&txn, &read_tenancy, &visibility, *schema.id())
+            .await
+            .expect("cannot create node template");
     assert_eq!(node_template.label.title, schema.name());
 }

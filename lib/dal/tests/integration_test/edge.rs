@@ -86,7 +86,7 @@ async fn new() {
     let _edge = Edge::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         EdgeKind::Configures,
@@ -104,7 +104,10 @@ async fn new() {
 
     let parents = Edge::find_component_configuration_parents(
         &txn,
-        &tenancy,
+        &tenancy
+            .clone_into_read_tenancy(&txn)
+            .await
+            .expect("unable to generate read tenancy"),
         &visibility,
         head_component.id(),
     )
