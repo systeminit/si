@@ -7,7 +7,7 @@
     <template #name>{{ props.editField.name }}</template>
     <template #edit>
       <input
-        v-model="currentValue"
+        v-model="inputValue"
         class="pl-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none input-bg-color-grey si-property disabled:opacity-50"
         :class="borderColor"
         type="checkbox"
