@@ -45,11 +45,6 @@ import { computed } from "vue";
 import VueFeather from "vue-feather";
 
 const props = defineProps({
-  name: {
-    type: String,
-    // NOTE(nick): name is currently unused, so it is not required, unlike in old-web.
-    required: false,
-  },
   size: {
     type: String as () => "xs" | "sm" | "base" | "lg",
     default: "base",

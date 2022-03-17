@@ -8,11 +8,11 @@
 </template>
 
 <script setup lang="ts">
-import type { EditFieldValue } from "@/api/sdf/dal/edit_field";
+import type { EditFieldValues } from "@/api/sdf/dal/edit_field";
 import VueFeather from "vue-feather";
 
 const props = defineProps<{
-  editValue?: EditFieldValue;
+  editValue?: EditFieldValues;
   unset: () => void;
 }>();
 </script>

@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use cyclone::{
     CodeGenerationRequest, CodeGenerationResultSuccess, FunctionResult, OutputStream,
     QualificationCheckRequest, QualificationCheckResultSuccess, ResolverFunctionRequest,
@@ -33,7 +35,7 @@ pub type ClientResult<T> = Result<T, ClientError>;
 #[derive(Clone, Debug)]
 pub struct Client {
     nats: NatsClient,
-    subject_prefix: Option<String>,
+    subject_prefix: Option<Arc<String>>,
 }
 
 impl Client {
@@ -47,7 +49,7 @@ impl Client {
     pub fn with_subject_prefix(nats: NatsClient, subject_prefix: impl Into<String>) -> Self {
         Self {
             nats,
-            subject_prefix: Some(subject_prefix.into()),
+            subject_prefix: Some(Arc::new(subject_prefix.into())),
         }
     }
 
@@ -222,7 +224,7 @@ impl Client {
 
     /// Gets a reference to the client's subject prefix.
     pub fn subject_prefix(&self) -> Option<&str> {
-        self.subject_prefix.as_deref()
+        self.subject_prefix.as_deref().map(String::as_str)
     }
 }
 

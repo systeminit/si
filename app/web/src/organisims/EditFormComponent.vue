@@ -26,7 +26,12 @@
 
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { EditFields } from "@/api/sdf/dal/edit_field";
+import type {
+  EditFields,
+  EditField,
+  HeaderWidgetDal,
+} from "@/api/sdf/dal/edit_field";
+import { EditFieldDataType } from "@/api/sdf/dal/edit_field";
 import Widgets from "@/organisims/EditForm/Widgets.vue";
 import {
   InitialTreeOpenStateVisitor,
@@ -41,12 +46,20 @@ const props = defineProps<{
  * Returns core edit fields that are *not* component properties
  */
 const coreEditFields = computed(() => {
-  let fields = [];
-  props.editFields.forEach((root) =>
-    root.widget.options.edit_fields
-      .filter((p) => p.name === "si")
-      .forEach((p) => (fields = fields.concat(p.widget.options.edit_fields))),
-  );
+  let fields: Array<EditField> = [];
+  props.editFields.forEach((root) => {
+    if (root.data_type === EditFieldDataType.Object) {
+      const widget = root.widget as HeaderWidgetDal;
+      widget.options.edit_fields
+        .filter((p) => p.name === "si")
+        .forEach((p) => {
+          if (p.data_type === EditFieldDataType.Object) {
+            const w = p.widget as HeaderWidgetDal;
+            fields = fields.concat(w.options.edit_fields);
+          }
+        });
+    }
+  });
   return fields;
 });
 
@@ -54,12 +67,20 @@ const coreEditFields = computed(() => {
  * Returns edit fields are component properties
  */
 const propertyEditFields = computed(() => {
-  let fields = [];
-  props.editFields.forEach((root) =>
-    root.widget.options.edit_fields
-      .filter((p) => p.name === "domain")
-      .forEach((p) => (fields = fields.concat(p.widget.options.edit_fields))),
-  );
+  let fields: Array<EditField> = [];
+  props.editFields.forEach((root) => {
+    if (root.data_type === EditFieldDataType.Object) {
+      const widget = root.widget as HeaderWidgetDal;
+      widget.options.edit_fields
+        .filter((p) => p.name === "domain")
+        .forEach((p) => {
+          if (p.data_type === EditFieldDataType.Object) {
+            const w = p.widget as HeaderWidgetDal;
+            fields = fields.concat(w.options.edit_fields);
+          }
+        });
+    }
+  });
   return fields;
 });
 

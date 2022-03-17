@@ -25,6 +25,8 @@ pub enum ComponentError {
     #[error(transparent)]
     Pg(#[from] si_data::PgError),
     #[error(transparent)]
+    PgPool(#[from] si_data::PgPoolError),
+    #[error(transparent)]
     StandardModel(#[from] StandardModelError),
     #[error("entity error: {0}")]
     Component(#[from] DalComponentError),

@@ -7,6 +7,7 @@ import {
 } from "@/observable/change_set";
 import { eventEditSessionSaved$ } from "@/observable/edit_session";
 import { eventResourceSynced$ } from "@/observable/resource";
+import { eventSecretCreated$ } from "@/observable/secret";
 
 const eventMap: {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -17,6 +18,7 @@ const eventMap: {
   ChangeSetCanceled: eventChangeSetCanceled$,
   EditSessionSaved: eventEditSessionSaved$,
   ResourceSynced: eventResourceSynced$,
+  SecretCreated: eventSecretCreated$,
 };
 
 export function dispatch(wsEvent: WsEvent<WsPayloadKinds>) {

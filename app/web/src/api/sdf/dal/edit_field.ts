@@ -26,7 +26,10 @@ export interface TextWidgetDal {
 
 export interface SelectWidgetDal {
   kind: "Select";
-  options: LabelList<unknown>;
+  options: {
+    options: LabelList<unknown>;
+    default?: unknown;
+  };
   default?: unknown;
 }
 
