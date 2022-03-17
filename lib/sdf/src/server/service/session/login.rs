@@ -2,7 +2,7 @@ use super::SessionResult;
 use crate::server::extract::{JwtSecretKey, NatsTxn, PgRwTxn};
 use crate::server::service::session::SessionError;
 use axum::Json;
-use dal::{BillingAccount, StandardModel, Tenancy, User, Visibility};
+use dal::{BillingAccount, ReadTenancy, StandardModel, Tenancy, User, Visibility};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -38,7 +38,7 @@ pub async fn login(
             .await?
             .ok_or(SessionError::LoginFailed)?;
 
-    let ba_tenancy = Tenancy::new_billing_account(vec![*billing_account.id()]);
+    let ba_tenancy = ReadTenancy::new_billing_account(vec![*billing_account.id()]);
     let user = User::find_by_email(&txn, &ba_tenancy, &visibility, &request.user_email)
         .await?
         .ok_or(SessionError::LoginFailed)?;

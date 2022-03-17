@@ -10,8 +10,8 @@ use crate::jwt_key::{get_jwt_signing_key, JwtKeyError};
 use crate::standard_model::option_object_from_row;
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
-    BillingAccount, BillingAccountId, HistoryActor, HistoryEventError, JwtSecretKey, StandardModel,
-    StandardModelError, Tenancy, Timestamp, Visibility,
+    BillingAccount, BillingAccountId, HistoryActor, HistoryEventError, JwtSecretKey, ReadTenancy,
+    StandardModel, StandardModelError, Tenancy, Timestamp, Visibility, WriteTenancy,
 };
 
 const USER_PASSWORD: &str = include_str!("./queries/user_password.sql");
@@ -76,7 +76,7 @@ impl User {
     pub async fn new(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
-        tenancy: &Tenancy,
+        write_tenancy: &WriteTenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
         name: impl AsRef<str>,
@@ -92,7 +92,7 @@ impl User {
             .query_one(
                 "SELECT object FROM user_create_v1($1, $2, $3, $4, $5)",
                 &[
-                    &tenancy,
+                    write_tenancy,
                     &visibility,
                     &name,
                     &email,
@@ -103,7 +103,7 @@ impl User {
         let object = standard_model::finish_create_from_row(
             txn,
             nats,
-            tenancy,
+            &write_tenancy.into(),
             visibility,
             history_actor,
             row,
@@ -127,13 +127,13 @@ impl User {
 
     pub async fn find_by_email(
         txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
+        read_tenancy: &ReadTenancy,
         visibility: &Visibility,
         email: impl AsRef<str>,
     ) -> UserResult<Option<User>> {
         let email = email.as_ref();
         let maybe_row = txn
-            .query_opt(USER_FIND_BY_EMAIL, &[&email, &tenancy, &visibility])
+            .query_opt(USER_FIND_BY_EMAIL, &[&email, read_tenancy, &visibility])
             .await?;
         let result = option_object_from_row(maybe_row)?;
         Ok(result)
@@ -141,12 +141,12 @@ impl User {
 
     pub async fn authorize(
         txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
+        read_tenancy: &ReadTenancy,
         visibility: &Visibility,
         user_id: &UserId,
     ) -> UserResult<bool> {
         let _row = txn
-            .query_one(AUTHORIZE_USER, &[&tenancy, &visibility, &user_id])
+            .query_one(AUTHORIZE_USER, &[read_tenancy, &visibility, &user_id])
             .await?;
         Ok(true)
     }

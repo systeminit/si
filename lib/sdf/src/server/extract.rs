@@ -6,8 +6,8 @@ use axum::{
     Json,
 };
 use dal::{
-    ChangeSetPk, EditSessionPk, StandardModel, Tenancy, User, UserClaim, Visibility, Workspace,
-    WorkspaceId,
+    ChangeSetPk, EditSessionPk, ReadTenancy, StandardModel, Tenancy, User, UserClaim, Visibility,
+    Workspace, WorkspaceId,
 };
 use hyper::StatusCode;
 use serde::Serialize;
@@ -234,9 +234,9 @@ where
         let claim = UserClaim::from_bearer_token(&txn, authorization)
             .await
             .map_err(|_| error_response.clone())?;
-        let tenancy = Tenancy::new_billing_account(vec![claim.billing_account_id]);
+        let read_tenancy = ReadTenancy::new_billing_account(vec![claim.billing_account_id]);
         let visibility = Visibility::new_head(false);
-        User::authorize(&txn, &tenancy, &visibility, &claim.user_id)
+        User::authorize(&txn, &read_tenancy, &visibility, &claim.user_id)
             .await
             .map_err(|_| error_response.clone())?;
         txn.commit().await.map_err(|_| error_response.clone())?;
@@ -279,9 +279,9 @@ where
         let claim = UserClaim::from_bearer_token(&txn, authorization)
             .await
             .map_err(|_| error_response.clone())?;
-        let tenancy = Tenancy::new_billing_account(vec![claim.billing_account_id]);
+        let read_tenancy = ReadTenancy::new_billing_account(vec![claim.billing_account_id]);
         let visibility = Visibility::new_head(false);
-        User::authorize(&txn, &tenancy, &visibility, &claim.user_id)
+        User::authorize(&txn, &read_tenancy, &visibility, &claim.user_id)
             .await
             .map_err(|_| error_response.clone())?;
         txn.commit().await.map_err(|_| error_response.clone())?;

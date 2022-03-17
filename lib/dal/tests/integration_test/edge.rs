@@ -136,7 +136,7 @@ async fn include_component_in_system() {
     let (_system, system_node) = System::new_with_node(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         "production",
@@ -218,7 +218,7 @@ async fn include_component_in_system_with_edit_sessions() {
     let (_system, system_node) = System::new_with_node(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         "production",

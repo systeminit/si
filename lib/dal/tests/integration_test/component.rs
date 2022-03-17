@@ -6,8 +6,8 @@ use dal::test_harness::{
     create_schema_variant, create_schema_variant_with_root, find_or_create_production_system,
 };
 use dal::{
-    BillingAccount, Component, HistoryActor, Organization, Prop, PropKind, Resource, Schema,
-    SchemaKind, StandardModel, Tenancy, Visibility, Workspace, WriteTenancy,
+    BillingAccount, Component, HistoryActor, Organization, Prop, PropKind, ReadTenancy, Resource,
+    Schema, SchemaKind, StandardModel, Tenancy, Visibility, Workspace, WriteTenancy,
 };
 use pretty_assertions_sorted::{assert_eq, assert_eq_sorted};
 use serde_json::json;
@@ -103,7 +103,10 @@ async fn new_for_schema_variant_with_node() {
     // All components get a Resource record when created.
     let resource = Resource::get_by_component_id_and_system_id(
         &txn,
-        &tenancy,
+        &tenancy
+            .clone_into_read_tenancy(&txn)
+            .await
+            .expect("failed to generate read tenancy"),
         &visibility,
         component.id(),
         system.id(),
@@ -481,10 +484,15 @@ async fn get_resource_by_component_id() {
         .await
         .expect("unable to set organization billing account");
 
-    let mut workspace_tenancy = Tenancy::new_organization(vec![*organization.id()]);
-    workspace_tenancy
-        .billing_account_ids
-        .push(*billing_account.id());
+    // Note: ideally write tenancies only contain the less specific
+    // But at dal/src/billing_account.rs we search for things that way, so we have to test the hack
+    // So we cheat on the write tenancy restrictions here
+    let workspace_tenancy = Tenancy::from(
+        &ReadTenancy::new_organization(&txn, vec![*organization.id()])
+            .await
+            .expect("unable to generate read tenancy"),
+    );
+    let workspace_tenancy = WriteTenancy::from(&workspace_tenancy);
     let workspace = Workspace::new(
         &txn,
         &nats,

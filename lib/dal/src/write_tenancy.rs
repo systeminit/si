@@ -141,7 +141,6 @@ impl From<&WriteTenancy> for Tenancy {
 }
 
 // This tecnically allow us to bypass WriteTenancy limitation, but it's only for interoperability until Tenancy dies
-// But in practice we don't use Tenancy in a way that should bypass it
 impl From<&Tenancy> for WriteTenancy {
     fn from(from: &Tenancy) -> Self {
         Self {

@@ -26,9 +26,16 @@ async fn new() {
     let change_set = create_change_set(&txn, &nats, &tenancy, &history_actor).await;
     let edit_session = create_edit_session(&txn, &nats, &history_actor, &change_set).await;
     let visibility = create_visibility_edit_session(&change_set, &edit_session);
-    let _key_pair = KeyPair::new(&txn, &nats, &tenancy, &visibility, &history_actor, "funky")
-        .await
-        .expect("cannot create key_pair");
+    let _key_pair = KeyPair::new(
+        &txn,
+        &nats,
+        &(&tenancy).into(),
+        &visibility,
+        &history_actor,
+        "funky",
+    )
+    .await
+    .expect("cannot create key_pair");
 }
 
 #[test(tokio::test)]

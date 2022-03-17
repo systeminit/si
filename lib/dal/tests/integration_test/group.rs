@@ -4,7 +4,7 @@ use dal::test_harness::{
     create_billing_account, create_change_set, create_edit_session, create_group, create_user,
     create_visibility_edit_session,
 };
-use dal::{Group, HistoryActor, StandardModel, Tenancy};
+use dal::{Group, HistoryActor, StandardModel, Tenancy, WriteTenancy};
 use test_env_log::test;
 
 #[test(tokio::test)]
@@ -20,14 +20,21 @@ async fn new() {
         _veritech,
         _encr_key
     );
-    let tenancy = Tenancy::new_universal();
+    let write_tenancy = WriteTenancy::new_universal();
     let history_actor = HistoryActor::SystemInit;
-    let change_set = create_change_set(&txn, &nats, &tenancy, &history_actor).await;
+    let change_set = create_change_set(&txn, &nats, &(&write_tenancy).into(), &history_actor).await;
     let edit_session = create_edit_session(&txn, &nats, &history_actor, &change_set).await;
     let visibility = create_visibility_edit_session(&change_set, &edit_session);
-    let _group = Group::new(&txn, &nats, &tenancy, &visibility, &history_actor, "funky")
-        .await
-        .expect("cannot create group");
+    let _group = Group::new(
+        &txn,
+        &nats,
+        &write_tenancy,
+        &visibility,
+        &history_actor,
+        "funky",
+    )
+    .await
+    .expect("cannot create group");
 }
 
 #[test(tokio::test)]

@@ -4,7 +4,7 @@ use dal::test_harness::{
     billing_account_signup, create_billing_account, create_change_set, create_edit_session,
     create_visibility_edit_session, create_visibility_head,
 };
-use dal::{HistoryActor, StandardModel, Tenancy, User};
+use dal::{HistoryActor, ReadTenancy, StandardModel, Tenancy, User, WriteTenancy};
 use test_env_log::test;
 
 #[test(tokio::test)]
@@ -20,15 +20,15 @@ async fn new() {
         _veritech,
         _encr_key
     );
-    let tenancy = Tenancy::new_universal();
+    let write_tenancy = WriteTenancy::new_universal();
     let history_actor = HistoryActor::SystemInit;
-    let change_set = create_change_set(&txn, &nats, &tenancy, &history_actor).await;
+    let change_set = create_change_set(&txn, &nats, &(&write_tenancy).into(), &history_actor).await;
     let edit_session = create_edit_session(&txn, &nats, &history_actor, &change_set).await;
     let visibility = create_visibility_edit_session(&change_set, &edit_session);
     let _user = User::new(
         &txn,
         &nats,
-        &tenancy,
+        &write_tenancy,
         &visibility,
         &history_actor,
         "funky",
@@ -47,12 +47,12 @@ async fn login() {
     let visibility = create_visibility_head();
     let billing_account =
         create_billing_account(&txn, &nats, &tenancy, &visibility, &history_actor).await;
-    let ba_tenancy = Tenancy::new_billing_account(vec![*billing_account.id()]);
+    let write_tenancy = WriteTenancy::new_billing_account(*billing_account.id());
     let password = "snakesOnAPlane123";
     let user = User::new(
         &txn,
         &nats,
-        &ba_tenancy,
+        &write_tenancy,
         &visibility,
         &history_actor,
         "funky",
@@ -83,14 +83,19 @@ async fn find_by_email() {
     let tenancy = Tenancy::new_universal();
     let history_actor = HistoryActor::SystemInit;
     let visibility = create_visibility_head();
+
     let billing_account =
         create_billing_account(&txn, &nats, &tenancy, &visibility, &history_actor).await;
-    let ba_tenancy = Tenancy::new_billing_account(vec![*billing_account.id()]);
+    let write_tenancy = WriteTenancy::new_billing_account(*billing_account.id());
+    let read_tenancy = write_tenancy
+        .clone_into_read_tenancy(&txn)
+        .await
+        .expect("unable to generate read tenancy");
     let password = "snakesOnAPlane123";
     let user = User::new(
         &txn,
         &nats,
-        &ba_tenancy,
+        &write_tenancy,
         &visibility,
         &history_actor,
         "funky",
@@ -99,19 +104,28 @@ async fn find_by_email() {
     )
     .await
     .expect("cannot create user");
-    let email_user =
-        User::find_by_email(&txn, &ba_tenancy, &visibility, "bobotclown@systeminit.com")
-            .await
-            .expect("cannot get by email");
+    let email_user = User::find_by_email(
+        &txn,
+        &read_tenancy,
+        &visibility,
+        "bobotclown@systeminit.com",
+    )
+    .await
+    .expect("cannot get by email");
     assert_eq!(
         Some(user),
         email_user,
         "user by email does not match created user"
     );
 
-    let fail_user = User::find_by_email(&txn, &tenancy, &visibility, "bobotclown@systeminit.com")
-        .await
-        .expect("cannot find user by email");
+    let fail_user = User::find_by_email(
+        &txn,
+        &ReadTenancy::new_universal(),
+        &visibility,
+        "bobotclown@systeminit.com",
+    )
+    .await
+    .expect("cannot find user by email");
     assert!(
         fail_user.is_none(),
         "user should not return if the tenancy is wrong"
@@ -125,8 +139,12 @@ async fn authorize() {
     let visibility = create_visibility_head();
 
     let (nba, _auth_token) = billing_account_signup(&txn, &nats, secret_key).await;
-    let ba_tenancy = Tenancy::new_billing_account(vec![*nba.billing_account.id()]);
-    let worked = User::authorize(&txn, &ba_tenancy, &visibility, nba.user.id())
+    let write_tenancy = WriteTenancy::new_billing_account(*nba.billing_account.id());
+    let read_tenancy = write_tenancy
+        .clone_into_read_tenancy(&txn)
+        .await
+        .expect("unable to generate read tenancy");
+    let worked = User::authorize(&txn, &read_tenancy, &visibility, nba.user.id())
         .await
         .expect("admin group user should be authorized");
     assert_eq!(worked, true, "authorized admin group user returns true");
@@ -134,7 +152,7 @@ async fn authorize() {
     let user_no_group = User::new(
         &txn,
         &nats,
-        &ba_tenancy,
+        &write_tenancy,
         &visibility,
         &history_actor,
         "funky",
@@ -143,7 +161,7 @@ async fn authorize() {
     )
     .await
     .expect("cannot create user");
-    let f = User::authorize(&txn, &ba_tenancy, &visibility, user_no_group.id()).await;
+    let f = User::authorize(&txn, &read_tenancy, &visibility, user_no_group.id()).await;
     assert_eq!(
         f.is_err(),
         true,
