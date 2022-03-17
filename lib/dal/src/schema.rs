@@ -130,7 +130,7 @@ impl Schema {
     pub async fn new(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
-        tenancy: &Tenancy,
+        write_tenancy: &WriteTenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
         name: impl AsRef<str>,
@@ -142,7 +142,7 @@ impl Schema {
             .query_one(
                 "SELECT object FROM schema_create_v1($1, $2, $3, $4, $5)",
                 &[
-                    &tenancy,
+                    write_tenancy,
                     &visibility,
                     &name,
                     &kind.as_ref(),
@@ -153,7 +153,7 @@ impl Schema {
         let object = standard_model::finish_create_from_row(
             txn,
             nats,
-            tenancy,
+            &write_tenancy.into(),
             visibility,
             history_actor,
             row,
@@ -255,29 +255,31 @@ impl Schema {
     pub async fn default_variant(
         &self,
         txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
+        read_tenancy: &ReadTenancy,
         visibility: &Visibility,
     ) -> SchemaResult<SchemaVariant> {
         match self.default_schema_variant_id() {
-            Some(schema_variant_id) => {
-                Ok(
-                    SchemaVariant::get_by_id(txn, tenancy, visibility, schema_variant_id)
-                        .await?
-                        .ok_or_else(|| SchemaError::NoDefaultVariant(*self.id()))?,
-                )
-            }
+            Some(schema_variant_id) => Ok(SchemaVariant::get_by_id(
+                txn,
+                &read_tenancy.into(),
+                visibility,
+                schema_variant_id,
+            )
+            .await?
+            .ok_or_else(|| SchemaError::NoDefaultVariant(*self.id()))?),
             None => Err(SchemaError::NoDefaultVariant(*self.id())),
         }
     }
 
     pub async fn default_schema_variant_id_for_name(
         txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
+        read_tenancy: &ReadTenancy,
         visibility: &Visibility,
         name: impl AsRef<str>,
     ) -> SchemaResult<SchemaVariantId> {
         let name = name.as_ref();
-        let schemas = Schema::find_by_attr(txn, tenancy, visibility, "name", &name).await?;
+        let schemas =
+            Schema::find_by_attr(txn, &read_tenancy.into(), visibility, "name", &name).await?;
         let schema = schemas
             .first()
             .ok_or_else(|| SchemaError::NotFoundByName(name.into()))?;
@@ -547,8 +549,7 @@ impl EditFieldAble for Schema {
             }
             "ui.menuItems" => {
                 let new_ui_menu =
-                    UiMenu::new(txn, nats, &write_tenancy.into(), visibility, history_actor)
-                        .await?;
+                    UiMenu::new(txn, nats, write_tenancy, visibility, history_actor).await?;
                 new_ui_menu
                     .set_schema(txn, nats, visibility, history_actor, object.id())
                     .await?;

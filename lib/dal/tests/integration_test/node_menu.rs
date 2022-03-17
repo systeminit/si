@@ -1,7 +1,7 @@
 use dal::node_menu::get_node_menu_items;
 use dal::test_harness::{billing_account_signup, create_component_for_schema};
 use dal::{node_menu::MenuFilter, Schema, SchematicKind};
-use dal::{HistoryActor, StandardModel, Tenancy, Visibility};
+use dal::{HistoryActor, StandardModel, Visibility, WriteTenancy};
 use test_env_log::test;
 
 use crate::test_setup;
@@ -11,14 +11,16 @@ async fn get_node_menu() {
     test_setup!(ctx, secret_key, _pg, _conn, txn, _nats_conn, nats, veritech, encr_key);
     let (nba, _key) = billing_account_signup(&txn, &nats, secret_key).await;
     let visibility = Visibility::new_head(false);
-    let tenancy = Tenancy::new_workspace(vec![*nba.workspace.id()]);
+    let write_tenancy = WriteTenancy::new_workspace(*nba.workspace.id());
+    let read_tenancy = write_tenancy
+        .clone_into_read_tenancy(&txn)
+        .await
+        .expect("unable to generate read tenancy");
     let history_actor = HistoryActor::SystemInit;
-
-    let tenancy_uni = Tenancy::new_universal();
 
     let application_schema = Schema::find_by_attr(
         &txn,
-        &tenancy_uni,
+        &(&read_tenancy).into(),
         &visibility,
         "name",
         &String::from("application"),
@@ -34,7 +36,7 @@ async fn get_node_menu() {
         &nats,
         veritech,
         &encr_key,
-        &tenancy,
+        &(&write_tenancy).into(),
         &visibility,
         &history_actor,
         application_schema.id(),
@@ -43,7 +45,7 @@ async fn get_node_menu() {
 
     let items = get_node_menu_items(
         &txn,
-        &tenancy,
+        &read_tenancy,
         &visibility,
         &MenuFilter::new(SchematicKind::Deployment, *application.id()),
     )

@@ -9,8 +9,9 @@ use crate::{
     func::FuncId,
     impl_standard_model, pk,
     standard_model::{self, objects_from_rows},
-    standard_model_accessor, ComponentId, HistoryActor, HistoryEventError, SchemaId,
+    standard_model_accessor, ComponentId, HistoryActor, HistoryEventError, ReadTenancy, SchemaId,
     SchemaVariantId, StandardModel, StandardModelError, SystemId, Tenancy, Timestamp, Visibility,
+    WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -137,7 +138,7 @@ impl QualificationPrototype {
     pub async fn new(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
-        tenancy: &Tenancy,
+        write_tenancy: &WriteTenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
         func_id: FuncId,
@@ -150,7 +151,7 @@ impl QualificationPrototype {
             .query_one(
                 "SELECT object FROM qualification_prototype_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9)",
                 &[
-                    &tenancy,
+                    write_tenancy,
                     &visibility,
                     &func_id,
                     &args,
@@ -165,7 +166,7 @@ impl QualificationPrototype {
         let object = standard_model::finish_create_from_row(
             txn,
             nats,
-            tenancy,
+            &write_tenancy.into(),
             visibility,
             history_actor,
             row,
@@ -182,7 +183,7 @@ impl QualificationPrototype {
     #[allow(clippy::too_many_arguments)]
     pub async fn find_for_component(
         txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
+        read_tenancy: &ReadTenancy,
         visibility: &Visibility,
         component_id: ComponentId,
         schema_id: SchemaId,
@@ -193,7 +194,7 @@ impl QualificationPrototype {
             .query(
                 FIND_FOR_CONTEXT,
                 &[
-                    &tenancy,
+                    read_tenancy,
                     &visibility,
                     &component_id,
                     &system_id,

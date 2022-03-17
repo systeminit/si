@@ -2,7 +2,10 @@ use crate::test_setup;
 
 use dal::schema::SchemaKind;
 use dal::test_harness::{billing_account_signup, create_schema, create_schema_ui_menu};
-use dal::{component::ComponentKind, HistoryActor, Schema, StandardModel, Tenancy, Visibility};
+use dal::{
+    component::ComponentKind, HistoryActor, Schema, StandardModel, Tenancy, Visibility,
+    WriteTenancy,
+};
 use test_env_log::test;
 
 pub mod ui_menu;
@@ -21,13 +24,13 @@ async fn new() {
         _veritech,
         _encr_key,
     );
-    let tenancy = Tenancy::new_universal();
+    let write_tenancy = WriteTenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
     let _schema = Schema::new(
         &txn,
         &nats,
-        &tenancy,
+        &write_tenancy,
         &visibility,
         &history_actor,
         "mastodon",
@@ -41,14 +44,14 @@ async fn new() {
 #[test(tokio::test)]
 async fn billing_accounts() {
     test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats, _veritech, _encr_key);
-    let tenancy = Tenancy::new_universal();
+    let write_tenancy = WriteTenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
     let (nba, _token) = billing_account_signup(&txn, &nats, secret_key).await;
     let schema = Schema::new(
         &txn,
         &nats,
-        &tenancy,
+        &write_tenancy,
         &visibility,
         &history_actor,
         "mastodon",
@@ -94,14 +97,14 @@ async fn billing_accounts() {
 #[test(tokio::test)]
 async fn organizations() {
     test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats, _veritech, _encr_key);
-    let tenancy = Tenancy::new_universal();
+    let write_tenancy = WriteTenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
     let (nba, _token) = billing_account_signup(&txn, &nats, secret_key).await;
     let schema = Schema::new(
         &txn,
         &nats,
-        &tenancy,
+        &write_tenancy,
         &visibility,
         &history_actor,
         "mastodon",
@@ -147,14 +150,14 @@ async fn organizations() {
 #[test(tokio::test)]
 async fn workspaces() {
     test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats, _veritech, _encr_key);
-    let tenancy = Tenancy::new_universal();
+    let write_tenancy = WriteTenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
     let (nba, _token) = billing_account_signup(&txn, &nats, secret_key).await;
     let schema = Schema::new(
         &txn,
         &nats,
-        &tenancy,
+        &write_tenancy,
         &visibility,
         &history_actor,
         "mastodon",

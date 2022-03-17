@@ -60,7 +60,7 @@ impl QualificationCheck {
     pub async fn new(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
-        tenancy: &Tenancy,
+        write_tenancy: &WriteTenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
         name: impl AsRef<str>,
@@ -69,13 +69,13 @@ impl QualificationCheck {
         let row = txn
             .query_one(
                 "SELECT object FROM qualification_check_create_v1($1, $2, $3)",
-                &[tenancy, visibility, &name],
+                &[write_tenancy, visibility, &name],
             )
             .await?;
         let object = standard_model::finish_create_from_row(
             txn,
             nats,
-            tenancy,
+            &write_tenancy.into(),
             visibility,
             history_actor,
             row,

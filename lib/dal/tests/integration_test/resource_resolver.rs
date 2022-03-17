@@ -33,7 +33,14 @@ async fn new() {
         .pop()
         .expect("no docker image found");
     let schema_variant = schema
-        .default_variant(&txn, &tenancy, &visibility)
+        .default_variant(
+            &txn,
+            &tenancy
+                .clone_into_read_tenancy(&txn)
+                .await
+                .expect("unable to generate read tenancy"),
+            &visibility,
+        )
         .await
         .expect("No default schema variant found for schema docker_image");
 
@@ -66,7 +73,7 @@ async fn new() {
     let func_binding = FuncBinding::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         serde_json::to_value(args).expect("cannot turn args into json"),
@@ -85,7 +92,7 @@ async fn new() {
     let _resource_esolver = ResourceResolver::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         UNSET_ID_VALUE.into(),
@@ -114,7 +121,14 @@ async fn find_for_prototype() {
         .expect("no docker image found");
 
     let schema_variant = schema
-        .default_variant(&txn, &tenancy, &visibility)
+        .default_variant(
+            &txn,
+            &tenancy
+                .clone_into_read_tenancy(&txn)
+                .await
+                .expect("unable to generate read tenancy"),
+            &visibility,
+        )
         .await
         .expect("No default schema variant found for schema docker_image");
 
@@ -147,7 +161,7 @@ async fn find_for_prototype() {
     let func_binding = FuncBinding::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         serde_json::to_value(args.clone()).expect("cannot turn args into json"),
@@ -166,7 +180,7 @@ async fn find_for_prototype() {
     let created = ResourceResolver::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         UNSET_ID_VALUE.into(),
@@ -179,7 +193,10 @@ async fn find_for_prototype() {
 
     let found_resolver = ResourceResolver::get_for_prototype_and_component(
         &txn,
-        &tenancy,
+        &tenancy
+            .clone_into_read_tenancy(&txn)
+            .await
+            .expect("unable to generate read tenancy"),
         &visibility,
         &UNSET_ID_VALUE.into(),
         component.id(),

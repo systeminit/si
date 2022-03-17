@@ -8,9 +8,9 @@ use crate::{
     func::{binding::FuncBindingId, binding_return_value::FuncBindingReturnValue, FuncId},
     impl_standard_model, pk,
     standard_model::{self, objects_from_rows},
-    standard_model_accessor, ComponentId, HistoryActor, HistoryEventError, Prop, PropId, SchemaId,
-    SchemaVariantId, StandardModel, StandardModelError, SystemId, Tenancy, Timestamp,
-    ValidationPrototypeId, Visibility,
+    standard_model_accessor, ComponentId, HistoryActor, HistoryEventError, Prop, PropId,
+    ReadTenancy, SchemaId, SchemaVariantId, StandardModel, StandardModelError, SystemId, Tenancy,
+    Timestamp, ValidationPrototypeId, Visibility, WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -144,7 +144,7 @@ impl ValidationResolver {
     pub async fn new(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
-        tenancy: &Tenancy,
+        write_tenancy: &WriteTenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
         validation_prototype_id: ValidationPrototypeId,
@@ -156,7 +156,7 @@ impl ValidationResolver {
             .query_one(
                 "SELECT object FROM validation_resolver_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
                 &[
-                    &tenancy,
+                    write_tenancy,
                     &visibility,
                     &validation_prototype_id,
                     &func_id,
@@ -172,7 +172,7 @@ impl ValidationResolver {
         let object = standard_model::finish_create_from_row(
             txn,
             nats,
-            tenancy,
+            &write_tenancy.into(),
             visibility,
             history_actor,
             row,
@@ -194,7 +194,7 @@ impl ValidationResolver {
     // pub async fn upsert(
     //     txn: &PgTxn<'_>,
     //     nats: &NatsTxn,
-    //     tenancy: &Tenancy,
+    //     write_tenancy: &WriteTenancy,
     //     visibility: &Visibility,
     //     history_actor: &HistoryActor,
     //     func_id: FuncId,
@@ -205,7 +205,7 @@ impl ValidationResolver {
     //         .query_one(
     //             "SELECT object FROM validation_resolver_upsert_v1($1, $2, $3, $4, $5, $6, $7, $8, $9)",
     //             &[
-    //                 &tenancy,
+    //                 write_tenancy,
     //                 &visibility,
     //                 &func_id,
     //                 &func_binding_id,
@@ -220,7 +220,7 @@ impl ValidationResolver {
     //     let object = standard_model::finish_create_from_row(
     //         txn,
     //         nats,
-    //         tenancy,
+    //         &write_tenancy.into(),
     //         visibility,
     //         history_actor,
     //         row,
@@ -231,7 +231,7 @@ impl ValidationResolver {
 
     pub async fn list_values_for_component(
         txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
+        read_tenancy: &ReadTenancy,
         visibility: &Visibility,
         component_id: ComponentId,
         system_id: SystemId,
@@ -239,7 +239,7 @@ impl ValidationResolver {
         let rows = txn
             .query(
                 FIND_VALUES_FOR_COMPONENT,
-                &[&tenancy, &visibility, &component_id, &system_id],
+                &[read_tenancy, &visibility, &component_id, &system_id],
             )
             .await?;
         let mut result = Vec::new();
@@ -247,7 +247,7 @@ impl ValidationResolver {
             let json: serde_json::Value = row.try_get("object")?;
             let object: FuncBindingReturnValue = serde_json::from_value(json)?;
             let prop_id: PropId = row.try_get("prop_id")?;
-            let prop = Prop::get_by_id(txn, tenancy, visibility, &prop_id)
+            let prop = Prop::get_by_id(txn, &read_tenancy.into(), visibility, &prop_id)
                 .await?
                 .ok_or(ValidationResolverError::InvalidPropId)?;
             result.push((prop, object));
@@ -257,7 +257,7 @@ impl ValidationResolver {
 
     pub async fn find_values_for_prop_and_component(
         txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
+        read_tenancy: &ReadTenancy,
         visibility: &Visibility,
         prop_id: PropId,
         component_id: ComponentId,
@@ -266,7 +266,13 @@ impl ValidationResolver {
         let rows = txn
             .query(
                 FIND_VALUES_FOR_CONTEXT,
-                &[&tenancy, &visibility, &prop_id, &component_id, &system_id],
+                &[
+                    read_tenancy,
+                    &visibility,
+                    &prop_id,
+                    &component_id,
+                    &system_id,
+                ],
             )
             .await?;
         let object = objects_from_rows(rows)?;
@@ -275,14 +281,14 @@ impl ValidationResolver {
 
     pub async fn find_for_prototype(
         txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
+        read_tenancy: &ReadTenancy,
         visibility: &Visibility,
         validation_prototype_id: &ValidationPrototypeId,
     ) -> ValidationResolverResult<Vec<Self>> {
         let rows = txn
             .query(
                 FIND_FOR_PROTOTYPE,
-                &[&tenancy, &visibility, validation_prototype_id],
+                &[read_tenancy, &visibility, validation_prototype_id],
             )
             .await?;
         let object = objects_from_rows(rows)?;

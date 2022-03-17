@@ -174,14 +174,14 @@ pub struct PublicKey {
 impl PublicKey {
     pub async fn get_current(
         txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
+        read_tenancy: &ReadTenancy,
         visibility: &Visibility,
         billing_account_id: &BillingAccountId,
     ) -> KeyPairResult<Self> {
         let row = txn
             .query_one(
                 PUBLIC_KEY_GET_CURRENT,
-                &[&tenancy, &visibility, &billing_account_id],
+                &[read_tenancy, &visibility, &billing_account_id],
             )
             .await?;
         let object = standard_model::object_from_row(row)?;

@@ -36,7 +36,14 @@ async fn new() {
             .expect("no service schema found");
 
     let service_schema_variant = service_schema
-        .default_variant(&txn, &tenancy, &visibility)
+        .default_variant(
+            &txn,
+            &tenancy
+                .clone_into_read_tenancy(&txn)
+                .await
+                .expect("unable to generate read tenancy"),
+            &visibility,
+        )
         .await
         .expect("cannot get default schema variant");
 

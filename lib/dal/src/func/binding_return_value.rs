@@ -9,8 +9,8 @@ use crate::func::execution::FuncExecution;
 use crate::func::execution::{FuncExecutionError, FuncExecutionPk};
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
-    Func, HistoryActor, HistoryEventError, StandardModel, StandardModelError, Tenancy, Timestamp,
-    Visibility,
+    Func, HistoryActor, HistoryEventError, ReadTenancy, ReadTenancyError, StandardModel,
+    StandardModelError, Tenancy, Timestamp, Visibility, WriteTenancy,
 };
 
 use super::{
@@ -32,9 +32,11 @@ pub enum FuncBindingReturnValueError {
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
     #[error("standard model error: {0}")]
-    StandardModelError(#[from] StandardModelError),
+    StandardModel(#[from] StandardModelError),
     #[error("function execution error: {0}")]
-    FuncExecutionError(#[from] FuncExecutionError),
+    FuncExecution(#[from] FuncExecutionError),
+    #[error("read tenancy error: {0}")]
+    ReadTenancy(#[from] ReadTenancyError),
 }
 
 pub type FuncBindingReturnValueResult<T> = Result<T, FuncBindingReturnValueError>;
@@ -82,7 +84,7 @@ impl FuncBindingReturnValue {
     pub async fn new(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
-        tenancy: &Tenancy,
+        write_tenancy: &WriteTenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
         unprocessed_value: Option<serde_json::Value>,
@@ -95,7 +97,7 @@ impl FuncBindingReturnValue {
             .query_one(
                 "SELECT object FROM func_binding_return_value_create_v1($1, $2, $3, $4, $5)",
                 &[
-                    &tenancy,
+                    write_tenancy,
                     &visibility,
                     &unprocessed_value,
                     &value,
@@ -106,7 +108,7 @@ impl FuncBindingReturnValue {
         let object: FuncBindingReturnValue = standard_model::finish_create_from_row(
             txn,
             nats,
-            tenancy,
+            &write_tenancy.into(),
             visibility,
             history_actor,
             row,
@@ -145,14 +147,14 @@ impl FuncBindingReturnValue {
 
     pub async fn get_by_func_binding_id(
         txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
+        read_tenancy: &ReadTenancy,
         visibility: &Visibility,
         func_binding_id: FuncBindingId,
     ) -> FuncBindingReturnValueResult<Option<Self>> {
         let row = txn
             .query_opt(
                 GET_FOR_FUNC_BINDING,
-                &[&tenancy, &visibility, &func_binding_id],
+                &[read_tenancy, &visibility, &func_binding_id],
             )
             .await?;
         let object = standard_model::option_object_from_row(row)?;
@@ -165,7 +167,7 @@ impl FuncBindingReturnValue {
     pub async fn upsert(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
-        tenancy: &Tenancy,
+        write_tenancy: &WriteTenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
         unprocessed_value: Option<serde_json::Value>,
@@ -174,8 +176,9 @@ impl FuncBindingReturnValue {
         func_binding_id: FuncBindingId,
         func_execution_pk: FuncExecutionPk,
     ) -> FuncBindingReturnValueResult<Self> {
+        let read_tenancy = write_tenancy.clone_into_read_tenancy(txn).await?;
         let return_value =
-            Self::get_by_func_binding_id(txn, tenancy, visibility, func_binding_id).await?;
+            Self::get_by_func_binding_id(txn, &read_tenancy, visibility, func_binding_id).await?;
         if let Some(mut return_value) = return_value {
             return_value
                 .set_value(txn, nats, visibility, history_actor, value)
@@ -191,7 +194,7 @@ impl FuncBindingReturnValue {
             Self::new(
                 txn,
                 nats,
-                tenancy,
+                write_tenancy,
                 visibility,
                 history_actor,
                 unprocessed_value,

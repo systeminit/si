@@ -9,8 +9,9 @@ use crate::{
     func::FuncId,
     impl_standard_model, pk,
     standard_model::{self, objects_from_rows},
-    standard_model_accessor, HistoryActor, HistoryEventError, PropId, SchemaId, SchemaVariantId,
-    StandardModel, StandardModelError, SystemId, Tenancy, Timestamp, Visibility,
+    standard_model_accessor, HistoryActor, HistoryEventError, PropId, ReadTenancy, SchemaId,
+    SchemaVariantId, StandardModel, StandardModelError, SystemId, Tenancy, Timestamp, Visibility,
+    WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -126,7 +127,7 @@ impl ValidationPrototype {
     pub async fn new(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
-        tenancy: &Tenancy,
+        write_tenancy: &WriteTenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
         func_id: FuncId,
@@ -137,7 +138,7 @@ impl ValidationPrototype {
             .query_one(
                 "SELECT object FROM validation_prototype_create_v1($1, $2, $3, $4, $5, $6, $7, $8)",
                 &[
-                    &tenancy,
+                    write_tenancy,
                     &visibility,
                     &func_id,
                     &args,
@@ -151,7 +152,7 @@ impl ValidationPrototype {
         let object = standard_model::finish_create_from_row(
             txn,
             nats,
-            tenancy,
+            &write_tenancy.into(),
             visibility,
             history_actor,
             row,
@@ -166,7 +167,7 @@ impl ValidationPrototype {
     #[allow(clippy::too_many_arguments)]
     pub async fn find_for_prop(
         txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
+        read_tenancy: &ReadTenancy,
         visibility: &Visibility,
         prop_id: PropId,
         system_id: SystemId,
@@ -174,7 +175,7 @@ impl ValidationPrototype {
         let rows = txn
             .query(
                 FIND_FOR_CONTEXT,
-                &[&tenancy, &visibility, &prop_id, &system_id],
+                &[read_tenancy, &visibility, &prop_id, &system_id],
             )
             .await?;
         let object = objects_from_rows(rows)?;

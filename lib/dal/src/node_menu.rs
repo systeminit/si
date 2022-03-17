@@ -11,8 +11,8 @@ use si_data::{PgError, PgTxn};
 
 use crate::schema::UiMenu;
 use crate::{
-    standard_model, ComponentId, SchemaError, SchemaId, SchematicKind, StandardModel,
-    StandardModelError, Tenancy, Visibility,
+    standard_model, ComponentId, ReadTenancy, SchemaError, SchemaId, SchematicKind, StandardModel,
+    StandardModelError, Visibility,
 };
 
 const UI_MENUS_FOR_NODE_MENU: &str = include_str!("./queries/ui_menus_for_node_menu.sql");
@@ -259,7 +259,7 @@ impl Default for GenerateMenuItem {
 
 pub async fn get_node_menu_items(
     txn: &PgTxn<'_>,
-    tenancy: &Tenancy,
+    read_tenancy: &ReadTenancy,
     visibility: &Visibility,
     filter: &MenuFilter,
 ) -> NodeMenuResult<Vec<(Vec<String>, Item)>> {
@@ -268,7 +268,7 @@ pub async fn get_node_menu_items(
         .query(
             UI_MENUS_FOR_NODE_MENU,
             &[
-                &tenancy,
+                read_tenancy,
                 &visibility,
                 &filter.root_component_id,
                 &filter.schematic_kind.to_string(),

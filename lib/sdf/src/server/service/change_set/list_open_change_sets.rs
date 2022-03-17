@@ -1,7 +1,7 @@
 use super::ChangeSetResult;
 use crate::server::extract::{Authorization, PgRwTxn};
 use axum::Json;
-use dal::{ChangeSet, ChangeSetPk, LabelList, Tenancy};
+use dal::{ChangeSet, ChangeSetPk, LabelList, ReadTenancy};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -15,7 +15,7 @@ pub async fn list_open_change_sets(
     Authorization(claim): Authorization,
 ) -> ChangeSetResult<Json<ListOpenChangeSetsResponse>> {
     let txn = txn.start().await?;
-    let tenancy = Tenancy::new_billing_account(vec![claim.billing_account_id]);
-    let list = ChangeSet::list_open(&txn, &tenancy).await?;
+    let read_tenancy = ReadTenancy::new_billing_account(vec![claim.billing_account_id]);
+    let list = ChangeSet::list_open(&txn, &read_tenancy).await?;
     Ok(Json(ListOpenChangeSetsResponse { list }))
 }

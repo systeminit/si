@@ -7,7 +7,8 @@ use thiserror::Error;
 
 use crate::{
     pk, standard_model::object_option_from_row_option, ChangeSetPk, HistoryActor, HistoryEvent,
-    HistoryEventError, StandardModelError, Tenancy, Timestamp, WsEvent, WsEventError, WsPayload,
+    HistoryEventError, ReadTenancy, StandardModelError, Tenancy, Timestamp, WriteTenancy, WsEvent,
+    WsEventError, WsPayload,
 };
 
 const EDIT_SESSION_GET_BY_PK: &str = include_str!("./queries/edit_session_get_by_pk.sql");
@@ -61,7 +62,7 @@ impl EditSession {
     pub async fn new(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
-        tenancy: &Tenancy,
+        write_tenancy: &WriteTenancy,
         history_actor: &HistoryActor,
         change_set_pk: &ChangeSetPk,
         name: impl AsRef<str>,
@@ -77,7 +78,7 @@ impl EditSession {
                     &note,
                     &EditSessionStatus::Open.to_string(),
                     &change_set_pk,
-                    &tenancy,
+                    write_tenancy,
                 ],
             )
             .await?;
@@ -91,7 +92,7 @@ impl EditSession {
             history_actor,
             "Edit Session created",
             &json,
-            tenancy,
+            &write_tenancy.into(),
         )
         .await?;
         let object: Self = serde_json::from_value(json)?;
@@ -101,11 +102,11 @@ impl EditSession {
     #[instrument(skip(txn))]
     pub async fn get_by_pk(
         txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
+        read_tenancy: &ReadTenancy,
         pk: &EditSessionPk,
     ) -> EditSessionResult<Option<Self>> {
         let row = txn
-            .query_opt(EDIT_SESSION_GET_BY_PK, &[&tenancy, &pk])
+            .query_opt(EDIT_SESSION_GET_BY_PK, &[read_tenancy, &pk])
             .await?;
         let result = object_option_from_row_option(row)?;
         Ok(result)

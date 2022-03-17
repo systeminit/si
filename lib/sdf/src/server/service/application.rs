@@ -4,7 +4,10 @@ use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::Json;
 use axum::Router;
-use dal::{ComponentError as DalComponentError, SchemaError, StandardModelError, WsEventError};
+use dal::{
+    ComponentError as DalComponentError, ReadTenancyError, SchemaError, StandardModelError,
+    WsEventError,
+};
 use std::convert::Infallible;
 use thiserror::Error;
 
@@ -32,6 +35,8 @@ pub enum ApplicationError {
     SchemaError(#[from] SchemaError),
     #[error("ws event error: {0}")]
     WsEvent(#[from] WsEventError),
+    #[error("read tenancy error: {0}")]
+    ReadTenancy(#[from] ReadTenancyError),
 }
 
 pub type ApplicationResult<T> = std::result::Result<T, ApplicationError>;

@@ -20,17 +20,13 @@ pub async fn restore_authentication(
     Authorization(claim): Authorization,
 ) -> SessionResult<Json<RestoreAuthenticationResponse>> {
     let txn = txn.start().await?;
-    let universal_tenancy = Tenancy::new_universal();
+    let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
 
-    let billing_account = BillingAccount::get_by_id(
-        &txn,
-        &universal_tenancy,
-        &visibility,
-        &claim.billing_account_id,
-    )
-    .await?
-    .ok_or(SessionError::LoginFailed)?;
+    let billing_account =
+        BillingAccount::get_by_id(&txn, &tenancy, &visibility, &claim.billing_account_id)
+            .await?
+            .ok_or(SessionError::LoginFailed)?;
 
     let billing_account_tenancy = Tenancy::new_billing_account(vec![*billing_account.id()]);
 

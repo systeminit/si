@@ -1,8 +1,8 @@
 use axum::Json;
 use dal::billing_account::BillingAccountSignup;
 use dal::{
-    test_harness::generate_fake_name, BillingAccount, HistoryActor, StandardModel, Tenancy,
-    Visibility,
+    test_harness::generate_fake_name, BillingAccount, HistoryActor, StandardModel, Visibility,
+    WriteTenancy,
 };
 use serde::{Deserialize, Serialize};
 
@@ -22,7 +22,7 @@ pub async fn signup_and_login(
 ) -> TestResult<Json<SignupResponse>> {
     let txn = txn.start().await?;
     let nats = nats.start().await?;
-    let tenancy = Tenancy::new_universal();
+    let write_tenancy = WriteTenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
     let billing_account_name = generate_fake_name();
@@ -33,7 +33,7 @@ pub async fn signup_and_login(
     let result = BillingAccount::signup(
         &txn,
         &nats,
-        &tenancy,
+        &write_tenancy,
         &visibility,
         &history_actor,
         &billing_account_name,

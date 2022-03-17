@@ -347,7 +347,7 @@ impl EditFieldAble for SchemaVariant {
                     nats,
                     veritech,
                     encryption_key,
-                    &write_tenancy.into(),
+                    write_tenancy,
                     visibility,
                     history_actor,
                     "TODO: name me!",

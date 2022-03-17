@@ -5,8 +5,8 @@ use dal::test_harness::{
     create_visibility_change_set, create_visibility_edit_session, one_time_setup, TestContext,
 };
 use dal::{
-    BillingAccount, ChangeSet, EditSessionStatus, HistoryActor, StandardModel, Tenancy,
-    NO_EDIT_SESSION_PK,
+    BillingAccount, ChangeSet, EditSessionStatus, HistoryActor, ReadTenancy, StandardModel,
+    Tenancy, WriteTenancy, NO_EDIT_SESSION_PK,
 };
 use test_env_log::test;
 
@@ -19,12 +19,12 @@ async fn new() {
     let mut conn = pg.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
-    let tenancy = Tenancy::new_universal();
+    let write_tenancy = WriteTenancy::new_universal();
     let history_actor = HistoryActor::SystemInit;
     let change_set = ChangeSet::new(
         &txn,
         &nats,
-        &tenancy,
+        &write_tenancy,
         &history_actor,
         "create me an edit session",
         None,
@@ -35,7 +35,7 @@ async fn new() {
     let _edit_session = EditSession::new(
         &txn,
         &nats,
-        &tenancy,
+        &write_tenancy,
         &history_actor,
         &change_set.pk,
         "whatever",
@@ -115,11 +115,11 @@ async fn get_by_pk() {
         _encr_key
     );
 
-    let tenancy = Tenancy::new_universal();
+    let read_tenancy = ReadTenancy::new_universal();
     let history_actor = HistoryActor::SystemInit;
-    let change_set = create_change_set(&txn, &nats, &tenancy, &history_actor).await;
+    let change_set = create_change_set(&txn, &nats, &(&read_tenancy).into(), &history_actor).await;
     let edit_session = create_edit_session(&txn, &nats, &history_actor, &change_set).await;
-    let result = EditSession::get_by_pk(&txn, &tenancy, &edit_session.pk)
+    let result = EditSession::get_by_pk(&txn, &read_tenancy, &edit_session.pk)
         .await
         .expect("cannot get edit session by pk")
         .expect("edit session pk should exist");

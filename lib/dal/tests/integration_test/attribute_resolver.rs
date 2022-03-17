@@ -48,7 +48,14 @@ async fn new() {
     .expect("no docker image found");
 
     let default_variant = schema
-        .default_variant(&txn, &tenancy, &visibility)
+        .default_variant(
+            &txn,
+            &tenancy
+                .clone_into_read_tenancy(&txn)
+                .await
+                .expect("unable to generate read tenancy"),
+            &visibility,
+        )
         .await
         .expect("cannot find default variant");
 
@@ -74,7 +81,7 @@ async fn new() {
     let func = Func::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         "test:setString",
@@ -88,7 +95,7 @@ async fn new() {
     let func_binding = FuncBinding::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         serde_json::to_value(args).expect("cannot turn args into json"),
@@ -144,7 +151,14 @@ async fn find_value_for_prop_and_component() {
     .expect("no docker image found");
 
     let default_variant = schema
-        .default_variant(&txn, &tenancy, &visibility)
+        .default_variant(
+            &txn,
+            &tenancy
+                .clone_into_read_tenancy(&txn)
+                .await
+                .expect("unable to generate read tenancy"),
+            &visibility,
+        )
         .await
         .expect("cannot find default variant");
 
@@ -171,7 +185,7 @@ async fn find_value_for_prop_and_component() {
     let func = Func::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         "test:setString",
@@ -185,7 +199,7 @@ async fn find_value_for_prop_and_component() {
     let func_binding = FuncBinding::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         serde_json::to_value(args).expect("cannot turn args into json"),
@@ -232,7 +246,7 @@ async fn find_value_for_prop_and_component() {
     let func_binding = FuncBinding::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         serde_json::to_value(args).expect("cannot turn args into json"),
@@ -280,7 +294,7 @@ async fn find_value_for_prop_and_component() {
     let func_binding = FuncBinding::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         serde_json::to_value(args).expect("cannot turn args into json"),
@@ -328,7 +342,7 @@ async fn find_value_for_prop_and_component() {
     let func_binding = FuncBinding::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         serde_json::to_value(args).expect("cannot turn args into json"),
@@ -376,7 +390,7 @@ async fn find_value_for_prop_and_component() {
     let func_binding = FuncBinding::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         serde_json::to_value(args).expect("cannot turn args into json"),
@@ -451,7 +465,14 @@ async fn upsert() {
     .expect("no docker image found");
 
     let default_variant = schema
-        .default_variant(&txn, &tenancy, &visibility)
+        .default_variant(
+            &txn,
+            &tenancy
+                .clone_into_read_tenancy(&txn)
+                .await
+                .expect("unable to generate read tenancy"),
+            &visibility,
+        )
         .await
         .expect("cannot find default variant");
 
@@ -477,7 +498,7 @@ async fn upsert() {
     let func = Func::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         "test:setString",
@@ -491,7 +512,7 @@ async fn upsert() {
     let func_binding = FuncBinding::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         serde_json::to_value(args).expect("cannot turn args into json"),
@@ -526,7 +547,7 @@ async fn upsert() {
     let second_func_binding = FuncBinding::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         serde_json::to_value(second_args).expect("cannot turn args into json"),
@@ -651,7 +672,7 @@ async fn update_parent_index_map() {
     let array_func_binding = FuncBinding::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         serde_json::to_value(array_args).expect("cannot turn args into json"),
@@ -721,7 +742,7 @@ async fn update_parent_index_map() {
     let string_func_binding = FuncBinding::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         serde_json::to_value(string_args).expect("cannot turn args into json"),

@@ -7,8 +7,8 @@ use thiserror::Error;
 use crate::{
     func::{binding::FuncBindingId, FuncId},
     impl_standard_model, pk, standard_model, standard_model_accessor, CodeGenerationPrototypeId,
-    ComponentId, HistoryActor, HistoryEventError, SchemaId, SchemaVariantId, StandardModel,
-    StandardModelError, SystemId, Tenancy, Timestamp, Visibility,
+    ComponentId, HistoryActor, HistoryEventError, ReadTenancy, SchemaId, SchemaVariantId,
+    StandardModel, StandardModelError, SystemId, Tenancy, Timestamp, Visibility, WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -126,7 +126,7 @@ impl CodeGenerationResolver {
     pub async fn new(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
-        tenancy: &Tenancy,
+        write_tenancy: &WriteTenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
         code_generation_prototype_id: CodeGenerationPrototypeId,
@@ -138,7 +138,7 @@ impl CodeGenerationResolver {
             .query_one(
                 "SELECT object FROM code_generation_resolver_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9)",
                 &[
-                    &tenancy,
+                    write_tenancy,
                     &visibility,
                     &code_generation_prototype_id,
                     &func_id,
@@ -153,7 +153,7 @@ impl CodeGenerationResolver {
         let object = standard_model::finish_create_from_row(
             txn,
             nats,
-            tenancy,
+            &write_tenancy.into(),
             visibility,
             history_actor,
             row,
@@ -176,7 +176,7 @@ impl CodeGenerationResolver {
 
     pub async fn find_for_prototype_and_component(
         txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
+        read_tenancy: &ReadTenancy,
         visibility: &Visibility,
         code_generation_prototype_id: &CodeGenerationPrototypeId,
         component_id: &ComponentId,
@@ -185,7 +185,7 @@ impl CodeGenerationResolver {
             .query(
                 FIND_FOR_PROTOTYPE,
                 &[
-                    &tenancy,
+                    read_tenancy,
                     &visibility,
                     code_generation_prototype_id,
                     component_id,

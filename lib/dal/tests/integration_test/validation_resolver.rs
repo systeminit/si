@@ -39,7 +39,14 @@ async fn new() {
     .expect("no docker image found");
 
     let default_variant = schema
-        .default_variant(&txn, &tenancy, &visibility)
+        .default_variant(
+            &txn,
+            &tenancy
+                .clone_into_read_tenancy(&txn)
+                .await
+                .expect("unable to generate read tenancy"),
+            &visibility,
+        )
         .await
         .expect("cannot find default variant");
 
@@ -65,7 +72,7 @@ async fn new() {
     let func = Func::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         "test:validateString",
@@ -80,7 +87,7 @@ async fn new() {
     let func_binding = FuncBinding::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         serde_json::to_value(args).expect("cannot turn args into json"),
@@ -100,7 +107,7 @@ async fn new() {
     let _validation_resolver = ValidationResolver::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         UNSET_ID_VALUE.into(),
@@ -134,7 +141,14 @@ async fn find_for_prototype() {
     .expect("no docker image found");
 
     let default_variant = schema
-        .default_variant(&txn, &tenancy, &visibility)
+        .default_variant(
+            &txn,
+            &tenancy
+                .clone_into_read_tenancy(&txn)
+                .await
+                .expect("unable to generate read tenancy"),
+            &visibility,
+        )
         .await
         .expect("cannot find default variant");
 
@@ -160,7 +174,7 @@ async fn find_for_prototype() {
     let func = Func::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         "test:validateString",
@@ -175,7 +189,7 @@ async fn find_for_prototype() {
     let first_func_binding = FuncBinding::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         serde_json::to_value(first_args).expect("cannot turn args into json"),
@@ -194,7 +208,7 @@ async fn find_for_prototype() {
     let _first_validation_resolver = ValidationResolver::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         UNSET_ID_VALUE.into(),
@@ -210,7 +224,7 @@ async fn find_for_prototype() {
     let second_func_binding = FuncBinding::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         serde_json::to_value(second_args).expect("cannot turn args into json"),
@@ -229,7 +243,7 @@ async fn find_for_prototype() {
     let _second_validation_resolver = ValidationResolver::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         UNSET_ID_VALUE.into(),
@@ -240,10 +254,17 @@ async fn find_for_prototype() {
     .await
     .expect("cannot create new attribute resolver");
 
-    let validation_results =
-        ValidationResolver::find_for_prototype(&txn, &tenancy, &visibility, &UNSET_ID_VALUE.into())
+    let validation_results = ValidationResolver::find_for_prototype(
+        &txn,
+        &tenancy
+            .clone_into_read_tenancy(&txn)
             .await
-            .expect("cannot find validators");
+            .expect("unable to generate read tenancy"),
+        &visibility,
+        &UNSET_ID_VALUE.into(),
+    )
+    .await
+    .expect("cannot find validators");
 
     assert_eq!(validation_results.len(), 2);
 }
@@ -272,7 +293,14 @@ async fn find_values_for_prop_and_component() {
     .expect("no docker image found");
 
     let default_variant = schema
-        .default_variant(&txn, &tenancy, &visibility)
+        .default_variant(
+            &txn,
+            &tenancy
+                .clone_into_read_tenancy(&txn)
+                .await
+                .expect("unable to generate read tenancy"),
+            &visibility,
+        )
         .await
         .expect("cannot find default variant");
 
@@ -298,7 +326,7 @@ async fn find_values_for_prop_and_component() {
     let func = Func::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         "test:validateString",
@@ -313,7 +341,7 @@ async fn find_values_for_prop_and_component() {
     let first_func_binding = FuncBinding::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         serde_json::to_value(first_args).expect("cannot turn args into json"),
@@ -332,7 +360,7 @@ async fn find_values_for_prop_and_component() {
     let _first_validation_resolver = ValidationResolver::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         UNSET_ID_VALUE.into(),
@@ -348,7 +376,7 @@ async fn find_values_for_prop_and_component() {
     let second_func_binding = FuncBinding::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         serde_json::to_value(second_args).expect("cannot turn args into json"),
@@ -367,7 +395,7 @@ async fn find_values_for_prop_and_component() {
     let _second_validation_resolver = ValidationResolver::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         UNSET_ID_VALUE.into(),
@@ -380,7 +408,10 @@ async fn find_values_for_prop_and_component() {
 
     let validation_results = ValidationResolver::find_values_for_prop_and_component(
         &txn,
-        &tenancy,
+        &tenancy
+            .clone_into_read_tenancy(&txn)
+            .await
+            .expect("unable to generate read tenancy"),
         &visibility,
         *first_prop.id(),
         *component.id(),
@@ -416,7 +447,14 @@ async fn find_values_for_prop_and_component_override() {
     .expect("no docker image found");
 
     let default_variant = schema
-        .default_variant(&txn, &tenancy, &visibility)
+        .default_variant(
+            &txn,
+            &tenancy
+                .clone_into_read_tenancy(&txn)
+                .await
+                .expect("unable to generate read tenancy"),
+            &visibility,
+        )
         .await
         .expect("cannot find default variant");
 
@@ -442,7 +480,7 @@ async fn find_values_for_prop_and_component_override() {
     let func = Func::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         "test:validateString",
@@ -457,7 +495,7 @@ async fn find_values_for_prop_and_component_override() {
     let first_func_binding = FuncBinding::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         serde_json::to_value(first_args).expect("cannot turn args into json"),
@@ -476,7 +514,7 @@ async fn find_values_for_prop_and_component_override() {
     let _first_validation_resolver = ValidationResolver::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         UNSET_ID_VALUE.into(),
@@ -492,7 +530,7 @@ async fn find_values_for_prop_and_component_override() {
     let second_func_binding = FuncBinding::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         serde_json::to_value(second_args).expect("cannot turn args into json"),
@@ -511,7 +549,7 @@ async fn find_values_for_prop_and_component_override() {
     let _second_validation_resolver = ValidationResolver::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         UNSET_ID_VALUE.into(),
@@ -524,7 +562,10 @@ async fn find_values_for_prop_and_component_override() {
 
     let validation_results = ValidationResolver::find_values_for_prop_and_component(
         &txn,
-        &tenancy,
+        &tenancy
+            .clone_into_read_tenancy(&txn)
+            .await
+            .expect("unable to generate read tenancy"),
         &visibility,
         *first_prop.id(),
         *component.id(),

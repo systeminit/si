@@ -761,7 +761,7 @@ impl AttributeResolver {
         let (unset_func_binding, _) = FuncBinding::find_or_create(
             txn,
             nats,
-            tenancy,
+            &tenancy.into(),
             visibility,
             history_actor,
             serde_json::json![null],
@@ -839,7 +839,7 @@ async fn set_value(
     let (func_binding, created) = FuncBinding::find_or_create(
         txn,
         nats,
-        tenancy,
+        &tenancy.into(),
         visibility,
         history_actor,
         args,

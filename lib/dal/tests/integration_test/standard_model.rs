@@ -1218,7 +1218,7 @@ async fn find_by_attr() {
     let schema_four = Schema::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &edit_session_visibility,
         &history_actor,
         schema_one.name(),

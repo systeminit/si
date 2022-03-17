@@ -21,7 +21,7 @@ use crate::{
     FuncBackendKind, FuncBackendResponseType, Group, HistoryActor, KeyPair, Node, Organization,
     Prop, PropKind, QualificationCheck, Schema, SchemaId, SchemaKind, SchemaVariantId, Secret,
     SecretKind, SecretObjectType, StandardModel, System, Tenancy, User, Visibility, Workspace,
-    NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK,
+    WriteTenancy, NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK,
 };
 
 #[derive(Debug)]
@@ -282,7 +282,7 @@ pub async fn create_change_set(
     history_actor: &HistoryActor,
 ) -> ChangeSet {
     let name = generate_fake_name();
-    ChangeSet::new(txn, nats, tenancy, history_actor, &name, None)
+    ChangeSet::new(txn, nats, &tenancy.into(), history_actor, &name, None)
         .await
         .expect("cannot create change_set")
 }
@@ -297,7 +297,7 @@ pub async fn create_edit_session(
     EditSession::new(
         txn,
         nats,
-        &change_set.tenancy,
+        &(&change_set.tenancy).into(),
         history_actor,
         &change_set.pk,
         &name,
@@ -330,9 +330,17 @@ pub async fn create_billing_account_with_name(
     history_actor: &HistoryActor,
     name: impl AsRef<str>,
 ) -> BillingAccount {
-    BillingAccount::new(txn, nats, tenancy, visibility, history_actor, &name, None)
-        .await
-        .expect("cannot create billing_account")
+    BillingAccount::new(
+        txn,
+        nats,
+        &tenancy.into(),
+        visibility,
+        history_actor,
+        &name,
+        None,
+    )
+    .await
+    .expect("cannot create billing_account")
 }
 
 pub async fn create_billing_account(
@@ -343,9 +351,7 @@ pub async fn create_billing_account(
     history_actor: &HistoryActor,
 ) -> BillingAccount {
     let name = generate_fake_name();
-    BillingAccount::new(txn, nats, tenancy, visibility, history_actor, &name, None)
-        .await
-        .expect("cannot create billing_account")
+    create_billing_account_with_name(txn, nats, tenancy, visibility, history_actor, name).await
 }
 
 pub async fn create_organization(
@@ -427,7 +433,7 @@ pub async fn billing_account_signup(
     nats: &NatsTxn,
     jwt_secret_key: &JwtSecretKey,
 ) -> (BillingAccountSignup, String) {
-    let tenancy = Tenancy::new_universal();
+    let write_tenancy = WriteTenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
     let billing_account_name = generate_fake_name();
@@ -438,7 +444,7 @@ pub async fn billing_account_signup(
     let nba = BillingAccount::signup(
         txn,
         nats,
-        &tenancy,
+        &write_tenancy,
         &visibility,
         &history_actor,
         &billing_account_name,
@@ -468,7 +474,7 @@ pub async fn create_schema(
     Schema::new(
         txn,
         nats,
-        tenancy,
+        &tenancy.into(),
         visibility,
         history_actor,
         &name,
@@ -486,7 +492,7 @@ pub async fn create_schema_ui_menu(
     visibility: &Visibility,
     history_actor: &HistoryActor,
 ) -> schema::UiMenu {
-    schema::UiMenu::new(txn, nats, tenancy, visibility, history_actor)
+    schema::UiMenu::new(txn, nats, &tenancy.into(), visibility, history_actor)
         .await
         .expect("cannot create schema ui menu")
 }
@@ -752,7 +758,7 @@ pub async fn create_qualification_check(
     history_actor: &HistoryActor,
 ) -> QualificationCheck {
     let name = generate_fake_name();
-    QualificationCheck::new(txn, nats, tenancy, visibility, history_actor, name)
+    QualificationCheck::new(txn, nats, &tenancy.into(), visibility, history_actor, name)
         .await
         .expect("cannot create qualification check")
 }
@@ -811,7 +817,7 @@ pub async fn create_prop(
         nats,
         veritech,
         encryption_key,
-        tenancy,
+        &tenancy.into(),
         visibility,
         history_actor,
         name,
@@ -838,7 +844,7 @@ pub async fn create_prop_of_kind(
         nats,
         veritech,
         encryption_key,
-        tenancy,
+        &tenancy.into(),
         visibility,
         history_actor,
         name,
@@ -866,7 +872,7 @@ pub async fn create_prop_of_kind_with_name(
         nats,
         veritech,
         encryption_key,
-        tenancy,
+        &tenancy.into(),
         visibility,
         history_actor,
         name,
@@ -887,7 +893,7 @@ pub async fn create_func(
     Func::new(
         txn,
         nats,
-        tenancy,
+        &tenancy.into(),
         visibility,
         history_actor,
         name,
@@ -912,7 +918,7 @@ pub async fn create_func_binding(
     FuncBinding::new(
         txn,
         nats,
-        tenancy,
+        &tenancy.into(),
         visibility,
         history_actor,
         args,

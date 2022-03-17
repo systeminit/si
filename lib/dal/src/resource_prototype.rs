@@ -7,8 +7,8 @@ use thiserror::Error;
 
 use crate::{
     func::FuncId, impl_standard_model, pk, standard_model, standard_model_accessor, ComponentId,
-    HistoryActor, HistoryEventError, SchemaId, SchemaVariantId, StandardModel, StandardModelError,
-    SystemId, Tenancy, Timestamp, Visibility,
+    HistoryActor, HistoryEventError, ReadTenancy, SchemaId, SchemaVariantId, StandardModel,
+    StandardModelError, SystemId, Tenancy, Timestamp, Visibility, WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -132,7 +132,7 @@ impl ResourcePrototype {
     pub async fn new(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
-        tenancy: &Tenancy,
+        write_tenancy: &WriteTenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
         func_id: FuncId,
@@ -143,7 +143,7 @@ impl ResourcePrototype {
             .query_one(
                 "SELECT object FROM resource_prototype_create_v1($1, $2, $3, $4, $5, $6, $7, $8)",
                 &[
-                    &tenancy,
+                    write_tenancy,
                     &visibility,
                     &func_id,
                     &args,
@@ -157,7 +157,7 @@ impl ResourcePrototype {
         let object = standard_model::finish_create_from_row(
             txn,
             nats,
-            tenancy,
+            &write_tenancy.into(),
             visibility,
             history_actor,
             row,
@@ -172,7 +172,7 @@ impl ResourcePrototype {
     #[allow(clippy::too_many_arguments)]
     pub async fn get_for_component(
         txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
+        read_tenancy: &ReadTenancy,
         visibility: &Visibility,
         component_id: ComponentId,
         schema_id: SchemaId,
@@ -183,7 +183,7 @@ impl ResourcePrototype {
             .query_opt(
                 GET_FOR_CONTEXT,
                 &[
-                    &tenancy,
+                    read_tenancy,
                     &visibility,
                     &component_id,
                     &system_id,

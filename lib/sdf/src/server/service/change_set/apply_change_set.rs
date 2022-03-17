@@ -2,7 +2,7 @@ use super::ChangeSetResult;
 use crate::server::extract::{Authorization, NatsTxn, PgRwTxn};
 use crate::server::service::change_set::ChangeSetError;
 use axum::Json;
-use dal::{ChangeSet, ChangeSetPk, HistoryActor, Tenancy};
+use dal::{ChangeSet, ChangeSetPk, HistoryActor, ReadTenancy};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -25,9 +25,9 @@ pub async fn apply_change_set(
 ) -> ChangeSetResult<Json<ApplyChangeSetResponse>> {
     let txn = txn.start().await?;
     let nats = nats.start().await?;
-    let tenancy = Tenancy::new_billing_account(vec![claim.billing_account_id]);
+    let read_tenancy = ReadTenancy::new_billing_account(vec![claim.billing_account_id]);
     let history_actor: HistoryActor = HistoryActor::from(claim.user_id);
-    let mut change_set = ChangeSet::get_by_pk(&txn, &tenancy, &request.change_set_pk)
+    let mut change_set = ChangeSet::get_by_pk(&txn, &read_tenancy, &request.change_set_pk)
         .await?
         .ok_or(ChangeSetError::ChangeSetNotFound)?;
     change_set.apply(&txn, &nats, &history_actor).await?;

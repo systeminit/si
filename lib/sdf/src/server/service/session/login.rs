@@ -2,7 +2,7 @@ use super::SessionResult;
 use crate::server::extract::{JwtSecretKey, NatsTxn, PgRwTxn};
 use crate::server::service::session::SessionError;
 use axum::Json;
-use dal::{BillingAccount, ReadTenancy, StandardModel, Tenancy, User, Visibility};
+use dal::{BillingAccount, ReadTenancy, StandardModel, User, Visibility};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -30,16 +30,20 @@ pub async fn login(
     let txn = txn.start().await?;
     let nats = nats.start().await?;
 
-    let tenancy = Tenancy::new_universal();
+    let read_tenancy = ReadTenancy::new_universal();
     let visibility = Visibility::new_head(false);
 
-    let billing_account =
-        BillingAccount::find_by_name(&txn, &tenancy, &visibility, &request.billing_account_name)
-            .await?
-            .ok_or(SessionError::LoginFailed)?;
+    let billing_account = BillingAccount::find_by_name(
+        &txn,
+        &read_tenancy,
+        &visibility,
+        &request.billing_account_name,
+    )
+    .await?
+    .ok_or(SessionError::LoginFailed)?;
 
-    let ba_tenancy = ReadTenancy::new_billing_account(vec![*billing_account.id()]);
-    let user = User::find_by_email(&txn, &ba_tenancy, &visibility, &request.user_email)
+    let read_tenancy = ReadTenancy::new_billing_account(vec![*billing_account.id()]);
+    let user = User::find_by_email(&txn, &read_tenancy, &visibility, &request.user_email)
         .await?
         .ok_or(SessionError::LoginFailed)?;
 

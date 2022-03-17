@@ -10,8 +10,8 @@ use crate::label_list::LabelList;
 use crate::standard_model::object_option_from_row_option;
 use crate::ws_event::{WsEvent, WsPayload};
 use crate::{
-    pk, HistoryActor, HistoryEvent, HistoryEventError, LabelListError, StandardModelError, Tenancy,
-    Timestamp, WsEventError,
+    pk, HistoryActor, HistoryEvent, HistoryEventError, LabelListError, ReadTenancy,
+    StandardModelError, Tenancy, Timestamp, WriteTenancy, WsEventError,
 };
 
 const CHANGE_SET_OPEN_LIST: &str = include_str!("./queries/change_set_open_list.sql");
@@ -69,7 +69,7 @@ impl ChangeSet {
     pub async fn new(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
-        tenancy: &Tenancy,
+        write_tenancy: &WriteTenancy,
         history_actor: &HistoryActor,
         name: impl AsRef<str>,
         note: Option<&String>,
@@ -79,7 +79,12 @@ impl ChangeSet {
         let row = txn
             .query_one(
                 "SELECT object FROM change_set_create_v1($1, $2, $3, $4)",
-                &[&name, &note, &ChangeSetStatus::Open.to_string(), &tenancy],
+                &[
+                    &name,
+                    &note,
+                    &ChangeSetStatus::Open.to_string(),
+                    write_tenancy,
+                ],
             )
             .await?;
         let json: serde_json::Value = row.try_get("object")?;
@@ -90,7 +95,7 @@ impl ChangeSet {
             history_actor,
             "Change Set created",
             &json,
-            tenancy,
+            &write_tenancy.into(),
         )
         .await?;
         let object: Self = serde_json::from_value(json)?;
@@ -136,9 +141,9 @@ impl ChangeSet {
     #[instrument(skip_all)]
     pub async fn list_open(
         txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
+        read_tenancy: &ReadTenancy,
     ) -> ChangeSetResult<LabelList<ChangeSetPk>> {
-        let rows = txn.query(CHANGE_SET_OPEN_LIST, &[&tenancy]).await?;
+        let rows = txn.query(CHANGE_SET_OPEN_LIST, &[read_tenancy]).await?;
         let results = LabelList::from_rows(rows)?;
         Ok(results)
     }
@@ -146,11 +151,11 @@ impl ChangeSet {
     #[instrument(skip_all)]
     pub async fn get_by_pk(
         txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
+        read_tenancy: &ReadTenancy,
         pk: &ChangeSetPk,
     ) -> ChangeSetResult<Option<ChangeSet>> {
         let row = txn
-            .query_opt(CHANGE_SET_GET_BY_PK, &[&tenancy, &pk])
+            .query_opt(CHANGE_SET_GET_BY_PK, &[read_tenancy, &pk])
             .await?;
         let change_set: Option<ChangeSet> = object_option_from_row_option(row)?;
         Ok(change_set)

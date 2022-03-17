@@ -2,7 +2,7 @@ use super::ChangeSetResult;
 use crate::server::extract::{Authorization, NatsTxn, PgRwTxn};
 use crate::server::service::change_set::ChangeSetError;
 use axum::Json;
-use dal::{EditSession, EditSessionPk, HistoryActor, Tenancy};
+use dal::{EditSession, EditSessionPk, HistoryActor, ReadTenancy};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -25,10 +25,10 @@ pub async fn save_edit_session(
 ) -> ChangeSetResult<Json<SaveEditSessionResponse>> {
     let txn = txn.start().await?;
     let nats = nats.start().await?;
-    let tenancy = Tenancy::new_billing_account(vec![claim.billing_account_id]);
+    let read_tenancy = ReadTenancy::new_billing_account(vec![claim.billing_account_id]);
     let history_actor: HistoryActor = HistoryActor::from(claim.user_id);
 
-    let mut edit_session = EditSession::get_by_pk(&txn, &tenancy, &request.edit_session_pk)
+    let mut edit_session = EditSession::get_by_pk(&txn, &read_tenancy, &request.edit_session_pk)
         .await?
         .ok_or(ChangeSetError::EditSessionNotFound)?;
     edit_session.save(&txn, &nats, &history_actor).await?;

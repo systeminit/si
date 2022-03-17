@@ -69,7 +69,7 @@ async fn new() {
     let _prototype = CodeGenerationPrototype::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         *func.id(),
@@ -119,7 +119,10 @@ async fn find_for_component() {
 
     let mut found_prototype = CodeGenerationPrototype::find_for_component(
         &txn,
-        &tenancy,
+        &tenancy
+            .clone_into_read_tenancy(&txn)
+            .await
+            .expect("unable to generate read tenancy"),
         &visibility,
         *component.id(),
         *schema.id(),

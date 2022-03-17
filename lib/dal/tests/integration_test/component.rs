@@ -247,7 +247,7 @@ async fn qualification_view() {
         &nats,
         veritech,
         encr_key,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         "some_property",
@@ -446,7 +446,7 @@ async fn get_resource_by_component_id() {
         encr_key,
     );
 
-    let billing_account_tenancy = Tenancy::new_universal();
+    let billing_account_tenancy = WriteTenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
 
@@ -596,7 +596,7 @@ async fn get_resource_by_component_id() {
 //     let func = Func::new(
 //         &txn,
 //         &nats,
-//         &tenancy,
+//         &(&tenancy).into(),
 //         &visibility,
 //         &history_actor,
 //         "lateralus",
