@@ -80,6 +80,10 @@ export class SDF {
     if (this.token) {
       headers.set("Authorization", `Bearer ${this.token}`);
     }
+    const workspace = JSON.parse(sessionStorage.getItem("workspace") ?? null);
+    if (workspace) {
+      headers.set("WorkspaceId", workspace.id);
+    }
     return headers;
   }
 
