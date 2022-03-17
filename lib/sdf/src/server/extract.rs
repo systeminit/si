@@ -6,12 +6,119 @@ use axum::{
     Json,
 };
 use dal::{
-    ChangeSetPk, EditSessionPk, ReadTenancy, StandardModel, Tenancy, User, UserClaim, Visibility,
-    Workspace, WorkspaceId,
+    ChangeSetPk, EditSessionPk, ReadTenancy, StandardModel, User, UserClaim, Visibility, Workspace,
+    WorkspaceId, WriteTenancy,
 };
 use hyper::StatusCode;
 use serde::Serialize;
 use si_data::{nats, pg};
+
+pub struct ServicesContext(pub dal::context::ServicesContext);
+
+#[async_trait]
+impl<P> FromRequest<P> for ServicesContext
+where
+    P: Send,
+{
+    type Rejection = (StatusCode, Json<InternalError>);
+
+    async fn from_request(req: &mut RequestParts<P>) -> Result<Self, Self::Rejection> {
+        let PgPool(pg_pool) = PgPool::from_request(req).await?;
+        let Nats(nats_conn) = Nats::from_request(req).await?;
+        let Veritech(veritech) = Veritech::from_request(req).await?;
+        let EncryptionKey(encryption_key) = EncryptionKey::from_request(req).await?;
+        let ctx = dal::context::ServicesContext::new(pg_pool, nats_conn, veritech, encryption_key);
+        Ok(Self(ctx))
+    }
+}
+
+pub struct HistoryActor(pub dal::HistoryActor);
+
+#[async_trait]
+impl<P> FromRequest<P> for HistoryActor
+where
+    P: Send,
+{
+    type Rejection = (StatusCode, Json<serde_json::Value>);
+
+    async fn from_request(req: &mut RequestParts<P>) -> Result<Self, Self::Rejection> {
+        let Authorization(claim) = Authorization::from_request(req).await?;
+        Ok(Self(dal::HistoryActor::from(claim.user_id)))
+    }
+}
+
+pub struct Tenancy(pub (WriteTenancy, ReadTenancy));
+
+#[async_trait]
+impl<P> FromRequest<P> for Tenancy
+where
+    P: Send,
+{
+    type Rejection = (StatusCode, Json<serde_json::Value>);
+
+    async fn from_request(req: &mut RequestParts<P>) -> Result<Self, Self::Rejection> {
+        let error_response = (
+            StatusCode::UNAUTHORIZED,
+            Json(serde_json::json!({
+                "error": {
+                    "message": "unauthorized",
+                    "code": 42,
+                    "statusCode": 401,
+                },
+            })),
+        );
+
+        let Authorization(claim) = Authorization::from_request(req).await?;
+
+        let mut ro_txn = PgRoTxn::from_request(req)
+            .await
+            .map_err(|_| error_response.clone())?;
+        let txn = ro_txn.start().await.map_err(|_| error_response.clone())?;
+
+        let headers = req.headers().ok_or_else(|| error_response.clone())?;
+        let write_tenancy = if let Some(workspace_header_value) = headers.get("WorkspaceId") {
+            let workspace_id = workspace_header_value
+                .to_str()
+                .map_err(|_| error_response.clone())?;
+            let workspace_id = workspace_id
+                .parse::<WorkspaceId>()
+                .map_err(|_| error_response.clone())?;
+            WriteTenancy::new_workspace(workspace_id)
+        } else if let Some(authorization_header_value) = headers.get("Authorization") {
+            let authorization = authorization_header_value
+                .to_str()
+                .map_err(|_| error_response.clone())?;
+            let claim = UserClaim::from_bearer_token(&txn, authorization)
+                .await
+                .map_err(|_| error_response.clone())?;
+            WriteTenancy::new_billing_account(claim.billing_account_id)
+        } else {
+            // Should only happen at signup where the billing account creation should set the
+            // tenancy manually to universal as we don't write to universal implicitly
+            //
+            // Empty tenancy means things can be written, but they will never match any read
+            // tenancy, so they won't ever be read
+            WriteTenancy::from(&dal::Tenancy::new_empty())
+        };
+
+        let read_tenancy = write_tenancy
+            .clone_into_read_tenancy(&txn)
+            .await
+            .map_err(|_| error_response.clone())?;
+
+        // Ensures user can access workspace specified by id
+        if !read_tenancy.billing_accounts().is_empty()
+            && !read_tenancy
+                .billing_accounts()
+                .contains(&claim.billing_account_id)
+        {
+            return Err(error_response);
+        }
+        txn.commit().await.map_err(|_| error_response.clone())?;
+
+        Ok(Self((write_tenancy, read_tenancy)))
+    }
+}
 
 pub struct PgPool(pub pg::PgPool);
 
@@ -339,7 +446,7 @@ where
     }
 }
 
-pub struct QueryWorkspaceTenancy(pub Tenancy);
+pub struct QueryWorkspaceTenancy(pub dal::Tenancy);
 
 #[async_trait]
 impl<P> FromRequest<P> for QueryWorkspaceTenancy
@@ -380,7 +487,8 @@ where
         let Authorization(claim) = Authorization::from_request(req)
             .await
             .map_err(|_| error_response.clone())?;
-        let billing_account_tenancy = Tenancy::new_billing_account(vec![claim.billing_account_id]);
+        let billing_account_tenancy =
+            dal::Tenancy::new_billing_account(vec![claim.billing_account_id]);
 
         let workspace_id: WorkspaceId = workspace_id_string
             .parse()
@@ -391,7 +499,7 @@ where
                 .await
                 .map_err(|_| error_response.clone())?;
 
-        let tenancy = Tenancy::new_workspace(vec![workspace_id]);
+        let tenancy = dal::Tenancy::new_workspace(vec![workspace_id]);
 
         Ok(Self(tenancy))
     }

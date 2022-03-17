@@ -7,7 +7,7 @@ use si_data::{
 };
 use veritech::EncryptionKey;
 
-use crate::{HistoryActor, Tenancy, Visibility};
+use crate::{HistoryActor, ReadTenancy, Visibility, WriteTenancy};
 
 /// A context type which contains handles to common core service dependencies.
 ///
@@ -82,9 +82,9 @@ pub struct DalContext<'a> {
     /// A reference to a NATS transaction.
     nats_txn: &'a nats::NatsTxn,
     /// A suitable read tenancy for the consuming DAL objects.
-    read_tenancy: Tenancy,
+    read_tenancy: ReadTenancy,
     /// A suitable write tenancy for the consuming DAL objects.
-    write_tenancy: Tenancy,
+    write_tenancy: WriteTenancy,
     /// A suitable [`Visibility`] scope for the consuming DAL objects.
     visibility: Visibility,
     /// A suitable [`HistoryActor`] for the consuming DAL objects.
@@ -129,12 +129,12 @@ impl DalContext<'_> {
     }
 
     /// Gets a reference to the dal context's read tenancy.
-    pub fn read_tenancy(&self) -> &Tenancy {
+    pub fn read_tenancy(&self) -> &ReadTenancy {
         &self.read_tenancy
     }
 
     /// Gets a reference to the dal context's write tenancy.
-    pub fn write_tenancy(&self) -> &Tenancy {
+    pub fn write_tenancy(&self) -> &WriteTenancy {
         &self.write_tenancy
     }
 
@@ -153,9 +153,9 @@ impl DalContext<'_> {
 /// of DAL objects.
 pub struct HandlerContext {
     /// A suitable read tenancy for the consuming DAL objects.
-    pub read_tenancy: Tenancy,
+    pub read_tenancy: ReadTenancy,
     /// A suitable write tenancy for the consuming DAL objects.
-    pub write_tenancy: Tenancy,
+    pub write_tenancy: WriteTenancy,
     /// A suitable [`Visibility`] scope for the consuming DAL objects.
     pub visibility: Visibility,
     /// A suitable [`HistoryActor`] for the consuming DAL objects.
