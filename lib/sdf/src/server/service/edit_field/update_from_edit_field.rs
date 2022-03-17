@@ -3,7 +3,8 @@ use dal::{
     edit_field::{EditFieldAble, EditFieldBaggage, EditFieldObjectKind},
     schema::{self, SchemaVariant},
     socket::Socket,
-    Component, HistoryActor, Prop, QualificationCheck, Schema, Tenancy, Visibility, WorkspaceId,
+    Component, HistoryActor, Prop, QualificationCheck, Schema, Visibility, WorkspaceId,
+    WriteTenancy,
 };
 use serde::{Deserialize, Serialize};
 
@@ -39,11 +40,11 @@ pub async fn update_from_edit_field(
 ) -> EditFieldResult<Json<UpdateFromEditFieldResponse>> {
     let txn = txn.start().await?;
     let nats = nats.start().await?;
-    let mut tenancy = match request.workspace_id {
-        Some(workspace_id) => Tenancy::new_workspace(vec![workspace_id]),
-        None => Tenancy::new_billing_account(vec![claim.billing_account_id]),
+    let write_tenancy = match request.workspace_id {
+        Some(workspace_id) => WriteTenancy::new_workspace(workspace_id),
+        None => WriteTenancy::new_billing_account(claim.billing_account_id),
     };
-    tenancy.universal = true;
+
     let history_actor: HistoryActor = HistoryActor::from(claim.user_id);
 
     match request.object_kind {
@@ -53,7 +54,7 @@ pub async fn update_from_edit_field(
                 &nats,
                 veritech,
                 &encryption_key,
-                &tenancy,
+                &write_tenancy,
                 &request.visibility,
                 &history_actor,
                 request.object_id.into(),
@@ -73,7 +74,7 @@ pub async fn update_from_edit_field(
                 &nats,
                 veritech,
                 &encryption_key,
-                &tenancy,
+                &write_tenancy,
                 &request.visibility,
                 &history_actor,
                 request.object_id.into(),
@@ -90,7 +91,7 @@ pub async fn update_from_edit_field(
                 &nats,
                 veritech,
                 &encryption_key,
-                &tenancy,
+                &write_tenancy,
                 &request.visibility,
                 &history_actor,
                 request.object_id.into(),
@@ -105,7 +106,7 @@ pub async fn update_from_edit_field(
                 &nats,
                 veritech,
                 &encryption_key,
-                &tenancy,
+                &write_tenancy,
                 &request.visibility,
                 &history_actor,
                 request.object_id.into(),
@@ -120,7 +121,7 @@ pub async fn update_from_edit_field(
                 &nats,
                 veritech,
                 &encryption_key,
-                &tenancy,
+                &write_tenancy,
                 &request.visibility,
                 &history_actor,
                 request.object_id.into(),
@@ -135,7 +136,7 @@ pub async fn update_from_edit_field(
                 &nats,
                 veritech,
                 &encryption_key,
-                &tenancy,
+                &write_tenancy,
                 &request.visibility,
                 &history_actor,
                 request.object_id.into(),
@@ -150,7 +151,7 @@ pub async fn update_from_edit_field(
                 &nats,
                 veritech,
                 &encryption_key,
-                &tenancy,
+                &write_tenancy,
                 &request.visibility,
                 &history_actor,
                 request.object_id.into(),
@@ -165,7 +166,7 @@ pub async fn update_from_edit_field(
                 &nats,
                 veritech,
                 &encryption_key,
-                &tenancy,
+                &write_tenancy,
                 &request.visibility,
                 &history_actor,
                 request.object_id.into(),

@@ -17,8 +17,8 @@ use crate::{
     socket::{Socket, SocketError, SocketId},
     standard_model::{self, objects_from_rows},
     standard_model_accessor, standard_model_belongs_to, standard_model_many_to_many, HistoryActor,
-    HistoryEventError, Prop, PropError, PropId, PropKind, Schema, SchemaId, StandardModel,
-    StandardModelError, Tenancy, Timestamp, Visibility, WsEventError,
+    HistoryEventError, Prop, PropError, PropId, PropKind, ReadTenancy, Schema, SchemaId,
+    StandardModel, StandardModelError, Tenancy, Timestamp, Visibility, WriteTenancy, WsEventError,
 };
 
 #[derive(Error, Debug)]
@@ -82,7 +82,7 @@ impl SchemaVariant {
     pub async fn new(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
-        tenancy: &Tenancy,
+        write_tenancy: &WriteTenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
         name: impl AsRef<str>,
@@ -93,13 +93,13 @@ impl SchemaVariant {
         let row = txn
             .query_one(
                 "SELECT object FROM schema_variant_create_v1($1, $2, $3)",
-                &[tenancy, visibility, &name],
+                &[write_tenancy, visibility, &name],
             )
             .await?;
         let object: SchemaVariant = standard_model::finish_create_from_row(
             txn,
             nats,
-            tenancy,
+            &write_tenancy.into(),
             visibility,
             history_actor,
             row,
@@ -108,7 +108,7 @@ impl SchemaVariant {
         let root_prop = create_root_prop(
             txn,
             nats,
-            tenancy,
+            write_tenancy,
             visibility,
             history_actor,
             object.id(),
@@ -209,7 +209,7 @@ impl SchemaVariant {
 
     async fn properties_edit_field(
         txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
+        read_tenancy: &ReadTenancy,
         visibility: &Visibility,
         object: &Self,
     ) -> SchemaVariantResult<EditField> {
@@ -217,7 +217,8 @@ impl SchemaVariant {
 
         let mut items: Vec<EditFields> = vec![];
         for prop in object.props(txn, visibility).await?.into_iter() {
-            let edit_fields = Prop::get_edit_fields(txn, tenancy, visibility, prop.id()).await?;
+            let edit_fields =
+                Prop::get_edit_fields(txn, read_tenancy, visibility, prop.id()).await?;
             items.push(edit_fields);
         }
         Ok(EditField::new(
@@ -235,7 +236,7 @@ impl SchemaVariant {
 
     async fn connections_edit_field(
         txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
+        read_tenancy: &ReadTenancy,
         visibility: &Visibility,
         object: &Self,
     ) -> SchemaVariantResult<EditField> {
@@ -244,7 +245,7 @@ impl SchemaVariant {
         let mut items: Vec<EditFields> = vec![];
         for socket in object.sockets(txn, visibility).await?.into_iter() {
             let edit_fields =
-                Socket::get_edit_fields(txn, tenancy, visibility, socket.id()).await?;
+                Socket::get_edit_fields(txn, read_tenancy, visibility, socket.id()).await?;
             items.push(edit_fields);
         }
 
@@ -280,30 +281,30 @@ impl EditFieldAble for SchemaVariant {
     #[instrument(skip_all)]
     async fn get_edit_fields(
         txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
+        read_tenancy: &ReadTenancy,
         visibility: &Visibility,
         id: &Self::Id,
     ) -> Result<EditFields, Self::Error> {
-        let object = Self::get_by_id(txn, tenancy, visibility, id)
+        let object = Self::get_by_id(txn, &read_tenancy.into(), visibility, id)
             .await?
             .ok_or(SchemaVariantError::NotFound(*id))?;
         let head_object = if visibility.in_change_set() {
             let head_visibility = visibility.to_head();
-            Self::get_by_id(txn, tenancy, &head_visibility, id).await?
+            Self::get_by_id(txn, &read_tenancy.into(), &head_visibility, id).await?
         } else {
             None
         };
         let change_set_object = if visibility.in_change_set() {
             let change_set_visibility = visibility.to_change_set();
-            Self::get_by_id(txn, tenancy, &change_set_visibility, id).await?
+            Self::get_by_id(txn, &read_tenancy.into(), &change_set_visibility, id).await?
         } else {
             None
         };
 
         let edit_fields = vec![
             Self::name_edit_field(visibility, &object, &head_object, &change_set_object)?,
-            Self::properties_edit_field(txn, tenancy, visibility, &object).await?,
-            Self::connections_edit_field(txn, tenancy, visibility, &object).await?,
+            Self::properties_edit_field(txn, read_tenancy, visibility, &object).await?,
+            Self::connections_edit_field(txn, read_tenancy, visibility, &object).await?,
         ];
 
         Ok(edit_fields)
@@ -315,14 +316,14 @@ impl EditFieldAble for SchemaVariant {
         nats: &NatsTxn,
         veritech: veritech::Client,
         encryption_key: &EncryptionKey,
-        tenancy: &Tenancy,
+        write_tenancy: &WriteTenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
         id: Self::Id,
         edit_field_id: String,
         value: Option<Value>,
     ) -> Result<(), Self::Error> {
-        let mut object = Self::get_by_id(txn, tenancy, visibility, &id)
+        let mut object = Self::get_by_id(txn, &write_tenancy.into(), visibility, &id)
             .await?
             .ok_or(SchemaVariantError::NotFound(id))?;
 
@@ -346,7 +347,7 @@ impl EditFieldAble for SchemaVariant {
                     nats,
                     veritech,
                     encryption_key,
-                    tenancy,
+                    &write_tenancy.into(),
                     visibility,
                     history_actor,
                     "TODO: name me!",
@@ -362,7 +363,7 @@ impl EditFieldAble for SchemaVariant {
                 let socket = Socket::new(
                     txn,
                     nats,
-                    tenancy,
+                    write_tenancy,
                     visibility,
                     history_actor,
                     "TODO: name me!",

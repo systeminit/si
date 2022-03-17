@@ -9,7 +9,7 @@ use veritech::EncryptionKey;
 
 use crate::{
     func::backend::validation::ValidationError, HistoryActor, LabelListError, PropId, PropKind,
-    SystemId, Tenancy, Visibility,
+    ReadTenancy, SystemId, Visibility, WriteTenancy,
 };
 
 pub use widget::{ToSelectWidget, Widget};
@@ -167,7 +167,7 @@ pub trait EditFieldAble {
 
     async fn get_edit_fields(
         txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
+        read_tenancy: &ReadTenancy,
         visibility: &Visibility,
         id: &Self::Id,
     ) -> Result<EditFields, Self::Error>;
@@ -178,7 +178,7 @@ pub trait EditFieldAble {
         nats: &NatsTxn,
         veritech: veritech::Client,
         encryption_key: &EncryptionKey,
-        tenancy: &Tenancy,
+        write_tenancy: &WriteTenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
         id: Self::Id,

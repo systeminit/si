@@ -525,10 +525,11 @@ pub async fn create_schema_variant_with_root(
     encryption_key: &EncryptionKey,
 ) -> (schema::SchemaVariant, schema::builtins::RootProp) {
     let name = generate_fake_name();
+    let write_tenancy = tenancy.into();
     let (variant, root) = schema::SchemaVariant::new(
         txn,
         nats,
-        tenancy,
+        &write_tenancy,
         visibility,
         history_actor,
         name,
@@ -541,7 +542,7 @@ pub async fn create_schema_variant_with_root(
     let input_socket = Socket::new(
         txn,
         nats,
-        tenancy,
+        &write_tenancy,
         visibility,
         history_actor,
         "input",
@@ -558,7 +559,7 @@ pub async fn create_schema_variant_with_root(
     let output_socket = Socket::new(
         txn,
         nats,
-        tenancy,
+        &write_tenancy,
         visibility,
         history_actor,
         "output",
@@ -575,7 +576,7 @@ pub async fn create_schema_variant_with_root(
     let includes_socket = Socket::new(
         txn,
         nats,
-        tenancy,
+        &write_tenancy,
         visibility,
         history_actor,
         "includes",
@@ -732,7 +733,7 @@ pub async fn create_socket(
     socket::Socket::new(
         txn,
         nats,
-        tenancy,
+        &tenancy.into(),
         visibility,
         history_actor,
         name,

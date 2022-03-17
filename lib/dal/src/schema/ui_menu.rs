@@ -12,8 +12,8 @@ use crate::{
         EditFieldAble, EditFieldDataType, EditFieldError, EditFieldObjectKind, EditFields,
     },
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
-    standard_model_many_to_many, HistoryActor, LabelList, SchemaError, SchematicKind,
-    StandardModel, Tenancy, Timestamp, Visibility,
+    standard_model_many_to_many, HistoryActor, LabelList, ReadTenancy, SchemaError, SchematicKind,
+    StandardModel, Tenancy, Timestamp, Visibility, WriteTenancy,
 };
 
 use super::{Schema, SchemaId, SchemaResult};
@@ -133,23 +133,23 @@ impl EditFieldAble for UiMenu {
 
     async fn get_edit_fields(
         txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
+        read_tenancy: &ReadTenancy,
         visibility: &Visibility,
         id: &Self::Id,
     ) -> Result<EditFields, Self::Error> {
-        let object = UiMenu::get_by_id(txn, tenancy, visibility, id)
+        let object = UiMenu::get_by_id(txn, &read_tenancy.into(), visibility, id)
             .await?
             .ok_or(SchemaError::UiMenuNotFound(*id))?;
         let head_obj: Option<UiMenu> = if visibility.in_change_set() {
             let head_visibility = Visibility::new_head(visibility.deleted);
-            UiMenu::get_by_id(txn, tenancy, &head_visibility, id).await?
+            UiMenu::get_by_id(txn, &read_tenancy.into(), &head_visibility, id).await?
         } else {
             None
         };
         let change_set_obj: Option<UiMenu> = if visibility.in_change_set() {
             let change_set_visibility =
                 Visibility::new_change_set(visibility.change_set_pk, visibility.deleted);
-            UiMenu::get_by_id(txn, tenancy, &change_set_visibility, id).await?
+            UiMenu::get_by_id(txn, &read_tenancy.into(), &change_set_visibility, id).await?
         } else {
             None
         };
@@ -220,7 +220,7 @@ impl EditFieldAble for UiMenu {
         nats: &NatsTxn,
         _veritech: veritech::Client,
         _encryption_key: &EncryptionKey,
-        tenancy: &Tenancy,
+        write_tenancy: &WriteTenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
         id: Self::Id,
@@ -228,7 +228,7 @@ impl EditFieldAble for UiMenu {
         value: Option<Value>,
     ) -> Result<(), Self::Error> {
         let edit_field_id = edit_field_id.as_ref();
-        let mut object = UiMenu::get_by_id(txn, tenancy, visibility, &id)
+        let mut object = UiMenu::get_by_id(txn, &write_tenancy.into(), visibility, &id)
             .await?
             .ok_or(SchemaError::UiMenuNotFound(id))?;
         match edit_field_id {

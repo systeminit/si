@@ -13,7 +13,7 @@ use crate::{
     func::binding::FuncBinding, validation_prototype::ValidationPrototypeContext,
     AttributeResolver, Func, FuncBackendKind, FuncBackendResponseType, HistoryActor, Prop, PropId,
     PropKind, QualificationPrototype, ResourcePrototype, Schema, SchemaError, SchemaKind,
-    SchemaVariantId, SchematicKind, StandardModel, Tenancy, ValidationPrototype, Visibility,
+    SchemaVariantId, SchematicKind, StandardModel, ValidationPrototype, Visibility, WriteTenancy,
 };
 use si_data::{NatsTxn, PgTxn};
 use telemetry::prelude::*;
@@ -34,7 +34,7 @@ pub async fn migrate(
     encryption_key: &EncryptionKey,
 ) -> SchemaResult<()> {
     let (tenancy, visibility, history_actor) = (
-        Tenancy::new_universal(),
+        WriteTenancy::new_universal(),
         Visibility::new_head(false),
         HistoryActor::SystemInit,
     );
@@ -116,7 +116,7 @@ pub async fn migrate(
 async fn system(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
-    tenancy: &Tenancy,
+    write_tenancy: &WriteTenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
     veritech: veritech::Client,
@@ -126,7 +126,7 @@ async fn system(
     let mut schema = match create_schema(
         txn,
         nats,
-        tenancy,
+        write_tenancy,
         visibility,
         history_actor,
         &name,
@@ -145,7 +145,7 @@ async fn system(
     let (variant, _) = SchemaVariant::new(
         txn,
         nats,
-        tenancy,
+        write_tenancy,
         visibility,
         history_actor,
         "v0",
@@ -163,7 +163,7 @@ async fn system(
     let output_socket = Socket::new(
         txn,
         nats,
-        tenancy,
+        write_tenancy,
         visibility,
         history_actor,
         "output",
@@ -181,7 +181,7 @@ async fn system(
 async fn application(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
-    tenancy: &Tenancy,
+    write_tenancy: &WriteTenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
     veritech: veritech::Client,
@@ -191,7 +191,7 @@ async fn application(
     let mut schema = match create_schema(
         txn,
         nats,
-        tenancy,
+        write_tenancy,
         visibility,
         history_actor,
         &name,
@@ -210,7 +210,7 @@ async fn application(
     let (variant, _) = SchemaVariant::new(
         txn,
         nats,
-        tenancy,
+        write_tenancy,
         visibility,
         history_actor,
         "v0",
@@ -228,7 +228,7 @@ async fn application(
     let input_socket = Socket::new(
         txn,
         nats,
-        tenancy,
+        write_tenancy,
         visibility,
         history_actor,
         "input",
@@ -243,7 +243,7 @@ async fn application(
     let output_socket = Socket::new(
         txn,
         nats,
-        tenancy,
+        write_tenancy,
         visibility,
         history_actor,
         "output",
@@ -258,7 +258,7 @@ async fn application(
     let includes_socket = Socket::new(
         txn,
         nats,
-        tenancy,
+        write_tenancy,
         visibility,
         history_actor,
         "includes",
@@ -276,7 +276,7 @@ async fn application(
 async fn service(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
-    tenancy: &Tenancy,
+    write_tenancy: &WriteTenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
     veritech: veritech::Client,
@@ -286,7 +286,7 @@ async fn service(
     let mut schema = match create_schema(
         txn,
         nats,
-        tenancy,
+        write_tenancy,
         visibility,
         history_actor,
         &name,
@@ -298,7 +298,8 @@ async fn service(
         None => return Ok(()),
     };
 
-    let mut ui_menu = UiMenu::new(txn, nats, tenancy, visibility, history_actor).await?;
+    let mut ui_menu =
+        UiMenu::new(txn, nats, &write_tenancy.into(), visibility, history_actor).await?;
     ui_menu
         .set_name(
             txn,
@@ -332,8 +333,15 @@ async fn service(
         .set_schema(txn, nats, visibility, history_actor, schema.id())
         .await?;
 
-    let application_schema_results =
-        Schema::find_by_attr(txn, tenancy, visibility, "name", &application_name).await?;
+    let read_tenancy = write_tenancy.clone_into_read_tenancy(txn).await?;
+    let application_schema_results = Schema::find_by_attr(
+        txn,
+        &(&read_tenancy).into(),
+        visibility,
+        "name",
+        &application_name,
+    )
+    .await?;
     let application_schema = application_schema_results
         .first()
         .ok_or(SchemaError::NotFoundByName(application_name))?;
@@ -351,7 +359,7 @@ async fn service(
     let (variant, _) = SchemaVariant::new(
         txn,
         nats,
-        tenancy,
+        write_tenancy,
         visibility,
         history_actor,
         "v0",
@@ -369,7 +377,7 @@ async fn service(
     let input_socket = Socket::new(
         txn,
         nats,
-        tenancy,
+        write_tenancy,
         visibility,
         history_actor,
         "input",
@@ -384,7 +392,7 @@ async fn service(
     let output_socket = Socket::new(
         txn,
         nats,
-        tenancy,
+        write_tenancy,
         visibility,
         history_actor,
         "output",
@@ -399,7 +407,7 @@ async fn service(
     let includes_socket = Socket::new(
         txn,
         nats,
-        tenancy,
+        write_tenancy,
         visibility,
         history_actor,
         "includes",
@@ -417,7 +425,7 @@ async fn service(
 async fn kubernetes_service(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
-    tenancy: &Tenancy,
+    write_tenancy: &WriteTenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
     veritech: veritech::Client,
@@ -427,7 +435,7 @@ async fn kubernetes_service(
     let mut schema = match create_schema(
         txn,
         nats,
-        tenancy,
+        write_tenancy,
         visibility,
         history_actor,
         &name,
@@ -442,7 +450,7 @@ async fn kubernetes_service(
     let (variant, _) = SchemaVariant::new(
         txn,
         nats,
-        tenancy,
+        write_tenancy,
         visibility,
         history_actor,
         "v0",
@@ -460,7 +468,7 @@ async fn kubernetes_service(
     let input_socket = Socket::new(
         txn,
         nats,
-        tenancy,
+        write_tenancy,
         visibility,
         history_actor,
         "input",
@@ -475,7 +483,7 @@ async fn kubernetes_service(
     let output_socket = Socket::new(
         txn,
         nats,
-        tenancy,
+        write_tenancy,
         visibility,
         history_actor,
         "output",
@@ -490,7 +498,7 @@ async fn kubernetes_service(
     let includes_socket = Socket::new(
         txn,
         nats,
-        tenancy,
+        write_tenancy,
         visibility,
         history_actor,
         "includes",
@@ -508,7 +516,7 @@ async fn kubernetes_service(
 async fn docker_hub_credential(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
-    tenancy: &Tenancy,
+    write_tenancy: &WriteTenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
     veritech: veritech::Client,
@@ -518,7 +526,7 @@ async fn docker_hub_credential(
     let mut schema = match create_schema(
         txn,
         nats,
-        tenancy,
+        write_tenancy,
         visibility,
         history_actor,
         &name,
@@ -542,7 +550,7 @@ async fn docker_hub_credential(
     let (variant, root_prop) = SchemaVariant::new(
         txn,
         nats,
-        tenancy,
+        write_tenancy,
         visibility,
         history_actor,
         "v0",
@@ -562,7 +570,7 @@ async fn docker_hub_credential(
         nats,
         veritech.clone(),
         encryption_key,
-        tenancy,
+        &write_tenancy.into(),
         visibility,
         history_actor,
         "secret",
@@ -593,10 +601,17 @@ async fn docker_hub_credential(
 
     // Qualification Prototype
     let qual_func_name = "si:qualificationDockerHubLogin".to_string();
-    let qual_func = Func::find_by_attr(txn, tenancy, visibility, "name", &qual_func_name)
-        .await?
-        .pop()
-        .ok_or(SchemaError::FuncNotFound(qual_func_name))?;
+    let read_tenancy = write_tenancy.clone_into_read_tenancy(txn).await?;
+    let qual_func = Func::find_by_attr(
+        txn,
+        &(&read_tenancy).into(),
+        visibility,
+        "name",
+        &qual_func_name,
+    )
+    .await?
+    .pop()
+    .ok_or(SchemaError::FuncNotFound(qual_func_name))?;
     let qual_args = FuncBackendJsQualificationArgs::default();
     let qual_args_json = serde_json::to_value(&qual_args)?;
     let mut qual_prototype_context = QualificationPrototypeContext::new();
@@ -605,7 +620,7 @@ async fn docker_hub_credential(
     let mut prototype = QualificationPrototype::new(
         txn,
         nats,
-        tenancy,
+        &write_tenancy.into(),
         visibility,
         history_actor,
         *qual_func.id(),
@@ -630,7 +645,7 @@ async fn docker_hub_credential(
     let input_socket = Socket::new(
         txn,
         nats,
-        tenancy,
+        write_tenancy,
         visibility,
         history_actor,
         "input",
@@ -645,7 +660,7 @@ async fn docker_hub_credential(
     let output_socket = Socket::new(
         txn,
         nats,
-        tenancy,
+        write_tenancy,
         visibility,
         history_actor,
         "output",
@@ -660,7 +675,7 @@ async fn docker_hub_credential(
     let includes_socket = Socket::new(
         txn,
         nats,
-        tenancy,
+        write_tenancy,
         visibility,
         history_actor,
         "includes",
@@ -672,7 +687,14 @@ async fn docker_hub_credential(
         .add_socket(txn, nats, visibility, history_actor, includes_socket.id())
         .await?;
 
-    let mut ui_menu = UiMenu::new(txn, nats, tenancy, visibility, history_actor).await?;
+    let mut ui_menu = UiMenu::new(
+        txn,
+        nats,
+        &(&read_tenancy).into(),
+        visibility,
+        history_actor,
+    )
+    .await?;
     ui_menu
         .set_name(
             txn,
@@ -706,8 +728,14 @@ async fn docker_hub_credential(
         .set_schema(txn, nats, visibility, history_actor, schema.id())
         .await?;
 
-    let application_schema_results =
-        Schema::find_by_attr(txn, tenancy, visibility, "name", &application_name).await?;
+    let application_schema_results = Schema::find_by_attr(
+        txn,
+        &(&read_tenancy).into(),
+        visibility,
+        "name",
+        &application_name,
+    )
+    .await?;
     let application_schema = application_schema_results
         .first()
         .ok_or(SchemaError::NotFoundByName(application_name))?;
@@ -728,7 +756,7 @@ async fn docker_hub_credential(
 async fn docker_image(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
-    tenancy: &Tenancy,
+    write_tenancy: &WriteTenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
     veritech: veritech::Client,
@@ -738,7 +766,7 @@ async fn docker_image(
     let mut schema = match create_schema(
         txn,
         nats,
-        tenancy,
+        write_tenancy,
         visibility,
         history_actor,
         &name,
@@ -753,7 +781,7 @@ async fn docker_image(
     let (variant, root_prop) = SchemaVariant::new(
         txn,
         nats,
-        tenancy,
+        write_tenancy,
         visibility,
         history_actor,
         "v0",
@@ -768,7 +796,15 @@ async fn docker_image(
         .set_default_schema_variant_id(txn, nats, visibility, history_actor, Some(*variant.id()))
         .await?;
 
-    let mut ui_menu = UiMenu::new(txn, nats, tenancy, visibility, history_actor).await?;
+    let read_tenancy = write_tenancy.clone_into_read_tenancy(txn).await?;
+    let mut ui_menu = UiMenu::new(
+        txn,
+        nats,
+        &(&read_tenancy).into(),
+        visibility,
+        history_actor,
+    )
+    .await?;
     ui_menu
         .set_name(
             txn,
@@ -802,8 +838,14 @@ async fn docker_image(
         .set_schema(txn, nats, visibility, history_actor, schema.id())
         .await?;
 
-    let application_schema_results =
-        Schema::find_by_attr(txn, tenancy, visibility, "name", &application_name).await?;
+    let application_schema_results = Schema::find_by_attr(
+        txn,
+        &(&read_tenancy).into(),
+        visibility,
+        "name",
+        &application_name,
+    )
+    .await?;
     let application_schema = application_schema_results
         .first()
         .ok_or(SchemaError::NotFoundByName(application_name))?;
@@ -822,7 +864,7 @@ async fn docker_image(
         nats,
         veritech.clone(),
         encryption_key,
-        tenancy,
+        &write_tenancy.into(),
         visibility,
         history_actor,
         "image",
@@ -848,7 +890,7 @@ async fn docker_image(
         nats,
         veritech.clone(),
         encryption_key,
-        tenancy,
+        &write_tenancy.into(),
         visibility,
         history_actor,
         "ExposedPorts",
@@ -869,7 +911,8 @@ async fn docker_image(
         .await?;
 
     let func_name = "si:validateStringEquals".to_string();
-    let mut funcs = Func::find_by_attr(txn, tenancy, visibility, "name", &func_name).await?;
+    let mut funcs =
+        Func::find_by_attr(txn, &(&read_tenancy).into(), visibility, "name", &func_name).await?;
     let func = funcs.pop().ok_or(SchemaError::MissingFunc(func_name))?;
     let mut validation_prototype_ctx = ValidationPrototypeContext::default();
     validation_prototype_ctx.set_prop_id(*image_prop.id());
@@ -878,7 +921,7 @@ async fn docker_image(
     ValidationPrototype::new(
         txn,
         nats,
-        tenancy,
+        &write_tenancy.into(),
         visibility,
         history_actor,
         *func.id(),
@@ -893,7 +936,7 @@ async fn docker_image(
     ValidationPrototype::new(
         txn,
         nats,
-        tenancy,
+        &write_tenancy.into(),
         visibility,
         history_actor,
         *func.id(),
@@ -910,7 +953,7 @@ async fn docker_image(
         nats,
         veritech.clone(),
         encryption_key,
-        tenancy,
+        &write_tenancy.into(),
         visibility,
         history_actor,
         "Number of Parents",
@@ -937,12 +980,13 @@ async fn docker_image(
     properties.insert("Number of Parents".to_owned(), serde_json::json!("0"));
 
     let func_name = "si:numberOfParents".to_string();
-    let mut funcs = Func::find_by_attr(txn, tenancy, visibility, "name", &func_name).await?;
+    let mut funcs =
+        Func::find_by_attr(txn, &(&read_tenancy).into(), visibility, "name", &func_name).await?;
     let func = funcs.pop().ok_or(SchemaError::MissingFunc(func_name))?;
     let (func_binding, _) = FuncBinding::find_or_create(
         txn,
         nats,
-        tenancy,
+        &write_tenancy.into(),
         visibility,
         history_actor,
         serde_json::to_value(FuncBackendJsAttributeArgs {
@@ -969,7 +1013,7 @@ async fn docker_image(
     AttributeResolver::upsert(
         txn,
         nats,
-        tenancy,
+        &write_tenancy.into(),
         visibility,
         history_actor,
         *func.id(),
@@ -985,7 +1029,7 @@ async fn docker_image(
     let input_socket = Socket::new(
         txn,
         nats,
-        tenancy,
+        write_tenancy,
         visibility,
         history_actor,
         "input",
@@ -1000,7 +1044,7 @@ async fn docker_image(
     let output_socket = Socket::new(
         txn,
         nats,
-        tenancy,
+        write_tenancy,
         visibility,
         history_actor,
         "output",
@@ -1015,7 +1059,7 @@ async fn docker_image(
     let includes_socket = Socket::new(
         txn,
         nats,
-        tenancy,
+        write_tenancy,
         visibility,
         history_actor,
         "includes",
@@ -1029,8 +1073,14 @@ async fn docker_image(
 
     // Qualification Prototype
     let qual_func_name = "si:qualificationDockerImageNameInspect".to_string();
-    let mut qual_funcs =
-        Func::find_by_attr(txn, tenancy, visibility, "name", &qual_func_name).await?;
+    let mut qual_funcs = Func::find_by_attr(
+        txn,
+        &(&read_tenancy).into(),
+        visibility,
+        "name",
+        &qual_func_name,
+    )
+    .await?;
     let qual_func = qual_funcs
         .pop()
         .ok_or(SchemaError::FuncNotFound(qual_func_name))?;
@@ -1042,7 +1092,7 @@ async fn docker_image(
     let mut prototype = QualificationPrototype::new(
         txn,
         nats,
-        tenancy,
+        &write_tenancy.into(),
         visibility,
         history_actor,
         *qual_func.id(),
@@ -1063,8 +1113,14 @@ async fn docker_image(
 
     // Resource Prototype
     let resource_sync_func_name = "si:resourceSyncHammer".to_string();
-    let mut resource_sync_funcs =
-        Func::find_by_attr(txn, tenancy, visibility, "name", &resource_sync_func_name).await?;
+    let mut resource_sync_funcs = Func::find_by_attr(
+        txn,
+        &(&read_tenancy).into(),
+        visibility,
+        "name",
+        &resource_sync_func_name,
+    )
+    .await?;
     let resource_sync_func = resource_sync_funcs
         .pop()
         .ok_or(SchemaError::FuncNotFound(resource_sync_func_name))?;
@@ -1076,7 +1132,7 @@ async fn docker_image(
     let _prototype = ResourcePrototype::new(
         txn,
         nats,
-        tenancy,
+        &write_tenancy.into(),
         visibility,
         history_actor,
         *resource_sync_func.id(),
@@ -1091,20 +1147,26 @@ async fn docker_image(
 async fn create_schema(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
-    tenancy: &Tenancy,
+    write_tenancy: &WriteTenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
     schema_name: &str,
     schema_kind: &SchemaKind,
 ) -> SchemaResult<Option<Schema>> {
+    let read_tenancy = write_tenancy.clone_into_read_tenancy(txn).await?;
     // TODO(nick): there's one issue here. If the schema kind has changed, then this check will be
     // inaccurate. As a result, we will be unable to re-create the schema without manual intervention.
     // This should be fine since this code should likely only last as long as default schemas need to
     // be created... which is hopefully not long.... hopefully...
-    let default_schema_exists =
-        !Schema::find_by_attr(txn, tenancy, visibility, "name", &schema_name.to_string())
-            .await?
-            .is_empty();
+    let default_schema_exists = !Schema::find_by_attr(
+        txn,
+        &(&read_tenancy).into(),
+        visibility,
+        "name",
+        &schema_name.to_string(),
+    )
+    .await?
+    .is_empty();
 
     // TODO(nick): this should probably return an "AlreadyExists" error instead of "None", but
     // since the calling function would have to deal with the result similarly, this should suffice
@@ -1115,7 +1177,7 @@ async fn create_schema(
             let schema = Schema::new(
                 txn,
                 nats,
-                tenancy,
+                &write_tenancy.into(),
                 visibility,
                 history_actor,
                 schema_name,
@@ -1134,7 +1196,7 @@ pub async fn create_prop(
     nats: &NatsTxn,
     veritech: veritech::Client,
     encryption_key: &EncryptionKey,
-    tenancy: &Tenancy,
+    write_tenancy: &WriteTenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
     variant_id: &SchemaVariantId,
@@ -1147,7 +1209,7 @@ pub async fn create_prop(
         nats,
         veritech,
         encryption_key,
-        tenancy,
+        &write_tenancy.into(),
         visibility,
         history_actor,
         prop_name,
@@ -1167,7 +1229,7 @@ pub async fn create_prop(
 pub async fn create_string_prop_with_default(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
-    tenancy: &Tenancy,
+    write_tenancy: &WriteTenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
     variant_id: &SchemaVariantId,
@@ -1182,7 +1244,7 @@ pub async fn create_string_prop_with_default(
         nats,
         veritech.clone(),
         encryption_key,
-        tenancy,
+        write_tenancy,
         visibility,
         history_actor,
         variant_id,
@@ -1195,7 +1257,7 @@ pub async fn create_string_prop_with_default(
     let mut func = Func::new(
         txn,
         nats,
-        tenancy,
+        &write_tenancy.into(),
         visibility,
         history_actor,
         &format!("si:setDefaultToProp{}", prop.id()),
@@ -1220,7 +1282,7 @@ pub async fn create_string_prop_with_default(
     let (func_binding, created) = FuncBinding::find_or_create(
         txn,
         nats,
-        tenancy,
+        &write_tenancy.into(),
         visibility,
         history_actor,
         // The default run doesn't have useful information, but it's just a reference for future reruns
@@ -1250,7 +1312,7 @@ pub async fn create_string_prop_with_default(
     AttributeResolver::upsert(
         txn,
         nats,
-        tenancy,
+        &write_tenancy.into(),
         visibility,
         history_actor,
         *func.id(),
@@ -1273,24 +1335,23 @@ pub struct RootProp {
 pub async fn create_root_prop(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
-    tenancy: &Tenancy,
+    write_tenancy: &WriteTenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
     variant_id: &SchemaVariantId,
     veritech: veritech::Client,
     encryption_key: &EncryptionKey,
 ) -> SchemaResult<RootProp> {
-    let mut schema_tenancy = tenancy.clone();
-    schema_tenancy.universal = true;
+    let read_tenancy = write_tenancy.clone_into_read_tenancy(txn).await?;
     let func_name = "si:setPropObject".to_string();
     let mut funcs =
-        Func::find_by_attr(txn, &schema_tenancy, visibility, "name", &func_name).await?;
+        Func::find_by_attr(txn, &(&read_tenancy).into(), visibility, "name", &func_name).await?;
     let func = funcs.pop().ok_or(SchemaError::MissingFunc(func_name))?;
 
     let (func_binding, created) = FuncBinding::find_or_create(
         txn,
         nats,
-        tenancy,
+        &write_tenancy.into(),
         visibility,
         history_actor,
         // Note: this 'value' property shouldn't need to exist, but it's deserialized to FuncBackendPropObjectArgs
@@ -1311,7 +1372,7 @@ pub async fn create_root_prop(
         nats,
         veritech.clone(),
         encryption_key,
-        tenancy,
+        &write_tenancy.into(),
         visibility,
         history_actor,
         "root",
@@ -1327,7 +1388,7 @@ pub async fn create_root_prop(
     AttributeResolver::upsert(
         txn,
         nats,
-        tenancy,
+        &write_tenancy.into(),
         visibility,
         history_actor,
         *func.id(),
@@ -1342,7 +1403,7 @@ pub async fn create_root_prop(
         nats,
         veritech.clone(),
         encryption_key,
-        tenancy,
+        &write_tenancy.into(),
         visibility,
         history_actor,
         "si",
@@ -1360,7 +1421,7 @@ pub async fn create_root_prop(
     AttributeResolver::upsert(
         txn,
         nats,
-        tenancy,
+        &write_tenancy.into(),
         visibility,
         history_actor,
         *func.id(),
@@ -1375,7 +1436,7 @@ pub async fn create_root_prop(
         nats,
         veritech.clone(),
         encryption_key,
-        tenancy,
+        &write_tenancy.into(),
         visibility,
         history_actor,
         "name",
@@ -1394,7 +1455,7 @@ pub async fn create_root_prop(
         nats,
         veritech.clone(),
         encryption_key,
-        tenancy,
+        &write_tenancy.into(),
         visibility,
         history_actor,
         "domain",
@@ -1412,7 +1473,7 @@ pub async fn create_root_prop(
     AttributeResolver::upsert(
         txn,
         nats,
-        tenancy,
+        &write_tenancy.into(),
         visibility,
         history_actor,
         *func.id(),

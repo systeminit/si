@@ -1,7 +1,7 @@
 use crate::schema::builtins::create_prop;
 use crate::schema::SchemaResult;
 use crate::{
-    HistoryActor, Prop, PropId, PropKind, SchemaVariantId, StandardModel, Tenancy, Visibility,
+    HistoryActor, Prop, PropId, PropKind, SchemaVariantId, StandardModel, Visibility, WriteTenancy,
 };
 use si_data::{NatsTxn, PgTxn};
 use veritech::EncryptionKey;
@@ -12,7 +12,7 @@ pub async fn create_selector_prop(
     nats: &NatsTxn,
     veritech: veritech::Client,
     encryption_key: &EncryptionKey,
-    tenancy: &Tenancy,
+    write_tenancy: &WriteTenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
     variant_id: &SchemaVariantId,
@@ -23,7 +23,7 @@ pub async fn create_selector_prop(
         nats,
         veritech.clone(),
         encryption_key,
-        tenancy,
+        write_tenancy,
         visibility,
         history_actor,
         variant_id,
@@ -39,7 +39,7 @@ pub async fn create_selector_prop(
             nats,
             veritech.clone(),
             encryption_key,
-            tenancy,
+            write_tenancy,
             visibility,
             history_actor,
             variant_id,
@@ -55,7 +55,7 @@ pub async fn create_selector_prop(
                 nats,
                 veritech.clone(),
                 encryption_key,
-                tenancy,
+                write_tenancy,
                 visibility,
                 history_actor,
                 variant_id,
@@ -74,7 +74,7 @@ pub async fn create_selector_prop(
                 nats,
                 veritech.clone(),
                 encryption_key,
-                tenancy,
+                write_tenancy,
                 visibility,
                 history_actor,
                 variant_id,
@@ -91,7 +91,7 @@ pub async fn create_selector_prop(
                 nats,
                 veritech.clone(),
                 encryption_key,
-                tenancy,
+                write_tenancy,
                 visibility,
                 history_actor,
                 variant_id,
@@ -109,7 +109,7 @@ pub async fn create_selector_prop(
             nats,
             veritech,
             encryption_key,
-            tenancy,
+            write_tenancy,
             visibility,
             history_actor,
             variant_id,

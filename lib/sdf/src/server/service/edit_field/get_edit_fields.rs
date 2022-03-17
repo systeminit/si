@@ -4,7 +4,7 @@ use dal::{
     edit_field::{EditFieldAble, EditFieldObjectKind, EditFields},
     schema,
     socket::Socket,
-    Component, Prop, QualificationCheck, Schema, Tenancy, Visibility, WorkspaceId,
+    Component, Prop, QualificationCheck, ReadTenancy, Schema, Visibility, WorkspaceId,
 };
 use serde::{Deserialize, Serialize};
 
@@ -34,51 +34,58 @@ pub async fn get_edit_fields(
 ) -> EditFieldResult<Json<GetEditFieldsResponse>> {
     let txn = txn.start().await?;
 
-    let mut tenancy = match request.workspace_id {
-        Some(workspace_id) => Tenancy::new_workspace(vec![workspace_id]),
-        None => Tenancy::new_billing_account(vec![claim.billing_account_id]),
+    let read_tenancy = match request.workspace_id {
+        Some(workspace_id) => ReadTenancy::new_workspace(&txn, vec![workspace_id]).await?,
+        None => ReadTenancy::new_billing_account(vec![claim.billing_account_id]),
     };
-    tenancy.universal = true;
 
     let edit_fields = match request.object_kind {
         EditFieldObjectKind::Component => {
-            Component::get_edit_fields(&txn, &tenancy, &request.visibility, &request.id.into())
+            Component::get_edit_fields(&txn, &read_tenancy, &request.visibility, &request.id.into())
                 .await?
         }
         EditFieldObjectKind::ComponentProp => {
-            Component::get_edit_fields(&txn, &tenancy, &request.visibility, &request.id.into())
+            Component::get_edit_fields(&txn, &read_tenancy, &request.visibility, &request.id.into())
                 .await?
         }
         EditFieldObjectKind::Prop => {
-            Prop::get_edit_fields(&txn, &tenancy, &request.visibility, &request.id.into()).await?
+            Prop::get_edit_fields(&txn, &read_tenancy, &request.visibility, &request.id.into())
+                .await?
         }
         EditFieldObjectKind::QualificationCheck => {
             QualificationCheck::get_edit_fields(
                 &txn,
-                &tenancy,
+                &read_tenancy,
                 &request.visibility,
                 &request.id.into(),
             )
             .await?
         }
         EditFieldObjectKind::Schema => {
-            Schema::get_edit_fields(&txn, &tenancy, &request.visibility, &request.id.into()).await?
+            Schema::get_edit_fields(&txn, &read_tenancy, &request.visibility, &request.id.into())
+                .await?
         }
         EditFieldObjectKind::SchemaUiMenu => {
-            schema::UiMenu::get_edit_fields(&txn, &tenancy, &request.visibility, &request.id.into())
-                .await?
+            schema::UiMenu::get_edit_fields(
+                &txn,
+                &read_tenancy,
+                &request.visibility,
+                &request.id.into(),
+            )
+            .await?
         }
         EditFieldObjectKind::SchemaVariant => {
             schema::SchemaVariant::get_edit_fields(
                 &txn,
-                &tenancy,
+                &read_tenancy,
                 &request.visibility,
                 &request.id.into(),
             )
             .await?
         }
         EditFieldObjectKind::Socket => {
-            Socket::get_edit_fields(&txn, &tenancy, &request.visibility, &request.id.into()).await?
+            Socket::get_edit_fields(&txn, &read_tenancy, &request.visibility, &request.id.into())
+                .await?
         }
     };
 

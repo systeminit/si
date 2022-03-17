@@ -1,6 +1,6 @@
 use dal::{
     schema::SchemaVariant, test_harness::create_schema, HistoryActor, SchemaKind, StandardModel,
-    Tenancy, Visibility,
+    Visibility, WriteTenancy,
 };
 use test_env_log::test;
 
@@ -19,13 +19,13 @@ async fn new() {
         veritech,
         encr_key,
     );
-    let tenancy = Tenancy::new_universal();
+    let write_tenancy = WriteTenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
     let (variant, _) = SchemaVariant::new(
         &txn,
         &nats,
-        &tenancy,
+        &write_tenancy,
         &visibility,
         &history_actor,
         "ringo",
@@ -50,13 +50,13 @@ async fn set_schema() {
         veritech,
         encr_key,
     );
-    let tenancy = Tenancy::new_universal();
+    let write_tenancy = WriteTenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
     let schema = create_schema(
         &txn,
         &nats,
-        &tenancy,
+        &(&write_tenancy).into(),
         &visibility,
         &history_actor,
         &SchemaKind::Concrete,
@@ -65,7 +65,7 @@ async fn set_schema() {
     let (variant, _) = SchemaVariant::new(
         &txn,
         &nats,
-        &tenancy,
+        &write_tenancy,
         &visibility,
         &history_actor,
         "v0",

@@ -1,7 +1,7 @@
 use dal::{
     socket::{Socket, SocketArity, SocketEdgeKind},
     test_harness::create_socket,
-    HistoryActor, Tenancy, Visibility,
+    HistoryActor, Visibility, WriteTenancy,
 };
 use test_env_log::test;
 
@@ -20,13 +20,13 @@ async fn new() {
         _veritech,
         _encr_key,
     );
-    let tenancy = Tenancy::new_universal();
+    let write_tenancy = WriteTenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
     let socket = Socket::new(
         &txn,
         &nats,
-        &tenancy,
+        &write_tenancy,
         &visibility,
         &history_actor,
         "jane",
@@ -53,10 +53,17 @@ async fn set_required() {
         _veritech,
         _encr_key,
     );
-    let tenancy = Tenancy::new_universal();
+    let write_tenancy = WriteTenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
-    let mut socket = create_socket(&txn, &nats, &tenancy, &visibility, &history_actor).await;
+    let mut socket = create_socket(
+        &txn,
+        &nats,
+        &(&write_tenancy).into(),
+        &visibility,
+        &history_actor,
+    )
+    .await;
 
     socket
         .set_required(&txn, &nats, &visibility, &history_actor, true)
