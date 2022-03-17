@@ -143,6 +143,9 @@ impl AttributePrototype {
             key.clone(),
         )
         .await?;
+        value
+            .set_attribute_prototype(txn, nats, visibility, history_actor, object.id())
+            .await?;
 
         if let Some(parent_attribute_value_id) = parent_attribute_value_id {
             value
