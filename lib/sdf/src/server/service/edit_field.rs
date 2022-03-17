@@ -7,7 +7,7 @@ use axum::{
 };
 use dal::{
     schema::variant::SchemaVariantError, socket::SocketError, ComponentError, PropError,
-    QualificationCheckError, SchemaError, StandardModelError,
+    QualificationCheckError, ReadTenancyError, SchemaError, StandardModelError,
 };
 use std::convert::Infallible;
 use thiserror::Error;
@@ -37,6 +37,8 @@ pub enum EditFieldError {
     Socket(#[from] SocketError),
     #[error("missing required baggage for edit field request; bug")]
     MissingBaggage,
+    #[error("read tenancy error: {0}")]
+    ReadTenancy(#[from] ReadTenancyError),
 }
 
 pub type EditFieldResult<T> = std::result::Result<T, EditFieldError>;

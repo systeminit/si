@@ -37,8 +37,6 @@ use crate::schema::variant::{SchemaVariantError, SchemaVariantId};
 use crate::schema::SchemaVariant;
 use crate::validation_resolver::ValidationResolverContext;
 use crate::ws_event::{WsEvent, WsEventError};
-use crate::Secret;
-use crate::{AttributeResolverId, Edge, EdgeError, PropError, System};
 
 use crate::func::backend::array::FuncBackendArrayArgs;
 use crate::func::backend::boolean::FuncBackendBooleanArgs;
@@ -46,15 +44,16 @@ use crate::func::backend::prop_object::FuncBackendPropObjectArgs;
 use crate::{
     impl_standard_model, pk, qualification::QualificationError, standard_model,
     standard_model_accessor, standard_model_belongs_to, standard_model_has_many, AttributeResolver,
-    AttributeResolverError, CodeGenerationPrototype, CodeGenerationPrototypeError,
-    CodeGenerationResolver, CodeGenerationResolverError, Func, FuncBackendKind, HistoryActor,
-    HistoryEventError, LabelEntry, LabelList, Node, NodeError, OrganizationError, Prop, PropId,
-    PropKind, QualificationPrototype, QualificationPrototypeError, QualificationResolver,
-    QualificationResolverError, ReadTenancy, ReadTenancyError, Resource, ResourceError,
-    ResourcePrototype, ResourcePrototypeError, ResourceResolver, ResourceResolverError,
-    ResourceView, Schema, SchemaError, SchemaId, StandardModel, StandardModelError, SystemId,
-    Tenancy, Timestamp, ValidationPrototype, ValidationPrototypeError, ValidationResolver,
-    ValidationResolverError, Visibility, WorkspaceError,
+    AttributeResolverError, AttributeResolverId, CodeGenerationPrototype,
+    CodeGenerationPrototypeError, CodeGenerationResolver, CodeGenerationResolverError, Edge,
+    EdgeError, Func, FuncBackendKind, HistoryActor, HistoryEventError, LabelEntry, LabelList, Node,
+    NodeError, OrganizationError, Prop, PropError, PropId, PropKind, QualificationPrototype,
+    QualificationPrototypeError, QualificationResolver, QualificationResolverError, ReadTenancy,
+    ReadTenancyError, Resource, ResourceError, ResourcePrototype, ResourcePrototypeError,
+    ResourceResolver, ResourceResolverError, ResourceView, Schema, SchemaError, SchemaId, Secret,
+    StandardModel, StandardModelError, System, SystemId, Tenancy, Timestamp, ValidationPrototype,
+    ValidationPrototypeError, ValidationResolver, ValidationResolverError, Visibility,
+    WorkspaceError, WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -433,7 +432,7 @@ impl Component {
         nats: &NatsTxn,
         veritech: veritech::Client,
         encryption_key: &EncryptionKey,
-        tenancy: &Tenancy,
+        write_tenancy: &WriteTenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
         component_id: ComponentId,
@@ -442,19 +441,24 @@ impl Component {
         value: Option<serde_json::Value>,
         key: Option<String>,
     ) -> ComponentResult<()> {
-        let mut schema_tenancy = tenancy.clone();
-        schema_tenancy.universal = true;
-        let prop = Prop::get_by_id(txn, &schema_tenancy, visibility, &prop_id)
+        let read_tenancy = write_tenancy.clone_into_read_tenancy(txn).await?;
+        let prop = Prop::get_by_id(txn, &(&read_tenancy).into(), visibility, &prop_id)
             .await?
             .ok_or(ComponentError::MissingProp(prop_id))?;
-        let component = Self::get_by_id(txn, tenancy, visibility, &component_id)
+        let component = Self::get_by_id(txn, &(&read_tenancy).into(), visibility, &component_id)
             .await?
             .ok_or(ComponentError::NotFound(component_id))?;
 
         // TODO: Eventually, we'll need the logic to be more complex than stuffing everything into
         // the "production" system, but that's a problem for "a week or two from now" us.
-        let mut systems =
-            System::find_by_attr(txn, tenancy, visibility, "name", &"production").await?;
+        let mut systems = System::find_by_attr(
+            txn,
+            &(&read_tenancy).into(),
+            visibility,
+            "name",
+            &"production",
+        )
+        .await?;
         let system = systems.pop().ok_or(ComponentError::SystemNotFound)?;
 
         let (value, _attribute_resolver_id, created) = component
@@ -463,7 +467,7 @@ impl Component {
                 nats,
                 veritech.clone(),
                 encryption_key,
-                tenancy,
+                &write_tenancy.into(),
                 visibility,
                 history_actor,
                 &prop,
@@ -480,7 +484,7 @@ impl Component {
                 nats,
                 veritech.clone(),
                 encryption_key,
-                tenancy,
+                &write_tenancy.into(),
                 visibility,
                 history_actor,
                 &prop,
@@ -496,7 +500,7 @@ impl Component {
                 nats,
                 veritech.clone(),
                 encryption_key,
-                tenancy,
+                &write_tenancy.into(),
                 visibility,
                 history_actor,
                 UNSET_ID_VALUE.into(), // TODO: properly obtain a system_id
@@ -509,7 +513,7 @@ impl Component {
                 nats,
                 veritech,
                 encryption_key,
-                tenancy,
+                &write_tenancy.into(),
                 visibility,
                 history_actor,
                 UNSET_ID_VALUE.into(), // TODO: properly obtain a system_id
@@ -1726,7 +1730,7 @@ impl Component {
                 nats,
                 veritech,
                 encryption_key,
-                tenancy,
+                &tenancy.into(),
                 visibility,
                 history_actor,
                 *self.id(),
@@ -1825,23 +1829,21 @@ impl EditFieldAble for Component {
 
     async fn get_edit_fields(
         txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
+        read_tenancy: &ReadTenancy,
         visibility: &Visibility,
         id: &ComponentId,
     ) -> ComponentResult<EditFields> {
-        let mut tenancy = tenancy.clone();
-        tenancy.universal = true;
         let head_visibility = Visibility::new_head(visibility.deleted);
         let change_set_visibility =
             Visibility::new_change_set(visibility.change_set_pk, visibility.deleted);
 
-        let component = Self::get_by_id(txn, &tenancy, visibility, id)
+        let component = Self::get_by_id(txn, &read_tenancy.into(), visibility, id)
             .await?
             .ok_or(ComponentError::NotFound(*id))?;
 
         let mut edit_fields = vec![];
         let schema_variant = component
-            .schema_variant_with_tenancy(txn, &tenancy, visibility)
+            .schema_variant_with_tenancy(txn, &read_tenancy.into(), visibility)
             .await?
             .ok_or(ComponentError::SchemaVariantNotFound)?;
 
@@ -1862,7 +1864,7 @@ impl EditFieldAble for Component {
             edit_fields.push(
                 edit_field_for_prop(
                     txn,
-                    &tenancy,
+                    &read_tenancy.into(),
                     visibility,
                     &head_visibility,
                     &change_set_visibility,
@@ -1882,7 +1884,7 @@ impl EditFieldAble for Component {
         _nats: &NatsTxn,
         _veritech: veritech::Client,
         _encryption_key: &EncryptionKey,
-        _tenancy: &Tenancy,
+        _write_tenancy: &WriteTenancy,
         _visibility: &Visibility,
         _history_actor: &HistoryActor,
         _id: Self::Id,

@@ -10,7 +10,7 @@ use crate::schema::{SchemaResult, SchemaVariant, UiMenu};
 use crate::socket::{Socket, SocketArity, SocketEdgeKind};
 use crate::{
     CodeGenerationPrototype, Func, HistoryActor, PropKind, QualificationPrototype, Schema,
-    SchemaError, SchemaKind, SchematicKind, StandardModel, Tenancy, Visibility,
+    SchemaError, SchemaKind, SchematicKind, StandardModel, Visibility, WriteTenancy,
 };
 use si_data::{NatsTxn, PgTxn};
 use veritech::EncryptionKey;
@@ -18,7 +18,7 @@ use veritech::EncryptionKey;
 pub async fn kubernetes_deployment(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
-    tenancy: &Tenancy,
+    write_tenancy: &WriteTenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
     veritech: veritech::Client,
@@ -28,7 +28,7 @@ pub async fn kubernetes_deployment(
     let mut schema = match create_schema(
         txn,
         nats,
-        tenancy,
+        write_tenancy,
         visibility,
         history_actor,
         &name,
@@ -43,7 +43,7 @@ pub async fn kubernetes_deployment(
     let (variant, root_prop) = SchemaVariant::new(
         txn,
         nats,
-        tenancy,
+        write_tenancy,
         visibility,
         history_actor,
         "v0",
@@ -63,7 +63,7 @@ pub async fn kubernetes_deployment(
         let _api_version_prop = create_string_prop_with_default(
             txn,
             nats,
-            tenancy,
+            write_tenancy,
             visibility,
             history_actor,
             variant.id(),
@@ -80,7 +80,7 @@ pub async fn kubernetes_deployment(
         let _kind_prop = create_string_prop_with_default(
             txn,
             nats,
-            tenancy,
+            write_tenancy,
             visibility,
             history_actor,
             variant.id(),
@@ -97,7 +97,7 @@ pub async fn kubernetes_deployment(
         let _metadata_prop = create_metadata_prop(
             txn,
             nats,
-            tenancy,
+            write_tenancy,
             visibility,
             history_actor,
             variant.id(),
@@ -115,7 +115,7 @@ pub async fn kubernetes_deployment(
             nats,
             veritech.clone(),
             encryption_key,
-            tenancy,
+            write_tenancy,
             visibility,
             history_actor,
             variant.id(),
@@ -131,7 +131,7 @@ pub async fn kubernetes_deployment(
                 nats,
                 veritech.clone(),
                 encryption_key,
-                tenancy,
+                write_tenancy,
                 visibility,
                 history_actor,
                 variant.id(),
@@ -148,7 +148,7 @@ pub async fn kubernetes_deployment(
                 nats,
                 veritech.clone(),
                 encryption_key,
-                tenancy,
+                write_tenancy,
                 visibility,
                 history_actor,
                 variant.id(),
@@ -161,7 +161,7 @@ pub async fn kubernetes_deployment(
             let _template_prop = create_template_prop(
                 txn,
                 nats,
-                tenancy,
+                write_tenancy,
                 visibility,
                 history_actor,
                 variant.id(),
@@ -174,9 +174,16 @@ pub async fn kubernetes_deployment(
     }
 
     // Qualification Prototype
+    let read_tenancy = write_tenancy.clone_into_read_tenancy(txn).await?;
     let qualification_func_name = "si:qualificationYamlKubeval".to_owned();
-    let mut qualification_funcs =
-        Func::find_by_attr(txn, tenancy, visibility, "name", &qualification_func_name).await?;
+    let mut qualification_funcs = Func::find_by_attr(
+        txn,
+        &(&read_tenancy).into(),
+        visibility,
+        "name",
+        &qualification_func_name,
+    )
+    .await?;
     let qualification_func = qualification_funcs
         .pop()
         .ok_or(SchemaError::FuncNotFound(qualification_func_name))?;
@@ -188,7 +195,7 @@ pub async fn kubernetes_deployment(
     let _prototype = QualificationPrototype::new(
         txn,
         nats,
-        tenancy,
+        &write_tenancy.into(),
         visibility,
         history_actor,
         *qualification_func.id(),
@@ -200,8 +207,14 @@ pub async fn kubernetes_deployment(
 
     // Code Generation Prototype
     let code_generation_func_name = "si:generateYAML".to_owned();
-    let mut code_generation_funcs =
-        Func::find_by_attr(txn, tenancy, visibility, "name", &code_generation_func_name).await?;
+    let mut code_generation_funcs = Func::find_by_attr(
+        txn,
+        &(&read_tenancy).into(),
+        visibility,
+        "name",
+        &code_generation_func_name,
+    )
+    .await?;
     let code_generation_func = code_generation_funcs
         .pop()
         .ok_or(SchemaError::FuncNotFound(code_generation_func_name))?;
@@ -213,7 +226,7 @@ pub async fn kubernetes_deployment(
     let _prototype = CodeGenerationPrototype::new(
         txn,
         nats,
-        tenancy,
+        &write_tenancy.into(),
         visibility,
         history_actor,
         *code_generation_func.id(),
@@ -229,7 +242,7 @@ pub async fn kubernetes_deployment(
     let input_socket = Socket::new(
         txn,
         nats,
-        tenancy,
+        write_tenancy,
         visibility,
         history_actor,
         "input",
@@ -244,7 +257,7 @@ pub async fn kubernetes_deployment(
     let output_socket = Socket::new(
         txn,
         nats,
-        tenancy,
+        write_tenancy,
         visibility,
         history_actor,
         "output",
@@ -259,7 +272,7 @@ pub async fn kubernetes_deployment(
     let includes_socket = Socket::new(
         txn,
         nats,
-        tenancy,
+        write_tenancy,
         visibility,
         history_actor,
         "includes",
@@ -272,7 +285,8 @@ pub async fn kubernetes_deployment(
         .await?;
 
     // TODO: abstract this boilerplate away
-    let mut ui_menu = UiMenu::new(txn, nats, tenancy, visibility, history_actor).await?;
+    let mut ui_menu =
+        UiMenu::new(txn, nats, &write_tenancy.into(), visibility, history_actor).await?;
     ui_menu
         .set_name(
             txn,
@@ -306,8 +320,14 @@ pub async fn kubernetes_deployment(
         .set_schema(txn, nats, visibility, history_actor, schema.id())
         .await?;
 
-    let application_schema_results =
-        Schema::find_by_attr(txn, tenancy, visibility, "name", &application_name).await?;
+    let application_schema_results = Schema::find_by_attr(
+        txn,
+        &(&read_tenancy).into(),
+        visibility,
+        "name",
+        &application_name,
+    )
+    .await?;
     let application_schema = application_schema_results
         .first()
         .ok_or(SchemaError::NotFoundByName(application_name))?;

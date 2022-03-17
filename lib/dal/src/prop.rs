@@ -22,8 +22,8 @@ use crate::{
     label_list::ToLabelList,
     pk, standard_model, standard_model_accessor, standard_model_belongs_to,
     standard_model_has_many, standard_model_many_to_many, AttributeResolver, Func, HistoryActor,
-    HistoryEventError, SchemaVariant, SchemaVariantId, StandardModel, StandardModelError, Tenancy,
-    Timestamp, Visibility,
+    HistoryEventError, ReadTenancy, SchemaVariant, SchemaVariantId, StandardModel,
+    StandardModelError, Tenancy, Timestamp, Visibility, WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -374,22 +374,22 @@ impl EditFieldAble for Prop {
 
     async fn get_edit_fields(
         txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
+        read_tenancy: &ReadTenancy,
         visibility: &Visibility,
         id: &Self::Id,
     ) -> Result<EditFields, Self::Error> {
-        let object = Self::get_by_id(txn, tenancy, visibility, id)
+        let object = Self::get_by_id(txn, &read_tenancy.into(), visibility, id)
             .await?
             .ok_or(Self::Error::NotFound(*id, *visibility))?;
         let head_object = if visibility.in_change_set() {
             let head_visibility = visibility.to_head();
-            Self::get_by_id(txn, tenancy, &head_visibility, id).await?
+            Self::get_by_id(txn, &read_tenancy.into(), &head_visibility, id).await?
         } else {
             None
         };
         let change_set_object = if visibility.in_change_set() {
             let change_set_visibility = visibility.to_change_set();
-            Self::get_by_id(txn, tenancy, &change_set_visibility, id).await?
+            Self::get_by_id(txn, &read_tenancy.into(), &change_set_visibility, id).await?
         } else {
             None
         };
@@ -408,14 +408,14 @@ impl EditFieldAble for Prop {
         nats: &NatsTxn,
         _veritech: veritech::Client,
         _encryption_key: &EncryptionKey,
-        tenancy: &Tenancy,
+        write_tenancy: &WriteTenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
         id: Self::Id,
         edit_field_id: String,
         value: Option<serde_json::Value>,
     ) -> Result<(), Self::Error> {
-        let mut object = Self::get_by_id(txn, tenancy, visibility, &id)
+        let mut object = Self::get_by_id(txn, &write_tenancy.into(), visibility, &id)
             .await?
             .ok_or(Self::Error::NotFound(id, *visibility))?;
 

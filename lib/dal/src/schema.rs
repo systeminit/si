@@ -19,9 +19,9 @@ use crate::{
     standard_model, standard_model_accessor, standard_model_has_many, standard_model_many_to_many,
     AttributeResolverError, BillingAccount, BillingAccountId, CodeGenerationPrototypeError,
     Component, FuncError, HistoryActor, HistoryEventError, LabelEntry, LabelList, Organization,
-    OrganizationId, PropError, QualificationPrototypeError, ResourcePrototypeError, StandardModel,
-    StandardModelError, Tenancy, Timestamp, ValidationPrototypeError, Visibility, Workspace,
-    WorkspaceId, WsEventError,
+    OrganizationId, PropError, QualificationPrototypeError, ReadTenancy, ReadTenancyError,
+    ResourcePrototypeError, StandardModel, StandardModelError, Tenancy, Timestamp,
+    ValidationPrototypeError, Visibility, Workspace, WorkspaceId, WriteTenancy, WsEventError,
 };
 
 use crate::socket::SocketError;
@@ -80,6 +80,8 @@ pub enum SchemaError {
     CodeGenerationPrototype(#[from] CodeGenerationPrototypeError),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
+    #[error("read tenancy error: {0}")]
+    ReadTenancy(#[from] ReadTenancyError),
 }
 
 pub type SchemaResult<T> = Result<T, SchemaError>;
@@ -366,7 +368,7 @@ impl Schema {
 
     async fn variants_edit_field(
         txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
+        read_tenancy: &ReadTenancy,
         visibility: &Visibility,
         object: &Self,
     ) -> SchemaResult<EditField> {
@@ -380,7 +382,7 @@ impl Schema {
             .into_iter()
         {
             let edit_fields =
-                SchemaVariant::get_edit_fields(txn, tenancy, visibility, variant.id()).await?;
+                SchemaVariant::get_edit_fields(txn, read_tenancy, visibility, variant.id()).await?;
             items.push(edit_fields);
         }
 
@@ -409,7 +411,7 @@ impl Schema {
 
     async fn ui_edit_field(
         txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
+        read_tenancy: &ReadTenancy,
         visibility: &Visibility,
         object: &Self,
     ) -> SchemaResult<EditField> {
@@ -423,7 +425,7 @@ impl Schema {
             .into_iter()
         {
             let edit_fields =
-                UiMenu::get_edit_fields(txn, tenancy, visibility, ui_menu.id()).await?;
+                UiMenu::get_edit_fields(txn, read_tenancy, visibility, ui_menu.id()).await?;
             items.push(edit_fields);
         }
 
@@ -458,23 +460,23 @@ impl EditFieldAble for Schema {
 
     async fn get_edit_fields(
         txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
+        read_tenancy: &ReadTenancy,
         visibility: &Visibility,
         id: &SchemaId,
     ) -> SchemaResult<EditFields> {
-        let object = Schema::get_by_id(txn, tenancy, visibility, id)
+        let object = Schema::get_by_id(txn, &read_tenancy.into(), visibility, id)
             .await?
             .ok_or(SchemaError::NotFound(*id))?;
         let head_object: Option<Schema> = if visibility.in_change_set() {
             let head_visibility = Visibility::new_head(visibility.deleted);
-            Schema::get_by_id(txn, tenancy, &head_visibility, id).await?
+            Schema::get_by_id(txn, &read_tenancy.into(), &head_visibility, id).await?
         } else {
             None
         };
         let change_set_object: Option<Schema> = if visibility.in_change_set() {
             let change_set_visibility =
                 Visibility::new_change_set(visibility.change_set_pk, visibility.deleted);
-            Schema::get_by_id(txn, tenancy, &change_set_visibility, id).await?
+            Schema::get_by_id(txn, &read_tenancy.into(), &change_set_visibility, id).await?
         } else {
             None
         };
@@ -482,8 +484,8 @@ impl EditFieldAble for Schema {
         Ok(vec![
             Self::name_edit_field(visibility, &object, &head_object, &change_set_object)?,
             Self::kind_edit_field(visibility, &object, &head_object, &change_set_object)?,
-            Self::variants_edit_field(txn, tenancy, visibility, &object).await?,
-            Self::ui_edit_field(txn, tenancy, visibility, &object).await?,
+            Self::variants_edit_field(txn, read_tenancy, visibility, &object).await?,
+            Self::ui_edit_field(txn, read_tenancy, visibility, &object).await?,
         ])
     }
 
@@ -492,7 +494,7 @@ impl EditFieldAble for Schema {
         nats: &NatsTxn,
         veritech: veritech::Client,
         encryption_key: &EncryptionKey,
-        tenancy: &Tenancy,
+        write_tenancy: &WriteTenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
         id: Self::Id,
@@ -500,7 +502,7 @@ impl EditFieldAble for Schema {
         value: Option<serde_json::Value>,
     ) -> SchemaResult<()> {
         let edit_field_id = edit_field_id.as_ref();
-        let mut object = Schema::get_by_id(txn, tenancy, visibility, &id)
+        let mut object = Schema::get_by_id(txn, &write_tenancy.into(), visibility, &id)
             .await?
             .ok_or(SchemaError::NotFound(id))?;
         // value: None = remove value, Some(v) = set value
@@ -531,7 +533,7 @@ impl EditFieldAble for Schema {
                 let (variant, _) = SchemaVariant::new(
                     txn,
                     nats,
-                    tenancy,
+                    write_tenancy,
                     visibility,
                     history_actor,
                     "TODO: name me!",
@@ -545,7 +547,8 @@ impl EditFieldAble for Schema {
             }
             "ui.menuItems" => {
                 let new_ui_menu =
-                    UiMenu::new(txn, nats, tenancy, visibility, history_actor).await?;
+                    UiMenu::new(txn, nats, &write_tenancy.into(), visibility, history_actor)
+                        .await?;
                 new_ui_menu
                     .set_schema(txn, nats, visibility, history_actor, object.id())
                     .await?;

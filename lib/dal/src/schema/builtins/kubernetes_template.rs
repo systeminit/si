@@ -3,7 +3,7 @@ use crate::schema::builtins::kubernetes_metadata::create_metadata_prop;
 use crate::schema::builtins::kubernetes_spec::create_spec_prop;
 use crate::schema::SchemaResult;
 use crate::{
-    HistoryActor, Prop, PropId, PropKind, SchemaVariantId, StandardModel, Tenancy, Visibility,
+    HistoryActor, Prop, PropId, PropKind, SchemaVariantId, StandardModel, Visibility, WriteTenancy,
 };
 use si_data::{NatsTxn, PgTxn};
 use veritech::EncryptionKey;
@@ -12,7 +12,7 @@ use veritech::EncryptionKey;
 pub async fn create_template_prop(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
-    tenancy: &Tenancy,
+    write_tenancy: &WriteTenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
     variant_id: &SchemaVariantId,
@@ -25,7 +25,7 @@ pub async fn create_template_prop(
         nats,
         veritech.clone(),
         encryption_key,
-        tenancy,
+        write_tenancy,
         visibility,
         history_actor,
         variant_id,
@@ -39,7 +39,7 @@ pub async fn create_template_prop(
         let _optional_metadata_prop = create_metadata_prop(
             txn,
             nats,
-            tenancy,
+            write_tenancy,
             visibility,
             history_actor,
             variant_id,
@@ -57,7 +57,7 @@ pub async fn create_template_prop(
             nats,
             veritech,
             encryption_key,
-            tenancy,
+            write_tenancy,
             visibility,
             history_actor,
             variant_id,
