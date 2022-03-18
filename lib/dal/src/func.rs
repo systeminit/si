@@ -6,6 +6,7 @@ use thiserror::Error;
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, HistoryActor,
     HistoryEventError, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
+    WriteTenancy,
 };
 
 use self::backend::{FuncBackendKind, FuncBackendResponseType};
@@ -74,7 +75,7 @@ impl Func {
     pub async fn new(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
-        tenancy: &Tenancy,
+        write_tenancy: &WriteTenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
         name: impl AsRef<str>,
@@ -86,7 +87,7 @@ impl Func {
             .query_one(
                 "SELECT object FROM func_create_v1($1, $2, $3, $4, $5)",
                 &[
-                    &tenancy,
+                    write_tenancy,
                     &visibility,
                     &name,
                     &backend_kind.as_ref(),
@@ -97,7 +98,7 @@ impl Func {
         let object = standard_model::finish_create_from_row(
             txn,
             nats,
-            tenancy,
+            &write_tenancy.into(),
             visibility,
             history_actor,
             row,

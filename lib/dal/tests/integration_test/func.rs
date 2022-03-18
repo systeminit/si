@@ -11,7 +11,7 @@ use dal::{
         create_visibility_edit_session,
     },
     Func, FuncBackendKind, FuncBackendResponseType, HistoryActor, StandardModel, Tenancy,
-    Visibility, NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK,
+    Visibility, WriteTenancy, NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK,
 };
 use test_env_log::test;
 
@@ -28,13 +28,13 @@ async fn new() {
         _veritech,
         _encr_key,
     );
-    let tenancy = Tenancy::new_universal();
+    let write_tenancy = WriteTenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
     let _func = Func::new(
         &txn,
         &nats,
-        &tenancy,
+        &write_tenancy,
         &visibility,
         &history_actor,
         "poop",
@@ -58,16 +58,23 @@ async fn func_binding_new() {
         _veritech,
         _encr_key,
     );
-    let tenancy = Tenancy::new_universal();
+    let write_tenancy = WriteTenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
-    let func = create_func(&txn, &nats, &tenancy, &visibility, &history_actor).await;
+    let func = create_func(
+        &txn,
+        &nats,
+        &(&write_tenancy).into(),
+        &visibility,
+        &history_actor,
+    )
+    .await;
     let args = FuncBackendStringArgs::new("floop".to_string());
     let args_json = serde_json::to_value(args).expect("cannot serialize args to json");
     let _func_binding = FuncBinding::new(
         &txn,
         &nats,
-        &tenancy,
+        &write_tenancy,
         &visibility,
         &history_actor,
         args_json,
@@ -91,16 +98,23 @@ async fn func_binding_find_or_create_head() {
         _veritech,
         _encr_key,
     );
-    let tenancy = Tenancy::new_universal();
+    let write_tenancy = WriteTenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
-    let func = create_func(&txn, &nats, &tenancy, &visibility, &history_actor).await;
+    let func = create_func(
+        &txn,
+        &nats,
+        &(&write_tenancy).into(),
+        &visibility,
+        &history_actor,
+    )
+    .await;
     let args = FuncBackendStringArgs::new("floop".to_string());
     let args_json = serde_json::to_value(args).expect("cannot serialize args to json");
     let (_func_binding, created) = FuncBinding::find_or_create(
         &txn,
         &nats,
-        &tenancy,
+        &write_tenancy,
         &visibility,
         &history_actor,
         args_json.clone(),
@@ -117,7 +131,7 @@ async fn func_binding_find_or_create_head() {
     let (_func_binding, created) = FuncBinding::find_or_create(
         &txn,
         &nats,
-        &tenancy,
+        &write_tenancy,
         &visibility,
         &history_actor,
         args_json,
@@ -164,7 +178,7 @@ async fn func_binding_find_or_create_edit_session() {
     let (edit_session_func_binding, created) = FuncBinding::find_or_create(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &edit_session_visibility,
         &history_actor,
         args_json.clone(),
@@ -181,7 +195,7 @@ async fn func_binding_find_or_create_edit_session() {
     let (edit_session_func_binding_again, created) = FuncBinding::find_or_create(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &edit_session_visibility,
         &history_actor,
         args_json.clone(),
@@ -210,7 +224,7 @@ async fn func_binding_find_or_create_edit_session() {
     let (change_set_func_binding, created) = FuncBinding::find_or_create(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &second_edit_session_visibility,
         &history_actor,
         args_json.clone(),
@@ -241,7 +255,7 @@ async fn func_binding_find_or_create_edit_session() {
     let (head_func_binding, created) = FuncBinding::find_or_create(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &final_visibility,
         &history_actor,
         args_json,
@@ -305,7 +319,7 @@ async fn func_binding_return_value_new() {
     let _func_binding_return_value = FuncBindingReturnValue::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         Some(serde_json::json!("funky")),
@@ -374,14 +388,14 @@ async fn func_binding_execute_unset() {
         veritech,
         encr_key
     );
-    let tenancy = Tenancy::new_universal();
+    let write_tenancy = WriteTenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
     let name = dal::test_harness::generate_fake_name();
     let func = Func::new(
         &txn,
         &nats,
-        &tenancy,
+        &write_tenancy,
         &visibility,
         &history_actor,
         name,
@@ -395,7 +409,7 @@ async fn func_binding_execute_unset() {
     let func_binding = create_func_binding(
         &txn,
         &nats,
-        &tenancy,
+        &(&write_tenancy).into(),
         &visibility,
         &history_actor,
         args,

@@ -30,7 +30,8 @@ use crate::{
     component::ComponentViewError, impl_standard_model, pk, qualification::QualificationResult,
     standard_model, standard_model_accessor, standard_model_belongs_to, ComponentView, Func,
     FuncBackendError, FuncBackendKind, HistoryActor, HistoryEvent, HistoryEventError,
-    StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
+    ReadTenancyError, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
+    WriteTenancy,
 };
 
 use super::{
@@ -63,6 +64,8 @@ pub enum FuncBindingError {
     FuncExecutionError(#[from] FuncExecutionError),
     #[error("component view error: {0}")]
     ComponentView(#[from] ComponentViewError),
+    #[error("read tenancy error: {0}")]
+    ReadTenancy(#[from] ReadTenancyError),
 }
 
 pub type FuncBindingResult<T> = Result<T, FuncBindingError>;
@@ -104,7 +107,7 @@ impl FuncBinding {
     pub async fn new(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
-        tenancy: &Tenancy,
+        write_tenancy: &WriteTenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
         args: serde_json::Value,
@@ -114,13 +117,13 @@ impl FuncBinding {
         let row = txn
             .query_one(
                 "SELECT object FROM func_binding_create_v1($1, $2, $3, $4)",
-                &[&tenancy, &visibility, &args, &backend_kind.as_ref()],
+                &[write_tenancy, &visibility, &args, &backend_kind.as_ref()],
             )
             .await?;
         let object: FuncBinding = standard_model::finish_create_from_row(
             txn,
             nats,
-            tenancy,
+            &write_tenancy.into(),
             visibility,
             history_actor,
             row,
@@ -137,17 +140,18 @@ impl FuncBinding {
     pub async fn find_or_create(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
-        tenancy: &Tenancy,
+        write_tenancy: &WriteTenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
         args: serde_json::Value,
         func_id: FuncId,
         backend_kind: FuncBackendKind,
     ) -> FuncBindingResult<(Self, bool)> {
+        let read_tenancy = write_tenancy.clone_into_read_tenancy(txn).await?;
         let row = txn
             .query_one(
                 "SELECT object, created FROM func_binding_find_or_create_v1($1, $2, $3, $4)",
-                &[&tenancy, &visibility, &args, &backend_kind.as_ref()],
+                &[&read_tenancy, &visibility, &args, &backend_kind.as_ref()],
             )
             .await?;
         let created: bool = row.try_get("created")?;
@@ -161,7 +165,7 @@ impl FuncBinding {
                 history_actor,
                 FuncBinding::history_event_message("created"),
                 &serde_json::json![{ "visibility": &visibility }],
-                tenancy,
+                &write_tenancy.into(),
             )
             .await?;
             let object: FuncBinding = serde_json::from_value(json_object)?;
@@ -459,7 +463,7 @@ impl FuncBinding {
         let fbrv = FuncBindingReturnValue::upsert(
             txn,
             nats,
-            &tenancy,
+            &(&tenancy).into(),
             &visibility,
             &history_actor,
             return_value.clone(),

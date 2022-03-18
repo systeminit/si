@@ -50,20 +50,24 @@ impl UiMenu {
     pub async fn new(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
-        tenancy: &Tenancy,
+        write_tenancy: &WriteTenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
     ) -> SchemaResult<Self> {
         let row = txn
             .query_one(
                 "SELECT object FROM schema_ui_menu_create_v1($1, $2, $3)",
-                &[&tenancy, &visibility, &SchematicKind::Component.as_ref()],
+                &[
+                    write_tenancy,
+                    &visibility,
+                    &SchematicKind::Component.as_ref(),
+                ],
             )
             .await?;
         let object = standard_model::finish_create_from_row(
             txn,
             nats,
-            tenancy,
+            &write_tenancy.into(),
             visibility,
             history_actor,
             row,

@@ -146,6 +146,11 @@ impl ReadTenancy {
         }
         Ok(read)
     }
+
+    pub fn into_local(mut self) -> Self {
+        self.universal = false;
+        self
+    }
 }
 
 impl postgres_types::ToSql for ReadTenancy {

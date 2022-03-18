@@ -46,7 +46,14 @@ async fn new() {
     .expect("no docker image found");
 
     let default_variant = schema
-        .default_variant(&txn, &tenancy, &visibility)
+        .default_variant(
+            &txn,
+            &tenancy
+                .clone_into_read_tenancy(&txn)
+                .await
+                .expect("unable to generate read tenancy"),
+            &visibility,
+        )
         .await
         .expect("cannot find default variant");
 
@@ -72,7 +79,7 @@ async fn new() {
     let func = Func::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         "test:setString",
@@ -86,7 +93,7 @@ async fn new() {
     let func_binding = FuncBinding::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         serde_json::to_value(args).expect("cannot turn args into json"),
@@ -335,7 +342,7 @@ async fn list_for_context() {
     let func = Func::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         "si:setString",
@@ -349,7 +356,7 @@ async fn list_for_context() {
     let func_binding = FuncBinding::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         serde_json::to_value(args).expect("cannot turn args into json"),
@@ -579,7 +586,7 @@ async fn list_for_context_with_a_hash() {
     let func = Func::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         "si:setString",
@@ -592,7 +599,7 @@ async fn list_for_context_with_a_hash() {
     let undertow_prop_func_binding = FuncBinding::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         serde_json::to_value(FuncBackendStringArgs::new("1993".to_string()))
@@ -625,7 +632,7 @@ async fn list_for_context_with_a_hash() {
     let lateralus_prop_func_binding = FuncBinding::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         serde_json::to_value(FuncBackendStringArgs::new("2001".to_string()))
@@ -676,7 +683,7 @@ async fn list_for_context_with_a_hash() {
     let lateralus_component_func_binding = FuncBinding::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         serde_json::to_value(FuncBackendStringArgs::new("The Early 2000s".to_string()))
@@ -709,7 +716,7 @@ async fn list_for_context_with_a_hash() {
     let fear_inoculum_component_func_binding = FuncBinding::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         serde_json::to_value(FuncBackendStringArgs::new("2019".to_string()))

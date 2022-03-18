@@ -94,7 +94,7 @@ impl BillingAccount {
     pub async fn new(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
-        tenancy: &Tenancy,
+        write_tenancy: &WriteTenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
         name: impl AsRef<str>,
@@ -104,13 +104,13 @@ impl BillingAccount {
         let row = txn
             .query_one(
                 "SELECT object FROM billing_account_create_v1($1, $2, $3, $4)",
-                &[&tenancy, &visibility, &name, &description],
+                &[write_tenancy, &visibility, &name, &description],
             )
             .await?;
         let object = standard_model::finish_create_from_row(
             txn,
             nats,
-            tenancy,
+            &write_tenancy.into(),
             visibility,
             history_actor,
             row,
@@ -150,7 +150,7 @@ impl BillingAccount {
     pub async fn signup(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
-        tenancy: &Tenancy,
+        write_tenancy: &WriteTenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
         billing_account_name: impl AsRef<str>,
@@ -161,7 +161,7 @@ impl BillingAccount {
         let billing_account = BillingAccount::new(
             txn,
             nats,
-            tenancy,
+            write_tenancy,
             visibility,
             history_actor,
             billing_account_name,
@@ -330,13 +330,16 @@ impl BillingAccount {
 
     pub async fn find_by_name(
         txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
+        read_tenancy: &ReadTenancy,
         visibility: &Visibility,
         name: impl AsRef<str>,
     ) -> BillingAccountResult<Option<BillingAccount>> {
         let name = name.as_ref();
         let maybe_row = txn
-            .query_opt(BILLING_ACCOUNT_GET_BY_NAME, &[&name, &tenancy, &visibility])
+            .query_opt(
+                BILLING_ACCOUNT_GET_BY_NAME,
+                &[&name, read_tenancy, &visibility],
+            )
             .await?;
         let result = option_object_from_row(maybe_row)?;
         Ok(result)
@@ -344,12 +347,15 @@ impl BillingAccount {
 
     pub async fn get_defaults(
         txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
+        read_tenancy: &ReadTenancy,
         visibility: &Visibility,
         id: &BillingAccountId,
     ) -> BillingAccountResult<BillingAccountDefaults> {
         let row = txn
-            .query_one(BILLING_ACCOUNT_GET_DEFAULTS, &[&tenancy, &visibility, &id])
+            .query_one(
+                BILLING_ACCOUNT_GET_DEFAULTS,
+                &[read_tenancy, &visibility, &id],
+            )
             .await?;
         let organization_json: serde_json::Value = row.try_get("organization")?;
         let organization: Organization = serde_json::from_value(organization_json)?;
@@ -358,7 +364,7 @@ impl BillingAccount {
 
         // TODO(fnichol): this query should get rolled up into the above query...
         let system = workspace
-            .systems(txn, tenancy, visibility)
+            .systems(txn, &read_tenancy.into(), visibility)
             .await?
             .into_iter()
             .find(|system| system.name() == INITIAL_SYSTEM_NAME)

@@ -3,7 +3,7 @@ use crate::server::extract::{Authorization, EncryptionKey, NatsTxn, PgRwTxn, Ver
 use axum::Json;
 use dal::{
     Component, HistoryActor, Schema, StandardModel, Tenancy, Visibility, Workspace, WorkspaceId,
-    WsEvent, WsPayload, NO_CHANGE_SET_PK,
+    WriteTenancy, WsEvent, WsPayload, NO_CHANGE_SET_PK,
 };
 use serde::{Deserialize, Serialize};
 use si_data::PgTxn;
@@ -44,7 +44,7 @@ pub async fn create_application(
     )
     .await?
     .ok_or(ApplicationError::InvalidRequest)?;
-    let tenancy = Tenancy::new_workspace(vec![*workspace.id()]);
+    let write_tenancy = WriteTenancy::new_workspace(*workspace.id());
 
     // You can only create applications directly to head? This feels wrong, but..
     let visibility = Visibility::new_head(false);
@@ -54,7 +54,7 @@ pub async fn create_application(
         &nats,
         veritech.clone(),
         &encryption_key,
-        &tenancy,
+        &(&write_tenancy).into(),
         &visibility,
         &history_actor,
         &request.name,
@@ -68,7 +68,7 @@ pub async fn create_application(
         &nats,
         veritech,
         &encryption_key,
-        &tenancy,
+        &write_tenancy,
         &visibility,
         &history_actor,
     )
@@ -94,13 +94,13 @@ async fn create_service_with_node(
     nats: &si_data::NatsTxn,
     veritech: veritech::Client,
     encryption_key: &veritech::EncryptionKey,
-    tenancy: &Tenancy,
+    write_tenancy: &WriteTenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
 ) -> ApplicationResult<()> {
-    let universal_tenancy = Tenancy::new_universal();
+    let read_tenancy = write_tenancy.clone_into_read_tenancy(txn).await?;
     let schema_variant_id =
-        Schema::default_schema_variant_id_for_name(txn, &universal_tenancy, visibility, "service")
+        Schema::default_schema_variant_id_for_name(txn, &read_tenancy, visibility, "service")
             .await?;
 
     let (_component, _node) = Component::new_for_schema_variant_with_node(
@@ -108,7 +108,7 @@ async fn create_service_with_node(
         nats,
         veritech,
         encryption_key,
-        tenancy,
+        &write_tenancy.into(),
         visibility,
         history_actor,
         "whiskers",

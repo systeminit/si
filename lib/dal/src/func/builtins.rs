@@ -52,7 +52,7 @@ async fn si_generate_yaml(
         let mut func = Func::new(
             txn,
             nats,
-            tenancy,
+            &tenancy.into(),
             visibility,
             history_actor,
             "si:generateYAML",
@@ -90,7 +90,7 @@ async fn si_number_of_parents(
         let mut func = Func::new(
             txn,
             nats,
-            tenancy,
+            &tenancy.into(),
             visibility,
             history_actor,
             "si:numberOfParents",
@@ -134,7 +134,7 @@ async fn si_set_array(
         Func::new(
             txn,
             nats,
-            tenancy,
+            &tenancy.into(),
             visibility,
             history_actor,
             "si:setArray",
@@ -166,7 +166,7 @@ async fn si_set_boolean(
         Func::new(
             txn,
             nats,
-            tenancy,
+            &tenancy.into(),
             visibility,
             history_actor,
             "si:setBoolean",
@@ -198,7 +198,7 @@ async fn si_set_integer(
         Func::new(
             txn,
             nats,
-            tenancy,
+            &tenancy.into(),
             visibility,
             history_actor,
             "si:setInteger",
@@ -231,7 +231,7 @@ async fn si_set_prop_object(
         Func::new(
             txn,
             nats,
-            tenancy,
+            &tenancy.into(),
             visibility,
             history_actor,
             "si:setPropObject",
@@ -258,7 +258,7 @@ async fn si_set_map(
         Func::new(
             txn,
             nats,
-            tenancy,
+            &tenancy.into(),
             visibility,
             history_actor,
             "si:setMap",
@@ -291,7 +291,7 @@ async fn si_set_string(
         Func::new(
             txn,
             nats,
-            tenancy,
+            &tenancy.into(),
             visibility,
             history_actor,
             "si:setString",
@@ -317,7 +317,7 @@ async fn si_unset(
         Func::new(
             txn,
             nats,
-            tenancy,
+            &tenancy.into(),
             visibility,
             history_actor,
             "si:unset",
@@ -343,7 +343,7 @@ async fn si_validate_string_equals(
         Func::new(
             txn,
             nats,
-            tenancy,
+            &tenancy.into(),
             visibility,
             history_actor,
             &func_name,
@@ -370,7 +370,7 @@ async fn si_qualification_always_true(
         let mut new_func = Func::new(
             txn,
             nats,
-            tenancy,
+            &tenancy.into(),
             visibility,
             history_actor,
             &func_name,
@@ -421,7 +421,7 @@ async fn si_resource_sync_hammer(
         let mut new_func = Func::new(
             txn,
             nats,
-            tenancy,
+            &tenancy.into(),
             visibility,
             history_actor,
             &func_name,
@@ -471,7 +471,7 @@ async fn si_qualification_docker_image_name_inspect(
         let mut new_func = Func::new(
             txn,
             nats,
-            tenancy,
+            &tenancy.into(),
             visibility,
             history_actor,
             &func_name,
@@ -523,7 +523,7 @@ async fn si_qualification_yaml_kubeval(
         let mut new_func = Func::new(
             txn,
             nats,
-            tenancy,
+            &tenancy.into(),
             visibility,
             history_actor,
             &func_name,
@@ -573,7 +573,7 @@ async fn si_qualification_docker_hub_login(
         let mut new_func = Func::new(
             txn,
             nats,
-            tenancy,
+            &tenancy.into(),
             visibility,
             history_actor,
             &func_name,

@@ -2,7 +2,9 @@ use crate::test_setup;
 
 use dal::schema::SchemaKind;
 use dal::test_harness::{create_schema, create_schema_ui_menu};
-use dal::{schema::UiMenu, HistoryActor, SchematicKind, StandardModel, Tenancy, Visibility};
+use dal::{
+    schema::UiMenu, HistoryActor, SchematicKind, StandardModel, Tenancy, Visibility, WriteTenancy,
+};
 use test_env_log::test;
 
 #[test(tokio::test)]
@@ -18,10 +20,10 @@ async fn new() {
         _veritech,
         _encr_key,
     );
-    let tenancy = Tenancy::new_universal();
+    let write_tenancy = WriteTenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
-    let schema_ui_menu = UiMenu::new(&txn, &nats, &tenancy, &visibility, &history_actor)
+    let schema_ui_menu = UiMenu::new(&txn, &nats, &write_tenancy, &visibility, &history_actor)
         .await
         .expect("cannot create schema ui menu");
     assert_eq!(schema_ui_menu.name(), None);

@@ -22,8 +22,8 @@ use crate::{
     label_list::ToLabelList,
     pk, standard_model, standard_model_accessor, standard_model_belongs_to,
     standard_model_has_many, standard_model_many_to_many, AttributeResolver, Func, HistoryActor,
-    HistoryEventError, ReadTenancy, SchemaVariant, SchemaVariantId, StandardModel,
-    StandardModelError, Tenancy, Timestamp, Visibility, WriteTenancy,
+    HistoryEventError, ReadTenancy, ReadTenancyError, SchemaVariant, SchemaVariantId,
+    StandardModel, StandardModelError, Tenancy, Timestamp, Visibility, WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -51,7 +51,9 @@ pub enum PropError {
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
     #[error("standard model error: {0}")]
-    StandardModelError(#[from] StandardModelError),
+    StandardModel(#[from] StandardModelError),
+    #[error("read tenancy error: {0}")]
+    ReadTenancy(#[from] ReadTenancyError),
     #[error("cannot set parent for a non object, array, or map prop: id {0} is a {1}. Bug!")]
     ParentNotAllowed(PropId, PropKind),
 }
@@ -131,7 +133,7 @@ impl Prop {
         nats: &NatsTxn,
         veritech: veritech::Client,
         encryption_key: &EncryptionKey,
-        tenancy: &Tenancy,
+        write_tenancy: &WriteTenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
         name: impl AsRef<str>,
@@ -143,7 +145,7 @@ impl Prop {
             .query_one(
                 "SELECT object FROM prop_create_v1($1, $2, $3, $4, $5)",
                 &[
-                    tenancy,
+                    write_tenancy,
                     visibility,
                     &name,
                     &kind.as_ref(),
@@ -154,24 +156,23 @@ impl Prop {
         let object: Prop = standard_model::finish_create_from_row(
             txn,
             nats,
-            tenancy,
+            &write_tenancy.into(),
             visibility,
             history_actor,
             row,
         )
         .await?;
 
-        // Set default prop value as 'unset'
-        let mut schema_tenancy = tenancy.clone();
-        schema_tenancy.universal = true;
+        let read_tenancy = write_tenancy.clone_into_read_tenancy(txn).await?;
         let func_name = "si:unset".to_string();
         let mut funcs =
-            Func::find_by_attr(txn, &schema_tenancy, visibility, "name", &func_name).await?;
+            Func::find_by_attr(txn, &(&read_tenancy).into(), visibility, "name", &func_name)
+                .await?;
         let func = funcs.pop().ok_or(PropError::MissingFunc(func_name))?;
         let (func_binding, created) = FuncBinding::find_or_create(
             txn,
             nats,
-            tenancy,
+            write_tenancy,
             visibility,
             history_actor,
             serde_json::json![null],
@@ -191,7 +192,7 @@ impl Prop {
         AttributeResolver::upsert(
             txn,
             nats,
-            tenancy,
+            &write_tenancy.into(),
             visibility,
             history_actor,
             *func.id(),
@@ -205,7 +206,7 @@ impl Prop {
         AttributePrototype::new(
             txn,
             nats,
-            tenancy,
+            &write_tenancy.into(),
             visibility,
             history_actor,
             *func.id(),

@@ -2,7 +2,7 @@ use super::{ChangeSetError, ChangeSetResult};
 use crate::server::extract::{Authorization, PgRoTxn};
 use axum::extract::Query;
 use axum::Json;
-use dal::{ChangeSet, ChangeSetPk, Tenancy};
+use dal::{ChangeSet, ChangeSetPk, ReadTenancy};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -23,8 +23,8 @@ pub async fn get_change_set(
     Authorization(claim): Authorization,
 ) -> ChangeSetResult<Json<GetChangeSetResponse>> {
     let txn = txn.start().await?;
-    let tenancy = Tenancy::new_billing_account(vec![claim.billing_account_id]);
-    let change_set = ChangeSet::get_by_pk(&txn, &tenancy, &request.pk)
+    let read_tenancy = ReadTenancy::new_billing_account(vec![claim.billing_account_id]);
+    let change_set = ChangeSet::get_by_pk(&txn, &read_tenancy, &request.pk)
         .await?
         .ok_or(ChangeSetError::ChangeSetNotFound)?;
     txn.commit().await?;

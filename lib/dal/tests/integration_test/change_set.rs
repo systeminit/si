@@ -4,8 +4,8 @@ use dal::test_harness::{
     create_edit_session, create_visibility_edit_session, create_visibility_head,
 };
 use dal::{
-    BillingAccount, ChangeSet, ChangeSetStatus, HistoryActor, StandardModel, Tenancy, Visibility,
-    NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK,
+    BillingAccount, ChangeSet, ChangeSetStatus, HistoryActor, ReadTenancy, StandardModel, Tenancy,
+    Visibility, WriteTenancy, NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK,
 };
 use test_env_log::test;
 
@@ -23,12 +23,12 @@ async fn new() {
         _encr_key
     );
 
-    let tenancy = Tenancy::new_universal();
+    let write_tenancy = WriteTenancy::new_universal();
     let history_actor = HistoryActor::SystemInit;
     let change_set = ChangeSet::new(
         &txn,
         &nats,
-        &tenancy,
+        &write_tenancy,
         &history_actor,
         "mastodon rocks",
         Some(&"they are a really good band and you should like them".to_string()),
@@ -41,7 +41,7 @@ async fn new() {
         &change_set.note,
         &Some("they are a really good band and you should like them".to_string())
     );
-    assert_eq!(&change_set.tenancy, &tenancy);
+    assert_eq!(&change_set.tenancy, &Tenancy::from(&write_tenancy));
 }
 
 #[test(tokio::test)]
@@ -130,7 +130,12 @@ async fn list_open() {
     let a_change_set = create_change_set(&txn, &nats, &tenancy, &history_actor).await;
     let b_change_set = create_change_set(&txn, &nats, &tenancy, &history_actor).await;
     let mut c_change_set = create_change_set(&txn, &nats, &tenancy, &history_actor).await;
-    let full_list = ChangeSet::list_open(&txn, &tenancy)
+    let read_tenancy = tenancy
+        .clone_into_read_tenancy(&txn)
+        .await
+        .expect("unable to generate read tenancy")
+        .into_local();
+    let full_list = ChangeSet::list_open(&txn, &read_tenancy)
         .await
         .expect("cannot get list of open change sets");
     assert_eq!(full_list.len(), 3);
@@ -150,7 +155,7 @@ async fn list_open() {
         .apply(&txn, &nats, &history_actor)
         .await
         .expect("cannot apply change set");
-    let partial_list = ChangeSet::list_open(&txn, &tenancy)
+    let partial_list = ChangeSet::list_open(&txn, &read_tenancy)
         .await
         .expect("cannot get list of open change sets");
     assert_eq!(partial_list.len(), 2);
@@ -178,10 +183,10 @@ async fn get_by_pk() {
         _encr_key
     );
 
-    let tenancy = Tenancy::new_universal();
+    let read_tenancy = ReadTenancy::new_universal();
     let history_actor = HistoryActor::SystemInit;
-    let change_set = create_change_set(&txn, &nats, &tenancy, &history_actor).await;
-    let result = ChangeSet::get_by_pk(&txn, &tenancy, &change_set.pk)
+    let change_set = create_change_set(&txn, &nats, &(&read_tenancy).into(), &history_actor).await;
+    let result = ChangeSet::get_by_pk(&txn, &read_tenancy, &change_set.pk)
         .await
         .expect("cannot get change set by pk")
         .expect("change set pk should exist");

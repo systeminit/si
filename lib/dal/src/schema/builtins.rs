@@ -298,8 +298,7 @@ async fn service(
         None => return Ok(()),
     };
 
-    let mut ui_menu =
-        UiMenu::new(txn, nats, &write_tenancy.into(), visibility, history_actor).await?;
+    let mut ui_menu = UiMenu::new(txn, nats, write_tenancy, visibility, history_actor).await?;
     ui_menu
         .set_name(
             txn,
@@ -570,7 +569,7 @@ async fn docker_hub_credential(
         nats,
         veritech.clone(),
         encryption_key,
-        &write_tenancy.into(),
+        write_tenancy,
         visibility,
         history_actor,
         "secret",
@@ -620,7 +619,7 @@ async fn docker_hub_credential(
     let mut prototype = QualificationPrototype::new(
         txn,
         nats,
-        &write_tenancy.into(),
+        write_tenancy,
         visibility,
         history_actor,
         *qual_func.id(),
@@ -687,14 +686,7 @@ async fn docker_hub_credential(
         .add_socket(txn, nats, visibility, history_actor, includes_socket.id())
         .await?;
 
-    let mut ui_menu = UiMenu::new(
-        txn,
-        nats,
-        &(&read_tenancy).into(),
-        visibility,
-        history_actor,
-    )
-    .await?;
+    let mut ui_menu = UiMenu::new(txn, nats, write_tenancy, visibility, history_actor).await?;
     ui_menu
         .set_name(
             txn,
@@ -797,14 +789,7 @@ async fn docker_image(
         .await?;
 
     let read_tenancy = write_tenancy.clone_into_read_tenancy(txn).await?;
-    let mut ui_menu = UiMenu::new(
-        txn,
-        nats,
-        &(&read_tenancy).into(),
-        visibility,
-        history_actor,
-    )
-    .await?;
+    let mut ui_menu = UiMenu::new(txn, nats, write_tenancy, visibility, history_actor).await?;
     ui_menu
         .set_name(
             txn,
@@ -864,7 +849,7 @@ async fn docker_image(
         nats,
         veritech.clone(),
         encryption_key,
-        &write_tenancy.into(),
+        write_tenancy,
         visibility,
         history_actor,
         "image",
@@ -890,7 +875,7 @@ async fn docker_image(
         nats,
         veritech.clone(),
         encryption_key,
-        &write_tenancy.into(),
+        write_tenancy,
         visibility,
         history_actor,
         "ExposedPorts",
@@ -921,7 +906,7 @@ async fn docker_image(
     ValidationPrototype::new(
         txn,
         nats,
-        &write_tenancy.into(),
+        write_tenancy,
         visibility,
         history_actor,
         *func.id(),
@@ -936,7 +921,7 @@ async fn docker_image(
     ValidationPrototype::new(
         txn,
         nats,
-        &write_tenancy.into(),
+        write_tenancy,
         visibility,
         history_actor,
         *func.id(),
@@ -953,7 +938,7 @@ async fn docker_image(
         nats,
         veritech.clone(),
         encryption_key,
-        &write_tenancy.into(),
+        write_tenancy,
         visibility,
         history_actor,
         "Number of Parents",
@@ -986,7 +971,7 @@ async fn docker_image(
     let (func_binding, _) = FuncBinding::find_or_create(
         txn,
         nats,
-        &write_tenancy.into(),
+        write_tenancy,
         visibility,
         history_actor,
         serde_json::to_value(FuncBackendJsAttributeArgs {
@@ -1092,7 +1077,7 @@ async fn docker_image(
     let mut prototype = QualificationPrototype::new(
         txn,
         nats,
-        &write_tenancy.into(),
+        write_tenancy,
         visibility,
         history_actor,
         *qual_func.id(),
@@ -1132,7 +1117,7 @@ async fn docker_image(
     let _prototype = ResourcePrototype::new(
         txn,
         nats,
-        &write_tenancy.into(),
+        write_tenancy,
         visibility,
         history_actor,
         *resource_sync_func.id(),
@@ -1177,7 +1162,7 @@ async fn create_schema(
             let schema = Schema::new(
                 txn,
                 nats,
-                &write_tenancy.into(),
+                write_tenancy,
                 visibility,
                 history_actor,
                 schema_name,
@@ -1209,7 +1194,7 @@ pub async fn create_prop(
         nats,
         veritech,
         encryption_key,
-        &write_tenancy.into(),
+        write_tenancy,
         visibility,
         history_actor,
         prop_name,
@@ -1257,7 +1242,7 @@ pub async fn create_string_prop_with_default(
     let mut func = Func::new(
         txn,
         nats,
-        &write_tenancy.into(),
+        write_tenancy,
         visibility,
         history_actor,
         &format!("si:setDefaultToProp{}", prop.id()),
@@ -1282,7 +1267,7 @@ pub async fn create_string_prop_with_default(
     let (func_binding, created) = FuncBinding::find_or_create(
         txn,
         nats,
-        &write_tenancy.into(),
+        write_tenancy,
         visibility,
         history_actor,
         // The default run doesn't have useful information, but it's just a reference for future reruns
@@ -1351,7 +1336,7 @@ pub async fn create_root_prop(
     let (func_binding, created) = FuncBinding::find_or_create(
         txn,
         nats,
-        &write_tenancy.into(),
+        write_tenancy,
         visibility,
         history_actor,
         // Note: this 'value' property shouldn't need to exist, but it's deserialized to FuncBackendPropObjectArgs
@@ -1372,7 +1357,7 @@ pub async fn create_root_prop(
         nats,
         veritech.clone(),
         encryption_key,
-        &write_tenancy.into(),
+        write_tenancy,
         visibility,
         history_actor,
         "root",
@@ -1403,7 +1388,7 @@ pub async fn create_root_prop(
         nats,
         veritech.clone(),
         encryption_key,
-        &write_tenancy.into(),
+        write_tenancy,
         visibility,
         history_actor,
         "si",
@@ -1436,7 +1421,7 @@ pub async fn create_root_prop(
         nats,
         veritech.clone(),
         encryption_key,
-        &write_tenancy.into(),
+        write_tenancy,
         visibility,
         history_actor,
         "name",
@@ -1455,7 +1440,7 @@ pub async fn create_root_prop(
         nats,
         veritech.clone(),
         encryption_key,
-        &write_tenancy.into(),
+        write_tenancy,
         visibility,
         history_actor,
         "domain",

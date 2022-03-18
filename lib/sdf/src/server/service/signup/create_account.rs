@@ -1,7 +1,7 @@
 use super::SignupResult;
 use crate::server::extract::{NatsTxn, PgRwTxn};
 use axum::Json;
-use dal::{BillingAccount, HistoryActor, Tenancy, Visibility};
+use dal::{BillingAccount, HistoryActor, Visibility, WriteTenancy};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -26,13 +26,13 @@ pub async fn create_account(
 ) -> SignupResult<Json<CreateAccountResponse>> {
     let txn = txn.start().await?;
     let nats = nats.start().await?;
-    let tenancy = Tenancy::new_universal();
+    let write_tenancy = WriteTenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
     let _result = BillingAccount::signup(
         &txn,
         &nats,
-        &tenancy,
+        &write_tenancy,
         &visibility,
         &history_actor,
         &request.billing_account_name,

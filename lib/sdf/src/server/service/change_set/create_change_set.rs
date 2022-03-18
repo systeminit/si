@@ -2,7 +2,7 @@ use super::ChangeSetResult;
 use crate::server::extract::{Authorization, NatsTxn, PgRwTxn};
 use axum::Json;
 use chrono::Utc;
-use dal::{ChangeSet, EditSession, HistoryActor, Tenancy};
+use dal::{ChangeSet, EditSession, HistoryActor, WriteTenancy};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -26,12 +26,12 @@ pub async fn create_change_set(
 ) -> ChangeSetResult<Json<CreateChangeSetResponse>> {
     let txn = txn.start().await?;
     let nats = nats.start().await?;
-    let tenancy = Tenancy::new_billing_account(vec![claim.billing_account_id]);
+    let write_tenancy = WriteTenancy::new_billing_account(claim.billing_account_id);
     let history_actor: HistoryActor = HistoryActor::from(claim.user_id);
     let change_set = ChangeSet::new(
         &txn,
         &nats,
-        &tenancy,
+        &write_tenancy,
         &history_actor,
         &request.change_set_name,
         None,
@@ -42,7 +42,7 @@ pub async fn create_change_set(
     let edit_session = EditSession::new(
         &txn,
         &nats,
-        &tenancy,
+        &write_tenancy,
         &history_actor,
         &change_set.pk,
         &edit_session_name,

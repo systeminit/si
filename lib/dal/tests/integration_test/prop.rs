@@ -1,6 +1,7 @@
 use dal::{
     test_harness::{create_prop, create_prop_of_kind, create_schema_variant},
     AttributeResolver, HistoryActor, Prop, PropKind, StandardModel, Tenancy, Visibility,
+    WriteTenancy,
 };
 use pretty_assertions_sorted::assert_eq;
 use test_env_log::test;
@@ -20,7 +21,7 @@ async fn new() {
         veritech,
         encr_key,
     );
-    let tenancy = Tenancy::new_universal();
+    let write_tenancy = WriteTenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
     let prop = Prop::new(
@@ -28,7 +29,7 @@ async fn new() {
         &nats,
         veritech,
         encr_key,
-        &tenancy,
+        &write_tenancy,
         &visibility,
         &history_actor,
         "coolness",
@@ -225,7 +226,7 @@ async fn new_creates_default_unset_binding() {
         veritech,
         encr_key,
     );
-    let tenancy = Tenancy::new_universal();
+    let write_tenancy = WriteTenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
     let prop = Prop::new(
@@ -233,7 +234,7 @@ async fn new_creates_default_unset_binding() {
         &nats,
         veritech,
         encr_key,
-        &tenancy,
+        &write_tenancy,
         &visibility,
         &history_actor,
         "not set by default",
@@ -242,9 +243,13 @@ async fn new_creates_default_unset_binding() {
     .await
     .expect("cannot create prop");
 
+    let read_tenancy = write_tenancy
+        .clone_into_read_tenancy(&txn)
+        .await
+        .expect("unable to generate read tenancy");
     let func_binding_return_value = AttributeResolver::find_value_for_prop_and_component(
         &txn,
-        &tenancy,
+        &(&read_tenancy).into(),
         &visibility,
         *prop.id(),
         (-1).into(),

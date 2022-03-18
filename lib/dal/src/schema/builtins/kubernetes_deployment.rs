@@ -195,7 +195,7 @@ pub async fn kubernetes_deployment(
     let _prototype = QualificationPrototype::new(
         txn,
         nats,
-        &write_tenancy.into(),
+        write_tenancy,
         visibility,
         history_actor,
         *qualification_func.id(),
@@ -226,7 +226,7 @@ pub async fn kubernetes_deployment(
     let _prototype = CodeGenerationPrototype::new(
         txn,
         nats,
-        &write_tenancy.into(),
+        write_tenancy,
         visibility,
         history_actor,
         *code_generation_func.id(),
@@ -285,8 +285,7 @@ pub async fn kubernetes_deployment(
         .await?;
 
     // TODO: abstract this boilerplate away
-    let mut ui_menu =
-        UiMenu::new(txn, nats, &write_tenancy.into(), visibility, history_actor).await?;
+    let mut ui_menu = UiMenu::new(txn, nats, write_tenancy, visibility, history_actor).await?;
     ui_menu
         .set_name(
             txn,

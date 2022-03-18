@@ -1,7 +1,7 @@
 use super::SchemaResult;
 use crate::server::extract::{Authorization, NatsTxn, PgRwTxn};
 use axum::Json;
-use dal::{component::ComponentKind, HistoryActor, Schema, SchemaKind, Tenancy, Visibility};
+use dal::{component::ComponentKind, HistoryActor, Schema, SchemaKind, Visibility, WriteTenancy};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -27,12 +27,12 @@ pub async fn create_schema(
 ) -> SchemaResult<Json<CreateSchemaResponse>> {
     let txn = txn.start().await?;
     let nats = nats.start().await?;
-    let tenancy = Tenancy::new_billing_account(vec![claim.billing_account_id]);
+    let write_tenancy = WriteTenancy::new_billing_account(claim.billing_account_id);
     let history_actor: HistoryActor = HistoryActor::from(claim.user_id);
     let schema = Schema::new(
         &txn,
         &nats,
-        &tenancy,
+        &write_tenancy,
         &request.visibility,
         &history_actor,
         &request.name,

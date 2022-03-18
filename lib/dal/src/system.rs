@@ -153,7 +153,7 @@ impl System {
         .pop()
         .ok_or(SystemError::SchemaNotFound)?;
         let schema_variant = schema
-            .default_variant(txn, &(&read_tenancy).into(), visibility)
+            .default_variant(txn, &read_tenancy, visibility)
             .await?;
 
         let system = Self::new(txn, nats, write_tenancy, visibility, history_actor, name).await?;

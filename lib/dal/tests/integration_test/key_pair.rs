@@ -136,9 +136,17 @@ async fn public_key_get_current() {
         .await
         .expect("cannot set billing account");
 
-    let pk = PublicKey::get_current(&txn, &tenancy, &visibility, billing_account.id())
-        .await
-        .expect("cannot get public key");
+    let pk = PublicKey::get_current(
+        &txn,
+        &tenancy
+            .clone_into_read_tenancy(&txn)
+            .await
+            .expect("unable to generate read tenancy"),
+        &visibility,
+        billing_account.id(),
+    )
+    .await
+    .expect("cannot get public key");
 
     assert_eq!(second_key_pair.pk(), pk.pk());
     assert_eq!(second_key_pair.public_key(), pk.public_key());

@@ -38,7 +38,14 @@ async fn new() {
     .expect("no docker image found");
 
     let default_variant = schema
-        .default_variant(&txn, &tenancy, &visibility)
+        .default_variant(
+            &txn,
+            &tenancy
+                .clone_into_read_tenancy(&txn)
+                .await
+                .expect("unable to generate read tenancy"),
+            &visibility,
+        )
         .await
         .expect("cannot find default variant");
 
@@ -65,7 +72,7 @@ async fn new() {
     let _validation_prototype = ValidationPrototype::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         *func.id(),
@@ -100,7 +107,14 @@ async fn find_for_prop() {
     .expect("no docker image found");
 
     let default_variant = schema
-        .default_variant(&txn, &tenancy, &visibility)
+        .default_variant(
+            &txn,
+            &tenancy
+                .clone_into_read_tenancy(&txn)
+                .await
+                .expect("unable to generate read tenancy"),
+            &visibility,
+        )
         .await
         .expect("cannot find default variant");
 
@@ -127,7 +141,7 @@ async fn find_for_prop() {
     let _first_validation_prototype = ValidationPrototype::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         *func.id(),
@@ -144,7 +158,7 @@ async fn find_for_prop() {
     let _second_validation_prototype = ValidationPrototype::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         *func.id(),
@@ -156,7 +170,10 @@ async fn find_for_prop() {
 
     let validation_results = ValidationPrototype::find_for_prop(
         &txn,
-        &tenancy,
+        &tenancy
+            .clone_into_read_tenancy(&txn)
+            .await
+            .expect("unable to generate read tenancy"),
         &visibility,
         *first_prop.id(),
         unset_system_id,

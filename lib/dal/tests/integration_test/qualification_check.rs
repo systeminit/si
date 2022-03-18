@@ -1,6 +1,6 @@
 use dal::{
     test_harness::{create_qualification_check, create_schema, create_schema_variant},
-    HistoryActor, QualificationCheck, SchemaKind, StandardModel, Tenancy, Visibility,
+    HistoryActor, QualificationCheck, SchemaKind, StandardModel, Tenancy, Visibility, WriteTenancy,
 };
 use test_env_log::test;
 
@@ -19,13 +19,13 @@ async fn new() {
         _veritech,
         _encr_key,
     );
-    let tenancy = Tenancy::new_universal();
+    let write_tenancy = WriteTenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
     let qualification_check = QualificationCheck::new(
         &txn,
         &nats,
-        &tenancy,
+        &write_tenancy,
         &visibility,
         &history_actor,
         "checkit",

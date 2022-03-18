@@ -4,7 +4,7 @@ use dal::test_harness::{
     create_change_set, create_edit_session, create_visibility_edit_session, create_visibility_head,
     one_time_setup, TestContext,
 };
-use dal::{BillingAccount, HistoryActor, StandardModel, Tenancy};
+use dal::{BillingAccount, HistoryActor, ReadTenancy, StandardModel, Tenancy, WriteTenancy};
 use test_env_log::test;
 
 #[test(tokio::test)]
@@ -16,16 +16,16 @@ async fn new() {
     let mut conn = pg.get().await.expect("cannot connect to pg");
     let txn = conn.transaction().await.expect("cannot create txn");
 
-    let tenancy = Tenancy::new_universal();
+    let write_tenancy = WriteTenancy::new_universal();
     let history_actor = HistoryActor::SystemInit;
-    let change_set = create_change_set(&txn, &nats, &tenancy, &history_actor).await;
+    let change_set = create_change_set(&txn, &nats, &(&write_tenancy).into(), &history_actor).await;
     let edit_session = create_edit_session(&txn, &nats, &history_actor, &change_set).await;
     let visibility = create_visibility_edit_session(&change_set, &edit_session);
 
     let billing_account = BillingAccount::new(
         &txn,
         &nats,
-        &tenancy,
+        &write_tenancy,
         &visibility,
         &history_actor,
         "coheed",
@@ -36,7 +36,7 @@ async fn new() {
 
     assert_eq!(billing_account.name(), "coheed");
     assert_eq!(billing_account.description(), Some("coheed and cambria"));
-    assert_eq!(billing_account.tenancy(), &tenancy);
+    assert_eq!(billing_account.tenancy(), &Tenancy::from(&write_tenancy));
     assert_eq!(billing_account.visibility(), &visibility);
 }
 
@@ -191,15 +191,28 @@ async fn find_by_name() {
         _veritech,
         _encr_key
     );
-    let tenancy = Tenancy::new_universal();
+    let write_tenancy = WriteTenancy::new_universal();
     let history_actor = HistoryActor::SystemInit;
     let visibility = create_visibility_head();
-    let billing_account =
-        create_billing_account(&txn, &nats, &tenancy, &visibility, &history_actor).await;
-    let name_billing_account =
-        BillingAccount::find_by_name(&txn, &tenancy, &visibility, &billing_account.name())
+    let billing_account = create_billing_account(
+        &txn,
+        &nats,
+        &(&write_tenancy).into(),
+        &visibility,
+        &history_actor,
+    )
+    .await;
+    let name_billing_account = BillingAccount::find_by_name(
+        &txn,
+        &write_tenancy
+            .clone_into_read_tenancy(&txn)
             .await
-            .expect("cannot get by email");
+            .expect("unable to generate read tenancy"),
+        &visibility,
+        &billing_account.name(),
+    )
+    .await
+    .expect("cannot get by email");
     assert_eq!(
         Some(billing_account),
         name_billing_account,
@@ -212,9 +225,9 @@ async fn get_defaults() {
     test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats, _veritech, _encr_key);
     let (nba, _auth_token) = billing_account_signup(&txn, &nats, secret_key).await;
     let visibility = create_visibility_head();
-    let tenancy = Tenancy::new_billing_account(vec![*nba.billing_account.id()]);
+    let read_tenancy = ReadTenancy::new_billing_account(vec![*nba.billing_account.id()]);
     let defaults =
-        BillingAccount::get_defaults(&txn, &tenancy, &visibility, nba.billing_account.id())
+        BillingAccount::get_defaults(&txn, &read_tenancy, &visibility, nba.billing_account.id())
             .await
             .expect("cannot get defaults for billing account");
     assert_eq!(

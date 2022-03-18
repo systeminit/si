@@ -368,11 +368,11 @@ impl Component {
         history_actor: &HistoryActor,
         name: impl AsRef<str>,
     ) -> ComponentResult<(Self, Node)> {
-        let universal_tenancy = Tenancy::new_universal();
+        let read_tenancy = ReadTenancy::new_universal();
 
         let schema_variant_id = Schema::default_schema_variant_id_for_name(
             txn,
-            &universal_tenancy,
+            &read_tenancy,
             visibility,
             "application",
         )
@@ -578,7 +578,7 @@ impl Component {
             let (func_binding, created) = FuncBinding::find_or_create(
                 txn,
                 nats,
-                tenancy,
+                &tenancy.into(),
                 visibility,
                 history_actor,
                 serde_json::to_value(args)?,
@@ -626,7 +626,7 @@ impl Component {
                 let (func_binding, created) = FuncBinding::find_or_create(
                     txn,
                     nats,
-                    tenancy,
+                    &tenancy.into(),
                     visibility,
                     history_actor,
                     serde_json::to_value(&args_default)?,
@@ -927,7 +927,7 @@ impl Component {
     ) -> ComponentResult<()> {
         let validators = ValidationPrototype::find_for_prop(
             txn,
-            tenancy,
+            &tenancy.clone_into_read_tenancy(txn).await?,
             visibility,
             *prop.id(),
             UNSET_ID_VALUE.into(),
@@ -959,7 +959,7 @@ impl Component {
                     let (func_binding, binding_created) = FuncBinding::find_or_create(
                         txn,
                         nats,
-                        tenancy,
+                        &tenancy.into(),
                         visibility,
                         history_actor,
                         args_json,
@@ -983,7 +983,7 @@ impl Component {
             if created {
                 let mut existing_validation_resolvers = ValidationResolver::find_for_prototype(
                     txn,
-                    tenancy,
+                    &tenancy.clone_into_read_tenancy(txn).await?,
                     visibility,
                     validator.id(),
                 )
@@ -1009,7 +1009,7 @@ impl Component {
                     ValidationResolver::new(
                         txn,
                         nats,
-                        tenancy,
+                        &tenancy.into(),
                         visibility,
                         history_actor,
                         *validator.id(),
@@ -1050,7 +1050,7 @@ impl Component {
 
         let qualification_prototypes = QualificationPrototype::find_for_component(
             txn,
-            &schema_tenancy,
+            &tenancy.clone_into_read_tenancy(txn).await?,
             visibility,
             *self.id(),
             *schema.id(),
@@ -1079,7 +1079,7 @@ impl Component {
             let (func_binding, created) = FuncBinding::find_or_create(
                 txn,
                 nats,
-                &schema_tenancy,
+                &tenancy.into(),
                 visibility,
                 history_actor,
                 json_args,
@@ -1099,7 +1099,7 @@ impl Component {
                 let mut existing_resolvers =
                     QualificationResolver::find_for_prototype_and_component(
                         txn,
-                        &schema_tenancy,
+                        &tenancy.clone_into_read_tenancy(txn).await?,
                         visibility,
                         prototype.id(),
                         self.id(),
@@ -1124,7 +1124,7 @@ impl Component {
                     QualificationResolver::new(
                         txn,
                         nats,
-                        tenancy,
+                        &tenancy.into(),
                         visibility,
                         history_actor,
                         *prototype.id(),
@@ -1166,7 +1166,7 @@ impl Component {
 
         let code_generation_prototypes = CodeGenerationPrototype::find_for_component(
             txn,
-            &schema_tenancy,
+            &tenancy.clone_into_read_tenancy(txn).await?,
             visibility,
             *self.id(),
             *schema.id(),
@@ -1190,7 +1190,7 @@ impl Component {
             let (func_binding, created) = FuncBinding::find_or_create(
                 txn,
                 nats,
-                &schema_tenancy,
+                &tenancy.into(),
                 visibility,
                 history_actor,
                 json_args,
@@ -1210,7 +1210,7 @@ impl Component {
                 let mut existing_resolvers =
                     CodeGenerationResolver::find_for_prototype_and_component(
                         txn,
-                        &schema_tenancy,
+                        &tenancy.clone_into_read_tenancy(txn).await?,
                         visibility,
                         prototype.id(),
                         self.id(),
@@ -1235,7 +1235,7 @@ impl Component {
                     let _resolver = CodeGenerationResolver::new(
                         txn,
                         nats,
-                        tenancy,
+                        &tenancy.into(),
                         visibility,
                         history_actor,
                         *prototype.id(),
@@ -1261,7 +1261,7 @@ impl Component {
     ) -> ComponentResult<QualificationView> {
         let validation_field_values = ValidationResolver::list_values_for_component(
             txn,
-            tenancy,
+            &tenancy.clone_into_read_tenancy(txn).await?,
             visibility,
             component_id,
             system_id,
@@ -1380,7 +1380,7 @@ impl Component {
                 .ok_or(ComponentError::SchemaVariantNotFound)?;
             let prototypes = QualificationPrototype::find_for_component(
                 txn,
-                tenancy,
+                &tenancy.clone_into_read_tenancy(txn).await?,
                 visibility,
                 component_id,
                 *schema.id(),
@@ -1587,6 +1587,9 @@ impl Component {
         let mut schema_tenancy = self.tenancy.clone();
         schema_tenancy.universal = true;
 
+        let write_tenancy = (&self.tenancy).into();
+        let read_tenancy = self.tenancy.clone_into_read_tenancy(txn).await?;
+
         let schema = self
             .schema_with_tenancy(txn, &schema_tenancy, &self.visibility)
             .await?
@@ -1598,7 +1601,7 @@ impl Component {
 
         let resource_prototype = ResourcePrototype::get_for_component(
             txn,
-            &schema_tenancy,
+            &read_tenancy,
             &self.visibility,
             *self.id(),
             *schema.id(),
@@ -1627,7 +1630,7 @@ impl Component {
             let (func_binding, _created) = FuncBinding::find_or_create(
                 txn,
                 nats,
-                &schema_tenancy,
+                &write_tenancy,
                 &self.visibility,
                 history_actor,
                 serde_json::to_value(args)?,
@@ -1646,7 +1649,7 @@ impl Component {
             // an FYI.
             let existing_resolver = ResourceResolver::get_for_prototype_and_component(
                 txn,
-                &schema_tenancy,
+                &read_tenancy,
                 &self.visibility,
                 prototype.id(),
                 self.id(),
@@ -1663,7 +1666,7 @@ impl Component {
                 ResourceResolver::new(
                     txn,
                     nats,
-                    &self.tenancy,
+                    &write_tenancy,
                     &self.visibility,
                     history_actor,
                     *prototype.id(),
@@ -1987,7 +1990,7 @@ async fn edit_field_for_prop(
     let mut validation_errors = Vec::new();
     let validation_field_values = ValidationResolver::find_values_for_prop_and_component(
         txn,
-        tenancy,
+        &tenancy.clone_into_read_tenancy(txn).await?,
         visibility,
         *prop.id(),
         *component.id(),

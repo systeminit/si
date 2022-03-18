@@ -7,8 +7,8 @@ use thiserror::Error;
 use crate::{
     func::{binding::FuncBindingId, FuncId},
     impl_standard_model, pk, standard_model, standard_model_accessor, ComponentId, HistoryActor,
-    HistoryEventError, ResourcePrototypeId, SchemaId, SchemaVariantId, StandardModel,
-    StandardModelError, SystemId, Tenancy, Timestamp, Visibility,
+    HistoryEventError, ReadTenancy, ResourcePrototypeId, SchemaId, SchemaVariantId, StandardModel,
+    StandardModelError, SystemId, Tenancy, Timestamp, Visibility, WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -125,7 +125,7 @@ impl ResourceResolver {
     pub async fn new(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
-        tenancy: &Tenancy,
+        write_tenancy: &WriteTenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
         resource_prototype_id: ResourcePrototypeId,
@@ -137,7 +137,7 @@ impl ResourceResolver {
             .query_one(
                 "SELECT object FROM resource_resolver_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9)",
                 &[
-                    &tenancy,
+                    write_tenancy,
                     &visibility,
                     &resource_prototype_id,
                     &func_id,
@@ -152,7 +152,7 @@ impl ResourceResolver {
         let object = standard_model::finish_create_from_row(
             txn,
             nats,
-            tenancy,
+            &write_tenancy.into(),
             visibility,
             history_actor,
             row,
@@ -171,7 +171,7 @@ impl ResourceResolver {
 
     pub async fn get_for_prototype_and_component(
         txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
+        read_tenancy: &ReadTenancy,
         visibility: &Visibility,
         resource_prototype_id: &ResourcePrototypeId,
         component_id: &ComponentId,
@@ -179,7 +179,12 @@ impl ResourceResolver {
         let row = txn
             .query_opt(
                 GET_FOR_PROTOTYPE,
-                &[&tenancy, &visibility, resource_prototype_id, component_id],
+                &[
+                    read_tenancy,
+                    &visibility,
+                    resource_prototype_id,
+                    component_id,
+                ],
             )
             .await?;
         let object = standard_model::option_object_from_row(row)?;
