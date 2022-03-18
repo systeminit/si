@@ -11,8 +11,8 @@ use crate::{
         attribute::value::{AttributeValue, AttributeValueId},
         AttributeReadContext,
     },
-    Component, ComponentError, EncryptedSecret, PropId, PropKind, SecretError, SecretId,
-    StandardModel, StandardModelError, System, Tenancy, Visibility,
+    Component, ComponentError, EncryptedSecret, PropId, PropKind, ReadTenancy, ReadTenancyError,
+    SecretError, SecretId, StandardModel, StandardModelError, System, Visibility,
 };
 
 use thiserror::Error;
@@ -29,6 +29,8 @@ pub enum ComponentViewError {
     SecretNotFound(SecretId),
     #[error("json pointer not found: {1} at {:0?}")]
     JSONPointerNotFound(serde_json::Value, String),
+    #[error("read tenancy error: {0}")]
+    ReadTenancy(#[from] ReadTenancyError),
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -51,7 +53,7 @@ impl Default for ComponentView {
 impl ComponentView {
     pub async fn for_context(
         txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
+        read_tenancy: &ReadTenancy,
         visibility: &Visibility,
         context: AttributeReadContext,
     ) -> ComponentResult<ComponentView> {
@@ -64,18 +66,20 @@ impl ComponentView {
             }
         };
 
-        let component = Component::get_by_id(txn, tenancy, visibility, &component_id)
+        let component = Component::get_by_id(txn, &read_tenancy.into(), visibility, &component_id)
             .await?
             .ok_or(ComponentError::NotFound(component_id))?;
 
         // Perhaps get_by_id should just do this? -- Adam
         let system = match context.system_id() {
-            Some(system_id) => System::get_by_id(txn, tenancy, visibility, &system_id).await?,
+            Some(system_id) => {
+                System::get_by_id(txn, &read_tenancy.into(), visibility, &system_id).await?
+            }
             None => None,
         };
 
         let mut work_queue =
-            AttributeValue::list_payload_for_read_context(txn, tenancy, visibility, context)
+            AttributeValue::list_payload_for_read_context(txn, read_tenancy, visibility, context)
                 .await?;
         // `AttributeValueId -> serde_json pointer` so when we have a parent_attribute_resolver_id,
         // we know _exactly_ where in the structure we need to insert, when we have a
@@ -191,7 +195,7 @@ impl ComponentView {
 
     pub async fn reencrypt_secrets(
         txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
+        read_tenancy: &ReadTenancy,
         visibility: &Visibility,
         encryption_key: &EncryptionKey,
         component: &mut veritech::ComponentView,
@@ -212,12 +216,16 @@ impl ComponentView {
             // TODO: traverse tree and decrypt leafs
             for (_key, value) in object {
                 if let Some(raw_id) = value.as_i64() {
-                    let decrypted_secret =
-                        EncryptedSecret::get_by_id(txn, tenancy, visibility, &raw_id.into())
-                            .await?
-                            .ok_or_else(|| ComponentViewError::SecretNotFound(raw_id.into()))?
-                            .decrypt(txn, visibility)
-                            .await?;
+                    let decrypted_secret = EncryptedSecret::get_by_id(
+                        txn,
+                        &read_tenancy.into(),
+                        visibility,
+                        &raw_id.into(),
+                    )
+                    .await?
+                    .ok_or_else(|| ComponentViewError::SecretNotFound(raw_id.into()))?
+                    .decrypt(txn, visibility)
+                    .await?;
                     let encoded = encryption_key
                         .encrypt_and_encode(&serde_json::to_string(&decrypted_secret.message())?);
 

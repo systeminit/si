@@ -7,8 +7,8 @@ use si_data::PgTxn;
 use crate::{
     component::ComponentKind, system::UNSET_SYSTEM_ID, AttributeResolver, AttributeResolverId,
     AttributeResolverValue, Component, ComponentError, ComponentId, EncryptedSecret, PropId,
-    PropKind, SecretError, SecretId, StandardModel, StandardModelError, System, SystemId, Tenancy,
-    Visibility,
+    PropKind, ReadTenancy, SecretError, SecretId, StandardModel, StandardModelError, System,
+    SystemId, Visibility,
 };
 
 use super::ComponentResult;
@@ -48,12 +48,12 @@ impl Default for ComponentView {
 impl ComponentView {
     pub async fn for_component_and_system(
         txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
+        read_tenancy: &ReadTenancy,
         visibility: &Visibility,
         component_id: ComponentId,
         system_id: SystemId,
     ) -> ComponentResult<ComponentView> {
-        let component = Component::get_by_id(txn, tenancy, visibility, &component_id)
+        let component = Component::get_by_id(txn, &read_tenancy.into(), visibility, &component_id)
             .await?
             .ok_or(ComponentError::NotFound(component_id))?;
 
@@ -61,12 +61,12 @@ impl ComponentView {
         let system = if system_id == UNSET_SYSTEM_ID {
             None
         } else {
-            System::get_by_id(txn, tenancy, visibility, &system_id).await?
+            System::get_by_id(txn, &read_tenancy.into(), visibility, &system_id).await?
         };
 
         let mut work_queue = AttributeResolver::list_values_for_component(
             txn,
-            tenancy,
+            &read_tenancy.into(),
             visibility,
             component_id,
             system_id,
@@ -193,7 +193,7 @@ impl ComponentView {
 
     pub async fn reencrypt_secrets(
         txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
+        read_tenancy: &ReadTenancy,
         visibility: &Visibility,
         encryption_key: &EncryptionKey,
         component: &mut veritech::ComponentView,
@@ -214,12 +214,16 @@ impl ComponentView {
             // TODO: traverse tree and decrypt leafs
             for (_key, value) in object {
                 if let Some(raw_id) = value.as_i64() {
-                    let decrypted_secret =
-                        EncryptedSecret::get_by_id(txn, tenancy, visibility, &raw_id.into())
-                            .await?
-                            .ok_or_else(|| ComponentViewError::SecretNotFound(raw_id.into()))?
-                            .decrypt(txn, visibility)
-                            .await?;
+                    let decrypted_secret = EncryptedSecret::get_by_id(
+                        txn,
+                        &read_tenancy.into(),
+                        visibility,
+                        &raw_id.into(),
+                    )
+                    .await?
+                    .ok_or_else(|| ComponentViewError::SecretNotFound(raw_id.into()))?
+                    .decrypt(txn, visibility)
+                    .await?;
                     let encoded = encryption_key
                         .encrypt_and_encode(&serde_json::to_string(&decrypted_secret.message())?);
 

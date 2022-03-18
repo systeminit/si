@@ -40,7 +40,7 @@ async fn new() {
         *func.backend_kind(),
     )
     .await;
-    let execution = FuncExecution::new(&txn, &nats, &tenancy, &func, &func_binding)
+    let execution = FuncExecution::new(&txn, &nats, &(&tenancy).into(), &func, &func_binding)
         .await
         .expect("cannot create a new func execution");
     assert_eq!(execution.state(), FuncExecutionState::Start);
@@ -76,7 +76,7 @@ async fn set_state() {
         *func.backend_kind(),
     )
     .await;
-    let mut execution = FuncExecution::new(&txn, &nats, &tenancy, &func, &func_binding)
+    let mut execution = FuncExecution::new(&txn, &nats, &(&tenancy).into(), &func, &func_binding)
         .await
         .expect("cannot create a new func execution");
     assert_eq!(execution.state(), FuncExecutionState::Start);
@@ -117,7 +117,7 @@ async fn set_output_stream() {
         *func.backend_kind(),
     )
     .await;
-    let mut execution = FuncExecution::new(&txn, &nats, &tenancy, &func, &func_binding)
+    let mut execution = FuncExecution::new(&txn, &nats, &(&tenancy).into(), &func, &func_binding)
         .await
         .expect("cannot create a new func execution");
 
@@ -179,7 +179,7 @@ async fn process_return_value() {
         .await
         .expect("cannot execute binding");
 
-    let mut execution = FuncExecution::new(&txn, &nats, &tenancy, &func, &func_binding)
+    let mut execution = FuncExecution::new(&txn, &nats, &(&tenancy).into(), &func, &func_binding)
         .await
         .expect("cannot create a new func execution");
 

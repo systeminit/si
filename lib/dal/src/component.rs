@@ -1399,14 +1399,14 @@ impl Component {
     #[instrument(skip_all)]
     pub async fn get_resource_by_component_and_system(
         txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
+        read_tenancy: &ReadTenancy,
         visibility: &Visibility,
         component_id: ComponentId,
         system_id: SystemId,
     ) -> ComponentResult<Option<ResourceView>> {
         let resource = Resource::get_by_component_id_and_system_id(
             txn,
-            &tenancy.clone_into_read_tenancy(txn).await?,
+            read_tenancy,
             visibility,
             &component_id,
             &system_id,
@@ -1420,7 +1420,7 @@ impl Component {
         let row = txn
             .query_opt(
                 GET_RESOURCE,
-                &[&tenancy, &visibility, &component_id, &system_id],
+                &[read_tenancy, &visibility, &component_id, &system_id],
             )
             .await?;
 
@@ -1440,28 +1440,27 @@ impl Component {
         visibility: &Visibility,
         system_id: SystemId,
     ) -> ComponentResult<veritech::ResolverFunctionComponent> {
-        let mut tenancy = tenancy.clone();
-        tenancy.universal = true;
-
-        let parent_ids = Edge::find_component_configuration_parents(
-            txn,
-            &tenancy.clone_into_read_tenancy(txn).await?,
-            visibility,
-            self.id(),
-        )
-        .await?;
+        let read_tenancy = tenancy.clone_into_read_tenancy(txn).await?;
+        let parent_ids =
+            Edge::find_component_configuration_parents(txn, &read_tenancy, visibility, self.id())
+                .await?;
         let mut parents = Vec::with_capacity(parent_ids.len());
         for id in parent_ids {
-            let view =
-                ComponentView::for_component_and_system(txn, &tenancy, visibility, id, system_id)
-                    .await?;
+            let view = ComponentView::for_component_and_system(
+                txn,
+                &read_tenancy,
+                visibility,
+                id,
+                system_id,
+            )
+            .await?;
             parents.push(veritech::ComponentView::from(view));
         }
 
         let component = veritech::ResolverFunctionComponent {
             data: ComponentView::for_component_and_system(
                 txn,
-                &tenancy,
+                &read_tenancy,
                 visibility,
                 *self.id(),
                 system_id,
@@ -1480,12 +1479,10 @@ impl Component {
         visibility: &Visibility,
         system_id: SystemId,
     ) -> ComponentResult<ComponentView> {
-        let mut tenancy = tenancy.clone();
-        tenancy.universal = true;
-
+        let read_tenancy = tenancy.clone_into_read_tenancy(txn).await?;
         let component = ComponentView::for_component_and_system(
             txn,
-            &tenancy,
+            &read_tenancy,
             visibility,
             *self.id(),
             system_id,
@@ -1501,12 +1498,10 @@ impl Component {
         visibility: &Visibility,
         system_id: SystemId,
     ) -> ComponentResult<ComponentView> {
-        let mut tenancy = tenancy.clone();
-        tenancy.universal = true;
-
+        let read_tenancy = tenancy.clone_into_read_tenancy(txn).await?;
         let component = ComponentView::for_component_and_system(
             txn,
-            &tenancy,
+            &read_tenancy,
             visibility,
             *self.id(),
             system_id,
@@ -1522,29 +1517,29 @@ impl Component {
         visibility: &Visibility,
         system_id: SystemId,
     ) -> ComponentResult<veritech::QualificationCheckComponent> {
-        let mut tenancy = tenancy.clone();
-        tenancy.universal = true;
+        let read_tenancy = tenancy.clone_into_read_tenancy(txn).await?;
 
-        let parent_ids = Edge::find_component_configuration_parents(
-            txn,
-            &tenancy.clone_into_read_tenancy(txn).await?,
-            visibility,
-            self.id(),
-        )
-        .await?;
+        let parent_ids =
+            Edge::find_component_configuration_parents(txn, &read_tenancy, visibility, self.id())
+                .await?;
 
         let mut parents = Vec::new();
         for id in parent_ids {
-            let view =
-                ComponentView::for_component_and_system(txn, &tenancy, visibility, id, system_id)
-                    .await?;
+            let view = ComponentView::for_component_and_system(
+                txn,
+                &read_tenancy,
+                visibility,
+                id,
+                system_id,
+            )
+            .await?;
             parents.push(veritech::ComponentView::from(view));
         }
 
         let qualification_view = veritech::QualificationCheckComponent {
             data: ComponentView::for_component_and_system(
                 txn,
-                &tenancy,
+                &read_tenancy,
                 visibility,
                 *self.id(),
                 system_id,
@@ -1553,7 +1548,7 @@ impl Component {
             .into(),
             codes: Self::list_code_generated_by_component_id(
                 txn,
-                &tenancy,
+                &(&read_tenancy).into(),
                 visibility,
                 *self.id(),
                 system_id,

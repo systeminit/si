@@ -2,12 +2,12 @@ use si_data::{NatsTxn, PgTxn};
 
 use crate::{
     Func, FuncBackendKind, FuncBackendResponseType, FuncResult, HistoryActor, StandardModel,
-    Tenancy, Visibility,
+    Visibility, WriteTenancy,
 };
 
 pub async fn migrate(txn: &PgTxn<'_>, nats: &NatsTxn) -> FuncResult<()> {
     let (tenancy, visibility, history_actor) = (
-        Tenancy::new_universal(),
+        WriteTenancy::new_universal(),
         Visibility::new_head(false),
         HistoryActor::SystemInit,
     );
@@ -36,13 +36,13 @@ pub async fn migrate(txn: &PgTxn<'_>, nats: &NatsTxn) -> FuncResult<()> {
 async fn si_generate_yaml(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
-    tenancy: &Tenancy,
+    write_tenancy: &WriteTenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
 ) -> FuncResult<()> {
     let existing_func = Func::find_by_attr(
         txn,
-        tenancy,
+        &write_tenancy.into(),
         visibility,
         "name",
         &"si:generateYAML".to_string(),
@@ -52,7 +52,7 @@ async fn si_generate_yaml(
         let mut func = Func::new(
             txn,
             nats,
-            &tenancy.into(),
+            write_tenancy,
             visibility,
             history_actor,
             "si:generateYAML",
@@ -74,13 +74,13 @@ async fn si_generate_yaml(
 async fn si_number_of_parents(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
-    tenancy: &Tenancy,
+    write_tenancy: &WriteTenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
 ) -> FuncResult<()> {
     let existing_func = Func::find_by_attr(
         txn,
-        tenancy,
+        &write_tenancy.into(),
         visibility,
         "name",
         &"si:numberOfParents".to_string(),
@@ -90,7 +90,7 @@ async fn si_number_of_parents(
         let mut func = Func::new(
             txn,
             nats,
-            &tenancy.into(),
+            write_tenancy,
             visibility,
             history_actor,
             "si:numberOfParents",
@@ -124,17 +124,23 @@ async fn si_number_of_parents(
 async fn si_set_array(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
-    tenancy: &Tenancy,
+    write_tenancy: &WriteTenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
 ) -> FuncResult<()> {
-    let existing_func =
-        Func::find_by_attr(txn, tenancy, visibility, "name", &"si:setArray".to_string()).await?;
+    let existing_func = Func::find_by_attr(
+        txn,
+        &write_tenancy.into(),
+        visibility,
+        "name",
+        &"si:setArray".to_string(),
+    )
+    .await?;
     if existing_func.is_empty() {
         Func::new(
             txn,
             nats,
-            &tenancy.into(),
+            write_tenancy,
             visibility,
             history_actor,
             "si:setArray",
@@ -150,13 +156,13 @@ async fn si_set_array(
 async fn si_set_boolean(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
-    tenancy: &Tenancy,
+    write_tenancy: &WriteTenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
 ) -> FuncResult<()> {
     let existing_func = Func::find_by_attr(
         txn,
-        tenancy,
+        &write_tenancy.into(),
         visibility,
         "name",
         &"si:setBoolean".to_string(),
@@ -166,7 +172,7 @@ async fn si_set_boolean(
         Func::new(
             txn,
             nats,
-            &tenancy.into(),
+            write_tenancy,
             visibility,
             history_actor,
             "si:setBoolean",
@@ -182,13 +188,13 @@ async fn si_set_boolean(
 async fn si_set_integer(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
-    tenancy: &Tenancy,
+    write_tenancy: &WriteTenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
 ) -> FuncResult<()> {
     let existing_func = Func::find_by_attr(
         txn,
-        tenancy,
+        &write_tenancy.into(),
         visibility,
         "name",
         &"si:setInteger".to_string(),
@@ -198,7 +204,7 @@ async fn si_set_integer(
         Func::new(
             txn,
             nats,
-            &tenancy.into(),
+            write_tenancy,
             visibility,
             history_actor,
             "si:setInteger",
@@ -215,13 +221,13 @@ async fn si_set_integer(
 async fn si_set_prop_object(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
-    tenancy: &Tenancy,
+    write_tenancy: &WriteTenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
 ) -> FuncResult<()> {
     let existing_func = Func::find_by_attr(
         txn,
-        tenancy,
+        &write_tenancy.into(),
         visibility,
         "name",
         &"si:setPropObject".to_string(),
@@ -231,7 +237,7 @@ async fn si_set_prop_object(
         Func::new(
             txn,
             nats,
-            &tenancy.into(),
+            write_tenancy,
             visibility,
             history_actor,
             "si:setPropObject",
@@ -248,17 +254,23 @@ async fn si_set_prop_object(
 async fn si_set_map(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
-    tenancy: &Tenancy,
+    write_tenancy: &WriteTenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
 ) -> FuncResult<()> {
-    let existing_func =
-        Func::find_by_attr(txn, tenancy, visibility, "name", &"si:setMap".to_string()).await?;
+    let existing_func = Func::find_by_attr(
+        txn,
+        &write_tenancy.into(),
+        visibility,
+        "name",
+        &"si:setMap".to_string(),
+    )
+    .await?;
     if existing_func.is_empty() {
         Func::new(
             txn,
             nats,
-            &tenancy.into(),
+            write_tenancy,
             visibility,
             history_actor,
             "si:setMap",
@@ -275,13 +287,13 @@ async fn si_set_map(
 async fn si_set_string(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
-    tenancy: &Tenancy,
+    write_tenancy: &WriteTenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
 ) -> FuncResult<()> {
     let existing_func = Func::find_by_attr(
         txn,
-        tenancy,
+        &write_tenancy.into(),
         visibility,
         "name",
         &"si:setString".to_string(),
@@ -291,7 +303,7 @@ async fn si_set_string(
         Func::new(
             txn,
             nats,
-            &tenancy.into(),
+            write_tenancy,
             visibility,
             history_actor,
             "si:setString",
@@ -307,17 +319,23 @@ async fn si_set_string(
 async fn si_unset(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
-    tenancy: &Tenancy,
+    write_tenancy: &WriteTenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
 ) -> FuncResult<()> {
-    let existing_func =
-        Func::find_by_attr(txn, tenancy, visibility, "name", &"si:unset".to_string()).await?;
+    let existing_func = Func::find_by_attr(
+        txn,
+        &write_tenancy.into(),
+        visibility,
+        "name",
+        &"si:unset".to_string(),
+    )
+    .await?;
     if existing_func.is_empty() {
         Func::new(
             txn,
             nats,
-            &tenancy.into(),
+            write_tenancy,
             visibility,
             history_actor,
             "si:unset",
@@ -333,17 +351,18 @@ async fn si_unset(
 async fn si_validate_string_equals(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
-    tenancy: &Tenancy,
+    write_tenancy: &WriteTenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
 ) -> FuncResult<()> {
     let func_name = "si:validateStringEquals".to_string();
-    let existing_func = Func::find_by_attr(txn, tenancy, visibility, "name", &func_name).await?;
+    let existing_func =
+        Func::find_by_attr(txn, &write_tenancy.into(), visibility, "name", &func_name).await?;
     if existing_func.is_empty() {
         Func::new(
             txn,
             nats,
-            &tenancy.into(),
+            write_tenancy,
             visibility,
             history_actor,
             &func_name,
@@ -360,17 +379,18 @@ async fn si_validate_string_equals(
 async fn si_qualification_always_true(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
-    tenancy: &Tenancy,
+    write_tenancy: &WriteTenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
 ) -> FuncResult<()> {
     let func_name = "si:qualificationAlwaysTrue".to_string();
-    let existing_func = Func::find_by_attr(txn, tenancy, visibility, "name", &func_name).await?;
+    let existing_func =
+        Func::find_by_attr(txn, &write_tenancy.into(), visibility, "name", &func_name).await?;
     if existing_func.is_empty() {
         let mut new_func = Func::new(
             txn,
             nats,
-            &tenancy.into(),
+            write_tenancy,
             visibility,
             history_actor,
             &func_name,
@@ -411,17 +431,18 @@ async fn si_qualification_always_true(
 async fn si_resource_sync_hammer(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
-    tenancy: &Tenancy,
+    write_tenancy: &WriteTenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
 ) -> FuncResult<()> {
     let func_name = "si:resourceSyncHammer".to_string();
-    let existing_func = Func::find_by_attr(txn, tenancy, visibility, "name", &func_name).await?;
+    let existing_func =
+        Func::find_by_attr(txn, &write_tenancy.into(), visibility, "name", &func_name).await?;
     if existing_func.is_empty() {
         let mut new_func = Func::new(
             txn,
             nats,
-            &tenancy.into(),
+            write_tenancy,
             visibility,
             history_actor,
             &func_name,
@@ -461,17 +482,18 @@ async fn si_resource_sync_hammer(
 async fn si_qualification_docker_image_name_inspect(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
-    tenancy: &Tenancy,
+    write_tenancy: &WriteTenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
 ) -> FuncResult<()> {
     let func_name = "si:qualificationDockerImageNameInspect".to_string();
-    let existing_func = Func::find_by_attr(txn, tenancy, visibility, "name", &func_name).await?;
+    let existing_func =
+        Func::find_by_attr(txn, &write_tenancy.into(), visibility, "name", &func_name).await?;
     if existing_func.is_empty() {
         let mut new_func = Func::new(
             txn,
             nats,
-            &tenancy.into(),
+            write_tenancy,
             visibility,
             history_actor,
             &func_name,
@@ -513,17 +535,18 @@ async fn si_qualification_docker_image_name_inspect(
 async fn si_qualification_yaml_kubeval(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
-    tenancy: &Tenancy,
+    write_tenancy: &WriteTenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
 ) -> FuncResult<()> {
     let func_name = "si:qualificationYamlKubeval".to_string();
-    let existing_func = Func::find_by_attr(txn, tenancy, visibility, "name", &func_name).await?;
+    let existing_func =
+        Func::find_by_attr(txn, &write_tenancy.into(), visibility, "name", &func_name).await?;
     if existing_func.is_empty() {
         let mut new_func = Func::new(
             txn,
             nats,
-            &tenancy.into(),
+            write_tenancy,
             visibility,
             history_actor,
             &func_name,
@@ -563,17 +586,18 @@ async fn si_qualification_yaml_kubeval(
 async fn si_qualification_docker_hub_login(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
-    tenancy: &Tenancy,
+    write_tenancy: &WriteTenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
 ) -> FuncResult<()> {
     let func_name = "si:qualificationDockerHubLogin".to_string();
-    let existing_func = Func::find_by_attr(txn, tenancy, visibility, "name", &func_name).await?;
+    let existing_func =
+        Func::find_by_attr(txn, &write_tenancy.into(), visibility, "name", &func_name).await?;
     if existing_func.is_empty() {
         let mut new_func = Func::new(
             txn,
             nats,
-            &tenancy.into(),
+            write_tenancy,
             visibility,
             history_actor,
             &func_name,

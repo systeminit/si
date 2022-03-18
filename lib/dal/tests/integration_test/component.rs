@@ -510,13 +510,13 @@ async fn get_resource_by_component_id() {
         .expect("Unable to set organization to workspace");
 
     let tenancy = Tenancy::new_workspace(vec![*workspace.id()]);
-
-    let mut schema_tenancy = tenancy.clone();
-    schema_tenancy.universal = true;
+    let read_tenancy = ReadTenancy::new_workspace(&txn, vec![*workspace.id()])
+        .await
+        .expect("unable to generate read tenancy");
 
     let schema = Schema::find_by_attr(
         &txn,
-        &schema_tenancy,
+        &(&read_tenancy).into(),
         &visibility,
         "name",
         &"docker_image".to_string(),
@@ -557,7 +557,7 @@ async fn get_resource_by_component_id() {
 
     let resource = Component::get_resource_by_component_and_system(
         &txn,
-        &tenancy,
+        &read_tenancy,
         &visibility,
         *component.id(),
         *system.id(),

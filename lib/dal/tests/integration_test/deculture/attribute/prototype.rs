@@ -117,7 +117,7 @@ async fn new() {
     let _attribute_prototype = AttributePrototype::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         *func.id(),
@@ -222,12 +222,19 @@ async fn list_for_context() {
         .to_context()
         .expect("cannot create attribute context");
 
-    let _albums_prop_prototype =
-        AttributePrototype::list_for_context(&txn, &tenancy, &visibility, albums_prototype_context)
+    let _albums_prop_prototype = AttributePrototype::list_for_context(
+        &txn,
+        &tenancy
+            .clone_into_read_tenancy(&txn)
             .await
-            .expect("cannot retrieve attribute prototype for album")
-            .pop()
-            .expect("no attribute prototype found for albums");
+            .expect("unable to generate read tenancy"),
+        &visibility,
+        albums_prototype_context,
+    )
+    .await
+    .expect("cannot retrieve attribute prototype for album")
+    .pop()
+    .expect("no attribute prototype found for albums");
 
     let album_prop = create_prop_of_kind_with_name(
         &txn,
@@ -252,12 +259,19 @@ async fn list_for_context() {
         .to_context()
         .expect("cannot create attribute context");
 
-    let _album_prop_prototype =
-        AttributePrototype::list_for_context(&txn, &tenancy, &visibility, album_prototype_context)
+    let _album_prop_prototype = AttributePrototype::list_for_context(
+        &txn,
+        &tenancy
+            .clone_into_read_tenancy(&txn)
             .await
-            .expect("cannot retrieve attribute prototype for album")
-            .pop()
-            .expect("no attribute prototype found for album");
+            .expect("unable to generate read tenancy"),
+        &visibility,
+        album_prototype_context,
+    )
+    .await
+    .expect("cannot retrieve attribute prototype for album")
+    .pop()
+    .expect("no attribute prototype found for album");
 
     let name_prop = create_prop_of_kind_with_name(
         &txn,
@@ -284,7 +298,10 @@ async fn list_for_context() {
 
     let album_name_prototype = AttributePrototype::list_for_context(
         &txn,
-        &tenancy,
+        &tenancy
+            .clone_into_read_tenancy(&txn)
+            .await
+            .expect("unable to generate read tenancy"),
         &visibility,
         album_name_prototype_context,
     )
@@ -318,7 +335,10 @@ async fn list_for_context() {
 
     let _album_artist_prototype = AttributePrototype::list_for_context(
         &txn,
-        &tenancy,
+        &tenancy
+            .clone_into_read_tenancy(&txn)
+            .await
+            .expect("unable to generate read tenancy"),
         &visibility,
         album_artist_prototype_context,
     )
@@ -379,7 +399,7 @@ async fn list_for_context() {
     let component_album_name_prototype = AttributePrototype::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         *func.id(),
@@ -393,7 +413,10 @@ async fn list_for_context() {
 
     let found_album_name_prototype = AttributePrototype::list_for_context(
         &txn,
-        &tenancy,
+        &tenancy
+            .clone_into_read_tenancy(&txn)
+            .await
+            .expect("unable to generate read tenancy"),
         &visibility,
         album_name_prototype_context,
     )
@@ -406,7 +429,10 @@ async fn list_for_context() {
 
     let found_component_album_name_prototype = AttributePrototype::list_for_context(
         &txn,
-        &tenancy,
+        &tenancy
+            .clone_into_read_tenancy(&txn)
+            .await
+            .expect("unable to generate read tenancy"),
         &visibility,
         component_name_prototype_context,
     )
@@ -512,12 +538,19 @@ async fn list_for_context_with_a_hash() {
         .to_context()
         .expect("cannot build attribute context");
 
-    let _albums_prop_prototype =
-        AttributePrototype::list_for_context(&txn, &tenancy, &visibility, albums_prototype_context)
+    let _albums_prop_prototype = AttributePrototype::list_for_context(
+        &txn,
+        &tenancy
+            .clone_into_read_tenancy(&txn)
             .await
-            .expect("cannot retrieve attribute prototype for album")
-            .pop()
-            .expect("no attribute prototype found for albums");
+            .expect("unable to generate read tenancy"),
+        &visibility,
+        albums_prototype_context,
+    )
+    .await
+    .expect("cannot retrieve attribute prototype for album")
+    .pop()
+    .expect("no attribute prototype found for albums");
 
     let album_prop = create_prop_of_kind_with_name(
         &txn,
@@ -542,12 +575,19 @@ async fn list_for_context_with_a_hash() {
         .to_context()
         .expect("cannot build attribute context");
 
-    let _album_prop_prototype =
-        AttributePrototype::list_for_context(&txn, &tenancy, &visibility, album_prototype_context)
+    let _album_prop_prototype = AttributePrototype::list_for_context(
+        &txn,
+        &tenancy
+            .clone_into_read_tenancy(&txn)
             .await
-            .expect("cannot retrieve attribute prototype for album")
-            .pop()
-            .expect("no attribute prototype found for album");
+            .expect("unable to generate read tenancy"),
+        &visibility,
+        album_prototype_context,
+    )
+    .await
+    .expect("cannot retrieve attribute prototype for album")
+    .pop()
+    .expect("no attribute prototype found for album");
 
     let hash_key_prop = create_prop_of_kind_with_name(
         &txn,
@@ -574,7 +614,10 @@ async fn list_for_context_with_a_hash() {
 
     let prop_hash_key_prototype = AttributePrototype::list_for_context(
         &txn,
-        &tenancy,
+        &tenancy
+            .clone_into_read_tenancy(&txn)
+            .await
+            .expect("unable to generate read tenancy"),
         &visibility,
         prop_hash_key_prototype_context,
     )
@@ -617,7 +660,7 @@ async fn list_for_context_with_a_hash() {
     let undertow_prop_prototype = AttributePrototype::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         *func.id(),
@@ -650,7 +693,7 @@ async fn list_for_context_with_a_hash() {
     let lateralus_prop_prototype = AttributePrototype::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         *func.id(),
@@ -701,7 +744,7 @@ async fn list_for_context_with_a_hash() {
     let lateralus_component_prototype = AttributePrototype::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         *func.id(),
@@ -734,7 +777,7 @@ async fn list_for_context_with_a_hash() {
     let fear_inoculum_component_prototype = AttributePrototype::new(
         &txn,
         &nats,
-        &tenancy,
+        &(&tenancy).into(),
         &visibility,
         &history_actor,
         *func.id(),
@@ -748,7 +791,10 @@ async fn list_for_context_with_a_hash() {
 
     let found_hash_key_prototypes = AttributePrototype::list_for_context(
         &txn,
-        &tenancy,
+        &tenancy
+            .clone_into_read_tenancy(&txn)
+            .await
+            .expect("unable to generate read tenancy"),
         &visibility,
         component_hash_key_prototype_context,
     )
@@ -767,7 +813,10 @@ async fn list_for_context_with_a_hash() {
 
     let found_hash_key_prototypes = AttributePrototype::list_for_context(
         &txn,
-        &tenancy,
+        &tenancy
+            .clone_into_read_tenancy(&txn)
+            .await
+            .expect("unable to generate read tenancy"),
         &visibility,
         prop_hash_key_prototype_context,
     )

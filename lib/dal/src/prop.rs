@@ -206,7 +206,7 @@ impl Prop {
         AttributePrototype::new(
             txn,
             nats,
-            &write_tenancy.into(),
+            write_tenancy,
             visibility,
             history_actor,
             *func.id(),
@@ -280,12 +280,13 @@ impl Prop {
             }
         }
 
+        let read_tenancy = self.tenancy().clone_into_read_tenancy(txn).await?;
         let our_attribute_value =
-            AttributeValue::find_for_prop(txn, self.tenancy(), visibility, *self.id())
+            AttributeValue::find_for_prop(txn, &read_tenancy, visibility, *self.id())
                 .await
                 .map_err(|e| PropError::AttributeValue(format!("{e}")))?;
         let parent_attribute_value =
-            AttributeValue::find_for_prop(txn, self.tenancy(), visibility, parent_prop_id)
+            AttributeValue::find_for_prop(txn, &read_tenancy, visibility, parent_prop_id)
                 .await
                 .map_err(|e| PropError::AttributeValue(format!("{e}")))?;
         our_attribute_value

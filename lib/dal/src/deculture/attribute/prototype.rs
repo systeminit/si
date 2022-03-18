@@ -12,10 +12,9 @@ use crate::{
     },
     func::binding::{FuncBindingError, FuncBindingId},
     func::FuncId,
-    impl_standard_model, pk,
-    standard_model::{self},
-    standard_model_accessor, HistoryActor, HistoryEventError, PropError, PropKind, StandardModel,
-    StandardModelError, Tenancy, Timestamp, Visibility,
+    impl_standard_model, pk, standard_model, standard_model_accessor, HistoryActor,
+    HistoryEventError, PropError, PropKind, ReadTenancy, ReadTenancyError, StandardModel,
+    StandardModelError, Tenancy, Timestamp, Visibility, WriteTenancy,
 };
 
 const LIST_FOR_CONTEXT: &str = include_str!("../queries/attribute_prototype_list_for_context.sql");
@@ -42,7 +41,7 @@ pub enum AttributePrototypeError {
     MissingProp,
     #[error("missing attribute value for tenancy {0:?}, visibility {1:?}, prototype {2:?}, with parent attribute value {3:?}")]
     MissingValue(
-        Tenancy,
+        ReadTenancy,
         Visibility,
         AttributePrototypeId,
         Option<AttributeValueId>,
@@ -61,6 +60,8 @@ pub enum AttributePrototypeError {
     SerdeJson(#[from] serde_json::Error),
     #[error("standard model error: {0}")]
     StandardModelError(#[from] StandardModelError),
+    #[error("read tenancy error: {0}")]
+    ReadTenancy(#[from] ReadTenancyError),
 }
 
 pub type AttributePrototypeResult<T> = Result<T, AttributePrototypeError>;
@@ -100,7 +101,7 @@ impl AttributePrototype {
     pub async fn new(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
-        tenancy: &Tenancy,
+        write_tenancy: &WriteTenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
         func_id: FuncId,
@@ -109,11 +110,12 @@ impl AttributePrototype {
         key: Option<String>,
         parent_attribute_value_id: Option<AttributeValueId>,
     ) -> AttributePrototypeResult<Self> {
+        let read_tenancy = write_tenancy.clone_into_read_tenancy(txn).await?;
         let row = txn
             .query_one(
                 "SELECT object FROM attribute_prototype_create_v1($1, $2, $3, $4, $5, $6)",
                 &[
-                    &tenancy,
+                    write_tenancy,
                     &visibility,
                     &context,
                     &func_id,
@@ -125,7 +127,7 @@ impl AttributePrototype {
         let object: AttributePrototype = standard_model::finish_create_from_row(
             txn,
             nats,
-            tenancy,
+            &write_tenancy.into(),
             visibility,
             history_actor,
             row,
@@ -135,7 +137,7 @@ impl AttributePrototype {
         let value = AttributeValue::new(
             txn,
             nats,
-            tenancy,
+            write_tenancy,
             visibility,
             history_actor,
             None,
@@ -159,7 +161,7 @@ impl AttributePrototype {
         if !context.is_least_specific() {
             let original_prototype = Self::find_with_parent_value_and_key_for_context(
                 txn,
-                tenancy,
+                &read_tenancy,
                 visibility,
                 parent_attribute_value_id,
                 key,
@@ -171,7 +173,7 @@ impl AttributePrototype {
                 Self::create_intermediate_proxy_values(
                     txn,
                     nats,
-                    tenancy,
+                    write_tenancy,
                     visibility,
                     history_actor,
                     parent_attribute_value_id,
@@ -192,14 +194,14 @@ impl AttributePrototype {
     #[instrument(skip_all)]
     pub async fn list_for_context(
         txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
+        read_tenancy: &ReadTenancy,
         visibility: &Visibility,
         context: AttributeContext,
     ) -> AttributePrototypeResult<Vec<Self>> {
         let rows = txn
             .query(
                 LIST_FOR_CONTEXT,
-                &[&tenancy, &visibility, &context, &context.prop_id()],
+                &[read_tenancy, &visibility, &context, &context.prop_id()],
             )
             .await?;
         let object = standard_model::objects_from_rows(rows)?;
@@ -209,7 +211,7 @@ impl AttributePrototype {
     #[tracing::instrument(skip_all)]
     pub async fn find_with_parent_value_and_key_for_context(
         txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
+        read_tenancy: &ReadTenancy,
         visibility: &Visibility,
         parent_attribute_value_id: Option<AttributeValueId>,
         key: Option<String>,
@@ -219,7 +221,7 @@ impl AttributePrototype {
             .query_opt(
                 FIND_WITH_PARENT_VALUE_AND_KEY_FOR_CONTEXT,
                 &[
-                    &tenancy,
+                    read_tenancy,
                     &visibility,
                     &context,
                     &parent_attribute_value_id,
@@ -237,7 +239,7 @@ impl AttributePrototype {
     async fn create_intermediate_proxy_values(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
-        tenancy: &Tenancy,
+        write_tenancy: &WriteTenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
         parent_attribute_value_id: Option<AttributeValueId>,
@@ -248,9 +250,10 @@ impl AttributePrototype {
             return Ok(());
         }
 
+        let read_tenancy = write_tenancy.clone_into_read_tenancy(txn).await?;
         if (AttributeValue::find_with_parent_and_prototype_for_context(
             txn,
-            tenancy,
+            &read_tenancy,
             visibility,
             parent_attribute_value_id,
             prototype_id,
@@ -263,7 +266,7 @@ impl AttributePrototype {
             Self::create_intermediate_proxy_values(
                 txn,
                 nats,
-                tenancy,
+                write_tenancy,
                 visibility,
                 history_actor,
                 parent_attribute_value_id,
@@ -274,7 +277,7 @@ impl AttributePrototype {
 
             if let Some(proxy_target) = AttributeValue::find_with_parent_and_prototype_for_context(
                 txn,
-                tenancy,
+                &read_tenancy,
                 visibility,
                 parent_attribute_value_id,
                 prototype_id,
@@ -286,7 +289,7 @@ impl AttributePrototype {
                 let mut proxy_attribute_value = AttributeValue::new(
                     txn,
                     nats,
-                    tenancy,
+                    write_tenancy,
                     visibility,
                     history_actor,
                     proxy_target.func_binding_return_value_id().copied(),
@@ -308,7 +311,7 @@ impl AttributePrototype {
                     .await?
             } else {
                 return Err(AttributePrototypeError::MissingValue(
-                    tenancy.clone(),
+                    read_tenancy,
                     *visibility,
                     prototype_id,
                     parent_attribute_value_id,

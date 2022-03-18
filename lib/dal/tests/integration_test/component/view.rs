@@ -949,7 +949,10 @@ async fn only_string_props() {
     }
     let component_view = ComponentView::for_component_and_system(
         &txn,
-        &tenancy,
+        &tenancy
+            .clone_into_read_tenancy(&txn)
+            .await
+            .expect("unable to generate read tenancy"),
         &visibility,
         *component.id(),
         UNSET_SYSTEM_ID,
@@ -1045,7 +1048,10 @@ async fn one_object_prop() {
     }
     let component_view = ComponentView::for_component_and_system(
         &txn,
-        &tenancy,
+        &tenancy
+            .clone_into_read_tenancy(&txn)
+            .await
+            .expect("unable to generate read tenancy"),
         &visibility,
         *component.id(),
         UNSET_SYSTEM_ID,
@@ -1183,7 +1189,10 @@ async fn nested_object_prop() {
 
     let component_view = ComponentView::for_component_and_system(
         &txn,
-        &tenancy,
+        &tenancy
+            .clone_into_read_tenancy(&txn)
+            .await
+            .expect("unable to generate read tenancy"),
         &visibility,
         *component.id(),
         UNSET_SYSTEM_ID,
@@ -1296,7 +1305,10 @@ async fn simple_array_of_strings() {
     }
     let component_view = ComponentView::for_component_and_system(
         &txn,
-        &tenancy,
+        &tenancy
+            .clone_into_read_tenancy(&txn)
+            .await
+            .expect("unable to generate read tenancy"),
         &visibility,
         *component.id(),
         UNSET_SYSTEM_ID,
@@ -1538,7 +1550,10 @@ async fn complex_nested_array_of_objects() {
         .expect("could not resolve driving 55");
     let component_view = ComponentView::for_component_and_system(
         &txn,
-        &tenancy,
+        &tenancy
+            .clone_into_read_tenancy(&txn)
+            .await
+            .expect("unable to generate read tenancy"),
         &visibility,
         *component.id(),
         UNSET_SYSTEM_ID,
@@ -1659,7 +1674,10 @@ async fn simple_map() {
 
     let component_view = ComponentView::for_component_and_system(
         &txn,
-        &tenancy,
+        &tenancy
+            .clone_into_read_tenancy(&txn)
+            .await
+            .expect("unable to generate read tenancy"),
         &visibility,
         *component.id(),
         UNSET_SYSTEM_ID,
@@ -1844,7 +1862,10 @@ async fn complex_nested_array_of_objects_with_a_map() {
 
     let component_view = ComponentView::for_component_and_system(
         &txn,
-        &tenancy,
+        &tenancy
+            .clone_into_read_tenancy(&txn)
+            .await
+            .expect("unable to generate read tenancy"),
         &visibility,
         *component.id(),
         UNSET_SYSTEM_ID,
