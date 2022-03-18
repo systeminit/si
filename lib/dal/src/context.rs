@@ -3,8 +3,9 @@ use std::sync::Arc;
 use si_data::{
     nats,
     pg::{self, InstrumentedClient, InstrumentedTransaction, PgPoolResult},
-    NatsClient, NatsTxn, PgError, PgPool, PgTxn,
+    NatsClient, NatsTxn, PgPool, PgTxn,
 };
+use thiserror::Error;
 use veritech::EncryptionKey;
 
 use crate::{HistoryActor, ReadTenancy, Visibility, WriteTenancy};
@@ -41,14 +42,14 @@ impl ServicesContext {
         }
     }
 
-    /// Returns a tuple of a new [`DalContextBuilder`] and a PostgreSQL connection.
+    /// Consumes and returns a tuple of a new [`DalContextBuilder`] and a PostgreSQL connection.
     ///
     /// The database connection is obtained by requesting one from the inner database connection
     /// pool and is returned apart from the `DalContextBuilder` to ensure that the connection's
     /// ownership is distinct and seperate from the builder.
-    pub async fn builder_and_pg_conn(
-        &self,
-    ) -> PgPoolResult<(DalContextBuilder<'_>, InstrumentedClient)> {
+    pub async fn into_builder_and_pg_conn(
+        self,
+    ) -> PgPoolResult<(DalContextBuilder, InstrumentedClient)> {
         let pg_conn = self.pg_pool.get().await?;
 
         Ok((
@@ -58,29 +59,16 @@ impl ServicesContext {
             pg_conn,
         ))
     }
-
-    /// Returns a tuple containing a newly created PostgreSQL transaction and a NATS transaction.
-    pub async fn transactions<'a>(
-        &self,
-        pg_conn: &'a mut InstrumentedClient,
-    ) -> Result<(pg::PgTxn<'a>, nats::NatsTxn), PgError> {
-        let pg_txn = pg_conn.transaction().await?;
-        let nats_txn = self.nats_conn.transaction();
-
-        Ok((pg_txn, nats_txn))
-    }
 }
 
 /// A context type which holds references to underlying services, transactions, and read/write
 /// context for DAL objects.
 #[derive(Debug)]
-pub struct DalContext<'a> {
+pub struct DalContext<'s, 't> {
     /// A reference to a [`ServicesContext`] which has handles to common core services.
-    services_context: &'a ServicesContext,
-    /// A reference to a PostgreSQL transaction.
-    pg_txn: &'a pg::PgTxn<'a>,
-    /// A reference to a NATS transaction.
-    nats_txn: &'a nats::NatsTxn,
+    services_context: &'s ServicesContext,
+    /// A reference to a set of atomically related transactions.
+    txns: &'t Transactions<'t>,
     /// A suitable read tenancy for the consuming DAL objects.
     read_tenancy: ReadTenancy,
     /// A suitable write tenancy for the consuming DAL objects.
@@ -91,10 +79,10 @@ pub struct DalContext<'a> {
     history_actor: HistoryActor,
 }
 
-impl DalContext<'_> {
+impl DalContext<'_, '_> {
     /// Takes a reference to a [`ServicesContext`] and returns a builder to construct a
     /// `DalContext`.
-    pub fn builder(services_context: &ServicesContext) -> DalContextBuilder<'_> {
+    pub fn builder(services_context: ServicesContext) -> DalContextBuilder {
         DalContextBuilder { services_context }
     }
 
@@ -105,7 +93,7 @@ impl DalContext<'_> {
 
     /// Gets the dal context's pg txn.
     pub fn pg_txn(&self) -> &InstrumentedTransaction {
-        self.pg_txn
+        &self.txns.pg_txn
     }
 
     /// Gets a reference to the DAL context's NATS connection.
@@ -115,7 +103,7 @@ impl DalContext<'_> {
 
     /// Gets the dal context's nats txn.
     pub fn nats_txn(&self) -> &NatsTxn {
-        self.nats_txn
+        &self.txns.nats_txn
     }
 
     /// Gets a reference to the DAL context's Veritech client.
@@ -151,7 +139,8 @@ impl DalContext<'_> {
 
 /// A context which represents a suitable tenancies, visibilities, etc. for consumption by a set
 /// of DAL objects.
-pub struct HandlerContext {
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct RequestContext {
     /// A suitable read tenancy for the consuming DAL objects.
     pub read_tenancy: ReadTenancy,
     /// A suitable write tenancy for the consuming DAL objects.
@@ -162,29 +151,122 @@ pub struct HandlerContext {
     pub history_actor: HistoryActor,
 }
 
-/// A builder for a [`DalContext`].
-pub struct DalContextBuilder<'a> {
-    /// A reference to a [`ServicesContext`] which has handles to common core services.
-    services_context: &'a ServicesContext,
+/// A request context builder which requires a [`Visibility`] to be completed.
+#[derive(Debug)]
+pub struct AccessBuilder {
+    /// A suitable read tenancy for the consuming DAL objects.
+    read_tenancy: ReadTenancy,
+    /// A suitable write tenancy for the consuming DAL objects.
+    write_tenancy: WriteTenancy,
+    /// A suitable [`HistoryActor`] for the consuming DAL objects.
+    history_actor: HistoryActor,
 }
 
-impl<'a> DalContextBuilder<'a> {
+impl AccessBuilder {
+    /// Constructs a new instance given a set of tenancies and a [`HistoryActor`].
+    pub fn new(
+        read_tenancy: ReadTenancy,
+        write_tenancy: WriteTenancy,
+        history_actor: HistoryActor,
+    ) -> Self {
+        Self {
+            read_tenancy,
+            write_tenancy,
+            history_actor,
+        }
+    }
+
+    /// Builds and returns a new [`RequestContext`] using the given [`Visibillity`].
+    pub fn build(self, visibility: Visibility) -> RequestContext {
+        RequestContext {
+            read_tenancy: self.read_tenancy,
+            write_tenancy: self.write_tenancy,
+            visibility,
+            history_actor: self.history_actor,
+        }
+    }
+}
+
+/// A builder for a [`DalContext`].
+pub struct DalContextBuilder {
+    /// A [`ServicesContext`] which has handles to common core services.
+    services_context: ServicesContext,
+}
+
+impl DalContextBuilder {
     /// Contructs and returns a new [`DalContext`] using the given transaction references and
-    /// [`HandlerContext`].
-    pub fn build(
-        self,
-        handler_context: HandlerContext,
-        pg_txn: &'a PgTxn<'a>,
-        nats_txn: &'a NatsTxn,
-    ) -> DalContext<'a> {
+    /// [`RequestContext`].
+    pub fn build<'t>(
+        &self,
+        handler_context: RequestContext,
+        txns: &'t Transactions,
+    ) -> DalContext<'_, 't> {
         DalContext {
-            services_context: self.services_context,
-            pg_txn,
-            nats_txn,
+            services_context: &self.services_context,
+            txns,
             read_tenancy: handler_context.read_tenancy,
             write_tenancy: handler_context.write_tenancy,
             visibility: handler_context.visibility,
             history_actor: handler_context.history_actor,
         }
+    }
+
+    /// Gets a reference to the DAL context's NATS connection.
+    pub fn nats_conn(&self) -> &NatsClient {
+        &self.services_context.nats_conn
+    }
+}
+
+#[derive(Debug, Error)]
+pub enum TransactionsError {
+    #[error(transparent)]
+    Pg(#[from] pg::Error),
+    #[error(transparent)]
+    Nats(#[from] nats::Error),
+}
+
+// A set of atomically-related transactions.
+//
+// Ideally, all of these inner transactions would be committed or rolled back together, hence the
+// API methods.
+#[derive(Debug)]
+pub struct Transactions<'a> {
+    /// A PostgreSQL transaction.
+    pg_txn: PgTxn<'a>,
+    /// A NATS transaction.
+    nats_txn: NatsTxn,
+}
+
+impl<'a> Transactions<'a> {
+    /// Creates and returns a new `Transactions` instance.
+    pub fn new(pg_txn: PgTxn<'a>, nats_txn: NatsTxn) -> Self {
+        Self { pg_txn, nats_txn }
+    }
+
+    /// Gets a reference to the PostgreSQL transaction.
+    pub fn pg(&self) -> &PgTxn<'a> {
+        &self.pg_txn
+    }
+
+    /// Gets a reference to the NATS transaction.
+    pub fn nats(&self) -> &NatsTxn {
+        &self.nats_txn
+    }
+
+    /// Consumes all inner transactions and committing all changes made within them.
+    pub async fn commit(self) -> Result<(), TransactionsError> {
+        self.pg_txn.commit().await?;
+        self.nats_txn.commit().await?;
+        Ok(())
+    }
+
+    /// Rolls all inner transactions back, discarding all changes made within them.
+    ///
+    /// This is equivalent to the transaction's `Drop` implementations, but provides any error
+    /// encountered to the caller.
+    pub async fn rollback(self) -> Result<(), TransactionsError> {
+        self.pg_txn.rollback().await?;
+        self.nats_txn.rollback().await?;
+        Ok(())
     }
 }

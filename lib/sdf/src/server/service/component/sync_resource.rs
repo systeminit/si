@@ -1,11 +1,9 @@
 use axum::Json;
-use dal::context::HandlerContext;
-use dal::system::UNSET_ID_VALUE;
-use dal::{Component, ComponentId, StandardModel, SystemId, Visibility};
+use dal::{system::UNSET_ID_VALUE, Component, ComponentId, StandardModel, SystemId, Visibility};
 use serde::{Deserialize, Serialize};
 
 use super::{ComponentError, ComponentResult};
-use crate::server::extract::{HistoryActor, ServicesContext, Tenancy};
+use crate::server::extract::{AccessBuilder, HandlerContext};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -23,27 +21,12 @@ pub struct SyncResourceResponse {
 }
 
 pub async fn sync_resource(
-    ServicesContext(services_context): ServicesContext,
-    HistoryActor(history_actor): HistoryActor,
-    Tenancy((write_tenancy, read_tenancy)): Tenancy,
+    HandlerContext(builder, mut txns): HandlerContext,
+    AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<SyncResourceRequest>,
 ) -> ComponentResult<Json<SyncResourceResponse>> {
-    // Building owned pg_conn and setup ctx builder--this could likely become a macro call?
-    let (builder, mut pg_conn) = services_context.builder_and_pg_conn().await?;
-    let (pg_txn, nats_txn) = services_context.transactions(&mut pg_conn).await?;
-
-    // Build the final DalContext used by the rest of the handler function
-    let ctx = builder.build(
-        // TODO: read_tenancy, write_tenancy and history actor should be set by default to whatever the extractor gets
-        HandlerContext {
-            read_tenancy,
-            write_tenancy,
-            history_actor,
-            visibility: request.visibility,
-        },
-        &pg_txn,
-        &nats_txn,
-    );
+    let txns = txns.start().await?;
+    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
 
     let component = Component::get_by_id(
         ctx.pg_txn(),
@@ -64,7 +47,6 @@ pub async fn sync_resource(
         )
         .await?;
 
-    pg_txn.commit().await?;
-    nats_txn.commit().await?;
+    txns.commit().await?;
     Ok(Json(SyncResourceResponse { success: true }))
 }

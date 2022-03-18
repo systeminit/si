@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, fmt, sync::Arc};
 
 use axum::{
     async_trait,
@@ -6,36 +6,17 @@ use axum::{
     Json,
 };
 use dal::{
+    context::{self, DalContextBuilder, ServicesContext, Transactions, TransactionsError},
     ChangeSetPk, EditSessionPk, ReadTenancy, StandardModel, User, UserClaim, Visibility, Workspace,
     WorkspaceId, WriteTenancy,
 };
 use hyper::StatusCode;
-use serde::Serialize;
 use si_data::{nats, pg};
 
-pub struct ServicesContext(pub dal::context::ServicesContext);
+pub struct AccessBuilder(pub context::AccessBuilder);
 
 #[async_trait]
-impl<P> FromRequest<P> for ServicesContext
-where
-    P: Send,
-{
-    type Rejection = (StatusCode, Json<InternalError>);
-
-    async fn from_request(req: &mut RequestParts<P>) -> Result<Self, Self::Rejection> {
-        let PgPool(pg_pool) = PgPool::from_request(req).await?;
-        let Nats(nats_conn) = Nats::from_request(req).await?;
-        let Veritech(veritech) = Veritech::from_request(req).await?;
-        let EncryptionKey(encryption_key) = EncryptionKey::from_request(req).await?;
-        let ctx = dal::context::ServicesContext::new(pg_pool, nats_conn, veritech, encryption_key);
-        Ok(Self(ctx))
-    }
-}
-
-pub struct HistoryActor(pub dal::HistoryActor);
-
-#[async_trait]
-impl<P> FromRequest<P> for HistoryActor
+impl<P> FromRequest<P> for AccessBuilder
 where
     P: Send,
 {
@@ -43,80 +24,56 @@ where
 
     async fn from_request(req: &mut RequestParts<P>) -> Result<Self, Self::Rejection> {
         let Authorization(claim) = Authorization::from_request(req).await?;
-        Ok(Self(dal::HistoryActor::from(claim.user_id)))
+        let mut pg_ro_txn = PgRoTxn::from_request(req).await?;
+        let pg_txn = pg_ro_txn.start().await.map_err(internal_error)?;
+
+        let history_actor = dal::HistoryActor::from(claim.user_id);
+        let Tenancy(write_tenancy, read_tenancy) =
+            tenancy_from_request(req, &claim, &pg_txn).await?;
+
+        Ok(Self(context::AccessBuilder::new(
+            read_tenancy,
+            write_tenancy,
+            history_actor,
+        )))
     }
 }
 
-pub struct Tenancy(pub (WriteTenancy, ReadTenancy));
+pub struct TransactionsStarter {
+    pg_conn: pg::InstrumentedClient,
+    nats_conn: nats::Client,
+}
+
+impl TransactionsStarter {
+    pub async fn start(&mut self) -> Result<Transactions<'_>, TransactionsError> {
+        let pg_txn = self.pg_conn.transaction().await?;
+        let nats_txn = self.nats_conn.transaction();
+        Ok(Transactions::new(pg_txn, nats_txn))
+    }
+}
+
+pub struct HandlerContext(pub DalContextBuilder, pub TransactionsStarter);
 
 #[async_trait]
-impl<P> FromRequest<P> for Tenancy
+impl<P> FromRequest<P> for HandlerContext
 where
     P: Send,
 {
     type Rejection = (StatusCode, Json<serde_json::Value>);
 
     async fn from_request(req: &mut RequestParts<P>) -> Result<Self, Self::Rejection> {
-        let error_response = (
-            StatusCode::UNAUTHORIZED,
-            Json(serde_json::json!({
-                "error": {
-                    "message": "unauthorized",
-                    "code": 42,
-                    "statusCode": 401,
-                },
-            })),
-        );
-
-        let Authorization(claim) = Authorization::from_request(req).await?;
-
-        let mut ro_txn = PgRoTxn::from_request(req)
+        let Extension(services_context) = Extension::<ServicesContext>::from_request(req)
             .await
-            .map_err(|_| error_response.clone())?;
-        let txn = ro_txn.start().await.map_err(|_| error_response.clone())?;
-
-        let headers = req.headers().ok_or_else(|| error_response.clone())?;
-        let write_tenancy = if let Some(workspace_header_value) = headers.get("WorkspaceId") {
-            let workspace_id = workspace_header_value
-                .to_str()
-                .map_err(|_| error_response.clone())?;
-            let workspace_id = workspace_id
-                .parse::<WorkspaceId>()
-                .map_err(|_| error_response.clone())?;
-            WriteTenancy::new_workspace(workspace_id)
-        } else if let Some(authorization_header_value) = headers.get("Authorization") {
-            let authorization = authorization_header_value
-                .to_str()
-                .map_err(|_| error_response.clone())?;
-            let claim = UserClaim::from_bearer_token(&txn, authorization)
-                .await
-                .map_err(|_| error_response.clone())?;
-            WriteTenancy::new_billing_account(claim.billing_account_id)
-        } else {
-            // Should only happen at signup where the billing account creation should set the
-            // tenancy manually to universal as we don't write to universal implicitly
-            //
-            // Empty tenancy means things can be written, but they will never match any read
-            // tenancy, so they won't ever be read
-            WriteTenancy::from(&dal::Tenancy::new_empty())
-        };
-
-        let read_tenancy = write_tenancy
-            .clone_into_read_tenancy(&txn)
+            .map_err(internal_error)?;
+        let (dal_ctx_builder, pg_conn) = services_context
+            .into_builder_and_pg_conn()
             .await
-            .map_err(|_| error_response.clone())?;
-
-        // Ensures user can access workspace specified by id
-        if !read_tenancy.billing_accounts().is_empty()
-            && !read_tenancy
-                .billing_accounts()
-                .contains(&claim.billing_account_id)
-        {
-            return Err(error_response);
-        }
-        txn.commit().await.map_err(|_| error_response.clone())?;
-
-        Ok(Self((write_tenancy, read_tenancy)))
+            .map_err(internal_error)?;
+        let nats_conn = dal_ctx_builder.nats_conn().clone();
+        Ok(Self(
+            dal_ctx_builder,
+            TransactionsStarter { pg_conn, nats_conn },
+        ))
     }
 }
 
@@ -127,7 +84,7 @@ impl<P> FromRequest<P> for PgPool
 where
     P: Send,
 {
-    type Rejection = (StatusCode, Json<InternalError>);
+    type Rejection = (StatusCode, Json<serde_json::Value>);
 
     async fn from_request(req: &mut RequestParts<P>) -> Result<Self, Self::Rejection> {
         let Extension(pg_pool) = Extension::<pg::PgPool>::from_request(req)
@@ -144,7 +101,7 @@ impl<P> FromRequest<P> for PgConn
 where
     P: Send,
 {
-    type Rejection = (StatusCode, Json<InternalError>);
+    type Rejection = (StatusCode, Json<serde_json::Value>);
 
     async fn from_request(req: &mut RequestParts<P>) -> Result<Self, Self::Rejection> {
         let PgPool(pg_pool) = PgPool::from_request(req).await?;
@@ -160,7 +117,7 @@ impl<P> FromRequest<P> for PgRwTxn
 where
     P: Send,
 {
-    type Rejection = (StatusCode, Json<InternalError>);
+    type Rejection = (StatusCode, Json<serde_json::Value>);
 
     async fn from_request(req: &mut RequestParts<P>) -> Result<Self, Self::Rejection> {
         let PgConn(pg_conn) = PgConn::from_request(req).await?;
@@ -181,7 +138,7 @@ impl<P> FromRequest<P> for PgRoTxn
 where
     P: Send,
 {
-    type Rejection = (StatusCode, Json<InternalError>);
+    type Rejection = (StatusCode, Json<serde_json::Value>);
 
     async fn from_request(req: &mut RequestParts<P>) -> Result<Self, Self::Rejection> {
         let PgConn(pg_conn) = PgConn::from_request(req).await?;
@@ -202,7 +159,7 @@ impl<P> FromRequest<P> for Nats
 where
     P: Send,
 {
-    type Rejection = (StatusCode, Json<InternalError>);
+    type Rejection = (StatusCode, Json<serde_json::Value>);
 
     async fn from_request(req: &mut RequestParts<P>) -> Result<Self, Self::Rejection> {
         let Extension(nats) = Extension::<nats::Client>::from_request(req)
@@ -219,7 +176,7 @@ impl<P> FromRequest<P> for NatsTxn
 where
     P: Send,
 {
-    type Rejection = (StatusCode, Json<InternalError>);
+    type Rejection = (StatusCode, Json<serde_json::Value>);
 
     async fn from_request(req: &mut RequestParts<P>) -> Result<Self, Self::Rejection> {
         let Nats(nats) = Nats::from_request(req).await?;
@@ -240,7 +197,7 @@ impl<P> FromRequest<P> for Veritech
 where
     P: Send,
 {
-    type Rejection = (StatusCode, Json<InternalError>);
+    type Rejection = (StatusCode, Json<serde_json::Value>);
 
     async fn from_request(req: &mut RequestParts<P>) -> Result<Self, Self::Rejection> {
         let Extension(veritech) = Extension::<veritech::Client>::from_request(req)
@@ -257,7 +214,7 @@ impl<P> FromRequest<P> for EncryptionKey
 where
     P: Send,
 {
-    type Rejection = (StatusCode, Json<InternalError>);
+    type Rejection = (StatusCode, Json<serde_json::Value>);
 
     async fn from_request(req: &mut RequestParts<P>) -> Result<Self, Self::Rejection> {
         let Extension(encryption_key) =
@@ -268,20 +225,6 @@ where
     }
 }
 
-#[derive(Debug, Serialize)]
-pub struct InternalError {
-    error: String,
-}
-
-fn internal_error(err: impl std::error::Error) -> (StatusCode, Json<InternalError>) {
-    (
-        StatusCode::INTERNAL_SERVER_ERROR,
-        Json(InternalError {
-            error: err.to_string(),
-        }),
-    )
-}
-
 pub struct JwtSecretKey(pub crate::JwtSecretKey);
 
 #[async_trait]
@@ -289,7 +232,7 @@ impl<P> FromRequest<P> for JwtSecretKey
 where
     P: Send,
 {
-    type Rejection = (StatusCode, Json<InternalError>);
+    type Rejection = (StatusCode, Json<serde_json::Value>);
 
     async fn from_request(req: &mut RequestParts<P>) -> Result<Self, Self::Rejection> {
         let Extension(key) = Extension::<crate::server::config::JwtSecretKey>::from_request(req)
@@ -315,38 +258,25 @@ where
     type Rejection = (StatusCode, Json<serde_json::Value>);
 
     async fn from_request(req: &mut RequestParts<P>) -> Result<Self, Self::Rejection> {
-        let error_response = (
-            StatusCode::UNAUTHORIZED,
-            Json(serde_json::json!({
-                "error": {
-                    "message": "unauthorized",
-                    "code": 42,
-                    "statusCode": 401,
-                },
-            })),
-        );
+        let mut ro_txn = PgRoTxn::from_request(req).await?;
+        let txn = ro_txn.start().await.map_err(internal_error)?;
 
-        let mut ro_txn = PgRoTxn::from_request(req)
-            .await
-            .map_err(|_| error_response.clone())?;
-        let txn = ro_txn.start().await.map_err(|_| error_response.clone())?;
-
-        let headers = req.headers().ok_or_else(|| error_response.clone())?;
+        let headers = req.headers().ok_or_else(unauthorized_error)?;
         let authorization_header_value = headers
             .get("Authorization")
-            .ok_or_else(|| error_response.clone())?;
+            .ok_or_else(unauthorized_error)?;
         let authorization = authorization_header_value
             .to_str()
-            .map_err(|_| error_response.clone())?;
+            .map_err(internal_error)?;
         let claim = UserClaim::from_bearer_token(&txn, authorization)
             .await
-            .map_err(|_| error_response.clone())?;
+            .map_err(|_| unauthorized_error())?;
         let read_tenancy = ReadTenancy::new_billing_account(vec![claim.billing_account_id]);
         let visibility = Visibility::new_head(false);
         User::authorize(&txn, &read_tenancy, &visibility, &claim.user_id)
             .await
-            .map_err(|_| error_response.clone())?;
-        txn.commit().await.map_err(|_| error_response.clone())?;
+            .map_err(|_| unauthorized_error())?;
+        txn.commit().await.map_err(internal_error)?;
 
         Ok(Self(claim))
     }
@@ -362,36 +292,23 @@ where
     type Rejection = (StatusCode, Json<serde_json::Value>);
 
     async fn from_request(req: &mut RequestParts<P>) -> Result<Self, Self::Rejection> {
-        let error_response = (
-            StatusCode::UNAUTHORIZED,
-            Json(serde_json::json!({
-                "error": {
-                    "message": "unauthorized",
-                    "code": 42,
-                    "statusCode": 401,
-                },
-            })),
-        );
-
-        let mut ro_txn = PgRoTxn::from_request(req)
-            .await
-            .map_err(|_| error_response.clone())?;
-        let txn = ro_txn.start().await.map_err(|_| error_response.clone())?;
+        let mut ro_txn = PgRoTxn::from_request(req).await?;
+        let txn = ro_txn.start().await.map_err(internal_error)?;
 
         let query: Query<HashMap<String, String>> = Query::from_request(req)
             .await
-            .map_err(|_| error_response.clone())?;
-        let authorization = query.get("token").ok_or_else(|| error_response.clone())?;
+            .map_err(|_| unauthorized_error())?;
+        let authorization = query.get("token").ok_or_else(unauthorized_error)?;
 
         let claim = UserClaim::from_bearer_token(&txn, authorization)
             .await
-            .map_err(|_| error_response.clone())?;
+            .map_err(|_| unauthorized_error())?;
         let read_tenancy = ReadTenancy::new_billing_account(vec![claim.billing_account_id]);
         let visibility = Visibility::new_head(false);
         User::authorize(&txn, &read_tenancy, &visibility, &claim.user_id)
             .await
-            .map_err(|_| error_response.clone())?;
-        txn.commit().await.map_err(|_| error_response.clone())?;
+            .map_err(|_| unauthorized_error())?;
+        txn.commit().await.map_err(internal_error)?;
 
         Ok(Self(claim))
     }
@@ -407,39 +324,30 @@ where
     type Rejection = (StatusCode, Json<serde_json::Value>);
 
     async fn from_request(req: &mut RequestParts<P>) -> Result<Self, Self::Rejection> {
-        let error_response = (
-            StatusCode::NOT_ACCEPTABLE,
-            Json(serde_json::json!({
-                "error": {
-                    "message": "bad or missing visibility",
-                    "code": 42,
-                    "statusCode": 406,
-                },
-            })),
-        );
+        let err_msg = "bad or missing visibility";
 
         let query: Query<HashMap<String, String>> = Query::from_request(req)
             .await
-            .map_err(|_| error_response.clone())?;
+            .map_err(|_| not_acceptable_error(err_msg))?;
         let change_set_pk_string = query
             .get("visibility_change_set_pk")
-            .ok_or_else(|| error_response.clone())?;
+            .ok_or_else(|| not_acceptable_error(err_msg))?;
         let change_set_pk: ChangeSetPk = change_set_pk_string
             .parse()
-            .map_err(|_| error_response.clone())?;
+            .map_err(|_| not_acceptable_error(err_msg))?;
         let edit_session_pk_string = query
             .get("visibility_edit_session_pk")
-            .ok_or_else(|| error_response.clone())?;
+            .ok_or_else(|| not_acceptable_error(err_msg))?;
         let edit_session_pk: EditSessionPk = edit_session_pk_string
             .parse()
-            .map_err(|_| error_response.clone())?;
+            .map_err(|_| not_acceptable_error(err_msg))?;
         let deleted_string = query
             .get("visibility_deleted")
-            .ok_or_else(|| error_response.clone())?;
+            .ok_or_else(|| not_acceptable_error(err_msg))?;
         let deleted = match deleted_string.as_ref() {
             "0" => true,
             "1" => false,
-            _ => return Err(error_response.clone()),
+            _ => return Err(not_acceptable_error(err_msg)),
         };
         let visibility = Visibility::new(change_set_pk, edit_session_pk, deleted);
         Ok(Self(visibility))
@@ -456,51 +364,151 @@ where
     type Rejection = (StatusCode, Json<serde_json::Value>);
 
     async fn from_request(req: &mut RequestParts<P>) -> Result<Self, Self::Rejection> {
-        let error_response = (
-            StatusCode::NOT_ACCEPTABLE,
-            Json(serde_json::json!({
-                "error": {
-                    "message": "bad or missing workspace id",
-                    "code": 42,
-                    "statusCode": 406,
-                },
-            })),
-        );
+        let err_msg = "bad or missing workspace id";
 
         let query: Query<HashMap<String, String>> = Query::from_request(req)
             .await
-            .map_err(|_| error_response.clone())?;
+            .map_err(|_| not_acceptable_error(err_msg))?;
         let workspace_id_string = query
             .get("workspaceId")
-            .ok_or_else(|| error_response.clone())?;
+            .ok_or_else(|| not_acceptable_error(err_msg))?;
 
-        let QueryVisibility(visibility) =
-            QueryVisibility::from_request(req).await.map_err(|e| {
-                dbg!(e);
-                error_response.clone()
-            })?;
-        let mut ro_txn = PgRoTxn::from_request(req)
-            .await
-            .map_err(|_| error_response.clone())?;
-        let txn = ro_txn.start().await.map_err(|_| error_response.clone())?;
+        let QueryVisibility(visibility) = QueryVisibility::from_request(req).await?;
+        let mut ro_txn = PgRoTxn::from_request(req).await?;
+        let txn = ro_txn.start().await.map_err(internal_error)?;
 
-        let Authorization(claim) = Authorization::from_request(req)
-            .await
-            .map_err(|_| error_response.clone())?;
+        let Authorization(claim) = Authorization::from_request(req).await?;
         let billing_account_tenancy =
             dal::Tenancy::new_billing_account(vec![claim.billing_account_id]);
 
         let workspace_id: WorkspaceId = workspace_id_string
             .parse()
-            .map_err(|_| error_response.clone())?;
+            .map_err(|_| not_acceptable_error(err_msg))?;
 
         let _workspace =
             Workspace::get_by_id(&txn, &billing_account_tenancy, &visibility, &workspace_id)
                 .await
-                .map_err(|_| error_response.clone())?;
+                .map_err(|_| not_acceptable_error(err_msg))?;
 
         let tenancy = dal::Tenancy::new_workspace(vec![workspace_id]);
 
         Ok(Self(tenancy))
     }
+}
+
+pub struct HistoryActor(pub dal::HistoryActor);
+
+#[async_trait]
+impl<P> FromRequest<P> for HistoryActor
+where
+    P: Send,
+{
+    type Rejection = (StatusCode, Json<serde_json::Value>);
+
+    async fn from_request(req: &mut RequestParts<P>) -> Result<Self, Self::Rejection> {
+        let Authorization(claim) = Authorization::from_request(req).await?;
+        Ok(Self(dal::HistoryActor::from(claim.user_id)))
+    }
+}
+
+pub struct Tenancy(pub WriteTenancy, pub ReadTenancy);
+
+#[async_trait]
+impl<P> FromRequest<P> for Tenancy
+where
+    P: Send,
+{
+    type Rejection = (StatusCode, Json<serde_json::Value>);
+
+    async fn from_request(req: &mut RequestParts<P>) -> Result<Self, Self::Rejection> {
+        let Authorization(claim) = Authorization::from_request(req).await?;
+        let mut pg_ro_txn = PgRoTxn::from_request(req).await?;
+        let pg_txn = pg_ro_txn.start().await.map_err(internal_error)?;
+
+        tenancy_from_request(req, &claim, &pg_txn).await
+    }
+}
+
+async fn tenancy_from_request<P: Send>(
+    req: &mut RequestParts<P>,
+    claim: &UserClaim,
+    pg_txn: &pg::PgTxn<'_>,
+) -> Result<Tenancy, (StatusCode, Json<serde_json::Value>)> {
+    let headers = req
+        .headers()
+        .ok_or_else(|| not_acceptable_error("headers not found for request"))?;
+    let write_tenancy = if let Some(workspace_header_value) = headers.get("WorkspaceId") {
+        let workspace_id = workspace_header_value.to_str().map_err(internal_error)?;
+        let workspace_id = workspace_id
+            .parse::<WorkspaceId>()
+            .map_err(not_acceptable_error)?;
+        WriteTenancy::new_workspace(workspace_id)
+    } else if headers.get("Authorization").is_some() {
+        WriteTenancy::new_billing_account(claim.billing_account_id)
+    } else {
+        // Should only happen at signup where the billing account creation should set the
+        // tenancy manually to universal as we don't write to universal implicitly
+        //
+        // Empty tenancy means things can be written, but they will never match any read
+        // tenancy, so they won't ever be read
+        WriteTenancy::from(&dal::Tenancy::new_empty())
+    };
+
+    let read_tenancy = write_tenancy
+        .clone_into_read_tenancy(pg_txn)
+        .await
+        .map_err(internal_error)?;
+
+    // Ensures user can access workspace specified by id
+    if !read_tenancy.billing_accounts().is_empty()
+        && !read_tenancy
+            .billing_accounts()
+            .contains(&claim.billing_account_id)
+    {
+        return Err(not_acceptable_error("failed to determine valid tenacy"));
+    }
+
+    Ok(Tenancy(write_tenancy, read_tenancy))
+}
+
+fn internal_error(message: impl fmt::Display) -> (StatusCode, Json<serde_json::Value>) {
+    let status_code = StatusCode::INTERNAL_SERVER_ERROR;
+    (
+        status_code,
+        Json(serde_json::json!({
+            "error": {
+                "message": message.to_string(),
+                "statusCode": status_code.as_u16(),
+                "code": 42,
+            },
+        })),
+    )
+}
+
+fn not_acceptable_error(message: impl fmt::Display) -> (StatusCode, Json<serde_json::Value>) {
+    let status_code = StatusCode::NOT_ACCEPTABLE;
+    (
+        status_code,
+        Json(serde_json::json!({
+            "error": {
+                "message": message.to_string(),
+                "statusCode": status_code.as_u16(),
+                "code": 42,
+            },
+        })),
+    )
+}
+
+fn unauthorized_error() -> (StatusCode, Json<serde_json::Value>) {
+    let status_code = StatusCode::UNAUTHORIZED;
+    (
+        status_code,
+        Json(serde_json::json!({
+            "error": {
+                "message": "unauthorized",
+                "statusCode": status_code.as_u16(),
+                "code": 42,
+            },
+        })),
+    )
 }

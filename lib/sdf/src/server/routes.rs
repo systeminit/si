@@ -7,6 +7,7 @@ use axum::{
     routing::get,
     AddExtensionLayer, Json, Router,
 };
+use dal::context::ServicesContext;
 use hyper::StatusCode;
 use si_data::{nats, pg};
 use telemetry::TelemetryClient;
@@ -45,7 +46,7 @@ impl ShutdownBroadcast {
 pub fn routes(
     telemetry: impl TelemetryClient,
     pg_pool: pg::PgPool,
-    nats: nats::Client,
+    nats_conn: nats::Client,
     veritech: veritech::Client,
     encryption_key: veritech::EncryptionKey,
     jwt_secret_key: JwtSecretKey,
@@ -53,6 +54,13 @@ pub fn routes(
     shutdown_broadcast_tx: broadcast::Sender<()>,
 ) -> Router {
     let shared_state = Arc::new(State::new(shutdown_tx));
+    let encryption_key = Arc::new(encryption_key);
+    let services_context = ServicesContext::new(
+        pg_pool.clone(),
+        nats_conn.clone(),
+        veritech.clone(),
+        encryption_key.clone(),
+    );
 
     let mut router: Router = Router::new();
     router = router
@@ -85,11 +93,12 @@ pub fn routes(
     router = test_routes(router);
     router = router
         .layer(AddExtensionLayer::new(shared_state))
+        .layer(AddExtensionLayer::new(services_context))
         .layer(AddExtensionLayer::new(telemetry))
         .layer(AddExtensionLayer::new(pg_pool))
-        .layer(AddExtensionLayer::new(nats))
+        .layer(AddExtensionLayer::new(nats_conn))
         .layer(AddExtensionLayer::new(veritech))
-        .layer(AddExtensionLayer::new(Arc::new(encryption_key)))
+        .layer(AddExtensionLayer::new(encryption_key))
         .layer(AddExtensionLayer::new(jwt_secret_key))
         .layer(AddExtensionLayer::new(ShutdownBroadcast(
             shutdown_broadcast_tx,

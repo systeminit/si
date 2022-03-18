@@ -1,14 +1,16 @@
-use axum::body::{Bytes, Full};
-use axum::http::StatusCode;
-use axum::response::IntoResponse;
-use axum::routing::{get, post};
-use axum::Json;
-use axum::Router;
-use dal::{
-    ComponentError as DalComponentError, ComponentId, SchemaError, StandardModelError, SystemId,
-    WsEventError,
-};
 use std::convert::Infallible;
+
+use axum::{
+    body::{Bytes, Full},
+    http::StatusCode,
+    response::IntoResponse,
+    routing::{get, post},
+    Json, Router,
+};
+use dal::{
+    context::TransactionsError, ComponentError as DalComponentError, ComponentId, SchemaError,
+    StandardModelError, SystemId, WsEventError,
+};
 use thiserror::Error;
 
 pub mod get_code;
@@ -25,7 +27,7 @@ pub enum ComponentError {
     #[error(transparent)]
     Pg(#[from] si_data::PgError),
     #[error(transparent)]
-    PgPool(#[from] si_data::PgPoolError),
+    Transactions(#[from] TransactionsError),
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
     #[error("entity error: {0}")]
