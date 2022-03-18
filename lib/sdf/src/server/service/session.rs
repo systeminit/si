@@ -4,7 +4,7 @@ use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::Json;
 use axum::Router;
-use dal::{BillingAccountError, StandardModelError, UserError};
+use dal::{BillingAccountError, StandardModelError, TransactionsError, UserError};
 use std::convert::Infallible;
 use thiserror::Error;
 
@@ -18,6 +18,8 @@ pub enum SessionError {
     Nats(#[from] si_data::NatsError),
     #[error(transparent)]
     Pg(#[from] si_data::PgError),
+    #[error(transparent)]
+    ContextTransactions(#[from] TransactionsError),
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
     #[error("billing account error: {0}")]

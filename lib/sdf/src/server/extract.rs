@@ -7,8 +7,7 @@ use axum::{
 };
 use dal::{
     context::{self, DalContextBuilder, ServicesContext, Transactions, TransactionsError},
-    ChangeSetPk, EditSessionPk, ReadTenancy, StandardModel, User, UserClaim, Visibility, Workspace,
-    WorkspaceId, WriteTenancy,
+    ReadTenancy, User, UserClaim, Visibility, WorkspaceId, WriteTenancy,
 };
 use hyper::StatusCode;
 use si_data::{nats, pg};
@@ -314,88 +313,6 @@ where
     }
 }
 
-pub struct QueryVisibility(pub Visibility);
-
-#[async_trait]
-impl<P> FromRequest<P> for QueryVisibility
-where
-    P: Send,
-{
-    type Rejection = (StatusCode, Json<serde_json::Value>);
-
-    async fn from_request(req: &mut RequestParts<P>) -> Result<Self, Self::Rejection> {
-        let err_msg = "bad or missing visibility";
-
-        let query: Query<HashMap<String, String>> = Query::from_request(req)
-            .await
-            .map_err(|_| not_acceptable_error(err_msg))?;
-        let change_set_pk_string = query
-            .get("visibility_change_set_pk")
-            .ok_or_else(|| not_acceptable_error(err_msg))?;
-        let change_set_pk: ChangeSetPk = change_set_pk_string
-            .parse()
-            .map_err(|_| not_acceptable_error(err_msg))?;
-        let edit_session_pk_string = query
-            .get("visibility_edit_session_pk")
-            .ok_or_else(|| not_acceptable_error(err_msg))?;
-        let edit_session_pk: EditSessionPk = edit_session_pk_string
-            .parse()
-            .map_err(|_| not_acceptable_error(err_msg))?;
-        let deleted_string = query
-            .get("visibility_deleted")
-            .ok_or_else(|| not_acceptable_error(err_msg))?;
-        let deleted = match deleted_string.as_ref() {
-            "0" => true,
-            "1" => false,
-            _ => return Err(not_acceptable_error(err_msg)),
-        };
-        let visibility = Visibility::new(change_set_pk, edit_session_pk, deleted);
-        Ok(Self(visibility))
-    }
-}
-
-pub struct QueryWorkspaceTenancy(pub dal::Tenancy);
-
-#[async_trait]
-impl<P> FromRequest<P> for QueryWorkspaceTenancy
-where
-    P: Send,
-{
-    type Rejection = (StatusCode, Json<serde_json::Value>);
-
-    async fn from_request(req: &mut RequestParts<P>) -> Result<Self, Self::Rejection> {
-        let err_msg = "bad or missing workspace id";
-
-        let query: Query<HashMap<String, String>> = Query::from_request(req)
-            .await
-            .map_err(|_| not_acceptable_error(err_msg))?;
-        let workspace_id_string = query
-            .get("workspaceId")
-            .ok_or_else(|| not_acceptable_error(err_msg))?;
-
-        let QueryVisibility(visibility) = QueryVisibility::from_request(req).await?;
-        let mut ro_txn = PgRoTxn::from_request(req).await?;
-        let txn = ro_txn.start().await.map_err(internal_error)?;
-
-        let Authorization(claim) = Authorization::from_request(req).await?;
-        let billing_account_tenancy =
-            dal::Tenancy::new_billing_account(vec![claim.billing_account_id]);
-
-        let workspace_id: WorkspaceId = workspace_id_string
-            .parse()
-            .map_err(|_| not_acceptable_error(err_msg))?;
-
-        let _workspace =
-            Workspace::get_by_id(&txn, &billing_account_tenancy, &visibility, &workspace_id)
-                .await
-                .map_err(|_| not_acceptable_error(err_msg))?;
-
-        let tenancy = dal::Tenancy::new_workspace(vec![workspace_id]);
-
-        Ok(Self(tenancy))
-    }
-}
-
 pub struct HistoryActor(pub dal::HistoryActor);
 
 #[async_trait]
@@ -449,8 +366,7 @@ async fn tenancy_from_request<P: Send>(
         // Should only happen at signup where the billing account creation should set the
         // tenancy manually to universal as we don't write to universal implicitly
         //
-        // Empty tenancy means things can be written, but they will never match any read
-        // tenancy, so they won't ever be read
+        // Empty tenancy means things can be written, but won't ever be read
         WriteTenancy::from(&dal::Tenancy::new_empty())
     };
 

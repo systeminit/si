@@ -23,7 +23,6 @@ import { ViewerStateMachine } from "./SchematicViewer/state";
 
 import { SchematicService } from "@/service/schematic";
 import { GlobalErrorService } from "@/service/global_error";
-// import { SetSchematicResponse } from "@/service/schematic/set_schematic";
 
 // import { schematicData } from "./SchematicViewer/model";
 // import { schematicData$ } from "./SchematicViewer/data";

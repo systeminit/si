@@ -1,7 +1,7 @@
 use super::SchemaResult;
-use crate::server::extract::{Authorization, NatsTxn, PgRwTxn};
+use crate::server::extract::{Authorization, HandlerContext, HistoryActor, Tenancy};
 use axum::Json;
-use dal::{component::ComponentKind, HistoryActor, Schema, SchemaKind, Visibility, WriteTenancy};
+use dal::{component::ComponentKind, Schema, SchemaKind, Visibility, WriteTenancy};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -20,28 +20,36 @@ pub struct CreateSchemaResponse {
 }
 
 pub async fn create_schema(
-    mut txn: PgRwTxn,
-    mut nats: NatsTxn,
+    HandlerContext(builder, mut txns): HandlerContext,
     Authorization(claim): Authorization,
+    Tenancy(_write_tenancy, read_tenancy): Tenancy,
+    HistoryActor(history_actor): HistoryActor,
     Json(request): Json<CreateSchemaRequest>,
 ) -> SchemaResult<Json<CreateSchemaResponse>> {
-    let txn = txn.start().await?;
-    let nats = nats.start().await?;
-    let write_tenancy = WriteTenancy::new_billing_account(claim.billing_account_id);
-    let history_actor: HistoryActor = HistoryActor::from(claim.user_id);
+    let txns = txns.start().await?;
+    let ctx = builder.build(
+        dal::context::AccessBuilder::new(
+            read_tenancy,
+            WriteTenancy::new_billing_account(claim.billing_account_id),
+            history_actor,
+        )
+        .build(request.visibility),
+        &txns,
+    );
+
     let schema = Schema::new(
-        &txn,
-        &nats,
-        &write_tenancy,
-        &request.visibility,
-        &history_actor,
+        ctx.pg_txn(),
+        ctx.nats_txn(),
+        ctx.write_tenancy(),
+        ctx.visibility(),
+        ctx.history_actor(),
         &request.name,
         &request.kind,
         &ComponentKind::Standard,
     )
     .await?;
-    txn.commit().await?;
-    nats.commit().await?;
     let response = CreateSchemaResponse { schema };
+
+    txns.commit().await?;
     Ok(Json(response))
 }

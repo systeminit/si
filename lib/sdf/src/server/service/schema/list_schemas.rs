@@ -1,10 +1,10 @@
 use axum::extract::Query;
 use axum::Json;
-use dal::{Schema, StandardModel, Tenancy, Visibility};
+use dal::{Schema, StandardModel, Visibility};
 use serde::{Deserialize, Serialize};
 
 use super::SchemaResult;
-use crate::server::extract::{Authorization, PgRoTxn};
+use crate::server::extract::{AccessBuilder, HandlerContext};
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct ListSchemaRequest {
@@ -19,14 +19,14 @@ pub struct ListSchemaResponse {
 }
 
 pub async fn list_schemas(
-    mut txn: PgRoTxn,
+    HandlerContext(builder, mut txns): HandlerContext,
+    AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<ListSchemaRequest>,
-    Authorization(claim): Authorization,
 ) -> SchemaResult<Json<ListSchemaResponse>> {
-    let txn = txn.start().await?;
-    let mut tenancy = Tenancy::new_billing_account(vec![claim.billing_account_id]);
-    tenancy.universal = true;
-    let list = Schema::list(&txn, &tenancy, &request.visibility).await?;
+    let txns = txns.start().await?;
+    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
+
+    let list = Schema::list(ctx.pg_txn(), &ctx.read_tenancy().into(), ctx.visibility()).await?;
     let response = ListSchemaResponse { list };
     Ok(Json(response))
 }

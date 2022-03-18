@@ -4,7 +4,7 @@ use axum::response::IntoResponse;
 use axum::routing::post;
 use axum::Json;
 use axum::Router;
-use dal::{BillingAccountError, UserError};
+use dal::{BillingAccountError, TransactionsError, UserError};
 use std::convert::Infallible;
 use thiserror::Error;
 
@@ -18,6 +18,8 @@ pub enum TestError {
     Nats(#[from] si_data::NatsError),
     #[error(transparent)]
     Pg(#[from] si_data::PgError),
+    #[error(transparent)]
+    ContextTransaction(#[from] TransactionsError),
     #[error("billing account error: {0}")]
     BillingAccount(#[from] BillingAccountError),
     #[error("user error: {0}")]

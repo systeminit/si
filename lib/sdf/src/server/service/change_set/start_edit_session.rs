@@ -1,5 +1,5 @@
 use super::ChangeSetResult;
-use crate::server::extract::{Authorization, NatsTxn, PgRwTxn};
+use crate::server::extract::{Authorization, HandlerContext, Tenancy};
 use axum::Json;
 use chrono::Utc;
 use dal::{ChangeSetPk, EditSession, HistoryActor, WriteTenancy};
@@ -18,30 +18,37 @@ pub struct StartEditSessionResponse {
 }
 
 pub async fn start_edit_session(
-    mut txn: PgRwTxn,
-    mut nats: NatsTxn,
+    HandlerContext(builder, mut txns): HandlerContext,
     Authorization(claim): Authorization,
+    Tenancy(_write_tenancy, read_tenancy): Tenancy,
     Json(request): Json<StartEditSessionRequest>,
 ) -> ChangeSetResult<Json<StartEditSessionResponse>> {
     dbg!("motherfucker");
-    let txn = txn.start().await?;
-    let nats = nats.start().await?;
-    let write_tenancy = WriteTenancy::new_billing_account(claim.billing_account_id);
-    let history_actor: HistoryActor = HistoryActor::from(claim.user_id);
+    let txns = txns.start().await?;
+    let ctx = builder.build(
+        dal::context::AccessBuilder::new(
+            read_tenancy,
+            WriteTenancy::new_billing_account(claim.billing_account_id),
+            HistoryActor::User(claim.user_id),
+        )
+        .build_head(),
+        &txns,
+    );
 
     let current_date_time = Utc::now();
     let edit_session_name = current_date_time.to_string();
     let edit_session = EditSession::new(
-        &txn,
-        &nats,
-        &write_tenancy,
-        &history_actor,
+        ctx.pg_txn(),
+        ctx.nats_txn(),
+        ctx.write_tenancy(),
+        ctx.history_actor(),
         &request.change_set_pk,
         &edit_session_name,
         None,
     )
     .await?;
-    txn.commit().await?;
-    nats.commit().await?;
+
+    txns.commit().await?;
+
     Ok(Json(StartEditSessionResponse { edit_session }))
 }

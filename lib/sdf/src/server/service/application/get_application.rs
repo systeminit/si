@@ -4,7 +4,7 @@ use dal::{Component, ComponentId, StandardModel, Visibility, WorkspaceId};
 use serde::{Deserialize, Serialize};
 
 use super::ApplicationResult;
-use crate::server::extract::{Authorization, PgRoTxn, QueryWorkspaceTenancy};
+use crate::server::extract::{AccessBuilder, HandlerContext};
 use crate::service::application::ApplicationError;
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -26,21 +26,29 @@ pub struct GetApplicationResponse {
 //pub type GetApplicationResponse = Option<Component>;
 
 pub async fn get_application(
-    mut txn: PgRoTxn,
-    Authorization(_claim): Authorization,
+    HandlerContext(builder, mut txns): HandlerContext,
+    AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<GetApplicationRequest>,
-    QueryWorkspaceTenancy(tenancy): QueryWorkspaceTenancy,
 ) -> ApplicationResult<Json<GetApplicationResponse>> {
-    let txn = txn.start().await?;
-    let application =
-        Component::get_by_id(&txn, &tenancy, &request.visibility, &request.application_id)
-            .await?
-            .ok_or(ApplicationError::NotFound)?;
+    let txns = txns.start().await?;
+    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
+
+    let application = Component::get_by_id(
+        ctx.pg_txn(),
+        &ctx.read_tenancy().into(),
+        ctx.visibility(),
+        &request.application_id,
+    )
+    .await?
+    .ok_or(ApplicationError::NotFound)?;
     let application_node = application
-        .node(&txn, &tenancy, &request.visibility)
+        .node(ctx.pg_txn(), &ctx.read_tenancy().into(), ctx.visibility())
         .await?
         .pop()
         .ok_or(ApplicationError::NotFound)?;
+
+    txns.commit().await?;
+
     Ok(Json(GetApplicationResponse {
         application,
         application_node_id: *application_node.id(),

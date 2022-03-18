@@ -5,7 +5,7 @@ use axum::routing::{get, post};
 use axum::Json;
 use axum::Router;
 use dal::{
-    ComponentError as DalComponentError, ReadTenancyError, SchemaError, StandardModelError,
+    ComponentError as DalComponentError, SchemaError, StandardModelError, TransactionsError,
     WsEventError,
 };
 use std::convert::Infallible;
@@ -23,6 +23,8 @@ pub enum ApplicationError {
     Pg(#[from] si_data::PgError),
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
+    #[error(transparent)]
+    ContextTransactions(#[from] TransactionsError),
     #[error("entity error: {0}")]
     Component(#[from] DalComponentError),
     #[error("not found")]
@@ -35,8 +37,6 @@ pub enum ApplicationError {
     SchemaError(#[from] SchemaError),
     #[error("ws event error: {0}")]
     WsEvent(#[from] WsEventError),
-    #[error("read tenancy error: {0}")]
-    ReadTenancy(#[from] ReadTenancyError),
 }
 
 pub type ApplicationResult<T> = std::result::Result<T, ApplicationError>;

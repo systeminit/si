@@ -1,8 +1,8 @@
 use super::ChangeSetResult;
-use crate::server::extract::{Authorization, NatsTxn, PgRwTxn};
+use crate::server::extract::{AccessBuilder, HandlerContext};
 use crate::server::service::change_set::ChangeSetError;
 use axum::Json;
-use dal::{EditSession, EditSessionPk, HistoryActor, ReadTenancy};
+use dal::{EditSession, EditSessionPk};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -18,21 +18,22 @@ pub struct CancelEditSessionResponse {
 }
 
 pub async fn cancel_edit_session(
-    mut txn: PgRwTxn,
-    mut nats: NatsTxn,
-    Authorization(claim): Authorization,
+    HandlerContext(builder, mut txns): HandlerContext,
+    AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<CancelEditSessionRequest>,
 ) -> ChangeSetResult<Json<CancelEditSessionResponse>> {
-    let txn = txn.start().await?;
-    let nats = nats.start().await?;
-    let read_tenancy = ReadTenancy::new_billing_account(vec![claim.billing_account_id]);
-    let history_actor: HistoryActor = HistoryActor::from(claim.user_id);
+    let txns = txns.start().await?;
+    let ctx = builder.build(request_ctx.build_head(), &txns);
 
-    let mut edit_session = EditSession::get_by_pk(&txn, &read_tenancy, &request.edit_session_pk)
-        .await?
-        .ok_or(ChangeSetError::EditSessionNotFound)?;
-    edit_session.cancel(&txn, &nats, &history_actor).await?;
-    txn.commit().await?;
-    nats.commit().await?;
+    let mut edit_session =
+        EditSession::get_by_pk(ctx.pg_txn(), ctx.read_tenancy(), &request.edit_session_pk)
+            .await?
+            .ok_or(ChangeSetError::EditSessionNotFound)?;
+    edit_session
+        .cancel(ctx.pg_txn(), ctx.nats_txn(), ctx.history_actor())
+        .await?;
+
+    txns.commit().await?;
+
     Ok(Json(CancelEditSessionResponse { edit_session }))
 }

@@ -8,8 +8,8 @@ use axum::{
     Json, Router,
 };
 use dal::{
-    context::TransactionsError, ComponentError as DalComponentError, ComponentId, ReadTenancyError,
-    SchemaError, StandardModelError, SystemId, WsEventError,
+    ComponentError as DalComponentError, ComponentId, ReadTenancyError, SchemaError,
+    StandardModelError, SystemId, TransactionsError, WsEventError,
 };
 
 use thiserror::Error;
@@ -51,8 +51,6 @@ pub enum ComponentError {
     ResourceNotFound(ComponentId, SystemId),
     #[error("read tenancy error: {0}")]
     ReadTenancy(#[from] ReadTenancyError),
-    #[error("tot authorized")]
-    NotAuthorized,
 }
 
 pub type ComponentResult<T> = std::result::Result<T, ComponentError>;

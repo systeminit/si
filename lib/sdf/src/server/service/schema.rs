@@ -4,7 +4,7 @@ use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::Json;
 use axum::Router;
-use dal::{SchemaError as DalSchemaError, StandardModelError};
+use dal::{SchemaError as DalSchemaError, StandardModelError, TransactionsError};
 use std::convert::Infallible;
 use thiserror::Error;
 
@@ -18,6 +18,8 @@ pub enum SchemaError {
     Nats(#[from] si_data::NatsError),
     #[error(transparent)]
     Pg(#[from] si_data::PgError),
+    #[error(transparent)]
+    ContextTransaction(#[from] TransactionsError),
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
     #[error("schema error: {0}")]

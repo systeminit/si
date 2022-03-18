@@ -910,14 +910,14 @@ impl Component {
     #[instrument(skip_all)]
     pub async fn list_validations_as_qualification_for_component_id(
         txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
+        read_tenancy: &ReadTenancy,
         visibility: &Visibility,
         component_id: ComponentId,
         system_id: SystemId,
     ) -> ComponentResult<QualificationView> {
         let validation_field_values = ValidationResolver::list_values_for_component(
             txn,
-            &tenancy.clone_into_read_tenancy(txn).await?,
+            read_tenancy,
             visibility,
             component_id,
             system_id,
@@ -969,18 +969,24 @@ impl Component {
     pub async fn list_qualifications(
         &self,
         txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
+        read_tenancy: &ReadTenancy,
         visibility: &Visibility,
         system_id: SystemId,
     ) -> ComponentResult<Vec<QualificationView>> {
-        Self::list_qualifications_by_component_id(txn, tenancy, visibility, *self.id(), system_id)
-            .await
+        Self::list_qualifications_by_component_id(
+            txn,
+            read_tenancy,
+            visibility,
+            *self.id(),
+            system_id,
+        )
+        .await
     }
 
     #[instrument(skip_all)]
     pub async fn list_qualifications_by_component_id(
         txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
+        read_tenancy: &ReadTenancy,
         visibility: &Visibility,
         component_id: ComponentId,
         system_id: SystemId,
@@ -990,7 +996,7 @@ impl Component {
         // This is the "All Fields Valid" universal qualification
         let validation_qualification = Self::list_validations_as_qualification_for_component_id(
             txn,
-            tenancy,
+            read_tenancy,
             visibility,
             component_id,
             system_id,
@@ -1001,7 +1007,7 @@ impl Component {
         let rows = txn
             .query(
                 LIST_QUALIFICATIONS,
-                &[&tenancy, &visibility, &component_id, &system_id],
+                &[read_tenancy, &visibility, &component_id, &system_id],
             )
             .await?;
         let no_qualification_results = rows.is_empty();
@@ -1021,22 +1027,20 @@ impl Component {
         }
         // This is inefficient, but effective
         if no_qualification_results {
-            let component = Self::get_by_id(txn, tenancy, visibility, &component_id)
+            let component = Self::get_by_id(txn, &read_tenancy.into(), visibility, &component_id)
                 .await?
                 .ok_or(ComponentError::NotFound(component_id))?;
-            let mut schema_tenancy = tenancy.clone();
-            schema_tenancy.universal = true;
             let schema = component
-                .schema_with_tenancy(txn, tenancy, visibility)
+                .schema_with_tenancy(txn, &read_tenancy.into(), visibility)
                 .await?
                 .ok_or(ComponentError::SchemaNotFound)?;
             let schema_variant = component
-                .schema_variant_with_tenancy(txn, tenancy, visibility)
+                .schema_variant_with_tenancy(txn, &read_tenancy.into(), visibility)
                 .await?
                 .ok_or(ComponentError::SchemaVariantNotFound)?;
             let prototypes = QualificationPrototype::find_for_component(
                 txn,
-                &tenancy.clone_into_read_tenancy(txn).await?,
+                read_tenancy,
                 visibility,
                 component_id,
                 *schema.id(),

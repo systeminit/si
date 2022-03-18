@@ -4,7 +4,9 @@ use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::Json;
 use axum::Router;
-use dal::{ChangeSetError as DalChangeSetError, EditSessionError, StandardModelError};
+use dal::{
+    ChangeSetError as DalChangeSetError, EditSessionError, StandardModelError, TransactionsError,
+};
 use std::convert::Infallible;
 use thiserror::Error;
 
@@ -26,6 +28,8 @@ pub enum ChangeSetError {
     StandardModel(#[from] StandardModelError),
     #[error(transparent)]
     ChangeSet(#[from] DalChangeSetError),
+    #[error(transparent)]
+    ContextError(#[from] TransactionsError),
     #[error(transparent)]
     EditSession(#[from] EditSessionError),
     #[error("change set not found")]

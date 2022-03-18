@@ -1,8 +1,8 @@
 use super::SessionResult;
-use crate::server::extract::{Authorization, PgRoTxn};
+use crate::server::extract::{AccessBuilder, Authorization, HandlerContext};
 use axum::Json;
 use dal::billing_account::BillingAccountDefaults;
-use dal::{BillingAccount, Organization, ReadTenancy, System, Visibility, Workspace};
+use dal::{BillingAccount, Organization, System, Workspace};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -24,15 +24,20 @@ impl From<BillingAccountDefaults> for GetDefaultsResponse {
 }
 
 pub async fn get_defaults(
-    mut txn: PgRoTxn,
+    HandlerContext(builder, mut txns): HandlerContext,
+    AccessBuilder(request_ctx): AccessBuilder,
     Authorization(claim): Authorization,
 ) -> SessionResult<Json<GetDefaultsResponse>> {
-    let txn = txn.start().await?;
-    let read_tenancy = ReadTenancy::new_billing_account(vec![claim.billing_account_id]);
-    let visibility = Visibility::new_head(false);
-    let response =
-        BillingAccount::get_defaults(&txn, &read_tenancy, &visibility, &claim.billing_account_id)
-            .await?
-            .into();
+    let txns = txns.start().await?;
+    let ctx = builder.build(request_ctx.build_head(), &txns);
+
+    let response = BillingAccount::get_defaults(
+        ctx.pg_txn(),
+        ctx.read_tenancy(),
+        ctx.visibility(),
+        &claim.billing_account_id,
+    )
+    .await?
+    .into();
     Ok(Json(response))
 }

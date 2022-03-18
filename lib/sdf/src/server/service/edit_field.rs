@@ -7,7 +7,7 @@ use axum::{
 };
 use dal::{
     schema::variant::SchemaVariantError, socket::SocketError, ComponentError, PropError,
-    QualificationCheckError, ReadTenancyError, SchemaError, StandardModelError,
+    QualificationCheckError, ReadTenancyError, SchemaError, StandardModelError, TransactionsError,
 };
 use std::convert::Infallible;
 use thiserror::Error;
@@ -29,6 +29,8 @@ pub enum EditFieldError {
     QualificationChec(#[from] QualificationCheckError),
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
+    #[error(transparent)]
+    ContextError(#[from] TransactionsError),
     #[error("schema error: {0}")]
     Schema(#[from] SchemaError),
     #[error("schema error: {0}")]

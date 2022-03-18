@@ -1,11 +1,9 @@
 use axum::{extract::Query, Json};
-use dal::{
-    node::NodeId, schematic::Schematic, system::SystemId, ReadTenancy, Visibility, WorkspaceId,
-};
+use dal::{node::NodeId, schematic::Schematic, system::SystemId, Visibility, WorkspaceId};
 use serde::{Deserialize, Serialize};
 
-use super::{SchematicError, SchematicResult};
-use crate::server::extract::{Authorization, PgRoTxn};
+use super::SchematicResult;
+use crate::server::extract::{AccessBuilder, HandlerContext};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -20,26 +18,22 @@ pub struct GetSchematicRequest {
 pub type GetSchematicResponse = Schematic;
 
 pub async fn get_schematic(
-    mut txn: PgRoTxn,
-    Authorization(claim): Authorization,
+    HandlerContext(builder, mut txns): HandlerContext,
+    AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<GetSchematicRequest>,
 ) -> SchematicResult<Json<GetSchematicResponse>> {
-    let txn = txn.start().await?;
-    let read_tenancy = ReadTenancy::new_workspace(&txn, vec![request.workspace_id]).await?;
-    if !read_tenancy
-        .billing_accounts()
-        .contains(&claim.billing_account_id)
-    {
-        return Err(SchematicError::NotAuthorized);
-    }
+    let txns = txns.start().await?;
+    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
 
     let response = Schematic::find(
-        &txn,
-        &read_tenancy,
-        &request.visibility,
+        ctx.pg_txn(),
+        ctx.read_tenancy(),
+        ctx.visibility(),
         request.system_id,
         request.root_node_id,
     )
     .await?;
+
+    txns.commit().await?;
     Ok(Json(response))
 }

@@ -1,9 +1,9 @@
 use axum::{extract::Query, Json};
-use dal::{Schema, SchemaId, StandardModel, Tenancy, Visibility};
+use dal::{Schema, SchemaId, StandardModel, Visibility};
 use serde::{Deserialize, Serialize};
 
 use super::{SchemaError, SchemaResult};
-use crate::server::extract::{Authorization, PgRoTxn};
+use crate::server::extract::{AccessBuilder, HandlerContext};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -16,15 +16,22 @@ pub struct GetSchemaRequest {
 pub type GetSchemaResponse = Schema;
 
 pub async fn get_schema(
-    mut txn: PgRoTxn,
-    Authorization(claim): Authorization,
+    HandlerContext(builder, mut txns): HandlerContext,
+    AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<GetSchemaRequest>,
 ) -> SchemaResult<Json<GetSchemaResponse>> {
-    let txn = txn.start().await?;
-    let mut tenancy = Tenancy::new_billing_account(vec![claim.billing_account_id]);
-    tenancy.universal = true;
-    let response = Schema::get_by_id(&txn, &tenancy, &request.visibility, &request.schema_id)
-        .await?
-        .ok_or(SchemaError::SchemaNotFound)?;
+    let txns = txns.start().await?;
+    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
+
+    let response = Schema::get_by_id(
+        ctx.pg_txn(),
+        &ctx.read_tenancy().into(),
+        ctx.visibility(),
+        &request.schema_id,
+    )
+    .await?
+    .ok_or(SchemaError::SchemaNotFound)?;
+
+    txns.commit().await?;
     Ok(Json(response))
 }

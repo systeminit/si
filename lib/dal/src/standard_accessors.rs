@@ -19,11 +19,14 @@ macro_rules! standard_model_many_to_many {
             txn: &si_data::PgTxn<'_>,
             visibility: &$crate::Visibility,
         ) -> $result_type<Vec<$returns>> {
+            // Hack to allow avoiding _with_tenancy in most cases
+            let mut tenancy = self.tenancy().clone();
+            tenancy.universal = true;
             let other: Option<&$right_id> = None;
             let r = $crate::standard_model::many_to_many(
                 &txn,
                 $table_name,
-                &self.tenancy(),
+                &tenancy,
                 visibility,
                 $left_table,
                 $right_table,

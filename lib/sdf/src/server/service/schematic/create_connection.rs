@@ -1,12 +1,9 @@
-use crate::server::extract::{Authorization, NatsTxn, PgRwTxn};
-use crate::service::schematic::{SchematicError, SchematicResult};
+use super::SchematicResult;
+use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::Json;
 use dal::node::NodeId;
 use dal::socket::SocketId;
-use dal::{
-    Connection, HistoryActor, StandardModel, Tenancy, Visibility, Workspace, WorkspaceId,
-    WriteTenancy,
-};
+use dal::{Connection, Visibility, WorkspaceId};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -28,32 +25,19 @@ pub struct CreateConnectionResponse {
 }
 
 pub async fn create_connection(
-    mut txn: PgRwTxn,
-    mut nats: NatsTxn,
-    Authorization(claim): Authorization,
+    HandlerContext(builder, mut txns): HandlerContext,
+    AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<CreateConnectionRequest>,
 ) -> SchematicResult<Json<CreateConnectionResponse>> {
-    let txn = txn.start().await?;
-    let nats = nats.start().await?;
-
-    let billing_account_tenancy = Tenancy::new_billing_account(vec![claim.billing_account_id]);
-    let history_actor: HistoryActor = HistoryActor::from(claim.user_id);
-    let workspace = Workspace::get_by_id(
-        &txn,
-        &billing_account_tenancy,
-        &request.visibility,
-        &request.workspace_id,
-    )
-    .await?
-    .ok_or(SchematicError::InvalidRequest)?;
-    let write_tenancy = WriteTenancy::new_workspace(*workspace.id());
+    let txns = txns.start().await?;
+    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
 
     let connection = Connection::new(
-        &txn,
-        &nats,
-        &write_tenancy,
-        &request.visibility,
-        &history_actor,
+        ctx.pg_txn(),
+        ctx.nats_txn(),
+        ctx.write_tenancy(),
+        ctx.visibility(),
+        ctx.history_actor(),
         &request.head_node_id,
         &request.head_socket_id,
         &request.tail_node_id,
@@ -61,8 +45,7 @@ pub async fn create_connection(
     )
     .await?;
 
-    txn.commit().await?;
-    nats.commit().await?;
+    txns.commit().await?;
 
     Ok(Json(CreateConnectionResponse { connection }))
 }
