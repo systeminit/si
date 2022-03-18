@@ -1,3 +1,15 @@
+//! An [`AttributePrototype`] represents, for a specific attribute:
+//!
+//!   * Which context the following applies to (combination of [`PropId`](crate::prop::PropId),
+//!     [`SchemaId`](crate::SchemaId), [`SchemaVariantId`](crate::SchemaVariantId),
+//!     [`ComponentId`](crate::ComponentId), [`SystemId`](crate::SystemId)).
+//!   * The function that should be run to find its value.
+//!   * In the case that the [`Prop`](crate::Prop) is the child of an
+//!     [`Array`](crate::prop::PropKind::Array): Which index in the `Array` the value
+//!     is for.
+//!   * In the case that the [`Prop`](crate::Prop) is the child of a
+//!     [`Map`](crate::prop::PropKind::Map): Which key of the `Map` the value is
+//!     for.
 use async_recursion::async_recursion;
 use serde::{Deserialize, Serialize};
 use si_data::{NatsError, NatsTxn, PgError, PgTxn};
@@ -5,10 +17,9 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
-    deculture::{
-        attribute::context::AttributeContext,
-        attribute::context::AttributeContextError,
-        attribute::value::{AttributeValue, AttributeValueError, AttributeValueId},
+    attribute::{
+        context::{AttributeContext, AttributeContextError},
+        value::{AttributeValue, AttributeValueError, AttributeValueId},
     },
     func::binding::{FuncBindingError, FuncBindingId},
     func::FuncId,
@@ -35,6 +46,8 @@ pub enum AttributePrototypeError {
     InvalidPropValue(String, serde_json::Value),
     #[error("nats txn error: {0}")]
     Nats(#[from] NatsError),
+    #[error("AttributePrototype is missing")]
+    Missing,
     #[error("func not found: {0}")]
     MissingFunc(String),
     #[error("attribute prototypes must have an associated prop, and this one does not. bug!")]
@@ -78,7 +91,6 @@ pub struct AttributePrototype {
     #[serde(flatten)]
     visibility: Visibility,
     func_id: FuncId,
-    func_binding_id: FuncBindingId,
     pub key: Option<String>,
     #[serde(flatten)]
     pub context: AttributeContext,
@@ -113,15 +125,8 @@ impl AttributePrototype {
         let read_tenancy = write_tenancy.clone_into_read_tenancy(txn).await?;
         let row = txn
             .query_one(
-                "SELECT object FROM attribute_prototype_create_v1($1, $2, $3, $4, $5, $6)",
-                &[
-                    write_tenancy,
-                    &visibility,
-                    &context,
-                    &func_id,
-                    &func_binding_id,
-                    &key,
-                ],
+                "SELECT object FROM attribute_prototype_create_v1($1, $2, $3, $4, $5)",
+                &[&write_tenancy, &visibility, &context, &func_id, &key],
             )
             .await?;
         let object: AttributePrototype = standard_model::finish_create_from_row(
@@ -140,11 +145,15 @@ impl AttributePrototype {
             write_tenancy,
             visibility,
             history_actor,
+            func_binding_id,
             None,
             context,
             key.clone(),
         )
         .await?;
+        value
+            .set_attribute_prototype(txn, nats, visibility, history_actor, object.id())
+            .await?;
 
         if let Some(parent_attribute_value_id) = parent_attribute_value_id {
             value
@@ -187,8 +196,69 @@ impl AttributePrototype {
         Ok(object)
     }
 
+    #[allow(clippy::too_many_arguments)]
+    #[instrument(skip_all)]
+    pub async fn new_with_existing_value(
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
+        write_tenancy: &WriteTenancy,
+        visibility: &Visibility,
+        history_actor: &HistoryActor,
+        func_id: FuncId,
+        func_binding_id: FuncBindingId,
+        context: AttributeContext,
+        key: Option<String>,
+        parent_attribute_value_id: Option<AttributeValueId>,
+        attribute_value_id: AttributeValueId,
+    ) -> AttributePrototypeResult<Self> {
+        let read_tenancy = write_tenancy.clone_into_read_tenancy(txn).await?;
+        let row = txn
+            .query_one(
+                "SELECT object FROM attribute_prototype_create_v1($1, $2, $3, $4, $5)",
+                &[&write_tenancy, &visibility, &context, &func_id, &key],
+            )
+            .await?;
+        let object: AttributePrototype = standard_model::finish_create_from_row(
+            txn,
+            nats,
+            &write_tenancy.into(),
+            visibility,
+            history_actor,
+            row,
+        )
+        .await?;
+
+        let value = AttributeValue::get_by_id(
+            txn,
+            &(&read_tenancy).into(),
+            visibility,
+            &attribute_value_id,
+        )
+        .await?
+        .ok_or(AttributeValueError::Missing)?;
+        value
+            .unset_attribute_prototype(txn, nats, visibility, history_actor)
+            .await?;
+        value
+            .set_attribute_prototype(txn, nats, visibility, history_actor, object.id())
+            .await?;
+
+        if let Some(parent_attribute_value_id) = parent_attribute_value_id {
+            value
+                .set_parent_attribute_value(
+                    txn,
+                    nats,
+                    visibility,
+                    history_actor,
+                    &parent_attribute_value_id,
+                )
+                .await?;
+        }
+
+        Ok(object)
+    }
+
     standard_model_accessor!(func_id, Pk(FuncId), AttributePrototypeResult);
-    standard_model_accessor!(func_binding_id, Pk(FuncBindingId), AttributePrototypeResult);
     standard_model_accessor!(key, Option<String>, AttributePrototypeResult);
 
     #[instrument(skip_all)]
@@ -292,6 +362,7 @@ impl AttributePrototype {
                     write_tenancy,
                     visibility,
                     history_actor,
+                    proxy_target.func_binding_id(),
                     proxy_target.func_binding_return_value_id().copied(),
                     context,
                     proxy_target.key().map(|k| k.to_string()),
@@ -320,5 +391,76 @@ impl AttributePrototype {
         }
 
         Ok(())
+    }
+
+    pub async fn update_for_context(
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
+        write_tenancy: &WriteTenancy,
+        visibility: &Visibility,
+        history_actor: &HistoryActor,
+        attribute_prototype_id: AttributePrototypeId,
+        context: AttributeContext,
+        func_id: FuncId,
+        func_binding_id: FuncBindingId,
+        parent_attribute_value_id: Option<AttributeValueId>,
+        existing_attribute_value_id: Option<AttributeValueId>,
+    ) -> AttributePrototypeResult<AttributePrototypeId> {
+        let read_tenancy = write_tenancy.clone_into_read_tenancy(txn).await?;
+        let given_attribute_prototype = Self::get_by_id(
+            txn,
+            &(&read_tenancy).into(),
+            visibility,
+            &attribute_prototype_id,
+        )
+        .await?
+        .ok_or(AttributePrototypeError::NotFound(
+            attribute_prototype_id,
+            *visibility,
+        ))?;
+
+        // If the AttributePrototype we were given isn't for the _specific_ context that we're
+        // trying to update, make a new one. This is necessary so that we don't end up changing the
+        // prototype for a context less specific than the one that we're trying to update.
+        let mut attribute_prototype = if given_attribute_prototype.context == context {
+            given_attribute_prototype
+        } else {
+            if let Some(attribute_value_id) = existing_attribute_value_id {
+                Self::new_with_existing_value(
+                    txn,
+                    nats,
+                    write_tenancy,
+                    visibility,
+                    history_actor,
+                    func_id,
+                    func_binding_id,
+                    context,
+                    given_attribute_prototype.key().map(|k| k.to_string()),
+                    parent_attribute_value_id,
+                    attribute_value_id,
+                )
+                .await?
+            } else {
+                Self::new(
+                    txn,
+                    nats,
+                    write_tenancy,
+                    visibility,
+                    history_actor,
+                    func_id,
+                    func_binding_id,
+                    context,
+                    given_attribute_prototype.key().map(|k| k.to_string()),
+                    parent_attribute_value_id,
+                )
+                .await?
+            }
+        };
+
+        attribute_prototype
+            .set_func_id(txn, nats, visibility, history_actor, func_id)
+            .await?;
+
+        Ok(*attribute_prototype.id())
     }
 }

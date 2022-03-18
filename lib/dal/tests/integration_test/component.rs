@@ -6,8 +6,9 @@ use dal::test_harness::{
     create_schema_variant, create_schema_variant_with_root, find_or_create_production_system,
 };
 use dal::{
-    BillingAccount, Component, HistoryActor, Organization, Prop, PropKind, ReadTenancy, Resource,
-    Schema, SchemaKind, StandardModel, Tenancy, Visibility, Workspace, WriteTenancy,
+    AttributeReadContext, BillingAccount, Component, ComponentView, HistoryActor, Organization,
+    Prop, PropKind, ReadTenancy, Resource, Schema, SchemaKind, StandardModel, Tenancy, Visibility,
+    Workspace, WriteTenancy,
 };
 use pretty_assertions_sorted::{assert_eq, assert_eq_sorted};
 use serde_json::json;
@@ -79,6 +80,7 @@ async fn new_for_schema_variant_with_node() {
         &history_actor,
         veritech.clone(),
         encr_key,
+        *schema.id(),
     )
     .await;
     schema_variant
@@ -168,6 +170,7 @@ async fn schema_relationships() {
         &history_actor,
         veritech.clone(),
         encr_key,
+        *schema.id(),
     )
     .await;
     schema_variant
@@ -222,6 +225,7 @@ async fn qualification_view() {
         &history_actor,
         veritech.clone(),
         encr_key,
+        *schema.id(),
     )
     .await;
     schema_variant
@@ -526,6 +530,11 @@ async fn get_resource_by_component_id() {
     .pop()
     .expect("no docker image schema found");
 
+    let variant = schema
+        .default_variant(&txn, &read_tenancy, &visibility)
+        .await
+        .expect("could not retrieve default variant");
+
     let system =
         find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor).await;
 
@@ -564,7 +573,9 @@ async fn get_resource_by_component_id() {
     )
     .await
     .expect("cannot get resource");
+
     assert_eq!(
+        serde_json::json!("Cant touch this: chvrches"),
         *resource
             .expect("Resource missing")
             .data
@@ -578,7 +589,6 @@ async fn get_resource_by_component_id() {
             .expect("Missing 'data.data' key from resource sync data")
             .get("name")
             .expect("Missing name in resource sync data"),
-        serde_json::json!("Cant touch this: chvrches")
     );
 }
 

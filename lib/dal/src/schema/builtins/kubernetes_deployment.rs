@@ -46,14 +46,12 @@ pub async fn kubernetes_deployment(
         write_tenancy,
         visibility,
         history_actor,
+        *schema.id(),
         "v0",
         veritech.clone(),
         encryption_key,
     )
     .await?;
-    variant
-        .set_schema(txn, nats, visibility, history_actor, schema.id())
-        .await?;
     schema
         .set_default_schema_variant_id(txn, nats, visibility, history_actor, Some(*variant.id()))
         .await?;

@@ -1,8 +1,8 @@
 use axum::extract::Query;
 use axum::Json;
 use dal::{
-    Component, ComponentId, LabelEntry, LabelList, StandardModel, Tenancy, Visibility, Workspace,
-    WorkspaceId,
+    Component, ComponentId, LabelEntry, LabelList, ReadTenancy, StandardModel, Tenancy, Visibility,
+    Workspace, WorkspaceId,
 };
 use serde::{Deserialize, Serialize};
 
@@ -52,12 +52,13 @@ pub async fn list_components_names_only(
 
     let components = Component::list(&txn, &tenancy, &request.visibility).await?;
     let mut label_entries = Vec::with_capacity(components.len());
+    let read_tenancy = ReadTenancy::try_from_tenancy(&txn, tenancy.clone()).await?;
     for component in components {
         label_entries.push(LabelEntry {
             label: component
-                .find_prop_value_by_json_pointer::<String>(
+                .find_value_by_json_pointer::<String>(
                     &txn,
-                    &tenancy,
+                    &read_tenancy,
                     &request.visibility,
                     "/root/si/name",
                 )

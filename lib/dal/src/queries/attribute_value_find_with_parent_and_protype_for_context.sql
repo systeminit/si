@@ -62,7 +62,7 @@ WHERE in_tenancy_v1($1, attribute_values.tenancy_universal, attribute_values.ten
 ORDER BY attribute_context_prop_id,
       visibility_change_set_pk DESC,
       visibility_edit_session_pk DESC,
-      attribute_context_schema_id DESC
+      attribute_context_schema_id DESC,
       attribute_context_schema_variant_id DESC,
       attribute_context_component_id DESC,
       attribute_context_system_id DESC;

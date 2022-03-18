@@ -1,11 +1,10 @@
-mod attribute_resolver;
+mod attribute;
 mod billing_account;
 mod capability;
 mod change_set;
 mod code_generation_prototype;
 mod code_generation_resolver;
 mod component;
-mod deculture;
 mod edge;
 mod edit_session;
 mod func;

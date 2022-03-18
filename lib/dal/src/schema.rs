@@ -17,11 +17,12 @@ use crate::{
     impl_standard_model, pk,
     schema::ui_menu::UiMenuId,
     standard_model, standard_model_accessor, standard_model_has_many, standard_model_many_to_many,
-    AttributeResolverError, BillingAccount, BillingAccountId, CodeGenerationPrototypeError,
-    Component, FuncError, HistoryActor, HistoryEventError, LabelEntry, LabelList, Organization,
-    OrganizationId, PropError, QualificationPrototypeError, ReadTenancy, ReadTenancyError,
-    ResourcePrototypeError, StandardModel, StandardModelError, Tenancy, Timestamp,
-    ValidationPrototypeError, Visibility, Workspace, WorkspaceId, WriteTenancy, WsEventError,
+    AttributeContextBuilderError, AttributePrototypeError, AttributeValueError, BillingAccount,
+    BillingAccountId, CodeGenerationPrototypeError, Component, FuncError, HistoryActor,
+    HistoryEventError, LabelEntry, LabelList, Organization, OrganizationId, PropError,
+    QualificationPrototypeError, ReadTenancy, ReadTenancyError, ResourcePrototypeError,
+    StandardModel, StandardModelError, Tenancy, Timestamp, ValidationPrototypeError, Visibility,
+    Workspace, WorkspaceId, WriteTenancy, WsEventError,
 };
 
 use crate::socket::SocketError;
@@ -34,10 +35,26 @@ pub mod variant;
 
 #[derive(Error, Debug)]
 pub enum SchemaError {
+    #[error("AttributeContextBuilder error: {0}")]
+    AttributeContextBuilder(#[from] AttributeContextBuilderError),
+    #[error("AttributePrototype error: {0}")]
+    AttributePrototype(#[from] AttributePrototypeError),
+    #[error("AttributeValue error: {0}")]
+    AttributeValue(#[from] AttributeValueError),
+    #[error("code generation prototype error: {0}")]
+    CodeGenerationPrototype(#[from] CodeGenerationPrototypeError),
     #[error("edit field error: {0}")]
     EditField(#[from] EditFieldError),
+    #[error("func error: {0}")]
+    Func(#[from] FuncError),
+    #[error("func binding error: {0}")]
+    FuncBinding(#[from] FuncBindingError),
+    #[error("func not found: {0}")]
+    FuncNotFound(String),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
+    #[error("missing a func in attribute update: {0} not found")]
+    MissingFunc(String),
     #[error("nats txn error: {0}")]
     Nats(#[from] NatsError),
     #[error("no default variant for schema id: {0}")]
@@ -50,6 +67,12 @@ pub enum SchemaError {
     Pg(#[from] PgError),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
+    #[error("qualification prototype error: {0}")]
+    QualificationPrototype(#[from] QualificationPrototypeError),
+    #[error("read tenancy error: {0}")]
+    ReadTenancy(#[from] ReadTenancyError),
+    #[error("resource prototype error: {0}")]
+    ResourcePrototype(#[from] ResourcePrototypeError),
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("socket error: {0}")]
@@ -60,28 +83,10 @@ pub enum SchemaError {
     UiMenuNotFound(UiMenuId),
     #[error("schema variant error: {0}")]
     Variant(#[from] SchemaVariantError),
-    #[error("ws event error: {0}")]
-    WsEvent(#[from] WsEventError),
-    #[error("missing a func in attribute update: {0} not found")]
-    MissingFunc(String),
     #[error("validation prototype error: {0}")]
     ValidationPrototype(#[from] ValidationPrototypeError),
-    #[error("attribute resolver error: {0}")]
-    AttributeResolver(#[from] AttributeResolverError),
-    #[error("func binding error: {0}")]
-    FuncBinding(#[from] FuncBindingError),
-    #[error("func not found: {0}")]
-    FuncNotFound(String),
-    #[error("qualification prototype error: {0}")]
-    QualificationPrototype(#[from] QualificationPrototypeError),
-    #[error("resource prototype error: {0}")]
-    ResourcePrototype(#[from] ResourcePrototypeError),
-    #[error("code generation prototype error: {0}")]
-    CodeGenerationPrototype(#[from] CodeGenerationPrototypeError),
-    #[error("func error: {0}")]
-    Func(#[from] FuncError),
-    #[error("read tenancy error: {0}")]
-    ReadTenancy(#[from] ReadTenancyError),
+    #[error("ws event error: {0}")]
+    WsEvent(#[from] WsEventError),
 }
 
 pub type SchemaResult<T> = Result<T, SchemaError>;
@@ -538,14 +543,12 @@ impl EditFieldAble for Schema {
                     write_tenancy,
                     visibility,
                     history_actor,
+                    *object.id(),
                     "TODO: name me!",
                     veritech,
                     encryption_key,
                 )
                 .await?;
-                variant
-                    .set_schema(txn, nats, visibility, history_actor, object.id())
-                    .await?;
             }
             "ui.menuItems" => {
                 let new_ui_menu =

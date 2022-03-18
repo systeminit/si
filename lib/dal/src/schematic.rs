@@ -195,12 +195,13 @@ impl Schematic {
                         .schema_with_tenancy(txn, &read_tenancy.into(), visibility)
                         .await?
                         .ok_or(SchematicError::SchemaNotFound)?;
+
                     (
                         schema,
                         component
-                            .find_prop_value_by_json_pointer::<String>(
+                            .find_value_by_json_pointer::<String>(
                                 txn,
-                                &read_tenancy.into(),
+                                read_tenancy,
                                 visibility,
                                 "/root/si/name",
                             )

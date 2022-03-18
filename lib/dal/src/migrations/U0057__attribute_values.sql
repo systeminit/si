@@ -18,6 +18,7 @@ CREATE TABLE attribute_values
     updated_at                          timestamp with time zone NOT NULL DEFAULT NOW(),
     proxy_for_attribute_value_id        bigint,
     sealed_proxy                        bool                     NOT NULL DEFAULT False,
+    func_binding_id                     bigint                   NOT NULL,
     func_binding_return_value_id        bigint,
     index_map                           jsonb,
     key                                 text
@@ -35,6 +36,7 @@ CREATE OR REPLACE FUNCTION attribute_value_create_v1(
     this_tenancy jsonb,
     this_visibility jsonb,
     this_attribute_context jsonb,
+    this_func_binding_id bigint,
     this_func_binding_return_value_id bigint,
     this_key text,
     OUT object json) AS
@@ -61,6 +63,7 @@ BEGIN
                                   attribute_context_schema_variant_id,
                                   attribute_context_component_id,
                                   attribute_context_system_id,
+                                  func_binding_id,
                                   func_binding_return_value_id,
                                   key)
     VALUES (this_tenancy_record.tenancy_universal,
@@ -75,6 +78,7 @@ BEGIN
             this_attribute_context_record.attribute_context_schema_variant_id,
             this_attribute_context_record.attribute_context_component_id,
             this_attribute_context_record.attribute_context_system_id,
+            this_func_binding_id,
             this_func_binding_return_value_id,
             this_key)
     RETURNING * INTO this_new_row;

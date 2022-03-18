@@ -2,7 +2,7 @@ use axum::http::Method;
 
 use crate::service_tests::{api_request_auth_json_body, api_request_auth_query};
 use crate::test_setup;
-use dal::{Component, HistoryActor, StandardModel, Tenancy, Visibility};
+use dal::{Component, HistoryActor, ReadTenancy, StandardModel, Tenancy, Visibility};
 use sdf::service::application::create_application::{
     CreateApplicationRequest, CreateApplicationResponse,
 };
@@ -44,10 +44,14 @@ async fn create_application() {
     .await;
 
     let tenancy = Tenancy::new_workspace(vec![*nba.workspace.id()]);
+    let read_tenancy = ReadTenancy::try_from_tenancy(&txn, tenancy.clone())
+        .await
+        .expect("cannot create read tenancy");
+
     assert_eq!(
         response
             .application
-            .find_prop_value_by_json_pointer::<String>(&txn, &tenancy, &visibility, "/root/si/name")
+            .find_value_by_json_pointer::<String>(&txn, &read_tenancy, &visibility, "/root/si/name")
             .await
             .expect("No name prop in application"),
         Some("fancyPants".to_owned())
@@ -73,6 +77,9 @@ async fn list_applications() {
     let visibility = Visibility::new_head(false);
     let tenancy = Tenancy::new_workspace(vec![*nba.workspace.id()]);
     let history_actor = HistoryActor::SystemInit;
+    let read_tenancy = ReadTenancy::try_from_tenancy(&txn, tenancy.clone())
+        .await
+        .expect("cannot create read tenancy");
 
     let (_component, _node) = Component::new_application_with_node(
         &txn,
@@ -109,7 +116,7 @@ async fn list_applications() {
     assert_eq!(
         response.list[0]
             .application
-            .find_prop_value_by_json_pointer::<String>(&txn, &tenancy, &visibility, "/root/si/name")
+            .find_value_by_json_pointer::<String>(&txn, &read_tenancy, &visibility, "/root/si/name")
             .await
             .expect("Unable to find name"),
         Some("fancyPants".to_owned())

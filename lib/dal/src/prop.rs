@@ -8,11 +8,7 @@ use thiserror::Error;
 use veritech::EncryptionKey;
 
 use crate::{
-    attribute_resolver::AttributeResolverContext,
-    deculture::{
-        attribute::prototype::AttributePrototype, attribute::value::AttributeValue,
-        AttributeContextBuilderError,
-    },
+    attribute::{prototype::AttributePrototype, value::AttributeValue},
     edit_field::{
         value_and_visibility_diff, widget::prelude::*, EditField, EditFieldAble, EditFieldDataType,
         EditFieldError, EditFieldObjectKind, EditFields,
@@ -21,9 +17,10 @@ use crate::{
     impl_standard_model,
     label_list::ToLabelList,
     pk, standard_model, standard_model_accessor, standard_model_belongs_to,
-    standard_model_has_many, standard_model_many_to_many, AttributeResolver, Func, HistoryActor,
-    HistoryEventError, ReadTenancy, ReadTenancyError, SchemaVariant, SchemaVariantId,
-    StandardModel, StandardModelError, Tenancy, Timestamp, Visibility, WriteTenancy,
+    standard_model_has_many, standard_model_many_to_many, AttributeContext,
+    AttributeContextBuilderError, Func, HistoryActor, HistoryEventError, ReadTenancy,
+    ReadTenancyError, SchemaVariant, SchemaVariantId, StandardModel, StandardModelError, Tenancy,
+    Timestamp, Visibility, WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -33,9 +30,6 @@ pub enum PropError {
     // Can't #[from] here, or we'll end up with circular error definitions.
     #[error("AttributePrototype error: {0}")]
     AttributePrototype(String),
-    // Can't #[from] here, or we'll end up with circular error definitions.
-    #[error("AttributeResolver error: {0}")]
-    AttributeResolver(String),
     #[error("AttributeValue error: {0}")]
     AttributeValue(String),
     #[error(transparent)]
@@ -187,21 +181,9 @@ impl Prop {
                 .await?;
         }
 
-        let mut attribute_resolver_context = AttributeResolverContext::new();
-        attribute_resolver_context.set_prop_id(*object.id());
-        AttributeResolver::upsert(
-            txn,
-            nats,
-            &write_tenancy.into(),
-            visibility,
-            history_actor,
-            *func.id(),
-            *func_binding.id(),
-            attribute_resolver_context.clone(),
-            None,
-        )
-        .await
-        .map_err(|e| PropError::AttributeResolver(format!("{e}")))?;
+        let attribute_context = AttributeContext::builder()
+            .set_prop_id(*object.id())
+            .to_context()?;
 
         AttributePrototype::new(
             txn,
@@ -211,7 +193,7 @@ impl Prop {
             history_actor,
             *func.id(),
             *func_binding.id(),
-            attribute_resolver_context.into(),
+            attribute_context,
             None,
             None,
         )
@@ -258,10 +240,6 @@ impl Prop {
         result: PropResult,
     );
 
-    // FIXME(nick,jacob): this needs to be able to automatically set the parent attribute resolver as well.
-    // See `integration_test::attribute_resolver::remove_for_context` for more details since its test setup
-    // involves setting parent attribute resolvers for two child string props in a prop object even though
-    // they have the prop object as their parent prop.
     pub async fn set_parent_prop(
         &self,
         txn: &PgTxn<'_>,
