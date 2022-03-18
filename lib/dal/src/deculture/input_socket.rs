@@ -6,7 +6,7 @@ use thiserror::Error;
 use crate::{
     deculture::attribute::context::AttributeContext, impl_standard_model, pk, standard_model,
     standard_model_accessor, standard_model_accessor_ro, HistoryActor, HistoryEventError,
-    StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
+    StandardModel, StandardModelError, Tenancy, Timestamp, Visibility, WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -58,7 +58,7 @@ impl InputSocket {
     pub async fn new(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
-        tenancy: &Tenancy,
+        write_tenancy: &WriteTenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
         context: AttributeContext,
@@ -68,13 +68,13 @@ impl InputSocket {
         let row = txn
             .query_one(
                 "SELECT object FROM input_socket_create_v1($1, $2, $3, $4, $5)",
-                &[&tenancy, &visibility, &context, &name, &internal_only],
+                &[write_tenancy, &visibility, &context, &name, &internal_only],
             )
             .await?;
         Ok(standard_model::finish_create_from_row(
             txn,
             nats,
-            tenancy,
+            &write_tenancy.into(),
             visibility,
             history_actor,
             row,

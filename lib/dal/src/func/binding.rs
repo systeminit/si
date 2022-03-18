@@ -205,6 +205,8 @@ impl FuncBinding {
         // different tenancy or have different visibility. But maybe?
         let visibility = self.visibility;
         let tenancy = self.tenancy.clone();
+        let write_tenancy = (&tenancy).into();
+        let read_tenancy = tenancy.clone_into_read_tenancy(txn).await?;
         // NOTE: the actor that executes this binding may not correspond to a user and that might
         // not make sense anyway. However, if it's a "caller's responsibility", then we can make
         // this an argument to this function
@@ -218,7 +220,7 @@ impl FuncBinding {
             .await?
             .ok_or(FuncBindingError::FuncNotFound(self.pk))?;
 
-        let mut execution = FuncExecution::new(txn, nats, &tenancy, &func, self).await?;
+        let mut execution = FuncExecution::new(txn, nats, &write_tenancy, &func, self).await?;
 
         let return_value = match self.backend_kind() {
             FuncBackendKind::Array => {
@@ -301,7 +303,7 @@ impl FuncBinding {
                     serde_json::from_value(self.args.clone())?;
                 ComponentView::reencrypt_secrets(
                     txn,
-                    &tenancy,
+                    &read_tenancy,
                     &visibility,
                     encryption_key,
                     &mut args.component.data,
@@ -310,7 +312,7 @@ impl FuncBinding {
                 for parent in &mut args.component.parents {
                     ComponentView::reencrypt_secrets(
                         txn,
-                        &tenancy,
+                        &read_tenancy,
                         &visibility,
                         encryption_key,
                         parent,
@@ -391,7 +393,7 @@ impl FuncBinding {
                     serde_json::from_value(self.args.clone())?;
                 ComponentView::reencrypt_secrets(
                     txn,
-                    &tenancy,
+                    &read_tenancy,
                     &visibility,
                     encryption_key,
                     &mut args.component.data,
@@ -400,7 +402,7 @@ impl FuncBinding {
                 for parent in &mut args.component.parents {
                     ComponentView::reencrypt_secrets(
                         txn,
-                        &tenancy,
+                        &read_tenancy,
                         &visibility,
                         encryption_key,
                         parent,

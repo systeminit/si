@@ -19,7 +19,8 @@ use crate::{
     impl_standard_model, pk,
     standard_model::{self, TypeHint},
     standard_model_accessor, standard_model_belongs_to, HistoryActor, HistoryEventError, Prop,
-    PropError, PropId, PropKind, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
+    PropError, PropId, PropKind, ReadTenancy, ReadTenancyError, StandardModel, StandardModelError,
+    Tenancy, Timestamp, Visibility, WriteTenancy,
 };
 
 const FIND_WITH_PARENT_AND_PROTOTYPE_FOR_CONTEXT: &str =
@@ -60,6 +61,8 @@ pub enum AttributeValueError {
     SerdeJson(#[from] serde_json::Error),
     #[error("standard model error: {0}")]
     StandardModelError(#[from] StandardModelError),
+    #[error("read tenancy error: {0}")]
+    ReadTenancy(#[from] ReadTenancyError),
 }
 
 pub type AttributeValueResult<T> = Result<T, AttributeValueError>;
@@ -109,7 +112,7 @@ impl AttributeValue {
     pub async fn new(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
-        tenancy: &Tenancy,
+        write_tenancy: &WriteTenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
         func_binding_return_value_id: Option<FuncBindingReturnValueId>,
@@ -120,7 +123,7 @@ impl AttributeValue {
             .query_one(
                 "SELECT object FROM attribute_value_create_v1($1, $2, $3, $4, $5)",
                 &[
-                    &tenancy,
+                    write_tenancy,
                     &visibility,
                     &context,
                     &func_binding_return_value_id,
@@ -131,7 +134,7 @@ impl AttributeValue {
         let object: Self = standard_model::finish_create_from_row(
             txn,
             nats,
-            tenancy,
+            &write_tenancy.into(),
             visibility,
             history_actor,
             row,
@@ -140,7 +143,7 @@ impl AttributeValue {
         // TODO: We need to have proxies for values from "less specific" contexts before we can handle updating our parent's index_map.
         //
         // object
-        //     .update_parent_index_map(txn, tenancy, visibility)
+        //     .update_parent_index_map(txn, &write_tenancy.into(), visibility)
         //     .await?;
         Ok(object)
     }
@@ -202,7 +205,7 @@ impl AttributeValue {
 
     pub async fn find_with_parent_and_prototype_for_context(
         txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
+        read_tenancy: &ReadTenancy,
         visibility: &Visibility,
         parent_attribute_value_id: Option<AttributeValueId>,
         attribute_prototype_id: AttributePrototypeId,
@@ -212,7 +215,7 @@ impl AttributeValue {
             .query_opt(
                 FIND_WITH_PARENT_AND_PROTOTYPE_FOR_CONTEXT,
                 &[
-                    &tenancy,
+                    read_tenancy,
                     &visibility,
                     &context,
                     &attribute_prototype_id,
@@ -226,7 +229,7 @@ impl AttributeValue {
 
     pub async fn find_for_prop(
         txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
+        read_tenancy: &ReadTenancy,
         visibility: &Visibility,
         prop_id: PropId,
     ) -> AttributeValueResult<Self> {
@@ -235,7 +238,7 @@ impl AttributeValue {
             .to_context()?;
 
         let row = txn
-            .query_one(FIND_FOR_PROP, &[&tenancy, &visibility, &prop_context])
+            .query_one(FIND_FOR_PROP, &[read_tenancy, &visibility, &prop_context])
             .await?;
 
         Ok(standard_model::object_from_row(row)?)
@@ -243,14 +246,14 @@ impl AttributeValue {
 
     pub async fn list_payload_for_read_context(
         txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
+        read_tenancy: &ReadTenancy,
         visibility: &Visibility,
         context: AttributeReadContext,
     ) -> AttributeValueResult<Vec<AttributeValuePayload>> {
         let rows = txn
             .query(
                 LIST_PAYLOAD_FOR_READ_CONTEXT,
-                &[&tenancy, &visibility, &context],
+                &[read_tenancy, &visibility, &context],
             )
             .await?;
         let mut result = Vec::new();

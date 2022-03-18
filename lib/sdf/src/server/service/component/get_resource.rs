@@ -1,14 +1,11 @@
 use axum::extract::Query;
 use axum::Json;
 use dal::system::UNSET_SYSTEM_ID;
-use dal::{
-    Component, ComponentId, ResourceView, StandardModel, SystemId, Tenancy, Visibility, Workspace,
-    WorkspaceId,
-};
+use dal::{Component, ComponentId, ResourceView, SystemId, Visibility, WorkspaceId};
 use serde::{Deserialize, Serialize};
 
 use super::{ComponentError, ComponentResult};
-use crate::server::extract::{Authorization, PgRwTxn};
+use crate::server::extract::{PgRwTxn, Tenancy};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -29,25 +26,14 @@ pub struct GetResourceResponse {
 pub async fn get_resource(
     mut txn: PgRwTxn,
     Query(request): Query<GetResourceRequest>,
-    Authorization(claim): Authorization,
+    Tenancy(_write_tenancy, read_tenancy): Tenancy,
 ) -> ComponentResult<Json<GetResourceResponse>> {
     let txn = txn.start().await?;
-
-    let billing_account_tenancy = Tenancy::new_billing_account(vec![claim.billing_account_id]);
-    let workspace = Workspace::get_by_id(
-        &txn,
-        &billing_account_tenancy,
-        &request.visibility,
-        &request.workspace_id,
-    )
-    .await?
-    .ok_or(ComponentError::InvalidRequest)?;
-    let tenancy = Tenancy::new_workspace(vec![*workspace.id()]);
 
     let system_id = request.system_id.unwrap_or(UNSET_SYSTEM_ID);
     let resource = Component::get_resource_by_component_and_system(
         &txn,
-        &tenancy,
+        &read_tenancy,
         &request.visibility,
         request.component_id,
         system_id,

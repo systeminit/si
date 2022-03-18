@@ -312,7 +312,7 @@ async fn func_binding_return_value_new() {
     )
     .await;
 
-    let execution = FuncExecution::new(&txn, &nats, &tenancy, &func, &func_binding)
+    let execution = FuncExecution::new(&txn, &nats, &(&tenancy).into(), &func, &func_binding)
         .await
         .expect("cannot create a new func execution");
 

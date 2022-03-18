@@ -13,7 +13,7 @@ use dal::{
         find_or_create_production_system,
     },
     AttributeResolver, Component, ComponentView, Func, FuncBackendKind, FuncBackendResponseType,
-    HistoryActor, PropKind, Schema, SchemaKind, StandardModel, Tenancy, Visibility,
+    HistoryActor, PropKind, ReadTenancy, Schema, SchemaKind, StandardModel, Tenancy, Visibility,
 };
 use pretty_assertions_sorted::{assert_eq, assert_eq_sorted};
 use test_env_log::test;
@@ -1029,6 +1029,7 @@ async fn update_for_context_will_unset_parent_resolvers() {
     );
 
     let tenancy = Tenancy::new_universal();
+    let read_tenancy = ReadTenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
     let prod_system =
@@ -1256,7 +1257,7 @@ async fn update_for_context_will_unset_parent_resolvers() {
 
     let component_view = ComponentView::for_component_and_system(
         &txn,
-        &tenancy,
+        &read_tenancy,
         &visibility,
         *component.id(),
         *prod_system.id(),
@@ -1294,7 +1295,7 @@ async fn update_for_context_will_unset_parent_resolvers() {
 
     let component_view = ComponentView::for_component_and_system(
         &txn,
-        &tenancy,
+        &read_tenancy,
         &visibility,
         *component.id(),
         *prod_system.id(),
@@ -1332,7 +1333,7 @@ async fn update_for_context_will_unset_parent_resolvers() {
 
     let component_view = ComponentView::for_component_and_system(
         &txn,
-        &tenancy,
+        &read_tenancy,
         &visibility,
         *component.id(),
         *prod_system.id(),
@@ -1365,6 +1366,7 @@ async fn remove_for_context() {
     );
 
     let tenancy = Tenancy::new_universal();
+    let read_tenancy = ReadTenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
     let prod_system =
@@ -1588,7 +1590,7 @@ async fn remove_for_context() {
 
     let component_view = ComponentView::for_component_and_system(
         &txn,
-        &tenancy,
+        &read_tenancy,
         &visibility,
         *component.id(),
         *prod_system.id(),
@@ -1642,7 +1644,7 @@ async fn remove_for_context() {
 
     let component_view = ComponentView::for_component_and_system(
         &txn,
-        &tenancy,
+        &read_tenancy,
         &visibility,
         *component.id(),
         *prod_system.id(),
@@ -1672,7 +1674,7 @@ async fn remove_for_context() {
 
     let component_view = ComponentView::for_component_and_system(
         &txn,
-        &tenancy,
+        &read_tenancy,
         &visibility,
         *component.id(),
         *prod_system.id(),
@@ -1702,7 +1704,7 @@ async fn remove_for_context() {
 
     let component_view = ComponentView::for_component_and_system(
         &txn,
-        &tenancy,
+        &read_tenancy,
         &visibility,
         *component.id(),
         *prod_system.id(),

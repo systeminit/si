@@ -7,7 +7,7 @@ use veritech::{FunctionResultFailure, OutputStream};
 
 use crate::{
     pk, Func, FuncBackendKind, FuncBackendResponseType, HistoryEventError, StandardModel,
-    StandardModelError, Tenancy, Timestamp,
+    StandardModelError, Tenancy, Timestamp, WriteTenancy,
 };
 
 use super::{
@@ -90,7 +90,7 @@ impl FuncExecution {
     pub async fn new(
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
-        tenancy: &Tenancy,
+        write_tenancy: &WriteTenancy,
         func: &Func,
         func_binding: &FuncBinding,
     ) -> FuncExecutionResult<Self> {
@@ -98,7 +98,7 @@ impl FuncExecution {
             .query_one(
                 "SELECT object FROM func_execution_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9)",
                 &[
-                    &tenancy,
+                    write_tenancy,
                     &FuncExecutionState::Start.to_string(),
                     &func.id(),
                     &func_binding.id(),
