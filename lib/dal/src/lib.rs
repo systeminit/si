@@ -5,8 +5,7 @@ use si_data::{NatsClient, NatsError, PgError, PgPool, PgPoolError};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-pub mod attribute_resolver;
-pub mod attribute_resolver_context;
+pub mod attribute;
 pub mod billing_account;
 pub mod capability;
 pub mod change_set;
@@ -16,7 +15,6 @@ pub mod code_view;
 pub mod component;
 pub mod context;
 pub mod cyclone_key_pair;
-pub mod deculture;
 pub mod edge;
 pub mod edit_field;
 pub mod edit_session;
@@ -24,6 +22,7 @@ pub mod func;
 pub mod group;
 pub mod history_event;
 pub mod index_map;
+pub mod input_socket;
 pub mod jwt_key;
 pub mod key_pair;
 pub mod label_list;
@@ -60,8 +59,17 @@ pub mod workspace;
 pub mod write_tenancy;
 pub mod ws_event;
 
-pub use attribute_resolver::{
-    AttributeResolver, AttributeResolverError, AttributeResolverId, AttributeResolverValue,
+pub use attribute::{
+    context::{
+        AttributeContext, AttributeContextBuilderError, AttributeContextError, AttributeReadContext,
+    },
+    prototype::{
+        AttributePrototype, AttributePrototypeError, AttributePrototypeId, AttributePrototypeResult,
+    },
+    value::{
+        AttributeValue, AttributeValueError, AttributeValueId, AttributeValuePayload,
+        AttributeValueResult,
+    },
 };
 pub use billing_account::{
     BillingAccount, BillingAccountDefaults, BillingAccountError, BillingAccountId, BillingAccountPk,

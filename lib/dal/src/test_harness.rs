@@ -506,6 +506,7 @@ pub async fn create_schema_variant(
     history_actor: &HistoryActor,
     veritech: veritech::Client,
     encryption_key: &EncryptionKey,
+    schema_id: SchemaId,
 ) -> schema::SchemaVariant {
     create_schema_variant_with_root(
         txn,
@@ -515,6 +516,7 @@ pub async fn create_schema_variant(
         history_actor,
         veritech,
         encryption_key,
+        schema_id,
     )
     .await
     .0
@@ -529,6 +531,7 @@ pub async fn create_schema_variant_with_root(
     history_actor: &HistoryActor,
     veritech: veritech::Client,
     encryption_key: &EncryptionKey,
+    schema_id: SchemaId,
 ) -> (schema::SchemaVariant, schema::builtins::RootProp) {
     let name = generate_fake_name();
     let write_tenancy = tenancy.into();
@@ -538,6 +541,7 @@ pub async fn create_schema_variant_with_root(
         &write_tenancy,
         visibility,
         history_actor,
+        schema_id,
         name,
         veritech,
         encryption_key,
@@ -624,6 +628,7 @@ pub async fn create_component_and_schema(
         history_actor,
         veritech.clone(),
         encryption_key,
+        *schema.id(),
     )
     .await;
     schema_variant

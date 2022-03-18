@@ -115,6 +115,7 @@ async fn new_node_template() {
         &history_actor,
         veritech,
         encr_key,
+        *schema.id(),
     )
     .await;
     schema_variant

@@ -3,7 +3,7 @@ use std::{fmt, ops::Deref, ops::DerefMut};
 
 pub type SensitiveString = SensitiveContainer<String>;
 
-/// A display/debug redacting [`T`].
+/// A display/debug redacting `T`.
 ///
 /// The [`SensitiveContainer`] type is wrapper around the `T` type, except that it will
 /// not emit its value in its [`std::fmt::Display`] and [`std::fmt::Debug`] implementations. This

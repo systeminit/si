@@ -2,15 +2,15 @@ use serde::{Deserialize, Serialize};
 
 use std::collections::HashMap;
 
-use crate::AttributeResolverId;
+use crate::attribute::value::AttributeValueId;
 
 /// An IndexMap keeps track of which 'child' attribute resolvers of an
 /// Array or Map property exist, their order, and what keys (if any) they
 /// map to.
 #[derive(Debug, Default, Eq, PartialEq, Clone, Serialize, Deserialize)]
 pub struct IndexMap {
-    order: Vec<AttributeResolverId>,
-    key_map: HashMap<AttributeResolverId, String>,
+    order: Vec<AttributeValueId>,
+    key_map: HashMap<AttributeValueId, String>,
 }
 
 impl IndexMap {
@@ -21,38 +21,37 @@ impl IndexMap {
 
     /// Push to the index map. If the `key` param is `None`, then the key will be the index
     /// of the item in the final order.
-    pub fn push(&mut self, attribute_resolver_id: AttributeResolverId, key: Option<String>) {
-        self.order.push(attribute_resolver_id);
+    pub fn push(&mut self, attribute_value_id: AttributeValueId, key: Option<String>) {
+        self.order.push(attribute_value_id);
         let index = self.order.len() - 1;
         match key {
             Some(key_string) => {
-                self.key_map.insert(attribute_resolver_id, key_string);
+                self.key_map.insert(attribute_value_id, key_string);
             }
             None => {
-                self.key_map
-                    .insert(attribute_resolver_id, index.to_string());
+                self.key_map.insert(attribute_value_id, index.to_string());
             }
         }
     }
 
     /// Returns the order of attribute resolvers for this index map as
     /// array; it does not include the keys.
-    pub fn order(&self) -> &[AttributeResolverId] {
+    pub fn order(&self) -> &[AttributeValueId] {
         &self.order
     }
 
     /// Returns the order of attribute resolvers as index map as a map
     /// vec - the tuple will be the `key` and the `AttributeResolverId`
     /// this entry represents.
-    pub fn order_as_map(&self) -> Vec<(String, AttributeResolverId)> {
+    pub fn order_as_map(&self) -> Vec<(String, AttributeValueId)> {
         self.order
             .iter()
-            .map(|attribute_resolver_id| {
+            .map(|attribute_value_id| {
                 let key = self
                     .key_map
-                    .get(attribute_resolver_id)
+                    .get(attribute_value_id)
                     .expect("index present in order, but not in keymap; this is a bug!");
-                (key.clone(), *attribute_resolver_id)
+                (key.clone(), *attribute_value_id)
             })
             .collect()
     }

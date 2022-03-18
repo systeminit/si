@@ -14,11 +14,12 @@ use serde::{Deserialize, Serialize};
 use std::default::Default;
 use thiserror::Error;
 
-use crate::attribute_resolver::UNSET_ID_VALUE;
 use crate::{ComponentId, PropId, SchemaId, SchemaVariantId, SystemId};
 
 pub mod read;
 pub use read::AttributeReadContext;
+
+pub const UNSET_ID_VALUE: i64 = -1;
 
 #[derive(Error, Debug)]
 pub enum AttributeContextError {
@@ -40,21 +41,6 @@ pub struct AttributeContext {
     component_id: ComponentId,
     #[serde(rename = "attribute_context_system_id")]
     system_id: SystemId,
-}
-
-impl From<crate::attribute_resolver_context::AttributeResolverContext> for AttributeContext {
-    fn from(
-        old_context: crate::attribute_resolver_context::AttributeResolverContext,
-    ) -> AttributeContext {
-        AttributeContextBuilder::new()
-            .set_prop_id(old_context.prop_id())
-            .set_schema_id(old_context.schema_id())
-            .set_schema_variant_id(old_context.schema_variant_id())
-            .set_component_id(old_context.component_id())
-            .set_system_id(old_context.system_id())
-            .to_context()
-            .unwrap_or_else(|_| panic!("Failed to convert an AttributeResolverContext to a deculture::AttributeContext: {:?}", old_context))
-    }
 }
 
 impl From<AttributeContext> for AttributeContextBuilder {

@@ -4,7 +4,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
-    deculture::attribute::context::AttributeContext, impl_standard_model, pk, standard_model,
+    attribute::context::AttributeContext, impl_standard_model, pk, standard_model,
     standard_model_accessor, standard_model_accessor_ro, HistoryActor, HistoryEventError,
     StandardModel, StandardModelError, Tenancy, Timestamp, Visibility, WriteTenancy,
 };

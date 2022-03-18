@@ -50,7 +50,7 @@ BEGIN
         WHEN check_context_record.attribute_context_prop_id IS NULL THEN
             TRUE
         ELSE
-            (check_context_record.attribute_context_prop_id = this_prop_id OR this_prop_id = -1)
+            check_context_record.attribute_context_prop_id = this_prop_id
     END;
     RAISE DEBUG 'prop__check: %', prop_check;
 
@@ -58,7 +58,7 @@ BEGIN
         WHEN check_context_record.attribute_context_schema_id IS NULL THEN
             TRUE
         ELSE
-            (check_context_record.attribute_context_schema_id = this_schema_id OR this_schema_id = -1)
+            check_context_record.attribute_context_schema_id = this_schema_id
     END;
     RAISE DEBUG 'schema_check: %', schema_check;
 
@@ -66,7 +66,7 @@ BEGIN
         WHEN check_context_record.attribute_context_schema_variant_id IS NULL THEN
             TRUE
         ELSE
-            (check_context_record.attribute_context_schema_variant_id = this_schema_variant_id OR this_schema_variant_id = -1)
+            check_context_record.attribute_context_schema_variant_id = this_schema_variant_id
     END;
     RAISE DEBUG 'schema_variant_check: %', schema_variant_check;
 
@@ -74,7 +74,7 @@ BEGIN
         WHEN check_context_record.attribute_context_component_id IS NULL THEN
             TRUE
         ELSE
-            (check_context_record.attribute_context_component_id = this_component_id OR this_component_id = -1)
+            check_context_record.attribute_context_component_id = this_component_id
     END;
     RAISE DEBUG 'component_check: %', component_check;
 
@@ -82,7 +82,7 @@ BEGIN
         WHEN check_context_record.attribute_context_system_id IS NULL THEN
             TRUE
         ELSE
-            (check_context_record.attribute_context_system_id = this_system_id OR this_system_id = -1)
+            check_context_record.attribute_context_system_id = this_system_id
     END;
     RAISE DEBUG 'system_check: %', system_check;
 
@@ -93,7 +93,13 @@ BEGIN
     result := (prop_check AND schema_check AND schema_variant_check AND component_check AND system_check)
         OR (prop_check AND schema_check AND schema_variant_check AND component_check AND this_system_id = -1)
         OR (prop_check AND schema_check AND schema_variant_check AND this_component_id = -1 AND this_system_id = -1)
-        OR (prop_check AND schema_check AND this_schema_variant_id = -1 AND this_component_id = -1 AND this_system_id = -1);
+        OR (prop_check AND schema_check AND this_schema_variant_id = -1 AND this_component_id = -1 AND this_system_id = -1)
+        OR CASE
+            WHEN check_context_record.attribute_context_prop_id IS NULL THEN
+                FALSE
+            ELSE
+                (prop_check AND this_schema_id = -1 AND this_schema_variant_id = -1 AND this_component_id = -1 AND this_system_id = -1)
+        END;
     RAISE DEBUG 'in_attribute_context check result: %', result;
 END;
 $$ LANGUAGE PLPGSQL IMMUTABLE;

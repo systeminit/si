@@ -51,6 +51,7 @@ async fn list_components_names_only() {
         &history_actor,
         veritech.clone(),
         encr_key,
+        *schema.id(),
     )
     .await;
     schema_variant
@@ -149,6 +150,7 @@ async fn get_component_metadata() {
         &history_actor,
         veritech.clone(),
         encr_key,
+        *schema.id(),
     )
     .await;
     schema_variant

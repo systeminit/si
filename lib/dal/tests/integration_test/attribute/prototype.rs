@@ -2,10 +2,8 @@ use crate::test_setup;
 
 use crate::dal::test;
 use dal::{
-    deculture::{
-        attribute::context::{AttributeContext, AttributeContextBuilder},
-        attribute::prototype::AttributePrototype,
-    },
+    attribute::context::{AttributeContext, AttributeContextBuilder},
+    attribute::prototype::AttributePrototype,
     func::{backend::string::FuncBackendStringArgs, binding::FuncBinding},
     test_harness::{
         create_component_for_schema, create_prop_of_kind_with_name, create_schema,
@@ -165,6 +163,7 @@ async fn list_for_context() {
         &history_actor,
         veritech.clone(),
         encr_key,
+        *schema.id(),
     )
     .await;
     schema_variant
@@ -482,6 +481,7 @@ async fn list_for_context_with_a_hash() {
         &history_actor,
         veritech.clone(),
         encr_key,
+        *schema.id(),
     )
     .await;
     schema_variant

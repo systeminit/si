@@ -17,7 +17,6 @@ CREATE TABLE attribute_prototypes
     created_at                          timestamp with time zone NOT NULL DEFAULT NOW(),
     updated_at                          timestamp with time zone NOT NULL DEFAULT NOW(),
     func_id                             bigint                   NOT NULL,
-    func_binding_id                     bigint                   NOT NULL,
     key                                 text
 );
 SELECT standard_model_table_constraints_v1('attribute_prototypes');
@@ -30,7 +29,6 @@ CREATE OR REPLACE FUNCTION attribute_prototype_create_v1(
     this_visibility jsonb,
     this_attribute_context jsonb,
     this_func_id bigint,
-    this_func_binding_id bigint,
     this_key text,
     OUT object json) AS
 $$
@@ -57,7 +55,6 @@ BEGIN
                                      attribute_context_component_id,
                                      attribute_context_system_id,
                                      func_id,
-                                     func_binding_id,
                                      key)
     VALUES (this_tenancy_record.tenancy_universal,
             this_tenancy_record.tenancy_billing_account_ids,
@@ -72,7 +69,6 @@ BEGIN
             this_attribute_context_record.attribute_context_component_id,
             this_attribute_context_record.attribute_context_system_id,
             this_func_id,
-            this_func_binding_id,
             this_key)
     RETURNING * INTO this_new_row;
 
