@@ -8,8 +8,17 @@ use telemetry::{
 
 mod args;
 
-#[tokio::main]
-async fn main() -> Result<()> {
+const RT_DEFAULT_THREAD_STACK_SIZE: usize = 2 * 1024 * 1024 * 3;
+
+fn main() -> Result<()> {
+    tokio::runtime::Builder::new_multi_thread()
+        .thread_stack_size(RT_DEFAULT_THREAD_STACK_SIZE)
+        .enable_all()
+        .build()?
+        .block_on(async_main())
+}
+
+async fn async_main() -> Result<()> {
     color_eyre::install()?;
     let config = telemetry::Config::builder()
         .service_name("sdf")
