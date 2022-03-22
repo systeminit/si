@@ -1,3 +1,4 @@
+use crate::dal::test;
 use axum::{
     body::Body,
     http::{self, Method, Request, StatusCode},
@@ -5,10 +6,9 @@ use axum::{
 };
 use dal::test_harness::{one_time_setup, TestContext};
 use sdf::service::signup::{self, create_account::CreateAccountResponse};
-use test_env_log::test;
 use tower::ServiceExt;
 
-#[test(tokio::test)]
+#[test]
 async fn create_account() {
     one_time_setup().await.expect("cannot setup tests");
     let ctx = TestContext::init().await;

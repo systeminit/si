@@ -1,11 +1,11 @@
+use crate::dal::test;
 use crate::test_setup;
 use dal::{
     test_harness::billing_account_signup, BillingAccountId, OrganizationId, ReadTenancy,
     StandardModel, Tenancy, WorkspaceId, WriteTenancy,
 };
-use test_env_log::test;
 
-#[test(tokio::test)]
+#[test]
 async fn check_organization_specific_billing_account() {
     test_setup!(ctx, secret_key, _pg, _conn, txn, nats_conn, nats, _veritech, _encr_key);
     let (nba, _) = billing_account_signup(&txn, &nats, &secret_key).await;
@@ -20,7 +20,7 @@ async fn check_organization_specific_billing_account() {
     assert!(!check);
 }
 
-#[test(tokio::test)]
+#[test]
 async fn check_organization_in_billing_account() {
     test_setup!(ctx, secret_key, _pg, _conn, txn, nats_conn, nats, _veritech, _encr_key);
     let (nba, _) = billing_account_signup(&txn, &nats, &secret_key).await;
@@ -37,7 +37,7 @@ async fn check_organization_in_billing_account() {
     assert!(check);
 }
 
-#[test(tokio::test)]
+#[test]
 async fn check_workspace_specific_billing_account() {
     test_setup!(ctx, secret_key, _pg, _conn, txn, nats_conn, nats, _veritech, _encr_key);
     let (nba, _) = billing_account_signup(&txn, &nats, &secret_key).await;
@@ -52,7 +52,7 @@ async fn check_workspace_specific_billing_account() {
     assert!(!check);
 }
 
-#[test(tokio::test)]
+#[test]
 async fn check_workspace_in_billing_account() {
     test_setup!(ctx, secret_key, _pg, _conn, txn, nats_conn, nats, _veritech, _encr_key);
     let (nba, _) = billing_account_signup(&txn, &nats, &secret_key).await;
@@ -73,7 +73,7 @@ async fn check_workspace_in_billing_account() {
     assert!(check);
 }
 
-#[test(tokio::test)]
+#[test]
 async fn check_workspace_specific_organization() {
     test_setup!(ctx, secret_key, _pg, _conn, txn, nats_conn, nats, _veritech, _encr_key);
     let (nba, _) = billing_account_signup(&txn, &nats, &secret_key).await;
@@ -94,7 +94,7 @@ async fn check_workspace_specific_organization() {
     assert!(!check);
 }
 
-#[test(tokio::test)]
+#[test]
 async fn check_workspace_in_organization() {
     test_setup!(ctx, secret_key, _pg, _conn, txn, nats_conn, nats, _veritech, _encr_key);
     let (nba, _) = billing_account_signup(&txn, &nats, &secret_key).await;
@@ -111,7 +111,7 @@ async fn check_workspace_in_organization() {
     assert!(check);
 }
 
-#[test(tokio::test)]
+#[test]
 async fn check_universal() {
     test_setup!(
         ctx,
@@ -170,7 +170,7 @@ async fn check_universal() {
     assert!(check);
 }
 
-#[test(tokio::test)]
+#[test]
 async fn check_billing_account_pk_identical() {
     test_setup!(
         ctx,
@@ -194,7 +194,7 @@ async fn check_billing_account_pk_identical() {
     assert!(check);
 }
 
-#[test(tokio::test)]
+#[test]
 async fn check_billing_account_pk_overlapping() {
     test_setup!(
         ctx,
@@ -225,7 +225,7 @@ async fn check_billing_account_pk_overlapping() {
     assert!(check);
 }
 
-#[test(tokio::test)]
+#[test]
 async fn check_billing_account_pk_mismatched() {
     test_setup!(
         ctx,
@@ -249,7 +249,7 @@ async fn check_billing_account_pk_mismatched() {
     assert!(!check);
 }
 
-#[test(tokio::test)]
+#[test]
 async fn check_billing_account_pk_mismatched_level() {
     test_setup!(
         ctx,
@@ -273,7 +273,7 @@ async fn check_billing_account_pk_mismatched_level() {
     assert!(!check);
 }
 
-#[test(tokio::test)]
+#[test]
 async fn check_organization_pk_identical() {
     test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats, _veritech, _encr_key);
 
@@ -290,7 +290,7 @@ async fn check_organization_pk_identical() {
     assert!(check);
 }
 
-#[test(tokio::test)]
+#[test]
 async fn check_organization_pk_overlapping() {
     test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats, _veritech, _encr_key);
 
@@ -316,7 +316,7 @@ async fn check_organization_pk_overlapping() {
     assert!(check);
 }
 
-#[test(tokio::test)]
+#[test]
 async fn check_organization_pk_mismatched() {
     test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats, _veritech, _encr_key);
 
@@ -333,7 +333,7 @@ async fn check_organization_pk_mismatched() {
     assert!(!check);
 }
 
-#[test(tokio::test)]
+#[test]
 async fn check_workspace_pk_identical() {
     test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats, _veritech, _encr_key);
 
@@ -350,7 +350,7 @@ async fn check_workspace_pk_identical() {
     assert!(check);
 }
 
-#[test(tokio::test)]
+#[test]
 async fn check_workspace_pk_overlapping() {
     test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats, _veritech, _encr_key);
 
@@ -376,7 +376,7 @@ async fn check_workspace_pk_overlapping() {
     assert!(check);
 }
 
-#[test(tokio::test)]
+#[test]
 async fn check_workspace_pk_mismatched() {
     test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats, _veritech, _encr_key);
 
@@ -393,7 +393,7 @@ async fn check_workspace_pk_mismatched() {
     assert!(!check);
 }
 
-#[test(tokio::test)]
+#[test]
 async fn into_tenancy() {
     test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats, _veritech, _encr_key);
 
@@ -421,7 +421,7 @@ async fn into_tenancy() {
     assert_eq!(Tenancy::from(&read_tenancy), tenancy);
 }
 
-#[test(tokio::test)]
+#[test]
 async fn from_tenancy() {
     test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats, _veritech, _encr_key);
 

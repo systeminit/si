@@ -1,10 +1,10 @@
 use crate::test_setup;
 
+use crate::dal::test;
 use dal::test_harness::{create_change_set, create_edit_session, create_visibility_edit_session};
 use dal::{Capability, HistoryActor, WriteTenancy};
-use test_env_log::test;
 
-#[test(tokio::test)]
+#[test]
 async fn new() {
     test_setup!(
         ctx,

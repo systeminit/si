@@ -1,5 +1,6 @@
 use crate::test_setup;
 
+use crate::dal::test;
 use dal::func::backend::js_resource::FuncBackendJsResourceSyncArgs;
 use dal::{
     func::binding::FuncBinding,
@@ -7,9 +8,8 @@ use dal::{
     test_harness::{billing_account_signup, create_component_for_schema_variant},
     Func, HistoryActor, ResourceResolver, Schema, StandardModel, Tenancy, Visibility,
 };
-use test_env_log::test;
 
-#[test(tokio::test)]
+#[test]
 async fn new() {
     test_setup!(
         ctx,
@@ -104,7 +104,7 @@ async fn new() {
     .expect("cannot create new attribute resolver");
 }
 
-#[test(tokio::test)]
+#[test]
 async fn find_for_prototype() {
     test_setup!(ctx, secret_key, pg, _conn, txn, nats_conn, nats, veritech, encr_key);
     let (nba, _token) = billing_account_signup(&txn, &nats, secret_key).await;

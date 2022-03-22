@@ -1,5 +1,6 @@
 use crate::test_setup;
 
+use crate::dal::test;
 use dal::qualification_resolver::UNSET_ID_VALUE;
 use dal::test_harness::{
     create_component_and_schema, create_component_for_schema_variant, create_schema,
@@ -11,11 +12,10 @@ use dal::{
 };
 use pretty_assertions_sorted::{assert_eq, assert_eq_sorted};
 use serde_json::json;
-use test_env_log::test;
 
 mod view;
 
-#[test(tokio::test)]
+#[test]
 async fn new() {
     test_setup!(
         ctx,
@@ -43,7 +43,7 @@ async fn new() {
     .await;
 }
 
-#[test(tokio::test)]
+#[test]
 async fn new_for_schema_variant_with_node() {
     test_setup!(
         ctx,
@@ -135,7 +135,7 @@ async fn new_for_schema_variant_with_node() {
     );
 }
 
-#[test(tokio::test)]
+#[test]
 async fn schema_relationships() {
     test_setup!(
         ctx,
@@ -187,7 +187,7 @@ async fn schema_relationships() {
     .await;
 }
 
-#[test(tokio::test)]
+#[test]
 async fn qualification_view() {
     test_setup!(
         ctx,
@@ -297,7 +297,7 @@ async fn qualification_view() {
 // NOTE: This test is brittle. It's going to rely on the existing configuration of the dockerImage, but it's going
 // to prove what we want right now. Figuring out a test that is less brittle is a great idea, but I'm choosing
 // expediency.
-#[test(tokio::test)]
+#[test]
 async fn list_qualifications() {
     test_setup!(
         ctx,
@@ -362,7 +362,7 @@ async fn list_qualifications() {
 }
 
 // Also brittle, same reason
-#[test(tokio::test)]
+#[test]
 async fn list_qualifications_by_component_id() {
     test_setup!(
         ctx,
@@ -432,7 +432,7 @@ async fn list_qualifications_by_component_id() {
 }
 
 // Also brittle, same reason
-#[test(tokio::test)]
+#[test]
 async fn get_resource_by_component_id() {
     test_setup!(
         ctx,
@@ -586,7 +586,7 @@ async fn get_resource_by_component_id() {
 // relatively low priority since it just checks if the output matches the expected between the
 // execution output stream itself and the view that was created afterwards.
 //
-// #[test(tokio::test)]
+// #[test]
 // async fn qualification_view_output_stream() {
 //     test_setup!(ctx, _secret_key, _pg, _conn, txn, nats_conn, nats, veritech, _encr_key);
 //     let tenancy = Tenancy::new_universal();

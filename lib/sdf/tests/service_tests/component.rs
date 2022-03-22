@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 
+use crate::dal::test;
 use crate::service_tests::api_request_auth_query;
 use crate::test_setup;
 use dal::test_harness::{
@@ -12,9 +13,8 @@ use sdf::service::component::get_component_metadata::{
 use sdf::service::component::list_components_names_only::{
     ListComponentNamesOnlyRequest, ListComponentNamesOnlyResponse,
 };
-use test_env_log::test;
 
-#[test(tokio::test)]
+#[test]
 async fn list_components_names_only() {
     test_setup!(
         _ctx,
@@ -109,7 +109,7 @@ async fn list_components_names_only() {
     );
 }
 
-#[test(tokio::test)]
+#[test]
 async fn get_component_metadata() {
     test_setup!(
         _ctx,

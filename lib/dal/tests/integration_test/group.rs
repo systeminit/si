@@ -1,13 +1,13 @@
 use crate::test_setup;
 
+use crate::dal::test;
 use dal::test_harness::{
     create_billing_account, create_change_set, create_edit_session, create_group, create_user,
     create_visibility_edit_session,
 };
 use dal::{Group, HistoryActor, StandardModel, Tenancy, WriteTenancy};
-use test_env_log::test;
 
-#[test(tokio::test)]
+#[test]
 async fn new() {
     test_setup!(
         ctx,
@@ -37,7 +37,7 @@ async fn new() {
     .expect("cannot create group");
 }
 
-#[test(tokio::test)]
+#[test]
 async fn add_user() {
     test_setup!(
         ctx,
@@ -71,7 +71,7 @@ async fn add_user() {
         .expect("cannot add user");
 }
 
-#[test(tokio::test)]
+#[test]
 async fn remove_user() {
     test_setup!(
         ctx,
@@ -113,7 +113,7 @@ async fn remove_user() {
         .expect("cannot remove user");
 }
 
-#[test(tokio::test)]
+#[test]
 async fn users() {
     test_setup!(
         ctx,

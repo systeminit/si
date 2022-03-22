@@ -1,11 +1,11 @@
+use crate::dal::test;
 use dal::jwt_key;
 use dal::test_harness::{one_time_setup, TestContext};
 use jwt_simple::algorithms::RSAKeyPairLike;
-use test_env_log::test;
 
 // {get_jwt_signing_key, get_jwt_validation_key};
 
-#[test(tokio::test)]
+#[test]
 async fn get_jwt_signing_key() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
@@ -18,7 +18,7 @@ async fn get_jwt_signing_key() {
         .expect("cannot get jwt signing key");
 }
 
-#[test(tokio::test)]
+#[test]
 async fn get_jwt_validation_key() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;

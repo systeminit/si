@@ -1,14 +1,14 @@
 use crate::test_setup;
 
+use crate::dal::test;
 use dal::key_pair::PublicKey;
 use dal::test_harness::{
     create_billing_account, create_change_set, create_edit_session, create_key_pair,
     create_visibility_edit_session,
 };
 use dal::{BillingAccount, HistoryActor, KeyPair, StandardModel, Tenancy};
-use test_env_log::test;
 
-#[test(tokio::test)]
+#[test]
 async fn new() {
     test_setup!(
         ctx,
@@ -38,7 +38,7 @@ async fn new() {
     .expect("cannot create key_pair");
 }
 
-#[test(tokio::test)]
+#[test]
 async fn belongs_to() {
     test_setup!(
         ctx,
@@ -93,7 +93,7 @@ async fn belongs_to() {
     );
 }
 
-#[test(tokio::test)]
+#[test]
 async fn public_key_get_current() {
     test_setup!(
         ctx,

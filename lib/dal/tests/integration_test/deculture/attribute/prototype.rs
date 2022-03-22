@@ -1,5 +1,6 @@
 use crate::test_setup;
 
+use crate::dal::test;
 use dal::{
     deculture::{
         attribute::context::{AttributeContext, AttributeContextBuilder},
@@ -14,9 +15,8 @@ use dal::{
     StandardModel, Tenancy, Visibility,
 };
 use pretty_assertions_sorted::assert_eq;
-use test_env_log::test;
 
-#[test(tokio::test)]
+#[test]
 async fn new() {
     test_setup!(
         ctx,
@@ -130,7 +130,7 @@ async fn new() {
     .expect("cannot create new attribute prototype");
 }
 
-#[test(tokio::test)]
+#[test]
 async fn list_for_context() {
     test_setup!(
         ctx,
@@ -447,7 +447,7 @@ async fn list_for_context() {
     );
 }
 
-#[test(tokio::test)]
+#[test]
 async fn list_for_context_with_a_hash() {
     test_setup!(
         ctx,

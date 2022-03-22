@@ -2,17 +2,17 @@ use std::collections::HashSet;
 
 use axum::http::Method;
 
+use crate::dal::test;
 use dal::test_harness::create_schema as dal_create_schema;
 use dal::{HistoryActor, SchemaKind, StandardModel, Tenancy, Visibility};
 use sdf::service::schema::create_schema::{CreateSchemaRequest, CreateSchemaResponse};
 use sdf::service::schema::get_schema::{GetSchemaRequest, GetSchemaResponse};
 use sdf::service::schema::list_schemas::{ListSchemaRequest, ListSchemaResponse};
-use test_env_log::test;
 
 use crate::service_tests::{api_request_auth_json_body, api_request_auth_query};
 use crate::test_setup;
 
-#[test(tokio::test)]
+#[test]
 async fn create_schema() {
     test_setup!(
         _ctx,
@@ -46,7 +46,7 @@ async fn create_schema() {
     assert_eq!(response.schema.kind(), &SchemaKind::Concrete);
 }
 
-#[test(tokio::test)]
+#[test]
 async fn list_schemas() {
     test_setup!(
         _ctx,
@@ -110,7 +110,7 @@ async fn list_schemas() {
     );
 }
 
-#[test(tokio::test)]
+#[test]
 async fn get_schemas() {
     test_setup!(
         _ctx,

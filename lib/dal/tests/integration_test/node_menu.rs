@@ -1,12 +1,12 @@
+use crate::dal::test;
 use dal::node_menu::get_node_menu_items;
 use dal::test_harness::{billing_account_signup, create_component_for_schema};
 use dal::{node_menu::MenuFilter, Schema, SchematicKind};
 use dal::{HistoryActor, StandardModel, Visibility, WriteTenancy};
-use test_env_log::test;
 
 use crate::test_setup;
 
-#[test(tokio::test)]
+#[test]
 async fn get_node_menu() {
     test_setup!(ctx, secret_key, _pg, _conn, txn, _nats_conn, nats, veritech, encr_key);
     let (nba, _key) = billing_account_signup(&txn, &nats, secret_key).await;

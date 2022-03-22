@@ -15,6 +15,7 @@ members = [
     "lib/veritech",
     "lib/si-data",
     "lib/si-settings",
+    "lib/si-test-macros",
     "lib/telemetry-rs",
 ]
 exclude = [

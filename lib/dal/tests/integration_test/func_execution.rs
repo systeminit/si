@@ -2,15 +2,15 @@ use crate::test_setup;
 use dal::func::execution::FuncExecutionState;
 use dal::{func::execution::FuncExecution, StandardModel};
 
+use crate::dal::test;
 use dal::{
     func::backend::string::FuncBackendStringArgs,
     test_harness::{create_func, create_func_binding, create_visibility_head},
     HistoryActor, Tenancy,
 };
-use test_env_log::test;
 use veritech::OutputStream;
 
-#[test(tokio::test)]
+#[test]
 async fn new() {
     test_setup!(
         ctx,
@@ -46,7 +46,7 @@ async fn new() {
     assert_eq!(execution.state(), FuncExecutionState::Start);
 }
 
-#[test(tokio::test)]
+#[test]
 async fn set_state() {
     test_setup!(
         ctx,
@@ -87,7 +87,7 @@ async fn set_state() {
     assert_eq!(execution.state(), FuncExecutionState::Dispatch);
 }
 
-#[test(tokio::test)]
+#[test]
 async fn set_output_stream() {
     test_setup!(
         ctx,
@@ -143,7 +143,7 @@ async fn set_output_stream() {
     assert_eq!(output_stream.len(), 1);
 }
 
-#[test(tokio::test)]
+#[test]
 async fn process_return_value() {
     test_setup!(
         ctx,
@@ -199,7 +199,7 @@ async fn process_return_value() {
 }
 
 // FIXME(nick,fletcher): re-add test once upsert is added.
-// #[test(tokio::test)]
+// #[test]
 // async fn execution_upserts_return_value() {
 //     test_setup!(ctx, _secret_key, _pg, _conn, txn, nats_conn, nats, veritech, _encr_key);
 //     let tenancy = Tenancy::new_universal();

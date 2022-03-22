@@ -25,6 +25,7 @@
 !lib/veritech
 !lib/si-data
 !lib/si-settings
+!lib/si-test-macros
 !lib/telemetry-rs
 
 # Ignore non-portable context in component sub-directories

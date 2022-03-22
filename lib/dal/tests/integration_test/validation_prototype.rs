@@ -1,14 +1,14 @@
 use crate::test_setup;
 
+use crate::dal::test;
 use dal::{
     func::backend::validation::FuncBackendValidateStringValueArgs,
     test_harness::billing_account_signup,
     validation_prototype::{ValidationPrototypeContext, UNSET_ID_VALUE},
     Func, HistoryActor, Schema, StandardModel, SystemId, Tenancy, ValidationPrototype, Visibility,
 };
-use test_env_log::test;
 
-#[test(tokio::test)]
+#[test]
 async fn new() {
     test_setup!(
         ctx,
@@ -83,7 +83,7 @@ async fn new() {
     .expect("cannot create new attribute prototype");
 }
 
-#[test(tokio::test)]
+#[test]
 async fn find_for_prop() {
     test_setup!(ctx, secret_key, pg, _conn, txn, nats_conn, nats, _veritech, _encr_key);
     let (nba, _token) = billing_account_signup(&txn, &nats, secret_key).await;

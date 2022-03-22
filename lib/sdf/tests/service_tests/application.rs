@@ -1,5 +1,6 @@
 use axum::http::Method;
 
+use crate::dal::test;
 use crate::service_tests::{api_request_auth_json_body, api_request_auth_query};
 use crate::test_setup;
 use dal::{Component, HistoryActor, StandardModel, Tenancy, Visibility};
@@ -9,9 +10,8 @@ use sdf::service::application::create_application::{
 use sdf::service::application::list_applications::{
     ListApplicationRequest, ListApplicationResponse,
 };
-use test_env_log::test;
 
-#[test(tokio::test)]
+#[test]
 async fn create_application() {
     test_setup!(
         _ctx,
@@ -54,7 +54,7 @@ async fn create_application() {
     );
 }
 
-#[test(tokio::test)]
+#[test]
 async fn list_applications() {
     test_setup!(
         _ctx,

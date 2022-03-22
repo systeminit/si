@@ -1,11 +1,11 @@
+use crate::dal::test;
 use crate::test_setup;
 use dal::{
     test_harness::find_or_create_production_system, Component, Connection, HistoryActor,
     NodePosition, Schema, Schematic, SchematicKind, StandardModel, SystemId, Tenancy, Visibility,
 };
-use test_env_log::test;
 
-#[test(tokio::test)]
+#[test]
 async fn get_schematic() {
     test_setup!(
         ctx,
@@ -103,7 +103,7 @@ async fn get_schematic() {
     assert_eq!(schematic.nodes()[1].positions()[0].y(), node_position.y());
 }
 
-#[test(tokio::test)]
+#[test]
 async fn create_connection() {
     test_setup!(
         ctx,

@@ -1,3 +1,4 @@
+use crate::dal::test;
 use dal::{
     system::UNSET_SYSTEM_ID,
     test_harness::{
@@ -9,7 +10,6 @@ use dal::{
 };
 use pretty_assertions_sorted::{assert_eq, assert_eq_sorted};
 use si_data::{NatsTxn, PgTxn};
-use test_env_log::test;
 use tokio::sync::mpsc;
 use veritech::EncryptionKey;
 
@@ -888,7 +888,7 @@ pub async fn create_schema_with_nested_array_objects_and_a_map(
     )
 }
 
-#[test(tokio::test)]
+#[test]
 async fn only_string_props() {
     test_setup!(
         ctx,
@@ -965,7 +965,7 @@ async fn only_string_props() {
     );
 }
 
-#[test(tokio::test)]
+#[test]
 async fn one_object_prop() {
     test_setup!(
         ctx,
@@ -1067,7 +1067,7 @@ async fn one_object_prop() {
     );
 }
 
-#[test(tokio::test)]
+#[test]
 async fn nested_object_prop() {
     test_setup!(
         ctx,
@@ -1205,7 +1205,7 @@ async fn nested_object_prop() {
     );
 }
 
-#[test(tokio::test)]
+#[test]
 async fn simple_array_of_strings() {
     test_setup!(
         ctx,
@@ -1322,7 +1322,7 @@ async fn simple_array_of_strings() {
     );
 }
 
-#[test(tokio::test)]
+#[test]
 async fn complex_nested_array_of_objects() {
     test_setup!(
         ctx,
@@ -1587,7 +1587,7 @@ async fn complex_nested_array_of_objects() {
     );
 }
 
-#[test(tokio::test)]
+#[test]
 async fn simple_map() {
     test_setup!(
         ctx,
@@ -1699,7 +1699,7 @@ async fn simple_map() {
     );
 }
 
-#[test(tokio::test)]
+#[test]
 async fn complex_nested_array_of_objects_with_a_map() {
     test_setup!(
         ctx,
@@ -1892,7 +1892,7 @@ async fn complex_nested_array_of_objects_with_a_map() {
     );
 }
 
-#[test(tokio::test)]
+#[test]
 async fn cyclone_crypto_e2e() {
     test_setup!(
         _ctx,

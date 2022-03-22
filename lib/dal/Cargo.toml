@@ -43,7 +43,7 @@ veritech = { path = "../../lib/veritech", features = ["client"] }
 [dev-dependencies]
 insta = "1.8.0"
 pretty_assertions_sorted = "1.1.2"
-test-env-log = { version = "0.2.7", default-features = false, features = ["trace"] }
+si-test-macros = { path = "../../lib/si-test-macros" }
 tracing = { version = "0.1" }
 tracing-subscriber = { version = "0.2.19", default-features = false, features = ["env-filter", "fmt"] }
 veritech = { path = "../../lib/veritech", features = ["client", "server"] }

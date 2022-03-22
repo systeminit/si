@@ -1,5 +1,6 @@
 use crate::test_setup;
 
+use crate::dal::test;
 use dal::{
     func::{backend::validation::FuncBackendValidateStringValueArgs, binding::FuncBinding},
     test_harness::{billing_account_signup, create_component_for_schema},
@@ -7,9 +8,8 @@ use dal::{
     Func, FuncBackendKind, FuncBackendResponseType, HistoryActor, Schema, StandardModel, SystemId,
     Tenancy, ValidationResolver, Visibility,
 };
-use test_env_log::test;
 
-#[test(tokio::test)]
+#[test]
 async fn new() {
     test_setup!(
         ctx,
@@ -119,7 +119,7 @@ async fn new() {
     .expect("cannot create new attribute resolver");
 }
 
-#[test(tokio::test)]
+#[test]
 async fn find_for_prototype() {
     test_setup!(ctx, secret_key, pg, _conn, txn, nats_conn, nats, veritech, encr_key);
     let (nba, _token) = billing_account_signup(&txn, &nats, secret_key).await;
@@ -269,7 +269,7 @@ async fn find_for_prototype() {
     assert_eq!(validation_results.len(), 2);
 }
 
-#[test(tokio::test)]
+#[test]
 async fn find_values_for_prop_and_component() {
     test_setup!(ctx, secret_key, pg, _conn, txn, nats_conn, nats, veritech, encr_key);
     let (nba, _token) = billing_account_signup(&txn, &nats, secret_key).await;
@@ -423,7 +423,7 @@ async fn find_values_for_prop_and_component() {
     assert_eq!(validation_results.len(), 2);
 }
 
-#[test(tokio::test)]
+#[test]
 async fn find_values_for_prop_and_component_override() {
     test_setup!(ctx, secret_key, pg, _conn, txn, nats_conn, nats, veritech, encr_key);
     let (nba, _token) = billing_account_signup(&txn, &nats, secret_key).await;

@@ -1,13 +1,13 @@
 use crate::test_setup;
 
+use crate::dal::test;
 use dal::schema::SchemaKind;
 use dal::test_harness::{create_schema, create_schema_ui_menu};
 use dal::{
     schema::UiMenu, HistoryActor, SchematicKind, StandardModel, Tenancy, Visibility, WriteTenancy,
 };
-use test_env_log::test;
 
-#[test(tokio::test)]
+#[test]
 async fn new() {
     test_setup!(
         ctx,
@@ -31,7 +31,7 @@ async fn new() {
     assert_eq!(schema_ui_menu.schematic_kind(), &SchematicKind::Component);
 }
 
-#[test(tokio::test)]
+#[test]
 async fn set_schema() {
     test_setup!(
         ctx,
@@ -81,7 +81,7 @@ async fn set_schema() {
     assert_eq!(attached_schema, None);
 }
 
-#[test(tokio::test)]
+#[test]
 async fn root_schematics() {
     test_setup!(
         ctx,
