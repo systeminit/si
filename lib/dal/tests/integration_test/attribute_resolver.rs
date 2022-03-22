@@ -1,5 +1,6 @@
 use crate::test_setup;
 
+use crate::dal::test;
 use dal::{
     attribute_resolver::AttributeResolverContext,
     func::{
@@ -16,9 +17,8 @@ use dal::{
     HistoryActor, PropKind, ReadTenancy, Schema, SchemaKind, StandardModel, Tenancy, Visibility,
 };
 use pretty_assertions_sorted::{assert_eq, assert_eq_sorted};
-use test_env_log::test;
 
-#[test(tokio::test)]
+#[test]
 async fn new() {
     test_setup!(
         ctx,
@@ -129,7 +129,7 @@ async fn new() {
 
 // TODO: Flesh out the full precedence for attributes, and refactor this test so that it is less
 // nuts.
-#[test(tokio::test)]
+#[test]
 async fn find_value_for_prop_and_component() {
     test_setup!(ctx, secret_key, pg, _conn, txn, nats_conn, nats, veritech, encr_key);
     let (nba, _token) = billing_account_signup(&txn, &nats, secret_key).await;
@@ -435,7 +435,7 @@ async fn find_value_for_prop_and_component() {
     );
 }
 
-#[test(tokio::test)]
+#[test]
 async fn upsert() {
     test_setup!(
         ctx,
@@ -580,7 +580,7 @@ async fn upsert() {
     );
 }
 
-#[test(tokio::test)]
+#[test]
 async fn update_parent_index_map() {
     test_setup!(
         ctx,
@@ -784,7 +784,7 @@ async fn update_parent_index_map() {
     assert_eq!(&[*string_attribute_resolver.id()], index_map.order());
 }
 
-#[test(tokio::test)]
+#[test]
 async fn siblings_have_values() {
     test_setup!(
         ctx,
@@ -1014,7 +1014,7 @@ async fn siblings_have_values() {
     );
 }
 
-#[test(tokio::test)]
+#[test]
 async fn update_for_context_will_unset_parent_resolvers() {
     test_setup!(
         ctx,
@@ -1351,7 +1351,7 @@ async fn update_for_context_will_unset_parent_resolvers() {
 /// resolver for the object and its two string fields. Override those values to different
 /// values in a component. Finally, remove each value individually and test that the fallback to
 /// the default values works properly.
-#[test(tokio::test)]
+#[test]
 async fn remove_for_context() {
     test_setup!(
         ctx,

@@ -1,13 +1,13 @@
 use crate::test_setup;
 
+use crate::dal::test;
 use dal::test_harness::{
     billing_account_signup, create_billing_account, create_change_set, create_edit_session,
     create_visibility_edit_session, create_visibility_head,
 };
 use dal::{HistoryActor, ReadTenancy, StandardModel, Tenancy, User, WriteTenancy};
-use test_env_log::test;
 
-#[test(tokio::test)]
+#[test]
 async fn new() {
     test_setup!(
         ctx,
@@ -39,7 +39,7 @@ async fn new() {
     .expect("cannot create user");
 }
 
-#[test(tokio::test)]
+#[test]
 async fn login() {
     test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats, _veritech, _encr_key);
     let tenancy = Tenancy::new_universal();
@@ -67,7 +67,7 @@ async fn login() {
         .expect("cannot get jwt");
 }
 
-#[test(tokio::test)]
+#[test]
 async fn find_by_email() {
     test_setup!(
         ctx,
@@ -132,7 +132,7 @@ async fn find_by_email() {
     );
 }
 
-#[test(tokio::test)]
+#[test]
 async fn authorize() {
     test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats, _veritech, _encr_key);
     let history_actor = HistoryActor::SystemInit;

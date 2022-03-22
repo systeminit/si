@@ -1,3 +1,4 @@
+use crate::dal::test;
 use crate::test_setup;
 use dal::edit_session::EditSession;
 use dal::test_harness::{
@@ -8,9 +9,8 @@ use dal::{
     BillingAccount, ChangeSet, EditSessionStatus, HistoryActor, ReadTenancy, StandardModel,
     Tenancy, WriteTenancy, NO_EDIT_SESSION_PK,
 };
-use test_env_log::test;
 
-#[test(tokio::test)]
+#[test]
 async fn new() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
@@ -45,7 +45,7 @@ async fn new() {
     .expect("cannot create edit session");
 }
 
-#[test(tokio::test)]
+#[test]
 async fn save() {
     one_time_setup().await.expect("one time setup failed");
     let ctx = TestContext::init().await;
@@ -101,7 +101,7 @@ async fn save() {
     );
 }
 
-#[test(tokio::test)]
+#[test]
 async fn get_by_pk() {
     test_setup!(
         ctx,
@@ -126,7 +126,7 @@ async fn get_by_pk() {
     assert_eq!(&edit_session, &result);
 }
 
-#[test(tokio::test)]
+#[test]
 async fn cancel() {
     test_setup!(
         ctx,

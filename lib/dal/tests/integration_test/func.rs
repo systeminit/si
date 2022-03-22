@@ -1,5 +1,6 @@
 use crate::test_setup;
 
+use crate::dal::test;
 use dal::func::execution::FuncExecution;
 use dal::{
     func::{
@@ -13,9 +14,8 @@ use dal::{
     Func, FuncBackendKind, FuncBackendResponseType, HistoryActor, StandardModel, Tenancy,
     Visibility, WriteTenancy, NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK,
 };
-use test_env_log::test;
 
-#[test(tokio::test)]
+#[test]
 async fn new() {
     test_setup!(
         ctx,
@@ -45,7 +45,7 @@ async fn new() {
     .expect("cannot create func");
 }
 
-#[test(tokio::test)]
+#[test]
 async fn func_binding_new() {
     test_setup!(
         ctx,
@@ -85,7 +85,7 @@ async fn func_binding_new() {
     .expect("cannot create func binding");
 }
 
-#[test(tokio::test)]
+#[test]
 async fn func_binding_find_or_create_head() {
     test_setup!(
         ctx,
@@ -146,7 +146,7 @@ async fn func_binding_find_or_create_head() {
     );
 }
 
-#[test(tokio::test)]
+#[test]
 async fn func_binding_find_or_create_edit_session() {
     test_setup!(
         ctx,
@@ -280,7 +280,7 @@ async fn func_binding_find_or_create_edit_session() {
     );
 }
 
-#[test(tokio::test)]
+#[test]
 async fn func_binding_return_value_new() {
     test_setup!(
         ctx,
@@ -332,7 +332,7 @@ async fn func_binding_return_value_new() {
     .expect("failed to create return value");
 }
 
-#[test(tokio::test)]
+#[test]
 async fn func_binding_execute() {
     test_setup!(
         ctx,
@@ -375,7 +375,7 @@ async fn func_binding_execute() {
     );
 }
 
-#[test(tokio::test)]
+#[test]
 async fn func_binding_execute_unset() {
     test_setup!(
         ctx,

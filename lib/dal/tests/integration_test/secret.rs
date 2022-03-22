@@ -1,13 +1,13 @@
+use crate::dal::test;
 use dal::{
     test_harness::{billing_account_signup, create_secret, generate_fake_name},
     EncryptedSecret, HistoryActor, Secret, SecretAlgorithm, SecretKind, SecretObjectType,
     SecretVersion, StandardModel, Tenancy, Visibility, WriteTenancy,
 };
-use test_env_log::test;
 
 use crate::test_setup;
 
-#[test(tokio::test)]
+#[test]
 async fn new_encrypted_secret() {
     test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats, _veritech, _encr_key);
     let (nba, _token) = billing_account_signup(&txn, &nats, secret_key).await;
@@ -47,7 +47,7 @@ async fn new_encrypted_secret() {
     assert_eq!(key_pair.pk(), nba.key_pair.pk());
 }
 
-#[test(tokio::test)]
+#[test]
 async fn secret_get_by_id() {
     test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats, _veritech, _encr_key);
     let (nba, _token) = billing_account_signup(&txn, &nats, secret_key).await;
@@ -73,7 +73,7 @@ async fn secret_get_by_id() {
     assert_eq!(secret, og_secret);
 }
 
-#[test(tokio::test)]
+#[test]
 async fn encrypted_secret_get_by_id() {
     test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats, _veritech, _encr_key);
     let (nba, _token) = billing_account_signup(&txn, &nats, secret_key).await;
@@ -103,7 +103,7 @@ async fn encrypted_secret_get_by_id() {
     assert_eq!(secret.kind(), encrypted_secret.kind());
 }
 
-#[test(tokio::test)]
+#[test]
 async fn secret_update_name() {
     test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats, _veritech, _encr_key);
     let (nba, _token) = billing_account_signup(&txn, &nats, secret_key).await;
@@ -132,7 +132,7 @@ async fn secret_update_name() {
     assert_eq!(secret.name(), "even-more-secret");
 }
 
-#[test(tokio::test)]
+#[test]
 async fn encrypt_decrypt_round_trip() {
     test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats, _veritech, _encr_key);
     let (nba, _token) = billing_account_signup(&txn, &nats, secret_key).await;

@@ -1,14 +1,16 @@
 use crate::test_setup;
 
-use dal::edge::{EdgeKind, VertexObjectKind};
-use dal::test_harness::{
-    create_change_set, create_edit_session, create_visibility_edit_session,
-    find_or_create_production_system,
+use crate::dal::test;
+use dal::{
+    edge::{EdgeKind, VertexObjectKind},
+    test_harness::{
+        create_change_set, create_edit_session, create_visibility_edit_session,
+        find_or_create_production_system,
+    },
+    Component, Edge, HistoryActor, Schema, StandardModel, System, Tenancy, Visibility,
 };
-use dal::{Component, Edge, HistoryActor, Schema, StandardModel, System, Tenancy, Visibility};
-use test_env_log::test;
 
-#[test(tokio::test)]
+#[test]
 async fn new() {
     test_setup!(
         ctx,
@@ -124,7 +126,7 @@ async fn new() {
     assert_eq!(parents[0], *tail_component.id());
 }
 
-#[test(tokio::test)]
+#[test]
 async fn include_component_in_system() {
     test_setup!(
         ctx,
@@ -203,7 +205,7 @@ async fn include_component_in_system() {
     assert_eq!(edges[1].tail_object_kind(), &VertexObjectKind::System);
 }
 
-#[test(tokio::test)]
+#[test]
 async fn include_component_in_system_with_edit_sessions() {
     test_setup!(
         ctx,

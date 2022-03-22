@@ -1,12 +1,12 @@
+use crate::dal::test;
 use crate::service_tests::{api_request, api_request_auth_empty, api_request_raw};
 use crate::test_setup;
 use axum::http::{Method, StatusCode};
 use sdf::service::session::get_defaults::GetDefaultsResponse;
 use sdf::service::session::login::{LoginRequest, LoginResponse};
 use sdf::service::session::restore_authentication::RestoreAuthenticationResponse;
-use test_env_log::test;
 
-#[test(tokio::test)]
+#[test]
 async fn login() {
     test_setup!(
         _ctx,
@@ -61,7 +61,7 @@ async fn login() {
     assert_eq!(wrong_password_response["error"]["message"], "login failed");
 }
 
-#[test(tokio::test)]
+#[test]
 async fn restore_authentication() {
     test_setup!(
         _ctx,
@@ -89,7 +89,7 @@ async fn restore_authentication() {
     assert_eq!(nba.user, response.user);
 }
 
-#[test(tokio::test)]
+#[test]
 async fn get_defaults() {
     test_setup!(
         _ctx,

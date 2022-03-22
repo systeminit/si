@@ -1,8 +1,8 @@
+use crate::dal::test;
 use crate::test_setup;
 use dal::Visibility;
-use test_env_log::test;
 
-#[test(tokio::test)]
+#[test]
 async fn head_is_visibile_to_head() {
     test_setup!(
         ctx,
@@ -26,7 +26,7 @@ async fn head_is_visibile_to_head() {
     assert!(check);
 }
 
-#[test(tokio::test)]
+#[test]
 async fn head_is_visible_to_change_set() {
     test_setup!(
         ctx,
@@ -50,7 +50,7 @@ async fn head_is_visible_to_change_set() {
     assert!(check);
 }
 
-#[test(tokio::test)]
+#[test]
 async fn head_is_visible_to_edit_session() {
     test_setup!(
         ctx,
@@ -74,7 +74,7 @@ async fn head_is_visible_to_edit_session() {
     assert!(check);
 }
 
-#[test(tokio::test)]
+#[test]
 async fn head_is_invisibile_to_deleted_head() {
     test_setup!(
         ctx,
@@ -98,7 +98,7 @@ async fn head_is_invisibile_to_deleted_head() {
     assert!(!check);
 }
 
-#[test(tokio::test)]
+#[test]
 async fn delted_head_is_visibile_to_deleted_head() {
     test_setup!(
         ctx,
@@ -122,7 +122,7 @@ async fn delted_head_is_visibile_to_deleted_head() {
     assert!(check);
 }
 
-#[test(tokio::test)]
+#[test]
 async fn change_set_is_not_visible_to_head() {
     test_setup!(
         ctx,
@@ -146,7 +146,7 @@ async fn change_set_is_not_visible_to_head() {
     assert!(!check);
 }
 
-#[test(tokio::test)]
+#[test]
 async fn change_set_is_visible_to_change_set() {
     test_setup!(
         ctx,
@@ -170,7 +170,7 @@ async fn change_set_is_visible_to_change_set() {
     assert!(check);
 }
 
-#[test(tokio::test)]
+#[test]
 async fn change_set_is_invisible_to_different_change_set() {
     test_setup!(
         ctx,
@@ -194,7 +194,7 @@ async fn change_set_is_invisible_to_different_change_set() {
     assert!(!check);
 }
 
-#[test(tokio::test)]
+#[test]
 async fn change_set_is_visible_to_edit_session() {
     test_setup!(
         ctx,
@@ -218,7 +218,7 @@ async fn change_set_is_visible_to_edit_session() {
     assert!(check);
 }
 
-#[test(tokio::test)]
+#[test]
 async fn edit_session_is_visible_to_edit_session() {
     test_setup!(
         ctx,
@@ -242,7 +242,7 @@ async fn edit_session_is_visible_to_edit_session() {
     assert!(check);
 }
 
-#[test(tokio::test)]
+#[test]
 async fn edit_session_is_invisible_change_set() {
     test_setup!(
         ctx,
@@ -266,7 +266,7 @@ async fn edit_session_is_invisible_change_set() {
     assert!(!check);
 }
 
-#[test(tokio::test)]
+#[test]
 async fn edit_session_is_invisible_to_different_edit_session() {
     test_setup!(
         ctx,

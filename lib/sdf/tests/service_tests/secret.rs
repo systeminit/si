@@ -1,14 +1,14 @@
+use crate::dal::test;
 use dal::{
     test_harness::encrypt_message, EncryptedSecret, SecretAlgorithm, SecretKind, SecretObjectType,
     SecretVersion, StandardModel, Tenancy, Visibility,
 };
 use hyper::Method;
 use sdf::service::secret::create_secret::{CreateSecretRequest, CreateSecretResponse};
-use test_env_log::test;
 
 use crate::{service_tests::api_request_auth_json_body, test_setup};
 
-#[test(tokio::test)]
+#[test]
 async fn create_secret() {
     test_setup!(
         _ctx,

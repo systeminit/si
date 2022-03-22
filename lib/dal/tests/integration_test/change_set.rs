@@ -1,3 +1,4 @@
+use crate::dal::test;
 use crate::test_setup;
 use dal::test_harness::{
     create_billing_account, create_billing_account_with_name, create_change_set,
@@ -7,9 +8,8 @@ use dal::{
     BillingAccount, ChangeSet, ChangeSetStatus, HistoryActor, ReadTenancy, StandardModel, Tenancy,
     Visibility, WriteTenancy, NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK,
 };
-use test_env_log::test;
 
-#[test(tokio::test)]
+#[test]
 async fn new() {
     test_setup!(
         ctx,
@@ -44,7 +44,7 @@ async fn new() {
     assert_eq!(&change_set.tenancy, &Tenancy::from(&write_tenancy));
 }
 
-#[test(tokio::test)]
+#[test]
 async fn apply() {
     test_setup!(
         ctx,
@@ -106,7 +106,7 @@ async fn apply() {
     );
 }
 
-#[test(tokio::test)]
+#[test]
 async fn list_open() {
     test_setup!(
         ctx,
@@ -169,7 +169,7 @@ async fn list_open() {
     );
 }
 
-#[test(tokio::test)]
+#[test]
 async fn get_by_pk() {
     test_setup!(
         ctx,

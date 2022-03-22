@@ -1,12 +1,12 @@
+use crate::dal::test;
 use dal::{
     node::NodeKind, test_harness::create_node, HistoryActor, NodePosition, SchematicKind,
     StandardModel, Tenancy, Visibility,
 };
-use test_env_log::test;
 
 use crate::test_setup;
 
-#[test(tokio::test)]
+#[test]
 async fn new() {
     test_setup!(
         ctx,
@@ -48,7 +48,7 @@ async fn new() {
     assert_eq!(node_position.y(), "-10");
 }
 
-#[test(tokio::test)]
+#[test]
 async fn set_node() {
     test_setup!(
         ctx,
@@ -113,7 +113,7 @@ async fn set_node() {
     );
 }
 
-#[test(tokio::test)]
+#[test]
 async fn set_node_position() {
     test_setup!(
         ctx,

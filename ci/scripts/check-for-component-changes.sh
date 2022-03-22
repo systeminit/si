@@ -20,6 +20,7 @@ SDF_CHANGES=".github/workflows/promote-sdf.yml
   lib/sdf/**
   lib/si-data/**
   lib/si-settings/**
+  lib/si-test-macros/**
   lib/telemetry-rs/**
   rust-toolchain
   rustfmt.toml"
@@ -31,6 +32,7 @@ VERITECH_PATHS=".github/workflows/promote-veritech.yml
   lib/cyclone/**
   lib/si-data/**
   lib/si-settings/**
+  lib/si-test-macros/**
   lib/telemetry-rs/**
   lib/veritech/**
   rust-toolchain

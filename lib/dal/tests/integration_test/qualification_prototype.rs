@@ -1,5 +1,6 @@
 use crate::test_setup;
 
+use crate::dal::test;
 use dal::func::backend::js_qualification::FuncBackendJsQualificationArgs;
 use dal::qualification_prototype::QualificationPrototypeContext;
 use dal::test_harness::find_or_create_production_system;
@@ -7,9 +8,8 @@ use dal::{
     qualification_prototype::UNSET_ID_VALUE, test_harness::billing_account_signup, Component, Func,
     HistoryActor, QualificationPrototype, Schema, StandardModel, Tenancy, Visibility,
 };
-use test_env_log::test;
 
-#[test(tokio::test)]
+#[test]
 async fn new() {
     test_setup!(
         ctx,
@@ -85,7 +85,7 @@ async fn new() {
     .expect("cannot create new prototype");
 }
 
-#[test(tokio::test)]
+#[test]
 async fn find_for_component() {
     // TODO: This test is brittle, because it relies on the behavior of docker_image. I'm okay
     // with that for now, but not for long. If it breaks before we fix it - future person, I'm

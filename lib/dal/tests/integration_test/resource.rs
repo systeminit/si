@@ -1,10 +1,10 @@
 use crate::test_setup;
 
+use crate::dal::test;
 use dal::test_harness::create_component_and_schema;
 use dal::{HistoryActor, Resource, StandardModel, System, Tenancy, Visibility, WriteTenancy};
-use test_env_log::test;
 
-#[test(tokio::test)]
+#[test]
 async fn new() {
     test_setup!(
         ctx,
@@ -54,7 +54,7 @@ async fn new() {
     .expect("cannot create resource for component/system");
 }
 
-#[test(tokio::test)]
+#[test]
 async fn get_by_component_and_system_id() {
     test_setup!(
         ctx,
