@@ -1,11 +1,13 @@
 use crate::dal::test;
 use dal::{
+    schema::builtins::RootProp,
     test_harness::{
         create_prop_of_kind_with_name, create_schema, create_schema_variant_with_root,
         find_or_create_production_system,
     },
-    AttributeReadContext, Component, ComponentView, HistoryActor, Prop, PropKind, SchemaKind,
-    SchemaVariant, StandardModel, Tenancy, Visibility,
+    AttributeContext, AttributeReadContext, AttributeValue, Component, ComponentView, HistoryActor,
+    Prop, PropKind, Schema, SchemaKind, SchemaVariant, StandardModel, Tenancy, Visibility,
+    WriteTenancy,
 };
 use pretty_assertions_sorted::{assert_eq, assert_eq_sorted};
 use si_data::{NatsTxn, PgTxn};
@@ -23,7 +25,7 @@ pub async fn create_schema_with_object_and_string_prop(
     nats: &NatsTxn,
     veritech: veritech::Client,
     encryption_key: &EncryptionKey,
-) -> SchemaVariant {
+) -> (Schema, SchemaVariant, Prop, Prop, Prop) {
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
@@ -62,7 +64,7 @@ pub async fn create_schema_with_object_and_string_prop(
         .await
         .expect("cannot set default schema variant");
 
-    let bohemian_prop = create_prop_of_kind_with_name(
+    let queen_prop = create_prop_of_kind_with_name(
         txn,
         nats,
         veritech.clone(),
@@ -70,8 +72,8 @@ pub async fn create_schema_with_object_and_string_prop(
         &tenancy,
         &visibility,
         &history_actor,
-        PropKind::String,
-        "bohemian_rhapsody",
+        PropKind::Object,
+        "queen",
     )
     .await;
 
@@ -88,18 +90,19 @@ pub async fn create_schema_with_object_and_string_prop(
     )
     .await;
 
-    let queen_prop = create_prop_of_kind_with_name(
+    let bohemian_prop = create_prop_of_kind_with_name(
         txn,
         nats,
-        veritech,
+        veritech.clone(),
         encryption_key,
         &tenancy,
         &visibility,
         &history_actor,
-        PropKind::Object,
-        "queen",
+        PropKind::String,
+        "bohemian_rhapsody",
     )
     .await;
+
     queen_prop
         .set_parent_prop(txn, nats, &visibility, &history_actor, root.domain_prop_id)
         .await
@@ -113,7 +116,13 @@ pub async fn create_schema_with_object_and_string_prop(
         .await
         .expect("cannot set parent prop");
 
-    schema_variant
+    (
+        schema,
+        schema_variant,
+        queen_prop,
+        killer_prop,
+        bohemian_prop,
+    )
 }
 
 /// Create a schema that looks like this:
@@ -268,7 +277,7 @@ pub async fn create_schema_with_string_props(
     nats: &NatsTxn,
     veritech: veritech::Client,
     encryption_key: &EncryptionKey,
-) -> SchemaVariant {
+) -> (Schema, SchemaVariant, Prop, Prop, RootProp) {
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
@@ -340,7 +349,8 @@ pub async fn create_schema_with_string_props(
         .set_parent_prop(txn, nats, &visibility, &history_actor, root.domain_prop_id)
         .await
         .expect("cannot set parent prop");
-    schema_variant
+
+    (schema, schema_variant, bohemian_prop, killer_prop, root)
 }
 
 /// Create a schema that looks like this:
@@ -862,7 +872,6 @@ pub async fn create_schema_with_nested_array_objects_and_a_map(
     )
 }
 
-#[ignore]
 #[test]
 async fn only_string_props() {
     test_setup!(
@@ -877,17 +886,22 @@ async fn only_string_props() {
         encr_key,
     );
     let tenancy = Tenancy::new_universal();
+    let write_tenancy: WriteTenancy = (&tenancy).into();
+    let read_tenancy = write_tenancy
+        .clone_into_read_tenancy(&txn)
+        .await
+        .expect("could not create read tenancy");
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
     let _ =
         find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor).await;
-    let schema_variant =
+    let (schema, schema_variant, bohemian_prop, killer_prop, root_prop) =
         create_schema_with_string_props(&txn, &nats, veritech.clone(), encr_key).await;
     let (component, _) = Component::new_for_schema_variant_with_node(
         &txn,
         &nats,
         veritech.clone(),
-        &encr_key,
+        encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -896,34 +910,81 @@ async fn only_string_props() {
     )
     .await
     .expect("Unable to create component");
-    let props = schema_variant
-        .props(&txn, &visibility)
-        .await
-        .expect("cannot get props for schema_variant");
-    for prop in props
-        .iter()
-        .filter(|p| !["root", "si", "domain", "name"].contains(&p.name()))
-    {
-        // TODO: Set the AttributeValue
-        //
-        // component
-        //     .resolve_attribute(
-        //         &txn,
-        //         &nats,
-        //         veritech.clone(),
-        //         encr_key,
-        //         &tenancy,
-        //         &visibility,
-        //         &history_actor,
-        //         prop,
-        //         Some(serde_json::json!["woohoo"]),
-        //         None,
-        //         None,
-        //         UNSET_SYSTEM_ID,
-        //     )
-        //     .await
-        //     .expect("cannot resolve the attributes for the component");
-    }
+
+    let mut base_attribute_context = AttributeContext::builder();
+    base_attribute_context
+        .set_schema_id(*schema.id())
+        .set_schema_variant_id(*schema_variant.id())
+        .set_component_id(*component.id());
+
+    let domain_context = base_attribute_context
+        .clone()
+        .set_prop_id(root_prop.domain_prop_id)
+        .to_context()
+        .expect("cannot create domain AttributeContext");
+    let domain_value =
+        AttributeValue::find_for_context(&txn, &read_tenancy, &visibility, domain_context.into())
+            .await
+            .expect("could not fetch domain AttributeValue")
+            .pop()
+            .expect("could not find domain AttributeValue");
+
+    let bohemian_context = base_attribute_context
+        .clone()
+        .set_prop_id(*bohemian_prop.id())
+        .to_context()
+        .expect("cannot create bohemian AttributeContext");
+    let bohemian_value =
+        AttributeValue::find_for_context(&txn, &read_tenancy, &visibility, bohemian_context.into())
+            .await
+            .expect("could not retrieve bohemian AttributeValue")
+            .pop()
+            .expect("could not find bohemian AttributeValue");
+    AttributeValue::update_for_context(
+        &txn,
+        &nats,
+        veritech.clone(),
+        encr_key,
+        &write_tenancy,
+        &visibility,
+        &history_actor,
+        *bohemian_value.id(),
+        Some(*domain_value.id()),
+        bohemian_context,
+        Some(serde_json::json!["Galileo"]),
+        None,
+    )
+    .await
+    .expect("could not update bohemian prop value");
+
+    let killer_context = base_attribute_context
+        .clone()
+        .set_prop_id(*killer_prop.id())
+        .to_context()
+        .expect("cannot create killer AttributeContext");
+    let killer_value =
+        AttributeValue::find_for_context(&txn, &read_tenancy, &visibility, killer_context.into())
+            .await
+            .expect("could not retrieve killer AttributeValue")
+            .pop()
+            .expect("could not find killer AttributeValue");
+    AttributeValue::update_for_context(
+        &txn,
+        &nats,
+        veritech.clone(),
+        encr_key,
+        &write_tenancy,
+        &visibility,
+        &history_actor,
+        *killer_value.id(),
+        Some(*domain_value.id()),
+        killer_context,
+        Some(serde_json::json!["woohoo"]),
+        None,
+    )
+    .await
+    .expect("could not update bohemian prop value");
+
     let component_view = ComponentView::for_context(
         &txn,
         &tenancy
@@ -932,15 +993,27 @@ async fn only_string_props() {
             .expect("unable to generate read tenancy"),
         &visibility,
         AttributeReadContext {
+            schema_id: Some(*schema.id()),
+            schema_variant_id: Some(*schema_variant.id()),
             component_id: Some(*component.id()),
             ..AttributeReadContext::any()
         },
     )
     .await
     .expect("cannot get component view");
-    assert_eq!(
+    assert_eq_sorted!(
+        serde_json::json![
+            {
+                "si": {
+                    "name": "capoeira"
+                },
+                "domain": {
+                    "bohemian_rhapsody": "Galileo",
+                    "killer_queen": "woohoo"
+                }
+            }
+        ],
         component_view.properties,
-        serde_json::json![{ "si": { "name": "capoeira" }, "domain": { "bohemian_rhapsody": "woohoo", "killer_queen": "woohoo" } }]
     );
 }
 
@@ -963,7 +1036,7 @@ async fn one_object_prop() {
     let history_actor = HistoryActor::SystemInit;
     let _ =
         find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor).await;
-    let schema_variant =
+    let (schema, schema_variant, queen_prop, killer_prop, bohemian_prop) =
         create_schema_with_object_and_string_prop(&txn, &nats, veritech.clone(), encr_key).await;
     let (component, _) = Component::new_for_schema_variant_with_node(
         &txn,

@@ -385,7 +385,7 @@ impl AttributeValue {
         let mut attribute_value = if given_attribute_value.context == context {
             given_attribute_value
         } else {
-            Self::new(
+            let av = Self::new(
                 txn,
                 nats,
                 write_tenancy,
@@ -398,7 +398,20 @@ impl AttributeValue {
                 context,
                 given_attribute_value.key,
             )
-            .await?
+            .await?;
+
+            if let Some(parent_attribute_value_id) = parent_attribute_value_id {
+                av.set_parent_attribute_value(
+                    txn,
+                    nats,
+                    visibility,
+                    history_actor,
+                    &parent_attribute_value_id,
+                )
+                .await?;
+            }
+
+            av
         };
 
         let prop = AttributeValue::find_prop_for_value(
