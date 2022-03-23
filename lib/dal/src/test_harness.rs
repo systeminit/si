@@ -19,9 +19,9 @@ use crate::{
     socket::{Socket, SocketArity, SocketEdgeKind},
     BillingAccount, BillingAccountId, ChangeSet, Component, EditSession, EncryptedSecret, Func,
     FuncBackendKind, FuncBackendResponseType, Group, HistoryActor, KeyPair, Node, Organization,
-    Prop, PropKind, QualificationCheck, Schema, SchemaId, SchemaKind, SchemaVariantId, Secret,
-    SecretKind, SecretObjectType, StandardModel, System, Tenancy, User, Visibility, Workspace,
-    WriteTenancy, NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK,
+    Prop, PropId, PropKind, QualificationCheck, Schema, SchemaId, SchemaKind, SchemaVariantId,
+    Secret, SecretKind, SecretObjectType, StandardModel, System, Tenancy, User, Visibility,
+    Workspace, WriteTenancy, NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK,
 };
 
 #[derive(Debug)]
@@ -885,6 +885,38 @@ pub async fn create_prop_of_kind_with_name(
     )
     .await
     .expect("cannot create prop")
+}
+
+#[allow(clippy::too_many_arguments)]
+pub async fn create_prop_of_kind_and_set_parent_with_name(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    veritech: veritech::Client,
+    encryption_key: &EncryptionKey,
+    tenancy: &Tenancy,
+    visibility: &Visibility,
+    history_actor: &HistoryActor,
+    prop_kind: PropKind,
+    name: impl AsRef<str>,
+    parent_prop_id: PropId,
+) -> Prop {
+    let new_prop = create_prop_of_kind_with_name(
+        txn,
+        nats,
+        veritech.clone(),
+        encryption_key,
+        tenancy,
+        visibility,
+        history_actor,
+        prop_kind,
+        name,
+    )
+    .await;
+    new_prop
+        .set_parent_prop(txn, nats, visibility, history_actor, parent_prop_id)
+        .await
+        .expect("cannot set parent to new prop");
+    new_prop
 }
 
 pub async fn create_func(

@@ -1,6 +1,5 @@
 pub mod view;
 
-use veritech::EncryptionKey;
 pub use view::{ComponentView, ComponentViewError};
 
 use async_recursion::async_recursion;
@@ -10,21 +9,19 @@ use si_data::{NatsError, NatsTxn, PgError, PgTxn};
 use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
+use veritech::EncryptionKey;
 
+use crate::attribute::value::AttributeValue;
 use crate::attribute::{context::UNSET_ID_VALUE, value::AttributeValueError};
 use crate::code_generation_resolver::CodeGenerationResolverContext;
 use crate::edit_field::{
-    value_and_visibility_diff_json_option, widget::prelude::*, EditField, EditFieldAble,
-    EditFieldBaggage, EditFieldBaggageComponentProp, EditFieldError, EditFieldObjectKind,
-    EditFields,
+    widget::prelude::*, EditField, EditFieldAble, EditFieldBaggage, EditFieldError,
+    EditFieldObjectKind, EditFields, VisibilityDiff,
 };
-use crate::func::backend::integer::FuncBackendIntegerArgs;
-use crate::func::backend::map::FuncBackendMapArgs;
 use crate::func::backend::validation::{FuncBackendValidateStringValueArgs, ValidationError};
 use crate::func::backend::{
-    js_attribute::FuncBackendJsAttributeArgs, js_code_generation::FuncBackendJsCodeGenerationArgs,
+    js_code_generation::FuncBackendJsCodeGenerationArgs,
     js_qualification::FuncBackendJsQualificationArgs, js_resource::FuncBackendJsResourceSyncArgs,
-    string::FuncBackendStringArgs,
 };
 use crate::func::binding::{FuncBinding, FuncBindingError};
 use crate::func::binding_return_value::FuncBindingReturnValue;
@@ -37,14 +34,11 @@ use crate::schema::SchemaVariant;
 use crate::validation_resolver::ValidationResolverContext;
 use crate::ws_event::{WsEvent, WsEventError};
 use crate::AttributeContextBuilderError;
-
-use crate::func::backend::array::FuncBackendArrayArgs;
-use crate::func::backend::boolean::FuncBackendBooleanArgs;
-use crate::func::backend::prop_object::FuncBackendPropObjectArgs;
+use crate::AttributeValueId;
 use crate::{
     impl_standard_model, pk, qualification::QualificationError, standard_model,
     standard_model_accessor, standard_model_belongs_to, standard_model_has_many, AttributeContext,
-    AttributeContextError, AttributeReadContext, AttributeValue, CodeGenerationPrototype,
+    AttributeContextError, AttributeReadContext, CodeGenerationPrototype,
     CodeGenerationPrototypeError, CodeGenerationResolver, CodeGenerationResolverError, Edge,
     EdgeError, Func, FuncBackendKind, HistoryActor, HistoryEventError, LabelEntry, LabelList, Node,
     NodeError, OrganizationError, Prop, PropError, PropId, PropKind, QualificationPrototype,
@@ -68,6 +62,14 @@ pub enum ComponentError {
     EditField(#[from] EditFieldError),
     #[error("edge error: {0}")]
     Edge(#[from] EdgeError),
+    #[error("missing attribute value for id: ({0})")]
+    MissingAttributeValue(AttributeValueId),
+    #[error("expected one root prop, found multiple: {0:?}")]
+    MultipleRootProps(Vec<Prop>),
+    #[error("root prop not found for schema variant: {0}")]
+    RootPropNotFound(SchemaVariantId),
+
+    // FIXME: change the below to be alphabetical and re-join with the above variants.
     #[error("qualification prototype error: {0}")]
     QualificationPrototype(#[from] QualificationPrototypeError),
     #[error("qualification resolver error: {0}")]
@@ -1538,39 +1540,40 @@ impl EditFieldAble for Component {
             .ok_or(ComponentError::NotFound(*id))?;
 
         let mut edit_fields = vec![];
-        let schema_variant = component
+        let schema_variant: SchemaVariant = component
             .schema_variant_with_tenancy(txn, &read_tenancy.into(), visibility)
             .await?
             .ok_or(ComponentError::SchemaVariantNotFound)?;
 
-        let props = schema_variant.props(txn, visibility).await?;
-        for prop in &props {
-            // TODO: remove this as soon as edit fields are implemented
-            // But for now we need the boilerplate to setup the props even if not editable
-            // So it was breaking some tests
-            if *prop.kind() == PropKind::Array || *prop.kind() == PropKind::Map {
-                continue;
-            }
-
-            // schema_variant.props returns all props, even if not root, this is a hotfix
-            if prop.parent_prop(txn, visibility).await?.is_some() {
-                continue;
-            }
-
-            edit_fields.push(
-                edit_field_for_prop(
-                    txn,
-                    &read_tenancy.into(),
-                    visibility,
-                    &head_visibility,
-                    &change_set_visibility,
-                    prop,
-                    &component,
-                    None,
-                )
-                .await?,
-            );
+        // NOTE(nick): this can be more elegant, but it works. We want to ensure we only find the
+        // root prop at this point.
+        let mut props = schema_variant.props(txn, visibility).await?;
+        if props.len() > 1 {
+            return Err(ComponentError::MultipleRootProps(props));
         }
+        let root_prop = props
+            .pop()
+            .ok_or_else(|| ComponentError::RootPropNotFound(*schema_variant.id()))?;
+
+        // NOTE(nick): it is a bit wasteful that we get the attribute value here and then do it
+        // again within the call below, but it ~~works~~.
+        let attribute_value: AttributeValue =
+            AttributeValue::find_for_prop(txn, read_tenancy, visibility, *root_prop.id()).await?;
+
+        // Parent attribute value must be "None" since we are dealing with the root prop.
+        edit_fields.push(
+            edit_field_for_attribute_value(
+                txn,
+                read_tenancy,
+                visibility,
+                &head_visibility,
+                &change_set_visibility,
+                *attribute_value.id(),
+                None,
+                None,
+            )
+            .await?,
+        );
 
         Ok(edit_fields)
     }
@@ -1593,91 +1596,49 @@ impl EditFieldAble for Component {
 
 #[allow(clippy::too_many_arguments)]
 #[async_recursion]
-async fn edit_field_for_prop(
+async fn edit_field_for_attribute_value(
     txn: &PgTxn<'_>,
-    tenancy: &Tenancy,
+    read_tenancy: &ReadTenancy,
     visibility: &Visibility,
     head_visibility: &Visibility,
     change_set_visibility: &Visibility,
-    prop: &Prop,
-    component: &Component,
+    attribute_value_id: AttributeValueId,
+    parent_attribute_value_id: Option<AttributeValueId>,
     edit_field_path: Option<Vec<String>>,
 ) -> ComponentResult<EditField> {
-    todo!()
-    // let read_tenancy: ReadTenancy = ReadTenancy::try_from_tenancy(txn, tenancy.clone()).await?;
-    // let system_id = UNSET_ID_VALUE.into();
-    // let read_context = AttributeReadContext {
-    //     prop_id: Some(*prop.id()),
-    //     schema_id: None,
-    //     schema_variant_id: None,
-    //     component_id: Some(*component.id()),
-    //     ..Default::default()
-    // };
-    // let current_value: Option<FuncBindingReturnValue> = match AttributeValue::find_for_context(
-    //     txn,
-    //     &read_tenancy,
-    //     visibility,
-    //     read_context,
-    // )
-    // .await
-    // {
-    //     Ok(v) => Some(v),
-    //     Err(e) => {
-    //         dbg!("missing attribute resolver; might be fine, might be a bug! who knows? only god.");
-    //         dbg!(&e);
-    //         None
-    //     }
-    // };
-    // let head_value: Option<FuncBindingReturnValue> = if visibility.in_change_set() {
-    //     match AttributeValue::find_for_context(txn, &read_tenancy, head_visibility, read_context)
-    //         .await
-    //     {
-    //         Ok(v) => Some(v),
-    //         Err(e) => {
-    //             dbg!("missing attribute resolver; might be fine, might be a bug! who knows? only god.");
-    //             dbg!(&e);
-    //             None
-    //         }
-    //     }
-    // } else {
-    //     None
-    // };
-    // let change_set_value: Option<FuncBindingReturnValue> = if visibility.in_change_set() {
-    //     match AttributeValue::find_for_context(
-    //         txn,
-    //         &read_tenancy,
-    //         change_set_visibility,
-    //         read_context,
-    //     )
-    //     .await
-    //     {
-    //         Ok(v) => Some(v),
-    //         Err(e) => {
-    //             dbg!("missing attribute resolver; might be fine, might be a bug! who knows? only god.");
-    //             dbg!(&e);
-    //             None
-    //         }
-    //     }
-    // } else {
-    //     None
-    // };
+    let tenancy = Tenancy::from_read_tenancy(read_tenancy.clone());
 
-    // let field_name = prop.name();
-    // let object_kind = EditFieldObjectKind::ComponentProp;
+    let attribute_value: AttributeValue =
+        AttributeValue::get_by_id(txn, &tenancy, visibility, &attribute_value_id)
+            .await?
+            .ok_or(ComponentError::MissingAttributeValue(attribute_value_id))?;
+    let prop =
+        AttributeValue::find_prop_for_value(txn, read_tenancy, visibility, *attribute_value.id())
+            .await?;
 
-    // fn extract_value(fbrv: &FuncBindingReturnValue) -> Option<&serde_json::Value> {
+    let field_name = prop.name();
+    let object_kind = EditFieldObjectKind::ComponentProp;
+
+    // FIXME(nick): fix visibility diff and value to handle arrays and maps.
+    //  - Get head_value if visibility.in_change_set()
+    //  - Get change_set_value if visibility.in_change_set()
+    //
+    // fn extract_value_from_fbrv(fbrv: &FuncBindingReturnValue) -> Option<&serde_json::Value> {
     //     fbrv.value()
     // }
-
-    // let (value, visibility_diff) = value_and_visibility_diff_json_option(
+    //
+    // let (value, visibility_diff) = edit_field::value_and_visibility_diff_json_option(
     //     visibility,
-    //     current_value.as_ref(),
-    //     extract_value,
-    //     head_value.as_ref(),
-    //     change_set_value.as_ref(),
+    //     current_fbrv.as_ref(),
+    //     extract_value_from_fbrv,
+    //     head_fbrv.as_ref(),
+    //     change_set_fbrv.as_ref(),
     // )?;
 
-    // let mut validation_errors = Vec::new();
+    let validation_errors = Vec::new();
+
+    // FIXME(nick): change validation resolver query to use attribute values instead.
+    //
     // let validation_field_values = ValidationResolver::find_values_for_prop_and_component(
     //     txn,
     //     &tenancy.clone_into_read_tenancy(txn).await?,
@@ -1696,87 +1657,78 @@ async fn edit_field_for_prop(
     //     }
     // }
 
-    // let current_edit_field_path = match edit_field_path {
-    //     None => vec!["properties".to_owned()],
-    //     Some(path) => path,
-    // };
-    // let mut edit_field_path_for_children = current_edit_field_path.clone();
-    // edit_field_path_for_children.push(field_name.to_string());
+    let current_edit_field_path = match edit_field_path {
+        None => vec!["properties".to_owned()],
+        Some(path) => path,
+    };
+    let mut edit_field_path_for_children = current_edit_field_path.clone();
+    edit_field_path_for_children.push(field_name.to_string());
 
-    // let widget = match prop.widget_kind() {
-    //     WidgetKind::SecretSelect => {
-    //         let mut entries = Vec::new();
-    //         let secrets = Secret::list(txn, tenancy, visibility).await?;
+    let widget = match prop.widget_kind() {
+        WidgetKind::SecretSelect => {
+            let mut entries = Vec::new();
+            let secrets = Secret::list(txn, &tenancy, visibility).await?;
 
-    //         for secret in secrets.into_iter() {
-    //             entries.push(LabelEntry::new(
-    //                 secret.name(),
-    //                 serde_json::json!(i64::from(*secret.id())),
-    //             ));
-    //         }
-    //         Widget::Select(SelectWidget::new(LabelList::new(entries), None))
-    //     }
-    //     WidgetKind::Text => Widget::Text(TextWidget::new()),
-    //     WidgetKind::Array | WidgetKind::Header => {
-    //         // NOTE: This ends up being ugly, and double checking what prop.kind() is
-    //         //       to avoid doing the child prop lookup if we're building the Widget
-    //         //       for a PropKind that "can't" have children. It may be worth taking
-    //         //       the hit and always looking up what the children are, even if
-    //         //       we're never going to use them, just to make this arm of the match
-    //         //       less gross.
-    //         let mut child_edit_fields = vec![];
-    //         for child_prop in prop.child_props(txn, tenancy, visibility).await? {
-    //             // TODO: remove this as soon as edit fields are implemented
-    //             // But for now we need the boilerplate to setup the props even if not editable
-    //             // So it was breaking some tests
-    //             if *child_prop.kind() == PropKind::Array || *child_prop.kind() == PropKind::Map {
-    //                 continue;
-    //             }
+            for secret in secrets.into_iter() {
+                entries.push(LabelEntry::new(
+                    secret.name(),
+                    serde_json::json!(i64::from(*secret.id())),
+                ));
+            }
+            Widget::Select(SelectWidget::new(LabelList::new(entries), None))
+        }
+        WidgetKind::Text => Widget::Text(TextWidget::new()),
+        WidgetKind::Array | WidgetKind::Header => {
+            let mut child_edit_fields = vec![];
+            for child_attribute_value in attribute_value
+                .child_attribute_values(txn, &tenancy, visibility)
+                .await?
+            {
+                // Use the current attribute value as the parent when creating the child edit field.
+                child_edit_fields.push(
+                    edit_field_for_attribute_value(
+                        txn,
+                        read_tenancy,
+                        visibility,
+                        head_visibility,
+                        change_set_visibility,
+                        *child_attribute_value.id(),
+                        Some(attribute_value_id),
+                        Some(edit_field_path_for_children.clone()),
+                    )
+                    .await?,
+                );
+            }
 
-    //             child_edit_fields.push(
-    //                 edit_field_for_prop(
-    //                     txn,
-    //                     tenancy,
-    //                     visibility,
-    //                     head_visibility,
-    //                     change_set_visibility,
-    //                     &child_prop,
-    //                     component,
-    //                     Some(edit_field_path_for_children.clone()),
-    //                 )
-    //                 .await?,
-    //             );
-    //         }
+            // FIXME(nick): need to eventually figure out the widget situation for arrays and maps.
+            if *prop.kind() == PropKind::Array {
+                todo!("Need to handle Array props");
+            } else if *prop.kind() == PropKind::Map {
+                todo!("Need to handle Map props");
+            } else {
+                // Only option left is PropKind::Object
+                Widget::Header(HeaderWidget::new(child_edit_fields))
+            }
+        }
+        WidgetKind::Checkbox => Widget::Checkbox(CheckboxWidget::new()),
+    };
 
-    //         if *prop.kind() == PropKind::Array {
-    //             todo!("Need to handle Array props");
-    //         } else if *prop.kind() == PropKind::Map {
-    //             todo!("Need to handle Map props");
-    //         } else {
-    //             // Only option left is PropKind::Object
-    //             Widget::Header(HeaderWidget::new(child_edit_fields))
-    //         }
-    //     }
-    //     WidgetKind::Checkbox => Widget::Checkbox(CheckboxWidget::new()),
-    // };
+    // FIXME(nick): re-introduce value and visibility diff.
+    let mut edit_field = EditField::new(
+        field_name,
+        current_edit_field_path,
+        object_kind,
+        attribute_value_id,
+        (*prop.kind()).into(),
+        widget,
+        None,
+        VisibilityDiff::None,
+        validation_errors,
+    );
+    edit_field.set_baggage(EditFieldBaggage {
+        attribute_value_id,
+        parent_attribute_value_id,
+    });
 
-    // let mut edit_field = EditField::new(
-    //     field_name,
-    //     current_edit_field_path,
-    //     object_kind,
-    //     *component.id(),
-    //     (*prop.kind()).into(),
-    //     widget,
-    //     value,
-    //     visibility_diff,
-    //     validation_errors,
-    // );
-    // edit_field.set_baggage(EditFieldBaggage::ComponentProp(
-    //     EditFieldBaggageComponentProp {
-    //         prop_id: *prop.id(),
-    //         system_id: None,
-    //     },
-    // ));
-
-    // Ok(edit_field)
+    Ok(edit_field)
 }

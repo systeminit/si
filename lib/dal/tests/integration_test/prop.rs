@@ -1,8 +1,6 @@
 use dal::{
-    func::binding_return_value::FuncBindingReturnValue,
     test_harness::{create_prop, create_prop_of_kind, create_schema, create_schema_variant},
-    AttributeReadContext, AttributeValue, HistoryActor, Prop, PropKind, SchemaKind, StandardModel,
-    Tenancy, Visibility, WriteTenancy,
+    HistoryActor, Prop, PropKind, SchemaKind, StandardModel, Tenancy, Visibility, WriteTenancy,
 };
 use pretty_assertions_sorted::assert_eq;
 use test_env_log::test;

@@ -1,6 +1,6 @@
 use dal::{
-    component::ComponentKind, schema::SchemaVariant, test_harness::create_schema, HistoryActor,
-    Schema, SchemaKind, StandardModel, Visibility, WriteTenancy,
+    schema::SchemaVariant, test_harness::create_schema, HistoryActor, SchemaKind, StandardModel,
+    Visibility, WriteTenancy,
 };
 use test_env_log::test;
 
