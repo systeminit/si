@@ -37,8 +37,8 @@ pub async fn create_schema_with_object_and_string_prop(
     )
     .await;
     let (schema_variant, root) = create_schema_variant_with_root(
-        &txn,
-        &nats,
+        txn,
+        nats,
         &tenancy,
         &visibility,
         &history_actor,
@@ -290,8 +290,8 @@ pub async fn create_schema_with_string_props(
     )
     .await;
     let (schema_variant, root) = create_schema_variant_with_root(
-        &txn,
-        &nats,
+        txn,
+        nats,
         &tenancy,
         &visibility,
         &history_actor,
@@ -474,8 +474,8 @@ pub async fn create_schema_with_nested_array_objects(
     )
     .await;
     let (schema_variant, root) = create_schema_variant_with_root(
-        &txn,
-        &nats,
+        txn,
+        nats,
         &tenancy,
         &visibility,
         &history_actor,
@@ -642,8 +642,8 @@ pub async fn create_simple_map(
     )
     .await;
     let (schema_variant, root) = create_schema_variant_with_root(
-        &txn,
-        &nats,
+        txn,
+        nats,
         &tenancy,
         &visibility,
         &history_actor,
@@ -734,8 +734,8 @@ pub async fn create_schema_with_nested_array_objects_and_a_map(
     )
     .await;
     let (schema_variant, root) = create_schema_variant_with_root(
-        &txn,
-        &nats,
+        txn,
+        nats,
         &tenancy,
         &visibility,
         &history_actor,
