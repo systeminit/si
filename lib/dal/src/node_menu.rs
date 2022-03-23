@@ -2,7 +2,7 @@
 //! the node add menu. It creates a tree for the menu, and can create it from the Schema's
 //! menu items based on the schematic context for the menu.
 use std::cell::RefCell;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -220,34 +220,22 @@ impl MenuFilter {
     }
 }
 
-// Why is there a lock and an Arc here? Because otherwise the
-// handler complained about it. It *might* be good to remove
-// now, if we're careful about using things across await points.
-// But I'm leaving it in, because the cost is pretty low, and
-// it's working. -- Adam
 #[derive(Deserialize, Serialize, Debug)]
-pub struct GenerateMenuItem(Arc<Mutex<MenuItems>>);
+pub struct GenerateMenuItem(MenuItems);
 
 impl GenerateMenuItem {
     pub fn new() -> Self {
-        GenerateMenuItem(Arc::new(Mutex::new(MenuItems::new())))
+        GenerateMenuItem(MenuItems::new())
     }
 
     pub fn create_menu_json(
         self,
         items: Vec<(Vec<String>, Item)>,
     ) -> NodeMenuResult<serde_json::Value> {
-        let result = {
-            let menu_items = self
-                .0
-                .lock()
-                .expect("cannot get lock on async menu item; bug");
-            for (path, item) in items.into_iter() {
-                menu_items.insert_menu_item(&path, MenuItem::Item(item))?;
-            }
-            menu_items.to_json_value()
-        };
-        result
+        for (path, item) in items {
+            self.0.insert_menu_item(&path, MenuItem::Item(item))?;
+        }
+        self.0.to_json_value()
     }
 }
 

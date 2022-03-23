@@ -1,10 +1,9 @@
 import Bottle from "bottlejs";
 import { ApiResponse, SDF } from "@/api/sdf";
-import { editMode$ } from "@/observable/edit_mode";
 import { from, mergeMap, Observable, take, tap } from "rxjs";
 import { ChangeSet } from "@/api/sdf/dal/change_set";
+import { switchToHead } from "@/service/change_set/switch_to_head";
 import { changeSet$ } from "@/observable/change_set";
-import { editSession$ } from "@/observable/edit_session";
 
 /**
  * Returns the change set that has been applied, or null if no
@@ -38,9 +37,7 @@ export function applyChangeSet(): Observable<
     }),
     tap((response) => {
       if (!response.error) {
-        changeSet$.next(null);
-        editSession$.next(null);
-        editMode$.next(false);
+        switchToHead();
       }
     }),
     take(1),

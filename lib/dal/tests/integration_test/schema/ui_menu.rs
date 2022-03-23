@@ -23,9 +23,16 @@ async fn new() {
     let write_tenancy = WriteTenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
-    let schema_ui_menu = UiMenu::new(&txn, &nats, &write_tenancy, &visibility, &history_actor)
-        .await
-        .expect("cannot create schema ui menu");
+    let schema_ui_menu = UiMenu::new(
+        &txn,
+        &nats,
+        &write_tenancy,
+        &visibility,
+        &history_actor,
+        &SchematicKind::Component,
+    )
+    .await
+    .expect("cannot create schema ui menu");
     assert_eq!(schema_ui_menu.name(), None);
     assert_eq!(schema_ui_menu.category(), None);
     assert_eq!(schema_ui_menu.schematic_kind(), &SchematicKind::Component);

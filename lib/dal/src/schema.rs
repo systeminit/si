@@ -14,15 +14,17 @@ use crate::{
         EditFieldError, EditFieldObjectKind, EditFields, VisibilityDiff,
     },
     func::binding::FuncBindingError,
-    impl_standard_model, pk,
+    impl_standard_model,
+    node::NodeKind,
+    pk,
     schema::ui_menu::UiMenuId,
     standard_model, standard_model_accessor, standard_model_has_many, standard_model_many_to_many,
     AttributeContextBuilderError, AttributePrototypeError, AttributeValueError, BillingAccount,
     BillingAccountId, CodeGenerationPrototypeError, Component, FuncError, HistoryActor,
     HistoryEventError, LabelEntry, LabelList, Organization, OrganizationId, PropError,
     QualificationPrototypeError, ReadTenancy, ReadTenancyError, ResourcePrototypeError,
-    StandardModel, StandardModelError, Tenancy, Timestamp, ValidationPrototypeError, Visibility,
-    Workspace, WorkspaceId, WriteTenancy, WsEventError,
+    SchematicKind, StandardModel, StandardModelError, Tenancy, Timestamp, ValidationPrototypeError,
+    Visibility, Workspace, WorkspaceId, WriteTenancy, WsEventError,
 };
 
 use crate::socket::SocketError;
@@ -94,13 +96,36 @@ pub type SchemaResult<T> = Result<T, SchemaError>;
 pk!(SchemaPk);
 pk!(SchemaId);
 
-#[derive(AsRefStr, Clone, Debug, Deserialize, Display, EnumString, Eq, PartialEq, Serialize)]
+#[derive(
+    AsRefStr, Copy, Clone, Debug, Deserialize, Display, EnumString, Eq, PartialEq, Serialize,
+)]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]
 pub enum SchemaKind {
+    /// High level abstract idea within SI domain (application, service, system...)
     Concept,
+    /// Pairs with a concept schema (kubernetes_service is an implementation of a si_service...)
     Implementation,
+    /// Low level model of a particular external domain (docker image, k8s deployment...)
     Concrete,
+}
+
+impl From<SchemaKind> for SchematicKind {
+    fn from(kind: SchemaKind) -> Self {
+        match kind {
+            SchemaKind::Concept => Self::Deployment,
+            SchemaKind::Concrete | SchemaKind::Implementation => Self::Component,
+        }
+    }
+}
+
+impl From<SchemaKind> for NodeKind {
+    fn from(kind: SchemaKind) -> Self {
+        match kind {
+            SchemaKind::Concept => Self::Deployment,
+            SchemaKind::Concrete | SchemaKind::Implementation => Self::Component,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -551,8 +576,15 @@ impl EditFieldAble for Schema {
                 .await?;
             }
             "ui.menuItems" => {
-                let new_ui_menu =
-                    UiMenu::new(txn, nats, write_tenancy, visibility, history_actor).await?;
+                let new_ui_menu = UiMenu::new(
+                    txn,
+                    nats,
+                    write_tenancy,
+                    visibility,
+                    history_actor,
+                    &(*object.kind()).into(),
+                )
+                .await?;
                 new_ui_menu
                     .set_schema(txn, nats, visibility, history_actor, object.id())
                     .await?;

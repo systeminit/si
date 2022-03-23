@@ -7,10 +7,11 @@ use thiserror::Error;
 use crate::schema::variant::SchemaVariantError;
 use crate::socket::{Socket, SocketEdgeKind};
 use crate::{
-    generate_name, impl_standard_model, pk, standard_model, standard_model_accessor,
-    standard_model_belongs_to, Component, ComponentId, HistoryActor, HistoryEventError,
-    NodePosition, ReadTenancy, ReadTenancyError, Schema, SchemaId, SchemaVariant, StandardModel,
-    StandardModelError, System, SystemId, Tenancy, Timestamp, Visibility, WriteTenancy,
+    generate_name, impl_standard_model, pk, schematic::SchematicKind, standard_model,
+    standard_model_accessor, standard_model_belongs_to, Component, ComponentId, HistoryActor,
+    HistoryEventError, NodePosition, ReadTenancy, ReadTenancyError, Schema, SchemaId,
+    SchemaVariant, StandardModel, StandardModelError, System, SystemId, Tenancy, Timestamp,
+    Visibility, WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -48,6 +49,7 @@ pk!(NodeId);
     Deserialize,
     Serialize,
     Debug,
+    Copy,
     Clone,
     PartialEq,
     Eq,
@@ -56,9 +58,22 @@ pk!(NodeId);
     strum_macros::AsRefStr,
     strum_macros::EnumIter,
 )]
+#[serde(rename_all = "camelCase")]
+#[strum(serialize_all = "camelCase")]
 pub enum NodeKind {
     Component,
+    Deployment,
     System,
+}
+
+impl From<NodeKind> for SchematicKind {
+    fn from(kind: NodeKind) -> Self {
+        match kind {
+            NodeKind::Component => Self::Component,
+            NodeKind::Deployment => Self::Deployment,
+            NodeKind::System => Self::System,
+        }
+    }
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
@@ -201,7 +216,7 @@ impl NodeTemplate {
 
         let node_name = schema.name().to_string();
         Ok(NodeTemplate {
-            kind: NodeKind::Component,
+            kind: (*schema.kind()).into(),
             label: NodeLabel {
                 title: node_name.clone(),
                 // name: node_name.clone(),
@@ -262,10 +277,9 @@ impl NodeView {
             last_updated: node.timestamp.updated_at,
             // What is this for?
             checksum: serde_json::json!["j4j4j4j4j4j4j4j4j4j4j4"],
-            // This feels redundant
             schematic: serde_json::json![{
-                "deployment": true,
-                "component": true,
+                "deployment": node_template.kind == NodeKind::Deployment,
+                "component": node_template.kind == NodeKind::Component,
             }],
         }
     }

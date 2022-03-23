@@ -3,7 +3,7 @@ use crate::service::schematic::{SchematicError, SchematicResult};
 use axum::Json;
 use dal::{
     generate_name, node::NodeId, Component, HistoryActor, NodePosition, NodeTemplate, NodeView,
-    SchemaId, SchematicKind, StandardModel, SystemId, Tenancy, Visibility, Workspace, WorkspaceId,
+    SchemaId, StandardModel, SystemId, Tenancy, Visibility, Workspace, WorkspaceId,
 };
 use serde::{Deserialize, Serialize};
 
@@ -78,7 +78,7 @@ pub async fn create_node(
         &(&tenancy).into(),
         &request.visibility,
         &history_actor,
-        SchematicKind::Component,
+        (*node.kind()).into(),
         request.root_node_id,
         request.x,
         request.y,

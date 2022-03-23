@@ -20,8 +20,8 @@ use crate::{
     BillingAccount, BillingAccountId, ChangeSet, Component, EditSession, EncryptedSecret, Func,
     FuncBackendKind, FuncBackendResponseType, Group, HistoryActor, KeyPair, Node, Organization,
     Prop, PropId, PropKind, QualificationCheck, Schema, SchemaId, SchemaKind, SchemaVariantId,
-    Secret, SecretKind, SecretObjectType, StandardModel, System, Tenancy, User, Visibility,
-    Workspace, WriteTenancy, NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK,
+    SchematicKind, Secret, SecretKind, SecretObjectType, StandardModel, System, Tenancy, User,
+    Visibility, Workspace, WriteTenancy, NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK,
 };
 
 #[derive(Debug)]
@@ -492,9 +492,16 @@ pub async fn create_schema_ui_menu(
     visibility: &Visibility,
     history_actor: &HistoryActor,
 ) -> schema::UiMenu {
-    schema::UiMenu::new(txn, nats, &tenancy.into(), visibility, history_actor)
-        .await
-        .expect("cannot create schema ui menu")
+    schema::UiMenu::new(
+        txn,
+        nats,
+        &tenancy.into(),
+        visibility,
+        history_actor,
+        &SchematicKind::Component,
+    )
+    .await
+    .expect("cannot create schema ui menu")
 }
 
 #[allow(clippy::too_many_arguments)]

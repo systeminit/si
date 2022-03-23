@@ -1,6 +1,7 @@
 import { Color, SchematicObject } from "./common";
 import { Socket } from "./socket";
 import { NodeTemplate } from "@/api/sdf/dal/node";
+import { SchematicKind } from "@/api/sdf/dal/schematic";
 
 export interface NodeLabel {
   title: string;
@@ -115,12 +116,12 @@ export interface NodeUpdate {
 
 export function fakeNodeFromTemplate(template: NodeTemplate): Node {
   const node: Node = {
-    id: "A:1",
+    id: -1,
     label: template.label,
     classification: template.classification,
     position: [
       {
-        id: "A:1",
+        id: -1,
         x: 0,
         y: 0,
       },
@@ -131,8 +132,8 @@ export function fakeNodeFromTemplate(template: NodeTemplate): Node {
     lastUpdated: new Date(Date.now()),
     checksum: "j4j4j4j4j4j4j4j4j4j4j4",
     schematic: {
-      deployment: false,
-      component: true,
+      deployment: template.kind === SchematicKind.Deployment,
+      component: template.kind === SchematicKind.Component,
     },
   };
   return node;
@@ -148,9 +149,10 @@ export function generateNode(
   title: string,
   name: string,
   position: { x: number; y: number },
+  schematicKind: SchematicKind,
 ): Node {
   const node: Node = {
-    id: "A:1",
+    id: -1,
     label: {
       title: title,
       name: name,
@@ -169,29 +171,29 @@ export function generateNode(
     ],
     input: [
       {
-        id: "A:1.S:1",
+        id: -2,
         type: "kubernetes.namespace",
         name: "namespace",
       },
       {
-        id: "A:1.S:2",
+        id: -3,
         type: "kubernetes.deployment",
         name: "deployment",
       },
       {
-        id: "A:1.S:3",
+        id: -4,
         type: "kubernetes.service",
         name: "service",
       },
       {
-        id: "A:1.S:4",
+        id: -5,
         type: "kubernetes.env",
         name: "env",
       },
     ],
     output: [
       {
-        id: "A:1.S:5",
+        id: -6,
         type: "kubernetes.service",
       },
     ],
@@ -201,8 +203,8 @@ export function generateNode(
     lastUpdated: new Date(Date.now()),
     checksum: "j4j4j4j4j4j4j4j4j4j4j4",
     schematic: {
-      deployment: false,
-      component: true,
+      deployment: schematicKind === SchematicKind.Deployment,
+      component: schematicKind === SchematicKind.Component,
     },
   };
 

@@ -24,23 +24,25 @@ import { defineComponent, PropType } from "vue";
 import _ from "lodash";
 import * as Rx from "rxjs";
 import * as PIXI from "pixi.js";
+import * as OBJ from "./Viewer/obj";
 import { refFrom } from "vuse-rx";
 
 import { ViewerStateMachine, ViewerEventKind } from "./state";
 import { useMachine } from "@xstate/vue";
 
-import { EditorContext } from "@/api/sdf/dal/schematic";
+import { EditorContext, SchematicKind } from "@/api/sdf/dal/schematic";
 import { SceneManager } from "./Viewer/scene";
 import { InteractionManager } from "./Viewer/interaction";
 import { Renderer } from "./Viewer/renderer";
+import { GlobalErrorService } from "@/service/global_error";
 import { SchematicDataManager } from "./data";
+import { deploymentSelection$, componentSelection$ } from "./state";
 
 // import { Schematic } from "./model";
 import * as MODEL from "./model";
 
 import * as VE from "./event";
 
-import * as s from "./state";
 import { schematicData$ } from "./data";
 
 interface KeyboardKey {
@@ -77,6 +79,17 @@ interface Data {
   debug: boolean;
 }
 
+const selectionObserver = (
+  schematicKind: SchematicKind,
+): Rx.ReplaySubject<Array<Node> | null> => {
+  switch (schematicKind) {
+    case SchematicKind.Deployment:
+      return deploymentSelection$;
+    case SchematicKind.Component:
+      return componentSelection$;
+  }
+};
+
 export default defineComponent({
   name: "Viewer",
   props: {
@@ -104,10 +117,17 @@ export default defineComponent({
       type: Object as PropType<EditorContext | null>,
       required: true,
     },
+    schematicKind: {
+      type: String as PropType<SchematicKind | null>,
+      required: true,
+    },
   },
   setup(props) {
     const { state, send, service } = useMachine(props.viewerState.machine);
-    const selection = refFrom(s.selection$); //pipe and additional operations.
+
+    // Chooses which observable will define our selected node
+    const selection = refFrom(selectionObserver(props.schematicKind));
+
     return {
       state,
       send,
@@ -153,9 +173,24 @@ export default defineComponent({
     };
   },
   watch: {
+    editorContext(ctx) {
+      if (this.dataManager && this.sceneManager && this.editorContext) {
+        this.dataManager.editorContext$.next(ctx);
+      }
+    },
+    async schematicKind(ctx) {
+      if (this.dataManager && this.sceneManager && this.schematicKind) {
+        this.selection = refFrom(selectionObserver(ctx));
+        this.dataManager.schematicKind$.next(ctx);
+        await this.loadSchematicData(this.schematicData);
+
+        // We resend the last selection state to update ourselves
+        selectionObserver(ctx).next(this.selection);
+      }
+    },
     schematicData(schematic) {
-      if (this.sceneManager && this.schematicData) {
-        this.dataManager?.schematicData$.next(schematic);
+      if (this.dataManager && this.sceneManager && this.schematicData) {
+        this.dataManager.schematicData$.next(schematic);
       }
     },
   },
@@ -190,16 +225,16 @@ export default defineComponent({
 
     const dataManager = new SchematicDataManager();
     this.dataManager = dataManager;
-
     this.dataManager.editorContext$.next(this.editorContext);
+    this.dataManager.schematicKind$.next(this.schematicKind);
 
     dataManager.schematicData$.subscribe({
-      next: (d) => this.loadSchematicData(d),
+      next: async (d) => await this.loadSchematicData(d),
     });
 
     // Global events
     schematicData$.subscribe({
-      next: (d) => this.dataManager?.schematicData$.next(d),
+      next: (d) => this.dataManager?.schematicData$?.next(d),
     });
 
     this.sceneManager = new SceneManager(this.renderer as Renderer);
@@ -209,21 +244,81 @@ export default defineComponent({
       dataManager,
       this.service,
       this.renderer as Renderer,
-      this.editorContext,
     );
     this.interactionManager = interactionManager;
 
-    this.sceneManager.subscribeToInteractionEvents(interactionManager);
+    const syncSelection = (selection) => {
+      const manager = this.interactionManager.selectionManager;
+      if (!selection && manager.selection[0]) {
+        // If the other panel deselected the node we have to update our selection state
+        this.interactionManager.selectionManager.clearSelection();
+        this.renderer.renderStage();
+      } else if (selection && !selection[0]) {
+        // If there is as selection but it's an empty array, there is a bug somewhere
+        const sel = JSON.stringify(selection);
+        const message = `Selection is broken ${sel} in panel ${this.component.id}`;
+        const [statusCode, code] = [500, 42];
 
-    this.renderer.stage.sortableChildren = true;
+        GlobalErrorService.set({ error: { statusCode, message, code } });
+      } else if (selection) {
+        const node = this.sceneManager.group?.nodes.children.find(
+          (n) => n.id === selection[0].id,
+        );
+
+        if (!node) {
+          // If there is as selection but the node related to it is not found, there is a bug somewhere
+          const message = `Node ${selection[0].id} not found in panel ${this.component.id}`;
+          const [statusCode, code] = [500, 42];
+          const error = { statusCode, message, code };
+
+          GlobalErrorService.set({ error });
+        } else if (node.id !== manager.selection[0]?.id) {
+          // If the other panel selected the node we have to update our selection state
+          this.interactionManager.selectionManager.select(node);
+          this.renderer.renderStage();
+        }
+      }
+    };
+
+    deploymentSelection$.subscribe({
+      next: async (selection) => {
+        switch (this.schematicKind) {
+          case SchematicKind.Deployment:
+            // We need to sync ourselves with the other panel if it's also Deployment
+            syncSelection(selection);
+            break;
+          case SchematicKind.Component:
+            // The deployment node selected defines which nodes appear in the Component panel
+            await this.loadSchematicData(this.schematicData);
+            break;
+        }
+      },
+    });
+
+    componentSelection$.subscribe({
+      next: (selection) => {
+        switch (this.schematicKind) {
+          case SchematicKind.Deployment:
+            break;
+          case SchematicKind.Component:
+            // We need to sync ourselves with the other panel if it's also Component
+            syncSelection(selection);
+            break;
+        }
+      },
+    });
+
+    this.sceneManager.subscribeToInteractionEvents(this.interactionManager);
 
     this.renderer.stage.addChild(this.sceneManager.scene as PIXI.Container);
 
     if (this.schematicData) {
-      this.sceneManager.loadSceneData(this.schematicData);
+      this.loadSchematicData(this.schematicData).then(() =>
+        this.renderer.renderStage(),
+      );
+    } else {
+      this.renderer.renderStage();
     }
-
-    this.renderer.render(this.renderer.stage);
   },
   beforeUnmount(): void {
     if (this.container.element) {
@@ -234,7 +329,7 @@ export default defineComponent({
     resizeCanvas(width: number, height: number): void {
       if (this.renderer && this.container.element) {
         this.renderer.resize(width, height);
-        this.renderer.render(this.renderer.stage);
+        this.renderer.renderStage();
       }
     },
 
@@ -277,14 +372,44 @@ export default defineComponent({
         this.send(ViewerEventKind.INITIATE_ZOOMING);
         this.send(ViewerEventKind.ZOOMING);
         this.interactionManager.zoomingManager.zoom(e);
-        this.interactionManager.renderer.renderStage();
+        this.renderer.renderStage();
         this.send(ViewerEventKind.DEACTIVATE_ZOOMING);
       }
     },
 
-    loadSchematicData(schematic: MODEL.Schematic | null): void {
-      if (schematic && this.sceneManager) {
-        this.sceneManager.loadSceneData(schematic);
+    async loadSchematicData(schematic: MODEL.Schematic | null): void {
+      if (this.schematicKind && schematic && this.sceneManager) {
+        // Deep cloning, very hackish, but bypassess all proxies
+        const filteredSchematic = JSON.parse(JSON.stringify(schematic));
+        // We want to ignore component data in deployment panel, and vice versa
+        filteredSchematic.nodes = filteredSchematic.nodes.filter(
+          (node) => node.kind === this.schematicKind,
+        );
+
+        const deploymentNode = await Rx.firstValueFrom(deploymentSelection$);
+        if (deploymentNode) {
+          // Find component nodes connected to selected deployment node
+          const nodeIds = filteredSchematic.connections
+            .filter((conn) => conn.destination.nodeId === deploymentNode.id)
+            .map((conn) => conn.source.nodeId);
+
+          // Filters component nodes that are children of selected deployment node
+          switch (this.schematicKind) {
+            case SchematicKind.Deployment:
+              break;
+            case SchematicKind.Component:
+              filteredSchematic.nodes = filteredSchematic.nodes.filter((node) =>
+                nodeIds.includes(node.id),
+              );
+              break;
+          }
+        }
+
+        this.sceneManager.loadSceneData(
+          filteredSchematic,
+          this.interactionManager.selectionManager,
+        );
+        this.renderer.renderStage();
       }
     },
 
@@ -298,8 +423,9 @@ export default defineComponent({
       this.activateComponent();
       if (this.component.isActive) {
         if (this.interactionManager) {
+          const nodeObj = new OBJ.Node(node);
           this.send(ViewerEventKind.ACTIVATE_NODEADD);
-          this.interactionManager.nodeAddManager.addNode(node, schemaId);
+          this.interactionManager.nodeAddManager.addNode(nodeObj, schemaId);
         }
       }
     },

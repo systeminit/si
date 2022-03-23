@@ -49,7 +49,10 @@ pub type SchematicResult<T> = Result<T, SchematicError>;
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]
 pub enum SchematicKind {
+    /// Only shows SchemaKind::Concrete and SchemaKind::Implementation
+    /// They all have implementation input socket tied to a service output socket (?)
     Component,
+    /// Only shows SchemaKind::Concept
     Deployment,
     System,
 }
@@ -185,8 +188,9 @@ impl Schematic {
 
         let mut node_views = Vec::with_capacity(nodes.len());
         for node in nodes {
-            let (schema, name, schematic_kind) = match node.kind() {
-                NodeKind::Component => {
+            let schematic_kind = (*node.kind()).into();
+            let (schema, name) = match node.kind() {
+                NodeKind::Deployment | NodeKind::Component => {
                     let component = node
                         .component(txn, visibility)
                         .await?
@@ -207,7 +211,6 @@ impl Schematic {
                             )
                             .await?
                             .ok_or(SchematicError::ComponentNameNotFound)?,
-                        SchematicKind::Component,
                     )
                 }
                 NodeKind::System => {
@@ -230,7 +233,7 @@ impl Schematic {
                     //     .await?
                     //     .ok_or(SchematicError::SchemaNotFound)?;
 
-                    // (schema, system.name().to_owned(), SchematicKind::System)
+                    // (schema, system.name().to_owned())
                 }
             };
 

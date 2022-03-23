@@ -1,6 +1,10 @@
 import * as PIXI from "pixi.js";
 import * as Rx from "rxjs";
 
+// Should we bypass the datamanager here?
+import { editSession$ } from "@/observable/edit_session";
+import { SchematicKind } from "@/api/sdf/dal/schematic";
+import { deploymentSelection$, componentSelection$ } from "../../state";
 import { SocketType } from "../obj";
 import { SceneManager } from "../scene";
 import { SchematicDataManager } from "../../data";
@@ -13,7 +17,6 @@ import { PanningManager } from "./panning";
 import { ConnectingManager } from "./connecting";
 import { ZoomingManager } from "./zooming";
 import { NodeAddManager } from "./nodeAdd";
-import { EditorContext } from "@/api/sdf/dal/schematic";
 
 // import { PanningInteractionData } from "./interaction/panning";
 
@@ -70,7 +73,6 @@ export class InteractionManager {
     dataManager: SchematicDataManager,
     stateService: Interpreter<unknown>,
     renderer: Renderer,
-    editorContext: EditorContext | null,
   ) {
     this.stateService = stateService;
     this.sceneManager = sceneManager;
@@ -109,9 +111,21 @@ export class InteractionManager {
     this.nodeAddManager = new NodeAddManager(
       sceneManager,
       dataManager,
+      this.selectionManager,
       renderer,
-      editorContext,
     );
+  }
+
+  async selectionObserver(): Rx.ReplaySubject<Array<Node> | null> {
+    const schematicKind = await Rx.firstValueFrom(
+      this.dataManager.schematicKind$,
+    );
+    switch (schematicKind) {
+      case SchematicKind.Deployment:
+        return deploymentSelection$;
+      case SchematicKind.Component:
+        return componentSelection$;
+    }
   }
 
   setZoomMagnitude(zoomMagnitude: number | null): void {
@@ -126,8 +140,12 @@ export class InteractionManager {
     }
   }
 
-  onMouseDown(this: InteractionManager, e: PIXI.InteractionEvent) {
+  async onMouseDown(this: InteractionManager, e: PIXI.InteractionEvent) {
+    const editSession = await Rx.firstValueFrom(editSession$);
+
     const target = this.renderer.plugins.interaction.hitTest(e.data.global);
+    const isFakeNode = target.id === -1;
+    const canEdit = editSession && !isFakeNode;
 
     if (target.name === "scene") {
       if (ST.isPanningActivated(this.stateService)) {
@@ -142,7 +160,8 @@ export class InteractionManager {
       } else {
         ST.readySelecting(this.stateService);
         ST.deSelecting(this.stateService);
-        this.selectionManager.clearSelection();
+
+        this.selectionManager.clearSelection(await this.selectionObserver());
         this.renderer.renderStage();
       }
     }
@@ -160,60 +179,69 @@ export class InteractionManager {
       } else {
         ST.readySelecting(this.stateService);
         ST.selecting(this.stateService);
-        this.selectionManager.select(target);
-        ST.activateDragging(this.stateService);
 
-        let zoomFactor = 1;
-        if (this.zoomFactor) {
-          zoomFactor = this.zoomFactor;
+        if (!isFakeNode) {
+          this.selectionManager.select(target, await this.selectionObserver());
         }
-        const offset = {
-          x: (e.data.global.x - target.worldTransform.tx) * (1 / zoomFactor),
-          y: (e.data.global.y - target.worldTransform.ty) * (1 / zoomFactor),
-        };
-        this.draggingManager.beforeDrag(e.data, offset);
-        this.renderer.renderStage();
-      }
-    }
 
-    if (target.kind === "socket") {
-      if (ST.isPanningActivated(this.stateService)) {
-        ST.initiatePanning(this.stateService);
-        const sceneGeo = this.renderer.stage.getChildByName("root", true);
-        const offset = {
-          x: sceneGeo.worldTransform.tx,
-          y: sceneGeo.worldTransform.ty,
-        };
-        this.panningManager.beforePan(e.data, offset);
-        this.renderer.renderStage();
-      } else {
-        if (target.type === SocketType.output) {
-          ST.activateConnecting(this.stateService);
-          const sceneGeo = this.renderer.stage.getChildByName("root", true);
-          const offset = {
-            x: sceneGeo.worldTransform.tx,
-            y: sceneGeo.worldTransform.ty,
-          };
+        if (canEdit) {
+          ST.activateDragging(this.stateService);
 
           let zoomFactor = 1;
           if (this.zoomFactor) {
             zoomFactor = this.zoomFactor;
           }
+          const offset = {
+            x: (e.data.global.x - target.worldTransform.tx) * (1 / zoomFactor),
+            y: (e.data.global.y - target.worldTransform.ty) * (1 / zoomFactor),
+          };
+          this.draggingManager.beforeDrag(e.data, offset);
+        }
+        this.renderer.renderStage();
+      }
+    }
 
-          this.connectingManager.beforeConnect(
-            e.data,
-            target,
-            this.sceneManager,
-            offset,
-            zoomFactor,
-          );
+    if (canEdit) {
+      if (target.kind === "socket") {
+        if (ST.isPanningActivated(this.stateService)) {
+          ST.initiatePanning(this.stateService);
+          const sceneGeo = this.renderer.stage.getChildByName("root", true);
+          const offset = {
+            x: sceneGeo.worldTransform.tx,
+            y: sceneGeo.worldTransform.ty,
+          };
+          this.panningManager.beforePan(e.data, offset);
           this.renderer.renderStage();
+        } else {
+          if (target.type === SocketType.output) {
+            ST.activateConnecting(this.stateService);
+            const sceneGeo = this.renderer.stage.getChildByName("root", true);
+            const offset = {
+              x: sceneGeo.worldTransform.tx,
+              y: sceneGeo.worldTransform.ty,
+            };
+
+            let zoomFactor = 1;
+            if (this.zoomFactor) {
+              zoomFactor = this.zoomFactor;
+            }
+
+            this.connectingManager.beforeConnect(
+              e.data,
+              target,
+              this.sceneManager,
+              offset,
+              zoomFactor,
+            );
+            this.renderer.renderStage();
+          }
         }
       }
     }
 
     // Adding a node
-    if (ST.isAddingNode(this.stateService)) {
+    const canAdd = !!editSession;
+    if (canAdd & ST.isAddingNode(this.stateService)) {
       this.nodeAddManager.afterAddNode();
       ST.deactivateNodeAdd(this.stateService);
     }

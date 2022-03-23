@@ -2,7 +2,7 @@ use crate::dal::test;
 use crate::test_setup;
 use dal::{
     test_harness::find_or_create_production_system, Component, Connection, HistoryActor,
-    NodePosition, Schema, Schematic, SchematicKind, StandardModel, SystemId, Tenancy, Visibility,
+    NodePosition, Schema, Schematic, StandardModel, SystemId, Tenancy, Visibility,
 };
 
 #[test]
@@ -75,7 +75,7 @@ async fn get_schematic() {
         &(&tenancy).into(),
         &visibility,
         &history_actor,
-        SchematicKind::Component,
+        (*service_schema.kind()).into(),
         &Some(SystemId::from(1)),
         *root_node.id(),
         *node.id(),
@@ -97,6 +97,7 @@ async fn get_schematic() {
     )
     .await
     .expect("cannot find schematic");
+    dbg!(&schematic);
     assert_eq!(schematic.nodes()[0].id(), root_node.id());
     assert_eq!(schematic.nodes()[1].id(), node.id());
     assert_eq!(schematic.nodes()[1].positions()[0].x(), node_position.x());
