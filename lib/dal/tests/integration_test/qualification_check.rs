@@ -70,6 +70,7 @@ async fn schema_variants() {
         &history_actor,
         veritech,
         encr_key,
+        *schema.id(),
     )
     .await;
     variant

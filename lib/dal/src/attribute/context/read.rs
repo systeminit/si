@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    attribute_resolver::UNSET_ID_VALUE, ComponentId, PropId, SchemaId, SchemaVariantId, SystemId,
-};
+use crate::{AttributeContext, ComponentId, PropId, SchemaId, SchemaVariantId, SystemId};
+
+pub const UNSET_ID_VALUE: i64 = -1;
 
 /// An `AttributeReadContext` allows for saying "do not use this filed
 /// to filter results" by providing [`None`] for the field's value.
@@ -10,7 +10,7 @@ use crate::{
 /// For example:
 ///
 /// ```rust
-/// # use dal::deculture::attribute::context::read::AttributeReadContext;
+/// # use dal::attribute::context::read::AttributeReadContext;
 /// # const UNSET_ID_VALUE: i64 = -1;
 /// let read_context = AttributeReadContext {
 ///     prop_id: None,
@@ -22,8 +22,8 @@ use crate::{
 /// ```
 ///
 /// The above `AttributeReadContext` would be used for finding all
-/// attributes, across all [`Props`](Prop) that have been set for a
-/// given [`SchemaId`], [`SchemaVariantId`], [`ComponentId`]
+/// attributes, across all [`Props`](crate::Prop) that have been set
+/// for a given [`SchemaId`], [`SchemaVariantId`], [`ComponentId`]
 /// specificity.
 #[derive(Deserialize, Serialize, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AttributeReadContext {
@@ -47,6 +47,18 @@ impl Default for AttributeReadContext {
             schema_variant_id: Some(UNSET_ID_VALUE.into()),
             component_id: Some(UNSET_ID_VALUE.into()),
             system_id: Some(UNSET_ID_VALUE.into()),
+        }
+    }
+}
+
+impl From<AttributeContext> for AttributeReadContext {
+    fn from(from_context: AttributeContext) -> Self {
+        Self {
+            prop_id: Some(from_context.prop_id()),
+            schema_id: Some(from_context.schema_id()),
+            schema_variant_id: Some(from_context.schema_variant_id()),
+            component_id: Some(from_context.component_id()),
+            system_id: Some(from_context.system_id()),
         }
     }
 }
@@ -90,6 +102,16 @@ impl AttributeReadContext {
 
     pub fn has_system_id(&self) -> bool {
         self.system_id.is_some()
+    }
+
+    pub fn any() -> Self {
+        Self {
+            prop_id: None,
+            schema_id: None,
+            schema_variant_id: None,
+            component_id: None,
+            system_id: None,
+        }
     }
 }
 

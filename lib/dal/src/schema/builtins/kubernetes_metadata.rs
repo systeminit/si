@@ -1,8 +1,6 @@
 use crate::schema::builtins::create_prop;
 use crate::schema::SchemaResult;
-use crate::{
-    HistoryActor, Prop, PropId, PropKind, SchemaVariantId, StandardModel, Visibility, WriteTenancy,
-};
+use crate::{HistoryActor, Prop, PropId, PropKind, StandardModel, Visibility, WriteTenancy};
 use si_data::{NatsTxn, PgTxn};
 use veritech::EncryptionKey;
 
@@ -13,7 +11,6 @@ pub async fn create_metadata_prop(
     write_tenancy: &WriteTenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
-    variant_id: &SchemaVariantId,
     is_name_required: bool,
     parent_prop_id: Option<PropId>,
     veritech: veritech::Client,
@@ -27,7 +24,6 @@ pub async fn create_metadata_prop(
         write_tenancy,
         visibility,
         history_actor,
-        variant_id,
         "metadata",
         PropKind::Object,
         parent_prop_id,
@@ -57,7 +53,6 @@ pub async fn create_metadata_prop(
             write_tenancy,
             visibility,
             history_actor,
-            variant_id,
             "name",
             PropKind::String,
             Some(*metadata_prop.id()),
@@ -74,7 +69,6 @@ pub async fn create_metadata_prop(
             write_tenancy,
             visibility,
             history_actor,
-            variant_id,
             "generateName",
             PropKind::String,
             Some(*metadata_prop.id()),
@@ -92,7 +86,6 @@ pub async fn create_metadata_prop(
             write_tenancy,
             visibility,
             history_actor,
-            variant_id,
             "namespace",
             PropKind::String,
             Some(*metadata_prop.id()),
@@ -109,7 +102,6 @@ pub async fn create_metadata_prop(
             write_tenancy,
             visibility,
             history_actor,
-            variant_id,
             "labels",
             PropKind::Map, // How to specify it as a map of string values?
             Some(*metadata_prop.id()),
@@ -126,7 +118,6 @@ pub async fn create_metadata_prop(
             write_tenancy,
             visibility,
             history_actor,
-            variant_id,
             "annotations",
             PropKind::Map, // How to specify it as a map of string values?
             Some(*metadata_prop.id()),

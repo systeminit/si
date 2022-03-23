@@ -1,5 +1,7 @@
 pub mod widget;
 
+pub use widget::{ToSelectWidget, Widget};
+
 use serde::{Deserialize, Serialize};
 use si_data::{NatsTxn, PgTxn};
 use std::{future::Future, pin::Pin};
@@ -7,12 +9,11 @@ use strum_macros::{AsRefStr, Display, EnumString};
 use thiserror::Error;
 use veritech::EncryptionKey;
 
+use crate::AttributeValueId;
 use crate::{
-    func::backend::validation::ValidationError, HistoryActor, LabelListError, PropId, PropKind,
-    ReadTenancy, SystemId, Visibility, WriteTenancy,
+    func::backend::validation::ValidationError, HistoryActor, LabelListError, PropKind,
+    ReadTenancy, Visibility, WriteTenancy,
 };
-
-pub use widget::{ToSelectWidget, Widget};
 
 #[derive(Error, Debug)]
 pub enum EditFieldError {
@@ -88,29 +89,26 @@ pub enum VisibilityDiff {
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct EditFieldBaggageComponentProp {
-    pub prop_id: PropId,
-    pub system_id: Option<SystemId>,
-}
-
-#[derive(AsRefStr, Clone, Debug, Deserialize, Display, Eq, PartialEq, Serialize)]
-pub enum EditFieldBaggage {
-    ComponentProp(EditFieldBaggageComponentProp),
+pub struct EditFieldBaggage {
+    pub attribute_value_id: AttributeValueId,
+    pub parent_attribute_value_id: Option<AttributeValueId>,
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 pub struct EditField {
     id: String,
     pub name: String,
-    /// A descendant edit field can be specified using "path" (e.g. "metadata.name").
+    /// A descendant [`EditField`] can be specified using "path" (e.g. "metadata.name").
     path: Vec<String>,
     object_kind: EditFieldObjectKind,
+    // NOTE(nick): what is this for?
     object_id: i64,
     data_type: EditFieldDataType,
     widget: Widget,
     pub value: Option<serde_json::Value>,
     visibility_diff: VisibilityDiff,
     validation_errors: Vec<ValidationError>,
+    /// Additional context for an [`EditField`] that's not directly consumed by the frontend.
     baggage: Option<EditFieldBaggage>,
 }
 
@@ -153,6 +151,23 @@ impl EditField {
 
     pub fn unset_baggage(&mut self) {
         self.baggage = None;
+    }
+
+    pub fn id(&self) -> &str {
+        &self.id
+    }
+
+    pub fn data_type(&self) -> &EditFieldDataType {
+        &self.data_type
+    }
+
+    // FIXME(nick): this only works for Object! It does not work for Arrays and Maps.
+    pub fn get_child_edit_fields(&self) -> Option<EditFields> {
+        if let Widget::Header(header) = &self.widget {
+            Some(header.edit_fields().to_vec())
+        } else {
+            None
+        }
     }
 }
 

@@ -85,6 +85,7 @@ impl SchemaVariant {
         write_tenancy: &WriteTenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
+        schema_id: SchemaId,
         name: impl AsRef<str>,
         veritech: veritech::Client,
         encryption_key: &EncryptionKey,
@@ -111,12 +112,18 @@ impl SchemaVariant {
             write_tenancy,
             visibility,
             history_actor,
-            object.id(),
+            schema_id,
+            *object.id(),
             veritech,
             encryption_key,
         )
         .await
         .map_err(Box::new)?;
+
+        object
+            .set_schema(txn, nats, visibility, history_actor, &schema_id)
+            .await?;
+
         Ok((object, root_prop))
     }
 

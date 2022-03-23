@@ -9,11 +9,15 @@ use crate::resource_prototype::ResourcePrototypeContext;
 use crate::schema::{SchemaResult, SchemaVariant, UiMenu};
 use crate::socket::{Socket, SocketArity, SocketEdgeKind};
 use crate::{
-    attribute_resolver::AttributeResolverContext, component::ComponentKind, edit_field::widget::*,
-    func::binding::FuncBinding, validation_prototype::ValidationPrototypeContext,
-    AttributeResolver, Func, FuncBackendKind, FuncBackendResponseType, HistoryActor, Prop, PropId,
-    PropKind, QualificationPrototype, ResourcePrototype, Schema, SchemaError, SchemaKind,
-    SchemaVariantId, SchematicKind, StandardModel, ValidationPrototype, Visibility, WriteTenancy,
+    component::ComponentKind, edit_field::widget::*, func::binding::FuncBinding,
+    validation_prototype::ValidationPrototypeContext, Func, FuncBackendKind,
+    FuncBackendResponseType, HistoryActor, Prop, PropId, PropKind, QualificationPrototype,
+    ResourcePrototype, Schema, SchemaError, SchemaKind, SchemaVariantId, SchematicKind,
+    StandardModel, ValidationPrototype, Visibility, WriteTenancy,
+};
+use crate::{
+    AttributeContext, AttributePrototype, AttributePrototypeError, AttributeReadContext,
+    AttributeValue, AttributeValueError, SchemaId,
 };
 use si_data::{NatsTxn, PgTxn};
 use telemetry::prelude::*;
@@ -148,14 +152,12 @@ async fn system(
         write_tenancy,
         visibility,
         history_actor,
+        *schema.id(),
         "v0",
         veritech,
         encryption_key,
     )
     .await?;
-    variant
-        .set_schema(txn, nats, visibility, history_actor, schema.id())
-        .await?;
     schema
         .set_default_schema_variant_id(txn, nats, visibility, history_actor, Some(*variant.id()))
         .await?;
@@ -213,14 +215,12 @@ async fn application(
         write_tenancy,
         visibility,
         history_actor,
+        *schema.id(),
         "v0",
         veritech,
         encryption_key,
     )
     .await?;
-    variant
-        .set_schema(txn, nats, visibility, history_actor, schema.id())
-        .await?;
     schema
         .set_default_schema_variant_id(txn, nats, visibility, history_actor, Some(*variant.id()))
         .await?;
@@ -361,14 +361,12 @@ async fn service(
         write_tenancy,
         visibility,
         history_actor,
+        *schema.id(),
         "v0",
         veritech,
         encryption_key,
     )
     .await?;
-    variant
-        .set_schema(txn, nats, visibility, history_actor, schema.id())
-        .await?;
     schema
         .set_default_schema_variant_id(txn, nats, visibility, history_actor, Some(*variant.id()))
         .await?;
@@ -452,14 +450,12 @@ async fn kubernetes_service(
         write_tenancy,
         visibility,
         history_actor,
+        *schema.id(),
         "v0",
         veritech,
         encryption_key,
     )
     .await?;
-    variant
-        .set_schema(txn, nats, visibility, history_actor, schema.id())
-        .await?;
     schema
         .set_default_schema_variant_id(txn, nats, visibility, history_actor, Some(*variant.id()))
         .await?;
@@ -552,14 +548,12 @@ async fn docker_hub_credential(
         write_tenancy,
         visibility,
         history_actor,
+        *schema.id(),
         "v0",
         veritech.clone(),
         encryption_key,
     )
     .await?;
-    variant
-        .set_schema(txn, nats, visibility, history_actor, schema.id())
-        .await?;
     schema
         .set_default_schema_variant_id(txn, nats, visibility, history_actor, Some(*variant.id()))
         .await?;
@@ -576,9 +570,6 @@ async fn docker_hub_credential(
         PropKind::Integer,
     )
     .await?;
-    secret_prop
-        .add_schema_variant(txn, nats, visibility, history_actor, variant.id())
-        .await?;
     secret_prop
         .set_parent_prop(
             txn,
@@ -754,6 +745,7 @@ async fn docker_image(
     veritech: veritech::Client,
     encryption_key: &EncryptionKey,
 ) -> SchemaResult<()> {
+    let read_tenancy = write_tenancy.clone_into_read_tenancy(txn).await?;
     let name = "docker_image".to_string();
     let mut schema = match create_schema(
         txn,
@@ -776,17 +768,33 @@ async fn docker_image(
         write_tenancy,
         visibility,
         history_actor,
+        *schema.id(),
         "v0",
         veritech.clone(),
         encryption_key,
     )
     .await?;
-    variant
-        .set_schema(txn, nats, visibility, history_actor, schema.id())
-        .await?;
     schema
         .set_default_schema_variant_id(txn, nats, visibility, history_actor, Some(*variant.id()))
         .await?;
+    let mut attribute_context_builder = AttributeContext::builder();
+    attribute_context_builder
+        .set_schema_id(*schema.id())
+        .set_schema_variant_id(*variant.id());
+    let root_prop_attribute_value = AttributeValue::find_for_context(
+        txn,
+        &read_tenancy,
+        visibility,
+        AttributeReadContext {
+            prop_id: Some(root_prop.domain_prop_id),
+            schema_id: Some(*schema.id()),
+            schema_variant_id: Some(*variant.id()),
+            ..AttributeReadContext::default()
+        },
+    )
+    .await?
+    .pop()
+    .ok_or(AttributeValueError::Missing)?;
 
     let read_tenancy = write_tenancy.clone_into_read_tenancy(txn).await?;
     let mut ui_menu = UiMenu::new(txn, nats, write_tenancy, visibility, history_actor).await?;
@@ -857,9 +865,6 @@ async fn docker_image(
     )
     .await?;
     image_prop
-        .add_schema_variant(txn, nats, visibility, history_actor, variant.id())
-        .await?;
-    image_prop
         .set_parent_prop(
             txn,
             nats,
@@ -882,9 +887,6 @@ async fn docker_image(
         PropKind::Array, // Note: we should have a way to specify that this is an array of Integer
     )
     .await?;
-    exposed_ports_prop
-        .add_schema_variant(txn, nats, visibility, history_actor, variant.id())
-        .await?;
     exposed_ports_prop
         .set_parent_prop(
             txn,
@@ -946,9 +948,6 @@ async fn docker_image(
     )
     .await?;
     number_of_parents_prop
-        .add_schema_variant(txn, nats, visibility, history_actor, variant.id())
-        .await?;
-    number_of_parents_prop
         .set_parent_prop(
             txn,
             nats,
@@ -993,18 +992,42 @@ async fn docker_image(
         .execute(txn, nats, veritech.clone(), encryption_key)
         .await?;
 
-    let mut attribute_resolver_context = AttributeResolverContext::new();
-    attribute_resolver_context.set_prop_id(*number_of_parents_prop.id());
-    AttributeResolver::upsert(
+    let number_of_parents_prop_context = attribute_context_builder
+        .clone()
+        .set_prop_id(*number_of_parents_prop.id())
+        .to_context()?;
+    let attribute_prototype = AttributePrototype::list_for_context(
+        txn,
+        &read_tenancy,
+        visibility,
+        number_of_parents_prop_context,
+    )
+    .await?
+    .pop()
+    .ok_or(AttributePrototypeError::Missing)?;
+    AttributePrototype::update_for_context(
         txn,
         nats,
-        &write_tenancy.into(),
+        write_tenancy,
         visibility,
         history_actor,
+        *attribute_prototype.id(),
+        number_of_parents_prop_context,
         *func.id(),
         *func_binding.id(),
-        attribute_resolver_context,
-        None,
+        Some(*root_prop_attribute_value.id()),
+        Some(
+            *AttributeValue::find_for_context(
+                txn,
+                &read_tenancy,
+                visibility,
+                number_of_parents_prop_context.into(),
+            )
+            .await?
+            .pop()
+            .ok_or(AttributeValueError::Missing)?
+            .id(),
+        ),
     )
     .await?;
 
@@ -1184,7 +1207,6 @@ pub async fn create_prop(
     write_tenancy: &WriteTenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
-    variant_id: &SchemaVariantId,
     prop_name: &str,
     prop_kind: PropKind,
     parent_prop_id: Option<PropId>,
@@ -1201,8 +1223,6 @@ pub async fn create_prop(
         prop_kind,
     )
     .await?;
-    prop.add_schema_variant(txn, nats, visibility, history_actor, variant_id)
-        .await?;
     if let Some(parent_prop_id) = parent_prop_id {
         prop.set_parent_prop(txn, nats, visibility, history_actor, parent_prop_id)
             .await?;
@@ -1217,7 +1237,6 @@ pub async fn create_string_prop_with_default(
     write_tenancy: &WriteTenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
-    variant_id: &SchemaVariantId,
     prop_name: &str,
     default_string: String,
     parent_prop_id: Option<PropId>,
@@ -1232,7 +1251,6 @@ pub async fn create_string_prop_with_default(
         write_tenancy,
         visibility,
         history_actor,
-        variant_id,
         prop_name,
         PropKind::String,
         parent_prop_id,
@@ -1292,20 +1310,8 @@ pub async fn create_string_prop_with_default(
             .await?;
     }
 
-    let mut attribute_resolver_context = AttributeResolverContext::new();
-    attribute_resolver_context.set_prop_id(*prop.id());
-    AttributeResolver::upsert(
-        txn,
-        nats,
-        &write_tenancy.into(),
-        visibility,
-        history_actor,
-        *func.id(),
-        *func_binding.id(),
-        attribute_resolver_context,
-        None,
-    )
-    .await?;
+    // TODO: Set up AttribuePrototype & AttributeValue appropriately
+
     Ok(prop)
 }
 
@@ -1323,10 +1329,16 @@ pub async fn create_root_prop(
     write_tenancy: &WriteTenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
-    variant_id: &SchemaVariantId,
+    schema_id: SchemaId,
+    variant_id: SchemaVariantId,
     veritech: veritech::Client,
     encryption_key: &EncryptionKey,
 ) -> SchemaResult<RootProp> {
+    let mut variant_context_builder = AttributeContext::builder();
+    variant_context_builder
+        .set_schema_id(schema_id)
+        .set_schema_variant_id(variant_id);
+
     let read_tenancy = write_tenancy.clone_into_read_tenancy(txn).await?;
     let func_name = "si:setPropObject".to_string();
     let mut funcs =
@@ -1339,7 +1351,7 @@ pub async fn create_root_prop(
         write_tenancy,
         visibility,
         history_actor,
-        // Note: this 'value' property shouldn't need to exist, but it's deserialized to FuncBackendPropObjectArgs
+        // Shortcut creating a FuncBackendPropObjectArgs
         serde_json::json!({ "value": {} }),
         *func.id(),
         *func.backend_kind(),
@@ -1365,20 +1377,29 @@ pub async fn create_root_prop(
     )
     .await?;
     root_prop
-        .add_schema_variant(txn, nats, visibility, history_actor, variant_id)
+        .add_schema_variant(txn, nats, visibility, history_actor, &variant_id)
         .await?;
 
-    let mut attribute_resolver_context = AttributeResolverContext::new();
-    attribute_resolver_context.set_prop_id(*root_prop.id());
-    AttributeResolver::upsert(
+    let root_context = variant_context_builder
+        .clone()
+        .set_prop_id(*root_prop.id())
+        .to_context()?;
+    let (_, root_value_id) = AttributeValue::update_for_context(
         txn,
         nats,
-        &write_tenancy.into(),
+        veritech.clone(),
+        encryption_key,
+        write_tenancy,
         visibility,
         history_actor,
-        *func.id(),
-        *func_binding.id(),
-        attribute_resolver_context,
+        *AttributeValue::find_for_context(txn, &read_tenancy, visibility, root_context.into())
+            .await?
+            .pop()
+            .ok_or(AttributeValueError::Missing)?
+            .id(),
+        None,
+        root_context,
+        Some(serde_json::json![{}]),
         None,
     )
     .await?;
@@ -1396,22 +1417,29 @@ pub async fn create_root_prop(
     )
     .await?;
     si_specific_prop
-        .add_schema_variant(txn, nats, visibility, history_actor, variant_id)
-        .await?;
-    si_specific_prop
         .set_parent_prop(txn, nats, visibility, history_actor, *root_prop.id())
         .await?;
-    let mut attribute_resolver_context = AttributeResolverContext::new();
-    attribute_resolver_context.set_prop_id(*si_specific_prop.id());
-    AttributeResolver::upsert(
+
+    let si_context = variant_context_builder
+        .clone()
+        .set_prop_id(*si_specific_prop.id())
+        .to_context()?;
+    let (_, si_value_id) = AttributeValue::update_for_context(
         txn,
         nats,
-        &write_tenancy.into(),
+        veritech.clone(),
+        encryption_key,
+        write_tenancy,
         visibility,
         history_actor,
-        *func.id(),
-        *func_binding.id(),
-        attribute_resolver_context,
+        *AttributeValue::find_for_context(txn, &read_tenancy, visibility, si_context.into())
+            .await?
+            .pop()
+            .ok_or(AttributeValueError::Missing)?
+            .id(),
+        Some(root_value_id),
+        si_context,
+        Some(serde_json::json![{}]),
         None,
     )
     .await?;
@@ -1429,11 +1457,32 @@ pub async fn create_root_prop(
     )
     .await?;
     si_name_prop
-        .add_schema_variant(txn, nats, visibility, history_actor, variant_id)
-        .await?;
-    si_name_prop
         .set_parent_prop(txn, nats, visibility, history_actor, *si_specific_prop.id())
         .await?;
+
+    let si_name_context = variant_context_builder
+        .clone()
+        .set_prop_id(*si_name_prop.id())
+        .to_context()?;
+    AttributeValue::update_for_context(
+        txn,
+        nats,
+        veritech.clone(),
+        encryption_key,
+        write_tenancy,
+        visibility,
+        history_actor,
+        *AttributeValue::find_for_context(txn, &read_tenancy, visibility, si_name_context.into())
+            .await?
+            .pop()
+            .ok_or(AttributeValueError::Missing)?
+            .id(),
+        Some(si_value_id),
+        si_name_context,
+        None,
+        None,
+    )
+    .await?;
 
     let domain_specific_prop = Prop::new(
         txn,
@@ -1448,25 +1497,33 @@ pub async fn create_root_prop(
     )
     .await?;
     domain_specific_prop
-        .add_schema_variant(txn, nats, visibility, history_actor, variant_id)
-        .await?;
-    domain_specific_prop
         .set_parent_prop(txn, nats, visibility, history_actor, *root_prop.id())
         .await?;
-    let mut attribute_resolver_context = AttributeResolverContext::new();
-    attribute_resolver_context.set_prop_id(*domain_specific_prop.id());
-    AttributeResolver::upsert(
+
+    let domain_context = variant_context_builder
+        .clone()
+        .set_prop_id(*domain_specific_prop.id())
+        .to_context()?;
+    AttributeValue::update_for_context(
         txn,
         nats,
-        &write_tenancy.into(),
+        veritech.clone(),
+        encryption_key,
+        write_tenancy,
         visibility,
         history_actor,
-        *func.id(),
-        *func_binding.id(),
-        attribute_resolver_context,
+        *AttributeValue::find_for_context(txn, &read_tenancy, visibility, domain_context.into())
+            .await?
+            .pop()
+            .ok_or(AttributeValueError::Missing)?
+            .id(),
+        Some(root_value_id),
+        domain_context,
+        Some(serde_json::json![{}]),
         None,
     )
     .await?;
+
     Ok(RootProp {
         si_prop_id: *si_specific_prop.id(),
         domain_prop_id: *domain_specific_prop.id(),

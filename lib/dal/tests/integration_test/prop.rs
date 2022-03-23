@@ -1,8 +1,7 @@
 use crate::dal::test;
 use dal::{
-    test_harness::{create_prop, create_prop_of_kind, create_schema_variant},
-    AttributeResolver, HistoryActor, Prop, PropKind, StandardModel, Tenancy, Visibility,
-    WriteTenancy,
+    test_harness::{create_prop, create_prop_of_kind, create_schema, create_schema_variant},
+    HistoryActor, Prop, PropKind, SchemaKind, StandardModel, Tenancy, Visibility, WriteTenancy,
 };
 use pretty_assertions_sorted::assert_eq;
 
@@ -57,6 +56,15 @@ async fn schema_variants() {
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
+    let schema = create_schema(
+        &txn,
+        &nats,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        &SchemaKind::Concrete,
+    )
+    .await;
     let schema_variant = create_schema_variant(
         &txn,
         &nats,
@@ -65,6 +73,7 @@ async fn schema_variants() {
         &history_actor,
         veritech.clone(),
         encr_key,
+        *schema.id(),
     )
     .await;
     let prop = create_prop(
@@ -211,52 +220,4 @@ async fn parent_props_wrong_prop_kinds() {
         .set_parent_prop(&txn, &nats, &visibility, &history_actor, *parent_prop.id())
         .await;
     result.expect_err("should have errored, and it did not");
-}
-
-#[test]
-async fn new_creates_default_unset_binding() {
-    test_setup!(
-        ctx,
-        _secret_key,
-        _pg,
-        _conn,
-        txn,
-        _nats_conn,
-        nats,
-        veritech,
-        encr_key,
-    );
-    let write_tenancy = WriteTenancy::new_universal();
-    let visibility = Visibility::new_head(false);
-    let history_actor = HistoryActor::SystemInit;
-    let prop = Prop::new(
-        &txn,
-        &nats,
-        veritech,
-        encr_key,
-        &write_tenancy,
-        &visibility,
-        &history_actor,
-        "not set by default",
-        PropKind::String,
-    )
-    .await
-    .expect("cannot create prop");
-
-    let read_tenancy = write_tenancy
-        .clone_into_read_tenancy(&txn)
-        .await
-        .expect("unable to generate read tenancy");
-    let func_binding_return_value = AttributeResolver::find_value_for_prop_and_component(
-        &txn,
-        &(&read_tenancy).into(),
-        &visibility,
-        *prop.id(),
-        (-1).into(),
-        (-1).into(),
-    )
-    .await
-    .expect("cannot retrieve value for prop");
-    dbg!(&func_binding_return_value);
-    assert_eq!(None, func_binding_return_value.value(),);
 }

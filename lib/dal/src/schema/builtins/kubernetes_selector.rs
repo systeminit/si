@@ -1,8 +1,6 @@
 use crate::schema::builtins::create_prop;
 use crate::schema::SchemaResult;
-use crate::{
-    HistoryActor, Prop, PropId, PropKind, SchemaVariantId, StandardModel, Visibility, WriteTenancy,
-};
+use crate::{HistoryActor, Prop, PropId, PropKind, StandardModel, Visibility, WriteTenancy};
 use si_data::{NatsTxn, PgTxn};
 use veritech::EncryptionKey;
 
@@ -15,7 +13,6 @@ pub async fn create_selector_prop(
     write_tenancy: &WriteTenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
-    variant_id: &SchemaVariantId,
     parent_prop_id: Option<PropId>,
 ) -> SchemaResult<Prop> {
     let selector_prop = create_prop(
@@ -26,7 +23,6 @@ pub async fn create_selector_prop(
         write_tenancy,
         visibility,
         history_actor,
-        variant_id,
         "selector",
         PropKind::Object,
         parent_prop_id,
@@ -42,7 +38,6 @@ pub async fn create_selector_prop(
             write_tenancy,
             visibility,
             history_actor,
-            variant_id,
             "matchExpressions",
             PropKind::Array, // How to specify it as an array of objects?
             Some(*selector_prop.id()),
@@ -58,7 +53,6 @@ pub async fn create_selector_prop(
                 write_tenancy,
                 visibility,
                 history_actor,
-                variant_id,
                 "key",
                 PropKind::String,
                 Some(*match_expressions_prop.id()),
@@ -77,7 +71,6 @@ pub async fn create_selector_prop(
                 write_tenancy,
                 visibility,
                 history_actor,
-                variant_id,
                 "operator",
                 PropKind::String,
                 Some(*match_expressions_prop.id()),
@@ -94,7 +87,6 @@ pub async fn create_selector_prop(
                 write_tenancy,
                 visibility,
                 history_actor,
-                variant_id,
                 "values",
                 PropKind::Array, // How to specify it as an array of strings?
                 Some(*match_expressions_prop.id()),
@@ -112,7 +104,6 @@ pub async fn create_selector_prop(
             write_tenancy,
             visibility,
             history_actor,
-            variant_id,
             "matchLabels",
             PropKind::Array, // How to specify it as an array of strings?
             Some(*selector_prop.id()),

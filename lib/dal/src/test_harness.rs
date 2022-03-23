@@ -19,9 +19,9 @@ use crate::{
     socket::{Socket, SocketArity, SocketEdgeKind},
     BillingAccount, BillingAccountId, ChangeSet, Component, EditSession, EncryptedSecret, Func,
     FuncBackendKind, FuncBackendResponseType, Group, HistoryActor, KeyPair, Node, Organization,
-    Prop, PropKind, QualificationCheck, Schema, SchemaId, SchemaKind, SchemaVariantId, Secret,
-    SecretKind, SecretObjectType, StandardModel, System, Tenancy, User, Visibility, Workspace,
-    WriteTenancy, NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK,
+    Prop, PropId, PropKind, QualificationCheck, Schema, SchemaId, SchemaKind, SchemaVariantId,
+    Secret, SecretKind, SecretObjectType, StandardModel, System, Tenancy, User, Visibility,
+    Workspace, WriteTenancy, NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK,
 };
 
 #[derive(Debug)]
@@ -506,6 +506,7 @@ pub async fn create_schema_variant(
     history_actor: &HistoryActor,
     veritech: veritech::Client,
     encryption_key: &EncryptionKey,
+    schema_id: SchemaId,
 ) -> schema::SchemaVariant {
     create_schema_variant_with_root(
         txn,
@@ -515,6 +516,7 @@ pub async fn create_schema_variant(
         history_actor,
         veritech,
         encryption_key,
+        schema_id,
     )
     .await
     .0
@@ -529,6 +531,7 @@ pub async fn create_schema_variant_with_root(
     history_actor: &HistoryActor,
     veritech: veritech::Client,
     encryption_key: &EncryptionKey,
+    schema_id: SchemaId,
 ) -> (schema::SchemaVariant, schema::builtins::RootProp) {
     let name = generate_fake_name();
     let write_tenancy = tenancy.into();
@@ -538,6 +541,7 @@ pub async fn create_schema_variant_with_root(
         &write_tenancy,
         visibility,
         history_actor,
+        schema_id,
         name,
         veritech,
         encryption_key,
@@ -624,6 +628,7 @@ pub async fn create_component_and_schema(
         history_actor,
         veritech.clone(),
         encryption_key,
+        *schema.id(),
     )
     .await;
     schema_variant
@@ -880,6 +885,38 @@ pub async fn create_prop_of_kind_with_name(
     )
     .await
     .expect("cannot create prop")
+}
+
+#[allow(clippy::too_many_arguments)]
+pub async fn create_prop_of_kind_and_set_parent_with_name(
+    txn: &PgTxn<'_>,
+    nats: &NatsTxn,
+    veritech: veritech::Client,
+    encryption_key: &EncryptionKey,
+    tenancy: &Tenancy,
+    visibility: &Visibility,
+    history_actor: &HistoryActor,
+    prop_kind: PropKind,
+    name: impl AsRef<str>,
+    parent_prop_id: PropId,
+) -> Prop {
+    let new_prop = create_prop_of_kind_with_name(
+        txn,
+        nats,
+        veritech.clone(),
+        encryption_key,
+        tenancy,
+        visibility,
+        history_actor,
+        prop_kind,
+        name,
+    )
+    .await;
+    new_prop
+        .set_parent_prop(txn, nats, visibility, history_actor, parent_prop_id)
+        .await
+        .expect("cannot set parent to new prop");
+    new_prop
 }
 
 pub async fn create_func(

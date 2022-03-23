@@ -7,7 +7,6 @@ SELECT DISTINCT ON (attribute_values.attribute_context_prop_id, attribute_values
                                          attribute_values.attribute_context_component_id,
                                          attribute_values.attribute_context_system_id,
                                          parent_attribute_values.id AS parent_attribute_value_id,
-                                         parent_attribute_values.attribute_context_prop_id AS parent_prop_id,
                                          row_to_json(attribute_values.*) AS attribute_value_object,
                                          row_to_json(props.*) AS prop_object,
                                          row_to_json(func_binding_return_values) AS object
@@ -29,16 +28,14 @@ LEFT JOIN attribute_values AS parent_attribute_values ON
 WHERE in_tenancy_v1($1, attribute_values.tenancy_universal, attribute_values.tenancy_billing_account_ids, attribute_values.tenancy_organization_ids,
                     attribute_values.tenancy_workspace_ids)
     AND is_visible_v1($2, attribute_values.visibility_change_set_pk, attribute_values.visibility_edit_session_pk, attribute_values.visibility_deleted)
-    AND in_attribute_read_context_v1($3, attribute_values.attribute_context_prop_id, attribute_values.attribute_context_schema_id,
+    AND in_attribute_context_v1($3, attribute_values.attribute_context_prop_id, attribute_values.attribute_context_schema_id,
                                      attribute_values.attribute_context_schema_variant_id, attribute_values.attribute_context_component_id,
                                      attribute_values.attribute_context_system_id)
 ORDER BY
-    attribute_values.id,
     attribute_values.attribute_context_prop_id,
     attribute_values.key,
     visibility_change_set_pk DESC,
     visibility_edit_session_pk DESC,
-    parent_prop_id DESC,
     attribute_context_schema_id DESC,
     attribute_context_schema_variant_id DESC,
     attribute_context_component_id DESC,

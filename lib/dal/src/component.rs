@@ -1,6 +1,5 @@
-mod view;
+pub mod view;
 
-use veritech::EncryptionKey;
 pub use view::{ComponentView, ComponentViewError};
 
 use async_recursion::async_recursion;
@@ -10,22 +9,19 @@ use si_data::{NatsError, NatsTxn, PgError, PgTxn};
 use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
+use veritech::EncryptionKey;
 
-use crate::attribute_resolver::{AttributeResolverContext, UNSET_ID_VALUE};
+use crate::attribute::value::AttributeValue;
+use crate::attribute::{context::UNSET_ID_VALUE, value::AttributeValueError};
 use crate::code_generation_resolver::CodeGenerationResolverContext;
-use crate::deculture::attribute::value::AttributeValueError;
 use crate::edit_field::{
-    value_and_visibility_diff_json_option, widget::prelude::*, EditField, EditFieldAble,
-    EditFieldBaggage, EditFieldBaggageComponentProp, EditFieldError, EditFieldObjectKind,
-    EditFields,
+    widget::prelude::*, EditField, EditFieldAble, EditFieldBaggage, EditFieldError,
+    EditFieldObjectKind, EditFields, VisibilityDiff,
 };
-use crate::func::backend::integer::FuncBackendIntegerArgs;
-use crate::func::backend::map::FuncBackendMapArgs;
 use crate::func::backend::validation::{FuncBackendValidateStringValueArgs, ValidationError};
 use crate::func::backend::{
-    js_attribute::FuncBackendJsAttributeArgs, js_code_generation::FuncBackendJsCodeGenerationArgs,
+    js_code_generation::FuncBackendJsCodeGenerationArgs,
     js_qualification::FuncBackendJsQualificationArgs, js_resource::FuncBackendJsResourceSyncArgs,
-    string::FuncBackendStringArgs,
 };
 use crate::func::binding::{FuncBinding, FuncBindingError};
 use crate::func::binding_return_value::FuncBindingReturnValue;
@@ -37,14 +33,12 @@ use crate::schema::variant::{SchemaVariantError, SchemaVariantId};
 use crate::schema::SchemaVariant;
 use crate::validation_resolver::ValidationResolverContext;
 use crate::ws_event::{WsEvent, WsEventError};
-
-use crate::func::backend::array::FuncBackendArrayArgs;
-use crate::func::backend::boolean::FuncBackendBooleanArgs;
-use crate::func::backend::prop_object::FuncBackendPropObjectArgs;
+use crate::AttributeContextBuilderError;
+use crate::AttributeValueId;
 use crate::{
     impl_standard_model, pk, qualification::QualificationError, standard_model,
-    standard_model_accessor, standard_model_belongs_to, standard_model_has_many, AttributeResolver,
-    AttributeResolverError, AttributeResolverId, CodeGenerationPrototype,
+    standard_model_accessor, standard_model_belongs_to, standard_model_has_many, AttributeContext,
+    AttributeContextError, AttributeReadContext, CodeGenerationPrototype,
     CodeGenerationPrototypeError, CodeGenerationResolver, CodeGenerationResolverError, Edge,
     EdgeError, Func, FuncBackendKind, HistoryActor, HistoryEventError, LabelEntry, LabelList, Node,
     NodeError, OrganizationError, Prop, PropError, PropId, PropKind, QualificationPrototype,
@@ -58,12 +52,24 @@ use crate::{
 
 #[derive(Error, Debug)]
 pub enum ComponentError {
+    #[error("AttributeContext error: {0}")]
+    AttributeContext(#[from] AttributeContextError),
+    #[error("AttributeContextBuilder error: {0}")]
+    AttributeContextBuilder(#[from] AttributeContextBuilderError),
     #[error("AttributeValue error: {0}")]
     AttributeValue(#[from] AttributeValueError),
     #[error("edit field error: {0}")]
     EditField(#[from] EditFieldError),
     #[error("edge error: {0}")]
     Edge(#[from] EdgeError),
+    #[error("missing attribute value for id: ({0})")]
+    MissingAttributeValue(AttributeValueId),
+    #[error("expected one root prop, found multiple: {0:?}")]
+    MultipleRootProps(Vec<Prop>),
+    #[error("root prop not found for schema variant: {0}")]
+    RootPropNotFound(SchemaVariantId),
+
+    // FIXME: change the below to be alphabetical and re-join with the above variants.
     #[error("qualification prototype error: {0}")]
     QualificationPrototype(#[from] QualificationPrototypeError),
     #[error("qualification resolver error: {0}")]
@@ -106,12 +112,6 @@ pub enum ComponentError {
     SchemaVariant(#[from] SchemaVariantError),
     #[error("unable to find system")]
     SystemNotFound,
-    #[error("attribute resolver error: {0}")]
-    AttributeResolver(#[from] AttributeResolverError),
-    #[error("missing attribute resolver: {0}")]
-    MissingAttributeResolver(AttributeResolverId),
-    #[error("missing parent attribute resolver for: {0}")]
-    MissingParentAttributeResolver(AttributeResolverId),
     #[error("missing a prop in attribute update: {0} not found")]
     MissingProp(PropId),
     #[error("missing a prop in attribute update: {0} not found")]
@@ -260,11 +260,10 @@ impl Component {
         name: impl AsRef<str>,
         schema_variant_id: &SchemaVariantId,
     ) -> ComponentResult<(Self, Node)> {
-        let mut schema_tenancy = tenancy.clone();
-        schema_tenancy.universal = true;
+        let read_tenancy = ReadTenancy::try_from_tenancy(txn, tenancy.clone()).await?;
 
         let schema_variant =
-            SchemaVariant::get_by_id(txn, &schema_tenancy, visibility, schema_variant_id)
+            SchemaVariant::get_by_id(txn, &(&read_tenancy).into(), visibility, schema_variant_id)
                 .await?
                 .ok_or(ComponentError::SchemaVariantNotFound)?;
         let schema = schema_variant
@@ -340,7 +339,7 @@ impl Component {
 
         let name: &str = name.as_ref();
         component
-            .set_prop_value_by_json_pointer(
+            .set_value_by_json_pointer(
                 txn,
                 nats,
                 veritech,
@@ -439,7 +438,8 @@ impl Component {
         prop_id: PropId,
         _edit_field_id: String,
         value: Option<serde_json::Value>,
-        key: Option<String>,
+        // TODO: Allow updating the key
+        _key: Option<String>,
     ) -> ComponentResult<()> {
         let read_tenancy = write_tenancy.clone_into_read_tenancy(txn).await?;
         let prop = Prop::get_by_id(txn, &(&read_tenancy).into(), visibility, &prop_id)
@@ -449,34 +449,9 @@ impl Component {
             .await?
             .ok_or(ComponentError::NotFound(component_id))?;
 
-        // TODO: Eventually, we'll need the logic to be more complex than stuffing everything into
-        // the "production" system, but that's a problem for "a week or two from now" us.
-        let mut systems = System::find_by_attr(
-            txn,
-            &(&read_tenancy).into(),
-            visibility,
-            "name",
-            &"production",
-        )
-        .await?;
-        let system = systems.pop().ok_or(ComponentError::SystemNotFound)?;
+        // TODO: AttributeValue::update_value
 
-        let (value, _attribute_resolver_id, created) = component
-            .resolve_attribute(
-                txn,
-                nats,
-                veritech.clone(),
-                encryption_key,
-                &write_tenancy.into(),
-                visibility,
-                history_actor,
-                &prop,
-                value,
-                None,
-                key,
-                *system.id(),
-            )
-            .await?;
+        let created = false;
 
         component
             .check_validations(
@@ -521,394 +496,6 @@ impl Component {
             .await?;
 
         Ok(())
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    #[async_recursion]
-    /// Perform the actual value setting for a given prop. If the value passed in is empty, we
-    /// greedily search for an attribute resolver to set the prop's default value, but "unsetting"
-    /// is currently unsupported beyond the initial implementation for "PropKind::String".
-    #[instrument(skip_all)]
-    pub async fn resolve_attribute(
-        &self,
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        veritech: veritech::Client,
-        encryption_key: &EncryptionKey,
-        tenancy: &Tenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
-        prop: &Prop,
-        value: Option<serde_json::Value>,
-        parent_attribute_resolver_id: Option<AttributeResolverId>,
-        key: Option<String>,
-        system_id: SystemId,
-    ) -> ComponentResult<(Option<serde_json::Value>, AttributeResolverId, bool)> {
-        let mut schema_tenancy = tenancy.clone();
-        schema_tenancy.universal = true;
-
-        // Allows for finding the default Attribute Resolver for a Prop
-        let mut attribute_resolver_context = AttributeResolverContext::new();
-        attribute_resolver_context.set_prop_id(*prop.id());
-
-        fn as_type<T: serde::de::DeserializeOwned>(json: serde_json::Value) -> ComponentResult<T> {
-            T::deserialize(&json).map_err(|_| {
-                ComponentError::InvalidPropValue(std::any::type_name::<T>().to_owned(), json)
-            })
-        }
-
-        async fn set_value<T: Serialize>(
-            txn: &PgTxn<'_>,
-            nats: &NatsTxn,
-            veritech: veritech::Client,
-            encryption_key: &EncryptionKey,
-            tenancy: &Tenancy,
-            visibility: &Visibility,
-            history_actor: &HistoryActor,
-            func_name: &str,
-            args: T,
-        ) -> ComponentResult<(Func, FuncBinding, bool)> {
-            let mut schema_tenancy = tenancy.clone();
-            schema_tenancy.universal = true;
-
-            let func_name = func_name.to_owned();
-            let mut funcs =
-                Func::find_by_attr(txn, &schema_tenancy, visibility, "name", &func_name).await?;
-            let func = funcs.pop().ok_or(ComponentError::MissingFunc(func_name))?;
-            let (func_binding, created) = FuncBinding::find_or_create(
-                txn,
-                nats,
-                &tenancy.into(),
-                visibility,
-                history_actor,
-                serde_json::to_value(args)?,
-                *func.id(),
-                *func.backend_kind(),
-            )
-            .await?;
-
-            // Note for future humans - if this isn't a built in, then we need to
-            // think about execution time. Probably higher up than this? But just
-            // an FYI.
-            if created {
-                func_binding
-                    .execute(txn, nats, veritech, encryption_key)
-                    .await?;
-            }
-            Ok((func, func_binding, created))
-        }
-
-        async fn unset_value(
-            txn: &PgTxn<'_>,
-            nats: &NatsTxn,
-            veritech: veritech::Client,
-            encryption_key: &EncryptionKey,
-            tenancy: &Tenancy,
-            visibility: &Visibility,
-            history_actor: &HistoryActor,
-            args_default: FuncBackendJsAttributeArgs,
-            attribute_resolver_context: AttributeResolverContext,
-        ) -> ComponentResult<(Func, FuncBinding, bool)> {
-            let mut schema_tenancy = tenancy.clone();
-            schema_tenancy.universal = true;
-
-            if let Some(resolver) = AttributeResolver::find_for_context(
-                txn,
-                &schema_tenancy,
-                visibility,
-                attribute_resolver_context,
-            )
-            .await?
-            {
-                let func = Func::get_by_id(txn, &schema_tenancy, visibility, &resolver.func_id())
-                    .await?
-                    .ok_or_else(|| ComponentError::MissingFunc(resolver.func_id().to_string()))?;
-                let (func_binding, created) = FuncBinding::find_or_create(
-                    txn,
-                    nats,
-                    &tenancy.into(),
-                    visibility,
-                    history_actor,
-                    serde_json::to_value(&args_default)?,
-                    *func.id(),
-                    *func.backend_kind(),
-                )
-                .await?;
-
-                if created {
-                    func_binding
-                        .execute(txn, nats, veritech, encryption_key)
-                        .await?;
-                }
-
-                Ok((func, func_binding, created))
-            } else {
-                set_value(
-                    txn,
-                    nats,
-                    veritech,
-                    encryption_key,
-                    tenancy,
-                    visibility,
-                    history_actor,
-                    "si:unset",
-                    (),
-                )
-                .await
-            }
-        }
-
-        // We shouldn't be leaking this value, because it may or may not be actually set. But
-        // when you YOLO, YOLO hard. -- Adam
-        let (func, func_binding, created) = match (prop.kind(), value.clone()) {
-            (PropKind::Array, Some(value_json)) => {
-                // FIXME(nick): handle nesting for Array.
-
-                let value: Vec<serde_json::Value> = as_type(value_json)?;
-                set_value(
-                    txn,
-                    nats,
-                    veritech.clone(),
-                    encryption_key,
-                    tenancy,
-                    visibility,
-                    history_actor,
-                    "si:setArray",
-                    FuncBackendArrayArgs::new(value),
-                )
-                .await?
-            }
-            (PropKind::Boolean, Some(value_json)) => {
-                let value: bool = as_type(value_json)?;
-                set_value(
-                    txn,
-                    nats,
-                    veritech.clone(),
-                    encryption_key,
-                    tenancy,
-                    visibility,
-                    history_actor,
-                    "si:setBoolean",
-                    FuncBackendBooleanArgs::new(value),
-                )
-                .await?
-            }
-            (PropKind::Integer, Some(value_json)) => {
-                let value: i64 = as_type(value_json)?;
-                set_value(
-                    txn,
-                    nats,
-                    veritech.clone(),
-                    encryption_key,
-                    tenancy,
-                    visibility,
-                    history_actor,
-                    "si:setInteger",
-                    FuncBackendIntegerArgs::new(value),
-                )
-                .await?
-            }
-            (PropKind::Map, Some(value_json)) => {
-                // FIXME(nick): handle nesting for Map.
-
-                let value: serde_json::Map<String, serde_json::Value> = as_type(value_json)?;
-                set_value(
-                    txn,
-                    nats,
-                    veritech.clone(),
-                    encryption_key,
-                    tenancy,
-                    visibility,
-                    history_actor,
-                    "si:setMap",
-                    FuncBackendMapArgs::new(value),
-                )
-                .await?
-            }
-            (PropKind::Object, Some(value_json)) => {
-                // FIXME(nick): deny objects that aren't empty here. The value must be empty for a PropObject.
-                // FIXME(nick,jacob): add object nesting. This is incomplete!
-
-                let value: serde_json::Map<String, serde_json::Value> = as_type(value_json)?;
-                set_value(
-                    txn,
-                    nats,
-                    veritech.clone(),
-                    encryption_key,
-                    tenancy,
-                    visibility,
-                    history_actor,
-                    "si:setPropObject",
-                    FuncBackendPropObjectArgs::new(value),
-                )
-                .await?
-            }
-            (PropKind::String, Some(value_json)) => {
-                let value: String = as_type(value_json)?;
-
-                set_value(
-                    txn,
-                    nats,
-                    veritech.clone(),
-                    encryption_key,
-                    tenancy,
-                    visibility,
-                    history_actor,
-                    "si:setString",
-                    FuncBackendStringArgs::new(value),
-                )
-                .await?
-            }
-            (_, None) => {
-                let args_default = FuncBackendJsAttributeArgs {
-                    component: self
-                        .veritech_attribute_resolver_component(
-                            txn,
-                            &schema_tenancy,
-                            visibility,
-                            system_id,
-                        )
-                        .await?,
-                };
-                unset_value(
-                    txn,
-                    nats,
-                    veritech.clone(),
-                    encryption_key,
-                    tenancy,
-                    visibility,
-                    history_actor,
-                    args_default,
-                    attribute_resolver_context,
-                )
-                .await?
-            }
-        };
-
-        let mut attribute_resolver_context = AttributeResolverContext::new();
-        attribute_resolver_context.set_prop_id(*prop.id());
-        attribute_resolver_context.set_component_id(*self.id());
-
-        let parent_prop = prop.parent_prop(txn, visibility).await?;
-        let attribute_resolver = if let (Some(parent_prop), Some(parent_attribute_resolver_id)) =
-            (parent_prop, parent_attribute_resolver_id)
-        {
-            let attribute_resolver = AttributeResolver::new(
-                txn,
-                nats,
-                tenancy,
-                visibility,
-                history_actor,
-                *func.id(),
-                *func_binding.id(),
-                attribute_resolver_context,
-                key.clone(),
-            )
-            .await?;
-
-            attribute_resolver
-                .set_parent_attribute_resolver(
-                    txn,
-                    nats,
-                    visibility,
-                    history_actor,
-                    parent_attribute_resolver_id,
-                )
-                .await?;
-
-            // Next we make sure that our parent AttributeResolver resolves to an appropriate
-            // "empty" value for the PropKind, as long as we have a value.
-            // In the case where our value is `unset`, and there are no other children of our
-            // parent with a value (we were the last child that had a non-`unset` value), then
-            // we want to set our parent's value to be `unset` as well.
-
-            // TODO: Eventually, we'll need the logic to be more complex than stuffing everything into the "production" system, but that's a problem for "a week or two from now" us.
-            let mut systems =
-                System::find_by_attr(txn, tenancy, visibility, "name", &"production").await?;
-            let system = systems.pop().ok_or(ComponentError::SystemNotFound)?;
-            let current_parent_value = AttributeResolver::find_value_for_prop_and_component(
-                txn,
-                tenancy,
-                visibility,
-                *parent_prop.id(),
-                *self.id(),
-                *system.id(),
-            )
-            .await?;
-            let (should_change_parent, new_parent_prop_value) = if value.is_some() {
-                match parent_prop.kind() {
-                    PropKind::Array => (true, Some(serde_json::json![[]])),
-                    PropKind::Map | PropKind::Object => (true, Some(serde_json::json![{}])),
-                    _ => (false, None),
-                }
-            } else {
-                // If we're setting an AttributeResolver to Unset, we should only ever set the parent AttributeResolver
-                // to unset if this is the only remaining AttributeResolver that wasn't already Unset.
-                if AttributeResolver::any_siblings_are_set(
-                    txn,
-                    tenancy,
-                    visibility,
-                    *attribute_resolver.id(),
-                )
-                .await?
-                {
-                    (false, None)
-                } else {
-                    (true, None)
-                }
-            };
-            if should_change_parent
-                && current_parent_value.value() != new_parent_prop_value.as_ref()
-            {
-                let parent_attribute_resolver = AttributeResolver::get_by_id(
-                    txn,
-                    tenancy,
-                    visibility,
-                    &parent_attribute_resolver_id,
-                )
-                .await?
-                .ok_or(ComponentError::MissingAttributeResolver(
-                    parent_attribute_resolver_id,
-                ))?;
-                let parent_parent_attribute_resolver_id = parent_attribute_resolver
-                    .parent_attribute_resolver(txn, visibility)
-                    .await?
-                    .map(|ar| *ar.id());
-
-                self.resolve_attribute(
-                    txn,
-                    nats,
-                    veritech,
-                    encryption_key,
-                    tenancy,
-                    visibility,
-                    history_actor,
-                    &parent_prop,
-                    new_parent_prop_value,
-                    parent_parent_attribute_resolver_id,
-                    key,
-                    *system.id(),
-                )
-                .await?;
-            }
-
-            attribute_resolver
-        } else {
-            AttributeResolver::upsert(
-                txn,
-                nats,
-                tenancy,
-                visibility,
-                history_actor,
-                *func.id(),
-                *func_binding.id(),
-                attribute_resolver_context,
-                key,
-            )
-            .await?
-        };
-
-        Ok((value, *attribute_resolver.id(), created))
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -1441,32 +1028,56 @@ impl Component {
         system_id: SystemId,
     ) -> ComponentResult<veritech::ResolverFunctionComponent> {
         let read_tenancy = tenancy.clone_into_read_tenancy(txn).await?;
+        let attribute_context_base = AttributeReadContext {
+            system_id: Some(system_id),
+            ..AttributeReadContext::any()
+        };
+
         let parent_ids =
             Edge::find_component_configuration_parents(txn, &read_tenancy, visibility, self.id())
                 .await?;
         let mut parents = Vec::with_capacity(parent_ids.len());
         for id in parent_ids {
-            let view = ComponentView::for_component_and_system(
-                txn,
-                &read_tenancy,
-                visibility,
-                id,
-                system_id,
-            )
-            .await?;
+            let component = Component::get_by_id(txn, tenancy, visibility, &id)
+                .await?
+                .ok_or(ComponentError::NotFound(id))?;
+            let schema = component
+                .schema_with_tenancy(txn, &(&read_tenancy).into(), visibility)
+                .await?
+                .ok_or(ComponentError::SchemaNotFound)?;
+            let schema_variant = component
+                .schema_variant_with_tenancy(txn, &(&read_tenancy).into(), visibility)
+                .await?
+                .ok_or(ComponentError::SchemaVariantNotFound)?;
+            let read_context = AttributeReadContext {
+                schema_id: Some(*schema.id()),
+                schema_variant_id: Some(*schema_variant.id()),
+                component_id: Some(id),
+                ..attribute_context_base
+            };
+            let view =
+                ComponentView::for_context(txn, &read_tenancy, visibility, read_context).await?;
             parents.push(veritech::ComponentView::from(view));
         }
 
-        let component = veritech::ResolverFunctionComponent {
-            data: ComponentView::for_component_and_system(
-                txn,
-                &read_tenancy,
-                visibility,
-                *self.id(),
-                system_id,
-            )
+        let schema = self
+            .schema_with_tenancy(txn, &(&read_tenancy).into(), visibility)
             .await?
-            .into(),
+            .ok_or(ComponentError::SchemaNotFound)?;
+        let schema_variant = self
+            .schema_variant_with_tenancy(txn, &(&read_tenancy).into(), visibility)
+            .await?
+            .ok_or(ComponentError::SchemaVariantNotFound)?;
+        let read_context = AttributeReadContext {
+            schema_id: Some(*schema.id()),
+            schema_variant_id: Some(*schema_variant.id()),
+            component_id: Some(*self.id()),
+            ..attribute_context_base
+        };
+        let component = veritech::ResolverFunctionComponent {
+            data: ComponentView::for_context(txn, &read_tenancy, visibility, read_context)
+                .await?
+                .into(),
             parents,
         };
         Ok(component)
@@ -1480,14 +1091,24 @@ impl Component {
         system_id: SystemId,
     ) -> ComponentResult<ComponentView> {
         let read_tenancy = tenancy.clone_into_read_tenancy(txn).await?;
-        let component = ComponentView::for_component_and_system(
-            txn,
-            &read_tenancy,
-            visibility,
-            *self.id(),
-            system_id,
-        )
-        .await?;
+        let schema = self
+            .schema_with_tenancy(txn, &(&read_tenancy).into(), visibility)
+            .await?
+            .ok_or(ComponentError::SchemaNotFound)?;
+        let schema_variant = self
+            .schema_variant_with_tenancy(txn, &(&read_tenancy).into(), visibility)
+            .await?
+            .ok_or(ComponentError::SchemaVariantNotFound)?;
+        let attribute_context = AttributeReadContext {
+            schema_id: Some(*schema.id()),
+            schema_variant_id: Some(*schema_variant.id()),
+            component_id: Some(*self.id()),
+            system_id: Some(system_id),
+            ..AttributeReadContext::any()
+        };
+
+        let component =
+            ComponentView::for_context(txn, &read_tenancy, visibility, attribute_context).await?;
         Ok(component)
     }
 
@@ -1499,14 +1120,24 @@ impl Component {
         system_id: SystemId,
     ) -> ComponentResult<ComponentView> {
         let read_tenancy = tenancy.clone_into_read_tenancy(txn).await?;
-        let component = ComponentView::for_component_and_system(
-            txn,
-            &read_tenancy,
-            visibility,
-            *self.id(),
-            system_id,
-        )
-        .await?;
+        let schema = self
+            .schema_with_tenancy(txn, &(&read_tenancy).into(), visibility)
+            .await?
+            .ok_or(ComponentError::SchemaNotFound)?;
+        let schema_variant = self
+            .schema_variant_with_tenancy(txn, &(&read_tenancy).into(), visibility)
+            .await?
+            .ok_or(ComponentError::SchemaVariantNotFound)?;
+        let attribute_context = AttributeReadContext {
+            schema_id: Some(*schema.id()),
+            schema_variant_id: Some(*schema_variant.id()),
+            component_id: Some(*self.id()),
+            system_id: Some(system_id),
+            ..AttributeReadContext::any()
+        };
+
+        let component =
+            ComponentView::for_context(txn, &read_tenancy, visibility, attribute_context).await?;
         Ok(component)
     }
 
@@ -1518,6 +1149,10 @@ impl Component {
         system_id: SystemId,
     ) -> ComponentResult<veritech::QualificationCheckComponent> {
         let read_tenancy = tenancy.clone_into_read_tenancy(txn).await?;
+        let base_attribute_context = AttributeReadContext {
+            system_id: Some(system_id),
+            ..AttributeReadContext::any()
+        };
 
         let parent_ids =
             Edge::find_component_configuration_parents(txn, &read_tenancy, visibility, self.id())
@@ -1525,27 +1160,23 @@ impl Component {
 
         let mut parents = Vec::new();
         for id in parent_ids {
-            let view = ComponentView::for_component_and_system(
-                txn,
-                &read_tenancy,
-                visibility,
-                id,
-                system_id,
-            )
-            .await?;
+            let read_context = AttributeReadContext {
+                component_id: Some(id),
+                ..base_attribute_context
+            };
+            let view =
+                ComponentView::for_context(txn, &read_tenancy, visibility, read_context).await?;
             parents.push(veritech::ComponentView::from(view));
         }
 
+        let read_context = AttributeReadContext {
+            component_id: Some(*self.id()),
+            ..base_attribute_context
+        };
         let qualification_view = veritech::QualificationCheckComponent {
-            data: ComponentView::for_component_and_system(
-                txn,
-                &read_tenancy,
-                visibility,
-                *self.id(),
-                system_id,
-            )
-            .await?
-            .into(),
+            data: ComponentView::for_context(txn, &read_tenancy, visibility, read_context)
+                .await?
+                .into(),
             codes: Self::list_code_generated_by_component_id(
                 txn,
                 &(&read_tenancy).into(),
@@ -1705,7 +1336,7 @@ impl Component {
     // Note: Won't work for arrays and maps
     #[instrument(skip_all)]
     #[allow(clippy::too_many_arguments)]
-    pub async fn set_prop_value_by_json_pointer<T: Serialize + std::fmt::Debug>(
+    pub async fn set_value_by_json_pointer<T: Serialize + std::fmt::Debug + std::clone::Clone>(
         &self,
         txn: &PgTxn<'_>,
         nats: &NatsTxn,
@@ -1717,45 +1348,76 @@ impl Component {
         json_pointer: &str,
         value: Option<T>,
     ) -> ComponentResult<Option<T>> {
-        let prop = self
-            .find_prop_by_json_pointer(txn, tenancy, visibility, json_pointer)
-            .await?;
+        let read_tenancy = ReadTenancy::try_from_tenancy(txn, tenancy.clone()).await?;
 
-        if let Some(prop) = prop {
-            // This was copied from sdf's update_from_edit_field service
-            Self::update_prop_from_edit_field(
+        let attribute_value = self
+            .find_attribute_value_by_json_pointer(txn, &read_tenancy, visibility, json_pointer)
+            .await?
+            .ok_or(AttributeValueError::Missing)?;
+
+        let schema_variant = self
+            .schema_variant_with_tenancy(txn, &(&read_tenancy).into(), visibility)
+            .await?
+            .ok_or(ComponentError::SchemaVariantNotFound)?;
+        let schema = schema_variant
+            .schema(txn, visibility)
+            .await?
+            .ok_or(ComponentError::SchemaNotFound)?;
+
+        let attribute_context = AttributeContext::builder()
+            .set_component_id(*self.id())
+            .set_schema_variant_id(*schema_variant.id())
+            .set_schema_id(*schema.id())
+            .set_prop_id(attribute_value.context.prop_id())
+            .to_context()?;
+
+        let json_value = match value.clone() {
+            Some(v) => Some(serde_json::to_value(v)?),
+            None => None,
+        };
+
+        let mut json_path_parts = json_pointer.split('/').collect::<Vec<&str>>();
+        json_path_parts.pop();
+        let parent_json_pointer = json_path_parts.join("/");
+        let parent_attribute_value_id = self
+            .find_attribute_value_by_json_pointer(
                 txn,
-                nats,
-                veritech,
-                encryption_key,
-                &tenancy.into(),
+                &read_tenancy,
                 visibility,
-                history_actor,
-                *self.id(),
-                *prop.id(),
-                json_pointer[1..].replace('/', "."),
-                value.as_ref().map(serde_json::to_value).transpose()?,
-                None, // TODO: Eventually, pass the key! -- Adam
+                &parent_json_pointer,
             )
-            .await?;
-            Ok(value)
-        } else {
-            Err(ComponentError::PropNotFound(json_pointer.to_owned()))
-        }
+            .await?
+            .map(|av| *av.id());
+
+        AttributeValue::update_for_context(
+            txn,
+            nats,
+            veritech,
+            encryption_key,
+            &tenancy.into(),
+            visibility,
+            history_actor,
+            *attribute_value.id(),
+            parent_attribute_value_id,
+            attribute_context,
+            json_value,
+            None,
+        )
+        .await?;
+
+        Ok(value)
     }
 
     #[instrument(skip_all)]
     pub async fn find_prop_by_json_pointer(
         &self,
         txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
+        read_tenancy: &ReadTenancy,
         visibility: &Visibility,
         json_pointer: &str,
     ) -> ComponentResult<Option<Prop>> {
-        let mut schema_tenancy = tenancy.clone();
-        schema_tenancy.universal = true;
         let schema_variant = self
-            .schema_variant_with_tenancy(txn, &schema_tenancy, visibility)
+            .schema_variant_with_tenancy(txn, &read_tenancy.into(), visibility)
             .await?
             .ok_or(ComponentError::SchemaVariantNotFound)?;
 
@@ -1775,48 +1437,76 @@ impl Component {
                     None => return Ok(Some(prop)),
                 };
                 work_queue.clear();
-                work_queue.extend(prop.child_props(txn, &schema_tenancy, visibility).await?);
+                work_queue.extend(
+                    prop.child_props(txn, &read_tenancy.into(), visibility)
+                        .await?,
+                );
             }
         }
+
         Ok(None)
     }
 
     #[instrument(skip_all)]
-    pub async fn find_prop_value_by_json_pointer<
-        T: serde::de::DeserializeOwned + std::fmt::Debug,
-    >(
+    pub async fn find_attribute_value_by_json_pointer(
         &self,
         txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
+        read_tenancy: &ReadTenancy,
+        visibility: &Visibility,
+        json_pointer: &str,
+    ) -> ComponentResult<Option<AttributeValue>> {
+        if let Some(prop) = self
+            .find_prop_by_json_pointer(txn, read_tenancy, visibility, json_pointer)
+            .await?
+        {
+            let read_context = AttributeReadContext {
+                prop_id: Some(*prop.id()),
+                component_id: Some(*self.id()),
+                ..AttributeReadContext::any()
+            };
+
+            return Ok(Some(
+                AttributeValue::find_for_context(txn, read_tenancy, visibility, read_context)
+                    .await?
+                    .pop()
+                    .ok_or(AttributeValueError::Missing)?,
+            ));
+        };
+
+        Ok(None)
+    }
+
+    #[instrument(skip_all)]
+    pub async fn find_value_by_json_pointer<T: serde::de::DeserializeOwned + std::fmt::Debug>(
+        &self,
+        txn: &PgTxn<'_>,
+        read_tenancy: &ReadTenancy,
         visibility: &Visibility,
         json_pointer: &str,
     ) -> ComponentResult<Option<T>> {
-        let prop = self
-            .find_prop_by_json_pointer(txn, tenancy, visibility, json_pointer)
-            .await?;
-        if let Some(prop) = prop {
-            // Copied from edit_field_for_prop, this is bad tho
-            let system_id = UNSET_ID_VALUE.into();
-            match AttributeResolver::find_value_for_prop_and_component(
-                txn,
-                tenancy,
-                visibility,
-                *prop.id(),
-                *self.id(),
-                system_id,
-            )
-            .await
-            {
-                Ok(v) => Ok(v.value().cloned().map(serde_json::from_value).transpose()?),
-                Err(e) => {
-                    dbg!("missing attribute resolver; might be fine, might be a bug! who knows? only god.");
-                    dbg!(&e);
-                    Ok(None)
-                }
-            }
-        } else {
-            Ok(None)
-        }
+        if let Some(attribute_value) = self
+            .find_attribute_value_by_json_pointer(txn, read_tenancy, visibility, json_pointer)
+            .await?
+        {
+            if let Some(fbrv_id) = attribute_value.func_binding_return_value_id() {
+                if let Some(fbrv) = FuncBindingReturnValue::get_by_id(
+                    txn,
+                    &read_tenancy.into(),
+                    visibility,
+                    fbrv_id,
+                )
+                .await?
+                {
+                    return Ok(fbrv
+                        .value()
+                        .cloned()
+                        .map(serde_json::from_value)
+                        .transpose()?);
+                };
+            };
+        };
+
+        Ok(None)
     }
 }
 
@@ -1840,39 +1530,40 @@ impl EditFieldAble for Component {
             .ok_or(ComponentError::NotFound(*id))?;
 
         let mut edit_fields = vec![];
-        let schema_variant = component
+        let schema_variant: SchemaVariant = component
             .schema_variant_with_tenancy(txn, &read_tenancy.into(), visibility)
             .await?
             .ok_or(ComponentError::SchemaVariantNotFound)?;
 
-        let props = schema_variant.props(txn, visibility).await?;
-        for prop in &props {
-            // TODO: remove this as soon as edit fields are implemented
-            // But for now we need the boilerplate to setup the props even if not editable
-            // So it was breaking some tests
-            if *prop.kind() == PropKind::Array || *prop.kind() == PropKind::Map {
-                continue;
-            }
-
-            // schema_variant.props returns all props, even if not root, this is a hotfix
-            if prop.parent_prop(txn, visibility).await?.is_some() {
-                continue;
-            }
-
-            edit_fields.push(
-                edit_field_for_prop(
-                    txn,
-                    &read_tenancy.into(),
-                    visibility,
-                    &head_visibility,
-                    &change_set_visibility,
-                    prop,
-                    &component,
-                    None,
-                )
-                .await?,
-            );
+        // NOTE(nick): this can be more elegant, but it works. We want to ensure we only find the
+        // root prop at this point.
+        let mut props = schema_variant.props(txn, visibility).await?;
+        if props.len() > 1 {
+            return Err(ComponentError::MultipleRootProps(props));
         }
+        let root_prop = props
+            .pop()
+            .ok_or_else(|| ComponentError::RootPropNotFound(*schema_variant.id()))?;
+
+        // NOTE(nick): it is a bit wasteful that we get the attribute value here and then do it
+        // again within the call below, but it ~~works~~.
+        let attribute_value: AttributeValue =
+            AttributeValue::find_for_prop(txn, read_tenancy, visibility, *root_prop.id()).await?;
+
+        // Parent attribute value must be "None" since we are dealing with the root prop.
+        edit_fields.push(
+            edit_field_for_attribute_value(
+                txn,
+                read_tenancy,
+                visibility,
+                &head_visibility,
+                &change_set_visibility,
+                *attribute_value.id(),
+                None,
+                None,
+            )
+            .await?,
+        );
 
         Ok(edit_fields)
     }
@@ -1895,111 +1586,66 @@ impl EditFieldAble for Component {
 
 #[allow(clippy::too_many_arguments)]
 #[async_recursion]
-async fn edit_field_for_prop(
+async fn edit_field_for_attribute_value(
     txn: &PgTxn<'_>,
-    tenancy: &Tenancy,
+    read_tenancy: &ReadTenancy,
     visibility: &Visibility,
     head_visibility: &Visibility,
     change_set_visibility: &Visibility,
-    prop: &Prop,
-    component: &Component,
+    attribute_value_id: AttributeValueId,
+    parent_attribute_value_id: Option<AttributeValueId>,
     edit_field_path: Option<Vec<String>>,
 ) -> ComponentResult<EditField> {
-    let system_id = UNSET_ID_VALUE.into();
-    let current_value: Option<FuncBindingReturnValue> =
-        match AttributeResolver::find_value_for_prop_and_component(
-            txn,
-            tenancy,
-            visibility,
-            *prop.id(),
-            *component.id(),
-            system_id,
-        )
-        .await
-        {
-            Ok(v) => Some(v),
-            Err(e) => {
-                dbg!("missing attribute resolver; might be fine, might be a bug! who knows? only god.");
-                dbg!(&e);
-                None
-            }
-        };
-    let head_value: Option<FuncBindingReturnValue> = if visibility.in_change_set() {
-        match AttributeResolver::find_value_for_prop_and_component(
-            txn,
-            tenancy,
-            head_visibility,
-            *prop.id(),
-            *component.id(),
-            system_id,
-        )
-        .await
-        {
-            Ok(v) => Some(v),
-            Err(e) => {
-                dbg!("missing attribute resolver; might be fine, might be a bug! who knows? only god.");
-                dbg!(&e);
-                None
-            }
-        }
-    } else {
-        None
-    };
-    let change_set_value: Option<FuncBindingReturnValue> = if visibility.in_change_set() {
-        match AttributeResolver::find_value_for_prop_and_component(
-            txn,
-            tenancy,
-            change_set_visibility,
-            *prop.id(),
-            *component.id(),
-            system_id,
-        )
-        .await
-        {
-            Ok(v) => Some(v),
-            Err(e) => {
-                dbg!("missing attribute resolver; might be fine, might be a bug! who knows? only god.");
-                dbg!(&e);
-                None
-            }
-        }
-    } else {
-        None
-    };
+    let tenancy = Tenancy::from_read_tenancy(read_tenancy.clone());
+
+    let attribute_value: AttributeValue =
+        AttributeValue::get_by_id(txn, &tenancy, visibility, &attribute_value_id)
+            .await?
+            .ok_or(ComponentError::MissingAttributeValue(attribute_value_id))?;
+    let prop =
+        AttributeValue::find_prop_for_value(txn, read_tenancy, visibility, *attribute_value.id())
+            .await?;
 
     let field_name = prop.name();
     let object_kind = EditFieldObjectKind::ComponentProp;
 
-    fn extract_value(fbrv: &FuncBindingReturnValue) -> Option<&serde_json::Value> {
-        fbrv.value()
-    }
+    // FIXME(nick): fix visibility diff and value to handle arrays and maps.
+    //  - Get head_value if visibility.in_change_set()
+    //  - Get change_set_value if visibility.in_change_set()
+    //
+    // fn extract_value_from_fbrv(fbrv: &FuncBindingReturnValue) -> Option<&serde_json::Value> {
+    //     fbrv.value()
+    // }
+    //
+    // let (value, visibility_diff) = edit_field::value_and_visibility_diff_json_option(
+    //     visibility,
+    //     current_fbrv.as_ref(),
+    //     extract_value_from_fbrv,
+    //     head_fbrv.as_ref(),
+    //     change_set_fbrv.as_ref(),
+    // )?;
 
-    let (value, visibility_diff) = value_and_visibility_diff_json_option(
-        visibility,
-        current_value.as_ref(),
-        extract_value,
-        head_value.as_ref(),
-        change_set_value.as_ref(),
-    )?;
+    let validation_errors = Vec::new();
 
-    let mut validation_errors = Vec::new();
-    let validation_field_values = ValidationResolver::find_values_for_prop_and_component(
-        txn,
-        &tenancy.clone_into_read_tenancy(txn).await?,
-        visibility,
-        *prop.id(),
-        *component.id(),
-        system_id,
-    )
-    .await?;
-    for field_value in validation_field_values.into_iter() {
-        if let Some(value_json) = field_value.value() {
-            // This clone shouldn't be necessary, but we have no way to get to the owned value -- Adam
-            let mut validation_error: Vec<ValidationError> =
-                serde_json::from_value(value_json.clone())?;
-            validation_errors.append(&mut validation_error);
-        }
-    }
+    // FIXME(nick): change validation resolver query to use attribute values instead.
+    //
+    // let validation_field_values = ValidationResolver::find_values_for_prop_and_component(
+    //     txn,
+    //     &tenancy.clone_into_read_tenancy(txn).await?,
+    //     visibility,
+    //     *prop.id(),
+    //     *component.id(),
+    //     system_id,
+    // )
+    // .await?;
+    // for field_value in validation_field_values.into_iter() {
+    //     if let Some(value_json) = field_value.value() {
+    //         // This clone shouldn't be necessary, but we have no way to get to the owned value -- Adam
+    //         let mut validation_error: Vec<ValidationError> =
+    //             serde_json::from_value(value_json.clone())?;
+    //         validation_errors.append(&mut validation_error);
+    //     }
+    // }
 
     let current_edit_field_path = match edit_field_path {
         None => vec!["properties".to_owned()],
@@ -2011,7 +1657,7 @@ async fn edit_field_for_prop(
     let widget = match prop.widget_kind() {
         WidgetKind::SecretSelect => {
             let mut entries = Vec::new();
-            let secrets = Secret::list(txn, tenancy, visibility).await?;
+            let secrets = Secret::list(txn, &tenancy, visibility).await?;
 
             for secret in secrets.into_iter() {
                 entries.push(LabelEntry::new(
@@ -2023,36 +1669,28 @@ async fn edit_field_for_prop(
         }
         WidgetKind::Text => Widget::Text(TextWidget::new()),
         WidgetKind::Array | WidgetKind::Header => {
-            // NOTE: This ends up being ugly, and double checking what prop.kind() is
-            //       to avoid doing the child prop lookup if we're building the Widget
-            //       for a PropKind that "can't" have children. It may be worth taking
-            //       the hit and always looking up what the children are, even if
-            //       we're never going to use them, just to make this arm of the match
-            //       less gross.
             let mut child_edit_fields = vec![];
-            for child_prop in prop.child_props(txn, tenancy, visibility).await? {
-                // TODO: remove this as soon as edit fields are implemented
-                // But for now we need the boilerplate to setup the props even if not editable
-                // So it was breaking some tests
-                if *child_prop.kind() == PropKind::Array || *child_prop.kind() == PropKind::Map {
-                    continue;
-                }
-
+            for child_attribute_value in attribute_value
+                .child_attribute_values(txn, &tenancy, visibility)
+                .await?
+            {
+                // Use the current attribute value as the parent when creating the child edit field.
                 child_edit_fields.push(
-                    edit_field_for_prop(
+                    edit_field_for_attribute_value(
                         txn,
-                        tenancy,
+                        read_tenancy,
                         visibility,
                         head_visibility,
                         change_set_visibility,
-                        &child_prop,
-                        component,
+                        *child_attribute_value.id(),
+                        Some(attribute_value_id),
                         Some(edit_field_path_for_children.clone()),
                     )
                     .await?,
                 );
             }
 
+            // FIXME(nick): need to eventually figure out the widget situation for arrays and maps.
             if *prop.kind() == PropKind::Array {
                 todo!("Need to handle Array props");
             } else if *prop.kind() == PropKind::Map {
@@ -2065,23 +1703,22 @@ async fn edit_field_for_prop(
         WidgetKind::Checkbox => Widget::Checkbox(CheckboxWidget::new()),
     };
 
+    // FIXME(nick): re-introduce value and visibility diff.
     let mut edit_field = EditField::new(
         field_name,
         current_edit_field_path,
         object_kind,
-        *component.id(),
+        attribute_value_id,
         (*prop.kind()).into(),
         widget,
-        value,
-        visibility_diff,
+        None,
+        VisibilityDiff::None,
         validation_errors,
     );
-    edit_field.set_baggage(EditFieldBaggage::ComponentProp(
-        EditFieldBaggageComponentProp {
-            prop_id: *prop.id(),
-            system_id: None,
-        },
-    ));
+    edit_field.set_baggage(EditFieldBaggage {
+        attribute_value_id,
+        parent_attribute_value_id,
+    });
 
     Ok(edit_field)
 }

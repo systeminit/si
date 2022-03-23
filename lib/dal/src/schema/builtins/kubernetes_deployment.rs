@@ -46,14 +46,12 @@ pub async fn kubernetes_deployment(
         write_tenancy,
         visibility,
         history_actor,
+        *schema.id(),
         "v0",
         veritech.clone(),
         encryption_key,
     )
     .await?;
-    variant
-        .set_schema(txn, nats, visibility, history_actor, schema.id())
-        .await?;
     schema
         .set_default_schema_variant_id(txn, nats, visibility, history_actor, Some(*variant.id()))
         .await?;
@@ -66,7 +64,6 @@ pub async fn kubernetes_deployment(
             write_tenancy,
             visibility,
             history_actor,
-            variant.id(),
             "apiVersion",
             "apps/v1".to_owned(),
             Some(root_prop.domain_prop_id),
@@ -83,7 +80,6 @@ pub async fn kubernetes_deployment(
             write_tenancy,
             visibility,
             history_actor,
-            variant.id(),
             "kind",
             "Deployment".to_owned(),
             Some(root_prop.domain_prop_id),
@@ -100,7 +96,6 @@ pub async fn kubernetes_deployment(
             write_tenancy,
             visibility,
             history_actor,
-            variant.id(),
             true, // is name required, note: bool is not ideal here tho
             Some(root_prop.domain_prop_id),
             veritech.clone(),
@@ -118,7 +113,6 @@ pub async fn kubernetes_deployment(
             write_tenancy,
             visibility,
             history_actor,
-            variant.id(),
             "spec",
             PropKind::Object,
             Some(root_prop.domain_prop_id),
@@ -134,7 +128,6 @@ pub async fn kubernetes_deployment(
                 write_tenancy,
                 visibility,
                 history_actor,
-                variant.id(),
                 "replicas",
                 PropKind::Integer,
                 Some(*spec_prop.id()),
@@ -151,7 +144,6 @@ pub async fn kubernetes_deployment(
                 write_tenancy,
                 visibility,
                 history_actor,
-                variant.id(),
                 Some(*spec_prop.id()),
             )
             .await?;
@@ -164,7 +156,6 @@ pub async fn kubernetes_deployment(
                 write_tenancy,
                 visibility,
                 history_actor,
-                variant.id(),
                 Some(*spec_prop.id()),
                 veritech.clone(),
                 encryption_key,
