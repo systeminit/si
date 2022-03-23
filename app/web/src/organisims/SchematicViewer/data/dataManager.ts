@@ -21,6 +21,7 @@ export class SchematicDataManager {
   connectionCreate$: Rx.ReplaySubject<ConnectionCreate | null>;
   nodeCreate$: Rx.ReplaySubject<NodeCreate | null>;
   editorContext$: Rx.ReplaySubject<EditorContext | null>;
+  schematicKind$: Rx.ReplaySubject<SchematicKind | null>;
 
   constructor() {
     this.id = _.uniqueId();
@@ -42,6 +43,9 @@ export class SchematicDataManager {
     this.editorContext$ = new Rx.ReplaySubject<EditorContext | null>(1);
     this.editorContext$.next(null);
 
+    this.schematicKind$ = new Rx.ReplaySubject<SchematicKind | null>(1);
+    this.schematicKind$.next(null);
+
     this.initialize();
   }
 
@@ -53,9 +57,10 @@ export class SchematicDataManager {
 
   async updateNodePosition(nodeUpdate: NodeUpdate | null): Promise<void> {
     const editorContext = await Rx.firstValueFrom(this.editorContext$);
+    const schematicKind = await Rx.firstValueFrom(this.schematicKind$);
     if (nodeUpdate && editorContext) {
       SchematicService.setNodePosition({
-        schematicKind: SchematicKind.Component,
+        schematicKind,
         x: `${nodeUpdate.position.x}`,
         y: `${nodeUpdate.position.y}`,
         nodeId: nodeUpdate.nodeId,

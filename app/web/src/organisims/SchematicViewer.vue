@@ -1,12 +1,13 @@
 <template>
   <div :id="viewerId" class="w-full h-full">
     <Viewer
-      v-if="schematicData && editorContext"
+      v-if="schematicData && editorContext && schematicKind"
       :schematic-viewer-id="viewerId"
       :viewer-state="viewerState"
       :schematic-data="schematicData"
       :viewer-event$="props.viewerEvent$"
       :editor-context="editorContext"
+      :schematic-kind="schematicKind"
     />
   </div>
 </template>
@@ -28,9 +29,11 @@ import { GlobalErrorService } from "@/service/global_error";
 // import { schematicData$ } from "./SchematicViewer/data";
 import { Schematic } from "./SchematicViewer/model";
 import { refFrom } from "vuse-rx";
+import { editSessionWritten$ } from "@/observable/edit_session";
 import { applicationNodeId$ } from "@/observable/application";
 import { system$ } from "@/observable/system";
-import { EditorContext } from "@/api/sdf/dal/schematic";
+import { visibility$ } from "@/observable/visibility";
+import { EditorContext, SchematicKind } from "@/api/sdf/dal/schematic";
 import { combineLatest, from } from "rxjs";
 import { switchMap } from "rxjs/operators";
 import { ViewerEvent } from "./SchematicViewer/event";
@@ -59,6 +62,10 @@ const props = defineProps({
     required: false,
     default: undefined,
   },
+  schematicKind: {
+    type: String as PropType<SchematicKind | null>,
+    required: true,
+  },
 });
 
 const componentName = "SchematicViewer";
@@ -68,7 +75,12 @@ const viewerId = componentName + "-" + componentId;
 const viewerState = new ViewerStateMachine();
 
 const schematicData = refFrom<Schematic | null>(
-  combineLatest([system$, applicationNodeId$]).pipe(
+  combineLatest([
+    system$,
+    applicationNodeId$,
+    editSessionWritten$,
+    visibility$,
+  ]).pipe(
     switchMap(([system, applicationNodeId]) => {
       if (system && applicationNodeId) {
         return SchematicService.getSchematic({
@@ -95,7 +107,7 @@ const schematicData = refFrom<Schematic | null>(
 );
 
 const editorContext = refFrom<EditorContext | null>(
-  combineLatest([system$, applicationNodeId$]).pipe(
+  combineLatest([system$, applicationNodeId$, visibility$]).pipe(
     switchMap(([system, applicationNodeId]) => {
       if (applicationNodeId) {
         return from([{ systemId: system?.id, applicationNodeId }]);

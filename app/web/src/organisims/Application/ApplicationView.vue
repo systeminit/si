@@ -69,6 +69,7 @@ import {
 } from "vue-router";
 import { ChangeSetService } from "@/service/change_set";
 import { refFrom, untilUnmounted } from "vuse-rx";
+import { switchToHead } from "@/service/change_set/switch_to_head";
 import _ from "lodash";
 import { ApplicationService } from "@/service/application";
 import { setIfError } from "@/service/global_error";
@@ -111,6 +112,7 @@ const leave = () => {
   if (navDestination.value) {
     unsavedChangesModalShow.value = false;
     reallyLeave.value = true;
+    switchToHead();
     router
       .push(navDestination.value)
       .catch((err) => console.log("route error", { err }));

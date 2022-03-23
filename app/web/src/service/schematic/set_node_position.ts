@@ -11,7 +11,7 @@ import { workspace$ } from "@/observable/workspace";
 import _ from "lodash";
 
 export interface SetNodePositionArgs {
-  nodeId: string;
+  nodeId: number;
   schematicKind: SchematicKind;
   rootNodeId: number;
   systemId?: number;

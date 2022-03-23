@@ -7,6 +7,7 @@ import { Grid, BACKGROUND_GRID_NAME } from "../obj";
 import { Schematic } from "../../model";
 import { Position } from "../cg";
 import { InteractionManager } from "../interaction";
+import { SelectionManager } from "../interaction/selection";
 
 export type SceneGraphData = Schematic;
 
@@ -94,17 +95,22 @@ export class SceneManager {
     this.root.addChild(this.group.connections);
   }
 
-  loadSceneData(data: SceneGraphData | null): void {
+  loadSceneData(
+    data: SceneGraphData | null,
+    selectionManager: SelectionManager,
+  ): void {
     this.initializeSceneData();
-
-    let render = false;
 
     if (data) {
       for (const n of data.nodes) {
         if (n.position.length > 0) {
           const node = new OBJ.Node(n);
+          // If the node was previously selected we re-select again as some operations
+          // were lost on the re-render (example: update node position)
+          if (node.id === (selectionManager.selection[0] ?? {}).id) {
+            selectionManager.select(node);
+          }
           this.addNode(node);
-          render = true;
         } else {
           // console.error("Node didn't have a position:", n);
         }
@@ -131,21 +137,12 @@ export class SceneManager {
               sourceSocket.name,
               destinationSocket.name,
             );
-            render = true;
           }
         }
       }
     }
 
-    if (render) {
-      this.renderer.renderStage();
-    }
-  }
-
-  reloadSceneData(data: SceneGraphData): void {
-    this.initializeSceneData();
-    this.loadSceneData(data);
-    // this.renderer.renderStage();
+    this.renderer.renderStage();
   }
 
   clearSceneData(): void {

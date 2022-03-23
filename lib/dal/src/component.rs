@@ -25,7 +25,6 @@ use crate::func::backend::{
 };
 use crate::func::binding::{FuncBinding, FuncBindingError};
 use crate::func::binding_return_value::FuncBindingReturnValue;
-use crate::node::NodeKind;
 use crate::qualification::QualificationView;
 use crate::qualification_resolver::QualificationResolverContext;
 use crate::resource_resolver::ResourceResolverContext;
@@ -302,7 +301,7 @@ impl Component {
             &tenancy.into(),
             visibility,
             history_actor,
-            &NodeKind::Component,
+            &(*schema.kind()).into(),
         )
         .await?;
         node.set_component(txn, nats, visibility, history_actor, component.id())

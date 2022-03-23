@@ -1,14 +1,12 @@
 import * as PIXI from "pixi.js";
+import * as Rx from "rxjs";
+import * as OBJ from "../obj";
 
 import { SceneManager } from "../scene";
 import { SchematicDataManager } from "../../data";
+import { SelectionManager } from "./selection";
 import { Renderer } from "../renderer";
-import * as OBJ from "../obj";
-import * as MODEL from "../../model";
 import { NodeCreate } from "../../data/event";
-import { EditorContext } from "@/api/sdf/dal/schematic";
-
-import { selection$ } from "../../state";
 
 export interface NodeAddInteractionData {
   position: {
@@ -22,43 +20,37 @@ export interface NodeAddInteractionData {
 export class NodeAddManager {
   sceneManager: SceneManager;
   dataManager: SchematicDataManager;
+  selectionManager: SelectionManager;
   renderer: Renderer;
   data?: PIXI.InteractionData | undefined;
   node?: OBJ.Node;
   // Note: this probably needs to not be data on this object, and instead be part of the
   // node template/node somewhere. :)
   nodeAddSchemaId?: number;
-  editorContext: EditorContext | null;
 
   constructor(
     sceneManager: SceneManager,
     dataManager: SchematicDataManager,
+    selectionManager: SelectionManager,
     renderer: Renderer,
-    editorContext: EditorContext | null,
   ) {
     this.sceneManager = sceneManager;
     this.dataManager = dataManager;
+    this.selectionManager = selectionManager;
     this.renderer = renderer;
-    this.editorContext = editorContext;
   }
 
   beforeAddNode(data: PIXI.InteractionData): void {
     this.data = data;
   }
 
-  addNode(n: MODEL.Node, schemaId: number): void {
-    const nodeObj = new OBJ.Node(n);
+  addNode(nodeObj: OBJ.Node, schemaId: number): void {
     this.sceneManager.addNode(nodeObj);
     this.nodeAddSchemaId = schemaId;
     this.node = this.sceneManager.getGeo(nodeObj.name) as OBJ.Node;
-    this.select(this.node);
-  }
 
-  select(node: OBJ.Node): void {
-    node.zIndex += 1;
-    const selection = [];
-    selection.push(node);
-    selection$.next(selection);
+    // Since node doesn't exist yet let's not sync the node add
+    this.selectionManager.select(this.node);
   }
 
   drag(): void {
@@ -78,12 +70,15 @@ export class NodeAddManager {
     }
   }
 
-  afterAddNode(): void {
-    if (this.node && this.nodeAddSchemaId && this.editorContext) {
+  async afterAddNode(): void {
+    const editorContext = await Rx.firstValueFrom(
+      this.dataManager.editorContext$,
+    );
+    if (this.node && this.nodeAddSchemaId && editorContext) {
       const event: NodeCreate = {
         nodeSchemaId: this.nodeAddSchemaId,
-        rootNodeId: this.editorContext.applicationNodeId,
-        systemId: this.editorContext.systemId,
+        rootNodeId: editorContext.applicationNodeId,
+        systemId: editorContext.systemId,
         x: `${this.node.position.x}`,
         y: `${this.node.position.y}`,
       };
@@ -97,7 +92,6 @@ export class NodeAddManager {
       // cleanup
       this.node = undefined;
       this.nodeAddSchemaId = undefined;
-      selection$.next(null);
     }
   }
 }

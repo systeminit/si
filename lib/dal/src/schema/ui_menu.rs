@@ -53,15 +53,12 @@ impl UiMenu {
         write_tenancy: &WriteTenancy,
         visibility: &Visibility,
         history_actor: &HistoryActor,
+        schematic_kind: &SchematicKind,
     ) -> SchemaResult<Self> {
         let row = txn
             .query_one(
                 "SELECT object FROM schema_ui_menu_create_v1($1, $2, $3)",
-                &[
-                    write_tenancy,
-                    &visibility,
-                    &SchematicKind::Component.as_ref(),
-                ],
+                &[write_tenancy, &visibility, &schematic_kind.as_ref()],
             )
             .await?;
         let object = standard_model::finish_create_from_row(
@@ -210,7 +207,7 @@ impl EditFieldAble for UiMenu {
                 EditFieldDataType::String,
                 Widget::Select(SelectWidget::new(
                     LabelList::new(vec![]),
-                    Some(serde_json::to_value(SchematicKind::Component)?),
+                    Some(serde_json::to_value(object.schematic_kind)?),
                 )),
                 schematic_kind_value,
                 schematic_kind_visibility_diff,

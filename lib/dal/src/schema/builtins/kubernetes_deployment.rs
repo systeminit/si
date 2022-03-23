@@ -276,7 +276,15 @@ pub async fn kubernetes_deployment(
         .await?;
 
     // TODO: abstract this boilerplate away
-    let mut ui_menu = UiMenu::new(txn, nats, write_tenancy, visibility, history_actor).await?;
+    let mut ui_menu = UiMenu::new(
+        txn,
+        nats,
+        write_tenancy,
+        visibility,
+        history_actor,
+        &(*schema.kind()).into(),
+    )
+    .await?;
     ui_menu
         .set_name(
             txn,
@@ -303,7 +311,7 @@ pub async fn kubernetes_deployment(
             nats,
             visibility,
             history_actor,
-            SchematicKind::Deployment,
+            SchematicKind::from(*schema.kind()),
         )
         .await?;
     ui_menu

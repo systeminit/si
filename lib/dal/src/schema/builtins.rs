@@ -298,7 +298,15 @@ async fn service(
         None => return Ok(()),
     };
 
-    let mut ui_menu = UiMenu::new(txn, nats, write_tenancy, visibility, history_actor).await?;
+    let mut ui_menu = UiMenu::new(
+        txn,
+        nats,
+        write_tenancy,
+        visibility,
+        history_actor,
+        &(*schema.kind()).into(),
+    )
+    .await?;
     ui_menu
         .set_name(
             txn,
@@ -325,7 +333,7 @@ async fn service(
             nats,
             visibility,
             history_actor,
-            SchematicKind::Deployment,
+            SchematicKind::from(*schema.kind()),
         )
         .await?;
     ui_menu
@@ -677,7 +685,15 @@ async fn docker_hub_credential(
         .add_socket(txn, nats, visibility, history_actor, includes_socket.id())
         .await?;
 
-    let mut ui_menu = UiMenu::new(txn, nats, write_tenancy, visibility, history_actor).await?;
+    let mut ui_menu = UiMenu::new(
+        txn,
+        nats,
+        write_tenancy,
+        visibility,
+        history_actor,
+        &(*schema.kind()).into(),
+    )
+    .await?;
     ui_menu
         .set_name(
             txn,
@@ -704,7 +720,7 @@ async fn docker_hub_credential(
             nats,
             visibility,
             history_actor,
-            SchematicKind::Deployment, // Note: This isn't right, but we are not fixing the SchematicKind::Component UI in this PR
+            SchematicKind::from(*schema.kind()),
         )
         .await?;
     ui_menu
@@ -754,7 +770,7 @@ async fn docker_image(
         visibility,
         history_actor,
         &name,
-        &SchemaKind::Concept,
+        &SchemaKind::Concrete,
     )
     .await?
     {
@@ -797,7 +813,15 @@ async fn docker_image(
     .ok_or(AttributeValueError::Missing)?;
 
     let read_tenancy = write_tenancy.clone_into_read_tenancy(txn).await?;
-    let mut ui_menu = UiMenu::new(txn, nats, write_tenancy, visibility, history_actor).await?;
+    let mut ui_menu = UiMenu::new(
+        txn,
+        nats,
+        write_tenancy,
+        visibility,
+        history_actor,
+        &(*schema.kind()).into(),
+    )
+    .await?;
     ui_menu
         .set_name(
             txn,
@@ -824,7 +848,7 @@ async fn docker_image(
             nats,
             visibility,
             history_actor,
-            SchematicKind::Deployment,
+            SchematicKind::from(*schema.kind()),
         )
         .await?;
     ui_menu

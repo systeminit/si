@@ -12,7 +12,7 @@
       <div class="min-w-max">
         <SiSelect
           id="schematicSelect"
-          v-model="schematicKind"
+          v-model="schematicKindRaw"
           size="xs"
           name="schematicSelect"
           class="pl-1"
@@ -47,7 +47,10 @@
       />
     </template>
     <template #content>
-      <SchematicViewer :viewer-event$="viewerEventObservable.viewerEvent$" />
+      <SchematicViewer
+        :viewer-event$="viewerEventObservable.viewerEvent$"
+        :schematic-kind="schematicKind"
+      />
       <!-- <SchematicViewer /> -->
       <!-- <div
         class="flex flex-col items-center justify-center w-full h-full align-middle"
@@ -69,7 +72,11 @@ import Panel from "@/molecules/Panel.vue";
 import SchematicViewer from "@/organisims/SchematicViewer.vue";
 import SiSelect from "@/atoms/SiSelect.vue";
 
-import { SchematicKind, MenuFilter } from "@/api/sdf/dal/schematic";
+import {
+  SchematicKind,
+  MenuFilter,
+  schematicKindFromString,
+} from "@/api/sdf/dal/schematic";
 import { LabelList } from "@/api/sdf/dal/label_list";
 import LockButton from "@/atoms/LockButton.vue";
 import NodeAddMenu from "@/molecules/NodeAddMenu.vue";
@@ -79,6 +86,7 @@ import { switchMap } from "rxjs/operators";
 import { from } from "rxjs";
 import { ChangeSetService } from "@/service/change_set";
 import { NodeAddEvent, ViewerEventObservable } from "./SchematicViewer/event";
+import { deploymentSelection$ } from "./SchematicViewer/state";
 
 import { SchematicService } from "@/service/schematic";
 import { GlobalErrorService } from "@/service/global_error";
@@ -107,12 +115,16 @@ defineProps({
   isMaximizedContainerEnabled: Boolean,
 });
 
-const schematicKind = ref<SchematicKind>(SchematicKind.Deployment);
+const schematicKindRaw = ref<string>(SchematicKind.Deployment);
 // const rootObjectId = ref<number | null>(null);
+
+const schematicKind = computed(() =>
+  schematicKindFromString(schematicKindRaw.value),
+);
 
 const schematicKinds = computed(() => {
   let labels: LabelList<string> = [];
-  for (const value in SchematicKind) {
+  for (const value of Object.values(SchematicKind)) {
     labels.push({
       label: value,
       value: value,
@@ -147,8 +159,6 @@ const applicationId = refFrom<number | null>(
   ),
 );
 
-// TODO: This eventually needs to be smart enough to deal with being in deployment or component context,
-// but for now, it will just work for deployment
 const addMenuFilters = computed(() => {
   if (applicationId.value) {
     const filter: MenuFilter = {
@@ -161,18 +171,15 @@ const addMenuFilters = computed(() => {
 });
 
 const editMode = refFrom<boolean>(ChangeSetService.currentEditMode());
+const rootDeployment = refFrom<Node | null>(deploymentSelection$);
 const addMenuEnabled = computed(() => {
-  if (schematicKind.value == SchematicKind.Component) {
-    // When selection comes back, this should be smarter again. Here is the missing code!
-    //if (editMode.value && !_.isNull(this.deploymentSchematicSelectNode)) {
-    if (editMode.value) {
-      return true;
-    } else {
-      return false;
-    }
-  } else {
-    return editMode.value;
+  switch (schematicKind.value) {
+    case SchematicKind.Component:
+      return editMode.value && !!rootDeployment.value;
+    case SchematicKind.Deployment:
+      return editMode.value;
   }
+  return editMode.value;
 });
 
 const addNode = async (schemaId: number, _event: MouseEvent) => {
