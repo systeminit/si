@@ -25,7 +25,7 @@ pub async fn create_schema_with_object_and_string_prop(
     nats: &NatsTxn,
     veritech: veritech::Client,
     encryption_key: &EncryptionKey,
-) -> (Schema, SchemaVariant, Prop, Prop, Prop) {
+) -> (Schema, SchemaVariant, Prop, Prop, Prop, RootProp) {
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
@@ -122,6 +122,7 @@ pub async fn create_schema_with_object_and_string_prop(
         queen_prop,
         killer_prop,
         bohemian_prop,
+        root,
     )
 }
 
@@ -1017,7 +1018,6 @@ async fn only_string_props() {
     );
 }
 
-#[ignore]
 #[test]
 async fn one_object_prop() {
     test_setup!(
@@ -1032,11 +1032,16 @@ async fn one_object_prop() {
         encr_key,
     );
     let tenancy = Tenancy::new_universal();
+    let write_tenancy: WriteTenancy = (&tenancy).into();
+    let read_tenancy = write_tenancy
+        .clone_into_read_tenancy(&txn)
+        .await
+        .expect("could not create read tenancy");
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
     let _ =
         find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor).await;
-    let (schema, schema_variant, queen_prop, killer_prop, bohemian_prop) =
+    let (schema, schema_variant, queen_prop, killer_prop, bohemian_prop, root_prop) =
         create_schema_with_object_and_string_prop(&txn, &nats, veritech.clone(), encr_key).await;
     let (component, _) = Component::new_for_schema_variant_with_node(
         &txn,
@@ -1051,58 +1056,108 @@ async fn one_object_prop() {
     )
     .await
     .expect("Unable to create component");
-    let props = schema_variant
-        .all_props(&txn, &visibility)
-        .await
-        .expect("cannot get all props");
-    let object_prop = props
-        .iter()
-        .find(|p| p.name() == "queen")
-        .expect("could not get object prop");
 
-    // TODO: Set AttributeValue
-    //
-    // let (_, object_attribute_resolver_id, _) = component
-    //     .resolve_attribute(
-    //         &txn,
-    //         &nats,
-    //         veritech.clone(),
-    //         encr_key,
-    //         &tenancy,
-    //         &visibility,
-    //         &history_actor,
-    //         object_prop,
-    //         Some(serde_json::json![{}]),
-    //         None,
-    //         None,
-    //         UNSET_SYSTEM_ID,
-    //     )
-    //     .await
-    //     .expect("cannot resolve object attribute to empty object");
-    for prop in props
-        .iter()
-        .filter(|p| !["queen", "root", "si", "domain", "name"].contains(&p.name()))
-    {
-        // TODO: Set AttributeValue
-        //
-        // component
-        //     .resolve_attribute(
-        //         &txn,
-        //         &nats,
-        //         veritech.clone(),
-        //         encr_key,
-        //         &tenancy,
-        //         &visibility,
-        //         &history_actor,
-        //         prop,
-        //         Some(serde_json::json!["woohoo"]),
-        //         Some(object_attribute_resolver_id),
-        //         None,
-        //         UNSET_SYSTEM_ID,
-        //     )
-        //     .await
-        //     .expect("cannot resolve the attributes for the component");
-    }
+    let mut base_attribute_context = AttributeContext::builder();
+    base_attribute_context
+        .set_schema_id(*schema.id())
+        .set_schema_variant_id(*schema_variant.id())
+        .set_component_id(*component.id());
+
+    let domain_context = base_attribute_context
+        .clone()
+        .set_prop_id(root_prop.domain_prop_id)
+        .to_context()
+        .expect("cannot create domain AttributeContext");
+    let domain_value =
+        AttributeValue::find_for_context(&txn, &read_tenancy, &visibility, domain_context.into())
+            .await
+            .expect("could not fetch domain AttributeValue")
+            .pop()
+            .expect("could not find domain AttributeValue");
+
+    let queen_context = base_attribute_context
+        .clone()
+        .set_prop_id(*queen_prop.id())
+        .to_context()
+        .expect("cannot create queen AttributeContext");
+    let unset_queen_value =
+        AttributeValue::find_for_context(&txn, &read_tenancy, &visibility, queen_context.into())
+            .await
+            .expect("could not retrieve queen AttributeValue")
+            .pop()
+            .expect("could not find queen AttributeValue");
+    let (_, queen_value_id) = AttributeValue::update_for_context(
+        &txn,
+        &nats,
+        veritech.clone(),
+        encr_key,
+        &write_tenancy,
+        &visibility,
+        &history_actor,
+        *unset_queen_value.id(),
+        Some(*domain_value.id()),
+        queen_context,
+        Some(serde_json::json![{}]),
+        None,
+    )
+    .await
+    .expect("could not update queen AttributeValue");
+
+    let bohemian_context = base_attribute_context
+        .clone()
+        .set_prop_id(*bohemian_prop.id())
+        .to_context()
+        .expect("cannot create bohemian AttributeContext");
+    let unset_bohemian_value =
+        AttributeValue::find_for_context(&txn, &read_tenancy, &visibility, bohemian_context.into())
+            .await
+            .expect("could not retrieve bohemian AttributeValue")
+            .pop()
+            .expect("could not find bohemian AttributeValue");
+    AttributeValue::update_for_context(
+        &txn,
+        &nats,
+        veritech.clone(),
+        encr_key,
+        &write_tenancy,
+        &visibility,
+        &history_actor,
+        *unset_bohemian_value.id(),
+        Some(queen_value_id),
+        bohemian_context,
+        Some(serde_json::json!["Galileo"]),
+        None,
+    )
+    .await
+    .expect("could not update bohemian AttributeValue");
+
+    let killer_context = base_attribute_context
+        .clone()
+        .set_prop_id(*killer_prop.id())
+        .to_context()
+        .expect("cannot create killer AttributeContext");
+    let unset_killer_value =
+        AttributeValue::find_for_context(&txn, &read_tenancy, &visibility, killer_context.into())
+            .await
+            .expect("could not retrieve killer AttributeValue")
+            .pop()
+            .expect("could not find killer AttributeValue");
+    AttributeValue::update_for_context(
+        &txn,
+        &nats,
+        veritech.clone(),
+        encr_key,
+        &write_tenancy,
+        &visibility,
+        &history_actor,
+        *unset_killer_value.id(),
+        Some(queen_value_id),
+        killer_context,
+        Some(serde_json::json!["woohoo"]),
+        None,
+    )
+    .await
+    .expect("could not update killer AttributeValue");
 
     let component_view = ComponentView::for_context(
         &txn,
@@ -1112,6 +1167,8 @@ async fn one_object_prop() {
             .expect("unable to generate read tenancy"),
         &visibility,
         AttributeReadContext {
+            schema_id: Some(*schema.id()),
+            schema_variant_id: Some(*schema_variant.id()),
             component_id: Some(*component.id()),
             ..AttributeReadContext::any()
         },
@@ -1123,7 +1180,12 @@ async fn one_object_prop() {
         component_view.properties,
         serde_json::json![{
             "si": { "name": "santos dumont" },
-            "domain": { "queen": { "bohemian_rhapsody": "woohoo", "killer_queen": "woohoo" } }
+            "domain": {
+                "queen": {
+                    "bohemian_rhapsody": "Galileo",
+                    "killer_queen": "woohoo"
+                }
+            }
         }]
     );
 }
