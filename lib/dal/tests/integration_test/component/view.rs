@@ -101,10 +101,6 @@ pub async fn create_schema_with_object_and_string_prop(
     )
     .await;
     queen_prop
-        .add_schema_variant(txn, nats, &visibility, &history_actor, schema_variant.id())
-        .await
-        .expect("cannot associate prop with schema variant");
-    queen_prop
         .set_parent_prop(txn, nats, &visibility, &history_actor, root.domain_prop_id)
         .await
         .expect("cannot set parent prop");
@@ -237,10 +233,6 @@ pub async fn create_schema_with_nested_objects_and_string_prop(
     )
     .await;
     queen_prop
-        .add_schema_variant(txn, nats, &visibility, &history_actor, schema_variant.id())
-        .await
-        .expect("cannot associate prop with schema variant");
-    queen_prop
         .set_parent_prop(txn, nats, &visibility, &history_actor, root.domain_prop_id)
         .await
         .expect("cannot set parent prop");
@@ -328,10 +320,6 @@ pub async fn create_schema_with_string_props(
     )
     .await;
     bohemian_prop
-        .add_schema_variant(txn, nats, &visibility, &history_actor, schema_variant.id())
-        .await
-        .expect("cannot associate prop with schema variant");
-    bohemian_prop
         .set_parent_prop(txn, nats, &visibility, &history_actor, root.domain_prop_id)
         .await
         .expect("cannot set parent prop");
@@ -348,10 +336,6 @@ pub async fn create_schema_with_string_props(
         "killer_queen",
     )
     .await;
-    killer_prop
-        .add_schema_variant(txn, nats, &visibility, &history_actor, schema_variant.id())
-        .await
-        .expect("cannot associate prop with schema variant");
     killer_prop
         .set_parent_prop(txn, nats, &visibility, &history_actor, root.domain_prop_id)
         .await
@@ -419,10 +403,6 @@ pub async fn create_schema_with_array_of_string_props(
         "sammy_hagar",
     )
     .await;
-    sammy_prop
-        .add_schema_variant(txn, nats, &visibility, &history_actor, schema_variant.id())
-        .await
-        .expect("cannot associate prop with schema variant");
     sammy_prop
         .set_parent_prop(txn, nats, &visibility, &history_actor, root.domain_prop_id)
         .await
@@ -511,10 +491,6 @@ pub async fn create_schema_with_nested_array_objects(
         "sammy_hagar",
     )
     .await;
-    sammy_prop
-        .add_schema_variant(txn, nats, &visibility, &history_actor, schema_variant.id())
-        .await
-        .expect("cannot associate prop with schema variant");
     sammy_prop
         .set_parent_prop(txn, nats, &visibility, &history_actor, root.domain_prop_id)
         .await
@@ -680,10 +656,6 @@ pub async fn create_simple_map(
     )
     .await;
     album_prop
-        .add_schema_variant(txn, nats, &visibility, &history_actor, schema_variant.id())
-        .await
-        .expect("cannot associate prop with schema variant");
-    album_prop
         .set_parent_prop(txn, nats, &visibility, &history_actor, root.domain_prop_id)
         .await
         .expect("cannot set parent");
@@ -771,10 +743,6 @@ pub async fn create_schema_with_nested_array_objects_and_a_map(
         "sammy_hagar",
     )
     .await;
-    sammy_prop
-        .add_schema_variant(txn, nats, &visibility, &history_actor, schema_variant.id())
-        .await
-        .expect("cannot associate prop with schema variant");
     sammy_prop
         .set_parent_prop(txn, nats, &visibility, &history_actor, root.domain_prop_id)
         .await
