@@ -114,6 +114,10 @@ impl Tenancy {
     ) -> Result<ReadTenancy, ReadTenancyError> {
         ReadTenancy::try_from_tenancy(txn, self.clone()).await
     }
+
+    pub fn from_read_tenancy(read_tenancy: ReadTenancy) -> Self {
+        (&read_tenancy).into()
+    }
 }
 
 impl postgres_types::ToSql for Tenancy {

@@ -30,6 +30,7 @@ pub struct UpdateFromEditFieldResponse {
     pub success: bool,
 }
 
+/// # Panics
 pub async fn update_from_edit_field(
     mut txn: PgRwTxn,
     mut nats: NatsTxn,
@@ -66,24 +67,25 @@ pub async fn update_from_edit_field(
         EditFieldObjectKind::ComponentProp => {
             // Eventually, this won't be infallible. -- Adam
             #[allow(clippy::infallible_destructuring_match)]
-            let baggage = match request.baggage.ok_or(EditFieldError::MissingBaggage)? {
-                EditFieldBaggage::ComponentProp(baggage) => baggage,
-            };
-            Component::update_prop_from_edit_field(
-                &txn,
-                &nats,
-                veritech,
-                &encryption_key,
-                &write_tenancy,
-                &request.visibility,
-                &history_actor,
-                request.object_id.into(),
-                baggage.prop_id,
-                request.edit_field_id,
-                request.value,
-                None, // TODO: Eventually, pass the key! -- Adam
-            )
-            .await?
+            let _baggage = request.baggage.ok_or(EditFieldError::MissingBaggage)?;
+            todo!()
+            // FIXME(nick): need to figure out prop id;
+            //
+            // Component::update_prop_from_edit_field(
+            //     &txn,
+            //     &nats,
+            //     veritech,
+            //     &encryption_key,
+            //     &write_tenancy,
+            //     &request.visibility,
+            //     &history_actor,
+            //     request.object_id.into(),
+            //     baggage.attribute_context.prop_id(),
+            //     request.edit_field_id,
+            //     request.value,
+            //     None, // TODO: Eventually, pass the key! -- Adam
+            // )
+            // .await?
         }
         EditFieldObjectKind::Prop => {
             Prop::update_from_edit_field(

@@ -7,9 +7,8 @@ use dal::test_harness::{
     create_schema_variant, create_schema_variant_with_root, find_or_create_production_system,
 };
 use dal::{
-    AttributeReadContext, BillingAccount, Component, ComponentView, HistoryActor, Organization,
-    Prop, PropKind, ReadTenancy, Resource, Schema, SchemaKind, StandardModel, Tenancy, Visibility,
-    Workspace, WriteTenancy,
+    BillingAccount, Component, HistoryActor, Organization, Prop, PropKind, ReadTenancy, Resource,
+    Schema, SchemaKind, StandardModel, Tenancy, Visibility, Workspace, WriteTenancy,
 };
 use pretty_assertions_sorted::{assert_eq, assert_eq_sorted};
 use serde_json::json;

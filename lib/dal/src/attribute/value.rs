@@ -21,9 +21,10 @@ use crate::{
     },
     impl_standard_model, pk,
     standard_model::{self, TypeHint},
-    standard_model_accessor, standard_model_belongs_to, Func, HistoryActor, HistoryEventError,
-    IndexMap, Prop, PropError, PropId, PropKind, ReadTenancy, ReadTenancyError, StandardModel,
-    StandardModelError, Tenancy, Timestamp, Visibility, WriteTenancy,
+    standard_model_accessor, standard_model_belongs_to, standard_model_has_many, Func,
+    HistoryActor, HistoryEventError, IndexMap, Prop, PropError, PropId, PropKind, ReadTenancy,
+    ReadTenancyError, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
+    WriteTenancy,
 };
 
 const FIND_WITH_PARENT_AND_PROTOTYPE_FOR_CONTEXT: &str =
@@ -189,6 +190,14 @@ impl AttributeValue {
         table: "attribute_value_belongs_to_attribute_value",
         model_table: "attribute_values",
         belongs_to_id: AttributeValueId,
+        returns: AttributeValue,
+        result: AttributeValueResult,
+    );
+
+    standard_model_has_many!(
+        lookup_fn: child_attribute_values,
+        table: "attribute_value_belongs_to_attribute_value",
+        model_table: "attribute_values",
         returns: AttributeValue,
         result: AttributeValueResult,
     );

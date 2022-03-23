@@ -1,8 +1,7 @@
 use crate::dal::test;
 use dal::node_menu::get_node_menu_items;
 use dal::test_harness::{
-    billing_account_signup, create_component_for_schema, create_component_for_schema_variant,
-    create_schema_variant,
+    billing_account_signup, create_component_for_schema, create_schema_variant,
 };
 use dal::{node_menu::MenuFilter, Schema, SchematicKind};
 use dal::{HistoryActor, StandardModel, Visibility, WriteTenancy};

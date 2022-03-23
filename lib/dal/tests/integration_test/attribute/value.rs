@@ -1,4 +1,4 @@
-use crate::test_setup;
+use crate::{dal::test, test_setup};
 
 use dal::{
     component::view::ComponentView,
@@ -7,9 +7,8 @@ use dal::{
     ReadTenancy, SchemaKind, StandardModel, Tenancy, Visibility,
 };
 use pretty_assertions_sorted::assert_eq_sorted;
-use test_env_log::test;
 
-#[test(tokio::test)]
+#[test]
 async fn update_for_context_simple() {
     test_setup!(
         ctx,

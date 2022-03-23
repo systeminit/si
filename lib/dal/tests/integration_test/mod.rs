@@ -6,6 +6,7 @@ mod code_generation_prototype;
 mod code_generation_resolver;
 mod component;
 mod edge;
+mod edit_field;
 mod edit_session;
 mod func;
 mod func_execution;
