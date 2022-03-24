@@ -53,8 +53,10 @@ export class SceneManager {
     this.zoomFactor = 1;
   }
 
-  subscribeToInteractionEvents(interactionManager: InteractionManager): void {
-    interactionManager.zoomFactor$.subscribe({
+  subscribeToInteractionEvents(
+    interactionManager: InteractionManager,
+  ): Subscription {
+    return interactionManager.zoomFactor$.subscribe({
       next: (v) => this.updateZoomFactor(v),
     });
   }

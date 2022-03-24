@@ -70,7 +70,7 @@ export class NodeAddManager {
     }
   }
 
-  async afterAddNode(): void {
+  async afterAddNode() {
     const editorContext = await Rx.firstValueFrom(
       this.dataManager.editorContext$,
     );

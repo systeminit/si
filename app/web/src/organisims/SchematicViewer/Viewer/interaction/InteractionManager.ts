@@ -1,5 +1,6 @@
 import * as PIXI from "pixi.js";
 import * as Rx from "rxjs";
+import * as OBJ from "../obj";
 
 // Should we bypass the datamanager here?
 import { editSession$ } from "@/observable/edit_session";
@@ -116,7 +117,7 @@ export class InteractionManager {
     );
   }
 
-  async selectionObserver(): Rx.ReplaySubject<Array<Node> | null> {
+  async selectionObserver(): Promise<Rx.ReplaySubject<Array<OBJ.Node> | null>> {
     const schematicKind = await Rx.firstValueFrom(
       this.dataManager.schematicKind$,
     );
@@ -126,6 +127,7 @@ export class InteractionManager {
       case SchematicKind.Component:
         return componentSelection$;
     }
+    throw Error("invalid schematic kind");
   }
 
   setZoomMagnitude(zoomMagnitude: number | null): void {
@@ -140,7 +142,10 @@ export class InteractionManager {
     }
   }
 
-  async onMouseDown(this: InteractionManager, e: PIXI.InteractionEvent) {
+  async onMouseDown(
+    this: InteractionManager,
+    e: PIXI.InteractionEvent,
+  ): Promise<void> {
     const editSession = await Rx.firstValueFrom(editSession$);
 
     const target = this.renderer.plugins.interaction.hitTest(e.data.global);
@@ -241,7 +246,7 @@ export class InteractionManager {
 
     // Adding a node
     const canAdd = !!editSession;
-    if (canAdd & ST.isAddingNode(this.stateService)) {
+    if (canAdd && ST.isAddingNode(this.stateService)) {
       this.nodeAddManager.afterAddNode();
       ST.deactivateNodeAdd(this.stateService);
     }

@@ -10,14 +10,14 @@ const OUTPUT_SOCKET_OFFSET = 35;
 const SOCKET_SPACING = 20;
 
 export class Sockets extends PIXI.Container {
-  constructor(nodeId: string, inputs: MODEL.Socket[], outputs: MODEL.Socket[]) {
+  constructor(nodeId: number, inputs: MODEL.Socket[], outputs: MODEL.Socket[]) {
     super();
 
     this.setInputSockets(nodeId, inputs);
     this.setOutputSockets(nodeId, outputs);
   }
 
-  setInputSockets(nodeId: string, inputs: MODEL.Socket[]): void {
+  setInputSockets(nodeId: number, inputs: MODEL.Socket[]): void {
     for (let i = 0; i < inputs.length; i++) {
       const s = inputs[i];
 
@@ -41,7 +41,7 @@ export class Sockets extends PIXI.Container {
     }
   }
 
-  setOutputSockets(nodeId: string, outputs: MODEL.Socket[]): void {
+  setOutputSockets(nodeId: number, outputs: MODEL.Socket[]): void {
     for (let i = 0; i < outputs.length; i++) {
       const s = outputs[i];
 
