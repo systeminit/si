@@ -16,6 +16,7 @@ export interface CreateNodeArgs {
   x: string;
   y: string;
   systemId?: number;
+  parentNodeId?: number;
 }
 
 export interface CreateNodeRequest extends CreateNodeArgs, Visibility {

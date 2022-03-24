@@ -1,5 +1,6 @@
 import * as PIXI from "pixi.js";
 import * as OBJ from "../obj";
+import * as Rx from "rxjs";
 
 import { SchematicGroup, NodeGroup, ConnectionGroup } from "../group";
 import { Renderer } from "../renderer";
@@ -55,7 +56,7 @@ export class SceneManager {
 
   subscribeToInteractionEvents(
     interactionManager: InteractionManager,
-  ): Subscription {
+  ): Rx.Subscription {
     return interactionManager.zoomFactor$.subscribe({
       next: (v) => this.updateZoomFactor(v),
     });
@@ -126,6 +127,10 @@ export class SceneManager {
               sourceSocketId,
               true,
             );
+            // Note: this happens when we switch panels with a connection rendered
+            // The nodes and the connections don't disappear
+            // We need to understand this better, but continuing here works by now, it may leak something tho
+            if (!sourceSocket) continue;
 
             const destinationSocketId = `${connection.destination.nodeId}.${connection.destination.socketId}`;
             const destinationSocket = this.scene.getChildByName(

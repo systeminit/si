@@ -2,8 +2,9 @@ use crate::server::extract::{Authorization, EncryptionKey, NatsTxn, PgRwTxn, Ver
 use crate::service::schematic::{SchematicError, SchematicResult};
 use axum::Json;
 use dal::{
-    generate_name, node::NodeId, Component, HistoryActor, NodePosition, NodeTemplate, NodeView,
-    SchemaId, StandardModel, SystemId, Tenancy, Visibility, Workspace, WorkspaceId,
+    generate_name, node::NodeId, Component, HistoryActor, Node, NodeKind, NodePosition,
+    NodeTemplate, NodeView, ReadTenancy, Schema, SchemaId, SchematicKind, StandardModel, SystemId,
+    Tenancy, Visibility, Workspace, WorkspaceId, WriteTenancy,
 };
 use serde::{Deserialize, Serialize};
 
@@ -15,6 +16,7 @@ pub struct CreateNodeRequest {
     pub system_id: Option<SystemId>,
     pub x: String,
     pub y: String,
+    pub parent_node_id: Option<NodeId>,
     pub workspace_id: WorkspaceId,
     #[serde(flatten)]
     pub visibility: Visibility,
@@ -47,26 +49,90 @@ pub async fn create_node(
     )
     .await?
     .ok_or(SchematicError::InvalidRequest)?;
-    let tenancy = Tenancy::new_workspace(vec![*workspace.id()]);
 
     let name = generate_name(None);
 
-    let (_component, node) = Component::new_for_schema_with_node(
+    let write_tenancy = WriteTenancy::new_workspace(*workspace.id());
+    let read_tenancy = ReadTenancy::new_workspace(&txn, vec![*workspace.id()]).await?;
+
+    let schema = Schema::get_by_id(
         &txn,
-        &nats,
-        veritech,
-        &encryption_key,
-        &tenancy,
+        &(&read_tenancy).into(),
         &request.visibility,
-        &history_actor,
-        &name,
         &request.schema_id,
     )
-    .await?;
+    .await?
+    .ok_or(SchematicError::SchemaNotFound)?;
+
+    let schema_variant_id = schema
+        .default_schema_variant_id()
+        .ok_or(SchematicError::SchemaVariantNotFound)?;
+
+    let system_id = match &request.system_id {
+        Some(system_id) => system_id,
+        None => return Err(SchematicError::InvalidSystem),
+    };
+    let (_component, node) = match (SchematicKind::from(*schema.kind()), &request.parent_node_id) {
+        (SchematicKind::Component, Some(parent_node_id)) => {
+            let parent_node = Node::get_by_id(
+                &txn,
+                &(&read_tenancy).into(),
+                &request.visibility,
+                parent_node_id,
+            )
+            .await?;
+            // Ensures parent node must be a NodeKind::Deployment
+            if let Some(parent_node) = parent_node {
+                match parent_node.kind() {
+                    NodeKind::Component | NodeKind::System => {
+                        return Err(SchematicError::InvalidParentNode(*parent_node.kind()))
+                    }
+                    NodeKind::Deployment => {}
+                }
+            } else {
+                return Err(SchematicError::ParentNodeNotFound(*parent_node_id));
+            }
+            Component::new_for_schema_variant_with_node_in_deployment(
+                &txn,
+                &nats,
+                veritech,
+                &encryption_key,
+                &(&write_tenancy).into(),
+                &request.visibility,
+                &history_actor,
+                &name,
+                schema_variant_id,
+                system_id,
+                parent_node_id,
+            )
+            .await?
+        }
+        (SchematicKind::Deployment, None) => {
+            Component::new_for_schema_variant_with_node_in_system(
+                &txn,
+                &nats,
+                veritech,
+                &encryption_key,
+                &(&write_tenancy).into(),
+                &request.visibility,
+                &history_actor,
+                &name,
+                schema_variant_id,
+                system_id,
+            )
+            .await?
+        }
+        (schema_kind, parent_node_id) => {
+            return Err(SchematicError::InvalidSchematicKindParentNodeIdPair(
+                schema_kind,
+                *parent_node_id,
+            ))
+        }
+    };
 
     let node_template = NodeTemplate::new_from_schema_id(
         &txn,
-        &tenancy.clone_into_read_tenancy(&txn).await?,
+        &read_tenancy,
         &request.visibility,
         request.schema_id,
     )
@@ -75,7 +141,7 @@ pub async fn create_node(
     let mut position = NodePosition::new(
         &txn,
         &nats,
-        &(&tenancy).into(),
+        &write_tenancy,
         &request.visibility,
         &history_actor,
         (*node.kind()).into(),

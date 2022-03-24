@@ -102,6 +102,7 @@ export class SchematicDataManager {
         systemId: e.systemId,
         x: e.x,
         y: e.y,
+        parentNodeId: e.parentNodeId,
       }).subscribe((response) => {
         if (response.error) {
           GlobalErrorService.set(response);

@@ -93,7 +93,7 @@ const selectionObserver = (
     case SchematicKind.Component:
       return componentSelection$;
   }
-  throw Error("invalid schematic kind");
+  throw Error(`invalid schematic kind ${schematicKind}`);
 };
 
 export default defineComponent({
@@ -152,7 +152,7 @@ export default defineComponent({
       send,
       service,
       selection,
-      subscribers: [],
+      subscribers: [] as Array<Rx.Subscription>,
     };
   },
   data(): Data {
@@ -282,8 +282,12 @@ export default defineComponent({
       this.sceneManager.subscribeToInteractionEvents(interactionManager),
     );
 
-    const syncSelection = (selection: Array<OBJ.Node> | null) => {
+    const syncSelection = (
+      selection: Array<OBJ.Node> | null,
+      schematicKind: SchematicKind,
+    ) => {
       const manager = this.interactionManager?.selectionManager;
+      const nodes = this.sceneManager?.group?.nodes?.children;
       if (!selection && (manager?.selection ?? [])[0]) {
         // If the other panel deselected the node we have to update our selection state
         this.interactionManager?.selectionManager?.clearSelection();
@@ -296,11 +300,18 @@ export default defineComponent({
 
         GlobalErrorService.set({ error: { statusCode, message, code } });
       } else if (selection) {
-        const node = this.sceneManager?.group?.nodes?.children
+        const node = nodes
           ?.map((n) => n as OBJ.Node)
           ?.find((n) => n.id === selection[0].id);
 
         if (!node) {
+          // This generally is a bug, but there are regular cases where it happen, like with vue's hot-reload
+          // When we caught it happening the viewer was always completely empty, so we just check for that edge case
+          if (!nodes || nodes.length === 0) {
+            selectionObserver(schematicKind).next(null);
+            return;
+          }
+
           // If there is as selection but the node related to it is not found, there is a bug somewhere
           const message = `Node ${selection[0].id} not found in panel ${this.component.id}`;
           const [statusCode, code] = [500, 42];
@@ -321,7 +332,7 @@ export default defineComponent({
           switch (this.schematicKind) {
             case SchematicKind.Deployment:
               // We need to sync ourselves with the other panel if it's also Deployment
-              syncSelection(selection);
+              syncSelection(selection, this.schematicKind);
               break;
             case SchematicKind.Component:
               // The deployment node selected defines which nodes appear in the Component panel
@@ -342,7 +353,7 @@ export default defineComponent({
               break;
             case SchematicKind.Component:
               // We need to sync ourselves with the other panel if it's also Component
-              syncSelection(selection);
+              syncSelection(selection, this.schematicKind);
               break;
           }
         },
@@ -428,26 +439,32 @@ export default defineComponent({
         );
 
         const deploymentNodes = await Rx.firstValueFrom(deploymentSelection$);
-        if (deploymentNodes) {
-          // Find component nodes connected to selected deployment node
-          const nodeIds = filteredSchematic.connections
-            .filter((conn) => conn.destination.nodeId === deploymentNodes[0].id)
-            .map((conn) => conn.source.nodeId);
+        // Find component nodes connected to selected deployment node
+        const nodeIds = filteredSchematic.connections
+          .filter(
+            (conn) =>
+              conn.destination.nodeId === (deploymentNodes ?? [])[0]?.id,
+          )
+          .map((conn) => conn.source.nodeId);
 
-          // Filters component nodes that are children of selected deployment node
+        const componentNodes = await Rx.firstValueFrom(componentSelection$);
+        const selectionManager = this.interactionManager?.selectionManager;
+        if (selectionManager) {
           switch (this.schematicKind) {
             case SchematicKind.Deployment:
               break;
             case SchematicKind.Component:
+              // Filters component nodes that are children of selected deployment node
               filteredSchematic.nodes = filteredSchematic.nodes.filter((node) =>
                 nodeIds.includes(node.id),
               );
+              // If selected node is not in display anymore de-select it
+              if (componentNodes && !nodeIds.includes(componentNodes[0]?.id)) {
+                selectionManager.clearSelection(componentSelection$);
+              }
               break;
           }
-        }
 
-        const selectionManager = this.interactionManager?.selectionManager;
-        if (selectionManager) {
           this.sceneManager.loadSceneData(
             filteredSchematic,
             selectionManager as SelectionManager,

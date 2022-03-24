@@ -4,4 +4,5 @@ export interface NodeCreate {
   systemId?: number;
   x: string;
   y: string;
+  parentNodeId?: number;
 }

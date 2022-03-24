@@ -194,4 +194,35 @@ impl Edge {
 
         Ok(object)
     }
+
+    pub async fn include_component_in_node(
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
+        write_tenancy: &WriteTenancy,
+        visibility: &Visibility,
+        history_actor: &HistoryActor,
+        component_id: &ComponentId,
+        parent_node_id: &NodeId,
+    ) -> EdgeResult<Self> {
+        let read_tenancy = write_tenancy.clone_into_read_tenancy(txn).await?;
+
+        let row = txn
+            .query_one(
+                "SELECT object FROM edge_include_component_in_node_v1($1, $2, $3, $4)",
+                &[&read_tenancy, &visibility, component_id, parent_node_id],
+            )
+            .await?;
+
+        let object = standard_model::finish_create_from_row(
+            txn,
+            nats,
+            &(&read_tenancy).into(),
+            visibility,
+            history_actor,
+            row,
+        )
+        .await?;
+
+        Ok(object)
+    }
 }

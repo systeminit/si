@@ -9,6 +9,16 @@ export enum SchematicKind {
   Component = "component",
 }
 
+export function schematicKindFromNodeKind(kind: NodeKind): SchematicKind {
+  switch (kind) {
+    case NodeKind.Deployment:
+      return SchematicKind.Deployment;
+    case NodeKind.Component:
+      return SchematicKind.Component;
+  }
+  throw Error(`Unknown NodeKind member: ${kind}`);
+}
+
 export function nodeKindFromSchematicKind(
   kind: SchematicKind | null,
 ): NodeKind | null {
@@ -27,9 +37,8 @@ export function schematicKindFromString(s: string): SchematicKind {
       return SchematicKind.Deployment;
     case "component":
       return SchematicKind.Component;
-    default:
-      throw Error(`Unknown SchematicKind member: ${s}`);
   }
+  throw Error(`Unknown SchematicKind member: ${s}`);
 }
 
 export interface MenuFilter {
