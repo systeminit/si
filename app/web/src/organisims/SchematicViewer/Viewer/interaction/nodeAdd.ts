@@ -7,6 +7,10 @@ import { SchematicDataManager } from "../../data";
 import { SelectionManager } from "./selection";
 import { Renderer } from "../renderer";
 import { NodeCreate } from "../../data/event";
+import { SchematicKind } from "@/api/sdf/dal/schematic";
+import { schematicKindFromNodeKind } from "@/api/sdf/dal/schematic";
+
+import { deploymentSelection$ } from "../../state";
 
 export interface NodeAddInteractionData {
   position: {
@@ -44,13 +48,19 @@ export class NodeAddManager {
     this.data = data;
   }
 
-  addNode(nodeObj: OBJ.Node, schemaId: number): void {
+  async addNode(nodeObj: OBJ.Node, schemaId: number): Promise<void> {
     this.sceneManager.addNode(nodeObj);
     this.nodeAddSchemaId = schemaId;
     this.node = this.sceneManager.getGeo(nodeObj.name) as OBJ.Node;
 
     // Since node doesn't exist yet let's not sync the node add
-    this.selectionManager.select(this.node);
+    if (nodeObj.nodeKind) {
+      const selectionObserver = this.selectionManager.selectionObserver(
+        schematicKindFromNodeKind(nodeObj.nodeKind),
+      );
+      this.selectionManager.clearSelection(selectionObserver);
+      this.selectionManager.select(this.node);
+    }
   }
 
   drag(): void {
@@ -74,6 +84,22 @@ export class NodeAddManager {
     const editorContext = await Rx.firstValueFrom(
       this.dataManager.editorContext$,
     );
+    const schematicKind = await Rx.firstValueFrom(
+      this.dataManager.schematicKind$,
+    );
+    const parent = await Rx.firstValueFrom(deploymentSelection$);
+    let parentNodeId;
+    switch (schematicKind) {
+      case SchematicKind.Component:
+        if (!parent || !parent[0])
+          throw new Error(
+            "Can't create component schematic node without a deployment node as parent",
+          );
+        parentNodeId = parent[0].id;
+        break;
+      case SchematicKind.Deployment:
+        break;
+    }
     if (this.node && this.nodeAddSchemaId && editorContext) {
       const event: NodeCreate = {
         nodeSchemaId: this.nodeAddSchemaId,
@@ -81,6 +107,7 @@ export class NodeAddManager {
         systemId: editorContext.systemId,
         x: `${this.node.position.x}`,
         y: `${this.node.position.y}`,
+        parentNodeId,
       };
 
       this.dataManager.nodeCreate$.next(event);

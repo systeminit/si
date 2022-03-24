@@ -11,6 +11,7 @@ import { Connection } from "./connection";
 import { SelectionStatus } from "./node/status";
 import { QualificationStatus } from "./node/status";
 import { ResourceStatus } from "./node/status/resource";
+import { NodeKind } from "@/api/sdf/dal/node";
 
 interface Position {
   x: number;
@@ -32,6 +33,7 @@ const SOCKET_HEIGHT = 3;
 
 export class Node extends PIXI.Container {
   kind: string;
+  nodeKind?: NodeKind;
   isSelected = false;
   id: number;
   title: string;
@@ -45,6 +47,7 @@ export class Node extends PIXI.Container {
     this.name = n.label.name;
     this.title = n.label.title;
     this.kind = "node";
+    this.nodeKind = n.kind;
     this.connections = [];
 
     if (typeof n.position[0].x == typeof "") {

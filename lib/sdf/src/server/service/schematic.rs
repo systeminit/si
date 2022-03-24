@@ -5,8 +5,9 @@ use axum::routing::{get, post};
 use axum::Json;
 use axum::Router;
 use dal::{
-    ComponentError, NodeError, NodeMenuError, NodePositionError, ReadTenancyError,
-    SchemaError as DalSchemaError, SchematicError as DalSchematicError, StandardModelError,
+    node::NodeId, ComponentError, NodeError, NodeKind, NodeMenuError, NodePositionError,
+    ReadTenancyError, SchemaError as DalSchemaError, SchematicError as DalSchematicError,
+    SchematicKind, StandardModelError,
 };
 use std::convert::Infallible;
 use thiserror::Error;
@@ -31,6 +32,8 @@ pub enum SchematicError {
     Schema(#[from] DalSchemaError),
     #[error("schema not found")]
     SchemaNotFound,
+    #[error("schema variant not found")]
+    SchemaVariantNotFound,
     #[error("node menu error: {0}")]
     NodeMenu(#[from] NodeMenuError),
     #[error("node error: {0}")]
@@ -47,6 +50,14 @@ pub enum SchematicError {
     ReadTenancy(#[from] ReadTenancyError),
     #[error("not authorized")]
     NotAuthorized,
+    #[error("invalid system")]
+    InvalidSystem,
+    #[error("invalid schema kind ({0}) and parent node id pair ({1:?})")]
+    InvalidSchematicKindParentNodeIdPair(SchematicKind, Option<NodeId>),
+    #[error("parent node not found {0}")]
+    ParentNodeNotFound(NodeId),
+    #[error("invalid parent node kind {0}")]
+    InvalidParentNode(NodeKind),
 }
 
 pub type SchematicResult<T> = std::result::Result<T, SchematicError>;

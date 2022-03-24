@@ -1,11 +1,8 @@
 import * as PIXI from "pixi.js";
 import * as Rx from "rxjs";
-import * as OBJ from "../obj";
 
 // Should we bypass the datamanager here?
 import { editSession$ } from "@/observable/edit_session";
-import { SchematicKind } from "@/api/sdf/dal/schematic";
-import { deploymentSelection$, componentSelection$ } from "../../state";
 import { SocketType } from "../obj";
 import { SceneManager } from "../scene";
 import { SchematicDataManager } from "../../data";
@@ -117,19 +114,6 @@ export class InteractionManager {
     );
   }
 
-  async selectionObserver(): Promise<Rx.ReplaySubject<Array<OBJ.Node> | null>> {
-    const schematicKind = await Rx.firstValueFrom(
-      this.dataManager.schematicKind$,
-    );
-    switch (schematicKind) {
-      case SchematicKind.Deployment:
-        return deploymentSelection$;
-      case SchematicKind.Component:
-        return componentSelection$;
-    }
-    throw Error("invalid schematic kind");
-  }
-
   setZoomMagnitude(zoomMagnitude: number | null): void {
     if (zoomMagnitude) {
       this.zoomMagnitude = zoomMagnitude;
@@ -147,8 +131,8 @@ export class InteractionManager {
     e: PIXI.InteractionEvent,
   ): Promise<void> {
     const editSession = await Rx.firstValueFrom(editSession$);
-
     const target = this.renderer.plugins.interaction.hitTest(e.data.global);
+
     const isFakeNode = target.id === -1;
     const canEdit = editSession && !isFakeNode;
 
@@ -166,8 +150,16 @@ export class InteractionManager {
         ST.readySelecting(this.stateService);
         ST.deSelecting(this.stateService);
 
-        this.selectionManager.clearSelection(await this.selectionObserver());
-        this.renderer.renderStage();
+        const schematicKind = await Rx.firstValueFrom(
+          this.dataManager.schematicKind$,
+        );
+        if (schematicKind) {
+          const selectionObserver = this.selectionManager.selectionObserver(
+            schematicKind,
+          );
+          this.selectionManager.clearSelection(selectionObserver);
+          this.renderer.renderStage();
+        }
       }
     }
 
@@ -186,7 +178,10 @@ export class InteractionManager {
         ST.selecting(this.stateService);
 
         if (!isFakeNode) {
-          this.selectionManager.select(target, await this.selectionObserver());
+          const selectionObserver = this.selectionManager.selectionObserver(
+            target.nodeKind,
+          );
+          this.selectionManager.select(target, selectionObserver);
         }
 
         if (canEdit) {

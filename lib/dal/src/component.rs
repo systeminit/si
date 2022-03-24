@@ -35,7 +35,7 @@ use crate::ws_event::{WsEvent, WsEventError};
 use crate::AttributeContextBuilderError;
 use crate::AttributeValueId;
 use crate::{
-    impl_standard_model, pk, qualification::QualificationError, standard_model,
+    impl_standard_model, node::NodeId, pk, qualification::QualificationError, standard_model,
     standard_model_accessor, standard_model_belongs_to, standard_model_has_many, AttributeContext,
     AttributeContextError, AttributeReadContext, CodeGenerationPrototype,
     CodeGenerationPrototypeError, CodeGenerationResolver, CodeGenerationResolverError, Edge,
@@ -259,6 +259,81 @@ impl Component {
         name: impl AsRef<str>,
         schema_variant_id: &SchemaVariantId,
     ) -> ComponentResult<(Self, Node)> {
+        // TODO: Eventually, we'll need the logic to be more complex than stuffing everything into the "production" system, but that's a problem for "a week or two from now" us.
+        let mut systems =
+            System::find_by_attr(txn, tenancy, visibility, "name", &"production").await?;
+        let system = systems.pop().ok_or(ComponentError::SystemNotFound)?;
+        Self::new_for_schema_variant_with_node_in_system(
+            txn,
+            nats,
+            veritech,
+            encryption_key,
+            tenancy,
+            visibility,
+            history_actor,
+            name,
+            schema_variant_id,
+            system.id(),
+        )
+        .await
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    #[instrument(skip_all)]
+    pub async fn new_for_schema_variant_with_node_in_deployment(
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
+        veritech: veritech::Client,
+        encryption_key: &EncryptionKey,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+        history_actor: &HistoryActor,
+        name: impl AsRef<str>,
+        schema_variant_id: &SchemaVariantId,
+        system_id: &SystemId,
+        parent_node_id: &NodeId,
+    ) -> ComponentResult<(Self, Node)> {
+        let (component, node) = Self::new_for_schema_variant_with_node_in_system(
+            txn,
+            nats,
+            veritech,
+            encryption_key,
+            tenancy,
+            visibility,
+            history_actor,
+            name,
+            schema_variant_id,
+            system_id,
+        )
+        .await?;
+        let _edge = Edge::include_component_in_node(
+            txn,
+            nats,
+            &tenancy.into(),
+            visibility,
+            history_actor,
+            component.id(),
+            parent_node_id,
+        )
+        .await?;
+
+        Ok((component, node))
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    #[instrument(skip_all)]
+    pub async fn new_for_schema_variant_with_node_in_system(
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
+        veritech: veritech::Client,
+        encryption_key: &EncryptionKey,
+        tenancy: &Tenancy,
+        visibility: &Visibility,
+        history_actor: &HistoryActor,
+        name: impl AsRef<str>,
+        schema_variant_id: &SchemaVariantId,
+        system_id: &SystemId,
+    ) -> ComponentResult<(Self, Node)> {
         let read_tenancy = ReadTenancy::try_from_tenancy(txn, tenancy.clone()).await?;
 
         let schema_variant =
@@ -307,21 +382,6 @@ impl Component {
         node.set_component(txn, nats, visibility, history_actor, component.id())
             .await?;
 
-        // TODO: Eventually, we'll need the logic to be more complex than stuffing everything into the "production" system, but that's a problem for "a week or two from now" us.
-        let mut systems =
-            System::find_by_attr(txn, tenancy, visibility, "name", &"production").await?;
-        let system = systems.pop().ok_or(ComponentError::SystemNotFound)?;
-        let _edge = Edge::include_component_in_system(
-            txn,
-            nats,
-            &tenancy.into(),
-            visibility,
-            history_actor,
-            component.id(),
-            system.id(),
-        )
-        .await?;
-
         // NOTE: We may want to be a bit smarter about when we create the Resource
         //       at some point in the future, by only creating it if there is also
         //       a ResourcePrototype for the Component's SchemaVariant.
@@ -332,7 +392,7 @@ impl Component {
             visibility,
             history_actor,
             component.id(),
-            system.id(),
+            system_id,
         )
         .await?;
 
@@ -350,6 +410,16 @@ impl Component {
                 Some(name),
             )
             .await?;
+        let _edge = Edge::include_component_in_system(
+            txn,
+            nats,
+            &tenancy.into(),
+            visibility,
+            history_actor,
+            component.id(),
+            system_id,
+        )
+        .await?;
 
         Ok((component, node))
     }
