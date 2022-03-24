@@ -3,6 +3,7 @@ use si_data::{NatsError, NatsTxn, PgError, PgTxn};
 
 use telemetry::prelude::*;
 use thiserror::Error;
+use uuid::Uuid;
 use veritech::EncryptionKey;
 
 use crate::{
@@ -525,10 +526,14 @@ impl AttributeValue {
         attribute_value
             .set_func_binding_return_value_id(txn, nats, visibility, history_actor, fbrv_id)
             .await?;
+        attribute_value
+            .update_parent_index_map(txn, write_tenancy, visibility)
+            .await?;
 
         Ok((value, *attribute_value.id()))
     }
 
+    #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn insert_for_context(
         txn: &PgTxn<'_>,
@@ -547,17 +552,17 @@ impl AttributeValue {
         let parent_prop = AttributeValue::find_prop_for_value(
             txn,
             &read_tenancy,
-            &visibility,
+            visibility,
             parent_attribute_value_id,
         )
         .await?;
 
-        let key = match parent_prop.kind() {
-            PropKind::Array => {
-                // Set key to be an appropriate "last index" for the array
-                todo!()
-            }
-            _ => key,
+        let key = if let Some(k) = key {
+            Some(k)
+        } else if *parent_prop.kind() == PropKind::Array {
+            Some(Uuid::new_v4().to_string())
+        } else {
+            None
         };
 
         let unset_func_name = "si:unset".to_string();
