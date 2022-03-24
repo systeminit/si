@@ -2160,7 +2160,6 @@ async fn complex_nested_array_of_objects_with_a_map() {
     );
 }
 
-#[ignore]
 #[test]
 async fn cyclone_crypto_e2e() {
     test_setup!(
