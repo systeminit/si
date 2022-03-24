@@ -188,6 +188,11 @@ fn nats_prefix() -> String {
 }
 
 pub async fn one_time_setup() -> Result<()> {
+    let _ = crate::test::TestContext::global().await;
+    Ok(())
+}
+
+pub async fn _one_time_setup_old() -> Result<()> {
     let mut finished = INIT_PG_LOCK.lock().await;
     if *finished {
         return Ok(());

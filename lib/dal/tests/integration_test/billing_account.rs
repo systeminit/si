@@ -1,75 +1,39 @@
-use crate::dal::test;
-use crate::test_setup;
-use dal::test_harness::{
-    billing_account_signup, create_billing_account, create_billing_account_with_name,
-    create_change_set, create_edit_session, create_visibility_edit_session, create_visibility_head,
-    one_time_setup, TestContext,
+use dal::{
+    test::{
+        helpers::{create_billing_account, generate_fake_name},
+        DalContextUniversalHeadRef,
+    },
+    BillingAccount, BillingAccountSignup, DalContext, StandardModel,
 };
-use dal::{BillingAccount, HistoryActor, ReadTenancy, StandardModel, Tenancy, WriteTenancy};
+
+use crate::dal::test;
 
 #[test]
-async fn new() {
-    one_time_setup().await.expect("one time setup failed");
-    let ctx = TestContext::init().await;
-    let (pg, nats_conn, _veritech, _encr_key, _secret_key) = ctx.entries();
-    let nats = nats_conn.transaction();
-    let mut conn = pg.get().await.expect("cannot connect to pg");
-    let txn = conn.transaction().await.expect("cannot create txn");
-
-    let write_tenancy = WriteTenancy::new_universal();
-    let history_actor = HistoryActor::SystemInit;
-    let change_set = create_change_set(&txn, &nats, &(&write_tenancy).into(), &history_actor).await;
-    let edit_session = create_edit_session(&txn, &nats, &history_actor, &change_set).await;
-    let visibility = create_visibility_edit_session(&change_set, &edit_session);
-
+async fn new(DalContextUniversalHeadRef(ctx): DalContextUniversalHeadRef<'_, '_, '_>) {
+    let name = generate_fake_name();
     let billing_account = BillingAccount::new(
-        &txn,
-        &nats,
-        &write_tenancy,
-        &visibility,
-        &history_actor,
-        "coheed",
+        ctx.pg_txn(),
+        ctx.nats_txn(),
+        ctx.write_tenancy(),
+        ctx.visibility(),
+        ctx.history_actor(),
+        &name,
         Some(&"coheed and cambria".to_string()),
     )
     .await
     .expect("cannot create new billing account");
 
-    assert_eq!(billing_account.name(), "coheed");
+    assert_eq!(billing_account.name(), &name);
     assert_eq!(billing_account.description(), Some("coheed and cambria"));
-    assert_eq!(billing_account.tenancy(), &Tenancy::from(&write_tenancy));
-    assert_eq!(billing_account.visibility(), &visibility);
+    assert_eq!(billing_account.tenancy(), &ctx.write_tenancy().into());
+    assert_eq!(billing_account.visibility(), ctx.visibility());
 }
 
 #[test]
-async fn get_by_pk() {
-    test_setup!(
-        ctx,
-        _secret_key,
-        pg,
-        conn,
-        txn,
-        nats_conn,
-        nats,
-        _veritech,
-        _encr_key
-    );
+async fn get_by_pk(DalContextUniversalHeadRef(ctx): DalContextUniversalHeadRef<'_, '_, '_>) {
+    let billing_account = create_billing_account(ctx).await;
 
-    let tenancy = Tenancy::new_universal();
-    let history_actor = HistoryActor::SystemInit;
-    let change_set = create_change_set(&txn, &nats, &tenancy, &history_actor).await;
-    let edit_session = create_edit_session(&txn, &nats, &history_actor, &change_set).await;
-    let visibility = create_visibility_edit_session(&change_set, &edit_session);
-    let billing_account = create_billing_account_with_name(
-        &txn,
-        &nats,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        "coheed",
-    )
-    .await;
-
-    let retrieved = BillingAccount::get_by_pk(&txn, billing_account.pk())
+    let retrieved = BillingAccount::get_by_pk(ctx.pg_txn(), billing_account.pk())
         .await
         .expect("cannot get billing account by pk");
 
@@ -77,138 +41,66 @@ async fn get_by_pk() {
 }
 
 #[test]
-async fn get_by_id() {
-    one_time_setup().await.expect("one time setup failed");
-    let ctx = TestContext::init().await;
-    let (pg, nats_conn, _veritech, _encr_key, _secret_key) = ctx.entries();
-    let nats = nats_conn.transaction();
-    let mut conn = pg.get().await.expect("cannot connect to pg");
-    let txn = conn.transaction().await.expect("cannot create txn");
+async fn get_by_id(DalContextUniversalHeadRef(ctx): DalContextUniversalHeadRef<'_, '_, '_>) {
+    let billing_account = create_billing_account(ctx).await;
 
-    let tenancy = Tenancy::new_universal();
-    let history_actor = HistoryActor::SystemInit;
-    let change_set = create_change_set(&txn, &nats, &tenancy, &history_actor).await;
-    let edit_session = create_edit_session(&txn, &nats, &history_actor, &change_set).await;
-    let visibility = create_visibility_edit_session(&change_set, &edit_session);
-    let billing_account = create_billing_account_with_name(
-        &txn,
-        &nats,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        "coheed",
+    let retrieved = BillingAccount::get_by_id(
+        ctx.pg_txn(),
+        &ctx.read_tenancy().into(),
+        ctx.visibility(),
+        billing_account.id(),
     )
-    .await;
-
-    let retrieved = BillingAccount::get_by_pk(&txn, billing_account.pk())
-        .await
-        .expect("cannot get billing account by pk");
+    .await
+    .expect("cannot get billing account by id")
+    .expect("there was no billing account by id");
 
     assert_eq!(billing_account, retrieved);
 }
 
 #[test]
-async fn set_name() {
-    one_time_setup().await.expect("one time setup failed");
-    let ctx = TestContext::init().await;
-    let (pg, nats_conn, _veritech, _encr_key, _secret_key) = ctx.entries();
-    let nats = nats_conn.transaction();
-    let mut conn = pg.get().await.expect("cannot connect to pg");
-    let txn = conn.transaction().await.expect("cannot create txn");
+async fn set_name(DalContextUniversalHeadRef(ctx): DalContextUniversalHeadRef<'_, '_, '_>) {
+    let mut billing_account = create_billing_account(ctx).await;
 
-    let tenancy = Tenancy::new_universal();
-    let history_actor = HistoryActor::SystemInit;
-    let change_set = create_change_set(&txn, &nats, &tenancy, &history_actor).await;
-    let edit_session = create_edit_session(&txn, &nats, &history_actor, &change_set).await;
-    let visibility = create_visibility_edit_session(&change_set, &edit_session);
-    let mut billing_account = create_billing_account_with_name(
-        &txn,
-        &nats,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        "coheed",
-    )
-    .await;
-
+    let new_name = generate_fake_name();
     billing_account
-        .set_name(&txn, &nats, &visibility, &history_actor, "woot".to_string())
+        .set_name(
+            ctx.pg_txn(),
+            ctx.nats_txn(),
+            ctx.visibility(),
+            ctx.history_actor(),
+            new_name.clone(),
+        )
         .await
         .expect("cannot set name");
 
-    assert_eq!(billing_account.name(), "woot");
-    txn.commit().await.expect("fuck");
+    assert_eq!(billing_account.name(), &new_name);
 }
 
 #[test]
-async fn set_description() {
-    one_time_setup().await.expect("one time setup failed");
-    let ctx = TestContext::init().await;
-    let (pg, nats_conn, _veritech, _encr_key, _secret_key) = ctx.entries();
-    let nats = nats_conn.transaction();
-    let mut conn = pg.get().await.expect("cannot connect to pg");
-    let txn = conn.transaction().await.expect("cannot create txn");
-
-    let tenancy = Tenancy::new_universal();
-    let history_actor = HistoryActor::SystemInit;
-    let change_set = create_change_set(&txn, &nats, &tenancy, &history_actor).await;
-    let edit_session = create_edit_session(&txn, &nats, &history_actor, &change_set).await;
-    let visibility = create_visibility_edit_session(&change_set, &edit_session);
-    let mut billing_account = create_billing_account_with_name(
-        &txn,
-        &nats,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        "coheed",
-    )
-    .await;
+async fn set_description(DalContextUniversalHeadRef(ctx): DalContextUniversalHeadRef<'_, '_, '_>) {
+    let mut billing_account = create_billing_account(ctx).await;
 
     billing_account
         .set_description(
-            &txn,
-            &nats,
-            &visibility,
-            &history_actor,
+            ctx.pg_txn(),
+            ctx.nats_txn(),
+            ctx.visibility(),
+            ctx.history_actor(),
             Some("smooth".to_string()),
         )
         .await
         .expect("cannot set description");
     assert_eq!(billing_account.description(), Some("smooth"));
-    txn.commit().await.expect("fuck");
 }
 
 #[test]
-async fn find_by_name() {
-    test_setup!(
-        ctx,
-        _secret_key,
-        pg,
-        conn,
-        txn,
-        nats_conn,
-        nats,
-        _veritech,
-        _encr_key
-    );
-    let write_tenancy = WriteTenancy::new_universal();
-    let history_actor = HistoryActor::SystemInit;
-    let visibility = create_visibility_head();
-    let billing_account = create_billing_account(
-        &txn,
-        &nats,
-        &(&write_tenancy).into(),
-        &visibility,
-        &history_actor,
-    )
-    .await;
+async fn find_by_name(DalContextUniversalHeadRef(ctx): DalContextUniversalHeadRef<'_, '_, '_>) {
+    let billing_account = create_billing_account(ctx).await;
+
     let name_billing_account = BillingAccount::find_by_name(
-        &txn,
-        &write_tenancy
-            .clone_into_read_tenancy(&txn)
-            .await
-            .expect("unable to generate read tenancy"),
-        &visibility,
+        ctx.pg_txn(),
+        ctx.read_tenancy(),
+        ctx.visibility(),
         &billing_account.name(),
     )
     .await
@@ -221,15 +113,17 @@ async fn find_by_name() {
 }
 
 #[test]
-async fn get_defaults() {
-    test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats, _veritech, _encr_key);
-    let (nba, _auth_token) = billing_account_signup(&txn, &nats, secret_key).await;
-    let visibility = create_visibility_head();
-    let read_tenancy = ReadTenancy::new_billing_account(vec![*nba.billing_account.id()]);
-    let defaults =
-        BillingAccount::get_defaults(&txn, &read_tenancy, &visibility, nba.billing_account.id())
-            .await
-            .expect("cannot get defaults for billing account");
+async fn get_defaults(ctx: &mut DalContext<'_, '_>, nba: &BillingAccountSignup) {
+    ctx.update_to_billing_account_tenancies(*nba.billing_account.id());
+
+    let defaults = BillingAccount::get_defaults(
+        ctx.pg_txn(),
+        ctx.read_tenancy(),
+        ctx.visibility(),
+        nba.billing_account.id(),
+    )
+    .await
+    .expect("cannot get defaults for billing account");
     assert_eq!(
         defaults.organization, nba.organization,
         "default organization matches created organization"

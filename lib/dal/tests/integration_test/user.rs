@@ -1,36 +1,20 @@
-use crate::test_setup;
+use dal::{
+    BillingAccountId, BillingAccountSignup, DalContext, JwtSecretKey, ReadTenancy, StandardModel,
+    User,
+};
 
 use crate::dal::test;
-use dal::test_harness::{
-    billing_account_signup, create_billing_account, create_change_set, create_edit_session,
-    create_visibility_edit_session, create_visibility_head,
-};
-use dal::{HistoryActor, ReadTenancy, StandardModel, Tenancy, User, WriteTenancy};
 
 #[test]
-async fn new() {
-    test_setup!(
-        ctx,
-        _secret_key,
-        pg,
-        conn,
-        txn,
-        nats_conn,
-        nats,
-        _veritech,
-        _encr_key
-    );
-    let write_tenancy = WriteTenancy::new_universal();
-    let history_actor = HistoryActor::SystemInit;
-    let change_set = create_change_set(&txn, &nats, &(&write_tenancy).into(), &history_actor).await;
-    let edit_session = create_edit_session(&txn, &nats, &history_actor, &change_set).await;
-    let visibility = create_visibility_edit_session(&change_set, &edit_session);
+async fn new(ctx: &mut DalContext<'_, '_>, bid: BillingAccountId) {
+    ctx.update_to_billing_account_tenancies(bid);
+
     let _user = User::new(
-        &txn,
-        &nats,
-        &write_tenancy,
-        &visibility,
-        &history_actor,
+        ctx.pg_txn(),
+        ctx.nats_txn(),
+        ctx.write_tenancy(),
+        ctx.visibility(),
+        ctx.history_actor(),
         "funky",
         "bobotclown@systeminit.com",
         "snakesOnAPlan123",
@@ -40,74 +24,51 @@ async fn new() {
 }
 
 #[test]
-async fn login() {
-    test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats, _veritech, _encr_key);
-    let tenancy = Tenancy::new_universal();
-    let history_actor = HistoryActor::SystemInit;
-    let visibility = create_visibility_head();
-    let billing_account =
-        create_billing_account(&txn, &nats, &tenancy, &visibility, &history_actor).await;
-    let write_tenancy = WriteTenancy::new_billing_account(*billing_account.id());
+async fn login(ctx: &mut DalContext<'_, '_>, bid: BillingAccountId, jwt_secret_key: &JwtSecretKey) {
+    ctx.update_to_billing_account_tenancies(bid);
+
     let password = "snakesOnAPlane123";
     let user = User::new(
-        &txn,
-        &nats,
-        &write_tenancy,
-        &visibility,
-        &history_actor,
+        ctx.pg_txn(),
+        ctx.nats_txn(),
+        ctx.write_tenancy(),
+        ctx.visibility(),
+        ctx.history_actor(),
         "funky",
         "bobotclown@systeminit.com",
         &password,
     )
     .await
     .expect("cannot create user");
+
     let _jwt = user
-        .login(&txn, secret_key, billing_account.id(), password)
+        .login(ctx.pg_txn(), jwt_secret_key, &bid, password)
         .await
         .expect("cannot get jwt");
 }
 
 #[test]
-async fn find_by_email() {
-    test_setup!(
-        ctx,
-        _secret_key,
-        pg,
-        conn,
-        txn,
-        nats_conn,
-        nats,
-        _veritech,
-        _encr_key
-    );
-    let tenancy = Tenancy::new_universal();
-    let history_actor = HistoryActor::SystemInit;
-    let visibility = create_visibility_head();
+async fn find_by_email(ctx: &mut DalContext<'_, '_>, bid: BillingAccountId) {
+    ctx.update_to_billing_account_tenancies(bid);
 
-    let billing_account =
-        create_billing_account(&txn, &nats, &tenancy, &visibility, &history_actor).await;
-    let write_tenancy = WriteTenancy::new_billing_account(*billing_account.id());
-    let read_tenancy = write_tenancy
-        .clone_into_read_tenancy(&txn)
-        .await
-        .expect("unable to generate read tenancy");
     let password = "snakesOnAPlane123";
     let user = User::new(
-        &txn,
-        &nats,
-        &write_tenancy,
-        &visibility,
-        &history_actor,
+        ctx.pg_txn(),
+        ctx.nats_txn(),
+        ctx.write_tenancy(),
+        ctx.visibility(),
+        ctx.history_actor(),
         "funky",
         "bobotclown@systeminit.com",
         &password,
     )
     .await
     .expect("cannot create user");
+
     let email_user = User::find_by_email(
-        &txn,
-        &read_tenancy,
-        &visibility,
+        ctx.pg_txn(),
+        ctx.read_tenancy(),
+        ctx.visibility(),
         "bobotclown@systeminit.com",
     )
     .await
@@ -118,10 +79,12 @@ async fn find_by_email() {
         "user by email does not match created user"
     );
 
+    ctx.update_read_tenancy(ReadTenancy::new_universal());
+
     let fail_user = User::find_by_email(
-        &txn,
-        &ReadTenancy::new_universal(),
-        &visibility,
+        ctx.pg_txn(),
+        ctx.read_tenancy(),
+        ctx.visibility(),
         "bobotclown@systeminit.com",
     )
     .await
@@ -133,35 +96,40 @@ async fn find_by_email() {
 }
 
 #[test]
-async fn authorize() {
-    test_setup!(ctx, secret_key, pg, conn, txn, nats_conn, nats, _veritech, _encr_key);
-    let history_actor = HistoryActor::SystemInit;
-    let visibility = create_visibility_head();
+async fn authorize(ctx: &mut DalContext<'_, '_>, nba: &BillingAccountSignup) {
+    ctx.update_to_billing_account_tenancies(*nba.billing_account.id());
 
-    let (nba, _auth_token) = billing_account_signup(&txn, &nats, secret_key).await;
-    let write_tenancy = WriteTenancy::new_billing_account(*nba.billing_account.id());
-    let read_tenancy = write_tenancy
-        .clone_into_read_tenancy(&txn)
-        .await
-        .expect("unable to generate read tenancy");
-    let worked = User::authorize(&txn, &read_tenancy, &visibility, nba.user.id())
-        .await
-        .expect("admin group user should be authorized");
+    let worked = User::authorize(
+        ctx.pg_txn(),
+        ctx.read_tenancy(),
+        ctx.visibility(),
+        nba.user.id(),
+    )
+    .await
+    .expect("admin group user should be authorized");
     assert_eq!(worked, true, "authorized admin group user returns true");
+
     let password = "snakesOnAPlane123";
     let user_no_group = User::new(
-        &txn,
-        &nats,
-        &write_tenancy,
-        &visibility,
-        &history_actor,
+        ctx.pg_txn(),
+        ctx.nats_txn(),
+        ctx.write_tenancy(),
+        ctx.visibility(),
+        ctx.history_actor(),
         "funky",
         "bobotclown@systeminit.com",
         &password,
     )
     .await
     .expect("cannot create user");
-    let f = User::authorize(&txn, &read_tenancy, &visibility, user_no_group.id()).await;
+
+    let f = User::authorize(
+        ctx.pg_txn(),
+        ctx.read_tenancy(),
+        ctx.visibility(),
+        user_no_group.id(),
+    )
+    .await;
     assert_eq!(
         f.is_err(),
         true,

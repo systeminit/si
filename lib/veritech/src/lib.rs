@@ -18,7 +18,7 @@ pub use deadpool_cyclone::{instance::cyclone::LocalUdsInstance, Instance};
 #[cfg(feature = "server")]
 pub use server::{
     Config, ConfigBuilder, ConfigError, ConfigFile, CycloneSpec, CycloneStream, Server,
-    ServerError, StandardConfig, StandardConfigFile,
+    ServerError, ShutdownHandle, StandardConfig, StandardConfigFile,
 };
 
 #[cfg(feature = "client")]

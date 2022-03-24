@@ -52,13 +52,35 @@ macro_rules! test_setup {
         $veritech:ident,
         $encryption_key:ident $(,)?
     ) => {
-        dal::test_harness::one_time_setup()
+        let test_context = ::dal::test::TestContext::global().await;
+        let nats_subject_prefix = ::dal::test::nats_subject_prefix();
+        let services_context = test_context
+            .create_services_context(nats_subject_prefix.clone())
+            .await;
+
+        // Run a Veritech server instance for each test
+        let veritech_server = ::dal::test::veritech_server_for_uds_cyclone(
+            test_context.nats_config().clone(),
+            nats_subject_prefix,
+        )
+        .await;
+        ::tokio::spawn(veritech_server.run());
+
+        // Phase out usage of this variable--the assert is to consume/use the variable to avoid
+        // Rust warnings for every usage of this macro
+        let $ctx = true;
+        assert!($ctx);
+
+        let $secret_key = test_context.jwt_secret_key();
+        let $pg = services_context.pg_pool();
+        let mut $pgconn = $pg
+            .get()
             .await
-            .expect("one time setup failed");
-        let $ctx = dal::test_harness::TestContext::init().await;
-        let ($pg, $nats_conn, $veritech, $encryption_key, $secret_key) = $ctx.entries();
+            .expect("failed to get a pg connection from the pool");
+        let $pgtxn = $pgconn.transaction().await.expect("cannot create pg txn");
+        let $nats_conn = services_context.nats_conn();
         let $nats = $nats_conn.transaction();
-        let mut $pgconn = $pg.get().await.expect("cannot connect to pg");
-        let $pgtxn = $pgconn.transaction().await.expect("cannot create txn");
+        let $veritech = services_context.veritech().clone();
+        let $encryption_key = services_context.encryption_key();
     };
 }

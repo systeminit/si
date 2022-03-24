@@ -1,36 +1,20 @@
-use crate::test_setup;
+use dal::{
+    test::helpers::{create_group, create_user},
+    BillingAccountId, DalContext, Group, StandardModel,
+};
 
 use crate::dal::test;
-use dal::test_harness::{
-    create_billing_account, create_change_set, create_edit_session, create_group, create_user,
-    create_visibility_edit_session,
-};
-use dal::{Group, HistoryActor, StandardModel, Tenancy, WriteTenancy};
 
 #[test]
-async fn new() {
-    test_setup!(
-        ctx,
-        _secret_key,
-        pg,
-        conn,
-        txn,
-        nats_conn,
-        nats,
-        _veritech,
-        _encr_key
-    );
-    let write_tenancy = WriteTenancy::new_universal();
-    let history_actor = HistoryActor::SystemInit;
-    let change_set = create_change_set(&txn, &nats, &(&write_tenancy).into(), &history_actor).await;
-    let edit_session = create_edit_session(&txn, &nats, &history_actor, &change_set).await;
-    let visibility = create_visibility_edit_session(&change_set, &edit_session);
+async fn new(ctx: &mut DalContext<'_, '_>, bid: BillingAccountId) {
+    ctx.update_to_billing_account_tenancies(bid);
+
     let _group = Group::new(
-        &txn,
-        &nats,
-        &write_tenancy,
-        &visibility,
-        &history_actor,
+        ctx.pg_txn(),
+        ctx.nats_txn(),
+        ctx.write_tenancy(),
+        ctx.visibility(),
+        ctx.history_actor(),
         "funky",
     )
     .await
@@ -38,116 +22,117 @@ async fn new() {
 }
 
 #[test]
-async fn add_user() {
-    test_setup!(
-        ctx,
-        _secret_key,
-        pg,
-        conn,
-        txn,
-        nats_conn,
-        nats,
-        _veritech,
-        _encr_key
-    );
-    let universal_tenancy = Tenancy::new_universal();
-    let history_actor = HistoryActor::SystemInit;
-    let change_set = create_change_set(&txn, &nats, &universal_tenancy, &history_actor).await;
-    let edit_session = create_edit_session(&txn, &nats, &history_actor, &change_set).await;
-    let visibility = create_visibility_edit_session(&change_set, &edit_session);
-    let billing_account =
-        create_billing_account(&txn, &nats, &universal_tenancy, &visibility, &history_actor).await;
-    let tenancy = Tenancy::new_billing_account(vec![*billing_account.id()]);
-    let group = create_group(&txn, &nats, &tenancy, &visibility, &history_actor).await;
-    let user_one = create_user(&txn, &nats, &tenancy, &visibility, &history_actor).await;
-    let user_two = create_user(&txn, &nats, &tenancy, &visibility, &history_actor).await;
+async fn add_user(ctx: &mut DalContext<'_, '_>, bid: BillingAccountId) {
+    ctx.update_to_billing_account_tenancies(bid);
+
+    let group = create_group(ctx).await;
+    let user_one = create_user(ctx).await;
+    let user_two = create_user(ctx).await;
+
     group
-        .add_user(&txn, &nats, &visibility, &history_actor, user_one.id())
+        .add_user(
+            ctx.pg_txn(),
+            ctx.nats_txn(),
+            ctx.visibility(),
+            ctx.history_actor(),
+            user_one.id(),
+        )
         .await
         .expect("cannot add user");
     group
-        .add_user(&txn, &nats, &visibility, &history_actor, user_two.id())
+        .add_user(
+            ctx.pg_txn(),
+            ctx.nats_txn(),
+            ctx.visibility(),
+            ctx.history_actor(),
+            user_two.id(),
+        )
         .await
         .expect("cannot add user");
 }
 
 #[test]
-async fn remove_user() {
-    test_setup!(
-        ctx,
-        _secret_key,
-        pg,
-        conn,
-        txn,
-        nats_conn,
-        nats,
-        _veritech,
-        _encr_key
-    );
-    let universal_tenancy = Tenancy::new_universal();
-    let history_actor = HistoryActor::SystemInit;
-    let change_set = create_change_set(&txn, &nats, &universal_tenancy, &history_actor).await;
-    let edit_session = create_edit_session(&txn, &nats, &history_actor, &change_set).await;
-    let visibility = create_visibility_edit_session(&change_set, &edit_session);
-    let billing_account =
-        create_billing_account(&txn, &nats, &universal_tenancy, &visibility, &history_actor).await;
-    let tenancy = Tenancy::new_billing_account(vec![*billing_account.id()]);
-    let group = create_group(&txn, &nats, &tenancy, &visibility, &history_actor).await;
-    let user_one = create_user(&txn, &nats, &tenancy, &visibility, &history_actor).await;
-    let user_two = create_user(&txn, &nats, &tenancy, &visibility, &history_actor).await;
+async fn remove_user(ctx: &mut DalContext<'_, '_>, bid: BillingAccountId) {
+    ctx.update_to_billing_account_tenancies(bid);
+
+    let group = create_group(ctx).await;
+    let user_one = create_user(ctx).await;
+    let user_two = create_user(ctx).await;
+
     group
-        .add_user(&txn, &nats, &visibility, &history_actor, user_one.id())
+        .add_user(
+            ctx.pg_txn(),
+            ctx.nats_txn(),
+            ctx.visibility(),
+            ctx.history_actor(),
+            user_one.id(),
+        )
+        .await
+        .expect("cannot add user");
+    group
+        .add_user(
+            ctx.pg_txn(),
+            ctx.nats_txn(),
+            ctx.visibility(),
+            ctx.history_actor(),
+            user_two.id(),
+        )
+        .await
+        .expect("cannot add user");
+
+    group
+        .remove_user(
+            ctx.pg_txn(),
+            ctx.nats_txn(),
+            ctx.visibility(),
+            ctx.history_actor(),
+            user_one.id(),
+        )
         .await
         .expect("cannot remove user");
     group
-        .add_user(&txn, &nats, &visibility, &history_actor, user_two.id())
-        .await
-        .expect("cannot remove user");
-    group
-        .remove_user(&txn, &nats, &visibility, &history_actor, user_one.id())
-        .await
-        .expect("cannot remove user");
-    group
-        .remove_user(&txn, &nats, &visibility, &history_actor, user_two.id())
+        .remove_user(
+            ctx.pg_txn(),
+            ctx.nats_txn(),
+            ctx.visibility(),
+            ctx.history_actor(),
+            user_two.id(),
+        )
         .await
         .expect("cannot remove user");
 }
 
 #[test]
-async fn users() {
-    test_setup!(
-        ctx,
-        _secret_key,
-        pg,
-        conn,
-        txn,
-        nats_conn,
-        nats,
-        _veritech,
-        _encr_key
-    );
-    let universal_tenancy = Tenancy::new_universal();
-    let history_actor = HistoryActor::SystemInit;
-    let change_set = create_change_set(&txn, &nats, &universal_tenancy, &history_actor).await;
-    let edit_session = create_edit_session(&txn, &nats, &history_actor, &change_set).await;
-    let visibility = create_visibility_edit_session(&change_set, &edit_session);
-    let billing_account =
-        create_billing_account(&txn, &nats, &universal_tenancy, &visibility, &history_actor).await;
-    let tenancy = Tenancy::new_billing_account(vec![*billing_account.id()]);
-    let group = create_group(&txn, &nats, &tenancy, &visibility, &history_actor).await;
-    let user_one = create_user(&txn, &nats, &tenancy, &visibility, &history_actor).await;
-    let user_two = create_user(&txn, &nats, &tenancy, &visibility, &history_actor).await;
+async fn users(ctx: &mut DalContext<'_, '_>, bid: BillingAccountId) {
+    ctx.update_to_billing_account_tenancies(bid);
+
+    let group = create_group(ctx).await;
+    let user_one = create_user(ctx).await;
+    let user_two = create_user(ctx).await;
+
     group
-        .add_user(&txn, &nats, &visibility, &history_actor, user_one.id())
+        .add_user(
+            ctx.pg_txn(),
+            ctx.nats_txn(),
+            ctx.visibility(),
+            ctx.history_actor(),
+            user_one.id(),
+        )
         .await
         .expect("cannot add user");
     group
-        .add_user(&txn, &nats, &visibility, &history_actor, user_two.id())
+        .add_user(
+            ctx.pg_txn(),
+            ctx.nats_txn(),
+            ctx.visibility(),
+            ctx.history_actor(),
+            user_two.id(),
+        )
         .await
         .expect("cannot add user");
 
     let all_users = group
-        .users(&txn, &visibility)
+        .users(ctx.pg_txn(), ctx.visibility())
         .await
         .expect("cannot list users for group");
     assert_eq!(
@@ -157,14 +142,20 @@ async fn users() {
     );
 
     group
-        .remove_user(&txn, &nats, &visibility, &history_actor, user_one.id())
+        .remove_user(
+            ctx.pg_txn(),
+            ctx.nats_txn(),
+            ctx.visibility(),
+            ctx.history_actor(),
+            user_one.id(),
+        )
         .await
         .expect("cannot remove user");
+
     let some_users = group
-        .users(&txn, &visibility)
+        .users(ctx.pg_txn(), ctx.visibility())
         .await
         .expect("cannot list users for group");
-    txn.commit().await.expect("cannot commit txn");
     assert_eq!(
         some_users,
         vec![user_two.clone()],

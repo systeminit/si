@@ -1,56 +1,26 @@
-use crate::test_setup;
-
-use crate::dal::test;
 use dal::{
     edge::{EdgeKind, VertexObjectKind},
-    test_harness::{
-        create_change_set, create_edit_session, create_visibility_edit_session,
-        find_or_create_production_system,
+    test::{
+        helpers::{
+            find_or_create_production_system, find_schema_and_default_variant_by_name,
+            find_schema_by_name,
+        },
+        DalContextHeadRef,
     },
-    Component, Edge, HistoryActor, Schema, StandardModel, System, Tenancy, Visibility,
+    Component, DalContext, Edge, StandardModel, System, Visibility,
 };
 
+use crate::dal::test;
+
 #[test]
-async fn new() {
-    test_setup!(
-        ctx,
-        _secret_key,
-        _pg,
-        _conn,
-        txn,
-        _nats_conn,
-        nats,
-        veritech,
-        encr_key,
-    );
-    let tenancy = Tenancy::new_universal();
-    let visibility = Visibility::new_head(false);
-    let history_actor = HistoryActor::SystemInit;
+async fn new(ctx: &DalContext<'_, '_>) {
+    let _ = find_or_create_production_system(ctx).await;
 
-    let _ =
-        find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor).await;
-
-    let service_schema =
-        Schema::find_by_attr(&txn, &tenancy, &visibility, "name", &"service".to_string())
-            .await
-            .expect("cannot find service schema")
-            .pop()
-            .expect("no service schema found");
-
-    let service_schema_variant = service_schema
-        .default_variant(
-            &txn,
-            &tenancy
-                .clone_into_read_tenancy(&txn)
-                .await
-                .expect("unable to generate read tenancy"),
-            &visibility,
-        )
-        .await
-        .expect("cannot get default schema variant");
+    let (service_schema, service_schema_variant) =
+        find_schema_and_default_variant_by_name(ctx, "service").await;
 
     let sockets = service_schema_variant
-        .sockets(&txn, &visibility)
+        .sockets(ctx.pg_txn(), ctx.visibility())
         .await
         .expect("cannot fetch sockets");
 
@@ -65,13 +35,13 @@ async fn new() {
         .expect("cannot find output socket");
 
     let (head_component, head_node) = Component::new_for_schema_with_node(
-        &txn,
-        &nats,
-        veritech.clone(),
-        &encr_key,
-        &tenancy,
-        &visibility,
-        &history_actor,
+        ctx.pg_txn(),
+        ctx.nats_txn(),
+        ctx.veritech().clone(),
+        ctx.encryption_key(),
+        &ctx.write_tenancy().into(),
+        ctx.visibility(),
+        ctx.history_actor(),
         "head",
         service_schema.id(),
     )
@@ -79,13 +49,13 @@ async fn new() {
     .expect("cannot create component and node for service");
 
     let (tail_component, tail_node) = Component::new_for_schema_with_node(
-        &txn,
-        &nats,
-        veritech,
-        &encr_key,
-        &tenancy,
-        &visibility,
-        &history_actor,
+        ctx.pg_txn(),
+        ctx.nats_txn(),
+        ctx.veritech().clone(),
+        ctx.encryption_key(),
+        &ctx.write_tenancy().into(),
+        ctx.visibility(),
+        ctx.history_actor(),
         "head",
         service_schema.id(),
     )
@@ -93,11 +63,11 @@ async fn new() {
     .expect("cannot create component and node for service");
 
     let _edge = Edge::new(
-        &txn,
-        &nats,
-        &(&tenancy).into(),
-        &visibility,
-        &history_actor,
+        ctx.pg_txn(),
+        ctx.nats_txn(),
+        ctx.write_tenancy(),
+        ctx.visibility(),
+        ctx.history_actor(),
         EdgeKind::Configures,
         *head_node.id(),
         VertexObjectKind::Component,
@@ -112,12 +82,9 @@ async fn new() {
     .expect("cannot create new edge");
 
     let parents = Edge::find_component_configuration_parents(
-        &txn,
-        &tenancy
-            .clone_into_read_tenancy(&txn)
-            .await
-            .expect("unable to generate read tenancy"),
-        &visibility,
+        ctx.pg_txn(),
+        ctx.read_tenancy(),
+        ctx.visibility(),
         head_component.id(),
     )
     .await
@@ -127,47 +94,28 @@ async fn new() {
 }
 
 #[test]
-async fn include_component_in_system() {
-    test_setup!(
-        ctx,
-        _secret_key,
-        _pg,
-        _conn,
-        txn,
-        _nats_conn,
-        nats,
-        veritech,
-        encr_key,
-    );
-    let tenancy = Tenancy::new_universal();
-    let visibility = Visibility::new_head(false);
-    let history_actor = HistoryActor::SystemInit;
+async fn include_component_in_system(DalContextHeadRef(ctx): DalContextHeadRef<'_, '_, '_>) {
     let (_system, system_node) = System::new_with_node(
-        &txn,
-        &nats,
-        &(&tenancy).into(),
-        &visibility,
-        &history_actor,
+        ctx.pg_txn(),
+        ctx.nats_txn(),
+        ctx.write_tenancy(),
+        &Visibility::new_head(false),
+        ctx.history_actor(),
         "production",
     )
     .await
     .expect("cannot create production system");
 
-    let service_schema =
-        Schema::find_by_attr(&txn, &tenancy, &visibility, "name", &"service".to_string())
-            .await
-            .expect("cannot find service schema")
-            .pop()
-            .expect("no service schema found");
+    let service_schema = find_schema_by_name(ctx, "service").await;
 
     let (_first_component, first_component_node) = Component::new_for_schema_with_node(
-        &txn,
-        &nats,
-        veritech.clone(),
-        &encr_key,
-        &tenancy,
-        &visibility,
-        &history_actor,
+        ctx.pg_txn(),
+        ctx.nats_txn(),
+        ctx.veritech().clone(),
+        ctx.encryption_key(),
+        &ctx.write_tenancy().into(),
+        ctx.visibility(),
+        ctx.history_actor(),
         "first",
         service_schema.id(),
     )
@@ -175,22 +123,28 @@ async fn include_component_in_system() {
     .expect("cannot create component and node for service");
 
     let (_second_component, second_component_node) = Component::new_for_schema_with_node(
-        &txn,
-        &nats,
-        veritech,
-        &encr_key,
-        &tenancy,
-        &visibility,
-        &history_actor,
+        ctx.pg_txn(),
+        ctx.nats_txn(),
+        ctx.veritech().clone(),
+        ctx.encryption_key(),
+        &ctx.write_tenancy().into(),
+        ctx.visibility(),
+        ctx.history_actor(),
         "second",
         service_schema.id(),
     )
     .await
     .expect("cannot create component and node for service");
 
-    let edges = Edge::find_by_attr(&txn, &tenancy, &visibility, "kind", &"includes".to_string())
-        .await
-        .expect("cannot retrieve edges");
+    let edges = Edge::find_by_attr(
+        ctx.pg_txn(),
+        &ctx.read_tenancy().into(),
+        ctx.visibility(),
+        "kind",
+        &"includes".to_string(),
+    )
+    .await
+    .expect("cannot retrieve edges from edit session");
 
     assert_eq!(edges.len(), 2);
 
@@ -206,50 +160,28 @@ async fn include_component_in_system() {
 }
 
 #[test]
-async fn include_component_in_system_with_edit_sessions() {
-    test_setup!(
-        ctx,
-        _secret_key,
-        _pg,
-        _conn,
-        txn,
-        _nats_conn,
-        nats,
-        veritech,
-        encr_key,
-    );
-    let tenancy = Tenancy::new_universal();
-    let visibility = Visibility::new_head(false);
-    let history_actor = HistoryActor::SystemInit;
-    let change_set = create_change_set(&txn, &nats, &tenancy, &history_actor).await;
-    let edit_session = create_edit_session(&txn, &nats, &history_actor, &change_set).await;
-    let edit_session_visibility = create_visibility_edit_session(&change_set, &edit_session);
+async fn include_component_in_system_with_edit_sessions(ctx: &DalContext<'_, '_>) {
     let (_system, system_node) = System::new_with_node(
-        &txn,
-        &nats,
-        &(&tenancy).into(),
-        &visibility,
-        &history_actor,
+        ctx.pg_txn(),
+        ctx.nats_txn(),
+        ctx.write_tenancy(),
+        &Visibility::new_head(false),
+        ctx.history_actor(),
         "production",
     )
     .await
     .expect("cannot create production system");
 
-    let service_schema =
-        Schema::find_by_attr(&txn, &tenancy, &visibility, "name", &"service".to_string())
-            .await
-            .expect("cannot find service schema")
-            .pop()
-            .expect("no service schema found");
+    let service_schema = find_schema_by_name(ctx, "service").await;
 
     let (_first_component, first_component_node) = Component::new_for_schema_with_node(
-        &txn,
-        &nats,
-        veritech.clone(),
-        &encr_key,
-        &tenancy,
-        &edit_session_visibility,
-        &history_actor,
+        ctx.pg_txn(),
+        ctx.nats_txn(),
+        ctx.veritech().clone(),
+        ctx.encryption_key(),
+        &ctx.write_tenancy().into(),
+        ctx.visibility(),
+        ctx.history_actor(),
         "first",
         service_schema.id(),
     )
@@ -257,34 +189,39 @@ async fn include_component_in_system_with_edit_sessions() {
     .expect("cannot create component and node for service");
 
     let (_second_component, second_component_node) = Component::new_for_schema_with_node(
-        &txn,
-        &nats,
-        veritech,
-        &encr_key,
-        &tenancy,
-        &edit_session_visibility,
-        &history_actor,
+        ctx.pg_txn(),
+        ctx.nats_txn(),
+        ctx.veritech().clone(),
+        ctx.encryption_key(),
+        &ctx.write_tenancy().into(),
+        ctx.visibility(),
+        ctx.history_actor(),
         "second",
         service_schema.id(),
     )
     .await
     .expect("cannot create component and node for service");
 
-    let edges = Edge::find_by_attr(&txn, &tenancy, &visibility, "kind", &"includes".to_string())
-        .await
-        .expect("cannot retrieve edges from HEAD");
+    let edges = Edge::find_by_attr(
+        ctx.pg_txn(),
+        &ctx.read_tenancy().into(),
+        &Visibility::new_head(false),
+        "kind",
+        &"includes".to_string(),
+    )
+    .await
+    .expect("cannot retrieve edges from HEAD");
     assert_eq!(edges.len(), 0);
 
     let edges = Edge::find_by_attr(
-        &txn,
-        &tenancy,
-        &edit_session_visibility,
+        ctx.pg_txn(),
+        &ctx.read_tenancy().into(),
+        ctx.visibility(),
         "kind",
         &"includes".to_string(),
     )
     .await
     .expect("cannot retrieve edges from edit session");
-
     assert_eq!(edges.len(), 2);
 
     assert_eq!(edges[0].head_node_id(), *first_component_node.id());
