@@ -627,7 +627,7 @@ pub async fn create_simple_map(
     nats: &NatsTxn,
     veritech: veritech::Client,
     encryption_key: &EncryptionKey,
-) -> (SchemaVariant, Prop, Prop) {
+) -> (Schema, SchemaVariant, Prop, Prop, RootProp) {
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
@@ -700,7 +700,7 @@ pub async fn create_simple_map(
         .await
         .expect("cannot set parent");
 
-    (schema_variant, album_prop, album_item_prop)
+    (schema, schema_variant, album_prop, album_item_prop, root)
 }
 
 /// Create a schema that looks like this:
@@ -1842,7 +1842,6 @@ async fn complex_nested_array_of_objects() {
     );
 }
 
-#[ignore]
 #[test]
 async fn simple_map() {
     test_setup!(
@@ -1857,11 +1856,16 @@ async fn simple_map() {
         encr_key,
     );
     let tenancy = Tenancy::new_universal();
+    let write_tenancy: WriteTenancy = (&tenancy).into();
+    let read_tenancy = write_tenancy
+        .clone_into_read_tenancy(&txn)
+        .await
+        .expect("could not create read tenancy");
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
     let _ =
         find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor).await;
-    let (schema_variant, album_prop, album_item_prop) =
+    let (schema, schema_variant, album_prop, album_item_prop, root_prop) =
         create_simple_map(&txn, &nats, veritech.clone(), encr_key).await;
     let (component, _) = Component::new_for_schema_variant_with_node(
         &txn,
@@ -1877,59 +1881,87 @@ async fn simple_map() {
     .await
     .expect("Unable to create component");
 
-    // TODO: Set AttributeValue
-    //
-    // let (_, album_resolver_id, _) = component
-    //     .resolve_attribute(
-    //         &txn,
-    //         &nats,
-    //         veritech.clone(),
-    //         encr_key,
-    //         &tenancy,
-    //         &visibility,
-    //         &history_actor,
-    //         &album_prop,
-    //         Some(serde_json::json![{}]),
-    //         None,
-    //         None,
-    //         UNSET_SYSTEM_ID,
-    //     )
-    //     .await
-    //     .expect("cannot resolve sammy prop");
-    // component
-    //     .resolve_attribute(
-    //         &txn,
-    //         &nats,
-    //         veritech.clone(),
-    //         encr_key,
-    //         &tenancy,
-    //         &visibility,
-    //         &history_actor,
-    //         &album_item_prop,
-    //         Some(serde_json::json!["nocturnal"]),
-    //         Some(album_resolver_id),
-    //         Some("black_dahlia".to_string()),
-    //         UNSET_SYSTEM_ID,
-    //     )
-    //     .await
-    //     .expect("cannot resolve album object prop");
-    // component
-    //     .resolve_attribute(
-    //         &txn,
-    //         &nats,
-    //         veritech.clone(),
-    //         encr_key,
-    //         &tenancy,
-    //         &visibility,
-    //         &history_actor,
-    //         &album_item_prop,
-    //         Some(serde_json::json!["destroy erase improve"]),
-    //         Some(album_resolver_id),
-    //         Some("meshuggah".to_string()),
-    //         UNSET_SYSTEM_ID,
-    //     )
-    //     .await
-    //     .expect("cannot resolve album object prop");
+    let mut base_attribute_context = AttributeContext::builder();
+    base_attribute_context
+        .set_schema_id(*schema.id())
+        .set_schema_variant_id(*schema_variant.id())
+        .set_component_id(*component.id());
+
+    let domain_context = base_attribute_context
+        .clone()
+        .set_prop_id(root_prop.domain_prop_id)
+        .to_context()
+        .expect("could not create domain AttributeContext");
+    let domain_value =
+        AttributeValue::find_for_context(&txn, &read_tenancy, &visibility, domain_context.into())
+            .await
+            .expect("could not retrieve domain AttributeValue")
+            .pop()
+            .expect("could not find domain AttributeValue");
+
+    let album_context = base_attribute_context
+        .clone()
+        .set_prop_id(*album_prop.id())
+        .to_context()
+        .expect("could not create album AttributeContext");
+    let unset_album_value =
+        AttributeValue::find_for_context(&txn, &read_tenancy, &visibility, album_context.into())
+            .await
+            .expect("could not retrieve album AttributeValue")
+            .pop()
+            .expect("could not find album AttributeValue");
+    let (_, album_value_id) = AttributeValue::update_for_context(
+        &txn,
+        &nats,
+        veritech.clone(),
+        encr_key,
+        &write_tenancy,
+        &visibility,
+        &history_actor,
+        *unset_album_value.id(),
+        Some(*domain_value.id()),
+        album_context,
+        Some(serde_json::json![{}]),
+        None,
+    )
+    .await
+    .expect("could not update album AttributeValue");
+
+    let album_item_context = base_attribute_context
+        .clone()
+        .set_prop_id(*album_item_prop.id())
+        .to_context()
+        .expect("could not create album item AttributeContext");
+    AttributeValue::insert_for_context(
+        &txn,
+        &nats,
+        veritech.clone(),
+        encr_key,
+        &write_tenancy,
+        &visibility,
+        &history_actor,
+        album_item_context,
+        album_value_id,
+        Some(serde_json::json!["nocturnal"]),
+        Some("black_dahlia".to_string()),
+    )
+    .await
+    .expect("could not insert album item");
+    AttributeValue::insert_for_context(
+        &txn,
+        &nats,
+        veritech.clone(),
+        encr_key,
+        &write_tenancy,
+        &visibility,
+        &history_actor,
+        album_item_context,
+        album_value_id,
+        Some(serde_json::json!["destroy erase improve"]),
+        Some("meshuggah".to_string()),
+    )
+    .await
+    .expect("could not insert album item");
 
     let component_view = ComponentView::for_context(
         &txn,
@@ -1939,13 +1971,14 @@ async fn simple_map() {
             .expect("unable to generate read tenancy"),
         &visibility,
         AttributeReadContext {
+            schema_id: Some(*schema.id()),
+            schema_variant_id: Some(*schema_variant.id()),
             component_id: Some(*component.id()),
             ..AttributeReadContext::any()
         },
     )
     .await
     .expect("cannot get component view");
-    // txn.commit().await.expect("cannot commit txn");
 
     assert_eq_sorted!(
         serde_json::json![{
