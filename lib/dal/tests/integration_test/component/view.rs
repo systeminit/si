@@ -135,7 +135,16 @@ pub async fn create_schema_with_nested_objects_and_string_prop(
     nats: &NatsTxn,
     veritech: veritech::Client,
     encryption_key: &EncryptionKey,
-) -> (SchemaVariant, Prop, Prop, Prop, Prop, Prop) {
+) -> (
+    Schema,
+    SchemaVariant,
+    Prop,
+    Prop,
+    Prop,
+    Prop,
+    Prop,
+    RootProp,
+) {
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
@@ -173,6 +182,23 @@ pub async fn create_schema_with_nested_objects_and_string_prop(
         )
         .await
         .expect("cannot set default schema variant");
+
+    let queen_prop = create_prop_of_kind_with_name(
+        txn,
+        nats,
+        veritech.clone(),
+        encryption_key,
+        &tenancy,
+        &visibility,
+        &history_actor,
+        PropKind::Object,
+        "queen",
+    )
+    .await;
+    queen_prop
+        .set_parent_prop(txn, nats, &visibility, &history_actor, root.domain_prop_id)
+        .await
+        .expect("cannot set parent prop");
 
     let bohemian_prop = create_prop_of_kind_with_name(
         txn,
@@ -213,6 +239,19 @@ pub async fn create_schema_with_nested_objects_and_string_prop(
     )
     .await;
 
+    killer_prop
+        .set_parent_prop(txn, nats, &visibility, &history_actor, *queen_prop.id())
+        .await
+        .expect("cannot set parent prop");
+    bohemian_prop
+        .set_parent_prop(txn, nats, &visibility, &history_actor, *queen_prop.id())
+        .await
+        .expect("cannot set parent prop");
+    pressure_prop
+        .set_parent_prop(txn, nats, &visibility, &history_actor, *queen_prop.id())
+        .await
+        .expect("cannot set parent prop");
+
     let dust_prop = create_prop_of_kind_with_name(
         txn,
         nats,
@@ -230,42 +269,15 @@ pub async fn create_schema_with_nested_objects_and_string_prop(
         .await
         .expect("cannot set parent prop");
 
-    let queen_prop = create_prop_of_kind_with_name(
-        txn,
-        nats,
-        veritech,
-        encryption_key,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        PropKind::Object,
-        "queen",
-    )
-    .await;
-    queen_prop
-        .set_parent_prop(txn, nats, &visibility, &history_actor, root.domain_prop_id)
-        .await
-        .expect("cannot set parent prop");
-    killer_prop
-        .set_parent_prop(txn, nats, &visibility, &history_actor, *queen_prop.id())
-        .await
-        .expect("cannot set parent prop");
-    bohemian_prop
-        .set_parent_prop(txn, nats, &visibility, &history_actor, *queen_prop.id())
-        .await
-        .expect("cannot set parent prop");
-    pressure_prop
-        .set_parent_prop(txn, nats, &visibility, &history_actor, *queen_prop.id())
-        .await
-        .expect("cannot set parent prop");
-
     (
+        schema,
         schema_variant,
         queen_prop,
         bohemian_prop,
         killer_prop,
         pressure_prop,
         dust_prop,
+        root,
     )
 }
 
@@ -1190,7 +1202,6 @@ async fn one_object_prop() {
     );
 }
 
-#[ignore]
 #[test]
 async fn nested_object_prop() {
     test_setup!(
@@ -1205,13 +1216,26 @@ async fn nested_object_prop() {
         encr_key,
     );
     let tenancy = Tenancy::new_universal();
+    let write_tenancy: WriteTenancy = (&tenancy).into();
+    let read_tenancy = write_tenancy
+        .clone_into_read_tenancy(&txn)
+        .await
+        .expect("could not create read tenancy");
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
     let _ =
         find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor).await;
-    let (schema_variant, queen_prop, bohemian_prop, killer_prop, pressure_prop, dust_prop) =
-        create_schema_with_nested_objects_and_string_prop(&txn, &nats, veritech.clone(), encr_key)
-            .await;
+    let (
+        schema,
+        schema_variant,
+        queen_prop,
+        bohemian_prop,
+        killer_prop,
+        pressure_prop,
+        dust_prop,
+        root_prop,
+    ) = create_schema_with_nested_objects_and_string_prop(&txn, &nats, veritech.clone(), encr_key)
+        .await;
     let (component, _) = Component::new_for_schema_variant_with_node(
         &txn,
         &nats,
@@ -1225,93 +1249,164 @@ async fn nested_object_prop() {
     )
     .await
     .expect("Unable to create component");
-    // TODO: Set AttributeValue
-    //
-    // let (_, queen_object_resolver_id, _) = component
-    //     .resolve_attribute(
-    //         &txn,
-    //         &nats,
-    //         veritech.clone(),
-    //         encr_key,
-    //         &tenancy,
-    //         &visibility,
-    //         &history_actor,
-    //         &queen_prop,
-    //         Some(serde_json::json![{}]),
-    //         None,
-    //         None,
-    //         UNSET_SYSTEM_ID,
-    //     )
-    //     .await
-    //     .expect("cannot resolve queen object prop");
-    // component
-    //     .resolve_attribute(
-    //         &txn,
-    //         &nats,
-    //         veritech.clone(),
-    //         encr_key,
-    //         &tenancy,
-    //         &visibility,
-    //         &history_actor,
-    //         &bohemian_prop,
-    //         Some(serde_json::json!["scaramouche"]),
-    //         Some(queen_object_resolver_id),
-    //         None,
-    //         UNSET_SYSTEM_ID,
-    //     )
-    //     .await
-    //     .expect("cannot resolve bohemian prop");
-    // component
-    //     .resolve_attribute(
-    //         &txn,
-    //         &nats,
-    //         veritech.clone(),
-    //         encr_key,
-    //         &tenancy,
-    //         &visibility,
-    //         &history_actor,
-    //         &killer_prop,
-    //         Some(serde_json::json!["cake"]),
-    //         Some(queen_object_resolver_id),
-    //         None,
-    //         UNSET_SYSTEM_ID,
-    //     )
-    //     .await
-    //     .expect("cannot resolve killer prop");
-    // let (_, pressure_object_resolver_id, _) = component
-    //     .resolve_attribute(
-    //         &txn,
-    //         &nats,
-    //         veritech.clone(),
-    //         encr_key,
-    //         &tenancy,
-    //         &visibility,
-    //         &history_actor,
-    //         &pressure_prop,
-    //         Some(serde_json::json![{}]),
-    //         Some(queen_object_resolver_id),
-    //         None,
-    //         UNSET_SYSTEM_ID,
-    //     )
-    //     .await
-    //     .expect("cannot resolve pressure prop");
-    // component
-    //     .resolve_attribute(
-    //         &txn,
-    //         &nats,
-    //         veritech.clone(),
-    //         encr_key,
-    //         &tenancy,
-    //         &visibility,
-    //         &history_actor,
-    //         &dust_prop,
-    //         Some(serde_json::json!["another one gone"]),
-    //         Some(pressure_object_resolver_id),
-    //         None,
-    //         UNSET_SYSTEM_ID,
-    //     )
-    //     .await
-    //     .expect("cannot resolve dust prop");
+
+    let mut base_attribute_context = AttributeContext::builder();
+    base_attribute_context
+        .set_schema_id(*schema.id())
+        .set_schema_variant_id(*schema_variant.id())
+        .set_component_id(*component.id());
+
+    let domain_context = base_attribute_context
+        .clone()
+        .set_prop_id(root_prop.domain_prop_id)
+        .to_context()
+        .expect("cannot create domain AttributeContext");
+    let domain_value =
+        AttributeValue::find_for_context(&txn, &read_tenancy, &visibility, domain_context.into())
+            .await
+            .expect("could not fetch domain AttributeValue")
+            .pop()
+            .expect("could not find domain AttributeContext");
+
+    let queen_context = base_attribute_context
+        .clone()
+        .set_prop_id(*queen_prop.id())
+        .to_context()
+        .expect("cannot create queen AttributeContext");
+    let unset_queen_value =
+        AttributeValue::find_for_context(&txn, &read_tenancy, &visibility, queen_context.into())
+            .await
+            .expect("could not fetch queen AttributeValue")
+            .pop()
+            .expect("could not find queen AttributeValue");
+    let (_, queen_value_id) = AttributeValue::update_for_context(
+        &txn,
+        &nats,
+        veritech.clone(),
+        &encr_key,
+        &write_tenancy,
+        &visibility,
+        &history_actor,
+        *unset_queen_value.id(),
+        Some(*domain_value.id()),
+        queen_context,
+        Some(serde_json::json![{}]),
+        None,
+    )
+    .await
+    .expect("could not update queen AttributeValue");
+
+    let bohemian_context = base_attribute_context
+        .clone()
+        .set_prop_id(*bohemian_prop.id())
+        .to_context()
+        .expect("cannot create bohemian AttributeContext");
+    let unset_bohemian_value =
+        AttributeValue::find_for_context(&txn, &read_tenancy, &visibility, bohemian_context.into())
+            .await
+            .expect("could not fetch bohemian AttributeValue")
+            .pop()
+            .expect("could not find bohemian AttributeValue");
+    AttributeValue::update_for_context(
+        &txn,
+        &nats,
+        veritech.clone(),
+        encr_key,
+        &write_tenancy,
+        &visibility,
+        &history_actor,
+        *unset_bohemian_value.id(),
+        Some(queen_value_id),
+        bohemian_context,
+        Some(serde_json::json!["scaramouche"]),
+        None,
+    )
+    .await
+    .expect("could not update bohemian AttributeValue");
+
+    let killer_context = base_attribute_context
+        .clone()
+        .set_prop_id(*killer_prop.id())
+        .to_context()
+        .expect("cannot create killer AttributeContext");
+    let unset_killer_value =
+        AttributeValue::find_for_context(&txn, &read_tenancy, &visibility, killer_context.into())
+            .await
+            .expect("could not fetch killer AttributeValue")
+            .pop()
+            .expect("could not find killer AttributeValue");
+    AttributeValue::update_for_context(
+        &txn,
+        &nats,
+        veritech.clone(),
+        encr_key,
+        &write_tenancy,
+        &visibility,
+        &history_actor,
+        *unset_killer_value.id(),
+        Some(queen_value_id),
+        killer_context,
+        Some(serde_json::json!["cake"]),
+        None,
+    )
+    .await
+    .expect("could not update killer AttributeValue");
+
+    let pressure_context = base_attribute_context
+        .clone()
+        .set_prop_id(*pressure_prop.id())
+        .to_context()
+        .expect("cannot create pressure AttributeContext");
+    let unset_pressure_value =
+        AttributeValue::find_for_context(&txn, &read_tenancy, &visibility, pressure_context.into())
+            .await
+            .expect("could not fetch pressure AttributeValue")
+            .pop()
+            .expect("could not find pressure AttributeValue");
+    let (_, pressure_value_id) = AttributeValue::update_for_context(
+        &txn,
+        &nats,
+        veritech.clone(),
+        encr_key,
+        &write_tenancy,
+        &visibility,
+        &history_actor,
+        *unset_pressure_value.id(),
+        Some(queen_value_id),
+        pressure_context,
+        Some(serde_json::json![{}]),
+        None,
+    )
+    .await
+    .expect("could not update pressure AttributeValue");
+
+    let dust_context = base_attribute_context
+        .clone()
+        .set_prop_id(*dust_prop.id())
+        .to_context()
+        .expect("cannot create dust AttributeContext");
+    let unset_dust_value =
+        AttributeValue::find_for_context(&txn, &read_tenancy, &visibility, dust_context.into())
+            .await
+            .expect("could not fetch dust AttributeValue")
+            .pop()
+            .expect("could not find dust AttributeValue");
+    AttributeValue::update_for_context(
+        &txn,
+        &nats,
+        veritech.clone(),
+        encr_key,
+        &write_tenancy,
+        &visibility,
+        &history_actor,
+        *unset_dust_value.id(),
+        Some(pressure_value_id),
+        dust_context,
+        Some(serde_json::json!["another one gone"]),
+        None,
+    )
+    .await
+    .expect("could not update dust AttributeValue");
 
     let component_view = ComponentView::for_context(
         &txn,
@@ -1321,15 +1416,33 @@ async fn nested_object_prop() {
             .expect("unable to generate read tenancy"),
         &visibility,
         AttributeReadContext {
+            schema_id: Some(*schema.id()),
+            schema_variant_id: Some(*schema_variant.id()),
             component_id: Some(*component.id()),
             ..AttributeReadContext::any()
         },
     )
     .await
     .expect("cannot get component view");
+
     assert_eq!(
+        serde_json::json![
+            {
+                "si": {
+                    "name": "free ronaldinho"
+                },
+                "domain": {
+                    "queen": {
+                        "bohemian_rhapsody": "scaramouche",
+                        "killer_queen": "cake",
+                        "under_pressure": {
+                            "another_one_bites_the_dust": "another one gone"
+                        }
+                    }
+                }
+            }
+        ],
         component_view.properties,
-        serde_json::json![{ "si": { "name": "free ronaldinho" }, "domain": {"queen": {"bohemian_rhapsody": "scaramouche", "killer_queen": "cake", "under_pressure": { "another_one_bites_the_dust": "another one gone"}}}}]
     );
 }
 
