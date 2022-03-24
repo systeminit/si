@@ -1,15 +1,20 @@
-SELECT DISTINCT ON (attribute_values.attribute_context_prop_id, attribute_values.key) attribute_values.id,
-                                         attribute_values.visibility_change_set_pk,
-                                         attribute_values.visibility_edit_session_pk,
-                                         attribute_values.attribute_context_prop_id,
-                                         attribute_values.attribute_context_schema_id,
-                                         attribute_values.attribute_context_schema_variant_id,
-                                         attribute_values.attribute_context_component_id,
-                                         attribute_values.attribute_context_system_id,
-                                         parent_attribute_values.id AS parent_attribute_value_id,
-                                         row_to_json(attribute_values.*) AS attribute_value_object,
-                                         row_to_json(props.*) AS prop_object,
-                                         row_to_json(func_binding_return_values) AS object
+SELECT DISTINCT ON (
+    attribute_values.attribute_context_prop_id,
+    attribute_value_belongs_to_attribute_value.belongs_to_id,
+    attribute_values.key
+)
+    attribute_values.id,
+    attribute_values.visibility_change_set_pk,
+    attribute_values.visibility_edit_session_pk,
+    attribute_values.attribute_context_prop_id,
+    attribute_values.attribute_context_schema_id,
+    attribute_values.attribute_context_schema_variant_id,
+    attribute_values.attribute_context_component_id,
+    attribute_values.attribute_context_system_id,
+    parent_attribute_values.id AS parent_attribute_value_id,
+    row_to_json(attribute_values.*) AS attribute_value_object,
+    row_to_json(props.*) AS prop_object,
+    row_to_json(func_binding_return_values) AS object
 FROM attribute_values
 INNER JOIN props ON
     props.id = attribute_values.attribute_context_prop_id
@@ -33,6 +38,7 @@ WHERE in_tenancy_v1($1, attribute_values.tenancy_universal, attribute_values.ten
                                      attribute_values.attribute_context_system_id)
 ORDER BY
     attribute_values.attribute_context_prop_id,
+    attribute_value_belongs_to_attribute_value.belongs_to_id,
     attribute_values.key,
     visibility_change_set_pk DESC,
     visibility_edit_session_pk DESC,

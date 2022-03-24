@@ -3,6 +3,7 @@ use si_data::{NatsError, NatsTxn, PgError, PgTxn};
 
 use telemetry::prelude::*;
 use thiserror::Error;
+use uuid::Uuid;
 use veritech::EncryptionKey;
 
 use crate::{
@@ -22,9 +23,9 @@ use crate::{
     impl_standard_model, pk,
     standard_model::{self, TypeHint},
     standard_model_accessor, standard_model_belongs_to, standard_model_has_many, Func,
-    HistoryActor, HistoryEventError, IndexMap, Prop, PropError, PropId, PropKind, ReadTenancy,
-    ReadTenancyError, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
-    WriteTenancy,
+    FuncBackendKind, HistoryActor, HistoryEventError, IndexMap, Prop, PropError, PropId, PropKind,
+    ReadTenancy, ReadTenancyError, StandardModel, StandardModelError, Tenancy, Timestamp,
+    Visibility, WriteTenancy,
 };
 
 const FIND_WITH_PARENT_AND_PROTOTYPE_FOR_CONTEXT: &str =
@@ -525,8 +526,134 @@ impl AttributeValue {
         attribute_value
             .set_func_binding_return_value_id(txn, nats, visibility, history_actor, fbrv_id)
             .await?;
+        attribute_value
+            .update_parent_index_map(txn, write_tenancy, visibility)
+            .await?;
 
         Ok((value, *attribute_value.id()))
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    #[instrument(skip_all)]
+    pub async fn insert_for_context(
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
+        veritech: veritech::Client,
+        encryption_key: &EncryptionKey,
+        write_tenancy: &WriteTenancy,
+        visibility: &Visibility,
+        history_actor: &HistoryActor,
+        context: AttributeContext,
+        parent_attribute_value_id: AttributeValueId,
+        value: Option<serde_json::Value>,
+        key: Option<String>,
+    ) -> AttributeValueResult<AttributeValueId> {
+        let read_tenancy = write_tenancy.clone_into_read_tenancy(txn).await?;
+        let parent_prop = AttributeValue::find_prop_for_value(
+            txn,
+            &read_tenancy,
+            visibility,
+            parent_attribute_value_id,
+        )
+        .await?;
+
+        let key = if let Some(k) = key {
+            Some(k)
+        } else if *parent_prop.kind() == PropKind::Array {
+            Some(Uuid::new_v4().to_string())
+        } else {
+            None
+        };
+
+        let unset_func_name = "si:unset".to_string();
+        let unset_func = Func::find_by_attr(
+            txn,
+            &(&read_tenancy).into(),
+            visibility,
+            "name",
+            &unset_func_name,
+        )
+        .await?
+        .pop()
+        .ok_or(AttributeValueError::MissingFunc(unset_func_name))?;
+        let (unset_func_binding, _) = FuncBinding::find_or_create(
+            txn,
+            nats,
+            write_tenancy,
+            visibility,
+            history_actor,
+            serde_json::json![null],
+            *unset_func.id(),
+            FuncBackendKind::Unset,
+        )
+        .await?;
+        let func_binding_return_value_id = FuncBindingReturnValue::get_by_func_binding_id(
+            txn,
+            &read_tenancy,
+            visibility,
+            *unset_func_binding.id(),
+        )
+        .await?
+        .map(|fbrv| *fbrv.id());
+
+        let attribute_value = Self::new(
+            txn,
+            nats,
+            write_tenancy,
+            visibility,
+            history_actor,
+            *unset_func_binding.id(),
+            func_binding_return_value_id,
+            context,
+            key.clone(),
+        )
+        .await?;
+
+        if AttributePrototype::find_with_parent_value_and_key_for_context(
+            txn,
+            &read_tenancy,
+            visibility,
+            Some(parent_attribute_value_id),
+            key.clone(),
+            context,
+        )
+        .await
+        .map_err(|e| AttributeValueError::AttributePrototype(format!("{e}")))?
+        .is_none()
+        {
+            AttributePrototype::new_with_existing_value(
+                txn,
+                nats,
+                write_tenancy,
+                visibility,
+                history_actor,
+                *unset_func.id(),
+                context,
+                key.clone(),
+                Some(parent_attribute_value_id),
+                *attribute_value.id(),
+            )
+            .await
+            .map_err(|e| AttributeValueError::AttributePrototype(format!("{e}")))?;
+        };
+
+        let (_, attribute_value_id) = AttributeValue::update_for_context(
+            txn,
+            nats,
+            veritech,
+            encryption_key,
+            write_tenancy,
+            visibility,
+            history_actor,
+            *attribute_value.id(),
+            Some(parent_attribute_value_id),
+            context,
+            value,
+            key,
+        )
+        .await?;
+
+        Ok(attribute_value_id)
     }
 
     #[instrument(skip_all)]

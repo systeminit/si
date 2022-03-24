@@ -375,7 +375,7 @@ pub async fn create_schema_with_array_of_string_props(
     nats: &NatsTxn,
     veritech: veritech::Client,
     encryption_key: &EncryptionKey,
-) -> SchemaVariant {
+) -> (Schema, SchemaVariant, Prop, Prop, RootProp) {
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
@@ -447,7 +447,8 @@ pub async fn create_schema_with_array_of_string_props(
         .set_parent_prop(txn, nats, &visibility, &history_actor, *sammy_prop.id())
         .await
         .expect("cannot set parent");
-    schema_variant
+
+    (schema, schema_variant, sammy_prop, album_string_prop, root)
 }
 
 /// Create a schema that looks like this:
@@ -463,7 +464,16 @@ pub async fn create_schema_with_nested_array_objects(
     nats: &NatsTxn,
     veritech: veritech::Client,
     encryption_key: &EncryptionKey,
-) -> (SchemaVariant, Prop, Prop, Prop, Prop, Prop) {
+) -> (
+    Schema,
+    SchemaVariant,
+    Prop,
+    Prop,
+    Prop,
+    Prop,
+    Prop,
+    RootProp,
+) {
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
@@ -606,12 +616,14 @@ pub async fn create_schema_with_nested_array_objects(
         .expect("cannot set parent");
 
     (
+        schema,
         schema_variant,
         sammy_prop,
         album_object_prop,
         album_string_prop,
         songs_array_prop,
         song_name_prop,
+        root,
     )
 }
 
@@ -627,7 +639,7 @@ pub async fn create_simple_map(
     nats: &NatsTxn,
     veritech: veritech::Client,
     encryption_key: &EncryptionKey,
-) -> (SchemaVariant, Prop, Prop) {
+) -> (Schema, SchemaVariant, Prop, Prop, RootProp) {
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
@@ -700,7 +712,7 @@ pub async fn create_simple_map(
         .await
         .expect("cannot set parent");
 
-    (schema_variant, album_prop, album_item_prop)
+    (schema, schema_variant, album_prop, album_item_prop, root)
 }
 
 /// Create a schema that looks like this:
@@ -715,7 +727,17 @@ pub async fn create_schema_with_nested_array_objects_and_a_map(
     nats: &NatsTxn,
     veritech: veritech::Client,
     encryption_key: &EncryptionKey,
-) -> (SchemaVariant, Prop, Prop, Prop, Prop, Prop, Prop) {
+) -> (
+    Schema,
+    SchemaVariant,
+    Prop,
+    Prop,
+    Prop,
+    Prop,
+    Prop,
+    Prop,
+    RootProp,
+) {
     let tenancy = Tenancy::new_universal();
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
@@ -875,6 +897,7 @@ pub async fn create_schema_with_nested_array_objects_and_a_map(
         .expect("cannot set parent");
 
     (
+        schema,
         schema_variant,
         sammy_prop,
         album_object_prop,
@@ -882,6 +905,7 @@ pub async fn create_schema_with_nested_array_objects_and_a_map(
         songs_array_prop,
         song_map_prop,
         song_map_item_prop,
+        root,
     )
 }
 
@@ -1446,7 +1470,6 @@ async fn nested_object_prop() {
     );
 }
 
-#[ignore]
 #[test]
 async fn simple_array_of_strings() {
     test_setup!(
@@ -1461,17 +1484,23 @@ async fn simple_array_of_strings() {
         encr_key,
     );
     let tenancy = Tenancy::new_universal();
+    let write_tenancy: WriteTenancy = (&tenancy).into();
+    let read_tenancy = write_tenancy
+        .clone_into_read_tenancy(&txn)
+        .await
+        .expect("could not create read tenancy");
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
     let _ =
         find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor).await;
-    let schema_variant =
+    let (schema, schema_variant, sammy_prop, album_prop, root_prop) =
         create_schema_with_array_of_string_props(&txn, &nats, veritech.clone(), encr_key).await;
+
     let (component, _) = Component::new_for_schema_variant_with_node(
         &txn,
         &nats,
         veritech.clone(),
-        &encr_key,
+        encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -1480,75 +1509,89 @@ async fn simple_array_of_strings() {
     )
     .await
     .expect("Unable to create component");
-    let props = schema_variant
-        .all_props(&txn, &visibility)
-        .await
-        .expect("cannot get props for schema_variant");
-    dbg!(&props);
-    let array_prop = props
-        .iter()
-        .find(|p| p.name() == "sammy_hagar")
-        .expect("could not find array prop");
-    // TODO: Set AttributeValue
-    //
-    // let (_, array_attribute_resolver_id, _) = component
-    //     .resolve_attribute(
-    //         &txn,
-    //         &nats,
-    //         veritech.clone(),
-    //         encr_key,
-    //         &tenancy,
-    //         &visibility,
-    //         &history_actor,
-    //         array_prop,
-    //         Some(serde_json::json![[]]),
-    //         None,
-    //         None,
-    //         UNSET_SYSTEM_ID,
-    //     )
-    //     .await
-    //     .expect("cannot resolve the attributes for the component");
-    for prop in props
-        .iter()
-        .filter(|p| !["sammy_hagar", "root", "si", "domain", "name"].contains(&p.name()))
-    {
-        // TODO: Set AttributeValue
-        //
-        // component
-        //     .resolve_attribute(
-        //         &txn,
-        //         &nats,
-        //         veritech.clone(),
-        //         encr_key,
-        //         &tenancy,
-        //         &visibility,
-        //         &history_actor,
-        //         prop,
-        //         Some(serde_json::json!["standing_hampton"]),
-        //         Some(array_attribute_resolver_id),
-        //         None,
-        //         UNSET_SYSTEM_ID,
-        //     )
-        //     .await
-        //     .expect("cannot resolve the attributes for the component");
-        // component
-        //     .resolve_attribute(
-        //         &txn,
-        //         &nats,
-        //         veritech.clone(),
-        //         encr_key,
-        //         &tenancy,
-        //         &visibility,
-        //         &history_actor,
-        //         prop,
-        //         Some(serde_json::json!["voa"]),
-        //         Some(array_attribute_resolver_id),
-        //         None,
-        //         UNSET_SYSTEM_ID,
-        //     )
-        //     .await
-        //     .expect("cannot resolve the attributes for the component");
-    }
+
+    let mut base_attribute_context = AttributeContext::builder();
+    base_attribute_context
+        .set_schema_id(*schema.id())
+        .set_schema_variant_id(*schema_variant.id())
+        .set_component_id(*component.id());
+
+    let domain_context = base_attribute_context
+        .clone()
+        .set_prop_id(root_prop.domain_prop_id)
+        .to_context()
+        .expect("could not create domain AttributeContext");
+    let domain_value =
+        AttributeValue::find_for_context(&txn, &read_tenancy, &visibility, domain_context.into())
+            .await
+            .expect("could not retrieve domain AttributeValue")
+            .pop()
+            .expect("could not find domain AttributeValue");
+
+    let sammy_context = base_attribute_context
+        .clone()
+        .set_prop_id(*sammy_prop.id())
+        .to_context()
+        .expect("could not create sammy AttributeContext");
+    let unset_sammy_value =
+        AttributeValue::find_for_context(&txn, &read_tenancy, &visibility, sammy_context.into())
+            .await
+            .expect("could not retrieve sammy AttributeValue")
+            .pop()
+            .expect("could not find sammy AttributeValue");
+    let (_, sammy_value_id) = AttributeValue::update_for_context(
+        &txn,
+        &nats,
+        veritech.clone(),
+        encr_key,
+        &write_tenancy,
+        &visibility,
+        &history_actor,
+        *unset_sammy_value.id(),
+        Some(*domain_value.id()),
+        sammy_context,
+        Some(serde_json::json![[]]),
+        None,
+    )
+    .await
+    .expect("could not update sammy AttributeValue");
+
+    let album_context = base_attribute_context
+        .clone()
+        .set_prop_id(*album_prop.id())
+        .to_context()
+        .expect("could not create album AttributeContext");
+    AttributeValue::insert_for_context(
+        &txn,
+        &nats,
+        veritech.clone(),
+        encr_key,
+        &write_tenancy,
+        &visibility,
+        &history_actor,
+        album_context,
+        sammy_value_id,
+        Some(serde_json::json!["standing_hampton"]),
+        None,
+    )
+    .await
+    .expect("could not insert album AttributeValue");
+    AttributeValue::insert_for_context(
+        &txn,
+        &nats,
+        veritech.clone(),
+        encr_key,
+        &write_tenancy,
+        &visibility,
+        &history_actor,
+        album_context,
+        sammy_value_id,
+        Some(serde_json::json!["voa"]),
+        None,
+    )
+    .await
+    .expect("could not insert album AttributeValue");
+
     let component_view = ComponentView::for_context(
         &txn,
         &tenancy
@@ -1557,22 +1600,32 @@ async fn simple_array_of_strings() {
             .expect("unable to generate read tenancy"),
         &visibility,
         AttributeReadContext {
+            schema_id: Some(*schema.id()),
+            schema_variant_id: Some(*schema_variant.id()),
             component_id: Some(*component.id()),
             ..AttributeReadContext::any()
         },
     )
     .await
     .expect("cannot get component view");
-    // txn.commit().await.expect("cannot commit txn");
+
     assert_eq!(
+        serde_json::json![
+            {
+                "si": {
+                    "name": "tim maia"
+                },
+                "domain": {
+                    "sammy_hagar": ["standing_hampton", "voa"]
+                }
+            }
+        ],
         component_view.properties,
-        serde_json::json![{"si": {"name": "tim maia" }, "domain": {"sammy_hagar": ["standing_hampton", "voa"]}}]
     );
 }
 
-#[ignore]
 #[test]
-async fn complex_nested_array_of_objects() {
+async fn complex_nested_array_of_objects_and_arrays() {
     test_setup!(
         ctx,
         _secret_key,
@@ -1585,23 +1638,30 @@ async fn complex_nested_array_of_objects() {
         encr_key,
     );
     let tenancy = Tenancy::new_universal();
+    let write_tenancy: WriteTenancy = (&tenancy).into();
+    let read_tenancy = write_tenancy
+        .clone_into_read_tenancy(&txn)
+        .await
+        .expect("could not create read tenancy");
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
     let _ =
         find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor).await;
     let (
+        schema,
         schema_variant,
         sammy_prop,
         album_object_prop,
         album_string_prop,
         songs_array_prop,
         song_name_prop,
+        root_prop,
     ) = create_schema_with_nested_array_objects(&txn, &nats, veritech.clone(), encr_key).await;
     let (component, _) = Component::new_for_schema_variant_with_node(
         &txn,
         &nats,
         veritech.clone(),
-        &encr_key,
+        encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -1610,195 +1670,255 @@ async fn complex_nested_array_of_objects() {
     )
     .await
     .expect("Unable to create component");
-    // TODO: Set AttributeValue
-    //
-    // let (_, sammy_resolver_id, _) = component
-    //     .resolve_attribute(
-    //         &txn,
-    //         &nats,
-    //         veritech.clone(),
-    //         encr_key,
-    //         &tenancy,
-    //         &visibility,
-    //         &history_actor,
-    //         &sammy_prop,
-    //         Some(serde_json::json![[]]),
-    //         None,
-    //         None,
-    //         UNSET_SYSTEM_ID,
-    //     )
-    //     .await
-    //     .expect("cannot resolve sammy prop");
-    // let (_, standing_hampton_album_resolver_id, _) = component
-    //     .resolve_attribute(
-    //         &txn,
-    //         &nats,
-    //         veritech.clone(),
-    //         encr_key,
-    //         &tenancy,
-    //         &visibility,
-    //         &history_actor,
-    //         &album_object_prop,
-    //         Some(serde_json::json![{}]),
-    //         Some(sammy_resolver_id),
-    //         None,
-    //         UNSET_SYSTEM_ID,
-    //     )
-    //     .await
-    //     .expect("cannot resolve album object prop");
-    // component
-    //     .resolve_attribute(
-    //         &txn,
-    //         &nats,
-    //         veritech.clone(),
-    //         encr_key,
-    //         &tenancy,
-    //         &visibility,
-    //         &history_actor,
-    //         &album_string_prop,
-    //         Some(serde_json::json!["standing_hampton"]),
-    //         Some(standing_hampton_album_resolver_id),
-    //         None,
-    //         UNSET_SYSTEM_ID,
-    //     )
-    //     .await
-    //     .expect("cannot resolve album name for standing hampton");
-    // let (_, standing_hampton_songs_resolver_id, _) = component
-    //     .resolve_attribute(
-    //         &txn,
-    //         &nats,
-    //         veritech.clone(),
-    //         encr_key,
-    //         &tenancy,
-    //         &visibility,
-    //         &history_actor,
-    //         &songs_array_prop,
-    //         Some(serde_json::json![[]]),
-    //         Some(standing_hampton_album_resolver_id),
-    //         None,
-    //         UNSET_SYSTEM_ID,
-    //     )
-    //     .await
-    //     .expect("cannot resolve songs prop for standing hampton");
-    // component
-    //     .resolve_attribute(
-    //         &txn,
-    //         &nats,
-    //         veritech.clone(),
-    //         encr_key,
-    //         &tenancy,
-    //         &visibility,
-    //         &history_actor,
-    //         &song_name_prop,
-    //         Some(serde_json::json!["fall in love again"]),
-    //         Some(standing_hampton_songs_resolver_id),
-    //         None,
-    //         UNSET_SYSTEM_ID,
-    //     )
-    //     .await
-    //     .expect("cannot resolve song for standing hampton");
-    // component
-    //     .resolve_attribute(
-    //         &txn,
-    //         &nats,
-    //         veritech.clone(),
-    //         encr_key,
-    //         &tenancy,
-    //         &visibility,
-    //         &history_actor,
-    //         &song_name_prop,
-    //         Some(serde_json::json!["surrender"]),
-    //         Some(standing_hampton_songs_resolver_id),
-    //         None,
-    //         UNSET_SYSTEM_ID,
-    //     )
-    //     .await
-    //     .expect("cannot resolve song for standing hampton");
-    // let (_, voa_album_resolver_id, _) = component
-    //     .resolve_attribute(
-    //         &txn,
-    //         &nats,
-    //         veritech.clone(),
-    //         encr_key,
-    //         &tenancy,
-    //         &visibility,
-    //         &history_actor,
-    //         &album_object_prop,
-    //         Some(serde_json::json![{}]),
-    //         Some(sammy_resolver_id),
-    //         None,
-    //         UNSET_SYSTEM_ID,
-    //     )
-    //     .await
-    //     .expect("cannot resolve voa album object");
-    // component
-    //     .resolve_attribute(
-    //         &txn,
-    //         &nats,
-    //         veritech.clone(),
-    //         encr_key,
-    //         &tenancy,
-    //         &visibility,
-    //         &history_actor,
-    //         &album_string_prop,
-    //         Some(serde_json::json!["voa"]),
-    //         Some(voa_album_resolver_id),
-    //         None,
-    //         UNSET_SYSTEM_ID,
-    //     )
-    //     .await
-    //     .expect("cannot resolve voa album name");
-    // let (_, voa_songs_resolver_id, _) = component
-    //     .resolve_attribute(
-    //         &txn,
-    //         &nats,
-    //         veritech.clone(),
-    //         encr_key,
-    //         &tenancy,
-    //         &visibility,
-    //         &history_actor,
-    //         &songs_array_prop,
-    //         Some(serde_json::json![[]]),
-    //         Some(voa_album_resolver_id),
-    //         None,
-    //         UNSET_SYSTEM_ID,
-    //     )
-    //     .await
-    //     .expect("cannot resolve voa songs array prop");
-    // component
-    //     .resolve_attribute(
-    //         &txn,
-    //         &nats,
-    //         veritech.clone(),
-    //         encr_key,
-    //         &tenancy,
-    //         &visibility,
-    //         &history_actor,
-    //         &song_name_prop,
-    //         Some(serde_json::json!["eagles fly"]),
-    //         Some(voa_songs_resolver_id),
-    //         None,
-    //         UNSET_SYSTEM_ID,
-    //     )
-    //     .await
-    //     .expect("could not resolve eagles fly");
-    // component
-    //     .resolve_attribute(
-    //         &txn,
-    //         &nats,
-    //         veritech.clone(),
-    //         encr_key,
-    //         &tenancy,
-    //         &visibility,
-    //         &history_actor,
-    //         &song_name_prop,
-    //         Some(serde_json::json!["can't drive 55"]),
-    //         Some(voa_songs_resolver_id),
-    //         None,
-    //         UNSET_SYSTEM_ID,
-    //     )
-    //     .await
-    //     .expect("could not resolve driving 55");
+
+    let mut base_attribute_context = AttributeContext::builder();
+    base_attribute_context
+        .set_schema_id(*schema.id())
+        .set_schema_variant_id(*schema_variant.id())
+        .set_component_id(*component.id());
+
+    let domain_context = base_attribute_context
+        .clone()
+        .set_prop_id(root_prop.domain_prop_id)
+        .to_context()
+        .expect("could not create domain AttributeContext");
+    let domain_value =
+        AttributeValue::find_for_context(&txn, &read_tenancy, &visibility, domain_context.into())
+            .await
+            .expect("could not fetch domain AttributeValue")
+            .pop()
+            .expect("could not find domain AttributeValue");
+
+    let sammy_context = base_attribute_context
+        .clone()
+        .set_prop_id(*sammy_prop.id())
+        .to_context()
+        .expect("could not create sammy AttributeContext");
+    let unset_sammy_value =
+        AttributeValue::find_for_context(&txn, &read_tenancy, &visibility, sammy_context.into())
+            .await
+            .expect("could not fetch sammy AttributeValue")
+            .pop()
+            .expect("could not find sammy AttributeValue");
+    let (_, sammy_value_id) = AttributeValue::update_for_context(
+        &txn,
+        &nats,
+        veritech.clone(),
+        encr_key,
+        &write_tenancy,
+        &visibility,
+        &history_actor,
+        *unset_sammy_value.id(),
+        Some(*domain_value.id()),
+        sammy_context,
+        Some(serde_json::json![[]]),
+        None,
+    )
+    .await
+    .expect("could not update sammy AttributeValue");
+
+    let album_object_context = base_attribute_context
+        .clone()
+        .set_prop_id(*album_object_prop.id())
+        .to_context()
+        .expect("could not create album object AttributeContext");
+    let standing_hampton_album_value_id = AttributeValue::insert_for_context(
+        &txn,
+        &nats,
+        veritech.clone(),
+        encr_key,
+        &write_tenancy,
+        &visibility,
+        &history_actor,
+        album_object_context,
+        sammy_value_id,
+        Some(serde_json::json![{}]),
+        None,
+    )
+    .await
+    .expect("could not insert album object AttributeValue");
+
+    let album_string_context = base_attribute_context
+        .clone()
+        .set_prop_id(*album_string_prop.id())
+        .to_context()
+        .expect("could not create album string AttributeContext");
+    let unset_album_string_value = AttributeValue::find_for_context(
+        &txn,
+        &read_tenancy,
+        &visibility,
+        album_string_context.into(),
+    )
+    .await
+    .expect("could not retrieve album string AttributeValue")
+    .pop()
+    .expect("could not find album string AttributeValue");
+    AttributeValue::update_for_context(
+        &txn,
+        &nats,
+        veritech.clone(),
+        encr_key,
+        &write_tenancy,
+        &visibility,
+        &history_actor,
+        *unset_album_string_value.id(),
+        Some(standing_hampton_album_value_id),
+        album_string_context,
+        Some(serde_json::json!["standing_hampton"]),
+        None,
+    )
+    .await
+    .expect("could not update standing hampton album string AttributeValue");
+
+    let songs_array_context = base_attribute_context
+        .clone()
+        .set_prop_id(*songs_array_prop.id())
+        .to_context()
+        .expect("could not create songs array AttributeContext");
+    let unset_songs_array_value = AttributeValue::find_for_context(
+        &txn,
+        &read_tenancy,
+        &visibility,
+        songs_array_context.into(),
+    )
+    .await
+    .expect("could not fetch songs array AttributeValue")
+    .pop()
+    .expect("could not find songs array AttributeValue");
+    let (_, standing_hampton_songs_array_value_id) = AttributeValue::update_for_context(
+        &txn,
+        &nats,
+        veritech.clone(),
+        encr_key,
+        &write_tenancy,
+        &visibility,
+        &history_actor,
+        *unset_songs_array_value.id(),
+        Some(standing_hampton_album_value_id),
+        songs_array_context,
+        Some(serde_json::json![[]]),
+        None,
+    )
+    .await
+    .expect("could not update standing hampton songs array AttributeValue");
+
+    let song_name_context = base_attribute_context
+        .clone()
+        .set_prop_id(*song_name_prop.id())
+        .to_context()
+        .expect("could not create song name AttributeContext");
+    AttributeValue::insert_for_context(
+        &txn,
+        &nats,
+        veritech.clone(),
+        encr_key,
+        &write_tenancy,
+        &visibility,
+        &history_actor,
+        song_name_context,
+        standing_hampton_songs_array_value_id,
+        Some(serde_json::json!["fall in love again"]),
+        None,
+    )
+    .await
+    .expect("could not insert fall in love again in standing hampton songs array");
+    AttributeValue::insert_for_context(
+        &txn,
+        &nats,
+        veritech.clone(),
+        encr_key,
+        &write_tenancy,
+        &visibility,
+        &history_actor,
+        song_name_context,
+        standing_hampton_songs_array_value_id,
+        Some(serde_json::json!["surrender"]),
+        None,
+    )
+    .await
+    .expect("could not insert surrender in standing hampton songs array");
+
+    let voa_album_value_id = AttributeValue::insert_for_context(
+        &txn,
+        &nats,
+        veritech.clone(),
+        encr_key,
+        &write_tenancy,
+        &visibility,
+        &history_actor,
+        album_object_context,
+        sammy_value_id,
+        Some(serde_json::json![{}]),
+        None,
+    )
+    .await
+    .expect("could not insert voa album object into albums array");
+
+    AttributeValue::update_for_context(
+        &txn,
+        &nats,
+        veritech.clone(),
+        encr_key,
+        &write_tenancy,
+        &visibility,
+        &history_actor,
+        *unset_album_string_value.id(),
+        Some(voa_album_value_id),
+        album_string_context,
+        Some(serde_json::json!["voa"]),
+        None,
+    )
+    .await
+    .expect("could not set voa album string AttributeValue");
+
+    let (_, voa_songs_value_id) = AttributeValue::update_for_context(
+        &txn,
+        &nats,
+        veritech.clone(),
+        encr_key,
+        &write_tenancy,
+        &visibility,
+        &history_actor,
+        *unset_songs_array_value.id(),
+        Some(voa_album_value_id),
+        songs_array_context,
+        Some(serde_json::json![[]]),
+        None,
+    )
+    .await
+    .expect("could not update voa songs array AttributeValue");
+
+    AttributeValue::insert_for_context(
+        &txn,
+        &nats,
+        veritech.clone(),
+        encr_key,
+        &write_tenancy,
+        &visibility,
+        &history_actor,
+        song_name_context,
+        voa_songs_value_id,
+        Some(serde_json::json!["eagles fly"]),
+        None,
+    )
+    .await
+    .expect("could not insert eagles fly into voa songs array");
+
+    AttributeValue::insert_for_context(
+        &txn,
+        &nats,
+        veritech.clone(),
+        encr_key,
+        &write_tenancy,
+        &visibility,
+        &history_actor,
+        song_name_context,
+        voa_songs_value_id,
+        Some(serde_json::json!["can't drive 55"]),
+        None,
+    )
+    .await
+    .expect("could not insert can't drive 55 into voa songs array");
 
     let component_view = ComponentView::for_context(
         &txn,
@@ -1808,13 +1928,14 @@ async fn complex_nested_array_of_objects() {
             .expect("unable to generate read tenancy"),
         &visibility,
         AttributeReadContext {
+            schema_id: Some(*schema.id()),
+            schema_variant_id: Some(*schema_variant.id()),
             component_id: Some(*component.id()),
             ..AttributeReadContext::any()
         },
     )
     .await
     .expect("cannot get component view");
-    // txn.commit().await.expect("cannot commit txn");
 
     assert_eq_sorted!(
         serde_json::json![{
@@ -1842,7 +1963,6 @@ async fn complex_nested_array_of_objects() {
     );
 }
 
-#[ignore]
 #[test]
 async fn simple_map() {
     test_setup!(
@@ -1857,11 +1977,16 @@ async fn simple_map() {
         encr_key,
     );
     let tenancy = Tenancy::new_universal();
+    let write_tenancy: WriteTenancy = (&tenancy).into();
+    let read_tenancy = write_tenancy
+        .clone_into_read_tenancy(&txn)
+        .await
+        .expect("could not create read tenancy");
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
     let _ =
         find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor).await;
-    let (schema_variant, album_prop, album_item_prop) =
+    let (schema, schema_variant, album_prop, album_item_prop, root_prop) =
         create_simple_map(&txn, &nats, veritech.clone(), encr_key).await;
     let (component, _) = Component::new_for_schema_variant_with_node(
         &txn,
@@ -1877,59 +2002,87 @@ async fn simple_map() {
     .await
     .expect("Unable to create component");
 
-    // TODO: Set AttributeValue
-    //
-    // let (_, album_resolver_id, _) = component
-    //     .resolve_attribute(
-    //         &txn,
-    //         &nats,
-    //         veritech.clone(),
-    //         encr_key,
-    //         &tenancy,
-    //         &visibility,
-    //         &history_actor,
-    //         &album_prop,
-    //         Some(serde_json::json![{}]),
-    //         None,
-    //         None,
-    //         UNSET_SYSTEM_ID,
-    //     )
-    //     .await
-    //     .expect("cannot resolve sammy prop");
-    // component
-    //     .resolve_attribute(
-    //         &txn,
-    //         &nats,
-    //         veritech.clone(),
-    //         encr_key,
-    //         &tenancy,
-    //         &visibility,
-    //         &history_actor,
-    //         &album_item_prop,
-    //         Some(serde_json::json!["nocturnal"]),
-    //         Some(album_resolver_id),
-    //         Some("black_dahlia".to_string()),
-    //         UNSET_SYSTEM_ID,
-    //     )
-    //     .await
-    //     .expect("cannot resolve album object prop");
-    // component
-    //     .resolve_attribute(
-    //         &txn,
-    //         &nats,
-    //         veritech.clone(),
-    //         encr_key,
-    //         &tenancy,
-    //         &visibility,
-    //         &history_actor,
-    //         &album_item_prop,
-    //         Some(serde_json::json!["destroy erase improve"]),
-    //         Some(album_resolver_id),
-    //         Some("meshuggah".to_string()),
-    //         UNSET_SYSTEM_ID,
-    //     )
-    //     .await
-    //     .expect("cannot resolve album object prop");
+    let mut base_attribute_context = AttributeContext::builder();
+    base_attribute_context
+        .set_schema_id(*schema.id())
+        .set_schema_variant_id(*schema_variant.id())
+        .set_component_id(*component.id());
+
+    let domain_context = base_attribute_context
+        .clone()
+        .set_prop_id(root_prop.domain_prop_id)
+        .to_context()
+        .expect("could not create domain AttributeContext");
+    let domain_value =
+        AttributeValue::find_for_context(&txn, &read_tenancy, &visibility, domain_context.into())
+            .await
+            .expect("could not retrieve domain AttributeValue")
+            .pop()
+            .expect("could not find domain AttributeValue");
+
+    let album_context = base_attribute_context
+        .clone()
+        .set_prop_id(*album_prop.id())
+        .to_context()
+        .expect("could not create album AttributeContext");
+    let unset_album_value =
+        AttributeValue::find_for_context(&txn, &read_tenancy, &visibility, album_context.into())
+            .await
+            .expect("could not retrieve album AttributeValue")
+            .pop()
+            .expect("could not find album AttributeValue");
+    let (_, album_value_id) = AttributeValue::update_for_context(
+        &txn,
+        &nats,
+        veritech.clone(),
+        encr_key,
+        &write_tenancy,
+        &visibility,
+        &history_actor,
+        *unset_album_value.id(),
+        Some(*domain_value.id()),
+        album_context,
+        Some(serde_json::json![{}]),
+        None,
+    )
+    .await
+    .expect("could not update album AttributeValue");
+
+    let album_item_context = base_attribute_context
+        .clone()
+        .set_prop_id(*album_item_prop.id())
+        .to_context()
+        .expect("could not create album item AttributeContext");
+    AttributeValue::insert_for_context(
+        &txn,
+        &nats,
+        veritech.clone(),
+        encr_key,
+        &write_tenancy,
+        &visibility,
+        &history_actor,
+        album_item_context,
+        album_value_id,
+        Some(serde_json::json!["nocturnal"]),
+        Some("black_dahlia".to_string()),
+    )
+    .await
+    .expect("could not insert album item");
+    AttributeValue::insert_for_context(
+        &txn,
+        &nats,
+        veritech.clone(),
+        encr_key,
+        &write_tenancy,
+        &visibility,
+        &history_actor,
+        album_item_context,
+        album_value_id,
+        Some(serde_json::json!["destroy erase improve"]),
+        Some("meshuggah".to_string()),
+    )
+    .await
+    .expect("could not insert album item");
 
     let component_view = ComponentView::for_context(
         &txn,
@@ -1939,13 +2092,14 @@ async fn simple_map() {
             .expect("unable to generate read tenancy"),
         &visibility,
         AttributeReadContext {
+            schema_id: Some(*schema.id()),
+            schema_variant_id: Some(*schema_variant.id()),
             component_id: Some(*component.id()),
             ..AttributeReadContext::any()
         },
     )
     .await
     .expect("cannot get component view");
-    // txn.commit().await.expect("cannot commit txn");
 
     assert_eq_sorted!(
         serde_json::json![{
@@ -1961,7 +2115,6 @@ async fn simple_map() {
     );
 }
 
-#[ignore]
 #[test]
 async fn complex_nested_array_of_objects_with_a_map() {
     test_setup!(
@@ -1976,11 +2129,17 @@ async fn complex_nested_array_of_objects_with_a_map() {
         encr_key,
     );
     let tenancy = Tenancy::new_universal();
+    let write_tenancy: WriteTenancy = (&tenancy).into();
+    let read_tenancy = write_tenancy
+        .clone_into_read_tenancy(&txn)
+        .await
+        .expect("could not create read tenancy");
     let visibility = Visibility::new_head(false);
     let history_actor = HistoryActor::SystemInit;
     let _ =
         find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor).await;
     let (
+        schema,
         schema_variant,
         sammy_prop,
         album_object_prop,
@@ -1988,13 +2147,14 @@ async fn complex_nested_array_of_objects_with_a_map() {
         songs_array_prop,
         song_map_prop,
         song_map_item_prop,
+        root_prop,
     ) = create_schema_with_nested_array_objects_and_a_map(&txn, &nats, veritech.clone(), encr_key)
         .await;
     let (component, _) = Component::new_for_schema_variant_with_node(
         &txn,
         &nats,
         veritech.clone(),
-        &encr_key,
+        encr_key,
         &tenancy,
         &visibility,
         &history_actor,
@@ -2004,127 +2164,193 @@ async fn complex_nested_array_of_objects_with_a_map() {
     .await
     .expect("Unable to create component");
 
-    // TODO: Set AttributeValue
-    //
-    // let (_, sammy_resolver_id, _) = component
-    //     .resolve_attribute(
-    //         &txn,
-    //         &nats,
-    //         veritech.clone(),
-    //         encr_key,
-    //         &tenancy,
-    //         &visibility,
-    //         &history_actor,
-    //         &sammy_prop,
-    //         Some(serde_json::json![[]]),
-    //         None,
-    //         None,
-    //         UNSET_SYSTEM_ID,
-    //     )
-    //     .await
-    //     .expect("cannot resolve sammy prop");
-    // let (_, standing_hampton_album_resolver_id, _) = component
-    //     .resolve_attribute(
-    //         &txn,
-    //         &nats,
-    //         veritech.clone(),
-    //         encr_key,
-    //         &tenancy,
-    //         &visibility,
-    //         &history_actor,
-    //         &album_object_prop,
-    //         Some(serde_json::json![{}]),
-    //         Some(sammy_resolver_id),
-    //         None,
-    //         UNSET_SYSTEM_ID,
-    //     )
-    //     .await
-    //     .expect("cannot resolve album object prop");
-    // component
-    //     .resolve_attribute(
-    //         &txn,
-    //         &nats,
-    //         veritech.clone(),
-    //         encr_key,
-    //         &tenancy,
-    //         &visibility,
-    //         &history_actor,
-    //         &album_string_prop,
-    //         Some(serde_json::json!["standing_hampton"]),
-    //         Some(standing_hampton_album_resolver_id),
-    //         None,
-    //         UNSET_SYSTEM_ID,
-    //     )
-    //     .await
-    //     .expect("cannot resolve album name for standing hampton");
-    // let (_, standing_hampton_songs_resolver_id, _) = component
-    //     .resolve_attribute(
-    //         &txn,
-    //         &nats,
-    //         veritech.clone(),
-    //         encr_key,
-    //         &tenancy,
-    //         &visibility,
-    //         &history_actor,
-    //         &songs_array_prop,
-    //         Some(serde_json::json![[]]),
-    //         Some(standing_hampton_album_resolver_id),
-    //         None,
-    //         UNSET_SYSTEM_ID,
-    //     )
-    //     .await
-    //     .expect("cannot resolve songs prop for standing hampton");
-    // let (_, standing_hampton_songs_first_map_resolver_id, _) = component
-    //     .resolve_attribute(
-    //         &txn,
-    //         &nats,
-    //         veritech.clone(),
-    //         encr_key,
-    //         &tenancy,
-    //         &visibility,
-    //         &history_actor,
-    //         &song_map_prop,
-    //         Some(serde_json::json![{}]),
-    //         Some(standing_hampton_songs_resolver_id),
-    //         None,
-    //         UNSET_SYSTEM_ID,
-    //     )
-    //     .await
-    //     .expect("cannot resolve songs map prop for standing hampton");
-    // component
-    //     .resolve_attribute(
-    //         &txn,
-    //         &nats,
-    //         veritech.clone(),
-    //         encr_key,
-    //         &tenancy,
-    //         &visibility,
-    //         &history_actor,
-    //         &song_map_item_prop,
-    //         Some(serde_json::json!["good"]),
-    //         Some(standing_hampton_songs_first_map_resolver_id),
-    //         Some("fall in love again".to_string()),
-    //         UNSET_SYSTEM_ID,
-    //     )
-    //     .await
-    //     .expect("cannot resolve songs map prop for standing hampton");
-    // component
-    //     .resolve_attribute(
-    //         &txn,
-    //         &nats,
-    //         veritech.clone(),
-    //         encr_key,
-    //         &tenancy,
-    //         &visibility,
-    //         &history_actor,
-    //         &song_map_item_prop,
-    //         Some(serde_json::json!["ok"]),
-    //         Some(standing_hampton_songs_first_map_resolver_id),
-    //         Some("surrender".to_string()),
-    //         UNSET_SYSTEM_ID,
-    //     )
-    //     .await
-    //     .expect("cannot resolve songs map prop for standing hampton");
+    let mut base_attribute_context = AttributeContext::builder();
+    base_attribute_context
+        .set_schema_id(*schema.id())
+        .set_schema_variant_id(*schema_variant.id())
+        .set_component_id(*component.id());
+
+    let domain_context = base_attribute_context
+        .clone()
+        .set_prop_id(root_prop.domain_prop_id)
+        .to_context()
+        .expect("could not create domain AttributeContext");
+    let domain_value =
+        AttributeValue::find_for_context(&txn, &read_tenancy, &visibility, domain_context.into())
+            .await
+            .expect("could not fetch domain AttributeValue")
+            .pop()
+            .expect("could not find domain AttributeValue");
+
+    let sammy_context = base_attribute_context
+        .clone()
+        .set_prop_id(*sammy_prop.id())
+        .to_context()
+        .expect("could not create sammy AttributeContext");
+    let unset_sammy_value =
+        AttributeValue::find_for_context(&txn, &read_tenancy, &visibility, sammy_context.into())
+            .await
+            .expect("could not fetch sammy AttributeValue")
+            .pop()
+            .expect("could not find sammy AttributeValue");
+    let (_, sammy_value_id) = AttributeValue::update_for_context(
+        &txn,
+        &nats,
+        veritech.clone(),
+        encr_key,
+        &write_tenancy,
+        &visibility,
+        &history_actor,
+        *unset_sammy_value.id(),
+        Some(*domain_value.id()),
+        sammy_context,
+        Some(serde_json::json![{}]),
+        None,
+    )
+    .await
+    .expect("could not update sammy AttributeValue");
+
+    let album_object_context = base_attribute_context
+        .clone()
+        .set_prop_id(*album_object_prop.id())
+        .to_context()
+        .expect("could not create album object context");
+    let standing_hampton_value_id = AttributeValue::insert_for_context(
+        &txn,
+        &nats,
+        veritech.clone(),
+        encr_key,
+        &write_tenancy,
+        &visibility,
+        &history_actor,
+        album_object_context,
+        sammy_value_id,
+        Some(serde_json::json![{}]),
+        None,
+    )
+    .await
+    .expect("could not insert standing_hampton into albums array");
+
+    let album_string_context = base_attribute_context
+        .clone()
+        .set_prop_id(*album_string_prop.id())
+        .to_context()
+        .expect("could not create album string AttributeContext");
+    let unset_album_string_value = AttributeValue::find_for_context(
+        &txn,
+        &read_tenancy,
+        &visibility,
+        album_string_context.into(),
+    )
+    .await
+    .expect("could not fetch album string AttributeValue")
+    .pop()
+    .expect("could not find album string AttributeValue");
+    AttributeValue::update_for_context(
+        &txn,
+        &nats,
+        veritech.clone(),
+        encr_key,
+        &write_tenancy,
+        &visibility,
+        &history_actor,
+        *unset_album_string_value.id(),
+        Some(standing_hampton_value_id),
+        album_string_context,
+        Some(serde_json::json!["standing_hampton"]),
+        None,
+    )
+    .await
+    .expect("could not update standing hampton album string AttributeValue");
+
+    let songs_array_context = base_attribute_context
+        .clone()
+        .set_prop_id(*songs_array_prop.id())
+        .to_context()
+        .expect("could not create songs array AttributeContext");
+    let unset_songs_array_value = AttributeValue::find_for_context(
+        &txn,
+        &read_tenancy,
+        &visibility,
+        songs_array_context.into(),
+    )
+    .await
+    .expect("could not fetch songs array AttributeValue")
+    .pop()
+    .expect("could not find songs array AttributeValue");
+    let (_, songs_array_value_id) = AttributeValue::update_for_context(
+        &txn,
+        &nats,
+        veritech.clone(),
+        encr_key,
+        &write_tenancy,
+        &visibility,
+        &history_actor,
+        *unset_songs_array_value.id(),
+        Some(standing_hampton_value_id),
+        songs_array_context,
+        Some(serde_json::json![[]]),
+        None,
+    )
+    .await
+    .expect("could not update songs array AttributeValue");
+
+    let song_map_context = base_attribute_context
+        .clone()
+        .set_prop_id(*song_map_prop.id())
+        .to_context()
+        .expect("could not create song map AttributeContext");
+    let song_map_value_id = AttributeValue::insert_for_context(
+        &txn,
+        &nats,
+        veritech.clone(),
+        encr_key,
+        &write_tenancy,
+        &visibility,
+        &history_actor,
+        song_map_context,
+        songs_array_value_id,
+        Some(serde_json::json![{}]),
+        None,
+    )
+    .await
+    .expect("could not insert song map into songs array");
+
+    let song_map_item_context = base_attribute_context
+        .clone()
+        .set_prop_id(*song_map_item_prop.id())
+        .to_context()
+        .expect("could not create song map item AttributeContext");
+    AttributeValue::insert_for_context(
+        &txn,
+        &nats,
+        veritech.clone(),
+        encr_key,
+        &write_tenancy,
+        &visibility,
+        &history_actor,
+        song_map_item_context,
+        song_map_value_id,
+        Some(serde_json::json!["good"]),
+        Some("fall in love again".to_string()),
+    )
+    .await
+    .expect("could not insert fall in love again into standing hampton songs map");
+    AttributeValue::insert_for_context(
+        &txn,
+        &nats,
+        veritech.clone(),
+        encr_key,
+        &write_tenancy,
+        &visibility,
+        &history_actor,
+        song_map_item_context,
+        song_map_value_id,
+        Some(serde_json::json!["ok"]),
+        Some("surrender".to_string()),
+    )
+    .await
+    .expect("could not insert surrender into standing hampton song map");
 
     let component_view = ComponentView::for_context(
         &txn,
@@ -2141,7 +2367,6 @@ async fn complex_nested_array_of_objects_with_a_map() {
     .await
     .expect("cannot get component view");
 
-    // txn.commit().await.expect("cannot commit txn");
     assert_eq_sorted!(
         serde_json::json![{
             "si": { "name": "E como isso afeta o Grêmio?" },
