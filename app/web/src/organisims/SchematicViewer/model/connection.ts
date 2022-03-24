@@ -21,12 +21,12 @@ interface ConnectionDisplay {
 }
 
 interface Source {
-  nodeId: string;
+  nodeId: number;
   socketId: string;
 }
 
 interface Destination {
-  nodeId: string;
+  nodeId: number;
   socketId: string;
 }
 

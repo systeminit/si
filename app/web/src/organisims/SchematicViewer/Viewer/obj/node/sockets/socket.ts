@@ -22,7 +22,7 @@ export class Socket extends PIXI.Container {
 
   constructor(
     id: string,
-    nodeId: string,
+    nodeId: number,
     labelText: string | null,
     type: SocketType,
     position: Position,

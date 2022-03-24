@@ -1,7 +1,7 @@
 import { Color, SchematicObject } from "./common";
 import { Socket } from "./socket";
 import { NodeTemplate } from "@/api/sdf/dal/node";
-import { SchematicKind } from "@/api/sdf/dal/schematic";
+import { NodeKind } from "@/api/sdf/dal/node";
 
 export interface NodeLabel {
   title: string;
@@ -92,7 +92,8 @@ interface NodeConnection {
 
 /**  A node */
 export interface Node extends SchematicObject {
-  id: string;
+  id: number;
+  kind: NodeKind;
   label: NodeLabel;
   classification: NodeClassification;
   status?: NodeStatus;
@@ -110,18 +111,19 @@ export interface NodePositionUpdate {
 }
 
 export interface NodeUpdate {
-  nodeId: string;
+  nodeId: number;
   position: NodePositionUpdate;
 }
 
 export function fakeNodeFromTemplate(template: NodeTemplate): Node {
   const node: Node = {
     id: -1,
+    kind: template.kind,
     label: template.label,
     classification: template.classification,
     position: [
       {
-        id: -1,
+        id: "-1",
         x: 0,
         y: 0,
       },
@@ -132,8 +134,8 @@ export function fakeNodeFromTemplate(template: NodeTemplate): Node {
     lastUpdated: new Date(Date.now()),
     checksum: "j4j4j4j4j4j4j4j4j4j4j4",
     schematic: {
-      deployment: template.kind === SchematicKind.Deployment,
-      component: template.kind === SchematicKind.Component,
+      deployment: template.kind === NodeKind.Deployment,
+      component: template.kind === NodeKind.Component,
     },
   };
   return node;
@@ -142,71 +144,4 @@ export function fakeNodeFromTemplate(template: NodeTemplate): Node {
 export function generateNodeName(): string {
   const name = "si-";
   return name;
-}
-
-export function generateNode(
-  id: string,
-  title: string,
-  name: string,
-  position: { x: number; y: number },
-  schematicKind: SchematicKind,
-): Node {
-  const node: Node = {
-    id: -1,
-    label: {
-      title: title,
-      name: name,
-    },
-    classification: {
-      component: ComponentType.APPLICATION,
-      kind: "kubernetes",
-      type: "service",
-    },
-    position: [
-      {
-        id,
-        x: position.x,
-        y: position.y,
-      },
-    ],
-    input: [
-      {
-        id: -2,
-        type: "kubernetes.namespace",
-        name: "namespace",
-      },
-      {
-        id: -3,
-        type: "kubernetes.deployment",
-        name: "deployment",
-      },
-      {
-        id: -4,
-        type: "kubernetes.service",
-        name: "service",
-      },
-      {
-        id: -5,
-        type: "kubernetes.env",
-        name: "env",
-      },
-    ],
-    output: [
-      {
-        id: -6,
-        type: "kubernetes.service",
-      },
-    ],
-    display: {
-      color: 0x32b832,
-    },
-    lastUpdated: new Date(Date.now()),
-    checksum: "j4j4j4j4j4j4j4j4j4j4j4",
-    schematic: {
-      deployment: schematicKind === SchematicKind.Deployment,
-      component: schematicKind === SchematicKind.Component,
-    },
-  };
-
-  return node;
 }

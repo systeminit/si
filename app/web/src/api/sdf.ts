@@ -3,6 +3,7 @@ import { SdfWs } from "@/api/sdf/ws";
 import { fromFetch } from "rxjs/fetch";
 import { from, mergeMap, Observable } from "rxjs";
 import _ from "lodash";
+import { Workspace } from "@/api/sdf/dal/workspace";
 import { SessionService } from "@/service/session";
 
 export class FetchError extends Error {
@@ -80,9 +81,12 @@ export class SDF {
     if (this.token) {
       headers.set("Authorization", `Bearer ${this.token}`);
     }
-    const workspace = JSON.parse(sessionStorage.getItem("workspace") ?? null);
-    if (workspace) {
-      headers.set("WorkspaceId", workspace.id);
+    const storedWorkspace = sessionStorage.getItem("workspace") ?? null;
+    if (storedWorkspace !== null) {
+      const workspace: Workspace = JSON.parse(storedWorkspace);
+      if (workspace) {
+        headers.set("WorkspaceId", `${workspace.id}`);
+      }
     }
     return headers;
   }

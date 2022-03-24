@@ -33,7 +33,7 @@ const SOCKET_HEIGHT = 3;
 export class Node extends PIXI.Container {
   kind: string;
   isSelected = false;
-  id: string;
+  id: number;
   title: string;
   connections: Array<Connection>;
   selection?: SelectionStatus;

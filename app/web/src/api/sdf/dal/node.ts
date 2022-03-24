@@ -5,7 +5,13 @@ import {
   NodeDisplay,
 } from "@/organisims/SchematicViewer/model/node";
 
+export enum NodeKind {
+  Deployment = "deployment",
+  Component = "component",
+}
+
 export interface NodeTemplate {
+  kind: NodeKind;
   label: NodeLabel;
   classification: NodeClassification;
   input: Socket[];

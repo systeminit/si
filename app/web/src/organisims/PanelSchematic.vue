@@ -92,6 +92,7 @@ import { SchematicService } from "@/service/schematic";
 import { GlobalErrorService } from "@/service/global_error";
 import { firstValueFrom } from "rxjs";
 import * as MODEL from "./SchematicViewer/model";
+import * as OBJ from "./SchematicViewer/Viewer/obj";
 
 // import { SchematicService } from "@/service/schematic";
 // import { GlobalErrorService } from "@/service/global_error";
@@ -171,11 +172,13 @@ const addMenuFilters = computed(() => {
 });
 
 const editMode = refFrom<boolean>(ChangeSetService.currentEditMode());
-const rootDeployment = refFrom<Node | null>(deploymentSelection$);
+const rootDeployment = refFrom<Array<OBJ.Node> | null>(
+  deploymentSelection$.asObservable(),
+);
 const addMenuEnabled = computed(() => {
   switch (schematicKind.value) {
     case SchematicKind.Component:
-      return editMode.value && !!rootDeployment.value;
+      return editMode.value && rootDeployment.value;
     case SchematicKind.Deployment:
       return editMode.value;
   }

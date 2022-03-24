@@ -1,3 +1,5 @@
+import { NodeKind } from "@/api/sdf/dal/node";
+
 export interface Schematic {
   poop: string;
 }
@@ -5,6 +7,18 @@ export interface Schematic {
 export enum SchematicKind {
   Deployment = "deployment",
   Component = "component",
+}
+
+export function nodeKindFromSchematicKind(
+  kind: SchematicKind | null,
+): NodeKind | null {
+  switch (kind) {
+    case SchematicKind.Deployment:
+      return NodeKind.Deployment;
+    case SchematicKind.Component:
+      return NodeKind.Component;
+  }
+  return null;
 }
 
 export function schematicKindFromString(s: string): SchematicKind {
