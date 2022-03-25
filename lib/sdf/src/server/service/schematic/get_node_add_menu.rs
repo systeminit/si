@@ -1,10 +1,10 @@
 use axum::Json;
 use dal::node_menu::{get_node_menu_items, GenerateMenuItem};
-use dal::{MenuFilter, ReadTenancy, Visibility, WorkspaceId};
+use dal::{MenuFilter, Visibility, WorkspaceId};
 use serde::{Deserialize, Serialize};
 
-use super::{SchematicError, SchematicResult};
-use crate::server::extract::{Authorization, PgRwTxn};
+use super::SchematicResult;
+use crate::server::extract::{AccessBuilder, HandlerContext};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -18,22 +18,17 @@ pub struct GetNodeAddMenuRequest {
 pub type GetNodeAddMenuResponse = serde_json::Value;
 
 pub async fn get_node_add_menu(
-    mut txn: PgRwTxn,
-    Authorization(claim): Authorization,
+    HandlerContext(builder, mut txns): HandlerContext,
+    AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<GetNodeAddMenuRequest>,
 ) -> SchematicResult<Json<GetNodeAddMenuResponse>> {
-    let txn = txn.start().await?;
-    let read_tenancy = ReadTenancy::new_workspace(&txn, vec![request.workspace_id]).await?;
-    if !read_tenancy
-        .billing_accounts()
-        .contains(&claim.billing_account_id)
-    {
-        return Err(SchematicError::NotAuthorized);
-    }
+    let txns = txns.start().await?;
+    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
+
     let items = get_node_menu_items(
-        &txn,
-        &read_tenancy,
-        &request.visibility,
+        ctx.pg_txn(),
+        ctx.read_tenancy(),
+        ctx.visibility(),
         &request.menu_filter,
     )
     .await?;

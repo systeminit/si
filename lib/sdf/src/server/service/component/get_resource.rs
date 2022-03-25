@@ -5,7 +5,7 @@ use dal::{Component, ComponentId, ResourceView, SystemId, Visibility, WorkspaceI
 use serde::{Deserialize, Serialize};
 
 use super::{ComponentError, ComponentResult};
-use crate::server::extract::{PgRwTxn, Tenancy};
+use crate::server::extract::{AccessBuilder, HandlerContext};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -24,17 +24,18 @@ pub struct GetResourceResponse {
 }
 
 pub async fn get_resource(
-    mut txn: PgRwTxn,
+    HandlerContext(builder, mut txns): HandlerContext,
+    AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<GetResourceRequest>,
-    Tenancy(_write_tenancy, read_tenancy): Tenancy,
 ) -> ComponentResult<Json<GetResourceResponse>> {
-    let txn = txn.start().await?;
+    let txns = txns.start().await?;
+    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
 
     let system_id = request.system_id.unwrap_or(UNSET_SYSTEM_ID);
     let resource = Component::get_resource_by_component_and_system(
-        &txn,
-        &read_tenancy,
-        &request.visibility,
+        ctx.pg_txn(),
+        ctx.read_tenancy(),
+        ctx.visibility(),
         request.component_id,
         system_id,
     )
@@ -44,6 +45,6 @@ pub async fn get_resource(
         system_id,
     ))?;
 
-    txn.commit().await?;
+    txns.commit().await?;
     Ok(Json(GetResourceResponse { resource }))
 }

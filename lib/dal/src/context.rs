@@ -176,6 +176,16 @@ impl AccessBuilder {
         }
     }
 
+    /// Builds and returns a new [`RequestContext`] using the default [`Visibillity`].
+    pub fn build_head(self) -> RequestContext {
+        RequestContext {
+            read_tenancy: self.read_tenancy,
+            write_tenancy: self.write_tenancy,
+            visibility: Visibility::new_head(false),
+            history_actor: self.history_actor,
+        }
+    }
+
     /// Builds and returns a new [`RequestContext`] using the given [`Visibillity`].
     pub fn build(self, visibility: Visibility) -> RequestContext {
         RequestContext {

@@ -1,11 +1,8 @@
-use crate::server::extract::{Authorization, NatsTxn, PgRwTxn};
-use crate::service::schematic::{SchematicError, SchematicResult};
+use super::SchematicResult;
+use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::Json;
 use dal::node::NodeId;
-use dal::{
-    HistoryActor, NodePosition, SchematicKind, StandardModel, SystemId, Tenancy, Visibility,
-    Workspace, WorkspaceId, WriteTenancy,
-};
+use dal::{NodePosition, SchematicKind, SystemId, Visibility, WorkspaceId};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -29,32 +26,19 @@ pub struct SetNodePositionResponse {
 }
 
 pub async fn set_node_position(
-    mut txn: PgRwTxn,
-    mut nats: NatsTxn,
-    Authorization(claim): Authorization,
+    HandlerContext(builder, mut txns): HandlerContext,
+    AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<SetNodePositionRequest>,
 ) -> SchematicResult<Json<SetNodePositionResponse>> {
-    let txn = txn.start().await?;
-    let nats = nats.start().await?;
+    let txns = txns.start().await?;
+    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
 
-    let billing_account_tenancy = Tenancy::new_billing_account(vec![claim.billing_account_id]);
-    let history_actor: HistoryActor = HistoryActor::from(claim.user_id);
-    let workspace = Workspace::get_by_id(
-        &txn,
-        &billing_account_tenancy,
-        &request.visibility,
-        &request.workspace_id,
-    )
-    .await?
-    .ok_or(SchematicError::InvalidRequest)?;
-
-    let write_tenancy = WriteTenancy::new_workspace(*workspace.id());
     let position = NodePosition::upsert_by_node_id(
-        &txn,
-        &nats,
-        &write_tenancy,
-        &request.visibility,
-        &history_actor,
+        ctx.pg_txn(),
+        ctx.nats_txn(),
+        ctx.write_tenancy(),
+        ctx.visibility(),
+        ctx.history_actor(),
         request.schematic_kind,
         &request.system_id,
         request.root_node_id,
@@ -64,8 +48,7 @@ pub async fn set_node_position(
     )
     .await?;
 
-    txn.commit().await?;
-    nats.commit().await?;
+    txns.commit().await?;
 
     Ok(Json(SetNodePositionResponse { position }))
 }

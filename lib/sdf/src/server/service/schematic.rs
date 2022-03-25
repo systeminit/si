@@ -7,7 +7,7 @@ use axum::Router;
 use dal::{
     node::NodeId, ComponentError, NodeError, NodeKind, NodeMenuError, NodePositionError,
     ReadTenancyError, SchemaError as DalSchemaError, SchematicError as DalSchematicError,
-    SchematicKind, StandardModelError,
+    SchematicKind, StandardModelError, TransactionsError,
 };
 use std::convert::Infallible;
 use thiserror::Error;
@@ -18,7 +18,6 @@ pub mod get_node_add_menu;
 pub mod get_node_template;
 pub mod get_schematic;
 pub mod set_node_position;
-pub mod set_schematic;
 
 #[derive(Debug, Error)]
 pub enum SchematicError {
@@ -28,6 +27,8 @@ pub enum SchematicError {
     Pg(#[from] si_data::PgError),
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
+    #[error(transparent)]
+    ContextTransaction(#[from] TransactionsError),
     #[error("schema error: {0}")]
     Schema(#[from] DalSchemaError),
     #[error("schema not found")]
@@ -83,7 +84,6 @@ impl IntoResponse for SchematicError {
 pub fn routes() -> Router {
     Router::new()
         .route("/get_schematic", get(get_schematic::get_schematic))
-        .route("/set_schematic", post(set_schematic::set_schematic))
         .route(
             "/get_node_add_menu",
             post(get_node_add_menu::get_node_add_menu),

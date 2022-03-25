@@ -1,12 +1,9 @@
 use axum::Json;
-use dal::{BillingAccount, StandardModel, Tenancy, User, Visibility};
+use dal::{BillingAccount, StandardModel, User};
 use serde::{Deserialize, Serialize};
 
-use super::SessionResult;
-use crate::server::{
-    extract::{Authorization, PgRoTxn},
-    service::session::SessionError,
-};
+use super::{SessionError, SessionResult};
+use crate::server::extract::{AccessBuilder, Authorization, HandlerContext};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -16,23 +13,31 @@ pub struct RestoreAuthenticationResponse {
 }
 
 pub async fn restore_authentication(
-    mut txn: PgRoTxn,
+    HandlerContext(builder, mut txns): HandlerContext,
+    AccessBuilder(request_ctx): AccessBuilder,
     Authorization(claim): Authorization,
 ) -> SessionResult<Json<RestoreAuthenticationResponse>> {
-    let txn = txn.start().await?;
-    let tenancy = Tenancy::new_universal();
-    let visibility = Visibility::new_head(false);
+    let txns = txns.start().await?;
+    let ctx = builder.build(request_ctx.build_head(), &txns);
 
-    let billing_account =
-        BillingAccount::get_by_id(&txn, &tenancy, &visibility, &claim.billing_account_id)
-            .await?
-            .ok_or(SessionError::LoginFailed)?;
+    // Why is this here?
+    let billing_account = BillingAccount::get_by_id(
+        ctx.pg_txn(),
+        &ctx.read_tenancy().into(),
+        ctx.visibility(),
+        &claim.billing_account_id,
+    )
+    .await?
+    .ok_or(SessionError::LoginFailed)?;
 
-    let billing_account_tenancy = Tenancy::new_billing_account(vec![*billing_account.id()]);
-
-    let user = User::get_by_id(&txn, &billing_account_tenancy, &visibility, &claim.user_id)
-        .await?
-        .ok_or(SessionError::LoginFailed)?;
+    let user = User::get_by_id(
+        ctx.pg_txn(),
+        &ctx.read_tenancy().into(),
+        ctx.visibility(),
+        &claim.user_id,
+    )
+    .await?
+    .ok_or(SessionError::LoginFailed)?;
 
     let reply = RestoreAuthenticationResponse {
         user,

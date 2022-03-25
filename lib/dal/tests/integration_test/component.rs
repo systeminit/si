@@ -358,7 +358,15 @@ async fn list_qualifications() {
         .await
         .expect("cannot check qualifications");
     let qualifications = component
-        .list_qualifications(&txn, &tenancy, &visibility, UNSET_ID_VALUE.into())
+        .list_qualifications(
+            &txn,
+            &tenancy
+                .clone_into_read_tenancy(&txn)
+                .await
+                .expect("unable to generate read tenancy"),
+            &visibility,
+            UNSET_ID_VALUE.into(),
+        )
         .await
         .expect("cannot list qualifications");
     assert_eq!(qualifications.len(), 2);
@@ -424,7 +432,10 @@ async fn list_qualifications_by_component_id() {
         .expect("cannot check qualifications");
     let qualifications = Component::list_qualifications_by_component_id(
         &txn,
-        &tenancy,
+        &tenancy
+            .clone_into_read_tenancy(&txn)
+            .await
+            .expect("unable to generate read tenancy"),
         &visibility,
         *component.id(),
         UNSET_ID_VALUE.into(),

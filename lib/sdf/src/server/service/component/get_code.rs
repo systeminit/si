@@ -1,14 +1,11 @@
 use axum::extract::Query;
 use axum::Json;
 use dal::system::UNSET_SYSTEM_ID;
-use dal::{
-    CodeLanguage, CodeView, Component, ComponentId, StandardModel, SystemId, Tenancy, Visibility,
-    Workspace, WorkspaceId,
-};
+use dal::{CodeLanguage, CodeView, Component, ComponentId, SystemId, Visibility, WorkspaceId};
 use serde::{Deserialize, Serialize};
 
-use super::{ComponentError, ComponentResult};
-use crate::server::extract::{Authorization, PgRoTxn};
+use super::ComponentResult;
+use crate::server::extract::{AccessBuilder, HandlerContext};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -27,28 +24,18 @@ pub struct GetCodeResponse {
 }
 
 pub async fn get_code(
-    mut txn: PgRoTxn,
+    HandlerContext(builder, mut txns): HandlerContext,
+    AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<GetCodeRequest>,
-    Authorization(claim): Authorization,
 ) -> ComponentResult<Json<GetCodeResponse>> {
-    let txn = txn.start().await?;
-
-    let billing_account_tenancy = Tenancy::new_billing_account(vec![claim.billing_account_id]);
-    let workspace = Workspace::get_by_id(
-        &txn,
-        &billing_account_tenancy,
-        &request.visibility,
-        &request.workspace_id,
-    )
-    .await?
-    .ok_or(ComponentError::InvalidRequest)?;
-    let tenancy = Tenancy::new_workspace(vec![*workspace.id()]);
+    let txns = txns.start().await?;
+    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
 
     let system_id = request.system_id.unwrap_or(UNSET_SYSTEM_ID);
     let code_list = Component::list_code_generated_by_component_id(
-        &txn,
-        &tenancy,
-        &request.visibility,
+        ctx.pg_txn(),
+        &ctx.read_tenancy().into(),
+        ctx.visibility(),
         request.component_id,
         system_id,
     )
@@ -59,6 +46,6 @@ pub async fn get_code(
         .map(|code_gen| CodeView::new(CodeLanguage::Yaml, code_gen.code))
         .collect();
 
-    txn.commit().await?;
+    txns.commit().await?;
     Ok(Json(GetCodeResponse { code_views }))
 }

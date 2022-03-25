@@ -1,11 +1,11 @@
 use axum::Json;
 use dal::{
-    key_pair::KeyPairId, EncryptedSecret, HistoryActor, Secret, SecretAlgorithm, SecretKind,
-    SecretObjectType, SecretVersion, Visibility, WorkspaceId, WriteTenancy,
+    key_pair::KeyPairId, EncryptedSecret, Secret, SecretAlgorithm, SecretKind, SecretObjectType,
+    SecretVersion, Visibility, WorkspaceId,
 };
 use serde::{Deserialize, Serialize};
 
-use crate::server::extract::{Authorization, NatsTxn, PgRwTxn};
+use crate::server::extract::{AccessBuilder, Authorization, HandlerContext};
 
 use super::SecretResult;
 
@@ -31,23 +31,20 @@ pub struct CreateSecretResponse {
 }
 
 pub async fn create_secret(
-    mut txn: PgRwTxn,
-    mut nats: NatsTxn,
+    HandlerContext(builder, mut txns): HandlerContext,
+    AccessBuilder(request_tx): AccessBuilder,
     Authorization(claim): Authorization,
     Json(request): Json<CreateSecretRequest>,
 ) -> SecretResult<Json<CreateSecretResponse>> {
-    let txn = txn.start().await?;
-    let nats = nats.start().await?;
-
-    let history_actor = HistoryActor::from(claim.user_id);
-    let write_tenancy = WriteTenancy::new_workspace(request.workspace_id);
+    let txns = txns.start().await?;
+    let ctx = builder.build(request_tx.build(request.visibility), &txns);
 
     let secret = EncryptedSecret::new(
-        &txn,
-        &nats,
-        &write_tenancy,
-        &request.visibility,
-        &history_actor,
+        ctx.pg_txn(),
+        ctx.nats_txn(),
+        ctx.write_tenancy(),
+        ctx.visibility(),
+        ctx.history_actor(),
         request.name,
         request.object_type,
         request.kind,
@@ -59,8 +56,7 @@ pub async fn create_secret(
     )
     .await?;
 
-    txn.commit().await?;
-    nats.commit().await?;
+    txns.commit().await?;
 
     Ok(Json(CreateSecretResponse { secret }))
 }

@@ -1,7 +1,7 @@
 use super::SignupResult;
-use crate::server::extract::{NatsTxn, PgRwTxn};
+use crate::server::extract::HandlerContext;
 use axum::Json;
-use dal::{BillingAccount, HistoryActor, Visibility, WriteTenancy};
+use dal::{BillingAccount, HistoryActor, ReadTenancy, WriteTenancy};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -20,28 +20,33 @@ pub struct CreateAccountResponse {
 }
 
 pub async fn create_account(
-    mut txn: PgRwTxn,
-    mut nats: NatsTxn,
+    HandlerContext(builder, mut txns): HandlerContext,
     Json(request): Json<CreateAccountRequest>,
 ) -> SignupResult<Json<CreateAccountResponse>> {
-    let txn = txn.start().await?;
-    let nats = nats.start().await?;
-    let write_tenancy = WriteTenancy::new_universal();
-    let visibility = Visibility::new_head(false);
-    let history_actor = HistoryActor::SystemInit;
+    let txns = txns.start().await?;
+    let ctx = builder.build(
+        dal::context::AccessBuilder::new(
+            ReadTenancy::new_universal(),
+            WriteTenancy::new_universal(),
+            HistoryActor::SystemInit,
+        )
+        .build_head(),
+        &txns,
+    );
+
     let _result = BillingAccount::signup(
-        &txn,
-        &nats,
-        &write_tenancy,
-        &visibility,
-        &history_actor,
+        ctx.pg_txn(),
+        ctx.nats_txn(),
+        ctx.write_tenancy(),
+        ctx.visibility(),
+        ctx.history_actor(),
         &request.billing_account_name,
         &request.user_name,
         &request.user_email,
         &request.user_password,
     )
     .await?;
-    txn.commit().await?;
-    nats.commit().await?;
+
+    txns.commit().await?;
     Ok(Json(CreateAccountResponse { success: true }))
 }

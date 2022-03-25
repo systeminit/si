@@ -3,13 +3,12 @@ use dal::{
     edit_field::{EditFieldAble, EditFieldBaggage, EditFieldObjectKind},
     schema::{self, SchemaVariant},
     socket::Socket,
-    Component, HistoryActor, Prop, QualificationCheck, Schema, Visibility, WorkspaceId,
-    WriteTenancy,
+    Component, Prop, QualificationCheck, Schema, Visibility, WorkspaceId,
 };
 use serde::{Deserialize, Serialize};
 
 use super::{EditFieldError, EditFieldResult};
-use crate::server::extract::{Authorization, EncryptionKey, NatsTxn, PgRwTxn, Veritech};
+use crate::server::extract::{AccessBuilder, HandlerContext};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -32,32 +31,23 @@ pub struct UpdateFromEditFieldResponse {
 
 /// # Panics
 pub async fn update_from_edit_field(
-    mut txn: PgRwTxn,
-    mut nats: NatsTxn,
-    Veritech(veritech): Veritech,
-    EncryptionKey(encryption_key): EncryptionKey,
-    Authorization(claim): Authorization,
+    HandlerContext(builder, mut txns): HandlerContext,
+    AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<UpdateFromEditFieldRequest>,
 ) -> EditFieldResult<Json<UpdateFromEditFieldResponse>> {
-    let txn = txn.start().await?;
-    let nats = nats.start().await?;
-    let write_tenancy = match request.workspace_id {
-        Some(workspace_id) => WriteTenancy::new_workspace(workspace_id),
-        None => WriteTenancy::new_billing_account(claim.billing_account_id),
-    };
-
-    let history_actor: HistoryActor = HistoryActor::from(claim.user_id);
+    let txns = txns.start().await?;
+    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
 
     match request.object_kind {
         EditFieldObjectKind::Component => {
             Component::update_from_edit_field(
-                &txn,
-                &nats,
-                veritech,
-                &encryption_key,
-                &write_tenancy,
-                &request.visibility,
-                &history_actor,
+                ctx.pg_txn(),
+                ctx.nats_txn(),
+                ctx.veritech().clone(),
+                ctx.encryption_key(),
+                ctx.write_tenancy(),
+                ctx.visibility(),
+                ctx.history_actor(),
                 request.object_id.into(),
                 request.edit_field_id,
                 request.value,
@@ -71,31 +61,31 @@ pub async fn update_from_edit_field(
             todo!()
             // FIXME(nick): need to figure out prop id;
             //
-            // Component::update_prop_from_edit_field(
-            //     &txn,
-            //     &nats,
-            //     veritech,
-            //     &encryption_key,
-            //     &write_tenancy,
-            //     &request.visibility,
-            //     &history_actor,
-            //     request.object_id.into(),
-            //     baggage.attribute_context.prop_id(),
-            //     request.edit_field_id,
-            //     request.value,
-            //     None, // TODO: Eventually, pass the key! -- Adam
-            // )
-            // .await?
+            //Component::update_prop_from_edit_field(
+            //    ctx.pg_txn(),
+            //    ctx.nats_txn(),
+            //    ctx.veritech().clone(),
+            //    ctx.encryption_key(),
+            //    ctx.write_tenancy(),
+            //    ctx.visibility(),
+            //    ctx.history_actor(),
+            //    request.object_id.into(),
+            //    baggage.attribute_context.prop_id(),
+            //    request.edit_field_id,
+            //    request.value,
+            //    None, // TODO: Eventually, pass the key! -- Adam
+            //)
+            //.await?
         }
         EditFieldObjectKind::Prop => {
             Prop::update_from_edit_field(
-                &txn,
-                &nats,
-                veritech,
-                &encryption_key,
-                &write_tenancy,
-                &request.visibility,
-                &history_actor,
+                ctx.pg_txn(),
+                ctx.nats_txn(),
+                ctx.veritech().clone(),
+                ctx.encryption_key(),
+                ctx.write_tenancy(),
+                ctx.visibility(),
+                ctx.history_actor(),
                 request.object_id.into(),
                 request.edit_field_id,
                 request.value,
@@ -104,13 +94,13 @@ pub async fn update_from_edit_field(
         }
         EditFieldObjectKind::QualificationCheck => {
             QualificationCheck::update_from_edit_field(
-                &txn,
-                &nats,
-                veritech,
-                &encryption_key,
-                &write_tenancy,
-                &request.visibility,
-                &history_actor,
+                ctx.pg_txn(),
+                ctx.nats_txn(),
+                ctx.veritech().clone(),
+                ctx.encryption_key(),
+                ctx.write_tenancy(),
+                ctx.visibility(),
+                ctx.history_actor(),
                 request.object_id.into(),
                 request.edit_field_id,
                 request.value,
@@ -119,13 +109,13 @@ pub async fn update_from_edit_field(
         }
         EditFieldObjectKind::Schema => {
             Schema::update_from_edit_field(
-                &txn,
-                &nats,
-                veritech,
-                &encryption_key,
-                &write_tenancy,
-                &request.visibility,
-                &history_actor,
+                ctx.pg_txn(),
+                ctx.nats_txn(),
+                ctx.veritech().clone(),
+                ctx.encryption_key(),
+                ctx.write_tenancy(),
+                ctx.visibility(),
+                ctx.history_actor(),
                 request.object_id.into(),
                 request.edit_field_id,
                 request.value,
@@ -134,13 +124,13 @@ pub async fn update_from_edit_field(
         }
         EditFieldObjectKind::SchemaUiMenu => {
             schema::UiMenu::update_from_edit_field(
-                &txn,
-                &nats,
-                veritech,
-                &encryption_key,
-                &write_tenancy,
-                &request.visibility,
-                &history_actor,
+                ctx.pg_txn(),
+                ctx.nats_txn(),
+                ctx.veritech().clone(),
+                ctx.encryption_key(),
+                ctx.write_tenancy(),
+                ctx.visibility(),
+                ctx.history_actor(),
                 request.object_id.into(),
                 request.edit_field_id,
                 request.value,
@@ -149,13 +139,13 @@ pub async fn update_from_edit_field(
         }
         EditFieldObjectKind::SchemaVariant => {
             SchemaVariant::update_from_edit_field(
-                &txn,
-                &nats,
-                veritech,
-                &encryption_key,
-                &write_tenancy,
-                &request.visibility,
-                &history_actor,
+                ctx.pg_txn(),
+                ctx.nats_txn(),
+                ctx.veritech().clone(),
+                ctx.encryption_key(),
+                ctx.write_tenancy(),
+                ctx.visibility(),
+                ctx.history_actor(),
                 request.object_id.into(),
                 request.edit_field_id,
                 request.value,
@@ -164,13 +154,13 @@ pub async fn update_from_edit_field(
         }
         EditFieldObjectKind::Socket => {
             Socket::update_from_edit_field(
-                &txn,
-                &nats,
-                veritech,
-                &encryption_key,
-                &write_tenancy,
-                &request.visibility,
-                &history_actor,
+                ctx.pg_txn(),
+                ctx.nats_txn(),
+                ctx.veritech().clone(),
+                ctx.encryption_key(),
+                ctx.write_tenancy(),
+                ctx.visibility(),
+                ctx.history_actor(),
                 request.object_id.into(),
                 request.edit_field_id,
                 request.value,
@@ -179,8 +169,7 @@ pub async fn update_from_edit_field(
         }
     };
 
-    txn.commit().await?;
-    nats.commit().await?;
+    txns.commit().await?;
 
     Ok(Json(UpdateFromEditFieldResponse { success: true }))
 }

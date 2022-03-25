@@ -30,7 +30,6 @@ async fn create_application() {
     let visibility = Visibility::new_head(false);
     let request = CreateApplicationRequest {
         name: "fancyPants".to_string(),
-        visibility,
         workspace_id: *nba.workspace.id(),
     };
 

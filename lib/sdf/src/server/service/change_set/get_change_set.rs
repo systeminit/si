@@ -1,8 +1,8 @@
 use super::{ChangeSetError, ChangeSetResult};
-use crate::server::extract::{Authorization, PgRoTxn};
+use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::extract::Query;
 use axum::Json;
-use dal::{ChangeSet, ChangeSetPk, ReadTenancy};
+use dal::{ChangeSet, ChangeSetPk};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -18,15 +18,18 @@ pub struct GetChangeSetResponse {
 }
 
 pub async fn get_change_set(
-    mut txn: PgRoTxn,
+    HandlerContext(builder, mut txns): HandlerContext,
+    AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<GetChangeSetRequest>,
-    Authorization(claim): Authorization,
 ) -> ChangeSetResult<Json<GetChangeSetResponse>> {
-    let txn = txn.start().await?;
-    let read_tenancy = ReadTenancy::new_billing_account(vec![claim.billing_account_id]);
-    let change_set = ChangeSet::get_by_pk(&txn, &read_tenancy, &request.pk)
+    let txns = txns.start().await?;
+    let ctx = builder.build(request_ctx.build_head(), &txns);
+
+    let change_set = ChangeSet::get_by_pk(ctx.pg_txn(), ctx.read_tenancy(), &request.pk)
         .await?
         .ok_or(ChangeSetError::ChangeSetNotFound)?;
-    txn.commit().await?;
+
+    txns.commit().await?;
+
     Ok(Json(GetChangeSetResponse { change_set }))
 }

@@ -84,6 +84,7 @@ pub use code_generation_resolver::{
 };
 pub use code_view::{CodeLanguage, CodeView};
 pub use component::{Component, ComponentError, ComponentId, ComponentView};
+pub use context::{DalContext, TransactionsError};
 pub use cyclone_key_pair::CycloneKeyPair;
 pub use edge::{Edge, EdgeError, EdgeResult};
 pub use edit_session::{

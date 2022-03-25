@@ -1,19 +1,27 @@
 use axum::Json;
-use dal::{PublicKey, ReadTenancy, Visibility};
+use dal::PublicKey;
 
 use super::SecretResult;
-use crate::server::extract::{Authorization, PgRoTxn};
+use crate::server::extract::{AccessBuilder, Authorization, HandlerContext};
 
 pub type GetPublicKeyResponse = PublicKey;
 
 pub async fn get_public_key(
-    mut txn: PgRoTxn,
+    HandlerContext(builder, mut txns): HandlerContext,
+    AccessBuilder(request_ctx): AccessBuilder,
     Authorization(claim): Authorization,
 ) -> SecretResult<Json<GetPublicKeyResponse>> {
-    let txn = txn.start().await?;
-    let read_tenancy = ReadTenancy::new_billing_account(vec![claim.billing_account_id]);
-    let visibility = Visibility::new_head(false);
-    let response: GetPublicKeyResponse =
-        PublicKey::get_current(&txn, &read_tenancy, &visibility, &claim.billing_account_id).await?;
+    let txns = txns.start().await?;
+    let ctx = builder.build(request_ctx.build_head(), &txns);
+
+    let response: GetPublicKeyResponse = PublicKey::get_current(
+        ctx.pg_txn(),
+        ctx.read_tenancy(),
+        ctx.visibility(),
+        &claim.billing_account_id,
+    )
+    .await?;
+
+    txns.commit().await?;
     Ok(Json(response))
 }

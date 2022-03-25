@@ -59,7 +59,6 @@
         {{ panelRef }}
         Schematic Panel
         <button @click="getSchematic">Get call</button>
-        <button @click="setSchematic">Set call</button>
       </div> -->
     </template>
   </Panel>
@@ -98,7 +97,6 @@ import * as OBJ from "./SchematicViewer/Viewer/obj";
 // import { GlobalErrorService } from "@/service/global_error";
 // import { ApiResponse } from "@/api/sdf";
 // import { GetSchematicResponse } from "@/service/schematic/get_schematic";
-// import { SetSchematicResponse } from "@/service/schematic/set_schematic";
 
 // TODO: Alex, here is your panel. The switcher is fucked, but otherwise, should be good to port.
 
@@ -199,32 +197,6 @@ const addNode = async (schemaId: number, _event: MouseEvent) => {
 
   viewerEventObservable.viewerEvent$.next(event);
 };
-
-// const getSchematic = () => {
-//   SchematicService.getSchematic({ context: "poop" }).subscribe(
-//     (response: ApiResponse<GetSchematicResponse>) => {
-//       if (response.error) {
-//         GlobalErrorService.set(response);
-//       }
-//       console.log("get response", { response });
-//     },
-//   );
-// };
-
-// const setSchematic = () => {
-//   SchematicService.setSchematic({ name: "canoe" }).subscribe(
-//     (response: ApiResponse<SetSchematicResponse>) => {
-//       if (response.error) {
-//         GlobalErrorService.set(response);
-//       }
-//       console.log("set response", { response });
-//     },
-//   );
-// };
-
-// onMounted(() => {
-//   // console.log("aaaaaaaaa:", schematicViewer.value);
-// });
 </script>
 
 <style scoped>

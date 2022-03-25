@@ -66,14 +66,26 @@ pub async fn api_request_auth_json_body<Req: Serialize, Res: DeserializeOwned>(
 ) -> Res {
     let auth_token = auth_token.as_ref();
     let uri = uri.as_ref();
-    let api_request = Request::builder()
+    let mut api_request = Request::builder()
         .method(method)
         .uri(uri)
         .header(http::header::CONTENT_TYPE, "application/json")
         .header(
             http::header::AUTHORIZATION,
             format!("Bearer {}", auth_token),
-        )
+        );
+
+    // This is a horrible hack, but helps transitioning from explicit workpace_id handling in sdf to using extractors
+    let request_json = serde_json::to_value(&request).expect("cannot serialize params to json");
+    if let Some(workspace_id) = request_json
+        .as_object()
+        .and_then(|obj| obj.get("workspaceId"))
+        .and_then(|value| value.as_u64())
+    {
+        api_request = api_request.header("WorkspaceId", &workspace_id.to_string());
+    }
+
+    let api_request = api_request
         .body(Body::from(
             serde_json::to_vec(&serde_json::json!(&request)).expect("cannot turn request to json"),
         ))
@@ -113,7 +125,9 @@ pub async fn api_request_auth_empty<Res: DeserializeOwned>(
         .header(
             http::header::AUTHORIZATION,
             format!("Bearer {}", auth_token),
-        )
+        );
+
+    let api_request = api_request
         .body(Body::empty())
         .expect("cannot create api request");
     let response = app.oneshot(api_request).await.expect("cannot send request");
@@ -134,10 +148,22 @@ pub async fn api_request<Req: Serialize, Res: DeserializeOwned>(
     request: &Req,
 ) -> Res {
     let uri = uri.as_ref();
-    let api_request = Request::builder()
+    let mut api_request = Request::builder()
         .method(Method::POST)
         .uri(uri)
-        .header(http::header::CONTENT_TYPE, "application/json")
+        .header(http::header::CONTENT_TYPE, "application/json");
+
+    // This is a horrible hack, but helps transitioning from explicit workpace_id handling in sdf to using extractors
+    let request_json = serde_json::to_value(&request).expect("cannot serialize params to json");
+    if let Some(workspace_id) = request_json
+        .as_object()
+        .and_then(|obj| obj.get("workspaceId"))
+        .and_then(|value| value.as_u64())
+    {
+        api_request = api_request.header("WorkspaceId", &workspace_id.to_string());
+    }
+
+    let api_request = api_request
         .body(Body::from(
             serde_json::to_vec(&serde_json::json!(&request)).expect("cannot turn request to json"),
         ))

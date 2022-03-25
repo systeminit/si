@@ -1,20 +1,14 @@
-use super::{ApplicationError, ApplicationResult};
-use crate::server::extract::{Authorization, EncryptionKey, NatsTxn, PgRwTxn, Veritech};
+use super::ApplicationResult;
+use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::Json;
-use dal::{
-    Component, HistoryActor, Schema, StandardModel, Tenancy, Visibility, Workspace, WorkspaceId,
-    WriteTenancy, WsEvent, WsPayload, NO_CHANGE_SET_PK,
-};
+use dal::{Component, WorkspaceId};
 use serde::{Deserialize, Serialize};
-use si_data::PgTxn;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateApplicationRequest {
     pub name: String,
     pub workspace_id: WorkspaceId,
-    #[serde(flatten)]
-    pub visibility: Visibility,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -24,97 +18,27 @@ pub struct CreateApplicationResponse {
 }
 
 pub async fn create_application(
-    mut txn: PgRwTxn,
-    mut nats: NatsTxn,
-    Veritech(veritech): Veritech,
-    EncryptionKey(encryption_key): EncryptionKey,
-    Authorization(claim): Authorization,
+    HandlerContext(builder, mut txns): HandlerContext,
+    AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<CreateApplicationRequest>,
 ) -> ApplicationResult<Json<CreateApplicationResponse>> {
-    let txn = txn.start().await?;
-    let nats = nats.start().await?;
-
-    let billing_account_tenancy = Tenancy::new_billing_account(vec![claim.billing_account_id]);
-    let history_actor: HistoryActor = HistoryActor::from(claim.user_id);
-    let workspace = Workspace::get_by_id(
-        &txn,
-        &billing_account_tenancy,
-        &request.visibility,
-        &request.workspace_id,
-    )
-    .await?
-    .ok_or(ApplicationError::InvalidRequest)?;
-    let write_tenancy = WriteTenancy::new_workspace(*workspace.id());
-
+    let txns = txns.start().await?;
     // You can only create applications directly to head? This feels wrong, but..
-    let visibility = Visibility::new_head(false);
+    let ctx = builder.build(request_ctx.build_head(), &txns);
 
     let (application, _application_node) = Component::new_application_with_node(
-        &txn,
-        &nats,
-        veritech.clone(),
-        &encryption_key,
-        &(&write_tenancy).into(),
-        &visibility,
-        &history_actor,
+        ctx.pg_txn(),
+        ctx.nats_txn(),
+        ctx.veritech().clone(),
+        ctx.encryption_key(),
+        &ctx.write_tenancy().into(),
+        ctx.visibility(),
+        ctx.history_actor(),
         &request.name,
     )
     .await?;
 
-    // TODO(fnichol): we're going to create a service component here until we have "node add"
-    // functionality in the frontend--then this extra code gets deleted
-    create_service_with_node(
-        &txn,
-        &nats,
-        veritech,
-        &encryption_key,
-        &write_tenancy,
-        &visibility,
-        &history_actor,
-    )
-    .await?;
+    txns.commit().await?;
 
-    // When we create something intentionally on head, we need to fake that a change
-    // set has been applied.
-    WsEvent::new(
-        billing_account_tenancy.billing_account_ids.clone(),
-        history_actor.clone(),
-        WsPayload::ChangeSetApplied(NO_CHANGE_SET_PK),
-    )
-    .publish(&nats)
-    .await?;
-
-    txn.commit().await?;
-    nats.commit().await?;
     Ok(Json(CreateApplicationResponse { application }))
-}
-
-async fn create_service_with_node(
-    txn: &PgTxn<'_>,
-    nats: &si_data::NatsTxn,
-    veritech: veritech::Client,
-    encryption_key: &veritech::EncryptionKey,
-    write_tenancy: &WriteTenancy,
-    visibility: &Visibility,
-    history_actor: &HistoryActor,
-) -> ApplicationResult<()> {
-    let read_tenancy = write_tenancy.clone_into_read_tenancy(txn).await?;
-    let schema_variant_id =
-        Schema::default_schema_variant_id_for_name(txn, &read_tenancy, visibility, "service")
-            .await?;
-
-    let (_component, _node) = Component::new_for_schema_variant_with_node(
-        txn,
-        nats,
-        veritech,
-        encryption_key,
-        &write_tenancy.into(),
-        visibility,
-        history_actor,
-        "whiskers",
-        &schema_variant_id,
-    )
-    .await?;
-
-    Ok(())
 }

@@ -4,7 +4,7 @@ use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::Json;
 use axum::Router;
-use dal::{KeyPairError, StandardModelError, WorkspaceId};
+use dal::{KeyPairError, StandardModelError, TransactionsError, WorkspaceId};
 use std::convert::Infallible;
 use thiserror::Error;
 
@@ -24,6 +24,8 @@ pub enum SecretError {
     StandardModel(#[from] StandardModelError),
     #[error(transparent)]
     KeyPairError(#[from] KeyPairError),
+    #[error(transparent)]
+    ContextTransactions(#[from] TransactionsError),
     #[error("workspace not found: {0}")]
     WorkspaceNotFound(WorkspaceId),
 }

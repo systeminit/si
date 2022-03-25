@@ -7,7 +7,7 @@ use dal::{
 use serde::{Deserialize, Serialize};
 
 use super::{ComponentError, ComponentResult};
-use crate::server::extract::{PgRoTxn, Tenancy};
+use crate::server::extract::{AccessBuilder, HandlerContext};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -28,32 +28,33 @@ pub struct GetComponentMetadataResponse {
 }
 
 pub async fn get_component_metadata(
-    mut txn: PgRoTxn,
+    HandlerContext(builder, mut txns): HandlerContext,
+    AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<GetComponentMetadataRequest>,
-    Tenancy(_write_tenancy, read_tenancy): Tenancy,
 ) -> ComponentResult<Json<GetComponentMetadataResponse>> {
-    let txn = txn.start().await?;
+    let txns = txns.start().await?;
+    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
 
     let component = Component::get_by_id(
-        &txn,
-        &(&read_tenancy).into(),
-        &request.visibility,
+        ctx.pg_txn(),
+        &ctx.read_tenancy().into(),
+        ctx.visibility(),
         &request.component_id,
     )
     .await?
     .ok_or(ComponentError::NotFound)?;
 
     let schema = component
-        .schema_with_tenancy(&txn, &(&read_tenancy).into(), &request.visibility)
+        .schema_with_tenancy(ctx.pg_txn(), &ctx.read_tenancy().into(), ctx.visibility())
         .await?
         .ok_or(ComponentError::SchemaNotFound)?;
 
     let system_id = request.system_id.unwrap_or(UNSET_SYSTEM_ID);
 
     let qualifications = Component::list_qualifications_by_component_id(
-        &txn,
-        &(&read_tenancy).into(),
-        &request.visibility,
+        ctx.pg_txn(),
+        ctx.read_tenancy(),
+        ctx.visibility(),
         *component.id(),
         system_id,
     )
@@ -65,9 +66,9 @@ pub async fn get_component_metadata(
         .reduce(|q, acc| acc && q);
 
     let resource = Component::get_resource_by_component_and_system(
-        &txn,
-        &read_tenancy,
-        &request.visibility,
+        ctx.pg_txn(),
+        ctx.read_tenancy(),
+        ctx.visibility(),
         request.component_id,
         system_id,
     )

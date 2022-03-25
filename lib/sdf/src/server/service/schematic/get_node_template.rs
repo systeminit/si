@@ -1,11 +1,11 @@
 use axum::extract::Query;
 use axum::Json;
 use dal::node::NodeTemplate;
-use dal::{ReadTenancy, SchemaId, Visibility, WorkspaceId};
+use dal::{SchemaId, Visibility, WorkspaceId};
 use serde::{Deserialize, Serialize};
 
-use super::{SchematicError, SchematicResult};
-use crate::server::extract::{Authorization, PgRoTxn};
+use super::SchematicResult;
+use crate::server::extract::{AccessBuilder, HandlerContext};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -19,23 +19,17 @@ pub struct GetNodeTemplateRequest {
 pub type GetNodeTemplateResponse = NodeTemplate;
 
 pub async fn get_node_template(
-    mut txn: PgRoTxn,
-    Authorization(claim): Authorization,
+    HandlerContext(builder, mut txns): HandlerContext,
+    AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<GetNodeTemplateRequest>,
 ) -> SchematicResult<Json<GetNodeTemplateResponse>> {
-    let txn = txn.start().await?;
-    let read_tenancy = ReadTenancy::new_workspace(&txn, vec![request.workspace_id]).await?;
-    if !read_tenancy
-        .billing_accounts()
-        .contains(&claim.billing_account_id)
-    {
-        return Err(SchematicError::NotAuthorized);
-    }
+    let txns = txns.start().await?;
+    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
 
     let response = NodeTemplate::new_from_schema_id(
-        &txn,
-        &read_tenancy,
-        &request.visibility,
+        ctx.pg_txn(),
+        ctx.read_tenancy(),
+        ctx.visibility(),
         request.schema_id,
     )
     .await?;

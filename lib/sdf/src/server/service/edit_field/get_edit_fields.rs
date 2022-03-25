@@ -4,12 +4,12 @@ use dal::{
     edit_field::{EditFieldAble, EditFieldObjectKind, EditFields},
     schema,
     socket::Socket,
-    Component, Prop, QualificationCheck, ReadTenancy, Schema, Visibility, WorkspaceId,
+    Component, Prop, QualificationCheck, Schema, Visibility, WorkspaceId,
 };
 use serde::{Deserialize, Serialize};
 
 use super::EditFieldResult;
-use crate::server::extract::{Authorization, PgRwTxn};
+use crate::server::extract::{AccessBuilder, HandlerContext};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -28,68 +28,89 @@ pub struct GetEditFieldsResponse {
 }
 
 pub async fn get_edit_fields(
-    mut txn: PgRwTxn,
-    Authorization(claim): Authorization,
+    HandlerContext(builder, mut txns): HandlerContext,
+    AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<GetEditFieldsRequest>,
 ) -> EditFieldResult<Json<GetEditFieldsResponse>> {
-    let txn = txn.start().await?;
-
-    let read_tenancy = match request.workspace_id {
-        Some(workspace_id) => ReadTenancy::new_workspace(&txn, vec![workspace_id]).await?,
-        None => ReadTenancy::new_billing_account(vec![claim.billing_account_id]),
-    };
+    let txns = txns.start().await?;
+    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
 
     let edit_fields = match request.object_kind {
         EditFieldObjectKind::Component => {
-            Component::get_edit_fields(&txn, &read_tenancy, &request.visibility, &request.id.into())
-                .await?
+            Component::get_edit_fields(
+                ctx.pg_txn(),
+                ctx.read_tenancy(),
+                ctx.visibility(),
+                &request.id.into(),
+            )
+            .await?
         }
         EditFieldObjectKind::ComponentProp => {
-            Component::get_edit_fields(&txn, &read_tenancy, &request.visibility, &request.id.into())
-                .await?
+            Component::get_edit_fields(
+                ctx.pg_txn(),
+                ctx.read_tenancy(),
+                ctx.visibility(),
+                &request.id.into(),
+            )
+            .await?
         }
         EditFieldObjectKind::Prop => {
-            Prop::get_edit_fields(&txn, &read_tenancy, &request.visibility, &request.id.into())
-                .await?
+            Prop::get_edit_fields(
+                ctx.pg_txn(),
+                ctx.read_tenancy(),
+                ctx.visibility(),
+                &request.id.into(),
+            )
+            .await?
         }
         EditFieldObjectKind::QualificationCheck => {
             QualificationCheck::get_edit_fields(
-                &txn,
-                &read_tenancy,
-                &request.visibility,
+                ctx.pg_txn(),
+                ctx.read_tenancy(),
+                ctx.visibility(),
                 &request.id.into(),
             )
             .await?
         }
         EditFieldObjectKind::Schema => {
-            Schema::get_edit_fields(&txn, &read_tenancy, &request.visibility, &request.id.into())
-                .await?
+            Schema::get_edit_fields(
+                ctx.pg_txn(),
+                ctx.read_tenancy(),
+                ctx.visibility(),
+                &request.id.into(),
+            )
+            .await?
         }
         EditFieldObjectKind::SchemaUiMenu => {
             schema::UiMenu::get_edit_fields(
-                &txn,
-                &read_tenancy,
-                &request.visibility,
+                ctx.pg_txn(),
+                ctx.read_tenancy(),
+                ctx.visibility(),
                 &request.id.into(),
             )
             .await?
         }
         EditFieldObjectKind::SchemaVariant => {
             schema::SchemaVariant::get_edit_fields(
-                &txn,
-                &read_tenancy,
-                &request.visibility,
+                ctx.pg_txn(),
+                ctx.read_tenancy(),
+                ctx.visibility(),
                 &request.id.into(),
             )
             .await?
         }
         EditFieldObjectKind::Socket => {
-            Socket::get_edit_fields(&txn, &read_tenancy, &request.visibility, &request.id.into())
-                .await?
+            Socket::get_edit_fields(
+                ctx.pg_txn(),
+                ctx.read_tenancy(),
+                ctx.visibility(),
+                &request.id.into(),
+            )
+            .await?
         }
     };
 
-    txn.commit().await?;
+    txns.commit().await?;
 
     Ok(Json(GetEditFieldsResponse {
         fields: edit_fields,

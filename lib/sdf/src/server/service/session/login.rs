@@ -1,8 +1,11 @@
+use super::SessionError;
 use super::SessionResult;
-use crate::server::extract::{JwtSecretKey, NatsTxn, PgRwTxn};
-use crate::server::service::session::SessionError;
+use crate::server::extract::{HandlerContext, JwtSecretKey};
 use axum::Json;
-use dal::{BillingAccount, ReadTenancy, StandardModel, User, Visibility};
+use dal::{
+    context::AccessBuilder, BillingAccount, HistoryActor, ReadTenancy, StandardModel, User,
+    WriteTenancy,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -22,34 +25,65 @@ pub struct LoginResponse {
 }
 
 pub async fn login(
-    mut txn: PgRwTxn,
-    mut nats: NatsTxn,
+    HandlerContext(builder, mut txns): HandlerContext,
     JwtSecretKey(jwt_secret_key): JwtSecretKey,
     Json(request): Json<LoginRequest>,
 ) -> SessionResult<Json<LoginResponse>> {
-    let txn = txn.start().await?;
-    let nats = nats.start().await?;
-
-    let read_tenancy = ReadTenancy::new_universal();
-    let visibility = Visibility::new_head(false);
-
+    let txns = txns.start().await?;
+    // Global history actor
+    let ctx = builder.build(
+        AccessBuilder::new(
+            ReadTenancy::new_universal(),
+            // Empty tenancy means things can be written, but won't ever be read
+            WriteTenancy::from(&dal::Tenancy::new_empty()),
+            HistoryActor::SystemInit,
+        )
+        .build_head(),
+        &txns,
+    );
     let billing_account = BillingAccount::find_by_name(
-        &txn,
-        &read_tenancy,
-        &visibility,
+        ctx.pg_txn(),
+        ctx.read_tenancy(),
+        ctx.visibility(),
         &request.billing_account_name,
     )
     .await?
     .ok_or(SessionError::LoginFailed)?;
 
-    let read_tenancy = ReadTenancy::new_billing_account(vec![*billing_account.id()]);
-    let user = User::find_by_email(&txn, &read_tenancy, &visibility, &request.user_email)
-        .await?
-        .ok_or(SessionError::LoginFailed)?;
+    // Update context tenancies
+    let ctx = builder.build(
+        AccessBuilder::new(
+            ReadTenancy::new_billing_account(vec![*billing_account.id()]),
+            WriteTenancy::new_billing_account(*billing_account.id()),
+            HistoryActor::SystemInit,
+        )
+        .build_head(),
+        &txns,
+    );
+
+    let user = User::find_by_email(
+        ctx.pg_txn(),
+        ctx.read_tenancy(),
+        ctx.visibility(),
+        &request.user_email,
+    )
+    .await?
+    .ok_or(SessionError::LoginFailed)?;
+
+    // Update context history actor
+    let ctx = builder.build(
+        AccessBuilder::new(
+            ctx.read_tenancy().clone(),
+            ctx.write_tenancy().clone(),
+            HistoryActor::User(*user.id()),
+        )
+        .build_head(),
+        &txns,
+    );
 
     let jwt = user
         .login(
-            &txn,
+            ctx.pg_txn(),
             &jwt_secret_key,
             billing_account.id(),
             &request.user_password,
@@ -57,8 +91,8 @@ pub async fn login(
         .await
         .map_err(|_| SessionError::LoginFailed)?;
 
-    txn.commit().await?;
-    nats.commit().await?;
+    txns.commit().await?;
+
     Ok(Json(LoginResponse {
         jwt,
         user,

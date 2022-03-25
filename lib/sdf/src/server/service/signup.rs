@@ -5,7 +5,7 @@ use axum::{
     routing::post,
     Json, Router,
 };
-use dal::BillingAccountError;
+use dal::{BillingAccountError, TransactionsError};
 use std::convert::Infallible;
 use thiserror::Error;
 
@@ -18,6 +18,8 @@ pub enum SignupError {
     Nats(#[from] si_data::NatsError),
     #[error(transparent)]
     Pg(#[from] si_data::PgError),
+    #[error(transparent)]
+    ContextTransaction(#[from] TransactionsError),
     #[error("billing account error: {0}")]
     BillingAccount(#[from] BillingAccountError),
 }

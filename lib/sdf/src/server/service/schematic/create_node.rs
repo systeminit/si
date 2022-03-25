@@ -1,10 +1,9 @@
-use crate::server::extract::{Authorization, EncryptionKey, NatsTxn, PgRwTxn, Veritech};
+use crate::server::extract::{AccessBuilder, HandlerContext};
 use crate::service::schematic::{SchematicError, SchematicResult};
 use axum::Json;
 use dal::{
-    generate_name, node::NodeId, Component, HistoryActor, Node, NodeKind, NodePosition,
-    NodeTemplate, NodeView, ReadTenancy, Schema, SchemaId, SchematicKind, StandardModel, SystemId,
-    Tenancy, Visibility, Workspace, WorkspaceId, WriteTenancy,
+    generate_name, node::NodeId, Component, Node, NodeKind, NodePosition, NodeTemplate, NodeView,
+    Schema, SchemaId, SchematicKind, StandardModel, SystemId, Visibility, WorkspaceId,
 };
 use serde::{Deserialize, Serialize};
 
@@ -29,36 +28,18 @@ pub struct CreateNodeResponse {
 }
 
 pub async fn create_node(
-    mut txn: PgRwTxn,
-    mut nats: NatsTxn,
-    Veritech(veritech): Veritech,
-    EncryptionKey(encryption_key): EncryptionKey,
-    Authorization(claim): Authorization,
+    HandlerContext(builder, mut txns): HandlerContext,
+    AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<CreateNodeRequest>,
 ) -> SchematicResult<Json<CreateNodeResponse>> {
-    let txn = txn.start().await?;
-    let nats = nats.start().await?;
-
-    let billing_account_tenancy = Tenancy::new_billing_account(vec![claim.billing_account_id]);
-    let history_actor: HistoryActor = HistoryActor::from(claim.user_id);
-    let workspace = Workspace::get_by_id(
-        &txn,
-        &billing_account_tenancy,
-        &request.visibility,
-        &request.workspace_id,
-    )
-    .await?
-    .ok_or(SchematicError::InvalidRequest)?;
+    let txns = txns.start().await?;
+    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
 
     let name = generate_name(None);
-
-    let write_tenancy = WriteTenancy::new_workspace(*workspace.id());
-    let read_tenancy = ReadTenancy::new_workspace(&txn, vec![*workspace.id()]).await?;
-
     let schema = Schema::get_by_id(
-        &txn,
-        &(&read_tenancy).into(),
-        &request.visibility,
+        ctx.pg_txn(),
+        &ctx.read_tenancy().into(),
+        ctx.visibility(),
         &request.schema_id,
     )
     .await?
@@ -75,9 +56,9 @@ pub async fn create_node(
     let (_component, node) = match (SchematicKind::from(*schema.kind()), &request.parent_node_id) {
         (SchematicKind::Component, Some(parent_node_id)) => {
             let parent_node = Node::get_by_id(
-                &txn,
-                &(&read_tenancy).into(),
-                &request.visibility,
+                ctx.pg_txn(),
+                &ctx.read_tenancy().into(),
+                ctx.visibility(),
                 parent_node_id,
             )
             .await?;
@@ -93,13 +74,13 @@ pub async fn create_node(
                 return Err(SchematicError::ParentNodeNotFound(*parent_node_id));
             }
             Component::new_for_schema_variant_with_node_in_deployment(
-                &txn,
-                &nats,
-                veritech,
-                &encryption_key,
-                &(&write_tenancy).into(),
-                &request.visibility,
-                &history_actor,
+                ctx.pg_txn(),
+                ctx.nats_txn(),
+                ctx.veritech().clone(),
+                ctx.encryption_key(),
+                &ctx.write_tenancy().into(),
+                ctx.visibility(),
+                ctx.history_actor(),
                 &name,
                 schema_variant_id,
                 system_id,
@@ -109,13 +90,13 @@ pub async fn create_node(
         }
         (SchematicKind::Deployment, None) => {
             Component::new_for_schema_variant_with_node_in_system(
-                &txn,
-                &nats,
-                veritech,
-                &encryption_key,
-                &(&write_tenancy).into(),
-                &request.visibility,
-                &history_actor,
+                ctx.pg_txn(),
+                ctx.nats_txn(),
+                ctx.veritech().clone(),
+                ctx.encryption_key(),
+                &ctx.write_tenancy().into(),
+                ctx.visibility(),
+                ctx.history_actor(),
                 &name,
                 schema_variant_id,
                 system_id,
@@ -131,19 +112,19 @@ pub async fn create_node(
     };
 
     let node_template = NodeTemplate::new_from_schema_id(
-        &txn,
-        &read_tenancy,
-        &request.visibility,
+        ctx.pg_txn(),
+        ctx.read_tenancy(),
+        ctx.visibility(),
         request.schema_id,
     )
     .await?;
 
     let mut position = NodePosition::new(
-        &txn,
-        &nats,
-        &write_tenancy,
-        &request.visibility,
-        &history_actor,
+        ctx.pg_txn(),
+        ctx.nats_txn(),
+        ctx.write_tenancy(),
+        ctx.visibility(),
+        ctx.history_actor(),
         (*node.kind()).into(),
         request.root_node_id,
         request.x,
@@ -153,21 +134,25 @@ pub async fn create_node(
     if let Some(system_id) = request.system_id {
         position
             .set_system_id(
-                &txn,
-                &nats,
-                &request.visibility,
-                &history_actor,
+                ctx.pg_txn(),
+                ctx.nats_txn(),
+                ctx.visibility(),
+                ctx.history_actor(),
                 Some(system_id),
             )
             .await?;
     }
     position
-        .set_node(&txn, &nats, &request.visibility, &history_actor, node.id())
+        .set_node(
+            ctx.pg_txn(),
+            ctx.nats_txn(),
+            ctx.visibility(),
+            ctx.history_actor(),
+            node.id(),
+        )
         .await?;
     let node_view = NodeView::new(name, node, vec![position], node_template);
 
-    txn.commit().await?;
-    nats.commit().await?;
-
+    txns.commit().await?;
     Ok(Json(CreateNodeResponse { node: node_view }))
 }
