@@ -110,28 +110,38 @@ Now, you have SI running!
 make down
 ```
 
-## Prepare Your Changes
+## Preparing Your Changes and Running Tests
 
-Navigate to the `Makefile` in the [ci](./ci) directory to see local development targets.
-These targets include code linting, formatting, running CI locally, etc.
-For instance, you can tidy up your Rust code before opening a pull request by executing the following:
-
-```bash
-make tidy
-```
+Navigate to the `Makefile` in the [ci](./ci) directory to see local development
+targets. These targets include code linting, formatting, running CI locally,
+etc.
 
 To verify that all lints will pass in CI, execute the following target:
 
 ```bash
-make lint
+( cd ci; make ci-lint )
 ```
 
-You can also run individual tests before bringing up the entire SI stack, as neeeded.
-This can be done in the root of the repository:
+> **Optional:** use the "tidy" make targets. Be careful, as the Rust-related
+> tidy actions are more aggressive than what the lint target checks for.
+>
+> ```bash
+> ( cd ci; make tidy )
+> ```
+
+You can also run individual [DAL](./lib/dal) integration tests before bringing
+up the entire SI stack, as neeeded. This can be done in the root of the
+repository with two terminal panes.
+
+In one pane, prepare the test environment:
 
 ```bash
-make prepare
-cargo build
+make prepare; sleep 10; make veritech-run
+```
+
+In the other pane, run your test:
+
+```bash
 RUST_BACKTRACE=1 cargo test <your-test-name>
 ```
 

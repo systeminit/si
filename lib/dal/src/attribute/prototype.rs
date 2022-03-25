@@ -21,11 +21,14 @@ use crate::{
         context::{AttributeContext, AttributeContextError},
         value::{AttributeValue, AttributeValueError, AttributeValueId},
     },
-    func::binding::{FuncBindingError, FuncBindingId},
     func::FuncId,
-    impl_standard_model, pk, standard_model, standard_model_accessor, HistoryActor,
-    HistoryEventError, PropError, PropKind, ReadTenancy, ReadTenancyError, StandardModel,
-    StandardModelError, Tenancy, Timestamp, Visibility, WriteTenancy,
+    func::{
+        binding::{FuncBindingError, FuncBindingId},
+        binding_return_value::FuncBindingReturnValueId,
+    },
+    impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_has_many,
+    HistoryActor, HistoryEventError, PropError, PropKind, ReadTenancy, ReadTenancyError,
+    StandardModel, StandardModelError, Tenancy, Timestamp, Visibility, WriteTenancy,
 };
 
 const LIST_FOR_CONTEXT: &str = include_str!("../queries/attribute_prototype_list_for_context.sql");
@@ -44,8 +47,6 @@ pub enum AttributePrototypeError {
     HistoryEvent(#[from] HistoryEventError),
     #[error("invalid prop value; expected {0} but got {1}")]
     InvalidPropValue(String, serde_json::Value),
-    #[error("nats txn error: {0}")]
-    Nats(#[from] NatsError),
     #[error("AttributePrototype is missing")]
     Missing,
     #[error("func not found: {0}")]
@@ -59,6 +60,8 @@ pub enum AttributePrototypeError {
         AttributePrototypeId,
         Option<AttributeValueId>,
     ),
+    #[error("nats txn error: {0}")]
+    Nats(#[from] NatsError),
     #[error("attribute prototype not found: {0} ({1:?})")]
     NotFound(AttributePrototypeId, Visibility),
     #[error(
@@ -75,6 +78,10 @@ pub enum AttributePrototypeError {
     StandardModelError(#[from] StandardModelError),
     #[error("read tenancy error: {0}")]
     ReadTenancy(#[from] ReadTenancyError),
+    #[error("cannot remove prototype with a least-specific context: {0}")]
+    LeastSpecificContextPrototypeRemovalNotAllowed(AttributePrototypeId),
+    #[error("cannot remove value with a least-specific context: {0}")]
+    LeastSpecificContextValueRemovalNotAllowed(AttributeValueId),
 }
 
 pub type AttributePrototypeResult<T> = Result<T, AttributePrototypeError>;
@@ -118,6 +125,7 @@ impl AttributePrototype {
         history_actor: &HistoryActor,
         func_id: FuncId,
         func_binding_id: FuncBindingId,
+        func_binding_return_value_id: Option<FuncBindingReturnValueId>,
         context: AttributeContext,
         key: Option<String>,
         parent_attribute_value_id: Option<AttributeValueId>,
@@ -146,7 +154,7 @@ impl AttributePrototype {
             visibility,
             history_actor,
             func_binding_id,
-            None,
+            func_binding_return_value_id,
             context,
             key.clone(),
         )
@@ -259,6 +267,91 @@ impl AttributePrototype {
 
     standard_model_accessor!(func_id, Pk(FuncId), AttributePrototypeResult);
     standard_model_accessor!(key, Option<String>, AttributePrototypeResult);
+
+    standard_model_has_many!(
+        lookup_fn: attribute_values,
+        table: "attribute_value_belongs_to_attribute_prototype",
+        model_table: "attribute_values",
+        returns: AttributeValue,
+        result: AttributePrototypeResult,
+    );
+
+    /// Deletes the [`AttributePrototype`] corresponding to a provided ID. Before deletion occurs,
+    /// its corresponding [`AttributeValue`], all of its child values (and their children,
+    /// recursively) and those children's prototypes are deleted. Any value or prototype that could
+    /// not be found or does not exist is assumed to have already been deleted or never existed.
+    ///
+    /// CAUTION: this should be used rather than [`StandardModel::delete()`] when deleting an
+    /// [`AttributePrototype`].
+    pub async fn remove(
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
+        write_tenancy: &WriteTenancy,
+        visibility: &Visibility,
+        history_actor: &HistoryActor,
+        attribute_prototype_id: &AttributePrototypeId,
+    ) -> AttributePrototypeResult<()> {
+        let tenancy = &(write_tenancy).into();
+
+        // Get the prototype for the given id. Once we get its corresponding value, we can delete
+        // the prototype.
+        let mut attribute_prototype =
+            match AttributePrototype::get_by_id(txn, tenancy, visibility, attribute_prototype_id)
+                .await?
+            {
+                Some(v) => v,
+                None => return Ok(()),
+            };
+        if attribute_prototype.context.is_least_specific() {
+            return Err(
+                AttributePrototypeError::LeastSpecificContextPrototypeRemovalNotAllowed(
+                    *attribute_prototype_id,
+                ),
+            );
+        }
+        let attribute_values = attribute_prototype
+            .attribute_values(txn, tenancy, visibility)
+            .await?;
+        attribute_prototype.delete(txn, nats, history_actor).await?;
+
+        // Start with the initial value(s) from the prototype and build a work queue based on the
+        // value's children (and their children, recursively). Once we find the child values,
+        // we can delete the current value in the queue and its prototype.
+        let mut work_queue = attribute_values;
+        while let Some(mut current_value) = work_queue.pop() {
+            let child_attribute_values = current_value
+                .child_attribute_values(txn, tenancy, visibility)
+                .await?;
+            if !child_attribute_values.is_empty() {
+                work_queue.extend(child_attribute_values);
+            }
+
+            // Delete the prototype if we find one and if its context is not "least-specific".
+            if let Some(mut current_prototype) =
+                current_value.attribute_prototype(txn, visibility).await?
+            {
+                if current_prototype.context.is_least_specific() {
+                    return Err(
+                        AttributePrototypeError::LeastSpecificContextPrototypeRemovalNotAllowed(
+                            *current_prototype.id(),
+                        ),
+                    );
+                }
+                current_prototype.delete(txn, nats, history_actor).await?;
+            }
+
+            // Delete the value if its context is not "least-specific".
+            if current_value.context.is_least_specific() {
+                return Err(
+                    AttributePrototypeError::LeastSpecificContextValueRemovalNotAllowed(
+                        *current_value.id(),
+                    ),
+                );
+            }
+            current_value.delete(txn, nats, history_actor).await?;
+        }
+        Ok(())
+    }
 
     #[instrument(skip_all)]
     pub async fn list_for_context(
@@ -468,6 +561,7 @@ impl AttributePrototype {
                 history_actor,
                 func_id,
                 func_binding_id,
+                None,
                 context,
                 given_attribute_prototype.key().map(|k| k.to_string()),
                 parent_attribute_value_id,

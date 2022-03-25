@@ -1,3 +1,7 @@
+//! An [`AttributeValue`] represents which [`FuncBinding`] and [`FuncBindingReturnValue`] provide
+//! attribute's value. Moreover, it tracks whether the value is proxied or not. Proxied values
+//! "point" to another [`AttributeValue`] to provide the attribute's value.
+
 use serde::{Deserialize, Serialize};
 use si_data::{NatsError, NatsTxn, PgError, PgTxn};
 
@@ -6,6 +10,7 @@ use thiserror::Error;
 use uuid::Uuid;
 use veritech::EncryptionKey;
 
+use crate::func::backend::FuncBackendKind;
 use crate::{
     attribute::context::{AttributeContext, AttributeContextBuilderError, AttributeReadContext},
     attribute::prototype::{AttributePrototype, AttributePrototypeId},
@@ -23,9 +28,9 @@ use crate::{
     impl_standard_model, pk,
     standard_model::{self, TypeHint},
     standard_model_accessor, standard_model_belongs_to, standard_model_has_many, Func,
-    FuncBackendKind, HistoryActor, HistoryEventError, IndexMap, Prop, PropError, PropId, PropKind,
-    ReadTenancy, ReadTenancyError, StandardModel, StandardModelError, Tenancy, Timestamp,
-    Visibility, WriteTenancy,
+    HistoryActor, HistoryEventError, IndexMap, Prop, PropError, PropId, PropKind, ReadTenancy,
+    ReadTenancyError, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
+    WriteTenancy,
 };
 
 const FIND_WITH_PARENT_AND_PROTOTYPE_FOR_CONTEXT: &str =
