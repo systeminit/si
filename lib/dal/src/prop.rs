@@ -175,11 +175,15 @@ impl Prop {
         )
         .await?;
 
-        if created {
-            func_binding
-                .execute(txn, nats, veritech.clone(), encryption_key)
-                .await?;
-        }
+        let func_binding_return_value_id = match created {
+            true => Some(
+                *func_binding
+                    .execute(txn, nats, veritech.clone(), encryption_key)
+                    .await?
+                    .id(),
+            ),
+            false => None,
+        };
 
         let attribute_context = AttributeContext::builder()
             .set_prop_id(*object.id())
@@ -193,6 +197,7 @@ impl Prop {
             history_actor,
             *func.id(),
             *func_binding.id(),
+            func_binding_return_value_id,
             attribute_context,
             None,
             None,
