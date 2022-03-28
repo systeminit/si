@@ -111,7 +111,7 @@ impl Node {
         let row = txn
             .query_one(
                 "SELECT object FROM node_create_v1($1, $2, $3)",
-                &[write_tenancy, &visibility, &kind.to_string()],
+                &[write_tenancy, &visibility, &kind.as_ref()],
             )
             .await?;
         let object = standard_model::finish_create_from_row(
@@ -236,13 +236,27 @@ impl NodeTemplate {
     }
 }
 
+#[derive(Deserialize, Serialize, Debug, Copy, Clone, PartialEq, Eq)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum NodeKindWithBaggage {
+    #[serde(rename_all = "camelCase")]
+    Component {
+        component_id: ComponentId,
+    },
+    #[serde(rename_all = "camelCase")]
+    Deployment {
+        component_id: ComponentId,
+    },
+    System,
+}
+
 /// This maps to the typescript node, and can go from the database
 /// representation of a node, combined with the schema data.
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct NodeView {
     id: NodeId,
-    kind: NodeKind,
+    kind: NodeKindWithBaggage,
     label: NodeLabel,
     classification: NodeClassification,
     position: Vec<NodePosition>,
@@ -251,20 +265,20 @@ pub struct NodeView {
     display: NodeDisplay,
     last_updated: DateTime<Utc>,
     checksum: serde_json::Value,
-    schematic: serde_json::Value,
 }
 
 impl NodeView {
     pub fn new(
         name: impl Into<String>,
         node: Node,
+        kind: NodeKindWithBaggage,
         position: Vec<NodePosition>,
         node_template: NodeTemplate,
     ) -> Self {
         let name = name.into();
         NodeView {
             id: node.id,
-            kind: node_template.kind,
+            kind,
             label: NodeLabel {
                 name,
                 title: node_template.label.title,
@@ -277,10 +291,6 @@ impl NodeView {
             last_updated: node.timestamp.updated_at,
             // What is this for?
             checksum: serde_json::json!["j4j4j4j4j4j4j4j4j4j4j4"],
-            schematic: serde_json::json![{
-                "deployment": node_template.kind == NodeKind::Deployment,
-                "component": node_template.kind == NodeKind::Component,
-            }],
         }
     }
 

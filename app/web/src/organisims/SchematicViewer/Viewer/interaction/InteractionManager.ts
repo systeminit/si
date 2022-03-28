@@ -15,6 +15,7 @@ import { PanningManager } from "./panning";
 import { ConnectingManager } from "./connecting";
 import { ZoomingManager } from "./zooming";
 import { NodeAddManager } from "./nodeAdd";
+import { schematicKindFromNodeKind } from "@/api/sdf/dal/schematic";
 
 // import { PanningInteractionData } from "./interaction/panning";
 
@@ -154,6 +155,7 @@ export class InteractionManager {
           this.dataManager.schematicKind$,
         );
         if (schematicKind) {
+          console.debug("Deselecting node");
           const selectionObserver = this.selectionManager.selectionObserver(
             schematicKind,
           );
@@ -177,9 +179,10 @@ export class InteractionManager {
         ST.readySelecting(this.stateService);
         ST.selecting(this.stateService);
 
-        if (!isFakeNode) {
+        if (!isFakeNode && target.nodeKind?.kind) {
+          console.debug("Selecting real node");
           const selectionObserver = this.selectionManager.selectionObserver(
-            target.nodeKind,
+            schematicKindFromNodeKind(target.nodeKind.kind),
           );
           this.selectionManager.select(target, selectionObserver);
         }

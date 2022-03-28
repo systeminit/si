@@ -816,5 +816,4 @@ macro_rules! standard_model_accessor {
             $result_type,
         );
     };
-
 }

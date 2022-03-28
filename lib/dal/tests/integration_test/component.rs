@@ -540,11 +540,6 @@ async fn get_resource_by_component_id() {
     .pop()
     .expect("no docker image schema found");
 
-    let variant = schema
-        .default_variant(&txn, &read_tenancy, &visibility)
-        .await
-        .expect("could not retrieve default variant");
-
     let system =
         find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor).await;
 

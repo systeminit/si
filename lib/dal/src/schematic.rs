@@ -1,8 +1,9 @@
 use crate::edge::{Edge, EdgeId, EdgeKind, VertexObjectKind};
 use crate::{
-    node::NodeId, ComponentError, EdgeError, HistoryActor, Node, NodeError, NodeKind, NodePosition,
-    NodePositionError, NodeTemplate, NodeView, ReadTenancy, ReadTenancyError, StandardModel,
-    StandardModelError, SystemError, SystemId, Visibility, WriteTenancy,
+    node::NodeId, node::NodeKindWithBaggage, ComponentError, EdgeError, HistoryActor, Node,
+    NodeError, NodeKind, NodePosition, NodePositionError, NodeTemplate, NodeView, ReadTenancy,
+    ReadTenancyError, StandardModel, StandardModelError, SystemError, SystemId, Visibility,
+    WriteTenancy,
 };
 use serde::{Deserialize, Serialize};
 use strum_macros::{AsRefStr, Display, EnumString};
@@ -189,7 +190,7 @@ impl Schematic {
         let mut node_views = Vec::with_capacity(nodes.len());
         for node in nodes {
             let schematic_kind = (*node.kind()).into();
-            let (schema, name) = match node.kind() {
+            let (schema, kind, name) = match node.kind() {
                 NodeKind::Deployment | NodeKind::Component => {
                     let component = node
                         .component(txn, visibility)
@@ -202,6 +203,15 @@ impl Schematic {
 
                     (
                         schema,
+                        match node.kind() {
+                            NodeKind::Deployment => NodeKindWithBaggage::Deployment {
+                                component_id: *component.id(),
+                            },
+                            NodeKind::Component => NodeKindWithBaggage::Component {
+                                component_id: *component.id(),
+                            },
+                            NodeKind::System => unreachable!(),
+                        },
                         component
                             .find_value_by_json_pointer::<String>(
                                 txn,
@@ -250,7 +260,13 @@ impl Schematic {
             let template =
                 NodeTemplate::new_from_schema_id(txn, read_tenancy, visibility, *schema.id())
                     .await?;
-            let view = NodeView::new(name, node, position.map_or(vec![], |p| vec![p]), template);
+            let view = NodeView::new(
+                name,
+                node,
+                kind,
+                position.map_or(vec![], |p| vec![p]),
+                template,
+            );
             node_views.push(view);
         }
 

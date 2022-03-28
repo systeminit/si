@@ -57,7 +57,7 @@ pub enum SchematicError {
     InvalidSchematicKindParentNodeIdPair(SchematicKind, Option<NodeId>),
     #[error("parent node not found {0}")]
     ParentNodeNotFound(NodeId),
-    #[error("invalid parent node kind {0}")]
+    #[error("invalid parent node kind {0:?}")]
     InvalidParentNode(NodeKind),
 }
 

@@ -10,12 +10,3 @@ export interface SchematicData {
   lastUpdated: Date;
   checksum: string;
 }
-
-interface SchematicParticipation {
-  deployment: boolean;
-  component: boolean;
-}
-
-export interface SchematicObject extends SchematicData {
-  schematic: SchematicParticipation;
-}

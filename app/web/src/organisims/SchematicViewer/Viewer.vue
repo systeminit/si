@@ -36,11 +36,11 @@ import {
   nodeKindFromSchematicKind,
 } from "@/api/sdf/dal/schematic";
 import { SceneManager } from "./Viewer/scene";
+import { SelectionManager } from "./Viewer/interaction/selection";
 import { InteractionManager } from "./Viewer/interaction";
 import { Renderer } from "./Viewer/renderer";
 import { GlobalErrorService } from "@/service/global_error";
 import { SchematicDataManager } from "./data";
-import { SelectionManager } from "./Viewer/interaction/selection";
 import { deploymentSelection$, componentSelection$ } from "./state";
 
 // import { Schematic } from "./model";
@@ -204,6 +204,7 @@ export default defineComponent({
         await this.loadSchematicData(this.schematicData);
 
         // We resend the last selection state to update ourselves
+        console.debug("Schematic Kind changed: " + ctx);
         const nodes = await Rx.firstValueFrom(selectionObserver(ctx));
         selectionObserver(ctx).next(nodes);
       }
@@ -308,6 +309,7 @@ export default defineComponent({
           // This generally is a bug, but there are regular cases where it happen, like with vue's hot-reload
           // When we caught it happening the viewer was always completely empty, so we just check for that edge case
           if (!nodes || nodes.length === 0) {
+            console.warn("Vue hot-reload broke current state, reseting it");
             selectionObserver(schematicKind).next(null);
             return;
           }
@@ -326,9 +328,13 @@ export default defineComponent({
       }
     };
 
+    let lastDeploymentSelection: OBJ.Node | null = null;
     this.subscribers.push(
       deploymentSelection$.subscribe({
         next: async (selection) => {
+          if (selection && lastDeploymentSelection === selection[0]) return;
+          lastDeploymentSelection = selection ? selection[0] : null;
+
           switch (this.schematicKind) {
             case SchematicKind.Deployment:
               // We need to sync ourselves with the other panel if it's also Deployment
@@ -345,9 +351,13 @@ export default defineComponent({
       }),
     );
 
+    let lastComponentSelection: OBJ.Node | null = null;
     this.subscribers.push(
       componentSelection$.subscribe({
         next: (selection) => {
+          if (selection && lastComponentSelection === selection[0]) return;
+          lastComponentSelection = selection ? selection[0] : null;
+
           switch (this.schematicKind) {
             case SchematicKind.Deployment:
               break;
@@ -435,7 +445,8 @@ export default defineComponent({
         );
         // We want to ignore component data in deployment panel, and vice versa
         filteredSchematic.nodes = filteredSchematic.nodes.filter(
-          (node) => node.kind === nodeKindFromSchematicKind(this.schematicKind),
+          (node) =>
+            node.kind.kind === nodeKindFromSchematicKind(this.schematicKind),
         );
 
         const deploymentNodes = await Rx.firstValueFrom(deploymentSelection$);

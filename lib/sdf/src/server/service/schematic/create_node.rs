@@ -2,8 +2,9 @@ use crate::server::extract::{AccessBuilder, HandlerContext};
 use crate::service::schematic::{SchematicError, SchematicResult};
 use axum::Json;
 use dal::{
-    generate_name, node::NodeId, Component, Node, NodeKind, NodePosition, NodeTemplate, NodeView,
-    Schema, SchemaId, SchematicKind, StandardModel, SystemId, Visibility, WorkspaceId,
+    generate_name, node::NodeId, node::NodeKindWithBaggage, Component, Node, NodeKind,
+    NodePosition, NodeTemplate, NodeView, Schema, SchemaId, SchematicKind, StandardModel, SystemId,
+    Visibility, WorkspaceId,
 };
 use serde::{Deserialize, Serialize};
 
@@ -53,7 +54,7 @@ pub async fn create_node(
         Some(system_id) => system_id,
         None => return Err(SchematicError::InvalidSystem),
     };
-    let (_component, node) = match (SchematicKind::from(*schema.kind()), &request.parent_node_id) {
+    let (kind, node) = match (SchematicKind::from(*schema.kind()), &request.parent_node_id) {
         (SchematicKind::Component, Some(parent_node_id)) => {
             let parent_node = Node::get_by_id(
                 ctx.pg_txn(),
@@ -73,7 +74,7 @@ pub async fn create_node(
             } else {
                 return Err(SchematicError::ParentNodeNotFound(*parent_node_id));
             }
-            Component::new_for_schema_variant_with_node_in_deployment(
+            let (component, node) = Component::new_for_schema_variant_with_node_in_deployment(
                 ctx.pg_txn(),
                 ctx.nats_txn(),
                 ctx.veritech().clone(),
@@ -86,10 +87,16 @@ pub async fn create_node(
                 system_id,
                 parent_node_id,
             )
-            .await?
+            .await?;
+            (
+                NodeKindWithBaggage::Component {
+                    component_id: *component.id(),
+                },
+                node,
+            )
         }
         (SchematicKind::Deployment, None) => {
-            Component::new_for_schema_variant_with_node_in_system(
+            let (component, node) = Component::new_for_schema_variant_with_node_in_system(
                 ctx.pg_txn(),
                 ctx.nats_txn(),
                 ctx.veritech().clone(),
@@ -101,7 +108,13 @@ pub async fn create_node(
                 schema_variant_id,
                 system_id,
             )
-            .await?
+            .await?;
+            (
+                NodeKindWithBaggage::Deployment {
+                    component_id: *component.id(),
+                },
+                node,
+            )
         }
         (schema_kind, parent_node_id) => {
             return Err(SchematicError::InvalidSchematicKindParentNodeIdPair(
@@ -151,7 +164,7 @@ pub async fn create_node(
             node.id(),
         )
         .await?;
-    let node_view = NodeView::new(name, node, vec![position], node_template);
+    let node_view = NodeView::new(name, node, kind, vec![position], node_template);
 
     txns.commit().await?;
     Ok(Json(CreateNodeResponse { node: node_view }))
