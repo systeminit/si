@@ -101,10 +101,7 @@ pub struct AttributeValue {
     id: AttributeValueId,
     func_binding_id: FuncBindingId,
     /// The [`FuncBindingReturnValueId`] that represents the value at this specific position & context.
-    /// A [`None`] value here represents that that the [`Func`](crate::Func) in the associated
-    /// [`AttributePrototype`] has not yet generated a [`FuncBindingReturnValueId`] for its
-    /// [`FuncBinding`](crate::func::binding::FuncBinding).
-    func_binding_return_value_id: Option<FuncBindingReturnValueId>,
+    func_binding_return_value_id: FuncBindingReturnValueId,
     /// The [`AttributeValueId`] (from a less-specific [`AttributeContext`]) that this
     /// [`AttributeValue`] is standing in for in this more-specific [`AttributeContext`].
     proxy_for_attribute_value_id: Option<AttributeValueId>,
@@ -142,7 +139,7 @@ impl AttributeValue {
         visibility: &Visibility,
         history_actor: &HistoryActor,
         func_binding_id: FuncBindingId,
-        func_binding_return_value_id: Option<FuncBindingReturnValueId>,
+        func_binding_return_value_id: FuncBindingReturnValueId,
         context: AttributeContext,
         key: Option<String>,
     ) -> AttributeValueResult<Self> {
@@ -185,7 +182,7 @@ impl AttributeValue {
     standard_model_accessor!(func_binding_id, Pk(FuncBindingId), AttributeValueResult);
     standard_model_accessor!(
         func_binding_return_value_id,
-        OptionBigInt<FuncBindingReturnValueId>,
+        Pk(FuncBindingReturnValueId),
         AttributeValueResult
     );
     standard_model_accessor!(index_map, Option<IndexMap>, AttributeValueResult);
@@ -432,9 +429,7 @@ impl AttributeValue {
                 visibility,
                 history_actor,
                 given_attribute_value.func_binding_id(),
-                given_attribute_value
-                    .func_binding_return_value_id()
-                    .copied(),
+                given_attribute_value.func_binding_return_value_id(),
                 context,
                 given_attribute_value.key,
             )
@@ -510,11 +505,9 @@ impl AttributeValue {
             }
         };
 
-        let (func, func_binding, _) = set_value(
+        let (func, func_binding, created) = set_value(
             txn,
             nats,
-            veritech.clone(),
-            encryption_key,
             write_tenancy,
             visibility,
             history_actor,
@@ -522,6 +515,23 @@ impl AttributeValue {
             func_args,
         )
         .await?;
+        let func_binding_return_value = if created {
+            func_binding
+                .execute(txn, nats, veritech.clone(), encryption_key)
+                .await?
+        } else {
+            FuncBindingReturnValue::get_by_func_binding_id_or_execute(
+                txn,
+                nats,
+                read_tenancy,
+                visibility,
+                veritech.clone(),
+                encryption_key,
+                *func_binding.id(),
+            )
+            .await?
+        };
+
         attribute_value
             .set_func_binding_id(txn, nats, visibility, history_actor, *func_binding.id())
             .await?;
@@ -536,6 +546,7 @@ impl AttributeValue {
             context,
             *func.id(),
             *func_binding.id(),
+            *func_binding_return_value.id(),
             parent_attribute_value_id,
             Some(*attribute_value.id()),
         )
@@ -554,16 +565,14 @@ impl AttributeValue {
             )
             .await?;
 
-        let fbrv_id = FuncBindingReturnValue::get_by_func_binding_id(
-            txn,
-            &read_tenancy,
-            visibility,
-            *func_binding.id(),
-        )
-        .await?
-        .map(|fbrv| *fbrv.id());
         attribute_value
-            .set_func_binding_return_value_id(txn, nats, visibility, history_actor, fbrv_id)
+            .set_func_binding_return_value_id(
+                txn,
+                nats,
+                visibility,
+                history_actor,
+                *func_binding_return_value.id(),
+            )
             .await?;
         attribute_value
             .update_parent_index_map(txn, write_tenancy, visibility)
@@ -622,7 +631,7 @@ impl AttributeValue {
         .await?
         .pop()
         .ok_or(AttributeValueError::MissingFunc(unset_func_name))?;
-        let (unset_func_binding, _) = FuncBinding::find_or_create(
+        let (unset_func_binding, created) = FuncBinding::find_or_create(
             txn,
             nats,
             write_tenancy,
@@ -633,14 +642,22 @@ impl AttributeValue {
             FuncBackendKind::Unset,
         )
         .await?;
-        let func_binding_return_value_id = FuncBindingReturnValue::get_by_func_binding_id(
-            txn,
-            &read_tenancy,
-            visibility,
-            *unset_func_binding.id(),
-        )
-        .await?
-        .map(|fbrv| *fbrv.id());
+        let func_binding_return_value = if created {
+            unset_func_binding
+                .execute(txn, nats, veritech.clone(), encryption_key)
+                .await?
+        } else {
+            FuncBindingReturnValue::get_by_func_binding_id_or_execute(
+                txn,
+                nats,
+                read_tenancy.clone(),
+                visibility,
+                veritech.clone(),
+                encryption_key,
+                *unset_func_binding.id(),
+            )
+            .await?
+        };
 
         let attribute_value = Self::new(
             txn,
@@ -649,7 +666,7 @@ impl AttributeValue {
             visibility,
             history_actor,
             *unset_func_binding.id(),
-            func_binding_return_value_id,
+            *func_binding_return_value.id(),
             context,
             key.clone(),
         )
@@ -800,8 +817,6 @@ fn as_type<T: serde::de::DeserializeOwned>(json: serde_json::Value) -> Attribute
 async fn set_value(
     txn: &PgTxn<'_>,
     nats: &NatsTxn,
-    veritech: veritech::Client,
-    encryption_key: &EncryptionKey,
     write_tenancy: &WriteTenancy,
     visibility: &Visibility,
     history_actor: &HistoryActor,
@@ -826,12 +841,6 @@ async fn set_value(
         *func.backend_kind(),
     )
     .await?;
-
-    if created {
-        func_binding
-            .execute(txn, nats, veritech, encryption_key)
-            .await?;
-    };
 
     Ok((func, func_binding, created))
 }

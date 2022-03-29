@@ -393,6 +393,7 @@ impl AccessBuilder {
             history_actor: self.history_actor,
         }
     }
+
     /// Builds and returns a new [`RequestContext`] using the given [`Visibility`].
     pub fn build(self, visibility: Visibility) -> RequestContext {
         RequestContext {

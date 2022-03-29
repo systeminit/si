@@ -7,6 +7,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use veritech::EncryptionKey;
 
+use crate::func::binding_return_value::{FuncBindingReturnValue, FuncBindingReturnValueError};
 use crate::{
     attribute::{prototype::AttributePrototype, value::AttributeValue},
     edit_field::{
@@ -36,6 +37,8 @@ pub enum PropError {
     EditField(#[from] EditFieldError),
     #[error("FuncBinding error: {0}")]
     FuncBinding(#[from] FuncBindingError),
+    #[error("FuncBindingReturnValue error: {0}")]
+    FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
     #[error("missing a func: {0}")]
@@ -175,19 +178,29 @@ impl Prop {
         )
         .await?;
 
-        let func_binding_return_value_id = match created {
-            true => Some(
-                *func_binding
-                    .execute(txn, nats, veritech.clone(), encryption_key)
-                    .await?
-                    .id(),
-            ),
-            false => None,
-        };
-
         let attribute_context = AttributeContext::builder()
             .set_prop_id(*object.id())
             .to_context()?;
+
+        // No matter what, we need a FuncBindingReturnValueId to create a new attribute prototype.
+        // If the func binding was created, we execute on it to generate our value id. Otherwise,
+        // we try to find a value by id and then fallback to executing anyway if one was not found.
+        let func_binding_return_value = if created {
+            func_binding
+                .execute(txn, nats, veritech.clone(), encryption_key)
+                .await?
+        } else {
+            FuncBindingReturnValue::get_by_func_binding_id_or_execute(
+                txn,
+                nats,
+                read_tenancy,
+                visibility,
+                veritech,
+                encryption_key,
+                *func_binding.id(),
+            )
+            .await?
+        };
 
         AttributePrototype::new(
             txn,
@@ -197,7 +210,7 @@ impl Prop {
             history_actor,
             *func.id(),
             *func_binding.id(),
-            func_binding_return_value_id,
+            *func_binding_return_value.id(),
             attribute_context,
             None,
             None,
