@@ -63,6 +63,8 @@ pub enum ComponentError {
     Edge(#[from] EdgeError),
     #[error("missing attribute value for id: ({0})")]
     MissingAttributeValue(AttributeValueId),
+    #[error("Missing IndexMap on AttributeValue: {0}")]
+    MissingIndexMap(AttributeValueId),
     #[error("expected one root prop, found multiple: {0:?}")]
     MultipleRootProps(Vec<Prop>),
     #[error("root prop not found for schema variant: {0}")]
@@ -1757,15 +1759,26 @@ async fn edit_field_for_attribute_value(
         WidgetKind::Text => Widget::Text(TextWidget::new()),
         WidgetKind::Array | WidgetKind::Header => {
             let mut child_edit_fields = vec![];
-            for child_attribute_value in attribute_value
+            let mut child_attribute_values = attribute_value
                 .child_attribute_values_in_context(
                     txn,
                     read_tenancy,
                     visibility,
                     attribute_read_context,
                 )
-                .await?
-            {
+                .await?;
+            if let Some(index_map) = attribute_value.index_map() {
+                let child_order = index_map.order();
+
+                child_attribute_values.sort_by_cached_key(|av| {
+                    child_order
+                        .iter()
+                        .position(|attribute_value_id| attribute_value_id == av.id())
+                        .unwrap_or(0)
+                });
+            }
+
+            for child_attribute_value in child_attribute_values {
                 // Use the current attribute value as the parent when creating the child edit field.
                 child_edit_fields.push(
                     edit_field_for_attribute_value(
