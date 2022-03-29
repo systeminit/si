@@ -11,7 +11,7 @@ use dal::{
     },
     AttributePrototypeError, AttributeReadContext, AttributeValue, Component, ComponentView, Func,
     FuncBackendKind, FuncBackendResponseType, HistoryActor, PropKind, ReadTenancy, Schema,
-    SchemaKind, StandardModel, Tenancy, Visibility, WriteTenancy,
+    SchemaKind, StandardModel, Tenancy, Visibility,
 };
 use pretty_assertions_sorted::{assert_eq, assert_eq_sorted};
 

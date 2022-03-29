@@ -54,9 +54,10 @@ export class NodeAddManager {
     this.node = this.sceneManager.getGeo(nodeObj.name) as OBJ.Node;
 
     // Since node doesn't exist yet let's not sync the node add
-    if (nodeObj.nodeKind) {
+    if (nodeObj.nodeKind?.kind) {
+      console.debug("Initiating node add");
       const selectionObserver = this.selectionManager.selectionObserver(
-        schematicKindFromNodeKind(nodeObj.nodeKind),
+        schematicKindFromNodeKind(nodeObj.nodeKind.kind),
       );
       this.selectionManager.clearSelection(selectionObserver);
       this.selectionManager.select(this.node);

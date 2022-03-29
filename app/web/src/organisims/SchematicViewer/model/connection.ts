@@ -1,4 +1,4 @@
-import { Color, SchematicObject } from "./common";
+import { Color, SchematicData } from "./common";
 
 /**  Replace string for correct connecion type */
 export enum ConnectionKind {
@@ -31,7 +31,7 @@ interface Destination {
 }
 
 /**  A connection (from an output to an input) */
-export interface Connection extends SchematicObject {
+export interface Connection extends SchematicData {
   id: number;
   classification: ConnectionClassification;
   source: Source;

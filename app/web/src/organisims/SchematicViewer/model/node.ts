@@ -1,4 +1,4 @@
-import { Color, SchematicObject } from "./common";
+import { Color, SchematicData } from "./common";
 import { Socket } from "./socket";
 import { NodeTemplate } from "@/api/sdf/dal/node";
 import { NodeKind } from "@/api/sdf/dal/node";
@@ -91,9 +91,9 @@ interface NodeConnection {
 }
 
 /**  A node */
-export interface Node extends SchematicObject {
+export interface Node extends SchematicData {
   id: number;
-  kind: NodeKind;
+  kind: { kind: NodeKind; componentId?: number };
   label: NodeLabel;
   classification: NodeClassification;
   status?: NodeStatus;
@@ -116,9 +116,16 @@ export interface NodeUpdate {
 }
 
 export function fakeNodeFromTemplate(template: NodeTemplate): Node {
+  let componentId;
+  switch (template.kind) {
+    case NodeKind.Component:
+    case NodeKind.Deployment:
+      componentId = -1;
+      break;
+  }
   const node: Node = {
     id: -1,
-    kind: template.kind,
+    kind: { kind: template.kind, componentId },
     label: template.label,
     classification: template.classification,
     position: [
@@ -133,10 +140,6 @@ export function fakeNodeFromTemplate(template: NodeTemplate): Node {
     display: template.display,
     lastUpdated: new Date(Date.now()),
     checksum: "j4j4j4j4j4j4j4j4j4j4j4",
-    schematic: {
-      deployment: template.kind === NodeKind.Deployment,
-      component: template.kind === NodeKind.Component,
-    },
   };
   return node;
 }

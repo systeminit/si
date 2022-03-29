@@ -9,6 +9,7 @@ import { Schematic } from "../../model";
 import { Position } from "../cg";
 import { InteractionManager } from "../interaction";
 import { SelectionManager } from "../interaction/selection";
+import { schematicKindFromNodeKind } from "@/api/sdf/dal/schematic";
 
 export type SceneGraphData = Schematic;
 
@@ -104,6 +105,7 @@ export class SceneManager {
   ): void {
     this.initializeSceneData();
 
+    let selected;
     if (data) {
       for (const n of data.nodes) {
         if (n.position.length > 0) {
@@ -111,7 +113,7 @@ export class SceneManager {
           // If the node was previously selected we re-select again as some operations
           // were lost on the re-render (example: update node position)
           if (node.id === (selectionManager.selection[0] ?? {}).id) {
-            selectionManager.select(node);
+            selected = node;
           }
           this.addNode(node);
         } else {
@@ -147,6 +149,17 @@ export class SceneManager {
           }
         }
       }
+    }
+
+    if (selected) {
+      const selectionObserver = selectionManager.selectionObserver(
+        schematicKindFromNodeKind(selected.nodeKind.kind),
+      );
+      console.debug(
+        "Re-selecting node: " +
+          schematicKindFromNodeKind(selected.nodeKind.kind),
+      );
+      selectionManager.select(selected, selectionObserver);
     }
 
     this.renderer.renderStage();

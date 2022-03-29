@@ -20,6 +20,7 @@
               class="pl-1"
               :value-as-number="true"
               :options="componentNamesOnlyList"
+              :disabled="!isPinned"
             />
           </div>
           <LockButton v-model="isPinned" />
@@ -209,9 +210,26 @@ import CodeViewer from "@/organisims/CodeViewer.vue";
 import VueFeather from "vue-feather";
 import _ from "lodash";
 import cheechSvg from "@/assets/images/cheech-and-chong.svg";
+import {
+  deploymentSelection$,
+  componentSelection$,
+} from "./SchematicViewer/state";
 
 const isPinned = ref<boolean>(false);
 const selectedComponentId = ref<number | "">("");
+
+componentSelection$.subscribe((node) => {
+  if (isPinned.value) return;
+
+  const maybe = node?.length ? node[0]?.nodeKind?.componentId : undefined;
+  selectedComponentId.value = maybe ?? "";
+});
+deploymentSelection$.subscribe((node) => {
+  if (isPinned.value) return;
+
+  const maybe = node?.length ? node[0]?.nodeKind?.componentId : undefined;
+  selectedComponentId.value = maybe ?? "";
+});
 
 const props = defineProps<{
   panelIndex: number;

@@ -11,7 +11,7 @@ CREATE TABLE nodes
     visibility_deleted          bool,
     created_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     updated_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
-    kind                        text NOT NULL
+    kind                        text                     NOT NULL
 );
 SELECT standard_model_table_constraints_v1('nodes');
 SELECT belongs_to_table_create_v1('node_belongs_to_component', 'nodes', 'components');

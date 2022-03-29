@@ -32,10 +32,10 @@ const SOCKET_SPACING = 20;
 const SOCKET_HEIGHT = 3;
 
 export class Node extends PIXI.Container {
-  kind: string;
-  nodeKind?: NodeKind;
-  isSelected = false;
   id: number;
+  kind: string;
+  nodeKind?: { kind: NodeKind; componentId?: number };
+  isSelected = false;
   title: string;
   connections: Array<Connection>;
   selection?: SelectionStatus;
