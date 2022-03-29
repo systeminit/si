@@ -35,20 +35,15 @@ pub async fn login(
         AccessBuilder::new(
             ReadTenancy::new_universal(),
             // Empty tenancy means things can be written, but won't ever be read
-            WriteTenancy::from(&dal::Tenancy::new_empty()),
+            WriteTenancy::new_empty(),
             HistoryActor::SystemInit,
         )
         .build_head(),
         &txns,
     );
-    let billing_account = BillingAccount::find_by_name(
-        ctx.pg_txn(),
-        ctx.read_tenancy(),
-        ctx.visibility(),
-        &request.billing_account_name,
-    )
-    .await?
-    .ok_or(SessionError::LoginFailed)?;
+    let billing_account = BillingAccount::find_by_name(&ctx, &request.billing_account_name)
+        .await?
+        .ok_or(SessionError::LoginFailed)?;
 
     // Update context tenancies
     let ctx = builder.build(
@@ -61,14 +56,9 @@ pub async fn login(
         &txns,
     );
 
-    let user = User::find_by_email(
-        ctx.pg_txn(),
-        ctx.read_tenancy(),
-        ctx.visibility(),
-        &request.user_email,
-    )
-    .await?
-    .ok_or(SessionError::LoginFailed)?;
+    let user = User::find_by_email(&ctx, &request.user_email)
+        .await?
+        .ok_or(SessionError::LoginFailed)?;
 
     // Update context history actor
     let ctx = builder.build(
@@ -83,7 +73,7 @@ pub async fn login(
 
     let jwt = user
         .login(
-            ctx.pg_txn(),
+            &ctx,
             &jwt_secret_key,
             billing_account.id(),
             &request.user_password,

@@ -1,42 +1,12 @@
 use crate::dal::test;
-use dal::{
-    node::NodeKind, test_harness::create_node, HistoryActor, NodePosition, SchematicKind,
-    StandardModel, Tenancy, Visibility,
-};
-
-use crate::test_setup;
+use dal::{node::NodeKind, test_harness::create_node, NodePosition, SchematicKind, StandardModel};
+use dal::{BillingAccountSignup, DalContext};
 
 #[test]
-async fn new() {
-    test_setup!(
-        ctx,
-        _secret_key,
-        _pg,
-        _conn,
-        txn,
-        _nats_conn,
-        nats,
-        _veritech,
-        _encr_key,
-    );
-    let tenancy = Tenancy::new_universal();
-    let visibility = Visibility::new_head(false);
-    let history_actor = HistoryActor::SystemInit;
-    let root_node = create_node(
-        &txn,
-        &nats,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        &NodeKind::Component,
-    )
-    .await;
+async fn new(ctx: &DalContext<'_, '_>, _nba: &BillingAccountSignup) {
+    let root_node = create_node(ctx, &NodeKind::Component).await;
     let node_position = NodePosition::new(
-        &txn,
-        &nats,
-        &(&tenancy).into(),
-        &visibility,
-        &history_actor,
+        ctx,
         SchematicKind::Component,
         *root_node.id(),
         None,
@@ -51,45 +21,11 @@ async fn new() {
 }
 
 #[test]
-async fn set_node() {
-    test_setup!(
-        ctx,
-        _secret_key,
-        _pg,
-        _conn,
-        txn,
-        _nats_conn,
-        nats,
-        _veritech,
-        _encr_key,
-    );
-    let tenancy = Tenancy::new_universal();
-    let visibility = Visibility::new_head(false);
-    let history_actor = HistoryActor::SystemInit;
-    let root_node = create_node(
-        &txn,
-        &nats,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        &NodeKind::Component,
-    )
-    .await;
-    let node = create_node(
-        &txn,
-        &nats,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        &NodeKind::Component,
-    )
-    .await;
+async fn set_node(ctx: &DalContext<'_, '_>) {
+    let root_node = create_node(ctx, &NodeKind::Component).await;
+    let node = create_node(ctx, &NodeKind::Component).await;
     let node_position = NodePosition::new(
-        &txn,
-        &nats,
-        &(&tenancy).into(),
-        &visibility,
-        &history_actor,
+        ctx,
         SchematicKind::Component,
         *root_node.id(),
         None,
@@ -101,14 +37,14 @@ async fn set_node() {
     .expect("cannot create node position");
 
     node_position
-        .set_node(&txn, &nats, &visibility, &history_actor, node.id())
+        .set_node(ctx, node.id())
         .await
         .expect("cannot associate node position with node");
     assert_eq!(
-        NodePosition::get_by_pk(&txn, node_position.pk())
+        NodePosition::get_by_pk(ctx, node_position.pk())
             .await
             .expect("failed to get node position by pk")
-            .node(&txn, &visibility)
+            .node(ctx)
             .await
             .expect("failed to get the node for the node position")
             .expect("node not set")
@@ -118,46 +54,12 @@ async fn set_node() {
 }
 
 #[test]
-async fn set_node_position() {
-    test_setup!(
-        ctx,
-        _secret_key,
-        _pg,
-        _conn,
-        txn,
-        _nats_conn,
-        nats,
-        _veritech,
-        _encr_key,
-    );
-    let tenancy = Tenancy::new_universal();
-    let visibility = Visibility::new_head(false);
-    let history_actor = HistoryActor::SystemInit;
-    let root_node = create_node(
-        &txn,
-        &nats,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        &NodeKind::Component,
-    )
-    .await;
-    let node = create_node(
-        &txn,
-        &nats,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        &NodeKind::Component,
-    )
-    .await;
+async fn set_node_position(ctx: &DalContext<'_, '_>) {
+    let root_node = create_node(ctx, &NodeKind::Component).await;
+    let node = create_node(ctx, &NodeKind::Component).await;
 
     let node_position = NodePosition::upsert_by_node_id(
-        &txn,
-        &nats,
-        &(&tenancy).into(),
-        &visibility,
-        &history_actor,
+        ctx,
         SchematicKind::Component,
         None,
         None,
@@ -170,14 +72,14 @@ async fn set_node_position() {
     .expect("cannot upsert node position");
 
     assert_eq!(
-        NodePosition::get_by_pk(&txn, node_position.pk())
+        NodePosition::get_by_pk(ctx, node_position.pk())
             .await
             .expect("failed to get node position by pk")
             .x(),
         "123"
     );
     assert_eq!(
-        NodePosition::get_by_pk(&txn, node_position.pk())
+        NodePosition::get_by_pk(ctx, node_position.pk())
             .await
             .expect("failed to get node position by pk")
             .y(),
@@ -185,11 +87,7 @@ async fn set_node_position() {
     );
 
     let node_position = NodePosition::upsert_by_node_id(
-        &txn,
-        &nats,
-        &(&tenancy).into(),
-        &visibility,
-        &history_actor,
+        ctx,
         SchematicKind::Component,
         None,
         None,
@@ -202,14 +100,14 @@ async fn set_node_position() {
     .expect("cannot upsert node position");
 
     assert_eq!(
-        NodePosition::get_by_pk(&txn, node_position.pk())
+        NodePosition::get_by_pk(ctx, node_position.pk())
             .await
             .expect("failed to get node position by pk")
             .x(),
         "-10"
     );
     assert_eq!(
-        NodePosition::get_by_pk(&txn, node_position.pk())
+        NodePosition::get_by_pk(ctx, node_position.pk())
             .await
             .expect("failed to get node position by pk")
             .y(),
@@ -218,50 +116,12 @@ async fn set_node_position() {
 }
 
 #[test]
-async fn multiple_per_node() {
-    test_setup!(
-        ctx,
-        _secret_key,
-        _pg,
-        _conn,
-        txn,
-        _nats_conn,
-        nats,
-        _veritech,
-        _encr_key,
-    );
-    let tenancy = Tenancy::new_universal();
-    let read_tenancy = tenancy
-        .clone_into_read_tenancy(&txn)
-        .await
-        .expect("unable to generate read tenancy");
-    let visibility = Visibility::new_head(false);
-    let history_actor = HistoryActor::SystemInit;
-    let root_node = create_node(
-        &txn,
-        &nats,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        &NodeKind::Deployment,
-    )
-    .await;
-    let node = create_node(
-        &txn,
-        &nats,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        &NodeKind::Deployment,
-    )
-    .await;
+async fn multiple_per_node(ctx: &DalContext<'_, '_>) {
+    let root_node = create_node(ctx, &NodeKind::Deployment).await;
+    let node = create_node(ctx, &NodeKind::Deployment).await;
 
     let node_position = NodePosition::upsert_by_node_id(
-        &txn,
-        &nats,
-        &(&tenancy).into(),
-        &visibility,
-        &history_actor,
+        ctx,
         SchematicKind::Deployment,
         None,
         None,
@@ -273,11 +133,7 @@ async fn multiple_per_node() {
     .await
     .expect("cannot upsert node position");
     let node_position2 = NodePosition::upsert_by_node_id(
-        &txn,
-        &nats,
-        &(&tenancy).into(),
-        &visibility,
-        &history_actor,
+        ctx,
         SchematicKind::Component,
         None,
         Some(*node.id()),
@@ -290,25 +146,14 @@ async fn multiple_per_node() {
     .expect("cannot upsert node position");
 
     assert_eq!(
-        NodePosition::find_by_node_id(
-            &txn,
-            &read_tenancy,
-            &visibility,
-            None,
-            *root_node.id(),
-            *node.id()
-        )
-        .await
-        .expect("failed to get node position by pk"),
+        NodePosition::find_by_node_id(ctx, None, *root_node.id(), *node.id())
+            .await
+            .expect("failed to get node position by pk"),
         vec![node_position.clone(), node_position2]
     );
 
     let node_position2 = NodePosition::upsert_by_node_id(
-        &txn,
-        &nats,
-        &(&tenancy).into(),
-        &visibility,
-        &history_actor,
+        ctx,
         SchematicKind::Component,
         None,
         Some(*node.id()),
@@ -321,25 +166,14 @@ async fn multiple_per_node() {
     .expect("cannot upsert node position");
 
     assert_eq!(
-        NodePosition::find_by_node_id(
-            &txn,
-            &read_tenancy,
-            &visibility,
-            None,
-            *root_node.id(),
-            *node.id()
-        )
-        .await
-        .expect("failed to get node position by pk"),
+        NodePosition::find_by_node_id(ctx, None, *root_node.id(), *node.id())
+            .await
+            .expect("failed to get node position by pk"),
         vec![node_position, node_position2.clone()]
     );
 
     let node_position = NodePosition::upsert_by_node_id(
-        &txn,
-        &nats,
-        &(&tenancy).into(),
-        &visibility,
-        &history_actor,
+        ctx,
         SchematicKind::Deployment,
         None,
         None,
@@ -352,16 +186,9 @@ async fn multiple_per_node() {
     .expect("cannot upsert node position");
 
     assert_eq!(
-        NodePosition::find_by_node_id(
-            &txn,
-            &read_tenancy,
-            &visibility,
-            None,
-            *root_node.id(),
-            *node.id()
-        )
-        .await
-        .expect("failed to get node position by pk"),
+        NodePosition::find_by_node_id(ctx, None, *root_node.id(), *node.id())
+            .await
+            .expect("failed to get node position by pk"),
         vec![node_position, node_position2]
     );
 }

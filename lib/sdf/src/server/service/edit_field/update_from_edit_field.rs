@@ -41,13 +41,7 @@ pub async fn update_from_edit_field(
     match request.object_kind {
         EditFieldObjectKind::Component => {
             Component::update_from_edit_field(
-                ctx.pg_txn(),
-                ctx.nats_txn(),
-                ctx.veritech().clone(),
-                ctx.encryption_key(),
-                ctx.write_tenancy(),
-                ctx.visibility(),
-                ctx.history_actor(),
+                &ctx,
                 request.object_id.into(),
                 request.edit_field_id,
                 request.value,
@@ -79,13 +73,7 @@ pub async fn update_from_edit_field(
         }
         EditFieldObjectKind::Prop => {
             Prop::update_from_edit_field(
-                ctx.pg_txn(),
-                ctx.nats_txn(),
-                ctx.veritech().clone(),
-                ctx.encryption_key(),
-                ctx.write_tenancy(),
-                ctx.visibility(),
-                ctx.history_actor(),
+                &ctx,
                 request.object_id.into(),
                 request.edit_field_id,
                 request.value,
@@ -94,13 +82,7 @@ pub async fn update_from_edit_field(
         }
         EditFieldObjectKind::QualificationCheck => {
             QualificationCheck::update_from_edit_field(
-                ctx.pg_txn(),
-                ctx.nats_txn(),
-                ctx.veritech().clone(),
-                ctx.encryption_key(),
-                ctx.write_tenancy(),
-                ctx.visibility(),
-                ctx.history_actor(),
+                &ctx,
                 request.object_id.into(),
                 request.edit_field_id,
                 request.value,
@@ -109,13 +91,7 @@ pub async fn update_from_edit_field(
         }
         EditFieldObjectKind::Schema => {
             Schema::update_from_edit_field(
-                ctx.pg_txn(),
-                ctx.nats_txn(),
-                ctx.veritech().clone(),
-                ctx.encryption_key(),
-                ctx.write_tenancy(),
-                ctx.visibility(),
-                ctx.history_actor(),
+                &ctx,
                 request.object_id.into(),
                 request.edit_field_id,
                 request.value,
@@ -124,13 +100,7 @@ pub async fn update_from_edit_field(
         }
         EditFieldObjectKind::SchemaUiMenu => {
             schema::UiMenu::update_from_edit_field(
-                ctx.pg_txn(),
-                ctx.nats_txn(),
-                ctx.veritech().clone(),
-                ctx.encryption_key(),
-                ctx.write_tenancy(),
-                ctx.visibility(),
-                ctx.history_actor(),
+                &ctx,
                 request.object_id.into(),
                 request.edit_field_id,
                 request.value,
@@ -139,13 +109,7 @@ pub async fn update_from_edit_field(
         }
         EditFieldObjectKind::SchemaVariant => {
             SchemaVariant::update_from_edit_field(
-                ctx.pg_txn(),
-                ctx.nats_txn(),
-                ctx.veritech().clone(),
-                ctx.encryption_key(),
-                ctx.write_tenancy(),
-                ctx.visibility(),
-                ctx.history_actor(),
+                &ctx,
                 request.object_id.into(),
                 request.edit_field_id,
                 request.value,
@@ -154,13 +118,7 @@ pub async fn update_from_edit_field(
         }
         EditFieldObjectKind::Socket => {
             Socket::update_from_edit_field(
-                ctx.pg_txn(),
-                ctx.nats_txn(),
-                ctx.veritech().clone(),
-                ctx.encryption_key(),
-                ctx.write_tenancy(),
-                ctx.visibility(),
-                ctx.history_actor(),
+                &ctx,
                 request.object_id.into(),
                 request.edit_field_id,
                 request.value,

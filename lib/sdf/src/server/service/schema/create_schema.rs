@@ -37,17 +37,7 @@ pub async fn create_schema(
         &txns,
     );
 
-    let schema = Schema::new(
-        ctx.pg_txn(),
-        ctx.nats_txn(),
-        ctx.write_tenancy(),
-        ctx.visibility(),
-        ctx.history_actor(),
-        &request.name,
-        &request.kind,
-        &ComponentKind::Standard,
-    )
-    .await?;
+    let schema = Schema::new(&ctx, &request.name, &request.kind, &ComponentKind::Standard).await?;
     let response = CreateSchemaResponse { schema };
 
     txns.commit().await?;

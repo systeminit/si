@@ -14,13 +14,8 @@ pub async fn get_public_key(
     let txns = txns.start().await?;
     let ctx = builder.build(request_ctx.build_head(), &txns);
 
-    let response: GetPublicKeyResponse = PublicKey::get_current(
-        ctx.pg_txn(),
-        ctx.read_tenancy(),
-        ctx.visibility(),
-        &claim.billing_account_id,
-    )
-    .await?;
+    let response: GetPublicKeyResponse =
+        PublicKey::get_current(&ctx, &claim.billing_account_id).await?;
 
     txns.commit().await?;
     Ok(Json(response))

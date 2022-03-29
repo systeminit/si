@@ -26,17 +26,8 @@ pub async fn create_application(
     // You can only create applications directly to head? This feels wrong, but..
     let ctx = builder.build(request_ctx.build_head(), &txns);
 
-    let (application, _application_node) = Component::new_application_with_node(
-        ctx.pg_txn(),
-        ctx.nats_txn(),
-        ctx.veritech().clone(),
-        ctx.encryption_key(),
-        &ctx.write_tenancy().into(),
-        ctx.visibility(),
-        ctx.history_actor(),
-        &request.name,
-    )
-    .await?;
+    let (application, _application_node) =
+        Component::new_application_with_node(&ctx, &request.name).await?;
 
     txns.commit().await?;
 

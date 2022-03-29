@@ -1,34 +1,15 @@
 use crate::schema::builtins::create_prop;
 use crate::schema::SchemaResult;
-use crate::{HistoryActor, Prop, PropId, PropKind, StandardModel, Visibility, WriteTenancy};
-use si_data::{NatsTxn, PgTxn};
-use veritech::EncryptionKey;
+use crate::DalContext;
+use crate::{Prop, PropId, PropKind, StandardModel};
 
 #[allow(clippy::too_many_arguments)]
 pub async fn create_metadata_prop(
-    txn: &PgTxn<'_>,
-    nats: &NatsTxn,
-    write_tenancy: &WriteTenancy,
-    visibility: &Visibility,
-    history_actor: &HistoryActor,
+    ctx: &DalContext<'_, '_>,
     is_name_required: bool,
     parent_prop_id: Option<PropId>,
-    veritech: veritech::Client,
-    encryption_key: &EncryptionKey,
 ) -> SchemaResult<Prop> {
-    let metadata_prop = create_prop(
-        txn,
-        nats,
-        veritech.clone(),
-        encryption_key,
-        write_tenancy,
-        visibility,
-        history_actor,
-        "metadata",
-        PropKind::Object,
-        parent_prop_id,
-    )
-    .await?;
+    let metadata_prop = create_prop(ctx, "metadata", PropKind::Object, parent_prop_id).await?;
 
     {
         // TODO: add validation
@@ -45,30 +26,13 @@ pub async fn create_metadata_prop(
             // TODO: add a required field validation here
         }
 
-        let _name_prop = create_prop(
-            txn,
-            nats,
-            veritech.clone(),
-            encryption_key,
-            write_tenancy,
-            visibility,
-            history_actor,
-            "name",
-            PropKind::String,
-            Some(*metadata_prop.id()),
-        )
-        .await?;
+        let _name_prop =
+            create_prop(ctx, "name", PropKind::String, Some(*metadata_prop.id())).await?;
     }
 
     {
         let _generate_name_prop = create_prop(
-            txn,
-            nats,
-            veritech.clone(),
-            encryption_key,
-            write_tenancy,
-            visibility,
-            history_actor,
+            ctx,
             "generateName",
             PropKind::String,
             Some(*metadata_prop.id()),
@@ -79,13 +43,7 @@ pub async fn create_metadata_prop(
     {
         // Note: should this come from a k8s namespace component configuring us?
         let _namespace_prop = create_prop(
-            txn,
-            nats,
-            veritech.clone(),
-            encryption_key,
-            write_tenancy,
-            visibility,
-            history_actor,
+            ctx,
             "namespace",
             PropKind::String,
             Some(*metadata_prop.id()),
@@ -95,13 +53,7 @@ pub async fn create_metadata_prop(
 
     {
         let _labels_prop = create_prop(
-            txn,
-            nats,
-            veritech.clone(),
-            encryption_key,
-            write_tenancy,
-            visibility,
-            history_actor,
+            ctx,
             "labels",
             PropKind::Map, // How to specify it as a map of string values?
             Some(*metadata_prop.id()),
@@ -111,13 +63,7 @@ pub async fn create_metadata_prop(
 
     {
         let _annotations_prop = create_prop(
-            txn,
-            nats,
-            veritech,
-            encryption_key,
-            write_tenancy,
-            visibility,
-            history_actor,
+            ctx,
             "annotations",
             PropKind::Map, // How to specify it as a map of string values?
             Some(*metadata_prop.id()),

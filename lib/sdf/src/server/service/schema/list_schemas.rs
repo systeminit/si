@@ -26,7 +26,7 @@ pub async fn list_schemas(
     let txns = txns.start().await?;
     let ctx = builder.build(request_ctx.build(request.visibility), &txns);
 
-    let list = Schema::list(ctx.pg_txn(), &ctx.read_tenancy().into(), ctx.visibility()).await?;
+    let list = Schema::list(&ctx).await?;
     let response = ListSchemaResponse { list };
     Ok(Json(response))
 }

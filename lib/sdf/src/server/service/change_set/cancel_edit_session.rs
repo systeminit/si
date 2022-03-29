@@ -25,13 +25,10 @@ pub async fn cancel_edit_session(
     let txns = txns.start().await?;
     let ctx = builder.build(request_ctx.build_head(), &txns);
 
-    let mut edit_session =
-        EditSession::get_by_pk(ctx.pg_txn(), ctx.read_tenancy(), &request.edit_session_pk)
-            .await?
-            .ok_or(ChangeSetError::EditSessionNotFound)?;
-    edit_session
-        .cancel(ctx.pg_txn(), ctx.nats_txn(), ctx.history_actor())
-        .await?;
+    let mut edit_session = EditSession::get_by_pk(&ctx, &request.edit_session_pk)
+        .await?
+        .ok_or(ChangeSetError::EditSessionNotFound)?;
+    edit_session.cancel(&ctx).await?;
 
     txns.commit().await?;
 

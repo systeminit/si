@@ -1,10 +1,10 @@
+use crate::WriteTenancy;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use si_data::{NatsError, NatsTxn, PgError, PgTxn};
+use si_data::{NatsError, PgError};
 use strum_macros::{AsRefStr, Display, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
-use veritech::EncryptionKey;
 
 use self::variant::{SchemaVariantError, SchemaVariantResult};
 use crate::{
@@ -20,11 +20,11 @@ use crate::{
     schema::ui_menu::UiMenuId,
     standard_model, standard_model_accessor, standard_model_has_many, standard_model_many_to_many,
     AttributeContextBuilderError, AttributePrototypeError, AttributeValueError, BillingAccount,
-    BillingAccountId, CodeGenerationPrototypeError, Component, FuncError, HistoryActor,
+    BillingAccountId, CodeGenerationPrototypeError, Component, DalContext, FuncError,
     HistoryEventError, LabelEntry, LabelList, Organization, OrganizationId, PropError,
-    QualificationPrototypeError, ReadTenancy, ReadTenancyError, ResourcePrototypeError,
-    SchematicKind, StandardModel, StandardModelError, Tenancy, Timestamp, ValidationPrototypeError,
-    Visibility, Workspace, WorkspaceId, WriteTenancy, WsEventError,
+    QualificationPrototypeError, ReadTenancyError, ResourcePrototypeError, SchematicKind,
+    StandardModel, StandardModelError, Timestamp, ValidationPrototypeError, Visibility, Workspace,
+    WorkspaceId, WsEventError,
 };
 
 use crate::socket::SocketError;
@@ -135,7 +135,7 @@ pub struct Schema {
     name: String,
     kind: SchemaKind,
     #[serde(flatten)]
-    tenancy: Tenancy,
+    tenancy: WriteTenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -158,37 +158,27 @@ impl Schema {
     #[instrument(skip_all)]
     #[allow(clippy::too_many_arguments)]
     pub async fn new(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        write_tenancy: &WriteTenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         name: impl AsRef<str>,
         kind: &SchemaKind,
         component_kind: &ComponentKind,
     ) -> SchemaResult<Self> {
         let name = name.as_ref();
-        let row = txn
+        let row = ctx
+            .txns()
+            .pg()
             .query_one(
                 "SELECT object FROM schema_create_v1($1, $2, $3, $4, $5)",
                 &[
-                    write_tenancy,
-                    &visibility,
+                    ctx.write_tenancy(),
+                    ctx.visibility(),
                     &name,
                     &kind.as_ref(),
                     &component_kind.as_ref(),
                 ],
             )
             .await?;
-        let object = standard_model::finish_create_from_row(
-            txn,
-            nats,
-            &write_tenancy.into(),
-            visibility,
-            history_actor,
-            row,
-        )
-        .await?;
+        let object = standard_model::finish_create_from_row(ctx, row).await?;
         Ok(object)
     }
 
@@ -282,34 +272,21 @@ impl Schema {
         result: SchemaResult,
     );
 
-    pub async fn default_variant(
-        &self,
-        txn: &PgTxn<'_>,
-        read_tenancy: &ReadTenancy,
-        visibility: &Visibility,
-    ) -> SchemaResult<SchemaVariant> {
+    pub async fn default_variant(&self, ctx: &DalContext<'_, '_>) -> SchemaResult<SchemaVariant> {
         match self.default_schema_variant_id() {
-            Some(schema_variant_id) => Ok(SchemaVariant::get_by_id(
-                txn,
-                &read_tenancy.into(),
-                visibility,
-                schema_variant_id,
-            )
-            .await?
-            .ok_or_else(|| SchemaError::NoDefaultVariant(*self.id()))?),
+            Some(schema_variant_id) => Ok(SchemaVariant::get_by_id(ctx, schema_variant_id)
+                .await?
+                .ok_or_else(|| SchemaError::NoDefaultVariant(*self.id()))?),
             None => Err(SchemaError::NoDefaultVariant(*self.id())),
         }
     }
 
     pub async fn default_schema_variant_id_for_name(
-        txn: &PgTxn<'_>,
-        read_tenancy: &ReadTenancy,
-        visibility: &Visibility,
+        ctx: &DalContext<'_, '_>,
         name: impl AsRef<str>,
     ) -> SchemaResult<SchemaVariantId> {
         let name = name.as_ref();
-        let schemas =
-            Schema::find_by_attr(txn, &read_tenancy.into(), visibility, "name", &name).await?;
+        let schemas = Schema::find_by_attr(ctx, "name", &name).await?;
         let schema = schemas
             .first()
             .ok_or_else(|| SchemaError::NotFoundByName(name.into()))?;
@@ -399,22 +376,15 @@ impl Schema {
     }
 
     async fn variants_edit_field(
-        txn: &PgTxn<'_>,
-        read_tenancy: &ReadTenancy,
-        visibility: &Visibility,
+        ctx: &DalContext<'_, '_>,
         object: &Self,
     ) -> SchemaResult<EditField> {
         let field_name = "variants";
         let object_kind = EditFieldObjectKind::Schema;
 
         let mut items: Vec<EditFields> = vec![];
-        for variant in object
-            .variants(txn, object.tenancy(), visibility)
-            .await?
-            .into_iter()
-        {
-            let edit_fields =
-                SchemaVariant::get_edit_fields(txn, read_tenancy, visibility, variant.id()).await?;
+        for variant in object.variants(ctx).await?.into_iter() {
+            let edit_fields = SchemaVariant::get_edit_fields(ctx, variant.id()).await?;
             items.push(edit_fields);
         }
 
@@ -441,23 +411,13 @@ impl Schema {
         ))
     }
 
-    async fn ui_edit_field(
-        txn: &PgTxn<'_>,
-        read_tenancy: &ReadTenancy,
-        visibility: &Visibility,
-        object: &Self,
-    ) -> SchemaResult<EditField> {
+    async fn ui_edit_field(ctx: &DalContext<'_, '_>, object: &Self) -> SchemaResult<EditField> {
         let field_name = "ui";
         let object_kind = EditFieldObjectKind::Schema;
 
         let mut items: Vec<EditFields> = vec![];
-        for ui_menu in object
-            .ui_menus(txn, object.tenancy(), visibility)
-            .await?
-            .into_iter()
-        {
-            let edit_fields =
-                UiMenu::get_edit_fields(txn, read_tenancy, visibility, ui_menu.id()).await?;
+        for ui_menu in object.ui_menus(ctx).await?.into_iter() {
+            let edit_fields = UiMenu::get_edit_fields(ctx, ui_menu.id()).await?;
             items.push(edit_fields);
         }
 
@@ -490,51 +450,41 @@ impl EditFieldAble for Schema {
     type Id = SchemaId;
     type Error = SchemaError;
 
-    async fn get_edit_fields(
-        txn: &PgTxn<'_>,
-        read_tenancy: &ReadTenancy,
-        visibility: &Visibility,
-        id: &SchemaId,
-    ) -> SchemaResult<EditFields> {
-        let object = Schema::get_by_id(txn, &read_tenancy.into(), visibility, id)
+    async fn get_edit_fields(ctx: &DalContext<'_, '_>, id: &SchemaId) -> SchemaResult<EditFields> {
+        let object = Schema::get_by_id(ctx, id)
             .await?
             .ok_or(SchemaError::NotFound(*id))?;
-        let head_object: Option<Schema> = if visibility.in_change_set() {
-            let head_visibility = Visibility::new_head(visibility.deleted);
-            Schema::get_by_id(txn, &read_tenancy.into(), &head_visibility, id).await?
+        let head_object: Option<Schema> = if ctx.visibility().in_change_set() {
+            let head_visibility = ctx.visibility().to_head();
+            let ctx = ctx.clone_with_new_visibility(head_visibility);
+            Schema::get_by_id(&ctx, id).await?
         } else {
             None
         };
-        let change_set_object: Option<Schema> = if visibility.in_change_set() {
-            let change_set_visibility =
-                Visibility::new_change_set(visibility.change_set_pk, visibility.deleted);
-            Schema::get_by_id(txn, &read_tenancy.into(), &change_set_visibility, id).await?
+        let change_set_object: Option<Schema> = if ctx.visibility().in_change_set() {
+            let change_set_visibility = ctx.visibility().to_change_set();
+            let ctx = ctx.clone_with_new_visibility(change_set_visibility);
+            Schema::get_by_id(&ctx, id).await?
         } else {
             None
         };
 
         Ok(vec![
-            Self::name_edit_field(visibility, &object, &head_object, &change_set_object)?,
-            Self::kind_edit_field(visibility, &object, &head_object, &change_set_object)?,
-            Self::variants_edit_field(txn, read_tenancy, visibility, &object).await?,
-            Self::ui_edit_field(txn, read_tenancy, visibility, &object).await?,
+            Self::name_edit_field(ctx.visibility(), &object, &head_object, &change_set_object)?,
+            Self::kind_edit_field(ctx.visibility(), &object, &head_object, &change_set_object)?,
+            Self::variants_edit_field(ctx, &object).await?,
+            Self::ui_edit_field(ctx, &object).await?,
         ])
     }
 
     async fn update_from_edit_field(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        veritech: veritech::Client,
-        encryption_key: &EncryptionKey,
-        write_tenancy: &WriteTenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         id: Self::Id,
         edit_field_id: String,
         value: Option<serde_json::Value>,
     ) -> SchemaResult<()> {
         let edit_field_id = edit_field_id.as_ref();
-        let mut object = Schema::get_by_id(txn, &write_tenancy.into(), visibility, &id)
+        let mut object = Schema::get_by_id(ctx, &id)
             .await?
             .ok_or(SchemaError::NotFound(id))?;
         // value: None = remove value, Some(v) = set value
@@ -544,9 +494,7 @@ impl EditFieldAble for Schema {
                     let value = json_value.as_str().map(|s| s.to_string()).ok_or(
                         Self::Error::EditField(EditFieldError::InvalidValueType("string")),
                     )?;
-                    object
-                        .set_name(txn, nats, visibility, history_actor, value)
-                        .await?;
+                    object.set_name(ctx, value).await?;
                 }
                 None => return Err(EditFieldError::MissingValue.into()),
             },
@@ -555,39 +503,16 @@ impl EditFieldAble for Schema {
                     let value: SchemaKind = serde_json::from_value(json_value).map_err(|_| {
                         Self::Error::EditField(EditFieldError::InvalidValueType("string"))
                     })?;
-                    object
-                        .set_kind(txn, nats, visibility, history_actor, value)
-                        .await?;
+                    object.set_kind(ctx, value).await?;
                 }
                 None => return Err(EditFieldError::MissingValue.into()),
             },
             "variants.schemaVariants" => {
-                let (_variant, _) = SchemaVariant::new(
-                    txn,
-                    nats,
-                    write_tenancy,
-                    visibility,
-                    history_actor,
-                    *object.id(),
-                    "TODO: name me!",
-                    veritech,
-                    encryption_key,
-                )
-                .await?;
+                let (_variant, _) = SchemaVariant::new(ctx, *object.id(), "TODO: name me!").await?;
             }
             "ui.menuItems" => {
-                let new_ui_menu = UiMenu::new(
-                    txn,
-                    nats,
-                    write_tenancy,
-                    visibility,
-                    history_actor,
-                    &(*object.kind()).into(),
-                )
-                .await?;
-                new_ui_menu
-                    .set_schema(txn, nats, visibility, history_actor, object.id())
-                    .await?;
+                let new_ui_menu = UiMenu::new(ctx, &(*object.kind()).into()).await?;
+                new_ui_menu.set_schema(ctx, object.id()).await?;
             }
             invalid => return Err(EditFieldError::invalid_field(invalid).into()),
         }

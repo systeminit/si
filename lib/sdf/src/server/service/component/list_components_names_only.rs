@@ -38,22 +38,12 @@ pub async fn list_components_names_only(
     let txns = txns.start().await?;
     let ctx = builder.build(request_ctx.build(request.visibility), &txns);
 
-    let components = Component::list(
-        ctx.pg_txn(),
-        &ctx.read_tenancy().into(),
-        &request.visibility,
-    )
-    .await?;
+    let components = Component::list(&ctx).await?;
     let mut label_entries = Vec::with_capacity(components.len());
     for component in components {
         label_entries.push(LabelEntry {
             label: component
-                .find_value_by_json_pointer::<String>(
-                    ctx.pg_txn(),
-                    ctx.read_tenancy(),
-                    ctx.visibility(),
-                    "/root/si/name",
-                )
+                .find_value_by_json_pointer::<String>(&ctx, "/root/si/name")
                 .await?
                 .ok_or(ComponentError::ComponentNameNotFound)?,
             value: *component.id(),

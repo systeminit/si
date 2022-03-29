@@ -23,7 +23,6 @@ pub async fn start_edit_session(
     Tenancy(_write_tenancy, read_tenancy): Tenancy,
     Json(request): Json<StartEditSessionRequest>,
 ) -> ChangeSetResult<Json<StartEditSessionResponse>> {
-    dbg!("motherfucker");
     let txns = txns.start().await?;
     let ctx = builder.build(
         dal::context::AccessBuilder::new(
@@ -37,16 +36,8 @@ pub async fn start_edit_session(
 
     let current_date_time = Utc::now();
     let edit_session_name = current_date_time.to_string();
-    let edit_session = EditSession::new(
-        ctx.pg_txn(),
-        ctx.nats_txn(),
-        ctx.write_tenancy(),
-        ctx.history_actor(),
-        &request.change_set_pk,
-        &edit_session_name,
-        None,
-    )
-    .await?;
+    let edit_session =
+        EditSession::new(&ctx, &request.change_set_pk, &edit_session_name, None).await?;
 
     txns.commit().await?;
 

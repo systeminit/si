@@ -23,14 +23,9 @@ pub async fn get_schema(
     let txns = txns.start().await?;
     let ctx = builder.build(request_ctx.build(request.visibility), &txns);
 
-    let response = Schema::get_by_id(
-        ctx.pg_txn(),
-        &ctx.read_tenancy().into(),
-        ctx.visibility(),
-        &request.schema_id,
-    )
-    .await?
-    .ok_or(SchemaError::SchemaNotFound)?;
+    let response = Schema::get_by_id(&ctx, &request.schema_id)
+        .await?
+        .ok_or(SchemaError::SchemaNotFound)?;
 
     txns.commit().await?;
     Ok(Json(response))

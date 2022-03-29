@@ -1,14 +1,15 @@
+use crate::DalContext;
 use serde::{Deserialize, Serialize};
-use si_data::{NatsError, NatsTxn, PgError, PgTxn};
+use si_data::{NatsError, PgError};
 use std::default::Default;
 use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
     func::{binding::FuncBindingId, FuncId},
-    impl_standard_model, pk, standard_model, standard_model_accessor, ComponentId, HistoryActor,
-    HistoryEventError, ReadTenancy, ResourcePrototypeId, SchemaId, SchemaVariantId, StandardModel,
-    StandardModelError, SystemId, Tenancy, Timestamp, Visibility, WriteTenancy,
+    impl_standard_model, pk, standard_model, standard_model_accessor, ComponentId,
+    HistoryEventError, ResourcePrototypeId, SchemaId, SchemaVariantId, StandardModel,
+    StandardModelError, SystemId, Timestamp, Visibility, WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -103,7 +104,7 @@ pub struct ResourceResolver {
     #[serde(flatten)]
     context: ResourceResolverContext,
     #[serde(flatten)]
-    tenancy: Tenancy,
+    tenancy: WriteTenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -123,22 +124,15 @@ impl ResourceResolver {
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn new(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        write_tenancy: &WriteTenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         resource_prototype_id: ResourcePrototypeId,
         func_id: FuncId,
         func_binding_id: FuncBindingId,
         context: ResourceResolverContext,
     ) -> ResourceResolverResult<Self> {
-        let row = txn
-            .query_one(
+        let row = ctx.txns().pg().query_one(
                 "SELECT object FROM resource_resolver_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9)",
-                &[
-                    write_tenancy,
-                    &visibility,
+                &[ctx.write_tenancy(), ctx.visibility(),
                     &resource_prototype_id,
                     &func_id,
                     &func_binding_id,
@@ -149,15 +143,7 @@ impl ResourceResolver {
                 ],
             )
             .await?;
-        let object = standard_model::finish_create_from_row(
-            txn,
-            nats,
-            &write_tenancy.into(),
-            visibility,
-            history_actor,
-            row,
-        )
-        .await?;
+        let object = standard_model::finish_create_from_row(ctx, row).await?;
         Ok(object)
     }
 
@@ -170,18 +156,18 @@ impl ResourceResolver {
     standard_model_accessor!(func_binding_id, Pk(FuncBindingId), ResourceResolverResult);
 
     pub async fn get_for_prototype_and_component(
-        txn: &PgTxn<'_>,
-        read_tenancy: &ReadTenancy,
-        visibility: &Visibility,
+        ctx: &DalContext<'_, '_>,
         resource_prototype_id: &ResourcePrototypeId,
         component_id: &ComponentId,
     ) -> ResourceResolverResult<Option<Self>> {
-        let row = txn
+        let row = ctx
+            .txns()
+            .pg()
             .query_opt(
                 GET_FOR_PROTOTYPE,
                 &[
-                    read_tenancy,
-                    &visibility,
+                    ctx.read_tenancy(),
+                    ctx.visibility(),
                     resource_prototype_id,
                     component_id,
                 ],

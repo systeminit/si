@@ -1,80 +1,40 @@
 use crate::dal::test;
-use crate::test_setup;
+use dal::DalContext;
+
 use dal::{
-    test_harness::find_or_create_production_system, Component, Connection, HistoryActor,
-    NodePosition, Schema, Schematic, StandardModel, SystemId, Tenancy, Visibility,
+    test_harness::find_or_create_production_system, Component, Connection, NodePosition, Schema,
+    Schematic, StandardModel, SystemId,
 };
 
 #[test]
-async fn get_schematic() {
-    test_setup!(
-        ctx,
-        _secret_key,
-        _pg,
-        conn,
-        txn,
-        _nats_conn,
-        nats,
-        veritech,
-        encr_key
-    );
-    let tenancy = Tenancy::new_universal();
-    let visibility = Visibility::new_head(false);
-    let history_actor = HistoryActor::SystemInit;
-    let _ =
-        find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor).await;
+async fn get_schematic(ctx: &DalContext<'_, '_>) {
+    let _ = find_or_create_production_system(ctx).await;
 
-    let application_schema = Schema::find_by_attr(
-        &txn,
-        &tenancy,
-        &visibility,
-        "name",
-        &"application".to_string(),
-    )
-    .await
-    .expect("cannot find application schema")
-    .pop()
-    .expect("no application schema found");
+    let application_schema = Schema::find_by_attr(ctx, "name", &"application".to_string())
+        .await
+        .expect("cannot find application schema")
+        .pop()
+        .expect("no application schema found");
     let (_component, root_node) = Component::new_for_schema_with_node(
-        &txn,
-        &nats,
-        veritech.clone(),
-        &encr_key,
-        &tenancy,
-        &visibility,
-        &history_actor,
+        ctx,
         "sc-component-root-get_schematic",
         application_schema.id(),
     )
     .await
     .expect("unable to create component for schema");
 
-    let service_schema =
-        Schema::find_by_attr(&txn, &tenancy, &visibility, "name", &"service".to_string())
+    let service_schema = Schema::find_by_attr(ctx, "name", &"service".to_string())
+        .await
+        .expect("cannot find service schema")
+        .pop()
+        .expect("no service schema found");
+    let (_component, node) =
+        Component::new_for_schema_with_node(ctx, "sc-component-get_schematic", service_schema.id())
             .await
-            .expect("cannot find service schema")
-            .pop()
-            .expect("no service schema found");
-    let (_component, node) = Component::new_for_schema_with_node(
-        &txn,
-        &nats,
-        veritech,
-        &encr_key,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        "sc-component-get_schematic",
-        service_schema.id(),
-    )
-    .await
-    .expect("unable to create component for schema");
+            .expect("unable to create component for schema");
 
     let node_position = NodePosition::upsert_by_node_id(
-        &txn,
-        &nats,
-        &(&tenancy).into(),
-        &visibility,
-        &history_actor,
+        ctx,
         (*service_schema.kind()).into(),
         Some(SystemId::from(1)),
         None,
@@ -86,18 +46,9 @@ async fn get_schematic() {
     .await
     .expect("cannot upsert node position");
 
-    let schematic = Schematic::find(
-        &txn,
-        &tenancy
-            .clone_into_read_tenancy(&txn)
-            .await
-            .expect("unable to generate read tenancy"),
-        &visibility,
-        Some(SystemId::from(1)),
-        *root_node.id(),
-    )
-    .await
-    .expect("cannot find schematic");
+    let schematic = Schematic::find(ctx, Some(SystemId::from(1)), *root_node.id())
+        .await
+        .expect("cannot find schematic");
     dbg!(&schematic);
     assert_eq!(schematic.nodes()[0].id(), root_node.id());
     assert_eq!(schematic.nodes()[1].id(), node.id());
@@ -106,45 +57,22 @@ async fn get_schematic() {
 }
 
 #[test]
-async fn create_connection() {
-    test_setup!(
-        ctx,
-        _secret_key,
-        _pg,
-        _conn,
-        txn,
-        _nats_conn,
-        nats,
-        veritech,
-        encr_key,
-    );
-    let tenancy = Tenancy::new_universal();
-    let visibility = Visibility::new_head(false);
-    let history_actor = HistoryActor::SystemInit;
-    let _ =
-        find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor).await;
+async fn create_connection(ctx: &DalContext<'_, '_>) {
+    let _ = find_or_create_production_system(ctx).await;
 
-    let service_schema =
-        Schema::find_by_attr(&txn, &tenancy, &visibility, "name", &"service".to_string())
-            .await
-            .expect("cannot find service schema")
-            .pop()
-            .expect("no service schema found");
+    let service_schema = Schema::find_by_attr(ctx, "name", &"service".to_string())
+        .await
+        .expect("cannot find service schema")
+        .pop()
+        .expect("no service schema found");
 
     let service_schema_variant = service_schema
-        .default_variant(
-            &txn,
-            &tenancy
-                .clone_into_read_tenancy(&txn)
-                .await
-                .expect("unable to generate read tenancy"),
-            &visibility,
-        )
+        .default_variant(ctx)
         .await
         .expect("cannot get default schema variant");
 
     let sockets = service_schema_variant
-        .sockets(&txn, &visibility)
+        .sockets(ctx)
         .await
         .expect("cannot fetch sockets");
 
@@ -158,40 +86,18 @@ async fn create_connection() {
         .find(|s| s.name() == "output")
         .expect("cannot find output socket");
 
-    let (_head_component, head_node) = Component::new_for_schema_with_node(
-        &txn,
-        &nats,
-        veritech.clone(),
-        &encr_key,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        "head",
-        service_schema.id(),
-    )
-    .await
-    .expect("cannot create component and node for service");
+    let (_head_component, head_node) =
+        Component::new_for_schema_with_node(ctx, "head", service_schema.id())
+            .await
+            .expect("cannot create component and node for service");
 
-    let (_tail_component, tail_node) = Component::new_for_schema_with_node(
-        &txn,
-        &nats,
-        veritech,
-        &encr_key,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        "tail",
-        service_schema.id(),
-    )
-    .await
-    .expect("cannot create component and node for service");
+    let (_tail_component, tail_node) =
+        Component::new_for_schema_with_node(ctx, "tail", service_schema.id())
+            .await
+            .expect("cannot create component and node for service");
 
     let connection = Connection::new(
-        &txn,
-        &nats,
-        &(&tenancy).into(),
-        &visibility,
-        &history_actor,
+        ctx,
         head_node.id(),
         output_socket.id(),
         tail_node.id(),

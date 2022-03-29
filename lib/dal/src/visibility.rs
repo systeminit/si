@@ -1,5 +1,6 @@
+use crate::DalContext;
 use serde::{Deserialize, Serialize};
-use si_data::{PgError, PgTxn};
+use si_data::PgError;
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -85,13 +86,15 @@ impl Visibility {
         self.change_set_pk != NO_CHANGE_SET_PK
     }
 
-    #[instrument(skip(txn))]
+    #[instrument(skip(ctx))]
     pub async fn is_visible_to(
         &self,
-        txn: &PgTxn<'_>,
+        ctx: &DalContext<'_, '_>,
         check_visibility: &Visibility,
     ) -> VisibilityResult<bool> {
-        let row = txn
+        let row = ctx
+            .txns()
+            .pg()
             .query_one(
                 "SELECT result FROM is_visible_v1($1, $2, $3, $4)",
                 &[

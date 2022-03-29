@@ -20,7 +20,7 @@ async fn new(ctx: &DalContext<'_, '_>) {
         find_schema_and_default_variant_by_name(ctx, "service").await;
 
     let sockets = service_schema_variant
-        .sockets(ctx.pg_txn(), ctx.visibility())
+        .sockets(ctx)
         .await
         .expect("cannot fetch sockets");
 
@@ -34,40 +34,18 @@ async fn new(ctx: &DalContext<'_, '_>) {
         .find(|s| s.name() == "output")
         .expect("cannot find output socket");
 
-    let (head_component, head_node) = Component::new_for_schema_with_node(
-        ctx.pg_txn(),
-        ctx.nats_txn(),
-        ctx.veritech().clone(),
-        ctx.encryption_key(),
-        &ctx.write_tenancy().into(),
-        ctx.visibility(),
-        ctx.history_actor(),
-        "head",
-        service_schema.id(),
-    )
-    .await
-    .expect("cannot create component and node for service");
+    let (head_component, head_node) =
+        Component::new_for_schema_with_node(ctx, "head", service_schema.id())
+            .await
+            .expect("cannot create component and node for service");
 
-    let (tail_component, tail_node) = Component::new_for_schema_with_node(
-        ctx.pg_txn(),
-        ctx.nats_txn(),
-        ctx.veritech().clone(),
-        ctx.encryption_key(),
-        &ctx.write_tenancy().into(),
-        ctx.visibility(),
-        ctx.history_actor(),
-        "head",
-        service_schema.id(),
-    )
-    .await
-    .expect("cannot create component and node for service");
+    let (tail_component, tail_node) =
+        Component::new_for_schema_with_node(ctx, "head", service_schema.id())
+            .await
+            .expect("cannot create component and node for service");
 
     let _edge = Edge::new(
-        ctx.pg_txn(),
-        ctx.nats_txn(),
-        ctx.write_tenancy(),
-        ctx.visibility(),
-        ctx.history_actor(),
+        ctx,
         EdgeKind::Configures,
         *head_node.id(),
         VertexObjectKind::Component,
@@ -81,70 +59,34 @@ async fn new(ctx: &DalContext<'_, '_>) {
     .await
     .expect("cannot create new edge");
 
-    let parents = Edge::find_component_configuration_parents(
-        ctx.pg_txn(),
-        ctx.read_tenancy(),
-        ctx.visibility(),
-        head_component.id(),
-    )
-    .await
-    .expect("unable to find component's parents");
+    let parents = Edge::find_component_configuration_parents(ctx, head_component.id())
+        .await
+        .expect("unable to find component's parents");
     assert_eq!(parents.len(), 1);
     assert_eq!(parents[0], *tail_component.id());
 }
 
 #[test]
 async fn include_component_in_system(DalContextHeadRef(ctx): DalContextHeadRef<'_, '_, '_>) {
-    let (_system, system_node) = System::new_with_node(
-        ctx.pg_txn(),
-        ctx.nats_txn(),
-        ctx.write_tenancy(),
-        &Visibility::new_head(false),
-        ctx.history_actor(),
-        "production",
-    )
-    .await
-    .expect("cannot create production system");
+    let (_system, system_node) = System::new_with_node(ctx, "production")
+        .await
+        .expect("cannot create production system");
 
     let service_schema = find_schema_by_name(ctx, "service").await;
 
-    let (_first_component, first_component_node) = Component::new_for_schema_with_node(
-        ctx.pg_txn(),
-        ctx.nats_txn(),
-        ctx.veritech().clone(),
-        ctx.encryption_key(),
-        &ctx.write_tenancy().into(),
-        ctx.visibility(),
-        ctx.history_actor(),
-        "first",
-        service_schema.id(),
-    )
-    .await
-    .expect("cannot create component and node for service");
+    let (_first_component, first_component_node) =
+        Component::new_for_schema_with_node(ctx, "first", service_schema.id())
+            .await
+            .expect("cannot create component and node for service");
 
-    let (_second_component, second_component_node) = Component::new_for_schema_with_node(
-        ctx.pg_txn(),
-        ctx.nats_txn(),
-        ctx.veritech().clone(),
-        ctx.encryption_key(),
-        &ctx.write_tenancy().into(),
-        ctx.visibility(),
-        ctx.history_actor(),
-        "second",
-        service_schema.id(),
-    )
-    .await
-    .expect("cannot create component and node for service");
+    let (_second_component, second_component_node) =
+        Component::new_for_schema_with_node(ctx, "second", service_schema.id())
+            .await
+            .expect("cannot create component and node for service");
 
-    let edges = Edge::find_by_attr(
-        ctx.pg_txn(),
-        &ctx.read_tenancy().into(),
-        ctx.visibility(),
-        "kind",
-        &"includes".to_string(),
-    )
-    .await
-    .expect("cannot retrieve edges from edit session");
+    let edges = Edge::find_by_attr(ctx, "kind", &"includes".to_string())
+        .await
+        .expect("cannot retrieve edges from edit session");
 
     assert_eq!(edges.len(), 2);
 
@@ -161,67 +103,31 @@ async fn include_component_in_system(DalContextHeadRef(ctx): DalContextHeadRef<'
 
 #[test]
 async fn include_component_in_system_with_edit_sessions(ctx: &DalContext<'_, '_>) {
-    let (_system, system_node) = System::new_with_node(
-        ctx.pg_txn(),
-        ctx.nats_txn(),
-        ctx.write_tenancy(),
-        &Visibility::new_head(false),
-        ctx.history_actor(),
-        "production",
-    )
-    .await
-    .expect("cannot create production system");
+    let (_system, system_node) = System::new_with_node(ctx, "production")
+        .await
+        .expect("cannot create production system");
 
     let service_schema = find_schema_by_name(ctx, "service").await;
 
-    let (_first_component, first_component_node) = Component::new_for_schema_with_node(
-        ctx.pg_txn(),
-        ctx.nats_txn(),
-        ctx.veritech().clone(),
-        ctx.encryption_key(),
-        &ctx.write_tenancy().into(),
-        ctx.visibility(),
-        ctx.history_actor(),
-        "first",
-        service_schema.id(),
-    )
-    .await
-    .expect("cannot create component and node for service");
+    let (_first_component, first_component_node) =
+        Component::new_for_schema_with_node(ctx, "first", service_schema.id())
+            .await
+            .expect("cannot create component and node for service");
 
-    let (_second_component, second_component_node) = Component::new_for_schema_with_node(
-        ctx.pg_txn(),
-        ctx.nats_txn(),
-        ctx.veritech().clone(),
-        ctx.encryption_key(),
-        &ctx.write_tenancy().into(),
-        ctx.visibility(),
-        ctx.history_actor(),
-        "second",
-        service_schema.id(),
-    )
-    .await
-    .expect("cannot create component and node for service");
+    let (_second_component, second_component_node) =
+        Component::new_for_schema_with_node(ctx, "second", service_schema.id())
+            .await
+            .expect("cannot create component and node for service");
 
-    let edges = Edge::find_by_attr(
-        ctx.pg_txn(),
-        &ctx.read_tenancy().into(),
-        &Visibility::new_head(false),
-        "kind",
-        &"includes".to_string(),
-    )
-    .await
-    .expect("cannot retrieve edges from HEAD");
+    let head_ctx = ctx.clone_with_new_visibility(Visibility::new_head(false));
+    let edges = Edge::find_by_attr(&head_ctx, "kind", &"includes".to_string())
+        .await
+        .expect("cannot retrieve edges from HEAD");
     assert_eq!(edges.len(), 0);
 
-    let edges = Edge::find_by_attr(
-        ctx.pg_txn(),
-        &ctx.read_tenancy().into(),
-        ctx.visibility(),
-        "kind",
-        &"includes".to_string(),
-    )
-    .await
-    .expect("cannot retrieve edges from edit session");
+    let edges = Edge::find_by_attr(ctx, "kind", &"includes".to_string())
+        .await
+        .expect("cannot retrieve edges from edit session");
     assert_eq!(edges.len(), 2);
 
     assert_eq!(edges[0].head_node_id(), *first_component_node.id());

@@ -25,13 +25,7 @@ pub async fn get_node_add_menu(
     let txns = txns.start().await?;
     let ctx = builder.build(request_ctx.build(request.visibility), &txns);
 
-    let items = get_node_menu_items(
-        ctx.pg_txn(),
-        ctx.read_tenancy(),
-        ctx.visibility(),
-        &request.menu_filter,
-    )
-    .await?;
+    let items = get_node_menu_items(&ctx, &request.menu_filter).await?;
     let response = {
         let gmi = GenerateMenuItem::new();
         gmi.create_menu_json(items)?

@@ -1,12 +1,13 @@
+use crate::DalContext;
 use serde::{Deserialize, Serialize};
-use si_data::{NatsError, NatsTxn, PgError, PgTxn};
+use si_data::{NatsError, PgError};
 use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
     attribute::context::AttributeContext, impl_standard_model, pk, standard_model,
-    standard_model_accessor, standard_model_accessor_ro, HistoryActor, HistoryEventError,
-    StandardModel, StandardModelError, Tenancy, Timestamp, Visibility, WriteTenancy,
+    standard_model_accessor, standard_model_accessor_ro, HistoryEventError, StandardModel,
+    StandardModelError, Timestamp, Visibility, WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -40,7 +41,7 @@ pub struct InputSocket {
     pk: InputSocketPk,
     id: InputSocketId,
     #[serde(flatten)]
-    tenancy: Tenancy,
+    tenancy: WriteTenancy,
     #[serde(flatten)]
     visibility: Visibility,
     #[serde(flatten)]
@@ -54,32 +55,28 @@ pub struct InputSocket {
 
 impl InputSocket {
     #[allow(clippy::too_many_arguments)]
-    #[tracing::instrument(skip(txn, nats))]
+    #[tracing::instrument(skip(ctx))]
     pub async fn new(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        write_tenancy: &WriteTenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         context: AttributeContext,
         name: Option<String>,
         internal_only: bool,
     ) -> InputSocketResult<Self> {
-        let row = txn
+        let row = ctx
+            .txns()
+            .pg()
             .query_one(
                 "SELECT object FROM input_socket_create_v1($1, $2, $3, $4, $5)",
-                &[write_tenancy, &visibility, &context, &name, &internal_only],
+                &[
+                    ctx.write_tenancy(),
+                    ctx.visibility(),
+                    &context,
+                    &name,
+                    &internal_only,
+                ],
             )
             .await?;
-        Ok(standard_model::finish_create_from_row(
-            txn,
-            nats,
-            &write_tenancy.into(),
-            visibility,
-            history_actor,
-            row,
-        )
-        .await?)
+        Ok(standard_model::finish_create_from_row(ctx, row).await?)
     }
 
     standard_model_accessor!(name, Option<String>, InputSocketResult);

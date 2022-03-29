@@ -21,23 +21,13 @@ pub async fn restore_authentication(
     let ctx = builder.build(request_ctx.build_head(), &txns);
 
     // Why is this here?
-    let billing_account = BillingAccount::get_by_id(
-        ctx.pg_txn(),
-        &ctx.read_tenancy().into(),
-        ctx.visibility(),
-        &claim.billing_account_id,
-    )
-    .await?
-    .ok_or(SessionError::LoginFailed)?;
+    let billing_account = BillingAccount::get_by_id(&ctx, &claim.billing_account_id)
+        .await?
+        .ok_or(SessionError::LoginFailed)?;
 
-    let user = User::get_by_id(
-        ctx.pg_txn(),
-        &ctx.read_tenancy().into(),
-        ctx.visibility(),
-        &claim.user_id,
-    )
-    .await?
-    .ok_or(SessionError::LoginFailed)?;
+    let user = User::get_by_id(&ctx, &claim.user_id)
+        .await?
+        .ok_or(SessionError::LoginFailed)?;
 
     let reply = RestoreAuthenticationResponse {
         user,

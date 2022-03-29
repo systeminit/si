@@ -16,6 +16,6 @@ pub async fn list_open_change_sets(
 ) -> ChangeSetResult<Json<ListOpenChangeSetsResponse>> {
     let txns = txns.start().await?;
     let ctx = builder.build(request_ctx.build_head(), &txns);
-    let list = ChangeSet::list_open(ctx.pg_txn(), ctx.read_tenancy()).await?;
+    let list = ChangeSet::list_open(&ctx).await?;
     Ok(Json(ListOpenChangeSetsResponse { list }))
 }

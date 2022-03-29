@@ -3,14 +3,14 @@
 //! "point" to another [`AttributeValue`] to provide the attribute's value.
 
 use serde::{Deserialize, Serialize};
-use si_data::{NatsError, NatsTxn, PgError, PgTxn};
+use si_data::{NatsError, PgError};
 
 use telemetry::prelude::*;
 use thiserror::Error;
 use uuid::Uuid;
-use veritech::EncryptionKey;
 
 use crate::func::backend::FuncBackendKind;
+use crate::DalContext;
 use crate::{
     attribute::context::{AttributeContext, AttributeContextBuilderError, AttributeReadContext},
     attribute::prototype::{AttributePrototype, AttributePrototypeId},
@@ -28,9 +28,8 @@ use crate::{
     impl_standard_model, pk,
     standard_model::{self, TypeHint},
     standard_model_accessor, standard_model_belongs_to, standard_model_has_many, Func,
-    HistoryActor, HistoryEventError, IndexMap, Prop, PropError, PropId, PropKind, ReadTenancy,
-    ReadTenancyError, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
-    WriteTenancy,
+    HistoryEventError, IndexMap, Prop, PropError, PropId, PropKind, ReadTenancyError,
+    StandardModel, StandardModelError, Timestamp, Visibility, WriteTenancy,
 };
 
 const CHILD_ATTRIBUTE_VALUES_IN_CONTEXT: &str =
@@ -115,7 +114,7 @@ pub struct AttributeValue {
     #[serde(flatten)]
     pub context: AttributeContext,
     #[serde(flatten)]
-    tenancy: Tenancy,
+    tenancy: WriteTenancy,
     #[serde(flatten)]
     visibility: Visibility,
     #[serde(flatten)]
@@ -132,25 +131,22 @@ impl_standard_model! {
 }
 
 impl AttributeValue {
-    #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn new(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        write_tenancy: &WriteTenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         func_binding_id: FuncBindingId,
         func_binding_return_value_id: FuncBindingReturnValueId,
         context: AttributeContext,
         key: Option<String>,
     ) -> AttributeValueResult<Self> {
-        let row = txn
+        let row = ctx
+            .txns()
+            .pg()
             .query_one(
                 "SELECT object FROM attribute_value_create_v1($1, $2, $3, $4, $5, $6)",
                 &[
-                    write_tenancy,
-                    &visibility,
+                    ctx.write_tenancy(),
+                    ctx.visibility(),
                     &context,
                     &func_binding_id,
                     &func_binding_return_value_id,
@@ -158,19 +154,9 @@ impl AttributeValue {
                 ],
             )
             .await?;
-        let object: Self = standard_model::finish_create_from_row(
-            txn,
-            nats,
-            &write_tenancy.into(),
-            visibility,
-            history_actor,
-            row,
-        )
-        .await?;
+        let object: Self = standard_model::finish_create_from_row(ctx, row).await?;
 
-        object
-            .update_parent_index_map(txn, write_tenancy, visibility)
-            .await?;
+        object.update_parent_index_map(ctx).await?;
 
         Ok(object)
     }
@@ -224,13 +210,14 @@ impl AttributeValue {
         self.index_map.as_mut()
     }
 
-    pub async fn update_stored_index_map(&self, txn: &PgTxn<'_>) -> AttributeValueResult<()> {
+    pub async fn update_stored_index_map(
+        &self,
+        ctx: &DalContext<'_, '_>,
+    ) -> AttributeValueResult<()> {
         standard_model::update(
-            txn,
+            ctx,
             "attribute_values",
             "index_map",
-            self.tenancy(),
-            self.visibility(),
             self.id(),
             &self.index_map,
             TypeHint::JsonB,
@@ -241,17 +228,16 @@ impl AttributeValue {
 
     pub async fn child_attribute_values_in_context(
         &self,
-        txn: &PgTxn<'_>,
-        read_tenancy: &ReadTenancy,
-        visibility: &Visibility,
+        ctx: &DalContext<'_, '_>,
         attribute_read_context: AttributeReadContext,
     ) -> AttributeValueResult<Vec<Self>> {
-        let rows = txn
+        let rows = ctx
+            .pg_txn()
             .query(
                 CHILD_ATTRIBUTE_VALUES_IN_CONTEXT,
                 &[
-                    &read_tenancy,
-                    &visibility,
+                    ctx.read_tenancy(),
+                    ctx.visibility(),
                     self.id(),
                     &attribute_read_context,
                 ],
@@ -262,19 +248,19 @@ impl AttributeValue {
     }
 
     pub async fn find_with_parent_and_prototype_for_context(
-        txn: &PgTxn<'_>,
-        read_tenancy: &ReadTenancy,
-        visibility: &Visibility,
+        ctx: &DalContext<'_, '_>,
         parent_attribute_value_id: Option<AttributeValueId>,
         attribute_prototype_id: AttributePrototypeId,
         context: AttributeContext,
     ) -> AttributeValueResult<Option<Self>> {
-        let row = txn
+        let row = ctx
+            .txns()
+            .pg()
             .query_opt(
                 FIND_WITH_PARENT_AND_PROTOTYPE_FOR_CONTEXT,
                 &[
-                    read_tenancy,
-                    &visibility,
+                    ctx.read_tenancy(),
+                    ctx.visibility(),
                     &context,
                     &attribute_prototype_id,
                     &parent_attribute_value_id,
@@ -287,19 +273,18 @@ impl AttributeValue {
 
     /// Find [`Self`] with a given parent value and key.
     pub async fn find_with_parent_and_key_for_context(
-        txn: &PgTxn<'_>,
-        read_tenancy: &ReadTenancy,
-        visibility: &Visibility,
+        ctx: &DalContext<'_, '_>,
         parent_attribute_value_id: Option<AttributeValueId>,
         key: Option<String>,
         context: AttributeContext,
     ) -> AttributeValueResult<Option<Self>> {
-        let row = txn
+        let row = ctx
+            .pg_txn()
             .query_opt(
                 FIND_WITH_PARENT_AND_KEY_FOR_CONTEXT,
                 &[
-                    read_tenancy,
-                    &visibility,
+                    ctx.read_tenancy(),
+                    ctx.visibility(),
                     &context,
                     &parent_attribute_value_id,
                     &key,
@@ -311,30 +296,36 @@ impl AttributeValue {
     }
 
     pub async fn find_for_context(
-        txn: &PgTxn<'_>,
-        read_tenancy: &ReadTenancy,
-        visibility: &Visibility,
+        ctx: &DalContext<'_, '_>,
         context: AttributeReadContext,
     ) -> AttributeValueResult<Vec<Self>> {
-        let rows = txn
-            .query(FIND_FOR_CONTEXT, &[&read_tenancy, &visibility, &context])
+        let rows = ctx
+            .txns()
+            .pg()
+            .query(
+                FIND_FOR_CONTEXT,
+                &[ctx.read_tenancy(), ctx.visibility(), &context],
+            )
             .await?;
 
         Ok(standard_model::objects_from_rows(rows)?)
     }
 
     pub async fn find_for_prop(
-        txn: &PgTxn<'_>,
-        read_tenancy: &ReadTenancy,
-        visibility: &Visibility,
+        ctx: &DalContext<'_, '_>,
         prop_id: PropId,
     ) -> AttributeValueResult<Self> {
         let prop_context = AttributeContext::builder()
             .set_prop_id(prop_id)
             .to_context()?;
 
-        let row = txn
-            .query_one(FIND_FOR_PROP, &[read_tenancy, &visibility, &prop_context])
+        let row = ctx
+            .txns()
+            .pg()
+            .query_one(
+                FIND_FOR_PROP,
+                &[ctx.read_tenancy(), ctx.visibility(), &prop_context],
+            )
             .await?;
 
         Ok(standard_model::object_from_row(row)?)
@@ -343,15 +334,15 @@ impl AttributeValue {
     /// Return the [`Prop`] that the [`AttributeValueId`] belongs to,
     /// following the relationship through [`AttributePrototype`].
     pub async fn find_prop_for_value(
-        txn: &PgTxn<'_>,
-        read_tenancy: &ReadTenancy,
-        visibility: &Visibility,
+        ctx: &DalContext<'_, '_>,
         attribute_value_id: AttributeValueId,
     ) -> AttributeValueResult<Prop> {
-        let row = txn
+        let row = ctx
+            .txns()
+            .pg()
             .query_one(
                 FIND_PROP_FOR_VALUE,
-                &[&read_tenancy, &visibility, &attribute_value_id],
+                &[ctx.read_tenancy(), ctx.visibility(), &attribute_value_id],
             )
             .await?;
 
@@ -359,15 +350,15 @@ impl AttributeValue {
     }
 
     pub async fn list_payload_for_read_context(
-        txn: &PgTxn<'_>,
-        read_tenancy: &ReadTenancy,
-        visibility: &Visibility,
+        ctx: &DalContext<'_, '_>,
         context: AttributeReadContext,
     ) -> AttributeValueResult<Vec<AttributeValuePayload>> {
-        let rows = txn
+        let rows = ctx
+            .txns()
+            .pg()
             .query(
                 LIST_PAYLOAD_FOR_READ_CONTEXT,
-                &[read_tenancy, &visibility, &context],
+                &[ctx.read_tenancy(), ctx.visibility(), &context],
             )
             .await?;
         let mut result = Vec::new();
@@ -406,13 +397,7 @@ impl AttributeValue {
     /// an [`AttributeContext`] specific to that component.
     #[allow(clippy::too_many_arguments)]
     pub async fn update_for_context(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        veritech: veritech::Client,
-        encryption_key: &EncryptionKey,
-        write_tenancy: &WriteTenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         attribute_value_id: AttributeValueId,
         parent_attribute_value_id: Option<AttributeValueId>,
         context: AttributeContext,
@@ -420,27 +405,19 @@ impl AttributeValue {
         // TODO: Allow updating the key
         _key: Option<String>,
     ) -> AttributeValueResult<(Option<serde_json::Value>, AttributeValueId)> {
-        let read_tenancy = write_tenancy.clone_into_read_tenancy(txn).await?;
-
-        let given_attribute_value = Self::get_by_id(
-            txn,
-            &(&read_tenancy).into(),
-            visibility,
-            &attribute_value_id,
-        )
-        .await?
-        .ok_or(AttributeValueError::NotFound(
-            attribute_value_id,
-            *visibility,
-        ))?;
+        let given_attribute_value = Self::get_by_id(ctx, &attribute_value_id)
+            .await?
+            .ok_or_else(|| AttributeValueError::NotFound(attribute_value_id, *ctx.visibility()))?;
 
         let original_attribute_prototype = given_attribute_value
-            .attribute_prototype_with_tenancy(txn, &(&read_tenancy).into(), visibility)
+            .attribute_prototype_with_tenancy(ctx)
             .await?
-            .ok_or(AttributeValueError::AttributePrototypeNotFound(
-                attribute_value_id,
-                *visibility,
-            ))?;
+            .ok_or_else(|| {
+                AttributeValueError::AttributePrototypeNotFound(
+                    attribute_value_id,
+                    *ctx.visibility(),
+                )
+            })?;
 
         // If the AttributeValue we were given isn't for the _specific_ context that we're trying to
         // update, make a new one. This is necessary, since the one that we were given might be the
@@ -450,11 +427,7 @@ impl AttributeValue {
             given_attribute_value
         } else {
             let av = Self::new(
-                txn,
-                nats,
-                write_tenancy,
-                visibility,
-                history_actor,
+                ctx,
                 given_attribute_value.func_binding_id(),
                 given_attribute_value.func_binding_return_value_id(),
                 context,
@@ -463,26 +436,14 @@ impl AttributeValue {
             .await?;
 
             if let Some(parent_attribute_value_id) = parent_attribute_value_id {
-                av.set_parent_attribute_value(
-                    txn,
-                    nats,
-                    visibility,
-                    history_actor,
-                    &parent_attribute_value_id,
-                )
-                .await?;
+                av.set_parent_attribute_value(ctx, &parent_attribute_value_id)
+                    .await?;
             }
 
             av
         };
 
-        let prop = AttributeValue::find_prop_for_value(
-            txn,
-            &read_tenancy,
-            visibility,
-            *attribute_value.id(),
-        )
-        .await?;
+        let prop = AttributeValue::find_prop_for_value(ctx, *attribute_value.id()).await?;
 
         let (func_name, func_args) = match (prop.kind(), value.clone()) {
             (_, None) => ("si:unset", serde_json::to_value(())?),
@@ -532,43 +493,20 @@ impl AttributeValue {
             }
         };
 
-        let (func, func_binding, created) = set_value(
-            txn,
-            nats,
-            write_tenancy,
-            visibility,
-            history_actor,
-            func_name,
-            func_args,
-        )
-        .await?;
+        let (func, func_binding, created) = set_value(ctx, func_name, func_args).await?;
         let func_binding_return_value = if created {
-            func_binding
-                .execute(txn, nats, veritech.clone(), encryption_key)
-                .await?
+            func_binding.execute(ctx).await?
         } else {
-            FuncBindingReturnValue::get_by_func_binding_id_or_execute(
-                txn,
-                nats,
-                read_tenancy,
-                visibility,
-                veritech.clone(),
-                encryption_key,
-                *func_binding.id(),
-            )
-            .await?
+            FuncBindingReturnValue::get_by_func_binding_id_or_execute(ctx, *func_binding.id())
+                .await?
         };
 
         attribute_value
-            .set_func_binding_id(txn, nats, visibility, history_actor, *func_binding.id())
+            .set_func_binding_id(ctx, *func_binding.id())
             .await?;
 
         let attribute_prototype_id = AttributePrototype::update_for_context(
-            txn,
-            nats,
-            write_tenancy,
-            visibility,
-            history_actor,
+            ctx,
             *original_attribute_prototype.id(),
             context,
             *func.id(),
@@ -579,31 +517,16 @@ impl AttributeValue {
         )
         .await
         .map_err(|e| AttributeValueError::AttributePrototype(format!("{e}")))?;
+        attribute_value.unset_attribute_prototype(ctx).await?;
         attribute_value
-            .unset_attribute_prototype(txn, nats, visibility, history_actor)
-            .await?;
-        attribute_value
-            .set_attribute_prototype(
-                txn,
-                nats,
-                visibility,
-                history_actor,
-                &attribute_prototype_id,
-            )
+            .set_attribute_prototype(ctx, &attribute_prototype_id)
             .await?;
 
         attribute_value
-            .set_func_binding_return_value_id(
-                txn,
-                nats,
-                visibility,
-                history_actor,
-                *func_binding_return_value.id(),
-            )
+            .set_func_binding_return_value_id(ctx, *func_binding_return_value.id())
             .await?;
-        attribute_value
-            .update_parent_index_map(txn, write_tenancy, visibility)
-            .await?;
+        attribute_value.update_parent_index_map(ctx).await?;
+        attribute_value.update_parent_index_map(ctx).await?;
 
         Ok((value, *attribute_value.id()))
     }
@@ -618,26 +541,14 @@ impl AttributeValue {
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn insert_for_context(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        veritech: veritech::Client,
-        encryption_key: &EncryptionKey,
-        write_tenancy: &WriteTenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         context: AttributeContext,
         parent_attribute_value_id: AttributeValueId,
         value: Option<serde_json::Value>,
         key: Option<String>,
     ) -> AttributeValueResult<AttributeValueId> {
-        let read_tenancy = write_tenancy.clone_into_read_tenancy(txn).await?;
-        let parent_prop = AttributeValue::find_prop_for_value(
-            txn,
-            &read_tenancy,
-            visibility,
-            parent_attribute_value_id,
-        )
-        .await?;
+        let parent_prop =
+            AttributeValue::find_prop_for_value(ctx, parent_attribute_value_id).await?;
 
         let key = if let Some(k) = key {
             Some(k)
@@ -648,50 +559,26 @@ impl AttributeValue {
         };
 
         let unset_func_name = "si:unset".to_string();
-        let unset_func = Func::find_by_attr(
-            txn,
-            &(&read_tenancy).into(),
-            visibility,
-            "name",
-            &unset_func_name,
-        )
-        .await?
-        .pop()
-        .ok_or(AttributeValueError::MissingFunc(unset_func_name))?;
+        let unset_func = Func::find_by_attr(ctx, "name", &unset_func_name)
+            .await?
+            .pop()
+            .ok_or(AttributeValueError::MissingFunc(unset_func_name))?;
         let (unset_func_binding, created) = FuncBinding::find_or_create(
-            txn,
-            nats,
-            write_tenancy,
-            visibility,
-            history_actor,
+            ctx,
             serde_json::json![null],
             *unset_func.id(),
             FuncBackendKind::Unset,
         )
         .await?;
         let func_binding_return_value = if created {
-            unset_func_binding
-                .execute(txn, nats, veritech.clone(), encryption_key)
-                .await?
+            unset_func_binding.execute(ctx).await?
         } else {
-            FuncBindingReturnValue::get_by_func_binding_id_or_execute(
-                txn,
-                nats,
-                read_tenancy.clone(),
-                visibility,
-                veritech.clone(),
-                encryption_key,
-                *unset_func_binding.id(),
-            )
-            .await?
+            FuncBindingReturnValue::get_by_func_binding_id_or_execute(ctx, *unset_func_binding.id())
+                .await?
         };
 
         let attribute_value = Self::new(
-            txn,
-            nats,
-            write_tenancy,
-            visibility,
-            history_actor,
+            ctx,
             *unset_func_binding.id(),
             *func_binding_return_value.id(),
             context,
@@ -700,9 +587,7 @@ impl AttributeValue {
         .await?;
 
         if AttributePrototype::find_with_parent_value_and_key_for_context(
-            txn,
-            &read_tenancy,
-            visibility,
+            ctx,
             Some(parent_attribute_value_id),
             key.clone(),
             context,
@@ -712,11 +597,7 @@ impl AttributeValue {
         .is_none()
         {
             AttributePrototype::new_with_existing_value(
-                txn,
-                nats,
-                write_tenancy,
-                visibility,
-                history_actor,
+                ctx,
                 *unset_func.id(),
                 context,
                 key.clone(),
@@ -728,13 +609,7 @@ impl AttributeValue {
         };
 
         let (_, attribute_value_id) = AttributeValue::update_for_context(
-            txn,
-            nats,
-            veritech,
-            encryption_key,
-            write_tenancy,
-            visibility,
-            history_actor,
+            ctx,
             *attribute_value.id(),
             Some(parent_attribute_value_id),
             context,
@@ -749,19 +624,12 @@ impl AttributeValue {
     #[instrument(skip_all)]
     pub async fn update_parent_index_map(
         &self,
-        txn: &PgTxn<'_>,
-        write_tenancy: &WriteTenancy,
-        visibility: &Visibility,
+        ctx: &DalContext<'_, '_>,
     ) -> AttributeValueResult<()> {
-        if let Some(mut parent_value) = self.parent_attribute_value(txn, visibility).await? {
-            let parent_prop = Prop::get_by_id(
-                txn,
-                &write_tenancy.into(),
-                visibility,
-                &parent_value.context.prop_id(),
-            )
-            .await?
-            .ok_or_else(|| AttributeValueError::PropNotFound(parent_value.context.prop_id()))?;
+        if let Some(mut parent_value) = self.parent_attribute_value(ctx).await? {
+            let parent_prop = Prop::get_by_id(ctx, &parent_value.context.prop_id())
+                .await?
+                .ok_or_else(|| AttributeValueError::PropNotFound(parent_value.context.prop_id()))?;
 
             if *parent_prop.kind() == PropKind::Array || *parent_prop.kind() == PropKind::Map {
                 match parent_value.index_map_mut() {
@@ -774,7 +642,7 @@ impl AttributeValue {
                         parent_value.index_map = Some(index_map);
                     }
                 }
-                parent_value.update_stored_index_map(txn).await?;
+                parent_value.update_stored_index_map(ctx).await?;
             }
         };
 
@@ -840,34 +708,19 @@ fn as_type<T: serde::de::DeserializeOwned>(json: serde_json::Value) -> Attribute
     })
 }
 
-#[allow(clippy::too_many_arguments)]
 async fn set_value(
-    txn: &PgTxn<'_>,
-    nats: &NatsTxn,
-    write_tenancy: &WriteTenancy,
-    visibility: &Visibility,
-    history_actor: &HistoryActor,
+    ctx: &DalContext<'_, '_>,
     func_name: &str,
     args: serde_json::Value,
 ) -> AttributeValueResult<(Func, FuncBinding, bool)> {
     let func_name = func_name.to_owned();
-    let read_tenancy = write_tenancy.clone_into_read_tenancy(txn).await?;
-    let func = Func::find_by_attr(txn, &(&read_tenancy).into(), visibility, "name", &func_name)
+    let func = Func::find_by_attr(ctx, "name", &func_name)
         .await?
         .pop()
         .ok_or(AttributeValueError::MissingFunc(func_name))?;
 
-    let (func_binding, created) = FuncBinding::find_or_create(
-        txn,
-        nats,
-        write_tenancy,
-        visibility,
-        history_actor,
-        args,
-        *func.id(),
-        *func.backend_kind(),
-    )
-    .await?;
+    let (func_binding, created) =
+        FuncBinding::find_or_create(ctx, args, *func.id(), *func.backend_kind()).await?;
 
     Ok((func, func_binding, created))
 }

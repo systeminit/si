@@ -25,13 +25,10 @@ pub async fn apply_change_set(
     let txns = txns.start().await?;
     let ctx = builder.build(request_ctx.build_head(), &txns);
 
-    let mut change_set =
-        ChangeSet::get_by_pk(ctx.pg_txn(), ctx.read_tenancy(), &request.change_set_pk)
-            .await?
-            .ok_or(ChangeSetError::ChangeSetNotFound)?;
-    change_set
-        .apply(ctx.pg_txn(), ctx.nats_txn(), ctx.history_actor())
-        .await?;
+    let mut change_set = ChangeSet::get_by_pk(&ctx, &request.change_set_pk)
+        .await?
+        .ok_or(ChangeSetError::ChangeSetNotFound)?;
+    change_set.apply(&ctx).await?;
 
     txns.commit().await?;
 

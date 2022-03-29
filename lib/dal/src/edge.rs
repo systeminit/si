@@ -1,5 +1,6 @@
+use crate::DalContext;
 use serde::{Deserialize, Serialize};
-use si_data::{NatsError, NatsTxn, PgError, PgTxn};
+use si_data::{NatsError, PgError};
 use strum_macros::{AsRefStr, Display, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -7,8 +8,8 @@ use thiserror::Error;
 use crate::node::NodeId;
 use crate::{
     impl_standard_model, pk, socket::SocketId, standard_model, standard_model_accessor,
-    ComponentId, HistoryActor, HistoryEventError, ReadTenancy, ReadTenancyError, StandardModel,
-    StandardModelError, SystemId, Tenancy, Timestamp, Visibility, WriteTenancy,
+    ComponentId, HistoryEventError, ReadTenancyError, StandardModel, StandardModelError, SystemId,
+    Timestamp, Visibility, WriteTenancy,
 };
 
 const FIND_PARENT_COMPONENTS: &str = include_str!("./queries/edge_find_parent_components.sql");
@@ -68,7 +69,7 @@ pub struct Edge {
     tail_object_id: i64,
     tail_socket_id: SocketId,
     #[serde(flatten)]
-    tenancy: Tenancy,
+    tenancy: WriteTenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -88,11 +89,7 @@ impl Edge {
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn new(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        write_tenancy: &WriteTenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         kind: EdgeKind,
         head_node_id: NodeId,
         head_object_kind: VertexObjectKind,
@@ -103,12 +100,14 @@ impl Edge {
         tail_object_id: i64,
         tail_socket_id: SocketId,
     ) -> EdgeResult<Self> {
-        let row = txn
+        let row = ctx
+            .txns()
+            .pg()
             .query_one(
                 "SELECT object FROM edge_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)",
                 &[
-                    write_tenancy,
-                    &visibility,
+                    ctx.write_tenancy(),
+                    ctx.visibility(),
                     &kind.to_string(),
                     &head_node_id,
                     &head_object_kind.to_string(),
@@ -121,15 +120,7 @@ impl Edge {
                 ],
             )
             .await?;
-        let object = standard_model::finish_create_from_row(
-            txn,
-            nats,
-            &write_tenancy.into(),
-            visibility,
-            history_actor,
-            row,
-        )
-        .await?;
+        let object = standard_model::finish_create_from_row(ctx, row).await?;
         Ok(object)
     }
 
@@ -146,15 +137,15 @@ impl Edge {
     standard_model_accessor!(tail_socket_id, Pk(SocketId), EdgeResult);
 
     pub async fn find_component_configuration_parents(
-        txn: &PgTxn<'_>,
-        read_tenancy: &ReadTenancy,
-        visibility: &Visibility,
+        ctx: &DalContext<'_, '_>,
         component_id: &ComponentId,
     ) -> EdgeResult<Vec<ComponentId>> {
-        let rows = txn
+        let rows = ctx
+            .txns()
+            .pg()
             .query(
                 FIND_PARENT_COMPONENTS,
-                &[read_tenancy, &visibility, &component_id],
+                &[ctx.read_tenancy(), ctx.visibility(), &component_id],
             )
             .await?;
         let objects = rows
@@ -165,63 +156,49 @@ impl Edge {
     }
 
     pub async fn include_component_in_system(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        write_tenancy: &WriteTenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         component_id: &ComponentId,
         system_id: &SystemId,
     ) -> EdgeResult<Self> {
-        let read_tenancy = write_tenancy.clone_into_read_tenancy(txn).await?;
-
-        let row = txn
+        let row = ctx
+            .txns()
+            .pg()
             .query_one(
                 "SELECT object FROM edge_include_component_in_system_v1($1, $2, $3, $4)",
-                &[&read_tenancy, &visibility, component_id, system_id],
+                &[
+                    &ctx.read_tenancy(),
+                    ctx.visibility(),
+                    component_id,
+                    system_id,
+                ],
             )
             .await?;
 
-        let object = standard_model::finish_create_from_row(
-            txn,
-            nats,
-            &(&read_tenancy).into(),
-            visibility,
-            history_actor,
-            row,
-        )
-        .await?;
+        let object = standard_model::finish_create_from_row(ctx, row).await?;
 
         Ok(object)
     }
 
     pub async fn include_component_in_node(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        write_tenancy: &WriteTenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         component_id: &ComponentId,
         parent_node_id: &NodeId,
     ) -> EdgeResult<Self> {
-        let read_tenancy = write_tenancy.clone_into_read_tenancy(txn).await?;
-
-        let row = txn
+        let row = ctx
+            .txns()
+            .pg()
             .query_one(
                 "SELECT object FROM edge_include_component_in_node_v1($1, $2, $3, $4)",
-                &[&read_tenancy, &visibility, component_id, parent_node_id],
+                &[
+                    &ctx.read_tenancy(),
+                    ctx.visibility(),
+                    component_id,
+                    parent_node_id,
+                ],
             )
             .await?;
 
-        let object = standard_model::finish_create_from_row(
-            txn,
-            nats,
-            &(&read_tenancy).into(),
-            visibility,
-            history_actor,
-            row,
-        )
-        .await?;
+        let object = standard_model::finish_create_from_row(ctx, row).await?;
 
         Ok(object)
     }

@@ -35,11 +35,7 @@ pub async fn set_node_position(
     let ctx = builder.build(request_ctx.build(request.visibility), &txns);
 
     let position = NodePosition::upsert_by_node_id(
-        ctx.pg_txn(),
-        ctx.nats_txn(),
-        ctx.write_tenancy(),
-        ctx.visibility(),
-        ctx.history_actor(),
+        &ctx,
         request.schematic_kind,
         request.system_id,
         request.deployment_node_id,

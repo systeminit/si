@@ -37,77 +37,23 @@ pub async fn get_edit_fields(
 
     let edit_fields = match request.object_kind {
         EditFieldObjectKind::Component => {
-            Component::get_edit_fields(
-                ctx.pg_txn(),
-                ctx.read_tenancy(),
-                ctx.visibility(),
-                &request.id.into(),
-            )
-            .await?
+            Component::get_edit_fields(&ctx, &request.id.into()).await?
         }
         EditFieldObjectKind::ComponentProp => {
-            Component::get_edit_fields(
-                ctx.pg_txn(),
-                ctx.read_tenancy(),
-                ctx.visibility(),
-                &request.id.into(),
-            )
-            .await?
+            Component::get_edit_fields(&ctx, &request.id.into()).await?
         }
-        EditFieldObjectKind::Prop => {
-            Prop::get_edit_fields(
-                ctx.pg_txn(),
-                ctx.read_tenancy(),
-                ctx.visibility(),
-                &request.id.into(),
-            )
-            .await?
-        }
+        EditFieldObjectKind::Prop => Prop::get_edit_fields(&ctx, &request.id.into()).await?,
         EditFieldObjectKind::QualificationCheck => {
-            QualificationCheck::get_edit_fields(
-                ctx.pg_txn(),
-                ctx.read_tenancy(),
-                ctx.visibility(),
-                &request.id.into(),
-            )
-            .await?
+            QualificationCheck::get_edit_fields(&ctx, &request.id.into()).await?
         }
-        EditFieldObjectKind::Schema => {
-            Schema::get_edit_fields(
-                ctx.pg_txn(),
-                ctx.read_tenancy(),
-                ctx.visibility(),
-                &request.id.into(),
-            )
-            .await?
-        }
+        EditFieldObjectKind::Schema => Schema::get_edit_fields(&ctx, &request.id.into()).await?,
         EditFieldObjectKind::SchemaUiMenu => {
-            schema::UiMenu::get_edit_fields(
-                ctx.pg_txn(),
-                ctx.read_tenancy(),
-                ctx.visibility(),
-                &request.id.into(),
-            )
-            .await?
+            schema::UiMenu::get_edit_fields(&ctx, &request.id.into()).await?
         }
         EditFieldObjectKind::SchemaVariant => {
-            schema::SchemaVariant::get_edit_fields(
-                ctx.pg_txn(),
-                ctx.read_tenancy(),
-                ctx.visibility(),
-                &request.id.into(),
-            )
-            .await?
+            schema::SchemaVariant::get_edit_fields(&ctx, &request.id.into()).await?
         }
-        EditFieldObjectKind::Socket => {
-            Socket::get_edit_fields(
-                ctx.pg_txn(),
-                ctx.read_tenancy(),
-                ctx.visibility(),
-                &request.id.into(),
-            )
-            .await?
-        }
+        EditFieldObjectKind::Socket => Socket::get_edit_fields(&ctx, &request.id.into()).await?,
     };
 
     txns.commit().await?;

@@ -33,11 +33,7 @@ pub async fn create_connection(
     let ctx = builder.build(request_ctx.build(request.visibility), &txns);
 
     let connection = Connection::new(
-        ctx.pg_txn(),
-        ctx.nats_txn(),
-        ctx.write_tenancy(),
-        ctx.visibility(),
-        ctx.history_actor(),
+        &ctx,
         &request.head_node_id,
         &request.head_socket_id,
         &request.tail_node_id,

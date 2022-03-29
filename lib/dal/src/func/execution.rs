@@ -1,13 +1,14 @@
+use crate::WriteTenancy;
 use serde::{Deserialize, Serialize};
-use si_data::{NatsError, NatsTxn, PgError, PgTxn};
+use si_data::{NatsError, PgError};
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::mpsc::Receiver;
 use veritech::{FunctionResultFailure, OutputStream};
 
 use crate::{
-    pk, Func, FuncBackendKind, FuncBackendResponseType, HistoryEventError, StandardModel,
-    StandardModelError, Tenancy, Timestamp, WriteTenancy,
+    pk, DalContext, Func, FuncBackendKind, FuncBackendResponseType, HistoryEventError,
+    StandardModel, StandardModelError, Timestamp,
 };
 
 use super::{
@@ -79,7 +80,7 @@ pub struct FuncExecution {
     output_stream: Option<Vec<OutputStream>>,
     function_failure: Option<FunctionResultFailure>,
     #[serde(flatten)]
-    tenancy: Tenancy,
+    tenancy: WriteTenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
 }
@@ -88,17 +89,17 @@ impl FuncExecution {
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn new(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        write_tenancy: &WriteTenancy,
+        ctx: &DalContext<'_, '_>,
         func: &Func,
         func_binding: &FuncBinding,
     ) -> FuncExecutionResult<Self> {
-        let row = txn
+        let row = ctx
+            .txns()
+            .pg()
             .query_one(
                 "SELECT object FROM func_execution_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9)",
                 &[
-                    write_tenancy,
+                    ctx.write_tenancy(),
                     &FuncExecutionState::Start.to_string(),
                     &func.id(),
                     &func_binding.id(),
@@ -112,7 +113,7 @@ impl FuncExecution {
             .await?;
         let json: serde_json::Value = row.try_get("object")?;
         // This needs to be some kind of 'immediate mode' publish.
-        nats.publish("funcExecution", &json).await?;
+        ctx.txns().nats().publish("funcExecution", &json).await?;
         let object: FuncExecution = serde_json::from_value(json)?;
         Ok(object)
     }
@@ -123,11 +124,12 @@ impl FuncExecution {
 
     pub async fn set_state(
         &mut self,
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
+        ctx: &DalContext<'_, '_>,
         state: FuncExecutionState,
     ) -> FuncExecutionResult<()> {
-        let row = txn
+        let row = ctx
+            .txns()
+            .pg()
             .query_one(
                 "SELECT object FROM func_execution_set_state_v1($1, $2)",
                 &[&self.pk, &state.to_string()],
@@ -135,7 +137,7 @@ impl FuncExecution {
             .await?;
         let json: serde_json::Value = row.try_get("object")?;
         // This needs to be some kind of 'immediate mode' publish.
-        nats.publish("funcExecution", &json).await?;
+        ctx.txns().nats().publish("funcExecution", &json).await?;
         let mut object: FuncExecution = serde_json::from_value(json)?;
         std::mem::swap(self, &mut object);
         Ok(())
@@ -144,8 +146,7 @@ impl FuncExecution {
     /// Takes the receiver stream from a Veritech function execution, and stores the output.
     pub async fn process_output(
         &mut self,
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
+        ctx: &DalContext<'_, '_>,
         mut rx: Receiver<OutputStream>,
     ) -> FuncExecutionResult<()> {
         // Right now, we consume everything. This should really be happening in a separate thread altogether, and
@@ -155,7 +156,7 @@ impl FuncExecution {
         while let Some(output_stream) = rx.recv().await {
             output.push(output_stream);
         }
-        self.set_output_stream(txn, nats, output).await
+        self.set_output_stream(ctx, output).await
     }
 
     pub fn output_stream(&self) -> Option<&Vec<OutputStream>> {
@@ -168,19 +169,20 @@ impl FuncExecution {
 
     pub async fn set_output_stream(
         &mut self,
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
+        ctx: &DalContext<'_, '_>,
         output_stream: Vec<OutputStream>,
     ) -> FuncExecutionResult<()> {
         let output_stream_json = serde_json::to_value(&output_stream)?;
-        let row = txn
+        let row = ctx
+            .txns()
+            .pg()
             .query_one(
                 "SELECT object FROM func_execution_set_output_stream_v1($1, $2)",
                 &[&self.pk, &output_stream_json],
             )
             .await?;
         let json: serde_json::Value = row.try_get("object")?;
-        nats.publish("funcExecution", &json).await?;
+        ctx.txns().nats().publish("funcExecution", &json).await?;
         let mut object: FuncExecution = serde_json::from_value(json)?;
         std::mem::swap(self, &mut object);
         Ok(())
@@ -189,11 +191,12 @@ impl FuncExecution {
     /// Take the return value of a function binding, and store its results.
     pub async fn process_return_value(
         &mut self,
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
+        ctx: &DalContext<'_, '_>,
         func_binding_return_value: &FuncBindingReturnValue,
     ) -> FuncExecutionResult<()> {
-        let row = txn
+        let row = ctx
+            .txns()
+            .pg()
             .query_one(
                 "SELECT object FROM func_execution_set_return_value_v1($1, $2, $3, $4)",
                 &[
@@ -205,7 +208,7 @@ impl FuncExecution {
             )
             .await?;
         let json: serde_json::Value = row.try_get("object")?;
-        nats.publish("funcExecution", &json).await?;
+        ctx.txns().nats().publish("funcExecution", &json).await?;
         let mut object: FuncExecution = serde_json::from_value(json)?;
         std::mem::swap(self, &mut object);
 
@@ -216,9 +219,14 @@ impl FuncExecution {
         self.pk
     }
 
-    #[instrument(skip(txn))]
-    pub async fn get_by_pk(txn: &PgTxn<'_>, pk: &FuncExecutionPk) -> FuncExecutionResult<Self> {
-        let row = txn
+    #[instrument(skip(ctx))]
+    pub async fn get_by_pk(
+        ctx: &DalContext<'_, '_>,
+        pk: &FuncExecutionPk,
+    ) -> FuncExecutionResult<Self> {
+        let row = ctx
+            .txns()
+            .pg()
             .query_one(
                 "SELECT object FROM get_by_pk_v1($1, $2)",
                 &[&"func_executions", &pk],

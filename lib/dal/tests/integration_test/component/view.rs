@@ -1,118 +1,55 @@
 use crate::dal::test;
+use dal::DalContext;
 use dal::{
     schema::builtins::RootProp,
     test_harness::{
         create_prop_of_kind_with_name, create_schema, create_schema_variant_with_root,
         find_or_create_production_system,
     },
-    AttributeContext, AttributeReadContext, AttributeValue, Component, ComponentView, HistoryActor,
-    Prop, PropKind, Schema, SchemaKind, SchemaVariant, StandardModel, Tenancy, Visibility,
-    WriteTenancy,
+    AttributeContext, AttributeReadContext, AttributeValue, Component, ComponentView, Prop,
+    PropKind, Schema, SchemaKind, SchemaVariant, StandardModel,
 };
 use pretty_assertions_sorted::{assert_eq, assert_eq_sorted};
-use si_data::{NatsTxn, PgTxn};
-use tokio::sync::mpsc;
-use veritech::EncryptionKey;
 
-use crate::test_setup;
+use tokio::sync::mpsc;
 
 /// Create a schema that looks like this:
 /// ```json
 /// { "queen": { "bohemian_rhapsody": "", "killer_queen": ""} }
 /// ```
 pub async fn create_schema_with_object_and_string_prop(
-    txn: &PgTxn<'_>,
-    nats: &NatsTxn,
-    veritech: veritech::Client,
-    encryption_key: &EncryptionKey,
+    ctx: &DalContext<'_, '_>,
 ) -> (Schema, SchemaVariant, Prop, Prop, Prop, RootProp) {
-    let tenancy = Tenancy::new_universal();
-    let visibility = Visibility::new_head(false);
-    let history_actor = HistoryActor::SystemInit;
-    let mut schema = create_schema(
-        txn,
-        nats,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        &SchemaKind::Concrete,
-    )
-    .await;
-    let (schema_variant, root) = create_schema_variant_with_root(
-        txn,
-        nats,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        veritech.clone(),
-        encryption_key,
-        *schema.id(),
-    )
-    .await;
+    let octx = ctx.clone_with_universal_head();
+    let ctx = &octx;
+    let mut schema = create_schema(ctx, &SchemaKind::Concrete).await;
+    let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema_variant
-        .set_schema(txn, nats, &visibility, &history_actor, schema.id())
+        .set_schema(ctx, schema.id())
         .await
         .expect("cannot associate variant with schema");
     schema
-        .set_default_schema_variant_id(
-            txn,
-            nats,
-            &visibility,
-            &history_actor,
-            Some(*schema_variant.id()),
-        )
+        .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
         .expect("cannot set default schema variant");
 
-    let queen_prop = create_prop_of_kind_with_name(
-        txn,
-        nats,
-        veritech.clone(),
-        encryption_key,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        PropKind::Object,
-        "queen",
-    )
-    .await;
+    let queen_prop = create_prop_of_kind_with_name(ctx, PropKind::Object, "queen").await;
 
-    let killer_prop = create_prop_of_kind_with_name(
-        txn,
-        nats,
-        veritech.clone(),
-        encryption_key,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        PropKind::String,
-        "killer_queen",
-    )
-    .await;
+    let killer_prop = create_prop_of_kind_with_name(ctx, PropKind::String, "killer_queen").await;
 
-    let bohemian_prop = create_prop_of_kind_with_name(
-        txn,
-        nats,
-        veritech.clone(),
-        encryption_key,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        PropKind::String,
-        "bohemian_rhapsody",
-    )
-    .await;
+    let bohemian_prop =
+        create_prop_of_kind_with_name(ctx, PropKind::String, "bohemian_rhapsody").await;
 
     queen_prop
-        .set_parent_prop(txn, nats, &visibility, &history_actor, root.domain_prop_id)
+        .set_parent_prop(ctx, root.domain_prop_id)
         .await
         .expect("cannot set parent prop");
     killer_prop
-        .set_parent_prop(txn, nats, &visibility, &history_actor, *queen_prop.id())
+        .set_parent_prop(ctx, *queen_prop.id())
         .await
         .expect("cannot set parent prop");
     bohemian_prop
-        .set_parent_prop(txn, nats, &visibility, &history_actor, *queen_prop.id())
+        .set_parent_prop(ctx, *queen_prop.id())
         .await
         .expect("cannot set parent prop");
 
@@ -131,10 +68,7 @@ pub async fn create_schema_with_object_and_string_prop(
 /// { "queen": { "bohemian_rhapsody": "", "killer_queen": "", "under_pressure": { "another_one_bites_the_dust": "" }} }
 /// ```
 pub async fn create_schema_with_nested_objects_and_string_prop(
-    txn: &PgTxn<'_>,
-    nats: &NatsTxn,
-    veritech: veritech::Client,
-    encryption_key: &EncryptionKey,
+    ctx: &DalContext<'_, '_>,
 ) -> (
     Schema,
     SchemaVariant,
@@ -145,127 +79,50 @@ pub async fn create_schema_with_nested_objects_and_string_prop(
     Prop,
     RootProp,
 ) {
-    let tenancy = Tenancy::new_universal();
-    let visibility = Visibility::new_head(false);
-    let history_actor = HistoryActor::SystemInit;
-    let mut schema = create_schema(
-        txn,
-        nats,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        &SchemaKind::Concrete,
-    )
-    .await;
-    let (schema_variant, root) = create_schema_variant_with_root(
-        &txn,
-        &nats,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        veritech.clone(),
-        encryption_key,
-        *schema.id(),
-    )
-    .await;
+    let octx = ctx.clone_with_universal_head();
+    let ctx = &octx;
+    let mut schema = create_schema(ctx, &SchemaKind::Concrete).await;
+    let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema_variant
-        .set_schema(txn, nats, &visibility, &history_actor, schema.id())
+        .set_schema(ctx, schema.id())
         .await
         .expect("cannot associate variant with schema");
     schema
-        .set_default_schema_variant_id(
-            txn,
-            nats,
-            &visibility,
-            &history_actor,
-            Some(*schema_variant.id()),
-        )
+        .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
         .expect("cannot set default schema variant");
 
-    let queen_prop = create_prop_of_kind_with_name(
-        txn,
-        nats,
-        veritech.clone(),
-        encryption_key,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        PropKind::Object,
-        "queen",
-    )
-    .await;
+    let queen_prop = create_prop_of_kind_with_name(ctx, PropKind::Object, "queen").await;
     queen_prop
-        .set_parent_prop(txn, nats, &visibility, &history_actor, root.domain_prop_id)
+        .set_parent_prop(ctx, root.domain_prop_id)
         .await
         .expect("cannot set parent prop");
 
-    let bohemian_prop = create_prop_of_kind_with_name(
-        txn,
-        nats,
-        veritech.clone(),
-        encryption_key,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        PropKind::String,
-        "bohemian_rhapsody",
-    )
-    .await;
+    let bohemian_prop =
+        create_prop_of_kind_with_name(ctx, PropKind::String, "bohemian_rhapsody").await;
 
-    let killer_prop = create_prop_of_kind_with_name(
-        txn,
-        nats,
-        veritech.clone(),
-        encryption_key,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        PropKind::String,
-        "killer_queen",
-    )
-    .await;
+    let killer_prop = create_prop_of_kind_with_name(ctx, PropKind::String, "killer_queen").await;
 
-    let pressure_prop = create_prop_of_kind_with_name(
-        txn,
-        nats,
-        veritech.clone(),
-        encryption_key,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        PropKind::Object,
-        "under_pressure",
-    )
-    .await;
+    let pressure_prop =
+        create_prop_of_kind_with_name(ctx, PropKind::Object, "under_pressure").await;
 
     killer_prop
-        .set_parent_prop(txn, nats, &visibility, &history_actor, *queen_prop.id())
+        .set_parent_prop(ctx, *queen_prop.id())
         .await
         .expect("cannot set parent prop");
     bohemian_prop
-        .set_parent_prop(txn, nats, &visibility, &history_actor, *queen_prop.id())
+        .set_parent_prop(ctx, *queen_prop.id())
         .await
         .expect("cannot set parent prop");
     pressure_prop
-        .set_parent_prop(txn, nats, &visibility, &history_actor, *queen_prop.id())
+        .set_parent_prop(ctx, *queen_prop.id())
         .await
         .expect("cannot set parent prop");
 
-    let dust_prop = create_prop_of_kind_with_name(
-        txn,
-        nats,
-        veritech.clone(),
-        encryption_key,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        PropKind::String,
-        "another_one_bites_the_dust",
-    )
-    .await;
+    let dust_prop =
+        create_prop_of_kind_with_name(ctx, PropKind::String, "another_one_bites_the_dust").await;
     dust_prop
-        .set_parent_prop(txn, nats, &visibility, &history_actor, *pressure_prop.id())
+        .set_parent_prop(ctx, *pressure_prop.id())
         .await
         .expect("cannot set parent prop");
 
@@ -286,80 +143,31 @@ pub async fn create_schema_with_nested_objects_and_string_prop(
 /// { "bohemian_rhapsody": "", "killer_queen": "" }
 /// ```
 pub async fn create_schema_with_string_props(
-    txn: &PgTxn<'_>,
-    nats: &NatsTxn,
-    veritech: veritech::Client,
-    encryption_key: &EncryptionKey,
+    ctx: &DalContext<'_, '_>,
 ) -> (Schema, SchemaVariant, Prop, Prop, RootProp) {
-    let tenancy = Tenancy::new_universal();
-    let visibility = Visibility::new_head(false);
-    let history_actor = HistoryActor::SystemInit;
-    let mut schema = create_schema(
-        txn,
-        nats,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        &SchemaKind::Concrete,
-    )
-    .await;
-    let (schema_variant, root) = create_schema_variant_with_root(
-        txn,
-        nats,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        veritech.clone(),
-        encryption_key,
-        *schema.id(),
-    )
-    .await;
+    let octx = ctx.clone_with_universal_head();
+    let ctx = &octx;
+    let mut schema = create_schema(ctx, &SchemaKind::Concrete).await;
+    let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema_variant
-        .set_schema(txn, nats, &visibility, &history_actor, schema.id())
+        .set_schema(ctx, schema.id())
         .await
         .expect("cannot associate variant with schema");
     schema
-        .set_default_schema_variant_id(
-            txn,
-            nats,
-            &visibility,
-            &history_actor,
-            Some(*schema_variant.id()),
-        )
+        .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
         .expect("cannot set default schema variant");
 
-    let bohemian_prop = create_prop_of_kind_with_name(
-        txn,
-        nats,
-        veritech.clone(),
-        encryption_key,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        PropKind::String,
-        "bohemian_rhapsody",
-    )
-    .await;
+    let bohemian_prop =
+        create_prop_of_kind_with_name(ctx, PropKind::String, "bohemian_rhapsody").await;
     bohemian_prop
-        .set_parent_prop(txn, nats, &visibility, &history_actor, root.domain_prop_id)
+        .set_parent_prop(ctx, root.domain_prop_id)
         .await
         .expect("cannot set parent prop");
 
-    let killer_prop = create_prop_of_kind_with_name(
-        txn,
-        nats,
-        veritech,
-        encryption_key,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        PropKind::String,
-        "killer_queen",
-    )
-    .await;
+    let killer_prop = create_prop_of_kind_with_name(ctx, PropKind::String, "killer_queen").await;
     killer_prop
-        .set_parent_prop(txn, nats, &visibility, &history_actor, root.domain_prop_id)
+        .set_parent_prop(ctx, root.domain_prop_id)
         .await
         .expect("cannot set parent prop");
 
@@ -371,80 +179,31 @@ pub async fn create_schema_with_string_props(
 /// { "sammy_hagar": ["standing hampton", "voa"] }
 /// ```
 pub async fn create_schema_with_array_of_string_props(
-    txn: &PgTxn<'_>,
-    nats: &NatsTxn,
-    veritech: veritech::Client,
-    encryption_key: &EncryptionKey,
+    ctx: &DalContext<'_, '_>,
 ) -> (Schema, SchemaVariant, Prop, Prop, RootProp) {
-    let tenancy = Tenancy::new_universal();
-    let visibility = Visibility::new_head(false);
-    let history_actor = HistoryActor::SystemInit;
-    let mut schema = create_schema(
-        txn,
-        nats,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        &SchemaKind::Concrete,
-    )
-    .await;
-    let (schema_variant, root) = create_schema_variant_with_root(
-        &txn,
-        &nats,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        veritech.clone(),
-        encryption_key,
-        *schema.id(),
-    )
-    .await;
+    let octx = ctx.clone_with_universal_head();
+    let ctx = &octx;
+
+    let mut schema = create_schema(ctx, &SchemaKind::Concrete).await;
+    let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema_variant
-        .set_schema(txn, nats, &visibility, &history_actor, schema.id())
+        .set_schema(ctx, schema.id())
         .await
         .expect("cannot associate variant with schema");
     schema
-        .set_default_schema_variant_id(
-            txn,
-            nats,
-            &visibility,
-            &history_actor,
-            Some(*schema_variant.id()),
-        )
+        .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
         .expect("cannot set default schema variant");
 
-    let sammy_prop = create_prop_of_kind_with_name(
-        txn,
-        nats,
-        veritech.clone(),
-        encryption_key,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        PropKind::Array,
-        "sammy_hagar",
-    )
-    .await;
+    let sammy_prop = create_prop_of_kind_with_name(ctx, PropKind::Array, "sammy_hagar").await;
     sammy_prop
-        .set_parent_prop(txn, nats, &visibility, &history_actor, root.domain_prop_id)
+        .set_parent_prop(ctx, root.domain_prop_id)
         .await
         .expect("cannot set parent");
 
-    let album_string_prop = create_prop_of_kind_with_name(
-        txn,
-        nats,
-        veritech,
-        encryption_key,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        PropKind::String,
-        "ignoreme",
-    )
-    .await;
+    let album_string_prop = create_prop_of_kind_with_name(ctx, PropKind::String, "ignoreme").await;
     album_string_prop
-        .set_parent_prop(txn, nats, &visibility, &history_actor, *sammy_prop.id())
+        .set_parent_prop(ctx, *sammy_prop.id())
         .await
         .expect("cannot set parent");
 
@@ -460,10 +219,7 @@ pub async fn create_schema_with_array_of_string_props(
 /// }
 /// ```
 pub async fn create_schema_with_nested_array_objects(
-    txn: &PgTxn<'_>,
-    nats: &NatsTxn,
-    veritech: veritech::Client,
-    encryption_key: &EncryptionKey,
+    ctx: &DalContext<'_, '_>,
 ) -> (
     Schema,
     SchemaVariant,
@@ -474,144 +230,49 @@ pub async fn create_schema_with_nested_array_objects(
     Prop,
     RootProp,
 ) {
-    let tenancy = Tenancy::new_universal();
-    let visibility = Visibility::new_head(false);
-    let history_actor = HistoryActor::SystemInit;
-    let mut schema = create_schema(
-        txn,
-        nats,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        &SchemaKind::Concrete,
-    )
-    .await;
-    let (schema_variant, root) = create_schema_variant_with_root(
-        txn,
-        nats,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        veritech.clone(),
-        encryption_key,
-        *schema.id(),
-    )
-    .await;
+    let octx = ctx.clone_with_universal_head();
+    let ctx = &octx;
+
+    let mut schema = create_schema(ctx, &SchemaKind::Concrete).await;
+    let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema_variant
-        .set_schema(txn, nats, &visibility, &history_actor, schema.id())
+        .set_schema(ctx, schema.id())
         .await
         .expect("cannot associate variant with schema");
     schema
-        .set_default_schema_variant_id(
-            txn,
-            nats,
-            &visibility,
-            &history_actor,
-            Some(*schema_variant.id()),
-        )
+        .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
         .expect("cannot set default schema variant");
 
-    let sammy_prop = create_prop_of_kind_with_name(
-        txn,
-        nats,
-        veritech.clone(),
-        encryption_key,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        PropKind::Array,
-        "sammy_hagar",
-    )
-    .await;
+    let sammy_prop = create_prop_of_kind_with_name(ctx, PropKind::Array, "sammy_hagar").await;
     sammy_prop
-        .set_parent_prop(txn, nats, &visibility, &history_actor, root.domain_prop_id)
+        .set_parent_prop(ctx, root.domain_prop_id)
         .await
         .expect("cannot set parent");
 
-    let album_object_prop = create_prop_of_kind_with_name(
-        txn,
-        nats,
-        veritech.clone(),
-        encryption_key,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        PropKind::Object,
-        "album_ignore",
-    )
-    .await;
+    let album_object_prop =
+        create_prop_of_kind_with_name(ctx, PropKind::Object, "album_ignore").await;
     album_object_prop
-        .set_parent_prop(txn, nats, &visibility, &history_actor, *sammy_prop.id())
+        .set_parent_prop(ctx, *sammy_prop.id())
         .await
         .expect("cannot set parent");
 
-    let album_string_prop = create_prop_of_kind_with_name(
-        txn,
-        nats,
-        veritech.clone(),
-        encryption_key,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        PropKind::String,
-        "album",
-    )
-    .await;
+    let album_string_prop = create_prop_of_kind_with_name(ctx, PropKind::String, "album").await;
     album_string_prop
-        .set_parent_prop(
-            txn,
-            nats,
-            &visibility,
-            &history_actor,
-            *album_object_prop.id(),
-        )
+        .set_parent_prop(ctx, *album_object_prop.id())
         .await
         .expect("cannot set parent");
 
-    let songs_array_prop = create_prop_of_kind_with_name(
-        txn,
-        nats,
-        veritech.clone(),
-        encryption_key,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        PropKind::Array,
-        "songs",
-    )
-    .await;
+    let songs_array_prop = create_prop_of_kind_with_name(ctx, PropKind::Array, "songs").await;
     songs_array_prop
-        .set_parent_prop(
-            txn,
-            nats,
-            &visibility,
-            &history_actor,
-            *album_object_prop.id(),
-        )
+        .set_parent_prop(ctx, *album_object_prop.id())
         .await
         .expect("cannot set parent");
 
-    let song_name_prop = create_prop_of_kind_with_name(
-        txn,
-        nats,
-        veritech.clone(),
-        encryption_key,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        PropKind::String,
-        "song_name_ignore",
-    )
-    .await;
+    let song_name_prop =
+        create_prop_of_kind_with_name(ctx, PropKind::String, "song_name_ignore").await;
     song_name_prop
-        .set_parent_prop(
-            txn,
-            nats,
-            &visibility,
-            &history_actor,
-            *songs_array_prop.id(),
-        )
+        .set_parent_prop(ctx, *songs_array_prop.id())
         .await
         .expect("cannot set parent");
 
@@ -635,80 +296,31 @@ pub async fn create_schema_with_nested_array_objects(
 /// }
 /// ```
 pub async fn create_simple_map(
-    txn: &PgTxn<'_>,
-    nats: &NatsTxn,
-    veritech: veritech::Client,
-    encryption_key: &EncryptionKey,
+    ctx: &DalContext<'_, '_>,
 ) -> (Schema, SchemaVariant, Prop, Prop, RootProp) {
-    let tenancy = Tenancy::new_universal();
-    let visibility = Visibility::new_head(false);
-    let history_actor = HistoryActor::SystemInit;
-    let mut schema = create_schema(
-        txn,
-        nats,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        &SchemaKind::Concrete,
-    )
-    .await;
-    let (schema_variant, root) = create_schema_variant_with_root(
-        txn,
-        nats,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        veritech.clone(),
-        encryption_key,
-        *schema.id(),
-    )
-    .await;
+    let octx = ctx.clone_with_universal_head();
+    let ctx = &octx;
+    let mut schema = create_schema(ctx, &SchemaKind::Concrete).await;
+    let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema_variant
-        .set_schema(txn, nats, &visibility, &history_actor, schema.id())
+        .set_schema(ctx, schema.id())
         .await
         .expect("cannot associate variant with schema");
     schema
-        .set_default_schema_variant_id(
-            txn,
-            nats,
-            &visibility,
-            &history_actor,
-            Some(*schema_variant.id()),
-        )
+        .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
         .expect("cannot set default schema variant");
 
-    let album_prop = create_prop_of_kind_with_name(
-        txn,
-        nats,
-        veritech.clone(),
-        encryption_key,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        PropKind::Map,
-        "albums",
-    )
-    .await;
+    let album_prop = create_prop_of_kind_with_name(ctx, PropKind::Map, "albums").await;
     album_prop
-        .set_parent_prop(txn, nats, &visibility, &history_actor, root.domain_prop_id)
+        .set_parent_prop(ctx, root.domain_prop_id)
         .await
         .expect("cannot set parent");
 
-    let album_item_prop = create_prop_of_kind_with_name(
-        txn,
-        nats,
-        veritech.clone(),
-        encryption_key,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        PropKind::String,
-        "album_ignore",
-    )
-    .await;
+    let album_item_prop =
+        create_prop_of_kind_with_name(ctx, PropKind::String, "album_ignore").await;
     album_item_prop
-        .set_parent_prop(txn, nats, &visibility, &history_actor, *album_prop.id())
+        .set_parent_prop(ctx, *album_prop.id())
         .await
         .expect("cannot set parent");
 
@@ -723,10 +335,7 @@ pub async fn create_simple_map(
 /// }
 /// ```
 pub async fn create_schema_with_nested_array_objects_and_a_map(
-    txn: &PgTxn<'_>,
-    nats: &NatsTxn,
-    veritech: veritech::Client,
-    encryption_key: &EncryptionKey,
+    ctx: &DalContext<'_, '_>,
 ) -> (
     Schema,
     SchemaVariant,
@@ -738,161 +347,55 @@ pub async fn create_schema_with_nested_array_objects_and_a_map(
     Prop,
     RootProp,
 ) {
-    let tenancy = Tenancy::new_universal();
-    let visibility = Visibility::new_head(false);
-    let history_actor = HistoryActor::SystemInit;
-    let mut schema = create_schema(
-        txn,
-        nats,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        &SchemaKind::Concrete,
-    )
-    .await;
-    let (schema_variant, root) = create_schema_variant_with_root(
-        txn,
-        nats,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        veritech.clone(),
-        encryption_key,
-        *schema.id(),
-    )
-    .await;
+    let octx = ctx.clone_with_universal_head();
+    let ctx = &octx;
+
+    let mut schema = create_schema(ctx, &SchemaKind::Concrete).await;
+    let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema_variant
-        .set_schema(txn, nats, &visibility, &history_actor, schema.id())
+        .set_schema(ctx, schema.id())
         .await
         .expect("cannot associate variant with schema");
     schema
-        .set_default_schema_variant_id(
-            txn,
-            nats,
-            &visibility,
-            &history_actor,
-            Some(*schema_variant.id()),
-        )
+        .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
         .expect("cannot set default schema variant");
 
-    let sammy_prop = create_prop_of_kind_with_name(
-        txn,
-        nats,
-        veritech.clone(),
-        encryption_key,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        PropKind::Array,
-        "sammy_hagar",
-    )
-    .await;
+    let sammy_prop = create_prop_of_kind_with_name(ctx, PropKind::Array, "sammy_hagar").await;
     sammy_prop
-        .set_parent_prop(txn, nats, &visibility, &history_actor, root.domain_prop_id)
+        .set_parent_prop(ctx, root.domain_prop_id)
         .await
         .expect("cannot set parent");
 
-    let album_object_prop = create_prop_of_kind_with_name(
-        txn,
-        nats,
-        veritech.clone(),
-        encryption_key,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        PropKind::Object,
-        "album_ignore",
-    )
-    .await;
+    let album_object_prop =
+        create_prop_of_kind_with_name(ctx, PropKind::Object, "album_ignore").await;
     album_object_prop
-        .set_parent_prop(txn, nats, &visibility, &history_actor, *sammy_prop.id())
+        .set_parent_prop(ctx, *sammy_prop.id())
         .await
         .expect("cannot set parent");
 
-    let album_string_prop = create_prop_of_kind_with_name(
-        txn,
-        nats,
-        veritech.clone(),
-        encryption_key,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        PropKind::String,
-        "album",
-    )
-    .await;
+    let album_string_prop = create_prop_of_kind_with_name(ctx, PropKind::String, "album").await;
     album_string_prop
-        .set_parent_prop(
-            txn,
-            nats,
-            &visibility,
-            &history_actor,
-            *album_object_prop.id(),
-        )
+        .set_parent_prop(ctx, *album_object_prop.id())
         .await
         .expect("cannot set parent");
 
-    let songs_array_prop = create_prop_of_kind_with_name(
-        txn,
-        nats,
-        veritech.clone(),
-        encryption_key,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        PropKind::Array,
-        "songs",
-    )
-    .await;
+    let songs_array_prop = create_prop_of_kind_with_name(ctx, PropKind::Array, "songs").await;
     songs_array_prop
-        .set_parent_prop(
-            txn,
-            nats,
-            &visibility,
-            &history_actor,
-            *album_object_prop.id(),
-        )
+        .set_parent_prop(ctx, *album_object_prop.id())
         .await
         .expect("cannot set parent");
 
-    let song_map_prop = create_prop_of_kind_with_name(
-        txn,
-        nats,
-        veritech.clone(),
-        encryption_key,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        PropKind::Map,
-        "song_map_ignore",
-    )
-    .await;
+    let song_map_prop = create_prop_of_kind_with_name(ctx, PropKind::Map, "song_map_ignore").await;
     song_map_prop
-        .set_parent_prop(
-            txn,
-            nats,
-            &visibility,
-            &history_actor,
-            *songs_array_prop.id(),
-        )
+        .set_parent_prop(ctx, *songs_array_prop.id())
         .await
         .expect("cannot set parent");
 
-    let song_map_item_prop = create_prop_of_kind_with_name(
-        txn,
-        nats,
-        veritech.clone(),
-        encryption_key,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        PropKind::String,
-        "song_map_item_ignore",
-    )
-    .await;
+    let song_map_item_prop =
+        create_prop_of_kind_with_name(ctx, PropKind::String, "song_map_item_ignore").await;
     song_map_item_prop
-        .set_parent_prop(txn, nats, &visibility, &history_actor, *song_map_prop.id())
+        .set_parent_prop(ctx, *song_map_prop.id())
         .await
         .expect("cannot set parent");
 
@@ -910,43 +413,14 @@ pub async fn create_schema_with_nested_array_objects_and_a_map(
 }
 
 #[test]
-async fn only_string_props() {
-    test_setup!(
-        ctx,
-        _secret_key,
-        _pg,
-        _conn,
-        txn,
-        _nats_conn,
-        nats,
-        veritech,
-        encr_key,
-    );
-    let tenancy = Tenancy::new_universal();
-    let write_tenancy: WriteTenancy = (&tenancy).into();
-    let read_tenancy = write_tenancy
-        .clone_into_read_tenancy(&txn)
-        .await
-        .expect("could not create read tenancy");
-    let visibility = Visibility::new_head(false);
-    let history_actor = HistoryActor::SystemInit;
-    let _ =
-        find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor).await;
+async fn only_string_props(ctx: &DalContext<'_, '_>) {
+    let _ = find_or_create_production_system(ctx).await;
     let (schema, schema_variant, bohemian_prop, killer_prop, root_prop) =
-        create_schema_with_string_props(&txn, &nats, veritech.clone(), encr_key).await;
-    let (component, _) = Component::new_for_schema_variant_with_node(
-        &txn,
-        &nats,
-        veritech.clone(),
-        encr_key,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        "capoeira",
-        schema_variant.id(),
-    )
-    .await
-    .expect("Unable to create component");
+        create_schema_with_string_props(ctx).await;
+    let (component, _) =
+        Component::new_for_schema_variant_with_node(ctx, "capoeira", schema_variant.id())
+            .await
+            .expect("Unable to create component");
 
     let mut base_attribute_context = AttributeContext::builder();
     base_attribute_context
@@ -959,32 +433,24 @@ async fn only_string_props() {
         .set_prop_id(root_prop.domain_prop_id)
         .to_context()
         .expect("cannot create domain AttributeContext");
-    let domain_value =
-        AttributeValue::find_for_context(&txn, &read_tenancy, &visibility, domain_context.into())
-            .await
-            .expect("could not fetch domain AttributeValue")
-            .pop()
-            .expect("could not find domain AttributeValue");
+    let domain_value = AttributeValue::find_for_context(ctx, domain_context.into())
+        .await
+        .expect("could not fetch domain AttributeValue")
+        .pop()
+        .expect("could not find domain AttributeValue");
 
     let bohemian_context = base_attribute_context
         .clone()
         .set_prop_id(*bohemian_prop.id())
         .to_context()
         .expect("cannot create bohemian AttributeContext");
-    let bohemian_value =
-        AttributeValue::find_for_context(&txn, &read_tenancy, &visibility, bohemian_context.into())
-            .await
-            .expect("could not retrieve bohemian AttributeValue")
-            .pop()
-            .expect("could not find bohemian AttributeValue");
+    let bohemian_value = AttributeValue::find_for_context(ctx, bohemian_context.into())
+        .await
+        .expect("could not retrieve bohemian AttributeValue")
+        .pop()
+        .expect("could not find bohemian AttributeValue");
     AttributeValue::update_for_context(
-        &txn,
-        &nats,
-        veritech.clone(),
-        encr_key,
-        &write_tenancy,
-        &visibility,
-        &history_actor,
+        ctx,
         *bohemian_value.id(),
         Some(*domain_value.id()),
         bohemian_context,
@@ -999,20 +465,13 @@ async fn only_string_props() {
         .set_prop_id(*killer_prop.id())
         .to_context()
         .expect("cannot create killer AttributeContext");
-    let killer_value =
-        AttributeValue::find_for_context(&txn, &read_tenancy, &visibility, killer_context.into())
-            .await
-            .expect("could not retrieve killer AttributeValue")
-            .pop()
-            .expect("could not find killer AttributeValue");
+    let killer_value = AttributeValue::find_for_context(ctx, killer_context.into())
+        .await
+        .expect("could not retrieve killer AttributeValue")
+        .pop()
+        .expect("could not find killer AttributeValue");
     AttributeValue::update_for_context(
-        &txn,
-        &nats,
-        veritech.clone(),
-        encr_key,
-        &write_tenancy,
-        &visibility,
-        &history_actor,
+        ctx,
         *killer_value.id(),
         Some(*domain_value.id()),
         killer_context,
@@ -1023,12 +482,7 @@ async fn only_string_props() {
     .expect("could not update bohemian prop value");
 
     let component_view = ComponentView::for_context(
-        &txn,
-        &tenancy
-            .clone_into_read_tenancy(&txn)
-            .await
-            .expect("unable to generate read tenancy"),
-        &visibility,
+        ctx,
         AttributeReadContext {
             schema_id: Some(*schema.id()),
             schema_variant_id: Some(*schema_variant.id()),
@@ -1055,43 +509,14 @@ async fn only_string_props() {
 }
 
 #[test]
-async fn one_object_prop() {
-    test_setup!(
-        ctx,
-        _secret_key,
-        _pg,
-        _conn,
-        txn,
-        _nats_conn,
-        nats,
-        veritech,
-        encr_key,
-    );
-    let tenancy = Tenancy::new_universal();
-    let write_tenancy: WriteTenancy = (&tenancy).into();
-    let read_tenancy = write_tenancy
-        .clone_into_read_tenancy(&txn)
-        .await
-        .expect("could not create read tenancy");
-    let visibility = Visibility::new_head(false);
-    let history_actor = HistoryActor::SystemInit;
-    let _ =
-        find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor).await;
+async fn one_object_prop(ctx: &DalContext<'_, '_>) {
+    let _ = find_or_create_production_system(ctx).await;
     let (schema, schema_variant, queen_prop, killer_prop, bohemian_prop, root_prop) =
-        create_schema_with_object_and_string_prop(&txn, &nats, veritech.clone(), encr_key).await;
-    let (component, _) = Component::new_for_schema_variant_with_node(
-        &txn,
-        &nats,
-        veritech.clone(),
-        &encr_key,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        "santos dumont",
-        schema_variant.id(),
-    )
-    .await
-    .expect("Unable to create component");
+        create_schema_with_object_and_string_prop(ctx).await;
+    let (component, _) =
+        Component::new_for_schema_variant_with_node(ctx, "santos dumont", schema_variant.id())
+            .await
+            .expect("Unable to create component");
 
     let mut base_attribute_context = AttributeContext::builder();
     base_attribute_context
@@ -1104,32 +529,24 @@ async fn one_object_prop() {
         .set_prop_id(root_prop.domain_prop_id)
         .to_context()
         .expect("cannot create domain AttributeContext");
-    let domain_value =
-        AttributeValue::find_for_context(&txn, &read_tenancy, &visibility, domain_context.into())
-            .await
-            .expect("could not fetch domain AttributeValue")
-            .pop()
-            .expect("could not find domain AttributeValue");
+    let domain_value = AttributeValue::find_for_context(ctx, domain_context.into())
+        .await
+        .expect("could not fetch domain AttributeValue")
+        .pop()
+        .expect("could not find domain AttributeValue");
 
     let queen_context = base_attribute_context
         .clone()
         .set_prop_id(*queen_prop.id())
         .to_context()
         .expect("cannot create queen AttributeContext");
-    let unset_queen_value =
-        AttributeValue::find_for_context(&txn, &read_tenancy, &visibility, queen_context.into())
-            .await
-            .expect("could not retrieve queen AttributeValue")
-            .pop()
-            .expect("could not find queen AttributeValue");
+    let unset_queen_value = AttributeValue::find_for_context(ctx, queen_context.into())
+        .await
+        .expect("could not retrieve queen AttributeValue")
+        .pop()
+        .expect("could not find queen AttributeValue");
     let (_, queen_value_id) = AttributeValue::update_for_context(
-        &txn,
-        &nats,
-        veritech.clone(),
-        encr_key,
-        &write_tenancy,
-        &visibility,
-        &history_actor,
+        ctx,
         *unset_queen_value.id(),
         Some(*domain_value.id()),
         queen_context,
@@ -1144,20 +561,13 @@ async fn one_object_prop() {
         .set_prop_id(*bohemian_prop.id())
         .to_context()
         .expect("cannot create bohemian AttributeContext");
-    let unset_bohemian_value =
-        AttributeValue::find_for_context(&txn, &read_tenancy, &visibility, bohemian_context.into())
-            .await
-            .expect("could not retrieve bohemian AttributeValue")
-            .pop()
-            .expect("could not find bohemian AttributeValue");
+    let unset_bohemian_value = AttributeValue::find_for_context(ctx, bohemian_context.into())
+        .await
+        .expect("could not retrieve bohemian AttributeValue")
+        .pop()
+        .expect("could not find bohemian AttributeValue");
     AttributeValue::update_for_context(
-        &txn,
-        &nats,
-        veritech.clone(),
-        encr_key,
-        &write_tenancy,
-        &visibility,
-        &history_actor,
+        ctx,
         *unset_bohemian_value.id(),
         Some(queen_value_id),
         bohemian_context,
@@ -1172,20 +582,13 @@ async fn one_object_prop() {
         .set_prop_id(*killer_prop.id())
         .to_context()
         .expect("cannot create killer AttributeContext");
-    let unset_killer_value =
-        AttributeValue::find_for_context(&txn, &read_tenancy, &visibility, killer_context.into())
-            .await
-            .expect("could not retrieve killer AttributeValue")
-            .pop()
-            .expect("could not find killer AttributeValue");
+    let unset_killer_value = AttributeValue::find_for_context(ctx, killer_context.into())
+        .await
+        .expect("could not retrieve killer AttributeValue")
+        .pop()
+        .expect("could not find killer AttributeValue");
     AttributeValue::update_for_context(
-        &txn,
-        &nats,
-        veritech.clone(),
-        encr_key,
-        &write_tenancy,
-        &visibility,
-        &history_actor,
+        ctx,
         *unset_killer_value.id(),
         Some(queen_value_id),
         killer_context,
@@ -1196,12 +599,7 @@ async fn one_object_prop() {
     .expect("could not update killer AttributeValue");
 
     let component_view = ComponentView::for_context(
-        &txn,
-        &tenancy
-            .clone_into_read_tenancy(&txn)
-            .await
-            .expect("unable to generate read tenancy"),
-        &visibility,
+        ctx,
         AttributeReadContext {
             schema_id: Some(*schema.id()),
             schema_variant_id: Some(*schema_variant.id()),
@@ -1227,28 +625,8 @@ async fn one_object_prop() {
 }
 
 #[test]
-async fn nested_object_prop() {
-    test_setup!(
-        ctx,
-        _secret_key,
-        _pg,
-        _conn,
-        txn,
-        _nats_conn,
-        nats,
-        veritech,
-        encr_key,
-    );
-    let tenancy = Tenancy::new_universal();
-    let write_tenancy: WriteTenancy = (&tenancy).into();
-    let read_tenancy = write_tenancy
-        .clone_into_read_tenancy(&txn)
-        .await
-        .expect("could not create read tenancy");
-    let visibility = Visibility::new_head(false);
-    let history_actor = HistoryActor::SystemInit;
-    let _ =
-        find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor).await;
+async fn nested_object_prop(ctx: &DalContext<'_, '_>) {
+    let _ = find_or_create_production_system(ctx).await;
     let (
         schema,
         schema_variant,
@@ -1258,21 +636,11 @@ async fn nested_object_prop() {
         pressure_prop,
         dust_prop,
         root_prop,
-    ) = create_schema_with_nested_objects_and_string_prop(&txn, &nats, veritech.clone(), encr_key)
-        .await;
-    let (component, _) = Component::new_for_schema_variant_with_node(
-        &txn,
-        &nats,
-        veritech.clone(),
-        &encr_key,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        "free ronaldinho",
-        schema_variant.id(),
-    )
-    .await
-    .expect("Unable to create component");
+    ) = create_schema_with_nested_objects_and_string_prop(ctx).await;
+    let (component, _) =
+        Component::new_for_schema_variant_with_node(ctx, "free ronaldinho", schema_variant.id())
+            .await
+            .expect("Unable to create component");
 
     let mut base_attribute_context = AttributeContext::builder();
     base_attribute_context
@@ -1285,32 +653,24 @@ async fn nested_object_prop() {
         .set_prop_id(root_prop.domain_prop_id)
         .to_context()
         .expect("cannot create domain AttributeContext");
-    let domain_value =
-        AttributeValue::find_for_context(&txn, &read_tenancy, &visibility, domain_context.into())
-            .await
-            .expect("could not fetch domain AttributeValue")
-            .pop()
-            .expect("could not find domain AttributeContext");
+    let domain_value = AttributeValue::find_for_context(ctx, domain_context.into())
+        .await
+        .expect("could not fetch domain AttributeValue")
+        .pop()
+        .expect("could not find domain AttributeContext");
 
     let queen_context = base_attribute_context
         .clone()
         .set_prop_id(*queen_prop.id())
         .to_context()
         .expect("cannot create queen AttributeContext");
-    let unset_queen_value =
-        AttributeValue::find_for_context(&txn, &read_tenancy, &visibility, queen_context.into())
-            .await
-            .expect("could not fetch queen AttributeValue")
-            .pop()
-            .expect("could not find queen AttributeValue");
+    let unset_queen_value = AttributeValue::find_for_context(ctx, queen_context.into())
+        .await
+        .expect("could not fetch queen AttributeValue")
+        .pop()
+        .expect("could not find queen AttributeValue");
     let (_, queen_value_id) = AttributeValue::update_for_context(
-        &txn,
-        &nats,
-        veritech.clone(),
-        &encr_key,
-        &write_tenancy,
-        &visibility,
-        &history_actor,
+        ctx,
         *unset_queen_value.id(),
         Some(*domain_value.id()),
         queen_context,
@@ -1325,20 +685,13 @@ async fn nested_object_prop() {
         .set_prop_id(*bohemian_prop.id())
         .to_context()
         .expect("cannot create bohemian AttributeContext");
-    let unset_bohemian_value =
-        AttributeValue::find_for_context(&txn, &read_tenancy, &visibility, bohemian_context.into())
-            .await
-            .expect("could not fetch bohemian AttributeValue")
-            .pop()
-            .expect("could not find bohemian AttributeValue");
+    let unset_bohemian_value = AttributeValue::find_for_context(ctx, bohemian_context.into())
+        .await
+        .expect("could not fetch bohemian AttributeValue")
+        .pop()
+        .expect("could not find bohemian AttributeValue");
     AttributeValue::update_for_context(
-        &txn,
-        &nats,
-        veritech.clone(),
-        encr_key,
-        &write_tenancy,
-        &visibility,
-        &history_actor,
+        ctx,
         *unset_bohemian_value.id(),
         Some(queen_value_id),
         bohemian_context,
@@ -1353,20 +706,13 @@ async fn nested_object_prop() {
         .set_prop_id(*killer_prop.id())
         .to_context()
         .expect("cannot create killer AttributeContext");
-    let unset_killer_value =
-        AttributeValue::find_for_context(&txn, &read_tenancy, &visibility, killer_context.into())
-            .await
-            .expect("could not fetch killer AttributeValue")
-            .pop()
-            .expect("could not find killer AttributeValue");
+    let unset_killer_value = AttributeValue::find_for_context(ctx, killer_context.into())
+        .await
+        .expect("could not fetch killer AttributeValue")
+        .pop()
+        .expect("could not find killer AttributeValue");
     AttributeValue::update_for_context(
-        &txn,
-        &nats,
-        veritech.clone(),
-        encr_key,
-        &write_tenancy,
-        &visibility,
-        &history_actor,
+        ctx,
         *unset_killer_value.id(),
         Some(queen_value_id),
         killer_context,
@@ -1381,20 +727,13 @@ async fn nested_object_prop() {
         .set_prop_id(*pressure_prop.id())
         .to_context()
         .expect("cannot create pressure AttributeContext");
-    let unset_pressure_value =
-        AttributeValue::find_for_context(&txn, &read_tenancy, &visibility, pressure_context.into())
-            .await
-            .expect("could not fetch pressure AttributeValue")
-            .pop()
-            .expect("could not find pressure AttributeValue");
+    let unset_pressure_value = AttributeValue::find_for_context(ctx, pressure_context.into())
+        .await
+        .expect("could not fetch pressure AttributeValue")
+        .pop()
+        .expect("could not find pressure AttributeValue");
     let (_, pressure_value_id) = AttributeValue::update_for_context(
-        &txn,
-        &nats,
-        veritech.clone(),
-        encr_key,
-        &write_tenancy,
-        &visibility,
-        &history_actor,
+        ctx,
         *unset_pressure_value.id(),
         Some(queen_value_id),
         pressure_context,
@@ -1409,20 +748,13 @@ async fn nested_object_prop() {
         .set_prop_id(*dust_prop.id())
         .to_context()
         .expect("cannot create dust AttributeContext");
-    let unset_dust_value =
-        AttributeValue::find_for_context(&txn, &read_tenancy, &visibility, dust_context.into())
-            .await
-            .expect("could not fetch dust AttributeValue")
-            .pop()
-            .expect("could not find dust AttributeValue");
+    let unset_dust_value = AttributeValue::find_for_context(ctx, dust_context.into())
+        .await
+        .expect("could not fetch dust AttributeValue")
+        .pop()
+        .expect("could not find dust AttributeValue");
     AttributeValue::update_for_context(
-        &txn,
-        &nats,
-        veritech.clone(),
-        encr_key,
-        &write_tenancy,
-        &visibility,
-        &history_actor,
+        ctx,
         *unset_dust_value.id(),
         Some(pressure_value_id),
         dust_context,
@@ -1433,12 +765,7 @@ async fn nested_object_prop() {
     .expect("could not update dust AttributeValue");
 
     let component_view = ComponentView::for_context(
-        &txn,
-        &tenancy
-            .clone_into_read_tenancy(&txn)
-            .await
-            .expect("unable to generate read tenancy"),
-        &visibility,
+        ctx,
         AttributeReadContext {
             schema_id: Some(*schema.id()),
             schema_variant_id: Some(*schema_variant.id()),
@@ -1471,44 +798,15 @@ async fn nested_object_prop() {
 }
 
 #[test]
-async fn simple_array_of_strings() {
-    test_setup!(
-        ctx,
-        _secret_key,
-        _pg,
-        _conn,
-        txn,
-        _nats_conn,
-        nats,
-        veritech,
-        encr_key,
-    );
-    let tenancy = Tenancy::new_universal();
-    let write_tenancy: WriteTenancy = (&tenancy).into();
-    let read_tenancy = write_tenancy
-        .clone_into_read_tenancy(&txn)
-        .await
-        .expect("could not create read tenancy");
-    let visibility = Visibility::new_head(false);
-    let history_actor = HistoryActor::SystemInit;
-    let _ =
-        find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor).await;
+async fn simple_array_of_strings(ctx: &DalContext<'_, '_>) {
+    let _ = find_or_create_production_system(ctx).await;
     let (schema, schema_variant, sammy_prop, album_prop, root_prop) =
-        create_schema_with_array_of_string_props(&txn, &nats, veritech.clone(), encr_key).await;
+        create_schema_with_array_of_string_props(ctx).await;
 
-    let (component, _) = Component::new_for_schema_variant_with_node(
-        &txn,
-        &nats,
-        veritech.clone(),
-        encr_key,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        "tim maia",
-        schema_variant.id(),
-    )
-    .await
-    .expect("Unable to create component");
+    let (component, _) =
+        Component::new_for_schema_variant_with_node(ctx, "tim maia", schema_variant.id())
+            .await
+            .expect("Unable to create component");
 
     let mut base_attribute_context = AttributeContext::builder();
     base_attribute_context
@@ -1521,32 +819,24 @@ async fn simple_array_of_strings() {
         .set_prop_id(root_prop.domain_prop_id)
         .to_context()
         .expect("could not create domain AttributeContext");
-    let domain_value =
-        AttributeValue::find_for_context(&txn, &read_tenancy, &visibility, domain_context.into())
-            .await
-            .expect("could not retrieve domain AttributeValue")
-            .pop()
-            .expect("could not find domain AttributeValue");
+    let domain_value = AttributeValue::find_for_context(ctx, domain_context.into())
+        .await
+        .expect("could not retrieve domain AttributeValue")
+        .pop()
+        .expect("could not find domain AttributeValue");
 
     let sammy_context = base_attribute_context
         .clone()
         .set_prop_id(*sammy_prop.id())
         .to_context()
         .expect("could not create sammy AttributeContext");
-    let unset_sammy_value =
-        AttributeValue::find_for_context(&txn, &read_tenancy, &visibility, sammy_context.into())
-            .await
-            .expect("could not retrieve sammy AttributeValue")
-            .pop()
-            .expect("could not find sammy AttributeValue");
+    let unset_sammy_value = AttributeValue::find_for_context(ctx, sammy_context.into())
+        .await
+        .expect("could not retrieve sammy AttributeValue")
+        .pop()
+        .expect("could not find sammy AttributeValue");
     let (_, sammy_value_id) = AttributeValue::update_for_context(
-        &txn,
-        &nats,
-        veritech.clone(),
-        encr_key,
-        &write_tenancy,
-        &visibility,
-        &history_actor,
+        ctx,
         *unset_sammy_value.id(),
         Some(*domain_value.id()),
         sammy_context,
@@ -1562,13 +852,7 @@ async fn simple_array_of_strings() {
         .to_context()
         .expect("could not create album AttributeContext");
     AttributeValue::insert_for_context(
-        &txn,
-        &nats,
-        veritech.clone(),
-        encr_key,
-        &write_tenancy,
-        &visibility,
-        &history_actor,
+        ctx,
         album_context,
         sammy_value_id,
         Some(serde_json::json!["standing_hampton"]),
@@ -1577,13 +861,7 @@ async fn simple_array_of_strings() {
     .await
     .expect("could not insert album AttributeValue");
     AttributeValue::insert_for_context(
-        &txn,
-        &nats,
-        veritech.clone(),
-        encr_key,
-        &write_tenancy,
-        &visibility,
-        &history_actor,
+        ctx,
         album_context,
         sammy_value_id,
         Some(serde_json::json!["voa"]),
@@ -1593,12 +871,7 @@ async fn simple_array_of_strings() {
     .expect("could not insert album AttributeValue");
 
     let component_view = ComponentView::for_context(
-        &txn,
-        &tenancy
-            .clone_into_read_tenancy(&txn)
-            .await
-            .expect("unable to generate read tenancy"),
-        &visibility,
+        ctx,
         AttributeReadContext {
             schema_id: Some(*schema.id()),
             schema_variant_id: Some(*schema_variant.id()),
@@ -1625,28 +898,8 @@ async fn simple_array_of_strings() {
 }
 
 #[test]
-async fn complex_nested_array_of_objects_and_arrays() {
-    test_setup!(
-        ctx,
-        _secret_key,
-        _pg,
-        _conn,
-        txn,
-        _nats_conn,
-        nats,
-        veritech,
-        encr_key,
-    );
-    let tenancy = Tenancy::new_universal();
-    let write_tenancy: WriteTenancy = (&tenancy).into();
-    let read_tenancy = write_tenancy
-        .clone_into_read_tenancy(&txn)
-        .await
-        .expect("could not create read tenancy");
-    let visibility = Visibility::new_head(false);
-    let history_actor = HistoryActor::SystemInit;
-    let _ =
-        find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor).await;
+async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext<'_, '_>) {
+    let _ = find_or_create_production_system(ctx).await;
     let (
         schema,
         schema_variant,
@@ -1656,15 +909,9 @@ async fn complex_nested_array_of_objects_and_arrays() {
         songs_array_prop,
         song_name_prop,
         root_prop,
-    ) = create_schema_with_nested_array_objects(&txn, &nats, veritech.clone(), encr_key).await;
+    ) = create_schema_with_nested_array_objects(ctx).await;
     let (component, _) = Component::new_for_schema_variant_with_node(
-        &txn,
-        &nats,
-        veritech.clone(),
-        encr_key,
-        &tenancy,
-        &visibility,
-        &history_actor,
+        ctx,
         "An Integralist Doesn't Run, It Flies",
         schema_variant.id(),
     )
@@ -1682,32 +929,24 @@ async fn complex_nested_array_of_objects_and_arrays() {
         .set_prop_id(root_prop.domain_prop_id)
         .to_context()
         .expect("could not create domain AttributeContext");
-    let domain_value =
-        AttributeValue::find_for_context(&txn, &read_tenancy, &visibility, domain_context.into())
-            .await
-            .expect("could not fetch domain AttributeValue")
-            .pop()
-            .expect("could not find domain AttributeValue");
+    let domain_value = AttributeValue::find_for_context(ctx, domain_context.into())
+        .await
+        .expect("could not fetch domain AttributeValue")
+        .pop()
+        .expect("could not find domain AttributeValue");
 
     let sammy_context = base_attribute_context
         .clone()
         .set_prop_id(*sammy_prop.id())
         .to_context()
         .expect("could not create sammy AttributeContext");
-    let unset_sammy_value =
-        AttributeValue::find_for_context(&txn, &read_tenancy, &visibility, sammy_context.into())
-            .await
-            .expect("could not fetch sammy AttributeValue")
-            .pop()
-            .expect("could not find sammy AttributeValue");
+    let unset_sammy_value = AttributeValue::find_for_context(ctx, sammy_context.into())
+        .await
+        .expect("could not fetch sammy AttributeValue")
+        .pop()
+        .expect("could not find sammy AttributeValue");
     let (_, sammy_value_id) = AttributeValue::update_for_context(
-        &txn,
-        &nats,
-        veritech.clone(),
-        encr_key,
-        &write_tenancy,
-        &visibility,
-        &history_actor,
+        ctx,
         *unset_sammy_value.id(),
         Some(*domain_value.id()),
         sammy_context,
@@ -1723,13 +962,7 @@ async fn complex_nested_array_of_objects_and_arrays() {
         .to_context()
         .expect("could not create album object AttributeContext");
     let standing_hampton_album_value_id = AttributeValue::insert_for_context(
-        &txn,
-        &nats,
-        veritech.clone(),
-        encr_key,
-        &write_tenancy,
-        &visibility,
-        &history_actor,
+        ctx,
         album_object_context,
         sammy_value_id,
         Some(serde_json::json![{}]),
@@ -1743,24 +976,14 @@ async fn complex_nested_array_of_objects_and_arrays() {
         .set_prop_id(*album_string_prop.id())
         .to_context()
         .expect("could not create album string AttributeContext");
-    let unset_album_string_value = AttributeValue::find_for_context(
-        &txn,
-        &read_tenancy,
-        &visibility,
-        album_string_context.into(),
-    )
-    .await
-    .expect("could not retrieve album string AttributeValue")
-    .pop()
-    .expect("could not find album string AttributeValue");
+    let unset_album_string_value =
+        AttributeValue::find_for_context(ctx, album_string_context.into())
+            .await
+            .expect("could not retrieve album string AttributeValue")
+            .pop()
+            .expect("could not find album string AttributeValue");
     AttributeValue::update_for_context(
-        &txn,
-        &nats,
-        veritech.clone(),
-        encr_key,
-        &write_tenancy,
-        &visibility,
-        &history_actor,
+        ctx,
         *unset_album_string_value.id(),
         Some(standing_hampton_album_value_id),
         album_string_context,
@@ -1775,24 +998,13 @@ async fn complex_nested_array_of_objects_and_arrays() {
         .set_prop_id(*songs_array_prop.id())
         .to_context()
         .expect("could not create songs array AttributeContext");
-    let unset_songs_array_value = AttributeValue::find_for_context(
-        &txn,
-        &read_tenancy,
-        &visibility,
-        songs_array_context.into(),
-    )
-    .await
-    .expect("could not fetch songs array AttributeValue")
-    .pop()
-    .expect("could not find songs array AttributeValue");
+    let unset_songs_array_value = AttributeValue::find_for_context(ctx, songs_array_context.into())
+        .await
+        .expect("could not fetch songs array AttributeValue")
+        .pop()
+        .expect("could not find songs array AttributeValue");
     let (_, standing_hampton_songs_array_value_id) = AttributeValue::update_for_context(
-        &txn,
-        &nats,
-        veritech.clone(),
-        encr_key,
-        &write_tenancy,
-        &visibility,
-        &history_actor,
+        ctx,
         *unset_songs_array_value.id(),
         Some(standing_hampton_album_value_id),
         songs_array_context,
@@ -1808,13 +1020,7 @@ async fn complex_nested_array_of_objects_and_arrays() {
         .to_context()
         .expect("could not create song name AttributeContext");
     AttributeValue::insert_for_context(
-        &txn,
-        &nats,
-        veritech.clone(),
-        encr_key,
-        &write_tenancy,
-        &visibility,
-        &history_actor,
+        ctx,
         song_name_context,
         standing_hampton_songs_array_value_id,
         Some(serde_json::json!["fall in love again"]),
@@ -1823,13 +1029,7 @@ async fn complex_nested_array_of_objects_and_arrays() {
     .await
     .expect("could not insert fall in love again in standing hampton songs array");
     AttributeValue::insert_for_context(
-        &txn,
-        &nats,
-        veritech.clone(),
-        encr_key,
-        &write_tenancy,
-        &visibility,
-        &history_actor,
+        ctx,
         song_name_context,
         standing_hampton_songs_array_value_id,
         Some(serde_json::json!["surrender"]),
@@ -1839,13 +1039,7 @@ async fn complex_nested_array_of_objects_and_arrays() {
     .expect("could not insert surrender in standing hampton songs array");
 
     let voa_album_value_id = AttributeValue::insert_for_context(
-        &txn,
-        &nats,
-        veritech.clone(),
-        encr_key,
-        &write_tenancy,
-        &visibility,
-        &history_actor,
+        ctx,
         album_object_context,
         sammy_value_id,
         Some(serde_json::json![{}]),
@@ -1855,13 +1049,7 @@ async fn complex_nested_array_of_objects_and_arrays() {
     .expect("could not insert voa album object into albums array");
 
     AttributeValue::update_for_context(
-        &txn,
-        &nats,
-        veritech.clone(),
-        encr_key,
-        &write_tenancy,
-        &visibility,
-        &history_actor,
+        ctx,
         *unset_album_string_value.id(),
         Some(voa_album_value_id),
         album_string_context,
@@ -1872,13 +1060,7 @@ async fn complex_nested_array_of_objects_and_arrays() {
     .expect("could not set voa album string AttributeValue");
 
     let (_, voa_songs_value_id) = AttributeValue::update_for_context(
-        &txn,
-        &nats,
-        veritech.clone(),
-        encr_key,
-        &write_tenancy,
-        &visibility,
-        &history_actor,
+        ctx,
         *unset_songs_array_value.id(),
         Some(voa_album_value_id),
         songs_array_context,
@@ -1889,13 +1071,7 @@ async fn complex_nested_array_of_objects_and_arrays() {
     .expect("could not update voa songs array AttributeValue");
 
     AttributeValue::insert_for_context(
-        &txn,
-        &nats,
-        veritech.clone(),
-        encr_key,
-        &write_tenancy,
-        &visibility,
-        &history_actor,
+        ctx,
         song_name_context,
         voa_songs_value_id,
         Some(serde_json::json!["eagles fly"]),
@@ -1905,13 +1081,7 @@ async fn complex_nested_array_of_objects_and_arrays() {
     .expect("could not insert eagles fly into voa songs array");
 
     AttributeValue::insert_for_context(
-        &txn,
-        &nats,
-        veritech.clone(),
-        encr_key,
-        &write_tenancy,
-        &visibility,
-        &history_actor,
+        ctx,
         song_name_context,
         voa_songs_value_id,
         Some(serde_json::json!["can't drive 55"]),
@@ -1921,12 +1091,7 @@ async fn complex_nested_array_of_objects_and_arrays() {
     .expect("could not insert can't drive 55 into voa songs array");
 
     let component_view = ComponentView::for_context(
-        &txn,
-        &tenancy
-            .clone_into_read_tenancy(&txn)
-            .await
-            .expect("unable to generate read tenancy"),
-        &visibility,
+        ctx,
         AttributeReadContext {
             schema_id: Some(*schema.id()),
             schema_variant_id: Some(*schema_variant.id()),
@@ -1964,38 +1129,12 @@ async fn complex_nested_array_of_objects_and_arrays() {
 }
 
 #[test]
-async fn simple_map() {
-    test_setup!(
-        ctx,
-        _secret_key,
-        _pg,
-        _conn,
-        txn,
-        _nats_conn,
-        nats,
-        veritech,
-        encr_key,
-    );
-    let tenancy = Tenancy::new_universal();
-    let write_tenancy: WriteTenancy = (&tenancy).into();
-    let read_tenancy = write_tenancy
-        .clone_into_read_tenancy(&txn)
-        .await
-        .expect("could not create read tenancy");
-    let visibility = Visibility::new_head(false);
-    let history_actor = HistoryActor::SystemInit;
-    let _ =
-        find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor).await;
+async fn simple_map(ctx: &DalContext<'_, '_>) {
+    let _ = find_or_create_production_system(ctx).await;
     let (schema, schema_variant, album_prop, album_item_prop, root_prop) =
-        create_simple_map(&txn, &nats, veritech.clone(), encr_key).await;
+        create_simple_map(ctx).await;
     let (component, _) = Component::new_for_schema_variant_with_node(
-        &txn,
-        &nats,
-        veritech.clone(),
-        &encr_key,
-        &tenancy,
-        &visibility,
-        &history_actor,
+        ctx,
         "E como isso afeta o Grêmio?",
         schema_variant.id(),
     )
@@ -2013,32 +1152,24 @@ async fn simple_map() {
         .set_prop_id(root_prop.domain_prop_id)
         .to_context()
         .expect("could not create domain AttributeContext");
-    let domain_value =
-        AttributeValue::find_for_context(&txn, &read_tenancy, &visibility, domain_context.into())
-            .await
-            .expect("could not retrieve domain AttributeValue")
-            .pop()
-            .expect("could not find domain AttributeValue");
+    let domain_value = AttributeValue::find_for_context(ctx, domain_context.into())
+        .await
+        .expect("could not retrieve domain AttributeValue")
+        .pop()
+        .expect("could not find domain AttributeValue");
 
     let album_context = base_attribute_context
         .clone()
         .set_prop_id(*album_prop.id())
         .to_context()
         .expect("could not create album AttributeContext");
-    let unset_album_value =
-        AttributeValue::find_for_context(&txn, &read_tenancy, &visibility, album_context.into())
-            .await
-            .expect("could not retrieve album AttributeValue")
-            .pop()
-            .expect("could not find album AttributeValue");
+    let unset_album_value = AttributeValue::find_for_context(ctx, album_context.into())
+        .await
+        .expect("could not retrieve album AttributeValue")
+        .pop()
+        .expect("could not find album AttributeValue");
     let (_, album_value_id) = AttributeValue::update_for_context(
-        &txn,
-        &nats,
-        veritech.clone(),
-        encr_key,
-        &write_tenancy,
-        &visibility,
-        &history_actor,
+        ctx,
         *unset_album_value.id(),
         Some(*domain_value.id()),
         album_context,
@@ -2054,13 +1185,7 @@ async fn simple_map() {
         .to_context()
         .expect("could not create album item AttributeContext");
     AttributeValue::insert_for_context(
-        &txn,
-        &nats,
-        veritech.clone(),
-        encr_key,
-        &write_tenancy,
-        &visibility,
-        &history_actor,
+        ctx,
         album_item_context,
         album_value_id,
         Some(serde_json::json!["nocturnal"]),
@@ -2069,13 +1194,7 @@ async fn simple_map() {
     .await
     .expect("could not insert album item");
     AttributeValue::insert_for_context(
-        &txn,
-        &nats,
-        veritech.clone(),
-        encr_key,
-        &write_tenancy,
-        &visibility,
-        &history_actor,
+        ctx,
         album_item_context,
         album_value_id,
         Some(serde_json::json!["destroy erase improve"]),
@@ -2085,12 +1204,7 @@ async fn simple_map() {
     .expect("could not insert album item");
 
     let component_view = ComponentView::for_context(
-        &txn,
-        &tenancy
-            .clone_into_read_tenancy(&txn)
-            .await
-            .expect("unable to generate read tenancy"),
-        &visibility,
+        ctx,
         AttributeReadContext {
             schema_id: Some(*schema.id()),
             schema_variant_id: Some(*schema_variant.id()),
@@ -2116,28 +1230,8 @@ async fn simple_map() {
 }
 
 #[test]
-async fn complex_nested_array_of_objects_with_a_map() {
-    test_setup!(
-        ctx,
-        _secret_key,
-        _pg,
-        _conn,
-        txn,
-        _nats_conn,
-        nats,
-        veritech,
-        encr_key,
-    );
-    let tenancy = Tenancy::new_universal();
-    let write_tenancy: WriteTenancy = (&tenancy).into();
-    let read_tenancy = write_tenancy
-        .clone_into_read_tenancy(&txn)
-        .await
-        .expect("could not create read tenancy");
-    let visibility = Visibility::new_head(false);
-    let history_actor = HistoryActor::SystemInit;
-    let _ =
-        find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor).await;
+async fn complex_nested_array_of_objects_with_a_map(ctx: &DalContext<'_, '_>) {
+    let _ = find_or_create_production_system(ctx).await;
     let (
         schema,
         schema_variant,
@@ -2148,16 +1242,9 @@ async fn complex_nested_array_of_objects_with_a_map() {
         song_map_prop,
         song_map_item_prop,
         root_prop,
-    ) = create_schema_with_nested_array_objects_and_a_map(&txn, &nats, veritech.clone(), encr_key)
-        .await;
+    ) = create_schema_with_nested_array_objects_and_a_map(ctx).await;
     let (component, _) = Component::new_for_schema_variant_with_node(
-        &txn,
-        &nats,
-        veritech.clone(),
-        encr_key,
-        &tenancy,
-        &visibility,
-        &history_actor,
+        ctx,
         "E como isso afeta o Grêmio?",
         schema_variant.id(),
     )
@@ -2175,32 +1262,24 @@ async fn complex_nested_array_of_objects_with_a_map() {
         .set_prop_id(root_prop.domain_prop_id)
         .to_context()
         .expect("could not create domain AttributeContext");
-    let domain_value =
-        AttributeValue::find_for_context(&txn, &read_tenancy, &visibility, domain_context.into())
-            .await
-            .expect("could not fetch domain AttributeValue")
-            .pop()
-            .expect("could not find domain AttributeValue");
+    let domain_value = AttributeValue::find_for_context(ctx, domain_context.into())
+        .await
+        .expect("could not fetch domain AttributeValue")
+        .pop()
+        .expect("could not find domain AttributeValue");
 
     let sammy_context = base_attribute_context
         .clone()
         .set_prop_id(*sammy_prop.id())
         .to_context()
         .expect("could not create sammy AttributeContext");
-    let unset_sammy_value =
-        AttributeValue::find_for_context(&txn, &read_tenancy, &visibility, sammy_context.into())
-            .await
-            .expect("could not fetch sammy AttributeValue")
-            .pop()
-            .expect("could not find sammy AttributeValue");
+    let unset_sammy_value = AttributeValue::find_for_context(ctx, sammy_context.into())
+        .await
+        .expect("could not fetch sammy AttributeValue")
+        .pop()
+        .expect("could not find sammy AttributeValue");
     let (_, sammy_value_id) = AttributeValue::update_for_context(
-        &txn,
-        &nats,
-        veritech.clone(),
-        encr_key,
-        &write_tenancy,
-        &visibility,
-        &history_actor,
+        ctx,
         *unset_sammy_value.id(),
         Some(*domain_value.id()),
         sammy_context,
@@ -2216,13 +1295,7 @@ async fn complex_nested_array_of_objects_with_a_map() {
         .to_context()
         .expect("could not create album object context");
     let standing_hampton_value_id = AttributeValue::insert_for_context(
-        &txn,
-        &nats,
-        veritech.clone(),
-        encr_key,
-        &write_tenancy,
-        &visibility,
-        &history_actor,
+        ctx,
         album_object_context,
         sammy_value_id,
         Some(serde_json::json![{}]),
@@ -2236,24 +1309,14 @@ async fn complex_nested_array_of_objects_with_a_map() {
         .set_prop_id(*album_string_prop.id())
         .to_context()
         .expect("could not create album string AttributeContext");
-    let unset_album_string_value = AttributeValue::find_for_context(
-        &txn,
-        &read_tenancy,
-        &visibility,
-        album_string_context.into(),
-    )
-    .await
-    .expect("could not fetch album string AttributeValue")
-    .pop()
-    .expect("could not find album string AttributeValue");
+    let unset_album_string_value =
+        AttributeValue::find_for_context(ctx, album_string_context.into())
+            .await
+            .expect("could not fetch album string AttributeValue")
+            .pop()
+            .expect("could not find album string AttributeValue");
     AttributeValue::update_for_context(
-        &txn,
-        &nats,
-        veritech.clone(),
-        encr_key,
-        &write_tenancy,
-        &visibility,
-        &history_actor,
+        ctx,
         *unset_album_string_value.id(),
         Some(standing_hampton_value_id),
         album_string_context,
@@ -2268,24 +1331,13 @@ async fn complex_nested_array_of_objects_with_a_map() {
         .set_prop_id(*songs_array_prop.id())
         .to_context()
         .expect("could not create songs array AttributeContext");
-    let unset_songs_array_value = AttributeValue::find_for_context(
-        &txn,
-        &read_tenancy,
-        &visibility,
-        songs_array_context.into(),
-    )
-    .await
-    .expect("could not fetch songs array AttributeValue")
-    .pop()
-    .expect("could not find songs array AttributeValue");
+    let unset_songs_array_value = AttributeValue::find_for_context(ctx, songs_array_context.into())
+        .await
+        .expect("could not fetch songs array AttributeValue")
+        .pop()
+        .expect("could not find songs array AttributeValue");
     let (_, songs_array_value_id) = AttributeValue::update_for_context(
-        &txn,
-        &nats,
-        veritech.clone(),
-        encr_key,
-        &write_tenancy,
-        &visibility,
-        &history_actor,
+        ctx,
         *unset_songs_array_value.id(),
         Some(standing_hampton_value_id),
         songs_array_context,
@@ -2301,13 +1353,7 @@ async fn complex_nested_array_of_objects_with_a_map() {
         .to_context()
         .expect("could not create song map AttributeContext");
     let song_map_value_id = AttributeValue::insert_for_context(
-        &txn,
-        &nats,
-        veritech.clone(),
-        encr_key,
-        &write_tenancy,
-        &visibility,
-        &history_actor,
+        ctx,
         song_map_context,
         songs_array_value_id,
         Some(serde_json::json![{}]),
@@ -2322,13 +1368,7 @@ async fn complex_nested_array_of_objects_with_a_map() {
         .to_context()
         .expect("could not create song map item AttributeContext");
     AttributeValue::insert_for_context(
-        &txn,
-        &nats,
-        veritech.clone(),
-        encr_key,
-        &write_tenancy,
-        &visibility,
-        &history_actor,
+        ctx,
         song_map_item_context,
         song_map_value_id,
         Some(serde_json::json!["good"]),
@@ -2337,13 +1377,7 @@ async fn complex_nested_array_of_objects_with_a_map() {
     .await
     .expect("could not insert fall in love again into standing hampton songs map");
     AttributeValue::insert_for_context(
-        &txn,
-        &nats,
-        veritech.clone(),
-        encr_key,
-        &write_tenancy,
-        &visibility,
-        &history_actor,
+        ctx,
         song_map_item_context,
         song_map_value_id,
         Some(serde_json::json!["ok"]),
@@ -2353,12 +1387,7 @@ async fn complex_nested_array_of_objects_with_a_map() {
     .expect("could not insert surrender into standing hampton song map");
 
     let component_view = ComponentView::for_context(
-        &txn,
-        &tenancy
-            .clone_into_read_tenancy(&txn)
-            .await
-            .expect("unable to generate read tenancy"),
-        &visibility,
+        ctx,
         AttributeReadContext {
             component_id: Some(*component.id()),
             ..AttributeReadContext::any()
@@ -2386,25 +1415,14 @@ async fn complex_nested_array_of_objects_with_a_map() {
 }
 
 #[test]
-async fn cyclone_crypto_e2e() {
-    test_setup!(
-        _ctx,
-        _secret_key,
-        _pg,
-        _conn,
-        _txn,
-        _nats_conn,
-        _nats,
-        veritech,
-        encr_key,
-    );
+async fn cyclone_crypto_e2e(ctx: &DalContext<'_, '_>) {
     let (tx, _rx) = mpsc::channel(64);
     let secret_value = "Beware Cuca will catch you";
     let secret = serde_json::to_string(&serde_json::json!({
         "key": secret_value,
     }))
     .expect("Secret serialization failed");
-    let encoded = encr_key.encrypt_and_encode(&secret);
+    let encoded = ctx.encryption_key().encrypt_and_encode(&secret);
     let code = format!("function testE2ECrypto(component) {{ return component.data.properties.secret.message.key === '{secret_value}'; }}");
     let request = veritech::ResolverFunctionRequest {
         execution_id: "seujorge".to_owned(),
@@ -2429,7 +1447,8 @@ async fn cyclone_crypto_e2e() {
         },
         code_base64: base64::encode(&code),
     };
-    let result = veritech
+    let result = ctx
+        .veritech()
         .execute_resolver_function(tx, &request)
         .await
         .expect("Veritech run failed");

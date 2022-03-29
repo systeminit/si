@@ -1,12 +1,13 @@
+use crate::WriteTenancy;
 use serde::{Deserialize, Serialize};
-use si_data::{NatsError, NatsTxn, PgError, PgTxn};
+use si_data::{NatsError, PgError};
 use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
-    Group, GroupId, HistoryActor, HistoryEventError, StandardModel, StandardModelError, Tenancy,
-    Timestamp, Visibility, WriteTenancy,
+    DalContext, Group, GroupId, HistoryEventError, StandardModel, StandardModelError, Timestamp,
+    Visibility,
 };
 
 #[derive(Error, Debug)]
@@ -35,7 +36,7 @@ pub struct Capability {
     subject: String,
     action: String,
     #[serde(flatten)]
-    tenancy: Tenancy,
+    tenancy: WriteTenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -54,31 +55,21 @@ impl_standard_model! {
 impl Capability {
     #[instrument(skip_all)]
     pub async fn new(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        write_tenancy: &WriteTenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         subject: impl AsRef<str>,
         action: impl AsRef<str>,
     ) -> CapabilityResult<Self> {
         let subject = subject.as_ref();
         let action = action.as_ref();
-        let row = txn
+        let row = ctx
+            .txns()
+            .pg()
             .query_one(
                 "SELECT object FROM capability_create_v1($1, $2, $3, $4)",
-                &[write_tenancy, visibility, &subject, &action],
+                &[ctx.write_tenancy(), ctx.visibility(), &subject, &action],
             )
             .await?;
-        let object = standard_model::finish_create_from_row(
-            txn,
-            nats,
-            &write_tenancy.into(),
-            visibility,
-            history_actor,
-            row,
-        )
-        .await?;
+        let object = standard_model::finish_create_from_row(ctx, row).await?;
         Ok(object)
     }
 

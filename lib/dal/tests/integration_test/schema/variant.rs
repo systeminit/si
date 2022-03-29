@@ -1,110 +1,39 @@
 use crate::dal::test;
-use dal::{
-    schema::SchemaVariant, test_harness::create_schema, HistoryActor, SchemaKind, StandardModel,
-    Visibility, WriteTenancy,
-};
-
-use crate::test_setup;
+use dal::DalContext;
+use dal::{schema::SchemaVariant, test_harness::create_schema, SchemaKind, StandardModel};
 
 #[test]
-async fn new() {
-    test_setup!(
-        ctx,
-        _secret_key,
-        _pg,
-        _conn,
-        txn,
-        _nats_conn,
-        nats,
-        veritech,
-        encr_key,
-    );
-    let write_tenancy = WriteTenancy::new_universal();
-    let visibility = Visibility::new_head(false);
-    let history_actor = HistoryActor::SystemInit;
-    let schema = create_schema(
-        &txn,
-        &nats,
-        &(&write_tenancy).into(),
-        &visibility,
-        &history_actor,
-        &SchemaKind::Concrete,
-    )
-    .await;
+async fn new(ctx: &DalContext<'_, '_>) {
+    let schema = create_schema(ctx, &SchemaKind::Concrete).await;
 
-    let (variant, _) = SchemaVariant::new(
-        &txn,
-        &nats,
-        &write_tenancy,
-        &visibility,
-        &history_actor,
-        *schema.id(),
-        "ringo",
-        veritech,
-        encr_key,
-    )
-    .await
-    .expect("cannot create schema ui menu");
+    let (variant, _) = SchemaVariant::new(ctx, *schema.id(), "ringo")
+        .await
+        .expect("cannot create schema ui menu");
     assert_eq!(variant.name(), "ringo");
 }
 
 #[test]
-async fn set_schema() {
-    test_setup!(
-        ctx,
-        _secret_key,
-        _pg,
-        _conn,
-        txn,
-        _nats_conn,
-        nats,
-        veritech,
-        encr_key,
-    );
-    let write_tenancy = WriteTenancy::new_universal();
-    let visibility = Visibility::new_head(false);
-    let history_actor = HistoryActor::SystemInit;
-    let schema = create_schema(
-        &txn,
-        &nats,
-        &(&write_tenancy).into(),
-        &visibility,
-        &history_actor,
-        &SchemaKind::Concrete,
-    )
-    .await;
-    let (variant, _) = SchemaVariant::new(
-        &txn,
-        &nats,
-        &write_tenancy,
-        &visibility,
-        &history_actor,
-        *schema.id(),
-        "v0",
-        veritech,
-        encr_key,
-    )
-    .await
-    .expect("cannot create schema ui menu");
+async fn set_schema(ctx: &DalContext<'_, '_>) {
+    let schema = create_schema(ctx, &SchemaKind::Concrete).await;
+    let (variant, _) = SchemaVariant::new(ctx, *schema.id(), "v0")
+        .await
+        .expect("cannot create schema ui menu");
 
     variant
-        .set_schema(&txn, &nats, &visibility, &history_actor, schema.id())
+        .set_schema(ctx, schema.id())
         .await
         .expect("cannot associate ui menu with schema");
     let attached_schema = variant
-        .schema(&txn, &visibility)
+        .schema(ctx)
         .await
         .expect("cannot get schema")
         .expect("should have a schema");
     assert_eq!(schema, attached_schema);
 
     variant
-        .unset_schema(&txn, &nats, &visibility, &history_actor)
+        .unset_schema(ctx)
         .await
         .expect("cannot associate ui menu with schema");
-    let attached_schema = variant
-        .schema(&txn, &visibility)
-        .await
-        .expect("cannot get schema");
+    let attached_schema = variant.schema(ctx).await.expect("cannot get schema");
     assert_eq!(attached_schema, None);
 }

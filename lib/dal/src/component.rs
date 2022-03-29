@@ -5,11 +5,10 @@ pub use view::{ComponentView, ComponentViewError};
 use async_recursion::async_recursion;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use si_data::{NatsError, NatsTxn, PgError, PgTxn};
+use si_data::{NatsError, PgError, PgTxn};
 use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
-use veritech::EncryptionKey;
 
 use crate::attribute::value::AttributeValue;
 use crate::attribute::{context::UNSET_ID_VALUE, value::AttributeValueError};
@@ -33,20 +32,19 @@ use crate::schema::SchemaVariant;
 use crate::validation_resolver::ValidationResolverContext;
 use crate::ws_event::{WsEvent, WsEventError};
 use crate::AttributeValueId;
-use crate::{edit_field, AttributeContextBuilderError};
 use crate::{
-    impl_standard_model, node::NodeId, pk, qualification::QualificationError, standard_model,
-    standard_model_accessor, standard_model_belongs_to, standard_model_has_many, AttributeContext,
-    AttributeContextError, AttributeReadContext, CodeGenerationPrototype,
-    CodeGenerationPrototypeError, CodeGenerationResolver, CodeGenerationResolverError, Edge,
-    EdgeError, Func, FuncBackendKind, HistoryActor, HistoryEventError, LabelEntry, LabelList, Node,
-    NodeError, OrganizationError, Prop, PropError, PropId, PropKind, QualificationPrototype,
-    QualificationPrototypeError, QualificationResolver, QualificationResolverError, ReadTenancy,
-    ReadTenancyError, Resource, ResourceError, ResourcePrototype, ResourcePrototypeError,
-    ResourceResolver, ResourceResolverError, ResourceView, Schema, SchemaError, SchemaId, Secret,
-    StandardModel, StandardModelError, System, SystemId, Tenancy, Timestamp, ValidationPrototype,
-    ValidationPrototypeError, ValidationResolver, ValidationResolverError, Visibility,
-    WorkspaceError, WriteTenancy,
+    edit_field, impl_standard_model, node::NodeId, pk, qualification::QualificationError,
+    standard_model, standard_model_accessor, standard_model_belongs_to, standard_model_has_many,
+    AttributeContext, AttributeContextBuilderError, AttributeContextError, AttributeReadContext,
+    CodeGenerationPrototype, CodeGenerationPrototypeError, CodeGenerationResolver,
+    CodeGenerationResolverError, DalContext, Edge, EdgeError, Func, FuncBackendKind,
+    HistoryEventError, LabelEntry, LabelList, Node, NodeError, OrganizationError, Prop, PropError,
+    PropId, PropKind, QualificationPrototype, QualificationPrototypeError, QualificationResolver,
+    QualificationResolverError, ReadTenancyError, Resource, ResourceError, ResourcePrototype,
+    ResourcePrototypeError, ResourceResolver, ResourceResolverError, ResourceView, Schema,
+    SchemaError, SchemaId, Secret, StandardModel, StandardModelError, System, SystemId, Timestamp,
+    ValidationPrototype, ValidationPrototypeError, ValidationResolver, ValidationResolverError,
+    Visibility, WorkspaceError, WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -193,7 +191,7 @@ pub struct Component {
     id: ComponentId,
     kind: ComponentKind,
     #[serde(flatten)]
-    tenancy: Tenancy,
+    tenancy: WriteTenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -213,20 +211,11 @@ impl Component {
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn new_for_schema_with_node(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        veritech: veritech::Client,
-        encryption_key: &EncryptionKey,
-        tenancy: &Tenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         name: impl AsRef<str>,
         schema_id: &SchemaId,
     ) -> ComponentResult<(Self, Node)> {
-        let mut schema_tenancy = tenancy.clone();
-        schema_tenancy.universal = true;
-
-        let schema = Schema::get_by_id(txn, &schema_tenancy, visibility, schema_id)
+        let schema = Schema::get_by_id(ctx, schema_id)
             .await?
             .ok_or(ComponentError::SchemaNotFound)?;
 
@@ -234,90 +223,40 @@ impl Component {
             .default_schema_variant_id()
             .ok_or(ComponentError::SchemaVariantNotFound)?;
 
-        Self::new_for_schema_variant_with_node(
-            txn,
-            nats,
-            veritech,
-            encryption_key,
-            tenancy,
-            visibility,
-            history_actor,
-            name,
-            schema_variant_id,
-        )
-        .await
+        Self::new_for_schema_variant_with_node(ctx, name, schema_variant_id).await
     }
 
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn new_for_schema_variant_with_node(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        veritech: veritech::Client,
-        encryption_key: &EncryptionKey,
-        tenancy: &Tenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         name: impl AsRef<str>,
         schema_variant_id: &SchemaVariantId,
     ) -> ComponentResult<(Self, Node)> {
         // TODO: Eventually, we'll need the logic to be more complex than stuffing everything into the "production" system, but that's a problem for "a week or two from now" us.
-        let mut systems =
-            System::find_by_attr(txn, tenancy, visibility, "name", &"production").await?;
+        let mut systems = System::find_by_attr(ctx, "name", &"production").await?;
         let system = systems.pop().ok_or(ComponentError::SystemNotFound)?;
-        Self::new_for_schema_variant_with_node_in_system(
-            txn,
-            nats,
-            veritech,
-            encryption_key,
-            tenancy,
-            visibility,
-            history_actor,
-            name,
-            schema_variant_id,
-            system.id(),
-        )
-        .await
+        Self::new_for_schema_variant_with_node_in_system(ctx, name, schema_variant_id, system.id())
+            .await
     }
 
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn new_for_schema_variant_with_node_in_deployment(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        veritech: veritech::Client,
-        encryption_key: &EncryptionKey,
-        tenancy: &Tenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         name: impl AsRef<str>,
         schema_variant_id: &SchemaVariantId,
         system_id: &SystemId,
         parent_node_id: &NodeId,
     ) -> ComponentResult<(Self, Node)> {
         let (component, node) = Self::new_for_schema_variant_with_node_in_system(
-            txn,
-            nats,
-            veritech,
-            encryption_key,
-            tenancy,
-            visibility,
-            history_actor,
+            ctx,
             name,
             schema_variant_id,
             system_id,
         )
         .await?;
-        let _edge = Edge::include_component_in_node(
-            txn,
-            nats,
-            &tenancy.into(),
-            visibility,
-            history_actor,
-            component.id(),
-            parent_node_id,
-        )
-        .await?;
+        let _edge = Edge::include_component_in_node(ctx, component.id(), parent_node_id).await?;
 
         Ok((component, node))
     }
@@ -325,103 +264,53 @@ impl Component {
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn new_for_schema_variant_with_node_in_system(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        veritech: veritech::Client,
-        encryption_key: &EncryptionKey,
-        tenancy: &Tenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         name: impl AsRef<str>,
         schema_variant_id: &SchemaVariantId,
         system_id: &SystemId,
     ) -> ComponentResult<(Self, Node)> {
-        let read_tenancy = ReadTenancy::try_from_tenancy(txn, tenancy.clone()).await?;
-
-        let schema_variant =
-            SchemaVariant::get_by_id(txn, &(&read_tenancy).into(), visibility, schema_variant_id)
-                .await?
-                .ok_or(ComponentError::SchemaVariantNotFound)?;
+        let schema_variant = SchemaVariant::get_by_id(ctx, schema_variant_id)
+            .await?
+            .ok_or(ComponentError::SchemaVariantNotFound)?;
         let schema = schema_variant
-            .schema(txn, visibility)
+            .schema(ctx)
             .await?
             .ok_or(ComponentError::SchemaNotFound)?;
 
-        let row = txn
+        let row = ctx
+            .txns()
+            .pg()
             .query_one(
                 "SELECT object FROM component_create_v1($1, $2, $3)",
-                &[&tenancy, &visibility, &schema.component_kind().as_ref()],
+                &[
+                    ctx.write_tenancy(),
+                    ctx.visibility(),
+                    &schema.component_kind().as_ref(),
+                ],
             )
             .await?;
 
-        let component: Component = standard_model::finish_create_from_row(
-            txn,
-            nats,
-            tenancy,
-            visibility,
-            history_actor,
-            row,
-        )
-        .await?;
+        let component: Component = standard_model::finish_create_from_row(ctx, row).await?;
+        component.set_schema(ctx, schema.id()).await?;
         component
-            .set_schema(txn, nats, visibility, history_actor, schema.id())
-            .await?;
-        component
-            .set_schema_variant(txn, nats, visibility, history_actor, schema_variant.id())
+            .set_schema_variant(ctx, schema_variant.id())
             .await?;
 
         // Need to flesh out node so that the template data is also included in the node we
         // persist. But it isn't, - our node is anemic.
-        let node = Node::new(
-            txn,
-            nats,
-            &tenancy.into(),
-            visibility,
-            history_actor,
-            &(*schema.kind()).into(),
-        )
-        .await?;
-        node.set_component(txn, nats, visibility, history_actor, component.id())
-            .await?;
+        let node = Node::new(ctx, &(*schema.kind()).into()).await?;
+        node.set_component(ctx, component.id()).await?;
 
         // NOTE: We may want to be a bit smarter about when we create the Resource
         //       at some point in the future, by only creating it if there is also
         //       a ResourcePrototype for the Component's SchemaVariant.
-        let _resource = Resource::new(
-            txn,
-            nats,
-            &tenancy.into(),
-            visibility,
-            history_actor,
-            component.id(),
-            system_id,
-        )
-        .await?;
+        let _resource = Resource::new(ctx, component.id(), system_id).await?;
 
         let name: &str = name.as_ref();
         component
-            .set_value_by_json_pointer(
-                txn,
-                nats,
-                veritech,
-                encryption_key,
-                tenancy,
-                history_actor,
-                visibility,
-                "/root/si/name",
-                Some(name),
-            )
+            .set_value_by_json_pointer(ctx, "/root/si/name", Some(name))
             .await?;
-        let _edge = Edge::include_component_in_system(
-            txn,
-            nats,
-            &tenancy.into(),
-            visibility,
-            history_actor,
-            component.id(),
-            system_id,
-        )
-        .await?;
+        let _edge = Edge::include_component_in_system(ctx, component.id(), system_id).await?;
 
         Ok((component, node))
     }
@@ -429,37 +318,14 @@ impl Component {
     #[instrument(skip_all)]
     #[allow(clippy::too_many_arguments)]
     pub async fn new_application_with_node(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        veritech: veritech::Client,
-        encryption_key: &EncryptionKey,
-        tenancy: &Tenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         name: impl AsRef<str>,
     ) -> ComponentResult<(Self, Node)> {
-        let read_tenancy = ReadTenancy::new_universal();
+        let schema_variant_id =
+            Schema::default_schema_variant_id_for_name(ctx, "application").await?;
 
-        let schema_variant_id = Schema::default_schema_variant_id_for_name(
-            txn,
-            &read_tenancy,
-            visibility,
-            "application",
-        )
-        .await?;
-
-        let (component, node) = Self::new_for_schema_variant_with_node(
-            txn,
-            nats,
-            veritech,
-            encryption_key,
-            tenancy,
-            visibility,
-            history_actor,
-            name,
-            &schema_variant_id,
-        )
-        .await?;
+        let (component, node) =
+            Self::new_for_schema_variant_with_node(ctx, name, &schema_variant_id).await?;
         Ok((component, node))
     }
 
@@ -495,16 +361,14 @@ impl Component {
         result: ComponentResult,
     );
 
+    pub fn tenancy(&self) -> &WriteTenancy {
+        &self.tenancy
+    }
+
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn update_prop_from_edit_field(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        veritech: veritech::Client,
-        encryption_key: &EncryptionKey,
-        write_tenancy: &WriteTenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         component_id: ComponentId,
         prop_id: PropId,
         _edit_field_id: String,
@@ -512,11 +376,10 @@ impl Component {
         // TODO: Allow updating the key
         _key: Option<String>,
     ) -> ComponentResult<()> {
-        let read_tenancy = write_tenancy.clone_into_read_tenancy(txn).await?;
-        let prop = Prop::get_by_id(txn, &(&read_tenancy).into(), visibility, &prop_id)
+        let prop = Prop::get_by_id(ctx, &prop_id)
             .await?
             .ok_or(ComponentError::MissingProp(prop_id))?;
-        let component = Self::get_by_id(txn, &(&read_tenancy).into(), visibility, &component_id)
+        let component = Self::get_by_id(ctx, &component_id)
             .await?
             .ok_or(ComponentError::NotFound(component_id))?;
 
@@ -525,43 +388,20 @@ impl Component {
         let created = false;
 
         component
-            .check_validations(
-                txn,
-                nats,
-                veritech.clone(),
-                encryption_key,
-                &write_tenancy.into(),
-                visibility,
-                history_actor,
-                &prop,
-                &value,
-                created,
-            )
+            .check_validations(ctx, &prop, &value, created)
             .await?;
 
         // Some qualifications depend on code generation, so we have to generate first
         component
             .generate_code(
-                txn,
-                nats,
-                veritech.clone(),
-                encryption_key,
-                &write_tenancy.into(),
-                visibility,
-                history_actor,
+                ctx,
                 UNSET_ID_VALUE.into(), // TODO: properly obtain a system_id
             )
             .await?;
 
         component
             .check_qualifications(
-                txn,
-                nats,
-                veritech,
-                encryption_key,
-                &write_tenancy.into(),
-                visibility,
-                history_actor,
+                ctx,
                 UNSET_ID_VALUE.into(), // TODO: properly obtain a system_id
             )
             .await?;
@@ -572,28 +412,16 @@ impl Component {
     #[allow(clippy::too_many_arguments)]
     pub async fn check_validations(
         &self,
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        veritech: veritech::Client,
-        encryption_key: &EncryptionKey,
-        tenancy: &Tenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         prop: &Prop,
         value: &Option<serde_json::Value>,
         created: bool,
     ) -> ComponentResult<()> {
-        let validators = ValidationPrototype::find_for_prop(
-            txn,
-            &tenancy.clone_into_read_tenancy(txn).await?,
-            visibility,
-            *prop.id(),
-            UNSET_ID_VALUE.into(),
-        )
-        .await?;
+        let validators =
+            ValidationPrototype::find_for_prop(ctx, *prop.id(), UNSET_ID_VALUE.into()).await?;
 
         for validator in validators {
-            let func = Func::get_by_id(txn, tenancy, visibility, &validator.func_id())
+            let func = Func::get_by_id(ctx, &validator.func_id())
                 .await?
                 .ok_or_else(|| ComponentError::MissingFunc(validator.func_id().to_string()))?;
             let func_binding = match func.backend_kind() {
@@ -615,11 +443,7 @@ impl Component {
                     };
                     let args_json = serde_json::to_value(args)?;
                     let (func_binding, binding_created) = FuncBinding::find_or_create(
-                        txn,
-                        nats,
-                        &tenancy.into(),
-                        visibility,
-                        history_actor,
+                        ctx,
                         args_json,
                         *func.id(),
                         *func.backend_kind(),
@@ -629,9 +453,7 @@ impl Component {
                     // think about execution time. Probably higher up than this? But just
                     // an FYI.
                     if binding_created {
-                        func_binding
-                            .execute(txn, nats, veritech.clone(), encryption_key)
-                            .await?;
+                        func_binding.execute(ctx).await?;
                     }
                     func_binding
                 }
@@ -639,37 +461,22 @@ impl Component {
             };
 
             if created {
-                let mut existing_validation_resolvers = ValidationResolver::find_for_prototype(
-                    txn,
-                    &tenancy.clone_into_read_tenancy(txn).await?,
-                    visibility,
-                    validator.id(),
-                )
-                .await?;
+                let mut existing_validation_resolvers =
+                    ValidationResolver::find_for_prototype(ctx, validator.id()).await?;
 
                 // If we don't have one, create the validation resolver. If we do, update the
                 // func binding id to point to the new value. Interesting to think about
                 // garbage collecting the left over funcbinding + func result value?
                 if let Some(mut validation_resolver) = existing_validation_resolvers.pop() {
                     validation_resolver
-                        .set_func_binding_id(
-                            txn,
-                            nats,
-                            visibility,
-                            history_actor,
-                            *func_binding.id(),
-                        )
+                        .set_func_binding_id(ctx, *func_binding.id())
                         .await?;
                 } else {
                     let mut validation_resolver_context = ValidationResolverContext::new();
                     validation_resolver_context.set_prop_id(*prop.id());
                     validation_resolver_context.set_component_id(*self.id());
                     ValidationResolver::new(
-                        txn,
-                        nats,
-                        &tenancy.into(),
-                        visibility,
-                        history_actor,
+                        ctx,
                         *validator.id(),
                         *func.id(),
                         *func_binding.id(),
@@ -685,31 +492,20 @@ impl Component {
     #[allow(clippy::too_many_arguments)]
     pub async fn check_qualifications(
         &self,
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        veritech: veritech::Client,
-        encryption_key: &EncryptionKey,
-        tenancy: &Tenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         system_id: SystemId,
     ) -> ComponentResult<()> {
-        let mut schema_tenancy = tenancy.clone();
-        schema_tenancy.universal = true;
-
         let schema = self
-            .schema_with_tenancy(txn, &schema_tenancy, visibility)
+            .schema_with_tenancy(ctx)
             .await?
             .ok_or(ComponentError::SchemaNotFound)?;
         let schema_variant = self
-            .schema_variant_with_tenancy(txn, &schema_tenancy, visibility)
+            .schema_variant_with_tenancy(ctx)
             .await?
             .ok_or(ComponentError::SchemaVariantNotFound)?;
 
         let qualification_prototypes = QualificationPrototype::find_for_component(
-            txn,
-            &tenancy.clone_into_read_tenancy(txn).await?,
-            visibility,
+            ctx,
             *self.id(),
             *schema.id(),
             *schema_variant.id(),
@@ -718,28 +514,19 @@ impl Component {
         .await?;
 
         for prototype in qualification_prototypes {
-            let func = Func::get_by_id(txn, &schema_tenancy, visibility, &prototype.func_id())
+            let func = Func::get_by_id(ctx, &prototype.func_id())
                 .await?
                 .ok_or_else(|| ComponentError::MissingFunc(prototype.func_id().to_string()))?;
 
             let args = FuncBackendJsQualificationArgs {
                 component: self
-                    .veritech_qualification_check_component(
-                        txn,
-                        &schema_tenancy,
-                        visibility,
-                        system_id,
-                    )
+                    .veritech_qualification_check_component(ctx, system_id)
                     .await?,
             };
 
             let json_args = serde_json::to_value(args)?;
             let (func_binding, created) = FuncBinding::find_or_create(
-                txn,
-                nats,
-                &tenancy.into(),
-                visibility,
-                history_actor,
+                ctx,
                 json_args,
                 prototype.func_id(),
                 *func.backend_kind(),
@@ -750,15 +537,11 @@ impl Component {
                 // Note for future humans - if this isn't a built in, then we need to
                 // think about execution time. Probably higher up than this? But just
                 // an FYI.
-                func_binding
-                    .execute(txn, nats, veritech.clone(), encryption_key)
-                    .await?;
+                func_binding.execute(ctx).await?;
 
                 let mut existing_resolvers =
                     QualificationResolver::find_for_prototype_and_component(
-                        txn,
-                        &tenancy.clone_into_read_tenancy(txn).await?,
-                        visibility,
+                        ctx,
                         prototype.id(),
                         self.id(),
                     )
@@ -768,23 +551,13 @@ impl Component {
                 // func binding id to point to the new value.
                 if let Some(mut resolver) = existing_resolvers.pop() {
                     resolver
-                        .set_func_binding_id(
-                            txn,
-                            nats,
-                            visibility,
-                            history_actor,
-                            *func_binding.id(),
-                        )
+                        .set_func_binding_id(ctx, *func_binding.id())
                         .await?;
                 } else {
                     let mut resolver_context = QualificationResolverContext::new();
                     resolver_context.set_component_id(*self.id());
                     QualificationResolver::new(
-                        txn,
-                        nats,
-                        &tenancy.into(),
-                        visibility,
-                        history_actor,
+                        ctx,
                         *prototype.id(),
                         *func.id(),
                         *func_binding.id(),
@@ -801,31 +574,20 @@ impl Component {
     #[allow(clippy::too_many_arguments)]
     pub async fn generate_code(
         &self,
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        veritech: veritech::Client,
-        encryption_key: &EncryptionKey,
-        tenancy: &Tenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         system_id: SystemId,
     ) -> ComponentResult<()> {
-        let mut schema_tenancy = tenancy.clone();
-        schema_tenancy.universal = true;
-
         let schema = self
-            .schema_with_tenancy(txn, &schema_tenancy, visibility)
+            .schema_with_tenancy(ctx)
             .await?
             .ok_or(ComponentError::SchemaNotFound)?;
         let schema_variant = self
-            .schema_variant_with_tenancy(txn, &schema_tenancy, visibility)
+            .schema_variant_with_tenancy(ctx)
             .await?
             .ok_or(ComponentError::SchemaVariantNotFound)?;
 
         let code_generation_prototypes = CodeGenerationPrototype::find_for_component(
-            txn,
-            &tenancy.clone_into_read_tenancy(txn).await?,
-            visibility,
+            ctx,
             *self.id(),
             *schema.id(),
             *schema_variant.id(),
@@ -834,23 +596,19 @@ impl Component {
         .await?;
 
         for prototype in code_generation_prototypes {
-            let func = Func::get_by_id(txn, &schema_tenancy, visibility, &prototype.func_id())
+            let func = Func::get_by_id(ctx, &prototype.func_id())
                 .await?
                 .ok_or_else(|| ComponentError::MissingFunc(prototype.func_id().to_string()))?;
 
             let args = FuncBackendJsCodeGenerationArgs {
                 component: self
-                    .veritech_code_generation_component(txn, &schema_tenancy, visibility, system_id)
+                    .veritech_code_generation_component(ctx, system_id)
                     .await?,
             };
             let json_args = serde_json::to_value(args)?;
 
             let (func_binding, created) = FuncBinding::find_or_create(
-                txn,
-                nats,
-                &tenancy.into(),
-                visibility,
-                history_actor,
+                ctx,
                 json_args,
                 prototype.func_id(),
                 *func.backend_kind(),
@@ -861,15 +619,11 @@ impl Component {
                 // Note for future humans - if this isn't a built in, then we need to
                 // think about execution time. Probably higher up than this? But just
                 // an FYI.
-                func_binding
-                    .execute(txn, nats, veritech.clone(), encryption_key)
-                    .await?;
+                func_binding.execute(ctx).await?;
 
                 let mut existing_resolvers =
                     CodeGenerationResolver::find_for_prototype_and_component(
-                        txn,
-                        &tenancy.clone_into_read_tenancy(txn).await?,
-                        visibility,
+                        ctx,
                         prototype.id(),
                         self.id(),
                     )
@@ -879,23 +633,13 @@ impl Component {
                 // func binding id to point to the new value.
                 if let Some(mut resolver) = existing_resolvers.pop() {
                     resolver
-                        .set_func_binding_id(
-                            txn,
-                            nats,
-                            visibility,
-                            history_actor,
-                            *func_binding.id(),
-                        )
+                        .set_func_binding_id(ctx, *func_binding.id())
                         .await?;
                 } else {
                     let mut resolver_context = CodeGenerationResolverContext::new();
                     resolver_context.set_component_id(*self.id());
                     let _resolver = CodeGenerationResolver::new(
-                        txn,
-                        nats,
-                        &tenancy.into(),
-                        visibility,
-                        history_actor,
+                        ctx,
                         *prototype.id(),
                         *func.id(),
                         *func_binding.id(),
@@ -911,20 +655,12 @@ impl Component {
 
     #[instrument(skip_all)]
     pub async fn list_validations_as_qualification_for_component_id(
-        txn: &PgTxn<'_>,
-        read_tenancy: &ReadTenancy,
-        visibility: &Visibility,
+        ctx: &DalContext<'_, '_>,
         component_id: ComponentId,
         system_id: SystemId,
     ) -> ComponentResult<QualificationView> {
-        let validation_field_values = ValidationResolver::list_values_for_component(
-            txn,
-            read_tenancy,
-            visibility,
-            component_id,
-            system_id,
-        )
-        .await?;
+        let validation_field_values =
+            ValidationResolver::list_values_for_component(ctx, component_id, system_id).await?;
 
         let mut validation_errors: Vec<(Prop, Vec<ValidationError>)> = Vec::new();
         for (prop, field_value) in validation_field_values.into_iter() {
@@ -941,18 +677,23 @@ impl Component {
 
     #[instrument(skip_all)]
     pub async fn list_code_generated_by_component_id(
-        txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
-        visibility: &Visibility,
+        ctx: &DalContext<'_, '_>,
         component_id: ComponentId,
         system_id: SystemId,
     ) -> ComponentResult<Vec<veritech::CodeGenerated>> {
         let mut results: Vec<veritech::CodeGenerated> = Vec::new();
 
-        let rows = txn
+        let rows = ctx
+            .txns()
+            .pg()
             .query(
                 LIST_CODE_GENERATED,
-                &[&tenancy, &visibility, &component_id, &system_id],
+                &[
+                    ctx.read_tenancy(),
+                    ctx.visibility(),
+                    &component_id,
+                    &system_id,
+                ],
             )
             .await?;
         for row in rows.into_iter() {
@@ -970,46 +711,37 @@ impl Component {
     #[instrument(skip_all)]
     pub async fn list_qualifications(
         &self,
-        txn: &PgTxn<'_>,
-        read_tenancy: &ReadTenancy,
-        visibility: &Visibility,
+        ctx: &DalContext<'_, '_>,
         system_id: SystemId,
     ) -> ComponentResult<Vec<QualificationView>> {
-        Self::list_qualifications_by_component_id(
-            txn,
-            read_tenancy,
-            visibility,
-            *self.id(),
-            system_id,
-        )
-        .await
+        Self::list_qualifications_by_component_id(ctx, *self.id(), system_id).await
     }
 
     #[instrument(skip_all)]
     pub async fn list_qualifications_by_component_id(
-        txn: &PgTxn<'_>,
-        read_tenancy: &ReadTenancy,
-        visibility: &Visibility,
+        ctx: &DalContext<'_, '_>,
         component_id: ComponentId,
         system_id: SystemId,
     ) -> ComponentResult<Vec<QualificationView>> {
         let mut results: Vec<QualificationView> = Vec::new();
 
         // This is the "All Fields Valid" universal qualification
-        let validation_qualification = Self::list_validations_as_qualification_for_component_id(
-            txn,
-            read_tenancy,
-            visibility,
-            component_id,
-            system_id,
-        )
-        .await?;
+        let validation_qualification =
+            Self::list_validations_as_qualification_for_component_id(ctx, component_id, system_id)
+                .await?;
         results.push(validation_qualification);
 
-        let rows = txn
+        let rows = ctx
+            .txns()
+            .pg()
             .query(
                 LIST_QUALIFICATIONS,
-                &[read_tenancy, &visibility, &component_id, &system_id],
+                &[
+                    ctx.read_tenancy(),
+                    ctx.visibility(),
+                    &component_id,
+                    &system_id,
+                ],
             )
             .await?;
         let no_qualification_results = rows.is_empty();
@@ -1017,7 +749,7 @@ impl Component {
             let json: serde_json::Value = row.try_get("object")?;
             let func_binding_return_value: FuncBindingReturnValue = serde_json::from_value(json)?;
             let mut qual_view = QualificationView::new_for_func_binding_return_value(
-                txn,
+                ctx,
                 func_binding_return_value,
             )
             .await?;
@@ -1029,21 +761,19 @@ impl Component {
         }
         // This is inefficient, but effective
         if no_qualification_results {
-            let component = Self::get_by_id(txn, &read_tenancy.into(), visibility, &component_id)
+            let component = Self::get_by_id(ctx, &component_id)
                 .await?
                 .ok_or(ComponentError::NotFound(component_id))?;
             let schema = component
-                .schema_with_tenancy(txn, &read_tenancy.into(), visibility)
+                .schema_with_tenancy(ctx)
                 .await?
                 .ok_or(ComponentError::SchemaNotFound)?;
             let schema_variant = component
-                .schema_variant_with_tenancy(txn, &read_tenancy.into(), visibility)
+                .schema_variant_with_tenancy(ctx)
                 .await?
                 .ok_or(ComponentError::SchemaVariantNotFound)?;
             let prototypes = QualificationPrototype::find_for_component(
-                txn,
-                read_tenancy,
-                visibility,
+                ctx,
                 component_id,
                 *schema.id(),
                 *schema_variant.id(),
@@ -1060,29 +790,28 @@ impl Component {
 
     #[instrument(skip_all)]
     pub async fn get_resource_by_component_and_system(
-        txn: &PgTxn<'_>,
-        read_tenancy: &ReadTenancy,
-        visibility: &Visibility,
+        ctx: &DalContext<'_, '_>,
         component_id: ComponentId,
         system_id: SystemId,
     ) -> ComponentResult<Option<ResourceView>> {
-        let resource = Resource::get_by_component_id_and_system_id(
-            txn,
-            read_tenancy,
-            visibility,
-            &component_id,
-            &system_id,
-        )
-        .await?;
+        let resource =
+            Resource::get_by_component_id_and_system_id(ctx, &component_id, &system_id).await?;
         let resource = match resource {
             Some(r) => r,
             None => return Ok(None),
         };
 
-        let row = txn
+        let row = ctx
+            .txns()
+            .pg()
             .query_opt(
                 GET_RESOURCE,
-                &[read_tenancy, &visibility, &component_id, &system_id],
+                &[
+                    ctx.read_tenancy(),
+                    ctx.visibility(),
+                    &component_id,
+                    &system_id,
+                ],
             )
             .await?;
 
@@ -1097,31 +826,26 @@ impl Component {
 
     pub async fn veritech_attribute_resolver_component(
         &self,
-        txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
-        visibility: &Visibility,
+        ctx: &DalContext<'_, '_>,
         system_id: SystemId,
     ) -> ComponentResult<veritech::ResolverFunctionComponent> {
-        let read_tenancy = tenancy.clone_into_read_tenancy(txn).await?;
         let attribute_context_base = AttributeReadContext {
             system_id: Some(system_id),
             ..AttributeReadContext::any()
         };
 
-        let parent_ids =
-            Edge::find_component_configuration_parents(txn, &read_tenancy, visibility, self.id())
-                .await?;
+        let parent_ids = Edge::find_component_configuration_parents(ctx, self.id()).await?;
         let mut parents = Vec::with_capacity(parent_ids.len());
         for id in parent_ids {
-            let component = Component::get_by_id(txn, tenancy, visibility, &id)
+            let component = Component::get_by_id(ctx, &id)
                 .await?
                 .ok_or(ComponentError::NotFound(id))?;
             let schema = component
-                .schema_with_tenancy(txn, &(&read_tenancy).into(), visibility)
+                .schema_with_tenancy(ctx)
                 .await?
                 .ok_or(ComponentError::SchemaNotFound)?;
             let schema_variant = component
-                .schema_variant_with_tenancy(txn, &(&read_tenancy).into(), visibility)
+                .schema_variant_with_tenancy(ctx)
                 .await?
                 .ok_or(ComponentError::SchemaVariantNotFound)?;
             let read_context = AttributeReadContext {
@@ -1130,17 +854,16 @@ impl Component {
                 component_id: Some(id),
                 ..attribute_context_base
             };
-            let view =
-                ComponentView::for_context(txn, &read_tenancy, visibility, read_context).await?;
+            let view = ComponentView::for_context(ctx, read_context).await?;
             parents.push(veritech::ComponentView::from(view));
         }
 
         let schema = self
-            .schema_with_tenancy(txn, &(&read_tenancy).into(), visibility)
+            .schema_with_tenancy(ctx)
             .await?
             .ok_or(ComponentError::SchemaNotFound)?;
         let schema_variant = self
-            .schema_variant_with_tenancy(txn, &(&read_tenancy).into(), visibility)
+            .schema_variant_with_tenancy(ctx)
             .await?
             .ok_or(ComponentError::SchemaVariantNotFound)?;
         let read_context = AttributeReadContext {
@@ -1150,9 +873,7 @@ impl Component {
             ..attribute_context_base
         };
         let component = veritech::ResolverFunctionComponent {
-            data: ComponentView::for_context(txn, &read_tenancy, visibility, read_context)
-                .await?
-                .into(),
+            data: ComponentView::for_context(ctx, read_context).await?.into(),
             parents,
         };
         Ok(component)
@@ -1160,18 +881,15 @@ impl Component {
 
     pub async fn veritech_code_generation_component(
         &self,
-        txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
-        visibility: &Visibility,
+        ctx: &DalContext<'_, '_>,
         system_id: SystemId,
     ) -> ComponentResult<ComponentView> {
-        let read_tenancy = tenancy.clone_into_read_tenancy(txn).await?;
         let schema = self
-            .schema_with_tenancy(txn, &(&read_tenancy).into(), visibility)
+            .schema_with_tenancy(ctx)
             .await?
             .ok_or(ComponentError::SchemaNotFound)?;
         let schema_variant = self
-            .schema_variant_with_tenancy(txn, &(&read_tenancy).into(), visibility)
+            .schema_variant_with_tenancy(ctx)
             .await?
             .ok_or(ComponentError::SchemaVariantNotFound)?;
         let attribute_context = AttributeReadContext {
@@ -1182,25 +900,21 @@ impl Component {
             ..AttributeReadContext::any()
         };
 
-        let component =
-            ComponentView::for_context(txn, &read_tenancy, visibility, attribute_context).await?;
+        let component = ComponentView::for_context(ctx, attribute_context).await?;
         Ok(component)
     }
 
     pub async fn veritech_resource_sync_component(
         &self,
-        txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
-        visibility: &Visibility,
+        ctx: &DalContext<'_, '_>,
         system_id: SystemId,
     ) -> ComponentResult<ComponentView> {
-        let read_tenancy = tenancy.clone_into_read_tenancy(txn).await?;
         let schema = self
-            .schema_with_tenancy(txn, &(&read_tenancy).into(), visibility)
+            .schema_with_tenancy(ctx)
             .await?
             .ok_or(ComponentError::SchemaNotFound)?;
         let schema_variant = self
-            .schema_variant_with_tenancy(txn, &(&read_tenancy).into(), visibility)
+            .schema_variant_with_tenancy(ctx)
             .await?
             .ok_or(ComponentError::SchemaVariantNotFound)?;
         let attribute_context = AttributeReadContext {
@@ -1211,27 +925,21 @@ impl Component {
             ..AttributeReadContext::any()
         };
 
-        let component =
-            ComponentView::for_context(txn, &read_tenancy, visibility, attribute_context).await?;
+        let component = ComponentView::for_context(ctx, attribute_context).await?;
         Ok(component)
     }
 
     pub async fn veritech_qualification_check_component(
         &self,
-        txn: &PgTxn<'_>,
-        tenancy: &Tenancy,
-        visibility: &Visibility,
+        ctx: &DalContext<'_, '_>,
         system_id: SystemId,
     ) -> ComponentResult<veritech::QualificationCheckComponent> {
-        let read_tenancy = tenancy.clone_into_read_tenancy(txn).await?;
         let base_attribute_context = AttributeReadContext {
             system_id: Some(system_id),
             ..AttributeReadContext::any()
         };
 
-        let parent_ids =
-            Edge::find_component_configuration_parents(txn, &read_tenancy, visibility, self.id())
-                .await?;
+        let parent_ids = Edge::find_component_configuration_parents(ctx, self.id()).await?;
 
         let mut parents = Vec::new();
         for id in parent_ids {
@@ -1239,8 +947,7 @@ impl Component {
                 component_id: Some(id),
                 ..base_attribute_context
             };
-            let view =
-                ComponentView::for_context(txn, &read_tenancy, visibility, read_context).await?;
+            let view = ComponentView::for_context(ctx, read_context).await?;
             parents.push(veritech::ComponentView::from(view));
         }
 
@@ -1249,17 +956,8 @@ impl Component {
             ..base_attribute_context
         };
         let qualification_view = veritech::QualificationCheckComponent {
-            data: ComponentView::for_context(txn, &read_tenancy, visibility, read_context)
-                .await?
-                .into(),
-            codes: Self::list_code_generated_by_component_id(
-                txn,
-                &(&read_tenancy).into(),
-                visibility,
-                *self.id(),
-                system_id,
-            )
-            .await?,
+            data: ComponentView::for_context(ctx, read_context).await?.into(),
+            codes: Self::list_code_generated_by_component_id(ctx, *self.id(), system_id).await?,
             parents,
         };
         Ok(qualification_view)
@@ -1276,34 +974,22 @@ impl Component {
     #[instrument(skip_all)]
     pub async fn sync_resource(
         &self,
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        veritech: veritech::Client,
-        encryption_key: &EncryptionKey,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         system_id: SystemId,
     ) -> ComponentResult<()> {
         // Note(paulo): we don't actually care about the Resource here, we only care about the ResourcePrototype, is this wrong?
 
-        let mut schema_tenancy = self.tenancy.clone();
-        schema_tenancy.universal = true;
-
-        let write_tenancy = (&self.tenancy).into();
-        let read_tenancy = self.tenancy.clone_into_read_tenancy(txn).await?;
-
         let schema = self
-            .schema_with_tenancy(txn, &schema_tenancy, &self.visibility)
+            .schema_with_tenancy(ctx)
             .await?
             .ok_or(ComponentError::SchemaNotFound)?;
         let schema_variant = self
-            .schema_variant_with_tenancy(txn, &schema_tenancy, &self.visibility)
+            .schema_variant_with_tenancy(ctx)
             .await?
             .ok_or(ComponentError::SchemaVariantNotFound)?;
 
         let resource_prototype = ResourcePrototype::get_for_component(
-            txn,
-            &read_tenancy,
-            &self.visibility,
+            ctx,
             *self.id(),
             *schema.id(),
             *schema_variant.id(),
@@ -1312,28 +998,18 @@ impl Component {
         .await?;
 
         if let Some(prototype) = resource_prototype {
-            let func =
-                Func::get_by_id(txn, &schema_tenancy, &self.visibility, &prototype.func_id())
-                    .await?
-                    .ok_or_else(|| ComponentError::MissingFunc(prototype.func_id().to_string()))?;
+            let func = Func::get_by_id(ctx, &prototype.func_id())
+                .await?
+                .ok_or_else(|| ComponentError::MissingFunc(prototype.func_id().to_string()))?;
 
             let args = FuncBackendJsResourceSyncArgs {
                 component: self
-                    .veritech_resource_sync_component(
-                        txn,
-                        &schema_tenancy,
-                        &self.visibility,
-                        system_id,
-                    )
+                    .veritech_resource_sync_component(ctx, system_id)
                     .await?,
             };
 
             let (func_binding, _created) = FuncBinding::find_or_create(
-                txn,
-                nats,
-                &write_tenancy,
-                &self.visibility,
-                history_actor,
+                ctx,
                 serde_json::to_value(args)?,
                 prototype.func_id(),
                 *func.backend_kind(),
@@ -1341,21 +1017,14 @@ impl Component {
             .await?;
 
             // Note: We need to execute the same func binding a bunch of times
-            func_binding
-                .execute(txn, nats, veritech.clone(), encryption_key)
-                .await?;
+            func_binding.execute(ctx).await?;
 
             // Note for future humans - if this isn't a built in, then we need to
             // think about execution time. Probably higher up than this? But just
             // an FYI.
-            let existing_resolver = ResourceResolver::get_for_prototype_and_component(
-                txn,
-                &read_tenancy,
-                &self.visibility,
-                prototype.id(),
-                self.id(),
-            )
-            .await?;
+            let existing_resolver =
+                ResourceResolver::get_for_prototype_and_component(ctx, prototype.id(), self.id())
+                    .await?;
 
             // If we do not have one, create the resource resolver. If we do, update the
             // func binding id to point to the new value.
@@ -1365,11 +1034,7 @@ impl Component {
                 let mut resolver_context = ResourceResolverContext::new();
                 resolver_context.set_component_id(*self.id());
                 ResourceResolver::new(
-                    txn,
-                    nats,
-                    &write_tenancy,
-                    &self.visibility,
-                    history_actor,
+                    ctx,
                     *prototype.id(),
                     *func.id(),
                     *func_binding.id(),
@@ -1378,32 +1043,18 @@ impl Component {
                 .await?
             };
             resolver
-                .set_func_binding_id(
-                    txn,
-                    nats,
-                    &self.visibility,
-                    history_actor,
-                    *func_binding.id(),
-                )
+                .set_func_binding_id(ctx, *func_binding.id())
                 .await?;
         }
 
-        let workspace_ids = self.tenancy.workspace_ids.clone();
-        if workspace_ids.is_empty() {
-            return Err(ComponentError::WorkspaceNotFound);
-        }
-        let billing_account_ids = ReadTenancy::new_workspace(txn, workspace_ids)
-            .await?
-            .billing_accounts()
-            .to_owned();
-        if billing_account_ids.is_empty() {
-            warn!("No billing accounts found for organization");
-            return Err(ComponentError::BillingAccountNotFound);
-        } else {
-            WsEvent::resource_synced(*self.id(), system_id, billing_account_ids, history_actor)
-                .publish(nats)
-                .await?;
-        }
+        WsEvent::resource_synced(
+            *self.id(),
+            system_id,
+            ctx.read_tenancy().billing_accounts().into(),
+            ctx.history_actor(),
+        )
+        .publish(ctx.txns().nats())
+        .await?;
 
         Ok(())
     }
@@ -1413,29 +1064,21 @@ impl Component {
     #[allow(clippy::too_many_arguments)]
     pub async fn set_value_by_json_pointer<T: Serialize + std::fmt::Debug + std::clone::Clone>(
         &self,
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        veritech: veritech::Client,
-        encryption_key: &EncryptionKey,
-        tenancy: &Tenancy,
-        history_actor: &HistoryActor,
-        visibility: &Visibility,
+        ctx: &DalContext<'_, '_>,
         json_pointer: &str,
         value: Option<T>,
     ) -> ComponentResult<Option<T>> {
-        let read_tenancy = ReadTenancy::try_from_tenancy(txn, tenancy.clone()).await?;
-
         let attribute_value = self
-            .find_attribute_value_by_json_pointer(txn, &read_tenancy, visibility, json_pointer)
+            .find_attribute_value_by_json_pointer(ctx, json_pointer)
             .await?
             .ok_or(AttributeValueError::Missing)?;
 
         let schema_variant = self
-            .schema_variant_with_tenancy(txn, &(&read_tenancy).into(), visibility)
+            .schema_variant_with_tenancy(ctx)
             .await?
             .ok_or(ComponentError::SchemaVariantNotFound)?;
         let schema = schema_variant
-            .schema(txn, visibility)
+            .schema(ctx)
             .await?
             .ok_or(ComponentError::SchemaNotFound)?;
 
@@ -1455,23 +1098,12 @@ impl Component {
         json_path_parts.pop();
         let parent_json_pointer = json_path_parts.join("/");
         let parent_attribute_value_id = self
-            .find_attribute_value_by_json_pointer(
-                txn,
-                &read_tenancy,
-                visibility,
-                &parent_json_pointer,
-            )
+            .find_attribute_value_by_json_pointer(ctx, &parent_json_pointer)
             .await?
             .map(|av| *av.id());
 
         AttributeValue::update_for_context(
-            txn,
-            nats,
-            veritech,
-            encryption_key,
-            &tenancy.into(),
-            visibility,
-            history_actor,
+            ctx,
             *attribute_value.id(),
             parent_attribute_value_id,
             attribute_context,
@@ -1486,13 +1118,11 @@ impl Component {
     #[instrument(skip_all)]
     pub async fn find_prop_by_json_pointer(
         &self,
-        txn: &PgTxn<'_>,
-        read_tenancy: &ReadTenancy,
-        visibility: &Visibility,
+        ctx: &DalContext<'_, '_>,
         json_pointer: &str,
     ) -> ComponentResult<Option<Prop>> {
         let schema_variant = self
-            .schema_variant_with_tenancy(txn, &read_tenancy.into(), visibility)
+            .schema_variant_with_tenancy(ctx)
             .await?
             .ok_or(ComponentError::SchemaVariantNotFound)?;
 
@@ -1504,7 +1134,7 @@ impl Component {
             None => return Ok(None),
         };
 
-        let mut work_queue = schema_variant.props(txn, visibility).await?;
+        let mut work_queue = schema_variant.props(ctx).await?;
         while let Some(prop) = work_queue.pop() {
             if prop.name() == next {
                 next = match hierarchy.next() {
@@ -1512,10 +1142,7 @@ impl Component {
                     None => return Ok(Some(prop)),
                 };
                 work_queue.clear();
-                work_queue.extend(
-                    prop.child_props(txn, &read_tenancy.into(), visibility)
-                        .await?,
-                );
+                work_queue.extend(prop.child_props(ctx).await?);
             }
         }
 
@@ -1525,15 +1152,10 @@ impl Component {
     #[instrument(skip_all)]
     pub async fn find_attribute_value_by_json_pointer(
         &self,
-        txn: &PgTxn<'_>,
-        read_tenancy: &ReadTenancy,
-        visibility: &Visibility,
+        ctx: &DalContext<'_, '_>,
         json_pointer: &str,
     ) -> ComponentResult<Option<AttributeValue>> {
-        if let Some(prop) = self
-            .find_prop_by_json_pointer(txn, read_tenancy, visibility, json_pointer)
-            .await?
-        {
+        if let Some(prop) = self.find_prop_by_json_pointer(ctx, json_pointer).await? {
             let read_context = AttributeReadContext {
                 prop_id: Some(*prop.id()),
                 component_id: Some(*self.id()),
@@ -1541,7 +1163,7 @@ impl Component {
             };
 
             return Ok(Some(
-                AttributeValue::find_for_context(txn, read_tenancy, visibility, read_context)
+                AttributeValue::find_for_context(ctx, read_context)
                     .await?
                     .pop()
                     .ok_or(AttributeValueError::Missing)?,
@@ -1554,19 +1176,15 @@ impl Component {
     #[instrument(skip_all)]
     pub async fn find_value_by_json_pointer<T: serde::de::DeserializeOwned + std::fmt::Debug>(
         &self,
-        txn: &PgTxn<'_>,
-        read_tenancy: &ReadTenancy,
-        visibility: &Visibility,
+        ctx: &DalContext<'_, '_>,
         json_pointer: &str,
     ) -> ComponentResult<Option<T>> {
         if let Some(attribute_value) = self
-            .find_attribute_value_by_json_pointer(txn, read_tenancy, visibility, json_pointer)
+            .find_attribute_value_by_json_pointer(ctx, json_pointer)
             .await?
         {
             if let Some(fbrv) = FuncBindingReturnValue::get_by_id(
-                txn,
-                &read_tenancy.into(),
-                visibility,
+                ctx,
                 &attribute_value.func_binding_return_value_id(),
             )
             .await?
@@ -1589,26 +1207,24 @@ impl EditFieldAble for Component {
     type Error = ComponentError;
 
     async fn get_edit_fields(
-        txn: &PgTxn<'_>,
-        read_tenancy: &ReadTenancy,
-        visibility: &Visibility,
+        ctx: &DalContext<'_, '_>,
         id: &ComponentId,
     ) -> ComponentResult<EditFields> {
-        let head_visibility = Visibility::new_head(visibility.deleted);
+        let head_visibility = Visibility::new_head(ctx.visibility().deleted);
         let change_set_visibility =
-            Visibility::new_change_set(visibility.change_set_pk, visibility.deleted);
+            Visibility::new_change_set(ctx.visibility().change_set_pk, ctx.visibility().deleted);
 
-        let component = Self::get_by_id(txn, &read_tenancy.into(), visibility, id)
+        let component = Self::get_by_id(ctx, id)
             .await?
             .ok_or(ComponentError::NotFound(*id))?;
 
         let mut edit_fields = vec![];
         let schema_variant = component
-            .schema_variant_with_tenancy(txn, &read_tenancy.into(), visibility)
+            .schema_variant_with_tenancy(ctx)
             .await?
             .ok_or(ComponentError::SchemaVariantNotFound)?;
         let schema = schema_variant
-            .schema(txn, visibility)
+            .schema(ctx)
             .await?
             .ok_or(ComponentError::SchemaNotFound)?;
 
@@ -1622,7 +1238,7 @@ impl EditFieldAble for Component {
 
         // NOTE(nick): this can be more elegant, but it works. We want to ensure we only find the
         // root prop at this point.
-        let mut props = schema_variant.props(txn, visibility).await?;
+        let mut props = schema_variant.props(ctx).await?;
         if props.len() > 1 {
             return Err(ComponentError::MultipleRootProps(props));
         }
@@ -1633,14 +1249,12 @@ impl EditFieldAble for Component {
         // NOTE(nick): it is a bit wasteful that we get the attribute value here and then do it
         // again within the call below, but it ~~works~~.
         let attribute_value: AttributeValue =
-            AttributeValue::find_for_prop(txn, read_tenancy, visibility, *root_prop.id()).await?;
+            AttributeValue::find_for_prop(ctx, *root_prop.id()).await?;
 
         // Parent attribute value must be "None" since we are dealing with the root prop.
         edit_fields.push(
             edit_field_for_attribute_value(
-                txn,
-                read_tenancy,
-                visibility,
+                ctx,
                 &head_visibility,
                 &change_set_visibility,
                 attribute_read_context,
@@ -1655,13 +1269,7 @@ impl EditFieldAble for Component {
     }
 
     async fn update_from_edit_field(
-        _txn: &PgTxn<'_>,
-        _nats: &NatsTxn,
-        _veritech: veritech::Client,
-        _encryption_key: &EncryptionKey,
-        _write_tenancy: &WriteTenancy,
-        _visibility: &Visibility,
-        _history_actor: &HistoryActor,
+        _ctx: &DalContext<'_, '_>,
         _id: Self::Id,
         edit_field_id: String,
         _value: Option<serde_json::Value>,
@@ -1673,9 +1281,7 @@ impl EditFieldAble for Component {
 #[allow(clippy::too_many_arguments)]
 #[async_recursion]
 async fn edit_field_for_attribute_value(
-    txn: &PgTxn<'_>,
-    read_tenancy: &ReadTenancy,
-    visibility: &Visibility,
+    ctx: &DalContext<'_, '_>,
     head_visibility: &Visibility,
     change_set_visibility: &Visibility,
     attribute_read_context: AttributeReadContext,
@@ -1683,15 +1289,12 @@ async fn edit_field_for_attribute_value(
     parent_attribute_value_id: Option<AttributeValueId>,
     edit_field_path: Option<Vec<String>>,
 ) -> ComponentResult<EditField> {
-    let tenancy = Tenancy::from_read_tenancy(read_tenancy.clone());
-
-    let attribute_value: AttributeValue =
-        AttributeValue::get_by_id(txn, &tenancy, visibility, &attribute_value_id)
-            .await?
-            .ok_or(ComponentError::MissingAttributeValue(attribute_value_id))?;
-    let prop =
-        AttributeValue::find_prop_for_value(txn, read_tenancy, visibility, *attribute_value.id())
-            .await?;
+    let head_ctx = ctx.clone_with_new_visibility(*head_visibility);
+    let change_set_ctx = ctx.clone_with_new_visibility(*change_set_visibility);
+    let attribute_value: AttributeValue = AttributeValue::get_by_id(ctx, &attribute_value_id)
+        .await?
+        .ok_or(ComponentError::MissingAttributeValue(attribute_value_id))?;
+    let prop = AttributeValue::find_prop_for_value(ctx, *attribute_value.id()).await?;
 
     let field_name = prop.name();
     let object_kind = EditFieldObjectKind::ComponentProp;
@@ -1699,18 +1302,12 @@ async fn edit_field_for_attribute_value(
     // Gather the three values we need for visibility diff. For the head and change set values, we
     // need to use their respective visibilites for attribute value searches, but can use the
     // standard visibility for getting the func binding return value by id.
-    let current_func_binding_return_value = FuncBindingReturnValue::get_by_id(
-        txn,
-        &tenancy,
-        visibility,
-        &attribute_value.func_binding_return_value_id(),
-    )
-    .await?;
-    let head_func_binding_return_value = if visibility.in_change_set() {
+    let current_func_binding_return_value =
+        FuncBindingReturnValue::get_by_id(ctx, &attribute_value.func_binding_return_value_id())
+            .await?;
+    let head_func_binding_return_value = if ctx.visibility().in_change_set() {
         if let Some(found_value) = AttributeValue::find_with_parent_and_key_for_context(
-            txn,
-            read_tenancy,
-            head_visibility,
+            &head_ctx,
             parent_attribute_value_id,
             attribute_value.key.clone(),
             attribute_value.context,
@@ -1718,9 +1315,7 @@ async fn edit_field_for_attribute_value(
         .await?
         {
             FuncBindingReturnValue::get_by_id(
-                txn,
-                &tenancy,
-                visibility,
+                &head_ctx,
                 &found_value.func_binding_return_value_id(),
             )
             .await?
@@ -1730,11 +1325,9 @@ async fn edit_field_for_attribute_value(
     } else {
         None
     };
-    let change_set_func_binding_return_value = if visibility.in_edit_session() {
+    let change_set_func_binding_return_value = if ctx.visibility().in_edit_session() {
         if let Some(found_value) = AttributeValue::find_with_parent_and_key_for_context(
-            txn,
-            read_tenancy,
-            change_set_visibility,
+            &change_set_ctx,
             parent_attribute_value_id,
             attribute_value.key.clone(),
             attribute_value.context,
@@ -1742,9 +1335,7 @@ async fn edit_field_for_attribute_value(
         .await?
         {
             FuncBindingReturnValue::get_by_id(
-                txn,
-                &tenancy,
-                visibility,
+                &change_set_ctx,
                 &found_value.func_binding_return_value_id(),
             )
             .await?
@@ -1762,7 +1353,7 @@ async fn edit_field_for_attribute_value(
     }
 
     let (value, visibility_diff) = edit_field::value_and_visibility_diff_json_option(
-        visibility,
+        ctx.visibility(),
         current_func_binding_return_value.as_ref(),
         extract_value,
         head_func_binding_return_value.as_ref(),
@@ -1801,7 +1392,7 @@ async fn edit_field_for_attribute_value(
     let widget = match prop.widget_kind() {
         WidgetKind::SecretSelect => {
             let mut entries = Vec::new();
-            let secrets = Secret::list(txn, &tenancy, visibility).await?;
+            let secrets = Secret::list(ctx).await?;
 
             for secret in secrets.into_iter() {
                 entries.push(LabelEntry::new(
@@ -1815,12 +1406,7 @@ async fn edit_field_for_attribute_value(
         WidgetKind::Array | WidgetKind::Header => {
             let mut child_edit_fields = vec![];
             let mut child_attribute_values = attribute_value
-                .child_attribute_values_in_context(
-                    txn,
-                    read_tenancy,
-                    visibility,
-                    attribute_read_context,
-                )
+                .child_attribute_values_in_context(ctx, attribute_read_context)
                 .await?;
             if let Some(index_map) = attribute_value.index_map() {
                 let child_order = index_map.order();
@@ -1837,9 +1423,7 @@ async fn edit_field_for_attribute_value(
                 // Use the current attribute value as the parent when creating the child edit field.
                 child_edit_fields.push(
                     edit_field_for_attribute_value(
-                        txn,
-                        read_tenancy,
-                        visibility,
+                        ctx,
                         head_visibility,
                         change_set_visibility,
                         attribute_read_context,

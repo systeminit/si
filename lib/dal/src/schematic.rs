@@ -1,15 +1,15 @@
 use crate::edge::{Edge, EdgeId, EdgeKind, VertexObjectKind};
+use crate::DalContext;
 use crate::{
-    node::NodeId, node::NodeKindWithBaggage, ComponentError, EdgeError, HistoryActor, Node,
-    NodeError, NodeKind, NodePosition, NodePositionError, NodeTemplate, NodeView, ReadTenancy,
-    ReadTenancyError, StandardModel, StandardModelError, SystemError, SystemId, Visibility,
-    WriteTenancy,
+    node::NodeId, node::NodeKindWithBaggage, ComponentError, EdgeError, Node, NodeError, NodeKind,
+    NodePosition, NodePositionError, NodeTemplate, NodeView, ReadTenancyError, StandardModel,
+    StandardModelError, SystemError, SystemId,
 };
 use serde::{Deserialize, Serialize};
 use strum_macros::{AsRefStr, Display, EnumString};
 
 use crate::socket::SocketId;
-use si_data::{NatsTxn, PgError, PgTxn};
+use si_data::PgError;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -77,40 +77,32 @@ struct Vertex {
 impl Connection {
     #[allow(clippy::too_many_arguments)]
     pub async fn new(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        write_tenancy: &WriteTenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         head_node_id: &NodeId,
         head_socket_id: &SocketId,
         tail_node_id: &NodeId,
         tail_socket_id: &SocketId,
     ) -> SchematicResult<Self> {
-        let head_node = Node::get_by_id(txn, &write_tenancy.into(), visibility, head_node_id)
+        let head_node = Node::get_by_id(ctx, head_node_id)
             .await?
             .ok_or(SchematicError::Node(NodeError::NotFound(*head_node_id)))?;
-        let tail_node = Node::get_by_id(txn, &write_tenancy.into(), visibility, tail_node_id)
+        let tail_node = Node::get_by_id(ctx, tail_node_id)
             .await?
             .ok_or(SchematicError::Node(NodeError::NotFound(*tail_node_id)))?;
 
         let head_component = head_node
-            .component(txn, visibility)
+            .component(ctx)
             .await?
             .ok_or(SchematicError::Node(NodeError::ComponentIsNone))?;
         let tail_component = tail_node
-            .component(txn, visibility)
+            .component(ctx)
             .await?
             .ok_or(SchematicError::Node(NodeError::ComponentIsNone))?;
 
         // TODO(nick): a lot of hardcoded values here along with the (temporary) insinuation that an
         // edge is equivalent to a connection.
         let edge = match Edge::new(
-            txn,
-            nats,
-            write_tenancy,
-            visibility,
-            history_actor,
+            ctx,
             EdgeKind::Configures,
             *head_node_id,
             VertexObjectKind::Component,
@@ -132,12 +124,8 @@ impl Connection {
         Ok(Self::from_edge(&edge))
     }
 
-    pub async fn list(
-        txn: &PgTxn<'_>,
-        read_tenancy: &ReadTenancy,
-        visibility: &Visibility,
-    ) -> SchematicResult<Vec<Self>> {
-        let edges = Edge::list(txn, &read_tenancy.into(), visibility).await?;
+    pub async fn list(ctx: &DalContext<'_, '_>) -> SchematicResult<Vec<Self>> {
+        let edges = Edge::list(ctx).await?;
         let connections = edges.iter().map(Self::from_edge).collect::<Vec<Self>>();
         Ok(connections)
     }
@@ -179,24 +167,22 @@ pub struct Schematic {
 
 impl Schematic {
     pub async fn find(
-        txn: &PgTxn<'_>,
-        read_tenancy: &ReadTenancy,
-        visibility: &Visibility,
+        ctx: &DalContext<'_, '_>,
         system_id: Option<SystemId>,
         root_node_id: NodeId,
     ) -> SchematicResult<Self> {
-        let nodes: Vec<Node> = Node::list(txn, &read_tenancy.into(), visibility).await?;
+        let nodes: Vec<Node> = Node::list(ctx).await?;
 
         let mut node_views = Vec::with_capacity(nodes.len());
         for node in nodes {
             let (schema, kind, name) = match node.kind() {
                 NodeKind::Deployment | NodeKind::Component => {
                     let component = node
-                        .component(txn, visibility)
+                        .component(ctx)
                         .await?
                         .ok_or(SchematicError::ComponentNotFound)?;
                     let schema = component
-                        .schema_with_tenancy(txn, &read_tenancy.into(), visibility)
+                        .schema_with_tenancy(ctx)
                         .await?
                         .ok_or(SchematicError::SchemaNotFound)?;
 
@@ -212,12 +198,7 @@ impl Schematic {
                             NodeKind::System => unreachable!(),
                         },
                         component
-                            .find_value_by_json_pointer::<String>(
-                                txn,
-                                read_tenancy,
-                                visibility,
-                                "/root/si/name",
-                            )
+                            .find_value_by_json_pointer::<String>(ctx, "/root/si/name")
                             .await?
                             .ok_or(SchematicError::ComponentNameNotFound)?,
                     )
@@ -232,13 +213,13 @@ impl Schematic {
                     // node kinds back to the frontend for use.
                     //
                     // let system = node
-                    //     .system(txn, visibility)
+                    //     .system(ctx)
                     //     .await?
                     //     .ok_or(SchematicError::SystemNotFound)?;
                     // let mut tenancy = tenancy.clone();
                     // tenancy.universal = true;
                     // let schema = system
-                    //     .schema_with_tenancy(txn, &tenancy, visibility)
+                    //     .schema_with_tenancy(ctx)
                     //     .await?
                     //     .ok_or(SchematicError::SchemaNotFound)?;
 
@@ -246,23 +227,14 @@ impl Schematic {
                 }
             };
 
-            let position = NodePosition::find_by_node_id(
-                txn,
-                read_tenancy,
-                visibility,
-                system_id,
-                root_node_id,
-                *node.id(),
-            )
-            .await?;
-            let template =
-                NodeTemplate::new_from_schema_id(txn, read_tenancy, visibility, *schema.id())
-                    .await?;
+            let position =
+                NodePosition::find_by_node_id(ctx, system_id, root_node_id, *node.id()).await?;
+            let template = NodeTemplate::new_from_schema_id(ctx, *schema.id()).await?;
             let view = NodeView::new(name, node, kind, position, template);
             node_views.push(view);
         }
 
-        let connections = Connection::list(txn, read_tenancy, visibility).await?;
+        let connections = Connection::list(ctx).await?;
         Ok(Self {
             nodes: node_views,
             connections,

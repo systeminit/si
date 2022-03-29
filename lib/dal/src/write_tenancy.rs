@@ -4,7 +4,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
-    BillingAccountId, OrganizationId, ReadTenancy, ReadTenancyError, Tenancy, WorkspaceId,
+    BillingAccountId, DalContext, OrganizationId, ReadTenancy, ReadTenancyError, WorkspaceId,
 };
 
 #[derive(Error, Debug)]
@@ -28,9 +28,30 @@ pub struct WriteTenancy {
 }
 
 impl WriteTenancy {
+    pub fn billing_accounts(&self) -> &[BillingAccountId] {
+        &self.billing_account_ids
+    }
+
+    pub fn organizations(&self) -> &[OrganizationId] {
+        &self.organization_ids
+    }
+
+    pub fn workspaces(&self) -> &[WorkspaceId] {
+        &self.workspace_ids
+    }
+
     pub fn into_universal(mut self) -> Self {
         self.universal = true;
         self
+    }
+
+    pub fn new_empty() -> Self {
+        Self {
+            universal: false,
+            billing_account_ids: Vec::new(),
+            organization_ids: Vec::new(),
+            workspace_ids: Vec::new(),
+        }
     }
 
     pub fn new_universal() -> Self {
@@ -93,9 +114,28 @@ impl WriteTenancy {
 
     pub async fn clone_into_read_tenancy(
         &self,
-        txn: &PgTxn<'_>,
+        ctx: &DalContext<'_, '_>,
     ) -> Result<ReadTenancy, ReadTenancyError> {
-        ReadTenancy::try_from_tenancy(txn, self.into()).await
+        let read_tenancy = if self.workspace_ids.is_empty() {
+            if self.organization_ids.is_empty() {
+                ReadTenancy::new_billing_account(self.billing_account_ids.clone())
+            } else {
+                ReadTenancy::new_organization(
+                    ctx.txns().pg(),
+                    self.organization_ids.clone(),
+                    ctx.visibility(),
+                )
+                .await?
+            }
+        } else {
+            ReadTenancy::new_workspace(
+                ctx.txns().pg(),
+                self.workspace_ids.clone(),
+                ctx.visibility(),
+            )
+            .await?
+        };
+        Ok(read_tenancy)
     }
 }
 
@@ -126,89 +166,5 @@ impl postgres_types::ToSql for WriteTenancy {
     ) -> Result<postgres_types::IsNull, Box<dyn std::error::Error + Sync + Send>> {
         let json = serde_json::to_value(self)?;
         postgres_types::ToSql::to_sql(&json, ty, out)
-    }
-}
-
-impl From<&WriteTenancy> for Tenancy {
-    fn from(from: &WriteTenancy) -> Self {
-        Self {
-            universal: from.universal,
-            billing_account_ids: from.billing_account_ids.clone(),
-            organization_ids: from.organization_ids.clone(),
-            workspace_ids: from.workspace_ids.clone(),
-        }
-    }
-}
-
-// This tecnically allow us to bypass WriteTenancy limitation, but it's only for interoperability until Tenancy dies
-impl From<&Tenancy> for WriteTenancy {
-    fn from(from: &Tenancy) -> Self {
-        Self {
-            universal: from.universal,
-            billing_account_ids: from.billing_account_ids.clone(),
-            organization_ids: from.organization_ids.clone(),
-            workspace_ids: from.workspace_ids.clone(),
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn into_tenancy() {
-        assert_eq!(
-            Tenancy::from(&WriteTenancy::new_workspace(1.into())),
-            Tenancy::new_workspace(vec![1.into()])
-        );
-        assert_eq!(
-            Tenancy::from(&WriteTenancy::new_organization(1.into())),
-            Tenancy::new_organization(vec![1.into()])
-        );
-        assert_eq!(
-            Tenancy::from(&WriteTenancy::new_billing_account(1.into())),
-            Tenancy::new_billing_account(vec![1.into()])
-        );
-        assert_eq!(
-            Tenancy::from(&WriteTenancy::new_workspace(1.into()).into_universal()),
-            Tenancy::new_workspace(vec![1.into()]).into_universal()
-        );
-        assert_eq!(
-            Tenancy::from(&WriteTenancy::new_organization(1.into()).into_universal()),
-            Tenancy::new_organization(vec![1.into()]).into_universal()
-        );
-        assert_eq!(
-            Tenancy::from(&WriteTenancy::new_billing_account(1.into()).into_universal()),
-            Tenancy::new_billing_account(vec![1.into()]).into_universal()
-        );
-    }
-
-    #[test]
-    fn from_tenancy() {
-        assert_eq!(
-            WriteTenancy::new_workspace(1.into()),
-            WriteTenancy::from(&Tenancy::new_workspace(vec![1.into()]))
-        );
-        assert_eq!(
-            WriteTenancy::new_organization(1.into()),
-            WriteTenancy::from(&Tenancy::new_organization(vec![1.into()]))
-        );
-        assert_eq!(
-            WriteTenancy::new_billing_account(1.into()),
-            WriteTenancy::from(&Tenancy::new_billing_account(vec![1.into()]))
-        );
-        assert_eq!(
-            WriteTenancy::new_workspace(1.into()).into_universal(),
-            WriteTenancy::from(&Tenancy::new_workspace(vec![1.into()]).into_universal())
-        );
-        assert_eq!(
-            WriteTenancy::new_organization(1.into()).into_universal(),
-            WriteTenancy::from(&Tenancy::new_organization(vec![1.into()]).into_universal())
-        );
-        assert_eq!(
-            WriteTenancy::new_billing_account(1.into()).into_universal(),
-            WriteTenancy::from(&Tenancy::new_billing_account(vec![1.into()]).into_universal())
-        );
     }
 }

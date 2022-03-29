@@ -1,6 +1,7 @@
+use crate::DalContext;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use si_data::{NatsError, NatsTxn, PgError, PgTxn};
+use si_data::{NatsError, PgError};
 use strum_macros::Display;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -9,9 +10,8 @@ use crate::func::binding_return_value::FuncBindingReturnValue;
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_belongs_to,
     ws_event::{WsEvent, WsPayload},
-    BillingAccountId, Component, ComponentId, HistoryActor, HistoryEventError, ReadTenancy,
-    ReadTenancyError, StandardModel, StandardModelError, System, SystemId, Tenancy, Timestamp,
-    Visibility, WriteTenancy,
+    BillingAccountId, Component, ComponentId, HistoryActor, HistoryEventError, ReadTenancyError,
+    StandardModel, StandardModelError, System, SystemId, Timestamp, Visibility, WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -46,7 +46,7 @@ pub struct Resource {
     pk: ResourcePk,
     id: ResourceId,
     #[serde(flatten)]
-    tenancy: Tenancy,
+    tenancy: WriteTenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -69,36 +69,22 @@ impl Resource {
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn new(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        write_tenancy: &WriteTenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         component_id: &ComponentId,
         system_id: &SystemId,
     ) -> ResourceResult<Self> {
-        let row = txn
+        let row = ctx
+            .txns()
+            .pg()
             .query_one(
                 "SELECT object FROM resource_create_v1($1, $2)",
-                &[write_tenancy, &visibility],
+                &[ctx.write_tenancy(), ctx.visibility()],
             )
             .await?;
-        let object: Self = standard_model::finish_create_from_row(
-            txn,
-            nats,
-            &write_tenancy.into(),
-            visibility,
-            history_actor,
-            row,
-        )
-        .await?;
+        let object: Self = standard_model::finish_create_from_row(ctx, row).await?;
 
-        object
-            .set_component(txn, nats, visibility, history_actor, component_id)
-            .await?;
-        object
-            .set_system(txn, nats, visibility, history_actor, system_id)
-            .await?;
+        object.set_component(ctx, component_id).await?;
+        object.set_system(ctx, system_id).await?;
 
         Ok(object)
     }
@@ -127,16 +113,21 @@ impl Resource {
 
     #[allow(clippy::too_many_arguments)]
     pub async fn get_by_component_id_and_system_id(
-        txn: &PgTxn<'_>,
-        read_tenancy: &ReadTenancy,
-        visibility: &Visibility,
+        ctx: &DalContext<'_, '_>,
         component_id: &ComponentId,
         system_id: &SystemId,
     ) -> ResourceResult<Option<Self>> {
-        let row = txn
+        let row = ctx
+            .txns()
+            .pg()
             .query_opt(
                 GET_BY_COMPONENT_AND_SYSTEM,
-                &[read_tenancy, &visibility, component_id, system_id],
+                &[
+                    ctx.read_tenancy(),
+                    ctx.visibility(),
+                    component_id,
+                    system_id,
+                ],
             )
             .await?;
         let object = standard_model::option_object_from_row(row)?;
@@ -145,38 +136,17 @@ impl Resource {
 
     #[allow(clippy::too_many_arguments)]
     pub async fn upsert(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        write_tenancy: &WriteTenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         component_id: &ComponentId,
         system_id: &SystemId,
     ) -> ResourceResult<Self> {
-        let read_tenancy = write_tenancy.clone_into_read_tenancy(txn).await?;
-
-        let resource = Resource::get_by_component_id_and_system_id(
-            txn,
-            &read_tenancy,
-            visibility,
-            component_id,
-            system_id,
-        )
-        .await?;
+        let resource =
+            Resource::get_by_component_id_and_system_id(ctx, component_id, system_id).await?;
 
         if let Some(resource) = resource {
             Ok(resource)
         } else {
-            Resource::new(
-                txn,
-                nats,
-                write_tenancy,
-                visibility,
-                history_actor,
-                component_id,
-                system_id,
-            )
-            .await
+            Resource::new(ctx, component_id, system_id).await
         }
     }
 }

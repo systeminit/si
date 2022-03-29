@@ -1,5 +1,6 @@
+use crate::DalContext;
 use serde::{Deserialize, Serialize};
-use si_data::{NatsError, NatsTxn, PgError, PgTxn};
+use si_data::{NatsError, PgError};
 use std::default::Default;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -8,9 +9,9 @@ use crate::{
     func::{binding::FuncBindingId, FuncId},
     impl_standard_model, pk,
     standard_model::{self, objects_from_rows},
-    standard_model_accessor, ComponentId, HistoryActor, HistoryEventError,
-    QualificationPrototypeId, ReadTenancy, SchemaId, SchemaVariantId, StandardModel,
-    StandardModelError, SystemId, Tenancy, Timestamp, Visibility, WriteTenancy,
+    standard_model_accessor, ComponentId, HistoryEventError, QualificationPrototypeId, SchemaId,
+    SchemaVariantId, StandardModel, StandardModelError, SystemId, Timestamp, Visibility,
+    WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -106,7 +107,7 @@ pub struct QualificationResolver {
     #[serde(flatten)]
     context: QualificationResolverContext,
     #[serde(flatten)]
-    tenancy: Tenancy,
+    tenancy: WriteTenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -126,22 +127,15 @@ impl QualificationResolver {
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn new(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        write_tenancy: &WriteTenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         qualification_prototype_id: QualificationPrototypeId,
         func_id: FuncId,
         func_binding_id: FuncBindingId,
         context: QualificationResolverContext,
     ) -> QualificationResolverResult<Self> {
-        let row = txn
-            .query_one(
+        let row = ctx.txns().pg().query_one(
                 "SELECT object FROM qualification_resolver_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9)",
-                &[
-                    write_tenancy,
-                    &visibility,
+                &[ctx.write_tenancy(), ctx.visibility(),
                     &qualification_prototype_id,
                     &func_id,
                     &func_binding_id,
@@ -152,15 +146,7 @@ impl QualificationResolver {
                 ],
             )
             .await?;
-        let object = standard_model::finish_create_from_row(
-            txn,
-            nats,
-            &write_tenancy.into(),
-            visibility,
-            history_actor,
-            row,
-        )
-        .await?;
+        let object = standard_model::finish_create_from_row(ctx, row).await?;
         Ok(object)
     }
 
@@ -177,18 +163,18 @@ impl QualificationResolver {
     );
 
     pub async fn find_for_prototype_and_component(
-        txn: &PgTxn<'_>,
-        read_tenancy: &ReadTenancy,
-        visibility: &Visibility,
+        ctx: &DalContext<'_, '_>,
         qualification_prototype_id: &QualificationPrototypeId,
         component_id: &ComponentId,
     ) -> QualificationResolverResult<Vec<Self>> {
-        let rows = txn
+        let rows = ctx
+            .txns()
+            .pg()
             .query(
                 FIND_FOR_PROTOTYPE,
                 &[
-                    read_tenancy,
-                    &visibility,
+                    ctx.read_tenancy(),
+                    ctx.visibility(),
                     qualification_prototype_id,
                     component_id,
                 ],

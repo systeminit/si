@@ -4,12 +4,11 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
-    standard_model, BillingAccount, BillingAccountId, OrganizationId, StandardModel,
-    StandardModelError, Tenancy, Workspace, WorkspaceError, WorkspaceId,
+    BillingAccountId, OrganizationId, StandardModelError, Visibility, WorkspaceError, WorkspaceId,
 };
 
 const GET_WORKSPACE: &str = include_str!("./queries/read_tenancy_get_workspace.sql");
-const GET_BILLING_ACCOUNT: &str = include_str!("./queries/read_tenancy_get_billing_account.sql");
+const GET_ORGANIZATION: &str = include_str!("./queries/read_tenancy_get_organization.sql");
 
 #[derive(Error, Debug)]
 pub enum ReadTenancyError {
@@ -67,20 +66,18 @@ impl ReadTenancy {
     pub async fn new_organization(
         txn: &PgTxn<'_>,
         organization_ids: Vec<OrganizationId>,
+        visibility: &Visibility,
     ) -> ReadTenancyResult<Self> {
         let mut billing_account_ids = Vec::with_capacity(organization_ids.len());
         for organization_id in &organization_ids {
-            let rows = txn.query(GET_BILLING_ACCOUNT, &[organization_id]).await?;
-            let billing_accounts: Vec<BillingAccount> = standard_model::objects_from_rows(rows)?;
-
-            if billing_accounts.is_empty() {
-                return Err(ReadTenancyError::BillingAccountNotFoundForOrganization(
+            let row = txn
+                .query_opt(GET_ORGANIZATION, &[organization_id, visibility])
+                .await?
+                .ok_or(ReadTenancyError::BillingAccountNotFoundForOrganization(
                     *organization_id,
-                ));
-            }
-            for billing_account in billing_accounts {
-                billing_account_ids.push(*billing_account.id());
-            }
+                ))?;
+            let billing_account_id = row.try_get("billing_account_id")?;
+            billing_account_ids.push(billing_account_id);
         }
         Ok(Self {
             universal: true,
@@ -93,58 +90,27 @@ impl ReadTenancy {
     pub async fn new_workspace(
         txn: &PgTxn<'_>,
         workspace_ids: Vec<WorkspaceId>,
+        visibility: &Visibility,
     ) -> ReadTenancyResult<Self> {
-        let mut organization_ids = Vec::with_capacity(workspace_ids.len());
+        let mut organization_ids = Vec::new();
+        let mut billing_account_ids = Vec::new();
 
         for workspace_id in &workspace_ids {
-            let row = txn.query_opt(GET_WORKSPACE, &[workspace_id]).await?;
-            match standard_model::option_object_from_row::<Workspace>(row)? {
-                None => return Err(ReadTenancyError::WorkspaceNotFound(*workspace_id)),
-                Some(workspace) => {
-                    let visibility = workspace.visibility();
-                    if let Some(organization) = workspace.organization(txn, visibility).await? {
-                        organization_ids.push(*organization.id());
-                    } else {
-                        return Err(ReadTenancyError::OrganizationNotFoundForWorkspace(
-                            *workspace_id,
-                        ));
-                    }
-                }
-            }
+            let row = txn
+                .query_opt(GET_WORKSPACE, &[workspace_id, visibility])
+                .await?
+                .ok_or(ReadTenancyError::WorkspaceNotFound(*workspace_id))?;
+            let organization_id = row.try_get("organization_id")?;
+            organization_ids.push(organization_id);
+            let billing_account_id = row.try_get("billing_account_id")?;
+            billing_account_ids.push(billing_account_id);
         }
-
-        let mut tenancy = Self::new_organization(txn, organization_ids).await?;
-        tenancy.workspace_ids = workspace_ids;
-        Ok(tenancy)
-    }
-
-    pub async fn try_from_tenancy(txn: &PgTxn<'_>, from: Tenancy) -> ReadTenancyResult<Self> {
-        let mut read = Self::new_universal();
-        if !from.workspace_ids.is_empty() {
-            read = Self::new_workspace(txn, from.workspace_ids).await?;
-        }
-        if !from.organization_ids.is_empty() {
-            let organization_ids = from
-                .organization_ids
-                .into_iter()
-                .filter(|id| !read.organization_ids.contains(id))
-                .collect();
-            let org_read = Self::new_organization(txn, organization_ids).await?;
-            read.organization_ids.extend(org_read.organization_ids);
-            read.billing_account_ids
-                .extend(org_read.billing_account_ids);
-        }
-        if !from.billing_account_ids.is_empty() {
-            let billing_account_ids = from
-                .billing_account_ids
-                .into_iter()
-                .filter(|id| !read.billing_account_ids.contains(id))
-                .collect();
-            let bill_read = Self::new_billing_account(billing_account_ids);
-            read.billing_account_ids
-                .extend(bill_read.billing_account_ids);
-        }
-        Ok(read)
+        Ok(Self {
+            organization_ids,
+            billing_account_ids,
+            workspace_ids,
+            universal: true,
+        })
     }
 
     pub fn into_local(mut self) -> Self {
@@ -180,16 +146,5 @@ impl postgres_types::ToSql for ReadTenancy {
     ) -> Result<postgres_types::IsNull, Box<dyn std::error::Error + Sync + Send>> {
         let json = serde_json::to_value(self)?;
         postgres_types::ToSql::to_sql(&json, ty, out)
-    }
-}
-
-impl From<&ReadTenancy> for Tenancy {
-    fn from(from: &ReadTenancy) -> Self {
-        Self {
-            universal: from.universal,
-            billing_account_ids: from.billing_account_ids.clone(),
-            organization_ids: from.organization_ids.clone(),
-            workspace_ids: from.workspace_ids.clone(),
-        }
     }
 }

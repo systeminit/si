@@ -216,7 +216,10 @@ macro_rules! test_setup {
         $encr_key:ident,
         $app:ident,
         $nba:ident,
-        $auth_token:ident $(,)?
+        $auth_token:ident,
+        $dal_ctx:ident,
+        $dal_txns:ident $(,)?
+    ,
     ) => {
         dal::test_harness::one_time_setup()
             .await
@@ -237,11 +240,53 @@ macro_rules! test_setup {
         )
         .expect("cannot build new server");
         let $app: axum::Router = $app.into();
-        let ($nba, $auth_token) =
-            dal::test_harness::billing_account_signup(&$pgtxn, &$nats, &$jwt_secret_key).await;
-        $pgtxn.commit().await.expect("cannot commit txn");
-        $nats.commit().await.expect("cannot commit nats");
-        let $nats = $nats_conn.transaction();
-        let $pgtxn = $pgconn.transaction().await.expect("cannot create txn");
+
+        let ($nba, $auth_token) = {
+            let services_context = dal::ServicesContext::new(
+                $pg.clone(),
+                $nats_conn.clone(),
+                $veritech.clone(),
+                std::sync::Arc::new($encr_key.clone()),
+            );
+            let mut starter = services_context
+                .transactions_starter()
+                .await
+                .expect("cannot start transaction starter");
+            let txns = starter.start().await.expect("cannot start transactions");
+            let builder = services_context.into_builder();
+            let request_context =
+                dal::RequestContext::new_universal_head(dal::HistoryActor::SystemInit);
+            let ctx = builder.build(request_context, &txns);
+
+            let ($nba, $auth_token) =
+                dal::test_harness::billing_account_signup(&ctx, &$jwt_secret_key).await;
+            txns.commit().await.expect("cannot finish setup");
+            ($nba, $auth_token)
+        };
+        let services_context = dal::ServicesContext::new(
+            $pg.clone(),
+            $nats_conn.clone(),
+            $veritech.clone(),
+            std::sync::Arc::new($encr_key.clone()),
+        );
+        let mut starter = services_context
+            .transactions_starter()
+            .await
+            .expect("cannot start transaction starter");
+        let $dal_txns = starter.start().await.expect("cannot start transactions");
+        let builder = services_context.into_builder();
+        let visibility = dal::Visibility::new_head(false);
+        let read_tenancy = dal::ReadTenancy::new_workspace(
+            $dal_txns.pg(),
+            vec![*$nba.workspace.id()],
+            &visibility,
+        )
+        .await
+        .expect("cannot construct read tenancy");
+        let write_tenancy = dal::WriteTenancy::new_workspace(*$nba.workspace.id());
+        let ab =
+            dal::AccessBuilder::new(read_tenancy, write_tenancy, dal::HistoryActor::SystemInit);
+        let request_context = ab.build(visibility);
+        let $dal_ctx = builder.build(request_context, &$dal_txns);
     };
 }

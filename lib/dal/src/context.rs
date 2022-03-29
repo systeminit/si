@@ -110,6 +110,18 @@ impl DalContext<'_, '_> {
         self.visibility = visibility;
     }
 
+    /// Updates this context with a new [`HistoryActor`].
+    pub fn update_history_actor(&mut self, history_actor: HistoryActor) {
+        self.history_actor = history_actor;
+    }
+
+    /// Clones a new context from this one with a new [`HistoryActor`].
+    pub fn clone_with_new_history_actor(&self, history_actor: HistoryActor) -> Self {
+        let mut new = self.clone();
+        new.update_history_actor(history_actor);
+        new
+    }
+
     /// Clones a new context from this one with a new [`Visibility`].
     pub fn clone_with_new_visibility(&self, visibility: Visibility) -> Self {
         let mut new = self.clone();
@@ -189,10 +201,11 @@ impl DalContext<'_, '_> {
     /// Updates this context with read/write tenancies for a specific organization.
     pub async fn update_to_organization_tenancies(
         &mut self,
-        pg_txn: &PgTxn<'_>,
+        ctx: &DalContext<'_, '_>,
         oid: OrganizationId,
     ) -> Result<(), TransactionsError> {
-        self.read_tenancy = ReadTenancy::new_organization(pg_txn, vec![oid]).await?;
+        self.read_tenancy =
+            ReadTenancy::new_organization(ctx.txns().pg(), vec![oid], ctx.visibility()).await?;
         self.write_tenancy = WriteTenancy::new_organization(oid);
         Ok(())
     }
@@ -200,21 +213,22 @@ impl DalContext<'_, '_> {
     /// Clones a new context from this one with read/write tenancies for a specific organization.
     pub async fn clone_with_new_organization_tenancies(
         &self,
-        pg_txn: &PgTxn<'_>,
+        ctx: &DalContext<'_, '_>,
         oid: OrganizationId,
     ) -> Result<DalContext<'_, '_>, TransactionsError> {
         let mut new = self.clone();
-        new.update_to_organization_tenancies(pg_txn, oid).await?;
+        new.update_to_organization_tenancies(ctx, oid).await?;
         Ok(new)
     }
 
     /// Updates this context with read/write tenancies for a specific workspace.
     pub async fn update_to_workspace_tenancies(
         &mut self,
-        pg_txn: &PgTxn<'_>,
+        ctx: &DalContext<'_, '_>,
         wid: WorkspaceId,
     ) -> Result<(), TransactionsError> {
-        self.read_tenancy = ReadTenancy::new_workspace(pg_txn, vec![wid]).await?;
+        self.read_tenancy =
+            ReadTenancy::new_workspace(ctx.txns().pg(), vec![wid], ctx.visibility()).await?;
         self.write_tenancy = WriteTenancy::new_workspace(wid);
         Ok(())
     }
@@ -222,11 +236,11 @@ impl DalContext<'_, '_> {
     /// Clones a new context from this one with read/write tenancies for a specific workspace.
     pub async fn clone_with_new_workspace_tenancies(
         &self,
-        pg_txn: &PgTxn<'_>,
+        ctx: &DalContext<'_, '_>,
         wid: WorkspaceId,
     ) -> Result<DalContext<'_, '_>, TransactionsError> {
         let mut new = self.clone();
-        new.update_to_workspace_tenancies(pg_txn, wid).await?;
+        new.update_to_workspace_tenancies(ctx, wid).await?;
         Ok(new)
     }
 
@@ -318,13 +332,13 @@ impl RequestContext {
     /// Builds a new [`RequestContext`] with read/write tenancies for a specific workspace and a
     /// head [`Visibility`] and the given [`HistoryActor`].
     pub async fn new_workspace_head(
-        pg_txn: &PgTxn<'_>,
+        txn: &PgTxn<'_>,
         history_actor: HistoryActor,
         workspace_id: WorkspaceId,
     ) -> Result<Self, TransactionsError> {
-        let read_tenancy = ReadTenancy::new_workspace(pg_txn, vec![workspace_id]).await?;
-        let write_tenancy = WriteTenancy::new_workspace(workspace_id);
         let visibility = Visibility::new_head(false);
+        let read_tenancy = ReadTenancy::new_workspace(txn, vec![workspace_id], &visibility).await?;
+        let write_tenancy = WriteTenancy::new_workspace(workspace_id);
 
         Ok(Self {
             read_tenancy,

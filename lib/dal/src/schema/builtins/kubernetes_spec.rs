@@ -1,43 +1,18 @@
 use crate::schema::builtins::create_prop;
 use crate::schema::SchemaResult;
-use crate::{HistoryActor, Prop, PropId, PropKind, StandardModel, Visibility, WriteTenancy};
-use si_data::{NatsTxn, PgTxn};
-use veritech::EncryptionKey;
+use crate::DalContext;
+use crate::{Prop, PropId, PropKind, StandardModel};
 
 #[allow(clippy::too_many_arguments)]
 pub async fn create_spec_prop(
-    txn: &PgTxn<'_>,
-    nats: &NatsTxn,
-    veritech: veritech::Client,
-    encryption_key: &EncryptionKey,
-    write_tenancy: &WriteTenancy,
-    visibility: &Visibility,
-    history_actor: &HistoryActor,
+    ctx: &DalContext<'_, '_>,
     parent_prop_id: PropId,
 ) -> SchemaResult<Prop> {
-    let spec_prop = create_prop(
-        txn,
-        nats,
-        veritech.clone(),
-        encryption_key,
-        write_tenancy,
-        visibility,
-        history_actor,
-        "spec",
-        PropKind::Object,
-        Some(parent_prop_id),
-    )
-    .await?;
+    let spec_prop = create_prop(ctx, "spec", PropKind::Object, Some(parent_prop_id)).await?;
 
     {
         let containers_prop = create_prop(
-            txn,
-            nats,
-            veritech.clone(),
-            encryption_key,
-            write_tenancy,
-            visibility,
-            history_actor,
+            ctx,
             "containers",
             PropKind::Array, // How to specify it as an array of objects?
             Some(*spec_prop.id()),
@@ -46,47 +21,19 @@ pub async fn create_spec_prop(
 
         {
             // Do we want default values here?
-            let _name_prop = create_prop(
-                txn,
-                nats,
-                veritech.clone(),
-                encryption_key,
-                write_tenancy,
-                visibility,
-                history_actor,
-                "name",
-                PropKind::String,
-                Some(*containers_prop.id()),
-            )
-            .await?;
+            let _name_prop =
+                create_prop(ctx, "name", PropKind::String, Some(*containers_prop.id())).await?;
         }
 
         {
-            let _image_prop = create_prop(
-                txn,
-                nats,
-                veritech.clone(),
-                encryption_key,
-                write_tenancy,
-                visibility,
-                history_actor,
-                "image",
-                PropKind::String,
-                Some(*containers_prop.id()),
-            )
-            .await?;
+            let _image_prop =
+                create_prop(ctx, "image", PropKind::String, Some(*containers_prop.id())).await?;
         }
 
         {
             // si-registry has some editPartials, but I'm not clear what are they
             let env_prop = create_prop(
-                txn,
-                nats,
-                veritech.clone(),
-                encryption_key,
-                write_tenancy,
-                visibility,
-                history_actor,
+                ctx,
                 "env",
                 PropKind::Array, // How to specify it as an array of objects?
                 Some(*containers_prop.id()),
@@ -94,61 +41,22 @@ pub async fn create_spec_prop(
             .await?;
 
             {
-                let _name_prop = create_prop(
-                    txn,
-                    nats,
-                    veritech.clone(),
-                    encryption_key,
-                    write_tenancy,
-                    visibility,
-                    history_actor,
-                    "name",
-                    PropKind::String,
-                    Some(*env_prop.id()),
-                )
-                .await?;
+                let _name_prop =
+                    create_prop(ctx, "name", PropKind::String, Some(*env_prop.id())).await?;
             }
 
             {
-                let _value_prop = create_prop(
-                    txn,
-                    nats,
-                    veritech.clone(),
-                    encryption_key,
-                    write_tenancy,
-                    visibility,
-                    history_actor,
-                    "value",
-                    PropKind::String,
-                    Some(*env_prop.id()),
-                )
-                .await?;
+                let _value_prop =
+                    create_prop(ctx, "value", PropKind::String, Some(*env_prop.id())).await?;
             }
 
             {
-                let _value_from_prop = create_prop(
-                    txn,
-                    nats,
-                    veritech.clone(),
-                    encryption_key,
-                    write_tenancy,
-                    visibility,
-                    history_actor,
-                    "valueFrom",
-                    PropKind::Object,
-                    Some(*env_prop.id()),
-                )
-                .await?;
+                let _value_from_prop =
+                    create_prop(ctx, "valueFrom", PropKind::Object, Some(*env_prop.id())).await?;
 
                 {
                     let _secret_key_ref_prop = create_prop(
-                        txn,
-                        nats,
-                        veritech.clone(),
-                        encryption_key,
-                        write_tenancy,
-                        visibility,
-                        history_actor,
+                        ctx,
                         "secretKeyRef",
                         PropKind::Object,
                         Some(*_value_from_prop.id()),
@@ -157,13 +65,7 @@ pub async fn create_spec_prop(
 
                     {
                         let _name_prop = create_prop(
-                            txn,
-                            nats,
-                            veritech.clone(),
-                            encryption_key,
-                            write_tenancy,
-                            visibility,
-                            history_actor,
+                            ctx,
                             "name",
                             PropKind::String,
                             Some(*_secret_key_ref_prop.id()),
@@ -173,13 +75,7 @@ pub async fn create_spec_prop(
 
                     {
                         let _key_prop = create_prop(
-                            txn,
-                            nats,
-                            veritech.clone(),
-                            encryption_key,
-                            write_tenancy,
-                            visibility,
-                            history_actor,
+                            ctx,
                             "key",
                             PropKind::String,
                             Some(*_secret_key_ref_prop.id()),
@@ -189,13 +85,7 @@ pub async fn create_spec_prop(
 
                     {
                         let _optional_prop = create_prop(
-                            txn,
-                            nats,
-                            veritech.clone(),
-                            encryption_key,
-                            write_tenancy,
-                            visibility,
-                            history_actor,
+                            ctx,
                             "optional",
                             PropKind::Boolean,
                             Some(*_secret_key_ref_prop.id()),
@@ -206,13 +96,7 @@ pub async fn create_spec_prop(
 
                 {
                     let _config_map_ref_prop = create_prop(
-                        txn,
-                        nats,
-                        veritech.clone(),
-                        encryption_key,
-                        write_tenancy,
-                        visibility,
-                        history_actor,
+                        ctx,
                         "configMapRef",
                         PropKind::Object,
                         Some(*_value_from_prop.id()),
@@ -221,13 +105,7 @@ pub async fn create_spec_prop(
 
                     {
                         let _name_prop = create_prop(
-                            txn,
-                            nats,
-                            veritech.clone(),
-                            encryption_key,
-                            write_tenancy,
-                            visibility,
-                            history_actor,
+                            ctx,
                             "name",
                             PropKind::String,
                             Some(*_config_map_ref_prop.id()),
@@ -237,13 +115,7 @@ pub async fn create_spec_prop(
 
                     {
                         let _key_prop = create_prop(
-                            txn,
-                            nats,
-                            veritech.clone(),
-                            encryption_key,
-                            write_tenancy,
-                            visibility,
-                            history_actor,
+                            ctx,
                             "key",
                             PropKind::String,
                             Some(*_config_map_ref_prop.id()),
@@ -253,13 +125,7 @@ pub async fn create_spec_prop(
 
                     {
                         let _optional_prop = create_prop(
-                            txn,
-                            nats,
-                            veritech.clone(),
-                            encryption_key,
-                            write_tenancy,
-                            visibility,
-                            history_actor,
+                            ctx,
                             "optional",
                             PropKind::Boolean,
                             Some(*_config_map_ref_prop.id()),
@@ -270,13 +136,7 @@ pub async fn create_spec_prop(
 
                 {
                     let _resource_field_ref_prop = create_prop(
-                        txn,
-                        nats,
-                        veritech.clone(),
-                        encryption_key,
-                        write_tenancy,
-                        visibility,
-                        history_actor,
+                        ctx,
                         "resourceFieldRef",
                         PropKind::Object,
                         Some(*_value_from_prop.id()),
@@ -285,13 +145,7 @@ pub async fn create_spec_prop(
 
                     {
                         let _container_name_prop = create_prop(
-                            txn,
-                            nats,
-                            veritech.clone(),
-                            encryption_key,
-                            write_tenancy,
-                            visibility,
-                            history_actor,
+                            ctx,
                             "containerName",
                             PropKind::String,
                             Some(*_resource_field_ref_prop.id()),
@@ -301,13 +155,7 @@ pub async fn create_spec_prop(
 
                     {
                         let _resource_prop = create_prop(
-                            txn,
-                            nats,
-                            veritech.clone(),
-                            encryption_key,
-                            write_tenancy,
-                            visibility,
-                            history_actor,
+                            ctx,
                             "resource",
                             PropKind::String,
                             Some(*_resource_field_ref_prop.id()),
@@ -317,13 +165,7 @@ pub async fn create_spec_prop(
 
                     {
                         let _divisor_prop = create_prop(
-                            txn,
-                            nats,
-                            veritech.clone(),
-                            encryption_key,
-                            write_tenancy,
-                            visibility,
-                            history_actor,
+                            ctx,
                             "divisor",
                             PropKind::String,
                             Some(*_resource_field_ref_prop.id()),
@@ -334,13 +176,7 @@ pub async fn create_spec_prop(
 
                 {
                     let _field_ref_prop = create_prop(
-                        txn,
-                        nats,
-                        veritech.clone(),
-                        encryption_key,
-                        write_tenancy,
-                        visibility,
-                        history_actor,
+                        ctx,
                         "fieldRef",
                         PropKind::Object,
                         Some(*_value_from_prop.id()),
@@ -350,13 +186,7 @@ pub async fn create_spec_prop(
                     {
                         // TODO: this should be autopopulated
                         let _api_version_prop = create_prop(
-                            txn,
-                            nats,
-                            veritech.clone(),
-                            encryption_key,
-                            write_tenancy,
-                            visibility,
-                            history_actor,
+                            ctx,
                             "apiVersion",
                             PropKind::String,
                             Some(*_field_ref_prop.id()),
@@ -366,13 +196,7 @@ pub async fn create_spec_prop(
 
                     {
                         let _field_path_prop = create_prop(
-                            txn,
-                            nats,
-                            veritech.clone(),
-                            encryption_key,
-                            write_tenancy,
-                            visibility,
-                            history_actor,
+                            ctx,
                             "fieldPath",
                             PropKind::String,
                             Some(*_field_ref_prop.id()),
@@ -388,13 +212,7 @@ pub async fn create_spec_prop(
             // Is there a selector widget? If so how to enable it
             // TODO: required
             let _image_pull_policy_prop = create_prop(
-                txn,
-                nats,
-                veritech.clone(),
-                encryption_key,
-                write_tenancy,
-                visibility,
-                history_actor,
+                ctx,
                 "imagePullPolicy",
                 PropKind::String,
                 Some(*containers_prop.id()),
@@ -404,13 +222,7 @@ pub async fn create_spec_prop(
 
         {
             let ports_prop = create_prop(
-                txn,
-                nats,
-                veritech.clone(),
-                encryption_key,
-                write_tenancy,
-                visibility,
-                history_actor,
+                ctx,
                 "ports",
                 PropKind::Array, // How to specify it as an array of objects?
                 Some(*containers_prop.id()),
@@ -418,31 +230,14 @@ pub async fn create_spec_prop(
             .await?;
 
             {
-                let _name_prop = create_prop(
-                    txn,
-                    nats,
-                    veritech.clone(),
-                    encryption_key,
-                    write_tenancy,
-                    visibility,
-                    history_actor,
-                    "name",
-                    PropKind::String,
-                    Some(*ports_prop.id()),
-                )
-                .await?;
+                let _name_prop =
+                    create_prop(ctx, "name", PropKind::String, Some(*ports_prop.id())).await?;
             }
 
             {
                 // TODO: int from 0 to 65536
                 let _container_port_prop = create_prop(
-                    txn,
-                    nats,
-                    veritech.clone(),
-                    encryption_key,
-                    write_tenancy,
-                    visibility,
-                    history_actor,
+                    ctx,
                     "containerPort",
                     PropKind::Integer,
                     Some(*ports_prop.id()),
@@ -451,66 +246,27 @@ pub async fn create_spec_prop(
             }
 
             {
-                let _host_ip_prop = create_prop(
-                    txn,
-                    nats,
-                    veritech.clone(),
-                    encryption_key,
-                    write_tenancy,
-                    visibility,
-                    history_actor,
-                    "hostIp",
-                    PropKind::String,
-                    Some(*ports_prop.id()),
-                )
-                .await?;
+                let _host_ip_prop =
+                    create_prop(ctx, "hostIp", PropKind::String, Some(*ports_prop.id())).await?;
             }
 
             {
                 // TODO: int from 0 to 65536
-                let _host_port_prop = create_prop(
-                    txn,
-                    nats,
-                    veritech.clone(),
-                    encryption_key,
-                    write_tenancy,
-                    visibility,
-                    history_actor,
-                    "hostPort",
-                    PropKind::Integer,
-                    Some(*ports_prop.id()),
-                )
-                .await?;
+                let _host_port_prop =
+                    create_prop(ctx, "hostPort", PropKind::Integer, Some(*ports_prop.id())).await?;
             }
 
             {
                 // TODO: validate to ensure it's either "TCP", "UDP" or "SCTP"
                 // Is there a selector widget? If so how to enable it
-                let _protocol_prop = create_prop(
-                    txn,
-                    nats,
-                    veritech.clone(),
-                    encryption_key,
-                    write_tenancy,
-                    visibility,
-                    history_actor,
-                    "protocol",
-                    PropKind::String,
-                    Some(*ports_prop.id()),
-                )
-                .await?;
+                let _protocol_prop =
+                    create_prop(ctx, "protocol", PropKind::String, Some(*ports_prop.id())).await?;
             }
         }
 
         {
             let volume_mounts_prop = create_prop(
-                txn,
-                nats,
-                veritech.clone(),
-                encryption_key,
-                write_tenancy,
-                visibility,
-                history_actor,
+                ctx,
                 "volumeMounts",
                 PropKind::Array, // How to specify it as an array of objects?
                 Some(*containers_prop.id()),
@@ -519,13 +275,7 @@ pub async fn create_spec_prop(
 
             {
                 let _name_prop = create_prop(
-                    txn,
-                    nats,
-                    veritech.clone(),
-                    encryption_key,
-                    write_tenancy,
-                    visibility,
-                    history_actor,
+                    ctx,
                     "name",
                     PropKind::String,
                     Some(*volume_mounts_prop.id()),
@@ -535,13 +285,7 @@ pub async fn create_spec_prop(
 
             {
                 let _mount_path_prop = create_prop(
-                    txn,
-                    nats,
-                    veritech.clone(),
-                    encryption_key,
-                    write_tenancy,
-                    visibility,
-                    history_actor,
+                    ctx,
                     "mountPath",
                     PropKind::String,
                     Some(*volume_mounts_prop.id()),
@@ -553,13 +297,7 @@ pub async fn create_spec_prop(
 
     {
         let volumes_prop = create_prop(
-            txn,
-            nats,
-            veritech.clone(),
-            encryption_key,
-            write_tenancy,
-            visibility,
-            history_actor,
+            ctx,
             "volumes",
             PropKind::Array, // How to specify it as an array of objects?
             Some(*spec_prop.id()),
@@ -567,63 +305,24 @@ pub async fn create_spec_prop(
         .await?;
 
         {
-            let _name_prop = create_prop(
-                txn,
-                nats,
-                veritech.clone(),
-                encryption_key,
-                write_tenancy,
-                visibility,
-                history_actor,
-                "name",
-                PropKind::String,
-                Some(*volumes_prop.id()),
-            )
-            .await?;
+            let _name_prop =
+                create_prop(ctx, "name", PropKind::String, Some(*volumes_prop.id())).await?;
         }
 
         {
-            let config_map_prop = create_prop(
-                txn,
-                nats,
-                veritech.clone(),
-                encryption_key,
-                write_tenancy,
-                visibility,
-                history_actor,
-                "configMap",
-                PropKind::Object,
-                Some(*volumes_prop.id()),
-            )
-            .await?;
+            let config_map_prop =
+                create_prop(ctx, "configMap", PropKind::Object, Some(*volumes_prop.id())).await?;
 
             {
-                let _name_prop = create_prop(
-                    txn,
-                    nats,
-                    veritech.clone(),
-                    encryption_key,
-                    write_tenancy,
-                    visibility,
-                    history_actor,
-                    "name",
-                    PropKind::String,
-                    Some(*config_map_prop.id()),
-                )
-                .await?;
+                let _name_prop =
+                    create_prop(ctx, "name", PropKind::String, Some(*config_map_prop.id())).await?;
             }
         }
     }
 
     {
         let image_pull_secrets_prop = create_prop(
-            txn,
-            nats,
-            veritech.clone(),
-            encryption_key,
-            write_tenancy,
-            visibility,
-            history_actor,
+            ctx,
             "imagePullSecrets",
             PropKind::Array, // How to specify it as an array of objects?
             Some(*spec_prop.id()),
@@ -632,13 +331,7 @@ pub async fn create_spec_prop(
 
         {
             let _name_prop = create_prop(
-                txn,
-                nats,
-                veritech,
-                encryption_key,
-                write_tenancy,
-                visibility,
-                history_actor,
+                ctx,
                 "name",
                 PropKind::String,
                 Some(*image_pull_secrets_prop.id()),

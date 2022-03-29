@@ -35,11 +35,7 @@ pub async fn create_account(
     );
 
     let _result = BillingAccount::signup(
-        ctx.pg_txn(),
-        ctx.nats_txn(),
-        ctx.write_tenancy(),
-        ctx.visibility(),
-        ctx.history_actor(),
+        &ctx,
         &request.billing_account_name,
         &request.user_name,
         &request.user_email,

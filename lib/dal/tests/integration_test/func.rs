@@ -1,4 +1,4 @@
-use crate::test_setup;
+use dal::DalContext;
 
 use crate::dal::test;
 use dal::func::execution::FuncExecution;
@@ -11,32 +11,17 @@ use dal::{
         create_change_set, create_edit_session, create_func, create_func_binding,
         create_visibility_edit_session,
     },
-    Func, FuncBackendKind, FuncBackendResponseType, HistoryActor, StandardModel, Tenancy,
-    Visibility, WriteTenancy, NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK,
+    Func, FuncBackendKind, FuncBackendResponseType, HistoryActor, StandardModel, Visibility,
+    WriteTenancy, NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK,
 };
 
 #[test]
-async fn new() {
-    test_setup!(
-        ctx,
-        _secret_key,
-        _pg,
-        _conn,
-        txn,
-        _nats_conn,
-        nats,
-        _veritech,
-        _encr_key,
-    );
-    let write_tenancy = WriteTenancy::new_universal();
-    let visibility = Visibility::new_head(false);
-    let history_actor = HistoryActor::SystemInit;
+async fn new(ctx: &DalContext<'_, '_>) {
+    let _write_tenancy = WriteTenancy::new_universal();
+    let _visibility = Visibility::new_head(false);
+    let _history_actor = HistoryActor::SystemInit;
     let _func = Func::new(
-        &txn,
-        &nats,
-        &write_tenancy,
-        &visibility,
-        &history_actor,
+        ctx,
         "poop",
         FuncBackendKind::String,
         FuncBackendResponseType::String,
@@ -46,100 +31,39 @@ async fn new() {
 }
 
 #[test]
-async fn func_binding_new() {
-    test_setup!(
-        ctx,
-        _secret_key,
-        _pg,
-        _conn,
-        txn,
-        _nats_conn,
-        nats,
-        _veritech,
-        _encr_key,
-    );
-    let write_tenancy = WriteTenancy::new_universal();
-    let visibility = Visibility::new_head(false);
-    let history_actor = HistoryActor::SystemInit;
-    let func = create_func(
-        &txn,
-        &nats,
-        &(&write_tenancy).into(),
-        &visibility,
-        &history_actor,
-    )
-    .await;
+async fn func_binding_new(ctx: &DalContext<'_, '_>) {
+    let _write_tenancy = WriteTenancy::new_universal();
+    let _visibility = Visibility::new_head(false);
+    let _history_actor = HistoryActor::SystemInit;
+    let func = create_func(ctx).await;
     let args = FuncBackendStringArgs::new("floop".to_string());
     let args_json = serde_json::to_value(args).expect("cannot serialize args to json");
-    let _func_binding = FuncBinding::new(
-        &txn,
-        &nats,
-        &write_tenancy,
-        &visibility,
-        &history_actor,
-        args_json,
-        *func.id(),
-        *func.backend_kind(),
-    )
-    .await
-    .expect("cannot create func binding");
+    let _func_binding = FuncBinding::new(ctx, args_json, *func.id(), *func.backend_kind())
+        .await
+        .expect("cannot create func binding");
 }
 
 #[test]
-async fn func_binding_find_or_create_head() {
-    test_setup!(
-        ctx,
-        _secret_key,
-        _pg,
-        _conn,
-        txn,
-        _nats_conn,
-        nats,
-        _veritech,
-        _encr_key,
-    );
-    let write_tenancy = WriteTenancy::new_universal();
-    let visibility = Visibility::new_head(false);
-    let history_actor = HistoryActor::SystemInit;
-    let func = create_func(
-        &txn,
-        &nats,
-        &(&write_tenancy).into(),
-        &visibility,
-        &history_actor,
-    )
-    .await;
+async fn func_binding_find_or_create_head(ctx: &DalContext<'_, '_>) {
+    let _write_tenancy = WriteTenancy::new_universal();
+    let _visibility = Visibility::new_head(false);
+    let _history_actor = HistoryActor::SystemInit;
+    let func = create_func(ctx).await;
     let args = FuncBackendStringArgs::new("floop".to_string());
     let args_json = serde_json::to_value(args).expect("cannot serialize args to json");
-    let (_func_binding, created) = FuncBinding::find_or_create(
-        &txn,
-        &nats,
-        &write_tenancy,
-        &visibility,
-        &history_actor,
-        args_json.clone(),
-        *func.id(),
-        *func.backend_kind(),
-    )
-    .await
-    .expect("cannot create func binding");
+    let (_func_binding, created) =
+        FuncBinding::find_or_create(ctx, args_json.clone(), *func.id(), *func.backend_kind())
+            .await
+            .expect("cannot create func binding");
     assert_eq!(
         created, true,
         "must create a new func binding when one is absent"
     );
 
-    let (_func_binding, created) = FuncBinding::find_or_create(
-        &txn,
-        &nats,
-        &write_tenancy,
-        &visibility,
-        &history_actor,
-        args_json,
-        *func.id(),
-        *func.backend_kind(),
-    )
-    .await
-    .expect("cannot create func binding");
+    let (_func_binding, created) =
+        FuncBinding::find_or_create(ctx, args_json, *func.id(), *func.backend_kind())
+            .await
+            .expect("cannot create func binding");
     assert_eq!(
         created, false,
         "must not create a new func binding when one is present"
@@ -147,63 +71,29 @@ async fn func_binding_find_or_create_head() {
 }
 
 #[test]
-async fn func_binding_find_or_create_edit_session() {
-    test_setup!(
-        ctx,
-        _secret_key,
-        _pg,
-        _conn,
-        txn,
-        _nats_conn,
-        nats,
-        _veritech,
-        _encr_key,
-    );
-    let tenancy = Tenancy::new_universal();
-    let history_actor = HistoryActor::SystemInit;
-    let mut change_set = create_change_set(&txn, &nats, &tenancy, &history_actor).await;
-    let mut edit_session = create_edit_session(&txn, &nats, &history_actor, &change_set).await;
+async fn func_binding_find_or_create_edit_session(ctx: &DalContext<'_, '_>) {
+    let mut change_set = create_change_set(ctx).await;
+    let mut edit_session = create_edit_session(ctx, &change_set).await;
     let edit_session_visibility = create_visibility_edit_session(&change_set, &edit_session);
+    let octx = ctx.clone_with_new_visibility(edit_session_visibility);
+    let ctx = &octx;
 
-    let func = create_func(
-        &txn,
-        &nats,
-        &tenancy,
-        &edit_session_visibility,
-        &history_actor,
-    )
-    .await;
+    let func = create_func(ctx).await;
     let args = FuncBackendStringArgs::new("floop".to_string());
     let args_json = serde_json::to_value(args).expect("cannot serialize args to json");
-    let (edit_session_func_binding, created) = FuncBinding::find_or_create(
-        &txn,
-        &nats,
-        &(&tenancy).into(),
-        &edit_session_visibility,
-        &history_actor,
-        args_json.clone(),
-        *func.id(),
-        *func.backend_kind(),
-    )
-    .await
-    .expect("cannot create func binding");
+    let (edit_session_func_binding, created) =
+        FuncBinding::find_or_create(ctx, args_json.clone(), *func.id(), *func.backend_kind())
+            .await
+            .expect("cannot create func binding");
     assert_eq!(
         created, true,
         "must create a new func binding when one is absent"
     );
 
-    let (edit_session_func_binding_again, created) = FuncBinding::find_or_create(
-        &txn,
-        &nats,
-        &(&tenancy).into(),
-        &edit_session_visibility,
-        &history_actor,
-        args_json.clone(),
-        *func.id(),
-        *func.backend_kind(),
-    )
-    .await
-    .expect("cannot create func binding");
+    let (edit_session_func_binding_again, created) =
+        FuncBinding::find_or_create(ctx, args_json.clone(), *func.id(), *func.backend_kind())
+            .await
+            .expect("cannot create func binding");
     assert_eq!(
         created, false,
         "must not create a new func binding when one is present"
@@ -214,25 +104,19 @@ async fn func_binding_find_or_create_edit_session() {
     );
 
     edit_session
-        .save(&txn, &nats, &history_actor)
+        .save(ctx)
         .await
         .expect("cannot save edit session");
 
-    let second_edit_session = create_edit_session(&txn, &nats, &history_actor, &change_set).await;
+    let second_edit_session = create_edit_session(ctx, &change_set).await;
     let second_edit_session_visibility =
         create_visibility_edit_session(&change_set, &second_edit_session);
-    let (change_set_func_binding, created) = FuncBinding::find_or_create(
-        &txn,
-        &nats,
-        &(&tenancy).into(),
-        &second_edit_session_visibility,
-        &history_actor,
-        args_json.clone(),
-        *func.id(),
-        *func.backend_kind(),
-    )
-    .await
-    .expect("cannot create func binding");
+    let soctx = ctx.clone_with_new_visibility(second_edit_session_visibility);
+    let ctx = &soctx;
+    let (change_set_func_binding, created) =
+        FuncBinding::find_or_create(ctx, args_json.clone(), *func.id(), *func.backend_kind())
+            .await
+            .expect("cannot create func binding");
     assert_eq!(
         created, false,
         "must not create a new func binding when one is present"
@@ -244,26 +128,20 @@ async fn func_binding_find_or_create_edit_session() {
     );
 
     change_set
-        .apply(&txn, &nats, &history_actor)
+        .apply(ctx)
         .await
         .expect("cannot apply change set");
 
-    let final_change_set = create_change_set(&txn, &nats, &tenancy, &history_actor).await;
-    let final_edit_session =
-        create_edit_session(&txn, &nats, &history_actor, &final_change_set).await;
+    let final_change_set = create_change_set(ctx).await;
+    let final_edit_session = create_edit_session(ctx, &final_change_set).await;
     let final_visibility = create_visibility_edit_session(&final_change_set, &final_edit_session);
-    let (head_func_binding, created) = FuncBinding::find_or_create(
-        &txn,
-        &nats,
-        &(&tenancy).into(),
-        &final_visibility,
-        &history_actor,
-        args_json,
-        *func.id(),
-        *func.backend_kind(),
-    )
-    .await
-    .expect("cannot create func binding");
+    let foctx = ctx.clone_with_new_visibility(final_visibility);
+    let ctx = &foctx;
+
+    let (head_func_binding, created) =
+        FuncBinding::find_or_create(ctx, args_json, *func.id(), *func.backend_kind())
+            .await
+            .expect("cannot create func binding");
     assert_eq!(
         created, false,
         "must not create a new func binding when one is present"
@@ -281,47 +159,19 @@ async fn func_binding_find_or_create_edit_session() {
 }
 
 #[test]
-async fn func_binding_return_value_new() {
-    test_setup!(
-        ctx,
-        _secret_key,
-        _pg,
-        _conn,
-        txn,
-        _nats_conn,
-        nats,
-        _veritech,
-        _encr_key,
-    );
-    let tenancy = Tenancy::new_universal();
-    let visibility = Visibility::new_head(false);
-    let history_actor = HistoryActor::SystemInit;
-    let func = create_func(&txn, &nats, &tenancy, &visibility, &history_actor).await;
+async fn func_binding_return_value_new(ctx: &DalContext<'_, '_>) {
+    let func = create_func(ctx).await;
     let args = FuncBackendStringArgs::new("funky".to_string());
     let args_json = serde_json::to_value(args).expect("cannot serialize args to json");
 
-    let func_binding = create_func_binding(
-        &txn,
-        &nats,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        args_json,
-        *func.id(),
-        *func.backend_kind(),
-    )
-    .await;
+    let func_binding = create_func_binding(ctx, args_json, *func.id(), *func.backend_kind()).await;
 
-    let execution = FuncExecution::new(&txn, &nats, &(&tenancy).into(), &func, &func_binding)
+    let execution = FuncExecution::new(ctx, &func, &func_binding)
         .await
         .expect("cannot create a new func execution");
 
     let _func_binding_return_value = FuncBindingReturnValue::new(
-        &txn,
-        &nats,
-        &(&tenancy).into(),
-        &visibility,
-        &history_actor,
+        ctx,
         Some(serde_json::json!("funky")),
         Some(serde_json::json!("funky")),
         *func.id(),
@@ -333,39 +183,15 @@ async fn func_binding_return_value_new() {
 }
 
 #[test]
-async fn func_binding_execute() {
-    test_setup!(
-        ctx,
-        _secret_key,
-        _pg,
-        _conn,
-        txn,
-        nats_conn,
-        nats,
-        veritech,
-        encr_key
-    );
-    let tenancy = Tenancy::new_universal();
-    let visibility = Visibility::new_head(false);
-    let history_actor = HistoryActor::SystemInit;
-    let func = create_func(&txn, &nats, &tenancy, &visibility, &history_actor).await;
+async fn func_binding_execute(ctx: &DalContext<'_, '_>) {
+    let func = create_func(ctx).await;
     let args = serde_json::to_value(FuncBackendStringArgs::new("funky".to_string()))
         .expect("cannot serialize args to json");
 
-    let func_binding = create_func_binding(
-        &txn,
-        &nats,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        args,
-        *func.id(),
-        *func.backend_kind(),
-    )
-    .await;
+    let func_binding = create_func_binding(ctx, args, *func.id(), *func.backend_kind()).await;
 
     let return_value = func_binding
-        .execute(&txn, &nats, veritech, encr_key)
+        .execute(ctx)
         .await
         .expect("failed to execute func binding");
     assert_eq!(return_value.value(), Some(&serde_json::json!["funky"]));
@@ -376,28 +202,10 @@ async fn func_binding_execute() {
 }
 
 #[test]
-async fn func_binding_execute_unset() {
-    test_setup!(
-        ctx,
-        _secret_key,
-        _pg,
-        _conn,
-        txn,
-        nats_conn,
-        nats,
-        veritech,
-        encr_key
-    );
-    let write_tenancy = WriteTenancy::new_universal();
-    let visibility = Visibility::new_head(false);
-    let history_actor = HistoryActor::SystemInit;
+async fn func_binding_execute_unset(ctx: &DalContext<'_, '_>) {
     let name = dal::test_harness::generate_fake_name();
     let func = Func::new(
-        &txn,
-        &nats,
-        &write_tenancy,
-        &visibility,
-        &history_actor,
+        ctx,
         name,
         FuncBackendKind::Unset,
         FuncBackendResponseType::Unset,
@@ -406,20 +214,10 @@ async fn func_binding_execute_unset() {
     .expect("cannot create func");
     let args = serde_json::json!({});
 
-    let func_binding = create_func_binding(
-        &txn,
-        &nats,
-        &(&write_tenancy).into(),
-        &visibility,
-        &history_actor,
-        args,
-        *func.id(),
-        *func.backend_kind(),
-    )
-    .await;
+    let func_binding = create_func_binding(ctx, args, *func.id(), *func.backend_kind()).await;
 
     let return_value = func_binding
-        .execute(&txn, &nats, veritech, encr_key)
+        .execute(ctx)
         .await
         .expect("failed to execute func binding");
     assert_eq!(return_value.value(), None);

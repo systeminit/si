@@ -28,12 +28,11 @@ pub async fn list_secrets(
     let txns = txns.start().await?;
     let ctx = builder.build(request_ctx.build(request.visibility), &txns);
 
-    let list: Vec<SecretView> =
-        Secret::list(ctx.pg_txn(), &ctx.read_tenancy().into(), ctx.visibility())
-            .await?
-            .into_iter()
-            .map(Into::into)
-            .collect();
+    let list: Vec<SecretView> = Secret::list(&ctx)
+        .await?
+        .into_iter()
+        .map(Into::into)
+        .collect();
     let response = ListSecretResponse { list };
 
     Ok(Json(response))

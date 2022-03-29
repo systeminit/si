@@ -29,9 +29,7 @@ pub async fn list_qualifications(
     let ctx = builder.build(request_ctx.build(request.visibility), &txns);
 
     let qualifications = Component::list_qualifications_by_component_id(
-        ctx.pg_txn(),
-        ctx.read_tenancy(),
-        ctx.visibility(),
+        &ctx,
         request.component_id,
         UNSET_ID_VALUE.into(),
     )

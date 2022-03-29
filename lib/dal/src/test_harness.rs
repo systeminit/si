@@ -1,10 +1,11 @@
+use crate::DalContext;
 use std::{env, path::Path, sync::Arc};
 
 use anyhow::Result;
 use lazy_static::lazy_static;
 use names::{Generator, Name};
-use si_data::{NatsClient, NatsConfig, NatsTxn, PgPool, PgPoolConfig, PgTxn};
-use telemetry::prelude::*;
+use si_data::{NatsClient, NatsConfig, PgPool, PgPoolConfig};
+
 use uuid::Uuid;
 use veritech::{EncryptionKey, Instance, StandardConfig};
 
@@ -20,8 +21,8 @@ use crate::{
     BillingAccount, BillingAccountId, ChangeSet, Component, EditSession, EncryptedSecret, Func,
     FuncBackendKind, FuncBackendResponseType, Group, HistoryActor, KeyPair, Node, Organization,
     Prop, PropId, PropKind, QualificationCheck, Schema, SchemaId, SchemaKind, SchemaVariantId,
-    SchematicKind, Secret, SecretKind, SecretObjectType, StandardModel, System, Tenancy, User,
-    Visibility, Workspace, WriteTenancy, NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK,
+    SchematicKind, Secret, SecretKind, SecretObjectType, StandardModel, System, User, Visibility,
+    Workspace, WriteTenancy, NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK,
 };
 
 #[derive(Debug)]
@@ -192,124 +193,22 @@ pub async fn one_time_setup() -> Result<()> {
     Ok(())
 }
 
-pub async fn _one_time_setup_old() -> Result<()> {
-    let mut finished = INIT_PG_LOCK.lock().await;
-    if *finished {
-        return Ok(());
-    }
-
-    sodiumoxide::init().expect("crypto failed to init");
-    info!("Initializing tests");
-
-    // The stack seems to get too deep here, so we create a new one just for the migrations
-    tokio::task::spawn(async {
-        let encryption_key = EncryptionKey::load(
-            Path::new(env!("CARGO_MANIFEST_DIR")).join("../cyclone/src/dev.encryption.key"),
-        )
-        .await
-        .expect("failed to load dev encryption key");
-
-        let nats_conn = NatsClient::new(&SETTINGS.nats)
-            .await
-            .expect("failed to connect to NATS");
-
-        // Start up a Veritech server as a task exclusively to allow the migrations to run
-        let nats_subject_prefix = nats_prefix();
-        let veritech_server =
-            veritech_server_for_uds_cyclone(SETTINGS.nats.clone(), nats_subject_prefix.clone())
-                .await;
-        let veritech_server_handle = veritech_server.shutdown_handle();
-        tokio::spawn(veritech_server.run());
-        let veritech =
-            veritech::Client::with_subject_prefix(nats_conn.clone(), nats_subject_prefix);
-        let pg = PgPool::new(&SETTINGS.pg)
-            .await
-            .expect("failed to connect to postgres");
-        pg.drop_and_create_public_schema()
-            .await
-            .expect("failed to drop the database");
-
-        crate::migrate(&pg).await.expect("migration failed!");
-
-        let mut conn = pg.get().await.expect("Unable to get pg connection");
-        let txn = conn
-            .transaction()
-            .await
-            .expect("Unable to start pg transaction");
-
-        crate::create_jwt_key_if_missing(
-            &txn,
-            concat!(env!("CARGO_MANIFEST_DIR"), "/", "config/public.pem"),
-            concat!(env!("CARGO_MANIFEST_DIR"), "/", "config/private.pem"),
-            &SETTINGS.jwt_encrypt.key,
-        )
-        .await
-        .expect("Unable to initialize jwt if missing");
-        txn.commit().await.expect("Unable to commit transaction");
-
-        crate::migrate_builtin_schemas(&pg, &nats_conn, veritech, &encryption_key)
-            .await
-            .expect("Failed to migrate builtins");
-
-        let visibility = Visibility::new_head(false);
-        let history_actor = HistoryActor::SystemInit;
-        let tenancy = Tenancy::new_universal();
-        let txn = conn
-            .transaction()
-            .await
-            .expect("Unable to start pg transaction");
-        let nats = nats_conn.transaction();
-        let _ =
-            find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor)
-                .await;
-        txn.commit().await.expect("Unable to commit transaction");
-
-        // Shutdown the Veritech server (each test gets their own server instance with an exclusively
-        // unique subject prefix)
-        veritech_server_handle.shutdown().await;
-    })
-    .await
-    .expect("Postgres initialization failed");
-
-    info!("Initialized tests");
-    *finished = true;
-    Ok(())
-}
-
 pub fn generate_fake_name() -> String {
     Generator::with_naming(Name::Numbered).next().unwrap()
 }
 
-pub async fn create_change_set(
-    txn: &PgTxn<'_>,
-    nats: &NatsTxn,
-    tenancy: &Tenancy,
-    history_actor: &HistoryActor,
-) -> ChangeSet {
+pub async fn create_change_set(ctx: &DalContext<'_, '_>) -> ChangeSet {
     let name = generate_fake_name();
-    ChangeSet::new(txn, nats, &tenancy.into(), history_actor, &name, None)
+    ChangeSet::new(ctx, &name, None)
         .await
         .expect("cannot create change_set")
 }
 
-pub async fn create_edit_session(
-    txn: &PgTxn<'_>,
-    nats: &NatsTxn,
-    history_actor: &HistoryActor,
-    change_set: &ChangeSet,
-) -> EditSession {
+pub async fn create_edit_session(ctx: &DalContext<'_, '_>, change_set: &ChangeSet) -> EditSession {
     let name = generate_fake_name();
-    EditSession::new(
-        txn,
-        nats,
-        &(&change_set.tenancy).into(),
-        history_actor,
-        &change_set.pk,
-        &name,
-        None,
-    )
-    .await
-    .expect("cannot create edit_session")
+    EditSession::new(ctx, &change_set.pk, &name, None)
+        .await
+        .expect("cannot create edit_session")
 }
 
 pub fn create_visibility_edit_session(
@@ -328,90 +227,44 @@ pub fn create_visibility_head() -> Visibility {
 }
 
 pub async fn create_billing_account_with_name(
-    txn: &PgTxn<'_>,
-    nats: &NatsTxn,
-    tenancy: &Tenancy,
-    visibility: &Visibility,
-    history_actor: &HistoryActor,
+    ctx: &DalContext<'_, '_>,
     name: impl AsRef<str>,
 ) -> BillingAccount {
-    BillingAccount::new(
-        txn,
-        nats,
-        &tenancy.into(),
-        visibility,
-        history_actor,
-        &name,
-        None,
-    )
-    .await
-    .expect("cannot create billing_account")
+    BillingAccount::new(ctx, &name, None)
+        .await
+        .expect("cannot create billing_account")
 }
 
-pub async fn create_billing_account(
-    txn: &PgTxn<'_>,
-    nats: &NatsTxn,
-    tenancy: &Tenancy,
-    visibility: &Visibility,
-    history_actor: &HistoryActor,
-) -> BillingAccount {
+pub async fn create_billing_account(ctx: &DalContext<'_, '_>) -> BillingAccount {
     let name = generate_fake_name();
-    create_billing_account_with_name(txn, nats, tenancy, visibility, history_actor, name).await
+    create_billing_account_with_name(ctx, name).await
 }
 
-pub async fn create_organization(
-    txn: &PgTxn<'_>,
-    nats: &NatsTxn,
-    tenancy: &Tenancy,
-    visibility: &Visibility,
-    history_actor: &HistoryActor,
-) -> Organization {
+pub async fn create_organization(ctx: &DalContext<'_, '_>) -> Organization {
     let name = generate_fake_name();
-    Organization::new(txn, nats, &tenancy.into(), visibility, history_actor, &name)
+    Organization::new(ctx, &name)
         .await
         .expect("cannot create organization")
 }
 
-pub async fn create_workspace(
-    txn: &PgTxn<'_>,
-    nats: &NatsTxn,
-    tenancy: &Tenancy,
-    visibility: &Visibility,
-    history_actor: &HistoryActor,
-) -> Workspace {
+pub async fn create_workspace(ctx: &DalContext<'_, '_>) -> Workspace {
     let name = generate_fake_name();
-    Workspace::new(txn, nats, &tenancy.into(), visibility, history_actor, &name)
+    Workspace::new(ctx, &name)
         .await
         .expect("cannot create workspace")
 }
 
-pub async fn create_key_pair(
-    txn: &PgTxn<'_>,
-    nats: &NatsTxn,
-    tenancy: &Tenancy,
-    visibility: &Visibility,
-    history_actor: &HistoryActor,
-) -> KeyPair {
+pub async fn create_key_pair(ctx: &DalContext<'_, '_>) -> KeyPair {
     let name = generate_fake_name();
-    KeyPair::new(txn, nats, &tenancy.into(), visibility, history_actor, &name)
+    KeyPair::new(ctx, &name)
         .await
         .expect("cannot create key_pair")
 }
 
-pub async fn create_user(
-    txn: &PgTxn<'_>,
-    nats: &NatsTxn,
-    tenancy: &Tenancy,
-    visibility: &Visibility,
-    history_actor: &HistoryActor,
-) -> User {
+pub async fn create_user(ctx: &DalContext<'_, '_>) -> User {
     let name = generate_fake_name();
     User::new(
-        txn,
-        nats,
-        &tenancy.into(),
-        visibility,
-        history_actor,
+        ctx,
         &name,
         &format!("{}@test.systeminit.com", name),
         "liesAreTold",
@@ -420,38 +273,25 @@ pub async fn create_user(
     .expect("cannot create user")
 }
 
-pub async fn create_group(
-    txn: &PgTxn<'_>,
-    nats: &NatsTxn,
-    tenancy: &Tenancy,
-    visibility: &Visibility,
-    history_actor: &HistoryActor,
-) -> Group {
+pub async fn create_group(ctx: &DalContext<'_, '_>) -> Group {
     let name = generate_fake_name();
-    Group::new(txn, nats, &tenancy.into(), visibility, history_actor, &name)
-        .await
-        .expect("cannot create group")
+    Group::new(ctx, &name).await.expect("cannot create group")
 }
 
 pub async fn billing_account_signup(
-    txn: &PgTxn<'_>,
-    nats: &NatsTxn,
+    ctx: &DalContext<'_, '_>,
     jwt_secret_key: &JwtSecretKey,
 ) -> (BillingAccountSignup, String) {
-    let write_tenancy = WriteTenancy::new_universal();
-    let visibility = Visibility::new_head(false);
-    let history_actor = HistoryActor::SystemInit;
+    let _write_tenancy = WriteTenancy::new_universal();
+    let _visibility = Visibility::new_head(false);
+    let _history_actor = HistoryActor::SystemInit;
     let billing_account_name = generate_fake_name();
     let user_name = format!("frank {}", billing_account_name);
     let user_email = format!("{}@example.com", billing_account_name);
     let user_password = "snakes";
 
     let nba = BillingAccount::signup(
-        txn,
-        nats,
-        &write_tenancy,
-        &visibility,
-        &history_actor,
+        ctx,
         &billing_account_name,
         &user_name,
         &user_email,
@@ -461,112 +301,47 @@ pub async fn billing_account_signup(
     .expect("cannot signup a new billing_account");
     let auth_token = nba
         .user
-        .login(txn, jwt_secret_key, nba.billing_account.id(), "snakes")
+        .login(ctx, jwt_secret_key, nba.billing_account.id(), "snakes")
         .await
         .expect("cannot log in newly created user");
     (nba, auth_token)
 }
 
-pub async fn create_schema(
-    txn: &PgTxn<'_>,
-    nats: &NatsTxn,
-    tenancy: &Tenancy,
-    visibility: &Visibility,
-    history_actor: &HistoryActor,
-    kind: &SchemaKind,
-) -> Schema {
+pub async fn create_schema(ctx: &DalContext<'_, '_>, kind: &SchemaKind) -> Schema {
     let name = generate_fake_name();
-    Schema::new(
-        txn,
-        nats,
-        &tenancy.into(),
-        visibility,
-        history_actor,
-        &name,
-        kind,
-        &ComponentKind::Standard,
-    )
-    .await
-    .expect("cannot create schema")
+    Schema::new(ctx, &name, kind, &ComponentKind::Standard)
+        .await
+        .expect("cannot create schema")
 }
 
-pub async fn create_schema_ui_menu(
-    txn: &PgTxn<'_>,
-    nats: &NatsTxn,
-    tenancy: &Tenancy,
-    visibility: &Visibility,
-    history_actor: &HistoryActor,
-) -> schema::UiMenu {
-    schema::UiMenu::new(
-        txn,
-        nats,
-        &tenancy.into(),
-        visibility,
-        history_actor,
-        &SchematicKind::Component,
-    )
-    .await
-    .expect("cannot create schema ui menu")
+pub async fn create_schema_ui_menu(ctx: &DalContext<'_, '_>) -> schema::UiMenu {
+    schema::UiMenu::new(ctx, &SchematicKind::Component)
+        .await
+        .expect("cannot create schema ui menu")
 }
 
 #[allow(clippy::too_many_arguments)]
 pub async fn create_schema_variant(
-    txn: &PgTxn<'_>,
-    nats: &NatsTxn,
-    tenancy: &Tenancy,
-    visibility: &Visibility,
-    history_actor: &HistoryActor,
-    veritech: veritech::Client,
-    encryption_key: &EncryptionKey,
+    ctx: &DalContext<'_, '_>,
+
     schema_id: SchemaId,
 ) -> schema::SchemaVariant {
-    create_schema_variant_with_root(
-        txn,
-        nats,
-        tenancy,
-        visibility,
-        history_actor,
-        veritech,
-        encryption_key,
-        schema_id,
-    )
-    .await
-    .0
+    create_schema_variant_with_root(ctx, schema_id).await.0
 }
 
 #[allow(clippy::too_many_arguments)]
 pub async fn create_schema_variant_with_root(
-    txn: &PgTxn<'_>,
-    nats: &NatsTxn,
-    tenancy: &Tenancy,
-    visibility: &Visibility,
-    history_actor: &HistoryActor,
-    veritech: veritech::Client,
-    encryption_key: &EncryptionKey,
+    ctx: &DalContext<'_, '_>,
+
     schema_id: SchemaId,
 ) -> (schema::SchemaVariant, schema::builtins::RootProp) {
     let name = generate_fake_name();
-    let write_tenancy = tenancy.into();
-    let (variant, root) = schema::SchemaVariant::new(
-        txn,
-        nats,
-        &write_tenancy,
-        visibility,
-        history_actor,
-        schema_id,
-        name,
-        veritech,
-        encryption_key,
-    )
-    .await
-    .expect("cannot create schema variant");
+    let (variant, root) = schema::SchemaVariant::new(ctx, schema_id, name)
+        .await
+        .expect("cannot create schema variant");
 
     let input_socket = Socket::new(
-        txn,
-        nats,
-        &write_tenancy,
-        visibility,
-        history_actor,
+        ctx,
         "input",
         &SocketEdgeKind::Configures,
         &SocketArity::Many,
@@ -574,33 +349,20 @@ pub async fn create_schema_variant_with_root(
     .await
     .expect("Unable to create socket");
     variant
-        .add_socket(txn, nats, visibility, history_actor, input_socket.id())
+        .add_socket(ctx, input_socket.id())
         .await
         .expect("Unable to add socket to variant");
 
-    let output_socket = Socket::new(
-        txn,
-        nats,
-        &write_tenancy,
-        visibility,
-        history_actor,
-        "output",
-        &SocketEdgeKind::Output,
-        &SocketArity::Many,
-    )
-    .await
-    .expect("Unable to create socket");
+    let output_socket = Socket::new(ctx, "output", &SocketEdgeKind::Output, &SocketArity::Many)
+        .await
+        .expect("Unable to create socket");
     variant
-        .add_socket(txn, nats, visibility, history_actor, output_socket.id())
+        .add_socket(ctx, output_socket.id())
         .await
         .expect("Unable to add socket to variant");
 
     let includes_socket = Socket::new(
-        txn,
-        nats,
-        &write_tenancy,
-        visibility,
-        history_actor,
+        ctx,
         "includes",
         &SocketEdgeKind::Includes,
         &SocketArity::Many,
@@ -608,157 +370,63 @@ pub async fn create_schema_variant_with_root(
     .await
     .expect("Unable to create socket");
     variant
-        .add_socket(txn, nats, visibility, history_actor, includes_socket.id())
+        .add_socket(ctx, includes_socket.id())
         .await
         .expect("Unable to add socket to variant");
     (variant, root)
 }
 
-pub async fn create_component_and_schema(
-    txn: &PgTxn<'_>,
-    nats: &NatsTxn,
-    veritech: veritech::Client,
-    encryption_key: &EncryptionKey,
-    tenancy: &Tenancy,
-    visibility: &Visibility,
-    history_actor: &HistoryActor,
-) -> Component {
-    let schema = create_schema(
-        txn,
-        nats,
-        tenancy,
-        visibility,
-        history_actor,
-        &SchemaKind::Concept,
-    )
-    .await;
-    let schema_variant = create_schema_variant(
-        txn,
-        nats,
-        tenancy,
-        visibility,
-        history_actor,
-        veritech.clone(),
-        encryption_key,
-        *schema.id(),
-    )
-    .await;
+pub async fn create_component_and_schema(ctx: &DalContext<'_, '_>) -> Component {
+    let schema = create_schema(ctx, &SchemaKind::Concept).await;
+    let schema_variant = create_schema_variant(ctx, *schema.id()).await;
     schema_variant
-        .set_schema(txn, nats, visibility, history_actor, schema.id())
+        .set_schema(ctx, schema.id())
         .await
         .expect("cannot set schema variant");
     let name = generate_fake_name();
-    let (entity, _) = Component::new_for_schema_variant_with_node(
-        txn,
-        nats,
-        veritech,
-        encryption_key,
-        tenancy,
-        visibility,
-        history_actor,
-        &name,
-        schema_variant.id(),
-    )
-    .await
-    .expect("cannot create entity");
+    let (entity, _) = Component::new_for_schema_variant_with_node(ctx, &name, schema_variant.id())
+        .await
+        .expect("cannot create entity");
     entity
 }
 
 #[allow(clippy::too_many_arguments)]
 pub async fn create_component_for_schema_variant(
-    txn: &PgTxn<'_>,
-    nats: &NatsTxn,
-    veritech: veritech::Client,
-    encryption_key: &EncryptionKey,
-    tenancy: &Tenancy,
-    visibility: &Visibility,
-    history_actor: &HistoryActor,
+    ctx: &DalContext<'_, '_>,
     schema_variant_id: &SchemaVariantId,
 ) -> Component {
     let name = generate_fake_name();
-    let (component, _) = Component::new_for_schema_variant_with_node(
-        txn,
-        nats,
-        veritech,
-        encryption_key,
-        tenancy,
-        visibility,
-        history_actor,
-        &name,
-        schema_variant_id,
-    )
-    .await
-    .expect("cannot create component");
+    let (component, _) = Component::new_for_schema_variant_with_node(ctx, &name, schema_variant_id)
+        .await
+        .expect("cannot create component");
     component
 }
 
 #[allow(clippy::too_many_arguments)]
 pub async fn create_component_for_schema(
-    txn: &PgTxn<'_>,
-    nats: &NatsTxn,
-    veritech: veritech::Client,
-    encryption_key: &EncryptionKey,
-    tenancy: &Tenancy,
-    visibility: &Visibility,
-    history_actor: &HistoryActor,
+    ctx: &DalContext<'_, '_>,
     schema_id: &SchemaId,
 ) -> Component {
     let name = generate_fake_name();
-    let (component, _) = Component::new_for_schema_with_node(
-        txn,
-        nats,
-        veritech,
-        encryption_key,
-        tenancy,
-        visibility,
-        history_actor,
-        &name,
-        schema_id,
-    )
-    .await
-    .expect("cannot create component");
+    let (component, _) = Component::new_for_schema_with_node(ctx, &name, schema_id)
+        .await
+        .expect("cannot create component");
     component
-        .set_schema(txn, nats, visibility, history_actor, schema_id)
+        .set_schema(ctx, schema_id)
         .await
         .expect("cannot set the schema for our component");
     component
 }
 
-pub async fn create_node(
-    txn: &PgTxn<'_>,
-    nats: &NatsTxn,
-    tenancy: &Tenancy,
-    visibility: &Visibility,
-    history_actor: &HistoryActor,
-    node_kind: &NodeKind,
-) -> Node {
-    let node = Node::new(
-        txn,
-        nats,
-        &tenancy.into(),
-        visibility,
-        history_actor,
-        node_kind,
-    )
-    .await
-    .expect("cannot create node");
+pub async fn create_node(ctx: &DalContext<'_, '_>, node_kind: &NodeKind) -> Node {
+    let node = Node::new(ctx, node_kind).await.expect("cannot create node");
     node
 }
 
-pub async fn create_socket(
-    txn: &PgTxn<'_>,
-    nats: &NatsTxn,
-    tenancy: &Tenancy,
-    visibility: &Visibility,
-    history_actor: &HistoryActor,
-) -> socket::Socket {
+pub async fn create_socket(ctx: &DalContext<'_, '_>) -> socket::Socket {
     let name = generate_fake_name();
     socket::Socket::new(
-        txn,
-        nats,
-        &tenancy.into(),
-        visibility,
-        history_actor,
+        ctx,
         name,
         &socket::SocketEdgeKind::Configures,
         &socket::SocketArity::One,
@@ -767,184 +435,83 @@ pub async fn create_socket(
     .expect("cannot create socket")
 }
 
-pub async fn create_qualification_check(
-    txn: &PgTxn<'_>,
-    nats: &NatsTxn,
-    tenancy: &Tenancy,
-    visibility: &Visibility,
-    history_actor: &HistoryActor,
-) -> QualificationCheck {
+pub async fn create_qualification_check(ctx: &DalContext<'_, '_>) -> QualificationCheck {
     let name = generate_fake_name();
-    QualificationCheck::new(txn, nats, &tenancy.into(), visibility, history_actor, name)
+    QualificationCheck::new(ctx, name)
         .await
         .expect("cannot create qualification check")
 }
 
-pub async fn create_system(
-    txn: &PgTxn<'_>,
-    nats: &NatsTxn,
-    tenancy: &Tenancy,
-    visibility: &Visibility,
-    history_actor: &HistoryActor,
-) -> System {
+pub async fn create_system(ctx: &DalContext<'_, '_>) -> System {
     let name = generate_fake_name();
-    System::new(txn, nats, &tenancy.into(), visibility, history_actor, name)
-        .await
-        .expect("cannot create system")
+    System::new(ctx, name).await.expect("cannot create system")
 }
 
-pub async fn find_or_create_production_system(
-    txn: &PgTxn<'_>,
-    nats: &NatsTxn,
-    tenancy: &Tenancy,
-    visibility: &Visibility,
-    history_actor: &HistoryActor,
-) -> System {
+pub async fn find_or_create_production_system(ctx: &DalContext<'_, '_>) -> System {
     let name = "production".to_string();
 
-    match System::find_by_attr(txn, tenancy, visibility, "name", &name)
+    match System::find_by_attr(ctx, "name", &name)
         .await
         .expect("cannot find system")
         .pop()
     {
         Some(s) => s,
         None => {
-            let (system, _system_node) =
-                System::new_with_node(txn, nats, &tenancy.into(), visibility, history_actor, name)
-                    .await
-                    .expect("cannot create named system");
+            let (system, _system_node) = System::new_with_node(ctx, name)
+                .await
+                .expect("cannot create named system");
 
             system
         }
     }
 }
 
-pub async fn create_prop(
-    txn: &PgTxn<'_>,
-    nats: &NatsTxn,
-    veritech: veritech::Client,
-    encryption_key: &EncryptionKey,
-    tenancy: &Tenancy,
-    visibility: &Visibility,
-    history_actor: &HistoryActor,
-) -> Prop {
+pub async fn create_prop(ctx: &DalContext<'_, '_>) -> Prop {
     let name = generate_fake_name();
-    Prop::new(
-        txn,
-        nats,
-        veritech,
-        encryption_key,
-        &tenancy.into(),
-        visibility,
-        history_actor,
-        name,
-        PropKind::String,
-    )
-    .await
-    .expect("cannot create prop")
+    Prop::new(ctx, name, PropKind::String)
+        .await
+        .expect("cannot create prop")
 }
 
 #[allow(clippy::too_many_arguments)]
-pub async fn create_prop_of_kind(
-    txn: &PgTxn<'_>,
-    nats: &NatsTxn,
-    veritech: veritech::Client,
-    encryption_key: &EncryptionKey,
-    tenancy: &Tenancy,
-    visibility: &Visibility,
-    history_actor: &HistoryActor,
-    prop_kind: PropKind,
-) -> Prop {
+pub async fn create_prop_of_kind(ctx: &DalContext<'_, '_>, prop_kind: PropKind) -> Prop {
     let name = generate_fake_name();
-    Prop::new(
-        txn,
-        nats,
-        veritech,
-        encryption_key,
-        &tenancy.into(),
-        visibility,
-        history_actor,
-        name,
-        prop_kind,
-    )
-    .await
-    .expect("cannot create prop")
+    Prop::new(ctx, name, prop_kind)
+        .await
+        .expect("cannot create prop")
 }
 
 #[allow(clippy::too_many_arguments)]
 pub async fn create_prop_of_kind_with_name(
-    txn: &PgTxn<'_>,
-    nats: &NatsTxn,
-    veritech: veritech::Client,
-    encryption_key: &EncryptionKey,
-    tenancy: &Tenancy,
-    visibility: &Visibility,
-    history_actor: &HistoryActor,
+    ctx: &DalContext<'_, '_>,
     prop_kind: PropKind,
     name: impl AsRef<str>,
 ) -> Prop {
     let name = name.as_ref();
-    Prop::new(
-        txn,
-        nats,
-        veritech,
-        encryption_key,
-        &tenancy.into(),
-        visibility,
-        history_actor,
-        name,
-        prop_kind,
-    )
-    .await
-    .expect("cannot create prop")
+    Prop::new(ctx, name, prop_kind)
+        .await
+        .expect("cannot create prop")
 }
 
 #[allow(clippy::too_many_arguments)]
 pub async fn create_prop_of_kind_and_set_parent_with_name(
-    txn: &PgTxn<'_>,
-    nats: &NatsTxn,
-    veritech: veritech::Client,
-    encryption_key: &EncryptionKey,
-    tenancy: &Tenancy,
-    visibility: &Visibility,
-    history_actor: &HistoryActor,
+    ctx: &DalContext<'_, '_>,
     prop_kind: PropKind,
     name: impl AsRef<str>,
     parent_prop_id: PropId,
 ) -> Prop {
-    let new_prop = create_prop_of_kind_with_name(
-        txn,
-        nats,
-        veritech.clone(),
-        encryption_key,
-        tenancy,
-        visibility,
-        history_actor,
-        prop_kind,
-        name,
-    )
-    .await;
+    let new_prop = create_prop_of_kind_with_name(ctx, prop_kind, name).await;
     new_prop
-        .set_parent_prop(txn, nats, visibility, history_actor, parent_prop_id)
+        .set_parent_prop(ctx, parent_prop_id)
         .await
         .expect("cannot set parent to new prop");
     new_prop
 }
 
-pub async fn create_func(
-    txn: &PgTxn<'_>,
-    nats: &NatsTxn,
-    tenancy: &Tenancy,
-    visibility: &Visibility,
-    history_actor: &HistoryActor,
-) -> Func {
+pub async fn create_func(ctx: &DalContext<'_, '_>) -> Func {
     let name = generate_fake_name();
     Func::new(
-        txn,
-        nats,
-        &tenancy.into(),
-        visibility,
-        history_actor,
+        ctx,
         name,
         FuncBackendKind::String,
         FuncBackendResponseType::String,
@@ -955,37 +522,22 @@ pub async fn create_func(
 
 #[allow(clippy::too_many_arguments)]
 pub async fn create_func_binding(
-    txn: &PgTxn<'_>,
-    nats: &NatsTxn,
-    tenancy: &Tenancy,
-    visibility: &Visibility,
-    history_actor: &HistoryActor,
+    ctx: &DalContext<'_, '_>,
     args: serde_json::Value,
     func_id: FuncId,
     backend_kind: FuncBackendKind,
 ) -> FuncBinding {
-    FuncBinding::new(
-        txn,
-        nats,
-        &tenancy.into(),
-        visibility,
-        history_actor,
-        args,
-        func_id,
-        backend_kind,
-    )
-    .await
-    .expect("cannot create func")
+    FuncBinding::new(ctx, args, func_id, backend_kind)
+        .await
+        .expect("cannot create func")
 }
 
 pub async fn encrypt_message(
-    txn: &PgTxn<'_>,
-    tenancy: &Tenancy,
-    visibility: &Visibility,
+    ctx: &DalContext<'_, '_>,
     key_pair_id: KeyPairId,
     message: &serde_json::Value,
 ) -> Vec<u8> {
-    let public_key = KeyPair::get_by_id(txn, tenancy, visibility, &key_pair_id)
+    let public_key = KeyPair::get_by_id(ctx, &key_pair_id)
         .await
         .expect("failed to fetch key pair")
         .expect("failed to find key pair");
@@ -998,32 +550,17 @@ pub async fn encrypt_message(
 }
 
 pub async fn create_secret(
-    txn: &PgTxn<'_>,
-    nats: &NatsTxn,
-    tenancy: &Tenancy,
-    visibility: &Visibility,
-    history_actor: &HistoryActor,
+    ctx: &DalContext<'_, '_>,
     key_pair_id: KeyPairId,
     billing_account_id: BillingAccountId,
 ) -> Secret {
     let name = generate_fake_name();
     EncryptedSecret::new(
-        txn,
-        nats,
-        &tenancy.into(),
-        visibility,
-        history_actor,
+        ctx,
         &name,
         SecretObjectType::Credential,
         SecretKind::DockerHub,
-        &encrypt_message(
-            txn,
-            tenancy,
-            visibility,
-            key_pair_id,
-            &serde_json::json!({ "name": name }),
-        )
-        .await,
+        &encrypt_message(ctx, key_pair_id, &serde_json::json!({ "name": name })).await,
         key_pair_id,
         Default::default(),
         Default::default(),
@@ -1035,26 +572,18 @@ pub async fn create_secret(
 
 #[allow(clippy::too_many_arguments)]
 pub async fn create_secret_with_message(
-    txn: &PgTxn<'_>,
-    nats: &NatsTxn,
-    tenancy: &Tenancy,
-    visibility: &Visibility,
-    history_actor: &HistoryActor,
+    ctx: &DalContext<'_, '_>,
     key_pair_id: KeyPairId,
     message: &serde_json::Value,
     billing_account_id: BillingAccountId,
 ) -> Secret {
     let name = generate_fake_name();
     EncryptedSecret::new(
-        txn,
-        nats,
-        &tenancy.into(),
-        visibility,
-        history_actor,
+        ctx,
         &name,
         SecretObjectType::Credential,
         SecretKind::DockerHub,
-        &encrypt_message(txn, tenancy, visibility, key_pair_id, message).await,
+        &encrypt_message(ctx, key_pair_id, message).await,
         key_pair_id,
         Default::default(),
         Default::default(),

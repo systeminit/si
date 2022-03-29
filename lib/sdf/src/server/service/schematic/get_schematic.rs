@@ -25,14 +25,7 @@ pub async fn get_schematic(
     let txns = txns.start().await?;
     let ctx = builder.build(request_ctx.build(request.visibility), &txns);
 
-    let response = Schematic::find(
-        ctx.pg_txn(),
-        ctx.read_tenancy(),
-        ctx.visibility(),
-        request.system_id,
-        request.root_node_id,
-    )
-    .await?;
+    let response = Schematic::find(&ctx, request.system_id, request.root_node_id).await?;
 
     txns.commit().await?;
     Ok(Json(response))
