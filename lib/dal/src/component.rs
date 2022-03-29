@@ -1603,10 +1603,22 @@ impl EditFieldAble for Component {
             .ok_or(ComponentError::NotFound(*id))?;
 
         let mut edit_fields = vec![];
-        let schema_variant: SchemaVariant = component
+        let schema_variant = component
             .schema_variant_with_tenancy(txn, &read_tenancy.into(), visibility)
             .await?
             .ok_or(ComponentError::SchemaVariantNotFound)?;
+        let schema = schema_variant
+            .schema(txn, visibility)
+            .await?
+            .ok_or(ComponentError::SchemaNotFound)?;
+
+        let attribute_read_context = AttributeReadContext {
+            prop_id: None,
+            schema_id: Some(*schema.id()),
+            schema_variant_id: Some(*schema_variant.id()),
+            component_id: Some(*id),
+            ..AttributeReadContext::default()
+        };
 
         // NOTE(nick): this can be more elegant, but it works. We want to ensure we only find the
         // root prop at this point.
@@ -1631,6 +1643,7 @@ impl EditFieldAble for Component {
                 visibility,
                 &head_visibility,
                 &change_set_visibility,
+                attribute_read_context,
                 *attribute_value.id(),
                 None,
                 None,
@@ -1665,6 +1678,7 @@ async fn edit_field_for_attribute_value(
     visibility: &Visibility,
     head_visibility: &Visibility,
     change_set_visibility: &Visibility,
+    attribute_read_context: AttributeReadContext,
     attribute_value_id: AttributeValueId,
     parent_attribute_value_id: Option<AttributeValueId>,
     edit_field_path: Option<Vec<String>>,
@@ -1744,7 +1758,12 @@ async fn edit_field_for_attribute_value(
         WidgetKind::Array | WidgetKind::Header => {
             let mut child_edit_fields = vec![];
             for child_attribute_value in attribute_value
-                .child_attribute_values(txn, &tenancy, visibility)
+                .child_attribute_values_in_context(
+                    txn,
+                    read_tenancy,
+                    visibility,
+                    attribute_read_context,
+                )
                 .await?
             {
                 // Use the current attribute value as the parent when creating the child edit field.
