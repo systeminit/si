@@ -30,6 +30,7 @@ ci-si: setup-base ci-crates ci-web
 
 ci-crates: down
 	cd $(REPOPATH)/deploy && $(MAKE) partial
+	cd $(REPOPATH); cargo doc
 	cd $(REPOPATH); cargo test --all-features
 .PHONY: ci-crates
 

@@ -145,9 +145,36 @@ In the other pane, run your test:
 RUST_BACKTRACE=1 cargo test <your-test-name>
 ```
 
-## Writing Documentation
+## Reading and Writing Documentation
 
-### Rust Documentation (`rustdoc`)
+Our crates leverage `rustdoc` for seamless integration with `cargo doc`, [IntelliJ Rust](https://www.jetbrains.com/rust/),
+[rust-analyzer](https://rust-analyzer.github.io/), and more.
+
+### Reading Rust Documentation
+
+Build the docs for all of our crates and open the docs in your browser at `dal` by executing the following:
+
+```bash
+cargo doc --all
+cargo doc -p dal --open
+```
+
+If you would like to live-recompile docs while making changes on your development branch, you can execute the following
+make target:
+
+```bash
+# Choose one! Both work.
+make doc
+make docs
+```
+
+> Please note: [cargo-watch](https://github.com/watchexec/cargo-watch) needs to be installed before using the above make target.
+>
+> ```bash
+> cargo install --locked cargo-watch
+> ```
+
+### Writing Rust Documentation
 
 We try to follow the official ["How to write documentation"](https://doc.rust-lang.org/rustdoc/how-to-write-documentation.html) guide from `rustdoc` as closely as possible.
 Older areas of the codebase may not follow the guide and conventions derived from it.

@@ -3,7 +3,7 @@ use serde_json::Value as JsonValue;
 use si_data::{NatsError, NatsTxn, PgError, PgTxn};
 use telemetry::prelude::*;
 use thiserror::Error;
-use veritech::OutputStream;
+use veritech::{EncryptionKey, OutputStream};
 
 use crate::func::execution::FuncExecution;
 use crate::func::execution::{FuncExecutionError, FuncExecutionPk};
@@ -23,20 +23,24 @@ const GET_FOR_FUNC_BINDING: &str =
 
 #[derive(Error, Debug)]
 pub enum FuncBindingReturnValueError {
-    #[error("error serializing/deserializing json: {0}")]
-    SerdeJson(#[from] serde_json::Error),
-    #[error("pg error: {0}")]
-    Pg(#[from] PgError),
-    #[error("nats txn error: {0}")]
-    Nats(#[from] NatsError),
-    #[error("history event error: {0}")]
-    HistoryEvent(#[from] HistoryEventError),
-    #[error("standard model error: {0}")]
-    StandardModel(#[from] StandardModelError),
+    #[error("func binding error: {0}")]
+    FuncBinding(String),
     #[error("function execution error: {0}")]
     FuncExecution(#[from] FuncExecutionError),
+    #[error("history event error: {0}")]
+    HistoryEvent(#[from] HistoryEventError),
+    #[error("missing func binding for id: {0}")]
+    Missing(FuncBindingId),
+    #[error("nats txn error: {0}")]
+    Nats(#[from] NatsError),
+    #[error("pg error: {0}")]
+    Pg(#[from] PgError),
     #[error("read tenancy error: {0}")]
     ReadTenancy(#[from] ReadTenancyError),
+    #[error("error serializing/deserializing json: {0}")]
+    SerdeJson(#[from] serde_json::Error),
+    #[error("standard model error: {0}")]
+    StandardModel(#[from] StandardModelError),
 }
 
 pub type FuncBindingReturnValueResult<T> = Result<T, FuncBindingReturnValueError>;
@@ -145,6 +149,7 @@ impl FuncBindingReturnValue {
     //     self.func_execution_id
     // }
 
+    /// Attempts to retrieve [`Self`] by [`FuncBindingId`].
     pub async fn get_by_func_binding_id(
         txn: &PgTxn<'_>,
         read_tenancy: &ReadTenancy,
@@ -159,6 +164,37 @@ impl FuncBindingReturnValue {
             .await?;
         let object = standard_model::option_object_from_row(row)?;
         Ok(object)
+    }
+
+    /// Attempts to retrieve [`Self`] by [`FuncBindingId`]. If nothing is found, then execute
+    /// with the given [`FuncBindingId`] and return the value generated.
+    pub async fn get_by_func_binding_id_or_execute(
+        txn: &PgTxn<'_>,
+        nats: &NatsTxn,
+        read_tenancy: ReadTenancy,
+        visibility: &Visibility,
+        veritech: veritech::Client,
+        encryption_key: &EncryptionKey,
+        func_binding_id: FuncBindingId,
+    ) -> FuncBindingReturnValueResult<Self> {
+        let object =
+            Self::get_by_func_binding_id(txn, &read_tenancy, visibility, func_binding_id).await?;
+        let func_binding_return_value: Self = if let Some(found_value) = object {
+            found_value
+        } else {
+            let tenancy = Tenancy::from_read_tenancy(read_tenancy);
+            let func_binding = FuncBinding::get_by_id(txn, &tenancy, visibility, &func_binding_id)
+                .await?
+                .ok_or(FuncBindingReturnValueError::Missing(func_binding_id))?;
+            match func_binding
+                .execute(txn, nats, veritech, encryption_key)
+                .await
+            {
+                Ok(generated_value) => generated_value,
+                Err(e) => return Err(FuncBindingReturnValueError::FuncBinding(e.to_string())),
+            }
+        };
+        Ok(func_binding_return_value)
     }
 
     // Note(paulo): this is dumb

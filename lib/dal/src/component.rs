@@ -1563,21 +1563,19 @@ impl Component {
             .find_attribute_value_by_json_pointer(txn, read_tenancy, visibility, json_pointer)
             .await?
         {
-            if let Some(fbrv_id) = attribute_value.func_binding_return_value_id() {
-                if let Some(fbrv) = FuncBindingReturnValue::get_by_id(
-                    txn,
-                    &read_tenancy.into(),
-                    visibility,
-                    fbrv_id,
-                )
-                .await?
-                {
-                    return Ok(fbrv
-                        .value()
-                        .cloned()
-                        .map(serde_json::from_value)
-                        .transpose()?);
-                };
+            if let Some(fbrv) = FuncBindingReturnValue::get_by_id(
+                txn,
+                &read_tenancy.into(),
+                visibility,
+                &attribute_value.func_binding_return_value_id(),
+            )
+            .await?
+            {
+                return Ok(fbrv
+                    .value()
+                    .cloned()
+                    .map(serde_json::from_value)
+                    .transpose()?);
             };
         };
 

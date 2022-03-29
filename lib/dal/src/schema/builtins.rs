@@ -1012,7 +1012,7 @@ async fn docker_image(
     )
     .await?;
 
-    func_binding
+    let func_binding_return_value = func_binding
         .execute(txn, nats, veritech.clone(), encryption_key)
         .await?;
 
@@ -1039,6 +1039,7 @@ async fn docker_image(
         number_of_parents_prop_context,
         *func.id(),
         *func_binding.id(),
+        *func_binding_return_value.id(),
         Some(*root_prop_attribute_value.id()),
         Some(
             *AttributeValue::find_for_context(

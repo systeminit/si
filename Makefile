@@ -269,3 +269,10 @@ lint:
 tidy:
 	cd $(MAKEPATH)/ci && $(MAKE) tidy
 .PHONY: tidy
+
+docs:
+	cd $(MAKEPATH); cargo watch -x doc
+.PHONY: docs
+
+doc: docs
+.PHONY: doc

@@ -19,7 +19,7 @@ CREATE TABLE attribute_values
     proxy_for_attribute_value_id        bigint,
     sealed_proxy                        bool                     NOT NULL DEFAULT False,
     func_binding_id                     bigint                   NOT NULL,
-    func_binding_return_value_id        bigint,
+    func_binding_return_value_id        bigint                   NOT NULL,
     index_map                           jsonb,
     key                                 text
 );

@@ -16,6 +16,7 @@ use si_data::{NatsError, NatsTxn, PgError, PgTxn};
 use telemetry::prelude::*;
 use thiserror::Error;
 
+use crate::func::binding_return_value::FuncBindingReturnValueError;
 use crate::{
     attribute::{
         context::{AttributeContext, AttributeContextError},
@@ -43,6 +44,8 @@ pub enum AttributePrototypeError {
     AttributeValue(#[from] AttributeValueError),
     #[error("func binding error: {0}")]
     FuncBinding(#[from] FuncBindingError),
+    #[error("func binding return value error: {0}")]
+    FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
     #[error("invalid prop value; expected {0} but got {1}")]
@@ -125,7 +128,7 @@ impl AttributePrototype {
         history_actor: &HistoryActor,
         func_id: FuncId,
         func_binding_id: FuncBindingId,
-        func_binding_return_value_id: Option<FuncBindingReturnValueId>,
+        func_binding_return_value_id: FuncBindingReturnValueId,
         context: AttributeContext,
         key: Option<String>,
         parent_attribute_value_id: Option<AttributeValueId>,
@@ -455,7 +458,7 @@ impl AttributePrototype {
                     visibility,
                     history_actor,
                     proxy_target.func_binding_id(),
-                    proxy_target.func_binding_return_value_id().copied(),
+                    proxy_target.func_binding_return_value_id(),
                     context,
                     proxy_target.key().map(|k| k.to_string()),
                 )
@@ -496,6 +499,7 @@ impl AttributePrototype {
         context: AttributeContext,
         func_id: FuncId,
         func_binding_id: FuncBindingId,
+        func_binding_return_value_id: FuncBindingReturnValueId,
         parent_attribute_value_id: Option<AttributeValueId>,
         existing_attribute_value_id: Option<AttributeValueId>,
     ) -> AttributePrototypeResult<AttributePrototypeId> {
@@ -561,7 +565,7 @@ impl AttributePrototype {
                 history_actor,
                 func_id,
                 func_binding_id,
-                None,
+                func_binding_return_value_id,
                 context,
                 given_attribute_prototype.key().map(|k| k.to_string()),
                 parent_attribute_value_id,

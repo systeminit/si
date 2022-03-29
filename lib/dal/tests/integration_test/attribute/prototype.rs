@@ -101,7 +101,7 @@ async fn new() {
     )
     .await
     .expect("cannot create function binding");
-    let fbrv = func_binding
+    let func_binding_return_value = func_binding
         .execute(&txn, &nats, veritech, encr_key)
         .await
         .expect("failed to execute func binding");
@@ -121,7 +121,7 @@ async fn new() {
         &history_actor,
         *func.id(),
         *func_binding.id(),
-        Some(*fbrv.id()),
+        *func_binding_return_value.id(),
         context,
         None,
         None,
@@ -386,7 +386,7 @@ async fn list_for_context() {
     )
     .await
     .expect("cannot create func binding");
-    let fbrv = func_binding
+    let func_binding_return_value = func_binding
         .execute(&txn, &nats, veritech, encr_key)
         .await
         .expect("failed to execute func binding");
@@ -405,7 +405,7 @@ async fn list_for_context() {
         &history_actor,
         *func.id(),
         *func_binding.id(),
-        Some(*fbrv.id()),
+        *func_binding_return_value.id(),
         component_name_prototype_context,
         None,
         None,
@@ -655,7 +655,7 @@ async fn list_for_context_with_a_hash() {
     )
     .await
     .expect("cannot create func binding");
-    let fbrv = undertow_prop_func_binding
+    let func_binding_return_value = undertow_prop_func_binding
         .execute(&txn, &nats, veritech.clone(), encr_key)
         .await
         .expect("failed to execute func binding");
@@ -668,7 +668,7 @@ async fn list_for_context_with_a_hash() {
         &history_actor,
         *func.id(),
         *undertow_prop_func_binding.id(),
-        Some(*fbrv.id()),
+        *func_binding_return_value.id(),
         prop_hash_key_prototype_context,
         Some("Undertow".to_string()),
         None,
@@ -689,7 +689,7 @@ async fn list_for_context_with_a_hash() {
     )
     .await
     .expect("cannot create func binding");
-    let fbrv = lateralus_prop_func_binding
+    let func_binding_return_value = lateralus_prop_func_binding
         .execute(&txn, &nats, veritech.clone(), encr_key)
         .await
         .expect("failed to execute func binding");
@@ -702,7 +702,7 @@ async fn list_for_context_with_a_hash() {
         &history_actor,
         *func.id(),
         *lateralus_prop_func_binding.id(),
-        Some(*fbrv.id()),
+        *func_binding_return_value.id(),
         prop_hash_key_prototype_context,
         Some("Lateralus".to_string()),
         None,
@@ -741,7 +741,7 @@ async fn list_for_context_with_a_hash() {
     )
     .await
     .expect("cannot create func binding");
-    let fbrv = lateralus_component_func_binding
+    let func_binding_return_value = lateralus_component_func_binding
         .execute(&txn, &nats, veritech.clone(), encr_key)
         .await
         .expect("failed to execute func binding");
@@ -754,7 +754,7 @@ async fn list_for_context_with_a_hash() {
         &history_actor,
         *func.id(),
         *lateralus_component_func_binding.id(),
-        Some(*fbrv.id()),
+        *func_binding_return_value.id(),
         component_hash_key_prototype_context,
         Some("Lateralus".to_string()),
         None,
@@ -775,7 +775,7 @@ async fn list_for_context_with_a_hash() {
     )
     .await
     .expect("cannot create func binding");
-    let fbrv = fear_inoculum_component_func_binding
+    let func_binding_return_value = fear_inoculum_component_func_binding
         .execute(&txn, &nats, veritech.clone(), encr_key)
         .await
         .expect("failed to execute func binding");
@@ -788,7 +788,7 @@ async fn list_for_context_with_a_hash() {
         &history_actor,
         *func.id(),
         *fear_inoculum_component_func_binding.id(),
-        Some(*fbrv.id()),
+        *func_binding_return_value.id(),
         component_hash_key_prototype_context,
         Some("Fear Inoculum".to_string()),
         None,
