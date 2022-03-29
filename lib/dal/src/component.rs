@@ -1798,7 +1798,7 @@ async fn edit_field_for_attribute_value(
 
             // FIXME(nick): need to eventually figure out the widget situation for arrays and maps.
             if *prop.kind() == PropKind::Array {
-                todo!("Need to handle Array props");
+                Widget::Array(ArrayWidget::new(vec![child_edit_fields]))
             } else if *prop.kind() == PropKind::Map {
                 todo!("Need to handle Map props");
             } else {
