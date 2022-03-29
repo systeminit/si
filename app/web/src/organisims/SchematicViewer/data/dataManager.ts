@@ -1,4 +1,5 @@
 import * as Rx from "rxjs";
+import { untilUnmounted } from "vuse-rx";
 import _ from "lodash";
 
 import { NodeUpdate, ConnectionCreate, Schematic } from "../model";
@@ -50,9 +51,15 @@ export class SchematicDataManager {
   }
 
   initialize(): void {
-    this.nodeUpdate$.subscribe({ next: (d) => this.updateNodePosition(d) });
-    this.connectionCreate$.subscribe({ next: (d) => this.createConnection(d) });
-    this.nodeCreate$.subscribe({ next: (d) => this.createNode(d) });
+    this.nodeUpdate$
+      .pipe(untilUnmounted)
+      .subscribe({ next: (d) => this.updateNodePosition(d) });
+    this.connectionCreate$
+      .pipe(untilUnmounted)
+      .subscribe({ next: (d) => this.createConnection(d) });
+    this.nodeCreate$
+      .pipe(untilUnmounted)
+      .subscribe({ next: (d) => this.createNode(d) });
   }
 
   async updateNodePosition(nodeUpdate: NodeUpdate | null): Promise<void> {

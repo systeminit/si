@@ -25,7 +25,7 @@ import _ from "lodash";
 import * as Rx from "rxjs";
 import * as PIXI from "pixi.js";
 import * as OBJ from "./Viewer/obj";
-import { refFrom } from "vuse-rx";
+import { refFrom, untilUnmounted } from "vuse-rx";
 
 import { ViewerStateMachine, ViewerEventKind } from "./state";
 import { useMachine } from "@xstate/vue";
@@ -152,7 +152,6 @@ export default defineComponent({
       send,
       service,
       selection,
-      subscribers: [] as Array<Rx.Subscription>,
     };
   },
   data(): Data {
@@ -215,12 +214,6 @@ export default defineComponent({
       }
     },
   },
-  unmounted(): void {
-    for (const subscriber of this.subscribers) {
-      subscriber.unsubscribe();
-    }
-    this.subscribers = [];
-  },
   mounted(): void {
     this.canvas.element = this.$refs.canvas as HTMLCanvasElement;
     this.container.element = this.$refs.container as HTMLCanvasElement;
@@ -229,11 +222,9 @@ export default defineComponent({
     document.addEventListener("keyup", this.handleKeyUp);
 
     if (this.viewerEvent$) {
-      this.subscribers.push(
-        this.viewerEvent$.subscribe({
-          next: (v) => this.handleViewerEvent(v),
-        }),
-      );
+      this.viewerEvent$.pipe(untilUnmounted).subscribe({
+        next: (v) => this.handleViewerEvent(v),
+      });
     }
 
     // this.$once("hook:beforeDestroy", () => {
@@ -257,18 +248,14 @@ export default defineComponent({
     this.dataManager.editorContext$.next(this.editorContext);
     this.dataManager.schematicKind$.next(this.schematicKind);
 
-    this.subscribers.push(
-      dataManager.schematicData$.subscribe({
-        next: async (d) => await this.loadSchematicData(d),
-      }),
-    );
+    dataManager.schematicData$.pipe(untilUnmounted).subscribe({
+      next: async (d) => await this.loadSchematicData(d),
+    });
 
     // Global events
-    this.subscribers.push(
-      schematicData$.subscribe({
-        next: (d) => this.dataManager?.schematicData$?.next(d),
-      }),
-    );
+    schematicData$.pipe(untilUnmounted).subscribe({
+      next: (d) => this.dataManager?.schematicData$?.next(d),
+    });
 
     this.sceneManager = new SceneManager(this.renderer as Renderer);
 
@@ -279,9 +266,7 @@ export default defineComponent({
       this.renderer as Renderer,
     );
     this.interactionManager = interactionManager;
-    this.subscribers.push(
-      this.sceneManager.subscribeToInteractionEvents(interactionManager),
-    );
+    this.sceneManager.subscribeToInteractionEvents(interactionManager);
 
     const syncSelection = (
       selection: Array<OBJ.Node> | null,
@@ -329,46 +314,42 @@ export default defineComponent({
     };
 
     let lastDeploymentSelection: OBJ.Node | null = null;
-    this.subscribers.push(
-      deploymentSelection$.subscribe({
-        next: async (selection) => {
-          if (selection && lastDeploymentSelection === selection[0]) return;
-          lastDeploymentSelection = selection ? selection[0] : null;
+    deploymentSelection$.pipe(untilUnmounted).subscribe({
+      next: async (selection) => {
+        if (selection && lastDeploymentSelection === selection[0]) return;
+        lastDeploymentSelection = selection ? selection[0] : null;
 
-          switch (this.schematicKind) {
-            case SchematicKind.Deployment:
-              // We need to sync ourselves with the other panel if it's also Deployment
-              syncSelection(selection, this.schematicKind);
-              break;
-            case SchematicKind.Component:
-              // The deployment node selected defines which nodes appear in the Component panel
-              if (this.schematicData) {
-                await this.loadSchematicData(this.schematicData);
-              }
-              break;
-          }
-        },
-      }),
-    );
+        switch (this.schematicKind) {
+          case SchematicKind.Deployment:
+            // We need to sync ourselves with the other panel if it's also Deployment
+            syncSelection(selection, this.schematicKind);
+            break;
+          case SchematicKind.Component:
+            // The deployment node selected defines which nodes appear in the Component panel
+            if (this.schematicData) {
+              await this.loadSchematicData(this.schematicData);
+            }
+            break;
+        }
+      },
+    });
 
     let lastComponentSelection: OBJ.Node | null = null;
-    this.subscribers.push(
-      componentSelection$.subscribe({
-        next: (selection) => {
-          if (selection && lastComponentSelection === selection[0]) return;
-          lastComponentSelection = selection ? selection[0] : null;
+    componentSelection$.pipe(untilUnmounted).subscribe({
+      next: (selection) => {
+        if (selection && lastComponentSelection === selection[0]) return;
+        lastComponentSelection = selection ? selection[0] : null;
 
-          switch (this.schematicKind) {
-            case SchematicKind.Deployment:
-              break;
-            case SchematicKind.Component:
-              // We need to sync ourselves with the other panel if it's also Component
-              syncSelection(selection, this.schematicKind);
-              break;
-          }
-        },
-      }),
-    );
+        switch (this.schematicKind) {
+          case SchematicKind.Deployment:
+            break;
+          case SchematicKind.Component:
+            // We need to sync ourselves with the other panel if it's also Component
+            syncSelection(selection, this.schematicKind);
+            break;
+        }
+      },
+    });
 
     this.renderer?.stage?.addChild(this.sceneManager.scene as PIXI.Container);
 

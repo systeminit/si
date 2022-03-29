@@ -37,7 +37,7 @@ import EditFormComponent from "@/organisims/EditFormComponent.vue";
 import { ComponentService } from "@/service/component";
 import { GetComponentMetadataResponse } from "@/service/component/get_component_metadata";
 import { toRefs, computed } from "vue";
-import { fromRef, refFrom } from "vuse-rx";
+import { fromRef, refFrom, untilUnmounted } from "vuse-rx";
 import { from, combineLatest, ReplaySubject } from "rxjs";
 import { switchMap, tap } from "rxjs/operators";
 import { system$ } from "@/observable/system";
@@ -84,7 +84,7 @@ const editFields = refFrom<EditFields | undefined>(
 // We should re-fetch the metadata if the resource was synced
 const resourceSynced$ = new ReplaySubject<true>();
 resourceSynced$.next(true); // We must fetch on setup
-eventResourceSynced$.subscribe((resourceSyncId) => {
+eventResourceSynced$.pipe(untilUnmounted).subscribe((resourceSyncId) => {
   combineLatest([system$]).pipe(
     tap(([system]) => {
       const data = resourceSyncId?.payload.data;

@@ -50,7 +50,7 @@ import SiTextBox from "@/atoms/SiTextBox.vue";
 import { ComponentService } from "@/service/component";
 import { GlobalErrorService } from "@/service/global_error";
 import { ChangeSetService } from "@/service/change_set";
-import { fromRef, refFrom } from "vuse-rx";
+import { fromRef, refFrom, untilUnmounted } from "vuse-rx";
 import VueFeather from "vue-feather";
 import { system$ } from "@/observable/system";
 import { from, combineLatest, ReplaySubject } from "rxjs";
@@ -120,7 +120,7 @@ const runSync = () => {
 
 const resourceSynced$ = new ReplaySubject<true>();
 resourceSynced$.next(true); // We must fetch on setup
-eventResourceSynced$.subscribe((resourceSyncId) => {
+eventResourceSynced$.pipe(untilUnmounted).subscribe((resourceSyncId) => {
   combineLatest([system$]).pipe(
     tap(([system]) => {
       const data = resourceSyncId?.payload.data;

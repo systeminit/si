@@ -1,12 +1,12 @@
 import * as PIXI from "pixi.js";
 import * as OBJ from "../obj";
-import * as Rx from "rxjs";
 
 import { SchematicGroup, NodeGroup, ConnectionGroup } from "../group";
 import { Renderer } from "../renderer";
 import { Grid, BACKGROUND_GRID_NAME } from "../obj";
 import { Schematic } from "../../model";
 import { Position } from "../cg";
+import { untilUnmounted } from "vuse-rx";
 import { InteractionManager } from "../interaction";
 import { SelectionManager } from "../interaction/selection";
 import { schematicKindFromNodeKind } from "@/api/sdf/dal/schematic";
@@ -55,10 +55,8 @@ export class SceneManager {
     this.zoomFactor = 1;
   }
 
-  subscribeToInteractionEvents(
-    interactionManager: InteractionManager,
-  ): Rx.Subscription {
-    return interactionManager.zoomFactor$.subscribe({
+  subscribeToInteractionEvents(interactionManager: InteractionManager) {
+    interactionManager.zoomFactor$.pipe(untilUnmounted).subscribe({
       next: (v) => this.updateZoomFactor(v),
     });
   }

@@ -198,7 +198,7 @@ import LockButton from "@/atoms/LockButton.vue";
 import SiSelect from "@/atoms/SiSelect.vue";
 import { ref } from "vue";
 import { LabelList } from "@/api/sdf/dal/label_list";
-import { refFrom } from "vuse-rx";
+import { refFrom, untilUnmounted } from "vuse-rx";
 import { switchMap } from "rxjs/operators";
 import { from } from "rxjs";
 import { ComponentService } from "@/service/component";
@@ -218,13 +218,13 @@ import {
 const isPinned = ref<boolean>(false);
 const selectedComponentId = ref<number | "">("");
 
-componentSelection$.subscribe((node) => {
+componentSelection$.pipe(untilUnmounted).subscribe((node) => {
   if (isPinned.value) return;
 
   const maybe = node?.length ? node[0]?.nodeKind?.componentId : undefined;
   selectedComponentId.value = maybe ?? "";
 });
-deploymentSelection$.subscribe((node) => {
+deploymentSelection$.pipe(untilUnmounted).subscribe((node) => {
   if (isPinned.value) return;
 
   const maybe = node?.length ? node[0]?.nodeKind?.componentId : undefined;
