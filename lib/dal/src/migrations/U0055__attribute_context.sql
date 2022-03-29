@@ -86,20 +86,11 @@ BEGIN
     END;
     RAISE DEBUG 'system_check: %', system_check;
 
-    -- This bottoms out just before saying "I want free-floating props", since those should be
-    -- considered specially.  If we're interested in retrieving those, we're probably _only_
-    -- interested in retrieving those, and we can accomplish that by explicitly setting the
-    -- schema/variant/component/system to -1 in the incoming check_context.
     result := (prop_check AND schema_check AND schema_variant_check AND component_check AND system_check)
         OR (prop_check AND schema_check AND schema_variant_check AND component_check AND this_system_id = -1)
         OR (prop_check AND schema_check AND schema_variant_check AND this_component_id = -1 AND this_system_id = -1)
         OR (prop_check AND schema_check AND this_schema_variant_id = -1 AND this_component_id = -1 AND this_system_id = -1)
-        OR CASE
-            WHEN check_context_record.attribute_context_prop_id IS NULL THEN
-                FALSE
-            ELSE
-                (prop_check AND this_schema_id = -1 AND this_schema_variant_id = -1 AND this_component_id = -1 AND this_system_id = -1)
-        END;
+        OR (prop_check AND this_schema_id = -1 AND this_schema_variant_id = -1 AND this_component_id = -1 AND this_system_id = -1);
     RAISE DEBUG 'in_attribute_context check result: %', result;
 END;
 $$ LANGUAGE PLPGSQL IMMUTABLE;
