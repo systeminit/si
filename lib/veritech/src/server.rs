@@ -3,7 +3,7 @@ pub use self::config::{
     StandardConfigFile,
 };
 pub(crate) use self::publisher::{Publisher, PublisherError};
-pub use self::server::{Server, ServerError};
+pub use self::server::{Server, ServerError, ShutdownHandle};
 pub(crate) use self::subscriber::{Request, Subscriber, SubscriberError};
 
 mod config;

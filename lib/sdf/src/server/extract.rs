@@ -6,8 +6,8 @@ use axum::{
     Json,
 };
 use dal::{
-    context::{self, DalContextBuilder, ServicesContext, Transactions, TransactionsError},
-    ReadTenancy, User, UserClaim, Visibility, WorkspaceId, WriteTenancy,
+    context::{self, DalContextBuilder, ServicesContext},
+    ReadTenancy, TransactionsStarter, User, UserClaim, Visibility, WorkspaceId, WriteTenancy,
 };
 use hyper::StatusCode;
 use si_data::{nats, pg};
@@ -38,19 +38,6 @@ where
     }
 }
 
-pub struct TransactionsStarter {
-    pg_conn: pg::InstrumentedClient,
-    nats_conn: nats::Client,
-}
-
-impl TransactionsStarter {
-    pub async fn start(&mut self) -> Result<Transactions<'_>, TransactionsError> {
-        let pg_txn = self.pg_conn.transaction().await?;
-        let nats_txn = self.nats_conn.transaction();
-        Ok(Transactions::new(pg_txn, nats_txn))
-    }
-}
-
 pub struct HandlerContext(pub DalContextBuilder, pub TransactionsStarter);
 
 #[async_trait]
@@ -64,15 +51,12 @@ where
         let Extension(services_context) = Extension::<ServicesContext>::from_request(req)
             .await
             .map_err(internal_error)?;
-        let (dal_ctx_builder, pg_conn) = services_context
-            .into_builder_and_pg_conn()
+        let builder = services_context.into_builder();
+        let txns = builder
+            .transactions_starter()
             .await
             .map_err(internal_error)?;
-        let nats_conn = dal_ctx_builder.nats_conn().clone();
-        Ok(Self(
-            dal_ctx_builder,
-            TransactionsStarter { pg_conn, nats_conn },
-        ))
+        Ok(Self(builder, txns))
     }
 }
 

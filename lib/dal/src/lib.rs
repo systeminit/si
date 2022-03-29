@@ -49,6 +49,7 @@ pub mod standard_model;
 pub mod standard_pk;
 pub mod system;
 pub mod tenancy;
+pub mod test;
 pub mod test_harness;
 pub mod timestamp;
 pub mod user;
@@ -72,7 +73,8 @@ pub use attribute::{
     },
 };
 pub use billing_account::{
-    BillingAccount, BillingAccountDefaults, BillingAccountError, BillingAccountId, BillingAccountPk,
+    BillingAccount, BillingAccountDefaults, BillingAccountError, BillingAccountId,
+    BillingAccountPk, BillingAccountSignup,
 };
 pub use capability::{Capability, CapabilityError, CapabilityId, CapabilityPk, CapabilityResult};
 pub use change_set::{ChangeSet, ChangeSetError, ChangeSetPk, ChangeSetStatus, NO_CHANGE_SET_PK};
@@ -84,7 +86,10 @@ pub use code_generation_resolver::{
 };
 pub use code_view::{CodeLanguage, CodeView};
 pub use component::{Component, ComponentError, ComponentId, ComponentView};
-pub use context::{DalContext, TransactionsError};
+pub use context::{
+    AccessBuilder, DalContext, DalContextBuilder, RequestContext, ServicesContext, Transactions,
+    TransactionsError, TransactionsStarter,
+};
 pub use cyclone_key_pair::CycloneKeyPair;
 pub use edge::{Edge, EdgeError, EdgeResult};
 pub use edit_session::{
