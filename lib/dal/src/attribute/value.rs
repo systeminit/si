@@ -33,14 +33,14 @@ use crate::{
     WriteTenancy,
 };
 
-const FIND_WITH_PARENT_AND_PROTOTYPE_FOR_CONTEXT: &str =
-    include_str!("../queries/attribute_value_find_with_parent_and_protype_for_context.sql");
 const FIND_FOR_CONTEXT: &str = include_str!("../queries/attribute_value_find_for_context.sql");
 const FIND_FOR_PROP: &str = include_str!("../queries/attribute_value_find_for_prop.sql");
-const LIST_PAYLOAD_FOR_READ_CONTEXT: &str =
-    include_str!("../queries/attribute_value_list_payload_for_read_context.sql");
 const FIND_PROP_FOR_VALUE: &str =
     include_str!("../queries/attribute_value_find_prop_for_value.sql");
+const FIND_WITH_PARENT_AND_PROTOTYPE_FOR_CONTEXT: &str =
+    include_str!("../queries/attribute_value_find_with_parent_and_protype_for_context.sql");
+const LIST_PAYLOAD_FOR_READ_CONTEXT: &str =
+    include_str!("../queries/attribute_value_list_payload_for_read_context.sql");
 
 #[derive(Error, Debug)]
 pub enum AttributeValueError {
