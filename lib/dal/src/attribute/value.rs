@@ -33,14 +33,16 @@ use crate::{
     WriteTenancy,
 };
 
-const FIND_WITH_PARENT_AND_PROTOTYPE_FOR_CONTEXT: &str =
-    include_str!("../queries/attribute_value_find_with_parent_and_protype_for_context.sql");
+const CHILD_ATTRIBUTE_VALUES_IN_CONTEXT: &str =
+    include_str!("../queries/attribute_value_child_attribute_values_in_context.sql");
 const FIND_FOR_CONTEXT: &str = include_str!("../queries/attribute_value_find_for_context.sql");
 const FIND_FOR_PROP: &str = include_str!("../queries/attribute_value_find_for_prop.sql");
-const LIST_PAYLOAD_FOR_READ_CONTEXT: &str =
-    include_str!("../queries/attribute_value_list_payload_for_read_context.sql");
 const FIND_PROP_FOR_VALUE: &str =
     include_str!("../queries/attribute_value_find_prop_for_value.sql");
+const FIND_WITH_PARENT_AND_PROTOTYPE_FOR_CONTEXT: &str =
+    include_str!("../queries/attribute_value_find_with_parent_and_protype_for_context.sql");
+const LIST_PAYLOAD_FOR_READ_CONTEXT: &str =
+    include_str!("../queries/attribute_value_list_payload_for_read_context.sql");
 
 #[derive(Error, Debug)]
 pub enum AttributeValueError {
@@ -238,6 +240,28 @@ impl AttributeValue {
         Ok(())
     }
 
+    pub async fn child_attribute_values_in_context(
+        &self,
+        txn: &PgTxn<'_>,
+        read_tenancy: &ReadTenancy,
+        visibility: &Visibility,
+        attribute_read_context: AttributeReadContext,
+    ) -> AttributeValueResult<Vec<Self>> {
+        let rows = txn
+            .query(
+                CHILD_ATTRIBUTE_VALUES_IN_CONTEXT,
+                &[
+                    &read_tenancy,
+                    &visibility,
+                    self.id(),
+                    &attribute_read_context,
+                ],
+            )
+            .await?;
+
+        Ok(standard_model::objects_from_rows(rows)?)
+    }
+
     pub async fn find_with_parent_and_prototype_for_context(
         txn: &PgTxn<'_>,
         read_tenancy: &ReadTenancy,
@@ -346,6 +370,16 @@ impl AttributeValue {
         Ok(result)
     }
 
+    /// Update the [`AttributeValue`] for a specific [`AttributeContext`] to the given value. If the
+    /// given [`AttributeValue`] is for a different [`AttributeContext`] than the one provided, a
+    /// new [`AttributeValue`] will be created for the given [`AttributeContext`].
+    ///
+    /// By passing in [`None`] as the `value`, the caller is explicitly saying "this value does not
+    /// exist here". This is potentially useful for "tombstoning" values that have been inherited
+    /// from a less-specific [`AttributeContext`]. For example, if a value has been set for a
+    /// [`SchemaVariant`](crate::SchemaVariant), but we do not want that value to exist for a
+    /// specific [`Component`](crate::Component), we can update the variant's value to [`None`] in
+    /// an [`AttributeContext`] specific to that component.
     #[allow(clippy::too_many_arguments)]
     pub async fn update_for_context(
         txn: &PgTxn<'_>,
@@ -538,6 +572,13 @@ impl AttributeValue {
         Ok((value, *attribute_value.id()))
     }
 
+    /// Insert a new value under the parent [`AttributeValue`] in the given [`AttributeContext`]. This is mostly only
+    /// useful for adding elements to a [`PropKind::Array`], or to a [`PropKind::Map`]. Updating existing values in an
+    /// [`Array`](PropKind::Array), or [`Map`](PropKind::Map), and setting/updating all other [`PropKind`] should be
+    /// able to directly use [`update_for_context()`](AttributeValue::update_for_context()), as there will already be an
+    /// appropriate [`AttributeValue`] to use. By using this function,
+    /// [`update_for_context()`](AttributeValue::update_for_context()) is called after we have created an appropriate
+    /// [`AttributeValue`] to use.
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn insert_for_context(
