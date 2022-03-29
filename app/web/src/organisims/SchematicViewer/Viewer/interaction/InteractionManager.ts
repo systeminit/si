@@ -1,5 +1,6 @@
 import * as PIXI from "pixi.js";
 import * as Rx from "rxjs";
+import { untilUnmounted } from "vuse-rx";
 
 // Should we bypass the datamanager here?
 import { editSession$ } from "@/observable/edit_session";
@@ -86,14 +87,14 @@ export class InteractionManager {
     this.zoomMagnitude$ = new Rx.ReplaySubject<number | null>(1);
     this.zoomMagnitude$.next(1);
 
-    this.zoomMagnitude$.subscribe({
+    this.zoomMagnitude$.pipe(untilUnmounted).subscribe({
       next: (v) => this.setZoomMagnitude(v),
     });
 
     this.zoomFactor$ = new Rx.ReplaySubject<number | null>(1);
     this.zoomFactor$.next(1);
 
-    this.zoomFactor$.subscribe({
+    this.zoomFactor$.pipe(untilUnmounted).subscribe({
       next: (v) => this.setZoomFactor(v),
     });
 
