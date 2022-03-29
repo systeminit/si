@@ -39,8 +39,10 @@ const FIND_FOR_CONTEXT: &str = include_str!("../queries/attribute_value_find_for
 const FIND_FOR_PROP: &str = include_str!("../queries/attribute_value_find_for_prop.sql");
 const FIND_PROP_FOR_VALUE: &str =
     include_str!("../queries/attribute_value_find_prop_for_value.sql");
+const FIND_WITH_PARENT_AND_KEY_FOR_CONTEXT: &str =
+    include_str!("../queries/attribute_value_find_with_parent_and_key_for_context.sql");
 const FIND_WITH_PARENT_AND_PROTOTYPE_FOR_CONTEXT: &str =
-    include_str!("../queries/attribute_value_find_with_parent_and_protype_for_context.sql");
+    include_str!("../queries/attribute_value_find_with_parent_and_prototype_for_context.sql");
 const LIST_PAYLOAD_FOR_READ_CONTEXT: &str =
     include_str!("../queries/attribute_value_list_payload_for_read_context.sql");
 
@@ -276,6 +278,31 @@ impl AttributeValue {
                     &context,
                     &attribute_prototype_id,
                     &parent_attribute_value_id,
+                ],
+            )
+            .await?;
+
+        Ok(standard_model::option_object_from_row(row)?)
+    }
+
+    /// Find [`Self`] with a given parent value and key.
+    pub async fn find_with_parent_and_key_for_context(
+        txn: &PgTxn<'_>,
+        read_tenancy: &ReadTenancy,
+        visibility: &Visibility,
+        parent_attribute_value_id: Option<AttributeValueId>,
+        key: Option<String>,
+        context: AttributeContext,
+    ) -> AttributeValueResult<Option<Self>> {
+        let row = txn
+            .query_opt(
+                FIND_WITH_PARENT_AND_KEY_FOR_CONTEXT,
+                &[
+                    read_tenancy,
+                    &visibility,
+                    &context,
+                    &parent_attribute_value_id,
+                    &key,
                 ],
             )
             .await?;
