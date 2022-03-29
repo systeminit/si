@@ -1755,6 +1755,7 @@ async fn edit_field_for_attribute_value(
                         visibility,
                         head_visibility,
                         change_set_visibility,
+                        attribute_read_context,
                         *child_attribute_value.id(),
                         Some(attribute_value_id),
                         Some(edit_field_path_for_children.clone()),

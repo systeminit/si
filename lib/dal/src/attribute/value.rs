@@ -33,6 +33,8 @@ use crate::{
     WriteTenancy,
 };
 
+const CHILD_ATTRIBUTE_VALUES_IN_CONTEXT: &str =
+    include_str!("../queries/attribute_value_child_attribute_values_in_context.sql");
 const FIND_FOR_CONTEXT: &str = include_str!("../queries/attribute_value_find_for_context.sql");
 const FIND_FOR_PROP: &str = include_str!("../queries/attribute_value_find_for_prop.sql");
 const FIND_PROP_FOR_VALUE: &str =
@@ -236,6 +238,28 @@ impl AttributeValue {
         )
         .await?;
         Ok(())
+    }
+
+    pub async fn child_attribute_values_in_context(
+        &self,
+        txn: &PgTxn<'_>,
+        read_tenancy: &ReadTenancy,
+        visibility: &Visibility,
+        attribute_read_context: AttributeReadContext,
+    ) -> AttributeValueResult<Vec<Self>> {
+        let rows = txn
+            .query(
+                CHILD_ATTRIBUTE_VALUES_IN_CONTEXT,
+                &[
+                    &read_tenancy,
+                    &visibility,
+                    self.id(),
+                    &attribute_read_context,
+                ],
+            )
+            .await?;
+
+        Ok(standard_model::objects_from_rows(rows)?)
     }
 
     pub async fn find_with_parent_and_prototype_for_context(
