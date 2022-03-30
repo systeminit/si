@@ -149,7 +149,7 @@ export class SceneManager {
       }
     }
 
-    if (selected) {
+    if (selected?.nodeKind) {
       const selectionObserver = selectionManager.selectionObserver(
         schematicKindFromNodeKind(selected.nodeKind.kind),
       );
