@@ -16,7 +16,6 @@ import { PanningManager } from "./panning";
 import { ConnectingManager } from "./connecting";
 import { ZoomingManager } from "./zooming";
 import { NodeAddManager } from "./nodeAdd";
-import { schematicKindFromNodeKind } from "@/api/sdf/dal/schematic";
 
 // import { PanningInteractionData } from "./interaction/panning";
 
@@ -133,8 +132,11 @@ export class InteractionManager {
     e: PIXI.InteractionEvent,
   ): Promise<void> {
     const editSession = await Rx.firstValueFrom(editSession$);
-    const target = this.renderer.plugins.interaction.hitTest(e.data.global);
+    const schematicKind = await Rx.firstValueFrom(
+      this.dataManager.schematicKind$,
+    );
 
+    const target = this.renderer.plugins.interaction.hitTest(e.data.global);
     const isFakeNode = target.id === -1;
     const canEdit = editSession && !isFakeNode;
 
@@ -152,9 +154,6 @@ export class InteractionManager {
         ST.readySelecting(this.stateService);
         ST.deSelecting(this.stateService);
 
-        const schematicKind = await Rx.firstValueFrom(
-          this.dataManager.schematicKind$,
-        );
         if (schematicKind) {
           console.debug("Deselecting node");
           const selectionObserver = this.selectionManager.selectionObserver(
@@ -180,10 +179,10 @@ export class InteractionManager {
         ST.readySelecting(this.stateService);
         ST.selecting(this.stateService);
 
-        if (!isFakeNode && target.nodeKind?.kind) {
+        if (!isFakeNode && schematicKind) {
           console.debug("Selecting real node");
           const selectionObserver = this.selectionManager.selectionObserver(
-            schematicKindFromNodeKind(target.nodeKind.kind),
+            schematicKind,
           );
           this.selectionManager.select(target, selectionObserver);
         }

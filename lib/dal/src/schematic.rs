@@ -189,7 +189,6 @@ impl Schematic {
 
         let mut node_views = Vec::with_capacity(nodes.len());
         for node in nodes {
-            let schematic_kind = (*node.kind()).into();
             let (schema, kind, name) = match node.kind() {
                 NodeKind::Deployment | NodeKind::Component => {
                     let component = node
@@ -251,8 +250,7 @@ impl Schematic {
                 txn,
                 read_tenancy,
                 visibility,
-                schematic_kind,
-                &system_id,
+                system_id,
                 root_node_id,
                 *node.id(),
             )
@@ -260,13 +258,7 @@ impl Schematic {
             let template =
                 NodeTemplate::new_from_schema_id(txn, read_tenancy, visibility, *schema.id())
                     .await?;
-            let view = NodeView::new(
-                name,
-                node,
-                kind,
-                position.map_or(vec![], |p| vec![p]),
-                template,
-            );
+            let view = NodeView::new(name, node, kind, position, template);
             node_views.push(view);
         }
 

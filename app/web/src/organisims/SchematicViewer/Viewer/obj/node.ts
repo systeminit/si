@@ -40,7 +40,7 @@ export class Node extends PIXI.Container {
   connections: Array<Connection>;
   selection?: SelectionStatus;
 
-  constructor(n: MODEL.Node) {
+  constructor(n: MODEL.Node, pos: Position) {
     super();
     this.id = n.id;
 
@@ -50,22 +50,8 @@ export class Node extends PIXI.Container {
     this.nodeKind = n.kind;
     this.connections = [];
 
-    if (typeof n.position[0].x == typeof "") {
-      // TODO this shouldn't live here; Position should already be a number.
-      const postiion = {
-        x: n.position[0].x as string,
-        y: n.position[0].y as string,
-      };
-      this.x = parseFloat(postiion.x);
-      this.y = parseFloat(postiion.y);
-    } else {
-      const postiion = {
-        x: n.position[0].x as number,
-        y: n.position[0].y as number,
-      };
-      this.x = postiion.x;
-      this.y = postiion.y;
-    }
+    this.x = pos.x;
+    this.y = pos.y;
 
     this.interactive = true;
     this.buttonMode = true;

@@ -12,8 +12,7 @@ import { NodeCreate } from "./event";
 import { EditorContext } from "@/api/sdf/dal/schematic";
 import { CreateConnectionResponse } from "@/service/schematic/create_connection";
 import { SetNodePositionResponse } from "@/service/schematic/set_node_position";
-
-// import { schematicData$ as schematicDataGlobal$ } from "./observable";
+import { deploymentSelection$ } from "@/organisims/SchematicViewer/state";
 
 export class SchematicDataManager {
   id: string;
@@ -66,7 +65,14 @@ export class SchematicDataManager {
     const editorContext = await Rx.firstValueFrom(this.editorContext$);
     const schematicKind = await Rx.firstValueFrom(this.schematicKind$);
     if (nodeUpdate && editorContext && schematicKind) {
+      const selectedDeployments = await Rx.firstValueFrom(deploymentSelection$);
+      const selectedDeploymentNodeId = (selectedDeployments ?? [])[0]?.id;
+
       SchematicService.setNodePosition({
+        deploymentNodeId:
+          schematicKind !== SchematicKind.Deployment
+            ? selectedDeploymentNodeId
+            : undefined,
         schematicKind,
         x: `${nodeUpdate.position.x}`,
         y: `${nodeUpdate.position.y}`,

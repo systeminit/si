@@ -8,7 +8,6 @@ import { SelectionManager } from "./selection";
 import { Renderer } from "../renderer";
 import { NodeCreate } from "../../data/event";
 import { SchematicKind } from "@/api/sdf/dal/schematic";
-import { schematicKindFromNodeKind } from "@/api/sdf/dal/schematic";
 
 import { deploymentSelection$ } from "../../state";
 
@@ -49,17 +48,21 @@ export class NodeAddManager {
   }
 
   async addNode(nodeObj: OBJ.Node, schemaId: number): Promise<void> {
+    const schematicKind = await Rx.firstValueFrom(
+      this.dataManager.schematicKind$,
+    );
+
     this.sceneManager.addNode(nodeObj);
     this.nodeAddSchemaId = schemaId;
     this.node = this.sceneManager.getGeo(nodeObj.name) as OBJ.Node;
 
-    // Since node doesn't exist yet let's not sync the node add
-    if (nodeObj.nodeKind?.kind) {
+    if (schematicKind) {
       console.debug("Initiating node add");
       const selectionObserver = this.selectionManager.selectionObserver(
-        schematicKindFromNodeKind(nodeObj.nodeKind.kind),
+        schematicKind,
       );
       this.selectionManager.clearSelection(selectionObserver);
+      // Since node doesn't exist yet let's not sync the node add
       this.selectionManager.select(this.node);
     }
   }

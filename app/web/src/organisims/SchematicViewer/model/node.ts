@@ -2,6 +2,10 @@ import { Color, SchematicData } from "./common";
 import { Socket } from "./socket";
 import { NodeTemplate } from "@/api/sdf/dal/node";
 import { NodeKind } from "@/api/sdf/dal/node";
+import {
+  SchematicKind,
+  schematicKindFromNodeKind,
+} from "@/api/sdf/dal/schematic";
 
 export interface NodeLabel {
   title: string;
@@ -11,11 +15,6 @@ export interface NodeLabel {
 export enum ComponentType {
   APPLICATION = "application",
   COMPUTING = "computing",
-}
-
-export enum SchematicLevel {
-  APPLICATION = "deployment",
-  COMPUTING = "component",
 }
 
 /**
@@ -37,10 +36,10 @@ interface NodePosition {
   id: string;
   x: number | string;
   y: number | string;
-  schematicKind?: SchematicLevel;
-  rootNodeId?: string;
-  applicationId?: string;
-  systemId?: string;
+  schematic_kind: SchematicKind;
+  deployment_node_id: number | null;
+  root_node_id?: string;
+  system_id?: string;
 }
 
 export enum QualificationStatus {
@@ -115,7 +114,10 @@ export interface NodeUpdate {
   position: NodePositionUpdate;
 }
 
-export function fakeNodeFromTemplate(template: NodeTemplate): Node {
+export function fakeNodeFromTemplate(
+  template: NodeTemplate,
+  deploymentNodeId: number | null,
+): Node {
   let componentId;
   switch (template.kind) {
     case NodeKind.Component:
@@ -131,6 +133,8 @@ export function fakeNodeFromTemplate(template: NodeTemplate): Node {
     position: [
       {
         id: "-1",
+        schematic_kind: schematicKindFromNodeKind(template.kind),
+        deployment_node_id: deploymentNodeId,
         x: 0,
         y: 0,
       },
