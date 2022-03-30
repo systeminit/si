@@ -54,7 +54,8 @@ Not only is flexibility between architectures useful for local development, but 
 The bootstrapper is (mostly) idempotent, so feel free to run it as many times as you like!
 However, it _will_ upgrade existing packages without confirmations, so ensure that you are ready to do so.
 
-**Login:** now, we need to ensure that we are [logged into Docker locally](https://docs.docker.com/engine/reference/commandline/login/) and that the corresponding account can pull images from our [private repositories](https://hub.docker.com/orgs/systeminit/repositories).
+**Login:** now, we need to ensure that we are [logged into Docker locally](https://docs.docker.com/engine/reference/commandline/login/)
+and that the corresponding account can pull images from our [private repositories](https://hub.docker.com/orgs/systeminit/repositories).
 Please reach out internally if your account cannot pull images from the private SI repositories.
 
 **Check Services:** SI uses external services in conjunction with its native components.
@@ -129,7 +130,7 @@ To verify that all lints will pass in CI, execute the following target:
 > ( cd ci; make tidy )
 > ```
 
-You can also run individual [DAL](./lib/dal) integration tests before bringing
+You can also run individual [dal](./lib/dal) integration tests before bringing
 up the entire SI stack, as neeeded. This can be done in the root of the
 repository with two terminal panes.
 
@@ -152,7 +153,7 @@ Our crates leverage `rustdoc` for seamless integration with `cargo doc`, [Intell
 
 ### Reading Rust Documentation
 
-Build the docs for all of our crates and open the docs in your browser at `dal` by executing the following:
+Build the docs for all of our crates and open the docs in your browser at [dal](./lib/dal) by executing the following:
 
 ```bash
 cargo doc --all
@@ -198,27 +199,22 @@ make troubleshoot
 ## Architecture
 
 The diagram below illustrates a _very_ high-level overview of SI's calling stack.
-There are many other components, including the JS language server, that aren't displayed, but the "onion-style" diagram is meant to show the overall flow from mouse-click to database entry.
+There are other components and paradigms that aren't displayed, but this diagram is purely meant to show the overall flow from "mouse-click" onwards.
 
 ```
-┌──────────────────────────┐
-│ Web Application          │
-│ ┌──────────────────────┐ │
-│ │ SDF                  │ │
-│ │ ┌──────────────────┐ │ │
-│ │ │ DAL              │ │ │
-│ │ │ ┌──────────────┐ │ │ │
-│ │ │ │ DB ("smart") │ │ │ │
-│ │ │ └──────────────┘ │ │ │
-│ │ │                  │ │ │
-│ │ └──────────────────┘ │ │
-│ │                      │ │
-│ └──────────────────────┘ │
-│                          │
-└──────────────────────────┘
+┌─────┐   ┌─────┐   ┌─────┐   ┌────┐
+│ web ├───┤ sdf ├───┤ dal ├───┤ db │
+└─────┘   └─────┘   └──┬──┘   └────┘
+                       │
+      ┌────────────────┘
+      │
+┌─────┴────┐   ┌──────────────────┐   ┌─────────┐
+│ veritech ├───┤ deadpool_cyclone ├───┤ cyclone │
+└──────────┘   └──────────────────┘   └─────────┘
 ```
 
-We claim that the database is "smart" because it includes many functions, currently in `PLPGSQL`, that perform non-trivial logic.
+It's worth noting that our database has many stored procedures (i.e. database functions) that perform non-trivial logic.
+While the [dal](./lib/dal) is the primary "data access layer" for the rest of the SI stack, it does not perform _all_ the heavy lifting.
 
 ## Contributing
 
@@ -229,26 +225,15 @@ When in doubt, use `feat`, `fix`, or `chore`!
 Moreover, please sign your commits using `git commit -s`.
 You can amend an existing commit with `git commit -s --amend`, if needed.
 
-### Shortcut Integration
+### Linear Integration
 
-If using [Shortcut](https://shortcut.com), you can link stories with commits.
-You can do so by including `[sc-XXXX]` in your commit message where `XXXX` represents the story ID.
-A recommended workflow is to put it in the body of the commit message rather than the title due to the latter's 50 character limit.
-
-Here is an example commit message using the integration:
-
-```
-chore(butt): add I like my butt
-
-- Add I like my butt to butt [sc-1234]
-- Enhance unit tests for butt
-```
+If your pull request addresses a Linear issue in some manner, please refer to the [official guide](https://linear.app/docs/github?tabs=206cad22125a) on linking the two together.
 
 ## Engineering Team Links
 
 Welcome to the team! A few handy links:
 
-* [Engineering Team Onboarding](https://docs.google.com/presentation/d/1Ypesl1iZ5KXI9KBxXINYPlo5TexAuln6Dg26yPXEqbM) - the foundation of our team
-* [Engineering Process](https://docs.google.com/document/d/1T3pMkTUX5fhzkBpG4NR3x6DrhZ18xXIjnSYl0g6Ld4o) - how we work together 
-* [Engineering Maxims](https://docs.google.com/document/d/1l-YCyMbXaVAG6VVDucZVJlO7VbJeTAAwt4jB-1usSQA) - some maxims we try to follow
+* [Engineering Team Onboarding](https://docs.google.com/presentation/d/1Ypesl1iZ5KXI9KBxXINYPlo5TexAuln6Dg26yPXEqbM/view) - the foundation of our team
+* [The SI Way](https://docs.google.com/document/d/1llbG8MLv2c9SytLnwCrJU27n5yfGsrI1c4Pi6qscVz4/view) - how we work together 
+* [Engineering Maxims](https://docs.google.com/document/d/1l-YCyMbXaVAG6VVDucZVJlO7VbJeTAAwt4jB-1usSQA/view) - some maxims we try to follow
 
