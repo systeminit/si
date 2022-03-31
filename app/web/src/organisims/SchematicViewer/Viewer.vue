@@ -127,6 +127,10 @@ export default defineComponent({
       type: String as PropType<SchematicKind | null>,
       required: true,
     },
+    isPinned: {
+      type: Boolean,
+      required: true,
+    },
   },
   setup(props) {
     const { state, send, service } = useMachine(props.viewerState.machine);
@@ -208,9 +212,14 @@ export default defineComponent({
         selectionObserver(ctx).next(nodes);
       }
     },
-    schematicData(schematic) {
-      if (this.dataManager && this.schematicData) {
-        this.dataManager.schematicData$.next(schematic);
+    async schematicData(schematic) {
+      if (this.dataManager && this.schematicData && this.schematicKind) {
+        const nodes = await Rx.firstValueFrom(
+          selectionObserver(this.schematicKind),
+        );
+        if (!_.isEqual(nodes, schematic)) {
+          this.dataManager.schematicData$.next(schematic);
+        }
       }
     },
   },
@@ -326,7 +335,7 @@ export default defineComponent({
             break;
           case SchematicKind.Component:
             // The deployment node selected defines which nodes appear in the Component panel
-            if (this.schematicData) {
+            if (this.schematicData && !this.isPinned) {
               await this.loadSchematicData(this.schematicData);
             }
             break;

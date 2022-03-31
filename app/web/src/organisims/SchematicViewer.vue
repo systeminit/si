@@ -8,6 +8,7 @@
       :viewer-event$="props.viewerEvent$"
       :editor-context="editorContext"
       :schematic-kind="schematicKind"
+      :is-pinned="isPinned"
     />
   </div>
 </template>
@@ -63,6 +64,10 @@ const props = defineProps({
   },
   schematicKind: {
     type: String as PropType<SchematicKind | null>,
+    required: true,
+  },
+  isPinned: {
+    type: Boolean,
     required: true,
   },
 });

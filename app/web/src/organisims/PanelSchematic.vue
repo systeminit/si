@@ -50,6 +50,7 @@
       <SchematicViewer
         :viewer-event$="viewerEventObservable.viewerEvent$"
         :schematic-kind="schematicKind"
+        :is-pinned="schematicKind === SchematicKind.Component && isPinned"
       />
       <!-- <SchematicViewer /> -->
       <!-- <div
@@ -82,7 +83,6 @@ import NodeAddMenu from "@/molecules/NodeAddMenu.vue";
 import { ApplicationService } from "@/service/application";
 import { refFrom } from "vuse-rx";
 import { switchMap } from "rxjs/operators";
-import { from } from "rxjs";
 import { ChangeSetService } from "@/service/change_set";
 import { NodeAddEvent, ViewerEventObservable } from "./SchematicViewer/event";
 import { deploymentSelection$ } from "./SchematicViewer/state";
@@ -90,6 +90,7 @@ import { deploymentSelection$ } from "./SchematicViewer/state";
 import { SchematicService } from "@/service/schematic";
 import { GlobalErrorService } from "@/service/global_error";
 import { firstValueFrom } from "rxjs";
+import * as Rx from "rxjs";
 import * as MODEL from "./SchematicViewer/model";
 import * as OBJ from "./SchematicViewer/Viewer/obj";
 
@@ -150,9 +151,9 @@ const applicationId = refFrom<number | null>(
   ApplicationService.currentApplication().pipe(
     switchMap((application) => {
       if (application) {
-        return from([application.id]);
+        return Rx.from([application.id]);
       } else {
-        return from([null]);
+        return Rx.from([null]);
       }
     }),
   ),
@@ -171,8 +172,15 @@ const addMenuFilters = computed(() => {
 
 const editMode = refFrom<boolean>(ChangeSetService.currentEditMode());
 const rootDeployment = refFrom<Array<OBJ.Node> | null>(
-  deploymentSelection$.asObservable(),
+  deploymentSelection$
+    .asObservable()
+    .pipe(
+      Rx.mergeMap((selection) =>
+        Rx.iif(() => !isPinned.value, Rx.of(selection), Rx.EMPTY),
+      ),
+    ),
 );
+
 const addMenuEnabled = computed(() => {
   switch (schematicKind.value) {
     case SchematicKind.Component:
@@ -180,7 +188,7 @@ const addMenuEnabled = computed(() => {
     case SchematicKind.Deployment:
       return editMode.value;
   }
-  return editMode.value;
+  throw new Error(`unsupported schematic kind ${schematicKind.value}`);
 });
 
 const addNode = async (schemaId: number, _event: MouseEvent) => {
