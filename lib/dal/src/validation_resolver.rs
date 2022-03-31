@@ -255,6 +255,8 @@ impl ValidationResolver {
         Ok(result)
     }
 
+    // FIXME(nick,jacob): this needs to be refactored to work for maps and arrays. Perhaps, the
+    // query will need to use a parent value, key and context for the refactor.
     pub async fn find_values_for_prop_and_component(
         txn: &PgTxn<'_>,
         read_tenancy: &ReadTenancy,

@@ -16,7 +16,7 @@ use crate::attribute::{context::UNSET_ID_VALUE, value::AttributeValueError};
 use crate::code_generation_resolver::CodeGenerationResolverContext;
 use crate::edit_field::{
     widget::prelude::*, EditField, EditFieldAble, EditFieldBaggage, EditFieldError,
-    EditFieldObjectKind, EditFields, VisibilityDiff,
+    EditFieldObjectKind, EditFields,
 };
 use crate::func::backend::validation::{FuncBackendValidateStringValueArgs, ValidationError};
 use crate::func::backend::{
@@ -32,8 +32,8 @@ use crate::schema::variant::{SchemaVariantError, SchemaVariantId};
 use crate::schema::SchemaVariant;
 use crate::validation_resolver::ValidationResolverContext;
 use crate::ws_event::{WsEvent, WsEventError};
-use crate::AttributeContextBuilderError;
 use crate::AttributeValueId;
+use crate::{edit_field, AttributeContextBuilderError};
 use crate::{
     impl_standard_model, node::NodeId, pk, qualification::QualificationError, standard_model,
     standard_model_accessor, standard_model_belongs_to, standard_model_has_many, AttributeContext,
@@ -1696,21 +1696,78 @@ async fn edit_field_for_attribute_value(
     let field_name = prop.name();
     let object_kind = EditFieldObjectKind::ComponentProp;
 
-    // FIXME(nick): fix visibility diff and value to handle arrays and maps.
-    //  - Get head_value if visibility.in_change_set()
-    //  - Get change_set_value if visibility.in_change_set()
-    //
-    // fn extract_value_from_fbrv(fbrv: &FuncBindingReturnValue) -> Option<&serde_json::Value> {
-    //     fbrv.value()
-    // }
-    //
-    // let (value, visibility_diff) = edit_field::value_and_visibility_diff_json_option(
-    //     visibility,
-    //     current_fbrv.as_ref(),
-    //     extract_value_from_fbrv,
-    //     head_fbrv.as_ref(),
-    //     change_set_fbrv.as_ref(),
-    // )?;
+    // Gather the three values we need for visibility diff. For the head and change set values, we
+    // need to use their respective visibilites for attribute value searches, but can use the
+    // standard visibility for getting the func binding return value by id.
+    let current_func_binding_return_value = FuncBindingReturnValue::get_by_id(
+        txn,
+        &tenancy,
+        visibility,
+        &attribute_value.func_binding_return_value_id(),
+    )
+    .await?;
+    let head_func_binding_return_value = if visibility.in_change_set() {
+        if let Some(found_value) = AttributeValue::find_with_parent_and_key_for_context(
+            txn,
+            read_tenancy,
+            head_visibility,
+            parent_attribute_value_id,
+            attribute_value.key.clone(),
+            attribute_value.context,
+        )
+        .await?
+        {
+            FuncBindingReturnValue::get_by_id(
+                txn,
+                &tenancy,
+                visibility,
+                &found_value.func_binding_return_value_id(),
+            )
+            .await?
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+    let change_set_func_binding_return_value = if visibility.in_edit_session() {
+        if let Some(found_value) = AttributeValue::find_with_parent_and_key_for_context(
+            txn,
+            read_tenancy,
+            change_set_visibility,
+            parent_attribute_value_id,
+            attribute_value.key.clone(),
+            attribute_value.context,
+        )
+        .await?
+        {
+            FuncBindingReturnValue::get_by_id(
+                txn,
+                &tenancy,
+                visibility,
+                &found_value.func_binding_return_value_id(),
+            )
+            .await?
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
+    fn extract_value(
+        func_binding_return_value: &FuncBindingReturnValue,
+    ) -> Option<&serde_json::Value> {
+        func_binding_return_value.value()
+    }
+
+    let (value, visibility_diff) = edit_field::value_and_visibility_diff_json_option(
+        visibility,
+        current_func_binding_return_value.as_ref(),
+        extract_value,
+        head_func_binding_return_value.as_ref(),
+        change_set_func_binding_return_value.as_ref(),
+    )?;
 
     let validation_errors = Vec::new();
 
@@ -1808,7 +1865,6 @@ async fn edit_field_for_attribute_value(
         WidgetKind::Checkbox => Widget::Checkbox(CheckboxWidget::new()),
     };
 
-    // FIXME(nick): re-introduce value and visibility diff.
     let mut edit_field = EditField::new(
         field_name,
         current_edit_field_path,
@@ -1816,8 +1872,8 @@ async fn edit_field_for_attribute_value(
         attribute_value_id,
         (*prop.kind()).into(),
         widget,
-        None,
-        VisibilityDiff::None,
+        value,
+        visibility_diff,
         validation_errors,
     );
     edit_field.set_baggage(EditFieldBaggage {

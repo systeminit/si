@@ -55,6 +55,28 @@ impl From<AttributeContext> for AttributeContextBuilder {
     }
 }
 
+impl From<AttributeReadContext> for AttributeContextBuilder {
+    fn from(from_read_context: AttributeReadContext) -> AttributeContextBuilder {
+        let mut builder = AttributeContextBuilder::new();
+        if let Some(prop_id) = from_read_context.prop_id {
+            builder.set_prop_id(prop_id);
+        }
+        if let Some(schema_id) = from_read_context.schema_id {
+            builder.set_schema_id(schema_id);
+        }
+        if let Some(schema_variant_id) = from_read_context.schema_variant_id {
+            builder.set_schema_variant_id(schema_variant_id);
+        }
+        if let Some(component_id) = from_read_context.component_id {
+            builder.set_component_id(component_id);
+        }
+        if let Some(system_id) = from_read_context.system_id {
+            builder.set_system_id(system_id);
+        }
+        builder
+    }
+}
+
 impl AttributeContext {
     pub fn builder() -> AttributeContextBuilder {
         AttributeContextBuilder::new()
