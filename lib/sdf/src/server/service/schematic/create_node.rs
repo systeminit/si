@@ -54,7 +54,8 @@ pub async fn create_node(
         Some(system_id) => system_id,
         None => return Err(SchematicError::InvalidSystem),
     };
-    let (kind, node) = match (SchematicKind::from(*schema.kind()), &request.parent_node_id) {
+    let schematic_kind = SchematicKind::from(*schema.kind());
+    let (kind, node) = match (schematic_kind, &request.parent_node_id) {
         (SchematicKind::Component, Some(parent_node_id)) => {
             let parent_node = Node::get_by_id(
                 ctx.pg_txn(),
@@ -132,7 +133,7 @@ pub async fn create_node(
     )
     .await?;
 
-    let mut position = NodePosition::new(
+    let position = NodePosition::new(
         ctx.pg_txn(),
         ctx.nats_txn(),
         ctx.write_tenancy(),
@@ -140,21 +141,14 @@ pub async fn create_node(
         ctx.history_actor(),
         (*node.kind()).into(),
         request.root_node_id,
-        request.x,
-        request.y,
+        request.system_id,
+        request
+            .parent_node_id
+            .filter(|_| schematic_kind == SchematicKind::Component),
+        request.x.clone(),
+        request.y.clone(),
     )
     .await?;
-    if let Some(system_id) = request.system_id {
-        position
-            .set_system_id(
-                ctx.pg_txn(),
-                ctx.nats_txn(),
-                ctx.visibility(),
-                ctx.history_actor(),
-                Some(system_id),
-            )
-            .await?;
-    }
     position
         .set_node(
             ctx.pg_txn(),
@@ -164,7 +158,34 @@ pub async fn create_node(
             node.id(),
         )
         .await?;
-    let node_view = NodeView::new(name, node, kind, vec![position], node_template);
+    let mut positions = vec![position];
+    if node.kind() == &NodeKind::Deployment {
+        let position_component_panel = NodePosition::new(
+            ctx.pg_txn(),
+            ctx.nats_txn(),
+            ctx.write_tenancy(),
+            ctx.visibility(),
+            ctx.history_actor(),
+            SchematicKind::Component,
+            request.root_node_id,
+            request.system_id,
+            Some(*node.id()),
+            request.x,
+            request.y,
+        )
+        .await?;
+        position_component_panel
+            .set_node(
+                ctx.pg_txn(),
+                ctx.nats_txn(),
+                ctx.visibility(),
+                ctx.history_actor(),
+                node.id(),
+            )
+            .await?;
+        positions.push(position_component_panel);
+    }
+    let node_view = NodeView::new(name, node, kind, positions, node_template);
 
     txns.commit().await?;
     Ok(Json(CreateNodeResponse { node: node_view }))

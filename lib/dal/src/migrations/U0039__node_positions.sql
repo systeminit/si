@@ -14,6 +14,7 @@ CREATE TABLE node_positions
     schematic_kind              text                     NOT NULL,
     root_node_id                bigint                   NOT NULL,
     system_id                   bigint,
+    deployment_node_id          bigint,
     x                           text                     NOT NULL,
     y                           text                     NOT NULL
 );
@@ -29,6 +30,8 @@ CREATE OR REPLACE FUNCTION node_position_create_v1(
     this_visibility jsonb,
     this_schematic_kind text,
     this_root_node_id bigint,
+    this_system_id bigint,
+    this_deployment_node_id bigint,
     this_x text,
     this_y text,
     OUT object json) AS
@@ -44,11 +47,12 @@ BEGIN
     INSERT INTO node_positions (tenancy_universal, tenancy_billing_account_ids, tenancy_organization_ids,
                          tenancy_workspace_ids,
                          visibility_change_set_pk, visibility_edit_session_pk, visibility_deleted,
-                         schematic_kind, root_node_id, x, y)
+                         schematic_kind, root_node_id, system_id, deployment_node_id, x, y)
     VALUES (this_tenancy_record.tenancy_universal, this_tenancy_record.tenancy_billing_account_ids,
             this_tenancy_record.tenancy_organization_ids, this_tenancy_record.tenancy_workspace_ids,
             this_visibility_record.visibility_change_set_pk, this_visibility_record.visibility_edit_session_pk,
-            this_visibility_record.visibility_deleted, this_schematic_kind, this_root_node_id, this_x, this_y)
+            this_visibility_record.visibility_deleted, this_schematic_kind, this_root_node_id, this_system_id,
+            this_deployment_node_id, this_x, this_y)
     RETURNING * INTO this_new_row;
 
     object := row_to_json(this_new_row);

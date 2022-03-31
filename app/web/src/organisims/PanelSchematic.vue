@@ -195,12 +195,14 @@ const addNode = async (schemaId: number, _event: MouseEvent) => {
   const response = await firstValueFrom(
     SchematicService.getNodeTemplate({ schemaId }),
   );
+  const deploymentNodes = await firstValueFrom(deploymentSelection$);
+  const deploymentNodeId = (deploymentNodes ?? [])[0]?.id;
   if (response.error) {
     GlobalErrorService.set(response);
     return;
   }
 
-  const n = MODEL.fakeNodeFromTemplate(response);
+  const n = MODEL.fakeNodeFromTemplate(response, deploymentNodeId);
   const event = new NodeAddEvent({ node: n, schemaId: schemaId });
 
   viewerEventObservable.viewerEvent$.next(event);

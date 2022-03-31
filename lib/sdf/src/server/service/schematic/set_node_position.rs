@@ -15,6 +15,7 @@ pub struct SetNodePositionRequest {
     pub schematic_kind: SchematicKind,
     pub root_node_id: NodeId,
     pub system_id: Option<SystemId>,
+    pub deployment_node_id: Option<NodeId>,
     pub x: String,
     pub y: String,
 }
@@ -40,7 +41,8 @@ pub async fn set_node_position(
         ctx.visibility(),
         ctx.history_actor(),
         request.schematic_kind,
-        &request.system_id,
+        request.system_id,
+        request.deployment_node_id,
         request.root_node_id,
         request.node_id,
         &request.x,

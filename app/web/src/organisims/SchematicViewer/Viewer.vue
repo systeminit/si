@@ -43,7 +43,6 @@ import { GlobalErrorService } from "@/service/global_error";
 import { SchematicDataManager } from "./data";
 import { deploymentSelection$, componentSelection$ } from "./state";
 
-// import { Schematic } from "./model";
 import * as MODEL from "./model";
 
 import * as VE from "./event";
@@ -433,20 +432,21 @@ export default defineComponent({
         const filteredSchematic: MODEL.Schematic = JSON.parse(
           JSON.stringify(schematic),
         );
+        const deploymentNodes = await Rx.firstValueFrom(deploymentSelection$);
+        const deploymentNodeId = (deploymentNodes ?? [])[0]?.id;
+
         // We want to ignore component data in deployment panel, and vice versa
+        // The selected deployment node appears in both panels
         filteredSchematic.nodes = filteredSchematic.nodes.filter(
           (node) =>
-            node.kind.kind === nodeKindFromSchematicKind(this.schematicKind),
+            node.kind.kind === nodeKindFromSchematicKind(this.schematicKind) ||
+            deploymentNodeId === node.id,
         );
-
-        const deploymentNodes = await Rx.firstValueFrom(deploymentSelection$);
         // Find component nodes connected to selected deployment node
         const nodeIds = filteredSchematic.connections
-          .filter(
-            (conn) =>
-              conn.destination.nodeId === (deploymentNodes ?? [])[0]?.id,
-          )
+          .filter((conn) => conn.destination.nodeId === deploymentNodeId)
           .map((conn) => conn.source.nodeId);
+        nodeIds.push(deploymentNodeId);
 
         const componentNodes = await Rx.firstValueFrom(componentSelection$);
         const selectionManager = this.interactionManager?.selectionManager;
@@ -469,6 +469,8 @@ export default defineComponent({
           this.sceneManager.loadSceneData(
             filteredSchematic,
             selectionManager as SelectionManager,
+            this.schematicKind,
+            deploymentNodeId,
           );
         }
         this.renderer?.renderStage();
@@ -483,12 +485,18 @@ export default defineComponent({
 
     nodeAdd(node: MODEL.Node, schemaId: number): void {
       this.activateComponent();
-      if (this.component.isActive) {
-        if (this.interactionManager) {
-          const nodeObj = new OBJ.Node(node);
-          this.send(ViewerEventKind.ACTIVATE_NODEADD);
-          this.interactionManager.nodeAddManager.addNode(nodeObj, schemaId);
-        }
+      if (
+        this.component.isActive &&
+        this.interactionManager &&
+        node.position.length > 0
+      ) {
+        // Fake nodes will always only have one position as they don't exist in the db yet
+        const nodeObj = new OBJ.Node(node, {
+          x: parseFloat(node.position[0].x as string),
+          y: parseFloat(node.position[0].y as string),
+        });
+        this.send(ViewerEventKind.ACTIVATE_NODEADD);
+        this.interactionManager.nodeAddManager.addNode(nodeObj, schemaId);
       }
     },
   },

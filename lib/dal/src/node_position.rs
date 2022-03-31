@@ -37,6 +37,7 @@ pub struct NodePosition {
     schematic_kind: SchematicKind,
     root_node_id: NodeId,
     system_id: Option<SystemId>,
+    deployment_node_id: Option<NodeId>,
     x: String,
     y: String,
     #[serde(flatten)]
@@ -66,17 +67,21 @@ impl NodePosition {
         history_actor: &HistoryActor,
         schematic_kind: SchematicKind,
         root_node_id: NodeId,
+        system_id: Option<SystemId>,
+        deployment_node_id: Option<NodeId>,
         x: impl AsRef<str>,
         y: impl AsRef<str>,
     ) -> NodePositionResult<Self> {
         let row = txn
             .query_one(
-                "SELECT object FROM node_position_create_v1($1, $2, $3, $4, $5, $6)",
+                "SELECT object FROM node_position_create_v1($1, $2, $3, $4, $5, $6, $7, $8)",
                 &[
                     write_tenancy,
                     visibility,
                     &schematic_kind.as_ref(),
                     &root_node_id,
+                    &system_id,
+                    &deployment_node_id,
                     &x.as_ref(),
                     &y.as_ref(),
                 ],
@@ -100,29 +105,24 @@ impl NodePosition {
         txn: &PgTxn<'_>,
         read_tenancy: &ReadTenancy,
         visibility: &Visibility,
-        schematic_kind: SchematicKind,
-        system_id: &Option<SystemId>,
+        system_id: Option<SystemId>,
         root_node_id: NodeId,
         node_id: NodeId,
-    ) -> NodePositionResult<Option<Self>> {
-        // Note: This query is broken if system_id is None, we spent quite some
-        // time trying to fix, but since right now the system_id always is
-        // set we decided to leave it as future work - Paulo & Fletcher
-        let row = txn
-            .query_opt(
+    ) -> NodePositionResult<Vec<Self>> {
+        let rows = txn
+            .query(
                 FIND_NODE_POSITION_BY_NODE_ID,
                 &[
                     read_tenancy,
                     visibility,
-                    &schematic_kind.as_ref(),
                     &system_id,
                     &root_node_id,
                     &node_id,
                 ],
             )
             .await?;
-        let object = standard_model::option_object_from_row(row)?;
-        Ok(object)
+        let objects = standard_model::objects_from_rows(rows)?;
+        Ok(objects)
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -133,52 +133,53 @@ impl NodePosition {
         visibility: &Visibility,
         history_actor: &HistoryActor,
         schematic_kind: SchematicKind,
-        system_id: &Option<SystemId>,
+        system_id: Option<SystemId>,
+        deployment_node_id: Option<NodeId>,
         root_node_id: NodeId,
         node_id: NodeId,
         x: impl AsRef<str>,
         y: impl AsRef<str>,
     ) -> NodePositionResult<Self> {
         let read_tenancy = write_tenancy.clone_into_read_tenancy(txn).await?;
-        if let Some(mut position) = Self::find_by_node_id(
+        for mut position in Self::find_by_node_id(
             txn,
             &read_tenancy,
             visibility,
-            schematic_kind,
             system_id,
             root_node_id,
             node_id,
         )
         .await?
         {
-            position
-                .set_x(txn, nats, visibility, history_actor, x.as_ref())
-                .await?;
-            position
-                .set_y(txn, nats, visibility, history_actor, y.as_ref())
-                .await?;
-            Ok(position)
-        } else {
-            let mut obj = Self::new(
-                txn,
-                nats,
-                write_tenancy,
-                visibility,
-                history_actor,
-                schematic_kind,
-                root_node_id,
-                x,
-                y,
-            )
-            .await?;
-            if let Some(system_id) = system_id {
-                obj.set_system_id(txn, nats, visibility, history_actor, Some(*system_id))
+            if position.deployment_node_id == deployment_node_id
+                && position.schematic_kind == schematic_kind
+            {
+                position
+                    .set_x(txn, nats, visibility, history_actor, x.as_ref())
                     .await?;
+                position
+                    .set_y(txn, nats, visibility, history_actor, y.as_ref())
+                    .await?;
+                return Ok(position);
             }
-            obj.set_node(txn, nats, visibility, history_actor, &node_id)
-                .await?;
-            Ok(obj)
         }
+        let obj = Self::new(
+            txn,
+            nats,
+            write_tenancy,
+            visibility,
+            history_actor,
+            schematic_kind,
+            root_node_id,
+            system_id,
+            deployment_node_id,
+            x,
+            y,
+        )
+        .await?;
+        obj.set_node(txn, nats, visibility, history_actor, &node_id)
+            .await?;
+        Ok(obj)
     }
 
     standard_model_accessor!(schematic_kind, Enum(SchematicKind), NodePositionResult);

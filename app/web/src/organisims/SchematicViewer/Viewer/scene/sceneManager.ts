@@ -9,7 +9,7 @@ import { Position } from "../cg";
 import { untilUnmounted } from "vuse-rx";
 import { InteractionManager } from "../interaction";
 import { SelectionManager } from "../interaction/selection";
-import { schematicKindFromNodeKind } from "@/api/sdf/dal/schematic";
+import { SchematicKind } from "@/api/sdf/dal/schematic";
 
 export type SceneGraphData = Schematic;
 
@@ -100,14 +100,25 @@ export class SceneManager {
   loadSceneData(
     data: SceneGraphData | null,
     selectionManager: SelectionManager,
+    schematicKind: SchematicKind,
+    selectedDeploymentNodeId?: number,
   ): void {
     this.initializeSceneData();
 
     let selected;
     if (data) {
       for (const n of data.nodes) {
-        if (n.position.length > 0) {
-          const node = new OBJ.Node(n);
+        const pos = n.position.find(
+          (pos) =>
+            pos.schematic_kind === schematicKind &&
+            (schematicKind === SchematicKind.Deployment ||
+              pos.deployment_node_id === selectedDeploymentNodeId),
+        );
+        if (pos) {
+          const node = new OBJ.Node(n, {
+            x: parseFloat(pos.x as string),
+            y: parseFloat(pos.y as string),
+          });
           // If the node was previously selected we re-select again as some operations
           // were lost on the re-render (example: update node position)
           if (node.id === (selectionManager.selection[0] ?? {}).id) {
@@ -151,12 +162,9 @@ export class SceneManager {
 
     if (selected?.nodeKind) {
       const selectionObserver = selectionManager.selectionObserver(
-        schematicKindFromNodeKind(selected.nodeKind.kind),
+        schematicKind,
       );
-      console.debug(
-        "Re-selecting node: " +
-          schematicKindFromNodeKind(selected.nodeKind.kind),
-      );
+      console.debug("Re-selecting node: " + schematicKind);
       selectionManager.select(selected, selectionObserver);
     }
 
