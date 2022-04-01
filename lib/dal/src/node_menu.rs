@@ -1,18 +1,19 @@
 //! This module is responsible for creating NodeMenus. At the moment, it only really makes
 //! the node add menu. It creates a tree for the menu, and can create it from the Schema's
 //! menu items based on the schematic context for the menu.
+use crate::DalContext;
 use std::cell::RefCell;
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use si_data::{PgError, PgTxn};
+use si_data::PgError;
 
 use crate::schema::UiMenu;
 use crate::{
-    standard_model, ComponentId, ReadTenancy, SchemaError, SchemaId, SchematicKind, StandardModel,
-    StandardModelError, Visibility,
+    standard_model, ComponentId, SchemaError, SchemaId, SchematicKind, StandardModel,
+    StandardModelError,
 };
 
 const UI_MENUS_FOR_NODE_MENU: &str = include_str!("./queries/ui_menus_for_node_menu.sql");
@@ -246,18 +247,18 @@ impl Default for GenerateMenuItem {
 }
 
 pub async fn get_node_menu_items(
-    txn: &PgTxn<'_>,
-    read_tenancy: &ReadTenancy,
-    visibility: &Visibility,
+    ctx: &DalContext<'_, '_>,
     filter: &MenuFilter,
 ) -> NodeMenuResult<Vec<(Vec<String>, Item)>> {
     let mut item_list = Vec::new();
-    let rows = txn
+    let rows = ctx
+        .txns()
+        .pg()
         .query(
             UI_MENUS_FOR_NODE_MENU,
             &[
-                read_tenancy,
-                &visibility,
+                ctx.read_tenancy(),
+                ctx.visibility(),
                 &filter.root_component_id,
                 &filter.schematic_kind.to_string(),
             ],
@@ -265,8 +266,8 @@ pub async fn get_node_menu_items(
         .await?;
     let result: Vec<UiMenu> = standard_model::objects_from_rows(rows)?;
     for ui_menu in result.into_iter() {
-        if ui_menu.usable_in_menu(txn, visibility).await? {
-            if let Some(schema) = ui_menu.schema(txn, visibility).await? {
+        if ui_menu.usable_in_menu(ctx).await? {
+            if let Some(schema) = ui_menu.schema(ctx).await? {
                 item_list.push((
                     ui_menu.category_path(),
                     Item::new(

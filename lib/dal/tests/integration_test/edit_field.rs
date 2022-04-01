@@ -1,4 +1,5 @@
-use crate::{dal::test, test_setup};
+use crate::dal::test;
+use dal::DalContext;
 use dal::{
     component::Component,
     edit_field::{EditField, EditFieldAble, EditFieldDataType},
@@ -6,63 +7,20 @@ use dal::{
         create_prop_of_kind_and_set_parent_with_name, create_schema,
         create_schema_variant_with_root,
     },
-    HistoryActor, PropKind, ReadTenancy, SchemaKind, StandardModel, Tenancy, Visibility,
+    PropKind, SchemaKind, StandardModel,
 };
 use pretty_assertions_sorted::assert_eq;
 
 #[test]
-async fn get_edit_fields_for_component() {
-    test_setup!(
-        ctx,
-        _secret_key,
-        _pg,
-        _conn,
-        txn,
-        _nats_conn,
-        nats,
-        veritech,
-        encryption_key,
-    );
-
-    let tenancy = Tenancy::new_universal();
-    let read_tenancy = ReadTenancy::try_from_tenancy(&txn, tenancy.clone())
-        .await
-        .expect("could not get ReadTenancy from Tenancy");
-    let visibility = Visibility::new_head(false);
-    let history_actor = HistoryActor::SystemInit;
-
-    let mut schema = create_schema(
-        &txn,
-        &nats,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        &SchemaKind::Concrete,
-    )
-    .await;
-    let (schema_variant, root) = create_schema_variant_with_root(
-        &txn,
-        &nats,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        veritech.clone(),
-        encryption_key,
-        *schema.id(),
-    )
-    .await;
+async fn get_edit_fields_for_component(ctx: &DalContext<'_, '_>) {
+    let mut schema = create_schema(ctx, &SchemaKind::Concrete).await;
+    let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema_variant
-        .set_schema(&txn, &nats, &visibility, &history_actor, schema.id())
+        .set_schema(ctx, schema.id())
         .await
         .expect("cannot associate variant with schema");
     schema
-        .set_default_schema_variant_id(
-            &txn,
-            &nats,
-            &visibility,
-            &history_actor,
-            Some(*schema_variant.id()),
-        )
+        .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
         .expect("cannot set default schema variant");
 
@@ -71,60 +29,32 @@ async fn get_edit_fields_for_component() {
     //    |- name: String
     //    |- value: String
     let object_prop = create_prop_of_kind_and_set_parent_with_name(
-        &txn,
-        &nats,
-        veritech.clone(),
-        encryption_key,
-        &tenancy,
-        &visibility,
-        &history_actor,
+        ctx,
         PropKind::Object,
         "object",
         root.domain_prop_id,
     )
     .await;
     let _name_prop = create_prop_of_kind_and_set_parent_with_name(
-        &txn,
-        &nats,
-        veritech.clone(),
-        encryption_key,
-        &tenancy,
-        &visibility,
-        &history_actor,
+        ctx,
         PropKind::String,
         "name",
         *object_prop.id(),
     )
     .await;
     let _value_prop = create_prop_of_kind_and_set_parent_with_name(
-        &txn,
-        &nats,
-        veritech.clone(),
-        encryption_key,
-        &tenancy,
-        &visibility,
-        &history_actor,
+        ctx,
         PropKind::String,
         "value",
         *object_prop.id(),
     )
     .await;
 
-    let (component, _) = Component::new_for_schema_with_node(
-        &txn,
-        &nats,
-        veritech.clone(),
-        encryption_key,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        "radahn",
-        schema.id(),
-    )
-    .await
-    .expect("cannot create component");
+    let (component, _) = Component::new_for_schema_with_node(ctx, "radahn", schema.id())
+        .await
+        .expect("cannot create component");
 
-    let edit_fields = Component::get_edit_fields(&txn, &read_tenancy, &visibility, component.id())
+    let edit_fields = Component::get_edit_fields(ctx, component.id())
         .await
         .expect("could not get edit fields");
 

@@ -1,8 +1,9 @@
+use crate::WriteTenancy;
 use std::fmt;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use si_data::{NatsTxn, PgError, PgTxn};
+use si_data::PgError;
 use sodiumoxide::crypto::{
     box_::{PublicKey, SecretKey},
     sealedbox,
@@ -18,8 +19,8 @@ use crate::{
     pk,
     standard_model::{self, TypeHint},
     standard_model_accessor, standard_model_accessor_ro, standard_model_belongs_to,
-    BillingAccountId, HistoryActor, HistoryEvent, HistoryEventError, KeyPair, KeyPairError,
-    StandardModel, StandardModelError, Tenancy, Timestamp, Visibility, WriteTenancy,
+    BillingAccountId, DalContext, HistoryEvent, HistoryEventError, KeyPair, KeyPairError,
+    StandardModel, StandardModelError, Timestamp, Visibility,
 };
 
 /// Error type for Secrets.
@@ -59,7 +60,7 @@ pub struct Secret {
     object_type: SecretObjectType,
     kind: SecretKind,
     #[serde(flatten)]
-    tenancy: Tenancy,
+    tenancy: WriteTenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -82,32 +83,24 @@ impl Secret {
     // `secrets` view
     pub async fn set_name(
         &mut self,
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         value: impl Into<String>,
     ) -> SecretResult<()> {
         let value = value.into();
         let updated_at = standard_model::update(
-            txn,
+            ctx,
             "encrypted_secrets",
             "name",
-            self.tenancy(),
-            visibility,
             self.id(),
             &value,
             TypeHint::Text,
         )
         .await?;
         let _history_event = HistoryEvent::new(
-            txn,
-            nats,
+            ctx,
             Self::history_event_label(vec!["updated"]),
-            history_actor,
             Self::history_event_message("updated"),
             &serde_json::json!({"pk": self.pk, "field": "name", "value": &value}),
-            self.tenancy(),
         )
         .await?;
         self.timestamp.updated_at = updated_at;
@@ -172,7 +165,7 @@ pub struct EncryptedSecret {
     version: SecretVersion,
     algorithm: SecretAlgorithm,
     #[serde(flatten)]
-    tenancy: Tenancy,
+    tenancy: WriteTenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -209,11 +202,7 @@ impl EncryptedSecret {
     /// Creates a new encypted secret and returns a corresponding [`Secret`] representation.
     #[allow(clippy::too_many_arguments, clippy::new_ret_no_self)]
     pub async fn new(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        write_tenancy: &WriteTenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         name: impl AsRef<str>,
         object_type: SecretObjectType,
         kind: SecretKind,
@@ -225,12 +214,14 @@ impl EncryptedSecret {
     ) -> SecretResult<Secret> {
         let name = name.as_ref();
 
-        let row = txn
+        let row = ctx
+            .txns()
+            .pg()
             .query_one(
                 "SELECT object FROM encrypted_secret_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9)",
                 &[
-                    write_tenancy,
-                    visibility,
+                    ctx.write_tenancy(),
+                    ctx.visibility(),
                     &name,
                     &object_type.as_ref(),
                     &kind.as_ref(),
@@ -241,19 +232,9 @@ impl EncryptedSecret {
                 ],
             )
             .await?;
-        let object: Secret = standard_model::finish_create_from_row(
-            txn,
-            nats,
-            &write_tenancy.into(),
-            visibility,
-            history_actor,
-            row,
-        )
-        .await?;
+        let object: Secret = standard_model::finish_create_from_row(ctx, row).await?;
 
-        object
-            .set_key_pair(txn, nats, visibility, history_actor, &key_pair_id)
-            .await?;
+        object.set_key_pair(ctx, &key_pair_id).await?;
 
         Ok(object)
     }
@@ -279,18 +260,9 @@ impl EncryptedSecret {
 
     /// Decrypts the encrypted secret with its associated [`KeyPair`] and returns a
     /// [`DecryptedSecret`].
-    pub async fn decrypt(
-        self,
-        txn: &PgTxn<'_>,
-        visibility: &Visibility,
-    ) -> SecretResult<DecryptedSecret> {
-        let mut key_pair_tenancy = self.tenancy().clone();
-        key_pair_tenancy
-            .billing_account_ids
-            .push(self.billing_account_id);
-
+    pub async fn decrypt(self, ctx: &DalContext<'_, '_>) -> SecretResult<DecryptedSecret> {
         let key_pair = self
-            .key_pair_with_tenancy(txn, &key_pair_tenancy, visibility)
+            .key_pair(ctx)
             .await?
             .ok_or(SecretError::KeyPairNotFound)?;
         self.into_decrypted(key_pair.public_key(), key_pair.secret_key())
@@ -480,7 +452,7 @@ mod tests {
                 crypted,
                 version: Default::default(),
                 algorithm: Default::default(),
-                tenancy: Tenancy::new_empty(),
+                tenancy: WriteTenancy::new_universal(),
                 timestamp: Timestamp::now(),
                 visibility: Visibility::new_head(false),
             }

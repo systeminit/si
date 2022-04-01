@@ -1,9 +1,9 @@
 use super::TestResult;
-use crate::server::extract::{NatsTxn, PgRwTxn};
+use crate::server::extract::{HandlerContext, JwtSecretKey};
 use axum::Json;
 use dal::billing_account::BillingAccountSignup;
 use dal::test_harness::generate_fake_name;
-use dal::{BillingAccount, HistoryActor, Visibility, WriteTenancy};
+use dal::{BillingAccount, HistoryActor, ReadTenancy, WriteTenancy};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -11,30 +11,35 @@ pub struct SignupResponse {
     data: BillingAccountSignup,
 }
 
-pub async fn signup(mut txn: PgRwTxn, mut nats: NatsTxn) -> TestResult<Json<SignupResponse>> {
-    let txn = txn.start().await?;
-    let nats = nats.start().await?;
-    let write_tenancy = WriteTenancy::new_universal();
-    let visibility = Visibility::new_head(false);
-    let history_actor = HistoryActor::SystemInit;
+pub async fn signup(
+    HandlerContext(builder, mut txns): HandlerContext,
+    JwtSecretKey(_jwt_secret_key): JwtSecretKey,
+) -> TestResult<Json<SignupResponse>> {
+    let txns = txns.start().await?;
+    let ctx = builder.build(
+        dal::context::AccessBuilder::new(
+            ReadTenancy::new_universal(),
+            WriteTenancy::new_universal(),
+            HistoryActor::SystemInit,
+        )
+        .build_head(),
+        &txns,
+    );
+
     let billing_account_name = generate_fake_name();
     let user_name = generate_fake_name();
     let user_email = format!("{}@example.com", user_name);
     let user_password = "snakes";
 
     let result = BillingAccount::signup(
-        &txn,
-        &nats,
-        &write_tenancy,
-        &visibility,
-        &history_actor,
+        &ctx,
         &billing_account_name,
         &user_name,
         &user_email,
         &user_password,
     )
     .await?;
-    txn.commit().await?;
-    nats.commit().await?;
+
+    txns.commit().await?;
     Ok(Json(SignupResponse { data: result }))
 }

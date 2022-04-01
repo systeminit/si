@@ -1,9 +1,9 @@
+use crate::DalContext;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use si_data::{NatsTxn, PgError, PgTxn};
+use si_data::PgError;
 use telemetry::prelude::*;
 use thiserror::Error;
-use veritech::EncryptionKey;
 
 use crate::{
     edit_field::{
@@ -11,8 +11,8 @@ use crate::{
         EditFieldError, EditFieldObjectKind, EditFields,
     },
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_many_to_many,
-    HistoryActor, HistoryEventError, ReadTenancy, SchemaVariant, SchemaVariantId, StandardModel,
-    StandardModelError, Tenancy, Timestamp, Visibility, WriteTenancy,
+    HistoryEventError, SchemaVariant, SchemaVariantId, StandardModel, StandardModelError,
+    Timestamp, Visibility, WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -40,7 +40,7 @@ pub struct QualificationCheck {
     id: QualificationCheckId,
     name: String,
     #[serde(flatten)]
-    tenancy: Tenancy,
+    tenancy: WriteTenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -58,29 +58,19 @@ impl_standard_model! {
 
 impl QualificationCheck {
     pub async fn new(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        write_tenancy: &WriteTenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         name: impl AsRef<str>,
     ) -> QualificationCheckResult<Self> {
         let name = name.as_ref();
-        let row = txn
+        let row = ctx
+            .txns()
+            .pg()
             .query_one(
                 "SELECT object FROM qualification_check_create_v1($1, $2, $3)",
-                &[write_tenancy, visibility, &name],
+                &[ctx.write_tenancy(), ctx.visibility(), &name],
             )
             .await?;
-        let object = standard_model::finish_create_from_row(
-            txn,
-            nats,
-            &write_tenancy.into(),
-            visibility,
-            history_actor,
-            row,
-        )
-        .await?;
+        let object = standard_model::finish_create_from_row(ctx, row).await?;
 
         Ok(object)
     }
@@ -142,29 +132,27 @@ impl EditFieldAble for QualificationCheck {
     type Error = QualificationCheckError;
 
     async fn get_edit_fields(
-        txn: &PgTxn<'_>,
-        read_tenancy: &ReadTenancy,
-        visibility: &Visibility,
+        ctx: &DalContext<'_, '_>,
         id: &QualificationCheckId,
     ) -> Result<EditFields, Self::Error> {
-        let object = Self::get_by_id(txn, &read_tenancy.into(), visibility, id)
+        let object = Self::get_by_id(ctx, id)
             .await?
             .ok_or(QualificationCheckError::NotFound(*id))?;
-        let head_object = if visibility.in_change_set() {
-            let head_visibility = visibility.to_head();
-            Self::get_by_id(txn, &read_tenancy.into(), &head_visibility, id).await?
+        let head_object = if ctx.visibility().in_change_set() {
+            let _head_visibility = ctx.visibility().to_head();
+            Self::get_by_id(ctx, id).await?
         } else {
             None
         };
-        let change_set_object = if visibility.in_change_set() {
-            let change_set_visibility = visibility.to_change_set();
-            Self::get_by_id(txn, &read_tenancy.into(), &change_set_visibility, id).await?
+        let change_set_object = if ctx.visibility().in_change_set() {
+            let _change_set_visibility = ctx.visibility().to_change_set();
+            Self::get_by_id(ctx, id).await?
         } else {
             None
         };
 
         let edit_fields = vec![Self::name_edit_field(
-            visibility,
+            ctx.visibility(),
             &object,
             &head_object,
             &change_set_object,
@@ -175,18 +163,12 @@ impl EditFieldAble for QualificationCheck {
 
     #[instrument(skip_all)]
     async fn update_from_edit_field(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        _veritech: veritech::Client,
-        _encryption_key: &EncryptionKey,
-        write_tenancy: &WriteTenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         id: Self::Id,
         edit_field_id: String,
         value: Option<serde_json::Value>,
     ) -> Result<(), Self::Error> {
-        let mut object = Self::get_by_id(txn, &write_tenancy.into(), visibility, &id)
+        let mut object = Self::get_by_id(ctx, &id)
             .await?
             .ok_or(QualificationCheckError::NotFound(id))?;
 
@@ -196,9 +178,7 @@ impl EditFieldAble for QualificationCheck {
                     let value = json_value.as_str().map(|s| s.to_string()).ok_or(
                         Self::Error::EditField(EditFieldError::InvalidValueType("string")),
                     )?;
-                    object
-                        .set_name(txn, nats, visibility, history_actor, value)
-                        .await?;
+                    object.set_name(ctx, value).await?;
                 }
                 None => return Err(EditFieldError::MissingValue.into()),
             },

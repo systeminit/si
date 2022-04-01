@@ -26,13 +26,7 @@ pub async fn get_node_template(
     let txns = txns.start().await?;
     let ctx = builder.build(request_ctx.build(request.visibility), &txns);
 
-    let response = NodeTemplate::new_from_schema_id(
-        ctx.pg_txn(),
-        ctx.read_tenancy(),
-        ctx.visibility(),
-        request.schema_id,
-    )
-    .await?;
+    let response = NodeTemplate::new_from_schema_id(&ctx, request.schema_id).await?;
 
     Ok(Json(response))
 }

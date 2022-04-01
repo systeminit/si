@@ -1,13 +1,14 @@
+use crate::WriteTenancy;
 use serde::{Deserialize, Serialize};
-use si_data::{NatsTxn, PgError, PgTxn};
+use si_data::PgError;
 use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
-    standard_model_has_many, HistoryActor, HistoryEventError, Node, NodeError, NodeKind,
+    standard_model_has_many, DalContext, HistoryEventError, Node, NodeError, NodeKind,
     ReadTenancyError, Schema, SchemaError, SchemaId, SchemaVariant, SchemaVariantId, StandardModel,
-    StandardModelError, Tenancy, Timestamp, Visibility, Workspace, WorkspaceId, WriteTenancy,
+    StandardModelError, Timestamp, Visibility, Workspace, WorkspaceId,
 };
 
 #[derive(Error, Debug)]
@@ -42,7 +43,7 @@ pub struct System {
     id: SystemId,
     name: String,
     #[serde(flatten)]
-    tenancy: Tenancy,
+    tenancy: WriteTenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -59,31 +60,17 @@ impl_standard_model! {
 }
 
 impl System {
-    pub async fn new(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        write_tenancy: &WriteTenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
-        name: impl AsRef<str>,
-    ) -> SystemResult<Self> {
+    pub async fn new(ctx: &DalContext<'_, '_>, name: impl AsRef<str>) -> SystemResult<Self> {
         let name = name.as_ref();
-        let row = txn
+        let row = ctx
+            .txns()
+            .pg()
             .query_one(
                 "SELECT object FROM system_create_v1($1, $2, $3)",
-                &[write_tenancy, visibility, &name],
+                &[ctx.write_tenancy(), ctx.visibility(), &name],
             )
             .await?;
-        let object = standard_model::finish_create_from_row(
-            txn,
-            nats,
-            &write_tenancy.into(),
-            visibility,
-            history_actor,
-            row,
-        )
-        .await?;
-
+        let object = standard_model::finish_create_from_row(ctx, row).await?;
         Ok(object)
     }
 
@@ -132,48 +119,22 @@ impl System {
 
     #[instrument(skip_all)]
     pub async fn new_with_node(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        write_tenancy: &WriteTenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         name: impl AsRef<str>,
     ) -> SystemResult<(Self, Node)> {
         let name = name.as_ref();
-        let read_tenancy = write_tenancy.clone_into_read_tenancy(txn).await?;
 
-        let schema = Schema::find_by_attr(
-            txn,
-            &(&read_tenancy).into(),
-            visibility,
-            "name",
-            &"system".to_string(),
-        )
-        .await?
-        .pop()
-        .ok_or(SystemError::SchemaNotFound)?;
-        let schema_variant = schema
-            .default_variant(txn, &read_tenancy, visibility)
-            .await?;
+        let schema = Schema::find_by_attr(ctx, "name", &"system".to_string())
+            .await?
+            .pop()
+            .ok_or(SystemError::SchemaNotFound)?;
+        let schema_variant = schema.default_variant(ctx).await?;
 
-        let system = Self::new(txn, nats, write_tenancy, visibility, history_actor, name).await?;
-        system
-            .set_schema(txn, nats, visibility, history_actor, schema.id())
-            .await?;
-        system
-            .set_schema_variant(txn, nats, visibility, history_actor, schema_variant.id())
-            .await?;
-        let node = Node::new(
-            txn,
-            nats,
-            write_tenancy,
-            visibility,
-            history_actor,
-            &NodeKind::System,
-        )
-        .await?;
-        node.set_system(txn, nats, visibility, history_actor, system.id())
-            .await?;
+        let system = Self::new(ctx, name).await?;
+        system.set_schema(ctx, schema.id()).await?;
+        system.set_schema_variant(ctx, schema_variant.id()).await?;
+        let node = Node::new(ctx, &NodeKind::System).await?;
+        node.set_system(ctx, system.id()).await?;
 
         Ok((system, node))
     }

@@ -1,5 +1,7 @@
 //! The Data Access Layer (DAL) for System Initiative.
 
+use std::sync::Arc;
+
 use rand::Rng;
 use si_data::{NatsClient, NatsError, PgError, PgPool, PgPoolError};
 use telemetry::prelude::*;
@@ -48,7 +50,6 @@ pub mod standard_accessors;
 pub mod standard_model;
 pub mod standard_pk;
 pub mod system;
-pub mod tenancy;
 pub mod test;
 pub mod test_harness;
 pub mod timestamp;
@@ -138,7 +139,6 @@ pub use secret::{
 };
 pub use standard_model::{StandardModel, StandardModelError, StandardModelResult};
 pub use system::{System, SystemError, SystemId, SystemPk, SystemResult};
-pub use tenancy::{Tenancy, TenancyError};
 pub use timestamp::{Timestamp, TimestampError};
 pub use user::{User, UserClaim, UserError, UserId, UserResult};
 pub use validation_prototype::{
@@ -171,6 +171,8 @@ pub enum ModelError {
     Schema(#[from] SchemaError),
     #[error("Func error")]
     Func(#[from] FuncError),
+    #[error("transactions error")]
+    Transactions(#[from] TransactionsError),
 }
 
 pub type ModelResult<T> = Result<T, ModelError>;
@@ -188,13 +190,20 @@ pub async fn migrate_builtin_schemas(
     veritech: veritech::Client,
     encryption_key: &EncryptionKey,
 ) -> ModelResult<()> {
-    let mut conn = pg.get().await?;
-    let txn = conn.transaction().await?;
-    let nats = nats.transaction();
-    func::builtins::migrate(&txn, &nats).await?;
-    schema::builtins::migrate(&txn, &nats, veritech, encryption_key).await?;
-    txn.commit().await?;
-    nats.commit().await?;
+    let services_context = ServicesContext::new(
+        pg.clone(),
+        nats.clone(),
+        veritech,
+        Arc::new(*encryption_key),
+    );
+    let dal_context = services_context.into_builder();
+    let mut starter = dal_context.transactions_starter().await?;
+    let txns = starter.start().await?;
+    let request_context = RequestContext::new_universal_head(HistoryActor::SystemInit);
+    let ctx = dal_context.build(request_context, &txns);
+    func::builtins::migrate(&ctx).await?;
+    schema::builtins::migrate(&ctx).await?;
+    txns.commit().await?;
     Ok(())
 }
 

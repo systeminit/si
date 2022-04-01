@@ -1,7 +1,7 @@
 use crate::dal::test;
 use dal::{
     test_harness::encrypt_message, EncryptedSecret, SecretAlgorithm, SecretKind, SecretObjectType,
-    SecretVersion, StandardModel, Tenancy, Visibility,
+    SecretVersion, StandardModel, Visibility,
 };
 use hyper::Method;
 use sdf::service::secret::create_secret::{CreateSecretRequest, CreateSecretResponse};
@@ -15,22 +15,22 @@ async fn create_secret() {
         _secret_key,
         _pg,
         _conn,
-        txn,
+        _txn,
         _nats_conn,
         _nats,
         _veritech,
         _encr_key,
         app,
         nba,
-        auth_token
+        auth_token,
+        dal_ctx,
+        dal_txns,
     );
 
     let visibility = Visibility::new_head(false);
-    let ba_tenancy = Tenancy::new_billing_account(vec![*nba.billing_account.id()]);
 
     let message = serde_json::json!({"artist":"Billy Talent"});
-    let crypted =
-        encrypt_message(&txn, &ba_tenancy, &visibility, *nba.key_pair.id(), &message).await;
+    let crypted = encrypt_message(&dal_ctx, *nba.key_pair.id(), &message).await;
 
     let request = CreateSecretRequest {
         name: "reckless-paradise".to_string(),
@@ -56,18 +56,13 @@ async fn create_secret() {
     assert_eq!(response.secret.object_type(), &SecretObjectType::Credential);
     assert_eq!(response.secret.kind(), &SecretKind::DockerHub);
 
-    let decrypted_secret = EncryptedSecret::get_by_id(
-        &txn,
-        &Tenancy::new_workspace(vec![*nba.workspace.id()]),
-        &visibility,
-        response.secret.id(),
-    )
-    .await
-    .expect("failed to fetch encrypted secret")
-    .expect("failed to find encrypted secret in tenancy and/or visibility")
-    .decrypt(&txn, &visibility)
-    .await
-    .expect("failed to decrypt secret");
+    let decrypted_secret = EncryptedSecret::get_by_id(&dal_ctx, response.secret.id())
+        .await
+        .expect("failed to fetch encrypted secret")
+        .expect("failed to find encrypted secret in tenancy and/or visibility")
+        .decrypt(&dal_ctx)
+        .await
+        .expect("failed to decrypt secret");
 
     assert_eq!(decrypted_secret.name(), "reckless-paradise");
     assert_eq!(decrypted_secret.object_type(), SecretObjectType::Credential);

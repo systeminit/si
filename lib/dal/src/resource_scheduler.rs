@@ -1,13 +1,15 @@
 use std::time::Duration;
 
-use si_data::{NatsClient, NatsError, PgError, PgPool, PgPoolError};
+use si_data::{NatsError, PgError, PgPoolError};
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::time;
-use veritech::EncryptionKey;
 
 use crate::system::UNSET_ID_VALUE;
-use crate::{Component, ComponentError, HistoryActor, HistoryEventError, StandardModelError};
+use crate::{
+    Component, ComponentError, HistoryActor, HistoryEventError, RequestContext, ServicesContext,
+    StandardModelError,
+};
 
 #[derive(Error, Debug)]
 pub enum ResourceSchedulerError {
@@ -36,25 +38,12 @@ pub type ResourceSchedulerResult<T> = Result<T, ResourceSchedulerError>;
 /// seconds, it will ask a component to sync_resource.
 #[derive(Debug, Clone)]
 pub struct ResourceScheduler {
-    pg_pool: PgPool,
-    nats: NatsClient,
-    veritech: veritech::Client,
-    encryption_key: EncryptionKey,
+    services_context: ServicesContext,
 }
 
 impl ResourceScheduler {
-    pub fn new(
-        pg_pool: PgPool,
-        nats: NatsClient,
-        veritech: veritech::Client,
-        encryption_key: EncryptionKey,
-    ) -> ResourceScheduler {
-        ResourceScheduler {
-            pg_pool,
-            nats,
-            veritech,
-            encryption_key,
-        }
+    pub fn new(services_context: ServicesContext) -> ResourceScheduler {
+        ResourceScheduler { services_context }
     }
 
     /// Starts the scheduler. It returns the join handle to the spawned scheduler, and
@@ -84,41 +73,53 @@ impl ResourceScheduler {
             };
 
             'check: for component in components.into_iter() {
-                let mut conn = match self.pg_pool.get().await {
-                    Ok(conn) => conn,
+                if component.tenancy().workspaces().is_empty() {
+                    error!(
+                        "component does not have any workspaces in tenancy; skipping it: {:?}",
+                        component
+                    );
+                    continue 'check;
+                }
+                let builder = self.services_context.clone().into_builder();
+                let mut starter = match builder.transactions_starter().await {
+                    Ok(starter) => starter,
                     Err(err) => {
-                        error!("Unable to get Pg Pool Connection: {:?}", err);
+                        error!("Unable to generate transaction starter: {:?}", err);
                         continue 'check;
                     }
                 };
-                let txn = match conn.transaction().await {
-                    Ok(txn) => txn,
+                let txns = match starter.start().await {
+                    Ok(txns) => txns,
                     Err(err) => {
-                        error!("Unable to start Pg Transaction: {:?}", err);
+                        error!("Unable to start transactions: {:?}", err);
                         continue 'check;
                     }
                 };
-                let nats = self.nats.transaction();
-                if let Err(error) = component
-                    .sync_resource(
-                        &txn,
-                        &nats,
-                        self.veritech.clone(),
-                        &self.encryption_key,
-                        &HistoryActor::SystemInit,
-                        UNSET_ID_VALUE.into(),
-                    )
-                    .await
+                let request_context = match RequestContext::new_workspace_head(
+                    txns.pg(),
+                    HistoryActor::SystemInit,
+                    *component
+                        .tenancy()
+                        .workspaces()
+                        .first()
+                        .expect("empty workspace array when we checked earlier; bug!"),
+                )
+                .await
                 {
+                    Ok(request_context) => request_context,
+                    Err(err) => {
+                        error!("Unable to create request context: {:?}", err);
+                        continue 'check;
+                    }
+                };
+                let ctx = builder.build(request_context, &txns);
+
+                if let Err(error) = component.sync_resource(&ctx, UNSET_ID_VALUE.into()).await {
                     error!(?error, "Failed to sync component, moving to the next.");
                     continue 'check;
                 }
-                if let Err(err) = txn.commit().await {
-                    error!("Unable to commit Pg Transaction: {:?}", err);
-                    continue 'check;
-                };
-                if let Err(err) = nats.commit().await {
-                    error!("Unable to commit Nats Transaction: {:?}", err);
+                if let Err(err) = txns.commit().await {
+                    error!("Unable to commit transactions: {:?}", err);
                     continue 'check;
                 };
             }
@@ -128,7 +129,7 @@ impl ResourceScheduler {
     /// Gets a list of all the components in the database.
     #[instrument(skip_all, level = "debug")]
     async fn components_to_check(&self) -> ResourceSchedulerResult<Vec<Component>> {
-        let mut conn = self.pg_pool.get().await?;
+        let mut conn = self.services_context.pg_pool().get().await?;
         let txn = conn.transaction().await?;
         let components = Component::list_for_resource_sync(&txn).await?;
         txn.commit().await?;

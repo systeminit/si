@@ -4,7 +4,7 @@ use thiserror::Error;
 use si_data::{NatsError, NatsTxn};
 
 use crate::resource::ResourceSyncId;
-use crate::{BillingAccountId, ChangeSetPk, HistoryActor, SchemaPk, Tenancy};
+use crate::{BillingAccountId, ChangeSetPk, HistoryActor, SchemaPk, WriteTenancy};
 
 #[derive(Error, Debug)]
 pub enum WsEventError {
@@ -49,8 +49,8 @@ impl WsEvent {
         }
     }
 
-    pub fn billing_account_id_from_tenancy(tenancy: &Tenancy) -> Vec<BillingAccountId> {
-        tenancy.billing_account_ids.clone()
+    pub fn billing_account_id_from_tenancy(tenancy: &WriteTenancy) -> Vec<BillingAccountId> {
+        tenancy.billing_accounts().into()
     }
 
     pub async fn publish(&self, nats: &NatsTxn) -> WsEventResult<()> {

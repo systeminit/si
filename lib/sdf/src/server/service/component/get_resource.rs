@@ -32,18 +32,13 @@ pub async fn get_resource(
     let ctx = builder.build(request_ctx.build(request.visibility), &txns);
 
     let system_id = request.system_id.unwrap_or(UNSET_SYSTEM_ID);
-    let resource = Component::get_resource_by_component_and_system(
-        ctx.pg_txn(),
-        ctx.read_tenancy(),
-        ctx.visibility(),
-        request.component_id,
-        system_id,
-    )
-    .await?
-    .ok_or(ComponentError::ResourceNotFound(
-        request.component_id,
-        system_id,
-    ))?;
+    let resource =
+        Component::get_resource_by_component_and_system(&ctx, request.component_id, system_id)
+            .await?
+            .ok_or(ComponentError::ResourceNotFound(
+                request.component_id,
+                system_id,
+            ))?;
 
     txns.commit().await?;
     Ok(Json(GetResourceResponse { resource }))

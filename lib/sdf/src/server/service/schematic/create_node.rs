@@ -37,14 +37,9 @@ pub async fn create_node(
     let ctx = builder.build(request_ctx.build(request.visibility), &txns);
 
     let name = generate_name(None);
-    let schema = Schema::get_by_id(
-        ctx.pg_txn(),
-        &ctx.read_tenancy().into(),
-        ctx.visibility(),
-        &request.schema_id,
-    )
-    .await?
-    .ok_or(SchematicError::SchemaNotFound)?;
+    let schema = Schema::get_by_id(&ctx, &request.schema_id)
+        .await?
+        .ok_or(SchematicError::SchemaNotFound)?;
 
     let schema_variant_id = schema
         .default_schema_variant_id()
@@ -57,13 +52,7 @@ pub async fn create_node(
     let schematic_kind = SchematicKind::from(*schema.kind());
     let (kind, node) = match (schematic_kind, &request.parent_node_id) {
         (SchematicKind::Component, Some(parent_node_id)) => {
-            let parent_node = Node::get_by_id(
-                ctx.pg_txn(),
-                &ctx.read_tenancy().into(),
-                ctx.visibility(),
-                parent_node_id,
-            )
-            .await?;
+            let parent_node = Node::get_by_id(&ctx, parent_node_id).await?;
             // Ensures parent node must be a NodeKind::Deployment
             if let Some(parent_node) = parent_node {
                 match parent_node.kind() {
@@ -76,13 +65,7 @@ pub async fn create_node(
                 return Err(SchematicError::ParentNodeNotFound(*parent_node_id));
             }
             let (component, node) = Component::new_for_schema_variant_with_node_in_deployment(
-                ctx.pg_txn(),
-                ctx.nats_txn(),
-                ctx.veritech().clone(),
-                ctx.encryption_key(),
-                &ctx.write_tenancy().into(),
-                ctx.visibility(),
-                ctx.history_actor(),
+                &ctx,
                 &name,
                 schema_variant_id,
                 system_id,
@@ -98,13 +81,7 @@ pub async fn create_node(
         }
         (SchematicKind::Deployment, None) => {
             let (component, node) = Component::new_for_schema_variant_with_node_in_system(
-                ctx.pg_txn(),
-                ctx.nats_txn(),
-                ctx.veritech().clone(),
-                ctx.encryption_key(),
-                &ctx.write_tenancy().into(),
-                ctx.visibility(),
-                ctx.history_actor(),
+                &ctx,
                 &name,
                 schema_variant_id,
                 system_id,
@@ -125,20 +102,10 @@ pub async fn create_node(
         }
     };
 
-    let node_template = NodeTemplate::new_from_schema_id(
-        ctx.pg_txn(),
-        ctx.read_tenancy(),
-        ctx.visibility(),
-        request.schema_id,
-    )
-    .await?;
+    let node_template = NodeTemplate::new_from_schema_id(&ctx, request.schema_id).await?;
 
     let position = NodePosition::new(
-        ctx.pg_txn(),
-        ctx.nats_txn(),
-        ctx.write_tenancy(),
-        ctx.visibility(),
-        ctx.history_actor(),
+        &ctx,
         (*node.kind()).into(),
         request.root_node_id,
         request.system_id,
@@ -149,23 +116,11 @@ pub async fn create_node(
         request.y.clone(),
     )
     .await?;
-    position
-        .set_node(
-            ctx.pg_txn(),
-            ctx.nats_txn(),
-            ctx.visibility(),
-            ctx.history_actor(),
-            node.id(),
-        )
-        .await?;
+    position.set_node(&ctx, node.id()).await?;
     let mut positions = vec![position];
     if node.kind() == &NodeKind::Deployment {
         let position_component_panel = NodePosition::new(
-            ctx.pg_txn(),
-            ctx.nats_txn(),
-            ctx.write_tenancy(),
-            ctx.visibility(),
-            ctx.history_actor(),
+            &ctx,
             SchematicKind::Component,
             request.root_node_id,
             request.system_id,
@@ -174,15 +129,7 @@ pub async fn create_node(
             request.y,
         )
         .await?;
-        position_component_panel
-            .set_node(
-                ctx.pg_txn(),
-                ctx.nats_txn(),
-                ctx.visibility(),
-                ctx.history_actor(),
-                node.id(),
-            )
-            .await?;
+        position_component_panel.set_node(&ctx, node.id()).await?;
         positions.push(position_component_panel);
     }
     let node_view = NodeView::new(name, node, kind, positions, node_template);

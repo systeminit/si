@@ -3,17 +3,13 @@ pub mod widget;
 pub use widget::{ToSelectWidget, Widget};
 
 use serde::{Deserialize, Serialize};
-use si_data::{NatsTxn, PgTxn};
+
 use std::{future::Future, pin::Pin};
 use strum_macros::{AsRefStr, Display, EnumString};
 use thiserror::Error;
-use veritech::EncryptionKey;
 
-use crate::AttributeValueId;
-use crate::{
-    func::backend::validation::ValidationError, HistoryActor, LabelListError, PropKind,
-    ReadTenancy, Visibility, WriteTenancy,
-};
+use crate::{func::backend::validation::ValidationError, LabelListError, PropKind, Visibility};
+use crate::{AttributeValueId, DalContext};
 
 #[derive(Error, Debug)]
 pub enum EditFieldError {
@@ -181,21 +177,13 @@ pub trait EditFieldAble {
     type Error;
 
     async fn get_edit_fields(
-        txn: &PgTxn<'_>,
-        read_tenancy: &ReadTenancy,
-        visibility: &Visibility,
+        ctx: &DalContext<'_, '_>,
         id: &Self::Id,
     ) -> Result<EditFields, Self::Error>;
 
     #[allow(clippy::too_many_arguments)]
     async fn update_from_edit_field(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        veritech: veritech::Client,
-        encryption_key: &EncryptionKey,
-        write_tenancy: &WriteTenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         id: Self::Id,
         edit_field_id: String,
         value: Option<serde_json::Value>,

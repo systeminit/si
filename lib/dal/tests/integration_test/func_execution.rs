@@ -1,130 +1,57 @@
-use crate::test_setup;
+use dal::DalContext;
+
 use dal::func::execution::FuncExecutionState;
 use dal::{func::execution::FuncExecution, StandardModel};
 
 use crate::dal::test;
 use dal::{
     func::backend::string::FuncBackendStringArgs,
-    test_harness::{create_func, create_func_binding, create_visibility_head},
-    HistoryActor, Tenancy,
+    test_harness::{create_func, create_func_binding},
 };
 use veritech::OutputStream;
 
 #[test]
-async fn new() {
-    test_setup!(
-        ctx,
-        _secret_key,
-        _pg,
-        _conn,
-        txn,
-        _nats_conn,
-        nats,
-        _veritech,
-        _encr_key,
-    );
-    let tenancy = Tenancy::new_universal();
-    let visibility = create_visibility_head();
-    let history_actor = HistoryActor::SystemInit;
-    let func = create_func(&txn, &nats, &tenancy, &visibility, &history_actor).await;
+async fn new(ctx: &DalContext<'_, '_>) {
+    let func = create_func(ctx).await;
     let args = FuncBackendStringArgs::new("slayer".to_string());
     let args_json = serde_json::to_value(args).expect("cannot serialize args to json");
-    let func_binding = create_func_binding(
-        &txn,
-        &nats,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        args_json,
-        *func.id(),
-        *func.backend_kind(),
-    )
-    .await;
-    let execution = FuncExecution::new(&txn, &nats, &(&tenancy).into(), &func, &func_binding)
+    let func_binding = create_func_binding(ctx, args_json, *func.id(), *func.backend_kind()).await;
+    let execution = FuncExecution::new(ctx, &func, &func_binding)
         .await
         .expect("cannot create a new func execution");
     assert_eq!(execution.state(), FuncExecutionState::Start);
 }
 
 #[test]
-async fn set_state() {
-    test_setup!(
-        ctx,
-        _secret_key,
-        _pg,
-        _conn,
-        txn,
-        _nats_conn,
-        nats,
-        _veritech,
-        _encr_key,
-    );
-    let tenancy = Tenancy::new_universal();
-    let visibility = create_visibility_head();
-    let history_actor = HistoryActor::SystemInit;
-    let func = create_func(&txn, &nats, &tenancy, &visibility, &history_actor).await;
+async fn set_state(ctx: &DalContext<'_, '_>) {
+    let func = create_func(ctx).await;
     let args = FuncBackendStringArgs::new("slayer".to_string());
     let args_json = serde_json::to_value(args).expect("cannot serialize args to json");
-    let func_binding = create_func_binding(
-        &txn,
-        &nats,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        args_json,
-        *func.id(),
-        *func.backend_kind(),
-    )
-    .await;
-    let mut execution = FuncExecution::new(&txn, &nats, &(&tenancy).into(), &func, &func_binding)
+    let func_binding = create_func_binding(ctx, args_json, *func.id(), *func.backend_kind()).await;
+    let mut execution = FuncExecution::new(ctx, &func, &func_binding)
         .await
         .expect("cannot create a new func execution");
     assert_eq!(execution.state(), FuncExecutionState::Start);
     execution
-        .set_state(&txn, &nats, FuncExecutionState::Dispatch)
+        .set_state(&ctx, FuncExecutionState::Dispatch)
         .await
         .expect("cannot set state");
     assert_eq!(execution.state(), FuncExecutionState::Dispatch);
 }
 
 #[test]
-async fn set_output_stream() {
-    test_setup!(
-        ctx,
-        _secret_key,
-        _pg,
-        _conn,
-        txn,
-        _nats_conn,
-        nats,
-        _veritech,
-        _encr_key,
-    );
-    let tenancy = Tenancy::new_universal();
-    let visibility = create_visibility_head();
-    let history_actor = HistoryActor::SystemInit;
-    let func = create_func(&txn, &nats, &tenancy, &visibility, &history_actor).await;
+async fn set_output_stream(ctx: &DalContext<'_, '_>) {
+    let func = create_func(ctx).await;
     let args = FuncBackendStringArgs::new("slayer".to_string());
     let args_json = serde_json::to_value(args).expect("cannot serialize args to json");
-    let func_binding = create_func_binding(
-        &txn,
-        &nats,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        args_json,
-        *func.id(),
-        *func.backend_kind(),
-    )
-    .await;
-    let mut execution = FuncExecution::new(&txn, &nats, &(&tenancy).into(), &func, &func_binding)
+    let func_binding = create_func_binding(ctx, args_json, *func.id(), *func.backend_kind()).await;
+    let mut execution = FuncExecution::new(ctx, &func, &func_binding)
         .await
         .expect("cannot create a new func execution");
 
     execution
         .set_output_stream(
-            &txn,
-            &nats,
+            ctx,
             vec![
                 (OutputStream {
                     stream: "stdout".to_string(),
@@ -144,47 +71,22 @@ async fn set_output_stream() {
 }
 
 #[test]
-async fn process_return_value() {
-    test_setup!(
-        ctx,
-        _secret_key,
-        _pg,
-        _conn,
-        txn,
-        nats_conn,
-        nats,
-        veritech,
-        encr_key
-    );
-    let tenancy = Tenancy::new_universal();
-    let visibility = create_visibility_head();
-    let history_actor = HistoryActor::SystemInit;
-
-    let func = create_func(&txn, &nats, &tenancy, &visibility, &history_actor).await;
+async fn process_return_value(ctx: &DalContext<'_, '_>) {
+    let func = create_func(ctx).await;
     let args = FuncBackendStringArgs::new("slayer".to_string());
     let args_json = serde_json::to_value(args).expect("cannot serialize args to json");
-    let func_binding = create_func_binding(
-        &txn,
-        &nats,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        args_json,
-        *func.id(),
-        *func.backend_kind(),
-    )
-    .await;
+    let func_binding = create_func_binding(ctx, args_json, *func.id(), *func.backend_kind()).await;
     let func_binding_return_value = func_binding
-        .execute(&txn, &nats, veritech, encr_key)
+        .execute(ctx)
         .await
         .expect("cannot execute binding");
 
-    let mut execution = FuncExecution::new(&txn, &nats, &(&tenancy).into(), &func, &func_binding)
+    let mut execution = FuncExecution::new(ctx, &func, &func_binding)
         .await
         .expect("cannot create a new func execution");
 
     execution
-        .process_return_value(&txn, &nats, &func_binding_return_value)
+        .process_return_value(ctx, &func_binding_return_value)
         .await
         .expect("cannot process return value");
     assert_eq!(
@@ -201,12 +103,12 @@ async fn process_return_value() {
 // FIXME(nick,fletcher): re-add test once upsert is added.
 // #[test]
 // async fn execution_upserts_return_value() {
-//     test_setup!(ctx, _secret_key, _pg, _conn, txn, nats_conn, nats, veritech, _encr_key);
+//
 //     let tenancy = Tenancy::new_universal();
 //     let visibility = create_visibility_head();
 //     let history_actor = HistoryActor::SystemInit;
 //
-//     let func = create_func(&txn, &nats, &tenancy, &visibility, &history_actor).await;
+//     let func = create_func(ctx).await;
 //     let args = FuncBackendStringArgs::new("slayer".to_string());
 //     let args_json = serde_json::to_value(args).expect("cannot serialize args to json");
 //     let func_binding = create_func_binding(

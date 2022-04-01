@@ -34,17 +34,10 @@ pub async fn list_applications(
     let txns = txns.start().await?;
     let ctx = builder.build(request_ctx.build(request.visibility), &txns);
 
-    let schemas = Schema::find_by_attr(
-        ctx.pg_txn(),
-        &ctx.read_tenancy().into(),
-        ctx.visibility(),
-        "name",
-        &"application".to_string(),
-    )
-    .await?;
+    let schemas = Schema::find_by_attr(&ctx, "name", &"application".to_string()).await?;
     let schema = schemas.first().ok_or(ApplicationError::SchemaNotFound)?;
     let list: Vec<ListApplicationItem> = schema
-        .components(ctx.pg_txn(), &ctx.read_tenancy().into(), ctx.visibility())
+        .components(&ctx)
         .await?
         .into_iter()
         .map(|application| ListApplicationItem { application })

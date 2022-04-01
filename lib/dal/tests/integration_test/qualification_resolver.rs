@@ -1,63 +1,31 @@
-use crate::test_setup;
+use dal::DalContext;
 
 use crate::dal::test;
 use dal::func::backend::js_qualification::FuncBackendJsQualificationArgs;
 use dal::{
     func::binding::FuncBinding,
     qualification_resolver::{QualificationResolverContext, UNSET_ID_VALUE},
-    test_harness::{billing_account_signup, create_component_for_schema_variant},
-    Func, HistoryActor, QualificationResolver, Schema, StandardModel, Tenancy, Visibility,
+    test_harness::create_component_for_schema_variant,
+    Func, QualificationResolver, Schema, StandardModel,
 };
 
 #[test]
-async fn new() {
-    test_setup!(
-        ctx,
-        _secret_key,
-        _pg,
-        _conn,
-        txn,
-        nats_conn,
-        nats,
-        veritech,
-        encr_key
-    );
-    let tenancy = Tenancy::new_universal();
-    let visibility = Visibility::new_head(false);
-    let history_actor = HistoryActor::SystemInit;
-
+async fn new(ctx: &DalContext<'_, '_>) {
     let name = "docker_image".to_string();
-    let schema = Schema::find_by_attr(&txn, &tenancy, &visibility, "name", &name)
+    let schema = Schema::find_by_attr(ctx, "name", &name)
         .await
         .expect("cannot find docker image")
         .pop()
         .expect("no docker image found");
     let schema_variant = schema
-        .default_variant(
-            &txn,
-            &tenancy
-                .clone_into_read_tenancy(&txn)
-                .await
-                .expect("unable to generate read tenancy"),
-            &visibility,
-        )
+        .default_variant(ctx)
         .await
         .expect("No default schema variant found for schema docker_image");
 
-    let component = create_component_for_schema_variant(
-        &txn,
-        &nats,
-        veritech.clone(),
-        &encr_key,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        schema_variant.id(),
-    )
-    .await;
+    let component = create_component_for_schema_variant(ctx, schema_variant.id()).await;
 
     let func_name = "si:qualificationDockerImageNameInspect".to_string();
-    let mut funcs = Func::find_by_attr(&txn, &tenancy, &visibility, "name", &func_name)
+    let mut funcs = Func::find_by_attr(ctx, "name", &func_name)
         .await
         .expect("Error fetching builtin function");
     let func = funcs
@@ -66,21 +34,12 @@ async fn new() {
 
     let args = FuncBackendJsQualificationArgs {
         component: component
-            .veritech_qualification_check_component(
-                &txn,
-                &tenancy,
-                &visibility,
-                UNSET_ID_VALUE.into(),
-            )
+            .veritech_qualification_check_component(ctx, UNSET_ID_VALUE.into())
             .await
             .expect("could not create component qualification view"),
     };
     let func_binding = FuncBinding::new(
-        &txn,
-        &nats,
-        &(&tenancy).into(),
-        &visibility,
-        &history_actor,
+        ctx,
         serde_json::to_value(args).expect("cannot turn args into json"),
         *func.id(),
         *func.backend_kind(),
@@ -88,18 +47,14 @@ async fn new() {
     .await
     .expect("cannot create function binding");
     func_binding
-        .execute(&txn, &nats, veritech, encr_key)
+        .execute(ctx)
         .await
         .expect("failed to execute func binding");
 
     let mut qualification_resolver_context = QualificationResolverContext::new();
     qualification_resolver_context.set_component_id(*component.id());
     let _qualification_resolver = QualificationResolver::new(
-        &txn,
-        &nats,
-        &(&tenancy).into(),
-        &visibility,
-        &history_actor,
+        ctx,
         UNSET_ID_VALUE.into(),
         *func.id(),
         *func_binding.id(),
@@ -110,47 +65,23 @@ async fn new() {
 }
 
 #[test]
-async fn find_for_prototype() {
-    test_setup!(ctx, secret_key, pg, _conn, txn, nats_conn, nats, veritech, encr_key);
-    let (nba, _token) = billing_account_signup(&txn, &nats, secret_key).await;
-    let mut tenancy = Tenancy::new_workspace(vec![*nba.workspace.id()]);
-    tenancy.universal = true;
-    let visibility = Visibility::new_head(false);
-    let history_actor = HistoryActor::SystemInit;
-
+async fn find_for_prototype(ctx: &DalContext<'_, '_>) {
     let name = "docker_image".to_string();
-    let schema = Schema::find_by_attr(&txn, &tenancy, &visibility, "name", &name)
+    let schema = Schema::find_by_attr(ctx, "name", &name)
         .await
         .expect("cannot find docker image")
         .pop()
         .expect("no docker image found");
 
     let schema_variant = schema
-        .default_variant(
-            &txn,
-            &tenancy
-                .clone_into_read_tenancy(&txn)
-                .await
-                .expect("unable to generate read tenancy"),
-            &visibility,
-        )
+        .default_variant(ctx)
         .await
         .expect("No default schema variant found for schema docker_image");
 
-    let component = create_component_for_schema_variant(
-        &txn,
-        &nats,
-        veritech.clone(),
-        &encr_key,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        schema_variant.id(),
-    )
-    .await;
+    let component = create_component_for_schema_variant(ctx, schema_variant.id()).await;
 
     let func_name = "si:qualificationDockerImageNameInspect".to_string();
-    let mut funcs = Func::find_by_attr(&txn, &tenancy, &visibility, "name", &func_name)
+    let mut funcs = Func::find_by_attr(ctx, "name", &func_name)
         .await
         .expect("Error fetching builtin function");
     let func = funcs
@@ -159,21 +90,12 @@ async fn find_for_prototype() {
 
     let args = FuncBackendJsQualificationArgs {
         component: component
-            .veritech_qualification_check_component(
-                &txn,
-                &tenancy,
-                &visibility,
-                UNSET_ID_VALUE.into(),
-            )
+            .veritech_qualification_check_component(ctx, UNSET_ID_VALUE.into())
             .await
             .expect("could not create component qualification view"),
     };
     let func_binding = FuncBinding::new(
-        &txn,
-        &nats,
-        &(&tenancy).into(),
-        &visibility,
-        &history_actor,
+        ctx,
         serde_json::to_value(args.clone()).expect("cannot turn args into json"),
         *func.id(),
         *func.backend_kind(),
@@ -181,18 +103,14 @@ async fn find_for_prototype() {
     .await
     .expect("cannot create function binding");
     func_binding
-        .execute(&txn, &nats, veritech, encr_key)
+        .execute(ctx)
         .await
         .expect("failed to execute func binding");
 
     let mut resolver_context = QualificationResolverContext::new();
     resolver_context.set_component_id(*component.id());
     let created = QualificationResolver::new(
-        &txn,
-        &nats,
-        &(&tenancy).into(),
-        &visibility,
-        &history_actor,
+        ctx,
         UNSET_ID_VALUE.into(),
         *func.id(),
         *func_binding.id(),
@@ -202,12 +120,7 @@ async fn find_for_prototype() {
     .expect("cannot create new attribute resolver");
 
     let mut found_resolvers = QualificationResolver::find_for_prototype_and_component(
-        &txn,
-        &tenancy
-            .clone_into_read_tenancy(&txn)
-            .await
-            .expect("unable to generate read tenancy"),
-        &visibility,
+        ctx,
         &UNSET_ID_VALUE.into(),
         component.id(),
     )

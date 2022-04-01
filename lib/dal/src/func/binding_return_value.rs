@@ -1,16 +1,17 @@
+use crate::WriteTenancy;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
-use si_data::{NatsError, NatsTxn, PgError, PgTxn};
+use si_data::{NatsError, PgError};
 use telemetry::prelude::*;
 use thiserror::Error;
-use veritech::{EncryptionKey, OutputStream};
+use veritech::OutputStream;
 
 use crate::func::execution::FuncExecution;
 use crate::func::execution::{FuncExecutionError, FuncExecutionPk};
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
-    Func, HistoryActor, HistoryEventError, ReadTenancy, ReadTenancyError, StandardModel,
-    StandardModelError, Tenancy, Timestamp, Visibility, WriteTenancy,
+    DalContext, Func, HistoryEventError, ReadTenancyError, StandardModel, StandardModelError,
+    Timestamp, Visibility,
 };
 
 use super::{
@@ -61,7 +62,7 @@ pub struct FuncBindingReturnValue {
     // Function Execution IDs can be attached later for lookup and are optional.
     func_execution_pk: FuncExecutionPk,
     #[serde(flatten)]
-    tenancy: Tenancy,
+    tenancy: WriteTenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -86,53 +87,40 @@ impl FuncBindingReturnValue {
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn new(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        write_tenancy: &WriteTenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         unprocessed_value: Option<serde_json::Value>,
         value: Option<serde_json::Value>,
         func_id: FuncId,
         func_binding_id: FuncBindingId,
         func_execution_pk: FuncExecutionPk,
     ) -> FuncBindingReturnValueResult<Self> {
-        let row = txn
+        let row = ctx
+            .txns()
+            .pg()
             .query_one(
                 "SELECT object FROM func_binding_return_value_create_v1($1, $2, $3, $4, $5)",
                 &[
-                    write_tenancy,
-                    &visibility,
+                    ctx.write_tenancy(),
+                    ctx.visibility(),
                     &unprocessed_value,
                     &value,
                     &func_execution_pk,
                 ],
             )
             .await?;
-        let object: FuncBindingReturnValue = standard_model::finish_create_from_row(
-            txn,
-            nats,
-            &write_tenancy.into(),
-            visibility,
-            history_actor,
-            row,
-        )
-        .await?;
-        object
-            .set_func(txn, nats, visibility, history_actor, &func_id)
-            .await?;
-        object
-            .set_func_binding(txn, nats, visibility, history_actor, &func_binding_id)
-            .await?;
+        let object: FuncBindingReturnValue =
+            standard_model::finish_create_from_row(ctx, row).await?;
+        object.set_func(ctx, &func_id).await?;
+        object.set_func_binding(ctx, &func_binding_id).await?;
 
         Ok(object)
     }
 
     pub async fn get_output_stream(
         &self,
-        txn: &PgTxn<'_>,
+        ctx: &DalContext<'_, '_>,
     ) -> FuncBindingReturnValueResult<Option<Vec<OutputStream>>> {
-        let func_execution = FuncExecution::get_by_pk(txn, &self.func_execution_pk).await?;
+        let func_execution = FuncExecution::get_by_pk(ctx, &self.func_execution_pk).await?;
         Ok(func_execution.into_output_stream())
     }
 
@@ -151,15 +139,15 @@ impl FuncBindingReturnValue {
 
     /// Attempts to retrieve [`Self`] by [`FuncBindingId`].
     pub async fn get_by_func_binding_id(
-        txn: &PgTxn<'_>,
-        read_tenancy: &ReadTenancy,
-        visibility: &Visibility,
+        ctx: &DalContext<'_, '_>,
         func_binding_id: FuncBindingId,
     ) -> FuncBindingReturnValueResult<Option<Self>> {
-        let row = txn
+        let row = ctx
+            .txns()
+            .pg()
             .query_opt(
                 GET_FOR_FUNC_BINDING,
-                &[read_tenancy, &visibility, &func_binding_id],
+                &[ctx.read_tenancy(), ctx.visibility(), &func_binding_id],
             )
             .await?;
         let object = standard_model::option_object_from_row(row)?;
@@ -169,27 +157,17 @@ impl FuncBindingReturnValue {
     /// Attempts to retrieve [`Self`] by [`FuncBindingId`]. If nothing is found, then execute
     /// with the given [`FuncBindingId`] and return the value generated.
     pub async fn get_by_func_binding_id_or_execute(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        read_tenancy: ReadTenancy,
-        visibility: &Visibility,
-        veritech: veritech::Client,
-        encryption_key: &EncryptionKey,
+        ctx: &DalContext<'_, '_>,
         func_binding_id: FuncBindingId,
     ) -> FuncBindingReturnValueResult<Self> {
-        let object =
-            Self::get_by_func_binding_id(txn, &read_tenancy, visibility, func_binding_id).await?;
+        let object = Self::get_by_func_binding_id(ctx, func_binding_id).await?;
         let func_binding_return_value: Self = if let Some(found_value) = object {
             found_value
         } else {
-            let tenancy = Tenancy::from_read_tenancy(read_tenancy);
-            let func_binding = FuncBinding::get_by_id(txn, &tenancy, visibility, &func_binding_id)
+            let func_binding = FuncBinding::get_by_id(ctx, &func_binding_id)
                 .await?
                 .ok_or(FuncBindingReturnValueError::Missing(func_binding_id))?;
-            match func_binding
-                .execute(txn, nats, veritech, encryption_key)
-                .await
-            {
+            match func_binding.execute(ctx).await {
                 Ok(generated_value) => generated_value,
                 Err(e) => return Err(FuncBindingReturnValueError::FuncBinding(e.to_string())),
             }
@@ -201,38 +179,26 @@ impl FuncBindingReturnValue {
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn upsert(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        write_tenancy: &WriteTenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         unprocessed_value: Option<serde_json::Value>,
         value: Option<serde_json::Value>,
         func_id: FuncId,
         func_binding_id: FuncBindingId,
         func_execution_pk: FuncExecutionPk,
     ) -> FuncBindingReturnValueResult<Self> {
-        let read_tenancy = write_tenancy.clone_into_read_tenancy(txn).await?;
-        let return_value =
-            Self::get_by_func_binding_id(txn, &read_tenancy, visibility, func_binding_id).await?;
+        let return_value = Self::get_by_func_binding_id(ctx, func_binding_id).await?;
         if let Some(mut return_value) = return_value {
+            return_value.set_value(ctx, value).await?;
             return_value
-                .set_value(txn, nats, visibility, history_actor, value)
+                .set_unprocessed_value(ctx, unprocessed_value)
                 .await?;
             return_value
-                .set_unprocessed_value(txn, nats, visibility, history_actor, unprocessed_value)
-                .await?;
-            return_value
-                .set_func_execution_pk(txn, nats, visibility, history_actor, func_execution_pk)
+                .set_func_execution_pk(ctx, func_execution_pk)
                 .await?;
             Ok(return_value)
         } else {
             Self::new(
-                txn,
-                nats,
-                write_tenancy,
-                visibility,
-                history_actor,
+                ctx,
                 unprocessed_value,
                 value,
                 func_id,

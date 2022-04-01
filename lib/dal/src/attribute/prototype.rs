@@ -12,7 +12,7 @@
 //!     for.
 use async_recursion::async_recursion;
 use serde::{Deserialize, Serialize};
-use si_data::{NatsError, NatsTxn, PgError, PgTxn};
+use si_data::{NatsError, PgError};
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -28,8 +28,8 @@ use crate::{
         binding_return_value::FuncBindingReturnValueId,
     },
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_has_many,
-    HistoryActor, HistoryEventError, PropError, PropKind, ReadTenancy, ReadTenancyError,
-    StandardModel, StandardModelError, Tenancy, Timestamp, Visibility, WriteTenancy,
+    DalContext, HistoryEventError, PropError, PropKind, ReadTenancy, ReadTenancyError,
+    StandardModel, StandardModelError, Timestamp, Visibility, WriteTenancy,
 };
 
 const LIST_FOR_CONTEXT: &str = include_str!("../queries/attribute_prototype_list_for_context.sql");
@@ -97,7 +97,7 @@ pub struct AttributePrototype {
     pk: AttributePrototypePk,
     id: AttributePrototypeId,
     #[serde(flatten)]
-    tenancy: Tenancy,
+    tenancy: WriteTenancy,
     #[serde(flatten)]
     visibility: Visibility,
     func_id: FuncId,
@@ -121,11 +121,7 @@ impl AttributePrototype {
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn new(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        write_tenancy: &WriteTenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         func_id: FuncId,
         func_binding_id: FuncBindingId,
         func_binding_return_value_id: FuncBindingReturnValueId,
@@ -133,56 +129,41 @@ impl AttributePrototype {
         key: Option<String>,
         parent_attribute_value_id: Option<AttributeValueId>,
     ) -> AttributePrototypeResult<Self> {
-        let read_tenancy = write_tenancy.clone_into_read_tenancy(txn).await?;
-        let row = txn
+        let row = ctx
+            .txns()
+            .pg()
             .query_one(
                 "SELECT object FROM attribute_prototype_create_v1($1, $2, $3, $4, $5)",
-                &[&write_tenancy, &visibility, &context, &func_id, &key],
+                &[
+                    ctx.write_tenancy(),
+                    ctx.visibility(),
+                    &context,
+                    &func_id,
+                    &key,
+                ],
             )
             .await?;
-        let object: AttributePrototype = standard_model::finish_create_from_row(
-            txn,
-            nats,
-            &write_tenancy.into(),
-            visibility,
-            history_actor,
-            row,
-        )
-        .await?;
+        let object: AttributePrototype = standard_model::finish_create_from_row(ctx, row).await?;
 
         let value = AttributeValue::new(
-            txn,
-            nats,
-            write_tenancy,
-            visibility,
-            history_actor,
+            ctx,
             func_binding_id,
             func_binding_return_value_id,
             context,
             key.clone(),
         )
         .await?;
-        value
-            .set_attribute_prototype(txn, nats, visibility, history_actor, object.id())
-            .await?;
+        value.set_attribute_prototype(ctx, object.id()).await?;
 
         if let Some(parent_attribute_value_id) = parent_attribute_value_id {
             value
-                .set_parent_attribute_value(
-                    txn,
-                    nats,
-                    visibility,
-                    history_actor,
-                    &parent_attribute_value_id,
-                )
+                .set_parent_attribute_value(ctx, &parent_attribute_value_id)
                 .await?;
         }
 
         if !context.is_least_specific() {
             let original_prototype = Self::find_with_parent_value_and_key_for_context(
-                txn,
-                &read_tenancy,
-                visibility,
+                ctx,
                 parent_attribute_value_id,
                 key,
                 context.less_specific()?,
@@ -191,11 +172,7 @@ impl AttributePrototype {
 
             if let Some(original_prototype) = original_prototype {
                 Self::create_intermediate_proxy_values(
-                    txn,
-                    nats,
-                    write_tenancy,
-                    visibility,
-                    history_actor,
+                    ctx,
                     parent_attribute_value_id,
                     *original_prototype.id(),
                     context.less_specific()?,
@@ -210,58 +187,38 @@ impl AttributePrototype {
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn new_with_existing_value(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        write_tenancy: &WriteTenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         func_id: FuncId,
         context: AttributeContext,
         key: Option<String>,
         parent_attribute_value_id: Option<AttributeValueId>,
         attribute_value_id: AttributeValueId,
     ) -> AttributePrototypeResult<Self> {
-        let read_tenancy = write_tenancy.clone_into_read_tenancy(txn).await?;
-        let row = txn
+        let row = ctx
+            .txns()
+            .pg()
             .query_one(
                 "SELECT object FROM attribute_prototype_create_v1($1, $2, $3, $4, $5)",
-                &[&write_tenancy, &visibility, &context, &func_id, &key],
+                &[
+                    ctx.write_tenancy(),
+                    ctx.visibility(),
+                    &context,
+                    &func_id,
+                    &key,
+                ],
             )
             .await?;
-        let object: AttributePrototype = standard_model::finish_create_from_row(
-            txn,
-            nats,
-            &write_tenancy.into(),
-            visibility,
-            history_actor,
-            row,
-        )
-        .await?;
+        let object: AttributePrototype = standard_model::finish_create_from_row(ctx, row).await?;
 
-        let value = AttributeValue::get_by_id(
-            txn,
-            &(&read_tenancy).into(),
-            visibility,
-            &attribute_value_id,
-        )
-        .await?
-        .ok_or(AttributeValueError::Missing)?;
-        value
-            .unset_attribute_prototype(txn, nats, visibility, history_actor)
-            .await?;
-        value
-            .set_attribute_prototype(txn, nats, visibility, history_actor, object.id())
-            .await?;
+        let value = AttributeValue::get_by_id(ctx, &attribute_value_id)
+            .await?
+            .ok_or(AttributeValueError::Missing)?;
+        value.unset_attribute_prototype(ctx).await?;
+        value.set_attribute_prototype(ctx, object.id()).await?;
 
         if let Some(parent_attribute_value_id) = parent_attribute_value_id {
             value
-                .set_parent_attribute_value(
-                    txn,
-                    nats,
-                    visibility,
-                    history_actor,
-                    &parent_attribute_value_id,
-                )
+                .set_parent_attribute_value(ctx, &parent_attribute_value_id)
                 .await?;
         }
 
@@ -287,21 +244,13 @@ impl AttributePrototype {
     /// CAUTION: this should be used rather than [`StandardModel::delete()`] when deleting an
     /// [`AttributePrototype`].
     pub async fn remove(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        write_tenancy: &WriteTenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         attribute_prototype_id: &AttributePrototypeId,
     ) -> AttributePrototypeResult<()> {
-        let tenancy = &(write_tenancy).into();
-
         // Get the prototype for the given id. Once we get its corresponding value, we can delete
         // the prototype.
         let mut attribute_prototype =
-            match AttributePrototype::get_by_id(txn, tenancy, visibility, attribute_prototype_id)
-                .await?
-            {
+            match AttributePrototype::get_by_id(ctx, attribute_prototype_id).await? {
                 Some(v) => v,
                 None => return Ok(()),
             };
@@ -312,27 +261,21 @@ impl AttributePrototype {
                 ),
             );
         }
-        let attribute_values = attribute_prototype
-            .attribute_values(txn, tenancy, visibility)
-            .await?;
-        attribute_prototype.delete(txn, nats, history_actor).await?;
+        let attribute_values = attribute_prototype.attribute_values(ctx).await?;
+        attribute_prototype.delete(ctx).await?;
 
         // Start with the initial value(s) from the prototype and build a work queue based on the
         // value's children (and their children, recursively). Once we find the child values,
         // we can delete the current value in the queue and its prototype.
         let mut work_queue = attribute_values;
         while let Some(mut current_value) = work_queue.pop() {
-            let child_attribute_values = current_value
-                .child_attribute_values(txn, tenancy, visibility)
-                .await?;
+            let child_attribute_values = current_value.child_attribute_values(ctx).await?;
             if !child_attribute_values.is_empty() {
                 work_queue.extend(child_attribute_values);
             }
 
             // Delete the prototype if we find one and if its context is not "least-specific".
-            if let Some(mut current_prototype) =
-                current_value.attribute_prototype(txn, visibility).await?
-            {
+            if let Some(mut current_prototype) = current_value.attribute_prototype(ctx).await? {
                 if current_prototype.context.is_least_specific() {
                     return Err(
                         AttributePrototypeError::LeastSpecificContextPrototypeRemovalNotAllowed(
@@ -340,7 +283,7 @@ impl AttributePrototype {
                         ),
                     );
                 }
-                current_prototype.delete(txn, nats, history_actor).await?;
+                current_prototype.delete(ctx).await?;
             }
 
             // Delete the value if its context is not "least-specific".
@@ -351,22 +294,27 @@ impl AttributePrototype {
                     ),
                 );
             }
-            current_value.delete(txn, nats, history_actor).await?;
+            current_value.delete(ctx).await?;
         }
         Ok(())
     }
 
     #[instrument(skip_all)]
     pub async fn list_for_context(
-        txn: &PgTxn<'_>,
-        read_tenancy: &ReadTenancy,
-        visibility: &Visibility,
+        ctx: &DalContext<'_, '_>,
         context: AttributeContext,
     ) -> AttributePrototypeResult<Vec<Self>> {
-        let rows = txn
+        let rows = ctx
+            .txns()
+            .pg()
             .query(
                 LIST_FOR_CONTEXT,
-                &[read_tenancy, &visibility, &context, &context.prop_id()],
+                &[
+                    ctx.read_tenancy(),
+                    ctx.visibility(),
+                    &context,
+                    &context.prop_id(),
+                ],
             )
             .await?;
         let object = standard_model::objects_from_rows(rows)?;
@@ -375,19 +323,19 @@ impl AttributePrototype {
 
     #[tracing::instrument(skip_all)]
     pub async fn find_with_parent_value_and_key_for_context(
-        txn: &PgTxn<'_>,
-        read_tenancy: &ReadTenancy,
-        visibility: &Visibility,
+        ctx: &DalContext<'_, '_>,
         parent_attribute_value_id: Option<AttributeValueId>,
         key: Option<String>,
         context: AttributeContext,
     ) -> AttributePrototypeResult<Option<Self>> {
-        let row = txn
+        let row = ctx
+            .txns()
+            .pg()
             .query_opt(
                 FIND_WITH_PARENT_VALUE_AND_KEY_FOR_CONTEXT,
                 &[
-                    read_tenancy,
-                    &visibility,
+                    ctx.read_tenancy(),
+                    ctx.visibility(),
                     &context,
                     &parent_attribute_value_id,
                     &key,
@@ -402,11 +350,7 @@ impl AttributePrototype {
     #[allow(clippy::too_many_arguments)]
     #[async_recursion]
     async fn create_intermediate_proxy_values(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        write_tenancy: &WriteTenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         parent_attribute_value_id: Option<AttributeValueId>,
         prototype_id: AttributePrototypeId,
         context: AttributeContext,
@@ -415,11 +359,8 @@ impl AttributePrototype {
             return Ok(());
         }
 
-        let read_tenancy = write_tenancy.clone_into_read_tenancy(txn).await?;
         if (AttributeValue::find_with_parent_and_prototype_for_context(
-            txn,
-            &read_tenancy,
-            visibility,
+            ctx,
             parent_attribute_value_id,
             prototype_id,
             context,
@@ -429,11 +370,7 @@ impl AttributePrototype {
         {
             // Need to create a proxy to the next lowest level
             Self::create_intermediate_proxy_values(
-                txn,
-                nats,
-                write_tenancy,
-                visibility,
-                history_actor,
+                ctx,
                 parent_attribute_value_id,
                 prototype_id,
                 context.less_specific()?,
@@ -441,9 +378,7 @@ impl AttributePrototype {
             .await?;
 
             if let Some(proxy_target) = AttributeValue::find_with_parent_and_prototype_for_context(
-                txn,
-                &read_tenancy,
-                visibility,
+                ctx,
                 parent_attribute_value_id,
                 prototype_id,
                 context.less_specific()?,
@@ -452,11 +387,7 @@ impl AttributePrototype {
             {
                 // Create the proxy at this level
                 let mut proxy_attribute_value = AttributeValue::new(
-                    txn,
-                    nats,
-                    write_tenancy,
-                    visibility,
-                    history_actor,
+                    ctx,
                     proxy_target.func_binding_id(),
                     proxy_target.func_binding_return_value_id(),
                     context,
@@ -464,21 +395,15 @@ impl AttributePrototype {
                 )
                 .await?;
                 proxy_attribute_value
-                    .set_proxy_for_attribute_value_id(
-                        txn,
-                        nats,
-                        visibility,
-                        history_actor,
-                        Some(*proxy_target.id()),
-                    )
+                    .set_proxy_for_attribute_value_id(ctx, Some(*proxy_target.id()))
                     .await?;
                 proxy_attribute_value
-                    .set_attribute_prototype(txn, nats, visibility, history_actor, &prototype_id)
+                    .set_attribute_prototype(ctx, &prototype_id)
                     .await?
             } else {
                 return Err(AttributePrototypeError::MissingValue(
-                    read_tenancy,
-                    *visibility,
+                    ctx.read_tenancy().clone(),
+                    *ctx.visibility(),
                     prototype_id,
                     parent_attribute_value_id,
                 ));
@@ -490,11 +415,7 @@ impl AttributePrototype {
 
     #[allow(clippy::too_many_arguments)]
     pub async fn update_for_context(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        write_tenancy: &WriteTenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         attribute_prototype_id: AttributePrototypeId,
         context: AttributeContext,
         func_id: FuncId,
@@ -503,18 +424,11 @@ impl AttributePrototype {
         parent_attribute_value_id: Option<AttributeValueId>,
         existing_attribute_value_id: Option<AttributeValueId>,
     ) -> AttributePrototypeResult<AttributePrototypeId> {
-        let read_tenancy = write_tenancy.clone_into_read_tenancy(txn).await?;
-        let given_attribute_prototype = Self::get_by_id(
-            txn,
-            &(&read_tenancy).into(),
-            visibility,
-            &attribute_prototype_id,
-        )
-        .await?
-        .ok_or(AttributePrototypeError::NotFound(
-            attribute_prototype_id,
-            *visibility,
-        ))?;
+        let given_attribute_prototype = Self::get_by_id(ctx, &attribute_prototype_id)
+            .await?
+            .ok_or_else(|| {
+                AttributePrototypeError::NotFound(attribute_prototype_id, *ctx.visibility())
+            })?;
 
         // If the AttributePrototype we were given isn't for the _specific_ context that we're
         // trying to update, make a new one. This is necessary so that we don't end up changing the
@@ -523,11 +437,7 @@ impl AttributePrototype {
             given_attribute_prototype
         } else if let Some(attribute_value_id) = existing_attribute_value_id {
             let prototype = Self::new_with_existing_value(
-                txn,
-                nats,
-                write_tenancy,
-                visibility,
-                history_actor,
+                ctx,
                 func_id,
                 context,
                 given_attribute_prototype.key().map(|k| k.to_string()),
@@ -536,33 +446,22 @@ impl AttributePrototype {
             )
             .await?;
 
-            let mut value = AttributeValue::get_by_id(
-                txn,
-                &(&read_tenancy).into(),
-                visibility,
-                &attribute_value_id,
-            )
-            .await?
-            .ok_or_else(|| {
-                AttributePrototypeError::MissingValue(
-                    read_tenancy,
-                    *visibility,
-                    *prototype.id(),
-                    Some(attribute_value_id),
-                )
-            })?;
-            value
-                .set_func_binding_id(txn, nats, visibility, history_actor, func_binding_id)
-                .await?;
+            let mut value = AttributeValue::get_by_id(ctx, &attribute_value_id)
+                .await?
+                .ok_or_else(|| {
+                    AttributePrototypeError::MissingValue(
+                        ctx.read_tenancy().clone(),
+                        *ctx.visibility(),
+                        *prototype.id(),
+                        Some(attribute_value_id),
+                    )
+                })?;
+            value.set_func_binding_id(ctx, func_binding_id).await?;
 
             prototype
         } else {
             Self::new(
-                txn,
-                nats,
-                write_tenancy,
-                visibility,
-                history_actor,
+                ctx,
                 func_id,
                 func_binding_id,
                 func_binding_return_value_id,
@@ -573,9 +472,7 @@ impl AttributePrototype {
             .await?
         };
 
-        attribute_prototype
-            .set_func_id(txn, nats, visibility, history_actor, func_id)
-            .await?;
+        attribute_prototype.set_func_id(ctx, func_id).await?;
 
         Ok(*attribute_prototype.id())
     }

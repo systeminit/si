@@ -1,6 +1,7 @@
+use crate::WriteTenancy;
 use jwt_simple::{algorithms::RSAKeyPairLike, claims::Claims, reexports::coarsetime::Duration};
 use serde::{Deserialize, Serialize};
-use si_data::{NatsError, NatsTxn, PgError, PgTxn};
+use si_data::{NatsError, PgError};
 use sodiumoxide::crypto::pwhash::argon2id13;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -10,8 +11,8 @@ use crate::jwt_key::{get_jwt_signing_key, JwtKeyError};
 use crate::standard_model::option_object_from_row;
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
-    BillingAccount, BillingAccountId, HistoryActor, HistoryEventError, JwtSecretKey, ReadTenancy,
-    StandardModel, StandardModelError, Tenancy, Timestamp, Visibility, WriteTenancy,
+    BillingAccount, BillingAccountId, DalContext, HistoryEventError, JwtSecretKey, StandardModel,
+    StandardModelError, Timestamp, Visibility,
 };
 
 const USER_PASSWORD: &str = include_str!("./queries/user_password.sql");
@@ -54,7 +55,7 @@ pub struct User {
     name: String,
     email: String,
     #[serde(flatten)]
-    tenancy: Tenancy,
+    tenancy: WriteTenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -74,11 +75,7 @@ impl User {
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn new(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        write_tenancy: &WriteTenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         name: impl AsRef<str>,
         email: impl AsRef<str>,
         password: impl AsRef<str>,
@@ -88,27 +85,21 @@ impl User {
         let password = password.as_ref();
         let encrypted_password = encrypt_password(password).await?;
 
-        let row = txn
+        let row = ctx
+            .txns()
+            .pg()
             .query_one(
                 "SELECT object FROM user_create_v1($1, $2, $3, $4, $5)",
                 &[
-                    write_tenancy,
-                    &visibility,
+                    ctx.write_tenancy(),
+                    ctx.visibility(),
                     &name,
                     &email,
                     &encrypted_password.as_ref(),
                 ],
             )
             .await?;
-        let object = standard_model::finish_create_from_row(
-            txn,
-            nats,
-            &write_tenancy.into(),
-            visibility,
-            history_actor,
-            row,
-        )
-        .await?;
+        let object = standard_model::finish_create_from_row(ctx, row).await?;
         Ok(object)
     }
 
@@ -126,39 +117,46 @@ impl User {
     );
 
     pub async fn find_by_email(
-        txn: &PgTxn<'_>,
-        read_tenancy: &ReadTenancy,
-        visibility: &Visibility,
+        ctx: &DalContext<'_, '_>,
         email: impl AsRef<str>,
     ) -> UserResult<Option<User>> {
         let email = email.as_ref();
-        let maybe_row = txn
-            .query_opt(USER_FIND_BY_EMAIL, &[&email, read_tenancy, &visibility])
+        let maybe_row = ctx
+            .txns()
+            .pg()
+            .query_opt(
+                USER_FIND_BY_EMAIL,
+                &[&email, ctx.read_tenancy(), ctx.visibility()],
+            )
             .await?;
         let result = option_object_from_row(maybe_row)?;
         Ok(result)
     }
 
-    pub async fn authorize(
-        txn: &PgTxn<'_>,
-        read_tenancy: &ReadTenancy,
-        visibility: &Visibility,
-        user_id: &UserId,
-    ) -> UserResult<bool> {
-        let _row = txn
-            .query_one(AUTHORIZE_USER, &[read_tenancy, &visibility, &user_id])
+    pub async fn authorize(ctx: &DalContext<'_, '_>, user_id: &UserId) -> UserResult<bool> {
+        let _row = ctx
+            .txns()
+            .pg()
+            .query_one(
+                AUTHORIZE_USER,
+                &[ctx.read_tenancy(), ctx.visibility(), &user_id],
+            )
             .await?;
         Ok(true)
     }
 
     pub async fn login(
         &self,
-        txn: &PgTxn<'_>,
+        ctx: &DalContext<'_, '_>,
         jwt_secret_key: &JwtSecretKey,
         billing_account_id: &BillingAccountId,
         password: impl Into<String>,
     ) -> UserResult<String> {
-        let row = txn.query_one(USER_PASSWORD, &[&self.pk()]).await?;
+        let row = ctx
+            .txns()
+            .pg()
+            .query_one(USER_PASSWORD, &[&self.pk()])
+            .await?;
         let current_password: Vec<u8> = row.try_get("password")?;
         let verified = verify_password(password, current_password).await?;
         if !verified {
@@ -171,7 +169,7 @@ impl User {
             .with_issuer("https://app.systeminit.com")
             .with_subject(*self.id());
 
-        let signing_key = get_jwt_signing_key(txn, jwt_secret_key).await?;
+        let signing_key = get_jwt_signing_key(ctx, jwt_secret_key).await?;
         let jwt = signing_key.sign(claims)?;
         Ok(jwt)
     }
@@ -192,10 +190,10 @@ impl UserClaim {
     }
 
     pub async fn from_bearer_token(
-        txn: &PgTxn<'_>,
+        ctx: &DalContext<'_, '_>,
         token: impl AsRef<str>,
     ) -> UserResult<UserClaim> {
-        let claims = crate::jwt_key::validate_bearer_token(txn, &token).await?;
+        let claims = crate::jwt_key::validate_bearer_token(ctx, &token).await?;
         Ok(claims.custom)
     }
 }

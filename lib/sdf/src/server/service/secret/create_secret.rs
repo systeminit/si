@@ -40,11 +40,7 @@ pub async fn create_secret(
     let ctx = builder.build(request_tx.build(request.visibility), &txns);
 
     let secret = EncryptedSecret::new(
-        ctx.pg_txn(),
-        ctx.nats_txn(),
-        ctx.write_tenancy(),
-        ctx.visibility(),
-        ctx.history_actor(),
+        &ctx,
         request.name,
         request.object_type,
         request.kind,

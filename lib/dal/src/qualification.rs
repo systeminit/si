@@ -1,5 +1,6 @@
+use crate::DalContext;
 use serde::{Deserialize, Serialize};
-use si_data::PgTxn;
+
 use thiserror::Error;
 use veritech::QualificationSubCheck;
 
@@ -85,10 +86,10 @@ impl QualificationView {
     }
 
     pub async fn new_for_func_binding_return_value(
-        txn: &PgTxn<'_>,
+        ctx: &DalContext<'_, '_>,
         fbrv: FuncBindingReturnValue,
     ) -> Result<Self, QualificationError> {
-        let output_streams = fbrv.get_output_stream(txn).await?;
+        let output_streams = fbrv.get_output_stream(ctx).await?;
         let output = match output_streams {
             Some(streams) => streams
                 .into_iter()

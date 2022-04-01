@@ -1,14 +1,11 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use veritech::EncryptionKey;
-
-use si_data::PgTxn;
 
 use crate::{
     attribute::value::{AttributeValue, AttributeValueId, AttributeValuePayload},
     component::{ComponentKind, ComponentResult},
-    AttributeReadContext, Component, ComponentError, EncryptedSecret, PropKind, ReadTenancy,
-    SecretError, SecretId, StandardModel, StandardModelError, System, Visibility,
+    AttributeReadContext, Component, ComponentError, DalContext, EncryptedSecret, PropKind,
+    SecretError, SecretId, StandardModel, StandardModelError, System,
 };
 
 use thiserror::Error;
@@ -46,9 +43,7 @@ impl Default for ComponentView {
 
 impl ComponentView {
     pub async fn for_context(
-        txn: &PgTxn<'_>,
-        read_tenancy: &ReadTenancy,
-        visibility: &Visibility,
+        ctx: &DalContext<'_, '_>,
         context: AttributeReadContext,
     ) -> ComponentResult<ComponentView> {
         let component_id = match context.component_id() {
@@ -60,21 +55,17 @@ impl ComponentView {
             }
         };
 
-        let component = Component::get_by_id(txn, &read_tenancy.into(), visibility, &component_id)
+        let component = Component::get_by_id(ctx, &component_id)
             .await?
             .ok_or(ComponentError::NotFound(component_id))?;
 
         // Perhaps get_by_id should just do this? -- Adam
         let system = match context.system_id() {
-            Some(system_id) => {
-                System::get_by_id(txn, &read_tenancy.into(), visibility, &system_id).await?
-            }
+            Some(system_id) => System::get_by_id(ctx, &system_id).await?,
             None => None,
         };
 
-        let mut work_queue =
-            AttributeValue::list_payload_for_read_context(txn, read_tenancy, visibility, context)
-                .await?;
+        let mut work_queue = AttributeValue::list_payload_for_read_context(ctx, context).await?;
         // `AttributeValueId -> serde_json pointer` so when we have a parent_attribute_value_id,
         // we know _exactly_ where in the structure we need to insert, when we have a
         // parent_attribute_resolver_id.
@@ -187,10 +178,7 @@ impl ComponentView {
     }
 
     pub async fn reencrypt_secrets(
-        txn: &PgTxn<'_>,
-        read_tenancy: &ReadTenancy,
-        visibility: &Visibility,
-        encryption_key: &EncryptionKey,
+        ctx: &DalContext<'_, '_>,
         component: &mut veritech::ComponentView,
     ) -> Result<(), ComponentViewError> {
         if component.kind != veritech::ComponentKind::Credential {
@@ -209,17 +197,13 @@ impl ComponentView {
             // TODO: traverse tree and decrypt leafs
             for (_key, value) in object {
                 if let Some(raw_id) = value.as_i64() {
-                    let decrypted_secret = EncryptedSecret::get_by_id(
-                        txn,
-                        &read_tenancy.into(),
-                        visibility,
-                        &raw_id.into(),
-                    )
-                    .await?
-                    .ok_or_else(|| ComponentViewError::SecretNotFound(raw_id.into()))?
-                    .decrypt(txn, visibility)
-                    .await?;
-                    let encoded = encryption_key
+                    let decrypted_secret = EncryptedSecret::get_by_id(ctx, &raw_id.into())
+                        .await?
+                        .ok_or_else(|| ComponentViewError::SecretNotFound(raw_id.into()))?
+                        .decrypt(ctx)
+                        .await?;
+                    let encoded = ctx
+                        .encryption_key()
                         .encrypt_and_encode(&serde_json::to_string(&decrypted_secret.message())?);
 
                     *value = serde_json::to_value(&decrypted_secret)?;

@@ -35,27 +35,10 @@ pub async fn create_change_set(
         &txns,
     );
 
-    let change_set = ChangeSet::new(
-        ctx.pg_txn(),
-        ctx.nats_txn(),
-        ctx.write_tenancy(),
-        ctx.history_actor(),
-        request.change_set_name,
-        None,
-    )
-    .await?;
+    let change_set = ChangeSet::new(&ctx, request.change_set_name, None).await?;
     let current_date_time = Utc::now();
     let edit_session_name = current_date_time.to_string();
-    let edit_session = EditSession::new(
-        ctx.pg_txn(),
-        ctx.nats_txn(),
-        ctx.write_tenancy(),
-        ctx.history_actor(),
-        &change_set.pk,
-        &edit_session_name,
-        None,
-    )
-    .await?;
+    let edit_session = EditSession::new(&ctx, &change_set.pk, &edit_session_name, None).await?;
 
     txns.commit().await?;
 

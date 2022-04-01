@@ -31,13 +31,8 @@ pub async fn get_defaults(
     let txns = txns.start().await?;
     let ctx = builder.build(request_ctx.build_head(), &txns);
 
-    let response = BillingAccount::get_defaults(
-        ctx.pg_txn(),
-        ctx.read_tenancy(),
-        ctx.visibility(),
-        &claim.billing_account_id,
-    )
-    .await?
-    .into();
+    let response = BillingAccount::get_defaults(&ctx, &claim.billing_account_id)
+        .await?
+        .into();
     Ok(Json(response))
 }

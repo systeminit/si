@@ -1,14 +1,15 @@
+use crate::DalContext;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
-use si_data::{NatsError, NatsTxn, PgError, PgTxn};
+use si_data::{NatsError, PgError};
 use std::default::Default;
 use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
     func::FuncId, impl_standard_model, pk, standard_model, standard_model_accessor, ComponentId,
-    HistoryActor, HistoryEventError, ReadTenancy, SchemaId, SchemaVariantId, StandardModel,
-    StandardModelError, SystemId, Tenancy, Timestamp, Visibility, WriteTenancy,
+    HistoryEventError, SchemaId, SchemaVariantId, StandardModel, StandardModelError, SystemId,
+    Timestamp, Visibility, WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -110,7 +111,7 @@ pub struct ResourcePrototype {
     #[serde(flatten)]
     context: ResourcePrototypeContext,
     #[serde(flatten)]
-    tenancy: Tenancy,
+    tenancy: WriteTenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -130,21 +131,19 @@ impl ResourcePrototype {
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn new(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        write_tenancy: &WriteTenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         func_id: FuncId,
         args: serde_json::Value,
         context: ResourcePrototypeContext,
     ) -> ResourcePrototypeResult<Self> {
-        let row = txn
+        let row = ctx
+            .txns()
+            .pg()
             .query_one(
                 "SELECT object FROM resource_prototype_create_v1($1, $2, $3, $4, $5, $6, $7, $8)",
                 &[
-                    write_tenancy,
-                    &visibility,
+                    ctx.write_tenancy(),
+                    ctx.visibility(),
                     &func_id,
                     &args,
                     &context.component_id(),
@@ -154,15 +153,7 @@ impl ResourcePrototype {
                 ],
             )
             .await?;
-        let object = standard_model::finish_create_from_row(
-            txn,
-            nats,
-            &write_tenancy.into(),
-            visibility,
-            history_actor,
-            row,
-        )
-        .await?;
+        let object = standard_model::finish_create_from_row(ctx, row).await?;
         Ok(object)
     }
 
@@ -171,20 +162,20 @@ impl ResourcePrototype {
 
     #[allow(clippy::too_many_arguments)]
     pub async fn get_for_component(
-        txn: &PgTxn<'_>,
-        read_tenancy: &ReadTenancy,
-        visibility: &Visibility,
+        ctx: &DalContext<'_, '_>,
         component_id: ComponentId,
         schema_id: SchemaId,
         schema_variant_id: SchemaVariantId,
         system_id: SystemId,
     ) -> ResourcePrototypeResult<Option<Self>> {
-        let row = txn
+        let row = ctx
+            .txns()
+            .pg()
             .query_opt(
                 GET_FOR_CONTEXT,
                 &[
-                    read_tenancy,
-                    &visibility,
+                    ctx.read_tenancy(),
+                    ctx.visibility(),
                     &component_id,
                     &system_id,
                     &schema_variant_id,

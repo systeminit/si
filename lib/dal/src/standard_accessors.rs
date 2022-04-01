@@ -16,18 +16,12 @@ macro_rules! standard_model_many_to_many {
         #[telemetry::tracing::instrument(skip_all)]
         pub async fn $lookup_fn(
             &self,
-            txn: &si_data::PgTxn<'_>,
-            visibility: &$crate::Visibility,
+            ctx: &$crate::DalContext<'_, '_>,
         ) -> $result_type<Vec<$returns>> {
-            // Hack to allow avoiding _with_tenancy in most cases
-            let mut tenancy = self.tenancy().clone();
-            tenancy.universal = true;
             let other: Option<&$right_id> = None;
             let r = $crate::standard_model::many_to_many(
-                &txn,
+                ctx,
                 $table_name,
-                &tenancy,
-                visibility,
                 $left_table,
                 $right_table,
                 Some(self.id()),
@@ -37,56 +31,24 @@ macro_rules! standard_model_many_to_many {
             Ok(r)
         }
 
-        paste::paste! {
-            #[telemetry::tracing::instrument(skip_all)]
-            pub async fn [<$lookup_fn _with_tenancy>](
-                &self,
-                txn: &si_data::PgTxn<'_>,
-                tenancy: &$crate::Tenancy,
-                visibility: &$crate::Visibility,
-            ) -> $result_type<Vec<$returns>> {
-                let other: Option<&$right_id> = None;
-                let r = $crate::standard_model::many_to_many(
-                    &txn,
-                    $table_name,
-                    tenancy,
-                    visibility,
-                    $left_table,
-                    $right_table,
-                    Some(self.id()),
-                    other,
-                )
-                .await?;
-                Ok(r)
-            }
-        }
-
         #[telemetry::tracing::instrument(skip_all)]
         pub async fn $associate_fn(
             &self,
-            txn: &si_data::PgTxn<'_>,
-            nats: &si_data::NatsTxn,
-            visibility: &$crate::Visibility,
-            history_actor: &$crate::HistoryActor,
+            ctx: &$crate::DalContext<'_, '_>,
             right_id: &$right_id,
         ) -> $result_type<()> {
             let _r = $crate::standard_model::associate_many_to_many(
-                &txn,
+                &ctx,
                 $table_name,
-                &self.tenancy(),
-                visibility,
                 self.id(),
                 right_id,
             )
             .await?;
             let _history_event = $crate::HistoryEvent::new(
-                &txn,
-                &nats,
+                ctx,
                 &Self::history_event_label(vec![stringify!($associate_fn)]),
-                &history_actor,
                 &Self::history_event_message(format!("associated {}", stringify!($returns))),
                 &serde_json::json![{ "pk": self.pk, "left_id": self.id(), "right_id": &right_id  }],
-                &self.tenancy(),
             )
             .await?;
             Ok(())
@@ -95,29 +57,21 @@ macro_rules! standard_model_many_to_many {
         #[telemetry::tracing::instrument(skip_all)]
         pub async fn $disassociate_fn(
             &self,
-            txn: &si_data::PgTxn<'_>,
-            nats: &si_data::NatsTxn,
-            visibility: &$crate::Visibility,
-            history_actor: &$crate::HistoryActor,
+            ctx: &$crate::DalContext<'_, '_>,
             right_id: &$right_id,
         ) -> $result_type<()> {
             let _r = $crate::standard_model::disassociate_many_to_many(
-                &txn,
+                ctx,
                 $table_name,
-                &self.tenancy(),
-                visibility,
                 self.id(),
                 right_id,
             )
             .await?;
             let _history_event = $crate::HistoryEvent::new(
-                &txn,
-                &nats,
+                ctx,
                 &Self::history_event_label(vec![stringify!($disassociate_fn)]),
-                &history_actor,
                 &Self::history_event_message(format!("disassociated {}", stringify!($returns))),
                 &serde_json::json![{ "pk": self.pk, "left_id": self.id(), "right_id": &right_id  }],
-                &self.tenancy(),
             )
             .await?;
             Ok(())
@@ -139,15 +93,12 @@ macro_rules! standard_model_many_to_many {
         #[telemetry::tracing::instrument(skip_all)]
         pub async fn $lookup_fn(
             &self,
-            txn: &si_data::PgTxn<'_>,
-            visibility: &$crate::Visibility,
+            ctx: &$crate::DalContext<'_, '_>,
         ) -> $result_type<Vec<$returns>> {
             let other: Option<&$left_id> = None;
             let r = $crate::standard_model::many_to_many(
-                &txn,
+                ctx,
                 $table_name,
-                &self.tenancy(),
-                visibility,
                 $left_table,
                 $right_table,
                 other,
@@ -160,29 +111,21 @@ macro_rules! standard_model_many_to_many {
         #[telemetry::tracing::instrument(skip_all)]
         pub async fn $associate_fn(
             &self,
-            txn: &si_data::PgTxn<'_>,
-            nats: &si_data::NatsTxn,
-            visibility: &$crate::Visibility,
-            history_actor: &$crate::HistoryActor,
+            ctx: &$crate::DalContext<'_, '_>,
             left_id: &$left_id,
         ) -> $result_type<()> {
             let _r = $crate::standard_model::associate_many_to_many(
-                &txn,
+                ctx,
                 $table_name,
-                &self.tenancy(),
-                visibility,
                 left_id,
                 self.id(),
             )
             .await?;
             let _history_event = $crate::HistoryEvent::new(
-                &txn,
-                &nats,
+                ctx,
                 &Self::history_event_label(vec![stringify!($associate_fn)]),
-                &history_actor,
                 &Self::history_event_message(format!("associated {}", stringify!($returns))),
                 &serde_json::json![{ "pk": self.pk, "left_id": &left_id, "right_id": &self.id() }],
-                &self.tenancy(),
             )
             .await?;
             Ok(())
@@ -191,29 +134,21 @@ macro_rules! standard_model_many_to_many {
         #[telemetry::tracing::instrument(skip_all)]
         pub async fn $disassociate_fn(
             &self,
-            txn: &si_data::PgTxn<'_>,
-            nats: &si_data::NatsTxn,
-            visibility: &$crate::Visibility,
-            history_actor: &$crate::HistoryActor,
+            ctx: &$crate::DalContext<'_, '_>,
             left_id: &$left_id,
         ) -> $result_type<()> {
             let _r = $crate::standard_model::disassociate_many_to_many(
-                &txn,
+                ctx,
                 $table_name,
-                &self.tenancy(),
-                visibility,
                 left_id,
                 self.id(),
             )
             .await?;
             let _history_event = $crate::HistoryEvent::new(
-                &txn,
-                &nats,
+                ctx,
                 &Self::history_event_label(vec![stringify!($disassociate_fn)]),
-                &history_actor,
                 &Self::history_event_message(format!("disassociated {}", stringify!($returns))),
                 &serde_json::json![{ "pk": self.pk, "right_id": self.id(), "left_id": &left_id }],
-                &self.tenancy(),
             )
             .await?;
             Ok(())
@@ -230,22 +165,13 @@ macro_rules! standard_model_has_many {
         returns: $has_many:ident,
         result: $result_type:ident $(,)?
     ) => {
-        #[telemetry::tracing::instrument(skip(txn))]
+        #[telemetry::tracing::instrument(skip(ctx))]
         pub async fn $lookup_fn(
             &self,
-            txn: &si_data::PgTxn<'_>,
-            tenancy: &$crate::Tenancy,
-            visibility: &$crate::Visibility,
+            ctx: &$crate::DalContext<'_, '_>,
         ) -> $result_type<Vec<$has_many>> {
-            let r = $crate::standard_model::has_many(
-                &txn,
-                $table,
-                tenancy,
-                visibility,
-                $retrieve_table,
-                &self.id(),
-            )
-            .await?;
+            let r =
+                $crate::standard_model::has_many(ctx, $table, $retrieve_table, &self.id()).await?;
             Ok(r)
         }
     };
@@ -263,17 +189,14 @@ macro_rules! standard_model_belongs_to {
         returns: $belongs_to:ident,
         result: $result_type:ident $(,)?
     ) => {
-        #[telemetry::tracing::instrument(skip(txn))]
+        #[telemetry::tracing::instrument(skip(ctx))]
         pub async fn $lookup_fn(
             &self,
-            txn: &si_data::PgTxn<'_>,
-            visibility: &$crate::Visibility,
+            ctx: &$crate::DalContext<'_, '_>,
         ) -> $result_type<Option<$belongs_to>> {
             let r = $crate::standard_model::belongs_to(
-                &txn,
+                ctx,
                 $table,
-                &self.tenancy(),
-                visibility,
                 $retrieve_table,
                 &self.id(),
             )
@@ -282,18 +205,14 @@ macro_rules! standard_model_belongs_to {
         }
 
         paste::paste! {
-            #[telemetry::tracing::instrument(skip(txn))]
+            #[telemetry::tracing::instrument(skip(ctx))]
             pub async fn [<$lookup_fn _with_tenancy>](
                 &self,
-                txn: &si_data::PgTxn<'_>,
-                tenancy: &$crate::Tenancy,
-                visibility: &$crate::Visibility,
+                ctx: &$crate::DalContext<'_, '_>,
             ) -> $result_type<Option<$belongs_to>> {
                 let r = $crate::standard_model::belongs_to(
-                    &txn,
+                    ctx,
                     $table,
-                    tenancy,
-                    visibility,
                     $retrieve_table,
                     &self.id(),
                 )
@@ -302,61 +221,45 @@ macro_rules! standard_model_belongs_to {
             }
         }
 
-        #[telemetry::tracing::instrument(skip(txn))]
+        #[telemetry::tracing::instrument(skip(ctx))]
         pub async fn $set_fn(
             &self,
-            txn: &si_data::PgTxn<'_>,
-            nats: &si_data::NatsTxn,
-            visibility: &$crate::Visibility,
-            history_actor: &$crate::HistoryActor,
+            ctx: &$crate::DalContext<'_, '_>,
             belongs_to_id: &$belongs_to_id,
         ) -> $result_type<()> {
             $crate::standard_model::set_belongs_to(
-                &txn,
+                ctx,
                 $table,
-                &self.tenancy(),
-                visibility,
                 &self.id(),
                 &belongs_to_id,
             )
             .await?;
             let _history_event = $crate::HistoryEvent::new(
-                &txn,
-                &nats,
+                ctx,
                 &Self::history_event_label(vec![stringify!($set_fn)]),
-                &history_actor,
                 &Self::history_event_message(format!("set {}", stringify!($returns))),
                 &serde_json::json![{ "pk": self.pk, "belongs_to_id": &belongs_to_id }],
-                &self.tenancy(),
             )
             .await?;
             Ok(())
         }
 
-        #[telemetry::tracing::instrument(skip(txn))]
+        #[telemetry::tracing::instrument(skip(ctx))]
         pub async fn $unset_fn(
             &self,
-            txn: &si_data::PgTxn<'_>,
-            nats: &si_data::NatsTxn,
-            visibility: &$crate::Visibility,
-            history_actor: &$crate::HistoryActor,
+            ctx: &$crate::DalContext<'_, '_>,
         ) -> $result_type<()> {
             $crate::standard_model::unset_belongs_to(
-                &txn,
+                ctx,
                 $table,
-                &self.tenancy(),
-                visibility,
                 &self.id(),
             )
             .await?;
             let _history_event = $crate::HistoryEvent::new(
-                &txn,
-                &nats,
+                ctx,
                 &Self::history_event_label(vec![stringify!($unset_fn)]),
-                &history_actor,
                 &Self::history_event_message(format!("unset {}", stringify!($returns))),
                 &serde_json::json![{ "pk": self.pk, "id": &self.id }],
-                &self.tenancy(),
             )
             .await?;
             Ok(())
@@ -380,35 +283,27 @@ macro_rules! standard_model_accessor {
             #[telemetry::tracing::instrument(skip_all)]
             pub async fn [<set_ $column>](
                 &mut self,
-                txn: &si_data::PgTxn<'_>,
-                nats: &si_data::NatsTxn,
-                visibility: &$crate::Visibility,
-                history_actor: &$crate::HistoryActor,
+                ctx: &$crate::DalContext<'_, '_>,
                 value: impl Into<$value_type>,
             ) -> $result_type<()> {
                 let value: $value_type = value.into();
                 let updated_at = standard_model::update(
-                    &txn,
+                    ctx,
                     Self::table_name(),
                     stringify!($column),
-                    &self.tenancy(),
-                    visibility,
                     self.id(),
                     &value,
                     $hint,
                 ).await?;
                 let _history_event = $crate::HistoryEvent::new(
-                    &txn,
-                    &nats,
+                    ctx,
                     &Self::history_event_label(vec!["updated"]),
-                    &history_actor,
                     &Self::history_event_message("updated"),
                     &serde_json::json![{
                         "pk": self.pk,
                         "field": stringify!($column),
                         "value": &value,
                     }],
-                    &self.tenancy(),
                 )
                 .await?;
                 self.timestamp.updated_at = updated_at;
@@ -424,35 +319,27 @@ macro_rules! standard_model_accessor {
             #[telemetry::tracing::instrument(skip_all)]
             pub async fn [<set_ $column>](
                 &mut self,
-                txn: &si_data::PgTxn<'_>,
-                nats: &si_data::NatsTxn,
-                visibility: &$crate::Visibility,
-                history_actor: &$crate::HistoryActor,
+                ctx: &$crate::DalContext<'_, '_>,
                 value: impl Into<$value_type>,
             ) -> $result_type<()> {
                 let value: $value_type = value.into();
                 let updated_at = standard_model::update(
-                    &txn,
+                    ctx,
                     Self::table_name(),
                     stringify!($column),
-                    &self.tenancy(),
-                    visibility,
                     self.id(),
                     value,
                     $hint,
                 ).await?;
                 let _history_event = $crate::HistoryEvent::new(
-                    &txn,
-                    &nats,
+                    ctx,
                     &Self::history_event_label(vec!["updated"]),
-                    &history_actor,
                     &Self::history_event_message("updated"),
                     &serde_json::json![{
                         "pk": self.pk,
                         "field": stringify!($column),
                         "value": &value,
                     }],
-                    &self.tenancy(),
                 )
                 .await?;
                 self.timestamp.updated_at = updated_at;
@@ -468,35 +355,27 @@ macro_rules! standard_model_accessor {
             #[telemetry::tracing::instrument(skip_all)]
             pub async fn [<set_ $column>](
                 &mut self,
-                txn: &si_data::PgTxn<'_>,
-                nats: &si_data::NatsTxn,
-                visibility: &$crate::Visibility,
-                history_actor: &$crate::HistoryActor,
+                ctx: &$crate::DalContext<'_, '_>,
                 value: Option<impl Into<$value_type>>,
             ) -> $result_type<()> {
                 let value: Option<$value_type> = value.map(Into::into);
                 let updated_at = standard_model::update(
-                    &txn,
+                    ctx,
                     Self::table_name(),
                     stringify!($column),
-                    &self.tenancy(),
-                    visibility,
                     self.id(),
                     &value,
                     $hint,
                 ).await?;
                 let _history_event = $crate::HistoryEvent::new(
-                    &txn,
-                    &nats,
+                    ctx,
                     &Self::history_event_label(vec!["updated"]),
-                    &history_actor,
                     &Self::history_event_message("updated"),
                     &serde_json::json![{
                         "pk": self.pk,
                         "field": stringify!($column),
                         "value": &value,
                     }],
-                    &self.tenancy(),
                 )
                 .await?;
                 self.timestamp.updated_at = updated_at;
@@ -508,38 +387,30 @@ macro_rules! standard_model_accessor {
 
     (@set_column_as_ref $column:ident, $value_type:ident, $hint:ty, $result_type:ident $(,)?) => {
         paste::paste! {
-            #[telemetry::tracing::instrument(skip(txn, nats, value))]
+            #[telemetry::tracing::instrument(skip(ctx, value))]
             pub async fn [<set_ $column>](
                 &mut self,
-                txn: &si_data::PgTxn<'_>,
-                nats: &si_data::NatsTxn,
-                visibility: &$crate::Visibility,
-                history_actor: &$crate::HistoryActor,
+                ctx: &$crate::DalContext<'_, '_>,
                 value: impl Into<$value_type>,
             ) -> $result_type<()> {
                 let value: $value_type = value.into();
                 let updated_at = standard_model::update(
-                    &txn,
+                    ctx,
                     Self::table_name(),
                     stringify!($column),
-                    &self.tenancy(),
-                    visibility,
                     self.id(),
                     &value.as_ref(),
                     $hint,
                 ).await?;
                 let _history_event = $crate::HistoryEvent::new(
-                    &txn,
-                    &nats,
+                    ctx,
                     &Self::history_event_label(vec!["updated"]),
-                    &history_actor,
                     &Self::history_event_message("updated"),
                     &serde_json::json![{
                         "pk": self.pk,
                         "field": stringify!($column),
                         "value": &value,
                     }],
-                    &self.tenancy(),
                 )
                 .await?;
                 self.timestamp.updated_at = updated_at;
@@ -554,35 +425,27 @@ macro_rules! standard_model_accessor {
             #[telemetry::tracing::instrument(skip_all)]
             pub async fn [<set_ $column>](
                 &mut self,
-                txn: &si_data::PgTxn<'_>,
-                nats: &si_data::NatsTxn,
-                visibility: &$crate::Visibility,
-                history_actor: &$crate::HistoryActor,
+                ctx: &$crate::DalContext<'_, '_>,
                 value: Option<impl Into<$value_type>>,
             ) -> $result_type<()> {
                 let value: Option<$value_type> = value.map(Into::into);
                 let updated_at = standard_model::update(
-                    &txn,
+                    ctx,
                     Self::table_name(),
                     stringify!($column),
-                    &self.tenancy(),
-                    visibility,
                     self.id(),
                     &value.as_ref().map(|v| v.as_ref()),
                     $hint,
                 ).await?;
                 let _history_event = $crate::HistoryEvent::new(
-                    &txn,
-                    &nats,
+                    ctx,
                     &Self::history_event_label(vec!["updated"]),
-                    &history_actor,
                     &Self::history_event_message("updated"),
                     &serde_json::json![{
                         "pk": self.pk,
                         "field": stringify!($column),
                         "value": &value,
                     }],
-                    &self.tenancy(),
                 )
                 .await?;
                 self.timestamp.updated_at = updated_at;

@@ -2,6 +2,7 @@ use crate::dal::test;
 use crate::service_tests::{api_request, api_request_auth_empty, api_request_raw};
 use crate::test_setup;
 use axum::http::{Method, StatusCode};
+use dal::StandardModel;
 use sdf::service::session::get_defaults::GetDefaultsResponse;
 use sdf::service::session::login::{LoginRequest, LoginResponse};
 use sdf::service::session::restore_authentication::RestoreAuthenticationResponse;
@@ -20,7 +21,9 @@ async fn login() {
         _encr_key,
         app,
         nba,
-        _auth_token
+        _auth_token,
+        _dal_ctx,
+        dal_txns,
     );
 
     let request = LoginRequest {
@@ -75,7 +78,9 @@ async fn restore_authentication() {
         _encr_key,
         app,
         nba,
-        auth_token
+        auth_token,
+        _dal_ctx,
+        dal_txns,
     );
 
     let response: RestoreAuthenticationResponse = api_request_auth_empty(
@@ -103,8 +108,11 @@ async fn get_defaults() {
         _encr_key,
         app,
         nba,
-        auth_token
+        auth_token,
+        _dal_ctx,
+        dal_txns,
     );
+    dal_txns.commit().await.expect("cannot commit txns");
 
     let response: GetDefaultsResponse = api_request_auth_empty(
         app.clone(),

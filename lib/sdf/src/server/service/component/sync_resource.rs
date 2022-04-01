@@ -28,21 +28,12 @@ pub async fn sync_resource(
     let txns = txns.start().await?;
     let ctx = builder.build(request_ctx.build(request.visibility), &txns);
 
-    let component = Component::get_by_id(
-        ctx.pg_txn(),
-        &ctx.read_tenancy().into(),
-        ctx.visibility(),
-        &request.component_id,
-    )
-    .await?
-    .ok_or(ComponentError::ComponentNotFound)?;
+    let component = Component::get_by_id(&ctx, &request.component_id)
+        .await?
+        .ok_or(ComponentError::ComponentNotFound)?;
     component
         .sync_resource(
-            ctx.pg_txn(),
-            ctx.nats_txn(),
-            ctx.veritech().clone(),
-            ctx.encryption_key(),
-            ctx.history_actor(),
+            &ctx,
             request.system_id.unwrap_or_else(|| UNSET_ID_VALUE.into()),
         )
         .await?;

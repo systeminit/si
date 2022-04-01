@@ -1,17 +1,18 @@
+use crate::DalContext;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use strum_macros::{Display, EnumString};
 use thiserror::Error;
 
-use si_data::{NatsError, NatsTxn, PgError, PgTxn};
+use si_data::{NatsError, PgError};
 use telemetry::prelude::*;
 
 use crate::label_list::LabelList;
 use crate::standard_model::object_option_from_row_option;
 use crate::ws_event::{WsEvent, WsPayload};
 use crate::{
-    pk, HistoryActor, HistoryEvent, HistoryEventError, LabelListError, ReadTenancy,
-    StandardModelError, Tenancy, Timestamp, WriteTenancy, WsEventError,
+    pk, HistoryActor, HistoryEvent, HistoryEventError, LabelListError, StandardModelError,
+    Timestamp, WriteTenancy, WsEventError,
 };
 
 const CHANGE_SET_OPEN_LIST: &str = include_str!("./queries/change_set_open_list.sql");
@@ -59,61 +60,49 @@ pub struct ChangeSet {
     pub note: Option<String>,
     pub status: ChangeSetStatus,
     #[serde(flatten)]
-    pub tenancy: Tenancy,
+    pub tenancy: WriteTenancy,
     #[serde(flatten)]
     pub timestamp: Timestamp,
 }
 
 impl ChangeSet {
-    #[instrument(skip(txn, nats, name, note))]
+    #[instrument(skip(ctx, name, note))]
     pub async fn new(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        write_tenancy: &WriteTenancy,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         name: impl AsRef<str>,
         note: Option<&String>,
     ) -> ChangeSetResult<Self> {
         let name = name.as_ref();
         let note = note.as_ref();
-        let row = txn
+        let row = ctx
+            .txns()
+            .pg()
             .query_one(
                 "SELECT object FROM change_set_create_v1($1, $2, $3, $4)",
                 &[
                     &name,
                     &note,
                     &ChangeSetStatus::Open.to_string(),
-                    write_tenancy,
+                    ctx.write_tenancy(),
                 ],
             )
             .await?;
         let json: serde_json::Value = row.try_get("object")?;
-        let _history_event = HistoryEvent::new(
-            txn,
-            nats,
-            "change_set.create",
-            history_actor,
-            "Change Set created",
-            &json,
-            &write_tenancy.into(),
-        )
-        .await?;
+        let _history_event =
+            HistoryEvent::new(ctx, "change_set.create", "Change Set created", &json).await?;
         let object: Self = serde_json::from_value(json)?;
-        WsEvent::change_set_created(&object, history_actor)
-            .publish(nats)
+        WsEvent::change_set_created(&object, ctx.history_actor())
+            .publish(ctx.txns().nats())
             .await?;
         Ok(object)
     }
 
-    #[instrument(skip(txn, nats))]
-    pub async fn apply(
-        &mut self,
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        history_actor: &HistoryActor,
-    ) -> ChangeSetResult<()> {
-        let actor = serde_json::to_value(&history_actor)?;
-        let row = txn
+    #[instrument(skip(ctx))]
+    pub async fn apply(&mut self, ctx: &DalContext<'_, '_>) -> ChangeSetResult<()> {
+        let actor = serde_json::to_value(ctx.history_actor())?;
+        let row = ctx
+            .txns()
+            .pg()
             .query_one(
                 "SELECT timestamp_updated_at FROM change_set_apply_v1($1, $2)",
                 &[&self.pk, &actor],
@@ -123,39 +112,38 @@ impl ChangeSet {
         self.timestamp.updated_at = updated_at;
         self.status = ChangeSetStatus::Applied;
         let _history_event = HistoryEvent::new(
-            txn,
-            nats,
+            ctx,
             "change_set.apply",
-            history_actor,
             "Change Set applied",
             &serde_json::json![{ "pk": &self.pk }],
-            &self.tenancy,
         )
         .await?;
-        WsEvent::change_set_applied(self, history_actor)
-            .publish(nats)
+        WsEvent::change_set_applied(self, ctx.history_actor())
+            .publish(ctx.txns().nats())
             .await?;
         Ok(())
     }
 
     #[instrument(skip_all)]
-    pub async fn list_open(
-        txn: &PgTxn<'_>,
-        read_tenancy: &ReadTenancy,
-    ) -> ChangeSetResult<LabelList<ChangeSetPk>> {
-        let rows = txn.query(CHANGE_SET_OPEN_LIST, &[read_tenancy]).await?;
+    pub async fn list_open(ctx: &DalContext<'_, '_>) -> ChangeSetResult<LabelList<ChangeSetPk>> {
+        let rows = ctx
+            .txns()
+            .pg()
+            .query(CHANGE_SET_OPEN_LIST, &[ctx.read_tenancy()])
+            .await?;
         let results = LabelList::from_rows(rows)?;
         Ok(results)
     }
 
     #[instrument(skip_all)]
     pub async fn get_by_pk(
-        txn: &PgTxn<'_>,
-        read_tenancy: &ReadTenancy,
+        ctx: &DalContext<'_, '_>,
         pk: &ChangeSetPk,
     ) -> ChangeSetResult<Option<ChangeSet>> {
-        let row = txn
-            .query_opt(CHANGE_SET_GET_BY_PK, &[read_tenancy, &pk])
+        let row = ctx
+            .txns()
+            .pg()
+            .query_opt(CHANGE_SET_GET_BY_PK, &[ctx.read_tenancy(), &pk])
             .await?;
         let change_set: Option<ChangeSet> = object_option_from_row_option(row)?;
         Ok(change_set)

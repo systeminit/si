@@ -1,6 +1,7 @@
+use crate::DalContext;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
-use si_data::{NatsError, NatsTxn, PgError, PgTxn};
+use si_data::{NatsError, PgError};
 use std::default::Default;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -9,9 +10,8 @@ use crate::{
     func::FuncId,
     impl_standard_model, pk,
     standard_model::{self, objects_from_rows},
-    standard_model_accessor, HistoryActor, HistoryEventError, PropId, ReadTenancy, SchemaId,
-    SchemaVariantId, StandardModel, StandardModelError, SystemId, Tenancy, Timestamp, Visibility,
-    WriteTenancy,
+    standard_model_accessor, HistoryEventError, PropId, SchemaId, SchemaVariantId, StandardModel,
+    StandardModelError, SystemId, Timestamp, Visibility, WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -105,7 +105,7 @@ pub struct ValidationPrototype {
     #[serde(flatten)]
     context: ValidationPrototypeContext,
     #[serde(flatten)]
-    tenancy: Tenancy,
+    tenancy: WriteTenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -125,21 +125,19 @@ impl ValidationPrototype {
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn new(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        write_tenancy: &WriteTenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         func_id: FuncId,
         args: serde_json::Value,
         context: ValidationPrototypeContext,
     ) -> ValidationPrototypeResult<Self> {
-        let row = txn
+        let row = ctx
+            .txns()
+            .pg()
             .query_one(
                 "SELECT object FROM validation_prototype_create_v1($1, $2, $3, $4, $5, $6, $7, $8)",
                 &[
-                    write_tenancy,
-                    &visibility,
+                    ctx.write_tenancy(),
+                    ctx.visibility(),
                     &func_id,
                     &args,
                     &context.prop_id(),
@@ -149,15 +147,7 @@ impl ValidationPrototype {
                 ],
             )
             .await?;
-        let object = standard_model::finish_create_from_row(
-            txn,
-            nats,
-            &write_tenancy.into(),
-            visibility,
-            history_actor,
-            row,
-        )
-        .await?;
+        let object = standard_model::finish_create_from_row(ctx, row).await?;
         Ok(object)
     }
 
@@ -166,16 +156,16 @@ impl ValidationPrototype {
 
     #[allow(clippy::too_many_arguments)]
     pub async fn find_for_prop(
-        txn: &PgTxn<'_>,
-        read_tenancy: &ReadTenancy,
-        visibility: &Visibility,
+        ctx: &DalContext<'_, '_>,
         prop_id: PropId,
         system_id: SystemId,
     ) -> ValidationPrototypeResult<Vec<Self>> {
-        let rows = txn
+        let rows = ctx
+            .txns()
+            .pg()
             .query(
                 FIND_FOR_CONTEXT,
-                &[read_tenancy, &visibility, &prop_id, &system_id],
+                &[ctx.read_tenancy(), ctx.visibility(), &prop_id, &system_id],
             )
             .await?;
         let object = objects_from_rows(rows)?;

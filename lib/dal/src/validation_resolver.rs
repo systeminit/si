@@ -1,5 +1,6 @@
+use crate::DalContext;
 use serde::{Deserialize, Serialize};
-use si_data::{NatsError, NatsTxn, PgError, PgTxn};
+use si_data::{NatsError, PgError};
 use std::default::Default;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -8,9 +9,9 @@ use crate::{
     func::{binding::FuncBindingId, binding_return_value::FuncBindingReturnValue, FuncId},
     impl_standard_model, pk,
     standard_model::{self, objects_from_rows},
-    standard_model_accessor, ComponentId, HistoryActor, HistoryEventError, Prop, PropId,
-    ReadTenancy, SchemaId, SchemaVariantId, StandardModel, StandardModelError, SystemId, Tenancy,
-    Timestamp, ValidationPrototypeId, Visibility, WriteTenancy,
+    standard_model_accessor, ComponentId, HistoryEventError, Prop, PropId, SchemaId,
+    SchemaVariantId, StandardModel, StandardModelError, SystemId, Timestamp, ValidationPrototypeId,
+    Visibility, WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -122,7 +123,7 @@ pub struct ValidationResolver {
     #[serde(flatten)]
     context: ValidationResolverContext,
     #[serde(flatten)]
-    tenancy: Tenancy,
+    tenancy: WriteTenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -142,22 +143,15 @@ impl ValidationResolver {
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn new(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        write_tenancy: &WriteTenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         validation_prototype_id: ValidationPrototypeId,
         func_id: FuncId,
         func_binding_id: FuncBindingId,
         context: ValidationResolverContext,
     ) -> ValidationResolverResult<Self> {
-        let row = txn
-            .query_one(
+        let row = ctx.txns().pg().query_one(
                 "SELECT object FROM validation_resolver_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
-                &[
-                    write_tenancy,
-                    &visibility,
+                &[ctx.write_tenancy(), ctx.visibility(),
                     &validation_prototype_id,
                     &func_id,
                     &func_binding_id,
@@ -169,15 +163,7 @@ impl ValidationResolver {
                 ],
             )
             .await?;
-        let object = standard_model::finish_create_from_row(
-            txn,
-            nats,
-            &write_tenancy.into(),
-            visibility,
-            history_actor,
-            row,
-        )
-        .await?;
+        let object = standard_model::finish_create_from_row(ctx, row).await?;
         Ok(object)
     }
 
@@ -230,16 +216,21 @@ impl ValidationResolver {
     // }
 
     pub async fn list_values_for_component(
-        txn: &PgTxn<'_>,
-        read_tenancy: &ReadTenancy,
-        visibility: &Visibility,
+        ctx: &DalContext<'_, '_>,
         component_id: ComponentId,
         system_id: SystemId,
     ) -> ValidationResolverResult<Vec<(Prop, FuncBindingReturnValue)>> {
-        let rows = txn
+        let rows = ctx
+            .txns()
+            .pg()
             .query(
                 FIND_VALUES_FOR_COMPONENT,
-                &[read_tenancy, &visibility, &component_id, &system_id],
+                &[
+                    ctx.read_tenancy(),
+                    ctx.visibility(),
+                    &component_id,
+                    &system_id,
+                ],
             )
             .await?;
         let mut result = Vec::new();
@@ -247,7 +238,7 @@ impl ValidationResolver {
             let json: serde_json::Value = row.try_get("object")?;
             let object: FuncBindingReturnValue = serde_json::from_value(json)?;
             let prop_id: PropId = row.try_get("prop_id")?;
-            let prop = Prop::get_by_id(txn, &read_tenancy.into(), visibility, &prop_id)
+            let prop = Prop::get_by_id(ctx, &prop_id)
                 .await?
                 .ok_or(ValidationResolverError::InvalidPropId)?;
             result.push((prop, object));
@@ -258,19 +249,19 @@ impl ValidationResolver {
     // FIXME(nick,jacob): this needs to be refactored to work for maps and arrays. Perhaps, the
     // query will need to use a parent value, key and context for the refactor.
     pub async fn find_values_for_prop_and_component(
-        txn: &PgTxn<'_>,
-        read_tenancy: &ReadTenancy,
-        visibility: &Visibility,
+        ctx: &DalContext<'_, '_>,
         prop_id: PropId,
         component_id: ComponentId,
         system_id: SystemId,
     ) -> ValidationResolverResult<Vec<FuncBindingReturnValue>> {
-        let rows = txn
+        let rows = ctx
+            .txns()
+            .pg()
             .query(
                 FIND_VALUES_FOR_CONTEXT,
                 &[
-                    read_tenancy,
-                    &visibility,
+                    ctx.read_tenancy(),
+                    ctx.visibility(),
                     &prop_id,
                     &component_id,
                     &system_id,
@@ -282,15 +273,19 @@ impl ValidationResolver {
     }
 
     pub async fn find_for_prototype(
-        txn: &PgTxn<'_>,
-        read_tenancy: &ReadTenancy,
-        visibility: &Visibility,
+        ctx: &DalContext<'_, '_>,
         validation_prototype_id: &ValidationPrototypeId,
     ) -> ValidationResolverResult<Vec<Self>> {
-        let rows = txn
+        let rows = ctx
+            .txns()
+            .pg()
             .query(
                 FIND_FOR_PROTOTYPE,
-                &[read_tenancy, &visibility, validation_prototype_id],
+                &[
+                    ctx.read_tenancy(),
+                    ctx.visibility(),
+                    validation_prototype_id,
+                ],
             )
             .await?;
         let object = objects_from_rows(rows)?;

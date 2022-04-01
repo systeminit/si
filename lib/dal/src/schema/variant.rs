@@ -1,10 +1,10 @@
+use crate::WriteTenancy;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use si_data::{NatsError, NatsTxn, PgError, PgTxn};
+use si_data::{NatsError, PgError};
 use telemetry::prelude::*;
 use thiserror::Error;
-use veritech::EncryptionKey;
 
 use crate::{
     edit_field::{
@@ -16,9 +16,9 @@ use crate::{
     schema::SchemaError,
     socket::{Socket, SocketError, SocketId},
     standard_model::{self, objects_from_rows},
-    standard_model_accessor, standard_model_belongs_to, standard_model_many_to_many, HistoryActor,
-    HistoryEventError, Prop, PropError, PropId, PropKind, ReadTenancy, Schema, SchemaId,
-    StandardModel, StandardModelError, Tenancy, Timestamp, Visibility, WriteTenancy, WsEventError,
+    standard_model_accessor, standard_model_belongs_to, standard_model_many_to_many, DalContext,
+    HistoryEventError, Prop, PropError, PropId, PropKind, Schema, SchemaId, StandardModel,
+    StandardModelError, Timestamp, Visibility, WsEventError,
 };
 
 #[derive(Error, Debug)]
@@ -60,7 +60,7 @@ pub struct SchemaVariant {
     id: SchemaVariantId,
     name: String,
     #[serde(flatten)]
-    tenancy: Tenancy,
+    tenancy: WriteTenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -78,51 +78,26 @@ impl_standard_model! {
 
 impl SchemaVariant {
     #[instrument(skip_all)]
-    #[allow(clippy::too_many_arguments)]
     pub async fn new(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        write_tenancy: &WriteTenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         schema_id: SchemaId,
         name: impl AsRef<str>,
-        veritech: veritech::Client,
-        encryption_key: &EncryptionKey,
     ) -> SchemaVariantResult<(Self, RootProp)> {
         let name = name.as_ref();
-        let row = txn
+        let row = ctx
+            .txns()
+            .pg()
             .query_one(
                 "SELECT object FROM schema_variant_create_v1($1, $2, $3)",
-                &[write_tenancy, visibility, &name],
+                &[ctx.write_tenancy(), ctx.visibility(), &name],
             )
             .await?;
-        let object: SchemaVariant = standard_model::finish_create_from_row(
-            txn,
-            nats,
-            &write_tenancy.into(),
-            visibility,
-            history_actor,
-            row,
-        )
-        .await?;
-        let root_prop = create_root_prop(
-            txn,
-            nats,
-            write_tenancy,
-            visibility,
-            history_actor,
-            schema_id,
-            *object.id(),
-            veritech,
-            encryption_key,
-        )
-        .await
-        .map_err(Box::new)?;
+        let object: SchemaVariant = standard_model::finish_create_from_row(ctx, row).await?;
+        let root_prop = create_root_prop(ctx, schema_id, *object.id())
+            .await
+            .map_err(Box::new)?;
 
-        object
-            .set_schema(txn, nats, visibility, history_actor, &schema_id)
-            .await?;
+        object.set_schema(ctx, &schema_id).await?;
 
         Ok((object, root_prop))
     }
@@ -168,13 +143,14 @@ impl SchemaVariant {
         result: SchemaVariantResult,
     );
 
-    pub async fn all_props(
-        &self,
-        txn: &PgTxn<'_>,
-        visibility: &Visibility,
-    ) -> SchemaVariantResult<Vec<Prop>> {
-        let rows = txn
-            .query(ALL_PROPS, &[&self.tenancy(), &visibility, self.id()])
+    pub async fn all_props(&self, ctx: &DalContext<'_, '_>) -> SchemaVariantResult<Vec<Prop>> {
+        let rows = ctx
+            .txns()
+            .pg()
+            .query(
+                ALL_PROPS,
+                &[ctx.read_tenancy(), ctx.visibility(), self.id()],
+            )
             .await?;
         let results = objects_from_rows(rows)?;
         Ok(results)
@@ -215,17 +191,14 @@ impl SchemaVariant {
     }
 
     async fn properties_edit_field(
-        txn: &PgTxn<'_>,
-        read_tenancy: &ReadTenancy,
-        visibility: &Visibility,
+        ctx: &DalContext<'_, '_>,
         object: &Self,
     ) -> SchemaVariantResult<EditField> {
         let field_name = "properties";
 
         let mut items: Vec<EditFields> = vec![];
-        for prop in object.props(txn, visibility).await?.into_iter() {
-            let edit_fields =
-                Prop::get_edit_fields(txn, read_tenancy, visibility, prop.id()).await?;
+        for prop in object.props(ctx).await?.into_iter() {
+            let edit_fields = Prop::get_edit_fields(ctx, prop.id()).await?;
             items.push(edit_fields);
         }
         Ok(EditField::new(
@@ -242,17 +215,14 @@ impl SchemaVariant {
     }
 
     async fn connections_edit_field(
-        txn: &PgTxn<'_>,
-        read_tenancy: &ReadTenancy,
-        visibility: &Visibility,
+        ctx: &DalContext<'_, '_>,
         object: &Self,
     ) -> SchemaVariantResult<EditField> {
         let field_name = "connections";
 
         let mut items: Vec<EditFields> = vec![];
-        for socket in object.sockets(txn, visibility).await?.into_iter() {
-            let edit_fields =
-                Socket::get_edit_fields(txn, read_tenancy, visibility, socket.id()).await?;
+        for socket in object.sockets(ctx).await?.into_iter() {
+            let edit_fields = Socket::get_edit_fields(ctx, socket.id()).await?;
             items.push(edit_fields);
         }
 
@@ -287,31 +257,31 @@ impl EditFieldAble for SchemaVariant {
 
     #[instrument(skip_all)]
     async fn get_edit_fields(
-        txn: &PgTxn<'_>,
-        read_tenancy: &ReadTenancy,
-        visibility: &Visibility,
+        ctx: &DalContext<'_, '_>,
         id: &Self::Id,
     ) -> Result<EditFields, Self::Error> {
-        let object = Self::get_by_id(txn, &read_tenancy.into(), visibility, id)
+        let object = Self::get_by_id(ctx, id)
             .await?
             .ok_or(SchemaVariantError::NotFound(*id))?;
-        let head_object = if visibility.in_change_set() {
-            let head_visibility = visibility.to_head();
-            Self::get_by_id(txn, &read_tenancy.into(), &head_visibility, id).await?
+        let head_object = if ctx.visibility().in_change_set() {
+            let head_visibility = ctx.visibility().to_head();
+            let ctx = ctx.clone_with_new_visibility(head_visibility);
+            Self::get_by_id(&ctx, id).await?
         } else {
             None
         };
-        let change_set_object = if visibility.in_change_set() {
-            let change_set_visibility = visibility.to_change_set();
-            Self::get_by_id(txn, &read_tenancy.into(), &change_set_visibility, id).await?
+        let change_set_object = if ctx.visibility().in_change_set() {
+            let change_set_visibility = ctx.visibility().to_change_set();
+            let ctx = ctx.clone_with_new_visibility(change_set_visibility);
+            Self::get_by_id(&ctx, id).await?
         } else {
             None
         };
 
         let edit_fields = vec![
-            Self::name_edit_field(visibility, &object, &head_object, &change_set_object)?,
-            Self::properties_edit_field(txn, read_tenancy, visibility, &object).await?,
-            Self::connections_edit_field(txn, read_tenancy, visibility, &object).await?,
+            Self::name_edit_field(ctx.visibility(), &object, &head_object, &change_set_object)?,
+            Self::properties_edit_field(ctx, &object).await?,
+            Self::connections_edit_field(ctx, &object).await?,
         ];
 
         Ok(edit_fields)
@@ -319,18 +289,12 @@ impl EditFieldAble for SchemaVariant {
 
     #[instrument(skip_all)]
     async fn update_from_edit_field(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        veritech: veritech::Client,
-        encryption_key: &EncryptionKey,
-        write_tenancy: &WriteTenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         id: Self::Id,
         edit_field_id: String,
         value: Option<Value>,
     ) -> Result<(), Self::Error> {
-        let mut object = Self::get_by_id(txn, &write_tenancy.into(), visibility, &id)
+        let mut object = Self::get_by_id(ctx, &id)
             .await?
             .ok_or(SchemaVariantError::NotFound(id))?;
 
@@ -340,47 +304,27 @@ impl EditFieldAble for SchemaVariant {
                     let value = json_value.as_str().map(|s| s.to_string()).ok_or(
                         Self::Error::EditField(EditFieldError::InvalidValueType("string")),
                     )?;
-                    object
-                        .set_name(txn, nats, visibility, history_actor, value)
-                        .await?;
+                    object.set_name(ctx, value).await?;
                 }
                 None => return Err(EditFieldError::MissingValue.into()),
             },
             "properties" => {
                 // TODO(fnichol): we're sticking in arbitrary default values--these become required
                 // field entries on a "new item" form somewhere
-                let prop = Prop::new(
-                    txn,
-                    nats,
-                    veritech,
-                    encryption_key,
-                    write_tenancy,
-                    visibility,
-                    history_actor,
-                    "TODO: name me!",
-                    PropKind::String,
-                )
-                .await?;
-                prop.add_schema_variant(txn, nats, visibility, history_actor, object.id())
-                    .await?;
+                let prop = Prop::new(ctx, "TODO: name me!", PropKind::String).await?;
+                prop.add_schema_variant(ctx, object.id()).await?;
             }
             "connections.sockets" => {
                 // TODO(fnichol): we're sticking in arbitrary default values--these become required
                 // field entries on a "new item" form somewhere
                 let socket = Socket::new(
-                    txn,
-                    nats,
-                    write_tenancy,
-                    visibility,
-                    history_actor,
+                    ctx,
                     "TODO: name me!",
                     &crate::socket::SocketEdgeKind::Deployment,
                     &crate::socket::SocketArity::One,
                 )
                 .await?;
-                socket
-                    .add_type(txn, nats, visibility, history_actor, object.id())
-                    .await?;
+                socket.add_type(ctx, object.id()).await?;
             }
             invalid => return Err(EditFieldError::invalid_field(invalid).into()),
         }

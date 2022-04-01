@@ -35,44 +35,28 @@ pub async fn get_component_metadata(
     let txns = txns.start().await?;
     let ctx = builder.build(request_ctx.build(request.visibility), &txns);
 
-    let component = Component::get_by_id(
-        ctx.pg_txn(),
-        &ctx.read_tenancy().into(),
-        ctx.visibility(),
-        &request.component_id,
-    )
-    .await?
-    .ok_or(ComponentError::NotFound)?;
+    let component = Component::get_by_id(&ctx, &request.component_id)
+        .await?
+        .ok_or(ComponentError::NotFound)?;
 
     let schema = component
-        .schema_with_tenancy(ctx.pg_txn(), &ctx.read_tenancy().into(), ctx.visibility())
+        .schema_with_tenancy(&ctx)
         .await?
         .ok_or(ComponentError::SchemaNotFound)?;
 
     let system_id = request.system_id.unwrap_or(UNSET_SYSTEM_ID);
 
-    let qualifications = Component::list_qualifications_by_component_id(
-        ctx.pg_txn(),
-        ctx.read_tenancy(),
-        ctx.visibility(),
-        *component.id(),
-        system_id,
-    )
-    .await?;
+    let qualifications =
+        Component::list_qualifications_by_component_id(&ctx, *component.id(), system_id).await?;
 
     let qualified = qualifications
         .into_iter()
         .flat_map(|q| q.result.map(|r| r.success))
         .reduce(|q, acc| acc && q);
 
-    let resource = Component::get_resource_by_component_and_system(
-        ctx.pg_txn(),
-        ctx.read_tenancy(),
-        ctx.visibility(),
-        request.component_id,
-        system_id,
-    )
-    .await?;
+    let resource =
+        Component::get_resource_by_component_and_system(&ctx, request.component_id, system_id)
+            .await?;
 
     let response = GetComponentMetadataResponse {
         schema_name: schema.name().to_owned(),

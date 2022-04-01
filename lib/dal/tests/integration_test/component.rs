@@ -1,4 +1,4 @@
-use crate::test_setup;
+use dal::DalContext;
 
 use crate::dal::test;
 use dal::qualification_resolver::UNSET_ID_VALUE;
@@ -6,119 +6,42 @@ use dal::test_harness::{
     create_component_and_schema, create_component_for_schema_variant, create_schema,
     create_schema_variant, create_schema_variant_with_root, find_or_create_production_system,
 };
-use dal::{
-    BillingAccount, Component, HistoryActor, Organization, Prop, PropKind, ReadTenancy, Resource,
-    Schema, SchemaKind, StandardModel, Tenancy, Visibility, Workspace, WriteTenancy,
-};
+use dal::{Component, Prop, PropKind, Resource, Schema, SchemaKind, StandardModel};
 use pretty_assertions_sorted::{assert_eq, assert_eq_sorted};
 use serde_json::json;
 
 mod view;
 
 #[test]
-async fn new() {
-    test_setup!(
-        ctx,
-        _secret_key,
-        _pg,
-        _conn,
-        txn,
-        _nats_conn,
-        nats,
-        veritech,
-        encr_key,
-    );
-    let tenancy = Tenancy::new_universal();
-    let visibility = Visibility::new_head(false);
-    let history_actor = HistoryActor::SystemInit;
-    let _component = create_component_and_schema(
-        &txn,
-        &nats,
-        veritech,
-        &encr_key,
-        &tenancy,
-        &visibility,
-        &history_actor,
-    )
-    .await;
+async fn new(ctx: &DalContext<'_, '_>) {
+    let _component = create_component_and_schema(ctx).await;
 }
 
 #[test]
-async fn new_for_schema_variant_with_node() {
-    test_setup!(
-        ctx,
-        _secret_key,
-        _pg,
-        _conn,
-        txn,
-        _nats_conn,
-        nats,
-        veritech,
-        encr_key,
-    );
-    let tenancy = Tenancy::new_universal();
-    let visibility = Visibility::new_head(false);
-    let history_actor = HistoryActor::SystemInit;
-    let system =
-        find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor).await;
+async fn new_for_schema_variant_with_node(ctx: &DalContext<'_, '_>) {
+    let system = find_or_create_production_system(ctx).await;
 
-    let schema = create_schema(
-        &txn,
-        &nats,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        &SchemaKind::Concept,
-    )
-    .await;
-    let schema_variant = create_schema_variant(
-        &txn,
-        &nats,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        veritech.clone(),
-        encr_key,
-        *schema.id(),
-    )
-    .await;
+    let schema = create_schema(ctx, &SchemaKind::Concept).await;
+    let schema_variant = create_schema_variant(ctx, *schema.id()).await;
     schema_variant
-        .set_schema(&txn, &nats, &visibility, &history_actor, schema.id())
+        .set_schema(ctx, schema.id())
         .await
         .expect("cannot set schema variant");
 
-    let (component, _node) = Component::new_for_schema_variant_with_node(
-        &txn,
-        &nats,
-        veritech,
-        &encr_key,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        "mastodon",
-        schema_variant.id(),
-    )
-    .await
-    .expect("cannot create component");
+    let (component, _node) =
+        Component::new_for_schema_variant_with_node(ctx, "mastodon", schema_variant.id())
+            .await
+            .expect("cannot create component");
 
     // All components get a Resource record when created.
-    let resource = Resource::get_by_component_id_and_system_id(
-        &txn,
-        &tenancy
-            .clone_into_read_tenancy(&txn)
-            .await
-            .expect("failed to generate read tenancy"),
-        &visibility,
-        component.id(),
-        system.id(),
-    )
-    .await
-    .expect("cannot retrieve resource for Component & System");
+    let resource = Resource::get_by_component_id_and_system_id(ctx, component.id(), system.id())
+        .await
+        .expect("cannot retrieve resource for Component & System");
     assert!(resource.is_some());
     let resource = resource.unwrap();
     assert_eq!(
         resource
-            .component(&txn, &visibility)
+            .component(ctx)
             .await
             .expect("cannot retrieve component for resource")
             .expect("no component found for resource")
@@ -127,7 +50,7 @@ async fn new_for_schema_variant_with_node() {
     );
     assert_eq!(
         resource
-            .system(&txn, &visibility)
+            .system(ctx)
             .await
             .expect("cannot retrieve system for resource")
             .expect("no system found for resource")
@@ -137,148 +60,42 @@ async fn new_for_schema_variant_with_node() {
 }
 
 #[test]
-async fn schema_relationships() {
-    test_setup!(
-        ctx,
-        _secret_key,
-        _pg,
-        _conn,
-        txn,
-        _nats_conn,
-        nats,
-        veritech,
-        encr_key,
-    );
-    let tenancy = Tenancy::new_universal();
-    let visibility = Visibility::new_head(false);
-    let history_actor = HistoryActor::SystemInit;
-    let schema = create_schema(
-        &txn,
-        &nats,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        &SchemaKind::Implementation,
-    )
-    .await;
-    let schema_variant = create_schema_variant(
-        &txn,
-        &nats,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        veritech.clone(),
-        encr_key,
-        *schema.id(),
-    )
-    .await;
+async fn schema_relationships(ctx: &DalContext<'_, '_>) {
+    let schema = create_schema(ctx, &SchemaKind::Implementation).await;
+    let schema_variant = create_schema_variant(ctx, *schema.id()).await;
     schema_variant
-        .set_schema(&txn, &nats, &visibility, &history_actor, schema.id())
+        .set_schema(ctx, schema.id())
         .await
         .expect("cannot set schema variant to schema");
-    let _component = create_component_for_schema_variant(
-        &txn,
-        &nats,
-        veritech,
-        &encr_key,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        schema_variant.id(),
-    )
-    .await;
+    let _component = create_component_for_schema_variant(ctx, schema_variant.id()).await;
 }
 
 #[test]
-async fn qualification_view() {
-    test_setup!(
-        ctx,
-        _secret_key,
-        _pg,
-        _conn,
-        txn,
-        _nats_conn,
-        nats,
-        veritech,
-        encr_key,
-    );
-    let tenancy = Tenancy::new_universal();
-    let visibility = Visibility::new_head(false);
-    let history_actor = HistoryActor::SystemInit;
-    let _ =
-        find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor).await;
-    let schema = create_schema(
-        &txn,
-        &nats,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        &SchemaKind::Implementation,
-    )
-    .await;
-    let (schema_variant, root) = create_schema_variant_with_root(
-        &txn,
-        &nats,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        veritech.clone(),
-        encr_key,
-        *schema.id(),
-    )
-    .await;
+async fn qualification_view(ctx: &DalContext<'_, '_>) {
+    let _ = find_or_create_production_system(ctx).await;
+    let schema = create_schema(ctx, &SchemaKind::Implementation).await;
+    let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema_variant
-        .set_schema(&txn, &nats, &visibility, &history_actor, schema.id())
+        .set_schema(ctx, schema.id())
         .await
         .expect("cannot set schema variant to schema");
-    let (component, _) = Component::new_for_schema_variant_with_node(
-        &txn,
-        &nats,
-        veritech.clone(),
-        &encr_key,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        "mastodon",
-        schema_variant.id(),
-    )
-    .await
-    .expect("Unable to create component");
+    let (component, _) =
+        Component::new_for_schema_variant_with_node(ctx, "mastodon", schema_variant.id())
+            .await
+            .expect("Unable to create component");
 
-    let prop = Prop::new(
-        &txn,
-        &nats,
-        veritech,
-        encr_key,
-        &(&tenancy).into(),
-        &visibility,
-        &history_actor,
-        "some_property",
-        PropKind::String,
-    )
-    .await
-    .expect("cannot create prop");
-    prop.set_parent_prop(
-        &txn,
-        &nats,
-        &visibility,
-        &history_actor,
-        root.domain_prop_id,
-    )
-    .await
-    .expect("Unable to set some_property parent to root.domain");
-    prop.add_schema_variant(
-        &txn,
-        &nats,
-        &visibility,
-        &history_actor,
-        schema_variant.id(),
-    )
-    .await
-    .expect("cannot add schema variant for prop");
+    let prop = Prop::new(ctx, "some_property", PropKind::String)
+        .await
+        .expect("cannot create prop");
+    prop.set_parent_prop(ctx, root.domain_prop_id)
+        .await
+        .expect("Unable to set some_property parent to root.domain");
+    prop.add_schema_variant(ctx, schema_variant.id())
+        .await
+        .expect("cannot add schema variant for prop");
 
     let qualification_check_component = component
-        .veritech_qualification_check_component(&txn, &tenancy, &visibility, UNSET_ID_VALUE.into())
+        .veritech_qualification_check_component(ctx, UNSET_ID_VALUE.into())
         .await
         .expect("cannot create QualificationCheckComponent");
 
@@ -301,72 +118,24 @@ async fn qualification_view() {
 // to prove what we want right now. Figuring out a test that is less brittle is a great idea, but I'm choosing
 // expediency.
 #[test]
-async fn list_qualifications() {
-    test_setup!(
-        ctx,
-        _secret_key,
-        _pg,
-        _conn,
-        txn,
-        _nats_conn,
-        nats,
-        veritech,
-        encr_key,
-    );
-    let tenancy = Tenancy::new_universal();
-    let visibility = Visibility::new_head(false);
-    let history_actor = HistoryActor::SystemInit;
-    let _ =
-        find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor).await;
+async fn list_qualifications(ctx: &DalContext<'_, '_>) {
+    let _ = find_or_create_production_system(ctx).await;
 
-    let schema = Schema::find_by_attr(
-        &txn,
-        &tenancy,
-        &visibility,
-        "name",
-        &"docker_image".to_string(),
-    )
-    .await
-    .expect("cannot find docker image schema")
-    .pop()
-    .expect("no docker image schema found");
-    let (component, _node) = Component::new_for_schema_with_node(
-        &txn,
-        &nats,
-        veritech.clone(),
-        &encr_key,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        "ash",
-        schema.id(),
-    )
-    .await
-    .expect("cannot create docker_image component");
+    let schema = Schema::find_by_attr(ctx, "name", &"docker_image".to_string())
+        .await
+        .expect("cannot find docker image schema")
+        .pop()
+        .expect("no docker image schema found");
+    let (component, _node) = Component::new_for_schema_with_node(ctx, "ash", schema.id())
+        .await
+        .expect("cannot create docker_image component");
 
     component
-        .check_qualifications(
-            &txn,
-            &nats,
-            veritech.clone(),
-            encr_key,
-            &tenancy,
-            &visibility,
-            &history_actor,
-            UNSET_ID_VALUE.into(),
-        )
+        .check_qualifications(ctx, UNSET_ID_VALUE.into())
         .await
         .expect("cannot check qualifications");
     let qualifications = component
-        .list_qualifications(
-            &txn,
-            &tenancy
-                .clone_into_read_tenancy(&txn)
-                .await
-                .expect("unable to generate read tenancy"),
-            &visibility,
-            UNSET_ID_VALUE.into(),
-        )
+        .list_qualifications(ctx, UNSET_ID_VALUE.into())
         .await
         .expect("cannot list qualifications");
     assert_eq!(qualifications.len(), 2);
@@ -374,210 +143,53 @@ async fn list_qualifications() {
 
 // Also brittle, same reason
 #[test]
-async fn list_qualifications_by_component_id() {
-    test_setup!(
-        ctx,
-        _secret_key,
-        _pg,
-        _conn,
-        txn,
-        _nats_conn,
-        nats,
-        veritech,
-        encr_key,
-    );
-    let tenancy = Tenancy::new_universal();
-    let visibility = Visibility::new_head(false);
-    let history_actor = HistoryActor::SystemInit;
-    let _ =
-        find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor).await;
+async fn list_qualifications_by_component_id(ctx: &DalContext<'_, '_>) {
+    let _ = find_or_create_production_system(ctx).await;
 
-    let schema = Schema::find_by_attr(
-        &txn,
-        &tenancy,
-        &visibility,
-        "name",
-        &"docker_image".to_string(),
-    )
-    .await
-    .expect("cannot find docker image schema")
-    .pop()
-    .expect("no docker image schema found");
-    let (component, _node) = Component::new_for_schema_with_node(
-        &txn,
-        &nats,
-        veritech.clone(),
-        &encr_key,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        "ash",
-        schema.id(),
-    )
-    .await
-    .expect("cannot create docker_image component");
+    let schema = Schema::find_by_attr(ctx, "name", &"docker_image".to_string())
+        .await
+        .expect("cannot find docker image schema")
+        .pop()
+        .expect("no docker image schema found");
+    let (component, _node) = Component::new_for_schema_with_node(ctx, "ash", schema.id())
+        .await
+        .expect("cannot create docker_image component");
 
     component
-        .check_qualifications(
-            &txn,
-            &nats,
-            veritech.clone(),
-            encr_key,
-            &tenancy,
-            &visibility,
-            &history_actor,
-            UNSET_ID_VALUE.into(),
-        )
+        .check_qualifications(ctx, UNSET_ID_VALUE.into())
         .await
         .expect("cannot check qualifications");
-    let qualifications = Component::list_qualifications_by_component_id(
-        &txn,
-        &tenancy
-            .clone_into_read_tenancy(&txn)
+    let qualifications =
+        Component::list_qualifications_by_component_id(ctx, *component.id(), UNSET_ID_VALUE.into())
             .await
-            .expect("unable to generate read tenancy"),
-        &visibility,
-        *component.id(),
-        UNSET_ID_VALUE.into(),
-    )
-    .await
-    .expect("cannot list qualifications");
+            .expect("cannot list qualifications");
     assert_eq!(qualifications.len(), 2);
 }
 
 // Also brittle, same reason
 #[test]
-async fn get_resource_by_component_id() {
-    test_setup!(
-        ctx,
-        _secret_key,
-        _pg,
-        _conn,
-        txn,
-        _nats_conn,
-        nats,
-        veritech,
-        encr_key,
-    );
-
-    let billing_account_tenancy = WriteTenancy::new_universal();
-    let visibility = Visibility::new_head(false);
-    let history_actor = HistoryActor::SystemInit;
-
-    let billing_account = BillingAccount::new(
-        &txn,
-        &nats,
-        &billing_account_tenancy,
-        &visibility,
-        &history_actor,
-        "coheed",
-        Some(&"coheed and cambria".to_string()),
-    )
-    .await
-    .expect("cannot create new billing account");
-
-    let organization_tenancy = WriteTenancy::new_billing_account(*billing_account.id());
-    let organization = Organization::new(
-        &txn,
-        &nats,
-        &organization_tenancy,
-        &visibility,
-        &history_actor,
-        "iron maiden",
-    )
-    .await
-    .expect("cannot create organization");
-    organization
-        .set_billing_account(
-            &txn,
-            &nats,
-            &visibility,
-            &history_actor,
-            billing_account.id(),
-        )
+async fn get_resource_by_component_id(ctx: &DalContext<'_, '_>) {
+    let schema = Schema::find_by_attr(ctx, "name", &"docker_image".to_string())
         .await
-        .expect("unable to set organization billing account");
+        .expect("cannot find docker image schema")
+        .pop()
+        .expect("no docker image schema found");
 
-    // Note: ideally write tenancies only contain the less specific
-    // But at dal/src/billing_account.rs we search for things that way, so we have to test the hack
-    // So we cheat on the write tenancy restrictions here
-    let workspace_tenancy = Tenancy::from(
-        &ReadTenancy::new_organization(&txn, vec![*organization.id()])
-            .await
-            .expect("unable to generate read tenancy"),
-    );
-    let workspace_tenancy = WriteTenancy::from(&workspace_tenancy);
-    let workspace = Workspace::new(
-        &txn,
-        &nats,
-        &workspace_tenancy,
-        &visibility,
-        &history_actor,
-        "iron maiden",
-    )
-    .await
-    .expect("cannot create workspace");
+    let system = find_or_create_production_system(ctx).await;
 
-    workspace
-        .set_organization(&txn, &nats, &visibility, &history_actor, organization.id())
+    let (component, _node) = Component::new_for_schema_with_node(ctx, "chvrches", schema.id())
         .await
-        .expect("Unable to set organization to workspace");
-
-    let tenancy = Tenancy::new_workspace(vec![*workspace.id()]);
-    let read_tenancy = ReadTenancy::new_workspace(&txn, vec![*workspace.id()])
-        .await
-        .expect("unable to generate read tenancy");
-
-    let schema = Schema::find_by_attr(
-        &txn,
-        &(&read_tenancy).into(),
-        &visibility,
-        "name",
-        &"docker_image".to_string(),
-    )
-    .await
-    .expect("cannot find docker image schema")
-    .pop()
-    .expect("no docker image schema found");
-
-    let system =
-        find_or_create_production_system(&txn, &nats, &tenancy, &visibility, &history_actor).await;
-
-    let (component, _node) = Component::new_for_schema_with_node(
-        &txn,
-        &nats,
-        veritech.clone(),
-        &encr_key,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        "chvrches",
-        schema.id(),
-    )
-    .await
-    .expect("cannot create ash component");
+        .expect("cannot create ash component");
 
     component
-        .sync_resource(
-            &txn,
-            &nats,
-            veritech.clone(),
-            encr_key,
-            &history_actor,
-            *system.id(),
-        )
+        .sync_resource(ctx, *system.id())
         .await
         .expect("cannot sync resource");
 
-    let resource = Component::get_resource_by_component_and_system(
-        &txn,
-        &read_tenancy,
-        &visibility,
-        *component.id(),
-        *system.id(),
-    )
-    .await
-    .expect("cannot get resource");
+    let resource =
+        Component::get_resource_by_component_and_system(ctx, *component.id(), *system.id())
+            .await
+            .expect("cannot get resource");
 
     assert_eq!(
         serde_json::json!("Cant touch this: chvrches"),
@@ -603,7 +215,7 @@ async fn get_resource_by_component_id() {
 //
 // #[test]
 // async fn qualification_view_output_stream() {
-//     test_setup!(ctx, _secret_key, _pg, _conn, txn, nats_conn, nats, veritech, _encr_key);
+//
 //     let tenancy = Tenancy::new_universal();
 //     let visibility = create_visibility_head();
 //     let history_actor = HistoryActor::SystemInit;

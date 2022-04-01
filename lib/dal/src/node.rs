@@ -1,6 +1,7 @@
+use crate::DalContext;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use si_data::{NatsError, NatsTxn, PgError, PgTxn};
+use si_data::{NatsError, PgError};
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -8,10 +9,9 @@ use crate::schema::variant::SchemaVariantError;
 use crate::socket::{Socket, SocketEdgeKind};
 use crate::{
     generate_name, impl_standard_model, pk, schematic::SchematicKind, standard_model,
-    standard_model_accessor, standard_model_belongs_to, Component, ComponentId, HistoryActor,
-    HistoryEventError, NodePosition, ReadTenancy, ReadTenancyError, Schema, SchemaId,
-    SchemaVariant, StandardModel, StandardModelError, System, SystemId, Tenancy, Timestamp,
-    Visibility, WriteTenancy,
+    standard_model_accessor, standard_model_belongs_to, Component, ComponentId, HistoryEventError,
+    NodePosition, ReadTenancyError, Schema, SchemaId, SchemaVariant, StandardModel,
+    StandardModelError, System, SystemId, Timestamp, Visibility, WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -82,7 +82,7 @@ pub struct Node {
     id: NodeId,
     kind: NodeKind,
     #[serde(flatten)]
-    tenancy: Tenancy,
+    tenancy: WriteTenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -100,29 +100,16 @@ impl_standard_model! {
 
 impl Node {
     #[instrument(skip_all)]
-    pub async fn new(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        write_tenancy: &WriteTenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
-        kind: &NodeKind,
-    ) -> NodeResult<Self> {
-        let row = txn
+    pub async fn new(ctx: &DalContext<'_, '_>, kind: &NodeKind) -> NodeResult<Self> {
+        let row = ctx
+            .txns()
+            .pg()
             .query_one(
                 "SELECT object FROM node_create_v1($1, $2, $3)",
-                &[write_tenancy, &visibility, &kind.as_ref()],
+                &[ctx.write_tenancy(), ctx.visibility(), &kind.as_ref()],
             )
             .await?;
-        let object = standard_model::finish_create_from_row(
-            txn,
-            nats,
-            &Tenancy::from(write_tenancy),
-            visibility,
-            history_actor,
-            row,
-        )
-        .await?;
+        let object = standard_model::finish_create_from_row(ctx, row).await?;
         Ok(object)
     }
 
@@ -188,23 +175,20 @@ pub struct NodeTemplate {
 
 impl NodeTemplate {
     pub async fn new_from_schema_id(
-        txn: &PgTxn<'_>,
-        read_tenancy: &ReadTenancy,
-        visibility: &Visibility,
+        ctx: &DalContext<'_, '_>,
         schema_id: SchemaId,
     ) -> NodeResult<Self> {
-        let schema = Schema::get_by_id(txn, &read_tenancy.into(), visibility, &schema_id)
+        let schema = Schema::get_by_id(ctx, &schema_id)
             .await?
             .ok_or(NodeError::SchemaIdNotFound)?;
         let schema_variant_id = schema
             .default_schema_variant_id()
             .ok_or(NodeError::SchemaMissingDefaultVariant)?;
-        let schema_variant =
-            SchemaVariant::get_by_id(txn, &read_tenancy.into(), visibility, schema_variant_id)
-                .await?
-                .ok_or(NodeError::SchemaMissingDefaultVariant)?;
+        let schema_variant = SchemaVariant::get_by_id(ctx, schema_variant_id)
+            .await?
+            .ok_or(NodeError::SchemaMissingDefaultVariant)?;
 
-        let sockets = schema_variant.sockets(txn, visibility).await?;
+        let sockets = schema_variant.sockets(ctx).await?;
         let mut outputs = vec![];
         let mut inputs = vec![];
         for socket in sockets.into_iter() {

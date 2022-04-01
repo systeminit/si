@@ -4,7 +4,7 @@ use axum::http::Method;
 
 use crate::dal::test;
 use dal::test_harness::create_schema as dal_create_schema;
-use dal::{HistoryActor, SchemaKind, StandardModel, Tenancy, Visibility};
+use dal::{SchemaKind, StandardModel, Visibility};
 use sdf::service::schema::create_schema::{CreateSchemaRequest, CreateSchemaResponse};
 use sdf::service::schema::get_schema::{GetSchemaRequest, GetSchemaResponse};
 use sdf::service::schema::list_schemas::{ListSchemaRequest, ListSchemaResponse};
@@ -26,7 +26,9 @@ async fn create_schema() {
         _encr_key,
         app,
         _nba,
-        auth_token
+        auth_token,
+        _dal_ctx,
+        dal_txns,
     );
     let visibility = Visibility::new_head(false);
     let request = CreateSchemaRequest {
@@ -53,41 +55,26 @@ async fn list_schemas() {
         _secret_key,
         _pg,
         _conn,
-        txn,
+        _txn,
         _nats_conn,
-        nats,
+        _nats,
         _veritech,
         _encr_key,
         app,
         nba,
-        auth_token
+        auth_token,
+        dal_ctx,
+        dal_txns,
     );
-    let tenancy = Tenancy::new_billing_account(vec![*nba.billing_account.id()]);
+    let dal_ctx = dal_ctx.clone_with_universal_head();
     let visibility = Visibility::new_head(false);
-    let history_actor = HistoryActor::SystemInit;
 
-    let rand_schema1 = dal_create_schema(
-        &txn,
-        &nats,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        &SchemaKind::Concrete,
-    )
-    .await;
+    let rand_schema1 = dal_create_schema(&dal_ctx, &SchemaKind::Concrete).await;
     let rand_schema1_name = rand_schema1.name();
-    let rand_schema2 = dal_create_schema(
-        &txn,
-        &nats,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        &SchemaKind::Concrete,
-    )
-    .await;
+    let rand_schema2 = dal_create_schema(&dal_ctx, &SchemaKind::Concrete).await;
     let rand_schema2_name = rand_schema2.name();
 
-    txn.commit().await.expect("cannot commit txn");
+    dal_txns.commit().await.expect("cannot commit txn");
     let request = ListSchemaRequest { visibility };
     let response: ListSchemaResponse =
         api_request_auth_query(app, "/api/schema/list_schemas", &auth_token, &request).await;
@@ -117,28 +104,21 @@ async fn get_schemas() {
         _secret_key,
         _pg,
         _conn,
-        txn,
+        _txn,
         _nats_conn,
-        nats,
+        _nats,
         _veritech,
         _encr_key,
         app,
         nba,
-        auth_token
+        auth_token,
+        dal_ctx,
+        dal_txns,
     );
-    let tenancy = Tenancy::new_billing_account(vec![*nba.billing_account.id()]);
+    let dal_ctx = dal_ctx.clone_with_universal_head();
     let visibility = Visibility::new_head(false);
-    let history_actor = HistoryActor::SystemInit;
-    let schema_one = dal_create_schema(
-        &txn,
-        &nats,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        &SchemaKind::Concrete,
-    )
-    .await;
-    txn.commit().await.expect("cannot commit txn");
+    let schema_one = dal_create_schema(&dal_ctx, &SchemaKind::Concrete).await;
+    dal_txns.commit().await.expect("cannot commit txn");
     let request = GetSchemaRequest {
         visibility,
         schema_id: *schema_one.id(),

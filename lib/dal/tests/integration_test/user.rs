@@ -10,11 +10,7 @@ async fn new(ctx: &mut DalContext<'_, '_>, bid: BillingAccountId) {
     ctx.update_to_billing_account_tenancies(bid);
 
     let _user = User::new(
-        ctx.pg_txn(),
-        ctx.nats_txn(),
-        ctx.write_tenancy(),
-        ctx.visibility(),
-        ctx.history_actor(),
+        ctx,
         "funky",
         "bobotclown@systeminit.com",
         "snakesOnAPlan123",
@@ -28,21 +24,12 @@ async fn login(ctx: &mut DalContext<'_, '_>, bid: BillingAccountId, jwt_secret_k
     ctx.update_to_billing_account_tenancies(bid);
 
     let password = "snakesOnAPlane123";
-    let user = User::new(
-        ctx.pg_txn(),
-        ctx.nats_txn(),
-        ctx.write_tenancy(),
-        ctx.visibility(),
-        ctx.history_actor(),
-        "funky",
-        "bobotclown@systeminit.com",
-        &password,
-    )
-    .await
-    .expect("cannot create user");
+    let user = User::new(ctx, "funky", "bobotclown@systeminit.com", &password)
+        .await
+        .expect("cannot create user");
 
     let _jwt = user
-        .login(ctx.pg_txn(), jwt_secret_key, &bid, password)
+        .login(ctx, jwt_secret_key, &bid, password)
         .await
         .expect("cannot get jwt");
 }
@@ -52,27 +39,13 @@ async fn find_by_email(ctx: &mut DalContext<'_, '_>, bid: BillingAccountId) {
     ctx.update_to_billing_account_tenancies(bid);
 
     let password = "snakesOnAPlane123";
-    let user = User::new(
-        ctx.pg_txn(),
-        ctx.nats_txn(),
-        ctx.write_tenancy(),
-        ctx.visibility(),
-        ctx.history_actor(),
-        "funky",
-        "bobotclown@systeminit.com",
-        &password,
-    )
-    .await
-    .expect("cannot create user");
+    let user = User::new(ctx, "funky", "bobotclown@systeminit.com", &password)
+        .await
+        .expect("cannot create user");
 
-    let email_user = User::find_by_email(
-        ctx.pg_txn(),
-        ctx.read_tenancy(),
-        ctx.visibility(),
-        "bobotclown@systeminit.com",
-    )
-    .await
-    .expect("cannot get by email");
+    let email_user = User::find_by_email(ctx, "bobotclown@systeminit.com")
+        .await
+        .expect("cannot get by email");
     assert_eq!(
         Some(user),
         email_user,
@@ -81,14 +54,9 @@ async fn find_by_email(ctx: &mut DalContext<'_, '_>, bid: BillingAccountId) {
 
     ctx.update_read_tenancy(ReadTenancy::new_universal());
 
-    let fail_user = User::find_by_email(
-        ctx.pg_txn(),
-        ctx.read_tenancy(),
-        ctx.visibility(),
-        "bobotclown@systeminit.com",
-    )
-    .await
-    .expect("cannot find user by email");
+    let fail_user = User::find_by_email(ctx, "bobotclown@systeminit.com")
+        .await
+        .expect("cannot find user by email");
     assert!(
         fail_user.is_none(),
         "user should not return if the tenancy is wrong"
@@ -99,37 +67,17 @@ async fn find_by_email(ctx: &mut DalContext<'_, '_>, bid: BillingAccountId) {
 async fn authorize(ctx: &mut DalContext<'_, '_>, nba: &BillingAccountSignup) {
     ctx.update_to_billing_account_tenancies(*nba.billing_account.id());
 
-    let worked = User::authorize(
-        ctx.pg_txn(),
-        ctx.read_tenancy(),
-        ctx.visibility(),
-        nba.user.id(),
-    )
-    .await
-    .expect("admin group user should be authorized");
+    let worked = User::authorize(ctx, nba.user.id())
+        .await
+        .expect("admin group user should be authorized");
     assert_eq!(worked, true, "authorized admin group user returns true");
 
     let password = "snakesOnAPlane123";
-    let user_no_group = User::new(
-        ctx.pg_txn(),
-        ctx.nats_txn(),
-        ctx.write_tenancy(),
-        ctx.visibility(),
-        ctx.history_actor(),
-        "funky",
-        "bobotclown@systeminit.com",
-        &password,
-    )
-    .await
-    .expect("cannot create user");
+    let user_no_group = User::new(ctx, "funky", "bobotclown@systeminit.com", &password)
+        .await
+        .expect("cannot create user");
 
-    let f = User::authorize(
-        ctx.pg_txn(),
-        ctx.read_tenancy(),
-        ctx.visibility(),
-        user_no_group.id(),
-    )
-    .await;
+    let f = User::authorize(ctx, user_no_group.id()).await;
     assert_eq!(
         f.is_err(),
         true,

@@ -1,13 +1,13 @@
+use crate::WriteTenancy;
 use serde::{Deserialize, Serialize};
-use si_data::{NatsError, NatsTxn, PgError, PgTxn};
+use si_data::{NatsError, PgError};
 use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
-    standard_model_has_many, HistoryActor, HistoryEventError, Organization, OrganizationId,
-    StandardModel, StandardModelError, System, SystemResult, Tenancy, Timestamp, Visibility,
-    WriteTenancy,
+    standard_model_has_many, DalContext, HistoryEventError, Organization, OrganizationId,
+    StandardModel, StandardModelError, System, SystemResult, Timestamp, Visibility,
 };
 
 #[derive(Error, Debug)]
@@ -35,7 +35,7 @@ pub struct Workspace {
     id: WorkspaceId,
     name: String,
     #[serde(flatten)]
-    tenancy: Tenancy,
+    tenancy: WriteTenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -53,30 +53,17 @@ impl_standard_model! {
 
 impl Workspace {
     #[instrument(skip_all)]
-    pub async fn new(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        write_tenancy: &WriteTenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
-        name: impl AsRef<str>,
-    ) -> WorkspaceResult<Self> {
+    pub async fn new(ctx: &DalContext<'_, '_>, name: impl AsRef<str>) -> WorkspaceResult<Self> {
         let name = name.as_ref();
-        let row = txn
+        let row = ctx
+            .txns()
+            .pg()
             .query_one(
                 "SELECT object FROM workspace_create_v1($1, $2, $3)",
-                &[write_tenancy, &visibility, &name],
+                &[ctx.write_tenancy(), &ctx.visibility(), &name],
             )
             .await?;
-        let object = standard_model::finish_create_from_row(
-            txn,
-            nats,
-            &write_tenancy.into(),
-            visibility,
-            history_actor,
-            row,
-        )
-        .await?;
+        let object = standard_model::finish_create_from_row(ctx, row).await?;
         Ok(object)
     }
 

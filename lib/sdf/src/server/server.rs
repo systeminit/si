@@ -2,6 +2,7 @@ use std::{
     io,
     net::SocketAddr,
     path::{Path, PathBuf},
+    sync::Arc,
 };
 
 use crate::server::config::{CycloneKeyPair, JwtSecretKey};
@@ -10,7 +11,7 @@ use axum::Router;
 use dal::{
     cyclone_key_pair::CycloneKeyPairError,
     jwt_key::{install_new_jwt_key, jwt_key_exists},
-    migrate, migrate_builtin_schemas, ResourceScheduler,
+    migrate, migrate_builtin_schemas, ResourceScheduler, ServicesContext,
 };
 use hyper::server::{accept::Accept, conn::AddrIncoming};
 use si_data::{NatsClient, NatsConfig, NatsError, PgError, PgPool, PgPoolConfig, PgPoolError};
@@ -198,7 +199,8 @@ impl Server<(), ()> {
         veritech: veritech::Client,
         encryption_key: veritech::EncryptionKey,
     ) {
-        let scheduler = ResourceScheduler::new(pg, nats, veritech, encryption_key);
+        let services_context = ServicesContext::new(pg, nats, veritech, Arc::new(encryption_key));
+        let scheduler = ResourceScheduler::new(services_context);
         tokio::spawn(scheduler.start());
     }
 

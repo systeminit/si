@@ -1,14 +1,15 @@
+use crate::DalContext;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use si_data::{NatsError, NatsTxn, PgError, PgTxn};
+use si_data::{NatsError, PgError};
 use strum_macros::{Display, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
     pk, standard_model::object_option_from_row_option, ChangeSetPk, HistoryActor, HistoryEvent,
-    HistoryEventError, ReadTenancy, StandardModelError, Tenancy, Timestamp, WriteTenancy, WsEvent,
-    WsEventError, WsPayload,
+    HistoryEventError, StandardModelError, Timestamp, WriteTenancy, WsEvent, WsEventError,
+    WsPayload,
 };
 
 const EDIT_SESSION_GET_BY_PK: &str = include_str!("./queries/edit_session_get_by_pk.sql");
@@ -52,25 +53,24 @@ pub struct EditSession {
     pub status: EditSessionStatus,
     pub change_set_pk: ChangeSetPk,
     #[serde(flatten)]
-    pub tenancy: Tenancy,
+    pub tenancy: WriteTenancy,
     #[serde(flatten)]
     pub timestamp: Timestamp,
 }
 
 impl EditSession {
-    #[instrument(skip(txn, nats, name, note))]
+    #[instrument(skip(ctx, name, note))]
     pub async fn new(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        write_tenancy: &WriteTenancy,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         change_set_pk: &ChangeSetPk,
         name: impl AsRef<str>,
         note: Option<&String>,
     ) -> EditSessionResult<Self> {
         let name = name.as_ref();
         let note = note.as_ref();
-        let row = txn
+        let row = ctx
+            .txns()
+            .pg()
             .query_one(
                 "SELECT object FROM edit_session_create_v1($1, $2, $3, $4, $5)",
                 &[
@@ -78,49 +78,39 @@ impl EditSession {
                     &note,
                     &EditSessionStatus::Open.to_string(),
                     &change_set_pk,
-                    write_tenancy,
+                    ctx.write_tenancy(),
                 ],
             )
             .await?;
         let json: serde_json::Value = row.try_get("object")?;
         // TODO(fnichol): determine subject(s) for publishing
-        nats.publish("editSession", &json).await?;
-        let _history_event = HistoryEvent::new(
-            txn,
-            nats,
-            "edit_session.create",
-            history_actor,
-            "Edit Session created",
-            &json,
-            &write_tenancy.into(),
-        )
-        .await?;
+        ctx.txns().nats().publish("editSession", &json).await?;
+        let _history_event =
+            HistoryEvent::new(ctx, "edit_session.create", "Edit Session created", &json).await?;
         let object: Self = serde_json::from_value(json)?;
         Ok(object)
     }
 
-    #[instrument(skip(txn))]
+    #[instrument(skip(ctx))]
     pub async fn get_by_pk(
-        txn: &PgTxn<'_>,
-        read_tenancy: &ReadTenancy,
+        ctx: &DalContext<'_, '_>,
         pk: &EditSessionPk,
     ) -> EditSessionResult<Option<Self>> {
-        let row = txn
-            .query_opt(EDIT_SESSION_GET_BY_PK, &[read_tenancy, &pk])
+        let row = ctx
+            .txns()
+            .pg()
+            .query_opt(EDIT_SESSION_GET_BY_PK, &[ctx.read_tenancy(), &pk])
             .await?;
         let result = object_option_from_row_option(row)?;
         Ok(result)
     }
 
-    #[instrument(skip(txn, nats))]
-    pub async fn save(
-        &mut self,
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        history_actor: &HistoryActor,
-    ) -> EditSessionResult<()> {
-        let actor = serde_json::to_value(&history_actor)?;
-        let row = txn
+    #[instrument(skip(ctx))]
+    pub async fn save(&mut self, ctx: &DalContext<'_, '_>) -> EditSessionResult<()> {
+        let actor = serde_json::to_value(ctx.history_actor())?;
+        let row = ctx
+            .txns()
+            .pg()
             .query_one(
                 "SELECT timestamp_updated_at FROM edit_session_save_v1($1, $2)",
                 &[&self.pk, &actor],
@@ -130,29 +120,23 @@ impl EditSession {
         self.timestamp.updated_at = updated_at;
         self.status = EditSessionStatus::Saved;
         let _history_event = HistoryEvent::new(
-            txn,
-            nats,
+            ctx,
             "edit_session.save",
-            history_actor,
             "Edit Session saved",
             &serde_json::json![{ "pk": &self.pk }],
-            &self.tenancy,
         )
         .await?;
-        WsEvent::edit_session_saved(self, history_actor)
-            .publish(nats)
+        WsEvent::edit_session_saved(self, ctx.history_actor())
+            .publish(ctx.txns().nats())
             .await?;
         Ok(())
     }
 
-    #[instrument(skip(txn, nats))]
-    pub async fn cancel(
-        &mut self,
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        history_actor: &HistoryActor,
-    ) -> EditSessionResult<()> {
-        let row = txn
+    #[instrument(skip(ctx))]
+    pub async fn cancel(&mut self, ctx: &DalContext<'_, '_>) -> EditSessionResult<()> {
+        let row = ctx
+            .txns()
+            .pg()
             .query_one(
                 "SELECT timestamp_updated_at FROM edit_session_cancel_v1($1)",
                 &[&self.pk],
@@ -162,13 +146,10 @@ impl EditSession {
         self.timestamp.updated_at = updated_at;
         self.status = EditSessionStatus::Canceled;
         let _history_event = HistoryEvent::new(
-            txn,
-            nats,
+            ctx,
             "edit_session.cancel",
-            history_actor,
             "Edit Session cancelled",
             &serde_json::json![{ "pk": &self.pk }],
-            &self.tenancy,
         )
         .await?;
         Ok(())

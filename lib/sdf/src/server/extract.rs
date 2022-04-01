@@ -7,7 +7,7 @@ use axum::{
 };
 use dal::{
     context::{self, DalContextBuilder, ServicesContext},
-    ReadTenancy, TransactionsStarter, User, UserClaim, Visibility, WorkspaceId, WriteTenancy,
+    ReadTenancy, RequestContext, TransactionsStarter, User, UserClaim, WorkspaceId, WriteTenancy,
 };
 use hyper::StatusCode;
 use si_data::{nats, pg};
@@ -24,11 +24,10 @@ where
     async fn from_request(req: &mut RequestParts<P>) -> Result<Self, Self::Rejection> {
         let Authorization(claim) = Authorization::from_request(req).await?;
         let mut pg_ro_txn = PgRoTxn::from_request(req).await?;
-        let pg_txn = pg_ro_txn.start().await.map_err(internal_error)?;
+        let _pg_txn = pg_ro_txn.start().await.map_err(internal_error)?;
 
         let history_actor = dal::HistoryActor::from(claim.user_id);
-        let Tenancy(write_tenancy, read_tenancy) =
-            tenancy_from_request(req, &claim, &pg_txn).await?;
+        let Tenancy(write_tenancy, read_tenancy) = tenancy_from_request(req, &claim).await?;
 
         Ok(Self(context::AccessBuilder::new(
             read_tenancy,
@@ -241,8 +240,10 @@ where
     type Rejection = (StatusCode, Json<serde_json::Value>);
 
     async fn from_request(req: &mut RequestParts<P>) -> Result<Self, Self::Rejection> {
-        let mut ro_txn = PgRoTxn::from_request(req).await?;
-        let txn = ro_txn.start().await.map_err(internal_error)?;
+        let HandlerContext(builder, mut starter) = HandlerContext::from_request(req).await?;
+        let txns = starter.start().await.map_err(internal_error)?;
+        let request_context = RequestContext::new_universal_head(dal::HistoryActor::SystemInit);
+        let mut ctx = builder.build(request_context, &txns);
 
         let headers = req.headers().ok_or_else(unauthorized_error)?;
         let authorization_header_value = headers
@@ -251,15 +252,17 @@ where
         let authorization = authorization_header_value
             .to_str()
             .map_err(internal_error)?;
-        let claim = UserClaim::from_bearer_token(&txn, authorization)
+        let claim = UserClaim::from_bearer_token(&ctx, authorization)
             .await
             .map_err(|_| unauthorized_error())?;
         let read_tenancy = ReadTenancy::new_billing_account(vec![claim.billing_account_id]);
-        let visibility = Visibility::new_head(false);
-        User::authorize(&txn, &read_tenancy, &visibility, &claim.user_id)
+        ctx.update_read_tenancy(read_tenancy);
+
+        User::authorize(&ctx, &claim.user_id)
             .await
             .map_err(|_| unauthorized_error())?;
-        txn.commit().await.map_err(internal_error)?;
+
+        txns.commit().await.map_err(internal_error)?;
 
         Ok(Self(claim))
     }
@@ -275,23 +278,25 @@ where
     type Rejection = (StatusCode, Json<serde_json::Value>);
 
     async fn from_request(req: &mut RequestParts<P>) -> Result<Self, Self::Rejection> {
-        let mut ro_txn = PgRoTxn::from_request(req).await?;
-        let txn = ro_txn.start().await.map_err(internal_error)?;
+        let HandlerContext(builder, mut starter) = HandlerContext::from_request(req).await?;
+        let txns = starter.start().await.map_err(internal_error)?;
+        let request_context = RequestContext::new_universal_head(dal::HistoryActor::SystemInit);
+        let mut ctx = builder.build(request_context, &txns);
 
         let query: Query<HashMap<String, String>> = Query::from_request(req)
             .await
             .map_err(|_| unauthorized_error())?;
         let authorization = query.get("token").ok_or_else(unauthorized_error)?;
 
-        let claim = UserClaim::from_bearer_token(&txn, authorization)
+        let claim = UserClaim::from_bearer_token(&ctx, authorization)
             .await
             .map_err(|_| unauthorized_error())?;
         let read_tenancy = ReadTenancy::new_billing_account(vec![claim.billing_account_id]);
-        let visibility = Visibility::new_head(false);
-        User::authorize(&txn, &read_tenancy, &visibility, &claim.user_id)
+        ctx.update_read_tenancy(read_tenancy);
+        User::authorize(&ctx, &claim.user_id)
             .await
             .map_err(|_| unauthorized_error())?;
-        txn.commit().await.map_err(internal_error)?;
+        txns.commit().await.map_err(internal_error)?;
 
         Ok(Self(claim))
     }
@@ -323,18 +328,19 @@ where
 
     async fn from_request(req: &mut RequestParts<P>) -> Result<Self, Self::Rejection> {
         let Authorization(claim) = Authorization::from_request(req).await?;
-        let mut pg_ro_txn = PgRoTxn::from_request(req).await?;
-        let pg_txn = pg_ro_txn.start().await.map_err(internal_error)?;
-
-        tenancy_from_request(req, &claim, &pg_txn).await
+        tenancy_from_request(req, &claim).await
     }
 }
 
 async fn tenancy_from_request<P: Send>(
     req: &mut RequestParts<P>,
     claim: &UserClaim,
-    pg_txn: &pg::PgTxn<'_>,
 ) -> Result<Tenancy, (StatusCode, Json<serde_json::Value>)> {
+    let HandlerContext(builder, mut starter) = HandlerContext::from_request(req).await?;
+    let txns = starter.start().await.map_err(internal_error)?;
+    let request_context = RequestContext::new_universal_head(dal::HistoryActor::SystemInit);
+    let mut ctx = builder.build(request_context, &txns);
+
     let headers = req
         .headers()
         .ok_or_else(|| not_acceptable_error("headers not found for request"))?;
@@ -351,11 +357,12 @@ async fn tenancy_from_request<P: Send>(
         // tenancy manually to universal as we don't write to universal implicitly
         //
         // Empty tenancy means things can be written, but won't ever be read
-        WriteTenancy::from(&dal::Tenancy::new_empty())
+        WriteTenancy::new_empty()
     };
+    ctx.update_write_tenancy(write_tenancy.clone());
 
     let read_tenancy = write_tenancy
-        .clone_into_read_tenancy(pg_txn)
+        .clone_into_read_tenancy(&ctx)
         .await
         .map_err(internal_error)?;
 

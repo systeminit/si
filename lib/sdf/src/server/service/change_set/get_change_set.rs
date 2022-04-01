@@ -25,7 +25,7 @@ pub async fn get_change_set(
     let txns = txns.start().await?;
     let ctx = builder.build(request_ctx.build_head(), &txns);
 
-    let change_set = ChangeSet::get_by_pk(ctx.pg_txn(), ctx.read_tenancy(), &request.pk)
+    let change_set = ChangeSet::get_by_pk(&ctx, &request.pk)
         .await?
         .ok_or(ChangeSetError::ChangeSetNotFound)?;
 

@@ -1,11 +1,11 @@
+use crate::DalContext;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
-use si_data::{NatsTxn, PgError, PgTxn};
+use si_data::PgError;
 use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
-use veritech::EncryptionKey;
 
 use crate::func::binding_return_value::{FuncBindingReturnValue, FuncBindingReturnValueError};
 use crate::{
@@ -19,9 +19,8 @@ use crate::{
     label_list::ToLabelList,
     pk, standard_model, standard_model_accessor, standard_model_belongs_to,
     standard_model_has_many, standard_model_many_to_many, AttributeContext,
-    AttributeContextBuilderError, Func, HistoryActor, HistoryEventError, ReadTenancy,
-    ReadTenancyError, SchemaVariant, SchemaVariantId, StandardModel, StandardModelError, Tenancy,
-    Timestamp, Visibility, WriteTenancy,
+    AttributeContextBuilderError, Func, HistoryEventError, ReadTenancyError, SchemaVariant,
+    SchemaVariantId, StandardModel, StandardModelError, Timestamp, Visibility, WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -106,7 +105,7 @@ pub struct Prop {
     kind: PropKind,
     widget_kind: WidgetKind,
     #[serde(flatten)]
-    tenancy: Tenancy,
+    tenancy: WriteTenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -126,52 +125,33 @@ impl Prop {
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn new(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        veritech: veritech::Client,
-        encryption_key: &EncryptionKey,
-        write_tenancy: &WriteTenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         name: impl AsRef<str>,
         kind: PropKind,
     ) -> PropResult<Self> {
         let name = name.as_ref();
         let widget_kind = WidgetKind::from(kind);
-        let row = txn
+        let row = ctx
+            .txns()
+            .pg()
             .query_one(
                 "SELECT object FROM prop_create_v1($1, $2, $3, $4, $5)",
                 &[
-                    write_tenancy,
-                    visibility,
+                    ctx.write_tenancy(),
+                    ctx.visibility(),
                     &name,
                     &kind.as_ref(),
                     &widget_kind.as_ref(),
                 ],
             )
             .await?;
-        let object: Prop = standard_model::finish_create_from_row(
-            txn,
-            nats,
-            &write_tenancy.into(),
-            visibility,
-            history_actor,
-            row,
-        )
-        .await?;
+        let object: Prop = standard_model::finish_create_from_row(ctx, row).await?;
 
-        let read_tenancy = write_tenancy.clone_into_read_tenancy(txn).await?;
         let func_name = "si:unset".to_string();
-        let mut funcs =
-            Func::find_by_attr(txn, &(&read_tenancy).into(), visibility, "name", &func_name)
-                .await?;
+        let mut funcs = Func::find_by_attr(ctx, "name", &func_name).await?;
         let func = funcs.pop().ok_or(PropError::MissingFunc(func_name))?;
         let (func_binding, created) = FuncBinding::find_or_create(
-            txn,
-            nats,
-            write_tenancy,
-            visibility,
-            history_actor,
+            ctx,
             serde_json::json![null],
             *func.id(),
             *func.backend_kind(),
@@ -186,28 +166,14 @@ impl Prop {
         // If the func binding was created, we execute on it to generate our value id. Otherwise,
         // we try to find a value by id and then fallback to executing anyway if one was not found.
         let func_binding_return_value = if created {
-            func_binding
-                .execute(txn, nats, veritech.clone(), encryption_key)
-                .await?
+            func_binding.execute(ctx).await?
         } else {
-            FuncBindingReturnValue::get_by_func_binding_id_or_execute(
-                txn,
-                nats,
-                read_tenancy,
-                visibility,
-                veritech,
-                encryption_key,
-                *func_binding.id(),
-            )
-            .await?
+            FuncBindingReturnValue::get_by_func_binding_id_or_execute(ctx, *func_binding.id())
+                .await?
         };
 
         AttributePrototype::new(
-            txn,
-            nats,
-            write_tenancy,
-            visibility,
-            history_actor,
+            ctx,
             *func.id(),
             *func_binding.id(),
             *func_binding_return_value.id(),
@@ -260,15 +226,12 @@ impl Prop {
 
     pub async fn set_parent_prop(
         &self,
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         parent_prop_id: PropId,
     ) -> PropResult<()> {
-        let parent_prop = Prop::get_by_id(txn, self.tenancy(), visibility, &parent_prop_id)
+        let parent_prop = Prop::get_by_id(ctx, &parent_prop_id)
             .await?
-            .ok_or(PropError::NotFound(parent_prop_id, *visibility))?;
+            .ok_or_else(|| PropError::NotFound(parent_prop_id, *ctx.visibility()))?;
         match parent_prop.kind() {
             PropKind::Object | PropKind::Map | PropKind::Array => (),
             kind => {
@@ -276,28 +239,18 @@ impl Prop {
             }
         }
 
-        let read_tenancy = self.tenancy().clone_into_read_tenancy(txn).await?;
-        let our_attribute_value =
-            AttributeValue::find_for_prop(txn, &read_tenancy, visibility, *self.id())
-                .await
-                .map_err(|e| PropError::AttributeValue(format!("{e}")))?;
-        let parent_attribute_value =
-            AttributeValue::find_for_prop(txn, &read_tenancy, visibility, parent_prop_id)
-                .await
-                .map_err(|e| PropError::AttributeValue(format!("{e}")))?;
+        let our_attribute_value = AttributeValue::find_for_prop(ctx, *self.id())
+            .await
+            .map_err(|e| PropError::AttributeValue(format!("{e}")))?;
+        let parent_attribute_value = AttributeValue::find_for_prop(ctx, parent_prop_id)
+            .await
+            .map_err(|e| PropError::AttributeValue(format!("{e}")))?;
         our_attribute_value
-            .set_parent_attribute_value(
-                txn,
-                nats,
-                visibility,
-                history_actor,
-                parent_attribute_value.id(),
-            )
+            .set_parent_attribute_value(ctx, parent_attribute_value.id())
             .await
             .map_err(|e| PropError::AttributeValue(format!("{e}")))?;
 
-        self.set_parent_prop_unchecked(txn, nats, visibility, history_actor, &parent_prop_id)
-            .await
+        self.set_parent_prop_unchecked(ctx, &parent_prop_id).await
     }
 
     fn edit_field_object_kind() -> EditFieldObjectKind {
@@ -371,30 +324,28 @@ impl EditFieldAble for Prop {
     type Error = PropError;
 
     async fn get_edit_fields(
-        txn: &PgTxn<'_>,
-        read_tenancy: &ReadTenancy,
-        visibility: &Visibility,
+        ctx: &DalContext<'_, '_>,
         id: &Self::Id,
     ) -> Result<EditFields, Self::Error> {
-        let object = Self::get_by_id(txn, &read_tenancy.into(), visibility, id)
+        let object = Self::get_by_id(ctx, id)
             .await?
-            .ok_or(Self::Error::NotFound(*id, *visibility))?;
-        let head_object = if visibility.in_change_set() {
-            let head_visibility = visibility.to_head();
-            Self::get_by_id(txn, &read_tenancy.into(), &head_visibility, id).await?
+            .ok_or_else(|| Self::Error::NotFound(*id, *ctx.visibility()))?;
+        let head_object = if ctx.visibility().in_change_set() {
+            let _head_visibility = ctx.visibility().to_head();
+            Self::get_by_id(ctx, id).await?
         } else {
             None
         };
-        let change_set_object = if visibility.in_change_set() {
-            let change_set_visibility = visibility.to_change_set();
-            Self::get_by_id(txn, &read_tenancy.into(), &change_set_visibility, id).await?
+        let change_set_object = if ctx.visibility().in_change_set() {
+            let _change_set_visibility = ctx.visibility().to_change_set();
+            Self::get_by_id(ctx, id).await?
         } else {
             None
         };
 
         let edit_fields = vec![
-            Self::name_edit_field(visibility, &object, &head_object, &change_set_object)?,
-            Self::kind_edit_field(visibility, &object, &head_object, &change_set_object)?,
+            Self::name_edit_field(ctx.visibility(), &object, &head_object, &change_set_object)?,
+            Self::kind_edit_field(ctx.visibility(), &object, &head_object, &change_set_object)?,
         ];
 
         Ok(edit_fields)
@@ -402,20 +353,14 @@ impl EditFieldAble for Prop {
 
     #[instrument(skip_all)]
     async fn update_from_edit_field(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        _veritech: veritech::Client,
-        _encryption_key: &EncryptionKey,
-        write_tenancy: &WriteTenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         id: Self::Id,
         edit_field_id: String,
         value: Option<serde_json::Value>,
     ) -> Result<(), Self::Error> {
-        let mut object = Self::get_by_id(txn, &write_tenancy.into(), visibility, &id)
+        let mut object = Self::get_by_id(ctx, &id)
             .await?
-            .ok_or(Self::Error::NotFound(id, *visibility))?;
+            .ok_or_else(|| Self::Error::NotFound(id, *ctx.visibility()))?;
 
         match edit_field_id.as_ref() {
             "name" => match value {
@@ -423,9 +368,7 @@ impl EditFieldAble for Prop {
                     let value = json_value.as_str().map(|s| s.to_string()).ok_or(
                         Self::Error::EditField(EditFieldError::InvalidValueType("string")),
                     )?;
-                    object
-                        .set_name(txn, nats, visibility, history_actor, value)
-                        .await?;
+                    object.set_name(ctx, value).await?;
                 }
                 None => return Err(EditFieldError::MissingValue.into()),
             },
@@ -434,9 +377,7 @@ impl EditFieldAble for Prop {
                     let value: PropKind = serde_json::from_value(json_value).map_err(|_| {
                         Self::Error::EditField(EditFieldError::InvalidValueType("PropKind"))
                     })?;
-                    object
-                        .set_kind(txn, nats, visibility, history_actor, value)
-                        .await?;
+                    object.set_kind(ctx, value).await?;
                 }
                 None => return Err(EditFieldError::MissingValue.into()),
             },

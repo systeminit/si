@@ -1,37 +1,26 @@
 use crate::dal::test;
 use dal::jwt_key;
-use dal::test_harness::{one_time_setup, TestContext};
+use dal::{DalContext, JwtSecretKey};
+
 use jwt_simple::algorithms::RSAKeyPairLike;
 
 // {get_jwt_signing_key, get_jwt_validation_key};
 
 #[test]
-async fn get_jwt_signing_key() {
-    one_time_setup().await.expect("one time setup failed");
-    let ctx = TestContext::init().await;
-    let (pg, _nats_conn, _veritech, _encr_key, secret_key) = ctx.entries();
-    let mut conn = pg.get().await.expect("cannot connect to pg");
-    let txn = conn.transaction().await.expect("cannot create txn");
-
-    let _signing_key = jwt_key::get_jwt_signing_key(&txn, secret_key)
+async fn get_jwt_signing_key(ctx: &DalContext<'_, '_>, jwt_secret_key: &JwtSecretKey) {
+    let _signing_key = jwt_key::get_jwt_signing_key(ctx, jwt_secret_key)
         .await
         .expect("cannot get jwt signing key");
 }
 
 #[test]
-async fn get_jwt_validation_key() {
-    one_time_setup().await.expect("one time setup failed");
-    let ctx = TestContext::init().await;
-    let (pg, _nats_conn, _veritech, _encr_key, secret_key) = ctx.entries();
-    let mut conn = pg.get().await.expect("cannot connect to pg");
-    let txn = conn.transaction().await.expect("cannot create txn");
-
-    let signing_key = jwt_key::get_jwt_signing_key(&txn, secret_key)
+async fn get_jwt_validation_key(ctx: &DalContext<'_, '_>, jwt_secret_key: &JwtSecretKey) {
+    let signing_key = jwt_key::get_jwt_signing_key(ctx, jwt_secret_key)
         .await
         .expect("cannot get jwt signing key");
 
     let _validation_key = jwt_key::get_jwt_validation_key(
-        &txn,
+        ctx,
         signing_key
             .key_id()
             .as_ref()

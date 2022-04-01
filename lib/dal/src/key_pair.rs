@@ -1,14 +1,14 @@
+use crate::WriteTenancy;
 use serde::{Deserialize, Serialize};
-use si_data::{NatsError, NatsTxn, PgError, PgTxn};
+use si_data::{NatsError, PgError};
 use sodiumoxide::crypto::box_::{self, PublicKey as BoxPublicKey, SecretKey as BoxSecretKey};
 use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_accessor_ro,
-    standard_model_belongs_to, BillingAccount, BillingAccountId, HistoryActor, HistoryEvent,
-    HistoryEventError, ReadTenancy, StandardModel, StandardModelError, Tenancy, Timestamp,
-    Visibility, WriteTenancy,
+    standard_model_belongs_to, BillingAccount, BillingAccountId, DalContext, HistoryEvent,
+    HistoryEventError, StandardModel, StandardModelError, Timestamp, Visibility,
 };
 
 mod key_pair_box_public_key_serde;
@@ -48,7 +48,7 @@ pub struct KeyPair {
     secret_key: BoxSecretKey,
     created_lamport_clock: u64,
     #[serde(flatten)]
-    tenancy: Tenancy,
+    tenancy: WriteTenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -65,23 +65,18 @@ impl_standard_model! {
 }
 
 impl KeyPair {
-    pub async fn new(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        write_tenancy: &WriteTenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
-        name: impl AsRef<str>,
-    ) -> KeyPairResult<Self> {
+    pub async fn new(ctx: &DalContext<'_, '_>, name: impl AsRef<str>) -> KeyPairResult<Self> {
         let name = name.as_ref();
         let (public_key, secret_key) = box_::gen_keypair();
 
-        let row = txn
+        let row = ctx
+            .txns()
+            .pg()
             .query_one(
                 "SELECT object FROM key_pair_create_v1($1, $2, $3, $4, $5)",
                 &[
-                    write_tenancy,
-                    visibility,
+                    ctx.write_tenancy(),
+                    ctx.visibility(),
                     &name,
                     &encode_public_key(&public_key),
                     &encode_secret_key(&secret_key),
@@ -90,13 +85,10 @@ impl KeyPair {
             .await?;
         let json: serde_json::Value = row.try_get("object")?;
         let _history_event = HistoryEvent::new(
-            txn,
-            nats,
+            ctx,
             Self::history_event_label(vec!["create"]),
-            history_actor,
             Self::history_event_message("created"),
-            &serde_json::json![{ "visibility": &visibility }],
-            &write_tenancy.into(),
+            &serde_json::json![{ "visibility": ctx.visibility() }],
         )
         .await?;
         let object = serde_json::from_value(json)?;
@@ -104,15 +96,15 @@ impl KeyPair {
     }
 
     pub async fn get_current(
-        txn: &PgTxn<'_>,
-        read_tenancy: &ReadTenancy,
-        visibility: &Visibility,
+        ctx: &DalContext<'_, '_>,
         billing_account_id: &BillingAccountId,
     ) -> KeyPairResult<Self> {
-        let row = txn
+        let row = ctx
+            .txns()
+            .pg()
             .query_one(
                 PUBLIC_KEY_GET_CURRENT,
-                &[read_tenancy, &visibility, &billing_account_id],
+                &[ctx.read_tenancy(), ctx.visibility(), &billing_account_id],
             )
             .await?;
         let object = standard_model::object_from_row(row)?;
@@ -164,7 +156,7 @@ pub struct PublicKey {
     public_key: BoxPublicKey,
     created_lamport_clock: u64,
     #[serde(flatten)]
-    tenancy: Tenancy,
+    tenancy: WriteTenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -173,15 +165,15 @@ pub struct PublicKey {
 
 impl PublicKey {
     pub async fn get_current(
-        txn: &PgTxn<'_>,
-        read_tenancy: &ReadTenancy,
-        visibility: &Visibility,
+        ctx: &DalContext<'_, '_>,
         billing_account_id: &BillingAccountId,
     ) -> KeyPairResult<Self> {
-        let row = txn
+        let row = ctx
+            .txns()
+            .pg()
             .query_one(
                 PUBLIC_KEY_GET_CURRENT,
-                &[read_tenancy, &visibility, &billing_account_id],
+                &[ctx.read_tenancy(), ctx.visibility(), &billing_account_id],
             )
             .await?;
         let object = standard_model::object_from_row(row)?;

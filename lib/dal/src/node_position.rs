@@ -1,13 +1,13 @@
+use crate::DalContext;
 use serde::{Deserialize, Serialize};
-use si_data::{NatsTxn, PgError, PgTxn};
+use si_data::PgError;
 use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
     impl_standard_model, node::NodeId, pk, standard_model, standard_model_accessor,
-    standard_model_belongs_to, HistoryActor, HistoryEventError, Node, ReadTenancy,
-    ReadTenancyError, SchematicKind, StandardModel, StandardModelError, SystemId, Tenancy,
-    Timestamp, Visibility, WriteTenancy,
+    standard_model_belongs_to, HistoryEventError, Node, ReadTenancyError, SchematicKind,
+    StandardModel, StandardModelError, SystemId, Timestamp, Visibility, WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -41,7 +41,7 @@ pub struct NodePosition {
     x: String,
     y: String,
     #[serde(flatten)]
-    tenancy: Tenancy,
+    tenancy: WriteTenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -60,11 +60,7 @@ impl_standard_model! {
 impl NodePosition {
     #[allow(clippy::too_many_arguments)]
     pub async fn new(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        write_tenancy: &WriteTenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         schematic_kind: SchematicKind,
         root_node_id: NodeId,
         system_id: Option<SystemId>,
@@ -72,12 +68,14 @@ impl NodePosition {
         x: impl AsRef<str>,
         y: impl AsRef<str>,
     ) -> NodePositionResult<Self> {
-        let row = txn
+        let row = ctx
+            .txns()
+            .pg()
             .query_one(
                 "SELECT object FROM node_position_create_v1($1, $2, $3, $4, $5, $6, $7, $8)",
                 &[
-                    write_tenancy,
-                    visibility,
+                    ctx.write_tenancy(),
+                    ctx.visibility(),
                     &schematic_kind.as_ref(),
                     &root_node_id,
                     &system_id,
@@ -87,34 +85,24 @@ impl NodePosition {
                 ],
             )
             .await?;
-        let object = standard_model::finish_create_from_row(
-            txn,
-            nats,
-            // the standard model uses Tenancy for interoperability with what hasn't been refactored yet
-            &write_tenancy.into(),
-            visibility,
-            history_actor,
-            row,
-        )
-        .await?;
+        let object = standard_model::finish_create_from_row(ctx, row).await?;
 
         Ok(object)
     }
 
     pub async fn find_by_node_id(
-        txn: &PgTxn<'_>,
-        read_tenancy: &ReadTenancy,
-        visibility: &Visibility,
+        ctx: &DalContext<'_, '_>,
         system_id: Option<SystemId>,
         root_node_id: NodeId,
         node_id: NodeId,
     ) -> NodePositionResult<Vec<Self>> {
-        let rows = txn
+        let rows = ctx
+            .pg_txn()
             .query(
                 FIND_NODE_POSITION_BY_NODE_ID,
                 &[
-                    read_tenancy,
-                    visibility,
+                    ctx.read_tenancy(),
+                    ctx.visibility(),
                     &system_id,
                     &root_node_id,
                     &node_id,
@@ -127,11 +115,7 @@ impl NodePosition {
 
     #[allow(clippy::too_many_arguments)]
     pub async fn upsert_by_node_id(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        write_tenancy: &WriteTenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         schematic_kind: SchematicKind,
         system_id: Option<SystemId>,
         deployment_node_id: Option<NodeId>,
@@ -140,35 +124,17 @@ impl NodePosition {
         x: impl AsRef<str>,
         y: impl AsRef<str>,
     ) -> NodePositionResult<Self> {
-        let read_tenancy = write_tenancy.clone_into_read_tenancy(txn).await?;
-        for mut position in Self::find_by_node_id(
-            txn,
-            &read_tenancy,
-            visibility,
-            system_id,
-            root_node_id,
-            node_id,
-        )
-        .await?
-        {
+        for mut position in Self::find_by_node_id(ctx, system_id, root_node_id, node_id).await? {
             if position.deployment_node_id == deployment_node_id
                 && position.schematic_kind == schematic_kind
             {
-                position
-                    .set_x(txn, nats, visibility, history_actor, x.as_ref())
-                    .await?;
-                position
-                    .set_y(txn, nats, visibility, history_actor, y.as_ref())
-                    .await?;
+                position.set_x(ctx, x.as_ref()).await?;
+                position.set_y(ctx, y.as_ref()).await?;
                 return Ok(position);
             }
         }
         let obj = Self::new(
-            txn,
-            nats,
-            write_tenancy,
-            visibility,
-            history_actor,
+            ctx,
             schematic_kind,
             root_node_id,
             system_id,
@@ -177,8 +143,7 @@ impl NodePosition {
             y,
         )
         .await?;
-        obj.set_node(txn, nats, visibility, history_actor, &node_id)
-            .await?;
+        obj.set_node(ctx, &node_id).await?;
         Ok(obj)
     }
 

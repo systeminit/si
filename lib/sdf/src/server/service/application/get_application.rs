@@ -33,16 +33,11 @@ pub async fn get_application(
     let txns = txns.start().await?;
     let ctx = builder.build(request_ctx.build(request.visibility), &txns);
 
-    let application = Component::get_by_id(
-        ctx.pg_txn(),
-        &ctx.read_tenancy().into(),
-        ctx.visibility(),
-        &request.application_id,
-    )
-    .await?
-    .ok_or(ApplicationError::NotFound)?;
+    let application = Component::get_by_id(&ctx, &request.application_id)
+        .await?
+        .ok_or(ApplicationError::NotFound)?;
     let application_node = application
-        .node(ctx.pg_txn(), &ctx.read_tenancy().into(), ctx.visibility())
+        .node(&ctx)
         .await?
         .pop()
         .ok_or(ApplicationError::NotFound)?;

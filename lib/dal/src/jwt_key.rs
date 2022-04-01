@@ -15,7 +15,7 @@ use tokio::{
     task::JoinError,
 };
 
-use crate::{pk, UserClaim};
+use crate::{pk, DalContext, UserClaim};
 
 const JWT_KEY_EXISTS: &str = include_str!("./queries/jwt_key_exists.sql");
 const JWT_KEY_GET_LATEST_PRIVATE_KEY: &str =
@@ -131,13 +131,17 @@ impl JwtSecretKey {
 
 #[instrument(skip_all)]
 pub async fn get_jwt_validation_key(
-    txn: &PgTxn<'_>,
+    ctx: &DalContext<'_, '_>,
     jwt_id: impl AsRef<str>,
 ) -> JwtKeyResult<RS256PublicKey> {
     let jwt_id = jwt_id.as_ref();
     let pk: JwtPk = jwt_id.parse::<i64>()?.into();
 
-    let row = txn.query_one(JWT_KEY_GET_PUBLIC_KEY, &[&pk]).await?;
+    let row = ctx
+        .txns()
+        .pg()
+        .query_one(JWT_KEY_GET_PUBLIC_KEY, &[&pk])
+        .await?;
     let key: String = row.try_get("public_key")?;
 
     tokio::task::spawn_blocking(move || {
@@ -152,7 +156,7 @@ pub async fn get_jwt_validation_key(
 
 #[instrument(skip_all)]
 pub async fn validate_bearer_token(
-    txn: &PgTxn<'_>,
+    ctx: &DalContext<'_, '_>,
     bearer_token: impl AsRef<str>,
 ) -> JwtKeyResult<JWTClaims<UserClaim>> {
     let bearer_token = bearer_token.as_ref();
@@ -167,7 +171,7 @@ pub async fn validate_bearer_token(
     let key_id = metadata
         .key_id()
         .ok_or_else(|| JwtKeyError::Metadata("missing key id".into()))?;
-    let public_key = get_jwt_validation_key(txn, key_id).await?;
+    let public_key = get_jwt_validation_key(ctx, key_id).await?;
     let claims = tokio::task::spawn_blocking(move || {
         public_key
             .verify_token::<UserClaim>(&token, None)
@@ -183,7 +187,7 @@ pub async fn validate_bearer_token(
 
 #[instrument(skip_all)]
 pub async fn validate_bearer_token_api_client(
-    txn: &PgTxn<'_>,
+    ctx: &DalContext<'_, '_>,
     bearer_token: impl AsRef<str>,
 ) -> JwtKeyResult<JWTClaims<ApiClaim>> {
     let bearer_token = bearer_token.as_ref();
@@ -199,7 +203,7 @@ pub async fn validate_bearer_token_api_client(
         .key_id()
         .ok_or_else(|| JwtKeyError::Metadata("missing key id".into()))?;
 
-    let public_key = get_jwt_validation_key(txn, key_id).await?;
+    let public_key = get_jwt_validation_key(ctx, key_id).await?;
     let claims = public_key
         .verify_token::<ApiClaim>(token, None)
         .map_err(|err| JwtKeyError::Verify(format!("{}", err)))?;
@@ -208,10 +212,14 @@ pub async fn validate_bearer_token_api_client(
 
 #[instrument(skip_all)]
 pub async fn get_jwt_signing_key(
-    txn: &PgTxn<'_>,
+    ctx: &DalContext<'_, '_>,
     jwt_secret_key: &JwtSecretKey,
 ) -> JwtKeyResult<RS256KeyPair> {
-    let row = txn.query_one(JWT_KEY_GET_LATEST_PRIVATE_KEY, &[]).await?;
+    let row = ctx
+        .txns()
+        .pg()
+        .query_one(JWT_KEY_GET_LATEST_PRIVATE_KEY, &[])
+        .await?;
     let encrypted_private_key: String = row.try_get("private_key")?;
     let nonce_bytes = row.try_get("nonce")?;
     let pk: JwtPk = row.try_get("pk")?;

@@ -1,11 +1,12 @@
+use crate::WriteTenancy;
 use serde::{Deserialize, Serialize};
 use strum_macros::Display as StrumDisplay;
 use thiserror::Error;
 
-use si_data::{NatsError, NatsTxn, PgError, PgTxn};
+use si_data::{NatsError, PgError};
 use telemetry::prelude::*;
 
-use crate::{pk, Tenancy, Timestamp, UserId};
+use crate::{pk, DalContext, Timestamp, UserId};
 
 #[derive(Error, Debug)]
 pub enum HistoryEventError {
@@ -50,34 +51,39 @@ pub struct HistoryEvent {
     pub message: String,
     pub data: serde_json::Value,
     #[serde(flatten)]
-    pub tenancy: Tenancy,
+    pub tenancy: WriteTenancy,
     #[serde(flatten)]
     pub timestamp: Timestamp,
 }
 
 impl HistoryEvent {
-    #[instrument(skip(txn, nats, label, message))]
+    #[instrument(skip(ctx, label, message))]
     pub async fn new(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
+        ctx: &DalContext<'_, '_>,
         label: impl AsRef<str>,
-        actor: &HistoryActor,
         message: impl AsRef<str>,
         data: &serde_json::Value,
-        tenancy: &Tenancy,
     ) -> HistoryEventResult<HistoryEvent> {
         let label = label.as_ref();
         let message = message.as_ref();
-        let actor = serde_json::to_value(&actor)?;
-        let row = txn
+        let actor = serde_json::to_value(ctx.history_actor())?;
+        let txns = ctx.txns();
+        let row = txns
+            .pg()
             .query_one(
                 "SELECT object FROM history_event_create_v1($1, $2, $3, $4, $5)",
-                &[&label.to_string(), &actor, &message, &data, &tenancy],
+                &[
+                    &label.to_string(),
+                    &actor,
+                    &message,
+                    &data,
+                    ctx.write_tenancy(),
+                ],
             )
             .await?;
         let json: serde_json::Value = row.try_get("object")?;
         // TODO(fnichol): determine subject(s) for publishing
-        nats.publish("historyEvent", &json).await?;
+        txns.nats().publish("historyEvent", &json).await?;
         let object: HistoryEvent = serde_json::from_value(json)?;
         Ok(object)
     }

@@ -4,7 +4,7 @@ use axum::{
     http::{self, Method, Request, StatusCode},
     Router,
 };
-use dal::test_harness::{one_time_setup, TestContext};
+use dal::test_harness::{generate_fake_name, one_time_setup, TestContext};
 use sdf::service::signup::{self, create_account::CreateAccountResponse};
 use tower::ServiceExt;
 
@@ -26,8 +26,9 @@ async fn create_account() {
     .expect("cannot build new server");
     let app: Router = app;
 
+    let fake_name = generate_fake_name();
     let request = signup::create_account::CreateAccountRequest {
-        billing_account_name: "witness".to_string(),
+        billing_account_name: fake_name,
         user_name: "bobo".to_string(),
         user_email: "bobo@tclown.org".to_string(),
         user_password: "bobor7les".to_string(),

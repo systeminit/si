@@ -27,7 +27,7 @@ WHERE in_tenancy_v1($1, attribute_values.tenancy_universal, attribute_values.ten
                                     attribute_values.attribute_context_component_id, attribute_values.attribute_context_system_id)
     AND CASE
         WHEN $4::bigint IS NULL THEN attribute_value_belongs_to_attribute_value.belongs_to_id IS NULL
-        ELSE parent_attribute_values.belongs_to_id = $4::bigint
+        ELSE attribute_value_belongs_to_attribute_value.belongs_to_id = $4::bigint
     END
     AND CASE
         WHEN $5::text IS NULL THEN attribute_values.key IS NULL

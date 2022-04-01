@@ -1,13 +1,14 @@
+use crate::WriteTenancy;
 use serde::{Deserialize, Serialize};
-use si_data::{NatsError, NatsTxn, PgError, PgTxn};
+use si_data::{NatsError, PgError};
 use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
     standard_model_has_many, standard_model_many_to_many, BillingAccount, BillingAccountId,
-    Capability, HistoryActor, HistoryEventError, StandardModel, StandardModelError, Tenancy,
-    Timestamp, User, UserId, Visibility, WriteTenancy,
+    Capability, DalContext, HistoryEventError, StandardModel, StandardModelError, Timestamp, User,
+    UserId, Visibility,
 };
 
 #[derive(Error, Debug)]
@@ -35,7 +36,7 @@ pub struct Group {
     id: GroupId,
     name: String,
     #[serde(flatten)]
-    tenancy: Tenancy,
+    tenancy: WriteTenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -53,30 +54,17 @@ impl_standard_model! {
 
 impl Group {
     #[instrument(skip_all)]
-    pub async fn new(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        write_tenancy: &WriteTenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
-        name: impl AsRef<str>,
-    ) -> GroupResult<Self> {
+    pub async fn new(ctx: &DalContext<'_, '_>, name: impl AsRef<str>) -> GroupResult<Self> {
         let name = name.as_ref();
-        let row = txn
+        let row = ctx
+            .txns()
+            .pg()
             .query_one(
                 "SELECT object FROM group_create_v1($1, $2, $3)",
-                &[write_tenancy, visibility, &name],
+                &[ctx.write_tenancy(), ctx.visibility(), &name],
             )
             .await?;
-        let object = standard_model::finish_create_from_row(
-            txn,
-            nats,
-            &write_tenancy.into(),
-            visibility,
-            history_actor,
-            row,
-        )
-        .await?;
+        let object = standard_model::finish_create_from_row(ctx, row).await?;
         Ok(object)
     }
 

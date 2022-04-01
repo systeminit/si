@@ -6,7 +6,7 @@ use crate::test_setup;
 use dal::test_harness::{
     create_component_for_schema_variant, create_schema, create_schema_variant,
 };
-use dal::{Component, HistoryActor, SchemaKind, StandardModel, Tenancy, Visibility};
+use dal::{Component, SchemaKind, StandardModel, Visibility};
 use sdf::service::component::get_component_metadata::{
     GetComponentMetadataRequest, GetComponentMetadataResponse,
 };
@@ -21,62 +21,34 @@ async fn list_components_names_only() {
         _secret_key,
         _pg,
         _conn,
-        txn,
+        _txn,
         _nats_conn,
-        nats,
+        _nats,
         veritech,
         encr_key,
         app,
         nba,
-        auth_token
+        auth_token,
+        dal_ctx,
+        dal_txns,
     );
     let visibility = Visibility::new_head(false);
-    let tenancy = Tenancy::new_workspace(vec![*nba.workspace.id()]);
-    let history_actor = HistoryActor::SystemInit;
-
-    let schema = create_schema(
-        &txn,
-        &nats,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        &SchemaKind::Concept,
-    )
-    .await;
-    let schema_variant = create_schema_variant(
-        &txn,
-        &nats,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        veritech.clone(),
-        encr_key,
-        *schema.id(),
-    )
-    .await;
+    let schema = create_schema(&dal_ctx, &SchemaKind::Concept).await;
+    let schema_variant = create_schema_variant(&dal_ctx, *schema.id()).await;
     schema_variant
-        .set_schema(&txn, &nats, &visibility, &history_actor, schema.id())
+        .set_schema(&dal_ctx, schema.id())
         .await
         .expect("Unable to set schema");
 
     let component_name1 = "poop";
     let component_name2 = "ilikemybutt";
     for name in &[component_name1, component_name2] {
-        let _component = Component::new_for_schema_variant_with_node(
-            &txn,
-            &nats,
-            veritech.clone(),
-            &encr_key,
-            &tenancy,
-            &visibility,
-            &history_actor,
-            &name,
-            schema_variant.id(),
-        )
-        .await
-        .expect("cannot create new component");
+        let _component =
+            Component::new_for_schema_variant_with_node(&dal_ctx, &name, schema_variant.id())
+                .await
+                .expect("cannot create new component");
     }
-    txn.commit().await.expect("cannot commit transaction");
+    dal_txns.commit().await.expect("cannot commit transaction");
 
     let request = ListComponentNamesOnlyRequest {
         visibility,
@@ -117,59 +89,29 @@ async fn get_component_metadata() {
         _secret_key,
         _pg,
         _conn,
-        txn,
+        _txn,
         _nats_conn,
-        nats,
+        _nats,
         veritech,
         encr_key,
         app,
         nba,
-        auth_token
+        auth_token,
+        dal_ctx,
+        dal_txns,
     );
     let visibility = Visibility::new_head(false);
-    let tenancy = Tenancy::new_workspace(vec![*nba.workspace.id()]);
-    let history_actor = HistoryActor::SystemInit;
 
-    let mut schema_tenancy = tenancy.clone();
-    schema_tenancy.universal = true;
-    let schema = create_schema(
-        &txn,
-        &nats,
-        &schema_tenancy,
-        &visibility,
-        &history_actor,
-        &SchemaKind::Concept,
-    )
-    .await;
+    let schema = create_schema(&dal_ctx, &SchemaKind::Concept).await;
 
-    let schema_variant = create_schema_variant(
-        &txn,
-        &nats,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        veritech.clone(),
-        encr_key,
-        *schema.id(),
-    )
-    .await;
+    let schema_variant = create_schema_variant(&dal_ctx, *schema.id()).await;
     schema_variant
-        .set_schema(&txn, &nats, &visibility, &history_actor, schema.id())
+        .set_schema(&dal_ctx, schema.id())
         .await
         .expect("cannot set schema variant");
 
-    let component = create_component_for_schema_variant(
-        &txn,
-        &nats,
-        veritech.clone(),
-        &encr_key,
-        &tenancy,
-        &visibility,
-        &history_actor,
-        schema_variant.id(),
-    )
-    .await;
-    txn.commit().await.expect("cannot commit transaction");
+    let component = create_component_for_schema_variant(&dal_ctx, schema_variant.id()).await;
+    dal_txns.commit().await.expect("cannot commit transaction");
 
     let request = GetComponentMetadataRequest {
         visibility,

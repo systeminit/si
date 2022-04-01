@@ -1,5 +1,6 @@
+use crate::DalContext;
 use serde::{Deserialize, Serialize};
-use si_data::{NatsError, NatsTxn, PgError, PgTxn};
+use si_data::{NatsError, PgError};
 use std::default::Default;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -7,8 +8,8 @@ use thiserror::Error;
 use crate::{
     func::{binding::FuncBindingId, FuncId},
     impl_standard_model, pk, standard_model, standard_model_accessor, CodeGenerationPrototypeId,
-    ComponentId, HistoryActor, HistoryEventError, ReadTenancy, SchemaId, SchemaVariantId,
-    StandardModel, StandardModelError, SystemId, Tenancy, Timestamp, Visibility, WriteTenancy,
+    ComponentId, HistoryEventError, SchemaId, SchemaVariantId, StandardModel, StandardModelError,
+    SystemId, Timestamp, Visibility, WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -104,7 +105,7 @@ pub struct CodeGenerationResolver {
     #[serde(flatten)]
     context: CodeGenerationResolverContext,
     #[serde(flatten)]
-    tenancy: Tenancy,
+    tenancy: WriteTenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -124,22 +125,15 @@ impl CodeGenerationResolver {
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn new(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        write_tenancy: &WriteTenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         code_generation_prototype_id: CodeGenerationPrototypeId,
         func_id: FuncId,
         func_binding_id: FuncBindingId,
         context: CodeGenerationResolverContext,
     ) -> CodeGenerationResolverResult<Self> {
-        let row = txn
-            .query_one(
+        let row = ctx.txns().pg().query_one(
                 "SELECT object FROM code_generation_resolver_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9)",
-                &[
-                    write_tenancy,
-                    &visibility,
+                &[ctx.write_tenancy(), ctx.visibility(),
                     &code_generation_prototype_id,
                     &func_id,
                     &func_binding_id,
@@ -150,15 +144,7 @@ impl CodeGenerationResolver {
                 ],
             )
             .await?;
-        let object = standard_model::finish_create_from_row(
-            txn,
-            nats,
-            &write_tenancy.into(),
-            visibility,
-            history_actor,
-            row,
-        )
-        .await?;
+        let object = standard_model::finish_create_from_row(ctx, row).await?;
         Ok(object)
     }
 
@@ -175,18 +161,18 @@ impl CodeGenerationResolver {
     );
 
     pub async fn find_for_prototype_and_component(
-        txn: &PgTxn<'_>,
-        read_tenancy: &ReadTenancy,
-        visibility: &Visibility,
+        ctx: &DalContext<'_, '_>,
         code_generation_prototype_id: &CodeGenerationPrototypeId,
         component_id: &ComponentId,
     ) -> CodeGenerationResolverResult<Vec<Self>> {
-        let rows = txn
+        let rows = ctx
+            .txns()
+            .pg()
             .query(
                 FIND_FOR_PROTOTYPE,
                 &[
-                    read_tenancy,
-                    &visibility,
+                    ctx.read_tenancy(),
+                    ctx.visibility(),
                     code_generation_prototype_id,
                     component_id,
                 ],

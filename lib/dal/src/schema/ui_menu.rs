@@ -1,10 +1,9 @@
+use crate::DalContext;
 use async_trait::async_trait;
 use jwt_simple::reexports::serde_json::Value;
 use serde::{Deserialize, Serialize};
 
-use si_data::{NatsTxn, PgTxn};
 use telemetry::prelude::*;
-use veritech::EncryptionKey;
 
 use crate::{
     edit_field::{
@@ -12,8 +11,8 @@ use crate::{
         EditFieldAble, EditFieldDataType, EditFieldError, EditFieldObjectKind, EditFields,
     },
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
-    standard_model_many_to_many, HistoryActor, LabelList, ReadTenancy, SchemaError, SchematicKind,
-    StandardModel, Tenancy, Timestamp, Visibility, WriteTenancy,
+    standard_model_many_to_many, LabelList, SchemaError, SchematicKind, StandardModel, Timestamp,
+    Visibility, WriteTenancy,
 };
 
 use super::{Schema, SchemaId, SchemaResult};
@@ -29,7 +28,7 @@ pub struct UiMenu {
     category: Option<String>,
     schematic_kind: SchematicKind,
     #[serde(flatten)]
-    tenancy: Tenancy,
+    tenancy: WriteTenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -48,28 +47,22 @@ impl_standard_model! {
 impl UiMenu {
     #[instrument(skip_all)]
     pub async fn new(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        write_tenancy: &WriteTenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         schematic_kind: &SchematicKind,
     ) -> SchemaResult<Self> {
-        let row = txn
+        let row = ctx
+            .txns()
+            .pg()
             .query_one(
                 "SELECT object FROM schema_ui_menu_create_v1($1, $2, $3)",
-                &[write_tenancy, &visibility, &schematic_kind.as_ref()],
+                &[
+                    ctx.write_tenancy(),
+                    ctx.visibility(),
+                    &schematic_kind.as_ref(),
+                ],
             )
             .await?;
-        let object = standard_model::finish_create_from_row(
-            txn,
-            nats,
-            &write_tenancy.into(),
-            visibility,
-            history_actor,
-            row,
-        )
-        .await?;
+        let object = standard_model::finish_create_from_row(ctx, row).await?;
         Ok(object)
     }
 
@@ -104,15 +97,8 @@ impl UiMenu {
 
     /// A menu item is unusable when it doesn't have the fields set yet that
     /// enable it to show up in a menu.
-    pub async fn usable_in_menu(
-        &self,
-        txn: &PgTxn<'_>,
-        visibility: &Visibility,
-    ) -> SchemaResult<bool> {
-        if self.name().is_none()
-            || self.category().is_none()
-            || self.schema(txn, visibility).await?.is_none()
-        {
+    pub async fn usable_in_menu(&self, ctx: &DalContext<'_, '_>) -> SchemaResult<bool> {
+        if self.name().is_none() || self.category().is_none() || self.schema(ctx).await?.is_none() {
             Ok(false)
         } else {
             Ok(true)
@@ -133,43 +119,43 @@ impl EditFieldAble for UiMenu {
     type Error = SchemaError;
 
     async fn get_edit_fields(
-        txn: &PgTxn<'_>,
-        read_tenancy: &ReadTenancy,
-        visibility: &Visibility,
+        ctx: &DalContext<'_, '_>,
         id: &Self::Id,
     ) -> Result<EditFields, Self::Error> {
-        let object = UiMenu::get_by_id(txn, &read_tenancy.into(), visibility, id)
+        let object = UiMenu::get_by_id(ctx, id)
             .await?
             .ok_or(SchemaError::UiMenuNotFound(*id))?;
-        let head_obj: Option<UiMenu> = if visibility.in_change_set() {
-            let head_visibility = Visibility::new_head(visibility.deleted);
-            UiMenu::get_by_id(txn, &read_tenancy.into(), &head_visibility, id).await?
+        let head_obj: Option<UiMenu> = if ctx.visibility().in_change_set() {
+            let _head_visibility = Visibility::new_head(ctx.visibility().deleted);
+            UiMenu::get_by_id(ctx, id).await?
         } else {
             None
         };
-        let change_set_obj: Option<UiMenu> = if visibility.in_change_set() {
-            let change_set_visibility =
-                Visibility::new_change_set(visibility.change_set_pk, visibility.deleted);
-            UiMenu::get_by_id(txn, &read_tenancy.into(), &change_set_visibility, id).await?
+        let change_set_obj: Option<UiMenu> = if ctx.visibility().in_change_set() {
+            let _change_set_visibility = Visibility::new_change_set(
+                ctx.visibility().change_set_pk,
+                ctx.visibility().deleted,
+            );
+            UiMenu::get_by_id(ctx, id).await?
         } else {
             None
         };
         let (name_value, name_visibility_diff) = value_and_visibility_diff_option(
-            visibility,
+            ctx.visibility(),
             Some(&object),
             UiMenu::name,
             head_obj.as_ref(),
             change_set_obj.as_ref(),
         )?;
         let (category_value, category_visibility_diff) = value_and_visibility_diff_option(
-            visibility,
+            ctx.visibility(),
             Some(&object),
             UiMenu::category,
             head_obj.as_ref(),
             change_set_obj.as_ref(),
         )?;
         let (schematic_kind_value, schematic_kind_visibility_diff) = value_and_visibility_diff(
-            visibility,
+            ctx.visibility(),
             Some(&object),
             UiMenu::schematic_kind,
             head_obj.as_ref(),
@@ -217,19 +203,13 @@ impl EditFieldAble for UiMenu {
     }
 
     async fn update_from_edit_field(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        _veritech: veritech::Client,
-        _encryption_key: &EncryptionKey,
-        write_tenancy: &WriteTenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         id: Self::Id,
         edit_field_id: String,
         value: Option<Value>,
     ) -> Result<(), Self::Error> {
         let edit_field_id = edit_field_id.as_ref();
-        let mut object = UiMenu::get_by_id(txn, &write_tenancy.into(), visibility, &id)
+        let mut object = UiMenu::get_by_id(ctx, &id)
             .await?
             .ok_or(SchemaError::UiMenuNotFound(id))?;
         match edit_field_id {
@@ -238,18 +218,14 @@ impl EditFieldAble for UiMenu {
             "name" => match value {
                 Some(json_value) => {
                     let value = json_value.as_str().map(|s| s.to_string());
-                    object
-                        .set_name(txn, nats, visibility, history_actor, value)
-                        .await?;
+                    object.set_name(ctx, value).await?;
                 }
                 None => return Err(EditFieldError::MissingValue.into()),
             },
             "category" => match value {
                 Some(json_value) => {
                     let value = json_value.as_str().map(|s| s.to_string());
-                    object
-                        .set_category(txn, nats, visibility, history_actor, value)
-                        .await?;
+                    object.set_category(ctx, value).await?;
                 }
                 None => return Err(EditFieldError::MissingValue.into()),
             },
@@ -257,9 +233,7 @@ impl EditFieldAble for UiMenu {
                 Some(json_value) => {
                     let value: SchematicKind = serde_json::from_value(json_value)
                         .expect("value must be a string, and it aint");
-                    object
-                        .set_schematic_kind(txn, nats, visibility, history_actor, value)
-                        .await?;
+                    object.set_schematic_kind(ctx, value).await?;
                 }
                 None => return Err(EditFieldError::MissingValue.into()),
             },

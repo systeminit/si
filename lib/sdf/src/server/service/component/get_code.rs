@@ -32,14 +32,9 @@ pub async fn get_code(
     let ctx = builder.build(request_ctx.build(request.visibility), &txns);
 
     let system_id = request.system_id.unwrap_or(UNSET_SYSTEM_ID);
-    let code_list = Component::list_code_generated_by_component_id(
-        ctx.pg_txn(),
-        &ctx.read_tenancy().into(),
-        ctx.visibility(),
-        request.component_id,
-        system_id,
-    )
-    .await?;
+    let code_list =
+        Component::list_code_generated_by_component_id(&ctx, request.component_id, system_id)
+            .await?;
 
     let code_views: Vec<CodeView> = code_list
         .into_iter()

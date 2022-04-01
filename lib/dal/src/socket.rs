@@ -1,10 +1,10 @@
+use crate::DalContext;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use si_data::{NatsTxn, PgError, PgTxn};
+use si_data::PgError;
 use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
-use veritech::EncryptionKey;
 
 use crate::{
     edit_field::{
@@ -13,9 +13,9 @@ use crate::{
     },
     impl_standard_model,
     label_list::ToLabelList,
-    pk, standard_model, standard_model_accessor, standard_model_many_to_many, HistoryActor,
-    HistoryEventError, ReadTenancy, SchemaVariant, SchemaVariantId, StandardModel,
-    StandardModelError, Tenancy, Timestamp, Visibility, WriteTenancy,
+    pk, standard_model, standard_model_accessor, standard_model_many_to_many, HistoryEventError,
+    SchemaVariant, SchemaVariantId, StandardModel, StandardModelError, Timestamp, Visibility,
+    WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -75,7 +75,7 @@ pub struct Socket {
     arity: SocketArity,
     required: bool,
     #[serde(flatten)]
-    tenancy: Tenancy,
+    tenancy: WriteTenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -94,37 +94,27 @@ impl_standard_model! {
 impl Socket {
     #[allow(clippy::too_many_arguments)]
     pub async fn new(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        write_tenancy: &WriteTenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         name: impl AsRef<str>,
         edge_kind: &SocketEdgeKind,
         arity: &SocketArity,
     ) -> SocketResult<Self> {
         let name = name.as_ref();
-        let row = txn
+        let row = ctx
+            .txns()
+            .pg()
             .query_one(
                 "SELECT object FROM socket_create_v1($1, $2, $3, $4, $5)",
                 &[
-                    write_tenancy,
-                    visibility,
+                    ctx.write_tenancy(),
+                    ctx.visibility(),
                     &name,
                     &edge_kind.as_ref(),
                     &arity.as_ref(),
                 ],
             )
             .await?;
-        let object = standard_model::finish_create_from_row(
-            txn,
-            nats,
-            &write_tenancy.into(),
-            visibility,
-            history_actor,
-            row,
-        )
-        .await?;
+        let object = standard_model::finish_create_from_row(ctx, row).await?;
 
         Ok(object)
     }
@@ -279,32 +269,35 @@ impl EditFieldAble for Socket {
     type Error = SocketError;
 
     async fn get_edit_fields(
-        txn: &PgTxn<'_>,
-        read_tenancy: &ReadTenancy,
-        visibility: &Visibility,
+        ctx: &DalContext<'_, '_>,
         id: &SocketId,
     ) -> Result<EditFields, Self::Error> {
-        let object = Self::get_by_id(txn, &read_tenancy.into(), visibility, id)
+        let object = Self::get_by_id(ctx, id)
             .await?
             .ok_or(SocketError::NotFound(*id))?;
-        let head_object = if visibility.in_change_set() {
-            let head_visibility = visibility.to_head();
-            Self::get_by_id(txn, &read_tenancy.into(), &head_visibility, id).await?
+        let head_object = if ctx.visibility().in_change_set() {
+            let _head_visibility = ctx.visibility().to_head();
+            Self::get_by_id(ctx, id).await?
         } else {
             None
         };
-        let change_set_object = if visibility.in_change_set() {
-            let change_set_visibility = visibility.to_change_set();
-            Self::get_by_id(txn, &read_tenancy.into(), &change_set_visibility, id).await?
+        let change_set_object = if ctx.visibility().in_change_set() {
+            let _change_set_visibility = ctx.visibility().to_change_set();
+            Self::get_by_id(ctx, id).await?
         } else {
             None
         };
 
         let edit_fields = vec![
-            Self::name_edit_field(visibility, &object, &head_object, &change_set_object)?,
-            Self::edge_kind_edit_field(visibility, &object, &head_object, &change_set_object)?,
-            Self::arity_edit_field(visibility, &object, &head_object, &change_set_object)?,
-            Self::required_edit_field(visibility, &object, &head_object, &change_set_object)?,
+            Self::name_edit_field(ctx.visibility(), &object, &head_object, &change_set_object)?,
+            Self::edge_kind_edit_field(
+                ctx.visibility(),
+                &object,
+                &head_object,
+                &change_set_object,
+            )?,
+            Self::arity_edit_field(ctx.visibility(), &object, &head_object, &change_set_object)?,
+            Self::required_edit_field(ctx.visibility(), &object, &head_object, &change_set_object)?,
         ];
 
         Ok(edit_fields)
@@ -312,18 +305,12 @@ impl EditFieldAble for Socket {
 
     #[instrument(skip_all)]
     async fn update_from_edit_field(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        _veritech: veritech::Client,
-        _encryption_key: &EncryptionKey,
-        write_tenancy: &WriteTenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         id: Self::Id,
         edit_field_id: String,
         value: Option<serde_json::Value>,
     ) -> Result<(), Self::Error> {
-        let mut object = Self::get_by_id(txn, &write_tenancy.into(), visibility, &id)
+        let mut object = Self::get_by_id(ctx, &id)
             .await?
             .ok_or(SocketError::NotFound(id))?;
 
@@ -333,9 +320,7 @@ impl EditFieldAble for Socket {
                     let value = json_value.as_str().map(|s| s.to_string()).ok_or(
                         Self::Error::EditField(EditFieldError::InvalidValueType("string")),
                     )?;
-                    object
-                        .set_name(txn, nats, visibility, history_actor, value)
-                        .await?;
+                    object.set_name(ctx, value).await?;
                 }
                 None => return Err(EditFieldError::MissingValue.into()),
             },
@@ -347,9 +332,7 @@ impl EditFieldAble for Socket {
                                 "SocketEdgeKind",
                             ))
                         })?;
-                    object
-                        .set_edge_kind(txn, nats, visibility, history_actor, value)
-                        .await?;
+                    object.set_edge_kind(ctx, value).await?;
                 }
                 None => return Err(EditFieldError::MissingValue.into()),
             },
@@ -358,9 +341,7 @@ impl EditFieldAble for Socket {
                     let value: SocketArity = serde_json::from_value(json_value).map_err(|_| {
                         Self::Error::EditField(EditFieldError::InvalidValueType("SocketArity"))
                     })?;
-                    object
-                        .set_arity(txn, nats, visibility, history_actor, value)
-                        .await?;
+                    object.set_arity(ctx, value).await?;
                 }
                 None => return Err(EditFieldError::MissingValue.into()),
             },
@@ -369,9 +350,7 @@ impl EditFieldAble for Socket {
                     let value = json_value.as_bool().ok_or(Self::Error::EditField(
                         EditFieldError::InvalidValueType("boolean"),
                     ))?;
-                    object
-                        .set_required(txn, nats, visibility, history_actor, value)
-                        .await?;
+                    object.set_required(ctx, value).await?;
                 }
                 None => return Err(EditFieldError::MissingValue.into()),
             },

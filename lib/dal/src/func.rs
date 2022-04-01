@@ -1,12 +1,12 @@
+use crate::WriteTenancy;
 use serde::{Deserialize, Serialize};
-use si_data::{NatsError, NatsTxn, PgError, PgTxn};
+use si_data::{NatsError, PgError};
 use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
-    impl_standard_model, pk, standard_model, standard_model_accessor, HistoryActor,
-    HistoryEventError, StandardModel, StandardModelError, Tenancy, Timestamp, Visibility,
-    WriteTenancy,
+    impl_standard_model, pk, standard_model, standard_model_accessor, DalContext,
+    HistoryEventError, StandardModel, StandardModelError, Timestamp, Visibility,
 };
 
 use self::backend::{FuncBackendKind, FuncBackendResponseType};
@@ -53,7 +53,7 @@ pub struct Func {
     handler: Option<String>,
     code_base64: Option<String>,
     #[serde(flatten)]
-    tenancy: Tenancy,
+    tenancy: WriteTenancy,
     #[serde(flatten)]
     timestamp: Timestamp,
     #[serde(flatten)]
@@ -70,40 +70,29 @@ impl_standard_model! {
 }
 
 impl Func {
-    #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn new(
-        txn: &PgTxn<'_>,
-        nats: &NatsTxn,
-        write_tenancy: &WriteTenancy,
-        visibility: &Visibility,
-        history_actor: &HistoryActor,
+        ctx: &DalContext<'_, '_>,
         name: impl AsRef<str>,
         backend_kind: FuncBackendKind,
         backend_response_type: FuncBackendResponseType,
     ) -> FuncResult<Self> {
         let name = name.as_ref();
-        let row = txn
+        let row = ctx
+            .txns()
+            .pg()
             .query_one(
                 "SELECT object FROM func_create_v1($1, $2, $3, $4, $5)",
                 &[
-                    write_tenancy,
-                    &visibility,
+                    ctx.write_tenancy(),
+                    ctx.visibility(),
                     &name,
                     &backend_kind.as_ref(),
                     &backend_response_type.as_ref(),
                 ],
             )
             .await?;
-        let object = standard_model::finish_create_from_row(
-            txn,
-            nats,
-            &write_tenancy.into(),
-            visibility,
-            history_actor,
-            row,
-        )
-        .await?;
+        let object = standard_model::finish_create_from_row(ctx, row).await?;
         Ok(object)
     }
 
