@@ -75,7 +75,7 @@ export function getEditFields(
         request,
       );
     }),
-    shareReplay(1),
+    shareReplay({ bufferSize: 1, refCount: true }),
   );
   return getEditFieldsCollection[args.objectKind][args.id];
 }

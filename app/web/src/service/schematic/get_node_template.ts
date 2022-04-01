@@ -59,7 +59,7 @@ export function getNodeTemplate(
         request,
       );
     }),
-    shareReplay(1),
+    shareReplay({ bufferSize: 1, refCount: true }),
   );
   return getNodeTemplateCollection[key];
 }

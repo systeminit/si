@@ -101,7 +101,7 @@ export class SceneManager {
     data: SceneGraphData | null,
     selectionManager: SelectionManager,
     schematicKind: SchematicKind,
-    selectedDeploymentNodeId?: number,
+    selectedDeploymentNodeId: number | null,
   ): void {
     this.initializeSceneData();
 
@@ -111,8 +111,7 @@ export class SceneManager {
         const pos = n.position.find(
           (pos) =>
             pos.schematic_kind === schematicKind &&
-            (schematicKind === SchematicKind.Deployment ||
-              pos.deployment_node_id === selectedDeploymentNodeId),
+            pos.deployment_node_id === selectedDeploymentNodeId,
         );
         if (pos) {
           const node = new OBJ.Node(n, {
@@ -121,7 +120,14 @@ export class SceneManager {
           });
           // If the node was previously selected we re-select again as some operations
           // were lost on the re-render (example: update node position)
-          if (node.id === (selectionManager.selection[0] ?? {}).id) {
+          const isSelected = (
+            selectionManager.selection.find((selected) => {
+              return (
+                selected.parentDeploymentNodeId === selectedDeploymentNodeId
+              );
+            })?.nodes ?? []
+          ).some((n) => n.id === node.id);
+          if (isSelected) {
             selected = node;
           }
           this.addNode(node);
@@ -130,42 +136,38 @@ export class SceneManager {
         }
       }
 
-      if (data.connections.length > 0) {
-        for (const connection of data.connections) {
-          if (connection.classification === "configures") {
-            const sourceSocketId = `${connection.source.nodeId}.${connection.source.socketId}`;
-            const sourceSocket = this.scene.getChildByName(
-              sourceSocketId,
-              true,
-            );
-            // Note: this happens when we switch panels with a connection rendered
-            // The nodes and the connections don't disappear
-            // We need to understand this better, but continuing here works by now, it may leak something tho
-            if (!sourceSocket) continue;
+      for (const connection of data.connections) {
+        if (connection.classification === "configures") {
+          const sourceSocketId = `${connection.source.nodeId}.${connection.source.socketId}`;
+          const sourceSocket = this.scene.getChildByName(sourceSocketId, true);
 
-            const destinationSocketId = `${connection.destination.nodeId}.${connection.destination.socketId}`;
-            const destinationSocket = this.scene.getChildByName(
-              destinationSocketId,
-              true,
-            );
+          // Note: this happens when we switch panels with a connection rendered
+          // The nodes and the connections don't disappear
+          // We need to understand this better, but continuing here works by now, it may leak something tho
+          if (!sourceSocket) continue;
 
-            this.createConnection(
-              sourceSocket.getGlobalPosition(),
-              destinationSocket.getGlobalPosition(),
-              sourceSocket.name,
-              destinationSocket.name,
-            );
-          }
+          const destinationSocketId = `${connection.destination.nodeId}.${connection.destination.socketId}`;
+          const destinationSocket = this.scene.getChildByName(
+            destinationSocketId,
+            true,
+          );
+
+          this.createConnection(
+            sourceSocket.getGlobalPosition(),
+            destinationSocket.getGlobalPosition(),
+            sourceSocket.name,
+            destinationSocket.name,
+          );
         }
       }
     }
 
-    if (selected?.nodeKind) {
-      const selectionObserver = selectionManager.selectionObserver(
-        schematicKind,
-      );
+    if (selected) {
       console.debug("Re-selecting node: " + schematicKind);
-      selectionManager.select(selected, selectionObserver);
+      selectionManager.select({
+        parentDeploymentNodeId: selectedDeploymentNodeId,
+        nodes: [selected],
+      });
     }
 
     this.renderer.renderStage();

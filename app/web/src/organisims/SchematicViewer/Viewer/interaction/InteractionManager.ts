@@ -8,6 +8,7 @@ import { SocketType } from "../obj";
 import { SceneManager } from "../scene";
 import { SchematicDataManager } from "../../data";
 import * as ST from "../../state";
+import { SchematicKind } from "@/api/sdf/dal/schematic";
 import { Renderer } from "../renderer";
 import { Interpreter } from "xstate";
 import { SelectionManager } from "./selection";
@@ -135,6 +136,10 @@ export class InteractionManager {
     const schematicKind = await Rx.firstValueFrom(
       this.dataManager.schematicKind$,
     );
+    const parentDeploymentNodeId =
+      schematicKind !== SchematicKind.Deployment
+        ? this.dataManager.selectedDeploymentNodeId
+        : null;
 
     const target = this.renderer.plugins.interaction.hitTest(e.data.global);
     const isFakeNode = target.id === -1;
@@ -155,11 +160,14 @@ export class InteractionManager {
         ST.deSelecting(this.stateService);
 
         if (schematicKind) {
-          console.debug("Deselecting node");
           const selectionObserver = this.selectionManager.selectionObserver(
             schematicKind,
           );
-          this.selectionManager.clearSelection(selectionObserver);
+
+          this.selectionManager.clearSelection(
+            parentDeploymentNodeId,
+            selectionObserver,
+          );
           this.renderer.renderStage();
         }
       }
@@ -180,11 +188,13 @@ export class InteractionManager {
         ST.selecting(this.stateService);
 
         if (!isFakeNode && schematicKind) {
-          console.debug("Selecting real node");
           const selectionObserver = this.selectionManager.selectionObserver(
             schematicKind,
           );
-          this.selectionManager.select(target, selectionObserver);
+          this.selectionManager.select(
+            { parentDeploymentNodeId, nodes: [target] },
+            selectionObserver,
+          );
         }
 
         if (canEdit) {
@@ -250,7 +260,15 @@ export class InteractionManager {
     }
   }
 
-  onMouseMove(this: InteractionManager, e: PIXI.InteractionEvent) {
+  async onMouseMove(this: InteractionManager, e: PIXI.InteractionEvent) {
+    const schematicKind = await Rx.firstValueFrom(
+      this.dataManager.schematicKind$,
+    );
+    const parentDeploymentNodeId =
+      schematicKind !== SchematicKind.Deployment
+        ? this.dataManager.selectedDeploymentNodeId
+        : null;
+
     // Panning
     if (this.stateService.state.value === ST.ViewerState.PANNING_INITIATED) {
       this.stateService.send({ type: ST.ViewerEventKind.PANNING });
@@ -272,10 +290,18 @@ export class InteractionManager {
       ST.dragging(this.stateService);
     }
     if (ST.isDragging(this.stateService)) {
-      const node = this.selectionManager.selection[0];
-      this.draggingManager.drag(node);
-      this.sceneManager.refreshConnections();
-      this.renderer.renderStage();
+      const node = this.selectionManager.selection.find(
+        (sel) => sel.parentDeploymentNodeId === parentDeploymentNodeId,
+      )?.nodes;
+
+      // Note: For now we only accept individual selection
+      // so this code takes advantage of that,
+      // it's broken if multiple nodes are selected
+      if (node && node[0]) {
+        this.draggingManager.drag(node[0]);
+        this.sceneManager.refreshConnections();
+        this.renderer.renderStage();
+      }
     }
 
     // Connecting
@@ -315,7 +341,14 @@ export class InteractionManager {
     }
   }
 
-  onMouseUp(this: InteractionManager) {
+  async onMouseUp(this: InteractionManager) {
+    const schematicKind = await Rx.firstValueFrom(
+      this.dataManager.schematicKind$,
+    );
+    const parentDeploymentNodeId =
+      schematicKind !== SchematicKind.Deployment
+        ? this.dataManager.selectedDeploymentNodeId
+        : null;
     // Panning
     if (
       ST.isPanning(this.stateService) ||
@@ -357,10 +390,20 @@ export class InteractionManager {
       ST.isDraggingActivated(this.stateService) ||
       ST.isDraggingInitiated(this.stateService)
     ) {
-      const node = this.selectionManager.selection[0];
-      this.draggingManager.afterDrag(node);
-      ST.deactivateDragging(this.stateService);
-      this.renderer.renderStage();
+      const node = this.selectionManager.selection.find(
+        (sel) => sel.parentDeploymentNodeId === parentDeploymentNodeId,
+      )?.nodes;
+
+      // Note: For now we only accept individual selection
+      // so this code takes advantage of that,
+      // it's broken if multiple nodes are selected
+      if (node && node[0]) {
+        this.draggingManager.afterDrag(node[0]);
+        ST.deactivateDragging(this.stateService);
+        this.renderer.renderStage();
+      } else {
+        throw new Error("unable to find selected node while dragging");
+      }
     }
   }
 }

@@ -35,7 +35,7 @@ export function getSchema(
         ...visibility,
       });
     }),
-    shareReplay(1),
+    shareReplay({ bufferSize: 1, refCount: true }),
   );
   return getSchemaCollection[args.schemaId];
 }

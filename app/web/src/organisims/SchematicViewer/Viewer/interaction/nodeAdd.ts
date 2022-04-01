@@ -9,8 +9,6 @@ import { Renderer } from "../renderer";
 import { NodeCreate } from "../../data/event";
 import { SchematicKind } from "@/api/sdf/dal/schematic";
 
-import { deploymentSelection$ } from "../../state";
-
 export interface NodeAddInteractionData {
   position: {
     mouse: {
@@ -61,9 +59,28 @@ export class NodeAddManager {
       const selectionObserver = this.selectionManager.selectionObserver(
         schematicKind,
       );
-      this.selectionManager.clearSelection(selectionObserver);
+
+      let parentDeploymentNodeId = null;
+      switch (schematicKind) {
+        case SchematicKind.Component:
+          parentDeploymentNodeId = this.dataManager.selectedDeploymentNodeId;
+          break;
+        case SchematicKind.Deployment:
+          break;
+      }
+
+      this.selectionManager.clearSelection(
+        parentDeploymentNodeId,
+        selectionObserver,
+      );
+
       // Since node doesn't exist yet let's not sync the node add
-      this.selectionManager.select(this.node);
+      // This might be synced by the selection manager if other actions happen
+      // So the node with -1 id will need to be ignored elsewhere
+      this.selectionManager.select({
+        parentDeploymentNodeId,
+        nodes: [this.node],
+      });
     }
   }
 
@@ -91,15 +108,10 @@ export class NodeAddManager {
     const schematicKind = await Rx.firstValueFrom(
       this.dataManager.schematicKind$,
     );
-    const parent = await Rx.firstValueFrom(deploymentSelection$);
-    let parentNodeId;
+    let parentNodeId = null;
     switch (schematicKind) {
       case SchematicKind.Component:
-        if (!parent || !parent[0])
-          throw new Error(
-            "Can't create component schematic node without a deployment node as parent",
-          );
-        parentNodeId = parent[0].id;
+        parentNodeId = this.dataManager.selectedDeploymentNodeId;
         break;
       case SchematicKind.Deployment:
         break;

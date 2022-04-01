@@ -8,7 +8,7 @@
       :viewer-event$="props.viewerEvent$"
       :editor-context="editorContext"
       :schematic-kind="schematicKind"
-      :is-pinned="isPinned"
+      :is-component-panel-pinned="isComponentPanelPinned"
     />
   </div>
 </template>
@@ -66,7 +66,7 @@ const props = defineProps({
     type: String as PropType<SchematicKind | null>,
     required: true,
   },
-  isPinned: {
+  isComponentPanelPinned: {
     type: Boolean,
     required: true,
   },

@@ -57,7 +57,7 @@ export function getNodeAddMenu(
         request,
       );
     }),
-    shareReplay(1),
+    shareReplay({ bufferSize: 1, refCount: true }),
   );
   return getNodeAddMenuCollection[key];
 }

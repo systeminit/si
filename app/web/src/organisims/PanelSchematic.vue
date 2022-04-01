@@ -50,17 +50,8 @@
       <SchematicViewer
         :viewer-event$="viewerEventObservable.viewerEvent$"
         :schematic-kind="schematicKind"
-        :is-pinned="schematicKind === SchematicKind.Component && isPinned"
+        :is-component-panel-pinned="isPinned"
       />
-      <!-- <SchematicViewer /> -->
-      <!-- <div
-        class="flex flex-col items-center justify-center w-full h-full align-middle"
-      >
-        {{ panelContainerRef }}
-        {{ panelRef }}
-        Schematic Panel
-        <button @click="getSchematic">Get call</button>
-      </div> -->
     </template>
   </Panel>
 </template>
@@ -81,27 +72,18 @@ import { LabelList } from "@/api/sdf/dal/label_list";
 import LockButton from "@/atoms/LockButton.vue";
 import NodeAddMenu from "@/molecules/NodeAddMenu.vue";
 import { ApplicationService } from "@/service/application";
-import { refFrom } from "vuse-rx";
+import { refFrom, untilUnmounted } from "vuse-rx";
 import { switchMap } from "rxjs/operators";
 import { ChangeSetService } from "@/service/change_set";
 import { NodeAddEvent, ViewerEventObservable } from "./SchematicViewer/event";
-import { deploymentSelection$ } from "./SchematicViewer/state";
+import { deploymentSelection$, SelectedNode } from "./SchematicViewer/state";
+import { visibility$ } from "@/observable/visibility";
 
 import { SchematicService } from "@/service/schematic";
 import { GlobalErrorService } from "@/service/global_error";
 import { firstValueFrom } from "rxjs";
 import * as Rx from "rxjs";
 import * as MODEL from "./SchematicViewer/model";
-import * as OBJ from "./SchematicViewer/Viewer/obj";
-
-// import { SchematicService } from "@/service/schematic";
-// import { GlobalErrorService } from "@/service/global_error";
-// import { ApiResponse } from "@/api/sdf";
-// import { GetSchematicResponse } from "@/service/schematic/get_schematic";
-
-// TODO: Alex, here is your panel. The switcher is fucked, but otherwise, should be good to port.
-
-// TODO: degfine viewer observable here.
 
 const viewerEventObservable = new ViewerEventObservable();
 
@@ -116,7 +98,6 @@ defineProps({
 });
 
 const schematicKindRaw = ref<string>(SchematicKind.Deployment);
-// const rootObjectId = ref<number | null>(null);
 
 const schematicKind = computed(() =>
   schematicKindFromString(schematicKindRaw.value),
@@ -147,6 +128,7 @@ const systemsList = computed(() => {
 });
 
 const isPinned = ref<boolean>(false);
+
 const applicationId = refFrom<number | null>(
   ApplicationService.currentApplication().pipe(
     switchMap((application) => {
@@ -171,20 +153,37 @@ const addMenuFilters = computed(() => {
 });
 
 const editMode = refFrom<boolean>(ChangeSetService.currentEditMode());
-const rootDeployment = refFrom<Array<OBJ.Node> | null>(
-  deploymentSelection$
-    .asObservable()
-    .pipe(
-      Rx.mergeMap((selection) =>
-        Rx.iif(() => !isPinned.value, Rx.of(selection), Rx.EMPTY),
-      ),
-    ),
+const selectedDeployment = refFrom<SelectedNode[]>(
+  deploymentSelection$.asObservable(),
 );
+
+let rootDeployment = ref<SelectedNode | null>(null);
+deploymentSelection$.pipe(untilUnmounted).subscribe((selections) => {
+  if (!isPinned.value) {
+    const selection = selections.find(
+      (sel) => sel.parentDeploymentNodeId === null,
+    );
+    if (!selection) {
+      rootDeployment.value = null;
+      return;
+    }
+
+    // We have to clone otherwise changes to the underlying selected node will alter us in a way we don't expect
+    rootDeployment.value = {
+      parentDeploymentNodeId: selection.parentDeploymentNodeId,
+      nodes: [...selection.nodes],
+    };
+  }
+});
+visibility$.pipe(untilUnmounted).subscribe((_) => {
+  isPinned.value = false;
+  rootDeployment.value = null;
+});
 
 const addMenuEnabled = computed(() => {
   switch (schematicKind.value) {
     case SchematicKind.Component:
-      return editMode.value && rootDeployment.value;
+      return editMode.value && !!rootDeployment.value?.nodes?.length;
     case SchematicKind.Deployment:
       return editMode.value;
   }
@@ -195,14 +194,25 @@ const addNode = async (schemaId: number, _event: MouseEvent) => {
   const response = await firstValueFrom(
     SchematicService.getNodeTemplate({ schemaId }),
   );
-  const deploymentNodes = await firstValueFrom(deploymentSelection$);
-  const deploymentNodeId = (deploymentNodes ?? [])[0]?.id;
   if (response.error) {
     GlobalErrorService.set(response);
     return;
   }
 
-  const n = MODEL.fakeNodeFromTemplate(response, deploymentNodeId);
+  let deployment;
+  switch (schematicKind.value) {
+    case SchematicKind.Component:
+      deployment = rootDeployment.value;
+      break;
+    case SchematicKind.Deployment:
+      deployment = (selectedDeployment.value ?? [])[0] ?? null;
+      break;
+  }
+
+  const n = MODEL.fakeNodeFromTemplate(
+    response,
+    (deployment?.nodes ?? [])[0]?.id,
+  );
   const event = new NodeAddEvent({ node: n, schemaId: schemaId });
 
   viewerEventObservable.viewerEvent$.next(event);
