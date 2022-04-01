@@ -9,12 +9,12 @@
       :editor-context="editorContext"
       :schematic-kind="schematicKind"
       :is-component-panel-pinned="isComponentPanelPinned"
+      :component-panel-pin="componentPanelPin"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import { PropType } from "vue";
 import _ from "lodash";
 import * as Rx from "rxjs";
 
@@ -25,8 +25,6 @@ import { ViewerStateMachine } from "./SchematicViewer/state";
 import { SchematicService } from "@/service/schematic";
 import { GlobalErrorService } from "@/service/global_error";
 
-// import { schematicData } from "./SchematicViewer/model";
-// import { schematicData$ } from "./SchematicViewer/data";
 import { Schematic } from "./SchematicViewer/model";
 import { refFrom } from "vuse-rx";
 import { editSessionWritten$ } from "@/observable/edit_session";
@@ -37,40 +35,14 @@ import { EditorContext, SchematicKind } from "@/api/sdf/dal/schematic";
 import { combineLatest, from } from "rxjs";
 import { switchMap } from "rxjs/operators";
 import { ViewerEvent } from "./SchematicViewer/event";
-// export interface ViewerData {
-//   component: {
-//     id: string;
-//   };
-//   viewer: {
-//     id: string;
-//     element: HTMLElement | null;
-//   };
-//   state: ViewerStateMachine;
-// }
+import { computed } from "vue";
 
-// const resizeEvent = ref<null | ResizeEvent>(null);
-// const ticking = ref<boolean>(false);
-// const maximizedData = ref<PanelMaximized | null>(null);
-// const panelSelector = ref<Array<typeof PanelSelector>>([]);
-// const panelSize = ref<
-//   Record<string, { width: number; height: number; hidden: boolean }>
-// >({});
-
-const props = defineProps({
-  viewerEvent$: {
-    type: Object as PropType<Rx.ReplaySubject<ViewerEvent | null>> | undefined,
-    required: false,
-    default: undefined,
-  },
-  schematicKind: {
-    type: String as PropType<SchematicKind | null>,
-    required: true,
-  },
-  isComponentPanelPinned: {
-    type: Boolean,
-    required: true,
-  },
-});
+const props = defineProps<{
+  viewerEvent$: Rx.ReplaySubject<ViewerEvent | null> | undefined;
+  schematicKind: SchematicKind | null;
+  isComponentPanelPinned: boolean;
+  deploymentComponentPin?: number;
+}>();
 
 const componentName = "SchematicViewer";
 const componentId = _.uniqueId();
@@ -109,6 +81,17 @@ const schematicData = refFrom<Schematic | null>(
     }),
   ),
 );
+
+const componentPanelPin = computed(() => {
+  if (!schematicData.value || !props.deploymentComponentPin) return undefined;
+
+  for (const node of schematicData.value.nodes) {
+    if (node.kind.componentId === props.deploymentComponentPin) {
+      return node.id;
+    }
+  }
+  throw new Error(`Node wasn't found ${props.deploymentComponentPin}`);
+});
 
 const editorContext = refFrom<EditorContext | null>(
   combineLatest([system$, applicationNodeId$, visibility$]).pipe(

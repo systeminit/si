@@ -33,10 +33,24 @@
         />
       </div>
 
-      <LockButton
+      <div
         v-if="schematicKind === SchematicKind.Component"
-        v-model="isPinned"
-      />
+        class="flex flex-row"
+      >
+        <div v-if="componentNamesOnlyList" class="min-w-max">
+          <SiSelect
+            id="nodeSelect"
+            v-model="selectedComponentId"
+            size="xs"
+            name="nodeSelect"
+            class="pl-1"
+            :value-as-number="true"
+            :options="componentNamesOnlyList"
+            :disabled="!isPinned"
+          />
+        </div>
+        <LockButton v-model="isPinned" />
+      </div>
 
       <NodeAddMenu
         v-if="addMenuFilters"
@@ -50,6 +64,9 @@
       <SchematicViewer
         :viewer-event$="viewerEventObservable.viewerEvent$"
         :schematic-kind="schematicKind"
+        :deployment-component-pin="
+          selectedComponentId ? selectedComponentId : undefined
+        "
         :is-component-panel-pinned="isPinned"
       />
     </template>
@@ -59,6 +76,7 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 
+import { ComponentService } from "@/service/component";
 import Panel from "@/molecules/Panel.vue";
 import SchematicViewer from "@/organisims/SchematicViewer.vue";
 import SiSelect from "@/atoms/SiSelect.vue";
@@ -76,14 +94,38 @@ import { refFrom, untilUnmounted } from "vuse-rx";
 import { switchMap } from "rxjs/operators";
 import { ChangeSetService } from "@/service/change_set";
 import { NodeAddEvent, ViewerEventObservable } from "./SchematicViewer/event";
-import { deploymentSelection$, SelectedNode } from "./SchematicViewer/state";
+import {
+  deploymentSelection$,
+  componentSelection$,
+  SelectedNode,
+} from "./SchematicViewer/state";
 import { visibility$ } from "@/observable/visibility";
-
 import { SchematicService } from "@/service/schematic";
 import { GlobalErrorService } from "@/service/global_error";
 import { firstValueFrom } from "rxjs";
+import _ from "lodash";
 import * as Rx from "rxjs";
 import * as MODEL from "./SchematicViewer/model";
+
+const selectedComponentId = ref<number | "">("");
+const isPinned = ref<boolean>(false);
+
+// We garantee that the latest update will always be the last element in the list
+deploymentSelection$.pipe(untilUnmounted).subscribe((selections) => {
+  if (isPinned.value) return;
+
+  const last = selections?.length
+    ? selections[selections.length - 1]
+    : undefined;
+  const componentId = last?.nodes?.length
+    ? last.nodes[0]?.nodeKind?.componentId
+    : undefined;
+
+  // Ignores fake nodes as they don't have any attributes
+  if (componentId === -1) return;
+
+  selectedComponentId.value = componentId ?? "";
+});
 
 const viewerEventObservable = new ViewerEventObservable();
 
@@ -126,8 +168,6 @@ const schematicSelectorStyling = computed(() => {
 const systemsList = computed(() => {
   return [{ value: "prod", label: "prod" }];
 });
-
-const isPinned = ref<boolean>(false);
 
 const applicationId = refFrom<number | null>(
   ApplicationService.currentApplication().pipe(
@@ -175,9 +215,11 @@ deploymentSelection$.pipe(untilUnmounted).subscribe((selections) => {
     };
   }
 });
+
 visibility$.pipe(untilUnmounted).subscribe((_) => {
   isPinned.value = false;
   rootDeployment.value = null;
+  selectedComponentId.value = "";
 });
 
 const addMenuEnabled = computed(() => {
@@ -217,6 +259,21 @@ const addNode = async (schemaId: number, _event: MouseEvent) => {
 
   viewerEventObservable.viewerEvent$.next(event);
 };
+
+const componentNamesOnlyList = refFrom<LabelList<number | "">>(
+  ComponentService.listComponentsNamesOnly().pipe(
+    switchMap((response) => {
+      if (response.error) {
+        GlobalErrorService.set(response);
+        return Rx.from([[]]);
+      } else {
+        const list: LabelList<number | ""> = _.cloneDeep(response.list);
+        list.push({ label: "", value: "" });
+        return Rx.from([list]);
+      }
+    }),
+  ),
+);
 </script>
 
 <style scoped>
