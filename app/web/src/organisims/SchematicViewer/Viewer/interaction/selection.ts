@@ -1,44 +1,86 @@
 import * as Rx from "rxjs";
 
 import { SchematicKind } from "@/api/sdf/dal/schematic";
-import * as OBJ from "../obj";
-import { deploymentSelection$, componentSelection$ } from "../../state";
+import {
+  deploymentSelection$,
+  componentSelection$,
+  SelectedNode,
+} from "../../state";
+import { untilUnmounted } from "vuse-rx";
+import { visibility$ } from "@/observable/visibility";
 
+// This currently will only grow, if the user selects hundreds of panels
+// the state for each panel will be preserved
 export class SelectionManager {
-  selection: Array<OBJ.Node>;
+  // Note: This should be a map with parentDeploymentNodeId,
+  // but I noticed this too late into a series of refactors to fix bugs
+  // I'm postponing this change
+  selection: SelectedNode[];
 
   constructor() {
     this.selection = [];
+    visibility$.pipe(untilUnmounted).subscribe((_) => {
+      this.selection = [];
+      deploymentSelection$.next([]);
+      componentSelection$.next([]);
+    });
   }
 
   // Selection should not be cleared when the schematic updates.
   select(
-    node: OBJ.Node,
-    selection$?: Rx.ReplaySubject<Array<OBJ.Node> | null>,
+    selection: SelectedNode,
+    selection$?: Rx.ReplaySubject<SelectedNode[]>,
   ): void {
-    if (this.selection.length > 0) {
-      this.clearSelection();
+    this.clearSelection(selection.parentDeploymentNodeId);
+
+    for (const node of selection.nodes) {
+      node.select();
+      node.zIndex += 1;
     }
 
-    node.select();
-    node.zIndex += 1;
-    this.selection.push(node);
-    if (selection$) selection$.next(this.selection);
+    const existing = this.selection.find(
+      (n) => n.parentDeploymentNodeId === selection.parentDeploymentNodeId,
+    );
+    // Newer nodes always become the last element in the array
+    if (existing) {
+      existing.nodes = selection.nodes;
+      const index = this.selection.indexOf(existing);
+      this.selection.push(this.selection.splice(index, 1)[0]);
+
+      if (selection$) {
+        selection$.next([existing]);
+      }
+    } else {
+      this.selection.push(selection);
+      if (selection$) {
+        selection$.next([selection]);
+      }
+    }
   }
 
-  clearSelection(selection$?: Rx.ReplaySubject<Array<OBJ.Node> | null>): void {
+  clearSelection(
+    parentDeploymentNodeId: number | null,
+    selection$?: Rx.ReplaySubject<SelectedNode[]>,
+  ): void {
     for (const selection of this.selection) {
-      selection.deselect();
-      selection.zIndex -= 1;
+      if (selection.parentDeploymentNodeId === parentDeploymentNodeId) {
+        for (const node of selection.nodes) {
+          node.deselect();
+          node.zIndex -= 1;
+        }
+        selection.nodes = [];
+        break;
+      }
     }
-    this.selection = [];
 
-    if (selection$) selection$.next(null);
+    if (selection$) {
+      selection$.next(this.selection);
+    }
   }
 
   selectionObserver(
     schematicKind: SchematicKind,
-  ): Rx.ReplaySubject<Array<OBJ.Node> | null> {
+  ): Rx.ReplaySubject<SelectedNode[]> {
     switch (schematicKind) {
       case SchematicKind.Deployment:
         return deploymentSelection$;

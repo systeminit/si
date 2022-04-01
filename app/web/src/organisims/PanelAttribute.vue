@@ -214,21 +214,46 @@ import {
   deploymentSelection$,
   componentSelection$,
 } from "./SchematicViewer/state";
+import { visibility$ } from "@/observable/visibility";
 
 const isPinned = ref<boolean>(false);
 const selectedComponentId = ref<number | "">("");
 
-componentSelection$.pipe(untilUnmounted).subscribe((node) => {
-  if (isPinned.value) return;
-
-  const maybe = node?.length ? node[0]?.nodeKind?.componentId : undefined;
-  selectedComponentId.value = maybe ?? "";
+visibility$.pipe(untilUnmounted).subscribe(() => {
+  isPinned.value = false;
+  selectedComponentId.value = "";
 });
-deploymentSelection$.pipe(untilUnmounted).subscribe((node) => {
+
+// We garantee that the latest update will always be the last element in the list
+componentSelection$.pipe(untilUnmounted).subscribe((selections) => {
   if (isPinned.value) return;
 
-  const maybe = node?.length ? node[0]?.nodeKind?.componentId : undefined;
-  selectedComponentId.value = maybe ?? "";
+  const last = selections?.length
+    ? selections[selections.length - 1]
+    : undefined;
+  const componentId = last?.nodes?.length
+    ? last.nodes[0]?.nodeKind?.componentId
+    : undefined;
+
+  // Ignores fake nodes as they don't have any attributes
+  if (componentId === -1) return;
+
+  selectedComponentId.value = componentId ?? "";
+});
+deploymentSelection$.pipe(untilUnmounted).subscribe((selections) => {
+  if (isPinned.value) return;
+
+  const last = selections?.length
+    ? selections[selections.length - 1]
+    : undefined;
+  const componentId = last?.nodes?.length
+    ? last.nodes[0]?.nodeKind?.componentId
+    : undefined;
+
+  // Ignores fake nodes as they don't have any attributes
+  if (componentId === -1) return;
+
+  selectedComponentId.value = componentId ?? "";
 });
 
 const props = defineProps<{

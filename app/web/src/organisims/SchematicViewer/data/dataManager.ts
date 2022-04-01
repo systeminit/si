@@ -12,7 +12,6 @@ import { NodeCreate } from "./event";
 import { EditorContext } from "@/api/sdf/dal/schematic";
 import { CreateConnectionResponse } from "@/service/schematic/create_connection";
 import { SetNodePositionResponse } from "@/service/schematic/set_node_position";
-import { deploymentSelection$ } from "@/organisims/SchematicViewer/state";
 
 export class SchematicDataManager {
   id: string;
@@ -22,11 +21,15 @@ export class SchematicDataManager {
   nodeCreate$: Rx.ReplaySubject<NodeCreate | null>;
   editorContext$: Rx.ReplaySubject<EditorContext | null>;
   schematicKind$: Rx.ReplaySubject<SchematicKind | null>;
+  selectedDeploymentNodeId: number | null;
+  isComponentPanelPinned: boolean;
 
   constructor() {
     this.id = _.uniqueId();
 
     // TODO: define dataManagerEvent types... and refactor the following observables.
+    this.selectedDeploymentNodeId = null;
+    this.isComponentPanelPinned = false;
 
     this.schematicData$ = new Rx.ReplaySubject<Schematic | null>(1);
     this.schematicData$.next(null);
@@ -65,14 +68,11 @@ export class SchematicDataManager {
     const editorContext = await Rx.firstValueFrom(this.editorContext$);
     const schematicKind = await Rx.firstValueFrom(this.schematicKind$);
     if (nodeUpdate && editorContext && schematicKind) {
-      const selectedDeployments = await Rx.firstValueFrom(deploymentSelection$);
-      const selectedDeploymentNodeId = (selectedDeployments ?? [])[0]?.id;
-
       SchematicService.setNodePosition({
         deploymentNodeId:
           schematicKind !== SchematicKind.Deployment
-            ? selectedDeploymentNodeId
-            : undefined,
+            ? this.selectedDeploymentNodeId
+            : null,
         schematicKind,
         x: `${nodeUpdate.position.x}`,
         y: `${nodeUpdate.position.y}`,
