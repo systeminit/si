@@ -236,9 +236,10 @@ componentSelection$.pipe(untilUnmounted).subscribe((selections) => {
     : undefined;
 
   // Ignores fake nodes as they don't have any attributes
-  if (componentId === -1) return;
+  // We never de-select with the panel
+  if (componentId === -1 || !componentId) return;
 
-  selectedComponentId.value = componentId ?? "";
+  selectedComponentId.value = componentId;
 });
 deploymentSelection$.pipe(untilUnmounted).subscribe((selections) => {
   if (isPinned.value) return;
@@ -251,9 +252,10 @@ deploymentSelection$.pipe(untilUnmounted).subscribe((selections) => {
     : undefined;
 
   // Ignores fake nodes as they don't have any attributes
-  if (componentId === -1) return;
+  // We never de-select with the panel
+  if (componentId === -1 || !componentId) return;
 
-  selectedComponentId.value = componentId ?? "";
+  selectedComponentId.value = componentId;
 });
 
 const props = defineProps<{

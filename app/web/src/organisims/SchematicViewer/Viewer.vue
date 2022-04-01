@@ -135,6 +135,11 @@ export default defineComponent({
       type: Boolean,
       required: true,
     },
+    componentPanelPin: {
+      type: Number,
+      required: false,
+      default: undefined,
+    },
   },
   setup(props) {
     const { state, send, service } = useMachine(props.viewerState.machine);
@@ -185,6 +190,12 @@ export default defineComponent({
     };
   },
   watch: {
+    async componentPanelPin(ctx) {
+      if (this.dataManager && this.schematicData) {
+        this.dataManager.selectedDeploymentNodeId = ctx;
+        await this.loadSchematicData(this.schematicData);
+      }
+    },
     isComponentPanelPinned(ctx) {
       if (this.dataManager) {
         this.dataManager.isComponentPanelPinned = ctx;
