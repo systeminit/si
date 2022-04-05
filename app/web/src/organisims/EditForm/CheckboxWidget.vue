@@ -37,11 +37,13 @@ import Unset from "@/atoms/Unset.vue";
 import { GlobalErrorService } from "@/service/global_error";
 import { UpdateFromEditFieldResponse } from "@/service/edit_field/update_from_edit_field";
 import { ApiResponse } from "@/api/sdf";
+import { AttributeContext } from "@/api/sdf/dal/attribute";
 
 const props = defineProps<{
   show: boolean;
   coreEditField: boolean;
   editField: EditField;
+  attributeContext: AttributeContext;
 }>();
 
 const updating = ref(false);
@@ -61,6 +63,7 @@ const onBlur = () => {
       editFieldId: props.editField.id,
       value: currentValue.value,
       baggage: props.editField.baggage,
+      attributeContext: props.attributeContext,
     }).subscribe((response: ApiResponse<UpdateFromEditFieldResponse>) => {
       if (response.error) {
         GlobalErrorService.set(response);
@@ -77,6 +80,7 @@ const unset = () => {
     editFieldId: props.editField.id,
     value: null,
     baggage: props.editField.baggage,
+    attributeContext: props.attributeContext,
   }).subscribe((response: ApiResponse<UpdateFromEditFieldResponse>) => {
     if (response.error) {
       GlobalErrorService.set(response);

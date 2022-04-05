@@ -67,6 +67,7 @@ import { GlobalErrorService } from "@/service/global_error";
 import { defineAsyncComponent, DefineComponent } from "vue";
 import type { WidgetsProps } from "./Widgets.vue";
 import { ITreeOpenState } from "@/utils/edit_field_visitor";
+import { AttributeContext } from "@/api/sdf/dal/attribute";
 
 // Eliminate the circular dependency of HeaderWidget -> Widgets -> HeaderWidget
 // by using `defineAsyncComponent` in a careful way to preserve the ability for
@@ -86,6 +87,7 @@ const props = defineProps<{
   indentLevel: number;
   editField: EditField;
   treeOpenState: ITreeOpenState;
+  attributeContext: AttributeContext;
 }>();
 
 const widget = computed<ArrayWidgetDal>(() => {
@@ -99,6 +101,7 @@ const addToArray = () => {
     editFieldId: props.editField.id,
     value: null,
     baggage: props.editField.baggage,
+    attributeContext: props.attributeContext,
   }).subscribe((response: ApiResponse<UpdateFromEditFieldResponse>) => {
     if (response.error) {
       GlobalErrorService.set(response);
@@ -113,6 +116,7 @@ const unset = () => {
     editFieldId: props.editField.id,
     value: null,
     baggage: props.editField.baggage,
+    attributeContext: props.attributeContext,
   }).subscribe((response: ApiResponse<UpdateFromEditFieldResponse>) => {
     if (response.error) {
       GlobalErrorService.set(response);

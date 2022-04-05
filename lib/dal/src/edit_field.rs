@@ -3,11 +3,11 @@ pub mod widget;
 pub use widget::{ToSelectWidget, Widget};
 
 use serde::{Deserialize, Serialize};
-
 use std::{future::Future, pin::Pin};
 use strum_macros::{AsRefStr, Display, EnumString};
 use thiserror::Error;
 
+use crate::PropId;
 use crate::{func::backend::validation::ValidationError, LabelListError, PropKind, Visibility};
 use crate::{AttributeValueId, DalContext};
 
@@ -84,10 +84,15 @@ pub enum VisibilityDiff {
     ChangeSet(Option<serde_json::Value>),
 }
 
+/// Baggage that includes associated data for a given [`EditField`] for use in both SDF and the UI.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct EditFieldBaggage {
     pub attribute_value_id: AttributeValueId,
     pub parent_attribute_value_id: Option<AttributeValueId>,
+    /// Optional key used to indicate which value to use for [`EditFieldObjectKind::Array`] and
+    /// [`EditFieldObjectKind::Map`].
+    pub key: Option<String>,
+    pub prop_id: PropId,
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
@@ -141,10 +146,23 @@ impl EditField {
         }
     }
 
-    pub fn set_baggage(&mut self, baggage: EditFieldBaggage) {
-        self.baggage = Some(baggage);
+    /// Creates a new [`EditFieldBaggage`] and sets it on the corresponding field on [`Self`].
+    pub fn set_new_baggage(
+        &mut self,
+        attribute_value_id: AttributeValueId,
+        parent_attribute_value_id: Option<AttributeValueId>,
+        key: Option<String>,
+        prop_id: PropId,
+    ) {
+        self.baggage = Some(EditFieldBaggage {
+            attribute_value_id,
+            parent_attribute_value_id,
+            key,
+            prop_id,
+        });
     }
 
+    /// Unsets the [`EditFieldBaggage`] by setting the corresponding field to [`None`] on [`Self`].
     pub fn unset_baggage(&mut self) {
         self.baggage = None;
     }
