@@ -41,8 +41,8 @@ pub async fn migrate(ctx: &DalContext<'_, '_>) -> SchemaResult<()> {
     service(ctx).await?;
     kubernetes_service(ctx).await?;
     kubernetes_deployment(ctx).await?;
-    docker_image(ctx).await?;
     docker_hub_credential(ctx).await?;
+    docker_image(ctx).await?;
 
     Ok(())
 }
@@ -275,18 +275,12 @@ async fn docker_hub_credential(ctx: &DalContext<'_, '_>) -> SchemaResult<()> {
     .await?;
     variant.add_socket(ctx, includes_socket.id()).await?;
 
-    let mut ui_menu = UiMenu::new(ctx, &(*schema.kind()).into()).await?;
-    ui_menu
-        .set_name(ctx, Some(schema.name().to_string()))
-        .await?;
-
     let application_name = "application".to_string();
-    ui_menu
-        .set_category(ctx, Some(application_name.clone()))
-        .await?;
-    ui_menu
-        .set_schematic_kind(ctx, SchematicKind::from(*schema.kind()))
-        .await?;
+
+    // Note: I wasn't able to create a ui menu with two layers
+    let mut ui_menu = UiMenu::new(ctx, &(*schema.kind()).into()).await?;
+    ui_menu.set_name(ctx, Some("credential".to_owned())).await?;
+    ui_menu.set_category(ctx, Some("docker".to_owned())).await?;
     ui_menu.set_schema(ctx, schema.id()).await?;
 
     let application_schema_results = Schema::find_by_attr(ctx, "name", &application_name).await?;
@@ -330,17 +324,10 @@ async fn docker_image(ctx: &DalContext<'_, '_>) -> SchemaResult<()> {
     .ok_or(AttributeValueError::Missing)?;
 
     let mut ui_menu = UiMenu::new(ctx, &(*schema.kind()).into()).await?;
-    ui_menu
-        .set_name(ctx, Some(schema.name().to_string()))
-        .await?;
+    ui_menu.set_name(ctx, Some("image")).await?;
 
     let application_name = "application".to_string();
-    ui_menu
-        .set_category(ctx, Some(application_name.clone()))
-        .await?;
-    ui_menu
-        .set_schematic_kind(ctx, SchematicKind::from(*schema.kind()))
-        .await?;
+    ui_menu.set_category(ctx, Some("docker".to_owned())).await?;
     ui_menu.set_schema(ctx, schema.id()).await?;
 
     let application_schema_results = Schema::find_by_attr(ctx, "name", &application_name).await?;

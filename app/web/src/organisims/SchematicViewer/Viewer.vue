@@ -554,13 +554,18 @@ export default defineComponent({
       if (
         this.component.isActive &&
         this.interactionManager &&
-        node.position.length > 0
+        node.position.length > 0 &&
+        this.schematicKind
       ) {
         // Fake nodes will always only have one position as they don't exist in the db yet
-        const nodeObj = new OBJ.Node(node, {
-          x: parseFloat(node.position[0].x as string),
-          y: parseFloat(node.position[0].y as string),
-        });
+        const nodeObj = new OBJ.Node(
+          node,
+          {
+            x: parseFloat(node.position[0].x as string),
+            y: parseFloat(node.position[0].y as string),
+          },
+          this.schematicKind,
+        );
         this.send(ViewerEventKind.ACTIVATE_NODEADD);
         this.interactionManager.nodeAddManager.addNode(nodeObj, schemaId);
       }

@@ -90,8 +90,8 @@ export class SceneManager {
     this.clearSceneData();
 
     this.group = {
-      nodes: new NodeGroup("nodes", 20),
-      connections: new ConnectionGroup("connections", 30),
+      connections: new ConnectionGroup("connections", 20),
+      nodes: new NodeGroup("nodes", 30),
     };
     this.root.addChild(this.group.nodes);
     this.root.addChild(this.group.connections);
@@ -114,10 +114,14 @@ export class SceneManager {
             pos.deployment_node_id === selectedDeploymentNodeId,
         );
         if (pos) {
-          const node = new OBJ.Node(n, {
-            x: parseFloat(pos.x as string),
-            y: parseFloat(pos.y as string),
-          });
+          const node = new OBJ.Node(
+            n,
+            {
+              x: parseFloat(pos.x as string),
+              y: parseFloat(pos.y as string),
+            },
+            schematicKind,
+          );
           // If the node was previously selected we re-select again as some operations
           // were lost on the re-render (example: update node position)
           const isSelected = (
