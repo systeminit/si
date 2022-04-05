@@ -11,6 +11,7 @@ import { Connection } from "./connection";
 import { SelectionStatus } from "./node/status";
 import { QualificationStatus } from "./node/status";
 import { ResourceStatus } from "./node/status/resource";
+import { SchematicKind } from "@/api/sdf/dal/schematic";
 import { NodeKind } from "@/api/sdf/dal/node";
 
 interface Position {
@@ -38,11 +39,14 @@ export class Node extends PIXI.Container {
   isSelected = false;
   title: string;
   connections: Array<Connection>;
+  panelKind: SchematicKind;
   selection?: SelectionStatus;
 
-  constructor(n: MODEL.Node, pos: Position) {
+  constructor(n: MODEL.Node, pos: Position, panelKind: SchematicKind) {
     super();
     this.id = n.id;
+
+    this.panelKind = panelKind;
 
     this.name = n.label.name;
     this.title = n.label.title;
@@ -111,7 +115,7 @@ export class Node extends PIXI.Container {
   }
 
   setSockets(inputs: MODEL.Socket[], outputs: MODEL.Socket[]): void {
-    const sockets = new Sockets(this.id, inputs, outputs);
+    const sockets = new Sockets(this.id, inputs, outputs, this.panelKind);
     sockets.zIndex = 2;
     this.addChild(sockets);
   }

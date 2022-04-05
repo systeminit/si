@@ -11,7 +11,7 @@
       @click="isOpen = !isOpen"
     >
       <div
-        class="items-center self-center w-full text-sm subpixel-antialiased font-light tracking-tight"
+        class="add-margin-top items-center self-center w-full text-sm subpixel-antialiased font-light tracking-tight"
         :class="{
           'text-gray-200': !isOpen,
           'menu-selected': isOpen,
@@ -136,6 +136,9 @@ onBeforeUnmount(() => {
   left: 100%;
   top: auto;
   margin-top: -1.305rem;
+}
+.add-margin-top {
+  margin-top: 0.25rem;
 }
 
 /* .menu-category:hover .category-items { */

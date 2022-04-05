@@ -146,19 +146,15 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> SchemaResult<()>
 
     // TODO: abstract this boilerplate away
     let mut ui_menu = UiMenu::new(ctx, &(*schema.kind()).into()).await?;
-    ui_menu
-        .set_name(ctx, Some(schema.name().to_string()))
-        .await?;
+    ui_menu.set_name(ctx, Some("deployment".to_owned())).await?;
 
-    let application_name = "application".to_string();
-    ui_menu
-        .set_category(ctx, Some(application_name.clone()))
-        .await?;
+    ui_menu.set_category(ctx, Some("kubernetes")).await?;
     ui_menu
         .set_schematic_kind(ctx, SchematicKind::from(*schema.kind()))
         .await?;
     ui_menu.set_schema(ctx, schema.id()).await?;
 
+    let application_name = "application".to_string();
     let application_schema_results = Schema::find_by_attr(ctx, "name", &application_name).await?;
     let application_schema = application_schema_results
         .first()

@@ -94,11 +94,7 @@ import { refFrom, untilUnmounted } from "vuse-rx";
 import { switchMap } from "rxjs/operators";
 import { ChangeSetService } from "@/service/change_set";
 import { NodeAddEvent, ViewerEventObservable } from "./SchematicViewer/event";
-import {
-  deploymentSelection$,
-  componentSelection$,
-  SelectedNode,
-} from "./SchematicViewer/state";
+import { deploymentSelection$, SelectedNode } from "./SchematicViewer/state";
 import { visibility$ } from "@/observable/visibility";
 import { SchematicService } from "@/service/schematic";
 import { GlobalErrorService } from "@/service/global_error";
