@@ -10,12 +10,12 @@ use dal::{Component, SchemaKind, StandardModel, Visibility};
 use sdf::service::component::get_component_metadata::{
     GetComponentMetadataRequest, GetComponentMetadataResponse,
 };
-use sdf::service::component::list_components_names_only::{
-    ListComponentNamesOnlyRequest, ListComponentNamesOnlyResponse,
+use sdf::service::component::list_components_with_schema_and_variant::{
+    ListComponentsWithSchemaAndVariantRequest, ListComponentsWithSchemaAndVariantResponse,
 };
 
 #[test]
-async fn list_components_names_only() {
+async fn list_components_with_schema_and_variant() {
     test_setup!(
         _ctx,
         _secret_key,
@@ -50,13 +50,13 @@ async fn list_components_names_only() {
     }
     dal_txns.commit().await.expect("cannot commit transaction");
 
-    let request = ListComponentNamesOnlyRequest {
+    let request = ListComponentsWithSchemaAndVariantRequest {
         visibility,
         workspace_id: *nba.workspace.id(),
     };
-    let response: ListComponentNamesOnlyResponse = api_request_auth_query(
+    let response: ListComponentsWithSchemaAndVariantResponse = api_request_auth_query(
         app,
-        "/api/component/list_components_names_only",
+        "/api/component/list_components_with_schema_and_variant",
         &auth_token,
         &request,
     )

@@ -14,16 +14,6 @@ import { ResourceStatus } from "./node/status/resource";
 import { SchematicKind } from "@/api/sdf/dal/schematic";
 import { NodeKind } from "@/api/sdf/dal/node";
 
-interface Position {
-  x: number;
-  y: number;
-}
-
-export interface NodeData {
-  name: string;
-  position: Position;
-}
-
 const NODE_WIDTH = 140;
 const NODE_HEIGHT = 100;
 
@@ -31,6 +21,11 @@ const INPUT_SOCKET_OFFSET = 45;
 // const OUTPUT_SOCKET_OFFSET = 35;
 const SOCKET_SPACING = 20;
 const SOCKET_HEIGHT = 3;
+
+interface Position {
+  x: number;
+  y: number;
+}
 
 export class Node extends PIXI.Container {
   id: number;

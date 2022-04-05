@@ -11,7 +11,7 @@
     <template #menuButtons>
       <div class="flex flex-row items-center justify-between flex-grow">
         <div class="flex flex-row">
-          <div v-if="componentNamesOnlyList" class="min-w-max">
+          <div v-if="componentList" class="min-w-max">
             <SiSelect
               id="nodeSelect"
               v-model="selectedComponentId"
@@ -19,7 +19,7 @@
               name="nodeSelect"
               class="pl-1"
               :value-as-number="true"
-              :options="componentNamesOnlyList"
+              :options="componentList"
               :disabled="!isPinned"
             />
           </div>
@@ -153,24 +153,25 @@
       For more information: https://v3.vuejs.org/guide/conditional.html#v-if
       -->
       <div
-        v-if="selectedComponentId"
+        v-if="selectedComponentWithSchemaAndVariant"
         class="flex flex-row w-full h-full overflow-auto"
       >
+        <!-- TODO(nick): use more than "componentId" from "selectedComponentWithSchemaAndVariant" -->
         <AttributeViewer
           v-if="activeView === 'attribute'"
-          :component-id="selectedComponentId"
+          :component-id="selectedComponentWithSchemaAndVariant.componentId"
         />
         <QualificationViewer
           v-else-if="activeView === 'qualification'"
-          :component-id="selectedComponentId"
+          :component-id="selectedComponentWithSchemaAndVariant.componentId"
         />
         <ResourceViewer
           v-else-if="activeView === 'resource'"
-          :component-id="selectedComponentId"
+          :component-id="selectedComponentWithSchemaAndVariant.componentId"
         />
         <CodeViewer
           v-else-if="activeView === 'code'"
-          :component-id="selectedComponentId"
+          :component-id="selectedComponentWithSchemaAndVariant.componentId"
         />
         <div v-else-if="activeView === 'connection'">
           ActiveView "{{ activeView }}" not implemented
@@ -196,7 +197,7 @@
 import Panel from "@/molecules/Panel.vue";
 import LockButton from "@/atoms/LockButton.vue";
 import SiSelect from "@/atoms/SiSelect.vue";
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import { LabelList } from "@/api/sdf/dal/label_list";
 import { refFrom, untilUnmounted } from "vuse-rx";
 import { switchMap } from "rxjs/operators";
@@ -215,6 +216,7 @@ import {
   componentSelection$,
 } from "./SchematicViewer/state";
 import { visibility$ } from "@/observable/visibility";
+import { ComponentWithSchemaAndVariant } from "@/api/sdf/dal/component";
 
 const isPinned = ref<boolean>(false);
 const selectedComponentId = ref<number | "">("");
@@ -237,7 +239,7 @@ componentSelection$.pipe(untilUnmounted).subscribe((selections) => {
 
   // Ignores fake nodes as they don't have any attributes
   // We never de-select with the panel
-  if (componentId === -1 || !componentId) return;
+  if (!componentId || componentId === -1) return;
 
   selectedComponentId.value = componentId;
 });
@@ -253,7 +255,7 @@ deploymentSelection$.pipe(untilUnmounted).subscribe((selections) => {
 
   // Ignores fake nodes as they don't have any attributes
   // We never de-select with the panel
-  if (componentId === -1 || !componentId) return;
+  if (!componentId || componentId === -1) return;
 
   selectedComponentId.value = componentId;
 });
@@ -273,20 +275,67 @@ const setActiveView = (view: string) => {
   activeView.value = view;
 };
 
-const componentNamesOnlyList = refFrom<LabelList<number | "">>(
-  ComponentService.listComponentsNamesOnly().pipe(
+const componentWithSchemaAndVariantList = refFrom<
+  LabelList<ComponentWithSchemaAndVariant | "">
+>(
+  ComponentService.listComponentsWithSchemaAndVariant().pipe(
     switchMap((response) => {
       if (response.error) {
         GlobalErrorService.set(response);
         return from([[]]);
       } else {
-        const list: LabelList<number | ""> = _.cloneDeep(response.list);
+        const list: LabelList<ComponentWithSchemaAndVariant | ""> = _.cloneDeep(
+          response.list,
+        );
         list.push({ label: "", value: "" });
         return from([list]);
       }
     }),
   ),
 );
+
+const componentList = computed(
+  (): LabelList<number | ""> => {
+    let list: LabelList<number | ""> = [];
+    if (componentWithSchemaAndVariantList.value) {
+      for (const item of componentWithSchemaAndVariantList.value) {
+        let value: number | "" = "";
+        if (item.value !== "") {
+          value = item.value.componentId;
+        }
+        list.push({ label: item.label, value: value });
+      }
+    }
+    return list;
+  },
+);
+
+const componentRecord = computed(
+  (): Record<number, ComponentWithSchemaAndVariant> => {
+    let record: Record<number, ComponentWithSchemaAndVariant> = {};
+    if (componentWithSchemaAndVariantList.value) {
+      for (const item of componentWithSchemaAndVariantList.value) {
+        if (item.value !== "") {
+          record[item.value.componentId] = item.value;
+        }
+      }
+    }
+    return record;
+  },
+);
+
+const selectedComponentWithSchemaAndVariant = computed(():
+  | ComponentWithSchemaAndVariant
+  | "" => {
+  if (selectedComponentId.value) {
+    let record = componentRecord.value[selectedComponentId.value];
+    if (record === null || record === undefined) {
+      return "";
+    }
+    return componentRecord.value[selectedComponentId.value];
+  }
+  return "";
+});
 </script>
 
 <style scoped>

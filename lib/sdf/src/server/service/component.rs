@@ -17,40 +17,42 @@ use thiserror::Error;
 pub mod get_code;
 pub mod get_component_metadata;
 pub mod get_resource;
-pub mod list_components_names_only;
+pub mod list_components_with_schema_and_variant;
 pub mod list_qualifications;
 pub mod sync_resource;
 
 #[derive(Debug, Error)]
 pub enum ComponentError {
-    #[error(transparent)]
-    Nats(#[from] si_data::NatsError),
-    #[error(transparent)]
-    Pg(#[from] si_data::PgError),
-    #[error(transparent)]
-    Transactions(#[from] TransactionsError),
-    #[error(transparent)]
-    StandardModel(#[from] StandardModelError),
     #[error("entity error: {0}")]
     Component(#[from] DalComponentError),
-    #[error("not found")]
-    NotFound,
-    #[error("schema not found")]
-    SchemaNotFound,
-    #[error("invalid request")]
-    InvalidRequest,
-    #[error("schema error: {0}")]
-    SchemaError(#[from] SchemaError),
-    #[error("ws event error: {0}")]
-    WsEvent(#[from] WsEventError),
-    #[error("component not found")]
-    ComponentNotFound,
     #[error("component name not found")]
     ComponentNameNotFound,
-    #[error("resource not found")]
-    ResourceNotFound(ComponentId, SystemId),
+    #[error("component not found")]
+    ComponentNotFound,
+    #[error("invalid request")]
+    InvalidRequest,
+    #[error(transparent)]
+    Nats(#[from] si_data::NatsError),
+    #[error("not found")]
+    NotFound,
+    #[error(transparent)]
+    Pg(#[from] si_data::PgError),
     #[error("read tenancy error: {0}")]
     ReadTenancy(#[from] ReadTenancyError),
+    #[error("resource not found")]
+    ResourceNotFound(ComponentId, SystemId),
+    #[error("schema error: {0}")]
+    SchemaError(#[from] SchemaError),
+    #[error("schema not found")]
+    SchemaNotFound,
+    #[error("schema variant not found")]
+    SchemaVariantNotFound,
+    #[error(transparent)]
+    StandardModel(#[from] StandardModelError),
+    #[error(transparent)]
+    Transactions(#[from] TransactionsError),
+    #[error("ws event error: {0}")]
+    WsEvent(#[from] WsEventError),
 }
 
 pub type ComponentResult<T> = std::result::Result<T, ComponentError>;
@@ -77,8 +79,8 @@ impl IntoResponse for ComponentError {
 pub fn routes() -> Router {
     Router::new()
         .route(
-            "/list_components_names_only",
-            get(list_components_names_only::list_components_names_only),
+            "/list_components_with_schema_and_variant",
+            get(list_components_with_schema_and_variant::list_components_with_schema_and_variant),
         )
         .route(
             "/get_component_metadata",
