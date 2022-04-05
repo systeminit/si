@@ -37,7 +37,7 @@
         v-if="schematicKind === SchematicKind.Component"
         class="flex flex-row"
       >
-        <div v-if="componentNamesOnlyList" class="min-w-max">
+        <div v-if="componentList" class="min-w-max">
           <SiSelect
             id="nodeSelect"
             v-model="selectedComponentId"
@@ -45,7 +45,7 @@
             name="nodeSelect"
             class="pl-1"
             :value-as-number="true"
-            :options="componentNamesOnlyList"
+            :options="componentList"
             :disabled="!isPinned"
           />
         </div>
@@ -102,9 +102,10 @@ import { firstValueFrom } from "rxjs";
 import _ from "lodash";
 import * as Rx from "rxjs";
 import * as MODEL from "./SchematicViewer/model";
+import { ComponentWithSchemaAndVariant } from "@/api/sdf/dal/component";
 
-const selectedComponentId = ref<number | "">("");
 const isPinned = ref<boolean>(false);
+const selectedComponentId = ref<number | "">("");
 
 // We garantee that the latest update will always be the last element in the list
 deploymentSelection$.pipe(untilUnmounted).subscribe((selections) => {
@@ -118,7 +119,7 @@ deploymentSelection$.pipe(untilUnmounted).subscribe((selections) => {
     : undefined;
 
   // Ignores fake nodes as they don't have any attributes
-  if (componentId === -1) return;
+  if (!componentId || componentId === -1) return;
 
   selectedComponentId.value = componentId ?? "";
 });
@@ -256,19 +257,39 @@ const addNode = async (schemaId: number, _event: MouseEvent) => {
   viewerEventObservable.viewerEvent$.next(event);
 };
 
-const componentNamesOnlyList = refFrom<LabelList<number | "">>(
-  ComponentService.listComponentsNamesOnly().pipe(
+const componentWithSchemaAndVariantList = refFrom<
+  LabelList<ComponentWithSchemaAndVariant | "">
+>(
+  ComponentService.listComponentsWithSchemaAndVariant().pipe(
     switchMap((response) => {
       if (response.error) {
         GlobalErrorService.set(response);
         return Rx.from([[]]);
       } else {
-        const list: LabelList<number | ""> = _.cloneDeep(response.list);
+        const list: LabelList<ComponentWithSchemaAndVariant | ""> = _.cloneDeep(
+          response.list,
+        );
         list.push({ label: "", value: "" });
         return Rx.from([list]);
       }
     }),
   ),
+);
+
+const componentList = computed(
+  (): LabelList<number | ""> => {
+    let list: LabelList<number | ""> = [];
+    if (componentWithSchemaAndVariantList.value) {
+      for (const item of componentWithSchemaAndVariantList.value) {
+        let value: number | "" = "";
+        if (item.value !== "") {
+          value = item.value.componentId;
+        }
+        list.push({ label: item.label, value: value });
+      }
+    }
+    return list;
+  },
 );
 </script>
 
