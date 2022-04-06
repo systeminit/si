@@ -91,13 +91,11 @@ test: $(TESTABLE)
 $(IMAGEABLE):
 	cd $(patsubst image//%,%,$@) && $(MAKE) image
 
-# NOTE(nick): commented out due to error messages. This target is currently unused.
-# $(RELEASEABLE):
-#	 cd bin/$(patsubst release-%,%,$@) && $(MAKE) release
+$(RELEASEABLE):
+	 cd bin/$(patsubst release-%,%,$@) && $(MAKE) release
 
-# NOTE(nick): commented out due to error messages. This target is currently unused.
-# $(PROMOTABLE):
-#	 cd bin/$(patsubst promote-%,%,$@) && $(MAKE) promote
+$(PROMOTABLE):
+	 cd bin/$(patsubst promote-%,%,$@) && $(MAKE) promote
 
 release-postgres:
 	cd component/postgres && $(MAKE) release
