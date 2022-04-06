@@ -17,6 +17,7 @@ members = [
     "lib/si-settings",
     "lib/si-test-macros",
     "lib/telemetry-rs",
+    "app/web/vue-imports-graph",
 ]
 exclude = [
   "components/*",
