@@ -8,7 +8,7 @@ use telemetry::prelude::*;
 use crate::{
     edit_field::{
         value_and_visibility_diff, value_and_visibility_diff_option, widget::prelude::*, EditField,
-        EditFieldAble, EditFieldDataType, EditFieldError, EditFieldObjectKind, EditFields,
+        EditFieldAble, EditFieldDataType, EditFieldError, EditFieldObjectKind,
     },
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
     standard_model_many_to_many, LabelList, SchemaError, SchematicKind, StandardModel, Timestamp,
@@ -121,7 +121,7 @@ impl EditFieldAble for UiMenu {
     async fn get_edit_fields(
         ctx: &DalContext<'_, '_>,
         id: &Self::Id,
-    ) -> Result<EditFields, Self::Error> {
+    ) -> Result<Vec<EditField>, Self::Error> {
         let object = UiMenu::get_by_id(ctx, id)
             .await?
             .ok_or(SchemaError::UiMenuNotFound(*id))?;

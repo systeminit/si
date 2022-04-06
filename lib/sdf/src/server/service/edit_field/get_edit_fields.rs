@@ -1,7 +1,8 @@
 use axum::extract::Query;
 use axum::Json;
+use dal::edit_field::EditField;
 use dal::{
-    edit_field::{EditFieldAble, EditFieldObjectKind, EditFields},
+    edit_field::{EditFieldAble, EditFieldObjectKind},
     schema,
     socket::Socket,
     Component, Prop, QualificationCheck, Schema, Visibility, WorkspaceId,
@@ -24,7 +25,7 @@ pub struct GetEditFieldsRequest {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct GetEditFieldsResponse {
-    pub fields: EditFields,
+    pub fields: Vec<EditField>,
 }
 
 pub async fn get_edit_fields(

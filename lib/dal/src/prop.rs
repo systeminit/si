@@ -12,7 +12,7 @@ use crate::{
     attribute::{prototype::AttributePrototype, value::AttributeValue},
     edit_field::{
         value_and_visibility_diff, widget::prelude::*, EditField, EditFieldAble, EditFieldDataType,
-        EditFieldError, EditFieldObjectKind, EditFields,
+        EditFieldError, EditFieldObjectKind,
     },
     func::binding::{FuncBinding, FuncBindingError},
     impl_standard_model,
@@ -326,7 +326,7 @@ impl EditFieldAble for Prop {
     async fn get_edit_fields(
         ctx: &DalContext<'_, '_>,
         id: &Self::Id,
-    ) -> Result<EditFields, Self::Error> {
+    ) -> Result<Vec<EditField>, Self::Error> {
         let object = Self::get_by_id(ctx, id)
             .await?
             .ok_or_else(|| Self::Error::NotFound(*id, *ctx.visibility()))?;

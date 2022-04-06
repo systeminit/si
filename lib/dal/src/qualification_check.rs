@@ -8,7 +8,7 @@ use thiserror::Error;
 use crate::{
     edit_field::{
         value_and_visibility_diff, widget::prelude::*, EditField, EditFieldAble, EditFieldDataType,
-        EditFieldError, EditFieldObjectKind, EditFields,
+        EditFieldError, EditFieldObjectKind,
     },
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_many_to_many,
     HistoryEventError, SchemaVariant, SchemaVariantId, StandardModel, StandardModelError,
@@ -134,7 +134,7 @@ impl EditFieldAble for QualificationCheck {
     async fn get_edit_fields(
         ctx: &DalContext<'_, '_>,
         id: &QualificationCheckId,
-    ) -> Result<EditFields, Self::Error> {
+    ) -> Result<Vec<EditField>, Self::Error> {
         let object = Self::get_by_id(ctx, id)
             .await?
             .ok_or(QualificationCheckError::NotFound(*id))?;

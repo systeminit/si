@@ -11,7 +11,7 @@ use crate::{
     component::ComponentKind,
     edit_field::{
         value_and_visibility_diff, widget::prelude::*, EditField, EditFieldAble, EditFieldDataType,
-        EditFieldError, EditFieldObjectKind, EditFields, VisibilityDiff,
+        EditFieldError, EditFieldObjectKind, VisibilityDiff,
     },
     func::binding::FuncBindingError,
     impl_standard_model,
@@ -382,7 +382,7 @@ impl Schema {
         let field_name = "variants";
         let object_kind = EditFieldObjectKind::Schema;
 
-        let mut items: Vec<EditFields> = vec![];
+        let mut items: Vec<Vec<EditField>> = vec![];
         for variant in object.variants(ctx).await?.into_iter() {
             let edit_fields = SchemaVariant::get_edit_fields(ctx, variant.id()).await?;
             items.push(edit_fields);
@@ -415,7 +415,7 @@ impl Schema {
         let field_name = "ui";
         let object_kind = EditFieldObjectKind::Schema;
 
-        let mut items: Vec<EditFields> = vec![];
+        let mut items: Vec<Vec<EditField>> = vec![];
         for ui_menu in object.ui_menus(ctx).await?.into_iter() {
             let edit_fields = UiMenu::get_edit_fields(ctx, ui_menu.id()).await?;
             items.push(edit_fields);
@@ -450,7 +450,10 @@ impl EditFieldAble for Schema {
     type Id = SchemaId;
     type Error = SchemaError;
 
-    async fn get_edit_fields(ctx: &DalContext<'_, '_>, id: &SchemaId) -> SchemaResult<EditFields> {
+    async fn get_edit_fields(
+        ctx: &DalContext<'_, '_>,
+        id: &SchemaId,
+    ) -> SchemaResult<Vec<EditField>> {
         let object = Schema::get_by_id(ctx, id)
             .await?
             .ok_or(SchemaError::NotFound(*id))?;
