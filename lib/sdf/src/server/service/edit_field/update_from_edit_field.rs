@@ -3,7 +3,7 @@ use dal::{
     edit_field::{EditFieldAble, EditFieldBaggage, EditFieldObjectKind},
     schema::{self, SchemaVariant},
     socket::Socket,
-    Component, Prop, QualificationCheck, Schema, Visibility, WorkspaceId,
+    AttributeContext, Component, Prop, QualificationCheck, Schema, Visibility, WorkspaceId,
 };
 use serde::{Deserialize, Serialize};
 
@@ -19,6 +19,7 @@ pub struct UpdateFromEditFieldRequest {
     pub value: Option<serde_json::Value>,
     pub baggage: Option<EditFieldBaggage>,
     pub workspace_id: Option<WorkspaceId>,
+    pub attribute_context: Option<AttributeContext>,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -51,25 +52,17 @@ pub async fn update_from_edit_field(
         EditFieldObjectKind::ComponentProp => {
             // Eventually, this won't be infallible. -- Adam
             #[allow(clippy::infallible_destructuring_match)]
-            let _baggage = request.baggage.ok_or(EditFieldError::MissingBaggage)?;
-            todo!()
-            // FIXME(nick): need to figure out prop id;
-            //
-            //Component::update_prop_from_edit_field(
-            //    ctx.pg_txn(),
-            //    ctx.nats_txn(),
-            //    ctx.veritech().clone(),
-            //    ctx.encryption_key(),
-            //    ctx.write_tenancy(),
-            //    ctx.visibility(),
-            //    ctx.history_actor(),
-            //    request.object_id.into(),
-            //    baggage.attribute_context.prop_id(),
-            //    request.edit_field_id,
-            //    request.value,
-            //    None, // TODO: Eventually, pass the key! -- Adam
-            //)
-            //.await?
+            let baggage = request.baggage.ok_or(EditFieldError::MissingBaggage)?;
+            let attribute_context = request
+                .attribute_context
+                .ok_or(EditFieldError::MissingAttributeContext)?;
+            Component::update_from_edit_field_with_baggage(
+                &ctx,
+                request.value,
+                attribute_context,
+                baggage,
+            )
+            .await?
         }
         EditFieldObjectKind::Prop => {
             Prop::update_from_edit_field(

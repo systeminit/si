@@ -365,45 +365,43 @@ impl Component {
         &self.tenancy
     }
 
+    // FIXME(nick): this should eventually become "update_from_edit_field", but we are going to
+    // maintain the old SDF logic for now since this code is in flux.
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
-    pub async fn update_prop_from_edit_field(
+    pub async fn update_from_edit_field_with_baggage(
         ctx: &DalContext<'_, '_>,
-        component_id: ComponentId,
-        prop_id: PropId,
-        _edit_field_id: String,
         value: Option<serde_json::Value>,
-        // TODO: Allow updating the key
-        _key: Option<String>,
+        attribute_context: AttributeContext,
+        baggage: EditFieldBaggage,
     ) -> ComponentResult<()> {
-        let prop = Prop::get_by_id(ctx, &prop_id)
+        let (updated_value, _updated_attribute_value_id) = AttributeValue::update_for_context(
+            ctx,
+            baggage.attribute_value_id,
+            baggage.parent_attribute_value_id,
+            attribute_context,
+            value,
+            baggage.key,
+        )
+        .await?;
+
+        // Check validations and qualifications for our component.
+        let component = Self::get_by_id(ctx, &attribute_context.component_id())
             .await?
-            .ok_or(ComponentError::MissingProp(prop_id))?;
-        let component = Self::get_by_id(ctx, &component_id)
+            .ok_or_else(|| ComponentError::NotFound(attribute_context.component_id()))?;
+        let prop = Prop::get_by_id(ctx, &attribute_context.prop_id())
             .await?
-            .ok_or(ComponentError::NotFound(component_id))?;
-
-        // TODO: AttributeValue::update_value
-
-        let created = false;
-
+            .ok_or_else(|| ComponentError::MissingProp(attribute_context.prop_id()))?;
         component
-            .check_validations(ctx, &prop, &value, created)
+            .check_validations(ctx, &prop, &updated_value, false)
             .await?;
 
         // Some qualifications depend on code generation, so we have to generate first
         component
-            .generate_code(
-                ctx,
-                UNSET_ID_VALUE.into(), // TODO: properly obtain a system_id
-            )
+            .generate_code(ctx, attribute_context.system_id())
             .await?;
-
         component
-            .check_qualifications(
-                ctx,
-                UNSET_ID_VALUE.into(), // TODO: properly obtain a system_id
-            )
+            .check_qualifications(ctx, attribute_context.system_id())
             .await?;
 
         Ok(())
@@ -1460,10 +1458,12 @@ async fn edit_field_for_attribute_value(
         visibility_diff,
         validation_errors,
     );
-    edit_field.set_baggage(EditFieldBaggage {
+    edit_field.set_new_baggage(
         attribute_value_id,
         parent_attribute_value_id,
-    });
+        attribute_value.key,
+        *prop.id(),
+    );
 
     Ok(edit_field)
 }

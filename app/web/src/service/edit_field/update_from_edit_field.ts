@@ -8,12 +8,14 @@ import { EditFieldObjectKind } from "@/api/sdf/dal/edit_field";
 import { editSessionWritten$ } from "@/observable/edit_session";
 import { workspace$ } from "@/observable/workspace";
 import _ from "lodash";
+import { AttributeContext } from "@/api/sdf/dal/attribute";
 
 export interface UpdateFromEditFieldArgs {
   objectKind: EditFieldObjectKind;
   objectId: number;
   editFieldId: string;
   value: unknown;
+  attributeContext: AttributeContext;
   baggage?: unknown;
 }
 

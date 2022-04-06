@@ -156,10 +156,12 @@
         v-if="selectedComponentWithSchemaAndVariant"
         class="flex flex-row w-full h-full overflow-auto"
       >
-        <!-- TODO(nick): use more than "componentId" from "selectedComponentWithSchemaAndVariant" -->
         <AttributeViewer
           v-if="activeView === 'attribute'"
           :component-id="selectedComponentWithSchemaAndVariant.componentId"
+          :component-with-schema-and-variant="
+            selectedComponentWithSchemaAndVariant
+          "
         />
         <QualificationViewer
           v-else-if="activeView === 'qualification'"

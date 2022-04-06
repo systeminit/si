@@ -28,7 +28,11 @@
         </div>
       </div>
     </div>
-    <EditFormComponent v-if="editFields" :edit-fields="editFields" />
+    <EditFormComponent
+      v-if="editFields"
+      :edit-fields="editFields"
+      :component-with-schema-and-variant="componentWithSchemaAndVariant"
+    />
   </div>
 </template>
 
@@ -48,12 +52,16 @@ import { EditFieldObjectKind, EditFields } from "@/api/sdf/dal/edit_field";
 import { EditFieldService } from "@/service/edit_field";
 import { ResourceHealth } from "@/api/sdf/dal/resource";
 import { ChangedEditFieldCounterVisitor } from "@/utils/edit_field_visitor";
+import { ComponentWithSchemaAndVariant } from "@/api/sdf/dal/component";
 
+// TODO(nick): we technically only need one prop. We're sticking with two to not mess
+// with the reactivity guarentees in place.
 const props = defineProps<{
   componentId: number;
+  componentWithSchemaAndVariant: ComponentWithSchemaAndVariant;
 }>();
 
-const { componentId } = toRefs(props);
+const { componentId, componentWithSchemaAndVariant } = toRefs(props);
 
 // We need an observable stream of props.componentId. We also want
 // that stream to emit a value immediately (the first value, as well as all

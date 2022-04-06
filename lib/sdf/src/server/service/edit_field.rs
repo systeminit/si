@@ -39,6 +39,8 @@ pub enum EditFieldError {
     Socket(#[from] SocketError),
     #[error("missing required baggage for edit field request; bug")]
     MissingBaggage,
+    #[error("missing required attribute context for edit field request; bug")]
+    MissingAttributeContext,
     #[error("read tenancy error: {0}")]
     ReadTenancy(#[from] ReadTenancyError),
 }

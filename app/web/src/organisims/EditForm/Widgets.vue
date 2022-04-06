@@ -8,6 +8,7 @@
       :core-edit-field="isCoreEditField"
       :indent-level="props.indentLevel"
       :tree-open-state="props.treeOpenState"
+      :component-with-schema-and-variant="props.componentWithSchemaAndVariant"
       @toggle-header="toggleHeader"
     />
     <div v-else class="my-2">
@@ -18,6 +19,7 @@
         :core-edit-field="isCoreEditField"
         :indent-level="props.indentLevel"
         :tree-open-state="props.treeOpenState"
+        :component-with-schema-and-variant="props.componentWithSchemaAndVariant"
         @toggle-header="toggleHeader"
       />
     </div>
@@ -30,6 +32,7 @@ import { EditFields } from "@/api/sdf/dal/edit_field";
 import Widget from "@/organisims/EditForm/Widget.vue";
 import { interpolateColors } from "@/utils/interpolateColors";
 import { ITreeOpenState } from "@/utils/edit_field_visitor";
+import { ComponentWithSchemaAndVariant } from "@/api/sdf/dal/component";
 
 export interface WidgetsProps {
   show: boolean;
@@ -37,6 +40,7 @@ export interface WidgetsProps {
   coreEditFields?: boolean;
   indentLevel: number;
   treeOpenState: ITreeOpenState;
+  componentWithSchemaAndVariant?: ComponentWithSchemaAndVariant;
 }
 
 const props = defineProps<WidgetsProps>();
@@ -53,16 +57,6 @@ const isCoreEditField = computed(() => props.coreEditFields ?? false);
 
 const backgroundColors = computed(() => {
   const longestProp = 50;
-  // for (const field of props.editFields) {
-  //   console.log("field", { field });
-  // }
-
-  const colors = interpolateColors(
-    "rgb(50, 50, 50)",
-    "rgb(25, 25, 25)",
-    longestProp,
-  );
-
-  return colors;
+  return interpolateColors("rgb(50, 50, 50)", "rgb(25, 25, 25)", longestProp);
 });
 </script>

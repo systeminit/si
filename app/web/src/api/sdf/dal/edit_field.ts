@@ -81,6 +81,13 @@ export type VisibilityDiff =
 
 export type EditFieldValues = null | boolean | number | string;
 
+export interface EditFieldBaggage {
+  attribute_value_id: number;
+  parent_attribute_value_id?: number;
+  key?: string;
+  prop_id: number;
+}
+
 export interface EditField {
   id: string;
   name: string;
@@ -92,7 +99,7 @@ export interface EditField {
   value?: EditFieldValues;
   visibility_diff: VisibilityDiff;
   validation_errors: ValidationErrors;
-  baggage?: unknown;
+  baggage?: EditFieldBaggage;
 }
 
 export type EditFields = Array<EditField>;
