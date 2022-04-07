@@ -221,8 +221,7 @@ clean-containers: clean-dev-deps
 	cd ./components/si-web-app && $(MAKE) clean-container
 .PHONY: clean-containers
 
-# TODO(nick): The below targets are to be used during the transition period between the Vue 2 to
-# Vue 3 rewrite. These targets should be merged into existing ones once the transition is complete.
+# TODO(nick): The below targets are to be used until we re-assemble the old Makefile "magic".
 
 down:
 	-cd $(MAKEPATH)/deploy && $(MAKE) down

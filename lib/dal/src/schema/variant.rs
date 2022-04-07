@@ -196,10 +196,10 @@ impl SchemaVariant {
     ) -> SchemaVariantResult<EditField> {
         let field_name = "properties";
 
-        let mut items: Vec<Vec<EditField>> = vec![];
+        let mut items: Vec<EditField> = vec![];
         for prop in object.props(ctx).await?.into_iter() {
             let edit_fields = Prop::get_edit_fields(ctx, prop.id()).await?;
-            items.push(edit_fields);
+            items.extend(edit_fields);
         }
         Ok(EditField::new(
             field_name,
@@ -220,10 +220,10 @@ impl SchemaVariant {
     ) -> SchemaVariantResult<EditField> {
         let field_name = "connections";
 
-        let mut items: Vec<Vec<EditField>> = vec![];
+        let mut items: Vec<EditField> = vec![];
         for socket in object.sockets(ctx).await?.into_iter() {
             let edit_fields = Socket::get_edit_fields(ctx, socket.id()).await?;
-            items.push(edit_fields);
+            items.extend(edit_fields);
         }
 
         Ok(EditField::new(

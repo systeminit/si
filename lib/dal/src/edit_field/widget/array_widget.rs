@@ -4,17 +4,21 @@ use crate::edit_field::EditField;
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 pub struct ArrayWidget {
-    entries: Vec<Vec<EditField>>,
+    entries: Vec<EditField>,
 }
 
 impl ArrayWidget {
-    pub fn new(entries: Vec<Vec<EditField>>) -> Self {
+    pub fn new(entries: Vec<EditField>) -> Self {
         ArrayWidget { entries }
+    }
+
+    pub fn entries(&self) -> &Vec<EditField> {
+        &self.entries
     }
 }
 
-impl From<Vec<Vec<EditField>>> for ArrayWidget {
-    fn from(entries: Vec<Vec<EditField>>) -> Self {
+impl From<Vec<EditField>> for ArrayWidget {
+    fn from(entries: Vec<EditField>) -> Self {
         Self::new(entries)
     }
 }

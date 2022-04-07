@@ -43,7 +43,7 @@ export interface HeaderWidgetDal {
 export interface ArrayWidgetDal {
   kind: "Array";
   options: {
-    entries: EditFields[];
+    entries: EditFields;
   };
 }
 

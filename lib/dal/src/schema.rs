@@ -382,10 +382,10 @@ impl Schema {
         let field_name = "variants";
         let object_kind = EditFieldObjectKind::Schema;
 
-        let mut items: Vec<Vec<EditField>> = vec![];
+        let mut items: Vec<EditField> = vec![];
         for variant in object.variants(ctx).await?.into_iter() {
             let edit_fields = SchemaVariant::get_edit_fields(ctx, variant.id()).await?;
-            items.push(edit_fields);
+            items.extend(edit_fields);
         }
 
         Ok(EditField::new(
@@ -415,10 +415,10 @@ impl Schema {
         let field_name = "ui";
         let object_kind = EditFieldObjectKind::Schema;
 
-        let mut items: Vec<Vec<EditField>> = vec![];
+        let mut items: Vec<EditField> = vec![];
         for ui_menu in object.ui_menus(ctx).await?.into_iter() {
             let edit_fields = UiMenu::get_edit_fields(ctx, ui_menu.id()).await?;
-            items.push(edit_fields);
+            items.extend(edit_fields);
         }
 
         Ok(EditField::new(

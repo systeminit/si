@@ -131,19 +131,26 @@ To verify that all lints will pass in CI, execute the following target:
 > ```
 
 You can also run individual [dal](./lib/dal) integration tests before bringing
-up the entire SI stack, as neeeded. This can be done in the root of the
+up the entire SI stack, as needed. This can be done in the root of the
 repository with two terminal panes.
 
 In one pane, prepare the test environment:
 
 ```bash
-make prepare; sleep 10; make veritech-run
+make prepare
 ```
 
-In the other pane, run your test:
+In the other pane, run your test(s):
 
 ```bash
-RUST_BACKTRACE=1 cargo test <your-test-name>
+# Running one test with backtrace enabled
+RUST_BACKTRACE=1 cargo test <your-individual-test-name>
+
+# Running all tests within "integration_test" with backtrace set to "full"
+RUST_BACKTRACE=full cargo test integration_test
+
+# Running all tests
+cargo test
 ```
 
 ## Reading and Writing Documentation

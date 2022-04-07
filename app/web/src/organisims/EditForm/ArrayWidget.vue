@@ -10,13 +10,11 @@
     <template #edit>
       <div class="flex flex-col mt-1">
         <div
-          v-for="(editFields, index) in widget.options.entries"
-          :key="index"
           class="flex flex-col justify-between w-full p-1 border border-gray-500"
         >
           <Widgets
             :show="show"
-            :edit-fields="editFields"
+            :edit-fields="widget.options.entries"
             :indent-level="indentLevel + 1"
             :tree-open-state="treeOpenState"
           />
@@ -37,13 +35,11 @@
     <template #show>
       <div class="flex flex-col">
         <div
-          v-for="(editFields, index) in widget.options.entries"
-          :key="index"
           class="flex flex-col justify-between w-full mx-1 border border-gray-500"
         >
           <Widgets
             :show="show"
-            :edit-fields="editFields"
+            :edit-fields="widget.options.entries"
             :indent-level="indentLevel + 1"
             :tree-open-state="treeOpenState"
           />
