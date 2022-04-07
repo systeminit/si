@@ -8,8 +8,8 @@ use dal::{
         create_prop_of_kind_and_set_parent_with_name, create_schema,
         create_schema_variant_with_root,
     },
-    AttributeContext, AttributeReadContext, ComponentId, ComponentView, PropKind, SchemaId,
-    SchemaKind, SchemaVariantId, StandardModel,
+    AttributeContext, AttributeReadContext, AttributeValueId, ComponentId, ComponentView, PropKind,
+    SchemaId, SchemaKind, SchemaVariantId, StandardModel,
 };
 use dal::{AttributeValue, DalContext};
 use pretty_assertions_sorted::assert_eq;
@@ -145,12 +145,14 @@ async fn update_edit_field_for_component_string(ctx: &DalContext<'_, '_>) {
 
     let new_value = Some(serde_json::json!("Aubrey Drake Graham"));
     update_edit_field_for_component(
+        ctx,
         &old_edit_field,
         new_value.clone(),
         *schema.id(),
         *schema_variant.id(),
         *component.id(),
-    );
+    )
+    .await;
 
     // Check if the value was updated properly.
     let updated_base_edit_fields = Component::get_edit_fields(ctx, component.id())
@@ -249,133 +251,99 @@ async fn update_edit_field_for_component_array(ctx: &DalContext<'_, '_>) {
     }
 
     update_edit_field_for_component(
+        ctx,
         &object_edit_field.expect("could not find object edit field"),
         Some(serde_json::json!("{}")),
         *schema.id(),
         *schema_variant.id(),
         *component.id(),
-    );
+    )
+    .await;
     let (array_baggage, array_attribute_context) = update_edit_field_for_component(
+        ctx,
         &array_edit_field.expect("could not find array edit field"),
         Some(serde_json::json!("[]")),
         *schema.id(),
         *schema_variant.id(),
         *component.id(),
-    );
+    )
+    .await;
 
     // Now, let's insert two values into our array;
-    for integer in &[1, 2] {
-        AttributeValue::insert_for_context(
-            ctx,
-            array_attribute_context,
-            array_baggage
-                .parent_attribute_value_id
-                .expect("could not find parent attribute value required for insertion"),
-            Some(serde_json::json!(integer)),
-            array_baggage.key.clone(),
-        )
-        .await
-        .expect("could not insert for context");
-    }
+    let _first_inserted_value_id = AttributeValue::insert_for_context(
+        ctx,
+        array_attribute_context,
+        array_baggage
+            .parent_attribute_value_id
+            .expect("could not find parent attribute value required for insertion"),
+        Some(serde_json::json!("1")),
+        array_baggage.key.clone(),
+    )
+    .await
+    .expect("could not insert for context");
+    let second_inserted_value_id = AttributeValue::insert_for_context(
+        ctx,
+        array_attribute_context,
+        array_baggage
+            .parent_attribute_value_id
+            .expect("could not find parent attribute value required for insertion"),
+        Some(serde_json::json!("2")),
+        array_baggage.key.clone(),
+    )
+    .await
+    .expect("could not insert for context");
 
     // Let's update the second value that we inserted. We'll need to get the edit fields again.
     let initialized_base_edit_fields = Component::get_edit_fields(ctx, component.id())
         .await
         .expect("could not get edit fields");
     let initialized_edit_fields = recursive_edit_fields(initialized_base_edit_fields);
-    let initalized_array_edit_field = select_edit_field_by_id(
-        &initialized_edit_fields,
-        "properties.root.domain.object.array",
-    );
-    Component::update_from_edit_field_with_baggage(
-        &ctx,
-        Some(serde_json::json!(3)),
-        array_attribute_context,
-        array_baggage,
+    let second_element_edit_field =
+        select_edit_field_by_attribute_value_id(&initialized_edit_fields, second_inserted_value_id)
+            .expect("could not find edit field by attribute value id");
+    update_edit_field_for_component(
+        ctx,
+        &second_element_edit_field,
+        Some(serde_json::json!("9000")),
+        *schema.id(),
+        *schema_variant.id(),
+        *component.id(),
     )
-    .await
-    .expect("could not update from edit field");
+    .await;
 
-    // (Direct lineage only)
-    // Object: {} (attr value upedate)
-    // Array: [] (attr value update)
-    // Elements: insert the integer (maybe twice?) (attr val insert(
-    //
-    // Update one element and A/B comparison assertion like before
-    // Component::update_from_edit_field_with_baggage(
-    //     &ctx,
-    //     new_value.clone(),
-    //     attribute_context,
-    //     old_baggage,
-    // )
-    //     .await
-    //     .expect("could not update from edit field");
-
-    // Finally, validate with ComponentView
-    // let view = ComponentView::for_context(ctx, attribute_context.into())
-    //     .await
-    //     .expect("could not create component view");
-
-    let target_edit_field_id = "properties.root.domain.object.array";
-    let old_edit_field = select_edit_field_by_id(&old_edit_fields, target_edit_field_id)
-        .expect("could not find edit field by id");
-    assert_eq!(*old_edit_field.value(), None);
-
-    let old_baggage = old_edit_field
-        .baggage()
-        .clone()
-        .expect("baggage not found on edit field");
-
-    let attribute_context = AttributeContextBuilder::new()
-        .set_prop_id(old_baggage.prop_id)
+    let domain_attribute_context = AttributeContextBuilder::new()
+        .set_prop_id(root.domain_prop_id)
         .set_schema_id(*schema.id())
         .set_schema_variant_id(*schema_variant.id())
         .set_component_id(*component.id())
         .to_context()
         .expect("could not create attribute context from builder");
-
-    let new_value = Some(serde_json::json!("Wonderlands"));
-    Component::update_from_edit_field_with_baggage(
-        &ctx,
-        new_value.clone(),
-        attribute_context,
-        old_baggage,
-    )
-    .await
-    .expect("could not update from edit field");
-
-    // Check if the value was updated properly.
-    let updated_base_edit_fields = Component::get_edit_fields(ctx, component.id())
+    let view = ComponentView::for_context(ctx, domain_attribute_context.into())
         .await
-        .expect("could not get edit fields");
-    let updated_edit_fields = recursive_edit_fields(updated_base_edit_fields);
-    let updated_edit_field = select_edit_field_by_id(&updated_edit_fields, target_edit_field_id)
-        .expect("could not find edit field by id");
-    assert_eq!(*updated_edit_field.value(), new_value);
+        .expect("could not create component view");
 
-    // Ensure that no other values were changed in the process of updating a sole edit field.
-    let mut old_values: Vec<(&str, &Option<serde_json::Value>, &Option<EditFieldBaggage>)> =
-        old_edit_fields
-            .iter()
-            .map(|v| (v.id(), v.value(), v.baggage()))
-            .collect();
-    old_values.retain(|v| v.0 != target_edit_field_id);
-    old_values.sort_by_key(|v| v.0);
-
-    let mut updated_values: Vec<(&str, &Option<serde_json::Value>, &Option<EditFieldBaggage>)> =
-        updated_edit_fields
-            .iter()
-            .map(|v| (v.id(), v.value(), v.baggage()))
-            .collect();
-    updated_values.retain(|v| v.0 != target_edit_field_id);
-    updated_values.sort_by_key(|v| v.0);
-
-    assert_eq!(old_values, updated_values);
+    assert_eq!(view.properties, serde_json::json!("{}"));
 }
 
 fn select_edit_field_by_id(edit_fields: &Vec<EditField>, id: &str) -> Option<EditField> {
     for edit_field in edit_fields {
         if edit_field.id() == id {
+            return Some(edit_field.to_owned());
+        }
+    }
+    return None;
+}
+
+fn select_edit_field_by_attribute_value_id(
+    edit_fields: &Vec<EditField>,
+    attribute_value_id: AttributeValueId,
+) -> Option<EditField> {
+    for edit_field in edit_fields {
+        let baggage = edit_field
+            .baggage()
+            .as_ref()
+            .expect("no baggage on edit field");
+        if baggage.attribute_value_id == attribute_value_id {
             return Some(edit_field.to_owned());
         }
     }
@@ -402,7 +370,9 @@ fn recursive_edit_fields(edit_fields: Vec<EditField>) -> Vec<EditField> {
     combined
 }
 
-fn update_edit_field_for_component(
+// FIXME(nick): the incessant baggage cloning must cease!
+async fn update_edit_field_for_component(
+    ctx: &DalContext<'_, '_>,
     edit_field: &EditField,
     value: Option<serde_json::Value>,
     schema_id: SchemaId,
@@ -415,7 +385,7 @@ fn update_edit_field_for_component(
         .expect("baggage not found on edit field");
 
     let attribute_context = AttributeContextBuilder::new()
-        .set_prop_id(edit_field.prop_id)
+        .set_prop_id(baggage.prop_id)
         .set_schema_id(schema_id)
         .set_schema_variant_id(schema_variant_id)
         .set_component_id(component_id)
