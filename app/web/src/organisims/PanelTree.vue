@@ -19,6 +19,17 @@ import { PanelType } from "./PanelTree/panel_types";
 import PanelContainer from "./PanelTree/PanelContainer.vue";
 import { ref, watch, onBeforeMount } from "vue";
 
+import * as Rx from "rxjs";
+import { ComponentService } from "@/service/component";
+import { GlobalErrorService } from "@/service/global_error";
+import { componentsMetadata$ } from "@/organisims/SchematicViewer/data/observable";
+import { untilUnmounted } from "vuse-rx";
+import { schematicData$ } from "./SchematicViewer/Viewer/scene/observable";
+import { applicationNodeId$ } from "@/observable/application";
+import { system$ } from "@/observable/system";
+import { eventResourceSynced$ } from "@/observable/resource";
+import { SchematicService } from "@/service/schematic";
+
 const maximizedData = ref<PanelMaximized | null>(null);
 
 watch(
@@ -84,4 +95,74 @@ const minimizePanelFull = (_event: PanelMaximized) => {
 const maximizePanelFull = (event: PanelMaximized) => {
   maximizedData.value = event;
 };
+
+// This is here to ensure both PanelSchematic and PanelAttribute have access to it
+// Previously we fetched at one and passed to the other, but if we hide that kind of panel the data is lost
+Rx.combineLatest([system$, applicationNodeId$])
+  .pipe(
+    Rx.switchMap(([system, applicationNodeId]) => {
+      if (system && applicationNodeId) {
+        return SchematicService.getSchematic({
+          systemId: system.id,
+          rootNodeId: applicationNodeId,
+        });
+      } else {
+        return Rx.from([null]);
+      }
+    }),
+  )
+  .pipe(untilUnmounted)
+  .subscribe((schematic) => {
+    if (schematic) {
+      if (schematic.error) {
+        GlobalErrorService.set(schematic);
+        return Rx.from([null]);
+      } else {
+        schematicData$.next(schematic);
+        return Rx.from([schematic]);
+      }
+    }
+  });
+
+// TODO: we should re-fetch the metadata when qualifications change
+
+// We should re-fetch the metadata if any resource was synced
+const resourceSynced$ = new Rx.ReplaySubject<true>();
+resourceSynced$.next(true); // We must fetch on setup
+eventResourceSynced$.pipe(untilUnmounted).subscribe((resourceSyncId) => {
+  Rx.combineLatest([system$]).pipe(
+    Rx.tap(([system]) => {
+      if (system?.id === resourceSyncId?.payload?.data?.systemId) {
+        // Note: we shouldn't actually retrigger getComponentsMetadata every time one resource syncs
+        // But we generally sync all resources in batch, so it's ok for now, but we eventually will
+        // want to refactor this logic
+        resourceSynced$.next(true);
+      }
+    }),
+  );
+});
+Rx.combineLatest([system$, resourceSynced$])
+  .pipe(
+    Rx.switchMap(([system]) => {
+      if (system) {
+        return ComponentService.getComponentsMetadata({
+          systemId: system.id,
+        });
+      } else {
+        return Rx.from([null]);
+      }
+    }),
+  )
+  .pipe(untilUnmounted)
+  .subscribe((response) => {
+    if (response === null) {
+      return;
+    } else if (response.error) {
+      GlobalErrorService.set(response);
+      return;
+    } else {
+      componentsMetadata$.next(response.data);
+      return;
+    }
+  });
 </script>

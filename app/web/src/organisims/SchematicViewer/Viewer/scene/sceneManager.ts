@@ -125,11 +125,10 @@ export class SceneManager {
           // If the node was previously selected we re-select again as some operations
           // were lost on the re-render (example: update node position)
           const isSelected = (
-            selectionManager.selection.find((selected) => {
-              return (
-                selected.parentDeploymentNodeId === selectedDeploymentNodeId
-              );
-            })?.nodes ?? []
+            selectionManager.selection.find(
+              (selected) =>
+                selected.parentDeploymentNodeId === selectedDeploymentNodeId,
+            )?.nodes ?? []
           ).some((n) => n.id === node.id);
           if (isSelected) {
             selected = node;

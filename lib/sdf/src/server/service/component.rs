@@ -15,7 +15,7 @@ use dal::{
 use thiserror::Error;
 
 pub mod get_code;
-pub mod get_component_metadata;
+pub mod get_components_metadata;
 pub mod get_resource;
 pub mod list_components_identification;
 pub mod list_qualifications;
@@ -83,8 +83,8 @@ pub fn routes() -> Router {
             get(list_components_identification::list_components_identification),
         )
         .route(
-            "/get_component_metadata",
-            get(get_component_metadata::get_component_metadata),
+            "/get_components_metadata",
+            get(get_components_metadata::get_components_metadata),
         )
         .route(
             "/list_qualifications",

@@ -7,8 +7,8 @@ use dal::test_harness::{
     create_component_for_schema_variant, create_schema, create_schema_variant,
 };
 use dal::{Component, SchemaKind, StandardModel, Visibility};
-use sdf::service::component::get_component_metadata::{
-    GetComponentMetadataRequest, GetComponentMetadataResponse,
+use sdf::service::component::get_components_metadata::{
+    GetComponentsMetadataRequest, GetComponentsMetadataResponse,
 };
 use sdf::service::component::list_components_identification::{
     ListComponentsIdentificationRequest, ListComponentsIdentificationResponse,
@@ -83,7 +83,7 @@ async fn list_components_identification() {
 }
 
 #[test]
-async fn get_component_metadata() {
+async fn get_components_metadata() {
     test_setup!(
         _ctx,
         _secret_key,
@@ -113,19 +113,18 @@ async fn get_component_metadata() {
     let component = create_component_for_schema_variant(&dal_ctx, schema_variant.id()).await;
     dal_txns.commit().await.expect("cannot commit transaction");
 
-    let request = GetComponentMetadataRequest {
+    let request = GetComponentsMetadataRequest {
         visibility,
-        component_id: *component.id(),
         workspace_id: *nba.workspace.id(),
         system_id: None,
     };
-    let response: GetComponentMetadataResponse = api_request_auth_query(
+    let response: GetComponentsMetadataResponse = api_request_auth_query(
         app,
-        "/api/component/get_component_metadata",
+        "/api/component/get_components_metadata",
         &auth_token,
         &request,
     )
     .await;
 
-    assert_eq!(response.schema_name, schema.name());
+    assert_eq!(response.data[0].schema_name, schema.name());
 }

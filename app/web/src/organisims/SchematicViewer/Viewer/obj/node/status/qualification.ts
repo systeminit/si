@@ -3,14 +3,20 @@ import * as PIXI from "pixi.js";
 import * as feather from "feather-icons";
 
 export class QualificationStatus extends PIXI.Container {
-  constructor() {
+  constructor(status?: boolean) {
     super();
-
     const icon = feather.icons["check-square"];
+
+    let color = "#bbbbbb"; // unknown status
+    if (status === true) {
+      color = "#86f0ad";
+    } else if (status === false) {
+      color = "#f08686";
+    }
 
     const texture = PIXI.Texture.from(
       icon.toSvg({
-        color: "#f08686",
+        color,
         width: 64,
         height: 64,
         "stroke-width": 1.75,

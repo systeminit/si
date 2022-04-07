@@ -175,6 +175,8 @@ impl Schematic {
 
         let mut node_views = Vec::with_capacity(nodes.len());
         for node in nodes {
+            // TODO: we have to filter the components here, by system and application (root_node_id)
+
             let (schema, kind, name) = match node.kind() {
                 NodeKind::Deployment | NodeKind::Component => {
                     let component = node

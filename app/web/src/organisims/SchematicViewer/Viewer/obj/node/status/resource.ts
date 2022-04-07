@@ -1,16 +1,25 @@
 import * as PIXI from "pixi.js";
-
 import * as feather from "feather-icons";
+import { ResourceHealth } from "@/api/sdf/dal/resource";
 
 export class ResourceStatus extends PIXI.Container {
-  constructor() {
+  constructor(health?: ResourceHealth) {
     super();
 
     const icon = feather.icons["box"];
 
+    let color = "#bbbbbb"; // unknown status
+    if (health === ResourceHealth.Ok) {
+      color = "#86f0ad";
+    } else if (health === ResourceHealth.Warning) {
+      color = "#f0d286";
+    } else if (health === ResourceHealth.Error) {
+      color = "#f08686";
+    }
+
     const texture = PIXI.Texture.from(
       icon.toSvg({
-        color: "#f08686",
+        color,
         width: 64,
         height: 64,
         "stroke-width": 1.75,
