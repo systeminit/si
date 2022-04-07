@@ -1,15 +1,15 @@
 <template>
   <div :id="viewerId" class="w-full h-full">
     <Viewer
-      v-if="schematicData && editorContext && schematicKind"
+      v-if="showViewer"
       :schematic-viewer-id="viewerId"
       :viewer-state="viewerState"
-      :schematic-data="schematicData"
+      :editor-context="editorContext ?? null"
+      :schematic-data="props.schematicData"
       :viewer-event$="props.viewerEvent$"
-      :editor-context="editorContext"
-      :schematic-kind="schematicKind"
-      :is-component-panel-pinned="isComponentPanelPinned"
-      :component-panel-pin="componentPanelPin"
+      :schematic-kind="props.schematicKind ?? null"
+      :is-component-panel-pinned="props.isComponentPanelPinned"
+      :deployment-node-pin="props.deploymentNodePin"
     />
   </div>
 </template>
@@ -22,12 +22,8 @@ import Viewer from "./SchematicViewer/Viewer.vue";
 
 import { ViewerStateMachine } from "./SchematicViewer/state";
 
-import { SchematicService } from "@/service/schematic";
-import { GlobalErrorService } from "@/service/global_error";
-
 import { Schematic } from "./SchematicViewer/model";
 import { refFrom } from "vuse-rx";
-import { editSessionWritten$ } from "@/observable/edit_session";
 import { applicationNodeId$ } from "@/observable/application";
 import { system$ } from "@/observable/system";
 import { visibility$ } from "@/observable/visibility";
@@ -37,11 +33,25 @@ import { switchMap } from "rxjs/operators";
 import { ViewerEvent } from "./SchematicViewer/event";
 import { computed } from "vue";
 
+const showViewer = computed(() => {
+  if (props.schematicData && editorContext.value && props.schematicKind) {
+    // Component panels pointing to a null deployment will sync selection with deployment panel
+    // To avoid this we don't render a component panel pointing to a invalid deployment
+    const isComponent = props.schematicKind === SchematicKind.Component;
+    if (isComponent && props.deploymentNodePin === undefined) {
+      return false;
+    }
+    return true;
+  }
+  return false;
+});
+
 const props = defineProps<{
   viewerEvent$: Rx.ReplaySubject<ViewerEvent | null> | undefined;
   schematicKind: SchematicKind | null;
   isComponentPanelPinned: boolean;
-  deploymentComponentPin?: number;
+  deploymentNodePin?: number;
+  schematicData: Schematic | null;
 }>();
 
 const componentName = "SchematicViewer";
@@ -49,49 +59,6 @@ const componentId = _.uniqueId();
 
 const viewerId = componentName + "-" + componentId;
 const viewerState = new ViewerStateMachine();
-
-const schematicData = refFrom<Schematic | null>(
-  combineLatest([
-    system$,
-    applicationNodeId$,
-    editSessionWritten$,
-    visibility$,
-  ]).pipe(
-    switchMap(([system, applicationNodeId]) => {
-      if (system && applicationNodeId) {
-        return SchematicService.getSchematic({
-          systemId: system.id,
-          rootNodeId: applicationNodeId,
-        });
-      } else {
-        return from([null]);
-      }
-    }),
-    switchMap((schematic) => {
-      if (schematic) {
-        if (schematic.error) {
-          GlobalErrorService.set(schematic);
-          return from([null]);
-        } else {
-          return from([schematic]);
-        }
-      } else {
-        return from([null]);
-      }
-    }),
-  ),
-);
-
-const componentPanelPin = computed(() => {
-  if (!schematicData.value || !props.deploymentComponentPin) return undefined;
-
-  for (const node of schematicData.value.nodes) {
-    if (node.kind.componentId === props.deploymentComponentPin) {
-      return node.id;
-    }
-  }
-  throw new Error(`Node wasn't found ${props.deploymentComponentPin}`);
-});
 
 const editorContext = refFrom<EditorContext | null>(
   combineLatest([system$, applicationNodeId$, visibility$]).pipe(

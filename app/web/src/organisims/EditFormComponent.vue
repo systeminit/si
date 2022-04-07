@@ -6,7 +6,7 @@
       :core-edit-fields="true"
       :indent-level="1"
       :tree-open-state="{}"
-      :component-with-schema-and-variant="componentWithSchemaAndVariant"
+      :component-identification="componentIdentification"
     />
     <div
       class="pt1 pb-1 pl-6 mt-2 text-base text-white align-middle property-section-bg-color"
@@ -19,7 +19,7 @@
         :edit-fields="propertyEditFields"
         :indent-level="1"
         :tree-open-state="treeOpenState"
-        :component-with-schema-and-variant="componentWithSchemaAndVariant"
+        :component-identification="componentIdentification"
         @toggle-header="toggleHeader"
       />
     </div>
@@ -39,11 +39,11 @@ import {
   InitialTreeOpenStateVisitor,
   ITreeOpenState,
 } from "@/utils/edit_field_visitor";
-import { ComponentWithSchemaAndVariant } from "@/api/sdf/dal/component";
+import { ComponentIdentification } from "@/api/sdf/dal/component";
 
 const props = defineProps<{
   editFields: EditFields;
-  componentWithSchemaAndVariant: ComponentWithSchemaAndVariant;
+  componentIdentification: ComponentIdentification;
 }>();
 
 /**

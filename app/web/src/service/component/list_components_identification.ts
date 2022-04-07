@@ -7,17 +7,17 @@ import { workspace$ } from "@/observable/workspace";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import _ from "lodash";
 import { LabelList } from "@/api/sdf/dal/label_list";
-import { ComponentWithSchemaAndVariant } from "@/api/sdf/dal/component";
+import { ComponentIdentification } from "@/api/sdf/dal/component";
 
-export interface ListComponentsWithSchemaAndVariantRequest extends Visibility {
+export interface ListComponentsIdentificationRequest extends Visibility {
   workspaceId: number;
 }
 
-export interface ListComponentsWithSchemaAndVariantResponse {
-  list: LabelList<ComponentWithSchemaAndVariant>;
+export interface ListComponentsIdentificationResponse {
+  list: LabelList<ComponentIdentification>;
 }
 
-const componentWithSchemaAndVariantList$ = combineLatest([
+const componentIdentificationList$ = combineLatest([
   standardVisibilityTriggers$,
 ]).pipe(
   combineLatestWith(workspace$),
@@ -35,20 +35,20 @@ const componentWithSchemaAndVariantList$ = combineLatest([
         },
       ]);
     }
-    const request: ListComponentsWithSchemaAndVariantRequest = {
+    const request: ListComponentsIdentificationRequest = {
       ...visibility,
       workspaceId: workspace.id,
     };
-    return sdf.get<ApiResponse<ListComponentsWithSchemaAndVariantResponse>>(
-      "component/list_components_with_schema_and_variant",
+    return sdf.get<ApiResponse<ListComponentsIdentificationResponse>>(
+      "component/list_components_identification",
       request,
     );
   }),
   shareReplay({ bufferSize: 1, refCount: true }),
 );
 
-export function listComponentsWithSchemaAndVariant(): Observable<
-  ApiResponse<ListComponentsWithSchemaAndVariantResponse>
+export function listComponentsIdentification(): Observable<
+  ApiResponse<ListComponentsIdentificationResponse>
 > {
-  return componentWithSchemaAndVariantList$;
+  return componentIdentificationList$;
 }

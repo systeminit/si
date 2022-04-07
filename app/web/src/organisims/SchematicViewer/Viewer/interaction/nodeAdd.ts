@@ -8,6 +8,7 @@ import { SelectionManager } from "./selection";
 import { Renderer } from "../renderer";
 import { NodeCreate } from "../../data/event";
 import { SchematicKind } from "@/api/sdf/dal/schematic";
+import { nodeSelection$ } from "../../state";
 
 export interface NodeAddInteractionData {
   position: {
@@ -56,9 +57,6 @@ export class NodeAddManager {
 
     if (schematicKind) {
       console.debug("Initiating node add");
-      const selectionObserver = this.selectionManager.selectionObserver(
-        schematicKind,
-      );
 
       let parentDeploymentNodeId = null;
       switch (schematicKind) {
@@ -69,18 +67,13 @@ export class NodeAddManager {
           break;
       }
 
-      this.selectionManager.clearSelection(
-        parentDeploymentNodeId,
-        selectionObserver,
+      this.selectionManager.select(
+        {
+          parentDeploymentNodeId,
+          nodes: [this.node],
+        },
+        nodeSelection$,
       );
-
-      // Since node doesn't exist yet let's not sync the node add
-      // This might be synced by the selection manager if other actions happen
-      // So the node with -1 id will need to be ignored elsewhere
-      this.selectionManager.select({
-        parentDeploymentNodeId,
-        nodes: [this.node],
-      });
     }
   }
 

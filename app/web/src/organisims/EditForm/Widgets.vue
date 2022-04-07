@@ -8,7 +8,7 @@
       :core-edit-field="isCoreEditField"
       :indent-level="props.indentLevel"
       :tree-open-state="props.treeOpenState"
-      :component-with-schema-and-variant="props.componentWithSchemaAndVariant"
+      :component-identification="props.componentIdentification"
       @toggle-header="toggleHeader"
     />
     <div v-else class="my-2">
@@ -19,7 +19,7 @@
         :core-edit-field="isCoreEditField"
         :indent-level="props.indentLevel"
         :tree-open-state="props.treeOpenState"
-        :component-with-schema-and-variant="props.componentWithSchemaAndVariant"
+        :component-identification="props.componentIdentification"
         @toggle-header="toggleHeader"
       />
     </div>
@@ -32,7 +32,7 @@ import { EditFields } from "@/api/sdf/dal/edit_field";
 import Widget from "@/organisims/EditForm/Widget.vue";
 import { interpolateColors } from "@/utils/interpolateColors";
 import { ITreeOpenState } from "@/utils/edit_field_visitor";
-import { ComponentWithSchemaAndVariant } from "@/api/sdf/dal/component";
+import { ComponentIdentification } from "@/api/sdf/dal/component";
 
 export interface WidgetsProps {
   show: boolean;
@@ -40,7 +40,7 @@ export interface WidgetsProps {
   coreEditFields?: boolean;
   indentLevel: number;
   treeOpenState: ITreeOpenState;
-  componentWithSchemaAndVariant?: ComponentWithSchemaAndVariant;
+  componentIdentification?: ComponentIdentification;
 }
 
 const props = defineProps<WidgetsProps>();

@@ -16,6 +16,7 @@ import { GlobalErrorService } from "@/service/global_error";
 import Widgets from "@/organisims/EditForm/Widgets.vue";
 import { combineLatest, from } from "rxjs";
 import { switchMap } from "rxjs/operators";
+import { standardVisibilityTriggers$ } from "@/observable/visibility";
 
 const props = defineProps<{
   objectKind: EditFieldObjectKind;
@@ -25,11 +26,12 @@ const props = defineProps<{
 const props$ = fromRef(props, { immediate: true, deep: true });
 
 const editFields = refFrom<EditFields>(
-  combineLatest([props$]).pipe(
-    switchMap(([props]) => {
+  combineLatest([props$, standardVisibilityTriggers$]).pipe(
+    switchMap(([props, [visibility]]) => {
       return EditFieldService.getEditFields({
         id: props.objectId,
         objectKind: props.objectKind,
+        ...visibility,
       });
     }),
     switchMap((response) => {

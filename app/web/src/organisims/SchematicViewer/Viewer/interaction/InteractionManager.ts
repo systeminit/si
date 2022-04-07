@@ -17,6 +17,11 @@ import { PanningManager } from "./panning";
 import { ConnectingManager } from "./connecting";
 import { ZoomingManager } from "./zooming";
 import { NodeAddManager } from "./nodeAdd";
+import {
+  lastSelectedNode$,
+  lastSelectedDeploymentNode$,
+  nodeSelection$,
+} from "../../state";
 
 // import { PanningInteractionData } from "./interaction/panning";
 
@@ -159,17 +164,16 @@ export class InteractionManager {
         ST.readySelecting(this.stateService);
         ST.deSelecting(this.stateService);
 
-        if (schematicKind) {
-          const selectionObserver = this.selectionManager.selectionObserver(
-            schematicKind,
-          );
-
-          this.selectionManager.clearSelection(
-            parentDeploymentNodeId,
-            selectionObserver,
-          );
-          this.renderer.renderStage();
+        lastSelectedNode$.next(null);
+        if (schematicKind === SchematicKind.Deployment) {
+          lastSelectedDeploymentNode$.next(null);
         }
+
+        this.selectionManager.clearSelection(
+          parentDeploymentNodeId,
+          nodeSelection$,
+        );
+        this.renderer.renderStage();
       }
     }
 
@@ -187,14 +191,13 @@ export class InteractionManager {
         ST.readySelecting(this.stateService);
         ST.selecting(this.stateService);
 
-        if (!isFakeNode && schematicKind) {
-          const selectionObserver = this.selectionManager.selectionObserver(
-            schematicKind,
-          );
-          this.selectionManager.select(
-            { parentDeploymentNodeId, nodes: [target] },
-            selectionObserver,
-          );
+        this.selectionManager.select(
+          { parentDeploymentNodeId, nodes: [target] },
+          nodeSelection$,
+        );
+        lastSelectedNode$.next(target);
+        if (schematicKind === SchematicKind.Deployment) {
+          lastSelectedDeploymentNode$.next(target);
         }
 
         if (canEdit) {
