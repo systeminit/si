@@ -220,7 +220,7 @@ async fn update_edit_field_for_component_array(ctx: &DalContext<'_, '_>) {
         *object_prop.id(),
     )
     .await;
-    let _array_elements_prop = create_prop_of_kind_and_set_parent_with_name(
+    let array_elements_prop = create_prop_of_kind_and_set_parent_with_name(
         ctx,
         PropKind::Integer,
         "elements",
@@ -228,7 +228,7 @@ async fn update_edit_field_for_component_array(ctx: &DalContext<'_, '_>) {
     )
     .await;
 
-    let (component, _) = Component::new_for_schema_with_node(ctx, "TinyTina", schema.id())
+    let (component, _) = Component::new_for_schema_with_node(ctx, "tinytina", schema.id())
         .await
         .expect("cannot create component");
 
@@ -258,7 +258,7 @@ async fn update_edit_field_for_component_array(ctx: &DalContext<'_, '_>) {
         *component.id(),
     )
     .await;
-    let (array_baggage, array_attribute_context) = update_edit_field_for_component(
+    let (array_baggage, _array_attribute_context) = update_edit_field_for_component(
         ctx,
         &array_edit_field.expect("could not find array edit field"),
         Some(serde_json::json!("[]")),
@@ -268,22 +268,28 @@ async fn update_edit_field_for_component_array(ctx: &DalContext<'_, '_>) {
     )
     .await;
 
-    // Now, let's insert two values into our array. We use the array's attribute context, attribute
-    // value id and key for insertion.
+    // Now, let's insert two values into our array.
+    let array_elements_attribute_context = AttributeContextBuilder::new()
+        .set_prop_id(*array_elements_prop.id())
+        .set_schema_id(*schema.id())
+        .set_schema_variant_id(*schema_variant.id())
+        .set_component_id(*component.id())
+        .to_context()
+        .expect("could not get attribute context from builder");
     let _first_inserted_value_id = AttributeValue::insert_for_context(
         ctx,
-        array_attribute_context,
+        array_elements_attribute_context,
         array_baggage.attribute_value_id,
-        Some(serde_json::json!("1")),
+        Some(serde_json::json!(serde_json::Number::from(1))),
         array_baggage.key.clone(),
     )
     .await
     .expect("could not insert for context");
     let second_inserted_value_id = AttributeValue::insert_for_context(
         ctx,
-        array_attribute_context,
+        array_elements_attribute_context,
         array_baggage.attribute_value_id,
-        Some(serde_json::json!("2")),
+        Some(serde_json::json!(serde_json::Number::from(2))),
         array_baggage.key.clone(),
     )
     .await
@@ -297,9 +303,10 @@ async fn update_edit_field_for_component_array(ctx: &DalContext<'_, '_>) {
 
     ///////////////////////////////////////////////////////////////////////////////////
 
-    let mut foo: Vec<(String, Option<EditFieldBaggage>)> = Vec::new();
+    let mut foo: Vec<(String, Option<AttributeValueId>)> = Vec::new();
     for v in initialized_edit_fields.clone() {
-        foo.push((v.id().to_string(), v.baggage().clone()));
+        let val = v.baggage().clone().unwrap().attribute_value_id;
+        foo.push((v.id().to_string(), Some(val)));
     }
     assert_eq!(foo, vec![(format!("{:?}", second_inserted_value_id), None)]);
 
@@ -311,7 +318,7 @@ async fn update_edit_field_for_component_array(ctx: &DalContext<'_, '_>) {
     update_edit_field_for_component(
         ctx,
         &second_element_edit_field,
-        Some(serde_json::json!("9000")),
+        Some(serde_json::json!(serde_json::Number::from(9000))),
         *schema.id(),
         *schema_variant.id(),
         *component.id(),
