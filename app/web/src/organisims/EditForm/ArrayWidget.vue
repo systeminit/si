@@ -10,6 +10,7 @@
     <template #edit>
       <div class="flex flex-col mt-1">
         <div
+          v-if="widget.options.entries"
           class="flex flex-col justify-between w-full p-1 border border-gray-500"
         >
           <Widgets
@@ -35,6 +36,7 @@
     <template #show>
       <div class="flex flex-col">
         <div
+          v-if="widget.options.entries"
           class="flex flex-col justify-between w-full mx-1 border border-gray-500"
         >
           <Widgets

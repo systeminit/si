@@ -8,12 +8,11 @@ use dal::{
         create_prop_of_kind_and_set_parent_with_name, create_schema,
         create_schema_variant_with_root,
     },
-    AttributeContext, AttributeReadContext, AttributeValueId, ComponentId, ComponentView, PropKind,
-    SchemaId, SchemaKind, SchemaVariantId, StandardModel,
+    AttributeContext, AttributeValueId, ComponentId, ComponentView, PropKind, SchemaId, SchemaKind,
+    SchemaVariantId, StandardModel,
 };
 use dal::{AttributeValue, DalContext};
 use pretty_assertions_sorted::assert_eq;
-use serde_json::Value;
 
 #[test]
 #[ignore]
@@ -269,13 +268,12 @@ async fn update_edit_field_for_component_array(ctx: &DalContext<'_, '_>) {
     )
     .await;
 
-    // Now, let's insert two values into our array;
+    // Now, let's insert two values into our array. We use the array's attribute context, attribute
+    // value id and key for insertion.
     let _first_inserted_value_id = AttributeValue::insert_for_context(
         ctx,
         array_attribute_context,
-        array_baggage
-            .parent_attribute_value_id
-            .expect("could not find parent attribute value required for insertion"),
+        array_baggage.attribute_value_id,
         Some(serde_json::json!("1")),
         array_baggage.key.clone(),
     )
@@ -284,9 +282,7 @@ async fn update_edit_field_for_component_array(ctx: &DalContext<'_, '_>) {
     let second_inserted_value_id = AttributeValue::insert_for_context(
         ctx,
         array_attribute_context,
-        array_baggage
-            .parent_attribute_value_id
-            .expect("could not find parent attribute value required for insertion"),
+        array_baggage.attribute_value_id,
         Some(serde_json::json!("2")),
         array_baggage.key.clone(),
     )
@@ -298,6 +294,17 @@ async fn update_edit_field_for_component_array(ctx: &DalContext<'_, '_>) {
         .await
         .expect("could not get edit fields");
     let initialized_edit_fields = recursive_edit_fields(initialized_base_edit_fields);
+
+    ///////////////////////////////////////////////////////////////////////////////////
+
+    let mut foo: Vec<(String, Option<EditFieldBaggage>)> = Vec::new();
+    for v in initialized_edit_fields.clone() {
+        foo.push((v.id().to_string(), v.baggage().clone()));
+    }
+    assert_eq!(foo, vec![(format!("{:?}", second_inserted_value_id), None)]);
+
+    ///////////////////////////////////////////////////////////////////////////////////
+
     let second_element_edit_field =
         select_edit_field_by_attribute_value_id(&initialized_edit_fields, second_inserted_value_id)
             .expect("could not find edit field by attribute value id");
