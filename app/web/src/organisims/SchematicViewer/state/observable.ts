@@ -10,11 +10,14 @@ export interface SelectedNode {
   nodes: Array<Node>;
 }
 
-export const deploymentSelection$ = new Rx.ReplaySubject<SelectedNode[]>(1);
-deploymentSelection$.next([]);
+export const nodeSelection$ = new Rx.ReplaySubject<SelectedNode[]>(1);
+nodeSelection$.next([]);
 
-export const componentSelection$ = new Rx.ReplaySubject<SelectedNode[]>(1);
-componentSelection$.next([]);
+export const lastSelectedNode$ = new Rx.ReplaySubject<Node | null>(1);
+lastSelectedNode$.next(null);
+
+export const lastSelectedDeploymentNode$ = new Rx.ReplaySubject<Node | null>(1);
+lastSelectedNode$.next(null);
 
 // export const zoomMagnitude$ = new Rx.ReplaySubject<number | null>(1);
 // zoomMagnitude$.next(null);

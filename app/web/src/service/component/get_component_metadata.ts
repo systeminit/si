@@ -1,20 +1,17 @@
 import { ApiResponse, SDF } from "@/api/sdf";
-import { combineLatest, combineLatestWith, from, Observable } from "rxjs";
-import { standardVisibilityTriggers$ } from "@/observable/visibility";
+import { combineLatest, from, Observable } from "rxjs";
 import Bottle from "bottlejs";
 import { switchMap } from "rxjs/operators";
 import { workspace$ } from "@/observable/workspace";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import _ from "lodash";
 
-export interface GetComponentMetadataArgs {
+export interface GetComponentMetadataArgs extends Visibility {
   componentId: number;
   systemId: number;
 }
 
-export interface GetComponentMetadataRequest
-  extends GetComponentMetadataArgs,
-    Visibility {
+export interface GetComponentMetadataRequest extends GetComponentMetadataArgs {
   workspaceId: number;
 }
 
@@ -27,9 +24,8 @@ export interface GetComponentMetadataResponse {
 export function getComponentMetadata(
   args: GetComponentMetadataArgs,
 ): Observable<ApiResponse<GetComponentMetadataResponse>> {
-  return combineLatest([standardVisibilityTriggers$]).pipe(
-    combineLatestWith(workspace$),
-    switchMap(([[[visibility]], workspace]) => {
+  return combineLatest([workspace$]).pipe(
+    switchMap(([workspace]) => {
       const bottle = Bottle.pop("default");
       const sdf: SDF = bottle.container.SDF;
       if (_.isNull(workspace)) {
@@ -44,7 +40,6 @@ export function getComponentMetadata(
         ]);
       }
       const request: GetComponentMetadataRequest = {
-        ...visibility,
         ...args,
         workspaceId: workspace.id,
       };

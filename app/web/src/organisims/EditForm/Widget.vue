@@ -53,7 +53,7 @@ import SelectWidget from "@/organisims/EditForm/SelectWidget.vue";
 import HeaderWidget from "@/organisims/EditForm/HeaderWidget.vue";
 import ArrayWidget from "@/organisims/EditForm/ArrayWidget.vue";
 import { ITreeOpenState } from "@/utils/edit_field_visitor";
-import { ComponentWithSchemaAndVariant } from "@/api/sdf/dal/component";
+import { ComponentIdentification } from "@/api/sdf/dal/component";
 import { computed } from "vue";
 import { AttributeContext } from "@/api/sdf/dal/attribute";
 
@@ -64,19 +64,19 @@ const props = defineProps<{
   editField: EditField;
   treeOpenState: ITreeOpenState;
   backgroundColors: number[][];
-  componentWithSchemaAndVariant?: ComponentWithSchemaAndVariant;
+  componentIdentification?: ComponentIdentification;
 }>();
 
 // FIXME(nick): handle SystemId.
 const attributeContext = computed((): AttributeContext | "" => {
-  if (!props.editField.baggage || !props.componentWithSchemaAndVariant) {
+  if (!props.editField.baggage || !props.componentIdentification) {
     return "";
   }
   return {
     propId: props.editField.baggage.prop_id,
-    schemaId: props.componentWithSchemaAndVariant.schemaId,
-    schemaVariantId: props.componentWithSchemaAndVariant.schemaVariantId,
-    componentId: props.componentWithSchemaAndVariant.componentId,
+    schemaId: props.componentIdentification.schemaId,
+    schemaVariantId: props.componentIdentification.schemaVariantId,
+    componentId: props.componentIdentification.componentId,
     systemId: -1,
   };
 });

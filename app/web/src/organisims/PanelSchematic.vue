@@ -1,12 +1,12 @@
 <template>
   <Panel
-    :panel-index="panelIndex"
-    :panel-ref="panelRef"
-    :panel-container-ref="panelContainerRef"
-    :initial-maximized-container="initialMaximizedContainer"
-    :initial-maximized-full="initialMaximizedFull"
-    :is-visible="isVisible"
-    :is-maximized-container-enabled="isMaximizedContainerEnabled"
+    :panel-index="props.panelIndex"
+    :panel-ref="props.panelRef"
+    :panel-container-ref="props.panelContainerRef"
+    :initial-maximized-container="props.initialMaximizedContainer"
+    :initial-maximized-full="props.initialMaximizedFull"
+    :is-visible="props.isVisible"
+    :is-maximized-container-enabled="props.isMaximizedContainerEnabled"
   >
     <template #menuButtons>
       <div class="min-w-max">
@@ -37,15 +37,15 @@
         v-if="schematicKind === SchematicKind.Component"
         class="flex flex-row"
       >
-        <div v-if="componentList" class="min-w-max">
+        <div v-if="deploymentComponentsList" class="min-w-max">
           <SiSelect
             id="nodeSelect"
-            v-model="selectedComponentId"
+            v-model="selectedDeploymentComponentId"
             size="xs"
             name="nodeSelect"
             class="pl-1"
             :value-as-number="true"
-            :options="componentList"
+            :options="deploymentComponentsList"
             :disabled="!isPinned"
           />
         </div>
@@ -64,77 +64,138 @@
       <SchematicViewer
         :viewer-event$="viewerEventObservable.viewerEvent$"
         :schematic-kind="schematicKind"
-        :deployment-component-pin="
-          selectedComponentId ? selectedComponentId : undefined
-        "
+        :deployment-node-pin="selectedDeploymentNodeId ?? undefined"
         :is-component-panel-pinned="isPinned"
+        :schematic-data="schematicData ?? null"
       />
     </template>
   </Panel>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 
 import { ComponentService } from "@/service/component";
 import Panel from "@/molecules/Panel.vue";
 import SchematicViewer from "@/organisims/SchematicViewer.vue";
 import SiSelect from "@/atoms/SiSelect.vue";
 
+import { SchematicService } from "@/service/schematic";
+import { GlobalErrorService } from "@/service/global_error";
+
+import { schematicData$ } from "./SchematicViewer/Viewer/scene/observable";
+import { Schematic } from "./SchematicViewer/model";
+import { applicationNodeId$ } from "@/observable/application";
+import { system$ } from "@/observable/system";
+
 import {
   SchematicKind,
   MenuFilter,
   schematicKindFromString,
 } from "@/api/sdf/dal/schematic";
+import { ComponentIdentification } from "@/api/sdf/dal/component";
 import { LabelList } from "@/api/sdf/dal/label_list";
 import LockButton from "@/atoms/LockButton.vue";
 import NodeAddMenu from "@/molecules/NodeAddMenu.vue";
 import { ApplicationService } from "@/service/application";
 import { refFrom, untilUnmounted } from "vuse-rx";
-import { switchMap } from "rxjs/operators";
 import { ChangeSetService } from "@/service/change_set";
 import { NodeAddEvent, ViewerEventObservable } from "./SchematicViewer/event";
-import { deploymentSelection$, SelectedNode } from "./SchematicViewer/state";
-import { visibility$ } from "@/observable/visibility";
-import { SchematicService } from "@/service/schematic";
-import { GlobalErrorService } from "@/service/global_error";
-import { firstValueFrom } from "rxjs";
+import { lastSelectedDeploymentNode$ } from "./SchematicViewer/state";
 import _ from "lodash";
 import * as Rx from "rxjs";
 import * as MODEL from "./SchematicViewer/model";
-import { ComponentWithSchemaAndVariant } from "@/api/sdf/dal/component";
+
+const schematicData = refFrom<Schematic | null>(
+  Rx.combineLatest([system$, applicationNodeId$]).pipe(
+    Rx.switchMap(([system, applicationNodeId]) => {
+      if (system && applicationNodeId) {
+        return SchematicService.getSchematic({
+          systemId: system.id,
+          rootNodeId: applicationNodeId,
+        });
+      } else {
+        return Rx.from([null]);
+      }
+    }),
+    Rx.switchMap((schematic) => {
+      if (schematic) {
+        if (schematic.error) {
+          GlobalErrorService.set(schematic);
+          return Rx.from([null]);
+        } else {
+          schematicData$.next(schematic);
+          return Rx.from([schematic]);
+        }
+      } else {
+        return Rx.from([null]);
+      }
+    }),
+  ),
+);
 
 const isPinned = ref<boolean>(false);
-const selectedComponentId = ref<number | "">("");
+const selectedDeploymentNodeId = ref<number | null>(null);
+const selectedDeploymentComponentId = ref<number | "">("");
 
-// We garantee that the latest update will always be the last element in the list
-deploymentSelection$.pipe(untilUnmounted).subscribe((selections) => {
+watch(selectedDeploymentComponentId, (componentId) => {
+  if (!componentId || !schematicData.value) {
+    selectedDeploymentNodeId.value = null;
+    return;
+  }
+
+  for (const node of schematicData.value.nodes) {
+    if (node.kind.componentId === componentId) {
+      selectedDeploymentNodeId.value = node.id;
+      return;
+    }
+  }
+  throw new Error(`Node wasn't found ${componentId}`);
+});
+
+lastSelectedDeploymentNode$.pipe(untilUnmounted).subscribe((node) => {
+  if (!schematicData.value) return;
+
   if (isPinned.value) return;
 
-  const last = selections?.length
-    ? selections[selections.length - 1]
-    : undefined;
-  const componentId = last?.nodes?.length
-    ? last.nodes[0]?.nodeKind?.componentId
-    : undefined;
+  const componentId = node?.nodeKind?.componentId;
 
   // Ignores fake nodes as they don't have any attributes
-  if (!componentId || componentId === -1) return;
+  if (componentId === -1) return;
 
-  selectedComponentId.value = componentId ?? "";
+  selectedDeploymentComponentId.value = componentId ?? "";
+});
+
+// Re-selects so our observable gets it
+Rx.firstValueFrom(lastSelectedDeploymentNode$).then((last) =>
+  lastSelectedDeploymentNode$.next(last),
+);
+
+schematicData$.pipe(untilUnmounted).subscribe((schematic) => {
+  if (!schematic || selectedDeploymentComponentId.value === "") return;
+
+  for (const node of schematic.nodes) {
+    if (selectedDeploymentComponentId.value === node.kind.componentId) {
+      return;
+    }
+  }
+
+  isPinned.value = false;
+  selectedDeploymentComponentId.value = "";
+  selectedDeploymentNodeId.value = null;
 });
 
 const viewerEventObservable = new ViewerEventObservable();
 
-defineProps({
-  panelIndex: { type: Number, required: true },
-  panelRef: { type: String, required: true },
-  panelContainerRef: { type: String, required: true },
-  initialMaximizedFull: Boolean,
-  initialMaximizedContainer: Boolean,
-  isVisible: Boolean,
-  isMaximizedContainerEnabled: Boolean,
-});
+const props = defineProps<{
+  panelIndex: number;
+  panelRef: string;
+  panelContainerRef: string;
+  initialMaximizedFull: boolean;
+  initialMaximizedContainer: boolean;
+  isVisible: boolean;
+  isMaximizedContainerEnabled: boolean;
+}>();
 
 const schematicKindRaw = ref<string>(SchematicKind.Deployment);
 
@@ -168,7 +229,7 @@ const systemsList = computed(() => {
 
 const applicationId = refFrom<number | null>(
   ApplicationService.currentApplication().pipe(
-    switchMap((application) => {
+    Rx.switchMap((application) => {
       if (application) {
         return Rx.from([application.id]);
       } else {
@@ -190,39 +251,11 @@ const addMenuFilters = computed(() => {
 });
 
 const editMode = refFrom<boolean>(ChangeSetService.currentEditMode());
-const selectedDeployment = refFrom<SelectedNode[]>(
-  deploymentSelection$.asObservable(),
-);
-
-let rootDeployment = ref<SelectedNode | null>(null);
-deploymentSelection$.pipe(untilUnmounted).subscribe((selections) => {
-  if (!isPinned.value) {
-    const selection = selections.find(
-      (sel) => sel.parentDeploymentNodeId === null,
-    );
-    if (!selection) {
-      rootDeployment.value = null;
-      return;
-    }
-
-    // We have to clone otherwise changes to the underlying selected node will alter us in a way we don't expect
-    rootDeployment.value = {
-      parentDeploymentNodeId: selection.parentDeploymentNodeId,
-      nodes: [...selection.nodes],
-    };
-  }
-});
-
-visibility$.pipe(untilUnmounted).subscribe((_) => {
-  isPinned.value = false;
-  rootDeployment.value = null;
-  selectedComponentId.value = "";
-});
 
 const addMenuEnabled = computed(() => {
   switch (schematicKind.value) {
     case SchematicKind.Component:
-      return editMode.value && !!rootDeployment.value?.nodes?.length;
+      return editMode.value && selectedDeploymentComponentId.value;
     case SchematicKind.Deployment:
       return editMode.value;
   }
@@ -230,7 +263,7 @@ const addMenuEnabled = computed(() => {
 });
 
 const addNode = async (schemaId: number, _event: MouseEvent) => {
-  const response = await firstValueFrom(
+  const response = await Rx.firstValueFrom(
     SchematicService.getNodeTemplate({ schemaId }),
   );
   if (response.error) {
@@ -238,55 +271,38 @@ const addNode = async (schemaId: number, _event: MouseEvent) => {
     return;
   }
 
-  let deployment;
-  switch (schematicKind.value) {
-    case SchematicKind.Component:
-      deployment = rootDeployment.value;
-      break;
-    case SchematicKind.Deployment:
-      deployment = (selectedDeployment.value ?? [])[0] ?? null;
-      break;
-  }
-
   const n = MODEL.fakeNodeFromTemplate(
     response,
-    (deployment?.nodes ?? [])[0]?.id,
+    selectedDeploymentNodeId.value,
   );
   const event = new NodeAddEvent({ node: n, schemaId: schemaId });
 
   viewerEventObservable.viewerEvent$.next(event);
 };
 
-const componentWithSchemaAndVariantList = refFrom<
-  LabelList<ComponentWithSchemaAndVariant | "">
->(
-  ComponentService.listComponentsWithSchemaAndVariant().pipe(
-    switchMap((response) => {
+const componentIdentificationList = refFrom<LabelList<ComponentIdentification>>(
+  ComponentService.listComponentsIdentification().pipe(
+    Rx.switchMap((response) => {
       if (response.error) {
         GlobalErrorService.set(response);
         return Rx.from([[]]);
       } else {
-        const list: LabelList<ComponentWithSchemaAndVariant | ""> = _.cloneDeep(
-          response.list,
-        );
-        list.push({ label: "", value: "" });
-        return Rx.from([list]);
+        return Rx.from([response.list]);
       }
     }),
   ),
 );
 
-const componentList = computed(
+const deploymentComponentsList = computed(
   (): LabelList<number | ""> => {
     let list: LabelList<number | ""> = [];
-    if (componentWithSchemaAndVariantList.value) {
-      for (const item of componentWithSchemaAndVariantList.value) {
-        let value: number | "" = "";
-        if (item.value !== "") {
-          value = item.value.componentId;
+    if (componentIdentificationList.value) {
+      for (const item of componentIdentificationList.value) {
+        if (item.value.schematicKind === SchematicKind.Deployment) {
+          list.push({ label: item.label, value: item.value.componentId });
         }
-        list.push({ label: item.label, value: value });
       }
+      list.push({ label: "", value: "" });
     }
     return list;
   },

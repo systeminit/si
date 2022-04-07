@@ -42,17 +42,11 @@ import { SelectionManager } from "./Viewer/interaction/selection";
 import { InteractionManager } from "./Viewer/interaction";
 import { Renderer } from "./Viewer/renderer";
 import { SchematicDataManager } from "./data";
-import {
-  deploymentSelection$,
-  componentSelection$,
-  SelectedNode,
-} from "./state";
+import { nodeSelection$, SelectedNode } from "./state";
 
 import * as MODEL from "./model";
 
 import * as VE from "./event";
-
-import { schematicData$ } from "./data";
 
 interface KeyboardKey {
   long: string;
@@ -87,18 +81,6 @@ interface Data {
   interactionManager: InteractionManager | undefined;
   debug: boolean;
 }
-
-const selectionObserver = (
-  schematicKind: SchematicKind,
-): Rx.ReplaySubject<SelectedNode[]> => {
-  switch (schematicKind) {
-    case SchematicKind.Deployment:
-      return deploymentSelection$;
-    case SchematicKind.Component:
-      return componentSelection$;
-  }
-  throw Error(`invalid schematic kind ${schematicKind}`);
-};
 
 export default defineComponent({
   name: "Viewer",
@@ -135,7 +117,7 @@ export default defineComponent({
       type: Boolean,
       required: true,
     },
-    componentPanelPin: {
+    deploymentNodePin: {
       type: Number,
       required: false,
       default: undefined,
@@ -190,7 +172,7 @@ export default defineComponent({
     };
   },
   watch: {
-    async componentPanelPin(ctx) {
+    async deploymentNodePin(ctx) {
       if (this.dataManager && this.schematicData) {
         this.dataManager.selectedDeploymentNodeId = ctx;
         await this.loadSchematicData(this.schematicData);
@@ -217,14 +199,13 @@ export default defineComponent({
         );
 
         // We re-sync the last selection as now we can retrieve the selected nodes of this panel from the sceneManager
-        const observable = selectionObserver(ctx);
-        const data = await Rx.firstValueFrom(observable);
-        observable.next(data);
+        const data = await Rx.firstValueFrom(nodeSelection$);
+        nodeSelection$.next(data);
 
         const parentDeploymentNodeId =
-          this.schematicKind !== SchematicKind.Deployment
-            ? this.dataManager.selectedDeploymentNodeId
-            : null;
+          (this.schematicKind !== SchematicKind.Deployment
+            ? this.dataManager?.selectedDeploymentNodeId
+            : null) ?? null;
         console.debug(
           `Schematic Kind changed: ${ctx} ${parentDeploymentNodeId}`,
         );
@@ -268,29 +249,14 @@ export default defineComponent({
     const dataManager = new SchematicDataManager();
     this.dataManager = dataManager;
     this.dataManager.isComponentPanelPinned = this.isComponentPanelPinned;
+    this.dataManager.selectedDeploymentNodeId = this.deploymentNodePin ?? null;
     this.dataManager.editorContext$.next(this.editorContext);
     this.dataManager.schematicKind$.next(this.schematicKind);
-
-    // Initializes selectedDeploymentNodeId to the global state
-    Rx.firstValueFrom(deploymentSelection$).then((selections) => {
-      const ourSelection = selections?.find(
-        (sel) => sel.parentDeploymentNodeId === null,
-      );
-      const ourNode = ourSelection?.nodes?.find((_) => true);
-      if (this.dataManager) {
-        this.dataManager.selectedDeploymentNodeId = ourNode?.id ?? null;
-      }
-    });
 
     dataManager.schematicData$.pipe(untilUnmounted).subscribe({
       next: async (d) => {
         if (d) await this.loadSchematicData(d);
       },
-    });
-
-    // Global events
-    schematicData$.pipe(untilUnmounted).subscribe({
-      next: (d) => this.dataManager?.schematicData$?.next(d),
     });
 
     this.sceneManager = new SceneManager(this.renderer as Renderer);
@@ -304,68 +270,45 @@ export default defineComponent({
     this.interactionManager = interactionManager;
     this.sceneManager.subscribeToInteractionEvents(interactionManager);
 
-    deploymentSelection$.pipe(untilUnmounted).subscribe({
+    nodeSelection$.pipe(untilUnmounted).subscribe({
       next: async (selections) => {
-        // Edge case where the visibility changed, and every state was cleared
-        // except for this.selection
         if (
-          !selections.length &&
-          !this.interactionManager?.selectionManager?.selection?.length
+          !this.isComponentPanelPinned &&
+          this.dataManager &&
+          this.schematicData
         ) {
-          this.selection = null;
-        }
+          const deploymentSelection = selections.find(
+            (sel) => sel.parentDeploymentNodeId === null,
+          );
+          const deploymentNodeId =
+            deploymentSelection?.nodes?.find((_) => true)?.id ?? null;
+          const isSame =
+            this.dataManager.selectedDeploymentNodeId === deploymentNodeId;
 
-        const ourSelection = selections.find(
-          (sel) => sel.parentDeploymentNodeId === null,
-        );
-        const ourNode = ourSelection?.nodes?.find((_) => true);
+          if (!isSame) {
+            this.dataManager.selectedDeploymentNodeId = deploymentNodeId;
 
-        if (!this.isComponentPanelPinned && this.dataManager) {
-          this.dataManager.selectedDeploymentNodeId = ourNode?.id ?? null;
-        }
-
-        this.syncSelection(
-          selections,
-          ourSelection?.parentDeploymentNodeId ?? null,
-        );
-        switch (this.schematicKind) {
-          case SchematicKind.Deployment:
-            break;
-          case SchematicKind.Component:
-            // The deployment node selected defines which nodes appear in the Component panel
-            if (!this.isComponentPanelPinned && this.schematicData) {
-              await this.loadSchematicData(this.schematicData);
+            switch (this.schematicKind) {
+              case SchematicKind.Deployment:
+                break;
+              case SchematicKind.Component:
+                // The deployment node selected defines which nodes appear in the Component panel
+                await this.loadSchematicData(this.schematicData);
+                break;
             }
-            break;
-        }
-      },
-    });
-
-    componentSelection$.pipe(untilUnmounted).subscribe({
-      next: (selections) => {
-        // Edge case where the visibility changed, and every state was cleared
-        // except for this.selection
-        if (
-          !selections.length &&
-          !this.interactionManager?.selectionManager?.selection?.length
-        ) {
-          this.selection = null;
+          }
         }
 
-        const ourSelection = selections.find(
-          (sel) =>
-            sel.parentDeploymentNodeId ===
-            this.dataManager?.selectedDeploymentNodeId,
-        );
-
-        this.syncSelection(
-          selections,
-          ourSelection?.parentDeploymentNodeId ?? null,
-        );
+        this.syncSelection(selections);
       },
     });
 
     this.renderer?.stage?.addChild(this.sceneManager.scene as PIXI.Container);
+
+    // Initializes selectedDeploymentNodeId to the global state
+    Rx.firstValueFrom(nodeSelection$).then((selections) => {
+      nodeSelection$.next(selections);
+    });
 
     if (this.schematicData) {
       this.loadSchematicData(this.schematicData).then(() =>
@@ -432,44 +375,45 @@ export default defineComponent({
       }
     },
 
-    syncSelection(
-      selections: SelectedNode[],
-      parentDeploymentNodeId: number | null,
-    ) {
+    syncSelection(selections: SelectedNode[]) {
+      const parentDeploymentNodeId =
+        (this.schematicKind !== SchematicKind.Deployment
+          ? this.dataManager?.selectedDeploymentNodeId
+          : null) ?? null;
+
+      let foundOurSelection = false;
       for (const selection of selections) {
         const isOurSelection =
           selection.parentDeploymentNodeId === parentDeploymentNodeId;
 
+        const nodes = this.sceneManager?.group?.nodes?.children;
+
+        // If storing nodes from other panels we won't have our version, so let's store the original one
+        // If we change to that panel we will just retrigger the selection, therefore we will actually find it
+        let node: OBJ.Node | null = selection.nodes[0] ?? null;
+
         if (isOurSelection) {
-          const nodes = this.sceneManager?.group?.nodes?.children;
-          // Finds our panel's node
-          let node = nodes
-            ?.map((n) => n as OBJ.Node)
-            ?.find((n) => n.id === selection.nodes[0]?.id);
+          foundOurSelection = true;
 
-          // Deployment node can appear in both panels, so we have to filter the selection of it when it happens in the other panel kind
-          if (
-            (this.schematicKind !== SchematicKind.Deployment &&
-              parentDeploymentNodeId === null) ||
-            (this.schematicKind === SchematicKind.Deployment &&
-              parentDeploymentNodeId !== null)
-          ) {
-            node = undefined;
-          }
-
-          if (!node) {
-            // If storing nodes from other panels we won't have our version, so let's store the original one
-            // If we change to that panel we will just retrigger the selection, therefore we will actually find it
-            node = selection.nodes[0];
-          }
-
-          this.selection = node ? [node] : null;
-          this.interactionManager?.selectionManager?.select({
-            parentDeploymentNodeId: selection.parentDeploymentNodeId,
-            nodes: node ? [node] : [],
-          });
-          this.renderer?.renderStage();
+          node =
+            nodes
+              ?.map((n) => n as OBJ.Node)
+              ?.find((n) => n.id === selection.nodes[0]?.id) ?? null;
         }
+
+        this.selection = node ? [node] : null;
+        this.interactionManager?.selectionManager?.select({
+          parentDeploymentNodeId: selection.parentDeploymentNodeId,
+          nodes: node ? [node] : [],
+        });
+        this.renderer?.renderStage();
+      }
+
+      if (!foundOurSelection) {
+        this.interactionManager?.selectionManager?.select({
+          parentDeploymentNodeId,
+          nodes: [],
+        });
       }
     },
 
@@ -489,21 +433,24 @@ export default defineComponent({
           checksum: schematic.checksum,
         };
         const parentDeploymentNodeId =
-          this.schematicKind !== SchematicKind.Deployment
-            ? this.dataManager.selectedDeploymentNodeId
-            : null;
+          (this.schematicKind !== SchematicKind.Deployment
+            ? this.dataManager?.selectedDeploymentNodeId
+            : null) ?? null;
 
-        // We want to ignore component data in deployment panel, and vice versa
-        // The selected deployment node appears in both panels
+        // We want to ensure the nodes from the other panel are ignored
+        // The deployment node also appears in the component panel
+        // so we have to ignore it on the deployment panel
         filteredSchematic.nodes = filteredSchematic.nodes.filter(
           (node) =>
             node.kind.kind === nodeKindFromSchematicKind(this.schematicKind) ||
             node.id === parentDeploymentNodeId,
         );
+
         // Find component nodes connected to selected deployment node
         const nodeIds = filteredSchematic.connections
           .filter((conn) => conn.destination.nodeId === parentDeploymentNodeId)
           .map((conn) => conn.source.nodeId);
+
         if (parentDeploymentNodeId) {
           nodeIds.push(parentDeploymentNodeId);
         }

@@ -1,6 +1,5 @@
 import { ApiResponse, SDF } from "@/api/sdf";
 import { combineLatest, Observable, shareReplay, from } from "rxjs";
-import { standardVisibilityTriggers$ } from "@/observable/visibility";
 import Bottle from "bottlejs";
 import { switchMap } from "rxjs/operators";
 import { Visibility } from "@/api/sdf/dal/visibility";
@@ -8,12 +7,12 @@ import { EditFieldObjectKind, EditFields } from "@/api/sdf/dal/edit_field";
 import { workspace$ } from "@/observable/workspace";
 import _ from "lodash";
 
-export interface GetEditFieldsArgs {
+export interface GetEditFieldsArgs extends Visibility {
   objectKind: EditFieldObjectKind;
   id: number;
 }
 
-export interface GetEditFieldsRequest extends GetEditFieldsArgs, Visibility {
+export interface GetEditFieldsRequest extends GetEditFieldsArgs {
   workspaceId?: number;
 }
 
@@ -40,13 +39,12 @@ export function getEditFields(
     getEditFieldsCollection[args.objectKind] = {};
   }
   getEditFieldsCollection[args.objectKind][args.id] = combineLatest([
-    standardVisibilityTriggers$,
     workspace$,
   ]).pipe(
-    switchMap(([[visibility], workspace]) => {
+    switchMap(([workspace]) => {
       const bottle = Bottle.pop("default");
       const sdf: SDF = bottle.container.SDF;
-      let request: GetEditFieldsRequest;
+      const request: GetEditFieldsRequest = { ...args };
       if (args.objectKind === EditFieldObjectKind.Component) {
         if (_.isNull(workspace)) {
           return from([
@@ -59,16 +57,7 @@ export function getEditFields(
             },
           ]);
         }
-        request = {
-          ...args,
-          ...visibility,
-          workspaceId: workspace.id,
-        };
-      } else {
-        request = {
-          ...args,
-          ...visibility,
-        };
+        request.workspaceId = workspace.id;
       }
       return sdf.get<ApiResponse<GetEditFieldsResponse>>(
         "edit_field/get_edit_fields",

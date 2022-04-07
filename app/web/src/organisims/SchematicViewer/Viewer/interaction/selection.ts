@@ -1,15 +1,10 @@
 import * as Rx from "rxjs";
 
-import { SchematicKind } from "@/api/sdf/dal/schematic";
-import {
-  deploymentSelection$,
-  componentSelection$,
-  SelectedNode,
-} from "../../state";
+import { nodeSelection$, SelectedNode } from "../../state";
 import { untilUnmounted } from "vuse-rx";
-import { visibility$ } from "@/observable/visibility";
+import { schematicData$ } from "../scene/observable";
 
-// This currently will only grow, if the user selects hundreds of panels
+// This currently will grow indefinitely, if the user selects hundreds of panels
 // the state for each panel will be preserved
 export class SelectionManager {
   // Note: This should be a map with parentDeploymentNodeId,
@@ -19,10 +14,36 @@ export class SelectionManager {
 
   constructor() {
     this.selection = [];
-    visibility$.pipe(untilUnmounted).subscribe((_) => {
-      this.selection = [];
-      deploymentSelection$.next([]);
-      componentSelection$.next([]);
+
+    // We need to clean the selection if the node doesn't exist anymore
+    // Happens when visibility changes
+    schematicData$.pipe(untilUnmounted).subscribe((schematic) => {
+      if (!schematic) return;
+
+      const remove: Array<number | null> = [];
+      for (const selection of this.selection) {
+        const selectedNode = selection.nodes[0];
+        if (!selectedNode || selectedNode.id === -1) continue;
+
+        let shouldRemove = true;
+        for (const node of schematic.nodes) {
+          if (selectedNode.id === node.id) {
+            shouldRemove = false;
+            break;
+          }
+        }
+        if (shouldRemove) {
+          remove.push(selection.parentDeploymentNodeId);
+        }
+      }
+
+      if (remove.length > 0) {
+        this.selection = this.selection.filter(
+          (selected) => !remove.includes(selected.parentDeploymentNodeId),
+        );
+
+        nodeSelection$.next(this.selection);
+      }
     });
   }
 
@@ -41,20 +62,14 @@ export class SelectionManager {
     const existing = this.selection.find(
       (n) => n.parentDeploymentNodeId === selection.parentDeploymentNodeId,
     );
-    // Newer nodes always become the last element in the array
     if (existing) {
       existing.nodes = selection.nodes;
-      const index = this.selection.indexOf(existing);
-      this.selection.push(this.selection.splice(index, 1)[0]);
-
-      if (selection$) {
-        selection$.next([existing]);
-      }
     } else {
       this.selection.push(selection);
-      if (selection$) {
-        selection$.next([selection]);
-      }
+    }
+
+    if (selection$) {
+      selection$.next(this.selection);
     }
   }
 
@@ -76,17 +91,5 @@ export class SelectionManager {
     if (selection$) {
       selection$.next(this.selection);
     }
-  }
-
-  selectionObserver(
-    schematicKind: SchematicKind,
-  ): Rx.ReplaySubject<SelectedNode[]> {
-    switch (schematicKind) {
-      case SchematicKind.Deployment:
-        return deploymentSelection$;
-      case SchematicKind.Component:
-        return componentSelection$;
-    }
-    throw Error(`invalid schematic kind: ${schematicKind}`);
   }
 }

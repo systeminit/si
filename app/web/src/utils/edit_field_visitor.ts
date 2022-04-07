@@ -97,7 +97,7 @@ export class ChangedEditFieldCounterVisitor implements EditFieldVisitor {
 
     // TODO(fnichol): implement support of maps once we have a reasonable
     // widget type
-    throw new Error("Map kinds are not yet supported, sorry!");
+    //throw new Error("Map kinds are not yet supported, sorry!");
   }
 
   visitNone(field: NoneEditField) {
@@ -176,7 +176,7 @@ export class InitialTreeOpenStateVisitor implements EditFieldVisitor {
   visitMap(_field: MapEditField) {
     // TODO(fnichol): implement support of maps once we have a reasonable
     // widget type
-    throw new Error("Map kinds are not yet supported, sorry!");
+    //throw new Error("Map kinds are not yet supported, sorry!");
   }
 
   visitNone(field: NoneEditField) {

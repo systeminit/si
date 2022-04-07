@@ -31,7 +31,7 @@
     <EditFormComponent
       v-if="editFields"
       :edit-fields="editFields"
-      :component-with-schema-and-variant="componentWithSchemaAndVariant"
+      :component-identification="componentIdentification"
     />
   </div>
 </template>
@@ -52,16 +52,21 @@ import { EditFieldObjectKind, EditFields } from "@/api/sdf/dal/edit_field";
 import { EditFieldService } from "@/service/edit_field";
 import { ResourceHealth } from "@/api/sdf/dal/resource";
 import { ChangedEditFieldCounterVisitor } from "@/utils/edit_field_visitor";
-import { ComponentWithSchemaAndVariant } from "@/api/sdf/dal/component";
+import { ComponentIdentification } from "@/api/sdf/dal/component";
+
+import { Visibility } from "@/api/sdf/dal/visibility";
+import { visibility$ } from "@/observable/visibility";
+
+const visibility = refFrom<Visibility>(visibility$);
 
 // TODO(nick): we technically only need one prop. We're sticking with two to not mess
 // with the reactivity guarentees in place.
 const props = defineProps<{
   componentId: number;
-  componentWithSchemaAndVariant: ComponentWithSchemaAndVariant;
+  componentIdentification: ComponentIdentification;
 }>();
 
-const { componentId, componentWithSchemaAndVariant } = toRefs(props);
+const { componentId, componentIdentification } = toRefs(props);
 
 // We need an observable stream of props.componentId. We also want
 // that stream to emit a value immediately (the first value, as well as all
@@ -71,13 +76,18 @@ const componentId$ = fromRef<number>(componentId, { immediate: true });
 const editFields = refFrom<EditFields | undefined>(
   combineLatest([componentId$]).pipe(
     switchMap(([componentId]) => {
+      if (!visibility.value) return from([null]);
       return EditFieldService.getEditFields({
         id: componentId,
         objectKind: EditFieldObjectKind.Component,
+        // We aren't reactive to visibility as our parent will retrigger this by updating componentId or our key
+        ...visibility.value,
       });
     }),
     switchMap((response) => {
-      if (response.error) {
+      if (response === null) {
+        return from([[]]);
+      } else if (response.error) {
         GlobalErrorService.set(response);
         return from([[]]);
       } else {
@@ -108,10 +118,12 @@ eventResourceSynced$.pipe(untilUnmounted).subscribe((resourceSyncId) => {
 const componentMetadata = refFrom<GetComponentMetadataResponse | undefined>(
   combineLatest([componentId$, system$, resourceSynced$]).pipe(
     switchMap(([componentId, system]) => {
-      if (system) {
+      if (system && visibility.value) {
         return ComponentService.getComponentMetadata({
           componentId,
           systemId: system.id,
+          // We aren't reactive to visibility as our parent will retrigger this by updating componentId or our key
+          ...visibility.value,
         });
       } else {
         return from([null]);

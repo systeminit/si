@@ -17,7 +17,7 @@ use thiserror::Error;
 pub mod get_code;
 pub mod get_component_metadata;
 pub mod get_resource;
-pub mod list_components_with_schema_and_variant;
+pub mod list_components_identification;
 pub mod list_qualifications;
 pub mod sync_resource;
 
@@ -79,8 +79,8 @@ impl IntoResponse for ComponentError {
 pub fn routes() -> Router {
     Router::new()
         .route(
-            "/list_components_with_schema_and_variant",
-            get(list_components_with_schema_and_variant::list_components_with_schema_and_variant),
+            "/list_components_identification",
+            get(list_components_identification::list_components_identification),
         )
         .route(
             "/get_component_metadata",

@@ -1,8 +1,8 @@
 use axum::extract::Query;
 use axum::Json;
 use dal::{
-    Component, ComponentId, LabelEntry, LabelList, SchemaId, SchemaVariantId, StandardModel,
-    Visibility, WorkspaceId,
+    Component, ComponentId, LabelEntry, LabelList, SchemaId, SchemaVariantId, SchematicKind,
+    StandardModel, Visibility, WorkspaceId,
 };
 use serde::{Deserialize, Serialize};
 
@@ -11,7 +11,7 @@ use crate::server::extract::{AccessBuilder, HandlerContext};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct ListComponentsWithSchemaAndVariantRequest {
+pub struct ListComponentsIdentificationRequest {
     pub workspace_id: WorkspaceId,
     #[serde(flatten)]
     pub visibility: Visibility,
@@ -19,23 +19,24 @@ pub struct ListComponentsWithSchemaAndVariantRequest {
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct ListComponentsWithSchemaAndVariantItem {
+pub struct ListComponentsIdentificationItem {
     pub component_id: ComponentId,
     pub schema_variant_id: SchemaVariantId,
     pub schema_id: SchemaId,
+    pub schematic_kind: SchematicKind,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct ListComponentsWithSchemaAndVariantResponse {
-    pub list: LabelList<ListComponentsWithSchemaAndVariantItem>,
+pub struct ListComponentsIdentificationResponse {
+    pub list: LabelList<ListComponentsIdentificationItem>,
 }
 
-pub async fn list_components_with_schema_and_variant(
+pub async fn list_components_identification(
     HandlerContext(builder, mut txns): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
-    Query(request): Query<ListComponentsWithSchemaAndVariantRequest>,
-) -> ComponentResult<Json<ListComponentsWithSchemaAndVariantResponse>> {
+    Query(request): Query<ListComponentsIdentificationRequest>,
+) -> ComponentResult<Json<ListComponentsIdentificationResponse>> {
     let txns = txns.start().await?;
     let ctx = builder.build(request_ctx.build(request.visibility), &txns);
 
@@ -51,10 +52,11 @@ pub async fn list_components_with_schema_and_variant(
             .await?
             .ok_or(ComponentError::SchemaNotFound)?;
 
-        let value = ListComponentsWithSchemaAndVariantItem {
+        let value = ListComponentsIdentificationItem {
             component_id: *component.id(),
             schema_variant_id: *schema_variant.id(),
             schema_id: *schema.id(),
+            schematic_kind: (*schema.kind()).into(),
         };
         label_entries.push(LabelEntry {
             label: component
@@ -65,6 +67,6 @@ pub async fn list_components_with_schema_and_variant(
         });
     }
     let list = LabelList::from(label_entries);
-    let response = ListComponentsWithSchemaAndVariantResponse { list };
+    let response = ListComponentsIdentificationResponse { list };
     Ok(Json(response))
 }
