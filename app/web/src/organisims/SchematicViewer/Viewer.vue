@@ -31,6 +31,8 @@ import { Interpreter } from "xstate";
 
 import { ViewerStateMachine, ViewerEventKind } from "./state";
 import { useMachine } from "@xstate/vue";
+import { componentsMetadata$ } from "@/organisims/SchematicViewer/data/observable";
+import { ComponentMetadata } from "@/service/component/get_components_metadata";
 
 import {
   EditorContext,
@@ -310,10 +312,20 @@ export default defineComponent({
       nodeSelection$.next(selections);
     });
 
+    componentsMetadata$.pipe(untilUnmounted).subscribe((metadatas) => {
+      if (metadatas) this.updateMetadata(metadatas);
+    });
+
     if (this.schematicData) {
-      this.loadSchematicData(this.schematicData).then(() =>
-        this.renderer?.renderStage(),
-      );
+      this.loadSchematicData(this.schematicData).then(() => {
+        this.renderer?.renderStage();
+
+        // Note: Horrible hack. I have no idea why, but without this the first load doesn't show the qualification/resource sync icons
+        setTimeout(async () => {
+          const metadatas = await Rx.firstValueFrom(componentsMetadata$);
+          if (metadatas) this.updateMetadata(metadatas);
+        }, 100);
+      });
     } else {
       this.renderer?.renderStage();
     }
@@ -488,12 +500,28 @@ export default defineComponent({
         );
         this.renderer?.renderStage();
       }
+      const metadatas = await Rx.firstValueFrom(componentsMetadata$);
+      if (metadatas) this.updateMetadata(metadatas);
     },
 
     handleViewerEvent(e: VE.ViewerEvent | null): void {
       if (e && e.kind == VE.ViewerEventKind.NODE_ADD) {
         this.nodeAdd(e.data.node, e.data.schemaId);
       }
+    },
+
+    updateMetadata(metadatas: ComponentMetadata[]) {
+      for (const metadata of metadatas) {
+        for (const n of this.sceneManager.group.nodes.children) {
+          const node = n as OBJ.Node;
+          if (metadata.componentId === node.nodeKind?.componentId) {
+            node.setQualificationStatus(metadata.qualified);
+            node.setResourceStatus(metadata.resourceHealth);
+            break;
+          }
+        }
+      }
+      this.renderer?.renderStage();
     },
 
     nodeAdd(node: MODEL.Node, schemaId: number): void {

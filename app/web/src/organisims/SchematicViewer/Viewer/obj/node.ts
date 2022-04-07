@@ -13,6 +13,7 @@ import { QualificationStatus } from "./node/status";
 import { ResourceStatus } from "./node/status/resource";
 import { SchematicKind } from "@/api/sdf/dal/schematic";
 import { NodeKind } from "@/api/sdf/dal/node";
+import { ResourceHealth } from "@/api/sdf/dal/resource";
 
 const NODE_WIDTH = 140;
 const NODE_HEIGHT = 100;
@@ -63,9 +64,8 @@ export class Node extends PIXI.Container {
     // Selection status
     this.setSelectionStatus(Math.max(n.input.length, n.output.length));
 
-    this.setQualificationStatus();
-
-    this.setResourceStatus();
+    this.setQualificationStatus(undefined);
+    this.setResourceStatus(undefined);
 
     // Shadow
     this.setShadows();
@@ -95,18 +95,30 @@ export class Node extends PIXI.Container {
     this.deselect();
   }
 
-  setQualificationStatus(): void {
-    const status = new QualificationStatus();
+  setQualificationStatus(qualified?: boolean): void {
+    const oldStatus = this.getChildByName("QualificationStatus");
+
+    const status = new QualificationStatus(qualified);
+    status.name = "QualificationStatus";
+    status.zIndex = 1;
     status.x = 100;
     status.y = 78;
     this.addChild(status);
+
+    oldStatus?.destroy();
   }
 
-  setResourceStatus(): void {
-    const status = new ResourceStatus();
+  setResourceStatus(health?: ResourceHealth): void {
+    const oldStatus = this.getChildByName("ResourceStatus");
+
+    const status = new ResourceStatus(health);
+    status.name = "ResourceStatus";
+    status.zIndex = 1;
     status.x = 120;
     status.y = 78;
     this.addChild(status);
+
+    oldStatus?.destroy();
   }
 
   setSockets(inputs: MODEL.Socket[], outputs: MODEL.Socket[]): void {

@@ -37,15 +37,10 @@
 </template>
 
 <script setup lang="ts">
+import * as Rx from "rxjs";
 import EditFormComponent from "@/organisims/EditFormComponent.vue";
-import { ComponentService } from "@/service/component";
-import { GetComponentMetadataResponse } from "@/service/component/get_component_metadata";
 import { toRefs, computed } from "vue";
-import { fromRef, refFrom, untilUnmounted } from "vuse-rx";
-import { from, combineLatest, ReplaySubject } from "rxjs";
-import { switchMap, tap } from "rxjs/operators";
-import { system$ } from "@/observable/system";
-import { eventResourceSynced$ } from "@/observable/resource";
+import { fromRef, refFrom } from "vuse-rx";
 import { GlobalErrorService } from "@/service/global_error";
 import VueFeather from "vue-feather";
 import { EditFieldObjectKind, EditFields } from "@/api/sdf/dal/edit_field";
@@ -53,7 +48,8 @@ import { EditFieldService } from "@/service/edit_field";
 import { ResourceHealth } from "@/api/sdf/dal/resource";
 import { ChangedEditFieldCounterVisitor } from "@/utils/edit_field_visitor";
 import { ComponentIdentification } from "@/api/sdf/dal/component";
-
+import { componentsMetadata$ } from "@/organisims/SchematicViewer/data/observable";
+import { ComponentMetadata } from "@/service/component/get_components_metadata";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import { visibility$ } from "@/observable/visibility";
 
@@ -74,9 +70,9 @@ const { componentId, componentIdentification } = toRefs(props);
 const componentId$ = fromRef<number>(componentId, { immediate: true });
 
 const editFields = refFrom<EditFields | undefined>(
-  combineLatest([componentId$]).pipe(
-    switchMap(([componentId]) => {
-      if (!visibility.value) return from([null]);
+  Rx.combineLatest([componentId$]).pipe(
+    Rx.switchMap(([componentId]) => {
+      if (!visibility.value) return Rx.from([null]);
       return EditFieldService.getEditFields({
         id: componentId,
         objectKind: EditFieldObjectKind.Component,
@@ -84,60 +80,30 @@ const editFields = refFrom<EditFields | undefined>(
         ...visibility.value,
       });
     }),
-    switchMap((response) => {
+    Rx.switchMap((response) => {
       if (response === null) {
-        return from([[]]);
+        return Rx.from([[]]);
       } else if (response.error) {
         GlobalErrorService.set(response);
-        return from([[]]);
+        return Rx.from([[]]);
       } else {
-        return from([response.fields]);
+        return Rx.from([response.fields]);
       }
     }),
   ),
 );
 
-// TODO: we should re-fetch the metadata when qualifications change
+const componentMetadata = refFrom<ComponentMetadata | null>(
+  Rx.combineLatest([componentId$, componentsMetadata$]).pipe(
+    Rx.map(([componentId, componentsMetadata]) => {
+      if (!componentsMetadata) return null;
 
-// We should re-fetch the metadata if the resource was synced
-const resourceSynced$ = new ReplaySubject<true>();
-resourceSynced$.next(true); // We must fetch on setup
-eventResourceSynced$.pipe(untilUnmounted).subscribe((resourceSyncId) => {
-  combineLatest([system$]).pipe(
-    tap(([system]) => {
-      const data = resourceSyncId?.payload.data;
-      const sameComponent = props.componentId === data?.componentId;
-      const sameSystem = system?.id === data?.systemId;
-      if (sameComponent && sameSystem) {
-        resourceSynced$.next(true);
+      for (const metadata of componentsMetadata) {
+        if (metadata.componentId === componentId) {
+          return metadata;
+        }
       }
-    }),
-  );
-});
-
-const componentMetadata = refFrom<GetComponentMetadataResponse | undefined>(
-  combineLatest([componentId$, system$, resourceSynced$]).pipe(
-    switchMap(([componentId, system]) => {
-      if (system && visibility.value) {
-        return ComponentService.getComponentMetadata({
-          componentId,
-          systemId: system.id,
-          // We aren't reactive to visibility as our parent will retrigger this by updating componentId or our key
-          ...visibility.value,
-        });
-      } else {
-        return from([null]);
-      }
-    }),
-    switchMap((response) => {
-      if (response === null) {
-        return from([undefined]);
-      } else if (response.error) {
-        GlobalErrorService.set(response);
-        return from([undefined]);
-      } else {
-        return from([response]);
-      }
+      return null;
     }),
   ),
 );
@@ -156,7 +122,7 @@ const qualificationStatus = computed(() => {
   let style: Record<string, boolean> = {};
 
   if (
-    componentMetadata.value === undefined ||
+    !componentMetadata.value ||
     componentMetadata.value.qualified === undefined
   ) {
     style["unknown"] = true;
@@ -171,7 +137,7 @@ const qualificationStatus = computed(() => {
 
 const resourceSyncStatusStroke = computed(() => {
   if (
-    componentMetadata.value === undefined ||
+    !componentMetadata.value ||
     componentMetadata.value.resourceHealth === undefined
   ) {
     return "#bbbbbb";

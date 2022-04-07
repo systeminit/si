@@ -85,9 +85,6 @@ import { GlobalErrorService } from "@/service/global_error";
 
 import { schematicData$ } from "./SchematicViewer/Viewer/scene/observable";
 import { Schematic } from "./SchematicViewer/model";
-import { applicationNodeId$ } from "@/observable/application";
-import { system$ } from "@/observable/system";
-
 import {
   SchematicKind,
   MenuFilter,
@@ -106,33 +103,7 @@ import _ from "lodash";
 import * as Rx from "rxjs";
 import * as MODEL from "./SchematicViewer/model";
 
-const schematicData = refFrom<Schematic | null>(
-  Rx.combineLatest([system$, applicationNodeId$]).pipe(
-    Rx.switchMap(([system, applicationNodeId]) => {
-      if (system && applicationNodeId) {
-        return SchematicService.getSchematic({
-          systemId: system.id,
-          rootNodeId: applicationNodeId,
-        });
-      } else {
-        return Rx.from([null]);
-      }
-    }),
-    Rx.switchMap((schematic) => {
-      if (schematic) {
-        if (schematic.error) {
-          GlobalErrorService.set(schematic);
-          return Rx.from([null]);
-        } else {
-          schematicData$.next(schematic);
-          return Rx.from([schematic]);
-        }
-      } else {
-        return Rx.from([null]);
-      }
-    }),
-  ),
-);
+const schematicData = refFrom<Schematic | null>(schematicData$);
 
 const isPinned = ref<boolean>(false);
 const selectedDeploymentNodeId = ref<number | null>(null);
