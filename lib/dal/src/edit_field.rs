@@ -106,7 +106,7 @@ pub struct EditField {
     object_id: i64,
     data_type: EditFieldDataType,
     widget: Widget,
-    pub value: Option<serde_json::Value>,
+    value: Option<serde_json::Value>,
     visibility_diff: VisibilityDiff,
     validation_errors: Vec<ValidationError>,
     /// Additional context for an [`EditField`] that's not directly consumed by the frontend.
@@ -146,6 +146,26 @@ impl EditField {
         }
     }
 
+    pub fn baggage(&self) -> &Option<EditFieldBaggage> {
+        &self.baggage
+    }
+
+    pub fn data_type(&self) -> &EditFieldDataType {
+        &self.data_type
+    }
+
+    pub fn id(&self) -> &str {
+        &self.id
+    }
+
+    pub fn value(&self) -> &Option<serde_json::Value> {
+        &self.value
+    }
+
+    pub fn widget(&self) -> &Widget {
+        &self.widget
+    }
+
     /// Creates a new [`EditFieldBaggage`] and sets it on the corresponding field on [`Self`].
     pub fn set_new_baggage(
         &mut self,
@@ -166,26 +186,7 @@ impl EditField {
     pub fn unset_baggage(&mut self) {
         self.baggage = None;
     }
-
-    pub fn id(&self) -> &str {
-        &self.id
-    }
-
-    pub fn data_type(&self) -> &EditFieldDataType {
-        &self.data_type
-    }
-
-    // FIXME(nick): this only works for Object! It does not work for Arrays and Maps.
-    pub fn get_child_edit_fields(&self) -> Option<EditFields> {
-        if let Widget::Header(header) = &self.widget {
-            Some(header.edit_fields().to_vec())
-        } else {
-            None
-        }
-    }
 }
-
-pub type EditFields = Vec<EditField>;
 
 pub type UpdateFunction = Box<dyn Fn(String) -> Pin<Box<dyn Future<Output = EditFieldResult<()>>>>>;
 
@@ -197,7 +198,7 @@ pub trait EditFieldAble {
     async fn get_edit_fields(
         ctx: &DalContext<'_, '_>,
         id: &Self::Id,
-    ) -> Result<EditFields, Self::Error>;
+    ) -> Result<Vec<EditField>, Self::Error>;
 
     #[allow(clippy::too_many_arguments)]
     async fn update_from_edit_field(

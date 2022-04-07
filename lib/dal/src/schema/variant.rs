@@ -9,7 +9,7 @@ use thiserror::Error;
 use crate::{
     edit_field::{
         value_and_visibility_diff, widget::prelude::*, EditField, EditFieldAble, EditFieldDataType,
-        EditFieldError, EditFieldObjectKind, EditFields, VisibilityDiff,
+        EditFieldError, EditFieldObjectKind, VisibilityDiff,
     },
     impl_standard_model, pk,
     schema::builtins::{create_root_prop, RootProp},
@@ -196,7 +196,7 @@ impl SchemaVariant {
     ) -> SchemaVariantResult<EditField> {
         let field_name = "properties";
 
-        let mut items: Vec<EditFields> = vec![];
+        let mut items: Vec<Vec<EditField>> = vec![];
         for prop in object.props(ctx).await?.into_iter() {
             let edit_fields = Prop::get_edit_fields(ctx, prop.id()).await?;
             items.push(edit_fields);
@@ -220,7 +220,7 @@ impl SchemaVariant {
     ) -> SchemaVariantResult<EditField> {
         let field_name = "connections";
 
-        let mut items: Vec<EditFields> = vec![];
+        let mut items: Vec<Vec<EditField>> = vec![];
         for socket in object.sockets(ctx).await?.into_iter() {
             let edit_fields = Socket::get_edit_fields(ctx, socket.id()).await?;
             items.push(edit_fields);
@@ -259,7 +259,7 @@ impl EditFieldAble for SchemaVariant {
     async fn get_edit_fields(
         ctx: &DalContext<'_, '_>,
         id: &Self::Id,
-    ) -> Result<EditFields, Self::Error> {
+    ) -> Result<Vec<EditField>, Self::Error> {
         let object = Self::get_by_id(ctx, id)
             .await?
             .ok_or(SchemaVariantError::NotFound(*id))?;

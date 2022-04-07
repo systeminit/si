@@ -1,20 +1,20 @@
 use serde::{Deserialize, Serialize};
 
-use crate::edit_field::EditFields;
+use crate::edit_field::EditField;
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
 pub struct ArrayWidget {
-    entries: Vec<EditFields>,
+    entries: Vec<Vec<EditField>>,
 }
 
 impl ArrayWidget {
-    pub fn new(entries: Vec<EditFields>) -> Self {
+    pub fn new(entries: Vec<Vec<EditField>>) -> Self {
         ArrayWidget { entries }
     }
 }
 
-impl From<Vec<EditFields>> for ArrayWidget {
-    fn from(entries: Vec<EditFields>) -> Self {
+impl From<Vec<Vec<EditField>>> for ArrayWidget {
+    fn from(entries: Vec<Vec<EditField>>) -> Self {
         Self::new(entries)
     }
 }

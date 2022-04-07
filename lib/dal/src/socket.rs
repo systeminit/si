@@ -9,7 +9,7 @@ use thiserror::Error;
 use crate::{
     edit_field::{
         value_and_visibility_diff, value_and_visibility_diff_copy, widget::prelude::*, EditField,
-        EditFieldAble, EditFieldDataType, EditFieldError, EditFieldObjectKind, EditFields,
+        EditFieldAble, EditFieldDataType, EditFieldError, EditFieldObjectKind,
     },
     impl_standard_model,
     label_list::ToLabelList,
@@ -271,7 +271,7 @@ impl EditFieldAble for Socket {
     async fn get_edit_fields(
         ctx: &DalContext<'_, '_>,
         id: &SocketId,
-    ) -> Result<EditFields, Self::Error> {
+    ) -> Result<Vec<EditField>, Self::Error> {
         let object = Self::get_by_id(ctx, id)
             .await?
             .ok_or(SocketError::NotFound(*id))?;

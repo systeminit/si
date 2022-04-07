@@ -15,7 +15,7 @@ use crate::attribute::{context::UNSET_ID_VALUE, value::AttributeValueError};
 use crate::code_generation_resolver::CodeGenerationResolverContext;
 use crate::edit_field::{
     widget::prelude::*, EditField, EditFieldAble, EditFieldBaggage, EditFieldError,
-    EditFieldObjectKind, EditFields,
+    EditFieldObjectKind,
 };
 use crate::func::backend::validation::{FuncBackendValidateStringValueArgs, ValidationError};
 use crate::func::backend::{
@@ -1207,7 +1207,7 @@ impl EditFieldAble for Component {
     async fn get_edit_fields(
         ctx: &DalContext<'_, '_>,
         id: &ComponentId,
-    ) -> ComponentResult<EditFields> {
+    ) -> ComponentResult<Vec<EditField>> {
         let head_visibility = Visibility::new_head(ctx.visibility().deleted);
         let change_set_visibility =
             Visibility::new_change_set(ctx.visibility().change_set_pk, ctx.visibility().deleted);
