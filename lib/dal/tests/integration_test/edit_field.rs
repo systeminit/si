@@ -8,8 +8,8 @@ use dal::{
         create_prop_of_kind_and_set_parent_with_name, create_schema,
         create_schema_variant_with_root,
     },
-    AttributeContext, AttributeValueId, ComponentId, ComponentView, PropKind, SchemaId, SchemaKind,
-    SchemaVariantId, StandardModel,
+    AttributeContext, AttributeReadContext, AttributeValueId, ComponentId, ComponentView, PropKind,
+    SchemaId, SchemaKind, SchemaVariantId, StandardModel,
 };
 use dal::{AttributeValue, DalContext};
 use pretty_assertions_sorted::assert_eq;
@@ -325,14 +325,15 @@ async fn update_edit_field_for_component_array(ctx: &DalContext<'_, '_>) {
     )
     .await;
 
-    let domain_attribute_context = AttributeContextBuilder::new()
-        .set_prop_id(root.domain_prop_id)
-        .set_schema_id(*schema.id())
-        .set_schema_variant_id(*schema_variant.id())
-        .set_component_id(*component.id())
-        .to_context()
-        .expect("could not create attribute context from builder");
-    let view = ComponentView::for_context(ctx, domain_attribute_context.into())
+    let domain_attribute_read_context = AttributeReadContext {
+        prop_id: None,
+        schema_id: Some(*schema.id()),
+        schema_variant_id: Some(*schema_variant.id()),
+        component_id: Some(*component.id()),
+        system_id: None,
+    };
+
+    let view = ComponentView::for_context(ctx, domain_attribute_read_context)
         .await
         .expect("could not create component view");
 
