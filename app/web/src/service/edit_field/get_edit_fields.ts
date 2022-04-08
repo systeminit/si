@@ -5,6 +5,7 @@ import { switchMap } from "rxjs/operators";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import { EditFieldObjectKind, EditFields } from "@/api/sdf/dal/edit_field";
 import { workspace$ } from "@/observable/workspace";
+import { editSessionWritten$ } from "@/observable/edit_session";
 import _ from "lodash";
 
 export interface GetEditFieldsArgs extends Visibility {
@@ -40,6 +41,7 @@ export function getEditFields(
   }
   getEditFieldsCollection[args.objectKind][args.id] = combineLatest([
     workspace$,
+    editSessionWritten$,
   ]).pipe(
     switchMap(([workspace]) => {
       const bottle = Bottle.pop("default");
