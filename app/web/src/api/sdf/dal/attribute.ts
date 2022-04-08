@@ -1,7 +1,7 @@
 export interface AttributeContext {
-  propId: number;
-  schemaId?: number;
-  schemaVariantId?: number;
-  componentId?: number;
-  systemId?: number;
+  attribute_context_prop_id: number;
+  attribute_context_schema_id?: number;
+  attribute_context_schema_variant_id?: number;
+  attribute_context_component_id?: number;
+  attribute_context_system_id?: number;
 }

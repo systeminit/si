@@ -827,7 +827,18 @@ impl Component {
         ctx: &DalContext<'_, '_>,
         system_id: SystemId,
     ) -> ComponentResult<veritech::ResolverFunctionComponent> {
+        let schema = self
+            .schema(ctx)
+            .await?
+            .ok_or(ComponentError::SchemaNotFound)?;
+        let schema_variant = self
+            .schema_variant(ctx)
+            .await?
+            .ok_or(ComponentError::SchemaVariantNotFound)?;
         let attribute_context_base = AttributeReadContext {
+            schema_id: Some(*schema.id()),
+            schema_variant_id: Some(*schema_variant.id()),
+            component_id: Some(*self.id()),
             system_id: Some(system_id),
             ..AttributeReadContext::any()
         };
@@ -932,7 +943,18 @@ impl Component {
         ctx: &DalContext<'_, '_>,
         system_id: SystemId,
     ) -> ComponentResult<veritech::QualificationCheckComponent> {
+        let schema = self
+            .schema(ctx)
+            .await?
+            .ok_or(ComponentError::SchemaNotFound)?;
+        let schema_variant = self
+            .schema_variant(ctx)
+            .await?
+            .ok_or(ComponentError::SchemaVariantNotFound)?;
         let base_attribute_context = AttributeReadContext {
+            schema_id: Some(*schema.id()),
+            schema_variant_id: Some(*schema_variant.id()),
+            component_id: Some(*self.id()),
             system_id: Some(system_id),
             ..AttributeReadContext::any()
         };
@@ -1154,6 +1176,7 @@ impl Component {
         json_pointer: &str,
     ) -> ComponentResult<Option<AttributeValue>> {
         if let Some(prop) = self.find_prop_by_json_pointer(ctx, json_pointer).await? {
+            // Should we specify system, schema, schema_variant here?
             let read_context = AttributeReadContext {
                 prop_id: Some(*prop.id()),
                 component_id: Some(*self.id()),
@@ -1246,8 +1269,14 @@ impl EditFieldAble for Component {
 
         // NOTE(nick): it is a bit wasteful that we get the attribute value here and then do it
         // again within the call below, but it ~~works~~.
-        let attribute_value: AttributeValue =
-            AttributeValue::find_for_prop(ctx, *root_prop.id()).await?;
+        let context = AttributeReadContext {
+            prop_id: Some(*root_prop.id()),
+            ..attribute_read_context
+        };
+        let attribute_value: AttributeValue = AttributeValue::find_for_context(ctx, context)
+            .await?
+            .pop()
+            .ok_or_else(|| ComponentError::RootPropNotFound(*schema_variant.id()))?;
 
         // Parent attribute value must be "None" since we are dealing with the root prop.
         edit_fields.push(

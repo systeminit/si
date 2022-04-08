@@ -246,6 +246,10 @@ impl Prop {
             .await
             .map_err(|e| PropError::AttributeValue(format!("{e}")))?;
         our_attribute_value
+            .unset_parent_attribute_value(ctx)
+            .await
+            .map_err(|e| PropError::AttributeValue(format!("{e}")))?;
+        our_attribute_value
             .set_parent_attribute_value(ctx, parent_attribute_value.id())
             .await
             .map_err(|e| PropError::AttributeValue(format!("{e}")))?;

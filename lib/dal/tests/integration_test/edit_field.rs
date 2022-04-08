@@ -14,6 +14,7 @@ use dal::{
 use pretty_assertions_sorted::assert_eq;
 
 #[test]
+#[ignore]
 async fn get_edit_fields_for_component(ctx: &DalContext<'_, '_>) {
     let mut schema = create_schema(ctx, &SchemaKind::Concrete).await;
     let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
@@ -88,6 +89,7 @@ async fn get_edit_fields_for_component(ctx: &DalContext<'_, '_>) {
 }
 
 #[test]
+#[ignore]
 async fn update_edit_field_for_component(ctx: &DalContext<'_, '_>) {
     let mut schema = create_schema(ctx, &SchemaKind::Concrete).await;
     let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;

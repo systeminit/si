@@ -216,6 +216,7 @@ impl AttributePrototype {
         value.unset_attribute_prototype(ctx).await?;
         value.set_attribute_prototype(ctx, object.id()).await?;
 
+        value.unset_parent_attribute_value(ctx).await?;
         if let Some(parent_attribute_value_id) = parent_attribute_value_id {
             value
                 .set_parent_attribute_value(ctx, &parent_attribute_value_id)
