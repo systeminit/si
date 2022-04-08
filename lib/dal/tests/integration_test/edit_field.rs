@@ -1,4 +1,5 @@
 use crate::dal::test;
+use dal::attribute::context::read::UNSET_ID_VALUE;
 use dal::attribute::context::AttributeContextBuilder;
 use dal::edit_field::{EditFieldBaggage, Widget};
 use dal::{
@@ -8,11 +9,12 @@ use dal::{
         create_prop_of_kind_and_set_parent_with_name, create_schema,
         create_schema_variant_with_root,
     },
-    AttributeContext, AttributeReadContext, AttributeValueId, ComponentId, ComponentView, PropKind,
-    SchemaId, SchemaKind, SchemaVariantId, StandardModel,
+    AttributeContext, AttributeReadContext, AttributeValueId, ComponentId, ComponentView, PropId,
+    PropKind, SchemaId, SchemaKind, SchemaVariantId, StandardModel,
 };
 use dal::{AttributeValue, DalContext};
 use pretty_assertions_sorted::assert_eq;
+use std::collections::HashMap;
 
 #[test]
 #[ignore]
@@ -28,10 +30,15 @@ async fn get_edit_fields_for_component(ctx: &DalContext<'_, '_>) {
         .await
         .expect("cannot set default schema variant");
 
+    // Create all props we want to have edit fields for.
+    //
     // domain: Object
     // └─ object: Object
     //    ├─ name: String
-    //    └─ value: String
+    //    ├─ value: String
+    //    └─ array_of_maps: Array
+    //       └─ map_of_arrays: Map
+    //          └─ array_of_integers: Array of (elements: Integer)
     let object_prop = create_prop_of_kind_and_set_parent_with_name(
         ctx,
         PropKind::Object,
@@ -53,10 +60,82 @@ async fn get_edit_fields_for_component(ctx: &DalContext<'_, '_>) {
         *object_prop.id(),
     )
     .await;
+    let array_of_maps_prop = create_prop_of_kind_and_set_parent_with_name(
+        ctx,
+        PropKind::Array,
+        "array_of_maps",
+        *object_prop.id(),
+    )
+    .await;
+    let map_of_arrays_prop = create_prop_of_kind_and_set_parent_with_name(
+        ctx,
+        PropKind::Map,
+        "map_of_arrays",
+        *array_of_maps_prop.id(),
+    )
+    .await;
+    let array_of_integers_prop = create_prop_of_kind_and_set_parent_with_name(
+        ctx,
+        PropKind::Array,
+        "array_of_integers",
+        *map_of_arrays_prop.id(),
+    )
+    .await;
+    let _elements_prop = create_prop_of_kind_and_set_parent_with_name(
+        ctx,
+        PropKind::Integer,
+        "elements",
+        *array_of_integers_prop.id(),
+    )
+    .await;
 
     let (component, _) = Component::new_for_schema_with_node(ctx, "radahn", schema.id())
         .await
         .expect("cannot create component");
+
+    // Initialize values for the lineage from the integer array elements up.
+    //
+    // domain: Object (already set)
+    // └─ object: Object (need to set)
+    //    └─ array_of_maps: Array (need to set)
+    //       └─ map_of_arrays: Map (need to set)
+    //          └─ array_of_integers: Array (need to set)
+    update_attribute_value(
+        ctx,
+        Some(serde_json::json![{}]),
+        object_prop.id(),
+        schema.id(),
+        schema_variant.id(),
+        component.id(),
+    )
+    .await;
+    update_attribute_value(
+        ctx,
+        Some(serde_json::json![[]]),
+        array_of_maps_prop.id(),
+        schema.id(),
+        schema_variant.id(),
+        component.id(),
+    )
+    .await;
+    update_attribute_value(
+        ctx,
+        Some(serde_json::json![{}]),
+        map_of_arrays_prop.id(),
+        schema.id(),
+        schema_variant.id(),
+        component.id(),
+    )
+    .await;
+    update_attribute_value(
+        ctx,
+        Some(serde_json::json![[]]),
+        array_of_integers_prop.id(),
+        schema.id(),
+        schema_variant.id(),
+        component.id(),
+    )
+    .await;
 
     let base_edit_fields = Component::get_edit_fields(ctx, component.id())
         .await
@@ -82,11 +161,43 @@ async fn get_edit_fields_for_component(ctx: &DalContext<'_, '_>) {
             "properties.root.domain.object.value",
             &EditFieldDataType::String,
         ),
+        (
+            "properties.root.domain.object.array_of_maps",
+            &EditFieldDataType::Array,
+        ),
+        (
+            "properties.root.domain.object.array_of_maps.map_of_arrays",
+            &EditFieldDataType::Map,
+        ),
+        (
+            "properties.root.domain.object.array_of_maps.map_of_arrays.array_of_integers",
+            &EditFieldDataType::Array,
+        ),
+        (
+            "properties.root.domain.object.array_of_maps.map_of_arrays.array_of_integers.elements",
+            &EditFieldDataType::Integer,
+        ),
     ];
 
     found.sort_by_key(|v| v.0);
     expected.sort_by_key(|v| v.0);
     assert_eq!(found, expected);
+
+    let view = ComponentView::for_context(
+        ctx,
+        AttributeReadContext {
+            prop_id: None,
+            schema_id: Some(*schema.id()),
+            schema_variant_id: Some(*schema_variant.id()),
+            component_id: Some(*component.id()),
+            system_id: None,
+        },
+    )
+    .await
+    .expect("could not create component view");
+
+    // SHOULD FAIL
+    assert_eq!(view.properties, serde_json::json!("{}"));
 }
 
 #[test]
@@ -258,67 +369,32 @@ async fn update_edit_field_for_component_array(ctx: &DalContext<'_, '_>) {
         *component.id(),
     )
     .await;
+
+    let initialized_base_edit_fields = Component::get_edit_fields(ctx, component.id())
+        .await
+        .expect("could not get edit fields");
+    assert_eq!(initialized_base_edit_fields, vec![]);
+    let foo = recursive_edit_fields(initialized_base_edit_fields);
+    panic!("EJECT");
+
+    let domain_attribute_read_context = AttributeReadContext {
+        prop_id: None,
+        schema_id: Some(*schema.id()),
+        schema_variant_id: Some(*schema_variant.id()),
+        component_id: Some(*component.id()),
+        system_id: None,
+    };
+
+    let view = ComponentView::for_context(ctx, domain_attribute_read_context)
+        .await
+        .expect("could not create component view");
+
+    assert_eq!(view.properties, serde_json::json!("{}"));
+
     let (array_baggage, _array_attribute_context) = update_edit_field_for_component(
         ctx,
         &array_edit_field.expect("could not find array edit field"),
         Some(serde_json::json!("[]")),
-        *schema.id(),
-        *schema_variant.id(),
-        *component.id(),
-    )
-    .await;
-
-    // Now, let's insert two values into our array.
-    let array_elements_attribute_context = AttributeContextBuilder::new()
-        .set_prop_id(*array_elements_prop.id())
-        .set_schema_id(*schema.id())
-        .set_schema_variant_id(*schema_variant.id())
-        .set_component_id(*component.id())
-        .to_context()
-        .expect("could not get attribute context from builder");
-    let _first_inserted_value_id = AttributeValue::insert_for_context(
-        ctx,
-        array_elements_attribute_context,
-        array_baggage.attribute_value_id,
-        Some(serde_json::json!(serde_json::Number::from(1))),
-        array_baggage.key.clone(),
-    )
-    .await
-    .expect("could not insert for context");
-    let second_inserted_value_id = AttributeValue::insert_for_context(
-        ctx,
-        array_elements_attribute_context,
-        array_baggage.attribute_value_id,
-        Some(serde_json::json!(serde_json::Number::from(2))),
-        array_baggage.key.clone(),
-    )
-    .await
-    .expect("could not insert for context");
-
-    // Let's update the second value that we inserted. We'll need to get the edit fields again.
-    let initialized_base_edit_fields = Component::get_edit_fields(ctx, component.id())
-        .await
-        .expect("could not get edit fields");
-    let initialized_edit_fields = recursive_edit_fields(initialized_base_edit_fields);
-
-    ///////////////////////////////////////////////////////////////////////////////////
-
-    let mut foo: Vec<(String, Option<AttributeValueId>)> = Vec::new();
-    for v in initialized_edit_fields.clone() {
-        let val = v.baggage().clone().unwrap().attribute_value_id;
-        foo.push((v.id().to_string(), Some(val)));
-    }
-    assert_eq!(foo, vec![(format!("{:?}", second_inserted_value_id), None)]);
-
-    ///////////////////////////////////////////////////////////////////////////////////
-
-    let second_element_edit_field =
-        select_edit_field_by_attribute_value_id(&initialized_edit_fields, second_inserted_value_id)
-            .expect("could not find edit field by attribute value id");
-    update_edit_field_for_component(
-        ctx,
-        &second_element_edit_field,
-        Some(serde_json::json!(serde_json::Number::from(9000))),
         *schema.id(),
         *schema_variant.id(),
         *component.id(),
@@ -338,6 +414,126 @@ async fn update_edit_field_for_component_array(ctx: &DalContext<'_, '_>) {
         .expect("could not create component view");
 
     assert_eq!(view.properties, serde_json::json!("{}"));
+
+    // // Now, let's insert two values into our array.
+    // let array_elements_attribute_context = AttributeContextBuilder::new()
+    //     .set_prop_id(*array_elements_prop.id())
+    //     .set_schema_id(*schema.id())
+    //     .set_schema_variant_id(*schema_variant.id())
+    //     .set_component_id(*component.id())
+    //     .to_context()
+    //     .expect("could not get attribute context from builder");
+    // let _first_inserted_value_id = AttributeValue::insert_for_context(
+    //     ctx,
+    //     array_elements_attribute_context,
+    //     array_baggage.attribute_value_id,
+    //     Some(serde_json::json!(serde_json::Number::from(1))),
+    //     array_baggage.key.clone(),
+    // )
+    // .await
+    // .expect("could not insert for context");
+    // let second_inserted_value_id = AttributeValue::insert_for_context(
+    //     ctx,
+    //     array_elements_attribute_context,
+    //     array_baggage.attribute_value_id,
+    //     Some(serde_json::json!(serde_json::Number::from(2))),
+    //     array_baggage.key.clone(),
+    // )
+    // .await
+    // .expect("could not insert for context");
+
+    // Let's update the second value that we inserted. We'll need to get the edit fields again.
+    let initialized_base_edit_fields = Component::get_edit_fields(ctx, component.id())
+        .await
+        .expect("could not get edit fields");
+    let initialized_edit_fields = recursive_edit_fields(initialized_base_edit_fields);
+
+    ///////////////////////////////////////////////////////////////////////////////////
+
+    let domain_attribute_read_context = AttributeReadContext {
+        prop_id: Some(UNSET_ID_VALUE.into()),
+        schema_id: Some(*schema.id()),
+        schema_variant_id: Some(*schema_variant.id()),
+        component_id: Some(*component.id()),
+        system_id: Some(UNSET_ID_VALUE.into()),
+    };
+
+    let view = ComponentView::for_context(ctx, domain_attribute_read_context)
+        .await
+        .expect("could not create component view");
+
+    assert_eq!(view.properties, serde_json::json!("{}"));
+
+    let mut foo: Vec<(String, Option<AttributeValueId>)> = Vec::new();
+    for v in initialized_edit_fields.clone() {
+        let val = v.baggage().clone().unwrap().attribute_value_id;
+        foo.push((v.id().to_string(), Some(val)));
+    }
+    assert_eq!(foo, vec![(format!("{:?}", root.domain_prop_id), None)]);
+
+    ///////////////////////////////////////////////////////////////////////////////////
+
+    // let second_element_edit_field =
+    //     select_edit_field_by_attribute_value_id(&initialized_edit_fields, second_inserted_value_id)
+    //         .expect("could not find edit field by attribute value id");
+    // update_edit_field_for_component(
+    //     ctx,
+    //     &second_element_edit_field,
+    //     Some(serde_json::json!(serde_json::Number::from(9000))),
+    //     *schema.id(),
+    //     *schema_variant.id(),
+    //     *component.id(),
+    // )
+    // .await;
+
+    let domain_attribute_read_context = AttributeReadContext {
+        prop_id: None,
+        schema_id: Some(*schema.id()),
+        schema_variant_id: Some(*schema_variant.id()),
+        component_id: Some(*component.id()),
+        system_id: None,
+    };
+
+    let view = ComponentView::for_context(ctx, domain_attribute_read_context)
+        .await
+        .expect("could not create component view");
+
+    assert_eq!(view.properties, serde_json::json!("{}"));
+}
+
+async fn update_attribute_value(
+    ctx: &DalContext<'_, '_>,
+    value: Option<serde_json::Value>,
+    prop_id: &PropId,
+    schema_id: &SchemaId,
+    schema_variant_id: &SchemaVariantId,
+    component_id: &ComponentId,
+) {
+    let attribute_value = AttributeValue::find_for_prop(ctx, *prop_id)
+        .await
+        .expect("could not find attribute value for prop");
+    let parent_attribute_value = attribute_value
+        .parent_attribute_value(ctx)
+        .await
+        .expect("could not get parent for attribute value")
+        .expect("parent not found for attribute value");
+    let context = AttributeContextBuilder::new()
+        .set_prop_id(*prop_id)
+        .set_schema_id(*schema_id)
+        .set_schema_variant_id(*schema_variant_id)
+        .set_component_id(*component_id)
+        .to_context()
+        .expect("could not convert builder to attribute context");
+    AttributeValue::update_for_context(
+        ctx,
+        *attribute_value.id(),
+        Some(*parent_attribute_value.id()),
+        context,
+        value,
+        attribute_value.key,
+    )
+    .await
+    .expect("could not update attribute value for context");
 }
 
 fn select_edit_field_by_id(edit_fields: &Vec<EditField>, id: &str) -> Option<EditField> {
