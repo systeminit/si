@@ -17,7 +17,6 @@ use pretty_assertions_sorted::assert_eq;
 use std::collections::HashMap;
 
 #[test]
-#[ignore]
 async fn get_edit_fields_for_component(ctx: &DalContext<'_, '_>) {
     let mut schema = create_schema(ctx, &SchemaKind::Concrete).await;
     let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
@@ -92,6 +91,12 @@ async fn get_edit_fields_for_component(ctx: &DalContext<'_, '_>) {
     let (component, _) = Component::new_for_schema_with_node(ctx, "radahn", schema.id())
         .await
         .expect("cannot create component");
+
+    let base_edit_fields = Component::get_edit_fields(ctx, component.id())
+        .await
+        .expect("could not get edit fields");
+    let edit_fields = recursive_edit_fields(base_edit_fields);
+    panic!();
 
     // Initialize values for the lineage from the integer array elements up.
     //
