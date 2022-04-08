@@ -50,8 +50,6 @@ pub async fn update_from_edit_field(
             .await?
         }
         EditFieldObjectKind::ComponentProp => {
-            // Eventually, this won't be infallible. -- Adam
-            #[allow(clippy::infallible_destructuring_match)]
             let baggage = request.baggage.ok_or(EditFieldError::MissingBaggage)?;
             let attribute_context = request
                 .attribute_context

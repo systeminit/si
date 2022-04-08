@@ -73,11 +73,12 @@ const attributeContext = computed((): AttributeContext | "" => {
     return "";
   }
   return {
-    propId: props.editField.baggage.prop_id,
-    schemaId: props.componentIdentification.schemaId,
-    schemaVariantId: props.componentIdentification.schemaVariantId,
-    componentId: props.componentIdentification.componentId,
-    systemId: -1,
+    attribute_context_prop_id: props.editField.baggage.prop_id,
+    attribute_context_schema_id: props.componentIdentification.schemaId,
+    attribute_context_schema_variant_id:
+      props.componentIdentification.schemaVariantId,
+    attribute_context_component_id: props.componentIdentification.componentId,
+    attribute_context_system_id: -1,
   };
 });
 
