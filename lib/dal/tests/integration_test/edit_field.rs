@@ -92,11 +92,12 @@ async fn get_edit_fields_for_component(ctx: &DalContext<'_, '_>) {
         .await
         .expect("cannot create component");
 
+    println!();
     let base_edit_fields = Component::get_edit_fields(ctx, component.id())
         .await
         .expect("could not get edit fields");
     let edit_fields = recursive_edit_fields(base_edit_fields);
-    panic!();
+    assert_eq!(edit_fields, vec![]);
 
     // Initialize values for the lineage from the integer array elements up.
     //
