@@ -29,6 +29,7 @@ import { system$ } from "@/observable/system";
 import { eventResourceSynced$ } from "@/observable/resource";
 import { SchematicService } from "@/service/schematic";
 import { SchematicKind } from "@/api/sdf/dal/schematic";
+import { GetSchematicArgs } from "@/service/schematic/get_schematic";
 
 const maximizedData = ref<PanelMaximized | null>(null);
 
@@ -105,13 +106,11 @@ const maximizePanelFull = (event: PanelMaximized) => {
 Rx.combineLatest([system$])
   .pipe(
     Rx.switchMap(([system]) => {
+      const request: GetSchematicArgs = {};
       if (system) {
-        return SchematicService.getSchematic({
-          systemId: system.id,
-        });
-      } else {
-        return Rx.from([null]);
+        request.systemId = system.id;
       }
+      return SchematicService.getSchematic(request);
     }),
   )
   .pipe(untilUnmounted)

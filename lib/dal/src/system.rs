@@ -1,4 +1,4 @@
-use crate::WriteTenancy;
+use crate::{LabelEntry, LabelList, WriteTenancy};
 use serde::{Deserialize, Serialize};
 use si_data::PgError;
 use telemetry::prelude::*;
@@ -27,6 +27,8 @@ pub enum SystemError {
     StandardModel(#[from] StandardModelError),
     #[error("read tenancy error: {0}")]
     ReadTenancy(#[from] ReadTenancyError),
+    #[error("workspace not found: {0}")]
+    WorkspaceNotFound(WorkspaceId),
 }
 
 pub type SystemResult<T> = Result<T, SystemError>;
@@ -34,8 +36,15 @@ pub type SystemResult<T> = Result<T, SystemError>;
 pk!(SystemPk);
 pk!(SystemId);
 
-pub const UNSET_ID_VALUE: i64 = -1;
-pub const UNSET_SYSTEM_ID: SystemId = SystemId(-1_i64);
+impl SystemId {
+    const NONE_VALUE: i64 = -1;
+
+    pub const NONE: Self = Self(Self::NONE_VALUE);
+
+    pub fn is_none(&self) -> bool {
+        self == &Self::NONE
+    }
+}
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct System {
@@ -121,6 +130,7 @@ impl System {
     pub async fn new_with_node(
         ctx: &DalContext<'_, '_>,
         name: impl AsRef<str>,
+        workspace_id: &WorkspaceId,
     ) -> SystemResult<(Self, Node)> {
         let name = name.as_ref();
 
@@ -136,6 +146,24 @@ impl System {
         let node = Node::new(ctx, &NodeKind::System).await?;
         node.set_system(ctx, system.id()).await?;
 
+        system.set_workspace(&ctx, workspace_id).await?;
+
         Ok((system, node))
+    }
+
+    #[instrument(skip_all)]
+    pub async fn list_for_workspace(
+        ctx: &DalContext<'_, '_>,
+        wid: &WorkspaceId,
+    ) -> SystemResult<LabelList<SystemId>> {
+        let system_labels: Vec<_> = Workspace::get_by_id(ctx, wid)
+            .await?
+            .ok_or(SystemError::WorkspaceNotFound(*wid))?
+            .systems(ctx)
+            .await?
+            .into_iter()
+            .map(|system| LabelEntry::new(system.name(), *system.id()))
+            .collect();
+        Ok(LabelList::new(system_labels))
     }
 }

@@ -1,8 +1,7 @@
 use super::SessionResult;
 use crate::server::extract::{AccessBuilder, Authorization, HandlerContext};
 use axum::Json;
-use dal::billing_account::BillingAccountDefaults;
-use dal::{BillingAccount, Organization, System, Workspace};
+use dal::{billing_account::BillingAccountDefaults, BillingAccount, Organization, Workspace};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -10,7 +9,6 @@ use serde::{Deserialize, Serialize};
 pub struct GetDefaultsResponse {
     pub workspace: Workspace,
     pub organization: Organization,
-    pub system: System,
 }
 
 impl From<BillingAccountDefaults> for GetDefaultsResponse {
@@ -18,7 +16,6 @@ impl From<BillingAccountDefaults> for GetDefaultsResponse {
         GetDefaultsResponse {
             workspace: defaults.workspace,
             organization: defaults.organization,
-            system: defaults.system,
         }
     }
 }

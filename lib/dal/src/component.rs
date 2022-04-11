@@ -42,7 +42,7 @@ use crate::{
     PropId, PropKind, QualificationPrototype, QualificationPrototypeError, QualificationResolver,
     QualificationResolverError, ReadTenancyError, Resource, ResourceError, ResourcePrototype,
     ResourcePrototypeError, ResourceResolver, ResourceResolverError, ResourceView, Schema,
-    SchemaError, SchemaId, Secret, StandardModel, StandardModelError, System, SystemId, Timestamp,
+    SchemaError, SchemaId, Secret, StandardModel, StandardModelError, SystemId, Timestamp,
     ValidationPrototype, ValidationPrototypeError, ValidationResolver, ValidationResolverError,
     Visibility, WorkspaceError, WriteTenancy,
 };
@@ -206,7 +206,6 @@ impl_standard_model! {
 }
 
 impl Component {
-    #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn new_for_schema_with_node(
         ctx: &DalContext<'_, '_>,
@@ -224,58 +223,11 @@ impl Component {
         Self::new_for_schema_variant_with_node(ctx, name, schema_variant_id).await
     }
 
-    #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn new_for_schema_variant_with_node(
         ctx: &DalContext<'_, '_>,
         name: impl AsRef<str>,
         schema_variant_id: &SchemaVariantId,
-    ) -> ComponentResult<(Self, Node)> {
-        // TODO: Eventually, we'll need the logic to be more complex than stuffing everything into the "production" system, but that's a problem for "a week or two from now" us.
-        let mut systems = System::find_by_attr(ctx, "name", &"production").await?;
-        let system = systems.pop().ok_or(ComponentError::SystemNotFound)?;
-        Self::new_for_schema_variant_with_node_in_system(ctx, name, schema_variant_id, system.id())
-            .await
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    #[instrument(skip_all)]
-    pub async fn new_for_schema_variant_with_node_in_deployment(
-        ctx: &DalContext<'_, '_>,
-        name: impl AsRef<str>,
-        schema_variant_id: &SchemaVariantId,
-        system_id: &SystemId,
-        parent_node_id: &NodeId,
-    ) -> ComponentResult<(Self, Node)> {
-        let (component, node) = Self::new_for_schema_variant_with_node_in_system(
-            ctx,
-            name,
-            schema_variant_id,
-            system_id,
-        )
-        .await?;
-        let schema = component
-            .schema(ctx)
-            .await?
-            .ok_or(ComponentError::SchemaNotFound)?;
-        let _edge = Edge::include_component_in_node(
-            ctx,
-            component.id(),
-            &schema.kind().into(),
-            parent_node_id,
-        )
-        .await?;
-
-        Ok((component, node))
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    #[instrument(skip_all)]
-    pub async fn new_for_schema_variant_with_node_in_system(
-        ctx: &DalContext<'_, '_>,
-        name: impl AsRef<str>,
-        schema_variant_id: &SchemaVariantId,
-        system_id: &SystemId,
     ) -> ComponentResult<(Self, Node)> {
         let schema_variant = SchemaVariant::get_by_id(ctx, schema_variant_id)
             .await?
@@ -309,20 +261,6 @@ impl Component {
         let node = Node::new(ctx, &(*schema.kind()).into()).await?;
         node.set_component(ctx, component.id()).await?;
 
-        if system_id != &SystemId::from(-1) {
-            let _edge = Edge::include_component_in_system(
-                ctx,
-                component.id(),
-                &schema.kind().into(),
-                system_id,
-            )
-            .await?;
-
-            // NOTE: We may want to be a bit smarter about when we create the Resource
-            //       at some point in the future, by only creating it if there is also
-            //       a ResourcePrototype for the Component's SchemaVariant.
-            let _resource = Resource::new(ctx, component.id(), system_id).await?;
-        }
         if let Some(root_node_id) = ctx.application_node_id() {
             let _edge = Edge::include_component_in_node(
                 ctx,
@@ -341,7 +279,30 @@ impl Component {
     }
 
     #[instrument(skip_all)]
-    #[allow(clippy::too_many_arguments)]
+    pub async fn new_for_schema_variant_with_node_in_deployment(
+        ctx: &DalContext<'_, '_>,
+        name: impl AsRef<str>,
+        schema_variant_id: &SchemaVariantId,
+        parent_node_id: &NodeId,
+    ) -> ComponentResult<(Self, Node)> {
+        let (component, node) =
+            Self::new_for_schema_variant_with_node(ctx, name, schema_variant_id).await?;
+        let schema = component
+            .schema(ctx)
+            .await?
+            .ok_or(ComponentError::SchemaNotFound)?;
+        let _edge = Edge::include_component_in_node(
+            ctx,
+            component.id(),
+            &schema.kind().into(),
+            parent_node_id,
+        )
+        .await?;
+
+        Ok((component, node))
+    }
+
+    #[instrument(skip_all)]
     pub async fn new_application_with_node(
         ctx: &DalContext<'_, '_>,
         name: impl AsRef<str>,
@@ -350,13 +311,29 @@ impl Component {
 
         let schema_variant_id =
             Schema::default_schema_variant_id_for_name(&ctx, "application").await?;
-        Self::new_for_schema_variant_with_node_in_system(
-            &ctx,
-            name,
-            &schema_variant_id,
-            &SystemId::from(-1),
-        )
-        .await
+        Self::new_for_schema_variant_with_node(&ctx, name, &schema_variant_id).await
+    }
+
+    #[instrument(skip_all)]
+    pub async fn add_to_system(
+        &self,
+        ctx: &DalContext<'_, '_>,
+        system_id: &SystemId,
+    ) -> ComponentResult<()> {
+        let schema = self
+            .schema(ctx)
+            .await?
+            .ok_or(ComponentError::SchemaNotFound)?;
+        let _edge =
+            Edge::include_component_in_system(ctx, &self.id, &schema.kind().into(), system_id)
+                .await;
+
+        // NOTE: We may want to be a bit smarter about when we create the Resource
+        //       at some point in the future, by only creating it if there is also
+        //       a ResourcePrototype for the Component's SchemaVariant.
+        let _resource = Resource::new(ctx, &self.id, system_id).await?;
+
+        Ok(())
     }
 
     standard_model_accessor!(kind, Enum(ComponentKind), ComponentResult);
@@ -437,7 +414,6 @@ impl Component {
         Ok(())
     }
 
-    #[allow(clippy::too_many_arguments)]
     pub async fn check_validations(
         &self,
         ctx: &DalContext<'_, '_>,
@@ -517,7 +493,6 @@ impl Component {
         Ok(())
     }
 
-    #[allow(clippy::too_many_arguments)]
     pub async fn check_qualifications(
         &self,
         ctx: &DalContext<'_, '_>,
@@ -599,7 +574,6 @@ impl Component {
         Ok(())
     }
 
-    #[allow(clippy::too_many_arguments)]
     pub async fn generate_code(
         &self,
         ctx: &DalContext<'_, '_>,
@@ -1014,10 +988,20 @@ impl Component {
     }
 
     #[instrument(skip_all)]
-    pub async fn list_for_resource_sync(txn: &PgTxn<'_>) -> ComponentResult<Vec<Component>> {
+    pub async fn list_for_resource_sync(
+        txn: &PgTxn<'_>,
+    ) -> ComponentResult<Vec<(Component, SystemId)>> {
         let visibility = Visibility::new_head(false);
         let rows = txn.query(LIST_FOR_RESOURCE_SYNC, &[&visibility]).await?;
-        let results = standard_model::objects_from_rows(rows)?;
+
+        let mut results = Vec::new();
+        for row in rows.into_iter() {
+            let json: serde_json::Value = row.try_get("object")?;
+            let object: Self = serde_json::from_value(json)?;
+            let system_id: SystemId = row.try_get("system_id")?;
+            results.push((object, system_id));
+        }
+
         Ok(results)
     }
 
@@ -1111,7 +1095,6 @@ impl Component {
 
     // Note: Won't work for arrays and maps
     #[instrument(skip_all)]
-    #[allow(clippy::too_many_arguments)]
     pub async fn set_value_by_json_pointer<T: Serialize + std::fmt::Debug + std::clone::Clone>(
         &self,
         ctx: &DalContext<'_, '_>,

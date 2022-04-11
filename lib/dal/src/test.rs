@@ -11,9 +11,7 @@ use tokio::sync::Mutex;
 use uuid::Uuid;
 use veritech::{EncryptionKey, Instance, StandardConfig};
 
-use crate::{DalContext, HistoryActor, JwtSecretKey, RequestContext, ServicesContext};
-
-use self::helpers::find_or_create_production_system;
+use crate::{DalContext, JwtSecretKey, ServicesContext};
 
 pub mod helpers;
 
@@ -384,32 +382,9 @@ async fn global_setup(test_context_builer: TestContextBuilder) {
     .await
     .expect("failed to run builtin schema migrations");
 
-    // TODO(fnichol): delete call when code that relies on a "universal system" is fixed (see
-    // function docs for more details)
-    hack_to_create_universal_production_system(&services_ctx).await;
-
     // Shutdown the Veritech server (each test gets their own server instance with an exclusively
     // unique subject prefix)
     veritech_server_handle.shutdown().await;
 
     info!("global test setup complete");
-}
-
-/// A temporary function to create a [`System`] called "production" that is in the **universal**
-/// tenancy. Obviously this is nonesense and needs to be removed, but some code depends on such a
-/// "universal system" and so this is why we are creating one. This code should be removed once
-/// we've fixed the rest of the codebase.
-async fn hack_to_create_universal_production_system(services_ctx: &ServicesContext) {
-    let mut txns = services_ctx
-        .transactions_starter()
-        .await
-        .expect("failed to get txns starter");
-    let txns = txns.start().await.expect("failed to start txns");
-    let request_context = RequestContext::new_universal_head(HistoryActor::SystemInit);
-    let builder = services_ctx.clone().into_builder();
-    let ctx = builder.build(request_context, &txns);
-
-    let _ = find_or_create_production_system(&ctx).await;
-
-    txns.commit().await.expect("failed to commit txns");
 }

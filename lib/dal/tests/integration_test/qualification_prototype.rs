@@ -3,7 +3,6 @@ use dal::DalContext;
 use crate::dal::test;
 use dal::func::backend::js_qualification::FuncBackendJsQualificationArgs;
 use dal::qualification_prototype::QualificationPrototypeContext;
-use dal::test_harness::find_or_create_production_system;
 use dal::{
     qualification_prototype::UNSET_ID_VALUE, Component, Func, QualificationPrototype, Schema,
     StandardModel,
@@ -11,8 +10,6 @@ use dal::{
 
 #[test]
 async fn new(ctx: &DalContext<'_, '_>) {
-    let _ = find_or_create_production_system(ctx).await;
-
     let name = "docker_image".to_string();
     let schema = Schema::find_by_attr(ctx, "name", &name)
         .await

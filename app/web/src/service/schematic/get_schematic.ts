@@ -10,7 +10,7 @@ import _ from "lodash";
 import { Visibility } from "@/api/sdf/dal/visibility";
 
 export interface GetSchematicArgs {
-  systemId: number;
+  systemId?: number;
 }
 
 export interface GetSchematicRequest extends GetSchematicArgs, Visibility {
@@ -56,7 +56,6 @@ export function getSchematic(
         {
           ...args,
           ...visibility,
-          systemId: args.systemId,
           workspaceId: workspace.id,
         },
       );

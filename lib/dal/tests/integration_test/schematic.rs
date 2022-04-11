@@ -2,14 +2,12 @@ use crate::dal::test;
 use dal::DalContext;
 
 use dal::{
-    node::ApplicationId, test_harness::find_or_create_production_system, Component, Connection,
-    NodePosition, Schema, Schematic, StandardModel, SystemId,
+    node::ApplicationId, test::helpers::create_system, Component, Connection, NodePosition, Schema,
+    Schematic, StandardModel,
 };
 
 #[test]
 async fn get_schematic(ctx: &DalContext<'_, '_>, application_id: ApplicationId) {
-    let _ = find_or_create_production_system(ctx).await;
-
     let service_schema = Schema::find_by_attr(ctx, "name", &"service".to_string())
         .await
         .expect("cannot find service schema")
@@ -41,10 +39,12 @@ async fn get_schematic(ctx: &DalContext<'_, '_>, application_id: ApplicationId) 
             .await
             .expect("unable to create component for schema");
 
+    let system = create_system(ctx).await;
+
     let node_position = NodePosition::upsert_by_node_id(
         ctx,
         (*service_schema.kind()).into(),
-        Some(SystemId::from(1)),
+        Some(*system.id()),
         None,
         *node.id(),
         "123",
@@ -75,7 +75,7 @@ async fn get_schematic(ctx: &DalContext<'_, '_>, application_id: ApplicationId) 
     let node_position2 = NodePosition::upsert_by_node_id(
         ctx,
         (*service_schema.kind()).into(),
-        Some(SystemId::from(1)),
+        Some(*system.id()),
         None,
         *node2.id(),
         "124",
@@ -94,7 +94,7 @@ async fn get_schematic(ctx: &DalContext<'_, '_>, application_id: ApplicationId) 
     .await
     .expect("could not create connection");
 
-    let schematic = Schematic::find(&ctx, Some(SystemId::from(1)))
+    let schematic = Schematic::find(&ctx, Some(*system.id()))
         .await
         .expect("cannot find schematic");
 
@@ -110,7 +110,7 @@ async fn get_schematic(ctx: &DalContext<'_, '_>, application_id: ApplicationId) 
     // Restores original context so we can properly check if data is properly hidden
     let ctx = ctx.clone_with_new_application_node_id(Some(application_id));
     let ctx = &ctx;
-    let schematic = Schematic::find(ctx, Some(SystemId::from(1)))
+    let schematic = Schematic::find(ctx, Some(*system.id()))
         .await
         .expect("cannot find schematic");
     assert_eq!(schematic.nodes().len(), 2);
@@ -124,8 +124,6 @@ async fn get_schematic(ctx: &DalContext<'_, '_>, application_id: ApplicationId) 
 
 #[test]
 async fn create_connection(ctx: &DalContext<'_, '_>) {
-    let _ = find_or_create_production_system(ctx).await;
-
     let service_schema = Schema::find_by_attr(ctx, "name", &"service".to_string())
         .await
         .expect("cannot find service schema")

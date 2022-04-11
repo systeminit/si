@@ -86,6 +86,10 @@ pub fn routes(
             crate::server::service::schematic::routes(),
         )
         .nest(
+            "/api/system",
+            crate::server::service::system::routes(),
+        )
+        .nest(
             "/api/edit_field",
             crate::server::service::edit_field::routes(),
         )

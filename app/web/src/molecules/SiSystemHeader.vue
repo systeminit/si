@@ -4,13 +4,13 @@
       <slot name="title"></slot>
     </div>
     <div class="mt-1 mr-4 align-middle">
-      <ChangeSetWidget />
+      <SystemWidget />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import ChangeSetWidget from "@/organisims/ChangeSetWidget.vue";
+import SystemWidget from "@/organisims/SystemWidget.vue";
 </script>
 
 <style scoped>

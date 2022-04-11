@@ -3,15 +3,12 @@ use dal::DalContext;
 use crate::dal::test;
 use dal::func::backend::js_resource::FuncBackendJsResourceSyncArgs;
 use dal::resource_prototype::ResourcePrototypeContext;
-use dal::test_harness::find_or_create_production_system;
 use dal::{
     resource_prototype::UNSET_ID_VALUE, Component, Func, ResourcePrototype, Schema, StandardModel,
 };
 
 #[test]
 async fn new(ctx: &DalContext<'_, '_>) {
-    let _ = find_or_create_production_system(ctx).await;
-
     let name = "docker_image".to_string();
     let schema = Schema::find_by_attr(ctx, "name", &name)
         .await

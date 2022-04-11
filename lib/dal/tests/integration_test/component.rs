@@ -1,14 +1,17 @@
-use dal::{AttributeReadContext, DalContext};
-
-use crate::dal::test;
-use dal::qualification_resolver::UNSET_ID_VALUE;
-use dal::test_harness::{
-    create_component_and_schema, create_component_for_schema_variant, create_schema,
-    create_schema_variant, create_schema_variant_with_root, find_or_create_production_system,
+use dal::{
+    qualification_resolver::UNSET_ID_VALUE,
+    test::helpers::create_system_with_node,
+    test_harness::{
+        create_component_and_schema, create_component_for_schema_variant, create_schema,
+        create_schema_variant, create_schema_variant_with_root,
+    },
+    AttributeReadContext, Component, DalContext, Prop, PropKind, Resource, Schema, SchemaKind,
+    StandardModel, WorkspaceId,
 };
-use dal::{Component, Prop, PropKind, Resource, Schema, SchemaKind, StandardModel};
 use pretty_assertions_sorted::{assert_eq, assert_eq_sorted};
 use serde_json::json;
+
+use crate::dal::test;
 
 mod view;
 
@@ -18,8 +21,8 @@ async fn new(ctx: &DalContext<'_, '_>) {
 }
 
 #[test]
-async fn new_for_schema_variant_with_node(ctx: &DalContext<'_, '_>) {
-    let system = find_or_create_production_system(ctx).await;
+async fn new_for_schema_variant_with_node(ctx: &DalContext<'_, '_>, wid: WorkspaceId) {
+    let (system, _system_node) = create_system_with_node(ctx, &wid).await;
 
     let schema = create_schema(ctx, &SchemaKind::Concept).await;
     let schema_variant = create_schema_variant(ctx, *schema.id()).await;
@@ -33,11 +36,23 @@ async fn new_for_schema_variant_with_node(ctx: &DalContext<'_, '_>) {
             .await
             .expect("cannot create component");
 
-    // All components get a Resource record when created.
+    // A components does not get a Resource record when created.
+    let resource = Resource::get_by_component_id_and_system_id(ctx, component.id(), system.id())
+        .await
+        .expect("cannot retrieve resource for Component & System");
+    assert!(resource.is_none());
+
+    component
+        .add_to_system(ctx, system.id())
+        .await
+        .expect("failed to add node to system");
+
+    // A components gets a Resource record when added to a system.
     let resource = Resource::get_by_component_id_and_system_id(ctx, component.id(), system.id())
         .await
         .expect("cannot retrieve resource for Component & System");
     assert!(resource.is_some());
+
     let resource = resource.unwrap();
     assert_eq!(
         resource
@@ -72,7 +87,6 @@ async fn schema_relationships(ctx: &DalContext<'_, '_>) {
 
 #[test]
 async fn qualification_view(ctx: &DalContext<'_, '_>) {
-    let _ = find_or_create_production_system(ctx).await;
     let schema = create_schema(ctx, &SchemaKind::Implementation).await;
     let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema_variant
@@ -125,8 +139,6 @@ async fn qualification_view(ctx: &DalContext<'_, '_>) {
 // expediency.
 #[test]
 async fn list_qualifications(ctx: &DalContext<'_, '_>) {
-    let _ = find_or_create_production_system(ctx).await;
-
     let schema = Schema::find_by_attr(ctx, "name", &"docker_image".to_string())
         .await
         .expect("cannot find docker image schema")
@@ -150,8 +162,6 @@ async fn list_qualifications(ctx: &DalContext<'_, '_>) {
 // Also brittle, same reason
 #[test]
 async fn list_qualifications_by_component_id(ctx: &DalContext<'_, '_>) {
-    let _ = find_or_create_production_system(ctx).await;
-
     let schema = Schema::find_by_attr(ctx, "name", &"docker_image".to_string())
         .await
         .expect("cannot find docker image schema")
@@ -174,18 +184,23 @@ async fn list_qualifications_by_component_id(ctx: &DalContext<'_, '_>) {
 
 // Also brittle, same reason
 #[test]
-async fn get_resource_by_component_id(ctx: &DalContext<'_, '_>) {
+async fn get_resource_by_component_id(ctx: &DalContext<'_, '_>, wid: WorkspaceId) {
     let schema = Schema::find_by_attr(ctx, "name", &"docker_image".to_string())
         .await
         .expect("cannot find docker image schema")
         .pop()
         .expect("no docker image schema found");
 
-    let system = find_or_create_production_system(ctx).await;
+    let (system, _system_node) = create_system_with_node(ctx, &wid).await;
 
     let (component, _node) = Component::new_for_schema_with_node(ctx, "chvrches", schema.id())
         .await
         .expect("cannot create ash component");
+
+    component
+        .add_to_system(ctx, system.id())
+        .await
+        .expect("failed to add component to system");
 
     component
         .sync_resource(ctx, *system.id())

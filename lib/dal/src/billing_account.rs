@@ -10,19 +10,16 @@ use crate::{
     standard_model_accessor, standard_model_has_many, Capability, CapabilityError, DalContext,
     Group, GroupError, HistoryActor, HistoryEventError, KeyPair, KeyPairError, NodeError,
     Organization, OrganizationError, ReadTenancy, ReadTenancyError, SchemaError, StandardModel,
-    StandardModelError, System, SystemError, Timestamp, User, UserError, Visibility, Workspace,
+    StandardModelError, SystemError, Timestamp, User, UserError, Visibility, Workspace,
     WorkspaceError, WriteTenancy,
 };
 
-const INITIAL_SYSTEM_NAME: &str = "production";
 const BILLING_ACCOUNT_GET_BY_NAME: &str = include_str!("./queries/billing_account_get_by_name.sql");
 const BILLING_ACCOUNT_GET_DEFAULTS: &str =
     include_str!("./queries/billing_account_get_defaults.sql");
 
 #[derive(Error, Debug)]
 pub enum BillingAccountError {
-    #[error("initial system missing for get_defaults")]
-    InitialSystemMissing,
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("pg error: {0}")]
@@ -206,9 +203,6 @@ impl BillingAccount {
         ctx.update_read_tenancy(workspace_read_tenancy);
         ctx.update_write_tenancy(workspace_write_tenancy);
 
-        let (system, _system_node) = System::new_with_node(&ctx, INITIAL_SYSTEM_NAME).await?;
-        system.set_workspace(&ctx, workspace.id()).await?;
-
         Ok(BillingAccountSignup {
             billing_account,
             key_pair,
@@ -216,7 +210,6 @@ impl BillingAccount {
             admin_group,
             organization,
             workspace,
-            system,
         })
     }
 
@@ -260,18 +253,9 @@ impl BillingAccount {
                 .await?;
         workspace_ctx.update_read_tenancy(read_tenancy);
 
-        // TODO(fnichol): this query should get rolled up into the above query...
-        let system = workspace
-            .systems(&workspace_ctx)
-            .await?
-            .into_iter()
-            .find(|system| system.name() == INITIAL_SYSTEM_NAME)
-            .ok_or(BillingAccountError::InitialSystemMissing)?;
-
         let result = BillingAccountDefaults {
             organization,
             workspace,
-            system,
         };
         Ok(result)
     }
@@ -285,12 +269,10 @@ pub struct BillingAccountSignup {
     pub admin_group: Group,
     pub organization: Organization,
     pub workspace: Workspace,
-    pub system: System,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct BillingAccountDefaults {
     pub organization: Organization,
     pub workspace: Workspace,
-    pub system: System,
 }
