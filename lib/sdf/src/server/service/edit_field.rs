@@ -13,6 +13,7 @@ use std::convert::Infallible;
 use thiserror::Error;
 
 pub mod get_edit_fields;
+pub mod remove_from_edit_field;
 pub mod update_from_edit_field;
 
 #[derive(Debug, Error)]
@@ -69,6 +70,10 @@ impl IntoResponse for EditFieldError {
 pub fn routes() -> Router {
     Router::new()
         .route("/get_edit_fields", get(get_edit_fields::get_edit_fields))
+        .route(
+            "/remove_from_edit_field",
+            post(remove_from_edit_field::remove_from_edit_field),
+        )
         .route(
             "/update_from_edit_field",
             post(update_from_edit_field::update_from_edit_field),
