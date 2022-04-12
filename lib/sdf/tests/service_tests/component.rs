@@ -110,7 +110,7 @@ async fn get_components_metadata() {
         .await
         .expect("cannot set schema variant");
 
-    let component = create_component_for_schema_variant(&dal_ctx, schema_variant.id()).await;
+    let _component = create_component_for_schema_variant(&dal_ctx, schema_variant.id()).await;
     dal_txns.commit().await.expect("cannot commit transaction");
 
     let request = GetComponentsMetadataRequest {

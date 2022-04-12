@@ -12,8 +12,7 @@ use crate::{
     component::ComponentKind, edit_field::widget::*, func::binding::FuncBinding,
     validation_prototype::ValidationPrototypeContext, Func, FuncBackendKind,
     FuncBackendResponseType, Prop, PropId, PropKind, QualificationPrototype, ResourcePrototype,
-    Schema, SchemaError, SchemaKind, SchemaVariantId, SchematicKind, StandardModel,
-    ValidationPrototype,
+    Schema, SchemaError, SchemaKind, SchemaVariantId, StandardModel, ValidationPrototype,
 };
 use crate::{
     AttributeContext, AttributePrototype, AttributePrototypeError, AttributeReadContext,
@@ -122,9 +121,6 @@ async fn service(ctx: &DalContext<'_, '_>) -> SchemaResult<()> {
     let application_name = "application".to_string();
     ui_menu
         .set_category(ctx, Some(application_name.clone()))
-        .await?;
-    ui_menu
-        .set_schematic_kind(ctx, SchematicKind::from(*schema.kind()))
         .await?;
     ui_menu.set_schema(ctx, schema.id()).await?;
 
