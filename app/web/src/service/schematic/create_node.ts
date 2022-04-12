@@ -12,7 +12,6 @@ import _ from "lodash";
 // Note: eventually, this needs to include the name and the position. For now, just the ID is good enough.
 export interface CreateNodeArgs {
   schemaId: number;
-  rootNodeId: number;
   x: string;
   y: string;
   systemId?: number;

@@ -1,6 +1,7 @@
 import { ApiResponse, SDF } from "@/api/sdf";
 import { Schematic } from "@/organisims/SchematicViewer/model/schematic";
 import { combineLatest, from, Observable, shareReplay } from "rxjs";
+import { applicationNodeId$ } from "@/observable/application";
 import { standardVisibilityTriggers$ } from "@/observable/visibility";
 import Bottle from "bottlejs";
 import { switchMap } from "rxjs/operators";
@@ -10,7 +11,6 @@ import { Visibility } from "@/api/sdf/dal/visibility";
 
 export interface GetSchematicArgs {
   systemId: number;
-  rootNodeId: number;
 }
 
 export interface GetSchematicRequest extends GetSchematicArgs, Visibility {
@@ -26,13 +26,14 @@ const getSchematicCollection: {
 export function getSchematic(
   args: GetSchematicArgs,
 ): Observable<ApiResponse<GetSchematicResponse>> {
-  const context = `${args.rootNodeId}-${args.systemId}`;
+  const context = `${args.systemId}`;
   if (getSchematicCollection[context]) {
     return getSchematicCollection[context];
   }
   getSchematicCollection[context] = combineLatest([
     standardVisibilityTriggers$,
     workspace$,
+    applicationNodeId$, // Application id is passed implicitly but we need the reactivity
   ]).pipe(
     switchMap(([[visibility], workspace]) => {
       if (_.isNull(workspace)) {
@@ -56,7 +57,6 @@ export function getSchematic(
           ...args,
           ...visibility,
           systemId: args.systemId,
-          rootNodeId: args.rootNodeId,
           workspaceId: workspace.id,
         },
       );

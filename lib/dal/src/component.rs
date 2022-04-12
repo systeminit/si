@@ -135,8 +135,6 @@ pub enum ComponentError {
     WorkspaceNotFound,
     #[error("organization not found")]
     OrganizationNotFound,
-    #[error("billing account not found")]
-    BillingAccountNotFound,
     #[error("ws event error: {0}")]
     WsEvent(#[from] WsEventError),
     #[error("workspace error: {0}")]
@@ -311,22 +309,33 @@ impl Component {
         let node = Node::new(ctx, &(*schema.kind()).into()).await?;
         node.set_component(ctx, component.id()).await?;
 
-        // NOTE: We may want to be a bit smarter about when we create the Resource
-        //       at some point in the future, by only creating it if there is also
-        //       a ResourcePrototype for the Component's SchemaVariant.
-        let _resource = Resource::new(ctx, component.id(), system_id).await?;
-
-        let name: &str = name.as_ref();
-        component
-            .set_value_by_json_pointer(ctx, "/root/si/name", Some(name))
+        if system_id != &SystemId::from(-1) {
+            let _edge = Edge::include_component_in_system(
+                ctx,
+                component.id(),
+                &schema.kind().into(),
+                system_id,
+            )
             .await?;
-        let _edge = Edge::include_component_in_system(
-            ctx,
-            component.id(),
-            &schema.kind().into(),
-            system_id,
-        )
-        .await?;
+
+            // NOTE: We may want to be a bit smarter about when we create the Resource
+            //       at some point in the future, by only creating it if there is also
+            //       a ResourcePrototype for the Component's SchemaVariant.
+            let _resource = Resource::new(ctx, component.id(), system_id).await?;
+        }
+        if let Some(root_node_id) = ctx.application_node_id() {
+            let _edge = Edge::include_component_in_node(
+                ctx,
+                component.id(),
+                &schema.kind().into(),
+                &root_node_id,
+            )
+            .await?;
+        }
+
+        component
+            .set_value_by_json_pointer(ctx, "/root/si/name", Some(name.as_ref()))
+            .await?;
 
         Ok((component, node))
     }
@@ -337,12 +346,17 @@ impl Component {
         ctx: &DalContext<'_, '_>,
         name: impl AsRef<str>,
     ) -> ComponentResult<(Self, Node)> {
-        let schema_variant_id =
-            Schema::default_schema_variant_id_for_name(ctx, "application").await?;
+        let ctx = ctx.clone_with_new_application_node_id(None);
 
-        let (component, node) =
-            Self::new_for_schema_variant_with_node(ctx, name, &schema_variant_id).await?;
-        Ok((component, node))
+        let schema_variant_id =
+            Schema::default_schema_variant_id_for_name(&ctx, "application").await?;
+        Self::new_for_schema_variant_with_node_in_system(
+            &ctx,
+            name,
+            &schema_variant_id,
+            &SystemId::from(-1),
+        )
+        .await
     }
 
     standard_model_accessor!(kind, Enum(ComponentKind), ComponentResult);

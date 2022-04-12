@@ -1,5 +1,5 @@
 use axum::{extract::Query, Json};
-use dal::{node::NodeId, schematic::Schematic, system::SystemId, Visibility, WorkspaceId};
+use dal::{schematic::Schematic, system::SystemId, Visibility};
 use serde::{Deserialize, Serialize};
 
 use super::SchematicResult;
@@ -8,9 +8,7 @@ use crate::server::extract::{AccessBuilder, HandlerContext};
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct GetSchematicRequest {
-    pub root_node_id: NodeId,
     pub system_id: Option<SystemId>,
-    pub workspace_id: WorkspaceId,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -25,7 +23,7 @@ pub async fn get_schematic(
     let txns = txns.start().await?;
     let ctx = builder.build(request_ctx.build(request.visibility), &txns);
 
-    let response = Schematic::find(&ctx, request.system_id, request.root_node_id).await?;
+    let response = Schematic::find(&ctx, request.system_id).await?;
 
     txns.commit().await?;
     Ok(Json(response))

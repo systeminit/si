@@ -8,8 +8,8 @@ use axum::{
     Json, Router,
 };
 use dal::{
-    ComponentError as DalComponentError, ComponentId, ReadTenancyError, SchemaError,
-    StandardModelError, SystemId, TransactionsError, WsEventError,
+    node::NodeError, ComponentError as DalComponentError, ComponentId, ReadTenancyError,
+    SchemaError, SchematicError, StandardModelError, SystemId, TransactionsError, WsEventError,
 };
 
 use thiserror::Error;
@@ -41,8 +41,12 @@ pub enum ComponentError {
     ReadTenancy(#[from] ReadTenancyError),
     #[error("resource not found")]
     ResourceNotFound(ComponentId, SystemId),
+    #[error("node error: {0}")]
+    Node(#[from] NodeError),
+    #[error("schematic error: {0}")]
+    Schematic(#[from] SchematicError),
     #[error("schema error: {0}")]
-    SchemaError(#[from] SchemaError),
+    Schema(#[from] SchemaError),
     #[error("schema not found")]
     SchemaNotFound,
     #[error("schema variant not found")]

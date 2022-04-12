@@ -3,12 +3,6 @@ use crate::{
 };
 
 pub async fn migrate(ctx: &DalContext<'_, '_>) -> FuncResult<()> {
-    //let (tenancy, visibility, history_actor) = (
-    //    WriteTenancy::new_universal(),
-    //    Visibility::new_head(false),
-    //    HistoryActor::SystemInit,
-    //);
-
     si_set_array(ctx).await?;
     si_set_boolean(ctx).await?;
     si_set_integer(ctx).await?;

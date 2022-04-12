@@ -14,6 +14,8 @@ use crate::{
     StandardModelError, System, SystemId, Timestamp, Visibility, WriteTenancy,
 };
 
+pub type ApplicationId = NodeId;
+
 #[derive(Error, Debug)]
 pub enum NodeError {
     #[error("error serializing/deserializing json: {0}")]
@@ -254,7 +256,7 @@ pub struct NodeView {
 impl NodeView {
     pub fn new(
         name: impl Into<String>,
-        node: Node,
+        node: &Node,
         kind: NodeKindWithBaggage,
         position: Vec<NodePosition>,
         node_template: NodeTemplate,

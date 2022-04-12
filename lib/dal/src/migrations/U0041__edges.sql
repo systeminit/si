@@ -453,7 +453,7 @@ BEGIN
                             AND
                         sockets.tenancy_organization_ids = socket_many_to_many_schema_variants.tenancy_organization_ids
                             AND sockets.tenancy_workspace_ids = socket_many_to_many_schema_variants.tenancy_workspace_ids
-                            AND sockets.edge_kind = 'includes'
+                            AND sockets.edge_kind = 'output'
                             AND sockets.schematic_kind = this_schematic_kind
     WHERE in_tenancy_v1(this_tenancy, components.tenancy_universal, components.tenancy_billing_account_ids, components.tenancy_organization_ids,
                         components.tenancy_workspace_ids)

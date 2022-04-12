@@ -32,6 +32,7 @@ pub async fn create_schema(
             read_tenancy,
             WriteTenancy::new_billing_account(claim.billing_account_id),
             history_actor,
+            None,
         )
         .build(request.visibility),
         &txns,

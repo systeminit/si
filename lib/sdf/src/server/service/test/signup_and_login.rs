@@ -25,6 +25,7 @@ pub async fn signup_and_login(
             ReadTenancy::new_universal(),
             WriteTenancy::new_universal(),
             HistoryActor::SystemInit,
+            None,
         )
         .build_head(),
         &txns,

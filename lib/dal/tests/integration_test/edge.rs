@@ -1,5 +1,6 @@
 use dal::{
     edge::{EdgeKind, VertexObjectKind},
+    node::ApplicationId,
     test::{
         helpers::{
             find_or_create_production_system, find_schema_and_default_variant_by_name,
@@ -67,7 +68,10 @@ async fn new(ctx: &DalContext<'_, '_>) {
 }
 
 #[test]
-async fn include_component_in_system(DalContextHeadRef(ctx): DalContextHeadRef<'_, '_, '_>) {
+async fn include_component_in_system(
+    DalContextHeadRef(ctx): DalContextHeadRef<'_, '_, '_>,
+    application_node_id: ApplicationId,
+) {
     let (_system, system_node) = System::new_with_node(ctx, "production")
         .await
         .expect("cannot create production system");
@@ -88,21 +92,34 @@ async fn include_component_in_system(DalContextHeadRef(ctx): DalContextHeadRef<'
         .await
         .expect("cannot retrieve edges from edit session");
 
-    assert_eq!(edges.len(), 2);
+    assert_eq!(edges.len(), 4);
 
     assert_eq!(edges[0].head_node_id(), *first_component_node.id());
     assert_eq!(edges[0].head_object_kind(), &VertexObjectKind::Component);
     assert_eq!(edges[0].tail_node_id(), *system_node.id());
     assert_eq!(edges[0].tail_object_kind(), &VertexObjectKind::System);
 
-    assert_eq!(edges[1].head_node_id(), *second_component_node.id());
+    assert_eq!(edges[1].head_node_id(), *first_component_node.id());
     assert_eq!(edges[1].head_object_kind(), &VertexObjectKind::Component);
-    assert_eq!(edges[1].tail_node_id(), *system_node.id());
-    assert_eq!(edges[1].tail_object_kind(), &VertexObjectKind::System);
+    assert_eq!(edges[1].tail_node_id(), application_node_id);
+    assert_eq!(edges[1].tail_object_kind(), &VertexObjectKind::Component);
+
+    assert_eq!(edges[2].head_node_id(), *second_component_node.id());
+    assert_eq!(edges[2].head_object_kind(), &VertexObjectKind::Component);
+    assert_eq!(edges[2].tail_node_id(), *system_node.id());
+    assert_eq!(edges[2].tail_object_kind(), &VertexObjectKind::System);
+
+    assert_eq!(edges[3].head_node_id(), *second_component_node.id());
+    assert_eq!(edges[3].head_object_kind(), &VertexObjectKind::Component);
+    assert_eq!(edges[3].tail_node_id(), application_node_id);
+    assert_eq!(edges[3].tail_object_kind(), &VertexObjectKind::Component);
 }
 
 #[test]
-async fn include_component_in_system_with_edit_sessions(ctx: &DalContext<'_, '_>) {
+async fn include_component_in_system_with_edit_sessions(
+    ctx: &DalContext<'_, '_>,
+    application_node_id: ApplicationId,
+) {
     let (_system, system_node) = System::new_with_node(ctx, "production")
         .await
         .expect("cannot create production system");
@@ -128,15 +145,25 @@ async fn include_component_in_system_with_edit_sessions(ctx: &DalContext<'_, '_>
     let edges = Edge::find_by_attr(ctx, "kind", &"includes".to_string())
         .await
         .expect("cannot retrieve edges from edit session");
-    assert_eq!(edges.len(), 2);
+    assert_eq!(edges.len(), 4);
 
     assert_eq!(edges[0].head_node_id(), *first_component_node.id());
     assert_eq!(edges[0].head_object_kind(), &VertexObjectKind::Component);
     assert_eq!(edges[0].tail_node_id(), *system_node.id());
     assert_eq!(edges[0].tail_object_kind(), &VertexObjectKind::System);
 
-    assert_eq!(edges[1].head_node_id(), *second_component_node.id());
+    assert_eq!(edges[1].head_node_id(), *first_component_node.id());
     assert_eq!(edges[1].head_object_kind(), &VertexObjectKind::Component);
-    assert_eq!(edges[1].tail_node_id(), *system_node.id());
-    assert_eq!(edges[1].tail_object_kind(), &VertexObjectKind::System);
+    assert_eq!(edges[1].tail_node_id(), application_node_id);
+    assert_eq!(edges[1].tail_object_kind(), &VertexObjectKind::Component);
+
+    assert_eq!(edges[2].head_node_id(), *second_component_node.id());
+    assert_eq!(edges[2].head_object_kind(), &VertexObjectKind::Component);
+    assert_eq!(edges[2].tail_node_id(), *system_node.id());
+    assert_eq!(edges[2].tail_object_kind(), &VertexObjectKind::System);
+
+    assert_eq!(edges[3].head_node_id(), *second_component_node.id());
+    assert_eq!(edges[3].head_object_kind(), &VertexObjectKind::Component);
+    assert_eq!(edges[3].tail_node_id(), application_node_id);
+    assert_eq!(edges[3].tail_object_kind(), &VertexObjectKind::Component);
 }
