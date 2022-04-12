@@ -89,8 +89,8 @@ pub enum VisibilityDiff {
 pub struct EditFieldBaggage {
     pub attribute_value_id: AttributeValueId,
     pub parent_attribute_value_id: Option<AttributeValueId>,
-    /// Optional key used to indicate which value to use for [`EditFieldObjectKind::Array`] and
-    /// [`EditFieldObjectKind::Map`].
+    /// Optional key used to indicate which value to use for [`EditFieldDataType::Array`] and
+    /// [`EditFieldDataType::Map`].
     pub key: Option<String>,
     pub prop_id: PropId,
 }

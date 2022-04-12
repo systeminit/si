@@ -28,7 +28,10 @@
         v-if="!coreEditField"
         class="flex flex-row items-center w-10 ml-1 bg-red"
       >
-        <Unset :edit-value="props.editField.value" :unset="unset" />
+        <Unset
+          :edit-field="props.editField"
+          :attribute-context="props.attributeContext"
+        />
       </div>
     </template>
     <template #show>
@@ -85,21 +88,6 @@ const onBlur = () => {
     });
   }
   updating.value = false;
-};
-
-const unset = () => {
-  EditFieldService.updateFromEditField({
-    objectKind: props.editField.object_kind,
-    objectId: props.editField.object_id,
-    editFieldId: props.editField.id,
-    value: null,
-    baggage: props.editField.baggage,
-    attributeContext: props.attributeContext,
-  }).subscribe((response: ApiResponse<UpdateFromEditFieldResponse>) => {
-    if (response.error) {
-      GlobalErrorService.set(response);
-    }
-  });
 };
 
 watch(
