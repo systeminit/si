@@ -73,9 +73,7 @@ export class ChangedEditFieldCounterVisitor implements EditFieldVisitor {
 
     if (field.widget.kind == "Array") {
       for (const entry of field.widget.options.entries) {
-        for (const editField of entry) {
-          visitEditField(this, editField);
-        }
+        visitEditField(this, entry);
       }
     } else {
       throw new Error(
@@ -95,9 +93,15 @@ export class ChangedEditFieldCounterVisitor implements EditFieldVisitor {
   visitMap(field: MapEditField) {
     this.countIfChanged(field.visibility_diff);
 
-    // TODO(fnichol): implement support of maps once we have a reasonable
-    // widget type
-    //throw new Error("Map kinds are not yet supported, sorry!");
+    if (field.widget.kind == "Map") {
+      for (const entry of field.widget.options.entries) {
+        visitEditField(this, entry);
+      }
+    } else {
+      throw new Error(
+        `Invalid Widget for a Map EditField: '${field.widget.kind}`,
+      );
+    }
   }
 
   visitNone(field: NoneEditField) {
@@ -154,9 +158,7 @@ export class InitialTreeOpenStateVisitor implements EditFieldVisitor {
   visitArray(field: ArrayEditField) {
     if (field.widget.kind == "Array") {
       for (const entry of field.widget.options.entries) {
-        for (const editField of entry) {
-          visitEditField(this, editField);
-        }
+        visitEditField(this, entry);
       }
     } else {
       throw new Error(
@@ -173,10 +175,16 @@ export class InitialTreeOpenStateVisitor implements EditFieldVisitor {
     this.markOpenIfChildIsSet(field);
   }
 
-  visitMap(_field: MapEditField) {
-    // TODO(fnichol): implement support of maps once we have a reasonable
-    // widget type
-    //throw new Error("Map kinds are not yet supported, sorry!");
+  visitMap(field: MapEditField) {
+    if (field.widget.kind == "Map") {
+      for (const entry of field.widget.options.entries) {
+        visitEditField(this, entry);
+      }
+    } else {
+      throw new Error(
+        `Invalid Widget for a Map EditField: '${field.widget.kind}`,
+      );
+    }
   }
 
   visitNone(field: NoneEditField) {
