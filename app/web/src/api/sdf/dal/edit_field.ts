@@ -43,7 +43,14 @@ export interface HeaderWidgetDal {
 export interface ArrayWidgetDal {
   kind: "Array";
   options: {
-    entries: EditFields[];
+    entries: EditFields;
+  };
+}
+
+export interface MapWidgetDal {
+  kind: "Map";
+  options: {
+    entries: EditFields;
   };
 }
 
@@ -52,7 +59,8 @@ export type Widget =
   | TextWidgetDal
   | SelectWidgetDal
   | HeaderWidgetDal
-  | ArrayWidgetDal;
+  | ArrayWidgetDal
+  | MapWidgetDal;
 
 export interface RequiredValidator {
   kind: "Required";

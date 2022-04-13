@@ -245,7 +245,7 @@ impl DalContext<'_, '_> {
     }
 
     /// Gets the dal context's txns.
-    pub fn txns(&self) -> &Transactions {
+    pub fn txns(&self) -> &Transactions<'_> {
         self.txns
     }
 
@@ -255,7 +255,7 @@ impl DalContext<'_, '_> {
     }
 
     /// Gets the dal context's pg txn.
-    pub fn pg_txn(&self) -> &InstrumentedTransaction {
+    pub fn pg_txn(&self) -> &InstrumentedTransaction<'_> {
         &self.txns.pg_txn
     }
 
@@ -431,7 +431,7 @@ impl DalContextBuilder {
     pub fn build<'t>(
         &self,
         request_context: RequestContext,
-        txns: &'t Transactions,
+        txns: &'t Transactions<'_>,
     ) -> DalContext<'_, 't> {
         DalContext {
             services_context: &self.services_context,

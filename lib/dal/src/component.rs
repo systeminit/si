@@ -1430,7 +1430,7 @@ async fn edit_field_for_attribute_value(
             Widget::Select(SelectWidget::new(LabelList::new(entries), None))
         }
         WidgetKind::Text => Widget::Text(TextWidget::new()),
-        WidgetKind::Array | WidgetKind::Header => {
+        WidgetKind::Array | WidgetKind::Map | WidgetKind::Header => {
             let mut child_edit_fields = vec![];
             let mut child_attribute_values = attribute_value
                 .child_attribute_values_in_context(ctx, attribute_read_context)
@@ -1464,12 +1464,10 @@ async fn edit_field_for_attribute_value(
 
             #[allow(clippy::if_same_then_else)]
             if *prop.kind() == PropKind::Array {
-                Widget::Array(ArrayWidget::new(vec![child_edit_fields]))
+                Widget::Array(ArrayWidget::new(child_edit_fields))
             } else if *prop.kind() == PropKind::Map {
-                // This is likely not correct.
-                Widget::Header(HeaderWidget::new(child_edit_fields))
+                Widget::Map(MapWidget::new(child_edit_fields))
             } else {
-                // Only option left is PropKind::Object
                 Widget::Header(HeaderWidget::new(child_edit_fields))
             }
         }

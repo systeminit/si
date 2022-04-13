@@ -21,7 +21,7 @@
           />
         </div>
         <div class="flex flex-row mt-1 ml-1">
-          <button @click="addToArray">
+          <button @click="addToMap">
             <VueFeather type="plus" />
           </button>
         </div>
@@ -56,10 +56,9 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-import type { EditField } from "@/api/sdf/dal/edit_field";
+import type { EditField, MapWidgetDal } from "@/api/sdf/dal/edit_field";
 import EditFormField from "./EditFormField.vue";
 import Unset from "@/atoms/Unset.vue";
-import { ArrayWidgetDal } from "@/api/sdf/dal/edit_field";
 import VueFeather from "vue-feather";
 import { EditFieldService } from "@/service/edit_field";
 import { ApiResponse } from "@/api/sdf";
@@ -91,11 +90,11 @@ const props = defineProps<{
   attributeContext: AttributeContext;
 }>();
 
-const widget = computed<ArrayWidgetDal>(() => {
-  return props.editField.widget as ArrayWidgetDal;
+const widget = computed<MapWidgetDal>(() => {
+  return props.editField.widget as MapWidgetDal;
 });
 
-const addToArray = () => {
+const addToMap = () => {
   EditFieldService.updateFromEditField({
     objectKind: props.editField.object_kind,
     objectId: props.editField.object_id,

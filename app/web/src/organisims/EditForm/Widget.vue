@@ -18,6 +18,15 @@
     :tree-open-state="props.treeOpenState"
     :attribute-context="attributeContext"
   />
+  <MapWidget
+    v-else-if="props.editField.widget.kind === 'Map' && attributeContext"
+    :show="props.show"
+    :edit-field="props.editField"
+    :core-edit-field="props.coreEditField"
+    :indent-level="props.indentLevel"
+    :tree-open-state="props.treeOpenState"
+    :attribute-context="attributeContext"
+  />
   <TextWidget
     v-else-if="props.editField.widget.kind === 'Text' && attributeContext"
     :show="props.show"
@@ -56,6 +65,7 @@ import { ITreeOpenState } from "@/utils/edit_field_visitor";
 import { ComponentIdentification } from "@/api/sdf/dal/component";
 import { computed } from "vue";
 import { AttributeContext } from "@/api/sdf/dal/attribute";
+import MapWidget from "@/organisims/EditForm/MapWidget.vue";
 
 const props = defineProps<{
   show: boolean;
