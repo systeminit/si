@@ -16,7 +16,7 @@ use crate::{
     jwt_key::JwtSecretKey,
     key_pair::KeyPairId,
     node::NodeKind,
-    schema, socket,
+    schema,
     socket::{Socket, SocketArity, SocketEdgeKind},
     BillingAccount, BillingAccountId, ChangeSet, Component, EditSession, EncryptedSecret, Func,
     FuncBackendKind, FuncBackendResponseType, Group, HistoryActor, KeyPair, Node, Organization,
@@ -332,7 +332,6 @@ pub async fn create_schema_variant(
 #[allow(clippy::too_many_arguments)]
 pub async fn create_schema_variant_with_root(
     ctx: &DalContext<'_, '_>,
-
     schema_id: SchemaId,
 ) -> (schema::SchemaVariant, schema::builtins::RootProp) {
     let name = generate_fake_name();
@@ -340,11 +339,17 @@ pub async fn create_schema_variant_with_root(
         .await
         .expect("cannot create schema variant");
 
+    let schema = variant
+        .schema(ctx)
+        .await
+        .expect("cannot find schema")
+        .expect("schema not found");
     let input_socket = Socket::new(
         ctx,
         "input",
         &SocketEdgeKind::Configures,
         &SocketArity::Many,
+        &schema.kind().into(),
     )
     .await
     .expect("Unable to create socket");
@@ -353,9 +358,15 @@ pub async fn create_schema_variant_with_root(
         .await
         .expect("Unable to add socket to variant");
 
-    let output_socket = Socket::new(ctx, "output", &SocketEdgeKind::Output, &SocketArity::Many)
-        .await
-        .expect("Unable to create socket");
+    let output_socket = Socket::new(
+        ctx,
+        "output",
+        &SocketEdgeKind::Output,
+        &SocketArity::Many,
+        &schema.kind().into(),
+    )
+    .await
+    .expect("Unable to create socket");
     variant
         .add_socket(ctx, output_socket.id())
         .await
@@ -366,6 +377,7 @@ pub async fn create_schema_variant_with_root(
         "includes",
         &SocketEdgeKind::Includes,
         &SocketArity::Many,
+        &schema.kind().into(),
     )
     .await
     .expect("Unable to create socket");
@@ -421,18 +433,6 @@ pub async fn create_component_for_schema(
 pub async fn create_node(ctx: &DalContext<'_, '_>, node_kind: &NodeKind) -> Node {
     let node = Node::new(ctx, node_kind).await.expect("cannot create node");
     node
-}
-
-pub async fn create_socket(ctx: &DalContext<'_, '_>) -> socket::Socket {
-    let name = generate_fake_name();
-    socket::Socket::new(
-        ctx,
-        name,
-        &socket::SocketEdgeKind::Configures,
-        &socket::SocketArity::One,
-    )
-    .await
-    .expect("cannot create socket")
 }
 
 pub async fn create_qualification_check(ctx: &DalContext<'_, '_>) -> QualificationCheck {

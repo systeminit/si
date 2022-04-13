@@ -14,6 +14,7 @@ CREATE TABLE sockets
     name                        text                     NOT NULL,
     edge_kind                   text                     NOT NULL,
     arity                       text                     NOT NULL,
+    schematic_kind              text                     NOT NULL,
     required                    bool                     NOT NULL DEFAULT false
 );
 SELECT standard_model_table_constraints_v1('sockets');
@@ -29,6 +30,7 @@ CREATE OR REPLACE FUNCTION socket_create_v1(
     this_name text,
     this_edge_kind text,
     this_arity text,
+    this_schematic_kind text,
     OUT object json) AS
 $$
 DECLARE
@@ -42,11 +44,11 @@ BEGIN
     INSERT INTO sockets (tenancy_universal, tenancy_billing_account_ids, tenancy_organization_ids,
                          tenancy_workspace_ids,
                          visibility_change_set_pk, visibility_edit_session_pk, visibility_deleted,
-                         name, edge_kind, arity)
+                         name, edge_kind, arity, schematic_kind)
     VALUES (this_tenancy_record.tenancy_universal, this_tenancy_record.tenancy_billing_account_ids,
             this_tenancy_record.tenancy_organization_ids, this_tenancy_record.tenancy_workspace_ids,
             this_visibility_record.visibility_change_set_pk, this_visibility_record.visibility_edit_session_pk,
-            this_visibility_record.visibility_deleted, this_name, this_edge_kind, this_arity)
+            this_visibility_record.visibility_deleted, this_name, this_edge_kind, this_arity, this_schematic_kind)
     RETURNING * INTO this_new_row;
 
     object := row_to_json(this_new_row);

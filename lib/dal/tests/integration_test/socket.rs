@@ -1,19 +1,22 @@
 use crate::dal::test;
+use dal::test::helpers::generate_fake_name;
 use dal::DalContext;
 use dal::{
     socket::{Socket, SocketArity, SocketEdgeKind},
-    test_harness::create_socket,
-    HistoryActor, Visibility, WriteTenancy,
+    SchematicKind,
 };
 
 #[test]
 async fn new(ctx: &DalContext<'_, '_>) {
-    let _write_tenancy = WriteTenancy::new_universal();
-    let _visibility = Visibility::new_head(false);
-    let _history_actor = HistoryActor::SystemInit;
-    let socket = Socket::new(ctx, "jane", &SocketEdgeKind::Component, &SocketArity::Many)
-        .await
-        .expect("cannot create schema ui menu");
+    let socket = Socket::new(
+        ctx,
+        "jane",
+        &SocketEdgeKind::Component,
+        &SocketArity::Many,
+        &SchematicKind::Component,
+    )
+    .await
+    .expect("cannot create schema ui menu");
     assert_eq!(socket.name(), "jane");
     assert_eq!(socket.edge_kind(), &SocketEdgeKind::Component);
     assert_eq!(socket.arity(), &SocketArity::Many);
@@ -21,10 +24,15 @@ async fn new(ctx: &DalContext<'_, '_>) {
 
 #[test]
 async fn set_required(ctx: &DalContext<'_, '_>) {
-    let _write_tenancy = WriteTenancy::new_universal();
-    let _visibility = Visibility::new_head(false);
-    let _history_actor = HistoryActor::SystemInit;
-    let mut socket = create_socket(ctx).await;
+    let mut socket = Socket::new(
+        ctx,
+        generate_fake_name(),
+        &SocketEdgeKind::Configures,
+        &SocketArity::One,
+        &SchematicKind::Component,
+    )
+    .await
+    .expect("unable to create socket");
 
     socket
         .set_required(ctx, true)

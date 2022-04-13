@@ -61,9 +61,29 @@ async fn system(ctx: &DalContext<'_, '_>) -> SchemaResult<()> {
         .set_default_schema_variant_id(ctx, Some(*variant.id()))
         .await?;
 
-    let output_socket =
-        Socket::new(ctx, "output", &SocketEdgeKind::Output, &SocketArity::Many).await?;
-    variant.add_socket(ctx, output_socket.id()).await?;
+    let deployment_output_socket = Socket::new(
+        ctx,
+        "output",
+        &SocketEdgeKind::Output,
+        &SocketArity::Many,
+        &SchematicKind::Deployment,
+    )
+    .await?;
+    variant
+        .add_socket(ctx, deployment_output_socket.id())
+        .await?;
+
+    let component_output_socket = Socket::new(
+        ctx,
+        "output",
+        &SocketEdgeKind::Output,
+        &SocketArity::Many,
+        &SchematicKind::Component,
+    )
+    .await?;
+    variant
+        .add_socket(ctx, component_output_socket.id())
+        .await?;
 
     Ok(())
 }
@@ -82,17 +102,14 @@ async fn application(ctx: &DalContext<'_, '_>) -> SchemaResult<()> {
         .set_default_schema_variant_id(ctx, Some(*variant.id()))
         .await?;
 
-    let input_socket = Socket::new(
+    let output_socket = Socket::new(
         ctx,
-        "input",
-        &SocketEdgeKind::Configures,
+        "output",
+        &SocketEdgeKind::Output,
         &SocketArity::Many,
+        &SchematicKind::Deployment,
     )
     .await?;
-    variant.add_socket(ctx, input_socket.id()).await?;
-
-    let output_socket =
-        Socket::new(ctx, "output", &SocketEdgeKind::Output, &SocketArity::Many).await?;
     variant.add_socket(ctx, output_socket.id()).await?;
 
     let includes_socket = Socket::new(
@@ -100,6 +117,7 @@ async fn application(ctx: &DalContext<'_, '_>) -> SchemaResult<()> {
         "includes",
         &SocketEdgeKind::Includes,
         &SocketArity::Many,
+        &SchematicKind::Deployment,
     )
     .await?;
     variant.add_socket(ctx, includes_socket.id()).await?;
@@ -147,12 +165,29 @@ async fn service(ctx: &DalContext<'_, '_>) -> SchemaResult<()> {
         "input",
         &SocketEdgeKind::Configures,
         &SocketArity::Many,
+        &SchematicKind::Component,
     )
     .await?;
     variant.add_socket(ctx, input_socket.id()).await?;
 
-    let output_socket =
-        Socket::new(ctx, "output", &SocketEdgeKind::Output, &SocketArity::Many).await?;
+    let includes_socket = Socket::new(
+        ctx,
+        "includes",
+        &SocketEdgeKind::Includes,
+        &SocketArity::Many,
+        &SchematicKind::Component,
+    )
+    .await?;
+    variant.add_socket(ctx, includes_socket.id()).await?;
+
+    let output_socket = Socket::new(
+        ctx,
+        "output",
+        &SocketEdgeKind::Output,
+        &SocketArity::Many,
+        &SchematicKind::Component,
+    )
+    .await?;
     variant.add_socket(ctx, output_socket.id()).await?;
 
     let includes_socket = Socket::new(
@@ -160,9 +195,20 @@ async fn service(ctx: &DalContext<'_, '_>) -> SchemaResult<()> {
         "includes",
         &SocketEdgeKind::Includes,
         &SocketArity::Many,
+        &SchematicKind::Deployment,
     )
     .await?;
     variant.add_socket(ctx, includes_socket.id()).await?;
+
+    let output_socket = Socket::new(
+        ctx,
+        "output",
+        &SocketEdgeKind::Output,
+        &SocketArity::Many,
+        &SchematicKind::Deployment,
+    )
+    .await?;
+    variant.add_socket(ctx, output_socket.id()).await?;
 
     Ok(())
 }
@@ -184,12 +230,19 @@ async fn kubernetes_service(ctx: &DalContext<'_, '_>) -> SchemaResult<()> {
         "input",
         &SocketEdgeKind::Configures,
         &SocketArity::Many,
+        &SchematicKind::Component,
     )
     .await?;
     variant.add_socket(ctx, input_socket.id()).await?;
 
-    let output_socket =
-        Socket::new(ctx, "output", &SocketEdgeKind::Output, &SocketArity::Many).await?;
+    let output_socket = Socket::new(
+        ctx,
+        "output",
+        &SocketEdgeKind::Output,
+        &SocketArity::Many,
+        &SchematicKind::Component,
+    )
+    .await?;
     variant.add_socket(ctx, output_socket.id()).await?;
 
     let includes_socket = Socket::new(
@@ -197,6 +250,7 @@ async fn kubernetes_service(ctx: &DalContext<'_, '_>) -> SchemaResult<()> {
         "includes",
         &SocketEdgeKind::Includes,
         &SocketArity::Many,
+        &SchematicKind::Component,
     )
     .await?;
     variant.add_socket(ctx, includes_socket.id()).await?;
@@ -258,12 +312,19 @@ async fn docker_hub_credential(ctx: &DalContext<'_, '_>) -> SchemaResult<()> {
         "input",
         &SocketEdgeKind::Configures,
         &SocketArity::Many,
+        &SchematicKind::Component,
     )
     .await?;
     variant.add_socket(ctx, input_socket.id()).await?;
 
-    let output_socket =
-        Socket::new(ctx, "output", &SocketEdgeKind::Output, &SocketArity::Many).await?;
+    let output_socket = Socket::new(
+        ctx,
+        "output",
+        &SocketEdgeKind::Output,
+        &SocketArity::Many,
+        &SchematicKind::Component,
+    )
+    .await?;
     variant.add_socket(ctx, output_socket.id()).await?;
 
     let includes_socket = Socket::new(
@@ -271,6 +332,7 @@ async fn docker_hub_credential(ctx: &DalContext<'_, '_>) -> SchemaResult<()> {
         "includes",
         &SocketEdgeKind::Includes,
         &SocketArity::Many,
+        &SchematicKind::Component,
     )
     .await?;
     variant.add_socket(ctx, includes_socket.id()).await?;
@@ -456,12 +518,19 @@ async fn docker_image(ctx: &DalContext<'_, '_>) -> SchemaResult<()> {
         "input",
         &SocketEdgeKind::Configures,
         &SocketArity::Many,
+        &SchematicKind::Component,
     )
     .await?;
     variant.add_socket(ctx, input_socket.id()).await?;
 
-    let output_socket =
-        Socket::new(ctx, "output", &SocketEdgeKind::Output, &SocketArity::Many).await?;
+    let output_socket = Socket::new(
+        ctx,
+        "output",
+        &SocketEdgeKind::Output,
+        &SocketArity::Many,
+        &SchematicKind::Component,
+    )
+    .await?;
     variant.add_socket(ctx, output_socket.id()).await?;
 
     let includes_socket = Socket::new(
@@ -469,6 +538,7 @@ async fn docker_image(ctx: &DalContext<'_, '_>) -> SchemaResult<()> {
         "includes",
         &SocketEdgeKind::Includes,
         &SocketArity::Many,
+        &SchematicKind::Component,
     )
     .await?;
     variant.add_socket(ctx, includes_socket.id()).await?;

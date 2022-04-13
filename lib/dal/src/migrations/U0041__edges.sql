@@ -70,6 +70,7 @@ CREATE OR REPLACE FUNCTION edge_include_component_in_system_v1(
     this_visibility jsonb,
     this_component_id bigint,
     this_system_id bigint,
+    this_schematic_kind text,
     OUT object json) AS
 $$
 DECLARE
@@ -112,8 +113,7 @@ BEGIN
             INNER JOIN node_belongs_to_component
                         ON components.id = node_belongs_to_component.belongs_to_id
                             AND components.tenancy_universal = node_belongs_to_component.tenancy_universal
-                            AND
-                        components.tenancy_billing_account_ids = node_belongs_to_component.tenancy_billing_account_ids
+                            AND components.tenancy_billing_account_ids = node_belongs_to_component.tenancy_billing_account_ids
                             AND components.tenancy_organization_ids = node_belongs_to_component.tenancy_organization_ids
                             AND components.tenancy_workspace_ids = node_belongs_to_component.tenancy_workspace_ids
                             AND components.visibility_change_set_pk = node_belongs_to_component.visibility_change_set_pk
@@ -161,6 +161,7 @@ BEGIN
                         sockets.tenancy_organization_ids = socket_many_to_many_schema_variants.tenancy_organization_ids
                             AND sockets.tenancy_workspace_ids = socket_many_to_many_schema_variants.tenancy_workspace_ids
                             AND sockets.edge_kind = 'includes'
+                            AND sockets.schematic_kind = this_schematic_kind
     WHERE in_tenancy_v1(this_tenancy, components.tenancy_universal, components.tenancy_billing_account_ids, components.tenancy_organization_ids,
                         components.tenancy_workspace_ids)
     AND is_visible_v1(this_visibility, components.visibility_change_set_pk, components.visibility_edit_session_pk, components.visibility_deleted)
@@ -244,6 +245,7 @@ BEGIN
                         sockets.tenancy_organization_ids = socket_many_to_many_schema_variants.tenancy_organization_ids
                             AND sockets.tenancy_workspace_ids = socket_many_to_many_schema_variants.tenancy_workspace_ids
                             AND sockets.edge_kind = 'output'
+                            AND sockets.schematic_kind = this_schematic_kind
     WHERE in_tenancy_v1(this_tenancy, systems.tenancy_universal, systems.tenancy_billing_account_ids, systems.tenancy_organization_ids,
                         systems.tenancy_workspace_ids)
     AND is_visible_v1(this_visibility, systems.visibility_change_set_pk, systems.visibility_edit_session_pk, systems.visibility_deleted)
@@ -276,6 +278,7 @@ CREATE OR REPLACE FUNCTION edge_include_component_in_node_v1(
     this_visibility jsonb,
     this_component_id bigint,
     this_parent_node_id bigint,
+    this_schematic_kind text,
     OUT object json) AS
 $$
 DECLARE
@@ -367,6 +370,7 @@ BEGIN
                         sockets.tenancy_organization_ids = socket_many_to_many_schema_variants.tenancy_organization_ids
                             AND sockets.tenancy_workspace_ids = socket_many_to_many_schema_variants.tenancy_workspace_ids
                             AND sockets.edge_kind = 'includes'
+                            AND sockets.schematic_kind = this_schematic_kind
     WHERE in_tenancy_v1(this_tenancy, components.tenancy_universal, components.tenancy_billing_account_ids, components.tenancy_organization_ids,
                         components.tenancy_workspace_ids)
     AND is_visible_v1(this_visibility, components.visibility_change_set_pk, components.visibility_edit_session_pk, components.visibility_deleted)
@@ -450,6 +454,7 @@ BEGIN
                         sockets.tenancy_organization_ids = socket_many_to_many_schema_variants.tenancy_organization_ids
                             AND sockets.tenancy_workspace_ids = socket_many_to_many_schema_variants.tenancy_workspace_ids
                             AND sockets.edge_kind = 'includes'
+                            AND sockets.schematic_kind = this_schematic_kind
     WHERE in_tenancy_v1(this_tenancy, components.tenancy_universal, components.tenancy_billing_account_ids, components.tenancy_organization_ids,
                         components.tenancy_workspace_ids)
     AND is_visible_v1(this_visibility, components.visibility_change_set_pk, components.visibility_edit_session_pk, components.visibility_deleted)

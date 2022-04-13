@@ -127,12 +127,19 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> SchemaResult<()>
         "input",
         &SocketEdgeKind::Configures,
         &SocketArity::Many,
+        &SchematicKind::Component,
     )
     .await?;
     variant.add_socket(ctx, input_socket.id()).await?;
 
-    let output_socket =
-        Socket::new(ctx, "output", &SocketEdgeKind::Output, &SocketArity::Many).await?;
+    let output_socket = Socket::new(
+        ctx,
+        "output",
+        &SocketEdgeKind::Output,
+        &SocketArity::Many,
+        &SchematicKind::Component,
+    )
+    .await?;
     variant.add_socket(ctx, output_socket.id()).await?;
 
     let includes_socket = Socket::new(
@@ -140,6 +147,7 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> SchemaResult<()>
         "includes",
         &SocketEdgeKind::Includes,
         &SocketArity::Many,
+        &SchematicKind::Component,
     )
     .await?;
     variant.add_socket(ctx, includes_socket.id()).await?;
@@ -149,9 +157,6 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> SchemaResult<()>
     ui_menu.set_name(ctx, Some("deployment".to_owned())).await?;
 
     ui_menu.set_category(ctx, Some("kubernetes")).await?;
-    ui_menu
-        .set_schematic_kind(ctx, SchematicKind::from(*schema.kind()))
-        .await?;
     ui_menu.set_schema(ctx, schema.id()).await?;
 
     let application_name = "application".to_string();

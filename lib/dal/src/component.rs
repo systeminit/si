@@ -256,7 +256,17 @@ impl Component {
             system_id,
         )
         .await?;
-        let _edge = Edge::include_component_in_node(ctx, component.id(), parent_node_id).await?;
+        let schema = component
+            .schema(ctx)
+            .await?
+            .ok_or(ComponentError::SchemaNotFound)?;
+        let _edge = Edge::include_component_in_node(
+            ctx,
+            component.id(),
+            &schema.kind().into(),
+            parent_node_id,
+        )
+        .await?;
 
         Ok((component, node))
     }
@@ -310,7 +320,13 @@ impl Component {
         component
             .set_value_by_json_pointer(ctx, "/root/si/name", Some(name))
             .await?;
-        let _edge = Edge::include_component_in_system(ctx, component.id(), system_id).await?;
+        let _edge = Edge::include_component_in_system(
+            ctx,
+            component.id(),
+            &schema.kind().into(),
+            system_id,
+        )
+        .await?;
 
         Ok((component, node))
     }

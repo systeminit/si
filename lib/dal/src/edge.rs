@@ -8,8 +8,8 @@ use thiserror::Error;
 use crate::node::NodeId;
 use crate::{
     impl_standard_model, pk, socket::SocketId, standard_model, standard_model_accessor,
-    ComponentId, HistoryEventError, ReadTenancyError, StandardModel, StandardModelError, SystemId,
-    Timestamp, Visibility, WriteTenancy,
+    ComponentId, HistoryEventError, ReadTenancyError, SchematicKind, StandardModel,
+    StandardModelError, SystemId, Timestamp, Visibility, WriteTenancy,
 };
 
 const FIND_PARENT_COMPONENTS: &str = include_str!("./queries/edge_find_parent_components.sql");
@@ -158,18 +158,20 @@ impl Edge {
     pub async fn include_component_in_system(
         ctx: &DalContext<'_, '_>,
         component_id: &ComponentId,
+        schematic_kind: &SchematicKind,
         system_id: &SystemId,
     ) -> EdgeResult<Self> {
         let row = ctx
             .txns()
             .pg()
             .query_one(
-                "SELECT object FROM edge_include_component_in_system_v1($1, $2, $3, $4)",
+                "SELECT object FROM edge_include_component_in_system_v1($1, $2, $3, $4, $5)",
                 &[
                     &ctx.read_tenancy(),
                     ctx.visibility(),
                     component_id,
                     system_id,
+                    &schematic_kind.as_ref(),
                 ],
             )
             .await?;
@@ -182,18 +184,20 @@ impl Edge {
     pub async fn include_component_in_node(
         ctx: &DalContext<'_, '_>,
         component_id: &ComponentId,
+        schematic_kind: &SchematicKind,
         parent_node_id: &NodeId,
     ) -> EdgeResult<Self> {
         let row = ctx
             .txns()
             .pg()
             .query_one(
-                "SELECT object FROM edge_include_component_in_node_v1($1, $2, $3, $4)",
+                "SELECT object FROM edge_include_component_in_node_v1($1, $2, $3, $4, $5)",
                 &[
                     &ctx.read_tenancy(),
                     ctx.visibility(),
                     component_id,
                     parent_node_id,
+                    &schematic_kind.as_ref(),
                 ],
             )
             .await?;

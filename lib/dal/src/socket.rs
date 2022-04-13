@@ -14,8 +14,8 @@ use crate::{
     impl_standard_model,
     label_list::ToLabelList,
     pk, standard_model, standard_model_accessor, standard_model_many_to_many, HistoryEventError,
-    SchemaVariant, SchemaVariantId, StandardModel, StandardModelError, Timestamp, Visibility,
-    WriteTenancy,
+    SchemaVariant, SchemaVariantId, SchematicKind, StandardModel, StandardModelError, Timestamp,
+    Visibility, WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -72,6 +72,7 @@ pub struct Socket {
     id: SocketId,
     name: String,
     edge_kind: SocketEdgeKind,
+    schematic_kind: SchematicKind,
     arity: SocketArity,
     required: bool,
     #[serde(flatten)]
@@ -98,19 +99,21 @@ impl Socket {
         name: impl AsRef<str>,
         edge_kind: &SocketEdgeKind,
         arity: &SocketArity,
+        schematic_kind: &SchematicKind,
     ) -> SocketResult<Self> {
         let name = name.as_ref();
         let row = ctx
             .txns()
             .pg()
             .query_one(
-                "SELECT object FROM socket_create_v1($1, $2, $3, $4, $5)",
+                "SELECT object FROM socket_create_v1($1, $2, $3, $4, $5, $6)",
                 &[
                     ctx.write_tenancy(),
                     ctx.visibility(),
                     &name,
                     &edge_kind.as_ref(),
                     &arity.as_ref(),
+                    &schematic_kind.as_ref(),
                 ],
             )
             .await?;
@@ -122,6 +125,7 @@ impl Socket {
     standard_model_accessor!(name, String, SocketResult);
     standard_model_accessor!(edge_kind, Enum(SocketEdgeKind), SocketResult);
     standard_model_accessor!(arity, Enum(SocketArity), SocketResult);
+    standard_model_accessor!(schematic_kind, Enum(SchematicKind), SocketResult);
     standard_model_accessor!(required, bool, SocketResult);
 
     standard_model_many_to_many!(
