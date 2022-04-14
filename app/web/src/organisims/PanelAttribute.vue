@@ -220,6 +220,7 @@ import { lastSelectedNode$ } from "./SchematicViewer/state";
 import { ComponentIdentification } from "@/api/sdf/dal/component";
 import { schematicData$ } from "./SchematicViewer/Viewer/scene/observable";
 import { visibility$ } from "@/observable/visibility";
+import { PanelAttributeSubType } from "./PanelTree/panel_types";
 
 const randomString = () => `${Math.floor(Math.random() * 50000)}`;
 const attributeViewerKey = ref(randomString());
@@ -275,9 +276,10 @@ const props = defineProps<{
   initialMaximizedContainer?: boolean;
   isVisible?: boolean;
   isMaximizedContainerEnabled?: boolean;
+  kind: PanelAttributeSubType | null;
 }>();
 
-const activeView = ref<string>("attribute");
+const activeView = ref<string>(props.kind ?? "attribute");
 const setActiveView = (view: string) => {
   activeView.value = view;
 };

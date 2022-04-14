@@ -166,9 +166,10 @@ const props = defineProps<{
   initialMaximizedContainer: boolean;
   isVisible: boolean;
   isMaximizedContainerEnabled: boolean;
+  kind: SchematicKind | null;
 }>();
 
-const schematicKindRaw = ref<string>(SchematicKind.Deployment);
+const schematicKindRaw = ref<string>(props.kind ?? SchematicKind.Deployment);
 
 const schematicKind = computed(() =>
   schematicKindFromString(schematicKindRaw.value),

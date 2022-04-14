@@ -15,7 +15,7 @@
 
 <script setup lang="ts">
 import type { IPanelContainer, PanelMaximized } from "./PanelTree/panel_types";
-import { PanelType } from "./PanelTree/panel_types";
+import { PanelType, PanelAttributeSubType } from "./PanelTree/panel_types";
 import PanelContainer from "./PanelTree/PanelContainer.vue";
 import { ref, watch, onBeforeMount } from "vue";
 
@@ -29,6 +29,7 @@ import { applicationNodeId$ } from "@/observable/application";
 import { system$ } from "@/observable/system";
 import { eventResourceSynced$ } from "@/observable/resource";
 import { SchematicService } from "@/service/schematic";
+import { SchematicKind } from "@/api/sdf/dal/schematic";
 
 const maximizedData = ref<PanelMaximized | null>(null);
 
@@ -63,10 +64,12 @@ const panelContainers = ref<IPanelContainer[]>([
           {
             name: PanelType.Schematic,
             type: "panel",
+            subType: SchematicKind.Deployment,
           },
           {
             name: PanelType.Schematic,
             type: "panel",
+            subType: SchematicKind.Component,
           },
         ],
       },
@@ -77,10 +80,12 @@ const panelContainers = ref<IPanelContainer[]>([
           {
             name: PanelType.Attribute,
             type: "panel",
+            subType: PanelAttributeSubType.Attributes,
           },
           {
             name: PanelType.Attribute,
             type: "panel",
+            subType: PanelAttributeSubType.Qualifications,
           },
         ],
       },

@@ -23,6 +23,7 @@
             :panel-ref="panelRefName(panelIndex)"
             :panel-container-ref="panelContainerRefName()"
             :initial-panel-type="panel.name"
+            :initial-panel-sub-type="panel.subType"
             @panel-maximize-container="maximizePanel($event)"
             @panel-minimize-container="minimizePanel($event)"
             @panel-maximize-full="maximizeFull($event)"
@@ -56,7 +57,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, PropType, ref, watch } from "vue";
+import { onMounted, ref, watch } from "vue";
 import PanelSelector from "./PanelSelector.vue";
 import {
   IPanelContainer,
@@ -71,15 +72,12 @@ import {
   restorePanelContainerSizeObservable,
 } from "@/observable/editor";
 
-const props = defineProps({
-  panelContainer: { type: Object as PropType<IPanelContainer>, required: true },
-  parentPrefix: { type: String, required: true },
-  index: { type: Number, required: true },
-  maximizedFullPanel: {
-    type: Object as PropType<PanelMaximized | null>,
-    default: null,
-  },
-});
+const props = defineProps<{
+  panelContainer: IPanelContainer;
+  parentPrefix: string;
+  index: number;
+  maximizedFullPanel: PanelMaximized | null;
+}>();
 
 const emit = defineEmits(["panel-maximize-full", "panel-minimize-full"]);
 
