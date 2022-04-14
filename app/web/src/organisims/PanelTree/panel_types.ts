@@ -1,3 +1,5 @@
+import { SchematicKind } from "@/api/sdf/dal/schematic";
+
 export const RESIZER_SIZE = 4;
 
 export enum PanelType {
@@ -33,12 +35,34 @@ export interface Size {
   widthPx: number;
 }
 
+export enum PanelAttributeSubType {
+  Attributes = "attribute",
+  Qualifications = "qualification",
+}
+
+export interface IPanelSchematic {
+  name: PanelType.Schematic;
+  type: "panel";
+  subType: SchematicKind;
+}
+
+export interface IPanelAttribute {
+  name: PanelType.Attribute;
+  type: "panel";
+  subType: PanelAttributeSubType;
+}
+
 export interface IPanel {
   name: PanelType;
   type: "panel";
+  subType: never;
 }
 
-export type IPanelOrPanelContainer = IPanel | IPanelContainer;
+export type IPanelOrPanelContainer =
+  | IPanel
+  | IPanelAttribute
+  | IPanelSchematic
+  | IPanelContainer;
 
 export type IPanelContainer =
   | IPanelContainerWithoutSize

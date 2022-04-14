@@ -11,6 +11,7 @@
       :initial-maximized-full="maximizedFull"
       :initial-maximized-container="maximizedContainer"
       :initial-panel-type="panelType"
+      :kind="panelSubType"
       :is-maximized-container-enabled="isMaximizedContainerEnabled"
       @change-panel="changePanelType"
       @panel-maximize-full="setMaximizedFullTrue($event)"
@@ -22,23 +23,23 @@
 </template>
 
 <script setup lang="ts">
-import { computed, PropType, ref } from "vue";
+import { computed, ref } from "vue";
 import { PanelMaximized, PanelType } from "./panel_types";
 import PanelEmpty from "@/organisims/PanelEmpty.vue";
+import { SchematicKind } from "@/api/sdf/dal/schematic";
+import { PanelAttributeSubType } from "./panel_types";
 
 import PanelAttribute from "@/organisims/PanelAttribute.vue";
 import PanelSchematic from "@/organisims/PanelSchematic.vue";
 import PanelSecret from "@/organisims/PanelSecret.vue";
 
-const props = defineProps({
-  panelIndex: { type: Number, required: true },
-  panelRef: { type: String, required: true },
-  panelContainerRef: { type: String, required: true },
-  initialPanelType: {
-    type: String as PropType<PanelType>,
-    default: PanelType.Schematic,
-  },
-});
+const props = defineProps<{
+  panelIndex: number;
+  panelRef: string;
+  panelContainerRef: string;
+  initialPanelType: PanelType;
+  initialPanelSubType: SchematicKind | PanelAttributeSubType | null;
+}>();
 const emit = defineEmits([
   "change-panel",
   "panel-maximize-container",
@@ -46,6 +47,9 @@ const emit = defineEmits([
   "panel-maximize-full",
   "panel-minimize-full",
 ]);
+const panelSubType = ref<PanelAttributeSubType | SchematicKind | null>(
+  props.initialPanelSubType,
+);
 const panelType = ref<PanelType>(props.initialPanelType);
 
 const whichComponent = computed<
@@ -88,6 +92,7 @@ const setMaximizedContainerFalse = (event: PanelMaximized) => {
 };
 const changePanelType = (newPanelType: PanelType) => {
   panelType.value = newPanelType;
+  panelSubType.value = null;
   emit("change-panel", newPanelType);
 };
 </script>
