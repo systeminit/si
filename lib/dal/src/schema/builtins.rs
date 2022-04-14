@@ -273,9 +273,15 @@ async fn docker_hub_credential(ctx: &DalContext<'_, '_>) -> SchemaResult<()> {
         .set_default_schema_variant_id(ctx, Some(*variant.id()))
         .await?;
 
+    let base_attribute_read_context = AttributeReadContext {
+        schema_id: Some(*schema.id()),
+        schema_variant_id: Some(*variant.id()),
+        ..AttributeReadContext::default()
+    };
+
     let mut secret_prop = Prop::new(ctx, "secret", PropKind::Integer).await?;
     secret_prop
-        .set_parent_prop(ctx, root_prop.domain_prop_id)
+        .set_parent_prop(ctx, root_prop.domain_prop_id, base_attribute_read_context)
         .await?;
     secret_prop
         .set_widget_kind(ctx, WidgetKind::SecretSelect)
@@ -400,9 +406,15 @@ async fn docker_image(ctx: &DalContext<'_, '_>) -> SchemaResult<()> {
         .add_root_schematic(ctx, application_schema.id())
         .await?;
 
+    let base_attribute_read_context = AttributeReadContext {
+        schema_id: Some(*schema.id()),
+        schema_variant_id: Some(*variant.id()),
+        ..AttributeReadContext::default()
+    };
+
     let image_prop = Prop::new(ctx, "image", PropKind::String).await?;
     image_prop
-        .set_parent_prop(ctx, root_prop.domain_prop_id)
+        .set_parent_prop(ctx, root_prop.domain_prop_id, base_attribute_read_context)
         .await?;
 
     // TODO: required, validate regex: "\\d+\\/(tcp|udp)", message: "invalid exposed port entry; must be [numeric]/(tcp|udp)",
@@ -413,7 +425,7 @@ async fn docker_image(ctx: &DalContext<'_, '_>) -> SchemaResult<()> {
     )
     .await?;
     exposed_ports_prop
-        .set_parent_prop(ctx, root_prop.domain_prop_id)
+        .set_parent_prop(ctx, root_prop.domain_prop_id, base_attribute_read_context)
         .await?;
 
     let func_name = "si:validateStringEquals".to_string();
@@ -452,7 +464,7 @@ async fn docker_image(ctx: &DalContext<'_, '_>) -> SchemaResult<()> {
     )
     .await?;
     number_of_parents_prop
-        .set_parent_prop(ctx, root_prop.domain_prop_id)
+        .set_parent_prop(ctx, root_prop.domain_prop_id, base_attribute_read_context)
         .await?;
 
     // TODO: we don't have a component to have their props, but we can manually rebuild the props from what we created in this schema variant
@@ -612,16 +624,20 @@ async fn create_schema(
     }
 }
 
+/// Creates a [`Prop`]. While a base [`AttributeReadContext`] is required for this function, it is
+/// only used when a parent [`PropId`] is provided.
 #[allow(clippy::too_many_arguments)]
 pub async fn create_prop(
     ctx: &DalContext<'_, '_>,
     prop_name: &str,
     prop_kind: PropKind,
     parent_prop_id: Option<PropId>,
+    base_attribute_read_context: AttributeReadContext,
 ) -> SchemaResult<Prop> {
     let prop = Prop::new(ctx, prop_name, prop_kind).await?;
     if let Some(parent_prop_id) = parent_prop_id {
-        prop.set_parent_prop(ctx, parent_prop_id).await?;
+        prop.set_parent_prop(ctx, parent_prop_id, base_attribute_read_context)
+            .await?;
     }
     Ok(prop)
 }
@@ -632,8 +648,16 @@ pub async fn create_string_prop_with_default(
     prop_name: &str,
     default_string: String,
     parent_prop_id: Option<PropId>,
+    base_attribute_read_context: AttributeReadContext,
 ) -> SchemaResult<Prop> {
-    let prop = create_prop(ctx, prop_name, PropKind::String, parent_prop_id).await?;
+    let prop = create_prop(
+        ctx,
+        prop_name,
+        PropKind::String,
+        parent_prop_id,
+        base_attribute_read_context,
+    )
+    .await?;
 
     let mut func = Func::new(
         ctx,
@@ -735,9 +759,15 @@ pub async fn create_root_prop(
     )
     .await?;
 
+    let base_attribute_read_context = AttributeReadContext {
+        schema_id: Some(schema_id),
+        schema_variant_id: Some(variant_id),
+        ..AttributeReadContext::default()
+    };
+
     let si_specific_prop = Prop::new(ctx, "si", PropKind::Object).await?;
     si_specific_prop
-        .set_parent_prop(ctx, *root_prop.id())
+        .set_parent_prop(ctx, *root_prop.id(), base_attribute_read_context)
         .await?;
 
     let si_context = variant_context_builder
@@ -760,7 +790,7 @@ pub async fn create_root_prop(
 
     let si_name_prop = Prop::new(ctx, "name", PropKind::String).await?;
     si_name_prop
-        .set_parent_prop(ctx, *si_specific_prop.id())
+        .set_parent_prop(ctx, *si_specific_prop.id(), base_attribute_read_context)
         .await?;
 
     let si_name_context = variant_context_builder
@@ -783,7 +813,7 @@ pub async fn create_root_prop(
 
     let domain_specific_prop = Prop::new(ctx, "domain", PropKind::Object).await?;
     domain_specific_prop
-        .set_parent_prop(ctx, *root_prop.id())
+        .set_parent_prop(ctx, *root_prop.id(), base_attribute_read_context)
         .await?;
 
     let domain_context = variant_context_builder

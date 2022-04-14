@@ -33,6 +33,12 @@ pub async fn create_schema_with_object_and_string_prop(
         .await
         .expect("cannot set default schema variant");
 
+    let base_attribute_read_context = AttributeReadContext {
+        schema_id: Some(*schema.id()),
+        schema_variant_id: Some(*schema_variant.id()),
+        ..AttributeReadContext::default()
+    };
+
     let queen_prop = create_prop_of_kind_with_name(ctx, PropKind::Object, "queen").await;
 
     let killer_prop = create_prop_of_kind_with_name(ctx, PropKind::String, "killer_queen").await;
@@ -41,15 +47,15 @@ pub async fn create_schema_with_object_and_string_prop(
         create_prop_of_kind_with_name(ctx, PropKind::String, "bohemian_rhapsody").await;
 
     queen_prop
-        .set_parent_prop(ctx, root.domain_prop_id)
+        .set_parent_prop(ctx, root.domain_prop_id, base_attribute_read_context)
         .await
         .expect("cannot set parent prop");
     killer_prop
-        .set_parent_prop(ctx, *queen_prop.id())
+        .set_parent_prop(ctx, *queen_prop.id(), base_attribute_read_context)
         .await
         .expect("cannot set parent prop");
     bohemian_prop
-        .set_parent_prop(ctx, *queen_prop.id())
+        .set_parent_prop(ctx, *queen_prop.id(), base_attribute_read_context)
         .await
         .expect("cannot set parent prop");
 
@@ -92,9 +98,15 @@ pub async fn create_schema_with_nested_objects_and_string_prop(
         .await
         .expect("cannot set default schema variant");
 
+    let base_attribute_read_context = AttributeReadContext {
+        schema_id: Some(*schema.id()),
+        schema_variant_id: Some(*schema_variant.id()),
+        ..AttributeReadContext::default()
+    };
+
     let queen_prop = create_prop_of_kind_with_name(ctx, PropKind::Object, "queen").await;
     queen_prop
-        .set_parent_prop(ctx, root.domain_prop_id)
+        .set_parent_prop(ctx, root.domain_prop_id, base_attribute_read_context)
         .await
         .expect("cannot set parent prop");
 
@@ -107,22 +119,22 @@ pub async fn create_schema_with_nested_objects_and_string_prop(
         create_prop_of_kind_with_name(ctx, PropKind::Object, "under_pressure").await;
 
     killer_prop
-        .set_parent_prop(ctx, *queen_prop.id())
+        .set_parent_prop(ctx, *queen_prop.id(), base_attribute_read_context)
         .await
         .expect("cannot set parent prop");
     bohemian_prop
-        .set_parent_prop(ctx, *queen_prop.id())
+        .set_parent_prop(ctx, *queen_prop.id(), base_attribute_read_context)
         .await
         .expect("cannot set parent prop");
     pressure_prop
-        .set_parent_prop(ctx, *queen_prop.id())
+        .set_parent_prop(ctx, *queen_prop.id(), base_attribute_read_context)
         .await
         .expect("cannot set parent prop");
 
     let dust_prop =
         create_prop_of_kind_with_name(ctx, PropKind::String, "another_one_bites_the_dust").await;
     dust_prop
-        .set_parent_prop(ctx, *pressure_prop.id())
+        .set_parent_prop(ctx, *pressure_prop.id(), base_attribute_read_context)
         .await
         .expect("cannot set parent prop");
 
@@ -157,17 +169,22 @@ pub async fn create_schema_with_string_props(
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
         .expect("cannot set default schema variant");
+    let base_attribute_read_context = AttributeReadContext {
+        schema_id: Some(*schema.id()),
+        schema_variant_id: Some(*schema_variant.id()),
+        ..AttributeReadContext::default()
+    };
 
     let bohemian_prop =
         create_prop_of_kind_with_name(ctx, PropKind::String, "bohemian_rhapsody").await;
     bohemian_prop
-        .set_parent_prop(ctx, root.domain_prop_id)
+        .set_parent_prop(ctx, root.domain_prop_id, base_attribute_read_context)
         .await
         .expect("cannot set parent prop");
 
     let killer_prop = create_prop_of_kind_with_name(ctx, PropKind::String, "killer_queen").await;
     killer_prop
-        .set_parent_prop(ctx, root.domain_prop_id)
+        .set_parent_prop(ctx, root.domain_prop_id, base_attribute_read_context)
         .await
         .expect("cannot set parent prop");
 
@@ -195,15 +212,21 @@ pub async fn create_schema_with_array_of_string_props(
         .await
         .expect("cannot set default schema variant");
 
+    let base_attribute_read_context = AttributeReadContext {
+        schema_id: Some(*schema.id()),
+        schema_variant_id: Some(*schema_variant.id()),
+        ..AttributeReadContext::default()
+    };
+
     let sammy_prop = create_prop_of_kind_with_name(ctx, PropKind::Array, "sammy_hagar").await;
     sammy_prop
-        .set_parent_prop(ctx, root.domain_prop_id)
+        .set_parent_prop(ctx, root.domain_prop_id, base_attribute_read_context)
         .await
         .expect("cannot set parent");
 
     let album_string_prop = create_prop_of_kind_with_name(ctx, PropKind::String, "ignoreme").await;
     album_string_prop
-        .set_parent_prop(ctx, *sammy_prop.id())
+        .set_parent_prop(ctx, *sammy_prop.id(), base_attribute_read_context)
         .await
         .expect("cannot set parent");
 
@@ -244,35 +267,41 @@ pub async fn create_schema_with_nested_array_objects(
         .await
         .expect("cannot set default schema variant");
 
+    let base_attribute_read_context = AttributeReadContext {
+        schema_id: Some(*schema.id()),
+        schema_variant_id: Some(*schema_variant.id()),
+        ..AttributeReadContext::default()
+    };
+
     let sammy_prop = create_prop_of_kind_with_name(ctx, PropKind::Array, "sammy_hagar").await;
     sammy_prop
-        .set_parent_prop(ctx, root.domain_prop_id)
+        .set_parent_prop(ctx, root.domain_prop_id, base_attribute_read_context)
         .await
         .expect("cannot set parent");
 
     let album_object_prop =
         create_prop_of_kind_with_name(ctx, PropKind::Object, "album_ignore").await;
     album_object_prop
-        .set_parent_prop(ctx, *sammy_prop.id())
+        .set_parent_prop(ctx, *sammy_prop.id(), base_attribute_read_context)
         .await
         .expect("cannot set parent");
 
     let album_string_prop = create_prop_of_kind_with_name(ctx, PropKind::String, "album").await;
     album_string_prop
-        .set_parent_prop(ctx, *album_object_prop.id())
+        .set_parent_prop(ctx, *album_object_prop.id(), base_attribute_read_context)
         .await
         .expect("cannot set parent");
 
     let songs_array_prop = create_prop_of_kind_with_name(ctx, PropKind::Array, "songs").await;
     songs_array_prop
-        .set_parent_prop(ctx, *album_object_prop.id())
+        .set_parent_prop(ctx, *album_object_prop.id(), base_attribute_read_context)
         .await
         .expect("cannot set parent");
 
     let song_name_prop =
         create_prop_of_kind_with_name(ctx, PropKind::String, "song_name_ignore").await;
     song_name_prop
-        .set_parent_prop(ctx, *songs_array_prop.id())
+        .set_parent_prop(ctx, *songs_array_prop.id(), base_attribute_read_context)
         .await
         .expect("cannot set parent");
 
@@ -311,16 +340,22 @@ pub async fn create_simple_map(
         .await
         .expect("cannot set default schema variant");
 
+    let base_attribute_read_context = AttributeReadContext {
+        schema_id: Some(*schema.id()),
+        schema_variant_id: Some(*schema_variant.id()),
+        ..AttributeReadContext::default()
+    };
+
     let album_prop = create_prop_of_kind_with_name(ctx, PropKind::Map, "albums").await;
     album_prop
-        .set_parent_prop(ctx, root.domain_prop_id)
+        .set_parent_prop(ctx, root.domain_prop_id, base_attribute_read_context)
         .await
         .expect("cannot set parent");
 
     let album_item_prop =
         create_prop_of_kind_with_name(ctx, PropKind::String, "album_ignore").await;
     album_item_prop
-        .set_parent_prop(ctx, *album_prop.id())
+        .set_parent_prop(ctx, *album_prop.id(), base_attribute_read_context)
         .await
         .expect("cannot set parent");
 
@@ -361,41 +396,47 @@ pub async fn create_schema_with_nested_array_objects_and_a_map(
         .await
         .expect("cannot set default schema variant");
 
+    let base_attribute_read_context = AttributeReadContext {
+        schema_id: Some(*schema.id()),
+        schema_variant_id: Some(*schema_variant.id()),
+        ..AttributeReadContext::default()
+    };
+
     let sammy_prop = create_prop_of_kind_with_name(ctx, PropKind::Array, "sammy_hagar").await;
     sammy_prop
-        .set_parent_prop(ctx, root.domain_prop_id)
+        .set_parent_prop(ctx, root.domain_prop_id, base_attribute_read_context)
         .await
         .expect("cannot set parent");
 
     let album_object_prop =
         create_prop_of_kind_with_name(ctx, PropKind::Object, "album_ignore").await;
     album_object_prop
-        .set_parent_prop(ctx, *sammy_prop.id())
+        .set_parent_prop(ctx, *sammy_prop.id(), base_attribute_read_context)
         .await
         .expect("cannot set parent");
 
     let album_string_prop = create_prop_of_kind_with_name(ctx, PropKind::String, "album").await;
     album_string_prop
-        .set_parent_prop(ctx, *album_object_prop.id())
+        .set_parent_prop(ctx, *album_object_prop.id(), base_attribute_read_context)
         .await
         .expect("cannot set parent");
 
     let songs_array_prop = create_prop_of_kind_with_name(ctx, PropKind::Array, "songs").await;
     songs_array_prop
-        .set_parent_prop(ctx, *album_object_prop.id())
+        .set_parent_prop(ctx, *album_object_prop.id(), base_attribute_read_context)
         .await
         .expect("cannot set parent");
 
     let song_map_prop = create_prop_of_kind_with_name(ctx, PropKind::Map, "song_map_ignore").await;
     song_map_prop
-        .set_parent_prop(ctx, *songs_array_prop.id())
+        .set_parent_prop(ctx, *songs_array_prop.id(), base_attribute_read_context)
         .await
         .expect("cannot set parent");
 
     let song_map_item_prop =
         create_prop_of_kind_with_name(ctx, PropKind::String, "song_map_item_ignore").await;
     song_map_item_prop
-        .set_parent_prop(ctx, *song_map_prop.id())
+        .set_parent_prop(ctx, *song_map_prop.id(), base_attribute_read_context)
         .await
         .expect("cannot set parent");
 

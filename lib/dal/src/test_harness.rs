@@ -1,4 +1,4 @@
-use crate::DalContext;
+use crate::{AttributeReadContext, DalContext};
 use std::{env, path::Path, sync::Arc};
 
 use anyhow::Result;
@@ -499,10 +499,14 @@ pub async fn create_prop_of_kind_and_set_parent_with_name(
     prop_kind: PropKind,
     name: impl AsRef<str>,
     parent_prop_id: PropId,
+    base_attribute_read_context: AttributeReadContext,
 ) -> Prop {
-    let new_prop = create_prop_of_kind_with_name(ctx, prop_kind, name).await;
+    let name = name.as_ref();
+    let new_prop = Prop::new(ctx, name, prop_kind)
+        .await
+        .expect("cannot create prop");
     new_prop
-        .set_parent_prop(ctx, parent_prop_id)
+        .set_parent_prop(ctx, parent_prop_id, base_attribute_read_context)
         .await
         .expect("cannot set parent to new prop");
     new_prop

@@ -1,14 +1,22 @@
 use crate::schema::builtins::create_prop;
 use crate::schema::SchemaResult;
-use crate::DalContext;
+use crate::{AttributeReadContext, DalContext};
 use crate::{Prop, PropId, PropKind, StandardModel};
 
 #[allow(clippy::too_many_arguments)]
 pub async fn create_selector_prop(
     ctx: &DalContext<'_, '_>,
     parent_prop_id: Option<PropId>,
+    base_attribute_read_context: AttributeReadContext,
 ) -> SchemaResult<Prop> {
-    let selector_prop = create_prop(ctx, "selector", PropKind::Object, parent_prop_id).await?;
+    let selector_prop = create_prop(
+        ctx,
+        "selector",
+        PropKind::Object,
+        parent_prop_id,
+        base_attribute_read_context,
+    )
+    .await?;
 
     {
         let match_expressions_prop = create_prop(
@@ -16,6 +24,7 @@ pub async fn create_selector_prop(
             "matchExpressions",
             PropKind::Array, // How to specify it as an array of objects?
             Some(*selector_prop.id()),
+            base_attribute_read_context,
         )
         .await?;
 
@@ -25,6 +34,7 @@ pub async fn create_selector_prop(
                 "key",
                 PropKind::String,
                 Some(*match_expressions_prop.id()),
+                base_attribute_read_context,
             )
             .await?;
         }
@@ -37,6 +47,7 @@ pub async fn create_selector_prop(
                 "operator",
                 PropKind::String,
                 Some(*match_expressions_prop.id()),
+                base_attribute_read_context,
             )
             .await?;
         }
@@ -47,6 +58,7 @@ pub async fn create_selector_prop(
                 "values",
                 PropKind::Array, // How to specify it as an array of strings?
                 Some(*match_expressions_prop.id()),
+                base_attribute_read_context,
             )
             .await?;
         }
@@ -58,6 +70,7 @@ pub async fn create_selector_prop(
             "matchLabels",
             PropKind::Array, // How to specify it as an array of strings?
             Some(*selector_prop.id()),
+            base_attribute_read_context,
         )
         .await?;
     }

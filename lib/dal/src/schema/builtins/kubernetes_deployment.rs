@@ -9,8 +9,8 @@ use crate::schema::builtins::{create_prop, create_schema, create_string_prop_wit
 use crate::schema::{SchemaResult, SchemaVariant, UiMenu};
 use crate::socket::{Socket, SocketArity, SocketEdgeKind};
 use crate::{
-    CodeGenerationPrototype, DalContext, Func, PropKind, QualificationPrototype, Schema,
-    SchemaError, SchemaKind, SchematicKind, StandardModel,
+    AttributeReadContext, CodeGenerationPrototype, DalContext, Func, PropKind,
+    QualificationPrototype, Schema, SchemaError, SchemaKind, SchematicKind, StandardModel,
 };
 
 pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> SchemaResult<()> {
@@ -24,6 +24,11 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> SchemaResult<()>
     schema
         .set_default_schema_variant_id(ctx, Some(*variant.id()))
         .await?;
+    let base_attribute_read_context = AttributeReadContext {
+        schema_id: Some(*schema.id()),
+        schema_variant_id: Some(*variant.id()),
+        ..AttributeReadContext::default()
+    };
 
     {
         // TODO: add validation (si-registry ensures the value is unchanged)
@@ -32,6 +37,7 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> SchemaResult<()>
             "apiVersion",
             "apps/v1".to_owned(),
             Some(root_prop.domain_prop_id),
+            base_attribute_read_context,
         )
         .await?;
     }
@@ -42,6 +48,7 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> SchemaResult<()>
             "kind",
             "Deployment".to_owned(),
             Some(root_prop.domain_prop_id),
+            base_attribute_read_context,
         )
         .await?;
     }
@@ -51,6 +58,7 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> SchemaResult<()>
             ctx,
             true, // is name required, note: bool is not ideal here tho
             Some(root_prop.domain_prop_id),
+            base_attribute_read_context,
         )
         .await?;
     }
@@ -61,20 +69,31 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> SchemaResult<()>
             "spec",
             PropKind::Object,
             Some(root_prop.domain_prop_id),
+            base_attribute_read_context,
         )
         .await?;
 
         {
-            let _replicas_prop =
-                create_prop(ctx, "replicas", PropKind::Integer, Some(*spec_prop.id())).await?;
+            let _replicas_prop = create_prop(
+                ctx,
+                "replicas",
+                PropKind::Integer,
+                Some(*spec_prop.id()),
+                base_attribute_read_context,
+            )
+            .await?;
         }
 
         {
-            let _selector_prop = create_selector_prop(ctx, Some(*spec_prop.id())).await?;
+            let _selector_prop =
+                create_selector_prop(ctx, Some(*spec_prop.id()), base_attribute_read_context)
+                    .await?;
         }
 
         {
-            let _template_prop = create_template_prop(ctx, Some(*spec_prop.id())).await?;
+            let _template_prop =
+                create_template_prop(ctx, Some(*spec_prop.id()), base_attribute_read_context)
+                    .await?;
         }
     }
 
