@@ -110,6 +110,15 @@ pub enum SchemaKind {
     Concrete,
 }
 
+impl From<&SchemaKind> for SchematicKind {
+    fn from(kind: &SchemaKind) -> Self {
+        match kind {
+            SchemaKind::Concept => Self::Deployment,
+            SchemaKind::Concrete | SchemaKind::Implementation => Self::Component,
+        }
+    }
+}
+
 impl From<SchemaKind> for SchematicKind {
     fn from(kind: SchemaKind) -> Self {
         match kind {

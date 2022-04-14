@@ -322,6 +322,7 @@ impl EditFieldAble for SchemaVariant {
                     "TODO: name me!",
                     &crate::socket::SocketEdgeKind::Deployment,
                     &crate::socket::SocketArity::One,
+                    &crate::SchematicKind::Component,
                 )
                 .await?;
                 socket.add_type(ctx, object.id()).await?;

@@ -29,6 +29,8 @@ export class Sockets extends PIXI.Container {
     inputs: MODEL.Socket[],
     panelKind: SchematicKind,
   ): void {
+    inputs = inputs.filter((i) => i.schematic_kind === panelKind);
+
     let pos, growth, color;
     let displaySocketLabel = false;
     switch (panelKind) {
@@ -43,7 +45,7 @@ export class Sockets extends PIXI.Container {
         break;
       case SchematicKind.Deployment:
         pos = {
-          x: (NODE_WIDTH - (inputs.length * SOCKET_SPACING) / 2) / 2,
+          x: NODE_WIDTH / 2,
           y: 0,
         };
         growth = { x: SOCKET_SPACING, y: 0 };
@@ -80,6 +82,8 @@ export class Sockets extends PIXI.Container {
     outputs: MODEL.Socket[],
     panelKind: SchematicKind,
   ): void {
+    outputs = outputs.filter((i) => i.schematic_kind === panelKind);
+
     let pos, color;
     switch (panelKind) {
       case SchematicKind.Component:

@@ -1,4 +1,5 @@
 import { Color } from "./common";
+import { SchematicKind } from "@/api/sdf/dal/schematic";
 
 /**  Display properties */
 interface SocketDisplay {
@@ -11,6 +12,7 @@ export interface Socket {
   name?: string;
   type: string;
   display?: SocketDisplay;
+  schematic_kind: SchematicKind;
 }
 
 export interface SocketCtx {
