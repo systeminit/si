@@ -23,9 +23,15 @@ async fn update_for_context_simple(ctx: &DalContext<'_, '_>) {
         .await
         .expect("cannot set default schema variant");
 
+    let base_attribute_read_context = AttributeReadContext {
+        schema_id: Some(*schema.id()),
+        schema_variant_id: Some(*schema_variant.id()),
+        ..AttributeReadContext::default()
+    };
+
     let name_prop = create_prop_of_kind_with_name(ctx, PropKind::String, "name_prop").await;
     name_prop
-        .set_parent_prop(ctx, root.domain_prop_id)
+        .set_parent_prop(ctx, root.domain_prop_id, base_attribute_read_context)
         .await
         .expect("cannot set parent of name_prop");
 
@@ -69,9 +75,18 @@ async fn update_for_context_simple(ctx: &DalContext<'_, '_>) {
     .pop()
     .expect("domain AttributeValue not found")
     .id();
-    let base_name_value = AttributeValue::find_for_prop(ctx, *name_prop.id())
-        .await
-        .expect("cannot get base prop value");
+    let base_name_value = AttributeValue::find_for_context(
+        ctx,
+        AttributeReadContext {
+            prop_id: Some(*name_prop.id()),
+            component_id: Some(*component.id()),
+            ..AttributeReadContext::any()
+        },
+    )
+    .await
+    .expect("cannot get name AttributeValue")
+    .pop()
+    .expect("name AttributeValue not found");
 
     let update_context = AttributeContext::builder()
         .set_prop_id(*name_prop.id())

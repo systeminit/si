@@ -35,7 +35,6 @@ use crate::{
 const CHILD_ATTRIBUTE_VALUES_IN_CONTEXT: &str =
     include_str!("../queries/attribute_value_child_attribute_values_in_context.sql");
 const FIND_FOR_CONTEXT: &str = include_str!("../queries/attribute_value_find_for_context.sql");
-const FIND_FOR_PROP: &str = include_str!("../queries/attribute_value_find_for_prop.sql");
 const FIND_PROP_FOR_VALUE: &str =
     include_str!("../queries/attribute_value_find_prop_for_value.sql");
 const FIND_WITH_PARENT_AND_KEY_FOR_CONTEXT: &str =
@@ -309,26 +308,6 @@ impl AttributeValue {
             .await?;
 
         Ok(standard_model::objects_from_rows(rows)?)
-    }
-
-    pub async fn find_for_prop(
-        ctx: &DalContext<'_, '_>,
-        prop_id: PropId,
-    ) -> AttributeValueResult<Self> {
-        let prop_context = AttributeContext::builder()
-            .set_prop_id(prop_id)
-            .to_context()?;
-
-        let row = ctx
-            .txns()
-            .pg()
-            .query_one(
-                FIND_FOR_PROP,
-                &[ctx.read_tenancy(), ctx.visibility(), &prop_context],
-            )
-            .await?;
-
-        Ok(standard_model::object_from_row(row)?)
     }
 
     /// Return the [`Prop`] that the [`AttributeValueId`] belongs to,

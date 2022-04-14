@@ -9,12 +9,11 @@ use dal::{
         create_prop_of_kind_and_set_parent_with_name, create_schema,
         create_schema_variant_with_root,
     },
-    PropKind, SchemaKind, StandardModel,
+    AttributeReadContext, PropKind, SchemaKind, StandardModel,
 };
 use pretty_assertions_sorted::assert_eq;
 
 #[test]
-#[ignore]
 async fn get_edit_fields_for_component(ctx: &DalContext<'_, '_>) {
     let mut schema = create_schema(ctx, &SchemaKind::Concrete).await;
     let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
@@ -26,6 +25,11 @@ async fn get_edit_fields_for_component(ctx: &DalContext<'_, '_>) {
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
         .expect("cannot set default schema variant");
+    let base_attribute_read_context = AttributeReadContext {
+        schema_id: Some(*schema.id()),
+        schema_variant_id: Some(*schema_variant.id()),
+        ..AttributeReadContext::default()
+    };
 
     // domain: Object
     // └─ object: Object
@@ -36,6 +40,7 @@ async fn get_edit_fields_for_component(ctx: &DalContext<'_, '_>) {
         PropKind::Object,
         "object",
         root.domain_prop_id,
+        base_attribute_read_context,
     )
     .await;
     let _name_prop = create_prop_of_kind_and_set_parent_with_name(
@@ -43,6 +48,7 @@ async fn get_edit_fields_for_component(ctx: &DalContext<'_, '_>) {
         PropKind::String,
         "name",
         *object_prop.id(),
+        base_attribute_read_context,
     )
     .await;
     let _value_prop = create_prop_of_kind_and_set_parent_with_name(
@@ -50,6 +56,7 @@ async fn get_edit_fields_for_component(ctx: &DalContext<'_, '_>) {
         PropKind::String,
         "value",
         *object_prop.id(),
+        base_attribute_read_context,
     )
     .await;
 
@@ -89,7 +96,6 @@ async fn get_edit_fields_for_component(ctx: &DalContext<'_, '_>) {
 }
 
 #[test]
-#[ignore]
 async fn update_edit_field_for_component(ctx: &DalContext<'_, '_>) {
     let mut schema = create_schema(ctx, &SchemaKind::Concrete).await;
     let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
@@ -101,6 +107,11 @@ async fn update_edit_field_for_component(ctx: &DalContext<'_, '_>) {
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
         .expect("cannot set default schema variant");
+    let base_attribute_read_context = AttributeReadContext {
+        schema_id: Some(*schema.id()),
+        schema_variant_id: Some(*schema_variant.id()),
+        ..AttributeReadContext::default()
+    };
 
     // domain: Object
     // └─ object: Object
@@ -111,6 +122,7 @@ async fn update_edit_field_for_component(ctx: &DalContext<'_, '_>) {
         PropKind::Object,
         "object",
         root.domain_prop_id,
+        base_attribute_read_context,
     )
     .await;
     let _name_prop = create_prop_of_kind_and_set_parent_with_name(
@@ -118,6 +130,7 @@ async fn update_edit_field_for_component(ctx: &DalContext<'_, '_>) {
         PropKind::String,
         "name",
         *object_prop.id(),
+        base_attribute_read_context,
     )
     .await;
     let _value_prop = create_prop_of_kind_and_set_parent_with_name(
@@ -125,6 +138,7 @@ async fn update_edit_field_for_component(ctx: &DalContext<'_, '_>) {
         PropKind::String,
         "value",
         *object_prop.id(),
+        base_attribute_read_context,
     )
     .await;
 
@@ -157,7 +171,7 @@ async fn update_edit_field_for_component(ctx: &DalContext<'_, '_>) {
 
     let new_value = Some(serde_json::json!("Aubrey Drake Graham"));
     Component::update_from_edit_field_with_baggage(
-        &ctx,
+        ctx,
         new_value.clone(),
         attribute_context,
         old_baggage,

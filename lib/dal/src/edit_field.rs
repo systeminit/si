@@ -195,6 +195,14 @@ pub trait EditFieldAble {
     type Id;
     type Error;
 
+    // FIXME(nick): technically, this should return only one EditField (the root). It's widget and
+    // its children's widgets recursively will contain all the child EditFields. We may want to
+    // keep the function and route names the same, but ensure only one EditField ever gets returned.
+    //
+    // However, we might want to change the name and its corresponding routes and references to
+    // "get_root_edit_field" or something similar. The direction we should go in is uncertain, but
+    // now that we have a singular "root" edit field most/all of the time, we should at least
+    // reconsider this function signature and its usages.
     async fn get_edit_fields(
         ctx: &DalContext<'_, '_>,
         id: &Self::Id,

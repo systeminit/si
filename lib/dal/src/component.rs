@@ -1192,9 +1192,18 @@ impl Component {
         json_pointer: &str,
     ) -> ComponentResult<Option<AttributeValue>> {
         if let Some(prop) = self.find_prop_by_json_pointer(ctx, json_pointer).await? {
-            // Should we specify system, schema, schema_variant here?
+            let schema = self
+                .schema(ctx)
+                .await?
+                .ok_or(ComponentError::SchemaNotFound)?;
+            let schema_variant = self
+                .schema_variant(ctx)
+                .await?
+                .ok_or(ComponentError::SchemaVariantNotFound)?;
             let read_context = AttributeReadContext {
                 prop_id: Some(*prop.id()),
+                schema_id: Some(*schema.id()),
+                schema_variant_id: Some(*schema_variant.id()),
                 component_id: Some(*self.id()),
                 ..AttributeReadContext::any()
             };
@@ -1243,72 +1252,15 @@ impl EditFieldAble for Component {
     type Id = ComponentId;
     type Error = ComponentError;
 
+    // FIXME(nick): we may want to change the trait's func signature to return only one edit field.
+    // Since that is TBD, we split out the "get_root_edit_field" logic to clearly indicate that only
+    // the root edit field is to be expected.
     async fn get_edit_fields(
         ctx: &DalContext<'_, '_>,
-        id: &ComponentId,
-    ) -> ComponentResult<Vec<EditField>> {
-        let head_visibility = Visibility::new_head(ctx.visibility().deleted);
-        let change_set_visibility =
-            Visibility::new_change_set(ctx.visibility().change_set_pk, ctx.visibility().deleted);
-
-        let component = Self::get_by_id(ctx, id)
-            .await?
-            .ok_or(ComponentError::NotFound(*id))?;
-
-        let mut edit_fields = vec![];
-        let schema_variant = component
-            .schema_variant_with_tenancy(ctx)
-            .await?
-            .ok_or(ComponentError::SchemaVariantNotFound)?;
-        let schema = schema_variant
-            .schema(ctx)
-            .await?
-            .ok_or(ComponentError::SchemaNotFound)?;
-
-        let attribute_read_context = AttributeReadContext {
-            prop_id: None,
-            schema_id: Some(*schema.id()),
-            schema_variant_id: Some(*schema_variant.id()),
-            component_id: Some(*id),
-            ..AttributeReadContext::default()
-        };
-
-        // NOTE(nick): this can be more elegant, but it works. We want to ensure we only find the
-        // root prop at this point.
-        let mut props = schema_variant.props(ctx).await?;
-        if props.len() > 1 {
-            return Err(ComponentError::MultipleRootProps(props));
-        }
-        let root_prop = props
-            .pop()
-            .ok_or_else(|| ComponentError::RootPropNotFound(*schema_variant.id()))?;
-
-        // NOTE(nick): it is a bit wasteful that we get the attribute value here and then do it
-        // again within the call below, but it ~~works~~.
-        let context = AttributeReadContext {
-            prop_id: Some(*root_prop.id()),
-            ..attribute_read_context
-        };
-        let attribute_value: AttributeValue = AttributeValue::find_for_context(ctx, context)
-            .await?
-            .pop()
-            .ok_or_else(|| ComponentError::RootPropNotFound(*schema_variant.id()))?;
-
-        // Parent attribute value must be "None" since we are dealing with the root prop.
-        edit_fields.push(
-            edit_field_for_attribute_value(
-                ctx,
-                &head_visibility,
-                &change_set_visibility,
-                attribute_read_context,
-                *attribute_value.id(),
-                None,
-                None,
-            )
-            .await?,
-        );
-
-        Ok(edit_fields)
+        id: &Self::Id,
+    ) -> Result<Vec<EditField>, Self::Error> {
+        let root_edit_field = get_root_edit_field(ctx, id).await?;
+        Ok(vec![root_edit_field])
     }
 
     async fn update_from_edit_field(
@@ -1319,6 +1271,75 @@ impl EditFieldAble for Component {
     ) -> ComponentResult<()> {
         Err(EditFieldError::invalid_field(edit_field_id).into())
     }
+}
+
+/// Find the root [`EditField`] for a given [`ComponentId`]. This will also find all of its child
+/// edit fields, which are accessed via each field`s [`Widget`], if applicable.
+async fn get_root_edit_field(
+    ctx: &DalContext<'_, '_>,
+    id: &ComponentId,
+) -> ComponentResult<EditField> {
+    let head_visibility = Visibility::new_head(ctx.visibility().deleted);
+    let change_set_visibility =
+        Visibility::new_change_set(ctx.visibility().change_set_pk, ctx.visibility().deleted);
+
+    // FIXME(nick): if we end up deciding that the trait's "get_edit_fields" func signature will
+    // change to only return one edit field, then this can use "Self" instead of "Component".
+    let component = Component::get_by_id(ctx, id)
+        .await?
+        .ok_or(ComponentError::NotFound(*id))?;
+
+    let schema_variant = component
+        .schema_variant_with_tenancy(ctx)
+        .await?
+        .ok_or(ComponentError::SchemaVariantNotFound)?;
+    let schema = schema_variant
+        .schema(ctx)
+        .await?
+        .ok_or(ComponentError::SchemaNotFound)?;
+
+    let attribute_read_context = AttributeReadContext {
+        prop_id: None,
+        schema_id: Some(*schema.id()),
+        schema_variant_id: Some(*schema_variant.id()),
+        component_id: Some(*id),
+        ..AttributeReadContext::default()
+    };
+
+    // NOTE(nick): this can be more elegant, but it works. We want to ensure we only find the
+    // root prop at this point.
+    let mut props = schema_variant.props(ctx).await?;
+    if props.len() > 1 {
+        return Err(ComponentError::MultipleRootProps(props));
+    }
+    let root_prop = props
+        .pop()
+        .ok_or_else(|| ComponentError::RootPropNotFound(*schema_variant.id()))?;
+
+    // NOTE(nick): it is a bit wasteful that we get the attribute value here and then do it
+    // again within the call below, but it ~~works~~.
+    let context = AttributeReadContext {
+        prop_id: Some(*root_prop.id()),
+        ..attribute_read_context
+    };
+    let attribute_value: AttributeValue = AttributeValue::find_for_context(ctx, context)
+        .await?
+        .pop()
+        .ok_or_else(|| ComponentError::RootPropNotFound(*schema_variant.id()))?;
+
+    // Parent attribute value must be "None" since we are dealing with the root prop.
+    let root_edit_field = edit_field_for_attribute_value(
+        ctx,
+        &head_visibility,
+        &change_set_visibility,
+        attribute_read_context,
+        *attribute_value.id(),
+        None,
+        None,
+    )
+    .await?;
+
+    Ok(root_edit_field)
 }
 
 #[allow(clippy::too_many_arguments)]

@@ -98,6 +98,12 @@ async fn list_for_context(ctx: &DalContext<'_, '_>) {
         .set_schema_id(*schema.id())
         .set_schema_variant_id(*schema_variant.id());
 
+    let base_attribute_read_context = AttributeReadContext {
+        schema_id: Some(*schema.id()),
+        schema_variant_id: Some(*schema_variant.id()),
+        ..AttributeReadContext::default()
+    };
+
     // {
     //   albums: [
     //     { name: String, artist: String, },
@@ -125,7 +131,7 @@ async fn list_for_context(ctx: &DalContext<'_, '_>) {
 
     let album_prop = create_prop_of_kind_with_name(ctx, PropKind::Object, "album_object").await;
     album_prop
-        .set_parent_prop(ctx, *albums_prop.id())
+        .set_parent_prop(ctx, *albums_prop.id(), base_attribute_read_context)
         .await
         .expect("cannot set parent prop for album object");
 
@@ -143,7 +149,7 @@ async fn list_for_context(ctx: &DalContext<'_, '_>) {
 
     let name_prop = create_prop_of_kind_with_name(ctx, PropKind::String, "album_name").await;
     name_prop
-        .set_parent_prop(ctx, *album_prop.id())
+        .set_parent_prop(ctx, *album_prop.id(), base_attribute_read_context)
         .await
         .expect("cannot set parent prop for album name");
 
@@ -162,7 +168,7 @@ async fn list_for_context(ctx: &DalContext<'_, '_>) {
 
     let artist_prop = create_prop_of_kind_with_name(ctx, PropKind::String, "artist_name").await;
     artist_prop
-        .set_parent_prop(ctx, *album_prop.id())
+        .set_parent_prop(ctx, *album_prop.id(), base_attribute_read_context)
         .await
         .expect("cannot set parent prop for album artist");
 
@@ -263,6 +269,12 @@ async fn list_for_context_with_a_hash(ctx: &DalContext<'_, '_>) {
         .set_schema_id(*schema.id())
         .set_schema_variant_id(*schema_variant.id());
 
+    let base_attribute_read_context = AttributeReadContext {
+        schema_id: Some(*schema.id()),
+        schema_variant_id: Some(*schema_variant.id()),
+        ..AttributeReadContext::default()
+    };
+
     // {
     //   albums: [
     //     { String: String, },
@@ -289,7 +301,7 @@ async fn list_for_context_with_a_hash(ctx: &DalContext<'_, '_>) {
 
     let album_prop = create_prop_of_kind_with_name(ctx, PropKind::Object, "album_object").await;
     album_prop
-        .set_parent_prop(ctx, *albums_prop.id())
+        .set_parent_prop(ctx, *albums_prop.id(), base_attribute_read_context)
         .await
         .expect("cannot set parent prop for album object");
 
@@ -308,7 +320,7 @@ async fn list_for_context_with_a_hash(ctx: &DalContext<'_, '_>) {
     let hash_key_prop =
         create_prop_of_kind_with_name(ctx, PropKind::String, "album_hash_key").await;
     hash_key_prop
-        .set_parent_prop(ctx, *album_prop.id())
+        .set_parent_prop(ctx, *album_prop.id(), base_attribute_read_context)
         .await
         .expect("cannot set parent prop for album hash key");
 
@@ -511,8 +523,14 @@ async fn remove_component_specific(ctx: &DalContext<'_, '_>) {
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
         .expect("cannot set default schema variant");
+    let base_attribute_read_context = AttributeReadContext {
+        schema_id: Some(*schema.id()),
+        schema_variant_id: Some(*schema_variant.id()),
+        ..AttributeReadContext::default()
+    };
+
     let prop = create_prop_of_kind_with_name(ctx, PropKind::String, "god").await;
-    prop.set_parent_prop(ctx, root.domain_prop_id)
+    prop.set_parent_prop(ctx, root.domain_prop_id, base_attribute_read_context)
         .await
         .expect("cannot set parent of prop");
     let (component, _) = Component::new_for_schema_with_node(ctx, "toddhoward", schema.id())

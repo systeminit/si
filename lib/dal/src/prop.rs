@@ -1,4 +1,4 @@
-use crate::DalContext;
+use crate::{AttributeReadContext, DalContext};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
@@ -224,10 +224,13 @@ impl Prop {
         result: PropResult,
     );
 
+    /// Sets a parent for a given [`Prop`]. For the provided [`AttributeReadContext`], the [`PropId`]
+    /// is ignored.
     pub async fn set_parent_prop(
         &self,
         ctx: &DalContext<'_, '_>,
         parent_prop_id: PropId,
+        base_attribute_read_context: AttributeReadContext,
     ) -> PropResult<()> {
         let parent_prop = Prop::get_by_id(ctx, &parent_prop_id)
             .await?
@@ -239,12 +242,37 @@ impl Prop {
             }
         }
 
-        let our_attribute_value = AttributeValue::find_for_prop(ctx, *self.id())
+        let attribute_read_context = AttributeReadContext {
+            prop_id: Some(*self.id()),
+            ..base_attribute_read_context
+        };
+        let our_attribute_value = AttributeValue::find_for_context(ctx, attribute_read_context)
             .await
-            .map_err(|e| PropError::AttributeValue(format!("{e}")))?;
-        let parent_attribute_value = AttributeValue::find_for_prop(ctx, parent_prop_id)
-            .await
-            .map_err(|e| PropError::AttributeValue(format!("{e}")))?;
+            .map_err(|e| PropError::AttributeValue(format!("{e}")))?
+            .pop()
+            .ok_or_else(|| {
+                PropError::AttributeValue(format!(
+                    "missing attribute value for context: {:?}",
+                    attribute_read_context
+                ))
+            })?;
+
+        let parent_attribute_read_context = AttributeReadContext {
+            prop_id: Some(parent_prop_id),
+            ..base_attribute_read_context
+        };
+        let parent_attribute_value =
+            AttributeValue::find_for_context(ctx, parent_attribute_read_context)
+                .await
+                .map_err(|e| PropError::AttributeValue(format!("{e}")))?
+                .pop()
+                .ok_or_else(|| {
+                    PropError::AttributeValue(format!(
+                        "missing attribute value for context: {:?}",
+                        parent_attribute_read_context
+                    ))
+                })?;
+
         our_attribute_value
             .unset_parent_attribute_value(ctx)
             .await

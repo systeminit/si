@@ -1,6 +1,6 @@
 use crate::schema::builtins::create_prop;
 use crate::schema::SchemaResult;
-use crate::DalContext;
+use crate::{AttributeReadContext, DalContext};
 use crate::{Prop, PropId, PropKind, StandardModel};
 
 #[allow(clippy::too_many_arguments)]
@@ -8,8 +8,16 @@ pub async fn create_metadata_prop(
     ctx: &DalContext<'_, '_>,
     is_name_required: bool,
     parent_prop_id: Option<PropId>,
+    base_attribute_read_context: AttributeReadContext,
 ) -> SchemaResult<Prop> {
-    let metadata_prop = create_prop(ctx, "metadata", PropKind::Object, parent_prop_id).await?;
+    let metadata_prop = create_prop(
+        ctx,
+        "metadata",
+        PropKind::Object,
+        parent_prop_id,
+        base_attribute_read_context,
+    )
+    .await?;
 
     {
         // TODO: add validation
@@ -26,8 +34,14 @@ pub async fn create_metadata_prop(
             // TODO: add a required field validation here
         }
 
-        let _name_prop =
-            create_prop(ctx, "name", PropKind::String, Some(*metadata_prop.id())).await?;
+        let _name_prop = create_prop(
+            ctx,
+            "name",
+            PropKind::String,
+            Some(*metadata_prop.id()),
+            base_attribute_read_context,
+        )
+        .await?;
     }
 
     {
@@ -36,6 +50,7 @@ pub async fn create_metadata_prop(
             "generateName",
             PropKind::String,
             Some(*metadata_prop.id()),
+            base_attribute_read_context,
         )
         .await?;
     }
@@ -47,6 +62,7 @@ pub async fn create_metadata_prop(
             "namespace",
             PropKind::String,
             Some(*metadata_prop.id()),
+            base_attribute_read_context,
         )
         .await?;
     }
@@ -57,6 +73,7 @@ pub async fn create_metadata_prop(
             "labels",
             PropKind::Map, // How to specify it as a map of string values?
             Some(*metadata_prop.id()),
+            base_attribute_read_context,
         )
         .await?;
     }
@@ -67,6 +84,7 @@ pub async fn create_metadata_prop(
             "annotations",
             PropKind::Map, // How to specify it as a map of string values?
             Some(*metadata_prop.id()),
+            base_attribute_read_context,
         )
         .await?;
     }
