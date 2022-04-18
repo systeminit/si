@@ -146,7 +146,7 @@ impl System {
         let node = Node::new(ctx, &NodeKind::System).await?;
         node.set_system(ctx, system.id()).await?;
 
-        system.set_workspace(&ctx, workspace_id).await?;
+        system.set_workspace(ctx, workspace_id).await?;
 
         Ok((system, node))
     }

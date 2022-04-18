@@ -3,10 +3,10 @@ use std::convert::Infallible;
 use axum::{
     body::{Bytes, Full},
     response::IntoResponse,
-    routing::{post, get},
+    routing::{get, post},
     Json, Router,
 };
-use dal::{SystemError as DalSystemError, TransactionsError, StandardModelError};
+use dal::{StandardModelError, SystemError as DalSystemError, TransactionsError};
 use hyper::StatusCode;
 use thiserror::Error;
 
