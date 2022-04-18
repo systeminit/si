@@ -25,7 +25,6 @@ import { GlobalErrorService } from "@/service/global_error";
 import { componentsMetadata$ } from "@/organisims/SchematicViewer/data/observable";
 import { untilUnmounted } from "vuse-rx";
 import { schematicData$ } from "./SchematicViewer/Viewer/scene/observable";
-import { applicationNodeId$ } from "@/observable/application";
 import { system$ } from "@/observable/system";
 import { eventResourceSynced$ } from "@/observable/resource";
 import { SchematicService } from "@/service/schematic";
@@ -103,13 +102,12 @@ const maximizePanelFull = (event: PanelMaximized) => {
 
 // This is here to ensure both PanelSchematic and PanelAttribute have access to it
 // Previously we fetched at one and passed to the other, but if we hide that kind of panel the data is lost
-Rx.combineLatest([system$, applicationNodeId$])
+Rx.combineLatest([system$])
   .pipe(
-    Rx.switchMap(([system, applicationNodeId]) => {
-      if (system && applicationNodeId) {
+    Rx.switchMap(([system]) => {
+      if (system) {
         return SchematicService.getSchematic({
           systemId: system.id,
-          rootNodeId: applicationNodeId,
         });
       } else {
         return Rx.from([null]);

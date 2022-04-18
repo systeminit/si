@@ -37,6 +37,7 @@ pub async fn login(
             // Empty tenancy means things can be written, but won't ever be read
             WriteTenancy::new_empty(),
             HistoryActor::SystemInit,
+            None,
         )
         .build_head(),
         &txns,
@@ -46,14 +47,9 @@ pub async fn login(
         .ok_or(SessionError::LoginFailed)?;
 
     // Update context tenancies
-    let ctx = builder.build(
-        AccessBuilder::new(
-            ReadTenancy::new_billing_account(vec![*billing_account.id()]),
-            WriteTenancy::new_billing_account(*billing_account.id()),
-            HistoryActor::SystemInit,
-        )
-        .build_head(),
-        &txns,
+    let ctx = ctx.clone_with_new_tenancies(
+        ReadTenancy::new_billing_account(vec![*billing_account.id()]),
+        WriteTenancy::new_billing_account(*billing_account.id()),
     );
 
     let user = User::find_by_email(&ctx, &request.user_email)
@@ -61,15 +57,7 @@ pub async fn login(
         .ok_or(SessionError::LoginFailed)?;
 
     // Update context history actor
-    let ctx = builder.build(
-        AccessBuilder::new(
-            ctx.read_tenancy().clone(),
-            ctx.write_tenancy().clone(),
-            HistoryActor::User(*user.id()),
-        )
-        .build_head(),
-        &txns,
-    );
+    let ctx = ctx.clone_with_new_history_actor(HistoryActor::User(*user.id()));
 
     let jwt = user
         .login(

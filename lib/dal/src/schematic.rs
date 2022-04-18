@@ -62,16 +62,16 @@ pub enum SchematicKind {
 #[serde(rename_all = "camelCase")]
 pub struct Connection {
     id: EdgeId,
-    classification: EdgeKind,
-    source: Vertex,
-    destination: Vertex,
+    pub classification: EdgeKind,
+    pub source: Vertex,
+    pub destination: Vertex,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-struct Vertex {
-    node_id: NodeId,
-    socket_id: SocketId,
+pub struct Vertex {
+    pub node_id: NodeId,
+    pub socket_id: SocketId,
 }
 
 impl Connection {
@@ -169,13 +169,28 @@ impl Schematic {
     pub async fn find(
         ctx: &DalContext<'_, '_>,
         system_id: Option<SystemId>,
-        root_node_id: NodeId,
     ) -> SchematicResult<Self> {
-        let nodes: Vec<Node> = Node::list(ctx).await?;
+        let connections = Connection::list(ctx).await?;
+        let mut valid_connections = Vec::new();
+        let nodes = Node::list(ctx).await?;
 
         let mut node_views = Vec::with_capacity(nodes.len());
-        for node in nodes {
-            // TODO: we have to filter the components here, by system and application (root_node_id)
+        for node in &nodes {
+            // TODO: we have to filter the components here by system
+
+            // Allows us to ignore nodes that aren't in current application
+            let conns = connections
+                .iter()
+                .filter(|c| c.source.node_id == *node.id());
+
+            let is_from_this_schematic = Some(*node.id()) == ctx.application_node_id()
+                || conns
+                    .clone()
+                    .any(|conn| Some(conn.destination.node_id) == ctx.application_node_id());
+            if !is_from_this_schematic {
+                continue;
+            }
+            valid_connections.extend(conns.cloned());
 
             let (schema, kind, name) = match node.kind() {
                 NodeKind::Deployment | NodeKind::Component => {
@@ -229,21 +244,30 @@ impl Schematic {
                 }
             };
 
-            let position =
-                NodePosition::find_by_node_id(ctx, system_id, root_node_id, *node.id()).await?;
+            let position = NodePosition::find_by_node_id(ctx, system_id, *node.id()).await?;
             let template = NodeTemplate::new_from_schema_id(ctx, *schema.id()).await?;
             let view = NodeView::new(name, node, kind, position, template);
             node_views.push(view);
         }
 
-        let connections = Connection::list(ctx).await?;
         Ok(Self {
+            connections: valid_connections
+                .into_iter()
+                .filter(|conn| {
+                    node_views
+                        .iter()
+                        .any(|n| conn.destination.node_id == *n.id())
+                })
+                .collect(),
             nodes: node_views,
-            connections,
         })
     }
 
     pub fn nodes(&self) -> &[NodeView] {
         &self.nodes
+    }
+
+    pub fn connections(&self) -> &[Connection] {
+        &self.connections
     }
 }

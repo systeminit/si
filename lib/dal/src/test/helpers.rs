@@ -1,13 +1,35 @@
 use names::{Generator, Name};
 
 use crate::{
-    BillingAccount, BillingAccountId, BillingAccountSignup, ChangeSet, Component, DalContext,
-    DalContextBuilder, EditSession, Group, HistoryActor, JwtSecretKey, RequestContext, Schema,
-    SchemaId, SchemaVariant, StandardModel, System, Transactions, User, Visibility,
+    node::Node, node::NodeId, BillingAccount, BillingAccountId, BillingAccountSignup, ChangeSet,
+    Component, DalContext, DalContextBuilder, EditSession, Group, HistoryActor, JwtSecretKey,
+    RequestContext, Schema, SchemaId, SchemaVariant, StandardModel, System, Transactions, User,
+    Visibility,
 };
 
 pub fn generate_fake_name() -> String {
     Generator::with_naming(Name::Numbered).next().unwrap()
+}
+
+pub async fn create_application(
+    builder: &DalContextBuilder,
+    txns: &Transactions<'_>,
+    nba: &BillingAccountSignup,
+) -> Node {
+    let request_context = RequestContext::new_workspace_head(
+        txns.pg(),
+        HistoryActor::SystemInit,
+        *nba.workspace.id(),
+        None,
+    )
+    .await
+    .expect("failed to create new workspace head request context");
+    let ctx = builder.build(request_context, txns);
+
+    let (_, node) = Component::new_application_with_node(&ctx, generate_fake_name())
+        .await
+        .expect("cannot create new application");
+    node
 }
 
 pub async fn billing_account_signup(
@@ -121,11 +143,13 @@ pub async fn create_ctx_for_new_change_set_and_edit_session<'s, 't>(
     builder: &'s DalContextBuilder,
     txns: &'t Transactions<'t>,
     nba: &BillingAccountSignup,
+    application_node_id: NodeId,
 ) -> DalContext<'s, 't> {
     let request_context = RequestContext::new_workspace_head(
         txns.pg(),
         HistoryActor::SystemInit,
         *nba.workspace.id(),
+        Some(application_node_id),
     )
     .await
     .expect("failed to create request context");

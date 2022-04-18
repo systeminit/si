@@ -20,6 +20,8 @@ pub enum NodePositionError {
     StandardModel(#[from] StandardModelError),
     #[error("read tenancy error: {0}")]
     ReadTenancy(#[from] ReadTenancyError),
+    #[error("application not found")]
+    ApplicationNotFound,
 }
 
 const FIND_NODE_POSITION_BY_NODE_ID: &str =
@@ -62,7 +64,6 @@ impl NodePosition {
     pub async fn new(
         ctx: &DalContext<'_, '_>,
         schematic_kind: SchematicKind,
-        root_node_id: NodeId,
         system_id: Option<SystemId>,
         deployment_node_id: Option<NodeId>,
         x: impl AsRef<str>,
@@ -77,7 +78,8 @@ impl NodePosition {
                     ctx.write_tenancy(),
                     ctx.visibility(),
                     &schematic_kind.as_ref(),
-                    &root_node_id,
+                    &ctx.application_node_id()
+                        .ok_or(NodePositionError::ApplicationNotFound)?,
                     &system_id,
                     &deployment_node_id,
                     &x.as_ref(),
@@ -93,7 +95,6 @@ impl NodePosition {
     pub async fn find_by_node_id(
         ctx: &DalContext<'_, '_>,
         system_id: Option<SystemId>,
-        root_node_id: NodeId,
         node_id: NodeId,
     ) -> NodePositionResult<Vec<Self>> {
         let rows = ctx
@@ -104,7 +105,8 @@ impl NodePosition {
                     ctx.read_tenancy(),
                     ctx.visibility(),
                     &system_id,
-                    &root_node_id,
+                    &ctx.application_node_id()
+                        .ok_or(NodePositionError::ApplicationNotFound)?,
                     &node_id,
                 ],
             )
@@ -119,12 +121,11 @@ impl NodePosition {
         schematic_kind: SchematicKind,
         system_id: Option<SystemId>,
         deployment_node_id: Option<NodeId>,
-        root_node_id: NodeId,
         node_id: NodeId,
         x: impl AsRef<str>,
         y: impl AsRef<str>,
     ) -> NodePositionResult<Self> {
-        for mut position in Self::find_by_node_id(ctx, system_id, root_node_id, node_id).await? {
+        for mut position in Self::find_by_node_id(ctx, system_id, node_id).await? {
             if position.deployment_node_id == deployment_node_id
                 && position.schematic_kind == schematic_kind
             {
@@ -133,16 +134,7 @@ impl NodePosition {
                 return Ok(position);
             }
         }
-        let obj = Self::new(
-            ctx,
-            schematic_kind,
-            root_node_id,
-            system_id,
-            deployment_node_id,
-            x,
-            y,
-        )
-        .await?;
+        let obj = Self::new(ctx, schematic_kind, system_id, deployment_node_id, x, y).await?;
         obj.set_node(ctx, &node_id).await?;
         Ok(obj)
     }

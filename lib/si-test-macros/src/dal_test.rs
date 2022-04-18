@@ -169,6 +169,11 @@ fn fn_setup<'a>(params: impl Iterator<Item = &'a FnArg>) -> FnSetup {
                                 let var = var.as_ref();
                                 expander.push_arg(parse_quote! {#var});
                             }
+                            "ApplicationId" => {
+                                let var = expander.setup_application_id();
+                                let var = var.as_ref();
+                                expander.push_arg(parse_quote! {#var});
+                            }
                             _ => panic!("unexpected argument type: {:?}", type_path),
                         };
                     }
@@ -271,6 +276,7 @@ struct FnSetupExpander {
     transaction_starter: Option<Arc<Ident>>,
     owned_transaction_starter: Option<Arc<Ident>>,
     transactions: Option<Arc<Ident>>,
+    application_id: Option<Arc<Ident>>,
     billing_account_signup: Option<(Arc<Ident>, Arc<Ident>)>,
     billing_account_id: Option<Arc<Ident>>,
     organization_id: Option<Arc<Ident>>,
@@ -301,6 +307,7 @@ impl FnSetupExpander {
             transaction_starter: None,
             owned_transaction_starter: None,
             transactions: None,
+            application_id: None,
             billing_account_signup: None,
             billing_account_id: None,
             organization_id: None,
@@ -514,6 +521,36 @@ impl FnSetupExpander {
         self.transactions.as_ref().unwrap().clone()
     }
 
+    fn setup_application_id(&mut self) -> Arc<Ident> {
+        if let Some(ident) = &self.application_id {
+            return ident.clone();
+        }
+
+        let dal_context_builder = self.setup_dal_context_builder();
+        let dal_context_builder = dal_context_builder.as_ref();
+        let transactions = self.setup_transactions();
+        let transactions = transactions.as_ref();
+
+        let bas = self.setup_billing_account_signup();
+        let nba = bas.0.as_ref();
+
+        let var = Ident::new("application_id", Span::call_site());
+        self.code.extend(quote! {
+            let #var = ::dal::test::helpers::create_application(
+                &#dal_context_builder,
+                &#transactions,
+                &#nba
+            ).await;
+            let #var = {
+                use dal::StandardModel;
+                *#var.id()
+            };
+        });
+        self.application_id = Some(Arc::new(var));
+
+        self.application_id.as_ref().unwrap().clone()
+    }
+
     fn setup_billing_account_signup(&mut self) -> (Arc<Ident>, Arc<Ident>) {
         if let Some(ref idents) = self.billing_account_signup {
             return idents.clone();
@@ -604,11 +641,14 @@ impl FnSetupExpander {
         let nba = bas.0.as_ref();
 
         let var = Ident::new("default_dal_context", Span::call_site());
+        let application_id = self.setup_application_id();
+        let application_id = application_id.as_ref();
         self.code.extend(quote! {
             let #var = ::dal::test::helpers::create_ctx_for_new_change_set_and_edit_session(
                 &#dal_context_builder,
                 &#transactions,
                 &#nba,
+                #application_id
             ).await;
         });
         self.dal_context_default = Some(Arc::new(var));
@@ -629,11 +669,14 @@ impl FnSetupExpander {
         let nba = bas.0.as_ref();
 
         let var = Ident::new("dal_context_default_mut", Span::call_site());
+        let application_id = self.setup_application_id();
+        let application_id = application_id.as_ref();
         self.code.extend(quote! {
             let mut #var = ::dal::test::helpers::create_ctx_for_new_change_set_and_edit_session(
                 &#dal_context_builder,
                 &#transactions,
                 &#nba,
+                #application_id,
             ).await;
         });
         self.dal_context_default_mut = Some(Arc::new(var));
@@ -730,12 +773,15 @@ impl FnSetupExpander {
         let nba = bas.0.as_ref();
 
         let var = Ident::new("dal_context_head", Span::call_site());
+        let application_id = self.setup_application_id();
+        let application_id = application_id.as_ref();
         self.code.extend(quote! {
             let #var = {
                 let request_context = ::dal::RequestContext::new_workspace_head(
                     &#transactions.pg(),
                     ::dal::HistoryActor::SystemInit,
                     *#nba.workspace.id(),
+                    Some(#application_id),
                 ).await.expect("failed to create new workspace head request context");
 
                 ::dal::test::DalContextHead(
@@ -761,12 +807,15 @@ impl FnSetupExpander {
         let nba = bas.0.as_ref();
 
         let var = Ident::new("dal_context_head_ref", Span::call_site());
+        let application_id = self.setup_application_id();
+        let application_id = application_id.as_ref();
         self.code.extend(quote! {
             let _dchr = {
                 let request_context = ::dal::RequestContext::new_workspace_head(
                     &#transactions.pg(),
                     ::dal::HistoryActor::SystemInit,
                     *#nba.workspace.id(),
+                    Some(#application_id),
                 ).await.expect("failed to create new workspace head request context");
 
                 #dal_context_builder.build(request_context, &#transactions)
@@ -791,12 +840,15 @@ impl FnSetupExpander {
         let nba = bas.0.as_ref();
 
         let var = Ident::new("dal_context_head_mut_ref", Span::call_site());
+        let application_id = self.setup_application_id();
+        let application_id = application_id.as_ref();
         self.code.extend(quote! {
             let mut _dchmr = {
                 let request_context = ::dal::RequestContext::new_workspace_head(
                     &#transactions.pg(),
                     ::dal::HistoryActor::SystemInit,
                     *#nba.workspace.id(),
+                    Some(#application_id),
                 ).await.expect("failed to create new workspace head request context");
 
                 #dal_context_builder.build(request_context, &#transactions)

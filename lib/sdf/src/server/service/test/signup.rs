@@ -21,6 +21,7 @@ pub async fn signup(
             ReadTenancy::new_universal(),
             WriteTenancy::new_universal(),
             HistoryActor::SystemInit,
+            None,
         )
         .build_head(),
         &txns,

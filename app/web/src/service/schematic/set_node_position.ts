@@ -14,7 +14,6 @@ export interface SetNodePositionArgs {
   deploymentNodeId: number | null;
   schematicKind: SchematicKind;
   nodeId: number;
-  rootNodeId: number;
   systemId?: number;
   x: string;
   y: string;

@@ -511,6 +511,8 @@ export default defineComponent({
     },
 
     updateMetadata(metadatas: ComponentMetadata[]) {
+      if (!this.sceneManager?.group) return;
+
       for (const metadata of metadatas) {
         for (const n of this.sceneManager.group.nodes.children) {
           const node = n as OBJ.Node;

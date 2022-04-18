@@ -30,12 +30,6 @@ mod kubernetes_template;
 use self::kubernetes_deployment::kubernetes_deployment;
 
 pub async fn migrate(ctx: &DalContext<'_, '_>) -> SchemaResult<()> {
-    //let (tenancy, visibility, history_actor) = (
-    //    WriteTenancy::new_universal(),
-    //    Visibility::new_head(false),
-    //    HistoryActor::SystemInit,
-    //);
-
     system(ctx).await?;
     application(ctx).await?;
     service(ctx).await?;
@@ -101,6 +95,16 @@ async fn application(ctx: &DalContext<'_, '_>) -> SchemaResult<()> {
     schema
         .set_default_schema_variant_id(ctx, Some(*variant.id()))
         .await?;
+
+    let output_socket = Socket::new(
+        ctx,
+        "output",
+        &SocketEdgeKind::Output,
+        &SocketArity::Many,
+        &SchematicKind::Component,
+    )
+    .await?;
+    variant.add_socket(ctx, output_socket.id()).await?;
 
     let output_socket = Socket::new(
         ctx,

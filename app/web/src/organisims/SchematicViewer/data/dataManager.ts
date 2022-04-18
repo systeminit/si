@@ -77,7 +77,6 @@ export class SchematicDataManager {
         x: `${nodeUpdate.position.x}`,
         y: `${nodeUpdate.position.y}`,
         nodeId: nodeUpdate.nodeId,
-        rootNodeId: editorContext.applicationNodeId,
         systemId: editorContext.systemId,
       }).subscribe((response: ApiResponse<SetNodePositionResponse>) => {
         if (response.error) {
@@ -111,7 +110,6 @@ export class SchematicDataManager {
     if (e) {
       SchematicService.createNode({
         schemaId: e.nodeSchemaId,
-        rootNodeId: e.rootNodeId,
         systemId: e.systemId,
         x: e.x,
         y: e.y,

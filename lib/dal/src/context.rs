@@ -9,8 +9,8 @@ use thiserror::Error;
 use veritech::EncryptionKey;
 
 use crate::{
-    BillingAccountId, HistoryActor, OrganizationId, ReadTenancy, ReadTenancyError, Visibility,
-    WorkspaceId, WriteTenancy,
+    node::NodeId, BillingAccountId, HistoryActor, OrganizationId, ReadTenancy, ReadTenancyError,
+    Visibility, WorkspaceId, WriteTenancy,
 };
 
 /// A context type which contains handles to common core service dependencies.
@@ -96,6 +96,8 @@ pub struct DalContext<'s, 't> {
     visibility: Visibility,
     /// A suitable [`HistoryActor`] for the consuming DAL objects.
     history_actor: HistoryActor,
+    /// A suitable application [`NodeId`] for the consuming DAL objects.
+    application_node_id: Option<NodeId>,
 }
 
 impl DalContext<'_, '_> {
@@ -105,9 +107,16 @@ impl DalContext<'_, '_> {
         DalContextBuilder { services_context }
     }
 
-    /// Updates this context with a new [`Visibility`].
-    pub fn update_visibility(&mut self, visibility: Visibility) {
-        self.visibility = visibility;
+    /// Updates this context with a new [`HistoryActor`].
+    pub fn update_application_node_id(&mut self, application_node_id: Option<NodeId>) {
+        self.application_node_id = application_node_id;
+    }
+
+    /// Clones a new context from this one with a new [`HistoryActor`].
+    pub fn clone_with_new_application_node_id(&self, application_node_id: Option<NodeId>) -> Self {
+        let mut new = self.clone();
+        new.update_application_node_id(application_node_id);
+        new
     }
 
     /// Updates this context with a new [`HistoryActor`].
@@ -120,6 +129,11 @@ impl DalContext<'_, '_> {
         let mut new = self.clone();
         new.update_history_actor(history_actor);
         new
+    }
+
+    /// Updates this context with a new [`Visibility`].
+    pub fn update_visibility(&mut self, visibility: Visibility) {
+        self.visibility = visibility;
     }
 
     /// Clones a new context from this one with a new [`Visibility`].
@@ -298,6 +312,12 @@ impl DalContext<'_, '_> {
     pub fn history_actor(&self) -> &HistoryActor {
         &self.history_actor
     }
+
+    /// Get a reference to the dal context's application node id
+    #[must_use]
+    pub fn application_node_id(&self) -> Option<NodeId> {
+        self.application_node_id
+    }
 }
 
 /// A context which represents a suitable tenancies, visibilities, etc. for consumption by a set
@@ -312,6 +332,8 @@ pub struct RequestContext {
     pub visibility: Visibility,
     /// A suitable [`HistoryActor`] for the consuming DAL objects.
     pub history_actor: HistoryActor,
+    /// A suitable application [`NodeId`] for the consuming DAL objects.
+    pub application_node_id: Option<NodeId>,
 }
 
 impl RequestContext {
@@ -326,6 +348,7 @@ impl RequestContext {
             write_tenancy,
             visibility,
             history_actor,
+            application_node_id: None,
         }
     }
 
@@ -335,6 +358,7 @@ impl RequestContext {
         txn: &PgTxn<'_>,
         history_actor: HistoryActor,
         workspace_id: WorkspaceId,
+        application_node_id: Option<NodeId>,
     ) -> Result<Self, TransactionsError> {
         let visibility = Visibility::new_head(false);
         let read_tenancy = ReadTenancy::new_workspace(txn, vec![workspace_id], &visibility).await?;
@@ -345,6 +369,7 @@ impl RequestContext {
             write_tenancy,
             visibility,
             history_actor,
+            application_node_id,
         })
     }
 
@@ -371,6 +396,12 @@ impl RequestContext {
     pub fn history_actor(&self) -> &HistoryActor {
         &self.history_actor
     }
+
+    /// Get a reference to the request context's application node id
+    #[must_use]
+    pub fn application_node_id(&self) -> Option<NodeId> {
+        self.application_node_id
+    }
 }
 
 /// A request context builder which requires a [`Visibility`] to be completed.
@@ -382,6 +413,8 @@ pub struct AccessBuilder {
     write_tenancy: WriteTenancy,
     /// A suitable [`HistoryActor`] for the consuming DAL objects.
     history_actor: HistoryActor,
+    /// A suitable application [`NodeId`] for the consuming DAL objects.
+    application_node_id: Option<NodeId>,
 }
 
 impl AccessBuilder {
@@ -390,11 +423,13 @@ impl AccessBuilder {
         read_tenancy: ReadTenancy,
         write_tenancy: WriteTenancy,
         history_actor: HistoryActor,
+        application_node_id: Option<NodeId>,
     ) -> Self {
         Self {
             read_tenancy,
             write_tenancy,
             history_actor,
+            application_node_id,
         }
     }
 
@@ -405,6 +440,7 @@ impl AccessBuilder {
             write_tenancy: self.write_tenancy,
             visibility: Visibility::new_head(false),
             history_actor: self.history_actor,
+            application_node_id: self.application_node_id,
         }
     }
 
@@ -415,6 +451,7 @@ impl AccessBuilder {
             write_tenancy: self.write_tenancy,
             visibility,
             history_actor: self.history_actor,
+            application_node_id: self.application_node_id,
         }
     }
 }
@@ -440,6 +477,7 @@ impl DalContextBuilder {
             write_tenancy: request_context.write_tenancy,
             visibility: request_context.visibility,
             history_actor: request_context.history_actor,
+            application_node_id: request_context.application_node_id,
         }
     }
 

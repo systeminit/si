@@ -112,7 +112,6 @@ export class NodeAddManager {
     if (this.node && this.nodeAddSchemaId && editorContext) {
       const event: NodeCreate = {
         nodeSchemaId: this.nodeAddSchemaId,
-        rootNodeId: editorContext.applicationNodeId,
         systemId: editorContext.systemId,
         x: `${this.node.position.x}`,
         y: `${this.node.position.y}`,

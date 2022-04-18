@@ -12,7 +12,6 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "camelCase")]
 pub struct CreateNodeRequest {
     pub schema_id: SchemaId,
-    pub root_node_id: NodeId,
     pub system_id: Option<SystemId>,
     pub x: String,
     pub y: String,
@@ -107,7 +106,6 @@ pub async fn create_node(
     let position = NodePosition::new(
         &ctx,
         (*node.kind()).into(),
-        request.root_node_id,
         request.system_id,
         request
             .parent_node_id
@@ -122,7 +120,6 @@ pub async fn create_node(
         let position_component_panel = NodePosition::new(
             &ctx,
             SchematicKind::Component,
-            request.root_node_id,
             request.system_id,
             Some(*node.id()),
             request.x,
@@ -132,7 +129,7 @@ pub async fn create_node(
         position_component_panel.set_node(&ctx, node.id()).await?;
         positions.push(position_component_panel);
     }
-    let node_view = NodeView::new(name, node, kind, positions, node_template);
+    let node_view = NodeView::new(name, &node, kind, positions, node_template);
 
     txns.commit().await?;
     Ok(Json(CreateNodeResponse { node: node_view }))
