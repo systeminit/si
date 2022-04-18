@@ -6,7 +6,16 @@
   >
     <div class="flex flex-col w-full h-full">
       <StatusBar />
-      <SiChangeSetHeader />
+      <div class="flex flex-col w-full my-2">
+        <div class="flex justify-between">
+          <div class="flex items-center"></div>
+          <div class="flex"></div>
+          <div class="flex mr-2">
+            <SiSystemHeader />
+            <SiChangeSetHeader />
+          </div>
+        </div>
+      </div>
       <!-- TODO: Reimplement this context
       <ApplicationEditorContext />
       -->
@@ -76,6 +85,7 @@ import { setIfError } from "@/service/global_error";
 import { Component } from "@/api/sdf/dal/component";
 import StatusBar from "@/molecules/StatusBar.vue";
 import SiChangeSetHeader from "@/molecules/SiChangeSetHeader.vue";
+import SiSystemHeader from "@/molecules/SiSystemHeader.vue";
 
 const props = defineProps({
   applicationId: {

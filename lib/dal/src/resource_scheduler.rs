@@ -5,10 +5,9 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::time;
 
-use crate::system::UNSET_ID_VALUE;
 use crate::{
     Component, ComponentError, HistoryActor, HistoryEventError, RequestContext, ServicesContext,
-    StandardModelError,
+    StandardModelError, SystemId,
 };
 
 #[derive(Error, Debug)]
@@ -61,7 +60,7 @@ impl ResourceScheduler {
         let mut interval = time::interval(Duration::from_secs(30));
         'schedule: loop {
             interval.tick().await;
-            let components = match self.components_to_check().await {
+            let to_check = match self.components_to_check().await {
                 Ok(r) => r,
                 Err(error) => {
                     error!(
@@ -72,7 +71,7 @@ impl ResourceScheduler {
                 }
             };
 
-            'check: for component in components.into_iter() {
+            'check: for (component, system_id) in to_check.into_iter() {
                 if component.tenancy().workspaces().is_empty() {
                     error!(
                         "component does not have any workspaces in tenancy; skipping it: {:?}",
@@ -115,7 +114,7 @@ impl ResourceScheduler {
                 };
                 let ctx = builder.build(request_context, &txns);
 
-                if let Err(error) = component.sync_resource(&ctx, UNSET_ID_VALUE.into()).await {
+                if let Err(error) = component.sync_resource(&ctx, system_id).await {
                     error!(?error, "Failed to sync component, moving to the next.");
                     continue 'check;
                 }
@@ -129,11 +128,11 @@ impl ResourceScheduler {
 
     /// Gets a list of all the components in the database.
     #[instrument(skip_all, level = "debug")]
-    async fn components_to_check(&self) -> ResourceSchedulerResult<Vec<Component>> {
+    async fn components_to_check(&self) -> ResourceSchedulerResult<Vec<(Component, SystemId)>> {
         let mut conn = self.services_context.pg_pool().get().await?;
         let txn = conn.transaction().await?;
-        let components = Component::list_for_resource_sync(&txn).await?;
+        let results = Component::list_for_resource_sync(&txn).await?;
         txn.commit().await?;
-        Ok(components)
+        Ok(results)
     }
 }

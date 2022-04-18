@@ -3,7 +3,6 @@ use dal::{BillingAccountSignup, DalContext};
 use crate::dal::test;
 use dal::code_generation_prototype::CodeGenerationPrototypeContext;
 use dal::func::backend::js_code_generation::FuncBackendJsCodeGenerationArgs;
-use dal::test_harness::find_or_create_production_system;
 use dal::{
     code_generation_prototype::UNSET_ID_VALUE, CodeGenerationPrototype, Component, Func, Schema,
     StandardModel,
@@ -11,8 +10,6 @@ use dal::{
 
 #[test]
 async fn new(ctx: &DalContext<'_, '_>) {
-    let _ = find_or_create_production_system(ctx).await;
-
     let name = "kubernetes_deployment".to_string();
     let schema = Schema::find_by_attr(ctx, "name", &name)
         .await

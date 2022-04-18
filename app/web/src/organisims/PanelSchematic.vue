@@ -21,18 +21,6 @@
         />
       </div>
 
-      <div class="min-w-max">
-        <SiSelect
-          v-if="schematicKind === SchematicKind.Deployment"
-          id="systemSelect"
-          size="xs"
-          name="systemSelect"
-          class="pl-1"
-          :options="systemsList"
-          :styling="schematicSelectorStyling"
-        />
-      </div>
-
       <div
         v-if="schematicKind === SchematicKind.Component"
         class="flex flex-row"
@@ -192,11 +180,6 @@ const schematicSelectorStyling = computed(() => {
   classes["text-gray-400"] = true;
   classes["border-gray-800"] = true;
   return classes;
-});
-
-// TODO: Re-implement systems, and fetch the default system. (adam)
-const systemsList = computed(() => {
-  return [{ value: "prod", label: "prod" }];
 });
 
 const applicationId = refFrom<number | null>(

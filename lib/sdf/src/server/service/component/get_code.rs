@@ -1,6 +1,4 @@
-use axum::extract::Query;
-use axum::Json;
-use dal::system::UNSET_SYSTEM_ID;
+use axum::{extract::Query, Json};
 use dal::{CodeLanguage, CodeView, Component, ComponentId, SystemId, Visibility, WorkspaceId};
 use serde::{Deserialize, Serialize};
 
@@ -31,7 +29,7 @@ pub async fn get_code(
     let txns = txns.start().await?;
     let ctx = builder.build(request_ctx.build(request.visibility), &txns);
 
-    let system_id = request.system_id.unwrap_or(UNSET_SYSTEM_ID);
+    let system_id = request.system_id.unwrap_or(SystemId::NONE);
     let code_list =
         Component::list_code_generated_by_component_id(&ctx, request.component_id, system_id)
             .await?;

@@ -1,8 +1,8 @@
 use axum::extract::Query;
 use axum::Json;
 use dal::{
-    resource::ResourceHealth, system::UNSET_SYSTEM_ID, Component, ComponentId, StandardModel,
-    SystemId, Visibility, WorkspaceId,
+    resource::ResourceHealth, Component, ComponentId, StandardModel, SystemId, Visibility,
+    WorkspaceId,
 };
 use serde::{Deserialize, Serialize};
 
@@ -41,7 +41,7 @@ pub async fn get_components_metadata(
     let txns = txns.start().await?;
     let ctx = builder.build(request_ctx.build(request.visibility), &txns);
 
-    let system_id = request.system_id.unwrap_or(UNSET_SYSTEM_ID);
+    let system_id = request.system_id.unwrap_or(SystemId::NONE);
 
     let components = Component::list(&ctx).await?;
     let mut metadata = Vec::with_capacity(components.len());
@@ -64,9 +64,12 @@ pub async fn get_components_metadata(
             .flat_map(|q| q.result.map(|r| r.success))
             .reduce(|q, acc| acc && q);
 
-        let resource =
+        let resource = if system_id.is_none() {
+            None
+        } else {
             Component::get_resource_by_component_and_system(&ctx, *component.id(), system_id)
-                .await?;
+                .await?
+        };
 
         metadata.push(ComponentMetadata {
             schema_name: schema.name().to_owned(),

@@ -44,12 +44,8 @@ pub async fn create_node(
         .default_schema_variant_id()
         .ok_or(SchematicError::SchemaVariantNotFound)?;
 
-    let system_id = match &request.system_id {
-        Some(system_id) => system_id,
-        None => return Err(SchematicError::InvalidSystem),
-    };
     let schematic_kind = SchematicKind::from(*schema.kind());
-    let (kind, node) = match (schematic_kind, &request.parent_node_id) {
+    let (component, kind, node) = match (schematic_kind, &request.parent_node_id) {
         (SchematicKind::Component, Some(parent_node_id)) => {
             let parent_node = Node::get_by_id(&ctx, parent_node_id).await?;
             // Ensures parent node must be a NodeKind::Deployment
@@ -67,29 +63,23 @@ pub async fn create_node(
                 &ctx,
                 &name,
                 schema_variant_id,
-                system_id,
                 parent_node_id,
             )
             .await?;
+            let component_id = *component.id();
             (
-                NodeKindWithBaggage::Component {
-                    component_id: *component.id(),
-                },
+                component,
+                NodeKindWithBaggage::Component { component_id },
                 node,
             )
         }
         (SchematicKind::Deployment, None) => {
-            let (component, node) = Component::new_for_schema_variant_with_node_in_system(
-                &ctx,
-                &name,
-                schema_variant_id,
-                system_id,
-            )
-            .await?;
+            let (component, node) =
+                Component::new_for_schema_variant_with_node(&ctx, &name, schema_variant_id).await?;
+            let component_id = *component.id();
             (
-                NodeKindWithBaggage::Deployment {
-                    component_id: *component.id(),
-                },
+                component,
+                NodeKindWithBaggage::Deployment { component_id },
                 node,
             )
         }
@@ -100,6 +90,10 @@ pub async fn create_node(
             ))
         }
     };
+
+    if let Some(system_id) = &request.system_id {
+        component.add_to_system(&ctx, system_id).await?;
+    }
 
     let node_template = NodeTemplate::new_from_schema_id(&ctx, request.schema_id).await?;
 

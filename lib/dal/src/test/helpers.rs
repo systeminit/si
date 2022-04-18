@@ -1,10 +1,10 @@
 use names::{Generator, Name};
 
 use crate::{
-    node::Node, node::NodeId, BillingAccount, BillingAccountId, BillingAccountSignup, ChangeSet,
-    Component, DalContext, DalContextBuilder, EditSession, Group, HistoryActor, JwtSecretKey,
+    node::NodeId, BillingAccount, BillingAccountId, BillingAccountSignup, ChangeSet, Component,
+    DalContext, DalContextBuilder, EditSession, Group, HistoryActor, JwtSecretKey, Node,
     RequestContext, Schema, SchemaId, SchemaVariant, StandardModel, System, Transactions, User,
-    Visibility,
+    Visibility, WorkspaceId,
 };
 
 pub fn generate_fake_name() -> String {
@@ -184,6 +184,21 @@ pub async fn create_component_for_schema(
     component
 }
 
+pub async fn create_system(ctx: &DalContext<'_, '_>) -> System {
+    let name = generate_fake_name();
+    System::new(ctx, name).await.expect("cannot create system")
+}
+
+pub async fn create_system_with_node(
+    ctx: &DalContext<'_, '_>,
+    wid: &WorkspaceId,
+) -> (System, Node) {
+    let name = generate_fake_name();
+    System::new_with_node(ctx, name, wid)
+        .await
+        .expect("cannot create system")
+}
+
 pub async fn find_schema_by_name(ctx: &DalContext<'_, '_>, schema_name: impl AsRef<str>) -> Schema {
     Schema::find_by_attr(ctx, "name", &schema_name.as_ref())
         .await
@@ -202,23 +217,4 @@ pub async fn find_schema_and_default_variant_by_name(
         .await
         .expect("cannot get default schema variant");
     (schema, default_variant)
-}
-
-pub async fn find_or_create_production_system(ctx: &DalContext<'_, '_>) -> System {
-    let name = "production".to_string();
-
-    match System::find_by_attr(ctx, "name", &name)
-        .await
-        .expect("cannot find system")
-        .pop()
-    {
-        Some(s) => s,
-        None => {
-            let (system, _system_node) = System::new_with_node(ctx, name)
-                .await
-                .expect("cannot create named system");
-
-            system
-        }
-    }
 }

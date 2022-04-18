@@ -447,25 +447,6 @@ pub async fn create_system(ctx: &DalContext<'_, '_>) -> System {
     System::new(ctx, name).await.expect("cannot create system")
 }
 
-pub async fn find_or_create_production_system(ctx: &DalContext<'_, '_>) -> System {
-    let name = "production".to_string();
-
-    match System::find_by_attr(ctx, "name", &name)
-        .await
-        .expect("cannot find system")
-        .pop()
-    {
-        Some(s) => s,
-        None => {
-            let (system, _system_node) = System::new_with_node(ctx, name)
-                .await
-                .expect("cannot create named system");
-
-            system
-        }
-    }
-}
-
 pub async fn create_prop(ctx: &DalContext<'_, '_>) -> Prop {
     let name = generate_fake_name();
     Prop::new(ctx, name, PropKind::String)

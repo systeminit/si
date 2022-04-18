@@ -28,6 +28,8 @@ pub enum ResourceError {
     StandardModel(#[from] StandardModelError),
     #[error("read tenancy error: {0}")]
     ReadTenancy(#[from] ReadTenancyError),
+    #[error("system id is required: -1 was used")]
+    SystemIdRequired,
 }
 
 pub type ResourceResult<T> = Result<T, ResourceError>;
@@ -117,6 +119,10 @@ impl Resource {
         component_id: &ComponentId,
         system_id: &SystemId,
     ) -> ResourceResult<Option<Self>> {
+        if system_id.is_none() {
+            return Err(ResourceError::SystemIdRequired);
+        }
+
         let row = ctx
             .txns()
             .pg()
@@ -140,6 +146,10 @@ impl Resource {
         component_id: &ComponentId,
         system_id: &SystemId,
     ) -> ResourceResult<Self> {
+        if system_id.is_none() {
+            return Err(ResourceError::SystemIdRequired);
+        }
+
         let resource =
             Resource::get_by_component_id_and_system_id(ctx, component_id, system_id).await?;
 

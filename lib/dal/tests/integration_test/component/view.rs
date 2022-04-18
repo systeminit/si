@@ -2,10 +2,7 @@ use crate::dal::test;
 use dal::DalContext;
 use dal::{
     schema::builtins::RootProp,
-    test_harness::{
-        create_prop_of_kind_with_name, create_schema, create_schema_variant_with_root,
-        find_or_create_production_system,
-    },
+    test_harness::{create_prop_of_kind_with_name, create_schema, create_schema_variant_with_root},
     AttributeContext, AttributeReadContext, AttributeValue, Component, ComponentView, Prop,
     PropKind, Schema, SchemaKind, SchemaVariant, StandardModel,
 };
@@ -455,7 +452,6 @@ pub async fn create_schema_with_nested_array_objects_and_a_map(
 
 #[test]
 async fn only_string_props(ctx: &DalContext<'_, '_>) {
-    let _ = find_or_create_production_system(ctx).await;
     let (schema, schema_variant, bohemian_prop, killer_prop, root_prop) =
         create_schema_with_string_props(ctx).await;
     let (component, _) =
@@ -551,7 +547,6 @@ async fn only_string_props(ctx: &DalContext<'_, '_>) {
 
 #[test]
 async fn one_object_prop(ctx: &DalContext<'_, '_>) {
-    let _ = find_or_create_production_system(ctx).await;
     let (schema, schema_variant, queen_prop, killer_prop, bohemian_prop, root_prop) =
         create_schema_with_object_and_string_prop(ctx).await;
     let (component, _) =
@@ -667,7 +662,6 @@ async fn one_object_prop(ctx: &DalContext<'_, '_>) {
 
 #[test]
 async fn nested_object_prop(ctx: &DalContext<'_, '_>) {
-    let _ = find_or_create_production_system(ctx).await;
     let (
         schema,
         schema_variant,
@@ -840,7 +834,6 @@ async fn nested_object_prop(ctx: &DalContext<'_, '_>) {
 
 #[test]
 async fn simple_array_of_strings(ctx: &DalContext<'_, '_>) {
-    let _ = find_or_create_production_system(ctx).await;
     let (schema, schema_variant, sammy_prop, album_prop, root_prop) =
         create_schema_with_array_of_string_props(ctx).await;
 
@@ -940,7 +933,6 @@ async fn simple_array_of_strings(ctx: &DalContext<'_, '_>) {
 
 #[test]
 async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext<'_, '_>) {
-    let _ = find_or_create_production_system(ctx).await;
     let (
         schema,
         schema_variant,
@@ -1171,7 +1163,6 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext<'_, '_>) {
 
 #[test]
 async fn simple_map(ctx: &DalContext<'_, '_>) {
-    let _ = find_or_create_production_system(ctx).await;
     let (schema, schema_variant, album_prop, album_item_prop, root_prop) =
         create_simple_map(ctx).await;
     let (component, _) = Component::new_for_schema_variant_with_node(
@@ -1272,7 +1263,6 @@ async fn simple_map(ctx: &DalContext<'_, '_>) {
 
 #[test]
 async fn complex_nested_array_of_objects_with_a_map(ctx: &DalContext<'_, '_>) {
-    let _ = find_or_create_production_system(ctx).await;
     let (
         schema,
         schema_variant,

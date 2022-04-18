@@ -6,9 +6,9 @@ import { user$ } from "@/observable/user";
 import { billingAccount$ } from "@/observable/billing_account";
 import { Observable, tap } from "rxjs";
 import { workspace$ } from "@/observable/workspace";
-import { system$ } from "@/observable/system";
 import { organization$ } from "@/observable/organization";
-import { switchToHead } from "@/service/change_set/switch_to_head";
+import { ChangeSetService } from "@/service/change_set";
+import { SystemService } from "@/service/system";
 
 export interface LoginRequest {
   billingAccountName: string;
@@ -32,10 +32,10 @@ export function login(
     tap((response) => {
       if (!response.error) {
         sdf.token = response.jwt;
-        switchToHead();
+        ChangeSetService.switchToHead();
         workspace$.next(null);
         organization$.next(null);
-        system$.next(null);
+        SystemService.switchToNone();
         user$.next(response.user);
         billingAccount$.next(response.billingAccount);
       }

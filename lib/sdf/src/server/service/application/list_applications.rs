@@ -3,8 +3,9 @@ use axum::Json;
 use dal::{Component, Schema, StandardModel, Visibility, WorkspaceId};
 use serde::{Deserialize, Serialize};
 
-use super::{ApplicationError, ApplicationResult};
 use crate::server::extract::{AccessBuilder, HandlerContext};
+
+use super::{ApplicationError, ApplicationResult};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
