@@ -354,11 +354,15 @@ impl AttributeValue {
             let parent_attribute_value_id: Option<AttributeValueId> =
                 row.try_get("parent_attribute_value_id")?;
 
+            let child_attribute_value_ids: Option<Vec<AttributeValueId>> =
+                row.try_get("child_attribute_value_ids")?;
+
             result.push(AttributeValuePayload::new(
                 prop,
                 fbrv,
                 attribute_value,
                 parent_attribute_value_id,
+                child_attribute_value_ids,
             ));
         }
         Ok(result)
@@ -710,6 +714,7 @@ pub struct AttributeValuePayload {
     pub fbrv: Option<FuncBindingReturnValue>,
     pub attribute_value: AttributeValue,
     pub parent_attribute_value_id: Option<AttributeValueId>,
+    pub child_attribute_value_ids: Option<Vec<AttributeValueId>>,
 }
 
 impl AttributeValuePayload {
@@ -718,12 +723,14 @@ impl AttributeValuePayload {
         fbrv: Option<FuncBindingReturnValue>,
         attribute_value: AttributeValue,
         parent_attribute_value_id: Option<AttributeValueId>,
+        child_attribute_value_ids: Option<Vec<AttributeValueId>>,
     ) -> Self {
         Self {
             prop,
             fbrv,
             attribute_value,
             parent_attribute_value_id,
+            child_attribute_value_ids,
         }
     }
 }

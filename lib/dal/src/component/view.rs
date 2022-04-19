@@ -102,6 +102,7 @@ impl ComponentView {
                 fbrv,
                 attribute_value,
                 parent_attribute_value_id,
+                child_attribute_value_ids,
             }) = work_queue.pop()
             {
                 if let Some(fbrv) = fbrv {
@@ -163,6 +164,7 @@ impl ComponentView {
                                 Some(fbrv),
                                 attribute_value,
                                 parent_attribute_value_id,
+                                child_attribute_value_ids,
                             ));
                         }
                     }

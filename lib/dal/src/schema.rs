@@ -326,7 +326,6 @@ impl Schema {
 
         Ok(EditField::new(
             field_name,
-            vec![],
             object_kind,
             object.id,
             EditFieldDataType::String,
@@ -357,7 +356,6 @@ impl Schema {
 
         Ok(EditField::new(
             field_name,
-            vec![],
             object_kind,
             object.id,
             EditFieldDataType::String,
@@ -399,13 +397,11 @@ impl Schema {
 
         Ok(EditField::new(
             field_name,
-            vec![],
             object_kind,
             object.id,
             EditFieldDataType::None,
             Widget::Header(HeaderWidget::new(vec![EditField::new(
                 "schemaVariants",
-                vec![field_name.to_string()],
                 EditFieldObjectKind::Schema,
                 object.id,
                 EditFieldDataType::Array,
@@ -432,13 +428,11 @@ impl Schema {
 
         Ok(EditField::new(
             field_name,
-            vec![],
             object_kind,
             object.id,
             EditFieldDataType::None,
             Widget::Header(HeaderWidget::new(vec![EditField::new(
                 "menuItems",
-                vec![field_name.to_string()],
                 EditFieldObjectKind::Schema,
                 object.id,
                 EditFieldDataType::Array,

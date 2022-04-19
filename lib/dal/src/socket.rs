@@ -165,7 +165,6 @@ impl Socket {
 
         Ok(EditField::new(
             field_name,
-            vec![],
             Self::edit_field_object_kind(),
             object.id,
             EditFieldDataType::String,
@@ -195,7 +194,6 @@ impl Socket {
 
         Ok(EditField::new(
             field_name,
-            vec![],
             Self::edit_field_object_kind(),
             object.id,
             EditFieldDataType::String,
@@ -225,7 +223,6 @@ impl Socket {
 
         Ok(EditField::new(
             field_name,
-            vec![],
             Self::edit_field_object_kind(),
             object.id,
             EditFieldDataType::String,
@@ -255,7 +252,6 @@ impl Socket {
 
         Ok(EditField::new(
             field_name,
-            vec![],
             Self::edit_field_object_kind(),
             object.id,
             EditFieldDataType::Boolean,

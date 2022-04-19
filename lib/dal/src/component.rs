@@ -2,10 +2,11 @@ pub mod view;
 
 pub use view::{ComponentView, ComponentViewError};
 
-use async_recursion::async_recursion;
+
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use si_data::{NatsError, PgError, PgTxn};
+use std::collections::HashMap;
 use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -31,7 +32,6 @@ use crate::schema::variant::{SchemaVariantError, SchemaVariantId};
 use crate::schema::SchemaVariant;
 use crate::validation_resolver::ValidationResolverContext;
 use crate::ws_event::{WsEvent, WsEventError};
-use crate::AttributeValueId;
 use crate::{
     edit_field, impl_standard_model, node::NodeId, pk, qualification::QualificationError,
     standard_model, standard_model_accessor, standard_model_belongs_to, standard_model_has_many,
@@ -39,13 +39,14 @@ use crate::{
     CodeGenerationPrototype, CodeGenerationPrototypeError, CodeGenerationResolver,
     CodeGenerationResolverError, DalContext, Edge, EdgeError, Func, FuncBackendKind,
     HistoryEventError, LabelEntry, LabelList, Node, NodeError, OrganizationError, Prop, PropError,
-    PropId, PropKind, QualificationPrototype, QualificationPrototypeError, QualificationResolver,
+    PropId, QualificationPrototype, QualificationPrototypeError, QualificationResolver,
     QualificationResolverError, ReadTenancyError, Resource, ResourceError, ResourcePrototype,
     ResourcePrototypeError, ResourceResolver, ResourceResolverError, ResourceView, Schema,
     SchemaError, SchemaId, Secret, StandardModel, StandardModelError, SystemId, Timestamp,
     ValidationPrototype, ValidationPrototypeError, ValidationResolver, ValidationResolverError,
     Visibility, WorkspaceError, WriteTenancy,
 };
+use crate::{AttributeValueId, AttributeValuePayload};
 
 #[derive(Error, Debug)]
 pub enum ComponentError {
@@ -55,16 +56,24 @@ pub enum ComponentError {
     AttributeContextBuilder(#[from] AttributeContextBuilderError),
     #[error("AttributeValue error: {0}")]
     AttributeValue(#[from] AttributeValueError),
+    #[error("desired key not found for root edit field")]
+    DesiredKeyNotFoundForRootEditField,
     #[error("edit field error: {0}")]
     EditField(#[from] EditFieldError),
     #[error("edge error: {0}")]
     Edge(#[from] EdgeError),
-    #[error("missing attribute value for id: ({0})")]
+    #[error("expected child attribute value not found in work queue: {0}")]
+    ExpectedChildAttributeValueNotFoundInWorkQueue(AttributeValueId),
+    #[error("missing attribute value for id: {0}")]
     MissingAttributeValue(AttributeValueId),
-    #[error("Missing IndexMap on AttributeValue: {0}")]
+    #[error("missing child attribute value(s) for id: {0}")]
+    MissingChildAttributeValues(AttributeValueId),
+    #[error("missing assembled child edit field for child attribute value id: {0}")]
+    MissingEditFieldForChildAttributeValue(AttributeValueId),
+    #[error("missing IndexMap on AttributeValue: {0}")]
     MissingIndexMap(AttributeValueId),
-    #[error("expected one root prop, found multiple: {0:?}")]
-    MultipleRootProps(Vec<Prop>),
+    #[error("expected one root attribute value id corresponding to the root edit field, found multiple ids: {0:?}")]
+    MultipleAttributeValuesUnexpected(Vec<AttributeValueId>),
     #[error("root prop not found for schema variant: {0}")]
     RootPropNotFound(SchemaVariantId),
 
@@ -1271,7 +1280,7 @@ impl EditFieldAble for Component {
 }
 
 /// Find the root [`EditField`] for a given [`ComponentId`]. This will also find all of its child
-/// edit fields, which are accessed via each field`s [`Widget`], if applicable.
+/// edit fields, which are accessed via each field's [`Widget`], if applicable.
 async fn get_root_edit_field(
     ctx: &DalContext<'_, '_>,
     id: &ComponentId,
@@ -1280,7 +1289,7 @@ async fn get_root_edit_field(
     let change_set_visibility =
         Visibility::new_change_set(ctx.visibility().change_set_pk, ctx.visibility().deleted);
 
-    // FIXME(nick): if we end up deciding that the trait's "get_edit_fields" func signature will
+    // NOTE(nick): if we end up deciding that the trait's "get_edit_fields" func signature will
     // change to only return one edit field, then this can use "Self" instead of "Component".
     let component = Component::get_by_id(ctx, id)
         .await?
@@ -1303,69 +1312,170 @@ async fn get_root_edit_field(
         ..AttributeReadContext::default()
     };
 
-    // NOTE(nick): this can be more elegant, but it works. We want to ensure we only find the
-    // root prop at this point.
-    let mut props = schema_variant.props(ctx).await?;
-    if props.len() > 1 {
-        return Err(ComponentError::MultipleRootProps(props));
-    }
-    let root_prop = props
-        .pop()
-        .ok_or_else(|| ComponentError::RootPropNotFound(*schema_variant.id()))?;
-
-    // NOTE(nick): it is a bit wasteful that we get the attribute value here and then do it
-    // again within the call below, but it ~~works~~.
-    let context = AttributeReadContext {
-        prop_id: Some(*root_prop.id()),
-        ..attribute_read_context
-    };
-    let attribute_value: AttributeValue = AttributeValue::find_for_context(ctx, context)
-        .await?
-        .pop()
-        .ok_or_else(|| ComponentError::RootPropNotFound(*schema_variant.id()))?;
-
-    // Parent attribute value must be "None" since we are dealing with the root prop.
-    let root_edit_field = edit_field_for_attribute_value(
+    let root_edit_field = edit_field_for_component(
         ctx,
+        attribute_read_context,
         &head_visibility,
         &change_set_visibility,
-        attribute_read_context,
-        *attribute_value.id(),
-        None,
-        None,
     )
     .await?;
 
     Ok(root_edit_field)
 }
 
-#[allow(clippy::too_many_arguments)]
-#[async_recursion]
-async fn edit_field_for_attribute_value(
+/// Generate the root [`EditField`] for a given [`AttributeReadContext`] that corresponds to a
+/// target [`Component`].
+async fn edit_field_for_component(
+    ctx: &DalContext<'_, '_>,
+    attribute_read_context: AttributeReadContext,
+    head_visibility: &Visibility,
+    change_set_visibility: &Visibility,
+) -> ComponentResult<EditField> {
+    let mut work_queue: Vec<AttributeValuePayload> =
+        AttributeValue::list_payload_for_read_context(ctx, attribute_read_context).await?;
+    let mut edit_fields_in_progress: HashMap<AttributeValueId, EditField> = HashMap::new();
+    let mut attribute_contexts: HashMap<AttributeValueId, AttributeContext> = HashMap::new();
+
+    while let Some(AttributeValuePayload {
+        prop,
+        fbrv,
+        attribute_value,
+        parent_attribute_value_id,
+        child_attribute_value_ids,
+    }) = work_queue.pop()
+    {
+        let attribute_value_id = *attribute_value.id();
+        attribute_contexts.insert(attribute_value_id, attribute_value.context);
+
+        if let Some(mut child_attribute_value_ids) = child_attribute_value_ids {
+            if child_attribute_value_ids.is_empty() {
+                return Err(ComponentError::MissingChildAttributeValues(
+                    *attribute_value.id(),
+                ));
+            }
+
+            let mut all_keys_found = true;
+            for child_attribute_value_id in &child_attribute_value_ids {
+                if !edit_fields_in_progress.contains_key(child_attribute_value_id) {
+                    all_keys_found = false;
+                    if !work_queue
+                        .iter()
+                        .any(|item| item.attribute_value.id() == child_attribute_value_id)
+                    {
+                        return Err(
+                            ComponentError::ExpectedChildAttributeValueNotFoundInWorkQueue(
+                                *child_attribute_value_id,
+                            ),
+                        );
+                    }
+                    break;
+                }
+            }
+
+            if all_keys_found {
+                // Ensure all children are sorted properly because accessing their assembled
+                // edit fields.
+                if let Some(index_map) = attribute_value.index_map() {
+                    let child_order = index_map.order();
+                    child_attribute_value_ids.sort_by_cached_key(|av| {
+                        child_order
+                            .iter()
+                            .position(|attribute_value_id| attribute_value_id == av)
+                            .unwrap_or(0)
+                    });
+                }
+
+                // Gather assembled child edit fields and remove them from the assembled edit
+                // fields data structure.
+                let mut child_edit_fields = Vec::new();
+                for child_attribute_value_id in child_attribute_value_ids {
+                    if let Some(child_edit_field) =
+                        edit_fields_in_progress.remove(&child_attribute_value_id)
+                    {
+                        child_edit_fields.push(child_edit_field);
+                    } else {
+                        return Err(ComponentError::MissingEditFieldForChildAttributeValue(
+                            child_attribute_value_id,
+                        ));
+                    }
+                }
+
+                // Assemble the current edit field with all of its ordered child edit fields.
+                let edit_field = assemble_component_edit_field(
+                    ctx,
+                    head_visibility,
+                    change_set_visibility,
+                    attribute_value,
+                    parent_attribute_value_id,
+                    child_edit_fields,
+                    prop,
+                    fbrv,
+                )
+                .await?;
+                edit_fields_in_progress.insert(attribute_value_id, edit_field);
+            } else {
+                // We are not ready to assemble this edit field since all of its children have yet
+                // to be assembled. Push it to the back. "Deferential work queue", as the youth
+                // calls it. Good news too: we do not need to worry about a scenario where we
+                // infinitely push payloads to the back of the work queue since we will always
+                // have at least one leaf (and be able to work up from there).
+                work_queue.push(AttributeValuePayload {
+                    prop,
+                    fbrv,
+                    attribute_value,
+                    parent_attribute_value_id,
+                    child_attribute_value_ids: Some(child_attribute_value_ids),
+                });
+            }
+        } else {
+            // We are a leaf! Assemble!
+            let edit_field = assemble_component_edit_field(
+                ctx,
+                head_visibility,
+                change_set_visibility,
+                attribute_value,
+                parent_attribute_value_id,
+                vec![],
+                prop,
+                fbrv,
+            )
+            .await?;
+            edit_fields_in_progress.insert(attribute_value_id, edit_field);
+        }
+    }
+
+    let keys = edit_fields_in_progress
+        .keys()
+        .copied()
+        .collect::<Vec<AttributeValueId>>();
+
+    // FIXME(nick,jacob): we need to deal with this "better" in the future.
+    let desired_key = keys
+        .iter()
+        .find(|k| {
+            if let Some(attribute_context) = attribute_contexts.get(k) {
+                !attribute_context.is_least_specific()
+            } else {
+                false
+            }
+        })
+        .ok_or(ComponentError::DesiredKeyNotFoundForRootEditField)?;
+    let root_edit_field = edit_fields_in_progress.remove(desired_key).expect("could not retrieve a key that we _literally_ just found. If this break, call Micron and replace your RAM because there is no other explanation as to why this would panic.");
+    Ok(root_edit_field)
+}
+
+async fn assemble_component_edit_field(
     ctx: &DalContext<'_, '_>,
     head_visibility: &Visibility,
     change_set_visibility: &Visibility,
-    attribute_read_context: AttributeReadContext,
-    attribute_value_id: AttributeValueId,
+    attribute_value: AttributeValue,
     parent_attribute_value_id: Option<AttributeValueId>,
-    edit_field_path: Option<Vec<String>>,
+    child_edit_fields: Vec<EditField>,
+    prop: Prop,
+    func_binding_return_value: Option<FuncBindingReturnValue>,
 ) -> ComponentResult<EditField> {
     let head_ctx = ctx.clone_with_new_visibility(*head_visibility);
     let change_set_ctx = ctx.clone_with_new_visibility(*change_set_visibility);
-    let attribute_value: AttributeValue = AttributeValue::get_by_id(ctx, &attribute_value_id)
-        .await?
-        .ok_or(ComponentError::MissingAttributeValue(attribute_value_id))?;
-    let prop = AttributeValue::find_prop_for_value(ctx, *attribute_value.id()).await?;
-
-    let field_name = prop.name();
-    let object_kind = EditFieldObjectKind::ComponentProp;
-
-    // Gather the three values we need for visibility diff. For the head and change set values, we
-    // need to use their respective visibilites for attribute value searches, but can use the
-    // standard visibility for getting the func binding return value by id.
-    let current_func_binding_return_value =
-        FuncBindingReturnValue::get_by_id(ctx, &attribute_value.func_binding_return_value_id())
-            .await?;
     let head_func_binding_return_value = if ctx.visibility().in_change_set() {
         if let Some(found_value) = AttributeValue::find_with_parent_and_key_for_context(
             &head_ctx,
@@ -1415,7 +1525,7 @@ async fn edit_field_for_attribute_value(
 
     let (value, visibility_diff) = edit_field::value_and_visibility_diff_json_option(
         ctx.visibility(),
-        current_func_binding_return_value.as_ref(),
+        func_binding_return_value.as_ref(),
         extract_value,
         head_func_binding_return_value.as_ref(),
         change_set_func_binding_return_value.as_ref(),
@@ -1443,13 +1553,6 @@ async fn edit_field_for_attribute_value(
     //     }
     // }
 
-    let current_edit_field_path = match edit_field_path {
-        None => vec!["properties".to_owned()],
-        Some(path) => path,
-    };
-    let mut edit_field_path_for_children = current_edit_field_path.clone();
-    edit_field_path_for_children.push(field_name.to_string());
-
     let widget = match prop.widget_kind() {
         WidgetKind::SecretSelect => {
             let mut entries = Vec::new();
@@ -1464,55 +1567,18 @@ async fn edit_field_for_attribute_value(
             Widget::Select(SelectWidget::new(LabelList::new(entries), None))
         }
         WidgetKind::Text => Widget::Text(TextWidget::new()),
-        WidgetKind::Array | WidgetKind::Map | WidgetKind::Header => {
-            let mut child_edit_fields = vec![];
-            let mut child_attribute_values = attribute_value
-                .child_attribute_values_in_context(ctx, attribute_read_context)
-                .await?;
-            if let Some(index_map) = attribute_value.index_map() {
-                let child_order = index_map.order();
-
-                child_attribute_values.sort_by_cached_key(|av| {
-                    child_order
-                        .iter()
-                        .position(|attribute_value_id| attribute_value_id == av.id())
-                        .unwrap_or(0)
-                });
-            }
-
-            for child_attribute_value in child_attribute_values {
-                // Use the current attribute value as the parent when creating the child edit field.
-                child_edit_fields.push(
-                    edit_field_for_attribute_value(
-                        ctx,
-                        head_visibility,
-                        change_set_visibility,
-                        attribute_read_context,
-                        *child_attribute_value.id(),
-                        Some(attribute_value_id),
-                        Some(edit_field_path_for_children.clone()),
-                    )
-                    .await?,
-                );
-            }
-
-            #[allow(clippy::if_same_then_else)]
-            if *prop.kind() == PropKind::Array {
-                Widget::Array(ArrayWidget::new(child_edit_fields))
-            } else if *prop.kind() == PropKind::Map {
-                Widget::Map(MapWidget::new(child_edit_fields))
-            } else {
-                Widget::Header(HeaderWidget::new(child_edit_fields))
-            }
-        }
+        WidgetKind::Array => Widget::Array(ArrayWidget::new(child_edit_fields)),
+        WidgetKind::Map => Widget::Map(MapWidget::new(child_edit_fields)),
+        WidgetKind::Header => Widget::Header(HeaderWidget::new(child_edit_fields)),
         WidgetKind::Checkbox => Widget::Checkbox(CheckboxWidget::new()),
     };
 
+    let field_name = prop.name();
+    let object_kind = EditFieldObjectKind::ComponentProp;
     let mut edit_field = EditField::new(
         field_name,
-        current_edit_field_path,
         object_kind,
-        attribute_value_id,
+        *attribute_value.id(),
         (*prop.kind()).into(),
         widget,
         value,
@@ -1520,11 +1586,10 @@ async fn edit_field_for_attribute_value(
         validation_errors,
     );
     edit_field.set_new_baggage(
-        attribute_value_id,
+        *attribute_value.id(),
         parent_attribute_value_id,
-        attribute_value.key,
+        attribute_value.key.clone(),
         *prop.id(),
     );
-
     Ok(edit_field)
 }

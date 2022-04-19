@@ -99,8 +99,6 @@ pub struct EditFieldBaggage {
 pub struct EditField {
     id: String,
     pub name: String,
-    /// A descendant [`EditField`] can be specified using "path" (e.g. "metadata.name").
-    path: Vec<String>,
     object_kind: EditFieldObjectKind,
     // NOTE(nick): what is this for?
     object_id: i64,
@@ -117,7 +115,6 @@ impl EditField {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         name: impl Into<String>,
-        path: Vec<String>,
         object_kind: EditFieldObjectKind,
         object_id: impl Into<i64>,
         data_type: EditFieldDataType,
@@ -128,9 +125,7 @@ impl EditField {
     ) -> Self {
         let name = name.into();
         let object_id = object_id.into();
-        let mut id_parts = path.clone();
-        id_parts.push(name.clone());
-        let id = id_parts.join(".");
+        let id = format!("{object_id}");
         EditField {
             id,
             object_kind,
@@ -138,7 +133,6 @@ impl EditField {
             data_type,
             widget,
             name,
-            path,
             value,
             visibility_diff,
             validation_errors,

@@ -165,7 +165,6 @@ impl EditFieldAble for UiMenu {
         Ok(vec![
             EditField::new(
                 String::from("name"),
-                vec![],
                 EditFieldObjectKind::SchemaUiMenu,
                 object.id,
                 EditFieldDataType::String,
@@ -176,7 +175,6 @@ impl EditFieldAble for UiMenu {
             ),
             EditField::new(
                 String::from("category"),
-                vec![],
                 EditFieldObjectKind::SchemaUiMenu,
                 object.id,
                 EditFieldDataType::String,
@@ -187,7 +185,6 @@ impl EditFieldAble for UiMenu {
             ),
             EditField::new(
                 String::from("schematic_kind"),
-                vec![],
                 EditFieldObjectKind::SchemaUiMenu,
                 object.id,
                 EditFieldDataType::String,

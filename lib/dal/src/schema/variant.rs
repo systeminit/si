@@ -179,7 +179,6 @@ impl SchemaVariant {
 
         Ok(EditField::new(
             field_name,
-            vec![],
             Self::edit_field_object_kind(),
             object.id,
             EditFieldDataType::String,
@@ -203,7 +202,6 @@ impl SchemaVariant {
         }
         Ok(EditField::new(
             field_name,
-            vec![],
             EditFieldObjectKind::Prop,
             object.id,
             EditFieldDataType::Array,
@@ -228,13 +226,11 @@ impl SchemaVariant {
 
         Ok(EditField::new(
             field_name,
-            vec![],
             Self::edit_field_object_kind(),
             object.id,
             EditFieldDataType::None,
             Widget::Header(HeaderWidget::new(vec![EditField::new(
                 "sockets",
-                vec![field_name.to_string()],
                 EditFieldObjectKind::SchemaVariant,
                 object.id,
                 EditFieldDataType::Array,
