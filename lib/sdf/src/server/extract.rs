@@ -233,6 +233,23 @@ impl JwtSecretKey {
     }
 }
 
+pub struct SignupSecret(pub super::routes::SignupSecret);
+
+#[async_trait]
+impl<P> FromRequest<P> for SignupSecret
+where
+    P: Send,
+{
+    type Rejection = (StatusCode, Json<serde_json::Value>);
+
+    async fn from_request(req: &mut RequestParts<P>) -> Result<Self, Self::Rejection> {
+        let Extension(signup_secret) = Extension::<super::routes::SignupSecret>::from_request(req)
+            .await
+            .map_err(internal_error)?;
+        Ok(Self(signup_secret))
+    }
+}
+
 pub struct Authorization(pub UserClaim);
 
 #[async_trait]

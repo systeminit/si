@@ -6,13 +6,15 @@ use std::{
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 use serde_with::{DeserializeFromStr, SerializeDisplay};
-use si_data::{NatsConfig, PgPoolConfig};
+use si_data::{NatsConfig, PgPoolConfig, SensitiveString};
 use si_settings::{CanonicalFile, CanonicalFileError};
 use strum_macros::{Display, EnumString, EnumVariantNames};
 use thiserror::Error;
 
 pub use dal::{CycloneKeyPair, JwtSecretKey};
 pub use si_settings::{StandardConfig, StandardConfigFile};
+
+const DEFAULT_SIGNUP_SECRET: &str = "cool-steam";
 
 #[derive(Debug, Error)]
 pub enum ConfigError {
@@ -46,6 +48,7 @@ pub struct Config {
 
     jwt_secret_key_path: CanonicalFile,
     cyclone_encryption_key_path: CanonicalFile,
+    signup_secret: SensitiveString,
 }
 
 impl StandardConfig for Config {
@@ -88,6 +91,12 @@ impl Config {
     pub fn cyclone_encryption_key_path(&self) -> &Path {
         self.cyclone_encryption_key_path.as_path()
     }
+
+    /// Gets a reference to the config's signup secret.
+    #[must_use]
+    pub fn signup_secret(&self) -> &SensitiveString {
+        &self.signup_secret
+    }
 }
 
 impl ConfigBuilder {
@@ -107,6 +116,7 @@ pub struct ConfigFile {
     migration_mode: MigrationMode,
     jwt_secret_key_path: String,
     cyclone_encryption_key_path: String,
+    signup_secret: SensitiveString,
 }
 
 impl Default for ConfigFile {
@@ -140,6 +150,7 @@ impl Default for ConfigFile {
             migration_mode: Default::default(),
             jwt_secret_key_path,
             cyclone_encryption_key_path,
+            signup_secret: DEFAULT_SIGNUP_SECRET.into(),
         }
     }
 }
@@ -158,6 +169,7 @@ impl TryFrom<ConfigFile> for Config {
         config.migration_mode(value.migration_mode);
         config.jwt_secret_key_path(value.jwt_secret_key_path.try_into()?);
         config.cyclone_encryption_key_path(value.cyclone_encryption_key_path.try_into()?);
+        config.signup_secret(value.signup_secret);
         config.build().map_err(Into::into)
     }
 }

@@ -14,14 +14,16 @@ pub mod create_account;
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Error)]
 pub enum SignupError {
+    #[error("billing account error: {0}")]
+    BillingAccount(#[from] BillingAccountError),
+    #[error(transparent)]
+    ContextTransaction(#[from] TransactionsError),
+    #[error("invalid signup secret")]
+    InvalidSignupSecret,
     #[error(transparent)]
     Nats(#[from] si_data::NatsError),
     #[error(transparent)]
     Pg(#[from] si_data::PgError),
-    #[error(transparent)]
-    ContextTransaction(#[from] TransactionsError),
-    #[error("billing account error: {0}")]
-    BillingAccount(#[from] BillingAccountError),
 }
 
 pub type SignupResult<T> = std::result::Result<T, SignupError>;
@@ -31,7 +33,12 @@ impl IntoResponse for SignupError {
     type BodyError = Infallible;
 
     fn into_response(self) -> hyper::Response<Self::Body> {
-        let (status, error_message) = (StatusCode::INTERNAL_SERVER_ERROR, self.to_string());
+        let (status, error_message) = match self {
+            SignupError::InvalidSignupSecret => {
+                (StatusCode::BAD_REQUEST, "signup failed".to_string())
+            }
+            err => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()),
+        };
 
         let body = Json(serde_json::json!({
             "error": {

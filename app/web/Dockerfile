@@ -34,4 +34,3 @@ RUN rm -rf /etc/nginx/conf.d/default.conf /usr/share/nginx/html/*
 COPY --from=builder /usr/src/app/web/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=builder /usr/src/app/web/nginx/* /etc/ssl/certs/
 COPY --from=builder /usr/src/app/web/dist /usr/share/nginx/html
-COPY --from=builder /usr/src/app/web/htpasswd /htpasswd

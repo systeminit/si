@@ -7,6 +7,7 @@ export interface CreateAccountRequest {
   userName: string;
   userEmail: string;
   userPassword: string;
+  signupSecret: string;
 }
 
 export interface CreateAccountResponse {

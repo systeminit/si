@@ -66,11 +66,13 @@ Cypress.Commands.add("signup", () => {
       const userName = faker.name.findName();
       const userEmail = faker.internet.email();
       const userPassword = "snakes";
+      const signupSecret = "cool-steam";
       const request = {
         billingAccountName,
         userName,
         userEmail,
         userPassword,
+        signupSecret,
       };
       cy.wrap(request).as("nba");
       return firstValueFrom(signup.createAccount(request));

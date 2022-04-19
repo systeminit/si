@@ -9,7 +9,7 @@ use axum::{
 };
 use dal::context::ServicesContext;
 use hyper::StatusCode;
-use si_data::{nats, pg};
+use si_data::{nats, pg, SensitiveString};
 use telemetry::TelemetryClient;
 use thiserror::Error;
 use tokio::sync::{broadcast, mpsc};
@@ -41,6 +41,15 @@ impl ShutdownBroadcast {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct SignupSecret(Arc<SensitiveString>);
+
+impl SignupSecret {
+    pub fn as_str(&self) -> &str {
+        self.0.as_str()
+    }
+}
+
 #[must_use]
 #[allow(clippy::too_many_arguments)]
 pub fn routes(
@@ -50,11 +59,13 @@ pub fn routes(
     veritech: veritech::Client,
     encryption_key: veritech::EncryptionKey,
     jwt_secret_key: JwtSecretKey,
+    signup_secret: SensitiveString,
     shutdown_tx: mpsc::Sender<ShutdownSource>,
     shutdown_broadcast_tx: broadcast::Sender<()>,
 ) -> Router {
     let shared_state = Arc::new(State::new(shutdown_tx));
     let encryption_key = Arc::new(encryption_key);
+    let signup_secret = SignupSecret(Arc::new(signup_secret));
     let services_context = ServicesContext::new(
         pg_pool.clone(),
         nats_conn.clone(),
@@ -101,6 +112,7 @@ pub fn routes(
         .layer(AddExtensionLayer::new(veritech))
         .layer(AddExtensionLayer::new(encryption_key))
         .layer(AddExtensionLayer::new(jwt_secret_key))
+        .layer(AddExtensionLayer::new(signup_secret))
         .layer(AddExtensionLayer::new(ShutdownBroadcast(
             shutdown_broadcast_tx,
         )));
