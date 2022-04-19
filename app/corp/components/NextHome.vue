@@ -1,6 +1,5 @@
-<!-- This example requires Tailwind CSS v2.0+ -->
 <template>
-  <div class="bg-neutral-800">
+  <div class="flex flex-col w-full bg-neutral-800">
     <div class="relative overflow-hidden">
       <NextHeader hero-words />
 
