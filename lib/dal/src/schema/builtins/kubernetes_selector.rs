@@ -4,6 +4,7 @@ use crate::{AttributeReadContext, DalContext};
 use crate::{Prop, PropId, PropKind, StandardModel};
 
 #[allow(clippy::too_many_arguments)]
+#[allow(dead_code)]
 pub async fn create_selector_prop(
     ctx: &DalContext<'_, '_>,
     parent_prop_id: Option<PropId>,
