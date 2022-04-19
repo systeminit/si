@@ -51,9 +51,13 @@ import { ComponentIdentification } from "@/api/sdf/dal/component";
 import { componentsMetadata$ } from "@/organisims/SchematicViewer/data/observable";
 import { ComponentMetadata } from "@/service/component/get_components_metadata";
 import { Visibility } from "@/api/sdf/dal/visibility";
-import { visibility$ } from "@/observable/visibility";
+import {
+  standardVisibilityTriggers$,
+  visibility$,
+} from "@/observable/visibility";
+import { editSessionWritten$ } from "@/observable/edit_session";
 
-const visibility = refFrom<Visibility>(visibility$);
+//const visibility = refFrom<Visibility>(visibility$);
 
 // TODO(nick): we technically only need one prop. We're sticking with two to not mess
 // with the reactivity guarentees in place.
@@ -70,14 +74,17 @@ const { componentId, componentIdentification } = toRefs(props);
 const componentId$ = fromRef<number>(componentId, { immediate: true });
 
 const editFields = refFrom<EditFields | undefined>(
-  Rx.combineLatest([componentId$]).pipe(
-    Rx.switchMap(([componentId]) => {
-      if (!visibility.value) return Rx.from([null]);
+  Rx.combineLatest([
+    componentId$,
+    standardVisibilityTriggers$,
+    editSessionWritten$,
+  ]).pipe(
+    Rx.switchMap(([componentId, [visibility]]) => {
       return EditFieldService.getEditFields({
         id: componentId,
         objectKind: EditFieldObjectKind.Component,
         // We aren't reactive to visibility as our parent will retrigger this by updating componentId or our key
-        ...visibility.value,
+        ...visibility,
       });
     }),
     Rx.switchMap((response) => {

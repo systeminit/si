@@ -151,7 +151,9 @@ Rx.combineLatest([system$, resourceSynced$])
           systemId: system.id,
         });
       } else {
-        return Rx.from([null]);
+        return ComponentService.getComponentsMetadata({
+          systemId: -1,
+        });
       }
     }),
   )
