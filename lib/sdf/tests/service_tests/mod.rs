@@ -261,6 +261,7 @@ macro_rules! test_setup {
             $veritech.clone(),
             $encr_key.clone(),
             $jwt_secret_key.clone(),
+            "myunusedsignupsecret".into(),
         )
         .expect("cannot build new server");
         let $app: axum::Router = $app.into();

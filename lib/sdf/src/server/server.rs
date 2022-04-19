@@ -14,7 +14,9 @@ use dal::{
     migrate, migrate_builtin_schemas, ResourceScheduler, ServicesContext,
 };
 use hyper::server::{accept::Accept, conn::AddrIncoming};
-use si_data::{NatsClient, NatsConfig, NatsError, PgError, PgPool, PgPoolConfig, PgPoolError};
+use si_data::{
+    NatsClient, NatsConfig, NatsError, PgError, PgPool, PgPoolConfig, PgPoolError, SensitiveString,
+};
 use telemetry::{prelude::*, TelemetryClient};
 use thiserror::Error;
 use tokio::{
@@ -84,6 +86,7 @@ impl Server<(), ()> {
                     veritech,
                     encryption_key,
                     jwt_secret_key,
+                    config.signup_secret().clone(),
                 )?;
 
                 info!("binding to HTTP socket; socket_addr={}", &socket_addr);
@@ -121,6 +124,7 @@ impl Server<(), ()> {
                     veritech,
                     encryption_key,
                     jwt_secret_key,
+                    config.signup_secret().clone(),
                 )?;
 
                 info!("binding to Unix domain socket; path={}", path.display());
@@ -258,6 +262,7 @@ pub fn build_service(
     veritech: veritech::Client,
     encryption_key: veritech::EncryptionKey,
     jwt_secret_key: JwtSecretKey,
+    signup_secret: SensitiveString,
 ) -> Result<(Router, oneshot::Receiver<()>)> {
     let (shutdown_tx, shutdown_rx) = mpsc::channel(4);
     // Note the channel parameter corresponds to the number of channels that may be maintained when
@@ -272,6 +277,7 @@ pub fn build_service(
         veritech,
         encryption_key,
         jwt_secret_key,
+        signup_secret,
         shutdown_tx,
         shutdown_broadcast_tx.clone(),
     )

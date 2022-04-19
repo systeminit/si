@@ -10,6 +10,7 @@ describe("Signup", () => {
     cy.getBySel("userName").type("a");
     cy.getBySel("userEmail").type("a");
     cy.getBySel("userPassword").type("a");
+    cy.getBySel("signupSecret").type("cool-steam");
     cy.getBySel("signUp").click();
     cy.url().should("be.match", /\/authenticate\/login$/);
   });

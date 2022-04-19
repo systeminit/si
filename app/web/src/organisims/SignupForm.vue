@@ -69,6 +69,23 @@
           />
         </div>
       </div>
+      <div class="flex flex-row items-center object-center mx-2 my-2">
+        <div class="w-2/3 pr-2 text-right text-gray-400 align-middle">
+          <label class="signup-form-text" for="signupSecret">
+            Agent Passphrase
+          </label>
+        </div>
+        <div class="w-2/3 align-middle">
+          <input
+            id="signupSecret"
+            v-model="form.signupSecret"
+            data-test="signupSecret"
+            class="block w-full px-2 py-1 pr-8 leading-tight shadow signup-form-input focus:outline-none"
+            :class="inputStyling('signupSecret')"
+            type="password"
+          />
+        </div>
+      </div>
       <!-- <div class="flex flex-row items-center object-center mx-2 my-2">
         <div class="w-2/3 pr-2 text-right text-gray-400 align-middle">
           <label for="userPasswordSecond">Password Again</label>
@@ -118,6 +135,7 @@ enum InputKind {
   Name = "name",
   Email = "email",
   Password = "password",
+  SignupSecret = "signupSecret",
 }
 
 interface IData {
@@ -135,6 +153,7 @@ export default defineComponent({
         userName: "",
         userEmail: "",
         userPassword: "",
+        signupSecret: "",
       },
       errorMessage: undefined,
     };
@@ -160,7 +179,8 @@ export default defineComponent({
           this.form.billingAccountName) ||
         (inputKind == InputKind.Name && this.form.userName) ||
         (inputKind == InputKind.Email && this.form.userEmail) ||
-        (inputKind == InputKind.Password && this.form.userPassword)
+        (inputKind == InputKind.Password && this.form.userPassword) ||
+        (inputKind == InputKind.SignupSecret && this.form.signupSecret)
       ) {
         classes["signup-form-input-validated"] = true;
       }
