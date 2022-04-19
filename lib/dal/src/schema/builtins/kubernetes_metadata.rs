@@ -4,6 +4,7 @@ use crate::{AttributeReadContext, DalContext};
 use crate::{Prop, PropId, PropKind, StandardModel};
 
 #[allow(clippy::too_many_arguments)]
+#[allow(dead_code)]
 pub async fn create_metadata_prop(
     ctx: &DalContext<'_, '_>,
     is_name_required: bool,
