@@ -7,6 +7,8 @@ A-ci:
   - .github/**/*
 A-docs:
   - docs/**/*
+A-corp:
+  - app/corp/**/*
 
 #
 # System Initiative apps (i.e. webapps/ios apps/android apps)

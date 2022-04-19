@@ -138,7 +138,7 @@
     <div
       class="flex flex-row border-solid border-t border-zinc-800 pt-10 pb-10 place-content-end pr-10"
     >
-      <a href="/jobs">Jobs</a>
+      <a href="https://systeminit.pinpointhq.com/">Jobs</a>
     </div>
     <div class="flex flex-row text-zinc-600 place-content-center">
       &copy; 2022, System Initiative, Inc. all rights reserved.
