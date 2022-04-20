@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="flex w-full">
     <NextHome v-if="secretStore.secretAgent" />
     <CurrentHome v-else />
   </div>
