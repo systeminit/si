@@ -31,7 +31,7 @@ async fn new_for_schema_variant_with_node(ctx: &DalContext<'_, '_>, wid: Workspa
         .await
         .expect("cannot set schema variant");
 
-    let (component, _node) =
+    let (component, _node, _) =
         Component::new_for_schema_variant_with_node(ctx, "mastodon", schema_variant.id())
             .await
             .expect("cannot create component");
@@ -93,7 +93,7 @@ async fn qualification_view(ctx: &DalContext<'_, '_>) {
         .set_schema(ctx, schema.id())
         .await
         .expect("cannot set schema variant to schema");
-    let (component, _) =
+    let (component, _, _) =
         Component::new_for_schema_variant_with_node(ctx, "mastodon", schema_variant.id())
             .await
             .expect("Unable to create component");
@@ -144,7 +144,7 @@ async fn list_qualifications(ctx: &DalContext<'_, '_>) {
         .expect("cannot find docker image schema")
         .pop()
         .expect("no docker image schema found");
-    let (component, _node) = Component::new_for_schema_with_node(ctx, "ash", schema.id())
+    let (component, _node, _) = Component::new_for_schema_with_node(ctx, "ash", schema.id())
         .await
         .expect("cannot create docker_image component");
 
@@ -167,7 +167,7 @@ async fn list_qualifications_by_component_id(ctx: &DalContext<'_, '_>) {
         .expect("cannot find docker image schema")
         .pop()
         .expect("no docker image schema found");
-    let (component, _node) = Component::new_for_schema_with_node(ctx, "ash", schema.id())
+    let (component, _node, _) = Component::new_for_schema_with_node(ctx, "ash", schema.id())
         .await
         .expect("cannot create docker_image component");
 
@@ -193,7 +193,7 @@ async fn get_resource_by_component_id(ctx: &DalContext<'_, '_>, wid: WorkspaceId
 
     let (system, _system_node) = create_system_with_node(ctx, &wid).await;
 
-    let (component, _node) = Component::new_for_schema_with_node(ctx, "chvrches", schema.id())
+    let (component, _node, _) = Component::new_for_schema_with_node(ctx, "chvrches", schema.id())
         .await
         .expect("cannot create ash component");
 

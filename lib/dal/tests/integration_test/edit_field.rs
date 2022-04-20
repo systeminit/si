@@ -60,7 +60,7 @@ async fn get_edit_fields_for_component(ctx: &DalContext<'_, '_>) {
     )
     .await;
 
-    let (component, _) = Component::new_for_schema_with_node(ctx, "radahn", schema.id())
+    let (component, _, _) = Component::new_for_schema_with_node(ctx, "radahn", schema.id())
         .await
         .expect("cannot create component");
 
@@ -142,7 +142,7 @@ async fn update_edit_field_for_component(ctx: &DalContext<'_, '_>) {
     )
     .await;
 
-    let (component, _) = Component::new_for_schema_with_node(ctx, "radahn", schema.id())
+    let (component, _, _) = Component::new_for_schema_with_node(ctx, "radahn", schema.id())
         .await
         .expect("cannot create component");
 

@@ -24,6 +24,8 @@ pub enum EditFieldError {
     Nats(#[from] si_data::NatsError),
     #[error(transparent)]
     Pg(#[from] si_data::PgError),
+    #[error(transparent)]
+    PgPool(#[from] si_data::PgPoolError),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
     #[error("qualification check error: {0}")]

@@ -7,6 +7,7 @@ use dal::{
     Visibility, WorkspaceId,
 };
 use serde::{Deserialize, Serialize};
+use telemetry::prelude::*;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -33,7 +34,9 @@ pub async fn create_node(
     Json(request): Json<CreateNodeRequest>,
 ) -> SchematicResult<Json<CreateNodeResponse>> {
     let txns = txns.start().await?;
-    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
+    let ctx = builder.build(request_ctx.clone().build(request.visibility), &txns);
+
+    let mut async_tasks = Vec::new();
 
     let name = generate_name(None);
     let schema = Schema::get_by_id(&ctx, &request.schema_id)
@@ -59,13 +62,16 @@ pub async fn create_node(
             } else {
                 return Err(SchematicError::ParentNodeNotFound(*parent_node_id));
             }
-            let (component, node) = Component::new_for_schema_variant_with_node_in_deployment(
-                &ctx,
-                &name,
-                schema_variant_id,
-                parent_node_id,
-            )
-            .await?;
+            let (component, node, tasks) =
+                Component::new_for_schema_variant_with_node_in_deployment(
+                    &ctx,
+                    &name,
+                    schema_variant_id,
+                    parent_node_id,
+                )
+                .await?;
+            async_tasks.push(tasks);
+
             let component_id = *component.id();
             (
                 component,
@@ -74,8 +80,10 @@ pub async fn create_node(
             )
         }
         (SchematicKind::Deployment, None) => {
-            let (component, node) =
+            let (component, node, tasks) =
                 Component::new_for_schema_variant_with_node(&ctx, &name, schema_variant_id).await?;
+            async_tasks.push(tasks);
+
             let component_id = *component.id();
             (
                 component,
@@ -92,8 +100,8 @@ pub async fn create_node(
     };
 
     if let Some(system_id) = &request.system_id {
-        component.add_to_system(&ctx, system_id).await?;
-    }
+        async_tasks.push(component.add_to_system(&ctx, system_id).await?);
+    };
 
     let node_template = NodeTemplate::new_from_schema_id(&ctx, request.schema_id).await?;
 
@@ -126,5 +134,39 @@ pub async fn create_node(
     let node_view = NodeView::new(name, &node, kind, positions, node_template);
 
     txns.commit().await?;
+
+    if !async_tasks.is_empty() {
+        tokio::task::spawn(async move {
+            let mut txns = match builder.transactions_starter().await {
+                Ok(val) => val,
+                Err(err) => {
+                    error!(
+                        "Unable to create Transactions in component async tasks execution: {err}"
+                    );
+                    return;
+                }
+            };
+            let txns = match txns.start().await {
+                Ok(val) => val,
+                Err(err) => {
+                    error!("Unable to start transaction in component async tasks execution: {err}");
+                    return;
+                }
+            };
+            let ctx = builder.build(request_ctx.build(request.visibility), &txns);
+
+            for async_tasks in async_tasks {
+                if let Err(err) = async_tasks.run(&ctx).await {
+                    error!("Component async task execution failed: {err}");
+                    return;
+                }
+            }
+
+            if let Err(err) = txns.commit().await {
+                error!("Unable to commit transaction in component async tasks execution: {err}");
+            }
+        });
+    }
+
     Ok(Json(CreateNodeResponse { node: node_view }))
 }
