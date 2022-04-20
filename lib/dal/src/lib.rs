@@ -24,7 +24,6 @@ pub mod func;
 pub mod group;
 pub mod history_event;
 pub mod index_map;
-pub mod input_socket;
 pub mod jwt_key;
 pub mod key_pair;
 pub mod label_list;

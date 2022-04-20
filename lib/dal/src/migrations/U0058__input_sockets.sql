@@ -14,6 +14,8 @@ CREATE TABLE input_sockets
     attribute_context_schema_variant_id bigint,
     attribute_context_component_id bigint,
     attribute_context_system_id bigint,
+    created_at timestamp with time zone NOT NULL DEFAULT NOW(),
+    updated_at timestamp with time zone NOT NULL DEFAULT NOW(),
     name text,
     internal_only bool NOT NULL DEFAULT FALSE,
     type_definition text
