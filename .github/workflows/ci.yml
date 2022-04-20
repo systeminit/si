@@ -4,9 +4,6 @@ on:
     branches:
       - staging
       - trying
-    paths-ignore:
-      - 'app/corp/**'
-      - 'bin/si-discord-bot/**'
   pull_request:
     branches:
       - main
