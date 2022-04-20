@@ -275,6 +275,11 @@ impl Component {
             .set_value_by_json_pointer(ctx, "/root/si/name", Some(name.as_ref()))
             .await?;
 
+        component.generate_code(ctx, UNSET_ID_VALUE.into()).await?;
+        component
+            .check_qualifications(ctx, UNSET_ID_VALUE.into())
+            .await?;
+
         Ok((component, node))
     }
 
@@ -333,6 +338,8 @@ impl Component {
         //       a ResourcePrototype for the Component's SchemaVariant.
         let _resource = Resource::new(ctx, &self.id, system_id).await?;
 
+        self.generate_code(ctx, *system_id).await?;
+        self.check_qualifications(ctx, *system_id).await?;
         Ok(())
     }
 

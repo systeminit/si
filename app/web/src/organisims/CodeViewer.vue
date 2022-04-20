@@ -4,6 +4,10 @@
       class="flex flex-row items-center justify-between h-10 px-6 py-2 text-base text-white align-middle property-section-bg-color"
     >
       <div class="text-lg">Component ID {{ props.componentId }} Code</div>
+
+      <button class="ml-2 text-base" @click="copyCode">
+        <VueFeather type="copy" size="1em" />
+      </button>
     </div>
     <div class="w-full h-full overflow-auto">
       <div
@@ -18,6 +22,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, toRefs } from "vue";
+import VueFeather from "vue-feather";
 import { EditorState, EditorView, basicSetup } from "@codemirror/basic-setup";
 import { yaml } from "@codemirror/legacy-modes/mode/yaml";
 import { StreamLanguage } from "@codemirror/stream-parser";
@@ -41,6 +46,11 @@ const view = ref<null | EditorView>(null);
 const view$ = fromRef(view, { immediate: true });
 const readOnly = new Compartment();
 
+// This doesn't work on IE, do we care? (is it polyfilled by our build system?)
+const copyCode = () => {
+  navigator.clipboard.writeText(view.value.state.doc.text.join("\n"));
+};
+
 onMounted(() => {
   if (editorMount.value) {
     const fixedHeightEditor = EditorView.theme({
@@ -56,7 +66,7 @@ onMounted(() => {
           fixedHeightEditor,
           keymap.of([indentWithTab]),
           StreamLanguage.define(yaml),
-          readOnly.of(EditorState.readOnly.of(false)),
+          readOnly.of(EditorState.readOnly.of(true)),
         ],
       }),
       parent: editorMount.value,
@@ -85,7 +95,7 @@ const _code = refFrom(
                 to: view.state.doc.length,
                 insert,
               },
-              effects: readOnly.reconfigure(EditorState.readOnly.of(false)),
+              effects: readOnly.reconfigure(EditorState.readOnly.of(true)),
             });
           } else {
             view.dispatch({
