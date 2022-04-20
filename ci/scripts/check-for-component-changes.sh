@@ -1,17 +1,19 @@
 #!/usr/bin/env bash
+set -u
 
 CHANGED_PATHS="$(git diff --name-only origin/main)"
 
 COMMON_PATHS=".github/workflows/promote-image.yml
   .github/workflows/build-docker-image.yml
-  .github/workflows/build-docker-images.yml"
+  .github/workflows/build-docker-images.yml
+  ci/scripts/check-for-component-changes.sh"
 NATS_PATHS=".github/workflows/promote-nats.yml
   component/nats/**"
 OTELCOL_PATHS=".github/workflows/promote-otelcol.yml
   component/otelcol/**"
 POSTGRES_PATHS=".github/workflows/promote-postgres.yml
   component/postgres/**"
-SDF_CHANGES=".github/workflows/promote-sdf.yml
+SDF_PATHS=".github/workflows/promote-sdf.yml
   .cargo/**
   Cargo.*
   bin/sdf/**
