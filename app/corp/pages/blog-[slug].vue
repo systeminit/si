@@ -21,6 +21,11 @@
             {{ blog.fields.title }}
           </span>
         </h1>
+        <h3>
+          <span class="block text-xl text-center leading-8 tracking-tight text-neutral-600 sm:text-md">
+            By {{ blog.fields.author.fields.name }}
+          </span>
+        </h3>
         <div class="mt-6 prose prose-gray prose-lg text-gray-100 mx-auto">
           <figure v-if="blog.fields.heroImage">
             <img
@@ -32,11 +37,27 @@
             />
           </figure>
         </div>
-
         <div
-          class="prose prose-neutral dark:prose-invert"
+          class="prose prose-neutral prose-invert"
           v-html="blogAsMarkdown"
         ></div>
+        <div class="flex bg-neutral-600 rounded-lg mt-5 mb-5">
+          <div class="ml-5 flex-shrink-0 self-center">
+            <img
+              :src="assetUrl(blog.fields.author.fields.image.fields.file.url)"
+              class="h-16 w-16 rounded-full"
+            />
+          </div>
+          <div class="m-5">
+            <h4 class="prose font-bold prose-invert">
+              {{ blog.fields.author.fields.name }},
+              {{ blog.fields.author.fields.title }}
+            </h4>
+            <p class="mt-1 prose prose-invert">
+              {{ blog.fields.author.fields.shortBio }}
+            </p>
+          </div>
+        </div>
       </div>
     </div>
     <div class="bg-neutral-700">
@@ -46,8 +67,8 @@
         <h2
           class="text-3xl font-extrabold tracking-tight text-gray-100 sm:text-4xl"
         >
-          <span class="block">Want to talk about DevOps?</span>
-          <span class="block">Come join us in Discord.</span>
+          <span class="block">Have a DevOps papercut?</span>
+          <span class="block">Tell us about it in Discord.</span>
         </h2>
         <div class="mt-8 flex justify-center">
           <iframe
