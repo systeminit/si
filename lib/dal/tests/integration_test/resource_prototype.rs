@@ -15,7 +15,7 @@ async fn new(ctx: &DalContext<'_, '_>) {
         .expect("cannot find docker image")
         .pop()
         .expect("no docker image found");
-    let (component, _node) = Component::new_for_schema_with_node(ctx, &name, schema.id())
+    let (component, _node, _) = Component::new_for_schema_with_node(ctx, &name, schema.id())
         .await
         .expect("could not create component");
 
@@ -62,7 +62,7 @@ async fn find_for_component(ctx: &DalContext<'_, '_>) {
         .default_schema_variant_id()
         .expect("cannot get default schema variant id");
 
-    let (component, _node) = Component::new_for_schema_with_node(ctx, "silverado", schema.id())
+    let (component, _node, _) = Component::new_for_schema_with_node(ctx, "silverado", schema.id())
         .await
         .expect("cannot create new component");
 

@@ -32,12 +32,12 @@ async fn new(ctx: &DalContext<'_, '_>) {
         .find(|s| s.name() == "output")
         .expect("cannot find output socket");
 
-    let (head_component, head_node) =
+    let (head_component, head_node, _) =
         Component::new_for_schema_with_node(ctx, "head", service_schema.id())
             .await
             .expect("cannot create component and node for service");
 
-    let (tail_component, tail_node) =
+    let (tail_component, tail_node, _) =
         Component::new_for_schema_with_node(ctx, "head", service_schema.id())
             .await
             .expect("cannot create component and node for service");
@@ -74,7 +74,7 @@ async fn include_component_in_system(
 
     let service_schema = find_schema_by_name(ctx, "service").await;
 
-    let (first_component, first_component_node) =
+    let (first_component, first_component_node, _) =
         Component::new_for_schema_with_node(ctx, "first", service_schema.id())
             .await
             .expect("cannot create component and node for service");
@@ -94,7 +94,7 @@ async fn include_component_in_system(
         .expect("cannot retrieve edges from edit session");
     assert_eq!(edges.len(), 2);
 
-    let (second_component, second_component_node) =
+    let (second_component, second_component_node, _) =
         Component::new_for_schema_with_node(ctx, "second", service_schema.id())
             .await
             .expect("cannot create component and node for service");
@@ -145,7 +145,7 @@ async fn include_component_in_system_with_edit_sessions(
 
     let service_schema = find_schema_by_name(ctx, "service").await;
 
-    let (first_component, first_component_node) =
+    let (first_component, first_component_node, _) =
         Component::new_for_schema_with_node(ctx, "first", service_schema.id())
             .await
             .expect("cannot create component and node for service");
@@ -165,7 +165,7 @@ async fn include_component_in_system_with_edit_sessions(
         .expect("cannot retrieve edges from edit session");
     assert_eq!(edges.len(), 2);
 
-    let (second_component, second_component_node) =
+    let (second_component, second_component_node, _) =
         Component::new_for_schema_with_node(ctx, "second", service_schema.id())
             .await
             .expect("cannot create component and node for service");

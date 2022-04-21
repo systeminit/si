@@ -86,7 +86,7 @@ pub use code_generation_resolver::{
     CodeGenerationResolver, CodeGenerationResolverError, CodeGenerationResolverId,
 };
 pub use code_view::{CodeLanguage, CodeView};
-pub use component::{Component, ComponentError, ComponentId, ComponentView};
+pub use component::{Component, ComponentAsyncTasks, ComponentError, ComponentId, ComponentView};
 pub use context::{
     AccessBuilder, DalContext, DalContextBuilder, RequestContext, ServicesContext, Transactions,
     TransactionsError, TransactionsStarter,

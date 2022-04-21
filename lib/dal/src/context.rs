@@ -405,7 +405,7 @@ impl RequestContext {
 }
 
 /// A request context builder which requires a [`Visibility`] to be completed.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct AccessBuilder {
     /// A suitable read tenancy for the consuming DAL objects.
     read_tenancy: ReadTenancy,

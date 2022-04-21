@@ -26,6 +26,8 @@ pub enum SchematicError {
     #[error(transparent)]
     Pg(#[from] si_data::PgError),
     #[error(transparent)]
+    PgPool(#[from] si_data::PgPoolError),
+    #[error(transparent)]
     StandardModel(#[from] StandardModelError),
     #[error(transparent)]
     ContextTransaction(#[from] TransactionsError),

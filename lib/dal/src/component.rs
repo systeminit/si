@@ -211,7 +211,7 @@ impl Component {
         ctx: &DalContext<'_, '_>,
         name: impl AsRef<str>,
         schema_id: &SchemaId,
-    ) -> ComponentResult<(Self, Node)> {
+    ) -> ComponentResult<(Self, Node, ComponentAsyncTasks)> {
         let schema = Schema::get_by_id(ctx, schema_id)
             .await?
             .ok_or(ComponentError::SchemaNotFound)?;
@@ -228,7 +228,7 @@ impl Component {
         ctx: &DalContext<'_, '_>,
         name: impl AsRef<str>,
         schema_variant_id: &SchemaVariantId,
-    ) -> ComponentResult<(Self, Node)> {
+    ) -> ComponentResult<(Self, Node, ComponentAsyncTasks)> {
         let schema_variant = SchemaVariant::get_by_id(ctx, schema_variant_id)
             .await?
             .ok_or(ComponentError::SchemaVariantNotFound)?;
@@ -275,12 +275,23 @@ impl Component {
             .set_value_by_json_pointer(ctx, "/root/si/name", Some(name.as_ref()))
             .await?;
 
-        component.generate_code(ctx, UNSET_ID_VALUE.into()).await?;
-        component
-            .check_qualifications(ctx, UNSET_ID_VALUE.into())
-            .await?;
+        let task = component.build_async_tasks(UNSET_ID_VALUE.into());
+        Ok((component, node, task))
+    }
 
-        Ok((component, node))
+    pub fn build_async_tasks(&self, system_id: SystemId) -> ComponentAsyncTasks {
+        ComponentAsyncTasks::new(self.clone(), system_id)
+    }
+
+    pub async fn run_async_tasks(
+        &self,
+        ctx: &DalContext<'_, '_>,
+        system_id: SystemId,
+    ) -> ComponentResult<()> {
+        // Some qualifications depend on code generation, so we have to generate first
+        self.generate_code(ctx, system_id).await?;
+        self.check_qualifications(ctx, system_id).await?;
+        Ok(())
     }
 
     #[instrument(skip_all)]
@@ -289,8 +300,8 @@ impl Component {
         name: impl AsRef<str>,
         schema_variant_id: &SchemaVariantId,
         parent_node_id: &NodeId,
-    ) -> ComponentResult<(Self, Node)> {
-        let (component, node) =
+    ) -> ComponentResult<(Self, Node, ComponentAsyncTasks)> {
+        let (component, node, task) =
             Self::new_for_schema_variant_with_node(ctx, name, schema_variant_id).await?;
         let schema = component
             .schema(ctx)
@@ -304,7 +315,7 @@ impl Component {
         )
         .await?;
 
-        Ok((component, node))
+        Ok((component, node, task))
     }
 
     #[instrument(skip_all)]
@@ -316,7 +327,9 @@ impl Component {
 
         let schema_variant_id =
             Schema::default_schema_variant_id_for_name(&ctx, "application").await?;
-        Self::new_for_schema_variant_with_node(&ctx, name, &schema_variant_id).await
+        let (comp, node, _) =
+            Self::new_for_schema_variant_with_node(&ctx, name, &schema_variant_id).await?;
+        Ok((comp, node))
     }
 
     #[instrument(skip_all)]
@@ -324,7 +337,7 @@ impl Component {
         &self,
         ctx: &DalContext<'_, '_>,
         system_id: &SystemId,
-    ) -> ComponentResult<()> {
+    ) -> ComponentResult<ComponentAsyncTasks> {
         let schema = self
             .schema(ctx)
             .await?
@@ -338,9 +351,7 @@ impl Component {
         //       a ResourcePrototype for the Component's SchemaVariant.
         let _resource = Resource::new(ctx, &self.id, system_id).await?;
 
-        self.generate_code(ctx, *system_id).await?;
-        self.check_qualifications(ctx, *system_id).await?;
-        Ok(())
+        Ok(self.build_async_tasks(*system_id))
     }
 
     standard_model_accessor!(kind, Enum(ComponentKind), ComponentResult);
@@ -388,7 +399,7 @@ impl Component {
         value: Option<serde_json::Value>,
         attribute_context: AttributeContext,
         baggage: EditFieldBaggage,
-    ) -> ComponentResult<()> {
+    ) -> ComponentResult<ComponentAsyncTasks> {
         let (updated_value, _updated_attribute_value_id) = AttributeValue::update_for_context(
             ctx,
             baggage.attribute_value_id,
@@ -410,15 +421,7 @@ impl Component {
             .check_validations(ctx, &prop, &updated_value, false)
             .await?;
 
-        // Some qualifications depend on code generation, so we have to generate first
-        component
-            .generate_code(ctx, attribute_context.system_id())
-            .await?;
-        component
-            .check_qualifications(ctx, attribute_context.system_id())
-            .await?;
-
-        Ok(())
+        Ok(component.build_async_tasks(attribute_context.system_id()))
     }
 
     pub async fn check_validations(
@@ -1534,4 +1537,22 @@ async fn edit_field_for_attribute_value(
     );
 
     Ok(edit_field)
+}
+
+pub struct ComponentAsyncTasks {
+    component: Component,
+    system_id: SystemId,
+}
+
+impl ComponentAsyncTasks {
+    pub fn new(component: Component, system_id: SystemId) -> Self {
+        Self {
+            component,
+            system_id,
+        }
+    }
+
+    pub async fn run(self, ctx: &DalContext<'_, '_>) -> ComponentResult<()> {
+        self.component.run_async_tasks(ctx, self.system_id).await
+    }
 }

@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{EditFieldError, EditFieldResult};
 use crate::server::extract::{AccessBuilder, HandlerContext};
+use telemetry::prelude::*;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -38,9 +39,9 @@ pub async fn remove_from_edit_field(
     Json(request): Json<RemoveFromEditFieldRequest>,
 ) -> EditFieldResult<Json<RemoveFromEditFieldResponse>> {
     let txns = txns.start().await?;
-    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
+    let ctx = builder.build(request_ctx.clone().build(request.visibility), &txns);
 
-    match request.object_kind {
+    let async_tasks = match request.object_kind {
         EditFieldObjectKind::Component => {
             Component::update_from_edit_field(
                 &ctx,
@@ -48,15 +49,23 @@ pub async fn remove_from_edit_field(
                 request.edit_field_id,
                 None,
             )
-            .await?
+            .await?;
+            None
         }
         EditFieldObjectKind::ComponentProp => {
             let baggage = request.baggage.ok_or(EditFieldError::MissingBaggage)?;
             let attribute_context = request
                 .attribute_context
                 .ok_or(EditFieldError::MissingAttributeContext)?;
-            Component::update_from_edit_field_with_baggage(&ctx, None, attribute_context, baggage)
-                .await?
+            Some(
+                Component::update_from_edit_field_with_baggage(
+                    &ctx,
+                    None,
+                    attribute_context,
+                    baggage,
+                )
+                .await?,
+            )
         }
         EditFieldObjectKind::Prop => {
             Prop::update_from_edit_field(
@@ -65,7 +74,8 @@ pub async fn remove_from_edit_field(
                 request.edit_field_id,
                 None,
             )
-            .await?
+            .await?;
+            None
         }
         EditFieldObjectKind::QualificationCheck => {
             QualificationCheck::update_from_edit_field(
@@ -74,7 +84,8 @@ pub async fn remove_from_edit_field(
                 request.edit_field_id,
                 None,
             )
-            .await?
+            .await?;
+            None
         }
         EditFieldObjectKind::Schema => {
             Schema::update_from_edit_field(
@@ -83,7 +94,8 @@ pub async fn remove_from_edit_field(
                 request.edit_field_id,
                 None,
             )
-            .await?
+            .await?;
+            None
         }
         EditFieldObjectKind::SchemaUiMenu => {
             schema::UiMenu::update_from_edit_field(
@@ -92,7 +104,8 @@ pub async fn remove_from_edit_field(
                 request.edit_field_id,
                 None,
             )
-            .await?
+            .await?;
+            None
         }
         EditFieldObjectKind::SchemaVariant => {
             SchemaVariant::update_from_edit_field(
@@ -101,7 +114,8 @@ pub async fn remove_from_edit_field(
                 request.edit_field_id,
                 None,
             )
-            .await?
+            .await?;
+            None
         }
         EditFieldObjectKind::Socket => {
             Socket::update_from_edit_field(
@@ -110,11 +124,43 @@ pub async fn remove_from_edit_field(
                 request.edit_field_id,
                 None,
             )
-            .await?
+            .await?;
+            None
         }
     };
 
     txns.commit().await?;
+
+    if let Some(async_tasks) = async_tasks {
+        tokio::task::spawn(async move {
+            let mut txns = match builder.transactions_starter().await {
+                Ok(val) => val,
+                Err(err) => {
+                    error!(
+                        "Unable to create Transactions in component async tasks execution: {err}"
+                    );
+                    return;
+                }
+            };
+            let txns = match txns.start().await {
+                Ok(val) => val,
+                Err(err) => {
+                    error!("Unable to start transaction in component async tasks execution: {err}");
+                    return;
+                }
+            };
+            let ctx = builder.build(request_ctx.build(request.visibility), &txns);
+
+            if let Err(err) = async_tasks.run(&ctx).await {
+                error!("Component async task execution failed: {err}");
+                return;
+            }
+
+            if let Err(err) = txns.commit().await {
+                error!("Unable to commit transaction in component async tasks execution: {err}");
+            }
+        });
+    }
 
     Ok(Json(RemoveFromEditFieldResponse { success: true }))
 }

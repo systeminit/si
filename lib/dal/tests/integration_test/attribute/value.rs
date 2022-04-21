@@ -35,9 +35,10 @@ async fn update_for_context_simple(ctx: &DalContext<'_, '_>) {
         .await
         .expect("cannot set parent of name_prop");
 
-    let (component, _) = Component::new_for_schema_with_node(ctx, "Basic component", schema.id())
-        .await
-        .expect("Unable to create component");
+    let (component, _, _) =
+        Component::new_for_schema_with_node(ctx, "Basic component", schema.id())
+            .await
+            .expect("Unable to create component");
 
     let read_context = AttributeReadContext {
         prop_id: None,
