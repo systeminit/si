@@ -18,6 +18,9 @@ use crate::{
     Visibility, WriteTenancy,
 };
 
+pub mod input;
+pub mod output;
+
 #[derive(Error, Debug)]
 pub enum SocketError {
     #[error(transparent)]
