@@ -50,7 +50,7 @@ export class SceneManager {
     this.scene.addChild(this.root);
 
     this.initializeSceneData();
-    this.setBackgroundGrid();
+    this.setBackgroundGrid(renderer.width, renderer.height);
 
     this.zoomFactor = 1;
   }
@@ -70,19 +70,9 @@ export class SceneManager {
     }
   }
 
-  setBackgroundGrid(): void {
-    const viewport = {
-      width: 800,
-      height: 800,
-    };
-
-    const size = Math.max(viewport.width, viewport.height);
-    const grid = new Grid(size);
+  setBackgroundGrid(rendererWidth: number, rendererHeight: number): void {
+    const grid = new Grid(rendererWidth, rendererHeight);
     grid.zIndex = 1;
-
-    grid.position.x = -(size * 0.5);
-    grid.position.y = -(size * 0.5);
-
     this.root.addChild(grid);
   }
 

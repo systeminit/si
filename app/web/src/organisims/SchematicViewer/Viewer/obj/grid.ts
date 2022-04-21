@@ -9,20 +9,18 @@ export class Grid extends PIXI.Container {
   zoomFactor?: number;
   quad: PIXI.Mesh<PIXI.Shader>;
 
-  constructor(size: number) {
+  constructor(rendererWidth: number, rendererHeight: number) {
     super();
 
     this.name = BACKGROUND_GRID_NAME;
     this.zoomFactor = 1;
 
-    const x = size;
-    const y = size;
+    const side = Math.max(rendererWidth, rendererHeight) * 2.0;
 
-    const v1 = { x: -x, y: -y };
-    const v2 = { x: x, y: -y };
-    const v3 = { x: x, y: y };
-    const v4 = { x: -x, y: y };
-
+    const v1 = { x: -side, y: -side };
+    const v2 = { x: side, y: -side };
+    const v3 = { x: side, y: side };
+    const v4 = { x: -side, y: side };
     const geo = new PIXI.Geometry()
       .addAttribute(
         "aVertexPosition",
@@ -35,7 +33,7 @@ export class Grid extends PIXI.Container {
     const uniforms = {
       uColor: [0.198, 0.198, 0.198],
       uBorderThickness: 0.02,
-      uGridSubdivisions: 80.0,
+      uGridSubdivisions: side / 10.0,
       uZoomFactor: this.zoomFactor,
     };
 
@@ -48,13 +46,13 @@ export class Grid extends PIXI.Container {
     this.quad = new PIXI.Mesh(geo, shader);
     this.quad.name = "quad";
     this.quad.blendMode = PIXI.BLEND_MODES.NORMAL_NPM;
-    this.quad.position.set(x, y);
     this.quad.scale.set(1);
     this.addChild(this.quad);
   }
 
   updateZoomFactor(zoomFactor: number) {
     const c = this.getChildByName("quad") as PIXI.Mesh<PIXI.Shader>;
-    c.shader.uniforms.uZoomFactor = zoomFactor;
+    // clamp(zoomFactor, 0.1, 1.);
+    c.shader.uniforms.uZoomFactor = Math.max(Math.min(zoomFactor, 1), 0.1);
   }
 }
