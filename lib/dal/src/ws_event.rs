@@ -3,6 +3,8 @@ use thiserror::Error;
 
 use si_data::{NatsError, NatsTxn};
 
+use crate::code_generation_resolver::CodeGenerationId;
+use crate::qualification::QualificationCheckId;
 use crate::resource::ResourceSyncId;
 use crate::{BillingAccountId, ChangeSetPk, HistoryActor, SchemaPk, WriteTenancy};
 
@@ -25,6 +27,8 @@ pub enum WsPayload {
     EditSessionSaved(ChangeSetPk),
     SchemaCreated(SchemaPk),
     ResourceSynced(ResourceSyncId),
+    CodeGenerated(CodeGenerationId),
+    CheckedQualifications(QualificationCheckId),
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, Eq, PartialEq)]

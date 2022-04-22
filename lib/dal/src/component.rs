@@ -581,6 +581,15 @@ impl Component {
             }
         }
 
+        WsEvent::checked_qualifications(
+            *self.id(),
+            system_id,
+            ctx.read_tenancy().billing_accounts().into(),
+            ctx.history_actor(),
+        )
+        .publish(ctx.txns().nats())
+        .await?;
+
         Ok(())
     }
 
@@ -661,6 +670,15 @@ impl Component {
                 }
             }
         }
+
+        WsEvent::code_generated(
+            *self.id(),
+            system_id,
+            ctx.read_tenancy().billing_accounts().into(),
+            ctx.history_actor(),
+        )
+        .publish(ctx.txns().nats())
+        .await?;
 
         Ok(())
     }

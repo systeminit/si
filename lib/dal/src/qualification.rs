@@ -6,7 +6,8 @@ use veritech::QualificationSubCheck;
 
 use crate::func::backend::validation::ValidationError;
 use crate::func::binding_return_value::{FuncBindingReturnValue, FuncBindingReturnValueError};
-use crate::{Prop, QualificationPrototype};
+use crate::ws_event::{WsEvent, WsPayload};
+use crate::{BillingAccountId, ComponentId, HistoryActor, Prop, QualificationPrototype, SystemId};
 
 #[derive(Error, Debug)]
 pub enum QualificationError {
@@ -114,5 +115,30 @@ impl QualificationView {
         } else {
             Err(QualificationError::NoValue)
         }
+    }
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct QualificationCheckId {
+    component_id: ComponentId,
+    system_id: SystemId,
+}
+
+impl WsEvent {
+    pub fn checked_qualifications(
+        component_id: ComponentId,
+        system_id: SystemId,
+        billing_account_ids: Vec<BillingAccountId>,
+        history_actor: &HistoryActor,
+    ) -> Self {
+        WsEvent::new(
+            billing_account_ids,
+            history_actor.clone(),
+            WsPayload::CheckedQualifications(QualificationCheckId {
+                component_id,
+                system_id,
+            }),
+        )
     }
 }
