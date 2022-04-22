@@ -12,7 +12,7 @@ export function createNodeVm(sandbox: Sandbox): NodeVM {
 }
 
 export function createVm(sandbox: Sandbox): VM {
-  const timeout = 2000;
+  const timeout = 10000;
   const fixAsync = true;
   return new VM({
     timeout,

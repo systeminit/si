@@ -23,7 +23,7 @@ use crate::func::backend::{
     js_qualification::FuncBackendJsQualificationArgs, js_resource::FuncBackendJsResourceSyncArgs,
 };
 use crate::func::binding::{FuncBinding, FuncBindingError};
-use crate::func::binding_return_value::FuncBindingReturnValue;
+use crate::func::binding_return_value::{FuncBindingReturnValue, FuncBindingReturnValueError};
 use crate::qualification::QualificationView;
 use crate::qualification_resolver::QualificationResolverContext;
 use crate::resource_resolver::ResourceResolverContext;
@@ -33,18 +33,19 @@ use crate::validation_resolver::ValidationResolverContext;
 use crate::ws_event::{WsEvent, WsEventError};
 use crate::AttributeValueId;
 use crate::{
-    edit_field, impl_standard_model, node::NodeId, pk, qualification::QualificationError,
-    standard_model, standard_model_accessor, standard_model_belongs_to, standard_model_has_many,
-    AttributeContext, AttributeContextBuilderError, AttributeContextError, AttributeReadContext,
+    edit_field, func::FuncId, impl_standard_model, node::NodeId, pk,
+    qualification::QualificationError, standard_model, standard_model_accessor,
+    standard_model_belongs_to, standard_model_has_many, AttributeContext,
+    AttributeContextBuilderError, AttributeContextError, AttributeReadContext,
     CodeGenerationPrototype, CodeGenerationPrototypeError, CodeGenerationResolver,
-    CodeGenerationResolverError, DalContext, Edge, EdgeError, Func, FuncBackendKind,
-    HistoryEventError, LabelEntry, LabelList, Node, NodeError, OrganizationError, Prop, PropError,
-    PropId, PropKind, QualificationPrototype, QualificationPrototypeError, QualificationResolver,
-    QualificationResolverError, ReadTenancyError, Resource, ResourceError, ResourcePrototype,
-    ResourcePrototypeError, ResourceResolver, ResourceResolverError, ResourceView, Schema,
-    SchemaError, SchemaId, Secret, StandardModel, StandardModelError, SystemId, Timestamp,
-    ValidationPrototype, ValidationPrototypeError, ValidationResolver, ValidationResolverError,
-    Visibility, WorkspaceError, WriteTenancy,
+    CodeGenerationResolverError, CodeLanguage, CodeView, DalContext, Edge, EdgeError, Func,
+    FuncBackendKind, HistoryEventError, LabelEntry, LabelList, Node, NodeError, OrganizationError,
+    Prop, PropError, PropId, PropKind, QualificationPrototype, QualificationPrototypeError,
+    QualificationResolver, QualificationResolverError, ReadTenancyError, Resource, ResourceError,
+    ResourcePrototype, ResourcePrototypeError, ResourceResolver, ResourceResolverError,
+    ResourceView, Schema, SchemaError, SchemaId, Secret, StandardModel, StandardModelError,
+    SystemId, Timestamp, ValidationPrototype, ValidationPrototypeError, ValidationResolver,
+    ValidationResolverError, Visibility, WorkspaceError, WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -145,6 +146,11 @@ pub enum ComponentError {
     BadJsonPointer(String, String),
     #[error("invalid AttributeReadContext: {0}")]
     BadAttributeReadContext(String),
+
+    #[error("func not found: {0}")]
+    FuncNotFound(FuncId),
+    #[error(transparent)]
+    FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
 }
 
 pub type ComponentResult<T> = Result<T, ComponentError>;
@@ -275,12 +281,18 @@ impl Component {
             .set_value_by_json_pointer(ctx, "/root/si/name", Some(name.as_ref()))
             .await?;
 
-        let task = component.build_async_tasks(UNSET_ID_VALUE.into());
+        let task = component
+            .build_async_tasks(ctx, UNSET_ID_VALUE.into())
+            .await?;
         Ok((component, node, task))
     }
 
-    pub fn build_async_tasks(&self, system_id: SystemId) -> ComponentAsyncTasks {
-        ComponentAsyncTasks::new(self.clone(), system_id)
+    pub async fn build_async_tasks(
+        &self,
+        ctx: &DalContext<'_, '_>,
+        system_id: SystemId,
+    ) -> ComponentResult<ComponentAsyncTasks> {
+        ComponentAsyncTasks::new(ctx, self.clone(), system_id).await
     }
 
     pub async fn run_async_tasks(
@@ -351,7 +363,7 @@ impl Component {
         //       a ResourcePrototype for the Component's SchemaVariant.
         let _resource = Resource::new(ctx, &self.id, system_id).await?;
 
-        Ok(self.build_async_tasks(*system_id))
+        self.build_async_tasks(ctx, *system_id).await
     }
 
     standard_model_accessor!(kind, Enum(ComponentKind), ComponentResult);
@@ -421,7 +433,9 @@ impl Component {
             .check_validations(ctx, &prop, &updated_value, false)
             .await?;
 
-        Ok(component.build_async_tasks(attribute_context.system_id()))
+        component
+            .build_async_tasks(ctx, attribute_context.system_id())
+            .await
     }
 
     pub async fn check_validations(
@@ -592,6 +606,101 @@ impl Component {
         Ok(())
     }
 
+    /// Creates code generation func binding, an fbrv without a value and a CodeGenerationResolver,
+    /// The func is not executed yet, it's just a placeholder for some code generation that is still being executed
+    pub async fn prepare_code_generation(
+        &self,
+        ctx: &DalContext<'_, '_>,
+        system_id: SystemId,
+    ) -> ComponentResult<()> {
+        let schema = self
+            .schema_with_tenancy(ctx)
+            .await?
+            .ok_or(ComponentError::SchemaNotFound)?;
+        let schema_variant = self
+            .schema_variant_with_tenancy(ctx)
+            .await?
+            .ok_or(ComponentError::SchemaVariantNotFound)?;
+
+        let code_generation_prototypes = CodeGenerationPrototype::find_for_component(
+            ctx,
+            *self.id(),
+            *schema.id(),
+            *schema_variant.id(),
+            system_id,
+        )
+        .await?;
+
+        for prototype in code_generation_prototypes {
+            let func = Func::get_by_id(ctx, &prototype.func_id())
+                .await?
+                .ok_or_else(|| ComponentError::MissingFunc(prototype.func_id().to_string()))?;
+
+            let args = FuncBackendJsCodeGenerationArgs {
+                component: self
+                    .veritech_code_generation_component(ctx, system_id)
+                    .await?,
+            };
+            let json_args = serde_json::to_value(args)?;
+
+            let (func_binding, _created) = FuncBinding::find_or_create(
+                ctx,
+                json_args,
+                prototype.func_id(),
+                *func.backend_kind(),
+            )
+            .await?;
+
+            // Empty fbrv means the function is still being executed
+            let _fbrv = FuncBindingReturnValue::upsert(
+                ctx,
+                None,
+                None,
+                prototype.func_id(),
+                *func_binding.id(),
+                UNSET_ID_VALUE.into(),
+            )
+            .await?;
+
+            let mut existing_resolvers = CodeGenerationResolver::find_for_prototype_and_component(
+                ctx,
+                prototype.id(),
+                self.id(),
+            )
+            .await?;
+
+            // If we do not have one, create the code generation resolver. If we do, update the
+            // func binding id to point to the new value.
+            if let Some(mut resolver) = existing_resolvers.pop() {
+                resolver
+                    .set_func_binding_id(ctx, *func_binding.id())
+                    .await?;
+            } else {
+                let mut resolver_context = CodeGenerationResolverContext::new();
+                resolver_context.set_component_id(*self.id());
+                let _resolver = CodeGenerationResolver::new(
+                    ctx,
+                    *prototype.id(),
+                    *func.id(),
+                    *func_binding.id(),
+                    resolver_context,
+                )
+                .await?;
+            }
+        }
+
+        WsEvent::code_generated(
+            *self.id(),
+            system_id,
+            ctx.read_tenancy().billing_accounts().into(),
+            ctx.history_actor(),
+        )
+        .publish(ctx.txns().nats())
+        .await?;
+
+        Ok(())
+    }
+
     pub async fn generate_code(
         &self,
         ctx: &DalContext<'_, '_>,
@@ -710,8 +819,8 @@ impl Component {
         ctx: &DalContext<'_, '_>,
         component_id: ComponentId,
         system_id: SystemId,
-    ) -> ComponentResult<Vec<veritech::CodeGenerated>> {
-        let mut results: Vec<veritech::CodeGenerated> = Vec::new();
+    ) -> ComponentResult<Vec<CodeView>> {
+        let mut results = Vec::new();
 
         let rows = ctx
             .txns()
@@ -726,14 +835,28 @@ impl Component {
                 ],
             )
             .await?;
-        for row in rows.into_iter() {
+        for row in rows {
             let json: serde_json::Value = row.try_get("object")?;
             let func_binding_return_value: FuncBindingReturnValue = serde_json::from_value(json)?;
-            let value = func_binding_return_value
-                .value()
-                .ok_or(ComponentError::CodeGeneratedNotFound)?;
-            let code_generated = veritech::CodeGenerated::deserialize(value)?;
-            results.push(code_generated);
+            if let Some(value) = func_binding_return_value.value() {
+                let code_generated = veritech::CodeGenerated::deserialize(value)?;
+                let lang = CodeLanguage::deserialize(serde_json::Value::String(
+                    code_generated.format.clone(),
+                ))
+                .unwrap_or_else(|err| {
+                    error!(
+                        "Unable to identify format {} ({err})",
+                        code_generated.format
+                    );
+                    CodeLanguage::Unknown
+                });
+                results.push(CodeView::new(lang, Some(code_generated.code)));
+            } else {
+                // Means the code generation is being executed, we currently don't have enough metadata to know the format
+                // TODO: when supporting multiple codes per component we will need a way to identify the format of a generation that is being ran
+                // We could infer from the function's name, but it's a stretch
+                results.push(CodeView::new(CodeLanguage::Unknown, None));
+            }
         }
         Ok(results)
     }
@@ -1009,7 +1132,15 @@ impl Component {
         };
         let qualification_view = veritech::QualificationCheckComponent {
             data: ComponentView::for_context(ctx, read_context).await?.into(),
-            codes: Self::list_code_generated_by_component_id(ctx, *self.id(), system_id).await?,
+            codes: Self::list_code_generated_by_component_id(ctx, *self.id(), system_id)
+                .await?
+                .into_iter()
+                .flat_map(|view| {
+                    let format = view.language.to_string();
+                    view.code
+                        .map(|code| veritech::CodeGenerated { format, code })
+                })
+                .collect(),
             parents,
         };
         Ok(qualification_view)
@@ -1563,11 +1694,16 @@ pub struct ComponentAsyncTasks {
 }
 
 impl ComponentAsyncTasks {
-    pub fn new(component: Component, system_id: SystemId) -> Self {
-        Self {
+    pub async fn new(
+        ctx: &DalContext<'_, '_>,
+        component: Component,
+        system_id: SystemId,
+    ) -> ComponentResult<Self> {
+        component.prepare_code_generation(ctx, system_id).await?;
+        Ok(Self {
             component,
             system_id,
-        }
+        })
     }
 
     pub async fn run(self, ctx: &DalContext<'_, '_>) -> ComponentResult<()> {

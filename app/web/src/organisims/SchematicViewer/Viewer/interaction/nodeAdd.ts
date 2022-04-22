@@ -56,8 +56,6 @@ export class NodeAddManager {
     this.node = this.sceneManager.getGeo(nodeObj.name) as OBJ.Node;
 
     if (schematicKind) {
-      console.debug("Initiating node add");
-
       let parentDeploymentNodeId = null;
       switch (schematicKind) {
         case SchematicKind.Component:
