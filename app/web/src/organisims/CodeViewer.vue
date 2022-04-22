@@ -108,7 +108,8 @@ const _code = refFrom(
         if (view) {
           // Eventually, we should support multiple code outputs
           if (reply.codeViews.length > 0) {
-            let insert = reply.codeViews[0].code;
+            let insert =
+              reply.codeViews[0].code ?? "# Generating code, wait a bit...";
             view.dispatch({
               changes: {
                 from: 0,

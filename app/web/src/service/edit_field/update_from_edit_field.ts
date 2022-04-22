@@ -70,9 +70,8 @@ export function updateFromEditField(
           request,
         )
         .pipe(
-          tap((response) => {
+          tap((_response) => {
             editSessionWritten$.next(true);
-            console.log({ response });
           }),
         );
     }),

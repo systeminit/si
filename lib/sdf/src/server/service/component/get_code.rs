@@ -1,5 +1,5 @@
 use axum::{extract::Query, Json};
-use dal::{CodeLanguage, CodeView, Component, ComponentId, SystemId, Visibility, WorkspaceId};
+use dal::{CodeView, Component, ComponentId, SystemId, Visibility, WorkspaceId};
 use serde::{Deserialize, Serialize};
 
 use super::ComponentResult;
@@ -30,14 +30,9 @@ pub async fn get_code(
     let ctx = builder.build(request_ctx.build(request.visibility), &txns);
 
     let system_id = request.system_id.unwrap_or(SystemId::NONE);
-    let code_list =
+    let code_views =
         Component::list_code_generated_by_component_id(&ctx, request.component_id, system_id)
             .await?;
-
-    let code_views: Vec<CodeView> = code_list
-        .into_iter()
-        .map(|code_gen| CodeView::new(CodeLanguage::Yaml, code_gen.code))
-        .collect();
 
     txns.commit().await?;
     Ok(Json(GetCodeResponse { code_views }))

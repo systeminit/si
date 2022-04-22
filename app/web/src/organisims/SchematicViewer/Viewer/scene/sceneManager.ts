@@ -156,7 +156,6 @@ export class SceneManager {
     }
 
     if (selected) {
-      console.debug("Re-selecting node: " + schematicKind);
       selectionManager.select({
         parentDeploymentNodeId: selectedDeploymentNodeId,
         nodes: [selected],

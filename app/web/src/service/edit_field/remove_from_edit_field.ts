@@ -69,9 +69,8 @@ export function removeFromEditField(
           request,
         )
         .pipe(
-          tap((response) => {
+          tap((_response) => {
             editSessionWritten$.next(true);
-            console.log({ response });
           }),
         );
     }),

@@ -116,9 +116,6 @@ const treeOpenState = computed(
 );
 
 const toggleHeader = (fieldId: string) => {
-  console.log(`toggling: ${fieldId}`, {
-    setTreeOpenState: setTreeOpenState.value,
-  });
   if (setTreeOpenState.value[fieldId] === undefined) {
     setTreeOpenState.value[fieldId] = true;
   } else {

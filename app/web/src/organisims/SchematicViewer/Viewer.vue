@@ -203,14 +203,6 @@ export default defineComponent({
         // We re-sync the last selection as now we can retrieve the selected nodes of this panel from the sceneManager
         const data = await Rx.firstValueFrom(nodeSelection$);
         nodeSelection$.next(data);
-
-        const parentDeploymentNodeId =
-          (this.schematicKind !== SchematicKind.Deployment
-            ? this.dataManager?.selectedDeploymentNodeId
-            : null) ?? null;
-        console.debug(
-          `Schematic Kind changed: ${ctx} ${parentDeploymentNodeId}`,
-        );
       }
     },
     async schematicData(schematic) {
