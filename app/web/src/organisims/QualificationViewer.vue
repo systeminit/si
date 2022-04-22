@@ -117,11 +117,11 @@
 </template>
 
 <script setup lang="ts">
+import * as Rx from "rxjs";
 import { ComponentService } from "@/service/component";
 import QualificationOutput from "./QualificationViewer/QualificationOutput.vue";
 import VueFeather from "vue-feather";
-import { fromRef, refFrom } from "vuse-rx";
-import { combineLatest, from, switchMap } from "rxjs";
+import { fromRef, refFrom, untilUnmounted } from "vuse-rx";
 import { GlobalErrorService } from "@/service/global_error";
 import {
   Qualification,
@@ -130,6 +130,8 @@ import {
 import { VueLoading } from "vue-loading-template";
 import { computed, ref, toRefs } from "vue";
 import { ChangeSetService } from "@/service/change_set";
+import { eventCheckedQualifications$ } from "@/observable/qualification";
+import { system$ } from "@/observable/system";
 //import { ListQualificationsResponse } from "@/service/component/list_qualifications";
 
 const editMode = refFrom<boolean>(ChangeSetService.currentEditMode());
@@ -214,25 +216,38 @@ const props = defineProps<{
 const { componentId } = toRefs(props);
 const componentId$ = fromRef<number>(componentId, { immediate: true });
 
-// TODO: we should fetch the qualifications when they change
+const checkedQualifications$ = new Rx.ReplaySubject<true>();
+checkedQualifications$.next(true); // We must fetch on setup
+eventCheckedQualifications$
+  .pipe(untilUnmounted)
+  .subscribe(async (checkedQualificationId) => {
+    const system = await Rx.firstValueFrom(system$);
+    const data = checkedQualificationId?.payload.data;
+    const sameComponent = props.componentId === data?.componentId;
+    const sameSystem = (system?.id ?? -1) === data?.systemId;
+    if (sameComponent && sameSystem) {
+      checkedQualifications$.next(true);
+    }
+  });
+
 const allQualifications = refFrom<Array<Qualification> | null>(
-  combineLatest([componentId$]).pipe(
-    switchMap(([componentId]) => {
+  Rx.combineLatest([componentId$, checkedQualifications$]).pipe(
+    Rx.switchMap(([componentId]) => {
       // Reset qualified state before getting qualifications.
       currentQualifiedState.value = QualifiedState.Unknown;
       return ComponentService.listQualifications({
         componentId: componentId,
       });
     }),
-    switchMap((reply) => {
+    Rx.switchMap((reply) => {
       if (reply.error) {
         GlobalErrorService.set(reply);
-        return from([null]);
+        return Rx.from([null]);
       } else {
         // Something something side effects... Let's rethink this someday.
         currentQualifiedState.value = getQualifiedState(reply);
         populateShowDescription(reply);
-        return from([reply]);
+        return Rx.from([reply]);
       }
     }),
   ),

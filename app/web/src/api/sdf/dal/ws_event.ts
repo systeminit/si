@@ -1,5 +1,7 @@
 import { HistoryActor } from "@/api/sdf/dal/history_actor";
 import { ResourceSyncId } from "@/observable/resource";
+import { CodeGenerationId } from "@/observable/code";
+import { CheckedQualificationId } from "@/observable/qualification";
 
 export interface WsEvent<Payload extends WsPayload> {
   version: number;
@@ -38,6 +40,16 @@ export interface WsResourceSynced extends WsPayload {
   data: ResourceSyncId;
 }
 
+export interface WsCheckedQualifications extends WsPayload {
+  kind: "CheckedQualifications";
+  data: CheckedQualificationId;
+}
+
+export interface WsCodeGenerated extends WsPayload {
+  kind: "CodeGenerated";
+  data: CodeGenerationId;
+}
+
 export interface WsSecretCreated extends WsPayload {
   kind: "SecretCreated";
   data: number;
@@ -49,4 +61,6 @@ export type WsPayloadKinds =
   | WsChangeSetApplied
   | WsChangeSetCanceled
   | WsResourceSynced
+  | WsCodeGenerated
+  | WsCheckedQualifications
   | WsSecretCreated;

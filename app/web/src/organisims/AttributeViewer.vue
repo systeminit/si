@@ -50,10 +50,10 @@ import { ChangedEditFieldCounterVisitor } from "@/utils/edit_field_visitor";
 import { ComponentIdentification } from "@/api/sdf/dal/component";
 import { componentsMetadata$ } from "@/organisims/SchematicViewer/data/observable";
 import { ComponentMetadata } from "@/service/component/get_components_metadata";
-import { Visibility } from "@/api/sdf/dal/visibility";
+//import { Visibility } from "@/api/sdf/dal/visibility";
 import {
   standardVisibilityTriggers$,
-  visibility$,
+  //visibility$,
 } from "@/observable/visibility";
 import { editSessionWritten$ } from "@/observable/edit_session";
 

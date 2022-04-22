@@ -44,6 +44,7 @@
 </template>
 
 <script setup lang="ts">
+import * as Rx from "rxjs";
 import { ref, toRefs, computed } from "vue";
 import { Resource, ResourceHealth } from "@/api/sdf/dal/resource";
 import SiTextBox from "@/atoms/SiTextBox.vue";
@@ -53,8 +54,6 @@ import { ChangeSetService } from "@/service/change_set";
 import { fromRef, refFrom, untilUnmounted } from "vuse-rx";
 import VueFeather from "vue-feather";
 import { system$ } from "@/observable/system";
-import { from, combineLatest, ReplaySubject } from "rxjs";
-import { switchMap, tap } from "rxjs/operators";
 import { eventResourceSynced$ } from "@/observable/resource";
 
 const props = defineProps<{
@@ -118,19 +117,16 @@ const runSync = () => {
   );
 };
 
-const resourceSynced$ = new ReplaySubject<true>();
+const resourceSynced$ = new Rx.ReplaySubject<true>();
 resourceSynced$.next(true); // We must fetch on setup
-eventResourceSynced$.pipe(untilUnmounted).subscribe((resourceSyncId) => {
-  combineLatest([system$]).pipe(
-    tap(([system]) => {
-      const data = resourceSyncId?.payload.data;
-      const sameComponent = props.componentId === data?.componentId;
-      const sameSystem = system?.id === data?.systemId;
-      if (sameComponent && sameSystem) {
-        resourceSynced$.next(true);
-      }
-    }),
-  );
+eventResourceSynced$.pipe(untilUnmounted).subscribe(async (resourceSyncId) => {
+  const system = await Rx.firstValueFrom(system$);
+  const data = resourceSyncId?.payload.data;
+  const sameComponent = props.componentId === data?.componentId;
+  const sameSystem = (system?.id ?? -1) === data?.systemId;
+  if (sameComponent && sameSystem) {
+    resourceSynced$.next(true);
+  }
 });
 
 // Fetches the resource. First by listening to componentId$.
@@ -144,22 +140,22 @@ eventResourceSynced$.pipe(untilUnmounted).subscribe((resourceSyncId) => {
 // check it for errors (if there are errors, set the resource to null). Otherwise
 // we set the resource to the returned value, and we're done.
 const resource = refFrom<Resource | null>(
-  combineLatest([componentId$, resourceSynced$]).pipe(
-    switchMap(([componentId]) => {
+  Rx.combineLatest([componentId$, resourceSynced$]).pipe(
+    Rx.switchMap(([componentId]) => {
       if (componentId) {
         return ComponentService.getResource({ componentId });
       } else {
-        return from([null]);
+        return Rx.from([null]);
       }
     }),
-    switchMap((reply) => {
+    Rx.switchMap((reply) => {
       if (reply === null) {
-        return from([null]);
+        return Rx.from([null]);
       } else if (reply.error) {
         GlobalErrorService.set(reply);
-        return from([null]);
+        return Rx.from([null]);
       } else {
-        return from([reply.resource]);
+        return Rx.from([reply.resource]);
       }
     }),
   ),

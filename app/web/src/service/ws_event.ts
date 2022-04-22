@@ -7,6 +7,8 @@ import {
 } from "@/observable/change_set";
 import { eventEditSessionSaved$ } from "@/observable/edit_session";
 import { eventResourceSynced$ } from "@/observable/resource";
+import { eventCheckedQualifications$ } from "@/observable/qualification";
+import { eventCodeGenerated$ } from "@/observable/code";
 import { eventSecretCreated$ } from "@/observable/secret";
 
 const eventMap: {
@@ -18,6 +20,8 @@ const eventMap: {
   ChangeSetCanceled: eventChangeSetCanceled$,
   EditSessionSaved: eventEditSessionSaved$,
   ResourceSynced: eventResourceSynced$,
+  CodeGenerated: eventCodeGenerated$,
+  CheckedQualifications: eventCheckedQualifications$,
   SecretCreated: eventSecretCreated$,
 };
 

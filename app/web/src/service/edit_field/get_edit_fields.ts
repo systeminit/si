@@ -5,7 +5,6 @@ import { switchMap } from "rxjs/operators";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import { EditFieldObjectKind, EditFields } from "@/api/sdf/dal/edit_field";
 import { workspace$ } from "@/observable/workspace";
-import { editSessionWritten$ } from "@/observable/edit_session";
 import _ from "lodash";
 import { standardVisibilityTriggers$ } from "@/observable/visibility";
 

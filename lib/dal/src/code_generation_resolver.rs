@@ -7,9 +7,11 @@ use thiserror::Error;
 
 use crate::{
     func::{binding::FuncBindingId, FuncId},
-    impl_standard_model, pk, standard_model, standard_model_accessor, CodeGenerationPrototypeId,
-    ComponentId, HistoryEventError, SchemaId, SchemaVariantId, StandardModel, StandardModelError,
-    SystemId, Timestamp, Visibility, WriteTenancy,
+    impl_standard_model, pk, standard_model, standard_model_accessor,
+    ws_event::{WsEvent, WsPayload},
+    BillingAccountId, CodeGenerationPrototypeId, ComponentId, HistoryActor, HistoryEventError,
+    SchemaId, SchemaVariantId, StandardModel, StandardModelError, SystemId, Timestamp, Visibility,
+    WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -180,6 +182,31 @@ impl CodeGenerationResolver {
             .await?;
         let object = standard_model::objects_from_rows(rows)?;
         Ok(object)
+    }
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct CodeGenerationId {
+    component_id: ComponentId,
+    system_id: SystemId,
+}
+
+impl WsEvent {
+    pub fn code_generated(
+        component_id: ComponentId,
+        system_id: SystemId,
+        billing_account_ids: Vec<BillingAccountId>,
+        history_actor: &HistoryActor,
+    ) -> Self {
+        WsEvent::new(
+            billing_account_ids,
+            history_actor.clone(),
+            WsPayload::CodeGenerated(CodeGenerationId {
+                component_id,
+                system_id,
+            }),
+        )
     }
 }
 
