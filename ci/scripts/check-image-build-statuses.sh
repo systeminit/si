@@ -48,7 +48,7 @@ if [ "${OTELCOL_RUN}" == "true" ]; then
 fi
 
 if [ "${POSTGRES_RUN}" == "true" ]; then
-  echo "::group:Postgres build check"
+  echo "::group::Postgres build check"
   set -x
   if [ "${POSTGRES_STATUS}" != "success" ]; then
     EXIT_STATUS=1
