@@ -538,7 +538,7 @@ impl Component {
             };
 
             let json_args = serde_json::to_value(args)?;
-            let (func_binding, created) = FuncBinding::find_or_create(
+            let (func_binding, _created) = FuncBinding::find_or_create(
                 ctx,
                 json_args,
                 prototype.func_id(),
@@ -546,38 +546,37 @@ impl Component {
             )
             .await?;
 
-            if created {
-                // Note for future humans - if this isn't a built in, then we need to
-                // think about execution time. Probably higher up than this? But just
-                // an FYI.
-                func_binding.execute(ctx).await?;
+            // We always re-execute the qualification checks as they are not idempotent
 
-                let mut existing_resolvers =
-                    QualificationResolver::find_for_prototype_and_component(
-                        ctx,
-                        prototype.id(),
-                        self.id(),
-                    )
-                    .await?;
+            // Note for future humans - if this isn't a built in, then we need to
+            // think about execution time. Probably higher up than this? But just
+            // an FYI.
+            func_binding.execute(ctx).await?;
 
-                // If we do not have one, create the qualification resolver. If we do, update the
-                // func binding id to point to the new value.
-                if let Some(mut resolver) = existing_resolvers.pop() {
-                    resolver
-                        .set_func_binding_id(ctx, *func_binding.id())
-                        .await?;
-                } else {
-                    let mut resolver_context = QualificationResolverContext::new();
-                    resolver_context.set_component_id(*self.id());
-                    QualificationResolver::new(
-                        ctx,
-                        *prototype.id(),
-                        *func.id(),
-                        *func_binding.id(),
-                        resolver_context,
-                    )
+            let mut existing_resolvers = QualificationResolver::find_for_prototype_and_component(
+                ctx,
+                prototype.id(),
+                self.id(),
+            )
+            .await?;
+
+            // If we do not have one, create the qualification resolver. If we do, update the
+            // func binding id to point to the new value.
+            if let Some(mut resolver) = existing_resolvers.pop() {
+                resolver
+                    .set_func_binding_id(ctx, *func_binding.id())
                     .await?;
-                }
+            } else {
+                let mut resolver_context = QualificationResolverContext::new();
+                resolver_context.set_component_id(*self.id());
+                QualificationResolver::new(
+                    ctx,
+                    *prototype.id(),
+                    *func.id(),
+                    *func_binding.id(),
+                    resolver_context,
+                )
+                .await?;
             }
         }
 
@@ -619,7 +618,7 @@ impl Component {
             };
             let json_args = serde_json::to_value(args)?;
 
-            let (func_binding, created) = FuncBinding::find_or_create(
+            let (func_binding, _created) = FuncBinding::find_or_create(
                 ctx,
                 json_args,
                 prototype.func_id(),
@@ -627,38 +626,39 @@ impl Component {
             )
             .await?;
 
-            if created {
-                // Note for future humans - if this isn't a built in, then we need to
-                // think about execution time. Probably higher up than this? But just
-                // an FYI.
-                func_binding.execute(ctx).await?;
+            // We always re-execute the code generation, as the previous one might have failed
+            // This is a temporary work-around until we have a battle-tested failure-detection
+            // system for async tasks
 
-                let mut existing_resolvers =
-                    CodeGenerationResolver::find_for_prototype_and_component(
-                        ctx,
-                        prototype.id(),
-                        self.id(),
-                    )
-                    .await?;
+            // Note for future humans - if this isn't a built in, then we need to
+            // think about execution time. Probably higher up than this? But just
+            // an FYI.
+            func_binding.execute(ctx).await?;
 
-                // If we do not have one, create the code generation resolver. If we do, update the
-                // func binding id to point to the new value.
-                if let Some(mut resolver) = existing_resolvers.pop() {
-                    resolver
-                        .set_func_binding_id(ctx, *func_binding.id())
-                        .await?;
-                } else {
-                    let mut resolver_context = CodeGenerationResolverContext::new();
-                    resolver_context.set_component_id(*self.id());
-                    let _resolver = CodeGenerationResolver::new(
-                        ctx,
-                        *prototype.id(),
-                        *func.id(),
-                        *func_binding.id(),
-                        resolver_context,
-                    )
+            let mut existing_resolvers = CodeGenerationResolver::find_for_prototype_and_component(
+                ctx,
+                prototype.id(),
+                self.id(),
+            )
+            .await?;
+
+            // If we do not have one, create the code generation resolver. If we do, update the
+            // func binding id to point to the new value.
+            if let Some(mut resolver) = existing_resolvers.pop() {
+                resolver
+                    .set_func_binding_id(ctx, *func_binding.id())
                     .await?;
-                }
+            } else {
+                let mut resolver_context = CodeGenerationResolverContext::new();
+                resolver_context.set_component_id(*self.id());
+                let _resolver = CodeGenerationResolver::new(
+                    ctx,
+                    *prototype.id(),
+                    *func.id(),
+                    *func_binding.id(),
+                    resolver_context,
+                )
+                .await?;
             }
         }
 
