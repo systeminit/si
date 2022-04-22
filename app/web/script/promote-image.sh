@@ -109,7 +109,7 @@ promote() {
 
   need_cmd docker
 
-  echo "  - Pulling image tagged with ${img}:${src_sha}"
+  echo "  - Pulling image tagged with ${img}:sha-${src_sha}"
   docker pull "$img:sha-$src_sha"
   echo "  - Tagging image ${img}: sha-${src_sha} -> ${tag}"
   docker tag "$img:sha-$src_sha" "$img:$tag"
