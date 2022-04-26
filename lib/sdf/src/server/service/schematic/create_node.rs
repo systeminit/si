@@ -137,33 +137,22 @@ pub async fn create_node(
 
     if !async_tasks.is_empty() {
         tokio::task::spawn(async move {
-            let mut txns = match builder.transactions_starter().await {
-                Ok(val) => val,
-                Err(err) => {
-                    error!(
-                        "Unable to create Transactions in component async tasks execution: {err}"
-                    );
-                    return;
-                }
-            };
-            let txns = match txns.start().await {
-                Ok(val) => val,
-                Err(err) => {
-                    error!("Unable to start transaction in component async tasks execution: {err}");
-                    return;
-                }
-            };
-            let ctx = builder.build(request_ctx.build(request.visibility), &txns);
-
-            for async_tasks in async_tasks {
-                if let Err(err) = async_tasks.run(&ctx).await {
-                    error!("Component async task execution failed: {err}");
-                    return;
-                }
+            let mut futures = Vec::new();
+            for async_tasks in &async_tasks {
+                futures.push(Box::pin(async_tasks.run(
+                    request_ctx.clone(),
+                    request.visibility,
+                    &builder,
+                )));
             }
-
-            if let Err(err) = txns.commit().await {
-                error!("Unable to commit transaction in component async tasks execution: {err}");
+            while !futures.is_empty() {
+                let (joined, _count, new_futures) = futures::future::select_all(futures).await;
+                futures = new_futures;
+                if let Err(err) = joined {
+                    error!(
+                        "Component async task execution failed: {err}, executing others from queue"
+                    );
+                }
             }
         });
     }

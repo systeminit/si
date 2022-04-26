@@ -231,7 +231,7 @@ eventCheckedQualifications$
   });
 
 const allQualifications = refFrom<Array<Qualification> | null>(
-  Rx.combineLatest([componentId$, checkedQualifications$]).pipe(
+  Rx.combineLatest([componentId$, system$, checkedQualifications$]).pipe(
     Rx.switchMap(([componentId]) => {
       // Reset qualified state before getting qualifications.
       currentQualifiedState.value = QualifiedState.Unknown;

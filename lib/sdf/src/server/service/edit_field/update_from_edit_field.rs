@@ -131,31 +131,11 @@ pub async fn update_from_edit_field(
 
     if let Some(async_tasks) = async_tasks {
         tokio::task::spawn(async move {
-            let mut txns = match builder.transactions_starter().await {
-                Ok(val) => val,
-                Err(err) => {
-                    error!(
-                        "Unable to create Transactions in component async tasks execution: {err}"
-                    );
-                    return;
-                }
-            };
-            let txns = match txns.start().await {
-                Ok(val) => val,
-                Err(err) => {
-                    error!("Unable to start transaction in component async tasks execution: {err}");
-                    return;
-                }
-            };
-            let ctx = builder.build(request_ctx.build(request.visibility), &txns);
-
-            if let Err(err) = async_tasks.run(&ctx).await {
+            if let Err(err) = async_tasks
+                .run(request_ctx, request.visibility, &builder)
+                .await
+            {
                 error!("Component async task execution failed: {err}");
-                return;
-            }
-
-            if let Err(err) = txns.commit().await {
-                error!("Unable to commit transaction in component async tasks execution: {err}");
             }
         });
     }

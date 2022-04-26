@@ -7,9 +7,9 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
-    func::FuncId, impl_standard_model, pk, standard_model, standard_model_accessor, ComponentId,
-    HistoryEventError, SchemaId, SchemaVariantId, StandardModel, StandardModelError, SystemId,
-    Timestamp, Visibility, WriteTenancy,
+    func::FuncId, impl_standard_model, pk, standard_model, standard_model_accessor, CodeLanguage,
+    ComponentId, HistoryEventError, SchemaId, SchemaVariantId, StandardModel, StandardModelError,
+    SystemId, Timestamp, Visibility, WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -109,6 +109,7 @@ pub struct CodeGenerationPrototype {
     id: CodeGenerationPrototypeId,
     func_id: FuncId,
     args: serde_json::Value,
+    format: CodeLanguage,
     #[serde(flatten)]
     context: CodeGenerationPrototypeContext,
     #[serde(flatten)]
@@ -135,13 +136,15 @@ impl CodeGenerationPrototype {
         ctx: &DalContext<'_, '_>,
         func_id: FuncId,
         args: serde_json::Value,
+        format: CodeLanguage,
         context: CodeGenerationPrototypeContext,
     ) -> CodeGenerationPrototypeResult<Self> {
         let row = ctx.txns().pg().query_one(
-                "SELECT object FROM code_generation_prototype_create_v1($1, $2, $3, $4, $5, $6, $7, $8)",
+                "SELECT object FROM code_generation_prototype_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9)",
                 &[ctx.write_tenancy(), ctx.visibility(),
                     &func_id,
                     &args,
+                    &format.as_ref(),
                     &context.component_id(),
                     &context.schema_id(),
                     &context.schema_variant_id(),
@@ -155,6 +158,7 @@ impl CodeGenerationPrototype {
 
     standard_model_accessor!(func_id, Pk(FuncId), CodeGenerationPrototypeResult);
     standard_model_accessor!(args, Json<JsonValue>, CodeGenerationPrototypeResult);
+    standard_model_accessor!(format, Enum(CodeLanguage), CodeGenerationPrototypeResult);
 
     #[allow(clippy::too_many_arguments)]
     pub async fn find_for_component(

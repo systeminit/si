@@ -33,9 +33,9 @@ use crate::validation_resolver::ValidationResolverContext;
 use crate::ws_event::{WsEvent, WsEventError};
 use crate::AttributeValueId;
 use crate::{
-    edit_field, func::FuncId, impl_standard_model, node::NodeId, pk,
-    qualification::QualificationError, standard_model, standard_model_accessor,
-    standard_model_belongs_to, standard_model_has_many, AttributeContext,
+    context::AccessBuilder, context::DalContextBuilder, edit_field, func::FuncId,
+    impl_standard_model, node::NodeId, pk, qualification::QualificationError, standard_model,
+    standard_model_accessor, standard_model_belongs_to, standard_model_has_many, AttributeContext,
     AttributeContextBuilderError, AttributeContextError, AttributeReadContext,
     CodeGenerationPrototype, CodeGenerationPrototypeError, CodeGenerationResolver,
     CodeGenerationResolverError, CodeLanguage, CodeView, DalContext, Edge, EdgeError, Func,
@@ -44,8 +44,8 @@ use crate::{
     QualificationResolver, QualificationResolverError, ReadTenancyError, Resource, ResourceError,
     ResourcePrototype, ResourcePrototypeError, ResourceResolver, ResourceResolverError,
     ResourceView, Schema, SchemaError, SchemaId, Secret, StandardModel, StandardModelError,
-    SystemId, Timestamp, ValidationPrototype, ValidationPrototypeError, ValidationResolver,
-    ValidationResolverError, Visibility, WorkspaceError, WriteTenancy,
+    SystemId, Timestamp, TransactionsError, ValidationPrototype, ValidationPrototypeError,
+    ValidationResolver, ValidationResolverError, Visibility, WorkspaceError, WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -56,6 +56,8 @@ pub enum ComponentError {
     AttributeContextBuilder(#[from] AttributeContextBuilderError),
     #[error("AttributeValue error: {0}")]
     AttributeValue(#[from] AttributeValueError),
+    #[error("codegen function returned unexpected format, expected {0:?}, got {1:?}")]
+    CodeLanguageMismatch(CodeLanguage, CodeLanguage),
     #[error("edit field error: {0}")]
     EditField(#[from] EditFieldError),
     #[error("edge error: {0}")]
@@ -88,6 +90,10 @@ pub enum ComponentError {
     SerdeJson(#[from] serde_json::Error),
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
+    #[error(transparent)]
+    PgPool(#[from] si_data::PgPoolError),
+    #[error(transparent)]
+    ContextTransaction(#[from] TransactionsError),
     #[error("nats txn error: {0}")]
     Nats(#[from] NatsError),
     #[error("history event error: {0}")]
@@ -293,17 +299,6 @@ impl Component {
         system_id: SystemId,
     ) -> ComponentResult<ComponentAsyncTasks> {
         ComponentAsyncTasks::new(ctx, self.clone(), system_id).await
-    }
-
-    pub async fn run_async_tasks(
-        &self,
-        ctx: &DalContext<'_, '_>,
-        system_id: SystemId,
-    ) -> ComponentResult<()> {
-        // Some qualifications depend on code generation, so we have to generate first
-        self.generate_code(ctx, system_id).await?;
-        self.check_qualifications(ctx, system_id).await?;
-        Ok(())
     }
 
     #[instrument(skip_all)]
@@ -517,6 +512,90 @@ impl Component {
         Ok(())
     }
 
+    /// Creates qualification func binding, an fbrv without a value and a QualificationResolver
+    /// The func is not executed yet, it's just a placeholder for some qualification that will be executed
+    pub async fn prepare_qualifications_check(
+        &self,
+        ctx: &DalContext<'_, '_>,
+        system_id: SystemId,
+    ) -> ComponentResult<()> {
+        let schema = self
+            .schema_with_tenancy(ctx)
+            .await?
+            .ok_or(ComponentError::SchemaNotFound)?;
+        let schema_variant = self
+            .schema_variant_with_tenancy(ctx)
+            .await?
+            .ok_or(ComponentError::SchemaVariantNotFound)?;
+
+        let qualification_prototypes = QualificationPrototype::find_for_component(
+            ctx,
+            *self.id(),
+            *schema.id(),
+            *schema_variant.id(),
+            system_id,
+        )
+        .await?;
+
+        for prototype in qualification_prototypes {
+            let func = Func::get_by_id(ctx, &prototype.func_id())
+                .await?
+                .ok_or_else(|| ComponentError::MissingFunc(prototype.func_id().to_string()))?;
+
+            let args = FuncBackendJsQualificationArgs {
+                component: self
+                    .veritech_qualification_check_component(ctx, system_id)
+                    .await?,
+            };
+
+            let json_args = serde_json::to_value(args)?;
+            let (func_binding, _created) = FuncBinding::find_or_create(
+                ctx,
+                json_args,
+                prototype.func_id(),
+                *func.backend_kind(),
+            )
+            .await?;
+
+            let mut existing_resolvers = QualificationResolver::find_for_prototype_and_component(
+                ctx,
+                prototype.id(),
+                self.id(),
+            )
+            .await?;
+
+            // If we do not have one, create the qualification resolver. If we do, update the
+            // func binding id to point to the new value.
+            if let Some(mut resolver) = existing_resolvers.pop() {
+                resolver
+                    .set_func_binding_id(ctx, *func_binding.id())
+                    .await?;
+            } else {
+                let mut resolver_context = QualificationResolverContext::new();
+                resolver_context.set_component_id(*self.id());
+                QualificationResolver::new(
+                    ctx,
+                    *prototype.id(),
+                    *func.id(),
+                    *func_binding.id(),
+                    resolver_context,
+                )
+                .await?;
+            }
+        }
+
+        WsEvent::checked_qualifications(
+            *self.id(),
+            system_id,
+            ctx.read_tenancy().billing_accounts().into(),
+            ctx.history_actor(),
+        )
+        .publish(ctx.txns().nats())
+        .await?;
+
+        Ok(())
+    }
+
     pub async fn check_qualifications(
         &self,
         ctx: &DalContext<'_, '_>,
@@ -607,7 +686,7 @@ impl Component {
     }
 
     /// Creates code generation func binding, an fbrv without a value and a CodeGenerationResolver,
-    /// The func is not executed yet, it's just a placeholder for some code generation that is still being executed
+    /// The func is not executed yet, it's just a placeholder for some code generation that will be executed
     pub async fn prepare_code_generation(
         &self,
         ctx: &DalContext<'_, '_>,
@@ -836,10 +915,18 @@ impl Component {
             )
             .await?;
         for row in rows {
+            let format: String = row.try_get("format")?;
+            let format = CodeLanguage::deserialize(serde_json::Value::String(format.clone()))
+                .unwrap_or_else(|err| {
+                    error!("Unable to identify format {} ({err})", format);
+                    CodeLanguage::Unknown
+                });
+
             let json: serde_json::Value = row.try_get("object")?;
             let func_binding_return_value: FuncBindingReturnValue = serde_json::from_value(json)?;
             if let Some(value) = func_binding_return_value.value() {
                 let code_generated = veritech::CodeGenerated::deserialize(value)?;
+
                 let lang = CodeLanguage::deserialize(serde_json::Value::String(
                     code_generated.format.clone(),
                 ))
@@ -850,12 +937,15 @@ impl Component {
                     );
                     CodeLanguage::Unknown
                 });
-                results.push(CodeView::new(lang, Some(code_generated.code)));
+
+                if lang != format {
+                    return Err(ComponentError::CodeLanguageMismatch(lang, format));
+                }
+
+                results.push(CodeView::new(format, Some(code_generated.code)));
             } else {
-                // Means the code generation is being executed, we currently don't have enough metadata to know the format
-                // TODO: when supporting multiple codes per component we will need a way to identify the format of a generation that is being ran
-                // We could infer from the function's name, but it's a stretch
-                results.push(CodeView::new(CodeLanguage::Unknown, None));
+                // Means the code generation is being executed
+                results.push(CodeView::new(format, None));
             }
         }
         Ok(results)
@@ -1700,13 +1790,56 @@ impl ComponentAsyncTasks {
         system_id: SystemId,
     ) -> ComponentResult<Self> {
         component.prepare_code_generation(ctx, system_id).await?;
+        component
+            .prepare_qualifications_check(ctx, system_id)
+            .await?;
         Ok(Self {
             component,
             system_id,
         })
     }
 
-    pub async fn run(self, ctx: &DalContext<'_, '_>) -> ComponentResult<()> {
-        self.component.run_async_tasks(ctx, self.system_id).await
+    pub async fn run(
+        &self,
+        access_builder: AccessBuilder,
+        visibility: Visibility,
+        ctx_builder: &DalContextBuilder,
+    ) -> ComponentResult<()> {
+        self.run_code_generation(access_builder.clone(), visibility, ctx_builder)
+            .await?;
+        // Some qualifications depend on code generation, so remember to generate the code first
+        self.run_qualification_check(access_builder, visibility, ctx_builder)
+            .await?;
+        Ok(())
+    }
+
+    async fn run_code_generation(
+        &self,
+        access_builder: AccessBuilder,
+        visibility: Visibility,
+        ctx_builder: &DalContextBuilder,
+    ) -> ComponentResult<()> {
+        let mut txns = ctx_builder.transactions_starter().await?;
+        let txns = txns.start().await?;
+        let ctx = ctx_builder.build(access_builder.build(visibility), &txns);
+        self.component.generate_code(&ctx, self.system_id).await?;
+        txns.commit().await?;
+        Ok(())
+    }
+
+    async fn run_qualification_check(
+        &self,
+        access_builder: AccessBuilder,
+        visibility: Visibility,
+        ctx_builder: &DalContextBuilder,
+    ) -> ComponentResult<()> {
+        let mut txns = ctx_builder.transactions_starter().await?;
+        let txns = txns.start().await?;
+        let ctx = ctx_builder.build(access_builder.build(visibility), &txns);
+        self.component
+            .check_qualifications(&ctx, self.system_id)
+            .await?;
+        txns.commit().await?;
+        Ok(())
     }
 }

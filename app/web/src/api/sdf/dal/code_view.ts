@@ -1,4 +1,4 @@
 export interface CodeView {
-  language: "yaml";
+  language: string;
   code?: string;
 }

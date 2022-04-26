@@ -4,8 +4,8 @@ use crate::dal::test;
 use dal::code_generation_prototype::CodeGenerationPrototypeContext;
 use dal::func::backend::js_code_generation::FuncBackendJsCodeGenerationArgs;
 use dal::{
-    code_generation_prototype::UNSET_ID_VALUE, CodeGenerationPrototype, Component, Func, Schema,
-    StandardModel,
+    code_generation_prototype::UNSET_ID_VALUE, CodeGenerationPrototype, CodeLanguage, Component,
+    Func, Schema, StandardModel,
 };
 
 #[test]
@@ -41,6 +41,7 @@ async fn new(ctx: &DalContext<'_, '_>) {
         ctx,
         *func.id(),
         serde_json::to_value(&args).expect("serialization failed"),
+        CodeLanguage::Yaml,
         prototype_context,
     )
     .await

@@ -7,8 +7,8 @@ use crate::schema::builtins::{create_schema, create_string_prop_with_default};
 use crate::schema::{SchemaResult, SchemaVariant, UiMenu};
 use crate::socket::{Socket, SocketArity, SocketEdgeKind};
 use crate::{
-    AttributeReadContext, CodeGenerationPrototype, DalContext, Func, QualificationPrototype,
-    Schema, SchemaError, SchemaKind, SchematicKind, StandardModel,
+    AttributeReadContext, CodeGenerationPrototype, CodeLanguage, DalContext, Func,
+    QualificationPrototype, Schema, SchemaError, SchemaKind, SchematicKind, StandardModel,
 };
 
 pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> SchemaResult<()> {
@@ -133,6 +133,7 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> SchemaResult<()>
         ctx,
         *code_generation_func.id(),
         code_generation_args_json,
+        CodeLanguage::Yaml,
         code_generation_prototype_context,
     )
     .await?;
