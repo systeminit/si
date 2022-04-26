@@ -298,7 +298,9 @@ impl Component {
         ctx: &DalContext<'_, '_>,
         system_id: SystemId,
     ) -> ComponentResult<ComponentAsyncTasks> {
-        ComponentAsyncTasks::new(ctx, self.clone(), system_id).await
+        self.prepare_code_generation(ctx, system_id).await?;
+        self.prepare_qualifications_check(ctx, system_id).await?;
+        Ok(ComponentAsyncTasks::new(self.clone(), system_id))
     }
 
     #[instrument(skip_all)]
@@ -554,6 +556,17 @@ impl Component {
                 json_args,
                 prototype.func_id(),
                 *func.backend_kind(),
+            )
+            .await?;
+
+            // Empty fbrv means the function is still being executed
+            let _fbrv = FuncBindingReturnValue::upsert(
+                ctx,
+                None,
+                None,
+                prototype.func_id(),
+                *func_binding.id(),
+                UNSET_ID_VALUE.into(),
             )
             .await?;
 
@@ -1784,23 +1797,15 @@ pub struct ComponentAsyncTasks {
 }
 
 impl ComponentAsyncTasks {
-    pub async fn new(
-        ctx: &DalContext<'_, '_>,
-        component: Component,
-        system_id: SystemId,
-    ) -> ComponentResult<Self> {
-        component.prepare_code_generation(ctx, system_id).await?;
-        component
-            .prepare_qualifications_check(ctx, system_id)
-            .await?;
-        Ok(Self {
+    pub fn new(component: Component, system_id: SystemId) -> Self {
+        Self {
             component,
             system_id,
-        })
+        }
     }
 
     pub async fn run(
-        &self,
+        self,
         access_builder: AccessBuilder,
         visibility: Visibility,
         ctx_builder: &DalContextBuilder,
@@ -1813,7 +1818,7 @@ impl ComponentAsyncTasks {
         Ok(())
     }
 
-    async fn run_code_generation(
+    pub async fn run_code_generation(
         &self,
         access_builder: AccessBuilder,
         visibility: Visibility,
@@ -1827,7 +1832,7 @@ impl ComponentAsyncTasks {
         Ok(())
     }
 
-    async fn run_qualification_check(
+    pub async fn run_qualification_check(
         &self,
         access_builder: AccessBuilder,
         visibility: Visibility,
