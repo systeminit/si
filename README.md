@@ -30,7 +30,7 @@ _Please note:_ adding your preferred environment will also add you as a maintain
 If unsure where to start, you can look at a [PR from the past](https://github.com/systeminit/si/pull/589) to help.
 If you are no longer using the environment, and you are the sole maintainer of the environment, you must remove it from the bootstrapper and the table above.
 
-### Notes on `aarch64 (arm64)`
+### Notes on aarch64 (arm64)
 
 Few SI dependencies rely on using an `x86_64 (amd64)` host.
 Fortunately, a compatibility layer, such as [Rosetta 2 on macOS](https://support.apple.com/en-us/HT211861) should suffice during builds.
@@ -45,7 +45,13 @@ Not only is flexibility between architectures useful for local development, but 
 
 ## Quickstart
 
-**Bootstrap:** to get ready to run this repository, you should run the following script:
+The steps outlined in this guide can be used interchangeably, modified slightly, etc. depending on your
+preferences and use cases.
+However, for first time users, we recommend following this guide "as-is".
+
+### Step 1/5: Bootstrap Your Environment
+
+For either running SI locally or developing SI, execute the following script:
 
 ```bash
 ./scripts/bootstrap.sh
@@ -54,11 +60,15 @@ Not only is flexibility between architectures useful for local development, but 
 The bootstrapper is (mostly) idempotent, so feel free to run it as many times as you like!
 However, it _will_ upgrade existing packages without confirmations, so ensure that you are ready to do so.
 
-**Login:** now, we need to ensure that we are [logged into Docker locally](https://docs.docker.com/engine/reference/commandline/login/)
+### Step 2/5: Check Permissions (e.g. Docker Login)
+
+We need to ensure that we are [logged into Docker locally](https://docs.docker.com/engine/reference/commandline/login/)
 and that the corresponding account can pull images from our [private repositories](https://hub.docker.com/orgs/systeminit/repositories).
 Please reach out internally if your account cannot pull images from the private SI repositories.
 
-**Check Services:** SI uses external services in conjunction with its native components.
+### Step 3/5: Check for Potential Service Conflicts
+
+SI uses external services in conjunction with its native components.
 These external services are deployed via `docker-compose` and are configured to stick to their default settings as closely as possible, including port settings.
 Thus, it is worth checking if you are running these services to avoid conflicts when running SI.
 Potentially conflicting services include, but are not limited to, the following:
@@ -70,7 +80,9 @@ Potentially conflicting services include, but are not limited to, the following:
 
 In the case of a port conflict, a good strategy is to temporarily disable the host service until SI is no longer being run.
 
-**Make:** with all dependencies installed and required binaries in `PATH`, we are ready to go!
+### Step 4/5: Run the SI Stack
+
+With all dependencies installed and required binaries in `PATH`, we are ready to go!
 In one terminal pane (e.g. using a terminal multiplexer, such as `tmux`, or tabs/windows), execute the following:
 
 ```bash
@@ -105,11 +117,15 @@ make app-run
 This will run the web application, which you can access by navigating to https://localhost:8080.
 Now, you have SI running!
 
-**Teardown**: you can teardown SI and its external services by stopping the active `make` targets above and executing the following in the repository root:
+### Step 5/5: Tear Down the SI Stack
+
+You can tear down SI and its external services by stopping the active `make` targets above and executing the following in the repository root:
 
 ```bash
 make down
 ```
+
+The above target will not only stop all running containers, but will remove them as well.
 
 ## Preparing Your Changes and Running Tests
 
@@ -123,8 +139,10 @@ To verify that all lints will pass in CI, execute the following target:
 ( cd ci; make ci-lint )
 ```
 
-> **Optional:** use the "tidy" make targets. Be careful, as the Rust-related
-> tidy actions are more aggressive than what the lint target checks for.
+> ### Optional Tidy Make Targets
+> 
+> You can (optionally) use the "tidy" make targets before linting.
+> Be careful, as the Rust-related tidy actions may perform more aggressive fixes than what the lint target checks for.
 >
 > ```bash
 > ( cd ci; make tidy )
@@ -152,6 +170,42 @@ RUST_BACKTRACE=full cargo test integration_test
 # Running all tests
 cargo test
 ```
+
+## Troubleshooting
+
+If re-running the aforementioned [bootstrap script](./scripts/bootstrap.sh) does not solve your issue
+and you are certain that `main` is stable, this section may help with troubleshooting and debugging.
+
+### Wiping the Slate Clean
+
+Having trouble running SI or its tests?
+Want to go back to the beginning and wipe the slate clean?
+We have a `make` target for that.
+
+```bash
+make troubleshoot
+```
+
+### Build and Runtime Errors on aarch64 (arm64)
+
+For `aarch64 (arm64)` debugging, please refer to the aforementioned **Notes on aarch64 (arm64)** section.
+
+### Hitting File Descriptor Limits in Integration Tests
+
+Running all [dal integration tests](./lib/dal/tests/integration.rs) can result in hitting the file descriptor limit.
+You may see NATS, Postgres and general failures containing the following message: "too many open files".
+If this happens, you are likley hitting the file descriptors limit.
+
+You can see all `ulimit` values by executing `ulimit -a`.
+For your specific OS, please refer to its official documentation on how to increase the file descriptor limit
+to a reasonable, stable, and likely-much-higher value.
+
+> #### Setting the Limit with Persistence on macOS
+>
+> While we recommend referring to the official documentation when possible, sometimes, it does not
+> exist!
+> [This guide](https://becomethesolution.com/blogs/mac/increase-open-file-descriptor-limits-fix-too-many-open-files-errors-mac-os-x-10-14)
+> from an unofficial source may help persist file descriptor limit changes on macOS.
 
 ## Reading and Writing Documentation
 
@@ -188,20 +242,10 @@ We try to follow the official ["How to write documentation"](https://doc.rust-la
 Older areas of the codebase may not follow the guide and conventions derived from it.
 We encourage updating older documentation as whilst navigating through SI crates.
 
-**Additional resources:**
+#### Additional Resources
 
 * [RFC-1574](https://github.com/rust-lang/rfcs/blob/master/text/1574-more-api-documentation-conventions.md#appendix-a-full-conventions-text): more API documentation conventions for `rust-lang`
 * ["Making Useful Documentation Comments" from "The Book"](https://doc.rust-lang.org/book/ch14-02-publishing-to-crates-io.html#making-useful-documentation-comments): a section of "The Book" covering useful documentation in the context of crate publishing
-
-## Troubleshooting
-
-Having trouble running SI or its tests?
-Want to go back to the beginning and wipe the slate clean?
-We have a `make` target for that.
-
-```bash
-make troubleshoot
-```
 
 ## Architecture
 
