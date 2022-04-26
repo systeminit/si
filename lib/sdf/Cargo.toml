@@ -6,14 +6,14 @@ rust-version = "1.56"
 publish = false
 
 [dependencies]
-axum = { version = "0.3.0", features = ["ws"] }
-axum-debug = { version = "0.1.0" }
+axum = { version = "0.5.4", features = ["ws"] }
+axum-debug = { version = "0.3.3" }
 chrono = { version = "0.4.19", features = ["serde"] }
 dal = { path = "../dal" }
-derive_builder = { version = "0.10.2" }
+derive_builder = { version = "0.11.2" }
 futures = { version = "0.3.17" }
 hyper = { version = "0.14", features = ["http1", "runtime", "server"] }
-nix = { version = "0.23.0" }
+nix = { version = "0.24.1" }
 pathdiff = "0.2.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", features = ["preserve_order"] }
@@ -21,18 +21,18 @@ serde_with = "1.10.0"
 si-data = { path = "../../lib/si-data" }
 si-settings = { path = "../../lib/si-settings" }
 sodiumoxide = "0.2.7"
-strum = "0.21.0"
-strum_macros = "0.21.1"
+strum = "0.24.0"
+strum_macros = "0.24.0"
 telemetry = { path = "../../lib/telemetry-rs" }
 thiserror = { version = "1.0" }
 tokio = { version = "1.12.0", features = ["full"] }
-tokio-tungstenite = "0.15.0"
+tokio-tungstenite = "0.17.1"
 tower = { version = "0.4.10" }
-tower-http = { version = "0.1", features = ["trace"] }
+tower-http = { version = "0.3", features = ["trace"] }
 veritech = { path = "../../lib/veritech", features = ["client", "server"] }
 
 [dev-dependencies]
 serde_url_params = "0.2.1"
 si-test-macros = { path = "../../lib/si-test-macros" }
 tracing = { version = "0.1" }
-tracing-subscriber = { version = "0.2.19", default-features = false, features = ["env-filter", "fmt"] }
+tracing-subscriber = { version = "0.3.11", default-features = false, features = ["env-filter", "fmt"] }

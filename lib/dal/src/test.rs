@@ -258,7 +258,7 @@ impl TestContextBuilder {
 
 /// Generates a new pseudo-random NATS subject prefix.
 pub fn nats_subject_prefix() -> String {
-    Uuid::new_v4().to_simple().to_string()
+    Uuid::new_v4().as_simple().to_string()
 }
 
 /// Configures and builds a [`veritech::Server`] suitable for running alongside DAL object-related

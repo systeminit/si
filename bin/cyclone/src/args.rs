@@ -1,6 +1,6 @@
 use std::{net::SocketAddr, path::PathBuf, time::Duration};
 
-use clap::{ArgSettings, Parser};
+use clap::Parser;
 use cyclone::{Config, ConfigError, IncomingStream};
 
 const NAME: &str = "cyclone";
@@ -89,7 +89,7 @@ pub(crate) struct Args {
     pub(crate) disable_code_generation: bool,
 
     /// Path to the lang server program.
-    #[clap(long, env = "SI_LANG_SERVER", setting = ArgSettings::HideEnvValues)]
+    #[clap(long, env = "SI_LANG_SERVER", hide_env = true)]
     pub(crate) lang_server: PathBuf,
 
     /// Limits execution requests to 1 before shutting down

@@ -4,7 +4,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use axum::routing::{BoxRoute, IntoMakeService};
+use axum::routing::{IntoMakeService, Router};
 use hyper::server::{accept::Accept, conn::AddrIncoming};
 use si_settings::{CanonicalFile, CanonicalFileError};
 use telemetry::{prelude::*, TelemetryLevel};
@@ -41,7 +41,7 @@ type Result<T> = std::result::Result<T, ServerError>;
 
 pub struct Server<I, S> {
     config: Config,
-    inner: axum::Server<I, IntoMakeService<BoxRoute>>,
+    inner: axum::Server<I, IntoMakeService<Router>>,
     socket: S,
     shutdown_rx: oneshot::Receiver<()>,
 }
@@ -145,7 +145,7 @@ fn build_service(
     config: &Config,
     telemetry_level: Box<dyn TelemetryLevel>,
     decryption_key: DecryptionKey,
-) -> Result<(IntoMakeService<BoxRoute>, oneshot::Receiver<()>)> {
+) -> Result<(IntoMakeService<Router>, oneshot::Receiver<()>)> {
     let (shutdown_tx, shutdown_rx) = mpsc::channel(4);
 
     let routes = routes(config, shutdown_tx, telemetry_level, decryption_key)
@@ -154,8 +154,7 @@ fn build_service(
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(DefaultMakeSpan::default().include_headers(true)),
-        )
-        .boxed();
+        );
 
     let graceful_shutdown_rx = prepare_graceful_shutdown(shutdown_rx)?;
 

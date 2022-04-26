@@ -265,7 +265,7 @@ where
         let request_context = RequestContext::new_universal_head(dal::HistoryActor::SystemInit);
         let mut ctx = builder.build(request_context, &txns);
 
-        let headers = req.headers().ok_or_else(unauthorized_error)?;
+        let headers = req.headers();
         let authorization_header_value = headers
             .get("Authorization")
             .ok_or_else(unauthorized_error)?;
@@ -354,9 +354,7 @@ where
 async fn application_from_request<P: Send>(
     req: &mut RequestParts<P>,
 ) -> Result<ApplicationId, (StatusCode, Json<serde_json::Value>)> {
-    let headers = req
-        .headers()
-        .ok_or_else(|| not_acceptable_error("headers not found for request"))?;
+    let headers = req.headers();
     let application_id = if let Some(application_header_value) = headers.get("ApplicationId") {
         let application_id = application_header_value.to_str().map_err(internal_error)?;
         Some(
@@ -395,9 +393,7 @@ async fn tenancy_from_request<P: Send>(
     let request_context = RequestContext::new_universal_head(dal::HistoryActor::SystemInit);
     let mut ctx = builder.build(request_context, &txns);
 
-    let headers = req
-        .headers()
-        .ok_or_else(|| not_acceptable_error("headers not found for request"))?;
+    let headers = req.headers();
     let write_tenancy = if let Some(workspace_header_value) = headers.get("WorkspaceId") {
         let workspace_id = workspace_header_value.to_str().map_err(internal_error)?;
         let workspace_id = workspace_id

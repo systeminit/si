@@ -9,23 +9,23 @@
   },
   "devDependencies": {
     "@babel/eslint-parser": "^7.17.0",
-    "@headlessui/vue": "^1.5.0",
+    "@headlessui/vue": "^1.6.0",
     "@heroicons/vue": "^1.0.6",
-    "@nuxt/kit-edge": "^3.0.0-27497942.c519cee",
-    "@nuxtjs/tailwindcss": "^5.0.2",
+    "@nuxt/kit-edge": "^3.0.0-rc.1-27516498.2bfd749",
+    "@nuxtjs/tailwindcss": "^5.0.3",
     "@pinia/nuxt": "^0.1.8",
     "@tailwindcss/forms": "^0.5.0",
-    "@typescript-eslint/eslint-plugin": "^5.19.0",
-    "@typescript-eslint/parser": "^5.19.0",
+    "@typescript-eslint/eslint-plugin": "^5.21.0",
+    "@typescript-eslint/parser": "^5.21.0",
     "@vue/eslint-config-prettier": "^7.0.0",
     "@vue/eslint-config-typescript": "^10.0.0",
-    "contentful-cli": "^1.12.18",
+    "contentful-cli": "^1.12.21",
     "dompurify": "^2.3.6",
-    "eslint": "^8.13.0",
+    "eslint": "^8.14.0",
     "eslint-config-prettier": "^8.5.0",
     "eslint-plugin-nuxt": "^3.2.0",
     "eslint-plugin-prettier": "^4.0.0",
-    "eslint-plugin-vue": "^8.6.0",
+    "eslint-plugin-vue": "^8.7.1",
     "google-fonts-helper": "^3.0.0",
     "marked": "^4.0.14",
     "nuxt3": "latest",
@@ -35,8 +35,11 @@
   },
   "dependencies": {
     "@tailwindcss/typography": "^0.5.2",
-    "contentful": "^9.1.22",
+    "contentful": "^9.1.26",
     "highlight.js": "^11.5.1",
     "pinia-plugin-persistedstate": "^1.5.1"
+  },
+  "volta": {
+    "node": "17.9.0"
   }
 }

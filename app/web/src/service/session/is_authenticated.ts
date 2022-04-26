@@ -22,9 +22,8 @@ export async function isAuthenticated(): Promise<ApiResponse<boolean>> {
     const user = await firstValueFrom(user$);
     const billingAccount = await firstValueFrom(billingAccount$);
     if (!user && !billingAccount) {
-      const result: ApiResponse<RestoreAuthenticationResponse> = await firstValueFrom(
-        sdf.get("session/restore_authentication"),
-      );
+      const result: ApiResponse<RestoreAuthenticationResponse> =
+        await firstValueFrom(sdf.get("session/restore_authentication"));
       if (result.error) {
         console.log("failed to restore authentication state", result);
         return false;

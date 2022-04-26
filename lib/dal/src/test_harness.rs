@@ -185,7 +185,7 @@ async fn veritech_server_for_uds_cyclone(
 }
 
 fn nats_prefix() -> String {
-    Uuid::new_v4().to_simple().to_string()
+    Uuid::new_v4().as_simple().to_string()
 }
 
 pub async fn one_time_setup() -> Result<()> {

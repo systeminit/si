@@ -127,7 +127,7 @@ export default Vue.extend({
   name: "Edge",
   props: {
     edge: {
-      type: (Object as PropType<Edge> | Object) as PropType<EdgeTemporary>,
+      type: Object as PropType<Edge> | Object as PropType<EdgeTemporary>,
       required: false,
     },
     schematic: {

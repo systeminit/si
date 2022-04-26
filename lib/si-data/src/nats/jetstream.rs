@@ -6,7 +6,7 @@ pub use super::{Client, Message};
 // `nats::jetstream` :(
 pub use nats::jetstream::{
     AccountInfo, AccountLimits, AckKind, AckPolicy, ApiStats, ClusterInfo, ConsumerConfig,
-    ConsumerInfo, DateTime, DeliverPolicy, DiscardPolicy, JetStreamMessageInfo, NextRequest,
-    PurgeResponse, ReplayPolicy, RetentionPolicy, SequencePair, StorageType, StreamConfig,
-    StreamInfo, StreamState,
+    ConsumerInfo, DateTime, DeliverPolicy, DiscardPolicy, JetStreamMessageInfo, PurgeResponse,
+    ReplayPolicy, RetentionPolicy, SequencePair, StorageType, StreamConfig, StreamInfo,
+    StreamState,
 };

@@ -9,7 +9,6 @@ export interface ResourceSyncId {
 /**
  * Fired with the ids of the component and the system
  */
-export const eventResourceSynced$ = new ReplaySubject<WsEvent<WsResourceSynced> | null>(
-  1,
-);
+export const eventResourceSynced$ =
+  new ReplaySubject<WsEvent<WsResourceSynced> | null>(1);
 eventResourceSynced$.next(null);

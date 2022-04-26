@@ -7,7 +7,7 @@
     "noImplicitAny": true,
     "outDir": "dist",
     "esModuleInterop": true,
-    "lib": ["ESNext"]
+    "lib": ["ESNext", "DOM"]
   },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist"]

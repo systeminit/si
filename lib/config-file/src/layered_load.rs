@@ -9,35 +9,27 @@ mod ser;
 
 #[derive(Debug)]
 pub struct ConfigMap {
-    inner: config::Config,
+    inner: std::collections::HashMap<String, config::Value>,
     empty: bool,
 }
 
 impl Default for ConfigMap {
     fn default() -> Self {
         Self {
-            inner: config::Config::default(),
+            inner: HashMap::new(),
             empty: true,
         }
     }
 }
 
 impl ConfigMap {
-    pub fn set(&mut self, key: impl AsRef<str>, value: impl Into<config::Value>) -> &mut Self {
-        // We entirely own this inner `config::Config` and I can't any reference to where and how
-        // this instance could get into a `ConfigKind::Frozen` state (I suspect their `Environment`
-        // type uses this).
-        //
-        // As a result, this expect is expected to never panic. If it does, then the API for
-        // `config::Config` has changed and this is a programming bug.
-        self.inner
-            .set(key.as_ref(), value)
-            .expect("inner config should not ever be frozen");
+    pub fn set(&mut self, key: impl Into<String>, value: impl Into<config::Value>) -> &mut Self {
+        self.inner.insert(key.into(), value.into());
         self.empty = false;
         self
     }
 
-    fn into_inner(self) -> config::Config {
+    fn into_inner(self) -> HashMap<String, config::Value> {
         self.inner
     }
 }
@@ -55,47 +47,27 @@ where
 {
     let app_name = app_name.as_ref();
 
-    let mut builder = config::Config::default();
-    add_defaults::<C>(&mut builder)?;
-    add_config_file(app_name, file_formats, config_env_var, &mut builder)?;
-    add_environment_config(env_config_prefix, &mut builder)?;
-    add_programatic_config(set_func, &mut builder)?;
-    into_config_file(builder)
-}
-
-fn add_defaults<C>(builder: &mut config::Config) -> Result<()>
-where
-    C: Clone + Debug + Default + Send + Serialize + Sync + 'static,
-{
-    let serde_source = SerdeSource::new(C::default());
+    // Add defaults
+    let mut builder = config::Config::builder();
+    let serde_source = SerdeSource::new(<C>::default());
     trace!("merging defaults config for defaults={:?}", &serde_source);
-    builder.merge(serde_source)?;
-    Ok(())
-}
+    builder = builder.add_source(serde_source);
 
-/// Add a config file, if relevant.
-///
-/// # Implementation
-///
-/// * Look for a config file, using `load::find` as it'll look in the right places, in
-///   the right order while also checking for a location in an environment variable.
-/// * We'll ultimately use the `config` crate to merge the config file in with other inputs, but to
-///   feed its API, we need the found file as a relative path to the current directory (why, why,
-///   why????), so compute this, using the `pathdiff` crate which was an extraction from internal
-///   Rust core code.
-/// * Then we need to get determine the file type for the `config` crate, so we'll convert from the
-///   file type determined by the `crate::FileType` type.
-/// * Finally, merge in the file into the `config::Config` builder.
-/// * I mean...
-fn add_config_file(
-    app_name: impl AsRef<str>,
-    file_formats: impl ToFileFormats,
-    env_var: &Option<impl AsRef<OsStr>>,
-    builder: &mut config::Config,
-) -> Result<()> {
-    let app_name = app_name.as_ref();
-
-    if let Some((target, file_format)) = crate::find(app_name, file_formats, env_var)? {
+    // Add a config file, if relevant.
+    //
+    // # Implementation
+    //
+    // * Look for a config file, using `load::find` as it'll look in the right places, in
+    //   the right order while also checking for a location in an environment variable.
+    // * We'll ultimately use the `config` crate to merge the config file in with other inputs, but to
+    //   feed its API, we need the found file as a relative path to the current directory (why, why,
+    //   why????), so compute this, using the `pathdiff` crate which was an extraction from internal
+    //   Rust core code.
+    // * Then we need to get determine the file type for the `config` crate, so we'll convert from the
+    //   file type determined by the `crate::FileType` type.
+    // * Finally, merge in the file into the `config::Config` builder.
+    // * I mean...
+    if let Some((target, file_format)) = crate::find(app_name, file_formats, config_env_var)? {
         // Config crate requires a relative path to a config file. /me sideeyes crate...
         let current_dir = env::current_dir().map_err(ConfigFileError::CurrentDirectory)?;
         let relative_target = pathdiff::diff_paths(&target, &current_dir).ok_or_else(|| {
@@ -130,17 +102,11 @@ fn add_config_file(
         let file = config::File::new(relative_target.to_string_lossy().as_ref(), file_format)
             .required(true);
         trace!("merging file config for file={:?}", &file);
-        builder.merge(file)?;
+        builder = builder.add_source(file);
     }
 
-    Ok(())
-}
-
-fn add_environment_config(
-    env_prefix: &Option<impl AsRef<str>>,
-    builder: &mut config::Config,
-) -> Result<()> {
-    if let Some(env_prefix) = env_prefix {
+    // Add environment config
+    if let Some(env_prefix) = env_config_prefix {
         let env = config::Environment::with_prefix(env_prefix.as_ref())
             .separator("__")
             .ignore_empty(true);
@@ -149,33 +115,28 @@ fn add_environment_config(
             ?env,
             "merging environment config with"
         );
-        builder.merge(env)?;
+        builder = builder.add_source(env);
     }
-    Ok(())
-}
 
-fn add_programatic_config<F>(set_func: F, builder: &mut config::Config) -> Result<()>
-where
-    F: FnOnce(&mut ConfigMap),
-{
+    // Add programattic config
     let mut config_map = ConfigMap::default();
     set_func(&mut config_map);
 
     if config_map.empty {
         trace!("nothing set for programatic config, not merging");
     } else {
-        let config = config_map.into_inner();
-        trace!("merging programatic config for config={:?}", &config);
-        builder.merge(config)?;
+        let config_hash = config_map.into_inner();
+        trace!("merging programatic config for config={:?}", &config_hash);
+        for (key, value) in config_hash.into_iter() {
+            builder = builder
+                .set_override(key, value)
+                .expect("tried to set programmatic value that was impossible! bug!");
+        }
     }
-    Ok(())
-}
 
-fn into_config_file<C>(builder: config::Config) -> Result<C>
-where
-    C: Debug + DeserializeOwned,
-{
-    let config_file = builder.try_into()?;
+    // Deserialize it into a config file struct
+    let config = builder.build()?;
+    let config_file = config.try_deserialize()?;
     debug!(?config_file, "merged configuration into");
     Ok(config_file)
 }
@@ -225,8 +186,10 @@ mod tests {
         };
         let expected = test.clone();
 
-        let mut c = config::Config::default();
-        c.merge(SerdeSource::new(test)).expect("failed to merge");
+        let c = config::Config::builder()
+            .add_source(SerdeSource::new(test))
+            .build()
+            .expect("cannot build config from source");
 
         assert_eq!(1, c.get_int("int").expect("failed to get int"));
         assert_eq!(
@@ -234,7 +197,7 @@ mod tests {
             c.get_array("seq").expect("failed to get seq")
         );
 
-        let round_trip: Test = c.try_into().expect("failed to deserialize");
+        let round_trip: Test = c.try_deserialize().expect("failed to deserialize");
         assert_eq!(expected, round_trip);
     }
 
@@ -304,10 +267,12 @@ mod tests {
         };
         let mut expected = input.clone();
 
-        let mut c = config::Config::default();
-        c.merge(SerdeSource::new(input)).expect("failed to merge");
-        // Let's set a new value programmatically, deep in the structure
-        c.set("place.creator.name", "Rick Astley".to_string())
+        let c = config::Config::builder()
+            .add_source(SerdeSource::new(input))
+            // Let's set a new value programmatically, deep in the structure
+            .set_override("place.creator.name", "Rick Astley".to_string())
+            .expect("set override value")
+            .build()
             .expect("failed to set value");
 
         // Now to update what we're expecting
@@ -318,7 +283,7 @@ mod tests {
         assert_eq!(Some("Jane Smith".to_string()), old_value);
 
         // Deserialize back into our type and make sure the round trip with update was successful
-        let round_trip: Settings = c.try_into().expect("failed to deserialize");
+        let round_trip: Settings = c.try_deserialize().expect("failed to deserialize");
         assert_eq!(expected, round_trip);
     }
 }

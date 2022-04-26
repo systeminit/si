@@ -196,16 +196,15 @@ export default Vue.extend({
     };
   },
   subscriptions() {
-    const selectedSchematicKind$: Observable<
-      Data["schematicKind"]
-    > = this.$watchAsObservable<Data["schematicKind"]>(
-      () =>
-        // @ts-ignore
-        this.schematicKind,
-      {
-        immediate: true,
-      },
-    ).pipe(pluck("newValue"));
+    const selectedSchematicKind$: Observable<Data["schematicKind"]> =
+      this.$watchAsObservable<Data["schematicKind"]>(
+        () =>
+          // @ts-ignore
+          this.schematicKind,
+        {
+          immediate: true,
+        },
+      ).pipe(pluck("newValue"));
 
     const isPinned$ = this.$watchAsObservable<Data["isPinned"]>(
       () =>

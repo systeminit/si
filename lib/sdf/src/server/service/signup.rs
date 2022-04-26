@@ -1,12 +1,10 @@
 use axum::{
-    body::{Bytes, Full},
     http::StatusCode,
-    response::IntoResponse,
+    response::{IntoResponse, Response},
     routing::post,
     Json, Router,
 };
 use dal::{BillingAccountError, TransactionsError};
-use std::convert::Infallible;
 use thiserror::Error;
 
 pub mod create_account;
@@ -29,10 +27,7 @@ pub enum SignupError {
 pub type SignupResult<T> = std::result::Result<T, SignupError>;
 
 impl IntoResponse for SignupError {
-    type Body = Full<Bytes>;
-    type BodyError = Infallible;
-
-    fn into_response(self) -> hyper::Response<Self::Body> {
+    fn into_response(self) -> Response {
         let (status, error_message) = match self {
             SignupError::InvalidSignupSecret => {
                 (StatusCode::BAD_REQUEST, "signup failed".to_string())

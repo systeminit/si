@@ -2,7 +2,7 @@ const theme = require("./src/design/themes/tailwind/tailwind-dark");
 const colors = require("tailwindcss/colors");
 
 module.exports = {
-  purge: ["./src/**/*.html", "./src/**/*.vue"],
+  content: ["./src/**/*.html", "./src/**/*.vue"],
   theme: {
     cursor: {
       resize: "ew-resize",
@@ -17,9 +17,9 @@ module.exports = {
       current: "currentColor",
       black: colors.black,
       white: colors.white,
-      gray: colors.trueGray,
+      gray: colors.neutral,
       blue: colors.blue,
-      blueGray: colors.blueGray,
+      blueGray: colors.slate,
       indigo: colors.indigo,
       red: colors.rose,
       yellow: colors.amber,

@@ -1,13 +1,14 @@
 import { OutputLine } from "../function";
 
 import execa from "execa";
+import { ExecaReturnValue, Options } from "execa";
 import Debug from "debug";
 const debug = Debug("langJs:siExec");
 
 //import readline from "readline";
 //import WebSocket from "ws";
 
-export type SiExecResult = execa.ExecaReturnValue<string>;
+export type SiExecResult = ExecaReturnValue<string>;
 
 // Note(paulo): This is highly dangerous as it bypasses the sandbox
 // We also are bypassing the VM timeout by using async (NodeVM doesn't have timeout, but it seems we can't await without it)
@@ -15,7 +16,7 @@ export const makeExec = (executionId: string) => {
   async function waitUntilEnd(
     execaFile: string,
     execaArgs?: readonly string[],
-    execaOptions?: execa.Options<string>,
+    execaOptions?: Options<string>,
   ): Promise<SiExecResult> {
     debug(`running command; executionId="${executionId}"; cmd="${execaFile} ${execaArgs?.join(" ")}"`);
 
@@ -32,7 +33,7 @@ export const makeExec = (executionId: string) => {
     //ws: WebSocket,
     execaFile: string,
     execaArgs?: readonly string[],
-    execaOptions?: execa.Options<string>,
+    execaOptions?: Options<string>,
   ): Promise<SiExecResult> {
     throw new Error("unimplemented");
   }

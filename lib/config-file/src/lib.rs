@@ -1,4 +1,6 @@
-use std::{io, iter, option::IntoIter, path::PathBuf, slice, str::FromStr, vec};
+use std::{
+    convert::Infallible, io, iter, option::IntoIter, path::PathBuf, slice, str::FromStr, vec,
+};
 
 use thiserror::Error;
 
@@ -50,6 +52,12 @@ pub enum ConfigFileError {
     #[cfg(feature = "load-yaml")]
     #[error("error deserializing yaml")]
     YamlDeserialize(#[from] serde_yaml::Error),
+}
+
+impl From<Infallible> for ConfigFileError {
+    fn from(_: Infallible) -> Self {
+        unreachable!();
+    }
 }
 
 pub type Result<T> = std::result::Result<T, ConfigFileError>;

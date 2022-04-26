@@ -604,7 +604,8 @@ export default Vue.extend({
     },
     setCanvasPosition() {
       if (this.viewport.element && this.canvas.element) {
-        const viewportBoundingRect = this.viewport.element.getBoundingClientRect();
+        const viewportBoundingRect =
+          this.viewport.element.getBoundingClientRect();
         const offset = {
           x: Math.abs(
             this.canvas.resolution.x * 0.5 - viewportBoundingRect.width * 0.5,
@@ -634,7 +635,8 @@ export default Vue.extend({
       // called when maximizing/minimizing a panel
 
       if (this.viewport.element && this.canvas.element) {
-        const viewportBoundingRect = this.viewport.element.getBoundingClientRect();
+        const viewportBoundingRect =
+          this.viewport.element.getBoundingClientRect();
 
         // calculate the canvas offsets so that it is centered on the viewport.
         const offsetToCenter = {
@@ -1311,9 +1313,8 @@ export default Vue.extend({
           this.schematic.nodes[payload.nodeId].node &&
           this.schematic.nodes[payload.nodeId].node.positions[payload.context]
         ) {
-          this.schematic.nodes[payload.nodeId].node.positions[
-            payload.context
-          ] = position;
+          this.schematic.nodes[payload.nodeId].node.positions[payload.context] =
+            position;
         } else {
           if (
             this.schematic &&
@@ -1347,9 +1348,8 @@ export default Vue.extend({
             workspaceId: this.currentWorkspace.id,
           };
 
-          let reply: INodeUpdatePositionReply = await SchematicDal.nodeUpdatePosition(
-            request,
-          );
+          let reply: INodeUpdatePositionReply =
+            await SchematicDal.nodeUpdatePosition(request);
 
           if (reply.error) {
             emitEditorErrorMessage(reply.error.message);
@@ -1372,9 +1372,8 @@ export default Vue.extend({
                   workspaceId: this.currentWorkspace.id,
                 };
 
-                let reply: INodeUpdatePositionReply = await SchematicDal.nodeUpdatePosition(
-                  request,
-                );
+                let reply: INodeUpdatePositionReply =
+                  await SchematicDal.nodeUpdatePosition(request);
 
                 if (reply.error) {
                   emitEditorErrorMessage(reply.error.message);
@@ -1402,24 +1401,21 @@ export default Vue.extend({
         let sourceNode: string[] = [""];
         let destinationNode: string[] = [""];
 
-        const sourceSocketType = this.connection.transientConnection.sourceSocketId
-          .split(".")[2]
-          .split(":")[1];
+        const sourceSocketType =
+          this.connection.transientConnection.sourceSocketId
+            .split(".")[2]
+            .split(":")[1];
         if (sourceSocketType === "output") {
-          sourceNode = this.connection.transientConnection.sourceSocketId.split(
-            ".",
-          );
+          sourceNode =
+            this.connection.transientConnection.sourceSocketId.split(".");
 
-          destinationNode = this.connection.transientConnection.destinationSocketId.split(
-            ".",
-          );
+          destinationNode =
+            this.connection.transientConnection.destinationSocketId.split(".");
         } else {
-          destinationNode = this.connection.transientConnection.sourceSocketId.split(
-            ".",
-          );
-          sourceNode = this.connection.transientConnection.destinationSocketId.split(
-            ".",
-          );
+          destinationNode =
+            this.connection.transientConnection.sourceSocketId.split(".");
+          sourceNode =
+            this.connection.transientConnection.destinationSocketId.split(".");
         }
 
         if (

@@ -16,7 +16,7 @@ mod options;
 mod subscription;
 
 pub use message::Message;
-pub use nats::{rustls, Headers};
+pub use nats::{header::HeaderMap, rustls};
 pub use options::Options;
 pub use subscription::Subscription;
 
@@ -809,13 +809,13 @@ impl Client {
         &self,
         subject: impl Into<String>,
         reply: Option<impl Into<String>>,
-        headers: Option<&Headers>,
+        headers: Option<&HeaderMap>,
         msg: impl Into<Vec<u8>>,
     ) -> Result<()> {
         let span = Span::current();
 
         let subject = subject.into();
-        let headers = headers.map(Headers::clone);
+        let headers = headers.map(HeaderMap::clone);
         let reply = reply.map(Into::into);
         let msg = msg.into();
         span.record("messaging.destination", &subject.as_str());

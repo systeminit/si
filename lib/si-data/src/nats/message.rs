@@ -6,7 +6,7 @@ use tokio::task::spawn_blocking;
 
 use super::{
     jetstream::{AckKind, JetStreamMessageInfo},
-    ConnectionMetadata, Error, Headers, Result,
+    ConnectionMetadata, Error, HeaderMap, Result,
 };
 
 #[derive(Clone)]
@@ -40,7 +40,7 @@ impl Message {
 
     /// Gets a reference to the headers of this message.
     #[must_use]
-    pub fn headers(&self) -> Option<&Headers> {
+    pub fn headers(&self) -> Option<&HeaderMap> {
         self.inner.headers.as_ref()
     }
 

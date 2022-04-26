@@ -1,6 +1,5 @@
-use axum::body::{Bytes, Full};
 use axum::http::StatusCode;
-use axum::response::IntoResponse;
+use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::Json;
 use axum::Router;
@@ -8,7 +7,6 @@ use dal::{
     ComponentError as DalComponentError, SchemaError, StandardModelError, TransactionsError,
     WsEventError,
 };
-use std::convert::Infallible;
 use thiserror::Error;
 
 pub mod create_application;
@@ -42,10 +40,7 @@ pub enum ApplicationError {
 pub type ApplicationResult<T> = std::result::Result<T, ApplicationError>;
 
 impl IntoResponse for ApplicationError {
-    type Body = Full<Bytes>;
-    type BodyError = Infallible;
-
-    fn into_response(self) -> hyper::Response<Self::Body> {
+    fn into_response(self) -> Response {
         let (status, error_message) = match self {
             ApplicationError::NotFound => (StatusCode::NOT_FOUND, self.to_string()),
             ApplicationError::SchemaNotFound => (StatusCode::NOT_FOUND, self.to_string()),

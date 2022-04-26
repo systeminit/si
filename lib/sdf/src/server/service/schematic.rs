@@ -1,6 +1,5 @@
-use axum::body::{Bytes, Full};
 use axum::http::StatusCode;
-use axum::response::IntoResponse;
+use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::Json;
 use axum::Router;
@@ -9,7 +8,6 @@ use dal::{
     ReadTenancyError, SchemaError as DalSchemaError, SchematicError as DalSchematicError,
     SchematicKind, StandardModelError, TransactionsError,
 };
-use std::convert::Infallible;
 use thiserror::Error;
 
 pub mod create_connection;
@@ -66,10 +64,7 @@ pub enum SchematicError {
 pub type SchematicResult<T> = std::result::Result<T, SchematicError>;
 
 impl IntoResponse for SchematicError {
-    type Body = Full<Bytes>;
-    type BodyError = Infallible;
-
-    fn into_response(self) -> hyper::Response<Self::Body> {
+    fn into_response(self) -> Response {
         let (status, error_message) = match self {
             SchematicError::SchemaNotFound => (StatusCode::NOT_FOUND, self.to_string()),
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),

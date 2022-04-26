@@ -99,24 +99,20 @@ watch(
   },
 );
 
-const borderColor = computed(
-  (): Record<string, boolean> => {
-    if (props.editField.visibility_diff.kind != "None") {
-      return { "input-border-gold": true };
-    } else {
-      return { "input-border-grey": true };
-    }
-  },
-);
-const textColor = computed(
-  (): Record<string, boolean> => {
-    if (props.editField.visibility_diff.kind != "None") {
-      return { "text-gold": true };
-    } else {
-      return { "text-gold": false };
-    }
-  },
-);
+const borderColor = computed((): Record<string, boolean> => {
+  if (props.editField.visibility_diff.kind != "None") {
+    return { "input-border-gold": true };
+  } else {
+    return { "input-border-grey": true };
+  }
+});
+const textColor = computed((): Record<string, boolean> => {
+  if (props.editField.visibility_diff.kind != "None") {
+    return { "text-gold": true };
+  } else {
+    return { "text-gold": false };
+  }
+});
 </script>
 
 <style scoped></style>

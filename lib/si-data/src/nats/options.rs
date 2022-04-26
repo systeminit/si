@@ -340,24 +340,28 @@ impl Options {
         self.inner.reconnect_callback(cb).into()
     }
 
-    /// Set a custom `JetStream` API prefix. This is useful when using `JetStream` through
-    /// exports/imports.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// # use si_data::nats; tokio_test::block_on(async {
-    /// let nc = nats::Options::new()
-    ///     .jetstream_api_prefix("some_exported_prefix".to_string())
-    ///     .connect("demo.nats.io")
-    ///     .await?;
-    /// nc.drain().await?;
-    /// # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
-    /// ```
-    #[must_use]
-    pub fn jetstream_api_prefix(self, jetstream_prefix: String) -> Self {
-        self.inner.jetstream_api_prefix(jetstream_prefix).into()
-    }
+    // This is no longer valid - the upstream splits config between Nats and JetStream
+    // -- Adam
+    //
+    // we aren't using JetStream, so...
+    // Set a custom `JetStream` API prefix. This is useful when using `JetStream` through
+    // exports/imports.
+    //
+    // # Examples
+    //
+    // ```no_run
+    // # use si_data::nats; tokio_test::block_on(async {
+    // let nc = nats::Options::new()
+    //     .jetstream_api_prefix("some_exported_prefix".to_string())
+    //     .connect("demo.nats.io")
+    //     .await?;
+    // nc.drain().await?;
+    // # Ok::<(), Box<dyn std::error::Error + 'static>>(()) });
+    // ```
+    //#[must_use]
+    //pub fn jetstream_api_prefix(self, jetstream_prefix: String) -> Self {
+    //    self.inner.jetstream_api_prefix(jetstream_prefix).into()
+    //}
 
     /// Set a callback to be executed when the client has been closed due to exhausting reconnect
     /// retries to known servers or by completing a drain request.

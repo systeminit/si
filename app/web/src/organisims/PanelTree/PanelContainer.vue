@@ -195,9 +195,8 @@ const setInitialPanelSize = () => {
         const newCheechWidthPercent = panelContainer.panels[0].width;
         const newChongWidthPercent = 100 - newCheechWidthPercent;
         if (panelSize.value[`${panelCheechIndex}`]) {
-          panelSize.value[`${panelCheechIndex}`][
-            "width"
-          ] = newCheechWidthPercent;
+          panelSize.value[`${panelCheechIndex}`]["width"] =
+            newCheechWidthPercent;
         }
         if (panelSize.value[`${panelChongIndex}`]) {
           panelSize.value[`${panelChongIndex}`]["width"] = newChongWidthPercent;
@@ -226,8 +225,10 @@ const resizePanels = (event: MouseEvent) => {
     );
 
     if (panelContainerElem && panelCheechElem && panelChongElem) {
-      let containerBoundingClientRect = panelContainerElem.getBoundingClientRect();
-      let panelCheechBoundingClientRect = panelCheechElem.getBoundingClientRect();
+      let containerBoundingClientRect =
+        panelContainerElem.getBoundingClientRect();
+      let panelCheechBoundingClientRect =
+        panelCheechElem.getBoundingClientRect();
       let panelChongBoundingClientRect = panelChongElem.getBoundingClientRect();
 
       if (orientation == "column") {
@@ -294,14 +295,12 @@ const resizePanels = (event: MouseEvent) => {
         }
         requestAnimationFrame(function () {
           if (panelSize.value[`${panelCheechIndex}`]) {
-            panelSize.value[`${panelCheechIndex}`][
-              "height"
-            ] = newCheechHeightPercent;
+            panelSize.value[`${panelCheechIndex}`]["height"] =
+              newCheechHeightPercent;
           }
           if (panelSize.value[`${panelChongIndex}`]) {
-            panelSize.value[`${panelChongIndex}`][
-              "height"
-            ] = newChongHeightPercent;
+            panelSize.value[`${panelChongIndex}`]["height"] =
+              newChongHeightPercent;
           }
           ticking.value = false;
         });
@@ -367,15 +366,13 @@ const resizePanels = (event: MouseEvent) => {
         }
         requestAnimationFrame(function () {
           if (panelSize.value[`${panelCheechIndex}`]) {
-            panelSize.value[`${panelCheechIndex}`][
-              "width"
-            ] = newCheechWidthPercent;
+            panelSize.value[`${panelCheechIndex}`]["width"] =
+              newCheechWidthPercent;
           }
 
           if (panelSize.value[`${panelChongIndex}`]) {
-            panelSize.value[`${panelChongIndex}`][
-              "width"
-            ] = newChongWidthPercent;
+            panelSize.value[`${panelChongIndex}`]["width"] =
+              newChongWidthPercent;
           }
 
           ticking.value = false;

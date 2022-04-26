@@ -276,6 +276,7 @@ where
         let stream = self.websocket_stream("/execute/ping").await?;
         Ok(ping::execute(stream))
     }
+
     async fn execute_qualification(
         &mut self,
         request: QualificationCheckRequest,
@@ -365,18 +366,22 @@ where
         Ok(Request::builder().uri(uri))
     }
 
-    fn new_ws_request<P>(&self, path_and_query: P) -> Result<Request<()>>
+    fn new_ws_request<P>(&self, path_and_query: P) -> Result<Uri>
     where
         P: TryInto<PathAndQuery, Error = InvalidUri>,
     {
         let uri = self.ws_request_uri(path_and_query)?;
-        let request = Request::builder()
-            .uri(uri)
-            .method(Method::GET)
-            .body(())
-            .map_err(ClientError::Request)?;
 
-        Ok(request)
+        // Tokio Tungstenite now requires that the request be perfectly created
+        // for websocket upgrades. If you use a URL, everything works.
+
+        //let request = Request::builder()
+        //    .uri(uri)
+        //    .method(Method::GET)
+        //    .body(())
+        //    .map_err(ClientError::Request)?;
+
+        Ok(uri)
     }
 
     async fn get<P>(&self, path_and_query: P) -> Result<Response<Body>>
@@ -404,8 +409,8 @@ where
             .call(self.uri.clone())
             .await
             .map_err(|err| ClientError::Connect(err.into()))?;
-        let request = self.new_ws_request(path_and_query)?;
-        let (websocket_stream, response) = tokio_tungstenite::client_async(request, stream)
+        let uri = self.new_ws_request(path_and_query)?;
+        let (websocket_stream, response) = tokio_tungstenite::client_async(uri, stream)
             .await
             .map_err(ClientError::WebsocketConnection)?;
 
@@ -440,7 +445,7 @@ mod tests {
     use serde_json::json;
     use sodiumoxide::crypto::box_::PublicKey;
     use tempfile::{NamedTempFile, TempPath};
-    use test_env_log::test;
+    use test_log::test;
 
     use super::*;
     use crate::{

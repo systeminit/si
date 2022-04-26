@@ -43,7 +43,7 @@ pub trait StandardConfigFile:
             app_name,
             "toml",
             &Some(format!("SI_{}_CONFIG", app_name.to_uppercase())),
-            &Some(format!("SI_{}_", app_name.to_uppercase())),
+            &Some(format!("SI_{}", app_name.to_uppercase())),
             set_func,
         )
         .map_err(SettingsError::ConfigFile)

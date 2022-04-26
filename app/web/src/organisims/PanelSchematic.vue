@@ -248,20 +248,18 @@ const componentIdentificationList = refFrom<LabelList<ComponentIdentification>>(
   ),
 );
 
-const deploymentComponentsList = computed(
-  (): LabelList<number | ""> => {
-    let list: LabelList<number | ""> = [];
-    if (componentIdentificationList.value) {
-      for (const item of componentIdentificationList.value) {
-        if (item.value.schematicKind === SchematicKind.Deployment) {
-          list.push({ label: item.label, value: item.value.componentId });
-        }
+const deploymentComponentsList = computed((): LabelList<number | ""> => {
+  let list: LabelList<number | ""> = [];
+  if (componentIdentificationList.value) {
+    for (const item of componentIdentificationList.value) {
+      if (item.value.schematicKind === SchematicKind.Deployment) {
+        list.push({ label: item.label, value: item.value.componentId });
       }
-      list.push({ label: "", value: "" });
     }
-    return list;
-  },
-);
+    list.push({ label: "", value: "" });
+  }
+  return list;
+});
 </script>
 
 <style scoped>

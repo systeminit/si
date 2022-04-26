@@ -10,7 +10,6 @@ module.exports = {
     "eslint:recommended",
     "@vue/typescript/recommended",
     "@vue/prettier",
-    "@vue/prettier/@typescript-eslint",
   ],
   rules: {
     camelcase: "off",
@@ -27,6 +26,7 @@ module.exports = {
     ],
     "vue/script-setup-uses-vars": "error",
     "@typescript-eslint/ban-ts-comment": "off",
+    "vue/multi-word-component-names": "off",
   },
   parser: "vue-eslint-parser",
   parserOptions: {

@@ -1,8 +1,5 @@
-use std::convert::Infallible;
-
 use axum::{
-    body::{Bytes, Full},
-    response::IntoResponse,
+    response::{IntoResponse, Response},
     routing::{get, post},
     Json, Router,
 };
@@ -29,10 +26,7 @@ pub enum SystemError {
 pub type SystemResult<T> = std::result::Result<T, SystemError>;
 
 impl IntoResponse for SystemError {
-    type Body = Full<Bytes>;
-    type BodyError = Infallible;
-
-    fn into_response(self) -> hyper::Response<Self::Body> {
+    fn into_response(self) -> Response {
         let (status, error_message) = match self {
             SystemError::SystemNotFound => (StatusCode::NOT_FOUND, self.to_string()),
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
