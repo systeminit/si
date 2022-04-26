@@ -111,6 +111,18 @@
               size="1.1em"
             />
           </button>
+          <button
+            class="pl-1 text-white focus:outline-none"
+            @click="setActiveView('socket')"
+          >
+            <VueFeather
+              v-if="activeView === 'socket'"
+              type="mail"
+              stroke="cyan"
+              size="1.1em"
+            />
+            <VueFeather v-else type="mail" class="text-gray-300" size="1.1em" />
+          </button>
         </div>
 
         <!-- NOTE(nick): old-web removes flex-row in this div and adds text-white for buttons in this div.
@@ -179,6 +191,10 @@
           v-else-if="activeView === 'code'"
           :component-id="selectedComponentIdentification.componentId"
         />
+        <SocketViewer
+          v-else-if="activeView === 'socket'"
+          :schema-variant-id="selectedComponentIdentification.schemaVariantId"
+        />
         <div v-else-if="activeView === 'connection'">
           ActiveView "{{ activeView }}" not implemented
         </div>
@@ -221,6 +237,7 @@ import { ComponentIdentification } from "@/api/sdf/dal/component";
 import { schematicData$ } from "./SchematicViewer/Viewer/scene/observable";
 import { visibility$ } from "@/observable/visibility";
 import { PanelAttributeSubType } from "./PanelTree/panel_types";
+import SocketViewer from "@/organisims/SocketViewer.vue";
 
 const randomString = () => `${Math.floor(Math.random() * 50000)}`;
 const attributeViewerKey = ref(randomString());

@@ -7,6 +7,7 @@ use crate::func::backend::validation::FuncBackendValidateStringValueArgs;
 use crate::qualification_prototype::QualificationPrototypeContext;
 use crate::resource_prototype::ResourcePrototypeContext;
 use crate::schema::{SchemaResult, SchemaVariant, UiMenu};
+use crate::socket::input::InputSocket;
 use crate::socket::{Socket, SocketArity, SocketEdgeKind};
 use crate::{
     component::ComponentKind, edit_field::widget::*, func::binding::FuncBinding,
@@ -598,6 +599,17 @@ async fn docker_image(ctx: &DalContext<'_, '_>) -> SchemaResult<()> {
         resource_sync_prototype_context,
     )
     .await?;
+
+    // FIXME(nick): remove this dummy socket once it is unneeded.
+    let _dummy_input_socket = InputSocket::new(
+        ctx,
+        *image_prop.id(),
+        *schema.id(),
+        *variant.id(),
+        Some(String::from("image-name-input-socket")),
+        false,
+        None,
+    );
 
     Ok(())
 }

@@ -48,6 +48,7 @@ pub struct InputSocket {
     visibility: Visibility,
     #[serde(flatten)]
     timestamp: Timestamp,
+
     /// Indicates which [`Prop`] this socket belongs to.
     prop_id: PropId,
     /// Indicates which [`Schema`] this socket belongs to.
