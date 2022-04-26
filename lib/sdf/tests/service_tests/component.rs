@@ -164,6 +164,11 @@ async fn get_components_metadata() {
         .await
         .expect("cannot set schema variant");
 
+    let (_, application) = Component::new_application_with_node(&dal_ctx, generate_fake_name())
+        .await
+        .expect("Unable to create application");
+    let dal_ctx = dal_ctx.clone_with_new_application_node_id(Some(*application.id()));
+
     let _component = create_component_for_schema_variant(&dal_ctx, schema_variant.id()).await;
     dal_txns.commit().await.expect("cannot commit transaction");
 
@@ -171,6 +176,7 @@ async fn get_components_metadata() {
         visibility,
         workspace_id: *nba.workspace.id(),
         system_id: None,
+        root_node_id: Some(*application.id()),
     };
     let response: GetComponentsMetadataResponse = api_request_auth_query(
         app,
@@ -180,5 +186,6 @@ async fn get_components_metadata() {
     )
     .await;
 
-    assert_eq!(response.data[0].schema_name, schema.name());
+    assert_eq!(response.data[0].schema_name, "application");
+    assert_eq!(response.data[1].schema_name, schema.name());
 }

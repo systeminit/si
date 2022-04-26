@@ -140,7 +140,7 @@ eventResourceSynced$.pipe(untilUnmounted).subscribe(async (resourceSyncId) => {
 // check it for errors (if there are errors, set the resource to null). Otherwise
 // we set the resource to the returned value, and we're done.
 const resource = refFrom<Resource | null>(
-  Rx.combineLatest([componentId$, resourceSynced$]).pipe(
+  Rx.combineLatest([componentId$, system$, resourceSynced$]).pipe(
     Rx.switchMap(([componentId]) => {
       if (componentId) {
         return ComponentService.getResource({ componentId });

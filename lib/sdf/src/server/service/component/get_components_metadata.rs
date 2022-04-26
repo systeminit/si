@@ -1,8 +1,8 @@
 use axum::extract::Query;
 use axum::Json;
 use dal::{
-    resource::ResourceHealth, Component, ComponentId, StandardModel, SystemId, Visibility,
-    WorkspaceId,
+    node::NodeId, resource::ResourceHealth, Component, ComponentId, Connection, StandardModel,
+    SystemId, Visibility, WorkspaceId,
 };
 use serde::{Deserialize, Serialize};
 
@@ -16,6 +16,11 @@ pub struct GetComponentsMetadataRequest {
     pub workspace_id: WorkspaceId,
     #[serde(flatten)]
     pub visibility: Visibility,
+
+    // Shouldn't be set by the client
+    // It's a hack to allow for sdf tests to automatically infer
+    // The applicationNodeId header from the JSON payload
+    pub root_node_id: Option<NodeId>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -46,9 +51,26 @@ pub async fn get_components_metadata(
     let components = Component::list(&ctx).await?;
     let mut metadata = Vec::with_capacity(components.len());
 
+    let connections = Connection::list(&ctx).await?;
+
     // Note: this is slow, we should have a better way of doing this
     for component in components {
-        // TODO: we have to filter the components here, by system and application
+        // Allows us to ignore nodes that aren't in current application
+        let mut in_this_schematic = false;
+        for node in component.node(&ctx).await? {
+            let is_from_this_schematic = Some(*node.id()) == ctx.application_node_id()
+                || connections.iter().any(|c| {
+                    c.source.node_id == *node.id()
+                        && Some(c.destination.node_id) == ctx.application_node_id()
+                });
+            if is_from_this_schematic {
+                in_this_schematic = true;
+                break;
+            }
+        }
+        if !in_this_schematic {
+            continue;
+        }
 
         let schema = component
             .schema_with_tenancy(&ctx)
@@ -61,8 +83,9 @@ pub async fn get_components_metadata(
 
         let qualified = qualifications
             .into_iter()
-            .flat_map(|q| q.result.map(|r| r.success))
-            .reduce(|q, acc| acc && q);
+            .map(|q| q.result.map(|r| r.success))
+            .reduce(|q, acc| acc.and_then(|acc| q.map(|q| acc && q)))
+            .and_then(|opt| opt);
 
         let resource = if system_id.is_none() {
             None

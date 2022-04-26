@@ -1,6 +1,7 @@
 SELECT DISTINCT ON (code_generation_resolvers.id) code_generation_resolvers.id,
                               code_generation_resolvers.visibility_change_set_pk,
                               code_generation_resolvers.visibility_edit_session_pk,
+                              code_generation_prototypes.format AS format,
                               row_to_json(func_binding_return_values.*) AS object
 FROM code_generation_resolvers
 INNER JOIN func_binding_return_value_belongs_to_func_binding ON 

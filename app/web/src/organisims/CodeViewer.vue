@@ -92,7 +92,7 @@ eventCodeGenerated$.pipe(untilUnmounted).subscribe(async (codeGenerationId) => {
 
 // @ts-ignore
 const _code = refFrom(
-  Rx.combineLatest([componentId$, codeGenerated$]).pipe(
+  Rx.combineLatest([componentId$, system$, codeGenerated$]).pipe(
     Rx.switchMap(([componentId]) => {
       if (componentId) {
         return ComponentService.getCode({ componentId });

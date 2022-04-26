@@ -27,6 +27,7 @@ import { untilUnmounted } from "vuse-rx";
 import { schematicData$ } from "./SchematicViewer/Viewer/scene/observable";
 import { system$ } from "@/observable/system";
 import { eventResourceSynced$ } from "@/observable/resource";
+import { eventCheckedQualifications$ } from "@/observable/qualification";
 import { SchematicService } from "@/service/schematic";
 import { SchematicKind } from "@/api/sdf/dal/schematic";
 import { GetSchematicArgs } from "@/service/schematic/get_schematic";
@@ -103,9 +104,10 @@ const maximizePanelFull = (event: PanelMaximized) => {
 
 // This is here to ensure both PanelSchematic and PanelAttribute have access to it
 // Previously we fetched at one and passed to the other, but if we hide that kind of panel the data is lost
-Rx.combineLatest([system$])
+system$
+  .pipe(untilUnmounted)
   .pipe(
-    Rx.switchMap(([system]) => {
+    Rx.switchMap((system) => {
       const request: GetSchematicArgs = {};
       if (system) {
         request.systemId = system.id;
@@ -113,7 +115,6 @@ Rx.combineLatest([system$])
       return SchematicService.getSchematic(request);
     }),
   )
-  .pipe(untilUnmounted)
   .subscribe((schematic) => {
     if (schematic) {
       if (schematic.error) {
@@ -126,24 +127,34 @@ Rx.combineLatest([system$])
     }
   });
 
-// TODO: we should re-fetch the metadata when qualifications change
-
-// We should re-fetch the metadata if any resource was synced
+// We should re-fetch the metadata if any resource from this system was synced
 const resourceSynced$ = new Rx.ReplaySubject<true>();
 resourceSynced$.next(true); // We must fetch on setup
-eventResourceSynced$.pipe(untilUnmounted).subscribe((resourceSyncId) => {
-  Rx.combineLatest([system$]).pipe(
-    Rx.tap(([system]) => {
-      if (system?.id === resourceSyncId?.payload?.data?.systemId) {
-        // Note: we shouldn't actually retrigger getComponentsMetadata every time one resource syncs
-        // But we generally sync all resources in batch, so it's ok for now, but we eventually will
-        // want to refactor this logic
-        resourceSynced$.next(true);
-      }
-    }),
-  );
+eventResourceSynced$.pipe(untilUnmounted).subscribe(async (resourceSyncId) => {
+  const system = await Rx.firstValueFrom(system$);
+  if ((system?.id ?? -1) === resourceSyncId?.payload?.data?.systemId) {
+    // Note: we shouldn't actually retrigger getComponentsMetadata every time one resource syncs
+    // But we generally sync all resources in batch, so it's ok for now, but we eventually will
+    // want to refactor this logic
+    resourceSynced$.next(true);
+  }
 });
-Rx.combineLatest([system$, resourceSynced$])
+
+// We should re-fetch the metadata if any qualification from this system was checked
+const checkedQualifications$ = new Rx.ReplaySubject<true>();
+checkedQualifications$.next(true); // We must fetch on setup
+eventCheckedQualifications$
+  .pipe(untilUnmounted)
+  .subscribe(async (checkedQualificationId) => {
+    const system = await Rx.firstValueFrom(system$);
+    const sysId = checkedQualificationId?.payload?.data?.systemId;
+    if ((system?.id ?? -1) === sysId) {
+      // Note: we shouldn't actually retrigger getComponentsMetadata every time one qualification check runs
+      checkedQualifications$.next(true);
+    }
+  });
+
+Rx.combineLatest([system$, resourceSynced$, checkedQualifications$])
   .pipe(
     Rx.switchMap(([system]) => {
       if (system) {

@@ -113,7 +113,13 @@ impl QualificationView {
                 result: Some(result),
             })
         } else {
-            Err(QualificationError::NoValue)
+            Ok(QualificationView {
+                title: "Unknown (no title provided)".to_string(),
+                output,
+                description: None,
+                link: None,
+                result: None,
+            })
         }
     }
 }

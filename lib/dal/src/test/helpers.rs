@@ -174,14 +174,13 @@ pub async fn create_component_for_schema(
     schema_id: &SchemaId,
 ) -> Component {
     let name = generate_fake_name();
-    let (component, _, task) = Component::new_for_schema_with_node(ctx, &name, schema_id)
+    let (component, _, _) = Component::new_for_schema_with_node(ctx, &name, schema_id)
         .await
         .expect("cannot create component");
     component
         .set_schema(ctx, schema_id)
         .await
         .expect("cannot set the schema for our component");
-    task.run(ctx).await.expect("unable to run component tasks");
     component
 }
 
