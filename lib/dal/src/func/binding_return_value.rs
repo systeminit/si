@@ -120,6 +120,10 @@ impl FuncBindingReturnValue {
         &self,
         ctx: &DalContext<'_, '_>,
     ) -> FuncBindingReturnValueResult<Option<Vec<OutputStream>>> {
+        if self.func_execution_pk == FuncExecutionPk::from(-1) {
+            return Ok(None);
+        }
+
         let func_execution = FuncExecution::get_by_pk(ctx, &self.func_execution_pk).await?;
         Ok(func_execution.into_output_stream())
     }

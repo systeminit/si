@@ -14,6 +14,8 @@ use dal::{
 
 use thiserror::Error;
 
+pub mod check_qualifications;
+pub mod generate_code;
 pub mod get_code;
 pub mod get_components_metadata;
 pub mod get_resource;
@@ -98,5 +100,10 @@ pub fn routes() -> Router {
         )
         .route("/get_resource", get(get_resource::get_resource))
         .route("/sync_resource", post(sync_resource::sync_resource))
+        .route(
+            "/check_qualifications",
+            post(check_qualifications::check_qualifications),
+        )
         .route("/get_code", get(get_code::get_code))
+        .route("/generate_code", post(generate_code::generate_code))
 }

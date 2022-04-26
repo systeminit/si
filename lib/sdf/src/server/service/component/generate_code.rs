@@ -4,10 +4,11 @@ use serde::{Deserialize, Serialize};
 
 use super::{ComponentError, ComponentResult};
 use crate::server::extract::{AccessBuilder, HandlerContext};
+use telemetry::prelude::*;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct SyncResourceRequest {
+pub struct GenerateCodeRequest {
     pub component_id: ComponentId,
     pub system_id: Option<SystemId>,
     #[serde(flatten)]
@@ -16,28 +17,34 @@ pub struct SyncResourceRequest {
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct SyncResourceResponse {
+pub struct GenerateCodeResponse {
     pub success: bool,
 }
 
-pub async fn sync_resource(
+pub async fn generate_code(
     HandlerContext(builder, mut txns): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
-    Json(request): Json<SyncResourceRequest>,
-) -> ComponentResult<Json<SyncResourceResponse>> {
+    Json(request): Json<GenerateCodeRequest>,
+) -> ComponentResult<Json<GenerateCodeResponse>> {
     let system_id = request.system_id.unwrap_or_else(|| SystemId::from(-1));
-    if system_id.is_none() {
-        return Err(ComponentError::SystemIdRequired);
-    }
 
     let txns = txns.start().await?;
-    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
+    let ctx = builder.build(request_ctx.clone().build(request.visibility), &txns);
 
     let component = Component::get_by_id(&ctx, &request.component_id)
         .await?
         .ok_or(ComponentError::ComponentNotFound)?;
-    component.sync_resource(&ctx, system_id).await?;
-
+    let async_tasks = component.build_async_tasks(&ctx, system_id).await?;
     txns.commit().await?;
-    Ok(Json(SyncResourceResponse { success: true }))
+
+    tokio::task::spawn(async move {
+        if let Err(err) = async_tasks
+            .run(request_ctx, request.visibility, &builder)
+            .await
+        {
+            error!("Component async task execution failed: {err}");
+        }
+    });
+
+    Ok(Json(GenerateCodeResponse { success: true }))
 }

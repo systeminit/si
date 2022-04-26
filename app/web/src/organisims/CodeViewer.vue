@@ -5,9 +5,20 @@
     >
       <div class="text-lg">Component ID {{ props.componentId }} Code</div>
 
-      <button class="ml-2 text-base" @click="copyCode">
-        <VueFeather type="copy" size="1em" />
-      </button>
+      <div class="flex">
+        <button class="ml-2 text-base" @click="copyCode">
+          <VueFeather type="copy" size="1em" />
+        </button>
+
+        <button
+          v-if="editMode"
+          ref="sync"
+          class="pl-1 focus:outline-none sync-button ml-2"
+          @click="generateCode"
+        >
+          <VueFeather type="refresh-cw" class="text-sm" size="1.1em" />
+        </button>
+      </div>
     </div>
     <div class="w-full h-full overflow-auto">
       <div
@@ -36,6 +47,7 @@ import { ComponentService } from "@/service/component";
 import { eventCodeGenerated$ } from "@/observable/code";
 import { GlobalErrorService } from "@/service/global_error";
 import { Compartment } from "@codemirror/state";
+import { ChangeSetService } from "@/service/change_set";
 import { system$ } from "@/observable/system";
 
 const props = defineProps<{
@@ -47,6 +59,8 @@ const editorMount = ref(null);
 const view = ref<null | EditorView>(null);
 const view$ = fromRef(view, { immediate: true });
 const readOnly = new Compartment();
+
+const editMode = refFrom<boolean>(ChangeSetService.currentEditMode());
 
 // This doesn't work on IE, do we care? (is it polyfilled by our build system?)
 const copyCode = () => {
@@ -133,6 +147,40 @@ const _code = refFrom(
     }),
   ),
 );
+
+const sync = ref<HTMLElement | null>(null);
+
+const animateSyncButton = () => {
+  const button = sync.value;
+  if (button) {
+    button.animate(
+      [{ transform: "rotate(0deg)" }, { transform: "rotate(720deg)" }],
+      {
+        duration: 2500,
+        easing: "linear",
+      },
+    );
+  }
+};
+
+const generateCode = () => {
+  animateSyncButton();
+  ComponentService.generateCode({
+    componentId: props.componentId,
+  }).subscribe((reply) => {
+    if (reply.error) {
+      GlobalErrorService.set(reply);
+    } else if (!reply.success) {
+      GlobalErrorService.set({
+        error: {
+          statusCode: 42,
+          code: 42,
+          message: "Code generation failed silently",
+        },
+      });
+    }
+  });
+};
 </script>
 
 <style scoped>

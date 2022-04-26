@@ -8,7 +8,12 @@
       </div>
 
       <div class="flex">
-        <button v-if="editMode" class="pl-1 focus:outline-none sync-button">
+        <button
+          v-if="editMode"
+          ref="sync"
+          class="pl-1 focus:outline-none run-button"
+          @click="runQualification"
+        >
           <VueFeather
             type="refresh-cw"
             class="text-sm"
@@ -166,6 +171,40 @@ const getQualifiedState = (
   return QualifiedState.Success;
 };
 
+const sync = ref<HTMLElement | null>(null);
+
+const animateSyncButton = () => {
+  const button = sync.value;
+  if (button) {
+    button.animate(
+      [{ transform: "rotate(0deg)" }, { transform: "rotate(720deg)" }],
+      {
+        duration: 2500,
+        easing: "linear",
+      },
+    );
+  }
+};
+
+const runQualification = () => {
+  animateSyncButton();
+  ComponentService.checkQualifications({
+    componentId: props.componentId,
+  }).subscribe((reply) => {
+    if (reply.error) {
+      GlobalErrorService.set(reply);
+    } else if (!reply.success) {
+      GlobalErrorService.set({
+        error: {
+          statusCode: 42,
+          code: 42,
+          message: "Qualification check failed silently",
+        },
+      });
+    }
+  });
+};
+
 const refreshButtonClasses = computed(() => {
   const classes: Record<string, boolean> = {};
   if (currentQualifiedState.value == QualifiedState.Success) {
@@ -298,19 +337,19 @@ $button-brightness: 1.1;
   color: #bbbbbb;
 }
 
-.sync-button {
+.run-button {
   color: #a8cc5f;
 }
 
-.sync-button:hover {
+.run-button:hover {
   filter: brightness($button-brightness);
 }
 
-.sync-button:focus {
+.run-button:focus {
   outline: none;
 }
 
-.sync-button:active {
+.run-button:active {
   filter: saturate(1.5) brightness($button-brightness);
 }
 
@@ -320,5 +359,8 @@ $button-brightness: 1.1;
 
 .header-background {
   background-color: #1f2122;
+}
+.run-button-invert {
+  transform: scaleX(-1);
 }
 </style>

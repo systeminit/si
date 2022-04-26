@@ -138,7 +138,7 @@ pub async fn create_node(
     if !async_tasks.is_empty() {
         tokio::task::spawn(async move {
             let mut futures = Vec::new();
-            for async_tasks in &async_tasks {
+            for async_tasks in async_tasks {
                 futures.push(Box::pin(async_tasks.run(
                     request_ctx.clone(),
                     request.visibility,
