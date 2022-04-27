@@ -75,10 +75,10 @@
               >
                 {{ q.title }}
               </div>
-              <div v-if="q.link" class="flex ml-2">
-                <a target="_blank" :href="q.link">
+              <div v-for="link in q.links" :key="link" class="flex ml-2">
+                <SiLink :blank-target="true" :uri="link">
                   <VueFeather type="info" class="info-button" size="1.1em" />
-                </a>
+                </SiLink>
               </div>
               <!-- NOTE(nick): We only render the button div if a description OR if a result exists
               in order to avoid user confusion. In essence, we want to ensure that we actually
@@ -136,6 +136,7 @@ import { computed, ref, toRefs } from "vue";
 import { ChangeSetService } from "@/service/change_set";
 import { eventCheckedQualifications$ } from "@/observable/qualification";
 import { system$ } from "@/observable/system";
+import SiLink from "@/atoms/SiLink.vue";
 //import { ListQualificationsResponse } from "@/service/component/list_qualifications";
 
 const editMode = refFrom<boolean>(ChangeSetService.currentEditMode());

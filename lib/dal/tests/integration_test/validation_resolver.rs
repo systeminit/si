@@ -162,7 +162,7 @@ async fn find_for_prototype(ctx: &DalContext<'_, '_>) {
 }
 
 #[test]
-async fn find_values_for_prop_and_component(ctx: &DalContext<'_, '_>) {
+async fn find_errors_for_prop_and_component(ctx: &DalContext<'_, '_>) {
     let unset_system_id: SystemId = UNSET_ID_VALUE.into();
 
     let schema = Schema::find_by_attr(ctx, "name", &"docker_image".to_string())
@@ -248,7 +248,7 @@ async fn find_values_for_prop_and_component(ctx: &DalContext<'_, '_>) {
     .await
     .expect("cannot create new attribute resolver");
 
-    let validation_results = ValidationResolver::find_values_for_prop_and_component(
+    let validation_results = ValidationResolver::find_errors_for_prop_and_component(
         ctx,
         *first_prop.id(),
         *component.id(),
@@ -347,7 +347,7 @@ async fn find_values_for_prop_and_component_override(ctx: &DalContext<'_, '_>) {
     .await
     .expect("cannot create new attribute resolver");
 
-    let validation_results = ValidationResolver::find_values_for_prop_and_component(
+    let validation_results = ValidationResolver::find_errors_for_prop_and_component(
         ctx,
         *first_prop.id(),
         *component.id(),

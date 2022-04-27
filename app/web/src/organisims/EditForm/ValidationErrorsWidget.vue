@@ -15,9 +15,9 @@
           {{ error.message }}
         </div>
         <div v-if="error.link" class="ml-1 align-top">
-          <a target="_blank" :href="error.link">
+          <SiLink :uri="error.link" :blank-target="true">
             <VueFeather type="external-link" stroke="grey" size="1.0em" />
-          </a>
+          </SiLink>
         </div>
       </div>
     </li>
@@ -26,6 +26,7 @@
 
 <script setup lang="ts">
 import VueFeather from "vue-feather";
+import SiLink from "@/atoms/SiLink.vue";
 import type { ValidationErrors } from "@/api/sdf/dal/edit_field";
 
 const props = defineProps<{

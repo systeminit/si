@@ -102,6 +102,7 @@ pub struct ValidationPrototype {
     id: ValidationPrototypeId,
     func_id: FuncId,
     args: serde_json::Value,
+    link: Option<String>,
     #[serde(flatten)]
     context: ValidationPrototypeContext,
     #[serde(flatten)]
@@ -153,6 +154,7 @@ impl ValidationPrototype {
 
     standard_model_accessor!(func_id, Pk(FuncId), ValidationPrototypeResult);
     standard_model_accessor!(args, Json<JsonValue>, ValidationPrototypeResult);
+    standard_model_accessor!(link, Option<String>, ValidationPrototypeResult);
 
     #[allow(clippy::too_many_arguments)]
     pub async fn find_for_prop(
