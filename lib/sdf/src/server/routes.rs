@@ -81,30 +81,34 @@ pub fn routes(
             crate::server::service::application::routes(),
         )
         .nest(
+            "/api/change_set",
+            crate::server::service::change_set::routes(),
+        )
+        .nest(
             "/api/component",
             crate::server::service::component::routes(),
+        )
+        .nest(
+            "/api/edit_field",
+            crate::server::service::edit_field::routes(),
         )
         .nest(
             "/api/input_socket",
             crate::server::service::input_socket::routes(),
         )
-        .nest("/api/signup", crate::server::service::signup::routes())
-        .nest("/api/session", crate::server::service::session::routes())
         .nest(
-            "/api/change_set",
-            crate::server::service::change_set::routes(),
+            "/api/output_socket",
+            crate::server::service::output_socket::routes(),
         )
         .nest("/api/schema", crate::server::service::schema::routes())
-        .nest("/api/secret", crate::server::service::secret::routes())
         .nest(
             "/api/schematic",
             crate::server::service::schematic::routes(),
         )
+        .nest("/api/secret", crate::server::service::secret::routes())
+        .nest("/api/session", crate::server::service::session::routes())
+        .nest("/api/signup", crate::server::service::signup::routes())
         .nest("/api/system", crate::server::service::system::routes())
-        .nest(
-            "/api/edit_field",
-            crate::server::service::edit_field::routes(),
-        )
         .nest("/api/ws", crate::server::service::ws::routes());
     router = test_routes(router);
     router = router

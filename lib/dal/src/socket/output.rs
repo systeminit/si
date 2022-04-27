@@ -1,5 +1,5 @@
 use crate::func::FuncId;
-use crate::{DalContext, PropId};
+use crate::{DalContext, PropId, SchemaVariantId};
 use serde::{Deserialize, Serialize};
 use si_data::{NatsError, PgError};
 use telemetry::prelude::*;
@@ -96,4 +96,23 @@ impl OutputSocket {
     standard_model_accessor!(type_definition, Option<String>, OutputSocketResult);
     standard_model_accessor!(source_prop_id, Pk(PropId), OutputSocketResult);
     standard_model_accessor!(transformation_func_id, Pk(FuncId), OutputSocketResult);
+
+    /// Find all output sockets for a given [`SchemaVariant`].
+    #[tracing::instrument(skip(ctx))]
+    pub async fn list_for_schema_variant(
+        ctx: &DalContext<'_, '_>,
+        schema_variant_id: SchemaVariantId,
+    ) -> OutputSocketResult<Vec<Self>> {
+        // FIXME(nick): make real query.
+        let rows = ctx
+            .txns()
+            .pg()
+            .query(
+                "foo",
+                &[ctx.read_tenancy(), ctx.visibility(), &schema_variant_id],
+            )
+            .await?;
+
+        Ok(standard_model::objects_from_rows(rows)?)
+    }
 }

@@ -3,6 +3,7 @@ pub mod change_set;
 pub mod component;
 pub mod edit_field;
 pub mod input_socket;
+pub mod output_socket;
 pub mod schema;
 pub mod schematic;
 pub mod secret;
