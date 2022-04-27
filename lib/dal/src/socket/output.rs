@@ -1,5 +1,7 @@
 use crate::func::FuncId;
-use crate::{DalContext, PropId, SchemaVariantId};
+use crate::{
+    AttributePrototype, AttributePrototypeId, DalContext, PropId, SchemaId, SchemaVariantId,
+};
 use serde::{Deserialize, Serialize};
 use si_data::{NatsError, PgError};
 use telemetry::prelude::*;
@@ -10,6 +12,9 @@ use crate::{
     standard_model_accessor, standard_model_accessor_ro, HistoryEventError, StandardModel,
     StandardModelError, Timestamp, Visibility, WriteTenancy,
 };
+
+const LIST_FOR_SCHEMA_VARIANT: &str =
+    include_str!("../queries/output_socket_list_for_schema_variant.sql");
 
 #[derive(Error, Debug)]
 pub enum OutputSocketError {
@@ -47,18 +52,21 @@ pub struct OutputSocket {
     visibility: Visibility,
     #[serde(flatten)]
     timestamp: Timestamp,
-    #[serde(flatten)]
-    context: AttributeContext,
+
+    /// Indicates which [`Prop`] this socket belongs to.
+    prop_id: PropId,
+    /// Indicates which [`Schema`] this socket belongs to.
+    schema_id: SchemaId,
+    /// Indicates which [`SchemaVariant`] this socket belongs to.
+    schema_variant_id: SchemaVariantId,
     /// Name for [`Self`] that can be used for identification.
     name: Option<String>,
-    /// Indicates if this socket is only for internal use.
-    internal_only: bool,
-    /// Definition of the output type.
+    /// Definition of the output type (e.g. "JSONSchema" or "Number").
     type_definition: Option<String>,
-    /// Source [`Prop`] for the socket.
-    source_prop_id: PropId,
-    /// Transformation [`Func`] for the socket.
-    transformation_func_id: FuncId,
+    /// The [`AttributePrototype`] of the transformation to perform for the socket.
+    /// It includes the transformation function itself and where to get the arguments for the
+    /// transformation function.
+    attribute_prototype_id: AttributePrototypeId,
 }
 
 impl OutputSocket {
@@ -66,25 +74,28 @@ impl OutputSocket {
     #[tracing::instrument(skip(ctx))]
     pub async fn new(
         ctx: &DalContext<'_, '_>,
-        context: AttributeContext,
+        prop_id: PropId,
+        schema_id: SchemaId,
+        schema_variant_id: SchemaVariantId,
         name: Option<String>,
         internal_only: bool,
-        source_prop_id: PropId,
-        transformation_func_id: FuncId,
+        type_definition: Option<String>,
+        attribute_prototype_id: AttributePrototypeId,
     ) -> OutputSocketResult<Self> {
         let row = ctx
             .txns()
             .pg()
             .query_one(
-                "SELECT object FROM output_socket_create_v1($1, $2, $3, $4, $5, $6, $7)",
+                "SELECT object FROM output_socket_create_v1($1, $2, $3, $4, $5, $6, $7, $8)",
                 &[
                     ctx.write_tenancy(),
                     ctx.visibility(),
-                    &context,
+                    &prop_id,
+                    &schema_id,
+                    &schema_variant_id,
                     &name,
-                    &internal_only,
-                    &source_prop_id,
-                    &transformation_func_id,
+                    &type_definition,
+                    &attribute_prototype_id,
                 ],
             )
             .await?;
@@ -92,10 +103,12 @@ impl OutputSocket {
     }
 
     standard_model_accessor!(name, Option<String>, OutputSocketResult);
-    standard_model_accessor_ro!(internal_only, bool);
     standard_model_accessor!(type_definition, Option<String>, OutputSocketResult);
-    standard_model_accessor!(source_prop_id, Pk(PropId), OutputSocketResult);
-    standard_model_accessor!(transformation_func_id, Pk(FuncId), OutputSocketResult);
+    standard_model_accessor_ro!(attribute_prototype_id, AttributePrototypeId);
+
+    standard_model_accessor_ro!(prop_id, PropId);
+    standard_model_accessor_ro!(schema_id, SchemaId);
+    standard_model_accessor_ro!(schema_variant_id, SchemaVariantId);
 
     /// Find all output sockets for a given [`SchemaVariant`].
     #[tracing::instrument(skip(ctx))]
@@ -103,12 +116,11 @@ impl OutputSocket {
         ctx: &DalContext<'_, '_>,
         schema_variant_id: SchemaVariantId,
     ) -> OutputSocketResult<Vec<Self>> {
-        // FIXME(nick): make real query.
         let rows = ctx
             .txns()
             .pg()
             .query(
-                "foo",
+                LIST_FOR_SCHEMA_VARIANT,
                 &[ctx.read_tenancy(), ctx.visibility(), &schema_variant_id],
             )
             .await?;

@@ -12,6 +12,7 @@ mod func;
 mod func_execution;
 mod group;
 mod history_event;
+mod input_and_output_socket;
 mod jwt_key;
 mod key_pair;
 mod node;

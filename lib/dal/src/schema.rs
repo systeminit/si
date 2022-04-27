@@ -1,4 +1,4 @@
-use crate::WriteTenancy;
+use crate::{AttributeContext, PropId, WriteTenancy};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use si_data::{NatsError, PgError};
@@ -55,8 +55,18 @@ pub enum SchemaError {
     FuncNotFound(String),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
+    #[error("attribute prototype not found for attribute context: {0}")]
+    MissingAttributePrototype(AttributeContext),
+    #[error("attribute value not found for attribute context: {0}")]
+    MissingAttributeValue(AttributeContext),
+    #[error("child prop not found with parent ({0}) for name: {0}")]
+    MissingChildProp((PropId, &'static str)),
     #[error("missing a func in attribute update: {0} not found")]
     MissingFunc(String),
+    #[error("prop not found for id: {0}")]
+    MissingProp(PropId),
+    #[error("expected one and found multiple attribute prototypes for attribute context: {0}")]
+    MultipleAttributePrototypesFound(AttributeContext),
     #[error("nats txn error: {0}")]
     Nats(#[from] NatsError),
     #[error("no default variant for schema id: {0}")]

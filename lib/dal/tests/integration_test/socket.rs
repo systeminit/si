@@ -6,8 +6,6 @@ use dal::{
     SchematicKind,
 };
 
-pub mod input;
-
 #[test]
 async fn new(ctx: &DalContext<'_, '_>) {
     let socket = Socket::new(

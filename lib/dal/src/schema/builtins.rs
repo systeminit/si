@@ -4,11 +4,16 @@ use crate::func::backend::js_attribute::FuncBackendJsAttributeArgs;
 use crate::func::backend::js_qualification::FuncBackendJsQualificationArgs;
 use crate::func::backend::js_resource::FuncBackendJsResourceSyncArgs;
 use crate::func::backend::validation::FuncBackendValidateStringValueArgs;
+use crate::func::binding_return_value::FuncBindingReturnValue;
 use crate::qualification_prototype::QualificationPrototypeContext;
 use crate::resource_prototype::ResourcePrototypeContext;
+use crate::schema::variant::SchemaVariantError::Schema;
 use crate::schema::{SchemaResult, SchemaVariant, UiMenu};
 use crate::socket::input::InputSocket;
+use crate::socket::output::OutputSocket;
 use crate::socket::{Socket, SocketArity, SocketEdgeKind};
+use crate::AttributePrototypeError::FuncBindingReturnValue;
+use crate::PropError::AttributePrototype;
 use crate::{
     component::ComponentKind, edit_field::widget::*, func::binding::FuncBinding,
     validation_prototype::ValidationPrototypeContext, Func, FuncBackendKind,
@@ -600,8 +605,8 @@ async fn docker_image(ctx: &DalContext<'_, '_>) -> SchemaResult<()> {
     )
     .await?;
 
-    // FIXME(nick): remove this dummy socket once it is unneeded.
-    let _dummy_input_socket = InputSocket::new(
+    // NOTE(nick): we hardcode socket creation for now.
+    let _image_input_socket = InputSocket::new(
         ctx,
         *image_prop.id(),
         *schema.id(),
@@ -609,6 +614,70 @@ async fn docker_image(ctx: &DalContext<'_, '_>) -> SchemaResult<()> {
         Some("image".to_string()),
         true,
         None,
+    );
+
+    // Obtain the prop corresponding to "/root/si/name". This is a bit fragile, but should work
+    // for now.
+    let si_prop: Prop = Prop::get_by_id(ctx, &root_prop.si_prop_id)
+        .await?
+        .pop()
+        .ok_or(SchemaError::MissingProp(root_prop.si_prop_id))?;
+    let si_child_props = si_prop.child_props(ctx).await?;
+    let si_name_prop = si_child_props
+        .iter()
+        .filter(|prop| prop.name() == "name")
+        .collect::<Vec<Prop>>()
+        .pop()
+        .ok_or(SchemaError::MissingChildProp((
+            root_prop.si_prop_id,
+            "name",
+        )))?;
+
+    let identity_func: Func = Func::find_by_attr(ctx, "name", "si:identity")?
+        .pop()
+        .ok_or(SchemaError::MissingFunc("si:identity".to_string()))?;
+    let (identity_func_binding, created) = FuncBinding::find_or_create(
+        ctx,
+        serde_json::json![{ "identity": null }],
+        *identity_func.id(),
+        FuncBackendKind::Identity,
+    )
+    .await?;
+    let identity_func_binding_return_value =
+        FuncBindingReturnValue::get_by_func_binding_id_or_execute(ctx, *identity_func_binding.id())
+            .await?;
+
+    let si_name_context = attribute_context_builder
+        .clone()
+        .set_prop_id(*si_name_prop.id())
+        .to_context()?;
+    let si_name_parent_attribute_value =
+        AttributeValue::find_for_context(&ctx, AttributeReadContext::from(si_name_context))
+            .await?
+            .pop()
+            .ok_or(SchemaError::MissingAttributeValue(si_name_context))?;
+
+    // FIXME(nick): take source prop id.
+    let name_prototype = AttributePrototype::new(
+        ctx,
+        *identity_func.id(),
+        *identity_func_binding.id(),
+        *identity_func_binding_return_value.id(),
+        si_name_context,
+        None,
+        Some(*si_name_parent_attribute_value.id()),
+    )
+    .await?;
+
+    let _name_output_socket = OutputSocket::new(
+        ctx,
+        *si_name_prop.id(),
+        *schema.id(),
+        *variant.id(),
+        Some("image".to_string()),
+        true,
+        None,
+        *name_prototype.id(),
     );
 
     Ok(())

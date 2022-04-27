@@ -13,10 +13,12 @@
 use async_recursion::async_recursion;
 use serde::{Deserialize, Serialize};
 use si_data::{NatsError, PgError};
+use std::collections::HashMap;
 use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::func::binding_return_value::FuncBindingReturnValueError;
+use crate::socket::input::InputSocketId;
 use crate::{
     attribute::{
         context::{AttributeContext, AttributeContextError},
@@ -28,7 +30,7 @@ use crate::{
         binding_return_value::FuncBindingReturnValueId,
     },
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_has_many,
-    DalContext, HistoryEventError, PropError, PropKind, ReadTenancy, ReadTenancyError,
+    DalContext, HistoryEventError, PropError, PropId, PropKind, ReadTenancy, ReadTenancyError,
     StandardModel, StandardModelError, Timestamp, Visibility, WriteTenancy,
 };
 
@@ -106,7 +108,29 @@ pub struct AttributePrototype {
     pub context: AttributeContext,
     #[serde(flatten)]
     timestamp: Timestamp,
+
+    /// This field is used to track dynamic function arguments (found via [`InputSocket`]s) to
+    /// generate a [`FuncBinding`].
+    argument_map: Option<HashMap<String, InputSocketId>>,
+    // Once you get your input socket ______id______ you will then use it to build an attribute context
+    // (assuming Nick added the equal precedence extension for prop id / input socket id / output socket id)
+    // in order to "retrieve" the attribute value we need to populate the arguments of the func binding
+    // we will be "generating".
+    //
+    // Example context: internal name --> description connection
+    // Example for this: identity! HashMap::new() --> first insertion --> { key: "identity".to_string(), value: source_input_socket_id }
+    // ^^^ directly attach to prototype for the description prop in schema variant context --> source_input_socket_id == "name" (internal only input socket corresponding to the name prop)
 }
+
+// FIXME(nick,jacob): we need a query for the below to be able to "connect" across components.
+//
+// We need a query for a "has many" relationship between attribute prototypes corresponding to external
+// input sockets and output sockets. Specifically, we are going to need the attribute context
+// (e.g. two components can use the same schema variant). This query will be used for external
+// input sockets.
+//
+// TLDR: (output_socket, component_id) belongs_to (input_socket, component_id).
+// Return for the query: Vec<OutputSocket>.
 
 impl_standard_model! {
     model: AttributePrototype,
