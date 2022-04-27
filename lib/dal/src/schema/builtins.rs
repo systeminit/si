@@ -319,7 +319,7 @@ async fn docker_hub_credential(ctx: &DalContext<'_, '_>) -> SchemaResult<()> {
     )
     .await?;
     prototype
-        .set_link(ctx, "http://hub.docker.com".into())
+        .set_doc_link(ctx, "http://hub.docker.com".into())
         .await?;
 
     // Note: This is not right; each schema needs its own socket types.
