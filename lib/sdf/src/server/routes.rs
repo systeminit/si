@@ -84,6 +84,10 @@ pub fn routes(
             "/api/component",
             crate::server::service::component::routes(),
         )
+        .nest(
+            "/api/input_socket",
+            crate::server::service::input_socket::routes(),
+        )
         .nest("/api/signup", crate::server::service::signup::routes())
         .nest("/api/session", crate::server::service::session::routes())
         .nest(

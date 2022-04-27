@@ -606,8 +606,8 @@ async fn docker_image(ctx: &DalContext<'_, '_>) -> SchemaResult<()> {
         *image_prop.id(),
         *schema.id(),
         *variant.id(),
-        Some(String::from("image-name-input-socket")),
-        false,
+        Some("image".to_string()),
+        true,
         None,
     );
 

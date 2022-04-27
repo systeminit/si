@@ -40,7 +40,7 @@ DECLARE
     this_new_row                  input_sockets%ROWTYPE;
 BEGIN
     this_tenancy_record := tenancy_json_to_columns_v1(this_tenancy);
-    this_visibility_record := tenancy_json_to_columns_v1(this_visibility);
+    this_visibility_record := visibility_json_to_columns_v1(this_visibility);
 
     INSERT INTO input_sockets (tenancy_universal,
                                tenancy_billing_account_ids,

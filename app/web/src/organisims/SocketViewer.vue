@@ -6,14 +6,21 @@
       <div v-if="schemaVariantId" class="text-lg">
         SchemaVariantId: {{ schemaVariantId }}
       </div>
+    </div>
+  </div>
 
-      <div v-for="inputSocket in inputSockets" :key="inputSocket.id" class="text-sm">
-        <div class="flex flex-row row-item">
-          {{ inputSocket }}
-        </div>
+  <div v-if="inputSockets && inputSockets.len() > 0">
+    <div
+        v-for="inputSocket in inputSockets"
+        :key="inputSocket.id"
+        class="text-sm"
+    >
+      <div class="flex flex-row row-item">
+        {{ inputSocket }}
       </div>
     </div>
   </div>
+  <div v-else class="text-sm">No InputSockets found! Huzzah.</div>
 </template>
 
 <script setup lang="ts">

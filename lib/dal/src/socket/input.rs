@@ -82,10 +82,10 @@ impl InputSocket {
                 &[
                     ctx.write_tenancy(),
                     ctx.visibility(),
-                    &name,
                     &prop_id,
                     &schema_id,
                     &schema_variant_id,
+                    &name,
                     &internal_only,
                     &type_definition,
                 ],
@@ -97,6 +97,10 @@ impl InputSocket {
     standard_model_accessor!(name, Option<String>, InputSocketResult);
     standard_model_accessor_ro!(internal_only, bool);
     standard_model_accessor!(type_definition, Option<String>, InputSocketResult);
+
+    standard_model_accessor_ro!(prop_id, PropId);
+    standard_model_accessor_ro!(schema_id, SchemaId);
+    standard_model_accessor_ro!(schema_variant_id, SchemaVariantId);
 
     /// Find all input sockets for a given [`SchemaVariant`].
     #[tracing::instrument(skip(ctx))]
