@@ -18,7 +18,16 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> SchemaResult<()>
         None => return Ok(()),
     };
 
-    let (variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
+    let (mut variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
+    variant
+        .set_link(
+            ctx,
+            Some(
+                "https://kubernetes.io/docs/concepts/workloads/controllers/deployment/".to_owned(),
+            ),
+        )
+        .await?;
+
     schema
         .set_default_schema_variant_id(ctx, Some(*variant.id()))
         .await?;

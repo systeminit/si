@@ -224,7 +224,14 @@ async fn kubernetes_service(ctx: &DalContext<'_, '_>) -> SchemaResult<()> {
         None => return Ok(()),
     };
 
-    let (variant, _) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
+    let (mut variant, _) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
+    variant
+        .set_link(
+            ctx,
+            Some("https://kubernetes.io/docs/concepts/services-networking/service/".to_owned()),
+        )
+        .await?;
+
     schema
         .set_default_schema_variant_id(ctx, Some(*variant.id()))
         .await?;
@@ -273,6 +280,7 @@ async fn docker_hub_credential(ctx: &DalContext<'_, '_>) -> SchemaResult<()> {
         .await?;
 
     let (variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
+
     schema
         .set_default_schema_variant_id(ctx, Some(*variant.id()))
         .await?;
