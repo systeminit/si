@@ -10,8 +10,8 @@ name = "sdf"
 path = "src/main.rs"
 
 [dependencies]
-clap = { version = "3.0.0-beta.5" }
-color-eyre = { version = "0.5.11" }
+clap = { version = "3.1.12", features = ["derive", "color", "env"] }
+color-eyre = { version = "0.6.1" }
 sdf = { path = "../../lib/sdf" }
 telemetry = { path = "../../lib/telemetry-rs", features = ["application"] }
 tokio = { version = "1.12.0", features = ["full"] }

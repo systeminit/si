@@ -9,7 +9,6 @@ export interface CheckedQualificationId {
 /**
  * Fired with the ids of the component and the system
  */
-export const eventCheckedQualifications$ = new ReplaySubject<WsEvent<WsCheckedQualifications> | null>(
-  1,
-);
+export const eventCheckedQualifications$ =
+  new ReplaySubject<WsEvent<WsCheckedQualifications> | null>(1);
 eventCheckedQualifications$.next(null);

@@ -10,9 +10,8 @@ persistToSession("editSession", editSession$);
 /**
  * Fired with the id of the new edit session when one is created.
  */
-export const eventEditSessionSaved$ = new ReplaySubject<WsEvent<WsEditSessionSaved> | null>(
-  1,
-);
+export const eventEditSessionSaved$ =
+  new ReplaySubject<WsEvent<WsEditSessionSaved> | null>(1);
 eventEditSessionSaved$.next(null);
 
 /**

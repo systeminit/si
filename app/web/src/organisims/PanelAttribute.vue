@@ -303,21 +303,19 @@ const componentIdentificationList = refFrom<
   ),
 );
 
-const componentList = computed(
-  (): LabelList<number | ""> => {
-    let list: LabelList<number | ""> = [];
-    if (componentIdentificationList.value) {
-      for (const item of componentIdentificationList.value) {
-        let value: number | "" = "";
-        if (item.value !== "") {
-          value = item.value.componentId;
-        }
-        list.push({ label: item.label, value: value });
+const componentList = computed((): LabelList<number | ""> => {
+  let list: LabelList<number | ""> = [];
+  if (componentIdentificationList.value) {
+    for (const item of componentIdentificationList.value) {
+      let value: number | "" = "";
+      if (item.value !== "") {
+        value = item.value.componentId;
       }
+      list.push({ label: item.label, value: value });
     }
-    return list;
-  },
-);
+  }
+  return list;
+});
 
 const componentRecord = computed(
   (): Record<number, ComponentIdentification> => {

@@ -365,7 +365,7 @@ mod tests {
     use indoc::indoc;
     use si_data::NatsConfig;
     use si_settings::StandardConfig;
-    use test_env_log::test;
+    use test_log::test;
     use tokio::task::JoinHandle;
     use uuid::Uuid;
 
@@ -387,7 +387,7 @@ mod tests {
     }
 
     fn nats_prefix() -> String {
-        Uuid::new_v4().to_simple().to_string()
+        Uuid::new_v4().as_simple().to_string()
     }
 
     async fn veritech_server_for_uds_cyclone(subject_prefix: String) -> Server {

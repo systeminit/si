@@ -1,11 +1,12 @@
-import { compileCode, createVm, runCode } from "../src/vm";
+import { compileCode, createVm } from "../src/vm";
 import { createSandbox } from "../src/sandbox";
 import { VM, VMScript } from "vm2";
+import { FunctionKind } from "../src/function";
 
 describe("createVm", () => {
   test("creates a new vm for execution", () => {
-    const sandbox = createSandbox("resolver");
-    const vm = createVm("resolver", sandbox);
+    const sandbox = createSandbox(FunctionKind.ResourceSync, "poop");
+    const vm = createVm(sandbox);
     expect(vm).toBeInstanceOf(VM);
   });
 });
@@ -19,10 +20,10 @@ describe("compileCode", () => {
 
 describe("runCode", () => {
   test("runs code on a vm, returning the result", () => {
-    const sandbox = createSandbox("resolver");
-    const vm = createVm("resolver", sandbox);
+    const sandbox = createSandbox(FunctionKind.ResourceSync, "poop");
+    const vm = createVm(sandbox);
     const code = compileCode("'foo'");
-    const result = runCode(vm, code);
+    const result = vm.run(code);
     expect(result).toBe("foo");
   });
 });

@@ -93,35 +93,31 @@ watch(
   },
 );
 
-const inputStyles = computed(
-  (): Record<string, boolean> => {
-    let styles: Record<string, boolean> = {};
+const inputStyles = computed((): Record<string, boolean> => {
+  let styles: Record<string, boolean> = {};
 
-    if (props.editField.visibility_diff.kind != "None") {
-      styles["input-border-gold"] = true;
-      styles["input-border-grey"] = false;
-    } else {
-      styles["input-border-gold"] = false;
-      styles["input-border-grey"] = true;
-    }
-    if (props.coreEditField) {
-      styles["flex-grow"] = true;
-    } else {
-      styles["flex-grow"] = false;
-    }
+  if (props.editField.visibility_diff.kind != "None") {
+    styles["input-border-gold"] = true;
+    styles["input-border-grey"] = false;
+  } else {
+    styles["input-border-gold"] = false;
+    styles["input-border-grey"] = true;
+  }
+  if (props.coreEditField) {
+    styles["flex-grow"] = true;
+  } else {
+    styles["flex-grow"] = false;
+  }
 
-    return styles;
-  },
-);
-const textColor = computed(
-  (): Record<string, boolean> => {
-    if (props.editField.visibility_diff.kind != "None") {
-      return { "text-gold": true };
-    } else {
-      return { "text-gold": false };
-    }
-  },
-);
+  return styles;
+});
+const textColor = computed((): Record<string, boolean> => {
+  if (props.editField.visibility_diff.kind != "None") {
+    return { "text-gold": true };
+  } else {
+    return { "text-gold": false };
+  }
+});
 </script>
 
 <style scoped></style>

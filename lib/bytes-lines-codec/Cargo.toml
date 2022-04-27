@@ -6,7 +6,7 @@ rust-version = "1.56"
 
 [dependencies]
 bytes = "1.1.0"
-tokio-util = { version = "0.6.8", features = ["codec"] }
+tokio-util = { version = "0.7.1", features = ["codec"] }
 tracing = "0.1.29"
 
 [dev-dependencies]

@@ -1,13 +1,11 @@
-use axum::body::{Bytes, Full};
 use axum::http::StatusCode;
-use axum::response::IntoResponse;
+use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::Json;
 use axum::Router;
 use dal::{
     ChangeSetError as DalChangeSetError, EditSessionError, StandardModelError, TransactionsError,
 };
-use std::convert::Infallible;
 use thiserror::Error;
 
 pub mod apply_change_set;
@@ -41,10 +39,7 @@ pub enum ChangeSetError {
 pub type ChangeSetResult<T> = std::result::Result<T, ChangeSetError>;
 
 impl IntoResponse for ChangeSetError {
-    type Body = Full<Bytes>;
-    type BodyError = Infallible;
-
-    fn into_response(self) -> hyper::Response<Self::Body> {
+    fn into_response(self) -> Response {
         let (status, error_message) = match self {
             ChangeSetError::ChangeSetNotFound => (StatusCode::NOT_FOUND, self.to_string()),
             ChangeSetError::EditSessionNotFound => (StatusCode::NOT_FOUND, self.to_string()),

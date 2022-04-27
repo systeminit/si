@@ -1,9 +1,6 @@
-use std::convert::Infallible;
-
 use axum::{
-    body::{Bytes, Full},
     http::StatusCode,
-    response::IntoResponse,
+    response::{IntoResponse, Response},
     routing::{get, post},
     Json, Router,
 };
@@ -66,10 +63,7 @@ pub enum ComponentError {
 pub type ComponentResult<T> = std::result::Result<T, ComponentError>;
 
 impl IntoResponse for ComponentError {
-    type Body = Full<Bytes>;
-    type BodyError = Infallible;
-
-    fn into_response(self) -> hyper::Response<Self::Body> {
+    fn into_response(self) -> Response {
         let (status, error_message) = match self {
             ComponentError::NotFound => (StatusCode::NOT_FOUND, self.to_string()),
             ComponentError::SchemaNotFound => (StatusCode::NOT_FOUND, self.to_string()),

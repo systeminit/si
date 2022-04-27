@@ -88,32 +88,28 @@ const propertyEditFields = computed(() => {
   return fields;
 });
 
-const initialTreeOpenState = computed(
-  (): ITreeOpenState => {
-    const visitor = new InitialTreeOpenStateVisitor();
-    visitor.visitEditFields(propertyEditFields.value);
-    return visitor.initialTreeState();
-  },
-);
+const initialTreeOpenState = computed((): ITreeOpenState => {
+  const visitor = new InitialTreeOpenStateVisitor();
+  visitor.visitEditFields(propertyEditFields.value);
+  return visitor.initialTreeState();
+});
 
 const setTreeOpenState = ref<ITreeOpenState>({});
 
-const treeOpenState = computed(
-  (): ITreeOpenState => {
-    const state: ITreeOpenState = {};
-    for (const [fieldId, initialOpenState] of Object.entries(
-      initialTreeOpenState.value,
-    )) {
-      const setOpenState = setTreeOpenState.value[fieldId];
-      if (setOpenState === undefined) {
-        state[fieldId] = initialOpenState;
-      } else {
-        state[fieldId] = setOpenState;
-      }
+const treeOpenState = computed((): ITreeOpenState => {
+  const state: ITreeOpenState = {};
+  for (const [fieldId, initialOpenState] of Object.entries(
+    initialTreeOpenState.value,
+  )) {
+    const setOpenState = setTreeOpenState.value[fieldId];
+    if (setOpenState === undefined) {
+      state[fieldId] = initialOpenState;
+    } else {
+      state[fieldId] = setOpenState;
     }
-    return state;
-  },
-);
+  }
+  return state;
+});
 
 const toggleHeader = (fieldId: string) => {
   if (setTreeOpenState.value[fieldId] === undefined) {

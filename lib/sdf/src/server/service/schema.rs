@@ -1,11 +1,9 @@
-use axum::body::{Bytes, Full};
 use axum::http::StatusCode;
-use axum::response::IntoResponse;
+use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::Json;
 use axum::Router;
 use dal::{SchemaError as DalSchemaError, StandardModelError, TransactionsError};
-use std::convert::Infallible;
 use thiserror::Error;
 
 pub mod create_schema;
@@ -31,10 +29,7 @@ pub enum SchemaError {
 pub type SchemaResult<T> = std::result::Result<T, SchemaError>;
 
 impl IntoResponse for SchemaError {
-    type Body = Full<Bytes>;
-    type BodyError = Infallible;
-
-    fn into_response(self) -> hyper::Response<Self::Body> {
+    fn into_response(self) -> Response {
         let (status, error_message) = match self {
             SchemaError::SchemaNotFound => (StatusCode::NOT_FOUND, self.to_string()),
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),

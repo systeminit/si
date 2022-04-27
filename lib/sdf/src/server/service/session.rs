@@ -1,11 +1,9 @@
-use axum::body::{Bytes, Full};
 use axum::http::StatusCode;
-use axum::response::IntoResponse;
+use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::Json;
 use axum::Router;
 use dal::{BillingAccountError, StandardModelError, TransactionsError, UserError};
-use std::convert::Infallible;
 use thiserror::Error;
 
 pub mod get_defaults;
@@ -33,10 +31,7 @@ pub enum SessionError {
 pub type SessionResult<T> = std::result::Result<T, SessionError>;
 
 impl IntoResponse for SessionError {
-    type Body = Full<Bytes>;
-    type BodyError = Infallible;
-
-    fn into_response(self) -> hyper::Response<Self::Body> {
+    fn into_response(self) -> Response {
         let (status, error_message) = match self {
             SessionError::LoginFailed => (StatusCode::UNAUTHORIZED, self.to_string()),
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),

@@ -9,7 +9,6 @@ export interface CodeGenerationId {
 /**
  * Fired with the ids of the component and the system
  */
-export const eventCodeGenerated$ = new ReplaySubject<WsEvent<WsCodeGenerated> | null>(
-  1,
-);
+export const eventCodeGenerated$ =
+  new ReplaySubject<WsEvent<WsCodeGenerated> | null>(1);
 eventCodeGenerated$.next(null);

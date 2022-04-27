@@ -3,7 +3,7 @@ use std::{cmp, fmt, net::ToSocketAddrs, sync::Arc, time::Duration};
 use bytes::Buf;
 use deadpool::managed::Object;
 use deadpool_postgres::{
-    config::ConfigError, Config, Manager, ManagerConfig, Pool, PoolConfig, PoolError,
+    Config, ConfigError, CreatePoolError, Manager, ManagerConfig, Pool, PoolConfig, PoolError,
     RecyclingMethod, Transaction, TransactionBuilder,
 };
 use serde::{Deserialize, Serialize};
@@ -27,6 +27,8 @@ pub enum PgPoolError {
     DeadpoolConfig(#[from] ConfigError),
     #[error("pg pool error: {0}")]
     PoolError(#[from] PoolError),
+    #[error("creating pg pool error: {0}")]
+    CreatePoolError(#[from] CreatePoolError),
     #[error("migration error: {0}")]
     Refinery(#[from] refinery::Error),
     #[error("tokio pg error: {0}")]
@@ -141,7 +143,7 @@ impl PgPool {
         }
         debug!(db.pool_config = ?pool_config);
         cfg.pool = Some(pool_config);
-        let pool = cfg.create_pool(NoTls)?;
+        let pool = cfg.create_pool(Some(deadpool_postgres::Runtime::Tokio1), NoTls)?;
 
         let resolving_hostname = format!("{}:{}", settings.hostname, settings.port);
         let net_peer_ip = tokio::task::spawn_blocking(move || {

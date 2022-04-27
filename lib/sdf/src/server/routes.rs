@@ -1,11 +1,10 @@
-use std::{convert::Infallible, sync::Arc};
+use std::sync::Arc;
 
 use crate::server::config::JwtSecretKey;
 use axum::{
-    body::{Bytes, Full},
-    response::IntoResponse,
+    response::{IntoResponse, Response},
     routing::get,
-    AddExtensionLayer, Json, Router,
+    Extension, Json, Router,
 };
 use dal::context::ServicesContext;
 use hyper::StatusCode;
@@ -104,18 +103,16 @@ pub fn routes(
         .nest("/api/ws", crate::server::service::ws::routes());
     router = test_routes(router);
     router = router
-        .layer(AddExtensionLayer::new(shared_state))
-        .layer(AddExtensionLayer::new(services_context))
-        .layer(AddExtensionLayer::new(telemetry))
-        .layer(AddExtensionLayer::new(pg_pool))
-        .layer(AddExtensionLayer::new(nats_conn))
-        .layer(AddExtensionLayer::new(veritech))
-        .layer(AddExtensionLayer::new(encryption_key))
-        .layer(AddExtensionLayer::new(jwt_secret_key))
-        .layer(AddExtensionLayer::new(signup_secret))
-        .layer(AddExtensionLayer::new(ShutdownBroadcast(
-            shutdown_broadcast_tx,
-        )));
+        .layer(Extension(shared_state))
+        .layer(Extension(services_context))
+        .layer(Extension(telemetry))
+        .layer(Extension(pg_pool))
+        .layer(Extension(nats_conn))
+        .layer(Extension(veritech))
+        .layer(Extension(encryption_key))
+        .layer(Extension(jwt_secret_key))
+        .layer(Extension(signup_secret))
+        .layer(Extension(ShutdownBroadcast(shutdown_broadcast_tx)));
     router
 }
 
@@ -144,10 +141,7 @@ pub enum AppError {
 pub type AppResult<T> = std::result::Result<T, AppError>;
 
 impl IntoResponse for AppError {
-    type Body = Full<Bytes>;
-    type BodyError = Infallible;
-
-    fn into_response(self) -> hyper::Response<Self::Body> {
+    fn into_response(self) -> Response {
         let (status, error_message) = (StatusCode::INTERNAL_SERVER_ERROR, self.to_string());
 
         let body = Json(serde_json::json!({

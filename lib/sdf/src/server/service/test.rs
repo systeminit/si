@@ -1,11 +1,9 @@
-use axum::body::{Bytes, Full};
 use axum::http::StatusCode;
-use axum::response::IntoResponse;
+use axum::response::{IntoResponse, Response};
 use axum::routing::post;
 use axum::Json;
 use axum::Router;
 use dal::{BillingAccountError, TransactionsError, UserError};
-use std::convert::Infallible;
 use thiserror::Error;
 
 mod signup;
@@ -29,10 +27,7 @@ pub enum TestError {
 pub type TestResult<T> = std::result::Result<T, TestError>;
 
 impl IntoResponse for TestError {
-    type Body = Full<Bytes>;
-    type BodyError = Infallible;
-
-    fn into_response(self) -> hyper::Response<Self::Body> {
+    fn into_response(self) -> Response {
         let (status, error_message) = (StatusCode::INTERNAL_SERVER_ERROR, self.to_string());
 
         let body = Json(serde_json::json!({
