@@ -104,6 +104,7 @@ pub struct Prop {
     name: String,
     kind: PropKind,
     widget_kind: WidgetKind,
+    doc_link: Option<String>,
     #[serde(flatten)]
     tenancy: WriteTenancy,
     #[serde(flatten)]
@@ -190,6 +191,7 @@ impl Prop {
     standard_model_accessor!(name, String, PropResult);
     standard_model_accessor!(kind, Enum(PropKind), PropResult);
     standard_model_accessor!(widget_kind, Enum(WidgetKind), PropResult);
+    standard_model_accessor!(doc_link, Option<String>, PropResult);
 
     standard_model_many_to_many!(
         lookup_fn: schema_variants,

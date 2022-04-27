@@ -93,6 +93,7 @@ pub struct EditFieldBaggage {
     /// [`EditFieldDataType::Map`].
     pub key: Option<String>,
     pub prop_id: PropId,
+    pub prop_doc_link: Option<String>,
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone)]
@@ -173,12 +174,14 @@ impl EditField {
         parent_attribute_value_id: Option<AttributeValueId>,
         key: Option<String>,
         prop_id: PropId,
+        prop_doc_link: Option<String>,
     ) {
         self.baggage = Some(EditFieldBaggage {
             attribute_value_id,
             parent_attribute_value_id,
             key,
             prop_id,
+            prop_doc_link,
         });
     }
 

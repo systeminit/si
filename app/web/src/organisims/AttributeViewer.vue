@@ -23,7 +23,7 @@
         class="flex flow-row items-center justify-end flex-grow h-full text-xs text-center"
       >
         <SiLink
-          v-if="componentMetadata.schemaLink"
+          v-if="componentMetadata?.schemaLink"
           :uri="componentMetadata.schemaLink"
           :blank-target="true"
           class="m-2 text-base"

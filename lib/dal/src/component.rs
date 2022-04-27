@@ -1786,6 +1786,7 @@ async fn edit_field_for_attribute_value(
         parent_attribute_value_id,
         attribute_value.key,
         *prop.id(),
+        prop.doc_link().map(ToOwned::to_owned),
     );
 
     Ok(edit_field)

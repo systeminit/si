@@ -4,7 +4,23 @@
     :validation-errors="props.editField.validation_errors"
     :core-edit-field="coreEditField"
   >
-    <template #name>{{ props.editField.name }}</template>
+    <template #name>
+      <SiLink
+        v-if="props.editField.baggage?.prop_doc_link"
+        :uri="props.editField.baggage.prop_doc_link"
+        :blank-target="true"
+        class="flex flex-row justify-end"
+      >
+        <span class="flex flex-col content-center justify-center">
+          {{ props.editField.name }}
+        </span>
+        <VueFeather type="help-circle" size="1em" class="m-2" />
+      </SiLink>
+      <template v-else>
+        {{ props.editField.name }}
+      </template>
+    </template>
+
     <template #edit>
       <input
         v-model="inputValue"
@@ -41,6 +57,8 @@ import { GlobalErrorService } from "@/service/global_error";
 import { UpdateFromEditFieldResponse } from "@/service/edit_field/update_from_edit_field";
 import { ApiResponse } from "@/api/sdf";
 import { AttributeContext } from "@/api/sdf/dal/attribute";
+import VueFeather from "vue-feather";
+import SiLink from "@/atoms/SiLink.vue";
 
 const props = defineProps<{
   show: boolean;

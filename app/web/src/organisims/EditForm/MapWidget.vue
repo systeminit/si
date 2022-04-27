@@ -5,8 +5,22 @@
     :core-edit-field="coreEditField"
   >
     <template #name>
-      {{ props.editField.name }}
+      <SiLink
+        v-if="props.editField.baggage?.prop_doc_link"
+        :uri="props.editField.baggage.prop_doc_link"
+        :blank-target="true"
+        class="flex flex-row justify-end"
+      >
+        <span class="flex flex-col content-center justify-center">
+          {{ props.editField.name }}
+        </span>
+        <VueFeather type="help-circle" size="1em" class="m-2" />
+      </SiLink>
+      <template v-else>
+        {{ props.editField.name }}
+      </template>
     </template>
+
     <template #edit>
       <div class="flex flex-col mt-1">
         <div
@@ -68,6 +82,7 @@ import { defineAsyncComponent, DefineComponent } from "vue";
 import type { WidgetsProps } from "./Widgets.vue";
 import { ITreeOpenState } from "@/utils/edit_field_visitor";
 import { AttributeContext } from "@/api/sdf/dal/attribute";
+import SiLink from "@/atoms/SiLink.vue";
 
 // Eliminate the circular dependency of HeaderWidget -> Widgets -> HeaderWidget
 // by using `defineAsyncComponent` in a careful way to preserve the ability for

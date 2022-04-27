@@ -39,7 +39,7 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> SchemaResult<()>
 
     {
         // TODO: add validation (si-registry ensures the value is unchanged)
-        let _api_version_prop = create_string_prop_with_default(
+        let mut api_version_prop = create_string_prop_with_default(
             ctx,
             "apiVersion",
             "apps/v1".to_owned(),
@@ -47,6 +47,9 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> SchemaResult<()>
             base_attribute_read_context,
         )
         .await?;
+
+        // TODO: this probably is not the appropriate doc link for the prop (we probably don't need one), it just serves as reference for prop doc links
+        api_version_prop.set_doc_link(ctx, Some("https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#deployment-v1-apps".to_owned())).await?;
     }
 
     // FIXME(nick,jacob): temporary performance gain for user testing.
