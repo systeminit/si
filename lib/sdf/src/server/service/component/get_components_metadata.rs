@@ -27,6 +27,7 @@ pub struct GetComponentsMetadataRequest {
 #[serde(rename_all = "camelCase")]
 pub struct ComponentMetadata {
     pub schema_name: String,
+    pub schema_link: Option<String>,
     pub qualified: Option<bool>,
     pub resource_health: Option<ResourceHealth>,
     pub component_id: ComponentId,
@@ -96,6 +97,10 @@ pub async fn get_components_metadata(
 
         metadata.push(ComponentMetadata {
             schema_name: schema.name().to_owned(),
+            schema_link: component
+                .schema_variant(&ctx)
+                .await?
+                .and_then(|v| v.link().map(ToOwned::to_owned)),
             qualified,
             resource_health: resource.map(|r| r.health),
             component_id: *component.id(),

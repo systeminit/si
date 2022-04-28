@@ -22,6 +22,15 @@
       <div
         class="flex flow-row items-center justify-end flex-grow h-full text-xs text-center"
       >
+        <SiLink
+          v-if="componentMetadata.schemaLink"
+          :uri="componentMetadata.schemaLink"
+          :blank-target="true"
+          class="m-2 text-base"
+        >
+          <VueFeather type="help-circle" size="1em" />
+        </SiLink>
+
         <div class="flex flex-row items-center">
           <VueFeather type="edit" size="0.75rem" class="gold-bars-icon" />
           <div v-if="editCount" class="ml-1 text-center">{{ editCount }}</div>
@@ -56,6 +65,7 @@ import {
   //visibility$,
 } from "@/observable/visibility";
 import { editSessionWritten$ } from "@/observable/edit_session";
+import SiLink from "@/atoms/SiLink.vue";
 
 //const visibility = refFrom<Visibility>(visibility$);
 

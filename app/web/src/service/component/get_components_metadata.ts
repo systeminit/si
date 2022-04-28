@@ -21,6 +21,7 @@ export interface GetComponentsMetadataRequest
 export interface ComponentMetadata {
   componentId: number;
   schemaName: string;
+  schemaLink?: string;
   qualified?: boolean;
   resourceHealth?: ResourceHealth;
 }
