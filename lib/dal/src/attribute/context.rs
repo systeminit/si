@@ -4,17 +4,24 @@
 //! fields of specificity.
 //!
 //! The order of precedence is as follows (from least to most "specificity"):
-//! - [`PropId`]
+//! - [`PropId`] / [`InternalProviderId`] / [`ExternalProviderId`]
 //! - [`SchemaId`]
 //! - [`SchemaVariantId`]
 //! - [`ComponentId`]
 //! - [`SystemId`]
+//!
+//! At the level of least "specificity", you can provider have a [`PropId`], an
+//! [`InternalProviderId`], or an [`ExternalProviderId`]. However, you can only provide one and only
+//! one for an [`AttributeContext`] since they are at the same "level" in the order of precedence.
 
 use serde::{Deserialize, Serialize};
 use std::default::Default;
 use thiserror::Error;
 
-use crate::{ComponentId, PropId, SchemaId, SchemaVariantId, SystemId};
+use crate::{
+    ComponentId, ExternalProviderId, InternalProviderId, PropId, SchemaId, SchemaVariantId,
+    SystemId,
+};
 
 pub mod read;
 pub use read::AttributeReadContext;
@@ -23,7 +30,7 @@ pub const UNSET_ID_VALUE: i64 = -1;
 
 #[derive(Error, Debug)]
 pub enum AttributeContextError {
-    #[error("attribute resolver context builder error: {0}")]
+    #[error("attribute context builder error: {0}")]
     AttributeContextBuilder(#[from] AttributeContextBuilderError),
 }
 
@@ -33,6 +40,10 @@ pub type AttributeContextResult<T> = Result<T, AttributeContextError>;
 pub struct AttributeContext {
     #[serde(rename = "attribute_context_prop_id")]
     prop_id: PropId,
+    #[serde(rename = "attribute_context_internal_provider_id")]
+    internal_provider_id: InternalProviderId,
+    #[serde(rename = "attribute_context_external_provider_id")]
+    external_provider_id: ExternalProviderId,
     #[serde(rename = "attribute_context_schema_id")]
     schema_id: SchemaId,
     #[serde(rename = "attribute_context_schema_variant_id")]
@@ -47,6 +58,8 @@ impl From<AttributeContext> for AttributeContextBuilder {
     fn from(from_context: AttributeContext) -> AttributeContextBuilder {
         AttributeContextBuilder {
             prop_id: from_context.prop_id(),
+            internal_provider_id: from_context.internal_provider_id(),
+            external_provider_id: from_context.external_provider_id(),
             schema_id: from_context.schema_id(),
             schema_variant_id: from_context.schema_variant_id(),
             component_id: from_context.component_id(),
@@ -60,6 +73,12 @@ impl From<AttributeReadContext> for AttributeContextBuilder {
         let mut builder = AttributeContextBuilder::new();
         if let Some(prop_id) = from_read_context.prop_id {
             builder.set_prop_id(prop_id);
+        }
+        if let Some(internal_provider_id) = from_read_context.internal_provider_id {
+            builder.set_internal_provider_id(internal_provider_id);
+        }
+        if let Some(external_provider_id) = from_read_context.external_provider_id {
+            builder.set_external_provider_id(external_provider_id);
         }
         if let Some(schema_id) = from_read_context.schema_id {
             builder.set_schema_id(schema_id);
@@ -86,6 +105,14 @@ impl AttributeContext {
         self.prop_id
     }
 
+    pub fn internal_provider_id(&self) -> InternalProviderId {
+        self.internal_provider_id
+    }
+
+    pub fn external_provider_id(&self) -> ExternalProviderId {
+        self.external_provider_id
+    }
+
     pub fn schema_id(&self) -> SchemaId {
         self.schema_id
     }
@@ -102,8 +129,7 @@ impl AttributeContext {
         self.system_id
     }
 
-    /// Determines if the context is "least specific" ([`PropId`] is
-    /// set) or everything is unset ([`PropId`] is unset).
+    /// Determines if the context is "least specific".
     pub fn is_least_specific(&self) -> bool {
         self.system_id == UNSET_ID_VALUE.into()
             && self.component_id == UNSET_ID_VALUE.into()
@@ -137,6 +163,8 @@ impl AttributeContext {
 pub enum AttributeContextBuilderError {
     #[error("for builder {0:?}, the following fields must be set: {1:?}")]
     PrerequisteFieldsUnset(AttributeContextBuilder, Vec<&'static str>),
+    #[error("cannot specify more than one field at the lowest level in the order of precedence")]
+    MultipleLeastSpecificFieldsSpecified,
 }
 
 pub type AttributeContextBuilderResult<T> = Result<T, AttributeContextBuilderError>;
@@ -146,6 +174,8 @@ pub type AttributeContextBuilderResult<T> = Result<T, AttributeContextBuilderErr
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Copy)]
 pub struct AttributeContextBuilder {
     prop_id: PropId,
+    internal_provider_id: InternalProviderId,
+    external_provider_id: ExternalProviderId,
     schema_id: SchemaId,
     schema_variant_id: SchemaVariantId,
     component_id: ComponentId,
@@ -164,6 +194,8 @@ impl AttributeContextBuilder {
     pub fn new() -> Self {
         Self {
             prop_id: UNSET_ID_VALUE.into(),
+            internal_provider_id: UNSET_ID_VALUE.into(),
+            external_provider_id: UNSET_ID_VALUE.into(),
             schema_id: UNSET_ID_VALUE.into(),
             schema_variant_id: UNSET_ID_VALUE.into(),
             component_id: UNSET_ID_VALUE.into(),
@@ -196,9 +228,23 @@ impl AttributeContextBuilder {
             unset_prerequisite_fields.push("SchemaId");
         }
 
-        // [`PropId`] must always be set.
-        if self.prop_id == UNSET_ID_VALUE.into() {
-            unset_prerequisite_fields.push("PropId");
+        // The lowest level in the order of precedence must always be set.
+        if self.prop_id == UNSET_ID_VALUE.into()
+            && self.internal_provider_id == UNSET_ID_VALUE.into()
+            && self.external_provider_id == UNSET_ID_VALUE.into()
+        {
+            unset_prerequisite_fields.push("PropId or InternalProviderId or ExternalProviderId");
+        }
+
+        // Only one field at the lowest level in the order of precedence can be set.
+        if (self.prop_id != UNSET_ID_VALUE.into()
+            && self.internal_provider_id != UNSET_ID_VALUE.into())
+            || (self.prop_id != UNSET_ID_VALUE.into()
+                && self.external_provider_id != UNSET_ID_VALUE.into())
+            || (self.internal_provider_id != UNSET_ID_VALUE.into()
+                && self.external_provider_id != UNSET_ID_VALUE.into())
+        {
+            return Err(AttributeContextBuilderError::MultipleLeastSpecificFieldsSpecified);
         }
 
         if !unset_prerequisite_fields.is_empty() {
@@ -210,6 +256,8 @@ impl AttributeContextBuilder {
 
         Ok(AttributeContext {
             prop_id: self.prop_id,
+            internal_provider_id: self.internal_provider_id,
+            external_provider_id: self.external_provider_id,
             schema_id: self.schema_id,
             schema_variant_id: self.schema_variant_id,
             component_id: self.component_id,
@@ -224,6 +272,32 @@ impl AttributeContextBuilder {
             return self.unset_prop_id();
         }
         self.prop_id = prop_id;
+        self
+    }
+
+    /// Sets the [`InternalProviderId`] field. If [`UNSET_ID_VALUE`] is the ID passed in, then
+    /// [`Self::unset_internal_provider_id()`] is returned.
+    pub fn set_internal_provider_id(
+        &mut self,
+        internal_provider_id: InternalProviderId,
+    ) -> &mut Self {
+        if internal_provider_id == UNSET_ID_VALUE.into() {
+            return self.unset_internal_provider_id();
+        }
+        self.internal_provider_id = internal_provider_id;
+        self
+    }
+
+    /// Sets the [`ExternalProviderId`] field. If [`UNSET_ID_VALUE`] is the ID passed in, then
+    /// [`Self::unset_external_provider_id()`] is returned.
+    pub fn set_external_provider_id(
+        &mut self,
+        external_provider_id: ExternalProviderId,
+    ) -> &mut Self {
+        if external_provider_id == UNSET_ID_VALUE.into() {
+            return self.unset_external_provider_id();
+        }
+        self.external_provider_id = external_provider_id;
         self
     }
 
@@ -270,6 +344,18 @@ impl AttributeContextBuilder {
     /// Unsets the [`PropId`].
     pub fn unset_prop_id(&mut self) -> &mut Self {
         self.prop_id = UNSET_ID_VALUE.into();
+        self
+    }
+
+    /// Unsets the [`InternalProviderId`].
+    pub fn unset_internal_provider_id(&mut self) -> &mut Self {
+        self.internal_provider_id = UNSET_ID_VALUE.into();
+        self
+    }
+
+    /// Unsets the [`ExternalProviderId`].
+    pub fn unset_external_provider_id(&mut self) -> &mut Self {
+        self.external_provider_id = UNSET_ID_VALUE.into();
         self
     }
 
@@ -352,7 +438,7 @@ mod tests {
             .set_component_id(4.into())
             .set_system_id(5.into())
             .to_context()
-            .expect("cannot build resolver context");
+            .expect("cannot build attribute context");
 
         let new_context = context
             .less_specific()
@@ -419,6 +505,12 @@ mod tests {
                 .expect("cannot create expected context"),
             new_context,
         );
+
+        let least_specific_context = AttributeContextBuilder::new()
+            .set_prop_id(1.into())
+            .to_context()
+            .expect("cannot create expected context");
+        assert!(least_specific_context.is_least_specific());
     }
 
     #[test]
