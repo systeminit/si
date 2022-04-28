@@ -10,7 +10,6 @@
       <div class="flex">
         <button
           v-if="editMode"
-          ref="sync"
           class="pl-1 focus:outline-none run-button"
           @click="runQualification"
         >
@@ -153,6 +152,8 @@ enum QualifiedState {
 }
 
 const currentQualifiedState = ref<QualifiedState>(QualifiedState.Unknown);
+const currentQualifiedAnimate = ref<boolean>(false);
+
 const getQualifiedState = (
   qualifications: Array<Qualification>,
 ): QualifiedState => {
@@ -171,26 +172,12 @@ const getQualifiedState = (
   return QualifiedState.Success;
 };
 
-const sync = ref<HTMLElement | null>(null);
-
-const animateSyncButton = () => {
-  const button = sync.value;
-  if (button) {
-    button.animate(
-      [{ transform: "rotate(0deg)" }, { transform: "rotate(720deg)" }],
-      {
-        duration: 2500,
-        easing: "linear",
-      },
-    );
-  }
-};
-
 const runQualification = () => {
-  animateSyncButton();
+  currentQualifiedAnimate.value = true;
   ComponentService.checkQualifications({
     componentId: props.componentId,
   }).subscribe((reply) => {
+    currentQualifiedAnimate.value = false;
     if (reply.error) {
       GlobalErrorService.set(reply);
     } else if (!reply.success) {
@@ -218,6 +205,12 @@ const refreshButtonClasses = computed(() => {
   } else {
     classes["error"] = false;
     classes["success"] = false;
+    classes["unknown"] = true;
+  }
+  if (currentQualifiedAnimate.value) {
+    classes["animate-spin"] = true;
+    classes["success"] = false;
+    classes["error"] = false;
     classes["unknown"] = true;
   }
   return classes;

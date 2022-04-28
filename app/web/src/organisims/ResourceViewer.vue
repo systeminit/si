@@ -10,11 +10,15 @@
       <div class="flex pl-1">
         <button
           v-if="!editMode"
-          ref="sync"
           class="flex items-center focus:outline-none button"
           @click="runSync()"
         >
-          <VueFeather type="refresh-cw" :stroke="healthColor" size="1em" />
+          <VueFeather
+            type="refresh-cw"
+            :stroke="healthColor"
+            size="1em"
+            :class="refreshClasses"
+          />
         </button>
         <VueFeather v-else type="box" :stroke="healthColor" size="1em" />
       </div>
@@ -62,7 +66,6 @@ const props = defineProps<{
 const { componentId } = toRefs(props);
 
 const editMode = refFrom<boolean>(ChangeSetService.currentEditMode());
-const sync = ref<HTMLElement | null>(null);
 
 // NOTE(nick): making this "computed" will result in the active view breaking for the attribute panel.
 const healthColor = computed(() => {
@@ -80,18 +83,16 @@ const healthColor = computed(() => {
   return "#bbbbbb";
 });
 
-const animateSyncButton = () => {
-  const button = sync.value;
-  if (button) {
-    button.animate(
-      [{ transform: "rotate(0deg)" }, { transform: "rotate(720deg)" }],
-      {
-        duration: 2500,
-        easing: "linear",
-      },
-    );
+const refreshAnimate = ref<boolean>(false);
+const refreshClasses = computed(() => {
+  const classes: { [key: string]: boolean } = {};
+  if (refreshAnimate.value) {
+    classes["animate-spin"] = true;
+  } else {
+    classes["animate-spin"] = false;
   }
-};
+  return classes;
+});
 
 // We need an observable stream of props.componentId. We also want
 // that stream to emit a value immediately (the first value, as well as all
@@ -99,9 +100,10 @@ const animateSyncButton = () => {
 const componentId$ = fromRef<number>(componentId, { immediate: true });
 
 const runSync = () => {
-  animateSyncButton();
+  refreshAnimate.value = true;
   ComponentService.syncResource({ componentId: props.componentId }).subscribe(
     (reply) => {
+      refreshAnimate.value = false;
       if (reply.error) {
         GlobalErrorService.set(reply);
       } else if (!reply.success) {
