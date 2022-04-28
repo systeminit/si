@@ -94,6 +94,7 @@ export interface EditFieldBaggage {
   parent_attribute_value_id?: number;
   key?: string;
   prop_id: number;
+  prop_doc_link?: string;
 }
 
 export interface EditField {

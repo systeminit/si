@@ -5,13 +5,24 @@
       :style="propObjectStyle"
       @click="toggleHeader"
     >
-      <div v-if="openState" class="flex" :style="propObjectStyle">
-        <VueFeather type="chevron-down" />
-        {{ props.editField.name }}
-      </div>
-      <div v-else class="flex" :style="propObjectStyle">
-        <VueFeather type="chevron-right" />
-        {{ props.editField.name }}
+      <div class="flex" :style="propObjectStyle">
+        <VueFeather v-if="openState" type="chevron-down" />
+        <VueFeather v-else type="chevron-right" />
+
+        <SiLink
+          v-if="props.editField.baggage?.prop_doc_link"
+          :uri="props.editField.baggage.prop_doc_link"
+          :blank-target="true"
+          class="flex flex-row justify-end"
+        >
+          <span class="flex flex-col content-center justify-center">
+            {{ props.editField.name }}
+          </span>
+          <VueFeather type="help-circle" size="1em" class="m-2" />
+        </SiLink>
+        <template v-else>
+          {{ props.editField.name }}
+        </template>
       </div>
     </div>
   </section>
@@ -32,6 +43,7 @@ import VueFeather from "vue-feather";
 import { defineAsyncComponent, DefineComponent } from "vue";
 import type { WidgetsProps } from "./Widgets.vue";
 import { ITreeOpenState } from "@/utils/edit_field_visitor";
+import SiLink from "@/atoms/SiLink.vue";
 
 // Eliminate the circular dependency of HeaderWidget -> Widgets -> HeaderWidget
 // by using `defineAsyncComponent` in a careful way to preserve the ability for

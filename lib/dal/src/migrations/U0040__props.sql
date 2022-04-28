@@ -13,7 +13,8 @@ CREATE TABLE props
     updated_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     name                        text                     NOT NULL,
     kind                        text                     NOT NULL,
-    widget_kind                 text                     NOT NULL
+    widget_kind                 text                     NOT NULL,
+    doc_link                    text
 );
 SELECT standard_model_table_constraints_v1('props');
 SELECT many_to_many_table_create_v1('prop_many_to_many_schema_variants', 'props',
