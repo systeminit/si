@@ -12,11 +12,15 @@
 
         <button
           v-if="editMode"
-          ref="sync"
           class="pl-1 focus:outline-none sync-button ml-2"
           @click="generateCode"
         >
-          <VueFeather type="refresh-cw" class="text-sm" size="1.1em" />
+          <VueFeather
+            type="refresh-cw"
+            class="text-sm"
+            size="1.1em"
+            :class="refreshClasses"
+          />
         </button>
       </div>
     </div>
@@ -34,7 +38,7 @@
 <script setup lang="ts">
 import _ from "lodash";
 import * as Rx from "rxjs";
-import { ref, onMounted, toRefs } from "vue";
+import { ref, onMounted, toRefs, computed } from "vue";
 import VueFeather from "vue-feather";
 import { EditorState, EditorView, basicSetup } from "@codemirror/basic-setup";
 import { yaml } from "@codemirror/legacy-modes/mode/yaml";
@@ -148,26 +152,23 @@ const _code = refFrom(
   ),
 );
 
-const sync = ref<HTMLElement | null>(null);
-
-const animateSyncButton = () => {
-  const button = sync.value;
-  if (button) {
-    button.animate(
-      [{ transform: "rotate(0deg)" }, { transform: "rotate(720deg)" }],
-      {
-        duration: 2500,
-        easing: "linear",
-      },
-    );
+const currentSyncAnimate = ref<boolean>(false);
+const refreshClasses = computed(() => {
+  const classes: { [key: string]: boolean } = {};
+  if (currentSyncAnimate.value) {
+    classes["animate-spin"] = true;
+  } else {
+    classes["animate-spin"] = false;
   }
-};
+  return classes;
+});
 
 const generateCode = () => {
-  animateSyncButton();
+  currentSyncAnimate.value = true;
   ComponentService.generateCode({
     componentId: props.componentId,
   }).subscribe((reply) => {
+    currentSyncAnimate.value = false;
     if (reply.error) {
       GlobalErrorService.set(reply);
     } else if (!reply.success) {

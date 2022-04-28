@@ -18,8 +18,11 @@
     "checks": "npm run eslint; npm run type-check; npm run prettier-check"
   },
   "dependencies": {
-    "@codemirror/basic-setup": "^0.20.0",
-    "@codemirror/legacy-modes": "^0.20.0",
+    "@codemirror/state": "^0.19.0",
+    "@codemirror/view": "^0.19.0",
+    "@codemirror/commands": "^0.19.0",
+    "@codemirror/basic-setup": "^0.19.0",
+    "@codemirror/legacy-modes": "^0.19.0",
     "@codemirror/stream-parser": "^0.19.9",
     "@pixi/layers": "^1.0.11",
     "@reactivex/rxjs": "^6.6.7",
