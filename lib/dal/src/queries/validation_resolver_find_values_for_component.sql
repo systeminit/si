@@ -6,6 +6,7 @@ SELECT DISTINCT ON (validation_resolvers.id) validation_resolvers.id,
                               validation_resolvers.schema_id,
                               validation_resolvers.schema_variant_id,
                               validation_resolvers.system_id,
+                              validation_resolvers.validation_prototype_id,
                               row_to_json(func_binding_return_values.*) AS object
 FROM validation_resolvers
 INNER JOIN func_binding_return_value_belongs_to_func_binding ON 

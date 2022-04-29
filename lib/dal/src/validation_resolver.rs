@@ -5,13 +5,14 @@ use std::default::Default;
 use telemetry::prelude::*;
 use thiserror::Error;
 
+use crate::func::backend::validation::ValidationError;
 use crate::{
     func::{binding::FuncBindingId, binding_return_value::FuncBindingReturnValue, FuncId},
     impl_standard_model, pk,
     standard_model::{self, objects_from_rows},
     standard_model_accessor, ComponentId, HistoryEventError, Prop, PropId, SchemaId,
-    SchemaVariantId, StandardModel, StandardModelError, SystemId, Timestamp, ValidationPrototypeId,
-    Visibility, WriteTenancy,
+    SchemaVariantId, StandardModel, StandardModelError, SystemId, Timestamp, ValidationPrototype,
+    ValidationPrototypeId, Visibility, WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -175,51 +176,11 @@ impl ValidationResolver {
     standard_model_accessor!(func_id, Pk(FuncId), ValidationResolverResult);
     standard_model_accessor!(func_binding_id, Pk(FuncBindingId), ValidationResolverResult);
 
-    // #[allow(clippy::too_many_arguments)]
-    // #[instrument(skip_all)]
-    // pub async fn upsert(
-    //     txn: &PgTxn<'_>,
-    //     nats: &NatsTxn,
-    //     write_tenancy: &WriteTenancy,
-    //     visibility: &Visibility,
-    //     history_actor: &HistoryActor,
-    //     func_id: FuncId,
-    //     func_binding_id: FuncBindingId,
-    //     context: ValidationResolverContext,
-    // ) -> ValidationResolverResult<Self> {
-    //     let row = txn
-    //         .query_one(
-    //             "SELECT object FROM validation_resolver_upsert_v1($1, $2, $3, $4, $5, $6, $7, $8, $9)",
-    //             &[
-    //                 write_tenancy,
-    //                 &visibility,
-    //                 &func_id,
-    //                 &func_binding_id,
-    //                 &context.prop_id(),
-    //                 &context.component_id(),
-    //                 &context.schema_id(),
-    //                 &context.schema_variant_id(),
-    //                 &context.system_id(),
-    //             ],
-    //         )
-    //         .await?;
-    //     let object = standard_model::finish_create_from_row(
-    //         txn,
-    //         nats,
-    //         &write_tenancy.into(),
-    //         visibility,
-    //         history_actor,
-    //         row,
-    //     )
-    //     .await?;
-    //     Ok(object)
-    // }
-
-    pub async fn list_values_for_component(
+    pub async fn enumerate_errors_for_component(
         ctx: &DalContext<'_, '_>,
         component_id: ComponentId,
         system_id: SystemId,
-    ) -> ValidationResolverResult<Vec<(Prop, FuncBindingReturnValue)>> {
+    ) -> ValidationResolverResult<Vec<(Prop, Vec<ValidationError>)>> {
         let rows = ctx
             .txns()
             .pg()
@@ -237,23 +198,35 @@ impl ValidationResolver {
         for row in rows.into_iter() {
             let json: serde_json::Value = row.try_get("object")?;
             let object: FuncBindingReturnValue = serde_json::from_value(json)?;
-            let prop_id: PropId = row.try_get("prop_id")?;
-            let prop = Prop::get_by_id(ctx, &prop_id)
-                .await?
-                .ok_or(ValidationResolverError::InvalidPropId)?;
-            result.push((prop, object));
+            if let Some(value_json) = object.value() {
+                let prop_id: PropId = row.try_get("prop_id")?;
+                let prop = Prop::get_by_id(ctx, &prop_id)
+                    .await?
+                    .ok_or(ValidationResolverError::InvalidPropId)?;
+
+                let prototype_id: ValidationPrototypeId = row.try_get("validation_prototype_id")?;
+                let prototype = ValidationPrototype::get_by_id(ctx, &prototype_id).await?;
+
+                let link = prototype.as_ref().and_then(|p| p.link());
+                let validation_errors = Vec::<ValidationError>::deserialize(value_json)?
+                    .into_iter()
+                    .map(|mut err| {
+                        err.link = link.map(|l| l.to_owned());
+                        err
+                    })
+                    .collect();
+                result.push((prop, validation_errors));
+            }
         }
         Ok(result)
     }
 
-    // FIXME(nick,jacob): this needs to be refactored to work for maps and arrays. Perhaps, the
-    // query will need to use a parent value, key and context for the refactor.
-    pub async fn find_values_for_prop_and_component(
+    pub async fn find_errors_for_prop_and_component(
         ctx: &DalContext<'_, '_>,
         prop_id: PropId,
         component_id: ComponentId,
         system_id: SystemId,
-    ) -> ValidationResolverResult<Vec<FuncBindingReturnValue>> {
+    ) -> ValidationResolverResult<Vec<ValidationError>> {
         let rows = ctx
             .txns()
             .pg()
@@ -268,8 +241,26 @@ impl ValidationResolver {
                 ],
             )
             .await?;
-        let object = objects_from_rows(rows)?;
-        Ok(object)
+
+        let mut result = Vec::new();
+        for row in rows.into_iter() {
+            let json: serde_json::Value = row.try_get("object")?;
+            let object: FuncBindingReturnValue = serde_json::from_value(json)?;
+            if let Some(value_json) = object.value() {
+                let prototype_id: ValidationPrototypeId = row.try_get("validation_prototype_id")?;
+                let prototype = ValidationPrototype::get_by_id(ctx, &prototype_id).await?;
+
+                let link = prototype.as_ref().and_then(|p| p.link());
+                let validation_errors = Vec::<ValidationError>::deserialize(value_json)?
+                    .into_iter()
+                    .map(|mut err| {
+                        err.link = link.map(|l| l.to_owned());
+                        err
+                    });
+                result.extend(validation_errors);
+            }
+        }
+        Ok(result)
     }
 
     pub async fn find_for_prototype(

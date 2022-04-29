@@ -37,6 +37,7 @@ pub async fn migrate(ctx: &DalContext<'_, '_>) -> SchemaResult<()> {
     kubernetes_deployment(ctx).await?;
     docker_hub_credential(ctx).await?;
     docker_image(ctx).await?;
+    bobao(ctx).await?;
 
     Ok(())
 }
@@ -440,35 +441,6 @@ async fn docker_image(ctx: &DalContext<'_, '_>) -> SchemaResult<()> {
         .set_parent_prop(ctx, root_prop.domain_prop_id, base_attribute_read_context)
         .await?;
 
-    let func_name = "si:validateStringEquals".to_string();
-    let mut funcs = Func::find_by_attr(ctx, "name", &func_name).await?;
-    let func = funcs.pop().ok_or(SchemaError::MissingFunc(func_name))?;
-    let mut validation_prototype_ctx = ValidationPrototypeContext::default();
-    validation_prototype_ctx.set_prop_id(*image_prop.id());
-    validation_prototype_ctx.set_schema_id(*schema.id());
-    validation_prototype_ctx.set_schema_variant_id(*variant.id());
-    ValidationPrototype::new(
-        ctx,
-        *func.id(),
-        serde_json::to_value(&FuncBackendValidateStringValueArgs::new(
-            None,
-            "gambiarra".to_owned(),
-        ))?,
-        validation_prototype_ctx.clone(),
-    )
-    .await?;
-
-    ValidationPrototype::new(
-        ctx,
-        *func.id(),
-        serde_json::to_value(&FuncBackendValidateStringValueArgs::new(
-            None,
-            "Tupi or not Tupi, that is the question".to_owned(), // https://en.wikipedia.org/wiki/Manifesto_Antrop%C3%B3fago
-        ))?,
-        validation_prototype_ctx,
-    )
-    .await?;
-
     let number_of_parents_prop = Prop::new(
         ctx,
         "Number of Parents",
@@ -606,6 +578,198 @@ async fn docker_image(ctx: &DalContext<'_, '_>) -> SchemaResult<()> {
         resource_sync_prototype_context,
     )
     .await?;
+
+    Ok(())
+}
+
+async fn bobao(ctx: &DalContext<'_, '_>) -> SchemaResult<()> {
+    let name = "bobão".to_string();
+    let mut schema = match create_schema(ctx, &name, &SchemaKind::Concrete).await? {
+        Some(schema) => schema,
+        None => return Ok(()),
+    };
+
+    let (variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
+    schema
+        .set_default_schema_variant_id(ctx, Some(*variant.id()))
+        .await?;
+    let mut attribute_context_builder = AttributeContext::builder();
+    attribute_context_builder
+        .set_schema_id(*schema.id())
+        .set_schema_variant_id(*variant.id());
+
+    let mut ui_menu = UiMenu::new(ctx, &(*schema.kind()).into()).await?;
+    ui_menu.set_name(ctx, Some("bobão")).await?;
+
+    let application_name = "application".to_string();
+    ui_menu.set_category(ctx, Some("docker".to_owned())).await?;
+    ui_menu.set_schema(ctx, schema.id()).await?;
+
+    let application_schema_results = Schema::find_by_attr(ctx, "name", &application_name).await?;
+    let application_schema = application_schema_results
+        .first()
+        .ok_or(SchemaError::NotFoundByName(application_name))?;
+    ui_menu
+        .add_root_schematic(ctx, application_schema.id())
+        .await?;
+
+    let base_attribute_read_context = AttributeReadContext {
+        schema_id: Some(*schema.id()),
+        schema_variant_id: Some(*variant.id()),
+        ..AttributeReadContext::default()
+    };
+
+    let func_name = "si:validateStringEquals".to_string();
+    let mut funcs = Func::find_by_attr(ctx, "name", &func_name).await?;
+    let func = funcs.pop().ok_or(SchemaError::MissingFunc(func_name))?;
+    let mut validation_prototype_ctx = ValidationPrototypeContext::default();
+    validation_prototype_ctx.set_schema_id(*schema.id());
+    validation_prototype_ctx.set_schema_variant_id(*variant.id());
+
+    let text_prop = Prop::new(ctx, "text", PropKind::String).await?;
+    text_prop
+        .set_parent_prop(ctx, root_prop.domain_prop_id, base_attribute_read_context)
+        .await?;
+    validation_prototype_ctx.set_prop_id(*text_prop.id());
+    let mut prototype = ValidationPrototype::new(
+        ctx,
+        *func.id(),
+        serde_json::to_value(&FuncBackendValidateStringValueArgs::new(
+            None,
+            "Tupi or not Tupi, that is the question".to_owned(), // https://en.wikipedia.org/wiki/Manifesto_Antrop%C3%B3fago
+        ))?,
+        validation_prototype_ctx.clone(),
+    )
+    .await?;
+    prototype
+        .set_link(
+            ctx,
+            Some("https://en.wikipedia.org/wiki/Manifesto_Antrop%C3%B3fago".to_owned()),
+        )
+        .await?;
+
+    let integer_prop = Prop::new(ctx, "integer", PropKind::Integer).await?;
+    integer_prop
+        .set_parent_prop(ctx, root_prop.domain_prop_id, base_attribute_read_context)
+        .await?;
+
+    let boolean_prop = Prop::new(ctx, "boolean", PropKind::Boolean).await?;
+    boolean_prop
+        .set_parent_prop(ctx, root_prop.domain_prop_id, base_attribute_read_context)
+        .await?;
+
+    let object_prop = Prop::new(ctx, "object", PropKind::Object).await?;
+    object_prop
+        .set_parent_prop(ctx, root_prop.domain_prop_id, base_attribute_read_context)
+        .await?;
+    validation_prototype_ctx.set_prop_id(*integer_prop.id());
+    let mut prototype = ValidationPrototype::new(
+        ctx,
+        *func.id(),
+        serde_json::to_value(&FuncBackendValidateStringValueArgs::new(
+            None,
+            "My office is at the beach".to_owned(),
+        ))?,
+        validation_prototype_ctx.clone(),
+    )
+    .await?;
+    prototype
+        .set_link(
+            ctx,
+            Some("https://www.youtube.com/watch?v=JiVsAnIgBIs".to_owned()),
+        )
+        .await?;
+
+    let child_prop = Prop::new(ctx, "child", PropKind::String).await?;
+    child_prop
+        .set_parent_prop(ctx, *object_prop.id(), base_attribute_read_context)
+        .await?;
+
+    let map_prop = Prop::new(ctx, "map", PropKind::Object).await?;
+    map_prop
+        .set_parent_prop(ctx, root_prop.domain_prop_id, base_attribute_read_context)
+        .await?;
+    validation_prototype_ctx.set_prop_id(*map_prop.id());
+    let mut prototype = ValidationPrototype::new(
+        ctx,
+        *func.id(),
+        serde_json::to_value(&FuncBackendValidateStringValueArgs::new(
+            None,
+            "I'm just a latin american guy\nWith no money in the bank, no important relatives\nComing from the country".to_owned(),
+        ))?,
+        validation_prototype_ctx.clone(),
+    )
+    .await?;
+    prototype
+        .set_link(
+            ctx,
+            Some("https://www.youtube.com/watch?v=8VcZURSMetg".to_owned()),
+        )
+        .await?;
+
+    let array_prop = Prop::new(ctx, "array", PropKind::Object).await?;
+    array_prop
+        .set_parent_prop(ctx, root_prop.domain_prop_id, base_attribute_read_context)
+        .await?;
+    validation_prototype_ctx.set_prop_id(*array_prop.id());
+    let mut prototype = ValidationPrototype::new(
+        ctx,
+        *func.id(),
+        serde_json::to_value(&FuncBackendValidateStringValueArgs::new(
+            None,
+            "I'm brazilian, of median stature\nI like so-and-so but the other one is who wants me"
+                .to_owned(),
+        ))?,
+        validation_prototype_ctx,
+    )
+    .await?;
+    prototype
+        .set_link(
+            ctx,
+            Some("https://www.youtube.com/watch?v=Vz73zZriafQ".to_owned()),
+        )
+        .await?;
+
+    let mut secret_prop = Prop::new(ctx, "secret", PropKind::Integer).await?;
+    secret_prop
+        .set_parent_prop(ctx, root_prop.domain_prop_id, base_attribute_read_context)
+        .await?;
+    secret_prop
+        .set_widget_kind(ctx, WidgetKind::SecretSelect)
+        .await?;
+
+    // Note: This is not right; each schema needs its own socket types.
+    //       Also, they should clearly inherit from the core schema? Something
+    //       for later.
+    let input_socket = Socket::new(
+        ctx,
+        "input",
+        &SocketEdgeKind::Configures,
+        &SocketArity::Many,
+        &SchematicKind::Component,
+    )
+    .await?;
+    variant.add_socket(ctx, input_socket.id()).await?;
+
+    let output_socket = Socket::new(
+        ctx,
+        "output",
+        &SocketEdgeKind::Output,
+        &SocketArity::Many,
+        &SchematicKind::Component,
+    )
+    .await?;
+    variant.add_socket(ctx, output_socket.id()).await?;
+
+    let includes_socket = Socket::new(
+        ctx,
+        "includes",
+        &SocketEdgeKind::Includes,
+        &SocketArity::Many,
+        &SchematicKind::Component,
+    )
+    .await?;
+    variant.add_socket(ctx, includes_socket.id()).await?;
 
     Ok(())
 }

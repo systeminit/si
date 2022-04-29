@@ -13,6 +13,7 @@ CREATE TABLE validation_prototypes
     updated_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     func_id                     bigint                   NOT NULL,
     args                        jsonb                    NOT NULL,
+    link                        text,
     prop_id                     bigint                   NOT NULL,
     schema_id                   bigint                   NOT NULL,
     schema_variant_id           bigint                   NOT NULL,

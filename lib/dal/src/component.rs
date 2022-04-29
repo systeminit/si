@@ -17,7 +17,7 @@ use crate::edit_field::{
     widget::prelude::*, EditField, EditFieldAble, EditFieldBaggage, EditFieldError,
     EditFieldObjectKind,
 };
-use crate::func::backend::validation::{FuncBackendValidateStringValueArgs, ValidationError};
+use crate::func::backend::validation::FuncBackendValidateStringValueArgs;
 use crate::func::backend::{
     js_code_generation::FuncBackendJsCodeGenerationArgs,
     js_qualification::FuncBackendJsQualificationArgs, js_resource::FuncBackendJsResourceSyncArgs,
@@ -427,7 +427,7 @@ impl Component {
             .await?
             .ok_or_else(|| ComponentError::MissingProp(attribute_context.prop_id()))?;
         component
-            .check_validations(ctx, &prop, &updated_value, false)
+            .check_validations(ctx, &prop, &updated_value)
             .await?;
 
         component
@@ -440,7 +440,6 @@ impl Component {
         ctx: &DalContext<'_, '_>,
         prop: &Prop,
         value: &Option<serde_json::Value>,
-        created: bool,
     ) -> ComponentResult<()> {
         let validators =
             ValidationPrototype::find_for_prop(ctx, *prop.id(), UNSET_ID_VALUE.into()).await?;
@@ -449,7 +448,7 @@ impl Component {
             let func = Func::get_by_id(ctx, &validator.func_id())
                 .await?
                 .ok_or_else(|| ComponentError::MissingFunc(validator.func_id().to_string()))?;
-            let func_binding = match func.backend_kind() {
+            let (func_binding, created) = match func.backend_kind() {
                 FuncBackendKind::ValidateStringValue => {
                     let mut args =
                         FuncBackendValidateStringValueArgs::deserialize(validator.args())?;
@@ -480,7 +479,7 @@ impl Component {
                     if binding_created {
                         func_binding.execute(ctx).await?;
                     }
-                    func_binding
+                    (func_binding, binding_created)
                 }
                 kind => unimplemented!("Validator Backend not supported yet: {}", kind),
             };
@@ -890,18 +889,9 @@ impl Component {
         component_id: ComponentId,
         system_id: SystemId,
     ) -> ComponentResult<QualificationView> {
-        let validation_field_values =
-            ValidationResolver::list_values_for_component(ctx, component_id, system_id).await?;
-
-        let mut validation_errors: Vec<(Prop, Vec<ValidationError>)> = Vec::new();
-        for (prop, field_value) in validation_field_values.into_iter() {
-            if let Some(value_json) = field_value.value() {
-                // This clone shouldn't be necessary, but we have no way to get to the owned value -- Adam
-                let internal_validation_errors: Vec<ValidationError> =
-                    serde_json::from_value(value_json.clone())?;
-                validation_errors.push((prop, internal_validation_errors));
-            }
-        }
+        let validation_errors =
+            ValidationResolver::enumerate_errors_for_component(ctx, component_id, system_id)
+                .await?;
         let qualification_view = QualificationView::new_for_validation_errors(validation_errors);
         Ok(qualification_view)
     }
@@ -1683,27 +1673,25 @@ async fn edit_field_for_attribute_value(
         change_set_func_binding_return_value.as_ref(),
     )?;
 
-    let validation_errors = Vec::new();
+    let mut validation_errors = Vec::new();
+    let component_id = attribute_read_context.component_id;
+    let system_id = attribute_read_context
+        .system_id
+        .unwrap_or_else(|| UNSET_ID_VALUE.into());
 
-    // FIXME(nick): change validation resolver query to use attribute values instead.
-    //
-    // let validation_field_values = ValidationResolver::find_values_for_prop_and_component(
-    //     txn,
-    //     &tenancy.clone_into_read_tenancy(txn).await?,
-    //     visibility,
-    //     *prop.id(),
-    //     *component.id(),
-    //     system_id,
-    // )
-    // .await?;
-    // for field_value in validation_field_values.into_iter() {
-    //     if let Some(value_json) = field_value.value() {
-    //         // This clone shouldn't be necessary, but we have no way to get to the owned value -- Adam
-    //         let mut validation_error: Vec<ValidationError> =
-    //             serde_json::from_value(value_json.clone())?;
-    //         validation_errors.append(&mut validation_error);
-    //     }
-    // }
+    // Ideally component id should always be set here, but let's future proof this
+    // as it's more of a product decision than a technical one
+    // Technically if we wanted a ValidationResolver and its data could live outside of a component
+    // But there is no need to implement a new query to handle that for now
+    if let Some(component_id) = component_id {
+        validation_errors = ValidationResolver::find_errors_for_prop_and_component(
+            ctx,
+            *prop.id(),
+            component_id,
+            system_id,
+        )
+        .await?;
+    }
 
     let current_edit_field_path = match edit_field_path {
         None => vec!["properties".to_owned()],
