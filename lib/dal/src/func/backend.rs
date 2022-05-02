@@ -7,6 +7,7 @@ use crate::{edit_field::ToSelectWidget, label_list::ToLabelList, PropKind};
 
 pub mod array;
 pub mod boolean;
+pub mod identity;
 pub mod integer;
 pub mod js_attribute;
 pub mod js_code_generation;
@@ -63,6 +64,8 @@ pub type FuncBackendResult<T> = Result<T, FuncBackendError>;
 pub enum FuncBackendKind {
     Array,
     Boolean,
+    /// Mathematical identity of the [`Func`](crate::Func)'s arguments.
+    Identity,
     Integer,
     JsQualification,
     JsResourceSync,
@@ -97,6 +100,8 @@ pub enum FuncBackendKind {
 pub enum FuncBackendResponseType {
     Array,
     Boolean,
+    /// Mathematical identity of the [`Func`](crate::Func)'s arguments.
+    Identity,
     Integer,
     Map,
     PropObject,

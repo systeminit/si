@@ -9,6 +9,8 @@ pub async fn migrate(ctx: &DalContext<'_, '_>) -> FuncResult<()> {
     si_set_map(ctx).await?;
     si_set_prop_object(ctx).await?;
     si_set_string(ctx).await?;
+
+    si_identity(ctx).await?;
     si_unset(ctx).await?;
 
     si_validate_string_equals(ctx).await?;
@@ -151,6 +153,21 @@ async fn si_set_string(ctx: &DalContext<'_, '_>) -> FuncResult<()> {
             "si:setString",
             FuncBackendKind::String,
             FuncBackendResponseType::String,
+        )
+        .await
+        .expect("cannot create func");
+    }
+    Ok(())
+}
+
+async fn si_identity(ctx: &DalContext<'_, '_>) -> FuncResult<()> {
+    let existing_func = Func::find_by_attr(ctx, "name", &"si:identity".to_string()).await?;
+    if existing_func.is_empty() {
+        Func::new(
+            ctx,
+            "si:identity",
+            FuncBackendKind::Identity,
+            FuncBackendResponseType::Identity,
         )
         .await
         .expect("cannot create func");
