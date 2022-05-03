@@ -115,6 +115,8 @@ pub use organization::{
     Organization, OrganizationError, OrganizationId, OrganizationPk, OrganizationResult,
 };
 pub use prop::{Prop, PropError, PropId, PropKind, PropPk, PropResult};
+pub use provider::external::{ExternalProvider, ExternalProviderId};
+pub use provider::internal::{InternalProvider, InternalProviderId};
 pub use qualification_check::{
     QualificationCheck, QualificationCheckError, QualificationCheckId, QualificationCheckPk,
 };

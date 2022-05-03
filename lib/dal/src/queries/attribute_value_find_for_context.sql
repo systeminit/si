@@ -6,6 +6,8 @@ SELECT DISTINCT ON (attribute_value_belongs_to_attribute_value.belongs_to_id, at
                    attribute_values.visibility_change_set_pk,
                    attribute_values.visibility_edit_session_pk,
                    attribute_values.visibility_deleted,
+                   attribute_values.attribute_context_internal_provider_id,
+                   attribute_values.attribute_context_external_provider_id,
                    attribute_values.attribute_context_schema_id,
                    attribute_values.attribute_context_schema_variant_id,
                    attribute_values.attribute_context_component_id,
@@ -26,14 +28,21 @@ LEFT JOIN attribute_value_belongs_to_attribute_value ON
 WHERE in_tenancy_v1($1, attribute_values.tenancy_universal, attribute_values.tenancy_billing_account_ids, attribute_values.tenancy_organization_ids,
                         attribute_values.tenancy_workspace_ids)
     AND is_visible_v1($2, attribute_values.visibility_change_set_pk, attribute_values.visibility_edit_session_pk, attribute_values.visibility_deleted)
-    AND in_attribute_context_v1($3, attribute_values.attribute_context_prop_id, attribute_values.attribute_context_schema_id, attribute_values.attribute_context_schema_variant_id,
-                                    attribute_values.attribute_context_component_id, attribute_values.attribute_context_system_id)
+    AND in_attribute_context_v1($3, attribute_values.attribute_context_prop_id,
+                                    attribute_values.attribute_context_internal_provider_id,
+                                    attribute_values.attribute_context_external_provider_id,
+                                    attribute_values.attribute_context_schema_id,
+                                    attribute_values.attribute_context_schema_variant_id,
+                                    attribute_values.attribute_context_component_id,
+                                    attribute_values.attribute_context_system_id)
 ORDER BY belongs_to_id,
          attribute_context_prop_id,
          key,
          visibility_change_set_pk DESC,
          visibility_edit_session_pk DESC,
          visibility_deleted DESC,
+         attribute_context_internal_provider_id DESC,
+         attribute_context_external_provider_id DESC,
          attribute_context_schema_id DESC,
          attribute_context_schema_variant_id DESC,
          attribute_context_component_id DESC,

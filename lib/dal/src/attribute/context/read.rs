@@ -1,11 +1,17 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{AttributeContext, ComponentId, PropId, SchemaId, SchemaVariantId, SystemId};
+use crate::{
+    AttributeContext, ComponentId, ExternalProviderId, InternalProviderId, PropId, SchemaId,
+    SchemaVariantId, SystemId,
+};
 
 pub const UNSET_ID_VALUE: i64 = -1;
 
-/// An `AttributeReadContext` allows for saying "do not use this filed
+/// An `AttributeReadContext` allows for saying "do not use this field
 /// to filter results" by providing [`None`] for the field's value.
+/// It also allows for saying "explicitly filter out results for that
+/// have this field set" by providing [`UNSET_ID_VALUE`] for the field's
+/// value.
 ///
 /// For example:
 ///
@@ -14,6 +20,8 @@ pub const UNSET_ID_VALUE: i64 = -1;
 /// # const UNSET_ID_VALUE: i64 = -1;
 /// let read_context = AttributeReadContext {
 ///     prop_id: None,
+///     internal_provider_id: Some(UNSET_ID_VALUE.into()),
+///     external_provider_id: Some(UNSET_ID_VALUE.into()),
 ///     schema_id: Some(1.into()),
 ///     schema_variant_id: Some(1.into()),
 ///     component_id: Some(1.into()),
@@ -29,6 +37,10 @@ pub const UNSET_ID_VALUE: i64 = -1;
 pub struct AttributeReadContext {
     #[serde(rename = "attribute_context_prop_id")]
     pub prop_id: Option<PropId>,
+    #[serde(rename = "attribute_context_internal_provider_id")]
+    pub internal_provider_id: Option<InternalProviderId>,
+    #[serde(rename = "attribute_context_external_provider_id")]
+    pub external_provider_id: Option<ExternalProviderId>,
     #[serde(rename = "attribute_context_schema_id")]
     pub schema_id: Option<SchemaId>,
     #[serde(rename = "attribute_context_schema_variant_id")]
@@ -43,6 +55,8 @@ impl Default for AttributeReadContext {
     fn default() -> Self {
         Self {
             prop_id: Some(UNSET_ID_VALUE.into()),
+            internal_provider_id: Some(UNSET_ID_VALUE.into()),
+            external_provider_id: Some(UNSET_ID_VALUE.into()),
             schema_id: Some(UNSET_ID_VALUE.into()),
             schema_variant_id: Some(UNSET_ID_VALUE.into()),
             component_id: Some(UNSET_ID_VALUE.into()),
@@ -55,6 +69,8 @@ impl From<AttributeContext> for AttributeReadContext {
     fn from(from_context: AttributeContext) -> Self {
         Self {
             prop_id: Some(from_context.prop_id()),
+            internal_provider_id: Some(from_context.internal_provider_id()),
+            external_provider_id: Some(from_context.external_provider_id()),
             schema_id: Some(from_context.schema_id()),
             schema_variant_id: Some(from_context.schema_variant_id()),
             component_id: Some(from_context.component_id()),
@@ -70,6 +86,22 @@ impl AttributeReadContext {
 
     pub fn has_prop_id(&self) -> bool {
         self.prop_id.is_some()
+    }
+
+    pub fn internal_provider_id(&self) -> Option<InternalProviderId> {
+        self.internal_provider_id
+    }
+
+    pub fn has_internal_provider_id(&self) -> bool {
+        self.internal_provider_id.is_some()
+    }
+
+    pub fn external_provider_id(&self) -> Option<ExternalProviderId> {
+        self.external_provider_id
+    }
+
+    pub fn has_external_provider_id(&self) -> bool {
+        self.external_provider_id.is_some()
     }
 
     pub fn schema_id(&self) -> Option<SchemaId> {
@@ -107,6 +139,8 @@ impl AttributeReadContext {
     pub fn any() -> Self {
         Self {
             prop_id: None,
+            internal_provider_id: None,
+            external_provider_id: None,
             schema_id: None,
             schema_variant_id: None,
             component_id: None,
