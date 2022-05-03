@@ -38,10 +38,11 @@ impl_standard_model! {
     history_event_message_name: "Internal Provider"
 }
 
-/// This provider can only provide data within its own [`SchemaVariant`]. If the "internal_consumer"
-/// field is set to "true", this provider can only consume data from within its own
-/// [`SchemaVariant`]. If the "internal_consumer" field is set to "false", this provider can only
-/// consume data from other [`SchemaVariant`]s.
+/// This provider can only provide data within its own [`SchemaVariant`](crate::SchemaVariant). If
+/// the "internal_consumer" field is set to "true", this provider can only consume data from within
+/// its own [`SchemaVariant`](crate::SchemaVariant). If the "internal_consumer" field is set to
+/// "false", this provider can only consume data from other
+/// [`SchemaVariants`](crate::SchemaVariant).
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct InternalProvider {
     pk: InternalProviderPk,
@@ -53,17 +54,17 @@ pub struct InternalProvider {
     #[serde(flatten)]
     timestamp: Timestamp,
 
-    /// Indicates which [`Prop`] this provider belongs to.
+    /// Indicates which [`Prop`](crate::Prop) this provider belongs to.
     prop_id: PropId,
-    /// Indicates which [`Schema`] this provider belongs to.
+    /// Indicates which [`Schema`](crate::Schema) this provider belongs to.
     schema_id: SchemaId,
-    /// Indicates which [`SchemaVariant`] this provider belongs to.
+    /// Indicates which [`SchemaVariant`](crate::SchemaVariant) this provider belongs to.
     schema_variant_id: SchemaVariantId,
     /// Name for [`Self`] that can be used for identification.
     name: Option<String>,
     /// If this field is set to "true", the provider can only consume data from within its own
-    /// [`SchemaVariant`]. If this field field is set to "false", the provider can only consume data
-    /// from other [`SchemaVariant`]s.
+    /// [`SchemaVariant`](crate::SchemaVariant). If this field field is set to "false", the provider
+    /// can only consume data from other [`SchemaVariants`](crate::SchemaVariant).
     internal_consumer: bool,
     /// Definition of the inbound type (e.g. "JSONSchema" or "Number").
     inbound_type_definition: Option<String>,
@@ -122,7 +123,7 @@ impl InternalProvider {
         InternalProviderResult
     );
 
-    /// Find all internal providers for a given [`SchemaVariant`].
+    /// Find all internal providers for a given [`SchemaVariant`](crate::SchemaVariant).
     #[tracing::instrument(skip(ctx))]
     pub async fn list_for_schema_variant(
         ctx: &DalContext<'_, '_>,

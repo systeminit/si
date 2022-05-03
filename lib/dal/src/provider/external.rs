@@ -38,8 +38,8 @@ impl_standard_model! {
     history_event_message_name: "External Provider"
 }
 
-/// This provider can only provide data to external [`SchemaVariant`]s. It can only consume data
-/// within its own [`SchemaVariant`].
+/// This provider can only provide data to external [`SchemaVariants`](crate::SchemaVariant). It can
+/// only consume data within its own [`SchemaVariant`](crate::SchemaVariant).
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct ExternalProvider {
     pk: ExternalProviderPk,
@@ -51,19 +51,19 @@ pub struct ExternalProvider {
     #[serde(flatten)]
     timestamp: Timestamp,
 
-    /// Indicates which [`Prop`] this provider belongs to.
+    /// Indicates which [`Prop`](crate::Prop) this provider belongs to.
     prop_id: PropId,
-    /// Indicates which [`Schema`] this provider belongs to.
+    /// Indicates which [`Schema`](crate::Schema) this provider belongs to.
     schema_id: SchemaId,
-    /// Indicates which [`SchemaVariant`] this provider belongs to.
+    /// Indicates which [`SchemaVariant`](crate::SchemaVariant) this provider belongs to.
     schema_variant_id: SchemaVariantId,
     /// Name for [`Self`] that can be used for identification.
     name: Option<String>,
     /// Definition of the data type (e.g. "JSONSchema" or "Number").
     type_definition: Option<String>,
-    /// The [`AttributePrototype`] of the transformation to perform for the socket.
-    /// It includes the transformation function itself and where to get the arguments for the
-    /// transformation function.
+    /// The [`AttributePrototype`](crate::AttributePrototype) of the transformation to perform for
+    /// the provider. It includes the transformation function itself and where to get the arguments
+    /// for the transformation function.
     attribute_prototype_id: AttributePrototypeId,
 }
 
@@ -107,7 +107,7 @@ impl ExternalProvider {
     standard_model_accessor!(type_definition, Option<String>, ExternalProviderResult);
     standard_model_accessor_ro!(attribute_prototype_id, AttributePrototypeId);
 
-    /// Find all external providers for a given [`SchemaVariant`].
+    /// Find all external providers for a given [`SchemaVariant`](crate::SchemaVariant).
     #[tracing::instrument(skip(ctx))]
     pub async fn list_for_schema_variant(
         ctx: &DalContext<'_, '_>,

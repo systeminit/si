@@ -19,7 +19,8 @@ CREATE TABLE attribute_prototypes
     created_at                             timestamp with time zone NOT NULL DEFAULT NOW(),
     updated_at                             timestamp with time zone NOT NULL DEFAULT NOW(),
     func_id                                bigint                   NOT NULL,
-    key                                    text
+    key                                    text,
+    attribute_prototype_argument_ids       bigint[]                 NOT NULL
 );
 SELECT standard_model_table_constraints_v1('attribute_prototypes');
 
@@ -32,6 +33,7 @@ CREATE OR REPLACE FUNCTION attribute_prototype_create_v1(
     this_attribute_context jsonb,
     this_func_id bigint,
     this_key text,
+    this_attribute_prototype_argument_ids bigint[],
     OUT object json) AS
 $$
 DECLARE
@@ -59,7 +61,8 @@ BEGIN
                                      attribute_context_component_id,
                                      attribute_context_system_id,
                                      func_id,
-                                     key)
+                                     key,
+                                     attribute_prototype_argument_ids)
     VALUES (this_tenancy_record.tenancy_universal,
             this_tenancy_record.tenancy_billing_account_ids,
             this_tenancy_record.tenancy_organization_ids,
@@ -75,7 +78,8 @@ BEGIN
             this_attribute_context_record.attribute_context_component_id,
             this_attribute_context_record.attribute_context_system_id,
             this_func_id,
-            this_key)
+            this_key,
+            this_attribute_prototype_argument_ids)
     RETURNING * INTO this_new_row;
 
     object := row_to_json(this_new_row);

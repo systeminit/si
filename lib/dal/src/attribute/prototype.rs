@@ -1,8 +1,6 @@
 //! An [`AttributePrototype`] represents, for a specific attribute:
 //!
-//!   * Which context the following applies to (combination of [`PropId`](crate::prop::PropId),
-//!     [`SchemaId`](crate::SchemaId), [`SchemaVariantId`](crate::SchemaVariantId),
-//!     [`ComponentId`](crate::ComponentId), [`SystemId`](crate::SystemId)).
+//!   * Which context the following applies to ([`AttributeContext`](crate::AttributeContext))
 //!   * The function that should be run to find its value.
 //!   * In the case that the [`Prop`](crate::Prop) is the child of an
 //!     [`Array`](crate::prop::PropKind::Array): Which index in the `Array` the value
@@ -10,12 +8,14 @@
 //!   * In the case that the [`Prop`](crate::Prop) is the child of a
 //!     [`Map`](crate::prop::PropKind::Map): Which key of the `Map` the value is
 //!     for.
+
 use async_recursion::async_recursion;
 use serde::{Deserialize, Serialize};
 use si_data::{NatsError, PgError};
 use telemetry::prelude::*;
 use thiserror::Error;
 
+use crate::attribute::prototype::argument::AttributePrototypeArgumentId;
 use crate::func::binding_return_value::FuncBindingReturnValueError;
 use crate::{
     attribute::{
@@ -27,10 +27,12 @@ use crate::{
         binding::{FuncBindingError, FuncBindingId},
         binding_return_value::FuncBindingReturnValueId,
     },
-    impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_has_many,
-    DalContext, HistoryEventError, PropError, PropKind, ReadTenancy, ReadTenancyError,
-    StandardModel, StandardModelError, Timestamp, Visibility, WriteTenancy,
+    impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_accessor_ro,
+    standard_model_has_many, DalContext, HistoryEventError, PropError, PropKind, ReadTenancy,
+    ReadTenancyError, StandardModel, StandardModelError, Timestamp, Visibility, WriteTenancy,
 };
+
+pub mod argument;
 
 const LIST_FOR_CONTEXT: &str = include_str!("../queries/attribute_prototype_list_for_context.sql");
 const FIND_WITH_PARENT_VALUE_AND_KEY_FOR_CONTEXT: &str =
@@ -100,13 +102,33 @@ pub struct AttributePrototype {
     tenancy: WriteTenancy,
     #[serde(flatten)]
     visibility: Visibility,
-    func_id: FuncId,
-    pub key: Option<String>,
-    #[serde(flatten)]
-    pub context: AttributeContext,
     #[serde(flatten)]
     timestamp: Timestamp,
+
+    /// The [`AttributeContext`] corresponding to the prototype.
+    #[serde(flatten)]
+    pub context: AttributeContext,
+    /// The [`Func`](crate::Func) corresponding to the prototype.
+    func_id: FuncId,
+    /// An optional key used for tracking parentage.
+    pub key: Option<String>,
+    /// This field is used to track dynamic function arguments (found via [`InternalProviders`](crate::InternalProvider)
+    /// to generate a [`FuncBinding`](crate::func::binding::FuncBinding). The arguments are stored
+    /// within [`AttributePrototypeArguments`](crate::AttributePrototypeArgument).
+    attribute_prototype_argument_ids: Vec<AttributePrototypeArgumentId>,
 }
+
+// TODO(nick): breakdown of what to do with the argument ids...
+// Once you get the InternalProviderId, you will use it to build an AttributeContext.
+// You will use that context to retrieve the AttributeValue we need to popular the arguments
+// of the FuncBinding that we will be "generating".
+//
+// Example scenario: Docker Image /root/si/name --> Docker Image /root/domain/image
+// We use "si:identity" in this scenario. Upon first insertion, the key will be "identity" and
+// the value will be the _source_ InternalProviderId. We will directly attach this to the
+// AttributePrototype for the "/root/domain/image" Prop in the SchemaVariant-specific
+// AttributeContext. The InternalProviderId will correspond to the InternalProvider (with
+// "internal_consumer" set to "true") that corresponds to the "/root/si/name" Prop.
 
 impl_standard_model! {
     model: AttributePrototype,
@@ -128,18 +150,25 @@ impl AttributePrototype {
         context: AttributeContext,
         key: Option<String>,
         parent_attribute_value_id: Option<AttributeValueId>,
+        attribute_prototype_argument_ids: Option<Vec<AttributePrototypeArgumentId>>,
     ) -> AttributePrototypeResult<Self> {
+        let arguments: Vec<AttributePrototypeArgumentId> = match attribute_prototype_argument_ids {
+            Some(arguments) => arguments,
+            None => vec![],
+        };
+
         let row = ctx
             .txns()
             .pg()
             .query_one(
-                "SELECT object FROM attribute_prototype_create_v1($1, $2, $3, $4, $5)",
+                "SELECT object FROM attribute_prototype_create_v1($1, $2, $3, $4, $5, $6)",
                 &[
                     ctx.write_tenancy(),
                     ctx.visibility(),
                     &context,
                     &func_id,
                     &key,
+                    &arguments,
                 ],
             )
             .await?;
@@ -192,19 +221,26 @@ impl AttributePrototype {
         context: AttributeContext,
         key: Option<String>,
         parent_attribute_value_id: Option<AttributeValueId>,
+        attribute_prototype_argument_ids: Option<Vec<AttributePrototypeArgumentId>>,
         attribute_value_id: AttributeValueId,
     ) -> AttributePrototypeResult<Self> {
+        let arguments: Vec<AttributePrototypeArgumentId> = match attribute_prototype_argument_ids {
+            Some(arguments) => arguments,
+            None => vec![],
+        };
+
         let row = ctx
             .txns()
             .pg()
             .query_one(
-                "SELECT object FROM attribute_prototype_create_v1($1, $2, $3, $4, $5)",
+                "SELECT object FROM attribute_prototype_create_v1($1, $2, $3, $4, $5, $6)",
                 &[
                     ctx.write_tenancy(),
                     ctx.visibility(),
                     &context,
                     &func_id,
                     &key,
+                    &arguments,
                 ],
             )
             .await?;
@@ -228,7 +264,10 @@ impl AttributePrototype {
 
     standard_model_accessor!(func_id, Pk(FuncId), AttributePrototypeResult);
     standard_model_accessor!(key, Option<String>, AttributePrototypeResult);
-
+    standard_model_accessor_ro!(
+        attribute_prototype_argument_ids,
+        Vec<AttributePrototypeArgumentId>
+    );
     standard_model_has_many!(
         lookup_fn: attribute_values,
         table: "attribute_value_belongs_to_attribute_prototype",
@@ -238,9 +277,10 @@ impl AttributePrototype {
     );
 
     /// Deletes the [`AttributePrototype`] corresponding to a provided ID. Before deletion occurs,
-    /// its corresponding [`AttributeValue`], all of its child values (and their children,
-    /// recursively) and those children's prototypes are deleted. Any value or prototype that could
-    /// not be found or does not exist is assumed to have already been deleted or never existed.
+    /// its corresponding [`AttributeValue`](crate::AttributeValue), all of its child values
+    /// (and their children, recursively) and those children's prototypes are deleted. Any value or
+    /// prototype that could not be found or does not exist is assumed to have already been deleted
+    /// or never existed.
     ///
     /// CAUTION: this should be used rather than [`StandardModel::delete()`] when deleting an
     /// [`AttributePrototype`].
@@ -423,6 +463,7 @@ impl AttributePrototype {
         func_binding_id: FuncBindingId,
         func_binding_return_value_id: FuncBindingReturnValueId,
         parent_attribute_value_id: Option<AttributeValueId>,
+        attribute_prototype_argument_ids: Option<Vec<AttributePrototypeArgumentId>>,
         existing_attribute_value_id: Option<AttributeValueId>,
     ) -> AttributePrototypeResult<AttributePrototypeId> {
         let given_attribute_prototype = Self::get_by_id(ctx, &attribute_prototype_id)
@@ -443,6 +484,7 @@ impl AttributePrototype {
                 context,
                 given_attribute_prototype.key().map(|k| k.to_string()),
                 parent_attribute_value_id,
+                attribute_prototype_argument_ids,
                 attribute_value_id,
             )
             .await?;
@@ -469,6 +511,7 @@ impl AttributePrototype {
                 context,
                 given_attribute_prototype.key().map(|k| k.to_string()),
                 parent_attribute_value_id,
+                attribute_prototype_argument_ids,
             )
             .await?
         };

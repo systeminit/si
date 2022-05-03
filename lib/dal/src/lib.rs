@@ -65,6 +65,10 @@ pub use attribute::{
     context::{
         AttributeContext, AttributeContextBuilderError, AttributeContextError, AttributeReadContext,
     },
+    prototype::argument::{
+        AttributePrototypeArgument, AttributePrototypeArgumentError, AttributePrototypeArgumentId,
+        AttributePrototypeArgumentResult,
+    },
     prototype::{
         AttributePrototype, AttributePrototypeError, AttributePrototypeId, AttributePrototypeResult,
     },
