@@ -34,11 +34,7 @@ import { useMachine } from "@xstate/vue";
 import { componentsMetadata$ } from "@/organisims/SchematicViewer/data/observable";
 import { ComponentMetadata } from "@/service/component/get_components_metadata";
 
-import {
-  EditorContext,
-  SchematicKind,
-  nodeKindFromSchematicKind,
-} from "@/api/sdf/dal/schematic";
+import { EditorContext, SchematicKind } from "@/api/sdf/dal/schematic";
 import { SceneManager } from "./Viewer/scene";
 import { SelectionManager } from "./Viewer/interaction/selection";
 import { InteractionManager } from "./Viewer/interaction";
@@ -429,63 +425,12 @@ export default defineComponent({
         this.dataManager &&
         selectionManager
       ) {
-        // Deep cloning, very hackish, but bypassess all proxies
-        const filteredSchematic: MODEL.Schematic = {
-          nodes: schematic.nodes,
-          connections: schematic.connections,
-          lastUpdated: schematic.lastUpdated,
-          checksum: schematic.checksum,
-        };
         const parentDeploymentNodeId =
           (this.schematicKind !== SchematicKind.Deployment
             ? this.dataManager?.selectedDeploymentNodeId
             : null) ?? null;
-
-        // We want to ensure the nodes from the other panel are ignored
-        // The deployment node also appears in the component panel
-        // so we have to ignore it on the deployment panel
-        filteredSchematic.nodes = filteredSchematic.nodes.filter(
-          (node) =>
-            node.kind.kind === nodeKindFromSchematicKind(this.schematicKind) ||
-            node.id === parentDeploymentNodeId,
-        );
-
-        // Find component nodes connected to selected deployment node
-        const nodeIds = filteredSchematic.connections
-          .filter((conn) => conn.destination.nodeId === parentDeploymentNodeId)
-          .map((conn) => conn.source.nodeId);
-
-        if (parentDeploymentNodeId) {
-          nodeIds.push(parentDeploymentNodeId);
-        }
-
-        switch (this.schematicKind) {
-          case SchematicKind.Deployment:
-            break;
-          case SchematicKind.Component:
-            // Filters component nodes that are children of selected deployment node
-            filteredSchematic.nodes = filteredSchematic.nodes.filter((node) =>
-              nodeIds.includes(node.id),
-            );
-            break;
-        }
-
-        // We need to remove connections from nodes that don't appear in our panel
-        filteredSchematic.connections = filteredSchematic.connections.filter(
-          (conn) => {
-            return (
-              filteredSchematic.nodes.find(
-                (node) => node.id === conn.destination.nodeId,
-              ) &&
-              filteredSchematic.nodes.find(
-                (node) => node.id === conn.source.nodeId,
-              )
-            );
-          },
-        );
-
         this.sceneManager.loadSceneData(
-          filteredSchematic,
+          schematic,
           selectionManager as SelectionManager,
           this.schematicKind,
           parentDeploymentNodeId,

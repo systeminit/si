@@ -46,7 +46,7 @@
         :add-to="
           schematicKind === SchematicKind.Deployment
             ? `application`
-            : selectedDeploymentNode?.label.title ?? ``
+            : selectedDeploymentNode?.label?.title
         "
         :filter="addMenuFilters"
         :disabled="!addMenuEnabled"
@@ -60,6 +60,7 @@
         :deployment-node-pin="selectedDeploymentNode?.id"
         :is-component-panel-pinned="isPinned"
         :schematic-data="schematicData ?? null"
+        :adding-node="addingNode"
       />
     </template>
   </Panel>
@@ -78,6 +79,7 @@ import { GlobalErrorService } from "@/service/global_error";
 
 import { schematicData$ } from "./SchematicViewer/Viewer/scene/observable";
 import { Schematic } from "./SchematicViewer/model";
+import { visibility$ } from "@/observable/visibility";
 import {
   SchematicKind,
   MenuFilter,
@@ -222,7 +224,13 @@ const addMenuEnabled = computed(() => {
   throw new Error(`unsupported schematic kind ${schematicKind.value}`);
 });
 
+const addingNode = ref(false);
+visibility$.pipe(untilUnmounted).subscribe(() => {
+  addingNode.value = false;
+});
+
 const addNode = async (schemaId: number, _event: MouseEvent) => {
+  addingNode.value = true;
   const response = await Rx.firstValueFrom(
     SchematicService.getNodeTemplate({ schemaId }),
   );
