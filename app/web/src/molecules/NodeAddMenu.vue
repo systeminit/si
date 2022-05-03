@@ -4,23 +4,20 @@
     @mouseleave="onMouseLeave"
     @mouseenter="cancelClose"
   >
-    <button
-      class="w-full focus:outline-none"
+    <SiButton
+      icon="plus"
+      :label="props.addTo ? `Add to ${props.addTo}` : `Add`"
+      class="w-full focus:outline-none add-margin-top items-center self-center text-sm subpixel-antialiased font-light tracking-tight"
+      :class="{
+        'text-gray-200': !isOpen,
+        'menu-selected': isOpen,
+        'text-gray-600': props.disabled ?? false,
+      }"
+      size="xs"
       data-cy="editor-schematic-node-add-button"
-      :disabled="disabled"
+      :disabled="props.disabled ?? false"
       @click="isOpen = !isOpen"
-    >
-      <div
-        class="add-margin-top items-center self-center w-full text-sm subpixel-antialiased font-light tracking-tight"
-        :class="{
-          'text-gray-200': !isOpen,
-          'menu-selected': isOpen,
-          'text-gray-600': disabled,
-        }"
-      >
-        Add
-      </div>
-    </button>
+    />
 
     <NodeAddMenuCategory
       :is-open="isOpen"
@@ -35,20 +32,19 @@
 <script setup lang="ts">
 import { MenuFilter, MenuItem } from "@/api/sdf/dal/schematic";
 import NodeAddMenuCategory from "./NodeAddMenu/NodeAddMenuCategory.vue";
-import { onBeforeUnmount, PropType, ref } from "vue";
+import { onBeforeUnmount, ref } from "vue";
 import { refFrom, fromRef } from "vuse-rx";
 import _ from "lodash";
 import { SchematicService } from "@/service/schematic";
 import { GlobalErrorService } from "@/service/global_error";
 import { combineLatest, from, switchMap } from "rxjs";
+import SiButton from "@/atoms/SiButton.vue";
 
-const props = defineProps({
-  disabled: { type: Boolean, default: false },
-  filter: {
-    type: Object as PropType<MenuFilter>,
-    required: true,
-  },
-});
+const props = defineProps<{
+  disabled?: boolean;
+  filter: MenuFilter;
+  addTo?: string;
+}>();
 const emits = defineEmits(["selected"]);
 
 const isOpen = ref<boolean>(false);

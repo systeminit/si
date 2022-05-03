@@ -24,7 +24,7 @@
           />
         </div>
       </div>
-      <div class="flex justify-start flex-grow">
+      <div class="flex flex-row items-center flex-grow">
         <slot name="menuButtons"></slot>
       </div>
       <div class="flex flex-row items-center justify-end flex-grow">
@@ -138,7 +138,7 @@ onMounted(() => {
 const panelTypes = computed<LabelList<PanelType>>(() => {
   return [
     {
-      label: "Schematic",
+      label: "Diagram",
       value: PanelType.Schematic,
     },
     {

@@ -116,7 +116,7 @@ export interface NodeUpdate {
 
 export function fakeNodeFromTemplate(
   template: NodeTemplate,
-  deploymentNodeId: number | null,
+  deploymentNodeId?: number,
 ): Node {
   let componentId;
   switch (template.kind) {
@@ -134,7 +134,7 @@ export function fakeNodeFromTemplate(
       {
         id: "-1",
         schematic_kind: schematicKindFromNodeKind(template.kind),
-        deployment_node_id: deploymentNodeId,
+        deployment_node_id: deploymentNodeId ?? null,
         x: 0,
         y: 0,
       },
