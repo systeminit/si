@@ -43,6 +43,11 @@
       <NodeAddMenu
         v-if="addMenuFilters"
         class="pl-4"
+        :add-to="
+          schematicKind === SchematicKind.Deployment
+            ? `application`
+            : selectedDeploymentNode?.label.title ?? ``
+        "
         :filter="addMenuFilters"
         :disabled="!addMenuEnabled"
         @selected="addNode"
@@ -52,7 +57,7 @@
       <SchematicViewer
         :viewer-event$="viewerEventObservable.viewerEvent$"
         :schematic-kind="schematicKind"
-        :deployment-node-pin="selectedDeploymentNodeId ?? undefined"
+        :deployment-node-pin="selectedDeploymentNode?.id"
         :is-component-panel-pinned="isPinned"
         :schematic-data="schematicData ?? null"
       />
@@ -94,18 +99,18 @@ import * as MODEL from "./SchematicViewer/model";
 const schematicData = refFrom<Schematic | null>(schematicData$);
 
 const isPinned = ref<boolean>(false);
-const selectedDeploymentNodeId = ref<number | null>(null);
+const selectedDeploymentNode = ref<MODEL.Node | null>(null);
 const selectedDeploymentComponentId = ref<number | "">("");
 
 watch(selectedDeploymentComponentId, (componentId) => {
   if (!componentId || !schematicData.value) {
-    selectedDeploymentNodeId.value = null;
+    selectedDeploymentNode.value = null;
     return;
   }
 
   for (const node of schematicData.value.nodes) {
     if (node.kind.componentId === componentId) {
-      selectedDeploymentNodeId.value = node.id;
+      selectedDeploymentNode.value = node;
       return;
     }
   }
@@ -141,7 +146,7 @@ schematicData$.pipe(untilUnmounted).subscribe((schematic) => {
 
   isPinned.value = false;
   selectedDeploymentComponentId.value = "";
-  selectedDeploymentNodeId.value = null;
+  selectedDeploymentNode.value = null;
 });
 
 const viewerEventObservable = new ViewerEventObservable();
@@ -228,7 +233,7 @@ const addNode = async (schemaId: number, _event: MouseEvent) => {
 
   const n = MODEL.fakeNodeFromTemplate(
     response,
-    selectedDeploymentNodeId.value,
+    selectedDeploymentNode.value?.id,
   );
   const event = new NodeAddEvent({ node: n, schemaId: schemaId });
 
