@@ -18,12 +18,13 @@
     "checks": "npm run eslint; npm run type-check; npm run prettier-check"
   },
   "dependencies": {
-    "@codemirror/state": "^0.19.0",
-    "@codemirror/view": "^0.19.0",
-    "@codemirror/commands": "^0.19.0",
     "@codemirror/basic-setup": "^0.19.0",
+    "@codemirror/commands": "^0.19.0",
     "@codemirror/legacy-modes": "^0.19.0",
+    "@codemirror/state": "^0.19.0",
     "@codemirror/stream-parser": "^0.19.9",
+    "@codemirror/view": "^0.19.0",
+    "@heroicons/vue": "^1.0.6",
     "@pixi/layers": "^1.0.11",
     "@reactivex/rxjs": "^6.6.7",
     "@xstate/vue": "^2.0.0",
@@ -35,6 +36,7 @@
     "rxjs": "^7.5.5",
     "tweetnacl-sealedbox-js": "github:systeminit/tweetnacl-sealed-box#master",
     "vue": "^3.2.33",
+    "vue3-popper": "^1.4.2",
     "vuse-rx": "systeminit/vuse-rx#bug/fix-options",
     "xstate": "^4.31.0"
   },

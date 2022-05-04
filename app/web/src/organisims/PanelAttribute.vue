@@ -26,121 +26,62 @@
           <LockButton v-model="isPinned" />
         </div>
 
-        <!-- NOTE(nick): old-web adds items-center for this div.
-        More information: https://tailwindcss.com/docs/align-items#center
-        -->
         <div class="flex flex-row items-center">
-          <button
-            class="pl-1 focus:outline-none"
+          <SiButtonIcon
+            tooltip-text="Attribute Viewer"
+            :color="activeView === 'attribute' ? 'cyan' : 'white'"
             @click="setActiveView('attribute')"
           >
-            <VueFeather
-              v-if="activeView === 'attribute'"
-              type="disc"
-              stroke="cyan"
-              size="1.1em"
-            />
-            <VueFeather v-else type="disc" class="text-gray-300" size="1.1em" />
-          </button>
-          <button
-            class="pl-1 focus:outline-none"
+            <ClipboardListIcon />
+          </SiButtonIcon>
+          <SiButtonIcon
+            tooltip-text="Code Viewer"
+            :color="activeView === 'code' ? 'cyan' : 'white'"
             @click="setActiveView('code')"
           >
-            <VueFeather
-              v-if="activeView === 'code'"
-              type="code"
-              stroke="cyan"
-              size="1.1em"
-            />
-            <VueFeather v-else type="code" class="text-gray-300" size="1.1em" />
-          </button>
-          <button
-            class="pl-1 focus:outline-none"
+            <CodeIcon />
+          </SiButtonIcon>
+          <SiButtonIcon
+            tooltip-text="Qualification Viewer"
+            :color="activeView === 'qualification' ? 'cyan' : 'white'"
             @click="setActiveView('qualification')"
           >
-            <VueFeather
-              v-if="activeView === 'qualification'"
-              type="check-square"
-              stroke="cyan"
-              size="1.1em"
-            />
-            <VueFeather
-              v-else
-              type="check-square"
-              class="text-gray-300"
-              size="1.1em"
-            />
-          </button>
+            <ClipboardCheckIcon />
+          </SiButtonIcon>
         </div>
 
-        <!-- NOTE(nick): old-web adds text-white for buttons in this div.
-        More information: https://tailwindcss.com/docs/text-color
-        -->
         <div class="flex flex-row items-center">
-          <button
-            class="pl-1 text-white focus:outline-none"
+          <SiButtonIcon
+            tooltip-text="Connection Viewer (not implemented yet)"
+            :color="activeView === 'connection' ? 'cyan' : 'white'"
             @click="setActiveView('connection')"
           >
-            <VueFeather
-              v-if="activeView === 'connection'"
-              type="link-2"
-              stroke="cyan"
-              size="1.1em"
-            />
-            <VueFeather
-              v-else
-              type="link-2"
-              class="text-gray-300"
-              size="1.1em"
-            />
-          </button>
-          <button
-            class="pl-1 text-white focus:outline-none"
+            <LinkIcon />
+          </SiButtonIcon>
+          <SiButtonIcon
+            tooltip-text="Discovery Viewer (not implemented yet)"
+            :color="activeView === 'discovery' ? 'cyan' : 'white'"
             @click="setActiveView('discovery')"
           >
-            <VueFeather
-              v-if="activeView === 'discovery'"
-              type="at-sign"
-              stroke="cyan"
-              size="1.1em"
-            />
-            <VueFeather
-              v-else
-              type="at-sign"
-              class="text-gray-300"
-              size="1.1em"
-            />
-          </button>
+            <AtSymbolIcon />
+          </SiButtonIcon>
         </div>
 
-        <!-- NOTE(nick): old-web removes flex-row in this div and adds text-white for buttons in this div.
-        More information: https://tailwindcss.com/docs/flex-direction#row
-        -->
         <div class="flex items-center">
-          <button
-            class="pl-1 text-white focus:outline-none"
+          <SiButtonIcon
+            tooltip-text="Action Viewer (not implemented yet)"
+            :color="activeView === 'action' ? 'cyan' : 'white'"
             @click="setActiveView('action')"
           >
-            <VueFeather
-              v-if="activeView === 'action'"
-              type="play"
-              stroke="cyan"
-              size="1.1em"
-            />
-            <VueFeather v-else type="play" class="text-gray-300" size="1.1em" />
-          </button>
-          <button
-            class="pl-1 text-white focus:outline-none"
+            <PlayIcon />
+          </SiButtonIcon>
+          <SiButtonIcon
+            tooltip-text="Resource Viewer"
+            :color="activeView === 'resource' ? 'cyan' : 'white'"
             @click="setActiveView('resource')"
           >
-            <VueFeather
-              v-if="activeView === 'resource'"
-              type="box"
-              stroke="cyan"
-              size="1.1em"
-            />
-            <VueFeather v-else type="box" class="text-gray-300" size="1.1em" />
-          </button>
+            <CubeIcon />
+          </SiButtonIcon>
         </div>
       </div>
     </template>
@@ -203,6 +144,7 @@
 import Panel from "@/molecules/Panel.vue";
 import LockButton from "@/atoms/LockButton.vue";
 import SiSelect from "@/atoms/SiSelect.vue";
+import SiButtonIcon from "@/atoms/SiButtonIcon.vue";
 import { computed, ref } from "vue";
 import { LabelList } from "@/api/sdf/dal/label_list";
 import { refFrom, untilUnmounted } from "vuse-rx";
@@ -213,7 +155,6 @@ import AttributeViewer from "@/organisims/AttributeViewer.vue";
 import QualificationViewer from "@/organisims/QualificationViewer.vue";
 import ResourceViewer from "@/organisims/ResourceViewer.vue";
 import CodeViewer from "@/organisims/CodeViewer.vue";
-import VueFeather from "vue-feather";
 import _ from "lodash";
 import cheechSvg from "@/assets/images/cheech-and-chong.svg";
 import { lastSelectedNode$ } from "./SchematicViewer/state";
@@ -221,6 +162,15 @@ import { ComponentIdentification } from "@/api/sdf/dal/component";
 import { schematicData$ } from "./SchematicViewer/Viewer/scene/observable";
 import { visibility$ } from "@/observable/visibility";
 import { PanelAttributeSubType } from "./PanelTree/panel_types";
+import {
+  ClipboardCheckIcon,
+  ClipboardListIcon,
+  LinkIcon,
+  AtSymbolIcon,
+  PlayIcon,
+  CubeIcon,
+  CodeIcon,
+} from "@heroicons/vue/solid";
 
 const randomString = () => `${Math.floor(Math.random() * 50000)}`;
 const attributeViewerKey = ref(randomString());
