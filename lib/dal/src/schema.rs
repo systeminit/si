@@ -1,4 +1,3 @@
-use crate::WriteTenancy;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use si_data::{NatsError, PgError};
@@ -7,6 +6,11 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use self::variant::{SchemaVariantError, SchemaVariantResult};
+use crate::func::binding_return_value::FuncBindingReturnValueError;
+use crate::provider::external::ExternalProviderError;
+use crate::provider::internal::InternalProviderError;
+use crate::socket::SocketError;
+use crate::WriteTenancy;
 use crate::{
     component::ComponentKind,
     edit_field::{
@@ -27,7 +31,6 @@ use crate::{
     WorkspaceId, WsEventError,
 };
 
-use crate::socket::SocketError;
 pub use ui_menu::UiMenu;
 pub use variant::{SchemaVariant, SchemaVariantId};
 
@@ -47,14 +50,20 @@ pub enum SchemaError {
     CodeGenerationPrototype(#[from] CodeGenerationPrototypeError),
     #[error("edit field error: {0}")]
     EditField(#[from] EditFieldError),
+    #[error("external provider error: {0}")]
+    ExternalProvider(#[from] ExternalProviderError),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
     #[error("func binding error: {0}")]
     FuncBinding(#[from] FuncBindingError),
+    #[error("func binding return value error: {0}")]
+    FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
     #[error("func not found: {0}")]
     FuncNotFound(String),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
+    #[error("internal provider error: {0}")]
+    InternalProvider(#[from] InternalProviderError),
     #[error("missing a func in attribute update: {0} not found")]
     MissingFunc(String),
     #[error("nats txn error: {0}")]

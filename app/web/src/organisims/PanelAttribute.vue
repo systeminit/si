@@ -65,6 +65,13 @@
           >
             <AtSymbolIcon />
           </SiButtonIcon>
+          <SiButtonIcon
+            tooltip-text="Provider Viewer"
+            :color="activeView === 'provider' ? 'cyan' : 'white'"
+            @click="setActiveView('provider')"
+          >
+            <BeakerIcon />
+          </SiButtonIcon>
         </div>
 
         <div class="flex items-center">
@@ -120,6 +127,10 @@
           v-else-if="activeView === 'code'"
           :component-id="selectedComponentIdentification.componentId"
         />
+        <ProviderViewer
+          v-else-if="activeView === 'provider'"
+          :schema-variant-id="selectedComponentIdentification.schemaVariantId"
+        />
         <div v-else-if="activeView === 'connection'">
           ActiveView "{{ activeView }}" not implemented
         </div>
@@ -152,6 +163,7 @@ import * as Rx from "rxjs";
 import { ComponentService } from "@/service/component";
 import { GlobalErrorService } from "@/service/global_error";
 import AttributeViewer from "@/organisims/AttributeViewer.vue";
+import ProviderViewer from "@/organisims/ProviderViewer.vue";
 import QualificationViewer from "@/organisims/QualificationViewer.vue";
 import ResourceViewer from "@/organisims/ResourceViewer.vue";
 import CodeViewer from "@/organisims/CodeViewer.vue";
@@ -170,6 +182,7 @@ import {
   PlayIcon,
   CubeIcon,
   CodeIcon,
+  BeakerIcon,
 } from "@heroicons/vue/solid";
 
 const randomString = () => `${Math.floor(Math.random() * 50000)}`;
