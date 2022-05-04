@@ -492,6 +492,7 @@ impl AttributeValue {
             *func_binding.id(),
             *func_binding_return_value.id(),
             parent_attribute_value_id,
+            None,
             Some(*attribute_value.id()),
         )
         .await
@@ -581,6 +582,7 @@ impl AttributeValue {
                 context,
                 key.clone(),
                 Some(parent_attribute_value_id),
+                None,
                 *attribute_value.id(),
             )
             .await

@@ -74,6 +74,7 @@ async fn new(ctx: &DalContext<'_, '_>) {
         context,
         None,
         None,
+        None,
     )
     .await
     .expect("cannot create new attribute prototype");
@@ -224,6 +225,7 @@ async fn list_for_context(ctx: &DalContext<'_, '_>) {
         component_name_prototype_context,
         None,
         None,
+        None,
     )
     .await
     .expect("cannot create attribute prototype for component album name");
@@ -368,6 +370,7 @@ async fn list_for_context_with_a_hash(ctx: &DalContext<'_, '_>) {
         prop_hash_key_prototype_context,
         Some("Undertow".to_string()),
         None,
+        None,
     )
     .await
     .expect("cannot create attribute prototype for component album name");
@@ -393,6 +396,7 @@ async fn list_for_context_with_a_hash(ctx: &DalContext<'_, '_>) {
         *func_binding_return_value.id(),
         prop_hash_key_prototype_context,
         Some("Lateralus".to_string()),
+        None,
         None,
     )
     .await
@@ -428,6 +432,7 @@ async fn list_for_context_with_a_hash(ctx: &DalContext<'_, '_>) {
         component_hash_key_prototype_context,
         Some("Lateralus".to_string()),
         None,
+        None,
     )
     .await
     .expect("cannot create attribute prototype for component album name");
@@ -453,6 +458,7 @@ async fn list_for_context_with_a_hash(ctx: &DalContext<'_, '_>) {
         *func_binding_return_value.id(),
         component_hash_key_prototype_context,
         Some("Fear Inoculum".to_string()),
+        None,
         None,
     )
     .await

@@ -128,6 +128,7 @@ async fn create_and_list_for_schema_variant(ctx: &DalContext<'_, '_>) {
         attribute_context,
         None,
         None,
+        None,
     )
     .await
     .expect("cannot create new attribute prototype");

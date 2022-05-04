@@ -496,6 +496,7 @@ async fn docker_image(ctx: &DalContext<'_, '_>) -> SchemaResult<()> {
         *func_binding.id(),
         *func_binding_return_value.id(),
         Some(*root_prop_attribute_value.id()),
+        None,
         Some(
             *AttributeValue::find_for_context(ctx, number_of_parents_prop_context.into())
                 .await?

@@ -270,9 +270,15 @@ tidy:
 	cd $(MAKEPATH)/ci && $(MAKE) tidy
 .PHONY: tidy
 
-docs:
-	cd $(MAKEPATH); cargo watch -x doc
-.PHONY: docs
+tidy-crates:
+	cd $(MAKEPATH)/ci && $(MAKE) tidy-crates
+.PHONY: tidy-crates
 
-doc: docs
-.PHONY: doc
+docs-open:
+	cd $(MAKEPATH); cargo doc --all
+	cd $(MAKEPATH); cargo doc -p dal --open
+.PHONY: docs-open
+
+docs-watch:
+	cd $(MAKEPATH); cargo watch -x doc
+.PHONY: docs-watch

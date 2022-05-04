@@ -266,20 +266,18 @@ Our crates leverage `rustdoc` for seamless integration with `cargo doc`, [Intell
 
 ### Reading Rust Documentation
 
-Build the docs for all of our crates and open the docs in your browser at [dal](./lib/dal) by executing the following:
+Build the docs for all of our crates and open the docs in your browser at [dal](./lib/dal) by executing
+the following make target:
 
 ```bash
-cargo doc --all
-cargo doc -p dal --open
+make docs-open
 ```
 
 If you would like to live-recompile docs while making changes on your development branch, you can execute the following
 make target:
 
 ```bash
-# Choose one! Both work.
-make doc
-make docs
+make docs-watch
 ```
 
 > Please note: [cargo-watch](https://github.com/watchexec/cargo-watch) needs to be installed before using the above make target.
