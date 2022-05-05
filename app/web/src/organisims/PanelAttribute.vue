@@ -176,7 +176,7 @@ import { schematicData$ } from "./SchematicViewer/Viewer/scene/observable";
 import { visibility$ } from "@/observable/visibility";
 import { PanelAttributeSubType } from "./PanelTree/panel_types";
 import { ChangeSetService } from "@/service/change_set";
-import { editButtonPulseUntil$ } from "@/observable/change_set";
+import { editButtonPulse$ } from "@/observable/change_set";
 import {
   CheckCircleIcon,
   ClipboardListIcon,
@@ -310,7 +310,7 @@ const selectedComponentIdentification = computed(
 const editMode = refFrom(ChangeSetService.currentEditMode());
 const attributeViewerClick = () => {
   if (activeView.value === "attribute" && !editMode.value) {
-    editButtonPulseUntil$.next(new Date(new Date().getTime() + 5000));
+    editButtonPulse$.next(true);
   }
 };
 </script>

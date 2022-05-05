@@ -114,7 +114,7 @@
 import { computed, ref } from "vue";
 import { refFrom, untilUnmounted } from "vuse-rx";
 
-import { editButtonPulseUntil$ } from "@/observable/change_set";
+import { editButtonPulse$ } from "@/observable/change_set";
 import SiSelect from "@/atoms/SiSelect.vue";
 import SiButton from "@/atoms/SiButton.vue";
 import SiModal from "@/molecules/SiModal.vue";
@@ -259,13 +259,20 @@ const editSessionStart = () => {
 const editButtonPulseStop = ref(false);
 // This is a horrible hack to ensure we cleanup the pulse
 const editButtonPulseUntil = refFrom<Date>(
-  editButtonPulseUntil$.asObservable().pipe(
-    Rx.tap((until) => {
+  editButtonPulse$.asObservable().pipe(
+    Rx.map((pulse) => {
+      if (!pulse) return new Date();
+
+      // Ensures setTimeout will trigger computed function change
       editButtonPulseStop.value = false;
+
+      // There must be a better way of doing this with RxJs, but I've been stuck trying to find it and failing for a while, let's move on
+      const until = new Date(new Date().getTime() + 5000);
       setTimeout(() => {
+        // This is here so we can keep pulsing if the user clicks multiple times instead of stopping at the first
         editButtonPulseStop.value = true;
-        setTimeout(() => (editButtonPulseStop.value = false), 0);
       }, Math.max(0, until.getTime() - new Date().getTime()));
+      return until;
     }),
   ),
 );

@@ -187,4 +187,7 @@ $button-brightness: 1.05;
 .button-cancel:active {
   filter: saturate($button-saturation) brightness($button-brightness);
 }
+.cursor-not-allowed {
+  cursor: not-allowed;
+}
 </style>
