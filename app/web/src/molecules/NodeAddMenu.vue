@@ -12,11 +12,12 @@
         'text-gray-200': !isOpen,
         'menu-selected': isOpen,
         'text-gray-600': props.disabled ?? false,
+        'opacity-50': props.disabled ?? false,
+        'cursor-not-allowed': props.disabled ?? false,
       }"
       size="xs"
       data-cy="editor-schematic-node-add-button"
-      :disabled="props.disabled ?? false"
-      @click="isOpen = !isOpen"
+      @click="addMenuClick"
     />
 
     <NodeAddMenuCategory
@@ -36,9 +37,21 @@ import { onBeforeUnmount, ref } from "vue";
 import { refFrom, fromRef } from "vuse-rx";
 import _ from "lodash";
 import { SchematicService } from "@/service/schematic";
+import { ChangeSetService } from "@/service/change_set";
 import { GlobalErrorService } from "@/service/global_error";
 import { combineLatest, from, switchMap } from "rxjs";
 import SiButton from "@/atoms/SiButton.vue";
+import { editButtonPulse$ } from "@/observable/change_set";
+
+const editMode = refFrom<boolean>(ChangeSetService.currentEditMode());
+
+const addMenuClick = () => {
+  if (!editMode.value) {
+    editButtonPulse$.next(true);
+  } else if (!props.disabled) {
+    isOpen.value = !isOpen.value;
+  }
+};
 
 const props = defineProps<{
   disabled?: boolean;
@@ -140,4 +153,7 @@ onBeforeUnmount(() => {
 /* .menu-category:hover .category-items { */
 /*   visibility: visible; */
 /* } */
+.cursor-not-allowed {
+  cursor: not-allowed;
+}
 </style>
