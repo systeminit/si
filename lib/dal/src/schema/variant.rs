@@ -1,4 +1,3 @@
-use crate::WriteTenancy;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -6,13 +5,14 @@ use si_data::{NatsError, PgError};
 use telemetry::prelude::*;
 use thiserror::Error;
 
+use crate::func::binding::FuncBindingError;
+use crate::schema::RootProp;
 use crate::{
     edit_field::{
         value_and_visibility_diff, widget::prelude::*, EditField, EditFieldAble, EditFieldDataType,
         EditFieldError, EditFieldObjectKind, VisibilityDiff,
     },
     impl_standard_model, pk,
-    schema::builtins::{create_root_prop, RootProp},
     schema::SchemaError,
     socket::{Socket, SocketError, SocketId},
     standard_model::{self, objects_from_rows},
@@ -20,13 +20,24 @@ use crate::{
     HistoryEventError, Prop, PropError, PropId, PropKind, Schema, SchemaId, StandardModel,
     StandardModelError, Timestamp, Visibility, WsEventError,
 };
+use crate::{AttributeContextBuilderError, AttributeValueError, WriteTenancy};
+
+pub mod root_prop;
 
 #[derive(Error, Debug)]
 pub enum SchemaVariantError {
+    #[error("attribute context builder error: {0}")]
+    AttributeContextBuilder(#[from] AttributeContextBuilderError),
+    #[error("attribute value error: {0}")]
+    AttributeValue(#[from] AttributeValueError),
     #[error(transparent)]
     EditField(#[from] EditFieldError),
+    #[error("func binding error: {0}")]
+    FuncBinding(#[from] FuncBindingError),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
+    #[error("missing a func in attribute update: {0} not found")]
+    MissingFunc(String),
     #[error("nats txn error: {0}")]
     Nats(#[from] NatsError),
     #[error("schema not found: {0}")]
@@ -35,6 +46,8 @@ pub enum SchemaVariantError {
     Pg(#[from] PgError),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
+    #[error("schema error: {0}")]
+    Schema(#[from] Box<SchemaError>),
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("socket error: {0}")]
@@ -43,8 +56,6 @@ pub enum SchemaVariantError {
     StandardModel(#[from] StandardModelError),
     #[error("ws event error: {0}")]
     WsEvent(#[from] WsEventError),
-    #[error("schema error: {0}")]
-    Schema(#[from] Box<SchemaError>),
 }
 
 pub type SchemaVariantResult<T> = Result<T, SchemaVariantError>;
@@ -94,9 +105,7 @@ impl SchemaVariant {
             )
             .await?;
         let object: SchemaVariant = standard_model::finish_create_from_row(ctx, row).await?;
-        let root_prop = create_root_prop(ctx, schema_id, *object.id())
-            .await
-            .map_err(Box::new)?;
+        let root_prop = RootProp::new(ctx, schema_id, *object.id()).await?;
 
         object.set_schema(ctx, &schema_id).await?;
 

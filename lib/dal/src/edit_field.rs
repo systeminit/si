@@ -1,6 +1,10 @@
-pub mod widget;
-
-pub use widget::{ToSelectWidget, Widget};
+//! [`EditFields`](crate::EditField) are data bags that contain information for visualization and
+//! rendering for a given attribute at a specific [`AttributeContext`](crate::AttributeContext).
+//! Their [`EditFieldBaggage`] contains the [`AttributeValues`](crate::AttributeValue) to perform
+//! the actual CRUD-like operations for a given [`EditField`]. Essentially these fields are
+//! purely wrappers around [`AttributeValues`](crate::AttributeValue) that retain their lineage and
+//! ordering (important for [`Maps`](EditFieldDataType::Map) and
+//! [`Arrays`](EditFieldDataType::Array)).
 
 use serde::{Deserialize, Serialize};
 use std::{future::Future, pin::Pin};
@@ -10,6 +14,10 @@ use thiserror::Error;
 use crate::PropId;
 use crate::{func::backend::validation::ValidationError, LabelListError, PropKind, Visibility};
 use crate::{AttributeValueId, DalContext};
+
+pub use widget::{ToSelectWidget, Widget};
+
+pub mod widget;
 
 #[derive(Error, Debug)]
 pub enum EditFieldError {

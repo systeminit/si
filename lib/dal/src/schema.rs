@@ -5,10 +5,10 @@ use strum_macros::{AsRefStr, Display, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use self::variant::{SchemaVariantError, SchemaVariantResult};
 use crate::func::binding_return_value::FuncBindingReturnValueError;
 use crate::provider::external::ExternalProviderError;
 use crate::provider::internal::InternalProviderError;
+use crate::schema::variant::{SchemaVariantError, SchemaVariantResult};
 use crate::socket::SocketError;
 use crate::WriteTenancy;
 use crate::{
@@ -32,6 +32,7 @@ use crate::{
 };
 
 pub use ui_menu::UiMenu;
+pub use variant::root_prop::RootProp;
 pub use variant::{SchemaVariant, SchemaVariantId};
 
 pub mod builtins;

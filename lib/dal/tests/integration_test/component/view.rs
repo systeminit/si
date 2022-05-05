@@ -1,7 +1,7 @@
 use crate::dal::test;
 use dal::DalContext;
 use dal::{
-    schema::builtins::RootProp,
+    schema::RootProp,
     test_harness::{create_prop_of_kind_with_name, create_schema, create_schema_variant_with_root},
     AttributeContext, AttributeReadContext, AttributeValue, Component, ComponentView, Prop,
     PropKind, Schema, SchemaKind, SchemaVariant, StandardModel,
