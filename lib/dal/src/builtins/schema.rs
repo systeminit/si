@@ -1,7 +1,3 @@
-//! This module contains the built-in [`Schemas`](crate::Schema) with their default
-//! [`SchemaVariants`](crate::SchemaVariant). Upon migration, these built-in objects (and their
-//! corresponding objects) will be created.
-
 use std::collections::HashMap;
 
 use crate::func::backend::js_attribute::FuncBackendJsAttributeArgs;
@@ -10,8 +6,9 @@ use crate::func::backend::js_resource::FuncBackendJsResourceSyncArgs;
 use crate::func::backend::validation::FuncBackendValidateStringValueArgs;
 use crate::qualification_prototype::QualificationPrototypeContext;
 use crate::resource_prototype::ResourcePrototypeContext;
-use crate::schema::{SchemaResult, SchemaVariant, UiMenu};
+use crate::schema::{SchemaVariant, UiMenu};
 use crate::socket::{Socket, SocketArity, SocketEdgeKind};
+use crate::BuiltinsResult;
 use crate::{
     component::ComponentKind, edit_field::widget::*, func::binding::FuncBinding,
     validation_prototype::ValidationPrototypeContext, Func, FuncBackendKind,
@@ -31,7 +28,7 @@ mod kubernetes_template;
 
 use self::kubernetes_deployment::kubernetes_deployment;
 
-pub async fn migrate(ctx: &DalContext<'_, '_>) -> SchemaResult<()> {
+pub async fn migrate(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     system(ctx).await?;
     application(ctx).await?;
     service(ctx).await?;
@@ -44,7 +41,7 @@ pub async fn migrate(ctx: &DalContext<'_, '_>) -> SchemaResult<()> {
     Ok(())
 }
 
-async fn system(ctx: &DalContext<'_, '_>) -> SchemaResult<()> {
+async fn system(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     let name = "system".to_string();
     let mut schema = match create_schema(ctx, &name, &SchemaKind::Concept).await? {
         Some(schema) => schema,
@@ -85,7 +82,7 @@ async fn system(ctx: &DalContext<'_, '_>) -> SchemaResult<()> {
     Ok(())
 }
 
-async fn application(ctx: &DalContext<'_, '_>) -> SchemaResult<()> {
+async fn application(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     let name = "application".to_string();
     let mut schema = match create_schema(ctx, &name, &SchemaKind::Concept).await? {
         Some(schema) => schema,
@@ -132,7 +129,7 @@ async fn application(ctx: &DalContext<'_, '_>) -> SchemaResult<()> {
     Ok(())
 }
 
-async fn service(ctx: &DalContext<'_, '_>) -> SchemaResult<()> {
+async fn service(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     let name = "service".to_string();
     let mut schema = match create_schema(ctx, &name, &SchemaKind::Concept).await? {
         Some(schema) => schema,
@@ -220,7 +217,7 @@ async fn service(ctx: &DalContext<'_, '_>) -> SchemaResult<()> {
     Ok(())
 }
 
-async fn kubernetes_service(ctx: &DalContext<'_, '_>) -> SchemaResult<()> {
+async fn kubernetes_service(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     let name = "kubernetes_service".to_string();
     let mut schema = match create_schema(ctx, &name, &SchemaKind::Implementation).await? {
         Some(schema) => schema,
@@ -272,7 +269,7 @@ async fn kubernetes_service(ctx: &DalContext<'_, '_>) -> SchemaResult<()> {
     Ok(())
 }
 
-async fn docker_hub_credential(ctx: &DalContext<'_, '_>) -> SchemaResult<()> {
+async fn docker_hub_credential(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     let name = "docker_hub_credential".to_string();
     let mut schema = match create_schema(ctx, &name, &SchemaKind::Concrete).await? {
         Some(schema) => schema,
@@ -378,7 +375,7 @@ async fn docker_hub_credential(ctx: &DalContext<'_, '_>) -> SchemaResult<()> {
     Ok(())
 }
 
-async fn docker_image(ctx: &DalContext<'_, '_>) -> SchemaResult<()> {
+async fn docker_image(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     let name = "docker_image".to_string();
     let mut schema = match create_schema(ctx, &name, &SchemaKind::Concrete).await? {
         Some(schema) => schema,
@@ -585,7 +582,7 @@ async fn docker_image(ctx: &DalContext<'_, '_>) -> SchemaResult<()> {
     Ok(())
 }
 
-async fn bobao(ctx: &DalContext<'_, '_>) -> SchemaResult<()> {
+async fn bobao(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     let name = "bobão".to_string();
     let mut schema = match create_schema(ctx, &name, &SchemaKind::Concrete).await? {
         Some(schema) => schema,
@@ -781,7 +778,7 @@ async fn create_schema(
     ctx: &DalContext<'_, '_>,
     schema_name: &str,
     schema_kind: &SchemaKind,
-) -> SchemaResult<Option<Schema>> {
+) -> BuiltinsResult<Option<Schema>> {
     // TODO(nick): there's one issue here. If the schema kind has changed, then this check will be
     // inaccurate. As a result, we will be unable to re-create the schema without manual intervention.
     // This should be fine since this code should likely only last as long as default schemas need to
@@ -812,7 +809,7 @@ pub async fn create_prop(
     prop_kind: PropKind,
     parent_prop_id: Option<PropId>,
     base_attribute_read_context: AttributeReadContext,
-) -> SchemaResult<Prop> {
+) -> BuiltinsResult<Prop> {
     let prop = Prop::new(ctx, prop_name, prop_kind).await?;
     if let Some(parent_prop_id) = parent_prop_id {
         prop.set_parent_prop(ctx, parent_prop_id, base_attribute_read_context)
@@ -828,7 +825,7 @@ pub async fn create_string_prop_with_default(
     default_string: String,
     parent_prop_id: Option<PropId>,
     base_attribute_read_context: AttributeReadContext,
-) -> SchemaResult<Prop> {
+) -> BuiltinsResult<Prop> {
     let prop = create_prop(
         ctx,
         prop_name,

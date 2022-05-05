@@ -1,5 +1,5 @@
-use crate::schema::builtins::create_prop;
-use crate::schema::SchemaResult;
+use crate::builtins::schema::create_prop;
+use crate::builtins::BuiltinsResult;
 use crate::{AttributeReadContext, DalContext};
 use crate::{Prop, PropId, PropKind, StandardModel};
 
@@ -9,7 +9,7 @@ pub async fn create_spec_prop(
     ctx: &DalContext<'_, '_>,
     parent_prop_id: PropId,
     base_attribute_read_context: AttributeReadContext,
-) -> SchemaResult<Prop> {
+) -> BuiltinsResult<Prop> {
     let spec_prop = create_prop(
         ctx,
         "spec",

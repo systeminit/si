@@ -35,7 +35,6 @@ pub use ui_menu::UiMenu;
 pub use variant::root_prop::RootProp;
 pub use variant::{SchemaVariant, SchemaVariantId};
 
-pub mod builtins;
 pub mod ui_menu;
 pub mod variant;
 

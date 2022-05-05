@@ -1,4 +1,4 @@
-//! [`EditFields`](crate::EditField) are data bags that contain information for visualization and
+//! [`EditFields`](EditField) are data bags that contain information for visualization and
 //! rendering for a given attribute at a specific [`AttributeContext`](crate::AttributeContext).
 //! Their [`EditFieldBaggage`] contains the [`AttributeValues`](crate::AttributeValue) to perform
 //! the actual CRUD-like operations for a given [`EditField`]. Essentially these fields are

@@ -373,7 +373,7 @@ async fn global_setup(test_context_builer: TestContextBuilder) {
             .expect("failed to commit jwt key insertion txn");
     }
 
-    crate::migrate_builtin_schemas(
+    crate::migrate_builtins(
         services_ctx.pg_pool(),
         services_ctx.nats_conn(),
         services_ctx.veritech().clone(),

@@ -14,7 +14,6 @@ use self::backend::{FuncBackendKind, FuncBackendResponseType};
 pub mod backend;
 pub mod binding;
 pub mod binding_return_value;
-pub mod builtins;
 pub mod execution;
 
 #[derive(Error, Debug)]

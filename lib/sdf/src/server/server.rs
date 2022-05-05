@@ -11,7 +11,7 @@ use axum::Router;
 use dal::{
     cyclone_key_pair::CycloneKeyPairError,
     jwt_key::{install_new_jwt_key, jwt_key_exists},
-    migrate, migrate_builtin_schemas, ResourceScheduler, ServicesContext,
+    migrate, migrate_builtins, ResourceScheduler, ServicesContext,
 };
 use hyper::server::{accept::Accept, conn::AddrIncoming};
 use si_data::{
@@ -183,7 +183,7 @@ impl Server<(), ()> {
         encryption_key: &veritech::EncryptionKey,
     ) -> Result<()> {
         migrate(pg).await?;
-        migrate_builtin_schemas(pg, nats, veritech, encryption_key).await?;
+        migrate_builtins(pg, nats, veritech, encryption_key).await?;
 
         let mut conn = pg.get().await?;
         let txn = conn.transaction().await?;

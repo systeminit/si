@@ -3,15 +3,15 @@ use crate::func::backend::js_code_generation::FuncBackendJsCodeGenerationArgs;
 use crate::func::backend::js_qualification::FuncBackendJsQualificationArgs;
 use crate::qualification_prototype::QualificationPrototypeContext;
 
-use crate::schema::builtins::{create_schema, create_string_prop_with_default};
-use crate::schema::{SchemaResult, SchemaVariant, UiMenu};
+use crate::builtins::schema::{create_schema, create_string_prop_with_default};
+use crate::schema::{SchemaVariant, UiMenu};
 use crate::socket::{Socket, SocketArity, SocketEdgeKind};
 use crate::{
-    AttributeReadContext, CodeGenerationPrototype, CodeLanguage, DalContext, Func,
+    AttributeReadContext, BuiltinsResult, CodeGenerationPrototype, CodeLanguage, DalContext, Func,
     QualificationPrototype, Schema, SchemaError, SchemaKind, SchematicKind, StandardModel,
 };
 
-pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> SchemaResult<()> {
+pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     let name = "kubernetes_deployment".to_string();
     let mut schema = match create_schema(ctx, &name, &SchemaKind::Concrete).await? {
         Some(schema) => schema,
