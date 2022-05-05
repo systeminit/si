@@ -1,5 +1,7 @@
 <template>
-  <LoginForm @success="routeToHome" @signup="routeToSignup" />
+  <div class="h-full w-full">
+    <LoginForm @success="routeToHome" @signup="routeToSignup" />
+  </div>
 </template>
 
 <script lang="ts">

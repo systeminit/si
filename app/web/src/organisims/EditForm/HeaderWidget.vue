@@ -1,39 +1,41 @@
 <template>
-  <section v-show="show">
-    <div
-      class="flex w-full pt-1 pb-1 mt-2 text-sm text-white cursor-pointer"
-      :style="propObjectStyle"
-      @click="toggleHeader"
-    >
-      <div class="flex" :style="propObjectStyle">
-        <VueFeather v-if="openState" type="chevron-down" />
-        <VueFeather v-else type="chevron-right" />
+  <div>
+    <section v-show="show">
+      <div
+        class="flex w-full pt-1 pb-1 mt-2 text-sm text-white cursor-pointer"
+        :style="propObjectStyle"
+        @click="toggleHeader"
+      >
+        <div class="flex" :style="propObjectStyle">
+          <VueFeather v-if="openState" type="chevron-down" />
+          <VueFeather v-else type="chevron-right" />
 
-        <SiLink
-          v-if="props.editField.baggage?.prop_doc_link"
-          :uri="props.editField.baggage.prop_doc_link"
-          :blank-target="true"
-          class="flex flex-row justify-end"
-        >
-          <span class="flex flex-col content-center justify-center">
+          <SiLink
+            v-if="props.editField.baggage?.prop_doc_link"
+            :uri="props.editField.baggage.prop_doc_link"
+            :blank-target="true"
+            class="flex flex-row justify-end"
+          >
+            <span class="flex flex-col content-center justify-center">
+              {{ props.editField.name }}
+            </span>
+            <VueFeather type="help-circle" size="1em" class="m-2" />
+          </SiLink>
+          <template v-else>
             {{ props.editField.name }}
-          </span>
-          <VueFeather type="help-circle" size="1em" class="m-2" />
-        </SiLink>
-        <template v-else>
-          {{ props.editField.name }}
-        </template>
+          </template>
+        </div>
       </div>
-    </div>
-  </section>
-  <Widgets
-    :show="showChildren"
-    :edit-fields="widgetEditFields"
-    :core-edit-fields="props.coreEditField"
-    :indent-level="props.indentLevel + 1"
-    :tree-open-state="props.treeOpenState"
-    @toggle-header="bubbleToggleHeader"
-  />
+    </section>
+    <Widgets
+      :show="showChildren"
+      :edit-fields="widgetEditFields"
+      :core-edit-fields="props.coreEditField"
+      :indent-level="props.indentLevel + 1"
+      :tree-open-state="props.treeOpenState"
+      @toggle-header="bubbleToggleHeader"
+    />
+  </div>
 </template>
 
 <script setup lang="ts">

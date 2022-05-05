@@ -15,15 +15,14 @@
             <SiSelect
               id="nodeSelect"
               v-model="selectedComponentId"
-              size="xs"
               name="nodeSelect"
-              class="pl-1"
+              class="pl-1 w-32"
               :value-as-number="true"
               :options="componentList"
               :disabled="!isPinned"
             />
           </div>
-          <LockButton v-model="isPinned" class="flex items-center" />
+          <LockButton v-model="isPinned" class="flex items-center pl-1" />
         </div>
 
         <div class="flex flex-row items-center">
@@ -37,6 +36,7 @@
           <SiButtonIcon
             tooltip-text="Code"
             :selected="activeView === 'code'"
+            class="pl-1"
             @click="setActiveView('code')"
           >
             <CodeIcon />
@@ -44,6 +44,7 @@
           <SiButtonIcon
             tooltip-text="Qualifications"
             :selected="activeView === 'qualification'"
+            class="pl-1"
             @click="setActiveView('qualification')"
           >
             <CheckCircleIcon />

@@ -1,5 +1,5 @@
 <template>
-  <div id="app">
+  <div id="app" class="h-max w-full">
     <!-- <SessionBroker /> -->
     <!-- <ShortcutsEventBroker> -->
     <router-view />

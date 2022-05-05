@@ -1,18 +1,20 @@
 <template>
   <div class="flex w-full h-6" @keyup.stop @keydown.stop>
     <div id="changeset-selector" class="flex">
-      <div class="flex items-center justify-end pr-1 text-xs text-gray-400">
+      <div
+        class="flex items-center justify-end pr-1 pt-1 text-sm text-gray-400"
+      >
         changeset:
       </div>
       <div class="flex items-center mr-2">
         <SiSelect
           id="select-current-change-set"
           v-model="selectedChangeSetPk"
+          class="w-32"
           value-as-number
           :options="openChangeSetsList"
           :disabled="editMode"
           size="xs"
-          :styling="changeSetSelectorStyling()"
           @change="changeSetSelected"
         />
       </div>
@@ -139,14 +141,6 @@ const selectedChangeSetPk = ref<number>(CHANGE_SET_NONE);
 // If we are in editMode or not
 const editMode = refFrom<boolean>(ChangeSetService.currentEditMode());
 
-// Styling for the change set selector and buttons
-const changeSetSelectorStyling = () => {
-  let classes: Record<string, boolean> = {};
-  classes["bg-selector1"] = true;
-  classes["text-gray-400"] = true;
-  classes["border-gray-700"] = true;
-  return classes;
-};
 const editButtonEnabled = () => {
   return !!(
     selectedChangeSetPk.value != CHANGE_SET_NONE &&

@@ -1,6 +1,6 @@
 <template>
   <button
-    class="inline-block py-1"
+    class="inline-block py-1 h-8 rounded-sm"
     :class="buttonStyle"
     :aria-label="label"
     :disabled="disabled"

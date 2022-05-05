@@ -1,9 +1,9 @@
 <template>
   <div class="flex">
-    <div class="mt-1 font-medium align-middle">
+    <div class="font-medium align-middle">
       <slot name="title"></slot>
     </div>
-    <div class="mt-1 mr-4 align-middle">
+    <div class="mr-4 align-middle">
       <ChangeSetWidget />
     </div>
   </div>

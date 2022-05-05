@@ -1,5 +1,7 @@
 <template>
-  <div class="flex flex-col items-center justify-center h-screen auth-canvas">
+  <div
+    class="flex flex-col items-center justify-center min-h-max h-max w-full auth-canvas"
+  >
     <router-view />
   </div>
 </template>

@@ -9,7 +9,7 @@
           class="flex items-center justify-center w-full my-3 hover:none focus:outline-none"
           @click="isMaximized = !isMaximized"
         >
-          <SysinitIcon v-show="isBrandLogoVisible" :size="1.15" class="" />
+          <SysinitIcon v-show="isBrandLogoVisible" class="h-7" />
           <div v-show="isBrandTitleVisible" class="brand-title">
             System Init
           </div>
@@ -20,6 +20,7 @@
         <div class="menu-separator" />
       </div>
 
+      <!--
       <div
         id="workspace-selector"
         class="flex items-center w-full h-4 mt-3 ml-6 justify-left"
@@ -35,28 +36,27 @@
           {{ currentWorkspace.name }}
         </div>
       </div>
+-->
 
-      <div class="self-center mt-3" :class="separatorClasses">
-        <div class="menu-separator" />
-      </div>
-
-      <div id="workspace-content" class="flex flex-col flex-grow mx-6 mt-4">
+      <div id="workspace-content" class="flex flex-col flex-grow mx-6">
         <div class="flex flex-col">
           <!-- Dashboard Link -->
+          <!--
           <div class="container-link">
             <SiIcon tooltip-text="Dashboard">
               <LightningBoltIcon class="color-grey-medium" />
             </SiIcon>
             <div v-show="isLinkTitleVisible" class="link-title">Dashboard</div>
           </div>
+          -->
 
           <!-- Applications Link -->
           <div class="container-link">
             <router-link :to="{ name: 'application-list' }">
               <div class="flex items-center justify-start cursor-pointer">
-                <SiButtonIcon tooltip-text="Applications">
+                <SiIcon tooltip-text="Applications">
                   <CodeIcon class="color-grey-medium" />
-                </SiButtonIcon>
+                </SiIcon>
                 <div v-show="isLinkTitleVisible" class="link-title">
                   Applications
                 </div>
@@ -65,6 +65,7 @@
           </div>
 
           <!-- Systems Link -->
+          <!--
           <div class="container-link">
             <div class="flex items-center justify-start">
               <SiIcon tooltip-text="Systems">
@@ -73,8 +74,10 @@
               <div v-show="isLinkTitleVisible" class="link-title">Systems</div>
             </div>
           </div>
+          -->
 
           <!-- Components Link -->
+          <!--
           <div class="container-link">
             <div class="flex items-center justify-start">
               <SiIcon tooltip-text="Components">
@@ -85,8 +88,10 @@
               </div>
             </div>
           </div>
+          -->
 
           <!-- Resources Link -->
+          <!--
           <div class="container-link">
             <div class="flex items-center justify-start">
               <SiIcon tooltip-text="Resources">
@@ -97,8 +102,10 @@
               </div>
             </div>
           </div>
+          -->
 
           <!-- Environment Link  AKA computing environment -->
+          <!--
           <div class="container-link">
             <div class="flex items-center justify-start">
               <SiIcon tooltip-text="Environment">
@@ -109,8 +116,10 @@
               </div>
             </div>
           </div>
+          -->
 
           <!-- Catalogue Link -->
+          <!--
           <div class="container-link">
             <div class="flex items-center justify-start">
               <SiIcon tooltip-text="Catalogue">
@@ -121,9 +130,11 @@
               </div>
             </div>
           </div>
+          -->
+
           <!-- Secrets Link -->
+          <!--
           <div class="container-link">
-            <!-- <router-link class="w-9/12" data-cy="secret-nav-link" :to="{ name: 'secret', params: { organizationId: organization.id, workspaceId: workspace.id, }, }" > -->
             <router-link
               v-if="currentOrganization && currentWorkspace"
               data-cy="secret-nav-link"
@@ -139,29 +150,21 @@
               </div>
             </router-link>
           </div>
+          -->
           <!-- Clients Link -->
+          <!--
           <div class="container-link">
-            <!-- <router-link
-          class="w-9/12"
-          data-cy="client-nav-link"
-          :to="{
-            name: 'client',
-            params: {
-              organizationId: organization.id,
-              workspaceId: workspace.id,
-            },
-          }"
-          > -->
             <div class="flex items-center justify-start">
               <SiIcon tooltip-text="Clients">
                 <GlobeAltIcon class="color-grey-medium" />
               </SiIcon>
               <div v-show="isLinkTitleVisible" class="link-title">Clients</div>
             </div>
-            <!-- </router-link> -->
           </div>
+-->
 
           <!-- Schema Link -->
+          <!--
           <div class="container-link">
             <router-link
               class="w-9/12"
@@ -176,10 +179,11 @@
               </div>
             </router-link>
           </div>
+          -->
         </div>
 
+        <!--
         <div class="flex flex-col justify-end flex-grow">
-          <!-- Settings Link -->
           <div class="container-link">
             <div class="flex items-center justify-start focus:text-white">
               <SiIcon tooltip-text="Settings">
@@ -189,6 +193,7 @@
             </div>
           </div>
         </div>
+          -->
       </div>
 
       <div class="self-center mt-3" :class="separatorClasses">
@@ -196,9 +201,9 @@
       </div>
 
       <div class="flex items-center w-full mx-6 my-4 color-grey-medium">
-        <SiButtonIcon tooltip-text="Logout" @click="onLogout">
+        <SiIcon tooltip-text="Logout" @click="onLogout">
           <LogoutIcon class="color-grey-medium" />
-        </SiButtonIcon>
+        </SiIcon>
       </div>
     </div>
   </nav>
@@ -206,36 +211,13 @@
 
 <script setup lang="ts">
 import { ref, computed } from "vue";
-import { refFrom } from "vuse-rx";
 import SysinitIcon from "@/atoms/SysinitIcon.vue";
 import { SessionService } from "@/service/session";
 import { useRouter } from "vue-router";
-import { organization$ } from "@/observable/organization";
-import { Workspace } from "@/api/sdf/dal/workspace";
-import { WorkspaceService } from "@/service/workspace";
-import SiButtonIcon from "@/atoms/SiButtonIcon.vue";
 import SiIcon from "@/atoms/SiIcon.vue";
-import {
-  CodeIcon,
-  MoonIcon,
-  BookOpenIcon,
-  ViewGridIcon,
-  CubeIcon,
-  MenuIcon,
-  CollectionIcon,
-  ShareIcon,
-  LightningBoltIcon,
-  GlobeAltIcon,
-  CogIcon,
-  KeyIcon,
-  LogoutIcon,
-} from "@heroicons/vue/solid";
+import { CodeIcon, LogoutIcon } from "@heroicons/vue/outline";
 
 const isMaximized = ref(false);
-const currentWorkspace = refFrom<Workspace | null>(
-  WorkspaceService.currentWorkspace(),
-);
-const currentOrganization = refFrom(organization$);
 
 const isLinkTitleVisible = computed(() => isMaximized.value);
 const isBrandLogoVisible = computed(() => !isMaximized.value);
