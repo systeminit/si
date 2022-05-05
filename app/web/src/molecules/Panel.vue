@@ -29,46 +29,46 @@
       </div>
       <div class="flex flex-row items-center justify-end flex-grow">
         <div class="flex items-center h-full pr-2">
-          <button
+          <SiButtonIcon
             v-if="maximizedContainer && !maximizedFull"
-            class="flex items-center"
+            tooltip-text="Minimize Container"
             data-testid="minimize-container"
             @click="minimizeContainer"
           >
-            <VueFeather type="minimize-2" size="1.2rem" stroke-width="1.5" />
-          </button>
+            <ChevronDownIcon />
+          </SiButtonIcon>
 
-          <button
+          <SiButtonIcon
             v-if="
               !maximizedContainer &&
               !maximizedFull &&
               isMaximizedContainerEnabled
             "
-            class="flex items-center"
+            tooltip-text="Maximize Container"
             data-testid="maximize-container"
             @click="maximizeContainer"
           >
-            <VueFeather type="maximize-2" size="1.2rem" stroke-width="1.5" />
-          </button>
+            <ChevronUpIcon />
+          </SiButtonIcon>
         </div>
         <div class="flex items-center h-full pr-2">
-          <button
+          <SiButtonIcon
             v-if="maximizedFull"
-            class="flex items-center"
+            tooltip-text="Minimize Full"
             data-testid="minimize-full"
             @click="minimizeFull"
           >
-            <VueFeather type="minimize" size="1.2rem" stroke-width="1.5" />
-          </button>
+            <ChevronDoubleDownIcon />
+          </SiButtonIcon>
 
-          <button
+          <SiButtonIcon
             v-else
-            class="flex items-center"
+            tooltip-text="Maximize Full"
             data-testid="maximize-full"
             @click="maximizeFull"
           >
-            <VueFeather type="maximize" size="1.2rem" stroke-width="1.5" />
-          </button>
+            <ChevronDoubleUpIcon />
+          </SiButtonIcon>
         </div>
       </div>
     </div>
@@ -82,7 +82,6 @@
 import SiSelect from "@/atoms/SiSelect.vue";
 import { PanelMaximized, PanelType } from "@/organisims/PanelTree/panel_types";
 import { LabelList } from "@/api/sdf/dal/label_list";
-import VueFeather from "vue-feather";
 import { computed, onMounted, PropType, ref, watch } from "vue";
 import {
   createPanelMaximizedContainerObservable,
@@ -91,6 +90,13 @@ import {
   restorePanelMaximizedFullObservable,
 } from "@/observable/editor";
 import _ from "lodash";
+import SiButtonIcon from "@/atoms/SiButtonIcon.vue";
+import {
+  ChevronUpIcon,
+  ChevronDownIcon,
+  ChevronDoubleUpIcon,
+  ChevronDoubleDownIcon,
+} from "@heroicons/vue/solid";
 
 const props = defineProps({
   panelIndex: { type: Number, required: true },

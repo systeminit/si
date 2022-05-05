@@ -10,10 +10,12 @@ import "@/assets/tailwind.css";
 import { SignupService } from "@/service/signup";
 import { SessionService } from "@/service/session";
 import { ChangeSetService } from "@/service/change_set";
+import FloatingVue from "floating-vue";
 
 bottleSetup(config);
 
 const app = createApp(App);
+app.use(FloatingVue);
 
 // Expose our internal services to Cypress, so we can use them
 // directly in tests.

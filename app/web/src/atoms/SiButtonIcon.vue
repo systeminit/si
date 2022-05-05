@@ -1,59 +1,46 @@
 <template>
-  <Popper :hover="true" :open-delay="500" :content="props.tooltipText">
-    <button
-      :class="buttonStyle"
-      :aria-label="props.tooltipText"
-      :disabled="props.disabled"
-      :style="{ color: props.color }"
-      @click="emit('click')"
-    >
-      <slot></slot>
-    </button>
-  </Popper>
+  <button
+    v-tooltip.bottom="tooltipText"
+    :class="buttonClasses"
+    :aria-label="props.tooltipText"
+    :disabled="props.disabled"
+    @click="emit('click')"
+  >
+    <slot></slot>
+  </button>
 </template>
 
 <script setup lang="ts">
-import Popper from "vue3-popper";
-import { computed } from "vue";
+import { computed, toRefs } from "vue";
 
 const emit = defineEmits(["click"]);
 
 const props = defineProps<{
   disabled?: boolean;
-  color: string;
+  selected?: boolean;
   tooltipText: string;
 }>();
+const { disabled, selected, tooltipText } = toRefs(props);
 
-const buttonStyle = computed(() => {
-  const results: Record<string, boolean> = {};
-  results["button-standard"] = true;
-  results["text-xs"] = true;
-  if (props.disabled) {
+const buttonClasses = computed(() => {
+  const results: Record<string, boolean> = {
+    block: true,
+    "w-5": true,
+    "h-5": true,
+    "text-gray-300": true,
+    "hover:text-gray-100": true,
+  };
+  if (disabled?.value) {
     results["opacity-50"] = true;
     results["cursor-not-allowed"] = true;
+  } else {
+    if (selected?.value) {
+      results["text-blue-300"] = true;
+      results["hover:text-blue-200"] = true;
+      results["hover:text-gray-100"] = false;
+      results["hover:text-gray-300"] = false;
+    }
   }
   return results;
 });
 </script>
-
-<style lang="scss" scoped>
-$button-saturation: 1.2;
-$button-brightness: 1.05;
-
-.button-standard {
-  display: flex;
-  width: 20px;
-}
-
-.button-standard:hover {
-  filter: brightness($button-brightness);
-}
-
-.button-standard:focus {
-  outline: none;
-}
-
-.button-standard:active {
-  filter: saturate(1.5) brightness($button-brightness);
-}
-</style>
