@@ -257,6 +257,7 @@ const editSessionStart = () => {
 };
 
 const editButtonPulseStop = ref(false);
+let editButtonPulseTimeout: ReturnType<typeof setTimeout>;
 // This is a horrible hack to ensure we cleanup the pulse
 const editButtonPulseUntil = refFrom<Date>(
   editButtonPulse$.asObservable().pipe(
@@ -268,10 +269,10 @@ const editButtonPulseUntil = refFrom<Date>(
 
       // There must be a better way of doing this with RxJs, but I've been stuck trying to find it and failing for a while, let's move on
       const until = new Date(new Date().getTime() + 5000);
-      setTimeout(() => {
-        // This is here so we can keep pulsing if the user clicks multiple times instead of stopping at the first
+      clearTimeout(editButtonPulseTimeout);
+      editButtonPulseTimeout = setTimeout(() => {
         editButtonPulseStop.value = true;
-      }, Math.max(0, until.getTime() - new Date().getTime()));
+      }, 5000);
       return until;
     }),
   ),
