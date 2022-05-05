@@ -26,10 +26,11 @@
         {{ changeSet.name }}
       </div>
       <div v-else class="mr-1 text-xs changeset-name">latest</div>
-      <div v-if="editMode" class="mr-1 text-xs changeset-icon">|</div>
+      <div class="mr-1 text-xs changeset-icon">|</div>
       <div v-if="editMode" class="w-6 mr-1 text-xs" :class="editModeClasses()">
         edit
       </div>
+      <div v-else class="w-6 mr-1 text-xs" :class="editModeClasses()">read</div>
     </div>
   </div>
 </template>

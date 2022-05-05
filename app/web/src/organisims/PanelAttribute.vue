@@ -99,21 +99,11 @@
       </div>
     </template>
 
-    <template v-if="selectedComponentIdentification" #content>
-      <!-- NOTE(nick): CLion's Vue.js plugin version 213.6461.23 shows an incorrect warning message here.
-      Essentially, the IDE will say that "selectComponentIdentification.componentId" can still be null despite the "v-if" directive
-      checking the "truthiness" of it (either in the div or the viewer declarations). Due to the usage of the directive,
-      we know it will be a number and the warning is incorrect.
-      For more information: https://v3.vuejs.org/guide/conditional.html#v-if
-      -->
-
-      <!-- NOTE(paulo): `npm run type-check` complains about selectedComponetnIdentification.componentId being null
-      if we only check in the template, but checking in the template ensures we can't endup rendering two #content slots
-      so we check on both places
-      -->
+    <template #content>
       <div
         v-if="selectedComponentIdentification"
         class="flex flex-row w-full h-full overflow-auto"
+        @click="attributeViewerClick"
       >
         <AttributeViewer
           v-if="activeView === 'attribute'"
@@ -153,6 +143,11 @@
           <img width="300" :src="cheechSvg" alt="Cheech and Chong!" />
         </div>
       </div>
+      <div
+        v-else
+        class="flex flex-row w-full h-full overflow-auto"
+        @click="attributeViewerClick"
+      ></div>
     </template>
   </Panel>
 </template>
@@ -180,6 +175,8 @@ import { ComponentIdentification } from "@/api/sdf/dal/component";
 import { schematicData$ } from "./SchematicViewer/Viewer/scene/observable";
 import { visibility$ } from "@/observable/visibility";
 import { PanelAttributeSubType } from "./PanelTree/panel_types";
+import { ChangeSetService } from "@/service/change_set";
+import { editButtonPulseUntil$ } from "@/observable/change_set";
 import {
   CheckCircleIcon,
   ClipboardListIcon,
@@ -309,6 +306,13 @@ const selectedComponentIdentification = computed(
     return null;
   },
 );
+
+const editMode = refFrom(ChangeSetService.currentEditMode());
+const attributeViewerClick = () => {
+  if (activeView.value === "attribute" && !editMode.value) {
+    editButtonPulseUntil$.next(new Date(new Date().getTime() + 5000));
+  }
+};
 </script>
 
 <style scoped>

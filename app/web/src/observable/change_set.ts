@@ -42,3 +42,9 @@ eventChangeSetApplied$.next(null);
 export const eventChangeSetCanceled$ =
   new ReplaySubject<WsEvent<WsChangeSetCanceled> | null>(1);
 eventChangeSetCanceled$.next(null);
+
+/**
+ * Fired when the user tries to edit something outside of an edit-session
+ */
+export const editButtonPulseUntil$ = new ReplaySubject<Date>(1);
+editButtonPulseUntil$.next(new Date());
