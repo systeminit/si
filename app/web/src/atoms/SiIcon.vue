@@ -21,8 +21,8 @@ const { tooltipText } = toRefs(props);
 const classes = computed(() => {
   const results: Record<string, boolean> = {
     block: true,
-    "w-5": true,
-    "h-5": true,
+    "w-6": true,
+    "h-6": true,
     "text-gray-300": true,
     "hover:text-gray-100": true,
   };

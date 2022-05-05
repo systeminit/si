@@ -1,7 +1,9 @@
 <template>
   <div class="flex w-full h-6" @keyup.stop @keydown.stop>
     <div id="system-selector" class="flex">
-      <div class="flex items-center justify-end pr-1 text-xs text-gray-400">
+      <div
+        class="flex items-center justify-end pr-1 pt-1 text-sm text-gray-400"
+      >
         system:
       </div>
       <div class="flex items-center mr-2">
@@ -11,8 +13,7 @@
           value-as-number
           :options="systemsList"
           :disabled="false"
-          size="xs"
-          :styling="systemSelectorStyling()"
+          class="w-32"
           @change="systemSelected"
         />
       </div>
@@ -108,15 +109,6 @@ const defaultSystemLabels = computed(() => {
 
 // The list of systems
 const systemsList = ref<LabelList<number>>(defaultSystemLabels.value);
-
-// Styling for the system selector and buttons
-const systemSelectorStyling = () => {
-  let classes: Record<string, boolean> = {};
-  classes["bg-selector1"] = true;
-  classes["text-gray-400"] = true;
-  classes["border-gray-700"] = true;
-  return classes;
-};
 
 const systemSelected = () => {
   if (selectedSystemId.value == SYSTEM_NONE) {

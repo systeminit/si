@@ -7,20 +7,16 @@
     @mouseleave="mouseLeave()"
   >
     <div
-      class="flex flex-row items-center w-full bg-black"
+      class="flex flex-row items-center w-full bg-black h-16"
       :class="panelMenuClasses"
-      style="height: 2.5rem; min-height: 2.5rem"
     >
       <div class="flex justify-start">
-        <div class="min-w-max">
+        <div class="min-w-max w-200">
           <SiSelect
             id="selectPanelType"
             v-model="selectedPanelType"
-            size="xs"
             :options="panelTypes"
-            class="pl-2"
-            :styling="panelSelectorStyling()"
-            @change="changePanelType"
+            class="pl-2 w-32"
           />
         </div>
       </div>
@@ -112,7 +108,17 @@ const props = defineProps({
   isMaximizedContainerEnabled: Boolean,
 });
 
-const selectedPanelType = ref<PanelType>(props.initialPanelType);
+const currentSelectedPanelType = ref<PanelType>(props.initialPanelType);
+const selectedPanelType = computed<PanelType>({
+  get() {
+    return currentSelectedPanelType.value;
+  },
+  set(value) {
+    currentSelectedPanelType.value = value;
+    changePanelType();
+  },
+});
+
 const maximizedFull = ref(props.initialMaximizedFull);
 const maximizedContainer = ref(props.initialMaximizedContainer);
 const isActive = ref<boolean>(false);
@@ -169,14 +175,6 @@ const emits = defineEmits([
   "panel-maximize-full",
   "panel-minimize-full",
 ]);
-
-const panelSelectorStyling = () => {
-  let classes: Record<string, boolean> = {};
-  classes["bg-selectordark"] = true;
-  classes["text-gray-400"] = true;
-  classes["border-gray-800"] = true;
-  return classes;
-};
 
 const changePanelType = () => {
   emits("change-panel", selectedPanelType.value);

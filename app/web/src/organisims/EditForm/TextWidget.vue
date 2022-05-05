@@ -25,7 +25,7 @@
     <template #edit>
       <input
         v-model="currentValue"
-        class="pl-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none input-bg-color-grey si-property disabled:opacity-50"
+        class="appearance-none block bg-gray-900 text-gray-100 w-full px-3 py-2 border rounded-sm shadow-sm placeholder-gray-700 focus:outline-none focus:ring-indigo-200 focus:border-indigo-200 sm:text-sm"
         :class="inputStyles"
         type="text"
         aria-label="name"
@@ -113,11 +113,11 @@ const inputStyles = computed((): Record<string, boolean> => {
   let styles: Record<string, boolean> = {};
 
   if (props.editField.visibility_diff.kind != "None") {
-    styles["input-border-gold"] = true;
-    styles["input-border-grey"] = false;
+    styles["border-yellow-600"] = true;
+    styles["border-grey-600"] = false;
   } else {
-    styles["input-border-gold"] = false;
-    styles["input-border-grey"] = true;
+    styles["border-yellow-600"] = false;
+    styles["border-grey-600"] = true;
   }
   if (props.coreEditField) {
     styles["flex-grow"] = true;
@@ -135,5 +135,3 @@ const textColor = computed((): Record<string, boolean> => {
   }
 });
 </script>
-
-<style scoped></style>

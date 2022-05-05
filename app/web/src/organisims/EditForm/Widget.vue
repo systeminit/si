@@ -89,6 +89,8 @@ const attributeContext = computed((): AttributeContext | "" => {
   if (!props.componentIdentification) {
     return {
       attribute_context_prop_id: props.editField.baggage.prop_id,
+      attribute_context_internal_provider_id: -1,
+      attribute_context_external_provider_id: -1,
       attribute_context_schema_id: -1,
       attribute_context_schema_variant_id: -1,
       attribute_context_component_id: -1,
@@ -98,6 +100,8 @@ const attributeContext = computed((): AttributeContext | "" => {
 
   return {
     attribute_context_prop_id: props.editField.baggage.prop_id,
+    attribute_context_internal_provider_id: -1,
+    attribute_context_external_provider_id: -1,
     attribute_context_schema_id: props.componentIdentification.schemaId,
     attribute_context_schema_variant_id:
       props.componentIdentification.schemaVariantId,

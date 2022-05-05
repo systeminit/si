@@ -13,11 +13,9 @@
         <SiSelect
           id="schematicSelect"
           v-model="schematicKindRaw"
-          size="xs"
           name="schematicSelect"
-          class="pl-1"
+          class="pl-1 w-32"
           :options="schematicKinds"
-          :styling="schematicSelectorStyling"
         />
       </div>
 
@@ -29,15 +27,14 @@
           <SiSelect
             id="nodeSelect"
             v-model="selectedDeploymentComponentId"
-            size="xs"
             name="nodeSelect"
-            class="pl-1"
+            class="pl-1 w-32"
             :value-as-number="true"
             :options="deploymentComponentsList"
             :disabled="!isPinned"
           />
         </div>
-        <LockButton v-model="isPinned" class="flex items-center" />
+        <LockButton v-model="isPinned" class="flex items-center pl-1" />
       </div>
 
       <NodeAddMenu
@@ -179,14 +176,6 @@ const schematicKinds = computed(() => {
     });
   }
   return labels;
-});
-
-const schematicSelectorStyling = computed(() => {
-  let classes: Record<string, boolean> = {};
-  classes["bg-selectordark"] = true;
-  classes["text-gray-400"] = true;
-  classes["border-gray-800"] = true;
-  return classes;
 });
 
 const applicationId = refFrom<number | null>(

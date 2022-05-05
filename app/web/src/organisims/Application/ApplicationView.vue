@@ -6,11 +6,9 @@
   >
     <div class="flex flex-col w-full h-full">
       <StatusBar />
-      <div class="flex flex-col w-full my-2">
-        <div class="flex justify-between">
-          <div class="flex items-center"></div>
-          <div class="flex"></div>
-          <div class="flex mr-2">
+      <div class="flex flex-col w-full h-16">
+        <div class="flex justify-end h-full">
+          <div class="flex mr-2 items-center">
             <SiSystemHeader />
             <SiChangeSetHeader />
           </div>

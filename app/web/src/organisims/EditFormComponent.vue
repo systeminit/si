@@ -9,11 +9,11 @@
       :component-identification="componentIdentification"
     />
     <div
-      class="pt1 pb-1 pl-6 mt-2 text-base text-white align-middle property-section-bg-color"
+      class="pt-1 pb-1 pl-6 mt-2 text-base text-white align-middle property-section-bg-color"
     >
       Properties
     </div>
-    <div class="w-full">
+    <div class="flex flex-col w-full overflow-auto scrollbar">
       <Widgets
         :show="true"
         :edit-fields="propertyEditFields"

@@ -5,10 +5,9 @@
       :id="id"
       :type="type"
       :aria-required="required"
-      :placeholder="placeholder"
       :value="modelValue"
       :data-test="id"
-      class="block w-full px-2 py-1 pr-8 leading-tight text-gray-400 border border-gray-800 border-solid shadow shadow-inner focus:outline-none bg-blueGray-700"
+      class="appearance-none block bg-gray-900 text-gray-100 w-full px-3 py-2 border border-gray-600 rounded-sm shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-200 focus:border-indigo-200 sm:text-sm"
       @input="valueChanged"
     />
 
@@ -20,7 +19,7 @@
       :placeholder="placeholder"
       :value="modelValue"
       :data-test="id"
-      class="block w-full h-24 px-2 py-1 pr-8 leading-tight text-gray-400 border border-gray-800 border-solid shadow shadow-inner resize-y focus:outline-none bg-blueGray-700"
+      class="appearance-none block h-24 bg-gray-900 text-gray-100 w-full px-3 py-2 border border-gray-600 rounded-sm shadow-sm placeholder-gray-900 focus:outline-none focus:ring-indigo-200 focus:border-indigo-200 sm:text-sm"
       @input="valueChanged"
     />
     <div

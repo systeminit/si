@@ -1,5 +1,7 @@
 <template>
-  <SignupForm @success="routeToLogin" @back-to-login="routeToLogin" />
+  <div class="h-full w-full">
+    <SignupForm @success="routeToLogin" @back-to-login="routeToLogin" />
+  </div>
 </template>
 
 <script lang="ts">

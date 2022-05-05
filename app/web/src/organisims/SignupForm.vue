@@ -1,271 +1,186 @@
 <template>
-  <div class="flex flex-col shadow-lg select-none w-96 signup-form">
-    <div
-      class="flex items-center justify-between pt-1 pb-1 pl-1 text-sm text-white bg-black"
-    >
-      <div class="signup-form-header">Sign Up</div>
-    </div>
-    <div class="p-4">
-      <div v-if="errorMessage" class="text-white bg-red-500">
-        Error: {{ errorMessage }}
-      </div>
-      <div class="flex flex-row items-center object-center mx-2 my-2">
-        <div class="w-2/3 pr-2 text-right text-gray-400 align-middle">
-          <label class="signup-form-text" for="billingAccountName"
-            >Billing Account Name</label
-          >
-        </div>
-        <div class="w-2/3 align-middle">
-          <input
-            id="billingAccountName"
-            v-model="form.billingAccountName"
-            data-test="billingAccountName"
-            class="block w-full px-2 py-1 pr-8 leading-tight shadow signup-form-input focus:outline-none"
-            :class="inputStyling('billingAccount')"
-          />
-        </div>
-      </div>
-
-      <div class="flex flex-row items-center object-center mx-2 my-2">
-        <div class="w-2/3 pr-2 text-right text-gray-400 align-middle">
-          <label class="signup-form-text" for="userName">Full Name</label>
-        </div>
-        <div class="w-2/3 align-middle">
-          <input
-            id="userName"
-            v-model="form.userName"
-            data-test="userName"
-            class="block w-full px-2 py-1 pr-8 leading-tight shadow signup-form-input focus:outline-none"
-            :class="inputStyling('name')"
-          />
-        </div>
-      </div>
-      <div class="flex flex-row items-center object-center mx-2 my-2">
-        <div class="w-2/3 pr-2 text-right text-gray-400 align-middle">
-          <label class="signup-form-text" for="userEmail">Email</label>
-        </div>
-        <div class="w-2/3 align-middle">
-          <input
-            id="userEmail"
-            v-model="form.userEmail"
-            data-test="userEmail"
-            class="block w-full px-2 py-1 pr-8 leading-tight shadow signup-form-input focus:outline-none"
-            :class="inputStyling('email')"
-          />
-        </div>
-      </div>
-      <div class="flex flex-row items-center object-center mx-2 my-2">
-        <div class="w-2/3 pr-2 text-right text-gray-400 align-middle">
-          <label class="signup-form-text" for="userPassword"> Password </label>
-        </div>
-        <div class="w-2/3 align-middle">
-          <input
-            id="userPassword"
-            v-model="form.userPassword"
-            data-test="userPassword"
-            class="block w-full px-2 py-1 pr-8 leading-tight shadow signup-form-input focus:outline-none"
-            :class="inputStyling('password')"
-            type="password"
-          />
-        </div>
-      </div>
-      <div class="flex flex-row items-center object-center mx-2 my-2">
-        <div class="w-2/3 pr-2 text-right text-gray-400 align-middle">
-          <label class="signup-form-text" for="signupSecret">
-            Agent Passphrase
-          </label>
-        </div>
-        <div class="w-2/3 align-middle">
-          <input
-            id="signupSecret"
-            v-model="form.signupSecret"
-            data-test="signupSecret"
-            class="block w-full px-2 py-1 pr-8 leading-tight shadow signup-form-input focus:outline-none"
-            :class="inputStyling('signupSecret')"
-            type="password"
-          />
-        </div>
-      </div>
-      <!-- <div class="flex flex-row items-center object-center mx-2 my-2">
-        <div class="w-2/3 pr-2 text-right text-gray-400 align-middle">
-          <label for="userPasswordSecond">Password Again</label>
-        </div>
-        <div class="w-2/3 align-middle">
-          <input
-            class="block w-full px-2 py-1 pr-8 leading-tight shadow login-form-input focus:outline-none"
-            :class="inputStyling('billingAccount')"
-            id="userPasswordSecond"
-            type="password"
-          />
-        </div>
-      </div> -->
+  <div class="min-h-full flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div class="sm:mx-auto sm:w-full sm:max-w-md">
+      <img
+        class="mx-auto h-12 w-auto"
+        :src="siLogoWts"
+        alt="System Initiative"
+      />
+      <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-200">
+        Sign up for a free trial
+      </h2>
+      <p class="mt-2 text-center text-sm text-gray-200">
+        Or
+        {{ " " }}
+        <router-link
+          :to="{ name: 'login' }"
+          class="font-medium text-indigo-300 hover:text-indigo-400"
+        >
+          sign in to your account
+        </router-link>
+      </p>
     </div>
 
-    <div class="flex justify-end w-full p-2">
-      <div class="pr-2">
-        <button
-          class="inline-block py-1 button button-cancel"
-          aria-label="Cancel"
-          @click="backToLogin"
-        >
-          [Cancel]
-        </button>
-      </div>
-      <div class="pr-2">
-        <button
-          data-test="signUp"
-          class="inline-block py-1 button button-signup"
-          :class="signupButtonStyling()"
-          aria-label="Sign Up"
-          @click="createAccount"
-        >
-          [Sign Up]
-        </button>
+    <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+      <div class="bg-gray-800 py-8 px-4 shadow sm:rounded-sm sm:px-10">
+        <div v-if="errorMessage" class="text-white bg-red-500">
+          Error: {{ errorMessage }}
+        </div>
+
+        <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
+          <div class="sm:col-span-6">
+            <label
+              for="billingAccountName"
+              class="block text-sm font-medium text-gray-200"
+            >
+              Billing Account Name
+            </label>
+            <div class="mt-1 w-full">
+              <input
+                id="billingAccountName"
+                v-model="form.billingAccountName"
+                data-test="billingAccountName"
+                type="text"
+                name="billingAccountName"
+                autocomplete="billingAccountName"
+                required
+                class="appearance-none block bg-gray-900 text-gray-100 w-full px-3 py-2 border border-gray-600 rounded-sm shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-200 focus:border-indigo-200 sm:text-sm"
+              />
+            </div>
+            <p class="mt-2 text-xs text-gray-300">
+              A name for your account. A company name is a good idea. You can
+              change it later. (You'll need this to sign in!)
+            </p>
+          </div>
+
+          <div class="sm:col-span-6">
+            <label
+              for="userName"
+              class="block text-sm font-medium text-gray-200"
+            >
+              Full Name
+            </label>
+            <div class="mt-1 w-full">
+              <input
+                id="userName"
+                v-model="form.userName"
+                data-test="userName"
+                type="text"
+                name="userName"
+                autocomplete="userName"
+                required
+                class="appearance-none block bg-gray-900 text-gray-100 w-full px-3 py-2 border border-gray-600 rounded-sm shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-200 focus:border-indigo-200 sm:text-sm"
+              />
+            </div>
+            <p class="mt-2 text-xs text-gray-300">Your full name.</p>
+          </div>
+
+          <div class="sm:col-span-6">
+            <label
+              for="userEmail"
+              class="block text-sm font-medium text-gray-200"
+            >
+              Email
+            </label>
+            <div class="mt-1 w-full">
+              <input
+                id="userEmail"
+                v-model="form.userEmail"
+                data-test="userEmail"
+                type="email"
+                name="email"
+                autocomplete="email"
+                required
+                class="appearance-none block bg-gray-900 text-gray-100 w-full px-3 py-2 border border-gray-600 rounded-sm shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-200 focus:border-indigo-200 sm:text-sm"
+              />
+            </div>
+            <p class="mt-2 text-xs text-gray-300">Your email address.</p>
+          </div>
+
+          <div class="sm:col-span-6">
+            <label
+              for="userPassword"
+              class="block text-sm font-medium text-gray-200"
+            >
+              Password
+            </label>
+            <div class="mt-1 w-full">
+              <input
+                id="userPassword"
+                v-model="form.userPassword"
+                data-test="userPassword"
+                type="password"
+                name="password"
+                required
+                class="appearance-none block bg-gray-900 text-gray-100 w-full px-3 py-2 border border-gray-600 rounded-sm shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-200 focus:border-indigo-200 sm:text-sm"
+              />
+            </div>
+            <p class="mt-2 text-xs text-gray-300">Your password.</p>
+          </div>
+
+          <div class="sm:col-span-6">
+            <label
+              for="signupSecret"
+              class="block text-sm font-medium text-gray-200"
+            >
+              Agent Passphrase
+            </label>
+            <div class="mt-1 w-full">
+              <input
+                id="signupSecret"
+                v-model="form.signupSecret"
+                data-test="signupSecret"
+                type="password"
+                name="password"
+                required
+                class="appearance-none block bg-gray-900 text-gray-100 w-full px-3 py-2 border border-gray-600 rounded-sm shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-200 focus:border-indigo-200 sm:text-sm"
+              />
+            </div>
+            <p class="mt-2 text-xs text-gray-300">
+              The secret agent passphrase provided to you by the Initiative.
+            </p>
+          </div>
+          <div class="sm:col-span-6">
+            <button
+              type="submit"
+              data-test="signUp"
+              aria-label="Sign Up"
+              class="w-full flex justify-center py-2 px-4 border border-transparent rounded-sm shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-400"
+              @click="createAccount"
+            >
+              Sign up
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from "vue";
+<script setup lang="ts">
+import { ref } from "vue";
 import { CreateAccountRequest, SignupService } from "@/service/signup";
+import siLogoWts from "@/assets/images/si-logo-wts.svg";
 
-enum InputKind {
-  BillingAccount = "billingAccount",
-  Name = "name",
-  Email = "email",
-  Password = "password",
-  SignupSecret = "signupSecret",
-}
+const emit = defineEmits(["success", "back-to-login"]);
 
-interface IData {
-  form: CreateAccountRequest;
-  errorMessage: string | undefined;
-}
-
-export default defineComponent({
-  name: "SignupForm",
-  emits: ["success", "back-to-login"],
-  data(): IData {
-    return {
-      form: {
-        billingAccountName: "",
-        userName: "",
-        userEmail: "",
-        userPassword: "",
-        signupSecret: "",
-      },
-      errorMessage: undefined,
-    };
-  },
-  methods: {
-    createAccount() {
-      SignupService.createAccount(this.form).subscribe((response) => {
-        if (response.error) {
-          this.errorMessage = response.error.message;
-        } else {
-          this.$emit("success");
-        }
-      });
-    },
-    async backToLogin() {
-      this.$emit("back-to-login");
-    },
-    inputStyling(inputKind: string): Record<string, boolean> {
-      let classes: Record<string, boolean> = {};
-
-      if (
-        (inputKind == InputKind.BillingAccount &&
-          this.form.billingAccountName) ||
-        (inputKind == InputKind.Name && this.form.userName) ||
-        (inputKind == InputKind.Email && this.form.userEmail) ||
-        (inputKind == InputKind.Password && this.form.userPassword) ||
-        (inputKind == InputKind.SignupSecret && this.form.signupSecret)
-      ) {
-        classes["signup-form-input-validated"] = true;
-      }
-      return classes;
-    },
-    signupButtonStyling(): Record<string, boolean> {
-      let classes: Record<string, boolean> = {};
-
-      if (
-        this.form.billingAccountName &&
-        this.form.userName &&
-        this.form.userEmail &&
-        this.form.userPassword
-      ) {
-        classes["button-signup-validated"] = true;
-      }
-      return classes;
-    },
-  },
+const form = ref<CreateAccountRequest>({
+  billingAccountName: "",
+  userName: "",
+  userEmail: "",
+  userPassword: "",
+  signupSecret: "",
 });
+
+const errorMessage = ref<undefined | string>(undefined);
+
+const createAccount = () => {
+  SignupService.createAccount(form.value).subscribe((response) => {
+    if (response.error) {
+      errorMessage.value = response.error.message;
+    } else {
+      emit("success");
+    }
+  });
+};
 </script>
-
-<style lang="scss" scoped>
-$button-saturation: 2;
-$button-brightness: 1.05;
-
-.signup-form {
-  background-color: #151b1e;
-  border: 1px solid #2c3940;
-}
-
-.signup-form-header {
-  font-family: "Source Code Pro";
-  font-size: 0.85em;
-  font-weight: 500;
-}
-
-.signup-form-text {
-  font-family: "Source Code Pro";
-  font-size: 0.85em;
-  font-weight: 400;
-  color: #dcdddd;
-}
-
-.signup-form-input {
-  font-family: "Source Code Pro";
-  font-size: 0.845em;
-  font-weight: 400;
-  background-color: #151b1e;
-  color: #e5e5e5;
-  border-bottom: 1px;
-  border-style: solid;
-  border-color: #b5b5b5;
-}
-
-.signup-form-input-validated {
-  border-color: #9ab5a4;
-}
-
-.button-cancel {
-  color: #ff99b8;
-}
-
-.button-signup {
-  color: #cccdcd;
-}
-
-.button-signup-validated {
-  color: #b3ffcf;
-}
-
-.button {
-  font-family: "Source Code Pro";
-  font-size: 0.8em;
-}
-
-.button:hover {
-  filter: saturate($button-saturation) brightness($button-brightness);
-}
-
-.button:focus {
-  outline: none;
-}
-
-.button:active {
-  filter: saturate(2) brightness($button-brightness);
-}
-</style>

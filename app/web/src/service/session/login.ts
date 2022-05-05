@@ -30,7 +30,7 @@ export function login(
 
   return sdf.post<ApiResponse<LoginResponse>>("session/login", request).pipe(
     tap((response) => {
-      if (!response.error) {
+      if (response && !response.error) {
         sdf.token = response.jwt;
         ChangeSetService.switchToHead();
         workspace$.next(null);
