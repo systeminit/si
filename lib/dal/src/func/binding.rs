@@ -420,7 +420,7 @@ impl FuncBinding {
             }
         };
 
-        let fbrv = FuncBindingReturnValue::upsert(
+        let func_binding_return_value = FuncBindingReturnValue::upsert(
             ctx,
             return_value.clone(),
             return_value,
@@ -430,11 +430,13 @@ impl FuncBinding {
         )
         .await?;
 
-        execution.process_return_value(ctx, &fbrv).await?;
+        execution
+            .process_return_value(ctx, &func_binding_return_value)
+            .await?;
         execution
             .set_state(ctx, super::execution::FuncExecutionState::Success)
             .await?;
 
-        Ok(fbrv)
+        Ok(func_binding_return_value)
     }
 }

@@ -99,13 +99,13 @@ impl ComponentView {
 
             while let Some(AttributeValuePayload {
                 prop,
-                fbrv,
+                func_binding_return_value,
                 attribute_value,
                 parent_attribute_value_id,
             }) = work_queue.pop()
             {
-                if let Some(fbrv) = fbrv {
-                    if let Some(value) = fbrv.value() {
+                if let Some(func_binding_return_value) = func_binding_return_value {
+                    if let Some(value) = func_binding_return_value.value() {
                         if root_id == parent_attribute_value_id {
                             let insertion_pointer =
                                 if let Some(parent_avi) = parent_attribute_value_id {
@@ -160,7 +160,7 @@ impl ComponentView {
                         } else {
                             unprocessed.push(AttributeValuePayload::new(
                                 prop,
-                                Some(fbrv),
+                                Some(func_binding_return_value),
                                 attribute_value,
                                 parent_attribute_value_id,
                             ));
