@@ -70,7 +70,7 @@
           </SiButtonIcon>
           -->
           <SiButtonIcon
-            tooltip-text="Provider Viewer"
+            tooltip-text="Providers"
             :selected="activeView === 'provider'"
             @click="setActiveView('provider')"
           >
