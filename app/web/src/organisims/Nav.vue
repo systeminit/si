@@ -24,7 +24,9 @@
         id="workspace-selector"
         class="flex items-center w-full h-4 mt-3 ml-6 justify-left"
       >
-        <VueFeather type="menu" class="color-grey-medium" />
+        <SiIcon tooltip-text="Menu">
+          <MenuIcon class="color-grey-medium" />
+        </SiIcon>
         <div
           v-if="currentWorkspace"
           v-show="isLinkTitleVisible"
@@ -42,19 +44,19 @@
         <div class="flex flex-col">
           <!-- Dashboard Link -->
           <div class="container-link">
-            <VueFeather type="activity" size="1.1rem" class="" />
+            <SiIcon tooltip-text="Dashboard">
+              <LightningBoltIcon class="color-grey-medium" />
+            </SiIcon>
             <div v-show="isLinkTitleVisible" class="link-title">Dashboard</div>
           </div>
 
           <!-- Applications Link -->
           <div class="container-link">
-            <router-link
-              :to="{
-                name: 'application-list',
-              }"
-            >
+            <router-link :to="{ name: 'application-list' }">
               <div class="flex items-center justify-start cursor-pointer">
-                <VueFeather type="code" size="1.1rem" class="" />
+                <SiButtonIcon tooltip-text="Applications">
+                  <CodeIcon class="color-grey-medium" />
+                </SiButtonIcon>
                 <div v-show="isLinkTitleVisible" class="link-title">
                   Applications
                 </div>
@@ -65,11 +67,9 @@
           <!-- Systems Link -->
           <div class="container-link">
             <div class="flex items-center justify-start">
-              <VueFeather
-                type="share-2"
-                size="1.1rem"
-                class="transform rotate-90"
-              />
+              <SiIcon tooltip-text="Systems">
+                <ShareIcon class="color-grey-medium transform rotate-90" />
+              </SiIcon>
               <div v-show="isLinkTitleVisible" class="link-title">Systems</div>
             </div>
           </div>
@@ -77,7 +77,9 @@
           <!-- Components Link -->
           <div class="container-link">
             <div class="flex items-center justify-start">
-              <VueFeather type="box" size="1.1rem" class="" />
+              <SiIcon tooltip-text="Components">
+                <CubeIcon class="color-grey-medium" />
+              </SiIcon>
               <div v-show="isLinkTitleVisible" class="link-title">
                 Components
               </div>
@@ -87,7 +89,9 @@
           <!-- Resources Link -->
           <div class="container-link">
             <div class="flex items-center justify-start">
-              <VueFeather type="grid" size="1.1rem" class="" />
+              <SiIcon tooltip-text="Resources">
+                <ViewGridIcon class="color-grey-medium" />
+              </SiIcon>
               <div v-show="isLinkTitleVisible" class="link-title">
                 Resources
               </div>
@@ -97,7 +101,9 @@
           <!-- Environment Link  AKA computing environment -->
           <div class="container-link">
             <div class="flex items-center justify-start">
-              <VueFeather type="layers" size="1.1rem" class="" />
+              <SiIcon tooltip-text="Environment">
+                <CollectionIcon class="color-grey-medium" />
+              </SiIcon>
               <div v-show="isLinkTitleVisible" class="link-title">
                 Environment
               </div>
@@ -107,40 +113,32 @@
           <!-- Catalogue Link -->
           <div class="container-link">
             <div class="flex items-center justify-start">
-              <VueFeather type="book-open" size="1.1rem" class="" />
+              <SiIcon tooltip-text="Catalogue">
+                <BookOpenIcon class="color-grey-medium" />
+              </SiIcon>
               <div v-show="isLinkTitleVisible" class="link-title">
                 Catalogue
               </div>
             </div>
           </div>
-
           <!-- Secrets Link -->
           <div class="container-link">
-            <!-- <router-link
-          class="w-9/12"
-          data-cy="secret-nav-link"
-          :to="{
-            name: 'secret',
-            params: {
-              organizationId: organization.id,
-              workspaceId: workspace.id,
-            },
-          }"
-          > -->
+            <!-- <router-link class="w-9/12" data-cy="secret-nav-link" :to="{ name: 'secret', params: { organizationId: organization.id, workspaceId: workspace.id, }, }" > -->
             <router-link
               v-if="currentOrganization && currentWorkspace"
               data-cy="secret-nav-link"
               to="notFound"
             >
               <div class="flex items-center justify-start cursor-pointer">
-                <VueFeather type="key" size="1.1rem" class="" />
+                <SiButtonIcon tooltip-text="Secrets">
+                  <KeyIcon class="color-grey-medium" />
+                </SiButtonIcon>
                 <div v-show="isLinkTitleVisible" class="link-title">
                   Secrets
                 </div>
               </div>
             </router-link>
           </div>
-
           <!-- Clients Link -->
           <div class="container-link">
             <!-- <router-link
@@ -154,8 +152,10 @@
             },
           }"
           > -->
-            <div class="flex items-center justify-start cursor-pointer">
-              <VueFeather type="hexagon" size="1.1rem" class="" />
+            <div class="flex items-center justify-start">
+              <SiIcon tooltip-text="Clients">
+                <GlobeAltIcon class="color-grey-medium" />
+              </SiIcon>
               <div v-show="isLinkTitleVisible" class="link-title">Clients</div>
             </div>
             <!-- </router-link> -->
@@ -169,7 +169,9 @@
               :to="{ name: 'schema' }"
             >
               <div class="flex items-center justify-start cursor-pointer">
-                <VueFeather type="moon" size="1rem" class="" />
+                <SiButtonIcon tooltip-text="Schema">
+                  <MoonIcon class="color-grey-medium" />
+                </SiButtonIcon>
                 <div v-show="isLinkTitleVisible" class="link-title">Schema</div>
               </div>
             </router-link>
@@ -179,10 +181,10 @@
         <div class="flex flex-col justify-end flex-grow">
           <!-- Settings Link -->
           <div class="container-link">
-            <div
-              class="flex items-center justify-start cursor-pointer focus:text-white"
-            >
-              <VueFeather type="settings" size="1.1rem" class="" />
+            <div class="flex items-center justify-start focus:text-white">
+              <SiIcon tooltip-text="Settings">
+                <CogIcon class="color-grey-medium" />
+              </SiIcon>
               <div v-show="isLinkTitleVisible" class="link-title">Settings</div>
             </div>
           </div>
@@ -194,13 +196,9 @@
       </div>
 
       <div class="flex items-center w-full mx-6 my-4 color-grey-medium">
-        <button data-test="logout" aria-label="Logout" @click="onLogout">
-          <VueFeather
-            type="log-out"
-            size="1.1rem"
-            class="text-center cursor-pointer logout-button"
-          />
-        </button>
+        <SiButtonIcon tooltip-text="Logout" @click="onLogout">
+          <LogoutIcon class="color-grey-medium" />
+        </SiButtonIcon>
       </div>
     </div>
   </nav>
@@ -209,13 +207,29 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import { refFrom } from "vuse-rx";
-import VueFeather from "vue-feather";
 import SysinitIcon from "@/atoms/SysinitIcon.vue";
 import { SessionService } from "@/service/session";
 import { useRouter } from "vue-router";
 import { organization$ } from "@/observable/organization";
 import { Workspace } from "@/api/sdf/dal/workspace";
 import { WorkspaceService } from "@/service/workspace";
+import SiButtonIcon from "@/atoms/SiButtonIcon.vue";
+import SiIcon from "@/atoms/SiIcon.vue";
+import {
+  CodeIcon,
+  MoonIcon,
+  BookOpenIcon,
+  ViewGridIcon,
+  CubeIcon,
+  MenuIcon,
+  CollectionIcon,
+  ShareIcon,
+  LightningBoltIcon,
+  GlobeAltIcon,
+  CogIcon,
+  KeyIcon,
+  LogoutIcon,
+} from "@heroicons/vue/solid";
 
 const isMaximized = ref(false);
 const currentWorkspace = refFrom<Workspace | null>(

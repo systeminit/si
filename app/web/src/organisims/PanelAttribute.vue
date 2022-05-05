@@ -71,7 +71,7 @@
           -->
           <SiButtonIcon
             tooltip-text="Provider Viewer"
-            :color="activeView === 'provider' ? 'cyan' : 'white'"
+            :selected="activeView === 'provider'"
             @click="setActiveView('provider')"
           >
             <BeakerIcon />
