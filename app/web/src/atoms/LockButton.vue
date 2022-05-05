@@ -1,12 +1,28 @@
 <template>
+  <div class="block">
+    <SiButtonIcon
+      v-if="modelValue"
+      tooltip-text="Lock Selection"
+      @click="toggle()"
+    >
+      <LockOpenIcon class="text-yellow-300" />
+    </SiButtonIcon>
+    <SiButtonIcon v-else tooltip-text="Unlock Selection" @click="toggle()">
+      <LockClosedIcon class="text-yello-300" />
+    </SiButtonIcon>
+  </div>
+
+  <!--
   <button class="pl-4 text-sm focus:outline-none" @click="toggle()">
     <VueFeather v-if="modelValue" size="1rem" type="lock" class="locked" />
     <VueFeather v-else size="1rem" type="unlock" class="unlocked" />
   </button>
+    -->
 </template>
 
 <script setup lang="ts">
-import VueFeather from "vue-feather";
+import SiButtonIcon from "./SiButtonIcon.vue";
+import { LockClosedIcon, LockOpenIcon } from "@heroicons/vue/solid";
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },

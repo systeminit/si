@@ -23,34 +23,35 @@
               :disabled="!isPinned"
             />
           </div>
-          <LockButton v-model="isPinned" />
+          <LockButton v-model="isPinned" class="flex items-center" />
         </div>
 
         <div class="flex flex-row items-center">
           <SiButtonIcon
-            tooltip-text="Attribute Viewer"
-            :color="activeView === 'attribute' ? 'cyan' : 'white'"
+            tooltip-text="Attributes"
+            :selected="activeView === 'attribute'"
             @click="setActiveView('attribute')"
           >
             <ClipboardListIcon />
           </SiButtonIcon>
           <SiButtonIcon
-            tooltip-text="Code Viewer"
-            :color="activeView === 'code' ? 'cyan' : 'white'"
+            tooltip-text="Code"
+            :selected="activeView === 'code'"
             @click="setActiveView('code')"
           >
             <CodeIcon />
           </SiButtonIcon>
           <SiButtonIcon
-            tooltip-text="Qualification Viewer"
-            :color="activeView === 'qualification' ? 'cyan' : 'white'"
+            tooltip-text="Qualifications"
+            :selected="activeView === 'qualification'"
             @click="setActiveView('qualification')"
           >
-            <ClipboardCheckIcon />
+            <CheckCircleIcon />
           </SiButtonIcon>
         </div>
 
         <div class="flex flex-row items-center">
+          <!--
           <SiButtonIcon
             tooltip-text="Connection Viewer (not implemented yet)"
             :color="activeView === 'connection' ? 'cyan' : 'white'"
@@ -58,6 +59,8 @@
           >
             <LinkIcon />
           </SiButtonIcon>
+          -->
+          <!--
           <SiButtonIcon
             tooltip-text="Discovery Viewer (not implemented yet)"
             :color="activeView === 'discovery' ? 'cyan' : 'white'"
@@ -65,6 +68,7 @@
           >
             <AtSymbolIcon />
           </SiButtonIcon>
+          -->
           <SiButtonIcon
             tooltip-text="Provider Viewer"
             :color="activeView === 'provider' ? 'cyan' : 'white'"
@@ -75,6 +79,7 @@
         </div>
 
         <div class="flex items-center">
+          <!--
           <SiButtonIcon
             tooltip-text="Action Viewer (not implemented yet)"
             :color="activeView === 'action' ? 'cyan' : 'white'"
@@ -82,9 +87,10 @@
           >
             <PlayIcon />
           </SiButtonIcon>
+          -->
           <SiButtonIcon
-            tooltip-text="Resource Viewer"
-            :color="activeView === 'resource' ? 'cyan' : 'white'"
+            tooltip-text="Resources"
+            :selected="activeView === 'resource'"
             @click="setActiveView('resource')"
           >
             <CubeIcon />
@@ -175,11 +181,8 @@ import { schematicData$ } from "./SchematicViewer/Viewer/scene/observable";
 import { visibility$ } from "@/observable/visibility";
 import { PanelAttributeSubType } from "./PanelTree/panel_types";
 import {
-  ClipboardCheckIcon,
+  CheckCircleIcon,
   ClipboardListIcon,
-  LinkIcon,
-  AtSymbolIcon,
-  PlayIcon,
   CubeIcon,
   CodeIcon,
   BeakerIcon,

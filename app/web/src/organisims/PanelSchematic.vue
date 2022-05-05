@@ -37,7 +37,7 @@
             :disabled="!isPinned"
           />
         </div>
-        <LockButton v-model="isPinned" />
+        <LockButton v-model="isPinned" class="flex items-center" />
       </div>
 
       <NodeAddMenu

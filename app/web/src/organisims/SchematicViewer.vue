@@ -13,35 +13,45 @@
     />
     <div
       v-else-if="props.schematicKind === SchematicKind.Component"
-      class="border-dotted border-2 empty-state"
+      class="flex place-content-center w-full h-full"
     >
-      <p>
-        This is a component diagram! It is a drill-down of the specific
-        components that make up the node that is selected in the deployment
-        diagram.
-      </p>
-      <p>&nbsp;</p>
-      <p>
-        Try selecting a node in the deployment diagram, and then adding a
-        component to it.
-      </p>
+      <div
+        class="self-center w-2/3 h-2/3 border-2 border-gray-600 border-dashed rounded-md p-12 text-center hover:border-gray-500 justify-items-center"
+      >
+        <div
+          class="flex-col text-center place-items-center items-center justify-items-center"
+        >
+          <h2 class="text-xl">Component Diagram</h2>
+          <p class="text-xs">
+            Contains a drill-down of the specific components that make up the
+            currently selected node in the deployment diagram.
+          </p>
+          <p>&nbsp;</p>
+          <p class="text-xs">
+            Try selecting a node in the deployment diagram, and then adding a
+            component to it.
+          </p>
+        </div>
+      </div>
     </div>
-    <div v-else class="border-dotted border-2 empty-state">
-      <p>
-        This is deployment diagram! It shows how the high level components of an
-        application are deployed. For example, a Service deploys to a Kubernetes
-        Cluster on AWS.
-      </p>
-      <p>&nbsp;</p>
-      <p>Try adding a service to the diagram!</p>
-      <div class="nodeadd-menu">
-        <NodeAddMenu
-          v-if="addMenuFilters"
-          add-to="application"
-          :filter="addMenuFilters"
-          :disabled="!editMode"
-          @selected="addNode"
-        />
+    <div v-else class="flex place-content-center w-full h-full">
+      <div
+        class="self-center w-2/3 h-2/3 border-2 border-gray-600 border-dashed rounded-md p-12 text-center hover:border-gray-500 justify-items-center"
+      >
+        <div
+          class="flex-col text-center place-items-center items-center justify-items-center"
+        >
+          <h2 class="text-xl">Deployment Diagram</h2>
+          <p class="text-xs">
+            Shows how the high level components of an application are deployed.
+          </p>
+          <p>&nbsp;</p>
+          <p class="text-xs">
+            For example, a Service deploys to a Kubernetes Cluster on AWS.
+          </p>
+          <p>&nbsp;</p>
+          <p class="text-xs">Try adding a service to the diagram!</p>
+        </div>
       </div>
     </div>
   </div>
@@ -56,28 +66,20 @@ import Viewer from "./SchematicViewer/Viewer.vue";
 
 import { ViewerStateMachine } from "./SchematicViewer/state";
 
-import NodeAddMenu from "@/molecules/NodeAddMenu.vue";
 import { Schematic } from "./SchematicViewer/model";
 import { refFrom, untilUnmounted } from "vuse-rx";
 import { applicationNodeId$ } from "@/observable/application";
 import { system$ } from "@/observable/system";
 import { visibility$ } from "@/observable/visibility";
-import { ApplicationService } from "@/service/application";
-import { SchematicService } from "@/service/schematic";
-import { GlobalErrorService } from "@/service/global_error";
-import { ChangeSetService } from "@/service/change_set";
 import {
   EditorContext,
   SchematicKind,
   nodeKindFromSchematicKind,
-  MenuFilter,
 } from "@/api/sdf/dal/schematic";
 import { combineLatest, from } from "rxjs";
 import { switchMap } from "rxjs/operators";
-import { NodeAddEvent, ViewerEvent } from "./SchematicViewer/event";
+import { ViewerEvent } from "./SchematicViewer/event";
 import { computed, ref } from "vue";
-
-const editMode = refFrom<boolean>(ChangeSetService.currentEditMode());
 
 const props = defineProps<{
   viewerEvent$: Rx.ReplaySubject<ViewerEvent | null>;
@@ -88,49 +90,10 @@ const props = defineProps<{
   addingNode?: boolean;
 }>();
 
-const applicationId = refFrom<number | null>(
-  ApplicationService.currentApplication().pipe(
-    Rx.switchMap((application) => {
-      if (application) {
-        return Rx.from([application.id]);
-      } else {
-        return Rx.from([null]);
-      }
-    }),
-  ),
-);
-
-const addMenuFilters = computed(() => {
-  if (applicationId.value && props.schematicKind) {
-    const filter: MenuFilter = {
-      rootComponentId: applicationId.value,
-      schematicKind: props.schematicKind,
-    };
-    return filter;
-  }
-  return null;
-});
-
 const addingNode = ref(false);
 visibility$.pipe(untilUnmounted).subscribe(() => {
   addingNode.value = false;
 });
-
-const addNode = async (schemaId: number, _event: MouseEvent) => {
-  addingNode.value = true;
-  const response = await Rx.firstValueFrom(
-    SchematicService.getNodeTemplate({ schemaId }),
-  );
-  if (response.error) {
-    GlobalErrorService.set(response);
-    return;
-  }
-
-  const n = MODEL.fakeNodeFromTemplate(response, props.deploymentNodePin);
-  const event = new NodeAddEvent({ node: n, schemaId: schemaId });
-
-  props.viewerEvent$.next(event);
-};
 
 const filteredSchematicData = computed(() => {
   if (!props.schematicData) return undefined;
@@ -231,16 +194,6 @@ const editorContext = refFrom<EditorContext | null>(
 </script>
 
 <style scoped>
-.empty-state {
-  overflow: scroll;
-  margin: 5%;
-  padding: 2%;
-  width: 90%;
-  height: 70%;
-  text-align: center;
-  background-color: #3a3a3a;
-}
-
 .nodeadd-menu {
   width: 30%;
   margin-left: 35%;
