@@ -39,6 +39,7 @@
       <SiButton
         v-if="editButtonEnabled()"
         class="w-16 ml-1"
+        :class="editButtonPulse"
         label="edit"
         icon="edit"
         size="xs"
@@ -113,6 +114,7 @@
 import { computed, ref } from "vue";
 import { refFrom, untilUnmounted } from "vuse-rx";
 
+import { editButtonPulseUntil$ } from "@/observable/change_set";
 import SiSelect from "@/atoms/SiSelect.vue";
 import SiButton from "@/atoms/SiButton.vue";
 import SiModal from "@/molecules/SiModal.vue";
@@ -121,6 +123,7 @@ import SiError from "@/atoms/SiError.vue";
 import SiFormRow from "@/atoms/SiFormRow.vue";
 // @ts-ignore const doesn't appear in index.d.ts
 import { $vfm } from "vue-final-modal";
+import * as Rx from "rxjs";
 
 import { LabelList } from "@/api/sdf/dal/label_list";
 import _ from "lodash";
@@ -252,6 +255,34 @@ const editSessionStart = () => {
     }),
   );
 };
+
+const editButtonPulseStop = ref(false);
+// This is a horrible hack to ensure we cleanup the pulse
+const editButtonPulseUntil = refFrom<Date>(
+  editButtonPulseUntil$.asObservable().pipe(
+    Rx.tap((until) => {
+      editButtonPulseStop.value = false;
+      setTimeout(() => {
+        editButtonPulseStop.value = true;
+        setTimeout(() => (editButtonPulseStop.value = false), 0);
+      }, Math.max(0, until.getTime() - new Date().getTime()));
+    }),
+  ),
+);
+const editButtonPulse = computed(() => {
+  let classes: Record<string, boolean> = {};
+  if (
+    !editButtonPulseStop.value &&
+    editButtonPulseUntil.value &&
+    editButtonPulseUntil.value.getTime() > new Date().getTime()
+  ) {
+    classes["animate-pulse"] = true;
+  } else {
+    classes["animate-pulse"] = false;
+  }
+
+  return classes;
+});
 </script>
 
 <style lang="css" scoped>
