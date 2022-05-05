@@ -7,16 +7,19 @@
         {{ componentMetadata.schemaName }}
       </div>
 
-      <div class="ml-2 text-base">
-        <VueFeather
-          type="check-square"
-          size="1em"
-          :class="qualificationStatus"
-        />
+      <div class="ml-2 flex">
+        <SiIcon
+          :tooltip-text="qualificationTooltip"
+          :color="qualificationColor"
+        >
+          <CheckCircleIcon />
+        </SiIcon>
       </div>
 
-      <div class="ml-2 text-base">
-        <VueFeather type="box" size="1em" :stroke="resourceSyncStatusStroke" />
+      <div class="ml-2 flex">
+        <SiIcon :tooltip-text="resourceTooltip" :color="resourceColor">
+          <CubeIcon />
+        </SiIcon>
       </div>
 
       <div
@@ -26,13 +29,17 @@
           v-if="componentMetadata?.schemaLink"
           :uri="componentMetadata.schemaLink"
           :blank-target="true"
-          class="m-2 text-base"
+          class="m-2 flex"
         >
-          <VueFeather type="help-circle" size="1em" />
+          <SiButtonIcon tooltip-text="Go to documentation">
+            <QuestionMarkCircleIcon />
+          </SiButtonIcon>
         </SiLink>
 
         <div class="flex flex-row items-center">
-          <VueFeather type="edit" size="0.75rem" class="gold-bars-icon" />
+          <SiIcon tooltip-text="Number of edit fields" color="#ce7f3e">
+            <PencilAltIcon />
+          </SiIcon>
           <div v-if="editCount" class="ml-1 text-center">{{ editCount }}</div>
         </div>
       </div>
@@ -51,7 +58,6 @@ import EditFormComponent from "@/organisims/EditFormComponent.vue";
 import { toRefs, computed } from "vue";
 import { fromRef, refFrom } from "vuse-rx";
 import { GlobalErrorService } from "@/service/global_error";
-import VueFeather from "vue-feather";
 import { EditFieldObjectKind, EditFields } from "@/api/sdf/dal/edit_field";
 import { EditFieldService } from "@/service/edit_field";
 import { ResourceHealth } from "@/api/sdf/dal/resource";
@@ -66,6 +72,14 @@ import {
 } from "@/observable/visibility";
 import { editSessionWritten$ } from "@/observable/edit_session";
 import SiLink from "@/atoms/SiLink.vue";
+import SiButtonIcon from "@/atoms/SiButtonIcon.vue";
+import SiIcon from "@/atoms/SiIcon.vue";
+import {
+  CheckCircleIcon,
+  CubeIcon,
+  QuestionMarkCircleIcon,
+  PencilAltIcon,
+} from "@heroicons/vue/outline";
 
 //const visibility = refFrom<Visibility>(visibility$);
 
@@ -135,24 +149,53 @@ const editCount = computed(() => {
   }
 });
 
-const qualificationStatus = computed(() => {
-  let style: Record<string, boolean> = {};
-
+const qualificationTooltip = computed(() => {
   if (
     !componentMetadata.value ||
     componentMetadata.value.qualified === undefined
   ) {
-    style["unknown"] = true;
+    return "Qualification is unknown";
   } else if (componentMetadata.value.qualified) {
-    style["ok"] = true;
+    return "Qualification succeeded";
   } else {
-    style["error"] = true;
+    return "Qualification failed";
   }
-
-  return style;
 });
 
-const resourceSyncStatusStroke = computed(() => {
+const qualificationColor = computed(() => {
+  if (
+    !componentMetadata.value ||
+    componentMetadata.value.qualified === undefined
+  ) {
+    return "#5b6163";
+  } else if (componentMetadata.value.qualified) {
+    return "#86f0ad";
+  } else {
+    return "#f08686";
+  }
+});
+
+const resourceTooltip = computed(() => {
+  if (
+    !componentMetadata.value ||
+    componentMetadata.value.resourceHealth === undefined
+  ) {
+    return "Resource Health Status is: Unknown";
+  }
+
+  const health = componentMetadata.value.resourceHealth;
+  if (health == ResourceHealth.Ok) {
+    return "Resource Health Status is: Ok";
+  } else if (health == ResourceHealth.Warning) {
+    return "Resource Health Status is: Warning";
+  } else if (health == ResourceHealth.Error) {
+    return "Resource Health Status is: Error";
+  } else {
+    return "Resource Health Status is: Unknown";
+  }
+});
+
+const resourceColor = computed(() => {
   if (
     !componentMetadata.value ||
     componentMetadata.value.resourceHealth === undefined
@@ -183,27 +226,7 @@ const resourceSyncStatusStroke = computed(() => {
   display: none; /*chrome, opera, and safari */
 }
 
-.gold-bars-icon {
-  color: #ce7f3e;
-}
-
 .property-section-bg-color {
   background-color: #292c2d;
-}
-
-.ok {
-  color: #86f0ad;
-}
-
-.warning {
-  color: #f0d286;
-}
-
-.error {
-  color: #f08686;
-}
-
-.unknown {
-  color: #5b6163;
 }
 </style>

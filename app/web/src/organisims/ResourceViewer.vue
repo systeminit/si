@@ -8,19 +8,16 @@
       </div>
 
       <div class="flex pl-1">
-        <button
+        <SiButtonIcon
           v-if="!editMode"
-          class="flex items-center focus:outline-none button"
+          tooltip-text="Sync Resource"
           @click="runSync()"
         >
-          <VueFeather
-            type="refresh-cw"
-            :stroke="healthColor"
-            size="1em"
-            :class="refreshClasses"
-          />
-        </button>
-        <VueFeather v-else type="box" :stroke="healthColor" size="1em" />
+          <RefreshIcon :class="refreshClasses" />
+        </SiButtonIcon>
+        <SiIcon :tooltip-text="resourceTooltip" :color="healthColor">
+          <CubeIcon />
+        </SiIcon>
       </div>
     </div>
 
@@ -28,7 +25,9 @@
       <div class="w-full h-full pt-2">
         <div class="flex flex-row mx-2 my-1">
           <div class="text-xs">
-            <VueFeather type="heart" :stroke="healthColor" size="1.25em" />
+            <SiIcon :tooltip-text="resourceTooltip" :color="healthColor">
+              <HeartIcon />
+            </SiIcon>
           </div>
 
           <div class="ml-2 text-xs">
@@ -56,9 +55,12 @@ import { ComponentService } from "@/service/component";
 import { GlobalErrorService } from "@/service/global_error";
 import { ChangeSetService } from "@/service/change_set";
 import { fromRef, refFrom, untilUnmounted } from "vuse-rx";
-import VueFeather from "vue-feather";
 import { system$ } from "@/observable/system";
 import { eventResourceSynced$ } from "@/observable/resource";
+import SiButtonIcon from "@/atoms/SiButtonIcon.vue";
+import SiIcon from "@/atoms/SiIcon.vue";
+import { CubeIcon, HeartIcon } from "@heroicons/vue/outline";
+import { RefreshIcon } from "@heroicons/vue/solid";
 
 const props = defineProps<{
   componentId: number;
@@ -82,14 +84,32 @@ const healthColor = computed(() => {
   }
   return "#bbbbbb";
 });
+const resourceTooltip = computed(() => {
+  if (resource.value) {
+    if (resource.value.health == ResourceHealth.Ok) {
+      return "Resource Health: Ok";
+    } else if (resource.value.health == ResourceHealth.Warning) {
+      return "Resource Health: Warning";
+    } else if (resource.value.health == ResourceHealth.Error) {
+      return "Resource Health: Error";
+    } else if (resource.value.health == ResourceHealth.Unknown) {
+      return "Resource Health: Unknwon";
+    }
+  }
+  return "Resource Missing";
+});
 
 const refreshAnimate = ref<boolean>(false);
 const refreshClasses = computed(() => {
   const classes: { [key: string]: boolean } = {};
   if (refreshAnimate.value) {
     classes["animate-spin"] = true;
+    classes["transform"] = true;
+    classes["rotate-180"] = true;
   } else {
     classes["animate-spin"] = false;
+    classes["transform"] = false;
+    classes["rotate-180"] = false;
   }
   return classes;
 });

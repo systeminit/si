@@ -6,22 +6,17 @@
       <div class="text-lg">Component ID {{ props.componentId }} Code</div>
 
       <div class="flex">
-        <button class="ml-2 text-base" @click="copyCode">
-          <VueFeather type="copy" size="1em" />
-        </button>
+        <SiButtonIcon tooltip-text="Copy code to clipboard" @click="copyCode">
+          <ClipboardCopyIcon />
+        </SiButtonIcon>
 
-        <button
+        <SiButtonIcon
           v-if="editMode"
-          class="pl-1 focus:outline-none sync-button ml-2"
+          tooltip-text="Re-generate code"
           @click="generateCode"
         >
-          <VueFeather
-            type="refresh-cw"
-            class="text-sm"
-            size="1.1em"
-            :class="refreshClasses"
-          />
-        </button>
+          <RefreshIcon :class="refreshClasses" />
+        </SiButtonIcon>
       </div>
     </div>
     <div class="w-full h-full overflow-auto">
@@ -39,7 +34,6 @@
 import _ from "lodash";
 import * as Rx from "rxjs";
 import { ref, onMounted, toRefs, computed } from "vue";
-import VueFeather from "vue-feather";
 import { EditorState, EditorView, basicSetup } from "@codemirror/basic-setup";
 import { yaml } from "@codemirror/legacy-modes/mode/yaml";
 import { StreamLanguage } from "@codemirror/stream-parser";
@@ -53,6 +47,8 @@ import { GlobalErrorService } from "@/service/global_error";
 import { Compartment } from "@codemirror/state";
 import { ChangeSetService } from "@/service/change_set";
 import { system$ } from "@/observable/system";
+import SiButtonIcon from "@/atoms/SiButtonIcon.vue";
+import { ClipboardCopyIcon, RefreshIcon } from "@heroicons/vue/solid";
 
 const props = defineProps<{
   componentId: number;
@@ -157,8 +153,12 @@ const refreshClasses = computed(() => {
   const classes: { [key: string]: boolean } = {};
   if (currentSyncAnimate.value) {
     classes["animate-spin"] = true;
+    classes["transform"] = true;
+    classes["rotate-180"] = true;
   } else {
     classes["animate-spin"] = false;
+    classes["transform"] = false;
+    classes["rotate-180"] = false;
   }
   return classes;
 });

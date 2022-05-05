@@ -8,25 +8,16 @@
       </div>
 
       <div class="flex">
-        <button
+        <SiIcon :tooltip-text="qualificationTooltip">
+          <CheckCircleIcon :class="qualificationStatusClasses" />
+        </SiIcon>
+        <SiButtonIcon
           v-if="editMode"
-          class="pl-1 focus:outline-none run-button"
+          tooltip-text="Re-run qualifications"
           @click="runQualification"
         >
-          <VueFeather
-            type="refresh-cw"
-            class="text-sm"
-            :class="refreshButtonClasses"
-            size="1.1em"
-          />
-        </button>
-        <VueFeather
-          v-else
-          type="check-square"
-          class="text-base text-sm text-gray-300"
-          :class="refreshButtonClasses"
-          size="1.1em"
-        />
+          <RefreshIcon :class="refreshButtonClasses" />
+        </SiButtonIcon>
       </div>
     </div>
 
@@ -51,22 +42,20 @@
                 />
               </div>
               <div v-else-if="q.result" class="flex">
-                <VueFeather
+                <SiIcon
                   v-if="qualificationResultQualified(q.result)"
-                  type="smile"
-                  class="text-green-300"
-                  size="1.1em"
-                />
-                <!-- NOTE(nick): frown is slightly smaller than smile. It has been slightly boosted to match the latter. -->
-                <VueFeather
-                  v-else
-                  type="frown"
-                  class="text-xs error"
-                  size="1.3em"
-                />
+                  tooltip-text="Qualification succeeded"
+                >
+                  <EmojiHappyIcon class="text-green-300" />
+                </SiIcon>
+                <SiIcon v-else tooltip-text="Qualification failed">
+                  <EmojiSadIcon class="error" />
+                </SiIcon>
               </div>
               <div v-else class="flex">
-                <VueFeather type="square" class="text-gray-700" size="1.1em" />
+                <SiIcon tooltip-text="No qualification result found">
+                  <RefreshIconOutline class="text-gray-700" />
+                </SiIcon>
               </div>
 
               <div
@@ -75,11 +64,11 @@
               >
                 {{ q.title }}
               </div>
-              <div v-for="link in q.links" :key="link" class="flex ml-2">
-                <SiLink :blank-target="true" :uri="link">
-                  <VueFeather type="info" class="info-button" size="1.1em" />
-                </SiLink>
-              </div>
+              <SiLink v-if="q.link" :blank-target="true" :uri="q.link">
+                <SiIcon tooltip-text="Go to docs">
+                  <InformationCircleIcon />
+                </SiIcon>
+              </SiLink>
               <!-- NOTE(nick): We only render the button div if a description OR if a result exists
               in order to avoid user confusion. In essence, we want to ensure that we actually
               have something to show to the user.
@@ -92,12 +81,15 @@
                   class="focus:outline-none"
                   @click="toggleShowDescription(q.name)"
                 >
-                  <VueFeather
+                  <SiIcon
                     v-if="showDescriptionMap[q.name] === true"
-                    type="chevron-down"
-                    size="1.1em"
-                  />
-                  <VueFeather v-else type="chevron-right" size="1.1em" />
+                    tooltip-text="Show description"
+                  >
+                    <ChevronDownIcon />
+                  </SiIcon>
+                  <SiIcon v-else tooltip-text="Hide description">
+                    <ChevronUpIcon />
+                  </SiIcon>
                 </button>
               </div>
             </div>
@@ -124,7 +116,6 @@
 import * as Rx from "rxjs";
 import { ComponentService } from "@/service/component";
 import QualificationOutput from "./QualificationViewer/QualificationOutput.vue";
-import VueFeather from "vue-feather";
 import { fromRef, refFrom, untilUnmounted } from "vuse-rx";
 import { GlobalErrorService } from "@/service/global_error";
 import {
@@ -137,6 +128,18 @@ import { ChangeSetService } from "@/service/change_set";
 import { eventCheckedQualifications$ } from "@/observable/qualification";
 import { system$ } from "@/observable/system";
 import SiLink from "@/atoms/SiLink.vue";
+import SiButtonIcon from "@/atoms/SiButtonIcon.vue";
+import SiIcon from "@/atoms/SiIcon.vue";
+import { RefreshIcon } from "@heroicons/vue/solid";
+import {
+  CheckCircleIcon,
+  InformationCircleIcon,
+  RefreshIcon as RefreshIconOutline,
+  EmojiSadIcon,
+  EmojiHappyIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
+} from "@heroicons/vue/outline";
 //import { ListQualificationsResponse } from "@/service/component/list_qualifications";
 
 const editMode = refFrom<boolean>(ChangeSetService.currentEditMode());
@@ -193,7 +196,29 @@ const runQualification = () => {
   });
 };
 
+const qualificationTooltip = computed(() => {
+  if (currentQualifiedAnimate.value === true) {
+    return "Qualification is running";
+  } else if (currentQualifiedState.value === QualifiedState.Success) {
+    return "Qualification succeeded";
+  } else if (currentQualifiedState.value === QualifiedState.Failure) {
+    return "Qualification failed";
+  } else {
+    return "Qualification is unknown";
+  }
+});
+
 const refreshButtonClasses = computed(() => {
+  const classes: Record<string, boolean> = {};
+  if (currentQualifiedAnimate.value) {
+    classes["animate-spin"] = true;
+    classes["transform"] = true;
+    classes["rotate-180"] = true;
+  }
+  return classes;
+});
+
+const qualificationStatusClasses = computed(() => {
   const classes: Record<string, boolean> = {};
   if (currentQualifiedState.value == QualifiedState.Success) {
     classes["error"] = false;
@@ -209,7 +234,6 @@ const refreshButtonClasses = computed(() => {
     classes["unknown"] = true;
   }
   if (currentQualifiedAnimate.value) {
-    classes["animate-spin"] = true;
     classes["success"] = false;
     classes["error"] = false;
     classes["unknown"] = true;
