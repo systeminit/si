@@ -17,6 +17,7 @@ ci-lint: ci-rust-lint ci-web-lint
 ci-rust-lint:
 	cd $(REPOPATH); cargo fmt --all -- --check
 	cd $(REPOPATH); cargo clippy -- -D warnings
+	cd $(REPOPATH); RUSTDOCFLAGS="-Dwarnings" cargo doc --all
 .PHONY: ci-rust-lint
 
 ci-web-lint:
@@ -30,7 +31,6 @@ ci-si: setup-base ci-crates ci-web
 
 ci-crates: down
 	cd $(REPOPATH)/deploy && $(MAKE) partial
-	cd $(REPOPATH); cargo doc
 	cd $(REPOPATH); cargo test --all-features
 .PHONY: ci-crates
 
@@ -62,6 +62,7 @@ tidy: tidy-web tidy-crates
 tidy-crates:
 	cd $(REPOPATH); cargo fix --edition-idioms --allow-dirty --allow-staged
 	cd $(REPOPATH); cargo fmt --all
+	cd $(REPOPATH); cargo doc
 	cd $(REPOPATH); cargo clippy
 .PHONY: tidy-crates
 

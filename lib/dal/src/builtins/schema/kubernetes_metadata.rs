@@ -1,5 +1,5 @@
-use crate::schema::builtins::create_prop;
-use crate::schema::SchemaResult;
+use crate::builtins::schema::create_prop;
+use crate::builtins::BuiltinsResult;
 use crate::{AttributeReadContext, DalContext};
 use crate::{Prop, PropId, PropKind, StandardModel};
 
@@ -10,7 +10,7 @@ pub async fn create_metadata_prop(
     is_name_required: bool,
     parent_prop_id: Option<PropId>,
     base_attribute_read_context: AttributeReadContext,
-) -> SchemaResult<Prop> {
+) -> BuiltinsResult<Prop> {
     let metadata_prop = create_prop(
         ctx,
         "metadata",

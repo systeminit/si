@@ -1,8 +1,8 @@
 use crate::{
-    DalContext, Func, FuncBackendKind, FuncBackendResponseType, FuncResult, StandardModel,
+    BuiltinsResult, DalContext, Func, FuncBackendKind, FuncBackendResponseType, StandardModel,
 };
 
-pub async fn migrate(ctx: &DalContext<'_, '_>) -> FuncResult<()> {
+pub async fn migrate(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     si_set_array(ctx).await?;
     si_set_boolean(ctx).await?;
     si_set_integer(ctx).await?;
@@ -25,7 +25,7 @@ pub async fn migrate(ctx: &DalContext<'_, '_>) -> FuncResult<()> {
     Ok(())
 }
 
-async fn si_generate_yaml(ctx: &DalContext<'_, '_>) -> FuncResult<()> {
+async fn si_generate_yaml(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     let existing_func = Func::find_by_attr(ctx, "name", &"si:generateYAML".to_string()).await?;
     if existing_func.is_empty() {
         let mut func = Func::new(
@@ -38,13 +38,13 @@ async fn si_generate_yaml(ctx: &DalContext<'_, '_>) -> FuncResult<()> {
         .expect("cannot create func");
         func.set_handler(ctx, Some("generateYAML")).await?;
 
-        let code = base64::encode(include_str!("./builtins/generateYAML.js",));
+        let code = base64::encode(include_str!("./func/generateYAML.js",));
         func.set_code_base64(ctx, Some(code)).await?;
     }
     Ok(())
 }
 
-async fn si_number_of_parents(ctx: &DalContext<'_, '_>) -> FuncResult<()> {
+async fn si_number_of_parents(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     let existing_func = Func::find_by_attr(ctx, "name", &"si:numberOfParents".to_string()).await?;
     if existing_func.is_empty() {
         let mut func = Func::new(
@@ -67,7 +67,7 @@ async fn si_number_of_parents(ctx: &DalContext<'_, '_>) -> FuncResult<()> {
     Ok(())
 }
 
-async fn si_set_array(ctx: &DalContext<'_, '_>) -> FuncResult<()> {
+async fn si_set_array(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     let existing_func = Func::find_by_attr(ctx, "name", &"si:setArray".to_string()).await?;
     if existing_func.is_empty() {
         Func::new(
@@ -82,7 +82,7 @@ async fn si_set_array(ctx: &DalContext<'_, '_>) -> FuncResult<()> {
     Ok(())
 }
 
-async fn si_set_boolean(ctx: &DalContext<'_, '_>) -> FuncResult<()> {
+async fn si_set_boolean(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     let existing_func = Func::find_by_attr(ctx, "name", &"si:setBoolean".to_string()).await?;
     if existing_func.is_empty() {
         Func::new(
@@ -97,7 +97,7 @@ async fn si_set_boolean(ctx: &DalContext<'_, '_>) -> FuncResult<()> {
     Ok(())
 }
 
-async fn si_set_integer(ctx: &DalContext<'_, '_>) -> FuncResult<()> {
+async fn si_set_integer(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     let existing_func = Func::find_by_attr(ctx, "name", &"si:setInteger".to_string()).await?;
     if existing_func.is_empty() {
         Func::new(
@@ -113,7 +113,7 @@ async fn si_set_integer(ctx: &DalContext<'_, '_>) -> FuncResult<()> {
     Ok(())
 }
 
-async fn si_set_prop_object(ctx: &DalContext<'_, '_>) -> FuncResult<()> {
+async fn si_set_prop_object(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     let existing_func = Func::find_by_attr(ctx, "name", &"si:setPropObject".to_string()).await?;
     if existing_func.is_empty() {
         Func::new(
@@ -129,7 +129,7 @@ async fn si_set_prop_object(ctx: &DalContext<'_, '_>) -> FuncResult<()> {
     Ok(())
 }
 
-async fn si_set_map(ctx: &DalContext<'_, '_>) -> FuncResult<()> {
+async fn si_set_map(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     let existing_func = Func::find_by_attr(ctx, "name", &"si:setMap".to_string()).await?;
     if existing_func.is_empty() {
         Func::new(
@@ -145,7 +145,7 @@ async fn si_set_map(ctx: &DalContext<'_, '_>) -> FuncResult<()> {
     Ok(())
 }
 
-async fn si_set_string(ctx: &DalContext<'_, '_>) -> FuncResult<()> {
+async fn si_set_string(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     let existing_func = Func::find_by_attr(ctx, "name", &"si:setString".to_string()).await?;
     if existing_func.is_empty() {
         Func::new(
@@ -160,7 +160,7 @@ async fn si_set_string(ctx: &DalContext<'_, '_>) -> FuncResult<()> {
     Ok(())
 }
 
-async fn si_identity(ctx: &DalContext<'_, '_>) -> FuncResult<()> {
+async fn si_identity(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     let existing_func = Func::find_by_attr(ctx, "name", &"si:identity".to_string()).await?;
     if existing_func.is_empty() {
         Func::new(
@@ -175,7 +175,7 @@ async fn si_identity(ctx: &DalContext<'_, '_>) -> FuncResult<()> {
     Ok(())
 }
 
-async fn si_unset(ctx: &DalContext<'_, '_>) -> FuncResult<()> {
+async fn si_unset(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     let existing_func = Func::find_by_attr(ctx, "name", &"si:unset".to_string()).await?;
     if existing_func.is_empty() {
         Func::new(
@@ -190,7 +190,7 @@ async fn si_unset(ctx: &DalContext<'_, '_>) -> FuncResult<()> {
     Ok(())
 }
 
-async fn si_validate_string_equals(ctx: &DalContext<'_, '_>) -> FuncResult<()> {
+async fn si_validate_string_equals(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     let func_name = "si:validateStringEquals".to_string();
     let existing_func = Func::find_by_attr(ctx, "name", &func_name).await?;
     if existing_func.is_empty() {
@@ -207,7 +207,7 @@ async fn si_validate_string_equals(ctx: &DalContext<'_, '_>) -> FuncResult<()> {
     Ok(())
 }
 
-async fn si_qualification_always_true(ctx: &DalContext<'_, '_>) -> FuncResult<()> {
+async fn si_qualification_always_true(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     let func_name = "si:qualificationAlwaysTrue".to_string();
     let existing_func = Func::find_by_attr(ctx, "name", &func_name).await?;
     if existing_func.is_empty() {
@@ -236,7 +236,7 @@ async fn si_qualification_always_true(ctx: &DalContext<'_, '_>) -> FuncResult<()
     Ok(())
 }
 
-async fn si_resource_sync_hammer(ctx: &DalContext<'_, '_>) -> FuncResult<()> {
+async fn si_resource_sync_hammer(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     let func_name = "si:resourceSyncHammer".to_string();
     let existing_func = Func::find_by_attr(ctx, "name", &func_name).await?;
     if existing_func.is_empty() {
@@ -249,7 +249,7 @@ async fn si_resource_sync_hammer(ctx: &DalContext<'_, '_>) -> FuncResult<()> {
         .await
         .expect("cannot create func");
 
-        let qualification_code = base64::encode(include_str!("./builtins/resourceSyncHammer.js",));
+        let qualification_code = base64::encode(include_str!("./func/resourceSyncHammer.js",));
 
         new_func
             .set_handler(ctx, Some("resourceSyncHammer".to_string()))
@@ -264,7 +264,9 @@ async fn si_resource_sync_hammer(ctx: &DalContext<'_, '_>) -> FuncResult<()> {
     Ok(())
 }
 
-async fn si_qualification_docker_image_name_inspect(ctx: &DalContext<'_, '_>) -> FuncResult<()> {
+async fn si_qualification_docker_image_name_inspect(
+    ctx: &DalContext<'_, '_>,
+) -> BuiltinsResult<()> {
     let func_name = "si:qualificationDockerImageNameInspect".to_string();
     let existing_func = Func::find_by_attr(ctx, "name", &func_name).await?;
     if existing_func.is_empty() {
@@ -278,7 +280,7 @@ async fn si_qualification_docker_image_name_inspect(ctx: &DalContext<'_, '_>) ->
         .expect("cannot create func");
 
         let qualification_code = base64::encode(include_str!(
-            "./builtins/qualificationDockerImageNameInspect.js"
+            "./func/qualificationDockerImageNameInspect.js"
         ));
 
         new_func
@@ -294,7 +296,7 @@ async fn si_qualification_docker_image_name_inspect(ctx: &DalContext<'_, '_>) ->
     Ok(())
 }
 
-async fn si_qualification_yaml_kubeval(ctx: &DalContext<'_, '_>) -> FuncResult<()> {
+async fn si_qualification_yaml_kubeval(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     let func_name = "si:qualificationYamlKubeval".to_string();
     let existing_func = Func::find_by_attr(ctx, "name", &func_name).await?;
     if existing_func.is_empty() {
@@ -307,8 +309,7 @@ async fn si_qualification_yaml_kubeval(ctx: &DalContext<'_, '_>) -> FuncResult<(
         .await
         .expect("cannot create func");
 
-        let qualification_code =
-            base64::encode(include_str!("./builtins/qualificationYamlKubeval.js"));
+        let qualification_code = base64::encode(include_str!("./func/qualificationYamlKubeval.js"));
 
         new_func
             .set_handler(ctx, Some("qualificationYamlKubeval".to_string()))
@@ -323,7 +324,7 @@ async fn si_qualification_yaml_kubeval(ctx: &DalContext<'_, '_>) -> FuncResult<(
     Ok(())
 }
 
-async fn si_qualification_docker_hub_login(ctx: &DalContext<'_, '_>) -> FuncResult<()> {
+async fn si_qualification_docker_hub_login(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     let func_name = "si:qualificationDockerHubLogin".to_string();
     let existing_func = Func::find_by_attr(ctx, "name", &func_name).await?;
     if existing_func.is_empty() {
@@ -337,7 +338,7 @@ async fn si_qualification_docker_hub_login(ctx: &DalContext<'_, '_>) -> FuncResu
         .expect("cannot create func");
 
         let qualification_code =
-            base64::encode(include_str!("./builtins/qualificationDockerHubLogin.js"));
+            base64::encode(include_str!("./func/qualificationDockerHubLogin.js"));
 
         new_func
             .set_handler(ctx, Some("qualificationDockerHubLogin".to_string()))

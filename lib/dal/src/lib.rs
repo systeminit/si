@@ -9,6 +9,7 @@ use thiserror::Error;
 
 pub mod attribute;
 pub mod billing_account;
+pub mod builtins;
 pub mod capability;
 pub mod change_set;
 pub mod code_generation_prototype;
@@ -81,6 +82,7 @@ pub use billing_account::{
     BillingAccount, BillingAccountDefaults, BillingAccountError, BillingAccountId,
     BillingAccountPk, BillingAccountSignup,
 };
+pub use builtins::{BuiltinsError, BuiltinsResult};
 pub use capability::{Capability, CapabilityError, CapabilityId, CapabilityPk, CapabilityResult};
 pub use change_set::{ChangeSet, ChangeSetError, ChangeSetPk, ChangeSetStatus, NO_CHANGE_SET_PK};
 pub use code_generation_prototype::{
@@ -167,16 +169,14 @@ const NAME_CHARSET: &[u8] = b"0123456789";
 
 #[derive(Error, Debug)]
 pub enum ModelError {
+    #[error("builtins error: {0}")]
+    Builtins(#[from] BuiltinsError),
     #[error(transparent)]
     Migration(#[from] PgPoolError),
     #[error(transparent)]
     Nats(#[from] NatsError),
     #[error("database error")]
     PgError(#[from] PgError),
-    #[error("Schema error")]
-    Schema(#[from] SchemaError),
-    #[error("Func error")]
-    Func(#[from] FuncError),
     #[error("transactions error")]
     Transactions(#[from] TransactionsError),
 }
@@ -190,7 +190,7 @@ pub async fn migrate(pg: &PgPool) -> ModelResult<()> {
 }
 
 #[instrument(skip_all)]
-pub async fn migrate_builtin_schemas(
+pub async fn migrate_builtins(
     pg: &PgPool,
     nats: &NatsClient,
     veritech: veritech::Client,
@@ -207,8 +207,7 @@ pub async fn migrate_builtin_schemas(
     let txns = starter.start().await?;
     let request_context = RequestContext::new_universal_head(HistoryActor::SystemInit);
     let ctx = dal_context.build(request_context, &txns);
-    func::builtins::migrate(&ctx).await?;
-    schema::builtins::migrate(&ctx).await?;
+    builtins::migrate(&ctx).await?;
     txns.commit().await?;
     Ok(())
 }
