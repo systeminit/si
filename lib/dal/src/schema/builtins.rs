@@ -1,3 +1,7 @@
+//! This module contains the built-in [`Schemas`](crate::Schema) with their default
+//! [`SchemaVariants`](crate::SchemaVariant). Upon migration, these built-in objects (and their
+//! corresponding objects) will be created.
+
 use std::collections::HashMap;
 
 use crate::func::backend::js_attribute::FuncBackendJsAttributeArgs;
@@ -12,14 +16,12 @@ use crate::{
     component::ComponentKind, edit_field::widget::*, func::binding::FuncBinding,
     validation_prototype::ValidationPrototypeContext, Func, FuncBackendKind,
     FuncBackendResponseType, Prop, PropId, PropKind, QualificationPrototype, ResourcePrototype,
-    Schema, SchemaError, SchemaKind, SchemaVariantId, SchematicKind, StandardModel,
-    ValidationPrototype,
+    Schema, SchemaError, SchemaKind, SchematicKind, StandardModel, ValidationPrototype,
 };
 use crate::{
     AttributeContext, AttributePrototype, AttributePrototypeError, AttributeReadContext,
-    AttributeValue, AttributeValueError, DalContext, SchemaId,
+    AttributeValue, AttributeValueError, DalContext,
 };
-use telemetry::prelude::*;
 
 mod kubernetes_deployment;
 mod kubernetes_metadata;
@@ -878,141 +880,4 @@ pub async fn create_string_prop_with_default(
     // TODO: Set up AttribuePrototype & AttributeValue appropriately
 
     Ok(prop)
-}
-
-pub struct RootProp {
-    pub si_prop_id: PropId,
-    pub domain_prop_id: PropId,
-}
-
-/// Returns si-specific prop id and domain-specific prop id, respectfully
-#[instrument(skip_all)]
-#[allow(clippy::too_many_arguments)]
-pub async fn create_root_prop(
-    ctx: &DalContext<'_, '_>,
-    schema_id: SchemaId,
-    variant_id: SchemaVariantId,
-) -> SchemaResult<RootProp> {
-    let mut variant_context_builder = AttributeContext::builder();
-    variant_context_builder
-        .set_schema_id(schema_id)
-        .set_schema_variant_id(variant_id);
-
-    let func_name = "si:setPropObject".to_string();
-    let mut funcs = Func::find_by_attr(ctx, "name", &func_name).await?;
-    let func = funcs.pop().ok_or(SchemaError::MissingFunc(func_name))?;
-
-    let (func_binding, created) = FuncBinding::find_or_create(
-        ctx,
-        // Shortcut creating a FuncBackendPropObjectArgs
-        serde_json::json!({ "value": {} }),
-        *func.id(),
-        *func.backend_kind(),
-    )
-    .await?;
-
-    if created {
-        func_binding.execute(ctx).await?;
-    }
-
-    let root_prop = Prop::new(ctx, "root", PropKind::Object).await?;
-    root_prop.add_schema_variant(ctx, &variant_id).await?;
-
-    let root_context = variant_context_builder
-        .clone()
-        .set_prop_id(*root_prop.id())
-        .to_context()?;
-    let (_, root_value_id) = AttributeValue::update_for_context(
-        ctx,
-        *AttributeValue::find_for_context(ctx, root_context.into())
-            .await?
-            .pop()
-            .ok_or(AttributeValueError::Missing)?
-            .id(),
-        None,
-        root_context,
-        Some(serde_json::json![{}]),
-        None,
-    )
-    .await?;
-
-    let base_attribute_read_context = AttributeReadContext {
-        schema_id: Some(schema_id),
-        schema_variant_id: Some(variant_id),
-        ..AttributeReadContext::default()
-    };
-
-    let si_specific_prop = Prop::new(ctx, "si", PropKind::Object).await?;
-    si_specific_prop
-        .set_parent_prop(ctx, *root_prop.id(), base_attribute_read_context)
-        .await?;
-
-    let si_context = variant_context_builder
-        .clone()
-        .set_prop_id(*si_specific_prop.id())
-        .to_context()?;
-    let (_, si_value_id) = AttributeValue::update_for_context(
-        ctx,
-        *AttributeValue::find_for_context(ctx, si_context.into())
-            .await?
-            .pop()
-            .ok_or(AttributeValueError::Missing)?
-            .id(),
-        Some(root_value_id),
-        si_context,
-        Some(serde_json::json![{}]),
-        None,
-    )
-    .await?;
-
-    let si_name_prop = Prop::new(ctx, "name", PropKind::String).await?;
-    si_name_prop
-        .set_parent_prop(ctx, *si_specific_prop.id(), base_attribute_read_context)
-        .await?;
-
-    let si_name_context = variant_context_builder
-        .clone()
-        .set_prop_id(*si_name_prop.id())
-        .to_context()?;
-    AttributeValue::update_for_context(
-        ctx,
-        *AttributeValue::find_for_context(ctx, si_name_context.into())
-            .await?
-            .pop()
-            .ok_or(AttributeValueError::Missing)?
-            .id(),
-        Some(si_value_id),
-        si_name_context,
-        None,
-        None,
-    )
-    .await?;
-
-    let domain_specific_prop = Prop::new(ctx, "domain", PropKind::Object).await?;
-    domain_specific_prop
-        .set_parent_prop(ctx, *root_prop.id(), base_attribute_read_context)
-        .await?;
-
-    let domain_context = variant_context_builder
-        .clone()
-        .set_prop_id(*domain_specific_prop.id())
-        .to_context()?;
-    AttributeValue::update_for_context(
-        ctx,
-        *AttributeValue::find_for_context(ctx, domain_context.into())
-            .await?
-            .pop()
-            .ok_or(AttributeValueError::Missing)?
-            .id(),
-        Some(root_value_id),
-        domain_context,
-        Some(serde_json::json![{}]),
-        None,
-    )
-    .await?;
-
-    Ok(RootProp {
-        si_prop_id: *si_specific_prop.id(),
-        domain_prop_id: *domain_specific_prop.id(),
-    })
 }

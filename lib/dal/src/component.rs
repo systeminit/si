@@ -1522,8 +1522,9 @@ impl EditFieldAble for Component {
     }
 }
 
-/// Find the root [`EditField`] for a given [`ComponentId`]. This will also find all of its child
-/// edit fields, which are accessed via each field`s [`Widget`], if applicable.
+/// Find the root [`EditField`](crate::EditField) for a given [`ComponentId`]. This will also find
+/// all of its child edit fields, which are accessed via each field's
+/// [`Widget`](crate::edit_field::widget::Widget), if applicable.
 async fn get_root_edit_field(
     ctx: &DalContext<'_, '_>,
     id: &ComponentId,
@@ -1591,6 +1592,13 @@ async fn get_root_edit_field(
     Ok(root_edit_field)
 }
 
+/// This recursive function creates an [`EditField`](crate::EditField) for a given set of
+/// information, particularly an [`AttributeValue`](crate::AttributeValue) and its parent
+/// [`AttributeValue`]. Recursion happens if our
+/// [`WidgetKind`](crate::edit_field::widget::WidgetKind) is an array, map or header. In that
+/// instance, we collect all the child [`AttributeValues`](crate::AttributeValue) for the current
+/// [`AttributeValue`](crate::AttributeValue), ensure they are correctly ordered via an index map,
+/// and then recursively call this function for each child.
 #[allow(clippy::too_many_arguments)]
 #[async_recursion]
 async fn edit_field_for_attribute_value(

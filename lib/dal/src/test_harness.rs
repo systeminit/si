@@ -333,7 +333,7 @@ pub async fn create_schema_variant(
 pub async fn create_schema_variant_with_root(
     ctx: &DalContext<'_, '_>,
     schema_id: SchemaId,
-) -> (schema::SchemaVariant, schema::builtins::RootProp) {
+) -> (schema::SchemaVariant, schema::RootProp) {
     let name = generate_fake_name();
     let (variant, root) = schema::SchemaVariant::new(ctx, schema_id, name)
         .await
