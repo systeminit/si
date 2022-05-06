@@ -23,123 +23,81 @@
 
     <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
       <div class="bg-gray-800 py-8 px-4 shadow sm:rounded-sm sm:px-10">
-        <div v-if="errorMessage" class="text-white bg-red-500">
+        <div
+          v-if="errorMessage"
+          class="bg-red-600 text-white p-1 mb-6 text-center text-sm font-medium"
+        >
           Error: {{ errorMessage }}
         </div>
 
         <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
           <div class="sm:col-span-6">
-            <label
-              for="billingAccountName"
-              class="block text-sm font-medium text-gray-200"
-            >
-              Billing Account Name
-            </label>
-            <div class="mt-1 w-full">
-              <input
-                id="billingAccountName"
-                v-model="form.billingAccountName"
-                data-test="billingAccountName"
-                type="text"
-                name="billingAccountName"
-                autocomplete="billingAccountName"
-                required
-                class="appearance-none block bg-gray-900 text-gray-100 w-full px-3 py-2 border border-gray-600 rounded-sm shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-200 focus:border-indigo-200 sm:text-sm"
-              />
-            </div>
-            <p class="mt-2 text-xs text-gray-300">
-              A name for your account. A company name is a good idea. You can
-              change it later. (You'll need this to sign in!)
-            </p>
-          </div>
+            <SiTextBox2
+              id="billingAccountName"
+              v-model="form.billingAccountName"
+              title="Billing Account Name"
+              description="A name for your account. A company name is a good idea. You can change it later. (You'll need this to sign in!)"
+            />
+            <!--
+            :error="form.billingAccountName === ''"
+            error-id="billing-account-name-error"
+            error-message="Billing account name cannot be an empty string or whitespace."
+          --></div>
 
           <div class="sm:col-span-6">
-            <label
-              for="userName"
-              class="block text-sm font-medium text-gray-200"
-            >
-              Full Name
-            </label>
-            <div class="mt-1 w-full">
-              <input
-                id="userName"
-                v-model="form.userName"
-                data-test="userName"
-                type="text"
-                name="userName"
-                autocomplete="userName"
-                required
-                class="appearance-none block bg-gray-900 text-gray-100 w-full px-3 py-2 border border-gray-600 rounded-sm shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-200 focus:border-indigo-200 sm:text-sm"
-              />
-            </div>
-            <p class="mt-2 text-xs text-gray-300">Your full name.</p>
-          </div>
+            <SiTextBox2
+              id="userName"
+              v-model="form.userName"
+              title="Full Name"
+              description="Your full name."
+            />
+            <!--
+            :error="false"
+            error-id="name-error"
+            error-message="Full name cannot be an empty string or whitespace."
+          --></div>
 
           <div class="sm:col-span-6">
-            <label
-              for="userEmail"
-              class="block text-sm font-medium text-gray-200"
-            >
-              Email
-            </label>
-            <div class="mt-1 w-full">
-              <input
-                id="userEmail"
-                v-model="form.userEmail"
-                data-test="userEmail"
-                type="email"
-                name="email"
-                autocomplete="email"
-                required
-                class="appearance-none block bg-gray-900 text-gray-100 w-full px-3 py-2 border border-gray-600 rounded-sm shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-200 focus:border-indigo-200 sm:text-sm"
-              />
-            </div>
-            <p class="mt-2 text-xs text-gray-300">Your email address.</p>
-          </div>
+            <SiTextBox2
+              id="userEmail"
+              v-model="form.userEmail"
+              title="Email"
+              description="Your email address."
+            />
+            <!--
+            :error="false"
+            error-id="email-error"
+            error-message="Email address must include the '@' character."
+          --></div>
 
           <div class="sm:col-span-6">
-            <label
-              for="userPassword"
-              class="block text-sm font-medium text-gray-200"
-            >
-              Password
-            </label>
-            <div class="mt-1 w-full">
-              <input
-                id="userPassword"
-                v-model="form.userPassword"
-                data-test="userPassword"
-                type="password"
-                name="password"
-                required
-                class="appearance-none block bg-gray-900 text-gray-100 w-full px-3 py-2 border border-gray-600 rounded-sm shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-200 focus:border-indigo-200 sm:text-sm"
-              />
-            </div>
-            <p class="mt-2 text-xs text-gray-300">Your password.</p>
-          </div>
+            <SiTextBox2
+              id="userPassword"
+              v-model="form.userPassword"
+              title="Password"
+              :password="true"
+              description="Your password."
+            />
+            <!--
+            :error="false"
+            error-id="password-error"
+            error-message="Password cannot be an empty string or whitespace."
+          --></div>
 
           <div class="sm:col-span-6">
-            <label
-              for="signupSecret"
-              class="block text-sm font-medium text-gray-200"
-            >
-              Agent Passphrase
-            </label>
-            <div class="mt-1 w-full">
-              <input
-                id="signupSecret"
-                v-model="form.signupSecret"
-                data-test="signupSecret"
-                type="password"
-                name="password"
-                required
-                class="appearance-none block bg-gray-900 text-gray-100 w-full px-3 py-2 border border-gray-600 rounded-sm shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-200 focus:border-indigo-200 sm:text-sm"
-              />
-            </div>
-            <p class="mt-2 text-xs text-gray-300">
-              The secret agent passphrase provided to you by the Initiative.
-            </p>
-          </div>
+            <SiTextBox2
+              id="signupSecret"
+              v-model="form.signupSecret"
+              title="Agent Passphrase"
+              :password="true"
+              description="The secret agent passphrase provided to you by the Initiative."
+            />
+            <!--
+            :error="false"
+            error-id="agent-passphrase-error"
+            error-message="Agent passphrase cannot be an empty string or whitespace."
+          --></div>
+
           <div class="sm:col-span-6">
             <button
               type="submit"
@@ -161,6 +119,7 @@
 import { ref } from "vue";
 import { CreateAccountRequest, SignupService } from "@/service/signup";
 import siLogoWts from "@/assets/images/si-logo-wts.svg";
+import SiTextBox2 from "@/atoms/SiTextBox2.vue";
 
 const emit = defineEmits(["success", "back-to-login"]);
 
