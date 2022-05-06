@@ -122,7 +122,7 @@ async fn process_return_value(ctx: &DalContext<'_, '_>) {
 //         *func.backend_kind(),
 //     )
 //         .await;
-//     let fbrv = func_binding
+//     let func_binding_return_value = func_binding
 //         .execute(&txn, &nats, veritech)
 //         .await
 //         .expect("cannot execute binding");

@@ -3,6 +3,8 @@
 //! The builder ensures the correct order of precedence is maintained whilst setting and unsetting
 //! fields of specificity.
 //!
+//! ## The Order of Precedence
+//!
 //! The order of precedence is as follows (from least to most "specificity"):
 //! - [`PropId`] / [`InternalProviderId`] / [`ExternalProviderId`]
 //! - [`SchemaId`]
@@ -13,6 +15,12 @@
 //! At the level of least "specificity", you can provider have a [`PropId`], an
 //! [`InternalProviderId`], or an [`ExternalProviderId`]. However, you can only provide one and only
 //! one for an [`AttributeContext`] since they are at the same "level" in the order of precedence.
+//!
+//! ## `AttributeContext` vs. `AttributeReadContext`
+//!
+//! While the [`AttributeContext`] can be used for both read and write queries, the
+//! [`AttributeReadContext`](crate::AttributeReadContext) is useful for read-only queries and for
+//! flexibility when searching for objects of varying levels of specificity.
 
 use serde::{Deserialize, Serialize};
 use std::default::Default;

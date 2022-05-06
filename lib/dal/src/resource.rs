@@ -184,15 +184,19 @@ pub struct ResourceView {
 }
 
 impl From<(Resource, Option<FuncBindingReturnValue>)> for ResourceView {
-    fn from((resource, fbrv): (Resource, Option<FuncBindingReturnValue>)) -> Self {
+    fn from(
+        (resource, func_binding_return_value): (Resource, Option<FuncBindingReturnValue>),
+    ) -> Self {
         // TODO: actually fill all of the data dynamically, most fields don't make much sense for now
 
         // TODO: do we want to have a special case for when the FuncBindingReturnValue is there, but the .value() returns None?
-        if let Some((fbrv, result_json)) = fbrv.and_then(|f| f.value().cloned().map(|v| (f, v))) {
+        if let Some((func_binding_return_value, result_json)) =
+            func_binding_return_value.and_then(|f| f.value().cloned().map(|v| (f, v)))
+        {
             Self {
                 id: *resource.id(),
-                created_at: fbrv.timestamp().created_at,
-                updated_at: fbrv.timestamp().updated_at,
+                created_at: func_binding_return_value.timestamp().created_at,
+                updated_at: func_binding_return_value.timestamp().updated_at,
                 error: Some("Boto Cor de Rosa Spotted at a Party".to_owned()),
                 data: result_json,
                 health: ResourceHealth::Error,

@@ -88,9 +88,9 @@ impl QualificationView {
 
     pub async fn new_for_func_binding_return_value(
         ctx: &DalContext<'_, '_>,
-        fbrv: FuncBindingReturnValue,
+        func_binding_return_value: FuncBindingReturnValue,
     ) -> Result<Self, QualificationError> {
-        let output_streams = fbrv.get_output_stream(ctx).await?;
+        let output_streams = func_binding_return_value.get_output_stream(ctx).await?;
         let output = match output_streams {
             Some(streams) => streams
                 .into_iter()
@@ -103,7 +103,7 @@ impl QualificationView {
             None => Vec::with_capacity(0),
         };
 
-        if let Some(qual_result_json) = fbrv.value() {
+        if let Some(qual_result_json) = func_binding_return_value.value() {
             let result = serde_json::from_value(qual_result_json.clone())?;
             Ok(QualificationView {
                 title: "Unknown (no title provided)".to_string(),

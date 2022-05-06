@@ -513,8 +513,10 @@ impl Component {
         Ok(())
     }
 
-    /// Creates qualification func binding, an fbrv without a value and a QualificationResolver
-    /// The func is not executed yet, it's just a placeholder for some qualification that will be executed
+    /// Creates a qualification [`FuncBinding`](crate::FuncBinding), a
+    /// [`FuncBindingReturnValue`](crate::FuncBindingReturnValue) without a value and a
+    /// [`QualificationResolver`](crate::QualificationResolver). The func is not executed yet; it's
+    /// just a placeholder for some qualification that will be executed.
     pub async fn prepare_qualifications_check(
         &self,
         ctx: &DalContext<'_, '_>,
@@ -558,8 +560,8 @@ impl Component {
             )
             .await?;
 
-            // Empty fbrv means the function is still being executed
-            let _fbrv = FuncBindingReturnValue::upsert(
+            // Empty func binding return value means the function is still being executed
+            let _func_binding_return_value = FuncBindingReturnValue::upsert(
                 ctx,
                 None,
                 None,
@@ -697,8 +699,10 @@ impl Component {
         Ok(())
     }
 
-    /// Creates code generation func binding, an fbrv without a value and a CodeGenerationResolver,
-    /// The func is not executed yet, it's just a placeholder for some code generation that will be executed
+    /// Creates code generation [`FuncBinding`](crate::FuncBinding), a
+    /// [`FuncBindingReturnValue`](crate::FuncBindingReturnValue) without a value and a
+    /// [`CodeGenerationResolver`](crate::CodeGenerationResolver). The func is not executed yet,
+    /// it's just a placeholder for some code generation that will be executed.
     pub async fn prepare_code_generation(
         &self,
         ctx: &DalContext<'_, '_>,
@@ -742,8 +746,8 @@ impl Component {
             )
             .await?;
 
-            // Empty fbrv means the function is still being executed
-            let _fbrv = FuncBindingReturnValue::upsert(
+            // Empty func_binding_return_value means the function is still being executed
+            let _func_binding_return_value = FuncBindingReturnValue::upsert(
                 ctx,
                 None,
                 None,
@@ -1478,13 +1482,13 @@ impl Component {
             .find_attribute_value_by_json_pointer(ctx, json_pointer)
             .await?
         {
-            if let Some(fbrv) = FuncBindingReturnValue::get_by_id(
+            if let Some(func_binding_return_value) = FuncBindingReturnValue::get_by_id(
                 ctx,
                 &attribute_value.func_binding_return_value_id(),
             )
             .await?
             {
-                return Ok(fbrv
+                return Ok(func_binding_return_value
                     .value()
                     .cloned()
                     .map(serde_json::from_value)

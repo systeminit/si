@@ -49,8 +49,8 @@
     :attribute-context="attributeContext"
   />
   <div v-else class="text-xs text-red-400">
-    Error: could not create AttributeContext for widget kind
-    {{ props.editField.widget.kind }}
+    Error: WidgetKind not found or could not create AttributeContext for
+    WidgetKind ({{ props.editField.widget.kind }})
   </div>
 </template>
 
@@ -82,22 +82,11 @@ const attributeContext = computed((): AttributeContext | "" => {
   if (!props.editField.baggage) {
     return "";
   }
-
-  // FIXME(nick): this check is required to have the edit fields display properly, but this is straight
-  // up _incorrect_. We need to require "componentIdentification" if we are going to create an "attributeContext",
-  // so this code needs to be addressed sooner rather than later.
   if (!props.componentIdentification) {
-    return {
-      attribute_context_prop_id: props.editField.baggage.prop_id,
-      attribute_context_internal_provider_id: -1,
-      attribute_context_external_provider_id: -1,
-      attribute_context_schema_id: -1,
-      attribute_context_schema_variant_id: -1,
-      attribute_context_component_id: -1,
-      attribute_context_system_id: -1,
-    };
+    // FIXME(nick): we need to ensure we handle the scenario where the WidgetKind requires an AttributeContext, but
+    // this expression is true (i.e. "componentIdentification" is not populated).
+    return "";
   }
-
   return {
     attribute_context_prop_id: props.editField.baggage.prop_id,
     attribute_context_internal_provider_id: -1,

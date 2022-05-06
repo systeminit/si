@@ -342,8 +342,9 @@ impl AttributeValue {
             .await?;
         let mut result = Vec::new();
         for row in rows.into_iter() {
-            let fbrv_json: serde_json::Value = row.try_get("object")?;
-            let fbrv: Option<FuncBindingReturnValue> = serde_json::from_value(fbrv_json)?;
+            let func_binding_return_value_json: serde_json::Value = row.try_get("object")?;
+            let func_binding_return_value: Option<FuncBindingReturnValue> =
+                serde_json::from_value(func_binding_return_value_json)?;
 
             let prop_json: serde_json::Value = row.try_get("prop_object")?;
             let prop: Prop = serde_json::from_value(prop_json)?;
@@ -356,7 +357,7 @@ impl AttributeValue {
 
             result.push(AttributeValuePayload::new(
                 prop,
-                fbrv,
+                func_binding_return_value,
                 attribute_value,
                 parent_attribute_value_id,
             ));
@@ -709,7 +710,7 @@ async fn set_value(
 #[derive(Debug)]
 pub struct AttributeValuePayload {
     pub prop: Prop,
-    pub fbrv: Option<FuncBindingReturnValue>,
+    pub func_binding_return_value: Option<FuncBindingReturnValue>,
     pub attribute_value: AttributeValue,
     pub parent_attribute_value_id: Option<AttributeValueId>,
 }
@@ -717,13 +718,13 @@ pub struct AttributeValuePayload {
 impl AttributeValuePayload {
     pub fn new(
         prop: Prop,
-        fbrv: Option<FuncBindingReturnValue>,
+        func_binding_return_value: Option<FuncBindingReturnValue>,
         attribute_value: AttributeValue,
         parent_attribute_value_id: Option<AttributeValueId>,
     ) -> Self {
         Self {
             prop,
-            fbrv,
+            func_binding_return_value,
             attribute_value,
             parent_attribute_value_id,
         }
