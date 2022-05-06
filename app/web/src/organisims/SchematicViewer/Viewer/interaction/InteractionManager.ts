@@ -17,6 +17,7 @@ import { PanningManager } from "./panning";
 import { ConnectingManager } from "./connecting";
 import { ZoomingManager } from "./zooming";
 import { NodeAddManager } from "./nodeAdd";
+import { editButtonPulse$ } from "@/observable/change_set";
 import {
   lastSelectedNode$,
   lastSelectedDeploymentNode$,
@@ -200,19 +201,17 @@ export class InteractionManager {
           lastSelectedDeploymentNode$.next(target);
         }
 
-        if (canEdit) {
-          ST.activateDragging(this.stateService);
+        ST.activateDragging(this.stateService);
 
-          let zoomFactor = 1;
-          if (this.zoomFactor) {
-            zoomFactor = this.zoomFactor;
-          }
-          const offset = {
-            x: (e.data.global.x - target.worldTransform.tx) * (1 / zoomFactor),
-            y: (e.data.global.y - target.worldTransform.ty) * (1 / zoomFactor),
-          };
-          this.draggingManager.beforeDrag(e.data, offset);
+        let zoomFactor = 1;
+        if (this.zoomFactor) {
+          zoomFactor = this.zoomFactor;
         }
+        const offset = {
+          x: (e.data.global.x - target.worldTransform.tx) * (1 / zoomFactor),
+          y: (e.data.global.y - target.worldTransform.ty) * (1 / zoomFactor),
+        };
+        this.draggingManager.beforeDrag(e.data, offset);
         this.renderer.renderStage();
       }
     }
@@ -272,6 +271,12 @@ export class InteractionManager {
         ? this.dataManager.selectedDeploymentNodeId
         : null;
 
+    const editSession = await Rx.firstValueFrom(editSession$);
+
+    const target = this.renderer.plugins.interaction.hitTest(e.data.global);
+    const isFakeNode = target?.id === -1;
+    const canEdit = editSession && !isFakeNode;
+
     // Panning
     if (this.stateService.state.value === ST.ViewerState.PANNING_INITIATED) {
       this.stateService.send({ type: ST.ViewerEventKind.PANNING });
@@ -293,17 +298,20 @@ export class InteractionManager {
       ST.dragging(this.stateService);
     }
     if (ST.isDragging(this.stateService)) {
-      const node = this.selectionManager.selection.find(
-        (sel) => sel.parentDeploymentNodeId === parentDeploymentNodeId,
-      )?.nodes;
+      editButtonPulse$.next(true);
+      if (canEdit) {
+        const node = this.selectionManager.selection.find(
+          (sel) => sel.parentDeploymentNodeId === parentDeploymentNodeId,
+        )?.nodes;
 
-      // Note: For now we only accept individual selection
-      // so this code takes advantage of that,
-      // it's broken if multiple nodes are selected
-      if (node && node[0]) {
-        this.draggingManager.drag(node[0]);
-        this.sceneManager.refreshConnections();
-        this.renderer.renderStage();
+        // Note: For now we only accept individual selection
+        // so this code takes advantage of that,
+        // it's broken if multiple nodes are selected
+        if (node && node[0]) {
+          this.draggingManager.drag(node[0]);
+          this.sceneManager.refreshConnections();
+          this.renderer.renderStage();
+        }
       }
     }
 
