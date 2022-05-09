@@ -5,11 +5,11 @@ use dal::{
     edit_field::{EditFieldAble, EditFieldObjectKind},
     schema,
     socket::Socket,
-    Component, Prop, QualificationCheck, Schema, Visibility, WorkspaceId,
+    Component, Prop, QualificationCheck, Schema, StandardModel, Visibility, WorkspaceId,
 };
 use serde::{Deserialize, Serialize};
 
-use super::EditFieldResult;
+use super::{EditFieldError, EditFieldResult};
 use crate::server::extract::{AccessBuilder, HandlerContext};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -38,9 +38,23 @@ pub async fn get_edit_fields(
 
     let edit_fields = match request.object_kind {
         EditFieldObjectKind::Component => {
+            let is_component_in_tenancy = Component::is_in_tenancy(&ctx, request.id.into()).await?;
+            let is_component_in_visibility = Component::get_by_id(&ctx, &request.id.into())
+                .await?
+                .is_some();
+            if is_component_in_tenancy && !is_component_in_visibility {
+                return Err(EditFieldError::InvalidVisibility);
+            }
             Component::get_edit_fields(&ctx, &request.id.into()).await?
         }
         EditFieldObjectKind::ComponentProp => {
+            let is_component_in_tenancy = Component::is_in_tenancy(&ctx, request.id.into()).await?;
+            let is_component_in_visibility = Component::get_by_id(&ctx, &request.id.into())
+                .await?
+                .is_some();
+            if is_component_in_tenancy && !is_component_in_visibility {
+                return Err(EditFieldError::InvalidVisibility);
+            }
             Component::get_edit_fields(&ctx, &request.id.into()).await?
         }
         EditFieldObjectKind::Prop => Prop::get_edit_fields(&ctx, &request.id.into()).await?,

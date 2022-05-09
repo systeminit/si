@@ -65,12 +65,6 @@ import { ChangedEditFieldCounterVisitor } from "@/utils/edit_field_visitor";
 import { ComponentIdentification } from "@/api/sdf/dal/component";
 import { componentsMetadata$ } from "@/organisims/SchematicViewer/data/observable";
 import { ComponentMetadata } from "@/service/component/get_components_metadata";
-//import { Visibility } from "@/api/sdf/dal/visibility";
-import {
-  standardVisibilityTriggers$,
-  //visibility$,
-} from "@/observable/visibility";
-import { editSessionWritten$ } from "@/observable/edit_session";
 import SiLink from "@/atoms/SiLink.vue";
 import SiButtonIcon from "@/atoms/SiButtonIcon.vue";
 import SiIcon from "@/atoms/SiIcon.vue";
@@ -80,8 +74,6 @@ import {
   QuestionMarkCircleIcon,
   PencilAltIcon,
 } from "@heroicons/vue/outline";
-
-//const visibility = refFrom<Visibility>(visibility$);
 
 // TODO(nick): we technically only need one prop. We're sticking with two to not mess
 // with the reactivity guarentees in place.
@@ -98,21 +90,19 @@ const { componentId, componentIdentification } = toRefs(props);
 const componentId$ = fromRef<number>(componentId, { immediate: true });
 
 const editFields = refFrom<EditFields | undefined>(
-  Rx.combineLatest([
-    componentId$,
-    standardVisibilityTriggers$,
-    editSessionWritten$,
-  ]).pipe(
-    Rx.switchMap(([componentId, [visibility]]) => {
+  Rx.combineLatest([componentId$]).pipe(
+    Rx.switchMap(([componentId]) => {
       return EditFieldService.getEditFields({
         id: componentId,
         objectKind: EditFieldObjectKind.Component,
-        // We aren't reactive to visibility as our parent will retrigger this by updating componentId or our key
-        ...visibility,
       });
     }),
     Rx.switchMap((response) => {
-      if (response === null) {
+      if (
+        response === null ||
+        (response.error?.statusCode === 404 &&
+          response.error?.message === "invalid visibility")
+      ) {
         return Rx.from([[]]);
       } else if (response.error) {
         GlobalErrorService.set(response);

@@ -8,12 +8,12 @@ import { workspace$ } from "@/observable/workspace";
 import _ from "lodash";
 import { standardVisibilityTriggers$ } from "@/observable/visibility";
 
-export interface GetEditFieldsArgs extends Visibility {
+export interface GetEditFieldsArgs {
   objectKind: EditFieldObjectKind;
   id: number;
 }
 
-export interface GetEditFieldsRequest extends GetEditFieldsArgs {
+export interface GetEditFieldsRequest extends GetEditFieldsArgs, Visibility {
   workspaceId?: number;
 }
 

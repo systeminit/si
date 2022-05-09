@@ -888,6 +888,22 @@ impl Component {
     }
 
     #[instrument(skip_all)]
+    pub async fn is_in_tenancy(ctx: &DalContext<'_, '_>, id: ComponentId) -> ComponentResult<bool> {
+        let row = ctx
+            .pg_txn()
+            .query_opt(
+                "SELECT id FROM components WHERE id = $1 AND in_tenancy_v1($2, components.tenancy_universal, components.tenancy_billing_account_ids,
+                                                                           components.tenancy_organization_ids, components.tenancy_workspace_ids) LIMIT 1",
+                &[
+                    &id,
+                    ctx.read_tenancy(),
+                ],
+            )
+            .await?;
+        Ok(row.is_some())
+    }
+
+    #[instrument(skip_all)]
     pub async fn list_validations_as_qualification_for_component_id(
         ctx: &DalContext<'_, '_>,
         component_id: ComponentId,

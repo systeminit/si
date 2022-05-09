@@ -108,7 +108,6 @@
       >
         <AttributeViewer
           v-if="activeView === 'attribute'"
-          :key="attributeViewerKey"
           :component-id="selectedComponentIdentification.componentId"
           :component-identification="selectedComponentIdentification"
         />
@@ -186,32 +185,19 @@ import {
   BeakerIcon,
 } from "@heroicons/vue/solid";
 
-const randomString = () => `${Math.floor(Math.random() * 50000)}`;
-const attributeViewerKey = ref(randomString());
 const isPinned = ref<boolean>(false);
 const selectedComponentId = ref<number | "">("");
 
-let visibilityChanged = false;
-visibility$.pipe(untilUnmounted).subscribe(() => (visibilityChanged = true));
-
 schematicData$.pipe(untilUnmounted).subscribe((schematic) => {
   if (!schematic || selectedComponentId.value === "") {
-    visibilityChanged = false;
     return;
   }
 
   for (const node of schematic.nodes) {
     if (selectedComponentId.value === node.kind.componentId) {
-      // Horrible hack to ensure we refetch the edit fields when visibility changes
-      // It will flash the screen, but I don't see a better way right now (I'm fixing other schematic panel bugs)
-      if (visibilityChanged) {
-        attributeViewerKey.value = randomString();
-        visibilityChanged = false;
-      }
       return;
     }
   }
-  visibilityChanged = false;
 
   isPinned.value = false;
   selectedComponentId.value = "";
