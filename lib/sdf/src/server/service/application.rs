@@ -35,6 +35,8 @@ pub enum ApplicationError {
     SchemaError(#[from] SchemaError),
     #[error("ws event error: {0}")]
     WsEvent(#[from] WsEventError),
+    #[error("application name not found")]
+    NameNotFound,
 }
 
 pub type ApplicationResult<T> = std::result::Result<T, ApplicationError>;

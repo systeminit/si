@@ -1,6 +1,6 @@
 use axum::{extract::Query, Json};
 use dal::node::NodeId;
-use dal::{Component, ComponentId, StandardModel, Visibility, WorkspaceId};
+use dal::{Component, ComponentId, StandardModel, Visibility, WorkspaceId, WriteTenancy};
 use serde::{Deserialize, Serialize};
 
 use super::ApplicationResult;
@@ -18,8 +18,17 @@ pub struct GetApplicationRequest {
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
+pub struct ApplicationView {
+    id: ComponentId,
+    name: String,
+    visibility: Visibility,
+    tenancy: WriteTenancy,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct GetApplicationResponse {
-    pub application: Component,
+    pub application: ApplicationView,
     pub application_node_id: NodeId,
 }
 
@@ -36,11 +45,23 @@ pub async fn get_application(
     let application = Component::get_by_id(&ctx, &request.application_id)
         .await?
         .ok_or(ApplicationError::NotFound)?;
+
     let application_node = application
         .node(&ctx)
         .await?
         .pop()
         .ok_or(ApplicationError::NotFound)?;
+
+    let name = application
+        .find_value_by_json_pointer::<String>(&ctx, "/root/si/name")
+        .await?
+        .ok_or(ApplicationError::NameNotFound)?;
+    let application = ApplicationView {
+        id: *application.id(),
+        name,
+        visibility: *application.visibility(),
+        tenancy: application.tenancy().clone(),
+    };
 
     txns.commit().await?;
 

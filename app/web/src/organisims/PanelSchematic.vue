@@ -13,6 +13,7 @@
         <SiSelect
           id="schematicSelect"
           v-model="schematicKindRaw"
+          tooltip-text="Diagram sub-panel selector"
           name="schematicSelect"
           class="pl-1 w-32"
           :options="schematicKinds"
@@ -27,6 +28,11 @@
           <SiSelect
             id="nodeSelect"
             v-model="selectedDeploymentComponentId"
+            v-tooltip.bottom="{
+              content:
+                'Node selection scape-hatch.<br/>For when you need to change nodes while the panel is locked.<br/>If unlocked, just use the Deployment Diagram sub-panel for selection.',
+              html: true,
+            }"
             name="nodeSelect"
             class="pl-1 w-32"
             :value-as-number="true"
