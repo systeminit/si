@@ -140,7 +140,13 @@ import {
   ChevronDownIcon,
   ChevronUpIcon,
 } from "@heroicons/vue/outline";
+import { visibility$ } from "@/observable/visibility";
+import { Visibility } from "@/api/sdf/dal/visibility";
 //import { ListQualificationsResponse } from "@/service/component/list_qualifications";
+
+// We aren't reactive to visibility as we actually depend on visibility+list_component to be sure the selected component still exists
+// Therefore our parent is actually responsible for re-rendering (changing the key) us whenever visibility changes, after cleaning the selection up
+const visibility = refFrom<Visibility>(visibility$);
 
 const editMode = refFrom<boolean>(ChangeSetService.currentEditMode());
 
@@ -294,6 +300,8 @@ const allQualifications = refFrom<Array<Qualification> | null>(
       currentQualifiedState.value = QualifiedState.Unknown;
       return ComponentService.listQualifications({
         componentId: componentId,
+        // We aren't reactive to visibility as our parent will retrigger this by updating componentId or our key
+        ...visibility.value,
       });
     }),
     Rx.switchMap((reply) => {

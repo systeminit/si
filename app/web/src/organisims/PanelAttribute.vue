@@ -114,6 +114,7 @@
         />
         <QualificationViewer
           v-else-if="activeView === 'qualification'"
+          :key="attributeViewerKey"
           :component-id="selectedComponentIdentification.componentId"
         />
         <ResourceViewer
@@ -174,7 +175,7 @@ import cheechSvg from "@/assets/images/cheech-and-chong.svg";
 import { lastSelectedNode$ } from "./SchematicViewer/state";
 import { ComponentIdentification } from "@/api/sdf/dal/component";
 import { schematicData$ } from "./SchematicViewer/Viewer/scene/observable";
-import { visibility$ } from "@/observable/visibility";
+import { standardVisibilityTriggers$ } from "@/observable/visibility";
 import { PanelAttributeSubType } from "./PanelTree/panel_types";
 import { ChangeSetService } from "@/service/change_set";
 import { editButtonPulse$ } from "@/observable/change_set";
@@ -192,7 +193,9 @@ const isPinned = ref<boolean>(false);
 const selectedComponentId = ref<number | "">("");
 
 let visibilityChanged = false;
-visibility$.pipe(untilUnmounted).subscribe(() => (visibilityChanged = true));
+standardVisibilityTriggers$
+  .pipe(untilUnmounted)
+  .subscribe(() => (visibilityChanged = true));
 
 schematicData$.pipe(untilUnmounted).subscribe((schematic) => {
   if (!schematic || selectedComponentId.value === "") {

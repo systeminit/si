@@ -65,10 +65,10 @@ import { ChangedEditFieldCounterVisitor } from "@/utils/edit_field_visitor";
 import { ComponentIdentification } from "@/api/sdf/dal/component";
 import { componentsMetadata$ } from "@/organisims/SchematicViewer/data/observable";
 import { ComponentMetadata } from "@/service/component/get_components_metadata";
-//import { Visibility } from "@/api/sdf/dal/visibility";
+import { Visibility } from "@/api/sdf/dal/visibility";
 import {
-  standardVisibilityTriggers$,
-  //visibility$,
+  //standardVisibilityTriggers$,
+  visibility$,
 } from "@/observable/visibility";
 import { editSessionWritten$ } from "@/observable/edit_session";
 import SiLink from "@/atoms/SiLink.vue";
@@ -81,7 +81,9 @@ import {
   PencilAltIcon,
 } from "@heroicons/vue/outline";
 
-//const visibility = refFrom<Visibility>(visibility$);
+// We aren't reactive to visibility as we actually depend on visibility+list_component to be sure the selected component still exists
+// Therefore our parent is actually responsible for re-rendering (changing the key) us whenever visibility changes, after cleaning the selection up
+const visibility = refFrom<Visibility>(visibility$);
 
 // TODO(nick): we technically only need one prop. We're sticking with two to not mess
 // with the reactivity guarentees in place.
@@ -100,10 +102,11 @@ const componentId$ = fromRef<number>(componentId, { immediate: true });
 const editFields = refFrom<EditFields | undefined>(
   Rx.combineLatest([
     componentId$,
-    standardVisibilityTriggers$,
+    //standardVisibilityTriggers$,
     editSessionWritten$,
   ]).pipe(
-    Rx.switchMap(([componentId, [visibility]]) => {
+    //Rx.switchMap(([componentId, [visibility]]) => {
+    Rx.switchMap(([componentId]) => {
       return EditFieldService.getEditFields({
         id: componentId,
         objectKind: EditFieldObjectKind.Component,

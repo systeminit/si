@@ -6,7 +6,7 @@ import { Visibility } from "@/api/sdf/dal/visibility";
 import { EditFieldObjectKind, EditFields } from "@/api/sdf/dal/edit_field";
 import { workspace$ } from "@/observable/workspace";
 import _ from "lodash";
-import { standardVisibilityTriggers$ } from "@/observable/visibility";
+//import { standardVisibilityTriggers$ } from "@/observable/visibility";
 
 export interface GetEditFieldsArgs extends Visibility {
   objectKind: EditFieldObjectKind;
@@ -41,12 +41,14 @@ export function getEditFields(
   }
   getEditFieldsCollection[args.objectKind][args.id] = combineLatest([
     workspace$,
-    standardVisibilityTriggers$,
+    //standardVisibilityTriggers$,
   ]).pipe(
-    switchMap(([workspace, [visibility]]) => {
+    //switchMap(([workspace, [visibility]]) => {
+    switchMap(([workspace]) => {
       const bottle = Bottle.pop("default");
       const sdf: SDF = bottle.container.SDF;
-      const request: GetEditFieldsRequest = { ...args, ...visibility };
+      //const request: GetEditFieldsRequest = { ...args, ...visibility };
+      const request: GetEditFieldsRequest = { ...args };
       if (args.objectKind === EditFieldObjectKind.Component) {
         if (_.isNull(workspace)) {
           return from([
