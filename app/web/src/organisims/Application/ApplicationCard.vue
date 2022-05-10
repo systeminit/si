@@ -1,38 +1,38 @@
 <template>
   <div class="flex flex-col justify-center w-full application-card">
     <div class="py-1 pl-2 card-header">
-      {{ application.name }}
+      {{ props.application.name }}
     </div>
 
     <div class="flex w-full h-full">
       <div class="w-1/5 py-2 mx-2">
         <ApplicationActivitySummary
-          :application-id="application.id"
+          :application-id="props.application.id"
           height="40px"
         />
       </div>
 
       <div class="w-1/5 py-2 mx-2">
         <ApplicationServicesSummary
-          :application-id="application.id"
+          :application-id="props.application.id"
           :show-button="false"
         />
       </div>
 
       <div class="w-1/5 py-2 mx-2">
         <ApplicationComputingResourcesSummary
-          :application-id="application.id"
+          :application-id="props.application.id"
           :show-button="false"
         />
       </div>
 
       <div class="w-1/5 py-2 mx-2">
-        <ApplicationProviderSummary :application-id="application.id" />
+        <ApplicationProviderSummary :application-id="props.application.id" />
       </div>
 
       <div class="w-1/5 py-2 mx-2">
         <ApplicationChangesSummary
-          :application-id="application.id"
+          :application-id="props.application.id"
           :show-selected-changeset-data="false"
         />
       </div>
@@ -45,7 +45,6 @@
 </template>
 
 <script setup lang="ts">
-import { PropType } from "vue";
 import { Component } from "@/api/sdf/dal/component";
 import VueFeather from "vue-feather";
 import ApplicationActivitySummary from "./Summary/ApplicationActivitySummary.vue";
@@ -54,12 +53,9 @@ import ApplicationComputingResourcesSummary from "@/organisims/Application/Appli
 import ApplicationProviderSummary from "@/organisims/Application/Summary/ApplicationProviderSummary.vue";
 import ApplicationChangesSummary from "@/organisims/Application/Summary/ApplicationChangesSummary.vue";
 
-defineProps({
-  application: {
-    type: Object as PropType<Component>,
-    required: true,
-  },
-});
+const props = defineProps<{
+  application: Component;
+}>();
 </script>
 
 <style scoped>

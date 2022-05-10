@@ -1,6 +1,6 @@
 use axum::extract::Query;
 use axum::Json;
-use dal::{Component, Schema, StandardModel, Visibility, WorkspaceId};
+use dal::{ComponentId, Schema, StandardModel, Visibility, WorkspaceId, WriteTenancy};
 use serde::{Deserialize, Serialize};
 
 use crate::server::extract::{AccessBuilder, HandlerContext};
@@ -17,8 +17,17 @@ pub struct ListApplicationRequest {
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
+pub struct ApplicationView {
+    id: ComponentId,
+    name: String,
+    visibility: Visibility,
+    tenancy: WriteTenancy,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct ListApplicationItem {
-    pub application: Component,
+    pub application: ApplicationView,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -37,12 +46,21 @@ pub async fn list_applications(
 
     let schemas = Schema::find_by_attr(&ctx, "name", &"application".to_string()).await?;
     let schema = schemas.first().ok_or(ApplicationError::SchemaNotFound)?;
-    let list: Vec<ListApplicationItem> = schema
-        .components(&ctx)
-        .await?
-        .into_iter()
-        .map(|application| ListApplicationItem { application })
-        .collect();
+    let mut list = Vec::new();
+    for application in schema.components(&ctx).await? {
+        let name = application
+            .find_value_by_json_pointer::<String>(&ctx, "/root/si/name")
+            .await?
+            .ok_or(ApplicationError::NameNotFound)?;
+        list.push(ListApplicationItem {
+            application: ApplicationView {
+                id: *application.id(),
+                name,
+                visibility: *application.visibility(),
+                tenancy: application.tenancy().clone(),
+            },
+        })
+    }
     let response = ListApplicationResponse { list };
 
     txns.commit().await?;

@@ -15,6 +15,11 @@
             <SiSelect
               id="nodeSelect"
               v-model="selectedComponentId"
+              v-tooltip.bottom="{
+                content:
+                  'Node selection scape-hatch.<br/>For when you need to change nodes while the panel is locked.<br/>If unlocked, use the Diagram panel for selection.',
+                html: true,
+              }"
               name="nodeSelect"
               class="pl-1 w-32"
               :value-as-number="true"

@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div v-tooltip.bottom="props.tooltipText" :aria-label="props.tooltipText">
     <Listbox
       :id="id"
       v-model="selectedValue"
@@ -130,6 +130,11 @@ const props = defineProps({
     default: false,
   },
   dataTest: {
+    type: String,
+    default: "",
+    required: false,
+  },
+  tooltipText: {
     type: String,
     default: "",
     required: false,

@@ -15,6 +15,7 @@
           <SiSelect
             id="selectPanelType"
             v-model="selectedPanelType"
+            tooltip-text="Panel selector"
             :options="panelTypes"
             class="pl-2 w-32"
           />
