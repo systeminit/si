@@ -1,11 +1,12 @@
 use crate::DalContext;
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use si_data::PgError;
 use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{ChangeSetPk, EditSessionPk, NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK};
-use serde_aux::field_attributes::{deserialize_bool_from_anything, deserialize_number_from_string};
+use serde_aux::field_attributes::deserialize_number_from_string;
 
 #[derive(Error, Debug)]
 pub enum VisibilityError {
@@ -27,43 +28,52 @@ pub struct Visibility {
         deserialize_with = "deserialize_number_from_string"
     )]
     pub edit_session_pk: EditSessionPk,
-    #[serde(
-        rename = "visibility_deleted",
-        deserialize_with = "deserialize_bool_from_anything"
-    )]
-    pub deleted: bool,
+    #[serde(rename = "visibility_deleted_at")]
+    pub deleted_at: Option<DateTime<Utc>>,
 }
 
 impl Visibility {
     #[instrument]
-    pub fn new(change_set_pk: ChangeSetPk, edit_session_pk: EditSessionPk, deleted: bool) -> Self {
+    pub fn new(
+        change_set_pk: ChangeSetPk,
+        edit_session_pk: EditSessionPk,
+        deleted_at: Option<DateTime<Utc>>,
+    ) -> Self {
         Visibility {
             change_set_pk,
             edit_session_pk,
-            deleted,
+            deleted_at,
         }
     }
 
     /// Constructs a new head `Visibility`.
     #[instrument]
     pub fn new_head(deleted: bool) -> Self {
-        Visibility::new(NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK, deleted)
+        let deleted_at = match deleted {
+            true => Some(Utc::now()),
+            false => None,
+        };
+        Visibility::new(NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK, deleted_at)
     }
 
     /// Converts this `Visibility` to a new head `Visibility`.
     pub fn to_head(&self) -> Self {
-        Self::new_head(self.deleted)
+        Self::new_head(self.deleted_at.is_some())
     }
 
     /// Constructs a new change set `Visibility`.
     #[instrument]
     pub fn new_change_set(change_set_pk: ChangeSetPk, deleted: bool) -> Self {
-        Visibility::new(change_set_pk, NO_EDIT_SESSION_PK, deleted)
+        let deleted_at = match deleted {
+            true => Some(Utc::now()),
+            false => None,
+        };
+        Visibility::new(change_set_pk, NO_EDIT_SESSION_PK, deleted_at)
     }
 
     /// Converts this `Visibility` to a new change set `Visibility`.
     pub fn to_change_set(&self) -> Self {
-        Self::new_change_set(self.change_set_pk, self.deleted)
+        Self::new_change_set(self.change_set_pk, self.deleted_at.is_some())
     }
 
     /// Constructs a new edit session `Visibility`.
@@ -73,7 +83,11 @@ impl Visibility {
         edit_session_pk: EditSessionPk,
         deleted: bool,
     ) -> Self {
-        Visibility::new(change_set_pk, edit_session_pk, deleted)
+        let deleted_at = match deleted {
+            true => Some(Utc::now()),
+            false => None,
+        };
+        Visibility::new(change_set_pk, edit_session_pk, deleted_at)
     }
 
     #[instrument]
@@ -101,7 +115,7 @@ impl Visibility {
                     &check_visibility,
                     &self.change_set_pk,
                     &self.edit_session_pk,
-                    &self.deleted,
+                    &self.deleted_at,
                 ],
             )
             .await?;

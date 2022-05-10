@@ -10,7 +10,7 @@ SELECT DISTINCT ON (attribute_resolvers.prop_id) attribute_resolvers.id,
 FROM attribute_resolvers
 WHERE in_tenancy_v1($1, attribute_resolvers.tenancy_universal, attribute_resolvers.tenancy_billing_account_ids, attribute_resolvers.tenancy_organization_ids,
                     attribute_resolvers.tenancy_workspace_ids)
-  AND is_visible_v1($2, attribute_resolvers.visibility_change_set_pk, attribute_resolvers.visibility_edit_session_pk, attribute_resolvers.visibility_deleted)
+  AND is_visible_v1($2, attribute_resolvers.visibility_change_set_pk, attribute_resolvers.visibility_edit_session_pk, attribute_resolvers.visibility_deleted_at)
   AND attribute_resolvers.prop_id = $3
   AND (attribute_resolvers.component_id = $4 OR attribute_resolvers.component_id = -1)
   AND (attribute_resolvers.schema_id = $5 OR attribute_resolvers.schema_id = -1)

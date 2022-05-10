@@ -6,10 +6,10 @@ FROM organizations
                       $2, 
                       organization_belongs_to_billing_account.visibility_change_set_pk, 
                       organization_belongs_to_billing_account.visibility_edit_session_pk, 
-                      organization_belongs_to_billing_account.visibility_deleted)
+                      organization_belongs_to_billing_account.visibility_deleted_at)
 
 WHERE organizations.id = $1 
-    AND is_visible_v1($2, organizations.visibility_change_set_pk, organizations.visibility_edit_session_pk, organizations.visibility_deleted)
+    AND is_visible_v1($2, organizations.visibility_change_set_pk, organizations.visibility_edit_session_pk, organizations.visibility_deleted_at)
 ORDER BY 
     organizations.id DESC,
     organizations.visibility_change_set_pk DESC,

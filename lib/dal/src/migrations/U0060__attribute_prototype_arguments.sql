@@ -8,7 +8,7 @@ CREATE TABLE attribute_prototype_arguments
     tenancy_workspace_ids bigint[],
     visibility_change_set_pk bigint,
     visibility_edit_session_pk bigint,
-    visibility_deleted bool,
+    visibility_deleted_at timestamp with time zone,
     created_at timestamp with time zone NOT NULL DEFAULT NOW(),
     updated_at timestamp with time zone NOT NULL DEFAULT NOW(),
     name text NOT NULL,
@@ -42,7 +42,7 @@ BEGIN
                                tenancy_workspace_ids,
                                visibility_change_set_pk,
                                visibility_edit_session_pk,
-                               visibility_deleted,
+                               visibility_deleted_at,
                                name,
                                internal_provider_id)
     VALUES (this_tenancy_record.tenancy_universal,
@@ -51,7 +51,7 @@ BEGIN
             this_tenancy_record.tenancy_workspace_ids,
             this_visibility_record.visibility_change_set_pk,
             this_visibility_record.visibility_edit_session_pk,
-            this_visibility_record.visibility_deleted,
+            this_visibility_record.visibility_deleted_at,
             this_name,
             this_internal_provider_id)
     RETURNING * INTO this_new_row;

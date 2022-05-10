@@ -8,7 +8,7 @@ CREATE TABLE edges
     tenancy_workspace_ids       bigint[],
     visibility_change_set_pk    bigint                   NOT NULL DEFAULT -1,
     visibility_edit_session_pk  bigint                   NOT NULL DEFAULT -1,
-    visibility_deleted          bool,
+    visibility_deleted_at       timestamp with time zone,
     created_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     updated_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     kind                        text                     NOT NULL,
@@ -50,13 +50,13 @@ BEGIN
 
     INSERT INTO edges (tenancy_universal, tenancy_billing_account_ids, tenancy_organization_ids,
                        tenancy_workspace_ids,
-                       visibility_change_set_pk, visibility_edit_session_pk, visibility_deleted, kind,
+                       visibility_change_set_pk, visibility_edit_session_pk, visibility_deleted_at, kind,
                        head_node_id, head_object_kind, head_object_id, head_socket_id,
                        tail_node_id, tail_object_kind, tail_object_id, tail_socket_id)
     VALUES (this_tenancy_record.tenancy_universal, this_tenancy_record.tenancy_billing_account_ids,
             this_tenancy_record.tenancy_organization_ids, this_tenancy_record.tenancy_workspace_ids,
             this_visibility_record.visibility_change_set_pk, this_visibility_record.visibility_edit_session_pk,
-            this_visibility_record.visibility_deleted, this_kind, this_head_node_id, this_head_object_kind,
+            this_visibility_record.visibility_deleted_at, this_kind, this_head_node_id, this_head_object_kind,
             this_head_object_id, this_head_socket_id, this_tail_node_id, this_tail_object_kind, this_tail_object_id,
             this_tail_socket_id)
     RETURNING * INTO this_new_row;
@@ -103,11 +103,10 @@ BEGIN
                             AND components.tenancy_organization_ids =
                                 component_belongs_to_schema_variant.tenancy_organization_ids
                             AND components.tenancy_workspace_ids = component_belongs_to_schema_variant.tenancy_workspace_ids
-                            AND components.visibility_change_set_pk =
-                                component_belongs_to_schema_variant.visibility_change_set_pk
-                            AND components.visibility_edit_session_pk =
-                                component_belongs_to_schema_variant.visibility_edit_session_pk
-                            AND components.visibility_deleted = component_belongs_to_schema_variant.visibility_deleted
+                            AND is_visible_v1(this_visibility,
+                                              component_belongs_to_schema_variant.visibility_change_set_pk,
+                                              component_belongs_to_schema_variant.visibility_edit_session_pk,
+                                              component_belongs_to_schema_variant.visibility_deleted_at)
             -- We're making sure the tenancy & visibility match the component's _exactly_ here, to ensure that
             -- we are getting the _exact_ join record for _this_ version of the component that we're interested in.
             INNER JOIN node_belongs_to_component
@@ -116,9 +115,10 @@ BEGIN
                             AND components.tenancy_billing_account_ids = node_belongs_to_component.tenancy_billing_account_ids
                             AND components.tenancy_organization_ids = node_belongs_to_component.tenancy_organization_ids
                             AND components.tenancy_workspace_ids = node_belongs_to_component.tenancy_workspace_ids
-                            AND components.visibility_change_set_pk = node_belongs_to_component.visibility_change_set_pk
-                            AND components.visibility_edit_session_pk = node_belongs_to_component.visibility_edit_session_pk
-                            AND components.visibility_deleted = node_belongs_to_component.visibility_deleted
+                            AND is_visible_v1(this_visibility,
+                                              node_belongs_to_component.visibility_change_set_pk,
+                                              node_belongs_to_component.visibility_edit_session_pk,
+                                              node_belongs_to_component.visibility_deleted_at)
             -- We're making sure the tenancy & visibility match the component's _exactly_ here, to ensure that
             -- we are getting the _exact_ join record for _this_ version of the component that we're interested in.
             INNER JOIN nodes
@@ -127,9 +127,10 @@ BEGIN
                             AND nodes.tenancy_billing_account_ids = components.tenancy_billing_account_ids
                             AND nodes.tenancy_organization_ids = components.tenancy_organization_ids
                             AND nodes.tenancy_workspace_ids = components.tenancy_workspace_ids
-                            AND nodes.visibility_change_set_pk = node_belongs_to_component.visibility_change_set_pk
-                            AND nodes.visibility_edit_session_pk = node_belongs_to_component.visibility_edit_session_pk
-                            AND nodes.visibility_deleted = node_belongs_to_component.visibility_deleted
+                            AND is_visible_v1(this_visibility,
+                                              nodes.visibility_change_set_pk,
+                                              nodes.visibility_edit_session_pk,
+                                              nodes.visibility_deleted_at)
             -- We're using the in_tenancy_v1, and is_visible_v1 helpers here, because the schema_variant might not
             -- exist in the _exact_ same tenancy/visibility as the component, so we need to be able to do the
             -- fallback/lookup logic here.
@@ -138,8 +139,10 @@ BEGIN
                             AND in_tenancy_v1(this_tenancy, schema_variants.tenancy_universal, schema_variants.tenancy_billing_account_ids,
                                             schema_variants.tenancy_organization_ids,
                                             schema_variants.tenancy_workspace_ids)
-                            AND is_visible_v1(this_visibility, schema_variants.visibility_change_set_pk, schema_variants.visibility_edit_session_pk,
-                                            schema_variants.visibility_deleted)
+                            AND is_visible_v1(this_visibility,
+                                              schema_variants.visibility_change_set_pk,
+                                              schema_variants.visibility_edit_session_pk,
+                                              schema_variants.visibility_deleted_at)
             -- We're using the in_tenancy_v1, and is_visible_v1 helpers here, because the schema_variant might not
             -- exist in the _exact_ same tenancy/visibility as the component, so we need to be able to do the
             -- fallback/lookup logic here.
@@ -149,6 +152,10 @@ BEGIN
                                             socket_many_to_many_schema_variants.tenancy_billing_account_ids,
                                             socket_many_to_many_schema_variants.tenancy_organization_ids,
                                             socket_many_to_many_schema_variants.tenancy_workspace_ids)
+                            AND is_visible_v1(this_visibility,
+                                              socket_many_to_many_schema_variants.visibility_change_set_pk,
+                                              socket_many_to_many_schema_variants.visibility_edit_session_pk,
+                                              socket_many_to_many_schema_variants.visibility_deleted_at)
             -- We're using the in_tenancy_v1, and is_visible_v1 helpers here, because the socket might not
             -- exist in the _exact_ same tenancy/visibility as the component, so we need to be able to do the
             -- fallback/lookup logic here.
@@ -157,14 +164,17 @@ BEGIN
                             AND sockets.tenancy_universal = socket_many_to_many_schema_variants.tenancy_universal
                             AND sockets.tenancy_billing_account_ids =
                                 socket_many_to_many_schema_variants.tenancy_billing_account_ids
-                            AND
-                        sockets.tenancy_organization_ids = socket_many_to_many_schema_variants.tenancy_organization_ids
+                            AND sockets.tenancy_organization_ids = socket_many_to_many_schema_variants.tenancy_organization_ids
                             AND sockets.tenancy_workspace_ids = socket_many_to_many_schema_variants.tenancy_workspace_ids
                             AND sockets.edge_kind = 'includes'
                             AND sockets.schematic_kind = this_schematic_kind
+                            AND is_visible_v1(this_visibility,
+                                              sockets.visibility_change_set_pk,
+                                              sockets.visibility_edit_session_pk,
+                                              sockets.visibility_deleted_at)
     WHERE in_tenancy_v1(this_tenancy, components.tenancy_universal, components.tenancy_billing_account_ids, components.tenancy_organization_ids,
                         components.tenancy_workspace_ids)
-    AND is_visible_v1(this_visibility, components.visibility_change_set_pk, components.visibility_edit_session_pk, components.visibility_deleted)
+    AND is_visible_v1(this_visibility, components.visibility_change_set_pk, components.visibility_edit_session_pk, components.visibility_deleted_at)
     AND components.id = this_component_id;
 
     SELECT
@@ -186,11 +196,10 @@ BEGIN
                             AND systems.tenancy_organization_ids =
                                 system_belongs_to_schema_variant.tenancy_organization_ids
                             AND systems.tenancy_workspace_ids = system_belongs_to_schema_variant.tenancy_workspace_ids
-                            AND systems.visibility_change_set_pk =
-                                system_belongs_to_schema_variant.visibility_change_set_pk
-                            AND systems.visibility_edit_session_pk =
-                                system_belongs_to_schema_variant.visibility_edit_session_pk
-                            AND systems.visibility_deleted = system_belongs_to_schema_variant.visibility_deleted
+                            AND is_visible_v1(this_visibility,
+                                              system_belongs_to_schema_variant.visibility_change_set_pk,
+                                              system_belongs_to_schema_variant.visibility_edit_session_pk,
+                                              system_belongs_to_schema_variant.visibility_deleted_at)
             -- We're making sure the tenancy & visibility match the system's _exactly_ here, to ensure that
             -- we are getting the _exact_ join record for _this_ version of the system that we're interested in.
             INNER JOIN node_belongs_to_system
@@ -200,9 +209,10 @@ BEGIN
                         systems.tenancy_billing_account_ids = node_belongs_to_system.tenancy_billing_account_ids
                             AND systems.tenancy_organization_ids = node_belongs_to_system.tenancy_organization_ids
                             AND systems.tenancy_workspace_ids = node_belongs_to_system.tenancy_workspace_ids
-                            AND systems.visibility_change_set_pk = node_belongs_to_system.visibility_change_set_pk
-                            AND systems.visibility_edit_session_pk = node_belongs_to_system.visibility_edit_session_pk
-                            AND systems.visibility_deleted = node_belongs_to_system.visibility_deleted
+                            AND is_visible_v1(this_visibility,
+                                              node_belongs_to_system.visibility_change_set_pk,
+                                              node_belongs_to_system.visibility_edit_session_pk,
+                                              node_belongs_to_system.visibility_deleted_at)
             -- We're making sure the tenancy & visibility match the system's _exactly_ here, to ensure that
             -- we are getting the _exact_ join record for _this_ version of the system that we're interested in.
             INNER JOIN nodes
@@ -211,9 +221,10 @@ BEGIN
                             AND nodes.tenancy_billing_account_ids = node_belongs_to_system.tenancy_billing_account_ids
                             AND nodes.tenancy_organization_ids = node_belongs_to_system.tenancy_organization_ids
                             AND nodes.tenancy_workspace_ids = node_belongs_to_system.tenancy_workspace_ids
-                            AND nodes.visibility_change_set_pk = node_belongs_to_system.visibility_change_set_pk
-                            AND nodes.visibility_edit_session_pk = node_belongs_to_system.visibility_edit_session_pk
-                            AND nodes.visibility_deleted = node_belongs_to_system.visibility_deleted
+                            AND is_visible_v1(this_visibility,
+                                              nodes.visibility_change_set_pk,
+                                              nodes.visibility_edit_session_pk,
+                                              nodes.visibility_deleted_at)
             -- We're using the in_tenancy_v1, and is_visible_v1 helpers here, because the schema_variant might not
             -- exist in the _exact_ same tenancy/visibility as the system, so we need to be able to do the
             -- fallback/lookup logic here.
@@ -222,8 +233,10 @@ BEGIN
                             AND in_tenancy_v1(this_tenancy, schema_variants.tenancy_universal, schema_variants.tenancy_billing_account_ids,
                                             schema_variants.tenancy_organization_ids,
                                             schema_variants.tenancy_workspace_ids)
-                            AND is_visible_v1(this_visibility, schema_variants.visibility_change_set_pk, schema_variants.visibility_edit_session_pk,
-                                            schema_variants.visibility_deleted)
+                            AND is_visible_v1(this_visibility,
+                                              schema_variants.visibility_change_set_pk,
+                                              schema_variants.visibility_edit_session_pk,
+                                              schema_variants.visibility_deleted_at)
             -- We're using the in_tenancy_v1, and is_visible_v1 helpers here, because the schema_variant might not
             -- exist in the _exact_ same tenancy/visibility as the system, so we need to be able to do the
             -- fallback/lookup logic here.
@@ -233,6 +246,10 @@ BEGIN
                                             socket_many_to_many_schema_variants.tenancy_billing_account_ids,
                                             socket_many_to_many_schema_variants.tenancy_organization_ids,
                                             socket_many_to_many_schema_variants.tenancy_workspace_ids)
+                            AND is_visible_v1(this_visibility,
+                                              socket_many_to_many_schema_variants.visibility_change_set_pk,
+                                              socket_many_to_many_schema_variants.visibility_edit_session_pk,
+                                              socket_many_to_many_schema_variants.visibility_deleted_at)
             -- We're using the in_tenancy_v1, and is_visible_v1 helpers here, because the socket might not
             -- exist in the _exact_ same tenancy/visibility as the system, so we need to be able to do the
             -- fallback/lookup logic here.
@@ -241,14 +258,17 @@ BEGIN
                             AND sockets.tenancy_universal = socket_many_to_many_schema_variants.tenancy_universal
                             AND sockets.tenancy_billing_account_ids =
                                 socket_many_to_many_schema_variants.tenancy_billing_account_ids
-                            AND
-                        sockets.tenancy_organization_ids = socket_many_to_many_schema_variants.tenancy_organization_ids
+                            AND sockets.tenancy_organization_ids = socket_many_to_many_schema_variants.tenancy_organization_ids
                             AND sockets.tenancy_workspace_ids = socket_many_to_many_schema_variants.tenancy_workspace_ids
                             AND sockets.edge_kind = 'output'
                             AND sockets.schematic_kind = this_schematic_kind
+                            AND is_visible_v1(this_visibility,
+                                              sockets.visibility_change_set_pk,
+                                              sockets.visibility_edit_session_pk,
+                                              sockets.visibility_deleted_at)
     WHERE in_tenancy_v1(this_tenancy, systems.tenancy_universal, systems.tenancy_billing_account_ids, systems.tenancy_organization_ids,
                         systems.tenancy_workspace_ids)
-    AND is_visible_v1(this_visibility, systems.visibility_change_set_pk, systems.visibility_edit_session_pk, systems.visibility_deleted)
+    AND is_visible_v1(this_visibility, systems.visibility_change_set_pk, systems.visibility_edit_session_pk, systems.visibility_deleted_at)
     AND systems.id = this_system_id;
 
     SELECT
@@ -311,11 +331,10 @@ BEGIN
                             AND components.tenancy_organization_ids =
                                 component_belongs_to_schema_variant.tenancy_organization_ids
                             AND components.tenancy_workspace_ids = component_belongs_to_schema_variant.tenancy_workspace_ids
-                            AND components.visibility_change_set_pk =
-                                component_belongs_to_schema_variant.visibility_change_set_pk
-                            AND components.visibility_edit_session_pk =
-                                component_belongs_to_schema_variant.visibility_edit_session_pk
-                            AND components.visibility_deleted = component_belongs_to_schema_variant.visibility_deleted
+                            AND is_visible_v1(this_visibility,
+                                              component_belongs_to_schema_variant.visibility_change_set_pk,
+                                              component_belongs_to_schema_variant.visibility_edit_session_pk,
+                                              component_belongs_to_schema_variant.visibility_deleted_at)
             -- We're making sure the tenancy & visibility match the component's _exactly_ here, to ensure that
             -- we are getting the _exact_ join record for _this_ version of the component that we're interested in.
             INNER JOIN node_belongs_to_component
@@ -325,9 +344,10 @@ BEGIN
                         components.tenancy_billing_account_ids = node_belongs_to_component.tenancy_billing_account_ids
                             AND components.tenancy_organization_ids = node_belongs_to_component.tenancy_organization_ids
                             AND components.tenancy_workspace_ids = node_belongs_to_component.tenancy_workspace_ids
-                            AND components.visibility_change_set_pk = node_belongs_to_component.visibility_change_set_pk
-                            AND components.visibility_edit_session_pk = node_belongs_to_component.visibility_edit_session_pk
-                            AND components.visibility_deleted = node_belongs_to_component.visibility_deleted
+                            AND is_visible_v1(this_visibility,
+                                              node_belongs_to_component.visibility_change_set_pk,
+                                              node_belongs_to_component.visibility_edit_session_pk,
+                                              node_belongs_to_component.visibility_deleted_at)
             -- We're making sure the tenancy & visibility match the component's _exactly_ here, to ensure that
             -- we are getting the _exact_ join record for _this_ version of the component that we're interested in.
             INNER JOIN nodes
@@ -336,9 +356,10 @@ BEGIN
                             AND nodes.tenancy_billing_account_ids = components.tenancy_billing_account_ids
                             AND nodes.tenancy_organization_ids = components.tenancy_organization_ids
                             AND nodes.tenancy_workspace_ids = components.tenancy_workspace_ids
-                            AND nodes.visibility_change_set_pk = node_belongs_to_component.visibility_change_set_pk
-                            AND nodes.visibility_edit_session_pk = node_belongs_to_component.visibility_edit_session_pk
-                            AND nodes.visibility_deleted = node_belongs_to_component.visibility_deleted
+                            AND is_visible_v1(this_visibility,
+                                              nodes.visibility_change_set_pk,
+                                              nodes.visibility_edit_session_pk,
+                                              nodes.visibility_deleted_at)
             -- We're using the in_tenancy_v1, and is_visible_v1 helpers here, because the schema_variant might not
             -- exist in the _exact_ same tenancy/visibility as the component, so we need to be able to do the
             -- fallback/lookup logic here.
@@ -347,8 +368,10 @@ BEGIN
                             AND in_tenancy_v1(this_tenancy, schema_variants.tenancy_universal, schema_variants.tenancy_billing_account_ids,
                                             schema_variants.tenancy_organization_ids,
                                             schema_variants.tenancy_workspace_ids)
-                            AND is_visible_v1(this_visibility, schema_variants.visibility_change_set_pk, schema_variants.visibility_edit_session_pk,
-                                            schema_variants.visibility_deleted)
+                            AND is_visible_v1(this_visibility,
+                                              schema_variants.visibility_change_set_pk,
+                                              schema_variants.visibility_edit_session_pk,
+                                              schema_variants.visibility_deleted_at)
             -- We're using the in_tenancy_v1, and is_visible_v1 helpers here, because the schema_variant might not
             -- exist in the _exact_ same tenancy/visibility as the component, so we need to be able to do the
             -- fallback/lookup logic here.
@@ -358,6 +381,10 @@ BEGIN
                                             socket_many_to_many_schema_variants.tenancy_billing_account_ids,
                                             socket_many_to_many_schema_variants.tenancy_organization_ids,
                                             socket_many_to_many_schema_variants.tenancy_workspace_ids)
+                            AND is_visible_v1(this_visibility,
+                                              socket_many_to_many_schema_variants.visibility_change_set_pk,
+                                              socket_many_to_many_schema_variants.visibility_edit_session_pk,
+                                              socket_many_to_many_schema_variants.visibility_deleted_at)
             -- We're using the in_tenancy_v1, and is_visible_v1 helpers here, because the socket might not
             -- exist in the _exact_ same tenancy/visibility as the component, so we need to be able to do the
             -- fallback/lookup logic here.
@@ -366,14 +393,17 @@ BEGIN
                             AND sockets.tenancy_universal = socket_many_to_many_schema_variants.tenancy_universal
                             AND sockets.tenancy_billing_account_ids =
                                 socket_many_to_many_schema_variants.tenancy_billing_account_ids
-                            AND
-                        sockets.tenancy_organization_ids = socket_many_to_many_schema_variants.tenancy_organization_ids
+                            AND sockets.tenancy_organization_ids = socket_many_to_many_schema_variants.tenancy_organization_ids
                             AND sockets.tenancy_workspace_ids = socket_many_to_many_schema_variants.tenancy_workspace_ids
                             AND sockets.edge_kind = 'includes'
                             AND sockets.schematic_kind = this_schematic_kind
+                            AND is_visible_v1(this_visibility,
+                                              sockets.visibility_change_set_pk,
+                                              sockets.visibility_edit_session_pk,
+                                              sockets.visibility_deleted_at)
     WHERE in_tenancy_v1(this_tenancy, components.tenancy_universal, components.tenancy_billing_account_ids, components.tenancy_organization_ids,
                         components.tenancy_workspace_ids)
-    AND is_visible_v1(this_visibility, components.visibility_change_set_pk, components.visibility_edit_session_pk, components.visibility_deleted)
+    AND is_visible_v1(this_visibility, components.visibility_change_set_pk, components.visibility_edit_session_pk, components.visibility_deleted_at)
     AND components.id = this_component_id;
 
     SELECT
@@ -395,11 +425,10 @@ BEGIN
                             AND components.tenancy_organization_ids =
                                 component_belongs_to_schema_variant.tenancy_organization_ids
                             AND components.tenancy_workspace_ids = component_belongs_to_schema_variant.tenancy_workspace_ids
-                            AND components.visibility_change_set_pk =
-                                component_belongs_to_schema_variant.visibility_change_set_pk
-                            AND components.visibility_edit_session_pk =
-                                component_belongs_to_schema_variant.visibility_edit_session_pk
-                            AND components.visibility_deleted = component_belongs_to_schema_variant.visibility_deleted
+                            AND is_visible_v1(this_visibility,
+                                              component_belongs_to_schema_variant.visibility_change_set_pk,
+                                              component_belongs_to_schema_variant.visibility_edit_session_pk,
+                                              component_belongs_to_schema_variant.visibility_deleted_at)
             -- We're making sure the tenancy & visibility match the component's _exactly_ here, to ensure that
             -- we are getting the _exact_ join record for _this_ version of the component that we're interested in.
             INNER JOIN node_belongs_to_component
@@ -409,9 +438,10 @@ BEGIN
                         components.tenancy_billing_account_ids = node_belongs_to_component.tenancy_billing_account_ids
                             AND components.tenancy_organization_ids = node_belongs_to_component.tenancy_organization_ids
                             AND components.tenancy_workspace_ids = node_belongs_to_component.tenancy_workspace_ids
-                            AND components.visibility_change_set_pk = node_belongs_to_component.visibility_change_set_pk
-                            AND components.visibility_edit_session_pk = node_belongs_to_component.visibility_edit_session_pk
-                            AND components.visibility_deleted = node_belongs_to_component.visibility_deleted
+                            AND is_visible_v1(this_visibility,
+                                              node_belongs_to_component.visibility_change_set_pk,
+                                              node_belongs_to_component.visibility_edit_session_pk,
+                                              node_belongs_to_component.visibility_deleted_at)
             -- We're making sure the tenancy & visibility match the component's _exactly_ here, to ensure that
             -- we are getting the _exact_ join record for _this_ version of the component that we're interested in.
             INNER JOIN nodes
@@ -420,9 +450,10 @@ BEGIN
                             AND nodes.tenancy_billing_account_ids = components.tenancy_billing_account_ids
                             AND nodes.tenancy_organization_ids = components.tenancy_organization_ids
                             AND nodes.tenancy_workspace_ids = components.tenancy_workspace_ids
-                            AND nodes.visibility_change_set_pk = node_belongs_to_component.visibility_change_set_pk
-                            AND nodes.visibility_edit_session_pk = node_belongs_to_component.visibility_edit_session_pk
-                            AND nodes.visibility_deleted = node_belongs_to_component.visibility_deleted
+                            AND is_visible_v1(this_visibility,
+                                              nodes.visibility_change_set_pk,
+                                              nodes.visibility_edit_session_pk,
+                                              nodes.visibility_deleted_at)
             -- We're using the in_tenancy_v1, and is_visible_v1 helpers here, because the schema_variant might not
             -- exist in the _exact_ same tenancy/visibility as the component, so we need to be able to do the
             -- fallback/lookup logic here.
@@ -431,8 +462,10 @@ BEGIN
                             AND in_tenancy_v1(this_tenancy, schema_variants.tenancy_universal, schema_variants.tenancy_billing_account_ids,
                                             schema_variants.tenancy_organization_ids,
                                             schema_variants.tenancy_workspace_ids)
-                            AND is_visible_v1(this_visibility, schema_variants.visibility_change_set_pk, schema_variants.visibility_edit_session_pk,
-                                            schema_variants.visibility_deleted)
+                            AND is_visible_v1(this_visibility,
+                                              schema_variants.visibility_change_set_pk,
+                                              schema_variants.visibility_edit_session_pk,
+                                              schema_variants.visibility_deleted_at)
             -- We're using the in_tenancy_v1, and is_visible_v1 helpers here, because the schema_variant might not
             -- exist in the _exact_ same tenancy/visibility as the component, so we need to be able to do the
             -- fallback/lookup logic here.
@@ -442,6 +475,10 @@ BEGIN
                                             socket_many_to_many_schema_variants.tenancy_billing_account_ids,
                                             socket_many_to_many_schema_variants.tenancy_organization_ids,
                                             socket_many_to_many_schema_variants.tenancy_workspace_ids)
+                            AND is_visible_v1(this_visibility,
+                                              socket_many_to_many_schema_variants.visibility_change_set_pk,
+                                              socket_many_to_many_schema_variants.visibility_edit_session_pk,
+                                              socket_many_to_many_schema_variants.visibility_deleted_at)
             -- We're using the in_tenancy_v1, and is_visible_v1 helpers here, because the socket might not
             -- exist in the _exact_ same tenancy/visibility as the component, so we need to be able to do the
             -- fallback/lookup logic here.
@@ -450,14 +487,17 @@ BEGIN
                             AND sockets.tenancy_universal = socket_many_to_many_schema_variants.tenancy_universal
                             AND sockets.tenancy_billing_account_ids =
                                 socket_many_to_many_schema_variants.tenancy_billing_account_ids
-                            AND
-                        sockets.tenancy_organization_ids = socket_many_to_many_schema_variants.tenancy_organization_ids
+                            AND sockets.tenancy_organization_ids = socket_many_to_many_schema_variants.tenancy_organization_ids
                             AND sockets.tenancy_workspace_ids = socket_many_to_many_schema_variants.tenancy_workspace_ids
                             AND sockets.edge_kind = 'output'
                             AND sockets.schematic_kind = this_schematic_kind
+                            AND is_visible_v1(this_visibility,
+                                              sockets.visibility_change_set_pk,
+                                              sockets.visibility_edit_session_pk,
+                                              sockets.visibility_deleted_at)
     WHERE in_tenancy_v1(this_tenancy, components.tenancy_universal, components.tenancy_billing_account_ids, components.tenancy_organization_ids,
                         components.tenancy_workspace_ids)
-    AND is_visible_v1(this_visibility, components.visibility_change_set_pk, components.visibility_edit_session_pk, components.visibility_deleted)
+    AND is_visible_v1(this_visibility, components.visibility_change_set_pk, components.visibility_edit_session_pk, components.visibility_deleted_at)
     AND nodes.id = this_parent_node_id;
 
     SELECT

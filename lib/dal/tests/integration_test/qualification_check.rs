@@ -21,10 +21,6 @@ async fn schema_variants(ctx: &DalContext<'_, '_>) {
     let qualification_check = create_qualification_check(ctx).await;
     let schema = create_schema(ctx, &SchemaKind::Concrete).await;
     let variant = create_schema_variant(ctx, *schema.id()).await;
-    variant
-        .set_schema(ctx, schema.id())
-        .await
-        .expect("cannot associate schema variant with schema");
 
     qualification_check
         .add_schema_variant(ctx, variant.id())

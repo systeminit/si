@@ -126,7 +126,7 @@ impl EditFieldAble for UiMenu {
             .await?
             .ok_or(SchemaError::UiMenuNotFound(*id))?;
         let head_obj: Option<UiMenu> = if ctx.visibility().in_change_set() {
-            let _head_visibility = Visibility::new_head(ctx.visibility().deleted);
+            let _head_visibility = Visibility::new_head(ctx.visibility().deleted_at.is_some());
             UiMenu::get_by_id(ctx, id).await?
         } else {
             None
@@ -134,7 +134,7 @@ impl EditFieldAble for UiMenu {
         let change_set_obj: Option<UiMenu> = if ctx.visibility().in_change_set() {
             let _change_set_visibility = Visibility::new_change_set(
                 ctx.visibility().change_set_pk,
-                ctx.visibility().deleted,
+                ctx.visibility().deleted_at.is_some(),
             );
             UiMenu::get_by_id(ctx, id).await?
         } else {

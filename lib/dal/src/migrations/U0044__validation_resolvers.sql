@@ -8,7 +8,7 @@ CREATE TABLE validation_resolvers
     tenancy_workspace_ids       bigint[],
     visibility_change_set_pk    bigint                   NOT NULL DEFAULT -1,
     visibility_edit_session_pk  bigint                   NOT NULL DEFAULT -1,
-    visibility_deleted          bool,
+    visibility_deleted_at       timestamp with time zone,
     created_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     updated_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     validation_prototype_id     bigint                   NOT NULL,
@@ -52,7 +52,7 @@ BEGIN
                                      tenancy_workspace_ids,
                                      visibility_change_set_pk,
                                      visibility_edit_session_pk,
-                                     visibility_deleted,
+                                     visibility_deleted_at,
                                      validation_prototype_id,
                                      func_id,
                                      func_binding_id,
@@ -67,7 +67,7 @@ BEGIN
             this_tenancy_record.tenancy_workspace_ids,
             this_visibility_record.visibility_change_set_pk,
             this_visibility_record.visibility_edit_session_pk,
-            this_visibility_record.visibility_deleted,
+            this_visibility_record.visibility_deleted_at,
             this_validation_prototype_id,
             this_func_id,
             this_func_binding_id,
@@ -110,15 +110,15 @@ $$ LANGUAGE PLPGSQL VOLATILE;
 --             this_visibility_record.visibility_change_set_pk,
 --             'visibility_edit_session_pk',
 --             -1,
---             'visibility_deleted',
---             this_visibility_record.visibility_deleted);
+--             'visibility_deleted_at',
+--             this_visibility_record.visibility_deleted_at);
 --     this_head_visibility := jsonb_build_object(
 --             'visibility_change_set_pk',
 --             -1,
 --             'visibility_edit_session_pk',
 --             -1,
---             'visibility_deleted',
---             this_visibility_record.visibility_deleted);
+--             'visibility_deleted_at',
+--             this_visibility_record.visibility_deleted_at);
 -- 
 --     -- If we have an ID at all in this query, its because something in our
 --     -- possible visibilities has an validationResolver with our criteria!
@@ -135,19 +135,19 @@ $$ LANGUAGE PLPGSQL VOLATILE;
 --                     this_visibility,
 --                     validation_resolvers.visibility_change_set_pk,
 --                     validation_resolvers.visibility_edit_session_pk,
---                     validation_resolvers.visibility_deleted)
+--                     validation_resolvers.visibility_deleted_at)
 --             OR
 --             is_visible_v1(
 --                     this_change_set_visibility,
 --                     validation_resolvers.visibility_change_set_pk,
 --                     validation_resolvers.visibility_edit_session_pk,
---                     validation_resolvers.visibility_deleted)
+--                     validation_resolvers.visibility_deleted_at)
 --             OR
 --             is_visible_v1(
 --                     this_visibility,
 --                     validation_resolvers.visibility_change_set_pk,
 --                     validation_resolvers.visibility_edit_session_pk,
---                     validation_resolvers.visibility_deleted)
+--                     validation_resolvers.visibility_deleted_at)
 --         )
 --       AND validation_resolvers.prop_id = this_prop_id
 --       AND validation_resolvers.component_id = this_component_id
@@ -189,7 +189,7 @@ $$ LANGUAGE PLPGSQL VOLATILE;
 --                 this_visibility,
 --                 validation_resolvers.visibility_change_set_pk,
 --                 validation_resolvers.visibility_edit_session_pk,
---                 validation_resolvers.visibility_deleted)
+--                 validation_resolvers.visibility_deleted_at)
 --           AND validation_resolvers.prop_id = this_prop_id
 --           AND validation_resolvers.component_id = this_component_id
 --           AND validation_resolvers.schema_id = this_schema_id

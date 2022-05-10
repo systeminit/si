@@ -21,10 +21,6 @@ pub async fn create_schema_with_object_and_string_prop(
     let ctx = &octx;
     let mut schema = create_schema(ctx, &SchemaKind::Concrete).await;
     let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
-    schema_variant
-        .set_schema(ctx, schema.id())
-        .await
-        .expect("cannot associate variant with schema");
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
@@ -86,10 +82,6 @@ pub async fn create_schema_with_nested_objects_and_string_prop(
     let ctx = &octx;
     let mut schema = create_schema(ctx, &SchemaKind::Concrete).await;
     let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
-    schema_variant
-        .set_schema(ctx, schema.id())
-        .await
-        .expect("cannot associate variant with schema");
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
@@ -158,10 +150,6 @@ pub async fn create_schema_with_string_props(
     let ctx = &octx;
     let mut schema = create_schema(ctx, &SchemaKind::Concrete).await;
     let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
-    schema_variant
-        .set_schema(ctx, schema.id())
-        .await
-        .expect("cannot associate variant with schema");
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
@@ -200,10 +188,6 @@ pub async fn create_schema_with_array_of_string_props(
 
     let mut schema = create_schema(ctx, &SchemaKind::Concrete).await;
     let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
-    schema_variant
-        .set_schema(ctx, schema.id())
-        .await
-        .expect("cannot associate variant with schema");
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
@@ -255,10 +239,6 @@ pub async fn create_schema_with_nested_array_objects(
 
     let mut schema = create_schema(ctx, &SchemaKind::Concrete).await;
     let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
-    schema_variant
-        .set_schema(ctx, schema.id())
-        .await
-        .expect("cannot associate variant with schema");
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
@@ -328,10 +308,6 @@ pub async fn create_simple_map(
     let ctx = &octx;
     let mut schema = create_schema(ctx, &SchemaKind::Concrete).await;
     let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
-    schema_variant
-        .set_schema(ctx, schema.id())
-        .await
-        .expect("cannot associate variant with schema");
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
@@ -384,10 +360,6 @@ pub async fn create_schema_with_nested_array_objects_and_a_map(
 
     let mut schema = create_schema(ctx, &SchemaKind::Concrete).await;
     let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
-    schema_variant
-        .set_schema(ctx, schema.id())
-        .await
-        .expect("cannot associate variant with schema");
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await

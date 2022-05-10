@@ -20,7 +20,7 @@ INNER JOIN attribute_value_belongs_to_attribute_prototype ON
                     attribute_value_belongs_to_attribute_prototype.tenancy_workspace_ids)
   AND is_visible_v1($2, attribute_value_belongs_to_attribute_prototype.visibility_change_set_pk,
                     attribute_value_belongs_to_attribute_prototype.visibility_edit_session_pk,
-                    attribute_value_belongs_to_attribute_prototype.visibility_deleted)
+                    attribute_value_belongs_to_attribute_prototype.visibility_deleted_at)
 INNER JOIN attribute_prototypes ON
   attribute_prototypes.id = attribute_value_belongs_to_attribute_prototype.belongs_to_id
   AND in_tenancy_v1($1, attribute_prototypes.tenancy_universal,
@@ -29,7 +29,7 @@ INNER JOIN attribute_prototypes ON
                     attribute_prototypes.tenancy_workspace_ids)
   AND is_visible_v1($2, attribute_prototypes.visibility_change_set_pk,
                     attribute_prototypes.visibility_edit_session_pk,
-                    attribute_prototypes.visibility_deleted)
+                    attribute_prototypes.visibility_deleted_at)
 
 -- Handle parentage. We need to use LEFT JOINs here to not wipe out attribute values that do not have relevant parents.
 LEFT JOIN attribute_value_belongs_to_attribute_value ON
@@ -40,7 +40,7 @@ LEFT JOIN attribute_value_belongs_to_attribute_value ON
                     attribute_value_belongs_to_attribute_value.tenancy_workspace_ids)
   AND is_visible_v1($2, attribute_value_belongs_to_attribute_value.visibility_change_set_pk,
                     attribute_value_belongs_to_attribute_value.visibility_edit_session_pk,
-                    attribute_value_belongs_to_attribute_value.visibility_deleted)
+                    attribute_value_belongs_to_attribute_value.visibility_deleted_at)
 LEFT JOIN attribute_values AS parent_attribute_values ON
   parent_attribute_values.id = attribute_value_belongs_to_attribute_value.belongs_to_id
   AND in_tenancy_v1($1, parent_attribute_values.tenancy_universal,
@@ -49,11 +49,11 @@ LEFT JOIN attribute_values AS parent_attribute_values ON
                     parent_attribute_values.tenancy_workspace_ids)
   AND is_visible_v1($2, parent_attribute_values.visibility_change_set_pk,
                     parent_attribute_values.visibility_edit_session_pk,
-                    parent_attribute_values.visibility_deleted)
+                    parent_attribute_values.visibility_deleted_at)
 
 WHERE in_tenancy_v1($1, attribute_values.tenancy_universal, attribute_values.tenancy_billing_account_ids, attribute_values.tenancy_organization_ids,
                     attribute_values.tenancy_workspace_ids)
-  AND is_visible_v1($2, attribute_values.visibility_change_set_pk, attribute_values.visibility_edit_session_pk, attribute_values.visibility_deleted)
+  AND is_visible_v1($2, attribute_values.visibility_change_set_pk, attribute_values.visibility_edit_session_pk, attribute_values.visibility_deleted_at)
   AND exact_attribute_context_v1($3, attribute_values.attribute_context_prop_id,
                                  attribute_values.attribute_context_internal_provider_id,
                                  attribute_values.attribute_context_external_provider_id,

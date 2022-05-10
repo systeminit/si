@@ -5,7 +5,7 @@ SELECT DISTINCT ON (attribute_value_belongs_to_attribute_value.belongs_to_id, at
                    attribute_values.key,
                    attribute_values.visibility_change_set_pk,
                    attribute_values.visibility_edit_session_pk,
-                   attribute_values.visibility_deleted,
+                   attribute_values.visibility_deleted_at,
                    attribute_values.attribute_context_internal_provider_id,
                    attribute_values.attribute_context_external_provider_id,
                    attribute_values.attribute_context_schema_id,
@@ -23,11 +23,11 @@ LEFT JOIN attribute_value_belongs_to_attribute_value ON
         attribute_value_belongs_to_attribute_value.tenancy_workspace_ids)
     AND is_visible_v1($2, attribute_value_belongs_to_attribute_value.visibility_change_set_pk,
         attribute_value_belongs_to_attribute_value.visibility_edit_session_pk,
-        attribute_value_belongs_to_attribute_value.visibility_deleted)
+        attribute_value_belongs_to_attribute_value.visibility_deleted_at)
 
 WHERE in_tenancy_v1($1, attribute_values.tenancy_universal, attribute_values.tenancy_billing_account_ids, attribute_values.tenancy_organization_ids,
                         attribute_values.tenancy_workspace_ids)
-    AND is_visible_v1($2, attribute_values.visibility_change_set_pk, attribute_values.visibility_edit_session_pk, attribute_values.visibility_deleted)
+    AND is_visible_v1($2, attribute_values.visibility_change_set_pk, attribute_values.visibility_edit_session_pk, attribute_values.visibility_deleted_at)
     AND in_attribute_context_v1($3, attribute_values.attribute_context_prop_id,
                                     attribute_values.attribute_context_internal_provider_id,
                                     attribute_values.attribute_context_external_provider_id,
@@ -40,7 +40,7 @@ ORDER BY belongs_to_id,
          key,
          visibility_change_set_pk DESC,
          visibility_edit_session_pk DESC,
-         visibility_deleted DESC,
+         visibility_deleted_at DESC NULLS FIRST,
          attribute_context_internal_provider_id DESC,
          attribute_context_external_provider_id DESC,
          attribute_context_schema_id DESC,

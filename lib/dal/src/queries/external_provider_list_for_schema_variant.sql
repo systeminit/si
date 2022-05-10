@@ -11,11 +11,11 @@ FROM external_providers
                           schema_variants.tenancy_workspace_ids)
         AND is_visible_v1($2, schema_variants.visibility_change_set_pk,
                           schema_variants.visibility_edit_session_pk,
-                          schema_variants.visibility_deleted)
+                          schema_variants.visibility_deleted_at)
 WHERE in_tenancy_v1($1, external_providers.tenancy_universal, external_providers.tenancy_billing_account_ids,
                     external_providers.tenancy_organization_ids, external_providers.tenancy_workspace_ids)
   AND is_visible_v1($2, external_providers.visibility_change_set_pk, external_providers.visibility_edit_session_pk,
-                    external_providers.visibility_deleted)
+                    external_providers.visibility_deleted_at)
   AND schema_variants.id = $3
 ORDER BY external_providers.id,
          visibility_change_set_pk DESC,

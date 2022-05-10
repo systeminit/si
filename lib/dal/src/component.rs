@@ -1549,9 +1549,11 @@ async fn get_root_edit_field(
     ctx: &DalContext<'_, '_>,
     id: &ComponentId,
 ) -> ComponentResult<EditField> {
-    let head_visibility = Visibility::new_head(ctx.visibility().deleted);
-    let change_set_visibility =
-        Visibility::new_change_set(ctx.visibility().change_set_pk, ctx.visibility().deleted);
+    let head_visibility = Visibility::new_head(ctx.visibility().deleted_at.is_some());
+    let change_set_visibility = Visibility::new_change_set(
+        ctx.visibility().change_set_pk,
+        ctx.visibility().deleted_at.is_some(),
+    );
 
     // FIXME(nick): if we end up deciding that the trait's "get_edit_fields" func signature will
     // change to only return one edit field, then this can use "Self" instead of "Component".

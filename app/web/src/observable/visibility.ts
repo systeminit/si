@@ -35,11 +35,11 @@ export const visibility$: Observable<Visibility> = combineLatest([
   switchMap(([changeSet, editSession, showDeleted]) => {
     const visibility_change_set_pk = changeSet?.pk || NO_CHANGE_SET_PK;
     const visibility_edit_session_pk = editSession?.pk || NO_EDIT_SESSION_PK;
-    const visibility_deleted = showDeleted;
+    const visibility_deleted_at = showDeleted ? new Date() : undefined;
     const visibility: Visibility = {
       visibility_change_set_pk,
       visibility_edit_session_pk,
-      visibility_deleted,
+      visibility_deleted_at,
     };
     return from([visibility]);
   }),

@@ -14,7 +14,7 @@ SELECT DISTINCT ON (props.id) props.id,
       $2, 
       props.visibility_change_set_pk, 
       props.visibility_edit_session_pk, 
-      props.visibility_deleted
+      props.visibility_deleted_at
     )
     AND props.id IN (
       WITH RECURSIVE recursive_props AS (

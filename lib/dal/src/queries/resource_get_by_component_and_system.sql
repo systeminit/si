@@ -15,7 +15,7 @@ INNER JOIN resource_belongs_to_system
     AND resources.tenancy_workspace_ids = resource_belongs_to_system.tenancy_workspace_ids
 WHERE in_tenancy_v1($1, resources.tenancy_universal, resources.tenancy_billing_account_ids, resources.tenancy_organization_ids,
     resources.tenancy_workspace_ids)
-  AND is_visible_v1($2, resources.visibility_change_set_pk, resources.visibility_edit_session_pk, resources.visibility_deleted)
+  AND is_visible_v1($2, resources.visibility_change_set_pk, resources.visibility_edit_session_pk, resources.visibility_deleted_at)
   AND resource_belongs_to_component.belongs_to_id = $3
   AND resource_belongs_to_system.belongs_to_id = $4
 ORDER BY resources.id,

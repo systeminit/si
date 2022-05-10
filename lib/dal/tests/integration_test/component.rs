@@ -26,10 +26,6 @@ async fn new_for_schema_variant_with_node(ctx: &DalContext<'_, '_>, wid: Workspa
 
     let schema = create_schema(ctx, &SchemaKind::Concept).await;
     let schema_variant = create_schema_variant(ctx, *schema.id()).await;
-    schema_variant
-        .set_schema(ctx, schema.id())
-        .await
-        .expect("cannot set schema variant");
 
     let (component, _node, _) =
         Component::new_for_schema_variant_with_node(ctx, "mastodon", schema_variant.id())
@@ -78,10 +74,6 @@ async fn new_for_schema_variant_with_node(ctx: &DalContext<'_, '_>, wid: Workspa
 async fn schema_relationships(ctx: &DalContext<'_, '_>) {
     let schema = create_schema(ctx, &SchemaKind::Implementation).await;
     let schema_variant = create_schema_variant(ctx, *schema.id()).await;
-    schema_variant
-        .set_schema(ctx, schema.id())
-        .await
-        .expect("cannot set schema variant to schema");
     let _component = create_component_for_schema_variant(ctx, schema_variant.id()).await;
 }
 
@@ -89,10 +81,6 @@ async fn schema_relationships(ctx: &DalContext<'_, '_>) {
 async fn qualification_view(ctx: &DalContext<'_, '_>) {
     let schema = create_schema(ctx, &SchemaKind::Implementation).await;
     let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
-    schema_variant
-        .set_schema(ctx, schema.id())
-        .await
-        .expect("cannot set schema variant to schema");
     let (component, _, _) =
         Component::new_for_schema_variant_with_node(ctx, "mastodon", schema_variant.id())
             .await

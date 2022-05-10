@@ -123,7 +123,7 @@ pub fn create_visibility_for_change_set_and_edit_session(
     change_set: &ChangeSet,
     edit_session: &EditSession,
 ) -> Visibility {
-    Visibility::new(change_set.pk, edit_session.pk, false)
+    Visibility::new(change_set.pk, edit_session.pk, None)
 }
 
 /// Creates a new [`Visibility`] backed by a new [`ChangeSet`] and a new [`EditSession`].

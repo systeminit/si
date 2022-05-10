@@ -8,14 +8,14 @@ FROM component_belongs_to_schema
                         AND is_visible_v1($2
                            , schema_ui_menu_root_schematic_many_to_many_schematic.visibility_change_set_pk
                            , schema_ui_menu_root_schematic_many_to_many_schematic.visibility_edit_session_pk
-                           , schema_ui_menu_root_schematic_many_to_many_schematic.visibility_deleted)
+                           , schema_ui_menu_root_schematic_many_to_many_schematic.visibility_deleted_at)
          INNER JOIN schema_ui_menus
                     ON schema_ui_menus.id = schema_ui_menu_root_schematic_many_to_many_schematic.left_object_id
                         AND schema_ui_menus.schematic_kind = $4
                         AND is_visible_v1($2
                            , schema_ui_menus.visibility_change_set_pk
                            , schema_ui_menus.visibility_edit_session_pk
-                           , schema_ui_menus.visibility_deleted)
+                           , schema_ui_menus.visibility_deleted_at)
 WHERE component_belongs_to_schema.object_id = $3
   AND in_tenancy_v1($1
     , component_belongs_to_schema.tenancy_universal
@@ -25,6 +25,6 @@ WHERE component_belongs_to_schema.object_id = $3
   AND is_visible_v1($2
     , component_belongs_to_schema.visibility_change_set_pk
     , component_belongs_to_schema.visibility_edit_session_pk
-    , component_belongs_to_schema.visibility_deleted)
+    , component_belongs_to_schema.visibility_deleted_at)
 ;
 

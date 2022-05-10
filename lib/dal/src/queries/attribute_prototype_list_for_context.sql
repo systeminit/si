@@ -13,7 +13,7 @@ SELECT DISTINCT ON (attribute_prototypes.attribute_context_prop_id, attribute_pr
 FROM attribute_prototypes
 WHERE in_tenancy_v1($1, attribute_prototypes.tenancy_universal, attribute_prototypes.tenancy_billing_account_ids, attribute_prototypes.tenancy_organization_ids,
                     attribute_prototypes.tenancy_workspace_ids)
-  AND is_visible_v1($2, attribute_prototypes.visibility_change_set_pk, attribute_prototypes.visibility_edit_session_pk, attribute_prototypes.visibility_deleted)
+  AND is_visible_v1($2, attribute_prototypes.visibility_change_set_pk, attribute_prototypes.visibility_edit_session_pk, attribute_prototypes.visibility_deleted_at)
   AND in_attribute_context_v1($3, attribute_prototypes.attribute_context_prop_id,
                                   attribute_prototypes.attribute_context_internal_provider_id,
                                   attribute_prototypes.attribute_context_external_provider_id,
