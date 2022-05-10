@@ -67,7 +67,12 @@ export class SchematicDataManager {
   async updateNodePosition(nodeUpdate: NodeUpdate | null): Promise<void> {
     const editorContext = await Rx.firstValueFrom(this.editorContext$);
     const schematicKind = await Rx.firstValueFrom(this.schematicKind$);
-    if (nodeUpdate && editorContext && schematicKind) {
+    if (
+      nodeUpdate &&
+      editorContext &&
+      schematicKind &&
+      nodeUpdate.nodeId !== -1
+    ) {
       SchematicService.setNodePosition({
         deploymentNodeId:
           schematicKind !== SchematicKind.Deployment
