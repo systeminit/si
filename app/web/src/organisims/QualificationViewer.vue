@@ -297,7 +297,12 @@ const allQualifications = refFrom<Array<Qualification> | null>(
       });
     }),
     Rx.switchMap((reply) => {
-      if (reply.error) {
+      if (
+        reply.error?.statusCode === 404 &&
+        reply.error?.message === "invalid visibility"
+      ) {
+        return Rx.from([null]);
+      } else if (reply.error) {
         GlobalErrorService.set(reply);
         return Rx.from([null]);
       } else {

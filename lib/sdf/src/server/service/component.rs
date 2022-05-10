@@ -32,8 +32,6 @@ pub enum ComponentError {
     InvalidRequest,
     #[error(transparent)]
     Nats(#[from] si_data::NatsError),
-    #[error("not found")]
-    NotFound,
     #[error(transparent)]
     Pg(#[from] si_data::PgError),
     #[error("read tenancy error: {0}")]
@@ -58,6 +56,8 @@ pub enum ComponentError {
     Transactions(#[from] TransactionsError),
     #[error("ws event error: {0}")]
     WsEvent(#[from] WsEventError),
+    #[error("invalid visibility")]
+    InvalidVisibility,
 }
 
 pub type ComponentResult<T> = std::result::Result<T, ComponentError>;
@@ -65,8 +65,8 @@ pub type ComponentResult<T> = std::result::Result<T, ComponentError>;
 impl IntoResponse for ComponentError {
     fn into_response(self) -> Response {
         let (status, error_message) = match self {
-            ComponentError::NotFound => (StatusCode::NOT_FOUND, self.to_string()),
             ComponentError::SchemaNotFound => (StatusCode::NOT_FOUND, self.to_string()),
+            ComponentError::InvalidVisibility => (StatusCode::NOT_FOUND, self.to_string()),
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
         };
 

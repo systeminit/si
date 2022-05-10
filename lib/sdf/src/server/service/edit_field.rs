@@ -44,13 +44,18 @@ pub enum EditFieldError {
     MissingAttributeContext,
     #[error("read tenancy error: {0}")]
     ReadTenancy(#[from] ReadTenancyError),
+    #[error("invalid visibility")]
+    InvalidVisibility,
 }
 
 pub type EditFieldResult<T> = std::result::Result<T, EditFieldError>;
 
 impl IntoResponse for EditFieldError {
     fn into_response(self) -> Response {
-        let (status, error_message) = (StatusCode::INTERNAL_SERVER_ERROR, self.to_string());
+        let (status, error_message) = match self {
+            EditFieldError::InvalidVisibility => (StatusCode::NOT_FOUND, self.to_string()),
+            _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
+        };
 
         let body = Json(serde_json::json!({
             "error": {
