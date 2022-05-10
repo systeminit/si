@@ -23,30 +23,15 @@
 # This ensures that we have the accurate path to the root of the repository for our targets.
 MAKEPATH := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 
-include ./components/build/deps.mk
-
 # order is important as earlier components are needed to build later components
-COMPONENTS = \
-	components/si-inference \
-	components/si-entity \
-	components/si-registry \
-	components/si-veritech \
-	components/si-web-app \
-	components/si-data \
-	components/si-model \
-	components/si-model-test \
-	components/si-settings \
-	components/si-sdf
 RELEASEABLE_COMPONENTS = \
 	web \
 	veritech \
 	sdf \
-	nats \
-	si-web-app
+	nats
 RUNNABLE_COMPONENTS = \
 	bin/veritech \
-	bin/sdf \
-	components/si-web-app
+	bin/sdf
 BUILDABLE = $(patsubst %,build//%,$(COMPONENTS))
 TESTABLE = $(patsubst %,test//%,$(COMPONENTS))
 CLEANABLE = $(patsubst %,clean//%,$(COMPONENTS))
@@ -60,16 +45,6 @@ RELEASEABLE_REGEX = $(shell echo $(RELEASEABLE_COMPONENTS) | tr " " "|")
 .DEFAULT_GOAL := prepare
 
 .PHONY: $(BUILDABLE) $(TESTABLE) $(RELEASEABLE) $(IMAGEABLE) image release
-
-test//components/si-sdf//RDEPS: test//components/si-settings test//components/si-model test//components/si-data test//components/si-model-test
-
-test//components/si-model//RDEPS: test//components/si-settings test//components/si-data test//components/si-model-test
-
-test//components/si-veritech//RDEPS: test//components/si-registry test//components/si-entity
-
-test//components/si-entity//RDEPS: test//components/si-registry
-
-test//components/si-web-app//RDEPS: test//components/si-registry test//components/si-entity
 
 %//RDEPS:
 	@ echo "*** No dependencies for $@ ***"
@@ -151,18 +126,6 @@ tmux_windows:
 tmux_panes:
 	@ for x in $(RUNNABLE_COMPONENTS); do tmux split-window -v && tmux send-keys "make watch//$$x" C-m; done
 
-build_release//cli:
-	@echo "--- [$(shell basename ${CURDIR})] $@"
-	@ pushd ./components/si-sdf; $(MAKE) $@
-
-container//cli:
-	@echo "--- [$(shell basename ${CURDIR})] $@"
-	@cd ./components/si-sdf; $(MAKE) $@
-
-deploy//internal: release
-	@echo "--- [$(shell basename ${CURDIR})] $@"
-	@cd components/aws-si-internal; env RELEASE=$(RELEASE) pulumi up -y
-
 release: $(RELEASEABLE)
 	@echo "--> You have released the System Initative! <--"
 
@@ -175,51 +138,7 @@ clean: $(CLEANABLE)
 
 force_clean:
 	@echo "--- [$(shell basename ${CURDIR})] $@"
-	sudo rm -rf ./components/*/node_modules
 	sudo rm -rf ./target
-
-run-dev-deps:
-	@echo "--- [$(shell basename ${CURDIR})] $@"
-	cd ./components/postgres && $(MAKE) run-container
-	cd ./components/nats && $(MAKE) run-container
-	cd ./components/otelcol && $(MAKE) run-container
-.PHONY: run-dev-deps
-
-run-containers: run-dev-deps
-	@echo "--- [$(shell basename ${CURDIR})] $@"
-	cd ./components/si-veritech && $(MAKE) run-container
-	cd ./components/si-sdf && $(MAKE) run-container
-	cd ./components/si-web-app && $(MAKE) run-container
-.PHONY: run-containers
-
-run-test-deps: run-dev-deps
-.PHONY: run-test-deps
-
-stop-dev-deps:
-	@echo "--- [$(shell basename ${CURDIR})] $@"
-	cd ./components/postgres && $(MAKE) stop-container
-	cd ./components/nats && $(MAKE) stop-container
-	cd ./components/otelcol && $(MAKE) stop-container
-
-stop-containers: stop-dev-deps
-	@echo "--- [$(shell basename ${CURDIR})] $@"
-	cd ./components/si-veritech && $(MAKE) stop-container
-	cd ./components/si-sdf && $(MAKE) stop-container
-	cd ./components/si-web-app && $(MAKE) stop-container
-.PHONY: stop-containers
-
-clean-dev-deps:
-	@echo "--- [$(shell basename ${CURDIR})] $@"
-	cd ./components/postgres && $(MAKE) clean-container
-	cd ./components/nats && $(MAKE) clean-container
-	cd ./components/otelcol && $(MAKE) clean-container
-
-clean-containers: clean-dev-deps
-	@echo "--- [$(shell basename ${CURDIR})] $@"
-	cd ./components/si-veritech && $(MAKE) clean-container
-	cd ./components/si-sdf && $(MAKE) clean-container
-	cd ./components/si-web-app && $(MAKE) clean-container
-.PHONY: clean-containers
 
 # TODO(nick): The below targets are to be used during the transition period between the Vue 2 to
 # Vue 3 rewrite. These targets should be merged into existing ones once the transition is complete.

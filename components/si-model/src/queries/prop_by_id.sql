@@ -1,1 +1,0 @@
-SELECT obj AS object FROM props WHERE id = si_id_to_primary_key_v1($1);

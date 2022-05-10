@@ -1,3 +1,0 @@
-name: aws-si-internal
-runtime: nodejs
-description: An Internal instance of SI, for deploying Prod

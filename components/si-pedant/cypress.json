@@ -1,8 +1,0 @@
-{
-  "baseUrl": "http://localhost:8080",
-  "nodeVersion": "system",
-  "env": {
-    "aws_access_key_id": "unconfigured",
-    "aws_secret_access_key": "unconfigured"
-  }
-}

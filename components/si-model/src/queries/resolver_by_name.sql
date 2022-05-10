@@ -1,1 +1,0 @@
-SELECT obj as object FROM resolvers WHERE name = $1;
