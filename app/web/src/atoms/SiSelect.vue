@@ -151,21 +151,21 @@ const selectedLabel = computed(() => {
   return selectedOption?.label;
 });
 
-const selectedValue = computed<string | object | number | boolean | null>({
+const selectedValue = computed<string | object | number | boolean | undefined>({
   get() {
-    return props.modelValue;
+    return props.modelValue ?? undefined;
   },
   set(value) {
     if (value === "") {
       emits("update:modelValue", null);
     } else {
       if (props.valueAsNumber) {
-        emits("update:modelValue", Number(value));
+        emits("update:modelValue", Number(value ?? null));
       } else {
-        emits("update:modelValue", value);
+        emits("update:modelValue", value ?? null);
       }
     }
-    emits("change", value);
+    emits("change", value ?? null);
   },
 });
 </script>

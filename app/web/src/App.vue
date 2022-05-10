@@ -32,4 +32,11 @@ export default {
 .vue-feather {
   display: flex !important;
 }
+.v-popper__arrow-container {
+  display: none;
+}
+.v-popper__inner {
+  border-radius: 0px !important;
+  border-color: #5a5a5a !important;
+}
 </style>

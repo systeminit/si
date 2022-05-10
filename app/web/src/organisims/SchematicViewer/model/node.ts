@@ -135,7 +135,7 @@ export function fakeNodeFromTemplate(
         id: "-1",
         schematic_kind: schematicKindFromNodeKind(template.kind),
         deployment_node_id: deploymentNodeId ?? null,
-        x: 0,
+        x: 350,
         y: 0,
       },
     ],

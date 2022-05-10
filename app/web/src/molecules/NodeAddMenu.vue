@@ -1,13 +1,9 @@
 <template>
-  <div
-    class="relative w-auto menu-root"
-    @mouseleave="onMouseLeave"
-    @mouseenter="cancelClose"
-  >
+  <SiMenu :disabled="props.disabled" :tree="generateTree" @selected="onSelect">
     <SiButton
       icon="plus"
       :label="props.addTo ? `Add to ${props.addTo}` : `Add`"
-      class="w-full focus:outline-none add-margin-top items-center self-center text-sm subpixel-antialiased font-light tracking-tight"
+      class="w-full focus:outline-none add-margin-top items-center self-center text-base subpixel-antialiased font-light tracking-tight"
       :class="{
         'text-gray-200': !isOpen,
         'menu-selected': isOpen,
@@ -19,21 +15,12 @@
       data-cy="editor-schematic-node-add-button"
       @click="addMenuClick"
     />
-
-    <NodeAddMenuCategory
-      :is-open="isOpen"
-      :menu-items="menuItems"
-      root-menu
-      class="menu-root"
-      @selected="onSelect"
-    />
-  </div>
+  </SiMenu>
 </template>
 
 <script setup lang="ts">
-import { MenuFilter, MenuItem } from "@/api/sdf/dal/schematic";
-import NodeAddMenuCategory from "./NodeAddMenu/NodeAddMenuCategory.vue";
-import { onBeforeUnmount, ref } from "vue";
+import { MenuFilter, MenuItem, LinkNodeItem } from "@/api/sdf/dal/schematic";
+import { onBeforeUnmount, ref, computed } from "vue";
 import { refFrom, fromRef } from "vuse-rx";
 import _ from "lodash";
 import { SchematicService } from "@/service/schematic";
@@ -42,6 +29,8 @@ import { GlobalErrorService } from "@/service/global_error";
 import { combineLatest, from, switchMap } from "rxjs";
 import SiButton from "@/atoms/SiButton.vue";
 import { editButtonPulse$ } from "@/observable/change_set";
+import SiMenu from "@/atoms/SiMenu.vue";
+import { SiMenuTree } from "@/utils/menu";
 
 const editMode = refFrom<boolean>(ChangeSetService.currentEditMode());
 
@@ -62,21 +51,13 @@ const emits = defineEmits(["selected"]);
 
 const isOpen = ref<boolean>(false);
 
-const onSelect = (schemaId: number, event: MouseEvent) => {
+const onSelect = (
+  obj: { schemaId: number; links?: LinkNodeItem[] },
+  event: MouseEvent,
+) => {
   event.preventDefault();
-  emits("selected", schemaId, event);
+  emits("selected", obj.schemaId, event);
   isOpen.value = false;
-};
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const debounceIsOpen = _.debounce((component: any, isOpen: boolean) => {
-  component.value = isOpen;
-}, 500);
-const onMouseLeave = () => {
-  debounceIsOpen(isOpen, false);
-};
-const cancelClose = () => {
-  debounceIsOpen.cancel();
 };
 
 const props$ = fromRef(props, { immediate: true, deep: true });
@@ -107,6 +88,33 @@ const handleEscape = (e: KeyboardEvent) => {
 document.addEventListener("keydown", handleEscape);
 onBeforeUnmount(() => {
   document.removeEventListener("keydown", handleEscape);
+});
+
+const recursiveParseMenuItems = (parent: SiMenuTree, menuItems: MenuItem[]) => {
+  for (const menuItem of menuItems) {
+    if (menuItem.kind === "category") {
+      const newParent: SiMenuTree = {
+        name: menuItem.name,
+        kind: "tree",
+        children: [],
+      };
+      recursiveParseMenuItems(newParent, menuItem.items);
+      parent.children.push(newParent);
+    } else if (menuItem.kind === "item") {
+      parent.children.push({
+        name: menuItem.name,
+        kind: "leaf",
+        value: { schemaId: menuItem.schema_id, links: menuItem.links },
+      });
+    } else if (menuItem.kind === "link") {
+      // TODO: find out what this serves for
+    }
+  }
+};
+const generateTree = computed(() => {
+  const tree: SiMenuTree = { name: "root", kind: "tree", children: [] };
+  recursiveParseMenuItems(tree, menuItems.value ?? []);
+  return tree;
 });
 </script>
 
