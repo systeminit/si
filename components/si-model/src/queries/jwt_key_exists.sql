@@ -1,1 +1,0 @@
-SELECT id FROM jwt_keys LIMIT 1;
