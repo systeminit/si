@@ -123,6 +123,11 @@ export class ChangedEditFieldCounterVisitor implements EditFieldVisitor {
   }
 
   visitString(field: StringEditField) {
+    // Horrible hack to ensure the initial name setting isn't counted
+    // We don't have enough metadata to be sure name is the actual root.si.name, so it might conflict eventually
+    if (field.name === "name" && String(field.value).match(/^si-\d+$/)) {
+      return;
+    }
     this.countIfChanged(field.visibility_diff);
   }
 }

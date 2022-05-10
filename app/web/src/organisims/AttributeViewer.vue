@@ -36,11 +36,11 @@
           </SiButtonIcon>
         </SiLink>
 
-        <div class="flex flex-row items-center">
+        <div v-if="editCount" class="flex flex-row items-center">
           <SiIcon tooltip-text="Number of edit fields" color="#ce7f3e">
             <PencilAltIcon />
           </SiIcon>
-          <div v-if="editCount" class="ml-1 text-center">{{ editCount }}</div>
+          <div class="ml-1 text-center">{{ editCount }}</div>
         </div>
       </div>
     </div>
@@ -131,7 +131,7 @@ const componentMetadata = refFrom<ComponentMetadata | null>(
 
 const editCount = computed(() => {
   if (editFields.value === undefined) {
-    return undefined;
+    return 0;
   } else {
     const counter = new ChangedEditFieldCounterVisitor();
     counter.visitEditFields(editFields.value);
