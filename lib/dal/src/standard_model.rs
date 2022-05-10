@@ -502,36 +502,12 @@ pub trait StandardModel {
         // visibility when deleting. As it stands right now, it would be maximally safe to fetch
         // this object by id for the target visibility (with `deleted = false`) and then delete
         // *that* instance.
-        self.visibility_mut().deleted = true;
+        self.visibility_mut().deleted_at = Some(Utc::now());
         self.timestamp_mut().updated_at = updated_at;
         let _history_event = crate::HistoryEvent::new(
             ctx,
             &Self::history_event_label(vec!["deleted"]),
             &Self::history_event_message("deleted"),
-            &serde_json::json![{
-                "pk": self.pk(),
-                "id": self.id(),
-                "visibility": self.visibility(),
-            }],
-        )
-        .await?;
-        Ok(())
-    }
-
-    #[instrument(skip_all)]
-    async fn undelete(&mut self, ctx: &DalContext<'_, '_>) -> StandardModelResult<()>
-    where
-        Self: Send + Sync,
-    {
-        let updated_at: chrono::DateTime<chrono::Utc> =
-            crate::standard_model::undelete(ctx, Self::table_name(), self.pk()).await?;
-        // TODO(fnichol): See the `Self.delete()` method for notes and caution.
-        self.visibility_mut().deleted = false;
-        self.timestamp_mut().updated_at = updated_at;
-        let _history_event = crate::HistoryEvent::new(
-            ctx,
-            &Self::history_event_label(vec!["undeleted"]),
-            &Self::history_event_message("undeleted"),
             &serde_json::json![{
                 "pk": self.pk(),
                 "id": self.id(),

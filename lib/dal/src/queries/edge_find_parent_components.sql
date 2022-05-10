@@ -2,7 +2,7 @@ SELECT DISTINCT ON (edges.tail_object_id) edges.tail_object_id
 FROM edges
 WHERE in_tenancy_v1($1, edges.tenancy_universal, edges.tenancy_billing_account_ids, edges.tenancy_organization_ids,
                     edges.tenancy_workspace_ids)
-  AND is_visible_v1($2, edges.visibility_change_set_pk, edges.visibility_edit_session_pk, edges.visibility_deleted)
+  AND is_visible_v1($2, edges.visibility_change_set_pk, edges.visibility_edit_session_pk, edges.visibility_deleted_at)
   AND edges.kind = 'configures'
   AND edges.head_object_kind = 'component'
   AND edges.head_object_id = $3

@@ -19,10 +19,6 @@ async fn set_schema(ctx: &DalContext<'_, '_>) {
         .await
         .expect("cannot create schema ui menu");
 
-    variant
-        .set_schema(ctx, schema.id())
-        .await
-        .expect("cannot associate ui menu with schema");
     let attached_schema = variant
         .schema(ctx)
         .await

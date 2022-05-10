@@ -215,15 +215,15 @@ pub fn create_visibility_edit_session(
     change_set: &ChangeSet,
     edit_session: &EditSession,
 ) -> Visibility {
-    Visibility::new(change_set.pk, edit_session.pk, false)
+    Visibility::new(change_set.pk, edit_session.pk, None)
 }
 
 pub fn create_visibility_change_set(change_set: &ChangeSet) -> Visibility {
-    Visibility::new(change_set.pk, NO_EDIT_SESSION_PK, false)
+    Visibility::new(change_set.pk, NO_EDIT_SESSION_PK, None)
 }
 
 pub fn create_visibility_head() -> Visibility {
-    Visibility::new(NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK, false)
+    Visibility::new(NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK, None)
 }
 
 pub async fn create_billing_account_with_name(
@@ -391,15 +391,11 @@ pub async fn create_schema_variant_with_root(
 pub async fn create_component_and_schema(ctx: &DalContext<'_, '_>) -> Component {
     let schema = create_schema(ctx, &SchemaKind::Concept).await;
     let schema_variant = create_schema_variant(ctx, *schema.id()).await;
-    schema_variant
-        .set_schema(ctx, schema.id())
-        .await
-        .expect("cannot set schema variant");
     let name = generate_fake_name();
     let (entity, _, _) =
         Component::new_for_schema_variant_with_node(ctx, &name, schema_variant.id())
             .await
-            .expect("cannot create entity");
+            .expect("cannot create component");
     entity
 }
 
@@ -425,10 +421,6 @@ pub async fn create_component_for_schema(
     let (component, _, _) = Component::new_for_schema_with_node(ctx, &name, schema_id)
         .await
         .expect("cannot create component");
-    component
-        .set_schema(ctx, schema_id)
-        .await
-        .expect("cannot set the schema for our component");
     component
 }
 

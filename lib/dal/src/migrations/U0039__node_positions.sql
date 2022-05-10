@@ -8,7 +8,7 @@ CREATE TABLE node_positions
     tenancy_workspace_ids       bigint[],
     visibility_change_set_pk    bigint                   NOT NULL DEFAULT -1,
     visibility_edit_session_pk  bigint                   NOT NULL DEFAULT -1,
-    visibility_deleted          bool,
+    visibility_deleted_at       timestamp with time zone,
     created_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     updated_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     schematic_kind              text                     NOT NULL,
@@ -46,12 +46,12 @@ BEGIN
 
     INSERT INTO node_positions (tenancy_universal, tenancy_billing_account_ids, tenancy_organization_ids,
                          tenancy_workspace_ids,
-                         visibility_change_set_pk, visibility_edit_session_pk, visibility_deleted,
+                         visibility_change_set_pk, visibility_edit_session_pk, visibility_deleted_at,
                          schematic_kind, root_node_id, system_id, deployment_node_id, x, y)
     VALUES (this_tenancy_record.tenancy_universal, this_tenancy_record.tenancy_billing_account_ids,
             this_tenancy_record.tenancy_organization_ids, this_tenancy_record.tenancy_workspace_ids,
             this_visibility_record.visibility_change_set_pk, this_visibility_record.visibility_edit_session_pk,
-            this_visibility_record.visibility_deleted, this_schematic_kind, this_root_node_id, this_system_id,
+            this_visibility_record.visibility_deleted_at, this_schematic_kind, this_root_node_id, this_system_id,
             this_deployment_node_id, this_x, this_y)
     RETURNING * INTO this_new_row;
 

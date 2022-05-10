@@ -40,10 +40,6 @@ async fn list_components_identification() {
 
     let schema = create_schema(&dal_ctx, &SchemaKind::Concept).await;
     let schema_variant = create_schema_variant(&dal_ctx, *schema.id()).await;
-    schema_variant
-        .set_schema(&dal_ctx, schema.id())
-        .await
-        .expect("Unable to set schema");
 
     let component_name1 = "poop";
     let component_name2 = "ilikemybutt";
@@ -159,10 +155,6 @@ async fn get_components_metadata() {
     let schema = create_schema(&dal_ctx, &SchemaKind::Concept).await;
 
     let schema_variant = create_schema_variant(&dal_ctx, *schema.id()).await;
-    schema_variant
-        .set_schema(&dal_ctx, schema.id())
-        .await
-        .expect("cannot set schema variant");
 
     let (_, application) = Component::new_application_with_node(&dal_ctx, generate_fake_name())
         .await

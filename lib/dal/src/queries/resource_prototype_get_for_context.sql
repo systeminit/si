@@ -9,7 +9,7 @@ SELECT DISTINCT ON (resource_prototypes.id) resource_prototypes.id,
   FROM resource_prototypes
   WHERE in_tenancy_v1($1, resource_prototypes.tenancy_universal, resource_prototypes.tenancy_billing_account_ids, resource_prototypes.tenancy_organization_ids,
       resource_prototypes.tenancy_workspace_ids)
-    AND is_visible_v1($2, resource_prototypes.visibility_change_set_pk, resource_prototypes.visibility_edit_session_pk, resource_prototypes.visibility_deleted)
+    AND is_visible_v1($2, resource_prototypes.visibility_change_set_pk, resource_prototypes.visibility_edit_session_pk, resource_prototypes.visibility_deleted_at)
     AND (resource_prototypes.schema_id = $6
             OR resource_prototypes.schema_variant_id = $5
             OR resource_prototypes.component_id = $3)

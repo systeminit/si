@@ -8,7 +8,7 @@ CREATE TABLE key_pairs
     tenancy_workspace_ids       bigint[],
     visibility_change_set_pk    bigint                   NOT NULL DEFAULT -1,
     visibility_edit_session_pk  bigint                   NOT NULL DEFAULT -1,
-    visibility_deleted          bool,
+    visibility_deleted_at       timestamp with time zone,
     created_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     updated_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     name                        text                     NOT NULL,
@@ -42,11 +42,11 @@ BEGIN
 
     INSERT INTO key_pairs (tenancy_universal, tenancy_billing_account_ids, tenancy_organization_ids,
                            tenancy_workspace_ids, visibility_change_set_pk, visibility_edit_session_pk,
-                           visibility_deleted, name, public_key, secret_key)
+                           visibility_deleted_at, name, public_key, secret_key)
     VALUES (this_tenancy_record.tenancy_universal, this_tenancy_record.tenancy_billing_account_ids,
             this_tenancy_record.tenancy_organization_ids, this_tenancy_record.tenancy_workspace_ids,
             this_visibility_record.visibility_change_set_pk, this_visibility_record.visibility_edit_session_pk,
-            this_visibility_record.visibility_deleted, this_name, this_public_key, this_secret_key)
+            this_visibility_record.visibility_deleted_at, this_name, this_public_key, this_secret_key)
     RETURNING * INTO this_new_row;
     object := row_to_json(this_new_row);
 END;

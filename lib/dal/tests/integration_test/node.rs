@@ -36,10 +36,6 @@ async fn component_relationships(ctx: &DalContext<'_, '_>) {
 async fn new_node_template(ctx: &DalContext<'_, '_>) {
     let mut schema = create_schema(ctx, &SchemaKind::Concept).await;
     let schema_variant = create_schema_variant(ctx, *schema.id()).await;
-    schema_variant
-        .set_schema(ctx, schema.id())
-        .await
-        .expect("cannot set schema for variant");
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await

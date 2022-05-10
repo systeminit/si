@@ -8,7 +8,7 @@ SELECT DISTINCT ON (components.id)
       $1,
       components.visibility_change_set_pk,
       components.visibility_edit_session_pk,
-      components.visibility_deleted
+      components.visibility_deleted_at
     )
     AND edges.head_object_kind = 'component'
     AND edges.kind = 'includes'

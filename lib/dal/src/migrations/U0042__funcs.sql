@@ -8,7 +8,7 @@ CREATE TABLE funcs
     tenancy_workspace_ids       bigint[],
     visibility_change_set_pk    bigint                   NOT NULL DEFAULT -1,
     visibility_edit_session_pk  bigint                   NOT NULL DEFAULT -1,
-    visibility_deleted          bool,
+    visibility_deleted_at       timestamp with time zone,
     created_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     updated_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     name                        text                     NOT NULL,
@@ -29,7 +29,7 @@ CREATE TABLE func_bindings
     tenancy_workspace_ids       bigint[],
     visibility_change_set_pk    bigint                   NOT NULL DEFAULT -1,
     visibility_edit_session_pk  bigint                   NOT NULL DEFAULT -1,
-    visibility_deleted          bool,
+    visibility_deleted_at       timestamp with time zone,
     created_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     updated_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     args                        jsonb                    NOT NULL,
@@ -48,7 +48,7 @@ CREATE TABLE func_binding_return_values
     tenancy_workspace_ids       bigint[],
     visibility_change_set_pk    bigint                   NOT NULL DEFAULT -1,
     visibility_edit_session_pk  bigint                   NOT NULL DEFAULT -1,
-    visibility_deleted          bool,
+    visibility_deleted_at       timestamp with time zone,
     created_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     updated_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     unprocessed_value           jsonb,
@@ -86,12 +86,12 @@ BEGIN
 
     INSERT INTO funcs (tenancy_universal, tenancy_billing_account_ids, tenancy_organization_ids,
                        tenancy_workspace_ids,
-                       visibility_change_set_pk, visibility_edit_session_pk, visibility_deleted,
+                       visibility_change_set_pk, visibility_edit_session_pk, visibility_deleted_at,
                        name, backend_kind, backend_response_type)
     VALUES (this_tenancy_record.tenancy_universal, this_tenancy_record.tenancy_billing_account_ids,
             this_tenancy_record.tenancy_organization_ids, this_tenancy_record.tenancy_workspace_ids,
             this_visibility_record.visibility_change_set_pk, this_visibility_record.visibility_edit_session_pk,
-            this_visibility_record.visibility_deleted, this_name, this_backend_kind, this_backend_response_type)
+            this_visibility_record.visibility_deleted_at, this_name, this_backend_kind, this_backend_response_type)
     RETURNING * INTO this_new_row;
 
     object := row_to_json(this_new_row);
@@ -115,12 +115,12 @@ BEGIN
 
     INSERT INTO func_bindings (tenancy_universal, tenancy_billing_account_ids, tenancy_organization_ids,
                                tenancy_workspace_ids,
-                               visibility_change_set_pk, visibility_edit_session_pk, visibility_deleted,
+                               visibility_change_set_pk, visibility_edit_session_pk, visibility_deleted_at,
                                args, backend_kind)
     VALUES (this_tenancy_record.tenancy_universal, this_tenancy_record.tenancy_billing_account_ids,
             this_tenancy_record.tenancy_organization_ids, this_tenancy_record.tenancy_workspace_ids,
             this_visibility_record.visibility_change_set_pk, this_visibility_record.visibility_edit_session_pk,
-            this_visibility_record.visibility_deleted, this_args, this_backend_kind)
+            this_visibility_record.visibility_deleted_at, this_args, this_backend_kind)
     RETURNING * INTO this_new_row;
 
     object := row_to_json(this_new_row);
@@ -159,7 +159,7 @@ BEGIN
         AND is_visible_v1(this_visibility, 
           func_bindings.visibility_change_set_pk, 
           func_bindings.visibility_edit_session_pk, 
-          func_bindings.visibility_deleted) 
+          func_bindings.visibility_deleted_at) 
         ORDER BY id ASC
         LIMIT 1
         INTO object;
@@ -170,8 +170,8 @@ BEGIN
         this_visibility_record.visibility_change_set_pk, 
         'visibility_edit_session_pk', 
         -1, 
-        'visibility_deleted', 
-        this_visibility_record.visibility_deleted);
+        'visibility_deleted_at', 
+        this_visibility_record.visibility_deleted_at);
       
       SELECT 
         row_to_json(func_bindings.*) FROM func_bindings WHERE 
@@ -184,7 +184,7 @@ BEGIN
           AND is_visible_v1(this_change_set_visibility, 
             func_bindings.visibility_change_set_pk, 
             func_bindings.visibility_edit_session_pk, 
-            func_bindings.visibility_deleted)
+            func_bindings.visibility_deleted_at)
           ORDER BY id ASC
           LIMIT 1
           INTO object;
@@ -196,8 +196,8 @@ BEGIN
         -1,
         'visibility_edit_session_pk', 
         -1, 
-        'visibility_deleted', 
-        this_visibility_record.visibility_deleted);
+        'visibility_deleted_at', 
+        this_visibility_record.visibility_deleted_at);
       
       SELECT 
         row_to_json(func_bindings.*) FROM func_bindings WHERE 
@@ -210,7 +210,7 @@ BEGIN
           AND is_visible_v1(this_head_visibility, 
             func_bindings.visibility_change_set_pk, 
             func_bindings.visibility_edit_session_pk, 
-            func_bindings.visibility_deleted)
+            func_bindings.visibility_deleted_at)
           ORDER BY id ASC
           LIMIT 1
           INTO object;
@@ -242,12 +242,12 @@ BEGIN
 
     INSERT INTO func_binding_return_values (tenancy_universal, tenancy_billing_account_ids, tenancy_organization_ids,
                                tenancy_workspace_ids,
-                               visibility_change_set_pk, visibility_edit_session_pk, visibility_deleted,
+                               visibility_change_set_pk, visibility_edit_session_pk, visibility_deleted_at,
                                unprocessed_value, value, func_execution_pk)
     VALUES (this_tenancy_record.tenancy_universal, this_tenancy_record.tenancy_billing_account_ids,
             this_tenancy_record.tenancy_organization_ids, this_tenancy_record.tenancy_workspace_ids,
             this_visibility_record.visibility_change_set_pk, this_visibility_record.visibility_edit_session_pk,
-            this_visibility_record.visibility_deleted, this_unprocessed_value, this_value, this_func_execution_pk)
+            this_visibility_record.visibility_deleted_at, this_unprocessed_value, this_value, this_func_execution_pk)
     RETURNING * INTO this_new_row;
 
     object := row_to_json(this_new_row);

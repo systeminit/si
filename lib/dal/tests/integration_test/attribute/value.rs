@@ -14,10 +14,6 @@ async fn update_for_context_simple(ctx: &DalContext<'_, '_>) {
     // "name": String
     let mut schema = create_schema(ctx, &SchemaKind::Concrete).await;
     let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
-    schema_variant
-        .set_schema(ctx, schema.id())
-        .await
-        .expect("cannot associate variant with schema");
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await

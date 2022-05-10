@@ -17,10 +17,6 @@ use pretty_assertions_sorted::assert_eq;
 async fn get_edit_fields_for_component(ctx: &DalContext<'_, '_>) {
     let mut schema = create_schema(ctx, &SchemaKind::Concrete).await;
     let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
-    schema_variant
-        .set_schema(ctx, schema.id())
-        .await
-        .expect("cannot associate variant with schema");
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
@@ -99,10 +95,6 @@ async fn get_edit_fields_for_component(ctx: &DalContext<'_, '_>) {
 async fn update_edit_field_for_component(ctx: &DalContext<'_, '_>) {
     let mut schema = create_schema(ctx, &SchemaKind::Concrete).await;
     let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
-    schema_variant
-        .set_schema(ctx, schema.id())
-        .await
-        .expect("cannot associate variant with schema");
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await

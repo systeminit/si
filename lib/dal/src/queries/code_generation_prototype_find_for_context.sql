@@ -9,7 +9,7 @@ SELECT DISTINCT ON (code_generation_prototypes.id) code_generation_prototypes.id
   FROM code_generation_prototypes
   WHERE in_tenancy_v1($1, code_generation_prototypes.tenancy_universal, code_generation_prototypes.tenancy_billing_account_ids, code_generation_prototypes.tenancy_organization_ids,
       code_generation_prototypes.tenancy_workspace_ids)
-    AND is_visible_v1($2, code_generation_prototypes.visibility_change_set_pk, code_generation_prototypes.visibility_edit_session_pk, code_generation_prototypes.visibility_deleted)
+    AND is_visible_v1($2, code_generation_prototypes.visibility_change_set_pk, code_generation_prototypes.visibility_edit_session_pk, code_generation_prototypes.visibility_deleted_at)
     AND (code_generation_prototypes.schema_id = $6
             OR code_generation_prototypes.schema_variant_id = $5
             OR code_generation_prototypes.component_id = $3)

@@ -85,10 +85,6 @@ async fn list_for_context(ctx: &DalContext<'_, '_>) {
     let mut schema = create_schema(ctx, &SchemaKind::Concrete).await;
 
     let schema_variant = create_schema_variant(ctx, *schema.id()).await;
-    schema_variant
-        .set_schema(ctx, schema.id())
-        .await
-        .expect("cannot associate variant with schema");
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
@@ -257,10 +253,6 @@ async fn list_for_context_with_a_hash(ctx: &DalContext<'_, '_>) {
     let mut schema = create_schema(ctx, &SchemaKind::Concrete).await;
 
     let schema_variant = create_schema_variant(ctx, *schema.id()).await;
-    schema_variant
-        .set_schema(ctx, schema.id())
-        .await
-        .expect("cannot associate variant with schema");
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await

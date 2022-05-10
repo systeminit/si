@@ -228,7 +228,10 @@ async fn delete(ctx: &DalContext<'_, '_>, nba: &BillingAccountSignup) {
             .await
             .expect("cannot get billing account");
 
-    assert_eq!(soft_deleted.visibility().deleted, true);
+    assert!(
+        soft_deleted.visibility().deleted_at.is_some(),
+        "should be deleted"
+    );
 }
 
 #[test]
@@ -242,7 +245,10 @@ async fn undelete(ctx: &DalContext<'_, '_>, nba: &BillingAccountSignup) {
             .await
             .expect("cannot get billing account");
 
-    assert_eq!(soft_deleted.visibility().deleted, true);
+    assert!(
+        soft_deleted.visibility().deleted_at.is_some(),
+        "should be deleted"
+    );
 
     let _updated_at = standard_model::undelete(ctx, "billing_accounts", nba.billing_account.pk())
         .await
@@ -253,7 +259,10 @@ async fn undelete(ctx: &DalContext<'_, '_>, nba: &BillingAccountSignup) {
             .await
             .expect("cannot get billing account");
 
-    assert_eq!(soft_undeleted.visibility().deleted, false);
+    assert!(
+        soft_undeleted.visibility().deleted_at.is_none(),
+        "should be no longer deleted"
+    );
 }
 
 #[test]
@@ -271,15 +280,22 @@ async fn set_belongs_to(ctx: &DalContext<'_, '_>) {
     .await
     .expect("cannot set billing account for key pair");
 
-    // You can replace the existing belongs to relationship by calling it again with a new id
-    standard_model::set_belongs_to(
+    // You cannot replace the existing belongs to relationship by calling it again with a new id
+    match standard_model::set_belongs_to(
         &ctx,
         "key_pair_belongs_to_billing_account",
         key_pair.id(),
         second_billing_account.id(),
     )
     .await
-    .expect("cannot set billing account for key pair");
+    {
+        Err(err) => {
+            assert!(err
+                .to_string()
+                .contains("duplicate key value violates unique constraint "));
+        }
+        Ok(_) => panic!("set belongs to twice should fail"),
+    };
 }
 
 #[test]

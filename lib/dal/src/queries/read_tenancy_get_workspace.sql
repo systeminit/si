@@ -7,16 +7,16 @@ FROM workspaces
                       $2, 
                       workspace_belongs_to_organization.visibility_change_set_pk, 
                       workspace_belongs_to_organization.visibility_edit_session_pk, 
-                      workspace_belongs_to_organization.visibility_deleted)
+                      workspace_belongs_to_organization.visibility_deleted_at)
          INNER JOIN organization_belongs_to_billing_account on organization_belongs_to_billing_account.object_id = workspace_belongs_to_organization.belongs_to_id
                     AND is_visible_v1(
                       $2, 
                       organization_belongs_to_billing_account.visibility_change_set_pk, 
                       organization_belongs_to_billing_account.visibility_edit_session_pk, 
-                      organization_belongs_to_billing_account.visibility_deleted)
+                      organization_belongs_to_billing_account.visibility_deleted_at)
 
 WHERE workspaces.id = $1 
-    AND is_visible_v1($2, workspaces.visibility_change_set_pk, workspaces.visibility_edit_session_pk, workspaces.visibility_deleted)
+    AND is_visible_v1($2, workspaces.visibility_change_set_pk, workspaces.visibility_edit_session_pk, workspaces.visibility_deleted_at)
 ORDER BY 
     workspaces.id DESC,
     workspaces.visibility_change_set_pk DESC,
