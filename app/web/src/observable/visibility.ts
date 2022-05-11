@@ -39,8 +39,10 @@ export const visibility$: Observable<Visibility> = combineLatest([
     const visibility: Visibility = {
       visibility_change_set_pk,
       visibility_edit_session_pk,
-      visibility_deleted_at,
     };
+    if (visibility_deleted_at) {
+      visibility.visibility_deleted_at = visibility_deleted_at;
+    }
     return from([visibility]);
   }),
   shareReplay(1),
