@@ -45,7 +45,7 @@
 
       <NodeAddMenu
         v-if="addMenuFilters"
-        class="pl-4"
+        class="ml-4"
         :add-to="
           schematicKind === SchematicKind.Deployment
             ? `application`
