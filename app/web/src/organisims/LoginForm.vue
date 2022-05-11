@@ -33,65 +33,43 @@
 
         <div class="space-y-6">
           <div>
-            <label
-              for="billingAccountName"
-              class="block text-sm font-medium text-gray-200"
-            >
-              Billing Account Name
-            </label>
-            <div class="mt-1">
-              <input
-                id="billingAccountName"
-                v-model="form.billingAccountName"
-                data-test="billingAccountName"
-                name="billingAccountName"
-                type="billingAccountName"
-                required
-                class="appearance-none block bg-gray-900 text-gray-100 w-full px-3 py-2 border border-gray-600 rounded-sm shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-200 focus:border-indigo-200 sm:text-sm"
-              />
-            </div>
+            <SiTextBox2
+              id="billingAccountName"
+              v-model="form.billingAccountName"
+              title="Billing Account Name"
+              required
+              @error="setFieldInError('billingAccountName', $event)"
+            />
           </div>
 
           <div>
-            <label
-              for="userEmail"
-              class="block text-sm font-medium text-gray-200"
-            >
-              Email address
-            </label>
-            <div class="mt-1">
-              <input
-                id="userEmail"
-                v-model="form.userEmail"
-                data-test="userEmail"
-                name="email"
-                type="email"
-                autocomplete="email"
-                required
-                class="appearance-none block bg-gray-900 text-gray-100 w-full px-3 py-2 border border-gray-600 rounded-sm shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-200 focus:border-indigo-200 sm:text-sm"
-              />
-            </div>
+            <SiTextBox2
+              id="userEmail"
+              v-model="form.userEmail"
+              title="Email Address"
+              required
+              :validations="[
+                {
+                  id: 'email',
+                  message: 'Must be a valid email address.',
+                  check: validator.isEmail,
+                },
+              ]"
+              @error="setFieldInError('userEmail', $event)"
+            />
           </div>
 
           <div>
-            <label
-              for="userPassword"
-              class="block text-sm font-medium text-gray-200"
-            >
-              Password
-            </label>
-            <div class="mt-1">
-              <input
-                id="userPassword"
-                v-model="form.userPassword"
-                data-test="password"
-                name="password"
-                type="password"
-                autocomplete="current-password"
-                required
-                class="appearance-none block bg-gray-900 text-gray-100 w-full px-3 py-2 border border-gray-600 rounded-sm shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-200 focus:border-indigo-200 sm:text-sm"
-              />
-            </div>
+            <SiTextBox2
+              id="userPassword"
+              v-model="form.userPassword"
+              title="Password"
+              password
+              description="Your password."
+              required
+              autocomplete="current-password"
+              @error="setFieldInError('userPassword', $event)"
+            />
           </div>
 
           <div>
@@ -99,8 +77,9 @@
               type="submit"
               data-test="login"
               aria-label="Sign In"
-              class="w-full flex justify-center py-2 px-4 border border-transparent rounded-sm shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-400"
-              @click="login"
+              class="w-full flex justify-center py-2 px-4 border border-transparent rounded-sm shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-400 disabled:opacity-50"
+              :disabled="formInError"
+              @click.prevent="login"
             >
               Sign in
             </button>
@@ -115,6 +94,9 @@
 import { ref } from "vue";
 import { SessionService } from "@/service/session";
 import siLogoWts from "@/assets/images/si-logo-wts.svg";
+import SiTextBox2 from "@/atoms/SiTextBox2.vue";
+import { useFieldErrors } from "@/composables/useFieldErrors";
+import validator from "validator";
 
 const form = ref({
   billingAccountName: "",
@@ -122,6 +104,8 @@ const form = ref({
   userPassword: "",
 });
 const errorMessage = ref<string | null>(null);
+
+const { formInError, setFieldInError } = useFieldErrors();
 
 const emit = defineEmits(["signup", "success"]);
 

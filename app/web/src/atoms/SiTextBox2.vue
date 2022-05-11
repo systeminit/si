@@ -1,61 +1,103 @@
 <template>
   <label :for="props.id" class="block text-sm font-medium text-gray-200">
-    {{ props.title }}
+    {{ props.title }} <span v-if="required">(required)</span>
   </label>
 
   <div class="mt-1 w-full relative">
     <input
       :id="props.id"
-      :value="modelValue"
+      v-model="inputValue"
       :data-test="props.id"
       :placeholder="props.placeholder"
       :type="type"
       :name="props.id"
       :autocomplete="props.id"
-      :aria-invalid="props.error !== undefined"
-      :aria-describedby="ariaDescribedBy"
+      :aria-invalid="inError"
       required
       class="appearance-none block bg-gray-900 text-gray-100 w-full px-3 py-2 border rounded-sm shadow-sm placeholder-gray-400 focus:outline-none sm:text-sm"
       :class="textBoxClasses"
-      @input="valueChanged"
+      @blur="setDirty"
     />
     <div
-      v-if="props.error"
+      v-if="inError"
       class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none"
     >
       <ExclamationCircleIcon class="h-5 w-5 text-red-400" aria-hidden="true" />
     </div>
   </div>
 
-  <p :class="descriptionClasses">
+  <p v-if="props.description" class="mt-2 text-xs text-gray-300">
     {{ props.description }}
   </p>
-  <p v-if="props.error" :id="props.error.id" class="mt-2 text-xs text-red-400">
-    {{ props.error.message }}
-  </p>
+
+  <SiValidation
+    :value="String(inputValue)"
+    :validations="validations"
+    :required="required"
+    :dirty="dirty"
+    class="mt-2"
+    @errors="setInError($event)"
+  />
 </template>
 
 <script setup lang="ts">
 import { ExclamationCircleIcon } from "@heroicons/vue/solid";
-import { computed } from "vue";
+import SiValidation, {
+  ValidatorArray,
+  ErrorsArray,
+} from "@/atoms/SiValidation.vue";
+import { computed, ref } from "vue";
+import _ from "lodash";
 
 const props = defineProps<{
   modelValue: string;
   title: string;
   id: string;
-  description: string;
-
-  error?: {
-    id: string;
-    message: string;
-  };
+  description?: string;
 
   placeholder?: string;
   password?: boolean;
+
+  validations?: ValidatorArray;
+  required?: boolean;
 }>();
 
+const emit = defineEmits(["update:modelValue", "error"]);
+
+const dirty = ref<boolean>(false);
+const setDirty = () => {
+  dirty.value = true;
+};
+
+const inError = ref<boolean>(false);
+const setInError = (errors: ErrorsArray) => {
+  let nextInError = false;
+  if (errors.length == 1) {
+    if (_.find(errors, (e) => e.id == "required")) {
+      if (dirty.value) {
+        nextInError = true;
+      }
+    } else {
+      nextInError = true;
+    }
+  } else if (errors.length > 1) {
+    nextInError = true;
+  }
+  inError.value = nextInError;
+  emit("error", inError);
+};
+
+const inputValue = computed<string>({
+  get() {
+    return props.modelValue;
+  },
+  set(value) {
+    emit("update:modelValue", value);
+  },
+});
+
 const textBoxClasses = computed((): Record<string, boolean> => {
-  if (props.error) {
+  if (inError.value) {
     return {
       "border-red-400": true,
       "focus:ring-red-400": true,
@@ -69,40 +111,10 @@ const textBoxClasses = computed((): Record<string, boolean> => {
   };
 });
 
-const descriptionClasses = computed((): Record<string, boolean> => {
-  if (props.error) {
-    return {
-      "mt-2": true,
-      "text-xs": true,
-      "text-gray-300": true,
-    };
-  }
-  // Add extra padding to the bottom where the error message would have been.
-  return {
-    "mt-2": true,
-    "text-xs": true,
-    "text-gray-300": true,
-    "mb-6": true,
-  };
-});
-
 const type = computed((): string => {
   if (props.password) {
     return "password";
   }
   return "text";
 });
-
-const ariaDescribedBy = computed((): string | undefined => {
-  if (props.error) {
-    return props.error.id;
-  }
-  return undefined;
-});
-
-const emit = defineEmits(["update:modelValue"]);
-const valueChanged = (event: Event) => {
-  const element = event.currentTarget as HTMLInputElement;
-  emit("update:modelValue", element.value);
-};
 </script>

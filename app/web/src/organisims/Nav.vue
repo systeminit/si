@@ -201,9 +201,11 @@
       </div>
 
       <div class="flex items-center w-full mx-6 my-4 color-grey-medium">
-        <SiIcon tooltip-text="Logout" @click="onLogout">
-          <LogoutIcon class="color-grey-medium" />
-        </SiIcon>
+        <button data-test="logout" @click="onLogout">
+          <SiIcon tooltip-text="Logout">
+            <LogoutIcon class="color-grey-medium" />
+          </SiIcon>
+        </button>
       </div>
     </div>
   </nav>
