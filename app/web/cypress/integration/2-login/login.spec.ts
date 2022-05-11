@@ -11,7 +11,7 @@ describe("Login", () => {
     cy.get("@nba").then((testCtx: any) => {
       cy.getBySel("billingAccountName").type(testCtx.billingAccountName);
       cy.getBySel("userEmail").type(testCtx.userEmail);
-      cy.getBySel("password").type("snakes");
+      cy.getBySel("userPassword").type("snakes");
       cy.getBySel("login")
         .click()
         .should(() => {

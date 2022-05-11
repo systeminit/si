@@ -6,10 +6,10 @@ describe("Signup", () => {
   });
 
   it("lets the user create a new account", () => {
-    cy.getBySel("billingAccountName").type("a");
-    cy.getBySel("userName").type("a");
-    cy.getBySel("userEmail").type("a");
-    cy.getBySel("userPassword").type("a");
+    cy.getBySel("billingAccountName").type("bobo");
+    cy.getBySel("userName").type("bobo clown");
+    cy.getBySel("userEmail").type("bobo@systeminit.com");
+    cy.getBySel("userPassword").type("Bobo42!ggz");
     cy.getBySel("signupSecret").type("cool-steam");
     cy.getBySel("signUp").click();
     cy.url().should("be.match", /\/authenticate\/login$/);
