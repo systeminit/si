@@ -680,6 +680,90 @@ impl AttributeValue {
         Ok(new_attribute_value_id)
     }
 
+    #[async_recursion]
+    async fn populate_child_proxies_for_value(
+        ctx: &DalContext<'_, '_>,
+        original_attribute_value_id: AttributeValueId,
+        previous_write_context: AttributeContext,
+        attribute_value_id: AttributeValueId,
+    ) -> AttributeValueResult<()> {
+        let read_context = AttributeReadContext {
+            prop_id: None,
+            ..AttributeReadContext::from(previous_write_context)
+        };
+        // These are the values that we wish to create proxies for in our new context.
+        let original_child_values =
+            Self::child_attribute_values_in_context(ctx, original_attribute_value_id, read_context)
+                .await?;
+
+        for original_child_value in original_child_values {
+            let mut write_context_builder = AttributeContextBuilder::from(previous_write_context);
+            let write_context = write_context_builder
+                .set_prop_id(original_child_value.context.prop_id())
+                .to_context()?;
+
+            if original_child_value.context == write_context {
+                // The `AttributeValue` that we found is one that was already
+                // set in the desired `AttributeContext`, but its parent was
+                // from a less-specific `AttributeContext`. Since it now has
+                // an appropriate parent `AttributeValue` within the desired
+                // `AttributeContext`, we need to have it under that parent
+                // instead of the old one.
+                original_child_value
+                    .unset_parent_attribute_value(ctx)
+                    .await?;
+                original_child_value
+                    .set_parent_attribute_value(ctx, &attribute_value_id)
+                    .await?;
+            } else {
+                // Since there isn't already an `AttributeValue` to represent
+                // the one from a less-specific `AttributeContext`, we need
+                // to create a proxy `AttributeValue` in the desired
+                // `AttributeContext` so that we can do things like add it to
+                // the `IndexMap` of the parent (that exists in the desired
+                // context).
+                let mut child_value = Self::new(
+                    ctx,
+                    original_child_value.func_binding_id(),
+                    original_child_value.func_binding_return_value_id(),
+                    write_context,
+                    original_child_value.key(),
+                )
+                .await?;
+                let child_attribute_value_prototype = original_child_value
+                    .attribute_prototype(ctx)
+                    .await?
+                    .ok_or_else(|| {
+                        AttributeValueError::AttributePrototypeNotFound(
+                            *original_child_value.id(),
+                            *ctx.visibility(),
+                        )
+                    })?;
+                child_value
+                    .set_attribute_prototype(ctx, child_attribute_value_prototype.id())
+                    .await?;
+                child_value
+                    .set_parent_attribute_value(ctx, &attribute_value_id)
+                    .await?;
+                child_value
+                    .set_proxy_for_attribute_value_id(ctx, Some(*original_child_value.id()))
+                    .await?;
+
+                // Now that we've created a proxy `AttributeValue`, we need
+                // to create proxies for all of the original value's children.
+                Self::populate_child_proxies_for_value(
+                    ctx,
+                    *original_child_value.id(),
+                    write_context,
+                    *child_value.id(),
+                )
+                .await?;
+            }
+        }
+
+        Ok(())
+    }
+
     // pub async fn update_proxies(
     //     &mut self,
     //     txn: &PgTxn<'_>,
