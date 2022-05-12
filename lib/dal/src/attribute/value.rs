@@ -633,6 +633,53 @@ impl AttributeValue {
         Ok(())
     }
 
+    /// Ensure the [`AttributeValueId`] has a "set" value in the given [`AttributeContext`], doing the same for its
+    /// parent [`AttributeValue`], and return the [`AttributeValueId`] for [`Self`] (which may be different from what
+    /// was passed in.
+    #[instrument(skip_all)]
+    #[async_recursion]
+    async fn vivify_value_and_parent_values(
+        ctx: &DalContext<'_, '_>,
+        context: AttributeContext,
+        attribute_value_id: AttributeValueId,
+    ) -> AttributeValueResult<AttributeValueId> {
+        let attribute_value = Self::get_by_id(ctx, &attribute_value_id)
+            .await?
+            .ok_or(AttributeValueError::Missing)?;
+
+        // If we're already set, there's not anything for us to do.
+        if FuncBindingReturnValue::get_by_id(ctx, &attribute_value.func_binding_return_value_id)
+            .await?
+            .ok_or_else(|| {
+                AttributeValueError::UnableToCreateParent(format!(
+                    "Missing FuncBindingReturnValue for AttributeValue: {}",
+                    attribute_value_id
+                ))
+            })?
+            .value()
+            .is_some()
+        {
+            return Ok(attribute_value_id);
+        }
+
+        let maybe_parent_attribute_value_id = attribute_value
+            .parent_attribute_value(ctx)
+            .await?
+            .map(|av| *av.id());
+
+        let (_, new_attribute_value_id) = Self::update_for_context(
+            ctx,
+            attribute_value_id,
+            maybe_parent_attribute_value_id,
+            context,
+            Some(json![{}]),
+            None,
+        )
+        .await?;
+
+        Ok(new_attribute_value_id)
+    }
+
     // pub async fn update_proxies(
     //     &mut self,
     //     txn: &PgTxn<'_>,
