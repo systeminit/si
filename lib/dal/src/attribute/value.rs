@@ -277,7 +277,7 @@ impl AttributeValue {
         ctx: &DalContext<'_, '_>,
         parent_attribute_value_id: Option<AttributeValueId>,
         key: Option<String>,
-        context: AttributeContext,
+        context: AttributeReadContext,
     ) -> AttributeValueResult<Option<Self>> {
         let row = ctx
             .pg_txn()

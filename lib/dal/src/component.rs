@@ -1653,7 +1653,7 @@ async fn edit_field_for_attribute_value(
             &head_ctx,
             parent_attribute_value_id,
             attribute_value.key.clone(),
-            attribute_value.context,
+            attribute_value.context.into(),
         )
         .await?
         {
@@ -1673,7 +1673,7 @@ async fn edit_field_for_attribute_value(
             &change_set_ctx,
             parent_attribute_value_id,
             attribute_value.key.clone(),
-            attribute_value.context,
+            attribute_value.context.into(),
         )
         .await?
         {
