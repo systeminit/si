@@ -225,9 +225,11 @@ impl AttributeValue {
         Ok(())
     }
 
+    /// Returns a list of child [`AttributeValues`](crate::AttributeValue) for a given
+    /// [`AttributeValue`] and [`AttributeReadContext`](crate::AttributeReadContext).
     pub async fn child_attribute_values_in_context(
-        &self,
         ctx: &DalContext<'_, '_>,
+        attribute_value_id: AttributeValueId,
         attribute_read_context: AttributeReadContext,
     ) -> AttributeValueResult<Vec<Self>> {
         let rows = ctx
@@ -237,7 +239,7 @@ impl AttributeValue {
                 &[
                     ctx.read_tenancy(),
                     ctx.visibility(),
-                    self.id(),
+                    &attribute_value_id,
                     &attribute_read_context,
                 ],
             )

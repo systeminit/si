@@ -1746,9 +1746,12 @@ async fn edit_field_for_attribute_value(
         WidgetKind::Text => Widget::Text(TextWidget::new()),
         WidgetKind::Array | WidgetKind::Map | WidgetKind::Header => {
             let mut child_edit_fields = vec![];
-            let mut child_attribute_values = attribute_value
-                .child_attribute_values_in_context(ctx, attribute_read_context)
-                .await?;
+            let mut child_attribute_values = AttributeValue::child_attribute_values_in_context(
+                ctx,
+                attribute_value_id,
+                attribute_read_context,
+            )
+            .await?;
             if let Some(index_map) = attribute_value.index_map() {
                 let child_order = index_map.order();
 
