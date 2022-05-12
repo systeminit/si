@@ -508,7 +508,7 @@ impl AttributeValue {
         attribute_value
             .set_func_binding_return_value_id(ctx, *func_binding_return_value.id())
             .await?;
-        attribute_value.update_parent_index_map(ctx).await?;
+
         attribute_value.update_parent_index_map(ctx).await?;
 
         Ok((value, *attribute_value.id()))
