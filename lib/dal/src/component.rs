@@ -435,6 +435,31 @@ impl Component {
             .await
     }
 
+    #[instrument(skip_all)]
+    pub async fn insert_from_edit_field_with_baggage(
+        ctx: &DalContext<'_, '_>,
+        attribute_context: AttributeContext,
+        baggage: EditFieldBaggage,
+        key: Option<String>,
+    ) -> ComponentResult<ComponentAsyncTasks> {
+        AttributeValue::insert_for_context(
+            ctx,
+            attribute_context,
+            baggage.attribute_value_id,
+            None,
+            key,
+        )
+        .await?;
+
+        let component = Self::get_by_id(ctx, &attribute_context.component_id())
+            .await?
+            .ok_or_else(|| ComponentError::NotFound(attribute_context.component_id()))?;
+
+        component
+            .build_async_tasks(ctx, attribute_context.system_id())
+            .await
+    }
+
     pub async fn check_validations(
         &self,
         ctx: &DalContext<'_, '_>,
@@ -1653,7 +1678,7 @@ async fn edit_field_for_attribute_value(
             &head_ctx,
             parent_attribute_value_id,
             attribute_value.key.clone(),
-            attribute_value.context,
+            attribute_value.context.into(),
         )
         .await?
         {
@@ -1673,7 +1698,7 @@ async fn edit_field_for_attribute_value(
             &change_set_ctx,
             parent_attribute_value_id,
             attribute_value.key.clone(),
-            attribute_value.context,
+            attribute_value.context.into(),
         )
         .await?
         {

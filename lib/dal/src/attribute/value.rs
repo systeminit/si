@@ -2,23 +2,26 @@
 //! attribute's value. Moreover, it tracks whether the value is proxied or not. Proxied values
 //! "point" to another [`AttributeValue`] to provide the attribute's value.
 
+use async_recursion::async_recursion;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use si_data::{NatsError, PgError};
 
 use telemetry::prelude::*;
 use thiserror::Error;
 use uuid::Uuid;
 
-use crate::func::backend::FuncBackendKind;
-use crate::DalContext;
 use crate::{
-    attribute::context::{AttributeContext, AttributeContextBuilderError, AttributeReadContext},
+    attribute::context::{
+        AttributeContext, AttributeContextBuilder, AttributeContextBuilderError,
+        AttributeReadContext,
+    },
     attribute::prototype::{AttributePrototype, AttributePrototypeId},
     func::{
         backend::{
             array::FuncBackendArrayArgs, boolean::FuncBackendBooleanArgs,
             integer::FuncBackendIntegerArgs, map::FuncBackendMapArgs,
-            prop_object::FuncBackendPropObjectArgs, string::FuncBackendStringArgs,
+            prop_object::FuncBackendPropObjectArgs, string::FuncBackendStringArgs, FuncBackendKind,
         },
         binding::{FuncBinding, FuncBindingError, FuncBindingId},
         binding_return_value::{
@@ -27,7 +30,7 @@ use crate::{
     },
     impl_standard_model, pk,
     standard_model::{self, TypeHint},
-    standard_model_accessor, standard_model_belongs_to, standard_model_has_many, Func,
+    standard_model_accessor, standard_model_belongs_to, standard_model_has_many, DalContext, Func,
     HistoryEventError, IndexMap, Prop, PropError, PropId, PropKind, ReadTenancyError,
     StandardModel, StandardModelError, Timestamp, Visibility, WriteTenancy,
 };
@@ -56,6 +59,8 @@ pub enum AttributeValueError {
     FuncBinding(#[from] FuncBindingError),
     #[error("FuncBindingReturnValue error: {0}")]
     FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
+    #[error("FuncBindingReturnValue not found for AttributeValue: {0}")]
+    FuncBindingReturnValueNotFound(AttributeValueId, Visibility),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
     #[error("invalid prop value; expected {0} but got {1}")]
@@ -66,6 +71,8 @@ pub enum AttributeValueError {
     NotFound(AttributeValueId, Visibility),
     #[error("missing attribute value")]
     Missing,
+    #[error("expected prop id {0} to have a child")]
+    MissingChildProp(PropId),
     #[error("func not found: {0}")]
     MissingFunc(String),
     #[error(
@@ -88,6 +95,10 @@ pub enum AttributeValueError {
     StandardModelError(#[from] StandardModelError),
     #[error("read tenancy error: {0}")]
     ReadTenancy(#[from] ReadTenancyError),
+    #[error("Unable to create parent AttributeValue: {0}")]
+    UnableToCreateParent(String),
+    #[error("unexpected prop kind: {0}")]
+    UnexpectedPropKind(PropKind),
 }
 
 pub type AttributeValueResult<T> = Result<T, AttributeValueError>;
@@ -136,8 +147,9 @@ impl AttributeValue {
         func_binding_id: FuncBindingId,
         func_binding_return_value_id: FuncBindingReturnValueId,
         context: AttributeContext,
-        key: Option<String>,
+        key: Option<impl Into<String>>,
     ) -> AttributeValueResult<Self> {
+        let key: Option<String> = key.map(|s| s.into());
         let row = ctx
             .txns()
             .pg()
@@ -277,7 +289,7 @@ impl AttributeValue {
         ctx: &DalContext<'_, '_>,
         parent_attribute_value_id: Option<AttributeValueId>,
         key: Option<String>,
-        context: AttributeContext,
+        context: AttributeReadContext,
     ) -> AttributeValueResult<Option<Self>> {
         let row = ctx
             .pg_txn()
@@ -377,7 +389,6 @@ impl AttributeValue {
     /// [`SchemaVariant`](crate::SchemaVariant), but we do not want that value to exist for a
     /// specific [`Component`](crate::Component), we can update the variant's value to [`None`] in
     /// an [`AttributeContext`] specific to that component.
-    #[allow(clippy::too_many_arguments)]
     pub async fn update_for_context(
         ctx: &DalContext<'_, '_>,
         attribute_value_id: AttributeValueId,
@@ -387,6 +398,8 @@ impl AttributeValue {
         // TODO: Allow updating the key
         _key: Option<String>,
     ) -> AttributeValueResult<(Option<serde_json::Value>, AttributeValueId)> {
+        let mut maybe_parent_attribute_value_id = parent_attribute_value_id;
+
         let given_attribute_value = Self::get_by_id(ctx, &attribute_value_id)
             .await?
             .ok_or_else(|| AttributeValueError::NotFound(attribute_value_id, *ctx.visibility()))?;
@@ -401,6 +414,31 @@ impl AttributeValue {
                 )
             })?;
 
+        // We need to make sure that all of the parents "exist" (are not the "unset" value).
+        // We can't rely on the client having created/set all of the parents already, as the
+        // parent might be an Object, or an Array/Map (instead of an element in an Array/Map).
+        // The client will only be creating new elements in Arrays/Maps, and not
+        // Objects/Arrays/Maps themselves.
+        if let Some(parent_attribute_value_id) = maybe_parent_attribute_value_id {
+            let parent_attribute_value = Self::get_by_id(ctx, &parent_attribute_value_id)
+                .await?
+                .ok_or_else(|| {
+                    AttributeValueError::NotFound(parent_attribute_value_id, *ctx.visibility())
+                })?;
+            let mut parent_attribute_context_builder = AttributeContextBuilder::from(context);
+            let parent_attribute_context = parent_attribute_context_builder
+                .set_prop_id(parent_attribute_value.context.prop_id())
+                .to_context()?;
+            maybe_parent_attribute_value_id = Some(
+                Self::vivify_value_and_parent_values(
+                    ctx,
+                    parent_attribute_context,
+                    parent_attribute_value_id,
+                )
+                .await?,
+            );
+        }
+
         // If the AttributeValue we were given isn't for the _specific_ context that we're trying to
         // update, make a new one. This is necessary, since the one that we were given might be the
         // "default" one that is directly attached to a Prop, or the one from a SchemaVariant, and the
@@ -408,19 +446,57 @@ impl AttributeValue {
         let mut attribute_value = if given_attribute_value.context == context {
             given_attribute_value
         } else {
-            let av = Self::new(
+            // Check if we created an appropriate AttributeValue in the process of vivifying
+            // the parent `AttributeValue`s, and populating proxy `AttributeValue`s for their
+            // child `AttributeValue`s.
+            let maybe_value = match Self::find_with_parent_and_key_for_context(
                 ctx,
-                given_attribute_value.func_binding_id(),
-                given_attribute_value.func_binding_return_value_id(),
-                context,
-                given_attribute_value.key,
+                maybe_parent_attribute_value_id,
+                given_attribute_value.key.clone(),
+                context.into(),
             )
-            .await?;
+            .await?
+            {
+                // If the value we found is of the `AttributeContext` that we want to
+                // update, then use it.
+                Some(value) if value.context == context => Some(value),
+                // Anything else isn't appropriate to use, so pretend that we didn't
+                // find anything, whether or not we did.
+                _ => None,
+            };
 
-            if let Some(parent_attribute_value_id) = parent_attribute_value_id {
-                av.set_parent_attribute_value(ctx, &parent_attribute_value_id)
-                    .await?;
-            }
+            let av = if let Some(value) = maybe_value {
+                value
+            } else {
+                // We haven't found an appropriate `AttributeValue` to use, so we
+                // need to make one.
+                let value = Self::new(
+                    ctx,
+                    given_attribute_value.func_binding_id(),
+                    given_attribute_value.func_binding_return_value_id(),
+                    context,
+                    given_attribute_value.key.clone(),
+                )
+                .await?;
+                if let Some(parent_attribute_value_id) = maybe_parent_attribute_value_id {
+                    value
+                        .set_parent_attribute_value(ctx, &parent_attribute_value_id)
+                        .await?;
+                }
+
+                // Whenever we make a new `AttributeValue` we need to create
+                // proxies to represent the children of the parallel `AttributeValue`
+                // that exists in a different `AttributeContext`.
+                Self::populate_child_proxies_for_value(
+                    ctx,
+                    *given_attribute_value.id(),
+                    context,
+                    *value.id(),
+                )
+                .await?;
+
+                value
+            };
 
             av
         };
@@ -494,7 +570,7 @@ impl AttributeValue {
             *func.id(),
             *func_binding.id(),
             *func_binding_return_value.id(),
-            parent_attribute_value_id,
+            maybe_parent_attribute_value_id,
             None,
             Some(*attribute_value.id()),
         )
@@ -508,7 +584,14 @@ impl AttributeValue {
         attribute_value
             .set_func_binding_return_value_id(ctx, *func_binding_return_value.id())
             .await?;
-        attribute_value.update_parent_index_map(ctx).await?;
+
+        // If the value we just updated is a proxy, we need to seal it to prevent
+        // it from being automatically updated from the `AttributeValue` it is
+        // proxying, since we're overrode that value.
+        if attribute_value.proxy_for_attribute_value_id().is_some() {
+            attribute_value.set_sealed_proxy(ctx, true).await?;
+        }
+
         attribute_value.update_parent_index_map(ctx).await?;
 
         Ok((value, *attribute_value.id()))
@@ -525,13 +608,27 @@ impl AttributeValue {
     #[instrument(skip_all)]
     pub async fn insert_for_context(
         ctx: &DalContext<'_, '_>,
-        context: AttributeContext,
+        parent_context: AttributeContext,
         parent_attribute_value_id: AttributeValueId,
         value: Option<serde_json::Value>,
         key: Option<String>,
     ) -> AttributeValueResult<AttributeValueId> {
         let parent_prop =
             AttributeValue::find_prop_for_value(ctx, parent_attribute_value_id).await?;
+        // We can only "insert" new values into Arrays & Maps. All other `PropKind` should be updated directly.
+        if *parent_prop.kind() != PropKind::Array && *parent_prop.kind() != PropKind::Map {
+            return Err(AttributeValueError::UnexpectedPropKind(*parent_prop.kind()));
+        }
+
+        let child_prop = parent_prop
+            .child_props(ctx)
+            .await?
+            .pop()
+            .ok_or_else(|| AttributeValueError::MissingChildProp(*parent_prop.id()))?;
+        let mut child_context_builder = AttributeContextBuilder::from(parent_context);
+        let context = child_context_builder
+            .set_prop_id(*child_prop.id())
+            .to_context()?;
 
         let key = if let Some(k) = key {
             Some(k)
@@ -629,6 +726,137 @@ impl AttributeValue {
                 parent_value.update_stored_index_map(ctx).await?;
             }
         };
+
+        Ok(())
+    }
+
+    /// Ensure the [`AttributeValueId`] has a "set" value in the given [`AttributeContext`], doing the same for its
+    /// parent [`AttributeValue`], and return the [`AttributeValueId`] for [`Self`] (which may be different from what
+    /// was passed in.
+    #[instrument(skip_all)]
+    #[async_recursion]
+    async fn vivify_value_and_parent_values(
+        ctx: &DalContext<'_, '_>,
+        context: AttributeContext,
+        attribute_value_id: AttributeValueId,
+    ) -> AttributeValueResult<AttributeValueId> {
+        let attribute_value = Self::get_by_id(ctx, &attribute_value_id)
+            .await?
+            .ok_or(AttributeValueError::Missing)?;
+
+        // If we're already set, there's not anything for us to do.
+        if FuncBindingReturnValue::get_by_id(ctx, &attribute_value.func_binding_return_value_id)
+            .await?
+            .ok_or_else(|| {
+                AttributeValueError::UnableToCreateParent(format!(
+                    "Missing FuncBindingReturnValue for AttributeValue: {}",
+                    attribute_value_id
+                ))
+            })?
+            .value()
+            .is_some()
+        {
+            return Ok(attribute_value_id);
+        }
+
+        let maybe_parent_attribute_value_id = attribute_value
+            .parent_attribute_value(ctx)
+            .await?
+            .map(|av| *av.id());
+
+        let (_, new_attribute_value_id) = Self::update_for_context(
+            ctx,
+            attribute_value_id,
+            maybe_parent_attribute_value_id,
+            context,
+            Some(json![{}]),
+            None,
+        )
+        .await?;
+
+        Ok(new_attribute_value_id)
+    }
+
+    #[async_recursion]
+    async fn populate_child_proxies_for_value(
+        ctx: &DalContext<'_, '_>,
+        original_attribute_value_id: AttributeValueId,
+        previous_write_context: AttributeContext,
+        attribute_value_id: AttributeValueId,
+    ) -> AttributeValueResult<()> {
+        let read_context = AttributeReadContext {
+            prop_id: None,
+            ..AttributeReadContext::from(previous_write_context)
+        };
+        // These are the values that we wish to create proxies for in our new context.
+        let original_child_values =
+            Self::child_attribute_values_in_context(ctx, original_attribute_value_id, read_context)
+                .await?;
+
+        for original_child_value in original_child_values {
+            let mut write_context_builder = AttributeContextBuilder::from(previous_write_context);
+            let write_context = write_context_builder
+                .set_prop_id(original_child_value.context.prop_id())
+                .to_context()?;
+
+            if original_child_value.context == write_context {
+                // The `AttributeValue` that we found is one that was already
+                // set in the desired `AttributeContext`, but its parent was
+                // from a less-specific `AttributeContext`. Since it now has
+                // an appropriate parent `AttributeValue` within the desired
+                // `AttributeContext`, we need to have it under that parent
+                // instead of the old one.
+                original_child_value
+                    .unset_parent_attribute_value(ctx)
+                    .await?;
+                original_child_value
+                    .set_parent_attribute_value(ctx, &attribute_value_id)
+                    .await?;
+            } else {
+                // Since there isn't already an `AttributeValue` to represent
+                // the one from a less-specific `AttributeContext`, we need
+                // to create a proxy `AttributeValue` in the desired
+                // `AttributeContext` so that we can do things like add it to
+                // the `IndexMap` of the parent (that exists in the desired
+                // context).
+                let mut child_value = Self::new(
+                    ctx,
+                    original_child_value.func_binding_id(),
+                    original_child_value.func_binding_return_value_id(),
+                    write_context,
+                    original_child_value.key(),
+                )
+                .await?;
+                let child_attribute_value_prototype = original_child_value
+                    .attribute_prototype(ctx)
+                    .await?
+                    .ok_or_else(|| {
+                        AttributeValueError::AttributePrototypeNotFound(
+                            *original_child_value.id(),
+                            *ctx.visibility(),
+                        )
+                    })?;
+                child_value
+                    .set_attribute_prototype(ctx, child_attribute_value_prototype.id())
+                    .await?;
+                child_value
+                    .set_parent_attribute_value(ctx, &attribute_value_id)
+                    .await?;
+                child_value
+                    .set_proxy_for_attribute_value_id(ctx, Some(*original_child_value.id()))
+                    .await?;
+
+                // Now that we've created a proxy `AttributeValue`, we need
+                // to create proxies for all of the original value's children.
+                Self::populate_child_proxies_for_value(
+                    ctx,
+                    *original_child_value.id(),
+                    write_context,
+                    *child_value.id(),
+                )
+                .await?;
+            }
+        }
 
         Ok(())
     }

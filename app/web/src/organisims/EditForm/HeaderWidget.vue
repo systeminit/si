@@ -33,6 +33,7 @@
       :core-edit-fields="props.coreEditField"
       :indent-level="props.indentLevel + 1"
       :tree-open-state="props.treeOpenState"
+      :component-identification="props.componentIdentification"
       @toggle-header="bubbleToggleHeader"
     />
   </div>
@@ -46,6 +47,7 @@ import { defineAsyncComponent, DefineComponent } from "vue";
 import type { WidgetsProps } from "./Widgets.vue";
 import { ITreeOpenState } from "@/utils/edit_field_visitor";
 import SiLink from "@/atoms/SiLink.vue";
+import { ComponentIdentification } from "@/api/sdf/dal/component";
 
 // Eliminate the circular dependency of HeaderWidget -> Widgets -> HeaderWidget
 // by using `defineAsyncComponent` in a careful way to preserve the ability for
@@ -65,6 +67,7 @@ const props = defineProps<{
   indentLevel: number;
   editField: EditField;
   treeOpenState: ITreeOpenState;
+  componentIdentification?: ComponentIdentification;
   backgroundColors: number[][];
 }>();
 

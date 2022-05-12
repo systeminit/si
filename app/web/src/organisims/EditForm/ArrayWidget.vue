@@ -31,6 +31,7 @@
             :show="show"
             :edit-fields="widget.options.entries"
             :indent-level="indentLevel + 1"
+            :component-identification="props.componentIdentification"
             :tree-open-state="treeOpenState"
           />
         </div>
@@ -84,6 +85,7 @@ import type { WidgetsProps } from "./Widgets.vue";
 import { ITreeOpenState } from "@/utils/edit_field_visitor";
 import { AttributeContext } from "@/api/sdf/dal/attribute";
 import SiLink from "@/atoms/SiLink.vue";
+import { ComponentIdentification } from "@/api/sdf/dal/component";
 
 // Eliminate the circular dependency of HeaderWidget -> Widgets -> HeaderWidget
 // by using `defineAsyncComponent` in a careful way to preserve the ability for
@@ -103,7 +105,8 @@ const props = defineProps<{
   indentLevel: number;
   editField: EditField;
   treeOpenState: ITreeOpenState;
-  attributeContext: AttributeContext;
+  componentIdentification?: ComponentIdentification;
+  attributeContext?: AttributeContext;
 }>();
 
 const widget = computed<ArrayWidgetDal>(() => {
@@ -111,11 +114,16 @@ const widget = computed<ArrayWidgetDal>(() => {
 });
 
 const addToArray = () => {
-  EditFieldService.updateFromEditField({
+  if (props.attributeContext === undefined) {
+    throw new Error(
+      `AttributeContext is undefined when adding to array (this is a bug)`,
+    );
+  }
+
+  EditFieldService.insertFromEditField({
     objectKind: props.editField.object_kind,
     objectId: props.editField.object_id,
     editFieldId: props.editField.id,
-    value: null,
     baggage: props.editField.baggage,
     attributeContext: props.attributeContext,
   }).subscribe((response: ApiResponse<UpdateFromEditFieldResponse>) => {

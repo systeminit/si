@@ -1,14 +1,20 @@
-use crate::code_generation_prototype::CodeGenerationPrototypeContext;
-use crate::func::backend::js_code_generation::FuncBackendJsCodeGenerationArgs;
-use crate::func::backend::js_qualification::FuncBackendJsQualificationArgs;
-use crate::qualification_prototype::QualificationPrototypeContext;
-
-use crate::builtins::schema::{create_schema, create_string_prop_with_default};
-use crate::schema::{SchemaVariant, UiMenu};
-use crate::socket::{Socket, SocketArity, SocketEdgeKind};
 use crate::{
+    builtins::schema::{
+        create_prop, create_schema, create_string_prop_with_default,
+        kubernetes_metadata::create_metadata_prop, kubernetes_selector::create_selector_prop,
+        kubernetes_template::create_template_prop,
+    },
+    code_generation_prototype::CodeGenerationPrototypeContext,
+    func::backend::{
+        js_code_generation::FuncBackendJsCodeGenerationArgs,
+        js_qualification::FuncBackendJsQualificationArgs,
+    },
+    qualification_prototype::QualificationPrototypeContext,
+    schema::{SchemaVariant, UiMenu},
+    socket::{Socket, SocketArity, SocketEdgeKind},
     AttributeReadContext, BuiltinsResult, CodeGenerationPrototype, CodeLanguage, DalContext, Func,
-    QualificationPrototype, Schema, SchemaError, SchemaKind, SchematicKind, StandardModel,
+    PropKind, QualificationPrototype, Schema, SchemaError, SchemaKind, SchematicKind,
+    StandardModel,
 };
 
 pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
@@ -52,62 +58,61 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> BuiltinsResult<(
         api_version_prop.set_doc_link(ctx, Some("https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#deployment-v1-apps".to_owned())).await?;
     }
 
-    // FIXME(nick,jacob): temporary performance gain for user testing.
-    // {
-    //     // TODO: add validation (si-registry ensures the value is unchanged)
-    //     let _kind_prop = create_string_prop_with_default(
-    //         ctx,
-    //         "kind",
-    //         "Deployment".to_owned(),
-    //         Some(root_prop.domain_prop_id),
-    //         base_attribute_read_context,
-    //     )
-    //     .await?;
-    // }
-    //
-    // {
-    //     let _metadata_prop = create_metadata_prop(
-    //         ctx,
-    //         true, // is name required, note: bool is not ideal here tho
-    //         Some(root_prop.domain_prop_id),
-    //         base_attribute_read_context,
-    //     )
-    //     .await?;
-    // }
-    //
-    // {
-    //     let spec_prop = create_prop(
-    //         ctx,
-    //         "spec",
-    //         PropKind::Object,
-    //         Some(root_prop.domain_prop_id),
-    //         base_attribute_read_context,
-    //     )
-    //     .await?;
-    //
-    //     {
-    //         let _replicas_prop = create_prop(
-    //             ctx,
-    //             "replicas",
-    //             PropKind::Integer,
-    //             Some(*spec_prop.id()),
-    //             base_attribute_read_context,
-    //         )
-    //         .await?;
-    //     }
-    //
-    //     {
-    //         let _selector_prop =
-    //             create_selector_prop(ctx, Some(*spec_prop.id()), base_attribute_read_context)
-    //                 .await?;
-    //     }
-    //
-    //     {
-    //         let _template_prop =
-    //             create_template_prop(ctx, Some(*spec_prop.id()), base_attribute_read_context)
-    //                 .await?;
-    //     }
-    // }
+    {
+        // TODO: add validation (si-registry ensures the value is unchanged)
+        let _kind_prop = create_string_prop_with_default(
+            ctx,
+            "kind",
+            "Deployment".to_owned(),
+            Some(root_prop.domain_prop_id),
+            base_attribute_read_context,
+        )
+        .await?;
+    }
+
+    {
+        let _metadata_prop = create_metadata_prop(
+            ctx,
+            true, // is name required, note: bool is not ideal here tho
+            Some(root_prop.domain_prop_id),
+            base_attribute_read_context,
+        )
+        .await?;
+    }
+
+    {
+        let spec_prop = create_prop(
+            ctx,
+            "spec",
+            PropKind::Object,
+            Some(root_prop.domain_prop_id),
+            base_attribute_read_context,
+        )
+        .await?;
+
+        {
+            let _replicas_prop = create_prop(
+                ctx,
+                "replicas",
+                PropKind::Integer,
+                Some(*spec_prop.id()),
+                base_attribute_read_context,
+            )
+            .await?;
+        }
+
+        {
+            let _selector_prop =
+                create_selector_prop(ctx, Some(*spec_prop.id()), base_attribute_read_context)
+                    .await?;
+        }
+
+        {
+            let _template_prop =
+                create_template_prop(ctx, Some(*spec_prop.id()), base_attribute_read_context)
+                    .await?;
+        }
+    }
 
     // Qualification Prototype
     let qualification_func_name = "si:qualificationYamlKubeval".to_owned();

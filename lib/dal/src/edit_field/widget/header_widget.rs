@@ -12,7 +12,11 @@ impl HeaderWidget {
         HeaderWidget { edit_fields }
     }
 
-    pub fn edit_fields(&self) -> &Vec<EditField> {
+    pub fn edit_fields(&self) -> &[EditField] {
         &self.edit_fields
+    }
+
+    pub fn into_edit_fields(self) -> Vec<EditField> {
+        self.edit_fields
     }
 }

@@ -175,6 +175,10 @@ impl EditField {
         &self.widget
     }
 
+    pub fn into_widget(self) -> Widget {
+        self.widget
+    }
+
     /// Creates a new [`EditFieldBaggage`] and sets it on the corresponding field on [`Self`].
     pub fn set_new_baggage(
         &mut self,

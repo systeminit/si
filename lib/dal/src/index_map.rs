@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use crate::attribute::value::AttributeValueId;
 
@@ -32,6 +32,14 @@ impl IndexMap {
                 self.key_map.insert(attribute_value_id, index.to_string());
             }
         }
+
+        // Remove any duplicated order entries that appear after the first
+        // occurrence of the entry.
+        //
+        // TODO: This should probably be done on (de)serialization, instead
+        //       of on every insert, but that's an optimization for later.
+        let mut order_set = HashSet::new();
+        self.order.retain(|x| order_set.insert(*x));
     }
 
     /// Returns the order of attribute resolvers for this index map as

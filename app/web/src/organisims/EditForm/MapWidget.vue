@@ -31,6 +31,7 @@
             :show="show"
             :edit-fields="widget.options.entries"
             :indent-level="indentLevel + 1"
+            :component-identification="props.componentIdentification"
             :tree-open-state="treeOpenState"
           />
         </div>
@@ -76,13 +77,14 @@ import Unset from "@/atoms/Unset.vue";
 import VueFeather from "vue-feather";
 import { EditFieldService } from "@/service/edit_field";
 import { ApiResponse } from "@/api/sdf";
-import { UpdateFromEditFieldResponse } from "@/service/edit_field/update_from_edit_field";
+import { InsertFromEditFieldResponse } from "@/service/edit_field/insert_from_edit_field";
 import { GlobalErrorService } from "@/service/global_error";
 import { defineAsyncComponent, DefineComponent } from "vue";
 import type { WidgetsProps } from "./Widgets.vue";
 import { ITreeOpenState } from "@/utils/edit_field_visitor";
 import { AttributeContext } from "@/api/sdf/dal/attribute";
 import SiLink from "@/atoms/SiLink.vue";
+import { ComponentIdentification } from "@/api/sdf/dal/component";
 
 // Eliminate the circular dependency of HeaderWidget -> Widgets -> HeaderWidget
 // by using `defineAsyncComponent` in a careful way to preserve the ability for
@@ -102,7 +104,8 @@ const props = defineProps<{
   indentLevel: number;
   editField: EditField;
   treeOpenState: ITreeOpenState;
-  attributeContext: AttributeContext;
+  componentIdentification?: ComponentIdentification;
+  attributeContext?: AttributeContext;
 }>();
 
 const widget = computed<MapWidgetDal>(() => {
@@ -110,14 +113,19 @@ const widget = computed<MapWidgetDal>(() => {
 });
 
 const addToMap = () => {
-  EditFieldService.updateFromEditField({
+  if (props.attributeContext === undefined) {
+    throw new Error(
+      `AttributeContext is undefined when adding to map (this is a bug)`,
+    );
+  }
+
+  EditFieldService.insertFromEditField({
     objectKind: props.editField.object_kind,
     objectId: props.editField.object_id,
     editFieldId: props.editField.id,
-    value: null,
     baggage: props.editField.baggage,
     attributeContext: props.attributeContext,
-  }).subscribe((response: ApiResponse<UpdateFromEditFieldResponse>) => {
+  }).subscribe((response: ApiResponse<InsertFromEditFieldResponse>) => {
     if (response.error) {
       GlobalErrorService.set(response);
     }

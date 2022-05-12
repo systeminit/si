@@ -15,11 +15,17 @@ import { RemoveFromEditFieldResponse } from "@/service/edit_field/remove_from_ed
 import { GlobalErrorService } from "@/service/global_error";
 
 const props = defineProps<{
-  attributeContext: AttributeContext;
+  attributeContext?: AttributeContext;
   editField: EditField;
 }>();
 
 const removeFromEditField = () => {
+  if (props.attributeContext === undefined) {
+    throw new Error(
+      `AttributeContext is undefined when unsetting an attribute (this is a bug)`,
+    );
+  }
+
   EditFieldService.removeFromEditField({
     objectKind: props.editField.object_kind,
     objectId: props.editField.object_id,
