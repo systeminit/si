@@ -1,4 +1,4 @@
-use crate::WriteTenancy;
+use crate::{AttributeValueId, WriteTenancy};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use si_data::{NatsError, PgError};
@@ -19,6 +19,8 @@ use super::{
     FuncId,
 };
 
+const GET_FOR_ATTRIBUTE_VALUE: &str =
+    include_str!("../queries/func_binding_return_value_get_for_attribute_value.sql");
 const GET_FOR_FUNC_BINDING: &str =
     include_str!("../queries/func_binding_return_value_get_for_func_binding.sql");
 
@@ -140,6 +142,22 @@ impl FuncBindingReturnValue {
     // pub fn func_execution_id(&self) -> Option<FuncExecutionId> {
     //     self.func_execution_id
     // }
+
+    pub async fn get_by_attribute_value_id(
+        ctx: &DalContext<'_, '_>,
+        attribute_value_id: AttributeValueId,
+    ) -> FuncBindingReturnValueResult<Option<Self>> {
+        let row = ctx
+            .txns()
+            .pg()
+            .query_opt(
+                GET_FOR_ATTRIBUTE_VALUE,
+                &[ctx.read_tenancy(), ctx.visibility(), &attribute_value_id],
+            )
+            .await?;
+
+        Ok(standard_model::option_object_from_row(row)?)
+    }
 
     /// Attempts to retrieve [`Self`] by [`FuncBindingId`].
     pub async fn get_by_func_binding_id(
