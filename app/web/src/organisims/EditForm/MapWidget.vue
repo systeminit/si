@@ -31,6 +31,7 @@
             :show="show"
             :edit-fields="widget.options.entries"
             :indent-level="indentLevel + 1"
+            :component-identification="props.componentIdentification"
             :tree-open-state="treeOpenState"
           />
         </div>
@@ -83,6 +84,7 @@ import type { WidgetsProps } from "./Widgets.vue";
 import { ITreeOpenState } from "@/utils/edit_field_visitor";
 import { AttributeContext } from "@/api/sdf/dal/attribute";
 import SiLink from "@/atoms/SiLink.vue";
+import { ComponentIdentification } from "@/api/sdf/dal/component";
 
 // Eliminate the circular dependency of HeaderWidget -> Widgets -> HeaderWidget
 // by using `defineAsyncComponent` in a careful way to preserve the ability for
@@ -102,7 +104,8 @@ const props = defineProps<{
   indentLevel: number;
   editField: EditField;
   treeOpenState: ITreeOpenState;
-  attributeContext: AttributeContext;
+  componentIdentification?: ComponentIdentification;
+  attributeContext?: AttributeContext;
 }>();
 
 const widget = computed<MapWidgetDal>(() => {
@@ -111,6 +114,12 @@ const widget = computed<MapWidgetDal>(() => {
 
 const addToMap = () => {
   EditFieldService.updateFromEditField({
+  if (props.attributeContext === undefined) {
+    throw new Error(
+      `AttributeContext is undefined when adding to map (this is a bug)`,
+    );
+  }
+
     objectKind: props.editField.object_kind,
     objectId: props.editField.object_id,
     editFieldId: props.editField.id,

@@ -7,6 +7,7 @@
     :core-edit-field="props.coreEditField"
     :indent-level="props.indentLevel"
     :tree-open-state="props.treeOpenState"
+    :component-identification="props.componentIdentification"
     @toggle-header="toggleHeader"
   />
   <ArrayWidget
@@ -16,6 +17,7 @@
     :core-edit-field="props.coreEditField"
     :indent-level="props.indentLevel"
     :tree-open-state="props.treeOpenState"
+    :component-identification="props.componentIdentification"
     :attribute-context="attributeContext"
   />
   <MapWidget
@@ -25,6 +27,7 @@
     :core-edit-field="props.coreEditField"
     :indent-level="props.indentLevel"
     :tree-open-state="props.treeOpenState"
+    :component-identification="props.componentIdentification"
     :attribute-context="attributeContext"
   />
   <TextWidget
