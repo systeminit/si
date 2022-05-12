@@ -181,11 +181,12 @@ Integration tests from the dal will not have their transactions committed and pe
 If you would like to view the state of the database via a debugger or after test conclusion, you will need to _temporarily_ refactor your test accordingly:
 
 ```rust
+// NOTE: this is likely wrong!
 #[test]
 async fn your_dal_integration_test(
     dal_context_builder: DalContextBuilder,
     jwt_secret_key: &JwtSecretKey,
-    application_id: &NodeId,
+    application_id: ApplicationId,
 ) {
     let mut transactions_starter = dal_context_builder
         .transactions_starter()
@@ -205,7 +206,7 @@ async fn your_dal_integration_test(
         &dal_context_builder,
         &transactions,
         &nba,
-        *application_id,
+        application_id,
     )
     .await;
 
