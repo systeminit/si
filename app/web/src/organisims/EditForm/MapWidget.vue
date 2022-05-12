@@ -77,7 +77,7 @@ import Unset from "@/atoms/Unset.vue";
 import VueFeather from "vue-feather";
 import { EditFieldService } from "@/service/edit_field";
 import { ApiResponse } from "@/api/sdf";
-import { UpdateFromEditFieldResponse } from "@/service/edit_field/update_from_edit_field";
+import { InsertFromEditFieldResponse } from "@/service/edit_field/insert_from_edit_field";
 import { GlobalErrorService } from "@/service/global_error";
 import { defineAsyncComponent, DefineComponent } from "vue";
 import type { WidgetsProps } from "./Widgets.vue";
@@ -113,20 +113,19 @@ const widget = computed<MapWidgetDal>(() => {
 });
 
 const addToMap = () => {
-  EditFieldService.updateFromEditField({
   if (props.attributeContext === undefined) {
     throw new Error(
       `AttributeContext is undefined when adding to map (this is a bug)`,
     );
   }
 
+  EditFieldService.insertFromEditField({
     objectKind: props.editField.object_kind,
     objectId: props.editField.object_id,
     editFieldId: props.editField.id,
-    value: null,
     baggage: props.editField.baggage,
     attributeContext: props.attributeContext,
-  }).subscribe((response: ApiResponse<UpdateFromEditFieldResponse>) => {
+  }).subscribe((response: ApiResponse<InsertFromEditFieldResponse>) => {
     if (response.error) {
       GlobalErrorService.set(response);
     }

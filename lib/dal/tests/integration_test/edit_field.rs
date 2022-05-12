@@ -1,15 +1,13 @@
 use crate::dal::test;
-use dal::attribute::context::AttributeContextBuilder;
-use dal::edit_field::{EditFieldBaggage, Widget};
-use dal::DalContext;
 use dal::{
+    attribute::context::AttributeContextBuilder,
     component::Component,
-    edit_field::{EditField, EditFieldAble, EditFieldDataType},
+    edit_field::{EditField, EditFieldAble, EditFieldDataType, Widget},
     test_harness::{
         create_prop_of_kind_and_set_parent_with_name, create_schema,
         create_schema_variant_with_root,
     },
-    AttributeReadContext, PropKind, SchemaKind, StandardModel,
+    AttributeReadContext, ComponentView, DalContext, PropKind, SchemaKind, StandardModel,
 };
 use pretty_assertions_sorted::assert_eq;
 
@@ -180,24 +178,29 @@ async fn update_edit_field_for_component(ctx: &DalContext<'_, '_>) {
         .expect("could not find edit field by id");
     assert_eq!(*updated_edit_field.value(), new_value);
 
-    // Ensure that no other values were changed in the process of updating a sole edit field.
-    let mut old_values: Vec<(&str, &Option<serde_json::Value>, &Option<EditFieldBaggage>)> =
-        old_edit_fields
-            .iter()
-            .map(|v| (v.id(), v.value(), v.baggage()))
-            .collect();
-    old_values.retain(|v| v.0 != target_edit_field_id);
-    old_values.sort_by_key(|v| v.0);
+    let component_view = ComponentView::for_context(
+        ctx,
+        AttributeReadContext {
+            prop_id: None,
+            ..AttributeReadContext::from(attribute_context)
+        },
+    )
+    .await
+    .expect("could not build ComponentView");
 
-    let mut updated_values: Vec<(&str, &Option<serde_json::Value>, &Option<EditFieldBaggage>)> =
-        updated_edit_fields
-            .iter()
-            .map(|v| (v.id(), v.value(), v.baggage()))
-            .collect();
-    updated_values.retain(|v| v.0 != target_edit_field_id);
-    updated_values.sort_by_key(|v| v.0);
-
-    assert_eq!(old_values, updated_values);
+    assert_eq!(
+        serde_json::json![{
+            "si": {
+                "name": "radahn",
+            },
+            "domain": {
+                "object": {
+                    "value": "Aubrey Drake Graham",
+                },
+            },
+        }],
+        component_view.properties
+    );
 }
 
 fn select_edit_field_by_id(edit_fields: &Vec<EditField>, id: &str) -> Option<EditField> {

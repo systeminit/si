@@ -114,17 +114,16 @@ const widget = computed<ArrayWidgetDal>(() => {
 });
 
 const addToArray = () => {
-  EditFieldService.updateFromEditField({
   if (props.attributeContext === undefined) {
     throw new Error(
       `AttributeContext is undefined when adding to array (this is a bug)`,
     );
   }
 
+  EditFieldService.insertFromEditField({
     objectKind: props.editField.object_kind,
     objectId: props.editField.object_id,
     editFieldId: props.editField.id,
-    value: null,
     baggage: props.editField.baggage,
     attributeContext: props.attributeContext,
   }).subscribe((response: ApiResponse<UpdateFromEditFieldResponse>) => {

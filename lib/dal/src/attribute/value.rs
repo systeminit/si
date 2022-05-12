@@ -608,13 +608,27 @@ impl AttributeValue {
     #[instrument(skip_all)]
     pub async fn insert_for_context(
         ctx: &DalContext<'_, '_>,
-        context: AttributeContext,
+        parent_context: AttributeContext,
         parent_attribute_value_id: AttributeValueId,
         value: Option<serde_json::Value>,
         key: Option<String>,
     ) -> AttributeValueResult<AttributeValueId> {
         let parent_prop =
             AttributeValue::find_prop_for_value(ctx, parent_attribute_value_id).await?;
+        // We can only "insert" new values into Arrays & Maps. All other `PropKind` should be updated directly.
+        if *parent_prop.kind() != PropKind::Array && *parent_prop.kind() != PropKind::Map {
+            return Err(AttributeValueError::UnexpectedPropKind(*parent_prop.kind()));
+        }
+
+        let child_prop = parent_prop
+            .child_props(ctx)
+            .await?
+            .pop()
+            .ok_or_else(|| AttributeValueError::MissingChildProp(*parent_prop.id()))?;
+        let mut child_context_builder = AttributeContextBuilder::from(parent_context);
+        let context = child_context_builder
+            .set_prop_id(*child_prop.id())
+            .to_context()?;
 
         let key = if let Some(k) = key {
             Some(k)

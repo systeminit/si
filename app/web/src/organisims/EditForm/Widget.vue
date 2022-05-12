@@ -65,6 +65,7 @@ import SelectWidget from "@/organisims/EditForm/SelectWidget.vue";
 import HeaderWidget from "@/organisims/EditForm/HeaderWidget.vue";
 import ArrayWidget from "@/organisims/EditForm/ArrayWidget.vue";
 import { ITreeOpenState } from "@/utils/edit_field_visitor";
+import { buildAttributeContext } from "@/utils/attributeContext";
 import { ComponentIdentification } from "@/api/sdf/dal/component";
 import { computed } from "vue";
 import { AttributeContext } from "@/api/sdf/dal/attribute";
@@ -81,25 +82,17 @@ const props = defineProps<{
 }>();
 
 // FIXME(nick): handle SystemId.
-const attributeContext = computed((): AttributeContext | "" => {
+const attributeContext = computed((): AttributeContext | undefined => {
+  // NOTE: these widgets are used in both the attritbute editor and the schema editor. At the
+  // moment, the schema editor may not have baggage which may change in the future. If baggage
+  // becomes required everywhere for all edit fields, then this check should be removed.
   if (!props.editField.baggage) {
-    return "";
+    return undefined;
   }
-  if (!props.componentIdentification) {
-    // FIXME(nick): we need to ensure we handle the scenario where the WidgetKind requires an AttributeContext, but
-    // this expression is true (i.e. "componentIdentification" is not populated).
-    return "";
-  }
-  return {
-    attribute_context_prop_id: props.editField.baggage.prop_id,
-    attribute_context_internal_provider_id: -1,
-    attribute_context_external_provider_id: -1,
-    attribute_context_schema_id: props.componentIdentification.schemaId,
-    attribute_context_schema_variant_id:
-      props.componentIdentification.schemaVariantId,
-    attribute_context_component_id: props.componentIdentification.componentId,
-    attribute_context_system_id: -1,
-  };
+  return buildAttributeContext(
+    props.editField.baggage,
+    props.componentIdentification,
+  );
 });
 
 const emit = defineEmits<{

@@ -923,11 +923,12 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext<'_, '_>) {
     .await
     .expect("Unable to create component");
 
-    let mut base_attribute_context = AttributeContext::builder();
-    base_attribute_context
+    let mut unset_attribute_context = AttributeContext::builder();
+    unset_attribute_context
         .set_schema_id(*schema.id())
-        .set_schema_variant_id(*schema_variant.id())
-        .set_component_id(*component.id());
+        .set_schema_variant_id(*schema_variant.id());
+    let mut base_attribute_context = unset_attribute_context.clone();
+    base_attribute_context.set_component_id(*component.id());
 
     let domain_context = base_attribute_context
         .clone()
@@ -940,16 +941,21 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext<'_, '_>) {
         .pop()
         .expect("could not find domain AttributeValue");
 
+    let unset_sammy_context = unset_attribute_context
+        .clone()
+        .set_prop_id(*sammy_prop.id())
+        .to_context()
+        .expect("could not create sammy AttributeContext");
+    let unset_sammy_value = AttributeValue::find_for_context(ctx, unset_sammy_context.into())
+        .await
+        .expect("could not fetch sammy AttributeValue")
+        .pop()
+        .expect("could not find sammy AttributeValue");
     let sammy_context = base_attribute_context
         .clone()
         .set_prop_id(*sammy_prop.id())
         .to_context()
         .expect("could not create sammy AttributeContext");
-    let unset_sammy_value = AttributeValue::find_for_context(ctx, sammy_context.into())
-        .await
-        .expect("could not fetch sammy AttributeValue")
-        .pop()
-        .expect("could not find sammy AttributeValue");
     let (_, sammy_value_id) = AttributeValue::update_for_context(
         ctx,
         *unset_sammy_value.id(),
@@ -976,13 +982,18 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext<'_, '_>) {
     .await
     .expect("could not insert album object AttributeValue");
 
+    let unset_album_string_context = unset_attribute_context
+        .clone()
+        .set_prop_id(*album_string_prop.id())
+        .to_context()
+        .expect("could not create album string AttributeContext");
     let album_string_context = base_attribute_context
         .clone()
         .set_prop_id(*album_string_prop.id())
         .to_context()
         .expect("could not create album string AttributeContext");
     let unset_album_string_value =
-        AttributeValue::find_for_context(ctx, album_string_context.into())
+        AttributeValue::find_for_context(ctx, unset_album_string_context.into())
             .await
             .expect("could not retrieve album string AttributeValue")
             .pop()
@@ -998,16 +1009,22 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext<'_, '_>) {
     .await
     .expect("could not update standing hampton album string AttributeValue");
 
+    let unset_songs_array_context = unset_attribute_context
+        .clone()
+        .set_prop_id(*songs_array_prop.id())
+        .to_context()
+        .expect("could not create songs array AttributeContext");
+    let unset_songs_array_value =
+        AttributeValue::find_for_context(ctx, unset_songs_array_context.into())
+            .await
+            .expect("could not fetch songs array AttributeValue")
+            .pop()
+            .expect("could not find songs array AttributeValue");
     let songs_array_context = base_attribute_context
         .clone()
         .set_prop_id(*songs_array_prop.id())
         .to_context()
         .expect("could not create songs array AttributeContext");
-    let unset_songs_array_value = AttributeValue::find_for_context(ctx, songs_array_context.into())
-        .await
-        .expect("could not fetch songs array AttributeValue")
-        .pop()
-        .expect("could not find songs array AttributeValue");
     let (_, standing_hampton_songs_array_value_id) = AttributeValue::update_for_context(
         ctx,
         *unset_songs_array_value.id(),
