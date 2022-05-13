@@ -40,7 +40,9 @@ pub enum Widget {
     Text(TextWidget),
 }
 
-#[derive(AsRefStr, Clone, Deserialize, Serialize, Debug, PartialEq, Eq, Display, EnumString)]
+#[derive(
+    AsRefStr, Clone, Deserialize, Serialize, Debug, PartialEq, Eq, Display, EnumString, Copy,
+)]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]
 pub enum WidgetKind {

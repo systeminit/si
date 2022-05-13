@@ -33,6 +33,7 @@ pub mod node_menu;
 pub mod node_position;
 pub mod organization;
 pub mod prop;
+pub mod property_editor;
 pub mod provider;
 pub mod qualification;
 pub mod qualification_check;

@@ -44,17 +44,20 @@
         </div>
       </div>
     </div>
+
+    <PropertyEditor @updated-property="updateProperty($event)" />
+    <!--
     <EditFormComponent
       v-if="editFields"
       :edit-fields="editFields"
       :component-identification="componentIdentification"
-    />
+    /> -->
   </div>
 </template>
 
 <script setup lang="ts">
 import * as Rx from "rxjs";
-import EditFormComponent from "@/organisims/EditFormComponent.vue";
+//import EditFormComponent from "@/organisims/EditFormComponent.vue";
 import { toRefs, computed } from "vue";
 import { fromRef, refFrom } from "vuse-rx";
 import { GlobalErrorService } from "@/service/global_error";
@@ -74,6 +77,8 @@ import {
   QuestionMarkCircleIcon,
   PencilAltIcon,
 } from "@heroicons/vue/outline";
+import PropertyEditor from "./PropertyEditor.vue";
+import { UpdatedProperty } from "@/api/sdf/dal/property_editor";
 
 // TODO(nick): we technically only need one prop. We're sticking with two to not mess
 // with the reactivity guarentees in place.
@@ -204,6 +209,10 @@ const resourceColor = computed(() => {
     return "#bbbbbb";
   }
 });
+
+const updateProperty = (update: UpdatedProperty) => {
+  console.log("updating", { update });
+};
 </script>
 
 <style scoped>
