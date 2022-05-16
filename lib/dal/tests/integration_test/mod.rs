@@ -19,6 +19,7 @@ mod node_menu;
 mod node_position;
 mod organization;
 mod prop;
+mod property_editor;
 mod provider;
 mod qualification_check;
 mod qualification_prototype;

@@ -62,11 +62,12 @@ const props = defineProps<{
   required?: boolean;
 }>();
 
-const emit = defineEmits(["update:modelValue", "error"]);
+const emit = defineEmits(["update:modelValue", "error", "blur"]);
 
 const dirty = ref<boolean>(false);
 const setDirty = () => {
   dirty.value = true;
+  emit("blur", inputValue);
 };
 
 const inError = ref<boolean>(false);
