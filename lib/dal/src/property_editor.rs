@@ -4,7 +4,7 @@
 
 use std::collections::HashMap;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use si_data::PgError;
 use thiserror::Error;
 
@@ -34,7 +34,7 @@ pub enum PropertyEditorError {
 
 pub type PropertyEditorResult<T> = Result<T, PropertyEditorError>;
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum PropertyEditorPropKind {
     Array,
@@ -58,7 +58,7 @@ impl From<&PropKind> for PropertyEditorPropKind {
     }
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum PropertyEditorPropWidgetKind {
     Array,
@@ -91,7 +91,7 @@ impl From<&PropId> for PropertyEditorPropId {
     }
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PropertyEditorProp {
     pub id: PropertyEditorPropId,
     pub name: String,
@@ -112,7 +112,7 @@ impl From<Prop> for PropertyEditorProp {
     }
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PropertyEditorSchema {
     pub root_prop_id: PropertyEditorPropId,
     pub props: HashMap<PropertyEditorPropId, PropertyEditorProp>,
