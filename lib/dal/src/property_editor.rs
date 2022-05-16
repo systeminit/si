@@ -5,12 +5,14 @@
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use si_data::PgError;
 use thiserror::Error;
 
 use crate::{
-    edit_field::widget::WidgetKind, pk, schema::variant::SchemaVariantError, DalContext, Prop,
-    PropId, PropKind, SchemaVariant, SchemaVariantId, StandardModel, StandardModelError,
+    edit_field::widget::WidgetKind, pk, schema::variant::SchemaVariantError, AttributeReadContext,
+    AttributeValue, AttributeValueError, AttributeValueId, DalContext, Prop, PropId, PropKind,
+    SchemaVariant, SchemaVariantId, StandardModel, StandardModelError,
 };
 
 const PROPERTY_EDITOR_SCHEMA_FOR_SCHEMA_VARIANT: &str =
@@ -30,6 +32,10 @@ pub enum PropertyEditorError {
     SchemaVariant(#[from] SchemaVariantError),
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
+    #[error("attribute value error: {0}")]
+    AttributeValue(#[from] AttributeValueError),
+    #[error("invalid AttributeReadContext: {0}")]
+    BadAttributeReadContext(String),
 }
 
 pub type PropertyEditorResult<T> = Result<T, PropertyEditorError>;
@@ -164,5 +170,84 @@ impl PropertyEditorSchema {
             props,
             child_props,
         })
+    }
+}
+
+pk!(PropertyEditorValueId);
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct PropertyEditorValue {
+    id: PropertyEditorValueId,
+    pub prop_id: PropertyEditorPropId,
+    key: Option<String>,
+    value: Value,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct PropertyEditorValues {
+    root_value_id: PropertyEditorValueId,
+    pub values: HashMap<PropertyEditorValueId, PropertyEditorValue>,
+    child_values: HashMap<PropertyEditorValueId, Vec<PropertyEditorValueId>>,
+}
+
+impl PropertyEditorValues {
+    pub async fn for_context(
+        ctx: &DalContext<'_, '_>,
+        context: AttributeReadContext,
+    ) -> PropertyEditorResult<Self> {
+        let mut root_value_id = None;
+        let mut values = HashMap::new();
+        let mut child_values = HashMap::new();
+
+        let mut work_queue = AttributeValue::list_payload_for_read_context(ctx, context).await?;
+
+        // We sort the work queue according to the order of every nested IndexMap. This ensures that
+        // when we reconstruct the final properties data, we don't have to worry about the order things
+        // appear in - they are certain to be the right order.
+        let attribute_value_order: Vec<AttributeValueId> = work_queue
+            .iter()
+            .filter_map(|avp| avp.attribute_value.index_map())
+            .flat_map(|index_map| index_map.order())
+            .copied()
+            .collect();
+        work_queue.sort_by_cached_key(|avp| {
+            attribute_value_order
+                .iter()
+                .position(|attribute_value_id| attribute_value_id == avp.attribute_value.id())
+                .unwrap_or(0)
+        });
+
+        for work in work_queue {
+            values.insert(
+                i64::from(*work.attribute_value.id()).into(),
+                PropertyEditorValue {
+                    id: i64::from(*work.attribute_value.id()).into(),
+                    prop_id: i64::from(*work.prop.id()).into(),
+                    key: work.attribute_value.key().map(Into::into),
+                    value: work
+                        .func_binding_return_value
+                        .and_then(|f| f.value().cloned())
+                        .unwrap_or(Value::Null),
+                },
+            );
+            if let Some(parent_id) = work.parent_attribute_value_id {
+                child_values
+                    .entry(i64::from(parent_id).into())
+                    .or_insert(vec![])
+                    .push(i64::from(*work.attribute_value.id()).into());
+            } else {
+                root_value_id = Some(i64::from(*work.attribute_value.id()).into());
+            }
+        }
+
+        if let Some(root_value_id) = root_value_id {
+            Ok(PropertyEditorValues {
+                root_value_id,
+                child_values,
+                values,
+            })
+        } else {
+            Err(PropertyEditorError::RootPropNotFound)
+        }
     }
 }

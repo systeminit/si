@@ -1396,6 +1396,7 @@ async fn complex_nested_array_of_objects_with_a_map(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not insert fall in love again into standing hampton songs map");
+
     AttributeValue::insert_for_context(
         ctx,
         song_map_item_context,
@@ -1409,8 +1410,11 @@ async fn complex_nested_array_of_objects_with_a_map(ctx: &DalContext<'_, '_>) {
     let component_view = ComponentView::for_context(
         ctx,
         AttributeReadContext {
+            schema_id: Some(*schema.id()),
+            schema_variant_id: Some(*schema_variant.id()),
             component_id: Some(*component.id()),
-            ..AttributeReadContext::any()
+            prop_id: None,
+            ..AttributeReadContext::default()
         },
     )
     .await

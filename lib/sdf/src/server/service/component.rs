@@ -17,6 +17,7 @@ pub mod generate_code;
 pub mod get_code;
 pub mod get_components_metadata;
 pub mod get_property_editor_schema;
+pub mod get_property_editor_values;
 pub mod get_resource;
 pub mod list_components_identification;
 pub mod list_qualifications;
@@ -107,5 +108,9 @@ pub fn routes() -> Router {
         .route(
             "/get_property_editor_schema",
             get(get_property_editor_schema::get_property_editor_schema),
+        )
+        .route(
+            "/get_property_editor_values",
+            get(get_property_editor_values::get_property_editor_values),
         )
 }

@@ -38,6 +38,3 @@ SELECT DISTINCT ON (props.id, child_prop_ids.belongs_to_id) props.id,
           FROM recursive_props
     )
 ORDER BY props.id, child_prop_ids.belongs_to_id, props.visibility_change_set_pk DESC, props.visibility_edit_session_pk DESC;
-
-
-
