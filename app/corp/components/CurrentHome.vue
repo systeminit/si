@@ -14,7 +14,7 @@
       <div class="flex flex-col w-full md:w-3/4 md:h-full justify-center">
         <div class="flex">
           <h1 class="font-extrabold text-4xl md:text-6xl">
-            Reinventing how we interact with computing environments
+            Power tools for DevOps teams
             <div class="cursor flex h-8 w-4 md:w-8 md:h-12" />
           </h1>
         </div>
@@ -121,9 +121,9 @@
           <!--End mc_embed_signup-->
         </div>
       </div>
-      <div class="flex md:w-1/4 rotate-90 md:rotate-0 shrink-1">
+      <div class="flex md:w-1/4 rotate-90 md:rotate-0 shrink-1 justify-start">
         <img
-          class="w-1/2 md:w-full"
+          class="w-1/2"
           src="~/assets/Circle-01-06-1.png"
           loading="lazy"
           srcset="
