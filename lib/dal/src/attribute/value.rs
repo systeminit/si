@@ -99,6 +99,10 @@ pub enum AttributeValueError {
     UnableToCreateParent(String),
     #[error("unexpected prop kind: {0}")]
     UnexpectedPropKind(PropKind),
+    #[error("schema variant missing in context")]
+    SchemaVariantMissing,
+    #[error("schema missing in context")]
+    SchemaMissing,
 }
 
 pub type AttributeValueResult<T> = Result<T, AttributeValueError>;
@@ -346,12 +350,26 @@ impl AttributeValue {
         ctx: &DalContext<'_, '_>,
         context: AttributeReadContext,
     ) -> AttributeValueResult<Vec<AttributeValuePayload>> {
+        let schema_variant_id = if let Some(schema_variant_id) = context.schema_variant_id() {
+            schema_variant_id
+        } else {
+            return Err(AttributeValueError::SchemaVariantMissing);
+        };
+        if !context.has_schema_id() {
+            return Err(AttributeValueError::SchemaMissing);
+        }
+
         let rows = ctx
             .txns()
             .pg()
             .query(
                 LIST_PAYLOAD_FOR_READ_CONTEXT,
-                &[ctx.read_tenancy(), ctx.visibility(), &context],
+                &[
+                    ctx.read_tenancy(),
+                    ctx.visibility(),
+                    &context,
+                    &schema_variant_id,
+                ],
             )
             .await?;
         let mut result = Vec::new();

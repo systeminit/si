@@ -42,6 +42,19 @@ WHERE in_tenancy_v1($1, attribute_values.tenancy_universal, attribute_values.ten
                                     attribute_values.attribute_context_schema_variant_id,
                                     attribute_values.attribute_context_component_id,
                                     attribute_values.attribute_context_system_id)
+    AND attribute_values.attribute_context_prop_id IN (
+      WITH RECURSIVE recursive_props AS (
+          SELECT left_object_id AS prop_id
+            FROM prop_many_to_many_schema_variants
+            WHERE right_object_id = $4
+          UNION ALL
+            SELECT pbp.object_id AS prop_id
+            FROM prop_belongs_to_prop AS pbp
+            JOIN recursive_props ON pbp.belongs_to_id = recursive_props.prop_id
+        )
+        SELECT prop_id
+          FROM recursive_props
+    )
 ORDER BY
     attribute_values.attribute_context_prop_id,
     attribute_value_belongs_to_attribute_value.belongs_to_id,

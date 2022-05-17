@@ -5,8 +5,9 @@ use axum::{
     Json, Router,
 };
 use dal::{
-    node::NodeError, ComponentError as DalComponentError, ComponentId, ReadTenancyError,
-    SchemaError, SchematicError, StandardModelError, SystemId, TransactionsError, WsEventError,
+    node::NodeError, property_editor::PropertyEditorError, ComponentError as DalComponentError,
+    ComponentId, ReadTenancyError, SchemaError, SchematicError, StandardModelError, SystemId,
+    TransactionsError, WsEventError,
 };
 
 use thiserror::Error;
@@ -15,6 +16,9 @@ pub mod check_qualifications;
 pub mod generate_code;
 pub mod get_code;
 pub mod get_components_metadata;
+pub mod get_property_editor_schema;
+pub mod get_property_editor_validations;
+pub mod get_property_editor_values;
 pub mod get_resource;
 pub mod list_components_identification;
 pub mod list_qualifications;
@@ -58,6 +62,8 @@ pub enum ComponentError {
     WsEvent(#[from] WsEventError),
     #[error("invalid visibility")]
     InvalidVisibility,
+    #[error("property editor error: {0}")]
+    PropertyEditor(#[from] PropertyEditorError),
 }
 
 pub type ComponentResult<T> = std::result::Result<T, ComponentError>;
@@ -100,4 +106,16 @@ pub fn routes() -> Router {
         )
         .route("/get_code", get(get_code::get_code))
         .route("/generate_code", post(generate_code::generate_code))
+        .route(
+            "/get_property_editor_schema",
+            get(get_property_editor_schema::get_property_editor_schema),
+        )
+        .route(
+            "/get_property_editor_values",
+            get(get_property_editor_values::get_property_editor_values),
+        )
+        .route(
+            "/get_property_editor_validations",
+            get(get_property_editor_validations::get_property_editor_validations),
+        )
 }

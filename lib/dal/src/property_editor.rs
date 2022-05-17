@@ -4,13 +4,16 @@
 
 use std::collections::HashMap;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use si_data::PgError;
 use thiserror::Error;
 
 use crate::{
-    edit_field::widget::WidgetKind, pk, schema::variant::SchemaVariantError, DalContext, Prop,
-    PropId, PropKind, SchemaVariant, SchemaVariantId, StandardModel, StandardModelError,
+    edit_field::widget::WidgetKind, pk, schema::variant::SchemaVariantError, AttributeReadContext,
+    AttributeValue, AttributeValueError, AttributeValueId, ComponentError, ComponentId, DalContext,
+    Prop, PropId, PropKind, SchemaVariant, SchemaVariantId, StandardModel, StandardModelError,
+    SystemId, ValidationResolver, ValidationResolverError,
 };
 
 const PROPERTY_EDITOR_SCHEMA_FOR_SCHEMA_VARIANT: &str =
@@ -30,11 +33,21 @@ pub enum PropertyEditorError {
     SchemaVariant(#[from] SchemaVariantError),
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
+    #[error("attribute value error: {0}")]
+    AttributeValue(#[from] AttributeValueError),
+    #[error("invalid AttributeReadContext: {0}")]
+    BadAttributeReadContext(String),
+    #[error("component not found")]
+    ComponentNotFound,
+    #[error("component error: {0}")]
+    Component(#[from] ComponentError),
+    #[error("validation resolver error: {0}")]
+    ValidationResolver(#[from] ValidationResolverError),
 }
 
 pub type PropertyEditorResult<T> = Result<T, PropertyEditorError>;
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum PropertyEditorPropKind {
     Array,
@@ -58,7 +71,7 @@ impl From<&PropKind> for PropertyEditorPropKind {
     }
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum PropertyEditorPropWidgetKind {
     Array,
@@ -91,7 +104,7 @@ impl From<&PropId> for PropertyEditorPropId {
     }
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PropertyEditorProp {
     pub id: PropertyEditorPropId,
     pub name: String,
@@ -112,7 +125,7 @@ impl From<Prop> for PropertyEditorProp {
     }
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PropertyEditorSchema {
     pub root_prop_id: PropertyEditorPropId,
     pub props: HashMap<PropertyEditorPropId, PropertyEditorProp>,
@@ -164,5 +177,133 @@ impl PropertyEditorSchema {
             props,
             child_props,
         })
+    }
+}
+
+pk!(PropertyEditorValueId);
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct PropertyEditorValue {
+    id: PropertyEditorValueId,
+    pub prop_id: PropertyEditorPropId,
+    key: Option<String>,
+    value: Value,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct PropertyEditorValues {
+    root_value_id: PropertyEditorValueId,
+    pub values: HashMap<PropertyEditorValueId, PropertyEditorValue>,
+    child_values: HashMap<PropertyEditorValueId, Vec<PropertyEditorValueId>>,
+}
+
+impl PropertyEditorValues {
+    pub async fn for_context(
+        ctx: &DalContext<'_, '_>,
+        context: AttributeReadContext,
+    ) -> PropertyEditorResult<Self> {
+        let mut root_value_id = None;
+        let mut values = HashMap::new();
+        let mut child_values = HashMap::new();
+
+        let mut work_queue = AttributeValue::list_payload_for_read_context(ctx, context).await?;
+
+        // We sort the work queue according to the order of every nested IndexMap. This ensures that
+        // when we reconstruct the final properties data, we don't have to worry about the order things
+        // appear in - they are certain to be the right order.
+        let attribute_value_order: Vec<AttributeValueId> = work_queue
+            .iter()
+            .filter_map(|avp| avp.attribute_value.index_map())
+            .flat_map(|index_map| index_map.order())
+            .copied()
+            .collect();
+        work_queue.sort_by_cached_key(|avp| {
+            attribute_value_order
+                .iter()
+                .position(|attribute_value_id| attribute_value_id == avp.attribute_value.id())
+                .unwrap_or(0)
+        });
+
+        for work in work_queue {
+            values.insert(
+                i64::from(*work.attribute_value.id()).into(),
+                PropertyEditorValue {
+                    id: i64::from(*work.attribute_value.id()).into(),
+                    prop_id: i64::from(*work.prop.id()).into(),
+                    key: work.attribute_value.key().map(Into::into),
+                    value: work
+                        .func_binding_return_value
+                        .and_then(|f| f.value().cloned())
+                        .unwrap_or(Value::Null),
+                },
+            );
+            if let Some(parent_id) = work.parent_attribute_value_id {
+                child_values
+                    .entry(i64::from(parent_id).into())
+                    .or_insert(vec![])
+                    .push(i64::from(*work.attribute_value.id()).into());
+            } else {
+                root_value_id = Some(i64::from(*work.attribute_value.id()).into());
+            }
+        }
+
+        if let Some(root_value_id) = root_value_id {
+            Ok(PropertyEditorValues {
+                root_value_id,
+                child_values,
+                values,
+            })
+        } else {
+            Err(PropertyEditorError::RootPropNotFound)
+        }
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct PropertyEditorValidationError {
+    message: String,
+    level: Option<String>,
+    kind: Option<String>,
+    link: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct PropertyEditorValidation {
+    value_id: PropertyEditorValueId,
+    valid: bool,
+    errors: Vec<PropertyEditorValidationError>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct PropertyEditorValidations {
+    validations: Vec<PropertyEditorValidation>,
+}
+
+impl PropertyEditorValidations {
+    pub async fn for_component(
+        ctx: &DalContext<'_, '_>,
+        component_id: ComponentId,
+        system_id: SystemId,
+    ) -> PropertyEditorResult<Self> {
+        let status = ValidationResolver::find_status(ctx, component_id, system_id).await?;
+
+        let mut validations = Vec::new();
+        for stat in status {
+            validations.push(PropertyEditorValidation {
+                value_id: i64::from(stat.attribute_value_id).into(),
+                valid: stat.errors.is_empty(),
+                errors: stat
+                    .errors
+                    .into_iter()
+                    .map(|err| PropertyEditorValidationError {
+                        message: err.message,
+                        level: err.level,
+                        kind: err.kind,
+                        link: err.link,
+                    })
+                    .collect(),
+            });
+        }
+        Ok(Self { validations })
     }
 }

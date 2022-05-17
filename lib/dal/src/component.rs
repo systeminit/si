@@ -29,7 +29,6 @@ use crate::qualification_resolver::QualificationResolverContext;
 use crate::resource_resolver::ResourceResolverContext;
 use crate::schema::variant::{SchemaVariantError, SchemaVariantId};
 use crate::schema::SchemaVariant;
-use crate::validation_resolver::ValidationResolverContext;
 use crate::ws_event::{WsEvent, WsEventError};
 use crate::AttributeValueId;
 use crate::{
@@ -409,7 +408,7 @@ impl Component {
         attribute_context: AttributeContext,
         baggage: EditFieldBaggage,
     ) -> ComponentResult<ComponentAsyncTasks> {
-        let (updated_value, _updated_attribute_value_id) = AttributeValue::update_for_context(
+        let (updated_value, updated_attribute_value_id) = AttributeValue::update_for_context(
             ctx,
             baggage.attribute_value_id,
             baggage.parent_attribute_value_id,
@@ -423,11 +422,8 @@ impl Component {
         let component = Self::get_by_id(ctx, &attribute_context.component_id())
             .await?
             .ok_or_else(|| ComponentError::NotFound(attribute_context.component_id()))?;
-        let prop = Prop::get_by_id(ctx, &attribute_context.prop_id())
-            .await?
-            .ok_or_else(|| ComponentError::MissingProp(attribute_context.prop_id()))?;
         component
-            .check_validations(ctx, &prop, &updated_value)
+            .check_validations(ctx, updated_attribute_value_id, &updated_value)
             .await?;
 
         component
@@ -463,11 +459,16 @@ impl Component {
     pub async fn check_validations(
         &self,
         ctx: &DalContext<'_, '_>,
-        prop: &Prop,
+        attribute_value_id: AttributeValueId,
         value: &Option<serde_json::Value>,
     ) -> ComponentResult<()> {
+        let attribute_value = AttributeValue::get_by_id(ctx, &attribute_value_id)
+            .await?
+            .ok_or(ComponentError::MissingAttributeValue(attribute_value_id))?;
+        let prop_id = attribute_value.context.prop_id();
+
         let validators =
-            ValidationPrototype::find_for_prop(ctx, *prop.id(), UNSET_ID_VALUE.into()).await?;
+            ValidationPrototype::find_for_prop(ctx, prop_id, UNSET_ID_VALUE.into()).await?;
 
         for validator in validators {
             let func = Func::get_by_id(ctx, &validator.func_id())
@@ -488,7 +489,7 @@ impl Component {
                         }
                     } else {
                         // TODO: This might not be quite the right error to return here if we got a None.
-                        return Err(ComponentError::MissingProp(*prop.id()));
+                        return Err(ComponentError::MissingProp(prop_id));
                     };
                     let args_json = serde_json::to_value(args)?;
                     let (func_binding, binding_created) = FuncBinding::find_or_create(
@@ -510,29 +511,13 @@ impl Component {
             };
 
             if created {
-                let mut existing_validation_resolvers =
-                    ValidationResolver::find_for_prototype(ctx, validator.id()).await?;
-
-                // If we don't have one, create the validation resolver. If we do, update the
-                // func binding id to point to the new value. Interesting to think about
-                // garbage collecting the left over funcbinding + func result value?
-                if let Some(mut validation_resolver) = existing_validation_resolvers.pop() {
-                    validation_resolver
-                        .set_func_binding_id(ctx, *func_binding.id())
-                        .await?;
-                } else {
-                    let mut validation_resolver_context = ValidationResolverContext::new();
-                    validation_resolver_context.set_prop_id(*prop.id());
-                    validation_resolver_context.set_component_id(*self.id());
-                    ValidationResolver::new(
-                        ctx,
-                        *validator.id(),
-                        *func.id(),
-                        *func_binding.id(),
-                        validation_resolver_context,
-                    )
-                    .await?;
-                }
+                ValidationResolver::new(
+                    ctx,
+                    *validator.id(),
+                    attribute_value_id,
+                    *func_binding.id(),
+                )
+                .await?;
             }
         }
         Ok(())
@@ -934,9 +919,11 @@ impl Component {
         component_id: ComponentId,
         system_id: SystemId,
     ) -> ComponentResult<QualificationView> {
-        let validation_errors =
-            ValidationResolver::enumerate_errors_for_component(ctx, component_id, system_id)
-                .await?;
+        let validation_errors = ValidationResolver::find_status(ctx, component_id, system_id)
+            .await?
+            .into_iter()
+            .flat_map(|s| s.errors)
+            .collect();
         let qualification_view = QualificationView::new_for_validation_errors(validation_errors);
         Ok(qualification_view)
     }
@@ -1728,7 +1715,9 @@ async fn edit_field_for_attribute_value(
         change_set_func_binding_return_value.as_ref(),
     )?;
 
-    let mut validation_errors = Vec::new();
+    let validation_errors = Vec::new();
+
+    /*
     let component_id = attribute_read_context.component_id;
     let system_id = attribute_read_context
         .system_id
@@ -1747,6 +1736,7 @@ async fn edit_field_for_attribute_value(
         )
         .await?;
     }
+    */
 
     let current_edit_field_path = match edit_field_path {
         None => vec!["properties".to_owned()],
