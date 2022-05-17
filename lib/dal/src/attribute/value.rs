@@ -101,6 +101,8 @@ pub enum AttributeValueError {
     UnexpectedPropKind(PropKind),
     #[error("schema variant missing in context")]
     SchemaVariantMissing,
+    #[error("schema missing in context")]
+    SchemaMissing,
 }
 
 pub type AttributeValueResult<T> = Result<T, AttributeValueError>;
@@ -354,7 +356,7 @@ impl AttributeValue {
             return Err(AttributeValueError::SchemaVariantMissing);
         };
         if !context.has_schema_id() {
-            return Err(AttributeValueError::SchemaVariantMissing);
+            return Err(AttributeValueError::SchemaMissing);
         }
 
         let rows = ctx

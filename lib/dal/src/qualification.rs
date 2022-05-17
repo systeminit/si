@@ -7,7 +7,7 @@ use veritech::QualificationSubCheck;
 use crate::func::backend::validation::ValidationError;
 use crate::func::binding_return_value::{FuncBindingReturnValue, FuncBindingReturnValueError};
 use crate::ws_event::{WsEvent, WsPayload};
-use crate::{BillingAccountId, ComponentId, HistoryActor, Prop, QualificationPrototype, SystemId};
+use crate::{BillingAccountId, ComponentId, HistoryActor, QualificationPrototype, SystemId};
 
 #[derive(Error, Debug)]
 pub enum QualificationError {
@@ -46,21 +46,16 @@ pub struct QualificationView {
 }
 
 impl QualificationView {
-    pub fn new_for_validation_errors(
-        prop_validation_errors: Vec<(Prop, Vec<ValidationError>)>,
-    ) -> QualificationView {
+    pub fn new_for_validation_errors(validation_errors: Vec<ValidationError>) -> QualificationView {
         let mut sub_checks: Vec<QualificationSubCheck> = Vec::new();
         let mut success = true;
-        for (prop, validation_errors) in prop_validation_errors.into_iter() {
-            for validation_error in validation_errors.into_iter() {
-                let description =
-                    format!("field {} failed: {}", prop.name(), validation_error.message);
-                sub_checks.push(QualificationSubCheck {
-                    description,
-                    status: veritech::QualificationSubCheckStatus::Failure,
-                });
-                success = false;
-            }
+        for validation_error in validation_errors {
+            let description = format!("field validation failed: {}", validation_error.message);
+            sub_checks.push(QualificationSubCheck {
+                description,
+                status: veritech::QualificationSubCheckStatus::Failure,
+            });
+            success = false;
         }
         QualificationView {
             title: "All fields are valid".into(),

@@ -1,18 +1,21 @@
 use crate::DalContext;
 use serde::{Deserialize, Serialize};
 use si_data::{NatsError, PgError};
-use std::default::Default;
+use std::collections::HashMap;
 use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::func::backend::validation::ValidationError;
 use crate::{
-    func::{binding::FuncBindingId, binding_return_value::FuncBindingReturnValue, FuncId},
+    func::{
+        binding::FuncBindingId, binding_return_value::FuncBindingReturnValue,
+        binding_return_value::FuncBindingReturnValueId, FuncId,
+    },
     impl_standard_model, pk,
-    standard_model::{self, objects_from_rows},
-    standard_model_accessor, ComponentId, HistoryEventError, Prop, PropId, SchemaId,
-    SchemaVariantId, StandardModel, StandardModelError, SystemId, Timestamp, ValidationPrototype,
-    ValidationPrototypeId, Visibility, WriteTenancy,
+    schema::variant::SchemaVariantError,
+    standard_model, standard_model_accessor, AttributeReadContext, AttributeValueId, Component,
+    ComponentId, HistoryEventError, StandardModel, StandardModelError, SystemId, Timestamp,
+    ValidationPrototype, ValidationPrototypeId, Visibility, WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -26,87 +29,31 @@ pub enum ValidationResolverError {
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
     #[error("standard model error: {0}")]
-    StandardModelError(#[from] StandardModelError),
+    StandardModel(#[from] StandardModelError),
+    #[error("schema variant error: {0}")]
+    SchemaVariant(#[from] SchemaVariantError),
+    #[error("component error: {0}")]
+    Component(String),
     #[error("invalid prop id")]
     InvalidPropId,
+    #[error("application not found")]
+    ApplicationNotFound,
+    #[error("component not found: {0}")]
+    ComponentNotFound(ComponentId),
+    #[error("schema variant not found")]
+    SchemaVariantNotFound,
+    #[error("schema not found")]
+    SchemaNotFound,
 }
 
 pub type ValidationResolverResult<T> = Result<T, ValidationResolverError>;
 
-pub const UNSET_ID_VALUE: i64 = -1;
-const FIND_VALUES_FOR_CONTEXT: &str =
-    include_str!("./queries/validation_resolver_find_values_for_context.sql");
-const FIND_VALUES_FOR_COMPONENT: &str =
-    include_str!("./queries/validation_resolver_find_values_for_component.sql");
-const FIND_FOR_PROTOTYPE: &str =
-    include_str!("./queries/validation_resolver_find_for_prototype.sql");
+const FIND_STATUS: &str = include_str!("./queries/validation_resolver_find_status.sql");
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-pub struct ValidationResolverContext {
-    prop_id: PropId,
-    component_id: ComponentId,
-    schema_id: SchemaId,
-    schema_variant_id: SchemaVariantId,
-    system_id: SystemId,
-}
-
-// Hrm - is this a universal resolver context? -- Adam
-impl Default for ValidationResolverContext {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl ValidationResolverContext {
-    pub fn new() -> Self {
-        ValidationResolverContext {
-            prop_id: UNSET_ID_VALUE.into(),
-            component_id: UNSET_ID_VALUE.into(),
-            schema_id: UNSET_ID_VALUE.into(),
-            schema_variant_id: UNSET_ID_VALUE.into(),
-            system_id: UNSET_ID_VALUE.into(),
-        }
-    }
-
-    pub fn prop_id(&self) -> PropId {
-        self.prop_id
-    }
-
-    pub fn set_prop_id(&mut self, prop_id: PropId) {
-        self.prop_id = prop_id;
-    }
-
-    pub fn component_id(&self) -> ComponentId {
-        self.component_id
-    }
-
-    pub fn set_component_id(&mut self, component_id: ComponentId) {
-        self.component_id = component_id;
-    }
-
-    pub fn schema_id(&self) -> SchemaId {
-        self.schema_id
-    }
-
-    pub fn set_schema_id(&mut self, schema_id: SchemaId) {
-        self.schema_id = schema_id;
-    }
-
-    pub fn schema_variant_id(&self) -> SchemaVariantId {
-        self.schema_variant_id
-    }
-
-    pub fn set_schema_variant_id(&mut self, schema_variant_id: SchemaVariantId) {
-        self.schema_variant_id = schema_variant_id;
-    }
-
-    pub fn system_id(&self) -> SystemId {
-        self.system_id
-    }
-
-    pub fn set_system_id(&mut self, system_id: SystemId) {
-        self.system_id = system_id;
-    }
+pub struct ValidationStatus {
+    pub attribute_value_id: AttributeValueId,
+    pub errors: Vec<ValidationError>,
 }
 
 pk!(ValidationResolverPk);
@@ -119,10 +66,11 @@ pub struct ValidationResolver {
     pk: ValidationResolverPk,
     id: ValidationResolverId,
     validation_prototype_id: ValidationPrototypeId,
+    attribute_value_id: AttributeValueId,
     func_id: FuncId,
     func_binding_id: FuncBindingId,
-    #[serde(flatten)]
-    context: ValidationResolverContext,
+    /// The [`FuncBindingReturnValueId`] that represents the value at this specific position & context.
+    func_binding_return_value_id: FuncBindingReturnValueId,
     #[serde(flatten)]
     tenancy: WriteTenancy,
     #[serde(flatten)]
@@ -146,21 +94,20 @@ impl ValidationResolver {
     pub async fn new(
         ctx: &DalContext<'_, '_>,
         validation_prototype_id: ValidationPrototypeId,
-        func_id: FuncId,
+        attribute_value_id: AttributeValueId,
         func_binding_id: FuncBindingId,
-        context: ValidationResolverContext,
     ) -> ValidationResolverResult<Self> {
-        let row = ctx.txns().pg().query_one(
-                "SELECT object FROM validation_resolver_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
-                &[ctx.write_tenancy(), ctx.visibility(),
+        let row = ctx
+            .txns()
+            .pg()
+            .query_one(
+                "SELECT object FROM validation_resolver_create_v1($1, $2, $3, $4, $5)",
+                &[
+                    ctx.write_tenancy(),
+                    ctx.visibility(),
                     &validation_prototype_id,
-                    &func_id,
+                    &attribute_value_id,
                     &func_binding_id,
-                    &context.prop_id(),
-                    &context.component_id(),
-                    &context.schema_id(),
-                    &context.schema_variant_id(),
-                    &context.system_id(),
                 ],
             )
             .await?;
@@ -176,124 +123,82 @@ impl ValidationResolver {
     standard_model_accessor!(func_id, Pk(FuncId), ValidationResolverResult);
     standard_model_accessor!(func_binding_id, Pk(FuncBindingId), ValidationResolverResult);
 
-    pub async fn enumerate_errors_for_component(
+    pub async fn find_status(
         ctx: &DalContext<'_, '_>,
         component_id: ComponentId,
         system_id: SystemId,
-    ) -> ValidationResolverResult<Vec<(Prop, Vec<ValidationError>)>> {
+    ) -> ValidationResolverResult<Vec<ValidationStatus>> {
+        let schema_variant = Component::get_by_id(ctx, &component_id)
+            .await
+            .map_err(|err| ValidationResolverError::Component(err.to_string()))?
+            .ok_or(ValidationResolverError::ComponentNotFound(component_id))?
+            .schema_variant(ctx)
+            .await
+            .map_err(|err| ValidationResolverError::Component(err.to_string()))?
+            .ok_or(ValidationResolverError::SchemaVariantNotFound)?;
+        let schema = schema_variant
+            .schema(ctx)
+            .await?
+            .ok_or(ValidationResolverError::SchemaNotFound)?;
+        let context = AttributeReadContext {
+            component_id: Some(component_id),
+            system_id: Some(system_id),
+            schema_variant_id: Some(*schema_variant.id()),
+            schema_id: Some(*schema.id()),
+            prop_id: None,
+            /*
+            application_id: Some(
+                ctx.application_node_id()
+                    .ok_or(ValidationResolverError::ApplicationNotFound)?,
+            ),
+            */
+            ..AttributeReadContext::default()
+        };
         let rows = ctx
             .txns()
             .pg()
             .query(
-                FIND_VALUES_FOR_COMPONENT,
+                FIND_STATUS,
                 &[
                     ctx.read_tenancy(),
                     ctx.visibility(),
-                    &component_id,
-                    &system_id,
+                    &context,
+                    schema_variant.id(),
                 ],
             )
             .await?;
-        let mut result = Vec::new();
-        for row in rows.into_iter() {
-            let json: serde_json::Value = row.try_get("object")?;
-            let object: FuncBindingReturnValue = serde_json::from_value(json)?;
-            if let Some(value_json) = object.value() {
-                let prop_id: PropId = row.try_get("prop_id")?;
-                let prop = Prop::get_by_id(ctx, &prop_id)
-                    .await?
-                    .ok_or(ValidationResolverError::InvalidPropId)?;
 
-                let prototype_id: ValidationPrototypeId = row.try_get("validation_prototype_id")?;
-                let prototype = ValidationPrototype::get_by_id(ctx, &prototype_id).await?;
+        let mut result = HashMap::new();
+        for row in rows {
+            let json: Option<serde_json::Value> = row.try_get("object")?;
+            let object: Option<FuncBindingReturnValue> =
+                serde_json::from_value(json.unwrap_or(serde_json::Value::Null))?;
 
-                let link = prototype.as_ref().and_then(|p| p.link());
-                let validation_errors = Vec::<ValidationError>::deserialize(value_json)?
-                    .into_iter()
-                    .map(|mut err| {
-                        err.link = link.map(|l| l.to_owned());
-                        err
-                    })
-                    .collect();
-                result.push((prop, validation_errors));
+            let json: Option<serde_json::Value> = row.try_get("validation_prototype_json")?;
+            let prototype: Option<ValidationPrototype> =
+                serde_json::from_value(json.unwrap_or(serde_json::Value::Null))?;
+
+            let attribute_value_id: AttributeValueId = row.try_get("attribute_value_id")?;
+
+            let key = result
+                .entry(attribute_value_id)
+                .or_insert(ValidationStatus {
+                    attribute_value_id,
+                    errors: vec![],
+                });
+
+            if let Some(value_json) = object.as_ref().and_then(|o| o.value()) {
+                let errors = Vec::<ValidationError>::deserialize(value_json)?;
+                key.errors.reserve(errors.len());
+                for mut error in errors {
+                    error.link = prototype
+                        .as_ref()
+                        .and_then(|p| p.link())
+                        .map(|l| l.to_owned());
+                    key.errors.push(error)
+                }
             }
         }
-        Ok(result)
-    }
-
-    pub async fn find_errors_for_prop_and_component(
-        ctx: &DalContext<'_, '_>,
-        prop_id: PropId,
-        component_id: ComponentId,
-        system_id: SystemId,
-    ) -> ValidationResolverResult<Vec<ValidationError>> {
-        let rows = ctx
-            .txns()
-            .pg()
-            .query(
-                FIND_VALUES_FOR_CONTEXT,
-                &[
-                    ctx.read_tenancy(),
-                    ctx.visibility(),
-                    &prop_id,
-                    &component_id,
-                    &system_id,
-                ],
-            )
-            .await?;
-
-        let mut result = Vec::new();
-        for row in rows.into_iter() {
-            let json: serde_json::Value = row.try_get("object")?;
-            let object: FuncBindingReturnValue = serde_json::from_value(json)?;
-            if let Some(value_json) = object.value() {
-                let prototype_id: ValidationPrototypeId = row.try_get("validation_prototype_id")?;
-                let prototype = ValidationPrototype::get_by_id(ctx, &prototype_id).await?;
-
-                let link = prototype.as_ref().and_then(|p| p.link());
-                let validation_errors = Vec::<ValidationError>::deserialize(value_json)?
-                    .into_iter()
-                    .map(|mut err| {
-                        err.link = link.map(|l| l.to_owned());
-                        err
-                    });
-                result.extend(validation_errors);
-            }
-        }
-        Ok(result)
-    }
-
-    pub async fn find_for_prototype(
-        ctx: &DalContext<'_, '_>,
-        validation_prototype_id: &ValidationPrototypeId,
-    ) -> ValidationResolverResult<Vec<Self>> {
-        let rows = ctx
-            .txns()
-            .pg()
-            .query(
-                FIND_FOR_PROTOTYPE,
-                &[
-                    ctx.read_tenancy(),
-                    ctx.visibility(),
-                    validation_prototype_id,
-                ],
-            )
-            .await?;
-        let object = objects_from_rows(rows)?;
-        Ok(object)
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::ValidationResolverContext;
-
-    #[test]
-    fn context_builder() {
-        let mut c = ValidationResolverContext::new();
-        c.set_component_id(15.into());
-        c.set_prop_id(22.into());
-        assert_eq!(c.component_id(), 15.into());
-        assert_eq!(c.prop_id(), 22.into());
+        Ok(result.into_iter().map(|(_, v)| v).collect())
     }
 }

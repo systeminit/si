@@ -11,8 +11,9 @@ use thiserror::Error;
 
 use crate::{
     edit_field::widget::WidgetKind, pk, schema::variant::SchemaVariantError, AttributeReadContext,
-    AttributeValue, AttributeValueError, AttributeValueId, DalContext, Prop, PropId, PropKind,
-    SchemaVariant, SchemaVariantId, StandardModel, StandardModelError,
+    AttributeValue, AttributeValueError, AttributeValueId, ComponentError, ComponentId, DalContext,
+    Prop, PropId, PropKind, SchemaVariant, SchemaVariantId, StandardModel, StandardModelError,
+    SystemId, ValidationResolver, ValidationResolverError,
 };
 
 const PROPERTY_EDITOR_SCHEMA_FOR_SCHEMA_VARIANT: &str =
@@ -36,6 +37,12 @@ pub enum PropertyEditorError {
     AttributeValue(#[from] AttributeValueError),
     #[error("invalid AttributeReadContext: {0}")]
     BadAttributeReadContext(String),
+    #[error("component not found")]
+    ComponentNotFound,
+    #[error("component error: {0}")]
+    Component(#[from] ComponentError),
+    #[error("validation resolver error: {0}")]
+    ValidationResolver(#[from] ValidationResolverError),
 }
 
 pub type PropertyEditorResult<T> = Result<T, PropertyEditorError>;
@@ -249,5 +256,54 @@ impl PropertyEditorValues {
         } else {
             Err(PropertyEditorError::RootPropNotFound)
         }
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct PropertyEditorValidationError {
+    message: String,
+    level: Option<String>,
+    kind: Option<String>,
+    link: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct PropertyEditorValidation {
+    value_id: PropertyEditorValueId,
+    valid: bool,
+    errors: Vec<PropertyEditorValidationError>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct PropertyEditorValidations {
+    validations: Vec<PropertyEditorValidation>,
+}
+
+impl PropertyEditorValidations {
+    pub async fn for_component(
+        ctx: &DalContext<'_, '_>,
+        component_id: ComponentId,
+        system_id: SystemId,
+    ) -> PropertyEditorResult<Self> {
+        let status = ValidationResolver::find_status(ctx, component_id, system_id).await?;
+
+        let mut validations = Vec::new();
+        for stat in status {
+            validations.push(PropertyEditorValidation {
+                value_id: i64::from(stat.attribute_value_id).into(),
+                valid: stat.errors.is_empty(),
+                errors: stat
+                    .errors
+                    .into_iter()
+                    .map(|err| PropertyEditorValidationError {
+                        message: err.message,
+                        level: err.level,
+                        kind: err.kind,
+                        link: err.link,
+                    })
+                    .collect(),
+            });
+        }
+        Ok(Self { validations })
     }
 }
