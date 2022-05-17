@@ -88,3 +88,19 @@ export interface UpdatedProperty {
   valueId: number;
   value: unknown;
 }
+
+export interface AddToArray {
+  propId: number;
+  valueId: number;
+}
+
+export interface AddToMap {
+  propId: number;
+  valueId: number;
+  key: string;
+}
+
+export interface PropertyPath {
+  displayPath: string[];
+  triggerPath: string[];
+}
