@@ -3,7 +3,7 @@
     v-tooltip.bottom="tooltipText"
     :class="buttonClasses"
     :aria-label="props.tooltipText"
-    :disabled="props.disabled"
+    :disabled="disabled"
     @click="emit('click')"
   >
     <slot></slot>

@@ -87,7 +87,7 @@ const props = defineProps<{
   componentIdentification: ComponentIdentification;
 }>();
 
-const { componentId, componentIdentification } = toRefs(props);
+const { componentId } = toRefs(props);
 
 // We need an observable stream of props.componentId. We also want
 // that stream to emit a value immediately (the first value, as well as all

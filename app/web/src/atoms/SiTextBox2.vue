@@ -13,8 +13,9 @@
       :name="props.id"
       :autocomplete="props.id"
       :aria-invalid="inError"
+      :disabled="props.disabled"
       required
-      class="appearance-none block bg-gray-900 text-gray-100 w-full px-3 py-2 border rounded-sm shadow-sm placeholder-gray-400 focus:outline-none sm:text-sm"
+      class="appearance-none block bg-gray-900 text-gray-100 w-full px-3 py-2 border rounded-sm shadow-sm placeholder-gray-400 focus:outline-none sm:text-sm disabled:border-gray-800"
       :class="textBoxClasses"
       @blur="setDirty"
     />
@@ -26,6 +27,12 @@
     </div>
   </div>
 
+  <p v-if="props.docLink" class="mt-2 text-xs text-blue-300">
+    <a :href="props.docLink" target="_blank" class="hover:underline">
+      Documentation
+    </a>
+  </p>
+
   <p v-if="props.description" class="mt-2 text-xs text-gray-300">
     {{ props.description }}
   </p>
@@ -34,7 +41,7 @@
     :value="String(inputValue)"
     :validations="validations"
     :required="required"
-    :dirty="dirty"
+    :dirty="reallyDirty"
     class="mt-2"
     @errors="setInError($event)"
   />
@@ -60,6 +67,11 @@ const props = defineProps<{
 
   validations?: ValidatorArray;
   required?: boolean;
+  alwaysValidate?: boolean;
+
+  docLink?: string;
+
+  disabled?: boolean;
 }>();
 
 const emit = defineEmits(["update:modelValue", "error", "blur"]);
@@ -69,6 +81,13 @@ const setDirty = () => {
   dirty.value = true;
   emit("blur", inputValue);
 };
+
+const reallyDirty = computed(() => {
+  if (props.alwaysValidate) {
+    return true;
+  }
+  return dirty.value;
+});
 
 const inError = ref<boolean>(false);
 const setInError = (errors: ErrorsArray) => {

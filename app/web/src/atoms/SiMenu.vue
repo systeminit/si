@@ -3,7 +3,7 @@
     :disabled="props.disabled ?? false"
     :placement="props.isNotRoot ? 'right-start' : 'bottom-start'"
     :triggers="props.isNotRoot ? ['hover'] : ['click']"
-    :hideTriggers="['hover', 'click']"
+    :hide-triggers="['hover', 'click']"
   >
     <button v-if="props.isNotRoot" class="button p-2 flex text-base">
       <div class="grow">{{ props.tree.name }}</div>

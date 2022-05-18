@@ -1,24 +1,26 @@
 <template>
   <div
+    v-show="isShown"
     class="flex flex-row w-full pl-7 pt-1 pb-1 mt-2 text-white cursor-pointer bg-gray-800 items-center h-12"
     @click="setCollapsed"
-    v-show="isShown"
   >
-    <div class="text-base font-extrabold">
-      {{ name }}
-    </div>
     <div
-      v-for="(part, index) of path"
+      v-for="(part, index) of displayPath"
       :key="index"
-      class="flex flex-row text-sm"
+      class="flex flex-row items-center"
     >
-      <ChevronLeftIcon class="h-5" /> {{ part }}
+      <span v-if="index == 0" class="text-base font-extrabold">
+        {{ part }}
+      </span>
+      <span v-else class="text-sm">
+        <ChevronLeftIcon class="pl-2 h-5 inline" /> {{ part }}
+      </span>
     </div>
     <div class="flex flex-grow justify-end pr-4">
-      <SiButtonIcon tooltip-text="Expand" v-if="isCollapsed">
+      <SiButtonIcon v-if="isCollapsed" tooltip-text="Expand">
         <ChevronUpIcon />
       </SiButtonIcon>
-      <SiButtonIcon tooltip-text="Collapse" v-else>
+      <SiButtonIcon v-else tooltip-text="Collapse">
         <ChevronDownIcon />
       </SiButtonIcon>
     </div>
@@ -32,10 +34,11 @@ import { ChevronLeftIcon } from "@heroicons/vue/outline";
 import { ChevronDownIcon, ChevronUpIcon } from "@heroicons/vue/solid";
 import _ from "lodash";
 import { usePropertyEditorIsShown } from "@/composables/usePropertyEditorIsShown";
+import { PropertyPath } from "@/api/sdf/dal/property_editor";
 
 const props = defineProps<{
   name: string;
-  path: string[];
+  path?: PropertyPath;
   collapsedPaths: Array<Array<string>>;
 }>();
 const emits = defineEmits<{
@@ -43,13 +46,26 @@ const emits = defineEmits<{
 }>();
 
 const setCollapsed = () => {
-  emits("toggle-collapsed", [props.name, ...props.path]);
+  if (props.path) {
+    console.log("collapsing", { triggerPath: props.path.triggerPath });
+    emits("toggle-collapsed", props.path.triggerPath);
+  }
 };
 
 const { name, path, collapsedPaths } = toRefs(props);
+
+const displayPath = computed(() => {
+  if (path && path.value) {
+    return path.value.displayPath;
+  } else {
+    return [];
+  }
+});
+
 const { isShown, isCollapsed } = usePropertyEditorIsShown(
   name,
-  path,
   collapsedPaths,
+  path,
+  true,
 );
 </script>

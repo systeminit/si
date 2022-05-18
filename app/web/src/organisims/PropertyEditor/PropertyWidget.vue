@@ -1,10 +1,41 @@
 <template>
   <div class="flex flex-col" @keyup.stop @keydown.stop>
     <WidgetHeader
-      v-if="props.schemaProp.widgetKind == 'header'"
+      v-if="showArrayElementHeader"
       :name="props.schemaProp.name"
       :path="path"
       :collapsed-paths="props.collapsedPaths"
+      @toggle-collapsed="setCollapsed($event)"
+    />
+    <WidgetHeader
+      v-if="props.schemaProp.widgetKind == 'header' && !showArrayElementHeader"
+      :name="props.schemaProp.name"
+      :path="path"
+      :collapsed-paths="props.collapsedPaths"
+      @toggle-collapsed="setCollapsed($event)"
+    />
+    <WidgetArray
+      v-else-if="props.schemaProp.widgetKind == 'array'"
+      :name="props.schemaProp.name"
+      :path="path"
+      :collapsed-paths="props.collapsedPaths"
+      :disabled="props.disabled"
+      :prop-id="props.propValue.propId"
+      :value-id="props.propValue.id"
+      :array-length="props.arrayLength"
+      @add-to-array="addToArray($event)"
+      @toggle-collapsed="setCollapsed($event)"
+    />
+    <WidgetMap
+      v-else-if="props.schemaProp.widgetKind == 'map'"
+      :name="props.schemaProp.name"
+      :path="path"
+      :collapsed-paths="props.collapsedPaths"
+      :disabled="props.disabled"
+      :prop-id="props.propValue.propId"
+      :value-id="props.propValue.id"
+      :array-length="props.arrayLength"
+      @add-to-map="addToMap($event)"
       @toggle-collapsed="setCollapsed($event)"
     />
     <WidgetTextBox
@@ -15,10 +46,13 @@
       :value="props.propValue.value"
       :prop-id="props.propValue.propId"
       :value-id="props.propValue.id"
-      @updated-property="updatedProperty($event)"
+      :doc-link="props.schemaProp.docLink"
+      :validation="props.validation"
+      :disabled="props.disabled"
       class="py-4 px-8"
+      @updated-property="updatedProperty($event)"
     />
-    <div v-else>
+    <!--<div v-else>
       <div class="flex">
         {{ props.path }}
       </div>
@@ -29,29 +63,46 @@
         {{ props.propValue }}
       </div>
     </div>
+      -->
   </div>
 </template>
 
 <script setup lang="ts">
+import { toRefs, computed } from "vue";
 import {
   PropertyEditorProp,
+  PropertyEditorValidation,
   PropertyEditorValue,
   UpdatedProperty,
+  AddToArray,
+  AddToMap,
+  PropertyPath,
 } from "@/api/sdf/dal/property_editor";
 import WidgetHeader from "./WidgetHeader.vue";
 import WidgetTextBox from "./WidgetTextBox.vue";
+import WidgetArray from "./WidgetArray.vue";
+import WidgetMap from "./WidgetMap.vue";
+import _ from "lodash";
 
 const props = defineProps<{
   schemaProp: PropertyEditorProp;
   propValue: PropertyEditorValue;
-  path: Array<string>;
+  validation?: PropertyEditorValidation;
+  path?: PropertyPath;
   collapsedPaths: Array<Array<string>>;
+  disabled?: boolean;
+  arrayIndex?: number;
+  arrayLength?: number;
 }>();
 
 const emits = defineEmits<{
   (e: "toggleCollapsed", path: Array<string>): void;
   (e: "updatedProperty", v: UpdatedProperty): void;
+  (e: "addToArray", v: AddToArray): void;
+  (e: "addToMap", v: AddToMap): void;
 }>();
+
+const { arrayIndex } = toRefs(props);
 
 const setCollapsed = (path: string[]) => {
   emits("toggleCollapsed", path);
@@ -60,4 +111,28 @@ const setCollapsed = (path: string[]) => {
 const updatedProperty = (event: UpdatedProperty) => {
   emits("updatedProperty", event);
 };
+
+const addToArray = (event: AddToArray) => {
+  emits("addToArray", event);
+};
+
+const addToMap = (event: AddToMap) => {
+  emits("addToMap", event);
+};
+
+const showArrayElementHeader = computed(() => {
+  console.log("show me the money", {
+    arrayIndex: JSON.stringify(arrayIndex?.value),
+  });
+  if (props.schemaProp.kind == "array") {
+    if (_.isUndefined(arrayIndex?.value)) {
+      return false;
+    }
+  } else if (props.schemaProp.kind == "map") {
+    if (_.isUndefined(props.propValue.key)) {
+      return false;
+    }
+  }
+  return true;
+});
 </script>
