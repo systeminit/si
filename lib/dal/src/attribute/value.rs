@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use si_data::{NatsError, PgError};
 
+use std::collections::VecDeque;
 use telemetry::prelude::*;
 use thiserror::Error;
 use uuid::Uuid;
@@ -648,6 +649,7 @@ impl AttributeValue {
             .set_prop_id(*child_prop.id())
             .to_context()?;
 
+        let old_key = key.clone();
         let key = if let Some(k) = key {
             Some(k)
         } else if *parent_prop.kind() == PropKind::Array {
@@ -687,7 +689,7 @@ impl AttributeValue {
         if AttributePrototype::find_with_parent_value_and_key_for_context(
             ctx,
             Some(parent_attribute_value_id),
-            key.clone(),
+            old_key.clone(),
             context,
         )
         .await
@@ -707,7 +709,55 @@ impl AttributeValue {
             .map_err(|e| AttributeValueError::AttributePrototype(format!("{e}")))?;
         };
 
-        let (_, attribute_value_id) = AttributeValue::update_for_context(
+        let prop = Self::find_prop_for_value(ctx, *attribute_value.id()).await?;
+        let mut child_props: VecDeque<_> = prop
+            .child_props(ctx)
+            .await?
+            .into_iter()
+            .map(|p| (*attribute_value.id(), p))
+            .collect();
+        while let Some((parent_attribute_value_id, prop)) = child_props.pop_front() {
+            let context = child_context_builder.set_prop_id(*prop.id()).to_context()?;
+            let prop_attribute_value = Self::new(
+                ctx,
+                *unset_func_binding.id(),
+                *func_binding_return_value.id(),
+                context,
+                Option::<&str>::None,
+            )
+            .await?;
+
+            prop_attribute_value
+                .set_parent_attribute_value(ctx, &parent_attribute_value_id)
+                .await?;
+
+            let prototype = AttributePrototype::new_with_existing_value(
+                ctx,
+                *unset_func.id(),
+                context,
+                key.clone(),
+                Some(parent_attribute_value_id),
+                None,
+                parent_attribute_value_id,
+            )
+            .await
+            .map_err(|e| AttributeValueError::AttributePrototype(format!("{e}")))?;
+
+            prop_attribute_value
+                .set_attribute_prototype(ctx, prototype.id())
+                .await?;
+
+            if *prop.kind() == PropKind::Object {
+                child_props.extend(
+                    prop.child_props(ctx)
+                        .await?
+                        .into_iter()
+                        .map(|p| (*prop_attribute_value.id(), p)),
+                );
+            }
+        }
+
+        let (_, attribute_value_id) = Self::update_for_context(
             ctx,
             *attribute_value.id(),
             Some(parent_attribute_value_id),
