@@ -235,9 +235,16 @@ watch(editorContext, (newValue) => {
 //      kind: PropertyEditorPropKind.String,
 //      widgetKind: PropertyEditorPropWidgetKind.Text,
 //    },
+//    25: {
+//      id: 25,
+//      name: "isHip",
+//      kind: PropertyEditorPropKind.Boolean,
+//      widgetKind: PropertyEditorPropWidgetKind.CheckBox,
+//      docLink: "https://www.songfacts.com/facts/tower-of-power/what-is-hip",
+//    },
 //  },
 //  childProps: {
-//    0: [1, 2, 3, 4, 8, 10, 17, 19],
+//    0: [1, 2, 3, 25, 4, 8, 10, 17, 19],
 //    4: [5],
 //    5: [6, 7],
 //    8: [9],
@@ -317,9 +324,14 @@ watch(editorContext, (newValue) => {
 //      propId: 19,
 //      value: {},
 //    },
+//    12: {
+//      id: 12,
+//      propId: 25,
+//      value: {},
+//    },
 //  },
 //  childValues: {
-//    0: [1, 2, 3, 4, 8, 9, 10, 11],
+//    0: [1, 2, 3, 12, 4, 8, 9, 10, 11],
 //    4: [5],
 //    5: [6, 7],
 //  },
@@ -333,6 +345,15 @@ watch(editorContext, (newValue) => {
 //      errors: [
 //        {
 //          message: "You should not be def leppard, dummy",
+//        },
+//      ],
+//    },
+//    [12]: {
+//      valueId: 12,
+//      valid: false,
+//      errors: [
+//        {
+//          message: "You ain't just exactly sure what is hip",
 //        },
 //      ],
 //    },
