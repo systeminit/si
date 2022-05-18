@@ -105,6 +105,7 @@ impl From<&PropId> for PropertyEditorPropId {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PropertyEditorProp {
     pub id: PropertyEditorPropId,
     pub name: String,
@@ -126,6 +127,7 @@ impl From<Prop> for PropertyEditorProp {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PropertyEditorSchema {
     pub root_prop_id: PropertyEditorPropId,
     pub props: HashMap<PropertyEditorPropId, PropertyEditorProp>,
@@ -183,6 +185,7 @@ impl PropertyEditorSchema {
 pk!(PropertyEditorValueId);
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PropertyEditorValue {
     id: PropertyEditorValueId,
     pub prop_id: PropertyEditorPropId,
@@ -191,6 +194,7 @@ pub struct PropertyEditorValue {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PropertyEditorValues {
     root_value_id: PropertyEditorValueId,
     pub values: HashMap<PropertyEditorValueId, PropertyEditorValue>,
@@ -260,6 +264,7 @@ impl PropertyEditorValues {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PropertyEditorValidationError {
     message: String,
     level: Option<String>,
@@ -268,6 +273,7 @@ pub struct PropertyEditorValidationError {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PropertyEditorValidation {
     value_id: PropertyEditorValueId,
     valid: bool,
@@ -275,6 +281,7 @@ pub struct PropertyEditorValidation {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PropertyEditorValidations {
     validations: Vec<PropertyEditorValidation>,
 }

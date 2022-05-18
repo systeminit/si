@@ -1,51 +1,63 @@
 <template>
-  <label :for="props.id" class="block text-sm font-medium text-gray-200">
-    {{ props.title }} <span v-if="required">(required)</span>
-  </label>
+  <div>
+    <label :for="props.id" class="block text-sm font-medium text-gray-200">
+      {{ props.title }} <span v-if="required">(required)</span>
+    </label>
 
-  <div class="mt-1 w-full relative">
-    <input
-      :id="props.id"
-      v-model="inputValue"
-      :data-test="props.id"
-      :placeholder="props.placeholder"
-      :type="type"
-      :name="props.id"
-      :autocomplete="props.id"
-      :aria-invalid="inError"
-      :disabled="props.disabled"
-      required
-      class="appearance-none block bg-gray-900 text-gray-100 w-full px-3 py-2 border rounded-sm shadow-sm placeholder-gray-400 focus:outline-none sm:text-sm disabled:border-gray-800"
-      :class="textBoxClasses"
-      @blur="setDirty"
-    />
-    <div
-      v-if="inError"
-      class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none"
-    >
-      <ExclamationCircleIcon class="h-5 w-5 text-red-400" aria-hidden="true" />
+    <div class="mt-1 w-full relative">
+      <input
+        :id="props.id"
+        v-model="inputValue"
+        :data-test="props.id"
+        :placeholder="props.placeholder"
+        :type="type"
+        :name="props.id"
+        :autocomplete="props.id"
+        :aria-invalid="inError"
+        :disabled="props.disabled"
+        required
+        class="appearance-none block bg-gray-900 text-gray-100 w-full px-3 py-2 border rounded-sm shadow-sm placeholder-gray-400 focus:outline-none sm:text-sm disabled:border-gray-800"
+        :class="textBoxClasses"
+        v-bind="$attrs"
+        @blur="setDirty"
+      />
+      <div
+        v-if="inError"
+        class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none"
+      >
+        <ExclamationCircleIcon
+          class="h-5 w-5 text-red-400"
+          aria-hidden="true"
+        />
+      </div>
     </div>
+
+    <p v-if="props.docLink" class="mt-2 text-xs text-blue-300">
+      <a :href="props.docLink" target="_blank" class="hover:underline">
+        Documentation
+      </a>
+    </p>
+
+    <p v-if="props.description" class="mt-2 text-xs text-gray-300">
+      {{ props.description }}
+    </p>
+
+    <SiValidation
+      :value="String(inputValue)"
+      :validations="validations"
+      :required="required"
+      :dirty="reallyDirty"
+      class="mt-2"
+      @errors="setInError($event)"
+    />
   </div>
-
-  <p v-if="props.docLink" class="mt-2 text-xs text-blue-300">
-    <a :href="props.docLink" target="_blank" class="hover:underline">
-      Documentation
-    </a>
-  </p>
-
-  <p v-if="props.description" class="mt-2 text-xs text-gray-300">
-    {{ props.description }}
-  </p>
-
-  <SiValidation
-    :value="String(inputValue)"
-    :validations="validations"
-    :required="required"
-    :dirty="reallyDirty"
-    class="mt-2"
-    @errors="setInError($event)"
-  />
 </template>
+
+<script lang="ts">
+export default {
+  inheritAttrs: false,
+};
+</script>
 
 <script setup lang="ts">
 import { ExclamationCircleIcon } from "@heroicons/vue/solid";

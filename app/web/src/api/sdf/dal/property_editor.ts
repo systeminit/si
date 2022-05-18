@@ -87,17 +87,21 @@ export interface UpdatedProperty {
   propId: number;
   valueId: number;
   value: unknown;
+  parentValueId?: number;
+  key?: string;
 }
 
 export interface AddToArray {
   propId: number;
   valueId: number;
+  key?: string;
 }
 
 export interface AddToMap {
   propId: number;
   valueId: number;
-  key: string;
+  parentValueId?: number;
+  key?: string;
 }
 
 export interface PropertyPath {

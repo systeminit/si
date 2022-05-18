@@ -92,7 +92,8 @@ impl From<PropKind> for WidgetKind {
             PropKind::Array => Self::Array,
             PropKind::Boolean => Self::Checkbox,
             PropKind::String | PropKind::Integer => Self::Text,
-            PropKind::Object | PropKind::Map => Self::Header,
+            PropKind::Object => Self::Header,
+            PropKind::Map => Self::Map,
         }
     }
 }
