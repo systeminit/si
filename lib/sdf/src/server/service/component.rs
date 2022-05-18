@@ -5,9 +5,9 @@ use axum::{
     Json, Router,
 };
 use dal::{
-    node::NodeError, property_editor::PropertyEditorError, ComponentError as DalComponentError,
-    ComponentId, ReadTenancyError, SchemaError, SchematicError, StandardModelError, SystemId,
-    TransactionsError, WsEventError,
+    node::NodeError, property_editor::PropertyEditorError, AttributeValueError,
+    ComponentError as DalComponentError, ComponentId, ReadTenancyError, SchemaError,
+    SchematicError, StandardModelError, SystemId, TransactionsError, WsEventError,
 };
 
 use thiserror::Error;
@@ -20,12 +20,16 @@ pub mod get_property_editor_schema;
 pub mod get_property_editor_validations;
 pub mod get_property_editor_values;
 pub mod get_resource;
+pub mod insert_property_editor_value;
 pub mod list_components_identification;
 pub mod list_qualifications;
 pub mod sync_resource;
+pub mod update_property_editor_value;
 
 #[derive(Debug, Error)]
 pub enum ComponentError {
+    #[error("attribute value error: {0}")]
+    AttributeValue(#[from] AttributeValueError),
     #[error("entity error: {0}")]
     Component(#[from] DalComponentError),
     #[error("component name not found")]
@@ -113,6 +117,14 @@ pub fn routes() -> Router {
         .route(
             "/get_property_editor_values",
             get(get_property_editor_values::get_property_editor_values),
+        )
+        .route(
+            "/update_property_editor_value",
+            post(update_property_editor_value::update_property_editor_value),
+        )
+        .route(
+            "/insert_property_editor_value",
+            post(insert_property_editor_value::insert_property_editor_value),
         )
         .route(
             "/get_property_editor_validations",
