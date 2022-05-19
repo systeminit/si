@@ -1,4 +1,3 @@
-use crate::{AttributeReadContext, DalContext};
 use std::{env, path::Path, sync::Arc};
 
 use anyhow::Result;
@@ -18,11 +17,11 @@ use crate::{
     node::NodeKind,
     schema,
     socket::{Socket, SocketArity, SocketEdgeKind},
-    BillingAccount, BillingAccountId, ChangeSet, Component, EditSession, EncryptedSecret, Func,
-    FuncBackendKind, FuncBackendResponseType, Group, HistoryActor, KeyPair, Node, Organization,
-    Prop, PropId, PropKind, QualificationCheck, Schema, SchemaId, SchemaKind, SchemaVariantId,
-    SchematicKind, Secret, SecretKind, SecretObjectType, StandardModel, System, User, Visibility,
-    Workspace, WriteTenancy, NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK,
+    BillingAccount, BillingAccountId, ChangeSet, Component, DalContext, EditSession,
+    EncryptedSecret, Func, FuncBackendKind, FuncBackendResponseType, Group, HistoryActor, KeyPair,
+    Node, Organization, Prop, PropId, PropKind, QualificationCheck, Schema, SchemaId, SchemaKind,
+    SchemaVariantId, SchematicKind, Secret, SecretKind, SecretObjectType, StandardModel, System,
+    User, Visibility, Workspace, WriteTenancy, NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK,
 };
 
 #[derive(Debug)]
@@ -320,16 +319,13 @@ pub async fn create_schema_ui_menu(ctx: &DalContext<'_, '_>) -> schema::UiMenu {
         .expect("cannot create schema ui menu")
 }
 
-#[allow(clippy::too_many_arguments)]
 pub async fn create_schema_variant(
     ctx: &DalContext<'_, '_>,
-
     schema_id: SchemaId,
 ) -> schema::SchemaVariant {
     create_schema_variant_with_root(ctx, schema_id).await.0
 }
 
-#[allow(clippy::too_many_arguments)]
 pub async fn create_schema_variant_with_root(
     ctx: &DalContext<'_, '_>,
     schema_id: SchemaId,
@@ -474,14 +470,13 @@ pub async fn create_prop_of_kind_and_set_parent_with_name(
     prop_kind: PropKind,
     name: impl AsRef<str>,
     parent_prop_id: PropId,
-    base_attribute_read_context: AttributeReadContext,
 ) -> Prop {
     let name = name.as_ref();
     let new_prop = Prop::new(ctx, name, prop_kind)
         .await
         .expect("cannot create prop");
     new_prop
-        .set_parent_prop(ctx, parent_prop_id, base_attribute_read_context)
+        .set_parent_prop(ctx, parent_prop_id)
         .await
         .expect("cannot set parent to new prop");
     new_prop

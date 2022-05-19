@@ -672,7 +672,6 @@ impl AttributeValue {
             .set_prop_id(*child_prop.id())
             .to_context()?;
 
-        let old_key = key.clone();
         let key = if let Some(k) = key {
             Some(k)
         } else if *parent_prop.kind() == PropKind::Array {

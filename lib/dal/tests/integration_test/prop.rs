@@ -1,10 +1,10 @@
-use crate::dal::test;
 use dal::{
     test_harness::{create_prop, create_prop_of_kind, create_schema, create_schema_variant},
-    HistoryActor, Prop, PropKind, SchemaKind, StandardModel, Visibility, WriteTenancy,
+    DalContext, HistoryActor, Prop, PropKind, SchemaKind, StandardModel, Visibility, WriteTenancy,
 };
-use dal::{AttributeReadContext, DalContext};
 use pretty_assertions_sorted::assert_eq;
+
+use crate::dal::test;
 
 #[test]
 async fn new(ctx: &DalContext<'_, '_>) {
@@ -50,7 +50,7 @@ async fn parent_props(ctx: &DalContext<'_, '_>) {
     let parent_prop = create_prop_of_kind(ctx, PropKind::Object).await;
     let child_prop = create_prop_of_kind(ctx, PropKind::String).await;
     child_prop
-        .set_parent_prop(ctx, *parent_prop.id(), AttributeReadContext::default())
+        .set_parent_prop(ctx, *parent_prop.id())
         .await
         .expect("cannot set parent prop");
     let retrieved_parent_prop = child_prop
@@ -72,8 +72,6 @@ async fn parent_props_wrong_prop_kinds(ctx: &DalContext<'_, '_>) {
     let parent_prop = create_prop_of_kind(ctx, PropKind::String).await;
     let child_prop = create_prop_of_kind(ctx, PropKind::Object).await;
 
-    let result = child_prop
-        .set_parent_prop(ctx, *parent_prop.id(), AttributeReadContext::default())
-        .await;
+    let result = child_prop.set_parent_prop(ctx, *parent_prop.id()).await;
     result.expect_err("should have errored, and it did not");
 }

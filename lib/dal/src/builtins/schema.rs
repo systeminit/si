@@ -285,15 +285,9 @@ async fn docker_hub_credential(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
         .set_default_schema_variant_id(ctx, Some(*variant.id()))
         .await?;
 
-    let base_attribute_read_context = AttributeReadContext {
-        schema_id: Some(*schema.id()),
-        schema_variant_id: Some(*variant.id()),
-        ..AttributeReadContext::default()
-    };
-
     let mut secret_prop = Prop::new(ctx, "secret", PropKind::Integer).await?;
     secret_prop
-        .set_parent_prop(ctx, root_prop.domain_prop_id, base_attribute_read_context)
+        .set_parent_prop(ctx, root_prop.domain_prop_id)
         .await?;
     secret_prop
         .set_widget_kind(ctx, WidgetKind::SecretSelect)
@@ -418,25 +412,19 @@ async fn docker_image(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
         .add_root_schematic(ctx, application_schema.id())
         .await?;
 
-    let base_attribute_read_context = AttributeReadContext {
-        schema_id: Some(*schema.id()),
-        schema_variant_id: Some(*variant.id()),
-        ..AttributeReadContext::default()
-    };
-
     let image_prop = Prop::new(ctx, "image", PropKind::String).await?;
     image_prop
-        .set_parent_prop(ctx, root_prop.domain_prop_id, base_attribute_read_context)
+        .set_parent_prop(ctx, root_prop.domain_prop_id)
         .await?;
 
     // TODO: required, validate regex: "\\d+\\/(tcp|udp)", message: "invalid exposed port entry; must be [numeric]/(tcp|udp)",
     let exposed_ports_prop = Prop::new(ctx, "ExposedPorts", PropKind::Array).await?;
     exposed_ports_prop
-        .set_parent_prop(ctx, root_prop.domain_prop_id, base_attribute_read_context)
+        .set_parent_prop(ctx, root_prop.domain_prop_id)
         .await?;
     let exposed_port_prop = Prop::new(ctx, "ExposedPort", PropKind::String).await?;
     exposed_port_prop
-        .set_parent_prop(ctx, *exposed_ports_prop.id(), base_attribute_read_context)
+        .set_parent_prop(ctx, *exposed_ports_prop.id())
         .await?;
 
     let number_of_parents_prop = Prop::new(
@@ -446,7 +434,7 @@ async fn docker_image(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     )
     .await?;
     number_of_parents_prop
-        .set_parent_prop(ctx, root_prop.domain_prop_id, base_attribute_read_context)
+        .set_parent_prop(ctx, root_prop.domain_prop_id)
         .await?;
 
     // TODO: we don't have a component to have their props, but we can manually rebuild the props from what we created in this schema variant
@@ -612,12 +600,6 @@ async fn bobao(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
         .add_root_schematic(ctx, application_schema.id())
         .await?;
 
-    let base_attribute_read_context = AttributeReadContext {
-        schema_id: Some(*schema.id()),
-        schema_variant_id: Some(*variant.id()),
-        ..AttributeReadContext::default()
-    };
-
     let func_name = "si:validateStringEquals".to_string();
     let mut funcs = Func::find_by_attr(ctx, "name", &func_name).await?;
     let func = funcs.pop().ok_or(SchemaError::MissingFunc(func_name))?;
@@ -627,7 +609,7 @@ async fn bobao(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
 
     let text_prop = Prop::new(ctx, "text", PropKind::String).await?;
     text_prop
-        .set_parent_prop(ctx, root_prop.domain_prop_id, base_attribute_read_context)
+        .set_parent_prop(ctx, root_prop.domain_prop_id)
         .await?;
     validation_prototype_ctx.set_prop_id(*text_prop.id());
     let mut prototype = ValidationPrototype::new(
@@ -649,17 +631,17 @@ async fn bobao(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
 
     let integer_prop = Prop::new(ctx, "integer", PropKind::Integer).await?;
     integer_prop
-        .set_parent_prop(ctx, root_prop.domain_prop_id, base_attribute_read_context)
+        .set_parent_prop(ctx, root_prop.domain_prop_id)
         .await?;
 
     let boolean_prop = Prop::new(ctx, "boolean", PropKind::Boolean).await?;
     boolean_prop
-        .set_parent_prop(ctx, root_prop.domain_prop_id, base_attribute_read_context)
+        .set_parent_prop(ctx, root_prop.domain_prop_id)
         .await?;
 
     let object_prop = Prop::new(ctx, "object", PropKind::Object).await?;
     object_prop
-        .set_parent_prop(ctx, root_prop.domain_prop_id, base_attribute_read_context)
+        .set_parent_prop(ctx, root_prop.domain_prop_id)
         .await?;
     validation_prototype_ctx.set_prop_id(*integer_prop.id());
     let mut prototype = ValidationPrototype::new(
@@ -680,13 +662,11 @@ async fn bobao(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
         .await?;
 
     let child_prop = Prop::new(ctx, "child", PropKind::String).await?;
-    child_prop
-        .set_parent_prop(ctx, *object_prop.id(), base_attribute_read_context)
-        .await?;
+    child_prop.set_parent_prop(ctx, *object_prop.id()).await?;
 
     let map_prop = Prop::new(ctx, "map", PropKind::Object).await?;
     map_prop
-        .set_parent_prop(ctx, root_prop.domain_prop_id, base_attribute_read_context)
+        .set_parent_prop(ctx, root_prop.domain_prop_id)
         .await?;
     validation_prototype_ctx.set_prop_id(*map_prop.id());
     let mut prototype = ValidationPrototype::new(
@@ -708,7 +688,7 @@ async fn bobao(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
 
     let array_prop = Prop::new(ctx, "array", PropKind::Object).await?;
     array_prop
-        .set_parent_prop(ctx, root_prop.domain_prop_id, base_attribute_read_context)
+        .set_parent_prop(ctx, root_prop.domain_prop_id)
         .await?;
     validation_prototype_ctx.set_prop_id(*array_prop.id());
     let mut prototype = ValidationPrototype::new(
@@ -731,7 +711,7 @@ async fn bobao(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
 
     let mut secret_prop = Prop::new(ctx, "secret", PropKind::Integer).await?;
     secret_prop
-        .set_parent_prop(ctx, root_prop.domain_prop_id, base_attribute_read_context)
+        .set_parent_prop(ctx, root_prop.domain_prop_id)
         .await?;
     secret_prop
         .set_widget_kind(ctx, WidgetKind::SecretSelect)
@@ -807,12 +787,10 @@ pub async fn create_prop(
     prop_name: &str,
     prop_kind: PropKind,
     parent_prop_id: Option<PropId>,
-    base_attribute_read_context: AttributeReadContext,
 ) -> BuiltinsResult<Prop> {
     let prop = Prop::new(ctx, prop_name, prop_kind).await?;
     if let Some(parent_prop_id) = parent_prop_id {
-        prop.set_parent_prop(ctx, parent_prop_id, base_attribute_read_context)
-            .await?;
+        prop.set_parent_prop(ctx, parent_prop_id).await?;
     }
     Ok(prop)
 }
@@ -823,16 +801,9 @@ pub async fn create_string_prop_with_default(
     prop_name: &str,
     default_string: String,
     parent_prop_id: Option<PropId>,
-    base_attribute_read_context: AttributeReadContext,
+    _base_attribute_read_context: AttributeReadContext,
 ) -> BuiltinsResult<Prop> {
-    let prop = create_prop(
-        ctx,
-        prop_name,
-        PropKind::String,
-        parent_prop_id,
-        base_attribute_read_context,
-    )
-    .await?;
+    let prop = create_prop(ctx, prop_name, PropKind::String, parent_prop_id).await?;
 
     let mut func = Func::new(
         ctx,
@@ -874,6 +845,7 @@ pub async fn create_string_prop_with_default(
     }
 
     // TODO: Set up AttribuePrototype & AttributeValue appropriately
+    // YES!
 
     Ok(prop)
 }

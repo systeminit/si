@@ -72,7 +72,6 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> BuiltinsResult<(
             ctx,
             true, // is name required, note: bool is not ideal here tho
             Some(root_prop.domain_prop_id),
-            base_attribute_read_context,
         )
         .await?;
     }

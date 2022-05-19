@@ -1,23 +1,14 @@
-use crate::builtins::schema::create_prop;
-use crate::builtins::BuiltinsResult;
-use crate::{AttributeReadContext, DalContext};
-use crate::{Prop, PropId, PropKind, StandardModel};
+use crate::{
+    builtins::{schema::create_prop, BuiltinsResult},
+    DalContext, Prop, PropId, PropKind, StandardModel,
+};
 
-#[allow(clippy::too_many_arguments)]
 #[allow(dead_code)]
 pub async fn create_spec_prop(
     ctx: &DalContext<'_, '_>,
     parent_prop_id: PropId,
-    base_attribute_read_context: AttributeReadContext,
 ) -> BuiltinsResult<Prop> {
-    let spec_prop = create_prop(
-        ctx,
-        "spec",
-        PropKind::Object,
-        Some(parent_prop_id),
-        base_attribute_read_context,
-    )
-    .await?;
+    let spec_prop = create_prop(ctx, "spec", PropKind::Object, Some(parent_prop_id)).await?;
 
     {
         let containers_prop = create_prop(
@@ -25,31 +16,18 @@ pub async fn create_spec_prop(
             "containers",
             PropKind::Array, // How to specify it as an array of objects?
             Some(*spec_prop.id()),
-            base_attribute_read_context,
         )
         .await?;
 
         {
             // Do we want default values here?
-            let _name_prop = create_prop(
-                ctx,
-                "name",
-                PropKind::String,
-                Some(*containers_prop.id()),
-                base_attribute_read_context,
-            )
-            .await?;
+            let _name_prop =
+                create_prop(ctx, "name", PropKind::String, Some(*containers_prop.id())).await?;
         }
 
         {
-            let _image_prop = create_prop(
-                ctx,
-                "image",
-                PropKind::String,
-                Some(*containers_prop.id()),
-                base_attribute_read_context,
-            )
-            .await?;
+            let _image_prop =
+                create_prop(ctx, "image", PropKind::String, Some(*containers_prop.id())).await?;
         }
 
         {
@@ -59,41 +37,22 @@ pub async fn create_spec_prop(
                 "env",
                 PropKind::Array, // How to specify it as an array of objects?
                 Some(*containers_prop.id()),
-                base_attribute_read_context,
             )
             .await?;
 
             {
-                let _name_prop = create_prop(
-                    ctx,
-                    "name",
-                    PropKind::String,
-                    Some(*env_prop.id()),
-                    base_attribute_read_context,
-                )
-                .await?;
+                let _name_prop =
+                    create_prop(ctx, "name", PropKind::String, Some(*env_prop.id())).await?;
             }
 
             {
-                let _value_prop = create_prop(
-                    ctx,
-                    "value",
-                    PropKind::String,
-                    Some(*env_prop.id()),
-                    base_attribute_read_context,
-                )
-                .await?;
+                let _value_prop =
+                    create_prop(ctx, "value", PropKind::String, Some(*env_prop.id())).await?;
             }
 
             {
-                let _value_from_prop = create_prop(
-                    ctx,
-                    "valueFrom",
-                    PropKind::Object,
-                    Some(*env_prop.id()),
-                    base_attribute_read_context,
-                )
-                .await?;
+                let _value_from_prop =
+                    create_prop(ctx, "valueFrom", PropKind::Object, Some(*env_prop.id())).await?;
 
                 {
                     let _secret_key_ref_prop = create_prop(
@@ -101,7 +60,6 @@ pub async fn create_spec_prop(
                         "secretKeyRef",
                         PropKind::Object,
                         Some(*_value_from_prop.id()),
-                        base_attribute_read_context,
                     )
                     .await?;
 
@@ -111,7 +69,6 @@ pub async fn create_spec_prop(
                             "name",
                             PropKind::String,
                             Some(*_secret_key_ref_prop.id()),
-                            base_attribute_read_context,
                         )
                         .await?;
                     }
@@ -122,7 +79,6 @@ pub async fn create_spec_prop(
                             "key",
                             PropKind::String,
                             Some(*_secret_key_ref_prop.id()),
-                            base_attribute_read_context,
                         )
                         .await?;
                     }
@@ -133,7 +89,6 @@ pub async fn create_spec_prop(
                             "optional",
                             PropKind::Boolean,
                             Some(*_secret_key_ref_prop.id()),
-                            base_attribute_read_context,
                         )
                         .await?;
                     }
@@ -145,7 +100,6 @@ pub async fn create_spec_prop(
                         "configMapRef",
                         PropKind::Object,
                         Some(*_value_from_prop.id()),
-                        base_attribute_read_context,
                     )
                     .await?;
 
@@ -155,7 +109,6 @@ pub async fn create_spec_prop(
                             "name",
                             PropKind::String,
                             Some(*_config_map_ref_prop.id()),
-                            base_attribute_read_context,
                         )
                         .await?;
                     }
@@ -166,7 +119,6 @@ pub async fn create_spec_prop(
                             "key",
                             PropKind::String,
                             Some(*_config_map_ref_prop.id()),
-                            base_attribute_read_context,
                         )
                         .await?;
                     }
@@ -177,7 +129,6 @@ pub async fn create_spec_prop(
                             "optional",
                             PropKind::Boolean,
                             Some(*_config_map_ref_prop.id()),
-                            base_attribute_read_context,
                         )
                         .await?;
                     }
@@ -189,7 +140,6 @@ pub async fn create_spec_prop(
                         "resourceFieldRef",
                         PropKind::Object,
                         Some(*_value_from_prop.id()),
-                        base_attribute_read_context,
                     )
                     .await?;
 
@@ -199,7 +149,6 @@ pub async fn create_spec_prop(
                             "containerName",
                             PropKind::String,
                             Some(*_resource_field_ref_prop.id()),
-                            base_attribute_read_context,
                         )
                         .await?;
                     }
@@ -210,7 +159,6 @@ pub async fn create_spec_prop(
                             "resource",
                             PropKind::String,
                             Some(*_resource_field_ref_prop.id()),
-                            base_attribute_read_context,
                         )
                         .await?;
                     }
@@ -221,7 +169,6 @@ pub async fn create_spec_prop(
                             "divisor",
                             PropKind::String,
                             Some(*_resource_field_ref_prop.id()),
-                            base_attribute_read_context,
                         )
                         .await?;
                     }
@@ -233,7 +180,6 @@ pub async fn create_spec_prop(
                         "fieldRef",
                         PropKind::Object,
                         Some(*_value_from_prop.id()),
-                        base_attribute_read_context,
                     )
                     .await?;
 
@@ -244,7 +190,6 @@ pub async fn create_spec_prop(
                             "apiVersion",
                             PropKind::String,
                             Some(*_field_ref_prop.id()),
-                            base_attribute_read_context,
                         )
                         .await?;
                     }
@@ -255,7 +200,6 @@ pub async fn create_spec_prop(
                             "fieldPath",
                             PropKind::String,
                             Some(*_field_ref_prop.id()),
-                            base_attribute_read_context,
                         )
                         .await?;
                     }
@@ -272,7 +216,6 @@ pub async fn create_spec_prop(
                 "imagePullPolicy",
                 PropKind::String,
                 Some(*containers_prop.id()),
-                base_attribute_read_context,
             )
             .await?;
         }
@@ -283,19 +226,12 @@ pub async fn create_spec_prop(
                 "ports",
                 PropKind::Array, // How to specify it as an array of objects?
                 Some(*containers_prop.id()),
-                base_attribute_read_context,
             )
             .await?;
 
             {
-                let _name_prop = create_prop(
-                    ctx,
-                    "name",
-                    PropKind::String,
-                    Some(*ports_prop.id()),
-                    base_attribute_read_context,
-                )
-                .await?;
+                let _name_prop =
+                    create_prop(ctx, "name", PropKind::String, Some(*ports_prop.id())).await?;
             }
 
             {
@@ -305,45 +241,26 @@ pub async fn create_spec_prop(
                     "containerPort",
                     PropKind::Integer,
                     Some(*ports_prop.id()),
-                    base_attribute_read_context,
                 )
                 .await?;
             }
 
             {
-                let _host_ip_prop = create_prop(
-                    ctx,
-                    "hostIp",
-                    PropKind::String,
-                    Some(*ports_prop.id()),
-                    base_attribute_read_context,
-                )
-                .await?;
+                let _host_ip_prop =
+                    create_prop(ctx, "hostIp", PropKind::String, Some(*ports_prop.id())).await?;
             }
 
             {
                 // TODO: int from 0 to 65536
-                let _host_port_prop = create_prop(
-                    ctx,
-                    "hostPort",
-                    PropKind::Integer,
-                    Some(*ports_prop.id()),
-                    base_attribute_read_context,
-                )
-                .await?;
+                let _host_port_prop =
+                    create_prop(ctx, "hostPort", PropKind::Integer, Some(*ports_prop.id())).await?;
             }
 
             {
                 // TODO: validate to ensure it's either "TCP", "UDP" or "SCTP"
                 // Is there a selector widget? If so how to enable it
-                let _protocol_prop = create_prop(
-                    ctx,
-                    "protocol",
-                    PropKind::String,
-                    Some(*ports_prop.id()),
-                    base_attribute_read_context,
-                )
-                .await?;
+                let _protocol_prop =
+                    create_prop(ctx, "protocol", PropKind::String, Some(*ports_prop.id())).await?;
             }
         }
 
@@ -353,7 +270,6 @@ pub async fn create_spec_prop(
                 "volumeMounts",
                 PropKind::Array, // How to specify it as an array of objects?
                 Some(*containers_prop.id()),
-                base_attribute_read_context,
             )
             .await?;
 
@@ -363,7 +279,6 @@ pub async fn create_spec_prop(
                     "name",
                     PropKind::String,
                     Some(*volume_mounts_prop.id()),
-                    base_attribute_read_context,
                 )
                 .await?;
             }
@@ -374,7 +289,6 @@ pub async fn create_spec_prop(
                     "mountPath",
                     PropKind::String,
                     Some(*volume_mounts_prop.id()),
-                    base_attribute_read_context,
                 )
                 .await?;
             }
@@ -387,40 +301,21 @@ pub async fn create_spec_prop(
             "volumes",
             PropKind::Array, // How to specify it as an array of objects?
             Some(*spec_prop.id()),
-            base_attribute_read_context,
         )
         .await?;
 
         {
-            let _name_prop = create_prop(
-                ctx,
-                "name",
-                PropKind::String,
-                Some(*volumes_prop.id()),
-                base_attribute_read_context,
-            )
-            .await?;
+            let _name_prop =
+                create_prop(ctx, "name", PropKind::String, Some(*volumes_prop.id())).await?;
         }
 
         {
-            let config_map_prop = create_prop(
-                ctx,
-                "configMap",
-                PropKind::Object,
-                Some(*volumes_prop.id()),
-                base_attribute_read_context,
-            )
-            .await?;
+            let config_map_prop =
+                create_prop(ctx, "configMap", PropKind::Object, Some(*volumes_prop.id())).await?;
 
             {
-                let _name_prop = create_prop(
-                    ctx,
-                    "name",
-                    PropKind::String,
-                    Some(*config_map_prop.id()),
-                    base_attribute_read_context,
-                )
-                .await?;
+                let _name_prop =
+                    create_prop(ctx, "name", PropKind::String, Some(*config_map_prop.id())).await?;
             }
         }
     }
@@ -431,7 +326,6 @@ pub async fn create_spec_prop(
             "imagePullSecrets",
             PropKind::Array, // How to specify it as an array of objects?
             Some(*spec_prop.id()),
-            base_attribute_read_context,
         )
         .await?;
 
@@ -441,7 +335,6 @@ pub async fn create_spec_prop(
                 "name",
                 PropKind::String,
                 Some(*image_pull_secrets_prop.id()),
-                base_attribute_read_context,
             )
             .await?;
         }

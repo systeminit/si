@@ -5,8 +5,8 @@ use dal::{
         create_component_and_schema, create_component_for_schema_variant, create_schema,
         create_schema_variant, create_schema_variant_with_root,
     },
-    AttributeReadContext, Component, DalContext, Prop, PropKind, Resource, Schema, SchemaKind,
-    StandardModel, WorkspaceId,
+    Component, DalContext, Prop, PropKind, Resource, Schema, SchemaKind, StandardModel,
+    WorkspaceId,
 };
 use pretty_assertions_sorted::{assert_eq, assert_eq_sorted};
 use serde_json::json;
@@ -86,16 +86,10 @@ async fn qualification_view(ctx: &DalContext<'_, '_>) {
             .await
             .expect("Unable to create component");
 
-    let base_attribute_read_context = AttributeReadContext {
-        schema_id: Some(*schema.id()),
-        schema_variant_id: Some(*schema_variant.id()),
-        ..AttributeReadContext::default()
-    };
-
     let prop = Prop::new(ctx, "some_property", PropKind::String)
         .await
         .expect("cannot create prop");
-    prop.set_parent_prop(ctx, root.domain_prop_id, base_attribute_read_context)
+    prop.set_parent_prop(ctx, root.domain_prop_id)
         .await
         .expect("Unable to set some_property parent to root.domain");
     prop.add_schema_variant(ctx, schema_variant.id())

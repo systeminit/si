@@ -39,7 +39,6 @@ async fn create_and_list_for_schema_variant(ctx: &DalContext<'_, '_>) {
         PropKind::Object,
         "object",
         root_prop.domain_prop_id,
-        base_attribute_read_context,
     )
     .await;
     let _name_prop = create_prop_of_kind_and_set_parent_with_name(
@@ -47,7 +46,6 @@ async fn create_and_list_for_schema_variant(ctx: &DalContext<'_, '_>) {
         PropKind::String,
         "name",
         *object_prop.id(),
-        base_attribute_read_context,
     )
     .await;
     let value_prop = create_prop_of_kind_and_set_parent_with_name(
@@ -55,7 +53,6 @@ async fn create_and_list_for_schema_variant(ctx: &DalContext<'_, '_>) {
         PropKind::String,
         "value",
         *object_prop.id(),
-        base_attribute_read_context,
     )
     .await;
 

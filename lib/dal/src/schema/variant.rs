@@ -1,26 +1,19 @@
-use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use si_data::{NatsError, PgError};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::func::binding::FuncBindingError;
-use crate::schema::RootProp;
 use crate::{
-    edit_field::{
-        value_and_visibility_diff, widget::prelude::*, EditField, EditFieldAble, EditFieldDataType,
-        EditFieldError, EditFieldObjectKind, VisibilityDiff,
-    },
+    func::binding::FuncBindingError,
     impl_standard_model, pk,
-    schema::SchemaError,
+    schema::{RootProp, SchemaError},
     socket::{Socket, SocketError, SocketId},
     standard_model::{self, objects_from_rows},
-    standard_model_accessor, standard_model_belongs_to, standard_model_many_to_many, DalContext,
-    HistoryEventError, Prop, PropError, PropId, PropKind, Schema, SchemaId, StandardModel,
-    StandardModelError, Timestamp, Visibility, WsEventError,
+    standard_model_accessor, standard_model_belongs_to, standard_model_many_to_many,
+    AttributeContextBuilderError, AttributeValueError, DalContext, HistoryEventError, Prop,
+    PropError, PropId, Schema, SchemaId, StandardModel, StandardModelError, Timestamp, Visibility,
+    WriteTenancy, WsEventError,
 };
-use crate::{AttributeContextBuilderError, AttributeValueError, WriteTenancy};
 
 pub mod root_prop;
 
@@ -30,8 +23,6 @@ pub enum SchemaVariantError {
     AttributeContextBuilder(#[from] AttributeContextBuilderError),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
-    #[error(transparent)]
-    EditField(#[from] EditFieldError),
     #[error("func binding error: {0}")]
     FuncBinding(#[from] FuncBindingError),
     #[error("history event error: {0}")]
@@ -165,182 +156,5 @@ impl SchemaVariant {
             .await?;
         let results = objects_from_rows(rows)?;
         Ok(results)
-    }
-
-    fn edit_field_object_kind() -> EditFieldObjectKind {
-        EditFieldObjectKind::SchemaVariant
-    }
-
-    fn name_edit_field(
-        visibility: &Visibility,
-        object: &Self,
-        head_object: &Option<Self>,
-        change_set_object: &Option<Self>,
-    ) -> SchemaVariantResult<EditField> {
-        let field_name = "name";
-        let target_fn = Self::name;
-
-        let (value, visibility_diff) = value_and_visibility_diff(
-            visibility,
-            Some(object),
-            target_fn,
-            head_object.as_ref(),
-            change_set_object.as_ref(),
-        )?;
-
-        Ok(EditField::new(
-            field_name,
-            vec![],
-            Self::edit_field_object_kind(),
-            object.id,
-            EditFieldDataType::String,
-            Widget::Text(TextWidget::new()),
-            value,
-            visibility_diff,
-            vec![], // TODO: actually validate to generate ValidationErrors
-        ))
-    }
-
-    async fn properties_edit_field(
-        ctx: &DalContext<'_, '_>,
-        object: &Self,
-    ) -> SchemaVariantResult<EditField> {
-        let field_name = "properties";
-
-        let mut items: Vec<EditField> = vec![];
-        for prop in object.props(ctx).await?.into_iter() {
-            let edit_fields = Prop::get_edit_fields(ctx, prop.id()).await?;
-            items.extend(edit_fields);
-        }
-        Ok(EditField::new(
-            field_name,
-            vec![],
-            EditFieldObjectKind::Prop,
-            object.id,
-            EditFieldDataType::Array,
-            Widget::Array(items.into()),
-            None,
-            VisibilityDiff::None,
-            vec![], // TODO: actually validate to generate ValidationErrors
-        ))
-    }
-
-    async fn connections_edit_field(
-        ctx: &DalContext<'_, '_>,
-        object: &Self,
-    ) -> SchemaVariantResult<EditField> {
-        let field_name = "connections";
-
-        let mut items: Vec<EditField> = vec![];
-        for socket in object.sockets(ctx).await?.into_iter() {
-            let edit_fields = Socket::get_edit_fields(ctx, socket.id()).await?;
-            items.extend(edit_fields);
-        }
-
-        Ok(EditField::new(
-            field_name,
-            vec![],
-            Self::edit_field_object_kind(),
-            object.id,
-            EditFieldDataType::None,
-            Widget::Header(HeaderWidget::new(vec![EditField::new(
-                "sockets",
-                vec![field_name.to_string()],
-                EditFieldObjectKind::SchemaVariant,
-                object.id,
-                EditFieldDataType::Array,
-                Widget::Array(items.into()),
-                None,
-                VisibilityDiff::None,
-                vec![], // TODO: actually validate to generate ValidationErrors
-            )])),
-            None,
-            VisibilityDiff::None,
-            vec![], // TODO: actually validate to generate ValidationErrors
-        ))
-    }
-}
-
-#[async_trait]
-impl EditFieldAble for SchemaVariant {
-    type Id = SchemaVariantId;
-    type Error = SchemaVariantError;
-
-    #[instrument(skip_all)]
-    async fn get_edit_fields(
-        ctx: &DalContext<'_, '_>,
-        id: &Self::Id,
-    ) -> Result<Vec<EditField>, Self::Error> {
-        let object = Self::get_by_id(ctx, id)
-            .await?
-            .ok_or(SchemaVariantError::NotFound(*id))?;
-        let head_object = if ctx.visibility().in_change_set() {
-            let head_visibility = ctx.visibility().to_head();
-            let ctx = ctx.clone_with_new_visibility(head_visibility);
-            Self::get_by_id(&ctx, id).await?
-        } else {
-            None
-        };
-        let change_set_object = if ctx.visibility().in_change_set() {
-            let change_set_visibility = ctx.visibility().to_change_set();
-            let ctx = ctx.clone_with_new_visibility(change_set_visibility);
-            Self::get_by_id(&ctx, id).await?
-        } else {
-            None
-        };
-
-        let edit_fields = vec![
-            Self::name_edit_field(ctx.visibility(), &object, &head_object, &change_set_object)?,
-            Self::properties_edit_field(ctx, &object).await?,
-            Self::connections_edit_field(ctx, &object).await?,
-        ];
-
-        Ok(edit_fields)
-    }
-
-    #[instrument(skip_all)]
-    async fn update_from_edit_field(
-        ctx: &DalContext<'_, '_>,
-        id: Self::Id,
-        edit_field_id: String,
-        value: Option<Value>,
-    ) -> Result<(), Self::Error> {
-        let mut object = Self::get_by_id(ctx, &id)
-            .await?
-            .ok_or(SchemaVariantError::NotFound(id))?;
-
-        match edit_field_id.as_ref() {
-            "name" => match value {
-                Some(json_value) => {
-                    let value = json_value.as_str().map(|s| s.to_string()).ok_or(
-                        Self::Error::EditField(EditFieldError::InvalidValueType("string")),
-                    )?;
-                    object.set_name(ctx, value).await?;
-                }
-                None => return Err(EditFieldError::MissingValue.into()),
-            },
-            "properties" => {
-                // TODO(fnichol): we're sticking in arbitrary default values--these become required
-                // field entries on a "new item" form somewhere
-                let prop = Prop::new(ctx, "TODO: name me!", PropKind::String).await?;
-                prop.add_schema_variant(ctx, object.id()).await?;
-            }
-            "connections.sockets" => {
-                // TODO(fnichol): we're sticking in arbitrary default values--these become required
-                // field entries on a "new item" form somewhere
-                let socket = Socket::new(
-                    ctx,
-                    "TODO: name me!",
-                    &crate::socket::SocketEdgeKind::Deployment,
-                    &crate::socket::SocketArity::One,
-                    &crate::SchematicKind::Component,
-                )
-                .await?;
-                socket.add_type(ctx, object.id()).await?;
-            }
-            invalid => return Err(EditFieldError::invalid_field(invalid).into()),
-        }
-
-        Ok(())
     }
 }

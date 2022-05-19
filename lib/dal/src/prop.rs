@@ -1,26 +1,23 @@
-use crate::{AttributeReadContext, DalContext};
-use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-
 use si_data::PgError;
 use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::func::binding_return_value::{FuncBindingReturnValue, FuncBindingReturnValueError};
 use crate::{
     attribute::{prototype::AttributePrototype, value::AttributeValue},
-    edit_field::{
-        value_and_visibility_diff, widget::prelude::*, EditField, EditFieldAble, EditFieldDataType,
-        EditFieldError, EditFieldObjectKind,
+    edit_field::widget::WidgetKind,
+    func::{
+        binding::{FuncBinding, FuncBindingError},
+        binding_return_value::{FuncBindingReturnValue, FuncBindingReturnValueError},
     },
-    func::binding::{FuncBinding, FuncBindingError},
     impl_standard_model,
     label_list::ToLabelList,
     pk, standard_model, standard_model_accessor, standard_model_belongs_to,
     standard_model_has_many, standard_model_many_to_many, AttributeContext,
-    AttributeContextBuilderError, Func, HistoryEventError, ReadTenancyError, SchemaVariant,
-    SchemaVariantId, StandardModel, StandardModelError, Timestamp, Visibility, WriteTenancy,
+    AttributeContextBuilderError, AttributeReadContext, DalContext, Func, HistoryEventError,
+    ReadTenancyError, SchemaVariant, SchemaVariantId, StandardModel, StandardModelError, Timestamp,
+    Visibility, WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -32,8 +29,6 @@ pub enum PropError {
     AttributePrototype(String),
     #[error("AttributeValue error: {0}")]
     AttributeValue(String),
-    #[error(transparent)]
-    EditField(#[from] EditFieldError),
     #[error("FuncBinding error: {0}")]
     FuncBinding(#[from] FuncBindingError),
     #[error("FuncBindingReturnValue error: {0}")]
@@ -84,7 +79,6 @@ pub enum PropKind {
 }
 
 impl ToLabelList for PropKind {}
-impl ToSelectWidget for PropKind {}
 
 impl From<PropKind> for WidgetKind {
     fn from(prop: PropKind) -> Self {
@@ -234,7 +228,6 @@ impl Prop {
         &self,
         ctx: &DalContext<'_, '_>,
         parent_prop_id: PropId,
-        base_attribute_read_context: AttributeReadContext,
     ) -> PropResult<()> {
         let parent_prop = Prop::get_by_id(ctx, &parent_prop_id)
             .await?
@@ -248,7 +241,7 @@ impl Prop {
 
         let attribute_read_context = AttributeReadContext {
             prop_id: Some(*self.id()),
-            ..base_attribute_read_context
+            ..AttributeReadContext::default()
         };
         let our_attribute_value = AttributeValue::find_for_context(ctx, attribute_read_context)
             .await
@@ -263,7 +256,7 @@ impl Prop {
 
         let parent_attribute_read_context = AttributeReadContext {
             prop_id: Some(parent_prop_id),
-            ..base_attribute_read_context
+            ..AttributeReadContext::default()
         };
         let parent_attribute_value =
             AttributeValue::find_for_context(ctx, parent_attribute_read_context)
@@ -287,139 +280,5 @@ impl Prop {
             .map_err(|e| PropError::AttributeValue(format!("{e}")))?;
 
         self.set_parent_prop_unchecked(ctx, &parent_prop_id).await
-    }
-
-    fn edit_field_object_kind() -> EditFieldObjectKind {
-        EditFieldObjectKind::Prop
-    }
-
-    fn name_edit_field(
-        visibility: &Visibility,
-        object: &Self,
-        head_object: &Option<Self>,
-        change_set_object: &Option<Self>,
-    ) -> PropResult<EditField> {
-        let field_name = "name";
-        let target_fn = Self::name;
-
-        let (value, visibility_diff) = value_and_visibility_diff(
-            visibility,
-            Some(object),
-            target_fn,
-            head_object.as_ref(),
-            change_set_object.as_ref(),
-        )?;
-
-        Ok(EditField::new(
-            field_name,
-            vec![],
-            Self::edit_field_object_kind(),
-            object.id,
-            EditFieldDataType::String,
-            Widget::Text(TextWidget::new()),
-            value,
-            visibility_diff,
-            vec![], // TODO: actually validate to generate ValidationErrors
-        ))
-    }
-
-    fn kind_edit_field(
-        visibility: &Visibility,
-        object: &Self,
-        head_object: &Option<Self>,
-        change_set_object: &Option<Self>,
-    ) -> PropResult<EditField> {
-        let field_name = "kind";
-        let target_fn = Self::kind;
-
-        let (value, visibility_diff) = value_and_visibility_diff(
-            visibility,
-            Some(object),
-            target_fn,
-            head_object.as_ref(),
-            change_set_object.as_ref(),
-        )?;
-
-        Ok(EditField::new(
-            field_name,
-            vec![],
-            Self::edit_field_object_kind(),
-            object.id,
-            EditFieldDataType::String,
-            Widget::Select(PropKind::to_select_widget_with_no_default()?),
-            value,
-            visibility_diff,
-            vec![], // TODO: actually validate to generate ValidationErrors
-        ))
-    }
-}
-
-#[async_trait]
-impl EditFieldAble for Prop {
-    type Id = PropId;
-    type Error = PropError;
-
-    async fn get_edit_fields(
-        ctx: &DalContext<'_, '_>,
-        id: &Self::Id,
-    ) -> Result<Vec<EditField>, Self::Error> {
-        let object = Self::get_by_id(ctx, id)
-            .await?
-            .ok_or_else(|| Self::Error::NotFound(*id, *ctx.visibility()))?;
-        let head_object = if ctx.visibility().in_change_set() {
-            let _head_visibility = ctx.visibility().to_head();
-            Self::get_by_id(ctx, id).await?
-        } else {
-            None
-        };
-        let change_set_object = if ctx.visibility().in_change_set() {
-            let _change_set_visibility = ctx.visibility().to_change_set();
-            Self::get_by_id(ctx, id).await?
-        } else {
-            None
-        };
-
-        let edit_fields = vec![
-            Self::name_edit_field(ctx.visibility(), &object, &head_object, &change_set_object)?,
-            Self::kind_edit_field(ctx.visibility(), &object, &head_object, &change_set_object)?,
-        ];
-
-        Ok(edit_fields)
-    }
-
-    #[instrument(skip_all)]
-    async fn update_from_edit_field(
-        ctx: &DalContext<'_, '_>,
-        id: Self::Id,
-        edit_field_id: String,
-        value: Option<serde_json::Value>,
-    ) -> Result<(), Self::Error> {
-        let mut object = Self::get_by_id(ctx, &id)
-            .await?
-            .ok_or_else(|| Self::Error::NotFound(id, *ctx.visibility()))?;
-
-        match edit_field_id.as_ref() {
-            "name" => match value {
-                Some(json_value) => {
-                    let value = json_value.as_str().map(|s| s.to_string()).ok_or(
-                        Self::Error::EditField(EditFieldError::InvalidValueType("string")),
-                    )?;
-                    object.set_name(ctx, value).await?;
-                }
-                None => return Err(EditFieldError::MissingValue.into()),
-            },
-            "kind" => match value {
-                Some(json_value) => {
-                    let value: PropKind = serde_json::from_value(json_value).map_err(|_| {
-                        Self::Error::EditField(EditFieldError::InvalidValueType("PropKind"))
-                    })?;
-                    object.set_kind(ctx, value).await?;
-                }
-                None => return Err(EditFieldError::MissingValue.into()),
-            },
-            invalid => return Err(EditFieldError::invalid_field(invalid).into()),
-        }
-
-        Ok(())
     }
 }
