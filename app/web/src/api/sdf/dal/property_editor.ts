@@ -15,7 +15,7 @@ export enum PropertyEditorPropKind {
 
 export enum PropertyEditorPropWidgetKind {
   Array = "array",
-  Checkbox = "checkbox",
+  CheckBox = "checkBox",
   Header = "header",
   Map = "map",
   SecretSelect = "secretSelect",

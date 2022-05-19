@@ -52,6 +52,20 @@
       class="py-4 px-8"
       @updated-property="updatedProperty($event)"
     />
+    <WidgetCheckBox
+      v-else-if="props.schemaProp.widgetKind == 'checkBox'"
+      :name="props.schemaProp.name"
+      :path="path"
+      :collapsed-paths="props.collapsedPaths"
+      :value="props.propValue.value"
+      :prop-id="props.propValue.propId"
+      :value-id="props.propValue.id"
+      :doc-link="props.schemaProp.docLink"
+      :validation="props.validation"
+      :disabled="props.disabled"
+      class="py-4 px-8"
+      @updated-property="updatedProperty($event)"
+    />
     <!--<div v-else>
       <div class="flex">
         {{ props.path }}
@@ -80,6 +94,7 @@ import {
 } from "@/api/sdf/dal/property_editor";
 import WidgetHeader from "./WidgetHeader.vue";
 import WidgetTextBox from "./WidgetTextBox.vue";
+import WidgetCheckBox from "./WidgetCheckBox.vue";
 import WidgetArray from "./WidgetArray.vue";
 import WidgetMap from "./WidgetMap.vue";
 import _ from "lodash";
