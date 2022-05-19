@@ -32,10 +32,8 @@ pub type SecretResult<T> = std::result::Result<T, SecretError>;
 
 impl IntoResponse for SecretError {
     fn into_response(self) -> Response {
-        let (status, error_message) = match self {
-            //SecretError::SecretNotFound => (StatusCode::NOT_FOUND, self.to_string()),
-            _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
-        };
+        let (status, error_message) = (StatusCode::INTERNAL_SERVER_ERROR, self.to_string());
+        //SecretError::SecretNotFound => (StatusCode::NOT_FOUND, self.to_string()),
 
         let body = Json(serde_json::json!({
             "error": {
