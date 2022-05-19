@@ -88,12 +88,44 @@ impl AttributeReadContext {
         self.prop_id.is_some()
     }
 
+    pub fn has_set_prop_id(&self) -> bool {
+        if let Some(prop_id) = self.prop_id {
+            prop_id != UNSET_ID_VALUE.into()
+        } else {
+            false
+        }
+    }
+
+    pub fn has_unset_prop_id(&self) -> bool {
+        if let Some(prop_id) = self.prop_id {
+            prop_id == UNSET_ID_VALUE.into()
+        } else {
+            false
+        }
+    }
+
     pub fn internal_provider_id(&self) -> Option<InternalProviderId> {
         self.internal_provider_id
     }
 
     pub fn has_internal_provider_id(&self) -> bool {
         self.internal_provider_id.is_some()
+    }
+
+    pub fn has_set_internal_provider(&self) -> bool {
+        if let Some(internal_provider) = self.internal_provider_id {
+            internal_provider != UNSET_ID_VALUE.into()
+        } else {
+            false
+        }
+    }
+
+    pub fn has_unset_internal_provider(&self) -> bool {
+        if let Some(internal_provider) = self.internal_provider_id {
+            internal_provider == UNSET_ID_VALUE.into()
+        } else {
+            false
+        }
     }
 
     pub fn external_provider_id(&self) -> Option<ExternalProviderId> {
@@ -104,12 +136,44 @@ impl AttributeReadContext {
         self.external_provider_id.is_some()
     }
 
+    pub fn has_set_external_provider(&self) -> bool {
+        if let Some(external_provider) = self.external_provider_id {
+            external_provider != UNSET_ID_VALUE.into()
+        } else {
+            false
+        }
+    }
+
+    pub fn has_unset_external_provider(&self) -> bool {
+        if let Some(external_provider) = self.external_provider_id {
+            external_provider == UNSET_ID_VALUE.into()
+        } else {
+            false
+        }
+    }
+
     pub fn schema_id(&self) -> Option<SchemaId> {
         self.schema_id
     }
 
     pub fn has_schema_id(&self) -> bool {
         self.schema_id.is_some()
+    }
+
+    pub fn has_set_schema_id(&self) -> bool {
+        if let Some(schema_id) = self.schema_id {
+            schema_id != UNSET_ID_VALUE.into()
+        } else {
+            false
+        }
+    }
+
+    pub fn has_unset_schema_id(&self) -> bool {
+        if let Some(schema_id) = self.schema_id {
+            schema_id == UNSET_ID_VALUE.into()
+        } else {
+            false
+        }
     }
 
     pub fn schema_variant_id(&self) -> Option<SchemaVariantId> {
@@ -120,6 +184,22 @@ impl AttributeReadContext {
         self.schema_variant_id.is_some()
     }
 
+    pub fn has_set_schema_variant_id(&self) -> bool {
+        if let Some(schema_variant_id) = self.schema_variant_id {
+            schema_variant_id != UNSET_ID_VALUE.into()
+        } else {
+            false
+        }
+    }
+
+    pub fn has_unset_schema_variant_id(&self) -> bool {
+        if let Some(schema_variant_id) = self.schema_variant_id {
+            schema_variant_id == UNSET_ID_VALUE.into()
+        } else {
+            false
+        }
+    }
+
     pub fn component_id(&self) -> Option<ComponentId> {
         self.component_id
     }
@@ -128,12 +208,44 @@ impl AttributeReadContext {
         self.component_id.is_some()
     }
 
+    pub fn has_set_component_id(&self) -> bool {
+        if let Some(component_id) = self.component_id {
+            component_id != UNSET_ID_VALUE.into()
+        } else {
+            false
+        }
+    }
+
+    pub fn has_unset_component_id(&self) -> bool {
+        if let Some(component_id) = self.component_id {
+            component_id == UNSET_ID_VALUE.into()
+        } else {
+            false
+        }
+    }
+
     pub fn system_id(&self) -> Option<SystemId> {
         self.system_id
     }
 
     pub fn has_system_id(&self) -> bool {
         self.system_id.is_some()
+    }
+
+    pub fn has_set_system_id(&self) -> bool {
+        if let Some(system_id) = self.system_id {
+            system_id != UNSET_ID_VALUE.into()
+        } else {
+            false
+        }
+    }
+
+    pub fn has_unset_system_id(&self) -> bool {
+        if let Some(system_id) = self.system_id {
+            system_id == UNSET_ID_VALUE.into()
+        } else {
+            false
+        }
     }
 
     pub fn any() -> Self {

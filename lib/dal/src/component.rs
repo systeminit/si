@@ -43,19 +43,21 @@ use crate::{
 
 #[derive(Error, Debug)]
 pub enum ComponentError {
-    #[error("AttributeContext error: {0}")]
+    #[error("attribute context error: {0}")]
     AttributeContext(#[from] AttributeContextError),
-    #[error("AttributeContextBuilder error: {0}")]
+    #[error("attribute context builder error: {0}")]
     AttributeContextBuilder(#[from] AttributeContextBuilderError),
-    #[error("AttributeValue error: {0}")]
+    #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
+    #[error("invalid json pointer: {0} for {1}")]
+    BadJsonPointer(String, String),
     #[error("codegen function returned unexpected format, expected {0:?}, got {1:?}")]
     CodeLanguageMismatch(CodeLanguage, CodeLanguage),
     #[error("edge error: {0}")]
     Edge(#[from] EdgeError),
     #[error("missing attribute value for id: ({0})")]
     MissingAttributeValue(AttributeValueId),
-    #[error("Missing IndexMap on AttributeValue: {0}")]
+    #[error("missing index map on attribute value: {0}")]
     MissingIndexMap(AttributeValueId),
     #[error("expected one root prop, found multiple: {0:?}")]
     MultipleRootProps(Vec<Prop>),
@@ -139,8 +141,6 @@ pub enum ComponentError {
     Workspace(#[from] WorkspaceError),
     #[error("organization error: {0}")]
     Organization(#[from] OrganizationError),
-    #[error("invalid json pointer: {0} for {1}")]
-    BadJsonPointer(String, String),
     #[error("invalid AttributeReadContext: {0}")]
     BadAttributeReadContext(String),
 
@@ -1111,11 +1111,12 @@ impl Component {
             .await?
             .ok_or(ComponentError::SchemaVariantNotFound)?;
         let attribute_context = AttributeReadContext {
+            prop_id: None,
             schema_id: Some(*schema.id()),
             schema_variant_id: Some(*schema_variant.id()),
             component_id: Some(*self.id()),
             system_id: Some(system_id),
-            ..AttributeReadContext::any()
+            ..AttributeReadContext::default()
         };
 
         let component = ComponentView::for_context(ctx, attribute_context).await?;
@@ -1136,11 +1137,12 @@ impl Component {
             .await?
             .ok_or(ComponentError::SchemaVariantNotFound)?;
         let attribute_context = AttributeReadContext {
+            prop_id: None,
             schema_id: Some(*schema.id()),
             schema_variant_id: Some(*schema_variant.id()),
             component_id: Some(*self.id()),
             system_id: Some(system_id),
-            ..AttributeReadContext::any()
+            ..AttributeReadContext::default()
         };
 
         let component = ComponentView::for_context(ctx, attribute_context).await?;
@@ -1161,11 +1163,12 @@ impl Component {
             .await?
             .ok_or(ComponentError::SchemaVariantNotFound)?;
         let base_attribute_context = AttributeReadContext {
+            prop_id: None,
             schema_id: Some(*schema.id()),
             schema_variant_id: Some(*schema_variant.id()),
             component_id: Some(*self.id()),
             system_id: Some(system_id),
-            ..AttributeReadContext::any()
+            ..AttributeReadContext::default()
         };
 
         let parent_ids = Edge::find_component_configuration_parents(ctx, self.id()).await?;

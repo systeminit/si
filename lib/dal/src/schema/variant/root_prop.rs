@@ -10,10 +10,12 @@ use crate::{
     PropKind, SchemaId, SchemaVariantId, StandardModel,
 };
 
-/// Contains the the si-specific [`PropId`](crate::Prop) and domain-specific [`PropId`](crate::Prop)
-/// corresponding to a [`SchemaVariant`](crate::SchemaVariant). In addition, these correspond to the
-/// "root" [`Props`](crate::Prop) on the [`ComponentView`](crate::ComponentView) "properties" field.
+/// Contains the si-specific [`PropId`](crate::Prop), the domain-specific [`PropId`](crate::Prop),
+/// and the root [`PropId`](crate::Prop) corresponding to a [`SchemaVariant`](crate::SchemaVariant).
+/// In addition, these correspond to the "root" [`Props`](crate::Prop) on the
+/// [`ComponentView`](crate::ComponentView) "properties" field.
 pub struct RootProp {
+    pub prop_id: PropId,
     pub si_prop_id: PropId,
     pub domain_prop_id: PropId,
 }
@@ -134,6 +136,7 @@ impl RootProp {
         .await?;
 
         Ok(Self {
+            prop_id: *root_prop.id(),
             si_prop_id: *si_specific_prop.id(),
             domain_prop_id: *domain_specific_prop.id(),
         })
