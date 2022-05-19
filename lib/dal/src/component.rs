@@ -282,12 +282,8 @@ impl Component {
             .await?;
         }
 
-        component
+        let (_, task) = component
             .set_value_by_json_pointer(ctx, "/root/si/name", Some(name.as_ref()))
-            .await?;
-
-        let task = component
-            .build_async_tasks(ctx, UNSET_ID_VALUE.into())
             .await?;
         Ok((component, node, task))
     }
@@ -407,8 +403,8 @@ impl Component {
         value: Option<serde_json::Value>,
         attribute_context: AttributeContext,
         baggage: EditFieldBaggage,
-    ) -> ComponentResult<ComponentAsyncTasks> {
-        let (updated_value, updated_attribute_value_id) = AttributeValue::update_for_context(
+    ) -> ComponentResult<Option<ComponentAsyncTasks>> {
+        let (_, _, async_tasks) = AttributeValue::update_for_context(
             ctx,
             baggage.attribute_value_id,
             baggage.parent_attribute_value_id,
@@ -417,18 +413,7 @@ impl Component {
             baggage.key,
         )
         .await?;
-
-        // Check validations and qualifications for our component.
-        let component = Self::get_by_id(ctx, &attribute_context.component_id())
-            .await?
-            .ok_or_else(|| ComponentError::NotFound(attribute_context.component_id()))?;
-        component
-            .check_validations(ctx, updated_attribute_value_id, &updated_value)
-            .await?;
-
-        component
-            .build_async_tasks(ctx, attribute_context.system_id())
-            .await
+        Ok(async_tasks)
     }
 
     #[instrument(skip_all)]
@@ -437,8 +422,8 @@ impl Component {
         attribute_context: AttributeContext,
         baggage: EditFieldBaggage,
         key: Option<String>,
-    ) -> ComponentResult<ComponentAsyncTasks> {
-        AttributeValue::insert_for_context(
+    ) -> ComponentResult<Option<ComponentAsyncTasks>> {
+        let (_, async_tasks) = AttributeValue::insert_for_context(
             ctx,
             attribute_context,
             baggage.attribute_value_id,
@@ -446,14 +431,7 @@ impl Component {
             key,
         )
         .await?;
-
-        let component = Self::get_by_id(ctx, &attribute_context.component_id())
-            .await?
-            .ok_or_else(|| ComponentError::NotFound(attribute_context.component_id()))?;
-
-        component
-            .build_async_tasks(ctx, attribute_context.system_id())
-            .await
+        Ok(async_tasks)
     }
 
     pub async fn check_validations(
@@ -1384,7 +1362,7 @@ impl Component {
         ctx: &DalContext<'_, '_>,
         json_pointer: &str,
         value: Option<T>,
-    ) -> ComponentResult<Option<T>> {
+    ) -> ComponentResult<(Option<T>, ComponentAsyncTasks)> {
         let attribute_value = self
             .find_attribute_value_by_json_pointer(ctx, json_pointer)
             .await?
@@ -1419,7 +1397,7 @@ impl Component {
             .await?
             .map(|av| *av.id());
 
-        AttributeValue::update_for_context(
+        let (_, _, async_tasks) = AttributeValue::update_for_context(
             ctx,
             *attribute_value.id(),
             parent_attribute_value_id,
@@ -1429,7 +1407,8 @@ impl Component {
         )
         .await?;
 
-        Ok(value)
+        let task = async_tasks.ok_or_else(|| ComponentError::NotFound(*self.id()))?;
+        Ok((value, task))
     }
 
     #[instrument(skip_all)]

@@ -31,9 +31,10 @@ use crate::{
     },
     impl_standard_model, pk,
     standard_model::{self, TypeHint},
-    standard_model_accessor, standard_model_belongs_to, standard_model_has_many, DalContext, Func,
-    HistoryEventError, IndexMap, Prop, PropError, PropId, PropKind, ReadTenancyError,
-    StandardModel, StandardModelError, Timestamp, Visibility, WriteTenancy,
+    standard_model_accessor, standard_model_belongs_to, standard_model_has_many, Component,
+    ComponentAsyncTasks, DalContext, Func, HistoryEventError, IndexMap, Prop, PropError, PropId,
+    PropKind, ReadTenancyError, StandardModel, StandardModelError, Timestamp, Visibility,
+    WriteTenancy,
 };
 
 const CHILD_ATTRIBUTE_VALUES_IN_CONTEXT: &str =
@@ -56,6 +57,8 @@ pub enum AttributeValueError {
     AttributePrototypeNotFound(AttributeValueId, Visibility),
     #[error("AttributePrototype error: {0}")]
     AttributePrototype(String),
+    #[error("component error: {0}")]
+    Component(String),
     #[error("func binding error: {0}")]
     FuncBinding(#[from] FuncBindingError),
     #[error("FuncBindingReturnValue error: {0}")]
@@ -416,7 +419,11 @@ impl AttributeValue {
         value: Option<serde_json::Value>,
         // TODO: Allow updating the key
         _key: Option<String>,
-    ) -> AttributeValueResult<(Option<serde_json::Value>, AttributeValueId)> {
+    ) -> AttributeValueResult<(
+        Option<serde_json::Value>,
+        AttributeValueId,
+        Option<ComponentAsyncTasks>,
+    )> {
         let mut maybe_parent_attribute_value_id = parent_attribute_value_id;
 
         let given_attribute_value = Self::get_by_id(ctx, &attribute_value_id)
@@ -448,14 +455,13 @@ impl AttributeValue {
             let parent_attribute_context = parent_attribute_context_builder
                 .set_prop_id(parent_attribute_value.context.prop_id())
                 .to_context()?;
-            maybe_parent_attribute_value_id = Some(
-                Self::vivify_value_and_parent_values(
-                    ctx,
-                    parent_attribute_context,
-                    parent_attribute_value_id,
-                )
-                .await?,
-            );
+            let maybe = Self::vivify_value_and_parent_values(
+                ctx,
+                parent_attribute_context,
+                parent_attribute_value_id,
+            )
+            .await?;
+            maybe_parent_attribute_value_id = Some(maybe);
         }
 
         // If the AttributeValue we were given isn't for the _specific_ context that we're trying to
@@ -613,7 +619,24 @@ impl AttributeValue {
 
         attribute_value.update_parent_index_map(ctx).await?;
 
-        Ok((value, *attribute_value.id()))
+        // Check validations and qualifications for our component.
+        let async_tasks =
+            if let Some(component) = Component::get_by_id(ctx, &context.component_id()).await? {
+                component
+                    .check_validations(ctx, *attribute_value.id(), &value)
+                    .await
+                    .map_err(|err| AttributeValueError::Component(err.to_string()))?;
+
+                let task = component
+                    .build_async_tasks(ctx, context.system_id())
+                    .await
+                    .map_err(|err| AttributeValueError::Component(err.to_string()))?;
+                Some(task)
+            } else {
+                None
+            };
+
+        Ok((value, *attribute_value.id(), async_tasks))
     }
 
     /// Insert a new value under the parent [`AttributeValue`] in the given [`AttributeContext`]. This is mostly only
@@ -631,7 +654,7 @@ impl AttributeValue {
         parent_attribute_value_id: AttributeValueId,
         value: Option<serde_json::Value>,
         key: Option<String>,
-    ) -> AttributeValueResult<AttributeValueId> {
+    ) -> AttributeValueResult<(AttributeValueId, Option<ComponentAsyncTasks>)> {
         let parent_prop =
             AttributeValue::find_prop_for_value(ctx, parent_attribute_value_id).await?;
         // We can only "insert" new values into Arrays & Maps. All other `PropKind` should be updated directly.
@@ -757,7 +780,7 @@ impl AttributeValue {
             }
         }
 
-        let (_, attribute_value_id) = Self::update_for_context(
+        let (_, attribute_value_id, async_tasks) = Self::update_for_context(
             ctx,
             *attribute_value.id(),
             Some(parent_attribute_value_id),
@@ -767,7 +790,7 @@ impl AttributeValue {
         )
         .await?;
 
-        Ok(attribute_value_id)
+        Ok((attribute_value_id, async_tasks))
     }
 
     #[instrument(skip_all)]
@@ -801,6 +824,8 @@ impl AttributeValue {
     /// Ensure the [`AttributeValueId`] has a "set" value in the given [`AttributeContext`], doing the same for its
     /// parent [`AttributeValue`], and return the [`AttributeValueId`] for [`Self`] (which may be different from what
     /// was passed in.
+    ///
+    /// The caller must create a [`ComponentAsyncTasks`], otherwise validations, code-gen and qualificatons won't happen
     #[instrument(skip_all)]
     #[async_recursion]
     async fn vivify_value_and_parent_values(
@@ -832,7 +857,7 @@ impl AttributeValue {
             .await?
             .map(|av| *av.id());
 
-        let (_, new_attribute_value_id) = Self::update_for_context(
+        let (_, new_attribute_value_id, _) = Self::update_for_context(
             ctx,
             attribute_value_id,
             maybe_parent_attribute_value_id,

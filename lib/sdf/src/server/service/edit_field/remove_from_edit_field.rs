@@ -57,15 +57,8 @@ pub async fn remove_from_edit_field(
             let attribute_context = request
                 .attribute_context
                 .ok_or(EditFieldError::MissingAttributeContext)?;
-            Some(
-                Component::update_from_edit_field_with_baggage(
-                    &ctx,
-                    None,
-                    attribute_context,
-                    baggage,
-                )
-                .await?,
-            )
+            Component::update_from_edit_field_with_baggage(&ctx, None, attribute_context, baggage)
+                .await?
         }
         EditFieldObjectKind::Prop => {
             Prop::update_from_edit_field(

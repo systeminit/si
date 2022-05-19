@@ -98,7 +98,7 @@ async fn update_for_context_simple(ctx: &DalContext<'_, '_>) {
         .to_context()
         .expect("cannot build write AttributeContext");
 
-    let (_, name_value_id) = AttributeValue::update_for_context(
+    let (_, name_value_id, _) = AttributeValue::update_for_context(
         ctx,
         *base_name_value.id(),
         Some(domain_value_id),
