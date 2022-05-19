@@ -91,7 +91,7 @@ const setField = () => {
     propId: propId.value,
     valueId: valueId.value,
   });
-  if (!_.isNull(currentValue.value)) {
+  if (!_.isNull(currentValue.value) && currentValue.value != props.value) {
     emit("updatedProperty", {
       value: currentValue.value,
       propId: propId.value,
