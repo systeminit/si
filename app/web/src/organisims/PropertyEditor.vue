@@ -38,11 +38,21 @@ import {
 } from "@/api/sdf/dal/property_editor";
 import { GlobalErrorService } from "@/service/global_error";
 import PropertyWidget from "./PropertyEditor/PropertyWidget.vue";
-import { ref, computed } from "vue";
+import { ref, computed, toRefs, watch } from "vue";
 import _ from "lodash";
 import { ChangeSetService } from "@/service/change_set";
 import { refFrom } from "vuse-rx";
 import { switchMap, from } from "rxjs";
+
+export interface PropertyEditorContext {
+  schema: PropertyEditorSchema;
+  values: PropertyEditorValues;
+  validations: PropertyEditorValidations;
+}
+
+const props = defineProps<{
+  editorContext: PropertyEditorContext;
+}>();
 
 const emits = defineEmits<{
   (e: "updatedProperty", v: UpdatedProperty): void;
@@ -58,263 +68,276 @@ const disabled = refFrom<boolean>(
   ),
 );
 
-const schema = ref<PropertyEditorSchema>({
-  rootPropId: 0,
-  props: {
-    0: {
-      id: 0,
-      name: "attributes",
-      kind: PropertyEditorPropKind.Object,
-      widgetKind: PropertyEditorPropWidgetKind.Header,
-    },
-    1: {
-      id: 1,
-      name: "name",
-      kind: PropertyEditorPropKind.String,
-      widgetKind: PropertyEditorPropWidgetKind.Text,
-      docLink: "http://slashdot.org",
-    },
-    2: {
-      id: 2,
-      name: "love",
-      kind: PropertyEditorPropKind.String,
-      widgetKind: PropertyEditorPropWidgetKind.Text,
-    },
-    3: {
-      id: 3,
-      name: "bleeds",
-      kind: PropertyEditorPropKind.String,
-      widgetKind: PropertyEditorPropWidgetKind.Text,
-    },
-    4: {
-      id: 4,
-      name: "snoop",
-      kind: PropertyEditorPropKind.Object,
-      widgetKind: PropertyEditorPropWidgetKind.Header,
-    },
-    5: {
-      id: 5,
-      name: "lion",
-      kind: PropertyEditorPropKind.Object,
-      widgetKind: PropertyEditorPropWidgetKind.Header,
-    },
-    6: {
-      id: 6,
-      name: "death row",
-      kind: PropertyEditorPropKind.String,
-      widgetKind: PropertyEditorPropWidgetKind.Text,
-    },
-    7: {
-      id: 7,
-      name: "dreams",
-      kind: PropertyEditorPropKind.String,
-      widgetKind: PropertyEditorPropWidgetKind.Text,
-    },
-    8: {
-      id: 8,
-      name: "songs",
-      kind: PropertyEditorPropKind.Array,
-      widgetKind: PropertyEditorPropWidgetKind.Array,
-    },
-    9: {
-      id: 9,
-      name: "song name",
-      kind: PropertyEditorPropKind.String,
-      widgetKind: PropertyEditorPropWidgetKind.Text,
-    },
-    10: {
-      id: 10,
-      name: "books",
-      kind: PropertyEditorPropKind.Array,
-      widgetKind: PropertyEditorPropWidgetKind.Array,
-    },
-    11: {
-      id: 11,
-      name: "book",
-      kind: PropertyEditorPropKind.Object,
-      widgetKind: PropertyEditorPropWidgetKind.Header,
-    },
-    12: {
-      id: 12,
-      name: "author",
-      kind: PropertyEditorPropKind.String,
-      widgetKind: PropertyEditorPropWidgetKind.Text,
-    },
-    13: {
-      id: 13,
-      name: "title",
-      kind: PropertyEditorPropKind.String,
-      widgetKind: PropertyEditorPropWidgetKind.Text,
-    },
-    14: {
-      id: 14,
-      name: "volumes",
-      kind: PropertyEditorPropKind.Array,
-      widgetKind: PropertyEditorPropWidgetKind.Array,
-    },
-    15: {
-      id: 15,
-      name: "volume",
-      kind: PropertyEditorPropKind.Object,
-      widgetKind: PropertyEditorPropWidgetKind.Header,
-    },
-    16: {
-      id: 16,
-      name: "thingyboober",
-      kind: PropertyEditorPropKind.String,
-      widgetKind: PropertyEditorPropWidgetKind.Text,
-    },
-    17: {
-      id: 17,
-      name: "env",
-      kind: PropertyEditorPropKind.Map,
-      widgetKind: PropertyEditorPropWidgetKind.Map,
-    },
-    18: {
-      id: 18,
-      name: "value",
-      kind: PropertyEditorPropKind.String,
-      widgetKind: PropertyEditorPropWidgetKind.Text,
-    },
-    19: {
-      id: 19,
-      name: "slayer songs",
-      kind: PropertyEditorPropKind.Map,
-      widgetKind: PropertyEditorPropWidgetKind.Map,
-    },
-    20: {
-      id: 20,
-      name: "slayer song",
-      kind: PropertyEditorPropKind.Object,
-      widgetKind: PropertyEditorPropWidgetKind.Header,
-    },
-    21: {
-      id: 21,
-      name: "kills it",
-      kind: PropertyEditorPropKind.String,
-      widgetKind: PropertyEditorPropWidgetKind.Text,
-    },
-    22: {
-      id: 22,
-      name: "every time",
-      kind: PropertyEditorPropKind.String,
-      widgetKind: PropertyEditorPropWidgetKind.Text,
-    },
-    23: {
-      id: 23,
-      name: "reasons",
-      kind: PropertyEditorPropKind.Array,
-      widgetKind: PropertyEditorPropWidgetKind.Array,
-    },
-    24: {
-      id: 24,
-      name: "reason",
-      kind: PropertyEditorPropKind.String,
-      widgetKind: PropertyEditorPropWidgetKind.Text,
-    },
-  },
-  childProps: {
-    0: [1, 2, 3, 4, 8, 10, 17, 19],
-    4: [5],
-    5: [6, 7],
-    8: [9],
-    10: [11],
-    11: [12, 13, 14],
-    14: [15],
-    15: [16],
-    17: [18],
-    19: [20],
-    20: [21, 22, 23],
-    23: [24],
-  },
+const { editorContext } = toRefs(props);
+
+const schema = ref<PropertyEditorSchema>(props.editorContext.schema);
+const values = ref<PropertyEditorValues>(props.editorContext.values);
+const validations = ref<PropertyEditorValidations>(
+  props.editorContext.validations,
+);
+watch(editorContext, (newValue) => {
+  schema.value = newValue.schema;
+  values.value = newValue.values;
+  validations.value = newValue.validations;
 });
 
-const values = ref<PropertyEditorValues>({
-  rootValueId: 0,
-  values: {
-    0: {
-      id: 0,
-      propId: 0,
-      value: {},
-    },
-    1: {
-      id: 1,
-      propId: 1,
-      value: "def leppard",
-    },
-    2: {
-      id: 2,
-      propId: 2,
-      value: "love bites",
-    },
-    3: {
-      id: 3,
-      propId: 3,
-      value: null,
-    },
-    4: {
-      id: 4,
-      propId: 4,
-      value: {},
-    },
-    5: {
-      id: 5,
-      propId: 5,
-      value: {},
-    },
-    6: {
-      id: 6,
-      propId: 6,
-      value: "too late",
-    },
-    7: {
-      id: 7,
-      propId: 7,
-      value: "for love",
-    },
-    8: {
-      // strings
-      id: 8,
-      propId: 8,
-      value: [],
-    },
-    9: {
-      // books
-      id: 9,
-      propId: 10,
-      value: [],
-    },
-    10: {
-      id: 10,
-      propId: 17,
-      value: {},
-    },
-    11: {
-      id: 11,
-      propId: 19,
-      value: {},
-    },
-  },
-  childValues: {
-    0: [1, 2, 3, 4, 8, 9, 10, 11],
-    4: [5],
-    5: [6, 7],
-  },
-});
-
-const validations = ref<PropertyEditorValidations>({
-  validations: {
-    [1]: {
-      valueId: 1,
-      valid: false,
-      errors: [
-        {
-          message: "You should not be def leppard, dummy",
-        },
-      ],
-    },
-  },
-});
+//const schema = ref<PropertyEditorSchema>({
+//  rootPropId: 0,
+//  props: {
+//    0: {
+//      id: 0,
+//      name: "attributes",
+//      kind: PropertyEditorPropKind.Object,
+//      widgetKind: PropertyEditorPropWidgetKind.Header,
+//    },
+//    1: {
+//      id: 1,
+//      name: "name",
+//      kind: PropertyEditorPropKind.String,
+//      widgetKind: PropertyEditorPropWidgetKind.Text,
+//      docLink: "http://slashdot.org",
+//    },
+//    2: {
+//      id: 2,
+//      name: "love",
+//      kind: PropertyEditorPropKind.String,
+//      widgetKind: PropertyEditorPropWidgetKind.Text,
+//    },
+//    3: {
+//      id: 3,
+//      name: "bleeds",
+//      kind: PropertyEditorPropKind.String,
+//      widgetKind: PropertyEditorPropWidgetKind.Text,
+//    },
+//    4: {
+//      id: 4,
+//      name: "snoop",
+//      kind: PropertyEditorPropKind.Object,
+//      widgetKind: PropertyEditorPropWidgetKind.Header,
+//    },
+//    5: {
+//      id: 5,
+//      name: "lion",
+//      kind: PropertyEditorPropKind.Object,
+//      widgetKind: PropertyEditorPropWidgetKind.Header,
+//    },
+//    6: {
+//      id: 6,
+//      name: "death row",
+//      kind: PropertyEditorPropKind.String,
+//      widgetKind: PropertyEditorPropWidgetKind.Text,
+//    },
+//    7: {
+//      id: 7,
+//      name: "dreams",
+//      kind: PropertyEditorPropKind.String,
+//      widgetKind: PropertyEditorPropWidgetKind.Text,
+//    },
+//    8: {
+//      id: 8,
+//      name: "songs",
+//      kind: PropertyEditorPropKind.Array,
+//      widgetKind: PropertyEditorPropWidgetKind.Array,
+//    },
+//    9: {
+//      id: 9,
+//      name: "song name",
+//      kind: PropertyEditorPropKind.String,
+//      widgetKind: PropertyEditorPropWidgetKind.Text,
+//    },
+//    10: {
+//      id: 10,
+//      name: "books",
+//      kind: PropertyEditorPropKind.Array,
+//      widgetKind: PropertyEditorPropWidgetKind.Array,
+//    },
+//    11: {
+//      id: 11,
+//      name: "book",
+//      kind: PropertyEditorPropKind.Object,
+//      widgetKind: PropertyEditorPropWidgetKind.Header,
+//    },
+//    12: {
+//      id: 12,
+//      name: "author",
+//      kind: PropertyEditorPropKind.String,
+//      widgetKind: PropertyEditorPropWidgetKind.Text,
+//    },
+//    13: {
+//      id: 13,
+//      name: "title",
+//      kind: PropertyEditorPropKind.String,
+//      widgetKind: PropertyEditorPropWidgetKind.Text,
+//    },
+//    14: {
+//      id: 14,
+//      name: "volumes",
+//      kind: PropertyEditorPropKind.Array,
+//      widgetKind: PropertyEditorPropWidgetKind.Array,
+//    },
+//    15: {
+//      id: 15,
+//      name: "volume",
+//      kind: PropertyEditorPropKind.Object,
+//      widgetKind: PropertyEditorPropWidgetKind.Header,
+//    },
+//    16: {
+//      id: 16,
+//      name: "thingyboober",
+//      kind: PropertyEditorPropKind.String,
+//      widgetKind: PropertyEditorPropWidgetKind.Text,
+//    },
+//    17: {
+//      id: 17,
+//      name: "env",
+//      kind: PropertyEditorPropKind.Map,
+//      widgetKind: PropertyEditorPropWidgetKind.Map,
+//    },
+//    18: {
+//      id: 18,
+//      name: "value",
+//      kind: PropertyEditorPropKind.String,
+//      widgetKind: PropertyEditorPropWidgetKind.Text,
+//    },
+//    19: {
+//      id: 19,
+//      name: "slayer songs",
+//      kind: PropertyEditorPropKind.Map,
+//      widgetKind: PropertyEditorPropWidgetKind.Map,
+//    },
+//    20: {
+//      id: 20,
+//      name: "slayer song",
+//      kind: PropertyEditorPropKind.Object,
+//      widgetKind: PropertyEditorPropWidgetKind.Header,
+//    },
+//    21: {
+//      id: 21,
+//      name: "kills it",
+//      kind: PropertyEditorPropKind.String,
+//      widgetKind: PropertyEditorPropWidgetKind.Text,
+//    },
+//    22: {
+//      id: 22,
+//      name: "every time",
+//      kind: PropertyEditorPropKind.String,
+//      widgetKind: PropertyEditorPropWidgetKind.Text,
+//    },
+//    23: {
+//      id: 23,
+//      name: "reasons",
+//      kind: PropertyEditorPropKind.Array,
+//      widgetKind: PropertyEditorPropWidgetKind.Array,
+//    },
+//    24: {
+//      id: 24,
+//      name: "reason",
+//      kind: PropertyEditorPropKind.String,
+//      widgetKind: PropertyEditorPropWidgetKind.Text,
+//    },
+//  },
+//  childProps: {
+//    0: [1, 2, 3, 4, 8, 10, 17, 19],
+//    4: [5],
+//    5: [6, 7],
+//    8: [9],
+//    10: [11],
+//    11: [12, 13, 14],
+//    14: [15],
+//    15: [16],
+//    17: [18],
+//    19: [20],
+//    20: [21, 22, 23],
+//    23: [24],
+//  },
+//});
+//
+//const values = ref<PropertyEditorValues>({
+//  rootValueId: 0,
+//  values: {
+//    0: {
+//      id: 0,
+//      propId: 0,
+//      value: {},
+//    },
+//    1: {
+//      id: 1,
+//      propId: 1,
+//      value: "def leppard",
+//    },
+//    2: {
+//      id: 2,
+//      propId: 2,
+//      value: "love bites",
+//    },
+//    3: {
+//      id: 3,
+//      propId: 3,
+//      value: null,
+//    },
+//    4: {
+//      id: 4,
+//      propId: 4,
+//      value: {},
+//    },
+//    5: {
+//      id: 5,
+//      propId: 5,
+//      value: {},
+//    },
+//    6: {
+//      id: 6,
+//      propId: 6,
+//      value: "too late",
+//    },
+//    7: {
+//      id: 7,
+//      propId: 7,
+//      value: "for love",
+//    },
+//    8: {
+//      // strings
+//      id: 8,
+//      propId: 8,
+//      value: [],
+//    },
+//    9: {
+//      // books
+//      id: 9,
+//      propId: 10,
+//      value: [],
+//    },
+//    10: {
+//      id: 10,
+//      propId: 17,
+//      value: {},
+//    },
+//    11: {
+//      id: 11,
+//      propId: 19,
+//      value: {},
+//    },
+//  },
+//  childValues: {
+//    0: [1, 2, 3, 4, 8, 9, 10, 11],
+//    4: [5],
+//    5: [6, 7],
+//  },
+//});
+//
+//const validations = ref<PropertyEditorValidations>({
+//  validations: {
+//    [1]: {
+//      valueId: 1,
+//      valid: false,
+//      errors: [
+//        {
+//          message: "You should not be def leppard, dummy",
+//        },
+//      ],
+//    },
+//  },
+//});
 
 const validationForValueId = (valueId: number) => {
   return validations.value.validations[valueId];
@@ -373,10 +396,30 @@ const findParentProp = (propId: number) => {
   }
 };
 
+const findParentValue = (valueId: number) => {
+  for (const [parentValueId, childValueIds] of Object.entries(
+    values.value.childValues,
+  )) {
+    for (const childValueId of childValueIds) {
+      if (childValueId == valueId) {
+        const parentValue = values.value.values[parseInt(parentValueId, 10)];
+        if (parentValue) {
+          return parentValue;
+        } else {
+          return undefined;
+        }
+      }
+    }
+  }
+};
+
 const pathPartForValueId = (valueId: number) => {
   let displayPathPart = "bug";
   let triggerPathPart = "bug";
   const currentValue = values.value.values[valueId];
+  if (!currentValue) {
+    return "bugbug returns!";
+  }
   const currentProp = schema.value.props[currentValue.propId];
   const parentProp = findParentProp(currentValue.propId);
 
@@ -484,64 +527,22 @@ const propertyValuesInOrder = computed(() => {
 });
 
 const updatedProperty = (event: UpdatedProperty) => {
-  console.log("property editor sets field", { event });
-  values.value.values[event.valueId].value = event.value;
+  const parentAttributeValue = findParentValue(event.valueId);
+  const attributeValue = values.value.values[event.valueId];
+  if (parentAttributeValue) {
+    event.parentValueId = parentAttributeValue.id;
+  }
+  if (attributeValue) {
+    event.key = attributeValue.key;
+  }
   emits("updatedProperty", event);
 };
 
-let newArrayIds = 100;
-
-const generateValuesForPropId = (
-  propId: number,
-  valueId: number,
-  key?: string,
-) => {
-  const prop = schema.value.props[propId];
-  if (prop) {
-    for (const childPropId of schema.value.childProps[prop.id]) {
-      if (childPropId) {
-        const childProp = schema.value.props[childPropId];
-        if (childProp) {
-          let value;
-          if (childProp.kind == "array") {
-            key = "0";
-            value = [];
-          } else if (childProp.kind == "object" || childProp.kind == "map") {
-            value = {};
-          } else {
-            value = null;
-          }
-          newArrayIds = newArrayIds + 1;
-          const newValue: PropertyEditorValue = {
-            id: newArrayIds,
-            propId: childProp.id,
-            key,
-            value,
-          };
-          values.value.values[newValue.id] = newValue;
-          if (values.value.childValues[valueId]) {
-            values.value.childValues[valueId].push(newValue.id);
-          } else {
-            values.value.childValues[valueId] = [newValue.id];
-          }
-          if (childProp.kind == "object") {
-            generateValuesForPropId(childPropId, newArrayIds);
-          }
-        }
-      }
-    }
-  }
-};
-
 const addToArray = (event: AddToArray) => {
-  generateValuesForPropId(event.propId, event.valueId);
-  console.log("property editor adds to array", { event });
   emits("addToArray", event);
 };
 
 const addToMap = (event: AddToMap) => {
-  generateValuesForPropId(event.propId, event.valueId, event.key);
-  console.log("property editor adds to map", { event });
   emits("addToMap", event);
 };
 

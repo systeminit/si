@@ -45,7 +45,14 @@
       </div>
     </div>
 
-    <PropertyEditor @updated-property="updateProperty($event)" />
+    <PropertyEditor
+      v-if="editorContext"
+      :editor-context="editorContext"
+      @updated-property="updateProperty($event)"
+      @add-to-array="addToArray($event)"
+      @add-to-map="addToMap($event)"
+    />
+
     <!--
     <EditFormComponent
       v-if="editFields"
@@ -61,10 +68,7 @@ import * as Rx from "rxjs";
 import { toRefs, computed } from "vue";
 import { fromRef, refFrom } from "vuse-rx";
 import { GlobalErrorService } from "@/service/global_error";
-import { EditFieldObjectKind, EditFields } from "@/api/sdf/dal/edit_field";
-import { EditFieldService } from "@/service/edit_field";
 import { ResourceHealth } from "@/api/sdf/dal/resource";
-import { ChangedEditFieldCounterVisitor } from "@/utils/edit_field_visitor";
 import { ComponentIdentification } from "@/api/sdf/dal/component";
 import { componentsMetadata$ } from "@/organisims/SchematicViewer/data/observable";
 import { ComponentMetadata } from "@/service/component/get_components_metadata";
@@ -77,8 +81,18 @@ import {
   QuestionMarkCircleIcon,
   PencilAltIcon,
 } from "@heroicons/vue/outline";
-import PropertyEditor from "./PropertyEditor.vue";
-import { UpdatedProperty } from "@/api/sdf/dal/property_editor";
+import PropertyEditor, { PropertyEditorContext } from "./PropertyEditor.vue";
+import {
+  PropertyEditorSchema,
+  PropertyEditorValues,
+  PropertyEditorValidations,
+  UpdatedProperty,
+  AddToArray,
+  AddToMap,
+} from "@/api/sdf/dal/property_editor";
+import { ComponentService } from "@/service/component";
+import { SystemService } from "@/service/system";
+import { standardVisibilityTriggers$ } from "@/observable/visibility";
 
 // TODO(nick): we technically only need one prop. We're sticking with two to not mess
 // with the reactivity guarentees in place.
@@ -87,37 +101,89 @@ const props = defineProps<{
   componentIdentification: ComponentIdentification;
 }>();
 
-const { componentId } = toRefs(props);
+const { componentId, componentIdentification } = toRefs(props);
 
 // We need an observable stream of props.componentId. We also want
 // that stream to emit a value immediately (the first value, as well as all
 // subsequent values)
 const componentId$ = fromRef<number>(componentId, { immediate: true });
 
-const editFields = refFrom<EditFields | undefined>(
-  Rx.combineLatest([componentId$]).pipe(
-    Rx.switchMap(([componentId]) => {
-      return EditFieldService.getEditFields({
-        id: componentId,
-        objectKind: EditFieldObjectKind.Component,
-      });
+const editorContext = refFrom<PropertyEditorContext | undefined>(
+  Rx.combineLatest([
+    componentId$,
+    SystemService.currentSystem(),
+    standardVisibilityTriggers$,
+  ]).pipe(
+    Rx.switchMap(([componentId, system, _triggers]) => {
+      const schema = ComponentService.getPropertyEditorSchema({
+        componentId: componentId,
+      }).pipe(Rx.take(1));
+      const values = ComponentService.getPropertyEditorValues({
+        componentId,
+        systemId: system?.id ?? -1,
+      }).pipe(Rx.take(1));
+      const validations = ComponentService.getPropertyEditorValidations({
+        componentId,
+        systemId: system?.id ?? -1,
+      }).pipe(Rx.take(1));
+      return Rx.from([[schema, values, validations]]);
     }),
-    Rx.switchMap((response) => {
-      if (
-        response === null ||
-        (response.error?.statusCode === 404 &&
-          response.error?.message === "invalid visibility")
-      ) {
-        return Rx.from([[]]);
-      } else if (response.error) {
-        GlobalErrorService.set(response);
-        return Rx.from([[]]);
-      } else {
-        return Rx.from([response.fields]);
-      }
+    Rx.switchMap((calls) => {
+      return Rx.forkJoin(calls);
     }),
+    Rx.switchMap(
+      ([
+        propertyEditorSchema,
+        propertyEditorValues,
+        propertyEditorValidations,
+      ]) => {
+        if (propertyEditorSchema.error) {
+          GlobalErrorService.set(propertyEditorSchema);
+          return Rx.from([]);
+        }
+        if (propertyEditorValues.error) {
+          GlobalErrorService.set(propertyEditorValues);
+          return Rx.from([]);
+        }
+        if (propertyEditorValidations.error) {
+          GlobalErrorService.set(propertyEditorValidations);
+          return Rx.from([]);
+        }
+        const propertyEditorContext: PropertyEditorContext = {
+          schema: propertyEditorSchema as PropertyEditorSchema,
+          values: propertyEditorValues as PropertyEditorValues,
+          validations: propertyEditorValidations as PropertyEditorValidations,
+        };
+        return Rx.from([propertyEditorContext]);
+      },
+    ),
   ),
 );
+
+//const editFields = refFrom<EditFields | undefined>(
+//  Rx.combineLatest([componentId$]).pipe(
+//    Rx.switchMap(([componentId]) => {
+//      return EditFieldService.getEditFields({
+//        id: componentId,
+//        objectKind: EditFieldObjectKind.Component,
+//      });
+//    }),
+//    Rx.switchMap((response) => {
+//      if (
+//        response === null ||
+//        (response.error?.statusCode === 404 &&
+//          response.error?.message === "invalid visibility")
+//      ) {
+//        return Rx.from([[]]);
+//      } else if (response.error) {
+//        GlobalErrorService.set(response);
+//        return Rx.from([[]]);
+//      } else {
+//        return Rx.from([response.fields]);
+//      }
+//    }),
+//  ),
+//);
 
 const componentMetadata = refFrom<ComponentMetadata | null>(
   Rx.combineLatest([componentId$, componentsMetadata$]).pipe(
@@ -135,13 +201,14 @@ const componentMetadata = refFrom<ComponentMetadata | null>(
 );
 
 const editCount = computed(() => {
-  if (editFields.value === undefined) {
-    return 0;
-  } else {
-    const counter = new ChangedEditFieldCounterVisitor();
-    counter.visitEditFields(editFields.value);
-    return counter.count();
-  }
+  return 0;
+  //  if (editFields.value === undefined) {
+  //    return 0;
+  //  } else {
+  //    const counter = new ChangedEditFieldCounterVisitor();
+  //    counter.visitEditFields(editFields.value);
+  //    return counter.count();
+  //  }
 });
 
 const qualificationTooltip = computed(() => {
@@ -212,6 +279,66 @@ const resourceColor = computed(() => {
 
 const updateProperty = (update: UpdatedProperty) => {
   console.log("updating", { update });
+  ComponentService.updateFromEditField({
+    attributeValueId: update.valueId,
+    parentAttributeValueId: update.parentValueId,
+    value: update.value,
+    key: update.key,
+    attributeContext: {
+      attribute_context_prop_id: update.propId,
+      attribute_context_internal_provider_id: -1,
+      attribute_context_external_provider_id: -1,
+      attribute_context_schema_id: componentIdentification.value.schemaId,
+      attribute_context_schema_variant_id:
+        componentIdentification.value.schemaVariantId,
+      attribute_context_component_id: componentIdentification.value.componentId,
+      attribute_context_system_id: -1,
+    },
+  }).subscribe((result) => {
+    if (result.error) {
+      GlobalErrorService.set(result);
+    }
+  });
+};
+
+const addToArray = (event: AddToArray) => {
+  ComponentService.insertFromEditField({
+    parentAttributeValueId: event.valueId,
+    attributeContext: {
+      attribute_context_prop_id: event.propId,
+      attribute_context_internal_provider_id: -1,
+      attribute_context_external_provider_id: -1,
+      attribute_context_schema_id: componentIdentification.value.schemaId,
+      attribute_context_schema_variant_id:
+        componentIdentification.value.schemaVariantId,
+      attribute_context_component_id: componentIdentification.value.componentId,
+      attribute_context_system_id: -1,
+    },
+  }).subscribe((result) => {
+    if (result.error) {
+      GlobalErrorService.set(result);
+    }
+  });
+};
+const addToMap = (event: AddToMap) => {
+  ComponentService.insertFromEditField({
+    parentAttributeValueId: event.valueId,
+    key: event.key,
+    attributeContext: {
+      attribute_context_prop_id: event.propId,
+      attribute_context_internal_provider_id: -1,
+      attribute_context_external_provider_id: -1,
+      attribute_context_schema_id: componentIdentification.value.schemaId,
+      attribute_context_schema_variant_id:
+        componentIdentification.value.schemaVariantId,
+      attribute_context_component_id: componentIdentification.value.componentId,
+      attribute_context_system_id: -1,
+    },
+  }).subscribe((result) => {
+    if (result.error) {
+      GlobalErrorService.set(result);
+    }
+  });
 };
 </script>
 

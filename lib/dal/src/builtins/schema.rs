@@ -430,14 +430,13 @@ async fn docker_image(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
         .await?;
 
     // TODO: required, validate regex: "\\d+\\/(tcp|udp)", message: "invalid exposed port entry; must be [numeric]/(tcp|udp)",
-    let exposed_ports_prop = Prop::new(
-        ctx,
-        "ExposedPorts",
-        PropKind::Array, // Note: we should have a way to specify that this is an array of Integer
-    )
-    .await?;
+    let exposed_ports_prop = Prop::new(ctx, "ExposedPorts", PropKind::Array).await?;
     exposed_ports_prop
         .set_parent_prop(ctx, root_prop.domain_prop_id, base_attribute_read_context)
+        .await?;
+    let exposed_port_prop = Prop::new(ctx, "ExposedPort", PropKind::String).await?;
+    exposed_port_prop
+        .set_parent_prop(ctx, *exposed_ports_prop.id(), base_attribute_read_context)
         .await?;
 
     let number_of_parents_prop = Prop::new(

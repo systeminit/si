@@ -11,6 +11,7 @@
           :disabled="disabled"
           always-validate
           @blur="setField"
+          @keyup.enter="triggerBlur($event)"
         />
       </div>
     </div>
@@ -126,4 +127,10 @@ const validations = computed(() => {
   }
   return results;
 });
+
+const triggerBlur = (event: KeyboardEvent) => {
+  if (event?.target instanceof HTMLElement) {
+    event.target.blur();
+  }
+};
 </script>

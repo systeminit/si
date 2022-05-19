@@ -69,22 +69,38 @@ pub async fn create_metadata_prop(
     }
 
     {
-        let _labels_prop = create_prop(
+        let labels_prop = create_prop(
             ctx,
             "labels",
-            PropKind::Map, // How to specify it as a map of string values?
+            PropKind::Map,
             Some(*metadata_prop.id()),
+            base_attribute_read_context,
+        )
+        .await?;
+        let _string_for_labels_prop = create_prop(
+            ctx,
+            "label",
+            PropKind::String,
+            Some(*labels_prop.id()),
             base_attribute_read_context,
         )
         .await?;
     }
 
     {
-        let _annotations_prop = create_prop(
+        let annotations_prop = create_prop(
             ctx,
             "annotations",
             PropKind::Map, // How to specify it as a map of string values?
             Some(*metadata_prop.id()),
+            base_attribute_read_context,
+        )
+        .await?;
+        let _string_for_annotations_prop = create_prop(
+            ctx,
+            "annotation",
+            PropKind::String,
+            Some(*annotations_prop.id()),
             base_attribute_read_context,
         )
         .await?;

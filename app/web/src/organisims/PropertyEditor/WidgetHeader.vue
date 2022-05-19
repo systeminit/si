@@ -1,6 +1,6 @@
 <template>
   <div
-    v-show="isShown"
+    v-show="showHeader"
     class="flex flex-row w-full pl-7 pt-1 pb-1 mt-2 text-white cursor-pointer bg-gray-800 items-center h-12"
     @click="setCollapsed"
   >
@@ -56,7 +56,8 @@ const { name, path, collapsedPaths } = toRefs(props);
 
 const displayPath = computed(() => {
   if (path && path.value) {
-    return path.value.displayPath;
+    // Always chop off the root path
+    return path.value.displayPath.slice(0, path.value.displayPath.length - 1);
   } else {
     return [];
   }
@@ -68,4 +69,12 @@ const { isShown, isCollapsed } = usePropertyEditorIsShown(
   path,
   true,
 );
+
+const showHeader = computed(() => {
+  if (displayPath.value.length == 0) {
+    return false;
+  } else {
+    return isShown.value;
+  }
+});
 </script>

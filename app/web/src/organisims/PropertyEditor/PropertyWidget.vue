@@ -121,18 +121,30 @@ const addToMap = (event: AddToMap) => {
 };
 
 const showArrayElementHeader = computed(() => {
-  console.log("show me the money", {
-    arrayIndex: JSON.stringify(arrayIndex?.value),
-  });
-  if (props.schemaProp.kind == "array") {
-    if (_.isUndefined(arrayIndex?.value)) {
-      return false;
-    }
-  } else if (props.schemaProp.kind == "map") {
-    if (_.isUndefined(props.propValue.key)) {
-      return false;
-    }
+  if (_.isUndefined(arrayIndex?.value) && _.isNull(props.propValue.key)) {
+    return false;
+  } else {
+    console.log("showing array element header", {
+      ai: JSON.stringify(arrayIndex?.value),
+      key: JSON.stringify(props.propValue.key),
+    });
+    return true;
   }
-  return true;
+  //if (props.schemaProp.kind == "array") {
+  //  console.log("checking an array", {
+  //    arrayIndex: JSON.stringify(arrayIndex?.value),
+  //  });
+
+  //  if (_.isUndefined(arrayIndex?.value)) {
+  //    return false;
+  //  }
+  //} else if (props.schemaProp.kind == "map") {
+  //  if (_.isUndefined(props.propValue.key)) {
+  //    return false;
+  //  }
+  //} else {
+  //  return false;
+  //}
+  //return true;
 });
 </script>

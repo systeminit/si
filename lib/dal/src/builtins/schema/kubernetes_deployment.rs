@@ -1,8 +1,6 @@
 use crate::{
     builtins::schema::{
-        create_prop, create_schema, create_string_prop_with_default,
-        kubernetes_metadata::create_metadata_prop, kubernetes_selector::create_selector_prop,
-        kubernetes_template::create_template_prop,
+        create_schema, create_string_prop_with_default, kubernetes_metadata::create_metadata_prop,
     },
     code_generation_prototype::CodeGenerationPrototypeContext,
     func::backend::{
@@ -13,8 +11,7 @@ use crate::{
     schema::{SchemaVariant, UiMenu},
     socket::{Socket, SocketArity, SocketEdgeKind},
     AttributeReadContext, BuiltinsResult, CodeGenerationPrototype, CodeLanguage, DalContext, Func,
-    PropKind, QualificationPrototype, Schema, SchemaError, SchemaKind, SchematicKind,
-    StandardModel,
+    QualificationPrototype, Schema, SchemaError, SchemaKind, SchematicKind, StandardModel,
 };
 
 pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
@@ -80,39 +77,39 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> BuiltinsResult<(
         .await?;
     }
 
-    {
-        let spec_prop = create_prop(
-            ctx,
-            "spec",
-            PropKind::Object,
-            Some(root_prop.domain_prop_id),
-            base_attribute_read_context,
-        )
-        .await?;
+    //{
+    //    let spec_prop = create_prop(
+    //        ctx,
+    //        "spec",
+    //        PropKind::Object,
+    //        Some(root_prop.domain_prop_id),
+    //        base_attribute_read_context,
+    //    )
+    //    .await?;
 
-        {
-            let _replicas_prop = create_prop(
-                ctx,
-                "replicas",
-                PropKind::Integer,
-                Some(*spec_prop.id()),
-                base_attribute_read_context,
-            )
-            .await?;
-        }
+    //    {
+    //        let _replicas_prop = create_prop(
+    //            ctx,
+    //            "replicas",
+    //            PropKind::Integer,
+    //            Some(*spec_prop.id()),
+    //            base_attribute_read_context,
+    //        )
+    //        .await?;
+    //    }
 
-        {
-            let _selector_prop =
-                create_selector_prop(ctx, Some(*spec_prop.id()), base_attribute_read_context)
-                    .await?;
-        }
+    //    {
+    //        let _selector_prop =
+    //            create_selector_prop(ctx, Some(*spec_prop.id()), base_attribute_read_context)
+    //                .await?;
+    //    }
 
-        {
-            let _template_prop =
-                create_template_prop(ctx, Some(*spec_prop.id()), base_attribute_read_context)
-                    .await?;
-        }
-    }
+    //    {
+    //        let _template_prop =
+    //            create_template_prop(ctx, Some(*spec_prop.id()), base_attribute_read_context)
+    //                .await?;
+    //    }
+    //}
 
     // Qualification Prototype
     let qualification_func_name = "si:qualificationYamlKubeval".to_owned();
