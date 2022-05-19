@@ -61,7 +61,7 @@ impl RootProp {
             .clone()
             .set_prop_id(*root_prop.id())
             .to_context()?;
-        let (_, root_value_id) = AttributeValue::update_for_context(
+        let (_, root_value_id, _) = AttributeValue::update_for_context(
             ctx,
             *AttributeValue::find_for_context(ctx, root_context.into())
                 .await?
@@ -90,7 +90,7 @@ impl RootProp {
             .clone()
             .set_prop_id(*si_specific_prop.id())
             .to_context()?;
-        let (_, si_value_id) = AttributeValue::update_for_context(
+        let (_, si_value_id, _) = AttributeValue::update_for_context(
             ctx,
             *AttributeValue::find_for_context(ctx, si_context.into())
                 .await?
