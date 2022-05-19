@@ -1,4 +1,5 @@
 use crate::WriteTenancy;
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use si_data::{NatsError, PgError};
@@ -6,7 +7,8 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::mpsc;
 use veritech::{
-    CodeGenerationResultSuccess, QualificationCheckResultSuccess, ResourceSyncResultSuccess,
+    CodeGenerationResultSuccess, OutputStream, QualificationCheckResultSuccess,
+    ResourceSyncResultSuccess,
 };
 
 use crate::func::backend::array::{FuncBackendArray, FuncBackendArrayArgs};
@@ -67,6 +69,8 @@ pub enum FuncBindingError {
     ComponentView(#[from] ComponentViewError),
     #[error("read tenancy error: {0}")]
     ReadTenancy(#[from] ReadTenancyError),
+    #[error("output stream error: {0}")]
+    OutputStream(#[from] mpsc::error::SendError<OutputStream>),
 }
 
 pub type FuncBindingResult<T> = Result<T, FuncBindingError>;
@@ -294,7 +298,7 @@ impl FuncBinding {
 
                 let return_value = FuncBackendJsQualification::new(
                     ctx.veritech().clone(),
-                    tx,
+                    tx.clone(),
                     handler.to_owned(),
                     args,
                     code_base64.to_owned(),
@@ -303,6 +307,18 @@ impl FuncBinding {
                 .await?;
 
                 let veritech_result = QualificationCheckResultSuccess::deserialize(&return_value)?;
+                if let Some(message) = veritech_result.message {
+                    tx.send(OutputStream {
+                        execution_id: veritech_result.execution_id,
+                        stream: "return".to_owned(),
+                        level: "info".to_owned(),
+                        group: None,
+                        data: None,
+                        message,
+                        timestamp: std::cmp::max(Utc::now().timestamp(), 0) as u64,
+                    })
+                    .await?;
+                }
                 let qual_result = QualificationResult {
                     success: veritech_result.qualified,
                     title: veritech_result.title,
@@ -310,6 +326,7 @@ impl FuncBinding {
                     sub_checks: veritech_result.sub_checks,
                 };
 
+                std::mem::drop(tx);
                 execution.process_output(ctx, rx).await?;
                 Some(serde_json::to_value(&qual_result)?)
             }

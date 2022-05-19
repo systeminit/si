@@ -1009,10 +1009,9 @@ impl Component {
                 func_binding_return_value,
             )
             .await?;
-            let title: String = row.try_get("title")?;
-            let link: Option<String> = row.try_get("link")?;
-            qual_view.title = title;
-            qual_view.link = link;
+            qual_view.title = row.try_get("title")?;
+            qual_view.description = row.try_get("description")?;
+            qual_view.link = row.try_get("link")?;
             results.push(qual_view);
         }
         // This is inefficient, but effective
