@@ -55,7 +55,7 @@ const props = defineProps<{
 }>();
 
 const subChecks = computed(() => {
-  if (props.result.sub_checks) {
+  if (props.result.sub_checks.length > 0) {
     return props.result.sub_checks;
   } else if (props.result.success) {
     return [

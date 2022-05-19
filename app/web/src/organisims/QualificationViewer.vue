@@ -30,11 +30,11 @@
         <div class="flex flex-col w-full">
           <div
             v-for="q in allQualifications"
-            :key="q.name"
+            :key="q.title"
             class="flex flex-col py-1 mx-2 mt-2 text-sm border qualification-section"
           >
             <div class="flex flex-row items-center w-full pl-4 my-1">
-              <div v-if="qualificationStarting(q.name)" class="flex">
+              <div v-if="qualificationStarting(q.title)" class="flex">
                 <VueLoading
                   class="inline-flex"
                   type="cylon"
@@ -79,10 +79,10 @@
               >
                 <button
                   class="focus:outline-none"
-                  @click="toggleShowDescription(q.name)"
+                  @click="toggleShowDescription(q.title)"
                 >
                   <SiIcon
-                    v-if="showDescriptionMap[q.name] === true"
+                    v-if="showDescriptionMap[q.title] === true"
                     tooltip-text="Show description"
                   >
                     <ChevronDownIcon />
@@ -95,7 +95,7 @@
             </div>
 
             <div
-              v-if="showDescriptionMap[q.name] === true"
+              v-if="showDescriptionMap[q.title] === true"
               class="flex flex-col w-full"
             >
               <!-- NOTE(nick): output is optional and can be empty. -->
@@ -258,8 +258,8 @@ const toggleShowDescription = (name: string) => {
 
 const populateShowDescription = (qualifications: Array<Qualification>) => {
   for (const q of qualifications) {
-    if (!showDescriptionMap.value[q.name]) {
-      showDescriptionMap.value[q.name] = false;
+    if (!showDescriptionMap.value[q.title]) {
+      showDescriptionMap.value[q.title] = false;
     }
   }
 };

@@ -48,7 +48,7 @@ pub struct QualificationCheckResultSuccess {
     pub qualified: bool,
     pub title: Option<String>,
     pub link: Option<String>,
-    pub sub_checks: Option<Vec<QualificationSubCheck>>,
+    pub sub_checks: Vec<QualificationSubCheck>,
     pub message: Option<String>,
     pub timestamp: u64,
 }
@@ -64,7 +64,7 @@ pub(crate) mod server {
         pub qualified: bool,
         pub title: Option<String>,
         pub link: Option<String>,
-        pub sub_checks: Option<Vec<QualificationSubCheck>>,
+        pub sub_checks: Vec<QualificationSubCheck>,
         pub message: Option<String>,
     }
 

@@ -24,7 +24,7 @@ pub struct QualificationResult {
     pub success: bool,
     pub title: Option<String>,
     pub link: Option<String>,
-    pub sub_checks: Option<Vec<QualificationSubCheck>>,
+    pub sub_checks: Vec<QualificationSubCheck>,
 }
 
 /// A view on "OutputStream" from cyclone.
@@ -66,7 +66,7 @@ impl QualificationView {
                 success,
                 title: None,
                 link: None,
-                sub_checks: Some(sub_checks),
+                sub_checks,
             }),
         }
     }
