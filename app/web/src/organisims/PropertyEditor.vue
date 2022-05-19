@@ -361,7 +361,9 @@ watch(editorContext, (newValue) => {
 //});
 
 const validationForValueId = (valueId: number) => {
-  return validations.value.validations[valueId];
+  return validations.value.validations.find(
+    (validation) => validation.valueId === valueId,
+  );
 };
 
 const schemaForPropId = (propId: number) => {
