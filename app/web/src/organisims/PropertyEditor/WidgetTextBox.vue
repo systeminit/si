@@ -15,7 +15,7 @@
         />
       </div>
     </div>
-    <div class="flex w-16 h-20 items-center justify-center">
+    <div v-if="canUnset" class="flex w-16 h-20 items-center justify-center">
       <UnsetButton
         v-if="!disabled"
         :disabled="disableUnset"
@@ -133,4 +133,8 @@ const triggerBlur = (event: KeyboardEvent) => {
     event.target.blur();
   }
 };
+
+const canUnset = computed(() => {
+  return (props.path?.triggerPath ?? []).join(".") !== "name.si.root";
+});
 </script>
