@@ -1,6 +1,5 @@
 export interface Qualification {
-  name: string;
-  title?: string;
+  title: string;
   link?: string;
   description?: string;
   result?: QualificationResult;
@@ -11,7 +10,7 @@ export interface QualificationResult {
   title?: string;
   link?: string;
   success: boolean;
-  sub_checks?: Array<{
+  sub_checks: Array<{
     status: "Success" | "Failure" | "Unknown";
     description: string;
   }>;

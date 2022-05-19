@@ -39,7 +39,7 @@ export interface QualificationCheckResultSuccess extends ResultSuccess {
   qualified: boolean;
   title?: string;
   link?: string;
-  subChecks?: Array<{
+  subChecks: Array<{
     status: "Success" | "Failure" | "Unknown",
     description: string,
   }>,
@@ -137,7 +137,7 @@ async function execute(
     executionId,
     title: qualificationCheckResult["title"],
     link: qualificationCheckResult["link"],
-    subChecks: qualificationCheckResult["subChecks"],
+    subChecks: qualificationCheckResult["subChecks"] ?? [],
     qualified: qualificationCheckResult["qualified"],
   };
   if (qualificationCheckResult["message"]) {
