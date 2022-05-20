@@ -14,6 +14,7 @@ CREATE TABLE qualification_prototypes
     func_id                     bigint                   NOT NULL,
     args                        jsonb                    NOT NULL,
     title                       text                     NOT NULL,
+    description                 text,
     link                        text,
     component_id                bigint                   NOT NULL,
     schema_id                   bigint                   NOT NULL,

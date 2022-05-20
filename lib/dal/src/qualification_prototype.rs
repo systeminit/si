@@ -112,6 +112,7 @@ pub struct QualificationPrototype {
     func_id: FuncId,
     args: serde_json::Value,
     title: String,
+    description: Option<String>,
     link: Option<String>,
     #[serde(flatten)]
     context: QualificationPrototypeContext,
@@ -163,6 +164,7 @@ impl QualificationPrototype {
     standard_model_accessor!(func_id, Pk(FuncId), QualificationPrototypeResult);
     standard_model_accessor!(args, Json<JsonValue>, QualificationPrototypeResult);
     standard_model_accessor!(title, String, QualificationPrototypeResult);
+    standard_model_accessor!(description, Option<String>, QualificationPrototypeResult);
     standard_model_accessor!(link, Option<String>, QualificationPrototypeResult);
 
     #[allow(clippy::too_many_arguments)]

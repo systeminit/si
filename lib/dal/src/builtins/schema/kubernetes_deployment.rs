@@ -122,7 +122,7 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> BuiltinsResult<(
     let mut qualification_prototype_context = QualificationPrototypeContext::new();
     qualification_prototype_context.set_schema_variant_id(*variant.id());
 
-    let _prototype = QualificationPrototype::new(
+    let mut prototype = QualificationPrototype::new(
         ctx,
         *qualification_func.id(),
         qualification_args_json,
@@ -130,6 +130,9 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> BuiltinsResult<(
         "Kubeval YAML".to_owned(),
     )
     .await?;
+    prototype
+        .set_description(ctx, Some("Runs kubeval on the generated YAML".to_owned()))
+        .await?;
 
     // Code Generation Prototype
     let code_generation_func_name = "si:generateYAML".to_owned();

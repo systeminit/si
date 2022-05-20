@@ -33,7 +33,10 @@
             :key="q.title"
             class="flex flex-col py-1 mx-2 mt-2 text-sm border qualification-section"
           >
-            <div class="flex flex-row items-center w-full pl-4 my-1">
+            <div
+              :v-tooltip="q.description"
+              class="flex flex-row items-center w-full pl-4 my-1"
+            >
               <div v-if="qualificationStarting(q.title)" class="flex">
                 <VueLoading
                   class="inline-flex"
