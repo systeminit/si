@@ -1,25 +1,28 @@
 use std::collections::HashMap;
 
-use crate::func::backend::js_attribute::FuncBackendJsAttributeArgs;
-use crate::func::backend::js_qualification::FuncBackendJsQualificationArgs;
-use crate::func::backend::js_resource::FuncBackendJsResourceSyncArgs;
-use crate::func::backend::validation::FuncBackendValidateStringValueArgs;
-use crate::qualification_prototype::QualificationPrototypeContext;
-use crate::resource_prototype::ResourcePrototypeContext;
-use crate::schema::{SchemaVariant, UiMenu};
-use crate::socket::{Socket, SocketArity, SocketEdgeKind};
-use crate::BuiltinsResult;
 use crate::{
-    component::ComponentKind, edit_field::widget::*, func::binding::FuncBinding,
-    validation_prototype::ValidationPrototypeContext, Func, FuncBackendKind,
+    component::ComponentKind,
+    edit_field::widget::*,
+    func::{
+        backend::{
+            js_attribute::FuncBackendJsAttributeArgs,
+            js_qualification::FuncBackendJsQualificationArgs,
+            js_resource::FuncBackendJsResourceSyncArgs,
+            validation::FuncBackendValidateStringValueArgs,
+        },
+        binding::FuncBinding,
+    },
+    qualification_prototype::QualificationPrototypeContext,
+    resource_prototype::ResourcePrototypeContext,
+    schema::{SchemaVariant, UiMenu},
+    socket::{Socket, SocketArity, SocketEdgeKind},
+    validation_prototype::ValidationPrototypeContext,
+    AttributeContext, AttributeReadContext, BuiltinsResult, DalContext, Func, FuncBackendKind,
     FuncBackendResponseType, Prop, PropId, PropKind, QualificationPrototype, ResourcePrototype,
     Schema, SchemaError, SchemaKind, SchematicKind, StandardModel, ValidationPrototype,
 };
-use crate::{
-    AttributeContext, AttributePrototype, AttributePrototypeError, AttributeReadContext,
-    AttributeValue, AttributeValueError, DalContext,
-};
 
+mod kubernetes;
 mod kubernetes_deployment;
 mod kubernetes_metadata;
 mod kubernetes_selector;
@@ -384,18 +387,6 @@ async fn docker_image(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     attribute_context_builder
         .set_schema_id(*schema.id())
         .set_schema_variant_id(*variant.id());
-    let root_prop_attribute_value = AttributeValue::find_for_context(
-        ctx,
-        AttributeReadContext {
-            prop_id: Some(root_prop.domain_prop_id),
-            schema_id: Some(*schema.id()),
-            schema_variant_id: Some(*variant.id()),
-            ..AttributeReadContext::default()
-        },
-    )
-    .await?
-    .pop()
-    .ok_or(AttributeValueError::Missing)?;
 
     let mut ui_menu = UiMenu::new(ctx, &(*schema.kind()).into()).await?;
     ui_menu.set_name(ctx, Some("image")).await?;
@@ -427,16 +418,6 @@ async fn docker_image(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
         .set_parent_prop(ctx, *exposed_ports_prop.id())
         .await?;
 
-    let number_of_parents_prop = Prop::new(
-        ctx,
-        "Number of Parents",
-        PropKind::String, // Should be integer, but the js integer backend isn't 100% there yet
-    )
-    .await?;
-    number_of_parents_prop
-        .set_parent_prop(ctx, root_prop.domain_prop_id)
-        .await?;
-
     // TODO: we don't have a component to have their props, but we can manually rebuild the props from what we created in this schema variant
     // This means if someone updates this function the properties will be invalid
     let mut properties = HashMap::new();
@@ -463,35 +444,7 @@ async fn docker_image(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     )
     .await?;
 
-    let func_binding_return_value = func_binding.execute(ctx).await?;
-
-    let number_of_parents_prop_context = attribute_context_builder
-        .clone()
-        .set_prop_id(*number_of_parents_prop.id())
-        .to_context()?;
-    let attribute_prototype =
-        AttributePrototype::list_for_context(ctx, number_of_parents_prop_context)
-            .await?
-            .pop()
-            .ok_or(AttributePrototypeError::Missing)?;
-    AttributePrototype::update_for_context(
-        ctx,
-        *attribute_prototype.id(),
-        number_of_parents_prop_context,
-        *func.id(),
-        *func_binding.id(),
-        *func_binding_return_value.id(),
-        Some(*root_prop_attribute_value.id()),
-        None,
-        Some(
-            *AttributeValue::find_for_context(ctx, number_of_parents_prop_context.into())
-                .await?
-                .pop()
-                .ok_or(AttributeValueError::Missing)?
-                .id(),
-        ),
-    )
-    .await?;
+    let _func_binding_return_value = func_binding.execute(ctx).await?;
 
     // Note: This is not right; each schema needs its own socket types.
     //       Also, they should clearly inherit from the core schema? Something

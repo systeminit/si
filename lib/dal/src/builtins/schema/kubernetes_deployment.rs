@@ -11,8 +11,11 @@ use crate::{
     schema::{SchemaVariant, UiMenu},
     socket::{Socket, SocketArity, SocketEdgeKind},
     AttributeReadContext, BuiltinsResult, CodeGenerationPrototype, CodeLanguage, DalContext, Func,
-    QualificationPrototype, Schema, SchemaError, SchemaKind, SchematicKind, StandardModel,
+    Prop, PropId, PropKind, QualificationPrototype, Schema, SchemaError, SchemaKind, SchematicKind,
+    StandardModel,
 };
+
+use super::{create_prop, kubernetes::doc_url, kubernetes_selector::create_selector_prop};
 
 pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     let name = "kubernetes_deployment".to_string();
@@ -25,90 +28,66 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> BuiltinsResult<(
     variant
         .set_link(
             ctx,
-            Some(
-                "https://kubernetes.io/docs/concepts/workloads/controllers/deployment/".to_owned(),
-            ),
+            Some(doc_url(
+                "reference/kubernetes-api/workload-resources/deployment-v1/",
+            )),
         )
         .await?;
 
     schema
         .set_default_schema_variant_id(ctx, Some(*variant.id()))
         .await?;
+
     let base_attribute_read_context = AttributeReadContext {
         schema_id: Some(*schema.id()),
         schema_variant_id: Some(*variant.id()),
         ..AttributeReadContext::default()
     };
 
-    {
-        // TODO: add validation (si-registry ensures the value is unchanged)
-        let mut api_version_prop = create_string_prop_with_default(
+    // TODO: add validation (si-registry ensures the value is unchanged)
+    let mut api_version_prop = create_string_prop_with_default(
+        ctx,
+        "apiVersion",
+        "apps/v1".to_owned(),
+        Some(root_prop.domain_prop_id),
+        base_attribute_read_context,
+    )
+    .await?;
+    api_version_prop
+        .set_doc_link(
             ctx,
-            "apiVersion",
-            "apps/v1".to_owned(),
-            Some(root_prop.domain_prop_id),
-            base_attribute_read_context,
+            Some(doc_url(
+                "reference/kubernetes-api/workload-resources/deployment-v1/#Deployment",
+            )),
         )
         .await?;
 
-        // TODO: this probably is not the appropriate doc link for the prop (we probably don't need one), it just serves as reference for prop doc links
-        api_version_prop.set_doc_link(ctx, Some("https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#deployment-v1-apps".to_owned())).await?;
-    }
-
-    {
-        // TODO: add validation (si-registry ensures the value is unchanged)
-        let _kind_prop = create_string_prop_with_default(
+    // TODO: add validation (si-registry ensures the value is unchanged)
+    let mut kind_prop = create_string_prop_with_default(
+        ctx,
+        "kind",
+        "Deployment".to_owned(),
+        Some(root_prop.domain_prop_id),
+        base_attribute_read_context,
+    )
+    .await?;
+    kind_prop
+        .set_doc_link(
             ctx,
-            "kind",
-            "Deployment".to_owned(),
-            Some(root_prop.domain_prop_id),
-            base_attribute_read_context,
+            Some(doc_url(
+                "reference/kubernetes-api/workload-resources/deployment-v1/#Deployment",
+            )),
         )
         .await?;
-    }
 
-    {
-        let _metadata_prop = create_metadata_prop(
-            ctx,
-            true, // is name required, note: bool is not ideal here tho
-            Some(root_prop.domain_prop_id),
-        )
-        .await?;
-    }
+    let _metadata_prop = create_metadata_prop(
+        ctx,
+        true, // is name required, note: bool is not ideal here tho
+        root_prop.domain_prop_id,
+    )
+    .await?;
 
-    //{
-    //    let spec_prop = create_prop(
-    //        ctx,
-    //        "spec",
-    //        PropKind::Object,
-    //        Some(root_prop.domain_prop_id),
-    //        base_attribute_read_context,
-    //    )
-    //    .await?;
-
-    //    {
-    //        let _replicas_prop = create_prop(
-    //            ctx,
-    //            "replicas",
-    //            PropKind::Integer,
-    //            Some(*spec_prop.id()),
-    //            base_attribute_read_context,
-    //        )
-    //        .await?;
-    //    }
-
-    //    {
-    //        let _selector_prop =
-    //            create_selector_prop(ctx, Some(*spec_prop.id()), base_attribute_read_context)
-    //                .await?;
-    //    }
-
-    //    {
-    //        let _template_prop =
-    //            create_template_prop(ctx, Some(*spec_prop.id()), base_attribute_read_context)
-    //                .await?;
-    //    }
-    //}
+    let _spec_prop = create_deployment_spec_prop(ctx, root_prop.domain_prop_id).await?;
 
     // Qualification Prototype
     let qualification_func_name = "si:qualificationYamlKubeval".to_owned();
@@ -205,4 +184,187 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> BuiltinsResult<(
         .await?;
 
     Ok(())
+}
+
+async fn create_deployment_spec_prop(
+    ctx: &DalContext<'_, '_>,
+    parent_prop_id: PropId,
+) -> BuiltinsResult<Prop> {
+    let mut spec_prop = create_prop(ctx, "spec", PropKind::Object, Some(parent_prop_id)).await?;
+    spec_prop
+        .set_doc_link(
+            ctx,
+            Some(doc_url(
+                "reference/kubernetes-api/workload-resources/deployment-v1/#DeploymentSpec",
+            )),
+        )
+        .await?;
+
+    let mut replicas_prop =
+        create_prop(ctx, "replicas", PropKind::Integer, Some(*spec_prop.id())).await?;
+    replicas_prop
+        .set_doc_link(
+            ctx,
+            Some(doc_url(
+                "reference/kubernetes-api/workload-resources/deployment-v1/#DeploymentSpec",
+            )),
+        )
+        .await?;
+
+    let _selector_prop = create_selector_prop(ctx, *spec_prop.id()).await?;
+    let _template_prop = create_pod_template_spec_prop(ctx, *spec_prop.id()).await?;
+
+    Ok(spec_prop)
+}
+
+async fn create_pod_template_spec_prop(
+    ctx: &DalContext<'_, '_>,
+    parent_prop_id: PropId,
+) -> BuiltinsResult<Prop> {
+    let mut template_prop =
+        create_prop(ctx, "template", PropKind::Object, Some(parent_prop_id)).await?;
+    template_prop
+        .set_doc_link(
+            ctx,
+            Some(doc_url(
+                "reference/kubernetes-api/workload-resources/pod-template-v1/#PodTemplateSpec",
+            )),
+        )
+        .await?;
+
+    let _metadata_prop = create_metadata_prop(
+        ctx,
+        true, // is name required, note: bool is not ideal here tho
+        *template_prop.id(),
+    )
+    .await?;
+
+    let _spec_prop = create_pod_spec_prop(ctx, *template_prop.id()).await?;
+
+    Ok(template_prop)
+}
+
+async fn create_pod_spec_prop(
+    ctx: &DalContext<'_, '_>,
+    parent_prop_id: PropId,
+) -> BuiltinsResult<Prop> {
+    let mut spec_prop = create_prop(ctx, "spec", PropKind::Object, Some(parent_prop_id)).await?;
+    spec_prop
+        .set_doc_link(
+            ctx,
+            Some(doc_url(
+                "reference/kubernetes-api/workload-resources/pod-v1/#PodSpec",
+            )),
+        )
+        .await?;
+
+    let mut containers_prop =
+        create_prop(ctx, "containers", PropKind::Array, Some(*spec_prop.id())).await?;
+    containers_prop
+        .set_doc_link(
+            ctx,
+            Some(doc_url(
+                "reference/kubernetes-api/workload-resources/pod-v1/#containers",
+            )),
+        )
+        .await?;
+    let _containers_element_prop = create_container_prop(ctx, *containers_prop.id()).await?;
+
+    Ok(spec_prop)
+}
+
+async fn create_container_prop(
+    ctx: &DalContext<'_, '_>,
+    parent_prop_id: PropId,
+) -> BuiltinsResult<Prop> {
+    let mut container_prop =
+        create_prop(ctx, "container", PropKind::Object, Some(parent_prop_id)).await?;
+    container_prop
+        .set_doc_link(
+            ctx,
+            Some(doc_url(
+                "reference/kubernetes-api/workload-resources/pod-v1/#Container",
+            )),
+        )
+        .await?;
+
+    let mut name_prop =
+        create_prop(ctx, "name", PropKind::String, Some(*container_prop.id())).await?;
+    name_prop
+        .set_doc_link(
+            ctx,
+            Some(doc_url(
+                "reference/kubernetes-api/workload-resources/pod-v1/#Container",
+            )),
+        )
+        .await?;
+
+    let mut image_prop =
+        create_prop(ctx, "image", PropKind::String, Some(*container_prop.id())).await?;
+    image_prop
+        .set_doc_link(
+            ctx,
+            Some(doc_url(
+                "reference/kubernetes-api/workload-resources/pod-v1/#image",
+            )),
+        )
+        .await?;
+
+    let mut ports_prop =
+        create_prop(ctx, "ports", PropKind::Array, Some(*container_prop.id())).await?;
+    ports_prop
+        .set_doc_link(
+            ctx,
+            Some(doc_url(
+                "reference/kubernetes-api/workload-resources/pod-v1/#ports",
+            )),
+        )
+        .await?;
+    let _ports_element_prop = create_container_port_prop(ctx, *ports_prop.id()).await?;
+
+    Ok(container_prop)
+}
+
+async fn create_container_port_prop(
+    ctx: &DalContext<'_, '_>,
+    parent_prop_id: PropId,
+) -> BuiltinsResult<Prop> {
+    let mut port_prop = create_prop(ctx, "port", PropKind::Object, Some(parent_prop_id)).await?;
+    port_prop
+        .set_doc_link(
+            ctx,
+            Some(doc_url(
+                "reference/kubernetes-api/workload-resources/pod-v1/#ports",
+            )),
+        )
+        .await?;
+
+    let mut container_port_prop = create_prop(
+        ctx,
+        "containerPort",
+        PropKind::Integer,
+        Some(*port_prop.id()),
+    )
+    .await?;
+    container_port_prop
+        .set_doc_link(
+            ctx,
+            Some(doc_url(
+                "reference/kubernetes-api/workload-resources/pod-v1/#ports",
+            )),
+        )
+        .await?;
+
+    let mut protocol_prop =
+        create_prop(ctx, "protocol", PropKind::String, Some(*port_prop.id())).await?;
+    protocol_prop
+        .set_doc_link(
+            ctx,
+            Some(doc_url(
+                "reference/kubernetes-api/workload-resources/pod-v1/#ports",
+            )),
+        )
+        .await?;
+
+    Ok(container_port_prop)
 }

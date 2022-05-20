@@ -18,8 +18,7 @@ pub async fn create_template_prop(
     let template_prop = create_prop(ctx, "template", PropKind::Object, parent_prop_id).await?;
 
     {
-        let _optional_metadata_prop =
-            create_metadata_prop(ctx, false, Some(*template_prop.id())).await?;
+        let _optional_metadata_prop = create_metadata_prop(ctx, false, *template_prop.id()).await?;
     }
 
     {
