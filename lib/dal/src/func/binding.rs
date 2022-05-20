@@ -133,7 +133,6 @@ impl FuncBinding {
         Ok(object)
     }
 
-    #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn find_or_create(
         ctx: &DalContext<'_, '_>,
@@ -145,12 +144,13 @@ impl FuncBinding {
             .txns()
             .pg()
             .query_one(
-                "SELECT object, created FROM func_binding_find_or_create_v1($1, $2, $3, $4)",
+                "SELECT object, created FROM func_binding_find_or_create_v1($1, $2, $3, $4, $5)",
                 &[
                     ctx.read_tenancy(),
                     ctx.visibility(),
                     &args,
                     &backend_kind.as_ref(),
+                    &func_id,
                 ],
             )
             .await?;
