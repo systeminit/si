@@ -63,6 +63,7 @@ pub mod workspace;
 pub mod write_tenancy;
 pub mod ws_event;
 
+pub use attribute::value::view::AttributeView;
 pub use attribute::{
     context::{
         AttributeContext, AttributeContextBuilderError, AttributeContextError, AttributeReadContext,

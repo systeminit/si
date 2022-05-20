@@ -6,7 +6,6 @@ use async_recursion::async_recursion;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use si_data::{NatsError, PgError};
-
 use std::collections::VecDeque;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -37,8 +36,10 @@ use crate::{
     WriteTenancy,
 };
 
-const CHILD_ATTRIBUTE_VALUES_IN_CONTEXT: &str =
-    include_str!("../queries/attribute_value_child_attribute_values_in_context.sql");
+pub mod view;
+
+const CHILD_ATTRIBUTE_VALUES_FOR_CONTEXT: &str =
+    include_str!("../queries/attribute_value_child_attribute_values_for_context.sql");
 const FIND_FOR_CONTEXT: &str = include_str!("../queries/attribute_value_find_for_context.sql");
 const FIND_PROP_FOR_VALUE: &str =
     include_str!("../queries/attribute_value_find_prop_for_value.sql");
@@ -48,6 +49,8 @@ const FIND_WITH_PARENT_AND_PROTOTYPE_FOR_CONTEXT: &str =
     include_str!("../queries/attribute_value_find_with_parent_and_prototype_for_context.sql");
 const LIST_PAYLOAD_FOR_READ_CONTEXT: &str =
     include_str!("../queries/attribute_value_list_payload_for_read_context.sql");
+const LIST_PAYLOAD_FOR_READ_CONTEXT_AND_ROOT: &str =
+    include_str!("../queries/attribute_value_list_payload_for_read_context_and_root.sql");
 
 #[derive(Error, Debug)]
 pub enum AttributeValueError {
@@ -57,6 +60,8 @@ pub enum AttributeValueError {
     AttributePrototypeNotFound(AttributeValueId, Visibility),
     #[error("AttributePrototype error: {0}")]
     AttributePrototype(String),
+    #[error("invalid json pointer: {0} for {1}")]
+    BadJsonPointer(String, String),
     #[error("component error: {0}")]
     Component(String),
     #[error("func binding error: {0}")]
@@ -67,6 +72,8 @@ pub enum AttributeValueError {
     FuncBindingReturnValueNotFound(AttributeValueId, Visibility),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
+    #[error("{0}")]
+    IncompatibleAttributeReadContext(&'static str),
     #[error("invalid prop value; expected {0} but got {1}")]
     InvalidPropValue(String, serde_json::Value),
     #[error("nats txn error: {0}")]
@@ -101,6 +108,8 @@ pub enum AttributeValueError {
     ReadTenancy(#[from] ReadTenancyError),
     #[error("Unable to create parent AttributeValue: {0}")]
     UnableToCreateParent(String),
+    #[error("the root prop id stack cannot be empty while work queue is not empty")]
+    UnexpectedEmptyRootStack,
     #[error("unexpected prop kind: {0}")]
     UnexpectedPropKind(PropKind),
     #[error("schema variant missing in context")]
@@ -247,7 +256,7 @@ impl AttributeValue {
 
     /// Returns a list of child [`AttributeValues`](crate::AttributeValue) for a given
     /// [`AttributeValue`] and [`AttributeReadContext`](crate::AttributeReadContext).
-    pub async fn child_attribute_values_in_context(
+    pub async fn child_attribute_values_for_context(
         ctx: &DalContext<'_, '_>,
         attribute_value_id: AttributeValueId,
         attribute_read_context: AttributeReadContext,
@@ -255,7 +264,7 @@ impl AttributeValue {
         let rows = ctx
             .pg_txn()
             .query(
-                CHILD_ATTRIBUTE_VALUES_IN_CONTEXT,
+                CHILD_ATTRIBUTE_VALUES_FOR_CONTEXT,
                 &[
                     ctx.read_tenancy(),
                     ctx.visibility(),
@@ -376,6 +385,60 @@ impl AttributeValue {
                 ],
             )
             .await?;
+        let mut result = Vec::new();
+        for row in rows.into_iter() {
+            let func_binding_return_value_json: serde_json::Value = row.try_get("object")?;
+            let func_binding_return_value: Option<FuncBindingReturnValue> =
+                serde_json::from_value(func_binding_return_value_json)?;
+
+            let prop_json: serde_json::Value = row.try_get("prop_object")?;
+            let prop: Prop = serde_json::from_value(prop_json)?;
+
+            let attribute_value_json: serde_json::Value = row.try_get("attribute_value_object")?;
+            let attribute_value: AttributeValue = serde_json::from_value(attribute_value_json)?;
+
+            let parent_attribute_value_id: Option<AttributeValueId> =
+                row.try_get("parent_attribute_value_id")?;
+
+            result.push(AttributeValuePayload::new(
+                prop,
+                func_binding_return_value,
+                attribute_value,
+                parent_attribute_value_id,
+            ));
+        }
+        Ok(result)
+    }
+
+    /// This method is similar to [`Self::list_payload_for_read_context()`], but it leverages a
+    /// root [`AttributeValueId`](crate::AttributeValue) in order to find payloads at any
+    /// root [`Prop`](crate::Prop) corresponding to the provided context and root value.
+    pub async fn list_payload_for_read_context_and_root(
+        ctx: &DalContext<'_, '_>,
+        root_attribute_value_id: AttributeValueId,
+        context: AttributeReadContext,
+    ) -> AttributeValueResult<Vec<AttributeValuePayload>> {
+        if context.has_prop_id()
+            || !context.has_unset_internal_provider()
+            || !context.has_unset_external_provider()
+        {
+            return Err(AttributeValueError::IncompatibleAttributeReadContext("incompatible attribute read context for query: prop must be empty and providers must be unset"));
+        }
+
+        let rows = ctx
+            .txns()
+            .pg()
+            .query(
+                LIST_PAYLOAD_FOR_READ_CONTEXT_AND_ROOT,
+                &[
+                    ctx.read_tenancy(),
+                    ctx.visibility(),
+                    &context,
+                    &root_attribute_value_id,
+                ],
+            )
+            .await?;
+
         let mut result = Vec::new();
         for row in rows.into_iter() {
             let func_binding_return_value_json: serde_json::Value = row.try_get("object")?;
@@ -870,9 +933,12 @@ impl AttributeValue {
             ..AttributeReadContext::from(previous_write_context)
         };
         // These are the values that we wish to create proxies for in our new context.
-        let original_child_values =
-            Self::child_attribute_values_in_context(ctx, original_attribute_value_id, read_context)
-                .await?;
+        let original_child_values = Self::child_attribute_values_for_context(
+            ctx,
+            original_attribute_value_id,
+            read_context,
+        )
+        .await?;
 
         for original_child_value in original_child_values {
             let mut write_context_builder = AttributeContextBuilder::from(previous_write_context);

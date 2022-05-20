@@ -1,10 +1,8 @@
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, VecDeque};
 
 use crate::{
-    attribute::value::{AttributeValue, AttributeValueId, AttributeValuePayload},
     component::{ComponentKind, ComponentResult},
-    AttributeReadContext, Component, ComponentError, DalContext, EncryptedSecret, PropKind,
+    AttributeReadContext, AttributeView, Component, ComponentError, DalContext, EncryptedSecret,
     SecretError, SecretId, StandardModel, StandardModelError, System,
 };
 
@@ -51,7 +49,7 @@ impl ComponentView {
             None => {
                 return Err(ComponentError::BadAttributeReadContext(
                     "component_id is required".to_string(),
-                ))
+                ));
             }
         };
 
@@ -65,120 +63,12 @@ impl ComponentView {
             None => None,
         };
 
-        let mut initial_work = AttributeValue::list_payload_for_read_context(ctx, context).await?;
+        let view = AttributeView::new(ctx, context, None).await?;
 
-        // `AttributeValueId -> serde_json pointer` so when we have a parent_attribute_value_id,
-        // we know _exactly_ where in the structure we need to insert, when we have a
-        // parent_attribute_resolver_id.
-        let mut json_pointer_for_attribute_value_id: HashMap<AttributeValueId, String> =
-            HashMap::new();
-
-        // We sort the work queue according to the order of every nested IndexMap. This ensures that
-        // when we reconstruct the final properties data, we don't have to worry about the order things
-        // appear in - they are certain to be the right order.
-        let attribute_value_order: Vec<AttributeValueId> = initial_work
-            .iter()
-            .filter_map(|avp| avp.attribute_value.index_map())
-            .flat_map(|index_map| index_map.order())
-            .copied()
-            .collect();
-        initial_work.sort_by_cached_key(|avp| {
-            attribute_value_order
-                .iter()
-                .position(|attribute_value_id| attribute_value_id == avp.attribute_value.id())
-                .unwrap_or(0)
-        });
-
-        // We need the work_queue to be a VecDeque so we can pop elements off of the front
-        // as it's supposed to be a queue, not a stack.
-        let mut work_queue: VecDeque<AttributeValuePayload> = VecDeque::from(initial_work);
-
-        let mut properties = serde_json::json![{}];
-        let mut root_stack: Vec<(Option<AttributeValueId>, String)> = vec![(None, "".to_string())];
-
-        while !work_queue.is_empty() {
-            let mut unprocessed: Vec<AttributeValuePayload> = vec![];
-            let (root_id, json_pointer) = root_stack
-                .pop()
-                .expect("the root prop id queue cannot be empty while work_queue is not empty");
-
-            while let Some(AttributeValuePayload {
-                prop,
-                func_binding_return_value,
-                attribute_value,
-                parent_attribute_value_id,
-            }) = work_queue.pop_front()
-            {
-                if let Some(func_binding_return_value) = func_binding_return_value {
-                    if let Some(value) = func_binding_return_value.value() {
-                        if root_id == parent_attribute_value_id {
-                            let insertion_pointer =
-                                if let Some(parent_avi) = parent_attribute_value_id {
-                                    match json_pointer_for_attribute_value_id.get(&parent_avi) {
-                                        Some(ptr) => ptr.clone(),
-                                        // A `None` here would mean that we're trying to process a child before we've handled its parent,
-                                        // and that shouldn't be possible given how we're going through the work_queue.
-                                        None => unreachable!(),
-                                    }
-                                } else {
-                                    // After we've processed the "root" property, we shouldn't hit this case any more.
-                                    json_pointer.clone()
-                                };
-                            let write_location = match properties.pointer_mut(&insertion_pointer) {
-                                Some(write_location) => write_location,
-                                None => {
-                                    return Err(ComponentError::BadJsonPointer(
-                                        insertion_pointer.clone(),
-                                        properties.to_string(),
-                                    ))
-                                }
-                            };
-                            let next_json_pointer =
-                                if let Some(object) = write_location.as_object_mut() {
-                                    if let Some(key) = attribute_value.key() {
-                                        object.insert(key.to_string(), value.clone());
-                                        format!("{}/{}", insertion_pointer, key)
-                                    } else {
-                                        object.insert(prop.name().to_string(), value.clone());
-                                        format!("{}/{}", insertion_pointer, prop.name())
-                                    }
-                                } else if let Some(array) = write_location.as_array_mut() {
-                                    // This code can just push, because we ordered the work queue above.
-                                    // Magic!
-                                    array.push(value.clone());
-                                    format!("{}/{}", insertion_pointer, array.len() - 1)
-                                } else {
-                                    // Note: this shouldn't ever actually get used.
-                                    insertion_pointer.to_string()
-                                };
-                            // Record the json pointer path to *this* specific attribute resolver's location.
-                            json_pointer_for_attribute_value_id
-                                .insert(*attribute_value.id(), next_json_pointer.clone());
-
-                            match prop.kind() {
-                                &PropKind::Object | &PropKind::Array | &PropKind::Map => {
-                                    root_stack
-                                        .push((Some(*attribute_value.id()), next_json_pointer));
-                                }
-                                _ => {}
-                            }
-                        } else {
-                            unprocessed.push(AttributeValuePayload::new(
-                                prop,
-                                Some(func_binding_return_value),
-                                attribute_value,
-                                parent_attribute_value_id,
-                            ));
-                        }
-                    }
-                }
-            }
-            work_queue = VecDeque::from(unprocessed);
-        }
         Ok(ComponentView {
             system,
             kind: *component.kind(),
-            properties: properties["root"].clone(),
+            properties: view.value()["root"].clone(),
         })
     }
 
@@ -223,7 +113,7 @@ impl ComponentView {
                             return Err(ComponentViewError::JSONPointerNotFound(
                                 value.clone(),
                                 "/message".to_owned(),
-                            ))
+                            ));
                         }
                     }
                 }
