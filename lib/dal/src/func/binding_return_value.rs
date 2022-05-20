@@ -14,6 +14,7 @@ use crate::{
     Timestamp, Visibility,
 };
 
+use super::binding::FuncBindingError;
 use super::{
     binding::{FuncBinding, FuncBindingId},
     FuncId,
@@ -32,8 +33,8 @@ pub enum FuncBindingReturnValueError {
     FuncExecution(#[from] FuncExecutionError),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
-    #[error("missing func binding for id: {0}")]
-    Missing(FuncBindingId),
+    #[error("missing func binding return value")]
+    Missing,
     #[error("nats txn error: {0}")]
     Nats(#[from] NatsError),
     #[error("pg error: {0}")]
@@ -188,7 +189,11 @@ impl FuncBindingReturnValue {
         } else {
             let func_binding = FuncBinding::get_by_id(ctx, &func_binding_id)
                 .await?
-                .ok_or(FuncBindingReturnValueError::Missing(func_binding_id))?;
+                .ok_or_else(|| {
+                    FuncBindingReturnValueError::FuncBinding(
+                        FuncBindingError::NotFound(func_binding_id).to_string(),
+                    )
+                })?;
             match func_binding.execute(ctx).await {
                 Ok(generated_value) => generated_value,
                 Err(e) => return Err(FuncBindingReturnValueError::FuncBinding(e.to_string())),
