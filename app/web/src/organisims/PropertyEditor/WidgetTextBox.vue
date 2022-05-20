@@ -34,8 +34,9 @@ import {
   PropertyEditorValidation,
   UpdatedProperty,
   PropertyPath,
+  PropertyEditorPropKind,
 } from "@/api/sdf/dal/property_editor";
-import _ from "lodash";
+import _, { parseInt } from "lodash";
 import { ValidatorArray } from "@/atoms/SiValidation.vue";
 
 const props = defineProps<{
@@ -45,6 +46,7 @@ const props = defineProps<{
   value: unknown;
   propId: number;
   valueId: number;
+  propKind: PropertyEditorPropKind;
   docLink?: string;
   validation?: PropertyEditorValidation;
   disabled?: boolean;
@@ -64,6 +66,8 @@ watch(
     if (oldValue != newValue) {
       if (_.isString(newValue)) {
         currentValue.value = newValue;
+      } else if (_.isNumber(newValue)) {
+        currentValue.value = `${newValue}`;
       } else {
         currentValue.value = "";
       }
@@ -86,30 +90,28 @@ const fieldId = ref(props.path.triggerPath.join("."));
 const { isShown } = usePropertyEditorIsShown(name, collapsedPaths, path);
 
 const setField = () => {
-  console.log("set field", {
-    fv: currentValue.value,
-    propId: propId.value,
-    valueId: valueId.value,
-  });
   if (
     !_.isNull(currentValue.value) &&
     currentValue.value != props.value &&
     ((!props.value && currentValue.value) || props.value)
   ) {
-    emit("updatedProperty", {
-      value: currentValue.value,
-      propId: propId.value,
-      valueId: valueId.value,
-    });
+    if (props.propKind == "integer") {
+      emit("updatedProperty", {
+        value: parseInt(currentValue.value, 10),
+        propId: propId.value,
+        valueId: valueId.value,
+      });
+    } else {
+      emit("updatedProperty", {
+        value: currentValue.value,
+        propId: propId.value,
+        valueId: valueId.value,
+      });
+    }
   }
 };
 
 const unsetField = () => {
-  console.log("unset field", {
-    fv: currentValue.value,
-    propId: propId.value,
-    valueId: valueId.value,
-  });
   emit("updatedProperty", {
     value: null,
     propId: propId.value,

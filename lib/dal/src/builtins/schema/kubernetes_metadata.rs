@@ -3,13 +3,23 @@ use crate::{
     DalContext, Prop, PropId, PropKind, StandardModel,
 };
 
-#[allow(dead_code)]
+use super::kubernetes::doc_url;
+
 pub async fn create_metadata_prop(
     ctx: &DalContext<'_, '_>,
     is_name_required: bool,
-    parent_prop_id: Option<PropId>,
+    parent_prop_id: PropId,
 ) -> BuiltinsResult<Prop> {
-    let metadata_prop = create_prop(ctx, "metadata", PropKind::Object, parent_prop_id).await?;
+    let mut metadata_prop =
+        create_prop(ctx, "metadata", PropKind::Object, Some(parent_prop_id)).await?;
+    metadata_prop
+        .set_doc_link(
+            ctx,
+            Some(doc_url(
+                "reference/kubernetes-api/common-definitions/object-meta/#ObjectMeta",
+            )),
+        )
+        .await?;
 
     {
         // TODO: add validation
@@ -26,53 +36,105 @@ pub async fn create_metadata_prop(
             // TODO: add a required field validation here
         }
 
-        let _name_prop =
+        let mut name_prop =
             create_prop(ctx, "name", PropKind::String, Some(*metadata_prop.id())).await?;
+        name_prop
+            .set_doc_link(
+                ctx,
+                Some(doc_url(
+                    "reference/kubernetes-api/common-definitions/object-meta/#ObjectMeta",
+                )),
+            )
+            .await?;
     }
 
     {
-        let _generate_name_prop = create_prop(
+        let mut generate_name_prop = create_prop(
             ctx,
             "generateName",
             PropKind::String,
             Some(*metadata_prop.id()),
         )
         .await?;
+        generate_name_prop
+            .set_doc_link(
+                ctx,
+                Some(doc_url(
+                    "reference/kubernetes-api/common-definitions/object-meta/#ObjectMeta",
+                )),
+            )
+            .await?;
     }
 
     {
         // Note: should this come from a k8s namespace component configuring us?
-        let _namespace_prop = create_prop(
+        let mut namespace_prop = create_prop(
             ctx,
             "namespace",
             PropKind::String,
             Some(*metadata_prop.id()),
         )
         .await?;
+        namespace_prop
+            .set_doc_link(
+                ctx,
+                Some(doc_url(
+                    "concepts/overview/working-with-objects/namespaces/",
+                )),
+            )
+            .await?;
     }
 
     {
-        let labels_prop =
+        let mut labels_prop =
             create_prop(ctx, "labels", PropKind::Map, Some(*metadata_prop.id())).await?;
-        let _string_for_labels_prop =
-            create_prop(ctx, "label", PropKind::String, Some(*labels_prop.id())).await?;
+        labels_prop
+            .set_doc_link(
+                ctx,
+                Some(doc_url("concepts/overview/working-with-objects/labels/")),
+            )
+            .await?;
+        let mut labels_value_prop =
+            create_prop(ctx, "labelValue", PropKind::String, Some(*labels_prop.id())).await?;
+        labels_value_prop
+            .set_doc_link(
+                ctx,
+                Some(doc_url("concepts/overview/working-with-objects/labels/")),
+            )
+            .await?;
     }
 
     {
-        let annotations_prop = create_prop(
+        let mut annotations_prop = create_prop(
             ctx,
             "annotations",
             PropKind::Map, // How to specify it as a map of string values?
             Some(*metadata_prop.id()),
         )
         .await?;
-        let _string_for_annotations_prop = create_prop(
+        annotations_prop
+            .set_doc_link(
+                ctx,
+                Some(doc_url(
+                    "concepts/overview/working-with-objects/annotations/",
+                )),
+            )
+            .await?;
+        let mut annotations_value_prop = create_prop(
             ctx,
-            "annotation",
+            "annotationValue",
             PropKind::String,
             Some(*annotations_prop.id()),
         )
         .await?;
+        annotations_value_prop
+            .set_doc_link(
+                ctx,
+                Some(doc_url(
+                    "concepts/overview/working-with-objects/annotations/",
+                )),
+            )
+            .await?;
     }
 
     Ok(metadata_prop)
