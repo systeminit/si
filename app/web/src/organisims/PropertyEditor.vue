@@ -587,7 +587,6 @@ const findArrayIndex = (valueId: number) => {
       }
     }
   }
-  console.log("lets try this", { index, parentProp, valueId });
   if (parentProp?.kind == "array") {
     return index;
   } else {
