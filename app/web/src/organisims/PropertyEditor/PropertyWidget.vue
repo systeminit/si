@@ -46,6 +46,7 @@
       :value="props.propValue.value"
       :prop-id="props.propValue.propId"
       :value-id="props.propValue.id"
+      :prop-kind="props.schemaProp.kind"
       :doc-link="props.schemaProp.docLink"
       :validation="props.validation"
       :disabled="props.disabled"
