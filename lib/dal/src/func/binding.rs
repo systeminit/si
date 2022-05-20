@@ -53,6 +53,8 @@ pub enum FuncBindingError {
     FuncBackend(#[from] FuncBackendError),
     #[error("func backend return value error: {0}")]
     FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
+    #[error("func binding not found: {0}")]
+    NotFound(FuncBindingId),
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("pg error: {0}")]

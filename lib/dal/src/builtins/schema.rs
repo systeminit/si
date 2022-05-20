@@ -11,15 +11,17 @@ use crate::{
             validation::FuncBackendValidateStringValueArgs,
         },
         binding::FuncBinding,
+        binding_return_value::FuncBindingReturnValueError,
     },
     qualification_prototype::QualificationPrototypeContext,
     resource_prototype::ResourcePrototypeContext,
     schema::{SchemaVariant, UiMenu},
     socket::{Socket, SocketArity, SocketEdgeKind},
     validation_prototype::ValidationPrototypeContext,
-    AttributeContext, AttributeReadContext, BuiltinsResult, DalContext, Func, FuncBackendKind,
-    FuncBackendResponseType, Prop, PropId, PropKind, QualificationPrototype, ResourcePrototype,
-    Schema, SchemaError, SchemaKind, SchematicKind, StandardModel, ValidationPrototype,
+    AttributeContext, AttributeReadContext, AttributeValue, AttributeValueError, BuiltinsResult,
+    DalContext, Func, FuncBackendKind, FuncBackendResponseType, FuncBindingReturnValue, Prop,
+    PropId, PropKind, QualificationPrototype, ResourcePrototype, Schema, SchemaError, SchemaKind,
+    SchematicKind, StandardModel, ValidationPrototype,
 };
 
 mod kubernetes;
@@ -748,7 +750,6 @@ pub async fn create_prop(
     Ok(prop)
 }
 
-#[allow(clippy::too_many_arguments)]
 pub async fn create_string_prop_with_default(
     ctx: &DalContext<'_, '_>,
     prop_name: &str,
@@ -797,8 +798,32 @@ pub async fn create_string_prop_with_default(
         func_binding.execute(ctx).await?;
     }
 
-    // TODO: Set up AttribuePrototype & AttributeValue appropriately
-    // YES!
+    let func_binding_return_value =
+        FuncBindingReturnValue::get_by_func_binding_id(ctx, *func_binding.id())
+            .await?
+            .ok_or(FuncBindingReturnValueError::Missing)?;
+
+    let attribute_value_context = AttributeReadContext {
+        prop_id: Some(*prop.id()),
+        ..AttributeReadContext::default()
+    };
+
+    let mut attribute_value = AttributeValue::find_for_context(ctx, attribute_value_context)
+        .await?
+        .pop()
+        .ok_or(AttributeValueError::Missing)?;
+    attribute_value
+        .set_func_binding_id(ctx, *func_binding.id())
+        .await?;
+    attribute_value
+        .set_func_binding_return_value_id(ctx, *func_binding_return_value.id())
+        .await?;
+
+    let mut attribute_prototype = attribute_value
+        .attribute_prototype(ctx)
+        .await?
+        .ok_or(AttributeValueError::MissingAttributePrototype)?;
+    attribute_prototype.set_func_id(ctx, *func.id()).await?;
 
     Ok(prop)
 }

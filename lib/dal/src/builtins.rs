@@ -5,6 +5,7 @@
 use thiserror::Error;
 
 use crate::func::binding::FuncBindingError;
+use crate::func::binding_return_value::FuncBindingReturnValueError;
 use crate::schema::variant::SchemaVariantError;
 use crate::socket::SocketError;
 use crate::{
@@ -30,6 +31,8 @@ pub enum BuiltinsError {
     Func(#[from] FuncError),
     #[error("func binding error: {0}")]
     FuncBinding(#[from] FuncBindingError),
+    #[error("func binding return value error: {0}")]
+    FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
     #[error("qualification prototype error: {0}")]
