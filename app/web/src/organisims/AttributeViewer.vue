@@ -93,6 +93,7 @@ import {
 import { ComponentService } from "@/service/component";
 import { SystemService } from "@/service/system";
 import { standardVisibilityTriggers$ } from "@/observable/visibility";
+import _, { parseInt } from "lodash";
 
 // TODO(nick): we technically only need one prop. We're sticking with two to not mess
 // with the reactivity guarentees in place.
@@ -157,6 +158,11 @@ const editorContext = refFrom<PropertyEditorContext | undefined>(
         return Rx.from([propertyEditorContext]);
       },
     ),
+    Rx.switchMap((propertyEditorContext) => {
+      return Rx.from([
+        hackAwayTheZeroElementOfContainers(propertyEditorContext),
+      ]);
+    }),
   ),
 );
 
@@ -339,6 +345,54 @@ const addToMap = (event: AddToMap) => {
       GlobalErrorService.set(result);
     }
   });
+};
+
+const hackAwayTheZeroElementOfContainers = (
+  propertyEditorContext: PropertyEditorContext | undefined,
+): PropertyEditorContext | undefined => {
+  if (_.isUndefined(propertyEditorContext)) {
+    return undefined;
+  }
+
+  const filteredChildValues: { [key: number]: Array<number> } = {};
+
+  for (const [parentValueId, childValuesIds] of Object.entries(
+    propertyEditorContext.values.childValues,
+  )) {
+    const parentValue =
+      propertyEditorContext.values.values[parseInt(parentValueId, 10)];
+    if (!parentValue) {
+      // If we don't find a value, then don't filter and continue
+      filteredChildValues[parseInt(parentValueId, 10)] = childValuesIds;
+      continue;
+    }
+    const parentProp = propertyEditorContext.schema.props[parentValue.propId];
+    if (!parentProp) {
+      // If we don't find a prop, then don't filter and continue
+      filteredChildValues[parentValue.id] = childValuesIds;
+      continue;
+    }
+
+    if (parentProp.kind == "array" || parentProp.kind == "map") {
+      filteredChildValues[parentValue.id] = childValuesIds.filter(
+        (childValueId) => {
+          const childValue = propertyEditorContext.values.values[childValueId];
+          if (childValue && _.isNull(childValue.key)) {
+            // If we don't find a value, then don't filter it out
+            return false;
+          } else {
+            return true;
+          }
+        },
+      );
+    } else {
+      filteredChildValues[parentValue.id] = childValuesIds;
+    }
+  }
+
+  propertyEditorContext.values.childValues = filteredChildValues;
+
+  return propertyEditorContext;
 };
 </script>
 
