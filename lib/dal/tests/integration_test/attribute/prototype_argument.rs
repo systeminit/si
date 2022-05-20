@@ -4,8 +4,7 @@ use dal::{
     attribute::prototype::AttributePrototype,
     func::{backend::string::FuncBackendStringArgs, binding::FuncBinding},
     test_harness::{create_schema, create_schema_variant_with_root},
-    AttributeReadContext, Func, FuncBackendKind, FuncBackendResponseType, PropKind, SchemaKind,
-    StandardModel,
+    Func, FuncBackendKind, FuncBackendResponseType, PropKind, SchemaKind, StandardModel,
 };
 use dal::{AttributePrototypeArgument, DalContext, InternalProvider};
 
@@ -21,12 +20,6 @@ async fn create_and_list_for_attribute_prototype(ctx: &DalContext<'_, '_>) {
         .await
         .expect("cannot set default schema variant");
 
-    let base_attribute_read_context = AttributeReadContext {
-        schema_id: Some(*schema.id()),
-        schema_variant_id: Some(*schema_variant.id()),
-        ..AttributeReadContext::default()
-    };
-
     // domain: Object
     // └─ object: Object
     //    └─ name: String
@@ -35,7 +28,6 @@ async fn create_and_list_for_attribute_prototype(ctx: &DalContext<'_, '_>) {
         PropKind::Object,
         "object",
         root_prop.domain_prop_id,
-        base_attribute_read_context,
     )
     .await;
     let name_prop = create_prop_of_kind_and_set_parent_with_name(
@@ -43,7 +35,6 @@ async fn create_and_list_for_attribute_prototype(ctx: &DalContext<'_, '_>) {
         PropKind::String,
         "name",
         *object_prop.id(),
-        base_attribute_read_context,
     )
     .await;
 

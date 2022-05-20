@@ -3,7 +3,7 @@ use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::{edit_field::ToSelectWidget, label_list::ToLabelList, PropKind};
+use crate::{label_list::ToLabelList, PropKind};
 
 pub mod array;
 pub mod boolean;
@@ -116,4 +116,3 @@ pub enum FuncBackendResponseType {
 }
 
 impl ToLabelList for FuncBackendKind {}
-impl ToSelectWidget for FuncBackendKind {}

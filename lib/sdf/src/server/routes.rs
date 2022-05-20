@@ -87,10 +87,6 @@ pub fn routes(
             "/api/component",
             crate::server::service::component::routes(),
         )
-        .nest(
-            "/api/edit_field",
-            crate::server::service::edit_field::routes(),
-        )
         .nest("/api/provider", crate::server::service::provider::routes())
         .nest("/api/schema", crate::server::service::schema::routes())
         .nest(

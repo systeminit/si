@@ -1,4 +1,3 @@
-use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use si_data::{NatsError, PgError};
 use strum_macros::{AsRefStr, Display, EnumString};
@@ -12,23 +11,14 @@ use crate::schema::variant::{SchemaVariantError, SchemaVariantResult};
 use crate::socket::SocketError;
 use crate::WriteTenancy;
 use crate::{
-    component::ComponentKind,
-    edit_field::{
-        value_and_visibility_diff, widget::prelude::*, EditField, EditFieldAble, EditFieldDataType,
-        EditFieldError, EditFieldObjectKind, VisibilityDiff,
-    },
-    func::binding::FuncBindingError,
-    impl_standard_model,
-    node::NodeKind,
-    pk,
-    schema::ui_menu::UiMenuId,
-    standard_model, standard_model_accessor, standard_model_has_many, standard_model_many_to_many,
-    AttributeContextBuilderError, AttributePrototypeError, AttributeValueError, BillingAccount,
-    BillingAccountId, CodeGenerationPrototypeError, Component, DalContext, FuncError,
-    HistoryEventError, LabelEntry, LabelList, Organization, OrganizationId, PropError,
-    QualificationPrototypeError, ReadTenancyError, ResourcePrototypeError, SchematicKind,
-    StandardModel, StandardModelError, Timestamp, ValidationPrototypeError, Visibility, Workspace,
-    WorkspaceId, WsEventError,
+    component::ComponentKind, func::binding::FuncBindingError, impl_standard_model, node::NodeKind,
+    pk, schema::ui_menu::UiMenuId, standard_model, standard_model_accessor,
+    standard_model_has_many, standard_model_many_to_many, AttributeContextBuilderError,
+    AttributePrototypeError, AttributeValueError, BillingAccount, BillingAccountId,
+    CodeGenerationPrototypeError, Component, DalContext, FuncError, HistoryEventError,
+    Organization, OrganizationId, PropError, QualificationPrototypeError, ReadTenancyError,
+    ResourcePrototypeError, SchematicKind, StandardModel, StandardModelError, Timestamp,
+    ValidationPrototypeError, Visibility, Workspace, WorkspaceId, WsEventError,
 };
 
 pub use ui_menu::UiMenu;
@@ -48,8 +38,6 @@ pub enum SchemaError {
     AttributeValue(#[from] AttributeValueError),
     #[error("code generation prototype error: {0}")]
     CodeGenerationPrototype(#[from] CodeGenerationPrototypeError),
-    #[error("edit field error: {0}")]
-    EditField(#[from] EditFieldError),
     #[error("external provider error: {0}")]
     ExternalProvider(#[from] ExternalProviderError),
     #[error("func error: {0}")]
@@ -313,230 +301,5 @@ impl Schema {
             .ok_or_else(|| SchemaError::NoDefaultVariant(*schema.id()))?;
 
         Ok(*schema_variant_id)
-    }
-
-    fn name_edit_field(
-        visibility: &Visibility,
-        object: &Self,
-        head_object: &Option<Self>,
-        change_set_object: &Option<Self>,
-    ) -> SchemaResult<EditField> {
-        let field_name = "name";
-        let target_fn = Self::name;
-        let object_kind = EditFieldObjectKind::Schema;
-
-        let (value, visibility_diff) = value_and_visibility_diff(
-            visibility,
-            Some(object),
-            target_fn,
-            head_object.as_ref(),
-            change_set_object.as_ref(),
-        )?;
-
-        Ok(EditField::new(
-            field_name,
-            vec![],
-            object_kind,
-            object.id,
-            EditFieldDataType::String,
-            Widget::Text(TextWidget::new()),
-            value,
-            visibility_diff,
-            vec![], // TODO: actually validate to generate ValidationErrors
-        ))
-    }
-
-    fn kind_edit_field(
-        visibility: &Visibility,
-        object: &Self,
-        head_object: &Option<Self>,
-        change_set_object: &Option<Self>,
-    ) -> SchemaResult<EditField> {
-        let field_name = "kind";
-        let target_fn = Self::kind;
-        let object_kind = EditFieldObjectKind::Schema;
-
-        let (value, visibility_diff) = value_and_visibility_diff(
-            visibility,
-            Some(object),
-            target_fn,
-            head_object.as_ref(),
-            change_set_object.as_ref(),
-        )?;
-
-        Ok(EditField::new(
-            field_name,
-            vec![],
-            object_kind,
-            object.id,
-            EditFieldDataType::String,
-            Widget::Select(SelectWidget::new(
-                LabelList::new(vec![
-                    LabelEntry::new(
-                        SchemaKind::Concrete.to_string(),
-                        serde_json::to_value(SchemaKind::Concrete)?,
-                    ),
-                    LabelEntry::new(
-                        SchemaKind::Concept.to_string(),
-                        serde_json::to_value(SchemaKind::Concept)?,
-                    ),
-                    LabelEntry::new(
-                        SchemaKind::Implementation.to_string(),
-                        serde_json::to_value(SchemaKind::Implementation)?,
-                    ),
-                ]),
-                Some(serde_json::to_value(SchemaKind::Concrete)?),
-            )),
-            value,
-            visibility_diff,
-            vec![], // TODO: actually validate to generate ValidationErrors
-        ))
-    }
-
-    async fn variants_edit_field(
-        ctx: &DalContext<'_, '_>,
-        object: &Self,
-    ) -> SchemaResult<EditField> {
-        let field_name = "variants";
-        let object_kind = EditFieldObjectKind::Schema;
-
-        let mut items: Vec<EditField> = vec![];
-        for variant in object.variants(ctx).await?.into_iter() {
-            let edit_fields = SchemaVariant::get_edit_fields(ctx, variant.id()).await?;
-            items.extend(edit_fields);
-        }
-
-        Ok(EditField::new(
-            field_name,
-            vec![],
-            object_kind,
-            object.id,
-            EditFieldDataType::None,
-            Widget::Header(HeaderWidget::new(vec![EditField::new(
-                "schemaVariants",
-                vec![field_name.to_string()],
-                EditFieldObjectKind::Schema,
-                object.id,
-                EditFieldDataType::Array,
-                Widget::Array(items.into()),
-                None,
-                VisibilityDiff::None,
-                vec![], // TODO: actually validate to generate ValidationErrors
-            )])),
-            None,
-            VisibilityDiff::None,
-            vec![], // TODO: actually validate to generate ValidationErrors
-        ))
-    }
-
-    async fn ui_edit_field(ctx: &DalContext<'_, '_>, object: &Self) -> SchemaResult<EditField> {
-        let field_name = "ui";
-        let object_kind = EditFieldObjectKind::Schema;
-
-        let mut items: Vec<EditField> = vec![];
-        for ui_menu in object.ui_menus(ctx).await?.into_iter() {
-            let edit_fields = UiMenu::get_edit_fields(ctx, ui_menu.id()).await?;
-            items.extend(edit_fields);
-        }
-
-        Ok(EditField::new(
-            field_name,
-            vec![],
-            object_kind,
-            object.id,
-            EditFieldDataType::None,
-            Widget::Header(HeaderWidget::new(vec![EditField::new(
-                "menuItems",
-                vec![field_name.to_string()],
-                EditFieldObjectKind::Schema,
-                object.id,
-                EditFieldDataType::Array,
-                Widget::Array(items.into()),
-                None,
-                VisibilityDiff::None,
-                vec![], // TODO: actually validate to generate ValidationErrors
-            )])),
-            None,
-            VisibilityDiff::None,
-            vec![], // TODO: actually validate to generate ValidationErrors
-        ))
-    }
-}
-
-#[async_trait]
-impl EditFieldAble for Schema {
-    type Id = SchemaId;
-    type Error = SchemaError;
-
-    async fn get_edit_fields(
-        ctx: &DalContext<'_, '_>,
-        id: &SchemaId,
-    ) -> SchemaResult<Vec<EditField>> {
-        let object = Schema::get_by_id(ctx, id)
-            .await?
-            .ok_or(SchemaError::NotFound(*id))?;
-        let head_object: Option<Schema> = if ctx.visibility().in_change_set() {
-            let head_visibility = ctx.visibility().to_head();
-            let ctx = ctx.clone_with_new_visibility(head_visibility);
-            Schema::get_by_id(&ctx, id).await?
-        } else {
-            None
-        };
-        let change_set_object: Option<Schema> = if ctx.visibility().in_change_set() {
-            let change_set_visibility = ctx.visibility().to_change_set();
-            let ctx = ctx.clone_with_new_visibility(change_set_visibility);
-            Schema::get_by_id(&ctx, id).await?
-        } else {
-            None
-        };
-
-        Ok(vec![
-            Self::name_edit_field(ctx.visibility(), &object, &head_object, &change_set_object)?,
-            Self::kind_edit_field(ctx.visibility(), &object, &head_object, &change_set_object)?,
-            Self::variants_edit_field(ctx, &object).await?,
-            Self::ui_edit_field(ctx, &object).await?,
-        ])
-    }
-
-    async fn update_from_edit_field(
-        ctx: &DalContext<'_, '_>,
-        id: Self::Id,
-        edit_field_id: String,
-        value: Option<serde_json::Value>,
-    ) -> SchemaResult<()> {
-        let edit_field_id = edit_field_id.as_ref();
-        let mut object = Schema::get_by_id(ctx, &id)
-            .await?
-            .ok_or(SchemaError::NotFound(id))?;
-        // value: None = remove value, Some(v) = set value
-        match edit_field_id {
-            "name" => match value {
-                Some(json_value) => {
-                    let value = json_value.as_str().map(|s| s.to_string()).ok_or(
-                        Self::Error::EditField(EditFieldError::InvalidValueType("string")),
-                    )?;
-                    object.set_name(ctx, value).await?;
-                }
-                None => return Err(EditFieldError::MissingValue.into()),
-            },
-            "kind" => match value {
-                Some(json_value) => {
-                    let value: SchemaKind = serde_json::from_value(json_value).map_err(|_| {
-                        Self::Error::EditField(EditFieldError::InvalidValueType("string"))
-                    })?;
-                    object.set_kind(ctx, value).await?;
-                }
-                None => return Err(EditFieldError::MissingValue.into()),
-            },
-            "variants.schemaVariants" => {
-                let (_variant, _) = SchemaVariant::new(ctx, *object.id(), "TODO: name me!").await?;
-            }
-            "ui.menuItems" => {
-                let new_ui_menu = UiMenu::new(ctx, &(*object.kind()).into()).await?;
-                new_ui_menu.set_schema(ctx, object.id()).await?;
-            }
-            invalid => return Err(EditFieldError::invalid_field(invalid).into()),
-        }
-        Ok(())
     }
 }

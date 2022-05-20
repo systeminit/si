@@ -2,8 +2,6 @@ pub mod view;
 
 pub use view::{ComponentView, ComponentViewError};
 
-use async_recursion::async_recursion;
-use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use si_data::{NatsError, PgError, PgTxn};
 use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
@@ -13,10 +11,6 @@ use thiserror::Error;
 use crate::attribute::value::AttributeValue;
 use crate::attribute::{context::UNSET_ID_VALUE, value::AttributeValueError};
 use crate::code_generation_resolver::CodeGenerationResolverContext;
-use crate::edit_field::{
-    widget::prelude::*, EditField, EditFieldAble, EditFieldBaggage, EditFieldError,
-    EditFieldObjectKind,
-};
 use crate::func::backend::validation::FuncBackendValidateStringValueArgs;
 use crate::func::backend::{
     js_code_generation::FuncBackendJsCodeGenerationArgs,
@@ -32,19 +26,19 @@ use crate::schema::SchemaVariant;
 use crate::ws_event::{WsEvent, WsEventError};
 use crate::AttributeValueId;
 use crate::{
-    context::AccessBuilder, context::DalContextBuilder, edit_field, func::FuncId,
-    impl_standard_model, node::NodeId, pk, qualification::QualificationError, standard_model,
-    standard_model_accessor, standard_model_belongs_to, standard_model_has_many, AttributeContext,
+    context::AccessBuilder, context::DalContextBuilder, func::FuncId, impl_standard_model,
+    node::NodeId, pk, qualification::QualificationError, standard_model, standard_model_accessor,
+    standard_model_belongs_to, standard_model_has_many, AttributeContext,
     AttributeContextBuilderError, AttributeContextError, AttributeReadContext,
     CodeGenerationPrototype, CodeGenerationPrototypeError, CodeGenerationResolver,
     CodeGenerationResolverError, CodeLanguage, CodeView, DalContext, Edge, EdgeError, Func,
-    FuncBackendKind, HistoryEventError, LabelEntry, LabelList, Node, NodeError, OrganizationError,
-    Prop, PropError, PropId, PropKind, QualificationPrototype, QualificationPrototypeError,
-    QualificationResolver, QualificationResolverError, ReadTenancyError, Resource, ResourceError,
-    ResourcePrototype, ResourcePrototypeError, ResourceResolver, ResourceResolverError,
-    ResourceView, Schema, SchemaError, SchemaId, Secret, StandardModel, StandardModelError,
-    SystemId, Timestamp, TransactionsError, ValidationPrototype, ValidationPrototypeError,
-    ValidationResolver, ValidationResolverError, Visibility, WorkspaceError, WriteTenancy,
+    FuncBackendKind, HistoryEventError, Node, NodeError, OrganizationError, Prop, PropError,
+    PropId, QualificationPrototype, QualificationPrototypeError, QualificationResolver,
+    QualificationResolverError, ReadTenancyError, Resource, ResourceError, ResourcePrototype,
+    ResourcePrototypeError, ResourceResolver, ResourceResolverError, ResourceView, Schema,
+    SchemaError, SchemaId, StandardModel, StandardModelError, SystemId, Timestamp,
+    TransactionsError, ValidationPrototype, ValidationPrototypeError, ValidationResolver,
+    ValidationResolverError, Visibility, WorkspaceError, WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -57,8 +51,6 @@ pub enum ComponentError {
     AttributeValue(#[from] AttributeValueError),
     #[error("codegen function returned unexpected format, expected {0:?}, got {1:?}")]
     CodeLanguageMismatch(CodeLanguage, CodeLanguage),
-    #[error("edit field error: {0}")]
-    EditField(#[from] EditFieldError),
     #[error("edge error: {0}")]
     Edge(#[from] EdgeError),
     #[error("missing attribute value for id: ({0})")]
@@ -392,46 +384,6 @@ impl Component {
 
     pub fn tenancy(&self) -> &WriteTenancy {
         &self.tenancy
-    }
-
-    // FIXME(nick): this should eventually become "update_from_edit_field", but we are going to
-    // maintain the old SDF logic for now since this code is in flux.
-    #[allow(clippy::too_many_arguments)]
-    #[instrument(skip_all)]
-    pub async fn update_from_edit_field_with_baggage(
-        ctx: &DalContext<'_, '_>,
-        value: Option<serde_json::Value>,
-        attribute_context: AttributeContext,
-        baggage: EditFieldBaggage,
-    ) -> ComponentResult<Option<ComponentAsyncTasks>> {
-        let (_, _, async_tasks) = AttributeValue::update_for_context(
-            ctx,
-            baggage.attribute_value_id,
-            baggage.parent_attribute_value_id,
-            attribute_context,
-            value,
-            baggage.key,
-        )
-        .await?;
-        Ok(async_tasks)
-    }
-
-    #[instrument(skip_all)]
-    pub async fn insert_from_edit_field_with_baggage(
-        ctx: &DalContext<'_, '_>,
-        attribute_context: AttributeContext,
-        baggage: EditFieldBaggage,
-        key: Option<String>,
-    ) -> ComponentResult<Option<ComponentAsyncTasks>> {
-        let (_, async_tasks) = AttributeValue::insert_for_context(
-            ctx,
-            attribute_context,
-            baggage.attribute_value_id,
-            None,
-            key,
-        )
-        .await?;
-        Ok(async_tasks)
     }
 
     pub async fn check_validations(
@@ -1504,306 +1456,6 @@ impl Component {
 
         Ok(None)
     }
-}
-
-#[async_trait]
-impl EditFieldAble for Component {
-    type Id = ComponentId;
-    type Error = ComponentError;
-
-    // FIXME(nick): we may want to change the trait's func signature to return only one edit field.
-    // Since that is TBD, we split out the "get_root_edit_field" logic to clearly indicate that only
-    // the root edit field is to be expected.
-    async fn get_edit_fields(
-        ctx: &DalContext<'_, '_>,
-        id: &Self::Id,
-    ) -> Result<Vec<EditField>, Self::Error> {
-        let root_edit_field = get_root_edit_field(ctx, id).await?;
-        Ok(vec![root_edit_field])
-    }
-
-    async fn update_from_edit_field(
-        _ctx: &DalContext<'_, '_>,
-        _id: Self::Id,
-        edit_field_id: String,
-        _value: Option<serde_json::Value>,
-    ) -> ComponentResult<()> {
-        Err(EditFieldError::invalid_field(edit_field_id).into())
-    }
-}
-
-/// Find the root [`EditField`](crate::EditField) for a given [`ComponentId`]. This will also find
-/// all of its child edit fields, which are accessed via each field's
-/// [`Widget`](crate::edit_field::widget::Widget), if applicable.
-async fn get_root_edit_field(
-    ctx: &DalContext<'_, '_>,
-    id: &ComponentId,
-) -> ComponentResult<EditField> {
-    let head_visibility = Visibility::new_head(ctx.visibility().deleted_at.is_some());
-    let change_set_visibility = Visibility::new_change_set(
-        ctx.visibility().change_set_pk,
-        ctx.visibility().deleted_at.is_some(),
-    );
-
-    // FIXME(nick): if we end up deciding that the trait's "get_edit_fields" func signature will
-    // change to only return one edit field, then this can use "Self" instead of "Component".
-    let component = Component::get_by_id(ctx, id)
-        .await?
-        .ok_or(ComponentError::NotFound(*id))?;
-
-    let schema_variant = component
-        .schema_variant_with_tenancy(ctx)
-        .await?
-        .ok_or(ComponentError::SchemaVariantNotFound)?;
-    let schema = schema_variant
-        .schema(ctx)
-        .await?
-        .ok_or(ComponentError::SchemaNotFound)?;
-
-    let attribute_read_context = AttributeReadContext {
-        prop_id: None,
-        schema_id: Some(*schema.id()),
-        schema_variant_id: Some(*schema_variant.id()),
-        component_id: Some(*id),
-        ..AttributeReadContext::default()
-    };
-
-    // NOTE(nick): this can be more elegant, but it works. We want to ensure we only find the
-    // root prop at this point.
-    let mut props = schema_variant.props(ctx).await?;
-    if props.len() > 1 {
-        return Err(ComponentError::MultipleRootProps(props));
-    }
-    let root_prop = props
-        .pop()
-        .ok_or_else(|| ComponentError::RootPropNotFound(*schema_variant.id()))?;
-
-    // NOTE(nick): it is a bit wasteful that we get the attribute value here and then do it
-    // again within the call below, but it ~~works~~.
-    let context = AttributeReadContext {
-        prop_id: Some(*root_prop.id()),
-        ..attribute_read_context
-    };
-    let attribute_value: AttributeValue = AttributeValue::find_for_context(ctx, context)
-        .await?
-        .pop()
-        .ok_or_else(|| ComponentError::RootPropNotFound(*schema_variant.id()))?;
-
-    // Parent attribute value must be "None" since we are dealing with the root prop.
-    let root_edit_field = edit_field_for_attribute_value(
-        ctx,
-        &head_visibility,
-        &change_set_visibility,
-        attribute_read_context,
-        *attribute_value.id(),
-        None,
-        None,
-    )
-    .await?;
-
-    Ok(root_edit_field)
-}
-
-/// This recursive function creates an [`EditField`](crate::EditField) for a given set of
-/// information, particularly an [`AttributeValue`](crate::AttributeValue) and its parent
-/// [`AttributeValue`]. Recursion happens if our
-/// [`WidgetKind`](crate::edit_field::widget::WidgetKind) is an array, map or header. In that
-/// instance, we collect all the child [`AttributeValues`](crate::AttributeValue) for the current
-/// [`AttributeValue`](crate::AttributeValue), ensure they are correctly ordered via an index map,
-/// and then recursively call this function for each child.
-#[allow(clippy::too_many_arguments)]
-#[async_recursion]
-async fn edit_field_for_attribute_value(
-    ctx: &DalContext<'_, '_>,
-    head_visibility: &Visibility,
-    change_set_visibility: &Visibility,
-    attribute_read_context: AttributeReadContext,
-    attribute_value_id: AttributeValueId,
-    parent_attribute_value_id: Option<AttributeValueId>,
-    edit_field_path: Option<Vec<String>>,
-) -> ComponentResult<EditField> {
-    let head_ctx = ctx.clone_with_new_visibility(*head_visibility);
-    let change_set_ctx = ctx.clone_with_new_visibility(*change_set_visibility);
-    let attribute_value: AttributeValue = AttributeValue::get_by_id(ctx, &attribute_value_id)
-        .await?
-        .ok_or(ComponentError::MissingAttributeValue(attribute_value_id))?;
-    let prop = AttributeValue::find_prop_for_value(ctx, *attribute_value.id()).await?;
-
-    let field_name = prop.name();
-    let object_kind = EditFieldObjectKind::ComponentProp;
-
-    // Gather the three values we need for visibility diff. For the head and change set values, we
-    // need to use their respective visibilites for attribute value searches, but can use the
-    // standard visibility for getting the func binding return value by id.
-    let current_func_binding_return_value =
-        FuncBindingReturnValue::get_by_id(ctx, &attribute_value.func_binding_return_value_id())
-            .await?;
-    let head_func_binding_return_value = if ctx.visibility().in_change_set() {
-        if let Some(found_value) = AttributeValue::find_with_parent_and_key_for_context(
-            &head_ctx,
-            parent_attribute_value_id,
-            attribute_value.key.clone(),
-            attribute_value.context.into(),
-        )
-        .await?
-        {
-            FuncBindingReturnValue::get_by_id(
-                &head_ctx,
-                &found_value.func_binding_return_value_id(),
-            )
-            .await?
-        } else {
-            None
-        }
-    } else {
-        None
-    };
-    let change_set_func_binding_return_value = if ctx.visibility().in_edit_session() {
-        if let Some(found_value) = AttributeValue::find_with_parent_and_key_for_context(
-            &change_set_ctx,
-            parent_attribute_value_id,
-            attribute_value.key.clone(),
-            attribute_value.context.into(),
-        )
-        .await?
-        {
-            FuncBindingReturnValue::get_by_id(
-                &change_set_ctx,
-                &found_value.func_binding_return_value_id(),
-            )
-            .await?
-        } else {
-            None
-        }
-    } else {
-        None
-    };
-
-    fn extract_value(
-        func_binding_return_value: &FuncBindingReturnValue,
-    ) -> Option<&serde_json::Value> {
-        func_binding_return_value.value()
-    }
-
-    let (value, visibility_diff) = edit_field::value_and_visibility_diff_json_option(
-        ctx.visibility(),
-        current_func_binding_return_value.as_ref(),
-        extract_value,
-        head_func_binding_return_value.as_ref(),
-        change_set_func_binding_return_value.as_ref(),
-    )?;
-
-    let validation_errors = Vec::new();
-
-    /*
-    let component_id = attribute_read_context.component_id;
-    let system_id = attribute_read_context
-        .system_id
-        .unwrap_or_else(|| UNSET_ID_VALUE.into());
-
-    // Ideally component id should always be set here, but let's future proof this
-    // as it's more of a product decision than a technical one
-    // Technically if we wanted a ValidationResolver and its data could live outside of a component
-    // But there is no need to implement a new query to handle that for now
-    if let Some(component_id) = component_id {
-        validation_errors = ValidationResolver::find_errors_for_prop_and_component(
-            ctx,
-            *prop.id(),
-            component_id,
-            system_id,
-        )
-        .await?;
-    }
-    */
-
-    let current_edit_field_path = match edit_field_path {
-        None => vec!["properties".to_owned()],
-        Some(path) => path,
-    };
-    let mut edit_field_path_for_children = current_edit_field_path.clone();
-    edit_field_path_for_children.push(field_name.to_string());
-
-    let widget = match prop.widget_kind() {
-        WidgetKind::SecretSelect => {
-            let mut entries = Vec::new();
-            let secrets = Secret::list(ctx).await?;
-
-            for secret in secrets.into_iter() {
-                entries.push(LabelEntry::new(
-                    secret.name(),
-                    serde_json::json!(i64::from(*secret.id())),
-                ));
-            }
-            Widget::Select(SelectWidget::new(LabelList::new(entries), None))
-        }
-        WidgetKind::Text => Widget::Text(TextWidget::new()),
-        WidgetKind::Array | WidgetKind::Map | WidgetKind::Header => {
-            let mut child_edit_fields = vec![];
-            let mut child_attribute_values = AttributeValue::child_attribute_values_in_context(
-                ctx,
-                attribute_value_id,
-                attribute_read_context,
-            )
-            .await?;
-            if let Some(index_map) = attribute_value.index_map() {
-                let child_order = index_map.order();
-
-                child_attribute_values.sort_by_cached_key(|av| {
-                    child_order
-                        .iter()
-                        .position(|attribute_value_id| attribute_value_id == av.id())
-                        .unwrap_or(0)
-                });
-            }
-
-            for child_attribute_value in child_attribute_values {
-                // Use the current attribute value as the parent when creating the child edit field.
-                child_edit_fields.push(
-                    edit_field_for_attribute_value(
-                        ctx,
-                        head_visibility,
-                        change_set_visibility,
-                        attribute_read_context,
-                        *child_attribute_value.id(),
-                        Some(attribute_value_id),
-                        Some(edit_field_path_for_children.clone()),
-                    )
-                    .await?,
-                );
-            }
-
-            #[allow(clippy::if_same_then_else)]
-            if *prop.kind() == PropKind::Array {
-                Widget::Array(ArrayWidget::new(child_edit_fields))
-            } else if *prop.kind() == PropKind::Map {
-                Widget::Map(MapWidget::new(child_edit_fields))
-            } else {
-                Widget::Header(HeaderWidget::new(child_edit_fields))
-            }
-        }
-        WidgetKind::Checkbox => Widget::Checkbox(CheckboxWidget::new()),
-    };
-
-    let mut edit_field = EditField::new(
-        field_name,
-        current_edit_field_path,
-        object_kind,
-        attribute_value_id,
-        (*prop.kind()).into(),
-        widget,
-        value,
-        visibility_diff,
-        validation_errors,
-    );
-    edit_field.set_new_baggage(
-        attribute_value_id,
-        parent_attribute_value_id,
-        attribute_value.key,
-        *prop.id(),
-        prop.doc_link().map(ToOwned::to_owned),
-    );
-
-    Ok(edit_field)
 }
 
 pub struct ComponentAsyncTasks {

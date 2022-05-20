@@ -3,13 +3,11 @@
 
 use telemetry::prelude::*;
 
-use crate::schema::variant::{SchemaVariantError, SchemaVariantResult};
 use crate::{
-    func::binding::FuncBinding, Func, Prop, PropId, PropKind, SchemaVariantId, StandardModel,
-};
-use crate::{
-    AttributeContext, AttributeReadContext, AttributeValue, AttributeValueError, DalContext,
-    SchemaId,
+    func::binding::FuncBinding,
+    schema::variant::{SchemaVariantError, SchemaVariantResult},
+    AttributeContext, AttributeValue, AttributeValueError, DalContext, Func, Prop, PropId,
+    PropKind, SchemaId, SchemaVariantId, StandardModel,
 };
 
 /// Contains the the si-specific [`PropId`](crate::Prop) and domain-specific [`PropId`](crate::Prop)
@@ -25,14 +23,9 @@ impl RootProp {
     #[instrument(skip_all)]
     pub async fn new(
         ctx: &DalContext<'_, '_>,
-        schema_id: SchemaId,
+        _schema_id: SchemaId,
         schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<Self> {
-        let mut base_context_builder = AttributeContext::builder();
-        base_context_builder
-            .set_schema_id(schema_id)
-            .set_schema_variant_id(schema_variant_id);
-
         let func_name = "si:setPropObject".to_string();
         let mut funcs = Func::find_by_attr(ctx, "name", &func_name).await?;
         let func = funcs
@@ -57,8 +50,7 @@ impl RootProp {
             .add_schema_variant(ctx, &schema_variant_id)
             .await?;
 
-        let root_context = base_context_builder
-            .clone()
+        let root_context = AttributeContext::builder()
             .set_prop_id(*root_prop.id())
             .to_context()?;
         let (_, root_value_id, _) = AttributeValue::update_for_context(
@@ -75,19 +67,12 @@ impl RootProp {
         )
         .await?;
 
-        let base_attribute_read_context = AttributeReadContext {
-            schema_id: Some(schema_id),
-            schema_variant_id: Some(schema_variant_id),
-            ..AttributeReadContext::default()
-        };
-
         let si_specific_prop = Prop::new(ctx, "si", PropKind::Object).await?;
         si_specific_prop
-            .set_parent_prop(ctx, *root_prop.id(), base_attribute_read_context)
+            .set_parent_prop(ctx, *root_prop.id())
             .await?;
 
-        let si_context = base_context_builder
-            .clone()
+        let si_context = AttributeContext::builder()
             .set_prop_id(*si_specific_prop.id())
             .to_context()?;
         let (_, si_value_id, _) = AttributeValue::update_for_context(
@@ -106,11 +91,10 @@ impl RootProp {
 
         let si_name_prop = Prop::new(ctx, "name", PropKind::String).await?;
         si_name_prop
-            .set_parent_prop(ctx, *si_specific_prop.id(), base_attribute_read_context)
+            .set_parent_prop(ctx, *si_specific_prop.id())
             .await?;
 
-        let si_name_context = base_context_builder
-            .clone()
+        let si_name_context = AttributeContext::builder()
             .set_prop_id(*si_name_prop.id())
             .to_context()?;
         AttributeValue::update_for_context(
@@ -129,11 +113,10 @@ impl RootProp {
 
         let domain_specific_prop = Prop::new(ctx, "domain", PropKind::Object).await?;
         domain_specific_prop
-            .set_parent_prop(ctx, *root_prop.id(), base_attribute_read_context)
+            .set_parent_prop(ctx, *root_prop.id())
             .await?;
 
-        let domain_context = base_context_builder
-            .clone()
+        let domain_context = AttributeContext::builder()
             .set_prop_id(*domain_specific_prop.id())
             .to_context()?;
         AttributeValue::update_for_context(

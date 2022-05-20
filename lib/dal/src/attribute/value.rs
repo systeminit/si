@@ -53,7 +53,7 @@ const LIST_PAYLOAD_FOR_READ_CONTEXT: &str =
 pub enum AttributeValueError {
     #[error("AttributeContextBuilder error: {0}")]
     AttributeContextBuilder(#[from] AttributeContextBuilderError),
-    #[error("AttributePrototype not found for AttributeValue: {0} ({:?})")]
+    #[error("AttributePrototype not found for AttributeValue: {0} ({1:?})")]
     AttributePrototypeNotFound(AttributeValueId, Visibility),
     #[error("AttributePrototype error: {0}")]
     AttributePrototype(String),
@@ -672,7 +672,6 @@ impl AttributeValue {
             .set_prop_id(*child_prop.id())
             .to_context()?;
 
-        let old_key = key.clone();
         let key = if let Some(k) = key {
             Some(k)
         } else if *parent_prop.kind() == PropKind::Array {
@@ -709,28 +708,17 @@ impl AttributeValue {
         )
         .await?;
 
-        if AttributePrototype::find_with_parent_value_and_key_for_context(
+        AttributePrototype::new_with_existing_value(
             ctx,
-            Some(parent_attribute_value_id),
-            old_key.clone(),
+            *unset_func.id(),
             context,
+            key.clone(),
+            Some(parent_attribute_value_id),
+            None,
+            *attribute_value.id(),
         )
         .await
-        .map_err(|e| AttributeValueError::AttributePrototype(format!("{e}")))?
-        .is_none()
-        {
-            AttributePrototype::new_with_existing_value(
-                ctx,
-                *unset_func.id(),
-                context,
-                key.clone(),
-                Some(parent_attribute_value_id),
-                None,
-                *attribute_value.id(),
-            )
-            .await
-            .map_err(|e| AttributeValueError::AttributePrototype(format!("{e}")))?;
-        };
+        .map_err(|e| AttributeValueError::AttributePrototype(format!("{e}")))?;
 
         let prop = Self::find_prop_for_value(ctx, *attribute_value.id()).await?;
         let mut child_props: VecDeque<_> = prop
