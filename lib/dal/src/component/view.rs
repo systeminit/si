@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 
 use crate::{
     attribute::value::{AttributeValue, AttributeValueId, AttributeValuePayload},
@@ -65,7 +65,8 @@ impl ComponentView {
             None => None,
         };
 
-        let mut work_queue = AttributeValue::list_payload_for_read_context(ctx, context).await?;
+        let mut initial_work = AttributeValue::list_payload_for_read_context(ctx, context).await?;
+
         // `AttributeValueId -> serde_json pointer` so when we have a parent_attribute_value_id,
         // we know _exactly_ where in the structure we need to insert, when we have a
         // parent_attribute_resolver_id.
@@ -75,18 +76,22 @@ impl ComponentView {
         // We sort the work queue according to the order of every nested IndexMap. This ensures that
         // when we reconstruct the final properties data, we don't have to worry about the order things
         // appear in - they are certain to be the right order.
-        let attribute_value_order: Vec<AttributeValueId> = work_queue
+        let attribute_value_order: Vec<AttributeValueId> = initial_work
             .iter()
             .filter_map(|avp| avp.attribute_value.index_map())
             .flat_map(|index_map| index_map.order())
             .copied()
             .collect();
-        work_queue.sort_by_cached_key(|avp| {
+        initial_work.sort_by_cached_key(|avp| {
             attribute_value_order
                 .iter()
                 .position(|attribute_value_id| attribute_value_id == avp.attribute_value.id())
                 .unwrap_or(0)
         });
+
+        // We need the work_queue to be a VecDeque so we can pop elements off of the front
+        // as it's supposed to be a queue, not a stack.
+        let mut work_queue: VecDeque<AttributeValuePayload> = VecDeque::from(initial_work);
 
         let mut properties = serde_json::json![{}];
         let mut root_stack: Vec<(Option<AttributeValueId>, String)> = vec![(None, "".to_string())];
@@ -102,7 +107,7 @@ impl ComponentView {
                 func_binding_return_value,
                 attribute_value,
                 parent_attribute_value_id,
-            }) = work_queue.pop()
+            }) = work_queue.pop_front()
             {
                 if let Some(func_binding_return_value) = func_binding_return_value {
                     if let Some(value) = func_binding_return_value.value() {
@@ -168,7 +173,7 @@ impl ComponentView {
                     }
                 }
             }
-            work_queue = unprocessed;
+            work_queue = VecDeque::from(unprocessed);
         }
         Ok(ComponentView {
             system,
