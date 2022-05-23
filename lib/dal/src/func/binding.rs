@@ -177,7 +177,7 @@ impl FuncBinding {
         Ok((object, created))
     }
 
-    standard_model_accessor!(args, Json<JsonValue>, FuncBindingResult);
+    standard_model_accessor!(args, PlainJson<JsonValue>, FuncBindingResult);
     standard_model_accessor!(backend_kind, Enum(FuncBackendKind), FuncBindingResult);
     standard_model_belongs_to!(
         lookup_fn: func,
