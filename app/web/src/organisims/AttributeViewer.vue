@@ -231,10 +231,7 @@ const qualificationTooltip = computed(() => {
 });
 
 const qualificationColor = computed(() => {
-  if (
-    !componentMetadata.value ||
-    componentMetadata.value.qualified === undefined
-  ) {
+  if (!componentMetadata.value || componentMetadata.value.qualified === null) {
     return "#5b6163";
   } else if (componentMetadata.value.qualified) {
     return "#86f0ad";

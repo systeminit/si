@@ -32,7 +32,7 @@ CREATE TABLE func_bindings
     visibility_deleted_at       timestamp with time zone,
     created_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     updated_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
-    args                        jsonb                    NOT NULL,
+    args                        json                     NOT NULL,
     backend_kind                text                     NOT NULL
 );
 SELECT standard_model_table_constraints_v1('func_bindings');
@@ -101,7 +101,7 @@ $$ LANGUAGE PLPGSQL VOLATILE;
 CREATE OR REPLACE FUNCTION func_binding_create_v1(
     this_tenancy jsonb,
     this_visibility jsonb,
-    this_args jsonb,
+    this_args json,
     this_backend_kind text,
     OUT object json) AS
 $$
@@ -134,7 +134,7 @@ $$ LANGUAGE PLPGSQL VOLATILE;
 CREATE OR REPLACE FUNCTION func_binding_find_or_create_v1(
     this_tenancy jsonb,
     this_visibility jsonb,
-    this_args jsonb,
+    this_args json,
     this_backend_kind text,
     this_func_id bigint,
     OUT object json, OUT created bool) AS
@@ -154,7 +154,7 @@ BEGIN
     INNER JOIN func_binding_belongs_to_func ON
         func_binding_belongs_to_func.object_id = func_bindings.id
         AND func_binding_belongs_to_func.belongs_to_id = this_func_id
-    WHERE func_bindings.args = this_args
+    WHERE func_bindings.args::jsonb = this_args::jsonb
         AND func_bindings.backend_kind = this_backend_kind
         AND in_tenancy_v1(this_tenancy,
           func_bindings.tenancy_universal,
@@ -183,7 +183,7 @@ BEGIN
       INNER JOIN func_binding_belongs_to_func ON
           func_binding_belongs_to_func.object_id = func_bindings.id
           AND func_binding_belongs_to_func.belongs_to_id = this_func_id
-      WHERE func_bindings.args = this_args
+      WHERE func_bindings.args::jsonb = this_args::jsonb
           AND func_bindings.backend_kind = this_backend_kind
           AND in_tenancy_v1(this_tenancy,
             func_bindings.tenancy_universal,
@@ -213,7 +213,7 @@ BEGIN
       INNER JOIN func_binding_belongs_to_func ON
           func_binding_belongs_to_func.object_id = func_bindings.id
           AND func_binding_belongs_to_func.belongs_to_id = this_func_id
-      WHERE func_bindings.args = this_args
+      WHERE func_bindings.args::jsonb = this_args::jsonb
           AND func_bindings.backend_kind = this_backend_kind
           AND in_tenancy_v1(this_tenancy,
             func_bindings.tenancy_universal,

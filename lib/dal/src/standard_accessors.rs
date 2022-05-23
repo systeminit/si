@@ -679,4 +679,14 @@ macro_rules! standard_model_accessor {
             $result_type,
         );
     };
+
+    ($column:ident, PlainJson<$value_type:ident>, $result_type:ident $(,)?) => {
+        standard_model_accessor!(@get_column $column, $value_type);
+        standard_model_accessor!(@set_column
+            $column,
+            $value_type,
+            $crate::standard_model::TypeHint::Json,
+            $result_type,
+        );
+    };
 }
