@@ -34,6 +34,7 @@
           <SiButtonIcon
             tooltip-text="Attributes"
             :selected="activeView === 'attribute'"
+            class="pl-1"
             @click="setActiveView('attribute')"
           >
             <ClipboardListIcon />
@@ -54,9 +55,7 @@
           >
             <CheckCircleIcon />
           </SiButtonIcon>
-        </div>
 
-        <div class="flex flex-row items-center">
           <!--
           <SiButtonIcon
             tooltip-text="Connection Viewer (not implemented yet)"
@@ -78,13 +77,12 @@
           <SiButtonIcon
             tooltip-text="Providers"
             :selected="activeView === 'provider'"
+            class="pl-1"
             @click="setActiveView('provider')"
           >
             <BeakerIcon />
           </SiButtonIcon>
-        </div>
 
-        <div class="flex items-center">
           <!--
           <SiButtonIcon
             tooltip-text="Action Viewer (not implemented yet)"
@@ -97,6 +95,7 @@
           <SiButtonIcon
             tooltip-text="Resources"
             :selected="activeView === 'resource'"
+            class="pl-1"
             @click="setActiveView('resource')"
           >
             <CubeIcon />
