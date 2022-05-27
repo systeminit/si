@@ -5,7 +5,6 @@ import { Visibility } from "@/api/sdf/dal/visibility";
 import { visibility$ } from "@/observable/visibility";
 import { switchMap } from "rxjs/operators";
 import { editSessionWritten$ } from "@/observable/edit_session";
-import { Node } from "@/organisims/SchematicViewer/model/node";
 import { workspace$ } from "@/observable/workspace";
 import _ from "lodash";
 
@@ -15,13 +14,14 @@ export interface CreateNodeArgs {
   x: string;
   y: string;
   systemId?: number;
-  parentNodeId: number | null;
+  parentNodeId?: number;
 }
 
 export interface CreateNodeRequest extends CreateNodeArgs, Visibility {
   workspaceId: number;
 }
 
+// These datastructure should use SchematicNode
 export interface CreateNodeResponse {
   node: Node;
 }

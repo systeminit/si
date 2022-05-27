@@ -1,5 +1,5 @@
 import * as Rx from "rxjs";
-import * as MODEL from "../model";
+import { SchematicNode } from "@/api/sdf/dal/schematic";
 
 // Viewer event - sendind events to the viewer...
 
@@ -8,7 +8,7 @@ export enum ViewerEventKind {
 }
 
 export interface NodeAddEventData {
-  node: MODEL.Node;
+  node: SchematicNode;
   schemaId: number;
 }
 
@@ -23,9 +23,6 @@ export class NodeAddEvent {
 }
 
 export type ViewerEvent = NodeAddEvent;
-
-// export const viewerEvent$ = new Rx.ReplaySubject<ViewerEvent | null>(1);
-// viewerEvent$.next(null);
 
 export class ViewerEventObservable {
   viewerEvent$: Rx.ReplaySubject<ViewerEvent | null>;

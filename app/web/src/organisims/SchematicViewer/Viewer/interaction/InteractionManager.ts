@@ -24,8 +24,6 @@ import {
   nodeSelection$,
 } from "../../state";
 
-// import { PanningInteractionData } from "./interaction/panning";
-
 export interface InteractionState {
   context: {
     mouse: {
@@ -43,22 +41,7 @@ export interface InteractionState {
   };
 }
 
-// interface Interaction {
-//   data: PIXI.InteractionData | undefined;
-//   isDraggingNode: boolean;
-//   isPanning: boolean;
-//   spaceBarPressed: boolean;
-//   socketClicked: boolean;
-//   isConnectingNode: boolean;
-//   isReadyToConnectNodes: boolean;
-//   offset: Position;
-//   selection: Array<Node>;
-//   sourceSocket: string | undefined;
-//   destinationSocket: string | undefined;
-// }
-
 export class InteractionManager {
-  // interaction: Interaction;
   sceneManager: SceneManager;
   dataManager: SchematicDataManager;
   stateService: Interpreter<unknown>;
@@ -145,7 +128,7 @@ export class InteractionManager {
     const parentDeploymentNodeId =
       schematicKind !== SchematicKind.Deployment
         ? this.dataManager.selectedDeploymentNodeId
-        : null;
+        : undefined;
 
     const target = this.renderer.plugins.interaction.hitTest(e.data.global);
     const isFakeNode = target.id === -1;
@@ -241,7 +224,7 @@ export class InteractionManager {
               zoomFactor = this.zoomFactor;
             }
 
-            this.connectingManager.beforeConnect(
+            await this.connectingManager.beforeConnect(
               e.data,
               target,
               this.sceneManager,
@@ -269,7 +252,7 @@ export class InteractionManager {
     const parentDeploymentNodeId =
       schematicKind !== SchematicKind.Deployment
         ? this.dataManager.selectedDeploymentNodeId
-        : null;
+        : undefined;
 
     const editSession = await Rx.firstValueFrom(editSession$);
 
@@ -359,7 +342,7 @@ export class InteractionManager {
     const parentDeploymentNodeId =
       schematicKind !== SchematicKind.Deployment
         ? this.dataManager.selectedDeploymentNodeId
-        : null;
+        : undefined;
     // Panning
     if (
       ST.isPanning(this.stateService) ||
@@ -382,7 +365,7 @@ export class InteractionManager {
     // Connecting
     if (ST.isConnecting(this.stateService)) {
       ST.connectingToSocket(this.stateService);
-      this.connectingManager.afterConnect(this.sceneManager);
+      await this.connectingManager.afterConnect(this.sceneManager);
       this.renderer.renderStage();
     }
     if (

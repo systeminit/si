@@ -6,7 +6,7 @@ import { Node } from "../Viewer/obj";
 
 export interface SelectedNode {
   // Deployments never have a parentDeploymentNodeId, Components always have
-  parentDeploymentNodeId: number | null;
+  parentDeploymentNodeId?: number;
   nodes: Array<Node>;
 }
 

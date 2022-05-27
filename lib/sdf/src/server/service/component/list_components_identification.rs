@@ -28,7 +28,9 @@ pub struct ListComponentsIdentificationItem {
     pub component_id: ComponentId,
     pub schema_variant_id: SchemaVariantId,
     pub schema_id: SchemaId,
+    pub schema_name: String,
     pub schematic_kind: SchematicKind,
+    pub schema_variant_name: String,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -77,7 +79,9 @@ pub async fn list_components_identification(
         let value = ListComponentsIdentificationItem {
             component_id: *component.id(),
             schema_variant_id: *schema_variant.id(),
+            schema_variant_name: schema_variant.name().to_owned(),
             schema_id: *schema.id(),
+            schema_name: schema.name().to_owned(),
             schematic_kind: (*schema.kind()).into(),
         };
         label_entries.push(LabelEntry {

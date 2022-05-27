@@ -20,16 +20,21 @@ import PanelContainer from "./PanelTree/PanelContainer.vue";
 import { ref, watch, onBeforeMount } from "vue";
 
 import * as Rx from "rxjs";
+import _ from "lodash";
 import { ComponentService } from "@/service/component";
 import { GlobalErrorService } from "@/service/global_error";
-import { componentsMetadata$ } from "@/organisims/SchematicViewer/data/observable";
+import { componentsMetadata$ } from "@/observable/component";
 import { untilUnmounted } from "vuse-rx";
-import { schematicData$ } from "./SchematicViewer/Viewer/scene/observable";
+import {
+  schematicData$,
+  schematicSchemaVariants$,
+} from "@/observable/schematic";
 import { system$ } from "@/observable/system";
 import { eventResourceSynced$ } from "@/observable/resource";
 import { eventCheckedQualifications$ } from "@/observable/qualification";
 import { SchematicService } from "@/service/schematic";
 import { SchematicKind } from "@/api/sdf/dal/schematic";
+import { SchematicSchemaVariants, Schematic } from "@/api/sdf/dal/schematic";
 import { GetSchematicArgs } from "@/service/schematic/get_schematic";
 
 const maximizedData = ref<PanelMaximized | null>(null);
@@ -46,7 +51,7 @@ watch(
 );
 
 onBeforeMount(() => {
-  let item = sessionStorage.getItem("panelTreeRootMaximized");
+  const item = sessionStorage.getItem("panelTreeRootMaximized");
   if (item) {
     maximizedData.value = JSON.parse(item);
   }
@@ -102,11 +107,93 @@ const maximizePanelFull = (event: PanelMaximized) => {
   maximizedData.value = event;
 };
 
-// This is here to ensure both PanelSchematic and PanelAttribute have access to it
-// Previously we fetched at one and passed to the other, but if we hide that kind of panel the data is lost
-system$
-  .pipe(untilUnmounted)
-  .pipe(
+// Hardcoded schematic schema variants, should come from the DB with the appropriate ids
+// For now we use dummy ids and update it below when the metadata arrives
+const schemaVariants = ref<SchematicSchemaVariants>([
+  {
+    id: -1,
+    name: "v0",
+    schemaName: "kubernetes_deployment",
+    inputSockets: [
+      {
+        id: -1,
+        name: "input",
+        schematicKind: SchematicKind.Component,
+        provider: {
+          ty: "docker_image",
+        },
+      },
+    ],
+    outputSockets: [],
+  },
+  {
+    id: -2,
+    name: "v0",
+    schemaName: "docker_image",
+    inputSockets: [
+      {
+        id: -2,
+        name: "input",
+        schematicKind: SchematicKind.Component,
+        provider: {
+          ty: "docker_hub_credential",
+        },
+      },
+    ],
+    outputSockets: [
+      {
+        id: -3,
+        name: "output",
+        schematicKind: SchematicKind.Component,
+        provider: {
+          ty: "docker_image",
+        },
+      },
+    ],
+  },
+  {
+    id: -3,
+    name: "v0",
+    schemaName: "service",
+    inputSockets: [],
+    outputSockets: [],
+  },
+  {
+    id: -4,
+    name: "v0",
+    schemaName: "application",
+    inputSockets: [],
+    outputSockets: [],
+  },
+  {
+    id: -5,
+    name: "v0",
+    schemaName: "docker_hub_credential",
+    inputSockets: [],
+    outputSockets: [
+      {
+        id: -3,
+        name: "output",
+        schematicKind: SchematicKind.Component,
+        provider: {
+          ty: "docker_hub_credential",
+        },
+      },
+    ],
+  },
+  {
+    id: -6,
+    name: "v0",
+    schemaName: "bobão",
+    inputSockets: [],
+    outputSockets: [],
+  },
+]);
+
+// Hack to adapt SDF response to the new datastructures (and augment it with the metadata above)
+let oldSchematic: Schematic | undefined = undefined;
+Rx.combineLatest([
+  system$.pipe(
     Rx.switchMap((system) => {
       const request: GetSchematicArgs = {};
       if (system) {
@@ -114,15 +201,115 @@ system$
       }
       return SchematicService.getSchematic(request);
     }),
-  )
-  .subscribe((schematic) => {
+  ),
+  // Allows us to tie a node to a schema variant
+  ComponentService.listComponentsIdentification().pipe(
+    Rx.switchMap((response) => {
+      if (response.error) {
+        GlobalErrorService.set(response);
+        return Rx.from([[]]);
+      } else {
+        for (const entry of response.list) {
+          for (const schemaVariant of schemaVariants.value) {
+            if (
+              entry.value.schemaName === schemaVariant.schemaName &&
+              entry.value.schemaVariantName === schemaVariant.name
+            ) {
+              schemaVariant.id = entry.value.schemaVariantId;
+              break;
+            }
+          }
+        }
+        return Rx.from([response.list]);
+      }
+    }),
+  ),
+])
+  .pipe(untilUnmounted)
+  .subscribe(async ([schematic, componentIdentificationList]) => {
     if (schematic) {
       if (schematic.error) {
         GlobalErrorService.set(schematic);
         return Rx.from([null]);
       } else {
-        schematicData$.next(schematic);
-        return Rx.from([schematic]);
+        const schematicView: Schematic = { nodes: [], connections: [] };
+
+        for (const node of schematic.nodes) {
+          // Connect the two sources of data
+          const identification = componentIdentificationList.find((entry) => {
+            return entry.value.componentId === node.kind.componentId;
+          });
+          if (!identification) return;
+
+          const variantId = identification.value.schemaVariantId;
+          const variant = schemaVariants.value.find((v) => v.id === variantId);
+          if (!variant) throw Error("schema variant not found: " + variantId);
+
+          // Fix hardcoded data's ids
+
+          if (variant.inputSockets.length) {
+            for (const input of node.input) {
+              if (input.name === "input") {
+                variant.inputSockets[0].id = input.id;
+                break;
+              }
+            }
+          }
+
+          if (variant.outputSockets.length) {
+            for (const output of node.output) {
+              if (output.name === "output") {
+                variant.outputSockets[0].id = output.id;
+                break;
+              }
+            }
+          }
+
+          // Convert from old position structure to new one
+
+          const positions = [];
+          for (const position of node.position) {
+            positions.push({
+              x: parseFloat(position.x as string),
+              y: parseFloat(position.y as string),
+              schematicKind: position.schematic_kind,
+              deploymentNodeId: position.deployment_node_id ?? undefined,
+              systemId: position.system_id ?? undefined,
+            });
+          }
+
+          if (!node.kind.componentId) throw new Error("componentId missing");
+          const kind = {
+            kind: node.kind.kind,
+            componentId: node.kind.componentId,
+          };
+          schematicView.nodes.push({
+            id: node.id,
+            kind,
+            name: node.label.name,
+            title: node.label.title,
+            schemaVariantId: identification.value.schemaVariantId ?? undefined,
+            positions,
+          });
+        }
+
+        for (const connection of schematic.connections) {
+          schematicView.connections.push({
+            sourceNodeId: connection.source.nodeId,
+            sourceSocketId: connection.source.socketId,
+            destinationNodeId: connection.destination.nodeId,
+            destinationSocketId: connection.destination.socketId,
+          });
+        }
+
+        // If the schematic didn't change, but visibility change triggered the `listComponentsIdentification` call
+        // We avoid passing this stale data around (it makes nodes teleport after a move, as the local data is more up to date)
+        // This if should go away when the backend gives us the appropriate metadata so we can stop calling `listComponentsIdentification` here
+        if (!oldSchematic || !_.isEqual(oldSchematic, schematicView)) {
+          oldSchematic = schematicView;
+          schematicData$.next(_.cloneDeep(schematicView));
+          schematicSchemaVariants$.next(schemaVariants.value);
+        }
       }
     }
   });

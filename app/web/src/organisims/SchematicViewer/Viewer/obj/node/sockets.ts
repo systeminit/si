@@ -1,8 +1,11 @@
 import * as PIXI from "pixi.js";
 
-import * as MODEL from "../../../model";
 import { Socket, SocketType } from "./sockets/socket";
 import { SchematicKind } from "@/api/sdf/dal/schematic";
+import {
+  SchematicInputSocket,
+  SchematicOutputSocket,
+} from "@/api/sdf/dal/schematic";
 
 const NODE_WIDTH = 140;
 const NODE_HEIGHT = 100;
@@ -14,8 +17,8 @@ const SOCKET_SPACING = 20;
 export class Sockets extends PIXI.Container {
   constructor(
     nodeId: number,
-    inputs: MODEL.Socket[],
-    outputs: MODEL.Socket[],
+    inputs: SchematicInputSocket[],
+    outputs: SchematicOutputSocket[],
     panelKind: SchematicKind,
   ) {
     super();
@@ -26,10 +29,10 @@ export class Sockets extends PIXI.Container {
 
   setInputSockets(
     nodeId: number,
-    inputs: MODEL.Socket[],
+    inputs: SchematicInputSocket[],
     panelKind: SchematicKind,
   ): void {
-    inputs = inputs.filter((i) => i.schematic_kind === panelKind);
+    inputs = inputs.filter((i) => i.schematicKind === panelKind);
 
     let pos, growth, color;
     let displaySocketLabel = false;
@@ -79,10 +82,10 @@ export class Sockets extends PIXI.Container {
 
   setOutputSockets(
     nodeId: number,
-    outputs: MODEL.Socket[],
+    outputs: SchematicOutputSocket[],
     panelKind: SchematicKind,
   ): void {
-    outputs = outputs.filter((i) => i.schematic_kind === panelKind);
+    outputs = outputs.filter((i) => i.schematicKind === panelKind);
 
     let pos, color;
     switch (panelKind) {

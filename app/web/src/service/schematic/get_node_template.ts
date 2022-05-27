@@ -1,12 +1,22 @@
 import { ApiResponse, SDF } from "@/api/sdf";
-import { combineLatest, from, Observable, shareReplay } from "rxjs";
+import { combineLatest, from, Observable, shareReplay, map } from "rxjs";
 import { standardVisibilityTriggers$ } from "@/observable/visibility";
 import Bottle from "bottlejs";
 import { switchMap } from "rxjs/operators";
 import { Visibility } from "@/api/sdf/dal/visibility";
+import { SchematicNodeTemplate } from "@/api/sdf/dal/schematic";
 import { workspace$ } from "@/observable/workspace";
 import _ from "lodash";
-import { NodeTemplate } from "@/api/sdf/dal/node";
+
+// This datastructure should die after the backend starts returning SchematicNodeTemplate
+interface NodeTemplate {
+  kind: "component" | "deployment";
+  label: {
+    title: string;
+    name: string;
+  };
+  schemaVariantId: number;
+}
 
 export interface GetNodeTemplateArgs {
   schemaId: number;
@@ -18,7 +28,7 @@ export interface GetNodeTemplateRequest
   workspaceId: number;
 }
 
-export type GetNodeTemplateResponse = NodeTemplate;
+export type GetNodeTemplateResponse = SchematicNodeTemplate;
 
 const getNodeTemplateCollection: {
   [key: string]: Observable<ApiResponse<GetNodeTemplateResponse>>;
@@ -54,10 +64,20 @@ export function getNodeTemplate(
         ...visibility,
         workspaceId: workspace.id,
       };
-      return sdf.get<ApiResponse<GetNodeTemplateResponse>>(
+      return sdf.get<ApiResponse<NodeTemplate>>(
         "schematic/get_node_template",
         request,
       );
+    }),
+    map((raw) => {
+      if (raw.error) return { error: raw.error };
+      const template: GetNodeTemplateResponse = {
+        name: raw.label.name,
+        title: raw.label.title,
+        kind: raw.kind,
+        schemaVariantId: raw.schemaVariantId,
+      };
+      return template;
     }),
     shareReplay({ bufferSize: 1, refCount: true }),
   );

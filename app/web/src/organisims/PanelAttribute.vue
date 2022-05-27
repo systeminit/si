@@ -176,7 +176,7 @@ import _ from "lodash";
 import cheechSvg from "@/assets/images/cheech-and-chong.svg";
 import { lastSelectedNode$ } from "./SchematicViewer/state";
 import { ComponentIdentification } from "@/api/sdf/dal/component";
-import { schematicData$ } from "./SchematicViewer/Viewer/scene/observable";
+import { schematicData$ } from "@/observable/schematic";
 import { PanelAttributeSubType } from "./PanelTree/panel_types";
 import { ChangeSetService } from "@/service/change_set";
 import { editButtonPulse$ } from "@/observable/change_set";

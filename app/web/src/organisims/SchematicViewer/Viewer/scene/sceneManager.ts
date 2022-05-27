@@ -4,12 +4,11 @@ import * as OBJ from "../obj";
 import { SchematicGroup, NodeGroup, ConnectionGroup } from "../group";
 import { Renderer } from "../renderer";
 import { Grid, BACKGROUND_GRID_NAME } from "../obj";
-import { Schematic } from "../../model";
-import { Position } from "../cg";
 import { untilUnmounted } from "vuse-rx";
 import { InteractionManager } from "../interaction";
 import { SelectionManager } from "../interaction/selection";
 import { SchematicKind } from "@/api/sdf/dal/schematic";
+import { Schematic, variantById } from "@/api/sdf/dal/schematic";
 
 export type SceneGraphData = Schematic;
 
@@ -22,7 +21,7 @@ export class SceneManager {
   renderer: Renderer;
   scene: PIXI.Container;
   root: PIXI.Container;
-  interactiveConnection: OBJ.Connection | null | undefined;
+  interactiveConnection?: OBJ.Connection | null;
   group?: {
     nodes: PIXI.Container;
     connections: PIXI.Container;
@@ -87,28 +86,31 @@ export class SceneManager {
     this.root.addChild(this.group.connections);
   }
 
-  loadSceneData(
-    data: SceneGraphData | null,
+  async loadSceneData(
+    data: Schematic | null,
     selectionManager: SelectionManager,
     schematicKind: SchematicKind,
-    selectedDeploymentNodeId: number | null,
-  ): void {
+    selectedDeploymentNodeId?: number,
+  ): Promise<void> {
     this.initializeSceneData();
 
     let selected;
     if (data) {
       for (const n of data.nodes) {
-        const pos = n.position.find(
+        const variant = await variantById(n.schemaVariantId);
+
+        const pos = n.positions.find(
           (pos) =>
-            pos.schematic_kind === schematicKind &&
-            pos.deployment_node_id === selectedDeploymentNodeId,
+            pos.schematicKind === schematicKind &&
+            pos.deploymentNodeId === selectedDeploymentNodeId,
         );
         if (pos) {
           const node = new OBJ.Node(
             n,
+            variant,
             {
-              x: parseFloat(pos.x as string),
-              y: parseFloat(pos.y as string),
+              x: pos.x,
+              y: pos.y,
             },
             schematicKind,
           );
@@ -130,28 +132,28 @@ export class SceneManager {
       }
 
       for (const connection of data.connections) {
-        if (connection.classification === "configures") {
-          const sourceSocketId = `${connection.source.nodeId}.${connection.source.socketId}`;
-          const sourceSocket = this.scene.getChildByName(sourceSocketId, true);
+        //if (connection.classification === "configures") {
+        const sourceSocketId = `${connection.sourceNodeId}.${connection.sourceSocketId}`;
+        const sourceSocket = this.scene.getChildByName(sourceSocketId, true);
 
-          // Note: this happens when we switch panels with a connection rendered
-          // The nodes and the connections don't disappear
-          // We need to understand this better, but continuing here works by now, it may leak something tho
-          if (!sourceSocket) continue;
+        // Note: this happens when we switch panels with a connection rendered
+        // The nodes and the connections don't disappear
+        // We need to understand this better, but continuing here works by now, it may leak something tho
+        if (!sourceSocket) continue;
 
-          const destinationSocketId = `${connection.destination.nodeId}.${connection.destination.socketId}`;
-          const destinationSocket = this.scene.getChildByName(
-            destinationSocketId,
-            true,
-          );
+        const destinationSocketId = `${connection.destinationNodeId}.${connection.destinationSocketId}`;
+        const destinationSocket = this.scene.getChildByName(
+          destinationSocketId,
+          true,
+        );
 
-          this.createConnection(
-            sourceSocket.getGlobalPosition(),
-            destinationSocket.getGlobalPosition(),
-            sourceSocket.name,
-            destinationSocket.name,
-          );
-        }
+        this.createConnection(
+          sourceSocket.getGlobalPosition(),
+          destinationSocket.getGlobalPosition(),
+          sourceSocket.name,
+          destinationSocket.name,
+        );
+        //}
       }
     }
 
@@ -200,7 +202,7 @@ export class SceneManager {
     }
   }
 
-  translateNode(node: OBJ.Node, position: Position): void {
+  translateNode(node: OBJ.Node, position: Point): void {
     node.x = position.x;
     node.y = position.y;
     node.updateTransform();

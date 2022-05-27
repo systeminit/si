@@ -2,7 +2,7 @@ import * as Rx from "rxjs";
 
 import { nodeSelection$, SelectedNode } from "../../state";
 import { untilUnmounted } from "vuse-rx";
-import { schematicData$ } from "../scene/observable";
+import { schematicData$ } from "@/observable/schematic";
 
 // This currently will grow indefinitely, if the user selects hundreds of panels
 // the state for each panel will be preserved
@@ -20,7 +20,7 @@ export class SelectionManager {
     schematicData$.pipe(untilUnmounted).subscribe((schematic) => {
       if (!schematic) return;
 
-      const remove: Array<number | null> = [];
+      const remove: Array<number | undefined> = [];
       for (const selection of this.selection) {
         const selectedNode = selection.nodes[0];
         if (!selectedNode || selectedNode.id === -1) continue;
@@ -74,7 +74,7 @@ export class SelectionManager {
   }
 
   clearSelection(
-    parentDeploymentNodeId: number | null,
+    parentDeploymentNodeId?: number,
     selection$?: Rx.ReplaySubject<SelectedNode[]>,
   ): void {
     for (const selection of this.selection) {

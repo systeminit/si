@@ -6,7 +6,6 @@ import { SceneManager } from "../scene";
 import { SchematicDataManager } from "../../data";
 import { SelectionManager } from "./selection";
 import { Renderer } from "../renderer";
-import { NodeCreate } from "../../data/event";
 import { SchematicKind } from "@/api/sdf/dal/schematic";
 import { nodeSelection$ } from "../../state";
 
@@ -56,7 +55,7 @@ export class NodeAddManager {
     this.node = this.sceneManager.getGeo(nodeObj.name) as OBJ.Node;
 
     if (schematicKind) {
-      let parentDeploymentNodeId = null;
+      let parentDeploymentNodeId = undefined;
       switch (schematicKind) {
         case SchematicKind.Component:
           parentDeploymentNodeId = this.dataManager.selectedDeploymentNodeId;
@@ -99,7 +98,7 @@ export class NodeAddManager {
     const schematicKind = await Rx.firstValueFrom(
       this.dataManager.schematicKind$,
     );
-    let parentNodeId = null;
+    let parentNodeId = undefined;
     switch (schematicKind) {
       case SchematicKind.Component:
         parentNodeId = this.dataManager.selectedDeploymentNodeId;
@@ -108,15 +107,13 @@ export class NodeAddManager {
         break;
     }
     if (this.node && this.nodeAddSchemaId && editorContext) {
-      const event: NodeCreate = {
+      this.dataManager.createNode({
         nodeSchemaId: this.nodeAddSchemaId,
         systemId: editorContext.systemId,
         x: `${this.node.position.x}`,
         y: `${this.node.position.y}`,
         parentNodeId,
-      };
-
-      this.dataManager.nodeCreate$.next(event);
+      });
 
       // TODO waiting for backend to implement "node swap". A schematic reload shuld be fine.
       // this.sceneManager.removeNode(this.node);

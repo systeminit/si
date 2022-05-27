@@ -31,7 +31,7 @@ import { Interpreter } from "xstate";
 
 import { ViewerStateMachine, ViewerEventKind } from "./state";
 import { useMachine } from "@xstate/vue";
-import { componentsMetadata$ } from "@/organisims/SchematicViewer/data/observable";
+import { componentsMetadata$ } from "@/observable/component";
 import { ComponentMetadata } from "@/service/component/get_components_metadata";
 
 import { EditorContext, SchematicKind } from "@/api/sdf/dal/schematic";
@@ -40,9 +40,8 @@ import { SelectionManager } from "./Viewer/interaction/selection";
 import { InteractionManager } from "./Viewer/interaction";
 import { Renderer } from "./Viewer/renderer";
 import { SchematicDataManager } from "./data";
+import { Schematic, SchematicNode, variantById } from "@/api/sdf/dal/schematic";
 import { nodeSelection$, SelectedNode } from "./state";
-
-import * as MODEL from "./model";
 
 import * as VE from "./event";
 
@@ -63,20 +62,20 @@ interface Data {
   };
   canvas: {
     id: string;
-    element: HTMLCanvasElement | undefined;
+    element?: HTMLCanvasElement;
     isPanning: boolean;
-    mousePosition: { x: number; y: number } | null | undefined;
+    mousePosition?: { x: number; y: number } | null;
   };
   container: {
     id: string;
-    element: HTMLCanvasElement | undefined;
+    element?: HTMLCanvasElement;
   };
-  renderer: Renderer | undefined;
-  sceneManager: SceneManager | undefined;
-  dataManager: SchematicDataManager | undefined;
+  renderer?: Renderer;
+  sceneManager?: SceneManager;
+  dataManager?: SchematicDataManager;
   spaceBarPressed: boolean;
   resizeObserver: ResizeObserver;
-  interactionManager: InteractionManager | undefined;
+  interactionManager?: InteractionManager;
   debug: boolean;
 }
 
@@ -99,7 +98,7 @@ export default defineComponent({
       default: undefined,
     },
     schematicData: {
-      type: Object as PropType<MODEL.Schematic | null>,
+      type: Object as PropType<Schematic | null>,
       required: false,
       default: undefined,
     },
@@ -182,7 +181,7 @@ export default defineComponent({
       }
     },
     editorContext(ctx) {
-      if (this.dataManager && this.sceneManager && this.editorContext) {
+      if (this.dataManager) {
         this.dataManager.editorContext$.next(ctx);
       }
     },
@@ -202,7 +201,7 @@ export default defineComponent({
       }
     },
     async schematicData(schematic) {
-      if (this.dataManager && this.schematicData && this.schematicKind) {
+      if (this.dataManager) {
         this.dataManager.schematicData$.next(schematic);
       }
     },
@@ -239,7 +238,7 @@ export default defineComponent({
     const dataManager = new SchematicDataManager();
     this.dataManager = dataManager;
     this.dataManager.isComponentPanelPinned = this.isComponentPanelPinned;
-    this.dataManager.selectedDeploymentNodeId = this.deploymentNodePin ?? null;
+    this.dataManager.selectedDeploymentNodeId = this.deploymentNodePin;
     this.dataManager.editorContext$.next(this.editorContext);
     this.dataManager.schematicKind$.next(this.schematicKind);
 
@@ -262,16 +261,18 @@ export default defineComponent({
 
     nodeSelection$.pipe(untilUnmounted).subscribe({
       next: async (selections) => {
+        console.log(this.schematicKind);
         if (
           !this.isComponentPanelPinned &&
           this.dataManager &&
           this.schematicData
         ) {
           const deploymentSelection = selections.find(
-            (sel) => sel.parentDeploymentNodeId === null,
+            (sel) => sel.parentDeploymentNodeId === undefined,
           );
-          const deploymentNodeId =
-            deploymentSelection?.nodes?.find((_) => true)?.id ?? null;
+          const deploymentNodeId = deploymentSelection?.nodes?.find(
+            (_) => true,
+          )?.id;
           const isSame =
             this.dataManager.selectedDeploymentNodeId === deploymentNodeId;
 
@@ -319,6 +320,8 @@ export default defineComponent({
     }
   },
   beforeUnmount(): void {
+    document.removeEventListener("keydown", this.handleKeyDown);
+    document.removeEventListener("keyup", this.handleKeyUp);
     if (this.container.element) {
       this.resizeObserver.unobserve(this.container.element);
     }
@@ -377,9 +380,9 @@ export default defineComponent({
 
     syncSelection(selections: SelectedNode[]) {
       const parentDeploymentNodeId =
-        (this.schematicKind !== SchematicKind.Deployment
+        this.schematicKind !== SchematicKind.Deployment
           ? this.dataManager?.selectedDeploymentNodeId
-          : null) ?? null;
+          : undefined;
 
       let foundOurSelection = false;
       for (const selection of selections) {
@@ -401,6 +404,7 @@ export default defineComponent({
               ?.find((n) => n.id === selection.nodes[0]?.id) ?? null;
         }
 
+        if (!node) return;
         this.selection = node ? [node] : null;
         this.interactionManager?.selectionManager?.select({
           parentDeploymentNodeId: selection.parentDeploymentNodeId,
@@ -417,7 +421,7 @@ export default defineComponent({
       }
     },
 
-    async loadSchematicData(schematic: MODEL.Schematic): Promise<void> {
+    async loadSchematicData(schematic: Schematic): Promise<void> {
       const selectionManager = this.interactionManager?.selectionManager;
       if (
         this.schematicKind &&
@@ -426,10 +430,10 @@ export default defineComponent({
         selectionManager
       ) {
         const parentDeploymentNodeId =
-          (this.schematicKind !== SchematicKind.Deployment
+          this.schematicKind !== SchematicKind.Deployment
             ? this.dataManager?.selectedDeploymentNodeId
-            : null) ?? null;
-        this.sceneManager.loadSceneData(
+            : undefined;
+        await this.sceneManager.loadSceneData(
           schematic,
           selectionManager as SelectionManager,
           this.schematicKind,
@@ -463,20 +467,43 @@ export default defineComponent({
       this.renderer?.renderStage();
     },
 
-    nodeAdd(node: MODEL.Node, schemaId: number): void {
+    async nodeAdd(node: SchematicNode, schemaId: number): Promise<void> {
       this.activateComponent();
+
       if (
         this.component.isActive &&
         this.interactionManager &&
-        node.position.length > 0 &&
+        node.positions.length > 0 &&
         this.schematicKind
       ) {
+        let schemaVariant;
+        try {
+          schemaVariant = await variantById(node.schemaVariantId);
+        } catch {
+          // Since we are using the `listComponentsIdentification` hack to obtain the schemas as the new backend route isn't
+          // there yet, we only get the schema metadata of components already created.
+          // So in schemas where no components have been created for, we can't really find it's metadata, but as the only
+          // reason we need the metadata here is to find it's sockets. And since we haven't created anything yet, it can't
+          // connect or be connected to anything, so we just mock a schema here with no sockets and wait for the visibility
+          // update, after creation, to give us the propper schema.
+          //
+          // This logic should go away after the backend provides us the complete set of SchematicSchemaVariants
+          schemaVariant = {
+            id: -20,
+            name: "v0",
+            schemaName: "mistery",
+            inputSockets: [],
+            outputSockets: [],
+          };
+        }
+
         // Fake nodes will always only have one position as they don't exist in the db yet
         const nodeObj = new OBJ.Node(
           node,
+          schemaVariant,
           {
-            x: parseFloat(node.position[0].x as string),
-            y: parseFloat(node.position[0].y as string),
+            x: node.positions[0].x,
+            y: node.positions[0].y,
           },
           this.schematicKind,
         );
