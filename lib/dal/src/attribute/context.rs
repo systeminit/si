@@ -32,14 +32,24 @@ use crate::{
 };
 
 pub mod read;
+
 pub use read::AttributeReadContext;
 
 pub const UNSET_ID_VALUE: i64 = -1;
+
+// Private enum used for determining the least specific field.
+enum AttributeContextLeastSpecificField {
+    ExternalProvider,
+    InternalProvider,
+    Prop,
+}
 
 #[derive(Error, Debug)]
 pub enum AttributeContextError {
     #[error("attribute context builder error: {0}")]
     AttributeContextBuilder(#[from] AttributeContextBuilderError),
+    #[error("could not find least specific field")]
+    LeastSpecificFieldNotFound,
 }
 
 pub type AttributeContextResult<T> = Result<T, AttributeContextError>;
@@ -125,16 +135,32 @@ impl AttributeContext {
         self.schema_id
     }
 
+    pub fn is_schema_unset(&self) -> bool {
+        self.schema_id == UNSET_ID_VALUE.into()
+    }
+
     pub fn schema_variant_id(&self) -> SchemaVariantId {
         self.schema_variant_id
+    }
+
+    pub fn is_schema_variant_unset(&self) -> bool {
+        self.schema_variant_id == UNSET_ID_VALUE.into()
     }
 
     pub fn component_id(&self) -> ComponentId {
         self.component_id
     }
 
+    pub fn is_component_unset(&self) -> bool {
+        self.component_id == UNSET_ID_VALUE.into()
+    }
+
     pub fn system_id(&self) -> SystemId {
         self.system_id
+    }
+
+    pub fn is_system_unset(&self) -> bool {
+        self.system_id == UNSET_ID_VALUE.into()
     }
 
     /// Determines if the context is "least specific".
@@ -164,6 +190,48 @@ impl AttributeContext {
         }
 
         Ok(builder.to_context()?)
+    }
+
+    /// Returns true if the least specific field corresponds to a [`Prop`](crate::Prop).
+    pub fn is_least_specific_field_prop(&self) -> AttributeContextResult<bool> {
+        if let AttributeContextLeastSpecificField::Prop = self.least_specific_field()? {
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+
+    /// Returns true if the least specific field corresponds to an [`InternalProvider`](crate::InternalProvider).
+    pub fn is_least_specific_field_internal_provider(&self) -> AttributeContextResult<bool> {
+        if let AttributeContextLeastSpecificField::InternalProvider = self.least_specific_field()? {
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+
+    /// Returns true if the least specific field corresponds to an [`ExternalProvider`](crate::ExternalProvider).
+    pub fn is_least_specific_field_external_provider(&self) -> AttributeContextResult<bool> {
+        if let AttributeContextLeastSpecificField::ExternalProvider = self.least_specific_field()? {
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+
+    // Private method that returns the least specific field kind specified.
+    fn least_specific_field(&self) -> AttributeContextResult<AttributeContextLeastSpecificField> {
+        if self.prop_id != UNSET_ID_VALUE.into() {
+            Ok(AttributeContextLeastSpecificField::Prop)
+        } else if self.internal_provider_id != UNSET_ID_VALUE.into() {
+            Ok(AttributeContextLeastSpecificField::InternalProvider)
+        } else if self.external_provider_id != UNSET_ID_VALUE.into() {
+            Ok(AttributeContextLeastSpecificField::ExternalProvider)
+        } else {
+            // This should never be possible to hit, but this check exists to protect
+            // against potential regressions.
+            Err(AttributeContextError::LeastSpecificFieldNotFound)
+        }
     }
 }
 
