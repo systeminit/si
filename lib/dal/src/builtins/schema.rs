@@ -633,7 +633,7 @@ async fn bobao(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
         ))?,
         validation_prototype_ctx.clone(),
     )
-    .await?;
+        .await?;
     prototype
         .set_link(
             ctx,
@@ -761,7 +761,7 @@ pub async fn create_string_prop_with_default(
 
     let mut func = Func::new(
         ctx,
-        &format!("si:setDefaultToProp{}", prop.id()),
+        &format!("si:setDefaultToProp{:?}", prop.id()),
         FuncBackendKind::JsAttribute,
         FuncBackendResponseType::String,
     )
@@ -808,7 +808,7 @@ pub async fn create_string_prop_with_default(
         ..AttributeReadContext::default()
     };
 
-    let mut attribute_value = AttributeValue::find_for_context(ctx, attribute_value_context)
+    let mut attribute_value = AttributeValue::list_for_context(ctx, attribute_value_context)
         .await?
         .pop()
         .ok_or(AttributeValueError::Missing)?;

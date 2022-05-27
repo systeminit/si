@@ -1414,16 +1414,18 @@ impl Component {
                 .schema_variant(ctx)
                 .await?
                 .ok_or(ComponentError::SchemaVariantNotFound)?;
+
+            // System will be unset since this method should only be used when creating a component.
             let read_context = AttributeReadContext {
                 prop_id: Some(*prop.id()),
                 schema_id: Some(*schema.id()),
                 schema_variant_id: Some(*schema_variant.id()),
                 component_id: Some(*self.id()),
-                ..AttributeReadContext::any()
+                ..AttributeReadContext::default()
             };
 
             return Ok(Some(
-                AttributeValue::find_for_context(ctx, read_context)
+                AttributeValue::list_for_context(ctx, read_context)
                     .await?
                     .pop()
                     .ok_or(AttributeValueError::Missing)?,

@@ -4,12 +4,13 @@ use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
 
+use crate::standard_model::{object_option_from_row_option, objects_from_rows};
 use crate::{
     attribute::{prototype::AttributePrototype, value::AttributeValue},
     edit_field::widget::WidgetKind,
     func::{
         binding::{FuncBinding, FuncBindingError},
-        binding_return_value::{FuncBindingReturnValue, FuncBindingReturnValueError},
+        binding_return_value::FuncBindingReturnValueError,
     },
     impl_standard_model,
     label_list::ToLabelList,
@@ -19,6 +20,10 @@ use crate::{
     ReadTenancyError, SchemaVariant, SchemaVariantId, StandardModel, StandardModelError, Timestamp,
     Visibility, WriteTenancy,
 };
+
+const ALL_ANCESTOR_PROPS: &str = include_str!("./queries/prop_all_ancestor_props.sql");
+const FIND_ROOT_FOR_SCHEMA_VARIANT: &str =
+    include_str!("./queries/prop_find_root_for_schema_variant.sql");
 
 #[derive(Error, Debug)]
 pub enum PropError {
@@ -146,7 +151,11 @@ impl Prop {
         let func_name = "si:unset".to_string();
         let mut funcs = Func::find_by_attr(ctx, "name", &func_name).await?;
         let func = funcs.pop().ok_or(PropError::MissingFunc(func_name))?;
-        let (func_binding, created) = FuncBinding::find_or_create(
+
+        // No matter what, we need a FuncBindingReturnValueId to create a new attribute prototype.
+        // If the func binding was created, we execute on it to generate our value id. Otherwise,
+        // we try to find a value by id and then fallback to executing anyway if one was not found.
+        let (func_binding, func_binding_return_value) = FuncBinding::find_or_create_and_execute(
             ctx,
             serde_json::json![null],
             *func.id(),
@@ -157,24 +166,12 @@ impl Prop {
         let attribute_context = AttributeContext::builder()
             .set_prop_id(*object.id())
             .to_context()?;
-
-        // No matter what, we need a FuncBindingReturnValueId to create a new attribute prototype.
-        // If the func binding was created, we execute on it to generate our value id. Otherwise,
-        // we try to find a value by id and then fallback to executing anyway if one was not found.
-        let func_binding_return_value = if created {
-            func_binding.execute(ctx).await?
-        } else {
-            FuncBindingReturnValue::get_by_func_binding_id_or_execute(ctx, *func_binding.id())
-                .await?
-        };
-
         AttributePrototype::new(
             ctx,
             *func.id(),
             *func_binding.id(),
             *func_binding_return_value.id(),
             attribute_context,
-            None,
             None,
             None,
         )
@@ -189,6 +186,8 @@ impl Prop {
     standard_model_accessor!(widget_kind, Enum(WidgetKind), PropResult);
     standard_model_accessor!(doc_link, Option<String>, PropResult);
 
+    // FIXME(nick): change the relationship to a "belongs to" relationship and the name to
+    // "prop_belongs_to_schema_variant".
     standard_model_many_to_many!(
         lookup_fn: schema_variants,
         associate_fn: add_schema_variant,
@@ -243,7 +242,7 @@ impl Prop {
             prop_id: Some(*self.id()),
             ..AttributeReadContext::default()
         };
-        let our_attribute_value = AttributeValue::find_for_context(ctx, attribute_read_context)
+        let our_attribute_value = AttributeValue::list_for_context(ctx, attribute_read_context)
             .await
             .map_err(|e| PropError::AttributeValue(format!("{e}")))?
             .pop()
@@ -259,7 +258,7 @@ impl Prop {
             ..AttributeReadContext::default()
         };
         let parent_attribute_value =
-            AttributeValue::find_for_context(ctx, parent_attribute_read_context)
+            AttributeValue::list_for_context(ctx, parent_attribute_read_context)
                 .await
                 .map_err(|e| PropError::AttributeValue(format!("{e}")))?
                 .pop()
@@ -280,5 +279,36 @@ impl Prop {
             .map_err(|e| PropError::AttributeValue(format!("{e}")))?;
 
         self.set_parent_prop_unchecked(ctx, &parent_prop_id).await
+    }
+
+    /// Returns the root [`Prop`] for a given [`SchemaVariantId`](crate::SchemaVariant). Returns
+    /// [`None`] if no [`Props`](Self) have been created for the [`SchemaVariant`](crate::SchemaVariant).
+    pub async fn find_root_for_schema_variant(
+        ctx: &DalContext<'_, '_>,
+        schema_variant_id: SchemaVariantId,
+    ) -> PropResult<Option<Prop>> {
+        let row = ctx
+            .pg_txn()
+            .query_opt(
+                FIND_ROOT_FOR_SCHEMA_VARIANT,
+                &[ctx.read_tenancy(), ctx.visibility(), &schema_variant_id],
+            )
+            .await?;
+        Ok(object_option_from_row_option(row)?)
+    }
+
+    /// Returns the given [`Prop`] and all ancestor [`Props`](crate::Prop) back to the root.
+    pub async fn all_ancestor_props(
+        ctx: &DalContext<'_, '_>,
+        prop_id: PropId,
+    ) -> PropResult<Vec<Self>> {
+        let rows = ctx
+            .pg_txn()
+            .query(
+                ALL_ANCESTOR_PROPS,
+                &[ctx.read_tenancy(), ctx.visibility(), &prop_id],
+            )
+            .await?;
+        Ok(objects_from_rows(rows)?)
     }
 }

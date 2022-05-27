@@ -1,29 +1,31 @@
 CREATE TABLE internal_providers
 (
-    pk bigserial PRIMARY KEY,
-    id bigserial NOT NULL,
-    tenancy_universal bool NOT NULL,
+    pk                          bigserial PRIMARY KEY,
+    id                          bigserial                NOT NULL,
+    tenancy_universal           bool                     NOT NULL,
     tenancy_billing_account_ids bigint[],
-    tenancy_organization_ids bigint[],
-    tenancy_workspace_ids bigint[],
-    visibility_change_set_pk bigint,
-    visibility_edit_session_pk bigint,
-    visibility_deleted_at timestamp with time zone,
-    created_at timestamp with time zone NOT NULL DEFAULT NOW(),
-    updated_at timestamp with time zone NOT NULL DEFAULT NOW(),
-    prop_id bigint,
-    schema_id bigint,
-    schema_variant_id bigint,
-    name text,
-    internal_consumer boolean NOT NULL DEFAULT FALSE,
-    inbound_type_definition text,
-    outbound_type_definition text
+    tenancy_organization_ids    bigint[],
+    tenancy_workspace_ids       bigint[],
+    visibility_change_set_pk    bigint,
+    visibility_edit_session_pk  bigint,
+    visibility_deleted_at       timestamp with time zone,
+    created_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
+    updated_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
+    prop_id                     bigint                   NOT NULL,
+    schema_id                   bigint                   NOT NULL,
+    schema_variant_id           bigint                   NOT NULL,
+    attribute_prototype_id      bigint,
+    name                        text,
+    internal_consumer           boolean                  NOT NULL DEFAULT TRUE,
+    inbound_type_definition     text,
+    outbound_type_definition    text
 );
 SELECT standard_model_table_constraints_v1('internal_providers');
 
 INSERT INTO standard_models (table_name, table_type, history_event_label_base, history_event_message_name)
-    VALUES ('internal_providers', 'model', 'internal_provider', 'Input Provider');
+VALUES ('internal_providers', 'model', 'internal_provider', 'Input Provider');
 
+-- We do not want to set the attribute prototype id upon creation because we need an internal provider id for the prototype's context. --
 CREATE OR REPLACE FUNCTION internal_provider_create_v1(
     this_tenancy jsonb,
     this_visibility jsonb,
@@ -37,27 +39,27 @@ CREATE OR REPLACE FUNCTION internal_provider_create_v1(
     OUT object json) AS
 $$
 DECLARE
-    this_tenancy_record           tenancy_record_v1;
-    this_visibility_record        visibility_record_v1;
-    this_new_row                  internal_providers%ROWTYPE;
+    this_tenancy_record    tenancy_record_v1;
+    this_visibility_record visibility_record_v1;
+    this_new_row           internal_providers%ROWTYPE;
 BEGIN
     this_tenancy_record := tenancy_json_to_columns_v1(this_tenancy);
     this_visibility_record := visibility_json_to_columns_v1(this_visibility);
 
     INSERT INTO internal_providers (tenancy_universal,
-                               tenancy_billing_account_ids,
-                               tenancy_organization_ids,
-                               tenancy_workspace_ids,
-                               visibility_change_set_pk,
-                               visibility_edit_session_pk,
-                               visibility_deleted_at,
-                               prop_id,
-                               schema_id,
-                               schema_variant_id,
-                               name,
-                               internal_consumer,
-                               inbound_type_definition,
-                               outbound_type_definition)
+                                    tenancy_billing_account_ids,
+                                    tenancy_organization_ids,
+                                    tenancy_workspace_ids,
+                                    visibility_change_set_pk,
+                                    visibility_edit_session_pk,
+                                    visibility_deleted_at,
+                                    prop_id,
+                                    schema_id,
+                                    schema_variant_id,
+                                    name,
+                                    internal_consumer,
+                                    inbound_type_definition,
+                                    outbound_type_definition)
     VALUES (this_tenancy_record.tenancy_universal,
             this_tenancy_record.tenancy_billing_account_ids,
             this_tenancy_record.tenancy_organization_ids,

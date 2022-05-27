@@ -19,9 +19,7 @@ WHERE in_tenancy_v1(
     )
   AND props.id IN (
     WITH RECURSIVE recursive_props AS (
-        SELECT left_object_id AS prop_id
-        FROM prop_many_to_many_schema_variants
-        WHERE right_object_id = $3
+        SELECT $3::bigint AS prop_id
         UNION ALL
         SELECT pbp.object_id AS prop_id
         FROM prop_belongs_to_prop AS pbp

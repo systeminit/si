@@ -52,7 +52,7 @@ async fn update_for_context_simple(ctx: &DalContext<'_, '_>) {
         component_view.properties,
     );
 
-    let domain_value_id = *AttributeValue::find_for_context(
+    let domain_value_id = *AttributeValue::list_for_context(
         ctx,
         AttributeReadContext {
             prop_id: Some(root.domain_prop_id),
@@ -65,7 +65,7 @@ async fn update_for_context_simple(ctx: &DalContext<'_, '_>) {
     .pop()
     .expect("domain AttributeValue not found")
     .id();
-    let base_name_value = AttributeValue::find_for_context(
+    let base_name_value = AttributeValue::list_for_context(
         ctx,
         AttributeReadContext {
             prop_id: Some(*name_prop.id()),
@@ -196,7 +196,7 @@ async fn insert_for_context_simple(ctx: &DalContext<'_, '_>) {
         component_view.properties,
     );
 
-    let array_value = AttributeValue::find_for_context(
+    let array_value = AttributeValue::list_for_context(
         ctx,
         AttributeReadContext {
             prop_id: Some(*array_prop.id()),

@@ -11,6 +11,7 @@ use crate::{
 /// A generated view for an [`AttributeReadContext`](crate::AttributeReadContext) and an optional
 /// root [`AttributeValueId`](crate::AttributeValue). The requirements for the context are laid
 /// out in [`Self::new()`].
+#[derive(Debug)]
 pub struct AttributeView {
     /// The value that was generated from [`Self::new()`]. This can also be referred to as the
     /// "properties" or "tree" of the view.
@@ -49,15 +50,32 @@ impl AttributeView {
             }
         };
 
-        // `AttributeValueId -> serde_json pointer` so when we have a parent_attribute_value_id,
-        // we know _exactly_ where in the structure we need to insert, when we have a
-        // parent_attribute_resolver_id.
+        // When we have a parent AttributeValueId (K: AttributeValueId), we need to know where in
+        // the structure we need to insert the value we are working with (V: String).
         let mut json_pointer_for_attribute_value_id: HashMap<AttributeValueId, String> =
             HashMap::new();
 
+        // Handle scenarios where we are generating views starting anywhere other than the root
+        // of a prop tree.
+        let maybe_parent_attribute_value_id =
+            if let Some(root_attribute_value_id) = root_attribute_value_id {
+                let root_attribute_value = AttributeValue::get_by_id(ctx, &root_attribute_value_id)
+                    .await?
+                    .ok_or(AttributeValueError::Missing)?;
+                root_attribute_value
+                    .parent_attribute_value(ctx)
+                    .await?
+                    .map(|av| *av.id())
+            } else {
+                None
+            };
+        if let Some(parent_attribute_value_id) = maybe_parent_attribute_value_id {
+            json_pointer_for_attribute_value_id.insert(parent_attribute_value_id, "".to_string());
+        }
+
         // We sort the work queue according to the order of every nested IndexMap. This ensures that
-        // when we reconstruct the final properties data, we don't have to worry about the order things
-        // appear in - they are certain to be the right order.
+        // when we reconstruct the final shape, we don't have to worry about the order that things
+        // appear in.
         let attribute_value_order: Vec<AttributeValueId> = initial_work
             .iter()
             .filter_map(|avp| avp.attribute_value.index_map())
@@ -71,12 +89,13 @@ impl AttributeView {
                 .unwrap_or(0)
         });
 
-        // We need the work_queue to be a VecDeque so we can pop elements off of the front
+        // We need the work queue to be a VecDeque so we can pop elements off of the front
         // as it's supposed to be a queue, not a stack.
         let mut work_queue: VecDeque<AttributeValuePayload> = VecDeque::from(initial_work);
 
         let mut properties = serde_json::json![{}];
-        let mut root_stack: Vec<(Option<AttributeValueId>, String)> = vec![(None, "".to_string())];
+        let mut root_stack: Vec<(Option<AttributeValueId>, String)> =
+            vec![(maybe_parent_attribute_value_id, "".to_string())];
 
         while !work_queue.is_empty() {
             let mut unprocessed: Vec<AttributeValuePayload> = vec![];
@@ -133,7 +152,7 @@ impl AttributeView {
                                     // Note: this shouldn't ever actually get used.
                                     insertion_pointer.to_string()
                                 };
-                            // Record the json pointer path to *this* specific attribute resolver's location.
+                            // Record the json pointer path to this specific attribute value's location.
                             json_pointer_for_attribute_value_id
                                 .insert(*attribute_value.id(), next_json_pointer.clone());
 
@@ -156,6 +175,19 @@ impl AttributeView {
                 }
             }
             work_queue = VecDeque::from(unprocessed);
+        }
+
+        if let Some(root_attribute_value_id) = root_attribute_value_id {
+            let root_json_pointer = json_pointer_for_attribute_value_id
+                .get(&root_attribute_value_id)
+                .ok_or(AttributeValueError::JsonPointerMissing)?;
+
+            return Ok(Self {
+                value: properties
+                    .pointer(root_json_pointer)
+                    .ok_or(AttributeValueError::NoValueForJsonPointer)?
+                    .clone(),
+            });
         }
 
         Ok(Self {
