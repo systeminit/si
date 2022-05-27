@@ -2,3 +2,6 @@
 rustflags = [
     "-C", "link-arg=-fuse-ld=lld",
 ]
+
+[profile.test]
+opt-level = 3
