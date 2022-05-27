@@ -98,7 +98,6 @@ async fn get_schematic(ctx: &DalContext<'_, '_>, application_id: ApplicationId) 
         .await
         .expect("cannot find schematic");
 
-    dbg!(&schematic);
     assert_eq!(schematic.nodes().len(), 2);
     assert_eq!(schematic.nodes()[0].id(), application_id2.id());
     assert_eq!(schematic.nodes()[1].id(), node2.id());

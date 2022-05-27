@@ -18,6 +18,7 @@ use crate::{
 
 const UI_MENUS_FOR_NODE_MENU: &str = include_str!("./queries/ui_menus_for_node_menu.sql");
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Error, Debug)]
 pub enum NodeMenuError {
     #[error("error serializing/deserializing json: {0}")]

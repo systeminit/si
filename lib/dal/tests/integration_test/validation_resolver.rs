@@ -249,7 +249,6 @@ async fn find_errors(ctx: &DalContext<'_, '_>) {
     validation_results
         .sort_by(|a, b| i64::from(a.attribute_value_id).cmp(&i64::from(b.attribute_value_id)));
 
-    dbg!(&validation_results);
     // There are two results, because the first one is showing that the
     // "directly on the prop" AttributeValue does not have any
     // validation errors.

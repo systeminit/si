@@ -13,9 +13,8 @@ async fn get_node_menu(ctx: &DalContext<'_, '_>) {
         .first()
         .expect("no built in application found")
         .clone();
-    let schema_variant = create_schema_variant(ctx, *application_schema.id()).await;
+    let _schema_variant = create_schema_variant(ctx, *application_schema.id()).await;
 
-    dbg!(&schema_variant);
     let application = create_component_for_schema(ctx, application_schema.id()).await;
 
     let items = get_node_menu_items(
