@@ -3,6 +3,8 @@ use si_data::{NatsError, PgError};
 use telemetry::prelude::*;
 use thiserror::Error;
 
+use crate::func::binding_return_value::FuncBindingReturnValueError;
+use crate::provider::internal::InternalProviderError;
 use crate::{
     func::binding::FuncBindingError,
     impl_standard_model, pk,
@@ -10,9 +12,9 @@ use crate::{
     socket::{Socket, SocketError, SocketId},
     standard_model::{self, objects_from_rows},
     standard_model_accessor, standard_model_belongs_to, standard_model_many_to_many,
-    AttributeContextBuilderError, AttributeValueError, DalContext, HistoryEventError, Prop,
-    PropError, PropId, Schema, SchemaId, StandardModel, StandardModelError, Timestamp, Visibility,
-    WriteTenancy, WsEventError,
+    AttributeContextBuilderError, AttributePrototypeError, AttributeValueError, DalContext,
+    HistoryEventError, InternalProvider, Prop, PropError, PropId, PropKind, Schema, SchemaId,
+    StandardModel, StandardModelError, Timestamp, Visibility, WriteTenancy, WsEventError,
 };
 
 pub mod root_prop;
@@ -21,12 +23,18 @@ pub mod root_prop;
 pub enum SchemaVariantError {
     #[error("attribute context builder error: {0}")]
     AttributeContextBuilder(#[from] AttributeContextBuilderError),
+    #[error("attribute prototype error: {0}")]
+    AttributePrototype(#[from] AttributePrototypeError),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
     #[error("func binding error: {0}")]
     FuncBinding(#[from] FuncBindingError),
+    #[error("func binding return value error: {0}")]
+    FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
+    #[error("internal provider error: {0}")]
+    InternalProvider(#[from] InternalProviderError),
     #[error("missing a func in attribute update: {0} not found")]
     MissingFunc(String),
     #[error("nats txn error: {0}")]
@@ -101,6 +109,38 @@ impl SchemaVariant {
         object.set_schema(ctx, &schema_id).await?;
 
         Ok((object, root_prop))
+    }
+
+    /// Creates _internally consuming_ [`InternalProviders`](crate::InternalProvider) corresponding
+    /// to every [`Prop`](crate::Prop) in the [`SchemaVariant`] that is not a descendant of an array
+    /// or a map.
+    pub async fn create_implicit_internal_providers(
+        ctx: &DalContext<'_, '_>,
+        schema_id: SchemaId,
+        schema_variant_id: SchemaVariantId,
+    ) -> SchemaVariantResult<()> {
+        // If no props have been created for the schema variant, there are no internal providers
+        // to create.
+        let root_prop = match Prop::find_root_for_schema_variant(ctx, schema_variant_id).await? {
+            Some(root_prop) => root_prop,
+            None => return Ok(()),
+        };
+
+        let mut work_queue = vec![root_prop];
+
+        while let Some(work) = work_queue.pop() {
+            InternalProvider::new_implicit(ctx, *work.id(), schema_id, schema_variant_id).await?;
+
+            // Only check for child props if the current prop is of kind object.
+            if work.kind() == &PropKind::Object {
+                let child_props = work.child_props(ctx).await?;
+                if !child_props.is_empty() {
+                    work_queue.extend(child_props);
+                }
+            }
+        }
+
+        Ok(())
     }
 
     standard_model_accessor!(name, String, SchemaVariantResult);

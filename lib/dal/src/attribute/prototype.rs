@@ -15,7 +15,6 @@ use si_data::{NatsError, PgError};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::attribute::prototype::argument::AttributePrototypeArgumentId;
 use crate::func::binding_return_value::FuncBindingReturnValueError;
 use crate::{
     attribute::{
@@ -27,9 +26,10 @@ use crate::{
         binding::{FuncBindingError, FuncBindingId},
         binding_return_value::FuncBindingReturnValueId,
     },
-    impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_accessor_ro,
-    standard_model_has_many, DalContext, HistoryEventError, PropError, PropKind, ReadTenancy,
-    ReadTenancyError, StandardModel, StandardModelError, Timestamp, Visibility, WriteTenancy,
+    impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_has_many,
+    AttributePrototypeArgument, AttributePrototypeArgumentError, DalContext, HistoryEventError,
+    PropError, PropKind, ReadTenancy, ReadTenancyError, StandardModel, StandardModelError,
+    Timestamp, Visibility, WriteTenancy,
 };
 
 pub mod argument;
@@ -42,6 +42,8 @@ const FIND_WITH_PARENT_VALUE_AND_KEY_FOR_CONTEXT: &str =
 pub enum AttributePrototypeError {
     #[error("attribute resolver context builder error: {0}")]
     AttributeContextBuilder(#[from] AttributeContextError),
+    #[error("attribute prototype argument error: {0}")]
+    AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
     #[error("func binding error: {0}")]
@@ -112,23 +114,7 @@ pub struct AttributePrototype {
     func_id: FuncId,
     /// An optional key used for tracking parentage.
     pub key: Option<String>,
-    /// This field is used to track dynamic function arguments (found via [`InternalProviders`](crate::InternalProvider)
-    /// to generate a [`FuncBinding`](crate::func::binding::FuncBinding). The arguments are stored
-    /// within [`AttributePrototypeArguments`](crate::AttributePrototypeArgument).
-    attribute_prototype_argument_ids: Vec<AttributePrototypeArgumentId>,
 }
-
-// TODO(nick): breakdown of what to do with the argument ids...
-// Once you get the InternalProviderId, you will use it to build an AttributeContext.
-// You will use that context to retrieve the AttributeValue we need to popular the arguments
-// of the FuncBinding that we will be "generating".
-//
-// Example scenario: Docker Image /root/si/name --> Docker Image /root/domain/image
-// We use "si:identity" in this scenario. Upon first insertion, the key will be "identity" and
-// the value will be the _source_ InternalProviderId. We will directly attach this to the
-// AttributePrototype for the "/root/domain/image" Prop in the SchemaVariant-specific
-// AttributeContext. The InternalProviderId will correspond to the InternalProvider (with
-// "internal_consumer" set to "true") that corresponds to the "/root/si/name" Prop.
 
 impl_standard_model! {
     model: AttributePrototype,
@@ -150,25 +136,18 @@ impl AttributePrototype {
         context: AttributeContext,
         key: Option<String>,
         parent_attribute_value_id: Option<AttributeValueId>,
-        attribute_prototype_argument_ids: Option<Vec<AttributePrototypeArgumentId>>,
     ) -> AttributePrototypeResult<Self> {
-        let arguments: Vec<AttributePrototypeArgumentId> = match attribute_prototype_argument_ids {
-            Some(arguments) => arguments,
-            None => vec![],
-        };
-
         let row = ctx
             .txns()
             .pg()
             .query_one(
-                "SELECT object FROM attribute_prototype_create_v1($1, $2, $3, $4, $5, $6)",
+                "SELECT object FROM attribute_prototype_create_v1($1, $2, $3, $4, $5)",
                 &[
                     ctx.write_tenancy(),
                     ctx.visibility(),
                     &context,
                     &func_id,
                     &key,
-                    &arguments,
                 ],
             )
             .await?;
@@ -221,26 +200,19 @@ impl AttributePrototype {
         context: AttributeContext,
         key: Option<String>,
         parent_attribute_value_id: Option<AttributeValueId>,
-        attribute_prototype_argument_ids: Option<Vec<AttributePrototypeArgumentId>>,
         attribute_value_id: AttributeValueId,
     ) -> AttributePrototypeResult<Self> {
-        let arguments: Vec<AttributePrototypeArgumentId> = match attribute_prototype_argument_ids {
-            Some(arguments) => arguments,
-            None => vec![],
-        };
-
         let row = ctx
             .txns()
             .pg()
             .query_one(
-                "SELECT object FROM attribute_prototype_create_v1($1, $2, $3, $4, $5, $6)",
+                "SELECT object FROM attribute_prototype_create_v1($1, $2, $3, $4, $5)",
                 &[
                     ctx.write_tenancy(),
                     ctx.visibility(),
                     &context,
                     &func_id,
                     &key,
-                    &arguments,
                 ],
             )
             .await?;
@@ -264,10 +236,6 @@ impl AttributePrototype {
 
     standard_model_accessor!(func_id, Pk(FuncId), AttributePrototypeResult);
     standard_model_accessor!(key, Option<String>, AttributePrototypeResult);
-    standard_model_accessor_ro!(
-        attribute_prototype_argument_ids,
-        Vec<AttributePrototypeArgumentId>
-    );
     standard_model_has_many!(
         lookup_fn: attribute_values,
         table: "attribute_value_belongs_to_attribute_prototype",
@@ -275,15 +243,24 @@ impl AttributePrototype {
         returns: AttributeValue,
         result: AttributePrototypeResult,
     );
+    standard_model_has_many!(
+        lookup_fn: attribute_prototype_arguments,
+        table: "attribute_prototype_argument_belongs_to_attribute_prototype",
+        model_table: "attribute_prototype_arguments",
+        returns: AttributePrototypeArgument,
+        result: AttributePrototypeResult,
+    );
 
     /// Deletes the [`AttributePrototype`] corresponding to a provided ID. Before deletion occurs,
     /// its corresponding [`AttributeValue`](crate::AttributeValue), all of its child values
     /// (and their children, recursively) and those children's prototypes are deleted. Any value or
     /// prototype that could not be found or does not exist is assumed to have already been deleted
-    /// or never existed.
+    /// or never existed. Moreover, before deletion of the [`AttributePrototype`] occurs, we delete
+    /// all [`AttributePrototypeArguments`](crate::AttributePrototypeArgument) that belong to the
+    /// prototype.
     ///
-    /// CAUTION: this should be used rather than [`StandardModel::delete()`] when deleting an
-    /// [`AttributePrototype`].
+    /// Caution: this should be used rather than [`StandardModel::delete()`] when deleting an
+    /// [`AttributePrototype`]. That method should never be called directly.
     pub async fn remove(
         ctx: &DalContext<'_, '_>,
         attribute_prototype_id: &AttributePrototypeId,
@@ -302,7 +279,15 @@ impl AttributePrototype {
                 ),
             );
         }
+
+        // Delete all values and arguments found for a prototype before deleting the prototype.
         let attribute_values = attribute_prototype.attribute_values(ctx).await?;
+        for mut argument in attribute_prototype
+            .attribute_prototype_arguments(ctx)
+            .await?
+        {
+            argument.delete(ctx).await?;
+        }
         attribute_prototype.delete(ctx).await?;
 
         // Start with the initial value(s) from the prototype and build a work queue based on the
@@ -323,6 +308,10 @@ impl AttributePrototype {
                             *current_prototype.id(),
                         ),
                     );
+                }
+                // Delete all arguments found for a prototype before deleting the prototype.
+                for mut argument in current_prototype.attribute_prototype_arguments(ctx).await? {
+                    argument.delete(ctx).await?;
                 }
                 current_prototype.delete(ctx).await?;
             }
@@ -463,7 +452,6 @@ impl AttributePrototype {
         func_binding_id: FuncBindingId,
         func_binding_return_value_id: FuncBindingReturnValueId,
         parent_attribute_value_id: Option<AttributeValueId>,
-        attribute_prototype_argument_ids: Option<Vec<AttributePrototypeArgumentId>>,
         existing_attribute_value_id: Option<AttributeValueId>,
     ) -> AttributePrototypeResult<AttributePrototypeId> {
         let given_attribute_prototype = Self::get_by_id(ctx, &attribute_prototype_id)
@@ -478,13 +466,13 @@ impl AttributePrototype {
         let mut attribute_prototype = if given_attribute_prototype.context == context {
             given_attribute_prototype
         } else if let Some(attribute_value_id) = existing_attribute_value_id {
+            // Create new prototype with an existing value and clone the arguments of the given prototype into the new one.
             let prototype = Self::new_with_existing_value(
                 ctx,
                 func_id,
                 context,
                 given_attribute_prototype.key().map(|k| k.to_string()),
                 parent_attribute_value_id,
-                attribute_prototype_argument_ids,
                 attribute_value_id,
             )
             .await?;
@@ -503,7 +491,8 @@ impl AttributePrototype {
 
             prototype
         } else {
-            Self::new(
+            // Create new prototype and clone the arguments of the given prototype into the new one.
+            let new_prototype = Self::new(
                 ctx,
                 func_id,
                 func_binding_id,
@@ -511,9 +500,9 @@ impl AttributePrototype {
                 context,
                 given_attribute_prototype.key().map(|k| k.to_string()),
                 parent_attribute_value_id,
-                attribute_prototype_argument_ids,
             )
-            .await?
+            .await?;
+            new_prototype
         };
 
         attribute_prototype.set_func_id(ctx, func_id).await?;

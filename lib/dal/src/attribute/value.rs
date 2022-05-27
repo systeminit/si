@@ -6,7 +6,7 @@ use async_recursion::async_recursion;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use si_data::{NatsError, PgError};
-use std::collections::VecDeque;
+use std::collections::{HashMap, HashSet, VecDeque};
 use telemetry::prelude::*;
 use thiserror::Error;
 use uuid::Uuid;
@@ -30,17 +30,19 @@ use crate::{
     },
     impl_standard_model, pk,
     standard_model::{self, TypeHint},
-    standard_model_accessor, standard_model_belongs_to, standard_model_has_many, Component,
-    ComponentAsyncTasks, DalContext, Func, HistoryEventError, IndexMap, Prop, PropError, PropId,
-    PropKind, ReadTenancyError, StandardModel, StandardModelError, Timestamp, Visibility,
-    WriteTenancy,
+    standard_model_accessor, standard_model_belongs_to, standard_model_has_many,
+    AttributeContextError, Component, ComponentAsyncTasks, DalContext, Func, HistoryEventError,
+    IndexMap, InternalProvider, InternalProviderId, Prop, PropError, PropId, PropKind,
+    ReadTenancyError, StandardModel, StandardModelError, Timestamp, Visibility, WriteTenancy,
 };
 
 pub mod view;
 
+const LIST_FROM_INTERNAL_PROVIDER_USE: &str =
+    include_str!("../queries/attribute_value_list_from_internal_provider_use.sql");
 const CHILD_ATTRIBUTE_VALUES_FOR_CONTEXT: &str =
     include_str!("../queries/attribute_value_child_attribute_values_for_context.sql");
-const FIND_FOR_CONTEXT: &str = include_str!("../queries/attribute_value_find_for_context.sql");
+const LIST_FOR_CONTEXT: &str = include_str!("../queries/attribute_value_list_for_context.sql");
 const FIND_PROP_FOR_VALUE: &str =
     include_str!("../queries/attribute_value_find_prop_for_value.sql");
 const FIND_WITH_PARENT_AND_KEY_FOR_CONTEXT: &str =
@@ -54,6 +56,8 @@ const LIST_PAYLOAD_FOR_READ_CONTEXT_AND_ROOT: &str =
 
 #[derive(Error, Debug)]
 pub enum AttributeValueError {
+    #[error("AttributeContext error: {0}")]
+    AttributeContext(#[from] AttributeContextError),
     #[error("AttributeContextBuilder error: {0}")]
     AttributeContextBuilder(#[from] AttributeContextBuilderError),
     #[error("AttributePrototype not found for AttributeValue: {0} ({1:?})")]
@@ -74,22 +78,34 @@ pub enum AttributeValueError {
     HistoryEvent(#[from] HistoryEventError),
     #[error("{0}")]
     IncompatibleAttributeReadContext(&'static str),
+    #[error("internal provider error: {0}")]
+    InternalProvider(String),
     #[error("invalid prop value; expected {0} but got {1}")]
     InvalidPropValue(String, serde_json::Value),
-    #[error("nats txn error: {0}")]
-    Nats(#[from] NatsError),
-    #[error("attribute value not found: {0} ({1:?})")]
-    NotFound(AttributeValueId, Visibility),
+    #[error("json pointer missing for attribute view")]
+    JsonPointerMissing,
     #[error("missing attribute value")]
     Missing,
-    #[error("expected prop id {0} to have a child")]
-    MissingChildProp(PropId),
-    #[error("func not found: {0}")]
-    MissingFunc(String),
     #[error(
         "attribute values must have an associated attribute prototype, and this one does not. bug!"
     )]
     MissingAttributePrototype,
+    #[error("expected prop id {0} to have a child")]
+    MissingChildProp(PropId),
+    #[error("func not found: {0}")]
+    MissingFunc(String),
+    #[error("func binding return value not found")]
+    MissingFuncBindingReturnValue,
+    #[error("unexpected: missing value from func binding return value")]
+    MissingValueFromFuncBindingReturnValue,
+    #[error("nats txn error: {0}")]
+    Nats(#[from] NatsError),
+    #[error("attribute value not found: {0} ({1:?})")]
+    NotFound(AttributeValueId, Visibility),
+    #[error("missing attribute value for internal provider context")]
+    NotFoundForInternalProviderContext,
+    #[error("using json pointer for attribute view yielded no value")]
+    NoValueForJsonPointer,
     #[error(
         "parent must be for an array, map, or object prop: attribute resolver id {0} is for a {1}"
     )]
@@ -238,6 +254,18 @@ impl AttributeValue {
         self.index_map.as_mut()
     }
 
+    /// Returns the [`serde_json::Value`] within the [`FuncBindingReturnValue`](crate::FuncBindingReturnValue)
+    /// corresponding to the field on [`Self`].
+    pub async fn value(
+        &self,
+        ctx: &DalContext<'_, '_>,
+    ) -> AttributeValueResult<Option<serde_json::Value>> {
+        match FuncBindingReturnValue::get_by_id(ctx, &self.func_binding_return_value_id).await? {
+            Some(func_binding_return_value) => Ok(func_binding_return_value.value().cloned()),
+            None => Err(AttributeValueError::MissingFuncBindingReturnValue),
+        }
+    }
+
     pub async fn update_stored_index_map(
         &self,
         ctx: &DalContext<'_, '_>,
@@ -325,7 +353,10 @@ impl AttributeValue {
         Ok(standard_model::option_object_from_row(row)?)
     }
 
-    pub async fn find_for_context(
+    /// List [`AttributeValues`](crate::AttributeValue) for a given
+    /// [`AttributeReadContext`](crate::AttributeReadContext). This does _not_ work for maps and
+    /// arrays! For those objects, please use [`Self::find_with_parent_and_key_for_context()`].
+    pub async fn list_for_context(
         ctx: &DalContext<'_, '_>,
         context: AttributeReadContext,
     ) -> AttributeValueResult<Vec<Self>> {
@@ -333,12 +364,35 @@ impl AttributeValue {
             .txns()
             .pg()
             .query(
-                FIND_FOR_CONTEXT,
+                LIST_FOR_CONTEXT,
                 &[ctx.read_tenancy(), ctx.visibility(), &context],
             )
             .await?;
-
         Ok(standard_model::objects_from_rows(rows)?)
+    }
+
+    /// Find one [`AttributeValue`](crate::AttributeValue) for a given
+    /// [`AttributeReadContext`](crate::AttributeReadContext). This does _not_ work for maps and arrays!
+    /// For those objects, please use [`Self::find_with_parent_and_key_for_context()`].
+    ///
+    /// This is a modified version of [`Self::list_for_context()`] that requires an [`AttributeReadContext`](crate::AttributeReadContext)
+    /// that is also a valid [`AttributeContext`](crate::AttributeContext) _and_ checks that only
+    /// one row was returned.
+    pub async fn find_for_context(
+        ctx: &DalContext<'_, '_>,
+        context: AttributeReadContext,
+    ) -> AttributeValueResult<Option<Self>> {
+        AttributeContextBuilder::from(context).to_context()?;
+        let mut rows = ctx
+            .txns()
+            .pg()
+            .query(
+                LIST_FOR_CONTEXT,
+                &[ctx.read_tenancy(), ctx.visibility(), &context],
+            )
+            .await?;
+        let maybe_row = rows.pop();
+        Ok(standard_model::option_object_from_row(maybe_row)?)
     }
 
     /// Return the [`Prop`] that the [`AttributeValueId`] belongs to,
@@ -413,6 +467,10 @@ impl AttributeValue {
     /// This method is similar to [`Self::list_payload_for_read_context()`], but it leverages a
     /// root [`AttributeValueId`](crate::AttributeValue) in order to find payloads at any
     /// root [`Prop`](crate::Prop) corresponding to the provided context and root value.
+    ///
+    /// Requirements for the [`AttributeReadContext`](crate::AttributeReadContext):
+    /// - [`PropId`](crate::Prop) must be set to [`None`]
+    /// - Both providers fields must be unset
     pub async fn list_payload_for_read_context_and_root(
         ctx: &DalContext<'_, '_>,
         root_attribute_value_id: AttributeValueId,
@@ -464,6 +522,21 @@ impl AttributeValue {
         Ok(result)
     }
 
+    /// List [`AttributeValues`](Self) that depend on a provided [`InternalProviderId`](crate::InternalProvider).
+    pub async fn list_from_internal_provider_use(
+        ctx: &DalContext<'_, '_>,
+        internal_provider_id: InternalProviderId,
+    ) -> AttributeValueResult<Vec<Self>> {
+        let rows = ctx
+            .pg_txn()
+            .query(
+                LIST_FROM_INTERNAL_PROVIDER_USE,
+                &[ctx.read_tenancy(), ctx.visibility(), &internal_provider_id],
+            )
+            .await?;
+        Ok(standard_model::objects_from_rows(rows)?)
+    }
+
     /// Update the [`AttributeValue`] for a specific [`AttributeContext`] to the given value. If the
     /// given [`AttributeValue`] is for a different [`AttributeContext`] than the one provided, a
     /// new [`AttributeValue`] will be created for the given [`AttributeContext`].
@@ -474,6 +547,11 @@ impl AttributeValue {
     /// [`SchemaVariant`](crate::SchemaVariant), but we do not want that value to exist for a
     /// specific [`Component`](crate::Component), we can update the variant's value to [`None`] in
     /// an [`AttributeContext`] specific to that component.
+    ///
+    /// This method returns the following:
+    /// - the [`Option<serde_json::Value>`] that was passed in
+    /// - the updated [`AttributeValueId`](Self)
+    /// - qualifications, validations, etc. via [`Option<ComponentAsyncTasks>`]
     pub async fn update_for_context(
         ctx: &DalContext<'_, '_>,
         attribute_value_id: AttributeValueId,
@@ -639,13 +717,8 @@ impl AttributeValue {
             }
         };
 
-        let (func, func_binding, created) = set_value(ctx, func_name, func_args).await?;
-        let func_binding_return_value = if created {
-            func_binding.execute(ctx).await?
-        } else {
-            FuncBindingReturnValue::get_by_func_binding_id_or_execute(ctx, *func_binding.id())
-                .await?
-        };
+        let (func, func_binding, func_binding_return_value) =
+            set_value(ctx, func_name, func_args).await?;
 
         attribute_value
             .set_func_binding_id(ctx, *func_binding.id())
@@ -659,7 +732,6 @@ impl AttributeValue {
             *func_binding.id(),
             *func_binding_return_value.id(),
             maybe_parent_attribute_value_id,
-            None,
             Some(*attribute_value.id()),
         )
         .await
@@ -698,6 +770,8 @@ impl AttributeValue {
             } else {
                 None
             };
+
+        Self::update_dependent_attribute_values(ctx, *attribute_value.id()).await?;
 
         Ok((value, *attribute_value.id(), async_tasks))
     }
@@ -748,24 +822,19 @@ impl AttributeValue {
             .await?
             .pop()
             .ok_or(AttributeValueError::MissingFunc(unset_func_name))?;
-        let (unset_func_binding, created) = FuncBinding::find_or_create(
-            ctx,
-            serde_json::json![null],
-            *unset_func.id(),
-            FuncBackendKind::Unset,
-        )
-        .await?;
-        let func_binding_return_value = if created {
-            unset_func_binding.execute(ctx).await?
-        } else {
-            FuncBindingReturnValue::get_by_func_binding_id_or_execute(ctx, *unset_func_binding.id())
-                .await?
-        };
+        let (unset_func_binding, unset_func_binding_return_value) =
+            FuncBinding::find_or_create_and_execute(
+                ctx,
+                serde_json::json![null],
+                *unset_func.id(),
+                FuncBackendKind::Unset,
+            )
+            .await?;
 
         let attribute_value = Self::new(
             ctx,
             *unset_func_binding.id(),
-            *func_binding_return_value.id(),
+            *unset_func_binding_return_value.id(),
             context,
             key.clone(),
         )
@@ -777,7 +846,6 @@ impl AttributeValue {
             context,
             key.clone(),
             Some(parent_attribute_value_id),
-            None,
             *attribute_value.id(),
         )
         .await
@@ -795,7 +863,7 @@ impl AttributeValue {
             let prop_attribute_value = Self::new(
                 ctx,
                 *unset_func_binding.id(),
-                *func_binding_return_value.id(),
+                *unset_func_binding_return_value.id(),
                 context,
                 Option::<&str>::None,
             )
@@ -811,7 +879,6 @@ impl AttributeValue {
                 context,
                 key.clone(),
                 Some(parent_attribute_value_id),
-                None,
                 parent_attribute_value_id,
             )
             .await
@@ -893,7 +960,7 @@ impl AttributeValue {
             .await?
             .ok_or_else(|| {
                 AttributeValueError::UnableToCreateParent(format!(
-                    "Missing FuncBindingReturnValue for AttributeValue: {}",
+                    "Missing FuncBindingReturnValue for AttributeValue: {:?}",
                     attribute_value_id
                 ))
             })?
@@ -1008,6 +1075,125 @@ impl AttributeValue {
         Ok(())
     }
 
+    /// Update dependent [`AttributeValues`](Self) for a given [`AttributeValueId`](Self).
+    pub async fn update_dependent_attribute_values(
+        ctx: &DalContext<'_, '_>,
+        attribute_value_id: AttributeValueId,
+    ) -> AttributeValueResult<()> {
+        let attribute_value = AttributeValue::get_by_id(ctx, &attribute_value_id)
+            .await?
+            .ok_or(AttributeValueError::Missing)?;
+
+        // Here, we push the value into the visited set and work queue immediately, but in the work
+        // queue itself, we will _only_ push values in the work queue if they have not been visited
+        // yet.
+        let mut visited: HashSet<AttributeValueId> = HashSet::new();
+        visited.insert(*attribute_value.id());
+        let mut work_queue: VecDeque<AttributeValue> = VecDeque::new();
+        work_queue.push_back(attribute_value);
+
+        while let Some(work) = work_queue.pop_front() {
+            // First, we need to ensure our corresponding implicit internal provider emits, if one
+            // exists.
+            if let Some(work_internal_provider) =
+                InternalProvider::get_for_prop(ctx, work.context.prop_id())
+                    .await
+                    .map_err(|e| AttributeValueError::InternalProvider(e.to_string()))?
+            {
+                work_internal_provider
+                    .emit(ctx, work.context)
+                    .await
+                    .map_err(|e| AttributeValueError::InternalProvider(e.to_string()))?;
+            }
+
+            // Collect the attribute values that need to be updated based on our current
+            // attribute value being processed.
+            let mut attribute_values_that_need_to_be_updated = Vec::new();
+            for ancestor_prop in Prop::all_ancestor_props(ctx, work.context.prop_id()).await? {
+                // If we are underneath an array or a map, we will not have an internal provider.
+                if let Some(ancestor_internal_provider) =
+                    InternalProvider::get_for_prop(ctx, *ancestor_prop.id())
+                        .await
+                        .map_err(|e| AttributeValueError::InternalProvider(e.to_string()))?
+                {
+                    let attribute_values_for_internal_provider_used =
+                        AttributeValue::list_from_internal_provider_use(
+                            ctx,
+                            *ancestor_internal_provider.id(),
+                        )
+                        .await?;
+                    attribute_values_that_need_to_be_updated
+                        .extend(attribute_values_for_internal_provider_used);
+                }
+            }
+
+            // Now, update each attribute value. Use the prototype
+            // and its arguments to build the func binding arguments needed to execution.
+            for mut attribute_value_that_needs_to_be_updated in
+                attribute_values_that_need_to_be_updated
+            {
+                let prototype = attribute_value_that_needs_to_be_updated
+                    .attribute_prototype(ctx)
+                    .await?
+                    .ok_or(AttributeValueError::MissingAttributePrototype)?;
+                let arguments = prototype
+                    .attribute_prototype_arguments(ctx)
+                    .await
+                    .map_err(|e| AttributeValueError::AttributePrototype(e.to_string()))?;
+
+                let mut func_binding_args: HashMap<String, serde_json::Value> = HashMap::new();
+                for argument in arguments {
+                    let internal_provider_context = AttributeContextBuilder::from(
+                        attribute_value_that_needs_to_be_updated.context,
+                    )
+                    .unset_prop_id()
+                    .set_internal_provider_id(argument.internal_provider_id())
+                    .to_context()?;
+                    let internal_provider_attribute_value =
+                        AttributeValue::find_for_context(ctx, internal_provider_context.into())
+                            .await?
+                            .ok_or(AttributeValueError::NotFoundForInternalProviderContext)?;
+                    let value = internal_provider_attribute_value
+                        .value(ctx)
+                        .await?
+                        .ok_or(AttributeValueError::MissingValueFromFuncBindingReturnValue)?;
+                    func_binding_args.insert(argument.name().clone(), value);
+                }
+
+                // Generate a new func binding return value with our arguments assembled.
+                let func = Func::get_by_id(ctx, &prototype.func_id())
+                    .await?
+                    .ok_or_else(|| {
+                        AttributeValueError::MissingFunc(format!("{:?}", &prototype.func_id()))
+                    })?;
+                let (func_binding, func_binding_return_value) =
+                    FuncBinding::find_or_create_and_execute(
+                        ctx,
+                        serde_json::to_value(func_binding_args)?,
+                        prototype.func_id(),
+                        *func.backend_kind(),
+                    )
+                    .await?;
+
+                // Update the attribute value with the new func binding and func binding return value.
+                attribute_value_that_needs_to_be_updated
+                    .set_func_binding_id(ctx, *func_binding.id())
+                    .await?;
+                attribute_value_that_needs_to_be_updated
+                    .set_func_binding_return_value_id(ctx, *func_binding_return_value.id())
+                    .await?;
+
+                // If the attribute value that was just update has not already triggered updates,
+                // process its dependent values.
+                if !visited.contains(attribute_value_that_needs_to_be_updated.id()) {
+                    visited.insert(*attribute_value_that_needs_to_be_updated.id());
+                    work_queue.push_back(attribute_value_that_needs_to_be_updated);
+                }
+            }
+        }
+        Ok(())
+    }
+
     // pub async fn update_proxies(
     //     &mut self,
     //     txn: &PgTxn<'_>,
@@ -1071,17 +1257,18 @@ async fn set_value(
     ctx: &DalContext<'_, '_>,
     func_name: &str,
     args: serde_json::Value,
-) -> AttributeValueResult<(Func, FuncBinding, bool)> {
+) -> AttributeValueResult<(Func, FuncBinding, FuncBindingReturnValue)> {
     let func_name = func_name.to_owned();
     let func = Func::find_by_attr(ctx, "name", &func_name)
         .await?
         .pop()
         .ok_or(AttributeValueError::MissingFunc(func_name))?;
 
-    let (func_binding, created) =
-        FuncBinding::find_or_create(ctx, args, *func.id(), *func.backend_kind()).await?;
+    let (func_binding, func_binding_return_value) =
+        FuncBinding::find_or_create_and_execute(ctx, args, *func.id(), *func.backend_kind())
+            .await?;
 
-    Ok((func, func_binding, created))
+    Ok((func, func_binding, func_binding_return_value))
 }
 
 #[derive(Debug)]

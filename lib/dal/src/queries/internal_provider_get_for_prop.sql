@@ -8,7 +8,7 @@ WHERE in_tenancy_v1($1, internal_providers.tenancy_universal, internal_providers
                     internal_providers.tenancy_organization_ids, internal_providers.tenancy_workspace_ids)
   AND is_visible_v1($2, internal_providers.visibility_change_set_pk, internal_providers.visibility_edit_session_pk,
                     internal_providers.visibility_deleted_at)
-  AND schema_variant_id = $3
+  AND prop_id = $3
 ORDER BY internal_providers.id,
          visibility_change_set_pk DESC,
          visibility_edit_session_pk DESC,

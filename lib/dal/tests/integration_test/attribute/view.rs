@@ -56,10 +56,8 @@ async fn schema_variant_specific(ctx: &DalContext<'_, '_>) {
     assert_eq_sorted!(
         serde_json::json![
             {
-                "root": {
-                    "domain": {},
-                    "si": {}
-                }
+                "domain": {},
+                "si": {}
             }
         ], // expected
         view.value().clone(), // actual
@@ -74,7 +72,6 @@ async fn schema_variant_specific(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("cannot find attribute value")
-    .pop()
     .expect("attribute value not found");
 
     let name_attribute_value = AttributeValue::find_for_context(
@@ -86,7 +83,6 @@ async fn schema_variant_specific(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("cannot find attribute value")
-    .pop()
     .expect("attribute value not found");
 
     let update_context = AttributeContextBuilder::from(base_context)
@@ -94,7 +90,7 @@ async fn schema_variant_specific(ctx: &DalContext<'_, '_>) {
         .to_context()
         .expect("could not convert builder to attribute context");
     let update_value = Some(serde_json::to_value("toddhoward").expect("could not create value"));
-    let (_, _, _) = AttributeValue::update_for_context(
+    let (_, updated_name_attribute_value_id, _) = AttributeValue::update_for_context(
         ctx,
         *name_attribute_value.id(),
         Some(*domain_attribute_value.id()),
@@ -119,117 +115,28 @@ async fn schema_variant_specific(ctx: &DalContext<'_, '_>) {
     assert_eq_sorted!(
         serde_json::json![
             {
-                "root": {
-                    "domain": {
-                        "name": "toddhoward"
-                    },
-                    "si": {}
+                "domain": {
+                    "name": "toddhoward"
                 },
+                "si": {}
             }
         ], // expected
         view.value().clone(), // actual
     );
-}
 
-#[test]
-async fn free_floating_props(ctx: &DalContext<'_, '_>) {
-    // {
-    //   "object": {
-    //     "array": []
-    //   }
-    // }
-    let base_context = AttributeReadContext {
-        ..AttributeReadContext::default()
-    };
-    let view_context = AttributeReadContext {
-        prop_id: None,
-        ..base_context
-    };
-
-    let object_prop = create_prop_of_kind_with_name(ctx, PropKind::Object, "object").await;
-    let array_prop = create_prop_of_kind_with_name(ctx, PropKind::Array, "array").await;
-    array_prop
-        .set_parent_prop(ctx, *object_prop.id())
-        .await
-        .expect("cannot set parent of array");
-    let array_element = create_prop_of_kind_with_name(ctx, PropKind::String, "element").await;
-    array_element
-        .set_parent_prop(ctx, *array_prop.id())
-        .await
-        .expect("cannot set parent of element");
-
-    let object_attribute_value = AttributeValue::find_with_parent_and_key_for_context(
-        ctx,
-        None,
-        None,
-        AttributeReadContext {
-            prop_id: Some(*object_prop.id()),
-            ..base_context
-        },
-    )
-    .await
-    .expect("cannot find attribute value")
-    .expect("attribute value not found");
-
-    let view = AttributeView::new(ctx, view_context, Some(*object_attribute_value.id()))
-        .await
-        .expect("could not create attribute view");
-    assert_eq_sorted!(
-        serde_json::json![{}], // expected
-        view.value().clone(),  // actual
-    );
-
-    let array_attribute_value = AttributeValue::find_for_context(
+    // Ensure that leaf generation works as well.
+    let view = AttributeView::new(
         ctx,
         AttributeReadContext {
-            prop_id: Some(*array_prop.id()),
+            prop_id: None,
             ..base_context
         },
+        Some(updated_name_attribute_value_id),
     )
     .await
-    .expect("cannot find attribute value")
-    .pop()
-    .expect("attribute value not found");
-
-    let insert_context = AttributeContextBuilder::from(base_context)
-        .set_prop_id(*array_prop.id())
-        .to_context()
-        .expect("could not convert builder to attribute context");
-    let (element_attribute_value_id, _) = AttributeValue::insert_for_context(
-        ctx,
-        insert_context,
-        *array_attribute_value.id(),
-        None,
-        None,
-    )
-    .await
-    .expect("cannot insert new array element");
-
-    let update_context = AttributeContextBuilder::from(base_context)
-        .set_prop_id(*array_element.id())
-        .to_context()
-        .expect("could not convert builder to attribute context");
-    let update_value = Some(serde_json::to_value("toddhoward").expect("could not create value"));
-    let (_, _, _) = AttributeValue::update_for_context(
-        ctx,
-        element_attribute_value_id,
-        Some(*array_attribute_value.id()),
-        update_context,
-        update_value,
-        array_attribute_value.key,
-    )
-    .await
-    .expect("could not update attribute value");
-
-    let view = AttributeView::new(ctx, view_context, Some(*object_attribute_value.id()))
-        .await
-        .expect("could not create attribute view");
+    .expect("could not create attribute view");
     assert_eq_sorted!(
-        serde_json::json![{
-            "object": {
-                "array": ["toddhoward"],
-            },
-        }], // expected
-        view.value().clone(), // actual
+        serde_json::json!["toddhoward"], // expected
+        view.value().clone(),            // actual
     );
 }
