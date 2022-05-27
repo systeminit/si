@@ -177,6 +177,36 @@ impl FuncBinding {
         Ok((object, created))
     }
 
+    /// Runs [`Self::find_or_create()`] and executes if [`Self`] was newly created or
+    /// [`FuncBindingReturnValue`](crate::FuncBindingReturnValue) could not be found.
+    pub async fn find_or_create_and_execute(
+        ctx: &DalContext<'_, '_>,
+        args: serde_json::Value,
+        func_id: FuncId,
+        backend_kind: FuncBackendKind,
+    ) -> FuncBindingResult<(Self, FuncBindingReturnValue)> {
+        let (func_binding, created) =
+            Self::find_or_create(ctx, args, func_id, backend_kind).await?;
+
+        let func_binding_return_value: FuncBindingReturnValue = if created {
+            func_binding.execute(ctx).await?
+        } else {
+            // If the func binding was not newly created, let's try to find a func binding
+            // return value first.
+            let maybe_func_binding_return_value =
+                FuncBindingReturnValue::get_by_func_binding_id(ctx, *func_binding.id()).await?;
+            if let Some(func_binding_return_value) = maybe_func_binding_return_value {
+                // If we found one, return it!
+                func_binding_return_value
+            } else {
+                // If we did not find one, let's execute.
+                func_binding.execute(ctx).await?
+            }
+        };
+
+        Ok((func_binding, func_binding_return_value))
+    }
+
     standard_model_accessor!(args, PlainJson<JsonValue>, FuncBindingResult);
     standard_model_accessor!(backend_kind, Enum(FuncBackendKind), FuncBindingResult);
     standard_model_belongs_to!(
@@ -203,7 +233,7 @@ impl FuncBinding {
         octx.update_write_tenancy(write_tenancy);
         let ctx = &octx;
 
-        let func = self
+        let func: Func = self
             .func_with_tenancy(ctx)
             .await?
             .ok_or(FuncBindingError::FuncNotFound(self.pk))?;

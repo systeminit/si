@@ -14,7 +14,6 @@ use crate::{
     Timestamp, Visibility,
 };
 
-use super::binding::FuncBindingError;
 use super::{
     binding::{FuncBinding, FuncBindingId},
     FuncId,
@@ -56,13 +55,13 @@ pk!(FuncBindingReturnValueId);
 pub struct FuncBindingReturnValue {
     pk: FuncBindingReturnValuePk,
     id: FuncBindingReturnValueId,
-    // The unprocessed return value is the "real" result, unprocessed for any other behavior
-    // This is useful when a function binding result is used as a generator for other
-    // results - it lets us see where things came from.
+    /// The unprocessed return value is the "real" result, unprocessed for any other behavior
+    /// This is useful when a function binding result is used as a generator for other
+    /// results - it lets us see where things came from.
     unprocessed_value: Option<serde_json::Value>,
-    // The processed return value.
+    /// The processed return value.
     value: Option<serde_json::Value>,
-    // Function Execution IDs can be attached later for lookup and are optional.
+    /// Function Execution IDs can be attached later for lookup and are optional.
     func_execution_pk: FuncExecutionPk,
     #[serde(flatten)]
     tenancy: WriteTenancy,
@@ -175,31 +174,6 @@ impl FuncBindingReturnValue {
             .await?;
         let object = standard_model::option_object_from_row(row)?;
         Ok(object)
-    }
-
-    /// Attempts to retrieve [`Self`] by [`FuncBindingId`]. If nothing is found, then execute
-    /// with the given [`FuncBindingId`] and return the value generated.
-    pub async fn get_by_func_binding_id_or_execute(
-        ctx: &DalContext<'_, '_>,
-        func_binding_id: FuncBindingId,
-    ) -> FuncBindingReturnValueResult<Self> {
-        let object = Self::get_by_func_binding_id(ctx, func_binding_id).await?;
-        let func_binding_return_value: Self = if let Some(found_value) = object {
-            found_value
-        } else {
-            let func_binding = FuncBinding::get_by_id(ctx, &func_binding_id)
-                .await?
-                .ok_or_else(|| {
-                    FuncBindingReturnValueError::FuncBinding(
-                        FuncBindingError::NotFound(func_binding_id).to_string(),
-                    )
-                })?;
-            match func_binding.execute(ctx).await {
-                Ok(generated_value) => generated_value,
-                Err(e) => return Err(FuncBindingReturnValueError::FuncBinding(e.to_string())),
-            }
-        };
-        Ok(func_binding_return_value)
     }
 
     // Note(paulo): this is dumb
