@@ -60,8 +60,11 @@
       <SchematicViewer
         :viewer-event$="viewerEventObservable.viewerEvent$"
         :schematic-kind="schematicKind"
-        :deployment-node-pin="selectedDeploymentNode?.id"
-        :is-component-panel-pinned="isPinned"
+        :deployment-node-selected="
+          schematicKind === SchematicKind.Component
+            ? selectedDeploymentNode?.id
+            : undefined
+        "
         :schematic-data="schematicData ?? null"
         :adding-node="addingNode"
       />
@@ -70,6 +73,10 @@
 </template>
 
 <script setup lang="ts">
+import _ from "lodash";
+import * as OBJ from "@/organisims/SchematicViewer/Viewer/obj";
+import * as Rx from "rxjs";
+
 import { computed, ref, watch } from "vue";
 
 import { ComponentService } from "@/service/component";
@@ -97,8 +104,6 @@ import { refFrom, untilUnmounted } from "vuse-rx";
 import { ChangeSetService } from "@/service/change_set";
 import { NodeAddEvent, ViewerEventObservable } from "./SchematicViewer/event";
 import { lastSelectedDeploymentNode$ } from "./SchematicViewer/state";
-import _ from "lodash";
-import * as Rx from "rxjs";
 
 const schematicData = refFrom<Schematic | null>(schematicData$);
 
@@ -121,22 +126,23 @@ watch(selectedDeploymentComponentId, (componentId) => {
   throw new Error(`Node wasn't found ${componentId}`);
 });
 
-lastSelectedDeploymentNode$.pipe(untilUnmounted).subscribe((node) => {
-  if (!schematicData.value) return;
-
-  if (isPinned.value) return;
-
+const updateDeploymentSelection = (node: OBJ.Node | null) => {
   const componentId = node?.nodeKind?.componentId;
 
-  // Ignores fake nodes as they don't have any attributes
-  if (componentId === -1) return;
+  if (!schematicData.value) return;
+  // Locked panels can't change selection by clicking in nodes
+  if (isPinned.value) return;
+  // Ignores deselection and fake nodes, as they don't have any attributes
+  if (!componentId || componentId === -1) return;
 
   selectedDeploymentComponentId.value = componentId ?? "";
-});
+};
 
-// Re-selects so our observable gets it
+lastSelectedDeploymentNode$
+  .pipe(untilUnmounted)
+  .subscribe((node) => updateDeploymentSelection(node));
 Rx.firstValueFrom(lastSelectedDeploymentNode$).then((last) =>
-  lastSelectedDeploymentNode$.next(last),
+  updateDeploymentSelection(last),
 );
 
 schematicData$.pipe(untilUnmounted).subscribe((schematic) => {
@@ -168,7 +174,7 @@ const props = defineProps<{
 
 const schematicKindRaw = ref<string>(props.kind ?? SchematicKind.Deployment);
 
-const schematicKind = computed(() =>
+const schematicKind = computed<SchematicKind>(() =>
   schematicKindFromString(schematicKindRaw.value),
 );
 

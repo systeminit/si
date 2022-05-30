@@ -168,11 +168,13 @@ export class Node extends PIXI.Container {
   }
 
   select(): void {
+    if (!this.isSelected) this.zIndex += 1;
     this.isSelected = true;
     if (this.selection) this.selection.visible = true;
   }
 
   deselect(): void {
+    if (this.isSelected) this.zIndex -= 1;
     this.isSelected = false;
     if (this.selection) this.selection.visible = false;
   }

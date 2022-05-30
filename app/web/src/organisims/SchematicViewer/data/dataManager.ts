@@ -13,13 +13,11 @@ export class SchematicDataManager {
   editorContext$: Rx.ReplaySubject<EditorContext | null>;
   schematicKind$: Rx.ReplaySubject<SchematicKind | null>;
   selectedDeploymentNodeId?: number;
-  isComponentPanelPinned: boolean;
 
   constructor() {
     this.id = _.uniqueId();
 
     this.selectedDeploymentNodeId = undefined;
-    this.isComponentPanelPinned = false;
 
     this.schematicData$ = new Rx.ReplaySubject<Schematic | null>(1);
     this.schematicData$.next(null);
@@ -40,10 +38,7 @@ export class SchematicDataManager {
     const schematicKind = await Rx.firstValueFrom(this.schematicKind$);
     if (editorContext && schematicKind && nodeId !== -1) {
       SchematicService.setNodePosition({
-        deploymentNodeId:
-          schematicKind !== SchematicKind.Deployment
-            ? this.selectedDeploymentNodeId
-            : undefined,
+        deploymentNodeId: this.selectedDeploymentNodeId,
         schematicKind,
         x: `${x}`,
         y: `${y}`,
