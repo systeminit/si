@@ -1,5 +1,5 @@
 use crate::dal::test;
-use dal::{BillingAccountSignup, DalContext};
+use dal::{BillingAccountSignup, DalContext, WriteTenancy};
 
 use dal::test_harness::{
     create_billing_account, create_billing_account_with_name, create_change_set,
@@ -204,7 +204,11 @@ async fn list(ctx: &DalContext<'_, '_>, nba: &BillingAccountSignup) {
 }
 
 #[test]
-async fn update(ctx: &DalContext<'_, '_>, nba: &BillingAccountSignup) {
+async fn update(ctx: &mut DalContext<'_, '_>, nba: &BillingAccountSignup) {
+    // Guess what--a billing account's tenancy is universal! So let's make sure our DalContext is
+    // appropriately set up
+    ctx.update_write_tenancy(WriteTenancy::new_universal());
+
     let _updated_at = standard_model::update(
         ctx,
         "billing_accounts",

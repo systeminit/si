@@ -156,8 +156,14 @@ BEGIN
             EXECUTE format('INSERT INTO %1$I (%2$s, visibility_change_set_pk, visibility_edit_session_pk, %3$s) ' ||
                            ' SELECT %4$L, %5$L, %6$L, %3$s FROM %1$I WHERE ' ||
                            ' %1$I.id = %7$L' ||
+                           ' AND in_tenancy_v1(%8$L, ' ||
+                           '                   %1$I.tenancy_universal, ' ||
+                           '                   %1$I.tenancy_billing_account_ids,' ||
+                           '                   %1$I.tenancy_organization_ids,' ||
+                           '                   %1$I.tenancy_workspace_ids)' ||
                            ' AND %1$I.visibility_change_set_pk = %5$L ' ||
                            ' AND %1$I.visibility_edit_session_pk = -1 ' ||
+                           ' AND %1$I.visibility_deleted_at IS NULL ' ||
                            ' RETURNING updated_at',
                            this_table,
                            this_column,
@@ -165,13 +171,21 @@ BEGIN
                            this_value,
                            this_visibility_row.visibility_change_set_pk,
                            this_visibility_row.visibility_edit_session_pk,
-                           this_id) INTO updated_at;
+                           this_id,
+                           this_tenancy) INTO updated_at;
+
             IF updated_at IS NULL THEN
                 EXECUTE format('INSERT INTO %1$I (%2$s, visibility_change_set_pk, visibility_edit_session_pk, %3$s) ' ||
                                ' SELECT %4$L, %5$L, %6$L, %3$s FROM %1$I WHERE ' ||
                                ' %1$I.id = %7$L' ||
+                               ' AND in_tenancy_v1(%8$L, ' ||
+                               '                   %1$I.tenancy_universal, ' ||
+                               '                   %1$I.tenancy_billing_account_ids,' ||
+                               '                   %1$I.tenancy_organization_ids,' ||
+                               '                   %1$I.tenancy_workspace_ids)' ||
                                ' AND %1$I.visibility_change_set_pk = -1 ' ||
                                ' AND %1$I.visibility_edit_session_pk = -1 ' ||
+                               ' AND %1$I.visibility_deleted_at IS NULL ' ||
                                ' RETURNING updated_at',
                                this_table,
                                this_column,
@@ -179,14 +193,21 @@ BEGIN
                                this_value,
                                this_visibility_row.visibility_change_set_pk,
                                this_visibility_row.visibility_edit_session_pk,
-                               this_id) INTO updated_at;
+                               this_id,
+                               this_tenancy) INTO updated_at;
             END IF;
         ELSE
             EXECUTE format('INSERT INTO %1$I (%2$s, visibility_change_set_pk, visibility_edit_session_pk, %3$s) ' ||
                            ' SELECT %4$L, %5$L, %6$L, %3$s FROM %1$I WHERE ' ||
                            ' %1$I.id = %7$L' ||
+                           ' AND in_tenancy_v1(%8$L, ' ||
+                           '                   %1$I.tenancy_universal, ' ||
+                           '                   %1$I.tenancy_billing_account_ids,' ||
+                           '                   %1$I.tenancy_organization_ids,' ||
+                           '                   %1$I.tenancy_workspace_ids)' ||
                            ' AND %1$I.visibility_change_set_pk = -1 ' ||
                            ' AND %1$I.visibility_edit_session_pk = -1 ' ||
+                           ' AND %1$I.visibility_deleted_at IS NULL ' ||
                            ' RETURNING updated_at',
                            this_table,
                            this_column,
@@ -194,7 +215,16 @@ BEGIN
                            this_value,
                            this_visibility_row.visibility_change_set_pk,
                            this_visibility_row.visibility_edit_session_pk,
-                           this_id) INTO updated_at;
+                           this_id,
+                           this_tenancy) INTO updated_at;
+        END IF;
+
+        -- If updated_at is still null, then there is a provided tenancy
+        -- that is not suitable--this could be an application bug!
+        IF updated_at IS NULL THEN
+            RAISE EXCEPTION 'update_by_id_v1: cannot update column % on table % (likely a tenancy issue)',
+                this_column,
+                this_table;
         END IF;
     END IF;
 END ;
