@@ -1,5 +1,4 @@
 import { ApiResponse, SDF } from "@/api/sdf";
-import { Schematic } from "@/organisims/SchematicViewer/model/schematic";
 import { combineLatest, from, Observable, shareReplay } from "rxjs";
 import { applicationNodeId$ } from "@/observable/application";
 import { standardVisibilityTriggers$ } from "@/observable/visibility";
@@ -8,6 +7,34 @@ import { switchMap } from "rxjs/operators";
 import { workspace$ } from "@/observable/workspace";
 import _ from "lodash";
 import { Visibility } from "@/api/sdf/dal/visibility";
+import { SchematicKind } from "@/api/sdf/dal/schematic";
+
+// These datastructures should die after the backend starts returning SchematicNode
+
+interface Socket {
+  id: number;
+  name: string;
+}
+
+interface NodePosition {
+  x: number | string;
+  y: number | string;
+  schematic_kind: SchematicKind;
+  deployment_node_id?: number;
+  system_id?: number;
+}
+
+export interface Node {
+  id: number;
+  kind: { kind: "component" | "deployment"; componentId?: number };
+  label: {
+    name: string;
+    title: string;
+  };
+  position: NodePosition[];
+  input: Socket[];
+  output: Socket[];
+}
 
 export interface GetSchematicArgs {
   systemId?: number;
@@ -17,10 +44,25 @@ export interface GetSchematicRequest extends GetSchematicArgs, Visibility {
   workspaceId: number;
 }
 
-export type GetSchematicResponse = Schematic;
+interface Port {
+  nodeId: number;
+  socketId: number;
+}
+
+export interface Connection {
+  id: number;
+  source: Port;
+  destination: Port;
+}
+
+// This datastructure should die after the backend starts returning Schematic
+export interface GetSchematicResponse {
+  nodes: Node[];
+  connections: Connection[];
+}
 
 const getSchematicCollection: {
-  [key: string]: Observable<ApiResponse<Schematic>>;
+  [key: string]: Observable<ApiResponse<GetSchematicResponse>>;
 } = {};
 
 export function getSchematic(

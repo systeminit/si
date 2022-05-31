@@ -1,7 +1,6 @@
 import { Visibility } from "@/api/sdf/dal/visibility";
 import { combineLatest, from, Observable, take, tap } from "rxjs";
 import { ApiResponse, SDF } from "@/api/sdf";
-import { Connection } from "@/organisims/SchematicViewer/model/connection";
 import { visibility$ } from "@/observable/visibility";
 import { workspace$ } from "@/observable/workspace";
 import { switchMap } from "rxjs/operators";
@@ -22,13 +21,9 @@ export interface CreateConnectionRequest
   workspaceId: number;
 }
 
-export interface CreateConnectionResponse {
-  connection: Connection;
-}
-
 export function createConnection(
   args: CreateConnectionArgs,
-): Observable<ApiResponse<CreateConnectionResponse>> {
+): Observable<ApiResponse<void>> {
   const bottle = Bottle.pop("default");
   const sdf: SDF = bottle.container.SDF;
   return combineLatest([visibility$, workspace$]).pipe(
@@ -50,18 +45,13 @@ export function createConnection(
         ...visibility,
         workspaceId: workspace.id,
       };
-      return sdf
-        .post<ApiResponse<CreateConnectionResponse>>(
-          "schematic/create_connection",
-          request,
-        )
-        .pipe(
-          tap((response) => {
-            if (!response.error) {
-              editSessionWritten$.next(true);
-            }
-          }),
-        );
+      return sdf.post("schematic/create_connection", request).pipe(
+        tap((response) => {
+          if (!response.error) {
+            editSessionWritten$.next(true);
+          }
+        }),
+      );
     }),
   );
 }

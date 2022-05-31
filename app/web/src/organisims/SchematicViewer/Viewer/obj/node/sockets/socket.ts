@@ -17,11 +17,11 @@ export enum SocketType {
 export class Socket extends PIXI.Container {
   kind: string;
   type: SocketType;
-  id: string;
+  id: number;
   labelText: string | null;
 
   constructor(
-    id: string,
+    id: number,
     nodeId: number,
     labelText: string | null,
     type: SocketType,

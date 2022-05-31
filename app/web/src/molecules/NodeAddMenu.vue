@@ -19,7 +19,7 @@
 </template>
 
 <script setup lang="ts">
-import { MenuFilter, MenuItem, LinkNodeItem } from "@/api/sdf/dal/schematic";
+import { MenuFilter, MenuItem, LinkNodeItem } from "@/api/sdf/dal/menu";
 import { onBeforeUnmount, ref, computed } from "vue";
 import { refFrom, fromRef } from "vuse-rx";
 import _ from "lodash";

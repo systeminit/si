@@ -1,8 +1,6 @@
 import * as PIXI from "pixi.js";
 import * as PIXIFILTER from "pixi-filters";
 
-import * as MODEL from "../../model";
-
 import _ from "lodash";
 
 import { Card } from "./node/card";
@@ -11,9 +9,14 @@ import { Connection } from "./connection";
 import { SelectionStatus } from "./node/status";
 import { QualificationStatus } from "./node/status";
 import { ResourceStatus } from "./node/status/resource";
-import { SchematicKind } from "@/api/sdf/dal/schematic";
-import { NodeKind } from "@/api/sdf/dal/node";
+import { SchematicKind, SchematicNodeKind } from "@/api/sdf/dal/schematic";
 import { ResourceHealth } from "@/api/sdf/dal/resource";
+import {
+  SchematicNode,
+  SchematicSchemaVariant,
+  SchematicInputSocket,
+  SchematicOutputSocket,
+} from "@/api/sdf/dal/schematic";
 
 const NODE_WIDTH = 140;
 const NODE_HEIGHT = 100;
@@ -31,21 +34,34 @@ interface Position {
 export class Node extends PIXI.Container {
   id: number;
   kind: string;
-  nodeKind?: { kind: NodeKind; componentId?: number };
+  schemaVariantId: number;
+  nodeKind: SchematicNodeKind;
   isSelected = false;
   title: string;
   connections: Array<Connection>;
   panelKind: SchematicKind;
   selection?: SelectionStatus;
 
-  constructor(n: MODEL.Node, pos: Position, panelKind: SchematicKind) {
+  constructor(
+    n: SchematicNode,
+    v: SchematicSchemaVariant,
+    pos: Position,
+    panelKind: SchematicKind,
+  ) {
     super();
     this.id = n.id;
 
     this.panelKind = panelKind;
 
-    this.name = n.label.name;
-    this.title = n.label.title;
+    // Ignores fake nodes as we might not have the schema variants for now (the backend isn't there yet)
+    // The v.id > 0 should go away eventually
+    if (v.id > 0 && v.id !== n.schemaVariantId)
+      throw new Error("mismatch in schema variants");
+
+    this.schemaVariantId = n.schemaVariantId;
+
+    this.name = n.name;
+    this.title = n.title;
     this.kind = "node";
     this.nodeKind = n.kind;
     this.connections = [];
@@ -58,11 +74,13 @@ export class Node extends PIXI.Container {
     this.sortableChildren = true;
 
     // Card object
-    this.setCard(Math.max(n.input.length, n.output.length));
-    this.setSockets(n.input, n.output);
+    const size = Math.max(v.inputSockets.length, v.outputSockets.length);
+    this.setCard(size);
 
     // Selection status
-    this.setSelectionStatus(Math.max(n.input.length, n.output.length));
+    this.setSelectionStatus(size);
+
+    this.setSockets(v.inputSockets, v.outputSockets);
 
     this.setQualificationStatus(undefined);
     this.setResourceStatus(undefined);
@@ -81,6 +99,14 @@ export class Node extends PIXI.Container {
     );
     card.zIndex = 0;
     this.addChild(card);
+  }
+
+  undim(): void {
+    this.alpha = 1;
+  }
+
+  dim(): void {
+    this.alpha = 0.3;
   }
 
   setSelectionStatus(socketCount: number): void {
@@ -121,7 +147,10 @@ export class Node extends PIXI.Container {
     oldStatus?.destroy();
   }
 
-  setSockets(inputs: MODEL.Socket[], outputs: MODEL.Socket[]): void {
+  setSockets(
+    inputs: SchematicInputSocket[],
+    outputs: SchematicOutputSocket[],
+  ): void {
     const sockets = new Sockets(this.id, inputs, outputs, this.panelKind);
     sockets.zIndex = 2;
     this.addChild(sockets);

@@ -10,8 +10,8 @@ use crate::socket::{Socket, SocketEdgeKind};
 use crate::{
     generate_name, impl_standard_model, pk, schematic::SchematicKind, standard_model,
     standard_model_accessor, standard_model_belongs_to, Component, ComponentId, HistoryEventError,
-    NodePosition, ReadTenancyError, Schema, SchemaId, SchemaVariant, StandardModel,
-    StandardModelError, System, SystemId, Timestamp, Visibility, WriteTenancy,
+    NodePosition, ReadTenancyError, Schema, SchemaId, SchemaVariant, SchemaVariantId,
+    StandardModel, StandardModelError, System, SystemId, Timestamp, Visibility, WriteTenancy,
 };
 
 pub type ApplicationId = NodeId;
@@ -166,6 +166,7 @@ pub struct NodeDisplay {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct NodeTemplate {
     pub kind: NodeKind,
     pub label: NodeLabel,
@@ -173,6 +174,7 @@ pub struct NodeTemplate {
     pub input: Vec<Socket>,
     pub output: Vec<Socket>,
     pub display: NodeDisplay,
+    pub schema_variant_id: SchemaVariantId,
 }
 
 impl NodeTemplate {
@@ -183,10 +185,10 @@ impl NodeTemplate {
         let schema = Schema::get_by_id(ctx, &schema_id)
             .await?
             .ok_or(NodeError::SchemaIdNotFound)?;
-        let schema_variant_id = schema
+        let schema_variant_id = *schema
             .default_schema_variant_id()
             .ok_or(NodeError::SchemaMissingDefaultVariant)?;
-        let schema_variant = SchemaVariant::get_by_id(ctx, schema_variant_id)
+        let schema_variant = SchemaVariant::get_by_id(ctx, &schema_variant_id)
             .await?
             .ok_or(NodeError::SchemaMissingDefaultVariant)?;
 
@@ -218,6 +220,7 @@ impl NodeTemplate {
             display: NodeDisplay {
                 color: "0x32b832".to_string(),
             },
+            schema_variant_id,
         })
     }
 }

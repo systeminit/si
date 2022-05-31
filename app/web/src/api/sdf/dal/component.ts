@@ -8,6 +8,8 @@ export interface Component extends StandardModel {
 export interface ComponentIdentification {
   componentId: number;
   schemaVariantId: number;
+  schemaVariantName: string;
   schemaId: number;
+  schemaName: string;
   schematicKind: SchematicKind;
 }

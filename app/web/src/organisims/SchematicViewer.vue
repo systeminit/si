@@ -60,21 +60,19 @@
 <script setup lang="ts">
 import _ from "lodash";
 import * as Rx from "rxjs";
-import * as MODEL from "./SchematicViewer/model";
 
 import Viewer from "./SchematicViewer/Viewer.vue";
 
 import { ViewerStateMachine } from "./SchematicViewer/state";
 
-import { Schematic } from "./SchematicViewer/model";
 import { refFrom, untilUnmounted } from "vuse-rx";
 import { applicationNodeId$ } from "@/observable/application";
 import { system$ } from "@/observable/system";
 import { visibility$ } from "@/observable/visibility";
 import {
   EditorContext,
+  Schematic,
   SchematicKind,
-  nodeKindFromSchematicKind,
 } from "@/api/sdf/dal/schematic";
 import { combineLatest, from } from "rxjs";
 import { switchMap } from "rxjs/operators";
@@ -98,32 +96,29 @@ visibility$.pipe(untilUnmounted).subscribe(() => {
 const filteredSchematicData = computed(() => {
   if (!props.schematicData) return undefined;
 
-  // Deep cloning, very hackish, but bypassess all proxies
-  const filteredSchematic: MODEL.Schematic = {
+  const filteredSchematic: Schematic = {
     nodes: props.schematicData.nodes,
     connections: props.schematicData.connections,
-    lastUpdated: props.schematicData.lastUpdated,
-    checksum: props.schematicData.checksum,
   };
   const parentDeploymentNodeId =
-    (props.schematicKind !== SchematicKind.Deployment
+    props.schematicKind !== SchematicKind.Deployment
       ? props.deploymentNodePin
-      : null) ?? null;
+      : undefined;
 
   // We want to ensure the nodes from the other panel are ignored
   // The deployment node also appears in the component panel
   // so we have to ignore it on the deployment panel
   filteredSchematic.nodes = filteredSchematic.nodes.filter(
     (node) =>
-      (node.kind.kind === nodeKindFromSchematicKind(props.schematicKind) ||
+      (node.kind.kind === String(props.schematicKind) ||
         node.id === parentDeploymentNodeId) &&
-      node.position.length > 0,
+      node.positions.length > 0,
   );
 
   // Find component nodes connected to selected deployment node
   const nodeIds = filteredSchematic.connections
-    .filter((conn) => conn.destination.nodeId === parentDeploymentNodeId)
-    .map((conn) => conn.source.nodeId);
+    .filter((conn) => conn.destinationNodeId === parentDeploymentNodeId)
+    .map((conn) => conn.sourceNodeId);
 
   if (parentDeploymentNodeId) {
     nodeIds.push(parentDeploymentNodeId);
@@ -145,9 +140,9 @@ const filteredSchematicData = computed(() => {
     (conn) => {
       return (
         filteredSchematic.nodes.find(
-          (node) => node.id === conn.destination.nodeId,
+          (node) => node.id === conn.destinationNodeId,
         ) &&
-        filteredSchematic.nodes.find((node) => node.id === conn.source.nodeId)
+        filteredSchematic.nodes.find((node) => node.id === conn.sourceNodeId)
       );
     },
   );
@@ -163,7 +158,7 @@ const showViewer = computed(() => {
   }
 
   if (props.schematicData && editorContext.value && props.schematicKind) {
-    // Component panels pointing to a null deployment will sync selection with deployment panel
+    // Component panels pointing to a undefined deployment will sync selection with deployment panel
     // To avoid this we don't render a component panel pointing to a invalid deployment
     const isComponent = props.schematicKind === SchematicKind.Component;
     if (isComponent && props.deploymentNodePin === undefined) {

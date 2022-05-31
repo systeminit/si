@@ -49,7 +49,7 @@
         :add-to="
           schematicKind === SchematicKind.Deployment
             ? `application`
-            : selectedDeploymentNode?.label?.title
+            : selectedDeploymentNode?.title
         "
         :filter="addMenuFilters"
         :disabled="!addMenuEnabled"
@@ -80,14 +80,14 @@ import SiSelect from "@/atoms/SiSelect.vue";
 import { SchematicService } from "@/service/schematic";
 import { GlobalErrorService } from "@/service/global_error";
 
-import { schematicData$ } from "./SchematicViewer/Viewer/scene/observable";
-import { Schematic } from "./SchematicViewer/model";
+import { schematicData$ } from "@/observable/schematic";
+import { Schematic, SchematicNode } from "@/api/sdf/dal/schematic";
 import { visibility$ } from "@/observable/visibility";
 import {
   SchematicKind,
-  MenuFilter,
   schematicKindFromString,
 } from "@/api/sdf/dal/schematic";
+import { MenuFilter } from "@/api/sdf/dal/menu";
 import { ComponentIdentification } from "@/api/sdf/dal/component";
 import { LabelList } from "@/api/sdf/dal/label_list";
 import LockButton from "@/atoms/LockButton.vue";
@@ -99,12 +99,11 @@ import { NodeAddEvent, ViewerEventObservable } from "./SchematicViewer/event";
 import { lastSelectedDeploymentNode$ } from "./SchematicViewer/state";
 import _ from "lodash";
 import * as Rx from "rxjs";
-import * as MODEL from "./SchematicViewer/model";
 
 const schematicData = refFrom<Schematic | null>(schematicData$);
 
 const isPinned = ref<boolean>(false);
-const selectedDeploymentNode = ref<MODEL.Node | null>(null);
+const selectedDeploymentNode = ref<SchematicNode | null>(null);
 const selectedDeploymentComponentId = ref<number | "">("");
 
 watch(selectedDeploymentComponentId, (componentId) => {
@@ -226,19 +225,34 @@ visibility$.pipe(untilUnmounted).subscribe(() => {
 
 const addNode = async (schemaId: number, _event: MouseEvent) => {
   addingNode.value = true;
-  const response = await Rx.firstValueFrom(
+  const template = await Rx.firstValueFrom(
     SchematicService.getNodeTemplate({ schemaId }),
   );
-  if (response.error) {
-    GlobalErrorService.set(response);
+  if (template.error) {
+    GlobalErrorService.set(template);
     return;
   }
 
-  const n = MODEL.fakeNodeFromTemplate(
-    response,
-    selectedDeploymentNode.value?.id,
-  );
-  const event = new NodeAddEvent({ node: n, schemaId: schemaId });
+  // Generates fake node from template
+  const node = {
+    id: -1,
+    kind: { kind: template.kind, componentId: -1 },
+    title: template.title,
+    name: template.name,
+    positions: [
+      {
+        schematicKind:
+          template.kind === "component"
+            ? SchematicKind.Component
+            : SchematicKind.Deployment,
+        deploymentNodeId: selectedDeploymentNode.value?.id,
+        x: 350,
+        y: 0,
+      },
+    ],
+    schemaVariantId: template.schemaVariantId,
+  };
+  const event = new NodeAddEvent({ node, schemaId: schemaId });
 
   viewerEventObservable.viewerEvent$.next(event);
 };

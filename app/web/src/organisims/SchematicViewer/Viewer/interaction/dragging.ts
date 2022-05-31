@@ -3,7 +3,6 @@ import * as PIXI from "pixi.js";
 import { Node } from "../obj";
 import { SceneManager } from "../scene";
 import { SchematicDataManager } from "../../data";
-import { NodeUpdate } from "../../model";
 
 interface Position {
   x: number;
@@ -48,14 +47,6 @@ export class DraggingManager {
   }
 
   afterDrag(node: Node): void {
-    const nodeUpdate: NodeUpdate = {
-      nodeId: node.id,
-      position: {
-        ctxId: "aaa",
-        x: node.x,
-        y: node.y,
-      },
-    };
-    this.dataManager.nodeUpdate$.next(nodeUpdate);
+    this.dataManager.updateNodePosition(node.id, node.x, node.y);
   }
 }

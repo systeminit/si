@@ -4,7 +4,7 @@ import { standardVisibilityTriggers$ } from "@/observable/visibility";
 import Bottle from "bottlejs";
 import { switchMap } from "rxjs/operators";
 import { Visibility } from "@/api/sdf/dal/visibility";
-import { MenuFilter, MenuItem } from "@/api/sdf/dal/schematic";
+import { MenuFilter, MenuItem } from "@/api/sdf/dal/menu";
 import { workspace$ } from "@/observable/workspace";
 import _ from "lodash";
 

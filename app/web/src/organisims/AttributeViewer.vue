@@ -70,7 +70,7 @@ import { fromRef, refFrom } from "vuse-rx";
 import { GlobalErrorService } from "@/service/global_error";
 import { ResourceHealth } from "@/api/sdf/dal/resource";
 import { ComponentIdentification } from "@/api/sdf/dal/component";
-import { componentsMetadata$ } from "@/organisims/SchematicViewer/data/observable";
+import { componentsMetadata$ } from "@/observable/component";
 import { ComponentMetadata } from "@/service/component/get_components_metadata";
 import SiLink from "@/atoms/SiLink.vue";
 import SiButtonIcon from "@/atoms/SiButtonIcon.vue";
