@@ -1,15 +1,15 @@
 <template>
   <div :id="viewerId" class="w-full h-full">
+    <!-- We check for schematicData and schematicKind inside showViewer but typescript can't understand that so we check it here again -->
     <Viewer
-      v-if="showViewer"
+      v-if="showViewer && props.schematicKind && filteredSchematicData"
       :schematic-viewer-id="viewerId"
       :viewer-state="viewerState"
       :editor-context="editorContext ?? null"
       :schematic-data="filteredSchematicData"
       :viewer-event$="props.viewerEvent$"
-      :schematic-kind="props.schematicKind ?? null"
-      :is-component-panel-pinned="props.isComponentPanelPinned"
-      :deployment-node-pin="props.deploymentNodePin"
+      :schematic-kind="props.schematicKind"
+      :deployment-node-selected="props.deploymentNodeSelected"
     />
     <div
       v-else-if="props.schematicKind === SchematicKind.Component"
@@ -81,10 +81,9 @@ import { computed, ref } from "vue";
 
 const props = defineProps<{
   viewerEvent$: Rx.ReplaySubject<ViewerEvent | null>;
-  schematicKind: SchematicKind | null;
-  isComponentPanelPinned: boolean;
-  deploymentNodePin?: number;
   schematicData: Schematic | null;
+  schematicKind: SchematicKind;
+  deploymentNodeSelected?: number;
   addingNode?: boolean;
 }>();
 
@@ -100,10 +99,7 @@ const filteredSchematicData = computed(() => {
     nodes: props.schematicData.nodes,
     connections: props.schematicData.connections,
   };
-  const parentDeploymentNodeId =
-    props.schematicKind !== SchematicKind.Deployment
-      ? props.deploymentNodePin
-      : undefined;
+  const parentDeploymentNodeId = props.deploymentNodeSelected;
 
   // We want to ensure the nodes from the other panel are ignored
   // The deployment node also appears in the component panel
@@ -161,7 +157,7 @@ const showViewer = computed(() => {
     // Component panels pointing to a undefined deployment will sync selection with deployment panel
     // To avoid this we don't render a component panel pointing to a invalid deployment
     const isComponent = props.schematicKind === SchematicKind.Component;
-    if (isComponent && props.deploymentNodePin === undefined) {
+    if (isComponent && props.deploymentNodeSelected === undefined) {
       return false;
     }
     return true;

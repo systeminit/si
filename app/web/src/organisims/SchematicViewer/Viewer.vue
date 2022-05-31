@@ -2,12 +2,6 @@
   <div :id="container.id" ref="container" class="w-full h-full">
     <div v-if="debug" class="flex flex-row">
       <div class="ml-2 font-medium text-yellow-200">{{ state.value }}</div>
-
-      <div v-if="selection" class="ml-2 font-medium text-blue-200">
-        <div v-for="(s, i) in selection" :key="i">
-          {{ s.name }}
-        </div>
-      </div>
     </div>
     <canvas
       :id="canvas.id"
@@ -20,7 +14,7 @@
 </template>
 
 <script lang="ts">
-import { ref, Ref, defineComponent, PropType } from "vue";
+import { defineComponent, PropType } from "vue";
 import _ from "lodash";
 import * as Rx from "rxjs";
 import * as PIXI from "pixi.js";
@@ -36,7 +30,6 @@ import { ComponentMetadata } from "@/service/component/get_components_metadata";
 
 import { EditorContext, SchematicKind } from "@/api/sdf/dal/schematic";
 import { SceneManager } from "./Viewer/scene";
-import { SelectionManager } from "./Viewer/interaction/selection";
 import { InteractionManager } from "./Viewer/interaction";
 import { Renderer } from "./Viewer/renderer";
 import { SchematicDataManager } from "./data";
@@ -72,7 +65,6 @@ interface Data {
   };
   renderer?: Renderer;
   sceneManager?: SceneManager;
-  dataManager?: SchematicDataManager;
   spaceBarPressed: boolean;
   resizeObserver: ResizeObserver;
   interactionManager?: InteractionManager;
@@ -98,23 +90,18 @@ export default defineComponent({
       default: undefined,
     },
     schematicData: {
-      type: Object as PropType<Schematic | null>,
-      required: false,
-      default: undefined,
+      type: Object as PropType<Schematic>,
+      required: true,
     },
     editorContext: {
       type: Object as PropType<EditorContext | null>,
       required: true,
     },
     schematicKind: {
-      type: String as PropType<SchematicKind | null>,
+      type: String as PropType<SchematicKind>,
       required: true,
     },
-    isComponentPanelPinned: {
-      type: Boolean,
-      required: true,
-    },
-    deploymentNodePin: {
+    deploymentNodeSelected: {
       type: Number,
       required: false,
       default: undefined,
@@ -123,12 +110,15 @@ export default defineComponent({
   setup(props) {
     const { state, send, service } = useMachine(props.viewerState.machine);
 
-    const selection: Ref<OBJ.Node[] | null> = ref(null);
+    const dataManager = new SchematicDataManager();
+    dataManager.editorContext$.next(props.editorContext);
+    dataManager.schematicKind$.next(props.schematicKind);
+
     return {
       state,
       send,
-      service,
-      selection,
+      dataManager,
+      service: service as Interpreter<unknown>,
     };
   },
   data(): Data {
@@ -146,7 +136,7 @@ export default defineComponent({
     });
     return {
       component: {
-        id: id,
+        id,
         isActive: false,
       },
       canvas: {
@@ -161,7 +151,6 @@ export default defineComponent({
       },
       renderer: undefined,
       sceneManager: undefined,
-      dataManager: undefined,
       spaceBarPressed: false,
       resizeObserver: resizeObserver,
       interactionManager: undefined,
@@ -169,24 +158,15 @@ export default defineComponent({
     };
   },
   watch: {
-    async deploymentNodePin(ctx) {
-      if (this.dataManager && this.schematicData) {
-        this.dataManager.selectedDeploymentNodeId = ctx;
-        await this.loadSchematicData(this.schematicData);
-      }
-    },
-    isComponentPanelPinned(ctx) {
-      if (this.dataManager) {
-        this.dataManager.isComponentPanelPinned = ctx;
-      }
+    async deploymentNodeSelected(ctx) {
+      this.dataManager.selectedDeploymentNodeId = ctx;
+      await this.loadSchematicData(this.schematicData);
     },
     editorContext(ctx) {
-      if (this.dataManager) {
-        this.dataManager.editorContext$.next(ctx);
-      }
+      this.dataManager.editorContext$.next(ctx);
     },
     async schematicKind(ctx) {
-      if (this.dataManager && this.schematicData && this.interactionManager) {
+      if (this.interactionManager) {
         this.dataManager.schematicKind$.next(ctx);
         await this.loadSchematicData(this.schematicData);
 
@@ -194,21 +174,22 @@ export default defineComponent({
         ST.deactivateDragging(
           this.interactionManager.stateService as Interpreter<unknown>,
         );
-
-        // We re-sync the last selection as now we can retrieve the selected nodes of this panel from the sceneManager
-        const data = await Rx.firstValueFrom(nodeSelection$);
-        nodeSelection$.next(data);
       }
     },
     async schematicData(schematic) {
-      if (this.dataManager) {
-        this.dataManager.schematicData$.next(schematic);
-      }
+      this.dataManager.schematicData$.next(schematic);
     },
   },
   mounted(): void {
     this.canvas.element = this.$refs.canvas as HTMLCanvasElement;
     this.container.element = this.$refs.container as HTMLCanvasElement;
+
+    this.dataManager.selectedDeploymentNodeId = this.deploymentNodeSelected;
+    this.dataManager.schematicData$
+      .pipe(untilUnmounted)
+      .subscribe(async (data) => {
+        if (data) await this.loadSchematicData(data);
+      });
 
     document.addEventListener("keydown", this.handleKeyDown);
     document.addEventListener("keyup", this.handleKeyUp);
@@ -235,93 +216,46 @@ export default defineComponent({
       backgroundColor: 0x282828,
     });
 
-    const dataManager = new SchematicDataManager();
-    this.dataManager = dataManager;
-    this.dataManager.isComponentPanelPinned = this.isComponentPanelPinned;
-    this.dataManager.selectedDeploymentNodeId = this.deploymentNodePin;
-    this.dataManager.editorContext$.next(this.editorContext);
-    this.dataManager.schematicKind$.next(this.schematicKind);
-
-    dataManager.schematicData$.pipe(untilUnmounted).subscribe({
-      next: async (d) => {
-        if (d) await this.loadSchematicData(d);
-      },
-    });
-
     this.sceneManager = new SceneManager(this.renderer as Renderer);
 
     const interactionManager = new InteractionManager(
       this.sceneManager as SceneManager,
-      dataManager,
+      this.dataManager,
       this.service,
       this.renderer as Renderer,
     );
     this.interactionManager = interactionManager;
     this.sceneManager.subscribeToInteractionEvents(interactionManager);
 
-    nodeSelection$.pipe(untilUnmounted).subscribe({
-      next: async (selections) => {
-        console.log(this.schematicKind);
-        if (
-          !this.isComponentPanelPinned &&
-          this.dataManager &&
-          this.schematicData
-        ) {
-          const deploymentSelection = selections.find(
-            (sel) => sel.parentDeploymentNodeId === undefined,
-          );
-          const deploymentNodeId = deploymentSelection?.nodes?.find(
-            (_) => true,
-          )?.id;
-          const isSame =
-            this.dataManager.selectedDeploymentNodeId === deploymentNodeId;
-
-          if (!isSame) {
-            this.dataManager.selectedDeploymentNodeId = deploymentNodeId;
-
-            switch (this.schematicKind) {
-              case SchematicKind.Deployment:
-                break;
-              case SchematicKind.Component:
-                // The deployment node selected defines which nodes appear in the Component panel
-                await this.loadSchematicData(this.schematicData);
-                break;
-            }
-          }
-        }
-
-        this.syncSelection(selections);
-      },
+    nodeSelection$.pipe(untilUnmounted).subscribe((selections) => {
+      this.syncSelection(selections);
     });
 
     this.renderer?.stage?.addChild(this.sceneManager.scene as PIXI.Container);
-
-    // Initializes selectedDeploymentNodeId to the global state
-    Rx.firstValueFrom(nodeSelection$).then((selections) => {
-      nodeSelection$.next(selections);
-    });
 
     componentsMetadata$.pipe(untilUnmounted).subscribe((metadatas) => {
       if (metadatas) this.updateMetadata(metadatas);
     });
 
-    if (this.schematicData) {
-      this.loadSchematicData(this.schematicData).then(() => {
-        this.renderer?.renderStage();
+    // Load local metadata
+    Rx.firstValueFrom(componentsMetadata$).then((metadatas) => {
+      if (metadatas) this.updateMetadata(metadatas);
+    });
 
-        // Note: Horrible hack. I have no idea why, but without this the first load doesn't show the qualification/resource sync icons
-        setTimeout(async () => {
-          const metadatas = await Rx.firstValueFrom(componentsMetadata$);
-          if (metadatas) this.updateMetadata(metadatas);
-        }, 100);
-      });
-    } else {
+    this.loadSchematicData(this.schematicData).then(() => {
       this.renderer?.renderStage();
-    }
+
+      // Note: Horrible hack. I have no idea why, but without this the first load doesn't show the qualification/resource sync icons
+      setTimeout(async () => {
+        const metadatas = await Rx.firstValueFrom(componentsMetadata$);
+        if (metadatas) this.updateMetadata(metadatas);
+      }, 100);
+    });
   },
   beforeUnmount(): void {
     document.removeEventListener("keydown", this.handleKeyDown);
     document.removeEventListener("keyup", this.handleKeyUp);
+
     if (this.container.element) {
       this.resizeObserver.unobserve(this.container.element);
     }
@@ -379,68 +313,40 @@ export default defineComponent({
     },
 
     syncSelection(selections: SelectedNode[]) {
-      const parentDeploymentNodeId =
-        this.schematicKind !== SchematicKind.Deployment
-          ? this.dataManager?.selectedDeploymentNodeId
-          : undefined;
+      const parentDeploymentNodeId = this.dataManager.selectedDeploymentNodeId;
 
-      let foundOurSelection = false;
-      for (const selection of selections) {
-        const isOurSelection =
-          selection.parentDeploymentNodeId === parentDeploymentNodeId;
+      const nodes = this.sceneManager?.group?.nodes?.children as
+        | OBJ.Node[]
+        | undefined;
 
-        const nodes = this.sceneManager?.group?.nodes?.children;
-
-        // If storing nodes from other panels we won't have our version, so let's store the original one
-        // If we change to that panel we will just retrigger the selection, therefore we will actually find it
-        let node: OBJ.Node | null = selection.nodes[0] ?? null;
-
-        if (isOurSelection) {
-          foundOurSelection = true;
-
-          node =
-            nodes
-              ?.map((n) => n as OBJ.Node)
-              ?.find((n) => n.id === selection.nodes[0]?.id) ?? null;
+      const selected = selections.find(
+        (s) => s.parentDeploymentNodeId === parentDeploymentNodeId,
+      );
+      for (const node of nodes ?? []) {
+        if (selected?.nodeIds?.includes(node.id)) {
+          node.select();
+        } else {
+          node.deselect();
         }
-
-        if (!node) return;
-        this.selection = node ? [node] : null;
-        this.interactionManager?.selectionManager?.select({
-          parentDeploymentNodeId: selection.parentDeploymentNodeId,
-          nodes: node ? [node] : [],
-        });
-        this.renderer?.renderStage();
       }
 
-      if (!foundOurSelection) {
-        this.interactionManager?.selectionManager?.select({
-          parentDeploymentNodeId,
-          nodes: [],
-        });
-      }
+      this.renderer?.renderStage();
     },
 
     async loadSchematicData(schematic: Schematic): Promise<void> {
-      const selectionManager = this.interactionManager?.selectionManager;
-      if (
-        this.schematicKind &&
-        this.sceneManager &&
-        this.dataManager &&
-        selectionManager
-      ) {
+      if (this.sceneManager) {
         const parentDeploymentNodeId =
-          this.schematicKind !== SchematicKind.Deployment
-            ? this.dataManager?.selectedDeploymentNodeId
-            : undefined;
+          this.dataManager.selectedDeploymentNodeId;
+
         await this.sceneManager.loadSceneData(
           schematic,
-          selectionManager as SelectionManager,
           this.schematicKind,
           parentDeploymentNodeId,
         );
-        this.renderer?.renderStage();
+
+        this.syncSelection(await Rx.firstValueFrom(nodeSelection$));
       }
+
       const metadatas = await Rx.firstValueFrom(componentsMetadata$);
       if (metadatas) this.updateMetadata(metadatas);
     },
@@ -473,8 +379,7 @@ export default defineComponent({
       if (
         this.component.isActive &&
         this.interactionManager &&
-        node.positions.length > 0 &&
-        this.schematicKind
+        node.positions.length > 0
       ) {
         let schemaVariant;
         try {

@@ -5,10 +5,10 @@
       tooltip-text="Lock Selection"
       @click="toggle()"
     >
-      <LockOpenIcon class="text-yellow-300" />
+      <LockClosedIcon class="text-yellow-300" />
     </SiButtonIcon>
     <SiButtonIcon v-else tooltip-text="Unlock Selection" @click="toggle()">
-      <LockClosedIcon class="text-yello-300" />
+      <LockOpenIcon class="text-yellow-300" />
     </SiButtonIcon>
   </div>
 

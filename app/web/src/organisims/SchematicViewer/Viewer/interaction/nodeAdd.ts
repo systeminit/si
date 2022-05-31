@@ -4,10 +4,8 @@ import * as OBJ from "../obj";
 
 import { SceneManager } from "../scene";
 import { SchematicDataManager } from "../../data";
-import { SelectionManager } from "./selection";
 import { Renderer } from "../renderer";
-import { SchematicKind } from "@/api/sdf/dal/schematic";
-import { nodeSelection$ } from "../../state";
+import { selectNode } from "../../state";
 
 export interface NodeAddInteractionData {
   position: {
@@ -21,7 +19,6 @@ export interface NodeAddInteractionData {
 export class NodeAddManager {
   sceneManager: SceneManager;
   dataManager: SchematicDataManager;
-  selectionManager: SelectionManager;
   renderer: Renderer;
   data?: PIXI.InteractionData | undefined;
   node?: OBJ.Node;
@@ -32,12 +29,10 @@ export class NodeAddManager {
   constructor(
     sceneManager: SceneManager,
     dataManager: SchematicDataManager,
-    selectionManager: SelectionManager,
     renderer: Renderer,
   ) {
     this.sceneManager = sceneManager;
     this.dataManager = dataManager;
-    this.selectionManager = selectionManager;
     this.renderer = renderer;
   }
 
@@ -55,22 +50,8 @@ export class NodeAddManager {
     this.node = this.sceneManager.getGeo(nodeObj.name) as OBJ.Node;
 
     if (schematicKind) {
-      let parentDeploymentNodeId = undefined;
-      switch (schematicKind) {
-        case SchematicKind.Component:
-          parentDeploymentNodeId = this.dataManager.selectedDeploymentNodeId;
-          break;
-        case SchematicKind.Deployment:
-          break;
-      }
-
-      this.selectionManager.select(
-        {
-          parentDeploymentNodeId,
-          nodes: [this.node],
-        },
-        nodeSelection$,
-      );
+      const parentDeploymentNodeId = this.dataManager.selectedDeploymentNodeId;
+      await selectNode(this.node.id, parentDeploymentNodeId);
     }
   }
 
@@ -95,24 +76,13 @@ export class NodeAddManager {
     const editorContext = await Rx.firstValueFrom(
       this.dataManager.editorContext$,
     );
-    const schematicKind = await Rx.firstValueFrom(
-      this.dataManager.schematicKind$,
-    );
-    let parentNodeId = undefined;
-    switch (schematicKind) {
-      case SchematicKind.Component:
-        parentNodeId = this.dataManager.selectedDeploymentNodeId;
-        break;
-      case SchematicKind.Deployment:
-        break;
-    }
     if (this.node && this.nodeAddSchemaId && editorContext) {
       this.dataManager.createNode({
         nodeSchemaId: this.nodeAddSchemaId,
         systemId: editorContext.systemId,
         x: `${this.node.position.x}`,
         y: `${this.node.position.y}`,
-        parentNodeId,
+        parentNodeId: this.dataManager.selectedDeploymentNodeId,
       });
 
       // TODO waiting for backend to implement "node swap". A schematic reload shuld be fine.

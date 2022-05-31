@@ -157,6 +157,10 @@
 </template>
 
 <script setup lang="ts">
+import * as OBJ from "@/organisims/SchematicViewer/Viewer/obj";
+import * as Rx from "rxjs";
+import _ from "lodash";
+
 import Panel from "@/molecules/Panel.vue";
 import LockButton from "@/atoms/LockButton.vue";
 import SiSelect from "@/atoms/SiSelect.vue";
@@ -164,7 +168,6 @@ import SiButtonIcon from "@/atoms/SiButtonIcon.vue";
 import { computed, ref } from "vue";
 import { LabelList } from "@/api/sdf/dal/label_list";
 import { refFrom, untilUnmounted } from "vuse-rx";
-import * as Rx from "rxjs";
 import { ComponentService } from "@/service/component";
 import { GlobalErrorService } from "@/service/global_error";
 import AttributeViewer from "@/organisims/AttributeViewer.vue";
@@ -172,7 +175,6 @@ import ProviderViewer from "@/organisims/ProviderViewer.vue";
 import QualificationViewer from "@/organisims/QualificationViewer.vue";
 import ResourceViewer from "@/organisims/ResourceViewer.vue";
 import CodeViewer from "@/organisims/CodeViewer.vue";
-import _ from "lodash";
 import cheechSvg from "@/assets/images/cheech-and-chong.svg";
 import { lastSelectedNode$ } from "./SchematicViewer/state";
 import { ComponentIdentification } from "@/api/sdf/dal/component";
@@ -206,20 +208,20 @@ schematicData$.pipe(untilUnmounted).subscribe((schematic) => {
   selectedComponentId.value = "";
 });
 
-lastSelectedNode$.pipe(untilUnmounted).subscribe((node) => {
-  if (isPinned.value) return;
-
+const updateSelection = (node: OBJ.Node | null) => {
   const componentId = node?.nodeKind?.componentId;
 
+  // Locked panels can't change selection by clicking in nodes
+  if (isPinned.value) return;
   // Ignores deselection and fake nodes, as they don't have any attributes
   if (!componentId || componentId === -1) return;
 
   selectedComponentId.value = componentId;
-});
-// Re-selects so our observable gets it
-Rx.firstValueFrom(lastSelectedNode$).then((last) =>
-  lastSelectedNode$.next(last),
-);
+};
+lastSelectedNode$
+  .pipe(untilUnmounted)
+  .subscribe((node) => updateSelection(node));
+Rx.firstValueFrom(lastSelectedNode$).then((last) => updateSelection(last));
 
 const props = defineProps<{
   panelIndex: number;

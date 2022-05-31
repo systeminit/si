@@ -86,7 +86,7 @@ import { CheckIcon, SelectorIcon } from "@heroicons/vue/solid";
 import _ from "lodash";
 
 export interface SelectPropsOption {
-  value: unknown;
+  value: string | number | boolean | Record<string, unknown> | undefined;
   label: unknown;
 }
 

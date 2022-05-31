@@ -6,7 +6,6 @@ import { Renderer } from "../renderer";
 import { Grid, BACKGROUND_GRID_NAME } from "../obj";
 import { untilUnmounted } from "vuse-rx";
 import { InteractionManager } from "../interaction";
-import { SelectionManager } from "../interaction/selection";
 import { SchematicKind } from "@/api/sdf/dal/schematic";
 import { Schematic, variantById } from "@/api/sdf/dal/schematic";
 
@@ -22,7 +21,7 @@ export class SceneManager {
   scene: PIXI.Container;
   root: PIXI.Container;
   interactiveConnection?: OBJ.Connection | null;
-  group?: {
+  group: {
     nodes: PIXI.Container;
     connections: PIXI.Container;
   };
@@ -47,6 +46,13 @@ export class SceneManager {
     this.root.sortableChildren = true;
     this.root.zIndex = 2;
     this.scene.addChild(this.root);
+
+    this.group = {
+      connections: new ConnectionGroup("connections", 20),
+      nodes: new NodeGroup("nodes", 30),
+    };
+    this.root.addChild(this.group.nodes);
+    this.root.addChild(this.group.connections);
 
     this.initializeSceneData();
     this.setBackgroundGrid(renderer.width, renderer.height);
@@ -88,13 +94,11 @@ export class SceneManager {
 
   async loadSceneData(
     data: Schematic | null,
-    selectionManager: SelectionManager,
     schematicKind: SchematicKind,
     selectedDeploymentNodeId?: number,
   ): Promise<void> {
     this.initializeSceneData();
 
-    let selected;
     if (data) {
       for (const n of data.nodes) {
         const variant = await variantById(n.schemaVariantId);
@@ -114,17 +118,6 @@ export class SceneManager {
             },
             schematicKind,
           );
-          // If the node was previously selected we re-select again as some operations
-          // were lost on the re-render (example: update node position)
-          const isSelected = (
-            selectionManager.selection.find(
-              (selected) =>
-                selected.parentDeploymentNodeId === selectedDeploymentNodeId,
-            )?.nodes ?? []
-          ).some((n) => n.id === node.id);
-          if (isSelected) {
-            selected = node;
-          }
           this.addNode(node);
         } else {
           // console.error("Node didn't have a position:", n);
@@ -132,13 +125,12 @@ export class SceneManager {
       }
 
       for (const connection of data.connections) {
-        //if (connection.classification === "configures") {
         const sourceSocketId = `${connection.sourceNodeId}.${connection.sourceSocketId}`;
         const sourceSocket = this.scene.getChildByName(sourceSocketId, true);
 
-        // Note: this happens when we switch panels with a connection rendered
-        // The nodes and the connections don't disappear
-        // We need to understand this better, but continuing here works by now, it may leak something tho
+        // Sometimes the connection isn't valid for display, like when switching panels while rendering
+        // And the "include" connections also won't be found as they don't get rendered, we could use some metadata,
+        // but there isn't much to gain from it
         if (!sourceSocket) continue;
 
         const destinationSocketId = `${connection.destinationNodeId}.${connection.destinationSocketId}`;
@@ -153,15 +145,7 @@ export class SceneManager {
           sourceSocket.name,
           destinationSocket.name,
         );
-        //}
       }
-    }
-
-    if (selected) {
-      selectionManager.select({
-        parentDeploymentNodeId: selectedDeploymentNodeId,
-        nodes: [selected],
-      });
     }
 
     this.renderer.renderStage();
@@ -188,18 +172,14 @@ export class SceneManager {
   }
 
   addNode(n: OBJ.Node): void {
-    if (this.group && this.group.nodes) {
-      this.group.nodes.addChild(n);
-    }
+    this.group.nodes.addChild(n);
   }
 
   removeNode(node: OBJ.Node): void {
     node.destroy();
 
-    if (this.group) {
-      const nodeGroup = this.scene.getChildByName(this.group.nodes.name, true);
-      this.renderer.renderGroup(nodeGroup);
-    }
+    const nodeGroup = this.scene.getChildByName(this.group.nodes.name, true);
+    this.renderer.renderGroup(nodeGroup);
   }
 
   translateNode(node: OBJ.Node, position: Point): void {
@@ -223,12 +203,10 @@ export class SceneManager {
       _interactive,
     );
     let isConnectionUnique = true;
-    if (this.group?.connections) {
-      for (const c of this.group.connections.children) {
-        const conn = c as OBJ.Connection;
-        if (conn.name === connection.name) {
-          isConnectionUnique = false;
-        }
+    for (const c of this.group.connections.children) {
+      const conn = c as OBJ.Connection;
+      if (conn.name === connection.name) {
+        isConnectionUnique = false;
       }
     }
 
@@ -243,21 +221,19 @@ export class SceneManager {
   }
 
   addConnection(c: OBJ.Connection): void {
-    this.group?.connections.addChild(c);
+    this.group.connections.addChild(c);
   }
 
   removeConnection(name: string): void {
     const c = this.scene.getChildByName(name, true) as OBJ.Connection;
-    this.group?.connections.removeChild(c);
+    this.group.connections.removeChild(c);
   }
 
   refreshConnections(): void {
-    if (this.group?.connections) {
-      for (const c of this.group.connections.children) {
-        const connection = c as OBJ.Connection;
-        if (connection && connection.type != OBJ.ConnectionType.interactive) {
-          this.refreshConnectionPosition(connection.name);
-        }
+    for (const c of this.group.connections.children) {
+      const connection = c as OBJ.Connection;
+      if (connection && connection.type != OBJ.ConnectionType.interactive) {
+        this.refreshConnectionPosition(connection.name);
       }
     }
   }
@@ -304,7 +280,7 @@ export class SceneManager {
   }
 
   getConnections(): void {
-    const connections = this.group?.connections.children;
+    const connections = this.group.connections.children;
     console.log(connections);
   }
 
