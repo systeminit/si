@@ -40,6 +40,10 @@ impl WriteTenancy {
         &self.workspace_ids
     }
 
+    pub fn universal(&self) -> bool {
+        self.universal
+    }
+
     pub fn into_universal(mut self) -> Self {
         self.universal = true;
         self

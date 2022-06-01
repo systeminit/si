@@ -104,7 +104,7 @@ impl SchemaVariant {
             )
             .await?;
         let object: SchemaVariant = standard_model::finish_create_from_row(ctx, row).await?;
-        let root_prop = RootProp::new(ctx, schema_id, *object.id()).await?;
+        let root_prop = RootProp::new(ctx, *object.id()).await?;
 
         object.set_schema(ctx, &schema_id).await?;
 

@@ -27,13 +27,17 @@ use crate::{
         binding_return_value::FuncBindingReturnValueId,
     },
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_has_many,
-    AttributePrototypeArgument, AttributePrototypeArgumentError, DalContext, HistoryEventError,
-    PropError, PropKind, ReadTenancy, ReadTenancyError, StandardModel, StandardModelError,
-    Timestamp, Visibility, WriteTenancy,
+    AttributePrototypeArgument, AttributePrototypeArgumentError, AttributeReadContext, DalContext,
+    HistoryEventError, InternalProviderId, PropError, PropKind, ReadTenancy, ReadTenancyError,
+    StandardModel, StandardModelError, Timestamp, Visibility, WriteTenancy,
 };
 
 pub mod argument;
 
+const ATTRIBUTE_VALUES_IN_CONTEXT_OR_GREATER: &str =
+    include_str!("../queries/attribute_prototype_attribute_values_in_context_or_greater.sql");
+const LIST_FROM_INTERNAL_PROVIDER_USE: &str =
+    include_str!("../queries/attribute_prototype_list_from_internal_provider_use.sql");
 const LIST_FOR_CONTEXT: &str = include_str!("../queries/attribute_prototype_list_for_context.sql");
 const FIND_WITH_PARENT_VALUE_AND_KEY_FOR_CONTEXT: &str =
     include_str!("../queries/attribute_prototype_find_with_parent_value_and_key_for_context.sql");
@@ -374,6 +378,44 @@ impl AttributePrototype {
             .await?;
 
         Ok(standard_model::option_object_from_row(row)?)
+    }
+
+    /// List [`Vec<Self>`] that depend on a provided [`InternalProviderId`](crate::InternalProvider).
+    pub async fn list_from_internal_provider_use(
+        ctx: &DalContext<'_, '_>,
+        internal_provider_id: InternalProviderId,
+    ) -> AttributePrototypeResult<Vec<Self>> {
+        let rows = ctx
+            .pg_txn()
+            .query(
+                LIST_FROM_INTERNAL_PROVIDER_USE,
+                &[ctx.read_tenancy(), ctx.visibility(), &internal_provider_id],
+            )
+            .await?;
+        Ok(standard_model::objects_from_rows(rows)?)
+    }
+
+    /// List [`AttributeValues`](crate::AttributeValue) that belong to a provided [`AttributePrototypeId`](Self)
+    /// and whose context contains the provided [`AttributeReadContext`](crate::AttributeReadContext)
+    /// or are "more-specific" than the provided [`AttributeReadContext`](crate::AttributeReadContext).
+    pub async fn attribute_values_in_context_or_greater(
+        ctx: &DalContext<'_, '_>,
+        attribute_prototype_id: AttributePrototypeId,
+        context: AttributeReadContext,
+    ) -> AttributePrototypeResult<Vec<AttributeValue>> {
+        let rows = ctx
+            .pg_txn()
+            .query(
+                ATTRIBUTE_VALUES_IN_CONTEXT_OR_GREATER,
+                &[
+                    ctx.read_tenancy(),
+                    ctx.visibility(),
+                    &attribute_prototype_id,
+                    &context,
+                ],
+            )
+            .await?;
+        Ok(standard_model::objects_from_rows(rows)?)
     }
 
     #[instrument(skip_all)]

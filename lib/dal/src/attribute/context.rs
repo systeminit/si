@@ -23,6 +23,7 @@
 //! flexibility when searching for objects of varying levels of specificity.
 
 use serde::{Deserialize, Serialize};
+use std::cmp::Ordering;
 use std::default::Default;
 use thiserror::Error;
 
@@ -114,6 +115,87 @@ impl From<AttributeReadContext> for AttributeContextBuilder {
     }
 }
 
+impl PartialOrd for AttributeContext {
+    /// How to compare two [`AttributeContexts`](crate::AttributeContext):
+    ///
+    /// - [`Ordering::Equal`]: same level of specificity between two contexts
+    /// - [`Ordering::Greater`]: "self" is "more-specific" than "other"
+    /// - [`Ordering::Less`]: "self" is "less-specific" than "other"
+    /// - [`None`]: "self" and "other" have different "least-specific" fields (e.g. "self" is
+    ///   [`Prop`](crate::Prop)-specific and "other" is [`InternalProvider`](crate::InternalProvider)-specific.
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        if !self.is_system_unset() {
+            return if !other.is_system_unset() {
+                Some(Ordering::Equal)
+            } else {
+                Some(Ordering::Greater)
+            };
+        }
+
+        if !self.is_component_unset() {
+            return if !other.is_system_unset() {
+                Some(Ordering::Less)
+            } else if !other.is_component_unset() {
+                Some(Ordering::Equal)
+            } else {
+                Some(Ordering::Greater)
+            };
+        }
+
+        if !self.is_schema_variant_unset() {
+            return if !other.is_component_unset() {
+                Some(Ordering::Less)
+            } else if !other.is_schema_variant_unset() {
+                Some(Ordering::Equal)
+            } else {
+                Some(Ordering::Greater)
+            };
+        }
+
+        if !self.is_schema_unset() {
+            return if !other.is_schema_variant_unset() {
+                Some(Ordering::Less)
+            } else if !other.is_schema_unset() {
+                Some(Ordering::Equal)
+            } else {
+                Some(Ordering::Greater)
+            };
+        }
+
+        if !self.is_external_provider_unset() {
+            return if !other.is_schema_unset() {
+                Some(Ordering::Less)
+            } else if !other.is_external_provider_unset() {
+                Some(Ordering::Equal)
+            } else {
+                None
+            };
+        }
+
+        if !self.is_internal_provider_unset() {
+            return if !other.is_schema_unset() {
+                Some(Ordering::Less)
+            } else if !other.is_internal_provider_unset() {
+                Some(Ordering::Equal)
+            } else {
+                None
+            };
+        }
+
+        if !self.is_prop_unset() {
+            return if !other.is_schema_unset() {
+                Some(Ordering::Less)
+            } else if !other.is_prop_unset() {
+                Some(Ordering::Equal)
+            } else {
+                None
+            };
+        }
+
+        None
+    }
+}
+
 impl AttributeContext {
     pub fn builder() -> AttributeContextBuilder {
         AttributeContextBuilder::new()
@@ -123,12 +205,24 @@ impl AttributeContext {
         self.prop_id
     }
 
+    pub fn is_prop_unset(&self) -> bool {
+        self.prop_id == UNSET_ID_VALUE.into()
+    }
+
     pub fn internal_provider_id(&self) -> InternalProviderId {
         self.internal_provider_id
     }
 
+    pub fn is_internal_provider_unset(&self) -> bool {
+        self.internal_provider_id == UNSET_ID_VALUE.into()
+    }
+
     pub fn external_provider_id(&self) -> ExternalProviderId {
         self.external_provider_id
+    }
+
+    pub fn is_external_provider_unset(&self) -> bool {
+        self.external_provider_id == UNSET_ID_VALUE.into()
     }
 
     pub fn schema_id(&self) -> SchemaId {

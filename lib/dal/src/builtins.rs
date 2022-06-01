@@ -6,12 +6,14 @@ use thiserror::Error;
 
 use crate::func::binding::FuncBindingError;
 use crate::func::binding_return_value::FuncBindingReturnValueError;
+use crate::provider::internal::InternalProviderError;
 use crate::schema::variant::SchemaVariantError;
 use crate::socket::SocketError;
 use crate::{
-    AttributeContextBuilderError, AttributePrototypeError, AttributeValueError,
-    CodeGenerationPrototypeError, DalContext, FuncError, PropError, QualificationPrototypeError,
-    ResourcePrototypeError, SchemaError, StandardModelError, ValidationPrototypeError,
+    AttributeContextBuilderError, AttributePrototypeArgumentError, AttributePrototypeError,
+    AttributeValueError, CodeGenerationPrototypeError, DalContext, FuncError, PropError,
+    QualificationPrototypeError, ResourcePrototypeError, SchemaError, StandardModelError,
+    ValidationPrototypeError,
 };
 
 mod func;
@@ -23,6 +25,8 @@ pub enum BuiltinsError {
     AttributeContextBuilder(#[from] AttributeContextBuilderError),
     #[error("attribute prototype error: {0}")]
     AttributePrototype(#[from] AttributePrototypeError),
+    #[error("attribute prototype argument error: {0}")]
+    AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
     #[error("code generation prototype error: {0}")]
@@ -33,6 +37,8 @@ pub enum BuiltinsError {
     FuncBinding(#[from] FuncBindingError),
     #[error("func binding return value error: {0}")]
     FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
+    #[error("internal provider error: {0}")]
+    InternalProvider(#[from] InternalProviderError),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
     #[error("qualification prototype error: {0}")]

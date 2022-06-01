@@ -9,7 +9,7 @@ use dal::test_harness::{
 };
 use dal::{
     AttributePrototype, AttributePrototypeArgument, AttributeValue, Component, ComponentView,
-    SchemaVariant,
+    Schema, SchemaVariant,
 };
 use dal::{
     AttributeReadContext, DalContext, Func, FuncBackendKind, FuncBackendResponseType, PropKind,
@@ -432,4 +432,245 @@ async fn intra_component_identity_update(ctx: &DalContext<'_, '_>) {
 
     // TODO(nick): add daisy chaining where one field updates another, which in turn, updates
     // another and other kinds of complex updating.
+}
+
+#[test]
+async fn docker_image_intra_component_update(ctx: &DalContext<'_, '_>) {
+    let schema_name = "docker_image".to_string();
+    let schema: Schema = Schema::find_by_attr(ctx, "name", &schema_name)
+        .await
+        .expect("could not find schema by name")
+        .pop()
+        .expect("schema not found");
+    let schema_variant_id = schema
+        .default_schema_variant_id()
+        .expect("default schema variant id not found");
+
+    // Create two components using the docker image schema.
+    let (soulrender_component, _, _) =
+        Component::new_for_schema_with_node(ctx, "soulrender", schema.id())
+            .await
+            .expect("unable to create component");
+    let soulrender_base_context = AttributeReadContext {
+        prop_id: None,
+        schema_id: Some(*schema.id()),
+        schema_variant_id: Some(*schema_variant_id),
+        component_id: Some(*soulrender_component.id()),
+        ..AttributeReadContext::default()
+    };
+
+    assert_eq_sorted!(
+        serde_json::json![{
+            "domain": {
+                "image": "soulrender"
+            },
+            "si": {
+                "name": "soulrender",
+            },
+        }], // expected
+        ComponentView::for_context(ctx, soulrender_base_context)
+            .await
+            .expect("cannot get component view")
+            .properties // actual
+    );
+
+    let (bloodscythe_component, _, _) =
+        Component::new_for_schema_with_node(ctx, "bloodscythe", schema.id())
+            .await
+            .expect("unable to create component");
+    let bloodscythe_base_context = AttributeReadContext {
+        prop_id: None,
+        schema_id: Some(*schema.id()),
+        schema_variant_id: Some(*schema_variant_id),
+        component_id: Some(*bloodscythe_component.id()),
+        ..AttributeReadContext::default()
+    };
+
+    assert_eq_sorted!(
+        serde_json::json![{
+            "domain": {
+                "image": "bloodscythe"
+            },
+            "si": {
+                "name": "bloodscythe",
+            },
+        }], // expected
+        ComponentView::for_context(ctx, bloodscythe_base_context)
+            .await
+            .expect("cannot get component view")
+            .properties // actual
+    );
+
+    // Update the second component and ensure the first's values did not drift. First, find the prop
+    // that we want to update on the schema variant.
+    let schema_variant: SchemaVariant = SchemaVariant::get_by_id(ctx, schema_variant_id)
+        .await
+        .expect("could not get schema variant by id")
+        .expect("schema variant not found");
+    let mut found_prop = None;
+    let mut found_parent_prop = None;
+    for prop in schema_variant
+        .all_props(ctx)
+        .await
+        .expect("could not find all props for schema variant")
+    {
+        if let Some(parent_prop) = prop
+            .parent_prop(ctx)
+            .await
+            .expect("could not find parent prop")
+        {
+            if prop.name() == "name" && parent_prop.name() == "si" {
+                found_prop = Some(prop);
+                found_parent_prop = Some(parent_prop);
+                break;
+            }
+        }
+    }
+    let name_prop = found_prop.expect("could not find /root/si/name prop");
+    let si_prop = found_parent_prop.expect("could not find /root/si prop");
+
+    // Now, find the attribute values need to update the second component.
+    let bloodscythe_si_attribute_value = AttributeValue::find_for_context(
+        ctx,
+        AttributeReadContext {
+            prop_id: Some(*si_prop.id()),
+            ..bloodscythe_base_context
+        },
+    )
+    .await
+    .expect("could not find attribute value for context")
+    .expect("attribute value not found");
+    let bloodscythe_name_attribute_value = AttributeValue::find_for_context(
+        ctx,
+        AttributeReadContext {
+            prop_id: Some(*name_prop.id()),
+            ..bloodscythe_base_context
+        },
+    )
+    .await
+    .expect("could not find attribute value for context")
+    .expect("attribute value not found");
+
+    // Update the "/root/si/name" value on the second component, observe that it worked, and observe
+    // that the first component was not updated.
+    let bloodscythe_name_update_context = AttributeContextBuilder::from(bloodscythe_base_context)
+        .set_prop_id(*name_prop.id())
+        .to_context()
+        .expect("could not convert builder to attribute context");
+    AttributeValue::update_for_context(
+        ctx,
+        *bloodscythe_name_attribute_value.id(),
+        Some(*bloodscythe_si_attribute_value.id()),
+        bloodscythe_name_update_context,
+        Some(
+            serde_json::to_value("bloodscythe-updated")
+                .expect("could not convert to serde_json::Value"),
+        ),
+        None,
+    )
+    .await
+    .expect("could not update attribute value for context");
+
+    assert_eq_sorted!(
+        serde_json::json![{
+            "domain": {
+                "image": "bloodscythe-updated"
+            },
+            "si": {
+                "name": "bloodscythe-updated",
+            },
+        }], // expected
+        ComponentView::for_context(ctx, bloodscythe_base_context)
+            .await
+            .expect("cannot get component view")
+            .properties // actual
+    );
+
+    assert_eq_sorted!(
+        serde_json::json![{
+            "domain": {
+                "image": "soulrender"
+            },
+            "si": {
+                "name": "soulrender",
+            },
+        }], // expected
+        ComponentView::for_context(ctx, soulrender_base_context)
+            .await
+            .expect("cannot get component view")
+            .properties // actual
+    );
+
+    // Let's update the first component too. Like before, find the attribute values need to update
+    // the first component.
+    let soulrender_si_attribute_value = AttributeValue::find_for_context(
+        ctx,
+        AttributeReadContext {
+            prop_id: Some(*si_prop.id()),
+            ..soulrender_base_context
+        },
+    )
+    .await
+    .expect("could not find attribute value for context")
+    .expect("attribute value not found");
+    let soulrender_name_attribute_value = AttributeValue::find_for_context(
+        ctx,
+        AttributeReadContext {
+            prop_id: Some(*name_prop.id()),
+            ..soulrender_base_context
+        },
+    )
+    .await
+    .expect("could not find attribute value for context")
+    .expect("attribute value not found");
+
+    // Update the "/root/si/name" value on the first component, observe that it worked, and observe
+    // that the second component was not updated.
+    let soulrender_name_update_context = AttributeContextBuilder::from(soulrender_base_context)
+        .set_prop_id(*name_prop.id())
+        .to_context()
+        .expect("could not convert builder to attribute context");
+    AttributeValue::update_for_context(
+        ctx,
+        *soulrender_name_attribute_value.id(),
+        Some(*soulrender_si_attribute_value.id()),
+        soulrender_name_update_context,
+        Some(
+            serde_json::to_value("soulrender-updated")
+                .expect("could not convert to serde_json::Value"),
+        ),
+        None,
+    )
+    .await
+    .expect("could not update attribute value for context");
+
+    assert_eq_sorted!(
+        serde_json::json![{
+            "domain": {
+                "image": "bloodscythe-updated"
+            },
+            "si": {
+                "name": "bloodscythe-updated",
+            },
+        }], // expected
+        ComponentView::for_context(ctx, bloodscythe_base_context)
+            .await
+            .expect("cannot get component view")
+            .properties // actual
+    );
+
+    assert_eq_sorted!(
+        serde_json::json![{
+            "domain": {
+                "image": "soulrender-updated"
+            },
+            "si": {
+                "name": "soulrender-updated",
+            },
+        }], // expected
+        ComponentView::for_context(ctx, soulrender_base_context)
+            .await
+            .expect("cannot get component view")
+            .properties // actual
+    );
 }

@@ -65,6 +65,8 @@ pub enum InternalProviderError {
         "provided attribute context for internal consumer evaluation does not specify a PropId"
     )]
     MissingPropForInternalConsumer,
+    #[error("not found for prop: {0}")]
+    NotFoundForProp(PropId),
     #[error("prop not found for id: {0}")]
     PropNotFound(PropId),
     #[error("schema id mismatch: {0} (self) and {1} (provided)")]
@@ -337,28 +339,32 @@ impl InternalProvider {
             .set_internal_provider_id(self.id)
             .to_context()?;
 
-        let emit_attribute_value = if let Some(mut emit_attribute_value) =
+        // We never want to mutate an emitted AttributeValue in the universal tenancy and we want
+        // to ensure the found AttributeValue's context _exactly_ matches the one assembled. In
+        // either case, just create a new one!
+        if let Some(mut emit_attribute_value) =
             AttributeValue::find_for_context(ctx, emit_context.into()).await?
         {
-            emit_attribute_value
-                .set_func_binding_id(ctx, *func_binding.id())
-                .await?;
-            emit_attribute_value
-                .set_func_binding_return_value_id(ctx, *func_binding_return_value.id())
-                .await?;
-            emit_attribute_value
-        } else {
-            AttributeValue::new(
-                ctx,
-                *func_binding.id(),
-                *func_binding_return_value.id(),
-                emit_context,
-                Option::<String>::None,
-            )
-            .await?
-        };
-
-        Ok(emit_attribute_value)
+            if emit_attribute_value.context == emit_context
+                && !emit_attribute_value.tenancy().universal()
+            {
+                emit_attribute_value
+                    .set_func_binding_id(ctx, *func_binding.id())
+                    .await?;
+                emit_attribute_value
+                    .set_func_binding_return_value_id(ctx, *func_binding_return_value.id())
+                    .await?;
+                return Ok(emit_attribute_value);
+            }
+        }
+        Ok(AttributeValue::new(
+            ctx,
+            *func_binding.id(),
+            *func_binding_return_value.id(),
+            emit_context,
+            Option::<String>::None,
+        )
+        .await?)
     }
 
     /// Find all internal providers for a given [`SchemaVariant`](crate::SchemaVariant).
