@@ -240,14 +240,15 @@ impl FuncBinding {
 
         let mut execution = FuncExecution::new(ctx, &func, self).await?;
 
-        let return_value = match self.backend_kind() {
+        let (unproceseed_value, processed_value) = match self.backend_kind() {
             FuncBackendKind::Array => {
                 execution
                     .set_state(ctx, super::execution::FuncExecutionState::Run)
                     .await?;
                 let args: FuncBackendArrayArgs = serde_json::from_value(self.args.clone())?;
-                let return_value = FuncBackendArray::new(args).execute().await?;
-                Some(return_value)
+                let (unprocessed_value, processed_value) =
+                    FuncBackendArray::new(args).execute().await?;
+                (Some(unprocessed_value), Some(processed_value))
             }
             FuncBackendKind::Boolean => {
                 execution
@@ -255,11 +256,11 @@ impl FuncBinding {
                     .await?;
                 let args: FuncBackendBooleanArgs = serde_json::from_value(self.args.clone())?;
                 let return_value = FuncBackendBoolean::new(args).execute().await?;
-                Some(return_value)
+                (Some(return_value.clone()), Some(return_value))
             }
             FuncBackendKind::Identity => {
                 let args: FuncBackendIdentityArgs = serde_json::from_value(self.args.clone())?;
-                Some(args.identity)
+                (Some(args.identity.clone()), Some(args.identity))
             }
             FuncBackendKind::Integer => {
                 execution
@@ -267,7 +268,7 @@ impl FuncBinding {
                     .await?;
                 let args: FuncBackendIntegerArgs = serde_json::from_value(self.args.clone())?;
                 let return_value = FuncBackendInteger::new(args).execute().await?;
-                Some(return_value)
+                (Some(return_value.clone()), Some(return_value))
             }
             FuncBackendKind::JsCodeGeneration => {
                 execution
@@ -301,7 +302,8 @@ impl FuncBinding {
 
                 let veritech_result = CodeGenerationResultSuccess::deserialize(&return_value)?;
                 execution.process_output(ctx, rx).await?;
-                Some(serde_json::to_value(&veritech_result.data)?)
+                let return_value = serde_json::to_value(&veritech_result.data)?;
+                (Some(return_value.clone()), Some(return_value))
             }
             FuncBackendKind::JsQualification => {
                 execution
@@ -360,7 +362,8 @@ impl FuncBinding {
 
                 std::mem::drop(tx);
                 execution.process_output(ctx, rx).await?;
-                Some(serde_json::to_value(&qual_result)?)
+                let return_value = serde_json::to_value(&qual_result)?;
+                (Some(return_value.clone()), Some(return_value))
             }
             FuncBackendKind::JsResourceSync => {
                 execution
@@ -395,7 +398,8 @@ impl FuncBinding {
                 let veritech_result = ResourceSyncResultSuccess::deserialize(&return_value)?;
 
                 execution.process_output(ctx, rx).await?;
-                Some(serde_json::to_value(&veritech_result)?)
+                let return_value = serde_json::to_value(&veritech_result)?;
+                (Some(return_value.clone()), Some(return_value))
             }
             FuncBackendKind::JsAttribute => {
                 execution
@@ -432,23 +436,25 @@ impl FuncBinding {
                 .await?;
 
                 execution.process_output(ctx, rx).await?;
-                Some(return_value)
+                (Some(return_value.clone()), Some(return_value))
             }
             FuncBackendKind::Map => {
                 execution
                     .set_state(ctx, super::execution::FuncExecutionState::Run)
                     .await?;
                 let args: FuncBackendMapArgs = serde_json::from_value(self.args.clone())?;
-                let return_value = FuncBackendMap::new(args).execute().await?;
-                Some(return_value)
+                let (unprocessed_value, processed_value) =
+                    FuncBackendMap::new(args).execute().await?;
+                (Some(unprocessed_value), Some(processed_value))
             }
             FuncBackendKind::PropObject => {
                 execution
                     .set_state(ctx, super::execution::FuncExecutionState::Run)
                     .await?;
                 let args: FuncBackendPropObjectArgs = serde_json::from_value(self.args.clone())?;
-                let return_value = FuncBackendPropObject::new(args).execute().await?;
-                Some(return_value)
+                let (unproceseed_value, processed_value) =
+                    FuncBackendPropObject::new(args).execute().await?;
+                (Some(unproceseed_value), Some(processed_value))
             }
             FuncBackendKind::String => {
                 execution
@@ -456,23 +462,24 @@ impl FuncBinding {
                     .await?;
                 let args: FuncBackendStringArgs = serde_json::from_value(self.args.clone())?;
                 let return_value = FuncBackendString::new(args).execute().await?;
-                Some(return_value)
+                (Some(return_value.clone()), Some(return_value))
             }
-            FuncBackendKind::Unset => None,
+            FuncBackendKind::Unset => (None, None),
             FuncBackendKind::ValidateStringValue => {
                 execution
                     .set_state(ctx, super::execution::FuncExecutionState::Run)
                     .await?;
                 let args: FuncBackendValidateStringValueArgs =
                     serde_json::from_value(self.args.clone())?;
-                Some(FuncBackendValidateStringValue::new(args).execute()?)
+                let return_value = FuncBackendValidateStringValue::new(args).execute()?;
+                (Some(return_value.clone()), Some(return_value))
             }
         };
 
         let func_binding_return_value = FuncBindingReturnValue::upsert(
             ctx,
-            return_value.clone(),
-            return_value,
+            unproceseed_value,
+            processed_value,
             *func.id(),
             self.id,
             execution.pk(),
