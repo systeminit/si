@@ -898,9 +898,8 @@ pub async fn create_string_prop_with_default(
         ..AttributeReadContext::default()
     };
 
-    let mut attribute_value = AttributeValue::list_for_context(ctx, attribute_value_context)
+    let mut attribute_value = AttributeValue::find_for_context(ctx, attribute_value_context)
         .await?
-        .pop()
         .ok_or(AttributeValueError::Missing)?;
     attribute_value
         .set_func_binding_id(ctx, *func_binding.id())

@@ -244,10 +244,9 @@ impl Prop {
             prop_id: Some(*self.id()),
             ..AttributeReadContext::default()
         };
-        let our_attribute_value = AttributeValue::list_for_context(ctx, attribute_read_context)
+        let our_attribute_value = AttributeValue::find_for_context(ctx, attribute_read_context)
             .await
             .map_err(|e| PropError::AttributeValue(format!("{e}")))?
-            .pop()
             .ok_or_else(|| {
                 PropError::AttributeValue(format!(
                     "missing attribute value for context: {:?}",
@@ -260,10 +259,9 @@ impl Prop {
             ..AttributeReadContext::default()
         };
         let parent_attribute_value =
-            AttributeValue::list_for_context(ctx, parent_attribute_read_context)
+            AttributeValue::find_for_context(ctx, parent_attribute_read_context)
                 .await
                 .map_err(|e| PropError::AttributeValue(format!("{e}")))?
-                .pop()
                 .ok_or_else(|| {
                     PropError::AttributeValue(format!(
                         "missing attribute value for context: {:?}",

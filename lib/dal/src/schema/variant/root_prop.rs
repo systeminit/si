@@ -56,9 +56,8 @@ impl RootProp {
             .to_context()?;
         let (_, root_value_id, _) = AttributeValue::update_for_context(
             ctx,
-            *AttributeValue::list_for_context(ctx, root_context.into())
+            *AttributeValue::find_for_context(ctx, root_context.into())
                 .await?
-                .pop()
                 .ok_or(AttributeValueError::Missing)?
                 .id(),
             None,
@@ -78,9 +77,8 @@ impl RootProp {
             .to_context()?;
         let (_, si_value_id, _) = AttributeValue::update_for_context(
             ctx,
-            *AttributeValue::list_for_context(ctx, si_context.into())
+            *AttributeValue::find_for_context(ctx, si_context.into())
                 .await?
-                .pop()
                 .ok_or(AttributeValueError::Missing)?
                 .id(),
             Some(root_value_id),
@@ -100,9 +98,8 @@ impl RootProp {
             .to_context()?;
         AttributeValue::update_for_context(
             ctx,
-            *AttributeValue::list_for_context(ctx, si_name_context.into())
+            *AttributeValue::find_for_context(ctx, si_name_context.into())
                 .await?
-                .pop()
                 .ok_or(AttributeValueError::Missing)?
                 .id(),
             Some(si_value_id),
@@ -122,9 +119,8 @@ impl RootProp {
             .to_context()?;
         AttributeValue::update_for_context(
             ctx,
-            *AttributeValue::list_for_context(ctx, domain_context.into())
+            *AttributeValue::find_for_context(ctx, domain_context.into())
                 .await?
-                .pop()
                 .ok_or(AttributeValueError::Missing)?
                 .id(),
             Some(root_value_id),
