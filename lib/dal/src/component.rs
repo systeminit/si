@@ -463,11 +463,11 @@ impl Component {
         system_id: SystemId,
     ) -> ComponentResult<()> {
         let schema = self
-            .schema_with_tenancy(ctx)
+            .schema(ctx)
             .await?
             .ok_or(ComponentError::SchemaNotFound)?;
         let schema_variant = self
-            .schema_variant_with_tenancy(ctx)
+            .schema_variant(ctx)
             .await?
             .ok_or(ComponentError::SchemaVariantNotFound)?;
 
@@ -556,11 +556,11 @@ impl Component {
         system_id: SystemId,
     ) -> ComponentResult<()> {
         let schema = self
-            .schema_with_tenancy(ctx)
+            .schema(ctx)
             .await?
             .ok_or(ComponentError::SchemaNotFound)?;
         let schema_variant = self
-            .schema_variant_with_tenancy(ctx)
+            .schema_variant(ctx)
             .await?
             .ok_or(ComponentError::SchemaVariantNotFound)?;
 
@@ -649,11 +649,11 @@ impl Component {
         system_id: SystemId,
     ) -> ComponentResult<()> {
         let schema = self
-            .schema_with_tenancy(ctx)
+            .schema(ctx)
             .await?
             .ok_or(ComponentError::SchemaNotFound)?;
         let schema_variant = self
-            .schema_variant_with_tenancy(ctx)
+            .schema_variant(ctx)
             .await?
             .ok_or(ComponentError::SchemaVariantNotFound)?;
 
@@ -742,11 +742,11 @@ impl Component {
         system_id: SystemId,
     ) -> ComponentResult<()> {
         let schema = self
-            .schema_with_tenancy(ctx)
+            .schema(ctx)
             .await?
             .ok_or(ComponentError::SchemaNotFound)?;
         let schema_variant = self
-            .schema_variant_with_tenancy(ctx)
+            .schema_variant(ctx)
             .await?
             .ok_or(ComponentError::SchemaVariantNotFound)?;
 
@@ -972,11 +972,11 @@ impl Component {
                 .await?
                 .ok_or(ComponentError::NotFound(component_id))?;
             let schema = component
-                .schema_with_tenancy(ctx)
+                .schema(ctx)
                 .await?
                 .ok_or(ComponentError::SchemaNotFound)?;
             let schema_variant = component
-                .schema_variant_with_tenancy(ctx)
+                .schema_variant(ctx)
                 .await?
                 .ok_or(ComponentError::SchemaVariantNotFound)?;
             let prototypes = QualificationPrototype::find_for_component(
@@ -1059,11 +1059,11 @@ impl Component {
                 .await?
                 .ok_or(ComponentError::NotFound(id))?;
             let schema = component
-                .schema_with_tenancy(ctx)
+                .schema(ctx)
                 .await?
                 .ok_or(ComponentError::SchemaNotFound)?;
             let schema_variant = component
-                .schema_variant_with_tenancy(ctx)
+                .schema_variant(ctx)
                 .await?
                 .ok_or(ComponentError::SchemaVariantNotFound)?;
             let read_context = AttributeReadContext {
@@ -1077,11 +1077,11 @@ impl Component {
         }
 
         let schema = self
-            .schema_with_tenancy(ctx)
+            .schema(ctx)
             .await?
             .ok_or(ComponentError::SchemaNotFound)?;
         let schema_variant = self
-            .schema_variant_with_tenancy(ctx)
+            .schema_variant(ctx)
             .await?
             .ok_or(ComponentError::SchemaVariantNotFound)?;
         let read_context = AttributeReadContext {
@@ -1103,11 +1103,11 @@ impl Component {
         system_id: SystemId,
     ) -> ComponentResult<ComponentView> {
         let schema = self
-            .schema_with_tenancy(ctx)
+            .schema(ctx)
             .await?
             .ok_or(ComponentError::SchemaNotFound)?;
         let schema_variant = self
-            .schema_variant_with_tenancy(ctx)
+            .schema_variant(ctx)
             .await?
             .ok_or(ComponentError::SchemaVariantNotFound)?;
         let attribute_context = AttributeReadContext {
@@ -1129,11 +1129,11 @@ impl Component {
         system_id: SystemId,
     ) -> ComponentResult<ComponentView> {
         let schema = self
-            .schema_with_tenancy(ctx)
+            .schema(ctx)
             .await?
             .ok_or(ComponentError::SchemaNotFound)?;
         let schema_variant = self
-            .schema_variant_with_tenancy(ctx)
+            .schema_variant(ctx)
             .await?
             .ok_or(ComponentError::SchemaVariantNotFound)?;
         let attribute_context = AttributeReadContext {
@@ -1230,11 +1230,11 @@ impl Component {
         // Note(paulo): we don't actually care about the Resource here, we only care about the ResourcePrototype, is this wrong?
 
         let schema = self
-            .schema_with_tenancy(ctx)
+            .schema(ctx)
             .await?
             .ok_or(ComponentError::SchemaNotFound)?;
         let schema_variant = self
-            .schema_variant_with_tenancy(ctx)
+            .schema_variant(ctx)
             .await?
             .ok_or(ComponentError::SchemaVariantNotFound)?;
 
@@ -1323,7 +1323,7 @@ impl Component {
             .ok_or(AttributeValueError::Missing)?;
 
         let schema_variant = self
-            .schema_variant_with_tenancy(ctx)
+            .schema_variant(ctx)
             .await?
             .ok_or(ComponentError::SchemaVariantNotFound)?;
         let schema = schema_variant
@@ -1372,7 +1372,7 @@ impl Component {
         json_pointer: &str,
     ) -> ComponentResult<Option<Prop>> {
         let schema_variant = self
-            .schema_variant_with_tenancy(ctx)
+            .schema_variant(ctx)
             .await?
             .ok_or(ComponentError::SchemaVariantNotFound)?;
 

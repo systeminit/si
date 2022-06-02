@@ -204,23 +204,6 @@ macro_rules! standard_model_belongs_to {
             Ok(r)
         }
 
-        paste::paste! {
-            #[telemetry::tracing::instrument(skip(ctx))]
-            pub async fn [<$lookup_fn _with_tenancy>](
-                &self,
-                ctx: &$crate::DalContext<'_, '_>,
-            ) -> $result_type<Option<$belongs_to>> {
-                let r = $crate::standard_model::belongs_to(
-                    ctx,
-                    $table,
-                    $retrieve_table,
-                    &self.id(),
-                )
-                .await?;
-                Ok(r)
-            }
-        }
-
         #[telemetry::tracing::instrument(skip(ctx))]
         pub async fn $set_fn(
             &self,

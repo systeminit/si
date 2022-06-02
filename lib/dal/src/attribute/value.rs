@@ -572,7 +572,7 @@ impl AttributeValue {
             .ok_or_else(|| AttributeValueError::NotFound(attribute_value_id, *ctx.visibility()))?;
 
         let original_attribute_prototype = given_attribute_value
-            .attribute_prototype_with_tenancy(ctx)
+            .attribute_prototype(ctx)
             .await?
             .ok_or_else(|| {
                 AttributeValueError::AttributePrototypeNotFound(

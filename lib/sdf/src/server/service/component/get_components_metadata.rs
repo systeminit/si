@@ -74,7 +74,7 @@ pub async fn get_components_metadata(
         }
 
         let schema = component
-            .schema_with_tenancy(&ctx)
+            .schema(&ctx)
             .await?
             .ok_or(ComponentError::SchemaNotFound)?;
 
