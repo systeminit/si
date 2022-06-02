@@ -7,7 +7,7 @@ use thiserror::Error;
 use crate::func::binding_return_value::FuncBindingReturnValueError;
 use crate::provider::external::ExternalProviderError;
 use crate::provider::internal::InternalProviderError;
-use crate::schema::variant::{SchemaVariantError, SchemaVariantResult};
+use crate::schema::variant::SchemaVariantError;
 use crate::socket::SocketError;
 use crate::WriteTenancy;
 use crate::{
@@ -261,7 +261,7 @@ impl Schema {
         table: "schema_variant_belongs_to_schema",
         model_table: "schema_variants",
         returns: SchemaVariant,
-        result: SchemaVariantResult,
+        result: SchemaResult,
     );
 
     standard_model_many_to_many!(

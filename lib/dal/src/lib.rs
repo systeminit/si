@@ -108,7 +108,7 @@ pub use func::binding::FuncBinding;
 pub use func::binding_return_value::FuncBindingReturnValue;
 pub use func::{
     backend::{FuncBackendError, FuncBackendKind, FuncBackendResponseType},
-    Func, FuncError, FuncResult,
+    Func, FuncError, FuncId, FuncResult,
 };
 pub use group::{Group, GroupError, GroupId, GroupResult};
 pub use history_event::{HistoryActor, HistoryEvent, HistoryEventError};
@@ -127,6 +127,7 @@ pub use organization::{
 pub use prop::{Prop, PropError, PropId, PropKind, PropPk, PropResult};
 pub use provider::external::{ExternalProvider, ExternalProviderId};
 pub use provider::internal::{InternalProvider, InternalProviderId};
+pub use qualification::{QualificationError, QualificationView};
 pub use qualification_check::{
     QualificationCheck, QualificationCheckError, QualificationCheckId, QualificationCheckPk,
 };

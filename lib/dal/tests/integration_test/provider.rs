@@ -320,7 +320,7 @@ async fn intra_component_identity_update(ctx: &DalContext<'_, '_>) {
             ctx,
             serde_json::json![{ "identity": null }],
             *identity_func.id(),
-            FuncBackendKind::Identity,
+            *identity_func.backend_kind(),
         )
         .await
         .expect("could not find or create identity func binding");

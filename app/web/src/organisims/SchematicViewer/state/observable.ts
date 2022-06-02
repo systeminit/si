@@ -51,6 +51,8 @@ export async function findSelectedNodes(
     (s) => s.parentDeploymentNodeId === parentDeploymentNodeId,
   );
   for (const nodeId of selected?.nodeIds ?? []) {
+    if (nodeId === -1) continue;
+
     const node = sceneNodes.find((n) => n.id === nodeId);
 
     if (node) {

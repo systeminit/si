@@ -33,6 +33,14 @@ pub async fn check_qualifications(
     let txns = txns.start().await?;
     let ctx = builder.build(request_ctx.clone().build(request.visibility), &txns);
 
+    let is_component_in_tenancy = Component::is_in_tenancy(&ctx, request.component_id).await?;
+    let is_component_in_visibility = Component::get_by_id(&ctx, &request.component_id)
+        .await?
+        .is_some();
+    if is_component_in_tenancy && !is_component_in_visibility {
+        return Err(ComponentError::InvalidVisibility);
+    }
+
     let component = Component::get_by_id(&ctx, &request.component_id)
         .await?
         .ok_or(ComponentError::ComponentNotFound)?;
@@ -44,7 +52,7 @@ pub async fn check_qualifications(
     let async_tasks = ComponentAsyncTasks::new(component, system_id);
     tokio::task::spawn(async move {
         if let Err(err) = async_tasks
-            .run_qualification_check(request_ctx, request.visibility, &builder)
+            .run(request_ctx, request.visibility, &builder)
             .await
         {
             error!("Component async qualification check failed: {err}");

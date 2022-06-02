@@ -64,9 +64,9 @@ const editMode = refFrom<boolean>(ChangeSetService.currentEditMode());
 
 // This doesn't work on IE, do we care? (is it polyfilled by our build system?)
 const copyCode = () => {
-  if (view.value?.state.doc) {
-    navigator.clipboard.writeText(view.value.state.doc.text.join("\n"));
-  }
+  if (!view.value) return;
+  const code = view.value.state.doc.toString().trim();
+  navigator.clipboard.writeText(code);
 };
 
 onMounted(() => {

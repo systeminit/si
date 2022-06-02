@@ -1,7 +1,7 @@
 <template>
   <div v-if="props.componentId" class="flex flex-col w-full">
     <div
-      class="relative flex flex-row items-center justify-between h-10 pt-2 pb-2 pl-6 pr-6 text-white property-section-bg-color"
+      class="flex justify-between h-10 pt-2 pr-6 pl-6 property-section-bg-color"
     >
       <div class="text-lg">
         Component ID {{ props.componentId }} Qualifications
@@ -13,6 +13,7 @@
         </SiIcon>
         <SiButtonIcon
           v-if="editMode"
+          class="ml-2"
           tooltip-text="Re-run qualifications"
           @click="runQualification"
         >
@@ -21,9 +22,28 @@
       </div>
     </div>
 
+    <div v-if="editingQualificationId" class="flex flex-col w-full mt-2">
+      <QualificationEditor
+        class="h-[18rem]"
+        :prototype-id="editingQualificationId"
+        @close="editingQualificationId = undefined"
+      />
+    </div>
+
     <div class="flex flex-col mx-4 mt-2 border qualification-card">
-      <div class="px-2 py-2 text-xs font-medium align-middle title">
-        Qualification Checks
+      <div class="flex justify-between h-10 pt-2 pr-6 pl-6">
+        <div class="px-2 py-2 text-xs font-medium align-middle title">
+          Qualification Checks
+        </div>
+
+        <SiButtonIcon
+          v-if="editMode"
+          class="mr-2 mt-1"
+          tooltip-text="Create new qualification function"
+          @click="createQualification"
+        >
+          <PlusCircleIcon class="text-green-300" />
+        </SiButtonIcon>
       </div>
 
       <div class="flex w-full h-full pt-2 pb-4 overflow-auto background-color">
@@ -72,28 +92,30 @@
                   <InformationCircleIcon />
                 </SiIcon>
               </SiLink>
-              <!-- NOTE(nick): We only render the button div if a description OR if a result exists
-              in order to avoid user confusion. In essence, we want to ensure that we actually
-              have something to show to the user.
-              -->
-              <div
-                v-if="q.description || q.result"
-                class="flex justify-end flex-grow pr-4"
-              >
-                <button
+
+              <div class="flex justify-end flex-grow pr-4">
+                <SiButtonIcon
+                  v-if="q.prototypeId"
+                  class="focus:outline-none mr-2"
+                  tooltip-text="Edit qualification function"
+                  @click="editingQualificationId = q.prototypeId"
+                >
+                  <PencilAltIcon />
+                </SiButtonIcon>
+
+                <SiButtonIcon
+                  v-if="q.description || q.result"
                   class="focus:outline-none"
+                  :tooltip-text="
+                    showDescriptionMap[q.title]
+                      ? 'Show description'
+                      : 'Hide description'
+                  "
                   @click="toggleShowDescription(q.title)"
                 >
-                  <SiIcon
-                    v-if="showDescriptionMap[q.title] === true"
-                    tooltip-text="Show description"
-                  >
-                    <ChevronDownIcon />
-                  </SiIcon>
-                  <SiIcon v-else tooltip-text="Hide description">
-                    <ChevronUpIcon />
-                  </SiIcon>
-                </button>
+                  <ChevronDownIcon v-if="showDescriptionMap[q.title]" />
+                  <ChevronUpIcon v-else />
+                </SiButtonIcon>
               </div>
             </div>
 
@@ -128,10 +150,12 @@ import {
 import { VueLoading } from "vue-loading-template";
 import { computed, ref, toRefs } from "vue";
 import { ChangeSetService } from "@/service/change_set";
+import { QualificationService } from "@/service/qualification";
 import { eventCheckedQualifications$ } from "@/observable/qualification";
 import { system$ } from "@/observable/system";
 import SiLink from "@/atoms/SiLink.vue";
 import SiButtonIcon from "@/atoms/SiButtonIcon.vue";
+import QualificationEditor from "@/organisims/QualificationEditor.vue";
 import SiIcon from "@/atoms/SiIcon.vue";
 import { RefreshIcon } from "@heroicons/vue/solid";
 import {
@@ -141,11 +165,15 @@ import {
   EmojiSadIcon,
   EmojiHappyIcon,
   ChevronDownIcon,
+  PencilAltIcon,
   ChevronUpIcon,
+  PlusCircleIcon,
 } from "@heroicons/vue/outline";
 //import { ListQualificationsResponse } from "@/service/component/list_qualifications";
 
 const editMode = refFrom<boolean>(ChangeSetService.currentEditMode());
+
+const editingQualificationId = ref<number | undefined>(undefined);
 
 // FIXME(nick): implement active state. Default to not starting for now.
 const qualificationStarting = (_qualification_name: string) => {
@@ -179,13 +207,33 @@ const getQualifiedState = (
   return QualifiedState.Success;
 };
 
+const createQualification = async () => {
+  const system = await Rx.firstValueFrom(system$);
+
+  QualificationService.create({
+    componentId: props.componentId,
+    systemId: system?.id,
+  }).subscribe((reply) => {
+    if (reply.error) {
+      GlobalErrorService.set(reply);
+    } else {
+      editingQualificationId.value = reply.prototypeId;
+    }
+  });
+};
+
 const runQualification = () => {
   currentQualifiedAnimate.value = true;
   ComponentService.checkQualifications({
     componentId: props.componentId,
   }).subscribe((reply) => {
     currentQualifiedAnimate.value = false;
-    if (reply.error) {
+    if (
+      reply.error?.statusCode === 404 &&
+      reply.error?.message === "invalid visibility"
+    ) {
+      return Rx.from([null]);
+    } else if (reply.error) {
       GlobalErrorService.set(reply);
     } else if (!reply.success) {
       GlobalErrorService.set({

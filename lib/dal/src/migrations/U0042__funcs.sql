@@ -144,16 +144,35 @@ DECLARE
     this_visibility_record visibility_record_v1;
     this_change_set_visibility jsonb;
     this_head_visibility jsonb;
+
+    -- Please no hate, this is a hack to be able to SELECT INTO object while sorting by visibility
+    dummy1 bigint;
+    dummy2 bigint;
+    dummy3 bigint;
 BEGIN
     this_tenancy_record := tenancy_json_to_columns_v1(this_tenancy);
     this_visibility_record := visibility_json_to_columns_v1(this_visibility);
     created := false;
 
-    SELECT row_to_json(func_bindings.*)
+    SELECT DISTINCT ON (funcs.id)
+      funcs.visibility_change_set_pk,
+      funcs.visibility_edit_session_pk,
+      funcs.visibility_deleted_at,
+      row_to_json(func_bindings.*)
     FROM func_bindings
     INNER JOIN func_binding_belongs_to_func ON
         func_binding_belongs_to_func.object_id = func_bindings.id
         AND func_binding_belongs_to_func.belongs_to_id = this_func_id
+    INNER JOIN funcs ON funcs.id = this_func_id
+        AND in_tenancy_v1(this_tenancy,
+          funcs.tenancy_universal,
+          funcs.tenancy_billing_account_ids,
+          funcs.tenancy_organization_ids,
+          funcs.tenancy_workspace_ids)
+        AND is_visible_v1(this_visibility,
+          funcs.visibility_change_set_pk,
+          funcs.visibility_edit_session_pk,
+          funcs.visibility_deleted_at)
     WHERE func_bindings.args::jsonb = this_args::jsonb
         AND func_bindings.backend_kind = this_backend_kind
         AND in_tenancy_v1(this_tenancy,
@@ -165,9 +184,12 @@ BEGIN
           func_bindings.visibility_change_set_pk,
           func_bindings.visibility_edit_session_pk,
           func_bindings.visibility_deleted_at)
-    ORDER BY func_bindings.id ASC
+    ORDER BY funcs.id,
+             funcs.visibility_change_set_pk DESC,
+             funcs.visibility_edit_session_pk DESC,
+             funcs.visibility_deleted_at DESC NULLS FIRST
     LIMIT 1
-    INTO object;
+    INTO dummy1, dummy2, dummy3, object;
 
     IF object IS NULL THEN
       this_change_set_visibility := jsonb_build_object(
@@ -178,11 +200,25 @@ BEGIN
         'visibility_deleted_at',
         this_visibility_record.visibility_deleted_at);
 
-      SELECT row_to_json(func_bindings.*)
+      SELECT DISTINCT ON (funcs.id)
+        funcs.visibility_change_set_pk,
+        funcs.visibility_edit_session_pk,
+        funcs.visibility_deleted_at,
+        row_to_json(func_bindings.*)
       FROM func_bindings
       INNER JOIN func_binding_belongs_to_func ON
           func_binding_belongs_to_func.object_id = func_bindings.id
           AND func_binding_belongs_to_func.belongs_to_id = this_func_id
+      INNER JOIN funcs ON funcs.id = this_func_id
+        AND in_tenancy_v1(this_tenancy,
+          funcs.tenancy_universal,
+          funcs.tenancy_billing_account_ids,
+          funcs.tenancy_organization_ids,
+          funcs.tenancy_workspace_ids)
+        AND is_visible_v1(this_change_set_visibility,
+          funcs.visibility_change_set_pk,
+          funcs.visibility_edit_session_pk,
+          funcs.visibility_deleted_at)
       WHERE func_bindings.args::jsonb = this_args::jsonb
           AND func_bindings.backend_kind = this_backend_kind
           AND in_tenancy_v1(this_tenancy,
@@ -194,9 +230,12 @@ BEGIN
             func_bindings.visibility_change_set_pk,
             func_bindings.visibility_edit_session_pk,
             func_bindings.visibility_deleted_at)
-      ORDER BY func_bindings.id ASC
+      ORDER BY funcs.id,
+               funcs.visibility_change_set_pk DESC,
+               funcs.visibility_edit_session_pk DESC,
+               funcs.visibility_deleted_at DESC NULLS FIRST
       LIMIT 1
-      INTO object;
+      INTO dummy1, dummy2, dummy3, object;
     END IF;
 
     IF object IS NULL THEN
@@ -208,11 +247,25 @@ BEGIN
         'visibility_deleted_at',
         this_visibility_record.visibility_deleted_at);
 
-      SELECT row_to_json(func_bindings.*)
+      SELECT DISTINCT ON (funcs.id)
+        funcs.visibility_change_set_pk,
+        funcs.visibility_edit_session_pk,
+        funcs.visibility_deleted_at,
+        row_to_json(func_bindings.*)
       FROM func_bindings
       INNER JOIN func_binding_belongs_to_func ON
           func_binding_belongs_to_func.object_id = func_bindings.id
           AND func_binding_belongs_to_func.belongs_to_id = this_func_id
+      INNER JOIN funcs ON funcs.id = this_func_id
+        AND in_tenancy_v1(this_tenancy,
+          funcs.tenancy_universal,
+          funcs.tenancy_billing_account_ids,
+          funcs.tenancy_organization_ids,
+          funcs.tenancy_workspace_ids)
+        AND is_visible_v1(this_head_visibility,
+          funcs.visibility_change_set_pk,
+          funcs.visibility_edit_session_pk,
+          funcs.visibility_deleted_at)
       WHERE func_bindings.args::jsonb = this_args::jsonb
           AND func_bindings.backend_kind = this_backend_kind
           AND in_tenancy_v1(this_tenancy,
@@ -224,9 +277,12 @@ BEGIN
             func_bindings.visibility_change_set_pk,
             func_bindings.visibility_edit_session_pk,
             func_bindings.visibility_deleted_at)
-      ORDER BY func_bindings.id ASC
+      ORDER BY funcs.id,
+               funcs.visibility_change_set_pk DESC,
+               funcs.visibility_edit_session_pk DESC,
+               funcs.visibility_deleted_at DESC NULLS FIRST
       LIMIT 1
-      INTO object;
+      INTO dummy1, dummy2, dummy3, object;
     END IF;
 
     IF object IS NULL THEN
