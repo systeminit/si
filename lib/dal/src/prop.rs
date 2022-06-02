@@ -34,6 +34,8 @@ pub enum PropError {
     AttributePrototype(String),
     #[error("AttributeValue error: {0}")]
     AttributeValue(String),
+    #[error("expected child prop not found with name {0}")]
+    ExpectedChildNotFound(String),
     #[error("FuncBinding error: {0}")]
     FuncBinding(#[from] FuncBindingError),
     #[error("FuncBindingReturnValue error: {0}")]

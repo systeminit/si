@@ -7,7 +7,7 @@ use crate::{
     func::binding::FuncBinding,
     schema::variant::{SchemaVariantError, SchemaVariantResult},
     AttributeContext, AttributeValue, AttributeValueError, DalContext, Func, Prop, PropId,
-    PropKind, SchemaId, SchemaVariantId, StandardModel,
+    PropKind, SchemaVariantId, StandardModel,
 };
 
 /// Contains the si-specific [`PropId`](crate::Prop), the domain-specific [`PropId`](crate::Prop),
@@ -25,7 +25,6 @@ impl RootProp {
     #[instrument(skip_all)]
     pub async fn new(
         ctx: &DalContext<'_, '_>,
-        _schema_id: SchemaId,
         schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<Self> {
         let func_name = "si:setPropObject".to_string();

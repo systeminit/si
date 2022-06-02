@@ -1,3 +1,4 @@
+use dal::attribute::context::AttributeContextBuilder;
 use dal::{
     component::view::ComponentView,
     test_harness::{create_prop_of_kind_with_name, create_schema, create_schema_variant_with_root},
@@ -29,16 +30,13 @@ async fn update_for_context_simple(ctx: &DalContext<'_, '_>) {
             .await
             .expect("Unable to create component");
 
-    let read_context = AttributeReadContext {
+    let base_attribute_read_context = AttributeReadContext {
         prop_id: None,
         schema_id: Some(*schema.id()),
         schema_variant_id: Some(*schema_variant.id()),
         component_id: Some(*component.id()),
         ..AttributeReadContext::default()
     };
-    let component_view = ComponentView::for_context(ctx, read_context)
-        .await
-        .expect("cannot get component view");
 
     assert_eq_sorted!(
         serde_json::json![
@@ -49,42 +47,39 @@ async fn update_for_context_simple(ctx: &DalContext<'_, '_>) {
                 "domain": {},
             }
         ],
-        component_view.properties,
+        ComponentView::for_context(ctx, base_attribute_read_context)
+            .await
+            .expect("cannot get component view")
+            .properties,
     );
 
-    let domain_value_id = *AttributeValue::list_for_context(
+    let domain_value_id = *AttributeValue::find_for_context(
         ctx,
         AttributeReadContext {
             prop_id: Some(root.domain_prop_id),
-            component_id: Some(*component.id()),
-            ..AttributeReadContext::any()
+            ..base_attribute_read_context
         },
     )
     .await
     .expect("cannot get domain AttributeValue")
-    .pop()
     .expect("domain AttributeValue not found")
     .id();
-    let base_name_value = AttributeValue::list_for_context(
+    let base_name_value = AttributeValue::find_for_context(
         ctx,
         AttributeReadContext {
             prop_id: Some(*name_prop.id()),
-            component_id: Some(*component.id()),
-            ..AttributeReadContext::any()
+            ..base_attribute_read_context
         },
     )
     .await
     .expect("cannot get name AttributeValue")
-    .pop()
     .expect("name AttributeValue not found");
 
-    let update_context = AttributeContext::builder()
-        .set_prop_id(*name_prop.id())
-        .set_schema_id(*schema.id())
-        .set_schema_variant_id(*schema_variant.id())
-        .set_component_id(*component.id())
-        .to_context()
-        .expect("cannot build write AttributeContext");
+    let update_context: AttributeContext =
+        AttributeContextBuilder::from(base_attribute_read_context)
+            .set_prop_id(*name_prop.id())
+            .to_context()
+            .expect("cannot build write AttributeContext");
 
     let (_, name_value_id, _) = AttributeValue::update_for_context(
         ctx,
@@ -97,10 +92,6 @@ async fn update_for_context_simple(ctx: &DalContext<'_, '_>) {
     .await
     .expect("cannot set value for context");
 
-    let component_view = ComponentView::for_context(ctx, read_context)
-        .await
-        .expect("cannot get component view");
-
     assert_eq_sorted!(
         serde_json::json![
             {
@@ -112,7 +103,10 @@ async fn update_for_context_simple(ctx: &DalContext<'_, '_>) {
                 },
             }
         ],
-        component_view.properties,
+        ComponentView::for_context(ctx, base_attribute_read_context)
+            .await
+            .expect("cannot get component view")
+            .properties,
     );
 
     AttributeValue::update_for_context(
@@ -126,10 +120,6 @@ async fn update_for_context_simple(ctx: &DalContext<'_, '_>) {
     .await
     .expect("cannot update value for context");
 
-    let component_view = ComponentView::for_context(ctx, read_context)
-        .await
-        .expect("cannot get component view");
-
     assert_eq_sorted!(
         serde_json::json![
             {
@@ -141,7 +131,10 @@ async fn update_for_context_simple(ctx: &DalContext<'_, '_>) {
                 },
             }
         ],
-        component_view.properties,
+        ComponentView::for_context(ctx, base_attribute_read_context)
+            .await
+            .expect("cannot get component view")
+            .properties,
     );
 }
 
@@ -153,12 +146,6 @@ async fn insert_for_context_simple(ctx: &DalContext<'_, '_>) {
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
         .expect("cannot set default schema variant");
-
-    let base_attribute_read_context = AttributeReadContext {
-        schema_id: Some(*schema.id()),
-        schema_variant_id: Some(*schema_variant.id()),
-        ..AttributeReadContext::default()
-    };
 
     let array_prop = create_prop_of_kind_with_name(ctx, PropKind::Array, "array_prop").await;
     array_prop
@@ -177,15 +164,14 @@ async fn insert_for_context_simple(ctx: &DalContext<'_, '_>) {
             .await
             .expect("Unable to create component");
 
-    let read_context = AttributeReadContext {
+    let base_attribute_read_context = AttributeReadContext {
         prop_id: None,
+        schema_id: Some(*schema.id()),
+        schema_variant_id: Some(*schema_variant.id()),
         component_id: Some(*component.id()),
-        ..base_attribute_read_context
+        ..AttributeReadContext::default()
     };
 
-    let component_view = ComponentView::for_context(ctx, read_context)
-        .await
-        .expect("cannot get component view");
     assert_eq_sorted!(
         serde_json::json![{
             "si": {
@@ -193,26 +179,24 @@ async fn insert_for_context_simple(ctx: &DalContext<'_, '_>) {
             },
             "domain": {},
         }],
-        component_view.properties,
+        ComponentView::for_context(ctx, base_attribute_read_context)
+            .await
+            .expect("cannot get component view")
+            .properties,
     );
 
-    let array_value = AttributeValue::list_for_context(
+    let array_value = AttributeValue::find_for_context(
         ctx,
         AttributeReadContext {
             prop_id: Some(*array_prop.id()),
-            component_id: Some(*component.id()),
             ..base_attribute_read_context
         },
     )
     .await
     .expect("cannot get array AttributeValue")
-    .pop()
     .expect("array AttributeValue not found");
-    let update_context = AttributeContext::builder()
+    let update_context = AttributeContextBuilder::from(base_attribute_read_context)
         .set_prop_id(*array_element.id())
-        .set_schema_id(*schema.id())
-        .set_schema_variant_id(*schema_variant.id())
-        .set_component_id(*component.id())
         .to_context()
         .expect("cannot build write AttributeContext");
 
@@ -221,9 +205,6 @@ async fn insert_for_context_simple(ctx: &DalContext<'_, '_>) {
             .await
             .expect("cannot insert new array element");
 
-    let component_view = ComponentView::for_context(ctx, read_context)
-        .await
-        .expect("cannot get component view");
     assert_eq_sorted!(
         serde_json::json![{
             "si": {
@@ -233,6 +214,9 @@ async fn insert_for_context_simple(ctx: &DalContext<'_, '_>) {
                 "array_prop": [],
             },
         }],
-        component_view.properties,
+        ComponentView::for_context(ctx, base_attribute_read_context)
+            .await
+            .expect("cannot get component view")
+            .properties,
     );
 }

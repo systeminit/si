@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use crate::attribute::context::AttributeContextBuilder;
+use crate::provider::internal::InternalProviderError;
 use crate::{
     component::ComponentKind,
     edit_field::widget::*,
@@ -18,9 +20,10 @@ use crate::{
     schema::{SchemaVariant, UiMenu},
     socket::{Socket, SocketArity, SocketEdgeKind},
     validation_prototype::ValidationPrototypeContext,
-    AttributeContext, AttributeReadContext, AttributeValue, AttributeValueError, BuiltinsResult,
-    DalContext, Func, FuncBackendKind, FuncBackendResponseType, FuncBindingReturnValue, Prop,
-    PropId, PropKind, QualificationPrototype, ResourcePrototype, Schema, SchemaError, SchemaKind,
+    AttributeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue,
+    AttributeValueError, BuiltinsResult, DalContext, Func, FuncBackendKind,
+    FuncBackendResponseType, FuncBindingReturnValue, InternalProvider, Prop, PropError, PropId,
+    PropKind, QualificationPrototype, ResourcePrototype, Schema, SchemaError, SchemaKind,
     SchematicKind, StandardModel, ValidationPrototype,
 };
 
@@ -518,6 +521,93 @@ async fn docker_image(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
         *resource_sync_func.id(),
         resource_sync_args_json,
         resource_sync_prototype_context,
+    )
+    .await?;
+
+    SchemaVariant::create_implicit_internal_providers(ctx, *schema.id(), *variant.id()).await?;
+
+    // Automatically derive the image name from the component's name. First, let's initialize the
+    // field with an empty string.
+    let base_attribute_read_context = AttributeReadContext {
+        schema_id: Some(*schema.id()),
+        schema_variant_id: Some(*variant.id()),
+        ..AttributeReadContext::default()
+    };
+    let image_context = AttributeReadContext {
+        prop_id: Some(*image_prop.id()),
+        ..base_attribute_read_context
+    };
+    let image_attribute_value = AttributeValue::find_for_context(ctx, image_context)
+        .await?
+        .ok_or(AttributeValueError::Missing)?;
+    let domain_context = AttributeReadContext {
+        prop_id: Some(root_prop.domain_prop_id),
+        ..base_attribute_read_context
+    };
+    let domain_attribute_value = AttributeValue::find_for_context(ctx, domain_context)
+        .await?
+        .ok_or(AttributeValueError::Missing)?;
+    let image_write_context = AttributeContextBuilder::from(image_context).to_context()?;
+    let (_, updated_image_attribute_value_id, _) = AttributeValue::update_for_context(
+        ctx,
+        *image_attribute_value.id(),
+        Some(*domain_attribute_value.id()),
+        image_write_context,
+        Some(serde_json::to_value("")?),
+        None,
+    )
+    .await?;
+
+    // Now, let's setup the connection with the initialized value.
+    let updated_image_attribute_value =
+        AttributeValue::get_by_id(ctx, &updated_image_attribute_value_id)
+            .await?
+            .ok_or(AttributeValueError::MissingForId(
+                updated_image_attribute_value_id,
+            ))?;
+    let mut image_attribute_prototype = updated_image_attribute_value
+        .attribute_prototype(ctx)
+        .await?
+        .ok_or(AttributeValueError::MissingAttributePrototype)?;
+    let identity_func_name = "si:identity".to_string();
+    let identity_func: Func = Func::find_by_attr(ctx, "name", &identity_func_name)
+        .await?
+        .pop()
+        .ok_or(SchemaError::FuncNotFound(identity_func_name))?;
+    image_attribute_prototype
+        .set_func_id(ctx, *identity_func.id())
+        .await?;
+    let (_identity_func_binding, _identity_func_binding_return_value) =
+        FuncBinding::find_or_create_and_execute(
+            ctx,
+            serde_json::json![{ "identity": null }],
+            *identity_func.id(),
+            FuncBackendKind::Identity,
+        )
+        .await?;
+
+    // Finally, find the implicit internal provider for the component's name and create the
+    // attribute argument prototype.
+    let si_prop = Prop::get_by_id(ctx, &root_prop.si_prop_id)
+        .await?
+        .ok_or_else(|| PropError::NotFound(root_prop.si_prop_id, *ctx.visibility()))?;
+    let mut si_name_prop = None;
+    for prop in si_prop.child_props(ctx).await? {
+        if prop.name() == "name" {
+            si_name_prop = Some(prop);
+            break;
+        }
+    }
+    let si_name_prop =
+        si_name_prop.ok_or_else(|| PropError::ExpectedChildNotFound("name".to_string()))?;
+    let si_name_internal_provider = InternalProvider::get_for_prop(ctx, *si_name_prop.id())
+        .await?
+        .ok_or_else(|| InternalProviderError::NotFoundForProp(*si_name_prop.id()))?;
+    let _argument = AttributePrototypeArgument::new(
+        ctx,
+        "identity".to_string(),
+        *si_name_internal_provider.id(),
+        *image_attribute_prototype.id(),
     )
     .await?;
 
