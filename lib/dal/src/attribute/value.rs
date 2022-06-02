@@ -356,9 +356,17 @@ impl AttributeValue {
         Ok(standard_model::option_object_from_row(row)?)
     }
 
-    /// List [`AttributeValues`](crate::AttributeValue) for a given
-    /// [`AttributeReadContext`](crate::AttributeReadContext). This does _not_ work for maps and
-    /// arrays! For those objects, please use [`Self::find_with_parent_and_key_for_context()`].
+    /// List [`AttributeValues`](crate::AttributeValue) for a provided
+    /// [`AttributeReadContext`](crate::AttributeReadContext).
+    ///
+    /// If you only anticipate one result to be returned and have an
+    /// [`AttributeReadContext`](crate::AttributeReadContext)
+    /// that is also a valid [`AttributeContext`](crate::AttributeContext), then you should use
+    /// [`Self::find_for_context()`] instead of this method.
+    ///
+    /// This does _not_ work for maps and arrays, barring the _first_ instance of the array or map
+    /// object themselves! For those objects, please use
+    /// [`Self::find_with_parent_and_key_for_context()`].
     pub async fn list_for_context(
         ctx: &DalContext<'_, '_>,
         context: AttributeReadContext,
@@ -374,14 +382,18 @@ impl AttributeValue {
         Ok(standard_model::objects_from_rows(rows)?)
     }
 
-    /// Find one [`AttributeValue`](crate::AttributeValue) for a given
-    /// [`AttributeReadContext`](crate::AttributeReadContext). This does _not_ work for maps and arrays!
-    /// For those objects, please use [`Self::find_with_parent_and_key_for_context()`].
+    /// Find one [`AttributeValue`](crate::AttributeValue) for a provided
+    /// [`AttributeReadContext`](crate::AttributeReadContext).
     ///
-    /// This is a modified version of [`Self::list_for_context()`] that requires an [`AttributeReadContext`](crate::AttributeReadContext)
+    /// This is a modified version of [`Self::list_for_context()`] that requires an
+    /// [`AttributeReadContext`](crate::AttributeReadContext)
     /// that is also a valid [`AttributeContext`](crate::AttributeContext) _and_ "pops" the first
     /// row off the rows found (which are sorted from most to least specific). Thus, the "popped"
     /// row will corresponding to the most specific [`AttributeValue`] found.
+    ///
+    /// This does _not_ work for maps and arrays, barring the _first_ instance of the array or map
+    /// object themselves! For those objects, please use
+    /// [`Self::find_with_parent_and_key_for_context()`].
     pub async fn find_for_context(
         ctx: &DalContext<'_, '_>,
         context: AttributeReadContext,

@@ -401,10 +401,9 @@ async fn only_string_props(ctx: &DalContext<'_, '_>) {
         .set_prop_id(root_prop.domain_prop_id)
         .to_context()
         .expect("cannot create domain AttributeContext");
-    let domain_value = AttributeValue::list_for_context(ctx, domain_context.into())
+    let domain_value = AttributeValue::find_for_context(ctx, domain_context.into())
         .await
         .expect("could not fetch domain AttributeValue")
-        .pop()
         .expect("could not find domain AttributeValue");
 
     let bohemian_context = base_attribute_context
@@ -412,10 +411,9 @@ async fn only_string_props(ctx: &DalContext<'_, '_>) {
         .set_prop_id(*bohemian_prop.id())
         .to_context()
         .expect("cannot create bohemian AttributeContext");
-    let bohemian_value = AttributeValue::list_for_context(ctx, bohemian_context.into())
+    let bohemian_value = AttributeValue::find_for_context(ctx, bohemian_context.into())
         .await
         .expect("could not retrieve bohemian AttributeValue")
-        .pop()
         .expect("could not find bohemian AttributeValue");
     AttributeValue::update_for_context(
         ctx,
@@ -433,10 +431,9 @@ async fn only_string_props(ctx: &DalContext<'_, '_>) {
         .set_prop_id(*killer_prop.id())
         .to_context()
         .expect("cannot create killer AttributeContext");
-    let killer_value = AttributeValue::list_for_context(ctx, killer_context.into())
+    let killer_value = AttributeValue::find_for_context(ctx, killer_context.into())
         .await
         .expect("could not retrieve killer AttributeValue")
-        .pop()
         .expect("could not find killer AttributeValue");
     AttributeValue::update_for_context(
         ctx,
@@ -496,10 +493,9 @@ async fn one_object_prop(ctx: &DalContext<'_, '_>) {
         .set_prop_id(root_prop.domain_prop_id)
         .to_context()
         .expect("cannot create domain AttributeContext");
-    let domain_value = AttributeValue::list_for_context(ctx, domain_context.into())
+    let domain_value = AttributeValue::find_for_context(ctx, domain_context.into())
         .await
         .expect("could not fetch domain AttributeValue")
-        .pop()
         .expect("could not find domain AttributeValue");
 
     let queen_context = base_attribute_context
@@ -507,10 +503,9 @@ async fn one_object_prop(ctx: &DalContext<'_, '_>) {
         .set_prop_id(*queen_prop.id())
         .to_context()
         .expect("cannot create queen AttributeContext");
-    let unset_queen_value = AttributeValue::list_for_context(ctx, queen_context.into())
+    let unset_queen_value = AttributeValue::find_for_context(ctx, queen_context.into())
         .await
         .expect("could not retrieve queen AttributeValue")
-        .pop()
         .expect("could not find queen AttributeValue");
     let (_, queen_value_id, _) = AttributeValue::update_for_context(
         ctx,
@@ -528,10 +523,9 @@ async fn one_object_prop(ctx: &DalContext<'_, '_>) {
         .set_prop_id(*bohemian_prop.id())
         .to_context()
         .expect("cannot create bohemian AttributeContext");
-    let unset_bohemian_value = AttributeValue::list_for_context(ctx, bohemian_context.into())
+    let unset_bohemian_value = AttributeValue::find_for_context(ctx, bohemian_context.into())
         .await
         .expect("could not retrieve bohemian AttributeValue")
-        .pop()
         .expect("could not find bohemian AttributeValue");
     AttributeValue::update_for_context(
         ctx,
@@ -549,10 +543,9 @@ async fn one_object_prop(ctx: &DalContext<'_, '_>) {
         .set_prop_id(*killer_prop.id())
         .to_context()
         .expect("cannot create killer AttributeContext");
-    let unset_killer_value = AttributeValue::list_for_context(ctx, killer_context.into())
+    let unset_killer_value = AttributeValue::find_for_context(ctx, killer_context.into())
         .await
         .expect("could not retrieve killer AttributeValue")
-        .pop()
         .expect("could not find killer AttributeValue");
     AttributeValue::update_for_context(
         ctx,
@@ -619,10 +612,9 @@ async fn nested_object_prop(ctx: &DalContext<'_, '_>) {
         .set_prop_id(root_prop.domain_prop_id)
         .to_context()
         .expect("cannot create domain AttributeContext");
-    let domain_value = AttributeValue::list_for_context(ctx, domain_context.into())
+    let domain_value = AttributeValue::find_for_context(ctx, domain_context.into())
         .await
         .expect("could not fetch domain AttributeValue")
-        .pop()
         .expect("could not find domain AttributeContext");
 
     let queen_context = base_attribute_context
@@ -630,10 +622,9 @@ async fn nested_object_prop(ctx: &DalContext<'_, '_>) {
         .set_prop_id(*queen_prop.id())
         .to_context()
         .expect("cannot create queen AttributeContext");
-    let unset_queen_value = AttributeValue::list_for_context(ctx, queen_context.into())
+    let unset_queen_value = AttributeValue::find_for_context(ctx, queen_context.into())
         .await
         .expect("could not fetch queen AttributeValue")
-        .pop()
         .expect("could not find queen AttributeValue");
     let (_, queen_value_id, _) = AttributeValue::update_for_context(
         ctx,
@@ -651,10 +642,9 @@ async fn nested_object_prop(ctx: &DalContext<'_, '_>) {
         .set_prop_id(*bohemian_prop.id())
         .to_context()
         .expect("cannot create bohemian AttributeContext");
-    let unset_bohemian_value = AttributeValue::list_for_context(ctx, bohemian_context.into())
+    let unset_bohemian_value = AttributeValue::find_for_context(ctx, bohemian_context.into())
         .await
         .expect("could not fetch bohemian AttributeValue")
-        .pop()
         .expect("could not find bohemian AttributeValue");
     AttributeValue::update_for_context(
         ctx,
@@ -672,10 +662,9 @@ async fn nested_object_prop(ctx: &DalContext<'_, '_>) {
         .set_prop_id(*killer_prop.id())
         .to_context()
         .expect("cannot create killer AttributeContext");
-    let unset_killer_value = AttributeValue::list_for_context(ctx, killer_context.into())
+    let unset_killer_value = AttributeValue::find_for_context(ctx, killer_context.into())
         .await
         .expect("could not fetch killer AttributeValue")
-        .pop()
         .expect("could not find killer AttributeValue");
     AttributeValue::update_for_context(
         ctx,
@@ -693,10 +682,9 @@ async fn nested_object_prop(ctx: &DalContext<'_, '_>) {
         .set_prop_id(*pressure_prop.id())
         .to_context()
         .expect("cannot create pressure AttributeContext");
-    let unset_pressure_value = AttributeValue::list_for_context(ctx, pressure_context.into())
+    let unset_pressure_value = AttributeValue::find_for_context(ctx, pressure_context.into())
         .await
         .expect("could not fetch pressure AttributeValue")
-        .pop()
         .expect("could not find pressure AttributeValue");
     let (_, pressure_value_id, _) = AttributeValue::update_for_context(
         ctx,
@@ -714,10 +702,9 @@ async fn nested_object_prop(ctx: &DalContext<'_, '_>) {
         .set_prop_id(*dust_prop.id())
         .to_context()
         .expect("cannot create dust AttributeContext");
-    let unset_dust_value = AttributeValue::list_for_context(ctx, dust_context.into())
+    let unset_dust_value = AttributeValue::find_for_context(ctx, dust_context.into())
         .await
         .expect("could not fetch dust AttributeValue")
-        .pop()
         .expect("could not find dust AttributeValue");
     AttributeValue::update_for_context(
         ctx,
@@ -784,10 +771,9 @@ async fn simple_array_of_strings(ctx: &DalContext<'_, '_>) {
         .set_prop_id(root_prop.domain_prop_id)
         .to_context()
         .expect("could not create domain AttributeContext");
-    let domain_value = AttributeValue::list_for_context(ctx, domain_context.into())
+    let domain_value = AttributeValue::find_for_context(ctx, domain_context.into())
         .await
         .expect("could not retrieve domain AttributeValue")
-        .pop()
         .expect("could not find domain AttributeValue");
 
     let sammy_context = base_attribute_context
@@ -795,10 +781,9 @@ async fn simple_array_of_strings(ctx: &DalContext<'_, '_>) {
         .set_prop_id(*sammy_prop.id())
         .to_context()
         .expect("could not create sammy AttributeContext");
-    let unset_sammy_value = AttributeValue::list_for_context(ctx, sammy_context.into())
+    let unset_sammy_value = AttributeValue::find_for_context(ctx, sammy_context.into())
         .await
         .expect("could not retrieve sammy AttributeValue")
-        .pop()
         .expect("could not find sammy AttributeValue");
     let (_, sammy_value_id, _) = AttributeValue::update_for_context(
         ctx,
@@ -894,10 +879,9 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext<'_, '_>) {
         .set_prop_id(root_prop.domain_prop_id)
         .to_context()
         .expect("could not create domain AttributeContext");
-    let domain_value = AttributeValue::list_for_context(ctx, domain_context.into())
+    let domain_value = AttributeValue::find_for_context(ctx, domain_context.into())
         .await
         .expect("could not fetch domain AttributeValue")
-        .pop()
         .expect("could not find domain AttributeValue");
 
     let unset_sammy_context = unset_attribute_context
@@ -905,10 +889,9 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext<'_, '_>) {
         .set_prop_id(*sammy_prop.id())
         .to_context()
         .expect("could not create sammy AttributeContext");
-    let unset_sammy_value = AttributeValue::list_for_context(ctx, unset_sammy_context.into())
+    let unset_sammy_value = AttributeValue::find_for_context(ctx, unset_sammy_context.into())
         .await
         .expect("could not fetch sammy AttributeValue")
-        .pop()
         .expect("could not find sammy AttributeValue");
     let sammy_context = base_attribute_context
         .clone()
@@ -952,10 +935,9 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext<'_, '_>) {
         .to_context()
         .expect("could not create album string AttributeContext");
     let unset_album_string_value =
-        AttributeValue::list_for_context(ctx, unset_album_string_context.into())
+        AttributeValue::find_for_context(ctx, unset_album_string_context.into())
             .await
             .expect("could not retrieve album string AttributeValue")
-            .pop()
             .expect("could not find album string AttributeValue");
     AttributeValue::update_for_context(
         ctx,
@@ -974,10 +956,9 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext<'_, '_>) {
         .to_context()
         .expect("could not create songs array AttributeContext");
     let unset_songs_array_value =
-        AttributeValue::list_for_context(ctx, unset_songs_array_context.into())
+        AttributeValue::find_for_context(ctx, unset_songs_array_context.into())
             .await
             .expect("could not fetch songs array AttributeValue")
-            .pop()
             .expect("could not find songs array AttributeValue");
     let songs_array_context = base_attribute_context
         .clone()
@@ -1132,10 +1113,9 @@ async fn simple_map(ctx: &DalContext<'_, '_>) {
         .set_prop_id(root_prop.domain_prop_id)
         .to_context()
         .expect("could not create domain AttributeContext");
-    let domain_value = AttributeValue::list_for_context(ctx, domain_context.into())
+    let domain_value = AttributeValue::find_for_context(ctx, domain_context.into())
         .await
         .expect("could not retrieve domain AttributeValue")
-        .pop()
         .expect("could not find domain AttributeValue");
 
     let album_context = base_attribute_context
@@ -1143,10 +1123,9 @@ async fn simple_map(ctx: &DalContext<'_, '_>) {
         .set_prop_id(*album_prop.id())
         .to_context()
         .expect("could not create album AttributeContext");
-    let unset_album_value = AttributeValue::list_for_context(ctx, album_context.into())
+    let unset_album_value = AttributeValue::find_for_context(ctx, album_context.into())
         .await
         .expect("could not retrieve album AttributeValue")
-        .pop()
         .expect("could not find album AttributeValue");
     let (_, album_value_id, _) = AttributeValue::update_for_context(
         ctx,
@@ -1241,10 +1220,9 @@ async fn complex_nested_array_of_objects_with_a_map(ctx: &DalContext<'_, '_>) {
         .set_prop_id(root_prop.domain_prop_id)
         .to_context()
         .expect("could not create domain AttributeContext");
-    let domain_value = AttributeValue::list_for_context(ctx, domain_context.into())
+    let domain_value = AttributeValue::find_for_context(ctx, domain_context.into())
         .await
         .expect("could not fetch domain AttributeValue")
-        .pop()
         .expect("could not find domain AttributeValue");
 
     let sammy_context = base_attribute_context
@@ -1252,10 +1230,9 @@ async fn complex_nested_array_of_objects_with_a_map(ctx: &DalContext<'_, '_>) {
         .set_prop_id(*sammy_prop.id())
         .to_context()
         .expect("could not create sammy AttributeContext");
-    let unset_sammy_value = AttributeValue::list_for_context(ctx, sammy_context.into())
+    let unset_sammy_value = AttributeValue::find_for_context(ctx, sammy_context.into())
         .await
         .expect("could not fetch sammy AttributeValue")
-        .pop()
         .expect("could not find sammy AttributeValue");
     let (_, sammy_value_id, _) = AttributeValue::update_for_context(
         ctx,
@@ -1289,10 +1266,9 @@ async fn complex_nested_array_of_objects_with_a_map(ctx: &DalContext<'_, '_>) {
         .to_context()
         .expect("could not create album string AttributeContext");
     let unset_album_string_value =
-        AttributeValue::list_for_context(ctx, album_string_context.into())
+        AttributeValue::find_for_context(ctx, album_string_context.into())
             .await
             .expect("could not fetch album string AttributeValue")
-            .pop()
             .expect("could not find album string AttributeValue");
     AttributeValue::update_for_context(
         ctx,
@@ -1310,10 +1286,9 @@ async fn complex_nested_array_of_objects_with_a_map(ctx: &DalContext<'_, '_>) {
         .set_prop_id(*songs_array_prop.id())
         .to_context()
         .expect("could not create songs array AttributeContext");
-    let unset_songs_array_value = AttributeValue::list_for_context(ctx, songs_array_context.into())
+    let unset_songs_array_value = AttributeValue::find_for_context(ctx, songs_array_context.into())
         .await
         .expect("could not fetch songs array AttributeValue")
-        .pop()
         .expect("could not find songs array AttributeValue");
     let (_, songs_array_value_id, _) = AttributeValue::update_for_context(
         ctx,

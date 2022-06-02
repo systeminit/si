@@ -1425,9 +1425,8 @@ impl Component {
             };
 
             return Ok(Some(
-                AttributeValue::list_for_context(ctx, read_context)
+                AttributeValue::find_for_context(ctx, read_context)
                     .await?
-                    .pop()
                     .ok_or(AttributeValueError::Missing)?,
             ));
         };
