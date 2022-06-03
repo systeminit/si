@@ -83,7 +83,7 @@
 
               <div
                 v-if="q.title"
-                class="flex ml-2 text-xs qualification-check-title"
+                class="flex ml-2 mr-2 text-xs qualification-check-title"
               >
                 {{ q.title }}
               </div>
@@ -157,9 +157,8 @@ import SiLink from "@/atoms/SiLink.vue";
 import SiButtonIcon from "@/atoms/SiButtonIcon.vue";
 import QualificationEditor from "@/organisims/QualificationEditor.vue";
 import SiIcon from "@/atoms/SiIcon.vue";
-import { RefreshIcon } from "@heroicons/vue/solid";
+import { RefreshIcon, CheckCircleIcon } from "@heroicons/vue/solid";
 import {
-  CheckCircleIcon,
   InformationCircleIcon,
   RefreshIcon as RefreshIconOutline,
   EmojiSadIcon,

@@ -7,15 +7,14 @@ import { Visibility } from "@/api/sdf/dal/visibility";
 import _ from "lodash";
 
 export interface CreateArgs {
-  prototypeId: number;
-  code: string;
+  componentId: number;
   systemId?: number;
 }
 
 export interface CreateRequest extends CreateArgs, Visibility {}
 
 export interface CreateResponse {
-  success: boolean;
+  prototypeId: number;
 }
 
 export function create(

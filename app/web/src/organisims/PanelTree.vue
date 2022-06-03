@@ -114,6 +114,7 @@ const schemaVariants = ref<SchematicSchemaVariants>([
     id: -1,
     name: "v0",
     schemaName: "kubernetes_deployment",
+    color: 0x921ed6,
     inputSockets: [
       {
         id: -1,
@@ -121,6 +122,7 @@ const schemaVariants = ref<SchematicSchemaVariants>([
         schematicKind: SchematicKind.Component,
         provider: {
           ty: "docker_image",
+          color: 0xd61e8c,
         },
       },
     ],
@@ -130,6 +132,7 @@ const schemaVariants = ref<SchematicSchemaVariants>([
     id: -2,
     name: "v0",
     schemaName: "docker_image",
+    color: 0xd61e8c,
     inputSockets: [
       {
         id: -2,
@@ -137,6 +140,7 @@ const schemaVariants = ref<SchematicSchemaVariants>([
         schematicKind: SchematicKind.Component,
         provider: {
           ty: "docker_hub_credential",
+          color: 0x1e88d6,
         },
       },
     ],
@@ -147,6 +151,7 @@ const schemaVariants = ref<SchematicSchemaVariants>([
         schematicKind: SchematicKind.Component,
         provider: {
           ty: "docker_image",
+          color: 0xd61e8c,
         },
       },
     ],
@@ -155,12 +160,14 @@ const schemaVariants = ref<SchematicSchemaVariants>([
     id: -3,
     name: "v0",
     schemaName: "service",
+    color: 0x00b0bc,
     inputSockets: [],
     outputSockets: [],
   },
   {
     id: -4,
     name: "v0",
+    color: 0x00b0bc,
     schemaName: "application",
     inputSockets: [],
     outputSockets: [],
@@ -169,6 +176,7 @@ const schemaVariants = ref<SchematicSchemaVariants>([
     id: -5,
     name: "v0",
     schemaName: "docker_hub_credential",
+    color: 0x1e88d6,
     inputSockets: [],
     outputSockets: [
       {
@@ -177,6 +185,7 @@ const schemaVariants = ref<SchematicSchemaVariants>([
         schematicKind: SchematicKind.Component,
         provider: {
           ty: "docker_hub_credential",
+          color: 0x1e88d6,
         },
       },
     ],
@@ -185,6 +194,7 @@ const schemaVariants = ref<SchematicSchemaVariants>([
     id: -6,
     name: "v0",
     schemaName: "bobão",
+    color: 0x1e88d6,
     inputSockets: [],
     outputSockets: [],
   },

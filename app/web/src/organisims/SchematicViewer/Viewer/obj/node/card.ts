@@ -10,6 +10,7 @@ export class Card extends PIXI.Container {
     radius: number,
     title: string,
     name: string,
+    headerColor: number,
   ) {
     super();
 
@@ -21,7 +22,7 @@ export class Card extends PIXI.Container {
     this.addChild(background);
 
     const headerHeight = 22;
-    const header = new Header(title, width, headerHeight);
+    const header = new Header(title, width, headerHeight, headerColor);
 
     header.mask = background;
     header.zIndex = 1;

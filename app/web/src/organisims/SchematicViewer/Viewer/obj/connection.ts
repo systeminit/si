@@ -19,17 +19,20 @@ export class Connection extends PIXI.Graphics {
   type: ConnectionType;
   sourceSocketId: string;
   destinationSocketId: string;
+  color: number;
 
   constructor(
     source: Point2D,
     destination: Point2D,
     sourceSocketId: string,
     destinationSocketId: string,
+    color: number,
     _interactive?: boolean,
   ) {
     super();
     this.id = _.uniqueId();
     this.kind = "connection";
+    this.color = color;
 
     if (_interactive) {
       this.type = ConnectionType.interactive;
@@ -45,8 +48,7 @@ export class Connection extends PIXI.Graphics {
   }
 
   private initiailize(p1: Point2D, p2: Point2D) {
-    this.lineStyle(1.25, 0xb0b0b0);
-    this.moveTo(0, 0);
+    this.lineStyle(1.25, this.color), this.moveTo(0, 0);
     this.lineTo(p2.x - p1.x, p2.y - p1.y);
     this.position.x = p1.x;
     this.position.y = p1.y;
@@ -54,7 +56,7 @@ export class Connection extends PIXI.Graphics {
 
   update(p1: Point2D, p2: Point2D) {
     this.clear();
-    this.lineStyle(1.25, 0xb0b0b0);
+    this.lineStyle(1.25, this.color);
 
     this.moveTo(0, 0);
     this.lineTo(p2.x - p1.x, p2.y - p1.y);

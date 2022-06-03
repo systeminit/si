@@ -82,6 +82,7 @@ export class ConnectingManager {
       },
       "none",
       "none",
+      sourceSocket.provider.color,
       true,
     );
   }
@@ -144,6 +145,7 @@ export class ConnectingManager {
           },
           source.name,
           destination.name,
+          sourceSocket.provider.color,
         );
         this.clearInteractiveConnection(sceneManager);
         sceneManager.refreshConnections();
