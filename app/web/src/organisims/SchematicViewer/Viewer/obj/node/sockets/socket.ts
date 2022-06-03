@@ -18,6 +18,7 @@ export class Socket extends PIXI.Container {
   kind: string;
   type: SocketType;
   id: number;
+  socketId: number;
   labelText: string | null;
 
   constructor(
@@ -49,7 +50,13 @@ export class Socket extends PIXI.Container {
 
   createConnector(id: string, type: SocketType, color: number): void {
     const socket = new Connector(id, type, color);
+    socket.name = "Connector";
     this.addChild(socket);
+  }
+
+  setConnected() {
+    const connector = this.getChildByName("Connector");
+    if (connector) connector.setConnected();
   }
 
   createLabel(text: string): void {
