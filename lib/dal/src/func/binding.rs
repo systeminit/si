@@ -234,7 +234,7 @@ impl FuncBinding {
         let ctx = &octx;
 
         let func: Func = self
-            .func_with_tenancy(ctx)
+            .func(ctx)
             .await?
             .ok_or(FuncBindingError::FuncNotFound(self.pk))?;
 

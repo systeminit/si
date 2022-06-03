@@ -199,7 +199,7 @@ impl Schematic {
                         .await?
                         .ok_or(SchematicError::ComponentNotFound)?;
                     let schema = component
-                        .schema_with_tenancy(ctx)
+                        .schema(ctx)
                         .await?
                         .ok_or(SchematicError::SchemaNotFound)?;
 
@@ -236,7 +236,7 @@ impl Schematic {
                     // let mut tenancy = tenancy.clone();
                     // tenancy.universal = true;
                     // let schema = system
-                    //     .schema_with_tenancy(ctx)
+                    //     .schema(ctx)
                     //     .await?
                     //     .ok_or(SchematicError::SchemaNotFound)?;
 
