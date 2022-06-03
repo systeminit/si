@@ -457,6 +457,7 @@ impl AccessBuilder {
 }
 
 /// A builder for a [`DalContext`].
+#[derive(Clone, Debug)]
 pub struct DalContextBuilder {
     /// A [`ServicesContext`] which has handles to common core services.
     services_context: ServicesContext,

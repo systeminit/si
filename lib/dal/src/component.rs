@@ -156,6 +156,8 @@ const GET_RESOURCE: &str = include_str!("./queries/component_get_resource.sql");
 const LIST_QUALIFICATIONS: &str = include_str!("./queries/component_list_qualifications.sql");
 const LIST_CODE_GENERATED: &str = include_str!("./queries/component_list_code_generated.sql");
 const LIST_FOR_RESOURCE_SYNC: &str = include_str!("./queries/component_list_for_resource_sync.sql");
+const LIST_FOR_SCHEMA_VARIANT: &str =
+    include_str!("./queries/component_list_for_schema_variant.sql");
 
 pk!(ComponentPk);
 pk!(ComponentId);
@@ -956,14 +958,15 @@ impl Component {
         for row in rows.into_iter() {
             let json: serde_json::Value = row.try_get("object")?;
             let func_binding_return_value: FuncBindingReturnValue = serde_json::from_value(json)?;
-            let mut qual_view = QualificationView::new_for_func_binding_return_value(
+
+            let json: serde_json::Value = row.try_get("prototype")?;
+            let prototype: QualificationPrototype = serde_json::from_value(json)?;
+            let qual_view = QualificationView::new_for_func_binding_return_value(
                 ctx,
+                prototype,
                 func_binding_return_value,
             )
             .await?;
-            qual_view.title = row.try_get("title")?;
-            qual_view.description = row.try_get("description")?;
-            qual_view.link = row.try_get("link")?;
             results.push(qual_view);
         }
         // This is inefficient, but effective
@@ -1201,6 +1204,29 @@ impl Component {
             parents,
         };
         Ok(qualification_view)
+    }
+
+    #[instrument(skip_all)]
+    pub async fn list_for_schema_variant(
+        ctx: &DalContext<'_, '_>,
+        schema_variant_id: SchemaVariantId,
+    ) -> ComponentResult<Vec<Component>> {
+        let rows = ctx
+            .pg_txn()
+            .query(
+                LIST_FOR_SCHEMA_VARIANT,
+                &[ctx.visibility(), ctx.read_tenancy(), &schema_variant_id],
+            )
+            .await?;
+
+        let mut results = Vec::new();
+        for row in rows.into_iter() {
+            let json: serde_json::Value = row.try_get("object")?;
+            let object: Self = serde_json::from_value(json)?;
+            results.push(object);
+        }
+
+        Ok(results)
     }
 
     #[instrument(skip_all)]
@@ -1489,7 +1515,7 @@ impl ComponentAsyncTasks {
         Ok(())
     }
 
-    pub async fn run_code_generation(
+    async fn run_code_generation(
         &self,
         access_builder: AccessBuilder,
         visibility: Visibility,
@@ -1503,7 +1529,7 @@ impl ComponentAsyncTasks {
         Ok(())
     }
 
-    pub async fn run_qualification_check(
+    async fn run_qualification_check(
         &self,
         access_builder: AccessBuilder,
         visibility: Visibility,

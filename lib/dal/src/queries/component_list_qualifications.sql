@@ -1,9 +1,7 @@
 SELECT DISTINCT ON (qualification_resolvers.id) qualification_resolvers.id,
                               qualification_resolvers.visibility_change_set_pk,
                               qualification_resolvers.visibility_edit_session_pk,
-                              qualification_prototypes.title as title,
-                              qualification_prototypes.description as description,
-                              qualification_prototypes.link as link,
+                              row_to_json(qualification_prototypes) AS prototype,
                               row_to_json(func_binding_return_values.*) AS object
 FROM qualification_resolvers
 INNER JOIN func_binding_return_value_belongs_to_func_binding ON 

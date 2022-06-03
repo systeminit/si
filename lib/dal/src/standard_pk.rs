@@ -16,12 +16,24 @@ macro_rules! pk {
         )]
         pub struct $name(i64);
 
+        impl $name {
+            pub const NONE: Self = Self(-1);
+
+            pub fn is_some(&self) -> bool {
+                !self.is_none()
+            }
+
+            pub fn is_none(&self) -> bool {
+                self == &Self::NONE
+            }
+        }
+
         impl std::str::FromStr for $name {
             type Err = std::num::ParseIntError;
 
             fn from_str(s: &str) -> Result<Self, Self::Err> {
                 let x = s.parse::<i64>()?;
-                Ok($name(x))
+                Ok(Self(x))
             }
         }
 
@@ -31,7 +43,7 @@ macro_rules! pk {
                 raw: &'a [u8],
             ) -> Result<Self, Box<dyn std::error::Error + Sync + Send>> {
                 let number: i64 = postgres_types::FromSql::from_sql(ty, raw)?;
-                Ok($name(number))
+                Ok(Self(number))
             }
 
             fn accepts(ty: &postgres_types::Type) -> bool {

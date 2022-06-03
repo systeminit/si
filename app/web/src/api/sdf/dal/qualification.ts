@@ -1,9 +1,18 @@
+export interface QualificationPrototype {
+  id: number;
+  title: string;
+  link?: string;
+  description?: string;
+  isComponentSpecific: boolean;
+}
+
 export interface Qualification {
   title: string;
   link?: string;
   description?: string;
   result?: QualificationResult;
   output?: Array<QualificationOutputStream>;
+  prototypeId?: number; // The validations qualification doesn't need a prototype, but it can't be edited
 }
 
 export interface QualificationResult {

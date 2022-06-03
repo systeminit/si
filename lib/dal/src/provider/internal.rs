@@ -177,7 +177,7 @@ impl InternalProvider {
                 ctx,
                 serde_json::json![{ "identity": null }],
                 *identity_func.id(),
-                FuncBackendKind::Identity,
+                *identity_func.backend_kind(),
             )
             .await?;
 

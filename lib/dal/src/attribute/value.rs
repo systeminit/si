@@ -22,7 +22,7 @@ use crate::{
         backend::{
             array::FuncBackendArrayArgs, boolean::FuncBackendBooleanArgs,
             integer::FuncBackendIntegerArgs, map::FuncBackendMapArgs,
-            prop_object::FuncBackendPropObjectArgs, string::FuncBackendStringArgs, FuncBackendKind,
+            prop_object::FuncBackendPropObjectArgs, string::FuncBackendStringArgs,
         },
         binding::{FuncBinding, FuncBindingError, FuncBindingId},
         binding_return_value::{
@@ -828,7 +828,7 @@ impl AttributeValue {
                 ctx,
                 serde_json::json![null],
                 *unset_func.id(),
-                FuncBackendKind::Unset,
+                *unset_func.backend_kind(),
             )
             .await?;
 

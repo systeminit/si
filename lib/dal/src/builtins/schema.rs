@@ -500,7 +500,7 @@ async fn docker_image(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
         *qual_func.id(),
         qual_args_json,
         qual_prototype_context,
-        "docker image name must match the component name",
+        "docker image must exist",
     )
     .await?;
     prototype.set_link(ctx, "http://docker.com".into()).await?;

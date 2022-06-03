@@ -1,4 +1,3 @@
-use crate::DalContext;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use si_data::{NatsError, PgError};
@@ -10,8 +9,9 @@ use crate::{
     func::FuncId,
     impl_standard_model, pk,
     standard_model::{self, objects_from_rows},
-    standard_model_accessor, ComponentId, HistoryEventError, SchemaId, SchemaVariantId,
-    StandardModel, StandardModelError, SystemId, Timestamp, Visibility, WriteTenancy,
+    standard_model_accessor, standard_model_accessor_ro, ComponentId, DalContext,
+    HistoryEventError, SchemaId, SchemaVariantId, StandardModel, StandardModelError, SystemId,
+    Timestamp, Visibility, WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -38,7 +38,6 @@ pub enum QualificationPrototypeError {
 
 pub type QualificationPrototypeResult<T> = Result<T, QualificationPrototypeError>;
 
-pub const UNSET_ID_VALUE: i64 = -1;
 const FIND_FOR_CONTEXT: &str =
     include_str!("./queries/qualification_prototype_find_for_context.sql");
 
@@ -60,10 +59,10 @@ impl Default for QualificationPrototypeContext {
 impl QualificationPrototypeContext {
     pub fn new() -> Self {
         Self {
-            component_id: UNSET_ID_VALUE.into(),
-            schema_id: UNSET_ID_VALUE.into(),
-            schema_variant_id: UNSET_ID_VALUE.into(),
-            system_id: UNSET_ID_VALUE.into(),
+            component_id: ComponentId::NONE,
+            schema_id: SchemaId::NONE,
+            schema_variant_id: SchemaVariantId::NONE,
+            system_id: SystemId::NONE,
         }
     }
 
@@ -166,6 +165,7 @@ impl QualificationPrototype {
     standard_model_accessor!(title, String, QualificationPrototypeResult);
     standard_model_accessor!(description, Option<String>, QualificationPrototypeResult);
     standard_model_accessor!(link, Option<String>, QualificationPrototypeResult);
+    standard_model_accessor_ro!(context, QualificationPrototypeContext);
 
     #[allow(clippy::too_many_arguments)]
     pub async fn find_for_component(

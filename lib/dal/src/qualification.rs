@@ -1,4 +1,3 @@
-use crate::DalContext;
 use serde::{Deserialize, Serialize};
 
 use thiserror::Error;
@@ -7,7 +6,10 @@ use veritech::QualificationSubCheck;
 use crate::func::backend::validation::ValidationError;
 use crate::func::binding_return_value::{FuncBindingReturnValue, FuncBindingReturnValueError};
 use crate::ws_event::{WsEvent, WsPayload};
-use crate::{BillingAccountId, ComponentId, HistoryActor, QualificationPrototype, SystemId};
+use crate::{
+    BillingAccountId, ComponentId, DalContext, HistoryActor, QualificationPrototype,
+    QualificationPrototypeId, StandardModel, SystemId,
+};
 
 #[derive(Error, Debug)]
 pub enum QualificationError {
@@ -36,6 +38,7 @@ pub struct QualificationOutputStreamView {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, Default, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct QualificationView {
     pub title: String,
     /// A collection of "OutputStream" views from cyclone.
@@ -43,6 +46,8 @@ pub struct QualificationView {
     pub description: Option<String>,
     pub link: Option<String>,
     pub result: Option<QualificationResult>,
+    /// The validations qualification doesn't need a prototype, but it can't be edited
+    pub prototype_id: Option<QualificationPrototypeId>,
 }
 
 impl QualificationView {
@@ -68,21 +73,24 @@ impl QualificationView {
                 link: None,
                 sub_checks,
             }),
+            prototype_id: None,
         }
     }
 
     pub fn new_for_qualification_prototype(prototype: QualificationPrototype) -> QualificationView {
         QualificationView {
             title: prototype.title().into(),
-            description: None,
-            link: None,
+            description: prototype.description().map(Into::into),
+            link: prototype.link().map(Into::into),
             output: vec![],
             result: None,
+            prototype_id: Some(*prototype.id()),
         }
     }
 
     pub async fn new_for_func_binding_return_value(
         ctx: &DalContext<'_, '_>,
+        prototype: QualificationPrototype,
         func_binding_return_value: FuncBindingReturnValue,
     ) -> Result<Self, QualificationError> {
         let output_streams = func_binding_return_value.get_output_stream(ctx).await?;
@@ -98,24 +106,17 @@ impl QualificationView {
             None => Vec::with_capacity(0),
         };
 
-        if let Some(qual_result_json) = func_binding_return_value.value() {
-            let result = serde_json::from_value(qual_result_json.clone())?;
-            Ok(QualificationView {
-                title: "Unknown (no title provided)".to_string(),
-                output,
-                description: None,
-                link: None,
-                result: Some(result),
-            })
-        } else {
-            Ok(QualificationView {
-                title: "Unknown (no title provided)".to_string(),
-                output,
-                description: None,
-                link: None,
-                result: None,
-            })
-        }
+        Ok(QualificationView {
+            title: prototype.title().into(),
+            description: prototype.description().map(Into::into),
+            link: prototype.link().map(Into::into),
+            output,
+            result: func_binding_return_value
+                .value()
+                .map(|json| serde_json::from_value(json.clone()))
+                .transpose()?,
+            prototype_id: Some(*prototype.id()),
+        })
     }
 }
 

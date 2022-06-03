@@ -1,12 +1,7 @@
-use dal::DalContext;
-
 use crate::dal::test;
 use dal::func::backend::js_qualification::FuncBackendJsQualificationArgs;
 use dal::qualification_prototype::QualificationPrototypeContext;
-use dal::{
-    qualification_prototype::UNSET_ID_VALUE, Component, Func, QualificationPrototype, Schema,
-    StandardModel,
-};
+use dal::{Component, DalContext, Func, QualificationPrototype, Schema, StandardModel, SystemId};
 
 #[test]
 async fn new(ctx: &DalContext<'_, '_>) {
@@ -30,7 +25,7 @@ async fn new(ctx: &DalContext<'_, '_>) {
 
     let args = FuncBackendJsQualificationArgs {
         component: component
-            .veritech_qualification_check_component(ctx, UNSET_ID_VALUE.into())
+            .veritech_qualification_check_component(ctx, SystemId::NONE)
             .await
             .expect("could not create component qualification view"),
     };
@@ -73,7 +68,7 @@ async fn find_for_component(ctx: &DalContext<'_, '_>) {
         *component.id(),
         *schema.id(),
         *default_schema_variant_id,
-        UNSET_ID_VALUE.into(),
+        SystemId::NONE,
     )
     .await
     .expect("could not create component qualification view");

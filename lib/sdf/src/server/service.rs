@@ -2,6 +2,7 @@ pub mod application;
 pub mod change_set;
 pub mod component;
 pub mod provider;
+pub mod qualification;
 pub mod schema;
 pub mod schematic;
 pub mod secret;

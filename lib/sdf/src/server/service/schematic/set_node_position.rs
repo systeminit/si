@@ -2,13 +2,12 @@ use super::SchematicResult;
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::Json;
 use dal::node::NodeId;
-use dal::{NodePosition, SchematicKind, SystemId, Visibility, WorkspaceId};
+use dal::{NodePosition, SchematicKind, SystemId, Visibility};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct SetNodePositionRequest {
-    pub workspace_id: WorkspaceId,
     #[serde(flatten)]
     pub visibility: Visibility,
     pub node_id: NodeId,

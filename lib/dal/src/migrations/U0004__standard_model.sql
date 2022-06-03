@@ -396,11 +396,11 @@ DECLARE
     this_table regclass;
 BEGIN
     this_table := this_table_text::regclass;
-    RETURN QUERY EXECUTE format('SELECT DISTINCT ON (%1$I.id)' ||
-                                '   %1$I.id,' ||
-                                '   %1$I.visibility_change_set_pk,' ||
-                                '   %1$I.visibility_edit_session_pk,' ||
-                                '   %1$I.visibility_deleted_at,' ||
+    RETURN QUERY EXECUTE format('SELECT DISTINCT ON (%5$I.id)' ||
+                                '   %5$I.id,' ||
+                                '   %5$I.visibility_change_set_pk,' ||
+                                '   %5$I.visibility_edit_session_pk,' ||
+                                '   %5$I.visibility_deleted_at,' ||
                                 '   row_to_json(%5$I.*) AS object' ||
                                 ' FROM %1$I' ||
                                 ' INNER JOIN %5$I ON %5$I.id = %1$I.belongs_to_id ' ||
@@ -423,10 +423,10 @@ BEGIN
                                 '                    %1$I.visibility_change_set_pk,' ||
                                 '                    %1$I.visibility_edit_session_pk,' ||
                                 '                    %1$I.visibility_deleted_at)' ||
-                                ' ORDER BY id,' ||
-                                '          visibility_change_set_pk DESC,' ||
-                                '          visibility_edit_session_pk DESC,' ||
-                                '          visibility_deleted_at DESC NULLS FIRST' ||
+                                ' ORDER BY %5$I.id,' ||
+                                '          %5$I.visibility_change_set_pk DESC,' ||
+                                '          %5$I.visibility_edit_session_pk DESC,' ||
+                                '          %5$I.visibility_deleted_at DESC NULLS FIRST' ||
                                 ' LIMIT 1'
         , this_table, this_tenancy, this_visibility, this_object_id, this_retrieve_table);
 END;

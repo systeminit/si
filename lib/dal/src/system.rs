@@ -36,16 +36,6 @@ pub type SystemResult<T> = Result<T, SystemError>;
 pk!(SystemPk);
 pk!(SystemId);
 
-impl SystemId {
-    const NONE_VALUE: i64 = -1;
-
-    pub const NONE: Self = Self(Self::NONE_VALUE);
-
-    pub fn is_none(&self) -> bool {
-        self == &Self::NONE
-    }
-}
-
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct System {
     pk: SystemPk,

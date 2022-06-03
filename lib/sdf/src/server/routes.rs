@@ -88,6 +88,10 @@ pub fn routes(
             crate::server::service::component::routes(),
         )
         .nest("/api/provider", crate::server::service::provider::routes())
+        .nest(
+            "/api/qualification",
+            crate::server::service::qualification::routes(),
+        )
         .nest("/api/schema", crate::server::service::schema::routes())
         .nest(
             "/api/schematic",
