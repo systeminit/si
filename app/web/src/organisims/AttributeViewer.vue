@@ -75,8 +75,8 @@ import { ComponentMetadata } from "@/service/component/get_components_metadata";
 import SiLink from "@/atoms/SiLink.vue";
 import SiButtonIcon from "@/atoms/SiButtonIcon.vue";
 import SiIcon from "@/atoms/SiIcon.vue";
+import { CheckCircleIcon } from "@heroicons/vue/solid";
 import {
-  CheckCircleIcon,
   CubeIcon,
   QuestionMarkCircleIcon,
   PencilAltIcon,

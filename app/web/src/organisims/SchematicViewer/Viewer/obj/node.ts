@@ -35,6 +35,7 @@ export class Node extends PIXI.Container {
   id: number;
   kind: string;
   schemaVariantId: number;
+  color: number;
   nodeKind: SchematicNodeKind;
   isSelected = false;
   title: string;
@@ -51,6 +52,7 @@ export class Node extends PIXI.Container {
   ) {
     super();
     this.id = n.id;
+    this.color = v.color;
 
     this.panelKind = panelKind;
 
@@ -98,6 +100,7 @@ export class Node extends PIXI.Container {
       6,
       this.title,
       this.name,
+      this.color,
     );
     card.zIndex = 0;
     this.addChild(card);

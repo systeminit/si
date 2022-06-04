@@ -26,6 +26,7 @@ export type SchematicProviderMetadata = string;
 
 export interface SchematicOutputProvider {
   ty: SchematicProviderMetadata;
+  color: number;
 }
 
 export interface SchematicOutputSocket {
@@ -37,6 +38,7 @@ export interface SchematicOutputSocket {
 
 export interface SchematicInputProvider {
   ty: SchematicProviderMetadata;
+  color: number;
 }
 
 export interface SchematicInputSocket {
@@ -50,6 +52,7 @@ export interface SchematicSchemaVariant {
   id: number;
   name: string;
   schemaName: string;
+  color: number;
   inputSockets: SchematicInputSocket[];
   outputSockets: SchematicOutputSocket[];
 }

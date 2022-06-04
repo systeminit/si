@@ -1,12 +1,17 @@
 import * as PIXI from "pixi.js";
 
 export class Header extends PIXI.Container {
-  constructor(textString: string, width: number, height: number) {
+  constructor(
+    textString: string,
+    width: number,
+    height: number,
+    color: number,
+  ) {
     super();
 
     this.interactive = false;
 
-    const background = new HeaderBackground(width, height);
+    const background = new HeaderBackground(width, height, color);
     background.zIndex = 0;
     this.addChild(background);
 
@@ -17,10 +22,10 @@ export class Header extends PIXI.Container {
 }
 
 class HeaderBackground extends PIXI.Graphics {
-  constructor(width: number, height: number) {
+  constructor(width: number, height: number, color: number) {
     super();
 
-    this.beginFill(0x05b1bc);
+    this.beginFill(color);
     this.drawRoundedRect(0, 0, width, height, 0);
     this.endFill();
   }

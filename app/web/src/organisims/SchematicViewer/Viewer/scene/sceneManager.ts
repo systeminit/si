@@ -7,7 +7,11 @@ import { Grid, BACKGROUND_GRID_NAME } from "../obj";
 import { untilUnmounted } from "vuse-rx";
 import { InteractionManager } from "../interaction";
 import { SchematicKind } from "@/api/sdf/dal/schematic";
-import { Schematic, variantById } from "@/api/sdf/dal/schematic";
+import {
+  Schematic,
+  variantById,
+  inputSocketById,
+} from "@/api/sdf/dal/schematic";
 
 export type SceneGraphData = Schematic;
 
@@ -124,7 +128,10 @@ export class SceneManager {
 
       for (const connection of data.connections) {
         const sourceSocketId = `${connection.sourceNodeId}.${connection.sourceSocketId}`;
-        const sourceSocket = this.scene.getChildByName(sourceSocketId, true);
+        const sourceSocket = this.scene.getChildByName(
+          sourceSocketId,
+          true,
+        ) as OBJ.Socket;
 
         // Sometimes the connection isn't valid for display, like when switching panels while rendering
         // And the "include" connections also won't be found as they don't get rendered, we could use some metadata,
@@ -137,11 +144,13 @@ export class SceneManager {
           true,
         );
 
+        const socket = await inputSocketById(sourceSocket.id);
         this.createConnection(
           sourceSocket.getGlobalPosition(),
           destinationSocket.getGlobalPosition(),
           sourceSocket.name,
           destinationSocket.name,
+          socket.provider.color,
         );
       }
     }
@@ -191,6 +200,7 @@ export class SceneManager {
     p2: Point,
     sourceSocketId: string,
     destinationSocketId: string,
+    color: number,
     _interactive?: boolean,
   ): OBJ.Connection | null {
     const connection = new OBJ.Connection(
@@ -198,6 +208,7 @@ export class SceneManager {
       p2,
       sourceSocketId,
       destinationSocketId,
+      color,
       _interactive,
     );
     let isConnectionUnique = true;

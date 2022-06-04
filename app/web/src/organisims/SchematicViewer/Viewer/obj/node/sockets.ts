@@ -34,7 +34,7 @@ export class Sockets extends PIXI.Container {
   ): void {
     inputs = inputs.filter((i) => i.schematicKind === panelKind);
 
-    let pos, growth, color;
+    let pos, growth;
     let displaySocketLabel = false;
     switch (panelKind) {
       case SchematicKind.Component:
@@ -43,7 +43,6 @@ export class Sockets extends PIXI.Container {
           y: INPUT_SOCKET_OFFSET,
         };
         growth = { x: 0, y: SOCKET_SPACING };
-        color = 0xffdd44;
         displaySocketLabel = true;
         break;
       case SchematicKind.Deployment:
@@ -52,14 +51,11 @@ export class Sockets extends PIXI.Container {
           y: 0,
         };
         growth = { x: SOCKET_SPACING, y: 0 };
-        color = 0x80c037;
         displaySocketLabel = false;
         break;
     }
 
-    for (let i = 0; i < inputs.length; i++) {
-      const s = inputs[i];
-
+    for (const s of inputs) {
       let socketLabel = null;
       if (s.name && displaySocketLabel) {
         socketLabel = s.name;
@@ -71,7 +67,7 @@ export class Sockets extends PIXI.Container {
         socketLabel,
         SocketType.input,
         pos,
-        color,
+        s.provider.color,
       );
       this.addChild(socket);
 
@@ -87,33 +83,29 @@ export class Sockets extends PIXI.Container {
   ): void {
     outputs = outputs.filter((i) => i.schematicKind === panelKind);
 
-    let pos, color;
+    let pos;
     switch (panelKind) {
       case SchematicKind.Component:
         pos = {
           x: NODE_WIDTH,
           y: OUTPUT_SOCKET_OFFSET,
         };
-        color = 0xeb44ff;
         break;
       case SchematicKind.Deployment:
         pos = {
           x: NODE_WIDTH / 2,
           y: NODE_HEIGHT,
         };
-        color = 0x00b0bc;
         break;
     }
-    for (let i = 0; i < outputs.length; i++) {
-      const s = outputs[i];
-
+    for (const s of outputs) {
       const socket = new Socket(
         s.id,
         nodeId,
         null,
         SocketType.output,
         pos,
-        color,
+        s.provider.color,
       );
       this.addChild(socket);
     }
