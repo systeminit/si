@@ -80,8 +80,8 @@ export class ConnectingManager {
         x: (data.global.x - offset.x) * (1 / this.zoomFactor),
         y: (data.global.y - offset.y) * (1 / this.zoomFactor),
       },
-      "none",
-      "none",
+      sourceSocket.name,
+      destinationSocket.name,
       true,
     );
   }

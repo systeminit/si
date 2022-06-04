@@ -545,7 +545,7 @@ const determineOrder = (
 const propertyValuesInOrder = computed(() => {
   const results = determineOrder([], [values.value.rootValueId]);
 
-  console.log("property results", { results });
+  //console.log("property results", { results });
   return results;
 });
 
@@ -625,7 +625,7 @@ const arrayIndex = computed(() => {
       result[propValue.id] = length;
     }
   }
-  console.log("array index", { result });
+  //console.log("array index", { result });
   return result;
 });
 
