@@ -1,7 +1,13 @@
 import * as PIXI from "pixi.js";
 
 export class QualificationStatus extends PIXI.Container {
-  constructor(status?: boolean) {
+  constructor(
+    status?: boolean,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+  ) {
     super();
 
     let iconSvg;
@@ -35,6 +41,17 @@ export class QualificationStatus extends PIXI.Container {
     sprite.scale.x = 0.235;
     sprite.scale.y = 0.235;
 
+    sprite.x = x;
+    sprite.y = y;
     this.addChild(sprite);
+
+    if (!status) {
+      const color = 0xf08686;
+      const box = new PIXI.Graphics()
+        .lineStyle(2, color, 1, 0, false)
+        .drawRoundedRect(-4, -4, width + 8, height + 8, 6);
+      box.zIndex = 1;
+      this.addChild(box);
+    }
   }
 }

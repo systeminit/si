@@ -55,8 +55,6 @@ export class SceneManager {
       connections: new ConnectionGroup("connections", 20),
       nodes: new NodeGroup("nodes", 30),
     };
-    this.root.addChild(this.group.nodes);
-    this.root.addChild(this.group.connections);
 
     this.initializeSceneData();
     this.setBackgroundGrid(renderer.width, renderer.height);
@@ -218,6 +216,17 @@ export class SceneManager {
       const conn = c as OBJ.Connection;
       if (conn.name === connection.name) {
         isConnectionUnique = false;
+      }
+    }
+
+    for (const node of this.group.nodes.children) {
+      const sockets = node.getChildByName("Sockets");
+      if (sockets) {
+        const source = sockets.getChildByName(sourceSocketId);
+        if (source) source.setConnected();
+
+        const destination = sockets.getChildByName(destinationSocketId);
+        if (destination) destination.setConnected();
       }
     }
 

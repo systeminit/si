@@ -1,10 +1,11 @@
-use axum::extract::Query;
-use axum::Json;
-use dal::property_editor::PropertyEditorValidations;
-use dal::{ComponentId, SystemId, Visibility};
+use axum::extract::{Json, Query};
+use dal::{
+    property_editor::PropertyEditorValidations, Component, ComponentId, StandardModel, SystemId,
+    Visibility,
+};
 use serde::{Deserialize, Serialize};
 
-use super::ComponentResult;
+use super::{ComponentError, ComponentResult};
 use crate::server::extract::{AccessBuilder, HandlerContext};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -25,6 +26,14 @@ pub async fn get_property_editor_validations(
 ) -> ComponentResult<Json<GetPropertyEditorValidationsResponse>> {
     let txns = txns.start().await?;
     let ctx = builder.build(request_ctx.build(request.visibility), &txns);
+
+    let is_component_in_tenancy = Component::is_in_tenancy(&ctx, request.component_id).await?;
+    let is_component_in_visibility = Component::get_by_id(&ctx, &request.component_id)
+        .await?
+        .is_some();
+    if is_component_in_tenancy && !is_component_in_visibility {
+        return Err(ComponentError::InvalidVisibility);
+    }
 
     let prop_edit_validations =
         PropertyEditorValidations::for_component(&ctx, request.component_id, request.system_id)

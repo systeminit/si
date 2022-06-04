@@ -42,6 +42,7 @@ export class Node extends PIXI.Container {
   connections: Array<Connection>;
   panelKind: SchematicKind;
   selection?: SelectionStatus;
+  socketCount: number;
 
   constructor(
     n: SchematicNode,
@@ -77,10 +78,11 @@ export class Node extends PIXI.Container {
 
     // Card object
     const size = Math.max(v.inputSockets.length, v.outputSockets.length);
-    this.setCard(size);
+    this.socketCount = size;
+    this.setCard();
 
     // Selection status
-    this.setSelectionStatus(size);
+    this.setSelectionStatus();
 
     this.setSockets(v.inputSockets, v.outputSockets);
 
@@ -91,10 +93,10 @@ export class Node extends PIXI.Container {
     this.setShadows();
   }
 
-  setCard(socketCount: number): void {
+  setCard(): void {
     const card = new Card(
       NODE_WIDTH,
-      this.nodeHeight(socketCount),
+      this.nodeHeight(this.socketCount),
       6,
       this.title,
       this.name,
@@ -112,10 +114,10 @@ export class Node extends PIXI.Container {
     this.alpha = 0.3;
   }
 
-  setSelectionStatus(socketCount: number): void {
+  setSelectionStatus(): void {
     const status = new SelectionStatus(
       NODE_WIDTH,
-      this.nodeHeight(socketCount),
+      this.nodeHeight(this.socketCount),
       6,
     );
     status.zIndex = 1;
@@ -127,11 +129,15 @@ export class Node extends PIXI.Container {
   setQualificationStatus(qualified?: boolean): void {
     const oldStatus = this.getChildByName("QualificationStatus");
 
-    const status = new QualificationStatus(qualified);
+    const status = new QualificationStatus(
+      qualified,
+      100,
+      78,
+      NODE_WIDTH,
+      this.nodeHeight(this.socketCount),
+    );
     status.name = "QualificationStatus";
     status.zIndex = 1;
-    status.x = 100;
-    status.y = 78;
     this.addChild(status);
 
     oldStatus?.destroy();
@@ -155,6 +161,7 @@ export class Node extends PIXI.Container {
     outputs: SchematicOutputSocket[],
   ): void {
     const sockets = new Sockets(this.id, inputs, outputs, this.panelKind);
+    sockets.name = "Sockets";
     sockets.zIndex = 2;
     this.addChild(sockets);
   }
@@ -186,10 +193,10 @@ export class Node extends PIXI.Container {
     this.connections.push(c);
   }
 
-  nodeHeight(socketCount: number): number {
+  nodeHeight(): number {
     const height =
       INPUT_SOCKET_OFFSET +
-      (SOCKET_HEIGHT + SOCKET_SPACING) * socketCount -
+      (SOCKET_HEIGHT + SOCKET_SPACING) * this.socketCount -
       SOCKET_SPACING * 0.65;
     return Math.max(height, NODE_HEIGHT);
   }
