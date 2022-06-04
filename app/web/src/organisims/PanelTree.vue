@@ -344,15 +344,9 @@ eventCheckedQualifications$
 Rx.combineLatest([system$, resourceSynced$, checkedQualifications$])
   .pipe(
     Rx.switchMap(([system]) => {
-      if (system) {
-        return ComponentService.getComponentsMetadata({
-          systemId: system.id,
-        });
-      } else {
-        return ComponentService.getComponentsMetadata({
-          systemId: -1,
-        });
-      }
+      return ComponentService.getComponentsMetadata({
+        systemId: system?.id ?? -1,
+      });
     }),
   )
   .pipe(untilUnmounted)

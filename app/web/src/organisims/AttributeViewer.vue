@@ -138,18 +138,36 @@ const editorContext = refFrom<PropertyEditorContext | undefined>(
         propertyEditorValues,
         propertyEditorValidations,
       ]) => {
-        if (propertyEditorSchema.error) {
+        if (
+          propertyEditorSchema.error?.statusCode === 404 &&
+          propertyEditorSchema.error?.message === "invalid visibility"
+        ) {
+          return Rx.from([]);
+        } else if (propertyEditorSchema.error) {
           GlobalErrorService.set(propertyEditorSchema);
           return Rx.from([]);
         }
-        if (propertyEditorValues.error) {
+
+        if (
+          propertyEditorValues.error?.statusCode === 404 &&
+          propertyEditorValues.error?.message === "invalid visibility"
+        ) {
+          return Rx.from([]);
+        } else if (propertyEditorValues.error) {
           GlobalErrorService.set(propertyEditorValues);
           return Rx.from([]);
         }
-        if (propertyEditorValidations.error) {
+
+        if (
+          propertyEditorValidations.error?.statusCode === 404 &&
+          propertyEditorValidations.error?.message === "invalid visibility"
+        ) {
+          return Rx.from([]);
+        } else if (propertyEditorValidations.error) {
           GlobalErrorService.set(propertyEditorValidations);
           return Rx.from([]);
         }
+
         const propertyEditorContext: PropertyEditorContext = {
           schema: propertyEditorSchema as PropertyEditorSchema,
           values: propertyEditorValues as PropertyEditorValues,
