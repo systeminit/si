@@ -397,6 +397,7 @@ export default defineComponent({
             id: -20,
             name: "v0",
             schemaName: "mistery",
+            color: 0x282e30,
             inputSockets: [],
             outputSockets: [],
           };

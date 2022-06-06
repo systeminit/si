@@ -81,7 +81,7 @@ export class ConnectingManager {
         y: (data.global.y - offset.y) * (1 / this.zoomFactor),
       },
       sourceSocket.name,
-      destinationSocket.name,
+      "none",
       sourceSocket.provider.color,
       true,
     );

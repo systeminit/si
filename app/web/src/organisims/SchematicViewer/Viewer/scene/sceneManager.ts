@@ -1,6 +1,8 @@
 import * as PIXI from "pixi.js";
 import * as OBJ from "../obj";
 
+import { Sockets } from "../obj/node/sockets";
+import { Socket } from "../obj/node/sockets/socket";
 import { SchematicGroup, NodeGroup, ConnectionGroup } from "../group";
 import { Renderer } from "../renderer";
 import { Grid, BACKGROUND_GRID_NAME } from "../obj";
@@ -219,14 +221,18 @@ export class SceneManager {
       }
     }
 
-    for (const node of this.group.nodes.children) {
-      const sockets = node.getChildByName("Sockets");
-      if (sockets) {
-        const source = sockets.getChildByName(sourceSocketId);
-        if (source) source.setConnected();
+    for (const n of this.group.nodes.children) {
+      const node = n as OBJ.Node;
+      for (const sockets of node.children) {
+        if (sockets instanceof Sockets) {
+          const source = sockets.getChildByName(sourceSocketId) as Socket;
+          if (source) source.setConnected();
 
-        const destination = sockets.getChildByName(destinationSocketId);
-        if (destination) destination.setConnected();
+          const destination = sockets.getChildByName(
+            destinationSocketId,
+          ) as Socket;
+          if (destination) destination.setConnected();
+        }
       }
     }
 
