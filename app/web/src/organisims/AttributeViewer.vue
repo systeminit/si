@@ -184,31 +184,6 @@ const editorContext = refFrom<PropertyEditorContext | undefined>(
   ),
 );
 
-//const editFields = refFrom<EditFields | undefined>(
-//  Rx.combineLatest([componentId$]).pipe(
-//    Rx.switchMap(([componentId]) => {
-//      return EditFieldService.getEditFields({
-//        id: componentId,
-//        objectKind: EditFieldObjectKind.Component,
-//      });
-//    }),
-//    Rx.switchMap((response) => {
-//      if (
-//        response === null ||
-//        (response.error?.statusCode === 404 &&
-//          response.error?.message === "invalid visibility")
-//      ) {
-//        return Rx.from([[]]);
-//      } else if (response.error) {
-//        GlobalErrorService.set(response);
-//        return Rx.from([[]]);
-//      } else {
-//        return Rx.from([response.fields]);
-//      }
-//    }),
-//  ),
-//);
-
 const componentMetadata = refFrom<ComponentMetadata | null>(
   Rx.combineLatest([componentId$, componentsMetadata$]).pipe(
     Rx.map(([componentId, componentsMetadata]) => {

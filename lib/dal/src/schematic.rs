@@ -1,7 +1,8 @@
 use crate::edge::{Edge, EdgeId, EdgeKind, VertexObjectKind};
+use crate::node_position::NodePositionView;
 use crate::DalContext;
 use crate::{
-    node::NodeId, node::NodeKindWithBaggage, ComponentError, EdgeError, Node, NodeError, NodeKind,
+    node::NodeId, node::NodeViewKind, ComponentError, EdgeError, Node, NodeError, NodeKind,
     NodePosition, NodePositionError, NodeTemplate, NodeView, ReadTenancyError, StandardModel,
     StandardModelError, SystemError, SystemId,
 };
@@ -160,9 +161,29 @@ impl Connection {
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
+pub struct ConnectionView {
+    source_node_id: NodeId,
+    source_socket_id: SocketId,
+    destination_node_id: NodeId,
+    destination_socket_id: SocketId,
+}
+
+impl From<Connection> for ConnectionView {
+    fn from(conn: Connection) -> Self {
+        Self {
+            source_node_id: conn.source.node_id,
+            source_socket_id: conn.source.socket_id,
+            destination_node_id: conn.destination.node_id,
+            destination_socket_id: conn.destination.socket_id,
+        }
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
 pub struct Schematic {
     nodes: Vec<NodeView>,
-    connections: Vec<Connection>,
+    connections: Vec<ConnectionView>,
 }
 
 impl Schematic {
@@ -206,10 +227,10 @@ impl Schematic {
                     (
                         schema,
                         match node.kind() {
-                            NodeKind::Deployment => NodeKindWithBaggage::Deployment {
+                            NodeKind::Deployment => NodeViewKind::Deployment {
                                 component_id: *component.id(),
                             },
-                            NodeKind::Component => NodeKindWithBaggage::Component {
+                            NodeKind::Component => NodeViewKind::Component {
                                 component_id: *component.id(),
                             },
                             NodeKind::System => unreachable!(),
@@ -244,9 +265,10 @@ impl Schematic {
                 }
             };
 
-            let position = NodePosition::find_by_node_id(ctx, system_id, *node.id()).await?;
+            let positions = NodePosition::find_by_node_id(ctx, system_id, *node.id()).await?;
+            let positions = positions.into_iter().map(NodePositionView::from).collect();
             let template = NodeTemplate::new_from_schema_id(ctx, *schema.id()).await?;
-            let view = NodeView::new(name, node, kind, position, template);
+            let view = NodeView::new(name, node, kind, positions, template);
             node_views.push(view);
         }
 
@@ -258,6 +280,7 @@ impl Schematic {
                         .iter()
                         .any(|n| conn.destination.node_id == *n.id())
                 })
+                .map(ConnectionView::from)
                 .collect(),
             nodes: node_views,
         })
@@ -267,7 +290,7 @@ impl Schematic {
         &self.nodes
     }
 
-    pub fn connections(&self) -> &[Connection] {
+    pub fn connections(&self) -> &[ConnectionView] {
         &self.connections
     }
 }

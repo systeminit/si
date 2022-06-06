@@ -56,9 +56,7 @@ export class Node extends PIXI.Container {
 
     this.panelKind = panelKind;
 
-    // Ignores fake nodes as we might not have the schema variants for now (the backend isn't there yet)
-    // The v.id > 0 should go away eventually
-    if (v.id > 0 && v.id !== n.schemaVariantId)
+    if (v.id !== n.schemaVariantId)
       throw new Error("mismatch in schema variants");
 
     this.schemaVariantId = n.schemaVariantId;

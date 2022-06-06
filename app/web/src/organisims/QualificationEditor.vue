@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col w-full overflow-hidden">
+  <div class="flex flex-col w-full h-full overflow-hidden">
     <div
       class="flex justify-between h-10 px-6 py-2 text-base text-white align-middle property-section-bg-color"
     >
@@ -19,7 +19,7 @@
         </SiButtonIcon>
       </div>
     </div>
-    <div class="w-full h-full overflow-scroll">
+    <div class="w-full h-full overflow-auto">
       <div
         ref="editorMount"
         class="w-full h-full"
@@ -71,6 +71,7 @@ onMounted(() => {
     const fixedHeightEditor = EditorView.theme({
       "&": { height: "100%" },
       ".cm-scroller": { overflow: "auto" },
+      ".cm-content": { "white-space": "pre-wrap" },
     });
 
     view.value = new EditorView({

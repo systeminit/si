@@ -381,27 +381,7 @@ export default defineComponent({
         this.interactionManager &&
         node.positions.length > 0
       ) {
-        let schemaVariant;
-        try {
-          schemaVariant = await variantById(node.schemaVariantId);
-        } catch {
-          // Since we are using the `listComponentsIdentification` hack to obtain the schemas as the new backend route isn't
-          // there yet, we only get the schema metadata of components already created.
-          // So in schemas where no components have been created for, we can't really find it's metadata, but as the only
-          // reason we need the metadata here is to find it's sockets. And since we haven't created anything yet, it can't
-          // connect or be connected to anything, so we just mock a schema here with no sockets and wait for the visibility
-          // update, after creation, to give us the propper schema.
-          //
-          // This logic should go away after the backend provides us the complete set of SchematicSchemaVariants
-          schemaVariant = {
-            id: -20,
-            name: "v0",
-            schemaName: "mistery",
-            color: 0x282e30,
-            inputSockets: [],
-            outputSockets: [],
-          };
-        }
+        const schemaVariant = await variantById(node.schemaVariantId);
 
         // Fake nodes will always only have one position as they don't exist in the db yet
         const nodeObj = new OBJ.Node(

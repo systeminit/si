@@ -4,9 +4,9 @@ use axum::routing::{get, post};
 use axum::Json;
 use axum::Router;
 use dal::{
-    node::NodeId, ComponentError, NodeError, NodeKind, NodeMenuError, NodePositionError,
-    ReadTenancyError, SchemaError as DalSchemaError, SchematicError as DalSchematicError,
-    SchematicKind, StandardModelError, TransactionsError,
+    node::NodeId, schema::variant::SchemaVariantError, ComponentError, NodeError, NodeKind,
+    NodeMenuError, NodePositionError, ReadTenancyError, SchemaError as DalSchemaError,
+    SchematicError as DalSchematicError, SchematicKind, StandardModelError, TransactionsError,
 };
 use thiserror::Error;
 
@@ -15,6 +15,7 @@ pub mod create_node;
 pub mod get_node_add_menu;
 pub mod get_node_template;
 pub mod get_schematic;
+pub mod list_schema_variants;
 pub mod set_node_position;
 
 #[derive(Debug, Error)]
@@ -41,8 +42,10 @@ pub enum SchematicError {
     Node(#[from] NodeError),
     #[error("invalid request")]
     InvalidRequest,
+    #[error("schema variant error: {0}")]
+    SchemaVariant(#[from] SchemaVariantError),
     #[error("component error: {0}")]
-    ComponentError(#[from] ComponentError),
+    Component(#[from] ComponentError),
     #[error("node position error: {0}")]
     NodePosition(#[from] NodePositionError),
     #[error("dal schematic error: {0}")]
@@ -97,5 +100,9 @@ pub fn routes() -> Router {
         .route(
             "/create_connection",
             post(create_connection::create_connection),
+        )
+        .route(
+            "/list_schema_variants",
+            get(list_schema_variants::list_schema_variants),
         )
 }

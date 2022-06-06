@@ -116,11 +116,6 @@ export interface Schematic {
   connections: SchematicConnections;
 }
 
-export interface SchematicContext {
-  schematic: Schematic;
-  variants: SchematicSchemaVariant[];
-}
-
 export async function variantById(id: number): Promise<SchematicSchemaVariant> {
   const variants = await Rx.firstValueFrom(schematicSchemaVariants$);
   if (!variants) throw new Error("variants not found");

@@ -22,9 +22,11 @@
       </div>
     </div>
 
-    <div v-if="editingQualificationId" class="flex flex-col w-full mt-2">
+    <div
+      v-if="editingQualificationId"
+      class="flex flex-col w-full h-full mt-2 overflow-auto"
+    >
       <QualificationEditor
-        class="h-[18rem]"
         :prototype-id="editingQualificationId"
         @close="editingQualificationId = undefined"
       />
@@ -322,6 +324,9 @@ const props = defineProps<{
 }>();
 const { componentId } = toRefs(props);
 const componentId$ = fromRef<number>(componentId, { immediate: true });
+componentId$
+  .pipe(untilUnmounted)
+  .subscribe(() => (editingQualificationId.value = undefined));
 
 const checkedQualifications$ = new Rx.ReplaySubject<true>();
 checkedQualifications$.next(true); // We must fetch on setup

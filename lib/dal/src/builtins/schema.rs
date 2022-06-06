@@ -42,6 +42,7 @@ pub async fn migrate(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     service(ctx).await?;
     kubernetes_service(ctx).await?;
     kubernetes_deployment(ctx).await?;
+    kubernetes_namespace(ctx).await?;
     docker_hub_credential(ctx).await?;
     docker_image(ctx).await?;
     bobao(ctx).await?;
@@ -167,30 +168,33 @@ async fn service(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
         .add_root_schematic(ctx, application_schema.id())
         .await?;
 
-    let (variant, _) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
+    let (mut variant, _) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
+    variant.set_color(ctx, Some(0x00b0bc)).await?;
     schema
         .set_default_schema_variant_id(ctx, Some(*variant.id()))
         .await?;
 
-    let input_socket = Socket::new(
+    let mut input_socket = Socket::new(
         ctx,
-        "input",
+        "service",
         &SocketEdgeKind::Configures,
         &SocketArity::Many,
-        &SchematicKind::Component,
+        &SchematicKind::Deployment,
     )
     .await?;
+    input_socket.set_color(ctx, Some(0x00b0bc)).await?;
     variant.add_socket(ctx, input_socket.id()).await?;
 
-    let includes_socket = Socket::new(
+    let mut output_socket = Socket::new(
         ctx,
-        "includes",
-        &SocketEdgeKind::Includes,
+        "service",
+        &SocketEdgeKind::Output,
         &SocketArity::Many,
-        &SchematicKind::Component,
+        &SchematicKind::Deployment,
     )
     .await?;
-    variant.add_socket(ctx, includes_socket.id()).await?;
+    output_socket.set_color(ctx, Some(0x00b0bc)).await?;
+    variant.add_socket(ctx, output_socket.id()).await?;
 
     let output_socket = Socket::new(
         ctx,
@@ -211,16 +215,6 @@ async fn service(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     )
     .await?;
     variant.add_socket(ctx, includes_socket.id()).await?;
-
-    let output_socket = Socket::new(
-        ctx,
-        "output",
-        &SocketEdgeKind::Output,
-        &SocketArity::Many,
-        &SchematicKind::Deployment,
-    )
-    .await?;
-    variant.add_socket(ctx, output_socket.id()).await?;
 
     Ok(())
 }
@@ -277,6 +271,70 @@ async fn kubernetes_service(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     Ok(())
 }
 
+async fn kubernetes_namespace(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
+    let name = "kubernetes_namespace".to_string();
+    let mut schema = match create_schema(ctx, &name, &SchemaKind::Concrete).await? {
+        Some(schema) => schema,
+        None => return Ok(()),
+    };
+
+    let (mut variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
+    variant.set_color(ctx, Some(0x85c9a3)).await?;
+    variant.set_link(ctx, Some("https://v1-22.docs.kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/".to_owned())).await?;
+    schema
+        .set_default_schema_variant_id(ctx, Some(*variant.id()))
+        .await?;
+    let mut attribute_context_builder = AttributeContext::builder();
+    attribute_context_builder
+        .set_schema_id(*schema.id())
+        .set_schema_variant_id(*variant.id());
+
+    let mut ui_menu = UiMenu::new(ctx, &(*schema.kind()).into()).await?;
+    ui_menu.set_name(ctx, Some("namespace")).await?;
+
+    let application_name = "application".to_string();
+    ui_menu
+        .set_category(ctx, Some("kubernetes".to_owned()))
+        .await?;
+    ui_menu.set_schema(ctx, schema.id()).await?;
+
+    let application_schema_results = Schema::find_by_attr(ctx, "name", &application_name).await?;
+    let application_schema = application_schema_results
+        .first()
+        .ok_or(SchemaError::NotFoundByName(application_name))?;
+    ui_menu
+        .add_root_schematic(ctx, application_schema.id())
+        .await?;
+
+    let image_prop = Prop::new(ctx, "namespace", PropKind::String).await?;
+    image_prop
+        .set_parent_prop(ctx, root_prop.domain_prop_id)
+        .await?;
+
+    let mut output_socket = Socket::new(
+        ctx,
+        "kubernetes_namespace",
+        &SocketEdgeKind::Output,
+        &SocketArity::Many,
+        &SchematicKind::Component,
+    )
+    .await?;
+    output_socket.set_color(ctx, Some(0x85c9a3)).await?;
+    variant.add_socket(ctx, output_socket.id()).await?;
+
+    let includes_socket = Socket::new(
+        ctx,
+        "includes",
+        &SocketEdgeKind::Includes,
+        &SocketArity::Many,
+        &SchematicKind::Component,
+    )
+    .await?;
+    variant.add_socket(ctx, includes_socket.id()).await?;
+
+    Ok(())
+}
+
 async fn docker_hub_credential(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     let name = "docker_hub_credential".to_string();
     let mut schema = match create_schema(ctx, &name, &SchemaKind::Concrete).await? {
@@ -287,7 +345,8 @@ async fn docker_hub_credential(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
         .set_component_kind(ctx, ComponentKind::Credential)
         .await?;
 
-    let (variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
+    let (mut variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
+    variant.set_color(ctx, Some(0x1e88d6)).await?;
 
     schema
         .set_default_schema_variant_id(ctx, Some(*variant.id()))
@@ -324,27 +383,15 @@ async fn docker_hub_credential(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
         .set_link(ctx, "http://hub.docker.com".into())
         .await?;
 
-    // Note: This is not right; each schema needs its own socket types.
-    //       Also, they should clearly inherit from the core schema? Something
-    //       for later.
-    let input_socket = Socket::new(
+    let mut output_socket = Socket::new(
         ctx,
-        "input",
-        &SocketEdgeKind::Configures,
-        &SocketArity::Many,
-        &SchematicKind::Component,
-    )
-    .await?;
-    variant.add_socket(ctx, input_socket.id()).await?;
-
-    let output_socket = Socket::new(
-        ctx,
-        "output",
+        "docker_hub_credential",
         &SocketEdgeKind::Output,
         &SocketArity::Many,
         &SchematicKind::Component,
     )
     .await?;
+    output_socket.set_color(ctx, Some(0x1e88d6)).await?;
     variant.add_socket(ctx, output_socket.id()).await?;
 
     let includes_socket = Socket::new(
@@ -384,7 +431,8 @@ async fn docker_image(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
         None => return Ok(()),
     };
 
-    let (variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
+    let (mut variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
+    variant.set_color(ctx, Some(0xd61e8c)).await?;
     schema
         .set_default_schema_variant_id(ctx, Some(*variant.id()))
         .await?;
@@ -429,49 +477,26 @@ async fn docker_image(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     properties.insert("image".to_owned(), serde_json::json!(""));
     properties.insert("Number of Parents".to_owned(), serde_json::json!("0"));
 
-    let func_name = "si:numberOfParents".to_string();
-    let mut funcs = Func::find_by_attr(ctx, "name", &func_name).await?;
-    let func = funcs.pop().ok_or(SchemaError::MissingFunc(func_name))?;
-    let (func_binding, _) = FuncBinding::find_or_create(
+    let mut input_socket = Socket::new(
         ctx,
-        serde_json::to_value(FuncBackendJsAttributeArgs {
-            component: veritech::ResolverFunctionComponent {
-                data: veritech::ComponentView {
-                    properties: serde_json::to_value(properties)?,
-                    kind: veritech::ComponentKind::Standard,
-                    system: None,
-                },
-                parents: vec![],
-            },
-        })?,
-        *func.id(),
-        *func.backend_kind(),
-    )
-    .await?;
-
-    let _func_binding_return_value = func_binding.execute(ctx).await?;
-
-    // Note: This is not right; each schema needs its own socket types.
-    //       Also, they should clearly inherit from the core schema? Something
-    //       for later.
-    let input_socket = Socket::new(
-        ctx,
-        "input",
+        "docker_hub_credential",
         &SocketEdgeKind::Configures,
         &SocketArity::Many,
         &SchematicKind::Component,
     )
     .await?;
+    input_socket.set_color(ctx, Some(0x1e88d6)).await?;
     variant.add_socket(ctx, input_socket.id()).await?;
 
-    let output_socket = Socket::new(
+    let mut output_socket = Socket::new(
         ctx,
-        "output",
+        "docker_image",
         &SocketEdgeKind::Output,
         &SocketArity::Many,
         &SchematicKind::Component,
     )
     .await?;
+    output_socket.set_color(ctx, Some(0xd61e8c)).await?;
     variant.add_socket(ctx, output_socket.id()).await?;
 
     let includes_socket = Socket::new(
@@ -761,29 +786,6 @@ async fn bobao(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     secret_prop
         .set_widget_kind(ctx, WidgetKind::SecretSelect)
         .await?;
-
-    // Note: This is not right; each schema needs its own socket types.
-    //       Also, they should clearly inherit from the core schema? Something
-    //       for later.
-    let input_socket = Socket::new(
-        ctx,
-        "input",
-        &SocketEdgeKind::Configures,
-        &SocketArity::Many,
-        &SchematicKind::Component,
-    )
-    .await?;
-    variant.add_socket(ctx, input_socket.id()).await?;
-
-    let output_socket = Socket::new(
-        ctx,
-        "output",
-        &SocketEdgeKind::Output,
-        &SocketArity::Many,
-        &SchematicKind::Component,
-    )
-    .await?;
-    variant.add_socket(ctx, output_socket.id()).await?;
 
     let includes_socket = Socket::new(
         ctx,

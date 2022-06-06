@@ -52,10 +52,27 @@ export class Socket extends PIXI.Container {
     this.addChild(socket);
   }
 
+  isConnected() {
+    for (const child of this.children) {
+      if (child instanceof Connector) {
+        return child.isConnected();
+      }
+    }
+    return false;
+  }
+
   setConnected() {
     for (const child of this.children) {
       if (child instanceof Connector) {
         child.setConnected();
+      }
+    }
+  }
+
+  setDisconnected() {
+    for (const child of this.children) {
+      if (child instanceof Connector) {
+        child.setDisconnected();
       }
     }
   }
