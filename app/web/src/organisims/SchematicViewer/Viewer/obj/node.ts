@@ -96,7 +96,7 @@ export class Node extends PIXI.Container {
   setCard(): void {
     const card = new Card(
       NODE_WIDTH,
-      this.nodeHeight(this.socketCount),
+      this.nodeHeight(),
       6,
       this.title,
       this.name,
@@ -115,11 +115,7 @@ export class Node extends PIXI.Container {
   }
 
   setSelectionStatus(): void {
-    const status = new SelectionStatus(
-      NODE_WIDTH,
-      this.nodeHeight(this.socketCount),
-      6,
-    );
+    const status = new SelectionStatus(NODE_WIDTH, this.nodeHeight(), 6);
     status.zIndex = 1;
     this.selection = status;
     this.addChild(this.selection);
@@ -134,7 +130,7 @@ export class Node extends PIXI.Container {
       100,
       78,
       NODE_WIDTH,
-      this.nodeHeight(this.socketCount),
+      this.nodeHeight(),
     );
     status.name = "QualificationStatus";
     status.zIndex = 1;

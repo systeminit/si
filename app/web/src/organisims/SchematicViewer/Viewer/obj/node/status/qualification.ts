@@ -2,7 +2,7 @@ import * as PIXI from "pixi.js";
 
 export class QualificationStatus extends PIXI.Container {
   constructor(
-    status?: boolean,
+    status: boolean | undefined,
     x: number,
     y: number,
     width: number,
@@ -10,8 +10,10 @@ export class QualificationStatus extends PIXI.Container {
   ) {
     super();
 
+    if (status === undefined) return;
+
     let iconSvg;
-    if (status === true) {
+    if (status) {
       const color = "#86f0ad";
 
       iconSvg = `\

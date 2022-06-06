@@ -31,6 +31,11 @@ export class Connector extends PIXI.Graphics {
 
   setDisconnected() {
     this.clear();
+
+    this.beginFill(0x282e30);
+    this.drawCircle(0, 0, 6);
+    this.endFill();
+
     this.lineStyle(2, this.color);
     this.drawCircle(0, 0, 5.4);
     this.endFill();
