@@ -338,11 +338,11 @@ async fn intra_component_identity_update(ctx: &DalContext<'_, '_>) {
 
     // With the "source" internal provider in hand and the "destination" attribute prototype setup,
     // we can create an argument for the latter prototype.
-    let _argument = AttributePrototypeArgument::new(
+    let _argument = AttributePrototypeArgument::new_for_intra_component(
         ctx,
+        *destination_attribute_prototype.id(),
         "identity".to_string(),
         *source_internal_provider.id(),
-        *destination_attribute_prototype.id(),
     )
     .await
     .expect("could not create attribute prototype argument");

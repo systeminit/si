@@ -83,11 +83,11 @@ async fn create_and_list_for_attribute_prototype(ctx: &DalContext<'_, '_>) {
             .await
             .expect("could not create internal provider");
 
-    let argument = AttributePrototypeArgument::new(
+    let argument = AttributePrototypeArgument::new_for_intra_component(
         ctx,
+        *attribute_prototype.id(),
         "title".to_string(),
         *internal_provider.id(),
-        *attribute_prototype.id(),
     )
     .await
     .expect("could not create attribute prototype argument");
@@ -108,10 +108,8 @@ async fn create_and_list_for_attribute_prototype(ctx: &DalContext<'_, '_>) {
         found_argument.internal_provider_id(),
         argument.internal_provider_id()
     );
-    let found_prototype = found_argument
-        .attribute_prototype(ctx)
-        .await
-        .expect("could not get attribute prototype for attribute prototype argument")
-        .expect("attribute prototype for attribute prototype argument not found");
-    assert_eq!(found_prototype.id(), attribute_prototype.id());
+    assert_eq!(
+        found_argument.attribute_prototype_id(),
+        *attribute_prototype.id()
+    );
 }

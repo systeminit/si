@@ -603,11 +603,11 @@ async fn docker_image(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     let si_name_internal_provider = InternalProvider::get_for_prop(ctx, *si_name_prop.id())
         .await?
         .ok_or_else(|| InternalProviderError::NotFoundForProp(*si_name_prop.id()))?;
-    let _argument = AttributePrototypeArgument::new(
+    let _argument = AttributePrototypeArgument::new_for_intra_component(
         ctx,
+        *image_attribute_prototype.id(),
         "identity".to_string(),
         *si_name_internal_provider.id(),
-        *image_attribute_prototype.id(),
     )
     .await?;
 
