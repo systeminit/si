@@ -89,18 +89,18 @@ BEGIN
             -- rows to conflict in head when we try to insert into head in the
             -- next query below (i.e. we're looking to trigger the ON CONFLICT
             -- behavior).
-            UPDATE this_table_name
-              SET visibility_deleted_at = now()
-            WHERE visibility_change_set_pk = -1
-              AND visibility_edit_session_pk = -1
-              AND visibility_deleted_at IS NULL
-              AND id IN (
-                  SELECT id
-                  FROM this_table_name
-                  WHERE visibility_change_set_pk = this_change_set_pk
-                    AND visibility_edit_session_pk = -1
-                    AND visibility_deleted_at IS NOT NULL
-              );
+            EXECUTE format('UPDATE %1$I ' ||
+                           '  SET visibility_deleted_at = now() ' ||
+                           'WHERE visibility_change_set_pk = -1 ' ||
+                           '  AND visibility_edit_session_pk = -1 ' ||
+                           '  AND visibility_deleted_at IS NULL ' ||
+                           '  AND id IN ( ' ||
+                           '      SELECT id ' ||
+                           '      FROM %1$I ' ||
+                           '      WHERE visibility_change_set_pk = %2$L ' ||
+                           '        AND visibility_edit_session_pk = -1 ' ||
+                           '        AND visibility_deleted_at IS NOT NULL ' ||
+                           '  )', this_table_name, this_change_set_pk);
 
             query := format('INSERT INTO %1$I (%2$s) ' ||
                             'SELECT %2$s FROM %1$I WHERE %1$I.visibility_change_set_pk = %3$L AND %1$I.visibility_edit_session_pk = -1 ' ||

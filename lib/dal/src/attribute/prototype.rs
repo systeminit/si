@@ -264,7 +264,7 @@ impl AttributePrototype {
     ) -> AttributePrototypeResult<()> {
         // Get the prototype for the given id. Once we get its corresponding value, we can delete
         // the prototype.
-        let mut attribute_prototype =
+        let attribute_prototype =
             match AttributePrototype::get_by_id(ctx, attribute_prototype_id).await? {
                 Some(v) => v,
                 None => return Ok(()),
@@ -279,7 +279,7 @@ impl AttributePrototype {
 
         // Delete all values and arguments found for a prototype before deleting the prototype.
         let attribute_values = attribute_prototype.attribute_values(ctx).await?;
-        for mut argument in
+        for argument in
             AttributePrototypeArgument::list_for_attribute_prototype(ctx, *attribute_prototype_id)
                 .await?
         {
@@ -291,14 +291,14 @@ impl AttributePrototype {
         // value's children (and their children, recursively). Once we find the child values,
         // we can delete the current value in the queue and its prototype.
         let mut work_queue = attribute_values;
-        while let Some(mut current_value) = work_queue.pop() {
+        while let Some(current_value) = work_queue.pop() {
             let child_attribute_values = current_value.child_attribute_values(ctx).await?;
             if !child_attribute_values.is_empty() {
                 work_queue.extend(child_attribute_values);
             }
 
             // Delete the prototype if we find one and if its context is not "least-specific".
-            if let Some(mut current_prototype) = current_value.attribute_prototype(ctx).await? {
+            if let Some(current_prototype) = current_value.attribute_prototype(ctx).await? {
                 if current_prototype.context.is_least_specific() {
                     return Err(
                         AttributePrototypeError::LeastSpecificContextPrototypeRemovalNotAllowed(
@@ -307,7 +307,7 @@ impl AttributePrototype {
                     );
                 }
                 // Delete all arguments found for a prototype before deleting the prototype.
-                for mut argument in AttributePrototypeArgument::list_for_attribute_prototype(
+                for argument in AttributePrototypeArgument::list_for_attribute_prototype(
                     ctx,
                     *current_prototype.id(),
                 )

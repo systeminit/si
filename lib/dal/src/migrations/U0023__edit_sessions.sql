@@ -92,16 +92,16 @@ BEGIN
             -- those rows to conflict in the change set when we try to insert
             -- into the change set in the next query below (i.e. we're looking
             -- to trigger the ON CONFLICT behavior).
-            UPDATE this_table_name
-              SET visibility_deleted_at = now()
-            WHERE visibility_edit_session_pk = -1
-              AND visibility_deleted_at IS NULL
-              AND ROW(id, visibility_change_set_pk) IN (
-                  SELECT id, visibility_change_set_pk
-                  FROM this_table_name
-                  WHERE visibility_edit_session_pk = this_edit_session_pk
-                    AND visibility_deleted_at IS NOT NULL
-              );
+            EXECUTE format('UPDATE %1$I ' ||
+                           '  SET visibility_deleted_at = now() ' ||
+                           'WHERE visibility_edit_session_pk = -1 ' ||
+                           '  AND visibility_deleted_at IS NULL ' ||
+                           '  AND ROW(id, visibility_change_set_pk) IN ( ' ||
+                           '      SELECT id, visibility_change_set_pk ' ||
+                           '      FROM %1$I ' ||
+                           '      WHERE visibility_edit_session_pk = %2$L ' ||
+                           '        AND visibility_deleted_at IS NOT NULL ' ||
+                           '  )', this_table_name, this_edit_session_pk);
 
             query := format('INSERT INTO %1$I (%2$s) ' ||
                             'SELECT %2$s FROM %1$I WHERE %1$I.visibility_edit_session_pk = %3$L ' ||
