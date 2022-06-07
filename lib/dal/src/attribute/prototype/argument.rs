@@ -1,24 +1,22 @@
-//! An [`AttributePrototypeArgument`] represents an argument name and its corresponding
-//! [`InternalProvider`](crate::InternalProvider). An
-//! [`AttributePrototype`](crate::AttributePrototype) can have multiple arguments.
+//! An [`AttributePrototypeArgument`] represents an argument name and how to dynamically derive
+//! the corresponding value. [`AttributePrototype`](crate::AttributePrototype) can have multiple
+//! arguments.
 
 use serde::{Deserialize, Serialize};
 use si_data::PgError;
 use telemetry::prelude::*;
 use thiserror::Error;
 
+use crate::attribute::context::UNSET_ID_VALUE;
 use crate::provider::internal::InternalProviderId;
 use crate::{
-    impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_accessor_ro,
-    standard_model_belongs_to, AttributePrototype, AttributePrototypeId, DalContext,
-    HistoryEventError, InternalProvider, StandardModel, StandardModelError, Timestamp, Visibility,
-    WriteTenancy,
+    impl_standard_model, pk, standard_model, standard_model_accessor, AttributePrototypeId,
+    ComponentId, DalContext, ExternalProviderId, HistoryEventError, StandardModel,
+    StandardModelError, Timestamp, Visibility, WriteTenancy,
 };
 
 const LIST_FOR_ATTRIBUTE_PROTOTYPE: &str =
     include_str!("../../queries/attribute_prototype_argument_list_for_attribute_prototype.sql");
-const LIST_FOR_INTERNAL_PROVIDER: &str =
-    include_str!("../../queries/attribute_prototype_argument_list_for_internal_provider.sql");
 
 #[derive(Error, Debug)]
 pub enum AttributePrototypeArgumentError {
@@ -29,14 +27,12 @@ pub enum AttributePrototypeArgumentError {
     #[error("standard model error: {0}")]
     StandardModelError(#[from] StandardModelError),
 
-    #[error("attribute prototype error: {0}")]
-    AttributePrototype(String),
-    #[error(
-        "attribute prototype argument for attribute prototype ({0}) with name ({1}) already exists"
-    )]
-    ArgumentWithNameForPrototypeAlreadyExists(AttributePrototypeId, String),
-    #[error("attribute prototype argument does not belong to any attribute prototype")]
-    NoAttributePrototypeRelationship,
+    #[error("cannot update set field to become unset: {0}")]
+    CannotFlipSetFieldToUnset(&'static str),
+    #[error("cannot update unset field to become set: {0}")]
+    CannotFlipUnsetFieldToSet(&'static str),
+    #[error("required value fields must be set, found at least one unset required value field")]
+    RequiredValueFieldsUnset,
 }
 
 pub type AttributePrototypeArgumentResult<T> = Result<T, AttributePrototypeArgumentError>;
@@ -44,8 +40,8 @@ pub type AttributePrototypeArgumentResult<T> = Result<T, AttributePrototypeArgum
 pk!(AttributePrototypeArgumentPk);
 pk!(AttributePrototypeArgumentId);
 
-/// Contains a "key" and "value" for an argument that can be dynamically used
-/// for [`AttributePrototypes`](crate::AttributePrototype).
+/// Contains a "key" and fields to derive a "value" that dynamically used as an argument for a
+/// [`AttributePrototypes`](crate::AttributePrototype) function execution.
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct AttributePrototypeArgument {
     pk: AttributePrototypeArgumentPk,
@@ -57,10 +53,23 @@ pub struct AttributePrototypeArgument {
     #[serde(flatten)]
     timestamp: Timestamp,
 
-    /// The "key" for a given argument. This field is immutable.
+    /// Indicates the [`AttributePrototype`](crate::AttributePrototype) that [`Self`] is used as
+    /// an argument for.
+    attribute_prototype_id: AttributePrototypeId,
+    /// The "key" for a given argument.
     name: String,
-    /// The "value" for a given argument.
+    /// Where to find the value for a given argument for _intra_ [`Component`](crate::Component)
+    /// connections.
     internal_provider_id: InternalProviderId,
+    /// Where to find the value for a given argument for _inter_ [`Component`](crate::Component)
+    /// connections.
+    external_provider_id: ExternalProviderId,
+    /// For _inter_ [`Component`](crate::Component) connections, this field provides additional
+    /// information to determine the _source_ of the value.
+    tail_component_id: ComponentId,
+    /// For _inter_ [`Component`](crate::Component) connections, this field provides additional
+    /// information to determine the _destination_ of the value.
+    head_component_id: ComponentId,
 }
 
 impl_standard_model! {
@@ -74,108 +83,212 @@ impl_standard_model! {
 
 impl AttributePrototypeArgument {
     #[instrument(skip_all)]
-    pub async fn new(
+    pub async fn new_for_intra_component(
         ctx: &DalContext<'_, '_>,
+        attribute_prototype_id: AttributePrototypeId,
         name: String,
         internal_provider_id: InternalProviderId,
-        attribute_prototype_id: AttributePrototypeId,
     ) -> AttributePrototypeArgumentResult<Self> {
+        let external_provider_id: ExternalProviderId = UNSET_ID_VALUE.into();
+        let tail_component_id: ComponentId = UNSET_ID_VALUE.into();
+        let head_component_id: ComponentId = UNSET_ID_VALUE.into();
+
+        if internal_provider_id == UNSET_ID_VALUE.into() {
+            return Err(AttributePrototypeArgumentError::RequiredValueFieldsUnset);
+        }
+
         let row = ctx
             .txns()
             .pg()
             .query_one(
-                "SELECT object FROM attribute_prototype_argument_create_v1($1, $2, $3, $4)",
+                "SELECT object FROM attribute_prototype_argument_create_v1($1, $2, $3, $4, $5, $6, $7, $8)",
                 &[
                     ctx.write_tenancy(),
                     ctx.visibility(),
+                    &attribute_prototype_id,
                     &name,
                     &internal_provider_id,
+                    &external_provider_id,
+                    &tail_component_id,
+                    &head_component_id,
                 ],
             )
             .await?;
-        let object: AttributePrototypeArgument =
-            standard_model::finish_create_from_row(ctx, row).await?;
-        object
-            .set_attribute_prototype(ctx, attribute_prototype_id)
-            .await?;
-        Ok(object)
+        Ok(standard_model::finish_create_from_row(ctx, row).await?)
     }
 
-    standard_model_accessor_ro!(name, String);
+    #[instrument(skip_all)]
+    pub async fn new_for_inter_component(
+        ctx: &DalContext<'_, '_>,
+        attribute_prototype_id: AttributePrototypeId,
+        name: String,
+        external_provider_id: ExternalProviderId,
+        tail_component_id: ComponentId,
+        head_component_id: ComponentId,
+    ) -> AttributePrototypeArgumentResult<Self> {
+        let internal_provider_id: ExternalProviderId = UNSET_ID_VALUE.into();
+
+        if external_provider_id == UNSET_ID_VALUE.into()
+            || tail_component_id == UNSET_ID_VALUE.into()
+            || head_component_id == UNSET_ID_VALUE.into()
+        {
+            return Err(AttributePrototypeArgumentError::RequiredValueFieldsUnset);
+        }
+
+        let row = ctx
+            .txns()
+            .pg()
+            .query_one(
+                "SELECT object FROM attribute_prototype_argument_create_v1($1, $2, $3, $4, $5, $6, $7, $8)",
+                &[
+                    ctx.write_tenancy(),
+                    ctx.visibility(),
+                    &attribute_prototype_id,
+                    &name,
+                    &internal_provider_id,
+                    &external_provider_id,
+                    &tail_component_id,
+                    &head_component_id,
+                ],
+            )
+            .await?;
+        Ok(standard_model::finish_create_from_row(ctx, row).await?)
+    }
+
+    standard_model_accessor!(
+        attribute_prototype_id,
+        Pk(AttributePrototypeId),
+        AttributePrototypeArgumentResult
+    );
+    standard_model_accessor!(name, String, AttributePrototypeArgumentResult);
+
+    // FIXME(nick): add standard model accessor wrapper that disallows updating set field
+    // to become unset and vice versa.
     standard_model_accessor!(
         internal_provider_id,
         Pk(InternalProviderId),
         AttributePrototypeArgumentResult
     );
-    standard_model_belongs_to!(
-        lookup_fn: attribute_prototype,
-        set_fn: set_attribute_prototype_unchecked,
-        unset_fn: unset_attribute_prototype,
-        table: "attribute_prototype_argument_belongs_to_attribute_prototype",
-        model_table: "attribute_prototypes",
-        belongs_to_id: AttributePrototypeId,
-        returns: AttributePrototype,
-        result: AttributePrototypeArgumentResult,
+    standard_model_accessor!(
+        external_provider_id,
+        Pk(ExternalProviderId),
+        AttributePrototypeArgumentResult
+    );
+    standard_model_accessor!(
+        tail_component_id,
+        Pk(ComponentId),
+        AttributePrototypeArgumentResult
+    );
+    standard_model_accessor!(
+        head_component_id,
+        Pk(ComponentId),
+        AttributePrototypeArgumentResult
     );
 
-    /// Sets [`Self`] to belong to a provided [`AttributePrototypeId`](crate::AttributePrototype).
-    /// This only works if there are no existing arguments that share the same name.
-    pub async fn set_attribute_prototype(
-        &self,
+    /// Wraps the standard model accessor for "internal_provider_id" to ensure that a set value
+    /// cannot become unset and vice versa.
+    pub async fn set_internal_provider_id_safe(
+        mut self,
         ctx: &DalContext<'_, '_>,
-        attribute_prototype_id: AttributePrototypeId,
+        internal_provider_id: InternalProviderId,
     ) -> AttributePrototypeArgumentResult<()> {
-        for argument in Self::list_for_attribute_prototype(ctx, attribute_prototype_id).await? {
-            if argument.name == self.name {
-                return Err(
-                    AttributePrototypeArgumentError::ArgumentWithNameForPrototypeAlreadyExists(
-                        attribute_prototype_id,
-                        self.name.clone(),
-                    ),
-                );
-            }
+        if self.internal_provider_id != UNSET_ID_VALUE.into()
+            && internal_provider_id == UNSET_ID_VALUE.into()
+        {
+            return Err(AttributePrototypeArgumentError::CannotFlipUnsetFieldToSet(
+                "InternalProviderId",
+            ));
         }
-        self.set_attribute_prototype_unchecked(ctx, &attribute_prototype_id)
+        if self.internal_provider_id == UNSET_ID_VALUE.into()
+            && internal_provider_id != UNSET_ID_VALUE.into()
+        {
+            return Err(AttributePrototypeArgumentError::CannotFlipSetFieldToUnset(
+                "InternalProviderId",
+            ));
+        }
+        self.set_internal_provider_id(ctx, internal_provider_id)
             .await?;
         Ok(())
     }
 
-    /// Get the [`InternalProvider`] via the corresponding field on [`Self`].
-    pub async fn internal_provider(
-        &self,
-        ctx: &DalContext<'_, '_>,
-    ) -> AttributePrototypeArgumentResult<Option<InternalProvider>> {
-        Ok(InternalProvider::get_by_id(ctx, &self.internal_provider_id).await?)
-    }
-
-    /// Since the "name" field is immutable for [`Self`], this function creates a new [`Self`] using
-    /// the new "name" and deletes the old [`Self`]. The sole, meaningful difference between the old
-    /// and new argument should be the "name" field.
-    pub async fn replace_with_new_name(
+    /// Wraps the standard model accessor for "external_provider_id" to ensure that a set value
+    /// cannot become unset and vice versa.
+    pub async fn set_external_provider_id_safe(
         mut self,
         ctx: &DalContext<'_, '_>,
-        new_name: String,
-    ) -> AttributePrototypeArgumentResult<Self> {
-        let found_attribute_prototype = self
-            .attribute_prototype(ctx)
-            .await?
-            .ok_or(AttributePrototypeArgumentError::NoAttributePrototypeRelationship)?;
-
-        // We need to delete immediately before creation because the creation function will check
-        // for a "name" collision.
-        self.delete(ctx).await?;
-
-        let new_argument = Self::new(
-            ctx,
-            new_name,
-            self.internal_provider_id,
-            *found_attribute_prototype.id(),
-        )
-        .await?;
-        Ok(new_argument)
+        external_provider_id: ExternalProviderId,
+    ) -> AttributePrototypeArgumentResult<()> {
+        if self.external_provider_id != UNSET_ID_VALUE.into()
+            && external_provider_id == UNSET_ID_VALUE.into()
+        {
+            return Err(AttributePrototypeArgumentError::CannotFlipUnsetFieldToSet(
+                "ExternalProviderId",
+            ));
+        }
+        if self.external_provider_id == UNSET_ID_VALUE.into()
+            && external_provider_id != UNSET_ID_VALUE.into()
+        {
+            return Err(AttributePrototypeArgumentError::CannotFlipSetFieldToUnset(
+                "ExternalProviderId",
+            ));
+        }
+        self.set_external_provider_id(ctx, external_provider_id)
+            .await?;
+        Ok(())
     }
 
-    /// Find all [`Self`] for a given [`AttributePrototype`](crate::AttributePrototype).
+    /// Wraps the standard model accessor for "tail_component_id" to ensure that a set value
+    /// cannot become unset and vice versa.
+    pub async fn set_tail_component_id_safe(
+        mut self,
+        ctx: &DalContext<'_, '_>,
+        tail_component_id: ComponentId,
+    ) -> AttributePrototypeArgumentResult<()> {
+        if self.tail_component_id != UNSET_ID_VALUE.into()
+            && tail_component_id == UNSET_ID_VALUE.into()
+        {
+            return Err(AttributePrototypeArgumentError::CannotFlipUnsetFieldToSet(
+                "tail ComponentId",
+            ));
+        }
+        if self.tail_component_id == UNSET_ID_VALUE.into()
+            && tail_component_id != UNSET_ID_VALUE.into()
+        {
+            return Err(AttributePrototypeArgumentError::CannotFlipSetFieldToUnset(
+                "tail ComponentId",
+            ));
+        }
+        self.set_tail_component_id(ctx, tail_component_id).await?;
+        Ok(())
+    }
+
+    /// Wraps the standard model accessor for "head_component_id" to ensure that a set value
+    /// cannot become unset and vice versa.
+    pub async fn set_head_component_id_safe(
+        mut self,
+        ctx: &DalContext<'_, '_>,
+        head_component_id: ComponentId,
+    ) -> AttributePrototypeArgumentResult<()> {
+        if self.head_component_id != UNSET_ID_VALUE.into()
+            && head_component_id == UNSET_ID_VALUE.into()
+        {
+            return Err(AttributePrototypeArgumentError::CannotFlipUnsetFieldToSet(
+                "head ComponentId",
+            ));
+        }
+        if self.head_component_id == UNSET_ID_VALUE.into()
+            && head_component_id != UNSET_ID_VALUE.into()
+        {
+            return Err(AttributePrototypeArgumentError::CannotFlipSetFieldToUnset(
+                "head ComponentId",
+            ));
+        }
+        self.set_head_component_id(ctx, head_component_id).await?;
+        Ok(())
+    }
+
+    /// List all [`AttributePrototypeArguments`](Self) for a given
+    /// [`AttributePrototype`](crate::AttributePrototype).
     #[tracing::instrument(skip(ctx))]
     pub async fn list_for_attribute_prototype(
         ctx: &DalContext<'_, '_>,
@@ -191,23 +304,6 @@ impl AttributePrototypeArgument {
                     ctx.visibility(),
                     &attribute_prototype_id,
                 ],
-            )
-            .await?;
-        Ok(standard_model::objects_from_rows(rows)?)
-    }
-
-    /// Find all [`Self`] for a given [`InternalProvider`](crate::InternalProvider).
-    #[tracing::instrument(skip(ctx))]
-    pub async fn list_for_internal_provider(
-        ctx: &DalContext<'_, '_>,
-        internal_provider_id: InternalProviderId,
-    ) -> AttributePrototypeArgumentResult<Vec<Self>> {
-        let rows = ctx
-            .txns()
-            .pg()
-            .query(
-                LIST_FOR_INTERNAL_PROVIDER,
-                &[ctx.read_tenancy(), ctx.visibility(), &internal_provider_id],
             )
             .await?;
         Ok(standard_model::objects_from_rows(rows)?)

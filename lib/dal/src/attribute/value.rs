@@ -32,9 +32,10 @@ use crate::{
     impl_standard_model, pk,
     standard_model::{self, TypeHint},
     standard_model_accessor, standard_model_belongs_to, standard_model_has_many,
-    AttributeContextError, Component, ComponentAsyncTasks, DalContext, Func, FuncError,
-    HistoryEventError, IndexMap, InternalProvider, Prop, PropError, PropId, PropKind,
-    ReadTenancyError, StandardModel, StandardModelError, Timestamp, Visibility, WriteTenancy,
+    AttributeContextError, AttributePrototypeArgument, AttributePrototypeArgumentError, Component,
+    ComponentAsyncTasks, DalContext, Func, FuncError, HistoryEventError, IndexMap,
+    InternalProvider, Prop, PropError, PropId, PropKind, ReadTenancyError, StandardModel,
+    StandardModelError, Timestamp, Visibility, WriteTenancy,
 };
 
 pub mod view;
@@ -59,10 +60,12 @@ pub enum AttributeValueError {
     AttributeContext(#[from] AttributeContextError),
     #[error("AttributeContextBuilder error: {0}")]
     AttributeContextBuilder(#[from] AttributeContextBuilderError),
-    #[error("AttributePrototype not found for AttributeValue: {0} ({1:?})")]
-    AttributePrototypeNotFound(AttributeValueId, Visibility),
     #[error("AttributePrototype error: {0}")]
     AttributePrototype(String),
+    #[error("AttributePrototypeArgument error: {0}")]
+    AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
+    #[error("AttributePrototype not found for AttributeValue: {0} ({1:?})")]
+    AttributePrototypeNotFound(AttributeValueId, Visibility),
     #[error("invalid json pointer: {0} for {1}")]
     BadJsonPointer(String, String),
     #[error("component error: {0}")]
@@ -1245,10 +1248,9 @@ impl AttributeValue {
                     .attribute_prototype(ctx)
                     .await?
                     .ok_or(AttributeValueError::MissingAttributePrototype)?;
-                let arguments = prototype
-                    .attribute_prototype_arguments(ctx)
-                    .await
-                    .map_err(|e| AttributeValueError::AttributePrototype(e.to_string()))?;
+                let arguments =
+                    AttributePrototypeArgument::list_for_attribute_prototype(ctx, *prototype.id())
+                        .await?;
 
                 let mut func_binding_args: HashMap<String, Option<serde_json::Value>> =
                     HashMap::new();
@@ -1266,7 +1268,7 @@ impl AttributeValue {
                                 internal_provider_context,
                             ))?;
                     let value = internal_provider_attribute_value.get_value(ctx).await?;
-                    func_binding_args.insert(argument.name().clone(), value);
+                    func_binding_args.insert(argument.name().to_string(), value);
                 }
 
                 // Generate a new func binding return value with our arguments assembled.

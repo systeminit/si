@@ -247,13 +247,6 @@ impl AttributePrototype {
         returns: AttributeValue,
         result: AttributePrototypeResult,
     );
-    standard_model_has_many!(
-        lookup_fn: attribute_prototype_arguments,
-        table: "attribute_prototype_argument_belongs_to_attribute_prototype",
-        model_table: "attribute_prototype_arguments",
-        returns: AttributePrototypeArgument,
-        result: AttributePrototypeResult,
-    );
 
     /// Deletes the [`AttributePrototype`] corresponding to a provided ID. Before deletion occurs,
     /// its corresponding [`AttributeValue`](crate::AttributeValue), all of its child values
@@ -286,9 +279,9 @@ impl AttributePrototype {
 
         // Delete all values and arguments found for a prototype before deleting the prototype.
         let attribute_values = attribute_prototype.attribute_values(ctx).await?;
-        for mut argument in attribute_prototype
-            .attribute_prototype_arguments(ctx)
-            .await?
+        for mut argument in
+            AttributePrototypeArgument::list_for_attribute_prototype(ctx, *attribute_prototype_id)
+                .await?
         {
             argument.delete(ctx).await?;
         }
@@ -314,7 +307,12 @@ impl AttributePrototype {
                     );
                 }
                 // Delete all arguments found for a prototype before deleting the prototype.
-                for mut argument in current_prototype.attribute_prototype_arguments(ctx).await? {
+                for mut argument in AttributePrototypeArgument::list_for_attribute_prototype(
+                    ctx,
+                    *current_prototype.id(),
+                )
+                .await?
+                {
                     argument.delete(ctx).await?;
                 }
                 current_prototype.delete(ctx).await?;

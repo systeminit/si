@@ -11,23 +11,41 @@ CREATE TABLE attribute_prototype_arguments
     visibility_deleted_at       timestamp with time zone,
     created_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     updated_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
+    attribute_prototype_id      bigint                   NOT NULL,
     name                        text                     NOT NULL,
-    internal_provider_id        bigint                   NOT NULL
+    internal_provider_id        bigint                   NOT NULL,
+    external_provider_id        bigint                   NOT NULL,
+    tail_component_id           bigint                   NOT NULL,
+    head_component_id           bigint                   NOT NULL
 );
-SELECT standard_model_table_constraints_v1('attribute_prototype_arguments');
-SELECT belongs_to_table_create_v1('attribute_prototype_argument_belongs_to_attribute_prototype',
-                                  'attribute_prototype_arguments', 'attribute_prototypes');
 
+/* NOTE(nick): these indices might be able to be combined in the future. They are not combined
+   currently in order to protect against an accidental update of an unset field (i.e. two rows
+   are identical barring one's "internal_provider_id" being set and the other unset, thus creating
+   logically identical attribute prototype arguments for inter component connections.
+ */
+CREATE UNIQUE INDEX intra_component_argument ON attribute_prototype_arguments (attribute_prototype_id,
+                                                                               name,
+                                                                               internal_provider_id);
+CREATE UNIQUE INDEX inter_component_argument ON attribute_prototype_arguments (attribute_prototype_id,
+                                                                               name,
+                                                                               external_provider_id,
+                                                                               tail_component_id,
+                                                                               head_component_id);
+
+SELECT standard_model_table_constraints_v1('attribute_prototype_arguments');
 INSERT INTO standard_models (table_name, table_type, history_event_label_base, history_event_message_name)
-VALUES ('attribute_prototype_arguments', 'model', 'attribute_prototype_argument', 'Attribute Prototype Argument'),
-       ('attribute_prototype_argument_belongs_to_attribute_prototype', 'belongs_to',
-        'attribute_prototype_argument.attribute_prototype', 'Attribute Prototype Argument <> Attribute Prototype');
+VALUES ('attribute_prototype_arguments', 'model', 'attribute_prototype_argument', 'Attribute Prototype Argument');
 
 CREATE OR REPLACE FUNCTION attribute_prototype_argument_create_v1(
     this_tenancy jsonb,
     this_visibility jsonb,
+    this_attribute_prototype_argument_id bigint,
     this_name text,
     this_internal_provider_id bigint,
+    this_external_provider_id bigint,
+    this_tail_component_id bigint,
+    this_head_component_id bigint,
     OUT object json) AS
 $$
 DECLARE
@@ -45,8 +63,12 @@ BEGIN
                                                visibility_change_set_pk,
                                                visibility_edit_session_pk,
                                                visibility_deleted_at,
+                                               attribute_prototype_id,
                                                name,
-                                               internal_provider_id)
+                                               internal_provider_id,
+                                               external_provider_id,
+                                               tail_component_id,
+                                               head_component_id)
     VALUES (this_tenancy_record.tenancy_universal,
             this_tenancy_record.tenancy_billing_account_ids,
             this_tenancy_record.tenancy_organization_ids,
@@ -54,8 +76,12 @@ BEGIN
             this_visibility_record.visibility_change_set_pk,
             this_visibility_record.visibility_edit_session_pk,
             this_visibility_record.visibility_deleted_at,
+            this_attribute_prototype_argument_id,
             this_name,
-            this_internal_provider_id)
+            this_internal_provider_id,
+            this_external_provider_id,
+            this_tail_component_id,
+            this_head_component_id)
     RETURNING * INTO this_new_row;
 
     object := row_to_json(this_new_row);
