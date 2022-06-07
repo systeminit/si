@@ -25,6 +25,7 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> BuiltinsResult<(
     };
 
     let (mut variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
+    variant.set_color(ctx, Some(0x921ed6)).await?;
     variant
         .set_link(
             ctx,
@@ -133,29 +134,27 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> BuiltinsResult<(
     )
     .await?;
 
-    // TODO: it's not clear if these are the desired sockets
-    // Note: This is not right; each schema needs its own socket types.
-    //       Also, they should clearly inherit from the core schema? Something
-    //       for later.
-    let input_socket = Socket::new(
+    let mut input_socket = Socket::new(
         ctx,
-        "input",
+        "docker_image",
         &SocketEdgeKind::Configures,
         &SocketArity::Many,
         &SchematicKind::Component,
     )
     .await?;
+    input_socket.set_color(ctx, Some(0xd61e8c)).await?;
     variant.add_socket(ctx, input_socket.id()).await?;
 
-    let output_socket = Socket::new(
+    let mut input_socket = Socket::new(
         ctx,
-        "output",
-        &SocketEdgeKind::Output,
+        "kubernetes_namespace",
+        &SocketEdgeKind::Configures,
         &SocketArity::Many,
         &SchematicKind::Component,
     )
     .await?;
-    variant.add_socket(ctx, output_socket.id()).await?;
+    input_socket.set_color(ctx, Some(0x85c9a3)).await?;
+    variant.add_socket(ctx, input_socket.id()).await?;
 
     let includes_socket = Socket::new(
         ctx,

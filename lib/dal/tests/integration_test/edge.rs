@@ -1,6 +1,7 @@
 use dal::{
     edge::{EdgeKind, VertexObjectKind},
     node::ApplicationId,
+    socket::SocketEdgeKind,
     test::{
         helpers::{
             create_system_with_node, find_schema_and_default_variant_by_name, find_schema_by_name,
@@ -24,12 +25,12 @@ async fn new(ctx: &DalContext<'_, '_>) {
 
     let input_socket = sockets
         .iter()
-        .find(|s| s.name() == "input")
+        .find(|s| s.edge_kind() == &SocketEdgeKind::Configures && s.name() == "service")
         .expect("cannot find input socket");
 
     let output_socket = sockets
         .iter()
-        .find(|s| s.name() == "output")
+        .find(|s| s.edge_kind() == &SocketEdgeKind::Output && s.name() == "service")
         .expect("cannot find output socket");
 
     let (head_component, head_node, _) =

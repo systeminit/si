@@ -1,16 +1,13 @@
-use crate::DalContext;
-use chrono::{DateTime, Utc};
+use crate::{node_position::NodePositionView, DalContext};
 use serde::{Deserialize, Serialize};
 use si_data::{NatsError, PgError};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::schema::variant::SchemaVariantError;
-use crate::socket::{Socket, SocketEdgeKind};
 use crate::{
-    generate_name, impl_standard_model, pk, schematic::SchematicKind, standard_model,
-    standard_model_accessor, standard_model_belongs_to, Component, ComponentId, HistoryEventError,
-    NodePosition, ReadTenancyError, Schema, SchemaId, SchemaVariant, SchemaVariantId,
+    generate_name, impl_standard_model, pk, schema::variant::SchemaVariantError,
+    schematic::SchematicKind, standard_model, standard_model_accessor, standard_model_belongs_to,
+    Component, ComponentId, HistoryEventError, ReadTenancyError, Schema, SchemaId, SchemaVariantId,
     StandardModel, StandardModelError, System, SystemId, Timestamp, Visibility, WriteTenancy,
 };
 
@@ -141,40 +138,12 @@ impl Node {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-pub struct NodeLabel {
-    pub title: String,
-    name: String,
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-pub enum NodeComponentType {
-    Application,
-    Computing,
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct NodeClassification {
-    pub component: NodeComponentType,
-    pub kind: String,
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct NodeDisplay {
-    pub color: String,
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct NodeTemplate {
-    pub kind: NodeKind,
-    pub label: NodeLabel,
-    pub classification: NodeClassification,
-    pub input: Vec<Socket>,
-    pub output: Vec<Socket>,
-    pub display: NodeDisplay,
-    pub schema_variant_id: SchemaVariantId,
+    name: String,
+    pub title: String,
+    kind: SchematicKind,
+    schema_variant_id: SchemaVariantId,
 }
 
 impl NodeTemplate {
@@ -188,38 +157,11 @@ impl NodeTemplate {
         let schema_variant_id = *schema
             .default_schema_variant_id()
             .ok_or(NodeError::SchemaMissingDefaultVariant)?;
-        let schema_variant = SchemaVariant::get_by_id(ctx, &schema_variant_id)
-            .await?
-            .ok_or(NodeError::SchemaMissingDefaultVariant)?;
 
-        let sockets = schema_variant.sockets(ctx).await?;
-        let mut outputs = vec![];
-        let mut inputs = vec![];
-        for socket in sockets.into_iter() {
-            match socket.edge_kind() {
-                SocketEdgeKind::Output => outputs.push(socket),
-                _ => inputs.push(socket),
-            }
-        }
-
-        let node_name = schema.name().to_string();
         Ok(NodeTemplate {
             kind: (*schema.kind()).into(),
-            label: NodeLabel {
-                title: node_name.clone(),
-                // name: node_name.clone(),
-                name: generate_name(None),
-            },
-            // eventually, this needs to come from the schema itself
-            classification: NodeClassification {
-                component: NodeComponentType::Application,
-                kind: node_name,
-            },
-            input: inputs,
-            output: outputs,
-            display: NodeDisplay {
-                color: "0x32b832".to_string(),
-            },
+            title: schema.name().to_owned(),
+            name: generate_name(None),
             schema_variant_id,
         })
     }
@@ -227,59 +169,42 @@ impl NodeTemplate {
 
 #[derive(Deserialize, Serialize, Debug, Copy, Clone, PartialEq, Eq)]
 #[serde(tag = "kind", rename_all = "camelCase")]
-pub enum NodeKindWithBaggage {
+pub enum NodeViewKind {
     #[serde(rename_all = "camelCase")]
-    Component {
-        component_id: ComponentId,
-    },
+    Component { component_id: ComponentId },
     #[serde(rename_all = "camelCase")]
-    Deployment {
-        component_id: ComponentId,
-    },
-    System,
+    Deployment { component_id: ComponentId },
 }
 
-/// This maps to the typescript node, and can go from the database
+/// This maps to the typescript SchematicNode, and can go from the database
 /// representation of a node, combined with the schema data.
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct NodeView {
     id: NodeId,
-    kind: NodeKindWithBaggage,
-    label: NodeLabel,
-    classification: NodeClassification,
-    position: Vec<NodePosition>,
-    input: Vec<Socket>,
-    output: Vec<Socket>,
-    display: NodeDisplay,
-    last_updated: DateTime<Utc>,
-    checksum: serde_json::Value,
+    name: String,
+    title: String,
+    kind: NodeViewKind,
+    schema_variant_id: SchemaVariantId,
+    positions: Vec<NodePositionView>,
 }
 
 impl NodeView {
     pub fn new(
         name: impl Into<String>,
         node: &Node,
-        kind: NodeKindWithBaggage,
-        position: Vec<NodePosition>,
+        kind: NodeViewKind,
+        positions: Vec<NodePositionView>,
         node_template: NodeTemplate,
     ) -> Self {
         let name = name.into();
         NodeView {
             id: node.id,
+            name,
             kind,
-            label: NodeLabel {
-                name,
-                title: node_template.label.title,
-            },
-            classification: node_template.classification,
-            position,
-            input: node_template.input,
-            output: node_template.output,
-            display: node_template.display,
-            last_updated: node.timestamp.updated_at,
-            // What is this for?
-            checksum: serde_json::json!["j4j4j4j4j4j4j4j4j4j4j4"],
+            schema_variant_id: node_template.schema_variant_id,
+            title: node_template.title,
+            positions,
         }
     }
 
@@ -287,7 +212,7 @@ impl NodeView {
         &self.id
     }
 
-    pub fn positions(&self) -> &[NodePosition] {
-        &self.position
+    pub fn positions(&self) -> &[NodePositionView] {
+        &self.positions
     }
 }

@@ -2,6 +2,7 @@ import * as PIXI from "pixi.js";
 import * as OBJ from "../obj";
 import _ from "lodash";
 
+import { Socket } from "../obj/node/sockets/socket";
 import { SceneManager } from "../scene";
 import { SchematicDataManager } from "../../data";
 import {
@@ -34,10 +35,13 @@ export class ConnectingManager {
   connection?: OBJ.Connection | undefined | null;
   data?: PIXI.InteractionData | undefined;
   offset?: Position | undefined;
+  target?: Socket;
+  targetWasConnected: boolean;
 
   constructor(dataManager: SchematicDataManager) {
     this.dataManager = dataManager;
     this.zoomFactor = 1;
+    this.targetWasConnected = false;
   }
 
   async beforeConnect(
@@ -54,6 +58,10 @@ export class ConnectingManager {
       x: offset.x,
       y: offset.y,
     };
+
+    this.target = target as Socket;
+    this.targetWasConnected = this.target.isConnected();
+    this.target.setConnected();
 
     //  (sp.x - offset.x) * (1 / this.zoomFactor),
 
@@ -123,6 +131,7 @@ export class ConnectingManager {
       const destinationSocketId = parseInt(destinationSocketStr[1]);
 
       const sourceSocket = await outputSocketById(sourceSocketId);
+
       const destinationSocket = await inputSocketById(destinationSocketId);
 
       if (_.isEqual(sourceSocket.provider.ty, destinationSocket.provider.ty)) {
@@ -160,6 +169,12 @@ export class ConnectingManager {
   }
 
   clearInteractiveConnection(sceneManager: SceneManager): void {
+    if (this.target) {
+      if (!this.targetWasConnected) {
+        this.target.setDisconnected();
+      }
+      this.target = undefined;
+    }
     if (sceneManager.interactiveConnection) {
       sceneManager.removeConnection(sceneManager.interactiveConnection.name);
     }

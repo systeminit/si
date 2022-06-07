@@ -10,6 +10,7 @@ export class Connector extends PIXI.Graphics {
   type: SocketType;
   kind: string;
   color: number;
+  connected: boolean;
 
   constructor(id: string, type: SocketType, color: number) {
     super();
@@ -19,7 +20,12 @@ export class Connector extends PIXI.Graphics {
     this.kind = "socket";
     this.name = id;
     this.color = color;
+    this.connected = false;
     this.setDisconnected();
+  }
+
+  isConnected() {
+    return this.connected;
   }
 
   setConnected() {
@@ -27,6 +33,7 @@ export class Connector extends PIXI.Graphics {
     this.beginFill(this.color);
     this.drawCircle(0, 0, 6);
     this.endFill();
+    this.connected = true;
   }
 
   setDisconnected() {
@@ -40,5 +47,6 @@ export class Connector extends PIXI.Graphics {
     this.drawCircle(0, 0, 5.4);
     this.endFill();
     this.interactive = true;
+    this.connected = false;
   }
 }

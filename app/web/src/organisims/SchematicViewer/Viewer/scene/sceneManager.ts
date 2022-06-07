@@ -110,7 +110,7 @@ export class SceneManager {
         const pos = n.positions.find(
           (pos) =>
             pos.schematicKind === schematicKind &&
-            pos.deploymentNodeId === selectedDeploymentNodeId,
+            pos.deploymentNodeId === (selectedDeploymentNodeId ?? null),
         );
         if (pos) {
           const node = new OBJ.Node(

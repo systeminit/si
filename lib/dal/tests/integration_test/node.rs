@@ -44,5 +44,5 @@ async fn new_node_template(ctx: &DalContext<'_, '_>) {
     let node_template = NodeTemplate::new_from_schema_id(ctx, *schema.id())
         .await
         .expect("cannot create node template");
-    assert_eq!(node_template.label.title, schema.name());
+    assert_eq!(node_template.title, schema.name());
 }

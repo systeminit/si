@@ -156,3 +156,27 @@ impl NodePosition {
         result: NodePositionResult,
     );
 }
+
+/// This maps to the typescript SchematicNodePosition, and can go from the database
+/// representation of a node, combined with the schema data.
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct NodePositionView {
+    pub deployment_node_id: Option<NodeId>,
+    pub schematic_kind: SchematicKind,
+    pub system_id: Option<SystemId>,
+    pub x: f64,
+    pub y: f64,
+}
+
+impl From<NodePosition> for NodePositionView {
+    fn from(pos: NodePosition) -> Self {
+        Self {
+            schematic_kind: pos.schematic_kind,
+            system_id: pos.system_id,
+            deployment_node_id: pos.deployment_node_id,
+            x: pos.x.parse().expect("Node position.x was not a float"),
+            y: pos.y.parse().expect("Node position.y was not a float"),
+        }
+    }
+}

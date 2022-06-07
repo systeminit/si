@@ -9,7 +9,7 @@
       <div class="flex flex-col w-full h-16">
         <div class="flex justify-end h-full">
           <div class="flex mr-2 items-center">
-            <SiSystemHeader />
+            <!-- <SiSystemHeader /> -->
             <SiChangeSetHeader />
           </div>
         </div>
@@ -83,7 +83,7 @@ import { setIfError } from "@/service/global_error";
 import { Component } from "@/api/sdf/dal/component";
 import StatusBar from "@/molecules/StatusBar.vue";
 import SiChangeSetHeader from "@/molecules/SiChangeSetHeader.vue";
-import SiSystemHeader from "@/molecules/SiSystemHeader.vue";
+//import SiSystemHeader from "@/molecules/SiSystemHeader.vue";
 
 const props = defineProps({
   applicationId: {

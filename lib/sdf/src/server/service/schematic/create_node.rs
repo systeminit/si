@@ -1,10 +1,11 @@
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use crate::service::schematic::{SchematicError, SchematicResult};
 use axum::Json;
+use dal::node_position::NodePositionView;
 use dal::{
-    generate_name, node::NodeId, node::NodeKindWithBaggage, Component, Node, NodeKind,
-    NodePosition, NodeTemplate, NodeView, Schema, SchemaId, SchematicKind, StandardModel, SystemId,
-    Visibility, WorkspaceId,
+    generate_name, node::NodeId, node::NodeViewKind, Component, Node, NodeKind, NodePosition,
+    NodeTemplate, NodeView, Schema, SchemaId, SchematicKind, StandardModel, SystemId, Visibility,
+    WorkspaceId,
 };
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
@@ -73,11 +74,7 @@ pub async fn create_node(
             async_tasks.push(tasks);
 
             let component_id = *component.id();
-            (
-                component,
-                NodeKindWithBaggage::Component { component_id },
-                node,
-            )
+            (component, NodeViewKind::Component { component_id }, node)
         }
         (SchematicKind::Deployment, None) => {
             let (component, node, tasks) =
@@ -85,11 +82,7 @@ pub async fn create_node(
             async_tasks.push(tasks);
 
             let component_id = *component.id();
-            (
-                component,
-                NodeKindWithBaggage::Deployment { component_id },
-                node,
-            )
+            (component, NodeViewKind::Deployment { component_id }, node)
         }
         (schema_kind, parent_node_id) => {
             return Err(SchematicError::InvalidSchematicKindParentNodeIdPair(
@@ -117,7 +110,7 @@ pub async fn create_node(
     )
     .await?;
     position.set_node(&ctx, node.id()).await?;
-    let mut positions = vec![position];
+    let mut positions = vec![NodePositionView::from(position)];
     if node.kind() == &NodeKind::Deployment {
         let position_component_panel = NodePosition::new(
             &ctx,
@@ -129,7 +122,7 @@ pub async fn create_node(
         )
         .await?;
         position_component_panel.set_node(&ctx, node.id()).await?;
-        positions.push(position_component_panel);
+        positions.push(NodePositionView::from(position_component_panel));
     }
     let node_view = NodeView::new(name, &node, kind, positions, node_template);
 

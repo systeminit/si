@@ -1,9 +1,10 @@
 use crate::dal::test;
 use dal::DalContext;
 
+use dal::schematic::ConnectionView;
 use dal::{
-    node::ApplicationId, test::helpers::create_system, Component, Connection, NodePosition, Schema,
-    Schematic, StandardModel,
+    node::ApplicationId, socket::SocketEdgeKind, test::helpers::create_system, Component,
+    Connection, NodePosition, Schema, Schematic, StandardModel,
 };
 
 #[test]
@@ -26,12 +27,12 @@ async fn get_schematic(ctx: &DalContext<'_, '_>, application_id: ApplicationId) 
 
     let input_socket = sockets
         .iter()
-        .find(|s| s.name() == "input")
+        .find(|s| s.edge_kind() == &SocketEdgeKind::Configures && s.name() == "service")
         .expect("cannot find input socket");
 
     let output_socket = sockets
         .iter()
-        .find(|s| s.name() == "output")
+        .find(|s| s.edge_kind() == &SocketEdgeKind::Output && s.name() == "service")
         .expect("cannot find output socket");
 
     let (_component, node, _) =
@@ -101,10 +102,19 @@ async fn get_schematic(ctx: &DalContext<'_, '_>, application_id: ApplicationId) 
     assert_eq!(schematic.nodes().len(), 2);
     assert_eq!(schematic.nodes()[0].id(), application_id2.id());
     assert_eq!(schematic.nodes()[1].id(), node2.id());
-    assert_eq!(schematic.nodes()[1].positions()[0].x(), node_position2.x());
-    assert_eq!(schematic.nodes()[1].positions()[0].y(), node_position2.y());
+    assert_eq!(
+        schematic.nodes()[1].positions()[0].x.to_string(),
+        node_position2.x()
+    );
+    assert_eq!(
+        schematic.nodes()[1].positions()[0].y.to_string(),
+        node_position2.y()
+    );
     assert_eq!(schematic.connections().len(), 1);
-    assert_ne!(schematic.connections()[0], connection);
+    assert_ne!(
+        schematic.connections()[0],
+        ConnectionView::from(connection.clone())
+    );
 
     // Restores original context so we can properly check if data is properly hidden
     let ctx = ctx.clone_with_new_application_node_id(Some(application_id));
@@ -115,10 +125,16 @@ async fn get_schematic(ctx: &DalContext<'_, '_>, application_id: ApplicationId) 
     assert_eq!(schematic.nodes().len(), 2);
     assert_eq!(schematic.nodes()[0].id(), &application_id);
     assert_eq!(schematic.nodes()[1].id(), node.id());
-    assert_eq!(schematic.nodes()[1].positions()[0].x(), node_position.x());
-    assert_eq!(schematic.nodes()[1].positions()[0].y(), node_position.y());
+    assert_eq!(
+        schematic.nodes()[1].positions()[0].x.to_string(),
+        node_position.x()
+    );
+    assert_eq!(
+        schematic.nodes()[1].positions()[0].y.to_string(),
+        node_position.y()
+    );
     assert_eq!(schematic.connections().len(), 1);
-    assert_ne!(schematic.connections()[0], connection);
+    assert_ne!(schematic.connections()[0], ConnectionView::from(connection));
 }
 
 #[test]
@@ -141,12 +157,12 @@ async fn create_connection(ctx: &DalContext<'_, '_>) {
 
     let input_socket = sockets
         .iter()
-        .find(|s| s.name() == "input")
+        .find(|s| s.edge_kind() == &SocketEdgeKind::Configures && s.name() == "service")
         .expect("cannot find input socket");
 
     let output_socket = sockets
         .iter()
-        .find(|s| s.name() == "output")
+        .find(|s| s.edge_kind() == &SocketEdgeKind::Output && s.name() == "service")
         .expect("cannot find output socket");
 
     let (_head_component, head_node, _) =

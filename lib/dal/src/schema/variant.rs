@@ -70,6 +70,7 @@ pub struct SchemaVariant {
     id: SchemaVariantId,
     name: String,
     link: Option<String>,
+    color: Option<i64>,
     #[serde(flatten)]
     tenancy: WriteTenancy,
     #[serde(flatten)]
@@ -145,6 +146,7 @@ impl SchemaVariant {
 
     standard_model_accessor!(name, String, SchemaVariantResult);
     standard_model_accessor!(link, Option<String>, SchemaVariantResult);
+    standard_model_accessor!(color, OptionBigInt<i64>, SchemaVariantResult);
 
     standard_model_belongs_to!(
         lookup_fn: schema,
