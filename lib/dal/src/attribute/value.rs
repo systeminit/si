@@ -2,22 +2,27 @@
 //! attribute's value. Moreover, it tracks whether the value is proxied or not. Proxied values
 //! "point" to another [`AttributeValue`] to provide the attribute's value.
 
+use std::{
+    cmp::Ordering,
+    collections::{HashMap, HashSet, VecDeque},
+};
+
 use async_recursion::async_recursion;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use si_data::{NatsError, PgError};
-use std::cmp::Ordering;
-use std::collections::{HashMap, HashSet, VecDeque};
 use telemetry::prelude::*;
 use thiserror::Error;
 use uuid::Uuid;
 
 use crate::{
-    attribute::context::{
-        AttributeContext, AttributeContextBuilder, AttributeContextBuilderError,
-        AttributeReadContext,
+    attribute::{
+        context::{
+            AttributeContext, AttributeContextBuilder, AttributeContextBuilderError,
+            AttributeReadContext,
+        },
+        prototype::{AttributePrototype, AttributePrototypeId},
     },
-    attribute::prototype::{AttributePrototype, AttributePrototypeId},
     func::{
         backend::{
             array::FuncBackendArrayArgs, boolean::FuncBackendBooleanArgs,
@@ -33,7 +38,7 @@ use crate::{
     standard_model::{self, TypeHint},
     standard_model_accessor, standard_model_belongs_to, standard_model_has_many,
     AttributeContextError, AttributePrototypeArgument, AttributePrototypeArgumentError, Component,
-    ComponentAsyncTasks, DalContext, Func, FuncError, HistoryEventError, IndexMap,
+    ComponentAsyncTasks, DalContext, Func, FuncBackendKind, FuncError, HistoryEventError, IndexMap,
     InternalProvider, Prop, PropError, PropId, PropKind, ReadTenancyError, StandardModel,
     StandardModelError, Timestamp, Visibility, WriteTenancy,
 };
@@ -42,6 +47,8 @@ pub mod view;
 
 const CHILD_ATTRIBUTE_VALUES_FOR_CONTEXT: &str =
     include_str!("../queries/attribute_value_child_attribute_values_for_context.sql");
+const CHILD_ATTRIBUTE_VALUES_FOR_EXACT_CONTEXT: &str =
+    include_str!("../queries/attribute_value_child_attribute_values_for_exact_context.sql");
 const LIST_FOR_CONTEXT: &str = include_str!("../queries/attribute_value_list_for_context.sql");
 const FIND_PROP_FOR_VALUE: &str =
     include_str!("../queries/attribute_value_find_prop_for_value.sql");
@@ -86,6 +93,8 @@ pub enum AttributeValueError {
     InternalProvider(String),
     #[error("invalid prop value; expected {0} but got {1}")]
     InvalidPropValue(String, serde_json::Value),
+    #[error("found invalid object value fields not found in corresponding prop: {0:?}")]
+    InvalidObjectValueFields(Vec<String>),
     #[error("json pointer missing for attribute view")]
     JsonPointerMissing,
     #[error("missing attribute value")]
@@ -134,6 +143,12 @@ pub enum AttributeValueError {
     UnexpectedEmptyRootStack,
     #[error("unexpected prop kind: {0}")]
     UnexpectedPropKind(PropKind),
+    #[error("JSON value failed to parse as an array")]
+    ValueAsArray,
+    #[error("JSON value failed to parse as an map")]
+    ValueAsMap,
+    #[error("JSON value failed to parse as an object")]
+    ValueAsObject,
     #[error("schema variant missing in context")]
     SchemaVariantMissing,
     #[error("schema missing in context")]
@@ -311,6 +326,26 @@ impl AttributeValue {
         Ok(standard_model::objects_from_rows(rows)?)
     }
 
+    async fn child_attribute_values_for_exact_context(
+        ctx: &DalContext<'_, '_>,
+        attribute_value_id: AttributeValueId,
+        attribute_read_context: AttributeReadContext,
+    ) -> AttributeValueResult<Vec<Self>> {
+        let rows = ctx
+            .pg_txn()
+            .query(
+                CHILD_ATTRIBUTE_VALUES_FOR_EXACT_CONTEXT,
+                &[
+                    ctx.read_tenancy(),
+                    ctx.visibility(),
+                    &attribute_value_id,
+                    &attribute_read_context,
+                ],
+            )
+            .await?;
+
+        Ok(standard_model::objects_from_rows(rows)?)
+    }
     pub async fn find_with_parent_and_prototype_for_context(
         ctx: &DalContext<'_, '_>,
         parent_attribute_value_id: Option<AttributeValueId>,
@@ -675,8 +710,8 @@ impl AttributeValue {
 
         let (func_name, func_args) = match (prop.kind(), value.clone()) {
             (_, None) => ("si:unset", serde_json::to_value(())?),
-            (PropKind::Array, Some(_)) => {
-                let value: Vec<serde_json::Value> = as_type(serde_json::json![[]])?;
+            (PropKind::Array, Some(value_json)) => {
+                let value: Vec<serde_json::Value> = as_type(value_json)?;
                 (
                     "si:setArray",
                     serde_json::to_value(FuncBackendArrayArgs::new(value))?,
@@ -696,17 +731,15 @@ impl AttributeValue {
                     serde_json::to_value(FuncBackendIntegerArgs::new(value))?,
                 )
             }
-            (PropKind::Map, Some(_)) => {
-                let value: serde_json::Map<String, serde_json::Value> =
-                    as_type(serde_json::json![{}])?;
+            (PropKind::Map, Some(value_json)) => {
+                let value: serde_json::Map<String, serde_json::Value> = as_type(value_json)?;
                 (
                     "si:setMap",
                     serde_json::to_value(FuncBackendMapArgs::new(value))?,
                 )
             }
-            (PropKind::Object, Some(_)) => {
-                let value: serde_json::Map<String, serde_json::Value> =
-                    as_type(serde_json::json![{}])?;
+            (PropKind::Object, Some(value_json)) => {
+                let value: serde_json::Map<String, serde_json::Value> = as_type(value_json)?;
                 (
                     "si:setPropObject",
                     serde_json::to_value(FuncBackendPropObjectArgs::new(value))?,
@@ -757,6 +790,23 @@ impl AttributeValue {
         }
 
         attribute_value.update_parent_index_map(ctx).await?;
+
+        // Do we need to process the unprocessed value and populate nested values?
+        // If the unprocessed value doesn't equal the value then we have a populated "container"
+        // (i.e. object, map, array) that contains values which need to be made into
+        // AttributeValues of their own.
+        if func_binding_return_value.unprocessed_value() != func_binding_return_value.value() {
+            if let Some(unprocessed_value) = func_binding_return_value.unprocessed_value().cloned()
+            {
+                Self::populate_nested_values(
+                    ctx,
+                    *attribute_value.id(),
+                    context,
+                    unprocessed_value,
+                )
+                .await?;
+            }
+        }
 
         // Check validations and qualifications for our component.
         let async_tasks =
@@ -958,6 +1008,14 @@ impl AttributeValue {
         let attribute_value = Self::get_by_id(ctx, &attribute_value_id)
             .await?
             .ok_or(AttributeValueError::Missing)?;
+        let prop = Prop::get_by_id(ctx, &attribute_value.context.prop_id())
+            .await?
+            .ok_or_else(|| AttributeValueError::PropNotFound(attribute_value.context.prop_id()))?;
+        let empty_value = match prop.kind() {
+            PropKind::Array => json!([]),
+            PropKind::Object | PropKind::Map => json!({}),
+            PropKind::String | PropKind::Boolean | PropKind::Integer => todo!(),
+        };
 
         // If we're already set, there's not anything for us to do.
         if FuncBindingReturnValue::get_by_id(ctx, &attribute_value.func_binding_return_value_id)
@@ -984,7 +1042,7 @@ impl AttributeValue {
             attribute_value_id,
             maybe_parent_attribute_value_id,
             context,
-            Some(json![{}]),
+            Some(empty_value),
             None,
         )
         .await?;
@@ -1302,6 +1360,234 @@ impl AttributeValue {
                 }
             }
         }
+        Ok(())
+    }
+
+    #[async_recursion]
+    async fn populate_nested_values(
+        ctx: &DalContext<'_, '_>,
+        parent_attribute_value_id: AttributeValueId,
+        update_context: AttributeContext,
+        mut unprocessed_value: serde_json::Value,
+    ) -> AttributeValueResult<()> {
+        let parent_attribute_value = Self::get_by_id(ctx, &parent_attribute_value_id)
+            .await?
+            .ok_or(AttributeValueError::Missing)?;
+        let parent_prop = Prop::get_by_id(ctx, &parent_attribute_value.context.prop_id())
+            .await?
+            .ok_or_else(|| {
+                AttributeValueError::PropNotFound(parent_attribute_value.context.prop_id())
+            })?;
+
+        let child_values_for_exact_context = Self::child_attribute_values_for_exact_context(
+            ctx,
+            *parent_attribute_value.id(),
+            AttributeReadContext {
+                prop_id: None,
+                ..parent_attribute_value.context.into()
+            },
+        )
+        .await?;
+        for child_value in child_values_for_exact_context {
+            Self::remove_value_and_children(ctx, child_value).await?;
+        }
+
+        match parent_prop.kind() {
+            PropKind::Object => {
+                let unprocessed_object = unprocessed_value
+                    .as_object_mut()
+                    .ok_or(AttributeValueError::ValueAsObject)?;
+
+                let child_props = parent_prop.child_props(ctx).await?;
+
+                // Determine if there are extra/invalid fields in the unprocess object that have no
+                // corresponding prop field
+                let object_keys: HashSet<_> =
+                    unprocessed_object.keys().map(|s| s.as_str()).collect();
+                let prop_keys: HashSet<_> = child_props.iter().map(|prop| prop.name()).collect();
+                let invalid_object_keys: HashSet<_> = object_keys.difference(&prop_keys).collect();
+                if !invalid_object_keys.is_empty() {
+                    return Err(AttributeValueError::InvalidObjectValueFields(
+                        invalid_object_keys
+                            .into_iter()
+                            .map(|s| s.to_string())
+                            .collect(),
+                    ));
+                }
+
+                let unset_func_name = "si:unset".to_string();
+                let unset_func = Func::find_by_attr(ctx, "name", &unset_func_name)
+                    .await?
+                    .pop()
+                    .ok_or(AttributeValueError::MissingFunc(unset_func_name))?;
+                let (unset_func_binding, unset_func_binding_return_value) =
+                    FuncBinding::find_or_create_and_execute(
+                        ctx,
+                        serde_json::json![null],
+                        *unset_func.id(),
+                        FuncBackendKind::Unset,
+                    )
+                    .await?;
+
+                for prop in child_props {
+                    // If an unprocessed object field exists, remove it and process it as a new
+                    // AttributeValue
+                    if let Some(value) = unprocessed_object.remove(prop.name()) {
+                        let mut context_builder = AttributeContextBuilder::from(update_context);
+                        let context = context_builder.set_prop_id(*prop.id()).to_context()?;
+
+                        let maybe_attribute_value = Self::find_with_parent_and_key_for_context(
+                            ctx,
+                            Some(*parent_attribute_value.id()),
+                            None,
+                            context.into(),
+                        )
+                        .await?;
+
+                        let attribute_value = match maybe_attribute_value {
+                            Some(attribute_value) => attribute_value,
+                            None => {
+                                let attribute_value = Self::new(
+                                    ctx,
+                                    *unset_func_binding.id(),
+                                    *unset_func_binding_return_value.id(),
+                                    context,
+                                    None::<&str>,
+                                )
+                                .await?;
+                                attribute_value
+                                    .set_parent_attribute_value(ctx, parent_attribute_value.id())
+                                    .await?;
+
+                                AttributePrototype::new_with_existing_value(
+                                    ctx,
+                                    *unset_func.id(),
+                                    context,
+                                    None,
+                                    Some(*parent_attribute_value.id()),
+                                    *attribute_value.id(),
+                                )
+                                .await
+                                .map_err(|e| {
+                                    AttributeValueError::AttributePrototype(format!("{e}"))
+                                })?;
+
+                                attribute_value
+                            }
+                        };
+
+                        // TODO(fnichol): hrm, we are going to accumulate async tasks--should we
+                        // return a Vec of these for the caller to run?
+                        let (_, _, _async_tasks) = Self::update_for_context(
+                            ctx,
+                            *attribute_value.id(),
+                            Some(*parent_attribute_value.id()),
+                            context,
+                            Some(value),
+                            None,
+                        )
+                        .await?;
+                    }
+                }
+            }
+            PropKind::Array => {
+                let unprocessed_array = unprocessed_value
+                    .as_array_mut()
+                    .ok_or(AttributeValueError::ValueAsObject)?;
+
+                for value in unprocessed_array.drain(0..) {
+                    Self::insert_for_context(
+                        ctx,
+                        update_context,
+                        *parent_attribute_value.id(),
+                        Some(value),
+                        None,
+                    )
+                    .await?;
+                }
+            }
+            PropKind::Map => {
+                let unprocessed_map = unprocessed_value
+                    .as_object_mut()
+                    .ok_or(AttributeValueError::ValueAsMap)?;
+
+                let map_keys: HashSet<_> = unprocessed_map.keys().map(|s| s.to_string()).collect();
+                for key in map_keys {
+                    if let Some(value) = unprocessed_map.remove(&key) {
+                        Self::insert_for_context(
+                            ctx,
+                            update_context,
+                            *parent_attribute_value.id(),
+                            Some(value),
+                            Some(key),
+                        )
+                        .await?;
+                    }
+                }
+            }
+            unexpected @ PropKind::String
+            | unexpected @ PropKind::Boolean
+            | unexpected @ PropKind::Integer => {
+                return Err(AttributeValueError::UnexpectedPropKind(*unexpected))
+            }
+        };
+
+        Ok(())
+    }
+
+    #[async_recursion]
+    async fn remove_value_and_children(
+        ctx: &DalContext<'_, '_>,
+        parent_attribute_value: AttributeValue,
+    ) -> AttributeValueResult<()> {
+        let child_values = parent_attribute_value.child_attribute_values(ctx).await?;
+        for child_value in child_values {
+            Self::remove_value_and_children(ctx, child_value).await?;
+        }
+
+        parent_attribute_value.remove_proxies(ctx).await?;
+
+        let attribute_prototype = parent_attribute_value
+            .attribute_prototype(ctx)
+            .await?
+            .ok_or_else(|| {
+                AttributeValueError::AttributePrototypeNotFound(
+                    *parent_attribute_value.id(),
+                    *ctx.visibility(),
+                )
+            })?;
+
+        parent_attribute_value
+            .unset_attribute_prototype(ctx)
+            .await?;
+
+        // If our value is the only remaining value for the prototype, delete the prototype
+        if attribute_prototype
+            .attribute_values(ctx)
+            .await
+            .map_err(|err| AttributeValueError::AttributePrototype(err.to_string()))?
+            .is_empty()
+        {
+            attribute_prototype
+                .delete(ctx)
+                .await
+                .map_err(|err| AttributeValueError::AttributePrototype(err.to_string()))?;
+        }
+
+        parent_attribute_value.delete(ctx).await?;
+
+        Ok(())
+    }
+
+    async fn remove_proxies(&self, ctx: &DalContext<'_, '_>) -> AttributeValueResult<()> {
+        let _row = ctx
+            .txns()
+            .pg()
+            .query_one(
+                "SELECT succeeded FROM attribute_value_remove_proxies_v1($1, $2, $3)",
+                &[&ctx.write_tenancy(), ctx.visibility(), &self.id()],
+            )
+            .await?;
         Ok(())
     }
 

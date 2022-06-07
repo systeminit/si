@@ -1239,7 +1239,7 @@ async fn complex_nested_array_of_objects_with_a_map(ctx: &DalContext<'_, '_>) {
         *unset_sammy_value.id(),
         Some(*domain_value.id()),
         sammy_context,
-        Some(serde_json::json![{}]),
+        Some(serde_json::json!([])),
         None,
     )
     .await

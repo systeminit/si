@@ -220,3 +220,220 @@ async fn insert_for_context_simple(ctx: &DalContext<'_, '_>) {
             .properties,
     );
 }
+
+#[test]
+async fn update_for_context_object(ctx: &DalContext<'_, '_>) {
+    let mut schema = create_schema(ctx, &SchemaKind::Concrete).await;
+    let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
+    schema
+        .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
+        .await
+        .expect("cannot set default schema variant");
+
+    let address_prop = create_prop_of_kind_with_name(ctx, PropKind::Object, "address").await;
+    address_prop
+        .set_parent_prop(ctx, root.domain_prop_id)
+        .await
+        .expect("cannot set parent of address_prop");
+
+    let streets_prop = create_prop_of_kind_with_name(ctx, PropKind::Array, "streets").await;
+    streets_prop
+        .set_parent_prop(ctx, *address_prop.id())
+        .await
+        .expect("cannot set parent of streets prop");
+    let streets_child_prop = create_prop_of_kind_with_name(ctx, PropKind::String, "street").await;
+    streets_child_prop
+        .set_parent_prop(ctx, *streets_prop.id())
+        .await
+        .expect("cannot set parent of street prop");
+
+    let city_prop = create_prop_of_kind_with_name(ctx, PropKind::String, "city").await;
+    city_prop
+        .set_parent_prop(ctx, *address_prop.id())
+        .await
+        .expect("cannot set parent of city prop");
+    let country_prop = create_prop_of_kind_with_name(ctx, PropKind::String, "country").await;
+    country_prop
+        .set_parent_prop(ctx, *address_prop.id())
+        .await
+        .expect("cannot set parent of country prop");
+
+    let tags_prop = create_prop_of_kind_with_name(ctx, PropKind::Map, "tags").await;
+    tags_prop
+        .set_parent_prop(ctx, *address_prop.id())
+        .await
+        .expect("cannot set parent of tags prop");
+    let tags_child_prop = create_prop_of_kind_with_name(ctx, PropKind::String, "tag").await;
+    tags_child_prop
+        .set_parent_prop(ctx, *tags_prop.id())
+        .await
+        .expect("cannot set parent of tags child prop");
+
+    let (component, _, _) =
+        Component::new_for_schema_with_node(ctx, "Basic component", schema.id())
+            .await
+            .expect("Unable to create component");
+
+    let read_context = AttributeReadContext {
+        prop_id: None,
+        schema_id: Some(*schema.id()),
+        schema_variant_id: Some(*schema_variant.id()),
+        component_id: Some(*component.id()),
+        ..AttributeReadContext::default()
+    };
+    let component_view = ComponentView::for_context(ctx, read_context)
+        .await
+        .expect("cannot get component view");
+
+    assert_eq_sorted!(
+        serde_json::json![
+            {
+                "si": {
+                    "name": "Basic component",
+                },
+                "domain": {},
+            }
+        ],
+        component_view.properties,
+    );
+
+    let root_value_id = *AttributeValue::list_for_context(
+        ctx,
+        AttributeReadContext {
+            prop_id: Some(root.prop_id),
+            component_id: Some(*component.id()),
+            schema_id: Some(*schema.id()),
+            schema_variant_id: Some(*schema_variant.id()),
+            ..AttributeReadContext::any()
+        },
+    )
+    .await
+    .expect("cannot get root AttributeValue")
+    .pop()
+    .expect("root AttributeValue not found")
+    .id();
+
+    let domain_value_id = *AttributeValue::list_for_context(
+        ctx,
+        AttributeReadContext {
+            prop_id: Some(root.domain_prop_id),
+            component_id: Some(*component.id()),
+            schema_id: Some(*schema.id()),
+            schema_variant_id: Some(*schema_variant.id()),
+            ..AttributeReadContext::any()
+        },
+    )
+    .await
+    .expect("cannot get domain AttributeValue")
+    .pop()
+    .expect("domain AttributeValue not found")
+    .id();
+
+    let update_context = AttributeContext::builder()
+        .set_prop_id(root.domain_prop_id)
+        .set_schema_id(*schema.id())
+        .set_schema_variant_id(*schema_variant.id())
+        .set_component_id(*component.id())
+        .to_context()
+        .expect("cannot build write AttributeContext");
+
+    let (_, domain_value_id, _) = AttributeValue::update_for_context(
+        ctx,
+        domain_value_id,
+        Some(root_value_id),
+        update_context,
+        Some(serde_json::json!({
+            "address": {
+                "streets": [
+                    "Suite 4",
+                    "14 Main Street"
+                ],
+                "city": "Plainstown",
+                "country": "Eurasia",
+                "tags": {
+                    "cool": "beans",
+                    "alpha": "bet",
+                },
+            },
+        })),
+        None,
+    )
+    .await
+    .expect("cannot update value");
+
+    let component_view = ComponentView::for_context(ctx, read_context)
+        .await
+        .expect("cannot get component view");
+
+    assert_eq_sorted!(
+        serde_json::json![
+            {
+                "si": {
+                    "name": "Basic component",
+                },
+                "domain": {
+                    "address": {
+                        "streets": [
+                            "Suite 4",
+                            "14 Main Street"
+                        ],
+                        "city": "Plainstown",
+                        "country": "Eurasia",
+                        "tags": {
+                            "cool": "beans",
+                            "alpha": "bet",
+                        },
+                    },
+                },
+            }
+        ],
+        component_view.properties,
+    );
+
+    let (_, _domain_value_id, _) = AttributeValue::update_for_context(
+        ctx,
+        domain_value_id,
+        Some(root_value_id),
+        update_context,
+        Some(serde_json::json!({
+            "address": {
+                "streets": [
+                    "123 Ok",
+                ],
+                "city": "Nowheresville",
+                "tags": {
+                    "new": "one",
+                },
+            },
+        })),
+        None,
+    )
+    .await
+    .expect("cannot update value");
+
+    let component_view = ComponentView::for_context(ctx, read_context)
+        .await
+        .expect("cannot get component view");
+
+    assert_eq_sorted!(
+        serde_json::json![
+            {
+                "si": {
+                    "name": "Basic component",
+                },
+                "domain": {
+                    "address": {
+                        "streets": [
+                            "123 Ok",
+                        ],
+                        "city": "Nowheresville",
+                        "tags": {
+                            "new": "one",
+                        },
+                    },
+                },
+            }
+        ],
+        component_view.properties,
+    );
+}

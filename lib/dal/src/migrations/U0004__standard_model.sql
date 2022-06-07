@@ -293,6 +293,24 @@ BEGIN
 END ;
 $$ LANGUAGE PLPGSQL VOLATILE;
 
+CREATE OR REPLACE FUNCTION delete_by_id_v1(this_table_text text,
+                                           this_tenancy jsonb,
+                                           this_visibility jsonb,
+                                           this_id bigint,
+                                           OUT updated_at timestamp with time zone)
+AS
+$$
+BEGIN
+    SELECT update_by_id_v1(this_table_text,
+                           'visibility_deleted_at',
+                           this_tenancy,
+                           this_visibility,
+                           this_id,
+                           CAST(now() as text))
+    INTO updated_at;
+END ;
+$$ LANGUAGE PLPGSQL VOLATILE;
+
 CREATE OR REPLACE FUNCTION delete_by_pk_v1(this_table_text text,
                                            this_tenancy jsonb,
                                            this_pk bigint,

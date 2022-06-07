@@ -490,21 +490,16 @@ pub trait StandardModel {
     }
 
     #[instrument(skip_all)]
-    async fn delete(&mut self, ctx: &DalContext<'_, '_>) -> StandardModelResult<()>
+    async fn delete(self, ctx: &DalContext<'_, '_>) -> StandardModelResult<()>
     where
-        Self: Send + Sync,
+        Self: Send + Sync + Sized,
     {
         let updated_at: chrono::DateTime<chrono::Utc> =
             crate::standard_model::delete(ctx, Self::table_name(), self.pk()).await?;
-        // TODO(fnichol): I think that mutating our own visibility is likely okay in this
-        // situation, as opposed to passing in an explicit visibility. The consequence is that
-        // you'll be setting *this* object to be in a deleted state, no matter its current
-        // visibility. This may prove to be sufficiently unsafe and warrants an explicitly passed
-        // visibility when deleting. As it stands right now, it would be maximally safe to fetch
-        // this object by id for the target visibility (with `deleted = false`) and then delete
-        // *that* instance.
-        self.visibility_mut().deleted_at = Some(Utc::now());
-        self.timestamp_mut().updated_at = updated_at;
+
+        let mut visibility = *self.visibility();
+        visibility.deleted_at = Some(updated_at);
+
         let _history_event = crate::HistoryEvent::new(
             ctx,
             &Self::history_event_label(vec!["deleted"]),
@@ -512,7 +507,7 @@ pub trait StandardModel {
             &serde_json::json![{
                 "pk": self.pk(),
                 "id": self.id(),
-                "visibility": self.visibility(),
+                "visibility": visibility,
             }],
         )
         .await?;

@@ -36,7 +36,7 @@ impl FuncBackendArray {
     si.func.result = Empty
     )
     )]
-    pub async fn execute(self) -> FuncBackendResult<serde_json::Value> {
+    pub async fn execute(self) -> FuncBackendResult<(serde_json::Value, serde_json::Value)> {
         let span = Span::current();
 
         let value = serde_json::to_value(&self.args.value)?;
@@ -53,6 +53,8 @@ impl FuncBackendArray {
                     PropKind::Object
                 } else if entry.is_boolean() {
                     PropKind::Boolean
+                } else if entry.is_string() {
+                    PropKind::String
                 } else {
                     return Err(
                         span.record_err(FuncBackendError::InvalidArrayEntryData(value.clone()))
@@ -75,6 +77,6 @@ impl FuncBackendArray {
 
         span.record_ok();
         span.record("si.func.result", &tracing::field::debug(&value));
-        Ok(value)
+        Ok((value, serde_json::json!([])))
     }
 }

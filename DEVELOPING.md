@@ -181,13 +181,49 @@ Integration tests from the dal will not have their transactions committed and pe
 If you would like to view the state of the database via a debugger or after test conclusion, you will need to _temporarily_ refactor your test accordingly:
 
 ```rust
-// NOTE: this is likely wrong!
 #[test]
-async fn your_dal_integration_test(
-    dal_context_builder: DalContextBuilder,
-    jwt_secret_key: &JwtSecretKey,
-    application_id: ApplicationId,
-) {
+async fn your_dal_integration_test() {
+    let test_context = ::dal::test::TestContext::global().await;
+    let nats_subject_prefix = ::dal::test::nats_subject_prefix();
+    let services_context = test_context
+        .create_services_context(&nats_subject_prefix)
+        .await;
+    let dal_context_builder = services_context.into_builder();
+    let mut transactions_starter = dal_context_builder
+        .transactions_starter()
+        .await
+        .expect("failed to build transactions starter");
+    let transactions = transactions_starter
+        .start()
+        .await
+        .expect("failed to start transactions");
+    let (nba, auth_token) = ::dal::test::helpers::billing_account_signup(
+        &dal_context_builder,
+        &transactions,
+        test_context.jwt_secret_key(),
+    )
+    .await;
+    let application_id =
+        ::dal::test::helpers::create_application(&dal_context_builder, &transactions, &nba).await;
+    let application_id = {
+        use dal::StandardModel;
+        *application_id.id()
+    };
+    let default_dal_context = ::dal::test::helpers::create_ctx_for_new_change_set_and_edit_session(
+        &dal_context_builder,
+        &transactions,
+        &nba,
+        application_id,
+    )
+    .await;
+    let veritech_server = ::dal::test::veritech_server_for_uds_cyclone(
+        test_context.nats_config().clone(),
+        nats_subject_prefix.clone(),
+    )
+    .await;
+    ::tokio::spawn(veritech_server.run());
+    let ctx = &default_dal_context;
+
     let mut transactions_starter = dal_context_builder
         .transactions_starter()
         .await
@@ -223,6 +259,10 @@ With these changes, you will be able to commit transactions and see them in the 
 However, please note: this refactor "hack" may produce unintended side effects that may or may not be relevant
 (depending on what you are looking for).
 It is also possible that the refactor example may not be entirely correct for your use case.
+
+How did we get this? By asking rust-analyzer to expand the `#[test]` macro and
+copy the contents of the `async fn imp() { .. }` body (except for the
+`inner(...).await` line).
 
 ## Troubleshooting
 
