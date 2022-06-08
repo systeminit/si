@@ -24,7 +24,6 @@ use crate::resource_resolver::ResourceResolverContext;
 use crate::schema::variant::{SchemaVariantError, SchemaVariantId};
 use crate::schema::SchemaVariant;
 use crate::ws_event::{WsEvent, WsEventError};
-use crate::AttributeValueId;
 use crate::{
     context::AccessBuilder, context::DalContextBuilder, func::FuncId, impl_standard_model,
     node::NodeId, pk, qualification::QualificationError, standard_model, standard_model_accessor,
@@ -40,6 +39,7 @@ use crate::{
     TransactionsError, ValidationPrototype, ValidationPrototypeError, ValidationResolver,
     ValidationResolverError, Visibility, WorkspaceError, WriteTenancy,
 };
+use crate::{AttributeValueId, QualificationPrototypeId};
 
 #[derive(Error, Debug)]
 pub enum ComponentError {
@@ -79,6 +79,8 @@ pub enum ComponentError {
     CodeGenerationResolver(#[from] CodeGenerationResolverError),
     #[error("unable to find code generated")]
     CodeGeneratedNotFound,
+    #[error("qualification prototype not found")]
+    QualificationPrototypeNotFound,
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("pg error: {0}")]
@@ -538,9 +540,78 @@ impl Component {
                 )
                 .await?;
             }
+
+            WsEvent::checked_qualifications(
+                *prototype.id(),
+                *self.id(),
+                system_id,
+                ctx.read_tenancy().billing_accounts().into(),
+                ctx.history_actor(),
+            )
+            .publish(ctx.txns().nats())
+            .await?;
+        }
+
+        Ok(())
+    }
+
+    pub async fn check_qualification(
+        &self,
+        ctx: &DalContext<'_, '_>,
+        system_id: SystemId,
+        prototype_id: QualificationPrototypeId,
+    ) -> ComponentResult<()> {
+        let prototype = QualificationPrototype::get_by_id(ctx, &prototype_id)
+            .await?
+            .ok_or(ComponentError::QualificationPrototypeNotFound)?;
+
+        let func = Func::get_by_id(ctx, &prototype.func_id())
+            .await?
+            .ok_or_else(|| ComponentError::MissingFunc(prototype.func_id().to_string()))?;
+
+        let args = FuncBackendJsQualificationArgs {
+            component: self
+                .veritech_qualification_check_component(ctx, system_id)
+                .await?,
+        };
+
+        let json_args = serde_json::to_value(args)?;
+        let (func_binding, _created) =
+            FuncBinding::find_or_create(ctx, json_args, prototype.func_id(), *func.backend_kind())
+                .await?;
+
+        // We always re-execute the qualification checks as they are not idempotent
+
+        // Note for future humans - if this isn't a built in, then we need to
+        // think about execution time. Probably higher up than this? But just
+        // an FYI.
+        func_binding.execute(ctx).await?;
+
+        let mut existing_resolvers =
+            QualificationResolver::find_for_prototype_and_component(ctx, prototype.id(), self.id())
+                .await?;
+
+        // If we do not have one, create the qualification resolver. If we do, update the
+        // func binding id to point to the new value.
+        if let Some(mut resolver) = existing_resolvers.pop() {
+            resolver
+                .set_func_binding_id(ctx, *func_binding.id())
+                .await?;
+        } else {
+            let mut resolver_context = QualificationResolverContext::new();
+            resolver_context.set_component_id(*self.id());
+            QualificationResolver::new(
+                ctx,
+                *prototype.id(),
+                *func.id(),
+                *func_binding.id(),
+                resolver_context,
+            )
+            .await?;
         }
 
         WsEvent::checked_qualifications(
+            *prototype.id(),
             *self.id(),
             system_id,
             ctx.read_tenancy().billing_accounts().into(),
@@ -627,16 +698,17 @@ impl Component {
                 )
                 .await?;
             }
-        }
 
-        WsEvent::checked_qualifications(
-            *self.id(),
-            system_id,
-            ctx.read_tenancy().billing_accounts().into(),
-            ctx.history_actor(),
-        )
-        .publish(ctx.txns().nats())
-        .await?;
+            WsEvent::checked_qualifications(
+                *prototype.id(),
+                *self.id(),
+                system_id,
+                ctx.read_tenancy().billing_accounts().into(),
+                ctx.history_actor(),
+            )
+            .publish(ctx.txns().nats())
+            .await?;
+        }
 
         Ok(())
     }
@@ -1491,6 +1563,8 @@ impl Component {
 pub struct ComponentAsyncTasks {
     component: Component,
     system_id: SystemId,
+    // Allows running only one specific qualification
+    qualification_prototype_id: Option<QualificationPrototypeId>,
 }
 
 impl ComponentAsyncTasks {
@@ -1498,7 +1572,12 @@ impl ComponentAsyncTasks {
         Self {
             component,
             system_id,
+            qualification_prototype_id: None,
         }
+    }
+
+    pub fn set_qualification_prototype_id(&mut self, id: QualificationPrototypeId) {
+        self.qualification_prototype_id = Some(id);
     }
 
     pub async fn run(
@@ -1507,10 +1586,17 @@ impl ComponentAsyncTasks {
         visibility: Visibility,
         ctx_builder: &DalContextBuilder,
     ) -> ComponentResult<()> {
+        if let Some(prototype_id) = self.qualification_prototype_id {
+            self.run_qualification_check(access_builder, visibility, ctx_builder, prototype_id)
+                .await?;
+
+            return Ok(());
+        }
+
         self.run_code_generation(access_builder.clone(), visibility, ctx_builder)
             .await?;
         // Some qualifications depend on code generation, so remember to generate the code first
-        self.run_qualification_check(access_builder, visibility, ctx_builder)
+        self.run_qualifications_check(access_builder, visibility, ctx_builder)
             .await?;
         Ok(())
     }
@@ -1530,6 +1616,23 @@ impl ComponentAsyncTasks {
     }
 
     async fn run_qualification_check(
+        &self,
+        access_builder: AccessBuilder,
+        visibility: Visibility,
+        ctx_builder: &DalContextBuilder,
+        prototype_id: QualificationPrototypeId,
+    ) -> ComponentResult<()> {
+        let mut txns = ctx_builder.transactions_starter().await?;
+        let txns = txns.start().await?;
+        let ctx = ctx_builder.build(access_builder.build(visibility), &txns);
+        self.component
+            .check_qualification(&ctx, self.system_id, prototype_id)
+            .await?;
+        txns.commit().await?;
+        Ok(())
+    }
+
+    async fn run_qualifications_check(
         &self,
         access_builder: AccessBuilder,
         visibility: Visibility,

@@ -8,8 +8,8 @@ use thiserror::Error;
 use crate::{
     func::FuncId,
     impl_standard_model, pk,
-    standard_model::{self, objects_from_rows},
-    standard_model_accessor, standard_model_accessor_ro, ComponentId, DalContext,
+    standard_model::{self, objects_from_rows, TypeHint},
+    standard_model_accessor, standard_model_accessor_ro, ComponentId, DalContext, HistoryEvent,
     HistoryEventError, SchemaId, SchemaVariantId, StandardModel, StandardModelError, SystemId,
     Timestamp, Visibility, WriteTenancy,
 };
@@ -166,6 +166,36 @@ impl QualificationPrototype {
     standard_model_accessor!(description, Option<String>, QualificationPrototypeResult);
     standard_model_accessor!(link, Option<String>, QualificationPrototypeResult);
     standard_model_accessor_ro!(context, QualificationPrototypeContext);
+
+    pub async fn set_id(
+        &mut self,
+        ctx: &DalContext<'_, '_>,
+        id: &QualificationPrototypeId,
+    ) -> QualificationPrototypeResult<()> {
+        let updated_at = standard_model::update(
+            ctx,
+            Self::table_name(),
+            "id",
+            self.id(),
+            id,
+            TypeHint::BigInt,
+        )
+        .await?;
+        let _history_event = HistoryEvent::new(
+            ctx,
+            &Self::history_event_label(vec!["updated"]),
+            &Self::history_event_message("updated"),
+            &serde_json::json![{
+                "pk": self.pk,
+                "field": "id",
+                "value": id,
+            }],
+        )
+        .await?;
+        self.timestamp.updated_at = updated_at;
+        self.id = *id;
+        Ok(())
+    }
 
     #[allow(clippy::too_many_arguments)]
     pub async fn find_for_component(

@@ -145,7 +145,8 @@ async function qualification(component) {
     let system_id = request.system_id.unwrap_or(SystemId::NONE);
 
     for component in components {
-        let async_tasks = ComponentAsyncTasks::new(component, system_id);
+        let mut async_tasks = ComponentAsyncTasks::new(component, system_id);
+        async_tasks.set_qualification_prototype_id(*prototype.id());
         let request_ctx = request_ctx.clone();
         let builder = builder.clone();
         tokio::task::spawn(async move {

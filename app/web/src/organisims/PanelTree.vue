@@ -10,6 +10,7 @@
       @panel-maximize-full="maximizePanelFull($event)"
       @panel-minimize-full="minimizePanelFull($event)"
     />
+    <SiToast />
   </div>
 </template>
 
@@ -37,6 +38,7 @@ import { SchematicKind } from "@/api/sdf/dal/schematic";
 import { Schematic, SchematicSchemaVariants } from "@/api/sdf/dal/schematic";
 import { standardVisibilityTriggers$ } from "@/observable/visibility";
 import { GetSchematicArgs } from "@/service/schematic/get_schematic";
+import SiToast from "@/atoms/SiToast.vue";
 
 const maximizedData = ref<PanelMaximized | null>(null);
 
