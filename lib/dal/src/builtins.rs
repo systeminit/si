@@ -11,7 +11,7 @@ use crate::schema::variant::SchemaVariantError;
 use crate::socket::SocketError;
 use crate::{
     AttributeContextBuilderError, AttributePrototypeArgumentError, AttributePrototypeError,
-    AttributeValueError, CodeGenerationPrototypeError, DalContext, FuncError, PropError,
+    AttributeValueError, CodeGenerationPrototypeError, DalContext, FuncError, PropError, PropId,
     QualificationPrototypeError, ResourcePrototypeError, SchemaError, StandardModelError,
     ValidationPrototypeError,
 };
@@ -37,6 +37,8 @@ pub enum BuiltinsError {
     FuncBinding(#[from] FuncBindingError),
     #[error("func binding return value error: {0}")]
     FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
+    #[error("implicit internal provider not found for prop: {0}")]
+    ImplicitInternalProviderNotFoundForProp(PropId),
     #[error("internal provider error: {0}")]
     InternalProvider(#[from] InternalProviderError),
     #[error("prop error: {0}")]

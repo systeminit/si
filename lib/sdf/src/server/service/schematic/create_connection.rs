@@ -32,12 +32,15 @@ pub async fn create_connection(
     let txns = txns.start().await?;
     let ctx = builder.build(request_ctx.build(request.visibility), &txns);
 
+    // TODO(nick): pass through the provider ids.
     let connection = Connection::new(
         &ctx,
         &request.head_node_id,
         &request.head_socket_id,
+        None,
         &request.tail_node_id,
         &request.tail_socket_id,
+        None,
     )
     .await?;
 

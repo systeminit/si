@@ -55,6 +55,10 @@ pub enum ComponentError {
     CodeLanguageMismatch(CodeLanguage, CodeLanguage),
     #[error("edge error: {0}")]
     Edge(#[from] EdgeError),
+    #[error("func not found: {0}")]
+    FuncNotFound(FuncId),
+    #[error(transparent)]
+    FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
     #[error("missing attribute value for id: ({0})")]
     MissingAttributeValue(AttributeValueId),
     #[error("missing index map on attribute value: {0}")]
@@ -145,11 +149,6 @@ pub enum ComponentError {
     Organization(#[from] OrganizationError),
     #[error("invalid AttributeReadContext: {0}")]
     BadAttributeReadContext(String),
-
-    #[error("func not found: {0}")]
-    FuncNotFound(FuncId),
-    #[error(transparent)]
-    FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
 }
 
 pub type ComponentResult<T> = Result<T, ComponentError>;

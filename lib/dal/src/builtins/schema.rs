@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use crate::attribute::context::AttributeContextBuilder;
-use crate::provider::internal::InternalProviderError;
 use crate::{
     component::ComponentKind,
     edit_field::widget::*,
@@ -21,7 +20,7 @@ use crate::{
     socket::{Socket, SocketArity, SocketEdgeKind},
     validation_prototype::ValidationPrototypeContext,
     AttributeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue,
-    AttributeValueError, BuiltinsResult, DalContext, Func, FuncBackendKind,
+    AttributeValueError, BuiltinsError, BuiltinsResult, DalContext, Func, FuncBackendKind,
     FuncBackendResponseType, FuncBindingReturnValue, InternalProvider, Prop, PropError, PropId,
     PropKind, QualificationPrototype, ResourcePrototype, Schema, SchemaError, SchemaKind,
     SchematicKind, StandardModel, ValidationPrototype,
@@ -607,7 +606,6 @@ async fn docker_image(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
             ctx,
             serde_json::json![{ "identity": null }],
             *identity_func.id(),
-            FuncBackendKind::Identity,
         )
         .await?;
 
@@ -627,7 +625,9 @@ async fn docker_image(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
         si_name_prop.ok_or_else(|| PropError::ExpectedChildNotFound("name".to_string()))?;
     let si_name_internal_provider = InternalProvider::get_for_prop(ctx, *si_name_prop.id())
         .await?
-        .ok_or_else(|| InternalProviderError::NotFoundForProp(*si_name_prop.id()))?;
+        .ok_or_else(|| {
+            BuiltinsError::ImplicitInternalProviderNotFoundForProp(*si_name_prop.id())
+        })?;
     let _argument = AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *image_attribute_prototype.id(),
