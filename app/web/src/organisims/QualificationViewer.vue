@@ -24,7 +24,7 @@
 
     <div
       v-if="editingQualificationId"
-      class="flex flex-col w-full h-full mt-2 overflow-auto"
+      class="flex flex-col w-full h-full max-h-[90%]"
     >
       <QualificationEditor
         :prototype-id="editingQualificationId"
@@ -32,20 +32,30 @@
       />
     </div>
 
-    <div class="flex flex-col mx-4 mt-2 border qualification-card">
-      <div class="flex justify-between h-10 pt-2 pr-6 pl-6">
+    <div class="flex flex-col mx-4 border qualification-card">
+      <div
+        v-if="!editingQualificationId"
+        class="flex justify-between h-10 mt-2 pt-2 pr-6 pl-6"
+      >
         <div class="px-2 py-2 text-xs font-medium align-middle title">
           Qualification Checks
         </div>
 
-        <SiButtonIcon
-          v-if="editMode"
-          class="mr-2 mt-1"
-          tooltip-text="Create new qualification function"
-          @click="createQualification"
-        >
-          <PlusCircleIcon class="text-green-300" />
-        </SiButtonIcon>
+        <div class="flex">
+          <SiButtonIcon
+            v-if="editMode"
+            class="mr-2 mt-1 text-green-300"
+            tooltip-text="Create new qualification function"
+            @click="createQualification"
+          >
+            <PlusCircleIcon />
+          </SiButtonIcon>
+          <span
+            class="cursor-pointer text-green-300 underline"
+            @click="createQualification"
+            >add qualification</span
+          >
+        </div>
       </div>
 
       <div class="flex w-full h-full pt-2 pb-4 overflow-auto background-color">
@@ -97,7 +107,7 @@
 
               <div class="flex justify-end flex-grow pr-4">
                 <SiButtonIcon
-                  v-if="q.prototypeId"
+                  v-if="q.prototypeId && !editingQualificationId"
                   class="focus:outline-none mr-2"
                   tooltip-text="Edit qualification function"
                   @click="editingQualificationId = q.prototypeId"
@@ -170,6 +180,7 @@ import {
   ChevronUpIcon,
   PlusCircleIcon,
 } from "@heroicons/vue/outline";
+import { toast$ } from "@/observable/toast";
 //import { ListQualificationsResponse } from "@/service/component/list_qualifications";
 
 const editMode = refFrom<boolean>(ChangeSetService.currentEditMode());
@@ -328,6 +339,8 @@ componentId$
   .pipe(untilUnmounted)
   .subscribe(() => (editingQualificationId.value = undefined));
 
+const scheduledToasts = ref([]);
+
 const checkedQualifications$ = new Rx.ReplaySubject<true>();
 checkedQualifications$.next(true); // We must fetch on setup
 eventCheckedQualifications$
@@ -337,7 +350,8 @@ eventCheckedQualifications$
     const data = checkedQualificationId?.payload.data;
     const sameComponent = props.componentId === data?.componentId;
     const sameSystem = (system?.id ?? -1) === data?.systemId;
-    if (sameComponent && sameSystem) {
+    if (data && sameComponent && sameSystem) {
+      scheduledToasts.value.push(data.prototypeId);
       checkedQualifications$.next(true);
     }
   });
@@ -361,6 +375,21 @@ const allQualifications = refFrom<Array<Qualification> | null>(
         GlobalErrorService.set(reply);
         return Rx.from([null]);
       } else {
+        for (const prototypeId of scheduledToasts.value) {
+          const qual = reply.find((q) => q.prototypeId === prototypeId);
+          if (qual?.result) {
+            toast$.next({
+              id: `qualification-prototype-${qual.prototypeId}`,
+              success: qual.result.success,
+              title: `Qualification ${qual.title} ${
+                qual.result.success ? "succeeded" : "failed"
+              }`,
+              message: qual.output.map((o) => o.line).join("\n"),
+            });
+          }
+        }
+        scheduledToasts.value = [];
+
         // Something something side effects... Let's rethink this someday.
         currentQualifiedState.value = getQualifiedState(reply);
         populateShowDescription(reply);

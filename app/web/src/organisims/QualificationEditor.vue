@@ -1,31 +1,41 @@
 <template>
-  <div class="flex flex-col w-full h-full overflow-hidden">
-    <div
-      class="flex justify-between h-10 px-6 py-2 text-base text-white align-middle property-section-bg-color"
-    >
-      <div class="text-md">Qualification {{ code?.prototype?.title }} Code</div>
+  <div class="flex flex-col w-full h-full px-4 py-2 overflow-hidden mt-2">
+    <SiTextBox2
+      id="qualification-name"
+      v-model="name"
+      class="mb-2 p-2 w-full"
+      title="qualification name"
+      required
+      @blur="save()"
+    />
 
-      <div class="flex">
-        <SiButtonIcon v-if="editMode" tooltip-text="Save code">
-          <SaveIcon />
-        </SiButtonIcon>
-
-        <SiButtonIcon
-          class="ml-2"
-          tooltip-text="Close Editor"
-          @click="save().then(() => emit('close'))"
-        >
-          <XCircleIcon />
-        </SiButtonIcon>
-      </div>
-    </div>
-    <div class="w-full h-full overflow-auto">
+    <div class="overflow-auto">
       <div
         ref="editorMount"
         class="w-full h-full"
         @keyup.stop
         @keydown.stop
       ></div>
+    </div>
+
+    <div class="flex mt-2 flex-row-reverse">
+      <SiButton
+        class="ml-2"
+        label="close"
+        size="xs"
+        icon="cancel"
+        kind="cancel"
+        @click="save().then(() => emit('close'))"
+      />
+
+      <SiButton
+        v-if="editMode"
+        label="save"
+        size="xs"
+        icon="save"
+        kind="save"
+        @click="save().then(() => emit('close'))"
+      />
     </div>
   </div>
 </template>
@@ -47,8 +57,8 @@ import { GlobalErrorService } from "@/service/global_error";
 import { Compartment } from "@codemirror/state";
 import { ChangeSetService } from "@/service/change_set";
 import { system$ } from "@/observable/system";
-import SiButtonIcon from "@/atoms/SiButtonIcon.vue";
-import { SaveIcon, XCircleIcon } from "@heroicons/vue/solid";
+import SiButton from "@/atoms/SiButton.vue";
+import SiTextBox2 from "@/atoms/SiTextBox2.vue";
 
 const emit = defineEmits(["close"]);
 
@@ -63,6 +73,8 @@ const editorMount = ref(null);
 const view = ref<null | EditorView>(null);
 const view$ = fromRef(view, { immediate: true });
 const readOnly = new Compartment();
+
+const name = ref("");
 
 const editMode = refFrom<boolean>(ChangeSetService.currentEditMode());
 
@@ -102,9 +114,14 @@ async function save() {
   const system = await Rx.firstValueFrom(system$);
 
   const newCode = view.value.state.doc.toString().trim();
-  if (code.value && code.value.code !== newCode) {
+  if (
+    code.value &&
+    name.value &&
+    (code.value.code !== newCode || code.value.prototype.title !== name.value)
+  ) {
     QualificationService.setCode({
       prototypeId: prototypeId.value,
+      prototypeTitle: name.value,
       code: newCode,
       systemId: system?.id,
     }).subscribe((response) => {
@@ -138,6 +155,7 @@ const code: Ref<GetCodeResponse | undefined> = refFrom<GetCodeResponse>(
             ),
           });
         }
+        name.value = reply.prototype.title;
         return Rx.from([reply]);
       }
     }),

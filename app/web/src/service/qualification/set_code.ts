@@ -8,6 +8,7 @@ import _ from "lodash";
 
 export interface SetCodeArgs {
   prototypeId: number;
+  prototypeTitle: string;
   code: string;
   systemId?: number;
 }

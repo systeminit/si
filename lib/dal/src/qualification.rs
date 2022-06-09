@@ -37,7 +37,7 @@ pub struct QualificationOutputStreamView {
     pub level: String,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct QualificationView {
     pub title: String,
@@ -123,12 +123,14 @@ impl QualificationView {
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct QualificationCheckId {
+    prototype_id: QualificationPrototypeId,
     component_id: ComponentId,
     system_id: SystemId,
 }
 
 impl WsEvent {
     pub fn checked_qualifications(
+        prototype_id: QualificationPrototypeId,
         component_id: ComponentId,
         system_id: SystemId,
         billing_account_ids: Vec<BillingAccountId>,
@@ -138,6 +140,7 @@ impl WsEvent {
             billing_account_ids,
             history_actor.clone(),
             WsPayload::CheckedQualifications(QualificationCheckId {
+                prototype_id,
                 component_id,
                 system_id,
             }),

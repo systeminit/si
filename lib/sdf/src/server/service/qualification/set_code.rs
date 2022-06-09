@@ -13,6 +13,7 @@ use crate::server::extract::{AccessBuilder, HandlerContext};
 #[serde(rename_all = "camelCase")]
 pub struct SetCodeRequest {
     pub prototype_id: QualificationPrototypeId,
+    pub prototype_title: String,
     pub code: String,
     pub system_id: Option<SystemId>,
     #[serde(flatten)]
@@ -36,12 +37,50 @@ pub async fn set_code(
     // TODO: actually use the system to filter qualifications
     let system_id = request.system_id.unwrap_or(SystemId::NONE);
 
-    let prototype = QualificationPrototype::get_by_id(&ctx, &request.prototype_id)
+    let mut prototype = QualificationPrototype::get_by_id(&ctx, &request.prototype_id)
         .await?
         .ok_or(QualificationError::PrototypeNotFound(request.prototype_id))?;
     let mut func = Func::get_by_id(&ctx, &prototype.func_id())
         .await?
         .ok_or(QualificationError::FuncNotFound)?;
+
+    if prototype.title() != request.prototype_title {
+        // We can't edit universal stuff created by another tenancy
+        let is_in_our_tenancy = ctx
+            .write_tenancy()
+            .check(
+                ctx.pg_txn(),
+                &prototype.tenancy().clone_into_read_tenancy(&ctx).await?,
+            )
+            .await?;
+
+        // Must be exactly in our visibility for us to edit
+        let is_in_our_visibility = prototype.visibility().edit_session_pk
+            == ctx.visibility().edit_session_pk
+            && prototype.visibility().change_set_pk == ctx.visibility().change_set_pk;
+
+        // Clone the qualification into our tenancy + visibility
+        if !is_in_our_tenancy || !is_in_our_visibility {
+            let mut new_prototype = QualificationPrototype::new(
+                &ctx,
+                prototype.func_id(),
+                prototype.args().clone(),
+                prototype.context().clone(),
+                &request.prototype_title,
+            )
+            .await?;
+            new_prototype
+                .set_link(&ctx, prototype.link().map(String::from))
+                .await?;
+            new_prototype
+                .set_description(&ctx, prototype.description().map(String::from))
+                .await?;
+            new_prototype.set_id(&ctx, prototype.id()).await?;
+            prototype = new_prototype;
+        } else {
+            prototype.set_title(&ctx, &request.prototype_title).await?;
+        }
+    }
 
     // We can't edit universal stuff created by another tenancy
     let is_in_our_tenancy = ctx
@@ -88,7 +127,8 @@ pub async fn set_code(
     txns.commit().await?;
 
     for component in components {
-        let async_tasks = ComponentAsyncTasks::new(component, system_id);
+        let mut async_tasks = ComponentAsyncTasks::new(component, system_id);
+        async_tasks.set_qualification_prototype_id(*prototype.id());
         let request_ctx = request_ctx.clone();
         let builder = builder.clone();
         tokio::task::spawn(async move {
