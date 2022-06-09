@@ -16,7 +16,6 @@ export interface CheckQualificationRequest
   extends CheckQualificationArgs,
     Visibility {
   systemId?: number;
-  workspaceId: number;
 }
 
 export type CheckQualificationResponse = { success: boolean };
@@ -24,28 +23,17 @@ export type CheckQualificationResponse = { success: boolean };
 export function checkQualifications(
   args: CheckQualificationArgs,
 ): Observable<ApiResponse<CheckQualificationResponse>> {
-  return combineLatest([standardVisibilityTriggers$, system$, workspace$]).pipe(
-    switchMap(([[visibility], system, workspace]) => {
+  return combineLatest([standardVisibilityTriggers$, system$]).pipe(
+    take(1),
+    switchMap(([[visibility], system]) => {
       const bottle = Bottle.pop("default");
       const sdf: SDF = bottle.container.SDF;
-      if (_.isNull(workspace)) {
-        return from([
-          {
-            error: {
-              statusCode: 10,
-              message: "cannot make call without a workspace; bug!",
-              code: 10,
-            },
-          },
-        ]);
-      }
       return sdf.post<ApiResponse<CheckQualificationResponse>>(
         "component/check_qualifications",
         {
           ...args,
           ...visibility,
           systemId: system?.id,
-          workspaceId: workspace.id,
         },
       );
     }),
