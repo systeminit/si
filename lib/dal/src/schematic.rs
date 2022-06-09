@@ -1,42 +1,60 @@
-use crate::edge::{Edge, EdgeId, EdgeKind, VertexObjectKind};
-use crate::node_position::NodePositionView;
-use crate::DalContext;
-use crate::{
-    node::NodeId, node::NodeViewKind, ComponentError, EdgeError, Node, NodeError, NodeKind,
-    NodePosition, NodePositionError, NodeTemplate, NodeView, ReadTenancyError, StandardModel,
-    StandardModelError, SystemError, SystemId,
-};
 use serde::{Deserialize, Serialize};
-use strum_macros::{AsRefStr, Display, EnumString};
-
-use crate::socket::SocketId;
 use si_data::PgError;
+use strum_macros::{AsRefStr, Display, EnumString};
 use thiserror::Error;
+
+use crate::edge::{Edge, EdgeId, EdgeKind, VertexObjectKind};
+use crate::node::NodeViewKind;
+use crate::node_position::NodePositionView;
+use crate::provider::external::ExternalProviderError;
+use crate::provider::internal::InternalProviderError;
+use crate::socket::SocketId;
+use crate::{
+    node::NodeId, AttributePrototypeArgument, AttributePrototypeArgumentError, ComponentError,
+    ComponentId, DalContext, EdgeError, ExternalProvider, ExternalProviderId, InternalProvider,
+    InternalProviderId, Node, NodeError, NodeKind, NodePosition, NodePositionError, NodeTemplate,
+    NodeView, PropError, ReadTenancyError, StandardModel, StandardModelError, SystemError,
+    SystemId,
+};
 
 #[derive(Error, Debug)]
 pub enum SchematicError {
-    #[error("pg error: {0}")]
-    Pg(#[from] PgError),
-    #[error("standard model error: {0}")]
-    StandardModel(#[from] StandardModelError),
-    #[error("node error: {0}")]
-    Node(#[from] NodeError),
-    #[error("read tenancy error: {0}")]
-    ReadTenancy(#[from] ReadTenancyError),
-    #[error("node position error: {0}")]
-    NodePosition(#[from] NodePositionError),
+    #[error("attribute prototype argument error: {0}")]
+    AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
-    #[error("edge error: {0}")]
-    Edge(#[from] EdgeError),
-    #[error("position not found")]
-    PositionNotFound,
-    #[error("component not found")]
-    ComponentNotFound,
     #[error("component name not found")]
     ComponentNameNotFound,
+    #[error("component not found")]
+    ComponentNotFound,
+    #[error("edge error: {0}")]
+    Edge(#[from] EdgeError),
+    #[error("external provider error: {0}")]
+    ExternalProvider(#[from] ExternalProviderError),
+    #[error("external provider not found for id: {0}")]
+    ExternalProviderNotFound(ExternalProviderId),
+    #[error("implicit internal provider cannot be used for inter component connection: {0}")]
+    FoundImplicitInternalProvider(InternalProviderId),
+    #[error("internal provider error: {0}")]
+    InternalProvider(#[from] InternalProviderError),
+    #[error("internal provider not found for id: {0}")]
+    InternalProviderNotFound(InternalProviderId),
+    #[error("pg error: {0}")]
+    Pg(#[from] PgError),
+    #[error("position not found")]
+    PositionNotFound,
+    #[error("prop error: {0}")]
+    Prop(#[from] PropError),
+    #[error("node error: {0}")]
+    Node(#[from] NodeError),
+    #[error("node position error: {0}")]
+    NodePosition(#[from] NodePositionError),
+    #[error("read tenancy error: {0}")]
+    ReadTenancy(#[from] ReadTenancyError),
     #[error("schema not found")]
     SchemaNotFound,
+    #[error("standard model error: {0}")]
+    StandardModel(#[from] StandardModelError),
     #[error("system error: {0}")]
     System(#[from] SystemError),
     #[error("system not found")]
@@ -81,8 +99,10 @@ impl Connection {
         ctx: &DalContext<'_, '_>,
         head_node_id: &NodeId,
         head_socket_id: &SocketId,
+        head_explicit_internal_provider_id: Option<InternalProviderId>,
         tail_node_id: &NodeId,
         tail_socket_id: &SocketId,
+        tail_external_provider_id: Option<ExternalProviderId>,
     ) -> SchematicResult<Self> {
         let head_node = Node::get_by_id(ctx, head_node_id)
             .await?
@@ -120,9 +140,75 @@ impl Connection {
             Err(e) => return Err(SchematicError::Edge(e)),
         };
 
+        // If there is an ExternalProvider corresponding to the tail and an externally-consuming
+        // InternalProvider corresponding to the head, then let's "connect" them too.
+        if let (Some(tail_external_provider_id), Some(head_explicit_internal_provider_id)) = (
+            tail_external_provider_id,
+            head_explicit_internal_provider_id,
+        ) {
+            // TODO(nick): allow for different names.
+            let name = "identity".to_string();
+            Self::connect_providers(
+                ctx,
+                name,
+                tail_external_provider_id,
+                *tail_component.id(),
+                head_explicit_internal_provider_id,
+                *head_component.id(),
+            )
+            .await?;
+        }
+
         // TODO: do we have to call Component::resolve_attribute for the head_component here?
 
         Ok(Self::from_edge(&edge))
+    }
+
+    /// This function should be only called by [`Connection::new()`] and integration tests. The
+    /// latter is why this function is public.
+    pub async fn connect_providers(
+        ctx: &DalContext<'_, '_>,
+        name: String,
+        tail_external_provider_id: ExternalProviderId,
+        tail_component_id: ComponentId,
+        head_explicit_internal_provider_id: InternalProviderId,
+        head_component_id: ComponentId,
+    ) -> SchematicResult<()> {
+        let tail_external_provider: ExternalProvider =
+            ExternalProvider::get_by_id(ctx, &tail_external_provider_id)
+                .await?
+                .ok_or(SchematicError::ExternalProviderNotFound(
+                    tail_external_provider_id,
+                ))?;
+        let head_explicit_internal_provider: InternalProvider =
+            InternalProvider::get_by_id(ctx, &head_explicit_internal_provider_id)
+                .await?
+                .ok_or(SchematicError::InternalProviderNotFound(
+                    head_explicit_internal_provider_id,
+                ))?;
+
+        // Check that the explicit internal provider is actually explicit and find its attribute
+        // prototype id.
+        if *head_explicit_internal_provider.internal_consumer() {
+            return Err(SchematicError::FoundImplicitInternalProvider(
+                *head_explicit_internal_provider.id(),
+            ));
+        }
+        let head_explicit_internal_provider_attribute_prototype = head_explicit_internal_provider
+            .attribute_prototype_id()
+            .ok_or(InternalProviderError::EmptyAttributePrototype)?;
+
+        // Now, we can create the inter component attribute prototype argument.
+        AttributePrototypeArgument::new_for_inter_component(
+            ctx,
+            *head_explicit_internal_provider_attribute_prototype,
+            name,
+            *tail_external_provider.id(),
+            tail_component_id,
+            head_component_id,
+        )
+        .await?;
+        Ok(())
     }
 
     pub async fn list(ctx: &DalContext<'_, '_>) -> SchematicResult<Vec<Self>> {
@@ -131,8 +217,6 @@ impl Connection {
         Ok(connections)
     }
 
-    // NOTE(nick): we clone kind for now, but I'd imagine Connection will have it's own "kind"
-    // wrapper in the future.
     pub fn from_edge(edge: &Edge) -> Self {
         Self {
             id: *edge.id(),
@@ -148,12 +232,10 @@ impl Connection {
         }
     }
 
-    // NOTE(nick): value is moved, but that's fine for tests.
     pub fn source(&self) -> (NodeId, SocketId) {
         (self.source.node_id, self.source.socket_id)
     }
 
-    // NOTE(nick): value is moved, but that's fine for tests.
     pub fn destination(&self) -> (NodeId, SocketId) {
         (self.destination.node_id, self.destination.socket_id)
     }

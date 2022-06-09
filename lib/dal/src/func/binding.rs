@@ -1,4 +1,4 @@
-use crate::WriteTenancy;
+use crate::{FuncError, WriteTenancy};
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
@@ -49,6 +49,8 @@ pub enum FuncBindingError {
     FuncNotFound(FuncBindingPk),
     #[error("unable to retrieve func for func binding: {0:?}")]
     JsFuncNotFound(FuncBindingPk),
+    #[error("func error: {0}")]
+    Func(#[from] FuncError),
     #[error("func backend error: {0}")]
     FuncBackend(#[from] FuncBackendError),
     #[error("func backend return value error: {0}")]
@@ -183,10 +185,12 @@ impl FuncBinding {
         ctx: &DalContext<'_, '_>,
         args: serde_json::Value,
         func_id: FuncId,
-        backend_kind: FuncBackendKind,
     ) -> FuncBindingResult<(Self, FuncBindingReturnValue)> {
+        let func = Func::get_by_id(ctx, &func_id)
+            .await?
+            .ok_or(FuncError::NotFound(func_id))?;
         let (func_binding, created) =
-            Self::find_or_create(ctx, args, func_id, backend_kind).await?;
+            Self::find_or_create(ctx, args, func_id, func.backend_kind).await?;
 
         let func_binding_return_value: FuncBindingReturnValue = if created {
             func_binding.execute(ctx).await?

@@ -29,6 +29,8 @@ pub enum FuncError {
     #[error("standard model error: {0}")]
     StandardModelError(#[from] StandardModelError),
 
+    #[error("could not find func by id: {0}")]
+    NotFound(FuncId),
     #[error("could not find func by name: {0}")]
     NotFoundByName(String),
 }

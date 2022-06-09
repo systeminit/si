@@ -1,19 +1,19 @@
 use serde::{Deserialize, Serialize};
-use si_data::{NatsError, PgError};
+use si_data::PgError;
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::attribute::context::AttributeContextBuilder;
-use crate::func::backend::identity::FuncBackendIdentityArgs;
-use crate::func::binding::FuncBindingError;
-use crate::func::binding_return_value::FuncBindingReturnValueError;
+use crate::attribute::context::{AttributeContextBuilder, UNSET_ID_VALUE};
+use crate::func::binding::{FuncBindingError, FuncBindingId};
+use crate::func::binding_return_value::FuncBindingReturnValueId;
+use crate::provider::emit;
+use crate::provider::emit::EmitError;
 use crate::standard_model::object_option_from_row_option;
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_accessor_ro,
     AttributeContextBuilderError, AttributePrototype, AttributePrototypeError,
-    AttributePrototypeId, AttributeReadContext, AttributeValueError, AttributeView,
-    FuncBackendKind, HistoryEventError, Prop, StandardModel, StandardModelError, Timestamp,
-    Visibility, WriteTenancy,
+    AttributePrototypeId, FuncId, HistoryEventError, Prop, StandardModel, StandardModelError,
+    Timestamp, Visibility, WriteTenancy,
 };
 use crate::{
     AttributeContext, AttributeContextError, AttributeValue, DalContext, Func, FuncBinding, PropId,
@@ -23,6 +23,8 @@ use crate::{
 const GET_FOR_PROP: &str = include_str!("../queries/internal_provider_get_for_prop.sql");
 const LIST_FOR_SCHEMA_VARIANT: &str =
     include_str!("../queries/internal_provider_list_for_schema_variant.sql");
+const LIST_FOR_ATTRIBUTE_PROTOTYPE: &str =
+    include_str!("../queries/internal_provider_list_for_attribute_prototype.sql");
 
 #[derive(Error, Debug)]
 pub enum InternalProviderError {
@@ -32,41 +34,27 @@ pub enum InternalProviderError {
     AttributeContextBuilder(#[from] AttributeContextBuilderError),
     #[error("attribute prototype error: {0}")]
     AttributePrototype(#[from] AttributePrototypeError),
-    #[error("attribute value error: {0}")]
-    AttributeValue(#[from] AttributeValueError),
+    #[error("emit error: {0}")]
+    Emit(#[from] EmitError),
     #[error("func binding error: {0}")]
     FuncBinding(#[from] FuncBindingError),
-    #[error("func binding return value error: {0}")]
-    FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
-    #[error("nats txn error: {0}")]
-    Nats(#[from] NatsError),
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
-    #[error("serde_json error: {0}")]
-    SerdeJsonError(#[from] serde_json::Error),
     #[error("standard model error: {0}")]
     StandardModelError(#[from] StandardModelError),
 
     #[error("unexpected: attribute prototype field is empty")]
     EmptyAttributePrototype,
-    #[error("func not found")]
-    FuncNotFound,
-    #[error("missing attribute value")]
-    MissingAttributeValue,
-    #[error("missing attribute prototype")]
-    MissingAttributePrototype,
-    #[error("provided attribute context for internal consumer evaluation does not specify an ExternalProviderId")]
-    MissingExternalProviderInAttributeContextForInternalConsumer,
+    #[error("provided attribute context does not specify an ExternalProviderId (required for explicit emit")]
+    MissingExternalProviderForExplicitEmit,
     #[error("missing func")]
     MissingFunc(String),
-    #[error(
-        "provided attribute context for internal consumer evaluation does not specify a PropId"
-    )]
-    MissingPropForInternalConsumer,
-    #[error("not found for prop: {0}")]
-    NotFoundForProp(PropId),
+    #[error("provided attribute context does not specify a PropId (required for implicit emit)")]
+    MissingPropForImplicitEmit,
+    #[error("not found for id: {0}")]
+    NotFound(InternalProviderId),
     #[error("prop not found for id: {0}")]
     PropNotFound(PropId),
     #[error("schema id mismatch: {0} (self) and {1} (provided)")]
@@ -89,11 +77,15 @@ impl_standard_model! {
     history_event_message_name: "Internal Provider"
 }
 
-/// This provider can only provide data within its own [`SchemaVariant`](crate::SchemaVariant). If
-/// the "internal_consumer" field is set to "true", this provider can only consume data from within
-/// its own [`SchemaVariant`](crate::SchemaVariant). If the "internal_consumer" field is set to
-/// "false", this provider can only consume data from other
-/// [`SchemaVariants`](crate::SchemaVariant).
+/// This provider can only provide data within its own [`SchemaVariant`](crate::SchemaVariant).
+///
+/// If the "internal_consumer" field is set to "true", this provider can only consume data from within
+/// its own [`SchemaVariant`](crate::SchemaVariant). Internally-consuming [`InternalProviders`](Self)
+/// are called "implicit" [`InternalProviders`](Self)
+///
+/// If the "internal_consumer" field is set to "false", this provider can only consume data from other
+/// [`SchemaVariants`](crate::SchemaVariant). Externally-consuming [`InternalProviders`](Self)
+/// are called "explicit" [`InternalProviders`](Self).
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct InternalProvider {
     pk: InternalProviderPk,
@@ -105,25 +97,26 @@ pub struct InternalProvider {
     #[serde(flatten)]
     timestamp: Timestamp,
 
-    /// Indicates which [`Prop`](crate::Prop) this provider belongs to.
+    /// Indicates which [`Prop`](crate::Prop) this provider belongs to. This will be
+    /// [`UNSET_ID_VALUE`](crate::attribute::context::UNSET_ID_VALUE) if [`Self`] is "explicit". If
+    /// [`Self`] is "implicit", this will always be a "set" id.
     prop_id: PropId,
     /// Indicates which [`Schema`](crate::Schema) this provider belongs to.
     schema_id: SchemaId,
     /// Indicates which [`SchemaVariant`](crate::SchemaVariant) this provider belongs to.
     schema_variant_id: SchemaVariantId,
-    /// Indicates which transformation function should be used during evaluation. This should only
-    /// be [`None`] within [`Self::new_implicit()`].
+    /// Indicates which transformation function should be used during [`Self::emit()`].
     attribute_prototype_id: Option<AttributePrototypeId>,
 
     /// Name for [`Self`] that can be used for identification.
     name: Option<String>,
     /// If this field is set to "true", the provider can only consume data for its corresponding
-    /// function from within its own [`SchemaVariant`](crate::SchemaVariant). The corresponding
-    /// context will have [`Prop`](crate::Prop) at the least specific field.
+    /// function from within its own [`SchemaVariant`](crate::SchemaVariant). In this case, [`Self`]
+    /// is "implicit".
     ///
     /// If this field field is set to "false", the provider
-    /// can only consume data from other [`SchemaVariants`](crate::SchemaVariant). The corresponding
-    /// context will have [`ExternalProvider`](crate::ExternalProvider) at the least specific field.
+    /// can only consume data from other [`SchemaVariants`](crate::SchemaVariant). In this case,
+    /// [`Self`] is "explicit".
     internal_consumer: bool,
     /// Definition of the inbound type (e.g. "JSONSchema" or "Number").
     inbound_type_definition: Option<String>,
@@ -177,7 +170,6 @@ impl InternalProvider {
                 ctx,
                 serde_json::json![{ "identity": null }],
                 *identity_func.id(),
-                *identity_func.backend_kind(),
             )
             .await?;
 
@@ -207,17 +199,69 @@ impl InternalProvider {
         Ok(internal_provider)
     }
 
+    #[tracing::instrument(skip(ctx))]
+    pub async fn new_explicit(
+        ctx: &DalContext<'_, '_>,
+        schema_id: SchemaId,
+        schema_variant_id: SchemaVariantId,
+        name: Option<String>,
+        func_id: FuncId,
+        func_binding_id: FuncBindingId,
+        func_binding_return_value_id: FuncBindingReturnValueId,
+    ) -> InternalProviderResult<Self> {
+        let prop_id: PropId = UNSET_ID_VALUE.into();
+        let row = ctx
+            .txns()
+            .pg()
+            .query_one(
+                "SELECT object FROM internal_provider_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+                &[
+                    ctx.write_tenancy(),
+                    ctx.visibility(),
+                    &prop_id,
+                    &schema_id,
+                    &schema_variant_id,
+                    &name,
+                    &false,
+                    &Option::<String>::None,
+                    &Option::<String>::None,
+                ],
+            )
+            .await?;
+
+        let mut explicit_internal_provider: InternalProvider =
+            standard_model::finish_create_from_row(ctx, row).await?;
+
+        let attribute_prototype = AttributePrototype::new(
+            ctx,
+            func_id,
+            func_binding_id,
+            func_binding_return_value_id,
+            explicit_internal_provider.attribute_context()?,
+            None,
+            None,
+        )
+        .await?;
+        explicit_internal_provider
+            .set_attribute_prototype_id(ctx, Some(*attribute_prototype.id()))
+            .await?;
+
+        Ok(explicit_internal_provider)
+    }
+
+    // Immutable fields.
     standard_model_accessor_ro!(prop_id, PropId);
     standard_model_accessor_ro!(schema_id, SchemaId);
     standard_model_accessor_ro!(schema_variant_id, SchemaVariantId);
+    standard_model_accessor_ro!(internal_consumer, bool);
+
+    // Mutable fields.
     standard_model_accessor!(
         attribute_prototype_id,
         OptionBigInt<AttributePrototypeId>,
         InternalProviderResult
     );
-
     standard_model_accessor!(name, Option<String>, InternalProviderResult);
-    standard_model_accessor_ro!(internal_consumer, bool);
     standard_model_accessor!(
         inbound_type_definition,
         Option<String>,
@@ -229,106 +273,51 @@ impl InternalProvider {
         InternalProviderResult
     );
 
-    /// Gets [`Self`] for a given [`PropId`](crate::Prop).
-    pub async fn get_for_prop(
-        ctx: &DalContext<'_, '_>,
-        prop_id: PropId,
-    ) -> InternalProviderResult<Option<Self>> {
-        let row = ctx
-            .pg_txn()
-            .query_opt(
-                GET_FOR_PROP,
-                &[ctx.read_tenancy(), ctx.visibility(), &prop_id],
-            )
-            .await?;
-        Ok(object_option_from_row_option(row)?)
-    }
-
-    /// Evaluate with a given [`AttributeContext`](crate::AttributeContext) and return the
-    /// resulting [`AttributeValue`](crate::AttributeValue). The provided context's fields must
-    /// corresponding fields on [`Self`], if provided.
+    /// Evaluate with a provided [`AttributeContext`](crate::AttributeContext) and return the
+    /// resulting [`AttributeValue`](crate::AttributeValue).
+    ///
+    /// Requirements for the provided [`AttributeContext`](crate::AttributeContext):
+    /// - If we are implicit, the provided context must specify a [`PropId`](crate::Prop)
+    /// - If we are explicit, the provided context must specify an
+    ///   [`ExternalProviderId`](crate::ExternalProvider)
+    /// - If the [`SchemaId`](crate::Schema) is set, it must match the corresponding field on
+    ///   [`Self`]
+    /// - If the [`SchemaVariantId`](crate::SchemaVariant) is set, it must match the corresponding
+    ///   field on [`Self`]
     pub async fn emit(
         &self,
         ctx: &DalContext<'_, '_>,
         attribute_context: AttributeContext,
     ) -> InternalProviderResult<AttributeValue> {
-        // TODO(nick): remove this check once external consumers are supported.
-        if !self.internal_consumer {
-            todo!("externally consuming internal providers are not yet supported for evaluation");
-        }
-
-        // Ensure that the provided context contains a PropId for internal consumers and ensure that
-        // the provided context contains an ExternalProviderId for external consumers.
-        if self.internal_consumer && !attribute_context.is_least_specific_field_prop()? {
-            return Err(InternalProviderError::MissingPropForInternalConsumer);
+        // Ensure that the least specific field in the provided context matches what we expect.
+        if self.internal_consumer && !attribute_context.is_least_specific_field_kind_prop()? {
+            return Err(InternalProviderError::MissingPropForImplicitEmit);
         } else if !self.internal_consumer
-            && !attribute_context.is_least_specific_field_external_provider()?
+            && !attribute_context.is_least_specific_field_kind_external_provider()?
         {
-            return Err(
-                InternalProviderError::MissingExternalProviderInAttributeContextForInternalConsumer,
-            );
+            return Err(InternalProviderError::MissingExternalProviderForExplicitEmit);
         }
 
-        // If the Schema or SchemaVariant fields are set on the provided context, we need to check
-        // if they match the corresponding fields of the InternalProvider.
-        if !attribute_context.is_schema_unset() && attribute_context.schema_id() != self.schema_id {
-            return Err(InternalProviderError::SchemaMismatch(
-                self.schema_id,
-                attribute_context.schema_id(),
-            ));
-        }
-        if !attribute_context.is_schema_variant_unset()
-            && attribute_context.schema_variant_id() != self.schema_variant_id
-        {
-            return Err(InternalProviderError::SchemaVariantMismatch(
-                self.schema_variant_id,
-                attribute_context.schema_variant_id(),
-            ));
-        }
-
-        // Get the value by generating a view for the found attribute value.
-        let found_attribute_value = AttributeValue::find_for_context(ctx, attribute_context.into())
-            .await?
-            .ok_or(InternalProviderError::MissingAttributeValue)?;
-        let found_attribute_view_context = AttributeReadContext {
-            prop_id: None,
-            ..AttributeReadContext::from(attribute_context)
-        };
-
-        // TODO(nick,jacob): we do not need to generate an attribute view for externally consuming
-        // internal providers.
-        let found_attribute_view = AttributeView::new(
-            ctx,
-            found_attribute_view_context,
-            Some(*found_attribute_value.id()),
-        )
-        .await?;
-        let found_value = found_attribute_view.value().clone();
-
-        // Generate a new func binding return value using the transformation function. Use the found value
-        // from the attribute view as the args.
-        let attribute_prototype_id = self
-            .attribute_prototype_id
-            .ok_or(InternalProviderError::EmptyAttributePrototype)?;
-        let attribute_prototype = AttributePrototype::get_by_id(ctx, &attribute_prototype_id)
-            .await?
-            .ok_or(InternalProviderError::MissingAttributePrototype)?;
-        let func = Func::get_by_id(ctx, &attribute_prototype.func_id())
-            .await?
-            .ok_or(InternalProviderError::FuncNotFound)?;
-
-        let args: serde_json::Value = match func.backend_kind() {
-            FuncBackendKind::Identity => serde_json::to_value(FuncBackendIdentityArgs {
-                identity: found_value,
-            })?,
-            backend_kind => {
-                todo!("emitting for backend kind {:?} not supported yet (currently, only internally consuming internal providers can emit)", backend_kind);
+        // Ensure that if the schema and/or schema variant fields are set, that they match our
+        // corresponding fields. We only need to perform this check for internal consumers.
+        if self.internal_consumer {
+            if !attribute_context.is_schema_unset()
+                && attribute_context.schema_id() != self.schema_id
+            {
+                return Err(InternalProviderError::SchemaMismatch(
+                    self.schema_id,
+                    attribute_context.schema_id(),
+                ));
             }
-        };
-
-        let (func_binding, func_binding_return_value) =
-            FuncBinding::find_or_create_and_execute(ctx, args, *func.id(), *func.backend_kind())
-                .await?;
+            if !attribute_context.is_schema_variant_unset()
+                && attribute_context.schema_variant_id() != self.schema_variant_id
+            {
+                return Err(InternalProviderError::SchemaVariantMismatch(
+                    self.schema_variant_id,
+                    attribute_context.schema_variant_id(),
+                ));
+            }
+        }
 
         // Update or create the emit attribute value using the newly generated func binding return
         // value. For its context, we use the provided context and replace the least specific field
@@ -339,35 +328,16 @@ impl InternalProvider {
             .set_internal_provider_id(self.id)
             .to_context()?;
 
-        // We never want to mutate an emitted AttributeValue in the universal tenancy and we want
-        // to ensure the found AttributeValue's context _exactly_ matches the one assembled. In
-        // either case, just create a new one!
-        if let Some(mut emit_attribute_value) =
-            AttributeValue::find_for_context(ctx, emit_context.into()).await?
-        {
-            if emit_attribute_value.context == emit_context
-                && !emit_attribute_value.tenancy().universal()
-            {
-                emit_attribute_value
-                    .set_func_binding_id(ctx, *func_binding.id())
-                    .await?;
-                emit_attribute_value
-                    .set_func_binding_return_value_id(ctx, *func_binding_return_value.id())
-                    .await?;
-                return Ok(emit_attribute_value);
-            }
-        }
-        Ok(AttributeValue::new(
-            ctx,
-            *func_binding.id(),
-            *func_binding_return_value.id(),
-            emit_context,
-            Option::<String>::None,
-        )
-        .await?)
+        let attribute_prototype_id = self
+            .attribute_prototype_id
+            .ok_or(InternalProviderError::EmptyAttributePrototype)?;
+
+        let emit_attribute_value =
+            emit::emit(ctx, attribute_prototype_id, attribute_context, emit_context).await?;
+        Ok(emit_attribute_value)
     }
 
-    /// Find all internal providers for a given [`SchemaVariant`](crate::SchemaVariant).
+    /// Find all [`Self`] for a given [`SchemaVariant`](crate::SchemaVariant).
     #[tracing::instrument(skip(ctx))]
     pub async fn list_for_schema_variant(
         ctx: &DalContext<'_, '_>,
@@ -382,5 +352,52 @@ impl InternalProvider {
             )
             .await?;
         Ok(standard_model::objects_from_rows(rows)?)
+    }
+
+    /// Find all [`Self`] for a given [`AttributePrototypeId`](crate::AttributePrototype).
+    #[tracing::instrument(skip(ctx))]
+    pub async fn list_for_attribute_prototype(
+        ctx: &DalContext<'_, '_>,
+        attribute_prototype_id: AttributePrototypeId,
+    ) -> InternalProviderResult<Vec<Self>> {
+        let rows = ctx
+            .txns()
+            .pg()
+            .query(
+                LIST_FOR_ATTRIBUTE_PROTOTYPE,
+                &[
+                    ctx.read_tenancy(),
+                    ctx.visibility(),
+                    &attribute_prototype_id,
+                ],
+            )
+            .await?;
+        Ok(standard_model::objects_from_rows(rows)?)
+    }
+
+    /// Returns an [`AttributeContext`](crate::AttributeContext) corresponding to our id, our
+    /// [`SchemaId`](crate::SchemaId) and our [`SchemaVariantId`](crate::SchemaVariantId).
+    pub fn attribute_context(&self) -> InternalProviderResult<AttributeContext> {
+        Ok(AttributeContext::builder()
+            .set_internal_provider_id(self.id)
+            .set_schema_id(self.schema_id)
+            .set_schema_variant_id(self.schema_variant_id)
+            .to_context()?)
+    }
+
+    /// Gets [`Self`] for a given [`PropId`](crate::Prop). This will only work for
+    /// implicit [`InternalProviders`](Self).
+    pub async fn get_for_prop(
+        ctx: &DalContext<'_, '_>,
+        prop_id: PropId,
+    ) -> InternalProviderResult<Option<Self>> {
+        let row = ctx
+            .pg_txn()
+            .query_opt(
+                GET_FOR_PROP,
+                &[ctx.read_tenancy(), ctx.visibility(), &prop_id],
+            )
+            .await?;
+        Ok(object_option_from_row_option(row)?)
     }
 }

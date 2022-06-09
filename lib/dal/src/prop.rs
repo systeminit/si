@@ -157,13 +157,9 @@ impl Prop {
         // No matter what, we need a FuncBindingReturnValueId to create a new attribute prototype.
         // If the func binding was created, we execute on it to generate our value id. Otherwise,
         // we try to find a value by id and then fallback to executing anyway if one was not found.
-        let (func_binding, func_binding_return_value) = FuncBinding::find_or_create_and_execute(
-            ctx,
-            serde_json::json![null],
-            *func.id(),
-            *func.backend_kind(),
-        )
-        .await?;
+        let (func_binding, func_binding_return_value) =
+            FuncBinding::find_or_create_and_execute(ctx, serde_json::json![null], *func.id())
+                .await?;
 
         let attribute_context = AttributeContext::builder()
             .set_prop_id(*object.id())

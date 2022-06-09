@@ -27,15 +27,19 @@ use crate::{
         binding_return_value::FuncBindingReturnValueId,
     },
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_has_many,
-    AttributePrototypeArgument, AttributePrototypeArgumentError, AttributeReadContext, DalContext,
-    HistoryEventError, InternalProviderId, PropError, PropKind, ReadTenancy, ReadTenancyError,
-    StandardModel, StandardModelError, Timestamp, Visibility, WriteTenancy,
+    AttributePrototypeArgument, AttributePrototypeArgumentError, AttributeReadContext, ComponentId,
+    DalContext, ExternalProviderId, HistoryEventError, InternalProviderId, PropError, PropKind,
+    ReadTenancy, ReadTenancyError, StandardModel, StandardModelError, Timestamp, Visibility,
+    WriteTenancy,
 };
 
 pub mod argument;
 
 const ATTRIBUTE_VALUES_IN_CONTEXT_OR_GREATER: &str =
     include_str!("../queries/attribute_prototype_attribute_values_in_context_or_greater.sql");
+const LIST_BY_HEAD_FROM_EXTERNAL_PROVIDER_USE_WITH_TAIL: &str = include_str!(
+    "../queries/attribute_prototype_list_by_head_from_external_provider_use_with_tail.sql"
+);
 const LIST_FROM_INTERNAL_PROVIDER_USE: &str =
     include_str!("../queries/attribute_prototype_list_from_internal_provider_use.sql");
 const LIST_FOR_CONTEXT: &str = include_str!("../queries/attribute_prototype_list_for_context.sql");
@@ -118,6 +122,14 @@ pub struct AttributePrototype {
     func_id: FuncId,
     /// An optional key used for tracking parentage.
     pub key: Option<String>,
+}
+
+/// This object is used for
+/// [`AttributePrototype::list_by_head_from_external_provider_use_with_tail()`].
+#[derive(Serialize, Deserialize, Debug)]
+pub struct AttributePrototypeGroupByHeadComponentId {
+    pub head_component_id: ComponentId,
+    pub attribute_prototype: AttributePrototype,
 }
 
 impl_standard_model! {
@@ -391,6 +403,41 @@ impl AttributePrototype {
             )
             .await?;
         Ok(standard_model::objects_from_rows(rows)?)
+    }
+
+    /// List [`Vec<Self>`] that depend on a provided [`ExternalProviderId`](crate::ExternalProvider)
+    /// and _tail_ [`ComponentId`](crate::Component).
+    pub async fn list_by_head_from_external_provider_use_with_tail(
+        ctx: &DalContext<'_, '_>,
+        external_provider_id: ExternalProviderId,
+        tail_component_id: ComponentId,
+    ) -> AttributePrototypeResult<Vec<AttributePrototypeGroupByHeadComponentId>> {
+        let rows = ctx
+            .pg_txn()
+            .query(
+                LIST_BY_HEAD_FROM_EXTERNAL_PROVIDER_USE_WITH_TAIL,
+                &[
+                    ctx.read_tenancy(),
+                    ctx.visibility(),
+                    &external_provider_id,
+                    &tail_component_id,
+                ],
+            )
+            .await?;
+
+        let mut result = Vec::new();
+        for row in rows.into_iter() {
+            let head_component_id: ComponentId = row.try_get("head_component_id")?;
+
+            let attribute_prototype_json: serde_json::Value = row.try_get("object")?;
+            let attribute_prototype = serde_json::from_value(attribute_prototype_json)?;
+
+            result.push(AttributePrototypeGroupByHeadComponentId {
+                head_component_id,
+                attribute_prototype,
+            });
+        }
+        Ok(result)
     }
 
     /// List [`AttributeValues`](crate::AttributeValue) that belong to a provided [`AttributePrototypeId`](Self)

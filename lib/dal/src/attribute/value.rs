@@ -2,19 +2,16 @@
 //! attribute's value. Moreover, it tracks whether the value is proxied or not. Proxied values
 //! "point" to another [`AttributeValue`] to provide the attribute's value.
 
-use std::{
-    cmp::Ordering,
-    collections::{HashMap, HashSet, VecDeque},
-};
-
 use async_recursion::async_recursion;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use si_data::{NatsError, PgError};
+use std::collections::{HashSet, VecDeque};
 use telemetry::prelude::*;
 use thiserror::Error;
 use uuid::Uuid;
 
+use crate::attribute::value::dependent_update::AttributeValueDependentUpdateHarness;
 use crate::{
     attribute::{
         context::{
@@ -37,13 +34,16 @@ use crate::{
     impl_standard_model, pk,
     standard_model::{self, TypeHint},
     standard_model_accessor, standard_model_belongs_to, standard_model_has_many,
-    AttributeContextError, AttributePrototypeArgument, AttributePrototypeArgumentError, Component,
-    ComponentAsyncTasks, DalContext, Func, FuncBackendKind, FuncError, HistoryEventError, IndexMap,
-    InternalProvider, Prop, PropError, PropId, PropKind, ReadTenancyError, StandardModel,
-    StandardModelError, Timestamp, Visibility, WriteTenancy,
+    AttributeContextError, AttributePrototypeArgumentError, Component, ComponentAsyncTasks,
+    ComponentId, DalContext, Func, FuncError, HistoryEventError, IndexMap, InternalProviderId,
+    Prop, PropError, PropId, PropKind, ReadTenancyError, StandardModel, StandardModelError,
+    Timestamp, Visibility, WriteTenancy,
 };
 
 pub mod view;
+
+// Private module for finding dependent_update attribute values based on providers.
+mod dependent_update;
 
 const CHILD_ATTRIBUTE_VALUES_FOR_CONTEXT: &str =
     include_str!("../queries/attribute_value_child_attribute_values_for_context.sql");
@@ -77,6 +77,12 @@ pub enum AttributeValueError {
     BadJsonPointer(String, String),
     #[error("component error: {0}")]
     Component(String),
+    #[error("component not found for id: {0}")]
+    ComponentNotFound(ComponentId),
+    #[error("empty attribute prototype arguments for group name: {0}")]
+    EmptyAttributePrototypeArgumentsForGroup(String),
+    #[error("external provider error: {0}")]
+    ExternalProvider(String),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
     #[error("func binding error: {0}")]
@@ -91,6 +97,8 @@ pub enum AttributeValueError {
     IncompatibleAttributeReadContext(&'static str),
     #[error("internal provider error: {0}")]
     InternalProvider(String),
+    #[error("internal provider not found by id: {0}")]
+    InternalProviderNotFound(InternalProviderId),
     #[error("invalid prop value; expected {0} but got {1}")]
     InvalidPropValue(String, serde_json::Value),
     #[error("found invalid object value fields not found in corresponding prop: {0:?}")]
@@ -117,6 +125,8 @@ pub enum AttributeValueError {
     Nats(#[from] NatsError),
     #[error("attribute value not found: {0} ({1:?})")]
     NotFound(AttributeValueId, Visibility),
+    #[error("missing attribute value for external provider context: {0:?}")]
+    NotFoundForExternalProviderContext(AttributeContext),
     #[error("missing attribute value for internal provider context: {0:?}")]
     NotFoundForInternalProviderContext(AttributeContext),
     #[error("using json pointer for attribute view yielded no value")]
@@ -131,6 +141,10 @@ pub enum AttributeValueError {
     Prop(#[from] PropError),
     #[error("Prop not found: {0}")]
     PropNotFound(PropId),
+    #[error("schema not found for component id: {0}")]
+    SchemaNotFoundForComponent(ComponentId),
+    #[error("schema variant not found for component id: {0}")]
+    SchemaVariantNotFoundForComponent(ComponentId),
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("standard model error: {0}")]
@@ -825,7 +839,9 @@ impl AttributeValue {
                 None
             };
 
-        Self::update_dependent_attribute_values(ctx, *attribute_value.id()).await?;
+        // After we have _completely_ updated ourself, we can update our dependent values.
+        AttributeValueDependentUpdateHarness::update_dependent_values(ctx, *attribute_value.id())
+            .await?;
 
         Ok((value, *attribute_value.id(), async_tasks))
     }
@@ -877,13 +893,8 @@ impl AttributeValue {
             .pop()
             .ok_or(AttributeValueError::MissingFunc(unset_func_name))?;
         let (unset_func_binding, unset_func_binding_return_value) =
-            FuncBinding::find_or_create_and_execute(
-                ctx,
-                serde_json::json![null],
-                *unset_func.id(),
-                *unset_func.backend_kind(),
-            )
-            .await?;
+            FuncBinding::find_or_create_and_execute(ctx, serde_json::json![null], *unset_func.id())
+                .await?;
 
         let attribute_value = Self::new(
             ctx,
@@ -1137,232 +1148,6 @@ impl AttributeValue {
         Ok(())
     }
 
-    /// Update dependent [`AttributeValues`](Self) for a given [`AttributeValueId`](Self).
-    pub async fn update_dependent_attribute_values(
-        ctx: &DalContext<'_, '_>,
-        attribute_value_id: AttributeValueId,
-    ) -> AttributeValueResult<()> {
-        let original_attribute_value = AttributeValue::get_by_id(ctx, &attribute_value_id)
-            .await?
-            .ok_or(AttributeValueError::Missing)?;
-        let original_attribute_value_context = original_attribute_value.context;
-        let original_attribute_value_base_context = AttributeReadContext {
-            prop_id: None,
-            ..AttributeReadContext::from(original_attribute_value_context)
-        };
-
-        // Here, we push the value into the visited set and work queue immediately, but in the work
-        // queue itself, we will _only_ push values in the work queue if they have not been visited
-        // yet.
-        let mut visited: HashSet<AttributeValueId> = HashSet::new();
-        visited.insert(*original_attribute_value.id());
-        let mut work_queue: VecDeque<AttributeValue> = VecDeque::new();
-        work_queue.push_back(original_attribute_value);
-
-        while let Some(work) = work_queue.pop_front() {
-            // First, we need to ensure our corresponding implicit internal provider emits, if one
-            // exists.
-            if let Some(work_internal_provider) =
-                InternalProvider::get_for_prop(ctx, work.context.prop_id())
-                    .await
-                    .map_err(|e| AttributeValueError::InternalProvider(e.to_string()))?
-            {
-                work_internal_provider
-                    .emit(ctx, work.context)
-                    .await
-                    .map_err(|e| AttributeValueError::InternalProvider(e.to_string()))?;
-            }
-
-            // Find all attribute values that need to be updated. We will start by finding all
-            // ancestor props for the prop on the current attribute value that we are processing.
-            // We will then find the internal provider corresponding to that prop (side note: if we
-            // are "underneath" an array or a map, we will not have an internal provider). From that
-            // internal provider, we will find the attribute prototypes who have arguments that
-            // specify that internal provider's id. From there, we can find the attribute values
-            // that need to be updated.
-            let mut attribute_values_that_need_to_be_updated = Vec::new();
-            for ancestor_prop in Prop::all_ancestor_props(ctx, work.context.prop_id()).await? {
-                if let Some(ancestor_internal_provider) =
-                    InternalProvider::get_for_prop(ctx, *ancestor_prop.id())
-                        .await
-                        .map_err(|e| AttributeValueError::InternalProvider(e.to_string()))?
-                {
-                    let attribute_prototypes_from_internal_provider_use =
-                        AttributePrototype::list_from_internal_provider_use(
-                            ctx,
-                            *ancestor_internal_provider.id(),
-                        )
-                        .await
-                        .map_err(|e| AttributeValueError::AttributePrototype(format!("{e}")))?;
-
-                    for attribute_prototype_from_internal_provider_use in
-                        attribute_prototypes_from_internal_provider_use
-                    {
-                        let mut found_exact_context_level = false;
-                        let attribute_values_in_context_or_greater =
-                            AttributePrototype::attribute_values_in_context_or_greater(
-                                ctx,
-                                *attribute_prototype_from_internal_provider_use.id(),
-                                original_attribute_value_base_context,
-                            )
-                            .await
-                            .map_err(|e| AttributeValueError::AttributePrototype(format!("{e}")))?;
-
-                        // For each relevant attribute value found corresponding to the attribute
-                        // prototype, check if its context is at same or greater ("more-specific")
-                        // level of specificity. If either are true, the attribute value being processed
-                        // needs to be updated. If the former is true, then we need to create an
-                        // attribute value in a context whose level of specificity is the same
-                        // as the context of the "original" attribute value that was updated.
-                        for attribute_value_in_context_or_greater in
-                            attribute_values_in_context_or_greater
-                        {
-                            if attribute_value_in_context_or_greater.context
-                                >= original_attribute_value_context
-                            {
-                                // We cannot use the "==" operator because we have derived "PartialEq"
-                                // in addition to creating our own "partial_cmp" implementation within
-                                // our "PartialOrd impl".
-                                if attribute_value_in_context_or_greater
-                                    .context
-                                    .partial_cmp(&original_attribute_value_context)
-                                    == Some(Ordering::Equal)
-                                {
-                                    found_exact_context_level = true;
-                                }
-
-                                // If values of a "more-specific" context appear, then they were not
-                                // pinned and we need to update them as well.
-                                attribute_values_that_need_to_be_updated
-                                    .push(attribute_value_in_context_or_greater);
-                            }
-                        }
-
-                        // If this condition passes, we need to create a new attribute value with
-                        // aforementioned specifications. First, let's find the attribute value
-                        // corresponding to the attribute prototype that we are currently working
-                        // with. We will use its data to help create the new attribute value.
-                        if !found_exact_context_level {
-                            let attribute_value_for_current_prototype =
-                                AttributeValue::find_for_context(
-                                    ctx,
-                                    attribute_prototype_from_internal_provider_use
-                                        .context
-                                        .into(),
-                                )
-                                .await?
-                                .ok_or(AttributeValueError::Missing)?;
-
-                            // The context for creating the new attribute value will use the prop
-                            // from the attribute value corresponding to the attribute prototype
-                            // that we are currently working with _and_ will use the context
-                            // from the "original" attribute value updated for all other fields.
-                            let new_attribute_value_context =
-                                AttributeContextBuilder::from(original_attribute_value_context)
-                                    .set_prop_id(
-                                        attribute_value_for_current_prototype.context.prop_id(),
-                                    )
-                                    .to_context()?;
-
-                            let new_attribute_value = AttributeValue::new(
-                                ctx,
-                                attribute_value_for_current_prototype.func_binding_id,
-                                attribute_value_for_current_prototype.func_binding_return_value_id,
-                                new_attribute_value_context,
-                                attribute_value_for_current_prototype.key.clone(),
-                            )
-                            .await?;
-
-                            // Before adding our new attribute value to the list of attribute values
-                            // that need to be updated, we need to set its prototype and its parent
-                            // attribute value.
-                            new_attribute_value
-                                .set_attribute_prototype(
-                                    ctx,
-                                    attribute_prototype_from_internal_provider_use.id(),
-                                )
-                                .await?;
-                            if let Some(parent_attribute_value) =
-                                attribute_value_for_current_prototype
-                                    .parent_attribute_value(ctx)
-                                    .await?
-                            {
-                                new_attribute_value
-                                    .set_parent_attribute_value(ctx, parent_attribute_value.id())
-                                    .await?;
-                            }
-                            attribute_values_that_need_to_be_updated.push(new_attribute_value);
-                        }
-                    }
-                }
-            }
-
-            // Now, update each attribute value. Use the prototype and its arguments to build the
-            // func binding arguments needed for execution.
-            for mut attribute_value_that_needs_to_be_updated in
-                attribute_values_that_need_to_be_updated
-            {
-                let prototype = attribute_value_that_needs_to_be_updated
-                    .attribute_prototype(ctx)
-                    .await?
-                    .ok_or(AttributeValueError::MissingAttributePrototype)?;
-                let arguments =
-                    AttributePrototypeArgument::list_for_attribute_prototype(ctx, *prototype.id())
-                        .await?;
-
-                let mut func_binding_args: HashMap<String, Option<serde_json::Value>> =
-                    HashMap::new();
-                for argument in arguments {
-                    let internal_provider_context = AttributeContextBuilder::from(
-                        attribute_value_that_needs_to_be_updated.context,
-                    )
-                    .unset_prop_id()
-                    .set_internal_provider_id(argument.internal_provider_id())
-                    .to_context()?;
-                    let internal_provider_attribute_value =
-                        AttributeValue::find_for_context(ctx, internal_provider_context.into())
-                            .await?
-                            .ok_or(AttributeValueError::NotFoundForInternalProviderContext(
-                                internal_provider_context,
-                            ))?;
-                    let value = internal_provider_attribute_value.get_value(ctx).await?;
-                    func_binding_args.insert(argument.name().to_string(), value);
-                }
-
-                // Generate a new func binding return value with our arguments assembled.
-                let func = Func::get_by_id(ctx, &prototype.func_id())
-                    .await?
-                    .ok_or_else(|| {
-                        AttributeValueError::MissingFunc(format!("{:?}", &prototype.func_id()))
-                    })?;
-                let (func_binding, func_binding_return_value) =
-                    FuncBinding::find_or_create_and_execute(
-                        ctx,
-                        serde_json::to_value(func_binding_args)?,
-                        prototype.func_id(),
-                        *func.backend_kind(),
-                    )
-                    .await?;
-
-                // Update the attribute value with the new func binding and func binding return value.
-                attribute_value_that_needs_to_be_updated
-                    .set_func_binding_id(ctx, *func_binding.id())
-                    .await?;
-                attribute_value_that_needs_to_be_updated
-                    .set_func_binding_return_value_id(ctx, *func_binding_return_value.id())
-                    .await?;
-
-                // If the attribute value that was just update has not already triggered updates,
-                // process its dependent values.
-                if !visited.contains(attribute_value_that_needs_to_be_updated.id()) {
-                    visited.insert(*attribute_value_that_needs_to_be_updated.id());
-                    work_queue.push_back(attribute_value_that_needs_to_be_updated);
-                }
-            }
-        }
-        Ok(())
-    }
-
     #[async_recursion]
     async fn populate_nested_values(
         ctx: &DalContext<'_, '_>,
@@ -1425,7 +1210,6 @@ impl AttributeValue {
                         ctx,
                         serde_json::json![null],
                         *unset_func.id(),
-                        FuncBackendKind::Unset,
                     )
                     .await?;
 
@@ -1528,7 +1312,7 @@ impl AttributeValue {
             unexpected @ PropKind::String
             | unexpected @ PropKind::Boolean
             | unexpected @ PropKind::Integer => {
-                return Err(AttributeValueError::UnexpectedPropKind(*unexpected))
+                return Err(AttributeValueError::UnexpectedPropKind(*unexpected));
             }
         };
 
@@ -1662,8 +1446,7 @@ async fn set_value(
         .ok_or(AttributeValueError::MissingFunc(func_name))?;
 
     let (func_binding, func_binding_return_value) =
-        FuncBinding::find_or_create_and_execute(ctx, args, *func.id(), *func.backend_kind())
-            .await?;
+        FuncBinding::find_or_create_and_execute(ctx, args, *func.id()).await?;
 
     Ok((func, func_binding, func_binding_return_value))
 }

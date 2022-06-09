@@ -17,6 +17,9 @@ use crate::{
 
 const LIST_FOR_ATTRIBUTE_PROTOTYPE: &str =
     include_str!("../../queries/attribute_prototype_argument_list_for_attribute_prototype.sql");
+const LIST_BY_NAME_FOR_ATTRIBUTE_PROTOTYPE: &str = include_str!(
+    "../../queries/attribute_prototype_argument_list_by_name_for_attribute_prototype.sql"
+);
 
 #[derive(Error, Debug)]
 pub enum AttributePrototypeArgumentError {
@@ -24,8 +27,10 @@ pub enum AttributePrototypeArgumentError {
     HistoryEvent(#[from] HistoryEventError),
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
+    #[error("serde json error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
     #[error("standard model error: {0}")]
-    StandardModelError(#[from] StandardModelError),
+    StandardModel(#[from] StandardModelError),
 
     #[error("cannot update set field to become unset: {0}")]
     CannotFlipSetFieldToUnset(&'static str),
@@ -72,6 +77,13 @@ pub struct AttributePrototypeArgument {
     head_component_id: ComponentId,
 }
 
+/// This object is used for [`AttributePrototypeArgument::list_by_name_for_attribute_prototype()`].
+#[derive(Serialize, Deserialize, Debug)]
+pub struct AttributePrototypeArgumentGroup {
+    pub name: String,
+    pub arguments: Vec<AttributePrototypeArgument>,
+}
+
 impl_standard_model! {
     model: AttributePrototypeArgument,
     pk: AttributePrototypeArgumentPk,
@@ -83,16 +95,17 @@ impl_standard_model! {
 
 impl AttributePrototypeArgument {
     #[instrument(skip_all)]
+    /// Create a new [`AttributePrototypeArgument`] for _intra_ [`Component`](crate::Component) use.
     pub async fn new_for_intra_component(
         ctx: &DalContext<'_, '_>,
         attribute_prototype_id: AttributePrototypeId,
         name: String,
         internal_provider_id: InternalProviderId,
     ) -> AttributePrototypeArgumentResult<Self> {
+        // Ensure the value fields are what we expect.
         let external_provider_id: ExternalProviderId = UNSET_ID_VALUE.into();
         let tail_component_id: ComponentId = UNSET_ID_VALUE.into();
         let head_component_id: ComponentId = UNSET_ID_VALUE.into();
-
         if internal_provider_id == UNSET_ID_VALUE.into() {
             return Err(AttributePrototypeArgumentError::RequiredValueFieldsUnset);
         }
@@ -117,6 +130,7 @@ impl AttributePrototypeArgument {
         Ok(standard_model::finish_create_from_row(ctx, row).await?)
     }
 
+    /// Create a new [`AttributePrototypeArgument`] for _inter_ [`Component`](crate::Component) use.
     #[instrument(skip_all)]
     pub async fn new_for_inter_component(
         ctx: &DalContext<'_, '_>,
@@ -126,8 +140,8 @@ impl AttributePrototypeArgument {
         tail_component_id: ComponentId,
         head_component_id: ComponentId,
     ) -> AttributePrototypeArgumentResult<Self> {
+        // Ensure the value fields are what we expect.
         let internal_provider_id: ExternalProviderId = UNSET_ID_VALUE.into();
-
         if external_provider_id == UNSET_ID_VALUE.into()
             || tail_component_id == UNSET_ID_VALUE.into()
             || head_component_id == UNSET_ID_VALUE.into()
@@ -287,6 +301,12 @@ impl AttributePrototypeArgument {
         Ok(())
     }
 
+    /// Determines if the [`InternalProviderId`](crate::InternalProvider) is unset. This function
+    /// can be useful for determining how to build [`FuncBinding`](crate::FuncBinding) arguments.
+    pub fn is_internal_provider_unset(&self) -> bool {
+        self.internal_provider_id == UNSET_ID_VALUE.into()
+    }
+
     /// List all [`AttributePrototypeArguments`](Self) for a given
     /// [`AttributePrototype`](crate::AttributePrototype).
     #[tracing::instrument(skip(ctx))]
@@ -307,5 +327,42 @@ impl AttributePrototypeArgument {
             )
             .await?;
         Ok(standard_model::objects_from_rows(rows)?)
+    }
+
+    /// List all [`AttributePrototypeArguments`](Self) by name for a given
+    /// [`AttributePrototype`](crate::AttributePrototype). This function should be used instead of
+    /// [`Self::list_for_attribute_prototype()`] if the caller needs to group arguments that share
+    /// the same "name" sharing the same name.
+    #[tracing::instrument(skip(ctx))]
+    pub async fn list_by_name_for_attribute_prototype(
+        ctx: &DalContext<'_, '_>,
+        attribute_prototype_id: AttributePrototypeId,
+    ) -> AttributePrototypeArgumentResult<Vec<AttributePrototypeArgumentGroup>> {
+        let rows = ctx
+            .txns()
+            .pg()
+            .query(
+                LIST_BY_NAME_FOR_ATTRIBUTE_PROTOTYPE,
+                &[
+                    ctx.read_tenancy(),
+                    ctx.visibility(),
+                    &attribute_prototype_id,
+                ],
+            )
+            .await?;
+
+        let mut result = Vec::new();
+        for row in rows.into_iter() {
+            let name: String = row.try_get("name")?;
+
+            let arguments_json: Vec<serde_json::Value> = row.try_get("arguments")?;
+            let mut arguments = Vec::new();
+            for argument_json in arguments_json {
+                arguments.push(serde_json::from_value(argument_json)?);
+            }
+
+            result.push(AttributePrototypeArgumentGroup { name, arguments });
+        }
+        Ok(result)
     }
 }

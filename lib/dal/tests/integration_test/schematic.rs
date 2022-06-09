@@ -89,8 +89,10 @@ async fn get_schematic(ctx: &DalContext<'_, '_>, application_id: ApplicationId) 
         ctx,
         node2.id(),
         output_socket.id(),
+        None,
         node.id(),
         input_socket.id(),
+        None,
     )
     .await
     .expect("could not create connection");
@@ -179,8 +181,10 @@ async fn create_connection(ctx: &DalContext<'_, '_>) {
         ctx,
         head_node.id(),
         output_socket.id(),
+        None,
         tail_node.id(),
         input_socket.id(),
+        None,
     )
     .await
     .expect("could not create connection");

@@ -38,8 +38,8 @@ pub use read::AttributeReadContext;
 
 pub const UNSET_ID_VALUE: i64 = -1;
 
-// Private enum used for determining the least specific field.
-enum AttributeContextLeastSpecificField {
+/// Indicates which least specific field for an [`AttributeContext`] is specified.
+pub enum AttributeContextLeastSpecificFieldKind {
     ExternalProvider,
     InternalProvider,
     Prop,
@@ -50,7 +50,7 @@ pub enum AttributeContextError {
     #[error("attribute context builder error: {0}")]
     AttributeContextBuilder(#[from] AttributeContextBuilderError),
     #[error("could not find least specific field")]
-    LeastSpecificFieldNotFound,
+    LeastSpecificFieldKindNotFound,
 }
 
 pub type AttributeContextResult<T> = Result<T, AttributeContextError>;
@@ -287,8 +287,8 @@ impl AttributeContext {
     }
 
     /// Returns true if the least specific field corresponds to a [`Prop`](crate::Prop).
-    pub fn is_least_specific_field_prop(&self) -> AttributeContextResult<bool> {
-        if let AttributeContextLeastSpecificField::Prop = self.least_specific_field()? {
+    pub fn is_least_specific_field_kind_prop(&self) -> AttributeContextResult<bool> {
+        if let AttributeContextLeastSpecificFieldKind::Prop = self.least_specific_field_kind()? {
             Ok(true)
         } else {
             Ok(false)
@@ -296,8 +296,10 @@ impl AttributeContext {
     }
 
     /// Returns true if the least specific field corresponds to an [`InternalProvider`](crate::InternalProvider).
-    pub fn is_least_specific_field_internal_provider(&self) -> AttributeContextResult<bool> {
-        if let AttributeContextLeastSpecificField::InternalProvider = self.least_specific_field()? {
+    pub fn is_least_specific_field_kind_internal_provider(&self) -> AttributeContextResult<bool> {
+        if let AttributeContextLeastSpecificFieldKind::InternalProvider =
+            self.least_specific_field_kind()?
+        {
             Ok(true)
         } else {
             Ok(false)
@@ -305,26 +307,30 @@ impl AttributeContext {
     }
 
     /// Returns true if the least specific field corresponds to an [`ExternalProvider`](crate::ExternalProvider).
-    pub fn is_least_specific_field_external_provider(&self) -> AttributeContextResult<bool> {
-        if let AttributeContextLeastSpecificField::ExternalProvider = self.least_specific_field()? {
+    pub fn is_least_specific_field_kind_external_provider(&self) -> AttributeContextResult<bool> {
+        if let AttributeContextLeastSpecificFieldKind::ExternalProvider =
+            self.least_specific_field_kind()?
+        {
             Ok(true)
         } else {
             Ok(false)
         }
     }
 
-    // Private method that returns the least specific field kind specified.
-    fn least_specific_field(&self) -> AttributeContextResult<AttributeContextLeastSpecificField> {
+    /// Returns the [`AttributeContextLeastSpecificFieldKind`] that is "set" for [`Self`].
+    pub fn least_specific_field_kind(
+        &self,
+    ) -> AttributeContextResult<AttributeContextLeastSpecificFieldKind> {
         if self.prop_id != UNSET_ID_VALUE.into() {
-            Ok(AttributeContextLeastSpecificField::Prop)
+            Ok(AttributeContextLeastSpecificFieldKind::Prop)
         } else if self.internal_provider_id != UNSET_ID_VALUE.into() {
-            Ok(AttributeContextLeastSpecificField::InternalProvider)
+            Ok(AttributeContextLeastSpecificFieldKind::InternalProvider)
         } else if self.external_provider_id != UNSET_ID_VALUE.into() {
-            Ok(AttributeContextLeastSpecificField::ExternalProvider)
+            Ok(AttributeContextLeastSpecificFieldKind::ExternalProvider)
         } else {
             // This should never be possible to hit, but this check exists to protect
             // against potential regressions.
-            Err(AttributeContextError::LeastSpecificFieldNotFound)
+            Err(AttributeContextError::LeastSpecificFieldKindNotFound)
         }
     }
 }
@@ -333,8 +339,10 @@ impl AttributeContext {
 pub enum AttributeContextBuilderError {
     #[error("for builder {0:?}, the following fields must be set: {1:?}")]
     PrerequisteFieldsUnset(AttributeContextBuilder, Vec<&'static str>),
-    #[error("cannot specify more than one field at the lowest level in the order of precedence")]
-    MultipleLeastSpecificFieldsSpecified,
+    #[error(
+        "cannot specify more than one field at the lowest level in the order of precedence: {0:?}"
+    )]
+    MultipleLeastSpecificFieldsSpecified(AttributeContextBuilder),
 }
 
 pub type AttributeContextBuilderResult<T> = Result<T, AttributeContextBuilderError>;
@@ -414,7 +422,7 @@ impl AttributeContextBuilder {
             || (self.internal_provider_id != UNSET_ID_VALUE.into()
                 && self.external_provider_id != UNSET_ID_VALUE.into())
         {
-            return Err(AttributeContextBuilderError::MultipleLeastSpecificFieldsSpecified);
+            return Err(AttributeContextBuilderError::MultipleLeastSpecificFieldsSpecified(*self));
         }
 
         if !unset_prerequisite_fields.is_empty() {
