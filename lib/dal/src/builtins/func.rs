@@ -16,6 +16,7 @@ pub async fn migrate(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     si_validate_string_equals(ctx).await?;
     si_qualification_always_true(ctx).await?;
     si_number_of_parents(ctx).await?;
+    si_docker_images_to_k8s_deployment_container_spec(ctx).await?;
     si_generate_yaml(ctx).await?;
     si_qualification_docker_image_name_inspect(ctx).await?;
     si_resource_sync_hammer(ctx).await?;
@@ -64,6 +65,34 @@ async fn si_number_of_parents(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
         )
         .await?;
     }
+    Ok(())
+}
+
+async fn si_docker_images_to_k8s_deployment_container_spec(
+    ctx: &DalContext<'_, '_>,
+) -> BuiltinsResult<()> {
+    let func_name = "si:dockerImagesToK8sDeploymentContainerSpec".to_string();
+    let existing_func = Func::find_by_attr(ctx, "name", &func_name).await?;
+    if existing_func.is_empty() {
+        let mut func = Func::new(
+            ctx,
+            func_name,
+            FuncBackendKind::JsAttribute,
+            FuncBackendResponseType::Array,
+        )
+        .await
+        .expect("cannot create func");
+        func.set_handler(ctx, Some("dockerImagesToK8sDeploymentContainerSpec"))
+            .await?;
+        func.set_code_base64(
+            ctx,
+            Some(base64::encode(include_str!(
+                "./func/dockerImagesToK8sDeploymentContainerSpec.js"
+            ))),
+        )
+        .await?;
+    }
+
     Ok(())
 }
 
