@@ -84,8 +84,8 @@ export class Node extends PIXI.Container {
 
     this.setSockets(v.inputSockets, v.outputSockets);
 
-    this.setQualificationStatus(undefined);
-    this.setResourceStatus(undefined);
+    this.setQualificationStatus(null);
+    this.setResourceStatus(null);
 
     // Shadow
     this.setShadows();
@@ -120,7 +120,7 @@ export class Node extends PIXI.Container {
     this.deselect();
   }
 
-  setQualificationStatus(qualified?: boolean): void {
+  setQualificationStatus(qualified: boolean | null): void {
     const oldStatus = this.getChildByName("QualificationStatus");
 
     const status = new QualificationStatus(
@@ -137,7 +137,7 @@ export class Node extends PIXI.Container {
     oldStatus?.destroy();
   }
 
-  setResourceStatus(health?: ResourceHealth): void {
+  setResourceStatus(health: ResourceHealth | null): void {
     const oldStatus = this.getChildByName("ResourceStatus");
 
     const status = new ResourceStatus(health);

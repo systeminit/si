@@ -339,7 +339,7 @@ componentId$
   .pipe(untilUnmounted)
   .subscribe(() => (editingQualificationId.value = undefined));
 
-const scheduledToasts = ref([]);
+const scheduledToasts = ref<number[]>([]);
 
 const checkedQualifications$ = new Rx.ReplaySubject<true>();
 checkedQualifications$.next(true); // We must fetch on setup
@@ -381,10 +381,11 @@ const allQualifications = refFrom<Array<Qualification> | null>(
             toast$.next({
               id: `qualification-prototype-${qual.prototypeId}`,
               success: qual.result.success,
-              title: `Qualification ${qual.title} ${
+              title: `Qualification ${
                 qual.result.success ? "succeeded" : "failed"
               }`,
-              message: qual.output.map((o) => o.line).join("\n"),
+              subtitle: qual.title,
+              message: (qual.output ?? []).map((o) => o.line).join("\n"),
             });
           }
         }

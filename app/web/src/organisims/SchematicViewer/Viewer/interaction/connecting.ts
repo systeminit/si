@@ -46,7 +46,7 @@ export class ConnectingManager {
 
   async beforeConnect(
     data: PIXI.InteractionData,
-    target: OBJ.Connection,
+    target: OBJ.Socket,
     sceneManager: SceneManager,
     offset: Position,
     zoomFactor: number,
@@ -59,15 +59,15 @@ export class ConnectingManager {
       y: offset.y,
     };
 
-    this.target = target as Socket;
-    this.targetWasConnected = this.target.isConnected();
-    this.target.setConnected();
-
     //  (sp.x - offset.x) * (1 / this.zoomFactor),
 
     const sourceSocketId = parseInt(this.sourceSocket.split(".")[1]);
     const sourceSocket = await outputSocketById(sourceSocketId);
     const metadata = sourceSocket.provider.ty;
+
+    this.target = target;
+    this.targetWasConnected = this.target.isConnected();
+    this.target.setConnected();
 
     const nodes = sceneManager.group?.nodes?.children as OBJ.Node[] | undefined;
     for (const node of nodes ?? []) {
