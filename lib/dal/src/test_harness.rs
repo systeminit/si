@@ -16,7 +16,7 @@ use crate::{
     key_pair::KeyPairId,
     node::NodeKind,
     schema,
-    socket::{Socket, SocketArity, SocketEdgeKind},
+    socket::{Socket, SocketArity, SocketEdgeKind, SocketKind},
     BillingAccount, BillingAccountId, ChangeSet, Component, DalContext, EditSession,
     EncryptedSecret, Func, FuncBackendKind, FuncBackendResponseType, Group, HistoryActor, KeyPair,
     Node, Organization, Prop, PropId, PropKind, QualificationCheck, Schema, SchemaId, SchemaKind,
@@ -343,6 +343,7 @@ pub async fn create_schema_variant_with_root(
     let input_socket = Socket::new(
         ctx,
         "input",
+        SocketKind::Provider,
         &SocketEdgeKind::Configures,
         &SocketArity::Many,
         &schema.kind().into(),
@@ -357,6 +358,7 @@ pub async fn create_schema_variant_with_root(
     let output_socket = Socket::new(
         ctx,
         "output",
+        SocketKind::Provider,
         &SocketEdgeKind::Output,
         &SocketArity::Many,
         &schema.kind().into(),
@@ -371,6 +373,7 @@ pub async fn create_schema_variant_with_root(
     let includes_socket = Socket::new(
         ctx,
         "includes",
+        SocketKind::Provider,
         &SocketEdgeKind::Includes,
         &SocketArity::Many,
         &schema.kind().into(),

@@ -8,10 +8,13 @@ use crate::func::binding::FuncBindingId;
 use crate::func::binding_return_value::FuncBindingReturnValueId;
 use crate::provider::emit;
 use crate::provider::emit::EmitError;
+use crate::schema::variant::SchemaVariantError;
+use crate::socket::{Socket, SocketArity, SocketEdgeKind, SocketError, SocketKind};
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_accessor_ro,
     AttributePrototype, AttributePrototypeError, ComponentId, FuncId, HistoryEventError,
-    InternalProviderId, StandardModel, StandardModelError, Timestamp, Visibility, WriteTenancy,
+    InternalProviderId, SchemaVariant, SchematicKind, StandardModel, StandardModelError, Timestamp,
+    Visibility, WriteTenancy,
 };
 use crate::{
     AttributeContext, AttributeContextBuilderError, AttributeContextError, AttributePrototypeId,
@@ -39,6 +42,8 @@ pub enum ExternalProviderError {
     HistoryEvent(#[from] HistoryEventError),
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
+    #[error("socket error: {0}")]
+    Socket(#[from] SocketError),
     #[error("standard model error: {0}")]
     StandardModelError(#[from] StandardModelError),
 
@@ -54,6 +59,8 @@ pub enum ExternalProviderError {
     SchemaMismatch(SchemaId, SchemaId),
     #[error("schema variant id mismatch: {0} (self) and {1} (provided)")]
     SchemaVariantMismatch(SchemaVariantId, SchemaVariantId),
+    #[error("schema variant error: {0}")]
+    SchemaVariant(String),
 }
 
 pub type ExternalProviderResult<T> = Result<T, ExternalProviderError>;
@@ -91,24 +98,27 @@ pub struct ExternalProvider {
     attribute_prototype_id: Option<AttributePrototypeId>,
 
     /// Name for [`Self`] that can be used for identification.
-    name: Option<String>,
+    name: String,
     /// Definition of the data type (e.g. "JSONSchema" or "Number").
     type_definition: Option<String>,
 }
 
 impl ExternalProvider {
     #[allow(clippy::too_many_arguments)]
-    #[tracing::instrument(skip(ctx))]
-    pub async fn new(
+    #[tracing::instrument(skip(ctx, name))]
+    pub async fn new_with_socket(
         ctx: &DalContext<'_, '_>,
         schema_id: SchemaId,
         schema_variant_id: SchemaVariantId,
-        name: Option<String>,
+        name: impl AsRef<str>,
         type_definition: Option<String>,
         func_id: FuncId,
         func_binding_id: FuncBindingId,
         func_binding_return_value_id: FuncBindingReturnValueId,
-    ) -> ExternalProviderResult<Self> {
+        arity: SocketArity,
+        schematic_kind: SchematicKind,
+    ) -> ExternalProviderResult<(Self, Socket)> {
+        let name = name.as_ref();
         let row = ctx
             .txns()
             .pg()
@@ -142,7 +152,33 @@ impl ExternalProvider {
             .set_attribute_prototype_id(ctx, Some(*attribute_prototype.id()))
             .await?;
 
-        Ok(external_provider)
+        let socket = Socket::new(
+            ctx,
+            name,
+            SocketKind::Provider,
+            &SocketEdgeKind::Output,
+            &arity,
+            &schematic_kind,
+        )
+        .await?;
+        socket
+            .set_external_provider(ctx, external_provider.id())
+            .await?;
+
+        let variant = SchemaVariant::get_by_id(ctx, external_provider.schema_variant_id())
+            .await?
+            .ok_or_else(|| {
+                ExternalProviderError::SchemaVariant(
+                    SchemaVariantError::NotFound(*external_provider.schema_variant_id())
+                        .to_string(),
+                )
+            })?;
+        variant
+            .add_socket(ctx, socket.id())
+            .await
+            .map_err(|err| ExternalProviderError::SchemaVariant(err.to_string()))?;
+
+        Ok((external_provider, socket))
     }
 
     // Immutable fields.
@@ -150,7 +186,7 @@ impl ExternalProvider {
     standard_model_accessor_ro!(schema_variant_id, SchemaVariantId);
 
     // Mutable fields.
-    standard_model_accessor!(name, Option<String>, ExternalProviderResult);
+    standard_model_accessor!(name, String, ExternalProviderResult);
     standard_model_accessor!(type_definition, Option<String>, ExternalProviderResult);
     standard_model_accessor!(
         attribute_prototype_id,

@@ -131,8 +131,10 @@ export class ConnectingManager {
       const destinationSocketId = parseInt(destinationSocketStr[1]);
 
       const sourceSocket = await outputSocketById(sourceSocketId);
+      const sourceProviderId = sourceSocket.provider.id;
 
       const destinationSocket = await inputSocketById(destinationSocketId);
+      const destinationProviderId = destinationSocket.provider.id;
 
       if (_.isEqual(sourceSocket.provider.ty, destinationSocket.provider.ty)) {
         sceneManager.createConnection(
@@ -161,8 +163,10 @@ export class ConnectingManager {
         this.dataManager.createConnection({
           sourceNodeId,
           sourceSocketId,
+          sourceProviderId,
           destinationNodeId,
           destinationSocketId,
+          destinationProviderId,
         });
       }
     }

@@ -14,13 +14,15 @@ CREATE TABLE external_providers
     schema_id                   bigint                   NOT NULL,
     schema_variant_id           bigint                   NOT NULL,
     attribute_prototype_id      bigint,
-    name                        text,
+    name                        text                     NOT NULL,
     type_definition             text
 );
 SELECT standard_model_table_constraints_v1('external_providers');
+SELECT belongs_to_table_create_v1('socket_belongs_to_external_provider', 'sockets', 'external_providers');
 
 INSERT INTO standard_models (table_name, table_type, history_event_label_base, history_event_message_name)
-VALUES ('external_providers', 'model', 'external_provider', 'Output Provider');
+VALUES ('external_providers', 'model', 'external_provider', 'Output Provider'),
+       ('socket_belongs_to_external_provider', 'belongs_to', 'socket.external_provider', 'Socket <> External Provider');
 
 CREATE OR REPLACE FUNCTION external_provider_create_v1(
     this_tenancy jsonb,

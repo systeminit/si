@@ -1,16 +1,17 @@
-use crate::dal::test;
-use dal::test::helpers::generate_fake_name;
-use dal::DalContext;
 use dal::{
-    socket::{Socket, SocketArity, SocketEdgeKind},
-    SchematicKind,
+    socket::{Socket, SocketArity, SocketEdgeKind, SocketKind},
+    test::helpers::generate_fake_name,
+    DalContext, SchematicKind,
 };
+
+use crate::dal::test;
 
 #[test]
 async fn new(ctx: &DalContext<'_, '_>) {
     let socket = Socket::new(
         ctx,
         "jane",
+        SocketKind::Provider,
         &SocketEdgeKind::Component,
         &SocketArity::Many,
         &SchematicKind::Component,
@@ -27,6 +28,7 @@ async fn set_required(ctx: &DalContext<'_, '_>) {
     let mut socket = Socket::new(
         ctx,
         generate_fake_name(),
+        SocketKind::Provider,
         &SocketEdgeKind::Configures,
         &SocketArity::One,
         &SchematicKind::Component,

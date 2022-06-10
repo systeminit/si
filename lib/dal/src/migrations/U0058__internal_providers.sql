@@ -15,15 +15,17 @@ CREATE TABLE internal_providers
     schema_id                   bigint                   NOT NULL,
     schema_variant_id           bigint                   NOT NULL,
     attribute_prototype_id      bigint,
-    name                        text,
+    name                        text                     NOT NULL,
     internal_consumer           boolean                  NOT NULL DEFAULT TRUE,
     inbound_type_definition     text,
     outbound_type_definition    text
 );
 SELECT standard_model_table_constraints_v1('internal_providers');
+SELECT belongs_to_table_create_v1('socket_belongs_to_internal_provider', 'sockets', 'internal_providers');
 
 INSERT INTO standard_models (table_name, table_type, history_event_label_base, history_event_message_name)
-VALUES ('internal_providers', 'model', 'internal_provider', 'Input Provider');
+VALUES ('internal_providers', 'model', 'internal_provider', 'Input Provider'),
+       ('socket_belongs_to_internal_provider', 'belongs_to', 'socket.internal_provider', 'Socket <> Internal Provider');
 
 -- We do not want to set the attribute prototype id upon creation because we need an internal provider id for the prototype's context. --
 CREATE OR REPLACE FUNCTION internal_provider_create_v1(
