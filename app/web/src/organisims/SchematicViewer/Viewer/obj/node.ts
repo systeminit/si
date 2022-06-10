@@ -18,10 +18,10 @@ import {
   SchematicOutputSocket,
 } from "@/api/sdf/dal/schematic";
 
-const NODE_WIDTH = 140;
-const NODE_HEIGHT = 100;
+const NODE_WIDTH = 160;
+const NODE_HEIGHT = 120;
 
-const INPUT_SOCKET_OFFSET = 45;
+const INPUT_SOCKET_OFFSET = 60;
 // const OUTPUT_SOCKET_OFFSET = 35;
 const SOCKET_SPACING = 20;
 const SOCKET_HEIGHT = 3;
@@ -125,8 +125,8 @@ export class Node extends PIXI.Container {
 
     const status = new QualificationStatus(
       qualified,
-      100,
-      78,
+      118,
+      98,
       NODE_WIDTH,
       this.nodeHeight(),
     );
@@ -143,8 +143,8 @@ export class Node extends PIXI.Container {
     const status = new ResourceStatus(health);
     status.name = "ResourceStatus";
     status.zIndex = 1;
-    status.x = 120;
-    status.y = 78;
+    status.x = 138;
+    status.y = 98;
     this.addChild(status);
 
     oldStatus?.destroy();

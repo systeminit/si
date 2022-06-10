@@ -7,11 +7,11 @@ import {
   SchematicOutputSocket,
 } from "@/api/sdf/dal/schematic";
 
-const NODE_WIDTH = 140;
-const NODE_HEIGHT = 100;
+const NODE_WIDTH = 160;
+const NODE_HEIGHT = 120;
 
-const INPUT_SOCKET_OFFSET = 45;
-const OUTPUT_SOCKET_OFFSET = 35;
+const INPUT_SOCKET_OFFSET = 60;
+const OUTPUT_SOCKET_OFFSET = 60;
 const SOCKET_SPACING = 20;
 
 export class Sockets extends PIXI.Container {
