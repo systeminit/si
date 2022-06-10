@@ -4,6 +4,7 @@ export interface Toasted {
   id: string;
   success: boolean;
   title: string;
+  subtitle?: string;
   message: string;
 }
 

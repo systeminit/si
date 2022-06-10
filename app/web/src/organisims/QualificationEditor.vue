@@ -45,7 +45,7 @@
 <script setup lang="ts">
 import _ from "lodash";
 import * as Rx from "rxjs";
-import { ref, onUnmounted, onMounted, toRefs, Ref } from "vue";
+import { ref, onUnmounted, onMounted, toRefs } from "vue";
 import { EditorState, EditorView, basicSetup } from "@codemirror/basic-setup";
 import { javascript } from "@codemirror/legacy-modes/mode/javascript";
 import { StreamLanguage } from "@codemirror/stream-parser";
@@ -134,16 +134,16 @@ async function save() {
   }
 }
 
-const code: Ref<GetCodeResponse | undefined> = refFrom<GetCodeResponse>(
+const code = refFrom<GetCodeResponse | undefined>(
   Rx.combineLatest([prototypeId$, system$]).pipe(
     Rx.switchMap(([prototypeId]) => {
       return QualificationService.getCode({ prototypeId });
     }),
     Rx.combineLatestWith(view$),
-    Rx.switchMap(([reply, view]) => {
+    Rx.map(([reply, view]) => {
       if (reply.error) {
         GlobalErrorService.set(reply);
-        return Rx.from([]);
+        return;
       } else if (reply) {
         if (view) {
           view.dispatch({
@@ -158,7 +158,7 @@ const code: Ref<GetCodeResponse | undefined> = refFrom<GetCodeResponse>(
           });
         }
         name.value = reply.prototype.title;
-        return Rx.from([reply]);
+        return reply as GetCodeResponse;
       }
     }),
   ),

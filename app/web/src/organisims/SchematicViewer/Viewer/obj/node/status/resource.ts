@@ -3,7 +3,7 @@ import * as feather from "feather-icons";
 import { ResourceHealth } from "@/api/sdf/dal/resource";
 
 export class ResourceStatus extends PIXI.Container {
-  constructor(health?: ResourceHealth) {
+  constructor(health: ResourceHealth | null) {
     super();
 
     const icon = feather.icons["box"];

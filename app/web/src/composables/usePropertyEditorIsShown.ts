@@ -3,7 +3,7 @@ import _ from "lodash";
 import { PropertyPath } from "@/api/sdf/dal/property_editor";
 
 export function usePropertyEditorIsShown(
-  name: Ref<string>,
+  _name: Ref<string>,
   collapsedPaths: Ref<Array<Array<string>>>,
   path?: Ref<PropertyPath | undefined>,
   isHeader?: boolean,

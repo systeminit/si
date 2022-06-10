@@ -162,7 +162,7 @@ const pathPartForValueId = (valueId: number) => {
   let triggerPathPart = "bug";
   const currentValue = values.value.values[valueId];
   if (!currentValue) {
-    return "bugbug returns!";
+    throw new Error(`unable to find current value: ${valueId}`);
   }
   const currentProp = schema.value.props[currentValue.propId];
   const parentProp = findParentProp(currentValue.propId);

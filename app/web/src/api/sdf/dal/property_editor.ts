@@ -78,9 +78,7 @@ export interface PropertyEditorValidation {
 }
 
 export interface PropertyEditorValidations {
-  validations: {
-    [valueId: number]: PropertyEditorValidation;
-  };
+  validations: PropertyEditorValidation[];
 }
 
 export interface UpdatedProperty {

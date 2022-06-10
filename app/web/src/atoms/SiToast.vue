@@ -21,8 +21,21 @@
             <XIcon v-else />
           </div>
           <span class="mx-3 text-sm font-normal">
-            <strong class="break-all">{{ toast.title }}</strong>
-            <p class="break-all">{{ toast.message }}</p>
+            <h3>
+              <strong class="break-all">{{ toast.title }}</strong>
+            </h3>
+            <strong v-if="toast.subtitle" class="break-all">
+              {{ toast.subtitle }}
+            </strong>
+            <p class="break-all">{{ message(toast) }}</p>
+            <a
+              v-if="toast.message.length > 100"
+              class="cursor-pointer underline w-auto"
+              @click="toast.viewFullOutput = !toast.viewFullOutput"
+            >
+              <span v-if="toast.viewFullOutput">hide full output</span>
+              <span v-else>view full output</span>
+            </a>
           </span>
           <button
             type="button"
@@ -41,11 +54,16 @@
 
 <script setup lang="ts">
 import { XIcon, CheckIcon } from "@heroicons/vue/solid";
-import { toast$ } from "@/observable/toast";
+import { toast$, Toasted } from "@/observable/toast";
 import { ref } from "vue";
 import { untilUnmounted } from "vuse-rx";
 
-const toasted = ref([]);
+interface Burnt extends Toasted {
+  timeout: ReturnType<typeof setTimeout>;
+  viewFullOutput: boolean;
+}
+
+const toasted = ref<Burnt[]>([]);
 
 const hideToasted = (id: string) => {
   const old = toasted.value.find((t) => t.id === id);
@@ -54,13 +72,25 @@ const hideToasted = (id: string) => {
   toasted.value = toasted.value.filter((t) => t.id !== id);
 };
 
+const message = (toast: Burnt) => {
+  if (toast.viewFullOutput) return toast.message;
+
+  const maxSize = 100;
+  return (
+    toast.message.substring(0, maxSize) +
+    (toast.message.length > maxSize ? "..." : "")
+  );
+};
+
 toast$.pipe(untilUnmounted).subscribe((toast) => {
   if (!toast) return;
 
   hideToasted(toast.id);
 
+  const maxSize = 100;
   const toaster = {
     timeout: setTimeout(() => hideToasted(toast.id), 8000),
+    viewFullOutput: toast.message.length <= maxSize,
     ...toast,
   };
   toasted.value.push(toaster);
