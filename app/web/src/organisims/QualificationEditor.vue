@@ -1,13 +1,15 @@
 <template>
   <div class="flex flex-col w-full h-full px-4 py-2 overflow-hidden mt-2">
-    <SiTextBox2
-      id="qualification-name"
-      v-model="name"
-      class="mb-2 p-2 w-full"
-      title="qualification name"
-      required
-      @blur="save()"
-    />
+    <div @keyup.stop @keydown.stop>
+      <SiTextBox2
+        id="qualification-name"
+        v-model="name"
+        class="mb-2 p-2 w-full"
+        title="qualification name"
+        required
+        @blur="save()"
+      />
+    </div>
 
     <div class="overflow-auto">
       <div
