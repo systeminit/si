@@ -31,6 +31,6 @@ WHERE in_tenancy_v1($1,
                                               attribute_values.attribute_context_system_id)
 
 ORDER BY attribute_values.id,
-         visibility_change_set_pk DESC,
-         visibility_edit_session_pk DESC,
-         visibility_deleted_at DESC NULLS FIRST;
+         attribute_values.visibility_change_set_pk DESC,
+         attribute_values.visibility_edit_session_pk DESC,
+         attribute_values.visibility_deleted_at DESC NULLS FIRST;

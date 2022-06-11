@@ -15,13 +15,15 @@ CREATE TABLE internal_providers
     schema_id                   bigint                   NOT NULL,
     schema_variant_id           bigint                   NOT NULL,
     attribute_prototype_id      bigint,
-    name                        text,
+    name                        text                     NOT NULL,
     internal_consumer           boolean                  NOT NULL DEFAULT TRUE,
     inbound_type_definition     text,
     outbound_type_definition    text
 );
-SELECT standard_model_table_constraints_v1('internal_providers');
 
+CREATE UNIQUE INDEX internal_provider_unique_index ON internal_providers (name, prop_id, schema_id, schema_variant_id);
+
+SELECT standard_model_table_constraints_v1('internal_providers');
 INSERT INTO standard_models (table_name, table_type, history_event_label_base, history_event_message_name)
 VALUES ('internal_providers', 'model', 'internal_provider', 'Input Provider');
 

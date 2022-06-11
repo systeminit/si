@@ -5,11 +5,9 @@
 use std::cmp::Ordering;
 
 use crate::attribute::context::{AttributeContextBuilder, AttributeContextLeastSpecificFieldKind};
-
 use crate::{
-    AttributeContext, AttributePrototype, AttributeReadContext, AttributeValue,
-    AttributeValueError, AttributeValueResult, DalContext, ExternalProvider, InternalProvider,
-    Prop, StandardModel,
+    AttributeContext, AttributePrototype, AttributeValue, AttributeValueError,
+    AttributeValueResult, DalContext, ExternalProvider, InternalProvider, Prop, StandardModel,
 };
 
 /// A field-less struct to that acts as an interface to provide [`Self::collect()`].
@@ -245,32 +243,20 @@ impl AttributeValueDependentCollectionHarness {
         attribute_prototypes: Vec<AttributePrototype>,
         source_attribute_context: AttributeContext,
     ) -> AttributeValueResult<Vec<AttributeValue>> {
-        // This read context is purely used for the "attribute_values_in_context_or_greater"
-        // that's called iteratively for all attribute prototypes provided.
-        let source_attribute_read_context =
-            match source_attribute_context.least_specific_field_kind()? {
-                AttributeContextLeastSpecificFieldKind::Prop => AttributeReadContext {
-                    prop_id: None,
-                    ..AttributeReadContext::from(source_attribute_context)
-                },
-                AttributeContextLeastSpecificFieldKind::InternalProvider => AttributeReadContext {
-                    internal_provider_id: None,
-                    ..AttributeReadContext::from(source_attribute_context)
-                },
-                AttributeContextLeastSpecificFieldKind::ExternalProvider => AttributeReadContext {
-                    external_provider_id: None,
-                    ..AttributeReadContext::from(source_attribute_context)
-                },
-            };
         let mut attribute_values_that_need_to_be_updated = Vec::new();
 
         for attribute_prototype in attribute_prototypes {
+            let attribute_values_in_context_or_greater_context = Self::merge_attribute_contexts(
+                attribute_prototype.context,
+                source_attribute_context,
+            )?;
+
             let mut found_exact_context_level = false;
             let attribute_values_in_context_or_greater =
                 AttributePrototype::attribute_values_in_context_or_greater(
                     ctx,
                     *attribute_prototype.id(),
-                    source_attribute_read_context,
+                    attribute_values_in_context_or_greater_context.into(),
                 )
                 .await
                 .map_err(|e| AttributeValueError::AttributePrototype(format!("{e}")))?;
@@ -379,5 +365,49 @@ impl AttributeValueDependentCollectionHarness {
             }
         }
         Ok(attribute_values_that_need_to_be_updated)
+    }
+
+    /// Merges two [`AttributeContexts`](crate::AttributeContext) with preference to the "base"
+    /// context.
+    fn merge_attribute_contexts(
+        base_attribute_context: AttributeContext,
+        override_attribute_context: AttributeContext,
+    ) -> AttributeValueResult<AttributeContext> {
+        let mut builder = AttributeContextBuilder::from(base_attribute_context);
+        let mut skip = false;
+
+        // We do not need to check "skip" at the most specific field.
+        if base_attribute_context.is_system_unset() {
+            if !override_attribute_context.is_system_unset() {
+                builder.set_system_id(override_attribute_context.system_id());
+            }
+        } else {
+            skip = true;
+        }
+        if base_attribute_context.is_component_unset() && !skip {
+            if !override_attribute_context.is_component_unset() {
+                builder.set_component_id(override_attribute_context.component_id());
+            }
+        } else {
+            skip = true;
+        }
+
+        if base_attribute_context.is_schema_variant_unset() && !skip {
+            if !override_attribute_context.is_schema_variant_unset() {
+                builder.set_schema_variant_id(override_attribute_context.schema_variant_id());
+            }
+        } else {
+            skip = true;
+        }
+
+        // We do not check the least specific fields.
+        if base_attribute_context.is_schema_unset()
+            && !skip
+            && !override_attribute_context.is_schema_unset()
+        {
+            builder.set_schema_id(override_attribute_context.schema_id());
+        }
+
+        Ok(builder.to_context()?)
     }
 }

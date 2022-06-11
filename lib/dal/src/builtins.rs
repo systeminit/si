@@ -6,14 +6,15 @@ use thiserror::Error;
 
 use crate::func::binding::FuncBindingError;
 use crate::func::binding_return_value::FuncBindingReturnValueError;
+use crate::provider::external::ExternalProviderError;
 use crate::provider::internal::InternalProviderError;
 use crate::schema::variant::SchemaVariantError;
 use crate::socket::SocketError;
 use crate::{
     AttributeContextBuilderError, AttributePrototypeArgumentError, AttributePrototypeError,
-    AttributeValueError, CodeGenerationPrototypeError, DalContext, FuncError, PropError, PropId,
-    QualificationPrototypeError, ResourcePrototypeError, SchemaError, StandardModelError,
-    ValidationPrototypeError,
+    AttributeReadContext, AttributeValueError, AttributeValueId, CodeGenerationPrototypeError,
+    DalContext, ExternalProviderId, FuncError, PropError, PropId, QualificationPrototypeError,
+    ResourcePrototypeError, SchemaError, StandardModelError, ValidationPrototypeError,
 };
 
 mod func;
@@ -29,8 +30,16 @@ pub enum BuiltinsError {
     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
+    #[error("attribute value not found for id: {0}")]
+    AttributeValueNotFound(AttributeValueId),
+    #[error("attribute value not found for attribute read context: {0:?}")]
+    AttributeValueNotFoundForContext(AttributeReadContext),
+    #[error("attribute value parent not found")]
+    AttributeValueParentNotFound,
     #[error("code generation prototype error: {0}")]
     CodeGenerationPrototype(#[from] CodeGenerationPrototypeError),
+    #[error("external provider error: {0}")]
+    ExternalProvider(#[from] ExternalProviderError),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
     #[error("func binding error: {0}")]
@@ -41,8 +50,16 @@ pub enum BuiltinsError {
     ImplicitInternalProviderNotFoundForProp(PropId),
     #[error("internal provider error: {0}")]
     InternalProvider(#[from] InternalProviderError),
+    #[error("missing attribute prototype for attribute value")]
+    MissingAttributePrototypeForAttributeValue,
+    #[error("missing attribute prototype for external provider id: {0}")]
+    MissingAttributePrototypeForExternalProvider(ExternalProviderId),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
+    #[error("prop not bound by id: {0}")]
+    PropNotFound(PropId),
+    #[error("parent for prop not found (or prop does not have parent) by id: {0}")]
+    PropParentNotFoundOrEmpty(PropId),
     #[error("qualification prototype error: {0}")]
     QualificationPrototype(#[from] QualificationPrototypeError),
     #[error("resource prototype error: {0}")]

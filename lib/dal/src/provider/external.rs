@@ -20,6 +20,8 @@ use crate::{
 
 const LIST_FOR_ATTRIBUTE_PROTOTYPE_WITH_HEAD: &str =
     include_str!("../queries/external_provider_list_for_attribute_prototype_with_head.sql");
+const FIND_FOR_SCHEMA_VARIANT_AND_NAME: &str =
+    include_str!("../queries/external_provider_find_for_schema_variant_and_name.sql");
 const LIST_FOR_SCHEMA_VARIANT: &str =
     include_str!("../queries/external_provider_list_for_schema_variant.sql");
 const LIST_FROM_INTERNAL_PROVIDER_USE: &str =
@@ -90,8 +92,8 @@ pub struct ExternalProvider {
     /// Indicates which transformation function should be used during [`Self::emit()`].
     attribute_prototype_id: Option<AttributePrototypeId>,
 
-    /// Name for [`Self`] that can be used for identification.
-    name: Option<String>,
+    /// Name for [`Self`] that will be used for identification.
+    name: String,
     /// Definition of the data type (e.g. "JSONSchema" or "Number").
     type_definition: Option<String>,
 }
@@ -103,7 +105,7 @@ impl ExternalProvider {
         ctx: &DalContext<'_, '_>,
         schema_id: SchemaId,
         schema_variant_id: SchemaVariantId,
-        name: Option<String>,
+        name: String,
         type_definition: Option<String>,
         func_id: FuncId,
         func_binding_id: FuncBindingId,
@@ -150,7 +152,7 @@ impl ExternalProvider {
     standard_model_accessor_ro!(schema_variant_id, SchemaVariantId);
 
     // Mutable fields.
-    standard_model_accessor!(name, Option<String>, ExternalProviderResult);
+    standard_model_accessor!(name, String, ExternalProviderResult);
     standard_model_accessor!(type_definition, Option<String>, ExternalProviderResult);
     standard_model_accessor!(
         attribute_prototype_id,
@@ -232,6 +234,29 @@ impl ExternalProvider {
             )
             .await?;
         Ok(standard_model::objects_from_rows(rows)?)
+    }
+
+    /// Find [`Self`] with a provided name.
+    #[tracing::instrument(skip(ctx))]
+    pub async fn find_for_schema_variant_and_name(
+        ctx: &DalContext<'_, '_>,
+        schema_variant_id: SchemaVariantId,
+        name: String,
+    ) -> ExternalProviderResult<Option<Self>> {
+        let row = ctx
+            .txns()
+            .pg()
+            .query_opt(
+                FIND_FOR_SCHEMA_VARIANT_AND_NAME,
+                &[
+                    ctx.read_tenancy(),
+                    ctx.visibility(),
+                    &schema_variant_id,
+                    &name,
+                ],
+            )
+            .await?;
+        Ok(standard_model::object_option_from_row_option(row)?)
     }
 
     /// Find all [`Self`] for a given [`AttributePrototypeId`](crate::AttributePrototype).
