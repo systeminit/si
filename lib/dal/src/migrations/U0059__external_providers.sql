@@ -14,11 +14,13 @@ CREATE TABLE external_providers
     schema_id                   bigint                   NOT NULL,
     schema_variant_id           bigint                   NOT NULL,
     attribute_prototype_id      bigint,
-    name                        text,
+    name                        text                     NOT NULL,
     type_definition             text
 );
-SELECT standard_model_table_constraints_v1('external_providers');
 
+CREATE UNIQUE INDEX external_provider_unique_index ON external_providers (name, schema_id, schema_variant_id);
+
+SELECT standard_model_table_constraints_v1('external_providers');
 INSERT INTO standard_models (table_name, table_type, history_event_label_base, history_event_message_name)
 VALUES ('external_providers', 'model', 'external_provider', 'Output Provider');
 

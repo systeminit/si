@@ -1,3 +1,6 @@
+use crate::builtins::schema::{
+    find_child_prop_by_name, setup_identity_func, update_prop_attribute_value,
+};
 use crate::{
     builtins::schema::{
         create_schema, create_string_prop_with_default, kubernetes_metadata::create_metadata_prop,
@@ -10,7 +13,8 @@ use crate::{
     qualification_prototype::QualificationPrototypeContext,
     schema::{SchemaVariant, UiMenu},
     socket::{Socket, SocketArity, SocketEdgeKind},
-    AttributeReadContext, BuiltinsResult, CodeGenerationPrototype, CodeLanguage, DalContext, Func,
+    AttributePrototypeArgument, AttributeReadContext, AttributeValue, BuiltinsError,
+    BuiltinsResult, CodeGenerationPrototype, CodeLanguage, DalContext, Func, InternalProvider,
     Prop, PropId, PropKind, QualificationPrototype, Schema, SchemaError, SchemaKind, SchematicKind,
     StandardModel,
 };
@@ -81,14 +85,14 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> BuiltinsResult<(
         )
         .await?;
 
-    let _metadata_prop = create_metadata_prop(
+    let metadata_prop = create_metadata_prop(
         ctx,
         true, // is name required, note: bool is not ideal here tho
         root_prop.domain_prop_id,
     )
     .await?;
 
-    let _spec_prop = create_deployment_spec_prop(ctx, root_prop.domain_prop_id).await?;
+    let spec_prop = create_deployment_spec_prop(ctx, root_prop.domain_prop_id).await?;
 
     // Qualification Prototype
     let qualification_func_name = "si:qualificationYamlKubeval".to_owned();
@@ -181,6 +185,138 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> BuiltinsResult<(
     ui_menu
         .add_root_schematic(ctx, application_schema.id())
         .await?;
+
+    SchemaVariant::create_implicit_internal_providers(ctx, *schema.id(), *variant.id()).await?;
+    let base_attribute_read_context = AttributeReadContext {
+        prop_id: None,
+        schema_id: Some(*schema.id()),
+        schema_variant_id: Some(*variant.id()),
+        ..AttributeReadContext::default()
+    };
+
+    // Collect the identity func information we need.
+    let (identity_func_id, identity_func_binding_id, identity_func_binding_return_value_id) =
+        setup_identity_func(ctx).await?;
+
+    // Create the "namespace" explicit internal provider and connect internally.
+    // FIXME(nick): omega hack with the name.
+    let explicit_internal_provider = InternalProvider::new_explicit(
+        ctx,
+        *schema.id(),
+        *variant.id(),
+        "namespace-string-input".to_string(),
+        identity_func_id,
+        identity_func_binding_id,
+        identity_func_binding_return_value_id,
+    )
+    .await?;
+
+    // First, connect to the "domain namespace".
+    let domain_namespace_prop =
+        find_child_prop_by_name(ctx, *metadata_prop.id(), "namespace").await?;
+    update_prop_attribute_value(
+        ctx,
+        *metadata_prop.id(),
+        Some(serde_json::json![{}]),
+        base_attribute_read_context,
+    )
+    .await?;
+    let domain_namespace_attribute_value_id = update_prop_attribute_value(
+        ctx,
+        *domain_namespace_prop.id(),
+        Some(serde_json::json![""]),
+        base_attribute_read_context,
+    )
+    .await?;
+
+    // We now need to set the func on the "domain namespace" prototype.
+    let domain_namespace_attribute_value =
+        AttributeValue::get_by_id(ctx, &domain_namespace_attribute_value_id)
+            .await?
+            .ok_or(BuiltinsError::AttributeValueNotFound(
+                domain_namespace_attribute_value_id,
+            ))?;
+    let mut domain_namespace_attribute_prototype = domain_namespace_attribute_value
+        .attribute_prototype(ctx)
+        .await?
+        .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
+    domain_namespace_attribute_prototype
+        .set_func_id(ctx, identity_func_id)
+        .await?;
+
+    // Now we can connect!
+    // TODO(nick): start here -- do we need to sure this is available for component?
+    // TODO(nick): domain_namespace_attribute_prototype
+    AttributePrototypeArgument::new_for_intra_component(
+        ctx,
+        *domain_namespace_attribute_prototype.id(),
+        "identity".to_string(),
+        *explicit_internal_provider.id(),
+    )
+    .await?;
+
+    // Second, connect to the "template namespace". Collect all the props first.
+    let template_prop = find_child_prop_by_name(ctx, *spec_prop.id(), "template").await?;
+    let template_metadata_prop =
+        find_child_prop_by_name(ctx, *template_prop.id(), "metadata").await?;
+    let template_namespace_prop =
+        find_child_prop_by_name(ctx, *template_metadata_prop.id(), "namespace").await?;
+
+    // Update with our collected props.
+    update_prop_attribute_value(
+        ctx,
+        *spec_prop.id(),
+        Some(serde_json::json![{}]),
+        base_attribute_read_context,
+    )
+    .await?;
+    update_prop_attribute_value(
+        ctx,
+        *template_prop.id(),
+        Some(serde_json::json![{}]),
+        base_attribute_read_context,
+    )
+    .await?;
+    update_prop_attribute_value(
+        ctx,
+        *template_metadata_prop.id(),
+        Some(serde_json::json![{}]),
+        base_attribute_read_context,
+    )
+    .await?;
+    let template_namespace_attribute_value_id = update_prop_attribute_value(
+        ctx,
+        *template_namespace_prop.id(),
+        Some(serde_json::json![""]),
+        base_attribute_read_context,
+    )
+    .await?;
+
+    // Setup the "template namespace" prototype.
+    let template_namespace_attribute_value =
+        AttributeValue::get_by_id(ctx, &template_namespace_attribute_value_id)
+            .await?
+            .ok_or(BuiltinsError::AttributeValueNotFound(
+                template_namespace_attribute_value_id,
+            ))?;
+    let mut template_namespace_attribute_prototype = template_namespace_attribute_value
+        .attribute_prototype(ctx)
+        .await?
+        .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
+    template_namespace_attribute_prototype
+        .set_func_id(ctx, identity_func_id)
+        .await?;
+
+    // Now we can connect (again)!
+    // TODO(nick): start here -- do we need to sure this is available for component?
+    // TODO(nick): template_namespace_attribute_prototype
+    AttributePrototypeArgument::new_for_intra_component(
+        ctx,
+        *template_namespace_attribute_prototype.id(),
+        "identity".to_string(),
+        *explicit_internal_provider.id(),
+    )
+    .await?;
 
     Ok(())
 }

@@ -20,6 +20,8 @@ use crate::{
     SchemaId, SchemaVariantId,
 };
 
+const FIND_EXPLICIT_FOR_SCHEMA_VARIANT_AND_NAME: &str =
+    include_str!("../queries/internal_provider_find_explicit_for_schema_variant_and_name.sql");
 const GET_FOR_PROP: &str = include_str!("../queries/internal_provider_get_for_prop.sql");
 const LIST_FOR_SCHEMA_VARIANT: &str =
     include_str!("../queries/internal_provider_list_for_schema_variant.sql");
@@ -108,8 +110,8 @@ pub struct InternalProvider {
     /// Indicates which transformation function should be used during [`Self::emit()`].
     attribute_prototype_id: Option<AttributePrototypeId>,
 
-    /// Name for [`Self`] that can be used for identification.
-    name: Option<String>,
+    /// Name for [`Self`] that will be used for identification.
+    name: String,
     /// If this field is set to "true", the provider can only consume data for its corresponding
     /// function from within its own [`SchemaVariant`](crate::SchemaVariant). In this case, [`Self`]
     /// is "implicit".
@@ -204,7 +206,7 @@ impl InternalProvider {
         ctx: &DalContext<'_, '_>,
         schema_id: SchemaId,
         schema_variant_id: SchemaVariantId,
-        name: Option<String>,
+        name: String,
         func_id: FuncId,
         func_binding_id: FuncBindingId,
         func_binding_return_value_id: FuncBindingReturnValueId,
@@ -261,7 +263,7 @@ impl InternalProvider {
         OptionBigInt<AttributePrototypeId>,
         InternalProviderResult
     );
-    standard_model_accessor!(name, Option<String>, InternalProviderResult);
+    standard_model_accessor!(name, String, InternalProviderResult);
     standard_model_accessor!(
         inbound_type_definition,
         Option<String>,
@@ -352,6 +354,29 @@ impl InternalProvider {
             )
             .await?;
         Ok(standard_model::objects_from_rows(rows)?)
+    }
+
+    /// Find [`Self`] with a provided name.
+    #[tracing::instrument(skip(ctx))]
+    pub async fn find_explicit_for_schema_variant_and_name(
+        ctx: &DalContext<'_, '_>,
+        schema_variant_id: SchemaVariantId,
+        name: String,
+    ) -> InternalProviderResult<Option<Self>> {
+        let row = ctx
+            .txns()
+            .pg()
+            .query_opt(
+                FIND_EXPLICIT_FOR_SCHEMA_VARIANT_AND_NAME,
+                &[
+                    ctx.read_tenancy(),
+                    ctx.visibility(),
+                    &schema_variant_id,
+                    &name,
+                ],
+            )
+            .await?;
+        Ok(object_option_from_row_option(row)?)
     }
 
     /// Find all [`Self`] for a given [`AttributePrototypeId`](crate::AttributePrototype).

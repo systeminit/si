@@ -67,7 +67,8 @@ pub async fn create_metadata_prop(
     }
 
     {
-        // Note: should this come from a k8s namespace component configuring us?
+        // NOTE(nick): since k8s namespace uses metadata, should we drop this field? My gut says
+        // no, but maybe we can hide this in "web".
         let mut namespace_prop = create_prop(
             ctx,
             "namespace",
