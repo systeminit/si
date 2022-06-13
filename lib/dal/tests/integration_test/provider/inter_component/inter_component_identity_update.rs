@@ -1,5 +1,6 @@
 use dal::attribute::context::AttributeContextBuilder;
-use dal::test::helpers::{setup_identity_func, ComponentPayload};
+use dal::builtins::helpers::setup_identity_func;
+use dal::test::helpers::ComponentPayload;
 use dal::test_harness::{
     create_prop_of_kind_and_set_parent_with_name, create_schema, create_schema_variant_with_root,
 };
@@ -48,7 +49,9 @@ async fn inter_component_identity_update(ctx: &DalContext<'_, '_>) {
 
     // Collect the identity func information we need.
     let (identity_func_id, identity_func_binding_id, identity_func_binding_return_value_id) =
-        setup_identity_func(ctx).await;
+        setup_identity_func(ctx)
+            .await
+            .expect("could not setup identity func");
 
     // Setup the "esp" intra component update functionality from "source" to "intermediate".
     let intermediate_attribute_value = AttributeValue::find_for_context(

@@ -257,7 +257,7 @@ impl AttributeValue {
 
     standard_model_belongs_to!(
         lookup_fn: parent_attribute_value,
-        set_fn: set_parent_attribute_value,
+        set_fn: set_parent_attribute_value_unchecked,
         unset_fn: unset_parent_attribute_value,
         table: "attribute_value_belongs_to_attribute_value",
         model_table: "attribute_values",
@@ -284,6 +284,30 @@ impl AttributeValue {
         returns: AttributePrototype,
         result: AttributeValueResult,
     );
+
+    pub async fn set_parent_attribute_value(
+        &self,
+        ctx: &DalContext<'_, '_>,
+        parent_attribute_value_id: AttributeValueId,
+    ) -> AttributeValueResult<()> {
+        if let Some(found_attribute_value) =
+            AttributeValue::find_for_context(ctx, self.context.into()).await?
+        {
+            if let Some(found_attribute_value_parent) =
+                found_attribute_value.parent_attribute_value(ctx).await?
+            {
+                if found_attribute_value.context == self.context
+                    && found_attribute_value.key == self.key
+                    && *found_attribute_value_parent.id() == parent_attribute_value_id
+                {
+                    panic!();
+                }
+            }
+        }
+        self.set_parent_attribute_value_unchecked(ctx, &parent_attribute_value_id)
+            .await?;
+        Ok(())
+    }
 
     pub fn index_map_mut(&mut self) -> Option<&mut IndexMap> {
         self.index_map.as_mut()
@@ -435,13 +459,10 @@ impl AttributeValue {
     }
 
     /// Find one [`AttributeValue`](crate::AttributeValue) for a provided
-    /// [`AttributeReadContext`](crate::AttributeReadContext).
-    ///
-    /// This is a modified version of [`Self::list_for_context()`] that requires an
-    /// [`AttributeReadContext`](crate::AttributeReadContext)
-    /// that is also a valid [`AttributeContext`](crate::AttributeContext) _and_ "pops" the first
-    /// row off the rows found (which are sorted from most to least specific). Thus, the "popped"
-    /// row will corresponding to the most specific [`AttributeValue`] found.
+    /// [`AttributeReadContext`](crate::AttributeReadContext). This is a modified version of
+    /// [`Self::list_for_context()`] that requires an
+    /// [`AttributeReadContext`](crate::AttributeReadContext) that is also a valid
+    /// [`AttributeContext`](crate::AttributeContext).
     ///
     /// This does _not_ work for maps and arrays, barring the _first_ instance of the array or map
     /// object themselves! For those objects, please use
@@ -451,16 +472,15 @@ impl AttributeValue {
         context: AttributeReadContext,
     ) -> AttributeValueResult<Option<Self>> {
         AttributeContextBuilder::from(context).to_context()?;
-        let mut rows = ctx
+        let row = ctx
             .txns()
             .pg()
-            .query(
+            .query_opt(
                 LIST_FOR_CONTEXT,
                 &[ctx.read_tenancy(), ctx.visibility(), &context],
             )
             .await?;
-        let maybe_row = rows.pop();
-        Ok(standard_model::option_object_from_row(maybe_row)?)
+        Ok(standard_model::option_object_from_row(row)?)
     }
 
     /// Return the [`Prop`] that the [`AttributeValueId`] belongs to,

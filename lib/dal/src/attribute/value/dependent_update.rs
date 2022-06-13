@@ -183,12 +183,14 @@ impl AttributeValueDependentUpdateHarness {
                 .set_schema_variant_id(*tail_schema_variant.id())
                 .set_component_id(tail_component_id)
                 .to_context()?;
+            dbg!("PRE EXTERNAL");
             let external_provider_attribute_value =
                 AttributeValue::find_for_context(ctx, external_provider_context.into())
                     .await?
                     .ok_or(AttributeValueError::NotFoundForExternalProviderContext(
                         external_provider_context,
                     ))?;
+            dbg!("POST EXTERNAL");
             external_provider_attribute_value.get_value(ctx).await?
         } else {
             let internal_provider_context = AttributeContextBuilder::from(attribute_value_context)
@@ -196,12 +198,14 @@ impl AttributeValueDependentUpdateHarness {
                 .unset_prop_id()
                 .set_internal_provider_id(attribute_prototype_argument.internal_provider_id())
                 .to_context()?;
+            dbg!("PRE INTERNAL");
             let internal_provider_attribute_value =
                 AttributeValue::find_for_context(ctx, internal_provider_context.into())
                     .await?
                     .ok_or(AttributeValueError::NotFoundForInternalProviderContext(
                         internal_provider_context,
                     ))?;
+            dbg!("POST INTERNAL");
             internal_provider_attribute_value.get_value(ctx).await?
         };
 

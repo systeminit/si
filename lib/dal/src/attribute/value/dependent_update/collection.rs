@@ -246,10 +246,27 @@ impl AttributeValueDependentCollectionHarness {
         let mut attribute_values_that_need_to_be_updated = Vec::new();
 
         for attribute_prototype in attribute_prototypes {
+            // let attribute_values_in_context_or_greater_context = if attribute_prototype
+            //     .context
+            //     .is_least_specific_field_kind_prop()?
+            // {
+            //     Self::merge_attribute_contexts(
+            //         attribute_prototype.context,
+            //         source_attribute_context,
+            //     )?
+            // } else {
+            //     attribute_prototype.context
+            // };
             let attribute_values_in_context_or_greater_context = Self::merge_attribute_contexts(
                 attribute_prototype.context,
                 source_attribute_context,
             )?;
+            dbg!(
+                "ASSEMBLED CONTEXT",
+                &attribute_values_in_context_or_greater_context,
+                &attribute_prototype.context,
+                &source_attribute_context
+            );
 
             let mut found_exact_context_level = false;
             let attribute_values_in_context_or_greater =
@@ -260,6 +277,11 @@ impl AttributeValueDependentCollectionHarness {
                 )
                 .await
                 .map_err(|e| AttributeValueError::AttributePrototype(format!("{e}")))?;
+
+            dbg!(
+                "IN CONTEXT OR GREATER",
+                &attribute_values_in_context_or_greater
+            );
 
             // For each relevant attribute value found corresponding to the attribute
             // prototype, check if its context is at same or greater ("more-specific")
@@ -292,10 +314,15 @@ impl AttributeValueDependentCollectionHarness {
             // corresponding to the attribute prototype that we are currently working
             // with. We will use its data to help create the new attribute value.
             if !found_exact_context_level {
-                let attribute_value_for_current_prototype =
-                    AttributeValue::find_for_context(ctx, attribute_prototype.context.into())
-                        .await?
-                        .ok_or(AttributeValueError::Missing)?;
+                let mut attribute_values_for_current_prototype =
+                    AttributeValue::list_for_context(ctx, attribute_prototype.context.into())
+                        .await?;
+
+                // Since list attribute values are sorted from least to most specific, we pop off the
+                // first one found.
+                let attribute_value_for_current_prototype = attribute_values_for_current_prototype
+                    .pop()
+                    .ok_or(AttributeValueError::Missing)?;
 
                 // The context for creating the new attribute value will use the least specific
                 // field from the attribute value corresponding to the attribute prototype
@@ -357,6 +384,16 @@ impl AttributeValueDependentCollectionHarness {
                     .parent_attribute_value(ctx)
                     .await?
                 {
+                    // let parent_attribute_context =
+                    //     AttributeContextBuilder::from(new_attribute_value.context)
+                    //         .set_prop_id(parent_attribute_value.context.prop_id())
+                    //         .to_context()?;
+                    // let parent_attribute_value_id = AttributeValue::vivify_value_and_parent_values(
+                    //     ctx,
+                    //     parent_attribute_context,
+                    //     *parent_attribute_value.id(),
+                    // )
+                    // .await?;
                     new_attribute_value
                         .set_parent_attribute_value(ctx, parent_attribute_value.id())
                         .await?;
@@ -368,7 +405,8 @@ impl AttributeValueDependentCollectionHarness {
     }
 
     /// Merges two [`AttributeContexts`](crate::AttributeContext) with preference to the "base"
-    /// context.
+    /// context. This should only be ran when the base context's least specific field kind
+    /// corresponds to [`PropId`](crate::Prop).
     fn merge_attribute_contexts(
         base_attribute_context: AttributeContext,
         override_attribute_context: AttributeContext,

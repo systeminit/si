@@ -57,10 +57,12 @@ pub async fn emit(
 ) -> EmitResult<AttributeValue> {
     // Assemble the raw value required for the "emit" attribute value. We only need to generate
     // a view if the least specific field set on the consume attribute context is a "PropId".
+    dbg!("EMIT - FIND - START", &consume_attribute_context);
     let found_attribute_value =
         AttributeValue::find_for_context(ctx, consume_attribute_context.into())
             .await?
             .ok_or(EmitError::MissingAttributeValue)?;
+    dbg!("EMIT - FIND - END", &consume_attribute_context);
 
     let payload = if consume_attribute_context.is_least_specific_field_kind_prop()? {
         let found_attribute_view_context = AttributeReadContext {
@@ -110,9 +112,10 @@ pub async fn emit(
     // We never want to mutate an emitted AttributeValue in the universal tenancy and we want
     // to ensure the found AttributeValue's context _exactly_ matches the one assembled. In
     // either case, just create a new one!
-    if let Some(mut emit_attribute_value) =
-        AttributeValue::find_for_context(ctx, emit_attribute_context.into()).await?
-    {
+    dbg!("EMIT - EMIT - START", &emit_attribute_context);
+    let mut found_emit_attribute_values =
+        AttributeValue::list_for_context(ctx, emit_attribute_context.into()).await?;
+    if let Some(mut emit_attribute_value) = found_emit_attribute_values.pop() {
         // TODO(nick): we will likely want to replace the "universal" tenancy check with an
         // "is compatible" tenancy check.
         if emit_attribute_value.context == emit_attribute_context
@@ -127,6 +130,7 @@ pub async fn emit(
             return Ok(emit_attribute_value);
         }
     }
+    dbg!("EMIT - EMIT - END", &emit_attribute_context);
     Ok(AttributeValue::new(
         ctx,
         *func_binding.id(),

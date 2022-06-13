@@ -1,5 +1,5 @@
-use crate::builtins::schema::{
-    find_child_prop_by_name, setup_identity_func, update_prop_attribute_value,
+use crate::builtins::helpers::{
+    find_child_prop_by_name, setup_identity_func, update_attribute_value_for_prop_and_context,
 };
 use crate::{
     builtins::schema::{
@@ -188,7 +188,6 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> BuiltinsResult<(
 
     SchemaVariant::create_implicit_internal_providers(ctx, *schema.id(), *variant.id()).await?;
     let base_attribute_read_context = AttributeReadContext {
-        prop_id: None,
         schema_id: Some(*schema.id()),
         schema_variant_id: Some(*variant.id()),
         ..AttributeReadContext::default()
@@ -214,28 +213,34 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> BuiltinsResult<(
     // First, connect to the "domain namespace".
     let domain_namespace_prop =
         find_child_prop_by_name(ctx, *metadata_prop.id(), "namespace").await?;
-    update_prop_attribute_value(
+    // update_attribute_value_for_prop_and_context(
+    //     ctx,
+    //     *metadata_prop.id(),
+    //     Some(serde_json::json![{}]),
+    //     AttributeReadContext::default(),
+    // )
+    // .await
+    // .unwrap();
+    dbg!("DOMAIN");
+    let domain_namespace_attribute_value = AttributeValue::find_for_context(
         ctx,
-        *metadata_prop.id(),
-        Some(serde_json::json![{}]),
-        base_attribute_read_context,
+        AttributeReadContext {
+            prop_id: Some(*domain_namespace_prop.id()),
+            ..base_attribute_read_context
+        },
     )
-    .await?;
-    let domain_namespace_attribute_value_id = update_prop_attribute_value(
-        ctx,
-        *domain_namespace_prop.id(),
-        Some(serde_json::json![""]),
-        base_attribute_read_context,
-    )
-    .await?;
+    .await
+    .unwrap()
+    .unwrap();
+    dbg!("POST DOMAIN");
 
     // We now need to set the func on the "domain namespace" prototype.
-    let domain_namespace_attribute_value =
-        AttributeValue::get_by_id(ctx, &domain_namespace_attribute_value_id)
-            .await?
-            .ok_or(BuiltinsError::AttributeValueNotFound(
-                domain_namespace_attribute_value_id,
-            ))?;
+    // let domain_namespace_attribute_value =
+    //     AttributeValue::get_by_id(ctx, &domain_namespace_attribute_value_id)
+    //         .await?
+    //         .ok_or(BuiltinsError::AttributeValueNotFound(
+    //             domain_namespace_attribute_value_id,
+    //         ))?;
     let mut domain_namespace_attribute_prototype = domain_namespace_attribute_value
         .attribute_prototype(ctx)
         .await?
@@ -245,8 +250,6 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> BuiltinsResult<(
         .await?;
 
     // Now we can connect!
-    // TODO(nick): start here -- do we need to sure this is available for component?
-    // TODO(nick): domain_namespace_attribute_prototype
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *domain_namespace_attribute_prototype.id(),
@@ -263,42 +266,50 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> BuiltinsResult<(
         find_child_prop_by_name(ctx, *template_metadata_prop.id(), "namespace").await?;
 
     // Update with our collected props.
-    update_prop_attribute_value(
+    // update_attribute_value_for_prop_and_context(
+    //     ctx,
+    //     *spec_prop.id(),
+    //     Some(serde_json::json![{}]),
+    //     base_attribute_read_context,
+    // )
+    // .await
+    // .unwrap();
+    // update_attribute_value_for_prop_and_context(
+    //     ctx,
+    //     *template_prop.id(),
+    //     Some(serde_json::json![{}]),
+    //     base_attribute_read_context,
+    // )
+    // .await
+    // .unwrap();
+    // update_attribute_value_for_prop_and_context(
+    //     ctx,
+    //     *template_metadata_prop.id(),
+    //     Some(serde_json::json![{}]),
+    //     base_attribute_read_context,
+    // )
+    // .await
+    // .unwrap();
+    dbg!("TEMPLATE");
+    let template_namespace_attribute_value = AttributeValue::find_for_context(
         ctx,
-        *spec_prop.id(),
-        Some(serde_json::json![{}]),
-        base_attribute_read_context,
+        AttributeReadContext {
+            prop_id: Some(*template_namespace_prop.id()),
+            ..base_attribute_read_context
+        },
     )
-    .await?;
-    update_prop_attribute_value(
-        ctx,
-        *template_prop.id(),
-        Some(serde_json::json![{}]),
-        base_attribute_read_context,
-    )
-    .await?;
-    update_prop_attribute_value(
-        ctx,
-        *template_metadata_prop.id(),
-        Some(serde_json::json![{}]),
-        base_attribute_read_context,
-    )
-    .await?;
-    let template_namespace_attribute_value_id = update_prop_attribute_value(
-        ctx,
-        *template_namespace_prop.id(),
-        Some(serde_json::json![""]),
-        base_attribute_read_context,
-    )
-    .await?;
+    .await
+    .unwrap()
+    .unwrap();
+    dbg!("POST TEMPLATE");
 
     // Setup the "template namespace" prototype.
-    let template_namespace_attribute_value =
-        AttributeValue::get_by_id(ctx, &template_namespace_attribute_value_id)
-            .await?
-            .ok_or(BuiltinsError::AttributeValueNotFound(
-                template_namespace_attribute_value_id,
-            ))?;
+    // let template_namespace_attribute_value =
+    //     AttributeValue::get_by_id(ctx, &template_namespace_attribute_value_id)
+    //         .await?
+    //         .ok_or(BuiltinsError::AttributeValueNotFound(
+    //             template_namespace_attribute_value_id,
+    //         ))?;
     let mut template_namespace_attribute_prototype = template_namespace_attribute_value
         .attribute_prototype(ctx)
         .await?
@@ -308,8 +319,6 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> BuiltinsResult<(
         .await?;
 
     // Now we can connect (again)!
-    // TODO(nick): start here -- do we need to sure this is available for component?
-    // TODO(nick): template_namespace_attribute_prototype
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *template_namespace_attribute_prototype.id(),

@@ -1,6 +1,6 @@
 //! This module contains "builtin" objects that are included with System Initiative.
-//! The submodules are private since the only entrypoint to this module should be the
-//! [migrate()](crate::builtins::migrate()) function.
+//! The submodules are private (barring "helpers") since the only entrypoint to this module
+//! should be the [migrate()](crate::builtins::migrate()) function.
 
 use thiserror::Error;
 
@@ -17,6 +17,10 @@ use crate::{
     ResourcePrototypeError, SchemaError, StandardModelError, ValidationPrototypeError,
 };
 
+/// Helpers is the only module that should be public because it can be used by tests.
+pub mod helpers;
+
+/// All other modules should be private since they should only be used during migration.
 mod func;
 mod schema;
 

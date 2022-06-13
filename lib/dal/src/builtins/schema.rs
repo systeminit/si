@@ -1,10 +1,11 @@
-use serde_json::Value;
 use std::collections::HashMap;
 
 use crate::attribute::context::AttributeContextBuilder;
+use crate::builtins::helpers::{
+    find_child_prop_by_name, setup_identity_func, update_attribute_value_for_prop_and_context,
+};
 use crate::builtins::schema::kubernetes_metadata::create_metadata_prop;
-use crate::func::binding::FuncBindingId;
-use crate::func::binding_return_value::FuncBindingReturnValueId;
+
 use crate::{
     component::ComponentKind,
     edit_field::widget::*,
@@ -24,11 +25,10 @@ use crate::{
     socket::{Socket, SocketArity, SocketEdgeKind},
     validation_prototype::ValidationPrototypeContext,
     AttributeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue,
-    AttributeValueError, AttributeValueId, BuiltinsError, BuiltinsResult, DalContext,
-    ExternalProvider, Func, FuncBackendKind, FuncBackendResponseType, FuncBindingReturnValue,
-    FuncError, FuncId, InternalProvider, Prop, PropError, PropId, PropKind, QualificationPrototype,
-    ResourcePrototype, Schema, SchemaError, SchemaKind, SchematicKind, StandardModel,
-    ValidationPrototype,
+    AttributeValueError, BuiltinsError, BuiltinsResult, DalContext, ExternalProvider, Func,
+    FuncBackendKind, FuncBackendResponseType, FuncBindingReturnValue, InternalProvider, Prop,
+    PropId, PropKind, QualificationPrototype, ResourcePrototype, Schema, SchemaError, SchemaKind,
+    SchematicKind, StandardModel, ValidationPrototype,
 };
 
 mod kubernetes;
@@ -362,21 +362,22 @@ async fn kubernetes_namespace(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
         external_provider.attribute_prototype_id().ok_or_else(|| {
             BuiltinsError::MissingAttributePrototypeForExternalProvider(*external_provider.id())
         })?;
-    update_prop_attribute_value(
-        ctx,
-        *metadata_prop.id(),
-        Some(serde_json::json![{}]),
-        base_attribute_read_context,
-    )
-    .await?;
+    // update_attribute_value_for_prop_and_context(
+    //     ctx,
+    //     *metadata_prop.id(),
+    //     Some(serde_json::json![{}]),
+    //     base_attribute_read_context,
+    // )
+    // .await
+    // .unwrap();
     let metadata_name_prop = find_child_prop_by_name(ctx, *metadata_prop.id(), "name").await?;
-    update_prop_attribute_value(
-        ctx,
-        *metadata_name_prop.id(),
-        Some(serde_json::json![""]),
-        base_attribute_read_context,
-    )
-    .await?;
+    // update_prop_attribute_value(
+    //     ctx,
+    //     *metadata_name_prop.id(),
+    //     Some(serde_json::json![""]),
+    //     base_attribute_read_context,
+    // )
+    // .await?;
     let metadata_name_implicit_internal_provider =
         InternalProvider::get_for_prop(ctx, *metadata_name_prop.id())
             .await?
@@ -621,35 +622,37 @@ async fn docker_image(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
         prop_id: Some(*image_prop.id()),
         ..base_attribute_read_context
     };
+    dbg!("PRE IMAGE");
     let image_attribute_value = AttributeValue::find_for_context(ctx, image_context)
         .await?
         .ok_or(AttributeValueError::Missing)?;
-    let domain_context = AttributeReadContext {
-        prop_id: Some(root_prop.domain_prop_id),
-        ..base_attribute_read_context
-    };
-    let domain_attribute_value = AttributeValue::find_for_context(ctx, domain_context)
-        .await?
-        .ok_or(AttributeValueError::Missing)?;
-    let image_write_context = AttributeContextBuilder::from(image_context).to_context()?;
-    let (_, updated_image_attribute_value_id, _) = AttributeValue::update_for_context(
-        ctx,
-        *image_attribute_value.id(),
-        Some(*domain_attribute_value.id()),
-        image_write_context,
-        Some(serde_json::to_value("")?),
-        None,
-    )
-    .await?;
+    dbg!("POST IMAGE");
+    // let domain_context = AttributeReadContext {
+    //     prop_id: Some(root_prop.domain_prop_id),
+    //     ..base_attribute_read_context
+    // };
+    // let domain_attribute_value = AttributeValue::find_for_context(ctx, domain_context)
+    //     .await?
+    //     .ok_or(AttributeValueError::Missing)?;
+    // let image_write_context = AttributeContextBuilder::from(image_context).to_context()?;
+    // let (_, updated_image_attribute_value_id, _) = AttributeValue::update_for_context(
+    //     ctx,
+    //     *image_attribute_value.id(),
+    //     Some(*domain_attribute_value.id()),
+    //     image_write_context,
+    //     Some(serde_json::to_value("")?),
+    //     None,
+    // )
+    // .await?;
 
     // Now, let's setup the connection with the initialized value.
-    let updated_image_attribute_value =
-        AttributeValue::get_by_id(ctx, &updated_image_attribute_value_id)
-            .await?
-            .ok_or(AttributeValueError::MissingForId(
-                updated_image_attribute_value_id,
-            ))?;
-    let mut image_attribute_prototype = updated_image_attribute_value
+    // let updated_image_attribute_value =
+    //     AttributeValue::get_by_id(ctx, &updated_image_attribute_value_id)
+    //         .await?
+    //         .ok_or(AttributeValueError::MissingForId(
+    //             updated_image_attribute_value_id,
+    //         ))?;
+    let mut image_attribute_prototype = image_attribute_value
         .attribute_prototype(ctx)
         .await?
         .ok_or(AttributeValueError::MissingAttributePrototype)?;
@@ -949,9 +952,11 @@ pub async fn create_string_prop_with_default(
         ..AttributeReadContext::default()
     };
 
+    dbg!("PRE PROP");
     let mut attribute_value = AttributeValue::find_for_context(ctx, attribute_value_context)
         .await?
         .ok_or(AttributeValueError::Missing)?;
+    dbg!("POST PROP");
     attribute_value
         .set_func_binding_id(ctx, *func_binding.id())
         .await?;
@@ -966,104 +971,4 @@ pub async fn create_string_prop_with_default(
     attribute_prototype.set_func_id(ctx, *func.id()).await?;
 
     Ok(prop)
-}
-
-/// Get the "si:identity" [`Func`](crate::Func) and execute (if necessary).
-pub async fn setup_identity_func(
-    ctx: &DalContext<'_, '_>,
-) -> BuiltinsResult<(FuncId, FuncBindingId, FuncBindingReturnValueId)> {
-    let identity_func_name = "si:identity".to_string();
-    let identity_func: Func = Func::find_by_attr(ctx, "name", &identity_func_name)
-        .await?
-        .pop()
-        .ok_or(FuncError::NotFoundByName(identity_func_name))?;
-    let (identity_func_binding, identity_func_binding_return_value) =
-        FuncBinding::find_or_create_and_execute(
-            ctx,
-            serde_json::json![{ "identity": null }],
-            *identity_func.id(),
-        )
-        .await?;
-    Ok((
-        *identity_func.id(),
-        *identity_func_binding.id(),
-        *identity_func_binding_return_value.id(),
-    ))
-}
-
-/// Find the child of a [`Prop`](crate::Prop) by name. _Use with caution!_
-pub async fn find_child_prop_by_name(
-    ctx: &DalContext<'_, '_>,
-    prop_id: PropId,
-    child_prop_name: &str,
-) -> BuiltinsResult<Prop> {
-    let prop = Prop::get_by_id(ctx, &prop_id)
-        .await?
-        .ok_or_else(|| PropError::NotFound(prop_id, *ctx.visibility()))?;
-    for current in prop.child_props(ctx).await? {
-        if current.name() == child_prop_name {
-            return Ok(current);
-        }
-    }
-    Err(PropError::ExpectedChildNotFound(child_prop_name.to_string()).into())
-}
-
-/// Update an [`AttributeValue`](crate::AttributeValue). This only works if the parent is an
-/// _"object"_ that's already been "initialized".
-pub async fn update_prop_attribute_value(
-    ctx: &DalContext<'_, '_>,
-    prop_id: PropId,
-    value: Option<Value>,
-    base_attribute_read_context: AttributeReadContext,
-) -> BuiltinsResult<AttributeValueId> {
-    let parent_prop_id = parent_prop(ctx, prop_id).await?;
-
-    let parent_attribute_value_context = AttributeReadContext {
-        prop_id: Some(parent_prop_id),
-        ..base_attribute_read_context
-    };
-    let parent_attribute_value =
-        AttributeValue::find_for_context(ctx, parent_attribute_value_context)
-            .await?
-            .ok_or(BuiltinsError::AttributeValueNotFoundForContext(
-                parent_attribute_value_context,
-            ))?;
-
-    let attribute_value_context = AttributeReadContext {
-        prop_id: Some(prop_id),
-        ..base_attribute_read_context
-    };
-    let attribute_value = AttributeValue::find_for_context(ctx, attribute_value_context)
-        .await?
-        .ok_or(BuiltinsError::AttributeValueNotFoundForContext(
-            attribute_value_context,
-        ))?;
-
-    let prop_attribute_context = AttributeContextBuilder::from(base_attribute_read_context)
-        .set_prop_id(prop_id)
-        .to_context()?;
-
-    let (_, updated_attribute_value_id, _) = AttributeValue::update_for_context(
-        ctx,
-        *attribute_value.id(),
-        Some(*parent_attribute_value.id()),
-        prop_attribute_context,
-        value,
-        None,
-    )
-    .await?;
-
-    // Return the updated attribute value id.
-    Ok(updated_attribute_value_id)
-}
-
-/// Find the parent for a given [`PropId`](crate::Prop).
-pub async fn parent_prop(ctx: &DalContext<'_, '_>, prop_id: PropId) -> BuiltinsResult<PropId> {
-    let parent_prop = Prop::get_by_id(ctx, &prop_id)
-        .await?
-        .ok_or(BuiltinsError::PropNotFound(prop_id))?
-        .parent_prop(ctx)
-        .await?
-        .ok_or(BuiltinsError::PropParentNotFoundOrEmpty(prop_id))?;
-    Ok(*parent_prop.id())
 }
