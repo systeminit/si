@@ -37,11 +37,13 @@ export class ConnectingManager {
   offset?: Position | undefined;
   target?: Socket;
   targetWasConnected: boolean;
+  createdConnection: boolean;
 
   constructor(dataManager: SchematicDataManager) {
     this.dataManager = dataManager;
     this.zoomFactor = 1;
     this.targetWasConnected = false;
+    this.createdConnection = false;
   }
 
   async beforeConnect(
@@ -67,6 +69,7 @@ export class ConnectingManager {
 
     this.target = target;
     this.targetWasConnected = this.target.isConnected();
+    this.createdConnection = false;
     this.target.setConnected();
 
     const nodes = sceneManager.group?.nodes?.children as OBJ.Node[] | undefined;
@@ -158,6 +161,7 @@ export class ConnectingManager {
           destination.name,
           sourceSocket.provider.color,
         );
+        this.createdConnection = true;
         this.clearInteractiveConnection(sceneManager);
         sceneManager.refreshConnections();
         this.dataManager.createConnection({
@@ -174,7 +178,7 @@ export class ConnectingManager {
 
   clearInteractiveConnection(sceneManager: SceneManager): void {
     if (this.target) {
-      if (!this.targetWasConnected) {
+      if (!this.targetWasConnected && !this.createdConnection) {
         this.target.setDisconnected();
       }
       this.target = undefined;
