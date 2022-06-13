@@ -245,23 +245,6 @@ impl AttributeValueDependentCollectionHarness {
         attribute_prototypes: Vec<AttributePrototype>,
         source_attribute_context: AttributeContext,
     ) -> AttributeValueResult<Vec<AttributeValue>> {
-        // This read context is purely used for the "attribute_values_in_context_or_greater"
-        // that's called iteratively for all attribute prototypes provided.
-        let source_attribute_read_context =
-            match source_attribute_context.least_specific_field_kind()? {
-                AttributeContextLeastSpecificFieldKind::Prop => AttributeReadContext {
-                    prop_id: None,
-                    ..AttributeReadContext::from(source_attribute_context)
-                },
-                AttributeContextLeastSpecificFieldKind::InternalProvider => AttributeReadContext {
-                    internal_provider_id: None,
-                    ..AttributeReadContext::from(source_attribute_context)
-                },
-                AttributeContextLeastSpecificFieldKind::ExternalProvider => AttributeReadContext {
-                    external_provider_id: None,
-                    ..AttributeReadContext::from(source_attribute_context)
-                },
-            };
         let mut attribute_values_that_need_to_be_updated = Vec::new();
 
         for attribute_prototype in attribute_prototypes {
