@@ -87,7 +87,7 @@ export class Socket extends PIXI.Container {
       align: "left",
     });
     label.position.x = 10;
-    label.position.y = -5;
+    label.position.y = -7.5;
     label.zIndex = 1;
     label.interactive = false;
     this.addChild(label);

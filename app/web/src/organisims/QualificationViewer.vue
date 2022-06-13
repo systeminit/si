@@ -335,11 +335,13 @@ const props = defineProps<{
 }>();
 const { componentId } = toRefs(props);
 const componentId$ = fromRef<number>(componentId, { immediate: true });
-componentId$
-  .pipe(untilUnmounted)
-  .subscribe(() => (editingQualificationId.value = undefined));
 
 const scheduledToasts = ref<number[]>([]);
+
+componentId$.pipe(untilUnmounted).subscribe(() => {
+  scheduledToasts.value = [];
+  editingQualificationId.value = undefined;
+});
 
 const checkedQualifications$ = new Rx.ReplaySubject<true>();
 checkedQualifications$.next(true); // We must fetch on setup
