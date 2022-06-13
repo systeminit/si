@@ -354,8 +354,18 @@ impl AttributeValueDependentCollectionHarness {
                     .parent_attribute_value(ctx)
                     .await?
                 {
+                    let parent_attribute_context =
+                        AttributeContextBuilder::from(new_attribute_value.context)
+                            .set_prop_id(parent_attribute_value.context.prop_id())
+                            .to_context()?;
+                    let parent_attribute_value_id = AttributeValue::vivify_value_and_parent_values(
+                        ctx,
+                        parent_attribute_context,
+                        *parent_attribute_value.id(),
+                    )
+                    .await?;
                     new_attribute_value
-                        .set_parent_attribute_value(ctx, parent_attribute_value.id())
+                        .set_parent_attribute_value(ctx, &parent_attribute_value_id)
                         .await?;
                 }
                 attribute_values_that_need_to_be_updated.push(new_attribute_value);
