@@ -109,7 +109,12 @@ export class Node extends PIXI.Container {
   }
 
   setSelectionStatus(): void {
-    const status = new SelectionStatus(NODE_WIDTH, this.nodeHeight(), 6);
+    const status = new SelectionStatus(
+      NODE_WIDTH,
+      this.nodeHeight(),
+      6,
+      this.color,
+    );
     status.zIndex = 1;
     this.selection = status;
     this.addChild(this.selection);

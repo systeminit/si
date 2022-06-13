@@ -50,8 +50,8 @@ export class QualificationStatus extends PIXI.Container {
     if (!status) {
       const color = 0xf08686;
       const box = new PIXI.Graphics()
-        .lineStyle(2, color, 1, 0, false)
-        .drawRoundedRect(-4, -4, width + 8, height + 8, 6);
+        .lineStyle(1, color, 1, 0, false)
+        .drawRoundedRect(-3, -3, width + 6, height + 6, 6);
       box.zIndex = 1;
       this.addChild(box);
     }
