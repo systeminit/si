@@ -34,7 +34,6 @@
     "feather-icons": "^4.29.0",
     "floating-vue": "^2.0.0-beta.16",
     "konva": "^8.3.5",
-    "pixi-filters": "^4.1.6",
     "pixi.js": "^6.3.0",
     "rxjs": "^7.5.5",
     "tweetnacl-sealedbox-js": "github:systeminit/tweetnacl-sealed-box#master",
