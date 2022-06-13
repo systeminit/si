@@ -11,8 +11,10 @@ import { editSessionWritten$ } from "@/observable/edit_session";
 export interface CreateConnectionArgs {
   headNodeId: number;
   headSocketId: number;
+  headInternalProviderId: number;
   tailNodeId: number;
   tailSocketId: number;
+  tailExternalProviderId: number;
 }
 
 export interface CreateConnectionRequest

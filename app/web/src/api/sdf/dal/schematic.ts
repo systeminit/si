@@ -25,6 +25,7 @@ export interface EditorContext {
 export type SchematicProviderMetadata = string;
 
 export interface SchematicOutputProvider {
+  id: number;
   ty: SchematicProviderMetadata;
   color: number;
 }
@@ -37,6 +38,7 @@ export interface SchematicOutputSocket {
 }
 
 export interface SchematicInputProvider {
+  id: number;
   ty: SchematicProviderMetadata;
   color: number;
 }

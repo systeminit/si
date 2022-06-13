@@ -1,7 +1,8 @@
 use axum::extract::{Json, Query};
 use dal::{
-    socket::{SocketEdgeKind, SocketId},
-    SchemaVariant, SchemaVariantId, SchematicKind, StandardModel, Visibility,
+    socket::{SocketEdgeKind, SocketId, SocketKind},
+    ExternalProviderId, InternalProviderId, SchemaVariant, SchemaVariantId, SchematicKind,
+    StandardModel, Visibility,
 };
 use serde::{Deserialize, Serialize};
 
@@ -20,6 +21,7 @@ pub type ProviderMetadata = String;
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct OutputProviderView {
+    id: ExternalProviderId,
     ty: ProviderMetadata,
     color: i64,
 }
@@ -36,6 +38,7 @@ pub struct OutputSocketView {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct InputProviderView {
+    id: InternalProviderId,
     ty: ProviderMetadata,
     color: i64,
 }
@@ -78,26 +81,40 @@ pub async fn list_schema_variants(
 
         let sockets = variant.sockets(&ctx).await?;
         for socket in sockets {
-            match socket.edge_kind() {
-                SocketEdgeKind::Output => output_sockets.push(OutputSocketView {
-                    id: *socket.id(),
-                    name: socket.name().to_owned(),
-                    schematic_kind: *socket.schematic_kind(),
-                    provider: OutputProviderView {
-                        ty: socket.name().to_owned(),
-                        color: socket.color().map_or(0x00b0bc, |c| *c),
-                    },
-                }),
-                SocketEdgeKind::Configures => input_sockets.push(InputSocketView {
-                    id: *socket.id(),
-                    name: socket.name().to_owned(),
-                    schematic_kind: *socket.schematic_kind(),
-                    provider: InputProviderView {
-                        ty: socket.name().to_owned(),
-                        color: socket.color().map_or(0x00b0bc, |c| *c),
-                    },
-                }),
-                _ => continue,
+            match socket.kind() {
+                SocketKind::Provider => match socket.edge_kind() {
+                    SocketEdgeKind::Output => {
+                        let provider = socket.external_provider(&ctx).await?.ok_or_else(|| {
+                            SchematicError::ExternalProviderNotFoundForSocket(*socket.id())
+                        })?;
+                        output_sockets.push(OutputSocketView {
+                            id: *socket.id(),
+                            name: socket.name().to_owned(),
+                            schematic_kind: *socket.schematic_kind(),
+                            provider: OutputProviderView {
+                                id: *provider.id(),
+                                ty: socket.name().to_owned(),
+                                color: socket.color().map_or(0x00b0bc, |c| *c),
+                            },
+                        })
+                    }
+                    SocketEdgeKind::Configures => {
+                        let provider = socket.internal_provider(&ctx).await?.ok_or_else(|| {
+                            SchematicError::InternalProviderNotFoundForSocket(*socket.id())
+                        })?;
+                        input_sockets.push(InputSocketView {
+                            id: *socket.id(),
+                            name: socket.name().to_owned(),
+                            schematic_kind: *socket.schematic_kind(),
+                            provider: InputProviderView {
+                                id: *provider.id(),
+                                ty: socket.name().to_owned(),
+                                color: socket.color().map_or(0x00b0bc, |c| *c),
+                            },
+                        })
+                    }
+                    _ => continue,
+                },
             }
         }
 

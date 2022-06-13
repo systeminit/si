@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
-use crate::attribute::context::AttributeContextBuilder;
 use crate::{
+    attribute::context::AttributeContextBuilder,
     component::ComponentKind,
     edit_field::widget::*,
     func::{
@@ -11,19 +11,19 @@ use crate::{
             js_resource::FuncBackendJsResourceSyncArgs,
             validation::FuncBackendValidateStringValueArgs,
         },
-        binding::FuncBinding,
-        binding_return_value::FuncBindingReturnValueError,
+        binding::{FuncBinding, FuncBindingId},
+        binding_return_value::{FuncBindingReturnValueError, FuncBindingReturnValueId},
     },
     qualification_prototype::QualificationPrototypeContext,
     resource_prototype::ResourcePrototypeContext,
     schema::{SchemaVariant, UiMenu},
-    socket::{Socket, SocketArity, SocketEdgeKind},
+    socket::{Socket, SocketArity, SocketEdgeKind, SocketKind},
     validation_prototype::ValidationPrototypeContext,
     AttributeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue,
-    AttributeValueError, BuiltinsError, BuiltinsResult, DalContext, Func, FuncBackendKind,
-    FuncBackendResponseType, FuncBindingReturnValue, InternalProvider, Prop, PropError, PropId,
-    PropKind, QualificationPrototype, ResourcePrototype, Schema, SchemaError, SchemaKind,
-    SchematicKind, StandardModel, ValidationPrototype,
+    AttributeValueError, BuiltinsError, BuiltinsResult, DalContext, ExternalProvider, Func,
+    FuncBackendKind, FuncBackendResponseType, FuncBindingReturnValue, FuncError, FuncId,
+    InternalProvider, Prop, PropError, PropId, PropKind, QualificationPrototype, ResourcePrototype,
+    Schema, SchemaError, SchemaKind, SchematicKind, StandardModel, ValidationPrototype,
 };
 
 mod kubernetes;
@@ -34,6 +34,29 @@ mod kubernetes_spec;
 mod kubernetes_template;
 
 use self::kubernetes_deployment::kubernetes_deployment;
+
+/// Get the "si:identity" [`Func`](crate::Func) and execute (if necessary).
+pub async fn setup_identity_func(
+    ctx: &DalContext<'_, '_>,
+) -> BuiltinsResult<(FuncId, FuncBindingId, FuncBindingReturnValueId)> {
+    let identity_func_name = "si:identity".to_string();
+    let identity_func: Func = Func::find_by_attr(ctx, "name", &identity_func_name)
+        .await?
+        .pop()
+        .ok_or(FuncError::NotFoundByName(identity_func_name))?;
+    let (identity_func_binding, identity_func_binding_return_value) =
+        FuncBinding::find_or_create_and_execute(
+            ctx,
+            serde_json::json![{ "identity": null }],
+            *identity_func.id(),
+        )
+        .await?;
+    Ok((
+        *identity_func.id(),
+        *identity_func_binding.id(),
+        *identity_func_binding_return_value.id(),
+    ))
+}
 
 pub async fn migrate(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     system(ctx).await?;
@@ -63,29 +86,36 @@ async fn system(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
         .set_default_schema_variant_id(ctx, Some(*variant.id()))
         .await?;
 
-    let deployment_output_socket = Socket::new(
-        ctx,
-        "output",
-        &SocketEdgeKind::Output,
-        &SocketArity::Many,
-        &SchematicKind::Deployment,
-    )
-    .await?;
-    variant
-        .add_socket(ctx, deployment_output_socket.id())
+    let identity_func = setup_identity_func(ctx).await?;
+
+    let (_deployment_output_provider, _deployment_output_socket) =
+        ExternalProvider::new_with_socket(
+            ctx,
+            *schema.id(),
+            *variant.id(),
+            "output",
+            None,
+            identity_func.0,
+            identity_func.1,
+            identity_func.2,
+            SocketArity::Many,
+            SchematicKind::Deployment,
+        )
         .await?;
 
-    let component_output_socket = Socket::new(
+    let (_component_output_provider, _component_output_socket) = ExternalProvider::new_with_socket(
         ctx,
+        *schema.id(),
+        *variant.id(),
         "output",
-        &SocketEdgeKind::Output,
-        &SocketArity::Many,
-        &SchematicKind::Component,
+        None,
+        identity_func.0,
+        identity_func.1,
+        identity_func.2,
+        SocketArity::Many,
+        SchematicKind::Component,
     )
     .await?;
-    variant
-        .add_socket(ctx, component_output_socket.id())
-        .await?;
 
     Ok(())
 }
@@ -104,29 +134,41 @@ async fn application(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
         .set_default_schema_variant_id(ctx, Some(*variant.id()))
         .await?;
 
-    let output_socket = Socket::new(
-        ctx,
-        "output",
-        &SocketEdgeKind::Output,
-        &SocketArity::Many,
-        &SchematicKind::Component,
-    )
-    .await?;
-    variant.add_socket(ctx, output_socket.id()).await?;
+    let identity_func = setup_identity_func(ctx).await?;
 
-    let output_socket = Socket::new(
+    let (_deployment_output_provider, _deployment_output_socket) =
+        ExternalProvider::new_with_socket(
+            ctx,
+            *schema.id(),
+            *variant.id(),
+            "output",
+            None,
+            identity_func.0,
+            identity_func.1,
+            identity_func.2,
+            SocketArity::Many,
+            SchematicKind::Deployment,
+        )
+        .await?;
+
+    let (_component_output_provider, _component_output_socket) = ExternalProvider::new_with_socket(
         ctx,
+        *schema.id(),
+        *variant.id(),
         "output",
-        &SocketEdgeKind::Output,
-        &SocketArity::Many,
-        &SchematicKind::Deployment,
+        None,
+        identity_func.0,
+        identity_func.1,
+        identity_func.2,
+        SocketArity::Many,
+        SchematicKind::Component,
     )
     .await?;
-    variant.add_socket(ctx, output_socket.id()).await?;
 
     let includes_socket = Socket::new(
         ctx,
         "includes",
+        SocketKind::Provider,
         &SocketEdgeKind::Includes,
         &SocketArity::Many,
         &SchematicKind::Deployment,
@@ -173,41 +215,57 @@ async fn service(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
         .set_default_schema_variant_id(ctx, Some(*variant.id()))
         .await?;
 
-    let mut input_socket = Socket::new(
+    let identity_func = setup_identity_func(ctx).await?;
+
+    let (_input_provider, _input_socket) = InternalProvider::new_explicit_with_socket(
         ctx,
+        *schema.id(),
+        *variant.id(),
         "service",
-        &SocketEdgeKind::Configures,
-        &SocketArity::Many,
-        &SchematicKind::Deployment,
+        identity_func.0,
+        identity_func.1,
+        identity_func.2,
+        SocketArity::Many,
+        SchematicKind::Deployment,
     )
     .await?;
-    input_socket.set_color(ctx, Some(0x00b0bc)).await?;
-    variant.add_socket(ctx, input_socket.id()).await?;
 
-    let mut output_socket = Socket::new(
-        ctx,
-        "service",
-        &SocketEdgeKind::Output,
-        &SocketArity::Many,
-        &SchematicKind::Deployment,
-    )
-    .await?;
-    output_socket.set_color(ctx, Some(0x00b0bc)).await?;
-    variant.add_socket(ctx, output_socket.id()).await?;
+    let (_deployment_output_provider, mut deployment_output_socket) =
+        ExternalProvider::new_with_socket(
+            ctx,
+            *schema.id(),
+            *variant.id(),
+            "service",
+            None,
+            identity_func.0,
+            identity_func.1,
+            identity_func.2,
+            SocketArity::Many,
+            SchematicKind::Deployment,
+        )
+        .await?;
+    deployment_output_socket
+        .set_color(ctx, Some(0x00b0bc))
+        .await?;
 
-    let output_socket = Socket::new(
+    let (_component_output_provider, _component_output_socket) = ExternalProvider::new_with_socket(
         ctx,
+        *schema.id(),
+        *variant.id(),
         "output",
-        &SocketEdgeKind::Output,
-        &SocketArity::Many,
-        &SchematicKind::Component,
+        None,
+        identity_func.0,
+        identity_func.1,
+        identity_func.2,
+        SocketArity::Many,
+        SchematicKind::Component,
     )
     .await?;
-    variant.add_socket(ctx, output_socket.id()).await?;
 
     let includes_socket = Socket::new(
         ctx,
         "includes",
+        SocketKind::Provider,
         &SocketEdgeKind::Includes,
         &SocketArity::Many,
         &SchematicKind::Deployment,
@@ -237,29 +295,39 @@ async fn kubernetes_service(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
         .set_default_schema_variant_id(ctx, Some(*variant.id()))
         .await?;
 
-    let input_socket = Socket::new(
-        ctx,
-        "input",
-        &SocketEdgeKind::Configures,
-        &SocketArity::Many,
-        &SchematicKind::Component,
-    )
-    .await?;
-    variant.add_socket(ctx, input_socket.id()).await?;
+    let identity_func = setup_identity_func(ctx).await?;
 
-    let output_socket = Socket::new(
+    let (_input_provider, _input_socket) = InternalProvider::new_explicit_with_socket(
         ctx,
-        "output",
-        &SocketEdgeKind::Output,
-        &SocketArity::Many,
-        &SchematicKind::Component,
+        *schema.id(),
+        *variant.id(),
+        "input",
+        identity_func.0,
+        identity_func.1,
+        identity_func.2,
+        SocketArity::Many,
+        SchematicKind::Component,
     )
     .await?;
-    variant.add_socket(ctx, output_socket.id()).await?;
+
+    let (_output_provider, _output_socket) = ExternalProvider::new_with_socket(
+        ctx,
+        *schema.id(),
+        *variant.id(),
+        "output",
+        None,
+        identity_func.0,
+        identity_func.1,
+        identity_func.2,
+        SocketArity::Many,
+        SchematicKind::Component,
+    )
+    .await?;
 
     let includes_socket = Socket::new(
         ctx,
         "includes",
+        SocketKind::Provider,
         &SocketEdgeKind::Includes,
         &SocketArity::Many,
         &SchematicKind::Component,
@@ -310,20 +378,27 @@ async fn kubernetes_namespace(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
         .set_parent_prop(ctx, root_prop.domain_prop_id)
         .await?;
 
-    let mut output_socket = Socket::new(
+    let identity_func = setup_identity_func(ctx).await?;
+
+    let (_output_provider, mut output_socket) = ExternalProvider::new_with_socket(
         ctx,
+        *schema.id(),
+        *variant.id(),
         "kubernetes_namespace",
-        &SocketEdgeKind::Output,
-        &SocketArity::Many,
-        &SchematicKind::Component,
+        None,
+        identity_func.0,
+        identity_func.1,
+        identity_func.2,
+        SocketArity::Many,
+        SchematicKind::Component,
     )
     .await?;
     output_socket.set_color(ctx, Some(0x85c9a3)).await?;
-    variant.add_socket(ctx, output_socket.id()).await?;
 
     let includes_socket = Socket::new(
         ctx,
         "includes",
+        SocketKind::Provider,
         &SocketEdgeKind::Includes,
         &SocketArity::Many,
         &SchematicKind::Component,
@@ -382,20 +457,27 @@ async fn docker_hub_credential(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
         .set_link(ctx, "http://hub.docker.com".into())
         .await?;
 
-    let mut output_socket = Socket::new(
+    let identity_func = setup_identity_func(ctx).await?;
+
+    let (_output_provider, mut output_socket) = ExternalProvider::new_with_socket(
         ctx,
+        *schema.id(),
+        *variant.id(),
         "docker_hub_credential",
-        &SocketEdgeKind::Output,
-        &SocketArity::Many,
-        &SchematicKind::Component,
+        None,
+        identity_func.0,
+        identity_func.1,
+        identity_func.2,
+        SocketArity::Many,
+        SchematicKind::Component,
     )
     .await?;
     output_socket.set_color(ctx, Some(0x1e88d6)).await?;
-    variant.add_socket(ctx, output_socket.id()).await?;
 
     let includes_socket = Socket::new(
         ctx,
         "includes",
+        SocketKind::Provider,
         &SocketEdgeKind::Includes,
         &SocketArity::Many,
         &SchematicKind::Component,
@@ -476,31 +558,41 @@ async fn docker_image(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     properties.insert("image".to_owned(), serde_json::json!(""));
     properties.insert("Number of Parents".to_owned(), serde_json::json!("0"));
 
-    let mut input_socket = Socket::new(
+    let identity_func = setup_identity_func(ctx).await?;
+
+    let (_input_provider, mut input_socket) = InternalProvider::new_explicit_with_socket(
         ctx,
+        *schema.id(),
+        *variant.id(),
         "docker_hub_credential",
-        &SocketEdgeKind::Configures,
-        &SocketArity::Many,
-        &SchematicKind::Component,
+        identity_func.0,
+        identity_func.1,
+        identity_func.2,
+        SocketArity::Many,
+        SchematicKind::Component,
     )
     .await?;
     input_socket.set_color(ctx, Some(0x1e88d6)).await?;
-    variant.add_socket(ctx, input_socket.id()).await?;
 
-    let mut output_socket = Socket::new(
+    let (_output_provider, mut output_socket) = ExternalProvider::new_with_socket(
         ctx,
+        *schema.id(),
+        *variant.id(),
         "docker_image",
-        &SocketEdgeKind::Output,
-        &SocketArity::Many,
-        &SchematicKind::Component,
+        None,
+        identity_func.0,
+        identity_func.1,
+        identity_func.2,
+        SocketArity::Many,
+        SchematicKind::Component,
     )
     .await?;
     output_socket.set_color(ctx, Some(0xd61e8c)).await?;
-    variant.add_socket(ctx, output_socket.id()).await?;
 
     let includes_socket = Socket::new(
         ctx,
         "includes",
+        SocketKind::Provider,
         &SocketEdgeKind::Includes,
         &SocketArity::Many,
         &SchematicKind::Component,
@@ -790,6 +882,7 @@ async fn bobao(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     let includes_socket = Socket::new(
         ctx,
         "includes",
+        SocketKind::Provider,
         &SocketEdgeKind::Includes,
         &SocketArity::Many,
         &SchematicKind::Component,

@@ -9,6 +9,8 @@ export interface NodeCreate {
 export interface ConnectionCreate {
   sourceNodeId: number;
   sourceSocketId: number;
+  sourceProviderId: number;
   destinationNodeId: number;
   destinationSocketId: number;
+  destinationProviderId: number;
 }

@@ -3,6 +3,7 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::Json;
 use axum::Router;
+use dal::socket::{SocketError, SocketId};
 use dal::{
     node::NodeId, schema::variant::SchemaVariantError, ComponentError, NodeError, NodeKind,
     NodeMenuError, NodePositionError, ReadTenancyError, SchemaError as DalSchemaError,
@@ -40,6 +41,12 @@ pub enum SchematicError {
     NodeMenu(#[from] NodeMenuError),
     #[error("node error: {0}")]
     Node(#[from] NodeError),
+    #[error("socket error: {0}")]
+    Socket(#[from] SocketError),
+    #[error("external provider not found for socket id: {0}")]
+    ExternalProviderNotFoundForSocket(SocketId),
+    #[error("internal provider not found for socket id: {0}")]
+    InternalProviderNotFoundForSocket(SocketId),
     #[error("invalid request")]
     InvalidRequest,
     #[error("schema variant error: {0}")]

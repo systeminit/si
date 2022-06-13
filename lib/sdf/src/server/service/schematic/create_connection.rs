@@ -1,18 +1,22 @@
+use axum::Json;
+use dal::{
+    node::NodeId, socket::SocketId, Connection, ExternalProviderId, InternalProviderId, Visibility,
+    WorkspaceId,
+};
+use serde::{Deserialize, Serialize};
+
 use super::SchematicResult;
 use crate::server::extract::{AccessBuilder, HandlerContext};
-use axum::Json;
-use dal::node::NodeId;
-use dal::socket::SocketId;
-use dal::{Connection, Visibility, WorkspaceId};
-use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateConnectionRequest {
     pub head_node_id: NodeId,
     pub head_socket_id: SocketId,
+    pub head_internal_provider_id: InternalProviderId,
     pub tail_node_id: NodeId,
     pub tail_socket_id: SocketId,
+    pub tail_external_provider_id: ExternalProviderId,
     pub workspace_id: WorkspaceId,
     #[serde(flatten)]
     pub visibility: Visibility,
@@ -37,10 +41,10 @@ pub async fn create_connection(
         &ctx,
         &request.head_node_id,
         &request.head_socket_id,
-        None,
+        Some(request.head_internal_provider_id),
         &request.tail_node_id,
         &request.tail_socket_id,
-        None,
+        Some(request.tail_external_provider_id),
     )
     .await?;
 

@@ -8,12 +8,14 @@ use crate::func::binding::{FuncBindingError, FuncBindingId};
 use crate::func::binding_return_value::FuncBindingReturnValueId;
 use crate::provider::emit;
 use crate::provider::emit::EmitError;
+use crate::schema::variant::SchemaVariantError;
+use crate::socket::{Socket, SocketArity, SocketEdgeKind, SocketError, SocketKind};
 use crate::standard_model::object_option_from_row_option;
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_accessor_ro,
     AttributeContextBuilderError, AttributePrototype, AttributePrototypeError,
-    AttributePrototypeId, FuncId, HistoryEventError, Prop, StandardModel, StandardModelError,
-    Timestamp, Visibility, WriteTenancy,
+    AttributePrototypeId, FuncId, HistoryEventError, Prop, SchemaVariant, SchematicKind,
+    StandardModel, StandardModelError, Timestamp, Visibility, WriteTenancy,
 };
 use crate::{
     AttributeContext, AttributeContextError, AttributeValue, DalContext, Func, FuncBinding, PropId,
@@ -42,6 +44,10 @@ pub enum InternalProviderError {
     HistoryEvent(#[from] HistoryEventError),
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
+    #[error("schema variant error: {0}")]
+    SchemaVariant(String),
+    #[error("socket error: {0}")]
+    Socket(#[from] SocketError),
     #[error("standard model error: {0}")]
     StandardModelError(#[from] StandardModelError),
 
@@ -109,7 +115,7 @@ pub struct InternalProvider {
     attribute_prototype_id: Option<AttributePrototypeId>,
 
     /// Name for [`Self`] that can be used for identification.
-    name: Option<String>,
+    name: String,
     /// If this field is set to "true", the provider can only consume data for its corresponding
     /// function from within its own [`SchemaVariant`](crate::SchemaVariant). In this case, [`Self`]
     /// is "implicit".
@@ -199,16 +205,20 @@ impl InternalProvider {
         Ok(internal_provider)
     }
 
-    #[tracing::instrument(skip(ctx))]
-    pub async fn new_explicit(
+    #[allow(clippy::too_many_arguments)]
+    #[tracing::instrument(skip(ctx, name))]
+    pub async fn new_explicit_with_socket(
         ctx: &DalContext<'_, '_>,
         schema_id: SchemaId,
         schema_variant_id: SchemaVariantId,
-        name: Option<String>,
+        name: impl AsRef<str>,
         func_id: FuncId,
         func_binding_id: FuncBindingId,
         func_binding_return_value_id: FuncBindingReturnValueId,
-    ) -> InternalProviderResult<Self> {
+        arity: SocketArity,
+        schematic_kind: SchematicKind,
+    ) -> InternalProviderResult<(Self, Socket)> {
+        let name = name.as_ref();
         let prop_id: PropId = UNSET_ID_VALUE.into();
         let row = ctx
             .txns()
@@ -246,7 +256,33 @@ impl InternalProvider {
             .set_attribute_prototype_id(ctx, Some(*attribute_prototype.id()))
             .await?;
 
-        Ok(explicit_internal_provider)
+        let socket = Socket::new(
+            ctx,
+            name,
+            SocketKind::Provider,
+            &SocketEdgeKind::Configures,
+            &arity,
+            &schematic_kind,
+        )
+        .await?;
+        socket
+            .set_internal_provider(ctx, explicit_internal_provider.id())
+            .await?;
+
+        let variant = SchemaVariant::get_by_id(ctx, explicit_internal_provider.schema_variant_id())
+            .await?
+            .ok_or_else(|| {
+                InternalProviderError::SchemaVariant(
+                    SchemaVariantError::NotFound(*explicit_internal_provider.schema_variant_id())
+                        .to_string(),
+                )
+            })?;
+        variant
+            .add_socket(ctx, socket.id())
+            .await
+            .map_err(|err| InternalProviderError::SchemaVariant(err.to_string()))?;
+
+        Ok((explicit_internal_provider, socket))
     }
 
     // Immutable fields.
@@ -261,7 +297,7 @@ impl InternalProvider {
         OptionBigInt<AttributePrototypeId>,
         InternalProviderResult
     );
-    standard_model_accessor!(name, Option<String>, InternalProviderResult);
+    standard_model_accessor!(name, String, InternalProviderResult);
     standard_model_accessor!(
         inbound_type_definition,
         Option<String>,

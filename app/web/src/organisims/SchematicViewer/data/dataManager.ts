@@ -56,8 +56,10 @@ export class SchematicDataManager {
     SchematicService.createConnection({
       headSocketId: connection.destinationSocketId,
       headNodeId: connection.destinationNodeId,
+      headInternalProviderId: connection.destinationProviderId,
       tailSocketId: connection.sourceSocketId,
       tailNodeId: connection.sourceNodeId,
+      tailExternalProviderId: connection.sourceProviderId,
     }).subscribe((response) => {
       if (response.error) {
         GlobalErrorService.set(response);

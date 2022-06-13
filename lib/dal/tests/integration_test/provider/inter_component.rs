@@ -2,13 +2,14 @@ use dal::attribute::context::AttributeContextBuilder;
 use dal::func::binding::FuncBindingId;
 use dal::func::binding_return_value::FuncBindingReturnValueId;
 
+use dal::socket::SocketArity;
 use dal::test_harness::{
     create_prop_of_kind_and_set_parent_with_name, create_schema, create_schema_variant_with_root,
 };
 use dal::{
     AttributeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue, Connection,
     DalContext, ExternalProvider, Func, FuncBinding, FuncId, InternalProvider, PropKind,
-    SchemaKind, StandardModel,
+    SchemaKind, SchematicKind, StandardModel,
 };
 use dal::{
     Component, ComponentId, ComponentView, PropId, SchemaId, SchemaVariant, SchemaVariantId,
@@ -113,15 +114,17 @@ async fn inter_component_identity_update(ctx: &DalContext<'_, '_>) {
     .expect("could not update attribute value");
 
     // Create the "esp" external provider for inter component connection.
-    let esp_external_provider = ExternalProvider::new(
+    let (esp_external_provider, _socket) = ExternalProvider::new_with_socket(
         ctx,
         esp_payload.schema_id,
         esp_payload.schema_variant_id,
-        None,
+        "output",
         None,
         identity_func_id,
         identity_func_binding_id,
         identity_func_binding_return_value_id,
+        SocketArity::Many,
+        SchematicKind::Component,
     )
     .await
     .expect("could not create external provider");
@@ -158,14 +161,16 @@ async fn inter_component_identity_update(ctx: &DalContext<'_, '_>) {
         .set_func_id(ctx, identity_func_id)
         .await
         .expect("could not set func id on attribute prototype");
-    let swings_explicit_internal_provider = InternalProvider::new_explicit(
+    let (swings_explicit_internal_provider, _socket) = InternalProvider::new_explicit_with_socket(
         ctx,
         swings_payload.schema_id,
         swings_payload.schema_variant_id,
-        None,
+        "swings",
         identity_func_id,
         identity_func_binding_id,
         identity_func_binding_return_value_id,
+        SocketArity::Many,
+        SchematicKind::Component,
     )
     .await
     .expect("could not create explicit internal provider");

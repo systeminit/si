@@ -9,13 +9,16 @@ use crate::{
     },
     qualification_prototype::QualificationPrototypeContext,
     schema::{SchemaVariant, UiMenu},
-    socket::{Socket, SocketArity, SocketEdgeKind},
+    socket::{Socket, SocketArity, SocketEdgeKind, SocketKind},
     AttributeReadContext, BuiltinsResult, CodeGenerationPrototype, CodeLanguage, DalContext, Func,
-    Prop, PropId, PropKind, QualificationPrototype, Schema, SchemaError, SchemaKind, SchematicKind,
-    StandardModel,
+    InternalProvider, Prop, PropId, PropKind, QualificationPrototype, Schema, SchemaError,
+    SchemaKind, SchematicKind, StandardModel,
 };
 
-use super::{create_prop, kubernetes::doc_url, kubernetes_selector::create_selector_prop};
+use super::{
+    create_prop, kubernetes::doc_url, kubernetes_selector::create_selector_prop,
+    setup_identity_func,
+};
 
 pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     let name = "kubernetes_deployment".to_string();
@@ -134,31 +137,40 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> BuiltinsResult<(
     )
     .await?;
 
-    let mut input_socket = Socket::new(
+    let identity_func = setup_identity_func(ctx).await?;
+
+    let (_input_provider, mut input_socket) = InternalProvider::new_explicit_with_socket(
         ctx,
+        *schema.id(),
+        *variant.id(),
         "docker_image",
-        &SocketEdgeKind::Configures,
-        &SocketArity::Many,
-        &SchematicKind::Component,
+        identity_func.0,
+        identity_func.1,
+        identity_func.2,
+        SocketArity::Many,
+        SchematicKind::Component,
     )
     .await?;
     input_socket.set_color(ctx, Some(0xd61e8c)).await?;
-    variant.add_socket(ctx, input_socket.id()).await?;
 
-    let mut input_socket = Socket::new(
+    let (_input_provider, mut input_socket) = InternalProvider::new_explicit_with_socket(
         ctx,
+        *schema.id(),
+        *variant.id(),
         "kubernetes_namespace",
-        &SocketEdgeKind::Configures,
-        &SocketArity::Many,
-        &SchematicKind::Component,
+        identity_func.0,
+        identity_func.1,
+        identity_func.2,
+        SocketArity::Many,
+        SchematicKind::Component,
     )
     .await?;
     input_socket.set_color(ctx, Some(0x85c9a3)).await?;
-    variant.add_socket(ctx, input_socket.id()).await?;
 
     let includes_socket = Socket::new(
         ctx,
         "includes",
+        SocketKind::Provider,
         &SocketEdgeKind::Includes,
         &SocketArity::Many,
         &SchematicKind::Component,

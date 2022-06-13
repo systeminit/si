@@ -99,9 +99,11 @@ impl Connection {
         ctx: &DalContext<'_, '_>,
         head_node_id: &NodeId,
         head_socket_id: &SocketId,
+        // TODO(fnichol): remove `Option` from type--this is now a requirement
         head_explicit_internal_provider_id: Option<InternalProviderId>,
         tail_node_id: &NodeId,
         tail_socket_id: &SocketId,
+        // TODO(fnichol): remove `Option` from type--this is now a requirement
         tail_external_provider_id: Option<ExternalProviderId>,
     ) -> SchematicResult<Self> {
         let head_node = Node::get_by_id(ctx, head_node_id)

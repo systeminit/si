@@ -6,6 +6,7 @@ use thiserror::Error;
 
 use crate::func::binding::FuncBindingError;
 use crate::func::binding_return_value::FuncBindingReturnValueError;
+use crate::provider::external::ExternalProviderError;
 use crate::provider::internal::InternalProviderError;
 use crate::schema::variant::SchemaVariantError;
 use crate::socket::SocketError;
@@ -37,6 +38,8 @@ pub enum BuiltinsError {
     FuncBinding(#[from] FuncBindingError),
     #[error("func binding return value error: {0}")]
     FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
+    #[error("external provider error: {0}")]
+    ExternalProvider(#[from] ExternalProviderError),
     #[error("implicit internal provider not found for prop: {0}")]
     ImplicitInternalProviderNotFoundForProp(PropId),
     #[error("internal provider error: {0}")]
