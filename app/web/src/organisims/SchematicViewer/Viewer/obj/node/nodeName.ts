@@ -3,7 +3,7 @@ import * as PIXI from "pixi.js";
 export class NodeName extends PIXI.Text {
   constructor(textString: string, nodeWidth: number) {
     const textStyle = new PIXI.TextStyle({
-      fontFamily: "Source Code Pro",
+      fontFamily: "Roboto",
       fontSize: 10,
       fontWeight: "400",
       letterSpacing: 0,
@@ -11,6 +11,7 @@ export class NodeName extends PIXI.Text {
       align: "left",
     });
     super(textString, textStyle);
+    this.resolution = window.devicePixelRatio * 2;
     this.setPosition(nodeWidth);
     this.setZIndex();
     this.disableInteraction();

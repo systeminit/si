@@ -29,7 +29,7 @@ class ContentBackground extends PIXI.Graphics {
 class ContentText extends PIXI.Text {
   constructor(textString: string, width: number) {
     const textStyle = new PIXI.TextStyle({
-      fontFamily: "Source Code Pro",
+      fontFamily: "Roboto",
       fontSize: 10,
       fontWeight: "400",
       letterSpacing: 0,
@@ -39,6 +39,7 @@ class ContentText extends PIXI.Text {
     super(textString, textStyle);
 
     this.position.x = width * 0.5 - this.width * 0.5;
+    this.resolution = window.devicePixelRatio * 2;
 
     const offset = 10;
     this.position.y = offset;

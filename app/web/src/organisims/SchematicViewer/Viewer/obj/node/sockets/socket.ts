@@ -79,10 +79,10 @@ export class Socket extends PIXI.Container {
 
   createLabel(text: string): void {
     const label = new PIXI.Text(text, {
-      fontFamily: "Source Code Pro",
+      fontFamily: "Roboto",
       fontSize: 9,
       fontWeight: "300",
-      letterSpacing: 0,
+      letterSpacing: 1,
       fill: "white",
       align: "left",
     });
@@ -90,6 +90,7 @@ export class Socket extends PIXI.Container {
     label.position.y = -5;
     label.zIndex = 1;
     label.interactive = false;
+    label.resolution = window.devicePixelRatio * 2;
     this.addChild(label);
   }
 
