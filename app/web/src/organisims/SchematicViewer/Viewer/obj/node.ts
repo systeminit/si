@@ -1,5 +1,4 @@
 import * as PIXI from "pixi.js";
-import * as PIXIFILTER from "pixi-filters";
 
 import _ from "lodash";
 
@@ -86,9 +85,6 @@ export class Node extends PIXI.Container {
 
     this.setQualificationStatus(null);
     this.setResourceStatus(null);
-
-    // Shadow
-    this.setShadows();
   }
 
   setCard(): void {
@@ -158,17 +154,6 @@ export class Node extends PIXI.Container {
     sockets.name = "Sockets";
     sockets.zIndex = 2;
     this.addChild(sockets);
-  }
-
-  setShadows(): void {
-    const dropShadow = new PIXIFILTER.DropShadowFilter();
-    dropShadow.color = 0x000000;
-    dropShadow.blur = 1;
-    dropShadow.distance = 2;
-    dropShadow.quality = 3;
-    dropShadow.alpha = 0.5;
-    dropShadow.resolution = window.devicePixelRatio || 1;
-    this.filters = [dropShadow];
   }
 
   select(): void {

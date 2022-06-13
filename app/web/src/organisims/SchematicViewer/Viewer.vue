@@ -208,7 +208,7 @@ export default defineComponent({
 
     this.renderer = new Renderer({
       view: this.canvas.element,
-      resolution: window.devicePixelRatio || 1,
+      resolution: window.devicePixelRatio * 3 || 1,
       width: this.container.element.offsetWidth,
       height: this.container.element.offsetHeight,
       autoDensity: true,
