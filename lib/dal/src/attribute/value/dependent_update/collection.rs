@@ -256,12 +256,23 @@ impl AttributeValueDependentCollectionHarness {
         let mut attribute_values_that_need_to_be_updated = Vec::new();
 
         for attribute_prototype in attribute_prototypes {
+            // The context for creating the new attribute value will use the least specific
+            // field from the attribute value corresponding to the attribute prototype
+            // that we are currently working with _and_ will use the context
+            // from the "source" attribute value updated for all other fields.
+            let destination_attribute_context =
+                AttributeContextBuilder::from(source_attribute_context)
+                    .set_prop_id(attribute_prototype.context.prop_id())
+                    .set_internal_provider_id(attribute_prototype.context.internal_provider_id())
+                    .set_external_provider_id(attribute_prototype.context.external_provider_id())
+                    .to_context()?;
+
             let mut found_exact_context_level = false;
             let attribute_values_in_context_or_greater =
                 AttributePrototype::attribute_values_in_context_or_greater(
                     ctx,
                     *attribute_prototype.id(),
-                    source_attribute_read_context,
+                    destination_attribute_context.into(),
                 )
                 .await
                 .map_err(|e| AttributeValueError::AttributePrototype(format!("{e}")))?;
@@ -279,7 +290,7 @@ impl AttributeValueDependentCollectionHarness {
                     // our "PartialOrd impl".
                     if attribute_value_in_context_or_greater
                         .context
-                        .partial_cmp(&source_attribute_context)
+                        .partial_cmp(&destination_attribute_context)
                         == Some(Ordering::Equal)
                     {
                         found_exact_context_level = true;
@@ -302,52 +313,11 @@ impl AttributeValueDependentCollectionHarness {
                         .await?
                         .ok_or(AttributeValueError::Missing)?;
 
-                // The context for creating the new attribute value will use the least specific
-                // field from the attribute value corresponding to the attribute prototype
-                // that we are currently working with _and_ will use the context
-                // from the "source" attribute value updated for all other fields.
-                let mut new_attribute_value_context_builder =
-                    AttributeContextBuilder::from(source_attribute_context);
-
-                // We need to ensure that we unset all other least specific fields.
-                let new_attribute_value_context = match attribute_value_for_current_prototype
-                    .context
-                    .least_specific_field_kind()?
-                {
-                    AttributeContextLeastSpecificFieldKind::Prop => {
-                        new_attribute_value_context_builder
-                            .set_prop_id(attribute_value_for_current_prototype.context.prop_id())
-                            .unset_internal_provider_id()
-                            .unset_external_provider_id()
-                    }
-                    AttributeContextLeastSpecificFieldKind::InternalProvider => {
-                        new_attribute_value_context_builder
-                            .set_internal_provider_id(
-                                attribute_value_for_current_prototype
-                                    .context
-                                    .internal_provider_id(),
-                            )
-                            .unset_prop_id()
-                            .unset_external_provider_id()
-                    }
-                    AttributeContextLeastSpecificFieldKind::ExternalProvider => {
-                        new_attribute_value_context_builder
-                            .set_external_provider_id(
-                                attribute_value_for_current_prototype
-                                    .context
-                                    .external_provider_id(),
-                            )
-                            .unset_prop_id()
-                            .unset_internal_provider_id()
-                    }
-                }
-                .to_context()?;
-
                 let new_attribute_value = AttributeValue::new(
                     ctx,
                     attribute_value_for_current_prototype.func_binding_id,
                     attribute_value_for_current_prototype.func_binding_return_value_id,
-                    new_attribute_value_context,
+                    destination_attribute_context,
                     attribute_value_for_current_prototype.key.clone(),
                 )
                 .await?;
