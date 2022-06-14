@@ -184,8 +184,9 @@ impl AttributeValueDependentUpdateHarness {
                 .set_component_id(tail_component_id)
                 .to_context()?;
             let external_provider_attribute_value =
-                AttributeValue::find_for_context(ctx, external_provider_context.into())
+                AttributeValue::list_for_context(ctx, external_provider_context.into())
                     .await?
+                    .pop()
                     .ok_or(AttributeValueError::NotFoundForExternalProviderContext(
                         external_provider_context,
                     ))?;
@@ -197,8 +198,9 @@ impl AttributeValueDependentUpdateHarness {
                 .set_internal_provider_id(attribute_prototype_argument.internal_provider_id())
                 .to_context()?;
             let internal_provider_attribute_value =
-                AttributeValue::find_for_context(ctx, internal_provider_context.into())
+                AttributeValue::list_for_context(ctx, internal_provider_context.into())
                     .await?
+                    .pop()
                     .ok_or(AttributeValueError::NotFoundForInternalProviderContext(
                         internal_provider_context,
                     ))?;

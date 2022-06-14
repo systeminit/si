@@ -655,33 +655,34 @@ async fn docker_image(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     };
     let image_attribute_value = AttributeValue::find_for_context(ctx, image_context)
         .await?
-        .ok_or(AttributeValueError::Missing)?;
-    let domain_context = AttributeReadContext {
-        prop_id: Some(root_prop.domain_prop_id),
-        ..base_attribute_read_context
-    };
-    let domain_attribute_value = AttributeValue::find_for_context(ctx, domain_context)
-        .await?
-        .ok_or(AttributeValueError::Missing)?;
-    let image_write_context = AttributeContextBuilder::from(image_context).to_context()?;
-    let (_, updated_image_attribute_value_id, _) = AttributeValue::update_for_context(
-        ctx,
-        *image_attribute_value.id(),
-        Some(*domain_attribute_value.id()),
-        image_write_context,
-        Some(serde_json::to_value("")?),
-        None,
-    )
-    .await?;
+        .ok_or(AttributeValueError::Missing)
+        .unwrap();
+    // let domain_context = AttributeReadContext {
+    //     prop_id: Some(root_prop.domain_prop_id),
+    //     ..base_attribute_read_context
+    // };
+    // let domain_attribute_value = AttributeValue::find_for_context(ctx, domain_context)
+    //     .await?
+    //     .ok_or(AttributeValueError::Missing)?;
+    // let image_write_context = AttributeContextBuilder::from(image_context).to_context()?;
+    // let (_, updated_image_attribute_value_id, _) = AttributeValue::update_for_context(
+    //     ctx,
+    //     *image_attribute_value.id(),
+    //     Some(*domain_attribute_value.id()),
+    //     image_write_context,
+    //     Some(serde_json::to_value("")?),
+    //     None,
+    // )
+    // .await?;
 
     // Now, let's setup the connection with the initialized value.
-    let updated_image_attribute_value =
-        AttributeValue::get_by_id(ctx, &updated_image_attribute_value_id)
-            .await?
-            .ok_or(AttributeValueError::MissingForId(
-                updated_image_attribute_value_id,
-            ))?;
-    let mut image_attribute_prototype = updated_image_attribute_value
+    // let updated_image_attribute_value =
+    //     AttributeValue::get_by_id(ctx, &updated_image_attribute_value_id)
+    //         .await?
+    //         .ok_or(AttributeValueError::MissingForId(
+    //             updated_image_attribute_value_id,
+    //         ))?;
+    let mut image_attribute_prototype = image_attribute_value
         .attribute_prototype(ctx)
         .await?
         .ok_or(AttributeValueError::MissingAttributePrototype)?;
@@ -995,7 +996,8 @@ pub async fn create_string_prop_with_default(
 
     let mut attribute_value = AttributeValue::find_for_context(ctx, attribute_value_context)
         .await?
-        .ok_or(AttributeValueError::Missing)?;
+        .ok_or(AttributeValueError::Missing)
+        .unwrap();
     attribute_value
         .set_func_binding_id(ctx, *func_binding.id())
         .await?;

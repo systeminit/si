@@ -125,6 +125,8 @@ impl_standard_model! {
 }
 
 impl Prop {
+    /// The creation of a [`Prop`](Self) will also result in the creation of an
+    /// [`AttributeValue`](crate::AttributeValue) in the [`Prop`](Self)-specific context.
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn new(

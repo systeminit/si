@@ -306,10 +306,12 @@ impl AttributeValueDependentCollectionHarness {
             // corresponding to the attribute prototype that we are currently working
             // with. We will use its data to help create the new attribute value.
             if !found_exact_context_level {
-                let attribute_value_for_current_prototype =
-                    AttributeValue::find_for_context(ctx, attribute_prototype.context.into())
-                        .await?
-                        .ok_or(AttributeValueError::Missing)?;
+                let mut attribute_values_for_current_prototype =
+                    AttributeValue::list_for_context(ctx, attribute_prototype.context.into())
+                        .await?;
+                let attribute_value_for_current_prototype = attribute_values_for_current_prototype
+                    .pop()
+                    .ok_or(AttributeValueError::Missing)?;
 
                 // The context for creating the new attribute value will use the least specific
                 // field from the attribute value corresponding to the attribute prototype

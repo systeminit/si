@@ -11,6 +11,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use uuid::Uuid;
 
+use crate::attribute::context::AttributeContextLeastSpecificFieldKind;
 use crate::attribute::value::dependent_update::AttributeValueDependentUpdateHarness;
 use crate::{
     attribute::{
@@ -83,6 +84,10 @@ pub enum AttributeValueError {
     EmptyAttributePrototypeArgumentsForGroup(String),
     #[error("external provider error: {0}")]
     ExternalProvider(String),
+    #[error("found duplicate attribute value ({0}) for self ({1}) for parent: {2}")]
+    FoundDuplicateForParent(AttributeValueId, AttributeValueId, AttributeValueId),
+    #[error("found duplicate attribute value ({0}) when creating new attribute value in provider context: {1:?}")]
+    FoundDuplicateForProviderContext(AttributeValueId, AttributeContext),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
     #[error("func binding error: {0}")]
@@ -217,6 +222,25 @@ impl AttributeValue {
         context: AttributeContext,
         key: Option<impl Into<String>>,
     ) -> AttributeValueResult<Self> {
+        // If we are trying to create values in a provider context, they will not have a parent,
+        // so we will need to ensure they do not exist in the same context.
+        match context.least_specific_field_kind()? {
+            AttributeContextLeastSpecificFieldKind::InternalProvider
+            | AttributeContextLeastSpecificFieldKind::ExternalProvider => {
+                if let Some(found_attribute_value) =
+                    AttributeValue::find_for_context(ctx, context.into()).await?
+                {
+                    if found_attribute_value.context == context {
+                        return Err(AttributeValueError::FoundDuplicateForProviderContext(
+                            found_attribute_value.id,
+                            context,
+                        ));
+                    }
+                }
+            }
+            _ => {}
+        };
+
         let key: Option<String> = key.map(|s| s.into());
         let row = ctx
             .txns()
@@ -257,7 +281,7 @@ impl AttributeValue {
 
     standard_model_belongs_to!(
         lookup_fn: parent_attribute_value,
-        set_fn: set_parent_attribute_value,
+        set_fn: set_parent_attribute_value_unchecked,
         unset_fn: unset_parent_attribute_value,
         table: "attribute_value_belongs_to_attribute_value",
         model_table: "attribute_values",
@@ -287,6 +311,35 @@ impl AttributeValue {
 
     pub fn index_map_mut(&mut self) -> Option<&mut IndexMap> {
         self.index_map.as_mut()
+    }
+
+    pub async fn set_parent_attribute_value(
+        &self,
+        ctx: &DalContext<'_, '_>,
+        belongs_to_id: &AttributeValueId,
+    ) -> AttributeValueResult<()> {
+        // TODO(nick): optimize performance by including parent in new query that extends "LIST_FOR_CONTEXT".
+        if let Some(found_attribute_value) =
+            AttributeValue::find_for_context(ctx, self.context.into()).await?
+        {
+            if let Some(found_parent_attribute_value) =
+                found_attribute_value.parent_attribute_value(ctx).await?
+            {
+                if found_attribute_value.context == self.context
+                    && found_attribute_value.key == self.key
+                    && found_parent_attribute_value.id() == belongs_to_id
+                {
+                    return Err(AttributeValueError::FoundDuplicateForParent(
+                        found_attribute_value.id,
+                        self.id,
+                        found_parent_attribute_value.id,
+                    ));
+                }
+            }
+        }
+        self.set_parent_attribute_value_unchecked(ctx, belongs_to_id)
+            .await?;
+        Ok(())
     }
 
     /// Returns the [`serde_json::Value`] within the [`FuncBindingReturnValue`](crate::FuncBindingReturnValue)
@@ -450,17 +503,23 @@ impl AttributeValue {
         ctx: &DalContext<'_, '_>,
         context: AttributeReadContext,
     ) -> AttributeValueResult<Option<Self>> {
-        AttributeContextBuilder::from(context).to_context()?;
-        let mut rows = ctx
+        let temp = AttributeContextBuilder::from(context).to_context()?;
+        let prop_name = if temp.is_least_specific_field_kind_prop()? {
+            let prop = Prop::get_by_id(ctx, &temp.prop_id()).await?.unwrap();
+            prop.name().to_string()
+        } else {
+            "".to_string()
+        };
+        dbg!("FIND_FOR_CONTEXT", &context, prop_name);
+        let row = ctx
             .txns()
             .pg()
-            .query(
+            .query_opt(
                 LIST_FOR_CONTEXT,
                 &[ctx.read_tenancy(), ctx.visibility(), &context],
             )
             .await?;
-        let maybe_row = rows.pop();
-        Ok(standard_model::option_object_from_row(maybe_row)?)
+        Ok(standard_model::option_object_from_row(row)?)
     }
 
     /// Return the [`Prop`] that the [`AttributeValueId`] belongs to,
