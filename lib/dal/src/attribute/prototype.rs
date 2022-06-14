@@ -186,22 +186,44 @@ impl AttributePrototype {
         }
 
         if !context.is_least_specific() {
-            let original_prototype = Self::find_with_parent_value_and_key_for_context(
-                ctx,
-                parent_attribute_value_id,
-                key,
-                context.less_specific()?,
-            )
-            .await?;
-
-            if let Some(original_prototype) = original_prototype {
-                Self::create_intermediate_proxy_values(
+            let maybe_existing_attribute_value_proxy =
+                AttributeValue::find_with_parent_and_key_for_context(
                     ctx,
                     parent_attribute_value_id,
-                    *original_prototype.id(),
+                    key.clone(),
+                    AttributeReadContext::from(context),
+                )
+                .await?;
+            let maybe_existing_attribute_value_proxy = if let Some(existing_attribute_value_proxy) =
+                maybe_existing_attribute_value_proxy
+            {
+                if existing_attribute_value_proxy.context == context {
+                    Some(existing_attribute_value_proxy)
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
+
+            if maybe_existing_attribute_value_proxy.is_none() {
+                let original_prototype = Self::find_with_parent_value_and_key_for_context(
+                    ctx,
+                    parent_attribute_value_id,
+                    key,
                     context.less_specific()?,
                 )
                 .await?;
+
+                if let Some(original_prototype) = original_prototype {
+                    Self::create_intermediate_proxy_values(
+                        ctx,
+                        parent_attribute_value_id,
+                        *original_prototype.id(),
+                        context.less_specific()?,
+                    )
+                    .await?;
+                }
             }
         }
 
