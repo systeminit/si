@@ -706,13 +706,13 @@ impl AttributeValue {
                 // Whenever we make a new `AttributeValue` we need to create
                 // proxies to represent the children of the parallel `AttributeValue`
                 // that exists in a different `AttributeContext`.
-                Self::populate_child_proxies_for_value(
-                    ctx,
-                    *given_attribute_value.id(),
-                    context,
-                    *value.id(),
-                )
-                .await?;
+                // Self::populate_child_proxies_for_value(
+                //     ctx,
+                //     *given_attribute_value.id(),
+                //     context,
+                //     *value.id(),
+                // )
+                // .await?;
 
                 value
             };
