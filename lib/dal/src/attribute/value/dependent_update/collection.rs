@@ -5,6 +5,7 @@
 use std::cmp::Ordering;
 
 use crate::attribute::context::{AttributeContextBuilder, AttributeContextLeastSpecificFieldKind};
+use crate::attribute::value::dependent_update::AttributeValueDependentUpdateHarness;
 use crate::{
     AttributeContext, AttributePrototype, AttributeValue, AttributeValueError,
     AttributeValueResult, DalContext, ExternalProvider, InternalProvider, Prop, StandardModel,
@@ -261,6 +262,11 @@ impl AttributeValueDependentCollectionHarness {
                 .await
                 .map_err(|e| AttributeValueError::AttributePrototype(format!("{e}")))?;
 
+            dbg!(
+                "OR GREATER CONTEXT",
+                &attribute_values_in_context_or_greater_context
+            );
+
             // For each relevant attribute value found corresponding to the attribute
             // prototype, check if its context is at same or greater ("more-specific")
             // level of specificity. If either are true, the attribute value being processed
@@ -268,6 +274,10 @@ impl AttributeValueDependentCollectionHarness {
             // attribute value in a context whose level of specificity is the same
             // as the context of the "original" attribute value that was updated.
             for attribute_value_in_context_or_greater in attribute_values_in_context_or_greater {
+                dbg!(
+                    "OR GREATER VALUE",
+                    attribute_value_in_context_or_greater.id()
+                );
                 if attribute_value_in_context_or_greater.context >= source_attribute_context {
                     // We cannot use the "==" operator because we have derived "PartialEq"
                     // in addition to creating our own "partial_cmp" implementation within
@@ -279,6 +289,9 @@ impl AttributeValueDependentCollectionHarness {
                     {
                         found_exact_context_level = true;
                     }
+                    // if attribute_value_in_context_or_greater.context == source_attribute_context {
+                    //     found_exact_context_level = true;
+                    // }
 
                     // If values of a "more-specific" context appear, then they were not
                     // pinned and we need to update them as well.
@@ -338,30 +351,92 @@ impl AttributeValueDependentCollectionHarness {
                 }
                 .to_context()?;
 
-                let new_attribute_value = AttributeValue::new(
-                    ctx,
-                    attribute_value_for_current_prototype.func_binding_id,
-                    attribute_value_for_current_prototype.func_binding_return_value_id,
-                    new_attribute_value_context,
-                    attribute_value_for_current_prototype.key.clone(),
-                )
-                .await?;
-
-                // Before adding our new attribute value to the list of attribute values
-                // that need to be updated, we need to set its prototype and its parent
-                // attribute value.
-                new_attribute_value
-                    .set_attribute_prototype(ctx, attribute_prototype.id())
-                    .await?;
-                if let Some(parent_attribute_value) = attribute_value_for_current_prototype
-                    .parent_attribute_value(ctx)
-                    .await?
+                let mut found_value = false;
+                for mut value in
+                    AttributeValue::list_for_context(ctx, new_attribute_value_context.into())
+                        .await?
                 {
-                    new_attribute_value
-                        .set_parent_attribute_value(ctx, parent_attribute_value.id())
-                        .await?;
+                    // dbg!(
+                    //     "found",
+                    //     &value.context == &new_attribute_value_context,
+                    //     &value.context,
+                    //     &new_attribute_value_context,
+                    //     &value.func_binding_id,
+                    //     &attribute_value_for_current_prototype.func_binding_id,
+                    //     &value.func_binding_return_value_id,
+                    //     &attribute_value_for_current_prototype.func_binding_return_value_id,
+                    //     &value.attribute_prototype(ctx).await?,
+                    //     &attribute_prototype.id(),
+                    // );
+
+                    if value.context == new_attribute_value_context {
+                        dbg!("PUSH");
+                        // if let Some(mut p) = value.attribute_prototype(ctx).await? {
+                        //     p.set_func_id(ctx, attribute_prototype.func_id())
+                        //         .await
+                        //         .unwrap();
+                        // }
+
+                        // TODO(nick): needs to belong to new prototype as new! BUT IT FAILS.
+
+                        // value.unset_attribute_prototype(ctx);
+                        // value
+                        //     .set_attribute_prototype(ctx, attribute_prototype.id())
+                        //     .await?;
+
+                        // TODO: re-enable.
+                        // attribute_values_that_need_to_be_updated.push(value);
+                        // found_value = true;
+                        // break;
+                    }
                 }
-                attribute_values_that_need_to_be_updated.push(new_attribute_value);
+                // let equivalent_value = attribute_prototype
+                //     .attribute_values(ctx)
+                //     .await
+                //     .unwrap()
+                //     .pop()
+                //     .unwrap();
+                // if equivalent_value.context == new_attribute_value_context {
+                //     attribute_values_that_need_to_be_updated.push(equivalent_value);
+                //     found_value = true;
+                // };
+                if !found_value {
+                    let new_attribute_value = AttributeValue::new(
+                        ctx,
+                        attribute_value_for_current_prototype.func_binding_id,
+                        attribute_value_for_current_prototype.func_binding_return_value_id,
+                        new_attribute_value_context,
+                        attribute_value_for_current_prototype.key.clone(),
+                    )
+                    .await?;
+
+                    // Before adding our new attribute value to the list of attribute values
+                    // that need to be updated, we need to set its prototype and its parent
+                    // attribute value.
+                    new_attribute_value
+                        .set_attribute_prototype(ctx, attribute_prototype.id())
+                        .await?;
+                    if let Some(parent_attribute_value) = attribute_value_for_current_prototype
+                        .parent_attribute_value(ctx)
+                        .await?
+                    {
+                        let parent_attribute_context =
+                            AttributeContextBuilder::from(new_attribute_value.context)
+                                .set_prop_id(parent_attribute_value.context.prop_id())
+                                .to_context()?;
+                        let parent_attribute_value_id =
+                            AttributeValue::vivify_value_and_parent_values(
+                                ctx,
+                                parent_attribute_context,
+                                *parent_attribute_value.id(),
+                            )
+                            .await?;
+                        new_attribute_value
+                            .set_parent_attribute_value(ctx, &parent_attribute_value_id)
+                            .await?;
+                    }
+                    attribute_values_that_need_to_be_updated.push(new_attribute_value);
+                }
             }
         }
         Ok(attribute_values_that_need_to_be_updated)

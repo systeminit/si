@@ -362,21 +362,21 @@ async fn kubernetes_namespace(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
         external_provider.attribute_prototype_id().ok_or_else(|| {
             BuiltinsError::MissingAttributePrototypeForExternalProvider(*external_provider.id())
         })?;
-    update_prop_attribute_value(
-        ctx,
-        *metadata_prop.id(),
-        Some(serde_json::json![{}]),
-        base_attribute_read_context,
-    )
-    .await?;
+    // update_prop_attribute_value(
+    //     ctx,
+    //     *metadata_prop.id(),
+    //     Some(serde_json::json![{}]),
+    //     base_attribute_read_context,
+    // )
+    // .await?;
     let metadata_name_prop = find_child_prop_by_name(ctx, *metadata_prop.id(), "name").await?;
-    update_prop_attribute_value(
-        ctx,
-        *metadata_name_prop.id(),
-        Some(serde_json::json![""]),
-        base_attribute_read_context,
-    )
-    .await?;
+    // update_prop_attribute_value(
+    //     ctx,
+    //     *metadata_name_prop.id(),
+    //     Some(serde_json::json![""]),
+    //     base_attribute_read_context,
+    // )
+    // .await?;
     let metadata_name_implicit_internal_provider =
         InternalProvider::get_for_prop(ctx, *metadata_name_prop.id())
             .await?

@@ -129,6 +129,12 @@ impl AttributeValueDependentUpdateHarness {
                 attribute_value_that_needs_to_be_updated
                     .set_func_binding_return_value_id(ctx, *func_binding_return_value.id())
                     .await?;
+                dbg!(
+                    "NEEDED TO BE UPDATED",
+                    func_binding_return_value.id(),
+                    &attribute_value_that_needs_to_be_updated.context,
+                    &attribute_value_that_needs_to_be_updated.id()
+                );
 
                 // If the attribute value that was just update has not already triggered updates,
                 // process its dependent_update values.
@@ -189,7 +195,13 @@ impl AttributeValueDependentUpdateHarness {
                     .ok_or(AttributeValueError::NotFoundForExternalProviderContext(
                         external_provider_context,
                     ))?;
-            external_provider_attribute_value.get_value(ctx).await?
+            let fbrv_actual_value = external_provider_attribute_value.get_value(ctx).await?;
+            dbg!(
+                "EXTERNAL",
+                &external_provider_attribute_value.id(),
+                &fbrv_actual_value
+            );
+            fbrv_actual_value
         } else {
             let internal_provider_context = AttributeContextBuilder::from(attribute_value_context)
                 .unset_external_provider_id()
@@ -202,7 +214,13 @@ impl AttributeValueDependentUpdateHarness {
                     .ok_or(AttributeValueError::NotFoundForInternalProviderContext(
                         internal_provider_context,
                     ))?;
-            internal_provider_attribute_value.get_value(ctx).await?
+            let fbrv_actual_value = internal_provider_attribute_value.get_value(ctx).await?;
+            dbg!(
+                "INTERNAL",
+                &internal_provider_attribute_value.id(),
+                &fbrv_actual_value
+            );
+            fbrv_actual_value
         };
 
         Ok(value)

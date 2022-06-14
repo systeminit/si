@@ -211,31 +211,18 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> BuiltinsResult<(
     )
     .await?;
 
-    // First, connect to the "domain namespace".
+    // First, connect the "domain namespace" to the explicit internal provider.
     let domain_namespace_prop =
         find_child_prop_by_name(ctx, *metadata_prop.id(), "namespace").await?;
-    update_prop_attribute_value(
+    let domain_namespace_attribute_value = AttributeValue::find_for_context(
         ctx,
-        *metadata_prop.id(),
-        Some(serde_json::json![{}]),
-        base_attribute_read_context,
+        AttributeReadContext {
+            prop_id: Some(*domain_namespace_prop.id()),
+            ..base_attribute_read_context
+        },
     )
-    .await?;
-    let domain_namespace_attribute_value_id = update_prop_attribute_value(
-        ctx,
-        *domain_namespace_prop.id(),
-        Some(serde_json::json![""]),
-        base_attribute_read_context,
-    )
-    .await?;
-
-    // We now need to set the func on the "domain namespace" prototype.
-    let domain_namespace_attribute_value =
-        AttributeValue::get_by_id(ctx, &domain_namespace_attribute_value_id)
-            .await?
-            .ok_or(BuiltinsError::AttributeValueNotFound(
-                domain_namespace_attribute_value_id,
-            ))?;
+    .await?
+    .unwrap();
     let mut domain_namespace_attribute_prototype = domain_namespace_attribute_value
         .attribute_prototype(ctx)
         .await?
@@ -243,10 +230,6 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> BuiltinsResult<(
     domain_namespace_attribute_prototype
         .set_func_id(ctx, identity_func_id)
         .await?;
-
-    // Now we can connect!
-    // TODO(nick): start here -- do we need to sure this is available for component?
-    // TODO(nick): domain_namespace_attribute_prototype
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *domain_namespace_attribute_prototype.id(),
@@ -255,50 +238,21 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> BuiltinsResult<(
     )
     .await?;
 
-    // Second, connect to the "template namespace". Collect all the props first.
+    // First, connect the "domain namespace" to the explicit internal provider.
     let template_prop = find_child_prop_by_name(ctx, *spec_prop.id(), "template").await?;
     let template_metadata_prop =
         find_child_prop_by_name(ctx, *template_prop.id(), "metadata").await?;
     let template_namespace_prop =
         find_child_prop_by_name(ctx, *template_metadata_prop.id(), "namespace").await?;
-
-    // Update with our collected props.
-    update_prop_attribute_value(
+    let template_namespace_attribute_value = AttributeValue::find_for_context(
         ctx,
-        *spec_prop.id(),
-        Some(serde_json::json![{}]),
-        base_attribute_read_context,
+        AttributeReadContext {
+            prop_id: Some(*template_namespace_prop.id()),
+            ..base_attribute_read_context
+        },
     )
-    .await?;
-    update_prop_attribute_value(
-        ctx,
-        *template_prop.id(),
-        Some(serde_json::json![{}]),
-        base_attribute_read_context,
-    )
-    .await?;
-    update_prop_attribute_value(
-        ctx,
-        *template_metadata_prop.id(),
-        Some(serde_json::json![{}]),
-        base_attribute_read_context,
-    )
-    .await?;
-    let template_namespace_attribute_value_id = update_prop_attribute_value(
-        ctx,
-        *template_namespace_prop.id(),
-        Some(serde_json::json![""]),
-        base_attribute_read_context,
-    )
-    .await?;
-
-    // Setup the "template namespace" prototype.
-    let template_namespace_attribute_value =
-        AttributeValue::get_by_id(ctx, &template_namespace_attribute_value_id)
-            .await?
-            .ok_or(BuiltinsError::AttributeValueNotFound(
-                template_namespace_attribute_value_id,
-            ))?;
+    .await?
+    .unwrap();
     let mut template_namespace_attribute_prototype = template_namespace_attribute_value
         .attribute_prototype(ctx)
         .await?
@@ -306,10 +260,6 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> BuiltinsResult<(
     template_namespace_attribute_prototype
         .set_func_id(ctx, identity_func_id)
         .await?;
-
-    // Now we can connect (again)!
-    // TODO(nick): start here -- do we need to sure this is available for component?
-    // TODO(nick): template_namespace_attribute_prototype
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *template_namespace_attribute_prototype.id(),

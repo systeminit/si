@@ -178,6 +178,9 @@ impl AttributePrototype {
         )
         .await?;
         value.set_attribute_prototype(ctx, object.id()).await?;
+        if value.context.prop_id() == 26.into() {
+            dbg!("NEW PROTOTYPE and VALUE", object.id(), value.id());
+        }
 
         if let Some(parent_attribute_value_id) = parent_attribute_value_id {
             value

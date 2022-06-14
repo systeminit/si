@@ -237,6 +237,21 @@ impl AttributeValue {
 
         object.update_parent_index_map(ctx).await?;
 
+        if context.prop_id() == 40.into() || context.prop_id() == 26.into() {
+            dbg!("NEW", object.id());
+            let messedup_value: AttributeValueId = 147.into();
+            if *object.id() == messedup_value {
+                dbg!(
+                    "BREAKPOINT",
+                    object.func_binding_id,
+                    object.func_binding_return_value_id
+                );
+                // TODO(value): start here with breakpoint. We need to ensure the protoype
+                // that this value is set to is the same.
+                dbg!("FOO");
+            }
+        }
+
         Ok(object)
     }
 
@@ -450,7 +465,7 @@ impl AttributeValue {
         ctx: &DalContext<'_, '_>,
         context: AttributeReadContext,
     ) -> AttributeValueResult<Option<Self>> {
-        AttributeContextBuilder::from(context).to_context()?;
+        let foo = AttributeContextBuilder::from(context).to_context()?;
         let mut rows = ctx
             .txns()
             .pg()
@@ -459,8 +474,18 @@ impl AttributeValue {
                 &[ctx.read_tenancy(), ctx.visibility(), &context],
             )
             .await?;
+        // if rows.len() > 1 {
+        //     for row in rows {
+        //         let temp: AttributeValue = standard_model::object_from_row(row)?;
+        //         if temp.context == foo {
+        //             return Ok(Some(temp));
+        //         }
+        //     }
+        //     todo!();
+        // } else {
         let maybe_row = rows.pop();
         Ok(standard_model::option_object_from_row(maybe_row)?)
+        // }
     }
 
     /// Return the [`Prop`] that the [`AttributeValueId`] belongs to,
@@ -706,13 +731,14 @@ impl AttributeValue {
                 // Whenever we make a new `AttributeValue` we need to create
                 // proxies to represent the children of the parallel `AttributeValue`
                 // that exists in a different `AttributeContext`.
-                Self::populate_child_proxies_for_value(
-                    ctx,
-                    *given_attribute_value.id(),
-                    context,
-                    *value.id(),
-                )
-                .await?;
+                // TODO(nick,jacob): re-add.
+                // Self::populate_child_proxies_for_value(
+                //     ctx,
+                //     *given_attribute_value.id(),
+                //     context,
+                //     *value.id(),
+                // )
+                // .await?;
 
                 value
             };
