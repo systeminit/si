@@ -354,30 +354,50 @@ impl AttributeValueDependentCollectionHarness {
                 }
                 .to_context()?;
 
-                let new_attribute_value = AttributeValue::new(
-                    ctx,
-                    attribute_value_for_current_prototype.func_binding_id,
-                    attribute_value_for_current_prototype.func_binding_return_value_id,
-                    new_attribute_value_context,
-                    attribute_value_for_current_prototype.key.clone(),
-                )
-                .await?;
-
-                // Before adding our new attribute value to the list of attribute values
-                // that need to be updated, we need to set its prototype and its parent
-                // attribute value.
-                new_attribute_value
-                    .set_attribute_prototype(ctx, attribute_prototype.id())
-                    .await?;
-                if let Some(parent_attribute_value) = attribute_value_for_current_prototype
-                    .parent_attribute_value(ctx)
+                let parent = if let Some(parent_attribute_value) =
+                    attribute_value_for_current_prototype
+                        .parent_attribute_value(ctx)
+                        .await?
+                {
+                    Some(*parent_attribute_value.id())
+                } else {
+                    None
+                };
+                let attribute_value = if let Some(found_attribute_value) =
+                    AttributeValue::find_with_parent_and_key_for_context(
+                        ctx,
+                        parent,
+                        attribute_value_for_current_prototype.key.clone(),
+                        new_attribute_value_context.into(),
+                    )
                     .await?
                 {
+                    found_attribute_value
+                } else {
+                    // Before adding our new attribute value to the list of attribute values
+                    // that need to be updated, we need to set its prototype and its parent
+                    // attribute value.
+                    let new_attribute_value = AttributeValue::new(
+                        ctx,
+                        attribute_value_for_current_prototype.func_binding_id,
+                        attribute_value_for_current_prototype.func_binding_return_value_id,
+                        new_attribute_value_context,
+                        attribute_value_for_current_prototype.key.clone(),
+                    )
+                    .await?;
                     new_attribute_value
-                        .set_parent_attribute_value(ctx, parent_attribute_value.id())
+                        .set_attribute_prototype(ctx, attribute_prototype.id())
                         .await?;
-                }
-                attribute_values_that_need_to_be_updated.push(new_attribute_value);
+                    dbg!("PROTOTYPE", &attribute_prototype);
+                    if let Some(parent) = parent {
+                        new_attribute_value
+                            .set_parent_attribute_value(ctx, &parent)
+                            .await
+                            .unwrap();
+                    }
+                    new_attribute_value
+                };
+                attribute_values_that_need_to_be_updated.push(attribute_value);
             }
         }
         Ok(attribute_values_that_need_to_be_updated)

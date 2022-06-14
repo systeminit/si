@@ -318,23 +318,21 @@ impl AttributeValue {
         ctx: &DalContext<'_, '_>,
         belongs_to_id: &AttributeValueId,
     ) -> AttributeValueResult<()> {
-        // TODO(nick): optimize performance by including parent in new query that extends "LIST_FOR_CONTEXT".
-        if let Some(found_attribute_value) =
-            AttributeValue::find_for_context(ctx, self.context.into()).await?
+        if let Some(potential_duplicate) = Self::find_with_parent_and_key_for_context(
+            ctx,
+            Some(*belongs_to_id),
+            self.key.clone(),
+            self.context.into(),
+        )
+        .await?
         {
-            if let Some(found_parent_attribute_value) =
-                found_attribute_value.parent_attribute_value(ctx).await?
-            {
-                if found_attribute_value.context == self.context
-                    && found_attribute_value.key == self.key
-                    && found_parent_attribute_value.id() == belongs_to_id
-                {
-                    return Err(AttributeValueError::FoundDuplicateForParent(
-                        found_attribute_value.id,
-                        self.id,
-                        found_parent_attribute_value.id,
-                    ));
-                }
+            if potential_duplicate.context == self.context {
+                dbg!("DUPLICATE (found then self)", &potential_duplicate, self);
+                return Err(AttributeValueError::FoundDuplicateForParent(
+                    potential_duplicate.id,
+                    self.id,
+                    *belongs_to_id,
+                ));
             }
         }
         self.set_parent_attribute_value_unchecked(ctx, belongs_to_id)
@@ -503,23 +501,49 @@ impl AttributeValue {
         ctx: &DalContext<'_, '_>,
         context: AttributeReadContext,
     ) -> AttributeValueResult<Option<Self>> {
-        let temp = AttributeContextBuilder::from(context).to_context()?;
-        let prop_name = if temp.is_least_specific_field_kind_prop()? {
-            let prop = Prop::get_by_id(ctx, &temp.prop_id()).await?.unwrap();
+        let write_context = AttributeContextBuilder::from(context).to_context()?;
+        let prop_name = if write_context.is_least_specific_field_kind_prop()? {
+            let prop = Prop::get_by_id(ctx, &write_context.prop_id())
+                .await?
+                .unwrap();
             prop.name().to_string()
         } else {
             "".to_string()
         };
         dbg!("FIND_FOR_CONTEXT", &context, prop_name);
-        let row = ctx
+        // let row = ctx
+        //     .txns()
+        //     .pg()
+        //     .query_opt(
+        //         LIST_FOR_CONTEXT,
+        //         &[ctx.read_tenancy(), ctx.visibility(), &context],
+        //     )
+        //     .await?;
+        // Ok(standard_model::option_object_from_row(row)?)
+        let mut rows = ctx
             .txns()
             .pg()
-            .query_opt(
+            .query(
                 LIST_FOR_CONTEXT,
                 &[ctx.read_tenancy(), ctx.visibility(), &context],
             )
             .await?;
-        Ok(standard_model::option_object_from_row(row)?)
+        if rows.len() > 1 {
+            let mut values = Vec::new();
+            for temp in rows {
+                let value: AttributeValue = standard_model::object_from_row(temp)?;
+                if value.context == write_context {
+                    return Ok(Some(value.clone()));
+                }
+                values.push(value);
+            }
+            dbg!(&values);
+            dbg!("FOO");
+            panic!()
+        } else {
+            let row = rows.pop();
+            Ok(standard_model::option_object_from_row(row)?)
+        }
     }
 
     /// Return the [`Prop`] that the [`AttributeValueId`] belongs to,
@@ -759,7 +783,8 @@ impl AttributeValue {
                 if let Some(parent_attribute_value_id) = maybe_parent_attribute_value_id {
                     value
                         .set_parent_attribute_value(ctx, &parent_attribute_value_id)
-                        .await?;
+                        .await
+                        .unwrap();
                 }
 
                 // Whenever we make a new `AttributeValue` we need to create
