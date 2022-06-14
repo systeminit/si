@@ -2,7 +2,7 @@
 //! [`AttributeValues`](crate::AttributeValue) that are "dependent" on an updated
 //! [`AttributeValue`](crate::AttributeValue).
 
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, VecDeque};
 
 use crate::{
     attribute::context::AttributeContextBuilder,
@@ -28,11 +28,6 @@ impl AttributeValueDependentUpdateHarness {
             .await?
             .ok_or(AttributeValueError::Missing)?;
 
-        // Here, we push the updated attribute value into the visited set and work queue
-        // immediately, but in the work queue itself, we will _only_ push values in the work queue
-        // if they have not been visited yet.
-        let mut visited: HashSet<AttributeValueId> = HashSet::new();
-        visited.insert(*original_attribute_value.id());
         let mut work_queue: VecDeque<AttributeValue> = VecDeque::new();
         work_queue.push_back(original_attribute_value);
 
@@ -185,12 +180,7 @@ impl AttributeValueDependentUpdateHarness {
                     }
                 }
 
-                // If the attribute value that was just update has not already triggered updates,
-                // process its dependent_update values.
-                if !visited.contains(attribute_value_that_needs_to_be_updated.id()) {
-                    visited.insert(*attribute_value_that_needs_to_be_updated.id());
-                    work_queue.push_back(attribute_value_that_needs_to_be_updated);
-                }
+                work_queue.push_back(attribute_value_that_needs_to_be_updated);
             }
         }
 
