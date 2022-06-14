@@ -21,9 +21,9 @@ WHERE in_tenancy_v1(
     WITH RECURSIVE recursive_props AS (
         SELECT $3::bigint AS prop_id
         UNION ALL
-        SELECT pbp.object_id AS prop_id
+        SELECT pbp.belongs_to_id AS prop_id
         FROM prop_belongs_to_prop AS pbp
-                 JOIN recursive_props ON pbp.belongs_to_id = recursive_props.prop_id
+                 JOIN recursive_props ON pbp.object_id = recursive_props.prop_id
     )
     SELECT prop_id
     FROM recursive_props
@@ -32,5 +32,3 @@ ORDER BY id,
          visibility_change_set_pk DESC,
          visibility_edit_session_pk DESC,
          visibility_deleted_at DESC NULLS FIRST;
-
-
