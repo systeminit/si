@@ -81,6 +81,14 @@ impl AttributeValueDependentCollectionHarness {
                     .await
                     .map_err(|e| AttributeValueError::InternalProvider(e.to_string()))?
             {
+                let provider_emit_context = AttributeContextBuilder::from(source_attribute_context)
+                    .set_prop_id(*ancestor_implicit_internal_provider.prop_id())
+                    .to_context()?;
+                ancestor_implicit_internal_provider
+                    .emit(ctx, provider_emit_context)
+                    .await
+                    .map_err(|e| AttributeValueError::InternalProvider(e.to_string()))?;
+
                 let attribute_prototypes_from_implicit_internal_provider_use =
                     AttributePrototype::list_from_internal_provider_use(
                         ctx,
