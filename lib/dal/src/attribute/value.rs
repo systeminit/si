@@ -6,7 +6,7 @@ use async_recursion::async_recursion;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use si_data::{NatsError, PgError};
-use std::collections::{HashSet, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use telemetry::prelude::*;
 use thiserror::Error;
 use uuid::Uuid;
@@ -103,8 +103,8 @@ pub enum AttributeValueError {
     InvalidPropValue(String, serde_json::Value),
     #[error("found invalid object value fields not found in corresponding prop: {0:?}")]
     InvalidObjectValueFields(Vec<String>),
-    #[error("json pointer missing for attribute view")]
-    JsonPointerMissing,
+    #[error("json pointer missing for attribute view {0:?} {1:?}")]
+    JsonPointerMissing(AttributeValueId, HashMap<AttributeValueId, String>),
     #[error("missing attribute value")]
     Missing,
     #[error(

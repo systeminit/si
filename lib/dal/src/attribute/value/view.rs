@@ -180,7 +180,12 @@ impl AttributeView {
         if let Some(root_attribute_value_id) = root_attribute_value_id {
             let root_json_pointer = json_pointer_for_attribute_value_id
                 .get(&root_attribute_value_id)
-                .ok_or(AttributeValueError::JsonPointerMissing)?;
+                .ok_or_else(|| {
+                    AttributeValueError::JsonPointerMissing(
+                        root_attribute_value_id,
+                        json_pointer_for_attribute_value_id.clone(),
+                    )
+                })?;
 
             return Ok(Self {
                 value: properties
