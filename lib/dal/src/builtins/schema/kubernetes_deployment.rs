@@ -1,3 +1,4 @@
+use crate::builtins::schema::find_child_prop_by_name;
 use crate::{
     builtins::schema::{
         create_schema, create_string_prop_with_default, kubernetes_metadata::create_metadata_prop,
@@ -10,9 +11,10 @@ use crate::{
     qualification_prototype::QualificationPrototypeContext,
     schema::{SchemaVariant, UiMenu},
     socket::{Socket, SocketArity, SocketEdgeKind, SocketKind},
-    AttributeReadContext, BuiltinsResult, CodeGenerationPrototype, CodeLanguage, DalContext, Func,
-    InternalProvider, Prop, PropId, PropKind, QualificationPrototype, Schema, SchemaError,
-    SchemaKind, SchematicKind, StandardModel,
+    AttributePrototypeArgument, AttributeReadContext, AttributeValue, BuiltinsError,
+    BuiltinsResult, CodeGenerationPrototype, CodeLanguage, DalContext, Func, InternalProvider,
+    Prop, PropId, PropKind, QualificationPrototype, Schema, SchemaError, SchemaKind, SchematicKind,
+    StandardModel,
 };
 
 use super::{
@@ -84,14 +86,14 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> BuiltinsResult<(
         )
         .await?;
 
-    let _metadata_prop = create_metadata_prop(
+    let metadata_prop = create_metadata_prop(
         ctx,
         true, // is name required, note: bool is not ideal here tho
         root_prop.domain_prop_id,
     )
     .await?;
 
-    let _spec_prop = create_deployment_spec_prop(ctx, root_prop.domain_prop_id).await?;
+    let spec_prop = create_deployment_spec_prop(ctx, root_prop.domain_prop_id).await?;
 
     // Qualification Prototype
     let qualification_func_name = "si:qualificationYamlKubeval".to_owned();
@@ -137,34 +139,37 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> BuiltinsResult<(
     )
     .await?;
 
-    let identity_func = setup_identity_func(ctx).await?;
+    let (identity_func_id, identity_func_binding_id, identity_func_binding_return_value_id) =
+        setup_identity_func(ctx).await?;
 
-    let (_input_provider, mut input_socket) = InternalProvider::new_explicit_with_socket(
-        ctx,
-        *schema.id(),
-        *variant.id(),
-        "docker_image",
-        identity_func.0,
-        identity_func.1,
-        identity_func.2,
-        SocketArity::Many,
-        SchematicKind::Component,
-    )
-    .await?;
+    let (_docker_image_explicit_internal_provider, mut input_socket) =
+        InternalProvider::new_explicit_with_socket(
+            ctx,
+            *schema.id(),
+            *variant.id(),
+            "docker_image",
+            identity_func_id,
+            identity_func_binding_id,
+            identity_func_binding_return_value_id,
+            SocketArity::Many,
+            SchematicKind::Component,
+        )
+        .await?;
     input_socket.set_color(ctx, Some(0xd61e8c)).await?;
 
-    let (_input_provider, mut input_socket) = InternalProvider::new_explicit_with_socket(
-        ctx,
-        *schema.id(),
-        *variant.id(),
-        "kubernetes_namespace",
-        identity_func.0,
-        identity_func.1,
-        identity_func.2,
-        SocketArity::Many,
-        SchematicKind::Component,
-    )
-    .await?;
+    let (kubernetes_namespace_explicit_internal_provider, mut input_socket) =
+        InternalProvider::new_explicit_with_socket(
+            ctx,
+            *schema.id(),
+            *variant.id(),
+            "kubernetes_namespace",
+            identity_func_id,
+            identity_func_binding_id,
+            identity_func_binding_return_value_id,
+            SocketArity::Many,
+            SchematicKind::Component,
+        )
+        .await?;
     input_socket.set_color(ctx, Some(0x85c9a3)).await?;
 
     let includes_socket = Socket::new(
@@ -193,6 +198,73 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> BuiltinsResult<(
     ui_menu
         .add_root_schematic(ctx, application_schema.id())
         .await?;
+
+    // Now, we can setup providers.
+    SchemaVariant::create_implicit_internal_providers(ctx, *schema.id(), *variant.id()).await?;
+    let base_attribute_read_context = AttributeReadContext {
+        schema_id: Some(*schema.id()),
+        schema_variant_id: Some(*variant.id()),
+        ..AttributeReadContext::default()
+    };
+
+    // First, connect to the "domain namespace" prop to the "kubernetes_namespace" explicit internal provider.
+    let domain_namespace_prop =
+        find_child_prop_by_name(ctx, *metadata_prop.id(), "namespace").await?;
+    let domain_namespace_attribute_value_read_context = AttributeReadContext {
+        prop_id: Some(*domain_namespace_prop.id()),
+        ..base_attribute_read_context
+    };
+    let domain_namespace_attribute_value =
+        AttributeValue::find_for_context(ctx, domain_namespace_attribute_value_read_context)
+            .await?
+            .ok_or(BuiltinsError::AttributeValueNotFoundForContext(
+                domain_namespace_attribute_value_read_context,
+            ))?;
+    let mut domain_namespace_attribute_prototype = domain_namespace_attribute_value
+        .attribute_prototype(ctx)
+        .await?
+        .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
+    domain_namespace_attribute_prototype
+        .set_func_id(ctx, identity_func_id)
+        .await?;
+    AttributePrototypeArgument::new_for_intra_component(
+        ctx,
+        *domain_namespace_attribute_prototype.id(),
+        "identity".to_string(),
+        *kubernetes_namespace_explicit_internal_provider.id(),
+    )
+    .await?;
+
+    // First, connect to the "template namespace" prop to the "kubernetes_namespace" explicit internal provider.
+    let template_prop = find_child_prop_by_name(ctx, *spec_prop.id(), "template").await?;
+    let template_metadata_prop =
+        find_child_prop_by_name(ctx, *template_prop.id(), "metadata").await?;
+    let template_namespace_prop =
+        find_child_prop_by_name(ctx, *template_metadata_prop.id(), "namespace").await?;
+    let template_namespace_attribute_value_read_context = AttributeReadContext {
+        prop_id: Some(*template_namespace_prop.id()),
+        ..base_attribute_read_context
+    };
+    let template_namespace_attribute_value =
+        AttributeValue::find_for_context(ctx, template_namespace_attribute_value_read_context)
+            .await?
+            .ok_or(BuiltinsError::AttributeValueNotFoundForContext(
+                template_namespace_attribute_value_read_context,
+            ))?;
+    let mut template_namespace_attribute_prototype = template_namespace_attribute_value
+        .attribute_prototype(ctx)
+        .await?
+        .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
+    template_namespace_attribute_prototype
+        .set_func_id(ctx, identity_func_id)
+        .await?;
+    AttributePrototypeArgument::new_for_intra_component(
+        ctx,
+        *template_namespace_attribute_prototype.id(),
+        "identity".to_string(),
+        *kubernetes_namespace_explicit_internal_provider.id(),
+    )
+    .await?;
 
     Ok(())
 }

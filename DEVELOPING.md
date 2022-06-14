@@ -224,28 +224,6 @@ async fn your_dal_integration_test() {
     ::tokio::spawn(veritech_server.run());
     let ctx = &default_dal_context;
 
-    let mut transactions_starter = dal_context_builder
-        .transactions_starter()
-        .await
-        .expect("failed to build transactions starter");
-    let transactions = transactions_starter
-        .start()
-        .await
-        .expect("failed to start transactions");
-    let (nba, _auth_token) = ::dal::test::helpers::billing_account_signup(
-        &dal_context_builder,
-        &transactions,
-        jwt_secret_key,
-    )
-    .await;
-    let ctx = ::dal::test::helpers::create_ctx_for_new_change_set_and_edit_session(
-        &dal_context_builder,
-        &transactions,
-        &nba,
-        application_id,
-    )
-    .await;
-
     // Do your test stuff here!
 
     transactions.commit().await.expect("failed to commit");
