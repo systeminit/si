@@ -7,9 +7,8 @@ use std::cmp::Ordering;
 use crate::attribute::context::{AttributeContextBuilder, AttributeContextLeastSpecificFieldKind};
 
 use crate::{
-    AttributeContext, AttributePrototype, AttributeReadContext, AttributeValue,
-    AttributeValueError, AttributeValueResult, DalContext, ExternalProvider, InternalProvider,
-    Prop, StandardModel,
+    AttributeContext, AttributePrototype, AttributeValue, AttributeValueError,
+    AttributeValueResult, DalContext, ExternalProvider, InternalProvider, Prop, StandardModel,
 };
 
 /// A field-less struct to that acts as an interface to provide [`Self::collect()`].

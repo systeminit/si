@@ -1062,6 +1062,7 @@ impl AttributeValue {
     }
 
     #[async_recursion]
+    #[allow(dead_code)]
     async fn populate_child_proxies_for_value(
         ctx: &DalContext<'_, '_>,
         original_attribute_value_id: AttributeValueId,
