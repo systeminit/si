@@ -6,7 +6,7 @@ use async_recursion::async_recursion;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use si_data::{NatsError, PgError};
-use std::collections::{HashSet, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use telemetry::prelude::*;
 use thiserror::Error;
 use uuid::Uuid;
@@ -103,8 +103,8 @@ pub enum AttributeValueError {
     InvalidPropValue(String, serde_json::Value),
     #[error("found invalid object value fields not found in corresponding prop: {0:?}")]
     InvalidObjectValueFields(Vec<String>),
-    #[error("json pointer missing for attribute view")]
-    JsonPointerMissing,
+    #[error("json pointer missing for attribute view {0:?} {1:?}")]
+    JsonPointerMissing(AttributeValueId, HashMap<AttributeValueId, String>),
     #[error("missing attribute value")]
     Missing,
     #[error(
@@ -706,13 +706,13 @@ impl AttributeValue {
                 // Whenever we make a new `AttributeValue` we need to create
                 // proxies to represent the children of the parallel `AttributeValue`
                 // that exists in a different `AttributeContext`.
-                Self::populate_child_proxies_for_value(
-                    ctx,
-                    *given_attribute_value.id(),
-                    context,
-                    *value.id(),
-                )
-                .await?;
+                // Self::populate_child_proxies_for_value(
+                //     ctx,
+                //     *given_attribute_value.id(),
+                //     context,
+                //     *value.id(),
+                // )
+                // .await?;
 
                 value
             };
@@ -1062,6 +1062,7 @@ impl AttributeValue {
     }
 
     #[async_recursion]
+    #[allow(dead_code)]
     async fn populate_child_proxies_for_value(
         ctx: &DalContext<'_, '_>,
         original_attribute_value_id: AttributeValueId,

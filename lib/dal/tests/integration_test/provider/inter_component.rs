@@ -2,17 +2,15 @@ use dal::attribute::context::AttributeContextBuilder;
 use dal::func::binding::FuncBindingId;
 use dal::func::binding_return_value::FuncBindingReturnValueId;
 
-use dal::socket::SocketArity;
 use dal::test_harness::{
-    create_prop_of_kind_and_set_parent_with_name, create_schema, create_schema_variant_with_root,
+    create_prop_of_kind_and_set_parent_with_name, create_prop_of_kind_with_name, create_schema,
+    create_schema_variant_with_root,
 };
 use dal::{
-    AttributeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue, Connection,
-    DalContext, ExternalProvider, Func, FuncBinding, FuncId, InternalProvider, PropKind,
-    SchemaKind, SchematicKind, StandardModel,
-};
-use dal::{
-    Component, ComponentId, ComponentView, PropId, SchemaId, SchemaVariant, SchemaVariantId,
+    socket::SocketArity, AttributeContext, AttributePrototypeArgument, AttributeReadContext,
+    AttributeValue, AttributeValueError, Component, ComponentId, ComponentView, Connection,
+    DalContext, ExternalProvider, Func, FuncBinding, FuncId, InternalProvider, PropId, PropKind,
+    SchemaId, SchemaKind, SchemaVariant, SchemaVariantId, SchematicKind, StandardModel,
 };
 use pretty_assertions_sorted::assert_eq_sorted;
 use std::collections::HashMap;
@@ -587,4 +585,396 @@ async fn setup_swings(ctx: &DalContext<'_, '_>) -> ComponentPayload {
         prop_map,
         base_attribute_read_context,
     }
+}
+
+#[test]
+async fn with_deep_data_structure(ctx: &DalContext<'_, '_>) {
+    let (identity_func_id, identity_func_binding_id, identity_func_binding_return_value_id) =
+        setup_identity_func(ctx).await;
+
+    let mut source_schema = create_schema(ctx, &SchemaKind::Concrete).await;
+    let (source_schema_variant, source_root) =
+        create_schema_variant_with_root(ctx, *source_schema.id()).await;
+    source_schema
+        .set_default_schema_variant_id(ctx, Some(*source_schema_variant.id()))
+        .await
+        .expect("cannot set default schema variant");
+
+    let source_object_prop =
+        create_prop_of_kind_with_name(ctx, PropKind::Object, "base_object").await;
+    source_object_prop
+        .set_parent_prop(ctx, source_root.domain_prop_id)
+        .await
+        .expect("cannot set parent of base_object");
+    let source_foo_prop = create_prop_of_kind_with_name(ctx, PropKind::String, "foo_string").await;
+    source_foo_prop
+        .set_parent_prop(ctx, *source_object_prop.id())
+        .await
+        .expect("cannot set parent of foo_string");
+    let source_bar_prop = create_prop_of_kind_with_name(ctx, PropKind::String, "bar_string").await;
+    source_bar_prop
+        .set_parent_prop(ctx, *source_object_prop.id())
+        .await
+        .expect("cannot set parent of bar_string");
+    SchemaVariant::create_implicit_internal_providers(
+        ctx,
+        *source_schema.id(),
+        *source_schema_variant.id(),
+    )
+    .await
+    .expect("cannot create internal providers for source schema");
+    let (source_external_provider, _socket) = ExternalProvider::new_with_socket(
+        ctx,
+        *source_schema.id(),
+        *source_schema_variant.id(),
+        "source_data",
+        None,
+        identity_func_id,
+        identity_func_binding_id,
+        identity_func_binding_return_value_id,
+        SocketArity::Many,
+        SchematicKind::Component,
+    )
+    .await
+    .expect("cannot create source external provider");
+    let source_internal_provider = InternalProvider::get_for_prop(ctx, *source_object_prop.id())
+        .await
+        .expect("cannot get source internal provider")
+        .expect("source internal provider not found");
+    AttributePrototypeArgument::new_for_intra_component(
+        ctx,
+        *source_external_provider
+            .attribute_prototype_id()
+            .expect("no attribute prototype id for external provider"),
+        "identity".to_string(),
+        *source_internal_provider.id(),
+    )
+    .await
+    .expect("cannot create source external provider attribute prototype argument");
+
+    let mut destination_schema = create_schema(ctx, &SchemaKind::Concrete).await;
+    let (destination_schema_variant, destination_root) =
+        create_schema_variant_with_root(ctx, *destination_schema.id()).await;
+    destination_schema
+        .set_default_schema_variant_id(ctx, Some(*destination_schema_variant.id()))
+        .await
+        .expect("cannot set default schema variant");
+
+    let destination_parent_object_prop =
+        create_prop_of_kind_with_name(ctx, PropKind::Object, "parent_object").await;
+    destination_parent_object_prop
+        .set_parent_prop(ctx, destination_root.domain_prop_id)
+        .await
+        .expect("cannot set parent of parent_object");
+    let destination_object_prop =
+        create_prop_of_kind_with_name(ctx, PropKind::Object, "base_object").await;
+    destination_object_prop
+        .set_parent_prop(ctx, *destination_parent_object_prop.id())
+        .await
+        .expect("cannot set parent of base_object");
+    let destination_object_value = AttributeValue::find_for_context(
+        ctx,
+        AttributeReadContext {
+            prop_id: Some(*destination_object_prop.id()),
+            schema_id: Some(*destination_schema.id()),
+            schema_variant_id: Some(*destination_schema_variant.id()),
+            ..AttributeReadContext::default()
+        },
+    )
+    .await
+    .expect("cannot find destination attribute value")
+    .expect("destination attribute value not found");
+    let mut destination_object_prototype = destination_object_value
+        .attribute_prototype(ctx)
+        .await
+        .expect("cannot find attribute prototype")
+        .expect("attribute prototype not found");
+    destination_object_prototype
+        .set_func_id(ctx, identity_func_id)
+        .await
+        .expect("cannot set function on destination object prototype");
+    let destination_foo_prop =
+        create_prop_of_kind_with_name(ctx, PropKind::String, "foo_string").await;
+    destination_foo_prop
+        .set_parent_prop(ctx, *destination_object_prop.id())
+        .await
+        .expect("cannot set parent of foo_string");
+    let destination_bar_prop =
+        create_prop_of_kind_with_name(ctx, PropKind::String, "bar_string").await;
+    destination_bar_prop
+        .set_parent_prop(ctx, *destination_object_prop.id())
+        .await
+        .expect("cannot set parent of bar_string");
+    SchemaVariant::create_implicit_internal_providers(
+        ctx,
+        *destination_schema.id(),
+        *destination_schema_variant.id(),
+    )
+    .await
+    .expect("cannot create internal providers for destination schema");
+    let (destination_internal_provider, _socket) = InternalProvider::new_explicit_with_socket(
+        ctx,
+        *destination_schema.id(),
+        *destination_schema_variant.id(),
+        "destination_data",
+        identity_func_id,
+        identity_func_binding_id,
+        identity_func_binding_return_value_id,
+        SocketArity::One,
+        SchematicKind::Component,
+    )
+    .await
+    .expect("cannot create destination explicit internal provider");
+    AttributePrototypeArgument::new_for_intra_component(
+        ctx,
+        *destination_object_prototype.id(),
+        "identity".to_string(),
+        *destination_internal_provider.id(),
+    )
+    .await
+    .expect("cannot create prototype argument for destination");
+
+    let (source_component, _, _) =
+        Component::new_for_schema_with_node(ctx, "Source Component", source_schema.id())
+            .await
+            .expect("Unable to create source component");
+    let source_attribute_read_context = AttributeReadContext {
+        prop_id: None,
+        schema_id: Some(*source_schema.id()),
+        schema_variant_id: Some(*source_schema_variant.id()),
+        component_id: Some(*source_component.id()),
+        ..AttributeReadContext::default()
+    };
+
+    assert_eq_sorted!(
+        serde_json::json![
+            {
+                "si": {
+                    "name": "Source Component",
+                },
+                "domain": {},
+            }
+        ],
+        ComponentView::for_context(ctx, source_attribute_read_context)
+            .await
+            .expect("cannot get source component view")
+            .properties,
+    );
+
+    let (destination_component, _, _) =
+        Component::new_for_schema_with_node(ctx, "Destination Component", destination_schema.id())
+            .await
+            .expect("Unable to create destination component");
+    let destination_attribute_read_context = AttributeReadContext {
+        prop_id: None,
+        schema_id: Some(*destination_schema.id()),
+        schema_variant_id: Some(*destination_schema_variant.id()),
+        component_id: Some(*destination_component.id()),
+        ..AttributeReadContext::default()
+    };
+
+    assert_eq_sorted!(
+        serde_json::json![
+            {
+                "si": {
+                    "name": "Destination Component",
+                },
+                "domain": {},
+            }
+        ],
+        ComponentView::for_context(ctx, destination_attribute_read_context)
+            .await
+            .expect("cannot get destination component view")
+            .properties,
+    );
+
+    Connection::connect_providers(
+        ctx,
+        "identity".to_string(),
+        *source_external_provider.id(),
+        *source_component.id(),
+        *destination_internal_provider.id(),
+        *destination_component.id(),
+    )
+    .await
+    .expect("could not connect providers");
+
+    let source_domain_attribute_value_id = *AttributeValue::find_for_context(
+        ctx,
+        AttributeReadContext {
+            prop_id: Some(source_root.domain_prop_id),
+            ..source_attribute_read_context
+        },
+    )
+    .await
+    .expect("cannot get source domain AttributeValue")
+    .expect("source domain AttributeValue not found")
+    .id();
+    let source_object_attribute_value_id = *AttributeValue::find_for_context(
+        ctx,
+        AttributeReadContext {
+            prop_id: Some(*source_object_prop.id()),
+            ..source_attribute_read_context
+        },
+    )
+    .await
+    .expect("cannot get source object AttributeValue")
+    .expect("source object AttributeValue not found")
+    .id();
+    let source_foo_attribute_value_id = *AttributeValue::find_for_context(
+        ctx,
+        AttributeReadContext {
+            prop_id: Some(*source_foo_prop.id()),
+            ..source_attribute_read_context
+        },
+    )
+    .await
+    .expect("cannot get source foo AttributeValue")
+    .expect("source foo AttributeValue not found")
+    .id();
+
+    let source_foo_update_context = AttributeContext::builder()
+        .set_prop_id(*source_foo_prop.id())
+        .set_schema_id(*source_schema.id())
+        .set_schema_variant_id(*source_schema_variant.id())
+        .set_component_id(*source_component.id())
+        .to_context()
+        .expect("could not create source foo update context");
+
+    AttributeValue::update_for_context(
+        ctx,
+        source_foo_attribute_value_id,
+        Some(source_object_attribute_value_id),
+        source_foo_update_context,
+        Some(serde_json::to_value("deep update").expect("could not convert to serde_json::Value")),
+        None,
+    )
+    .await
+    .expect("cannot update source foo_string");
+
+    assert_eq_sorted!(
+        serde_json::json![
+            {
+                "si": {
+                    "name": "Source Component",
+                },
+                "domain": {
+                    "base_object": {
+                        "foo_string": "deep update",
+                    },
+                },
+            }
+        ],
+        ComponentView::for_context(ctx, source_attribute_read_context)
+            .await
+            .expect("cannot get source component view")
+            .properties,
+    );
+
+    assert_eq_sorted!(
+        serde_json::json![
+            {
+                "si": {
+                    "name": "Destination Component",
+                },
+                "domain": {
+                    "parent_object": {
+                        "base_object": {
+                            "foo_string": "deep update",
+                        },
+                    },
+                },
+            }
+        ],
+        ComponentView::for_context(ctx, destination_attribute_read_context)
+            .await
+            .expect("cannot get destination component view")
+            .properties,
+    );
+
+    let source_object_attribute_value_id = *AttributeValue::find_for_context(
+        ctx,
+        AttributeReadContext {
+            prop_id: Some(*source_object_prop.id()),
+            ..source_attribute_read_context
+        },
+    )
+    .await
+    .expect("cannot get source object AttributeValue")
+    .expect("source object AttributeValue not found")
+    .id();
+    let source_bar_attribute_value_id = *AttributeValue::find_for_context(
+        ctx,
+        AttributeReadContext {
+            prop_id: Some(*source_bar_prop.id()),
+            ..source_attribute_read_context
+        },
+    )
+    .await
+    .expect("cannot get source bar AttributeValue")
+    .expect("source foo AttributeValue not found")
+    .id();
+
+    let source_bar_update_context = AttributeContext::builder()
+        .set_prop_id(*source_bar_prop.id())
+        .set_schema_id(*source_schema.id())
+        .set_schema_variant_id(*source_schema_variant.id())
+        .set_component_id(*source_component.id())
+        .to_context()
+        .expect("could not create source foo update context");
+
+    AttributeValue::update_for_context(
+        ctx,
+        source_bar_attribute_value_id,
+        Some(source_object_attribute_value_id),
+        source_bar_update_context,
+        Some(
+            serde_json::to_value("another update").expect("could not convert to serde_json::Value"),
+        ),
+        None,
+    )
+    .await
+    .expect("cannot update source bar_string");
+
+    assert_eq_sorted!(
+        serde_json::json![
+            {
+                "si": {
+                    "name": "Source Component",
+                },
+                "domain": {
+                    "base_object": {
+                        "foo_string": "deep update",
+                        "bar_string": "another update",
+                    },
+                },
+            }
+        ],
+        ComponentView::for_context(ctx, source_attribute_read_context)
+            .await
+            .expect("cannot get source component view")
+            .properties,
+    );
+
+    assert_eq_sorted!(
+        serde_json::json![
+            {
+                "si": {
+                    "name": "Destination Component",
+                },
+                "domain": {
+                    "parent_object": {
+                        "base_object": {
+                            "foo_string": "deep update",
+                            "bar_string": "another update",
+                        },
+                    },
+                },
+            }
+        ],
+        ComponentView::for_context(ctx, destination_attribute_read_context)
+            .await
+            .expect("cannot get destination component view")
+            .properties,
+    );
 }

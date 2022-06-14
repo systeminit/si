@@ -56,6 +56,13 @@ WHERE in_tenancy_v1($1, attribute_values.tenancy_universal, attribute_values.ten
         FROM attribute_value_belongs_to_attribute_value AS aba
                  JOIN recursive_attribute_values
                       ON aba.belongs_to_id = recursive_attribute_values.attribute_value_id
+                      WHERE in_tenancy_v1($1, aba.tenancy_universal,
+                                              aba.tenancy_billing_account_ids,
+                                              aba.tenancy_organization_ids,
+                                              aba.tenancy_workspace_ids)
+                            AND is_visible_v1($2, aba.visibility_change_set_pk,
+                                                  aba.visibility_edit_session_pk,
+                                                  aba.visibility_deleted_at)
     )
     SELECT attribute_value_id
     FROM recursive_attribute_values

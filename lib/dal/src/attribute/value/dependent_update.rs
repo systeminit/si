@@ -2,13 +2,14 @@
 //! [`AttributeValues`](crate::AttributeValue) that are "dependent" on an updated
 //! [`AttributeValue`](crate::AttributeValue).
 
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, VecDeque};
 
-use crate::attribute::context::AttributeContextBuilder;
-use crate::attribute::value::dependent_update::collection::AttributeValueDependentCollectionHarness;
 use crate::{
+    attribute::context::AttributeContextBuilder,
+    attribute::value::dependent_update::collection::AttributeValueDependentCollectionHarness,
     AttributeContext, AttributePrototypeArgument, AttributeValue, AttributeValueError,
-    AttributeValueId, AttributeValueResult, Component, DalContext, FuncBinding, StandardModel,
+    AttributeValueId, AttributeValueResult, Component, DalContext, FuncBinding, Prop, PropKind,
+    StandardModel,
 };
 
 mod collection;
@@ -27,11 +28,6 @@ impl AttributeValueDependentUpdateHarness {
             .await?
             .ok_or(AttributeValueError::Missing)?;
 
-        // Here, we push the updated attribute value into the visited set and work queue
-        // immediately, but in the work queue itself, we will _only_ push values in the work queue
-        // if they have not been visited yet.
-        let mut visited: HashSet<AttributeValueId> = HashSet::new();
-        visited.insert(*original_attribute_value.id());
         let mut work_queue: VecDeque<AttributeValue> = VecDeque::new();
         work_queue.push_back(original_attribute_value);
 
@@ -114,7 +110,7 @@ impl AttributeValueDependentUpdateHarness {
                 }
 
                 // Generate a new func binding return value with our arguments assembled.
-                let (func_binding, func_binding_return_value) =
+                let (func_binding, mut func_binding_return_value) =
                     FuncBinding::find_or_create_and_execute(
                         ctx,
                         serde_json::to_value(func_binding_args)?,
@@ -130,12 +126,61 @@ impl AttributeValueDependentUpdateHarness {
                     .set_func_binding_return_value_id(ctx, *func_binding_return_value.id())
                     .await?;
 
-                // If the attribute value that was just update has not already triggered updates,
-                // process its dependent_update values.
-                if !visited.contains(attribute_value_that_needs_to_be_updated.id()) {
-                    visited.insert(*attribute_value_that_needs_to_be_updated.id());
-                    work_queue.push_back(attribute_value_that_needs_to_be_updated);
+                // If the value we just updated was for a Prop, we might have run a function that
+                // generates a deep data structure. If the Prop is an Array/Map/Object, then the
+                // value should be an empty Array/Map/Object, while the unprocessed value contains
+                // the deep data structure.
+                if attribute_value_that_needs_to_be_updated
+                    .context
+                    .is_least_specific_field_kind_prop()?
+                {
+                    let processed_value =
+                        match func_binding_return_value.unprocessed_value().cloned() {
+                            Some(unprocessed_value) => {
+                                let prop = Prop::get_by_id(
+                                    ctx,
+                                    &attribute_value_that_needs_to_be_updated.context.prop_id(),
+                                )
+                                .await?
+                                .ok_or_else(|| {
+                                    AttributeValueError::PropNotFound(
+                                        attribute_value_that_needs_to_be_updated.context.prop_id(),
+                                    )
+                                })?;
+
+                                match prop.kind() {
+                                    PropKind::Object | PropKind::Map => Some(serde_json::json!({})),
+                                    PropKind::Array => Some(serde_json::json!([])),
+                                    _ => Some(unprocessed_value),
+                                }
+                            }
+                            None => None,
+                        };
+                    func_binding_return_value
+                        .set_value(ctx, processed_value)
+                        .await?;
+                };
+                // The value will be different from the unprocessed value if we updated it above
+                // for an Array/Map/Value. If they are different from each other, then we know
+                // that we need to fully process the deep data structure, populating
+                // AttributeValues for the child Props.
+                if func_binding_return_value.unprocessed_value()
+                    != func_binding_return_value.value()
+                {
+                    if let Some(unprocessed_value) =
+                        func_binding_return_value.unprocessed_value().cloned()
+                    {
+                        AttributeValue::populate_nested_values(
+                            ctx,
+                            *attribute_value_that_needs_to_be_updated.id(),
+                            attribute_value_that_needs_to_be_updated.context,
+                            unprocessed_value,
+                        )
+                        .await?;
+                    }
                 }
+
+                work_queue.push_back(attribute_value_that_needs_to_be_updated);
             }
         }
 

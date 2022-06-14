@@ -127,12 +127,17 @@ pub async fn emit(
             return Ok(emit_attribute_value);
         }
     }
-    Ok(AttributeValue::new(
+    let new_attribute_value = AttributeValue::new(
         ctx,
         *func_binding.id(),
         *func_binding_return_value.id(),
         emit_attribute_context,
         Option::<String>::None,
     )
-    .await?)
+    .await?;
+    new_attribute_value
+        .set_attribute_prototype(ctx, attribute_prototype.id())
+        .await?;
+
+    Ok(new_attribute_value)
 }
