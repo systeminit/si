@@ -1,11 +1,10 @@
-use dal::test::helpers::{
-    find_prop_and_parent_by_name, update_attribute_value_for_prop_and_context, ComponentPayload,
-};
+use dal::test::helpers::{find_prop_and_parent_by_name, ComponentPayload};
 use dal::Component;
 use dal::{
     AttributeReadContext, Connection, DalContext, ExternalProvider, InternalProvider, Schema,
     StandardModel,
 };
+
 use pretty_assertions_sorted::assert_eq_sorted;
 use std::collections::HashMap;
 
@@ -19,13 +18,13 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(
     let head_deployment_payload = setup_kubernetes_deployment(ctx).await;
 
     // Initialize the tail "/root/domain/metadata/name" field.
-    update_attribute_value_for_prop_and_context(
-        ctx,
-        tail_namespace_payload.get_prop_id("/root/domain/metadata/name"),
-        Some(serde_json::json!["tail"]),
-        tail_namespace_payload.base_attribute_read_context,
-    )
-    .await;
+    tail_namespace_payload
+        .update_attribute_value_for_prop_name(
+            ctx,
+            "/root/domain/metadata/name",
+            Some(serde_json::json!["tail"]),
+        )
+        .await;
 
     // Ensure setup worked.
     assert_eq_sorted!(
@@ -113,13 +112,13 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(
     );
 
     // Perform update!
-    update_attribute_value_for_prop_and_context(
-        ctx,
-        tail_namespace_payload.get_prop_id("/root/domain/metadata/name"),
-        Some(serde_json::json!["look-at-me-mom-i-updated"]),
-        tail_namespace_payload.base_attribute_read_context,
-    )
-    .await;
+    tail_namespace_payload
+        .update_attribute_value_for_prop_name(
+            ctx,
+            "/root/domain/metadata/name",
+            Some(serde_json::json!["look-at-me-mom-i-updated"]),
+        )
+        .await;
 
     // Observed that it worked.
     assert_eq_sorted!(

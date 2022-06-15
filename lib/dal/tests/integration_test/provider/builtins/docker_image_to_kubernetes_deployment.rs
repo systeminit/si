@@ -1,29 +1,26 @@
-use dal::test::helpers::{
-    find_prop_and_parent_by_name, update_attribute_value_for_prop_and_context, ComponentPayload,
-};
-use dal::Component;
+use dal::test::helpers::{find_prop_and_parent_by_name, ComponentPayload};
 use dal::{
-    AttributeReadContext, Connection, DalContext, ExternalProvider, InternalProvider, Schema,
-    StandardModel,
+    AttributeReadContext, Component, Connection, DalContext, ExternalProvider, InternalProvider,
+    Schema, StandardModel,
 };
 use pretty_assertions_sorted::assert_eq_sorted;
 use std::collections::HashMap;
 
 use crate::dal::test;
+use crate::integration_test::provider::builtins::ProviderBuiltinsHarness;
 
 #[test]
 async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &DalContext<'_, '_>) {
-    let tail_docker_image_payload = setup_docker_image(ctx).await;
-    let head_deployment_payload = setup_kubernetes_deployment(ctx).await;
+    let mut harness = ProviderBuiltinsHarness::new();
+    let tail_docker_image_payload = harness.create_docker_image(ctx, "image").await;
+    let head_deployment_payload = harness
+        .create_kubernetes_deployment(ctx, "deployment")
+        .await;
 
     // Initialize the tail "/root/si/name" field.
-    update_attribute_value_for_prop_and_context(
-        ctx,
-        tail_docker_image_payload.get_prop_id("/root/si/name"),
-        Some(serde_json::json!["tail"]),
-        tail_docker_image_payload.base_attribute_read_context,
-    )
-    .await;
+    tail_docker_image_payload
+        .update_attribute_value_for_prop_name(ctx, "/root/si/name", Some(serde_json::json!["tail"]))
+        .await;
 
     // Ensure setup worked.
     assert_eq_sorted!(
@@ -111,13 +108,13 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &DalC
     );
 
     // Perform update!
-    update_attribute_value_for_prop_and_context(
-        ctx,
-        tail_docker_image_payload.get_prop_id("/root/si/name"),
-        Some(serde_json::json!["ironsides"]),
-        tail_docker_image_payload.base_attribute_read_context,
-    )
-    .await;
+    tail_docker_image_payload
+        .update_attribute_value_for_prop_name(
+            ctx,
+            "/root/si/name",
+            Some(serde_json::json!["ironsides"]),
+        )
+        .await;
 
     // Observe that it worked.
     assert_eq_sorted!(
