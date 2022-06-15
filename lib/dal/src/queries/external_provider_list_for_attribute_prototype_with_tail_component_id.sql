@@ -15,7 +15,7 @@ WHERE in_tenancy_v1($1, external_providers.tenancy_universal, external_providers
   AND is_visible_v1($2, external_providers.visibility_change_set_pk, external_providers.visibility_edit_session_pk,
                     external_providers.visibility_deleted_at)
   AND external_providers.attribute_prototype_id = $3
-  AND attribute_prototype_arguments.head_component_id = $4
+  AND attribute_prototype_arguments.tail_component_id = $4
 
 ORDER BY external_providers.id,
          external_providers.visibility_change_set_pk DESC,

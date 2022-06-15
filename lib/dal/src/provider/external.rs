@@ -21,8 +21,9 @@ use crate::{
     AttributeValue, DalContext, SchemaId, SchemaVariantId,
 };
 
-const LIST_FOR_ATTRIBUTE_PROTOTYPE_WITH_HEAD: &str =
-    include_str!("../queries/external_provider_list_for_attribute_prototype_with_head.sql");
+const LIST_FOR_ATTRIBUTE_PROTOTYPE_WITH_TAIL_COMPONENT_ID: &str = include_str!(
+    "../queries/external_provider_list_for_attribute_prototype_with_tail_component_id.sql"
+);
 const LIST_FOR_SCHEMA_VARIANT: &str =
     include_str!("../queries/external_provider_list_for_schema_variant.sql");
 const LIST_FROM_INTERNAL_PROVIDER_USE: &str =
@@ -272,21 +273,21 @@ impl ExternalProvider {
 
     /// Find all [`Self`] for a given [`AttributePrototypeId`](crate::AttributePrototype).
     #[tracing::instrument(skip(ctx))]
-    pub async fn list_for_attribute_prototype_with_head(
+    pub async fn list_for_attribute_prototype_with_tail_component_id(
         ctx: &DalContext<'_, '_>,
         attribute_prototype_id: AttributePrototypeId,
-        head_component_id: ComponentId,
+        tail_component_id: ComponentId,
     ) -> ExternalProviderResult<Vec<Self>> {
         let rows = ctx
             .txns()
             .pg()
             .query(
-                LIST_FOR_ATTRIBUTE_PROTOTYPE_WITH_HEAD,
+                LIST_FOR_ATTRIBUTE_PROTOTYPE_WITH_TAIL_COMPONENT_ID,
                 &[
                     ctx.read_tenancy(),
                     ctx.visibility(),
                     &attribute_prototype_id,
-                    &head_component_id,
+                    &tail_component_id,
                 ],
             )
             .await?;

@@ -140,7 +140,7 @@ impl AttributeValueDependentCollectionHarness {
             attribute_prototypes_from_internal_provider_use
         {
             let external_providers_found =
-                ExternalProvider::list_for_attribute_prototype_with_head(
+                ExternalProvider::list_for_attribute_prototype_with_tail_component_id(
                     ctx,
                     *attribute_prototype_from_internal_provider_use.id(),
                     source_attribute_context.component_id(),
