@@ -65,9 +65,6 @@ impl FuncBackendJsAttribute {
                 if success.unset {
                     return Err(span.record_err(FuncBackendError::UnexpectedUnset));
                 }
-                if !success.data.is_string() {
-                    return Err(span.record_err(FuncBackendError::InvalidStringData(success.data)));
-                }
                 success.data
             }
             FunctionResult::Failure(failure) => {

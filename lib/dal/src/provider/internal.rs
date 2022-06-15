@@ -22,6 +22,8 @@ use crate::{
     SchemaId, SchemaVariantId,
 };
 
+const FIND_EXPLICIT_FOR_SCHEMA_VARIANT_AND_NAME: &str =
+    include_str!("../queries/internal_provider_find_explicit_for_schema_variant_and_name.sql");
 const GET_FOR_PROP: &str = include_str!("../queries/internal_provider_get_for_prop.sql");
 const LIST_FOR_SCHEMA_VARIANT: &str =
     include_str!("../queries/internal_provider_list_for_schema_variant.sql");
@@ -388,6 +390,30 @@ impl InternalProvider {
             )
             .await?;
         Ok(standard_model::objects_from_rows(rows)?)
+    }
+
+    /// Find [`Self`] with a provided name.
+    #[instrument(skip_all)]
+    pub async fn find_explicit_for_schema_variant_and_name(
+        ctx: &DalContext<'_, '_>,
+        schema_variant_id: SchemaVariantId,
+        name: impl AsRef<str>,
+    ) -> InternalProviderResult<Option<Self>> {
+        let name = name.as_ref();
+        let row = ctx
+            .txns()
+            .pg()
+            .query_opt(
+                FIND_EXPLICIT_FOR_SCHEMA_VARIANT_AND_NAME,
+                &[
+                    ctx.read_tenancy(),
+                    ctx.visibility(),
+                    &schema_variant_id,
+                    &name,
+                ],
+            )
+            .await?;
+        Ok(object_option_from_row_option(row)?)
     }
 
     /// Find all [`Self`] for a given [`AttributePrototypeId`](crate::AttributePrototype).

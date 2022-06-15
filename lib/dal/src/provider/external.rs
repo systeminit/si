@@ -24,6 +24,8 @@ use crate::{
 const LIST_FOR_ATTRIBUTE_PROTOTYPE_WITH_TAIL_COMPONENT_ID: &str = include_str!(
     "../queries/external_provider_list_for_attribute_prototype_with_tail_component_id.sql"
 );
+const FIND_FOR_SCHEMA_VARIANT_AND_NAME: &str =
+    include_str!("../queries/external_provider_find_for_schema_variant_and_name.sql");
 const LIST_FOR_SCHEMA_VARIANT: &str =
     include_str!("../queries/external_provider_list_for_schema_variant.sql");
 const LIST_FROM_INTERNAL_PROVIDER_USE: &str =
@@ -270,6 +272,30 @@ impl ExternalProvider {
             )
             .await?;
         Ok(standard_model::objects_from_rows(rows)?)
+    }
+
+    /// Find [`Self`] with a provided name.
+    #[instrument(skip_all)]
+    pub async fn find_for_schema_variant_and_name(
+        ctx: &DalContext<'_, '_>,
+        schema_variant_id: SchemaVariantId,
+        name: impl AsRef<str>,
+    ) -> ExternalProviderResult<Option<Self>> {
+        let name = name.as_ref();
+        let row = ctx
+            .txns()
+            .pg()
+            .query_opt(
+                FIND_FOR_SCHEMA_VARIANT_AND_NAME,
+                &[
+                    ctx.read_tenancy(),
+                    ctx.visibility(),
+                    &schema_variant_id,
+                    &name,
+                ],
+            )
+            .await?;
+        Ok(standard_model::object_option_from_row_option(row)?)
     }
 
     /// Find all [`Self`] for a given [`AttributePrototypeId`](crate::AttributePrototype).

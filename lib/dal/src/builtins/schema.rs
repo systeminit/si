@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
+use crate::builtins::schema::kubernetes_metadata::create_metadata_prop;
 use crate::{
-    attribute::context::AttributeContextBuilder,
     component::ComponentKind,
     edit_field::widget::*,
     func::{
@@ -34,29 +34,6 @@ mod kubernetes_spec;
 mod kubernetes_template;
 
 use self::kubernetes_deployment::kubernetes_deployment;
-
-/// Get the "si:identity" [`Func`](crate::Func) and execute (if necessary).
-pub async fn setup_identity_func(
-    ctx: &DalContext<'_, '_>,
-) -> BuiltinsResult<(FuncId, FuncBindingId, FuncBindingReturnValueId)> {
-    let identity_func_name = "si:identity".to_string();
-    let identity_func: Func = Func::find_by_attr(ctx, "name", &identity_func_name)
-        .await?
-        .pop()
-        .ok_or(FuncError::NotFoundByName(identity_func_name))?;
-    let (identity_func_binding, identity_func_binding_return_value) =
-        FuncBinding::find_or_create_and_execute(
-            ctx,
-            serde_json::json![{ "identity": null }],
-            *identity_func.id(),
-        )
-        .await?;
-    Ok((
-        *identity_func.id(),
-        *identity_func_binding.id(),
-        *identity_func_binding_return_value.id(),
-    ))
-}
 
 pub async fn migrate(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     system(ctx).await?;
@@ -373,22 +350,20 @@ async fn kubernetes_namespace(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
         .add_root_schematic(ctx, application_schema.id())
         .await?;
 
-    let image_prop = Prop::new(ctx, "namespace", PropKind::String).await?;
-    image_prop
-        .set_parent_prop(ctx, root_prop.domain_prop_id)
-        .await?;
+    let metadata_prop = create_metadata_prop(ctx, true, root_prop.domain_prop_id).await?;
 
-    let identity_func = setup_identity_func(ctx).await?;
+    let (identity_func_id, identity_func_binding_id, identity_func_binding_return_value_id) =
+        setup_identity_func(ctx).await?;
 
-    let (_output_provider, mut output_socket) = ExternalProvider::new_with_socket(
+    let (external_provider, mut output_socket) = ExternalProvider::new_with_socket(
         ctx,
         *schema.id(),
         *variant.id(),
         "kubernetes_namespace",
         None,
-        identity_func.0,
-        identity_func.1,
-        identity_func.2,
+        identity_func_id,
+        identity_func_binding_id,
+        identity_func_binding_return_value_id,
         SocketArity::Many,
         SchematicKind::Component,
     )
@@ -405,6 +380,29 @@ async fn kubernetes_namespace(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     )
     .await?;
     variant.add_socket(ctx, includes_socket.id()).await?;
+
+    // Now, we can setup providers.
+    SchemaVariant::create_implicit_internal_providers(ctx, *schema.id(), *variant.id()).await?;
+
+    // Connect the "/root/domain/metadata/name" prop to the external provider.
+    let external_provider_attribute_prototype_id =
+        external_provider.attribute_prototype_id().ok_or_else(|| {
+            BuiltinsError::MissingAttributePrototypeForExternalProvider(*external_provider.id())
+        })?;
+    let metadata_name_prop = find_child_prop_by_name(ctx, *metadata_prop.id(), "name").await?;
+    let metadata_name_implicit_internal_provider =
+        InternalProvider::get_for_prop(ctx, *metadata_name_prop.id())
+            .await?
+            .ok_or_else(|| {
+                BuiltinsError::ImplicitInternalProviderNotFoundForProp(*metadata_name_prop.id())
+            })?;
+    AttributePrototypeArgument::new_for_intra_component(
+        ctx,
+        *external_provider_attribute_prototype_id,
+        "identity".to_string(),
+        *metadata_name_implicit_internal_provider.id(),
+    )
+    .await?;
 
     Ok(())
 }
@@ -556,33 +554,34 @@ async fn docker_image(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     // This means if someone updates this function the properties will be invalid
     let mut properties = HashMap::new();
     properties.insert("image".to_owned(), serde_json::json!(""));
-    properties.insert("Number of Parents".to_owned(), serde_json::json!("0"));
 
-    let identity_func = setup_identity_func(ctx).await?;
+    let (identity_func_id, identity_func_binding_id, identity_func_binding_return_value_id) =
+        setup_identity_func(ctx).await?;
 
-    let (_input_provider, mut input_socket) = InternalProvider::new_explicit_with_socket(
-        ctx,
-        *schema.id(),
-        *variant.id(),
-        "docker_hub_credential",
-        identity_func.0,
-        identity_func.1,
-        identity_func.2,
-        SocketArity::Many,
-        SchematicKind::Component,
-    )
-    .await?;
+    let (_docker_hub_credential_explicit_internal_provider, mut input_socket) =
+        InternalProvider::new_explicit_with_socket(
+            ctx,
+            *schema.id(),
+            *variant.id(),
+            "docker_hub_credential",
+            identity_func_id,
+            identity_func_binding_id,
+            identity_func_binding_return_value_id,
+            SocketArity::Many,
+            SchematicKind::Component,
+        )
+        .await?;
     input_socket.set_color(ctx, Some(0x1e88d6)).await?;
 
-    let (_output_provider, mut output_socket) = ExternalProvider::new_with_socket(
+    let (docker_image_external_provider, mut output_socket) = ExternalProvider::new_with_socket(
         ctx,
         *schema.id(),
         *variant.id(),
         "docker_image",
         None,
-        identity_func.0,
-        identity_func.1,
-        identity_func.2,
+        identity_func_id,
+        identity_func_binding_id,
+        identity_func_binding_return_value_id,
         SocketArity::Many,
         SchematicKind::Component,
     )
@@ -641,90 +640,61 @@ async fn docker_image(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     .await?;
 
     SchemaVariant::create_implicit_internal_providers(ctx, *schema.id(), *variant.id()).await?;
-
-    // Automatically derive the image name from the component's name. First, let's initialize the
-    // field with an empty string.
     let base_attribute_read_context = AttributeReadContext {
         schema_id: Some(*schema.id()),
         schema_variant_id: Some(*variant.id()),
         ..AttributeReadContext::default()
     };
-    let image_context = AttributeReadContext {
-        prop_id: Some(*image_prop.id()),
-        ..base_attribute_read_context
-    };
-    let image_attribute_value = AttributeValue::find_for_context(ctx, image_context)
-        .await?
-        .ok_or(AttributeValueError::Missing)?;
-    let domain_context = AttributeReadContext {
-        prop_id: Some(root_prop.domain_prop_id),
-        ..base_attribute_read_context
-    };
-    let domain_attribute_value = AttributeValue::find_for_context(ctx, domain_context)
-        .await?
-        .ok_or(AttributeValueError::Missing)?;
-    let image_write_context = AttributeContextBuilder::from(image_context).to_context()?;
-    let (_, updated_image_attribute_value_id, _) = AttributeValue::update_for_context(
-        ctx,
-        *image_attribute_value.id(),
-        Some(*domain_attribute_value.id()),
-        image_write_context,
-        Some(serde_json::to_value("")?),
-        None,
-    )
-    .await?;
 
-    // Now, let's setup the connection with the initialized value.
-    let updated_image_attribute_value =
-        AttributeValue::get_by_id(ctx, &updated_image_attribute_value_id)
-            .await?
-            .ok_or(AttributeValueError::MissingForId(
-                updated_image_attribute_value_id,
-            ))?;
-    let mut image_attribute_prototype = updated_image_attribute_value
+    // Connect the "/root/si/name" field to the "/root/domain/image" field.
+    let image_attribute_value = AttributeValue::find_for_context(
+        ctx,
+        AttributeReadContext {
+            prop_id: Some(*image_prop.id()),
+            ..base_attribute_read_context
+        },
+    )
+    .await?
+    .ok_or(AttributeValueError::Missing)?;
+    let mut image_attribute_prototype = image_attribute_value
         .attribute_prototype(ctx)
         .await?
         .ok_or(AttributeValueError::MissingAttributePrototype)?;
-    let identity_func_name = "si:identity".to_string();
-    let identity_func: Func = Func::find_by_attr(ctx, "name", &identity_func_name)
-        .await?
-        .pop()
-        .ok_or(SchemaError::FuncNotFound(identity_func_name))?;
     image_attribute_prototype
-        .set_func_id(ctx, *identity_func.id())
+        .set_func_id(ctx, identity_func_id)
         .await?;
-    let (_identity_func_binding, _identity_func_binding_return_value) =
-        FuncBinding::find_or_create_and_execute(
-            ctx,
-            serde_json::json![{ "identity": null }],
-            *identity_func.id(),
-        )
-        .await?;
-
-    // Finally, find the implicit internal provider for the component's name and create the
-    // attribute argument prototype.
-    let si_prop = Prop::get_by_id(ctx, &root_prop.si_prop_id)
-        .await?
-        .ok_or_else(|| PropError::NotFound(root_prop.si_prop_id, *ctx.visibility()))?;
-    let mut si_name_prop = None;
-    for prop in si_prop.child_props(ctx).await? {
-        if prop.name() == "name" {
-            si_name_prop = Some(prop);
-            break;
-        }
-    }
-    let si_name_prop =
-        si_name_prop.ok_or_else(|| PropError::ExpectedChildNotFound("name".to_string()))?;
+    let si_name_prop = find_child_prop_by_name(ctx, root_prop.si_prop_id, "name").await?;
     let si_name_internal_provider = InternalProvider::get_for_prop(ctx, *si_name_prop.id())
         .await?
         .ok_or_else(|| {
             BuiltinsError::ImplicitInternalProviderNotFoundForProp(*si_name_prop.id())
         })?;
-    let _argument = AttributePrototypeArgument::new_for_intra_component(
+    AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *image_attribute_prototype.id(),
         "identity".to_string(),
         *si_name_internal_provider.id(),
+    )
+    .await?;
+
+    // Connect "/root/domain" to the external provider.
+    let domain_implicit_internal_provider =
+        InternalProvider::get_for_prop(ctx, root_prop.domain_prop_id)
+            .await?
+            .ok_or(BuiltinsError::ImplicitInternalProviderNotFoundForProp(
+                root_prop.domain_prop_id,
+            ))?;
+    AttributePrototypeArgument::new_for_intra_component(
+        ctx,
+        *docker_image_external_provider
+            .attribute_prototype_id()
+            .ok_or_else(|| {
+                BuiltinsError::MissingAttributePrototypeForExternalProvider(
+                    *docker_image_external_provider.id(),
+                )
+            })?,
+        "identity".to_string(),
+        *domain_implicit_internal_provider.id(),
     )
     .await?;
 
@@ -1010,4 +980,46 @@ pub async fn create_string_prop_with_default(
     attribute_prototype.set_func_id(ctx, *func.id()).await?;
 
     Ok(prop)
+}
+
+/// Get the "si:identity" [`Func`](crate::Func) and execute (if necessary).
+pub async fn setup_identity_func(
+    ctx: &DalContext<'_, '_>,
+) -> BuiltinsResult<(FuncId, FuncBindingId, FuncBindingReturnValueId)> {
+    let identity_func_name = "si:identity".to_string();
+    let identity_func: Func = Func::find_by_attr(ctx, "name", &identity_func_name)
+        .await?
+        .pop()
+        .ok_or(FuncError::NotFoundByName(identity_func_name))?;
+    let (identity_func_binding, identity_func_binding_return_value) =
+        FuncBinding::find_or_create_and_execute(
+            ctx,
+            serde_json::json![{ "identity": null }],
+            *identity_func.id(),
+        )
+        .await?;
+    Ok((
+        *identity_func.id(),
+        *identity_func_binding.id(),
+        *identity_func_binding_return_value.id(),
+    ))
+}
+
+/// Find the child of a [`Prop`](crate::Prop) by name.
+///
+/// _Use with caution!_
+pub async fn find_child_prop_by_name(
+    ctx: &DalContext<'_, '_>,
+    prop_id: PropId,
+    child_prop_name: &str,
+) -> BuiltinsResult<Prop> {
+    let prop = Prop::get_by_id(ctx, &prop_id)
+        .await?
+        .ok_or_else(|| PropError::NotFound(prop_id, *ctx.visibility()))?;
+    for current in prop.child_props(ctx).await? {
+        if current.name() == child_prop_name {
+            return Ok(current);
+        }
+    }
+    Err(PropError::ExpectedChildNotFound(child_prop_name.to_string()).into())
 }

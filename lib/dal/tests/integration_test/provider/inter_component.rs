@@ -1,16 +1,14 @@
-use dal::attribute::context::AttributeContextBuilder;
-use dal::func::binding::FuncBindingId;
-use dal::func::binding_return_value::FuncBindingReturnValueId;
-
+use dal::test::helpers::{
+    setup_identity_func, update_attribute_value_for_prop_and_context, ComponentPayload,
+};
 use dal::test_harness::{
     create_prop_of_kind_and_set_parent_with_name, create_prop_of_kind_with_name, create_schema,
     create_schema_variant_with_root,
 };
 use dal::{
     socket::SocketArity, AttributeContext, AttributePrototypeArgument, AttributeReadContext,
-    AttributeValue, AttributeValueError, Component, ComponentId, ComponentView, Connection,
-    DalContext, ExternalProvider, Func, FuncBinding, FuncId, InternalProvider, PropId, PropKind,
-    SchemaId, SchemaKind, SchemaVariant, SchemaVariantId, SchematicKind, StandardModel,
+    AttributeValue, Component, ComponentView, Connection, DalContext, ExternalProvider,
+    InternalProvider, PropKind, SchemaKind, SchemaVariant, SchematicKind, StandardModel,
 };
 use pretty_assertions_sorted::assert_eq_sorted;
 use std::collections::HashMap;
@@ -23,13 +21,13 @@ async fn inter_component_identity_update(ctx: &DalContext<'_, '_>) {
     let esp_payload = setup_esp(ctx).await;
     let swings_payload = setup_swings(ctx).await;
 
-    // Ensure that they look as we expect.
+    // Ensure setup went as expected.
     assert_eq_sorted!(
         serde_json::json![{
             "domain": {
                 "object": {
-                    "intermediate": "zero",
-                    "source": "zero",
+                    "intermediate": "zero-intermediate",
+                    "source": "zero-source",
                 },
             },
             "si": {
@@ -40,12 +38,10 @@ async fn inter_component_identity_update(ctx: &DalContext<'_, '_>) {
     );
     assert_eq_sorted!(
         serde_json::json![{
-            "domain": {
-                "destination": "zero",
-            },
+            "domain": {},
             "si": {
                 "name": "swings",
-            },
+            }
         }], // expected
         swings_payload.component_view_properties(ctx).await // actual
     );
@@ -57,7 +53,7 @@ async fn inter_component_identity_update(ctx: &DalContext<'_, '_>) {
     // Setup the "esp" intra component update functionality from "source" to "intermediate".
     let intermediate_attribute_value = AttributeValue::find_for_context(
         ctx,
-        esp_payload.attribute_read_context_with_prop_id("intermediate"),
+        esp_payload.attribute_read_context_with_prop_id("/root/domain/object/intermediate"),
     )
     .await
     .expect("cannot find attribute value")
@@ -72,7 +68,7 @@ async fn inter_component_identity_update(ctx: &DalContext<'_, '_>) {
         .await
         .expect("could not set func id on attribute prototype");
     let source_internal_provider =
-        InternalProvider::get_for_prop(ctx, esp_payload.get_prop_id("source"))
+        InternalProvider::get_for_prop(ctx, esp_payload.get_prop_id("/root/domain/object/source"))
             .await
             .expect("could not get internal provider")
             .expect("internal provider not found");
@@ -85,31 +81,39 @@ async fn inter_component_identity_update(ctx: &DalContext<'_, '_>) {
     .await
     .expect("could not create attribute prototype argument");
 
-    // Update the "esp" field, "source", to see if the intra component connection works.
-    let object_attribute_value = AttributeValue::find_for_context(
+    // Update the "esp" field, "source", to see if the intra component connection continues to work.
+    update_attribute_value_for_prop_and_context(
         ctx,
-        esp_payload.attribute_read_context_with_prop_id("object"),
+        esp_payload.get_prop_id("/root/domain/object/source"),
+        Some(serde_json::json!["one"]),
+        esp_payload.base_attribute_read_context,
     )
-    .await
-    .expect("cannot find attribute value")
-    .expect("attribute value not found");
-    let source_attribute_value = AttributeValue::find_for_context(
-        ctx,
-        esp_payload.attribute_read_context_with_prop_id("source"),
-    )
-    .await
-    .expect("cannot find attribute value")
-    .expect("attribute value not found");
-    let (_, updated_source_attribute_value_id, _) = AttributeValue::update_for_context(
-        ctx,
-        *source_attribute_value.id(),
-        Some(*object_attribute_value.id()),
-        esp_payload.attribute_context_with_prop_id("source"),
-        Some(serde_json::to_value("one").expect("could not convert to serde_json::Value")),
-        None,
-    )
-    .await
-    .expect("could not update attribute value");
+    .await;
+
+    // Ensure that they look as we expect.
+    assert_eq_sorted!(
+        serde_json::json![{
+            "domain": {
+                "object": {
+                    "intermediate": "one",
+                    "source": "one",
+                },
+            },
+            "si": {
+                "name": "esp",
+            },
+        }], // expected
+        esp_payload.component_view_properties(ctx).await // actual
+    );
+    assert_eq_sorted!(
+        serde_json::json![{
+            "domain": {},
+            "si": {
+                "name": "swings",
+            }
+        }], // expected
+        swings_payload.component_view_properties(ctx).await // actual
+    );
 
     // Create the "esp" external provider for inter component connection.
     let (esp_external_provider, _socket) = ExternalProvider::new_with_socket(
@@ -126,11 +130,13 @@ async fn inter_component_identity_update(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not create external provider");
-    let esp_intermediate_internal_provider =
-        InternalProvider::get_for_prop(ctx, esp_payload.get_prop_id("intermediate"))
-            .await
-            .expect("could not get internal provider")
-            .expect("internal provider not found");
+    let esp_intermediate_internal_provider = InternalProvider::get_for_prop(
+        ctx,
+        esp_payload.get_prop_id("/root/domain/object/intermediate"),
+    )
+    .await
+    .expect("could not get internal provider")
+    .expect("internal provider not found");
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *esp_external_provider
@@ -143,22 +149,6 @@ async fn inter_component_identity_update(ctx: &DalContext<'_, '_>) {
     .expect("could not create attribute prototype argument");
 
     // Create the "swings" explicit internal provider for intra component connection.
-    let swings_destination_attribute_value = AttributeValue::find_for_context(
-        ctx,
-        swings_payload.attribute_read_context_with_prop_id("destination"),
-    )
-    .await
-    .expect("cannot find attribute value")
-    .expect("attribute value not found");
-    let mut swings_destination_attribute_prototype = swings_destination_attribute_value
-        .attribute_prototype(ctx)
-        .await
-        .expect("could not find attribute prototype")
-        .expect("attribute prototype not found");
-    swings_destination_attribute_prototype
-        .set_func_id(ctx, identity_func_id)
-        .await
-        .expect("could not set func id on attribute prototype");
     let (swings_explicit_internal_provider, _socket) = InternalProvider::new_explicit_with_socket(
         ctx,
         swings_payload.schema_id,
@@ -172,6 +162,22 @@ async fn inter_component_identity_update(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not create explicit internal provider");
+    let swings_destination_attribute_value = AttributeValue::find_for_context(
+        ctx,
+        swings_payload.attribute_read_context_with_prop_id("/root/domain/destination"),
+    )
+    .await
+    .expect("cannot find attribute value")
+    .expect("attribute value not found");
+    let mut swings_destination_attribute_prototype = swings_destination_attribute_value
+        .attribute_prototype(ctx)
+        .await
+        .expect("could not find attribute prototype")
+        .expect("attribute prototype not found");
+    swings_destination_attribute_prototype
+        .set_func_id(ctx, identity_func_id)
+        .await
+        .expect("could not set func id on attribute prototype");
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *swings_destination_attribute_prototype.id(),
@@ -200,12 +206,10 @@ async fn inter_component_identity_update(ctx: &DalContext<'_, '_>) {
     );
     assert_eq_sorted!(
         serde_json::json![{
-            "domain": {
-                "destination": "zero",
-            },
+            "domain": {},
             "si": {
                 "name": "swings",
-            },
+            }
         }], // expected
         swings_payload.component_view_properties(ctx).await // actual
     );
@@ -239,27 +243,22 @@ async fn inter_component_identity_update(ctx: &DalContext<'_, '_>) {
     );
     assert_eq_sorted!(
         serde_json::json![{
-            "domain": {
-                "destination": "zero",
-            },
+            "domain": {},
             "si": {
                 "name": "swings",
-            },
+            }
         }], // expected
         swings_payload.component_view_properties(ctx).await // actual
     );
 
     // Update the "esp" field, "source", again.
-    AttributeValue::update_for_context(
+    update_attribute_value_for_prop_and_context(
         ctx,
-        updated_source_attribute_value_id,
-        Some(*object_attribute_value.id()),
-        esp_payload.attribute_context_with_prop_id("source"),
-        Some(serde_json::to_value("two").expect("could not convert to serde_json::Value")),
-        None,
+        esp_payload.get_prop_id("/root/domain/object/source"),
+        Some(serde_json::json!["two"]),
+        esp_payload.base_attribute_read_context,
     )
-    .await
-    .expect("could not update attribute value");
+    .await;
 
     // Observe that inter component identity updating work.
     assert_eq_sorted!(
@@ -287,74 +286,6 @@ async fn inter_component_identity_update(ctx: &DalContext<'_, '_>) {
         }], // expected
         swings_payload.component_view_properties(ctx).await // actual
     );
-}
-
-// Get the identity func and execute. We will need it for multiple attribute prototypes.
-async fn setup_identity_func(
-    ctx: &DalContext<'_, '_>,
-) -> (FuncId, FuncBindingId, FuncBindingReturnValueId) {
-    let identity_func: Func = Func::find_by_attr(ctx, "name", &"si:identity".to_string())
-        .await
-        .expect("could not find func by name attr")
-        .pop()
-        .expect("identity func not found");
-    let (identity_func_binding, identity_func_binding_return_value) =
-        FuncBinding::find_or_create_and_execute(
-            ctx,
-            serde_json::json![{ "identity": null }],
-            *identity_func.id(),
-        )
-        .await
-        .expect("could not find or create identity func binding");
-    (
-        *identity_func.id(),
-        *identity_func_binding.id(),
-        *identity_func_binding_return_value.id(),
-    )
-}
-
-/// Payload used for bundling a [`Component`](dal::Component) with all metadata needed for the test.
-struct ComponentPayload {
-    schema_id: SchemaId,
-    schema_variant_id: SchemaVariantId,
-    component_id: ComponentId,
-    /// A map that uses [`Prop`](crate::Prop) names as keys and their ids as values. As a result,
-    /// _two props cannot share the same name_ in these test [`Components`](crate::Component).
-    prop_map: HashMap<String, PropId>,
-    /// An [`AttributeReadContext`](dal::AttributeReadContext) that can be used for generating
-    /// a [`ComponentView`](dal::ComponentView).
-    base_attribute_read_context: AttributeReadContext,
-}
-
-impl ComponentPayload {
-    fn get_prop_id(&self, prop_name: &str) -> PropId {
-        *self
-            .prop_map
-            .get(prop_name)
-            .expect("could not find PropId for key")
-    }
-
-    fn attribute_read_context_with_prop_id(&self, prop_name: &str) -> AttributeReadContext {
-        AttributeReadContext {
-            prop_id: Some(self.get_prop_id(prop_name)),
-            ..self.base_attribute_read_context
-        }
-    }
-
-    fn attribute_context_with_prop_id(&self, prop_name: &str) -> AttributeContext {
-        AttributeContextBuilder::from(self.base_attribute_read_context)
-            .set_prop_id(self.get_prop_id(prop_name))
-            .to_context()
-            .expect("could not convert builder to attribute context")
-    }
-
-    /// Generates a new [`ComponentView`](dal::ComponentView) and returns the "properites" field.
-    async fn component_view_properties(&self, ctx: &DalContext<'_, '_>) -> serde_json::Value {
-        ComponentView::for_context(ctx, self.base_attribute_read_context)
-            .await
-            .expect("cannot get component view")
-            .properties
-    }
 }
 
 // 38.805354552534816, -77.05091482877533
@@ -392,13 +323,10 @@ async fn setup_esp(ctx: &DalContext<'_, '_>) -> ComponentPayload {
         *object_prop.id(),
     )
     .await;
+
     let mut prop_map = HashMap::new();
-    prop_map.insert(object_prop.name().to_string(), *object_prop.id());
-    prop_map.insert(source_prop.name().to_string(), *source_prop.id());
-    prop_map.insert(
-        intermediate_prop.name().to_string(),
-        *intermediate_prop.id(),
-    );
+    prop_map.insert("/root/domain/object/source", *source_prop.id());
+    prop_map.insert("/root/domain/object/intermediate", *intermediate_prop.id());
 
     // Create the internal providers for a schema variant. Afterwards, we can create the component.
     SchemaVariant::create_implicit_internal_providers(ctx, *schema.id(), *schema_variant.id())
@@ -418,78 +346,22 @@ async fn setup_esp(ctx: &DalContext<'_, '_>) -> ComponentPayload {
     };
 
     // Initialize the value corresponding to the "source" prop.
-    let unset_object_attribute_value = AttributeValue::find_for_context(
+    update_attribute_value_for_prop_and_context(
         ctx,
-        AttributeReadContext {
-            prop_id: Some(*object_prop.id()),
-            ..base_attribute_read_context
-        },
+        *source_prop.id(),
+        Some(serde_json::json!["zero-source"]),
+        base_attribute_read_context,
     )
-    .await
-    .expect("cannot get attribute value")
-    .expect("attribute value not found");
-    let source_attribute_value = AttributeValue::find_for_context(
-        ctx,
-        AttributeReadContext {
-            prop_id: Some(*source_prop.id()),
-            ..base_attribute_read_context
-        },
-    )
-    .await
-    .expect("cannot get attribute value")
-    .expect("attribute value not found");
-    let source_prop_context = AttributeContextBuilder::from(base_attribute_read_context)
-        .set_prop_id(*source_prop.id())
-        .to_context()
-        .expect("could not convert builder to attribute context");
-    let value = serde_json::to_value("zero").expect("could not convert to serde_json::Value");
-    AttributeValue::update_for_context(
-        ctx,
-        *source_attribute_value.id(),
-        Some(*unset_object_attribute_value.id()),
-        source_prop_context,
-        Some(value),
-        None,
-    )
-    .await
-    .expect("cannot update value for context");
+    .await;
 
     // Initialize the value corresponding to the "intermediate" prop.
-    let set_object_attribute_value = AttributeValue::find_for_context(
+    update_attribute_value_for_prop_and_context(
         ctx,
-        AttributeReadContext {
-            prop_id: Some(*object_prop.id()),
-            ..base_attribute_read_context
-        },
+        *intermediate_prop.id(),
+        Some(serde_json::json!["zero-intermediate"]),
+        base_attribute_read_context,
     )
-    .await
-    .expect("cannot get attribute value")
-    .expect("attribute value not found");
-    let intermediate_attribute_value = AttributeValue::find_for_context(
-        ctx,
-        AttributeReadContext {
-            prop_id: Some(*intermediate_prop.id()),
-            ..base_attribute_read_context
-        },
-    )
-    .await
-    .expect("cannot get attribute value")
-    .expect("attribute value not found");
-    let intermediate_prop_context = AttributeContextBuilder::from(base_attribute_read_context)
-        .set_prop_id(*intermediate_prop.id())
-        .to_context()
-        .expect("could not convert builder to attribute context");
-    let value = serde_json::to_value("zero").expect("could not convert to serde_json::Value");
-    AttributeValue::update_for_context(
-        ctx,
-        *intermediate_attribute_value.id(),
-        Some(*set_object_attribute_value.id()),
-        intermediate_prop_context,
-        Some(value),
-        None,
-    )
-    .await
-    .expect("cannot set value for context");
+    .await;
 
     // Return the payload.
     ComponentPayload {
@@ -521,7 +393,7 @@ async fn setup_swings(ctx: &DalContext<'_, '_>) -> ComponentPayload {
     )
     .await;
     let mut prop_map = HashMap::new();
-    prop_map.insert(destination_prop.name().to_string(), *destination_prop.id());
+    prop_map.insert("/root/domain/destination", *destination_prop.id());
 
     // Create the internal providers for a schema variant. Afterwards, we can create the component.
     SchemaVariant::create_implicit_internal_providers(ctx, *schema.id(), *schema_variant.id())
@@ -539,43 +411,6 @@ async fn setup_swings(ctx: &DalContext<'_, '_>) -> ComponentPayload {
         component_id: Some(*component.id()),
         ..AttributeReadContext::default()
     };
-
-    // Initialize the value corresponding to the "destination" prop.
-    let domain_attribute_value = AttributeValue::find_for_context(
-        ctx,
-        AttributeReadContext {
-            prop_id: Some(root_prop.domain_prop_id),
-            ..base_attribute_read_context
-        },
-    )
-    .await
-    .expect("cannot get attribute value")
-    .expect("attribute value not found");
-    let destination_attribute_value = AttributeValue::find_for_context(
-        ctx,
-        AttributeReadContext {
-            prop_id: Some(*destination_prop.id()),
-            ..base_attribute_read_context
-        },
-    )
-    .await
-    .expect("cannot get attribute value")
-    .expect("attribute value not found");
-    let destination_prop_context = AttributeContextBuilder::from(base_attribute_read_context)
-        .set_prop_id(*destination_prop.id())
-        .to_context()
-        .expect("could not convert builder to attribute context");
-    let value = serde_json::to_value("zero").expect("could not convert to serde_json::Value");
-    AttributeValue::update_for_context(
-        ctx,
-        *destination_attribute_value.id(),
-        Some(*domain_attribute_value.id()),
-        destination_prop_context,
-        Some(value),
-        None,
-    )
-    .await
-    .expect("cannot update value for context");
 
     // Return the payload.
     ComponentPayload {
@@ -799,7 +634,7 @@ async fn with_deep_data_structure(ctx: &DalContext<'_, '_>) {
     .await
     .expect("could not connect providers");
 
-    let source_domain_attribute_value_id = *AttributeValue::find_for_context(
+    let _source_domain_attribute_value_id = *AttributeValue::find_for_context(
         ctx,
         AttributeReadContext {
             prop_id: Some(source_root.domain_prop_id),

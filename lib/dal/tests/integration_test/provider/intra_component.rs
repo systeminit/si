@@ -1,9 +1,8 @@
 use crate::dal::test;
 use dal::attribute::context::AttributeContextBuilder;
-
 use dal::func::binding::FuncBinding;
-
 use dal::provider::internal::InternalProvider;
+use dal::test::helpers::find_prop_and_parent_by_name;
 use dal::test_harness::{
     create_prop_of_kind_and_set_parent_with_name, create_schema, create_schema_variant_with_root,
 };
@@ -364,37 +363,16 @@ async fn docker_image_intra_component_update(ctx: &DalContext<'_, '_>) {
 
     // Update the second component and ensure the first's values did not drift. First, find the prop
     // that we want to update on the schema variant.
-    let schema_variant: SchemaVariant = SchemaVariant::get_by_id(ctx, schema_variant_id)
-        .await
-        .expect("could not get schema variant by id")
-        .expect("schema variant not found");
-    let mut found_prop = None;
-    let mut found_parent_prop = None;
-    for prop in schema_variant
-        .all_props(ctx)
-        .await
-        .expect("could not find all props for schema variant")
-    {
-        if let Some(parent_prop) = prop
-            .parent_prop(ctx)
+    let (name_prop_id, si_prop_id) =
+        find_prop_and_parent_by_name(ctx, "name", "si", None, *schema_variant_id)
             .await
-            .expect("could not find parent prop")
-        {
-            if prop.name() == "name" && parent_prop.name() == "si" {
-                found_prop = Some(prop);
-                found_parent_prop = Some(parent_prop);
-                break;
-            }
-        }
-    }
-    let name_prop = found_prop.expect("could not find /root/si/name prop");
-    let si_prop = found_parent_prop.expect("could not find /root/si prop");
+            .expect("could not find prop and parent by name");
 
     // Now, find the attribute values need to update the second component.
     let bloodscythe_si_attribute_value = AttributeValue::find_for_context(
         ctx,
         AttributeReadContext {
-            prop_id: Some(*si_prop.id()),
+            prop_id: Some(si_prop_id),
             ..bloodscythe_base_context
         },
     )
@@ -404,7 +382,7 @@ async fn docker_image_intra_component_update(ctx: &DalContext<'_, '_>) {
     let bloodscythe_name_attribute_value = AttributeValue::find_for_context(
         ctx,
         AttributeReadContext {
-            prop_id: Some(*name_prop.id()),
+            prop_id: Some(name_prop_id),
             ..bloodscythe_base_context
         },
     )
@@ -415,7 +393,7 @@ async fn docker_image_intra_component_update(ctx: &DalContext<'_, '_>) {
     // Update the "/root/si/name" value on the second component, observe that it worked, and observe
     // that the first component was not updated.
     let bloodscythe_name_update_context = AttributeContextBuilder::from(bloodscythe_base_context)
-        .set_prop_id(*name_prop.id())
+        .set_prop_id(name_prop_id)
         .to_context()
         .expect("could not convert builder to attribute context");
     AttributeValue::update_for_context(
@@ -467,7 +445,7 @@ async fn docker_image_intra_component_update(ctx: &DalContext<'_, '_>) {
     let soulrender_si_attribute_value = AttributeValue::find_for_context(
         ctx,
         AttributeReadContext {
-            prop_id: Some(*si_prop.id()),
+            prop_id: Some(si_prop_id),
             ..soulrender_base_context
         },
     )
@@ -477,7 +455,7 @@ async fn docker_image_intra_component_update(ctx: &DalContext<'_, '_>) {
     let soulrender_name_attribute_value = AttributeValue::find_for_context(
         ctx,
         AttributeReadContext {
-            prop_id: Some(*name_prop.id()),
+            prop_id: Some(name_prop_id),
             ..soulrender_base_context
         },
     )
@@ -488,7 +466,7 @@ async fn docker_image_intra_component_update(ctx: &DalContext<'_, '_>) {
     // Update the "/root/si/name" value on the first component, observe that it worked, and observe
     // that the second component was not updated.
     let soulrender_name_update_context = AttributeContextBuilder::from(soulrender_base_context)
-        .set_prop_id(*name_prop.id())
+        .set_prop_id(name_prop_id)
         .to_context()
         .expect("could not convert builder to attribute context");
     AttributeValue::update_for_context(

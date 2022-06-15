@@ -12,9 +12,9 @@ use crate::schema::variant::SchemaVariantError;
 use crate::socket::SocketError;
 use crate::{
     AttributeContextBuilderError, AttributePrototypeArgumentError, AttributePrototypeError,
-    AttributeValueError, CodeGenerationPrototypeError, DalContext, FuncError, PropError, PropId,
-    QualificationPrototypeError, ResourcePrototypeError, SchemaError, StandardModelError,
-    ValidationPrototypeError,
+    AttributeReadContext, AttributeValueError, CodeGenerationPrototypeError, DalContext,
+    ExternalProviderId, FuncError, PropError, PropId, QualificationPrototypeError,
+    ResourcePrototypeError, SchemaError, StandardModelError, ValidationPrototypeError,
 };
 
 mod func;
@@ -30,6 +30,8 @@ pub enum BuiltinsError {
     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
+    #[error("attribute value not found for attribute read context: {0:?}")]
+    AttributeValueNotFoundForContext(AttributeReadContext),
     #[error("code generation prototype error: {0}")]
     CodeGenerationPrototype(#[from] CodeGenerationPrototypeError),
     #[error("func error: {0}")]
@@ -44,8 +46,16 @@ pub enum BuiltinsError {
     ImplicitInternalProviderNotFoundForProp(PropId),
     #[error("internal provider error: {0}")]
     InternalProvider(#[from] InternalProviderError),
+    #[error("missing attribute prototype for attribute value")]
+    MissingAttributePrototypeForAttributeValue,
+    #[error("missing attribute prototype for external provider id: {0}")]
+    MissingAttributePrototypeForExternalProvider(ExternalProviderId),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
+    #[error("prop not bound by id: {0}")]
+    PropNotFound(PropId),
+    #[error("parent for prop not found (or prop does not have parent) by id: {0}")]
+    PropParentNotFoundOrEmpty(PropId),
     #[error("qualification prototype error: {0}")]
     QualificationPrototype(#[from] QualificationPrototypeError),
     #[error("resource prototype error: {0}")]
