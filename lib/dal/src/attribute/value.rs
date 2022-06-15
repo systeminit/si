@@ -117,6 +117,8 @@ pub enum AttributeValueError {
     MissingForId(AttributeValueId),
     #[error("func not found: {0}")]
     MissingFunc(String),
+    #[error("FuncBinding not found: {0}")]
+    MissingFuncBinding(FuncBindingId),
     #[error("func binding return value not found")]
     MissingFuncBindingReturnValue,
     #[error("missing value from func binding return value for attribute value id: {0}")]
@@ -612,7 +614,58 @@ impl AttributeValue {
         context: AttributeContext,
         value: Option<serde_json::Value>,
         // TODO: Allow updating the key
+        key: Option<String>,
+    ) -> AttributeValueResult<(
+        Option<serde_json::Value>,
+        AttributeValueId,
+        Option<ComponentAsyncTasks>,
+    )> {
+        Self::update_for_context_raw(
+            ctx,
+            attribute_value_id,
+            parent_attribute_value_id,
+            context,
+            value,
+            key,
+            true,
+        )
+        .await
+    }
+
+    pub async fn update_for_context_without_creating_proxies(
+        ctx: &DalContext<'_, '_>,
+        attribute_value_id: AttributeValueId,
+        parent_attribute_value_id: Option<AttributeValueId>,
+        context: AttributeContext,
+        value: Option<serde_json::Value>,
+        // TODO: Allow updating the key
+        key: Option<String>,
+    ) -> AttributeValueResult<(
+        Option<serde_json::Value>,
+        AttributeValueId,
+        Option<ComponentAsyncTasks>,
+    )> {
+        Self::update_for_context_raw(
+            ctx,
+            attribute_value_id,
+            parent_attribute_value_id,
+            context,
+            value,
+            key,
+            false,
+        )
+        .await
+    }
+
+    async fn update_for_context_raw(
+        ctx: &DalContext<'_, '_>,
+        attribute_value_id: AttributeValueId,
+        parent_attribute_value_id: Option<AttributeValueId>,
+        context: AttributeContext,
+        value: Option<serde_json::Value>,
+        // TODO: Allow updating the key
         _key: Option<String>,
+        create_child_proxies: bool,
     ) -> AttributeValueResult<(
         Option<serde_json::Value>,
         AttributeValueId,
@@ -649,10 +702,11 @@ impl AttributeValue {
             let parent_attribute_context = parent_attribute_context_builder
                 .set_prop_id(parent_attribute_value.context.prop_id())
                 .to_context()?;
-            let maybe = Self::vivify_value_and_parent_values(
+            let maybe = Self::vivify_value_and_parent_values_raw(
                 ctx,
                 parent_attribute_context,
                 parent_attribute_value_id,
+                create_child_proxies,
             )
             .await?;
             maybe_parent_attribute_value_id = Some(maybe);
@@ -706,13 +760,15 @@ impl AttributeValue {
                 // Whenever we make a new `AttributeValue` we need to create
                 // proxies to represent the children of the parallel `AttributeValue`
                 // that exists in a different `AttributeContext`.
-                // Self::populate_child_proxies_for_value(
-                //     ctx,
-                //     *given_attribute_value.id(),
-                //     context,
-                //     *value.id(),
-                // )
-                // .await?;
+                if create_child_proxies {
+                    Self::populate_child_proxies_for_value(
+                        ctx,
+                        *given_attribute_value.id(),
+                        context,
+                        *value.id(),
+                    )
+                    .await?;
+                }
 
                 value
             };
@@ -853,7 +909,6 @@ impl AttributeValue {
     /// appropriate [`AttributeValue`] to use. By using this function,
     /// [`update_for_context()`](AttributeValue::update_for_context()) is called after we have created an appropriate
     /// [`AttributeValue`] to use.
-    #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn insert_for_context(
         ctx: &DalContext<'_, '_>,
@@ -861,6 +916,45 @@ impl AttributeValue {
         parent_attribute_value_id: AttributeValueId,
         value: Option<serde_json::Value>,
         key: Option<String>,
+    ) -> AttributeValueResult<(AttributeValueId, Option<ComponentAsyncTasks>)> {
+        Self::insert_for_context_raw(
+            ctx,
+            parent_context,
+            parent_attribute_value_id,
+            value,
+            key,
+            true,
+        )
+        .await
+    }
+
+    #[instrument(skip_all)]
+    pub async fn insert_for_context_without_creating_proxies(
+        ctx: &DalContext<'_, '_>,
+        parent_context: AttributeContext,
+        parent_attribute_value_id: AttributeValueId,
+        value: Option<serde_json::Value>,
+        key: Option<String>,
+    ) -> AttributeValueResult<(AttributeValueId, Option<ComponentAsyncTasks>)> {
+        Self::insert_for_context_raw(
+            ctx,
+            parent_context,
+            parent_attribute_value_id,
+            value,
+            key,
+            false,
+        )
+        .await
+    }
+
+    #[instrument(skip_all)]
+    async fn insert_for_context_raw(
+        ctx: &DalContext<'_, '_>,
+        parent_context: AttributeContext,
+        parent_attribute_value_id: AttributeValueId,
+        value: Option<serde_json::Value>,
+        key: Option<String>,
+        create_child_proxies: bool,
     ) -> AttributeValueResult<(AttributeValueId, Option<ComponentAsyncTasks>)> {
         let parent_prop =
             AttributeValue::find_prop_for_value(ctx, parent_attribute_value_id).await?;
@@ -963,13 +1057,14 @@ impl AttributeValue {
             }
         }
 
-        let (_, attribute_value_id, async_tasks) = Self::update_for_context(
+        let (_, attribute_value_id, async_tasks) = Self::update_for_context_raw(
             ctx,
             *attribute_value.id(),
             Some(parent_attribute_value_id),
             context,
             value,
             key,
+            create_child_proxies,
         )
         .await?;
 
@@ -1016,6 +1111,27 @@ impl AttributeValue {
         context: AttributeContext,
         attribute_value_id: AttributeValueId,
     ) -> AttributeValueResult<AttributeValueId> {
+        Self::vivify_value_and_parent_values_raw(ctx, context, attribute_value_id, true).await
+    }
+
+    #[instrument(skip_all)]
+    #[async_recursion]
+    async fn vivify_value_and_parent_values_without_child_proxies(
+        ctx: &DalContext<'_, '_>,
+        context: AttributeContext,
+        attribute_value_id: AttributeValueId,
+    ) -> AttributeValueResult<AttributeValueId> {
+        Self::vivify_value_and_parent_values_raw(ctx, context, attribute_value_id, false).await
+    }
+
+    #[instrument(skip_all)]
+    #[async_recursion]
+    async fn vivify_value_and_parent_values_raw(
+        ctx: &DalContext<'_, '_>,
+        context: AttributeContext,
+        attribute_value_id: AttributeValueId,
+        create_child_proxies: bool,
+    ) -> AttributeValueResult<AttributeValueId> {
         let attribute_value = Self::get_by_id(ctx, &attribute_value_id)
             .await?
             .ok_or(AttributeValueError::Missing)?;
@@ -1028,18 +1144,25 @@ impl AttributeValue {
             PropKind::String | PropKind::Boolean | PropKind::Integer => todo!(),
         };
 
-        // If we're already set, there's not anything for us to do.
-        if FuncBindingReturnValue::get_by_id(ctx, &attribute_value.func_binding_return_value_id)
+        let unset_func_name = "si:unset".to_string();
+        let unset_func = Func::find_by_attr(ctx, "name", &unset_func_name)
             .await?
-            .ok_or_else(|| {
-                AttributeValueError::UnableToCreateParent(format!(
-                    "Missing FuncBindingReturnValue for AttributeValue: {:?}",
-                    attribute_value_id
-                ))
-            })?
-            .value()
-            .is_some()
-        {
+            .pop()
+            .ok_or(AttributeValueError::MissingFunc(unset_func_name))?;
+
+        let func_binding = FuncBinding::get_by_id(ctx, &attribute_value.func_binding_id())
+            .await?
+            .ok_or(AttributeValueError::MissingFuncBinding(
+                attribute_value.func_binding_id,
+            ))?;
+        let func = func_binding.func(ctx).await?.ok_or_else(|| {
+            AttributeValueError::MissingFunc(format!(
+                "Func for FuncBindingId {} not found",
+                func_binding.id()
+            ))
+        })?;
+        // If we're already set, there's not anything for us to do.
+        if func.id() != unset_func.id() {
             return Ok(attribute_value_id);
         }
 
@@ -1048,13 +1171,14 @@ impl AttributeValue {
             .await?
             .map(|av| *av.id());
 
-        let (_, new_attribute_value_id, _) = Self::update_for_context(
+        let (_, new_attribute_value_id, _) = Self::update_for_context_raw(
             ctx,
             attribute_value_id,
             maybe_parent_attribute_value_id,
             context,
             Some(empty_value),
             None,
+            create_child_proxies,
         )
         .await?;
 
@@ -1062,7 +1186,6 @@ impl AttributeValue {
     }
 
     #[async_recursion]
-    #[allow(dead_code)]
     async fn populate_child_proxies_for_value(
         ctx: &DalContext<'_, '_>,
         original_attribute_value_id: AttributeValueId,
@@ -1263,15 +1386,16 @@ impl AttributeValue {
 
                         // TODO(fnichol): hrm, we are going to accumulate async tasks--should we
                         // return a Vec of these for the caller to run?
-                        let (_, _, _async_tasks) = Self::update_for_context(
-                            ctx,
-                            *attribute_value.id(),
-                            Some(*parent_attribute_value.id()),
-                            context,
-                            Some(value),
-                            None,
-                        )
-                        .await?;
+                        let (_, _, _async_tasks) =
+                            Self::update_for_context_without_creating_proxies(
+                                ctx,
+                                *attribute_value.id(),
+                                Some(*parent_attribute_value.id()),
+                                context,
+                                Some(value),
+                                None,
+                            )
+                            .await?;
                     }
                 }
             }
@@ -1281,7 +1405,7 @@ impl AttributeValue {
                     .ok_or(AttributeValueError::ValueAsObject)?;
 
                 for value in unprocessed_array.drain(0..) {
-                    Self::insert_for_context(
+                    Self::insert_for_context_without_creating_proxies(
                         ctx,
                         update_context,
                         *parent_attribute_value.id(),
@@ -1299,7 +1423,7 @@ impl AttributeValue {
                 let map_keys: HashSet<_> = unprocessed_map.keys().map(|s| s.to_string()).collect();
                 for key in map_keys {
                     if let Some(value) = unprocessed_map.remove(&key) {
-                        Self::insert_for_context(
+                        Self::insert_for_context_without_creating_proxies(
                             ctx,
                             update_context,
                             *parent_attribute_value.id(),

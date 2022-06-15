@@ -5,7 +5,8 @@ use std::collections::{HashMap, VecDeque};
 
 use crate::{
     AttributeReadContext, AttributeValue, AttributeValueError, AttributeValueId,
-    AttributeValuePayload, AttributeValueResult, DalContext, PropKind, StandardModel,
+    AttributeValuePayload, AttributeValueResult, DalContext, Prop, PropError, PropKind,
+    StandardModel,
 };
 
 /// A generated view for an [`AttributeReadContext`](crate::AttributeReadContext) and an optional
@@ -99,9 +100,10 @@ impl AttributeView {
 
         while !work_queue.is_empty() {
             let mut unprocessed: Vec<AttributeValuePayload> = vec![];
-            let (root_id, json_pointer) = root_stack
-                .pop()
-                .ok_or(AttributeValueError::UnexpectedEmptyRootStack)?;
+            let (root_id, json_pointer) = root_stack.pop().ok_or_else(|| {
+                dbg!(&work_queue);
+                AttributeValueError::UnexpectedEmptyRootStack
+            })?;
 
             while let Some(AttributeValuePayload {
                 prop,
@@ -178,14 +180,32 @@ impl AttributeView {
         }
 
         if let Some(root_attribute_value_id) = root_attribute_value_id {
-            let root_json_pointer = json_pointer_for_attribute_value_id
-                .get(&root_attribute_value_id)
-                .ok_or_else(|| {
-                    AttributeValueError::JsonPointerMissing(
-                        root_attribute_value_id,
-                        json_pointer_for_attribute_value_id.clone(),
-                    )
-                })?;
+            let root_json_pointer =
+                match json_pointer_for_attribute_value_id.get(&root_attribute_value_id) {
+                    Some(pointer) => pointer,
+                    None => {
+                        let root_av = AttributeValue::get_by_id(ctx, &root_attribute_value_id)
+                            .await?
+                            .ok_or_else(|| {
+                                AttributeValueError::NotFound(
+                                    root_attribute_value_id,
+                                    *ctx.visibility(),
+                                )
+                            })?;
+                        let root_prop = Prop::get_by_id(ctx, &root_av.context.prop_id())
+                            .await?
+                            .ok_or_else(|| {
+                                PropError::NotFound(root_av.context.prop_id(), *ctx.visibility())
+                            })?;
+                        // Likely what happened here is that we tried to build an AttributeView
+                        // for an AttributeValue/Prop that is Unset, so the `properties` object
+                        // is empty, and does not contain a key matching our Prop's name.
+                        dbg!(&properties, root_av, root_prop);
+                        return Ok(Self {
+                            value: serde_json::Value::Null,
+                        });
+                    }
+                };
 
             return Ok(Self {
                 value: properties
