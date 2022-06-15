@@ -236,6 +236,7 @@ impl ExternalProvider {
         }
 
         let emit_context = AttributeContextBuilder::from(consume_attribute_context)
+            .unset_prop_id()
             .unset_internal_provider_id()
             .set_external_provider_id(self.id)
             .to_context()?;
