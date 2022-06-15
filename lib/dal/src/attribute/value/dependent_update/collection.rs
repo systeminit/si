@@ -334,6 +334,8 @@ impl AttributeValueDependentCollectionHarness {
                     let parent_attribute_context =
                         AttributeContextBuilder::from(new_attribute_value.context)
                             .set_prop_id(parent_attribute_value.context.prop_id())
+                            .unset_internal_provider_id()
+                            .unset_external_provider_id()
                             .to_context()?;
                     let parent_attribute_value_id =
                         AttributeValue::vivify_value_and_parent_values_without_child_proxies(
