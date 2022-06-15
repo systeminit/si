@@ -79,7 +79,7 @@ pub enum FuncBackendKind {
     //Number (Float?),
     //EmptyObject,
     //EmptyArray,
-    //Json,
+    Json,
     //Js,
     ValidateStringValue,
 }
@@ -111,7 +111,7 @@ pub enum FuncBackendResponseType {
     String,
     Unset,
     // Commented out while we climb back up - Adam & Fletcher
-    //Json,
+    Json,
     Validation,
 }
 

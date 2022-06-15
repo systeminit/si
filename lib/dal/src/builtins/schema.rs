@@ -554,7 +554,6 @@ async fn docker_image(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     // This means if someone updates this function the properties will be invalid
     let mut properties = HashMap::new();
     properties.insert("image".to_owned(), serde_json::json!(""));
-    properties.insert("Number of Parents".to_owned(), serde_json::json!("0"));
 
     let (identity_func_id, identity_func_binding_id, identity_func_binding_return_value_id) =
         setup_identity_func(ctx).await?;

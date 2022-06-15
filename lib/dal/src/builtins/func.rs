@@ -15,7 +15,6 @@ pub async fn migrate(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
 
     si_validate_string_equals(ctx).await?;
     si_qualification_always_true(ctx).await?;
-    si_number_of_parents(ctx).await?;
     si_docker_images_to_k8s_deployment_container_spec(ctx).await?;
     si_generate_yaml(ctx).await?;
     si_qualification_docker_image_name_inspect(ctx).await?;
@@ -45,29 +44,6 @@ async fn si_generate_yaml(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     Ok(())
 }
 
-async fn si_number_of_parents(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
-    let existing_func = Func::find_by_attr(ctx, "name", &"si:numberOfParents".to_string()).await?;
-    if existing_func.is_empty() {
-        let mut func = Func::new(
-            ctx,
-            "si:numberOfParents",
-            FuncBackendKind::JsAttribute, // Should be integer, but the js integer backend isn't 100% there yet and is being worked on in parallel
-            FuncBackendResponseType::String,
-        )
-        .await
-        .expect("cannot create func");
-        func.set_handler(ctx, Some("numberOfParents")).await?;
-        func.set_code_base64(
-            ctx,
-            Some(base64::encode(
-                "function numberOfParents(component) { return `${component.parents.length}`; }",
-            )),
-        )
-        .await?;
-    }
-    Ok(())
-}
-
 async fn si_docker_images_to_k8s_deployment_container_spec(
     ctx: &DalContext<'_, '_>,
 ) -> BuiltinsResult<()> {
@@ -77,7 +53,7 @@ async fn si_docker_images_to_k8s_deployment_container_spec(
         let mut func = Func::new(
             ctx,
             func_name,
-            FuncBackendKind::JsAttribute,
+            FuncBackendKind::Json,
             FuncBackendResponseType::Array,
         )
         .await

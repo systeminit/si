@@ -91,7 +91,8 @@ pub async fn emit(
         .await?
         .ok_or(EmitError::FuncNotFound(func_id))?;
 
-    // TODO(nick): handle non-identity connections.
+    // TODO(nick): handle non-identity connections. This will only happen for explicit internal
+    // providers and external providers... which do not use emit (maybe will never!).
     let args: serde_json::Value = match func.backend_kind() {
         FuncBackendKind::Identity => {
             serde_json::to_value(FuncBackendIdentityArgs { identity: payload })?

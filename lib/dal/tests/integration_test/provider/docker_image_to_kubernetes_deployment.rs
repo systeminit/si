@@ -133,10 +133,30 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &DalC
             .component_view_properties(ctx)
             .await // actual
     );
-    // TODO(nick): add correct shape once we see what it looks like.
+
     assert_eq_sorted!(
-        serde_json::json![{}],                                        // expected
-        head_deployment_payload.component_view_properties(ctx).await  // actual
+        serde_json::json![{
+            "domain": {
+                "apiVersion": "apps/v1",
+                "kind": "Deployment",
+                "spec": {
+                    "template": {
+                        "spec": {
+                            "containers": [
+                                {
+                                    "image": "ironsides",
+                                    "ports": [],
+                                },
+                            ],
+                        },
+                    },
+                },
+            },
+            "si": {
+                "name": "deployment"
+            },
+        }], // expected
+        head_deployment_payload.component_view_properties(ctx).await // actual
     );
 }
 

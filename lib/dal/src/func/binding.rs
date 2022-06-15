@@ -8,7 +8,7 @@ use thiserror::Error;
 use tokio::sync::mpsc;
 use veritech::{
     CodeGenerationResultSuccess, OutputStream, QualificationCheckResultSuccess,
-    ResourceSyncResultSuccess,
+    ResolverFunctionComponent, ResourceSyncResultSuccess,
 };
 
 use crate::func::backend::array::{FuncBackendArray, FuncBackendArrayArgs};
@@ -403,6 +403,48 @@ impl FuncBinding {
 
                 execution.process_output(ctx, rx).await?;
                 let return_value = serde_json::to_value(&veritech_result)?;
+                (Some(return_value.clone()), Some(return_value))
+            }
+            FuncBackendKind::Json => {
+                execution
+                    .set_state(ctx, super::execution::FuncExecutionState::Dispatch)
+                    .await?;
+
+                let (tx, rx) = mpsc::channel(64);
+                let handler = func
+                    .handler()
+                    .ok_or(FuncBindingError::JsFuncNotFound(self.pk))?;
+                let code_base64 = func
+                    .code_base64()
+                    .ok_or(FuncBindingError::JsFuncNotFound(self.pk))?;
+
+                let mut component = ResolverFunctionComponent {
+                    data: veritech::ComponentView {
+                        properties: self.args.clone(),
+                        ..Default::default()
+                    },
+                    parents: Vec::new(),
+                };
+
+                // We don't need to encrypt parents as we are hardcoding them to be empty
+                // Note(paulo, nick): we should use a new request kind eventually, but now we gotta ship
+                ComponentView::reencrypt_secrets(ctx, &mut component.data).await?;
+
+                execution
+                    .set_state(ctx, super::execution::FuncExecutionState::Run)
+                    .await?;
+
+                let return_value = FuncBackendJsAttribute::new(
+                    ctx.veritech().clone(),
+                    tx,
+                    handler.to_owned(),
+                    FuncBackendJsAttributeArgs { component },
+                    code_base64.to_owned(),
+                )
+                .execute()
+                .await?;
+
+                execution.process_output(ctx, rx).await?;
                 (Some(return_value.clone()), Some(return_value))
             }
             FuncBackendKind::JsAttribute => {
