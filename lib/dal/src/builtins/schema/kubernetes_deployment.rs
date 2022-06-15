@@ -12,9 +12,9 @@ use crate::{
     schema::{SchemaVariant, UiMenu},
     socket::{Socket, SocketArity, SocketEdgeKind, SocketKind},
     AttributePrototypeArgument, AttributeReadContext, AttributeValue, BuiltinsError,
-    BuiltinsResult, CodeGenerationPrototype, CodeLanguage, DalContext, Func, InternalProvider,
-    Prop, PropId, PropKind, QualificationPrototype, Schema, SchemaError, SchemaKind, SchematicKind,
-    StandardModel,
+    BuiltinsResult, CodeGenerationPrototype, CodeLanguage, DalContext, Func, FuncError,
+    InternalProvider, Prop, PropId, PropKind, QualificationPrototype, Schema, SchemaError,
+    SchemaKind, SchematicKind, StandardModel,
 };
 
 use super::{
@@ -142,7 +142,7 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> BuiltinsResult<(
     let (identity_func_id, identity_func_binding_id, identity_func_binding_return_value_id) =
         setup_identity_func(ctx).await?;
 
-    let (_docker_image_explicit_internal_provider, mut input_socket) =
+    let (docker_image_explicit_internal_provider, mut input_socket) =
         InternalProvider::new_explicit_with_socket(
             ctx,
             *schema.id(),
@@ -207,7 +207,7 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> BuiltinsResult<(
         ..AttributeReadContext::default()
     };
 
-    // First, connect to the "domain namespace" prop to the "kubernetes_namespace" explicit internal provider.
+    // Connect the "domain namespace" prop to the "kubernetes_namespace" explicit internal provider.
     let domain_namespace_prop =
         find_child_prop_by_name(ctx, *metadata_prop.id(), "namespace").await?;
     let domain_namespace_attribute_value_read_context = AttributeReadContext {
@@ -235,7 +235,7 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> BuiltinsResult<(
     )
     .await?;
 
-    // First, connect to the "template namespace" prop to the "kubernetes_namespace" explicit internal provider.
+    // Connect the "template namespace" prop to the "kubernetes_namespace" explicit internal provider.
     let template_prop = find_child_prop_by_name(ctx, *spec_prop.id(), "template").await?;
     let template_metadata_prop =
         find_child_prop_by_name(ctx, *template_prop.id(), "metadata").await?;
@@ -263,6 +263,41 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> BuiltinsResult<(
         *template_namespace_attribute_prototype.id(),
         "identity".to_string(),
         *kubernetes_namespace_explicit_internal_provider.id(),
+    )
+    .await?;
+
+    // Connect the "/root/domain/spec/template/spec/containers" field to the "docker_image" explicit
+    // internal provider. We need to use the appropriate function with and name the argument "images".
+    let template_spec_prop = find_child_prop_by_name(ctx, *template_prop.id(), "spec").await?;
+    let containers_prop =
+        find_child_prop_by_name(ctx, *template_spec_prop.id(), "containers").await?;
+    let containers_attribute_value_read_context = AttributeReadContext {
+        prop_id: Some(*containers_prop.id()),
+        ..base_attribute_read_context
+    };
+    let containers_attribute_value =
+        AttributeValue::find_for_context(ctx, containers_attribute_value_read_context)
+            .await?
+            .ok_or(BuiltinsError::AttributeValueNotFoundForContext(
+                containers_attribute_value_read_context,
+            ))?;
+    let mut containers_attribute_prototype = containers_attribute_value
+        .attribute_prototype(ctx)
+        .await?
+        .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
+    let transformation_func_name = "si:dockerImagesToK8sDeploymentContainerSpec".to_string();
+    let transformation_func = Func::find_by_attr(ctx, "name", &transformation_func_name)
+        .await?
+        .pop()
+        .ok_or(FuncError::NotFoundByName(transformation_func_name))?;
+    containers_attribute_prototype
+        .set_func_id(ctx, *transformation_func.id())
+        .await?;
+    AttributePrototypeArgument::new_for_intra_component(
+        ctx,
+        *containers_attribute_prototype.id(),
+        "images".to_string(),
+        *docker_image_explicit_internal_provider.id(),
     )
     .await?;
 

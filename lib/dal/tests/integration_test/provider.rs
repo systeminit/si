@@ -1,3 +1,4 @@
+mod docker_image_to_kubernetes_deployment;
 mod inter_component;
 mod intra_component;
 mod kubernetes_namespace_to_kubernetes_deployment;

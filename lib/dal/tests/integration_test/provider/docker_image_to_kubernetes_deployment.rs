@@ -12,18 +12,16 @@ use std::collections::HashMap;
 use crate::dal::test;
 
 #[test]
-async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(
-    ctx: &DalContext<'_, '_>,
-) {
-    let tail_namespace_payload = setup_kubernetes_namespace(ctx).await;
+async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &DalContext<'_, '_>) {
+    let tail_docker_image_payload = setup_docker_image(ctx).await;
     let head_deployment_payload = setup_kubernetes_deployment(ctx).await;
 
-    // Initialize the tail "/root/domain/metadata/name" field.
+    // Initialize the tail "/root/si/name" field.
     update_attribute_value_for_prop_and_context(
         ctx,
-        tail_namespace_payload.get_prop_id("/root/domain/metadata/name"),
+        tail_docker_image_payload.get_prop_id("/root/si/name"),
         Some(serde_json::json!["tail"]),
-        tail_namespace_payload.base_attribute_read_context,
+        tail_docker_image_payload.base_attribute_read_context,
     )
     .await;
 
@@ -31,15 +29,15 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(
     assert_eq_sorted!(
         serde_json::json![{
             "domain": {
-                "metadata": {
-                    "name": "tail"
-                }
+                "image": "tail"
             },
             "si": {
-                "name": "namespace"
+                "name": "tail"
             }
         }], // expected
-        tail_namespace_payload.component_view_properties(ctx).await // actual
+        tail_docker_image_payload
+            .component_view_properties(ctx)
+            .await // actual
     );
     assert_eq_sorted!(
         serde_json::json![{
@@ -57,8 +55,8 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(
     // Find the providers we need for connection.
     let tail_external_provider = ExternalProvider::find_for_schema_variant_and_name(
         ctx,
-        tail_namespace_payload.schema_variant_id,
-        "kubernetes_namespace",
+        tail_docker_image_payload.schema_variant_id,
+        "docker_image",
     )
     .await
     .expect("cannot find external provider")
@@ -67,7 +65,7 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(
         InternalProvider::find_explicit_for_schema_variant_and_name(
             ctx,
             head_deployment_payload.schema_variant_id,
-            "kubernetes_namespace",
+            "docker_image",
         )
         .await
         .expect("cannot find explicit internal provider")
@@ -78,7 +76,7 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(
         ctx,
         "identity".to_string(),
         *tail_external_provider.id(),
-        tail_namespace_payload.component_id,
+        tail_docker_image_payload.component_id,
         *head_explicit_internal_provider.id(),
         head_deployment_payload.component_id,
     )
@@ -89,15 +87,15 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(
     assert_eq_sorted!(
         serde_json::json![{
             "domain": {
-                "metadata": {
-                    "name": "tail"
-                }
+                "image": "tail"
             },
             "si": {
-                "name": "namespace"
+                "name": "tail"
             }
         }], // expected
-        tail_namespace_payload.component_view_properties(ctx).await // actual
+        tail_docker_image_payload
+            .component_view_properties(ctx)
+            .await // actual
     );
     assert_eq_sorted!(
         serde_json::json![{
@@ -115,53 +113,35 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(
     // Perform update!
     update_attribute_value_for_prop_and_context(
         ctx,
-        tail_namespace_payload.get_prop_id("/root/domain/metadata/name"),
-        Some(serde_json::json!["look-at-me-mom-i-updated"]),
-        tail_namespace_payload.base_attribute_read_context,
+        tail_docker_image_payload.get_prop_id("/root/si/name"),
+        Some(serde_json::json!["ironsides"]),
+        tail_docker_image_payload.base_attribute_read_context,
     )
     .await;
 
-    // Observed that it worked.
+    // Observe that it worked.
     assert_eq_sorted!(
         serde_json::json![{
             "domain": {
-                "metadata": {
-                    "name": "look-at-me-mom-i-updated"
-                }
+                "image": "ironsides"
             },
             "si": {
-                "name": "namespace"
+                "name": "ironsides"
             }
         }], // expected
-        tail_namespace_payload.component_view_properties(ctx).await // actual
+        tail_docker_image_payload
+            .component_view_properties(ctx)
+            .await // actual
     );
-
+    // TODO(nick): add correct shape once we see what it looks like.
     assert_eq_sorted!(
-        serde_json::json![{
-            "domain": {
-                "apiVersion": "apps/v1",
-                "kind": "Deployment",
-                "metadata": {
-                    "namespace": "look-at-me-mom-i-updated"
-                },
-                "spec": {
-                    "template": {
-                        "metadata": {
-                            "namespace": "look-at-me-mom-i-updated"
-                        }
-                    }
-                },
-            },
-            "si": {
-                "name": "deployment"
-            }
-        }], // expected
-        head_deployment_payload.component_view_properties(ctx).await // actual
+        serde_json::json![{}],                                        // expected
+        head_deployment_payload.component_view_properties(ctx).await  // actual
     );
 }
 
-async fn setup_kubernetes_namespace(ctx: &DalContext<'_, '_>) -> ComponentPayload {
-    let schema_name = "kubernetes_namespace".to_string();
+async fn setup_docker_image(ctx: &DalContext<'_, '_>) -> ComponentPayload {
+    let schema_name = "docker_image".to_string();
     let schema: Schema = Schema::find_by_attr(ctx, "name", &schema_name)
         .await
         .expect("could not find schema by name")
@@ -171,7 +151,7 @@ async fn setup_kubernetes_namespace(ctx: &DalContext<'_, '_>) -> ComponentPayloa
         .default_schema_variant_id()
         .expect("default schema variant id not found");
 
-    let (component, _, _) = Component::new_for_schema_with_node(ctx, "namespace", schema.id())
+    let (component, _, _) = Component::new_for_schema_with_node(ctx, "image", schema.id())
         .await
         .expect("unable to create component");
     let base_attribute_read_context = AttributeReadContext {
@@ -183,11 +163,11 @@ async fn setup_kubernetes_namespace(ctx: &DalContext<'_, '_>) -> ComponentPayloa
     };
     let mut prop_map = HashMap::new();
 
-    let (name_prop_id, _metadata_prop_id) =
-        find_prop_and_parent_by_name(ctx, "name", "metadata", None, *schema_variant_id)
+    let (name_prop_id, _si_prop_id) =
+        find_prop_and_parent_by_name(ctx, "name", "si", None, *schema_variant_id)
             .await
-            .expect("could not find prop (and its parent): /root/domain/metadata/name");
-    prop_map.insert("/root/domain/metadata/name", name_prop_id);
+            .expect("could not find prop (and its parent)");
+    prop_map.insert("/root/si/name", name_prop_id);
 
     ComponentPayload {
         schema_id: *schema.id(),
