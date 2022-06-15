@@ -269,7 +269,7 @@ pub async fn update_attribute_value_for_prop_and_context(
         .to_context()
         .expect("could not convert builder to attribute context");
 
-    let (_, updated_attribute_value_id, _) = AttributeValue::update_for_context(
+    let (_, updated_attribute_value_id, task) = AttributeValue::update_for_context(
         ctx,
         *attribute_value.id(),
         Some(*parent_attribute_value.id()),
@@ -279,6 +279,10 @@ pub async fn update_attribute_value_for_prop_and_context(
     )
     .await
     .expect("cannot update value for context");
+    let _ = task
+        .run_updates_in_ctx(ctx)
+        .await
+        .expect("unable to run dependent values async task");
 
     // Return the updated attribute value id.
     updated_attribute_value_id

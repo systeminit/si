@@ -96,7 +96,7 @@ impl RootProp {
         let si_name_context = AttributeContext::builder()
             .set_prop_id(*si_name_prop.id())
             .to_context()?;
-        AttributeValue::update_for_context(
+        let _ = AttributeValue::update_for_context(
             ctx,
             *AttributeValue::find_for_context(ctx, si_name_context.into())
                 .await?
@@ -117,7 +117,7 @@ impl RootProp {
         let domain_context = AttributeContext::builder()
             .set_prop_id(*domain_specific_prop.id())
             .to_context()?;
-        AttributeValue::update_for_context(
+        let _ = AttributeValue::update_for_context(
             ctx,
             *AttributeValue::find_for_context(ctx, domain_context.into())
                 .await?

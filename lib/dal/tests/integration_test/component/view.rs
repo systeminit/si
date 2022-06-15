@@ -415,7 +415,7 @@ async fn only_string_props(ctx: &DalContext<'_, '_>) {
         .await
         .expect("could not retrieve bohemian AttributeValue")
         .expect("could not find bohemian AttributeValue");
-    AttributeValue::update_for_context(
+    let _ = AttributeValue::update_for_context(
         ctx,
         *bohemian_value.id(),
         Some(*domain_value.id()),
@@ -435,7 +435,7 @@ async fn only_string_props(ctx: &DalContext<'_, '_>) {
         .await
         .expect("could not retrieve killer AttributeValue")
         .expect("could not find killer AttributeValue");
-    AttributeValue::update_for_context(
+    let _ = AttributeValue::update_for_context(
         ctx,
         *killer_value.id(),
         Some(*domain_value.id()),
@@ -527,7 +527,7 @@ async fn one_object_prop(ctx: &DalContext<'_, '_>) {
         .await
         .expect("could not retrieve bohemian AttributeValue")
         .expect("could not find bohemian AttributeValue");
-    AttributeValue::update_for_context(
+    let _ = AttributeValue::update_for_context(
         ctx,
         *unset_bohemian_value.id(),
         Some(queen_value_id),
@@ -547,7 +547,7 @@ async fn one_object_prop(ctx: &DalContext<'_, '_>) {
         .await
         .expect("could not retrieve killer AttributeValue")
         .expect("could not find killer AttributeValue");
-    AttributeValue::update_for_context(
+    let _ = AttributeValue::update_for_context(
         ctx,
         *unset_killer_value.id(),
         Some(queen_value_id),
@@ -646,7 +646,7 @@ async fn nested_object_prop(ctx: &DalContext<'_, '_>) {
         .await
         .expect("could not fetch bohemian AttributeValue")
         .expect("could not find bohemian AttributeValue");
-    AttributeValue::update_for_context(
+    let _ = AttributeValue::update_for_context(
         ctx,
         *unset_bohemian_value.id(),
         Some(queen_value_id),
@@ -666,7 +666,7 @@ async fn nested_object_prop(ctx: &DalContext<'_, '_>) {
         .await
         .expect("could not fetch killer AttributeValue")
         .expect("could not find killer AttributeValue");
-    AttributeValue::update_for_context(
+    let _ = AttributeValue::update_for_context(
         ctx,
         *unset_killer_value.id(),
         Some(queen_value_id),
@@ -706,7 +706,7 @@ async fn nested_object_prop(ctx: &DalContext<'_, '_>) {
         .await
         .expect("could not fetch dust AttributeValue")
         .expect("could not find dust AttributeValue");
-    AttributeValue::update_for_context(
+    let _ = AttributeValue::update_for_context(
         ctx,
         *unset_dust_value.id(),
         Some(pressure_value_id),
@@ -801,7 +801,7 @@ async fn simple_array_of_strings(ctx: &DalContext<'_, '_>) {
         .set_prop_id(*album_prop.id())
         .to_context()
         .expect("could not create album AttributeContext");
-    AttributeValue::insert_for_context(
+    let _ = AttributeValue::insert_for_context(
         ctx,
         album_context,
         sammy_value_id,
@@ -810,7 +810,7 @@ async fn simple_array_of_strings(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not insert album AttributeValue");
-    AttributeValue::insert_for_context(
+    let _ = AttributeValue::insert_for_context(
         ctx,
         album_context,
         sammy_value_id,
@@ -939,7 +939,7 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext<'_, '_>) {
             .await
             .expect("could not retrieve album string AttributeValue")
             .expect("could not find album string AttributeValue");
-    AttributeValue::update_for_context(
+    let _ = AttributeValue::update_for_context(
         ctx,
         *unset_album_string_value.id(),
         Some(standing_hampton_album_value_id),
@@ -981,7 +981,7 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext<'_, '_>) {
         .set_prop_id(*song_name_prop.id())
         .to_context()
         .expect("could not create song name AttributeContext");
-    AttributeValue::insert_for_context(
+    let _ = AttributeValue::insert_for_context(
         ctx,
         song_name_context,
         standing_hampton_songs_array_value_id,
@@ -990,7 +990,7 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not insert fall in love again in standing hampton songs array");
-    AttributeValue::insert_for_context(
+    let _ = AttributeValue::insert_for_context(
         ctx,
         song_name_context,
         standing_hampton_songs_array_value_id,
@@ -1010,7 +1010,7 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext<'_, '_>) {
     .await
     .expect("could not insert voa album object into albums array");
 
-    AttributeValue::update_for_context(
+    let _ = AttributeValue::update_for_context(
         ctx,
         *unset_album_string_value.id(),
         Some(voa_album_value_id),
@@ -1032,7 +1032,7 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext<'_, '_>) {
     .await
     .expect("could not update voa songs array AttributeValue");
 
-    AttributeValue::insert_for_context(
+    let _ = AttributeValue::insert_for_context(
         ctx,
         song_name_context,
         voa_songs_value_id,
@@ -1042,7 +1042,7 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext<'_, '_>) {
     .await
     .expect("could not insert eagles fly into voa songs array");
 
-    AttributeValue::insert_for_context(
+    let _ = AttributeValue::insert_for_context(
         ctx,
         song_name_context,
         voa_songs_value_id,
@@ -1143,7 +1143,7 @@ async fn simple_map(ctx: &DalContext<'_, '_>) {
         .set_prop_id(*album_item_prop.id())
         .to_context()
         .expect("could not create album item AttributeContext");
-    AttributeValue::insert_for_context(
+    let _ = AttributeValue::insert_for_context(
         ctx,
         album_item_context,
         album_value_id,
@@ -1152,7 +1152,7 @@ async fn simple_map(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not insert album item");
-    AttributeValue::insert_for_context(
+    let _ = AttributeValue::insert_for_context(
         ctx,
         album_item_context,
         album_value_id,
@@ -1270,7 +1270,7 @@ async fn complex_nested_array_of_objects_with_a_map(ctx: &DalContext<'_, '_>) {
             .await
             .expect("could not fetch album string AttributeValue")
             .expect("could not find album string AttributeValue");
-    AttributeValue::update_for_context(
+    let _ = AttributeValue::update_for_context(
         ctx,
         *unset_album_string_value.id(),
         Some(standing_hampton_value_id),
@@ -1321,7 +1321,7 @@ async fn complex_nested_array_of_objects_with_a_map(ctx: &DalContext<'_, '_>) {
         .set_prop_id(*song_map_item_prop.id())
         .to_context()
         .expect("could not create song map item AttributeContext");
-    AttributeValue::insert_for_context(
+    let _ = AttributeValue::insert_for_context(
         ctx,
         song_map_item_context,
         song_map_value_id,
@@ -1331,7 +1331,7 @@ async fn complex_nested_array_of_objects_with_a_map(ctx: &DalContext<'_, '_>) {
     .await
     .expect("could not insert fall in love again into standing hampton songs map");
 
-    AttributeValue::insert_for_context(
+    let _ = AttributeValue::insert_for_context(
         ctx,
         song_map_item_context,
         song_map_value_id,

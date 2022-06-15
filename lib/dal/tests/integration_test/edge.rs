@@ -85,7 +85,7 @@ async fn include_component_in_system(
         .expect("cannot retrieve edges from edit session");
     assert_eq!(edges.len(), 1);
 
-    first_component
+    let _ = first_component
         .add_to_system(ctx, system.id())
         .await
         .expect("failed to add component to system");
@@ -105,7 +105,7 @@ async fn include_component_in_system(
         .expect("cannot retrieve edges from edit session");
     assert_eq!(edges.len(), 3);
 
-    second_component
+    let _ = second_component
         .add_to_system(ctx, system.id())
         .await
         .expect("failed to add component to system");
@@ -156,7 +156,7 @@ async fn include_component_in_system_with_edit_sessions(
         .expect("cannot retrieve edges from edit session");
     assert_eq!(edges.len(), 1);
 
-    first_component
+    let _ = first_component
         .add_to_system(ctx, system.id())
         .await
         .expect("failed to add component to system");
@@ -176,7 +176,7 @@ async fn include_component_in_system_with_edit_sessions(
         .expect("cannot retrieve edges from edit session");
     assert_eq!(edges.len(), 3);
 
-    second_component
+    let _ = second_component
         .add_to_system(ctx, system.id())
         .await
         .expect("failed to add component to system");
