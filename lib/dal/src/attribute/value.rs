@@ -1386,15 +1386,16 @@ impl AttributeValue {
 
                         // TODO(fnichol): hrm, we are going to accumulate async tasks--should we
                         // return a Vec of these for the caller to run?
-                        let (_, _, _async_tasks) = Self::update_for_context(
-                            ctx,
-                            *attribute_value.id(),
-                            Some(*parent_attribute_value.id()),
-                            context,
-                            Some(value),
-                            None,
-                        )
-                        .await?;
+                        let (_, _, _async_tasks) =
+                            Self::update_for_context_without_creating_proxies(
+                                ctx,
+                                *attribute_value.id(),
+                                Some(*parent_attribute_value.id()),
+                                context,
+                                Some(value),
+                                None,
+                            )
+                            .await?;
                     }
                 }
             }
@@ -1404,7 +1405,7 @@ impl AttributeValue {
                     .ok_or(AttributeValueError::ValueAsObject)?;
 
                 for value in unprocessed_array.drain(0..) {
-                    Self::insert_for_context(
+                    Self::insert_for_context_without_creating_proxies(
                         ctx,
                         update_context,
                         *parent_attribute_value.id(),
@@ -1422,7 +1423,7 @@ impl AttributeValue {
                 let map_keys: HashSet<_> = unprocessed_map.keys().map(|s| s.to_string()).collect();
                 for key in map_keys {
                     if let Some(value) = unprocessed_map.remove(&key) {
-                        Self::insert_for_context(
+                        Self::insert_for_context_without_creating_proxies(
                             ctx,
                             update_context,
                             *parent_attribute_value.id(),
