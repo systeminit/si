@@ -117,6 +117,8 @@ pub enum AttributeValueError {
     MissingForId(AttributeValueId),
     #[error("func not found: {0}")]
     MissingFunc(String),
+    #[error("FuncBinding not found: {0}")]
+    MissingFuncBinding(FuncBindingId),
     #[error("func binding return value not found")]
     MissingFuncBindingReturnValue,
     #[error("missing value from func binding return value for attribute value id: {0}")]
