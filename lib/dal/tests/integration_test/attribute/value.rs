@@ -109,7 +109,7 @@ async fn update_for_context_simple(ctx: &DalContext<'_, '_>) {
             .properties,
     );
 
-    AttributeValue::update_for_context(
+    let _ = AttributeValue::update_for_context(
         ctx,
         name_value_id,
         Some(domain_value_id),

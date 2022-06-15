@@ -2,14 +2,14 @@
 //! [`AttributeValues`](crate::AttributeValue) that are "dependent" on an updated
 //! [`AttributeValue`](crate::AttributeValue).
 
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 
 use crate::{
     attribute::context::AttributeContextBuilder,
     attribute::value::dependent_update::collection::AttributeValueDependentCollectionHarness,
     AttributeContext, AttributePrototypeArgument, AttributeValue, AttributeValueError,
-    AttributeValueId, AttributeValueResult, Component, DalContext, FuncBinding, Prop, PropKind,
-    StandardModel,
+    AttributeValueId, AttributeValueResult, Component, ComponentAsyncTasks, ComponentId,
+    DalContext, FuncBinding, Prop, PropKind, StandardModel, SystemId,
 };
 
 mod collection;
@@ -17,16 +17,24 @@ mod collection;
 /// A field-less struct to that acts as an interface to provide [`Self::update_dependent_values()`].
 pub struct AttributeValueDependentUpdateHarness;
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct AlmostComponentAsyncTask {
+    component_id: ComponentId,
+    system_id: SystemId,
+}
+
 impl AttributeValueDependentUpdateHarness {
     /// Update dependent_update [`AttributeValues`](crate::AttributeValue) for an updated
     /// [`AttributeValueId`](crate::AttributeValue).
     pub async fn update_dependent_values(
         ctx: &DalContext<'_, '_>,
         updated_attribute_value_id: AttributeValueId,
-    ) -> AttributeValueResult<()> {
+    ) -> AttributeValueResult<Vec<ComponentAsyncTasks>> {
         let original_attribute_value = AttributeValue::get_by_id(ctx, &updated_attribute_value_id)
             .await?
             .ok_or(AttributeValueError::Missing)?;
+
+        let mut components_updated = HashSet::new();
 
         let mut work_queue: VecDeque<AttributeValue> = VecDeque::new();
         work_queue.push_back(original_attribute_value);
@@ -43,6 +51,12 @@ impl AttributeValueDependentUpdateHarness {
             for mut attribute_value_that_needs_to_be_updated in
                 attribute_values_that_need_to_be_updated
             {
+                components_updated.insert(AlmostComponentAsyncTask {
+                    component_id: attribute_value_that_needs_to_be_updated
+                        .context
+                        .component_id(),
+                    system_id: attribute_value_that_needs_to_be_updated.context.system_id(),
+                });
                 let attribute_prototype = attribute_value_that_needs_to_be_updated
                     .attribute_prototype(ctx)
                     .await?
@@ -184,7 +198,17 @@ impl AttributeValueDependentUpdateHarness {
             }
         }
 
-        Ok(())
+        let mut async_tasks = Vec::with_capacity(components_updated.len());
+        for almost_task in components_updated {
+            let component = Component::get_by_id(ctx, &almost_task.component_id)
+                .await?
+                .ok_or(AttributeValueError::ComponentNotFound(
+                    almost_task.component_id,
+                ))?;
+            async_tasks.push(ComponentAsyncTasks::new(component, almost_task.system_id));
+        }
+
+        Ok(async_tasks)
     }
 
     /// Build a [`FuncBinding`](crate::FuncBinding) argument from a provided

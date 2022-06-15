@@ -8,6 +8,7 @@ import {
 import { eventEditSessionSaved$ } from "@/observable/edit_session";
 import { eventResourceSynced$ } from "@/observable/resource";
 import { eventCheckedQualifications$ } from "@/observable/qualification";
+import { eventDependentValuesUpdated$ } from "@/observable/attribute_value";
 import { eventCodeGenerated$ } from "@/observable/code";
 import { eventSecretCreated$ } from "@/observable/secret";
 
@@ -22,6 +23,7 @@ const eventMap: {
   ResourceSynced: eventResourceSynced$,
   CodeGenerated: eventCodeGenerated$,
   CheckedQualifications: eventCheckedQualifications$,
+  UpdatedDependentValue: eventDependentValuesUpdated$,
   SecretCreated: eventSecretCreated$,
 };
 

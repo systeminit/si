@@ -676,7 +676,7 @@ async fn with_deep_data_structure(ctx: &DalContext<'_, '_>) {
         .to_context()
         .expect("could not create source foo update context");
 
-    AttributeValue::update_for_context(
+    let (_, _, task) = AttributeValue::update_for_context(
         ctx,
         source_foo_attribute_value_id,
         Some(source_object_attribute_value_id),
@@ -686,6 +686,9 @@ async fn with_deep_data_structure(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("cannot update source foo_string");
+    task.run_updates_in_ctx(&ctx)
+        .await
+        .expect("unable to run dependent values update");
 
     assert_eq_sorted!(
         serde_json::json![
@@ -758,7 +761,7 @@ async fn with_deep_data_structure(ctx: &DalContext<'_, '_>) {
         .to_context()
         .expect("could not create source foo update context");
 
-    AttributeValue::update_for_context(
+    let (_, _, task) = AttributeValue::update_for_context(
         ctx,
         source_bar_attribute_value_id,
         Some(source_object_attribute_value_id),
@@ -770,6 +773,9 @@ async fn with_deep_data_structure(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("cannot update source bar_string");
+    task.run_updates_in_ctx(&ctx)
+        .await
+        .expect("unable to run dependent values update");
 
     assert_eq_sorted!(
         serde_json::json![

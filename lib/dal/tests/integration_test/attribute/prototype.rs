@@ -569,7 +569,7 @@ async fn remove_component_specific(ctx: &DalContext<'_, '_>) {
                 None => None,
             };
 
-            AttributeValue::update_for_context(
+            let _ = AttributeValue::update_for_context(
                 ctx,
                 *value.id(),
                 parent_value_id,

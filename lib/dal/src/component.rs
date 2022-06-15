@@ -8,7 +8,7 @@ use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::attribute::value::AttributeValue;
+use crate::attribute::value::{AttributeValue, DependentValuesAsyncTasks};
 use crate::attribute::{context::UNSET_ID_VALUE, value::AttributeValueError};
 use crate::code_generation_resolver::CodeGenerationResolverContext;
 use crate::func::backend::validation::FuncBackendValidateStringValueArgs;
@@ -217,7 +217,7 @@ impl Component {
         ctx: &DalContext<'_, '_>,
         name: impl AsRef<str>,
         schema_id: &SchemaId,
-    ) -> ComponentResult<(Self, Node, ComponentAsyncTasks)> {
+    ) -> ComponentResult<(Self, Node, DependentValuesAsyncTasks)> {
         let schema = Schema::get_by_id(ctx, schema_id)
             .await?
             .ok_or(ComponentError::SchemaNotFound)?;
@@ -234,7 +234,7 @@ impl Component {
         ctx: &DalContext<'_, '_>,
         name: impl AsRef<str>,
         schema_variant_id: &SchemaVariantId,
-    ) -> ComponentResult<(Self, Node, ComponentAsyncTasks)> {
+    ) -> ComponentResult<(Self, Node, DependentValuesAsyncTasks)> {
         let schema_variant = SchemaVariant::get_by_id(ctx, schema_variant_id)
             .await?
             .ok_or(ComponentError::SchemaVariantNotFound)?;
@@ -299,7 +299,7 @@ impl Component {
         name: impl AsRef<str>,
         schema_variant_id: &SchemaVariantId,
         parent_node_id: &NodeId,
-    ) -> ComponentResult<(Self, Node, ComponentAsyncTasks)> {
+    ) -> ComponentResult<(Self, Node, DependentValuesAsyncTasks)> {
         let (component, node, task) =
             Self::new_for_schema_variant_with_node(ctx, name, schema_variant_id).await?;
         let schema = component
@@ -1413,7 +1413,7 @@ impl Component {
         ctx: &DalContext<'_, '_>,
         json_pointer: &str,
         value: Option<T>,
-    ) -> ComponentResult<(Option<T>, ComponentAsyncTasks)> {
+    ) -> ComponentResult<(Option<T>, DependentValuesAsyncTasks)> {
         let attribute_value = self
             .find_attribute_value_by_json_pointer(ctx, json_pointer)
             .await?
@@ -1458,8 +1458,7 @@ impl Component {
         )
         .await?;
 
-        let task = async_tasks.ok_or_else(|| ComponentError::NotFound(*self.id()))?;
-        Ok((value, task))
+        Ok((value, async_tasks))
     }
 
     #[instrument(skip_all)]
@@ -1559,9 +1558,10 @@ impl Component {
     }
 }
 
+#[must_use]
 pub struct ComponentAsyncTasks {
-    component: Component,
-    system_id: SystemId,
+    pub component: Component,
+    pub system_id: SystemId,
     // Allows running only one specific qualification
     qualification_prototype_id: Option<QualificationPrototypeId>,
 }

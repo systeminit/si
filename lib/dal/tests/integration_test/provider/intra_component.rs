@@ -90,7 +90,7 @@ async fn intra_component_identity_update(ctx: &DalContext<'_, '_>) {
         .to_context()
         .expect("could not convert builder to attribute context");
     let value = serde_json::to_value("updateme").expect("could not convert to serde_json::Value");
-    let (_, updated_source_attribute_value_id, _) = AttributeValue::update_for_context(
+    let (_, updated_source_attribute_value_id, task) = AttributeValue::update_for_context(
         ctx,
         *source_attribute_value.id(),
         Some(*unset_object_attribute_value.id()),
@@ -100,6 +100,9 @@ async fn intra_component_identity_update(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("cannot update value for context");
+    task.run_updates_in_ctx(&ctx)
+        .await
+        .expect("unable to run dependent values update");
 
     // Initialize the value corresponding to the "destination" prop.
     let set_object_attribute_value = AttributeValue::find_for_context(
@@ -128,7 +131,7 @@ async fn intra_component_identity_update(ctx: &DalContext<'_, '_>) {
         .expect("could not convert builder to attribute context");
     let value =
         serde_json::to_value("11-nov-2022").expect("could not convert to serde_json::Value");
-    let (_, updated_destination_attribute_value_id, _) = AttributeValue::update_for_context(
+    let (_, updated_destination_attribute_value_id, task) = AttributeValue::update_for_context(
         ctx,
         *destination_attribute_value.id(),
         Some(*set_object_attribute_value.id()),
@@ -138,6 +141,9 @@ async fn intra_component_identity_update(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("cannot set value for context");
+    task.run_updates_in_ctx(&ctx)
+        .await
+        .expect("unable to run dependent values update");
 
     // Ensure that our rendered data matches what was intended.
     assert_eq_sorted!(
@@ -228,7 +234,7 @@ async fn intra_component_identity_update(ctx: &DalContext<'_, '_>) {
 
     // Update the source field.
     let value = serde_json::to_value("h1-2023").expect("could not convert to serde_json::Value");
-    let (_, twice_updated_source_attribute_value_id, _) = AttributeValue::update_for_context(
+    let (_, twice_updated_source_attribute_value_id, task) = AttributeValue::update_for_context(
         ctx,
         updated_source_attribute_value_id,
         Some(*set_object_attribute_value.id()),
@@ -238,6 +244,9 @@ async fn intra_component_identity_update(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not update attribute value");
+    task.run_updates_in_ctx(&ctx)
+        .await
+        .expect("unable to run dependent values update");
 
     // Observe that both the source and destination fields were updated.
     assert_eq_sorted!(
@@ -260,7 +269,7 @@ async fn intra_component_identity_update(ctx: &DalContext<'_, '_>) {
 
     // Update it again!
     let value = serde_json::to_value("pain.").expect("could not convert to serde_json::Value");
-    let (_, _, _) = AttributeValue::update_for_context(
+    let (_, _, task) = AttributeValue::update_for_context(
         ctx,
         twice_updated_source_attribute_value_id,
         Some(*set_object_attribute_value.id()),
@@ -270,6 +279,9 @@ async fn intra_component_identity_update(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not update attribute value");
+    task.run_updates_in_ctx(&ctx)
+        .await
+        .expect("unable to run dependent values update");
 
     // Observe it again!
     assert_eq_sorted!(
@@ -307,10 +319,13 @@ async fn docker_image_intra_component_update(ctx: &DalContext<'_, '_>) {
         .expect("default schema variant id not found");
 
     // Create two components using the docker image schema.
-    let (soulrender_component, _, _) =
+    let (soulrender_component, _, task) =
         Component::new_for_schema_with_node(ctx, "soulrender", schema.id())
             .await
             .expect("unable to create component");
+    task.run_updates_in_ctx(&ctx)
+        .await
+        .expect("unable to run dependent values update");
     let soulrender_base_context = AttributeReadContext {
         prop_id: None,
         schema_id: Some(*schema.id()),
@@ -334,10 +349,13 @@ async fn docker_image_intra_component_update(ctx: &DalContext<'_, '_>) {
             .properties // actual
     );
 
-    let (bloodscythe_component, _, _) =
+    let (bloodscythe_component, _, task) =
         Component::new_for_schema_with_node(ctx, "bloodscythe", schema.id())
             .await
             .expect("unable to create component");
+    task.run_updates_in_ctx(&ctx)
+        .await
+        .expect("unable to run dependent values update");
     let bloodscythe_base_context = AttributeReadContext {
         prop_id: None,
         schema_id: Some(*schema.id()),
@@ -396,7 +414,7 @@ async fn docker_image_intra_component_update(ctx: &DalContext<'_, '_>) {
         .set_prop_id(name_prop_id)
         .to_context()
         .expect("could not convert builder to attribute context");
-    AttributeValue::update_for_context(
+    let (_, _, task) = AttributeValue::update_for_context(
         ctx,
         *bloodscythe_name_attribute_value.id(),
         Some(*bloodscythe_si_attribute_value.id()),
@@ -409,6 +427,9 @@ async fn docker_image_intra_component_update(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not update attribute value for context");
+    task.run_updates_in_ctx(&ctx)
+        .await
+        .expect("unable to run dependent values update");
 
     assert_eq_sorted!(
         serde_json::json![{
@@ -469,7 +490,7 @@ async fn docker_image_intra_component_update(ctx: &DalContext<'_, '_>) {
         .set_prop_id(name_prop_id)
         .to_context()
         .expect("could not convert builder to attribute context");
-    AttributeValue::update_for_context(
+    let (_, _, task) = AttributeValue::update_for_context(
         ctx,
         *soulrender_name_attribute_value.id(),
         Some(*soulrender_si_attribute_value.id()),
@@ -482,6 +503,9 @@ async fn docker_image_intra_component_update(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not update attribute value for context");
+    task.run_updates_in_ctx(&ctx)
+        .await
+        .expect("unable to run dependent values update");
 
     assert_eq_sorted!(
         serde_json::json![{

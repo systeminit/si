@@ -1,6 +1,7 @@
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use crate::service::schematic::{SchematicError, SchematicResult};
 use axum::Json;
+use dal::attribute::value::DependentValuesAsyncTasks;
 use dal::node_position::NodePositionView;
 use dal::{
     generate_name, node::NodeId, node::NodeViewKind, Component, Node, NodeKind, NodePosition,
@@ -93,7 +94,10 @@ pub async fn create_node(
     };
 
     if let Some(system_id) = &request.system_id {
-        async_tasks.push(component.add_to_system(&ctx, system_id).await?);
+        async_tasks.push(DependentValuesAsyncTasks::new(
+            Some(component.add_to_system(&ctx, system_id).await?),
+            None,
+        ));
     };
 
     let node_template = NodeTemplate::new_from_schema_id(&ctx, request.schema_id).await?;

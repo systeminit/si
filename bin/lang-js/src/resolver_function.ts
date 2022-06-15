@@ -56,7 +56,7 @@ export function executeResolverFunction(
   const vm = createVm(sandbox);
 
   const result = execute(vm, compiledCode, request.executionId);
-  debug({ result });
+  debug({ result: JSON.stringify(result) });
 
   console.log(JSON.stringify(result));
 }

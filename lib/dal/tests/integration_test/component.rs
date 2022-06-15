@@ -38,7 +38,7 @@ async fn new_for_schema_variant_with_node(ctx: &DalContext<'_, '_>, wid: Workspa
         .expect("cannot retrieve resource for Component & System");
     assert!(resource.is_none());
 
-    component
+    let _ = component
         .add_to_system(ctx, system.id())
         .await
         .expect("failed to add node to system");
@@ -179,7 +179,7 @@ async fn get_resource_by_component_id(ctx: &DalContext<'_, '_>, wid: WorkspaceId
         .await
         .expect("cannot create ash component");
 
-    component
+    let _ = component
         .add_to_system(ctx, system.id())
         .await
         .expect("failed to add component to system");
