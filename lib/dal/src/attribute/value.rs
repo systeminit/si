@@ -909,7 +909,6 @@ impl AttributeValue {
     /// appropriate [`AttributeValue`] to use. By using this function,
     /// [`update_for_context()`](AttributeValue::update_for_context()) is called after we have created an appropriate
     /// [`AttributeValue`] to use.
-    #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn insert_for_context(
         ctx: &DalContext<'_, '_>,
@@ -1187,7 +1186,6 @@ impl AttributeValue {
     }
 
     #[async_recursion]
-    #[allow(dead_code)]
     async fn populate_child_proxies_for_value(
         ctx: &DalContext<'_, '_>,
         original_attribute_value_id: AttributeValueId,
