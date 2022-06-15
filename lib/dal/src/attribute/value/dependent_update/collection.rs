@@ -312,14 +312,63 @@ impl AttributeValueDependentCollectionHarness {
                         .await?
                         .ok_or(AttributeValueError::Missing)?;
 
-                let new_attribute_value = AttributeValue::new(
+                let maybe_parent_attribute_value = attribute_value_for_current_prototype
+                    .parent_attribute_value(ctx)
+                    .await?;
+                let maybe_parent_attribute_value_id =
+                    maybe_parent_attribute_value.as_ref().map(|pav| *pav.id());
+
+                // Check to see if there's a proxy AttributeValue taking our slot, since it
+                // wouldn't have been created with the same AttributePrototype as what we
+                // originally looked for values using.
+                let maybe_attribute_value = AttributeValue::find_with_parent_and_key_for_context(
                     ctx,
-                    attribute_value_for_current_prototype.func_binding_id,
-                    attribute_value_for_current_prototype.func_binding_return_value_id,
-                    destination_attribute_context,
-                    attribute_value_for_current_prototype.key.clone(),
+                    maybe_parent_attribute_value_id,
+                    attribute_prototype.key().map(|k| k.to_string()),
+                    destination_attribute_context.into(),
                 )
                 .await?;
+                // Make sure that what we got back is for the _exact_ destination_attribute_context.
+                let maybe_attribute_value = match maybe_attribute_value {
+                    Some(attribute_value) => {
+                        if attribute_value.context == destination_attribute_context {
+                            Some(attribute_value)
+                        } else {
+                            None
+                        }
+                    }
+                    None => None,
+                };
+
+                let new_attribute_value = if let Some(mut attribute_value) = maybe_attribute_value {
+                    if attribute_value.proxy_for_attribute_value_id().is_some() {
+                        attribute_value.set_sealed_proxy(ctx, true).await?;
+                    }
+                    attribute_value.unset_attribute_prototype(ctx).await?;
+                    attribute_value
+                        .set_func_binding_id(
+                            ctx,
+                            attribute_value_for_current_prototype.func_binding_id,
+                        )
+                        .await?;
+                    attribute_value
+                        .set_func_binding_return_value_id(
+                            ctx,
+                            attribute_value_for_current_prototype.func_binding_return_value_id,
+                        )
+                        .await?;
+
+                    attribute_value
+                } else {
+                    AttributeValue::new(
+                        ctx,
+                        attribute_value_for_current_prototype.func_binding_id,
+                        attribute_value_for_current_prototype.func_binding_return_value_id,
+                        destination_attribute_context,
+                        attribute_value_for_current_prototype.key.clone(),
+                    )
+                    .await?
+                };
 
                 // Before adding our new attribute value to the list of attribute values
                 // that need to be updated, we need to set its prototype and its parent
@@ -327,10 +376,7 @@ impl AttributeValueDependentCollectionHarness {
                 new_attribute_value
                     .set_attribute_prototype(ctx, attribute_prototype.id())
                     .await?;
-                if let Some(parent_attribute_value) = attribute_value_for_current_prototype
-                    .parent_attribute_value(ctx)
-                    .await?
-                {
+                if let Some(parent_attribute_value) = maybe_parent_attribute_value {
                     let parent_attribute_context =
                         AttributeContextBuilder::from(new_attribute_value.context)
                             .set_prop_id(parent_attribute_value.context.prop_id())
