@@ -1030,18 +1030,25 @@ impl AttributeValue {
             PropKind::String | PropKind::Boolean | PropKind::Integer => todo!(),
         };
 
-        // If we're already set, there's not anything for us to do.
-        if FuncBindingReturnValue::get_by_id(ctx, &attribute_value.func_binding_return_value_id)
+        let unset_func_name = "si:unset".to_string();
+        let unset_func = Func::find_by_attr(ctx, "name", &unset_func_name)
             .await?
-            .ok_or_else(|| {
-                AttributeValueError::UnableToCreateParent(format!(
-                    "Missing FuncBindingReturnValue for AttributeValue: {:?}",
-                    attribute_value_id
-                ))
-            })?
-            .value()
-            .is_some()
-        {
+            .pop()
+            .ok_or(AttributeValueError::MissingFunc(unset_func_name))?;
+
+        let func_binding = FuncBinding::get_by_id(ctx, &attribute_value.func_binding_id())
+            .await?
+            .ok_or(AttributeValueError::MissingFuncBinding(
+                attribute_value.func_binding_id,
+            ))?;
+        let func = func_binding.func(ctx).await?.ok_or_else(|| {
+            AttributeValueError::MissingFunc(format!(
+                "Func for FuncBindingId {} not found",
+                func_binding.id()
+            ))
+        })?;
+        // If we're already set, there's not anything for us to do.
+        if func.id() != unset_func.id() {
             return Ok(attribute_value_id);
         }
 
