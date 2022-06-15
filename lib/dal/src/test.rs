@@ -1,3 +1,5 @@
+//! This module provides helpers and resources for constructing and running integration tests.
+
 use std::{
     env,
     path::{Path, PathBuf},
