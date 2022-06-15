@@ -95,7 +95,7 @@ const editMode = refFrom<boolean | undefined>(
 
 const secretName = ref<string>("");
 
-const secretKind = ref<SecretKind | undefined>(undefined);
+const secretKind = ref<SecretKind | null>(null);
 
 const secretMessage = ref<Record<string, string>>({});
 
@@ -131,7 +131,7 @@ const enableCreateButton = computed((): boolean => {
   }
 
   const inEditMode = editMode.value != undefined && editMode.value;
-  const secretKindSelected = secretKind.value != undefined;
+  const secretKindSelected = !!secretKind.value;
   const namePopulated = secretName.value.length > 0;
 
   return inEditMode && namePopulated && secretKindSelected;
@@ -165,7 +165,7 @@ const secretKindOptionList = computed((): SelectPropsOption[] => {
 
 const clear = () => {
   secretName.value = "";
-  secretKind.value = undefined;
+  secretKind.value = null;
   for (const key of Object.keys(secretMessage.value)) {
     delete secretMessage.value[key];
   }

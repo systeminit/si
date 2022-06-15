@@ -1,10 +1,13 @@
 <template>
-  <div v-tooltip.bottom="props.tooltipText" :aria-label="props.tooltipText">
+  <div
+    v-tooltip.bottom="props.tooltipText ?? ''"
+    :aria-label="props.tooltipText ?? ''"
+  >
     <Listbox
       :id="id"
       v-model="selectedValue"
       :name="id"
-      :data-test="dataTest"
+      :data-test="dataTest ?? ''"
       :disabled="disabled"
       as="div"
       @keypress.space.prevent
@@ -75,71 +78,36 @@
 </template>
 
 <script setup lang="ts">
-import { PropType, computed, toRefs } from "vue";
+import { computed, toRefs } from "vue";
 import {
   Listbox,
   ListboxButton,
   ListboxOption,
   ListboxOptions,
 } from "@headlessui/vue";
+import { LabelList } from "@/api/sdf/dal/label_list";
 import { CheckIcon, SelectorIcon } from "@heroicons/vue/solid";
 import _ from "lodash";
 
 export interface SelectPropsOption {
-  value: string | number | boolean | Record<string, unknown> | undefined;
-  label: unknown;
+  value: string | number;
+  label: string;
 }
 
 export interface SelectProps {
-  size: "xs" | "sm" | "base" | "lg";
   options: SelectPropsOption[];
-
-  // TODO: fix below
-  // eslint-disable-next-line @typescript-eslint/ban-types
-  value: string | null | Object | number;
+  value: string | number;
 }
 
-const props = defineProps({
-  styling: {
-    type: Object as PropType<Record<string, unknown>>,
-    default: null,
-  },
-  id: {
-    type: String,
-    required: true,
-  },
-  size: {
-    type: String as () => SelectProps["size"],
-    default: "base",
-  },
-  options: {
-    type: Array as () => SelectProps["options"],
-    required: true,
-  },
-  modelValue: {
-    type: [String, Object, Number],
-    default: "",
-    required: false,
-  },
-  disabled: {
-    type: Boolean,
-    default: false,
-  },
-  valueAsNumber: {
-    type: Boolean,
-    default: false,
-  },
-  dataTest: {
-    type: String,
-    default: "",
-    required: false,
-  },
-  tooltipText: {
-    type: String,
-    default: "",
-    required: false,
-  },
-});
+const props = defineProps<{
+  id: string;
+  options: LabelList<string | number>;
+  modelValue: string | number | null;
+  disabled?: boolean;
+  valueAsNumber?: boolean;
+  dataTest?: string;
+  tooltipText?: string;
+}>();
 const emits = defineEmits(["update:modelValue", "change"]);
 const { options } = toRefs(props);
 
@@ -151,9 +119,9 @@ const selectedLabel = computed(() => {
   return selectedOption?.label;
 });
 
-const selectedValue = computed<string | object | number | boolean | undefined>({
+const selectedValue = computed<string | number>({
   get() {
-    return props.modelValue ?? undefined;
+    return props.modelValue ?? "";
   },
   set(value) {
     if (value === "") {

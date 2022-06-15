@@ -28,8 +28,7 @@
             id="schema-new-form-kind"
             data-test="schema-new-form-kind"
             :options="kindOptions"
-            value="concrete"
-            size="xs"
+            :model-value="form.kind"
           />
         </template>
       </SiFormRow>
