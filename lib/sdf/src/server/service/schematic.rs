@@ -5,9 +5,10 @@ use axum::Json;
 use axum::Router;
 use dal::socket::{SocketError, SocketId};
 use dal::{
-    node::NodeId, schema::variant::SchemaVariantError, ComponentError, NodeError, NodeKind,
-    NodeMenuError, NodePositionError, ReadTenancyError, SchemaError as DalSchemaError,
-    SchematicError as DalSchematicError, SchematicKind, StandardModelError, TransactionsError,
+    node::NodeId, schema::variant::SchemaVariantError, AttributeValueError, ComponentError,
+    NodeError, NodeKind, NodeMenuError, NodePositionError, ReadTenancyError,
+    SchemaError as DalSchemaError, SchematicError as DalSchematicError, SchematicKind,
+    StandardModelError, TransactionsError,
 };
 use thiserror::Error;
 
@@ -33,8 +34,14 @@ pub enum SchematicError {
     ContextTransaction(#[from] TransactionsError),
     #[error("schema error: {0}")]
     Schema(#[from] DalSchemaError),
+    #[error("attribute value error: {0}")]
+    AttributeValue(#[from] AttributeValueError),
     #[error("schema not found")]
     SchemaNotFound,
+    #[error("component not found")]
+    ComponentNotFound,
+    #[error("node not found: {0}")]
+    NodeNotFound(NodeId),
     #[error("schema variant not found")]
     SchemaVariantNotFound,
     #[error("node menu error: {0}")]
