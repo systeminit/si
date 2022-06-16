@@ -145,6 +145,7 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &DalC
                             "containers": [
                                 {
                                     "image": "ironsides",
+                                    "name": "ironsides",
                                     "ports": [],
                                 },
                             ],

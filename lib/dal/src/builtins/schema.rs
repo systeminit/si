@@ -677,13 +677,12 @@ async fn docker_image(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     )
     .await?;
 
-    // Connect "/root/domain" to the external provider.
-    let domain_implicit_internal_provider =
-        InternalProvider::get_for_prop(ctx, root_prop.domain_prop_id)
-            .await?
-            .ok_or(BuiltinsError::ImplicitInternalProviderNotFoundForProp(
-                root_prop.domain_prop_id,
-            ))?;
+    // Connect "/root" to the external provider.
+    let root_implicit_internal_provider = InternalProvider::get_for_prop(ctx, root_prop.prop_id)
+        .await?
+        .ok_or(BuiltinsError::ImplicitInternalProviderNotFoundForProp(
+            root_prop.prop_id,
+        ))?;
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *docker_image_external_provider
@@ -694,7 +693,7 @@ async fn docker_image(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
                 )
             })?,
         "identity".to_string(),
-        *domain_implicit_internal_provider.id(),
+        *root_implicit_internal_provider.id(),
     )
     .await?;
 
