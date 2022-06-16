@@ -1,12 +1,14 @@
 use std::collections::HashMap;
 
-use crate::builtins::schema::kubernetes_metadata::create_metadata_prop;
 use crate::{
+    builtins::schema::kubernetes_metadata::create_metadata_prop,
+    code_generation_prototype::CodeGenerationPrototypeContext,
     component::ComponentKind,
     edit_field::widget::*,
     func::{
         backend::{
             js_attribute::FuncBackendJsAttributeArgs,
+            js_code_generation::FuncBackendJsCodeGenerationArgs,
             js_qualification::FuncBackendJsQualificationArgs,
             js_resource::FuncBackendJsResourceSyncArgs,
             validation::FuncBackendValidateStringValueArgs,
@@ -20,10 +22,11 @@ use crate::{
     socket::{Socket, SocketArity, SocketEdgeKind, SocketKind},
     validation_prototype::ValidationPrototypeContext,
     AttributeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue,
-    AttributeValueError, BuiltinsError, BuiltinsResult, DalContext, ExternalProvider, Func,
-    FuncBackendKind, FuncBackendResponseType, FuncBindingReturnValue, FuncError, FuncId,
-    InternalProvider, Prop, PropError, PropId, PropKind, QualificationPrototype, ResourcePrototype,
-    Schema, SchemaError, SchemaKind, SchematicKind, StandardModel, ValidationPrototype,
+    AttributeValueError, BuiltinsError, BuiltinsResult, CodeGenerationPrototype, CodeLanguage,
+    DalContext, ExternalProvider, Func, FuncBackendKind, FuncBackendResponseType,
+    FuncBindingReturnValue, FuncError, FuncId, InternalProvider, Prop, PropError, PropId, PropKind,
+    QualificationPrototype, ResourcePrototype, Schema, SchemaError, SchemaKind, SchematicKind,
+    StandardModel, ValidationPrototype,
 };
 
 mod kubernetes;
@@ -351,6 +354,27 @@ async fn kubernetes_namespace(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
         .await?;
 
     let metadata_prop = create_metadata_prop(ctx, true, root_prop.domain_prop_id).await?;
+
+    // Code Generation Prototype
+    let code_generation_func_name = "si:generateYAML".to_owned();
+    let mut code_generation_funcs =
+        Func::find_by_attr(ctx, "name", &code_generation_func_name).await?;
+    let code_generation_func = code_generation_funcs
+        .pop()
+        .ok_or(SchemaError::FuncNotFound(code_generation_func_name))?;
+    let code_generation_args = FuncBackendJsCodeGenerationArgs::default();
+    let code_generation_args_json = serde_json::to_value(&code_generation_args)?;
+    let mut code_generation_prototype_context = CodeGenerationPrototypeContext::new();
+    code_generation_prototype_context.set_schema_variant_id(*variant.id());
+
+    let _prototype = CodeGenerationPrototype::new(
+        ctx,
+        *code_generation_func.id(),
+        code_generation_args_json,
+        CodeLanguage::Yaml,
+        code_generation_prototype_context,
+    )
+    .await?;
 
     let (identity_func_id, identity_func_binding_id, identity_func_binding_return_value_id) =
         setup_identity_func(ctx).await?;
