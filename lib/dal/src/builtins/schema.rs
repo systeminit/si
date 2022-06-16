@@ -384,6 +384,43 @@ async fn kubernetes_namespace(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     // Now, we can setup providers.
     SchemaVariant::create_implicit_internal_providers(ctx, *schema.id(), *variant.id()).await?;
 
+    // Connect the "/root/si/name" field to the "/root/domain/metadata/name" field.
+    let base_attribute_read_context = AttributeReadContext {
+        schema_id: Some(*schema.id()),
+        schema_variant_id: Some(*variant.id()),
+        ..AttributeReadContext::default()
+    };
+    let metadata_name_prop = find_child_prop_by_name(ctx, *metadata_prop.id(), "name").await?;
+    let metadata_name_attribute_value = AttributeValue::find_for_context(
+        ctx,
+        AttributeReadContext {
+            prop_id: Some(*metadata_name_prop.id()),
+            ..base_attribute_read_context
+        },
+    )
+    .await?
+    .ok_or(AttributeValueError::Missing)?;
+    let mut metadata_name_attribute_prototype = metadata_name_attribute_value
+        .attribute_prototype(ctx)
+        .await?
+        .ok_or(AttributeValueError::MissingAttributePrototype)?;
+    metadata_name_attribute_prototype
+        .set_func_id(ctx, identity_func_id)
+        .await?;
+    let si_name_prop = find_child_prop_by_name(ctx, root_prop.si_prop_id, "name").await?;
+    let si_name_internal_provider = InternalProvider::get_for_prop(ctx, *si_name_prop.id())
+        .await?
+        .ok_or_else(|| {
+            BuiltinsError::ImplicitInternalProviderNotFoundForProp(*si_name_prop.id())
+        })?;
+    AttributePrototypeArgument::new_for_intra_component(
+        ctx,
+        *metadata_name_attribute_prototype.id(),
+        "identity".to_string(),
+        *si_name_internal_provider.id(),
+    )
+    .await?;
+
     // Connect the "/root/domain/metadata/name" prop to the external provider.
     let external_provider_attribute_prototype_id =
         external_provider.attribute_prototype_id().ok_or_else(|| {
