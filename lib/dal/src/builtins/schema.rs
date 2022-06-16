@@ -1,12 +1,14 @@
 use std::collections::HashMap;
 
-use crate::builtins::schema::kubernetes_metadata::create_metadata_prop;
 use crate::{
+    builtins::schema::kubernetes_metadata::create_metadata_prop,
+    code_generation_prototype::CodeGenerationPrototypeContext,
     component::ComponentKind,
     edit_field::widget::*,
     func::{
         backend::{
             js_attribute::FuncBackendJsAttributeArgs,
+            js_code_generation::FuncBackendJsCodeGenerationArgs,
             js_qualification::FuncBackendJsQualificationArgs,
             js_resource::FuncBackendJsResourceSyncArgs,
             validation::FuncBackendValidateStringValueArgs,
@@ -20,10 +22,11 @@ use crate::{
     socket::{Socket, SocketArity, SocketEdgeKind, SocketKind},
     validation_prototype::ValidationPrototypeContext,
     AttributeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue,
-    AttributeValueError, BuiltinsError, BuiltinsResult, DalContext, ExternalProvider, Func,
-    FuncBackendKind, FuncBackendResponseType, FuncBindingReturnValue, FuncError, FuncId,
-    InternalProvider, Prop, PropError, PropId, PropKind, QualificationPrototype, ResourcePrototype,
-    Schema, SchemaError, SchemaKind, SchematicKind, StandardModel, ValidationPrototype,
+    AttributeValueError, BuiltinsError, BuiltinsResult, CodeGenerationPrototype, CodeLanguage,
+    DalContext, ExternalProvider, Func, FuncBackendKind, FuncBackendResponseType,
+    FuncBindingReturnValue, FuncError, FuncId, InternalProvider, Prop, PropError, PropId, PropKind,
+    QualificationPrototype, ResourcePrototype, Schema, SchemaError, SchemaKind, SchematicKind,
+    StandardModel, ValidationPrototype,
 };
 
 mod kubernetes;
@@ -352,6 +355,27 @@ async fn kubernetes_namespace(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
 
     let metadata_prop = create_metadata_prop(ctx, true, root_prop.domain_prop_id).await?;
 
+    // Code Generation Prototype
+    let code_generation_func_name = "si:generateYAML".to_owned();
+    let mut code_generation_funcs =
+        Func::find_by_attr(ctx, "name", &code_generation_func_name).await?;
+    let code_generation_func = code_generation_funcs
+        .pop()
+        .ok_or(SchemaError::FuncNotFound(code_generation_func_name))?;
+    let code_generation_args = FuncBackendJsCodeGenerationArgs::default();
+    let code_generation_args_json = serde_json::to_value(&code_generation_args)?;
+    let mut code_generation_prototype_context = CodeGenerationPrototypeContext::new();
+    code_generation_prototype_context.set_schema_variant_id(*variant.id());
+
+    let _prototype = CodeGenerationPrototype::new(
+        ctx,
+        *code_generation_func.id(),
+        code_generation_args_json,
+        CodeLanguage::Yaml,
+        code_generation_prototype_context,
+    )
+    .await?;
+
     let (identity_func_id, identity_func_binding_id, identity_func_binding_return_value_id) =
         setup_identity_func(ctx).await?;
 
@@ -383,6 +407,43 @@ async fn kubernetes_namespace(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
 
     // Now, we can setup providers.
     SchemaVariant::create_implicit_internal_providers(ctx, *schema.id(), *variant.id()).await?;
+
+    // Connect the "/root/si/name" field to the "/root/domain/metadata/name" field.
+    let base_attribute_read_context = AttributeReadContext {
+        schema_id: Some(*schema.id()),
+        schema_variant_id: Some(*variant.id()),
+        ..AttributeReadContext::default()
+    };
+    let metadata_name_prop = find_child_prop_by_name(ctx, *metadata_prop.id(), "name").await?;
+    let metadata_name_attribute_value = AttributeValue::find_for_context(
+        ctx,
+        AttributeReadContext {
+            prop_id: Some(*metadata_name_prop.id()),
+            ..base_attribute_read_context
+        },
+    )
+    .await?
+    .ok_or(AttributeValueError::Missing)?;
+    let mut metadata_name_attribute_prototype = metadata_name_attribute_value
+        .attribute_prototype(ctx)
+        .await?
+        .ok_or(AttributeValueError::MissingAttributePrototype)?;
+    metadata_name_attribute_prototype
+        .set_func_id(ctx, identity_func_id)
+        .await?;
+    let si_name_prop = find_child_prop_by_name(ctx, root_prop.si_prop_id, "name").await?;
+    let si_name_internal_provider = InternalProvider::get_for_prop(ctx, *si_name_prop.id())
+        .await?
+        .ok_or_else(|| {
+            BuiltinsError::ImplicitInternalProviderNotFoundForProp(*si_name_prop.id())
+        })?;
+    AttributePrototypeArgument::new_for_intra_component(
+        ctx,
+        *metadata_name_attribute_prototype.id(),
+        "identity".to_string(),
+        *si_name_internal_provider.id(),
+    )
+    .await?;
 
     // Connect the "/root/domain/metadata/name" prop to the external provider.
     let external_provider_attribute_prototype_id =
@@ -677,13 +738,12 @@ async fn docker_image(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     )
     .await?;
 
-    // Connect "/root/domain" to the external provider.
-    let domain_implicit_internal_provider =
-        InternalProvider::get_for_prop(ctx, root_prop.domain_prop_id)
-            .await?
-            .ok_or(BuiltinsError::ImplicitInternalProviderNotFoundForProp(
-                root_prop.domain_prop_id,
-            ))?;
+    // Connect "/root" to the external provider.
+    let root_implicit_internal_provider = InternalProvider::get_for_prop(ctx, root_prop.prop_id)
+        .await?
+        .ok_or(BuiltinsError::ImplicitInternalProviderNotFoundForProp(
+            root_prop.prop_id,
+        ))?;
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *docker_image_external_provider
@@ -694,7 +754,7 @@ async fn docker_image(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
                 )
             })?,
         "identity".to_string(),
-        *domain_implicit_internal_provider.id(),
+        *root_implicit_internal_provider.id(),
     )
     .await?;
 
