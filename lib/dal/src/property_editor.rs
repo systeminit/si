@@ -12,8 +12,8 @@ use thiserror::Error;
 use crate::{
     edit_field::widget::WidgetKind, pk, schema::variant::SchemaVariantError, AttributeReadContext,
     AttributeValue, AttributeValueError, AttributeValueId, ComponentError, ComponentId, DalContext,
-    Prop, PropId, PropKind, SchemaVariant, SchemaVariantId, StandardModel, StandardModelError,
-    SystemId, ValidationResolver, ValidationResolverError,
+    LabelEntry, LabelList, Prop, PropId, PropKind, SchemaVariant, SchemaVariantId, Secret,
+    StandardModel, StandardModelError, SystemId, ValidationResolver, ValidationResolverError,
 };
 
 const PROPERTY_EDITOR_SCHEMA_FOR_SCHEMA_VARIANT: &str =
@@ -72,26 +72,37 @@ impl From<&PropKind> for PropertyEditorPropKind {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(tag = "kind", rename_all = "camelCase")]
 pub enum PropertyEditorPropWidgetKind {
     Array,
     Checkbox,
     Header,
     Map,
-    SecretSelect,
+    Select { options: LabelList<i64> },
     Text,
 }
 
-impl From<&WidgetKind> for PropertyEditorPropWidgetKind {
-    fn from(widget_kind: &WidgetKind) -> Self {
-        match widget_kind {
+impl PropertyEditorPropWidgetKind {
+    pub async fn new(
+        ctx: &DalContext<'_, '_>,
+        widget_kind: WidgetKind,
+    ) -> PropertyEditorResult<Self> {
+        Ok(match widget_kind {
             WidgetKind::Array => Self::Array,
             WidgetKind::Checkbox => Self::Checkbox,
             WidgetKind::Header => Self::Header,
             WidgetKind::Map => Self::Map,
-            WidgetKind::SecretSelect => Self::SecretSelect,
+            WidgetKind::SecretSelect => Self::Select {
+                options: LabelList::new(
+                    Secret::list(ctx)
+                        .await?
+                        .into_iter()
+                        .map(|s| LabelEntry::new(s.name(), i64::from(*s.id())))
+                        .collect(),
+                ),
+            },
             WidgetKind::Text => Self::Text,
-        }
+        })
     }
 }
 
@@ -114,15 +125,18 @@ pub struct PropertyEditorProp {
     pub doc_link: Option<String>,
 }
 
-impl From<Prop> for PropertyEditorProp {
-    fn from(prop: Prop) -> PropertyEditorProp {
-        PropertyEditorProp {
+impl PropertyEditorProp {
+    pub async fn new(
+        ctx: &DalContext<'_, '_>,
+        prop: Prop,
+    ) -> PropertyEditorResult<PropertyEditorProp> {
+        Ok(PropertyEditorProp {
             id: prop.id().into(),
             name: prop.name().into(),
             kind: prop.kind().into(),
-            widget_kind: prop.widget_kind().into(),
+            widget_kind: PropertyEditorPropWidgetKind::new(ctx, *prop.widget_kind()).await?,
             doc_link: prop.doc_link().map(Into::into),
-        }
+        })
     }
 }
 
@@ -165,7 +179,7 @@ impl PropertyEditorSchema {
         for row in rows {
             let json: serde_json::Value = row.try_get("object")?;
             let prop: Prop = serde_json::from_value(json)?;
-            let property_editor_prop: PropertyEditorProp = prop.into();
+            let property_editor_prop = PropertyEditorProp::new(ctx, prop).await?;
             let maybe_child_prop_ids: Option<Vec<PropertyEditorPropId>> =
                 row.try_get("child_prop_ids")?;
             if let Some(child_prop_ids) = maybe_child_prop_ids {

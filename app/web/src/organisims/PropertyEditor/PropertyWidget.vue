@@ -8,14 +8,16 @@
       @toggle-collapsed="setCollapsed($event)"
     />
     <WidgetHeader
-      v-if="props.schemaProp.widgetKind == 'header' && !showArrayElementHeader"
+      v-if="
+        props.schemaProp.widgetKind.kind === 'header' && !showArrayElementHeader
+      "
       :name="props.schemaProp.name"
       :path="path"
       :collapsed-paths="props.collapsedPaths"
       @toggle-collapsed="setCollapsed($event)"
     />
     <WidgetArray
-      v-else-if="props.schemaProp.widgetKind == 'array'"
+      v-else-if="props.schemaProp.widgetKind.kind === 'array'"
       :name="props.schemaProp.name"
       :path="path"
       :collapsed-paths="props.collapsedPaths"
@@ -27,7 +29,7 @@
       @toggle-collapsed="setCollapsed($event)"
     />
     <WidgetMap
-      v-else-if="props.schemaProp.widgetKind == 'map'"
+      v-else-if="props.schemaProp.widgetKind.kind === 'map'"
       :name="props.schemaProp.name"
       :path="path"
       :collapsed-paths="props.collapsedPaths"
@@ -39,7 +41,7 @@
       @toggle-collapsed="setCollapsed($event)"
     />
     <WidgetTextBox
-      v-else-if="props.schemaProp.widgetKind == 'text'"
+      v-else-if="props.schemaProp.widgetKind.kind === 'text'"
       :name="props.schemaProp.name"
       :path="path"
       :collapsed-paths="props.collapsedPaths"
@@ -54,8 +56,23 @@
       @updated-property="updatedProperty($event)"
     />
     <WidgetCheckBox
-      v-else-if="props.schemaProp.widgetKind == 'checkBox'"
+      v-else-if="props.schemaProp.widgetKind.kind == 'checkBox'"
       :name="props.schemaProp.name"
+      :path="path"
+      :collapsed-paths="props.collapsedPaths"
+      :value="props.propValue.value"
+      :prop-id="props.propValue.propId"
+      :value-id="props.propValue.id"
+      :doc-link="props.schemaProp.docLink"
+      :validation="props.validation"
+      :disabled="props.disabled"
+      class="py-4 px-8"
+      @updated-property="updatedProperty($event)"
+    />
+    <WidgetSelectBox
+      v-else-if="props.schemaProp.widgetKind.kind == 'select'"
+      :name="props.schemaProp.name"
+      :options="props.schemaProp.widgetKind.options"
       :path="path"
       :collapsed-paths="props.collapsedPaths"
       :value="props.propValue.value"
@@ -96,6 +113,7 @@ import {
 import WidgetHeader from "./WidgetHeader.vue";
 import WidgetTextBox from "./WidgetTextBox.vue";
 import WidgetCheckBox from "./WidgetCheckBox.vue";
+import WidgetSelectBox from "./WidgetSelectBox.vue";
 import WidgetArray from "./WidgetArray.vue";
 import WidgetMap from "./WidgetMap.vue";
 import _ from "lodash";

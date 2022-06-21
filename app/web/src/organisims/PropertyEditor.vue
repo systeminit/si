@@ -26,7 +26,7 @@
 <script setup lang="ts">
 import {
   PropertyEditorPropKind,
-  PropertyEditorPropWidgetKind,
+  PropertyEditorPropWidgetKindText,
   PropertyEditorSchema,
   PropertyEditorValues,
   PropertyEditorValue,
@@ -103,7 +103,9 @@ const schemaForPropId = (propId: number) => {
       id: propId,
       name: "error",
       kind: PropertyEditorPropKind.String,
-      widgetKind: PropertyEditorPropWidgetKind.Text,
+      widgetKind: {
+        kind: "text",
+      } as PropertyEditorPropWidgetKindText,
     };
   }
 };

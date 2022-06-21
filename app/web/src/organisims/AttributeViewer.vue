@@ -66,7 +66,7 @@
 import * as Rx from "rxjs";
 //import EditFormComponent from "@/organisims/EditFormComponent.vue";
 import { toRefs, computed } from "vue";
-import { fromRef, refFrom } from "vuse-rx";
+import { fromRef, refFrom, untilUnmounted } from "vuse-rx";
 import { GlobalErrorService } from "@/service/global_error";
 import { ResourceHealth } from "@/api/sdf/dal/resource";
 import { ComponentIdentification } from "@/api/sdf/dal/component";
@@ -198,6 +198,11 @@ const componentMetadata = refFrom<ComponentMetadata | null>(
     }),
   ),
 );
+
+componentId$.pipe(untilUnmounted).subscribe(() => {
+  editorContext.value = undefined;
+  componentMetadata.value = null;
+});
 
 const editCount = computed(() => {
   return 0;

@@ -4,6 +4,8 @@
 // * fundamental data type (string/number/bool/map/array)
 // * require a key/index (map or array)
 
+import { LabelList } from "@/api/sdf/dal/label_list";
+
 export enum PropertyEditorPropKind {
   Array = "array",
   Boolean = "boolean",
@@ -13,14 +15,36 @@ export enum PropertyEditorPropKind {
   Map = "map",
 }
 
-export enum PropertyEditorPropWidgetKind {
-  Array = "array",
-  CheckBox = "checkBox",
-  Header = "header",
-  Map = "map",
-  SecretSelect = "secretSelect",
-  Text = "text",
+export interface PropertyEditorPropWidgetKindArray {
+  kind: "array";
 }
+export interface PropertyEditorPropWidgetKindCheckBox {
+  kind: "checkBox";
+}
+export interface PropertyEditorPropWidgetKindHeader {
+  kind: "header";
+}
+export interface PropertyEditorPropWidgetKindMap {
+  kind: "map";
+}
+export interface PropertyEditorPropWidgetKindText {
+  kind: "text";
+}
+export interface PropertyEditorPropWidgetKindInteger {
+  kind: "integer";
+}
+export interface PropertyEditorPropWidgetKindSelect {
+  kind: "select";
+  options: LabelList<string | number>;
+}
+export type PropertyEditorPropWidgetKind =
+  | PropertyEditorPropWidgetKindText
+  | PropertyEditorPropWidgetKindCheckBox
+  | PropertyEditorPropWidgetKindMap
+  | PropertyEditorPropWidgetKindInteger
+  | PropertyEditorPropWidgetKindHeader
+  | PropertyEditorPropWidgetKindArray
+  | PropertyEditorPropWidgetKindSelect;
 
 export interface PropertyEditorProp {
   id: number;
