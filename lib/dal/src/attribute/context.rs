@@ -39,6 +39,7 @@ pub use read::AttributeReadContext;
 pub const UNSET_ID_VALUE: i64 = -1;
 
 /// Indicates which least specific field for an [`AttributeContext`] is specified.
+#[derive(Debug)]
 pub enum AttributeContextLeastSpecificFieldKind {
     ExternalProvider,
     InternalProvider,

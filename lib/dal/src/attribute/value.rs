@@ -1610,6 +1610,7 @@ impl AttributeValuePayload {
 }
 
 #[must_use]
+#[derive(Debug)]
 pub struct DependentValuesAsyncTasks {
     component_task: Option<ComponentAsyncTasks>,
     attribute_value_id: Option<AttributeValueId>,
