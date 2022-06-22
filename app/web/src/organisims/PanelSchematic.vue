@@ -62,8 +62,8 @@
         :schematic-kind="schematicKind"
         :deployment-node-selected="
           schematicKind === SchematicKind.Component
-            ? selectedDeploymentNode?.id
-            : undefined
+            ? selectedDeploymentNode?.id ?? null
+            : null
         "
         :schematic-data="schematicData ?? null"
         :adding-node="addingNode"
@@ -74,7 +74,7 @@
 
 <script setup lang="ts">
 import _ from "lodash";
-import * as OBJ from "@/organisims/SchematicViewer/Viewer/obj";
+import { Node } from "@/organisims/SchematicViewer/Viewer/obj/node";
 import * as Rx from "rxjs";
 
 import { computed, ref, watch } from "vue";
@@ -102,8 +102,11 @@ import NodeAddMenu from "@/molecules/NodeAddMenu.vue";
 import { ApplicationService } from "@/service/application";
 import { refFrom, untilUnmounted } from "vuse-rx";
 import { ChangeSetService } from "@/service/change_set";
-import { NodeAddEvent, ViewerEventObservable } from "./SchematicViewer/event";
-import { lastSelectedDeploymentNode$ } from "./SchematicViewer/state";
+import {
+  NodeAddEvent,
+  ViewerEventObservable,
+} from "./SchematicViewer/viewer_event";
+import { lastSelectedDeploymentNode$ } from "@/observable/selection";
 
 const schematicData = refFrom<Schematic | null>(schematicData$);
 
@@ -126,7 +129,7 @@ watch(selectedDeploymentComponentId, (componentId) => {
   throw new Error(`Node wasn't found ${componentId}`);
 });
 
-const updateDeploymentSelection = (node: OBJ.Node | null) => {
+const updateDeploymentSelection = (node: Node | null) => {
   const componentId = node?.nodeKind?.componentId;
 
   if (!schematicData.value) return;
@@ -141,9 +144,6 @@ const updateDeploymentSelection = (node: OBJ.Node | null) => {
 lastSelectedDeploymentNode$
   .pipe(untilUnmounted)
   .subscribe((node) => updateDeploymentSelection(node));
-Rx.firstValueFrom(lastSelectedDeploymentNode$).then((last) =>
-  updateDeploymentSelection(last),
-);
 
 schematicData$.pipe(untilUnmounted).subscribe((schematic) => {
   if (!schematic || selectedDeploymentComponentId.value === "") return;

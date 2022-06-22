@@ -1,13 +1,14 @@
 import * as PIXI from "pixi.js";
-import * as OBJ from "../obj";
 
-import { Sockets } from "../obj/node/sockets";
-import { Socket } from "../obj/node/sockets/socket";
-import { SchematicGroup, NodeGroup, ConnectionGroup } from "../group";
-import { Renderer } from "../renderer";
-import { Grid, BACKGROUND_GRID_NAME } from "../obj";
+import { Sockets } from "./obj/node/sockets";
+import { Connection, ConnectionType } from "./obj/connection";
+import { Socket } from "./obj/node/sockets/socket";
+import { Node } from "./obj/node";
+import { Grid, BACKGROUND_GRID_NAME } from "./obj/grid";
+import { SchematicGroup, NodeGroup, ConnectionGroup } from "./obj/group";
+import { Renderer } from "./renderer";
 import { untilUnmounted } from "vuse-rx";
-import { InteractionManager } from "../interaction";
+import { InteractionManager } from "./interaction_manager";
 import { SchematicKind } from "@/api/sdf/dal/schematic";
 import {
   Schematic,
@@ -26,7 +27,7 @@ export class SceneManager {
   renderer: Renderer;
   scene: PIXI.Container;
   root: PIXI.Container;
-  interactiveConnection?: OBJ.Connection | null;
+  interactiveConnection?: Connection | null;
   group: {
     nodes: PIXI.Container;
     connections: PIXI.Container;
@@ -54,8 +55,8 @@ export class SceneManager {
     this.scene.addChild(this.root);
 
     this.group = {
-      connections: new ConnectionGroup("connections", 20),
-      nodes: new NodeGroup("nodes", 30),
+      connections: new ConnectionGroup("connections", 0),
+      nodes: new NodeGroup("nodes", 0),
     };
 
     this.initializeSceneData();
@@ -65,9 +66,9 @@ export class SceneManager {
   }
 
   subscribeToInteractionEvents(interactionManager: InteractionManager) {
-    interactionManager.zoomFactor$.pipe(untilUnmounted).subscribe({
-      next: (v) => this.updateZoomFactor(v),
-    });
+    interactionManager.zoomFactor$
+      .pipe(untilUnmounted)
+      .subscribe((v) => this.updateZoomFactor(v));
   }
 
   updateZoomFactor(zoomFactor: number | null) {
@@ -99,7 +100,7 @@ export class SceneManager {
   async loadSceneData(
     data: Schematic | null,
     schematicKind: SchematicKind,
-    selectedDeploymentNodeId?: number,
+    selectedDeploymentNodeId: number | null,
   ): Promise<void> {
     this.initializeSceneData();
 
@@ -110,10 +111,10 @@ export class SceneManager {
         const pos = n.positions.find(
           (pos) =>
             pos.schematicKind === schematicKind &&
-            pos.deploymentNodeId === (selectedDeploymentNodeId ?? null),
+            pos.deploymentNodeId === selectedDeploymentNodeId,
         );
         if (pos) {
-          const node = new OBJ.Node(
+          const node = new Node(
             n,
             variant,
             {
@@ -133,18 +134,18 @@ export class SceneManager {
         const sourceSocket = this.scene.getChildByName(
           sourceSocketId,
           true,
-        ) as OBJ.Socket;
-
-        // Sometimes the connection isn't valid for display, like when switching panels while rendering
-        // And the "include" connections also won't be found as they don't get rendered, we could use some metadata,
-        // but there isn't much to gain from it
-        if (!sourceSocket) continue;
+        ) as Socket;
 
         const destinationSocketId = `${connection.destinationNodeId}.${connection.destinationSocketId}`;
         const destinationSocket = this.scene.getChildByName(
           destinationSocketId,
           true,
         );
+
+        // Sometimes the connection isn't valid for display, like when switching panels while rendering
+        // And the "include" connections also won't be found as they don't get rendered, we could use some metadata,
+        // but there isn't much to gain from it
+        if (!sourceSocket || !destinationSocket) continue;
 
         const socket = await inputSocketById(sourceSocket.id);
         this.createConnection(
@@ -180,18 +181,11 @@ export class SceneManager {
     return geo;
   }
 
-  addNode(n: OBJ.Node): void {
+  addNode(n: Node): void {
     this.group.nodes.addChild(n);
   }
 
-  removeNode(node: OBJ.Node): void {
-    node.destroy();
-
-    const nodeGroup = this.scene.getChildByName(this.group.nodes.name, true);
-    this.renderer.renderGroup(nodeGroup);
-  }
-
-  translateNode(node: OBJ.Node, position: Point): void {
+  translateNode(node: Node, position: Point): void {
     node.x = position.x;
     node.y = position.y;
     node.updateTransform();
@@ -203,26 +197,26 @@ export class SceneManager {
     sourceSocketId: string,
     destinationSocketId: string,
     color: number,
-    _interactive?: boolean,
-  ): OBJ.Connection | null {
-    const connection = new OBJ.Connection(
+    interactive?: boolean,
+  ): Connection | null {
+    const connection = new Connection(
       p1,
       p2,
       sourceSocketId,
       destinationSocketId,
       color,
-      _interactive,
+      interactive,
     );
     let isConnectionUnique = true;
     for (const c of this.group.connections.children) {
-      const conn = c as OBJ.Connection;
+      const conn = c as Connection;
       if (conn.name === connection.name) {
         isConnectionUnique = false;
       }
     }
 
     for (const n of this.group.nodes.children) {
-      const node = n as OBJ.Node;
+      const node = n as Node;
       for (const sockets of node.children) {
         if (sockets instanceof Sockets) {
           const source = sockets.getChildByName(sourceSocketId) as Socket;
@@ -239,33 +233,32 @@ export class SceneManager {
     if (isConnectionUnique) {
       this.addConnection(connection);
       this.refreshConnections(); // inefficient, should be for the connections on a node.
-      // this.renderConnection(connection); // causes an orphan edge to renders.
       return connection;
     } else {
       return null;
     }
   }
 
-  addConnection(c: OBJ.Connection): void {
+  addConnection(c: Connection): void {
     this.group.connections.addChild(c);
   }
 
   removeConnection(name: string): void {
-    const c = this.scene.getChildByName(name, true) as OBJ.Connection;
+    const c = this.scene.getChildByName(name, true) as Connection;
     this.group.connections.removeChild(c);
   }
 
   refreshConnections(): void {
     for (const c of this.group.connections.children) {
-      const connection = c as OBJ.Connection;
-      if (connection && connection.type != OBJ.ConnectionType.interactive) {
+      const connection = c as Connection;
+      if (connection && connection.type != ConnectionType.interactive) {
         this.refreshConnectionPosition(connection.name);
       }
     }
   }
 
   refreshConnectionPosition(name: string): void {
-    const c = this.scene.getChildByName(name, true) as OBJ.Connection;
+    const c = this.scene.getChildByName(name, true) as Connection;
     const sp = this.getSocketPosition(c.sourceSocketId);
     const dp = this.getSocketPosition(c.destinationSocketId);
 
@@ -290,7 +283,7 @@ export class SceneManager {
   }
 
   updateConnectionInteractive(name: string, p: Point): void {
-    const c = this.scene.getChildByName(name, true) as OBJ.Connection;
+    const c = this.scene.getChildByName(name, true) as Connection;
 
     if (c && this.interactiveConnection) {
       const p1 = {
@@ -303,14 +296,5 @@ export class SceneManager {
       };
       c.update(p1, p2);
     }
-  }
-
-  getConnections(): void {
-    const connections = this.group.connections.children;
-    console.log(connections);
-  }
-
-  renderConnection(c: OBJ.Connection): void {
-    c.render(this.renderer);
   }
 }

@@ -7,11 +7,6 @@ export enum ConnectionType {
   standard = "standard",
 }
 
-interface Point2D {
-  x: number;
-  y: number;
-}
-
 // TODO replace for smooth.SmoothGraphics?
 export class Connection extends PIXI.Graphics {
   id: string;
@@ -27,14 +22,14 @@ export class Connection extends PIXI.Graphics {
     sourceSocketId: string,
     destinationSocketId: string,
     color: number,
-    _interactive?: boolean,
+    interactive?: boolean,
   ) {
     super();
     this.id = _.uniqueId();
     this.kind = "connection";
     this.color = color;
 
-    if (_interactive) {
+    if (interactive) {
       this.type = ConnectionType.interactive;
     } else {
       this.type = ConnectionType.standard;
@@ -63,4 +58,9 @@ export class Connection extends PIXI.Graphics {
     this.position.x = p1.x;
     this.position.y = p1.y;
   }
+}
+
+interface Point2D {
+  x: number;
+  y: number;
 }

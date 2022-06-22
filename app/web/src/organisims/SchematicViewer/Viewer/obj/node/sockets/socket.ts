@@ -4,11 +4,6 @@ import _ from "lodash";
 
 import { Connector } from "./connector";
 
-interface Position {
-  x: number;
-  y: number;
-}
-
 export enum SocketType {
   input = "input",
   output = "output",
@@ -106,4 +101,9 @@ export class Socket extends PIXI.Container {
   disableInteraction(): void {
     this.interactive = false;
   }
+}
+
+interface Position {
+  x: number;
+  y: number;
 }

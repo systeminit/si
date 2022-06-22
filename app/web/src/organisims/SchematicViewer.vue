@@ -2,10 +2,15 @@
   <div :id="viewerId" class="w-full h-full">
     <!-- We check for schematicData and schematicKind inside showViewer but typescript can't understand that so we check it here again -->
     <Viewer
-      v-if="showViewer && props.schematicKind && filteredSchematicData"
+      v-if="
+        showViewer &&
+        props.schematicKind &&
+        filteredSchematicData &&
+        editorContext
+      "
       :schematic-viewer-id="viewerId"
       :viewer-state="viewerState"
-      :editor-context="editorContext ?? null"
+      :editor-context="editorContext"
       :schematic-data="filteredSchematicData"
       :viewer-event$="props.viewerEvent$"
       :schematic-kind="props.schematicKind"
@@ -63,7 +68,7 @@ import * as Rx from "rxjs";
 
 import Viewer from "./SchematicViewer/Viewer.vue";
 
-import { ViewerStateMachine } from "./SchematicViewer/state";
+import { ViewerStateMachine } from "./SchematicViewer/state_machine";
 
 import { refFrom, untilUnmounted } from "vuse-rx";
 import { applicationNodeId$ } from "@/observable/application";
@@ -76,14 +81,14 @@ import {
 } from "@/api/sdf/dal/schematic";
 import { combineLatest, from } from "rxjs";
 import { switchMap } from "rxjs/operators";
-import { ViewerEvent } from "./SchematicViewer/event";
+import { ViewerEvent } from "./SchematicViewer/viewer_event";
 import { computed, ref } from "vue";
 
 const props = defineProps<{
   viewerEvent$: Rx.ReplaySubject<ViewerEvent | null>;
   schematicData: Schematic | null;
   schematicKind: SchematicKind;
-  deploymentNodeSelected?: number;
+  deploymentNodeSelected: number | null;
   addingNode?: boolean;
 }>();
 

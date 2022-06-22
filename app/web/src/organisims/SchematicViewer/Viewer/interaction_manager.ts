@@ -4,18 +4,18 @@ import { untilUnmounted } from "vuse-rx";
 
 // Should we bypass the datamanager here?
 import { editSession$ } from "@/observable/edit_session";
-import { SocketType } from "../obj";
-import { SceneManager } from "../scene";
-import { SchematicDataManager } from "../../data";
-import * as ST from "../../state";
+import { SocketType } from "./obj/node/sockets/socket";
+import { SceneManager } from "./scene_manager";
+import { SchematicDataManager } from "./../data_manager";
+import * as ST from "./../state_machine";
 import { SchematicKind } from "@/api/sdf/dal/schematic";
-import { Renderer } from "../renderer";
+import { Renderer } from "./renderer";
 import { Interpreter } from "xstate";
-import { DraggingManager } from "./dragging";
-import { PanningManager } from "./panning";
-import { ConnectingManager } from "./connecting";
-import { ZoomingManager } from "./zooming";
-import { NodeAddManager } from "./nodeAdd";
+import { DraggingManager } from "./interaction_manager/dragging";
+import { PanningManager } from "./interaction_manager/panning";
+import { ConnectingManager } from "./interaction_manager/connecting";
+import { ZoomingManager } from "./interaction_manager/zooming";
+import { NodeAddManager } from "./interaction_manager/node_add";
 import { editButtonPulse$ } from "@/observable/change_set";
 import {
   lastSelectedNode$,
@@ -23,7 +23,7 @@ import {
   selectNode,
   clearSelection,
   findSelectedNodes,
-} from "../../state";
+} from "@/observable/selection";
 
 export interface InteractionState {
   context: {
@@ -96,11 +96,7 @@ export class InteractionManager {
       this.zoomMagnitude$,
       this.zoomFactor$,
     );
-    this.nodeAddManager = new NodeAddManager(
-      sceneManager,
-      dataManager,
-      renderer,
-    );
+    this.nodeAddManager = new NodeAddManager(sceneManager, dataManager);
   }
 
   setZoomMagnitude(zoomMagnitude: number | null): void {
@@ -123,7 +119,9 @@ export class InteractionManager {
     const schematicKind = await Rx.firstValueFrom(
       this.dataManager.schematicKind$,
     );
-    const parentDeploymentNodeId = this.dataManager.selectedDeploymentNodeId;
+    const parentDeploymentNodeId = await Rx.firstValueFrom(
+      this.dataManager.selectedDeploymentNodeId$,
+    );
 
     const target = this.renderer.plugins.interaction.hitTest(e.data.global);
     const isFakeNode = target.id === -1;
@@ -235,7 +233,9 @@ export class InteractionManager {
   }
 
   async onMouseMove(this: InteractionManager, e: PIXI.InteractionEvent) {
-    const parentDeploymentNodeId = this.dataManager.selectedDeploymentNodeId;
+    const parentDeploymentNodeId = await Rx.firstValueFrom(
+      this.dataManager.selectedDeploymentNodeId$,
+    );
 
     const editSession = await Rx.firstValueFrom(editSession$);
 
@@ -317,7 +317,9 @@ export class InteractionManager {
   }
 
   async onMouseUp(this: InteractionManager) {
-    const parentDeploymentNodeId = this.dataManager.selectedDeploymentNodeId;
+    const parentDeploymentNodeId = await Rx.firstValueFrom(
+      this.dataManager.selectedDeploymentNodeId$,
+    );
     // Panning
     if (
       ST.isPanning(this.stateService) ||

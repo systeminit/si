@@ -1,7 +1,0 @@
-Objects (not to name them models)
-
-
-Node
-
- Id: referenceId to the node (from the schematic) it represents
- position: current position

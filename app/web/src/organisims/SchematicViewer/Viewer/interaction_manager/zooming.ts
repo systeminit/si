@@ -4,7 +4,6 @@ import * as Rx from "rxjs";
 import { Renderer } from "../renderer";
 
 export class ZoomingManager {
-  data?: PIXI.InteractionData | undefined;
   scale: number;
   sensitivity: number;
   factor: number;
@@ -33,10 +32,6 @@ export class ZoomingManager {
 
     this.zoomMagnitude$ = zoomMagnitude$;
     this.zoomFactor$ = zoomFactor$;
-  }
-
-  beforePan(data: PIXI.InteractionData): void {
-    this.data = data;
   }
 
   zoom(e: WheelEvent): void {

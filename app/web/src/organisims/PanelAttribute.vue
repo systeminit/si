@@ -157,7 +157,7 @@
 </template>
 
 <script setup lang="ts">
-import * as OBJ from "@/organisims/SchematicViewer/Viewer/obj";
+import { Node } from "@/organisims/SchematicViewer/Viewer/obj/node";
 import * as Rx from "rxjs";
 import _ from "lodash";
 
@@ -176,7 +176,7 @@ import QualificationViewer from "@/organisims/QualificationViewer.vue";
 import ResourceViewer from "@/organisims/ResourceViewer.vue";
 import CodeViewer from "@/organisims/CodeViewer.vue";
 import cheechSvg from "@/assets/images/cheech-and-chong.svg";
-import { lastSelectedNode$ } from "./SchematicViewer/state";
+import { lastSelectedNode$ } from "@/observable/selection";
 import { ComponentIdentification } from "@/api/sdf/dal/component";
 import { schematicData$ } from "@/observable/schematic";
 import { PanelAttributeSubType } from "./PanelTree/panel_types";
@@ -208,7 +208,7 @@ schematicData$.pipe(untilUnmounted).subscribe((schematic) => {
   selectedComponentId.value = "";
 });
 
-const updateSelection = (node: OBJ.Node | null) => {
+const updateSelection = (node: Node | null) => {
   const componentId = node?.nodeKind?.componentId;
 
   // Locked panels can't change selection by clicking in nodes
