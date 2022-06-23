@@ -340,35 +340,37 @@ impl AttributeValueDependentCollectionHarness {
                     None => None,
                 };
 
-                let new_attribute_value = if let Some(mut attribute_value) = maybe_attribute_value {
-                    if attribute_value.proxy_for_attribute_value_id().is_some() {
-                        attribute_value.set_sealed_proxy(ctx, true).await?;
-                    }
-                    attribute_value.unset_attribute_prototype(ctx).await?;
-                    attribute_value
-                        .set_func_binding_id(
+                let (new_attribute_value, created) =
+                    if let Some(mut attribute_value) = maybe_attribute_value {
+                        if attribute_value.proxy_for_attribute_value_id().is_some() {
+                            attribute_value.set_sealed_proxy(ctx, true).await?;
+                        }
+                        attribute_value.unset_attribute_prototype(ctx).await?;
+                        attribute_value
+                            .set_func_binding_id(
+                                ctx,
+                                attribute_value_for_current_prototype.func_binding_id,
+                            )
+                            .await?;
+                        attribute_value
+                            .set_func_binding_return_value_id(
+                                ctx,
+                                attribute_value_for_current_prototype.func_binding_return_value_id,
+                            )
+                            .await?;
+
+                        (attribute_value, false)
+                    } else {
+                        let attribute_value = AttributeValue::new(
                             ctx,
                             attribute_value_for_current_prototype.func_binding_id,
-                        )
-                        .await?;
-                    attribute_value
-                        .set_func_binding_return_value_id(
-                            ctx,
                             attribute_value_for_current_prototype.func_binding_return_value_id,
+                            destination_attribute_context,
+                            attribute_value_for_current_prototype.key.clone(),
                         )
                         .await?;
-
-                    attribute_value
-                } else {
-                    AttributeValue::new(
-                        ctx,
-                        attribute_value_for_current_prototype.func_binding_id,
-                        attribute_value_for_current_prototype.func_binding_return_value_id,
-                        destination_attribute_context,
-                        attribute_value_for_current_prototype.key.clone(),
-                    )
-                    .await?
-                };
+                        (attribute_value, true)
+                    };
 
                 // Before adding our new attribute value to the list of attribute values
                 // that need to be updated, we need to set its prototype and its parent
@@ -390,6 +392,11 @@ impl AttributeValueDependentCollectionHarness {
                             *parent_attribute_value.id(),
                         )
                         .await?;
+                    if !created {
+                        new_attribute_value
+                            .unset_parent_attribute_value(ctx)
+                            .await?;
+                    }
                     new_attribute_value
                         .set_parent_attribute_value(ctx, &parent_attribute_value_id)
                         .await?;

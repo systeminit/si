@@ -1559,6 +1559,7 @@ impl Component {
 }
 
 #[must_use]
+#[derive(Debug)]
 pub struct ComponentAsyncTasks {
     pub component: Component,
     pub system_id: SystemId,
