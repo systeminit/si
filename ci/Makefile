@@ -22,8 +22,8 @@ ci-rust-lint:
 
 ci-web-lint:
 	cd $(REPOPATH)/app/web; npm run prettier-check
-	cd $(REPOPATH)/app/web; npm run type-check || exit 0
-	cd $(REPOPATH)/app/web; npm run eslint || exit 0
+	cd $(REPOPATH)/app/web; npm run type-check
+	cd $(REPOPATH)/app/web; npm run eslint
 .PHONY: ci-web-lint
 
 ci-si: setup-base ci-crates ci-web
@@ -38,7 +38,7 @@ ci-web: down
 	cd $(REPOPATH)/app/web; npm ci
 	cd $(REPOPATH)/app/web; env VUE_APP_SDF_BASE_HTTP_URL="https://localhost/api" \
 		VUE_APP_SDF_BASE_WS_URL="wss://localhost/api/ws/billing_account_updates" \
-		npm run build || exit 0;
+		npm run build;
 	cd $(REPOPATH)/deploy && $(MAKE) ci
 	$(MAKEPATH)/scripts/readiness-check.sh
 	cd $(REPOPATH)/app/web; env CYPRESS_BASE_URL='https://max:L0vesMiriya!@localhost' npm run cypress:run || exit 0

@@ -27,7 +27,6 @@
     "@headlessui/vue": "^1.6.1",
     "@heroicons/vue": "^1.0.6",
     "@pixi/layers": "^1.0.11",
-    "@reactivex/rxjs": "^6.6.7",
     "@tailwindcss/forms": "^0.5.1",
     "@xstate/vue": "^2.0.0",
     "cm6-theme-gruvbox-dark": "^0.1.0",
@@ -39,7 +38,7 @@
     "tweetnacl-sealedbox-js": "github:systeminit/tweetnacl-sealed-box#master",
     "validator": "^13.7.0",
     "vue": "^3.2.33",
-    "vuse-rx": "systeminit/vuse-rx#bug/fix-options",
+    "vuse-rx": "systeminit/vuse-rx#bug/hotfix-types",
     "xstate": "^4.31.0"
   },
   "devDependencies": {
@@ -83,7 +82,7 @@
     "vue-loading-template": "^1.3.2",
     "vue-router": "^4.0.14",
     "vue-tsc": "^0.34.10",
-    "vuse-rx": "systeminit/vuse-rx#bug/fix-options"
+    "vuse-rx": "systeminit/vuse-rx#bug/hotfix-types"
   },
   "eslintConfig": {
     "parserOptions": {
