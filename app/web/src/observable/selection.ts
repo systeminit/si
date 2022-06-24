@@ -1,20 +1,20 @@
 import * as Rx from "rxjs";
 
-import { SceneManager } from "../Viewer/scene";
-import { Node } from "../Viewer/obj";
+import { SceneManager } from "@/organisims/SchematicViewer/Viewer/scene_manager";
+import { Node } from "@/organisims/SchematicViewer/Viewer/obj/node";
 
 // These shouldn't be global, interaction manager should own them
 
 export interface SelectedNode {
   // Deployments never have a parentDeploymentNodeId, Components always have
-  parentDeploymentNodeId?: number;
+  parentDeploymentNodeId: number | null;
   nodeIds: number[];
 }
 
 // For now we clear the old selection when adding a new one, but we could support multiselection without problems
 export async function selectNode(
   nodeId: number,
-  parentDeploymentNodeId?: number,
+  parentDeploymentNodeId: number | null,
 ) {
   const selections = await Rx.firstValueFrom(nodeSelection$);
   for (const selection of selections) {
@@ -32,7 +32,7 @@ export async function selectNode(
   nodeSelection$.next(selections);
 }
 
-export async function clearSelection(parentDeploymentNodeId?: number) {
+export async function clearSelection(parentDeploymentNodeId: number | null) {
   const selections = (await Rx.firstValueFrom(nodeSelection$)).filter(
     (selection) => selection.parentDeploymentNodeId !== parentDeploymentNodeId,
   );
@@ -41,7 +41,7 @@ export async function clearSelection(parentDeploymentNodeId?: number) {
 
 export async function findSelectedNodes(
   sceneManager: SceneManager,
-  parentDeploymentNodeId?: number,
+  parentDeploymentNodeId: number | null,
 ): Promise<Node[]> {
   const selections = await Rx.firstValueFrom(nodeSelection$);
   const sceneNodes = sceneManager.group.nodes.children as Node[];
@@ -72,9 +72,3 @@ lastSelectedNode$.next(null);
 
 export const lastSelectedDeploymentNode$ = new Rx.ReplaySubject<Node | null>(1);
 lastSelectedNode$.next(null);
-
-// export const zoomMagnitude$ = new Rx.ReplaySubject<number | null>(1);
-// zoomMagnitude$.next(null);
-
-// export const zoomFactor$ = new Rx.ReplaySubject<number | null>(1);
-// zoomFactor$.next(null);

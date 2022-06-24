@@ -1,22 +1,14 @@
 import { createMachine } from "xstate";
 
-import { PanEventKind, PanEvent, PanState } from "./machine/pan";
-import { DragEventKind, DragEvent, DragState } from "./machine/drag";
-import { SelectEventKind, SelectEvent, SelectState } from "./machine/select";
-import { ZoomEventKind, ZoomEvent, ZoomState } from "./machine/zoom";
-import {
-  NodeAddEventKind,
-  NodeAddEvent,
-  NodeAddState,
-} from "./machine/nodeAdd";
+import { PanEventKind, PanEvent, PanState } from "./pan";
+import { DragEventKind, DragEvent, DragState } from "./drag";
+import { SelectEventKind, SelectEvent, SelectState } from "./select";
+import { ZoomEventKind, ZoomEvent, ZoomState } from "./zoom";
+import { NodeAddEventKind, NodeAddEvent, NodeAddState } from "./node_add";
 
-import {
-  ConnectEventKind,
-  ConnectEvent,
-  ConnectState,
-} from "./machine/connect";
+import { ConnectEventKind, ConnectEvent, ConnectState } from "./connect";
 
-import { IdleState } from "./machine/idle";
+import { IdleState } from "./idle";
 
 export const ViewerEventKind = {
   ...ZoomEventKind,

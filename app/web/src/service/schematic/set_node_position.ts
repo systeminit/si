@@ -10,7 +10,7 @@ import { editSessionWritten$ } from "@/observable/edit_session";
 import _ from "lodash";
 
 export interface SetNodePositionArgs {
-  deploymentNodeId?: number;
+  deploymentNodeId: number | null;
   schematicKind: SchematicKind;
   nodeId: number;
   systemId?: number;

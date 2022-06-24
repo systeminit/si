@@ -4,7 +4,6 @@ import _ from "lodash";
 import { Schematic, SchematicKind } from "@/api/sdf/dal/schematic";
 import { SchematicService } from "@/service/schematic";
 import { GlobalErrorService } from "@/service/global_error";
-import { NodeCreate, ConnectionCreate } from "./event";
 import { EditorContext } from "@/api/sdf/dal/schematic";
 
 export class SchematicDataManager {
@@ -12,12 +11,13 @@ export class SchematicDataManager {
   schematicData$: Rx.ReplaySubject<Schematic | null>;
   editorContext$: Rx.ReplaySubject<EditorContext | null>;
   schematicKind$: Rx.ReplaySubject<SchematicKind | null>;
-  selectedDeploymentNodeId?: number;
+  selectedDeploymentNodeId$: Rx.ReplaySubject<number | null>;
 
   constructor() {
     this.id = _.uniqueId();
 
-    this.selectedDeploymentNodeId = undefined;
+    this.selectedDeploymentNodeId$ = new Rx.ReplaySubject<number | null>(1);
+    this.selectedDeploymentNodeId$.next(null);
 
     this.schematicData$ = new Rx.ReplaySubject<Schematic | null>(1);
     this.schematicData$.next(null);
@@ -36,9 +36,12 @@ export class SchematicDataManager {
   ): Promise<void> {
     const editorContext = await Rx.firstValueFrom(this.editorContext$);
     const schematicKind = await Rx.firstValueFrom(this.schematicKind$);
+    const parentDeploymentNodeId = await Rx.firstValueFrom(
+      this.selectedDeploymentNodeId$,
+    );
     if (editorContext && schematicKind && nodeId !== -1) {
       SchematicService.setNodePosition({
-        deploymentNodeId: this.selectedDeploymentNodeId,
+        deploymentNodeId: parentDeploymentNodeId,
         schematicKind,
         x: `${x}`,
         y: `${y}`,
@@ -80,4 +83,21 @@ export class SchematicDataManager {
       }
     });
   }
+}
+
+interface NodeCreate {
+  nodeSchemaId: number;
+  systemId?: number;
+  x: string;
+  y: string;
+  parentNodeId: number | null;
+}
+
+interface ConnectionCreate {
+  sourceNodeId: number;
+  sourceSocketId: number;
+  sourceProviderId: number;
+  destinationNodeId: number;
+  destinationSocketId: number;
+  destinationProviderId: number;
 }
