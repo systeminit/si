@@ -16,7 +16,6 @@ CREATE TABLE internal_providers
     schema_variant_id           bigint                   NOT NULL,
     attribute_prototype_id      bigint,
     name                        text                     NOT NULL,
-    internal_consumer           boolean                  NOT NULL DEFAULT TRUE,
     inbound_type_definition     text,
     outbound_type_definition    text
 );
@@ -35,7 +34,6 @@ CREATE OR REPLACE FUNCTION internal_provider_create_v1(
     this_schema_id bigint,
     this_schema_variant_id bigint,
     this_name text,
-    this_internal_consumer boolean,
     this_inbound_type_definition text,
     this_outbound_type_definition text,
     OUT object json) AS
@@ -59,7 +57,6 @@ BEGIN
                                     schema_id,
                                     schema_variant_id,
                                     name,
-                                    internal_consumer,
                                     inbound_type_definition,
                                     outbound_type_definition)
     VALUES (this_tenancy_record.tenancy_universal,
@@ -73,7 +70,6 @@ BEGIN
             this_schema_id,
             this_schema_variant_id,
             this_name,
-            this_internal_consumer,
             this_inbound_type_definition,
             this_outbound_type_definition)
     RETURNING * INTO this_new_row;

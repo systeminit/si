@@ -191,7 +191,7 @@ impl Connection {
 
         // Check that the explicit internal provider is actually explicit and find its attribute
         // prototype id.
-        if *head_explicit_internal_provider.internal_consumer() {
+        if head_explicit_internal_provider.is_internal_consumer() {
             return Err(SchematicError::FoundImplicitInternalProvider(
                 *head_explicit_internal_provider.id(),
             ));

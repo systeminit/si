@@ -87,12 +87,12 @@ impl_standard_model! {
 
 /// This provider can only provide data within its own [`SchemaVariant`](crate::SchemaVariant).
 ///
-/// If the "internal_consumer" field is set to "true", this provider can only consume data from within
-/// its own [`SchemaVariant`](crate::SchemaVariant). Internally-consuming [`InternalProviders`](Self)
-/// are called "implicit" [`InternalProviders`](Self)
+/// If this provider _specifies_ a [`PropId`](crate::Prop), it provider can only consume data from
+/// within its own [`SchemaVariant`](crate::SchemaVariant). Internally-consuming
+/// [`InternalProviders`](Self) are called "implicit" [`InternalProviders`](Self).
 ///
-/// If the "internal_consumer" field is set to "false", this provider can only consume data from other
-/// [`SchemaVariants`](crate::SchemaVariant). Externally-consuming [`InternalProviders`](Self)
+/// If this provider _does not_ specify a [`PropId`](crate::Prop), it can only consume data from
+/// other [`SchemaVariants`](crate::SchemaVariant). Externally-consuming [`InternalProviders`](Self)
 /// are called "explicit" [`InternalProviders`](Self).
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct InternalProvider {
@@ -118,14 +118,6 @@ pub struct InternalProvider {
 
     /// Name for [`Self`] that can be used for identification.
     name: String,
-    /// If this field is set to "true", the provider can only consume data for its corresponding
-    /// function from within its own [`SchemaVariant`](crate::SchemaVariant). In this case, [`Self`]
-    /// is "implicit".
-    ///
-    /// If this field field is set to "false", the provider
-    /// can only consume data from other [`SchemaVariants`](crate::SchemaVariant). In this case,
-    /// [`Self`] is "explicit".
-    internal_consumer: bool,
     /// Definition of the inbound type (e.g. "JSONSchema" or "Number").
     inbound_type_definition: Option<String>,
     /// Definition of the outbound type (e.g. "JSONSchema" or "Number").
@@ -151,7 +143,7 @@ impl InternalProvider {
             .txns()
             .pg()
             .query_one(
-                "SELECT object FROM internal_provider_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+                "SELECT object FROM internal_provider_create_v1($1, $2, $3, $4, $5, $6, $7, $8)",
                 &[
                     ctx.write_tenancy(),
                     ctx.visibility(),
@@ -159,7 +151,6 @@ impl InternalProvider {
                     &schema_id,
                     &schema_variant_id,
                     &name,
-                    &true,
                     &Option::<String>::None,
                     &Option::<String>::None,
                 ],
@@ -226,7 +217,7 @@ impl InternalProvider {
             .txns()
             .pg()
             .query_one(
-                "SELECT object FROM internal_provider_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+                "SELECT object FROM internal_provider_create_v1($1, $2, $3, $4, $5, $6, $7, $8)",
                 &[
                     ctx.write_tenancy(),
                     ctx.visibility(),
@@ -234,7 +225,6 @@ impl InternalProvider {
                     &schema_id,
                     &schema_variant_id,
                     &name,
-                    &false,
                     &Option::<String>::None,
                     &Option::<String>::None,
                 ],
@@ -291,7 +281,6 @@ impl InternalProvider {
     standard_model_accessor_ro!(prop_id, PropId);
     standard_model_accessor_ro!(schema_id, SchemaId);
     standard_model_accessor_ro!(schema_variant_id, SchemaVariantId);
-    standard_model_accessor_ro!(internal_consumer, bool);
 
     // Mutable fields.
     standard_model_accessor!(
@@ -311,6 +300,11 @@ impl InternalProvider {
         InternalProviderResult
     );
 
+    /// If the [`PropId`](crate::Prop) field is not unset, then [`Self`] is an internal consumer.
+    pub fn is_internal_consumer(&self) -> bool {
+        self.prop_id != UNSET_ID_VALUE.into()
+    }
+
     /// Evaluate with a provided [`AttributeContext`](crate::AttributeContext) and return the
     /// resulting [`AttributeValue`](crate::AttributeValue).
     ///
@@ -328,9 +322,9 @@ impl InternalProvider {
         attribute_context: AttributeContext,
     ) -> InternalProviderResult<AttributeValue> {
         // Ensure that the least specific field in the provided context matches what we expect.
-        if self.internal_consumer && !attribute_context.is_least_specific_field_kind_prop()? {
+        if self.is_internal_consumer() && !attribute_context.is_least_specific_field_kind_prop()? {
             return Err(InternalProviderError::MissingPropForImplicitEmit);
-        } else if !self.internal_consumer
+        } else if !self.is_internal_consumer()
             && !attribute_context.is_least_specific_field_kind_external_provider()?
         {
             return Err(InternalProviderError::MissingExternalProviderForExplicitEmit);
@@ -338,7 +332,7 @@ impl InternalProvider {
 
         // Ensure that if the schema and/or schema variant fields are set, that they match our
         // corresponding fields. We only need to perform this check for internal consumers.
-        if self.internal_consumer {
+        if self.is_internal_consumer() {
             if !attribute_context.is_schema_unset()
                 && attribute_context.schema_id() != self.schema_id
             {
