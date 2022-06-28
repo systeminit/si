@@ -99,12 +99,10 @@ impl Connection {
         ctx: &DalContext<'_, '_>,
         head_node_id: &NodeId,
         head_socket_id: &SocketId,
-        // TODO(fnichol): remove `Option` from type--this is now a requirement
-        head_explicit_internal_provider_id: Option<InternalProviderId>,
+        head_explicit_internal_provider_id: InternalProviderId,
         tail_node_id: &NodeId,
         tail_socket_id: &SocketId,
-        // TODO(fnichol): remove `Option` from type--this is now a requirement
-        tail_external_provider_id: Option<ExternalProviderId>,
+        tail_external_provider_id: ExternalProviderId,
     ) -> SchematicResult<Self> {
         let head_node = Node::get_by_id(ctx, head_node_id)
             .await?
@@ -121,6 +119,18 @@ impl Connection {
             .component(ctx)
             .await?
             .ok_or(SchematicError::Node(NodeError::ComponentIsNone))?;
+
+        // TODO(nick): allow for non-identity inter component connections.
+        let name = "identity".to_string();
+        Self::connect_providers(
+            ctx,
+            name,
+            tail_external_provider_id,
+            *tail_component.id(),
+            head_explicit_internal_provider_id,
+            *head_component.id(),
+        )
+        .await?;
 
         // TODO(nick): a lot of hardcoded values here along with the (temporary) insinuation that an
         // edge is equivalent to a connection.
@@ -141,25 +151,6 @@ impl Connection {
             Ok(edge) => edge,
             Err(e) => return Err(SchematicError::Edge(e)),
         };
-
-        // If there is an ExternalProvider corresponding to the tail and an externally-consuming
-        // InternalProvider corresponding to the head, then let's "connect" them too.
-        if let (Some(tail_external_provider_id), Some(head_explicit_internal_provider_id)) = (
-            tail_external_provider_id,
-            head_explicit_internal_provider_id,
-        ) {
-            // TODO(nick): allow for different names.
-            let name = "identity".to_string();
-            Self::connect_providers(
-                ctx,
-                name,
-                tail_external_provider_id,
-                *tail_component.id(),
-                head_explicit_internal_provider_id,
-                *head_component.id(),
-            )
-            .await?;
-        }
 
         // TODO: do we have to call Component::resolve_attribute for the head_component here?
 
