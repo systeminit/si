@@ -93,6 +93,10 @@ pub enum AttributeValueError {
     EmptyAttributePrototypeArgumentsForGroup(String),
     #[error("external provider error: {0}")]
     ExternalProvider(String),
+    #[error("found duplicate attribute value ({0}) for self ({1}) for parent: {2}")]
+    FoundDuplicateForParent(AttributeValueId, AttributeValueId, AttributeValueId),
+    #[error("found duplicate attribute value ({0}) when creating new attribute value in provider context: {1:?}")]
+    FoundDuplicateForProviderContext(AttributeValueId, AttributeContext),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
     #[error("func binding error: {0}")]
@@ -229,6 +233,21 @@ impl AttributeValue {
         context: AttributeContext,
         key: Option<impl Into<String>>,
     ) -> AttributeValueResult<Self> {
+        // If we are trying to create values in a provider context, they will not have a parent,
+        // so we will need to ensure they do not exist in the same context.
+        if context.is_least_specific_field_kind_internal_or_external_provider()? {
+            if let Some(found_attribute_value) =
+                AttributeValue::find_for_context(ctx, context.into()).await?
+            {
+                if found_attribute_value.context == context {
+                    return Err(AttributeValueError::FoundDuplicateForProviderContext(
+                        found_attribute_value.id,
+                        context,
+                    ));
+                }
+            }
+        }
+
         let key: Option<String> = key.map(|s| s.into());
         let row = ctx
             .txns()
@@ -269,7 +288,7 @@ impl AttributeValue {
 
     standard_model_belongs_to!(
         lookup_fn: parent_attribute_value,
-        set_fn: set_parent_attribute_value,
+        set_fn: set_parent_attribute_value_unchecked,
         unset_fn: unset_parent_attribute_value,
         table: "attribute_value_belongs_to_attribute_value",
         model_table: "attribute_values",
@@ -296,6 +315,32 @@ impl AttributeValue {
         returns: AttributePrototype,
         result: AttributeValueResult,
     );
+
+    pub async fn set_parent_attribute_value(
+        &self,
+        ctx: &DalContext<'_, '_>,
+        belongs_to_id: &AttributeValueId,
+    ) -> AttributeValueResult<()> {
+        if let Some(potential_duplicate) = Self::find_with_parent_and_key_for_context(
+            ctx,
+            Some(*belongs_to_id),
+            self.key.clone(),
+            self.context.into(),
+        )
+        .await?
+        {
+            if potential_duplicate.context == self.context {
+                return Err(AttributeValueError::FoundDuplicateForParent(
+                    potential_duplicate.id,
+                    self.id,
+                    *belongs_to_id,
+                ));
+            }
+        }
+        self.set_parent_attribute_value_unchecked(ctx, belongs_to_id)
+            .await?;
+        Ok(())
+    }
 
     pub fn index_map_mut(&mut self) -> Option<&mut IndexMap> {
         self.index_map.as_mut()
