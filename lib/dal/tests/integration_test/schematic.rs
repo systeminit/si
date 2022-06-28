@@ -29,11 +29,21 @@ async fn get_schematic(ctx: &DalContext<'_, '_>, application_id: ApplicationId) 
         .iter()
         .find(|s| s.edge_kind() == &SocketEdgeKind::Configures && s.name() == "service")
         .expect("cannot find input socket");
+    let explicit_internal_provider = input_socket
+        .internal_provider(ctx)
+        .await
+        .expect("cannot find external provider")
+        .expect("external provider not found");
 
     let output_socket = sockets
         .iter()
         .find(|s| s.edge_kind() == &SocketEdgeKind::Output && s.name() == "service")
         .expect("cannot find output socket");
+    let external_provider = output_socket
+        .external_provider(ctx)
+        .await
+        .expect("cannot find external provider")
+        .expect("external provider not found");
 
     let (_component, node, _) =
         Component::new_for_schema_with_node(ctx, "sc-component-get_schematic", service_schema.id())
@@ -89,10 +99,10 @@ async fn get_schematic(ctx: &DalContext<'_, '_>, application_id: ApplicationId) 
         ctx,
         node2.id(),
         output_socket.id(),
-        None,
+        *explicit_internal_provider.id(),
         node.id(),
         input_socket.id(),
-        None,
+        *external_provider.id(),
     )
     .await
     .expect("could not create connection");
@@ -161,11 +171,21 @@ async fn create_connection(ctx: &DalContext<'_, '_>) {
         .iter()
         .find(|s| s.edge_kind() == &SocketEdgeKind::Configures && s.name() == "service")
         .expect("cannot find input socket");
+    let explicit_internal_provider = input_socket
+        .internal_provider(ctx)
+        .await
+        .expect("cannot find external provider")
+        .expect("external provider not found");
 
     let output_socket = sockets
         .iter()
         .find(|s| s.edge_kind() == &SocketEdgeKind::Output && s.name() == "service")
         .expect("cannot find output socket");
+    let external_provider = output_socket
+        .external_provider(ctx)
+        .await
+        .expect("cannot find external provider")
+        .expect("external provider not found");
 
     let (_head_component, head_node, _) =
         Component::new_for_schema_with_node(ctx, "head", service_schema.id())
@@ -181,10 +201,10 @@ async fn create_connection(ctx: &DalContext<'_, '_>) {
         ctx,
         head_node.id(),
         output_socket.id(),
-        None,
+        *explicit_internal_provider.id(),
         tail_node.id(),
         input_socket.id(),
-        None,
+        *external_provider.id(),
     )
     .await
     .expect("could not create connection");
