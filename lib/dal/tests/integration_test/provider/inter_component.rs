@@ -75,7 +75,7 @@ async fn inter_component_identity_update(ctx: &DalContext<'_, '_>) {
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *intermediate_attribute_prototype.id(),
-        "identity".to_string(),
+        "identity",
         *source_internal_provider.id(),
     )
     .await
@@ -142,7 +142,7 @@ async fn inter_component_identity_update(ctx: &DalContext<'_, '_>) {
         *esp_external_provider
             .attribute_prototype_id()
             .expect("no attribute prototype id for external provider"),
-        "identity".to_string(),
+        "identity",
         *esp_intermediate_internal_provider.id(),
     )
     .await
@@ -181,7 +181,7 @@ async fn inter_component_identity_update(ctx: &DalContext<'_, '_>) {
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *swings_destination_attribute_prototype.id(),
-        "identity".to_string(),
+        "identity",
         *swings_explicit_internal_provider.id(),
     )
     .await
@@ -217,7 +217,7 @@ async fn inter_component_identity_update(ctx: &DalContext<'_, '_>) {
     // Connect the two components.
     Connection::connect_providers(
         ctx,
-        "identity".to_string(),
+        "identity",
         *esp_external_provider.id(),
         esp_payload.component_id,
         *swings_explicit_internal_provider.id(),
@@ -481,7 +481,7 @@ async fn with_deep_data_structure(ctx: &DalContext<'_, '_>) {
         *source_external_provider
             .attribute_prototype_id()
             .expect("no attribute prototype id for external provider"),
-        "identity".to_string(),
+        "identity",
         *source_internal_provider.id(),
     )
     .await
@@ -563,7 +563,7 @@ async fn with_deep_data_structure(ctx: &DalContext<'_, '_>) {
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *destination_object_prototype.id(),
-        "identity".to_string(),
+        "identity",
         *destination_internal_provider.id(),
     )
     .await
@@ -625,7 +625,7 @@ async fn with_deep_data_structure(ctx: &DalContext<'_, '_>) {
 
     Connection::connect_providers(
         ctx,
-        "identity".to_string(),
+        "identity",
         *source_external_provider.id(),
         *source_component.id(),
         *destination_internal_provider.id(),

@@ -230,7 +230,7 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> BuiltinsResult<(
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *domain_namespace_attribute_prototype.id(),
-        "identity".to_string(),
+        "identity",
         *kubernetes_namespace_explicit_internal_provider.id(),
     )
     .await?;
@@ -261,7 +261,7 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> BuiltinsResult<(
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *template_namespace_attribute_prototype.id(),
-        "identity".to_string(),
+        "identity",
         *kubernetes_namespace_explicit_internal_provider.id(),
     )
     .await?;
@@ -296,7 +296,7 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> BuiltinsResult<(
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *containers_attribute_prototype.id(),
-        "images".to_string(),
+        "images",
         *docker_image_explicit_internal_provider.id(),
     )
     .await?;

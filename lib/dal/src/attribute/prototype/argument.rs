@@ -99,7 +99,7 @@ impl AttributePrototypeArgument {
     pub async fn new_for_intra_component(
         ctx: &DalContext<'_, '_>,
         attribute_prototype_id: AttributePrototypeId,
-        name: String,
+        name: impl AsRef<str>,
         internal_provider_id: InternalProviderId,
     ) -> AttributePrototypeArgumentResult<Self> {
         // Ensure the value fields are what we expect.
@@ -110,6 +110,7 @@ impl AttributePrototypeArgument {
             return Err(AttributePrototypeArgumentError::RequiredValueFieldsUnset);
         }
 
+        let name = name.as_ref();
         let row = ctx
             .txns()
             .pg()
@@ -135,7 +136,7 @@ impl AttributePrototypeArgument {
     pub async fn new_for_inter_component(
         ctx: &DalContext<'_, '_>,
         attribute_prototype_id: AttributePrototypeId,
-        name: String,
+        name: impl AsRef<str>,
         external_provider_id: ExternalProviderId,
         tail_component_id: ComponentId,
         head_component_id: ComponentId,
@@ -149,6 +150,7 @@ impl AttributePrototypeArgument {
             return Err(AttributePrototypeArgumentError::RequiredValueFieldsUnset);
         }
 
+        let name = name.as_ref();
         let row = ctx
             .txns()
             .pg()

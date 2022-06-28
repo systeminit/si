@@ -207,7 +207,7 @@ async fn intra_component_identity_update(ctx: &DalContext<'_, '_>) {
     let _argument = AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *destination_attribute_prototype.id(),
-        "identity".to_string(),
+        "identity",
         *source_internal_provider.id(),
     )
     .await

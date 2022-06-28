@@ -121,10 +121,9 @@ impl Connection {
             .ok_or(SchematicError::Node(NodeError::ComponentIsNone))?;
 
         // TODO(nick): allow for non-identity inter component connections.
-        let name = "identity".to_string();
         Self::connect_providers(
             ctx,
-            name,
+            "identity",
             tail_external_provider_id,
             *tail_component.id(),
             head_explicit_internal_provider_id,
@@ -161,7 +160,7 @@ impl Connection {
     /// latter is why this function is public.
     pub async fn connect_providers(
         ctx: &DalContext<'_, '_>,
-        name: String,
+        name: impl AsRef<str>,
         tail_external_provider_id: ExternalProviderId,
         tail_component_id: ComponentId,
         head_explicit_internal_provider_id: InternalProviderId,
