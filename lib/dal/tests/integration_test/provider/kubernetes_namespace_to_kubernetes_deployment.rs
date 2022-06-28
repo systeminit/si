@@ -76,7 +76,7 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(
     // Finally, create the inter component connection.
     Connection::connect_providers(
         ctx,
-        "identity".to_string(),
+        "identity",
         *tail_external_provider.id(),
         tail_namespace_payload.component_id,
         *head_explicit_internal_provider.id(),

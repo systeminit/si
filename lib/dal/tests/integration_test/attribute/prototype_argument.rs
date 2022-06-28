@@ -86,7 +86,7 @@ async fn create_and_list_for_attribute_prototype(ctx: &DalContext<'_, '_>) {
     let argument = AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *attribute_prototype.id(),
-        "title".to_string(),
+        "title",
         *internal_provider.id(),
     )
     .await

@@ -440,7 +440,7 @@ async fn kubernetes_namespace(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *metadata_name_attribute_prototype.id(),
-        "identity".to_string(),
+        "identity",
         *si_name_internal_provider.id(),
     )
     .await?;
@@ -460,7 +460,7 @@ async fn kubernetes_namespace(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *external_provider_attribute_prototype_id,
-        "identity".to_string(),
+        "identity",
         *metadata_name_implicit_internal_provider.id(),
     )
     .await?;
@@ -733,7 +733,7 @@ async fn docker_image(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     AttributePrototypeArgument::new_for_intra_component(
         ctx,
         *image_attribute_prototype.id(),
-        "identity".to_string(),
+        "identity",
         *si_name_internal_provider.id(),
     )
     .await?;
@@ -753,7 +753,7 @@ async fn docker_image(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
                     *docker_image_external_provider.id(),
                 )
             })?,
-        "identity".to_string(),
+        "identity",
         *root_implicit_internal_provider.id(),
     )
     .await?;

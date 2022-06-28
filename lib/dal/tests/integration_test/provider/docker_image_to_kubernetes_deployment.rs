@@ -74,7 +74,7 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &DalC
     // Finally, create the inter component connection.
     Connection::connect_providers(
         ctx,
-        "identity".to_string(),
+        "identity",
         *tail_external_provider.id(),
         tail_docker_image_payload.component_id,
         *head_explicit_internal_provider.id(),
