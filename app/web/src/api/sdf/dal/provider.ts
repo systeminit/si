@@ -5,7 +5,6 @@ export interface InternalProvider extends StandardModel {
   schemaId: number;
   schemaVariantId: number;
   name?: string;
-  internal_consumer: boolean;
   inbound_type_definition?: string;
   outbound_type_definition?: string;
 }
