@@ -307,6 +307,18 @@ impl AttributeContext {
         }
     }
 
+    /// Returns true if the least specific field corresponds to an [`InternalProvider`](crate::InternalProvider)
+    /// _or_ an [`ExternalProvider`](crate::ExternalProvider).
+    pub fn is_least_specific_field_kind_internal_or_external_provider(
+        &self,
+    ) -> AttributeContextResult<bool> {
+        match self.least_specific_field_kind()? {
+            AttributeContextLeastSpecificFieldKind::InternalProvider
+            | AttributeContextLeastSpecificFieldKind::ExternalProvider => Ok(true),
+            _ => Ok(false),
+        }
+    }
+
     /// Returns true if the least specific field corresponds to an [`ExternalProvider`](crate::ExternalProvider).
     pub fn is_least_specific_field_kind_external_provider(&self) -> AttributeContextResult<bool> {
         if let AttributeContextLeastSpecificFieldKind::ExternalProvider =
