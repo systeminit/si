@@ -17,6 +17,16 @@ CREATE TABLE external_providers
     name                        text                     NOT NULL,
     type_definition             text
 );
+
+CREATE UNIQUE INDEX unique_external_providers
+    ON external_providers (name,
+                           schema_id,
+                           schema_variant_id,
+                           visibility_change_set_pk,
+                           visibility_edit_session_pk,
+                           (visibility_deleted_at IS NULL))
+    WHERE visibility_deleted_at IS NULL;
+
 SELECT standard_model_table_constraints_v1('external_providers');
 SELECT belongs_to_table_create_v1('socket_belongs_to_external_provider', 'sockets', 'external_providers');
 
