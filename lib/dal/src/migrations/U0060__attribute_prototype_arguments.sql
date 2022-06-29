@@ -19,23 +19,29 @@ CREATE TABLE attribute_prototype_arguments
     head_component_id           bigint                   NOT NULL
 );
 
--- NOTE(fnichol): the current index may be able to be further refined and may
--- allow some duplicates in situations where we would prefer to not create
--- duplicates. As a fully specified uniqueness check would require more refined
--- cross-table querying an index here may not be enough on its own. However, we
--- create rows for this table via `attribute_prototype_argument_create_v1` so
--- further checking can be make there to guard creation time uniqueness at
--- least ;)
-CREATE UNIQUE INDEX inter_component_argument ON attribute_prototype_arguments (attribute_prototype_id,
-                                                                               name,
-                                                                               internal_provider_id,
-                                                                               external_provider_id,
-                                                                               tail_component_id,
-                                                                               head_component_id,
-                                                                               visibility_change_set_pk,
-                                                                               visibility_edit_session_pk,
-                                                                               (visibility_deleted_at IS NULL))
-                                              WHERE visibility_deleted_at IS NULL;
+CREATE UNIQUE INDEX intra_component_argument
+    ON attribute_prototype_arguments (attribute_prototype_id,
+                                      name,
+                                      internal_provider_id,
+                                      visibility_change_set_pk,
+                                      visibility_edit_session_pk,
+                                      (visibility_deleted_at IS NULL))
+    WHERE visibility_deleted_at IS NULL
+        AND (external_provider_id = -1
+            OR head_component_id = -1
+            OR tail_component_id = -1);
+
+CREATE UNIQUE INDEX inter_component_argument
+    ON attribute_prototype_arguments (attribute_prototype_id,
+                                      name,
+                                      external_provider_id,
+                                      tail_component_id,
+                                      head_component_id,
+                                      visibility_change_set_pk,
+                                      visibility_edit_session_pk,
+                                      (visibility_deleted_at IS NULL))
+    WHERE visibility_deleted_at IS NULL
+        AND internal_provider_id = -1;
 
 SELECT standard_model_table_constraints_v1('attribute_prototype_arguments');
 INSERT INTO standard_models (table_name, table_type, history_event_label_base, history_event_message_name)
