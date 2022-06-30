@@ -328,6 +328,9 @@ async fn setup_esp(ctx: &DalContext<'_, '_>) -> ComponentPayload {
     prop_map.insert("/root/domain/object/source", *source_prop.id());
     prop_map.insert("/root/domain/object/intermediate", *intermediate_prop.id());
 
+    SchemaVariant::create_default_prototypes_and_values(ctx, *schema_variant.id())
+        .await
+        .expect("cannot create default prototypes and values for SchemaVariant");
     // Create the internal providers for a schema variant. Afterwards, we can create the component.
     SchemaVariant::create_implicit_internal_providers(ctx, *schema.id(), *schema_variant.id())
         .await
@@ -395,6 +398,9 @@ async fn setup_swings(ctx: &DalContext<'_, '_>) -> ComponentPayload {
     let mut prop_map = HashMap::new();
     prop_map.insert("/root/domain/destination", *destination_prop.id());
 
+    SchemaVariant::create_default_prototypes_and_values(ctx, *schema_variant.id())
+        .await
+        .expect("cannot create default prototypes and values for SchemaVariant");
     // Create the internal providers for a schema variant. Afterwards, we can create the component.
     SchemaVariant::create_implicit_internal_providers(ctx, *schema.id(), *schema_variant.id())
         .await
@@ -451,6 +457,9 @@ async fn with_deep_data_structure(ctx: &DalContext<'_, '_>) {
         .set_parent_prop(ctx, *source_object_prop.id())
         .await
         .expect("cannot set parent of bar_string");
+    SchemaVariant::create_default_prototypes_and_values(ctx, *source_schema_variant.id())
+        .await
+        .expect("cannot create default prototypes and values for SchemaVariant");
     SchemaVariant::create_implicit_internal_providers(
         ctx,
         *source_schema.id(),
@@ -507,6 +516,28 @@ async fn with_deep_data_structure(ctx: &DalContext<'_, '_>) {
         .set_parent_prop(ctx, *destination_parent_object_prop.id())
         .await
         .expect("cannot set parent of base_object");
+    let destination_foo_prop =
+        create_prop_of_kind_with_name(ctx, PropKind::String, "foo_string").await;
+    destination_foo_prop
+        .set_parent_prop(ctx, *destination_object_prop.id())
+        .await
+        .expect("cannot set parent of foo_string");
+    let destination_bar_prop =
+        create_prop_of_kind_with_name(ctx, PropKind::String, "bar_string").await;
+    destination_bar_prop
+        .set_parent_prop(ctx, *destination_object_prop.id())
+        .await
+        .expect("cannot set parent of bar_string");
+    SchemaVariant::create_default_prototypes_and_values(ctx, *destination_schema_variant.id())
+        .await
+        .expect("cannot create default prototypes and values for SchemaVariant");
+    SchemaVariant::create_implicit_internal_providers(
+        ctx,
+        *destination_schema.id(),
+        *destination_schema_variant.id(),
+    )
+    .await
+    .expect("cannot create internal providers for destination schema");
     let destination_object_value = AttributeValue::find_for_context(
         ctx,
         AttributeReadContext {
@@ -528,25 +559,6 @@ async fn with_deep_data_structure(ctx: &DalContext<'_, '_>) {
         .set_func_id(ctx, identity_func_id)
         .await
         .expect("cannot set function on destination object prototype");
-    let destination_foo_prop =
-        create_prop_of_kind_with_name(ctx, PropKind::String, "foo_string").await;
-    destination_foo_prop
-        .set_parent_prop(ctx, *destination_object_prop.id())
-        .await
-        .expect("cannot set parent of foo_string");
-    let destination_bar_prop =
-        create_prop_of_kind_with_name(ctx, PropKind::String, "bar_string").await;
-    destination_bar_prop
-        .set_parent_prop(ctx, *destination_object_prop.id())
-        .await
-        .expect("cannot set parent of bar_string");
-    SchemaVariant::create_implicit_internal_providers(
-        ctx,
-        *destination_schema.id(),
-        *destination_schema_variant.id(),
-    )
-    .await
-    .expect("cannot create internal providers for destination schema");
     let (destination_internal_provider, _socket) = InternalProvider::new_explicit_with_socket(
         ctx,
         *destination_schema.id(),

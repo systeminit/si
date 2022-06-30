@@ -190,8 +190,7 @@ pub type ModelResult<T> = Result<T, ModelError>;
 
 #[instrument(skip_all)]
 pub async fn migrate(pg: &PgPool) -> ModelResult<()> {
-    let result = pg.migrate(embedded::migrations::runner()).await?;
-    Ok(result)
+    Ok(pg.migrate(embedded::migrations::runner()).await?)
 }
 
 #[instrument(skip_all)]

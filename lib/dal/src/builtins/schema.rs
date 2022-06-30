@@ -14,7 +14,7 @@ use crate::{
             validation::FuncBackendValidateStringValueArgs,
         },
         binding::{FuncBinding, FuncBindingId},
-        binding_return_value::{FuncBindingReturnValueError, FuncBindingReturnValueId},
+        binding_return_value::FuncBindingReturnValueId,
     },
     qualification_prototype::QualificationPrototypeContext,
     resource_prototype::ResourcePrototypeContext,
@@ -23,10 +23,10 @@ use crate::{
     validation_prototype::ValidationPrototypeContext,
     AttributeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue,
     AttributeValueError, BuiltinsError, BuiltinsResult, CodeGenerationPrototype, CodeLanguage,
-    DalContext, ExternalProvider, Func, FuncBackendKind, FuncBackendResponseType,
-    FuncBindingReturnValue, FuncError, FuncId, InternalProvider, Prop, PropError, PropId, PropKind,
-    QualificationPrototype, ResourcePrototype, Schema, SchemaError, SchemaKind, SchematicKind,
-    StandardModel, ValidationPrototype,
+    DalContext, ExternalProvider, Func, FuncBackendKind, FuncBackendResponseType, FuncError,
+    FuncId, InternalProvider, Prop, PropError, PropId, PropKind, QualificationPrototype,
+    ResourcePrototype, Schema, SchemaError, SchemaKind, SchematicKind, StandardModel,
+    ValidationPrototype,
 };
 
 mod kubernetes;
@@ -58,13 +58,14 @@ async fn system(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
         Some(schema) => schema,
         None => return Ok(()),
     };
-
     schema.set_ui_hidden(ctx, true).await?;
 
     let (variant, _) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
     schema
         .set_default_schema_variant_id(ctx, Some(*variant.id()))
         .await?;
+
+    SchemaVariant::create_default_prototypes_and_values(ctx, *variant.id()).await?;
 
     let identity_func = setup_identity_func(ctx).await?;
 
@@ -113,6 +114,8 @@ async fn application(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     schema
         .set_default_schema_variant_id(ctx, Some(*variant.id()))
         .await?;
+
+    SchemaVariant::create_default_prototypes_and_values(ctx, *variant.id()).await?;
 
     let identity_func = setup_identity_func(ctx).await?;
 
@@ -405,6 +408,7 @@ async fn kubernetes_namespace(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     .await?;
     variant.add_socket(ctx, includes_socket.id()).await?;
 
+    SchemaVariant::create_default_prototypes_and_values(ctx, *variant.id()).await?;
     // Now, we can setup providers.
     SchemaVariant::create_implicit_internal_providers(ctx, *schema.id(), *variant.id()).await?;
 
@@ -517,6 +521,8 @@ async fn docker_hub_credential(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
         .await?;
 
     let identity_func = setup_identity_func(ctx).await?;
+
+    SchemaVariant::create_default_prototypes_and_values(ctx, *variant.id()).await?;
 
     let (_output_provider, mut output_socket) = ExternalProvider::new_with_socket(
         ctx,
@@ -700,6 +706,7 @@ async fn docker_image(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     )
     .await?;
 
+    SchemaVariant::create_default_prototypes_and_values(ctx, *variant.id()).await?;
     SchemaVariant::create_implicit_internal_providers(ctx, *schema.id(), *variant.id()).await?;
     let base_attribute_read_context = AttributeReadContext {
         schema_id: Some(*schema.id()),
@@ -909,6 +916,8 @@ async fn bobao(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
         .set_widget_kind(ctx, WidgetKind::SecretSelect)
         .await?;
 
+    SchemaVariant::create_default_prototypes_and_values(ctx, *variant.id()).await?;
+
     let includes_socket = Socket::new(
         ctx,
         "includes",
@@ -991,7 +1000,7 @@ pub async fn create_string_prop_with_default(
     )
     .await?;
 
-    let (func_binding, created) = FuncBinding::find_or_create(
+    let (func_binding, func_binding_return_value) = FuncBinding::find_or_create_and_execute(
         ctx,
         // The default run doesn't have useful information, but it's just a reference for future reruns
         serde_json::to_value(FuncBackendJsAttributeArgs {
@@ -1005,23 +1014,15 @@ pub async fn create_string_prop_with_default(
             },
         })?,
         *func.id(),
-        *func.backend_kind(),
     )
     .await?;
-
-    if created {
-        func_binding.execute(ctx).await?;
-    }
-
-    let func_binding_return_value =
-        FuncBindingReturnValue::get_by_func_binding_id(ctx, *func_binding.id())
-            .await?
-            .ok_or(FuncBindingReturnValueError::Missing)?;
 
     let attribute_value_context = AttributeReadContext {
         prop_id: Some(*prop.id()),
         ..AttributeReadContext::default()
     };
+
+    Prop::create_default_prototypes_and_values(ctx, *prop.id()).await?;
 
     let mut attribute_value = AttributeValue::find_for_context(ctx, attribute_value_context)
         .await?

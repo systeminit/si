@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 use serde::{Deserialize, Serialize};
 use si_data::PgError;
 use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
@@ -20,6 +22,7 @@ use crate::{
     ReadTenancyError, SchemaVariant, SchemaVariantId, StandardModel, StandardModelError, Timestamp,
     Visibility, WriteTenancy,
 };
+use crate::{AttributeValueError, AttributeValueId};
 
 const ALL_ANCESTOR_PROPS: &str = include_str!("./queries/prop_all_ancestor_props.sql");
 const FIND_ROOT_FOR_SCHEMA_VARIANT: &str =
@@ -152,32 +155,6 @@ impl Prop {
             .await?;
         let object: Prop = standard_model::finish_create_from_row(ctx, row).await?;
 
-        let func_name = "si:unset".to_string();
-        let mut funcs = Func::find_by_attr(ctx, "name", &func_name).await?;
-        let func = funcs.pop().ok_or(PropError::MissingFunc(func_name))?;
-
-        // No matter what, we need a FuncBindingReturnValueId to create a new attribute prototype.
-        // If the func binding was created, we execute on it to generate our value id. Otherwise,
-        // we try to find a value by id and then fallback to executing anyway if one was not found.
-        let (func_binding, func_binding_return_value) =
-            FuncBinding::find_or_create_and_execute(ctx, serde_json::json![null], *func.id())
-                .await?;
-
-        let attribute_context = AttributeContext::builder()
-            .set_prop_id(*object.id())
-            .to_context()?;
-        AttributePrototype::new(
-            ctx,
-            *func.id(),
-            *func_binding.id(),
-            *func_binding_return_value.id(),
-            attribute_context,
-            None,
-            None,
-        )
-        .await
-        .map_err(|e| PropError::AttributePrototype(format!("{e}")))?;
-
         Ok(object)
     }
 
@@ -242,39 +219,35 @@ impl Prop {
             prop_id: Some(*self.id()),
             ..AttributeReadContext::default()
         };
-        let our_attribute_value = AttributeValue::find_for_context(ctx, attribute_read_context)
+
+        if let Some(attribute_value) = AttributeValue::find_for_context(ctx, attribute_read_context)
             .await
             .map_err(|e| PropError::AttributeValue(format!("{e}")))?
-            .ok_or_else(|| {
-                PropError::AttributeValue(format!(
-                    "missing attribute value for context: {:?}",
-                    attribute_read_context
-                ))
-            })?;
+        {
+            let parent_attribute_read_context = AttributeReadContext {
+                prop_id: Some(parent_prop_id),
+                ..AttributeReadContext::default()
+            };
+            let parent_attribute_value =
+                AttributeValue::find_for_context(ctx, parent_attribute_read_context)
+                    .await
+                    .map_err(|e| PropError::AttributeValue(format!("{e}")))?
+                    .ok_or_else(|| {
+                        PropError::AttributeValue(format!(
+                            "missing attribute value for context: {:?}",
+                            parent_attribute_read_context
+                        ))
+                    })?;
 
-        let parent_attribute_read_context = AttributeReadContext {
-            prop_id: Some(parent_prop_id),
-            ..AttributeReadContext::default()
-        };
-        let parent_attribute_value =
-            AttributeValue::find_for_context(ctx, parent_attribute_read_context)
+            attribute_value
+                .unset_parent_attribute_value(ctx)
                 .await
-                .map_err(|e| PropError::AttributeValue(format!("{e}")))?
-                .ok_or_else(|| {
-                    PropError::AttributeValue(format!(
-                        "missing attribute value for context: {:?}",
-                        parent_attribute_read_context
-                    ))
-                })?;
-
-        our_attribute_value
-            .unset_parent_attribute_value(ctx)
-            .await
-            .map_err(|e| PropError::AttributeValue(format!("{e}")))?;
-        our_attribute_value
-            .set_parent_attribute_value(ctx, parent_attribute_value.id())
-            .await
-            .map_err(|e| PropError::AttributeValue(format!("{e}")))?;
+                .map_err(|e| PropError::AttributeValue(format!("{e}")))?;
+            attribute_value
+                .set_parent_attribute_value(ctx, parent_attribute_value.id())
+                .await
+                .map_err(|e| PropError::AttributeValue(format!("{e}")))?;
+        };
 
         self.set_parent_prop_unchecked(ctx, &parent_prop_id).await
     }
@@ -308,5 +281,86 @@ impl Prop {
             )
             .await?;
         Ok(objects_from_rows(rows)?)
+    }
+
+    pub async fn create_default_prototypes_and_values(
+        ctx: &DalContext<'_, '_>,
+        prop_id: PropId,
+    ) -> PropResult<()> {
+        #[derive(Debug)]
+        struct WorkItem {
+            maybe_parent: Option<AttributeValueId>,
+            prop: Prop,
+        }
+
+        let mut root_prop = Prop::get_by_id(ctx, &prop_id)
+            .await?
+            .ok_or_else(|| PropError::NotFound(prop_id, *ctx.visibility()))?;
+
+        // We should make sure that we're creating AttributePrototypes & AttributeValues
+        // contiguously from the root.
+        while let Some(parent) = root_prop.parent_prop(ctx).await? {
+            root_prop = parent;
+        }
+
+        let mut work_queue: VecDeque<WorkItem> = VecDeque::from(vec![WorkItem {
+            maybe_parent: None,
+            prop: root_prop,
+        }]);
+
+        let func_name = "si:unset".to_string();
+        let mut funcs = Func::find_by_attr(ctx, "name", &func_name).await?;
+        let func = funcs.pop().ok_or(PropError::MissingFunc(func_name))?;
+
+        // No matter what, we need a FuncBindingReturnValueId to create a new attribute prototype.
+        // If the func binding was created, we execute on it to generate our value id. Otherwise,
+        // we try to find a value by id and then fallback to executing anyway if one was not found.
+        let (func_binding, func_binding_return_value) =
+            FuncBinding::find_or_create_and_execute(ctx, serde_json::json![null], *func.id())
+                .await?;
+
+        while let Some(WorkItem { maybe_parent, prop }) = work_queue.pop_front() {
+            let attribute_context = AttributeContext::builder()
+                .set_prop_id(*prop.id())
+                .to_context()?;
+
+            let attribute_value = if let Some(attribute_value) =
+                AttributeValue::find_for_context(ctx, attribute_context.into())
+                    .await
+                    .map_err(|e| PropError::AttributeValue(e.to_string()))?
+            {
+                attribute_value
+            } else {
+                AttributePrototype::new(
+                    ctx,
+                    *func.id(),
+                    *func_binding.id(),
+                    *func_binding_return_value.id(),
+                    attribute_context,
+                    None,
+                    maybe_parent,
+                )
+                .await
+                .map_err(|e| PropError::AttributePrototype(e.to_string()))?;
+
+                AttributeValue::find_for_context(ctx, attribute_context.into())
+                    .await
+                    .map_err(|e| PropError::AttributeValue(e.to_string()))?
+                    .ok_or(AttributeValueError::Missing)
+                    .map_err(|e| PropError::AttributeValue(e.to_string()))?
+            };
+
+            if *prop.kind() == PropKind::Object {
+                let child_props = prop.child_props(ctx).await?;
+                if !child_props.is_empty() {
+                    work_queue.extend(child_props.iter().map(|p| WorkItem {
+                        maybe_parent: Some(*attribute_value.id()),
+                        prop: p.clone(),
+                    }));
+                }
+            }
+        }
+
+        Ok(())
     }
 }

@@ -92,9 +92,6 @@ async fn qualification_view(ctx: &DalContext<'_, '_>) {
     prop.set_parent_prop(ctx, root.domain_prop_id)
         .await
         .expect("Unable to set some_property parent to root.domain");
-    prop.add_schema_variant(ctx, schema_variant.id())
-        .await
-        .expect("cannot add schema variant for prop");
 
     let qualification_check_component = component
         .veritech_qualification_check_component(ctx, UNSET_ID_VALUE.into())

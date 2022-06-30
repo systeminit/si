@@ -1,9 +1,9 @@
 use crate::dal::test;
-use dal::attribute::context::AttributeContextBuilder;
-use dal::DalContext;
 use dal::{
+    attribute::context::AttributeContextBuilder,
     test_harness::{create_prop_of_kind_with_name, create_schema, create_schema_variant_with_root},
-    AttributeReadContext, AttributeValue, AttributeView, PropKind, SchemaKind, StandardModel,
+    AttributeReadContext, AttributeValue, AttributeView, DalContext, PropKind, SchemaKind,
+    SchemaVariant, StandardModel,
 };
 use pretty_assertions_sorted::assert_eq_sorted;
 
@@ -28,6 +28,10 @@ async fn schema_variant_specific(ctx: &DalContext<'_, '_>) {
         .set_parent_prop(ctx, root_prop.domain_prop_id)
         .await
         .expect("cannot set parent of name_prop");
+
+    SchemaVariant::create_default_prototypes_and_values(ctx, *schema_variant.id())
+        .await
+        .expect("cannot create default prototypes and values for SchemaVariant");
 
     let root_attribute_value = AttributeValue::find_with_parent_and_key_for_context(
         ctx,

@@ -50,6 +50,8 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> BuiltinsResult<(
         ..AttributeReadContext::default()
     };
 
+    SchemaVariant::create_default_prototypes_and_values(ctx, *variant.id()).await?;
+
     // TODO: add validation (si-registry ensures the value is unchanged)
     let mut api_version_prop = create_string_prop_with_default(
         ctx,
@@ -199,6 +201,7 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> BuiltinsResult<(
         .add_root_schematic(ctx, application_schema.id())
         .await?;
 
+    SchemaVariant::create_default_prototypes_and_values(ctx, *variant.id()).await?;
     // Now, we can setup providers.
     SchemaVariant::create_implicit_internal_providers(ctx, *schema.id(), *variant.id()).await?;
     let base_attribute_read_context = AttributeReadContext {
