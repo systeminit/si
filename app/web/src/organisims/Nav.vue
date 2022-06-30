@@ -264,7 +264,7 @@ const onWorkspaceView = async () => {
   if (workspaceId.value) {
     await router.push({
       name: "workspace-view",
-      path: "/w/:workspaceId",
+      path: "/new/w/:workspaceId",
       params: { workspaceId: workspaceId.value },
     });
   } else {
