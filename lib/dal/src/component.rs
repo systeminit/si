@@ -17,7 +17,9 @@ use crate::func::backend::{
     js_qualification::FuncBackendJsQualificationArgs, js_resource::FuncBackendJsResourceSyncArgs,
 };
 use crate::func::binding::{FuncBinding, FuncBindingError};
-use crate::func::binding_return_value::{FuncBindingReturnValue, FuncBindingReturnValueError};
+use crate::func::binding_return_value::{
+    FuncBindingReturnValue, FuncBindingReturnValueError, FuncBindingReturnValueId,
+};
 use crate::qualification::QualificationView;
 use crate::qualification_resolver::QualificationResolverContext;
 use crate::resource_resolver::ResourceResolverContext;
@@ -26,9 +28,9 @@ use crate::schema::SchemaVariant;
 use crate::ws_event::{WsEvent, WsEventError};
 use crate::{
     context::AccessBuilder, context::DalContextBuilder, func::FuncId, impl_standard_model,
-    node::NodeId, pk, qualification::QualificationError, standard_model, standard_model_accessor,
-    standard_model_belongs_to, standard_model_has_many, AttributeContext,
-    AttributeContextBuilderError, AttributeContextError, AttributeReadContext,
+    node::NodeId, pk, provider::internal::InternalProviderError, qualification::QualificationError,
+    standard_model, standard_model_accessor, standard_model_belongs_to, standard_model_has_many,
+    AttributeContext, AttributeContextBuilderError, AttributeContextError, AttributeReadContext,
     CodeGenerationPrototype, CodeGenerationPrototypeError, CodeGenerationResolver,
     CodeGenerationResolverError, CodeLanguage, CodeView, DalContext, Edge, EdgeError, Func,
     FuncBackendKind, HistoryEventError, Node, NodeError, OrganizationError, Prop, PropError,
@@ -53,6 +55,8 @@ pub enum ComponentError {
     BadJsonPointer(String, String),
     #[error("codegen function returned unexpected format, expected {0:?}, got {1:?}")]
     CodeLanguageMismatch(CodeLanguage, CodeLanguage),
+    #[error("internal provider error: {0}")]
+    InternalProvider(#[from] InternalProviderError),
     #[error("edge error: {0}")]
     Edge(#[from] EdgeError),
     #[error("func not found: {0}")]
@@ -67,6 +71,10 @@ pub enum ComponentError {
     MultipleRootProps(Vec<Prop>),
     #[error("root prop not found for schema variant: {0}")]
     RootPropNotFound(SchemaVariantId),
+    #[error("internal provider not found for prop: {0}")]
+    InternalProviderNotFoundForProp(PropId),
+    #[error("attrubte value not found for context: {0:?}")]
+    AttributeValueNotFoundForContext(AttributeReadContext),
 
     // FIXME: change the below to be alphabetical and re-join with the above variants.
     #[error("qualification prototype error: {0}")]
@@ -123,6 +131,8 @@ pub enum ComponentError {
     PropNotFound(String),
     #[error("missing a func in attribute update: {0} not found")]
     MissingFunc(String),
+    #[error("func binding return value: {0} not found")]
+    FuncBindingReturnValueNotFound(FuncBindingReturnValueId),
     #[error("invalid prop value; expected {0} but got {1}")]
     InvalidPropValue(String, serde_json::Value),
     #[error("func binding error: {0}")]
@@ -1105,72 +1115,6 @@ impl Component {
         Ok(Some(res_view))
     }
 
-    pub async fn veritech_attribute_resolver_component(
-        &self,
-        ctx: &DalContext<'_, '_>,
-        system_id: SystemId,
-    ) -> ComponentResult<veritech::ResolverFunctionComponent> {
-        let schema = self
-            .schema(ctx)
-            .await?
-            .ok_or(ComponentError::SchemaNotFound)?;
-        let schema_variant = self
-            .schema_variant(ctx)
-            .await?
-            .ok_or(ComponentError::SchemaVariantNotFound)?;
-        let attribute_context_base = AttributeReadContext {
-            schema_id: Some(*schema.id()),
-            schema_variant_id: Some(*schema_variant.id()),
-            component_id: Some(*self.id()),
-            system_id: Some(system_id),
-            ..AttributeReadContext::any()
-        };
-
-        let parent_ids = Edge::find_component_configuration_parents(ctx, self.id()).await?;
-        let mut parents = Vec::with_capacity(parent_ids.len());
-        for id in parent_ids {
-            let component = Component::get_by_id(ctx, &id)
-                .await?
-                .ok_or(ComponentError::NotFound(id))?;
-            let schema = component
-                .schema(ctx)
-                .await?
-                .ok_or(ComponentError::SchemaNotFound)?;
-            let schema_variant = component
-                .schema_variant(ctx)
-                .await?
-                .ok_or(ComponentError::SchemaVariantNotFound)?;
-            let read_context = AttributeReadContext {
-                schema_id: Some(*schema.id()),
-                schema_variant_id: Some(*schema_variant.id()),
-                component_id: Some(id),
-                ..attribute_context_base
-            };
-            let view = ComponentView::for_context(ctx, read_context).await?;
-            parents.push(veritech::ComponentView::from(view));
-        }
-
-        let schema = self
-            .schema(ctx)
-            .await?
-            .ok_or(ComponentError::SchemaNotFound)?;
-        let schema_variant = self
-            .schema_variant(ctx)
-            .await?
-            .ok_or(ComponentError::SchemaVariantNotFound)?;
-        let read_context = AttributeReadContext {
-            schema_id: Some(*schema.id()),
-            schema_variant_id: Some(*schema_variant.id()),
-            component_id: Some(*self.id()),
-            ..attribute_context_base
-        };
-        let component = veritech::ResolverFunctionComponent {
-            data: ComponentView::for_context(ctx, read_context).await?.into(),
-            parents,
-        };
-        Ok(component)
-    }
-
     pub async fn veritech_code_generation_component(
         &self,
         ctx: &DalContext<'_, '_>,
@@ -1236,7 +1180,7 @@ impl Component {
             .schema_variant(ctx)
             .await?
             .ok_or(ComponentError::SchemaVariantNotFound)?;
-        let base_attribute_context = AttributeReadContext {
+        let read_context = AttributeReadContext {
             prop_id: None,
             schema_id: Some(*schema.id()),
             schema_variant_id: Some(*schema_variant.id()),
@@ -1251,16 +1195,12 @@ impl Component {
         for id in parent_ids {
             let read_context = AttributeReadContext {
                 component_id: Some(id),
-                ..base_attribute_context
+                ..read_context
             };
             let view = ComponentView::for_context(ctx, read_context).await?;
             parents.push(veritech::ComponentView::from(view));
         }
 
-        let read_context = AttributeReadContext {
-            component_id: Some(*self.id()),
-            ..base_attribute_context
-        };
         let qualification_view = veritech::QualificationCheckComponent {
             data: ComponentView::for_context(ctx, read_context).await?.into(),
             codes: Self::list_code_generated_by_component_id(ctx, *self.id(), system_id)
@@ -1559,7 +1499,7 @@ impl Component {
 }
 
 #[must_use]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ComponentAsyncTasks {
     pub component: Component,
     pub system_id: SystemId,

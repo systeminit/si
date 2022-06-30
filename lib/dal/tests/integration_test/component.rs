@@ -5,8 +5,8 @@ use dal::{
         create_component_and_schema, create_component_for_schema_variant, create_schema,
         create_schema_variant, create_schema_variant_with_root,
     },
-    Component, DalContext, Prop, PropKind, Resource, Schema, SchemaKind, StandardModel,
-    WorkspaceId,
+    Component, DalContext, Prop, PropKind, Resource, Schema, SchemaKind, SchemaVariant,
+    StandardModel, WorkspaceId,
 };
 use pretty_assertions_sorted::{assert_eq, assert_eq_sorted};
 use serde_json::json;
@@ -81,10 +81,6 @@ async fn schema_relationships(ctx: &DalContext<'_, '_>) {
 async fn qualification_view(ctx: &DalContext<'_, '_>) {
     let schema = create_schema(ctx, &SchemaKind::Implementation).await;
     let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
-    let (component, _, _) =
-        Component::new_for_schema_variant_with_node(ctx, "mastodon", schema_variant.id())
-            .await
-            .expect("Unable to create component");
 
     let prop = Prop::new(ctx, "some_property", PropKind::String)
         .await
@@ -92,6 +88,18 @@ async fn qualification_view(ctx: &DalContext<'_, '_>) {
     prop.set_parent_prop(ctx, root.domain_prop_id)
         .await
         .expect("Unable to set some_property parent to root.domain");
+
+    SchemaVariant::create_implicit_internal_providers(ctx, *schema.id(), *schema_variant.id())
+        .await
+        .expect("unable to create implicit internal providers");
+
+    let (component, _, task) =
+        Component::new_for_schema_variant_with_node(ctx, "mastodon", schema_variant.id())
+            .await
+            .expect("Unable to create component");
+    task.run_updates_in_ctx(ctx)
+        .await
+        .expect("unable to run async tasks");
 
     let qualification_check_component = component
         .veritech_qualification_check_component(ctx, UNSET_ID_VALUE.into())
@@ -172,9 +180,13 @@ async fn get_resource_by_component_id(ctx: &DalContext<'_, '_>, wid: WorkspaceId
 
     let (system, _system_node) = create_system_with_node(ctx, &wid).await;
 
-    let (component, _node, _) = Component::new_for_schema_with_node(ctx, "chvrches", schema.id())
+    let (component, _node, task) =
+        Component::new_for_schema_with_node(ctx, "chvrches", schema.id())
+            .await
+            .expect("cannot create ash component");
+    task.run_updates_in_ctx(ctx)
         .await
-        .expect("cannot create ash component");
+        .expect("unable to run async tasks");
 
     let _ = component
         .add_to_system(ctx, system.id())

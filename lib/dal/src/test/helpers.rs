@@ -279,8 +279,7 @@ pub async fn update_attribute_value_for_prop_and_context(
     )
     .await
     .expect("cannot update value for context");
-    let _ = task
-        .run_updates_in_ctx(ctx)
+    task.run_updates_in_ctx(ctx)
         .await
         .expect("unable to run dependent values async task");
 

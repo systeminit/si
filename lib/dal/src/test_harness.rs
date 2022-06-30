@@ -404,10 +404,13 @@ pub async fn create_component_for_schema_variant(
     schema_variant_id: &SchemaVariantId,
 ) -> Component {
     let name = generate_fake_name();
-    let (component, _, _) =
+    let (component, _, task) =
         Component::new_for_schema_variant_with_node(ctx, &name, schema_variant_id)
             .await
             .expect("cannot create component");
+    task.run_updates_in_ctx(ctx)
+        .await
+        .expect("cannot run async updates");
     component
 }
 

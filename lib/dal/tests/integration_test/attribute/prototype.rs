@@ -379,9 +379,18 @@ async fn remove_component_specific(ctx: &DalContext<'_, '_>) {
     prop.set_parent_prop(ctx, root.domain_prop_id)
         .await
         .expect("cannot set parent of prop");
-    let (component, _, _) = Component::new_for_schema_with_node(ctx, "toddhoward", schema.id())
+
+    // Now, we can setup providers.
+    SchemaVariant::create_implicit_internal_providers(ctx, *schema.id(), *schema_variant.id())
+        .await
+        .expect("unable to create implicit internal providers");
+
+    let (component, _, task) = Component::new_for_schema_with_node(ctx, "toddhoward", schema.id())
         .await
         .expect("cannot create component");
+    task.run_updates_in_ctx(ctx)
+        .await
+        .expect("unable to run async updates");
 
     let read_context = AttributeReadContext {
         prop_id: None,

@@ -28,11 +28,17 @@ async fn update_for_context_simple(ctx: &DalContext<'_, '_>) {
     SchemaVariant::create_default_prototypes_and_values(ctx, *schema_variant.id())
         .await
         .expect("cannot create default prototypes and values for SchemaVariant");
+    SchemaVariant::create_implicit_internal_providers(ctx, *schema.id(), *schema_variant.id())
+        .await
+        .expect("unable to create implicit internal providers for schema variant");
 
-    let (component, _, _) =
+    let (component, _, task) =
         Component::new_for_schema_with_node(ctx, "Basic component", schema.id())
             .await
             .expect("Unable to create component");
+    task.run_updates_in_ctx(ctx)
+        .await
+        .expect("dependent values update failed");
 
     let base_attribute_read_context = AttributeReadContext {
         prop_id: None,
@@ -85,7 +91,7 @@ async fn update_for_context_simple(ctx: &DalContext<'_, '_>) {
             .to_context()
             .expect("cannot build write AttributeContext");
 
-    let (_, name_value_id, _) = AttributeValue::update_for_context(
+    let (_, name_value_id, task) = AttributeValue::update_for_context(
         ctx,
         *base_name_value.id(),
         Some(domain_value_id),
@@ -95,6 +101,9 @@ async fn update_for_context_simple(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("cannot set value for context");
+    task.run_updates_in_ctx(ctx)
+        .await
+        .expect("dependent values update failed");
 
     assert_eq_sorted!(
         serde_json::json![
@@ -113,7 +122,7 @@ async fn update_for_context_simple(ctx: &DalContext<'_, '_>) {
             .properties,
     );
 
-    let _ = AttributeValue::update_for_context(
+    let (_, _, task) = AttributeValue::update_for_context(
         ctx,
         name_value_id,
         Some(domain_value_id),
@@ -123,6 +132,9 @@ async fn update_for_context_simple(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("cannot update value for context");
+    task.run_updates_in_ctx(ctx)
+        .await
+        .expect("dependent values update failed");
 
     assert_eq_sorted!(
         serde_json::json![
@@ -166,11 +178,17 @@ async fn insert_for_context_simple(ctx: &DalContext<'_, '_>) {
     SchemaVariant::create_default_prototypes_and_values(ctx, *schema_variant.id())
         .await
         .expect("cannot create default prototypes and values for SchemaVariant");
+    SchemaVariant::create_implicit_internal_providers(ctx, *schema.id(), *schema_variant.id())
+        .await
+        .expect("unable to create implicit internal providers for schema variant");
 
-    let (component, _, _) =
+    let (component, _, task) =
         Component::new_for_schema_with_node(ctx, "Array Component", schema.id())
             .await
             .expect("Unable to create component");
+    task.run_updates_in_ctx(ctx)
+        .await
+        .expect("dependent values update failed");
 
     let base_attribute_read_context = AttributeReadContext {
         prop_id: None,
@@ -208,10 +226,13 @@ async fn insert_for_context_simple(ctx: &DalContext<'_, '_>) {
         .to_context()
         .expect("cannot build write AttributeContext");
 
-    let _new_array_element_value_id =
+    let (_new_array_element_value_id, task) =
         AttributeValue::insert_for_context(ctx, update_context, *array_value.id(), None, None)
             .await
             .expect("cannot insert new array element");
+    task.run_updates_in_ctx(ctx)
+        .await
+        .expect("dependent values update failed");
 
     assert_eq_sorted!(
         serde_json::json![{
@@ -277,10 +298,18 @@ async fn update_for_context_object(ctx: &DalContext<'_, '_>) {
         .await
         .expect("cannot set parent of tags child prop");
 
-    let (component, _, _) =
+    // Now, we can setup providers.
+    SchemaVariant::create_implicit_internal_providers(ctx, *schema.id(), *schema_variant.id())
+        .await
+        .expect("unable to create implicit internal providers");
+
+    let (component, _, task) =
         Component::new_for_schema_with_node(ctx, "Basic component", schema.id())
             .await
             .expect("Unable to create component");
+    task.run_updates_in_ctx(ctx)
+        .await
+        .expect("dependent values update failed");
 
     let read_context = AttributeReadContext {
         prop_id: None,
@@ -317,7 +346,8 @@ async fn update_for_context_object(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("cannot get root AttributeValue")
-    .pop()
+    .into_iter()
+    .next()
     .expect("root AttributeValue not found")
     .id();
 
@@ -333,7 +363,8 @@ async fn update_for_context_object(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("cannot get domain AttributeValue")
-    .pop()
+    .into_iter()
+    .next()
     .expect("domain AttributeValue not found")
     .id();
 
@@ -345,7 +376,7 @@ async fn update_for_context_object(ctx: &DalContext<'_, '_>) {
         .to_context()
         .expect("cannot build write AttributeContext");
 
-    let (_, domain_value_id, _) = AttributeValue::update_for_context(
+    let (_, domain_value_id, task) = AttributeValue::update_for_context(
         ctx,
         domain_value_id,
         Some(root_value_id),
@@ -368,6 +399,9 @@ async fn update_for_context_object(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("cannot update value");
+    task.run_updates_in_ctx(ctx)
+        .await
+        .expect("dependent values update failed");
 
     let component_view = ComponentView::for_context(ctx, read_context)
         .await
@@ -398,7 +432,7 @@ async fn update_for_context_object(ctx: &DalContext<'_, '_>) {
         component_view.properties,
     );
 
-    let (_, _domain_value_id, _) = AttributeValue::update_for_context(
+    let (_, _domain_value_id, task) = AttributeValue::update_for_context(
         ctx,
         domain_value_id,
         Some(root_value_id),
@@ -418,6 +452,9 @@ async fn update_for_context_object(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("cannot update value");
+    task.run_updates_in_ctx(ctx)
+        .await
+        .expect("dependent values update failed");
 
     let component_view = ComponentView::for_context(ctx, read_context)
         .await
@@ -470,11 +507,17 @@ async fn insert_for_context_creates_array_in_final_context(ctx: &DalContext<'_, 
     SchemaVariant::create_default_prototypes_and_values(ctx, *schema_variant.id())
         .await
         .expect("cannot create default prop AttributePrototypes");
+    SchemaVariant::create_implicit_internal_providers(ctx, *schema.id(), *schema_variant.id())
+        .await
+        .expect("unable to create implicit internal providers for schema variant");
 
-    let (component, _, _) =
+    let (component, _, task) =
         Component::new_for_schema_with_node(ctx, "Array Component", schema.id())
             .await
             .expect("Unable to create component");
+    task.run_updates_in_ctx(ctx)
+        .await
+        .expect("unable to run async updates");
 
     let base_attribute_read_context = AttributeReadContext {
         prop_id: None,
@@ -512,7 +555,7 @@ async fn insert_for_context_creates_array_in_final_context(ctx: &DalContext<'_, 
         .to_context()
         .expect("cannot build write AttributeContext");
 
-    let _new_array_element_value_id = AttributeValue::insert_for_context(
+    let (_new_array_element_value_id, task) = AttributeValue::insert_for_context(
         ctx,
         update_context,
         *array_value.id(),
@@ -521,6 +564,9 @@ async fn insert_for_context_creates_array_in_final_context(ctx: &DalContext<'_, 
     )
     .await
     .expect("cannot insert new array element");
+    task.run_updates_in_ctx(ctx)
+        .await
+        .expect("unable to run async updates");
 
     assert_eq_sorted!(
         serde_json::json![{
@@ -557,7 +603,7 @@ async fn insert_for_context_creates_array_in_final_context(ctx: &DalContext<'_, 
         .to_context()
         .expect("cannot build system write AttributeContext");
 
-    let _new_system_array_element_value_id = AttributeValue::insert_for_context(
+    let (_new_system_array_element_value_id, task) = AttributeValue::insert_for_context(
         ctx,
         system_update_context,
         *component_array_value.id(),
@@ -566,6 +612,9 @@ async fn insert_for_context_creates_array_in_final_context(ctx: &DalContext<'_, 
     )
     .await
     .expect("cannot insert new system array element");
+    task.run_updates_in_ctx(ctx)
+        .await
+        .expect("unable to run async updates");
 
     let system_attribute_read_context = AttributeReadContext {
         system_id: Some(system_id),

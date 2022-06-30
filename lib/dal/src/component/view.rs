@@ -2,8 +2,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     component::{ComponentKind, ComponentResult},
-    AttributeReadContext, AttributeView, Component, ComponentError, DalContext, EncryptedSecret,
-    SecretError, SecretId, StandardModel, StandardModelError, System,
+    AttributeReadContext, AttributeValue, Component, ComponentError, DalContext, EncryptedSecret,
+    ExternalProviderId, FuncBindingReturnValue, InternalProvider, Prop, PropId, SecretError,
+    SecretId, StandardModel, StandardModelError, System,
 };
 
 use thiserror::Error;
@@ -63,12 +64,52 @@ impl ComponentView {
             None => None,
         };
 
-        let view = AttributeView::new(ctx, context, None).await?;
+        let schema_variant_id = context
+            .schema_variant_id()
+            .ok_or(ComponentError::SchemaVariantNotFound)?;
+
+        let prop = Prop::find_root_for_schema_variant(ctx, schema_variant_id)
+            .await?
+            .ok_or_else(|| {
+                ComponentError::PropNotFound(format!(
+                    "root not found for schema variant {schema_variant_id}"
+                ))
+            })?;
+
+        let implicit_provider = InternalProvider::get_for_prop(ctx, *prop.id())
+            .await?
+            .ok_or_else(|| ComponentError::InternalProviderNotFoundForProp(*prop.id()))?;
+
+        let value_context = AttributeReadContext {
+            internal_provider_id: Some(*implicit_provider.id()),
+            prop_id: Some(PropId::NONE),
+            external_provider_id: Some(ExternalProviderId::NONE),
+            ..context
+        };
+
+        let attribute_value = AttributeValue::find_for_context(ctx, value_context)
+            .await?
+            .ok_or(ComponentError::AttributeValueNotFoundForContext(
+                value_context,
+            ))?;
+
+        let properties =
+            FuncBindingReturnValue::get_by_id(ctx, &attribute_value.func_binding_return_value_id())
+                .await?
+                .ok_or_else(|| {
+                    ComponentError::FuncBindingReturnValueNotFound(
+                        attribute_value.func_binding_return_value_id(),
+                    )
+                })?;
+        let properties = properties
+            .value()
+            .unwrap_or(&serde_json::Value::Null)
+            .clone();
 
         Ok(ComponentView {
             system,
             kind: *component.kind(),
-            properties: view.value()["root"].clone(),
+            properties,
         })
     }
 
