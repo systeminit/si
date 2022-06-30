@@ -1,4 +1,4 @@
-use dal::DalContext;
+use dal::{DalContext, SchemaVariant};
 
 use crate::dal::test;
 use dal::{
@@ -7,7 +7,7 @@ use dal::{
     func::{backend::string::FuncBackendStringArgs, binding::FuncBinding},
     test_harness::{
         create_component_for_schema, create_prop_of_kind_with_name, create_schema,
-        create_schema_variant, create_schema_variant_with_root,
+        create_schema_variant_with_root,
     },
     AttributePrototypeError, AttributeReadContext, AttributeValue, Component, ComponentView, Func,
     FuncBackendKind, FuncBackendResponseType, PropKind, Schema, SchemaKind, StandardModel,
@@ -80,171 +80,10 @@ async fn new(ctx: &DalContext<'_, '_>) {
 }
 
 #[test]
-async fn list_for_context(ctx: &DalContext<'_, '_>) {
-    let mut schema = create_schema(ctx, &SchemaKind::Concrete).await;
-
-    let schema_variant = create_schema_variant(ctx, *schema.id()).await;
-    schema
-        .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
-        .await
-        .expect("cannot set default schema variant");
-
-    let mut base_prototype_context = AttributeContext::builder();
-    base_prototype_context
-        .set_schema_id(*schema.id())
-        .set_schema_variant_id(*schema_variant.id());
-
-    // {
-    //   albums: [
-    //     { name: String, artist: String, },
-    //   ]
-    // }
-    let albums_prop = create_prop_of_kind_with_name(ctx, PropKind::Array, "albums_array").await;
-    albums_prop
-        .add_schema_variant(ctx, schema_variant.id())
-        .await
-        .expect("cannot set schema variant for album object");
-
-    let albums_prototype_context = AttributeContext::builder()
-        .set_prop_id(*albums_prop.id())
-        .set_schema_id(*schema.id())
-        .set_schema_variant_id(*schema_variant.id())
-        .to_context()
-        .expect("cannot create attribute context");
-
-    let _albums_prop_prototype =
-        AttributePrototype::list_for_context(ctx, albums_prototype_context)
-            .await
-            .expect("cannot retrieve attribute prototype for album")
-            .pop()
-            .expect("no attribute prototype found for albums");
-
-    let album_prop = create_prop_of_kind_with_name(ctx, PropKind::Object, "album_object").await;
-    album_prop
-        .set_parent_prop(ctx, *albums_prop.id())
-        .await
-        .expect("cannot set parent prop for album object");
-
-    let album_prototype_context = base_prototype_context
-        .clone()
-        .set_prop_id(*album_prop.id())
-        .to_context()
-        .expect("cannot create attribute context");
-
-    let _album_prop_prototype = AttributePrototype::list_for_context(ctx, album_prototype_context)
-        .await
-        .expect("cannot retrieve attribute prototype for album")
-        .pop()
-        .expect("no attribute prototype found for album");
-
-    let name_prop = create_prop_of_kind_with_name(ctx, PropKind::String, "album_name").await;
-    name_prop
-        .set_parent_prop(ctx, *album_prop.id())
-        .await
-        .expect("cannot set parent prop for album name");
-
-    let album_name_prototype_context = base_prototype_context
-        .clone()
-        .set_prop_id(*name_prop.id())
-        .to_context()
-        .expect("cannot create attribute context");
-
-    let album_name_prototype =
-        AttributePrototype::list_for_context(ctx, album_name_prototype_context)
-            .await
-            .expect("cannot retrieve attribute prototype for album name")
-            .pop()
-            .expect("no attribute prototype found for album name");
-
-    let artist_prop = create_prop_of_kind_with_name(ctx, PropKind::String, "artist_name").await;
-    artist_prop
-        .set_parent_prop(ctx, *album_prop.id())
-        .await
-        .expect("cannot set parent prop for album artist");
-
-    let album_artist_prototype_context = base_prototype_context
-        .clone()
-        .set_prop_id(*artist_prop.id())
-        .to_context()
-        .expect("cannot create attribute context");
-
-    let _album_artist_prototype =
-        AttributePrototype::list_for_context(ctx, album_artist_prototype_context)
-            .await
-            .expect("cannot retrieve attribute prototype for album artist")
-            .pop()
-            .expect("no attribute prototype found for album artist");
-
-    let component = create_component_for_schema(ctx, schema.id()).await;
-
-    let func = Func::new(
-        ctx,
-        "si:setString",
-        FuncBackendKind::String,
-        FuncBackendResponseType::String,
-    )
-    .await
-    .expect("cannot create func");
-
-    let args = FuncBackendStringArgs::new("Undertow".to_string());
-    let func_binding = FuncBinding::new(
-        ctx,
-        serde_json::to_value(args).expect("cannot turn args into json"),
-        *func.id(),
-        *func.backend_kind(),
-    )
-    .await
-    .expect("cannot create func binding");
-    let func_binding_return_value = func_binding
-        .execute(ctx)
-        .await
-        .expect("failed to execute func binding");
-
-    let component_name_prototype_context =
-        AttributeContextBuilder::from(album_name_prototype_context)
-            .set_component_id(*component.id())
-            .to_context()
-            .expect("cannot create attribute context");
-
-    let component_album_name_prototype = AttributePrototype::new(
-        ctx,
-        *func.id(),
-        *func_binding.id(),
-        *func_binding_return_value.id(),
-        component_name_prototype_context,
-        None,
-        None,
-    )
-    .await
-    .expect("cannot create attribute prototype for component album name");
-
-    let found_album_name_prototype =
-        AttributePrototype::list_for_context(ctx, album_name_prototype_context)
-            .await
-            .expect("could not retrieve album name prototype")
-            .pop()
-            .expect("no album name prototype found");
-
-    assert_eq!(album_name_prototype, found_album_name_prototype,);
-
-    let found_component_album_name_prototype =
-        AttributePrototype::list_for_context(ctx, component_name_prototype_context)
-            .await
-            .expect("could not retrieve album name prototype")
-            .pop()
-            .expect("no album name prototype found");
-
-    assert_eq!(
-        component_album_name_prototype,
-        found_component_album_name_prototype,
-    );
-}
-
-#[test]
 async fn list_for_context_with_a_hash(ctx: &DalContext<'_, '_>) {
     let mut schema = create_schema(ctx, &SchemaKind::Concrete).await;
 
-    let schema_variant = create_schema_variant(ctx, *schema.id()).await;
+    let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
         .await
@@ -262,40 +101,15 @@ async fn list_for_context_with_a_hash(ctx: &DalContext<'_, '_>) {
     // }
     let albums_prop = create_prop_of_kind_with_name(ctx, PropKind::Array, "albums_array").await;
     albums_prop
-        .add_schema_variant(ctx, schema_variant.id())
+        .set_parent_prop(ctx, root.domain_prop_id)
         .await
-        .expect("cannot set schema variant for album object");
+        .expect("cannot set parent prop for albums array");
 
-    let albums_prototype_context = base_prototype_context
-        .clone()
-        .set_prop_id(*albums_prop.id())
-        .to_context()
-        .expect("cannot build attribute context");
-
-    let _albums_prop_prototype =
-        AttributePrototype::list_for_context(ctx, albums_prototype_context)
-            .await
-            .expect("cannot retrieve attribute prototype for album")
-            .pop()
-            .expect("no attribute prototype found for albums");
-
-    let album_prop = create_prop_of_kind_with_name(ctx, PropKind::Object, "album_object").await;
+    let album_prop = create_prop_of_kind_with_name(ctx, PropKind::Map, "album_object").await;
     album_prop
         .set_parent_prop(ctx, *albums_prop.id())
         .await
         .expect("cannot set parent prop for album object");
-
-    let album_prototype_context = base_prototype_context
-        .clone()
-        .set_prop_id(*album_prop.id())
-        .to_context()
-        .expect("cannot build attribute context");
-
-    let _album_prop_prototype = AttributePrototype::list_for_context(ctx, album_prototype_context)
-        .await
-        .expect("cannot retrieve attribute prototype for album")
-        .pop()
-        .expect("no attribute prototype found for album");
 
     let hash_key_prop =
         create_prop_of_kind_with_name(ctx, PropKind::String, "album_hash_key").await;
@@ -304,151 +118,212 @@ async fn list_for_context_with_a_hash(ctx: &DalContext<'_, '_>) {
         .await
         .expect("cannot set parent prop for album hash key");
 
+    SchemaVariant::create_default_prototypes_and_values(ctx, *schema_variant.id())
+        .await
+        .expect("cannot create default prototypes and values for schema variant");
+
+    let domain_context = base_prototype_context
+        .clone()
+        .set_prop_id(root.domain_prop_id)
+        .to_context()
+        .expect("cannot build domain attribute context");
+
+    let domain_attribute_value = AttributeValue::find_for_context(ctx, domain_context.into())
+        .await
+        .expect("cannot retrieve domain AttributeValue")
+        .expect("cannot find domain AttributeValue");
+
+    let albums_prototype_context = base_prototype_context
+        .clone()
+        .set_prop_id(*albums_prop.id())
+        .to_context()
+        .expect("cannot build attribute context");
+
+    let album_prototype_context = base_prototype_context
+        .clone()
+        .set_prop_id(*album_prop.id())
+        .to_context()
+        .expect("cannot build attribute context");
+
     let prop_hash_key_prototype_context = base_prototype_context
         .clone()
         .set_prop_id(*hash_key_prop.id())
         .to_context()
         .expect("cannot build attribute context");
 
-    let prop_hash_key_prototype =
-        AttributePrototype::list_for_context(ctx, prop_hash_key_prototype_context)
+    let albums_attribute_value =
+        AttributeValue::find_for_context(ctx, albums_prototype_context.into())
             .await
-            .expect("cannot retrieve attribute prototype for album hash key")
-            .pop()
-            .expect("no attribute prototype found for album hash key");
+            .expect("cannot retrieve albums AttributeValue")
+            .expect("albums AttribtueValue not found");
 
-    let func = Func::new(
+    let (_, albums_attribute_value_id, _) = AttributeValue::update_for_context(
         ctx,
-        "si:setString",
-        FuncBackendKind::String,
-        FuncBackendResponseType::String,
+        *albums_attribute_value.id(),
+        Some(*domain_attribute_value.id()),
+        albums_prototype_context,
+        Some(serde_json::json!([])),
+        None,
     )
     .await
-    .expect("cannot create func");
+    .expect("cannot update albums AttributeValue");
 
-    let undertow_prop_func_binding = FuncBinding::new(
+    let (undertow_hash_attribute_value_id, _) = AttributeValue::insert_for_context(
         ctx,
-        serde_json::to_value(FuncBackendStringArgs::new("1993".to_string()))
-            .expect("cannot turn args into json"),
-        *func.id(),
-        *func.backend_kind(),
+        albums_prototype_context,
+        albums_attribute_value_id,
+        Some(serde_json::json!({})),
+        None,
     )
     .await
-    .expect("cannot create func binding");
-    let func_binding_return_value = undertow_prop_func_binding
-        .execute(ctx)
-        .await
-        .expect("failed to execute func binding");
-
-    let undertow_prop_prototype = AttributePrototype::new(
+    .expect("cannot create hash for Undertow");
+    let (undertow_attribute_value_id, _) = AttributeValue::insert_for_context(
         ctx,
-        *func.id(),
-        *undertow_prop_func_binding.id(),
-        *func_binding_return_value.id(),
-        prop_hash_key_prototype_context,
+        album_prototype_context,
+        undertow_hash_attribute_value_id,
+        Some(serde_json::json!("1993")),
         Some("Undertow".to_string()),
-        None,
     )
     .await
-    .expect("cannot create attribute prototype for component album name");
-
-    let lateralus_prop_func_binding = FuncBinding::new(
-        ctx,
-        serde_json::to_value(FuncBackendStringArgs::new("2001".to_string()))
-            .expect("cannot turn args into json"),
-        *func.id(),
-        *func.backend_kind(),
-    )
-    .await
-    .expect("cannot create func binding");
-    let func_binding_return_value = lateralus_prop_func_binding
-        .execute(ctx)
+    .expect("cannot create Undertow entry");
+    let undertow_prop_prototype = AttributeValue::get_by_id(ctx, &undertow_attribute_value_id)
         .await
-        .expect("failed to execute func binding");
+        .expect("cannot retrieve AttributeValue")
+        .expect("cannot find AttributeValue")
+        .attribute_prototype(ctx)
+        .await
+        .expect("cannot retrieve AttributePrototype")
+        .expect("cannot find AttributePrototype");
 
-    let lateralus_prop_prototype = AttributePrototype::new(
+    let albums_attribute_value_id =
+        *AttributeValue::find_for_context(ctx, albums_prototype_context.into())
+            .await
+            .expect("cannot retrieve AttributeValue")
+            .expect("cannot find AttributeValue")
+            .id();
+
+    let (lateralus_hash_attribute_value_id, _) = AttributeValue::insert_for_context(
         ctx,
-        *func.id(),
-        *lateralus_prop_func_binding.id(),
-        *func_binding_return_value.id(),
-        prop_hash_key_prototype_context,
-        Some("Lateralus".to_string()),
+        albums_prototype_context,
+        albums_attribute_value_id,
+        Some(serde_json::json!({})),
         None,
     )
     .await
-    .expect("cannot create attribute prototype for component album name");
+    .expect("cannot create hash for Lateralus");
+    let (lateralus_attribute_value_id, _) = AttributeValue::insert_for_context(
+        ctx,
+        album_prototype_context,
+        lateralus_hash_attribute_value_id,
+        Some(serde_json::json!("2001")),
+        Some("Lateralus".to_string()),
+    )
+    .await
+    .expect("cannot create Lateralus entry");
+    let lateralus_prop_prototype = AttributeValue::get_by_id(ctx, &lateralus_attribute_value_id)
+        .await
+        .expect("cannot retrieve AttributeValue")
+        .expect("cannot find AttributeValue")
+        .attribute_prototype(ctx)
+        .await
+        .expect("cannot retrieve AttributePrototype")
+        .expect("cannot retrieve AttributePrototype");
 
     let component = create_component_for_schema(ctx, schema.id()).await;
 
+    let component_album_prototype_context = AttributeContextBuilder::from(album_prototype_context)
+        .clone()
+        .set_component_id(*component.id())
+        .to_context()
+        .expect("cannot create component array entry AttributeContext");
     let component_hash_key_prototype_context =
         AttributeContextBuilder::from(prop_hash_key_prototype_context)
+            .clone()
             .set_component_id(*component.id())
             .to_context()
-            .expect("cannot create attribute context");
+            .expect("cannot create component hash AttributeContext");
 
-    let lateralus_component_func_binding = FuncBinding::new(
-        ctx,
-        serde_json::to_value(FuncBackendStringArgs::new("The Early 2000s".to_string()))
-            .expect("cannot turn args into json"),
-        *func.id(),
-        *func.backend_kind(),
-    )
-    .await
-    .expect("cannot create func binding");
-    let func_binding_return_value = lateralus_component_func_binding
-        .execute(ctx)
-        .await
-        .expect("failed to execute func binding");
+    let albums_component_context = AttributeContextBuilder::from(albums_prototype_context)
+        .set_component_id(*component.id())
+        .to_context()
+        .expect("cannot create albums component AttributeContext");
 
-    let lateralus_component_prototype = AttributePrototype::new(
+    let (_, lateralus_component_attribute_value_id, _) = AttributeValue::update_for_context(
         ctx,
-        *func.id(),
-        *lateralus_component_func_binding.id(),
-        *func_binding_return_value.id(),
+        lateralus_attribute_value_id,
+        Some(lateralus_hash_attribute_value_id),
         component_hash_key_prototype_context,
+        Some(serde_json::json!("The Early 2000s")),
         Some("Lateralus".to_string()),
+    )
+    .await
+    .expect("cannot set Lateralus entry for component");
+
+    let albums_attribute_value_id =
+        *AttributeValue::find_for_context(ctx, albums_component_context.into())
+            .await
+            .expect("cannot retrieve AttributeValue")
+            .expect("cannot find AttributeValue")
+            .id();
+
+    let lateralus_component_prototype =
+        AttributeValue::get_by_id(ctx, &lateralus_component_attribute_value_id)
+            .await
+            .expect("cannot retrieve AttributeValue")
+            .expect("cannot find AttributeValue")
+            .attribute_prototype(ctx)
+            .await
+            .expect("cannot retrieve AttributePrototype")
+            .expect("cannot find AttributePrototype");
+
+    let (fear_inoculum_hash_attribute_value_id, _) = AttributeValue::insert_for_context(
+        ctx,
+        albums_component_context,
+        albums_attribute_value_id,
+        Some(serde_json::json!({})),
         None,
     )
     .await
-    .expect("cannot create attribute prototype for component album name");
-
-    let fear_inoculum_component_func_binding = FuncBinding::new(
+    .expect("cannot create Fear Inoculum array entry");
+    let (fear_inoculum_attribute_value_id, _) = AttributeValue::insert_for_context(
         ctx,
-        serde_json::to_value(FuncBackendStringArgs::new("2019".to_string()))
-            .expect("cannot turn args into json"),
-        *func.id(),
-        *func.backend_kind(),
-    )
-    .await
-    .expect("cannot create func binding");
-    let func_binding_return_value = fear_inoculum_component_func_binding
-        .execute(ctx)
-        .await
-        .expect("failed to execute func binding");
-
-    let fear_inoculum_component_prototype = AttributePrototype::new(
-        ctx,
-        *func.id(),
-        *fear_inoculum_component_func_binding.id(),
-        *func_binding_return_value.id(),
-        component_hash_key_prototype_context,
+        component_album_prototype_context,
+        fear_inoculum_hash_attribute_value_id,
+        Some(serde_json::json!("2019")),
         Some("Fear Inoculum".to_string()),
-        None,
     )
     .await
-    .expect("cannot create attribute prototype for component album name");
+    .expect("cannot set Fear Inoculum entry for component");
+    let fear_inoculum_component_prototype =
+        AttributeValue::get_by_id(ctx, &fear_inoculum_attribute_value_id)
+            .await
+            .expect("cannot retrieve AttributeValue")
+            .expect("cannot find AttributeValue")
+            .attribute_prototype(ctx)
+            .await
+            .expect("cannot retrieve AttributePrototype")
+            .expect("cannot find AttributePrototype");
 
     let found_hash_key_prototypes =
         AttributePrototype::list_for_context(ctx, component_hash_key_prototype_context)
             .await
             .expect("could not retrieve component prototypes");
 
+    let mut hash_key_values = vec![];
+    for proto in found_hash_key_prototypes.clone() {
+        hash_key_values.extend(
+            proto
+                .attribute_values(ctx)
+                .await
+                .expect("could not retrieve values for prototype"),
+        );
+    }
+
     assert_eq!(
         vec![
             fear_inoculum_component_prototype,
             lateralus_component_prototype,
             undertow_prop_prototype.clone(),
-            prop_hash_key_prototype.clone(),
         ],
         found_hash_key_prototypes,
     );
@@ -459,11 +334,7 @@ async fn list_for_context_with_a_hash(ctx: &DalContext<'_, '_>) {
             .expect("could not retrieve prop prototypes");
 
     assert_eq!(
-        vec![
-            lateralus_prop_prototype,
-            undertow_prop_prototype,
-            prop_hash_key_prototype,
-        ],
+        vec![lateralus_prop_prototype, undertow_prop_prototype],
         found_hash_key_prototypes,
     );
 }

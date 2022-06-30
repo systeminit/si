@@ -1222,9 +1222,18 @@ impl AttributeValue {
                 func_binding.id()
             ))
         })?;
-        // If we're already set, there's not anything for us to do.
+
+        // If we're already set, there might not be anything for us to do.
         if func.id() != unset_func.id() {
-            return Ok(attribute_value_id);
+            if *prop.kind() == PropKind::Array || *prop.kind() == PropKind::Map {
+                // If the Prop is an Array or a Map, we need it to be set in the specific
+                // context we're looking at.
+                if attribute_value.context == context {
+                    return Ok(attribute_value_id);
+                }
+            } else {
+                return Ok(attribute_value_id);
+            }
         }
 
         let maybe_parent_attribute_value_id = attribute_value

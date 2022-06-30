@@ -46,6 +46,10 @@ pub async fn create_schema_with_object_and_string_prop(
         .await
         .expect("cannot set parent prop");
 
+    SchemaVariant::create_default_prototypes_and_values(ctx, *schema_variant.id())
+        .await
+        .expect("cannot create default prototypes & values for SchemaVariant");
+
     (
         schema,
         schema_variant,
@@ -115,6 +119,10 @@ pub async fn create_schema_with_nested_objects_and_string_prop(
         .await
         .expect("cannot set parent prop");
 
+    SchemaVariant::create_default_prototypes_and_values(ctx, *schema_variant.id())
+        .await
+        .expect("cannot create default prototypes & values for SchemaVariant");
+
     (
         schema,
         schema_variant,
@@ -156,6 +164,10 @@ pub async fn create_schema_with_string_props(
         .await
         .expect("cannot set parent prop");
 
+    SchemaVariant::create_default_prototypes_and_values(ctx, *schema_variant.id())
+        .await
+        .expect("cannot create default prototypes & values for SchemaVariant");
+
     (schema, schema_variant, bohemian_prop, killer_prop, root)
 }
 
@@ -187,6 +199,10 @@ pub async fn create_schema_with_array_of_string_props(
         .set_parent_prop(ctx, *sammy_prop.id())
         .await
         .expect("cannot set parent");
+
+    SchemaVariant::create_default_prototypes_and_values(ctx, *schema_variant.id())
+        .await
+        .expect("cannot create default prototypes & values for SchemaVariant");
 
     (schema, schema_variant, sammy_prop, album_string_prop, root)
 }
@@ -253,6 +269,10 @@ pub async fn create_schema_with_nested_array_objects(
         .await
         .expect("cannot set parent");
 
+    SchemaVariant::create_default_prototypes_and_values(ctx, *schema_variant.id())
+        .await
+        .expect("cannot create default prototypes & values for SchemaVariant");
+
     (
         schema,
         schema_variant,
@@ -296,6 +316,10 @@ pub async fn create_simple_map(
         .set_parent_prop(ctx, *album_prop.id())
         .await
         .expect("cannot set parent");
+
+    SchemaVariant::create_default_prototypes_and_values(ctx, *schema_variant.id())
+        .await
+        .expect("cannot create default prototypes & values for SchemaVariant");
 
     (schema, schema_variant, album_prop, album_item_prop, root)
 }
@@ -367,6 +391,10 @@ pub async fn create_schema_with_nested_array_objects_and_a_map(
         .set_parent_prop(ctx, *song_map_prop.id())
         .await
         .expect("cannot set parent");
+
+    SchemaVariant::create_default_prototypes_and_values(ctx, *schema_variant.id())
+        .await
+        .expect("cannot create default prototypes & values for SchemaVariant");
 
     (
         schema,
@@ -924,24 +952,23 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext<'_, '_>) {
     .await
     .expect("could not insert album object AttributeValue");
 
-    let unset_album_string_context = unset_attribute_context
-        .clone()
-        .set_prop_id(*album_string_prop.id())
-        .to_context()
-        .expect("could not create album string AttributeContext");
     let album_string_context = base_attribute_context
         .clone()
         .set_prop_id(*album_string_prop.id())
         .to_context()
         .expect("could not create album string AttributeContext");
-    let unset_album_string_value =
-        AttributeValue::find_for_context(ctx, unset_album_string_context.into())
-            .await
-            .expect("could not retrieve album string AttributeValue")
-            .expect("could not find album string AttributeValue");
+    let standing_hampton_album_string_value = AttributeValue::find_with_parent_and_key_for_context(
+        ctx,
+        Some(standing_hampton_album_value_id),
+        None,
+        album_string_context.into(),
+    )
+    .await
+    .expect("could not retrieve album string AttributeValue")
+    .expect("could not find album string AttributeValue");
     let _ = AttributeValue::update_for_context(
         ctx,
-        *unset_album_string_value.id(),
+        *standing_hampton_album_string_value.id(),
         Some(standing_hampton_album_value_id),
         album_string_context,
         Some(serde_json::json!["standing_hampton"]),
@@ -950,24 +977,23 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext<'_, '_>) {
     .await
     .expect("could not update standing hampton album string AttributeValue");
 
-    let unset_songs_array_context = unset_attribute_context
-        .clone()
-        .set_prop_id(*songs_array_prop.id())
-        .to_context()
-        .expect("could not create songs array AttributeContext");
-    let unset_songs_array_value =
-        AttributeValue::find_for_context(ctx, unset_songs_array_context.into())
-            .await
-            .expect("could not fetch songs array AttributeValue")
-            .expect("could not find songs array AttributeValue");
     let songs_array_context = base_attribute_context
         .clone()
         .set_prop_id(*songs_array_prop.id())
         .to_context()
         .expect("could not create songs array AttributeContext");
+    let standing_hampton_songs_array_value = AttributeValue::find_with_parent_and_key_for_context(
+        ctx,
+        Some(standing_hampton_album_value_id),
+        None,
+        songs_array_context.into(),
+    )
+    .await
+    .expect("could not fetch songs array AttributeValue")
+    .expect("could not find songs array AttributeValue");
     let (_, standing_hampton_songs_array_value_id, _) = AttributeValue::update_for_context(
         ctx,
-        *unset_songs_array_value.id(),
+        *standing_hampton_songs_array_value.id(),
         Some(standing_hampton_album_value_id),
         songs_array_context,
         Some(serde_json::json![[]]),
@@ -1010,9 +1036,18 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext<'_, '_>) {
     .await
     .expect("could not insert voa album object into albums array");
 
+    let voa_album_string_value = AttributeValue::find_with_parent_and_key_for_context(
+        ctx,
+        Some(voa_album_value_id),
+        None,
+        album_string_context.into(),
+    )
+    .await
+    .expect("could not retrieve voa album string AttributeValue")
+    .expect("could not find voa album string AttributeValue");
     let _ = AttributeValue::update_for_context(
         ctx,
-        *unset_album_string_value.id(),
+        *voa_album_string_value.id(),
         Some(voa_album_value_id),
         album_string_context,
         Some(serde_json::json!["voa"]),
@@ -1021,9 +1056,18 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext<'_, '_>) {
     .await
     .expect("could not set voa album string AttributeValue");
 
+    let voa_songs_array_value = AttributeValue::find_with_parent_and_key_for_context(
+        ctx,
+        Some(voa_album_value_id),
+        None,
+        songs_array_context.into(),
+    )
+    .await
+    .expect("could not fetch songs array AttributeValue")
+    .expect("could not find songs array AttributeValue");
     let (_, voa_songs_value_id, _) = AttributeValue::update_for_context(
         ctx,
-        *unset_songs_array_value.id(),
+        *voa_songs_array_value.id(),
         Some(voa_album_value_id),
         songs_array_context,
         Some(serde_json::json![[]]),

@@ -47,6 +47,9 @@ async fn intra_component_identity_update(ctx: &DalContext<'_, '_>) {
     )
     .await;
 
+    SchemaVariant::create_default_prototypes_and_values(ctx, *schema_variant.id())
+        .await
+        .expect("cannot create default prototypes and values for SchemaVariant");
     // Create the internal providers for a schema variant. Afterwards, we can create the component.
     SchemaVariant::create_implicit_internal_providers(ctx, *schema.id(), *schema_variant.id())
         .await

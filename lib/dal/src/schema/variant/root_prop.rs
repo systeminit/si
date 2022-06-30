@@ -4,16 +4,15 @@
 use telemetry::prelude::*;
 
 use crate::{
-    func::binding::FuncBinding,
-    schema::variant::{SchemaVariantError, SchemaVariantResult},
-    AttributeContext, AttributeValue, AttributeValueError, DalContext, Func, Prop, PropId,
-    PropKind, SchemaVariantId, StandardModel,
+    schema::variant::SchemaVariantResult, AttributeContext, AttributeValue, AttributeValueError,
+    DalContext, Prop, PropId, PropKind, SchemaVariant, SchemaVariantId, StandardModel,
 };
 
 /// Contains the si-specific [`PropId`](crate::Prop), the domain-specific [`PropId`](crate::Prop),
 /// and the root [`PropId`](crate::Prop) corresponding to a [`SchemaVariant`](crate::SchemaVariant).
 /// In addition, these correspond to the "root" [`Props`](crate::Prop) on the
 /// [`ComponentView`](crate::ComponentView) "properties" field.
+#[derive(Debug, Copy, Clone)]
 pub struct RootProp {
     pub prop_id: PropId,
     pub si_prop_id: PropId,
@@ -27,29 +26,29 @@ impl RootProp {
         ctx: &DalContext<'_, '_>,
         schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<Self> {
-        let func_name = "si:setPropObject".to_string();
-        let mut funcs = Func::find_by_attr(ctx, "name", &func_name).await?;
-        let func = funcs
-            .pop()
-            .ok_or(SchemaVariantError::MissingFunc(func_name))?;
-
-        let (func_binding, created) = FuncBinding::find_or_create(
-            ctx,
-            // Shortcut to creating the FuncBackendPropObjectArgs.
-            serde_json::json!({ "value": {} }),
-            *func.id(),
-            *func.backend_kind(),
-        )
-        .await?;
-
-        if created {
-            func_binding.execute(ctx).await?;
-        }
-
         let root_prop = Prop::new(ctx, "root", PropKind::Object).await?;
         root_prop
             .add_schema_variant(ctx, &schema_variant_id)
             .await?;
+
+        let si_specific_prop = Prop::new(ctx, "si", PropKind::Object).await?;
+        si_specific_prop
+            .set_parent_prop(ctx, *root_prop.id())
+            .await?;
+
+        let si_name_prop = Prop::new(ctx, "name", PropKind::String).await?;
+        si_name_prop
+            .set_parent_prop(ctx, *si_specific_prop.id())
+            .await?;
+
+        let domain_specific_prop = Prop::new(ctx, "domain", PropKind::Object).await?;
+        domain_specific_prop
+            .set_parent_prop(ctx, *root_prop.id())
+            .await?;
+
+        // Now that the structure is set up, we can populate default
+        // AttributePrototypes & AttributeValues to be updated appropriately below.
+        SchemaVariant::create_default_prototypes_and_values(ctx, schema_variant_id).await?;
 
         let root_context = AttributeContext::builder()
             .set_prop_id(*root_prop.id())
@@ -67,11 +66,6 @@ impl RootProp {
         )
         .await?;
 
-        let si_specific_prop = Prop::new(ctx, "si", PropKind::Object).await?;
-        si_specific_prop
-            .set_parent_prop(ctx, *root_prop.id())
-            .await?;
-
         let si_context = AttributeContext::builder()
             .set_prop_id(*si_specific_prop.id())
             .to_context()?;
@@ -88,11 +82,6 @@ impl RootProp {
         )
         .await?;
 
-        let si_name_prop = Prop::new(ctx, "name", PropKind::String).await?;
-        si_name_prop
-            .set_parent_prop(ctx, *si_specific_prop.id())
-            .await?;
-
         let si_name_context = AttributeContext::builder()
             .set_prop_id(*si_name_prop.id())
             .to_context()?;
@@ -108,11 +97,6 @@ impl RootProp {
             None,
         )
         .await?;
-
-        let domain_specific_prop = Prop::new(ctx, "domain", PropKind::Object).await?;
-        domain_specific_prop
-            .set_parent_prop(ctx, *root_prop.id())
-            .await?;
 
         let domain_context = AttributeContext::builder()
             .set_prop_id(*domain_specific_prop.id())

@@ -112,6 +112,18 @@ impl SchemaVariant {
         Ok((object, root_prop))
     }
 
+    pub async fn create_default_prototypes_and_values(
+        ctx: &DalContext<'_, '_>,
+        schema_variant_id: SchemaVariantId,
+    ) -> SchemaVariantResult<()> {
+        let root_prop = match Prop::find_root_for_schema_variant(ctx, schema_variant_id).await? {
+            Some(root_prop) => root_prop,
+            None => return Ok(()),
+        };
+
+        Ok(Prop::create_default_prototypes_and_values(ctx, *root_prop.id()).await?)
+    }
+
     /// Creates _internally consuming_ [`InternalProviders`](crate::InternalProvider) corresponding
     /// to every [`Prop`](crate::Prop) in the [`SchemaVariant`] that is not a descendant of an array
     /// or a map.
