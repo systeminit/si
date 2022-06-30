@@ -1064,50 +1064,57 @@ impl AttributeValue {
         .await
         .map_err(|e| AttributeValueError::AttributePrototype(format!("{e}")))?;
 
+        // Create unset AttributePrototypes & AttributeValues for child Props
+        // up until (inclusive) we reach an Array/Map.
         let prop = Self::find_prop_for_value(ctx, *attribute_value.id()).await?;
-        let mut child_props: VecDeque<_> = prop
-            .child_props(ctx)
-            .await?
-            .into_iter()
-            .map(|p| (*attribute_value.id(), p))
-            .collect();
-        while let Some((parent_attribute_value_id, prop)) = child_props.pop_front() {
-            let context = child_context_builder.set_prop_id(*prop.id()).to_context()?;
-            let prop_attribute_value = Self::new(
-                ctx,
-                *unset_func_binding.id(),
-                *unset_func_binding_return_value.id(),
-                context,
-                Option::<&str>::None,
-            )
-            .await?;
-
-            prop_attribute_value
-                .set_parent_attribute_value(ctx, &parent_attribute_value_id)
+        if *prop.kind() == PropKind::Object {
+            let mut child_props: VecDeque<_> = prop
+                .child_props(ctx)
+                .await?
+                .into_iter()
+                .map(|p| (*attribute_value.id(), p))
+                .collect();
+            while let Some((parent_attribute_value_id, prop)) = child_props.pop_front() {
+                let context = child_context_builder.set_prop_id(*prop.id()).to_context()?;
+                let prop_attribute_value = Self::new(
+                    ctx,
+                    *unset_func_binding.id(),
+                    *unset_func_binding_return_value.id(),
+                    context,
+                    Option::<&str>::None,
+                )
                 .await?;
 
-            let prototype = AttributePrototype::new_with_existing_value(
-                ctx,
-                *unset_func.id(),
-                context,
-                key.clone(),
-                Some(parent_attribute_value_id),
-                parent_attribute_value_id,
-            )
-            .await
-            .map_err(|e| AttributeValueError::AttributePrototype(format!("{e}")))?;
+                prop_attribute_value
+                    .set_parent_attribute_value(ctx, &parent_attribute_value_id)
+                    .await?;
 
-            prop_attribute_value
-                .set_attribute_prototype(ctx, prototype.id())
-                .await?;
+                let prototype = AttributePrototype::new_with_existing_value(
+                    ctx,
+                    *unset_func.id(),
+                    context,
+                    None,
+                    Some(parent_attribute_value_id),
+                    parent_attribute_value_id,
+                )
+                .await
+                .map_err(|e| AttributeValueError::AttributePrototype(format!("{e}")))?;
 
-            if *prop.kind() == PropKind::Object {
-                child_props.extend(
-                    prop.child_props(ctx)
-                        .await?
-                        .into_iter()
-                        .map(|p| (*prop_attribute_value.id(), p)),
-                );
+                prop_attribute_value
+                    .set_attribute_prototype(ctx, prototype.id())
+                    .await?;
+
+                // PropKind::Object is the only kind of Prop that can have child Props,
+                // and that we want to create unset AttributePrototypes & AttributeValue
+                // for its children.
+                if *prop.kind() == PropKind::Object {
+                    child_props.extend(
+                        prop.child_props(ctx)
+                            .await?
+                            .into_iter()
+                            .map(|p| (*prop_attribute_value.id(), p)),
+                    );
+                }
             }
         }
 
