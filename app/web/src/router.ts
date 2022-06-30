@@ -22,6 +22,7 @@ import ApplicationView from "@/organisims/Application/ApplicationView.vue";
 import Editor from "@/organisims/Editor.vue";
 import _ from "lodash";
 import SchematicViewer from "@/organisims/SchematicViewer.vue";
+import WorkspaceView from "@/new/organisms/WorkspaceView.vue";
 
 const routes: RouteRecordRaw[] = [
   {
@@ -127,6 +128,22 @@ const routes: RouteRecordRaw[] = [
         component: Signup,
       },
     ],
+  },
+  {
+    path: "/w/:workspaceId",
+    name: "workspace-view",
+    component: WorkspaceView, // NOTE(nick): this should eventually be a "Home" component underneath "pages"
+    props: (route) => {
+      let workspaceId;
+      if (_.isArray(route.params.workspaceId)) {
+        workspaceId = Number.parseInt(route.params.workspaceId[0]);
+      } else {
+        workspaceId = Number.parseInt(route.params.workspaceId);
+      }
+      return {
+        workspaceId,
+      };
+    },
   },
   {
     path: "/404",

@@ -196,14 +196,28 @@
           -->
       </div>
 
-      <div class="self-center mt-3" :class="separatorClasses">
+      <div v-if="workspaceId">
+        <div class="self-center" :class="separatorClasses">
+          <div class="menu-separator" />
+        </div>
+
+        <div class="flex items-center w-full mx-6 my-4 color-grey-light">
+          <button data-test="new-home" @click="onWorkspaceView">
+            <SiIcon tooltip-text="New Home">
+              <SwitchHorizontalIcon class="color-grey-light" />
+            </SiIcon>
+          </button>
+        </div>
+      </div>
+
+      <div class="self-center" :class="separatorClasses">
         <div class="menu-separator" />
       </div>
 
-      <div class="flex items-center w-full mx-6 my-4 color-grey-medium">
+      <div class="flex items-center w-full mx-6 my-4 color-grey-light">
         <button data-test="logout" @click="onLogout">
           <SiIcon tooltip-text="Logout">
-            <LogoutIcon class="color-grey-medium" />
+            <LogoutIcon class="color-grey-light" />
           </SiIcon>
         </button>
       </div>
@@ -217,7 +231,14 @@ import SysinitIcon from "@/atoms/SysinitIcon.vue";
 import { SessionService } from "@/service/session";
 import { useRouter } from "vue-router";
 import SiIcon from "@/atoms/SiIcon.vue";
-import { CodeIcon, LogoutIcon } from "@heroicons/vue/outline";
+import {
+  CodeIcon,
+  LogoutIcon,
+  SwitchHorizontalIcon,
+} from "@heroicons/vue/outline";
+import { Workspace } from "@/api/sdf/dal/workspace";
+import { WorkspaceService } from "@/service/workspace";
+import { refFrom } from "vuse-rx/src";
 
 const isMaximized = ref(false);
 
@@ -239,6 +260,29 @@ const onLogout = async () => {
   await SessionService.logout();
   await router.push({ name: "login" });
 };
+const onWorkspaceView = async () => {
+  if (workspaceId.value) {
+    await router.push({
+      name: "workspace-view",
+      path: "/w/:workspaceId",
+      params: { workspaceId: workspaceId.value },
+    });
+  } else {
+    // FIXME(nick): ensure that it's impossible for "onWorkspaceView" to be executed
+    // when "workspaceId" is undefined.
+    console.log("workspace id is undefined");
+  }
+};
+
+const workspace = refFrom<Workspace | null>(
+  WorkspaceService.currentWorkspace(),
+);
+const workspaceId = computed((): number | undefined => {
+  if (workspace.value) {
+    return workspace.value.id;
+  }
+  return undefined;
+});
 </script>
 
 <style scoped>
