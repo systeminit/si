@@ -69,4 +69,4 @@ tidy-crates:
 tidy-web:
 	cd $(REPOPATH)/app/web/; npm run format
 	cd $(REPOPATH)/app/web/; npm run eslint:fix
-.PHONY: tidy-app
+.PHONY: tidy-web
