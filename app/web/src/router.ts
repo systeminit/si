@@ -22,7 +22,10 @@ import ApplicationView from "@/organisims/Application/ApplicationView.vue";
 import Editor from "@/organisims/Editor.vue";
 import _ from "lodash";
 import SchematicViewer from "@/organisims/SchematicViewer.vue";
-import WorkspaceView from "@/new/organisms/WorkspaceView.vue";
+import NewHome from "@/pages/NewHome.vue";
+import Workspace from "@/templates/Workspace.vue";
+import WorkspaceView from "@/organisims/Workspace/WorkspaceView.vue";
+import WorkspaceList from "@/organisims/Workspace/WorkspaceList.vue";
 
 const routes: RouteRecordRaw[] = [
   {
@@ -130,20 +133,40 @@ const routes: RouteRecordRaw[] = [
     ],
   },
   {
-    path: "/w/:workspaceId",
-    name: "workspace-view",
-    component: WorkspaceView, // NOTE(nick): this should eventually be a "Home" component underneath "pages"
-    props: (route) => {
-      let workspaceId;
-      if (_.isArray(route.params.workspaceId)) {
-        workspaceId = Number.parseInt(route.params.workspaceId[0]);
-      } else {
-        workspaceId = Number.parseInt(route.params.workspaceId);
-      }
-      return {
-        workspaceId,
-      };
-    },
+    path: "/new",
+    name: "new",
+    component: NewHome,
+    children: [
+      {
+        path: "w",
+        name: "workspace",
+        component: Workspace,
+        redirect: { name: "workspace-list" },
+        children: [
+          {
+            name: "workspace-list",
+            path: "list",
+            component: WorkspaceList,
+          },
+          {
+            name: "workspace-view",
+            path: ":workspaceId",
+            component: WorkspaceView,
+            props: (route) => {
+              let workspaceId;
+              if (_.isArray(route.params.workspaceId)) {
+                workspaceId = Number.parseInt(route.params.workspaceId[0]);
+              } else {
+                workspaceId = Number.parseInt(route.params.workspaceId);
+              }
+              return {
+                workspaceId,
+              };
+            },
+          },
+        ],
+      },
+    ],
   },
   {
     path: "/404",
