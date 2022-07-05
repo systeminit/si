@@ -12,7 +12,7 @@
       leave-from-class="transform opacity-100 scale-100"
       leave-to-class="transform opacity-0 scale-95"
     >
-      <SiProfileDropdown />
+      <SiProfileDropdown :enable-old-app-switch="props.enableOldAppSwitch" />
     </transition>
   </Menu>
 </template>
@@ -21,4 +21,8 @@
 import { Menu } from "@headlessui/vue";
 import SiProfileIcon from "@/atoms/SiProfileIcon.vue";
 import SiProfileDropdown from "@/atoms/SiProfileDropdown.vue";
+
+const props = defineProps<{
+  enableOldAppSwitch?: boolean;
+}>();
 </script>

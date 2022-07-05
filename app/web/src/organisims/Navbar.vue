@@ -85,7 +85,7 @@
               <MoonIcon class="h-6 w-6" aria-hidden="true" />
             </button>
 
-            <SiProfile />
+            <SiProfile :enable-old-app-switch="true" />
           </div>
         </div>
 
@@ -114,6 +114,6 @@ import {
   LinkIcon,
 } from "@heroicons/vue/outline";
 import { PlayIcon, BeakerIcon, CollectionIcon } from "@heroicons/vue/solid";
-import SiProfile from "../molecules/SiProfile.vue";
+import SiProfile from "@/molecules/SiProfile.vue";
 import SiLogoWts from "@/assets/images/si-logo-wts.svg";
 </script>
