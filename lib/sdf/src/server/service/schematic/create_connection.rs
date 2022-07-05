@@ -1,8 +1,8 @@
 use axum::Json;
 use dal::{
-    attribute::value::DependentValuesAsyncTasks, node::NodeId, socket::SocketId,
-    AttributeReadContext, AttributeValue, ComponentAsyncTasks, Connection, ExternalProviderId,
-    InternalProviderId, Node, StandardModel, SystemId, Visibility, WorkspaceId,
+    attribute::value::DependentValuesAsyncTasks, context::JobContent, node::NodeId,
+    socket::SocketId, AttributeReadContext, AttributeValue, ComponentAsyncTasks, Connection,
+    ExternalProviderId, InternalProviderId, Node, StandardModel, SystemId, Visibility, WorkspaceId,
 };
 use serde::{Deserialize, Serialize};
 
@@ -86,22 +86,26 @@ pub async fn create_connection(
 
     let task = attribute_value.map(|attribute_value| {
         DependentValuesAsyncTasks::new(
-            Some(ComponentAsyncTasks::new(component, system_id)),
+            Some(ComponentAsyncTasks::new(*component.id(), system_id)),
             Some(*attribute_value.id()),
         )
     });
+    if let Some(task) = task {
+        ctx.enqueue_job(JobContent::DependentValuesUpdate(task))
+            .await;
+    }
 
     txns.commit().await?;
 
-    if let Some(task) = task {
-        let request_ctx = request_ctx.clone();
-        let builder = builder.clone();
-        tokio::task::spawn(async move {
-            if let Err(err) = task.run(request_ctx, request.visibility, &builder).await {
-                error!("Component async qualification check failed: {err}");
-            }
-        });
-    }
+    //if let Some(task) = task {
+    //    let request_ctx = request_ctx.clone();
+    //    let builder = builder.clone();
+    //    tokio::task::spawn(async move {
+    //        if let Err(err) = task.run(request_ctx, request.visibility, &builder).await {
+    //            error!("Component async qualification check failed: {err}");
+    //        }
+    //    });
+    //}
 
     Ok(Json(CreateConnectionResponse { connection }))
 }

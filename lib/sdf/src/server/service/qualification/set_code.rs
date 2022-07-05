@@ -1,6 +1,7 @@
 use axum::Json;
 use dal::{
-    Component, ComponentAsyncTasks, Func, QualificationPrototype, QualificationPrototypeId, Schema,
+    attribute::value::DependentValuesAsyncTasks, context::JobContent, Component,
+    ComponentAsyncTasks, Func, QualificationPrototype, QualificationPrototypeId, Schema,
     StandardModel, SystemId, Visibility,
 };
 use serde::{Deserialize, Serialize};
@@ -124,22 +125,25 @@ pub async fn set_code(
         }
     }
 
-    txns.commit().await?;
-
     for component in components {
-        let mut async_tasks = ComponentAsyncTasks::new(component, system_id);
+        let mut async_tasks = ComponentAsyncTasks::new(*component.id(), system_id);
         async_tasks.set_qualification_prototype_id(*prototype.id());
+        ctx.enqueue_job(JobContent::ComponentPostProcessing(async_tasks))
+            .await;
+
         let request_ctx = request_ctx.clone();
         let builder = builder.clone();
-        tokio::task::spawn(async move {
-            if let Err(err) = async_tasks
-                .run(request_ctx, request.visibility, &builder)
-                .await
-            {
-                error!("Component async qualification check failed: {err}");
-            }
-        });
+        //tokio::task::spawn(async move {
+        //    if let Err(err) = async_tasks
+        //        .run(request_ctx, request.visibility, &builder)
+        //        .await
+        //    {
+        //        error!("Component async qualification check failed: {err}");
+        //    }
+        //});
     }
+
+    txns.commit().await?;
 
     Ok(Json(SetCodeResponse { success: true }))
 }

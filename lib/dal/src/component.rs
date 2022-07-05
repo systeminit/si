@@ -300,7 +300,7 @@ impl Component {
     ) -> ComponentResult<ComponentAsyncTasks> {
         self.prepare_code_generation(ctx, system_id).await?;
         self.prepare_qualifications_check(ctx, system_id).await?;
-        Ok(ComponentAsyncTasks::new(self.clone(), system_id))
+        Ok(ComponentAsyncTasks::new(*self.id(), system_id))
     }
 
     #[instrument(skip_all)]
@@ -1499,18 +1499,18 @@ impl Component {
 }
 
 #[must_use]
-#[derive(Debug, Clone)]
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
 pub struct ComponentAsyncTasks {
-    pub component: Component,
+    pub component_id: ComponentId,
     pub system_id: SystemId,
     // Allows running only one specific qualification
     qualification_prototype_id: Option<QualificationPrototypeId>,
 }
 
 impl ComponentAsyncTasks {
-    pub fn new(component: Component, system_id: SystemId) -> Self {
+    pub fn new(component_id: ComponentId, system_id: SystemId) -> Self {
         Self {
-            component,
+            component_id,
             system_id,
             qualification_prototype_id: None,
         }
@@ -1550,7 +1550,10 @@ impl ComponentAsyncTasks {
         let mut txns = ctx_builder.transactions_starter().await?;
         let txns = txns.start().await?;
         let ctx = ctx_builder.build(access_builder.build(visibility), &txns);
-        self.component.generate_code(&ctx, self.system_id).await?;
+        let component = Component::get_by_id(&ctx, &self.component_id)
+            .await?
+            .ok_or(ComponentError::NotFound(self.component_id))?;
+        component.generate_code(&ctx, self.system_id).await?;
         txns.commit().await?;
         Ok(())
     }
@@ -1565,7 +1568,10 @@ impl ComponentAsyncTasks {
         let mut txns = ctx_builder.transactions_starter().await?;
         let txns = txns.start().await?;
         let ctx = ctx_builder.build(access_builder.build(visibility), &txns);
-        self.component
+        let component = Component::get_by_id(&ctx, &self.component_id)
+            .await?
+            .ok_or(ComponentError::NotFound(self.component_id))?;
+        component
             .check_qualification(&ctx, self.system_id, prototype_id)
             .await?;
         txns.commit().await?;
@@ -1581,9 +1587,10 @@ impl ComponentAsyncTasks {
         let mut txns = ctx_builder.transactions_starter().await?;
         let txns = txns.start().await?;
         let ctx = ctx_builder.build(access_builder.build(visibility), &txns);
-        self.component
-            .check_qualifications(&ctx, self.system_id)
-            .await?;
+        let component = Component::get_by_id(&ctx, &self.component_id)
+            .await?
+            .ok_or(ComponentError::NotFound(self.component_id))?;
+        component.check_qualifications(&ctx, self.system_id).await?;
         txns.commit().await?;
         Ok(())
     }

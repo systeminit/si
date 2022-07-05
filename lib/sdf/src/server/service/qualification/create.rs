@@ -1,12 +1,11 @@
 use axum::Json;
 use dal::{
-    func::backend::js_qualification::FuncBackendJsQualificationArgs, generate_name,
-    qualification_prototype::QualificationPrototypeContext, Component, ComponentAsyncTasks,
-    ComponentId, Func, FuncBackendKind, FuncBackendResponseType, QualificationPrototype,
-    QualificationPrototypeId, Schema, StandardModel, SystemId, Visibility,
+    context::JobContent, func::backend::js_qualification::FuncBackendJsQualificationArgs,
+    generate_name, qualification_prototype::QualificationPrototypeContext, Component,
+    ComponentAsyncTasks, ComponentId, Func, FuncBackendKind, FuncBackendResponseType,
+    QualificationPrototype, QualificationPrototypeId, Schema, StandardModel, SystemId, Visibility,
 };
 use serde::{Deserialize, Serialize};
-use telemetry::prelude::*;
 
 use super::{QualificationError, QualificationResult};
 use crate::server::extract::{AccessBuilder, HandlerContext};
@@ -139,25 +138,29 @@ async function qualification(component) {
         }
     }
 
-    txns.commit().await?;
-
     // TODO: actually use the system to filter qualifications
     let system_id = request.system_id.unwrap_or(SystemId::NONE);
 
     for component in components {
-        let mut async_tasks = ComponentAsyncTasks::new(component, system_id);
+        let mut async_tasks = ComponentAsyncTasks::new(*component.id(), system_id);
         async_tasks.set_qualification_prototype_id(*prototype.id());
-        let request_ctx = request_ctx.clone();
-        let builder = builder.clone();
-        tokio::task::spawn(async move {
-            if let Err(err) = async_tasks
-                .run(request_ctx, request.visibility, &builder)
-                .await
-            {
-                error!("Component async qualification check failed: {err}");
-            }
-        });
+        ctx.enqueue_job(JobContent::ComponentPostProcessing(async_tasks))
+            .await;
+
+        //let request_ctx = request_ctx.clone();
+        //let builder = builder.clone();
+        //tokio::task::spawn(async move {
+        //    if let Err(err) = async_tasks
+        //        .run(request_ctx, request.visibility, &builder)
+        //        .await
+        //    {
+        //        error!("Component async qualification check failed: {err}");
+        //    }
+        //});
     }
+
+    txns.commit().await?;
+
     Ok(Json(CreateResponse {
         prototype_id: *prototype.id(),
     }))

@@ -2,6 +2,7 @@ use crate::server::extract::{AccessBuilder, HandlerContext};
 use crate::service::schematic::{SchematicError, SchematicResult};
 use axum::Json;
 use dal::attribute::value::DependentValuesAsyncTasks;
+use dal::context::JobContent;
 use dal::node_position::NodePositionView;
 use dal::{
     generate_name, node::NodeId, node::NodeViewKind, Component, Node, NodeKind, NodePosition,
@@ -94,10 +95,13 @@ pub async fn create_node(
     };
 
     if let Some(system_id) = &request.system_id {
-        async_tasks.push(DependentValuesAsyncTasks::new(
+        let task = DependentValuesAsyncTasks::new(
             Some(component.add_to_system(&ctx, system_id).await?),
             None,
-        ));
+        );
+        ctx.enqueue_job(JobContent::DependentValuesUpdate(task.clone()))
+            .await;
+        async_tasks.push(task);
     };
 
     let node_template = NodeTemplate::new_from_schema_id(&ctx, request.schema_id).await?;
@@ -132,27 +136,27 @@ pub async fn create_node(
 
     txns.commit().await?;
 
-    if !async_tasks.is_empty() {
-        tokio::task::spawn(async move {
-            let mut futures = Vec::new();
-            for async_tasks in async_tasks {
-                futures.push(Box::pin(async_tasks.run(
-                    request_ctx.clone(),
-                    request.visibility,
-                    &builder,
-                )));
-            }
-            while !futures.is_empty() {
-                let (joined, _count, new_futures) = futures::future::select_all(futures).await;
-                futures = new_futures;
-                if let Err(err) = joined {
-                    error!(
-                        "Component async task execution failed: {err}, executing others from queue"
-                    );
-                }
-            }
-        });
-    }
+    //if !async_tasks.is_empty() {
+    //    tokio::task::spawn(async move {
+    //        let mut futures = Vec::new();
+    //        for async_tasks in async_tasks {
+    //            futures.push(Box::pin(async_tasks.run(
+    //                request_ctx.clone(),
+    //                request.visibility,
+    //                &builder,
+    //            )));
+    //        }
+    //        while !futures.is_empty() {
+    //            let (joined, _count, new_futures) = futures::future::select_all(futures).await;
+    //            futures = new_futures;
+    //            if let Err(err) = joined {
+    //                error!(
+    //                    "Component async task execution failed: {err}, executing others from queue"
+    //                );
+    //            }
+    //        }
+    //    });
+    //}
 
     Ok(Json(CreateNodeResponse { node: node_view }))
 }

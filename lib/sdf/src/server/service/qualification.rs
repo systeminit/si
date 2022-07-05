@@ -10,9 +10,9 @@ use axum::{
 use thiserror::Error;
 
 use dal::{
-    ComponentError, ComponentId, FuncError, FuncId, QualificationPrototypeError,
-    QualificationPrototypeId, ReadTenancyError, SchemaError, SchemaId, StandardModelError,
-    TransactionsError, WriteTenancyError,
+    AttributeValueError, ComponentError, ComponentId, FuncError, FuncId,
+    QualificationPrototypeError, QualificationPrototypeId, ReadTenancyError, SchemaError, SchemaId,
+    StandardModelError, TransactionsError, WriteTenancyError,
 };
 
 pub mod create;
@@ -29,6 +29,8 @@ pub enum QualificationError {
     QualificationPrototype(#[from] QualificationPrototypeError),
     #[error("func error: {0}")]
     Func(#[from] FuncError),
+    #[error("attribute value error: {0}")]
+    AttributeValue(#[from] AttributeValueError),
     #[error("serde error: {0}")]
     Serde(#[from] serde_json::Error),
     #[error("schema error: {0}")]

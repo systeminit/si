@@ -65,7 +65,7 @@ impl RootProp {
             None,
         )
         .await?;
-        task.run_updates_in_ctx(ctx).await?;
+        //task.run_updates_in_ctx(ctx).await?;
 
         let si_context = AttributeContext::builder()
             .set_prop_id(*si_specific_prop.id())
@@ -82,7 +82,7 @@ impl RootProp {
             None,
         )
         .await?;
-        task.run_updates_in_ctx(ctx).await?;
+        //task.run_updates_in_ctx(ctx).await?;
 
         let si_name_context = AttributeContext::builder()
             .set_prop_id(*si_name_prop.id())
@@ -99,7 +99,7 @@ impl RootProp {
             None,
         )
         .await?;
-        task.run_updates_in_ctx(ctx).await?;
+        //task.run_updates_in_ctx(ctx).await?;
 
         let domain_context = AttributeContext::builder()
             .set_prop_id(*domain_specific_prop.id())
@@ -116,7 +116,7 @@ impl RootProp {
             None,
         )
         .await?;
-        task.run_updates_in_ctx(ctx).await?;
+        //task.run_updates_in_ctx(ctx).await?;
 
         Ok(Self {
             prop_id: *root_prop.id(),

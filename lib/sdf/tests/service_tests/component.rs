@@ -31,6 +31,7 @@ async fn list_components_identification() {
         auth_token,
         dal_ctx,
         dal_txns,
+        _faktory,
     );
 
     let (_, application) = Component::new_application_with_node(&dal_ctx, generate_fake_name())
@@ -149,6 +150,7 @@ async fn get_components_metadata() {
         auth_token,
         dal_ctx,
         dal_txns,
+        _faktory,
     );
     let visibility = Visibility::new_head(false);
 
