@@ -43,6 +43,9 @@ pub struct Config {
     #[builder(default = "NatsConfig::default()")]
     nats: NatsConfig,
 
+    #[builder(default = "default_faktory()")]
+    faktory: String,
+
     #[builder(default = "MigrationMode::default()")]
     migration_mode: MigrationMode,
 
@@ -78,6 +81,12 @@ impl Config {
     #[must_use]
     pub fn nats(&self) -> &NatsConfig {
         &self.nats
+    }
+
+    /// Gets a reference to the config's faktory.
+    #[must_use]
+    pub fn faktory(&self) -> &str {
+        &self.faktory
     }
 
     /// Gets a reference to the config's jwt secret key path.
@@ -287,4 +296,8 @@ mod tests {
             assert_eq!(r#"{"mode":"runAndQuit"}"#, test);
         }
     }
+}
+
+fn default_faktory() -> String {
+    "tcp://localhost:7419".to_owned()
 }

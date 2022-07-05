@@ -117,7 +117,7 @@ pub async fn emit(
         // TODO(nick): we will likely want to replace the "universal" tenancy check with an
         // "is compatible" tenancy check.
         if emit_attribute_value.context == emit_attribute_context
-            && !emit_attribute_value.tenancy().universal()
+            && (!emit_attribute_value.tenancy().universal() || ctx.write_tenancy().universal())
         {
             emit_attribute_value
                 .set_func_binding_id(ctx, *func_binding.id())

@@ -12,6 +12,7 @@ use thiserror::Error;
 use uuid::Uuid;
 
 use crate::attribute::value::dependent_update::AttributeValueDependentUpdateHarness;
+use crate::context::JobContent;
 use crate::ws_event::{WsEvent, WsEventError};
 use crate::{
     attribute::{
@@ -951,9 +952,11 @@ impl AttributeValue {
             };
 
         // After we have _completely_ updated ourself, we can update our dependent values.
-        let async_tasks = DependentValuesAsyncTasks::new(async_tasks, Some(*attribute_value.id()));
+        let task = DependentValuesAsyncTasks::new(async_tasks, Some(*attribute_value.id()));
+        ctx.enqueue_job(JobContent::DependentValuesUpdate(task.clone()))
+            .await;
 
-        Ok((value, *attribute_value.id(), async_tasks))
+        Ok((value, *attribute_value.id(), task))
     }
 
     /// Insert a new value under the parent [`AttributeValue`] in the given [`AttributeContext`]. This is mostly only
@@ -1671,8 +1674,9 @@ impl AttributeValuePayload {
 }
 
 #[must_use]
-#[derive(Debug)]
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
 pub struct DependentValuesAsyncTasks {
+    // TODO: this should be removed from here and equeued separately
     component_task: Option<ComponentAsyncTasks>,
     attribute_value_id: Option<AttributeValueId>,
 }
@@ -1725,7 +1729,7 @@ impl DependentValuesAsyncTasks {
             if let Some((component_id, system_id)) = self
                 .component_task
                 .as_ref()
-                .map(|t| (*t.component.id(), t.system_id))
+                .map(|t| (t.component_id, t.system_id))
             {
                 WsEvent::updated_dependent_value(
                     component_id,

@@ -1,17 +1,85 @@
-use std::sync::Arc;
-
+use faktory::Producer;
+use serde::{Deserialize, Serialize};
 use si_data::{
     nats,
     pg::{self, InstrumentedClient, InstrumentedTransaction, PgPoolResult},
     NatsClient, NatsTxn, PgPool, PgTxn,
 };
+use std::{fmt, net::TcpStream, sync::Arc};
 use thiserror::Error;
+use tokio::sync::Mutex;
 use veritech::EncryptionKey;
 
 use crate::{
-    node::NodeId, BillingAccountId, HistoryActor, OrganizationId, ReadTenancy, ReadTenancyError,
-    Visibility, WorkspaceId, WriteTenancy,
+    attribute::value::DependentValuesAsyncTasks, node::NodeId, BillingAccountId,
+    ComponentAsyncTasks, HistoryActor, OrganizationId, ReadTenancy, ReadTenancyError, Visibility,
+    WorkspaceId, WriteTenancy,
 };
+
+#[derive(Clone)]
+pub struct FaktoryProducer {
+    inner: Arc<Mutex<Producer<TcpStream>>>,
+}
+
+impl FaktoryProducer {
+    pub fn new(uri: &str) -> Result<Self, TransactionsError> {
+        Ok(Self {
+            inner: Arc::new(Mutex::new(Producer::connect(Some(uri))?)),
+        })
+    }
+}
+
+impl fmt::Debug for FaktoryProducer {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        // TODO: improve this, and move out of this file
+        f.debug_struct("FaktoryProducer")
+            .field("inner", &"()")
+            .finish()
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
+#[serde(tag = "job_faktory_kind")]
+pub enum JobContent {
+    DependentValuesUpdate(DependentValuesAsyncTasks),
+    ComponentPostProcessing(ComponentAsyncTasks),
+}
+
+impl JobContent {
+    pub fn name(&self) -> &'static str {
+        match self {
+            Self::DependentValuesUpdate(_) => "DependentValuesUpdate",
+            Self::ComponentPostProcessing(_) => "ComponentPostProcessing",
+        }
+    }
+}
+
+#[must_use]
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq)]
+pub struct Job {
+    pub access_builder: AccessBuilder,
+    pub content: JobContent,
+    pub visibility: Visibility,
+}
+
+impl Job {
+    pub async fn run(
+        self,
+        ctx_builder: Arc<DalContextBuilder>,
+    ) -> Result<(), Box<dyn std::error::Error + 'static + Sync + Send>> {
+        match self.content {
+            JobContent::DependentValuesUpdate(task) => {
+                task.run(self.access_builder, self.visibility, &*ctx_builder)
+                    .await?
+            }
+            JobContent::ComponentPostProcessing(task) => {
+                task.run(self.access_builder, self.visibility, &*ctx_builder)
+                    .await?
+            }
+        }
+        Ok(())
+    }
+}
 
 /// A context type which contains handles to common core service dependencies.
 ///
@@ -23,6 +91,8 @@ pub struct ServicesContext {
     pg_pool: PgPool,
     /// A connected NATS client
     nats_conn: NatsClient,
+    /// A connected faktory client
+    faktory_conn: FaktoryProducer,
     /// A Veritech client, connected via a NATS connection.
     veritech: veritech::Client,
     /// A key for re-recrypting messages to the function execution system.
@@ -34,12 +104,14 @@ impl ServicesContext {
     pub fn new(
         pg_pool: PgPool,
         nats_conn: NatsClient,
+        faktory_conn: FaktoryProducer,
         veritech: veritech::Client,
         encryption_key: Arc<veritech::EncryptionKey>,
     ) -> Self {
         Self {
             pg_pool,
             nats_conn,
+            faktory_conn,
             veritech,
             encryption_key,
         }
@@ -67,6 +139,10 @@ impl ServicesContext {
         &self.veritech
     }
 
+    pub fn faktory_conn(&self) -> &FaktoryProducer {
+        &self.faktory_conn
+    }
+
     /// Gets a reference to the encryption key.
     pub fn encryption_key(&self) -> &EncryptionKey {
         &self.encryption_key
@@ -76,7 +152,11 @@ impl ServicesContext {
     pub async fn transactions_starter(&self) -> PgPoolResult<TransactionsStarter> {
         let pg_conn = self.pg_pool.get().await?;
         let nats_conn = self.nats_conn.clone();
-        Ok(TransactionsStarter::new(pg_conn, nats_conn))
+        Ok(TransactionsStarter::new(
+            pg_conn,
+            nats_conn,
+            self.faktory_conn.clone(),
+        ))
     }
 }
 
@@ -258,6 +338,20 @@ impl DalContext<'_, '_> {
         Ok(new)
     }
 
+    pub async fn enqueue_job(&self, content: JobContent) {
+        let access_builder = AccessBuilder::new(
+            self.read_tenancy().clone(),
+            self.write_tenancy().clone(),
+            self.history_actor().clone(),
+            self.application_node_id(),
+        );
+        self.txns().faktory_queue.lock().await.push(Job {
+            visibility: *self.visibility(),
+            content,
+            access_builder,
+        });
+    }
+
     /// Gets the dal context's txns.
     pub fn txns(&self) -> &Transactions<'_> {
         self.txns
@@ -405,7 +499,7 @@ impl RequestContext {
 }
 
 /// A request context builder which requires a [`Visibility`] to be completed.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct AccessBuilder {
     /// A suitable read tenancy for the consuming DAL objects.
     read_tenancy: ReadTenancy,
@@ -505,6 +599,10 @@ pub enum TransactionsError {
     #[error(transparent)]
     Nats(#[from] nats::Error),
     #[error(transparent)]
+    Faktory(#[from] faktory::Error),
+    #[error(transparent)]
+    SerdeJson(#[from] serde_json::Error),
+    #[error(transparent)]
     ReadTenancy(#[from] ReadTenancyError),
 }
 
@@ -513,20 +611,29 @@ pub enum TransactionsError {
 pub struct TransactionsStarter {
     pg_conn: InstrumentedClient,
     nats_conn: NatsClient,
+    faktory: FaktoryProducer,
 }
 
 impl TransactionsStarter {
     /// Builds a new [`TransactionsStarter`].
     #[must_use]
-    pub fn new(pg_conn: InstrumentedClient, nats_conn: NatsClient) -> Self {
-        Self { pg_conn, nats_conn }
+    pub fn new(
+        pg_conn: InstrumentedClient,
+        nats_conn: NatsClient,
+        faktory: FaktoryProducer,
+    ) -> Self {
+        Self {
+            pg_conn,
+            nats_conn,
+            faktory,
+        }
     }
 
     /// Starts and returns the underlying transactions as a [`Transactions`].
     pub async fn start(&mut self) -> Result<Transactions<'_>, TransactionsError> {
         let pg_txn = self.pg_conn.transaction().await?;
         let nats_txn = self.nats_conn.transaction();
-        Ok(Transactions::new(pg_txn, nats_txn))
+        Ok(Transactions::new(pg_txn, nats_txn, self.faktory.clone()))
     }
 
     /// Gets a reference to a PostgreSQL connection.
@@ -550,12 +657,19 @@ pub struct Transactions<'a> {
     pg_txn: PgTxn<'a>,
     /// A NATS transaction.
     nats_txn: NatsTxn,
+    faktory_conn: FaktoryProducer,
+    faktory_queue: tokio::sync::Mutex<Vec<Job>>,
 }
 
 impl<'a> Transactions<'a> {
     /// Creates and returns a new `Transactions` instance.
-    pub fn new(pg_txn: PgTxn<'a>, nats_txn: NatsTxn) -> Self {
-        Self { pg_txn, nats_txn }
+    pub fn new(pg_txn: PgTxn<'a>, nats_txn: NatsTxn, faktory_conn: FaktoryProducer) -> Self {
+        Self {
+            pg_txn,
+            nats_txn,
+            faktory_conn,
+            faktory_queue: Default::default(),
+        }
     }
 
     /// Gets a reference to the PostgreSQL transaction.
@@ -572,6 +686,20 @@ impl<'a> Transactions<'a> {
     pub async fn commit(self) -> Result<(), TransactionsError> {
         self.pg_txn.commit().await?;
         self.nats_txn.commit().await?;
+
+        let mut queue = self.faktory_queue.into_inner();
+        queue.dedup();
+
+        for job in queue {
+            self.faktory_conn
+                .inner
+                .lock()
+                .await
+                .enqueue(faktory::Job::new(
+                    job.content.name(),
+                    vec![serde_json::to_string(&job)?],
+                ))?;
+        }
         Ok(())
     }
 

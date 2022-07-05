@@ -25,6 +25,7 @@ async fn create_secret() {
         auth_token,
         dal_ctx,
         dal_txns,
+        _faktory,
     );
 
     let visibility = Visibility::new_head(false);

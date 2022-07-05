@@ -42,14 +42,14 @@ pub async fn insert_property_editor_value(
 
     txns.commit().await?;
 
-    tokio::task::spawn(async move {
-        if let Err(err) = async_tasks
-            .run(request_ctx, request.visibility, &builder)
-            .await
-        {
-            error!("Component async task execution failed: {err}");
-        }
-    });
+    //tokio::task::spawn(async move {
+    //    if let Err(err) = async_tasks
+    //        .run(request_ctx, request.visibility, &builder)
+    //        .await
+    //    {
+    //        error!("Component async task execution failed: {err}");
+    //    }
+    //});
 
     Ok(Json(InsertPropertyEditorValueResponse { success: true }))
 }

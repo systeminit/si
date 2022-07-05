@@ -242,14 +242,15 @@ macro_rules! test_setup {
         $nba:ident,
         $auth_token:ident,
         $dal_ctx:ident,
-        $dal_txns:ident $(,)?
+        $dal_txns:ident,
+        $faktory:ident $(,)?
     ,
     ) => {
         dal::test_harness::one_time_setup()
             .await
             .expect("one time setup failed");
         let $ctx = dal::test_harness::TestContext::init().await;
-        let ($pg, $nats_conn, $veritech, $encr_key, $jwt_secret_key) = $ctx.entries();
+        let ($pg, $nats_conn, $faktory, $veritech, $encr_key, $jwt_secret_key) = $ctx.entries();
         let telemetry = $ctx.telemetry();
         let $nats = $nats_conn.transaction();
         let mut $pgconn = $pg.get().await.expect("cannot connect to pg");
@@ -258,6 +259,7 @@ macro_rules! test_setup {
             telemetry,
             $pg.clone(),
             $nats_conn.clone(),
+            $faktory.clone(),
             $veritech.clone(),
             $encr_key.clone(),
             $jwt_secret_key.clone(),
@@ -270,6 +272,7 @@ macro_rules! test_setup {
             let services_context = dal::ServicesContext::new(
                 $pg.clone(),
                 $nats_conn.clone(),
+                $faktory.clone(),
                 $veritech.clone(),
                 std::sync::Arc::new($encr_key.clone()),
             );
@@ -291,6 +294,7 @@ macro_rules! test_setup {
         let services_context = dal::ServicesContext::new(
             $pg.clone(),
             $nats_conn.clone(),
+            $faktory.clone(),
             $veritech.clone(),
             std::sync::Arc::new($encr_key.clone()),
         );

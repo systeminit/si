@@ -1,5 +1,8 @@
 use axum::Json;
-use dal::{Component, ComponentId, StandardModel, SystemId, Visibility};
+use dal::{
+    attribute::value::DependentValuesAsyncTasks, context::JobContent, Component, ComponentId,
+    StandardModel, SystemId, Visibility,
+};
 use serde::{Deserialize, Serialize};
 
 use super::{ComponentError, ComponentResult};
@@ -35,16 +38,18 @@ pub async fn generate_code(
         .await?
         .ok_or(ComponentError::ComponentNotFound)?;
     let async_tasks = component.build_async_tasks(&ctx, system_id).await?;
+    ctx.enqueue_job(JobContent::ComponentPostProcessing(async_tasks))
+        .await;
     txns.commit().await?;
 
-    tokio::task::spawn(async move {
-        if let Err(err) = async_tasks
-            .run(request_ctx, request.visibility, &builder)
-            .await
-        {
-            error!("Component async task execution failed: {err}");
-        }
-    });
+    //tokio::task::spawn(async move {
+    //    if let Err(err) = async_tasks
+    //        .run(request_ctx, request.visibility, &builder)
+    //        .await
+    //    {
+    //        error!("Component async task execution failed: {err}");
+    //    }
+    //});
 
     Ok(Json(GenerateCodeResponse { success: true }))
 }

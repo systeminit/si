@@ -31,6 +31,7 @@ tower = { version = "0.4.10" }
 tower-http = { version = "0.3", features = ["trace"] }
 veritech = { path = "../../lib/veritech", features = ["client", "server"] }
 base64 = "0.13.0"
+faktory = "0.12"
 
 [dev-dependencies]
 serde_url_params = "0.2.1"

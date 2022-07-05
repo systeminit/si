@@ -51,12 +51,18 @@ impl AttributeValueDependentUpdateHarness {
             for mut attribute_value_that_needs_to_be_updated in
                 attribute_values_that_need_to_be_updated
             {
-                components_updated.insert(AlmostComponentAsyncTask {
-                    component_id: attribute_value_that_needs_to_be_updated
-                        .context
-                        .component_id(),
-                    system_id: attribute_value_that_needs_to_be_updated.context.system_id(),
-                });
+                if attribute_value_that_needs_to_be_updated
+                    .context
+                    .component_id()
+                    .is_some()
+                {
+                    components_updated.insert(AlmostComponentAsyncTask {
+                        component_id: attribute_value_that_needs_to_be_updated
+                            .context
+                            .component_id(),
+                        system_id: attribute_value_that_needs_to_be_updated.context.system_id(),
+                    });
+                }
                 let attribute_prototype = attribute_value_that_needs_to_be_updated
                     .attribute_prototype(ctx)
                     .await?
@@ -200,12 +206,10 @@ impl AttributeValueDependentUpdateHarness {
 
         let mut async_tasks = Vec::with_capacity(components_updated.len());
         for almost_task in components_updated {
-            let component = Component::get_by_id(ctx, &almost_task.component_id)
-                .await?
-                .ok_or(AttributeValueError::ComponentNotFound(
-                    almost_task.component_id,
-                ))?;
-            async_tasks.push(ComponentAsyncTasks::new(component, almost_task.system_id));
+            async_tasks.push(ComponentAsyncTasks::new(
+                almost_task.component_id,
+                almost_task.system_id,
+            ));
         }
 
         Ok(async_tasks)

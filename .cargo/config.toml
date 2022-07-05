@@ -3,5 +3,8 @@ rustflags = [
     "-C", "link-arg=-fuse-ld=lld",
 ]
 
+[profile.dev.package.sdf-cli]
+opt-level = 1
+
 [profile.test.package.dal]
 opt-level = 1

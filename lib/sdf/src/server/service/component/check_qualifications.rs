@@ -1,6 +1,7 @@
 use axum::Json;
 use dal::{
-    component::ComponentAsyncTasks, Component, ComponentId, StandardModel, SystemId, Visibility,
+    attribute::value::DependentValuesAsyncTasks, component::ComponentAsyncTasks,
+    context::JobContent, Component, ComponentId, StandardModel, SystemId, Visibility,
 };
 use serde::{Deserialize, Serialize};
 
@@ -47,17 +48,20 @@ pub async fn check_qualifications(
     component
         .prepare_qualifications_check(&ctx, system_id)
         .await?;
+
+    let async_tasks = ComponentAsyncTasks::new(*component.id(), system_id);
+    ctx.enqueue_job(JobContent::ComponentPostProcessing(async_tasks))
+        .await;
     txns.commit().await?;
 
-    let async_tasks = ComponentAsyncTasks::new(component, system_id);
-    tokio::task::spawn(async move {
-        if let Err(err) = async_tasks
-            .run(request_ctx, request.visibility, &builder)
-            .await
-        {
-            error!("Component async qualification check failed: {err}");
-        }
-    });
+    //tokio::task::spawn(async move {
+    //    if let Err(err) = async_tasks
+    //        .run(request_ctx, request.visibility, &builder)
+    //        .await
+    //    {
+    //        error!("Component async qualification check failed: {err}");
+    //    }
+    //});
 
     Ok(Json(CheckQualficationsResponse { success: true }))
 }

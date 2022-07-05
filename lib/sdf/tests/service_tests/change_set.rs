@@ -40,6 +40,7 @@ async fn list_open_change_sets() {
         auth_token,
         dal_ctx,
         dal_txns,
+        _faktory,
     );
     let dal_ctx = dal_ctx.clone_with_new_billing_account_tenancies(*nba.billing_account.id());
     let _a_change_set = dal_create_change_set(&dal_ctx).await;
@@ -72,6 +73,7 @@ async fn create_change_set() {
         auth_token,
         _dal_ctx,
         dal_txns,
+        _faktory,
     );
     let request: CreateChangeSetRequest = CreateChangeSetRequest {
         change_set_name: "mastodon".to_string(),
@@ -108,6 +110,7 @@ async fn get_change_set() {
         auth_token,
         dal_ctx,
         dal_txns,
+        _faktory,
     );
     let dal_ctx = dal_ctx.clone_with_new_billing_account_tenancies(*nba.billing_account.id());
     let change_set = dal_create_change_set(&dal_ctx).await;
@@ -136,6 +139,7 @@ async fn start_edit_session() {
         auth_token,
         dal_ctx,
         dal_txns,
+        _faktory,
     );
     let _history_actor = HistoryActor::SystemInit;
     let change_set = dal_create_change_set(&dal_ctx).await;
@@ -171,6 +175,7 @@ async fn cancel_edit_session() {
         auth_token,
         dal_ctx,
         dal_txns,
+        _faktory,
     );
     let dal_ctx = dal_ctx.clone_with_new_billing_account_tenancies(*nba.billing_account.id());
     let change_set = dal_create_change_set(&dal_ctx).await;
@@ -207,6 +212,7 @@ async fn save_edit_session() {
         auth_token,
         dal_ctx,
         dal_txns,
+        _faktory,
     );
     let dal_ctx = dal_ctx.clone_with_new_billing_account_tenancies(*nba.billing_account.id());
     let change_set = dal_create_change_set(&dal_ctx).await;
@@ -243,6 +249,7 @@ async fn apply_change_set() {
         auth_token,
         dal_ctx,
         dal_txns,
+        _faktory,
     );
     let dal_ctx = dal_ctx.clone_with_new_billing_account_tenancies(*nba.billing_account.id());
     let change_set = dal_create_change_set(&dal_ctx).await;

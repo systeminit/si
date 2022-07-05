@@ -29,6 +29,7 @@ async fn create_schema() {
         auth_token,
         _dal_ctx,
         dal_txns,
+        _faktory,
     );
     let visibility = Visibility::new_head(false);
     let request = CreateSchemaRequest {
@@ -65,6 +66,7 @@ async fn list_schemas() {
         auth_token,
         dal_ctx,
         dal_txns,
+        _faktory,
     );
     let dal_ctx = dal_ctx.clone_with_universal_head();
     let visibility = Visibility::new_head(false);
@@ -114,6 +116,7 @@ async fn get_schemas() {
         auth_token,
         dal_ctx,
         dal_txns,
+        _faktory,
     );
     let dal_ctx = dal_ctx.clone_with_universal_head();
     let visibility = Visibility::new_head(false);

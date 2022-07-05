@@ -2,10 +2,14 @@
 
 use std::sync::Arc;
 
+use context::FaktoryProducer;
+use faktory::Producer;
 use rand::Rng;
 use si_data::{NatsClient, NatsError, PgError, PgPool, PgPoolError};
+use std::net::TcpStream;
 use telemetry::prelude::*;
 use thiserror::Error;
+use tokio::sync::Mutex;
 
 pub mod attribute;
 pub mod billing_account;
@@ -197,12 +201,14 @@ pub async fn migrate(pg: &PgPool) -> ModelResult<()> {
 pub async fn migrate_builtins(
     pg: &PgPool,
     nats: &NatsClient,
+    faktory_conn: FaktoryProducer,
     veritech: veritech::Client,
     encryption_key: &EncryptionKey,
 ) -> ModelResult<()> {
     let services_context = ServicesContext::new(
         pg.clone(),
         nats.clone(),
+        faktory_conn,
         veritech,
         Arc::new(*encryption_key),
     );

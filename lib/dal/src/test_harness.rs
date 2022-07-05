@@ -11,6 +11,7 @@ use veritech::{EncryptionKey, Instance, StandardConfig};
 use crate::{
     billing_account::BillingAccountSignup,
     component::ComponentKind,
+    context::FaktoryProducer,
     func::{binding::FuncBinding, FuncId},
     jwt_key::JwtSecretKey,
     key_pair::KeyPairId,
@@ -28,6 +29,7 @@ use crate::{
 pub struct TestConfig {
     pg: PgPoolConfig,
     nats: NatsConfig,
+    faktory: String,
     jwt_encrypt: JwtSecretKey,
 }
 
@@ -37,15 +39,22 @@ impl Default for TestConfig {
         if let Ok(value) = env::var("SI_TEST_NATS_URL") {
             nats.url = value;
         }
+
         let mut pg = PgPoolConfig::default();
         if let Ok(value) = env::var("SI_TEST_PG_HOSTNAME") {
             pg.hostname = value;
         }
         pg.dbname = env::var("SI_TEST_PG_DBNAME").unwrap_or_else(|_| "si_test".to_string());
 
+        let mut faktory = "tcp://localhost:7419".to_owned();
+        if let Ok(value) = env::var("SI_TEST_FAKTORY_URL") {
+            faktory = value;
+        }
+
         Self {
             pg,
             nats,
+            faktory,
             jwt_encrypt: JwtSecretKey::default(),
         }
     }
@@ -65,6 +74,7 @@ pub struct TestContext {
     tmp_event_log_fs_root: tempfile::TempDir,
     pub pg: PgPool,
     pub nats_conn: NatsClient,
+    pub faktory: FaktoryProducer,
     pub veritech: veritech::Client,
     pub encryption_key: EncryptionKey,
     pub jwt_secret_key: JwtSecretKey,
@@ -84,6 +94,8 @@ impl TestContext {
         let nats_conn = NatsClient::new(&settings.nats)
             .await
             .expect("failed to connect to NATS");
+        let faktory =
+            FaktoryProducer::new(&settings.faktory).expect("failed to connect to Faktory");
         // Create a dedicated Veritech server with a unique subject prefix for each test
         let nats_subject_prefix = nats_prefix();
         let veritech_server =
@@ -104,6 +116,7 @@ impl TestContext {
             tmp_event_log_fs_root,
             pg,
             nats_conn,
+            faktory,
             veritech,
             encryption_key,
             jwt_secret_key: secret_key,
@@ -116,6 +129,7 @@ impl TestContext {
     ) -> (
         &PgPool,
         &NatsClient,
+        FaktoryProducer,
         veritech::Client,
         &EncryptionKey,
         &JwtSecretKey,
@@ -123,6 +137,7 @@ impl TestContext {
         (
             &self.pg,
             &self.nats_conn,
+            self.faktory.clone(),
             self.veritech.clone(),
             &self.encryption_key,
             &self.jwt_secret_key,

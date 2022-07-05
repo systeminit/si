@@ -3,7 +3,7 @@ pub use config::{
     StandardConfig, StandardConfigFile,
 };
 pub use routes::{routes, AppError, AppResult};
-pub use server::{build_service, Server};
+pub use server::{build_service, FaktoryProducer, Server};
 pub use uds::{UdsIncomingStream, UdsIncomingStreamError};
 
 mod config;

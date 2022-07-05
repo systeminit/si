@@ -28,6 +28,7 @@ async fn create_application() {
         auth_token,
         _dal_ctx,
         dal_txns,
+        _faktory,
     );
     let _visibility = Visibility::new_head(false);
     let request = CreateApplicationRequest {
@@ -62,6 +63,7 @@ async fn list_applications() {
         auth_token,
         dal_ctx,
         dal_txns,
+        _faktory,
     );
 
     let visibility = Visibility::new_head(false);
