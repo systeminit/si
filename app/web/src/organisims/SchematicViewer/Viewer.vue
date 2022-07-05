@@ -44,6 +44,7 @@ const props = defineProps<{
   editorContext: EditorContext | null;
   schematicKind: SchematicKind;
   deploymentNodeSelected: number | null;
+  lightMode?: boolean;
 }>();
 
 const machine = useMachine(props.viewerState.machine);
@@ -126,6 +127,13 @@ onMounted(async () => {
   if (!canvas.element.value) throw new Error("canvas is missing");
   if (!container.element.value) throw new Error("container is missing");
   resizeObserver.observe(container.element.value as Element);
+
+  let backgroundColor = 0x282828;
+  if (props.lightMode) {
+    // RGB(245,244,244)
+    backgroundColor = 0xf5f4f4;
+  }
+
   const renderer = new Renderer({
     view: canvas.element.value,
     resolution: window.devicePixelRatio * 3 || 1,
@@ -133,7 +141,7 @@ onMounted(async () => {
     height: container.element.value.offsetHeight,
     autoDensity: true,
     antialias: true,
-    backgroundColor: 0x282828,
+    backgroundColor: backgroundColor,
   });
   maybeRenderer = renderer;
 

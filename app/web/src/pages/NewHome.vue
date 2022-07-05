@@ -1,15 +1,10 @@
 <template>
   <div class="flex flex-col items-center justify-center h-screen bg-white">
     <router-view class="flex" />
-
-    <div class="flex m-6 border-2 p-2 rounded-lg border-black">
-      <OldAppSwitch />
-    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import OldAppSwitch from "@/atoms/OldAppSwitch.vue";
 import { computed, onMounted } from "vue";
 import { SessionService } from "@/service/session";
 import { useRouter, useRoute } from "vue-router";
