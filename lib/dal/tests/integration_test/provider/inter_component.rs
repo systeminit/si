@@ -335,9 +335,12 @@ async fn setup_esp(ctx: &DalContext<'_, '_>) -> ComponentPayload {
     SchemaVariant::create_implicit_internal_providers(ctx, *schema.id(), *schema_variant.id())
         .await
         .expect("could not create internal providers for schema variant");
-    let (component, _, _) = Component::new_for_schema_with_node(ctx, "esp", schema.id())
+    let (component, _, task) = Component::new_for_schema_with_node(ctx, "esp", schema.id())
         .await
         .expect("unable to create component");
+    task.run_updates_in_ctx(ctx)
+        .await
+        .expect("unable to run async tasks");
 
     // This context can also be used for generating component views.
     let base_attribute_read_context = AttributeReadContext {
@@ -405,9 +408,12 @@ async fn setup_swings(ctx: &DalContext<'_, '_>) -> ComponentPayload {
     SchemaVariant::create_implicit_internal_providers(ctx, *schema.id(), *schema_variant.id())
         .await
         .expect("could not create internal providers for schema variant");
-    let (component, _, _) = Component::new_for_schema_with_node(ctx, "swings", schema.id())
+    let (component, _, task) = Component::new_for_schema_with_node(ctx, "swings", schema.id())
         .await
         .expect("unable to create component");
+    task.run_updates_in_ctx(ctx)
+        .await
+        .expect("unable to run async tasks");
 
     // This context can also be used for generating component views.
     let base_attribute_read_context = AttributeReadContext {
@@ -581,10 +587,13 @@ async fn with_deep_data_structure(ctx: &DalContext<'_, '_>) {
     .await
     .expect("cannot create prototype argument for destination");
 
-    let (source_component, _, _) =
+    let (source_component, _, task) =
         Component::new_for_schema_with_node(ctx, "Source Component", source_schema.id())
             .await
             .expect("Unable to create source component");
+    task.run_updates_in_ctx(ctx)
+        .await
+        .expect("unable to run async tasks");
     let source_attribute_read_context = AttributeReadContext {
         prop_id: None,
         schema_id: Some(*source_schema.id()),
@@ -608,10 +617,13 @@ async fn with_deep_data_structure(ctx: &DalContext<'_, '_>) {
             .properties,
     );
 
-    let (destination_component, _, _) =
+    let (destination_component, _, task) =
         Component::new_for_schema_with_node(ctx, "Destination Component", destination_schema.id())
             .await
             .expect("Unable to create destination component");
+    task.run_updates_in_ctx(ctx)
+        .await
+        .expect("unable to run async tasks");
     let destination_attribute_read_context = AttributeReadContext {
         prop_id: None,
         schema_id: Some(*destination_schema.id()),
