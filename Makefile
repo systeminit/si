@@ -193,6 +193,10 @@ tidy-crates:
 	cd $(MAKEPATH)/ci && $(MAKE) tidy-crates
 .PHONY: tidy-crates
 
+tidy-web:
+	cd $(MAKEPATH)/ci && $(MAKE) tidy-web
+.PHONY: tidy-web
+
 docs-open:
 	cd $(MAKEPATH); cargo doc --all
 	cd $(MAKEPATH); cargo doc -p dal --open

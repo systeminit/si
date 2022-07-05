@@ -25,7 +25,6 @@ import SchematicViewer from "@/organisims/SchematicViewer.vue";
 import NewHome from "@/pages/NewHome.vue";
 import Workspace from "@/templates/Workspace.vue";
 import WorkspaceView from "@/organisims/Workspace/WorkspaceView.vue";
-import WorkspaceList from "@/organisims/Workspace/WorkspaceList.vue";
 
 const routes: RouteRecordRaw[] = [
   {
@@ -141,13 +140,8 @@ const routes: RouteRecordRaw[] = [
         path: "w",
         name: "workspace",
         component: Workspace,
-        redirect: { name: "workspace-list" },
+        redirect: { name: "new" },
         children: [
-          {
-            name: "workspace-list",
-            path: "list",
-            component: WorkspaceList,
-          },
           {
             name: "workspace-view",
             path: ":workspaceId",
