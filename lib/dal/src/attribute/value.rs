@@ -11,9 +11,6 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use uuid::Uuid;
 
-use crate::attribute::value::dependent_update::AttributeValueDependentUpdateHarness;
-use crate::context::JobContent;
-use crate::ws_event::{WsEvent, WsEventError};
 use crate::{
     attribute::{
         context::{
@@ -21,7 +18,9 @@ use crate::{
             AttributeReadContext,
         },
         prototype::{AttributePrototype, AttributePrototypeId},
+        value::dependent_update::collection::AttributeValueDependentCollectionHarness,
     },
+    context::JobContent,
     func::{
         backend::{
             array::FuncBackendArrayArgs, boolean::FuncBackendBooleanArgs,
@@ -36,6 +35,7 @@ use crate::{
     impl_standard_model, pk,
     standard_model::{self, TypeHint},
     standard_model_accessor, standard_model_belongs_to, standard_model_has_many,
+    ws_event::{WsEvent, WsEventError},
     AttributeContextError, AttributePrototypeArgumentError, Component, ComponentAsyncTasks,
     ComponentId, DalContext, Func, FuncError, HistoryEventError, IndexMap, InternalProviderId,
     Prop, PropError, PropId, PropKind, ReadTenancyError, StandardModel, StandardModelError,
@@ -44,6 +44,8 @@ use crate::{
 use crate::{
     AccessBuilder, BillingAccountId, DalContextBuilder, HistoryActor, SystemId, WsPayload,
 };
+
+use self::dependent_update::AttributeValueDependentUpdateHarness;
 
 pub mod view;
 
@@ -952,11 +954,20 @@ impl AttributeValue {
             };
 
         // After we have _completely_ updated ourself, we can update our dependent values.
-        let task = DependentValuesAsyncTasks::new(async_tasks, Some(*attribute_value.id()));
-        ctx.enqueue_job(JobContent::DependentValuesUpdate(task.clone()))
+        let component_task = DependentValuesAsyncTasks::new(async_tasks, None);
+        ctx.enqueue_job(JobContent::DependentValuesUpdate(component_task.clone()))
             .await;
 
-        Ok((value, *attribute_value.id(), task))
+        let dependent_attribute_values =
+            AttributeValueDependentCollectionHarness::collect(ctx, attribute_value.context).await?;
+        for dependent_attribute_value in dependent_attribute_values {
+            ctx.enqueue_job(JobContent::DependentValuesUpdate(
+                DependentValuesAsyncTasks::new(None, Some(*dependent_attribute_value.id())),
+            ))
+            .await;
+        }
+
+        Ok((value, *attribute_value.id(), component_task))
     }
 
     /// Insert a new value under the parent [`AttributeValue`] in the given [`AttributeContext`]. This is mostly only
