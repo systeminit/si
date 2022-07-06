@@ -115,14 +115,14 @@ async fn run(args: args::Args, mut telemetry: telemetry::Client) -> Result<()> {
 
     start_tracing_level_signal_handler_task(&telemetry)?;
 
-    Server::start_faktory_job_executor(
-        pg_pool.clone(),
-        nats.clone(),
-        faktory_conn.clone(),
-        veritech.clone(),
-        encryption_key,
-    )
-    .await;
+    //Server::start_faktory_job_executor(
+    //    pg_pool.clone(),
+    //    nats.clone(),
+    //    faktory_conn.clone(),
+    //    veritech.clone(),
+    //    encryption_key,
+    //)
+    //.await;
 
     Server::start_resource_sync_scheduler(
         pg_pool.clone(),

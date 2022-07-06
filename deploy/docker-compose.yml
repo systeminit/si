@@ -31,6 +31,7 @@ services:
     depends_on:
       - watchtower
       - pg
+      - faktory
       - otel
       - nats
     restart: "unless-stopped"
@@ -51,6 +52,26 @@ services:
       - nats
     restart: "unless-stopped"
 
+      #pinga:
+      #  image: "index.docker.io/systeminit/pinga:stable"
+      #  environment:
+      #    - "SI_SDF__PG__HOSTNAME=postgres"
+      #    - "SI_SDF__NATS__URL=nats"
+      #    - "OTEL_EXPORTER_OTLP_ENDPOINT=http://otelcol:4317"
+      #  extra_hosts:
+      #    - "postgres:${GATEWAY:-I like my butt}"
+      #    - "nats:${GATEWAY:-I like my butt}"
+      #    - "otelcol:${GATEWAY:-I like my butt}"
+      #  labels:
+      #    - "com.centurylinklabs.watchtower.enable=true"
+      #  depends_on:
+      #    - watchtower
+      #    - pg
+      #    - faktory
+      #    - otel
+      #    - nats
+      #  restart: "unless-stopped"
+
   pg:
     image: "index.docker.io/systeminit/postgres:stable"
     command: "-c log_error_verbosity=VERBOSE \
@@ -70,6 +91,12 @@ services:
       - "5432:5432"
     depends_on:
       - watchtower
+
+  faktory:
+    image: "index.docker.io/contribsys/faktory:latest"
+    ports:
+      - "7419:7419"
+      - "7420:7420"
 
   nats:
     image: "index.docker.io/systeminit/nats:stable"

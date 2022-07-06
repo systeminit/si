@@ -6,10 +6,10 @@ use si_data::{
     NatsClient, NatsTxn, PgPool, PgTxn,
 };
 use std::{fmt, net::TcpStream, sync::Arc};
+use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::Mutex;
 use veritech::EncryptionKey;
-use telemetry::prelude::*;
 
 use crate::{
     attribute::value::DependentValuesAsyncTasks, node::NodeId, BillingAccountId,
@@ -25,7 +25,9 @@ pub struct FaktoryProducer {
 impl FaktoryProducer {
     pub fn new(uri: &str) -> Result<Self, TransactionsError> {
         Ok(Self {
-            inner: Arc::new(Mutex::new(Producer::connect(Some(uri)).map_err(TransactionsError::FaktoryConnect)?)),
+            inner: Arc::new(Mutex::new(
+                Producer::connect(Some(uri)).map_err(TransactionsError::FaktoryConnect)?,
+            )),
         })
     }
 }
@@ -52,6 +54,17 @@ impl JobContent {
             Self::DependentValuesUpdate(_) => "DependentValuesUpdate",
             Self::ComponentPostProcessing(_) => "ComponentPostProcessing",
         }
+    }
+
+    pub async fn run_in_ctx(
+        self,
+        ctx: &DalContext<'_, '_>,
+    ) -> Result<(), Box<dyn std::error::Error + 'static + Sync + Send>> {
+        match self {
+            JobContent::DependentValuesUpdate(task) => task.run_in_ctx(ctx).await?,
+            JobContent::ComponentPostProcessing(task) => task.run_in_ctx(ctx).await?,
+        }
+        Ok(())
     }
 }
 
@@ -351,6 +364,19 @@ impl DalContext<'_, '_> {
             content,
             access_builder,
         });
+    }
+
+    // TODO: change error type
+    pub async fn run_enqueued_jobs(
+        &self,
+    ) -> Result<(), Box<dyn std::error::Error + 'static + Sync + Send>> {
+        while !self.txns().faktory_queue.lock().await.is_empty() {
+            let jobs = std::mem::take(&mut *self.txns().faktory_queue.lock().await);
+            for job in jobs {
+                job.content.run_in_ctx(self).await?;
+            }
+        }
+        Ok(())
     }
 
     /// Gets the dal context's txns.
@@ -704,7 +730,8 @@ impl<'a> Transactions<'a> {
                 .enqueue(faktory::Job::new(
                     job.content.name(),
                     vec![serde_json::to_string(&job)?],
-                )).map_err(TransactionsError::FaktoryEnqueue)?;
+                ))
+                .map_err(TransactionsError::FaktoryEnqueue)?;
         }
         Ok(())
     }

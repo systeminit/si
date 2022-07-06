@@ -1,7 +1,6 @@
 use axum::Json;
 use dal::{
-    context::JobContent, Component,
-    ComponentAsyncTasks, Func, QualificationPrototype, QualificationPrototypeId, Schema,
+    context::JobContent, Component, Func, QualificationPrototype, QualificationPrototypeId, Schema,
     StandardModel, SystemId, Visibility,
 };
 use serde::{Deserialize, Serialize};
@@ -32,7 +31,7 @@ pub async fn set_code(
     Json(request): Json<SetCodeRequest>,
 ) -> QualificationResult<Json<SetCodeResponse>> {
     let txns = txns.start().await?;
-    let ctx = builder.build(request_ctx.clone().build(request.visibility), &txns);
+    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
 
     // TODO: actually use the system to filter qualifications
     let system_id = request.system_id.unwrap_or(SystemId::NONE);
@@ -125,7 +124,7 @@ pub async fn set_code(
     }
 
     for component in components {
-        let mut async_tasks = ComponentAsyncTasks::new(*component.id(), system_id);
+        let mut async_tasks = component.build_async_tasks(&ctx, system_id).await?;
         async_tasks.set_qualification_prototype_id(*prototype.id());
         ctx.enqueue_job(JobContent::ComponentPostProcessing(async_tasks))
             .await;

@@ -406,10 +406,9 @@ pub async fn create_component_and_schema(ctx: &DalContext<'_, '_>) -> Component 
     let schema = create_schema(ctx, &SchemaKind::Concept).await;
     let schema_variant = create_schema_variant(ctx, *schema.id()).await;
     let name = generate_fake_name();
-    let (entity, _, _) =
-        Component::new_for_schema_variant_with_node(ctx, &name, schema_variant.id())
-            .await
-            .expect("cannot create component");
+    let (entity, _) = Component::new_for_schema_variant_with_node(ctx, &name, schema_variant.id())
+        .await
+        .expect("cannot create component");
     entity
 }
 
@@ -419,13 +418,12 @@ pub async fn create_component_for_schema_variant(
     schema_variant_id: &SchemaVariantId,
 ) -> Component {
     let name = generate_fake_name();
-    let (component, _, task) =
-        Component::new_for_schema_variant_with_node(ctx, &name, schema_variant_id)
-            .await
-            .expect("cannot create component");
-    task.run_updates_in_ctx(ctx)
+    let (component, _) = Component::new_for_schema_variant_with_node(ctx, &name, schema_variant_id)
         .await
-        .expect("cannot run async updates");
+        .expect("cannot create component");
+    ctx.run_enqueued_jobs()
+        .await
+        .expect("cannot run enqueued jobs");
     component
 }
 
@@ -435,7 +433,7 @@ pub async fn create_component_for_schema(
     schema_id: &SchemaId,
 ) -> Component {
     let name = generate_fake_name();
-    let (component, _, _) = Component::new_for_schema_with_node(ctx, &name, schema_id)
+    let (component, _) = Component::new_for_schema_with_node(ctx, &name, schema_id)
         .await
         .expect("cannot create component");
     component

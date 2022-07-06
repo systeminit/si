@@ -4,6 +4,7 @@ use axum::routing::{get, post};
 use axum::Json;
 use axum::Router;
 use dal::socket::{SocketError, SocketId};
+use dal::AttributeReadContext;
 use dal::{
     node::NodeId, schema::variant::SchemaVariantError, AttributeValueError, ComponentError,
     NodeError, NodeKind, NodeMenuError, NodePositionError, ReadTenancyError,
@@ -36,6 +37,8 @@ pub enum SchematicError {
     Schema(#[from] DalSchemaError),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
+    #[error("attrubte value not found for context: {0:?}")]
+    AttributeValueNotFoundForContext(AttributeReadContext),
     #[error("schema not found")]
     SchemaNotFound,
     #[error("component not found")]

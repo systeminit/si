@@ -1,5 +1,3 @@
-use std::{net::TcpStream, sync::Arc};
-
 use crate::server::config::JwtSecretKey;
 use axum::{
     response::{IntoResponse, Response},
@@ -9,9 +7,10 @@ use axum::{
 use dal::context::{FaktoryProducer, ServicesContext};
 use hyper::StatusCode;
 use si_data::{nats, pg, SensitiveString};
+use std::sync::Arc;
 use telemetry::TelemetryClient;
 use thiserror::Error;
-use tokio::sync::{broadcast, mpsc, Mutex};
+use tokio::sync::{broadcast, mpsc};
 
 use super::{
     handlers,

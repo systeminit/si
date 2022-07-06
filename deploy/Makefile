@@ -13,7 +13,7 @@ partial: init
 		docker-compose \
 			-f $(MAKEPATH)/docker-compose.yml \
 			-f $(MAKEPATH)/docker-compose.env.yml \
-		up -d nats pg otel
+		up -d nats pg otel faktory
 
 # Run interactively and compose down beforehand. This target is meant to be run iteratively for
 # local development and testing.

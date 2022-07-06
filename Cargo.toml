@@ -5,6 +5,7 @@ debug = true
 members = [
     "bin/cyclone",
     "bin/sdf",
+    "bin/pinga",
     "bin/veritech",
     "lib/bytes-lines-codec",
     "lib/config-file",

@@ -1,9 +1,9 @@
 use axum::Json;
 use dal::{
     context::JobContent, func::backend::js_qualification::FuncBackendJsQualificationArgs,
-    generate_name, qualification_prototype::QualificationPrototypeContext, Component,
-    ComponentAsyncTasks, ComponentId, Func, FuncBackendKind, FuncBackendResponseType,
-    QualificationPrototype, QualificationPrototypeId, Schema, StandardModel, SystemId, Visibility,
+    generate_name, qualification_prototype::QualificationPrototypeContext, Component, ComponentId,
+    Func, FuncBackendKind, FuncBackendResponseType, QualificationPrototype,
+    QualificationPrototypeId, Schema, StandardModel, SystemId, Visibility,
 };
 use serde::{Deserialize, Serialize};
 
@@ -31,7 +31,7 @@ pub async fn create(
     Json(request): Json<CreateRequest>,
 ) -> QualificationResult<Json<CreateResponse>> {
     let txns = txns.start().await?;
-    let ctx = builder.build(request_ctx.clone().build(request.visibility), &txns);
+    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
 
     let mut func = Func::new(
         &ctx,
@@ -142,21 +142,11 @@ async function qualification(component) {
     let system_id = request.system_id.unwrap_or(SystemId::NONE);
 
     for component in components {
-        let mut async_tasks = ComponentAsyncTasks::new(*component.id(), system_id);
-        async_tasks.set_qualification_prototype_id(*prototype.id());
-        ctx.enqueue_job(JobContent::ComponentPostProcessing(async_tasks))
+        let task = component
+            .build_async_task(&ctx, system_id, *prototype.id())
+            .await?;
+        ctx.enqueue_job(JobContent::ComponentPostProcessing(task))
             .await;
-
-        //let request_ctx = request_ctx.clone();
-        //let builder = builder.clone();
-        //tokio::task::spawn(async move {
-        //    if let Err(err) = async_tasks
-        //        .run(request_ctx, request.visibility, &builder)
-        //        .await
-        //    {
-        //        error!("Component async qualification check failed: {err}");
-        //    }
-        //});
     }
 
     txns.commit().await?;

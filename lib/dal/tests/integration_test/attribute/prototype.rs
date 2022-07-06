@@ -157,7 +157,7 @@ async fn list_for_context_with_a_hash(ctx: &DalContext<'_, '_>) {
             .expect("cannot retrieve albums AttributeValue")
             .expect("albums AttribtueValue not found");
 
-    let (_, albums_attribute_value_id, _) = AttributeValue::update_for_context(
+    let (_, albums_attribute_value_id) = AttributeValue::update_for_context(
         ctx,
         *albums_attribute_value.id(),
         Some(*domain_attribute_value.id()),
@@ -168,7 +168,7 @@ async fn list_for_context_with_a_hash(ctx: &DalContext<'_, '_>) {
     .await
     .expect("cannot update albums AttributeValue");
 
-    let (undertow_hash_attribute_value_id, _) = AttributeValue::insert_for_context(
+    let undertow_hash_attribute_value_id = AttributeValue::insert_for_context(
         ctx,
         albums_prototype_context,
         albums_attribute_value_id,
@@ -177,7 +177,7 @@ async fn list_for_context_with_a_hash(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("cannot create hash for Undertow");
-    let (undertow_attribute_value_id, _) = AttributeValue::insert_for_context(
+    let undertow_attribute_value_id = AttributeValue::insert_for_context(
         ctx,
         album_prototype_context,
         undertow_hash_attribute_value_id,
@@ -202,7 +202,7 @@ async fn list_for_context_with_a_hash(ctx: &DalContext<'_, '_>) {
             .expect("cannot find AttributeValue")
             .id();
 
-    let (lateralus_hash_attribute_value_id, _) = AttributeValue::insert_for_context(
+    let lateralus_hash_attribute_value_id = AttributeValue::insert_for_context(
         ctx,
         albums_prototype_context,
         albums_attribute_value_id,
@@ -211,7 +211,7 @@ async fn list_for_context_with_a_hash(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("cannot create hash for Lateralus");
-    let (lateralus_attribute_value_id, _) = AttributeValue::insert_for_context(
+    let lateralus_attribute_value_id = AttributeValue::insert_for_context(
         ctx,
         album_prototype_context,
         lateralus_hash_attribute_value_id,
@@ -248,7 +248,7 @@ async fn list_for_context_with_a_hash(ctx: &DalContext<'_, '_>) {
         .to_context()
         .expect("cannot create albums component AttributeContext");
 
-    let (_, lateralus_component_attribute_value_id, _) = AttributeValue::update_for_context(
+    let (_, lateralus_component_attribute_value_id) = AttributeValue::update_for_context(
         ctx,
         lateralus_attribute_value_id,
         Some(lateralus_hash_attribute_value_id),
@@ -276,7 +276,7 @@ async fn list_for_context_with_a_hash(ctx: &DalContext<'_, '_>) {
             .expect("cannot retrieve AttributePrototype")
             .expect("cannot find AttributePrototype");
 
-    let (fear_inoculum_hash_attribute_value_id, _) = AttributeValue::insert_for_context(
+    let fear_inoculum_hash_attribute_value_id = AttributeValue::insert_for_context(
         ctx,
         albums_component_context,
         albums_attribute_value_id,
@@ -285,7 +285,7 @@ async fn list_for_context_with_a_hash(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("cannot create Fear Inoculum array entry");
-    let (fear_inoculum_attribute_value_id, _) = AttributeValue::insert_for_context(
+    let fear_inoculum_attribute_value_id = AttributeValue::insert_for_context(
         ctx,
         component_album_prototype_context,
         fear_inoculum_hash_attribute_value_id,
@@ -385,12 +385,12 @@ async fn remove_component_specific(ctx: &DalContext<'_, '_>) {
         .await
         .expect("unable to create implicit internal providers");
 
-    let (component, _, task) = Component::new_for_schema_with_node(ctx, "toddhoward", schema.id())
+    let (component, _) = Component::new_for_schema_with_node(ctx, "toddhoward", schema.id())
         .await
         .expect("cannot create component");
-    task.run_updates_in_ctx(ctx)
+    ctx.run_enqueued_jobs()
         .await
-        .expect("unable to run async updates");
+        .expect("cannot run enqueued jobs");
 
     let read_context = AttributeReadContext {
         prop_id: None,

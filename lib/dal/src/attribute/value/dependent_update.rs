@@ -2,15 +2,14 @@
 //! [`AttributeValues`](crate::AttributeValue) that are "dependent" on an updated
 //! [`AttributeValue`](crate::AttributeValue).
 
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::HashMap;
 
 use crate::{
     attribute::context::AttributeContextBuilder,
     attribute::value::dependent_update::collection::AttributeValueDependentCollectionHarness,
     context::JobContent, AttributeContext, AttributePrototypeArgument, AttributeValue,
-    AttributeValueError, AttributeValueId, AttributeValueResult, Component, ComponentAsyncTasks,
-    ComponentId, DalContext, FuncBinding, InternalProvider, Prop, PropKind, StandardModel,
-    SystemId,
+    AttributeValueError, AttributeValueId, AttributeValueResult, Component, ComponentId,
+    DalContext, FuncBinding, InternalProvider, Prop, PropKind, StandardModel, SystemId,
 };
 
 use super::DependentValuesAsyncTasks;
@@ -32,7 +31,7 @@ impl AttributeValueDependentUpdateHarness {
     pub async fn update_dependent_values(
         ctx: &DalContext<'_, '_>,
         attribute_value_id_to_update: AttributeValueId,
-    ) -> AttributeValueResult<Vec<ComponentAsyncTasks>> {
+    ) -> AttributeValueResult<()> {
         let mut attribute_value_that_needs_to_be_updated =
             AttributeValue::get_by_id(ctx, &attribute_value_id_to_update)
                 .await?
@@ -211,26 +210,26 @@ impl AttributeValueDependentUpdateHarness {
                                 .internal_provider_id(),
                         )
                     })?;
-                    let provider_prop = Prop::get_by_id(ctx, internal_provider.prop_id())
-                        .await?
-                        .ok_or_else(|| {
-                            AttributeValueError::PropNotFound(*internal_provider.prop_id())
-                        })?;
 
-                    // The Root Prop won't have a parent Prop.
-                    if provider_prop.parent_prop(ctx).await?.is_none() {
-                        let task = component
-                            .build_async_tasks(
-                                ctx,
-                                attribute_value_that_needs_to_be_updated.context.system_id(),
-                            )
-                            .await
-                            .map_err(|err| AttributeValueError::Component(err.to_string()))?;
+                    if internal_provider.prop_id().is_some() {
+                        let provider_prop = Prop::get_by_id(ctx, internal_provider.prop_id())
+                            .await?
+                            .ok_or_else(|| {
+                                AttributeValueError::PropNotFound(*internal_provider.prop_id())
+                            })?;
 
-                        ctx.enqueue_job(JobContent::DependentValuesUpdate(
-                            DependentValuesAsyncTasks::new(Some(task), None),
-                        ))
-                        .await;
+                        let system_id =
+                            attribute_value_that_needs_to_be_updated.context.system_id();
+
+                        // The Root Prop won't have a parent Prop.
+                        if provider_prop.parent_prop(ctx).await?.is_none() {
+                            ctx.enqueue_job(JobContent::ComponentPostProcessing(
+                                component.build_async_tasks(ctx, system_id).await.map_err(
+                                    |err| AttributeValueError::Component(err.to_string()),
+                                )?,
+                            ))
+                            .await;
+                        }
                     }
                 }
             }
@@ -243,12 +242,12 @@ impl AttributeValueDependentUpdateHarness {
         .await?;
         for dependent_attribute_value in dependent_attribute_values {
             ctx.enqueue_job(JobContent::DependentValuesUpdate(
-                DependentValuesAsyncTasks::new(None, Some(*dependent_attribute_value.id())),
+                DependentValuesAsyncTasks::new(*dependent_attribute_value.id()),
             ))
             .await;
         }
 
-        Ok(vec![])
+        Ok(())
     }
 
     /// Build a [`FuncBinding`](crate::FuncBinding) argument from a provided

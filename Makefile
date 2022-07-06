@@ -164,6 +164,11 @@ sdf-run:
 	cd $(MAKEPATH); cargo run --bin sdf -- --disable-opentelemetry
 .PHONY: sdf-run
 
+pinga-run:
+	cd $(MAKEPATH); cargo build --all
+	cd $(MAKEPATH); cargo run --bin pinga -- --disable-opentelemetry
+.PHONY: pinga-run
+
 app-run:
 	cd $(MAKEPATH)/app/web; npm install
 	cd $(MAKEPATH)/app/web; npm run vite-clean

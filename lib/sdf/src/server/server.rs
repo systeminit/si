@@ -3,10 +3,11 @@ pub use dal::context::FaktoryProducer;
 use std::{
     io,
     net::SocketAddr,
+    panic::AssertUnwindSafe,
     path::{Path, PathBuf},
     pin::Pin,
     sync::Arc,
-    time::Duration, panic::AssertUnwindSafe,
+    time::Duration,
 };
 
 use crate::server::config::{CycloneKeyPair, JwtSecretKey};
@@ -74,6 +75,7 @@ pub struct Server<I, S> {
 }
 
 impl Server<(), ()> {
+    #[allow(clippy::too_many_arguments)]
     pub fn http(
         config: Config,
         telemetry: telemetry::Client,
@@ -114,6 +116,7 @@ impl Server<(), ()> {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn uds(
         config: Config,
         telemetry: telemetry::Client,
@@ -228,25 +231,35 @@ impl Server<(), ()> {
         faktory: FaktoryProducer,
         veritech: veritech::Client,
         encryption_key: veritech::EncryptionKey,
+        runtime: Arc<tokio::runtime::Runtime>,
     ) {
         let services_context =
             ServicesContext::new(pg, nats, faktory, veritech, Arc::new(encryption_key));
         let ctx_builder = Arc::new(DalContext::builder(services_context));
-        std::thread::spawn(move || loop {
+
+        loop {
             let mut c = faktory::ConsumerBuilder::default();
 
             let ctx_builder1 = ctx_builder.clone();
+            let runtime1 = runtime.clone();
             c.register("ComponentPostProcessing", move |job| -> io::Result<()> {
-                faktory_job_wrapper(ctx_builder1.clone(), job, |job, ctx_builder| {
-                    Box::pin(async { job.run(ctx_builder).await })
-                })
+                faktory_job_wrapper(
+                    ctx_builder1.clone(),
+                    job,
+                    runtime1.clone(),
+                    |job, ctx_builder| Box::pin(async { job.run(ctx_builder).await }),
+                )
             });
 
             let ctx_builder2 = ctx_builder.clone();
+            let runtime2 = runtime.clone();
             c.register("DependentValuesUpdate", move |job| -> io::Result<()> {
-                faktory_job_wrapper(ctx_builder2.clone(), job, |job, ctx_builder| {
-                    Box::pin(async { job.run(ctx_builder).await })
-                })
+                faktory_job_wrapper(
+                    ctx_builder2.clone(),
+                    job,
+                    runtime2.clone(),
+                    |job, ctx_builder| Box::pin(async { job.run(ctx_builder).await }),
+                )
             });
 
             let mut c = match c.connect(Some("tcp://localhost:7419")) {
@@ -261,8 +274,7 @@ impl Server<(), ()> {
             if let Err(e) = c.run(&["default"]) {
                 error!("worker failed: {}", e);
             }
-            return;
-        });
+        }
     }
 
     #[instrument(name = "sdf.init.create_pg_pool", skip_all)]
@@ -312,6 +324,7 @@ where
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn build_service(
     telemetry: impl TelemetryClient,
     pg_pool: PgPool,
@@ -403,6 +416,7 @@ pub enum ShutdownSource {}
 fn faktory_job_wrapper(
     ctx_builder: Arc<DalContextBuilder>,
     job: faktory::Job,
+    runtime: Arc<tokio::runtime::Runtime>,
     task: impl FnOnce(
         Job,
         Arc<DalContextBuilder>,
@@ -412,7 +426,7 @@ fn faktory_job_wrapper(
 ) -> Result<(), io::Error> {
     info!("Execute: {job:?}");
 
-    let args = match job.args().into_iter().next() {
+    let args = match job.args().iter().next() {
         Some(args) => args,
         None => {
             error!("No Job provided");
@@ -441,21 +455,9 @@ fn faktory_job_wrapper(
     };
 
     let result = std::panic::catch_unwind(AssertUnwindSafe(|| {
-        const RT_DEFAULT_THREAD_STACK_SIZE: usize = 2 * 1024 * 1024 * 3;
-
-        tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .thread_stack_size(RT_DEFAULT_THREAD_STACK_SIZE)
-            .build()
-            .map_err(|err| {
-                error!("Unable to initialize tokio thread: {err}");
-                err.to_string()
-            })?
-            .block_on(task(dbg!(job), ctx_builder))
-            .map_err(|err| {
-                error!("Task execution failed: {err}");
-                err.to_string()
-            })?;
+        runtime
+            .block_on(task(job, ctx_builder))
+            .map_err(|err| err.to_string())?;
         Ok(())
     }));
 

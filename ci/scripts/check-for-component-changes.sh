@@ -17,6 +17,7 @@ SDF_PATHS=".github/workflows/promote-sdf.yml
   .cargo/**
   Cargo.*
   bin/sdf/**
+  bin/pinga/**
   lib/config-file/**
   lib/dal/**
   lib/sdf/**

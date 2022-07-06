@@ -36,10 +36,10 @@ use crate::{
     standard_model::{self, TypeHint},
     standard_model_accessor, standard_model_belongs_to, standard_model_has_many,
     ws_event::{WsEvent, WsEventError},
-    AttributeContextError, AttributePrototypeArgumentError, Component, ComponentAsyncTasks,
-    ComponentId, DalContext, Func, FuncError, HistoryEventError, IndexMap, InternalProviderId,
-    Prop, PropError, PropId, PropKind, ReadTenancyError, StandardModel, StandardModelError,
-    Timestamp, TransactionsError, Visibility, WriteTenancy,
+    AttributeContextError, AttributePrototypeArgumentError, Component, ComponentId, DalContext,
+    Func, FuncError, HistoryEventError, IndexMap, InternalProviderId, Prop, PropError, PropId,
+    PropKind, ReadTenancyError, StandardModel, StandardModelError, Timestamp, TransactionsError,
+    Visibility, WriteTenancy,
 };
 use crate::{
     AccessBuilder, BillingAccountId, DalContextBuilder, HistoryActor, SystemId, WsPayload,
@@ -664,7 +664,6 @@ impl AttributeValue {
     /// This method returns the following:
     /// - the [`Option<serde_json::Value>`] that was passed in
     /// - the updated [`AttributeValueId`](Self)
-    /// - qualifications, validations, etc. via [`DependentValuesAsyncTasks`]
     pub async fn update_for_context(
         ctx: &DalContext<'_, '_>,
         attribute_value_id: AttributeValueId,
@@ -673,11 +672,7 @@ impl AttributeValue {
         value: Option<serde_json::Value>,
         // TODO: Allow updating the key
         key: Option<String>,
-    ) -> AttributeValueResult<(
-        Option<serde_json::Value>,
-        AttributeValueId,
-        DependentValuesAsyncTasks,
-    )> {
+    ) -> AttributeValueResult<(Option<serde_json::Value>, AttributeValueId)> {
         Self::update_for_context_raw(
             ctx,
             attribute_value_id,
@@ -698,11 +693,7 @@ impl AttributeValue {
         value: Option<serde_json::Value>,
         // TODO: Allow updating the key
         key: Option<String>,
-    ) -> AttributeValueResult<(
-        Option<serde_json::Value>,
-        AttributeValueId,
-        DependentValuesAsyncTasks,
-    )> {
+    ) -> AttributeValueResult<(Option<serde_json::Value>, AttributeValueId)> {
         Self::update_for_context_raw(
             ctx,
             attribute_value_id,
@@ -724,11 +715,7 @@ impl AttributeValue {
         // TODO: Allow updating the key
         _key: Option<String>,
         create_child_proxies: bool,
-    ) -> AttributeValueResult<(
-        Option<serde_json::Value>,
-        AttributeValueId,
-        DependentValuesAsyncTasks,
-    )> {
+    ) -> AttributeValueResult<(Option<serde_json::Value>, AttributeValueId)> {
         let mut maybe_parent_attribute_value_id = parent_attribute_value_id;
 
         let given_attribute_value = Self::get_by_id(ctx, &attribute_value_id)
@@ -936,38 +923,31 @@ impl AttributeValue {
             }
         }
 
-        // Check validations and qualifications for our component.
-        let async_tasks =
-            if let Some(component) = Component::get_by_id(ctx, &context.component_id()).await? {
-                component
-                    .check_validations(ctx, *attribute_value.id(), &value)
-                    .await
-                    .map_err(|err| AttributeValueError::Component(err.to_string()))?;
+        if context.component_id().is_some() {
+            // Check validations and qualifications for our component.
+            let component = Component::get_by_id(ctx, &context.component_id())
+                .await?
+                .ok_or_else(|| AttributeValueError::ComponentNotFound(context.component_id()))?;
 
-                let task = component
+            ctx.enqueue_job(JobContent::ComponentPostProcessing(
+                component
                     .build_async_tasks(ctx, context.system_id())
                     .await
-                    .map_err(|err| AttributeValueError::Component(err.to_string()))?;
-                Some(task)
-            } else {
-                None
-            };
-
-        // After we have _completely_ updated ourself, we can update our dependent values.
-        let component_task = DependentValuesAsyncTasks::new(async_tasks, None);
-        ctx.enqueue_job(JobContent::DependentValuesUpdate(component_task.clone()))
+                    .map_err(|err| AttributeValueError::Component(err.to_string()))?,
+            ))
             .await;
+        }
 
         let dependent_attribute_values =
             AttributeValueDependentCollectionHarness::collect(ctx, attribute_value.context).await?;
         for dependent_attribute_value in dependent_attribute_values {
             ctx.enqueue_job(JobContent::DependentValuesUpdate(
-                DependentValuesAsyncTasks::new(None, Some(*dependent_attribute_value.id())),
+                DependentValuesAsyncTasks::new(*dependent_attribute_value.id()),
             ))
             .await;
         }
 
-        Ok((value, *attribute_value.id(), component_task))
+        Ok((value, *attribute_value.id()))
     }
 
     /// Insert a new value under the parent [`AttributeValue`] in the given [`AttributeContext`]. This is mostly only
@@ -984,7 +964,7 @@ impl AttributeValue {
         parent_attribute_value_id: AttributeValueId,
         value: Option<serde_json::Value>,
         key: Option<String>,
-    ) -> AttributeValueResult<(AttributeValueId, DependentValuesAsyncTasks)> {
+    ) -> AttributeValueResult<AttributeValueId> {
         Self::insert_for_context_raw(
             ctx,
             parent_context,
@@ -1003,7 +983,7 @@ impl AttributeValue {
         parent_attribute_value_id: AttributeValueId,
         value: Option<serde_json::Value>,
         key: Option<String>,
-    ) -> AttributeValueResult<(AttributeValueId, DependentValuesAsyncTasks)> {
+    ) -> AttributeValueResult<AttributeValueId> {
         Self::insert_for_context_raw(
             ctx,
             parent_context,
@@ -1023,7 +1003,7 @@ impl AttributeValue {
         value: Option<serde_json::Value>,
         key: Option<String>,
         create_child_proxies: bool,
-    ) -> AttributeValueResult<(AttributeValueId, DependentValuesAsyncTasks)> {
+    ) -> AttributeValueResult<AttributeValueId> {
         let parent_prop =
             AttributeValue::find_prop_for_value(ctx, parent_attribute_value_id).await?;
         // We can only "insert" new values into Arrays & Maps. All other `PropKind` should be updated directly.
@@ -1132,7 +1112,7 @@ impl AttributeValue {
             }
         }
 
-        let (_, attribute_value_id, async_tasks) = Self::update_for_context_raw(
+        let (_, attribute_value_id) = Self::update_for_context_raw(
             ctx,
             *attribute_value.id(),
             Some(parent_attribute_value_id),
@@ -1143,7 +1123,7 @@ impl AttributeValue {
         )
         .await?;
 
-        Ok((attribute_value_id, async_tasks))
+        Ok(attribute_value_id)
     }
 
     #[instrument(skip_all)]
@@ -1177,8 +1157,6 @@ impl AttributeValue {
     /// Ensure the [`AttributeValueId`] has a "set" value in the given [`AttributeContext`], doing the same for its
     /// parent [`AttributeValue`], and return the [`AttributeValueId`] for [`Self`] (which may be different from what
     /// was passed in.
-    ///
-    /// The caller must create a [`DependentValuesAsyncTasks`], otherwise validations, code-gen and qualificatons won't happen
     #[instrument(skip_all)]
     #[async_recursion]
     async fn vivify_value_and_parent_values(
@@ -1255,7 +1233,7 @@ impl AttributeValue {
             .await?
             .map(|av| *av.id());
 
-        let (_, new_attribute_value_id, _) = Self::update_for_context_raw(
+        let (_, new_attribute_value_id) = Self::update_for_context_raw(
             ctx,
             attribute_value_id,
             maybe_parent_attribute_value_id,
@@ -1468,18 +1446,15 @@ impl AttributeValue {
                             }
                         };
 
-                        // TODO(fnichol): hrm, we are going to accumulate async tasks--should we
-                        // return a Vec of these for the caller to run?
-                        let (_, _, _async_tasks) =
-                            Self::update_for_context_without_creating_proxies(
-                                ctx,
-                                *attribute_value.id(),
-                                Some(*parent_attribute_value.id()),
-                                context,
-                                Some(value),
-                                None,
-                            )
-                            .await?;
+                        let (_, _) = Self::update_for_context_without_creating_proxies(
+                            ctx,
+                            *attribute_value.id(),
+                            Some(*parent_attribute_value.id()),
+                            context,
+                            Some(value),
+                            None,
+                        )
+                        .await?;
                     }
                 }
             }
@@ -1687,20 +1662,12 @@ impl AttributeValuePayload {
 #[must_use]
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
 pub struct DependentValuesAsyncTasks {
-    // TODO: this should be removed from here and equeued separately
-    component_task: Option<ComponentAsyncTasks>,
-    attribute_value_id: Option<AttributeValueId>,
+    attribute_value_id: AttributeValueId,
 }
 
 impl DependentValuesAsyncTasks {
-    pub fn new(
-        component_task: Option<ComponentAsyncTasks>,
-        attribute_value_id: Option<AttributeValueId>,
-    ) -> Self {
-        Self {
-            component_task,
-            attribute_value_id,
-        }
+    pub fn new(attribute_value_id: AttributeValueId) -> Self {
+        Self { attribute_value_id }
     }
 
     pub async fn run(
@@ -1713,47 +1680,34 @@ impl DependentValuesAsyncTasks {
         let txns = txns.start().await?;
         let ctx = ctx_builder.build(access_builder.clone().build(visibility), &txns);
 
-        let mut component_tasks = self.run_updates_in_ctx(&ctx).await?;
-        if let Some(task) = self.component_task {
-            component_tasks.push(task);
-        }
+        self.run_in_ctx(&ctx).await?;
 
         txns.commit().await?;
 
-        for task in component_tasks {
-            task.run(access_builder.clone(), visibility, ctx_builder)
-                .await
-                .map_err(|err| AttributeValueError::Component(err.to_string()))?;
-        }
         Ok(())
     }
 
-    pub async fn run_updates_in_ctx(
-        &self,
-        ctx: &DalContext<'_, '_>,
-    ) -> AttributeValueResult<Vec<ComponentAsyncTasks>> {
-        if let Some(id) = self.attribute_value_id {
-            // After we have _completely_ updated ourself, we can update our dependent values.
-            let tasks =
-                AttributeValueDependentUpdateHarness::update_dependent_values(ctx, id).await?;
+    pub async fn run_in_ctx(&self, ctx: &DalContext<'_, '_>) -> AttributeValueResult<()> {
+        // After we have _completely_ updated ourself, we can update our dependent values.
+        AttributeValueDependentUpdateHarness::update_dependent_values(ctx, self.attribute_value_id)
+            .await?;
 
-            if let Some((component_id, system_id)) = self
-                .component_task
-                .as_ref()
-                .map(|t| (t.component_id, t.system_id))
-            {
-                WsEvent::updated_dependent_value(
-                    component_id,
-                    system_id,
-                    ctx.read_tenancy().billing_accounts().into(),
-                    ctx.history_actor(),
-                )
-                .publish(ctx.txns().nats())
-                .await?;
-            }
-            return Ok(tasks);
-        }
-        Ok(Vec::new())
+        // TODO: send websocket message
+        //if let Some((component_id, system_id)) = self
+        //    .component_task
+        //    .as_ref()
+        //    .map(|t| (t.component_id, t.system_id))
+        //{
+        //    WsEvent::updated_dependent_value(
+        //        component_id,
+        //        system_id,
+        //        ctx.read_tenancy().billing_accounts().into(),
+        //        ctx.history_actor(),
+        //    )
+        //    .publish(ctx.txns().nats())
+        //    .await?;
+        //}
+        Ok(())
     }
 }
 

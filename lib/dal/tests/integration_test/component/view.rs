@@ -434,13 +434,13 @@ pub async fn create_schema_with_nested_array_objects_and_a_map(
 async fn only_string_props(ctx: &DalContext<'_, '_>) {
     let (schema, schema_variant, bohemian_prop, killer_prop, root_prop) =
         create_schema_with_string_props(ctx).await;
-    let (component, _, task) =
+    let (component, _) =
         Component::new_for_schema_variant_with_node(ctx, "capoeira", schema_variant.id())
             .await
             .expect("Unable to create component");
-    task.run_updates_in_ctx(ctx)
+    ctx.run_enqueued_jobs()
         .await
-        .expect("unable to run async tasks");
+        .expect("cannot run enqueued jobs");
 
     let mut base_attribute_context = AttributeContext::builder();
     base_attribute_context
@@ -467,7 +467,7 @@ async fn only_string_props(ctx: &DalContext<'_, '_>) {
         .await
         .expect("could not retrieve bohemian AttributeValue")
         .expect("could not find bohemian AttributeValue");
-    let (_, _, task) = AttributeValue::update_for_context(
+    let (_, _) = AttributeValue::update_for_context(
         ctx,
         *bohemian_value.id(),
         Some(*domain_value.id()),
@@ -477,9 +477,9 @@ async fn only_string_props(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not update bohemian prop value");
-    task.run_updates_in_ctx(ctx)
+    ctx.run_enqueued_jobs()
         .await
-        .expect("unable to run async tasks");
+        .expect("cannot run enqueued jobs");
 
     let killer_context = base_attribute_context
         .clone()
@@ -490,7 +490,7 @@ async fn only_string_props(ctx: &DalContext<'_, '_>) {
         .await
         .expect("could not retrieve killer AttributeValue")
         .expect("could not find killer AttributeValue");
-    let (_, _, task) = AttributeValue::update_for_context(
+    let (_, _) = AttributeValue::update_for_context(
         ctx,
         *killer_value.id(),
         Some(*domain_value.id()),
@@ -500,9 +500,9 @@ async fn only_string_props(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not update bohemian prop value");
-    task.run_updates_in_ctx(ctx)
+    ctx.run_enqueued_jobs()
         .await
-        .expect("unable to run async tasks");
+        .expect("cannot run enqueued jobs");
 
     let component_view = ComponentView::for_context(
         ctx,
@@ -535,13 +535,13 @@ async fn only_string_props(ctx: &DalContext<'_, '_>) {
 async fn one_object_prop(ctx: &DalContext<'_, '_>) {
     let (schema, schema_variant, queen_prop, killer_prop, bohemian_prop, root_prop) =
         create_schema_with_object_and_string_prop(ctx).await;
-    let (component, _, task) =
+    let (component, _) =
         Component::new_for_schema_variant_with_node(ctx, "santos dumont", schema_variant.id())
             .await
             .expect("Unable to create component");
-    task.run_updates_in_ctx(ctx)
+    ctx.run_enqueued_jobs()
         .await
-        .expect("unable to run async tasks");
+        .expect("cannot run enqueued jobs");
 
     let mut base_attribute_context = AttributeContext::builder();
     base_attribute_context
@@ -568,7 +568,7 @@ async fn one_object_prop(ctx: &DalContext<'_, '_>) {
         .await
         .expect("could not retrieve queen AttributeValue")
         .expect("could not find queen AttributeValue");
-    let (_, queen_value_id, task) = AttributeValue::update_for_context(
+    let (_, queen_value_id) = AttributeValue::update_for_context(
         ctx,
         *unset_queen_value.id(),
         Some(*domain_value.id()),
@@ -578,9 +578,9 @@ async fn one_object_prop(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not update queen AttributeValue");
-    task.run_updates_in_ctx(ctx)
+    ctx.run_enqueued_jobs()
         .await
-        .expect("unable to run async tasks");
+        .expect("cannot run enqueued jobs");
 
     let bohemian_context = base_attribute_context
         .clone()
@@ -591,7 +591,7 @@ async fn one_object_prop(ctx: &DalContext<'_, '_>) {
         .await
         .expect("could not retrieve bohemian AttributeValue")
         .expect("could not find bohemian AttributeValue");
-    let (_, _, task) = AttributeValue::update_for_context(
+    let (_, _) = AttributeValue::update_for_context(
         ctx,
         *unset_bohemian_value.id(),
         Some(queen_value_id),
@@ -601,9 +601,9 @@ async fn one_object_prop(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not update bohemian AttributeValue");
-    task.run_updates_in_ctx(ctx)
+    ctx.run_enqueued_jobs()
         .await
-        .expect("unable to run async tasks");
+        .expect("cannot run enqueued jobs");
 
     let killer_context = base_attribute_context
         .clone()
@@ -614,7 +614,7 @@ async fn one_object_prop(ctx: &DalContext<'_, '_>) {
         .await
         .expect("could not retrieve killer AttributeValue")
         .expect("could not find killer AttributeValue");
-    let (_, _, task) = AttributeValue::update_for_context(
+    let (_, _) = AttributeValue::update_for_context(
         ctx,
         *unset_killer_value.id(),
         Some(queen_value_id),
@@ -624,9 +624,9 @@ async fn one_object_prop(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not update killer AttributeValue");
-    task.run_updates_in_ctx(ctx)
+    ctx.run_enqueued_jobs()
         .await
-        .expect("unable to run async tasks");
+        .expect("cannot run enqueued jobs");
 
     let component_view = ComponentView::for_context(
         ctx,
@@ -666,13 +666,13 @@ async fn nested_object_prop(ctx: &DalContext<'_, '_>) {
         dust_prop,
         root_prop,
     ) = create_schema_with_nested_objects_and_string_prop(ctx).await;
-    let (component, _, task) =
+    let (component, _) =
         Component::new_for_schema_variant_with_node(ctx, "free ronaldinho", schema_variant.id())
             .await
             .expect("Unable to create component");
-    task.run_updates_in_ctx(ctx)
+    ctx.run_enqueued_jobs()
         .await
-        .expect("unable to run async tasks");
+        .expect("cannot run enqueued jobs");
 
     let mut base_attribute_context = AttributeContext::builder();
     base_attribute_context
@@ -699,7 +699,7 @@ async fn nested_object_prop(ctx: &DalContext<'_, '_>) {
         .await
         .expect("could not fetch queen AttributeValue")
         .expect("could not find queen AttributeValue");
-    let (_, queen_value_id, task) = AttributeValue::update_for_context(
+    let (_, queen_value_id) = AttributeValue::update_for_context(
         ctx,
         *unset_queen_value.id(),
         Some(*domain_value.id()),
@@ -709,9 +709,9 @@ async fn nested_object_prop(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not update queen AttributeValue");
-    task.run_updates_in_ctx(ctx)
+    ctx.run_enqueued_jobs()
         .await
-        .expect("unable to run async tasks");
+        .expect("cannot run enqueued jobs");
 
     let bohemian_context = base_attribute_context
         .clone()
@@ -722,7 +722,7 @@ async fn nested_object_prop(ctx: &DalContext<'_, '_>) {
         .await
         .expect("could not fetch bohemian AttributeValue")
         .expect("could not find bohemian AttributeValue");
-    let (_, _, task) = AttributeValue::update_for_context(
+    let (_, _) = AttributeValue::update_for_context(
         ctx,
         *unset_bohemian_value.id(),
         Some(queen_value_id),
@@ -732,9 +732,9 @@ async fn nested_object_prop(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not update bohemian AttributeValue");
-    task.run_updates_in_ctx(ctx)
+    ctx.run_enqueued_jobs()
         .await
-        .expect("unable to run async tasks");
+        .expect("cannot run enqueued jobs");
 
     let killer_context = base_attribute_context
         .clone()
@@ -745,7 +745,7 @@ async fn nested_object_prop(ctx: &DalContext<'_, '_>) {
         .await
         .expect("could not fetch killer AttributeValue")
         .expect("could not find killer AttributeValue");
-    let (_, _, task) = AttributeValue::update_for_context(
+    let (_, _) = AttributeValue::update_for_context(
         ctx,
         *unset_killer_value.id(),
         Some(queen_value_id),
@@ -755,9 +755,9 @@ async fn nested_object_prop(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not update killer AttributeValue");
-    task.run_updates_in_ctx(ctx)
+    ctx.run_enqueued_jobs()
         .await
-        .expect("unable to run async tasks");
+        .expect("cannot run enqueued jobs");
 
     let pressure_context = base_attribute_context
         .clone()
@@ -768,7 +768,7 @@ async fn nested_object_prop(ctx: &DalContext<'_, '_>) {
         .await
         .expect("could not fetch pressure AttributeValue")
         .expect("could not find pressure AttributeValue");
-    let (_, pressure_value_id, task) = AttributeValue::update_for_context(
+    let (_, pressure_value_id) = AttributeValue::update_for_context(
         ctx,
         *unset_pressure_value.id(),
         Some(queen_value_id),
@@ -778,9 +778,9 @@ async fn nested_object_prop(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not update pressure AttributeValue");
-    task.run_updates_in_ctx(ctx)
+    ctx.run_enqueued_jobs()
         .await
-        .expect("unable to run async tasks");
+        .expect("cannot run enqueued jobs");
 
     let dust_context = base_attribute_context
         .clone()
@@ -791,7 +791,7 @@ async fn nested_object_prop(ctx: &DalContext<'_, '_>) {
         .await
         .expect("could not fetch dust AttributeValue")
         .expect("could not find dust AttributeValue");
-    let (_, _, task) = AttributeValue::update_for_context(
+    let (_, _) = AttributeValue::update_for_context(
         ctx,
         *unset_dust_value.id(),
         Some(pressure_value_id),
@@ -801,9 +801,9 @@ async fn nested_object_prop(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not update dust AttributeValue");
-    task.run_updates_in_ctx(ctx)
+    ctx.run_enqueued_jobs()
         .await
-        .expect("unable to run async tasks");
+        .expect("cannot run enqueued jobs");
 
     let component_view = ComponentView::for_context(
         ctx,
@@ -843,13 +843,13 @@ async fn simple_array_of_strings(ctx: &DalContext<'_, '_>) {
     let (schema, schema_variant, sammy_prop, album_prop, root_prop) =
         create_schema_with_array_of_string_props(ctx).await;
 
-    let (component, _, task) =
+    let (component, _) =
         Component::new_for_schema_variant_with_node(ctx, "tim maia", schema_variant.id())
             .await
             .expect("Unable to create component");
-    task.run_updates_in_ctx(ctx)
+    ctx.run_enqueued_jobs()
         .await
-        .expect("unable to run async tasks");
+        .expect("cannot run enqueued jobs");
 
     let mut base_attribute_context = AttributeContext::builder();
     base_attribute_context
@@ -876,7 +876,7 @@ async fn simple_array_of_strings(ctx: &DalContext<'_, '_>) {
         .await
         .expect("could not retrieve sammy AttributeValue")
         .expect("could not find sammy AttributeValue");
-    let (_, sammy_value_id, task) = AttributeValue::update_for_context(
+    let (_, sammy_value_id) = AttributeValue::update_for_context(
         ctx,
         *unset_sammy_value.id(),
         Some(*domain_value.id()),
@@ -886,16 +886,16 @@ async fn simple_array_of_strings(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not update sammy AttributeValue");
-    task.run_updates_in_ctx(ctx)
+    ctx.run_enqueued_jobs()
         .await
-        .expect("unable to run async tasks");
+        .expect("cannot run enqueued jobs");
 
     let album_context = base_attribute_context
         .clone()
         .set_prop_id(*album_prop.id())
         .to_context()
         .expect("could not create album AttributeContext");
-    let (_, task) = AttributeValue::insert_for_context(
+    let _ = AttributeValue::insert_for_context(
         ctx,
         album_context,
         sammy_value_id,
@@ -904,11 +904,11 @@ async fn simple_array_of_strings(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not insert album AttributeValue");
-    task.run_updates_in_ctx(ctx)
+    ctx.run_enqueued_jobs()
         .await
-        .expect("unable to run async tasks");
+        .expect("cannot run enqueued jobs");
 
-    let (_, task) = AttributeValue::insert_for_context(
+    let _ = AttributeValue::insert_for_context(
         ctx,
         album_context,
         sammy_value_id,
@@ -917,9 +917,9 @@ async fn simple_array_of_strings(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not insert album AttributeValue");
-    task.run_updates_in_ctx(ctx)
+    ctx.run_enqueued_jobs()
         .await
-        .expect("unable to run async tasks");
+        .expect("cannot run enqueued jobs");
 
     let component_view = ComponentView::for_context(
         ctx,
@@ -960,16 +960,16 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext<'_, '_>) {
         song_name_prop,
         root_prop,
     ) = create_schema_with_nested_array_objects(ctx).await;
-    let (component, _, task) = Component::new_for_schema_variant_with_node(
+    let (component, _) = Component::new_for_schema_variant_with_node(
         ctx,
         "An Integralist Doesn't Run, It Flies",
         schema_variant.id(),
     )
     .await
     .expect("Unable to create component");
-    task.run_updates_in_ctx(ctx)
+    ctx.run_enqueued_jobs()
         .await
-        .expect("unable to run async tasks");
+        .expect("cannot run enqueued jobs");
 
     let mut unset_attribute_context = AttributeContext::builder();
     unset_attribute_context
@@ -1002,7 +1002,7 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext<'_, '_>) {
         .set_prop_id(*sammy_prop.id())
         .to_context()
         .expect("could not create sammy AttributeContext");
-    let (_, sammy_value_id, task) = AttributeValue::update_for_context(
+    let (_, sammy_value_id) = AttributeValue::update_for_context(
         ctx,
         *unset_sammy_value.id(),
         Some(*domain_value.id()),
@@ -1012,16 +1012,16 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not update sammy AttributeValue");
-    task.run_updates_in_ctx(ctx)
+    ctx.run_enqueued_jobs()
         .await
-        .expect("unable to run async tasks");
+        .expect("cannot run enqueued jobs");
 
     let album_object_context = base_attribute_context
         .clone()
         .set_prop_id(*album_object_prop.id())
         .to_context()
         .expect("could not create album object AttributeContext");
-    let (standing_hampton_album_value_id, task) = AttributeValue::insert_for_context(
+    let standing_hampton_album_value_id = AttributeValue::insert_for_context(
         ctx,
         album_object_context,
         sammy_value_id,
@@ -1030,9 +1030,9 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not insert album object AttributeValue");
-    task.run_updates_in_ctx(ctx)
+    ctx.run_enqueued_jobs()
         .await
-        .expect("unable to run async tasks");
+        .expect("cannot run enqueued jobs");
 
     let album_string_context = base_attribute_context
         .clone()
@@ -1048,7 +1048,7 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext<'_, '_>) {
     .await
     .expect("could not retrieve album string AttributeValue")
     .expect("could not find album string AttributeValue");
-    let (_, _, task) = AttributeValue::update_for_context(
+    let (_, _) = AttributeValue::update_for_context(
         ctx,
         *standing_hampton_album_string_value.id(),
         Some(standing_hampton_album_value_id),
@@ -1058,9 +1058,9 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not update standing hampton album string AttributeValue");
-    task.run_updates_in_ctx(ctx)
+    ctx.run_enqueued_jobs()
         .await
-        .expect("unable to run async tasks");
+        .expect("cannot run enqueued jobs");
 
     let songs_array_context = base_attribute_context
         .clone()
@@ -1076,7 +1076,7 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext<'_, '_>) {
     .await
     .expect("could not fetch songs array AttributeValue")
     .expect("could not find songs array AttributeValue");
-    let (_, standing_hampton_songs_array_value_id, task) = AttributeValue::update_for_context(
+    let (_, standing_hampton_songs_array_value_id) = AttributeValue::update_for_context(
         ctx,
         *standing_hampton_songs_array_value.id(),
         Some(standing_hampton_album_value_id),
@@ -1086,16 +1086,16 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not update standing hampton songs array AttributeValue");
-    task.run_updates_in_ctx(ctx)
+    ctx.run_enqueued_jobs()
         .await
-        .expect("unable to run async tasks");
+        .expect("cannot run enqueued jobs");
 
     let song_name_context = base_attribute_context
         .clone()
         .set_prop_id(*song_name_prop.id())
         .to_context()
         .expect("could not create song name AttributeContext");
-    let (_, task) = AttributeValue::insert_for_context(
+    let _ = AttributeValue::insert_for_context(
         ctx,
         song_name_context,
         standing_hampton_songs_array_value_id,
@@ -1104,11 +1104,11 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not insert fall in love again in standing hampton songs array");
-    task.run_updates_in_ctx(ctx)
+    ctx.run_enqueued_jobs()
         .await
-        .expect("unable to run async tasks");
+        .expect("cannot run enqueued jobs");
 
-    let (_, task) = AttributeValue::insert_for_context(
+    let _ = AttributeValue::insert_for_context(
         ctx,
         song_name_context,
         standing_hampton_songs_array_value_id,
@@ -1117,11 +1117,11 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not insert surrender in standing hampton songs array");
-    task.run_updates_in_ctx(ctx)
+    ctx.run_enqueued_jobs()
         .await
-        .expect("unable to run async tasks");
+        .expect("cannot run enqueued jobs");
 
-    let (voa_album_value_id, task) = AttributeValue::insert_for_context(
+    let voa_album_value_id = AttributeValue::insert_for_context(
         ctx,
         album_object_context,
         sammy_value_id,
@@ -1130,9 +1130,9 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not insert voa album object into albums array");
-    task.run_updates_in_ctx(ctx)
+    ctx.run_enqueued_jobs()
         .await
-        .expect("unable to run async tasks");
+        .expect("cannot run enqueued jobs");
 
     let voa_album_string_value = AttributeValue::find_with_parent_and_key_for_context(
         ctx,
@@ -1143,7 +1143,7 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext<'_, '_>) {
     .await
     .expect("could not retrieve voa album string AttributeValue")
     .expect("could not find voa album string AttributeValue");
-    let (_, _, task) = AttributeValue::update_for_context(
+    let (_, _) = AttributeValue::update_for_context(
         ctx,
         *voa_album_string_value.id(),
         Some(voa_album_value_id),
@@ -1153,9 +1153,9 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not set voa album string AttributeValue");
-    task.run_updates_in_ctx(ctx)
+    ctx.run_enqueued_jobs()
         .await
-        .expect("unable to run async tasks");
+        .expect("cannot run enqueued jobs");
 
     let voa_songs_array_value = AttributeValue::find_with_parent_and_key_for_context(
         ctx,
@@ -1166,7 +1166,7 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext<'_, '_>) {
     .await
     .expect("could not fetch songs array AttributeValue")
     .expect("could not find songs array AttributeValue");
-    let (_, voa_songs_value_id, task) = AttributeValue::update_for_context(
+    let (_, voa_songs_value_id) = AttributeValue::update_for_context(
         ctx,
         *voa_songs_array_value.id(),
         Some(voa_album_value_id),
@@ -1176,11 +1176,11 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not update voa songs array AttributeValue");
-    task.run_updates_in_ctx(ctx)
+    ctx.run_enqueued_jobs()
         .await
-        .expect("unable to run async tasks");
+        .expect("cannot run enqueued jobs");
 
-    let (_, task) = AttributeValue::insert_for_context(
+    let _ = AttributeValue::insert_for_context(
         ctx,
         song_name_context,
         voa_songs_value_id,
@@ -1189,11 +1189,11 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not insert eagles fly into voa songs array");
-    task.run_updates_in_ctx(ctx)
+    ctx.run_enqueued_jobs()
         .await
-        .expect("unable to run async tasks");
+        .expect("cannot run enqueued jobs");
 
-    let (_, task) = AttributeValue::insert_for_context(
+    let _ = AttributeValue::insert_for_context(
         ctx,
         song_name_context,
         voa_songs_value_id,
@@ -1202,9 +1202,9 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not insert can't drive 55 into voa songs array");
-    task.run_updates_in_ctx(ctx)
+    ctx.run_enqueued_jobs()
         .await
-        .expect("unable to run async tasks");
+        .expect("cannot run enqueued jobs");
 
     let component_view = ComponentView::for_context(
         ctx,
@@ -1248,16 +1248,16 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext<'_, '_>) {
 async fn simple_map(ctx: &DalContext<'_, '_>) {
     let (schema, schema_variant, album_prop, album_item_prop, root_prop) =
         create_simple_map(ctx).await;
-    let (component, _, task) = Component::new_for_schema_variant_with_node(
+    let (component, _) = Component::new_for_schema_variant_with_node(
         ctx,
         "E como isso afeta o Grêmio?",
         schema_variant.id(),
     )
     .await
     .expect("Unable to create component");
-    task.run_updates_in_ctx(ctx)
+    ctx.run_enqueued_jobs()
         .await
-        .expect("unable to run async tasks");
+        .expect("cannot run enqueued jobs");
 
     let mut base_attribute_context = AttributeContext::builder();
     base_attribute_context
@@ -1284,7 +1284,7 @@ async fn simple_map(ctx: &DalContext<'_, '_>) {
         .await
         .expect("could not retrieve album AttributeValue")
         .expect("could not find album AttributeValue");
-    let (_, album_value_id, task) = AttributeValue::update_for_context(
+    let (_, album_value_id) = AttributeValue::update_for_context(
         ctx,
         *unset_album_value.id(),
         Some(*domain_value.id()),
@@ -1294,16 +1294,16 @@ async fn simple_map(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not update album AttributeValue");
-    task.run_updates_in_ctx(ctx)
+    ctx.run_enqueued_jobs()
         .await
-        .expect("unable to run async tasks");
+        .expect("cannot run enqueued jobs");
 
     let album_item_context = base_attribute_context
         .clone()
         .set_prop_id(*album_item_prop.id())
         .to_context()
         .expect("could not create album item AttributeContext");
-    let (_, task) = AttributeValue::insert_for_context(
+    let _ = AttributeValue::insert_for_context(
         ctx,
         album_item_context,
         album_value_id,
@@ -1312,11 +1312,11 @@ async fn simple_map(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not insert album item");
-    task.run_updates_in_ctx(ctx)
+    ctx.run_enqueued_jobs()
         .await
-        .expect("unable to run async tasks");
+        .expect("cannot run enqueued jobs");
 
-    let (_, task) = AttributeValue::insert_for_context(
+    let _ = AttributeValue::insert_for_context(
         ctx,
         album_item_context,
         album_value_id,
@@ -1325,9 +1325,9 @@ async fn simple_map(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not insert album item");
-    task.run_updates_in_ctx(ctx)
+    ctx.run_enqueued_jobs()
         .await
-        .expect("unable to run async tasks");
+        .expect("cannot run enqueued jobs");
 
     let component_view = ComponentView::for_context(
         ctx,
@@ -1368,16 +1368,16 @@ async fn complex_nested_array_of_objects_with_a_map(ctx: &DalContext<'_, '_>) {
         song_map_item_prop,
         root_prop,
     ) = create_schema_with_nested_array_objects_and_a_map(ctx).await;
-    let (component, _, task) = Component::new_for_schema_variant_with_node(
+    let (component, _) = Component::new_for_schema_variant_with_node(
         ctx,
         "E como isso afeta o Grêmio?",
         schema_variant.id(),
     )
     .await
     .expect("Unable to create component");
-    task.run_updates_in_ctx(ctx)
+    ctx.run_enqueued_jobs()
         .await
-        .expect("unable to run async tasks");
+        .expect("cannot run enqueued jobs");
 
     let mut base_attribute_context = AttributeContext::builder();
     base_attribute_context
@@ -1404,7 +1404,7 @@ async fn complex_nested_array_of_objects_with_a_map(ctx: &DalContext<'_, '_>) {
         .await
         .expect("could not fetch sammy AttributeValue")
         .expect("could not find sammy AttributeValue");
-    let (_, sammy_value_id, task) = AttributeValue::update_for_context(
+    let (_, sammy_value_id) = AttributeValue::update_for_context(
         ctx,
         *unset_sammy_value.id(),
         Some(*domain_value.id()),
@@ -1414,16 +1414,16 @@ async fn complex_nested_array_of_objects_with_a_map(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not update sammy AttributeValue");
-    task.run_updates_in_ctx(ctx)
+    ctx.run_enqueued_jobs()
         .await
-        .expect("unable to run async tasks");
+        .expect("cannot run enqueued jobs");
 
     let album_object_context = base_attribute_context
         .clone()
         .set_prop_id(*album_object_prop.id())
         .to_context()
         .expect("could not create album object context");
-    let (standing_hampton_value_id, task) = AttributeValue::insert_for_context(
+    let standing_hampton_value_id = AttributeValue::insert_for_context(
         ctx,
         album_object_context,
         sammy_value_id,
@@ -1432,9 +1432,9 @@ async fn complex_nested_array_of_objects_with_a_map(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not insert standing_hampton into albums array");
-    task.run_updates_in_ctx(ctx)
+    ctx.run_enqueued_jobs()
         .await
-        .expect("unable to run async tasks");
+        .expect("cannot run enqueued jobs");
 
     let album_string_context = base_attribute_context
         .clone()
@@ -1466,7 +1466,7 @@ async fn complex_nested_array_of_objects_with_a_map(ctx: &DalContext<'_, '_>) {
         .await
         .expect("could not fetch songs array AttributeValue")
         .expect("could not find songs array AttributeValue");
-    let (_, songs_array_value_id, task) = AttributeValue::update_for_context(
+    let (_, songs_array_value_id) = AttributeValue::update_for_context(
         ctx,
         *unset_songs_array_value.id(),
         Some(standing_hampton_value_id),
@@ -1476,16 +1476,16 @@ async fn complex_nested_array_of_objects_with_a_map(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not update songs array AttributeValue");
-    task.run_updates_in_ctx(ctx)
+    ctx.run_enqueued_jobs()
         .await
-        .expect("unable to run async tasks");
+        .expect("cannot run enqueued jobs");
 
     let song_map_context = base_attribute_context
         .clone()
         .set_prop_id(*song_map_prop.id())
         .to_context()
         .expect("could not create song map AttributeContext");
-    let (song_map_value_id, task) = AttributeValue::insert_for_context(
+    let song_map_value_id = AttributeValue::insert_for_context(
         ctx,
         song_map_context,
         songs_array_value_id,
@@ -1494,16 +1494,16 @@ async fn complex_nested_array_of_objects_with_a_map(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not insert song map into songs array");
-    task.run_updates_in_ctx(ctx)
+    ctx.run_enqueued_jobs()
         .await
-        .expect("unable to run async tasks");
+        .expect("cannot run enqueued jobs");
 
     let song_map_item_context = base_attribute_context
         .clone()
         .set_prop_id(*song_map_item_prop.id())
         .to_context()
         .expect("could not create song map item AttributeContext");
-    let (_, task) = AttributeValue::insert_for_context(
+    let _ = AttributeValue::insert_for_context(
         ctx,
         song_map_item_context,
         song_map_value_id,
@@ -1512,11 +1512,11 @@ async fn complex_nested_array_of_objects_with_a_map(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not insert fall in love again into standing hampton songs map");
-    task.run_updates_in_ctx(ctx)
+    ctx.run_enqueued_jobs()
         .await
-        .expect("unable to run async tasks");
+        .expect("cannot run enqueued jobs");
 
-    let (_, task) = AttributeValue::insert_for_context(
+    let _ = AttributeValue::insert_for_context(
         ctx,
         song_map_item_context,
         song_map_value_id,
@@ -1525,9 +1525,9 @@ async fn complex_nested_array_of_objects_with_a_map(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not insert surrender into standing hampton song map");
-    task.run_updates_in_ctx(ctx)
+    ctx.run_enqueued_jobs()
         .await
-        .expect("unable to run async tasks");
+        .expect("cannot run enqueued jobs");
 
     let component_view = ComponentView::for_context(
         ctx,
