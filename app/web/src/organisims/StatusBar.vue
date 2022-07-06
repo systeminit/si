@@ -1,6 +1,6 @@
 <template>
-  <Disclosure v-slot="{ open }" as="nav" class="bg-gray-800">
-    <div class="mx-auto px-4 sm:px-4 lg:px-4">
+  <Disclosure v-slot="{ open }" as="status" class="bg-gray-800">
+    <div class="mx-auto px-4 max-w-fit">
       <div class="flex items-end justify-end h-12">
         <!-- Tabs location -->
         <div class="flex items-center">
