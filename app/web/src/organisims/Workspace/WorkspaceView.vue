@@ -9,6 +9,15 @@
     :deployment-node-selected="deploymentNodeSelected"
     :light-mode="true"
   />
+  <SiSidebar :placeholder="'Component Panel'" />
+
+  <!-- NOTE(nick): we use a large z index to ensure that the profile dropdown is displayed -->
+  <SiSidebar
+    :place-right="true"
+    :placeholder="'Property Panel'"
+    class="z-900"
+  />
+  <StatusBar />
 </template>
 
 <script setup lang="ts">
@@ -17,6 +26,8 @@ import Viewer from "@/organisims/SchematicViewer/Viewer.vue";
 import * as VE from "@/organisims/SchematicViewer/viewer_event";
 import _ from "lodash";
 import { ViewerStateMachine } from "@/organisims/SchematicViewer/state_machine";
+import StatusBar from "@/organisims/StatusBar.vue";
+import SiSidebar from "@/molecules/SiSidebar.vue";
 
 const schematicViewerId = _.uniqueId();
 const viewerState = new ViewerStateMachine();
