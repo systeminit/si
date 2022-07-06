@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use color_eyre::Result;
 use sdf::{Config, FaktoryProducer, IncomingStream, MigrationMode, Server};
 use telemetry::{
@@ -7,7 +5,6 @@ use telemetry::{
     tracing::{debug, info, trace},
     TelemetryClient,
 };
-use tokio::sync::Mutex;
 
 mod args;
 

@@ -1,11 +1,10 @@
 use axum::Json;
 use dal::{
-    attribute::value::DependentValuesAsyncTasks, context::JobContent, Component,
+    context::JobContent, Component,
     ComponentAsyncTasks, Func, QualificationPrototype, QualificationPrototypeId, Schema,
     StandardModel, SystemId, Visibility,
 };
 use serde::{Deserialize, Serialize};
-use telemetry::prelude::*;
 
 use super::{QualificationError, QualificationResult};
 use crate::server::extract::{AccessBuilder, HandlerContext};
@@ -130,17 +129,6 @@ pub async fn set_code(
         async_tasks.set_qualification_prototype_id(*prototype.id());
         ctx.enqueue_job(JobContent::ComponentPostProcessing(async_tasks))
             .await;
-
-        let request_ctx = request_ctx.clone();
-        let builder = builder.clone();
-        //tokio::task::spawn(async move {
-        //    if let Err(err) = async_tasks
-        //        .run(request_ctx, request.visibility, &builder)
-        //        .await
-        //    {
-        //        error!("Component async qualification check failed: {err}");
-        //    }
-        //});
     }
 
     txns.commit().await?;

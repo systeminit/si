@@ -4,7 +4,6 @@ use std::{
     sync::Arc,
 };
 
-use faktory::Producer;
 use lazy_static::lazy_static;
 use si_data::{NatsClient, NatsConfig, PgPool, PgPoolConfig};
 use telemetry::prelude::*;

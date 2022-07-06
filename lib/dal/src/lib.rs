@@ -3,13 +3,10 @@
 use std::sync::Arc;
 
 use context::FaktoryProducer;
-use faktory::Producer;
 use rand::Rng;
 use si_data::{NatsClient, NatsError, PgError, PgPool, PgPoolError};
-use std::net::TcpStream;
 use telemetry::prelude::*;
 use thiserror::Error;
-use tokio::sync::Mutex;
 
 pub mod attribute;
 pub mod billing_account;

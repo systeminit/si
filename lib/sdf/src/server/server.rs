@@ -2,11 +2,11 @@ pub use dal::context::FaktoryProducer;
 
 use std::{
     io,
-    net::{SocketAddr, TcpStream},
+    net::SocketAddr,
     path::{Path, PathBuf},
     pin::Pin,
     sync::Arc,
-    time::Duration,
+    time::Duration, panic::AssertUnwindSafe,
 };
 
 use crate::server::config::{CycloneKeyPair, JwtSecretKey};
@@ -18,10 +18,8 @@ use dal::{
     jwt_key::{install_new_jwt_key, jwt_key_exists},
     migrate, migrate_builtins, DalContext, DalContextBuilder, ResourceScheduler, ServicesContext,
 };
-use faktory::Producer;
 use futures::Future;
 use hyper::server::{accept::Accept, conn::AddrIncoming};
-use serde::Deserialize;
 use si_data::{
     NatsClient, NatsConfig, NatsError, PgError, PgPool, PgPoolConfig, PgPoolError, SensitiveString,
 };
@@ -30,7 +28,7 @@ use thiserror::Error;
 use tokio::{
     io::{AsyncRead, AsyncWrite},
     signal::unix,
-    sync::{broadcast, mpsc, oneshot, Mutex},
+    sync::{broadcast, mpsc, oneshot},
 };
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 
@@ -238,14 +236,14 @@ impl Server<(), ()> {
             let mut c = faktory::ConsumerBuilder::default();
 
             let ctx_builder1 = ctx_builder.clone();
-            c.register("ComponentAsyncTasks", move |job| -> io::Result<()> {
+            c.register("ComponentPostProcessing", move |job| -> io::Result<()> {
                 faktory_job_wrapper(ctx_builder1.clone(), job, |job, ctx_builder| {
                     Box::pin(async { job.run(ctx_builder).await })
                 })
             });
 
             let ctx_builder2 = ctx_builder.clone();
-            c.register("DependentValuesAsyncTasks", move |job| -> io::Result<()> {
+            c.register("DependentValuesUpdate", move |job| -> io::Result<()> {
                 faktory_job_wrapper(ctx_builder2.clone(), job, |job, ctx_builder| {
                     Box::pin(async { job.run(ctx_builder).await })
                 })
@@ -412,7 +410,7 @@ fn faktory_job_wrapper(
         Box<dyn Future<Output = Result<(), Box<dyn std::error::Error + 'static + Sync + Send>>>>,
     >,
 ) -> Result<(), io::Error> {
-    debug!("Execute: {job:?}");
+    info!("Execute: {job:?}");
 
     let args = match job.args().into_iter().next() {
         Some(args) => args,
@@ -424,37 +422,76 @@ fn faktory_job_wrapper(
             )); // TODO: this sucks
         }
     };
-    let job = match Job::deserialize(args) {
-        Err(err) => {
+    let job = match args.as_str().map(serde_json::from_str) {
+        Some(Ok(job)) => job,
+        Some(Err(err)) => {
             error!("Unable to deserialize args as Job: {args:?} ({err}");
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
                 TaskError::InvalidRequest(args.clone(), Box::new(err)),
             )); // TODO: This sucks
         }
-        Ok(job) => job,
+        None => {
+            error!("Unable to deserialize args as Job: {args:?}");
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                TaskError::InvalidArgType(args.clone()),
+            )); // TODO: This sucks
+        }
     };
 
-    const RT_DEFAULT_THREAD_STACK_SIZE: usize = 2 * 1024 * 1024 * 3;
-    tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .thread_stack_size(RT_DEFAULT_THREAD_STACK_SIZE)
-        .build()
-        .map_err(|err| {
-            error!("Unable to initialize tokio thread: {err}");
-            err
-        })?
-        .block_on(task(job, ctx_builder))
-        .map_err(|err| io::Error::new(io::ErrorKind::Interrupted, TaskError::Failure(err)))?;
+    let result = std::panic::catch_unwind(AssertUnwindSafe(|| {
+        const RT_DEFAULT_THREAD_STACK_SIZE: usize = 2 * 1024 * 1024 * 3;
+
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .thread_stack_size(RT_DEFAULT_THREAD_STACK_SIZE)
+            .build()
+            .map_err(|err| {
+                error!("Unable to initialize tokio thread: {err}");
+                err.to_string()
+            })?
+            .block_on(task(dbg!(job), ctx_builder))
+            .map_err(|err| {
+                error!("Task execution failed: {err}");
+                err.to_string()
+            })?;
+        Ok(())
+    }));
+
+    match result {
+        Ok(Ok(())) => {}
+        Ok(Err(err)) => {
+            return Err(io::Error::new(
+                io::ErrorKind::Interrupted,
+                TaskError::Failure(err),
+            ))
+        }
+        Err(any) => {
+            let err = any.downcast::<&str>().map_err(|err| {
+                io::Error::new(
+                    io::ErrorKind::Interrupted,
+                    TaskError::Failure(format!("{:?}", err.type_id())),
+                )
+            })?;
+
+            error!("Job execution panicked with: {err}");
+            return Err(io::Error::new(
+                io::ErrorKind::Interrupted,
+                TaskError::Failure(err.to_string()),
+            ));
+        }
+    }
     Ok(())
 }
 
 #[derive(Debug, strum_macros::Display, thiserror::Error)]
 enum TaskError {
     EmptyRequest,
+    InvalidArgType(serde_json::Value),
     InvalidRequest(
         serde_json::Value,
         Box<dyn std::error::Error + 'static + Sync + Send>,
     ),
-    Failure(Box<dyn std::error::Error + 'static + Sync + Send>),
+    Failure(String),
 }

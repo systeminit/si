@@ -10,7 +10,6 @@ use dal::{
     WorkspaceId,
 };
 use serde::{Deserialize, Serialize};
-use telemetry::prelude::*;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]

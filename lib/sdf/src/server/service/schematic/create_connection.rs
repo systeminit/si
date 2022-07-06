@@ -8,7 +8,6 @@ use serde::{Deserialize, Serialize};
 
 use super::{SchematicError, SchematicResult};
 use crate::server::extract::{AccessBuilder, HandlerContext};
-use telemetry::prelude::*;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]

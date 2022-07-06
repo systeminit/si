@@ -9,6 +9,7 @@ use std::{fmt, net::TcpStream, sync::Arc};
 use thiserror::Error;
 use tokio::sync::Mutex;
 use veritech::EncryptionKey;
+use telemetry::prelude::*;
 
 use crate::{
     attribute::value::DependentValuesAsyncTasks, node::NodeId, BillingAccountId,
@@ -24,7 +25,7 @@ pub struct FaktoryProducer {
 impl FaktoryProducer {
     pub fn new(uri: &str) -> Result<Self, TransactionsError> {
         Ok(Self {
-            inner: Arc::new(Mutex::new(Producer::connect(Some(uri))?)),
+            inner: Arc::new(Mutex::new(Producer::connect(Some(uri)).map_err(TransactionsError::FaktoryConnect)?)),
         })
     }
 }
@@ -39,7 +40,7 @@ impl fmt::Debug for FaktoryProducer {
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
-#[serde(tag = "job_faktory_kind")]
+#[serde(tag = "faktory_job_kind")]
 pub enum JobContent {
     DependentValuesUpdate(DependentValuesAsyncTasks),
     ComponentPostProcessing(ComponentAsyncTasks),
@@ -599,11 +600,15 @@ pub enum TransactionsError {
     #[error(transparent)]
     Nats(#[from] nats::Error),
     #[error(transparent)]
-    Faktory(#[from] faktory::Error),
-    #[error(transparent)]
     SerdeJson(#[from] serde_json::Error),
     #[error(transparent)]
     ReadTenancy(#[from] ReadTenancyError),
+
+    // faktory-rs has poor error reporting capabilities
+    #[error("faktory connection failed: {0}")]
+    FaktoryConnect(faktory::Error),
+    #[error("faktory enqueue failed: {0}")]
+    FaktoryEnqueue(faktory::Error),
 }
 
 /// A type which holds ownership over connections that can be used to start transactions.
@@ -691,6 +696,7 @@ impl<'a> Transactions<'a> {
         queue.dedup();
 
         for job in queue {
+            info!("Enqueueing job: {job:?}");
             self.faktory_conn
                 .inner
                 .lock()
@@ -698,7 +704,7 @@ impl<'a> Transactions<'a> {
                 .enqueue(faktory::Job::new(
                     job.content.name(),
                     vec![serde_json::to_string(&job)?],
-                ))?;
+                )).map_err(TransactionsError::FaktoryEnqueue)?;
         }
         Ok(())
     }
