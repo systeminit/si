@@ -14,6 +14,7 @@
 
 # All workspace member directories from `Cargo.toml`
 !bin/cyclone
+!bin/modat
 !bin/sdf
 !bin/veritech
 !lib/bytes-lines-codec
@@ -21,6 +22,7 @@
 !lib/cyclone
 !lib/dal
 !lib/deadpool-cyclone
+!lib/modat
 !lib/sdf
 !lib/veritech
 !lib/si-data

@@ -1724,6 +1724,42 @@ dependencies = [
 ]
 
 [[package]]
+name = "modat-cli"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "color-eyre",
+ "modat-server",
+ "telemetry",
+ "tokio",
+]
+
+[[package]]
+name = "modat-client"
+version = "0.1.0"
+
+[[package]]
+name = "modat-server"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "dal",
+ "derive_builder",
+ "futures",
+ "hyper",
+ "serde",
+ "serde_json",
+ "si-data",
+ "si-settings",
+ "sodiumoxide",
+ "telemetry",
+ "thiserror",
+ "tokio",
+ "tower-http",
+ "veritech",
+]
+
+[[package]]
 name = "multimap"
 version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
