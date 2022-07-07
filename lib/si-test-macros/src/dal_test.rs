@@ -65,8 +65,12 @@ pub(crate) fn expand(item: ItemFn, _args: AttributeArgs) -> TokenStream {
 
             #tracing_init
 
-            #[allow(clippy::expect_used)]
-            #rt.block_on(imp())
+            let thread_builder = ::std::thread::Builder::new().stack_size(#thread_stack_size);
+            let thread_handler = thread_builder.spawn(|| {
+                #[allow(clippy::expect_used)]
+                #rt.block_on(imp())
+            }).unwrap();
+            thread_handler.join().unwrap();
         }
     }
 }
