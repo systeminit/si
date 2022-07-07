@@ -1,5 +1,6 @@
 import { Command } from "commander";
 import { Worker } from "@temporalio/worker";
+import axios from "axios";
 
 import { createActivities } from "./activities";
 
@@ -39,13 +40,15 @@ async function main() {
   await run(taskQueue, bindUds);
 }
 
-async function run(taskQueue: string, bindUds: string) {
-  const ctx = { bindUds };
+async function run(taskQueue: string, socketPath: string) {
+  const httpClient = axios.create({
+    socketPath,
+  });
 
   // Step 1: Register Workflows and Activities with the Worker and connect to
   // the Temporal server.
   const worker = await Worker.create({
-    activities: createActivities(ctx),
+    activities: createActivities({ httpClient }),
     sinks: {
       logger: {
         info: {

@@ -1,3 +1,5 @@
+import { AxiosInstance } from "axios";
+
 export interface Context {
-  bindUds: string;
+  httpClient: AxiosInstance;
 }

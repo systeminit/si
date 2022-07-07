@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use axum::{
     response::{IntoResponse, Response},
-    Extension, Json, Router,
+    Extension, Json, Router, routing::post,
 };
 use dal::ServicesContext;
 use hyper::StatusCode;
@@ -11,7 +11,7 @@ use telemetry::TelemetryClient;
 use thiserror::Error;
 use tokio::sync::{broadcast, mpsc};
 
-use crate::server::{ServerError, ShutdownSource};
+use crate::{server::{ServerError, ShutdownSource}, handlers};
 
 pub struct State {
     // TODO(fnichol): we're likely going to use this, but we can't allow it to be dropped because
@@ -48,7 +48,7 @@ pub fn routes(
     let shared_state = Arc::new(State::new(shutdown_tx));
     let encryption_key = Arc::new(encryption_key);
     let services_context = ServicesContext::new(pg_pool, nats_conn, veritech, encryption_key);
-    let mut router: Router = Router::new();
+    let mut router: Router = Router::new().route("/greet", post(handlers::greet));
     router = router
         .layer(Extension(shared_state))
         .layer(Extension(services_context))

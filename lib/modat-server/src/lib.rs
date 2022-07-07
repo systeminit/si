@@ -7,6 +7,7 @@ pub use server::{build_service, Server};
 pub use uds::{UdsIncomingStream, UdsIncomingStreamError};
 
 mod config;
+mod handlers;
 mod routes;
 mod server;
 mod uds;
