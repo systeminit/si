@@ -11,11 +11,15 @@ mod args;
 const RT_DEFAULT_THREAD_STACK_SIZE: usize = 2 * 1024 * 1024 * 3;
 
 fn main() -> Result<()> {
-    tokio::runtime::Builder::new_multi_thread()
-        .thread_stack_size(RT_DEFAULT_THREAD_STACK_SIZE)
-        .enable_all()
-        .build()?
-        .block_on(async_main())
+    let thread_builder = ::std::thread::Builder::new().stack_size(RT_DEFAULT_THREAD_STACK_SIZE);
+    let thread_handler = thread_builder.spawn(|| {
+        tokio::runtime::Builder::new_multi_thread()
+            .thread_stack_size(RT_DEFAULT_THREAD_STACK_SIZE)
+            .enable_all()
+            .build()?
+            .block_on(async_main())
+    })?;
+    thread_handler.join().unwrap()
 }
 
 async fn async_main() -> Result<()> {
