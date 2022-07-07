@@ -3,10 +3,12 @@
   "version": "4.4.2",
   "compilerOptions": {
     "declaration": true,
+    "declarationDir": "./dist",
     "declarationMap": true,
     "sourceMap": true,
     "rootDir": "./src",
-    "outDir": "./lib"
+    "outDir": "./dist"
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
 }

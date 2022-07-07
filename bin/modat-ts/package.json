@@ -3,9 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "clean": "rm -rf ./dist",
     "build": "tsc --build",
-    "build.watch": "tsc --build --watch",
-    "lint": "eslint .",
+    "build:clean": "npm run clean && npm run build",
+    "build:watch": "npm run clean && tsc --watch",
+    "watch": "npm run build:watch",
+    "lint": "eslint",
+    "lint:fix": "eslint --fix",
+    "fmt": "prettier --write .",
+    "fmt:check": "prettier --check .",
+    "run": "npm run build && node ./dist/worker.js",
     "start": "ts-node src/worker.ts",
     "start.watch": "nodemon src/worker.ts",
     "workflow": "ts-node src/client.ts"
