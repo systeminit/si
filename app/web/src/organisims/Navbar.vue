@@ -1,5 +1,5 @@
 <template>
-  <Disclosure v-slot="{ open }" as="nav" class="bg-gray-800">
+  <Disclosure v-slot="{ open }" as="nav" :class="bgColor">
     <div class="mx-auto px-4 sm:px-4 lg:px-4">
       <div class="flex items-center justify-between h-16">
         <!-- Left side -->
@@ -19,41 +19,45 @@
         <!-- Center -->
         <div class="flex items-center">
           <div class="hidden sm:block sm:ml-6">
-            <div class="flex space-x-4">
-              <button
-                type="button"
-                class="px-2 py-1 rounded-full text-gray-300 hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white"
+            <div class="flex">
+              <SiNavbarButton
+                tooltip-text="Compose yourself, dammit!"
+                :selected="selectedMode === Mode.Compose"
+                :panel-switcher="true"
+                @click="changeMode(Mode.Compose)"
               >
-                <span class="sr-only">View notifications</span>
-                <CollectionIcon class="h-6 w-6" aria-hidden="true" />
-              </button>
+                <CollectionIcon />
+              </SiNavbarButton>
 
-              <button
-                type="button"
-                class="px-2 py-1 rounded-full text-gray-300 hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white"
+              <SiNavbarButton
+                tooltip-text="Are you a thrill beaker?"
+                :selected="selectedMode === Mode.Beaker"
+                :panel-switcher="true"
+                @click="changeMode(Mode.Beaker)"
               >
-                <span class="sr-only">View notifications</span>
-                <BeakerIcon class="h-6 w-6" aria-hidden="true" />
-              </button>
+                <BeakerIcon />
+              </SiNavbarButton>
 
               <!-- Vertical bar -->
-              <div class="h-8 w-1 bg-gray-400"></div>
+              <div class="w-1 h-8 self-center mx-2 bg-gray-400"></div>
 
-              <button
-                type="button"
-                class="px-2 py-1 rounded-full text-gray-300 hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white"
+              <SiNavbarButton
+                tooltip-text="Eye see you"
+                :selected="selectedMode === Mode.Eye"
+                :panel-switcher="true"
+                @click="changeMode(Mode.Eye)"
               >
-                <span class="sr-only">View notifications</span>
-                <EyeIcon class="h-6 w-6" aria-hidden="true" />
-              </button>
+                <EyeIcon />
+              </SiNavbarButton>
 
-              <button
-                type="button"
-                class="px-2 py-1 rounded-full text-gray-300 hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white"
+              <SiNavbarButton
+                tooltip-text="Dookie, by Green Play"
+                :selected="selectedMode === Mode.Play"
+                :panel-switcher="true"
+                @click="changeMode(Mode.Play)"
               >
-                <span class="sr-only">View notifications</span>
-                <PlayIcon class="h-6 w-6" aria-hidden="true" />
-              </button>
+                <PlayIcon />
+              </SiNavbarButton>
             </div>
           </div>
         </div>
@@ -61,29 +65,26 @@
         <!-- Right side -->
         <div class="hidden sm:ml-6 sm:block">
           <div class="flex items-center">
-            <button
-              type="button"
-              class="text-sm px-2 py-1 rounded-full text-gray-300 hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white"
+            <SiNavbarButton
+              tooltip-text="Zoom"
+              :text-mode="true"
+              :selected="selectedButton === SelectableButton.Zoom"
+              @click="changedSelectableButton(SelectableButton.Zoom)"
             >
-              <span class="sr-only">View notifications</span>
-              100%
-            </button>
+              <div class="self-center text-center">100%</div>
+            </SiNavbarButton>
 
-            <button
-              type="button"
-              class="px-2 py-1 rounded-full text-gray-300 hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white"
-            >
-              <span class="sr-only">View notifications</span>
-              <LinkIcon class="h-6 w-6" aria-hidden="true" />
-            </button>
+            <SiNavbarButton tooltip-text="Copy link" @click="copyURL">
+              <LinkIcon />
+            </SiNavbarButton>
 
-            <button
-              type="button"
-              class="px-2 py-1 rounded-full text-gray-300 hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white"
+            <SiNavbarButton
+              tooltip-text="Change theme"
+              :selected="selectedButton === SelectableButton.Theme"
+              @click="changedSelectableButton(SelectableButton.Theme)"
             >
-              <span class="sr-only">View notifications</span>
-              <MoonIcon class="h-6 w-6" aria-hidden="true" />
-            </button>
+              <MoonIcon />
+            </SiNavbarButton>
 
             <SiProfile :enable-old-app-switch="true" />
           </div>
@@ -116,4 +117,38 @@ import {
 import { PlayIcon, BeakerIcon, CollectionIcon } from "@heroicons/vue/solid";
 import SiProfile from "@/molecules/SiProfile.vue";
 import SiLogoWts from "@/assets/images/si-logo-wts.svg";
+import SiNavbarButton from "@/atoms/SiNavbarButton.vue";
+import { refFrom } from "vuse-rx";
+
+const bgColor = "bg-[#333333]";
+
+const copyURL = () => {
+  navigator.clipboard.writeText(window.location.href);
+};
+
+enum Mode {
+  Compose,
+  Beaker,
+  Eye,
+  Play,
+}
+const selectedMode = refFrom<Mode>(Mode.Compose);
+const changeMode = (mode: Mode) => {
+  selectedMode.value = mode;
+};
+
+enum SelectableButton {
+  Zoom,
+  Theme,
+}
+const selectedButton = refFrom<SelectableButton | "">("");
+const changedSelectableButton = (selectableButton: SelectableButton) => {
+  if (selectedButton.value === "") {
+    selectedButton.value = selectableButton;
+  } else {
+    // Flip the selection to "unset" if the same button is clicked again.
+    // FIXME(nick): this is temporary until dropdown menus are implemented for selectable buttons.
+    selectedButton.value = "";
+  }
+};
 </script>

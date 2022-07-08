@@ -130,8 +130,8 @@ onMounted(async () => {
 
   let backgroundColor = 0x282828;
   if (props.lightMode) {
-    // RGB(245,244,244)
-    backgroundColor = 0xf5f4f4;
+    // RGB(244,244,244)
+    backgroundColor = 0xf4f4f4;
   }
 
   const renderer = new Renderer({
