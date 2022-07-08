@@ -16,6 +16,9 @@ pub mod event_log_fs;
 #[cfg(feature = "event-log-fs")]
 pub use event_log_fs::{EventLogFS, EventLogFSError, OutputLineStream};
 
+pub mod faktory;
+pub use faktory::FaktoryConfig;
+
 #[cfg(feature = "pg")]
 pub mod pg;
 #[cfg(feature = "pg")]

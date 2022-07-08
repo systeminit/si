@@ -82,7 +82,7 @@ async fn run(args: args::Args, mut telemetry: telemetry::Client) -> Result<()> {
 
     let nats = Server::connect_to_nats(config.nats()).await?;
 
-    let faktory_conn = FaktoryProducer::new(config.faktory())?;
+    let faktory_conn = FaktoryProducer::new(&config.faktory().url)?;
 
     let pg_pool = Server::create_pg_pool(config.pg_pool()).await?;
 

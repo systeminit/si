@@ -88,7 +88,7 @@ async fn run(
 
     let nats = Server::connect_to_nats(config.nats()).await?;
 
-    let faktory_conn = FaktoryProducer::new(config.faktory())?;
+    let faktory_conn = FaktoryProducer::new(&config.faktory().url)?;
 
     let pg_pool = Server::create_pg_pool(config.pg_pool()).await?;
 
@@ -98,7 +98,7 @@ async fn run(
         pg_pool.clone(),
         nats.clone(),
         faktory_conn.clone(),
-        config.faktory().to_owned(),
+        config.faktory().url.clone(),
         veritech.clone(),
         encryption_key,
         runtime,
