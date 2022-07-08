@@ -21,11 +21,13 @@ services:
     environment:
       - "SI_SDF__PG__HOSTNAME=postgres"
       - "SI_SDF__NATS__URL=nats"
+      - "SI_SDF__FAKTORY=tcp://faktory:7419"
       - "OTEL_EXPORTER_OTLP_ENDPOINT=http://otelcol:4317"
     extra_hosts:
       - "postgres:${GATEWAY:-I like my butt}"
       - "nats:${GATEWAY:-I like my butt}"
       - "otelcol:${GATEWAY:-I like my butt}"
+      - "faktory:${GATEWAY:-I like my butt}"
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
     depends_on:
@@ -57,11 +59,13 @@ services:
       #  environment:
       #    - "SI_SDF__PG__HOSTNAME=postgres"
       #    - "SI_SDF__NATS__URL=nats"
+      #    - "SI_SDF__FAKTORY=tcp://faktory:7419"
       #    - "OTEL_EXPORTER_OTLP_ENDPOINT=http://otelcol:4317"
       #  extra_hosts:
       #    - "postgres:${GATEWAY:-I like my butt}"
       #    - "nats:${GATEWAY:-I like my butt}"
       #    - "otelcol:${GATEWAY:-I like my butt}"
+      #    - "faktory:${GATEWAY:-I like my butt}"
       #  labels:
       #    - "com.centurylinklabs.watchtower.enable=true"
       #  depends_on:

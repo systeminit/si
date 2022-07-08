@@ -46,7 +46,8 @@ impl Default for TestConfig {
         }
         pg.dbname = env::var("SI_TEST_PG_DBNAME").unwrap_or_else(|_| "si_test".to_string());
 
-        let mut faktory = "tcp://localhost:7419".to_owned();
+        let mut faktory =
+            env::var("SI_TEST_FAKTORY").unwrap_or_else(|_| "tcp://localhost:7419".to_owned());
         if let Ok(value) = env::var("SI_TEST_FAKTORY_URL") {
             faktory = value;
         }

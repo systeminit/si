@@ -96,6 +96,7 @@ async fn run(
         pg_pool.clone(),
         nats.clone(),
         faktory_conn.clone(),
+        config.faktory().to_owned(),
         veritech.clone(),
         encryption_key,
         runtime,

@@ -229,6 +229,7 @@ impl Server<(), ()> {
         pg: PgPool,
         nats: NatsClient,
         faktory: FaktoryProducer,
+        faktory_url: String,
         veritech: veritech::Client,
         encryption_key: veritech::EncryptionKey,
         runtime: Arc<tokio::runtime::Runtime>,
@@ -262,10 +263,10 @@ impl Server<(), ()> {
                 )
             });
 
-            let mut c = match c.connect(Some("tcp://localhost:7419")) {
+            let mut c = match c.connect(Some(&faktory_url)) {
                 Ok(c) => c,
                 Err(err) => {
-                    error!("Unable to connect to faktory at tcp://localhost:7419: {err}");
+                    error!("Unable to connect to faktory at {faktory_url}: {err}");
                     std::thread::sleep(Duration::from_millis(5000));
                     continue;
                 }

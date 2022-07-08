@@ -20,6 +20,7 @@ const DEFAULT_PG_DBNAME: &str = "si_test";
 const ENV_VAR_NATS_URL: &str = "SI_TEST_NATS_URL";
 const ENV_VAR_PG_HOSTNAME: &str = "SI_TEST_PG_HOSTNAME";
 const ENV_VAR_PG_DBNAME: &str = "SI_TEST_PG_DBNAME";
+const ENV_VAR_FAKTORY: &str = "SI_TEST_FAKTORY";
 
 const JWT_PUBLIC_FILENAME: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/", "config/public.pem");
 const JWT_PRIVATE_FILENAME: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/", "config/private.pem");
@@ -90,8 +91,11 @@ impl Config {
         nats
     }
 
-    fn default_faktory() -> &'static str {
-        "tcp://localhost:7419"
+    fn default_faktory() -> String {
+        if let Ok(value) = env::var(ENV_VAR_FAKTORY) {
+            return value;
+        }
+        "tcp://localhost:7419".to_owned()
     }
 
     fn default_pg_pool() -> PgPoolConfig {
@@ -111,7 +115,7 @@ impl Default for Config {
         Self {
             pg_pool: Self::default_pg_pool(),
             nats: Self::default_nats(),
-            faktory: Self::default_faktory().to_owned(),
+            faktory: Self::default_faktory(),
             encryption_key_path: Self::default_encryption_key_path(),
         }
     }
