@@ -1,6 +1,7 @@
 <template>
-  <Disclosure v-slot="{ open }" as="status" class="bg-gray-800">
-    <div class="mx-auto px-4 max-w-fit">
+  <Disclosure v-slot="{ open }" as="status" :class="bgColor">
+    <!-- NOTE(nick): class might be needed, max-w-fit -->
+    <div class="mx-auto px-4">
       <div class="flex items-end justify-end h-12">
         <!-- Tabs location -->
         <div class="flex items-center">
@@ -15,7 +16,7 @@
         <!-- Mobile menu button -->
         <div class="-mr-2 flex sm:hidden">
           <DisclosureButton
-            class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
+            class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white hover:bg-black focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
           >
             <span class="sr-only">Open main menu</span>
             <MenuIcon v-if="!open" class="block h-6 w-6" aria-hidden="true" />
@@ -32,4 +33,6 @@ import { Disclosure, DisclosureButton } from "@headlessui/vue";
 import { MenuIcon, XIcon } from "@heroicons/vue/outline";
 import SiFlyoutTab from "@/molecules/SiFlyoutTab.vue";
 import { SiFlyoutKind } from "@/molecules/SiFlyoutTab/types";
+
+const bgColor = "bg-[#333333]";
 </script>
