@@ -1,7 +1,7 @@
 <template>
   <Disclosure v-slot="{ open }" as="status" :class="bgColor">
-    <!-- NOTE(nick): class might be needed, max-w-fit -->
-    <div class="mx-auto px-4">
+    <!-- NOTE(nick): will likely need to remove max-w-fit -->
+    <div class="mx-auto px-4 max-w-fit">
       <div class="flex items-end justify-end h-12">
         <!-- Tabs location -->
         <div class="flex items-center">

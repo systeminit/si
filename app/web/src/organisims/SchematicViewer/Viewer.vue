@@ -128,8 +128,14 @@ onMounted(async () => {
   if (!container.element.value) throw new Error("container is missing");
   resizeObserver.observe(container.element.value as Element);
 
-  let backgroundColor = 0x282828;
+  // Check for light mode in advance.
+  let lightMode = false;
   if (props.lightMode) {
+    lightMode = true;
+  }
+
+  let backgroundColor = 0x282828;
+  if (lightMode) {
     // RGB(244,244,244)
     backgroundColor = 0xf4f4f4;
   }
@@ -146,7 +152,7 @@ onMounted(async () => {
   maybeRenderer = renderer;
 
   // Handles elements that appear on the screen
-  const sceneManager = new SceneManager(renderer);
+  const sceneManager = new SceneManager(renderer, lightMode);
   maybeSceneManager = sceneManager;
   renderer.stage.addChild(sceneManager.scene);
 

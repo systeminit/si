@@ -34,7 +34,7 @@ export class SceneManager {
   };
   zoomFactor?: number;
 
-  constructor(renderer: Renderer) {
+  constructor(renderer: Renderer, lightMode: boolean) {
     this.renderer = renderer;
     this.scene = new PIXI.Container();
     this.scene.name = "scene";
@@ -60,7 +60,7 @@ export class SceneManager {
     };
 
     this.initializeSceneData();
-    this.setBackgroundGrid(renderer.width, renderer.height);
+    this.setBackgroundGrid(renderer.width, renderer.height, lightMode);
 
     this.zoomFactor = 1;
   }
@@ -80,8 +80,12 @@ export class SceneManager {
     }
   }
 
-  setBackgroundGrid(rendererWidth: number, rendererHeight: number): void {
-    const grid = new Grid(rendererWidth, rendererHeight);
+  setBackgroundGrid(
+    rendererWidth: number,
+    rendererHeight: number,
+    lightMode: boolean,
+  ): void {
+    const grid = new Grid(rendererWidth, rendererHeight, lightMode);
     grid.zIndex = 1;
     this.root.addChild(grid);
   }

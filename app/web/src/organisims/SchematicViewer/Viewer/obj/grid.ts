@@ -9,7 +9,11 @@ export class Grid extends PIXI.Container {
   zoomFactor?: number;
   quad: PIXI.Mesh<PIXI.Shader>;
 
-  constructor(rendererWidth: number, rendererHeight: number) {
+  constructor(
+    rendererWidth: number,
+    rendererHeight: number,
+    lightMode: boolean,
+  ) {
     super();
 
     this.name = BACKGROUND_GRID_NAME;
@@ -31,11 +35,17 @@ export class Grid extends PIXI.Container {
       .addIndex([0, 1, 2, 0, 3, 2]); // two triangles...
 
     const uniforms = {
+      // The color of the grid lines.
       uColor: [0.198, 0.198, 0.198],
       uBorderThickness: 0.02,
       uGridSubdivisions: side / 10.0,
       uZoomFactor: this.zoomFactor,
     };
+
+    // If in light mode, ensure the grid line color is white.
+    if (lightMode) {
+      uniforms.uColor = [1.0, 1.0, 1.0];
+    }
 
     const shader = PIXI.Shader.from(
       SHADER.gridVertexShader,
