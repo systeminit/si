@@ -1077,8 +1077,7 @@ dependencies = [
 [[package]]
 name = "faktory"
 version = "0.12.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aa57d70ff185a4ea08b2b8b3d1d5678477414f3a82004a84a8ec0b4ead74cff1"
+source = "git+https://github.com/systeminit/faktory-rs#7f9306b1b7854684c23f8b89998145190432af1a"
 dependencies = [
  "atomic-option",
  "bufstream",

@@ -248,7 +248,7 @@ impl Server<(), ()> {
                     ctx_builder1.clone(),
                     job,
                     runtime1.clone(),
-                    |job, ctx_builder| Box::pin(async { job.run(ctx_builder).await }),
+                    Box::new(|job, ctx_builder| Box::pin(async { job.run(ctx_builder).await })),
                 )
             });
 
@@ -259,7 +259,7 @@ impl Server<(), ()> {
                     ctx_builder2.clone(),
                     job,
                     runtime2.clone(),
-                    |job, ctx_builder| Box::pin(async { job.run(ctx_builder).await }),
+                    Box::new(|job, ctx_builder| Box::pin(async { job.run(ctx_builder).await })),
                 )
             });
 
@@ -418,11 +418,15 @@ fn faktory_job_wrapper(
     ctx_builder: Arc<DalContextBuilder>,
     job: faktory::Job,
     runtime: Arc<tokio::runtime::Runtime>,
-    task: impl FnOnce(
-        Job,
-        Arc<DalContextBuilder>,
-    ) -> Pin<
-        Box<dyn Future<Output = Result<(), Box<dyn std::error::Error + 'static + Sync + Send>>>>,
+    task: Box<
+        dyn FnOnce(
+            Job,
+            Arc<DalContextBuilder>,
+        ) -> Pin<
+            Box<
+                dyn Future<Output = Result<(), Box<dyn std::error::Error + 'static + Sync + Send>>>,
+            >,
+        >,
     >,
 ) -> Result<(), io::Error> {
     info!("Execute: {job:?}");

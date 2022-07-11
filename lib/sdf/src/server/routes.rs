@@ -125,7 +125,7 @@ pub fn test_routes(mut router: Router) -> Router {
 }
 
 #[cfg(not(debug_assertions))]
-pub fn test_routes(mut router: Router) -> Router {
+pub fn test_routes(router: Router) -> Router {
     router
 }
 

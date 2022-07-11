@@ -15,10 +15,12 @@ const RT_DEFAULT_THREAD_STACK_SIZE: usize = 2 * 1024 * 1024 * 3;
 fn main() {
     std::thread::Builder::new()
         .stack_size(RT_DEFAULT_THREAD_STACK_SIZE)
+        .name("bin/pinga-std::thread".to_owned())
         .spawn(move || {
             let runtime = Arc::new(
                 tokio::runtime::Builder::new_multi_thread()
                     .thread_stack_size(RT_DEFAULT_THREAD_STACK_SIZE)
+                    .thread_name("bin/pinga-tokio::runtime".to_owned())
                     .enable_all()
                     .build()?,
             );
