@@ -12,17 +12,33 @@
       leave-from-class="transform opacity-100 scale-100"
       leave-to-class="transform opacity-0 scale-95"
     >
-      <SiProfileDropdown :enable-old-app-switch="props.enableOldAppSwitch" />
+      <SiIconDropdown :options="options" />
     </transition>
   </Menu>
 </template>
 
 <script setup lang="ts">
+import { SessionService } from "@/service/session";
+import { useRouter } from "vue-router";
 import { Menu } from "@headlessui/vue";
 import SiProfileIcon from "@/atoms/SiProfileIcon.vue";
-import SiProfileDropdown from "@/atoms/SiProfileDropdown.vue";
+import SiIconDropdown from "@/atoms/SiIconDropdown.vue";
+import { SiIconDropdownOption } from "@/atoms/SiIconDropdown/types";
 
-const props = defineProps<{
-  enableOldAppSwitch?: boolean;
-}>();
+const router = useRouter();
+const options: SiIconDropdownOption[] = [
+  {
+    text: "Switch to old app",
+    action: async () => {
+      await router.push({ name: "home" });
+    },
+  },
+  {
+    text: "Logout",
+    action: async () => {
+      await SessionService.logout();
+      await router.push({ name: "login" });
+    },
+  },
+];
 </script>
