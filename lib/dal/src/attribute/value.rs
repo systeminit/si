@@ -1692,21 +1692,23 @@ impl DependentValuesAsyncTasks {
         AttributeValueDependentUpdateHarness::update_dependent_values(ctx, self.attribute_value_id)
             .await?;
 
-        // TODO: send websocket message
-        //if let Some((component_id, system_id)) = self
-        //    .component_task
-        //    .as_ref()
-        //    .map(|t| (t.component_id, t.system_id))
-        //{
-        //    WsEvent::updated_dependent_value(
-        //        component_id,
-        //        system_id,
-        //        ctx.read_tenancy().billing_accounts().into(),
-        //        ctx.history_actor(),
-        //    )
-        //    .publish(ctx.txns().nats())
-        //    .await?;
-        //}
+        let attribute_value = AttributeValue::get_by_id(ctx, &self.attribute_value_id)
+            .await?
+            .ok_or(AttributeValueError::NotFound(
+                self.attribute_value_id,
+                ctx.visibility().clone(),
+            ))?;
+
+        if attribute_value.context.component_id().is_some() {
+            WsEvent::updated_dependent_value(
+                attribute_value.context.component_id(),
+                attribute_value.context.system_id(),
+                ctx.read_tenancy().billing_accounts().into(),
+                ctx.history_actor(),
+            )
+            .publish(ctx.txns().nats())
+            .await?;
+        }
         Ok(())
     }
 }
