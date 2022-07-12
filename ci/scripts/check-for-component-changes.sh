@@ -44,6 +44,8 @@ WEB_PATHS=".github/workflows/promote-web.yml
   .prettierrc.js
   babel.config.js
   app/web/**"
+PINGA_PATHS="${SDF_PATHS}
+  bin/pinga/**"
 
 NATS_CHANGES=false
 OTELCOL_CHANGES=false
@@ -51,6 +53,7 @@ POSTGRES_CHANGES=false
 SDF_CHANGES=false
 VERITECH_CHANGES=false
 WEB_CHANGES=false
+PINGA_CHANGES=false
 
 echo "::group::Changed files"
 echo "${CHANGED_PATHS}"
@@ -95,6 +98,12 @@ for changed_path in ${CHANGED_PATHS}; do
       WEB_CHANGES=true
     fi
   done
+  for check_path in ${COMMON_PATHS} ${PINGA_PATHS}; do
+    if [[ "${changed_path}" == "${check_path}"* ]]; then
+      echo "Pinga MATCH!"
+      PINGA_CHANGES=true
+    fi
+  done
 done
 set +x
 echo "::endgroup::"
@@ -106,6 +115,7 @@ echo "Postgres: ${POSTGRES_CHANGES}"
 echo "SDF:      ${SDF_CHANGES}"
 echo "Veritech: ${VERITECH_CHANGES}"
 echo "Web:      ${WEB_CHANGES}"
+echo "Pinga:    ${PINGA_CHANGES}"
 echo "::endgroup::"
 
 echo "::set-output name=nats::${NATS_CHANGES}"
@@ -114,3 +124,4 @@ echo "::set-output name=postgres::${POSTGRES_CHANGES}"
 echo "::set-output name=sdf::${SDF_CHANGES}"
 echo "::set-output name=veritech::${VERITECH_CHANGES}"
 echo "::set-output name=web::${WEB_CHANGES}"
+echo "::set-output name=pinga::${PINGA_CHANGES}"

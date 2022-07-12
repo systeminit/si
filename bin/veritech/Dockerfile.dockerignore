@@ -16,6 +16,7 @@
 !bin/cyclone
 !bin/sdf
 !bin/veritech
+!bin/pinga
 !lib/bytes-lines-codec
 !lib/config-file
 !lib/cyclone

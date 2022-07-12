@@ -54,27 +54,27 @@ services:
       - nats
     restart: "unless-stopped"
 
-      #pinga:
-      #  image: "index.docker.io/systeminit/pinga:stable"
-      #  environment:
-      #    - "SI_SDF__PG__HOSTNAME=postgres"
-      #    - "SI_SDF__NATS__URL=nats"
-      #    - "SI_SDF__FAKTORY__URL=tcp://faktory:7419"
-      #    - "OTEL_EXPORTER_OTLP_ENDPOINT=http://otelcol:4317"
-      #  extra_hosts:
-      #    - "postgres:${GATEWAY:-I like my butt}"
-      #    - "nats:${GATEWAY:-I like my butt}"
-      #    - "otelcol:${GATEWAY:-I like my butt}"
-      #    - "faktory:${GATEWAY:-I like my butt}"
-      #  labels:
-      #    - "com.centurylinklabs.watchtower.enable=true"
-      #  depends_on:
-      #    - watchtower
-      #    - pg
-      #    - faktory
-      #    - otel
-      #    - nats
-      #  restart: "unless-stopped"
+  pinga:
+    image: "index.docker.io/systeminit/pinga:stable"
+    environment:
+      - "SI_PINGA__PG__HOSTNAME=postgres"
+      - "SI_PINGA__NATS__URL=nats"
+      - "SI_PINGA__FAKTORY__URL=tcp://faktory:7419"
+      - "OTEL_EXPORTER_OTLP_ENDPOINT=http://otelcol:4317"
+    extra_hosts:
+      - "postgres:${GATEWAY:-I like my butt}"
+      - "nats:${GATEWAY:-I like my butt}"
+      - "otelcol:${GATEWAY:-I like my butt}"
+      - "faktory:${GATEWAY:-I like my butt}"
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+    depends_on:
+      - watchtower
+      - pg
+      - faktory
+      - otel
+      - nats
+    restart: "unless-stopped"
 
   pg:
     image: "index.docker.io/systeminit/postgres:stable"

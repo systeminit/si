@@ -28,10 +28,12 @@ RELEASEABLE_COMPONENTS = \
 	web \
 	veritech \
 	sdf \
-	nats
+	nats \
+	pinga
 RUNNABLE_COMPONENTS = \
 	bin/veritech \
-	bin/sdf
+	bin/sdf \
+	bin/pinga
 BUILDABLE = $(patsubst %,build//%,$(COMPONENTS))
 TESTABLE = $(patsubst %,test//%,$(COMPONENTS))
 CLEANABLE = $(patsubst %,clean//%,$(COMPONENTS))
