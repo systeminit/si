@@ -1694,10 +1694,9 @@ impl DependentValuesAsyncTasks {
 
         let attribute_value = AttributeValue::get_by_id(ctx, &self.attribute_value_id)
             .await?
-            .ok_or(AttributeValueError::NotFound(
-                self.attribute_value_id,
-                ctx.visibility().clone(),
-            ))?;
+            .ok_or_else(|| {
+                AttributeValueError::NotFound(self.attribute_value_id, *ctx.visibility())
+            })?;
 
         if attribute_value.context.component_id().is_some() {
             WsEvent::updated_dependent_value(

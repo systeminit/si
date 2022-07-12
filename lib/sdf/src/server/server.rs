@@ -414,20 +414,20 @@ fn prepare_graceful_shutdown(
 #[derive(Debug, Eq, PartialEq)]
 pub enum ShutdownSource {}
 
+pub type FaktoryTask = Box<
+    dyn FnOnce(
+        Job,
+        Arc<DalContextBuilder>,
+    ) -> Pin<
+        Box<dyn Future<Output = Result<(), Box<dyn std::error::Error + 'static + Sync + Send>>>>,
+    >,
+>;
+
 fn faktory_job_wrapper(
     ctx_builder: Arc<DalContextBuilder>,
     job: faktory::Job,
     runtime: Arc<tokio::runtime::Runtime>,
-    task: Box<
-        dyn FnOnce(
-            Job,
-            Arc<DalContextBuilder>,
-        ) -> Pin<
-            Box<
-                dyn Future<Output = Result<(), Box<dyn std::error::Error + 'static + Sync + Send>>>,
-            >,
-        >,
-    >,
+    task: FaktoryTask,
 ) -> Result<(), io::Error> {
     info!("Execute: {job:?}");
 
