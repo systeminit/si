@@ -43,6 +43,8 @@ export class Grid extends PIXI.Container {
     };
 
     // If in light mode, ensure the grid line color is white.
+    // If we eventually implement a style sheet, we can also convert
+    // hex colors directly: "PIXI.utils.hex2rgb(0xffffff)"
     if (lightMode) {
       uniforms.uColor = [1.0, 1.0, 1.0];
     }

@@ -74,7 +74,7 @@ export class Socket extends PIXI.Container {
 
   createLabel(text: string): void {
     const label = new PIXI.Text(text, {
-      fontFamily: "Roboto",
+      fontFamily: "Inter",
       fontSize: 9,
       fontWeight: "300",
       letterSpacing: 1,

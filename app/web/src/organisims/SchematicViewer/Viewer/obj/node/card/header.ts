@@ -34,7 +34,7 @@ class HeaderBackground extends PIXI.Graphics {
 class HeaderText extends PIXI.Text {
   constructor(textString: string, width: number, height: number) {
     const textStyle = new PIXI.TextStyle({
-      fontFamily: "Roboto",
+      fontFamily: "Inter",
       fontSize: 12, // TODO: consider rem.
       fontWeight: "400",
       letterSpacing: 0,
