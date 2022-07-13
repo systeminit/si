@@ -10,7 +10,7 @@ module.exports = {
       move: "move",
     },
     fontFamily: {
-      sans: ["Roboto", "Sans-serif"],
+      sans: ["Inter", "Sans-serif"],
     },
     colors: {
       transparent: "transparent",

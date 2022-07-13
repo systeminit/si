@@ -1,16 +1,15 @@
 <template>
-  <Menu as="div" class="inline-block text-left">
-    <div :class="bgClasses">
-      <MenuButton
-        v-tooltip.bottom="tooltipText"
-        :class="buttonClasses"
-        :aria-label="props.tooltipText"
-        :disabled="disabled"
-        @click="emit('click')"
-      >
-        <slot></slot>
-      </MenuButton>
-    </div>
+  <Menu v-slot="{ open }" as="div" class="inline-block text-left">
+    <MenuButton
+      v-tooltip.bottom="tooltipText"
+      :class="buttonClasses(open)"
+      :aria-label="props.tooltipText"
+      :disabled="disabled"
+      @mouseenter="toggleHover"
+      @mouseleave="toggleHover"
+    >
+      <slot :hovered="hovered" :open="open"></slot>
+    </MenuButton>
 
     <transition
       v-if="enableDropdown && props.options"
@@ -35,17 +34,14 @@ import { computed, toRefs } from "vue";
 import { Menu } from "@headlessui/vue";
 import SiIconDropdown from "@/atoms/SiIconDropdown.vue";
 import { SiIconDropdownOption } from "@/atoms/SiIconDropdown/types";
-
-const emit = defineEmits(["click"]);
+import { ref } from "vue";
 
 const props = defineProps<{
   disabled?: boolean;
-  selected?: boolean;
   tooltipText: string;
-  panelSwitcher?: boolean;
   options?: SiIconDropdownOption[];
 }>();
-const { disabled, selected, tooltipText } = toRefs(props);
+const { disabled, tooltipText } = toRefs(props);
 
 const enableDropdown = computed((): boolean => {
   if (props.options && props.options.length > 0) {
@@ -54,46 +50,30 @@ const enableDropdown = computed((): boolean => {
   return false;
 });
 
-const selectedPanelBgColor = "bg-[#2F80ED]";
-const selectedBgColor = "bg-black";
+const hovered = ref<boolean>(false);
+const toggleHover = () => {
+  if (hovered.value) {
+    hovered.value = false;
+  } else {
+    hovered.value = true;
+  }
+};
 
-const bgClasses = computed(() => {
+const buttonClasses = (open: boolean) => {
   const results: Record<string, boolean> = {
     "py-12": true,
     "px-4": true,
     "hover:bg-black": true,
   };
 
-  if (selected?.value) {
+  // Only display "selected" classes if there is a dropdown available.
+  if (open && enableDropdown.value) {
     results["hover:bg-black"] = false;
-    if (props.panelSwitcher) {
-      results[selectedPanelBgColor] = true;
-    } else {
-      results[selectedBgColor] = true;
-    }
+    results["bg-black"] = true;
   }
 
   return results;
-});
-
-const buttonClasses = computed(() => {
-  const results: Record<string, boolean> = {
-    block: true,
-    "w-6": true,
-    "h-6": true,
-    "text-gray-300": true,
-    "hover:text-white": true,
-  };
-  if (disabled?.value) {
-    results["opacity-50"] = true;
-    results["cursor-not-allowed"] = true;
-  } else if (selected?.value) {
-    results["text-white"] = true;
-    results["text-gray-300"] = false;
-    results["hover:text-white"] = false;
-  }
-  return results;
-});
+};
 </script>
 
 <style lang="scss" scoped>

@@ -29,7 +29,7 @@ class ContentBackground extends PIXI.Graphics {
 class ContentText extends PIXI.Text {
   constructor(textString: string, width: number) {
     const textStyle = new PIXI.TextStyle({
-      fontFamily: "Roboto",
+      fontFamily: "Inter",
       fontSize: 10,
       fontWeight: "400",
       letterSpacing: 0,

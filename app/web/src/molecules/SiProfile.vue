@@ -1,7 +1,7 @@
 <template>
   <Menu as="div" class="ml-3 relative">
     <div>
-      <SiProfileIcon />
+      <SiProfileButton />
     </div>
 
     <transition
@@ -21,9 +21,9 @@
 import { SessionService } from "@/service/session";
 import { useRouter } from "vue-router";
 import { Menu } from "@headlessui/vue";
-import SiProfileIcon from "@/atoms/SiProfileIcon.vue";
 import SiIconDropdown from "@/atoms/SiIconDropdown.vue";
 import { SiIconDropdownOption } from "@/atoms/SiIconDropdown/types";
+import SiProfileButton from "@/atoms/SiProfileButton.vue";
 
 const router = useRouter();
 const options: SiIconDropdownOption[] = [
