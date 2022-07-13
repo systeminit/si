@@ -10,6 +10,7 @@ edition = "2018"
 async-recursion = "1.0.0"
 base64 = "0.13.0"
 chrono = { version = "0.4.19", features = ["serde"] }
+dyn-clone = "1.0.6"
 futures = "0.3.13"
 jwt-simple = "0.11.0"
 names = { version = "0.13.0", default-features = false }

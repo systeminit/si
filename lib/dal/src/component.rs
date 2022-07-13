@@ -11,7 +11,6 @@ use thiserror::Error;
 use crate::attribute::value::AttributeValue;
 use crate::attribute::{context::UNSET_ID_VALUE, value::AttributeValueError};
 use crate::code_generation_resolver::CodeGenerationResolverContext;
-use crate::context::JobContent;
 use crate::func::backend::validation::FuncBackendValidateStringValueArgs;
 use crate::func::backend::{
     js_code_generation::FuncBackendJsCodeGenerationArgs,
@@ -21,6 +20,7 @@ use crate::func::binding::{FuncBinding, FuncBindingError};
 use crate::func::binding_return_value::{
     FuncBindingReturnValue, FuncBindingReturnValueError, FuncBindingReturnValueId,
 };
+use crate::job::definition::component_post_processing::ComponentPostProcessing;
 use crate::qualification::QualificationView;
 use crate::qualification_resolver::QualificationResolverContext;
 use crate::resource_resolver::ResourceResolverContext;
@@ -28,10 +28,10 @@ use crate::schema::variant::{SchemaVariantError, SchemaVariantId};
 use crate::schema::SchemaVariant;
 use crate::ws_event::{WsEvent, WsEventError};
 use crate::{
-    context::AccessBuilder, context::DalContextBuilder, func::FuncId, impl_standard_model,
-    node::NodeId, pk, provider::internal::InternalProviderError, qualification::QualificationError,
-    standard_model, standard_model_accessor, standard_model_belongs_to, standard_model_has_many,
-    AttributeContext, AttributeContextBuilderError, AttributeContextError, AttributeReadContext,
+    func::FuncId, impl_standard_model, node::NodeId, pk, provider::internal::InternalProviderError,
+    qualification::QualificationError, standard_model, standard_model_accessor,
+    standard_model_belongs_to, standard_model_has_many, AttributeContext,
+    AttributeContextBuilderError, AttributeContextError, AttributeReadContext,
     CodeGenerationPrototype, CodeGenerationPrototypeError, CodeGenerationResolver,
     CodeGenerationResolverError, CodeLanguage, CodeView, DalContext, Edge, EdgeError, Func,
     FuncBackendKind, HistoryEventError, Node, NodeError, OrganizationError, Prop, PropError,
@@ -294,30 +294,6 @@ impl Component {
         Ok((component, node))
     }
 
-    pub async fn build_async_tasks(
-        &self,
-        ctx: &DalContext<'_, '_>,
-        system_id: SystemId,
-    ) -> ComponentResult<ComponentAsyncTasks> {
-        self.prepare_code_generation(ctx, system_id).await?;
-        self.prepare_qualifications_check(ctx, system_id).await?;
-        Ok(ComponentAsyncTasks::new(*self.id(), system_id))
-    }
-
-    pub async fn build_async_task(
-        &self,
-        ctx: &DalContext<'_, '_>,
-        system_id: SystemId,
-        qualification_prototype_id: QualificationPrototypeId,
-    ) -> ComponentResult<ComponentAsyncTasks> {
-        self.prepare_code_generation(ctx, system_id).await?;
-        self.prepare_qualification_check(ctx, system_id, qualification_prototype_id)
-            .await?;
-        let mut task = ComponentAsyncTasks::new(*self.id(), system_id);
-        task.set_qualification_prototype_id(qualification_prototype_id);
-        Ok(task)
-    }
-
     #[instrument(skip_all)]
     pub async fn new_for_schema_variant_with_node_in_deployment(
         ctx: &DalContext<'_, '_>,
@@ -375,10 +351,8 @@ impl Component {
         //       a ResourcePrototype for the Component's SchemaVariant.
         let _resource = Resource::new(ctx, &self.id, system_id).await?;
 
-        ctx.enqueue_job(JobContent::ComponentPostProcessing(
-            self.build_async_tasks(ctx, *system_id).await?,
-        ))
-        .await;
+        ctx.enqueue_job(ComponentPostProcessing::new(ctx, self.id, *system_id, None).await?)
+            .await;
 
         Ok(())
     }
@@ -1591,123 +1565,5 @@ impl Component {
         };
 
         Ok(None)
-    }
-}
-
-#[must_use]
-#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
-pub struct ComponentAsyncTasks {
-    pub component_id: ComponentId,
-    pub system_id: SystemId,
-    // Allows running only one specific qualification
-    qualification_prototype_id: Option<QualificationPrototypeId>,
-}
-
-impl ComponentAsyncTasks {
-    // Don't call this directly, call Component::build_async_tasks
-    fn new(component_id: ComponentId, system_id: SystemId) -> Self {
-        Self {
-            component_id,
-            system_id,
-            qualification_prototype_id: None,
-        }
-    }
-
-    pub fn set_qualification_prototype_id(&mut self, id: QualificationPrototypeId) {
-        self.qualification_prototype_id = Some(id);
-    }
-
-    pub async fn run_in_ctx(self, ctx: &DalContext<'_, '_>) -> ComponentResult<()> {
-        let component = Component::get_by_id(ctx, &self.component_id)
-            .await?
-            .ok_or(ComponentError::NotFound(self.component_id))?;
-
-        if let Some(prototype_id) = self.qualification_prototype_id {
-            component
-                .check_qualification(ctx, self.system_id, prototype_id)
-                .await?;
-
-            return Ok(());
-        }
-
-        component.generate_code(ctx, self.system_id).await?;
-        // Some qualifications depend on code generation, so remember to generate the code first
-        component.check_qualifications(ctx, self.system_id).await?;
-        Ok(())
-    }
-
-    pub async fn run(
-        self,
-        access_builder: AccessBuilder,
-        visibility: Visibility,
-        ctx_builder: &DalContextBuilder,
-    ) -> ComponentResult<()> {
-        if let Some(prototype_id) = self.qualification_prototype_id {
-            self.run_qualification_check(access_builder, visibility, ctx_builder, prototype_id)
-                .await?;
-
-            return Ok(());
-        }
-
-        self.run_code_generation(access_builder.clone(), visibility, ctx_builder)
-            .await?;
-        // Some qualifications depend on code generation, so remember to generate the code first
-        self.run_qualifications_check(access_builder, visibility, ctx_builder)
-            .await?;
-        Ok(())
-    }
-
-    async fn run_code_generation(
-        &self,
-        access_builder: AccessBuilder,
-        visibility: Visibility,
-        ctx_builder: &DalContextBuilder,
-    ) -> ComponentResult<()> {
-        let mut txns = ctx_builder.transactions_starter().await?;
-        let txns = txns.start().await?;
-        let ctx = ctx_builder.build(access_builder.build(visibility), &txns);
-        let component = Component::get_by_id(&ctx, &self.component_id)
-            .await?
-            .ok_or(ComponentError::NotFound(self.component_id))?;
-        component.generate_code(&ctx, self.system_id).await?;
-        txns.commit().await?;
-        Ok(())
-    }
-
-    async fn run_qualification_check(
-        &self,
-        access_builder: AccessBuilder,
-        visibility: Visibility,
-        ctx_builder: &DalContextBuilder,
-        prototype_id: QualificationPrototypeId,
-    ) -> ComponentResult<()> {
-        let mut txns = ctx_builder.transactions_starter().await?;
-        let txns = txns.start().await?;
-        let ctx = ctx_builder.build(access_builder.build(visibility), &txns);
-        let component = Component::get_by_id(&ctx, &self.component_id)
-            .await?
-            .ok_or(ComponentError::NotFound(self.component_id))?;
-        component
-            .check_qualification(&ctx, self.system_id, prototype_id)
-            .await?;
-        txns.commit().await?;
-        Ok(())
-    }
-
-    async fn run_qualifications_check(
-        &self,
-        access_builder: AccessBuilder,
-        visibility: Visibility,
-        ctx_builder: &DalContextBuilder,
-    ) -> ComponentResult<()> {
-        let mut txns = ctx_builder.transactions_starter().await?;
-        let txns = txns.start().await?;
-        let ctx = ctx_builder.build(access_builder.build(visibility), &txns);
-        let component = Component::get_by_id(&ctx, &self.component_id)
-            .await?
-            .ok_or(ComponentError::NotFound(self.component_id))?;
-        component.check_qualifications(&ctx, self.system_id).await?;
-        txns.commit().await?;
-        Ok(())
     }
 }

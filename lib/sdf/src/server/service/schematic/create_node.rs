@@ -1,12 +1,11 @@
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use crate::service::schematic::{SchematicError, SchematicResult};
 use axum::Json;
-use dal::context::JobContent;
-use dal::node_position::NodePositionView;
+use dal::job::definition::component_post_processing::ComponentPostProcessing;
 use dal::{
-    generate_name, node::NodeId, node::NodeViewKind, Component, Node, NodeKind, NodePosition,
-    NodeTemplate, NodeView, Schema, SchemaId, SchematicKind, StandardModel, SystemId, Visibility,
-    WorkspaceId,
+    generate_name, node::NodeId, node::NodeViewKind, node_position::NodePositionView, Component,
+    Node, NodeKind, NodePosition, NodeTemplate, NodeView, Schema, SchemaId, SchematicKind,
+    StandardModel, SystemId, Visibility, WorkspaceId,
 };
 use serde::{Deserialize, Serialize};
 
@@ -88,9 +87,9 @@ pub async fn create_node(
     };
 
     if let Some(system_id) = &request.system_id {
-        ctx.enqueue_job(JobContent::ComponentPostProcessing(
-            component.build_async_tasks(&ctx, *system_id).await?,
-        ))
+        ctx.enqueue_job(
+            ComponentPostProcessing::new(&ctx, *component.id(), *system_id, None).await?,
+        )
         .await;
     };
 

@@ -1,6 +1,7 @@
 use dal::{
     attribute::context::AttributeContextBuilder,
     component::view::ComponentView,
+    test::helpers::process_job_queue,
     test_harness::{create_prop_of_kind_with_name, create_schema, create_schema_variant_with_root},
     AttributeContext, AttributeReadContext, AttributeValue, Component, DalContext, PropKind,
     SchemaKind, SchemaVariant, StandardModel, SystemId,
@@ -35,9 +36,7 @@ async fn update_for_context_simple(ctx: &DalContext<'_, '_>) {
     let (component, _) = Component::new_for_schema_with_node(ctx, "Basic component", schema.id())
         .await
         .expect("Unable to create component");
-    ctx.run_enqueued_jobs()
-        .await
-        .expect("cannot run enqueued jobs");
+    process_job_queue(ctx).await;
 
     let base_attribute_read_context = AttributeReadContext {
         prop_id: None,
@@ -100,9 +99,7 @@ async fn update_for_context_simple(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("cannot set value for context");
-    ctx.run_enqueued_jobs()
-        .await
-        .expect("cannot run enqueued jobs");
+    process_job_queue(ctx).await;
 
     assert_eq_sorted!(
         serde_json::json![
@@ -131,9 +128,7 @@ async fn update_for_context_simple(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("cannot update value for context");
-    ctx.run_enqueued_jobs()
-        .await
-        .expect("cannot run enqueued jobs");
+    process_job_queue(ctx).await;
 
     assert_eq_sorted!(
         serde_json::json![
@@ -184,9 +179,7 @@ async fn insert_for_context_simple(ctx: &DalContext<'_, '_>) {
     let (component, _) = Component::new_for_schema_with_node(ctx, "Array Component", schema.id())
         .await
         .expect("Unable to create component");
-    ctx.run_enqueued_jobs()
-        .await
-        .expect("cannot run enqueued jobs");
+    process_job_queue(ctx).await;
 
     let base_attribute_read_context = AttributeReadContext {
         prop_id: None,
@@ -228,9 +221,7 @@ async fn insert_for_context_simple(ctx: &DalContext<'_, '_>) {
         AttributeValue::insert_for_context(ctx, update_context, *array_value.id(), None, None)
             .await
             .expect("cannot insert new array element");
-    ctx.run_enqueued_jobs()
-        .await
-        .expect("cannot run enqueued jobs");
+    process_job_queue(ctx).await;
 
     assert_eq_sorted!(
         serde_json::json![{
@@ -304,9 +295,7 @@ async fn update_for_context_object(ctx: &DalContext<'_, '_>) {
     let (component, _) = Component::new_for_schema_with_node(ctx, "Basic component", schema.id())
         .await
         .expect("Unable to create component");
-    ctx.run_enqueued_jobs()
-        .await
-        .expect("cannot run enqueued jobs");
+    process_job_queue(ctx).await;
 
     let read_context = AttributeReadContext {
         prop_id: None,
@@ -396,9 +385,7 @@ async fn update_for_context_object(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("cannot update value");
-    ctx.run_enqueued_jobs()
-        .await
-        .expect("cannot run enqueued jobs");
+    process_job_queue(ctx).await;
 
     let component_view = ComponentView::for_context(ctx, read_context)
         .await
@@ -449,9 +436,7 @@ async fn update_for_context_object(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("cannot update value");
-    ctx.run_enqueued_jobs()
-        .await
-        .expect("cannot run enqueued jobs");
+    process_job_queue(ctx).await;
 
     let component_view = ComponentView::for_context(ctx, read_context)
         .await
@@ -511,9 +496,7 @@ async fn insert_for_context_creates_array_in_final_context(ctx: &DalContext<'_, 
     let (component, _) = Component::new_for_schema_with_node(ctx, "Array Component", schema.id())
         .await
         .expect("Unable to create component");
-    ctx.run_enqueued_jobs()
-        .await
-        .expect("cannot run enqueued jobs");
+    process_job_queue(ctx).await;
 
     let base_attribute_read_context = AttributeReadContext {
         prop_id: None,
@@ -560,9 +543,7 @@ async fn insert_for_context_creates_array_in_final_context(ctx: &DalContext<'_, 
     )
     .await
     .expect("cannot insert new array element");
-    ctx.run_enqueued_jobs()
-        .await
-        .expect("cannot run enqueued jobs");
+    process_job_queue(ctx).await;
 
     assert_eq_sorted!(
         serde_json::json![{
@@ -608,9 +589,7 @@ async fn insert_for_context_creates_array_in_final_context(ctx: &DalContext<'_, 
     )
     .await
     .expect("cannot insert new system array element");
-    ctx.run_enqueued_jobs()
-        .await
-        .expect("cannot run enqueued jobs");
+    process_job_queue(ctx).await;
 
     let system_attribute_read_context = AttributeReadContext {
         system_id: Some(system_id),

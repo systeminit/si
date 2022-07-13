@@ -1,6 +1,6 @@
 use dal::{
     qualification_resolver::UNSET_ID_VALUE,
-    test::helpers::create_system_with_node,
+    test::helpers::{create_system_with_node, process_job_queue},
     test_harness::{
         create_component_and_schema, create_component_for_schema_variant, create_schema,
         create_schema_variant, create_schema_variant_with_root,
@@ -97,9 +97,7 @@ async fn qualification_view(ctx: &DalContext<'_, '_>) {
         Component::new_for_schema_variant_with_node(ctx, "mastodon", schema_variant.id())
             .await
             .expect("Unable to create component");
-    ctx.run_enqueued_jobs()
-        .await
-        .expect("cannot run enqueued jobs");
+    process_job_queue(ctx).await;
 
     let qualification_check_component = component
         .veritech_qualification_check_component(ctx, UNSET_ID_VALUE.into())
@@ -183,9 +181,7 @@ async fn get_resource_by_component_id(ctx: &DalContext<'_, '_>, wid: WorkspaceId
     let (component, _node) = Component::new_for_schema_with_node(ctx, "chvrches", schema.id())
         .await
         .expect("cannot create ash component");
-    ctx.run_enqueued_jobs()
-        .await
-        .expect("cannot run enqueued jobs");
+    process_job_queue(ctx).await;
 
     let _ = component
         .add_to_system(ctx, system.id())

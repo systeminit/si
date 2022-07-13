@@ -13,6 +13,6 @@
 
 mod server;
 pub use server::{
-    build_service, service, Config, ConfigError, ConfigFile, FaktoryProducer, IncomingStream,
-    JwtSecretKey, MigrationMode, Server, StandardConfig, StandardConfigFile,
+    build_service, service, Config, ConfigError, ConfigFile, FaktoryProcessor, IncomingStream,
+    JobQueueProcessor, JwtSecretKey, MigrationMode, Server, StandardConfig, StandardConfigFile,
 };

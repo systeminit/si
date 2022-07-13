@@ -4,7 +4,7 @@ use axum::{
     routing::get,
     Extension, Json, Router,
 };
-use dal::context::{FaktoryProducer, ServicesContext};
+use dal::{context::ServicesContext, job::processor::JobQueueProcessor};
 use hyper::StatusCode;
 use si_data::{nats, pg, SensitiveString};
 use std::sync::Arc;
@@ -54,7 +54,7 @@ pub fn routes(
     telemetry: impl TelemetryClient,
     pg_pool: pg::PgPool,
     nats_conn: nats::Client,
-    faktory_conn: FaktoryProducer,
+    job_processor: Arc<Box<dyn JobQueueProcessor + Send + Sync>>,
     veritech: veritech::Client,
     encryption_key: veritech::EncryptionKey,
     jwt_secret_key: JwtSecretKey,
@@ -68,7 +68,7 @@ pub fn routes(
     let services_context = ServicesContext::new(
         pg_pool.clone(),
         nats_conn.clone(),
-        faktory_conn,
+        job_processor,
         veritech.clone(),
         encryption_key.clone(),
     );

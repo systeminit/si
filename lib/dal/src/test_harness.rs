@@ -11,13 +11,14 @@ use veritech::{EncryptionKey, Instance, StandardConfig};
 use crate::{
     billing_account::BillingAccountSignup,
     component::ComponentKind,
-    context::FaktoryProducer,
     func::{binding::FuncBinding, FuncId},
+    job::processor::{faktory_processor::FaktoryProcessor, JobQueueProcessor},
     jwt_key::JwtSecretKey,
     key_pair::KeyPairId,
     node::NodeKind,
     schema,
     socket::{Socket, SocketArity, SocketEdgeKind, SocketKind},
+    test::helpers::process_job_queue,
     BillingAccount, BillingAccountId, ChangeSet, Component, DalContext, EditSession,
     EncryptedSecret, Func, FuncBackendKind, FuncBackendResponseType, Group, HistoryActor, KeyPair,
     Node, Organization, Prop, PropId, PropKind, QualificationCheck, Schema, SchemaId, SchemaKind,
@@ -75,7 +76,7 @@ pub struct TestContext {
     tmp_event_log_fs_root: tempfile::TempDir,
     pub pg: PgPool,
     pub nats_conn: NatsClient,
-    pub faktory: FaktoryProducer,
+    pub faktory: Arc<Box<dyn JobQueueProcessor + Send + Sync>>,
     pub veritech: veritech::Client,
     pub encryption_key: EncryptionKey,
     pub jwt_secret_key: JwtSecretKey,
@@ -95,8 +96,9 @@ impl TestContext {
         let nats_conn = NatsClient::new(&settings.nats)
             .await
             .expect("failed to connect to NATS");
-        let faktory =
-            FaktoryProducer::new(&settings.faktory).expect("failed to connect to Faktory");
+        let faktory = Arc::new(Box::new(
+            FaktoryProcessor::new(&settings.faktory).expect("failed to connect to Faktory"),
+        ) as Box<dyn JobQueueProcessor + Send + Sync>);
         // Create a dedicated Veritech server with a unique subject prefix for each test
         let nats_subject_prefix = nats_prefix();
         let veritech_server =
@@ -130,7 +132,7 @@ impl TestContext {
     ) -> (
         &PgPool,
         &NatsClient,
-        FaktoryProducer,
+        Arc<Box<dyn JobQueueProcessor + Send + Sync>>,
         veritech::Client,
         &EncryptionKey,
         &JwtSecretKey,
@@ -422,9 +424,7 @@ pub async fn create_component_for_schema_variant(
     let (component, _) = Component::new_for_schema_variant_with_node(ctx, &name, schema_variant_id)
         .await
         .expect("cannot create component");
-    ctx.run_enqueued_jobs()
-        .await
-        .expect("cannot run enqueued jobs");
+    process_job_queue(ctx).await;
     component
 }
 

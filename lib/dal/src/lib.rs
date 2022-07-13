@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use context::FaktoryProducer;
+use job::processor::JobQueueProcessor;
 use rand::Rng;
 use si_data::{NatsClient, NatsError, PgError, PgPool, PgPoolError};
 use telemetry::prelude::*;
@@ -26,6 +26,7 @@ pub mod func;
 pub mod group;
 pub mod history_event;
 pub mod index_map;
+pub mod job;
 pub mod job_failure;
 pub mod jwt_key;
 pub mod key_pair;
@@ -96,7 +97,7 @@ pub use code_generation_resolver::{
     CodeGenerationResolver, CodeGenerationResolverError, CodeGenerationResolverId,
 };
 pub use code_view::{CodeLanguage, CodeView};
-pub use component::{Component, ComponentAsyncTasks, ComponentError, ComponentId, ComponentView};
+pub use component::{Component, ComponentError, ComponentId, ComponentView};
 pub use context::{
     AccessBuilder, DalContext, DalContextBuilder, RequestContext, ServicesContext, Transactions,
     TransactionsError, TransactionsStarter,
@@ -200,14 +201,14 @@ pub async fn migrate(pg: &PgPool) -> ModelResult<()> {
 pub async fn migrate_builtins(
     pg: &PgPool,
     nats: &NatsClient,
-    faktory_conn: FaktoryProducer,
+    job_processor: Arc<Box<dyn JobQueueProcessor + Send + Sync>>,
     veritech: veritech::Client,
     encryption_key: &EncryptionKey,
 ) -> ModelResult<()> {
     let services_context = ServicesContext::new(
         pg.clone(),
         nats.clone(),
-        faktory_conn,
+        job_processor,
         veritech,
         Arc::new(*encryption_key),
     );
