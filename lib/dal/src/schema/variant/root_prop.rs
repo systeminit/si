@@ -53,7 +53,7 @@ impl RootProp {
         let root_context = AttributeContext::builder()
             .set_prop_id(*root_prop.id())
             .to_context()?;
-        let (_, root_value_id, task) = AttributeValue::update_for_context(
+        let (_, root_value_id) = AttributeValue::update_for_context(
             ctx,
             *AttributeValue::find_for_context(ctx, root_context.into())
                 .await?
@@ -65,12 +65,11 @@ impl RootProp {
             None,
         )
         .await?;
-        task.run_updates_in_ctx(ctx).await?;
 
         let si_context = AttributeContext::builder()
             .set_prop_id(*si_specific_prop.id())
             .to_context()?;
-        let (_, si_value_id, task) = AttributeValue::update_for_context(
+        let (_, si_value_id) = AttributeValue::update_for_context(
             ctx,
             *AttributeValue::find_for_context(ctx, si_context.into())
                 .await?
@@ -82,12 +81,11 @@ impl RootProp {
             None,
         )
         .await?;
-        task.run_updates_in_ctx(ctx).await?;
 
         let si_name_context = AttributeContext::builder()
             .set_prop_id(*si_name_prop.id())
             .to_context()?;
-        let (_, _, task) = AttributeValue::update_for_context(
+        let (_, _) = AttributeValue::update_for_context(
             ctx,
             *AttributeValue::find_for_context(ctx, si_name_context.into())
                 .await?
@@ -99,12 +97,11 @@ impl RootProp {
             None,
         )
         .await?;
-        task.run_updates_in_ctx(ctx).await?;
 
         let domain_context = AttributeContext::builder()
             .set_prop_id(*domain_specific_prop.id())
             .to_context()?;
-        let (_, _, task) = AttributeValue::update_for_context(
+        let (_, _) = AttributeValue::update_for_context(
             ctx,
             *AttributeValue::find_for_context(ctx, domain_context.into())
                 .await?
@@ -116,7 +113,6 @@ impl RootProp {
             None,
         )
         .await?;
-        task.run_updates_in_ctx(ctx).await?;
 
         Ok(Self {
             prop_id: *root_prop.id(),

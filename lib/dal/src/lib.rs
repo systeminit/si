@@ -2,6 +2,7 @@
 
 use std::sync::Arc;
 
+use context::FaktoryProducer;
 use rand::Rng;
 use si_data::{NatsClient, NatsError, PgError, PgPool, PgPoolError};
 use telemetry::prelude::*;
@@ -197,12 +198,14 @@ pub async fn migrate(pg: &PgPool) -> ModelResult<()> {
 pub async fn migrate_builtins(
     pg: &PgPool,
     nats: &NatsClient,
+    faktory_conn: FaktoryProducer,
     veritech: veritech::Client,
     encryption_key: &EncryptionKey,
 ) -> ModelResult<()> {
     let services_context = ServicesContext::new(
         pg.clone(),
         nats.clone(),
+        faktory_conn,
         veritech,
         Arc::new(*encryption_key),
     );

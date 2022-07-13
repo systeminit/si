@@ -1,7 +1,6 @@
 use axum::Json;
 use dal::{AttributeContext, AttributeValue, AttributeValueId, Visibility};
 use serde::{Deserialize, Serialize};
-use telemetry::prelude::*;
 
 use super::ComponentResult;
 use crate::server::extract::{AccessBuilder, HandlerContext};
@@ -30,9 +29,9 @@ pub async fn update_property_editor_value(
     Json(request): Json<UpdatePropertyEditorValueRequest>,
 ) -> ComponentResult<Json<UpdatePropertyEditorValueResponse>> {
     let txns = txns.start().await?;
-    let ctx = builder.build(request_ctx.clone().build(request.visibility), &txns);
+    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
 
-    let (_, _, async_tasks) = AttributeValue::update_for_context(
+    let (_, _) = AttributeValue::update_for_context(
         &ctx,
         request.attribute_value_id,
         request.parent_attribute_value_id,
@@ -43,15 +42,6 @@ pub async fn update_property_editor_value(
     .await?;
 
     txns.commit().await?;
-
-    tokio::task::spawn(async move {
-        if let Err(err) = async_tasks
-            .run(request_ctx, request.visibility, &builder)
-            .await
-        {
-            error!("Component async task execution failed: {err}");
-        }
-    });
 
     Ok(Json(UpdatePropertyEditorValueResponse { success: true }))
 }

@@ -17,6 +17,7 @@ jobs:
       sdf-changed: ${{ steps.check-component-changes.outputs.sdf }}
       veritech-changed: ${{ steps.check-component-changes.outputs.veritech }}
       web-changed: ${{ steps.check-component-changes.outputs.web }}
+      pinga-changed: ${{ steps.check-component-changes.outputs.pinga }}
     steps:
       - uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # pin@v2.3.4
         with:
@@ -83,6 +84,16 @@ jobs:
     secrets:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
+  pinga:
+    name: "Build pinga image"
+    needs: check-changes
+    if: needs.check-changes.outputs.pinga-changed == 'true'
+    uses: ./.github/workflows/build-docker-image.yml
+    with:
+      component_name: pinga
+    secrets:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
   summary:
     name: Docker Image Build Summary Status
     runs-on: self-hosted
@@ -94,6 +105,7 @@ jobs:
       - sdf
       - veritech
       - web
+      - pinga
     if: always()
     env:
       CHECK_CHANGES_STATUS: ${{ needs.check-changes.result }}

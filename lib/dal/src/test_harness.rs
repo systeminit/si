@@ -11,6 +11,7 @@ use veritech::{EncryptionKey, Instance, StandardConfig};
 use crate::{
     billing_account::BillingAccountSignup,
     component::ComponentKind,
+    context::FaktoryProducer,
     func::{binding::FuncBinding, FuncId},
     jwt_key::JwtSecretKey,
     key_pair::KeyPairId,
@@ -28,6 +29,7 @@ use crate::{
 pub struct TestConfig {
     pg: PgPoolConfig,
     nats: NatsConfig,
+    faktory: String,
     jwt_encrypt: JwtSecretKey,
 }
 
@@ -37,15 +39,23 @@ impl Default for TestConfig {
         if let Ok(value) = env::var("SI_TEST_NATS_URL") {
             nats.url = value;
         }
+
         let mut pg = PgPoolConfig::default();
         if let Ok(value) = env::var("SI_TEST_PG_HOSTNAME") {
             pg.hostname = value;
         }
         pg.dbname = env::var("SI_TEST_PG_DBNAME").unwrap_or_else(|_| "si_test".to_string());
 
+        let mut faktory =
+            env::var("SI_TEST_FAKTORY").unwrap_or_else(|_| "tcp://localhost:7419".to_owned());
+        if let Ok(value) = env::var("SI_TEST_FAKTORY_URL") {
+            faktory = value;
+        }
+
         Self {
             pg,
             nats,
+            faktory,
             jwt_encrypt: JwtSecretKey::default(),
         }
     }
@@ -65,6 +75,7 @@ pub struct TestContext {
     tmp_event_log_fs_root: tempfile::TempDir,
     pub pg: PgPool,
     pub nats_conn: NatsClient,
+    pub faktory: FaktoryProducer,
     pub veritech: veritech::Client,
     pub encryption_key: EncryptionKey,
     pub jwt_secret_key: JwtSecretKey,
@@ -84,6 +95,8 @@ impl TestContext {
         let nats_conn = NatsClient::new(&settings.nats)
             .await
             .expect("failed to connect to NATS");
+        let faktory =
+            FaktoryProducer::new(&settings.faktory).expect("failed to connect to Faktory");
         // Create a dedicated Veritech server with a unique subject prefix for each test
         let nats_subject_prefix = nats_prefix();
         let veritech_server =
@@ -104,6 +117,7 @@ impl TestContext {
             tmp_event_log_fs_root,
             pg,
             nats_conn,
+            faktory,
             veritech,
             encryption_key,
             jwt_secret_key: secret_key,
@@ -116,6 +130,7 @@ impl TestContext {
     ) -> (
         &PgPool,
         &NatsClient,
+        FaktoryProducer,
         veritech::Client,
         &EncryptionKey,
         &JwtSecretKey,
@@ -123,6 +138,7 @@ impl TestContext {
         (
             &self.pg,
             &self.nats_conn,
+            self.faktory.clone(),
             self.veritech.clone(),
             &self.encryption_key,
             &self.jwt_secret_key,
@@ -391,10 +407,9 @@ pub async fn create_component_and_schema(ctx: &DalContext<'_, '_>) -> Component 
     let schema = create_schema(ctx, &SchemaKind::Concept).await;
     let schema_variant = create_schema_variant(ctx, *schema.id()).await;
     let name = generate_fake_name();
-    let (entity, _, _) =
-        Component::new_for_schema_variant_with_node(ctx, &name, schema_variant.id())
-            .await
-            .expect("cannot create component");
+    let (entity, _) = Component::new_for_schema_variant_with_node(ctx, &name, schema_variant.id())
+        .await
+        .expect("cannot create component");
     entity
 }
 
@@ -404,13 +419,12 @@ pub async fn create_component_for_schema_variant(
     schema_variant_id: &SchemaVariantId,
 ) -> Component {
     let name = generate_fake_name();
-    let (component, _, task) =
-        Component::new_for_schema_variant_with_node(ctx, &name, schema_variant_id)
-            .await
-            .expect("cannot create component");
-    task.run_updates_in_ctx(ctx)
+    let (component, _) = Component::new_for_schema_variant_with_node(ctx, &name, schema_variant_id)
         .await
-        .expect("cannot run async updates");
+        .expect("cannot create component");
+    ctx.run_enqueued_jobs()
+        .await
+        .expect("cannot run enqueued jobs");
     component
 }
 
@@ -420,7 +434,7 @@ pub async fn create_component_for_schema(
     schema_id: &SchemaId,
 ) -> Component {
     let name = generate_fake_name();
-    let (component, _, _) = Component::new_for_schema_with_node(ctx, &name, schema_id)
+    let (component, _) = Component::new_for_schema_with_node(ctx, &name, schema_id)
         .await
         .expect("cannot create component");
     component

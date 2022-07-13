@@ -55,6 +55,8 @@ pub enum SchemaVariantError {
     StandardModel(#[from] StandardModelError),
     #[error("ws event error: {0}")]
     WsEvent(#[from] WsEventError),
+    #[error("std error: {0}")]
+    Std(#[from] Box<dyn std::error::Error + Sync + Send + 'static>),
 }
 
 pub type SchemaVariantResult<T> = Result<T, SchemaVariantError>;

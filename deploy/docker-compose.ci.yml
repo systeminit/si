@@ -32,3 +32,12 @@ services:
       - "${REPOPATH:-..}/app/web/nginx/nginx-selfsigned.crt:/etc/ssl/certs/nginx-selfsigned.crt"
       - "${REPOPATH:-..}/app/web/nginx/nginx-selfsigned.key:/etc/ssl/certs/nginx-selfsigned.key"
       - "${REPOPATH:-..}/app/web/htpasswd:/htpasswd"
+
+  pinga:
+    image: "fedora:latest"
+    volumes:
+      - "${REPOPATH:-..}/target/debug/pinga:/usr/local/bin/pinga"
+      - "${REPOPATH:-..}/bin/pinga/src/dev.jwt_secret_key.bin:/run/pinga/jwt_secret_key.bin:ro"
+      - "${REPOPATH:-..}/lib/cyclone/src/dev.encryption.key:/run/pinga/cyclone_encryption.key:ro"
+    entrypoint:
+      - "/usr/local/bin/pinga"

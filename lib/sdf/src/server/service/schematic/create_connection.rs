@@ -1,14 +1,13 @@
 use axum::Json;
 use dal::{
-    attribute::value::DependentValuesAsyncTasks, node::NodeId, socket::SocketId,
-    AttributeReadContext, AttributeValue, ComponentAsyncTasks, Connection, ExternalProviderId,
+    attribute::value::DependentValuesAsyncTasks, context::JobContent, node::NodeId,
+    socket::SocketId, AttributeReadContext, AttributeValue, Connection, ExternalProviderId,
     InternalProviderId, Node, StandardModel, SystemId, Visibility, WorkspaceId,
 };
 use serde::{Deserialize, Serialize};
 
 use super::{SchematicError, SchematicResult};
 use crate::server::extract::{AccessBuilder, HandlerContext};
-use telemetry::prelude::*;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -36,7 +35,7 @@ pub async fn create_connection(
     Json(request): Json<CreateConnectionRequest>,
 ) -> SchematicResult<Json<CreateConnectionResponse>> {
     let txns = txns.start().await?;
-    let ctx = builder.build(request_ctx.clone().build(request.visibility), &txns);
+    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
 
     let connection = Connection::new(
         &ctx,
@@ -71,37 +70,30 @@ pub async fn create_connection(
         .await?
         .ok_or(SchematicError::SchemaNotFound)?;
 
-    let attribute_value = AttributeValue::find_for_context(
-        &ctx,
-        AttributeReadContext {
-            component_id: Some(*component.id()),
-            schema_variant_id: Some(*schema_variant.id()),
-            schema_id: Some(*schema.id()),
-            system_id: Some(system_id),
-            external_provider_id: Some(request.tail_external_provider_id),
-            ..Default::default()
-        },
-    )
-    .await?;
+    let attribute_value_context = AttributeReadContext {
+        component_id: Some(*component.id()),
+        schema_variant_id: Some(*schema_variant.id()),
+        schema_id: Some(*schema.id()),
+        system_id: Some(system_id),
+        external_provider_id: Some(request.tail_external_provider_id),
+        ..Default::default()
+    };
+    let attribute_value = AttributeValue::find_for_context(&ctx, attribute_value_context)
+        .await?
+        .ok_or(SchematicError::AttributeValueNotFoundForContext(
+            attribute_value_context,
+        ))?;
 
-    let task = attribute_value.map(|attribute_value| {
-        DependentValuesAsyncTasks::new(
-            Some(ComponentAsyncTasks::new(component, system_id)),
-            Some(*attribute_value.id()),
-        )
-    });
+    ctx.enqueue_job(JobContent::DependentValuesUpdate(
+        DependentValuesAsyncTasks::new(*attribute_value.id()),
+    ))
+    .await;
+    ctx.enqueue_job(JobContent::ComponentPostProcessing(
+        component.build_async_tasks(&ctx, system_id).await?,
+    ))
+    .await;
 
     txns.commit().await?;
-
-    if let Some(task) = task {
-        let request_ctx = request_ctx.clone();
-        let builder = builder.clone();
-        tokio::task::spawn(async move {
-            if let Err(err) = task.run(request_ctx, request.visibility, &builder).await {
-                error!("Component async qualification check failed: {err}");
-            }
-        });
-    }
 
     Ok(Json(CreateConnectionResponse { connection }))
 }

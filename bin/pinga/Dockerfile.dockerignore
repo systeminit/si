@@ -1,0 +1,37 @@
+# Use an allow-list strategy vs and ignore-list strategy to only include what
+# is necessary and no more for less unnecessary rebuilds.
+#
+# See: https://kevinpollet.dev/posts/how-to-use-your-dockerignore-as-a-whitelist/
+
+# Ignore everything
+*
+
+# Root/Cargo workspace files
+!.cargo
+!Cargo.*
+!rust-toolchain
+!rustfmt.toml
+
+# All workspace member directories from `Cargo.toml`
+!bin/cyclone
+!bin/sdf
+!bin/pinga
+!bin/veritech
+!lib/bytes-lines-codec
+!lib/config-file
+!lib/cyclone
+!lib/dal
+!lib/deadpool-cyclone
+!lib/sdf
+!lib/veritech
+!lib/si-data
+!lib/si-settings
+!lib/si-test-macros
+!lib/telemetry-rs
+
+# Ignore non-portable context in component sub-directories
+**/.envrc
+**/Makefile
+**/script
+**/target
+**/tmp

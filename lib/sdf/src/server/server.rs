@@ -1,18 +1,25 @@
+pub use dal::context::FaktoryProducer;
+
 use std::{
     io,
     net::SocketAddr,
+    panic::AssertUnwindSafe,
     path::{Path, PathBuf},
+    pin::Pin,
     sync::Arc,
+    time::Duration,
 };
 
 use crate::server::config::{CycloneKeyPair, JwtSecretKey};
 use axum::routing::IntoMakeService;
 use axum::Router;
 use dal::{
+    context::Job,
     cyclone_key_pair::CycloneKeyPairError,
     jwt_key::{install_new_jwt_key, jwt_key_exists},
-    migrate, migrate_builtins, ResourceScheduler, ServicesContext,
+    migrate, migrate_builtins, DalContext, DalContextBuilder, ResourceScheduler, ServicesContext,
 };
+use futures::Future;
 use hyper::server::{accept::Accept, conn::AddrIncoming};
 use si_data::{
     NatsClient, NatsConfig, NatsError, PgError, PgPool, PgPoolConfig, PgPoolError, SensitiveString,
@@ -58,7 +65,7 @@ pub enum ServerError {
     EncryptionKey(#[from] veritech::EncryptionKeyError),
 }
 
-pub type Result<T> = std::result::Result<T, ServerError>;
+pub type Result<T, E = ServerError> = std::result::Result<T, E>;
 
 pub struct Server<I, S> {
     config: Config,
@@ -68,11 +75,13 @@ pub struct Server<I, S> {
 }
 
 impl Server<(), ()> {
+    #[allow(clippy::too_many_arguments)]
     pub fn http(
         config: Config,
         telemetry: telemetry::Client,
         pg_pool: PgPool,
         nats: NatsClient,
+        faktory: FaktoryProducer,
         veritech: veritech::Client,
         encryption_key: veritech::EncryptionKey,
         jwt_secret_key: JwtSecretKey,
@@ -83,6 +92,7 @@ impl Server<(), ()> {
                     telemetry,
                     pg_pool,
                     nats,
+                    faktory,
                     veritech,
                     encryption_key,
                     jwt_secret_key,
@@ -106,11 +116,13 @@ impl Server<(), ()> {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn uds(
         config: Config,
         telemetry: telemetry::Client,
         pg_pool: PgPool,
         nats: NatsClient,
+        faktory: FaktoryProducer,
         veritech: veritech::Client,
         encryption_key: veritech::EncryptionKey,
         jwt_secret_key: JwtSecretKey,
@@ -121,6 +133,7 @@ impl Server<(), ()> {
                     telemetry,
                     pg_pool,
                     nats,
+                    faktory,
                     veritech,
                     encryption_key,
                     jwt_secret_key,
@@ -178,12 +191,13 @@ impl Server<(), ()> {
     pub async fn migrate_database(
         pg: &PgPool,
         nats: &NatsClient,
+        faktory: FaktoryProducer,
         jwt_secret_key: &JwtSecretKey,
         veritech: veritech::Client,
         encryption_key: &veritech::EncryptionKey,
     ) -> Result<()> {
         migrate(pg).await?;
-        migrate_builtins(pg, nats, veritech, encryption_key).await?;
+        migrate_builtins(pg, nats, faktory, veritech, encryption_key).await?;
 
         let mut conn = pg.get().await?;
         let txn = conn.transaction().await?;
@@ -200,12 +214,68 @@ impl Server<(), ()> {
     pub async fn start_resource_sync_scheduler(
         pg: PgPool,
         nats: NatsClient,
+        faktory: FaktoryProducer,
         veritech: veritech::Client,
         encryption_key: veritech::EncryptionKey,
     ) {
-        let services_context = ServicesContext::new(pg, nats, veritech, Arc::new(encryption_key));
+        let services_context =
+            ServicesContext::new(pg, nats, faktory, veritech, Arc::new(encryption_key));
         let scheduler = ResourceScheduler::new(services_context);
         tokio::spawn(scheduler.start());
+    }
+
+    /// Start the faktory job executor
+    pub async fn start_faktory_job_executor(
+        pg: PgPool,
+        nats: NatsClient,
+        faktory: FaktoryProducer,
+        faktory_url: String,
+        veritech: veritech::Client,
+        encryption_key: veritech::EncryptionKey,
+        runtime: Arc<tokio::runtime::Runtime>,
+    ) {
+        let services_context =
+            ServicesContext::new(pg, nats, faktory, veritech, Arc::new(encryption_key));
+        let ctx_builder = Arc::new(DalContext::builder(services_context));
+
+        loop {
+            let mut c = faktory::ConsumerBuilder::default();
+
+            let ctx_builder1 = ctx_builder.clone();
+            let runtime1 = runtime.clone();
+            c.register("ComponentPostProcessing", move |job| -> io::Result<()> {
+                faktory_job_wrapper(
+                    ctx_builder1.clone(),
+                    job,
+                    runtime1.clone(),
+                    Box::new(|job, ctx_builder| Box::pin(async { job.run(ctx_builder).await })),
+                )
+            });
+
+            let ctx_builder2 = ctx_builder.clone();
+            let runtime2 = runtime.clone();
+            c.register("DependentValuesUpdate", move |job| -> io::Result<()> {
+                faktory_job_wrapper(
+                    ctx_builder2.clone(),
+                    job,
+                    runtime2.clone(),
+                    Box::new(|job, ctx_builder| Box::pin(async { job.run(ctx_builder).await })),
+                )
+            });
+
+            let mut c = match c.connect(Some(&faktory_url)) {
+                Ok(c) => c,
+                Err(err) => {
+                    error!("Unable to connect to faktory at {faktory_url}: {err}");
+                    std::thread::sleep(Duration::from_millis(5000));
+                    continue;
+                }
+            };
+
+            if let Err(e) = c.run(&["default"]) {
+                error!("worker failed: {}", e);
+            }
+        }
     }
 
     #[instrument(name = "sdf.init.create_pg_pool", skip_all)]
@@ -255,10 +325,12 @@ where
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn build_service(
     telemetry: impl TelemetryClient,
     pg_pool: PgPool,
     nats: NatsClient,
+    faktory: FaktoryProducer,
     veritech: veritech::Client,
     encryption_key: veritech::EncryptionKey,
     jwt_secret_key: JwtSecretKey,
@@ -274,6 +346,7 @@ pub fn build_service(
         telemetry,
         pg_pool,
         nats,
+        faktory,
         veritech,
         encryption_key,
         jwt_secret_key,
@@ -340,3 +413,92 @@ fn prepare_graceful_shutdown(
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum ShutdownSource {}
+
+pub type FaktoryTask = Box<
+    dyn FnOnce(
+        Job,
+        Arc<DalContextBuilder>,
+    ) -> Pin<
+        Box<dyn Future<Output = Result<(), Box<dyn std::error::Error + 'static + Sync + Send>>>>,
+    >,
+>;
+
+fn faktory_job_wrapper(
+    ctx_builder: Arc<DalContextBuilder>,
+    job: faktory::Job,
+    runtime: Arc<tokio::runtime::Runtime>,
+    task: FaktoryTask,
+) -> Result<(), io::Error> {
+    info!("Execute: {job:?}");
+
+    let args = match job.args().iter().next() {
+        Some(args) => args,
+        None => {
+            error!("No Job provided");
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                TaskError::EmptyRequest,
+            )); // TODO: this sucks
+        }
+    };
+    let job = match args.as_str().map(serde_json::from_str) {
+        Some(Ok(job)) => job,
+        Some(Err(err)) => {
+            error!("Unable to deserialize args as Job: {args:?} ({err}");
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                TaskError::InvalidRequest(args.clone(), Box::new(err)),
+            )); // TODO: This sucks
+        }
+        None => {
+            error!("Unable to deserialize args as Job: {args:?}");
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                TaskError::InvalidArgType(args.clone()),
+            )); // TODO: This sucks
+        }
+    };
+
+    let result = std::panic::catch_unwind(AssertUnwindSafe(|| {
+        runtime
+            .block_on(task(job, ctx_builder))
+            .map_err(|err| err.to_string())?;
+        Ok(())
+    }));
+
+    match result {
+        Ok(Ok(())) => {}
+        Ok(Err(err)) => {
+            return Err(io::Error::new(
+                io::ErrorKind::Interrupted,
+                TaskError::Failure(err),
+            ))
+        }
+        Err(any) => {
+            let err = any.downcast::<&str>().map_err(|err| {
+                io::Error::new(
+                    io::ErrorKind::Interrupted,
+                    TaskError::Failure(format!("{:?}", err.type_id())),
+                )
+            })?;
+
+            error!("Job execution panicked with: {err}");
+            return Err(io::Error::new(
+                io::ErrorKind::Interrupted,
+                TaskError::Failure(err.to_string()),
+            ));
+        }
+    }
+    Ok(())
+}
+
+#[derive(Debug, strum_macros::Display, thiserror::Error)]
+enum TaskError {
+    EmptyRequest,
+    InvalidArgType(serde_json::Value),
+    InvalidRequest(
+        serde_json::Value,
+        Box<dyn std::error::Error + 'static + Sync + Send>,
+    ),
+    Failure(String),
+}

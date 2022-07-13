@@ -6,7 +6,7 @@ use std::{
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 use serde_with::{DeserializeFromStr, SerializeDisplay};
-use si_data::{NatsConfig, PgPoolConfig, SensitiveString};
+use si_data::{FaktoryConfig, NatsConfig, PgPoolConfig, SensitiveString};
 use si_settings::{CanonicalFile, CanonicalFileError};
 use strum_macros::{Display, EnumString, EnumVariantNames};
 use thiserror::Error;
@@ -42,6 +42,9 @@ pub struct Config {
 
     #[builder(default = "NatsConfig::default()")]
     nats: NatsConfig,
+
+    #[builder(default = "FaktoryConfig::default()")]
+    faktory: FaktoryConfig,
 
     #[builder(default = "MigrationMode::default()")]
     migration_mode: MigrationMode,
@@ -80,6 +83,12 @@ impl Config {
         &self.nats
     }
 
+    /// Gets a reference to the config's faktory.
+    #[must_use]
+    pub fn faktory(&self) -> &FaktoryConfig {
+        &self.faktory
+    }
+
     /// Gets a reference to the config's jwt secret key path.
     #[must_use]
     pub fn jwt_secret_key_path(&self) -> &Path {
@@ -113,6 +122,7 @@ impl ConfigBuilder {
 pub struct ConfigFile {
     pg: PgPoolConfig,
     nats: NatsConfig,
+    faktory: FaktoryConfig,
     migration_mode: MigrationMode,
     jwt_secret_key_path: String,
     cyclone_encryption_key_path: String,
@@ -147,6 +157,7 @@ impl Default for ConfigFile {
         Self {
             pg: Default::default(),
             nats: Default::default(),
+            faktory: Default::default(),
             migration_mode: Default::default(),
             jwt_secret_key_path,
             cyclone_encryption_key_path,
@@ -166,6 +177,7 @@ impl TryFrom<ConfigFile> for Config {
         let mut config = Config::builder();
         config.pg_pool(value.pg);
         config.nats(value.nats);
+        config.faktory(value.faktory);
         config.migration_mode(value.migration_mode);
         config.jwt_secret_key_path(value.jwt_secret_key_path.try_into()?);
         config.cyclone_encryption_key_path(value.cyclone_encryption_key_path.try_into()?);

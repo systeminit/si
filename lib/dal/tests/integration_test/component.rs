@@ -27,7 +27,7 @@ async fn new_for_schema_variant_with_node(ctx: &DalContext<'_, '_>, wid: Workspa
     let schema = create_schema(ctx, &SchemaKind::Concept).await;
     let schema_variant = create_schema_variant(ctx, *schema.id()).await;
 
-    let (component, _node, _) =
+    let (component, _node) =
         Component::new_for_schema_variant_with_node(ctx, "mastodon", schema_variant.id())
             .await
             .expect("cannot create component");
@@ -93,13 +93,13 @@ async fn qualification_view(ctx: &DalContext<'_, '_>) {
         .await
         .expect("unable to create implicit internal providers");
 
-    let (component, _, task) =
+    let (component, _) =
         Component::new_for_schema_variant_with_node(ctx, "mastodon", schema_variant.id())
             .await
             .expect("Unable to create component");
-    task.run_updates_in_ctx(ctx)
+    ctx.run_enqueued_jobs()
         .await
-        .expect("unable to run async tasks");
+        .expect("cannot run enqueued jobs");
 
     let qualification_check_component = component
         .veritech_qualification_check_component(ctx, UNSET_ID_VALUE.into())
@@ -131,7 +131,7 @@ async fn list_qualifications(ctx: &DalContext<'_, '_>) {
         .expect("cannot find docker image schema")
         .pop()
         .expect("no docker image schema found");
-    let (component, _node, _) = Component::new_for_schema_with_node(ctx, "ash", schema.id())
+    let (component, _node) = Component::new_for_schema_with_node(ctx, "ash", schema.id())
         .await
         .expect("cannot create docker_image component");
 
@@ -154,7 +154,7 @@ async fn list_qualifications_by_component_id(ctx: &DalContext<'_, '_>) {
         .expect("cannot find docker image schema")
         .pop()
         .expect("no docker image schema found");
-    let (component, _node, _) = Component::new_for_schema_with_node(ctx, "ash", schema.id())
+    let (component, _node) = Component::new_for_schema_with_node(ctx, "ash", schema.id())
         .await
         .expect("cannot create docker_image component");
 
@@ -180,13 +180,12 @@ async fn get_resource_by_component_id(ctx: &DalContext<'_, '_>, wid: WorkspaceId
 
     let (system, _system_node) = create_system_with_node(ctx, &wid).await;
 
-    let (component, _node, task) =
-        Component::new_for_schema_with_node(ctx, "chvrches", schema.id())
-            .await
-            .expect("cannot create ash component");
-    task.run_updates_in_ctx(ctx)
+    let (component, _node) = Component::new_for_schema_with_node(ctx, "chvrches", schema.id())
         .await
-        .expect("unable to run async tasks");
+        .expect("cannot create ash component");
+    ctx.run_enqueued_jobs()
+        .await
+        .expect("cannot run enqueued jobs");
 
     let _ = component
         .add_to_system(ctx, system.id())

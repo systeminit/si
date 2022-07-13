@@ -171,12 +171,13 @@ async fn setup_kubernetes_namespace(ctx: &DalContext<'_, '_>) -> ComponentPayloa
         .default_schema_variant_id()
         .expect("default schema variant id not found");
 
-    let (component, _, task) = Component::new_for_schema_with_node(ctx, "namespace", schema.id())
+    let (component, _) = Component::new_for_schema_with_node(ctx, "namespace", schema.id())
         .await
         .expect("unable to create component");
-    task.run_updates_in_ctx(ctx)
+    ctx.run_enqueued_jobs()
         .await
-        .expect("unable to run async tasks");
+        .expect("cannot run enqueued jobs");
+
     let base_attribute_read_context = AttributeReadContext {
         prop_id: None,
         schema_id: Some(*schema.id()),
@@ -212,12 +213,13 @@ async fn setup_kubernetes_deployment(ctx: &DalContext<'_, '_>) -> ComponentPaylo
         .default_schema_variant_id()
         .expect("default schema variant id not found");
 
-    let (component, _, task) = Component::new_for_schema_with_node(ctx, "deployment", schema.id())
+    let (component, _) = Component::new_for_schema_with_node(ctx, "deployment", schema.id())
         .await
         .expect("unable to create component");
-    task.run_updates_in_ctx(ctx)
+    ctx.run_enqueued_jobs()
         .await
-        .expect("unable to run async tasks");
+        .expect("cannot run enqueued jobs");
+
     let base_attribute_read_context = AttributeReadContext {
         prop_id: None,
         schema_id: Some(*schema.id()),

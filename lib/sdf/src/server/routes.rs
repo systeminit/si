@@ -1,14 +1,13 @@
-use std::sync::Arc;
-
 use crate::server::config::JwtSecretKey;
 use axum::{
     response::{IntoResponse, Response},
     routing::get,
     Extension, Json, Router,
 };
-use dal::context::ServicesContext;
+use dal::context::{FaktoryProducer, ServicesContext};
 use hyper::StatusCode;
 use si_data::{nats, pg, SensitiveString};
+use std::sync::Arc;
 use telemetry::TelemetryClient;
 use thiserror::Error;
 use tokio::sync::{broadcast, mpsc};
@@ -55,6 +54,7 @@ pub fn routes(
     telemetry: impl TelemetryClient,
     pg_pool: pg::PgPool,
     nats_conn: nats::Client,
+    faktory_conn: FaktoryProducer,
     veritech: veritech::Client,
     encryption_key: veritech::EncryptionKey,
     jwt_secret_key: JwtSecretKey,
@@ -68,6 +68,7 @@ pub fn routes(
     let services_context = ServicesContext::new(
         pg_pool.clone(),
         nats_conn.clone(),
+        faktory_conn,
         veritech.clone(),
         encryption_key.clone(),
     );
@@ -124,7 +125,7 @@ pub fn test_routes(mut router: Router) -> Router {
 }
 
 #[cfg(not(debug_assertions))]
-pub fn test_routes(mut router: Router) -> Router {
+pub fn test_routes(router: Router) -> Router {
     router
 }
 

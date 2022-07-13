@@ -1,12 +1,11 @@
 use axum::Json;
 use dal::{
-    func::backend::js_qualification::FuncBackendJsQualificationArgs, generate_name,
-    qualification_prototype::QualificationPrototypeContext, Component, ComponentAsyncTasks,
-    ComponentId, Func, FuncBackendKind, FuncBackendResponseType, QualificationPrototype,
+    context::JobContent, func::backend::js_qualification::FuncBackendJsQualificationArgs,
+    generate_name, qualification_prototype::QualificationPrototypeContext, Component, ComponentId,
+    Func, FuncBackendKind, FuncBackendResponseType, QualificationPrototype,
     QualificationPrototypeId, Schema, StandardModel, SystemId, Visibility,
 };
 use serde::{Deserialize, Serialize};
-use telemetry::prelude::*;
 
 use super::{QualificationError, QualificationResult};
 use crate::server::extract::{AccessBuilder, HandlerContext};
@@ -32,7 +31,7 @@ pub async fn create(
     Json(request): Json<CreateRequest>,
 ) -> QualificationResult<Json<CreateResponse>> {
     let txns = txns.start().await?;
-    let ctx = builder.build(request_ctx.clone().build(request.visibility), &txns);
+    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
 
     let mut func = Func::new(
         &ctx,
@@ -139,25 +138,19 @@ async function qualification(component) {
         }
     }
 
-    txns.commit().await?;
-
     // TODO: actually use the system to filter qualifications
     let system_id = request.system_id.unwrap_or(SystemId::NONE);
 
     for component in components {
-        let mut async_tasks = ComponentAsyncTasks::new(component, system_id);
-        async_tasks.set_qualification_prototype_id(*prototype.id());
-        let request_ctx = request_ctx.clone();
-        let builder = builder.clone();
-        tokio::task::spawn(async move {
-            if let Err(err) = async_tasks
-                .run(request_ctx, request.visibility, &builder)
-                .await
-            {
-                error!("Component async qualification check failed: {err}");
-            }
-        });
+        let task = component
+            .build_async_task(&ctx, system_id, *prototype.id())
+            .await?;
+        ctx.enqueue_job(JobContent::ComponentPostProcessing(task))
+            .await;
     }
+
+    txns.commit().await?;
+
     Ok(Json(CreateResponse {
         prototype_id: *prototype.id(),
     }))

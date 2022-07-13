@@ -28,10 +28,12 @@ RELEASEABLE_COMPONENTS = \
 	web \
 	veritech \
 	sdf \
-	nats
+	nats \
+	pinga
 RUNNABLE_COMPONENTS = \
 	bin/veritech \
-	bin/sdf
+	bin/sdf \
+	bin/pinga
 BUILDABLE = $(patsubst %,build//%,$(COMPONENTS))
 TESTABLE = $(patsubst %,test//%,$(COMPONENTS))
 CLEANABLE = $(patsubst %,clean//%,$(COMPONENTS))
@@ -163,6 +165,11 @@ sdf-run:
 	cd $(MAKEPATH); cargo build --all
 	cd $(MAKEPATH); cargo run --bin sdf -- --disable-opentelemetry
 .PHONY: sdf-run
+
+pinga-run:
+	cd $(MAKEPATH); cargo build --all
+	cd $(MAKEPATH); cargo run --bin pinga -- --disable-opentelemetry
+.PHONY: pinga-run
 
 app-run:
 	cd $(MAKEPATH)/app/web; npm install

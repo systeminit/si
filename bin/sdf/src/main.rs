@@ -1,5 +1,5 @@
 use color_eyre::Result;
-use sdf::{Config, IncomingStream, MigrationMode, Server};
+use sdf::{Config, FaktoryProducer, IncomingStream, MigrationMode, Server};
 use telemetry::{
     start_tracing_level_signal_handler_task,
     tracing::{debug, info, trace},
@@ -15,6 +15,7 @@ fn main() -> Result<()> {
     let thread_handler = thread_builder.spawn(|| {
         tokio::runtime::Builder::new_multi_thread()
             .thread_stack_size(RT_DEFAULT_THREAD_STACK_SIZE)
+            .thread_name("bin/sdf-tokio::runtime".to_owned())
             .enable_all()
             .build()?
             .block_on(async_main())
@@ -81,6 +82,8 @@ async fn run(args: args::Args, mut telemetry: telemetry::Client) -> Result<()> {
 
     let nats = Server::connect_to_nats(config.nats()).await?;
 
+    let faktory_conn = FaktoryProducer::new(&config.faktory().url)?;
+
     let pg_pool = Server::create_pg_pool(config.pg_pool()).await?;
 
     let veritech = Server::create_veritech_client(nats.clone());
@@ -89,6 +92,7 @@ async fn run(args: args::Args, mut telemetry: telemetry::Client) -> Result<()> {
         Server::migrate_database(
             &pg_pool,
             &nats,
+            faktory_conn.clone(),
             &jwt_secret_key,
             veritech.clone(),
             &encryption_key,
@@ -112,9 +116,19 @@ async fn run(args: args::Args, mut telemetry: telemetry::Client) -> Result<()> {
 
     start_tracing_level_signal_handler_task(&telemetry)?;
 
+    //Server::start_faktory_job_executor(
+    //    pg_pool.clone(),
+    //    nats.clone(),
+    //    faktory_conn.clone(),
+    //    veritech.clone(),
+    //    encryption_key,
+    //)
+    //.await;
+
     Server::start_resource_sync_scheduler(
         pg_pool.clone(),
         nats.clone(),
+        faktory_conn.clone(),
         veritech.clone(),
         encryption_key,
     )
@@ -127,6 +141,7 @@ async fn run(args: args::Args, mut telemetry: telemetry::Client) -> Result<()> {
                 telemetry,
                 pg_pool,
                 nats,
+                faktory_conn.clone(),
                 veritech,
                 encryption_key,
                 jwt_secret_key,
@@ -140,6 +155,7 @@ async fn run(args: args::Args, mut telemetry: telemetry::Client) -> Result<()> {
                 telemetry,
                 pg_pool,
                 nats,
+                faktory_conn.clone(),
                 veritech,
                 encryption_key,
                 jwt_secret_key,

@@ -94,7 +94,7 @@ async fn schema_variant_specific(ctx: &DalContext<'_, '_>) {
         .to_context()
         .expect("could not convert builder to attribute context");
     let update_value = Some(serde_json::to_value("toddhoward").expect("could not create value"));
-    let (_, updated_name_attribute_value_id, _) = AttributeValue::update_for_context(
+    let (_, updated_name_attribute_value_id) = AttributeValue::update_for_context(
         ctx,
         *name_attribute_value.id(),
         Some(*domain_attribute_value.id()),

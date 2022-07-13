@@ -8,9 +8,10 @@ use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::attribute::value::{AttributeValue, DependentValuesAsyncTasks};
+use crate::attribute::value::AttributeValue;
 use crate::attribute::{context::UNSET_ID_VALUE, value::AttributeValueError};
 use crate::code_generation_resolver::CodeGenerationResolverContext;
+use crate::context::JobContent;
 use crate::func::backend::validation::FuncBackendValidateStringValueArgs;
 use crate::func::backend::{
     js_code_generation::FuncBackendJsCodeGenerationArgs,
@@ -227,7 +228,7 @@ impl Component {
         ctx: &DalContext<'_, '_>,
         name: impl AsRef<str>,
         schema_id: &SchemaId,
-    ) -> ComponentResult<(Self, Node, DependentValuesAsyncTasks)> {
+    ) -> ComponentResult<(Self, Node)> {
         let schema = Schema::get_by_id(ctx, schema_id)
             .await?
             .ok_or(ComponentError::SchemaNotFound)?;
@@ -244,7 +245,7 @@ impl Component {
         ctx: &DalContext<'_, '_>,
         name: impl AsRef<str>,
         schema_variant_id: &SchemaVariantId,
-    ) -> ComponentResult<(Self, Node, DependentValuesAsyncTasks)> {
+    ) -> ComponentResult<(Self, Node)> {
         let schema_variant = SchemaVariant::get_by_id(ctx, schema_variant_id)
             .await?
             .ok_or(ComponentError::SchemaVariantNotFound)?;
@@ -287,10 +288,10 @@ impl Component {
             .await?;
         }
 
-        let (_, task) = component
+        let _ = component
             .set_value_by_json_pointer(ctx, "/root/si/name", Some(name.as_ref()))
             .await?;
-        Ok((component, node, task))
+        Ok((component, node))
     }
 
     pub async fn build_async_tasks(
@@ -300,7 +301,21 @@ impl Component {
     ) -> ComponentResult<ComponentAsyncTasks> {
         self.prepare_code_generation(ctx, system_id).await?;
         self.prepare_qualifications_check(ctx, system_id).await?;
-        Ok(ComponentAsyncTasks::new(self.clone(), system_id))
+        Ok(ComponentAsyncTasks::new(*self.id(), system_id))
+    }
+
+    pub async fn build_async_task(
+        &self,
+        ctx: &DalContext<'_, '_>,
+        system_id: SystemId,
+        qualification_prototype_id: QualificationPrototypeId,
+    ) -> ComponentResult<ComponentAsyncTasks> {
+        self.prepare_code_generation(ctx, system_id).await?;
+        self.prepare_qualification_check(ctx, system_id, qualification_prototype_id)
+            .await?;
+        let mut task = ComponentAsyncTasks::new(*self.id(), system_id);
+        task.set_qualification_prototype_id(qualification_prototype_id);
+        Ok(task)
     }
 
     #[instrument(skip_all)]
@@ -309,8 +324,8 @@ impl Component {
         name: impl AsRef<str>,
         schema_variant_id: &SchemaVariantId,
         parent_node_id: &NodeId,
-    ) -> ComponentResult<(Self, Node, DependentValuesAsyncTasks)> {
-        let (component, node, task) =
+    ) -> ComponentResult<(Self, Node)> {
+        let (component, node) =
             Self::new_for_schema_variant_with_node(ctx, name, schema_variant_id).await?;
         let schema = component
             .schema(ctx)
@@ -324,7 +339,7 @@ impl Component {
         )
         .await?;
 
-        Ok((component, node, task))
+        Ok((component, node))
     }
 
     #[instrument(skip_all)]
@@ -336,7 +351,7 @@ impl Component {
 
         let schema_variant_id =
             Schema::default_schema_variant_id_for_name(&ctx, "application").await?;
-        let (comp, node, _) =
+        let (comp, node) =
             Self::new_for_schema_variant_with_node(&ctx, name, &schema_variant_id).await?;
         Ok((comp, node))
     }
@@ -346,7 +361,7 @@ impl Component {
         &self,
         ctx: &DalContext<'_, '_>,
         system_id: &SystemId,
-    ) -> ComponentResult<ComponentAsyncTasks> {
+    ) -> ComponentResult<()> {
         let schema = self
             .schema(ctx)
             .await?
@@ -360,7 +375,12 @@ impl Component {
         //       a ResourcePrototype for the Component's SchemaVariant.
         let _resource = Resource::new(ctx, &self.id, system_id).await?;
 
-        self.build_async_tasks(ctx, *system_id).await
+        ctx.enqueue_job(JobContent::ComponentPostProcessing(
+            self.build_async_tasks(ctx, *system_id).await?,
+        ))
+        .await;
+
+        Ok(())
     }
 
     standard_model_accessor!(kind, Enum(ComponentKind), ComponentResult);
@@ -463,6 +483,82 @@ impl Component {
                 .await?;
             }
         }
+        Ok(())
+    }
+
+    /// Creates a qualification [`FuncBinding`](crate::FuncBinding), a
+    /// [`FuncBindingReturnValue`](crate::FuncBindingReturnValue) without a value and a
+    /// [`QualificationResolver`](crate::QualificationResolver). The func is not executed yet; it's
+    /// just a placeholder for some qualification that will be executed.
+    pub async fn prepare_qualification_check(
+        &self,
+        ctx: &DalContext<'_, '_>,
+        system_id: SystemId,
+        qualification_prototype_id: QualificationPrototypeId,
+    ) -> ComponentResult<()> {
+        let prototype = QualificationPrototype::get_by_id(ctx, &qualification_prototype_id)
+            .await?
+            .ok_or(ComponentError::QualificationPrototypeNotFound)?;
+
+        let func = Func::get_by_id(ctx, &prototype.func_id())
+            .await?
+            .ok_or_else(|| ComponentError::MissingFunc(prototype.func_id().to_string()))?;
+
+        let args = FuncBackendJsQualificationArgs {
+            component: self
+                .veritech_qualification_check_component(ctx, system_id)
+                .await?,
+        };
+
+        let json_args = serde_json::to_value(args)?;
+        let (func_binding, _created) =
+            FuncBinding::find_or_create(ctx, json_args, prototype.func_id(), *func.backend_kind())
+                .await?;
+
+        // Empty func binding return value means the function is still being executed
+        let _func_binding_return_value = FuncBindingReturnValue::upsert(
+            ctx,
+            None,
+            None,
+            prototype.func_id(),
+            *func_binding.id(),
+            UNSET_ID_VALUE.into(),
+        )
+        .await?;
+
+        let mut existing_resolvers =
+            QualificationResolver::find_for_prototype_and_component(ctx, prototype.id(), self.id())
+                .await?;
+
+        // If we do not have one, create the qualification resolver. If we do, update the
+        // func binding id to point to the new value.
+        if let Some(mut resolver) = existing_resolvers.pop() {
+            resolver
+                .set_func_binding_id(ctx, *func_binding.id())
+                .await?;
+        } else {
+            let mut resolver_context = QualificationResolverContext::new();
+            resolver_context.set_component_id(*self.id());
+            QualificationResolver::new(
+                ctx,
+                *prototype.id(),
+                *func.id(),
+                *func_binding.id(),
+                resolver_context,
+            )
+            .await?;
+        }
+
+        WsEvent::checked_qualifications(
+            *prototype.id(),
+            *self.id(),
+            system_id,
+            ctx.read_tenancy().billing_accounts().into(),
+            ctx.history_actor(),
+        )
+        .publish(ctx.txns().nats())
+        .await?;
+
         Ok(())
     }
 
@@ -1353,7 +1449,7 @@ impl Component {
         ctx: &DalContext<'_, '_>,
         json_pointer: &str,
         value: Option<T>,
-    ) -> ComponentResult<(Option<T>, DependentValuesAsyncTasks)> {
+    ) -> ComponentResult<Option<T>> {
         let attribute_value = self
             .find_attribute_value_by_json_pointer(ctx, json_pointer)
             .await?
@@ -1388,7 +1484,7 @@ impl Component {
             .await?
             .map(|av| *av.id());
 
-        let (_, _, async_tasks) = AttributeValue::update_for_context(
+        let (_, _) = AttributeValue::update_for_context(
             ctx,
             *attribute_value.id(),
             parent_attribute_value_id,
@@ -1398,7 +1494,7 @@ impl Component {
         )
         .await?;
 
-        Ok((value, async_tasks))
+        Ok(value)
     }
 
     #[instrument(skip_all)]
@@ -1499,18 +1595,19 @@ impl Component {
 }
 
 #[must_use]
-#[derive(Debug, Clone)]
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
 pub struct ComponentAsyncTasks {
-    pub component: Component,
+    pub component_id: ComponentId,
     pub system_id: SystemId,
     // Allows running only one specific qualification
     qualification_prototype_id: Option<QualificationPrototypeId>,
 }
 
 impl ComponentAsyncTasks {
-    pub fn new(component: Component, system_id: SystemId) -> Self {
+    // Don't call this directly, call Component::build_async_tasks
+    fn new(component_id: ComponentId, system_id: SystemId) -> Self {
         Self {
-            component,
+            component_id,
             system_id,
             qualification_prototype_id: None,
         }
@@ -1518,6 +1615,25 @@ impl ComponentAsyncTasks {
 
     pub fn set_qualification_prototype_id(&mut self, id: QualificationPrototypeId) {
         self.qualification_prototype_id = Some(id);
+    }
+
+    pub async fn run_in_ctx(self, ctx: &DalContext<'_, '_>) -> ComponentResult<()> {
+        let component = Component::get_by_id(ctx, &self.component_id)
+            .await?
+            .ok_or(ComponentError::NotFound(self.component_id))?;
+
+        if let Some(prototype_id) = self.qualification_prototype_id {
+            component
+                .check_qualification(ctx, self.system_id, prototype_id)
+                .await?;
+
+            return Ok(());
+        }
+
+        component.generate_code(ctx, self.system_id).await?;
+        // Some qualifications depend on code generation, so remember to generate the code first
+        component.check_qualifications(ctx, self.system_id).await?;
+        Ok(())
     }
 
     pub async fn run(
@@ -1550,7 +1666,10 @@ impl ComponentAsyncTasks {
         let mut txns = ctx_builder.transactions_starter().await?;
         let txns = txns.start().await?;
         let ctx = ctx_builder.build(access_builder.build(visibility), &txns);
-        self.component.generate_code(&ctx, self.system_id).await?;
+        let component = Component::get_by_id(&ctx, &self.component_id)
+            .await?
+            .ok_or(ComponentError::NotFound(self.component_id))?;
+        component.generate_code(&ctx, self.system_id).await?;
         txns.commit().await?;
         Ok(())
     }
@@ -1565,7 +1684,10 @@ impl ComponentAsyncTasks {
         let mut txns = ctx_builder.transactions_starter().await?;
         let txns = txns.start().await?;
         let ctx = ctx_builder.build(access_builder.build(visibility), &txns);
-        self.component
+        let component = Component::get_by_id(&ctx, &self.component_id)
+            .await?
+            .ok_or(ComponentError::NotFound(self.component_id))?;
+        component
             .check_qualification(&ctx, self.system_id, prototype_id)
             .await?;
         txns.commit().await?;
@@ -1581,9 +1703,10 @@ impl ComponentAsyncTasks {
         let mut txns = ctx_builder.transactions_starter().await?;
         let txns = txns.start().await?;
         let ctx = ctx_builder.build(access_builder.build(visibility), &txns);
-        self.component
-            .check_qualifications(&ctx, self.system_id)
-            .await?;
+        let component = Component::get_by_id(&ctx, &self.component_id)
+            .await?
+            .ok_or(ComponentError::NotFound(self.component_id))?;
+        component.check_qualifications(&ctx, self.system_id).await?;
         txns.commit().await?;
         Ok(())
     }

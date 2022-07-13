@@ -45,7 +45,7 @@ async fn get_schematic(ctx: &DalContext<'_, '_>, application_id: ApplicationId) 
         .expect("cannot find external provider")
         .expect("external provider not found");
 
-    let (_component, node, _) =
+    let (_component, node) =
         Component::new_for_schema_with_node(ctx, "sc-component-get_schematic", service_schema.id())
             .await
             .expect("unable to create component for schema");
@@ -75,7 +75,7 @@ async fn get_schematic(ctx: &DalContext<'_, '_>, application_id: ApplicationId) 
     let ctx = ctx.clone_with_new_application_node_id(Some(*application_id2.id()));
     let ctx = &ctx;
 
-    let (_component, node2, _) = Component::new_for_schema_with_node(
+    let (_component, node2) = Component::new_for_schema_with_node(
         ctx,
         "sc-component-get_schematic2",
         service_schema.id(),
@@ -187,12 +187,12 @@ async fn create_connection(ctx: &DalContext<'_, '_>) {
         .expect("cannot find external provider")
         .expect("external provider not found");
 
-    let (_head_component, head_node, _) =
+    let (_head_component, head_node) =
         Component::new_for_schema_with_node(ctx, "head", service_schema.id())
             .await
             .expect("cannot create component and node for service");
 
-    let (_tail_component, tail_node, _) =
+    let (_tail_component, tail_node) =
         Component::new_for_schema_with_node(ctx, "tail", service_schema.id())
             .await
             .expect("cannot create component and node for service");

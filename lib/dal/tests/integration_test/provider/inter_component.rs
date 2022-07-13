@@ -335,12 +335,12 @@ async fn setup_esp(ctx: &DalContext<'_, '_>) -> ComponentPayload {
     SchemaVariant::create_implicit_internal_providers(ctx, *schema.id(), *schema_variant.id())
         .await
         .expect("could not create internal providers for schema variant");
-    let (component, _, task) = Component::new_for_schema_with_node(ctx, "esp", schema.id())
+    let (component, _) = Component::new_for_schema_with_node(ctx, "esp", schema.id())
         .await
         .expect("unable to create component");
-    task.run_updates_in_ctx(ctx)
+    ctx.run_enqueued_jobs()
         .await
-        .expect("unable to run async tasks");
+        .expect("cannot run enqueued jobs");
 
     // This context can also be used for generating component views.
     let base_attribute_read_context = AttributeReadContext {
@@ -408,12 +408,12 @@ async fn setup_swings(ctx: &DalContext<'_, '_>) -> ComponentPayload {
     SchemaVariant::create_implicit_internal_providers(ctx, *schema.id(), *schema_variant.id())
         .await
         .expect("could not create internal providers for schema variant");
-    let (component, _, task) = Component::new_for_schema_with_node(ctx, "swings", schema.id())
+    let (component, _) = Component::new_for_schema_with_node(ctx, "swings", schema.id())
         .await
         .expect("unable to create component");
-    task.run_updates_in_ctx(ctx)
+    ctx.run_enqueued_jobs()
         .await
-        .expect("unable to run async tasks");
+        .expect("cannot run enqueued jobs");
 
     // This context can also be used for generating component views.
     let base_attribute_read_context = AttributeReadContext {
@@ -587,13 +587,14 @@ async fn with_deep_data_structure(ctx: &DalContext<'_, '_>) {
     .await
     .expect("cannot create prototype argument for destination");
 
-    let (source_component, _, task) =
+    let (source_component, _) =
         Component::new_for_schema_with_node(ctx, "Source Component", source_schema.id())
             .await
             .expect("Unable to create source component");
-    task.run_updates_in_ctx(ctx)
+    ctx.run_enqueued_jobs()
         .await
-        .expect("unable to run async tasks");
+        .expect("cannot run enqueued jobs");
+
     let source_attribute_read_context = AttributeReadContext {
         prop_id: None,
         schema_id: Some(*source_schema.id()),
@@ -617,13 +618,14 @@ async fn with_deep_data_structure(ctx: &DalContext<'_, '_>) {
             .properties,
     );
 
-    let (destination_component, _, task) =
+    let (destination_component, _) =
         Component::new_for_schema_with_node(ctx, "Destination Component", destination_schema.id())
             .await
             .expect("Unable to create destination component");
-    task.run_updates_in_ctx(ctx)
+    ctx.run_enqueued_jobs()
         .await
-        .expect("unable to run async tasks");
+        .expect("cannot run enqueued jobs");
+
     let destination_attribute_read_context = AttributeReadContext {
         prop_id: None,
         schema_id: Some(*destination_schema.id()),
@@ -700,7 +702,7 @@ async fn with_deep_data_structure(ctx: &DalContext<'_, '_>) {
         .to_context()
         .expect("could not create source foo update context");
 
-    let (_, _, task) = AttributeValue::update_for_context(
+    let (_, _) = AttributeValue::update_for_context(
         ctx,
         source_foo_attribute_value_id,
         Some(source_object_attribute_value_id),
@@ -710,9 +712,9 @@ async fn with_deep_data_structure(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("cannot update source foo_string");
-    task.run_updates_in_ctx(&ctx)
+    ctx.run_enqueued_jobs()
         .await
-        .expect("unable to run dependent values update");
+        .expect("cannot run enqueued jobs");
 
     assert_eq_sorted!(
         serde_json::json![
@@ -785,7 +787,7 @@ async fn with_deep_data_structure(ctx: &DalContext<'_, '_>) {
         .to_context()
         .expect("could not create source foo update context");
 
-    let (_, _, task) = AttributeValue::update_for_context(
+    let (_, _) = AttributeValue::update_for_context(
         ctx,
         source_bar_attribute_value_id,
         Some(source_object_attribute_value_id),
@@ -797,9 +799,9 @@ async fn with_deep_data_structure(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("cannot update source bar_string");
-    task.run_updates_in_ctx(&ctx)
+    ctx.run_enqueued_jobs()
         .await
-        .expect("unable to run dependent values update");
+        .expect("cannot run enqueued jobs");
 
     assert_eq_sorted!(
         serde_json::json![
