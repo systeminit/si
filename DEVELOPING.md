@@ -51,7 +51,7 @@ However, for first time users, we recommend following this guide "as-is".
 
 ### Bootstrapping Your Environment (1/5)
 
-First, ensure that Docker is installed on your machine and the `docker` executable is in your `PATH`ººº. Then, for either running SI locally or developing SI, execute the following script:
+First, ensure that Docker is installed on your machine and the `docker` executable is in your `PATH`. Then, for either running SI locally or developing SI, execute the following script:
 
 ```bash
 ./scripts/bootstrap.sh
