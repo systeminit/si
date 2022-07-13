@@ -4,13 +4,13 @@ This document contains all information related to developing and running the SI 
 
 ## Supported Developer Environments
 
-Environment | `x84_64 (amd64)` | `aarch64 (arm64)`
---- | --- | ---
-Arch Linux | ✅ | 🚫
-Fedora | ✅ | 🚫
-macOS | ✅ | ✅
-Ubuntu | ✅ | 🚫
-WSL2 | ✅ | 🚫
+| Environment | `x84_64 (amd64)` | `aarch64 (arm64)` |
+|-------------|------------------|-------------------|
+| Arch Linux  | ✅                | 🚫                |
+| Fedora      | ✅                | 🚫                |
+| macOS       | ✅                | ✅                 |
+| Ubuntu      | ✅                | 🚫                |
+| WSL2        | ✅                | 🚫                |
 
 We recommend using the latest stable Rust toolchain and latest LTS Node toolchain for your environment.
 If unsure, the following tools are recommended to help manage your toolchains:
@@ -40,7 +40,7 @@ You can install Rosetta 2 on macOS by executing the following:
 softwareupdate --install-rosetta
 ```
 
-Despite the above, if any dependency can be made to work on both `aarch64 (arm64)` and `x86_64 (amd64)`, we should do attempt to do so.
+Despite the above, if any dependency can be made to work on both `aarch64 (arm64)` and `x86_64 (amd64)`, we should attempt to do so.
 Not only is flexibility between architectures useful for local development, but it may also be useful in CI and/or production.
 
 ## Quickstart
@@ -51,7 +51,7 @@ However, for first time users, we recommend following this guide "as-is".
 
 ### Bootstrapping Your Environment (1/5)
 
-For either running SI locally or developing SI, execute the following script:
+First, ensure that Docker is installed on your machine and the `docker` executable is in your `PATH`. Then, for either running SI locally or developing SI, execute the following script:
 
 ```bash
 ./scripts/bootstrap.sh
@@ -114,7 +114,7 @@ In a third terminal pane, execute the following command:
 make app-run
 ```
 
-This will run the web application, which you can access by navigating to https://localhost:8080.
+This will run the web application, which you can access by navigating to http://localhost:8080.
 Now, you have SI running!
 
 ### Tearing Down the SI Stack (5/5)

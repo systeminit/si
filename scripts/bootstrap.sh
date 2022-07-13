@@ -63,7 +63,6 @@ function darwin-bootstrap {
     brew update
     brew upgrade
     brew cleanup
-    brew tap instrumenta/instrumenta
     brew install bash make git skopeo libtool automake kubeval
 }
 
