@@ -20,7 +20,6 @@ use crate::{
         prototype::{AttributePrototype, AttributePrototypeId},
         value::dependent_update::collection::AttributeValueDependentCollectionHarness,
     },
-    context::JobContent,
     func::{
         backend::{
             array::FuncBackendArrayArgs, boolean::FuncBackendBooleanArgs,
@@ -33,24 +32,19 @@ use crate::{
         },
     },
     impl_standard_model, pk,
+    JobError,
     standard_model::{self, TypeHint},
     standard_model_accessor, standard_model_belongs_to, standard_model_has_many,
-    ws_event::{WsEvent, WsEventError},
-    AttributeContextError, AttributePrototypeArgumentError, Component, ComponentId, DalContext,
-    Func, FuncError, HistoryEventError, IndexMap, InternalProviderId, Prop, PropError, PropId,
-    PropKind, ReadTenancyError, StandardModel, StandardModelError, Timestamp, TransactionsError,
-    Visibility, WriteTenancy,
+    AttributeContextError, AttributePrototypeArgumentError, CodeGenerationJob, ComponentId,
+    DalContext, Func, FuncError, HistoryEventError, IndexMap, InternalProviderId, Prop, PropError,
+    PropId, PropKind, ReadTenancyError, StandardModel, StandardModelError, Timestamp,
+    TransactionsError, UpdateDependentValuesJob, Visibility, WriteTenancy,
 };
-use crate::{
-    AccessBuilder, BillingAccountId, DalContextBuilder, HistoryActor, SystemId, WsPayload,
-};
-
-use self::dependent_update::AttributeValueDependentUpdateHarness;
 
 pub mod view;
 
-// Private module for finding dependent_update attribute values based on providers.
-mod dependent_update;
+// For finding dependent_update attribute values based on providers.
+pub mod dependent_update;
 
 const CHILD_ATTRIBUTE_VALUES_FOR_CONTEXT: &str =
     include_str!("../queries/attribute_value_child_attribute_values_for_context.sql");
@@ -74,8 +68,6 @@ pub enum AttributeValueError {
     Transactions(#[from] TransactionsError),
     #[error(transparent)]
     PgPool(#[from] si_data::PgPoolError),
-    #[error("ws event error: {0}")]
-    WsEvent(#[from] WsEventError),
     #[error("AttributeContext error: {0}")]
     AttributeContext(#[from] AttributeContextError),
     #[error("AttributeContextBuilder error: {0}")]
@@ -88,6 +80,8 @@ pub enum AttributeValueError {
     AttributePrototypeNotFound(AttributeValueId, Visibility),
     #[error("invalid json pointer: {0} for {1}")]
     BadJsonPointer(String, String),
+    #[error("job error: {0}")]
+    Job(#[from] JobError),
     #[error("component error: {0}")]
     Component(String),
     #[error("component not found for id: {0}")]
@@ -924,27 +918,20 @@ impl AttributeValue {
         }
 
         if context.component_id().is_some() {
-            // Check validations and qualifications for our component.
-            let component = Component::get_by_id(ctx, &context.component_id())
-                .await?
-                .ok_or_else(|| AttributeValueError::ComponentNotFound(context.component_id()))?;
-
-            ctx.enqueue_job(JobContent::ComponentPostProcessing(
-                component
-                    .build_async_tasks(ctx, context.system_id())
-                    .await
-                    .map_err(|err| AttributeValueError::Component(err.to_string()))?,
+            ctx.enqueue_job(CodeGenerationJob::new(
+                context.component_id(),
+                context.system_id(),
             ))
-            .await;
+            .await?;
         }
 
         let dependent_attribute_values =
             AttributeValueDependentCollectionHarness::collect(ctx, attribute_value.context).await?;
         for dependent_attribute_value in dependent_attribute_values {
-            ctx.enqueue_job(JobContent::DependentValuesUpdate(
-                DependentValuesAsyncTasks::new(*dependent_attribute_value.id()),
+            ctx.enqueue_job(UpdateDependentValuesJob::new(
+                *dependent_attribute_value.id(),
             ))
-            .await;
+            .await?;
         }
 
         Ok((value, *attribute_value.id()))
@@ -1656,83 +1643,5 @@ impl AttributeValuePayload {
             attribute_value,
             parent_attribute_value_id,
         }
-    }
-}
-
-#[must_use]
-#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
-pub struct DependentValuesAsyncTasks {
-    attribute_value_id: AttributeValueId,
-}
-
-impl DependentValuesAsyncTasks {
-    pub fn new(attribute_value_id: AttributeValueId) -> Self {
-        Self { attribute_value_id }
-    }
-
-    pub async fn run(
-        self,
-        access_builder: AccessBuilder,
-        visibility: Visibility,
-        ctx_builder: &DalContextBuilder,
-    ) -> AttributeValueResult<()> {
-        let mut txns = ctx_builder.transactions_starter().await?;
-        let txns = txns.start().await?;
-        let ctx = ctx_builder.build(access_builder.clone().build(visibility), &txns);
-
-        self.run_in_ctx(&ctx).await?;
-
-        txns.commit().await?;
-
-        Ok(())
-    }
-
-    pub async fn run_in_ctx(&self, ctx: &DalContext<'_, '_>) -> AttributeValueResult<()> {
-        // After we have _completely_ updated ourself, we can update our dependent values.
-        AttributeValueDependentUpdateHarness::update_dependent_values(ctx, self.attribute_value_id)
-            .await?;
-
-        let attribute_value = AttributeValue::get_by_id(ctx, &self.attribute_value_id)
-            .await?
-            .ok_or_else(|| {
-                AttributeValueError::NotFound(self.attribute_value_id, *ctx.visibility())
-            })?;
-
-        if attribute_value.context.component_id().is_some() {
-            WsEvent::updated_dependent_value(
-                attribute_value.context.component_id(),
-                attribute_value.context.system_id(),
-                ctx.read_tenancy().billing_accounts().into(),
-                ctx.history_actor(),
-            )
-            .publish(ctx.txns().nats())
-            .await?;
-        }
-        Ok(())
-    }
-}
-
-#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct DependentValuesUpdated {
-    component_id: ComponentId,
-    system_id: SystemId,
-}
-
-impl WsEvent {
-    pub fn updated_dependent_value(
-        component_id: ComponentId,
-        system_id: SystemId,
-        billing_account_ids: Vec<BillingAccountId>,
-        history_actor: &HistoryActor,
-    ) -> Self {
-        WsEvent::new(
-            billing_account_ids,
-            history_actor.clone(),
-            WsPayload::UpdatedDependentValue(DependentValuesUpdated {
-                component_id,
-                system_id,
-            }),
-        )
     }
 }

@@ -12,9 +12,8 @@ use tokio::sync::Mutex;
 use veritech::EncryptionKey;
 
 use crate::{
-    attribute::value::DependentValuesAsyncTasks, node::NodeId, BillingAccountId,
-    ComponentAsyncTasks, HistoryActor, OrganizationId, ReadTenancy, ReadTenancyError, Visibility,
-    WorkspaceId, WriteTenancy,
+    node::NodeId, BillingAccountId, HistoryActor, Job, JobResult, JobWrapper, OrganizationId,
+    ReadTenancy, ReadTenancyError, Visibility, WorkspaceId, WriteTenancy,
 };
 
 #[derive(Clone)]
@@ -38,60 +37,6 @@ impl fmt::Debug for FaktoryProducer {
         f.debug_struct("FaktoryProducer")
             .field("inner", &"()")
             .finish()
-    }
-}
-
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
-#[serde(tag = "faktory_job_kind")]
-pub enum JobContent {
-    DependentValuesUpdate(DependentValuesAsyncTasks),
-    ComponentPostProcessing(ComponentAsyncTasks),
-}
-
-impl JobContent {
-    pub fn name(&self) -> &'static str {
-        match self {
-            Self::DependentValuesUpdate(_) => "DependentValuesUpdate",
-            Self::ComponentPostProcessing(_) => "ComponentPostProcessing",
-        }
-    }
-
-    pub async fn run_in_ctx(
-        self,
-        ctx: &DalContext<'_, '_>,
-    ) -> Result<(), Box<dyn std::error::Error + 'static + Sync + Send>> {
-        match self {
-            JobContent::DependentValuesUpdate(task) => task.run_in_ctx(ctx).await?,
-            JobContent::ComponentPostProcessing(task) => task.run_in_ctx(ctx).await?,
-        }
-        Ok(())
-    }
-}
-
-#[must_use]
-#[derive(Clone, Deserialize, Serialize, Debug, PartialEq)]
-pub struct Job {
-    pub access_builder: AccessBuilder,
-    pub content: JobContent,
-    pub visibility: Visibility,
-}
-
-impl Job {
-    pub async fn run(
-        self,
-        ctx_builder: Arc<DalContextBuilder>,
-    ) -> Result<(), Box<dyn std::error::Error + 'static + Sync + Send>> {
-        match self.content {
-            JobContent::DependentValuesUpdate(task) => {
-                task.run(self.access_builder, self.visibility, &*ctx_builder)
-                    .await?
-            }
-            JobContent::ComponentPostProcessing(task) => {
-                task.run(self.access_builder, self.visibility, &*ctx_builder)
-                    .await?
-            }
-        }
-        Ok(())
     }
 }
 
@@ -352,28 +297,26 @@ impl DalContext<'_, '_> {
         Ok(new)
     }
 
-    pub async fn enqueue_job(&self, content: JobContent) {
+    pub async fn enqueue_job(&self, job: impl Job) -> JobResult<()> {
         let access_builder = AccessBuilder::new(
             self.read_tenancy().clone(),
             self.write_tenancy().clone(),
             self.history_actor().clone(),
             self.application_node_id(),
         );
-        self.txns().faktory_queue.lock().await.push(Job {
+        self.txns().faktory_queue.lock().await.push(JobWrapper {
             visibility: *self.visibility(),
-            content,
+            job: serde_json::to_string(&job)?,
             access_builder,
         });
+        Ok(())
     }
 
-    // TODO: change error type
-    pub async fn run_enqueued_jobs(
-        &self,
-    ) -> Result<(), Box<dyn std::error::Error + 'static + Sync + Send>> {
+    pub async fn run_enqueued_jobs(&self) -> JobResult<()> {
         while !self.txns().faktory_queue.lock().await.is_empty() {
             let jobs = std::mem::take(&mut *self.txns().faktory_queue.lock().await);
-            for job in jobs {
-                job.content.run_in_ctx(self).await?;
+            for wrapper in jobs {
+                //wrapper.job.run(self).await?;
             }
         }
         Ok(())
@@ -688,8 +631,10 @@ pub struct Transactions<'a> {
     pg_txn: PgTxn<'a>,
     /// A NATS transaction.
     nats_txn: NatsTxn,
+    /// A Faktory connection
     faktory_conn: FaktoryProducer,
-    faktory_queue: tokio::sync::Mutex<Vec<Job>>,
+    /// Jos to enqueue on faktory during commit
+    faktory_queue: Mutex<Vec<JobWrapper>>,
 }
 
 impl<'a> Transactions<'a> {
@@ -719,8 +664,6 @@ impl<'a> Transactions<'a> {
         self.nats_txn.commit().await?;
 
         let mut queue = self.faktory_queue.into_inner();
-        queue.dedup();
-
         for job in queue {
             info!("Enqueueing job: {job:?}");
             self.faktory_conn
@@ -728,7 +671,7 @@ impl<'a> Transactions<'a> {
                 .lock()
                 .await
                 .enqueue(faktory::Job::new(
-                    job.content.name(),
+                    job.job.name(),
                     vec![serde_json::to_string(&job)?],
                 ))
                 .map_err(TransactionsError::FaktoryEnqueue)?;

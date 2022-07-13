@@ -3,8 +3,8 @@ use thiserror::Error;
 
 use si_data::{NatsError, NatsTxn};
 
-use crate::attribute::value::DependentValuesUpdated;
 use crate::code_generation_resolver::CodeGenerationId;
+use crate::job::update_dependent_values::DependentValuesUpdated;
 use crate::qualification::QualificationCheckId;
 use crate::resource::ResourceSyncId;
 use crate::{BillingAccountId, ChangeSetPk, HistoryActor, SchemaPk, WriteTenancy};

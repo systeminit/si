@@ -28,6 +28,12 @@ macro_rules! pk {
             }
         }
 
+        impl Default for $name {
+            fn default() -> Self {
+                Self::NONE
+            }
+        }
+
         impl std::str::FromStr for $name {
             type Err = std::num::ParseIntError;
 

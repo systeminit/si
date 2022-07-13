@@ -14,10 +14,10 @@ use crate::server::config::{CycloneKeyPair, JwtSecretKey};
 use axum::routing::IntoMakeService;
 use axum::Router;
 use dal::{
-    context::Job,
     cyclone_key_pair::CycloneKeyPairError,
     jwt_key::{install_new_jwt_key, jwt_key_exists},
-    migrate, migrate_builtins, DalContext, DalContextBuilder, ResourceScheduler, ServicesContext,
+    migrate, migrate_builtins, DalContext, DalContextBuilder, Job, ResourceScheduler,
+    ServicesContext, UpdateDependentValuesJob,
 };
 use futures::Future;
 use hyper::server::{accept::Accept, conn::AddrIncoming};
@@ -241,27 +241,58 @@ impl Server<(), ()> {
         loop {
             let mut c = faktory::ConsumerBuilder::default();
 
-            let ctx_builder1 = ctx_builder.clone();
-            let runtime1 = runtime.clone();
-            c.register("ComponentPostProcessing", move |job| -> io::Result<()> {
-                faktory_job_wrapper(
-                    ctx_builder1.clone(),
-                    job,
-                    runtime1.clone(),
-                    Box::new(|job, ctx_builder| Box::pin(async { job.run(ctx_builder).await })),
-                )
-            });
+            let ctx_builder_cloned = ctx_builder.clone();
+            let runtime_cloned = runtime.clone();
+            c.register(
+                CodeGenerationJob::default().name(),
+                move |job| -> io::Result<()> {
+                    faktory_job_wrapper::<CodeGenerationJob>(
+                        ctx_builder_cloned.clone(),
+                        job,
+                        runtime_cloned.clone(),
+                        |job, ctx_builder| Box::pin(async { job.run(ctx_builder).await }),
+                    )
+                },
+            );
 
-            let ctx_builder2 = ctx_builder.clone();
-            let runtime2 = runtime.clone();
-            c.register("DependentValuesUpdate", move |job| -> io::Result<()> {
-                faktory_job_wrapper(
-                    ctx_builder2.clone(),
-                    job,
-                    runtime2.clone(),
-                    Box::new(|job, ctx_builder| Box::pin(async { job.run(ctx_builder).await })),
-                )
-            });
+            let ctx_builder_cloned = ctx_builder.clone();
+            let runtime_cloned = runtime.clone();
+            c.register(
+                QualificationsJob::default().name(),
+                move |job| -> io::Result<()> {
+                    faktory_job_wrapper::<QualificationsJob>(
+                        ctx_builder_cloned.clone(),
+                        job,
+                        runtime_cloned.clone(),
+                    )
+                },
+            );
+
+            let ctx_builder_cloned = ctx_builder.clone();
+            let runtime_cloned = runtime.clone();
+            c.register(
+                QualificationJob::default().name(),
+                move |job| -> io::Result<()> {
+                    faktory_job_wrapper::<QualificationJob>(
+                        ctx_builder_cloned.clone(),
+                        job,
+                        runtime_cloned.clone(),
+                    )
+                },
+            );
+
+            let ctx_builder_cloned = ctx_builder.clone();
+            let runtime_cloned = runtime.clone();
+            c.register(
+                UpdateDependentValuesJob::name(),
+                move |job| -> io::Result<()> {
+                    faktory_job_wrapper::<UpdateDependentValuesJob>(
+                        ctx_builder_cloned.clone(),
+                        job,
+                        runtime_cloned.clone(),
+                    )
+                },
+            );
 
             let mut c = match c.connect(Some(&faktory_url)) {
                 Ok(c) => c,
@@ -414,20 +445,16 @@ fn prepare_graceful_shutdown(
 #[derive(Debug, Eq, PartialEq)]
 pub enum ShutdownSource {}
 
-pub type FaktoryTask = Box<
-    dyn FnOnce(
+fn faktory_job_wrapper<T: Job>(
+    ctx_builder: Arc<DalContextBuilder>,
+    job: faktory::Job,
+    runtime: Arc<tokio::runtime::Runtime>,
+    job: impl FnOnce(
         Job,
         Arc<DalContextBuilder>,
     ) -> Pin<
         Box<dyn Future<Output = Result<(), Box<dyn std::error::Error + 'static + Sync + Send>>>>,
     >,
->;
-
-fn faktory_job_wrapper(
-    ctx_builder: Arc<DalContextBuilder>,
-    job: faktory::Job,
-    runtime: Arc<tokio::runtime::Runtime>,
-    task: FaktoryTask,
 ) -> Result<(), io::Error> {
     info!("Execute: {job:?}");
 
@@ -437,31 +464,31 @@ fn faktory_job_wrapper(
             error!("No Job provided");
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                TaskError::EmptyRequest,
-            )); // TODO: this sucks
+                JobError::EmptyRequest,
+            ));
         }
     };
-    let job = match args.as_str().map(serde_json::from_str) {
+    let job: T = match args.as_str().map(serde_json::from_str) {
         Some(Ok(job)) => job,
         Some(Err(err)) => {
-            error!("Unable to deserialize args as Job: {args:?} ({err}");
+            error!("Unable to deserialize args as Job: {args:?} ({err})");
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                TaskError::InvalidRequest(args.clone(), Box::new(err)),
-            )); // TODO: This sucks
+                JobError::InvalidRequest(err),
+            ));
         }
         None => {
             error!("Unable to deserialize args as Job: {args:?}");
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                TaskError::InvalidArgType(args.clone()),
-            )); // TODO: This sucks
+                JobError::InvalidArgType(args.clone()),
+            ));
         }
     };
 
     let result = std::panic::catch_unwind(AssertUnwindSafe(|| {
         runtime
-            .block_on(task(job, ctx_builder))
+            .block_on(job(job, ctx_builder))
             .map_err(|err| err.to_string())?;
         Ok(())
     }));
@@ -471,34 +498,23 @@ fn faktory_job_wrapper(
         Ok(Err(err)) => {
             return Err(io::Error::new(
                 io::ErrorKind::Interrupted,
-                TaskError::Failure(err),
+                JobError::Failure(err),
             ))
         }
         Err(any) => {
             let err = any.downcast::<&str>().map_err(|err| {
                 io::Error::new(
                     io::ErrorKind::Interrupted,
-                    TaskError::Failure(format!("{:?}", err.type_id())),
+                    JobError::Failure(format!("{:?}", err.type_id())),
                 )
             })?;
 
             error!("Job execution panicked with: {err}");
             return Err(io::Error::new(
                 io::ErrorKind::Interrupted,
-                TaskError::Failure(err.to_string()),
+                JobError::Failure(err.to_string()),
             ));
         }
     }
     Ok(())
-}
-
-#[derive(Debug, strum_macros::Display, thiserror::Error)]
-enum TaskError {
-    EmptyRequest,
-    InvalidArgType(serde_json::Value),
-    InvalidRequest(
-        serde_json::Value,
-        Box<dyn std::error::Error + 'static + Sync + Send>,
-    ),
-    Failure(String),
 }

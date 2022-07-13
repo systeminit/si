@@ -7,12 +7,11 @@ use std::collections::HashMap;
 use crate::{
     attribute::context::AttributeContextBuilder,
     attribute::value::dependent_update::collection::AttributeValueDependentCollectionHarness,
-    context::JobContent, AttributeContext, AttributePrototypeArgument, AttributeValue,
-    AttributeValueError, AttributeValueId, AttributeValueResult, Component, ComponentId,
-    DalContext, FuncBinding, InternalProvider, Prop, PropKind, StandardModel, SystemId,
+    AttributeContext, AttributePrototypeArgument, AttributeValue, AttributeValueError,
+    AttributeValueId, AttributeValueResult, CodeGenerationJob, Component, ComponentId, DalContext,
+    FuncBinding, InternalProvider, Prop, PropKind, StandardModel, SystemId,
+    UpdateDependentValuesJob,
 };
-
-use super::DependentValuesAsyncTasks;
 
 pub mod collection;
 
@@ -223,12 +222,8 @@ impl AttributeValueDependentUpdateHarness {
 
                         // The Root Prop won't have a parent Prop.
                         if provider_prop.parent_prop(ctx).await?.is_none() {
-                            ctx.enqueue_job(JobContent::ComponentPostProcessing(
-                                component.build_async_tasks(ctx, system_id).await.map_err(
-                                    |err| AttributeValueError::Component(err.to_string()),
-                                )?,
-                            ))
-                            .await;
+                            ctx.enqueue_job(CodeGenerationJob::new(*component.id(), system_id))
+                                .await?;
                         }
                     }
                 }
@@ -241,10 +236,10 @@ impl AttributeValueDependentUpdateHarness {
         )
         .await?;
         for dependent_attribute_value in dependent_attribute_values {
-            ctx.enqueue_job(JobContent::DependentValuesUpdate(
-                DependentValuesAsyncTasks::new(*dependent_attribute_value.id()),
+            ctx.enqueue_job(UpdateDependentValuesJob::new(
+                *dependent_attribute_value.id(),
             ))
-            .await;
+            .await?;
         }
 
         Ok(())

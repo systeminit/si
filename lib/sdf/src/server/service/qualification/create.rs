@@ -1,9 +1,9 @@
 use axum::Json;
 use dal::{
-    context::JobContent, func::backend::js_qualification::FuncBackendJsQualificationArgs,
-    generate_name, qualification_prototype::QualificationPrototypeContext, Component, ComponentId,
-    Func, FuncBackendKind, FuncBackendResponseType, QualificationPrototype,
-    QualificationPrototypeId, Schema, StandardModel, SystemId, Visibility,
+    func::backend::js_qualification::FuncBackendJsQualificationArgs, generate_name,
+    qualification_prototype::QualificationPrototypeContext, Component, ComponentId, Func,
+    FuncBackendKind, FuncBackendResponseType, QualificationPrototype, QualificationPrototypeId,
+    Schema, StandardModel, SystemId, Visibility,
 };
 use serde::{Deserialize, Serialize};
 
@@ -142,11 +142,7 @@ async function qualification(component) {
     let system_id = request.system_id.unwrap_or(SystemId::NONE);
 
     for component in components {
-        let task = component
-            .build_async_task(&ctx, system_id, *prototype.id())
-            .await?;
-        ctx.enqueue_job(JobContent::ComponentPostProcessing(task))
-            .await;
+        ctx.enqueue_job(QualificationJob::new(*component.id(), *system_id, *prototype.id())).await;
     }
 
     txns.commit().await?;

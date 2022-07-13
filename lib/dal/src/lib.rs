@@ -26,6 +26,7 @@ pub mod func;
 pub mod group;
 pub mod history_event;
 pub mod index_map;
+pub mod job;
 pub mod jwt_key;
 pub mod key_pair;
 pub mod label_list;
@@ -95,7 +96,7 @@ pub use code_generation_resolver::{
     CodeGenerationResolver, CodeGenerationResolverError, CodeGenerationResolverId,
 };
 pub use code_view::{CodeLanguage, CodeView};
-pub use component::{Component, ComponentAsyncTasks, ComponentError, ComponentId, ComponentView};
+pub use component::{Component, ComponentError, ComponentId, ComponentView};
 pub use context::{
     AccessBuilder, DalContext, DalContextBuilder, RequestContext, ServicesContext, Transactions,
     TransactionsError, TransactionsStarter,
@@ -114,6 +115,10 @@ pub use func::{
 pub use group::{Group, GroupError, GroupId, GroupResult};
 pub use history_event::{HistoryActor, HistoryEvent, HistoryEventError};
 pub use index_map::IndexMap;
+pub use job::code_generation::CodeGenerationJob;
+pub use job::qualification::{QualificationJob, QualificationsJob};
+pub use job::update_dependent_values::UpdateDependentValuesJob;
+pub use job::{Job, JobError, JobFuture, JobResult, JobWrapper};
 pub use jwt_key::{create_jwt_key_if_missing, JwtSecretKey};
 pub use key_pair::{KeyPair, KeyPairError, KeyPairResult, PublicKey};
 pub use label_list::{LabelEntry, LabelList, LabelListError};
