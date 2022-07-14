@@ -1,9 +1,10 @@
 <template>
-  <Menu v-slot="{ open }" as="div" class="inline-block text-left">
+  <Menu v-slot="{ open }" as="div" class="inline-block relative text-left">
     <MenuButton
       v-tooltip.bottom="tooltipText"
       :class="buttonClasses(open)"
       :aria-label="props.tooltipText"
+      class="relative"
       :disabled="disabled"
       @mouseenter="toggleHover"
       @mouseleave="toggleHover"
@@ -14,15 +15,15 @@
     <transition
       v-if="enableDropdown && props.options"
       enter-active-class="transition ease-out duration-100"
-      enter-from-class="transform opacity-0 scale-95"
-      enter-to-class="transform opacity-100 scale-100"
+      enter-from-class="transform opacity-0 scale-95 rounded-md"
+      enter-to-class="transform opacity-100 scale-100 rounded-md"
       leave-active-class="transition ease-in duration-75"
-      leave-from-class="transform opacity-100 scale-100"
-      leave-to-class="transform opacity-0 scale-95"
+      leave-from-class="transform opacity-100 scale-100 rounded-md"
+      leave-to-class="transform opacity-0 scale-95 rounded-md"
     >
       <SiIconDropdown
         :options="props.options"
-        :menu-items-class="'origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none'"
+        class="min-w-full"
       ></SiIconDropdown>
     </transition>
   </Menu>

@@ -1,23 +1,16 @@
 <template>
-  <MenuItems class="z-10" :class="menuItemsClass">
+  <MenuItems
+    :class="dropdownClasses"
+    class="z-10 absolute rounded-b-md shadow-lg py-1ring-1 ring-black ring-opacity-5 focus:outline-none"
+  >
     <div v-for="option in props.options" :key="option.text">
       <MenuItem v-slot="{ active }">
         <a
-          v-if="option.action"
           :class="[
-            active ? 'bg-gray-100' : '',
-            'block px-4 py-2 text-sm text-gray-700',
+            active ? 'bg-gray-700 rounded-md' : '',
+            'block px-4 py-2 text-sm text-white',
           ]"
           @click="option.action"
-          >{{ option.text }}</a
-        >
-
-        <a
-          v-else
-          :class="[
-            active ? 'bg-gray-100' : '',
-            'block px-4 py-2 text-sm text-gray-700',
-          ]"
           >{{ option.text }}</a
         >
       </MenuItem>
@@ -33,16 +26,13 @@ import { computed } from "@vue/reactivity";
 
 const props = defineProps<{
   options: SiIconDropdownOption[];
-  menuItemsClass?: string;
+  profileMode?: boolean;
 }>();
 
-const defaultClass =
-  "origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none";
-
-const menuItemsClass = computed((): string => {
-  if (props.menuItemsClass) {
-    return props.menuItemsClass;
+const dropdownClasses = computed((): string => {
+  if (props.profileMode) {
+    return "origin-top-right right-0 top-[3rem] bg-[#333333] w-48";
   }
-  return defaultClass;
+  return "top-[5.75rem] bg-black min-w-full";
 });
 </script>

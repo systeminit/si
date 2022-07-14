@@ -16,10 +16,12 @@
         <div class="flex flex-col h-full">
           <!-- panels -->
           <div class="flex flex-row grow">
-            <SiSidebar side="left" class="pointer-events-auto">poop</SiSidebar>
+            <SiSidebar side="left" class="pointer-events-auto dark:text-white"
+              >poop</SiSidebar
+            >
             <!-- transparent div that flows through to the canvas -->
             <div class="grow bg-transparent h-full pointer-events-none"></div>
-            <SiSidebar side="right" class="pointer-events-auto"
+            <SiSidebar side="right" class="pointer-events-auto dark:text-white"
               >canoe</SiSidebar
             >
           </div>

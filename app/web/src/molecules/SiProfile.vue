@@ -1,8 +1,6 @@
 <template>
-  <Menu as="div" class="ml-3 relative">
-    <div>
-      <SiProfileButton />
-    </div>
+  <Menu as="div" class="ml-2 relative">
+    <SiProfileButton />
 
     <transition
       enter-active-class="transition ease-out duration-100"
@@ -12,7 +10,7 @@
       leave-from-class="transform opacity-100 scale-100"
       leave-to-class="transform opacity-0 scale-95"
     >
-      <SiIconDropdown :options="options" />
+      <SiIconDropdown :options="options" :profile-mode="true" />
     </transition>
   </Menu>
 </template>
