@@ -34,6 +34,7 @@ prod: init
 		up -d
 
 ci: init
+	REPOPATH=$(REPOPATH) $(MAKEPATH)/scripts/check-for-artifacts-before-mounting.sh
 	GATEWAY=$(shell $(MAKEPATH)/scripts/gateway.sh) REPOPATH=$(REPOPATH) \
 		docker-compose \
 			-f $(MAKEPATH)/docker-compose.yml \
