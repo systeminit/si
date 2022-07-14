@@ -18,7 +18,7 @@ const emit = defineEmits(["click"]);
 const props = defineProps<{
   disabled?: boolean;
   selected?: boolean;
-  tooltipText: string;
+  tooltipText?: string;
 }>();
 const { disabled, selected, tooltipText } = toRefs(props);
 
