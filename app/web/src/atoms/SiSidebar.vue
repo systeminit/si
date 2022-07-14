@@ -1,0 +1,25 @@
+<template>
+  <div
+    class="border-[#DBDBDB] border-b-2 flex flex-col bg-white overflow-auto pl-2 pr-2 min-w-fit w-42 lg:w-56 xl:w-72"
+    :class="panelClasses"
+  >
+    <slot />
+  </div>
+</template>
+
+<script setup lang="ts">
+import { toRef, computed } from "vue";
+
+const props = defineProps<{ side: "right" | "left" }>();
+const side = toRef(props, "side");
+
+const panelClasses = computed(() => {
+  const classes: Record<string, boolean> = {};
+  if (side.value == "left") {
+    classes["border-r-2"] = true;
+  } else {
+    classes["border-l-2"] = true;
+  }
+  return classes;
+});
+</script>
