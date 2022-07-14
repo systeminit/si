@@ -1,3 +1,4 @@
-include ../build/rust.mk
+include ../../mk/base.mk
+include ../../mk/rust.mk
+
 .DEFAULT_GOAL := build
-WATCH_TASK = build

@@ -1,4 +1,4 @@
-include $(CURDIR)/../../component/mk/container.mk
+include $(CURDIR)/../../mk/container.mk
 
 image: ## Builds a container image (uses ./script/build-image.sh)
 	@echo "--- [$(shell basename ${CURDIR})] $@"

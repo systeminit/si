@@ -15,8 +15,7 @@
     "fmt": "prettier --write .",
     "fmt:check": "prettier --check .",
     "start": "npm run build && node ./dist/index.js",
-    "package": "npm run build && pkg . --output ./target/lang-js",
-    "test": "jest",
+    "test": "jest --passWithNoTests",
     "test:watch": "jest --watch --forceExit",
     "test:debug": "node --inspect-brk node_modules/.bin/jest --runInBand"
   },

@@ -34,11 +34,11 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
       - id: promote
-        name: make promote-${{ inputs.component_name }}
+        name: make promote//${{ inputs.component_name }}
         run: |
           : make ${{ inputs.component_name }}
           echo "::group::Promoting image"
-          make promote-${{ inputs.component_name }}
+          make promote//${{ inputs.component_name }}
           echo "::endgroup::"
       - uses: voxmedia/github-action-slack-notify-build@212e9f7a9ca33368c8dd879d6053972128258985 # pin@v1.5.0
         if: success()

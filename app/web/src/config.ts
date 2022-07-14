@@ -9,13 +9,13 @@ export const config: Config = {
   sdfBaseUrl: new URL(
     process.env.VUE_APP_SDF_BASE_HTTP_URL ||
       (process.env.NODE_ENV == "production"
-        ? "https://app.systeminit.com/api"
+        ? `https://${window.location.origin}/api`
         : `${window.location.origin}/api`),
   ),
   sdfBaseWsUrl: new URL(
     process.env.VUE_APP_SDF_BASE_WS_URL ||
       (process.env.NODE_ENV == "production"
-        ? "wss://app.systeminit.com/api/ws/billing_account_updates"
+        ? `wss://${window.location.host}/api/ws/billing_account_updates`
         : `ws://${window.location.host}/api/ws/billing_account_updates`),
   ),
 };

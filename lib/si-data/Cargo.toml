@@ -30,7 +30,7 @@ pg = [
 ]
 
 [dependencies]
-serde = "1.0.123"
+serde = { version = "1.0.123", features = ["derive"] }
 telemetry = { path = "../../lib/telemetry-rs" }
 thiserror = "1.0.24"
 tokio = { version = "1.2.0", features = ["full"] }

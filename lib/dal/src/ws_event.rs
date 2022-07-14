@@ -9,6 +9,8 @@ use crate::qualification::QualificationCheckId;
 use crate::resource::ResourceSyncId;
 use crate::{BillingAccountId, ChangeSetPk, HistoryActor, SchemaPk, WriteTenancy};
 
+// foo
+
 #[derive(Error, Debug)]
 pub enum WsEventError {
     #[error("error serializing/deserializing json: {0}")]

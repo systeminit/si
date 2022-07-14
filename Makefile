@@ -22,119 +22,191 @@
 # We declare our path to the directory containing the root Makefile before other imports.
 # This ensures that we have the accurate path to the root of the repository for our targets.
 MAKEPATH := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
+CI := false
+CI_FROM_REF := main
+CI_TO_REF := HEAD
 
-# order is important as earlier components are needed to build later components
+COMPONENTS = app/corp \
+	app/web \
+	bin/cyclone \
+	bin/lang-js \
+	bin/pinga \
+	bin/sdf \
+	bin/si-discord-bot \
+	bin/veritech \
+	lib/bytes-lines-codec \
+	lib/cyclone \
+	lib/deadpool-cyclone \
+	lib/si-data \
+	lib/si-test-macros \
+	lib/veritech \
+	lib/config-file \
+	lib/dal \
+	lib/sdf \
+	lib/si-settings \
+	lib/telemetry-rs 
+
 RELEASEABLE_COMPONENTS = \
-	web \
-	veritech \
-	sdf \
-	nats \
-	pinga
-RUNNABLE_COMPONENTS = \
+	component/nats \
+	component/otelcol \
+	component/postgres \
+	bin/sdf \
+	bin/veritech \
+	bin/pinga \
+	app/web
+
+RUNABLE_COMPONENTS = \
 	bin/veritech \
 	bin/sdf \
-	bin/pinga
+	bin/pinga \
+	app/web
+
 BUILDABLE = $(patsubst %,build//%,$(COMPONENTS))
+WATCHABLE = $(patsubst %,watch//%,$(COMPONENTS))
 TESTABLE = $(patsubst %,test//%,$(COMPONENTS))
+LINTABLE = $(patsubst %,lint//%,$(COMPONENTS))
 CLEANABLE = $(patsubst %,clean//%,$(COMPONENTS))
-RELEASEABLE = $(patsubst %,release-%,$(RELEASEABLE_COMPONENTS))
-PROMOTABLE = $(patsubst %,promote-%,$(RELEASEABLE_COMPONENTS))
+RELEASEABLE = $(patsubst %,release//%,$(RELEASEABLE_COMPONENTS))
+PROMOTABLE = $(patsubst %,promote//%,$(RELEASEABLE_COMPONENTS))
 IMAGEABLE = $(patsubst %,image//%,$(RELEASEABLE_COMPONENTS))
-WATCHABLE = $(patsubst %,watch//%,$(RUNNABLE_COMPONENTS))
-BUILDABLE_REGEX = $(shell echo $(COMPONENTS) | tr " " "|")
-RELEASEABLE_REGEX = $(shell echo $(RELEASEABLE_COMPONENTS) | tr " " "|")
+RUNABLE = $(patsubst %,run//%,$(RUNABLE_COMPONENTS))
 
 .DEFAULT_GOAL := prepare
 
-.PHONY: $(BUILDABLE) $(TESTABLE) $(RELEASEABLE) $(IMAGEABLE) image release
+.PHONY: $(BUILDABLE) $(TESTABLE) $(RELEASEABLE) $(IMAGEABLE) image release help
 
-%//RDEPS:
-	@ echo "*** No dependencies for $@ ***"
+# @ echo "*** No test dependencies remaining for $@ ***"
+%//TESTDEPS: ;
 
-$(BUILDABLE):
-	@ pushd $(patsubst build//%,%,$@); $(MAKE)
+#@ echo "*** No reverse test dependencies remaining for $@ ***"
+%//RTESTDEPS: ;
 
-build: $(BUILDABLE)
+#@ echo "*** No build dependencies remaining for $@ ***"
+%//BUILDDEPS: ;
 
-$(TESTABLE): % : %//RDEPS
-ifdef TEST_IN_CONTAINERS
-	@ pushd $(patsubst test//%,%,$@); $(MAKE) test_container RELEASE=$(RELEASE)
-else
-	@ pushd $(patsubst test//%,%,$@); $(MAKE) test
-endif
-
-test: $(TESTABLE)
+$(WATCHABLE):
+	@ pushd $(patsubst watch//%,%,$@); $(MAKE) watch
 
 $(IMAGEABLE):
 	cd $(patsubst image//%,%,$@) && $(MAKE) image
 
 $(RELEASEABLE):
-	 cd bin/$(patsubst release-%,%,$@) && $(MAKE) release
+	 cd $(patsubst release//%,%,$@) && $(MAKE) release
 
 $(PROMOTABLE):
-	 cd bin/$(patsubst promote-%,%,$@) && $(MAKE) promote
-
-release-postgres:
-	cd component/postgres && $(MAKE) release
-
-release-nats:
-	cd component/nats && $(MAKE) release
-
-release-otelcol:
-	cd component/otelcol && $(MAKE) release
-
-release-web:
-	cd app/web && $(MAKE) release
-
-promote-postgres:
-	cd component/postgres && $(MAKE) promote
-
-promote-nats:
-	cd component/nats && $(MAKE) promote
-
-promote-otelcol:
-	cd component/otelcol && $(MAKE) promote
-
-promote-web:
-	cd app/web && $(MAKE) promote
-
-$(WATCHABLE):
-	@ pushd $(patsubst watch//%,%,$@); $(MAKE) watch
-
-watch:
-	@ echo $(RUNNABLE_COMPONENTS) | tr ' ' '\n' | parallel --tag --jobs 0 --linebuffer -r make watch//{}
-
-tmux: tmux//windows
-
-tmux//windows: tmux_session tmux_windows
-	@ echo "*** Starting magical tmux (windows) good times ***"
-
-tmux//panes: tmux_session tmux_panes
-	@ echo "*** Starting magical tmux (panes) good times ***"
-
-tmux_session:
-ifdef TMUX
-	@ echo Not starting a new session, as you are in one.
-else
-	@ echo "*** Starting new tmux session ***"
-	@ tmux -2 new-session -d -s si
-	@ tmux send-keys "make dev_deps" C-m
-	@ echo "tmux attach -t si"
-endif
-
-tmux_windows:
-	@ for x in $(RUNNABLE_COMPONENTS); do tmux new-window -a -n $$(echo $$x | cut -f 2 -d '/') && tmux send-keys "make watch//$$x" C-m; done
-
-tmux_panes:
-	@ for x in $(RUNNABLE_COMPONENTS); do tmux split-window -v && tmux send-keys "make watch//$$x" C-m; done
-
-release: $(RELEASEABLE)
-	@echo "--> You have released the System Initative! <--"
-
-image: $(IMAGEABLE)
+	 cd bin/$(patsubst promote//%,%,$@) && $(MAKE) promote
 
 $(CLEANABLE):
 	@cd $(patsubst clean//%,%,$@); $(MAKE) clean
+
+$(LINTABLE):
+	@echo "::group::$@"
+	@cd $(patsubst lint//%,%,$@); $(MAKE) lint
+	@echo "::endgroup::"
+
+%//BUILD:
+	@echo "::group::$@"
+	@pushd $(patsubst build//%//BUILD,%,$@); $(MAKE) build
+	@echo "::endgroup::"
+
+$(BUILDABLE): % : %//BUILDDEPS %//BUILD
+
+build//lib/cyclone//BUILDDEPS: build//bin/lang-js
+
+build//bin/cyclone//BUILDDEPS: build//bin/lang-js
+
+build//bin/veritech//BUILDDEPS: build//bin/cyclone
+
+build//bin/sdf//BUILDDEPS: build//bin/veritech
+
+%//TEST:
+	@echo "::group::$@"
+	@pushd $(patsubst test//%//TEST,%,$@); $(MAKE) CI=$(CI) CI_FROM_REF=$(CI_FROM_REF) CI_TO_REF=$(CI_TO_REF) test
+	@echo "::endgroup::"
+
+$(TESTABLE): % : %//TESTDEPS %//TEST %//RTESTDEPS
+
+test//lib/dal//TESTDEPS: deploy//partial
+test//lib/dal//RTESTDEPS: test//lib/sdf
+
+test//lib/sdf//TESTDEPS: deploy//partial
+test//lib/sdf//RTESTDEPS: test//bin/sdf test//bin/pinga
+
+test//lib/bytes-lines-codec//RTESTDEPS: test//lib/cyclone
+
+test//bin/cyclone//TESTDEPS: build//bin/lang-js
+
+test//lib/cyclone//TESTDEPS: deploy//partial build//bin/lang-js
+test//lib/cyclone//RTESTDEPS: test//lib/veritech test//bin/cyclone
+
+test//lib/deadpool-cyclone//RTESTDEPS: test//lib/veritech
+
+test//lib/si-data//RTESTDEPS: test//lib/veritech test//lib/dal test//lib/sdf
+
+test//lib/si-test-macros//RTESTDEPS: test//lib/dal//TEST test//lib/sdf//TEST
+
+test//lib/veritech//TESTDEPS: deploy//partial build//bin/cyclone
+test//lib/veritech//RTESTDEPS: test//lib/dal//TEST test//lib/sdf//TEST test//bin/veritech 
+
+test//lib/config-file//RTESTDEPS: test//lib/si-settings//TEST
+
+test//lib/si-settings//RTESTDEPS: test//lib/veritech//TEST test//lib/cyclone//TEST test//lib/sdf//TEST
+
+test//bin/lang-js//RTESTDEPS: test//lib/cyclone
+
+test//app/web//TESTDEPS: build//app/web deploy//web
+
+%//RUN:
+	@echo "::group::$@"
+	@pushd $(patsubst run//%//RUN,%,$@); $(MAKE) run
+	@echo "::endgroup::"
+
+run//app/web: run//app/web//RUN
+
+$(RUNABLE): run//% : build//% run//%//RUN
+
+
+test: $(TESTABLE)
+
+build: $(BUILDABLE)
+
+ci: 
+	@echo $(CI_FROM_REF) $(CI_TO_REF)
+	@$(MAKEPATH)/mk/test-changed.sh $(CI_FROM_REF) $(CI_TO_REF)
+.PHONY: ci
+
+deploy//web: 
+	@echo "::group::deploy//web"
+ifeq ($(CI),true)
+	@echo "--- [$@]"
+	@pushd $(MAKEPATH)/deploy; $(MAKE) CI_FROM_REF=$(CI_FROM_REF) CI_TO_REF=$(CI_TO_REF) web 
+	@$(MAKEPATH)/ci/scripts/readiness-check.sh
+else
+	@echo "Skipping deploy//web outside of CI; set CI=true if you want this to happen automatically."
+endif
+	@echo "::endgroup::"
+
+deploy//down: 
+	@echo "::group::deploy//down"
+ifeq ($(CI),true)
+	@echo "--- [$@]"
+	@pushd $(MAKEPATH)/deploy; $(MAKE) down
+else
+	@echo "Skipping deploy//down outside of CI; set CI=true if you want this to happen automatically."
+endif
+	@echo "::endgroup::"
+
+deploy//partial: deploy//down
+	@echo "::group::deploy//partial"
+ifeq ($(CI),true)
+	@echo "--- [$@]"
+	@pushd $(MAKEPATH)/deploy; $(MAKE) partial
+	@echo "Sleeping to not race postgres or the queue to being alive; you're welcome."
+	@sleep 10 
+else
+	@echo "Skipping deploy//partial outside of CI; set CI=true if you want this to happen automatically."
+endif
+	@echo "::endgroup::"
 
 clean: $(CLEANABLE)
 
@@ -146,36 +218,12 @@ force_clean:
 # Vue 3 rewrite. These targets should be merged into existing ones once the transition is complete.
 
 down:
-	-cd $(MAKEPATH)/deploy && $(MAKE) down
+	$(MAKE) CI=true deploy//down
 .PHONY: down
 
 prepare: down
-	cd $(MAKEPATH)/bin/lang-js; npm install
-	cd $(MAKEPATH)/bin/lang-js; npm run package
-	cd $(MAKEPATH)/deploy && $(MAKE) partial
+	$(MAKE) CI=true deploy//partial
 .PHONY: prepare
-
-veritech-run:
-	cd $(MAKEPATH); cargo build --all
-	cd $(MAKEPATH); cargo build --bin cyclone
-	cd $(MAKEPATH)/bin/veritech; cargo run
-.PHONY: veritech-run
-
-sdf-run:
-	cd $(MAKEPATH); cargo build --all
-	cd $(MAKEPATH); cargo run --bin sdf -- --disable-opentelemetry
-.PHONY: sdf-run
-
-pinga-run:
-	cd $(MAKEPATH); cargo build --all
-	cd $(MAKEPATH); cargo run --bin pinga -- --disable-opentelemetry
-.PHONY: pinga-run
-
-app-run:
-	cd $(MAKEPATH)/app/web; npm install
-	cd $(MAKEPATH)/app/web; npm run vite-clean
-	cd $(MAKEPATH)/app/web; npm run dev
-.PHONY: app-run
 
 troubleshoot: down
 	cd $(MAKEPATH)/app/web; npm install
@@ -212,3 +260,4 @@ docs-open:
 docs-watch:
 	cd $(MAKEPATH); cargo watch -x doc
 .PHONY: docs-watch
+

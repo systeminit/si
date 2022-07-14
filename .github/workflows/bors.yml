@@ -1,16 +1,12 @@
-name: ci
+name: bors
 on:
-  pull_request:
+  push:
     branches:
-      - main
-    paths-ignore:
-      - 'app/corp/**'
-      - 'bin/si-discord-bot/**'
-
+      - staging
+      - trying
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-
 jobs:
   ci:
     timeout-minutes: 20
@@ -33,9 +29,10 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
-      - name: CI
-        run: ( source /data/runners/.profile; make CI=true CI_FROM_REF=${{github.event.pull_request.base.sha}} CI_TO_REF=${{ github.event.pull_request.head.sha}} ci)
+      - name: Test
+        run: ( source /data/runners/.profile; make CI=true CI_FROM_REF=${{github.event.push.before}} CI_TO_REF=${{ github.event.push.after}} ci)
         env:
           HONEYCOMB_TOKEN: ${{ secrets.HONEYCOMB_TOKEN }}
           RUSTC_WRAPPER: /usr/local/bin/sccache
           CARGO_INCREMENTAL: false
+          SKIP_LINT: true
