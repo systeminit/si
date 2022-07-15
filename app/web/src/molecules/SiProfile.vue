@@ -1,5 +1,5 @@
 <template>
-  <Menu as="div" class="ml-2 relative">
+  <Menu as="div" class="relative h-full">
     <SiProfileButton />
 
     <transition

@@ -1,5 +1,5 @@
 <template>
-  <Menu v-slot="{ open }" as="div" class="inline-block relative text-left">
+  <Menu v-slot="{ open }" as="div" class="relative h-full">
     <MenuButton
       v-tooltip.bottom="tooltipText"
       :class="buttonClasses(open)"
@@ -42,7 +42,7 @@ const props = defineProps<{
   tooltipText: string;
   options?: SiIconDropdownOption[];
 }>();
-const { disabled, tooltipText } = toRefs(props);
+const { disabled } = toRefs(props);
 
 const enableDropdown = computed((): boolean => {
   if (props.options && props.options.length > 0) {
@@ -53,16 +53,12 @@ const enableDropdown = computed((): boolean => {
 
 const hovered = ref<boolean>(false);
 const toggleHover = () => {
-  if (hovered.value) {
-    hovered.value = false;
-  } else {
-    hovered.value = true;
-  }
+  hovered.value = !hovered.value;
 };
 
 const buttonClasses = (open: boolean) => {
   const results: Record<string, boolean> = {
-    "py-12": true,
+    "h-full": true,
     "px-4": true,
     "hover:bg-black": true,
   };

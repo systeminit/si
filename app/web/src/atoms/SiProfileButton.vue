@@ -1,7 +1,7 @@
 <template>
   <MenuButton
     v-slot="{ open }"
-    class="flex flex-row items-center text-sm"
+    class="flex flex-row items-center text-sm h-full px-2 hover:bg-black"
     @mouseenter="toggleHover"
     @mouseleave="toggleHover"
   >
@@ -24,10 +24,6 @@ import SiArrow from "@/atoms/SiArrow.vue";
 
 const hovered = ref<boolean>(false);
 const toggleHover = () => {
-  if (hovered.value) {
-    hovered.value = false;
-  } else {
-    hovered.value = true;
-  }
+  hovered.value = !hovered.value;
 };
 </script>

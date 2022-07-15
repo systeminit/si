@@ -1,6 +1,6 @@
 <template>
   <Disclosure v-slot="{ open }" as="nav" :class="bgColor">
-    <div class="mx-auto px-2.5">
+    <div class="pl-2 border-b-2 border-gray-600">
       <div class="flex items-center h-16">
         <!-- Left side -->
         <div class="flex items-center justify-center place-items-center">

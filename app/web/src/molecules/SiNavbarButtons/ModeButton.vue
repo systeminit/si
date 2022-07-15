@@ -1,5 +1,5 @@
 <template>
-  <Menu as="div" class="inline-block text-left">
+  <Menu as="div" class="h-full">
     <MenuButton
       v-tooltip.bottom="tooltipText"
       :class="buttonClasses"
@@ -31,18 +31,14 @@ const { disabled, selected, tooltipText } = toRefs(props);
 
 const hovered = ref<boolean>(false);
 const toggleHover = () => {
-  if (hovered.value) {
-    hovered.value = false;
-  } else {
-    hovered.value = true;
-  }
+  hovered.value = !hovered.value;
 };
 
 const selectedColor = "bg-[#2F80ED]";
 
 const buttonClasses = computed(() => {
   const results: Record<string, boolean> = {
-    "py-12": true,
+    "h-full": true,
     "px-4": true,
     "hover:bg-black": true,
   };

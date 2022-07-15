@@ -1,5 +1,7 @@
 <template>
-  <div class="flex items-center justify-center place-items-center mx-auto">
+  <div
+    class="flex items-center justify-center place-items-center mx-auto h-full"
+  >
     <ModeButton
       v-slot="{ hovered }"
       tooltip-text="Compose yourself, dammit!"
@@ -68,6 +70,7 @@ enum Mode {
   Eye,
   Play,
 }
+
 const selectedMode = refFrom<Mode>(Mode.Compose);
 const changeMode = (mode: Mode) => {
   selectedMode.value = mode;

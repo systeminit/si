@@ -1,5 +1,5 @@
 <template>
-  <div class="flex items-center">
+  <div class="flex items-center h-full">
     <NavbarButton
       v-slot="{ hovered, open }"
       tooltip-text="Zoom"
@@ -89,6 +89,7 @@ const zoomOptions: SiIconDropdownOption[] = [
   },
 ];
 
+// FIXME(victor) this still isn't working properly. The active theme selection should persist across reloads
 onMounted(() => {
   if (
     localStorage.theme === "dark" ||
@@ -96,10 +97,8 @@ onMounted(() => {
       window.matchMedia("(prefers-color-scheme: dark)").matches)
   ) {
     document.documentElement.classList.add("dark");
-    localStorage.setItem("color-theme", "dark");
   } else {
     document.documentElement.classList.remove("dark");
-    localStorage.setItem("color-theme", "light");
   }
 });
 

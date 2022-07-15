@@ -1,6 +1,6 @@
 <template>
   <div
-    class="border-[#DBDBDB] border-b-2 flex flex-col bg-white dark:bg-[#333333] dark:border-t-2 overflow-auto pl-2 pr-2 min-w-fit w-42 lg:w-56 xl:w-72"
+    class="flex flex-col border-[#DBDBDB] border-b-2 bg-white dark:bg-[#333333] overflow-auto pl-2 pr-2 min-w-fit w-42 lg:w-56 xl:w-72"
     :class="panelClasses"
   >
     <slot />
