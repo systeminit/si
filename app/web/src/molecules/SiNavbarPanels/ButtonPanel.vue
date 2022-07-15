@@ -21,29 +21,19 @@
       <LinkIcon class="w-6" :class="buttonClasses(hovered, false)" />
     </NavbarButton>
 
-    <NavbarButton
-      v-slot="{ hovered, open }"
-      tooltip-text="Change theme"
-      :options="themeOptions"
-      dropdown-classes="right-0 text-center"
-    >
-      <MoonIcon class="w-6" :class="buttonClasses(hovered, open)" />
-    </NavbarButton>
+    <SiThemeSwitcher />
 
     <SiProfile />
   </div>
 </template>
 
 <script setup lang="ts">
-import { MoonIcon, LinkIcon } from "@heroicons/vue/outline";
+import { LinkIcon } from "@heroicons/vue/outline";
 import SiProfile from "@/molecules/SiProfile.vue";
 import NavbarButton from "@/molecules/SiNavbarButtons/NavbarButton.vue";
 import { SiIconDropdownOption } from "@/atoms/SiIconDropdown/types";
 import SiArrow from "@/atoms/SiArrow.vue";
-import { ThemeService } from "@/service/theme";
-import { onMounted, toRef } from "vue";
-import { theme$ } from "@/observable/theme";
-import { tap } from "rxjs";
+import SiThemeSwitcher from "@/organisims/SiThemeSwitcher.vue";
 
 const copyURL = () => {
   navigator.clipboard.writeText(window.location.href);
@@ -91,29 +81,6 @@ const zoomOptions: SiIconDropdownOption[] = [
     action: () => {
       console.log("25%");
     },
-  },
-];
-
-theme$.pipe(
-  tap((theme) => {
-    console.log(theme.value);
-    // if (theme === "dark") document.documentElement.classList.add("dark");
-    // else document.documentElement.classList.remove("dark");
-  }),
-);
-
-const themeOptions: SiIconDropdownOption[] = [
-  {
-    text: "System theme",
-    action: ThemeService.resetToSystems,
-  },
-  {
-    text: "Light theme",
-    action: () => theme$.next({ value: "light", source: "user" }),
-  },
-  {
-    text: "Dark theme",
-    action: () => ThemeService.setTo("dark"),
   },
 ];
 </script>

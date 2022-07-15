@@ -2,6 +2,7 @@
   <div class="w-full h-full flex pointer-events-none">
     <div class="w-full h-full z-0 relative">
       <Viewer
+        v-if="lightmode"
         :schematic-viewer-id="schematicViewerId"
         :viewer-state="viewerState"
         :viewer-event$="viewerEventObservable.viewerEvent$"
@@ -12,6 +13,19 @@
         :light-mode="true"
         class="pointer-events-auto"
       />
+      <Viewer
+        v-else
+        :schematic-viewer-id="schematicViewerId"
+        :viewer-state="viewerState"
+        :viewer-event$="viewerEventObservable.viewerEvent$"
+        :schematic-data="schematicData"
+        :editor-context="editorContext"
+        :schematic-kind="schematicKind"
+        :deployment-node-selected="deploymentNodeSelected"
+        :light-mode="false"
+        class="pointer-events-auto"
+      />
+
       <div class="absolute inset-0 z-10">
         <div class="flex flex-col h-full">
           <!-- panels -->
@@ -43,6 +57,10 @@ import _ from "lodash";
 import { ViewerStateMachine } from "@/organisims/SchematicViewer/state_machine";
 import StatusBar from "@/organisims/StatusBar.vue";
 import SiSidebar from "@/atoms/SiSidebar.vue";
+import { ThemeService } from "@/service/theme";
+import { refFrom } from "vuse-rx/src";
+import { computed } from "vue";
+import { Theme } from "@/observable/theme";
 
 const schematicViewerId = _.uniqueId();
 const viewerState = new ViewerStateMachine();
@@ -54,4 +72,18 @@ const schematicData = {
 const editorContext = null;
 const schematicKind = SchematicKind.Component;
 const deploymentNodeSelected = null;
+
+const theme = refFrom<Theme>(ThemeService.currentTheme());
+const lightmode = computed(() => {
+  console.log("light mode", { theme: theme.value });
+  if (theme.value) {
+    if (theme.value.value == "light") {
+      return true;
+    } else {
+      return false;
+    }
+  } else {
+    return true;
+  }
+});
 </script>

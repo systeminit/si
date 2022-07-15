@@ -7,7 +7,7 @@ import { persistToSession } from "@/observable/session_state";
 export type ThemeSource = "user" | "system";
 export type ThemeValue = "dark" | "light";
 
-interface Theme {
+export interface Theme {
   value: ThemeValue;
   source: ThemeSource;
 }
@@ -16,6 +16,12 @@ interface Theme {
  * The currently selected theme
  */
 export const theme$ = new ReplaySubject<Theme>(1);
+persistToSession("theme", theme$);
+
+theme$.subscribe((newTheme) => {
+  if (newTheme.value === "dark") document.documentElement.classList.add("dark");
+  else document.documentElement.classList.remove("dark");
+});
 
 theme$.next({
   value: window.matchMedia("(prefers-color-scheme: dark)").matches
@@ -23,4 +29,3 @@ theme$.next({
     : "light",
   source: "system",
 });
-persistToSession("theme", theme$);

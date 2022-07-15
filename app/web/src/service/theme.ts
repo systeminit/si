@@ -1,25 +1,25 @@
-import { theme$ } from "@/observable/theme";
+import { Theme, theme$ } from "@/observable/theme";
+
+// Fetch the current theme
+function currentTheme(): typeof theme$ {
+  return theme$;
+}
 
 /**
  * Set the theme state to light or dark
  */
-function setTo(theme: Theme) {
-  theme$.next(theme);
-
-  if (theme === "dark") document.documentElement.classList.add("dark");
-  else document.documentElement.classList.remove("dark");
+function setTo(value: Theme["value"]) {
+  theme$.next({ value, source: "user" });
 }
 
 /**
  * Make the whole website follow the system's theme
  */
-export function resetToSystems() {
+function resetToSystems() {
   const theme: Theme = window.matchMedia("(prefers-color-scheme: dark)").matches
-    ? "dark"
-    : "light";
-
-  setTo(theme);
-  console.log(theme);
+    ? { value: "dark", source: "system" }
+    : { value: "light", source: "system" };
+  theme$.next(theme);
 }
 
 /**
@@ -28,4 +28,5 @@ export function resetToSystems() {
 export const ThemeService = {
   setTo,
   resetToSystems,
+  currentTheme,
 };
