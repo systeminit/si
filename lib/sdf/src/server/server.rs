@@ -1,6 +1,7 @@
 pub use dal::context::FaktoryProducer;
 
 use std::{
+    any::TypeId,
     io,
     net::SocketAddr,
     panic::AssertUnwindSafe,
@@ -17,7 +18,8 @@ use dal::{
     context::Job,
     cyclone_key_pair::CycloneKeyPairError,
     jwt_key::{install_new_jwt_key, jwt_key_exists},
-    migrate, migrate_builtins, DalContext, DalContextBuilder, ResourceScheduler, ServicesContext,
+    migrate, migrate_builtins, DalContext, DalContextBuilder, JobFailure, JobFailureError,
+    ResourceScheduler, ServicesContext, TransactionsError,
 };
 use futures::Future;
 use hyper::server::{accept::Accept, conn::AddrIncoming};
@@ -28,6 +30,7 @@ use telemetry::{prelude::*, TelemetryClient};
 use thiserror::Error;
 use tokio::{
     io::{AsyncRead, AsyncWrite},
+    runtime::Runtime,
     signal::unix,
     sync::{broadcast, mpsc, oneshot},
 };
@@ -232,7 +235,7 @@ impl Server<(), ()> {
         faktory_url: String,
         veritech: veritech::Client,
         encryption_key: veritech::EncryptionKey,
-        runtime: Arc<tokio::runtime::Runtime>,
+        runtime: Arc<Runtime>,
     ) {
         let services_context =
             ServicesContext::new(pg, nats, faktory, veritech, Arc::new(encryption_key));
@@ -426,79 +429,116 @@ pub type FaktoryTask = Box<
 fn faktory_job_wrapper(
     ctx_builder: Arc<DalContextBuilder>,
     job: faktory::Job,
-    runtime: Arc<tokio::runtime::Runtime>,
+    runtime: Arc<Runtime>,
     task: FaktoryTask,
 ) -> Result<(), io::Error> {
-    info!("Execute: {job:?}");
+    let job_kind = job.queue.clone();
 
+    // Since we needs this metadata to properly report the error, if it's not found we just log the failure and call it a day
+    // TODO: we should have a way to report failures without access_builder + visibility, that is only readable to us, as it implies in a dal's implementation problem
     let args = match job.args().iter().next() {
         Some(args) => args,
         None => {
-            error!("No Job provided");
+            error!("No Job provided for {job_kind}");
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                TaskError::EmptyRequest,
-            )); // TODO: this sucks
+                TaskError::EmptyRequest(job_kind),
+            ));
         }
     };
-    let job = match args.as_str().map(serde_json::from_str) {
+    let job: Job = match args.as_str().map(serde_json::from_str) {
         Some(Ok(job)) => job,
         Some(Err(err)) => {
             error!("Unable to deserialize args as Job: {args:?} ({err}");
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                TaskError::InvalidRequest(args.clone(), Box::new(err)),
-            )); // TODO: This sucks
+                TaskError::InvalidRequest(job_kind, args.clone(), err),
+            ));
         }
         None => {
-            error!("Unable to deserialize args as Job: {args:?}");
+            error!("Job args weren't a string json value: {args:?}");
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                TaskError::InvalidArgType(args.clone()),
-            )); // TODO: This sucks
+                TaskError::InvalidArgType(job_kind, args.clone()),
+            ));
         }
     };
 
-    let result = std::panic::catch_unwind(AssertUnwindSafe(|| {
-        runtime
-            .block_on(task(job, ctx_builder))
-            .map_err(|err| err.to_string())?;
-        Ok(())
-    }));
+    info!("Execute {job_kind}: {job:?}");
+    let runtime1 = runtime.clone();
+    let job_kind = &job_kind;
+    let ctx_builder1 = ctx_builder.clone();
+    let job1 = job.clone();
+    if let Err(err) = panic_wrapper(job_kind, move || {
+        runtime1.block_on(async {
+            task(job1, ctx_builder1)
+                .await
+                .map_err(|err| TaskError::ExecutionFailed(job_kind.to_owned(), err.to_string()))
+        })
+    }) {
+        error!("Job execution failed: {err}");
 
-    match result {
-        Ok(Ok(())) => {}
-        Ok(Err(err)) => {
-            return Err(io::Error::new(
-                io::ErrorKind::Interrupted,
-                TaskError::Failure(err),
-            ))
-        }
-        Err(any) => {
-            let err = any.downcast::<&str>().map_err(|err| {
-                io::Error::new(
-                    io::ErrorKind::Interrupted,
-                    TaskError::Failure(format!("{:?}", err.type_id())),
-                )
-            })?;
+        let err_message = err.to_string();
+        panic_wrapper("job failure reporting", move || {
+            runtime.block_on(async {
+                let mut txns = ctx_builder.transactions_starter().await?;
+                let txns = txns.start().await?;
+                let ctx = ctx_builder.build(job.access_builder.build(job.visibility), &txns);
 
-            error!("Job execution panicked with: {err}");
-            return Err(io::Error::new(
-                io::ErrorKind::Interrupted,
-                TaskError::Failure(err.to_string()),
-            ));
+                JobFailure::new(&ctx, job_kind.clone(), err_message).await?;
+
+                txns.commit().await?;
+                Ok(())
+            })
+        })
+        .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?;
+        return Err(io::Error::new(io::ErrorKind::Interrupted, err));
+    }
+    return Ok(());
+
+    fn panic_wrapper(
+        label: &str,
+        func: impl FnOnce() -> Result<(), TaskError>,
+    ) -> Result<(), TaskError> {
+        match std::panic::catch_unwind(AssertUnwindSafe(func)) {
+            Ok(Ok(())) => Ok(()),
+            Ok(Err(err)) => Err(err),
+            Err(any) => {
+                // Note: Technically panicks can be of any form, but most should be &str or String
+                match any.downcast::<String>() {
+                    Ok(msg) => Err(TaskError::Panic(label.to_owned(), *msg)),
+                    Err(any) => match any.downcast::<&str>() {
+                        Ok(msg) => Err(TaskError::Panic(label.to_owned(), msg.to_string())),
+                        Err(any) => {
+                            let id = any.type_id();
+                            error!("{label}: Panic message downcast failed of {id:?}",);
+                            Err(TaskError::UnknownPanic(label.to_owned(), id))
+                        }
+                    },
+                }
+            }
         }
     }
-    Ok(())
 }
 
-#[derive(Debug, strum_macros::Display, thiserror::Error)]
+#[derive(Debug, thiserror::Error)]
 enum TaskError {
-    EmptyRequest,
-    InvalidArgType(serde_json::Value),
-    InvalidRequest(
-        serde_json::Value,
-        Box<dyn std::error::Error + 'static + Sync + Send>,
-    ),
-    Failure(String),
+    #[error("empty request for {0}")]
+    EmptyRequest(String),
+    #[error("invalid arg type for {0}: {1}")]
+    InvalidArgType(String, serde_json::Value),
+    #[error("invalid request for {0}: {1:?}, err: {2}")]
+    InvalidRequest(String, serde_json::Value, serde_json::Error),
+    #[error("execution failed for {0}: {1}")]
+    ExecutionFailed(String, String),
+    #[error("{0} panicked: {1}")]
+    Panic(String, String),
+    #[error("{0} panicked with an unknown payload of {1:?}")]
+    UnknownPanic(String, TypeId),
+    #[error("failure reporting error: {0}")]
+    FailureReporting(#[from] JobFailureError),
+    #[error("pg error: {0}")]
+    Pg(#[from] PgPoolError),
+    #[error("transactions error: {0}")]
+    Transactions(#[from] TransactionsError),
 }
