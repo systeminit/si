@@ -40,7 +40,10 @@ import SiProfile from "@/molecules/SiProfile.vue";
 import NavbarButton from "@/molecules/SiNavbarButtons/NavbarButton.vue";
 import { SiIconDropdownOption } from "@/atoms/SiIconDropdown/types";
 import SiArrow from "@/atoms/SiArrow.vue";
-import { onMounted } from "vue";
+import { ThemeService } from "@/service/theme";
+import { onMounted, toRef } from "vue";
+import { theme$ } from "@/observable/theme";
+import { tap } from "rxjs";
 
 const copyURL = () => {
   navigator.clipboard.writeText(window.location.href);
@@ -91,48 +94,26 @@ const zoomOptions: SiIconDropdownOption[] = [
   },
 ];
 
-// FIXME(victor) this still isn't working properly. The active theme selection should persist across reloads
-onMounted(() => {
-  if (
-    localStorage.theme === "dark" ||
-    (!("theme" in localStorage) &&
-      window.matchMedia("(prefers-color-scheme: dark)").matches)
-  ) {
-    document.documentElement.classList.add("dark");
-  } else {
-    document.documentElement.classList.remove("dark");
-  }
-});
-
-const setThemeToLight = () => {
-  document.documentElement.classList.remove("dark");
-  localStorage.setItem("color-theme", "light");
-};
-
-const setThemeToDark = () => {
-  document.documentElement.classList.add("dark");
-  localStorage.setItem("color-theme", "dark");
-};
+theme$.pipe(
+  tap((theme) => {
+    console.log(theme.value);
+    // if (theme === "dark") document.documentElement.classList.add("dark");
+    // else document.documentElement.classList.remove("dark");
+  }),
+);
 
 const themeOptions: SiIconDropdownOption[] = [
   {
     text: "System theme",
-    action: () => {
-      if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
-        setThemeToDark();
-      } else {
-        setThemeToLight();
-      }
-      localStorage.removeItem("color-theme");
-    },
+    action: ThemeService.resetToSystems,
   },
   {
     text: "Light theme",
-    action: setThemeToLight,
+    action: () => theme$.next({ value: "light", source: "user" }),
   },
   {
     text: "Dark theme",
-    action: setThemeToDark,
+    action: () => ThemeService.setTo("dark"),
   },
 ];
 </script>
