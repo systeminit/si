@@ -10,7 +10,7 @@
       leave-from-class="transform opacity-100 scale-100"
       leave-to-class="transform opacity-0 scale-95"
     >
-      <SiIconDropdown :options="options" :profile-mode="true" />
+      <SiIconDropdown :options="options" class="right-1" />
     </transition>
   </Menu>
 </template>

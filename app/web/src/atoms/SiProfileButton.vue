@@ -1,7 +1,7 @@
 <template>
   <MenuButton
     v-slot="{ open }"
-    class="flex flex-row items-center text-sm h-full px-2 hover:bg-black"
+    class="flex flex-row items-center text-sm h-full pl-2 pr-1 hover:bg-black"
     @mouseenter="toggleHover"
     @mouseleave="toggleHover"
   >

@@ -2,7 +2,7 @@ const theme = require("./src/design/themes/tailwind/tailwind-dark");
 const colors = require("tailwindcss/colors");
 
 module.exports = {
-  darkMode: 'class',
+  darkMode: "class",
   content: ["./src/**/*.html", "./src/**/*.vue"],
   theme: {
     cursor: {

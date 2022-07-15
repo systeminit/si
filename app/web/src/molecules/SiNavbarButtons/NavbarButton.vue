@@ -24,6 +24,7 @@
       <SiIconDropdown
         :options="props.options"
         class="min-w-full"
+        :class="dropdownClasses"
       ></SiIconDropdown>
     </transition>
   </Menu>
@@ -41,14 +42,12 @@ const props = defineProps<{
   disabled?: boolean;
   tooltipText: string;
   options?: SiIconDropdownOption[];
+  dropdownClasses?: string;
 }>();
 const { disabled } = toRefs(props);
 
 const enableDropdown = computed((): boolean => {
-  if (props.options && props.options.length > 0) {
-    return true;
-  }
-  return false;
+  return !!props.options?.length;
 });
 
 const hovered = ref<boolean>(false);

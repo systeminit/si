@@ -5,6 +5,7 @@
       tooltip-text="Zoom"
       :options="zoomOptions"
       :text-mode="true"
+      dropdown-classes="text-center"
     >
       <div class="flex-row flex" :class="buttonClasses(hovered, open)">
         100%
@@ -24,6 +25,7 @@
       v-slot="{ hovered, open }"
       tooltip-text="Change theme"
       :options="themeOptions"
+      dropdown-classes="right-0 text-center"
     >
       <MoonIcon class="w-6" :class="buttonClasses(hovered, open)" />
     </NavbarButton>
