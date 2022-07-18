@@ -1,4 +1,4 @@
 export interface SiIconDropdownOption {
   text: string;
-  action?: () => Promise<void>;
+  action: (() => Promise<void>) | (() => void);
 }

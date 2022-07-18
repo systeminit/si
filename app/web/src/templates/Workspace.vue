@@ -1,5 +1,8 @@
 <template>
-  <div id="workspaces" class="flex flex-col w-full h-full select-none bg-white">
+  <div
+    id="workspaces"
+    class="overflow-hidden flex flex-col w-full h-full select-none bg-white"
+  >
     <Navbar />
 
     <router-view />
