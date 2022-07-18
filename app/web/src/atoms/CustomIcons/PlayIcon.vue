@@ -9,8 +9,8 @@
     <g clip-path="url(#clip0_318_700)">
       <path
         d="M1.5 1.5L15.5 10.5L1.5 19.5V1.5Z"
-        :fill="primaryColor"
-        :stroke="primaryColor"
+        :fill="color"
+        :stroke="color"
         stroke-width="2"
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -21,7 +21,7 @@
         <rect
           width="16"
           height="20"
-          :fill="primaryColor"
+          :fill="color"
           transform="translate(0.5 0.5)"
         />
       </clipPath>
@@ -30,5 +30,16 @@
 </template>
 
 <script setup lang="ts">
-const primaryColor = "#FFFFFF";
+import { computed } from "vue";
+
+const props = defineProps<{
+  color?: string;
+}>();
+
+const color = computed(() => {
+  if (props.color) {
+    return props.color;
+  }
+  return "#FFFFFF";
+});
 </script>

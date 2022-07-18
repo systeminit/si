@@ -8,7 +8,7 @@
       :panel-switcher="true"
       @click="changeMode(Mode.Compose)"
     >
-      <ComposeIcon class="w-6 text-white" />
+      <ComposeIcon class="w-6" />
     </SiNavbarButton>
 
     <SiNavbarButton
@@ -38,7 +38,7 @@
       :panel-switcher="true"
       @click="changeMode(Mode.Play)"
     >
-      <PlayIcon class="w-6 text-white" />
+      <PlayIcon class="w-6" />
     </SiNavbarButton>
   </div>
 </template>
@@ -49,7 +49,7 @@ import { BeakerIcon } from "@heroicons/vue/solid";
 import { refFrom } from "vuse-rx";
 import ComposeIcon from "@/atoms/CustomIcons/ComposeIcon.vue";
 import PlayIcon from "@/atoms/CustomIcons/PlayIcon.vue";
-import SiNavbarButton from "@/atoms/SiNavbarButton.vue";
+import SiNavbarButton from "@/molecules/SiNavbarButton.vue";
 
 enum Mode {
   Compose,
