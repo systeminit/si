@@ -100,22 +100,35 @@ $ systemctl enable actions.runner.systeminit-si.ci-1
 $ systemctl start actions.runner.systeminit-si.ci-1
 ```
 
-# Complete the following as grunner
+## Setting up the runners as `grunner`
 
 ```sh 
 sudo su - grunner
 ```
 
-## Installing rust
+### Installing rust
 
 ```sh 
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
-## Installing volta
+### Installing volta
 
 ```sh 
 curl https://get.volta.sh | bash
 volta install node typescript
 ```
 
+## Troubleshooting
+
+Sometimes, there may be a permissions error seen when runners try to clean themselves up from the previous run.
+To fix this manually, `ssh` into a runner and delete the _interior_ `si` directory.
+Caution: do not delete the _exterior_ `si` directory.
+
+```sh
+# This can technically be ran in one command, but let's be careful and "cd" first.
+cd /data/runners/1/_work/si/
+
+# We need to use "sudo" due to the permissions error.
+sudo rm -rf ./si
+```
