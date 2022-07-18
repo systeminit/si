@@ -1,11 +1,10 @@
 <template>
   <NavbarButton
-    v-slot="{ hovered, open }"
     tooltip-text="Change theme"
     :options="themeOptions"
     dropdown-classes="right-0 text-center"
   >
-    <MoonIcon class="w-6" :class="buttonClasses(hovered, open)" />
+    <MoonIcon class="w-6 text-white" />
   </NavbarButton>
 </template>
 
@@ -29,17 +28,4 @@ const themeOptions: SiIconDropdownOption[] = [
     action: () => ThemeService.setTo("dark"),
   },
 ];
-
-const buttonClasses = (hovered: boolean, selected: boolean) => {
-  if (hovered || selected) {
-    return {
-      block: true,
-      "text-white": true,
-    };
-  }
-  return {
-    block: true,
-    "text-gray-400": true,
-  };
-};
 </script>

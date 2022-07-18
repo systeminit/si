@@ -9,7 +9,7 @@
     >
       <a
         :class="[
-          active ? 'bg-gray-700 rounded-md' : '',
+          active ? 'bg-[#2F80ED] rounded-md' : '',
           'block whitespace-nowrap px-4 py-2 text-sm text-white cursor-pointer',
         ]"
         @click="option.action"

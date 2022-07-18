@@ -1,5 +1,5 @@
 <template>
-  <Menu v-slot="{ open }" as="div" class="relative h-full">
+  <Menu v-slot="{ open }" as="div" class="relative block h-full">
     <MenuButton
       v-tooltip.bottom="tooltipText"
       :class="buttonClasses(open)"
@@ -8,6 +8,7 @@
       :disabled="disabled"
       @mouseenter="toggleHover"
       @mouseleave="toggleHover"
+      @click="emit('click')"
     >
       <slot :hovered="hovered" :open="open"></slot>
     </MenuButton>
@@ -38,8 +39,11 @@ import SiIconDropdown from "@/atoms/SiIconDropdown.vue";
 import { SiIconDropdownOption } from "@/atoms/SiIconDropdown/types";
 import { ref } from "vue";
 
+const emit = defineEmits(["click"]);
+
 const props = defineProps<{
   disabled?: boolean;
+  selected?: boolean;
   tooltipText: string;
   options?: SiIconDropdownOption[];
   dropdownClasses?: string;
@@ -62,10 +66,11 @@ const buttonClasses = (open: boolean) => {
     "hover:bg-black": true,
   };
 
-  // Only display "selected" classes if there is a dropdown available.
-  if (open && enableDropdown.value) {
+  // Only display "selected" classes if there is a dropdown available
+  // or we have explicitly passed in a selected value.
+  if (props.selected || (open && enableDropdown.value)) {
     results["hover:bg-black"] = false;
-    results["bg-black"] = true;
+    results["bg-[#2F80ED]"] = true;
   }
 
   return results;

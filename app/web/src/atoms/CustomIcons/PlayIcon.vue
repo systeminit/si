@@ -30,16 +30,5 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
-
-const props = defineProps<{
-  selected?: boolean;
-}>();
-
-const primaryColor = computed(() => {
-  if (props.selected) {
-    return "#FFFFFF";
-  }
-  return "#E0E0E0";
-});
+const primaryColor = "#FFFFFF";
 </script>
