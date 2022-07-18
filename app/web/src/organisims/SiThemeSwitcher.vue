@@ -1,20 +1,20 @@
 <template>
-  <NavbarButton
+  <SiNavbarButton
     tooltip-text="Change theme"
     :options="themeOptions"
     dropdown-classes="right-0 text-center"
   >
     <MoonIcon class="w-6 text-white" />
-  </NavbarButton>
+  </SiNavbarButton>
 </template>
 
 <script setup lang="ts">
 import { ThemeService } from "@/service/theme";
-import { SiIconDropdownOption } from "@/atoms/SiIconDropdown/types";
+import { SiSelectOption } from "@/atoms/SiSelect2/types";
 import { MoonIcon } from "@heroicons/vue/outline";
-import NavbarButton from "@/molecules/SiNavbarButtons/NavbarButton.vue";
+import SiNavbarButton from "@/molecules/SiNavbarButton.vue";
 
-const themeOptions: SiIconDropdownOption[] = [
+const themeOptions: SiSelectOption[] = [
   {
     text: "System theme",
     action: ThemeService.resetToSystems,

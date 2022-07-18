@@ -2,44 +2,44 @@
   <div
     class="flex items-center justify-center place-items-center mx-auto h-full"
   >
-    <NavbarButton
+    <SiNavbarButton
       tooltip-text="Compose yourself, dammit!"
       :selected="selectedMode === Mode.Compose"
       :panel-switcher="true"
       @click="changeMode(Mode.Compose)"
     >
       <ComposeIcon class="w-6 text-white" />
-    </NavbarButton>
+    </SiNavbarButton>
 
-    <NavbarButton
+    <SiNavbarButton
       tooltip-text="Are you a thrill beaker?"
       :selected="selectedMode === Mode.Beaker"
       :panel-switcher="true"
       @click="changeMode(Mode.Beaker)"
     >
       <BeakerIcon class="w-6 text-white" />
-    </NavbarButton>
+    </SiNavbarButton>
 
     <!-- Vertical bar -->
     <div class="w-0.5 h-8 self-center mx-2 bg-white"></div>
 
-    <NavbarButton
+    <SiNavbarButton
       tooltip-text="Eye see you"
       :selected="selectedMode === Mode.Eye"
       :panel-switcher="true"
       @click="changeMode(Mode.Eye)"
     >
       <EyeIcon class="w-6 text-white" />
-    </NavbarButton>
+    </SiNavbarButton>
 
-    <NavbarButton
+    <SiNavbarButton
       tooltip-text="Dookie, by Green Play"
       :selected="selectedMode === Mode.Play"
       :panel-switcher="true"
       @click="changeMode(Mode.Play)"
     >
       <PlayIcon class="w-6 text-white" />
-    </NavbarButton>
+    </SiNavbarButton>
   </div>
 </template>
 
@@ -49,7 +49,7 @@ import { BeakerIcon } from "@heroicons/vue/solid";
 import { refFrom } from "vuse-rx";
 import ComposeIcon from "@/atoms/CustomIcons/ComposeIcon.vue";
 import PlayIcon from "@/atoms/CustomIcons/PlayIcon.vue";
-import NavbarButton from "../SiNavbarButtons/NavbarButton.vue";
+import SiNavbarButton from "@/atoms/SiNavbarButton.vue";
 
 enum Mode {
   Compose,

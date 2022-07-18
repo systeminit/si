@@ -22,9 +22,9 @@
 <script setup lang="ts">
 import { MenuItem, MenuItems } from "@headlessui/vue";
 import { defineProps } from "vue";
-import { SiIconDropdownOption } from "@/atoms/SiIconDropdown/types";
+import { SiSelectOption } from "@/atoms/SiSelect2/types";
 
 const props = defineProps<{
-  options: SiIconDropdownOption[];
+  options: SiSelectOption[];
 }>();
 </script>
