@@ -19,14 +19,7 @@ export const theme$ = new ReplaySubject<Theme>(1);
 persistToSession("theme", theme$);
 
 theme$.subscribe((newTheme) => {
-  const newThemeValue: ThemeValue =
-    newTheme.source === "system"
-      ? window.matchMedia("(prefers-color-scheme: dark)").matches
-        ? "dark"
-        : "light"
-      : newTheme.value;
-
-  if (newThemeValue === "dark") document.documentElement.classList.add("dark");
+  if (newTheme.value === "dark") document.documentElement.classList.add("dark");
   else document.documentElement.classList.remove("dark");
 });
 
