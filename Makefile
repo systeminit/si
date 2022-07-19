@@ -154,7 +154,7 @@ test//lib/si-settings//RTESTDEPS: test//lib/veritech//TEST test//lib/cyclone//TE
 
 test//bin/lang-js//RTESTDEPS: test//lib/cyclone
 
-test//app/web//TESTDEPS: build//app/web deploy//web
+test//app/web//TESTDEPS: build//app/web deploy//down deploy//web
 
 %//RUN:
 	@echo "::group::$@"
