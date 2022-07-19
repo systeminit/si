@@ -19,9 +19,7 @@ services:
   veritech:
     volumes:
       - "${REPOPATH:-..}/lib/cyclone/src/dev.decryption.key:/run/cyclone/decryption.key:ro"
-      - "${REPOPATH:-..}/bin/lang-js/target/lang-js:/usr/local/bin/lang-js"
   pinga:
     volumes:
       - "${REPOPATH:-..}/bin/pinga/src/dev.jwt_secret_key.bin:/run/pinga/jwt_secret_key.bin:ro"
       - "${REPOPATH:-..}/lib/cyclone/src/dev.encryption.key:/run/pinga/cyclone_encryption.key:ro"
-
