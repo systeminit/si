@@ -20,6 +20,10 @@ services:
     volumes:
       - "${REPOPATH:-..}/lib/cyclone/src/dev.decryption.key:/run/cyclone/decryption.key:ro"
   pinga:
+    image: "fedora:latest"
     volumes:
+      - "${REPOPATH:-..}/target/debug/pinga:/usr/local/bin/pinga"
       - "${REPOPATH:-..}/bin/pinga/src/dev.jwt_secret_key.bin:/run/pinga/jwt_secret_key.bin:ro"
       - "${REPOPATH:-..}/lib/cyclone/src/dev.encryption.key:/run/pinga/cyclone_encryption.key:ro"
+    entrypoint:
+      - "/usr/local/bin/pinga"

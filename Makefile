@@ -119,6 +119,8 @@ build//bin/veritech//BUILDDEPS: build//bin/cyclone
 
 build//bin/sdf//BUILDDEPS: build//bin/veritech
 
+build//bin/pinga//BUILDDEPS: build//bin/cyclone
+
 %//TEST:
 	@echo "::group::$@"
 	@pushd $(patsubst test//%//TEST,%,$@); $(MAKE) CI=$(CI) CI_FROM_REF=$(CI_FROM_REF) CI_TO_REF=$(CI_TO_REF) test
@@ -154,7 +156,7 @@ test//lib/si-settings//RTESTDEPS: test//lib/veritech//TEST test//lib/cyclone//TE
 
 test//bin/lang-js//RTESTDEPS: test//lib/cyclone
 
-test//app/web//TESTDEPS: build//app/web deploy//web
+test//app/web//TESTDEPS: build//app/web build//bin/pinga deploy//web
 
 %//RUN:
 	@echo "::group::$@"
