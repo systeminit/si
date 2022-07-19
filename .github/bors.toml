@@ -1,5 +1,5 @@
 status = [
-  "Pull Request Checks",
+  "Merge Request Checks",
   "Docker Image Build Summary Status",
 ]
 block_labels = [
