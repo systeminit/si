@@ -1,4 +1,4 @@
-import { ReplaySubject } from "rxjs";
+import { ReplaySubject, take } from "rxjs";
 import { persistToSession } from "@/observable/session_state";
 
 /**
@@ -29,3 +29,20 @@ theme$.next({
     : "light",
   source: "system",
 });
+
+/**
+ * The browser API allows us to get set a handler for the theme preference change event,
+ * so this code updates the system state when that event fires off.
+ */
+window
+  .matchMedia("(prefers-color-scheme: dark)")
+  .addEventListener("change", (themeUpdate) => {
+    theme$.pipe(take(1)).subscribe((theme) => {
+      if (theme.source === "system") {
+        theme$.next({
+          value: themeUpdate.matches ? "dark" : "light",
+          source: "system",
+        });
+      }
+    });
+  });
