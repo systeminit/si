@@ -94,7 +94,7 @@ $(RELEASEABLE):
 	 cd $(patsubst release//%,%,$@) && $(MAKE) release
 
 $(PROMOTABLE):
-	 cd bin/$(patsubst promote//%,%,$@) && $(MAKE) promote
+	 cd $(patsubst promote//%,%,$@) && $(MAKE) promote
 
 $(CLEANABLE):
 	@cd $(patsubst clean//%,%,$@); $(MAKE) clean
