@@ -1,5 +1,5 @@
 <template>
-  <WorkspaceEditor :mutable="false" />
+  <WorkspaceEditor :mutable="true" />
 </template>
 
 <script setup lang="ts">

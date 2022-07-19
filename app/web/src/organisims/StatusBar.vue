@@ -47,11 +47,12 @@
       </Tab>
       <div
         class="flex w-12 border-black border-l h-full items-center justify-center"
+        @click="togglePanel()"
       >
-        <SiButtonIcon v-if="panelOpen" @click="togglePanel()">
+        <SiButtonIcon v-if="panelOpen">
           <ChevronDownIcon />
         </SiButtonIcon>
-        <SiButtonIcon v-else @click="togglePanel()">
+        <SiButtonIcon v-else>
           <ChevronUpIcon />
         </SiButtonIcon>
       </div>

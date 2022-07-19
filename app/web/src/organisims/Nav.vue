@@ -202,7 +202,7 @@
         </div>
 
         <div class="flex items-center w-full mx-6 my-4 color-grey-light">
-          <button data-test="new-home" @click="onWorkspaceView">
+          <button data-test="new-home" @click="onWorkspace">
             <SiIcon tooltip-text="New Home">
               <SwitchHorizontalIcon class="color-grey-light" />
             </SiIcon>
@@ -260,15 +260,15 @@ const onLogout = async () => {
   await SessionService.logout();
   await router.push({ name: "login" });
 };
-const onWorkspaceView = async () => {
+const onWorkspace = async () => {
   if (workspaceId.value) {
     await router.push({
-      name: "workspace-view",
+      name: "workspace-single",
       path: "/new/w/:workspaceId",
       params: { workspaceId: workspaceId.value },
     });
   } else {
-    // FIXME(nick): ensure that it's impossible for "onWorkspaceView" to be executed
+    // FIXME(nick): ensure that it's impossible for this to be executed
     // when "workspaceId" is undefined.
     console.log("workspace id is undefined");
   }

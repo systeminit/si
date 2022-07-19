@@ -23,8 +23,12 @@ import Editor from "@/organisims/Editor.vue";
 import _ from "lodash";
 import SchematicViewer from "@/organisims/SchematicViewer.vue";
 import NewHome from "@/pages/NewHome.vue";
-import Workspace from "@/templates/Workspace.vue";
+import WorkspaceSingle from "@/templates/WorkspaceSingle.vue";
+import WorkspaceMultiple from "@/templates/WorkspaceMultiple.vue";
 import WorkspaceView from "@/organisims/Workspace/WorkspaceView.vue";
+import WorkspaceRuntime from "@/organisims/Workspace/WorkspaceRuntime.vue";
+import WorkspaceCompose from "@/organisims/Workspace/WorkspaceCompose.vue";
+import WorkspaceLab from "@/organisims/Workspace/WorkspaceLab.vue";
 
 const routes: RouteRecordRaw[] = [
   {
@@ -138,14 +142,14 @@ const routes: RouteRecordRaw[] = [
     children: [
       {
         path: "w",
-        name: "workspace",
-        component: Workspace,
+        name: "workspace-multiple",
+        component: WorkspaceMultiple,
         redirect: { name: "new" },
         children: [
           {
-            name: "workspace-view",
+            name: "workspace-single",
             path: ":workspaceId",
-            component: WorkspaceView,
+            component: WorkspaceSingle,
             props: (route) => {
               let workspaceId;
               if (_.isArray(route.params.workspaceId)) {
@@ -157,6 +161,28 @@ const routes: RouteRecordRaw[] = [
                 workspaceId,
               };
             },
+            children: [
+              {
+                path: "c",
+                name: "workspace-compose",
+                component: WorkspaceCompose,
+              },
+              {
+                path: "l",
+                name: "workspace-lab",
+                component: WorkspaceLab,
+              },
+              {
+                path: "v",
+                name: "workspace-view",
+                component: WorkspaceView,
+              },
+              {
+                path: "r",
+                name: "workspace-runtime",
+                component: WorkspaceRuntime,
+              },
+            ],
           },
         ],
       },
