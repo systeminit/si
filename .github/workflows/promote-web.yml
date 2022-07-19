@@ -15,7 +15,7 @@ jobs:
   promote:
     uses: ./.github/workflows/promote-image.yml
     with:
-      component_name: web
+      component_name: app/web
     secrets:
       SLACKBOT_TOKEN: ${{ secrets.SLACKBOT_TOKEN }}
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}

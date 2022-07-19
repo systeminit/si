@@ -23,7 +23,7 @@ jobs:
   promote:
     uses: ./.github/workflows/promote-image.yml
     with:
-      component_name: sdf
+      component_name: bin/sdf
     secrets:
       SLACKBOT_TOKEN: ${{ secrets.SLACKBOT_TOKEN }}
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}

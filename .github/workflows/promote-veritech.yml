@@ -23,7 +23,7 @@ jobs:
   promote:
     uses: ./.github/workflows/promote-image.yml
     with:
-      component_name: veritech
+      component_name: bin/veritech
     secrets:
       SLACKBOT_TOKEN: ${{ secrets.SLACKBOT_TOKEN }}
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
