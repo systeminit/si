@@ -76,6 +76,7 @@ Potentially conflicting services include, but are not limited to, the following:
 * PostgreSQL DB
 * OpenTelemetry
 * NATS
+* Faktory
 * Watchtower
 
 In the case of a port conflict, a good strategy is to temporarily disable the host service until SI is no longer being run.
@@ -89,7 +90,7 @@ In one terminal pane (e.g. using a terminal multiplexer, such as `tmux`, or tabs
 make prepare
 ```
 
-This will ensure that our database is running, our NATS server is running, the JS language server is built, and all crates are built.
+This will ensure that our database is running, our NATS server is running, and faktory is running.
 
 Now, wait for the `postgres` database container to be running and ready to receive incoming client connection requests.
 If it is not ready, `sdf` database migration will fail.
@@ -97,21 +98,25 @@ If it is not ready, `sdf` database migration will fail.
 Once the database is ready, you can run `veritech`.
 
 ```bash
-make veritech-run
+make run//bin/veritech
 ```
 
 In another terminal pane, run `sdf`.
 
 ```bash
-make sdf-run
+make run//bin/sdf
 ```
 
-_Note:_ you can run `veritech` and `sdf` again without running the prepare target.
+In another terminal pane, run `pinga`.
+
+```bash
+make run//bin/pinga
+```
 
 In a third terminal pane, execute the following command:
 
 ```bash
-make app-run
+make run//app/web
 ```
 
 This will run the web application, which you can access by navigating to http://localhost:8080.
@@ -129,16 +134,22 @@ The above target will not only stop all running containers, but will remove them
 
 ## Preparing Your Changes and Running Tests
 
-Navigate to the `Makefile` in the [ci](./ci) directory to see local development
-targets. These targets include code linting, formatting, running CI locally,
-etc.
+### Running Lints
+
+You can lint a component with:
+
+```bash
+make lint//bin/veritech
+```
+
+Where `bin/veritech` is the path to the component you want to lint.
 
 ### Running All Lints
 
-To verify that all lints will pass in CI, execute the following target:
+You can run all the lints with:
 
 ```bash
-( cd ci; make ci-lint )
+make lint
 ```
 
 > #### Using Optional Tidy Targets
@@ -147,10 +158,44 @@ To verify that all lints will pass in CI, execute the following target:
 > Be careful, as the Rust-related tidy actions may perform more aggressive fixes than what the lint target checks for.
 >
 > ```bash
-> ( cd ci; make tidy )
+> make tidy
 > ```
 
-### Running Integration Tests
+### Running Tests
+
+You can run tests for components with:
+
+```bash 
+make prepare
+```
+
+Followed by:
+
+```bash
+make test//bin/veritech
+```
+
+
+Where `bin/veritech` is the path to the component you want to test. If you want the environment to be 
+cleaned and started automatically (blowing away the data in the database) run this instead:
+
+```bash
+make CI=true test//lib/sdf
+```
+
+### Running the CI tests locally
+
+To ensure your code will pass CI, you can run the exact same code that the CI servers themselves will run.
+
+```
+make down
+make CI=true ci
+```
+
+This will evaluate the delta between your current branch and `main`, and run only the tests and lints
+that are relevant to your changes.
+
+### Running Integration Tests Manually
 
 You can also run individual [dal](./lib/dal) integration tests before bringing
 up the entire SI stack, as needed. This can be done in the root of the

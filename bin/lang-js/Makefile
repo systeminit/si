@@ -1,16 +1,12 @@
-include ../build/typescript.mk
-COMPONENT = si-lang-js
+include ../../mk/typescript.mk
+
 .DEFAULT_GOAL := build
 
-build:
+build: node_modules
 	@echo "--- [$(shell basename ${CURDIR})] $@"
-	$(MAKE) node_modules
-	env NODE_ENV=production npm run build
+	env NODE_ENV=production npm run package
+.PHONY: build
 
-watch:
-	@echo "--- [$(shell basename ${CURDIR})] $@"
-	npm run watch
-
-format:
-	@echo "--- [$(shell basename ${CURDIR})] $@"
-	npm run lint:fix
+lint:
+	@echo 'skipping lint'
+PHONY: lint

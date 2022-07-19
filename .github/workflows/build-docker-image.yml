@@ -26,11 +26,11 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
       - id: release
-        name: make release-${{ inputs.component_name }}
+        name: make release//${{ inputs.component_name }}
         run: |
-          : make release-${{ inputs.component_name }}
+          : make release//${{ inputs.component_name }}
           echo "::group::Building and publishing image"
-          make release-${{ inputs.component_name }}
+          make release//${{ inputs.component_name }}
           echo "::endgroup::"
           echo "::group::Manifest info"
           jq . <tmp/release-${{ inputs.component_name }}.manifest.json

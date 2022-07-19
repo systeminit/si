@@ -3,9 +3,14 @@ node_modules: package.json ## Installs the package's dependencies
 	npm install
 .PHONY: node_modules
 
-build: node_modules ## Builds the TypeScript package
+release-build: node_modules ## Builds the TypeScript package
 	@echo "--- [$(shell basename ${CURDIR})] $@"
 	env NODE_ENV=production npm run build
+.PHONY: build
+
+build: node_modules ## Builds the TypeScript package
+	@echo "--- [$(shell basename ${CURDIR})] $@"
+	npm run build
 .PHONY: build
 
 test: node_modules ## Tests the TypeScript package
@@ -32,3 +37,4 @@ lint: node_modules ## Runs code/style linting
 	@echo "--- [$(shell basename ${CURDIR})] $@"
 	npm run eslint
 .PHONY: lint
+
