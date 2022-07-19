@@ -33,7 +33,9 @@ function check-binary {
     fi
 }
 
+echo "::group::Readiness check"
 check-binary curl
 check-binary jq
 readiness-check
 echo "SI is ready!"
+echo "::endgroup::"

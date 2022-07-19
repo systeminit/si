@@ -32,4 +32,5 @@ else
   cp $REPOPATH/deploy/scripts/partials/docker-compose.ci.yml $REPOPATH/deploy/docker-compose.ci.yml
 fi
 echo "::endgroup::"
+
 exit 0
