@@ -12,4 +12,16 @@ services:
       - "${REPOPATH:-..}/app/web/nginx/dhparam.pem:/etc/ssl/certs/dhparam.pem"
       - "${REPOPATH:-..}/app/web/nginx/nginx-selfsigned.crt:/etc/ssl/certs/nginx-selfsigned.crt"
       - "${REPOPATH:-..}/app/web/nginx/nginx-selfsigned.key:/etc/ssl/certs/nginx-selfsigned.key"
-      - "${REPOPATH:-..}/app/web/htpasswd:/htpasswd"
+  sdf:
+    volumes:
+      - "${REPOPATH:-..}/bin/sdf/src/dev.jwt_secret_key.bin:/run/sdf/jwt_secret_key.bin:ro"
+      - "${REPOPATH:-..}/lib/cyclone/src/dev.encryption.key:/run/sdf/cyclone_encryption.key:ro"
+  veritech:
+    volumes:
+      - "${REPOPATH:-..}/lib/cyclone/src/dev.decryption.key:/run/cyclone/decryption.key:ro"
+      - "${REPOPATH:-..}/bin/lang-js/target/lang-js:/usr/local/bin/lang-js"
+  pinga:
+    volumes:
+      - "${REPOPATH:-..}/bin/pinga/src/dev.jwt_secret_key.bin:/run/pinga/jwt_secret_key.bin:ro"
+      - "${REPOPATH:-..}/lib/cyclone/src/dev.encryption.key:/run/pinga/cyclone_encryption.key:ro"
+

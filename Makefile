@@ -154,7 +154,7 @@ test//lib/si-settings//RTESTDEPS: test//lib/veritech//TEST test//lib/cyclone//TE
 
 test//bin/lang-js//RTESTDEPS: test//lib/cyclone
 
-test//app/web//TESTDEPS: build//app/web deploy//down deploy//web
+test//app/web//TESTDEPS: build//app/web deploy//web
 
 %//RUN:
 	@echo "::group::$@"
@@ -175,7 +175,7 @@ ci:
 	@$(MAKEPATH)/mk/test-changed.sh $(CI_FROM_REF) $(CI_TO_REF)
 .PHONY: ci
 
-deploy//web: 
+deploy//web: deploy//down
 	@echo "::group::deploy//web"
 ifeq ($(CI),true)
 	@echo "--- [$@]"
