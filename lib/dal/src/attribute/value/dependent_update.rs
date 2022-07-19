@@ -7,12 +7,14 @@ use std::collections::HashMap;
 use crate::{
     attribute::context::AttributeContextBuilder,
     attribute::value::dependent_update::collection::AttributeValueDependentCollectionHarness,
-    context::JobContent, AttributeContext, AttributePrototypeArgument, AttributeValue,
-    AttributeValueError, AttributeValueId, AttributeValueResult, Component, ComponentId,
-    DalContext, FuncBinding, InternalProvider, Prop, PropKind, StandardModel, SystemId,
+    job::definition::{
+        component_post_processing::ComponentPostProcessing,
+        dependent_values_update::DependentValuesUpdate,
+    },
+    AttributeContext, AttributePrototypeArgument, AttributeValue, AttributeValueError,
+    AttributeValueId, AttributeValueResult, Component, ComponentId, DalContext, FuncBinding,
+    InternalProvider, Prop, PropKind, StandardModel, SystemId,
 };
-
-use super::DependentValuesAsyncTasks;
 
 pub mod collection;
 
@@ -223,11 +225,11 @@ impl AttributeValueDependentUpdateHarness {
 
                         // The Root Prop won't have a parent Prop.
                         if provider_prop.parent_prop(ctx).await?.is_none() {
-                            ctx.enqueue_job(JobContent::ComponentPostProcessing(
-                                component.build_async_tasks(ctx, system_id).await.map_err(
-                                    |err| AttributeValueError::Component(err.to_string()),
-                                )?,
-                            ))
+                            ctx.enqueue_job(
+                                ComponentPostProcessing::new(ctx, *component.id(), system_id, None)
+                                    .await
+                                    .map_err(|e| AttributeValueError::Component(e.to_string()))?,
+                            )
                             .await;
                         }
                     }
@@ -241,8 +243,10 @@ impl AttributeValueDependentUpdateHarness {
         )
         .await?;
         for dependent_attribute_value in dependent_attribute_values {
-            ctx.enqueue_job(JobContent::DependentValuesUpdate(
-                DependentValuesAsyncTasks::new(*dependent_attribute_value.id()),
+            ctx.enqueue_job(DependentValuesUpdate::new(
+                ctx,
+                *dependent_attribute_value.id(),
+                *ctx.visibility(),
             ))
             .await;
         }

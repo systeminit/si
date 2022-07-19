@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use color_eyre::Result;
-use sdf::{Config, FaktoryProducer, Server};
+use sdf::{Config, FaktoryProcessor, JobQueueProcessor, Server};
 use telemetry::{
     tracing::{debug, info},
     TelemetryClient,
@@ -88,16 +88,17 @@ async fn run(
 
     let nats = Server::connect_to_nats(config.nats()).await?;
 
-    let faktory_conn = FaktoryProducer::new(&config.faktory().url)?;
+    let job_processor = Arc::new(Box::new(FaktoryProcessor::new(&config.faktory().url)?)
+        as Box<dyn JobQueueProcessor + Send + Sync>);
 
     let pg_pool = Server::create_pg_pool(config.pg_pool()).await?;
 
     let veritech = Server::create_veritech_client(nats.clone());
 
-    Server::start_faktory_job_executor(
+    Server::start_job_executor(
         pg_pool.clone(),
         nats.clone(),
-        faktory_conn.clone(),
+        job_processor,
         config.faktory().url.clone(),
         veritech.clone(),
         encryption_key,

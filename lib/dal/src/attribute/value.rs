@@ -20,7 +20,6 @@ use crate::{
         prototype::{AttributePrototype, AttributePrototypeId},
         value::dependent_update::collection::AttributeValueDependentCollectionHarness,
     },
-    context::JobContent,
     func::{
         backend::{
             array::FuncBackendArrayArgs, boolean::FuncBackendBooleanArgs,
@@ -32,7 +31,12 @@ use crate::{
             FuncBindingReturnValue, FuncBindingReturnValueError, FuncBindingReturnValueId,
         },
     },
-    impl_standard_model, pk,
+    impl_standard_model,
+    job::definition::{
+        component_post_processing::ComponentPostProcessing,
+        dependent_values_update::DependentValuesUpdate,
+    },
+    pk,
     standard_model::{self, TypeHint},
     standard_model_accessor, standard_model_belongs_to, standard_model_has_many,
     ws_event::{WsEvent, WsEventError},
@@ -47,10 +51,8 @@ use crate::{
 
 use self::dependent_update::AttributeValueDependentUpdateHarness;
 
+pub mod dependent_update;
 pub mod view;
-
-// Private module for finding dependent_update attribute values based on providers.
-mod dependent_update;
 
 const CHILD_ATTRIBUTE_VALUES_FOR_CONTEXT: &str =
     include_str!("../queries/attribute_value_child_attribute_values_for_context.sql");
@@ -929,20 +931,21 @@ impl AttributeValue {
                 .await?
                 .ok_or_else(|| AttributeValueError::ComponentNotFound(context.component_id()))?;
 
-            ctx.enqueue_job(JobContent::ComponentPostProcessing(
-                component
-                    .build_async_tasks(ctx, context.system_id())
+            ctx.enqueue_job(
+                ComponentPostProcessing::new(ctx, *component.id(), context.system_id(), None)
                     .await
-                    .map_err(|err| AttributeValueError::Component(err.to_string()))?,
-            ))
+                    .map_err(|e| AttributeValueError::Component(e.to_string()))?,
+            )
             .await;
         }
 
         let dependent_attribute_values =
             AttributeValueDependentCollectionHarness::collect(ctx, attribute_value.context).await?;
         for dependent_attribute_value in dependent_attribute_values {
-            ctx.enqueue_job(JobContent::DependentValuesUpdate(
-                DependentValuesAsyncTasks::new(*dependent_attribute_value.id()),
+            ctx.enqueue_job(DependentValuesUpdate::new(
+                ctx,
+                *dependent_attribute_value.id(),
+                *ctx.visibility(),
             ))
             .await;
         }

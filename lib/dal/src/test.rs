@@ -11,7 +11,10 @@ use tokio::sync::Mutex;
 use uuid::Uuid;
 use veritech::{EncryptionKey, Instance, StandardConfig};
 
-use crate::{context::FaktoryProducer, DalContext, JwtSecretKey, ServicesContext};
+use crate::{
+    job::processor::{test_null_processor::TestNullProcessor, JobQueueProcessor},
+    DalContext, JwtSecretKey, ServicesContext,
+};
 
 pub mod helpers;
 
@@ -20,7 +23,6 @@ const DEFAULT_PG_DBNAME: &str = "si_test";
 const ENV_VAR_NATS_URL: &str = "SI_TEST_NATS_URL";
 const ENV_VAR_PG_HOSTNAME: &str = "SI_TEST_PG_HOSTNAME";
 const ENV_VAR_PG_DBNAME: &str = "SI_TEST_PG_DBNAME";
-const ENV_VAR_FAKTORY: &str = "SI_TEST_FAKTORY";
 
 const JWT_PUBLIC_FILENAME: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/", "config/public.pem");
 const JWT_PRIVATE_FILENAME: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/", "config/private.pem");
@@ -74,7 +76,6 @@ pub struct DalContextUniversalHeadMutRef<'a, 'b, 'c>(pub &'a mut DalContext<'b, 
 pub struct Config {
     pg_pool: PgPoolConfig,
     nats: NatsConfig,
-    faktory: String,
     encryption_key_path: PathBuf,
 }
 
@@ -89,13 +90,6 @@ impl Config {
             nats.url = value;
         }
         nats
-    }
-
-    fn default_faktory() -> String {
-        if let Ok(value) = env::var(ENV_VAR_FAKTORY) {
-            return value;
-        }
-        "tcp://localhost:7419".to_owned()
     }
 
     fn default_pg_pool() -> PgPoolConfig {
@@ -115,7 +109,6 @@ impl Default for Config {
         Self {
             pg_pool: Self::default_pg_pool(),
             nats: Self::default_nats(),
-            faktory: Self::default_faktory(),
             encryption_key_path: Self::default_encryption_key_path(),
         }
     }
@@ -130,8 +123,8 @@ pub struct TestContext {
     pg_pool: PgPool,
     /// A connected NATS client
     nats_conn: NatsClient,
-    /// A connected Faktory client
-    faktory_conn: FaktoryProducer,
+    /// A [`JobQueueProcessor`] impl
+    job_processor: Arc<Box<dyn JobQueueProcessor + Send + Sync>>,
     /// A key for re-recrypting messages to the function execution system.
     encryption_key: Arc<EncryptionKey>,
     /// A key used to decrypt the JWT signing key from the database.
@@ -173,8 +166,7 @@ impl TestContext {
         let nats_conn = NatsClient::new(&config.nats)
             .await
             .expect("failed to create NatsClient");
-        let faktory_conn =
-            FaktoryProducer::new(&config.faktory).expect("failed to create Faktory Producer");
+        let job_processor = TestNullProcessor::new();
         let encryption_key = Arc::new(
             EncryptionKey::load(&config.encryption_key_path)
                 .await
@@ -186,7 +178,7 @@ impl TestContext {
             config,
             pg_pool,
             nats_conn,
-            faktory_conn,
+            job_processor,
             encryption_key,
             jwt_secret_key,
         }
@@ -203,7 +195,7 @@ impl TestContext {
         ServicesContext::new(
             self.pg_pool.clone(),
             self.nats_conn.clone(),
-            self.faktory_conn.clone(),
+            self.job_processor.clone(),
             veritech,
             self.encryption_key.clone(),
         )
@@ -261,14 +253,13 @@ impl TestContextBuilder {
         let nats_conn = NatsClient::new(&self.config.nats)
             .await
             .expect("failed to create NatsClient");
-        let faktory_conn =
-            FaktoryProducer::new(&self.config.faktory).expect("failed to create Faktory Producer");
+        let job_processor = TestNullProcessor::new();
 
         TestContext {
             config: self.config.clone(),
             pg_pool,
             nats_conn,
-            faktory_conn,
+            job_processor,
             encryption_key: self.encryption_key.clone(),
             jwt_secret_key: self.jwt_secret_key.clone(),
         }
@@ -395,7 +386,7 @@ async fn global_setup(test_context_builer: TestContextBuilder) {
     crate::migrate_builtins(
         services_ctx.pg_pool(),
         services_ctx.nats_conn(),
-        services_ctx.faktory_conn().clone(),
+        services_ctx.job_processor(),
         services_ctx.veritech().clone(),
         services_ctx.encryption_key(),
     )

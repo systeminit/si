@@ -1,8 +1,13 @@
 use axum::Json;
 use dal::{
-    attribute::value::DependentValuesAsyncTasks, context::JobContent, node::NodeId,
-    socket::SocketId, AttributeReadContext, AttributeValue, Connection, ExternalProviderId,
-    InternalProviderId, Node, StandardModel, SystemId, Visibility, WorkspaceId,
+    job::definition::{
+        component_post_processing::ComponentPostProcessing,
+        dependent_values_update::DependentValuesUpdate,
+    },
+    node::NodeId,
+    socket::SocketId,
+    AttributeReadContext, AttributeValue, Connection, ExternalProviderId, InternalProviderId, Node,
+    StandardModel, SystemId, Visibility, WorkspaceId,
 };
 use serde::{Deserialize, Serialize};
 
@@ -84,14 +89,14 @@ pub async fn create_connection(
             attribute_value_context,
         ))?;
 
-    ctx.enqueue_job(JobContent::DependentValuesUpdate(
-        DependentValuesAsyncTasks::new(*attribute_value.id()),
+    ctx.enqueue_job(DependentValuesUpdate::new(
+        &ctx,
+        *attribute_value.id(),
+        *ctx.visibility(),
     ))
     .await;
-    ctx.enqueue_job(JobContent::ComponentPostProcessing(
-        component.build_async_tasks(&ctx, system_id).await?,
-    ))
-    .await;
+    ctx.enqueue_job(ComponentPostProcessing::new(&ctx, *component.id(), system_id, None).await?)
+        .await;
 
     txns.commit().await?;
 

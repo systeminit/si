@@ -2,7 +2,7 @@ use crate::dal::test;
 use dal::attribute::context::AttributeContextBuilder;
 use dal::func::binding::FuncBinding;
 use dal::provider::internal::InternalProvider;
-use dal::test::helpers::find_prop_and_parent_by_name;
+use dal::test::helpers::{find_prop_and_parent_by_name, process_job_queue};
 use dal::test_harness::{
     create_prop_of_kind_and_set_parent_with_name, create_schema, create_schema_variant_with_root,
 };
@@ -103,9 +103,7 @@ async fn intra_component_identity_update(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("cannot update value for context");
-    ctx.run_enqueued_jobs()
-        .await
-        .expect("cannot run enqueued jobs");
+    process_job_queue(ctx).await;
 
     // Initialize the value corresponding to the "destination" prop.
     let set_object_attribute_value = AttributeValue::find_for_context(
@@ -144,9 +142,7 @@ async fn intra_component_identity_update(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("cannot set value for context");
-    ctx.run_enqueued_jobs()
-        .await
-        .expect("cannot run enqueued jobs");
+    process_job_queue(ctx).await;
 
     // Ensure that our rendered data matches what was intended.
     assert_eq_sorted!(
@@ -247,9 +243,7 @@ async fn intra_component_identity_update(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not update attribute value");
-    ctx.run_enqueued_jobs()
-        .await
-        .expect("cannot run enqueued jobs");
+    process_job_queue(ctx).await;
 
     // Observe that both the source and destination fields were updated.
     assert_eq_sorted!(
@@ -282,9 +276,7 @@ async fn intra_component_identity_update(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not update attribute value");
-    ctx.run_enqueued_jobs()
-        .await
-        .expect("cannot run enqueued jobs");
+    process_job_queue(ctx).await;
 
     // Observe it again!
     assert_eq_sorted!(
@@ -326,9 +318,7 @@ async fn docker_image_intra_component_update(ctx: &DalContext<'_, '_>) {
         Component::new_for_schema_with_node(ctx, "soulrender", schema.id())
             .await
             .expect("unable to create component");
-    ctx.run_enqueued_jobs()
-        .await
-        .expect("cannot run enqueued jobs");
+    process_job_queue(ctx).await;
 
     let soulrender_base_context = AttributeReadContext {
         prop_id: None,
@@ -357,9 +347,7 @@ async fn docker_image_intra_component_update(ctx: &DalContext<'_, '_>) {
         Component::new_for_schema_with_node(ctx, "bloodscythe", schema.id())
             .await
             .expect("unable to create component");
-    ctx.run_enqueued_jobs()
-        .await
-        .expect("cannot run enqueued jobs");
+    process_job_queue(ctx).await;
 
     let bloodscythe_base_context = AttributeReadContext {
         prop_id: None,
@@ -432,9 +420,7 @@ async fn docker_image_intra_component_update(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not update attribute value for context");
-    ctx.run_enqueued_jobs()
-        .await
-        .expect("cannot run enqueued jobs");
+    process_job_queue(ctx).await;
 
     assert_eq_sorted!(
         serde_json::json![{
@@ -508,9 +494,7 @@ async fn docker_image_intra_component_update(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not update attribute value for context");
-    ctx.run_enqueued_jobs()
-        .await
-        .expect("cannot run enqueued jobs");
+    process_job_queue(ctx).await;
 
     assert_eq_sorted!(
         serde_json::json![{

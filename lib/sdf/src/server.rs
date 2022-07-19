@@ -2,8 +2,9 @@ pub use config::{
     Config, ConfigBuilder, ConfigError, ConfigFile, IncomingStream, JwtSecretKey, MigrationMode,
     StandardConfig, StandardConfigFile,
 };
+pub use dal::job::processor::{faktory_processor::FaktoryProcessor, JobQueueProcessor};
 pub use routes::{routes, AppError, AppResult};
-pub use server::{build_service, FaktoryProducer, Server};
+pub use server::{build_service, Server};
 pub use uds::{UdsIncomingStream, UdsIncomingStreamError};
 
 mod config;

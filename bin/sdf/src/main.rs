@@ -1,5 +1,7 @@
+use std::sync::Arc;
+
 use color_eyre::Result;
-use sdf::{Config, FaktoryProducer, IncomingStream, MigrationMode, Server};
+use sdf::{Config, FaktoryProcessor, IncomingStream, JobQueueProcessor, MigrationMode, Server};
 use telemetry::{
     start_tracing_level_signal_handler_task,
     tracing::{debug, info, trace},
@@ -82,7 +84,8 @@ async fn run(args: args::Args, mut telemetry: telemetry::Client) -> Result<()> {
 
     let nats = Server::connect_to_nats(config.nats()).await?;
 
-    let faktory_conn = FaktoryProducer::new(&config.faktory().url)?;
+    let job_processor = Arc::new(Box::new(FaktoryProcessor::new(&config.faktory().url)?)
+        as Box<dyn JobQueueProcessor + Send + Sync>);
 
     let pg_pool = Server::create_pg_pool(config.pg_pool()).await?;
 
@@ -92,7 +95,7 @@ async fn run(args: args::Args, mut telemetry: telemetry::Client) -> Result<()> {
         Server::migrate_database(
             &pg_pool,
             &nats,
-            faktory_conn.clone(),
+            job_processor.clone(),
             &jwt_secret_key,
             veritech.clone(),
             &encryption_key,
@@ -128,7 +131,7 @@ async fn run(args: args::Args, mut telemetry: telemetry::Client) -> Result<()> {
     Server::start_resource_sync_scheduler(
         pg_pool.clone(),
         nats.clone(),
-        faktory_conn.clone(),
+        job_processor.clone(),
         veritech.clone(),
         encryption_key,
     )
@@ -141,7 +144,7 @@ async fn run(args: args::Args, mut telemetry: telemetry::Client) -> Result<()> {
                 telemetry,
                 pg_pool,
                 nats,
-                faktory_conn.clone(),
+                job_processor.clone(),
                 veritech,
                 encryption_key,
                 jwt_secret_key,
@@ -155,7 +158,7 @@ async fn run(args: args::Args, mut telemetry: telemetry::Client) -> Result<()> {
                 telemetry,
                 pg_pool,
                 nats,
-                faktory_conn.clone(),
+                job_processor.clone(),
                 veritech,
                 encryption_key,
                 jwt_secret_key,

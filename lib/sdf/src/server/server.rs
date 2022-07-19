@@ -1,12 +1,9 @@
-pub use dal::context::FaktoryProducer;
-
 use std::{
     any::TypeId,
     io,
     net::SocketAddr,
     panic::AssertUnwindSafe,
     path::{Path, PathBuf},
-    pin::Pin,
     sync::Arc,
     time::Duration,
 };
@@ -15,13 +12,19 @@ use crate::server::config::{CycloneKeyPair, JwtSecretKey};
 use axum::routing::IntoMakeService;
 use axum::Router;
 use dal::{
-    context::Job,
     cyclone_key_pair::CycloneKeyPairError,
+    job::{
+        consumer::{JobConsumer, JobConsumerError},
+        definition::{
+            component_post_processing::ComponentPostProcessing,
+            dependent_values_update::DependentValuesUpdate,
+        },
+        processor::JobQueueProcessor,
+    },
     jwt_key::{install_new_jwt_key, jwt_key_exists},
     migrate, migrate_builtins, DalContext, DalContextBuilder, JobFailure, JobFailureError,
     ResourceScheduler, ServicesContext, TransactionsError,
 };
-use futures::Future;
 use hyper::server::{accept::Accept, conn::AddrIncoming};
 use si_data::{
     NatsClient, NatsConfig, NatsError, PgError, PgPool, PgPoolConfig, PgPoolError, SensitiveString,
@@ -84,7 +87,7 @@ impl Server<(), ()> {
         telemetry: telemetry::Client,
         pg_pool: PgPool,
         nats: NatsClient,
-        faktory: FaktoryProducer,
+        job_processor: Arc<Box<dyn JobQueueProcessor + Send + Sync>>,
         veritech: veritech::Client,
         encryption_key: veritech::EncryptionKey,
         jwt_secret_key: JwtSecretKey,
@@ -95,7 +98,7 @@ impl Server<(), ()> {
                     telemetry,
                     pg_pool,
                     nats,
-                    faktory,
+                    job_processor,
                     veritech,
                     encryption_key,
                     jwt_secret_key,
@@ -125,7 +128,7 @@ impl Server<(), ()> {
         telemetry: telemetry::Client,
         pg_pool: PgPool,
         nats: NatsClient,
-        faktory: FaktoryProducer,
+        job_processor: Arc<Box<dyn JobQueueProcessor + Send + Sync>>,
         veritech: veritech::Client,
         encryption_key: veritech::EncryptionKey,
         jwt_secret_key: JwtSecretKey,
@@ -136,7 +139,7 @@ impl Server<(), ()> {
                     telemetry,
                     pg_pool,
                     nats,
-                    faktory,
+                    job_processor,
                     veritech,
                     encryption_key,
                     jwt_secret_key,
@@ -194,13 +197,13 @@ impl Server<(), ()> {
     pub async fn migrate_database(
         pg: &PgPool,
         nats: &NatsClient,
-        faktory: FaktoryProducer,
+        job_processor: Arc<Box<dyn JobQueueProcessor + Send + Sync>>,
         jwt_secret_key: &JwtSecretKey,
         veritech: veritech::Client,
         encryption_key: &veritech::EncryptionKey,
     ) -> Result<()> {
         migrate(pg).await?;
-        migrate_builtins(pg, nats, faktory, veritech, encryption_key).await?;
+        migrate_builtins(pg, nats, job_processor, veritech, encryption_key).await?;
 
         let mut conn = pg.get().await?;
         let txn = conn.transaction().await?;
@@ -208,6 +211,8 @@ impl Server<(), ()> {
             debug!("no jwt key found, generating new keypair");
             install_new_jwt_key(&txn, jwt_secret_key).await?;
         }
+        // TODO: manually process job queue
+
         txn.commit().await?;
 
         Ok(())
@@ -217,28 +222,28 @@ impl Server<(), ()> {
     pub async fn start_resource_sync_scheduler(
         pg: PgPool,
         nats: NatsClient,
-        faktory: FaktoryProducer,
+        job_processor: Arc<Box<dyn JobQueueProcessor + Send + Sync>>,
         veritech: veritech::Client,
         encryption_key: veritech::EncryptionKey,
     ) {
         let services_context =
-            ServicesContext::new(pg, nats, faktory, veritech, Arc::new(encryption_key));
+            ServicesContext::new(pg, nats, job_processor, veritech, Arc::new(encryption_key));
         let scheduler = ResourceScheduler::new(services_context);
         tokio::spawn(scheduler.start());
     }
 
     /// Start the faktory job executor
-    pub async fn start_faktory_job_executor(
+    pub async fn start_job_executor(
         pg: PgPool,
         nats: NatsClient,
-        faktory: FaktoryProducer,
-        faktory_url: String,
+        job_processor: Arc<Box<dyn JobQueueProcessor + Send + Sync>>,
+        job_executor_config: String,
         veritech: veritech::Client,
         encryption_key: veritech::EncryptionKey,
         runtime: Arc<Runtime>,
     ) {
         let services_context =
-            ServicesContext::new(pg, nats, faktory, veritech, Arc::new(encryption_key));
+            ServicesContext::new(pg, nats, job_processor, veritech, Arc::new(encryption_key));
         let ctx_builder = Arc::new(DalContext::builder(services_context));
 
         loop {
@@ -246,30 +251,37 @@ impl Server<(), ()> {
 
             let ctx_builder1 = ctx_builder.clone();
             let runtime1 = runtime.clone();
+            // TODO: we should have a way to report failures without access_builder + visibility, that is only readable to us, as it implies in a dal's implementation problem
             c.register("ComponentPostProcessing", move |job| -> io::Result<()> {
+                info!("Got a ComponentPostProcessing job: {}", job.id());
                 faktory_job_wrapper(
                     ctx_builder1.clone(),
-                    job,
+                    Box::new(ComponentPostProcessing::try_from(job)?)
+                        as Box<dyn JobConsumer + Send + Sync>,
                     runtime1.clone(),
-                    Box::new(|job, ctx_builder| Box::pin(async { job.run(ctx_builder).await })),
                 )
             });
 
             let ctx_builder2 = ctx_builder.clone();
             let runtime2 = runtime.clone();
             c.register("DependentValuesUpdate", move |job| -> io::Result<()> {
+                info!("Got a DependentValuesUpdate job: {}", job.id());
                 faktory_job_wrapper(
                     ctx_builder2.clone(),
-                    job,
+                    Box::new(DependentValuesUpdate::try_from(job)?)
+                        as Box<dyn JobConsumer + Send + Sync>,
                     runtime2.clone(),
-                    Box::new(|job, ctx_builder| Box::pin(async { job.run(ctx_builder).await })),
                 )
             });
 
-            let mut c = match c.connect(Some(&faktory_url)) {
-                Ok(c) => c,
+            let mut c = match c.connect(Some(&job_executor_config)) {
+                Ok(c) => {
+                    info!("Conected to faktory at: {job_executor_config}");
+
+                    c
+                }
                 Err(err) => {
-                    error!("Unable to connect to faktory at {faktory_url}: {err}");
+                    error!("Unable to connect to faktory at {job_executor_config}: {err}");
                     std::thread::sleep(Duration::from_millis(5000));
                     continue;
                 }
@@ -333,7 +345,7 @@ pub fn build_service(
     telemetry: impl TelemetryClient,
     pg_pool: PgPool,
     nats: NatsClient,
-    faktory: FaktoryProducer,
+    job_processor: Arc<Box<dyn JobQueueProcessor + Send + Sync>>,
     veritech: veritech::Client,
     encryption_key: veritech::EncryptionKey,
     jwt_secret_key: JwtSecretKey,
@@ -349,7 +361,7 @@ pub fn build_service(
         telemetry,
         pg_pool,
         nats,
-        faktory,
+        job_processor,
         veritech,
         encryption_key,
         jwt_secret_key,
@@ -417,87 +429,15 @@ fn prepare_graceful_shutdown(
 #[derive(Debug, Eq, PartialEq)]
 pub enum ShutdownSource {}
 
-pub type FaktoryTask = Box<
-    dyn FnOnce(
-        Job,
-        Arc<DalContextBuilder>,
-    ) -> Pin<
-        Box<dyn Future<Output = Result<(), Box<dyn std::error::Error + 'static + Sync + Send>>>>,
-    >,
->;
-
 fn faktory_job_wrapper(
     ctx_builder: Arc<DalContextBuilder>,
-    job: faktory::Job,
+    job: Box<dyn JobConsumer + Send + Sync>,
     runtime: Arc<Runtime>,
-    task: FaktoryTask,
 ) -> Result<(), io::Error> {
-    let job_kind = job.queue.clone();
-
-    // Since we needs this metadata to properly report the error, if it's not found we just log the failure and call it a day
-    // TODO: we should have a way to report failures without access_builder + visibility, that is only readable to us, as it implies in a dal's implementation problem
-    let args = match job.args().iter().next() {
-        Some(args) => args,
-        None => {
-            error!("No Job provided for {job_kind}");
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                TaskError::EmptyRequest(job_kind),
-            ));
-        }
-    };
-    let job: Job = match args.as_str().map(serde_json::from_str) {
-        Some(Ok(job)) => job,
-        Some(Err(err)) => {
-            error!("Unable to deserialize args as Job: {args:?} ({err}");
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                TaskError::InvalidRequest(job_kind, args.clone(), err),
-            ));
-        }
-        None => {
-            error!("Job args weren't a string json value: {args:?}");
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                TaskError::InvalidArgType(job_kind, args.clone()),
-            ));
-        }
-    };
-
-    info!("Execute {job_kind}: {job:?}");
-    let runtime1 = runtime.clone();
-    let job_kind = &job_kind;
-    let ctx_builder1 = ctx_builder.clone();
-    let job1 = job.clone();
-    if let Err(err) = panic_wrapper(job_kind, move || {
-        runtime1.block_on(async {
-            task(job1, ctx_builder1)
-                .await
-                .map_err(|err| TaskError::ExecutionFailed(job_kind.to_owned(), err.to_string()))
-        })
-    }) {
-        error!("Job execution failed: {err}");
-
-        let err_message = err.to_string();
-        panic_wrapper("job failure reporting", move || {
-            runtime.block_on(async {
-                let mut txns = ctx_builder.transactions_starter().await?;
-                let txns = txns.start().await?;
-                let ctx = ctx_builder.build(job.access_builder.build(job.visibility), &txns);
-
-                JobFailure::new(&ctx, job_kind.clone(), err_message).await?;
-
-                txns.commit().await?;
-                Ok(())
-            })
-        })
-        .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?;
-        return Err(io::Error::new(io::ErrorKind::Interrupted, err));
-    }
-    return Ok(());
+    info!("Execute {}: {job:?}", job.type_name());
 
     fn panic_wrapper(
-        label: &str,
+        label: String,
         func: impl FnOnce() -> Result<(), TaskError>,
     ) -> Result<(), TaskError> {
         match std::panic::catch_unwind(AssertUnwindSafe(func)) {
@@ -506,31 +446,63 @@ fn faktory_job_wrapper(
             Err(any) => {
                 // Note: Technically panicks can be of any form, but most should be &str or String
                 match any.downcast::<String>() {
-                    Ok(msg) => Err(TaskError::Panic(label.to_owned(), *msg)),
+                    Ok(msg) => Err(TaskError::Panic(label, *msg)),
                     Err(any) => match any.downcast::<&str>() {
-                        Ok(msg) => Err(TaskError::Panic(label.to_owned(), msg.to_string())),
+                        Ok(msg) => Err(TaskError::Panic(label, msg.to_string())),
                         Err(any) => {
                             let id = any.type_id();
                             error!("{label}: Panic message downcast failed of {id:?}",);
-                            Err(TaskError::UnknownPanic(label.to_owned(), id))
+                            Err(TaskError::UnknownPanic(label, id))
                         }
                     },
                 }
             }
         }
     }
+
+    let outer_runtime = runtime.clone();
+    let outer_ctx_builder = ctx_builder.clone();
+    let access_builder = job.access_builder();
+    let visibility = job.visibility();
+    let job_type_name = job.type_name();
+    let outer_type_name = job.type_name();
+
+    let result = panic_wrapper(format!("Job execution: {}", job_type_name), move || {
+        outer_runtime
+            .block_on(async { job.run_job(outer_ctx_builder).await })
+            .map_err(|err| TaskError::ExecutionFailed(outer_type_name, err))
+    });
+
+    if let Err(err) = result {
+        error!("Job execution failed: {err}");
+
+        let err_message = err.to_string();
+        panic_wrapper(
+            format!("Job failure reporting: {}", job_type_name),
+            move || {
+                runtime.block_on(async {
+                    let mut txns = ctx_builder.transactions_starter().await?;
+                    let txns = txns.start().await?;
+                    let ctx = ctx_builder.build(access_builder.build(visibility), &txns);
+
+                    JobFailure::new(&ctx, job_type_name.clone(), err_message).await?;
+
+                    txns.commit().await?;
+                    Ok(())
+                })
+            },
+        )
+        .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?;
+        return Err(io::Error::new(io::ErrorKind::Interrupted, err));
+    }
+
+    Ok(())
 }
 
 #[derive(Debug, thiserror::Error)]
 enum TaskError {
-    #[error("empty request for {0}")]
-    EmptyRequest(String),
-    #[error("invalid arg type for {0}: {1}")]
-    InvalidArgType(String, serde_json::Value),
-    #[error("invalid request for {0}: {1:?}, err: {2}")]
-    InvalidRequest(String, serde_json::Value, serde_json::Error),
     #[error("execution failed for {0}: {1}")]
-    ExecutionFailed(String, String),
+    ExecutionFailed(String, JobConsumerError),
     #[error("{0} panicked: {1}")]
     Panic(String, String),
     #[error("{0} panicked with an unknown payload of {1:?}")]

@@ -671,6 +671,7 @@ dependencies = [
  "base64",
  "chrono",
  "derive_more",
+ "dyn-clone",
  "faktory",
  "futures",
  "insta",
@@ -957,6 +958,12 @@ dependencies = [
  "redox_users",
  "winapi",
 ]
+
+[[package]]
+name = "dyn-clone"
+version = "1.0.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "140206b78fb2bc3edbcfc9b5ccbd0b30699cfe8d348b8b31b330e47df5291a5a"
 
 [[package]]
 name = "ecdsa"
