@@ -25,7 +25,7 @@
         </div>
 
         <!-- Center -->
-        <ModePanel />
+        <ViewerPanel />
 
         <!-- Right -->
         <ButtonPanel />
@@ -56,7 +56,7 @@ import SiSelect from "@/atoms/SiSelect.vue";
 import { LabelList } from "@/api/sdf/dal/label_list";
 import { computed } from "vue";
 import ButtonPanel from "@/molecules/SiNavbarPanels/ButtonPanel.vue";
-import ModePanel from "@/molecules/SiNavbarPanels/ModePanel.vue";
+import ViewerPanel from "@/molecules/SiNavbarPanels/ViewerPanel.vue";
 
 const workspace = refFrom<Workspace | null>(
   WorkspaceService.currentWorkspace(),

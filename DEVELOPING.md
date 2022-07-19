@@ -113,7 +113,7 @@ In another terminal pane, run `pinga`.
 make run//bin/pinga
 ```
 
-In a third terminal pane, execute the following command:
+In a final terminal pane, execute the following command:
 
 ```bash
 make run//app/web

@@ -20,7 +20,7 @@ onMounted(async () => {
   const defaults = await firstValueFrom(SessionService.getDefaults());
   if (route.name == "new" && !defaults.error) {
     await router.push({
-      name: "workspace-view",
+      name: "workspace-single",
       path: "/new/w/:workspaceId",
       params: { workspaceId: workspaceId.value },
     });

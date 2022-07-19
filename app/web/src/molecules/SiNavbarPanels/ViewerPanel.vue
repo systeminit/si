@@ -4,18 +4,16 @@
   >
     <SiNavbarButton
       tooltip-text="Compose yourself, dammit!"
-      :selected="selectedMode === Mode.Compose"
-      :panel-switcher="true"
-      @click="changeMode(Mode.Compose)"
+      :selected="currentViewer === 'compose'"
+      @click="ViewerService.setTo('compose')"
     >
       <ComposeIcon class="w-6" />
     </SiNavbarButton>
 
     <SiNavbarButton
       tooltip-text="Are you a thrill beaker?"
-      :selected="selectedMode === Mode.Beaker"
-      :panel-switcher="true"
-      @click="changeMode(Mode.Beaker)"
+      :selected="currentViewer === 'lab'"
+      @click="ViewerService.setTo('lab')"
     >
       <BeakerIcon class="w-6 text-white" />
     </SiNavbarButton>
@@ -25,18 +23,16 @@
 
     <SiNavbarButton
       tooltip-text="Eye see you"
-      :selected="selectedMode === Mode.Eye"
-      :panel-switcher="true"
-      @click="changeMode(Mode.Eye)"
+      :selected="currentViewer === 'view'"
+      @click="ViewerService.setTo('view')"
     >
       <EyeIcon class="w-6 text-white" />
     </SiNavbarButton>
 
     <SiNavbarButton
       tooltip-text="Dookie, by Green Play"
-      :selected="selectedMode === Mode.Play"
-      :panel-switcher="true"
-      @click="changeMode(Mode.Play)"
+      :selected="currentViewer === 'runtime'"
+      @click="ViewerService.setTo('runtime')"
     >
       <PlayIcon class="w-6" />
     </SiNavbarButton>
@@ -50,16 +46,8 @@ import { refFrom } from "vuse-rx";
 import ComposeIcon from "@/atoms/CustomIcons/ComposeIcon.vue";
 import PlayIcon from "@/atoms/CustomIcons/PlayIcon.vue";
 import SiNavbarButton from "@/molecules/SiNavbarButton.vue";
+import { ViewerService } from "@/service/viewer";
+import { Viewer } from "@/observable/viewer";
 
-enum Mode {
-  Compose,
-  Beaker,
-  Eye,
-  Play,
-}
-
-const selectedMode = refFrom<Mode>(Mode.Compose);
-const changeMode = (mode: Mode) => {
-  selectedMode.value = mode;
-};
+const currentViewer = refFrom<Viewer>(ViewerService.currentViewer());
 </script>
