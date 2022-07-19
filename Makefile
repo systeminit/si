@@ -71,7 +71,7 @@ PROMOTABLE = $(patsubst %,promote//%,$(RELEASEABLE_COMPONENTS))
 IMAGEABLE = $(patsubst %,image//%,$(RELEASEABLE_COMPONENTS))
 RUNABLE = $(patsubst %,run//%,$(RUNABLE_COMPONENTS))
 
-.DEFAULT_GOAL := prepare
+.DEFAULT_GOAL := help
 
 .PHONY: $(BUILDABLE) $(TESTABLE) $(RELEASEABLE) $(IMAGEABLE) image release help
 
@@ -261,3 +261,5 @@ docs-watch:
 	cd $(MAKEPATH); cargo watch -x doc
 .PHONY: docs-watch
 
+help:
+	@echo "Check out DEVELOPING.md for more info"
