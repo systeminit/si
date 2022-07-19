@@ -1,25 +1,21 @@
 <template>
   <div class="flex items-center h-full">
-    <NavbarButton
+    <SiNavbarButton
       v-slot="{ hovered, open }"
       tooltip-text="Zoom"
       :options="zoomOptions"
       :text-mode="true"
       dropdown-classes="text-center"
     >
-      <div class="flex-row flex" :class="buttonClasses(hovered, open)">
+      <div class="flex-row flex text-white">
         100%
-        <SiArrow :nudge="hovered || open" class="ml-1 w-4" />
+        <SiArrow :nudge="hovered || open" class="ml-1 w-4 text-white" />
       </div>
-    </NavbarButton>
+    </SiNavbarButton>
 
-    <NavbarButton
-      v-slot="{ hovered }"
-      tooltip-text="Copy link"
-      @click="copyURL"
-    >
-      <LinkIcon class="w-6" :class="buttonClasses(hovered, false)" />
-    </NavbarButton>
+    <SiNavbarButton tooltip-text="Copy link" @click="copyURL">
+      <LinkIcon class="w-6 text-white" />
+    </SiNavbarButton>
 
     <SiThemeSwitcher />
 
@@ -30,8 +26,8 @@
 <script setup lang="ts">
 import { LinkIcon } from "@heroicons/vue/outline";
 import SiProfile from "@/molecules/SiProfile.vue";
-import NavbarButton from "@/molecules/SiNavbarButtons/NavbarButton.vue";
-import { SiIconDropdownOption } from "@/atoms/SiIconDropdown/types";
+import SiNavbarButton from "@/molecules/SiNavbarButton.vue";
+import { SiSelectOption } from "@/atoms/SiSelect2/types";
 import SiArrow from "@/atoms/SiArrow.vue";
 import SiThemeSwitcher from "@/organisims/SiThemeSwitcher.vue";
 
@@ -39,19 +35,7 @@ const copyURL = () => {
   navigator.clipboard.writeText(window.location.href);
 };
 
-const buttonClasses = (hovered: boolean, selected: boolean) => {
-  if (hovered || selected) {
-    return {
-      block: true,
-      "text-white": true,
-    };
-  }
-  return {
-    block: true,
-    "text-gray-400": true,
-  };
-};
-const zoomOptions: SiIconDropdownOption[] = [
+const zoomOptions: SiSelectOption[] = [
   {
     text: "200%",
     action: () => {

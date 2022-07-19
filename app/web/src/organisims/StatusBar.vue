@@ -1,6 +1,6 @@
 <template>
   <TabGroup
-    class="flex flex-col w-full bg-[#333333] text-white"
+    class="flex flex-col w-full bg-[#333333] text-white border-black border-t-[1px]"
     as="div"
     :selected-index="selectedTab"
     @change="changeTab"

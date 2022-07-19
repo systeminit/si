@@ -1,4 +1,4 @@
-export interface SiIconDropdownOption {
+export interface SiSelectOption {
   text: string;
   action: (() => Promise<void>) | (() => void);
 }

@@ -1,21 +1,39 @@
 <template>
-  <NavbarButton
-    v-slot="{ hovered, open }"
+  <SiNavbarButton
     tooltip-text="Change theme"
     :options="themeOptions"
     dropdown-classes="right-0 text-center"
   >
-    <MoonIcon class="w-6" :class="buttonClasses(hovered, open)" />
-  </NavbarButton>
+    <div v-if="lightmode">
+      <MoonIcon class="w-6" />
+    </div>
+    <div v-else><SunIcon class="w-6" /></div>
+  </SiNavbarButton>
 </template>
 
 <script setup lang="ts">
 import { ThemeService } from "@/service/theme";
-import { SiIconDropdownOption } from "@/atoms/SiIconDropdown/types";
-import { MoonIcon } from "@heroicons/vue/outline";
-import NavbarButton from "@/molecules/SiNavbarButtons/NavbarButton.vue";
+import { SiSelectOption } from "@/atoms/SiSelect2/types";
+import MoonIcon from "@/atoms/CustomIcons/MoonIcon.vue";
+import SunIcon from "@/atoms/CustomIcons/SunIcon.vue";
+import SiNavbarButton from "@/molecules/SiNavbarButton.vue";
+import { Theme } from "@/observable/theme";
+import { computed } from "vue";
+import { refFrom } from "vuse-rx/src";
 
-const themeOptions: SiIconDropdownOption[] = [
+const theme = refFrom<Theme>(ThemeService.currentTheme());
+const lightmode = computed(() => {
+  console.log("light mode", { theme: theme.value });
+  if (theme.value) {
+    if (theme.value.value == "light") {
+      return true;
+    }
+    return false;
+  }
+  return true;
+});
+
+const themeOptions: SiSelectOption[] = [
   {
     text: "System theme",
     action: ThemeService.resetToSystems,
@@ -29,17 +47,4 @@ const themeOptions: SiIconDropdownOption[] = [
     action: () => ThemeService.setTo("dark"),
   },
 ];
-
-const buttonClasses = (hovered: boolean, selected: boolean) => {
-  if (hovered || selected) {
-    return {
-      block: true,
-      "text-white": true,
-    };
-  }
-  return {
-    block: true,
-    "text-gray-400": true,
-  };
-};
 </script>

@@ -10,7 +10,7 @@
       leave-from-class="transform opacity-100 scale-100"
       leave-to-class="transform opacity-0 scale-95"
     >
-      <SiIconDropdown :options="options" class="right-1" />
+      <SiSelect2 :options="options" class="right-1" />
     </transition>
   </Menu>
 </template>
@@ -19,12 +19,12 @@
 import { SessionService } from "@/service/session";
 import { useRouter } from "vue-router";
 import { Menu } from "@headlessui/vue";
-import SiIconDropdown from "@/atoms/SiIconDropdown.vue";
-import { SiIconDropdownOption } from "@/atoms/SiIconDropdown/types";
+import SiSelect2 from "@/atoms/SiSelect2.vue";
+import { SiSelectOption } from "@/atoms/SiSelect2/types";
 import SiProfileButton from "@/atoms/SiProfileButton.vue";
 
 const router = useRouter();
-const options: SiIconDropdownOption[] = [
+const options: SiSelectOption[] = [
   {
     text: "Switch to old app",
     action: async () => {
