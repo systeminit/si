@@ -128,7 +128,7 @@ build//bin/pinga//BUILDDEPS: build//bin/cyclone
 
 $(TESTABLE): % : %//TESTDEPS %//TEST %//RTESTDEPS
 
-test//lib/dal//TESTDEPS: deploy//partial
+test//lib/dal//TESTDEPS: build//bin/veritech deploy//partial
 test//lib/dal//RTESTDEPS: test//lib/sdf
 
 test//lib/sdf//TESTDEPS: deploy//partial
