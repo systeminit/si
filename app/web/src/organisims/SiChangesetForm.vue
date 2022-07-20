@@ -1,5 +1,6 @@
 <template>
   <div class="w-full dark:border-[#525252] border-b-2 px-2 flex flex-col">
+    <!--    TODO(victor, fletcher): replace SiTextInput and the button components with the final components-->
     <div class="w-full flex flex-row items-end">
       <SiTextInput
         title="Change Set"
