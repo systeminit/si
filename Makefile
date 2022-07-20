@@ -25,6 +25,7 @@ MAKEPATH := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 CI := false
 CI_FROM_REF := main
 CI_TO_REF := HEAD
+SHELL := /bin/bash
 
 COMPONENTS = app/corp \
 	app/web \

@@ -201,7 +201,7 @@ pub async fn migrate(pg: &PgPool) -> ModelResult<()> {
 pub async fn migrate_builtins(
     pg: &PgPool,
     nats: &NatsClient,
-    job_processor: Arc<Box<dyn JobQueueProcessor + Send + Sync>>,
+    job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
     veritech: veritech::Client,
     encryption_key: &EncryptionKey,
 ) -> ModelResult<()> {

@@ -42,7 +42,7 @@ pub type JobConsumerResult<T> = Result<T, JobConsumerError>;
 pub struct FaktoryJobInfo {
     pub id: String,
     pub kind: String,
-    pub queue: String,
+    pub queue: Option<String>,
     pub created_at: Option<DateTime<Utc>>,
     pub enqueued_at: Option<DateTime<Utc>>,
     pub at: Option<DateTime<Utc>>,
@@ -50,10 +50,10 @@ pub struct FaktoryJobInfo {
     pub custom: JobConsumerCustomPayload,
 }
 
-impl TryFrom<faktory::Job> for FaktoryJobInfo {
+impl TryFrom<faktory_async::Job> for FaktoryJobInfo {
     type Error = JobConsumerError;
 
-    fn try_from(job: faktory::Job) -> Result<Self, Self::Error> {
+    fn try_from(job: faktory_async::Job) -> Result<Self, Self::Error> {
         let custom: JobConsumerCustomPayload =
             serde_json::from_value(serde_json::to_value(job.custom.clone())?)?;
 

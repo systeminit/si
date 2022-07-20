@@ -33,7 +33,7 @@ pub struct ServicesContext {
     /// A connected NATS client
     nats_conn: NatsClient,
     /// A connected faktory client
-    job_processor: Arc<Box<dyn JobQueueProcessor + Send + Sync>>,
+    job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
     /// A Veritech client, connected via a NATS connection.
     veritech: veritech::Client,
     /// A key for re-recrypting messages to the function execution system.
@@ -45,7 +45,7 @@ impl ServicesContext {
     pub fn new(
         pg_pool: PgPool,
         nats_conn: NatsClient,
-        job_processor: Arc<Box<dyn JobQueueProcessor + Send + Sync>>,
+        job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
         veritech: veritech::Client,
         encryption_key: Arc<veritech::EncryptionKey>,
     ) -> Self {
@@ -80,7 +80,7 @@ impl ServicesContext {
         &self.veritech
     }
 
-    pub fn job_processor(&self) -> Arc<Box<dyn JobQueueProcessor + Send + Sync>> {
+    pub fn job_processor(&self) -> Box<dyn JobQueueProcessor + Send + Sync> {
         self.job_processor.clone()
     }
 
@@ -555,12 +555,8 @@ pub enum TransactionsError {
     ReadTenancy(#[from] ReadTenancyError),
     #[error(transparent)]
     JobQueueProcessor(#[from] JobQueueProcessorError),
-
-    // faktory-rs has poor error reporting capabilities
-    #[error("faktory connection failed: {0}")]
-    FaktoryConnect(faktory::Error),
-    #[error("faktory enqueue failed: {0}")]
-    FaktoryEnqueue(faktory::Error),
+    #[error("faktory error: {0}")]
+    Faktory(#[from] faktory_async::Error),
 }
 
 /// A type which holds ownership over connections that can be used to start transactions.
@@ -568,7 +564,7 @@ pub enum TransactionsError {
 pub struct TransactionsStarter {
     pg_conn: InstrumentedClient,
     nats_conn: NatsClient,
-    job_processor: Arc<Box<dyn JobQueueProcessor + Send + Sync>>,
+    job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
 }
 
 impl TransactionsStarter {
@@ -577,7 +573,7 @@ impl TransactionsStarter {
     pub fn new(
         pg_conn: InstrumentedClient,
         nats_conn: NatsClient,
-        job_processor: Arc<Box<dyn JobQueueProcessor + Send + Sync>>,
+        job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
     ) -> Self {
         Self {
             pg_conn,
@@ -590,7 +586,7 @@ impl TransactionsStarter {
     pub async fn start(&mut self) -> Result<Transactions<'_>, TransactionsError> {
         let pg_txn = self.pg_conn.transaction().await?;
         let nats_txn = self.nats_conn.transaction();
-        let job_processor = (*self.job_processor).clone();
+        let job_processor = self.job_processor.clone();
 
         Ok(Transactions::new(pg_txn, nats_txn, job_processor))
     }

@@ -12,7 +12,7 @@ pub mod test_null_processor;
 #[derive(Error, Debug)]
 pub enum JobQueueProcessorError {
     #[error(transparent)]
-    Faktory(#[from] faktory::Error),
+    Faktory(#[from] faktory_async::Error),
     #[error(transparent)]
     JobProducer(#[from] JobProducerError),
 }

@@ -139,10 +139,10 @@ impl JobConsumer for ComponentPostProcessing {
     }
 }
 
-impl TryFrom<faktory::Job> for ComponentPostProcessing {
+impl TryFrom<faktory_async::Job> for ComponentPostProcessing {
     type Error = JobConsumerError;
 
-    fn try_from(job: faktory::Job) -> Result<Self, Self::Error> {
+    fn try_from(job: faktory_async::Job) -> Result<Self, Self::Error> {
         if job.args().len() != 3 {
             return Err(JobConsumerError::InvalidArguments(
                 r#"[{ "component_id": <ComponentId>, "system_id": [SystemId] }, <AccessBuilder>, <Visibility>]"#.to_string(),

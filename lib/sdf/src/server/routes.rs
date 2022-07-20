@@ -54,7 +54,7 @@ pub fn routes(
     telemetry: impl TelemetryClient,
     pg_pool: pg::PgPool,
     nats_conn: nats::Client,
-    job_processor: Arc<Box<dyn JobQueueProcessor + Send + Sync>>,
+    job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
     veritech: veritech::Client,
     encryption_key: veritech::EncryptionKey,
     jwt_secret_key: JwtSecretKey,

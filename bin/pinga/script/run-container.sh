@@ -37,7 +37,7 @@ main() {
       --add-host "faktory:$gateway" \
       --env SI_SDF__PG__HOSTNAME=postgres \
       --env SI_SDF__NATS__URL=nats \
-      --env SI_SDF__FAKTORY__URL=tcp://faktory:7419 \
+      --env SI_SDF__FAKTORY__URL=faktory:7419 \
       --env OTEL_EXPORTER_OTLP_ENDPOINT=http://otelcol:4317 \
       --name "$name" \
       "$@" \

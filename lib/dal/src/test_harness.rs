@@ -1,6 +1,7 @@
 use std::{env, path::Path, sync::Arc};
 
 use anyhow::Result;
+use faktory_async::Client;
 use lazy_static::lazy_static;
 use names::{Generator, Name};
 use si_data::{NatsClient, NatsConfig, PgPool, PgPoolConfig};
@@ -48,7 +49,7 @@ impl Default for TestConfig {
         pg.dbname = env::var("SI_TEST_PG_DBNAME").unwrap_or_else(|_| "si_test".to_string());
 
         let mut faktory =
-            env::var("SI_TEST_FAKTORY").unwrap_or_else(|_| "tcp://localhost:7419".to_owned());
+            env::var("SI_TEST_FAKTORY").unwrap_or_else(|_| "localhost:7419".to_owned());
         if let Ok(value) = env::var("SI_TEST_FAKTORY_URL") {
             faktory = value;
         }
@@ -76,7 +77,7 @@ pub struct TestContext {
     tmp_event_log_fs_root: tempfile::TempDir,
     pub pg: PgPool,
     pub nats_conn: NatsClient,
-    pub faktory: Arc<Box<dyn JobQueueProcessor + Send + Sync>>,
+    pub faktory: Box<dyn JobQueueProcessor + Send + Sync>,
     pub veritech: veritech::Client,
     pub encryption_key: EncryptionKey,
     pub jwt_secret_key: JwtSecretKey,
@@ -96,9 +97,11 @@ impl TestContext {
         let nats_conn = NatsClient::new(&settings.nats)
             .await
             .expect("failed to connect to NATS");
-        let faktory = Arc::new(Box::new(
-            FaktoryProcessor::new(&settings.faktory).expect("failed to connect to Faktory"),
-        ) as Box<dyn JobQueueProcessor + Send + Sync>);
+        let faktory = Box::new(FaktoryProcessor::new(
+            Client::new(&faktory_async::Config::from_uri(&settings.faktory))
+                .await
+                .expect("unable to connect to faktory"),
+        )) as Box<dyn JobQueueProcessor + Send + Sync>;
         // Create a dedicated Veritech server with a unique subject prefix for each test
         let nats_subject_prefix = nats_prefix();
         let veritech_server =
@@ -132,7 +135,7 @@ impl TestContext {
     ) -> (
         &PgPool,
         &NatsClient,
-        Arc<Box<dyn JobQueueProcessor + Send + Sync>>,
+        Box<dyn JobQueueProcessor + Send + Sync>,
         veritech::Client,
         &EncryptionKey,
         &JwtSecretKey,

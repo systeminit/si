@@ -4,15 +4,19 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
-    impl_standard_model, pk, standard_model, standard_model_accessor_ro, DalContext, StandardModel,
-    StandardModelError, Timestamp, Visibility, WriteTenancy,
+    impl_standard_model, pk, standard_model, standard_model_accessor_ro, DalContext, PgPoolError,
+    StandardModel, StandardModelError, Timestamp, TransactionsError, Visibility, WriteTenancy,
 };
 
 #[derive(Error, Debug)]
 pub enum JobFailureError {
-    #[error("pg error: {0}")]
+    #[error(transparent)]
+    Transactions(#[from] TransactionsError),
+    #[error(transparent)]
+    PgPool(#[from] PgPoolError),
+    #[error(transparent)]
     Pg(#[from] PgError),
-    #[error("standard model error: {0}")]
+    #[error(transparent)]
     StandardModel(#[from] StandardModelError),
 }
 

@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use color_eyre::Result;
 use sdf::{Config, FaktoryProcessor, IncomingStream, JobQueueProcessor, MigrationMode, Server};
 use telemetry::{
@@ -84,8 +82,9 @@ async fn run(args: args::Args, mut telemetry: telemetry::Client) -> Result<()> {
 
     let nats = Server::connect_to_nats(config.nats()).await?;
 
-    let job_processor = Arc::new(Box::new(FaktoryProcessor::new(&config.faktory().url)?)
-        as Box<dyn JobQueueProcessor + Send + Sync>);
+    let job_processor = Box::new(FaktoryProcessor::new(
+        faktory_async::Client::new(&faktory_async::Config::from_uri(&config.faktory().url)).await?,
+    )) as Box<dyn JobQueueProcessor + Send + Sync>;
 
     let pg_pool = Server::create_pg_pool(config.pg_pool()).await?;
 

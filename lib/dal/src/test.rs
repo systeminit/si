@@ -124,7 +124,7 @@ pub struct TestContext {
     /// A connected NATS client
     nats_conn: NatsClient,
     /// A [`JobQueueProcessor`] impl
-    job_processor: Arc<Box<dyn JobQueueProcessor + Send + Sync>>,
+    job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
     /// A key for re-recrypting messages to the function execution system.
     encryption_key: Arc<EncryptionKey>,
     /// A key used to decrypt the JWT signing key from the database.
