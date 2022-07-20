@@ -7,7 +7,9 @@
     <div v-if="lightmode">
       <MoonIcon class="w-6" />
     </div>
-    <div v-else><SunIcon class="w-6" /></div>
+    <div v-else>
+      <SunIcon class="w-6" />
+    </div>
   </SiNavbarButton>
 </template>
 
@@ -23,14 +25,7 @@ import { refFrom } from "vuse-rx/src";
 
 const theme = refFrom<Theme>(ThemeService.currentTheme());
 const lightmode = computed(() => {
-  console.log("light mode", { theme: theme.value });
-  if (theme.value) {
-    if (theme.value.value == "light") {
-      return true;
-    }
-    return false;
-  }
-  return true;
+  return theme.value?.value == "light";
 });
 
 const themeOptions: SiDropdownOption[] = [

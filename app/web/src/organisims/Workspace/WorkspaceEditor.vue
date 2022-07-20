@@ -30,18 +30,30 @@
         <div class="flex flex-col h-full">
           <!-- panels -->
           <div class="flex flex-row grow">
-            <SiSidebar
-              side="left"
-              class="pointer-events-auto dark:text-white"
-              >{{ poop }}</SiSidebar
-            >
+            <SiSidebar side="left" class="pointer-events-auto dark:text-white">
+              <SiChangesetForm />
+
+              <TabGroup>
+                <TabList>
+                  <Tab>Assets Palette</Tab>
+                  <Tab>Local Assets</Tab>
+                  <Tab>Panel</Tab>
+                </TabList>
+                <TabPanels>
+                  <TabPanel>
+                    <AssetPalette />
+                  </TabPanel>
+                  <TabPanel>Local Assets</TabPanel>
+                  <TabPanel>Panel</TabPanel>
+                </TabPanels>
+              </TabGroup>
+            </SiSidebar>
+
             <!-- transparent div that flows through to the canvas -->
             <div class="grow bg-transparent h-full pointer-events-none"></div>
-            <SiSidebar
-              side="right"
-              class="pointer-events-auto dark:text-white"
-              >{{ canoe }}</SiSidebar
-            >
+            <SiSidebar side="right" class="pointer-events-auto dark:text-white">
+              {{ canoe }}
+            </SiSidebar>
           </div>
         </div>
       </div>
@@ -60,17 +72,13 @@ import { ThemeService } from "@/service/theme";
 import { refFrom } from "vuse-rx/src";
 import { computed } from "vue";
 import { Theme } from "@/observable/theme";
+import SiChangesetForm from "@/organisims/SiChangesetForm.vue";
+import { TabGroup, TabPanel, TabPanels, TabList, Tab } from "@headlessui/vue";
+import AssetPalette from "@/organisims/AssetPalette.vue";
 
 const props = defineProps<{
   mutable: boolean;
 }>();
-
-const poop = computed(() => {
-  if (props.mutable) {
-    return "compose poop";
-  }
-  return "view poop";
-});
 
 const canoe = computed(() => {
   if (props.mutable) {
@@ -92,15 +100,6 @@ const deploymentNodeSelected = null;
 
 const theme = refFrom<Theme>(ThemeService.currentTheme());
 const lightmode = computed(() => {
-  console.log("light mode", { theme: theme.value });
-  if (theme.value) {
-    if (theme.value.value == "light") {
-      return true;
-    } else {
-      return false;
-    }
-  } else {
-    return true;
-  }
+  return theme.value?.value == "light";
 });
 </script>
