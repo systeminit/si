@@ -3,7 +3,12 @@ module.exports = {
   env: {
     node: true,
   },
-  globals: { defineProps: "readonly", defineEmits: "readonly" },
+  globals: {
+    defineProps: "readonly",
+    defineEmits: "readonly",
+    defineExpose: "readonly",
+    withDefaults: "readonly",
+  },
   plugins: ["vue", "@typescript-eslint"],
   extends: [
     "plugin:vue/vue3-recommended",
