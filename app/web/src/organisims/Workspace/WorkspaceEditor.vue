@@ -32,23 +32,8 @@
           <div class="flex flex-row grow">
             <SiSidebar side="left" class="pointer-events-auto dark:text-white">
               <SiChangesetForm />
-
-              <TabGroup>
-                <TabList>
-                  <Tab>Assets Palette</Tab>
-                  <Tab>Local Assets</Tab>
-                  <Tab>Panel</Tab>
-                </TabList>
-                <TabPanels>
-                  <TabPanel>
-                    <AssetPalette />
-                  </TabPanel>
-                  <TabPanel>Local Assets</TabPanel>
-                  <TabPanel>Panel</TabPanel>
-                </TabPanels>
-              </TabGroup>
+              <AssetsTabs />
             </SiSidebar>
-
             <!-- transparent div that flows through to the canvas -->
             <div class="grow bg-transparent h-full pointer-events-none"></div>
             <SiSidebar side="right" class="pointer-events-auto dark:text-white">
@@ -73,8 +58,7 @@ import { refFrom } from "vuse-rx/src";
 import { computed } from "vue";
 import { Theme } from "@/observable/theme";
 import SiChangesetForm from "@/organisims/SiChangesetForm.vue";
-import { TabGroup, TabPanel, TabPanels, TabList, Tab } from "@headlessui/vue";
-import AssetPalette from "@/organisims/AssetPalette.vue";
+import AssetsTabs from "@/organisims/AssetsTabs.vue";
 
 const props = defineProps<{
   mutable: boolean;

@@ -1,5 +1,5 @@
 <template>
-  <div class="p-2">
+  <div class="">
     <SiSearch />
 
     <p>
@@ -8,37 +8,40 @@
     </p>
 
     <ul>
-      <SiCollapsibleList
+      <SiCollapsible
         v-for="(category, index) in assetCategories"
         :key="index"
         as="li"
+        content-as="ul"
         :label="category.name"
       >
-        <SiListItem v-for="i in 5" :key="i" />
-      </SiCollapsibleList>
+        <li v-for="i in 5" :key="i">
+          <SiNodeSprite :color="category.color" :name="category.name" />
+        </li>
+      </SiCollapsible>
     </ul>
   </div>
 </template>
 
 <script setup lang="ts">
-import SiListItem from "@/molecules/SiAssetListItem.vue";
-import SiCollapsibleList from "@/atoms/SiCollapsibleList.vue";
+import SiNodeSprite from "@/molecules/SiNodeSprite.vue";
+import SiCollapsible from "@/organisims/SiCollapsible.vue";
 import SiSearch from "@/molecules/SiSearch.vue";
 
 const assetCategories = [
   {
     name: "Kubernetes",
-    color: "text-red",
+    color: "#00F",
     assets: [],
   },
   {
     name: "Blip",
-    color: "text-blue",
+    color: "#F00",
     assets: [],
   },
   {
     name: "Something with a really really long name oh no oh no",
-    color: "text-purple",
+    color: "#0FF",
     assets: [],
   },
 ];
