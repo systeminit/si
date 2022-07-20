@@ -1,88 +1,72 @@
 <template>
-  <Disclosure v-slot="{ open }" as="nav" :class="bgColor">
+  <nav class="bg-[#333333] text-white relative">
     <div class="pl-2 dark:border-b-2 dark:border-[#525252]">
       <div class="flex items-center h-16">
         <!-- Left side -->
-        <div class="flex items-center justify-center place-items-center">
+        <div class="flex items-center justify-center place-items-center h-full">
           <img
             class="block h-11 w-11 my-2 mr-2 bg-black"
             :src="SiLogoWts"
             alt="SI Logo"
           />
 
-          <div v-if="workspace && workspaceList" class="flex-col my-2 ml-2 p-1">
-            <div class="text-white text-xs font-medium">WORKSPACE:</div>
-            <SiSelect
-              id="workspace-selector"
-              v-model="selectedWorkspaceName"
-              tooltip-text="Workspace selector"
-              name="workspaceSelect"
-              class=""
-              :options="workspaceList"
-              :navbar-mode="true"
-            />
-          </div>
+          <SiNavbarButton
+            v-slot="{ hovered, open }"
+            tooltip-text="Workspaces"
+            :options="workspaceList"
+            :text-mode="true"
+            dropdown-classes="text-center"
+          >
+            <div class="flex-col flex text-left">
+              <div class="text-xs font-medium">WORKSPACE:</div>
+              <div class="flex-row flex font-semibold">
+                <span>
+                  {{ workspace?.name || "- none -" }}
+                </span>
+                <SiArrow :nudge="hovered || open" class="ml-1 w-5" />
+              </div>
+            </div>
+          </SiNavbarButton>
         </div>
 
         <!-- Center -->
-        <ViewerPanel />
+        <NavbarPanelCenter />
 
         <!-- Right -->
-        <ButtonPanel />
-
-        <!-- Mobile menu button -->
-        <div class="-mr-2 flex sm:hidden">
-          <DisclosureButton
-            class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
-          >
-            <span class="sr-only">Open main menu</span>
-            <MenuIcon v-if="!open" class="block h-6 w-6" aria-hidden="true" />
-            <XIcon v-else class="block h-6 w-6" aria-hidden="true" />
-          </DisclosureButton>
-        </div>
+        <NavbarPanelRight />
       </div>
     </div>
-  </Disclosure>
+  </nav>
 </template>
 
 <script setup lang="ts">
-import { Disclosure, DisclosureButton } from "@headlessui/vue";
-import { MenuIcon, XIcon } from "@heroicons/vue/outline";
 import SiLogoWts from "@/assets/images/si-logo-wts.svg";
 import { refFrom } from "vuse-rx";
 import { WorkspaceService } from "@/service/workspace";
 import { Workspace } from "@/api/sdf/dal/workspace";
-import SiSelect from "@/atoms/SiSelect.vue";
-import { LabelList } from "@/api/sdf/dal/label_list";
 import { computed } from "vue";
-import ButtonPanel from "@/molecules/SiNavbarPanels/ButtonPanel.vue";
-import ViewerPanel from "@/molecules/SiNavbarPanels/ViewerPanel.vue";
+import NavbarPanelRight from "@/organisims/NavbarPanelRight.vue";
+import NavbarPanelCenter from "@/organisims/NavbarPanelCenter.vue";
+import { SiDropdownOption } from "@/atoms/SiDropdown.vue";
+import SiNavbarButton from "@/molecules/SiNavbarButton.vue";
+import SiArrow from "@/atoms/SiArrow.vue";
 
 const workspace = refFrom<Workspace | null>(
   WorkspaceService.currentWorkspace(),
 );
 
-// FIXME(nick): selecting the workspace should change to that workspace.
-// Perhaps, this should work similarly to "switchTo" from "SystemService".
-const selectedWorkspaceName = computed(() => {
+// FIXME(nick): this should contain a real list of available workspaces. This
+// will likely be an observable.
+const workspaceList = computed((): SiDropdownOption[] => {
+  let options: SiDropdownOption[] = [];
   if (workspace.value) {
-    return workspace.value.name;
-  }
-  return "- none -";
-});
-
-// FIXME(nick): this should contain a real list of available workspaces.
-const workspaceList = computed((): LabelList<string> | false => {
-  if (workspace.value) {
-    let labels: LabelList<string> = [];
-    labels.push({
-      label: workspace.value.name,
-      value: workspace.value.name,
+    options.push({
+      text: workspace.value.name,
+      action: () => {
+        console.log("selected workspace! huzzah.");
+      },
     });
-    return labels;
   }
-  return false;
+  return options;
 });
-
-const bgColor = "bg-[#333333]";
 </script>

@@ -13,7 +13,7 @@
 
 <script setup lang="ts">
 import { ThemeService } from "@/service/theme";
-import { SiSelectOption } from "@/atoms/SiSelect2/types";
+import { SiDropdownOption } from "@/atoms/SiDropdown.vue";
 import MoonIcon from "@/atoms/CustomIcons/MoonIcon.vue";
 import SunIcon from "@/atoms/CustomIcons/SunIcon.vue";
 import SiNavbarButton from "@/molecules/SiNavbarButton.vue";
@@ -33,7 +33,7 @@ const lightmode = computed(() => {
   return true;
 });
 
-const themeOptions: SiSelectOption[] = [
+const themeOptions: SiDropdownOption[] = [
   {
     text: "System theme",
     action: ThemeService.resetToSystems,

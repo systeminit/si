@@ -21,9 +21,13 @@
 
 <script setup lang="ts">
 import { MenuItem, MenuItems } from "@headlessui/vue";
-import { SiSelectOption } from "@/atoms/SiSelect2/types";
+
+export interface SiDropdownOption {
+  text: string;
+  action: (() => Promise<void>) | (() => void);
+}
 
 const props = defineProps<{
-  options: SiSelectOption[];
+  options: SiDropdownOption[];
 }>();
 </script>
