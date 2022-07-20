@@ -22,11 +22,11 @@
       leave-from-class="transform opacity-100 scale-100 rounded-md"
       leave-to-class="transform opacity-0 scale-95 rounded-md"
     >
-      <SiSelect2
+      <SiDropdown
         :options="props.options"
         class="min-w-full"
         :class="dropdownClasses"
-      ></SiSelect2>
+      />
     </transition>
   </Menu>
 </template>
@@ -35,8 +35,8 @@
 import { MenuButton } from "@headlessui/vue";
 import { computed, toRefs } from "vue";
 import { Menu } from "@headlessui/vue";
-import SiSelect2 from "@/atoms/SiSelect2.vue";
-import { SiSelectOption } from "@/atoms/SiSelect2/types";
+import SiDropdown from "@/atoms/SiDropdown.vue";
+import { SiDropdownOption } from "@/atoms/SiDropdown.vue";
 import { ref } from "vue";
 
 const emit = defineEmits(["click"]);
@@ -45,7 +45,7 @@ const props = defineProps<{
   disabled?: boolean;
   selected?: boolean;
   tooltipText: string;
-  options?: SiSelectOption[];
+  options?: SiDropdownOption[];
   dropdownClasses?: string;
 }>();
 const { disabled } = toRefs(props);
