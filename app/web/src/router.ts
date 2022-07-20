@@ -150,6 +150,7 @@ const routes: RouteRecordRaw[] = [
             name: "workspace-single",
             path: ":workspaceId",
             component: WorkspaceSingle,
+            redirect: { name: "workspace-compose" },
             props: (route) => {
               let workspaceId;
               if (_.isArray(route.params.workspaceId)) {

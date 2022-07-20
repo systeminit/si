@@ -10,22 +10,22 @@
             alt="SI Logo"
           />
 
-          <SiNavbarButton
-            v-slot="{ hovered, open }"
-            tooltip-text="Workspaces"
-            :options="workspaceList"
-            :text-mode="true"
-            dropdown-classes="text-center"
-          >
-            <div class="flex-col flex text-left">
-              <div class="text-xs font-medium">WORKSPACE:</div>
-              <div class="flex-row flex font-semibold">
-                <span>
-                  {{ workspace?.name || "- none -" }}
-                </span>
-                <SiArrow :nudge="hovered || open" class="ml-1 w-5" />
+          <SiNavbarButton tooltip-text="Workspaces" :text-mode="true">
+            <template #default="{ hovered, open }">
+              <div class="flex-col flex text-left">
+                <div class="text-xs font-medium">WORKSPACE:</div>
+                <div class="flex-row flex font-semibold">
+                  <span>{{ selectedWorkspaceName }}</span>
+                  <SiArrow :nudge="hovered || open" class="ml-1 w-5" />
+                </div>
               </div>
-            </div>
+            </template>
+
+            <template #dropdownContent>
+              <SiDropdownItem checked>{{
+                selectedWorkspaceName
+              }}</SiDropdownItem>
+            </template>
           </SiNavbarButton>
         </div>
 
@@ -47,7 +47,7 @@ import { Workspace } from "@/api/sdf/dal/workspace";
 import { computed } from "vue";
 import NavbarPanelRight from "@/organisims/NavbarPanelRight.vue";
 import NavbarPanelCenter from "@/organisims/NavbarPanelCenter.vue";
-import { SiDropdownOption } from "@/atoms/SiDropdown.vue";
+import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
 import SiNavbarButton from "@/molecules/SiNavbarButton.vue";
 import SiArrow from "@/atoms/SiArrow.vue";
 
@@ -57,16 +57,10 @@ const workspace = refFrom<Workspace | null>(
 
 // FIXME(nick): this should contain a real list of available workspaces. This
 // will likely be an observable.
-const workspaceList = computed((): SiDropdownOption[] => {
-  let options: SiDropdownOption[] = [];
+const selectedWorkspaceName = computed(() => {
   if (workspace.value) {
-    options.push({
-      text: workspace.value.name,
-      action: () => {
-        console.log("selected workspace! huzzah.");
-      },
-    });
+    return workspace.value.name;
   }
-  return options;
+  return "- none -";
 });
 </script>

@@ -46,7 +46,7 @@
         </StatusBarTab>
       </Tab>
       <div
-        class="flex w-12 border-black border-l h-full items-center justify-center"
+        class="flex w-12 border-black border-l h-full items-center justify-center cursor-pointer"
         @click="togglePanel()"
       >
         <SiButtonIcon v-if="panelOpen">

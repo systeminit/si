@@ -16,19 +16,4 @@
 <script setup lang="ts">
 import Navbar from "@/organisims/Navbar.vue";
 import StatusBar from "@/organisims/StatusBar.vue";
-import { onMounted } from "vue";
-import { Viewer } from "@/observable/viewer";
-import { ViewerService } from "@/service/viewer";
-import { refFrom } from "vuse-rx";
-
-const currentViewer = refFrom<Viewer>(ViewerService.currentViewer());
-
-onMounted(() => {
-  const currentViewerOnMount = currentViewer.value;
-  if (currentViewerOnMount) {
-    ViewerService.setTo(currentViewerOnMount);
-  } else {
-    ViewerService.setTo("compose");
-  }
-});
 </script>

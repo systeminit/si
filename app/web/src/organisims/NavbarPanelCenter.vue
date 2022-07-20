@@ -4,18 +4,18 @@
   >
     <SiNavbarButton
       tooltip-text="Compose yourself, dammit!"
-      :selected="currentViewer === 'compose'"
-      @click="ViewerService.setTo('compose')"
+      :selected="route.name === 'workspace-compose'"
+      @click="onCompose"
     >
       <ComposeIcon class="w-6" />
     </SiNavbarButton>
 
     <SiNavbarButton
       tooltip-text="Are you a thrill beaker?"
-      :selected="currentViewer === 'lab'"
-      @click="ViewerService.setTo('lab')"
+      :selected="route.name === 'workspace-lab'"
+      @click="onLab"
     >
-      <BeakerIcon class="w-6 text-white" />
+      <BeakerIcon class="w-6" />
     </SiNavbarButton>
 
     <!-- Vertical bar -->
@@ -23,31 +23,58 @@
 
     <SiNavbarButton
       tooltip-text="Eye see you"
-      :selected="currentViewer === 'view'"
-      @click="ViewerService.setTo('view')"
+      :selected="route.name === 'workspace-view'"
+      @click="onView"
     >
-      <EyeIcon class="w-6 text-white" />
+      <ViewIcon class="w-6" />
     </SiNavbarButton>
 
     <SiNavbarButton
       tooltip-text="Dookie, by Green Play"
-      :selected="currentViewer === 'runtime'"
-      @click="ViewerService.setTo('runtime')"
+      :selected="route.name === 'workspace-runtime'"
+      @click="onRuntime"
     >
-      <PlayIcon class="w-6" />
+      <RunIcon class="w-6" />
     </SiNavbarButton>
   </div>
 </template>
 
 <script setup lang="ts">
-import { EyeIcon } from "@heroicons/vue/outline";
-import { BeakerIcon } from "@heroicons/vue/solid";
-import { refFrom } from "vuse-rx";
 import ComposeIcon from "@/atoms/CustomIcons/ComposeIcon.vue";
-import PlayIcon from "@/atoms/CustomIcons/PlayIcon.vue";
 import SiNavbarButton from "@/molecules/SiNavbarButton.vue";
-import { ViewerService } from "@/service/viewer";
-import { Viewer } from "@/observable/viewer";
+import ViewIcon from "@/atoms/CustomIcons/ViewIcon.vue";
+import RunIcon from "@/atoms/CustomIcons/RunIcon.vue";
+import BeakerIcon from "@/atoms/CustomIcons/BeakerIcon.vue";
+import { useRoute } from "vue-router";
+import router from "@/router";
 
-const currentViewer = refFrom<Viewer>(ViewerService.currentViewer());
+const route = useRoute();
+
+const onCompose = async () => {
+  await router.push({
+    name: "workspace-compose",
+    path: "c",
+  });
+};
+
+const onLab = async () => {
+  await router.push({
+    name: "workspace-lab",
+    path: "l",
+  });
+};
+
+const onView = async () => {
+  await router.push({
+    name: "workspace-view",
+    path: "v",
+  });
+};
+
+const onRuntime = async () => {
+  await router.push({
+    name: "workspace-runtime",
+    path: "r",
+  });
+};
 </script>
