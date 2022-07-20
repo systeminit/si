@@ -222,19 +222,27 @@ async fn start_job_executor(
     }
 }
 
+macro_rules! job_match {
+    ($job:ident, $( $job_struct:ident ),* ) => {
+        match $job.kind() {
+            $(
+                stringify!($job_struct) => Ok(Box::new($job_struct::try_from($job)?) as Box<dyn JobConsumer + Send + Sync>),
+            )*
+            kind => Err(JobError::UnknownJobKind(kind.to_owned())),
+        }
+    };
+}
+
 async fn start_job_executor_fallible(
     job: faktory_async::Job,
     ctx_builder: Arc<DalContextBuilder>,
 ) -> Result<()> {
     info!("Processing {job:?}");
-    let job =
-        match job.kind() {
-            "ComponentPostProcessing" => Box::new(ComponentPostProcessing::try_from(job)?)
-                as Box<dyn JobConsumer + Send + Sync>,
-            "DependentValuesUpdate" => Box::new(DependentValuesUpdate::try_from(job)?)
-                as Box<dyn JobConsumer + Send + Sync>,
-            kind => return Err(JobError::UnknownJobKind(kind.to_owned())),
-        };
+
+    let job = match job_match!(job, ComponentPostProcessing, DependentValuesUpdate) {
+        Ok(job) => job,
+        Err(err) => return Err(err),
+    };
 
     let outer_ctx_builder = ctx_builder.clone();
     let access_builder = job.access_builder();
