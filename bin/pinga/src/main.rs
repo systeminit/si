@@ -2,6 +2,7 @@ use faktory_async::{BeatState, Client, FailConfig};
 use futures::{future::FutureExt, Future};
 use std::{any::TypeId, panic::AssertUnwindSafe, sync::Arc, time::Duration};
 use telemetry::{prelude::*, TelemetryClient};
+use tokio::task::JoinError;
 
 use dal::{
     job::consumer::{JobConsumer, JobConsumerError},
@@ -204,7 +205,7 @@ async fn start_job_executor(
                 };
 
                 let jid = job.id().to_owned();
-                match start_job_executor_fallible(job, ctx_builder.clone()).await {
+                match start_job_executor_fallible(job, ctx_builder.clone(), client.clone()).await {
                     Ok(()) => match client.ack(jid).await {
                         Ok(()) => {}
                         Err(err) => {
@@ -269,6 +270,40 @@ macro_rules! job_match {
 }
 
 async fn start_job_executor_fallible(
+    job: faktory_async::Job,
+    ctx_builder: Arc<DalContextBuilder>,
+    client: Client,
+) -> Result<()> {
+    let job_task = tokio::task::spawn(execute_job_fallible(job, ctx_builder));
+
+    loop {
+        // The sleep in this loop means that any job will take _at minimum_ 1 second to complete,
+        // and will really only complete in 1 second increments.
+        //
+        // Ideally, we'd do something like selecting on the job task with a timeout that let the
+        // task keep running if the timeout is reached, or select on the job_task and the future for
+        // the sleep. Unfortunately, tokio::select! both takes ownership of what's being selected,
+        // and cancels everything that's not the first one to finish. Since we don't want to limit
+        // all jobs to 1 second, and want to be able to check multiple times if the job task is
+        // done, this was the least awkward way to do it for now.
+        tokio::time::sleep(Duration::from_secs(1)).await;
+        if !job_task.is_finished() {
+            if let Ok(BeatState::Terminate) = client.last_beat().await {
+                job_task.abort();
+                break;
+            }
+        } else {
+            // The job task has finished, so there's no point in
+            // continuing to poll the client state watching to see if
+            // we should terminate early.
+            break;
+        }
+    }
+
+    job_task.await?
+}
+
+async fn execute_job_fallible(
     job: faktory_async::Job,
     ctx_builder: Arc<DalContextBuilder>,
 ) -> Result<()> {
@@ -359,4 +394,6 @@ enum JobError {
     Faktory(#[from] faktory_async::Error),
     #[error(transparent)]
     JobConsumer(#[from] JobConsumerError),
+    #[error(transparent)]
+    JoinError(#[from] JoinError),
 }
