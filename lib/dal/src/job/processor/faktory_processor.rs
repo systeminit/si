@@ -1,6 +1,7 @@
 use async_trait::async_trait;
 use faktory_async::Client;
 use std::{collections::VecDeque, convert::TryInto, sync::Arc};
+use telemetry::prelude::*;
 use tokio::sync::Mutex;
 
 use crate::job::producer::JobProducer;
@@ -26,7 +27,10 @@ impl JobQueueProcessor for FaktoryProcessor {
     ) -> JobQueueProcessorResult<()> {
         while let Some(job) = queue.lock().await.pop_front() {
             let faktory_job = job.try_into()?;
-            self.client.push(faktory_job).await?;
+            if let Err(err) = self.client.push(faktory_job).await {
+                error!("Faktory push failed, some jobs will be dropped");
+                return Err(err)?;
+            }
         }
 
         Ok(())

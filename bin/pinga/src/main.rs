@@ -149,12 +149,6 @@ async fn run(
     }
 }
 
-async fn reconnect_on_error(client: &Client) {
-    if let Err(err) = client.reconnect().await {
-        error!("Could not reconnect cleanly: {err}");
-    }
-}
-
 /// Start the faktory job executor
 async fn start_job_executor(
     client: Client,
@@ -195,8 +189,6 @@ async fn start_job_executor(
                     }
                     Err(err) => {
                         error!("Unable to fetch from faktory: {err}");
-                        reconnect_on_error(&client).await;
-
                         continue;
                     }
                 };
@@ -207,8 +199,6 @@ async fn start_job_executor(
                         Ok(()) => {}
                         Err(err) => {
                             error!("Ack failed: {err}");
-                            reconnect_on_error(&client).await;
-
                             continue;
                         }
                     },
@@ -227,8 +217,6 @@ async fn start_job_executor(
                             Ok(()) => {}
                             Err(err) => {
                                 error!("Fail failed: {err}");
-                                reconnect_on_error(&client).await;
-
                                 continue;
                             }
                         }
