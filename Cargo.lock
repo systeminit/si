@@ -1072,7 +1072,7 @@ dependencies = [
 [[package]]
 name = "faktory-async"
 version = "0.1.0"
-source = "git+https://github.com/systeminit/faktory-async?branch=main#b21158006d38c8dcf8f33b3771d86632350b5163"
+source = "git+https://github.com/systeminit/faktory-async?branch=main#924e2a29f553091de28ab2c709e070b58e121b94"
 dependencies = [
  "chrono",
  "serde",
