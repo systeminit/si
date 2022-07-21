@@ -118,8 +118,11 @@ async fn run(
         handles.push(tokio::task::spawn(async move {
             loop {
                 match beat_client.beat().await {
-                    Ok(BeatState::Ok) | Ok(BeatState::Quiet) => {}
-                    Ok(BeatState::Terminate) => break,
+                    Ok(BeatState::Ok) => {}
+                    // Both the Quiet and Terminate states from the
+                    // faktory server mean that we should initiate a
+                    // shutdown.
+                    Ok(BeatState::Quiet) | Ok(BeatState::Terminate) => break,
                     Err(err) => {
                         error!("Beat failed: {err}");
                         break;
@@ -209,7 +212,14 @@ async fn start_job_executor(
                     }
                 }
             }
-            Ok(BeatState::Quiet) => {}
+            Ok(BeatState::Quiet) => {
+                // Getting a "quiet" state from the faktory server means that
+                // someone has gone to the faktory UI and requested that this
+                // particular worker finish what it's doing, and gracefully
+                // shut down.
+                info!("Gracefully shutting down from Faktory request.");
+                break;
+            }
             Ok(BeatState::Terminate) => {
                 warn!("Faktory asked us to terminate");
                 break;
