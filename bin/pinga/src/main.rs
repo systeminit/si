@@ -145,6 +145,15 @@ async fn run(
     }
 }
 
+async fn close_on_io_error(err: faktory_async::Error, client: &Client) {
+    if let faktory_async::Error::Io(_) = err {
+        match client.close().await {
+            Ok(_) => {}
+            Err(err) => error!("Could not close connection cleanly: {err}"),
+        };
+    }
+}
+
 /// Start the faktory job executor
 async fn start_job_executor(
     client: Client,
@@ -166,6 +175,16 @@ async fn start_job_executor(
 
     loop {
         tokio::time::sleep(Duration::from_millis(500)).await;
+
+        match client.reconnect_if_needed().await {
+            Ok(did_reconnect) => {
+                if did_reconnect {
+                    info!("Reconnected to faktory");
+                }
+            }
+            Err(err) => error!("Could not reconnect to faktory: {err})"),
+        };
+
         match client.last_beat().await {
             Ok(BeatState::Ok) => {
                 let job = match client.fetch(&["default".to_owned()]).await {
@@ -175,6 +194,8 @@ async fn start_job_executor(
                     }
                     Err(err) => {
                         error!("Unable to fetch from faktory: {err}");
+                        close_on_io_error(err, &client).await;
+
                         continue;
                     }
                 };
@@ -185,6 +206,8 @@ async fn start_job_executor(
                         Ok(()) => {}
                         Err(err) => {
                             error!("Ack failed: {err}");
+                            close_on_io_error(err, &client).await;
+
                             continue;
                         }
                     },
@@ -202,7 +225,9 @@ async fn start_job_executor(
                         {
                             Ok(()) => {}
                             Err(err) => {
-                                error!("Ack failed: {err}");
+                                error!("Fail failed: {err}");
+                                close_on_io_error(err, &client).await;
+
                                 continue;
                             }
                         }
@@ -215,8 +240,8 @@ async fn start_job_executor(
                 break;
             }
             Err(err) => {
-                error!("Connection is closed: {err}");
-                break;
+                error!("Connection closed: {err}");
+                continue;
             }
         }
     }
