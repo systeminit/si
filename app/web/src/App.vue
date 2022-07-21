@@ -1,10 +1,8 @@
 <template>
-  <div id="app" class="h-max w-full">
-    <!-- <SessionBroker /> -->
-    <!-- <ShortcutsEventBroker> -->
-    <router-view />
-    <!-- </ShortcutsEventBroker> -->
-  </div>
+  <!-- <SessionBroker /> -->
+  <!-- <ShortcutsEventBroker> -->
+  <router-view />
+  <!-- </ShortcutsEventBroker> -->
 </template>
 
 <script lang="ts">
@@ -29,14 +27,17 @@ export default {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
 .vue-feather {
   display: flex !important;
 }
+
 .v-popper__arrow-container {
   display: none;
 }
+
 .v-popper__inner {
-  border-radius: 0px !important;
+  border-radius: 0 !important;
   border-color: #5a5a5a !important;
 }
 </style>

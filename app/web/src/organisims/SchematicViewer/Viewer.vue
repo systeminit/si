@@ -1,5 +1,9 @@
 <template>
-  <div :id="container.id" :ref="container.element" class="w-full h-full">
+  <div
+    :id="container.id"
+    :ref="container.element"
+    class="w-full h-full absolute -z-10"
+  >
     <div v-if="debug" class="flex flex-row">
       <div class="ml-2 font-medium text-yellow-200">{{ state.value }}</div>
     </div>
@@ -247,6 +251,7 @@ function updateMetadata(
   }
   renderer.renderStage();
 }
+
 async function nodeAdd(
   node: SchematicNode,
   schemaId: number,
@@ -343,6 +348,7 @@ function deactivateComponent(): void {
 function mouseEnter(): void {
   activateComponent();
 }
+
 function mouseLeave(): void {
   deactivateComponent();
 }
