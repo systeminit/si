@@ -149,12 +149,9 @@ async fn run(
     }
 }
 
-async fn close_on_io_error(err: faktory_async::Error, client: &Client) {
-    if let faktory_async::Error::Io(_) = err {
-        match client.close().await {
-            Ok(_) => {}
-            Err(err) => error!("Could not close connection cleanly: {err}"),
-        };
+async fn reconnect_on_error(client: &Client) {
+    if let Err(err) = client.reconnect().await {
+        error!("Could not reconnect cleanly: {err}");
     }
 }
 
@@ -198,7 +195,7 @@ async fn start_job_executor(
                     }
                     Err(err) => {
                         error!("Unable to fetch from faktory: {err}");
-                        close_on_io_error(err, &client).await;
+                        reconnect_on_error(&client).await;
 
                         continue;
                     }
@@ -210,7 +207,7 @@ async fn start_job_executor(
                         Ok(()) => {}
                         Err(err) => {
                             error!("Ack failed: {err}");
-                            close_on_io_error(err, &client).await;
+                            reconnect_on_error(&client).await;
 
                             continue;
                         }
@@ -230,7 +227,7 @@ async fn start_job_executor(
                             Ok(()) => {}
                             Err(err) => {
                                 error!("Fail failed: {err}");
-                                close_on_io_error(err, &client).await;
+                                reconnect_on_error(&client).await;
 
                                 continue;
                             }
