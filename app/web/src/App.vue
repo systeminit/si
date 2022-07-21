@@ -37,7 +37,7 @@ export default {
 }
 
 .v-popper__inner {
-  border-radius: 0 !important;
+  border-radius: 0px !important;
   border-color: #5a5a5a !important;
 }
 </style>
