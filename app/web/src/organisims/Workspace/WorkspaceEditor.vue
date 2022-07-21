@@ -1,5 +1,6 @@
 <template>
   <div class="w-full h-full flex pointer-events-none relative">
+    <!--  TODO(victor): `absolute -z-10` are only being passed here because otherwise it would break the old interface. When that's retired, that should probably go inside the Viewer component   -->
     <Viewer
       v-if="lightmode"
       :schematic-viewer-id="schematicViewerId"
@@ -10,7 +11,7 @@
       :schematic-kind="schematicKind"
       :deployment-node-selected="deploymentNodeSelected"
       :light-mode="true"
-      class="pointer-events-auto"
+      class="pointer-events-auto absolute -z-10"
     />
     <Viewer
       v-else
@@ -22,7 +23,7 @@
       :schematic-kind="schematicKind"
       :deployment-node-selected="deploymentNodeSelected"
       :light-mode="false"
-      class="pointer-events-auto"
+      class="pointer-events-auto absolute -z-10"
     />
 
     <div class="flex flex-row w-full bg-transparent">

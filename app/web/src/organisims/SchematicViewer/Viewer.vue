@@ -1,9 +1,5 @@
 <template>
-  <div
-    :id="container.id"
-    :ref="container.element"
-    class="w-full h-full absolute -z-10"
-  >
+  <div :id="container.id" :ref="container.element" class="w-full h-full">
     <div v-if="debug" class="flex flex-row">
       <div class="ml-2 font-medium text-yellow-200">{{ state.value }}</div>
     </div>
