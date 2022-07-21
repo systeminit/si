@@ -39,7 +39,7 @@ ARG BIN=pinga
 
 RUN useradd -ms /bin/bash app \
   && mkdir -p {/run,/etc,/usr/local/etc,/home/app/.confg}/$BIN \
-  && mkdir -p /run/sdf
+  && mkdir -p /run/pinga
 WORKDIR /run/$BIN
 COPY --from=builder /usr/src/target/release/$BIN /usr/local/bin/
 COPY --from=builder /usr/src/target/release/$BIN.dbg /usr/local/bin/.debug/

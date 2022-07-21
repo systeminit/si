@@ -7,7 +7,7 @@ use dal::{
     cyclone_key_pair::CycloneKeyPairError,
     job::processor::JobQueueProcessor,
     jwt_key::{install_new_jwt_key, jwt_key_exists},
-    migrate, migrate_builtins, ResourceScheduler, ServicesContext,
+    ResourceScheduler, ServicesContext,
 };
 use hyper::server::{accept::Accept, conn::AddrIncoming};
 use si_data::{
@@ -52,6 +52,8 @@ pub enum ServerError {
     CyclonePublicKeyAlreadySet,
     #[error("error when loading encryption key: {0}")]
     EncryptionKey(#[from] veritech::EncryptionKeyError),
+    #[error(transparent)]
+    DalInitialization(#[from] dal::InitializationError),
 }
 
 pub type Result<T, E = ServerError> = std::result::Result<T, E>;
@@ -148,7 +150,7 @@ impl Server<(), ()> {
     }
 
     pub fn init() -> Result<()> {
-        sodiumoxide::init().map_err(|_| ServerError::Init)
+        Ok(dal::init()?)
     }
 
     #[instrument(name = "sdf.init.generate_jwt_secret_key", skip_all)]
@@ -185,8 +187,7 @@ impl Server<(), ()> {
         veritech: veritech::Client,
         encryption_key: &veritech::EncryptionKey,
     ) -> Result<()> {
-        migrate(pg).await?;
-        migrate_builtins(pg, nats, job_processor, veritech, encryption_key).await?;
+        dal::migrate_all(pg, nats, job_processor, veritech, encryption_key).await?;
 
         let mut conn = pg.get().await?;
         let txn = conn.transaction().await?;

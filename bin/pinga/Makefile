@@ -9,7 +9,6 @@ IMG := systeminit/pinga
 WATCH_PATHS := . \
 	../../lib/config-file \
 	../../lib/dal \
-	../../lib/sdf \
 	../../lib/si-data \
 	../../lib/si-settings \
 	../../lib/telemetry-rs

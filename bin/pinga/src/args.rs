@@ -1,7 +1,9 @@
 use std::path::PathBuf;
 
 use clap::Parser;
-use sdf::{Config, ConfigError, ConfigFile, MigrationMode, StandardConfigFile};
+
+use crate::config::{Config, ConfigError, ConfigFile, StandardConfigFile};
+use dal::MigrationMode;
 
 const NAME: &str = "pinga";
 
@@ -55,7 +57,7 @@ pub(crate) struct Args {
     #[clap(long)]
     pub(crate) disable_opentelemetry: bool,
 
-    /// Cyclone encryption key file location [default: /run/sdf/cyclone_encryption.key]
+    /// Cyclone encryption key file location [default: /run/pinga/cyclone_encryption.key]
     #[clap(long)]
     pub(crate) cyclone_encryption_key_path: Option<String>,
 

@@ -75,13 +75,9 @@ services:
         source: "${REPOPATH:-..}/target/debug/pinga"
         target: "/usr/local/bin/pinga"
         read_only: true
-      - type: bind 
-        source: "${REPOPATH:-..}/bin/pinga/src/dev.jwt_secret_key.bin"
-        target: "/run/sdf/jwt_secret_key.bin"
-        read_only: true
       - type: bind
         source: "${REPOPATH:-..}/lib/cyclone/src/dev.encryption.key"
-        target: "/run/sdf/cyclone_encryption.key"
+        target: "/run/pinga/cyclone_encryption.key"
         read_only: true
     entrypoint:
       - "/usr/local/bin/pinga"

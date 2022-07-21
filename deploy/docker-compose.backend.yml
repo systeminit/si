@@ -3,7 +3,7 @@ version: "3"
 services:
   pinga:
     volumes:
-      - "${REPOPATH:-..}/lib/cyclone/src/dev.encryption.key:/run/sdf/cyclone_encryption.key:ro"
+      - "${REPOPATH:-..}/lib/cyclone/src/dev.encryption.key:/run/pinga/cyclone_encryption.key:ro"
   sdf:
     volumes:
       - "${REPOPATH:-..}/bin/sdf/src/dev.jwt_secret_key.bin:/run/sdf/jwt_secret_key.bin:ro"
