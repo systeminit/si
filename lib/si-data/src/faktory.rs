@@ -9,7 +9,7 @@ pub struct FaktoryConfig {
 impl Default for FaktoryConfig {
     fn default() -> Self {
         FaktoryConfig {
-            url: "tcp://localhost:7419".to_string(),
+            url: "localhost:7419".to_string(),
         }
     }
 }

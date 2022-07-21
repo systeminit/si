@@ -84,10 +84,10 @@ impl JobConsumer for DependentValuesUpdate {
     }
 }
 
-impl TryFrom<faktory::Job> for DependentValuesUpdate {
+impl TryFrom<faktory_async::Job> for DependentValuesUpdate {
     type Error = JobConsumerError;
 
-    fn try_from(job: faktory::Job) -> Result<Self, Self::Error> {
+    fn try_from(job: faktory_async::Job) -> Result<Self, Self::Error> {
         if job.args().len() != 3 {
             return Err(JobConsumerError::InvalidArguments(
                 r#"[{ "attribute_value_id": <id> }, <AccessBuilder>, <Visibility>]"#.to_string(),

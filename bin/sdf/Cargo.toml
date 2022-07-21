@@ -15,3 +15,4 @@ color-eyre = { version = "0.6.1" }
 sdf = { path = "../../lib/sdf" }
 telemetry = { path = "../../lib/telemetry-rs", features = ["application"] }
 tokio = { version = "1.12.0", features = ["full"] }
+faktory-async = { git = "https://github.com/systeminit/faktory-async", branch = "main" }

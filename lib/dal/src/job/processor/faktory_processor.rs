@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use faktory::Producer;
+use faktory_async::Client;
 use std::{collections::VecDeque, convert::TryInto, sync::Arc};
 use tokio::sync::Mutex;
 
@@ -7,24 +7,14 @@ use crate::job::producer::JobProducer;
 
 use super::{JobQueueProcessor, JobQueueProcessorResult};
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct FaktoryProcessor {
-    url: String,
-}
-
-impl std::fmt::Debug for FaktoryProcessor {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("FaktoryProcessor")
-            .field("inner", &"<TcpStream>")
-            .finish()
-    }
+    client: Client,
 }
 
 impl FaktoryProcessor {
-    pub fn new(url: &str) -> JobQueueProcessorResult<Self> {
-        Ok(Self {
-            url: url.to_string(),
-        })
+    pub fn new(client: Client) -> Self {
+        Self { client }
     }
 }
 
@@ -34,11 +24,9 @@ impl JobQueueProcessor for FaktoryProcessor {
         &self,
         queue: Arc<Mutex<VecDeque<Box<dyn JobProducer + Send + Sync>>>>,
     ) -> JobQueueProcessorResult<()> {
-        let mut connection = Producer::connect(Some(&self.url))?;
-
         while let Some(job) = queue.lock().await.pop_front() {
             let faktory_job = job.try_into()?;
-            connection.enqueue(faktory_job)?;
+            self.client.push(faktory_job).await?;
         }
 
         Ok(())

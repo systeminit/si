@@ -32,13 +32,13 @@ pub struct JobMeta {
     pub custom: HashMap<String, serde_json::Value>,
 }
 
-impl TryFrom<Box<dyn JobProducer + Send + Sync>> for faktory::Job {
+impl TryFrom<Box<dyn JobProducer + Send + Sync>> for faktory_async::Job {
     type Error = JobProducerError;
 
     fn try_from(job_producer: Box<dyn JobProducer + Send + Sync>) -> Result<Self, Self::Error> {
         let job_producer_meta = job_producer.meta()?;
 
-        let mut faktory_job = faktory::Job::new(
+        let mut faktory_job = faktory_async::Job::new(
             job_producer.type_name(),
             vec![
                 job_producer.args()?,

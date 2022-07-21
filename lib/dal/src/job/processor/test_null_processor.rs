@@ -12,8 +12,8 @@ pub struct TestNullProcessor {}
 
 impl TestNullProcessor {
     #[allow(clippy::new_ret_no_self)]
-    pub fn new() -> Arc<Box<dyn JobQueueProcessor + Send + Sync>> {
-        Arc::new(Box::new(Self {}))
+    pub fn new() -> Box<dyn JobQueueProcessor + Send + Sync> {
+        Box::new(Self {})
     }
 }
 
