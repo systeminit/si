@@ -1,4 +1,4 @@
-<template v-slot="search">
+<template>
   <div
     class="flex nowrap gap-3 p-3 dark:border-[#525252] border-b-2 justify-between"
   >

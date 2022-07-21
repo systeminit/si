@@ -1,19 +1,18 @@
 <template>
-  <Disclosure v-slot="{ open }" :as="as" class="mt-2">
+  <Disclosure v-slot="{ open }" :as="as">
     <DisclosureButton
-      class="flex w-full justify-between rounded-lg bg-purple-100 px-4 py-2 text-left text-sm font-medium text-purple-900 hover:bg-purple-200 focus:outline-none focus-visible:ring focus-visible:ring-purple-500 focus-visible:ring-opacity-75"
+      class="flex w-full px-2 py-2 text-left text-sm font-medium focus:outline-none dark:border-[#525252] border-b-2"
     >
       <ChevronUpIcon
-        class="w-4 mr-0.5 dark:text-white"
+        class="w-5 mr-1.5 dark:text-white flex-shrink-0 block"
         :class="open ? 'rotate-180 transform' : ''"
       />
 
-      <span>{{ label }}</span>
+      <span class="whitespace-nowrap overflow-hidden overflow-ellipsis">{{
+        label
+      }}</span>
     </DisclosureButton>
-    <DisclosurePanel
-      :as="contentAs"
-      class="px-4 pt-4 pb-2 text-sm text-gray-500"
-    >
+    <DisclosurePanel :as="contentAs">
       <slot />
     </DisclosurePanel>
   </Disclosure>

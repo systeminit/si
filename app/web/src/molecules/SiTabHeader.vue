@@ -1,5 +1,5 @@
 <template>
-  <Tab v-slot="{ selected }">
+  <Tab v-slot="{ selected }" class="focus:outline-none">
     <span
       class="text-sm"
       :class="selected ? 'font-bold text-black h-full' : 'text-gray-400'"
