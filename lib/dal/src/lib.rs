@@ -2,9 +2,10 @@
 
 use std::sync::Arc;
 
-use job::processor::JobQueueProcessor;
 use rand::Rng;
+use serde_with::{DeserializeFromStr, SerializeDisplay};
 use si_data::{NatsClient, NatsError, PgError, PgPool, PgPoolError};
+use strum_macros::{Display, EnumString, EnumVariantNames};
 use telemetry::prelude::*;
 use thiserror::Error;
 
@@ -116,6 +117,7 @@ pub use func::{
 pub use group::{Group, GroupError, GroupId, GroupResult};
 pub use history_event::{HistoryActor, HistoryEvent, HistoryEventError};
 pub use index_map::IndexMap;
+pub use job::processor::{faktory_processor::FaktoryProcessor, JobQueueProcessor};
 pub use job_failure::{JobFailure, JobFailureError, JobFailureResult};
 pub use jwt_key::{create_jwt_key_if_missing, JwtSecretKey};
 pub use key_pair::{KeyPair, KeyPairError, KeyPairResult, PublicKey};
@@ -168,6 +170,16 @@ pub use workspace::{Workspace, WorkspaceError, WorkspaceId, WorkspacePk, Workspa
 pub use write_tenancy::{WriteTenancy, WriteTenancyError};
 pub use ws_event::{WsEvent, WsEventError, WsPayload};
 
+#[derive(Error, Debug)]
+pub enum InitializationError {
+    #[error("failed ot initialize sodium oxide")]
+    SodiumOxide,
+}
+
+pub fn init() -> Result<(), InitializationError> {
+    sodiumoxide::init().map_err(|()| InitializationError::SodiumOxide)
+}
+
 mod embedded {
     use refinery::embed_migrations;
 
@@ -191,6 +203,19 @@ pub enum ModelError {
 }
 
 pub type ModelResult<T> = Result<T, ModelError>;
+
+#[instrument(skip_all)]
+pub async fn migrate_all(
+    pg: &PgPool,
+    nats: &NatsClient,
+    job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
+    veritech: veritech::Client,
+    encryption_key: &EncryptionKey,
+) -> ModelResult<()> {
+    migrate(pg).await?;
+    migrate_builtins(pg, nats, job_processor, veritech, encryption_key).await?;
+    Ok(())
+}
 
 #[instrument(skip_all)]
 pub async fn migrate(pg: &PgPool) -> ModelResult<()> {
@@ -235,4 +260,91 @@ pub fn generate_name(name: Option<String>) -> String {
         })
         .collect();
     format!("si-{}", unique_id)
+}
+
+#[derive(
+    Clone,
+    Debug,
+    DeserializeFromStr,
+    Display,
+    EnumString,
+    EnumVariantNames,
+    Eq,
+    PartialEq,
+    SerializeDisplay,
+)]
+#[strum(serialize_all = "camelCase")]
+pub enum MigrationMode {
+    Run,
+    RunAndQuit,
+    Skip,
+}
+
+impl Default for MigrationMode {
+    fn default() -> Self {
+        Self::Run
+    }
+}
+
+impl MigrationMode {
+    #[must_use]
+    pub const fn variants() -> &'static [&'static str] {
+        <MigrationMode as strum::VariantNames>::VARIANTS
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde::{Deserialize, Serialize};
+
+    mod migration_mode {
+        use super::*;
+
+        #[test]
+        fn display() {
+            assert_eq!("run", MigrationMode::Run.to_string());
+            assert_eq!("runAndQuit", MigrationMode::RunAndQuit.to_string());
+            assert_eq!("skip", MigrationMode::Skip.to_string());
+        }
+
+        #[test]
+        fn from_str() {
+            assert_eq!(MigrationMode::Run, "run".parse().expect("failed to parse"));
+            assert_eq!(
+                MigrationMode::RunAndQuit,
+                "runAndQuit".parse().expect("failed to parse")
+            );
+            assert_eq!(
+                MigrationMode::Skip,
+                "skip".parse().expect("failed to parse")
+            );
+        }
+
+        #[test]
+        fn deserialize() {
+            #[derive(Deserialize)]
+            struct Test {
+                mode: MigrationMode,
+            }
+
+            let test: Test =
+                serde_json::from_str(r#"{"mode":"runAndQuit"}"#).expect("failed to deserialize");
+            assert_eq!(MigrationMode::RunAndQuit, test.mode);
+        }
+
+        #[test]
+        fn serialize() {
+            #[derive(Serialize)]
+            struct Test {
+                mode: MigrationMode,
+            }
+
+            let test = serde_json::to_string(&Test {
+                mode: MigrationMode::RunAndQuit,
+            })
+            .expect("failed to serialize");
+            assert_eq!(r#"{"mode":"runAndQuit"}"#, test);
+        }
+    }
 }

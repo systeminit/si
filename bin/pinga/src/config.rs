@@ -1,18 +1,13 @@
-use std::{
-    net::{SocketAddr, ToSocketAddrs},
-    path::{Path, PathBuf},
-};
+use std::path::Path;
 
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
-use si_data::{FaktoryConfig, NatsConfig, PgPoolConfig, SensitiveString};
+use si_data::{FaktoryConfig, NatsConfig, PgPoolConfig};
 use si_settings::{CanonicalFile, CanonicalFileError};
 use thiserror::Error;
 
-pub use dal::{CycloneKeyPair, JwtSecretKey, MigrationMode};
+pub use dal::{CycloneKeyPair, MigrationMode};
 pub use si_settings::{StandardConfig, StandardConfigFile};
-
-const DEFAULT_SIGNUP_SECRET: &str = "cool-steam";
 
 #[derive(Debug, Error)]
 pub enum ConfigError {
@@ -20,21 +15,14 @@ pub enum ConfigError {
     Builder(#[from] ConfigBuilderError),
     #[error(transparent)]
     CanonicalFile(#[from] CanonicalFileError),
-    #[error("no socket addrs where resolved")]
-    NoSocketAddrResolved,
     #[error(transparent)]
     Settings(#[from] si_settings::SettingsError),
-    #[error("failed to resolve socket addrs")]
-    SocketAddrResolve(#[source] std::io::Error),
 }
 
 type Result<T> = std::result::Result<T, ConfigError>;
 
 #[derive(Debug, Builder)]
 pub struct Config {
-    #[builder(default = "IncomingStream::default()")]
-    incoming_stream: IncomingStream,
-
     #[builder(default = "PgPoolConfig::default()")]
     pg_pool: PgPoolConfig,
 
@@ -47,9 +35,7 @@ pub struct Config {
     #[builder(default = "MigrationMode::default()")]
     migration_mode: MigrationMode,
 
-    jwt_secret_key_path: CanonicalFile,
     cyclone_encryption_key_path: CanonicalFile,
-    signup_secret: SensitiveString,
 }
 
 impl StandardConfig for Config {
@@ -57,12 +43,6 @@ impl StandardConfig for Config {
 }
 
 impl Config {
-    /// Gets a reference to the config's incoming stream.
-    #[must_use]
-    pub fn incoming_stream(&self) -> &IncomingStream {
-        &self.incoming_stream
-    }
-
     /// Gets a reference to the config's pg pool.
     #[must_use]
     pub fn pg_pool(&self) -> &PgPoolConfig {
@@ -87,32 +67,10 @@ impl Config {
         &self.faktory
     }
 
-    /// Gets a reference to the config's jwt secret key path.
-    #[must_use]
-    pub fn jwt_secret_key_path(&self) -> &Path {
-        self.jwt_secret_key_path.as_path()
-    }
-
     /// Gets a reference to the config's cyclone public key path.
     #[must_use]
     pub fn cyclone_encryption_key_path(&self) -> &Path {
         self.cyclone_encryption_key_path.as_path()
-    }
-
-    /// Gets a reference to the config's signup secret.
-    #[must_use]
-    pub fn signup_secret(&self) -> &SensitiveString {
-        &self.signup_secret
-    }
-}
-
-impl ConfigBuilder {
-    pub fn http_socket(&mut self, socket_addrs: impl ToSocketAddrs) -> Result<&mut Self> {
-        Ok(self.incoming_stream(IncomingStream::http_socket(socket_addrs)?))
-    }
-
-    pub fn unix_domain_socket(&mut self, path: impl Into<PathBuf>) -> &mut Self {
-        self.incoming_stream(IncomingStream::unix_domain_socket(path))
     }
 }
 
@@ -122,23 +80,16 @@ pub struct ConfigFile {
     nats: NatsConfig,
     faktory: FaktoryConfig,
     migration_mode: MigrationMode,
-    jwt_secret_key_path: String,
     cyclone_encryption_key_path: String,
-    signup_secret: SensitiveString,
 }
 
 impl Default for ConfigFile {
     fn default() -> Self {
-        let mut jwt_secret_key_path = "/run/sdf/jwt_secret_key.bin".to_string();
-        let mut cyclone_encryption_key_path = "/run/sdf/cyclone_encryption.key".to_string();
+        let mut cyclone_encryption_key_path = "/run/pinga/cyclone_encryption.key".to_string();
 
         // TODO(fnichol): okay, this goes away/changes when we determine where the key would be by
         // default, etc.
         if let Ok(dir) = std::env::var("CARGO_MANIFEST_DIR") {
-            jwt_secret_key_path = Path::new(&dir)
-                .join("src/dev.jwt_secret_key.bin")
-                .to_string_lossy()
-                .to_string();
             // In development we just take the keys cyclone is using (it needs both public and secret)
             // The dal integration tests will also need it
             cyclone_encryption_key_path = Path::new(&dir)
@@ -146,7 +97,6 @@ impl Default for ConfigFile {
                 .to_string_lossy()
                 .to_string();
             telemetry::tracing::warn!(
-                jwt_secret_key_path = jwt_secret_key_path.as_str(),
                 cyclone_encryption_key_path = cyclone_encryption_key_path.as_str(),
                 "detected cargo run, setting *default* key paths from sources"
             );
@@ -157,9 +107,7 @@ impl Default for ConfigFile {
             nats: Default::default(),
             faktory: Default::default(),
             migration_mode: Default::default(),
-            jwt_secret_key_path,
             cyclone_encryption_key_path,
-            signup_secret: DEFAULT_SIGNUP_SECRET.into(),
         }
     }
 }
@@ -177,38 +125,7 @@ impl TryFrom<ConfigFile> for Config {
         config.nats(value.nats);
         config.faktory(value.faktory);
         config.migration_mode(value.migration_mode);
-        config.jwt_secret_key_path(value.jwt_secret_key_path.try_into()?);
         config.cyclone_encryption_key_path(value.cyclone_encryption_key_path.try_into()?);
-        config.signup_secret(value.signup_secret);
         config.build().map_err(Into::into)
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum IncomingStream {
-    HTTPSocket(SocketAddr),
-    UnixDomainSocket(PathBuf),
-}
-
-impl Default for IncomingStream {
-    fn default() -> Self {
-        Self::HTTPSocket(SocketAddr::from(([0, 0, 0, 0], 5156)))
-    }
-}
-
-impl IncomingStream {
-    pub fn http_socket(socket_addrs: impl ToSocketAddrs) -> Result<Self> {
-        let socket_addr = socket_addrs
-            .to_socket_addrs()
-            .map_err(ConfigError::SocketAddrResolve)?
-            .into_iter()
-            .next()
-            .ok_or(ConfigError::NoSocketAddrResolved)?;
-        Ok(Self::HTTPSocket(socket_addr))
-    }
-
-    pub fn unix_domain_socket(path: impl Into<PathBuf>) -> Self {
-        let pathbuf = path.into();
-        Self::UnixDomainSocket(pathbuf)
     }
 }

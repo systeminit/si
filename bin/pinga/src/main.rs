@@ -8,12 +8,14 @@ use dal::{
     job::consumer::{JobConsumer, JobConsumerError},
     job::definition::component_post_processing::ComponentPostProcessing,
     job::definition::dependent_values_update::DependentValuesUpdate,
-    DalContext, DalContextBuilder, JobFailure, JobFailureError, ServicesContext, TransactionsError,
+    CycloneKeyPair, DalContext, DalContextBuilder, JobFailure, JobFailureError, MigrationMode,
+    ServicesContext, TransactionsError,
 };
-use sdf::{Config, FaktoryProcessor, JobQueueProcessor, Server};
+use dal::{FaktoryProcessor, JobQueueProcessor};
 use si_data::{NatsClient, PgPool, PgPoolError};
 
 mod args;
+mod config;
 
 type Result<T, E = JobError> = std::result::Result<T, E>;
 
@@ -42,7 +44,7 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let config = telemetry::Config::builder()
         .service_name("pinga")
         .service_namespace("si")
-        .app_modules(vec!["pinga", "sdf"])
+        .app_modules(vec!["pinga"])
         .build()?;
     let telemetry = telemetry::init(config)?;
     let args = args::parse();
@@ -59,7 +61,7 @@ async fn run(
     }
     debug!(arguments =?args, "parsed cli arguments");
 
-    Server::init()?;
+    dal::init()?;
 
     // TODO(fnichol): we have a mutex poisoning panic that happens, but is avoided if opentelemetry
     // is not running when the migrations are. For the moment we'll disable otel until after the
@@ -82,21 +84,51 @@ async fn run(
             secret_key_path.display(),
             public_key_path.display()
         );
-        Server::generate_cyclone_key_pair(secret_key_path, public_key_path).await?;
+        CycloneKeyPair::create(secret_key_path, public_key_path).await?;
         return Ok(());
     }
 
-    let config = Config::try_from(args)?;
+    let config = config::Config::try_from(args)?;
 
-    let encryption_key = Server::load_encryption_key(config.cyclone_encryption_key_path()).await?;
+    let encryption_key =
+        veritech::EncryptionKey::load(config.cyclone_encryption_key_path()).await?;
 
-    let nats = Server::connect_to_nats(config.nats()).await?;
+    let nats = NatsClient::new(config.nats()).await?;
 
-    let pg_pool = Server::create_pg_pool(config.pg_pool()).await?;
+    let pg_pool = PgPool::new(config.pg_pool()).await?;
 
-    let veritech = Server::create_veritech_client(nats.clone());
+    let veritech = veritech::Client::new(nats.clone());
+
+    if let MigrationMode::Run | MigrationMode::RunAndQuit = config.migration_mode() {
+        info!("Running migrations");
+
+        let mut faktory_config = faktory_async::Config::from_uri(config.faktory().url.clone());
+        faktory_config.set_hostname("pinga-migrations");
+        let client = Client::new(&faktory_config).await?;
+        let job_processor =
+            Box::new(FaktoryProcessor::new(client)) as Box<dyn JobQueueProcessor + Send + Sync>;
+
+        dal::migrate_all(
+            &pg_pool,
+            &nats,
+            job_processor,
+            veritech.clone(),
+            &encryption_key,
+        )
+        .await?;
+        if let MigrationMode::RunAndQuit = config.migration_mode() {
+            info!(
+                "migration mode is {}, shutting down",
+                config.migration_mode()
+            );
+            return Ok(());
+        }
+    } else {
+        trace!("migration mode is skip, not running migrations");
+    }
 
     loop {
+        info!("Creating faktory connection");
         let mut config = faktory_async::Config::from_uri(config.faktory().url.clone());
         config.does_consume();
         config.set_hostname("pinga");
