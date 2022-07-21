@@ -5,9 +5,9 @@
   >
     <Navbar />
 
-    <router-view />
+    <router-view class="overflow-y-hidden" />
 
-    <StatusBar />
+    <StatusBar class="flex-initial" />
   </div>
 </template>
 
