@@ -27,13 +27,13 @@
     />
 
     <div class="flex flex-row w-full bg-transparent">
-      <SiSidebar side="left" class="pointer-events-auto dark:text-white">
+      <SiSidebar side="left">
         <SiChangesetForm />
         <AssetsTabs />
       </SiSidebar>
       <!-- transparent div that flows through to the canvas -->
       <div class="grow h-full pointer-events-none"></div>
-      <SiSidebar side="right" class="pointer-events-auto dark:text-white">
+      <SiSidebar side="right">
         <SiChangesetForm />
         <AssetsTabs />
       </SiSidebar>
