@@ -22,7 +22,7 @@
           :name="node.name"
           class="border-b-2 dark:border-[#525252] hover:bg-[#2F80ED] dark:text-white hover:text-white hover:cursor-pointer"
           :class="activeNode === node.id ? 'bg-[#2F80ED]' : ''"
-          @click="setActiveNode(node)"
+          @click="setActiveNode(node, $event)"
         />
       </li>
     </SiCollapsible>
@@ -34,6 +34,18 @@ import SiNodeSprite from "@/molecules/SiNodeSprite.vue";
 import SiCollapsible from "@/organisims/SiCollapsible.vue";
 import SiSearch from "@/molecules/SiSearch.vue";
 import { ref } from "vue";
+import { firstValueFrom } from "rxjs";
+import { SchematicService } from "@/service/schematic";
+import { GlobalErrorService } from "@/service/global_error";
+import { SchematicKind, SchematicNode } from "@/api/sdf/dal/schematic";
+import {
+  NodeAddEvent,
+  ViewerEventObservable,
+} from "@/organisims/SchematicViewer/viewer_event";
+
+const props = defineProps<{
+  viewerEvent$: ViewerEventObservable["viewerEvent$"];
+}>();
 
 interface Asset {
   id: number;
@@ -50,7 +62,7 @@ const assetCategories: AssetCategory[] = [
   {
     name: "Kubernetes",
     color: "#00F",
-    assets: [{ id: 1, name: "Deployment" }],
+    assets: [{ id: 1, name: "Service (placeholder)" }],
   },
   {
     name: "Cloud",
@@ -77,10 +89,50 @@ const assetCategories: AssetCategory[] = [
   },
 ];
 
+// NodeSprite
+// NodeSprite normal hover focus disabled
+// NodeCategory
+
 const activeNode = ref<number | undefined>();
 
-const setActiveNode = (e: Asset) => {
+const setActiveNode = (e: Asset, _event: MouseEvent) => {
   // TODO(victor): This code makes it so that clicking the selected node deselects it. That should probably change when node addiction is handled by an observable
   activeNode.value = e.id !== activeNode.value ? e.id : undefined;
+
+  // TODO(nick): temporarily embedding the add node into the active node event.
+  addNode(3, _event);
+};
+
+const addNode = async (schemaId: number, _event: MouseEvent) => {
+  const template = await firstValueFrom(
+    SchematicService.getNodeTemplate({ schemaId }),
+  );
+  if (template.error) {
+    GlobalErrorService.set(template);
+    return;
+  }
+
+  // Generates fake node from template
+  const node: SchematicNode = {
+    id: -1,
+    kind: { kind: template.kind, componentId: -1 },
+    title: template.title,
+    name: template.name,
+    positions: [
+      {
+        schematicKind:
+          template.kind === "component"
+            ? SchematicKind.Component
+            : SchematicKind.Deployment,
+        x: 350,
+        y: 0,
+      },
+    ],
+    schemaVariantId: template.schemaVariantId,
+  };
+
+  const event = new NodeAddEvent({ node, schemaId: schemaId });
+
+  props.viewerEvent$.next(event);
 };
 </script>

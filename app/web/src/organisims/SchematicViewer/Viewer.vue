@@ -142,7 +142,7 @@ onMounted(async () => {
 
   const renderer = new Renderer({
     view: canvas.element.value,
-    resolution: window.devicePixelRatio * 3 || 1,
+    resolution: window.devicePixelRatio || 1,
     width: container.element.value.offsetWidth,
     height: container.element.value.offsetHeight,
     autoDensity: true,

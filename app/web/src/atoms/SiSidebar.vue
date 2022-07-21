@@ -1,6 +1,7 @@
 <template>
+  <!-- FIXME(nick,victor): find a way to remove z levels from here. This is needed for interaction with the canvas to work. -->
   <div
-    class="flex flex-col dark:text-white border-[#DBDBDB] dark:border-[#525252] bg-white dark:bg-[#333333] w-40 lg:w-56 xl:w-72 pointer-events-auto"
+    class="z-20 flex flex-col dark:text-white border-[#DBDBDB] dark:border-[#525252] bg-white dark:bg-[#333333] w-40 lg:w-56 xl:w-72 pointer-events-auto"
     :class="panelClasses"
   >
     <slot />

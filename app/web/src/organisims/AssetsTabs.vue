@@ -8,7 +8,7 @@
 
     <template #panels>
       <TabPanel class="flex flex-col overflow-y-hidden">
-        <AssetPalette />
+        <AssetPalette :viewer-event$="props.viewerEvent$" />
       </TabPanel>
       <TabPanel>Local Assets</TabPanel>
       <TabPanel>Panel</TabPanel>
@@ -21,4 +21,9 @@ import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import { TabPanel } from "@headlessui/vue";
 import AssetPalette from "@/organisims/AssetPalette.vue";
+import { ViewerEventObservable } from "./SchematicViewer/viewer_event";
+
+const props = defineProps<{
+  viewerEvent$: ViewerEventObservable["viewerEvent$"];
+}>();
 </script>
