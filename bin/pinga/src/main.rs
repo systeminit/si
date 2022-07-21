@@ -1,4 +1,4 @@
-use faktory_async::{BeatReply, Client, FailConfig};
+use faktory_async::{BeatState, Client, FailConfig};
 use futures::{future::FutureExt, Future};
 use std::{any::TypeId, panic::AssertUnwindSafe, sync::Arc, time::Duration};
 use telemetry::{prelude::*, TelemetryClient};
@@ -118,8 +118,8 @@ async fn run(
         handles.push(tokio::task::spawn(async move {
             loop {
                 match beat_client.beat().await {
-                    Ok(BeatReply::Ok) | Ok(BeatReply::Quiet) => {}
-                    Ok(BeatReply::Terminate) => break,
+                    Ok(BeatState::Ok) | Ok(BeatState::Quiet) => {}
+                    Ok(BeatState::Terminate) => break,
                     Err(err) => {
                         error!("Beat failed: {err}");
                         break;
@@ -167,7 +167,7 @@ async fn start_job_executor(
     loop {
         tokio::time::sleep(Duration::from_millis(500)).await;
         match client.last_beat().await {
-            Ok(BeatReply::Ok) => {
+            Ok(BeatState::Ok) => {
                 let job = match client.fetch(&["default".to_owned()]).await {
                     Ok(Some(job)) => job,
                     Ok(None) => {
@@ -209,8 +209,8 @@ async fn start_job_executor(
                     }
                 }
             }
-            Ok(BeatReply::Quiet) => {}
-            Ok(BeatReply::Terminate) => {
+            Ok(BeatState::Quiet) => {}
+            Ok(BeatState::Terminate) => {
                 warn!("Faktory asked us to terminate");
                 break;
             }
