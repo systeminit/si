@@ -43,5 +43,8 @@ module.exports = {
       opacity: ["disabled"],
     },
   },
-  plugins: [require("@tailwindcss/forms")],
+  plugins: [
+    require("@tailwindcss/forms"),
+    require("./src/design/themes/tailwind/plugin/si_typography")
+  ],
 };
