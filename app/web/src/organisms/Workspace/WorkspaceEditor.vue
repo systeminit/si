@@ -1,7 +1,7 @@
 <template>
   <div class="w-full h-full flex pointer-events-none relative">
     <!-- FIXME(nick,victor): remove reliance on z index -->
-    <Viewer
+    <SiCanvas
       v-if="lightmode && editorContext"
       light-mode
       :schematic-viewer-id="schematicViewerId"
@@ -13,7 +13,7 @@
       :deployment-node-selected="null"
       class="pointer-events-auto absolute z-10"
     />
-    <Viewer
+    <SiCanvas
       v-else-if="editorContext"
       :schematic-viewer-id="schematicViewerId"
       :viewer-state="viewerState"
@@ -52,10 +52,10 @@ import {
   SchematicKind,
   SchematicSchemaVariants,
 } from "@/api/sdf/dal/schematic";
-import Viewer from "@/organisms/SchematicViewer/Viewer.vue";
-import * as VE from "@/organisms/SchematicViewer/viewer_event";
+import SiCanvas from "@/organisms/SiCanvas.vue";
+import * as VE from "@/organisms/SiCanvas/viewer_event";
 import _ from "lodash";
-import { ViewerStateMachine } from "@/organisms/SchematicViewer/state_machine";
+import { ViewerStateMachine } from "@/organisms/SiCanvas/state_machine";
 import SiSidebar from "@/atoms/SiSidebar.vue";
 import { ThemeService } from "@/service/theme";
 import { refFrom, untilUnmounted } from "vuse-rx";

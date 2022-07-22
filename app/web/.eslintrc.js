@@ -39,6 +39,6 @@ module.exports = {
   },
   ignorePatterns: [
     "src/ignore/*",
-    "src/organisms/SchematicViewer/references/*",
+    "src/organisms/SiCanvas/references/*",
   ],
 };

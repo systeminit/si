@@ -21,7 +21,7 @@ import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import { TabPanel } from "@headlessui/vue";
 import AssetPalette from "@/organisms/AssetPalette.vue";
-import { ViewerEventObservable } from "./SchematicViewer/viewer_event";
+import { ViewerEventObservable } from "./SiCanvas/viewer_event";
 
 const props = defineProps<{
   viewerEvent$: ViewerEventObservable["viewerEvent$"];
