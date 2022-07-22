@@ -41,7 +41,7 @@ import { SchematicKind, SchematicNode } from "@/api/sdf/dal/schematic";
 import {
   NodeAddEvent,
   ViewerEventObservable,
-} from "@/organisms/SchematicViewer/viewer_event";
+} from "@/organisms/SiCanvas/viewer_event";
 import { Category, Item, MenuItem } from "@/api/sdf/dal/menu";
 import { ApiResponse } from "@/api/sdf";
 
