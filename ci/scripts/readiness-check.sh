@@ -6,12 +6,6 @@ RETRY_COUNT=0
 
 function readiness-check {
     while true; do
-        RETRY_COUNT=$(( RETRY_COUNT + 1 ))
-        if [[ $RETRY_COUNT -ge $MAX_RETRIES ]]; then
-            echo "hit max retry count: $MAX_RETRIES"
-            exit 1
-        fi
-
         # NOTE(nick): declare VALUE as local first so that we capture the subshell output.
         # Then, ensure that we allow curl to fail as needed.
         local VALUE
@@ -22,6 +16,14 @@ function readiness-check {
         if [ "$VALUE" = "true" ]; then
             return
         fi
+
+        RETRY_COUNT=$(( RETRY_COUNT + 1 ))
+        if [[ $RETRY_COUNT -ge $MAX_RETRIES ]]; then
+            echo "hit max retry count: $MAX_RETRIES"
+            exit 1
+        fi
+
+        echo "sleeping and retrying..."
         sleep 1
     done
 }
