@@ -53,9 +53,9 @@ import {
   SchematicSchemaVariants,
 } from "@/api/sdf/dal/schematic";
 import SiCanvas from "@/organisms/SiCanvas.vue";
-import * as VE from "@/organisms/SchematicViewer/viewer_event";
+import * as VE from "@/organisms/SiCanvas/viewer_event";
 import _ from "lodash";
-import { ViewerStateMachine } from "@/organisms/SchematicViewer/state_machine";
+import { ViewerStateMachine } from "@/organisms/SiCanvas/state_machine";
 import SiSidebar from "@/atoms/SiSidebar.vue";
 import { ThemeService } from "@/service/theme";
 import { refFrom, untilUnmounted } from "vuse-rx";

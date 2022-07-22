@@ -74,7 +74,7 @@
 
 <script setup lang="ts">
 import _ from "lodash";
-import { Node } from "@/organisms/SchematicViewer/SiCanvas/obj/node";
+import { Node } from "@/organisms/SiCanvas/SiCanvas/obj/node";
 import * as Rx from "rxjs";
 
 import { computed, ref, watch } from "vue";
@@ -105,7 +105,7 @@ import { ChangeSetService } from "@/service/change_set";
 import {
   NodeAddEvent,
   ViewerEventObservable,
-} from "./SchematicViewer/viewer_event";
+} from "./SiCanvas/viewer_event";
 import { lastSelectedDeploymentNode$ } from "@/observable/selection";
 
 const schematicData = refFrom<Schematic | null>(schematicData$);

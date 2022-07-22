@@ -41,7 +41,7 @@ import { SchematicKind, SchematicNode } from "@/api/sdf/dal/schematic";
 import {
   NodeAddEvent,
   ViewerEventObservable,
-} from "@/organisms/SchematicViewer/viewer_event";
+} from "@/organisms/SiCanvas/viewer_event";
 
 const props = defineProps<{
   viewerEvent$: ViewerEventObservable["viewerEvent$"];
