@@ -17,7 +17,7 @@
 import { watch, onMounted, onUnmounted, ref, toRefs } from "vue";
 import _ from "lodash";
 import * as Rx from "rxjs";
-import { Node } from "./Viewer/obj/node";
+import { Node } from "./SiCanvas/obj/node";
 import * as SM from "./state_machine";
 import { untilUnmounted } from "vuse-rx";
 import { Interpreter } from "xstate";
@@ -27,9 +27,9 @@ import { componentsMetadata$ } from "@/observable/component";
 import { ComponentMetadata } from "@/service/component/get_components_metadata";
 
 import { EditorContext, SchematicKind } from "@/api/sdf/dal/schematic";
-import { SceneManager } from "./Viewer/scene_manager";
-import { InteractionManager } from "./Viewer/interaction_manager";
-import { Renderer } from "./Viewer/renderer";
+import { SceneManager } from "./SiCanvas/scene_manager";
+import { InteractionManager } from "./SiCanvas/interaction_manager";
+import { Renderer } from "./SiCanvas/renderer";
 import { SchematicDataManager } from "./data_manager";
 import { Schematic, SchematicNode, variantById } from "@/api/sdf/dal/schematic";
 import { nodeSelection$, SelectedNode } from "@/observable/selection";

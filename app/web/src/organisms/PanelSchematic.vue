@@ -74,7 +74,7 @@
 
 <script setup lang="ts">
 import _ from "lodash";
-import { Node } from "@/organisms/SchematicViewer/Viewer/obj/node";
+import { Node } from "@/organisms/SchematicViewer/SiCanvas/obj/node";
 import * as Rx from "rxjs";
 
 import { computed, ref, watch } from "vue";

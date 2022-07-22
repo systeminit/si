@@ -1,7 +1,7 @@
 <template>
   <div :id="viewerId" class="w-full h-full">
     <!-- We check for schematicData and schematicKind inside showViewer but typescript can't understand that so we check it here again -->
-    <Viewer
+    <SiCanvas
       v-if="
         showViewer &&
         props.schematicKind &&
@@ -66,7 +66,7 @@
 import _ from "lodash";
 import * as Rx from "rxjs";
 
-import Viewer from "./SchematicViewer/Viewer.vue";
+import SiCanvas from "./SchematicViewer/SiCanvas.vue";
 
 import { ViewerStateMachine } from "./SchematicViewer/state_machine";
 
