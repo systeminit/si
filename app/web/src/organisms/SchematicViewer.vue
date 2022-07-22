@@ -66,7 +66,7 @@
 import _ from "lodash";
 import * as Rx from "rxjs";
 
-import SiCanvas from "./SchematicViewer/SiCanvas.vue";
+import SiCanvas from "./SiCanvas.vue";
 
 import { ViewerStateMachine } from "./SchematicViewer/state_machine";
 

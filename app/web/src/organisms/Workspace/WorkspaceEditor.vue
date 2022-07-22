@@ -52,7 +52,7 @@ import {
   SchematicKind,
   SchematicSchemaVariants,
 } from "@/api/sdf/dal/schematic";
-import SiCanvas from "@/organisms/SchematicViewer/SiCanvas.vue";
+import SiCanvas from "@/organisms/SiCanvas.vue";
 import * as VE from "@/organisms/SchematicViewer/viewer_event";
 import _ from "lodash";
 import { ViewerStateMachine } from "@/organisms/SchematicViewer/state_machine";
