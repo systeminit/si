@@ -4,18 +4,18 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::attribute::context::{AttributeContextBuilder, UNSET_ID_VALUE};
+use crate::func::backend::identity::FuncBackendIdentityArgs;
 use crate::func::binding::{FuncBindingError, FuncBindingId};
 use crate::func::binding_return_value::FuncBindingReturnValueId;
-use crate::provider::emit;
-use crate::provider::emit::EmitError;
 use crate::schema::variant::SchemaVariantError;
 use crate::socket::{Socket, SocketArity, SocketEdgeKind, SocketError, SocketKind};
 use crate::standard_model::object_option_from_row_option;
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_accessor_ro,
     AttributeContextBuilderError, AttributePrototype, AttributePrototypeError,
-    AttributePrototypeId, FuncId, HistoryEventError, Prop, SchemaVariant, SchematicKind,
-    StandardModel, StandardModelError, Timestamp, Visibility, WriteTenancy,
+    AttributePrototypeId, AttributeReadContext, AttributeValueError, AttributeView, FuncId,
+    HistoryEventError, Prop, SchemaVariant, SchematicKind, StandardModel, StandardModelError,
+    Timestamp, Visibility, WriteTenancy,
 };
 use crate::{
     AttributeContext, AttributeContextError, AttributeValue, DalContext, Func, FuncBinding, PropId,
@@ -38,8 +38,8 @@ pub enum InternalProviderError {
     AttributeContextBuilder(#[from] AttributeContextBuilderError),
     #[error("attribute prototype error: {0}")]
     AttributePrototype(#[from] AttributePrototypeError),
-    #[error("emit error: {0}")]
-    Emit(#[from] EmitError),
+    #[error("attribute value error: {0}")]
+    AttributeValue(#[from] AttributeValueError),
     #[error("func binding error: {0}")]
     FuncBinding(#[from] FuncBindingError),
     #[error("history event error: {0}")]
@@ -48,15 +48,23 @@ pub enum InternalProviderError {
     Pg(#[from] PgError),
     #[error("schema variant error: {0}")]
     SchemaVariant(String),
+    #[error("serde_json error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
     #[error("socket error: {0}")]
     Socket(#[from] SocketError),
     #[error("standard model error: {0}")]
     StandardModelError(#[from] StandardModelError),
 
+    #[error("attribute prototype not found for id: {0}")]
+    AttributePrototypeNotFound(AttributePrototypeId),
+    #[error("could not find attribute value for attribute context: {0:?}")]
+    AttributeValueNotFoundForContext(AttributeContext),
     #[error("unexpected: attribute prototype field is empty")]
     EmptyAttributePrototype,
-    #[error("provided attribute context does not specify an ExternalProviderId (required for explicit emit")]
-    MissingExternalProviderForExplicitEmit,
+    #[error("func not found for id: {0}")]
+    FuncNotFound(FuncId),
+    #[error("not allowed to perform implicit emit as an explicit internal provider")]
+    ImplicitEmitForExplicitProviderNotAllowed,
     #[error("missing func")]
     MissingFunc(String),
     #[error("provided attribute context does not specify a PropId (required for implicit emit)")]
@@ -113,7 +121,7 @@ pub struct InternalProvider {
     schema_id: SchemaId,
     /// Indicates which [`SchemaVariant`](crate::SchemaVariant) this provider belongs to.
     schema_variant_id: SchemaVariantId,
-    /// Indicates which transformation function should be used during [`Self::emit()`].
+    /// Indicates which transformation function should be used for "emit".
     attribute_prototype_id: Option<AttributePrototypeId>,
 
     /// Name for [`Self`] that can be used for identification.
@@ -305,68 +313,128 @@ impl InternalProvider {
         self.prop_id != UNSET_ID_VALUE.into()
     }
 
-    /// Evaluate with a provided [`AttributeContext`](crate::AttributeContext) and return the
+    /// Consume with a provided [`AttributeContext`](crate::AttributeContext) and return the
     /// resulting [`AttributeValue`](crate::AttributeValue).
     ///
     /// Requirements for the provided [`AttributeContext`](crate::AttributeContext):
-    /// - If we are implicit, the provided context must specify a [`PropId`](crate::Prop)
-    /// - If we are explicit, the provided context must specify an
-    ///   [`ExternalProviderId`](crate::ExternalProvider)
+    /// - The least specific field be a [`PropId`](crate::Prop)
     /// - If the [`SchemaId`](crate::Schema) is set, it must match the corresponding field on
     ///   [`Self`]
     /// - If the [`SchemaVariantId`](crate::SchemaVariant) is set, it must match the corresponding
     ///   field on [`Self`]
-    pub async fn emit(
+    pub async fn implicit_emit(
         &self,
         ctx: &DalContext<'_, '_>,
-        attribute_context: AttributeContext,
+        consume_attribute_context: AttributeContext,
     ) -> InternalProviderResult<AttributeValue> {
-        // Ensure that the least specific field in the provided context matches what we expect.
-        if self.is_internal_consumer() && !attribute_context.is_least_specific_field_kind_prop()? {
+        if !self.is_internal_consumer() {
+            return Err(InternalProviderError::ImplicitEmitForExplicitProviderNotAllowed);
+        }
+        if !consume_attribute_context.is_least_specific_field_kind_prop()? {
             return Err(InternalProviderError::MissingPropForImplicitEmit);
-        } else if !self.is_internal_consumer()
-            && !attribute_context.is_least_specific_field_kind_external_provider()?
-        {
-            return Err(InternalProviderError::MissingExternalProviderForExplicitEmit);
         }
 
         // Ensure that if the schema and/or schema variant fields are set, that they match our
         // corresponding fields. We only need to perform this check for internal consumers.
-        if self.is_internal_consumer() {
-            if !attribute_context.is_schema_unset()
-                && attribute_context.schema_id() != self.schema_id
-            {
-                return Err(InternalProviderError::SchemaMismatch(
-                    self.schema_id,
-                    attribute_context.schema_id(),
-                ));
-            }
-            if !attribute_context.is_schema_variant_unset()
-                && attribute_context.schema_variant_id() != self.schema_variant_id
-            {
-                return Err(InternalProviderError::SchemaVariantMismatch(
-                    self.schema_variant_id,
-                    attribute_context.schema_variant_id(),
-                ));
-            }
+        if !consume_attribute_context.is_schema_unset()
+            && consume_attribute_context.schema_id() != self.schema_id
+        {
+            return Err(InternalProviderError::SchemaMismatch(
+                self.schema_id,
+                consume_attribute_context.schema_id(),
+            ));
+        }
+        if !consume_attribute_context.is_schema_variant_unset()
+            && consume_attribute_context.schema_variant_id() != self.schema_variant_id
+        {
+            return Err(InternalProviderError::SchemaVariantMismatch(
+                self.schema_variant_id,
+                consume_attribute_context.schema_variant_id(),
+            ));
         }
 
         // Update or create the emit attribute value using the newly generated func binding return
         // value. For its context, we use the provided context and replace the least specific field
         // with our own InternalProviderId.
-        let emit_context = AttributeContextBuilder::from(attribute_context)
+        let emit_attribute_context = AttributeContextBuilder::from(consume_attribute_context)
             .unset_prop_id()
-            .unset_external_provider_id()
             .set_internal_provider_id(self.id)
             .to_context()?;
 
+        // Get the func from our attribute prototype.
         let attribute_prototype_id = self
             .attribute_prototype_id
             .ok_or(InternalProviderError::EmptyAttributePrototype)?;
+        let attribute_prototype = AttributePrototype::get_by_id(ctx, &attribute_prototype_id)
+            .await?
+            .ok_or(InternalProviderError::AttributePrototypeNotFound(
+                attribute_prototype_id,
+            ))?;
+        let func_id = attribute_prototype.func_id();
+        let func = Func::get_by_id(ctx, &func_id)
+            .await?
+            .ok_or(InternalProviderError::FuncNotFound(func_id))?;
 
-        let emit_attribute_value =
-            emit::emit(ctx, attribute_prototype_id, attribute_context, emit_context).await?;
-        Ok(emit_attribute_value)
+        // Generate the func binding and func binding return value required for either updating
+        // or creating a new attribute value to "emit".
+        let found_attribute_value =
+            AttributeValue::find_for_context(ctx, consume_attribute_context.into())
+                .await?
+                .ok_or(InternalProviderError::AttributeValueNotFoundForContext(
+                    consume_attribute_context,
+                ))?;
+        let found_attribute_view_context = AttributeReadContext {
+            prop_id: None,
+            ..AttributeReadContext::from(consume_attribute_context)
+        };
+        let found_attribute_view = AttributeView::new(
+            ctx,
+            found_attribute_view_context,
+            Some(*found_attribute_value.id()),
+        )
+        .await?;
+        let (func_binding, func_binding_return_value) = FuncBinding::find_or_create_and_execute(
+            ctx,
+            serde_json::to_value(FuncBackendIdentityArgs {
+                identity: found_attribute_view.value().clone(),
+            })?,
+            *func.id(),
+        )
+        .await?;
+
+        // We never want to mutate an emitted AttributeValue in the universal tenancy and we want
+        // to ensure the found AttributeValue's context _exactly_ matches the one assembled. In
+        // either case, just create a new one!
+        if let Some(mut emit_attribute_value) =
+            AttributeValue::find_for_context(ctx, emit_attribute_context.into()).await?
+        {
+            // TODO(nick): we will likely want to replace the "universal" tenancy check with an
+            // "is compatible" tenancy check.
+            if emit_attribute_value.context == emit_attribute_context
+                && (!emit_attribute_value.tenancy().universal() || ctx.write_tenancy().universal())
+            {
+                emit_attribute_value
+                    .set_func_binding_id(ctx, *func_binding.id())
+                    .await?;
+                emit_attribute_value
+                    .set_func_binding_return_value_id(ctx, *func_binding_return_value.id())
+                    .await?;
+                return Ok(emit_attribute_value);
+            }
+        }
+        let new_emit_attribute_value = AttributeValue::new(
+            ctx,
+            *func_binding.id(),
+            *func_binding_return_value.id(),
+            emit_attribute_context,
+            Option::<String>::None,
+        )
+        .await?;
+        new_emit_attribute_value
+            .set_attribute_prototype(ctx, attribute_prototype.id())
+            .await?;
+
+        Ok(new_emit_attribute_value)
     }
 
     /// Find all [`Self`] for a given [`SchemaVariant`](crate::SchemaVariant).
