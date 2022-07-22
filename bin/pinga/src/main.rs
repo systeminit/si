@@ -2,7 +2,11 @@ use faktory_async::{BeatState, Client, FailConfig};
 use futures::{future::FutureExt, Future};
 use std::{any::TypeId, panic::AssertUnwindSafe, sync::Arc, time::Duration};
 use telemetry::{prelude::*, TelemetryClient};
-use tokio::task::JoinError;
+use tokio::{
+    signal,
+    sync::{broadcast, mpsc},
+    task::JoinError,
+};
 
 use dal::{
     job::consumer::{JobConsumer, JobConsumerError},
@@ -49,12 +53,31 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let telemetry = telemetry::init(config)?;
     let args = args::parse();
 
-    run(args, telemetry).await
+    let (shutdown_send, shutdown_receive) = broadcast::channel(1);
+
+    let run_result = tokio::task::spawn(run(args, telemetry, shutdown_receive));
+
+    let mut sigterm_watcher = signal::unix::signal(signal::unix::SignalKind::terminate())?;
+
+    tokio::select! {
+        _ = signal::ctrl_c() => {
+            info!("SIGINT received; initiating graceful shutdown");
+            shutdown_send.send(())?;
+        }
+        _ = sigterm_watcher.recv() => {
+            info!("SIGTERM received; initiating graceful shutdown");
+            shutdown_send.send(())?;
+        }
+    }
+
+    // We should return any errors that happened in our run method's task.
+    run_result.await?
 }
 
 async fn run(
     args: args::Args,
     mut telemetry: telemetry::Client,
+    mut shutdown_channel: broadcast::Receiver<()>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     if args.verbose > 0 {
         telemetry.set_verbosity(args.verbose.into()).await?;
@@ -146,8 +169,13 @@ async fn run(
         };
 
         const NUM_TASKS: usize = 5;
+        let (task_wait_send, mut task_wait_recv) = mpsc::channel(1);
         let mut handles = Vec::with_capacity(NUM_TASKS + 1);
         let beat_client = client.clone();
+        // The heartbeat gets its own shutdown channel, because we don't want it to shut down until
+        // _after_ all the worker tasks have already shutdown. If we shut down the heartbeat before
+        // then, the faktory server is likely to kill our TCP connection, and that is A Bad Thing™.
+        let (beat_shutdown_send, mut beat_shutdown_channel) = broadcast::channel(1);
         handles.push(tokio::task::spawn(async move {
             loop {
                 match beat_client.beat().await {
@@ -161,7 +189,22 @@ async fn run(
                         break;
                     }
                 }
-                tokio::time::sleep(Duration::from_secs(15)).await;
+                // We use the "old" receive end in the async block,
+                // instead of the newly created one, so that we don't
+                // risk missing a shutdown message. We will then use
+                // the "new" one next time around in the loop.
+                let new_shutdown_channel = beat_shutdown_channel.resubscribe();
+                let shutdown_future = async move {
+                    let _ = beat_shutdown_channel.recv().await;
+                };
+                beat_shutdown_channel = new_shutdown_channel;
+                tokio::select! {
+                    _ = shutdown_future => {
+                        info!("Heartbeat task received shutdown notification; stopping.");
+                        break;
+                    }
+                    _ = tokio::time::sleep(Duration::from_secs(15)) => {}
+                }
             }
         }));
 
@@ -172,9 +215,42 @@ async fn run(
                 nats.clone(),
                 veritech.clone(),
                 encryption_key,
+                shutdown_channel.resubscribe(),
+                task_wait_send.clone(),
             )));
         }
-        futures::future::join_all(handles).await;
+
+        let new_shutdown_channel = shutdown_channel.resubscribe();
+        let shutdown_future = async move {
+            let _ = shutdown_channel.recv().await;
+        };
+        shutdown_channel = new_shutdown_channel;
+
+        // Watch for either all job tasks exiting on their own, or us
+        // receiving a shutdown signal. If they all exited on their
+        // own, we should restart them, but if we received a shutdown
+        // signal, then we should wait for them to exit before exiting
+        // the loop that would respawn them (and the heartbeat).
+        tokio::select! {
+            _ = shutdown_future => {
+                info!("Main executor loop received shutdown notification; stopping.");
+                drop(task_wait_send);
+                task_wait_recv.recv().await;
+                // Now that all the worker tasks have exited, we can
+                // safely stop sending heartbeats to the faktory
+                // server.
+                let _ = beat_shutdown_send.send(());
+                info!("Closing faktory-async client connection");
+                if let Err(err) = client.close().await {
+                    error!("Unable to close client connection: {err}");
+                }
+                info!("All executor jobs finished; exiting main executor loop.");
+                break Ok(());
+            }
+            _ = futures::future::join_all(handles) => {}
+        }
+
+        info!("Closing faktory-async client connection");
         if let Err(err) = client.close().await {
             error!("Unable to close client connection: {err}");
         }
@@ -188,6 +264,8 @@ async fn start_job_executor(
     nats: NatsClient,
     veritech: veritech::Client,
     encryption_key: veritech::EncryptionKey,
+    mut shutdown_channel: broadcast::Receiver<()>,
+    _sender: mpsc::Sender<()>,
 ) {
     let job_processor =
         Box::new(FaktoryProcessor::new(client.clone())) as Box<dyn JobQueueProcessor + Send + Sync>;
@@ -201,6 +279,18 @@ async fn start_job_executor(
     let ctx_builder = Arc::new(DalContext::builder(services_context));
 
     loop {
+        match shutdown_channel.try_recv() {
+            Err(broadcast::error::TryRecvError::Empty) => {
+                // No shutdown signal yet; nothing to do.
+            }
+            _ => {
+                // The sender has shut down, we're lagged (on a channel that can only hold 1 thing),
+                // or we got something over the channel. In any of these scenarios, we should be
+                // shutting down.
+                info!("Worker task received shutdown notification: stopping");
+                break;
+            }
+        }
         tokio::time::sleep(Duration::from_millis(500)).await;
 
         match client.reconnect_if_needed().await {
