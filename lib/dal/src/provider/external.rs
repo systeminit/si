@@ -3,11 +3,8 @@ use si_data::PgError;
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::attribute::context::AttributeContextBuilder;
 use crate::func::binding::FuncBindingId;
 use crate::func::binding_return_value::FuncBindingReturnValueId;
-use crate::provider::emit;
-use crate::provider::emit::EmitError;
 use crate::schema::variant::SchemaVariantError;
 use crate::socket::{Socket, SocketArity, SocketEdgeKind, SocketError, SocketKind};
 use crate::{
@@ -18,7 +15,7 @@ use crate::{
 };
 use crate::{
     AttributeContext, AttributeContextBuilderError, AttributeContextError, AttributePrototypeId,
-    AttributeValue, DalContext, SchemaId, SchemaVariantId,
+    DalContext, SchemaId, SchemaVariantId,
 };
 
 const LIST_FOR_ATTRIBUTE_PROTOTYPE_WITH_TAIL_COMPONENT_ID: &str = include_str!(
@@ -39,8 +36,6 @@ pub enum ExternalProviderError {
     AttributeContextBuilder(#[from] AttributeContextBuilderError),
     #[error("attribute prototype error: {0}")]
     AttributePrototype(#[from] AttributePrototypeError),
-    #[error("emit error: {0}")]
-    Emit(#[from] EmitError),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
     #[error("pg error: {0}")]
@@ -52,10 +47,6 @@ pub enum ExternalProviderError {
 
     #[error("unexpected: attribute prototype field is empty")]
     EmptyAttributePrototype,
-    #[error(
-        "provided attribute context does not specify an internal provider id (required for emit)"
-    )]
-    MissingInternalProviderForEmit,
     #[error("not found for id: {0}")]
     NotFound(ExternalProviderId),
     #[error("schema id mismatch: {0} (self) and {1} (provided)")]
@@ -97,7 +88,7 @@ pub struct ExternalProvider {
     schema_id: SchemaId,
     /// Indicates which [`SchemaVariant`](crate::SchemaVariant) this provider belongs to.
     schema_variant_id: SchemaVariantId,
-    /// Indicates which transformation function should be used during [`Self::emit()`].
+    /// Indicates which transformation function should be used for "emit".
     attribute_prototype_id: Option<AttributePrototypeId>,
 
     /// Name for [`Self`] that can be used for identification.
@@ -196,66 +187,6 @@ impl ExternalProvider {
         OptionBigInt<AttributePrototypeId>,
         ExternalProviderResult
     );
-
-    /// Evaluate with a provided [`AttributeContext`](crate::AttributeContext) and return the
-    /// resulting [`AttributeValue`](crate::AttributeValue).
-    ///
-    /// Requirements for the provided [`AttributeContext`](crate::AttributeContext):
-    /// - The least specific field set must be the [`InternalProviderId`](crate::InternalProvider)
-    ///   field (which _should_ correspond to an "explicit"
-    ///   [`InternalProvider`](crate::InternalProvider))
-    /// - If the [`SchemaId`](crate::Schema) is set, it must match the corresponding field on
-    ///   [`Self`]
-    /// - If the [`SchemaVariantId`](crate::SchemaVariant) is set, it must match the corresponding
-    ///   field on [`Self`]
-    pub async fn emit(
-        &self,
-        ctx: &DalContext<'_, '_>,
-        consume_attribute_context: AttributeContext,
-    ) -> ExternalProviderResult<AttributeValue> {
-        // Ensure that the least specific field in the provided context matches what we expect.
-        if !consume_attribute_context.is_least_specific_field_kind_internal_provider()? {
-            return Err(ExternalProviderError::MissingInternalProviderForEmit);
-        }
-
-        // Ensure that if the schema and/or schema variant fields are set, that they match our
-        // corresponding fields because we consume internally.
-        if !consume_attribute_context.is_schema_unset()
-            && consume_attribute_context.schema_id() != self.schema_id
-        {
-            return Err(ExternalProviderError::SchemaMismatch(
-                self.schema_id,
-                consume_attribute_context.schema_id(),
-            ));
-        }
-        if !consume_attribute_context.is_schema_variant_unset()
-            && consume_attribute_context.schema_variant_id() != self.schema_variant_id
-        {
-            return Err(ExternalProviderError::SchemaVariantMismatch(
-                self.schema_variant_id,
-                consume_attribute_context.schema_variant_id(),
-            ));
-        }
-
-        let emit_context = AttributeContextBuilder::from(consume_attribute_context)
-            .unset_prop_id()
-            .unset_internal_provider_id()
-            .set_external_provider_id(self.id)
-            .to_context()?;
-
-        let attribute_prototype_id = self
-            .attribute_prototype_id
-            .ok_or(ExternalProviderError::EmptyAttributePrototype)?;
-
-        let emit_attribute_value = emit::emit(
-            ctx,
-            attribute_prototype_id,
-            consume_attribute_context,
-            emit_context,
-        )
-        .await?;
-        Ok(emit_attribute_value)
-    }
 
     /// Find all [`Self`] for a given [`SchemaVariant`](crate::SchemaVariant).
     #[tracing::instrument(skip(ctx))]

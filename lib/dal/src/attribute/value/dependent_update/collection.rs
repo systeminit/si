@@ -61,7 +61,7 @@ impl AttributeValueDependentCollectionHarness {
                 .map_err(|e| AttributeValueError::InternalProvider(e.to_string()))?
         {
             source_implicit_internal_provider
-                .emit(ctx, source_attribute_context)
+                .implicit_emit(ctx, source_attribute_context)
                 .await
                 .map_err(|e| AttributeValueError::InternalProvider(e.to_string()))?;
         }
@@ -84,7 +84,7 @@ impl AttributeValueDependentCollectionHarness {
                     .set_prop_id(*ancestor_implicit_internal_provider.prop_id())
                     .to_context()?;
                 ancestor_implicit_internal_provider
-                    .emit(ctx, provider_emit_context)
+                    .implicit_emit(ctx, provider_emit_context)
                     .await
                     .map_err(|e| AttributeValueError::InternalProvider(e.to_string()))?;
 

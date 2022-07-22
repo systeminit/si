@@ -13,6 +13,3 @@
 
 pub mod external;
 pub mod internal;
-
-// Ensure "emit" is private since it will only be used by the providers.
-mod emit;
