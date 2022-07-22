@@ -74,7 +74,7 @@
 
 <script setup lang="ts">
 import _ from "lodash";
-import { Node } from "@/organisms/SiCanvas/SiCanvas/obj/node";
+import { Node } from "@/organisms/SiCanvas/canvas/obj/node";
 import * as Rx from "rxjs";
 
 import { computed, ref, watch } from "vue";
