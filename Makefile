@@ -157,7 +157,8 @@ test//lib/si-settings//RTESTDEPS: test//lib/veritech//TEST test//lib/cyclone//TE
 
 test//bin/lang-js//RTESTDEPS: test//lib/cyclone
 
-test//app/web//TESTDEPS: build//app/web build//bin/pinga deploy//web
+test//app/web//TESTDEPS: build//app/web
+# FIXME(nick): temporarily dropped --> build//bin/pinga deploy//web
 
 %//RUN:
 	@echo "::group::$@"
