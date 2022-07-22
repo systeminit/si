@@ -45,7 +45,7 @@
     "src/ignore/**/*.ts",
     "src/ignore/**/*.tsx",
     "src/ignore/**/*.vue",
-    "src/organisims/SchematicViewer/references",
+    "src/organisms/SchematicViewer/references",
     "node_modules/@pixi/text/index.d.ts"
   ]
 }

@@ -1,6 +1,6 @@
 import { ReplaySubject } from "rxjs";
 import { persistToSession } from "@/observable/session_state";
-import { PanelMaximized } from "@/organisims/PanelTree/panel_types";
+import { PanelMaximized } from "@/organisms/PanelTree/panel_types";
 
 export type PanelContainerSize = Record<
   string,

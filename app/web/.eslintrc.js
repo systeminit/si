@@ -39,6 +39,6 @@ module.exports = {
   },
   ignorePatterns: [
     "src/ignore/*",
-    "src/organisims/SchematicViewer/references/*",
+    "src/organisms/SchematicViewer/references/*",
   ],
 };

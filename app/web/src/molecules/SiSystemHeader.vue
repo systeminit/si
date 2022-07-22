@@ -10,7 +10,7 @@
 </template>
 
 <script setup lang="ts">
-import SystemWidget from "@/organisims/SystemWidget.vue";
+import SystemWidget from "@/organisms/SystemWidget.vue";
 </script>
 
 <style scoped>

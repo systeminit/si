@@ -19,7 +19,7 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
-import Nav from "@/organisims/Nav.vue";
+import Nav from "@/organisms/Nav.vue";
 import SiError from "@/atoms/SiError.vue";
 import SiLoader from "@/atoms/SiLoader.vue";
 import DebugRoute from "@/atoms/DebugRoute.vue";
