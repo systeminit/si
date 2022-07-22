@@ -7,7 +7,7 @@
     </template>
 
     <template #panels>
-      <TabPanel>
+      <TabPanel class="flex flex-col overflow-y-hidden">
         <AssetPalette />
       </TabPanel>
       <TabPanel>Local Assets</TabPanel>

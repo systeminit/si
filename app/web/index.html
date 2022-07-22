@@ -5,9 +5,15 @@
     <link rel="icon" href="/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>System Init</title>
-  <style>
-    html, body { margin: 0; padding: 0; height: 100%; width: 100%; background-color: #171717;  } 
-  </style>
+    <style>
+      html, body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        width: 100%;
+        background: transparent;
+      }
+    </style>
   </head>
   <body>
     <noscript>
@@ -16,7 +22,7 @@
         JavaScript enabled. Please enable it to continue.
       </strong>
     </noscript>
-    <div id="app" class="flex flex-col flex-grow min-h-screen h-full w-full"></div>
+    <div id="app" class="flex flex-col flex-grow h-screen w-screen"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

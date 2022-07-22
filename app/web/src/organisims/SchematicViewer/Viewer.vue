@@ -247,6 +247,7 @@ function updateMetadata(
   }
   renderer.renderStage();
 }
+
 async function nodeAdd(
   node: SchematicNode,
   schemaId: number,
@@ -343,6 +344,7 @@ function deactivateComponent(): void {
 function mouseEnter(): void {
   activateComponent();
 }
+
 function mouseLeave(): void {
   deactivateComponent();
 }

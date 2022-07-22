@@ -1,6 +1,6 @@
 <template>
   <div
-    class="flex flex-col border-[#DBDBDB] dark:border-[#525252] bg-white dark:bg-[#333333] overflow-auto w-40 lg:w-56 xl:w-72"
+    class="flex flex-col dark:text-white border-[#DBDBDB] dark:border-[#525252] bg-white dark:bg-[#333333] w-40 lg:w-56 xl:w-72 pointer-events-auto"
     :class="panelClasses"
   >
     <slot />

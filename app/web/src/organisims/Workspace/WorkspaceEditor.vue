@@ -1,47 +1,42 @@
 <template>
-  <div class="w-full h-full flex pointer-events-none">
-    <div class="w-full h-full z-0 relative">
-      <Viewer
-        v-if="lightmode"
-        :schematic-viewer-id="schematicViewerId"
-        :viewer-state="viewerState"
-        :viewer-event$="viewerEventObservable.viewerEvent$"
-        :schematic-data="schematicData"
-        :editor-context="editorContext"
-        :schematic-kind="schematicKind"
-        :deployment-node-selected="deploymentNodeSelected"
-        :light-mode="true"
-        class="pointer-events-auto"
-      />
-      <Viewer
-        v-else
-        :schematic-viewer-id="schematicViewerId"
-        :viewer-state="viewerState"
-        :viewer-event$="viewerEventObservable.viewerEvent$"
-        :schematic-data="schematicData"
-        :editor-context="editorContext"
-        :schematic-kind="schematicKind"
-        :deployment-node-selected="deploymentNodeSelected"
-        :light-mode="false"
-        class="pointer-events-auto"
-      />
+  <div class="w-full h-full flex pointer-events-none relative">
+    <!--  TODO(victor): `absolute -z-10` are only being passed here because otherwise it would break the old interface. When that's retired, that should probably go inside the Viewer component   -->
+    <Viewer
+      v-if="lightmode"
+      :schematic-viewer-id="schematicViewerId"
+      :viewer-state="viewerState"
+      :viewer-event$="viewerEventObservable.viewerEvent$"
+      :schematic-data="schematicData"
+      :editor-context="editorContext"
+      :schematic-kind="schematicKind"
+      :deployment-node-selected="deploymentNodeSelected"
+      :light-mode="true"
+      class="pointer-events-auto absolute -z-10"
+    />
+    <Viewer
+      v-else
+      :schematic-viewer-id="schematicViewerId"
+      :viewer-state="viewerState"
+      :viewer-event$="viewerEventObservable.viewerEvent$"
+      :schematic-data="schematicData"
+      :editor-context="editorContext"
+      :schematic-kind="schematicKind"
+      :deployment-node-selected="deploymentNodeSelected"
+      :light-mode="false"
+      class="pointer-events-auto absolute -z-10"
+    />
 
-      <div class="absolute inset-0 z-10">
-        <div class="flex flex-col h-full">
-          <!-- panels -->
-          <div class="flex flex-row grow">
-            <SiSidebar side="left" class="pointer-events-auto dark:text-white">
-              <SiChangesetForm />
-              <AssetsTabs />
-            </SiSidebar>
-            <!-- transparent div that flows through to the canvas -->
-            <div class="grow bg-transparent h-full pointer-events-none"></div>
-            <SiSidebar side="right" class="pointer-events-auto dark:text-white">
-              {{ canoe }}
-            </SiSidebar>
-          </div>
-        </div>
-      </div>
+    <div class="flex flex-row w-full bg-transparent">
+      <SiSidebar side="left">
+        <SiChangesetForm />
+        <AssetsTabs />
+      </SiSidebar>
+      <!-- transparent div that flows through to the canvas -->
+      <div class="grow h-full pointer-events-none"></div>
+      <SiSidebar side="right">
+        <SiChangesetForm />
+        <AssetsTabs />
+      </SiSidebar>
     </div>
   </div>
 </template>

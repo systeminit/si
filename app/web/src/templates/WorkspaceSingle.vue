@@ -1,15 +1,13 @@
 <template>
   <div
     id="workspace"
-    class="overflow-hidden flex flex-col w-full h-full select-none bg-white dark:bg-#[333333]"
+    class="overflow-hidden flex flex-col w-full h-full select-none"
   >
     <Navbar />
 
-    <router-view />
+    <router-view class="overflow-y-hidden" />
 
-    <div class="pointer-events-auto absolute bottom-0 z-10 w-screen">
-      <StatusBar />
-    </div>
+    <StatusBar class="flex-initial" />
   </div>
 </template>
 
