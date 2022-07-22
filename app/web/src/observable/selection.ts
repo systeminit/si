@@ -1,7 +1,7 @@
 import * as Rx from "rxjs";
 
-import { SceneManager } from "@/organisims/SchematicViewer/Viewer/scene_manager";
-import { Node } from "@/organisims/SchematicViewer/Viewer/obj/node";
+import { SceneManager } from "@/organisms/SchematicViewer/Viewer/scene_manager";
+import { Node } from "@/organisms/SchematicViewer/Viewer/obj/node";
 
 // These shouldn't be global, interaction manager should own them
 

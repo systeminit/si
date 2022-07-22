@@ -10,7 +10,7 @@
 </template>
 
 <script setup lang="ts">
-import ChangeSetWidget from "@/organisims/ChangeSetWidget.vue";
+import ChangeSetWidget from "@/organisms/ChangeSetWidget.vue";
 </script>
 
 <style scoped>

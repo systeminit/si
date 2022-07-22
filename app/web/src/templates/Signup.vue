@@ -7,7 +7,7 @@
 <script lang="ts">
 import { defineComponent } from "vue";
 
-import SignupForm from "@/organisims/SignupForm.vue";
+import SignupForm from "@/organisms/SignupForm.vue";
 
 export default defineComponent({
   name: "Signup",

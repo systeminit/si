@@ -77,7 +77,7 @@
 
 <script setup lang="ts">
 import SiSelect from "@/atoms/SiSelect.vue";
-import { PanelMaximized, PanelType } from "@/organisims/PanelTree/panel_types";
+import { PanelMaximized, PanelType } from "@/organisms/PanelTree/panel_types";
 import { LabelList } from "@/api/sdf/dal/label_list";
 import { computed, onMounted, PropType, ref, watch } from "vue";
 import {

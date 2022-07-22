@@ -6,7 +6,7 @@
 </template>
 
 <script lang="ts">
-// import ShortcutsEventBroker from "./organisims/ShortcutsEventBroker.vue";
+// import ShortcutsEventBroker from "./organisms/ShortcutsEventBroker.vue";
 import { restoreFromSession } from "@/observable/session_state";
 import "floating-vue/dist/style.css";
 

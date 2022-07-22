@@ -13,22 +13,22 @@ import Authenticate from "@/pages/Authenticate.vue";
 import Login from "@/templates/Login.vue";
 import Signup from "@/templates/Signup.vue";
 import Schema from "@/templates/Schema.vue";
-import SchemaList from "@/organisims/Schema/SchemaList.vue";
-import SchemaNew from "@/organisims/Schema/SchemaNew.vue";
-import SchemaView from "@/organisims/Schema/SchemaView.vue";
+import SchemaList from "@/organisms/Schema/SchemaList.vue";
+import SchemaNew from "@/organisms/Schema/SchemaNew.vue";
+import SchemaView from "@/organisms/Schema/SchemaView.vue";
 import Application from "@/templates/Application.vue";
-import ApplicationList from "@/organisims/Application/ApplicationList.vue";
-import ApplicationView from "@/organisims/Application/ApplicationView.vue";
-import Editor from "@/organisims/Editor.vue";
+import ApplicationList from "@/organisms/Application/ApplicationList.vue";
+import ApplicationView from "@/organisms/Application/ApplicationView.vue";
+import Editor from "@/organisms/Editor.vue";
 import _ from "lodash";
-import SchematicViewer from "@/organisims/SchematicViewer.vue";
+import SchematicViewer from "@/organisms/SchematicViewer.vue";
 import NewHome from "@/pages/NewHome.vue";
 import WorkspaceSingle from "@/templates/WorkspaceSingle.vue";
 import WorkspaceMultiple from "@/templates/WorkspaceMultiple.vue";
-import WorkspaceView from "@/organisims/Workspace/WorkspaceView.vue";
-import WorkspaceRuntime from "@/organisims/Workspace/WorkspaceRuntime.vue";
-import WorkspaceCompose from "@/organisims/Workspace/WorkspaceCompose.vue";
-import WorkspaceLab from "@/organisims/Workspace/WorkspaceLab.vue";
+import WorkspaceView from "@/organisms/Workspace/WorkspaceView.vue";
+import WorkspaceRuntime from "@/organisms/Workspace/WorkspaceRuntime.vue";
+import WorkspaceCompose from "@/organisms/Workspace/WorkspaceCompose.vue";
+import WorkspaceLab from "@/organisms/Workspace/WorkspaceLab.vue";
 
 const routes: RouteRecordRaw[] = [
   {
