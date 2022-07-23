@@ -42,11 +42,14 @@ import {
   NodeAddEvent,
   ViewerEventObservable,
 } from "@/organisms/SiCanvas/viewer_event";
+import { Category, Item, MenuItem } from "@/api/sdf/dal/menu";
+import { ApiResponse } from "@/api/sdf";
 
 const props = defineProps<{
   viewerEvent$: ViewerEventObservable["viewerEvent$"];
 }>();
 
+// TODO(victor): this types shouldn't be here, but since we probably need to refactor the way nodes/assets are organized in the backend I'll keep them for now
 interface Asset {
   id: number;
   name: string;
@@ -58,40 +61,40 @@ interface AssetCategory {
   assets: Asset[];
 }
 
-const assetCategories: AssetCategory[] = [
-  {
-    name: "Kubernetes",
-    color: "#00F",
-    assets: [{ id: 1, name: "Service (placeholder)" }],
-  },
-  {
-    name: "Cloud",
-    color: "#F00",
-    assets: [
-      { id: 2, name: "Secret" },
-      { id: 3, name: "Database" },
-    ],
-  },
-  {
-    name: "Something with a really really long name oh no oh no",
-    color: "#0FF",
-    assets: [
-      {
-        id: 4,
-        name: "Oh no this thing with a really really long name has an asset with a really long name inside",
-      },
-      {
-        id: 5,
-        name: "Oh no this thing with a really really long name has an asset with a really really long name inside",
-      },
-      { id: 6, name: "Help me I'm stuck in a cloud component factory" },
-    ],
-  },
-];
+const assetCategories = ref<AssetCategory[]>([]);
 
-// NodeSprite
-// NodeSprite normal hover focus disabled
-// NodeCategory
+SchematicService.getNodeAddMenu({
+  menuFilter: {
+    rootComponentId: 1,
+    schematicKind: SchematicKind.Deployment,
+  },
+}).subscribe((response: ApiResponse<MenuItem[]>) => {
+  if (response.error) {
+    GlobalErrorService.set(response);
+    return;
+  }
+
+  // TODO(victor): when the old interface goes, the API probably could return the expected structure and we won't need this conversion
+  // for now, we assume the endpoint returns an array of `api/sdf/dal/menu.Category` containing an array of `api/sdf/dal/menu.Item`
+  assetCategories.value = response
+    .filter((c) => c.kind === "category")
+    .map((c) => {
+      const { name, items } = c as Category;
+      return {
+        name,
+        color: "#00F", // TODO(victor) refactor menu endpoint to send color info
+        assets: items
+          .filter((i) => i.kind === "item")
+          .map((i) => {
+            const { name, schema_id: id } = i as Item;
+            return {
+              name,
+              id,
+            };
+          }),
+      };
+    });
+});
 
 const activeNode = ref<number | undefined>();
 
@@ -100,7 +103,7 @@ const setActiveNode = (e: Asset, _event: MouseEvent) => {
   activeNode.value = e.id !== activeNode.value ? e.id : undefined;
 
   // TODO(nick): temporarily embedding the add node into the active node event.
-  addNode(3, _event);
+  addNode(e.id, _event);
 };
 
 const addNode = async (schemaId: number, _event: MouseEvent) => {
@@ -134,5 +137,6 @@ const addNode = async (schemaId: number, _event: MouseEvent) => {
   const event = new NodeAddEvent({ node, schemaId: schemaId });
 
   props.viewerEvent$.next(event);
+  // TODO(victor) we should subscribe to viewerEvents to sync the selected node with the real state
 };
 </script>
