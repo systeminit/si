@@ -1,5 +1,5 @@
 <template>
-  <div class="w-full h-full flex pointer-events-none relative">
+  <div class="w-full h-full flex pointer-events-none relative overflow-hidden">
     <!-- FIXME(nick,victor): remove reliance on z index -->
     <SiCanvas
       v-if="lightmode && editorContext"
@@ -34,12 +34,8 @@
       <!-- transparent div that flows through to the canvas -->
       <div class="grow h-full pointer-events-none"></div>
 
-      <SiSidebar side="right">
-        <div class="text-center mt-10">
-          poop canoe
-          <div v-if="props.mutable">(rw)</div>
-          <div v-else>(ro)</div>
-        </div>
+      <SiSidebar side="right" :hidden="activeNode === null">
+        <ComponentDetails />
       </SiSidebar>
     </div>
   </div>
@@ -79,8 +75,10 @@ import { applicationNodeId$ } from "@/observable/application";
 import { ChangeSetService } from "@/service/change_set";
 import { ApplicationService } from "@/service/application";
 import AssetsTabs from "@/organisms/AssetsTabs.vue";
+import { lastSelectedNode$ } from "@/observable/selection";
+import ComponentDetails from "@/organisms/ComponentDetails.vue";
 
-const props = defineProps<{
+defineProps<{
   mutable: boolean;
 }>();
 
@@ -211,6 +209,8 @@ const editorContext = refFrom<EditorContext | null>(
     }),
   ),
 );
+
+const activeNode = refFrom(lastSelectedNode$);
 
 const theme = refFrom<Theme>(ThemeService.currentTheme());
 const lightmode = computed(() => {
