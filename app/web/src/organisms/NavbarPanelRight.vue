@@ -37,7 +37,7 @@
       </template>
 
       <template #dropdownContent>
-        <SiDropdownItem @select="onHome">Switch to old app</SiDropdownItem>
+        <SiDropdownItem @select="onOld">Switch to old app</SiDropdownItem>
         <SiDropdownItem @select="onLogout">Logout</SiDropdownItem>
       </template>
     </SiNavbarButton>
@@ -60,8 +60,8 @@ const copyURL = () => {
   navigator.clipboard.writeText(window.location.href);
 };
 
-const onHome = async () => {
-  await router.push({ name: "home" });
+const onOld = async () => {
+  await router.push({ name: "old" });
 };
 
 const onLogout = async () => {

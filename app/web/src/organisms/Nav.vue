@@ -202,8 +202,8 @@
         </div>
 
         <div class="flex items-center w-full mx-6 my-4 color-grey-light">
-          <button data-test="new-home" @click="onWorkspace">
-            <SiIcon tooltip-text="New Home">
+          <button data-test="home" @click="onWorkspace">
+            <SiIcon tooltip-text="Home">
               <SwitchHorizontalIcon class="color-grey-light" />
             </SiIcon>
           </button>
@@ -264,7 +264,7 @@ const onWorkspace = async () => {
   if (workspaceId.value) {
     await router.push({
       name: "workspace-single",
-      path: "/new/w/:workspaceId",
+      path: "/w/:workspaceId",
       params: { workspaceId: workspaceId.value },
     });
   } else {

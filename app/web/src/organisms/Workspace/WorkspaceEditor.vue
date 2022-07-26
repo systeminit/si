@@ -72,8 +72,6 @@ import {
 } from "@/observable/schematic";
 import { system$ } from "@/observable/system";
 import { applicationNodeId$ } from "@/observable/application";
-import { ChangeSetService } from "@/service/change_set";
-import { ApplicationService } from "@/service/application";
 import AssetsTabs from "@/organisms/AssetsTabs.vue";
 import { lastSelectedNode$ } from "@/observable/selection";
 import ComponentDetails from "@/organisms/ComponentDetails.vue";
@@ -138,65 +136,6 @@ combineLatest([
       schematicSchemaVariants$.next(variants as SchematicSchemaVariants);
     }
   });
-
-// FIXME(nick,adam): create an application and a changeset when the editor is loaded.
-// We need both in order to create and drag nodes.
-
-// we use this lock to guarantee that we won't loop the application creation, since some calls during the process
-// also notify the ApplicationService.currentApplication's observers. -- victor
-const creatingResource = ref<boolean>(false);
-
-ApplicationService.currentApplication().subscribe((application) => {
-  if (application === null && !creatingResource.value) {
-    creatingResource.value = true;
-    ApplicationService.createApplication({
-      name: "poop",
-    }).subscribe((response) => {
-      if (response.error) {
-        creatingResource.value = false;
-        console.log("oopsie poopsie! we could not create an application!");
-        GlobalErrorService.set(response);
-        return;
-      }
-
-      ApplicationService.clearCurrentApplication();
-      ApplicationService.setCurrentApplication({
-        applicationId: response.application.id,
-      }).subscribe((response) => {
-        creatingResource.value = false;
-        if (response.error) {
-          console.log("could not set current application to poop!");
-          GlobalErrorService.set(response);
-          return;
-        }
-      });
-    });
-  }
-});
-
-ChangeSetService.currentChangeSet().subscribe((changeSet) => {
-  if (changeSet === null) {
-    ChangeSetService.createChangeSet({ changeSetName: "canoe" }).subscribe(
-      (response) => {
-        if (response.error) {
-          console.log("oopsie poopsie! we could not create a change set!");
-          GlobalErrorService.set(response);
-          return;
-        }
-
-        ChangeSetService.startEditSession({
-          changeSetPk: response.changeSet.pk,
-        }).subscribe((response) => {
-          if (response.error) {
-            console.log("could not start edit session!");
-            GlobalErrorService.set(response);
-            return;
-          }
-        });
-      },
-    );
-  }
-});
 
 const editorContext = refFrom<EditorContext | null>(
   combineLatest([system$, applicationNodeId$, visibility$]).pipe(

@@ -7,7 +7,7 @@ import {
   NavigationGuardNext,
 } from "vue-router";
 import { SessionService } from "@/service/session";
-import Home from "@/pages/Home.vue";
+import OldHome from "@/pages/OldHome.vue";
 import NotFoundPage from "@/pages/NotFound.vue";
 import Authenticate from "@/pages/Authenticate.vue";
 import Login from "@/templates/Login.vue";
@@ -22,7 +22,7 @@ import ApplicationView from "@/organisms/Application/ApplicationView.vue";
 import Editor from "@/organisms/Editor.vue";
 import _ from "lodash";
 import SchematicViewer from "@/organisms/SchematicViewer.vue";
-import NewHome from "@/pages/NewHome.vue";
+import Home from "@/pages/Home.vue";
 import WorkspaceSingle from "@/templates/WorkspaceSingle.vue";
 import WorkspaceMultiple from "@/templates/WorkspaceMultiple.vue";
 import WorkspaceView from "@/organisms/Workspace/WorkspaceView.vue";
@@ -35,6 +35,60 @@ const routes: RouteRecordRaw[] = [
     path: "/",
     name: "home",
     component: Home,
+    children: [
+      {
+        path: "w",
+        name: "workspace-multiple",
+        component: WorkspaceMultiple,
+        redirect: { name: "home" },
+        children: [
+          {
+            name: "workspace-single",
+            path: ":workspaceId",
+            component: WorkspaceSingle,
+            redirect: { name: "workspace-compose" },
+            props: (route) => {
+              let workspaceId;
+              if (_.isArray(route.params.workspaceId)) {
+                workspaceId = Number.parseInt(route.params.workspaceId[0]);
+              } else {
+                workspaceId = Number.parseInt(route.params.workspaceId);
+              }
+              return {
+                workspaceId,
+              };
+            },
+            children: [
+              {
+                path: "c",
+                name: "workspace-compose",
+                component: WorkspaceCompose,
+              },
+              {
+                path: "l",
+                name: "workspace-lab",
+                component: WorkspaceLab,
+              },
+              {
+                path: "v",
+                name: "workspace-view",
+                component: WorkspaceView,
+              },
+              {
+                path: "r",
+                name: "workspace-runtime",
+                component: WorkspaceRuntime,
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+  {
+    path: "/old",
+    name: "old",
+    component: OldHome,
     children: [
       {
         path: "application",
@@ -132,60 +186,6 @@ const routes: RouteRecordRaw[] = [
         path: "signup",
         name: "signup",
         component: Signup,
-      },
-    ],
-  },
-  {
-    path: "/new",
-    name: "new",
-    component: NewHome,
-    children: [
-      {
-        path: "w",
-        name: "workspace-multiple",
-        component: WorkspaceMultiple,
-        redirect: { name: "new" },
-        children: [
-          {
-            name: "workspace-single",
-            path: ":workspaceId",
-            component: WorkspaceSingle,
-            redirect: { name: "workspace-compose" },
-            props: (route) => {
-              let workspaceId;
-              if (_.isArray(route.params.workspaceId)) {
-                workspaceId = Number.parseInt(route.params.workspaceId[0]);
-              } else {
-                workspaceId = Number.parseInt(route.params.workspaceId);
-              }
-              return {
-                workspaceId,
-              };
-            },
-            children: [
-              {
-                path: "c",
-                name: "workspace-compose",
-                component: WorkspaceCompose,
-              },
-              {
-                path: "l",
-                name: "workspace-lab",
-                component: WorkspaceLab,
-              },
-              {
-                path: "v",
-                name: "workspace-view",
-                component: WorkspaceView,
-              },
-              {
-                path: "r",
-                name: "workspace-runtime",
-                component: WorkspaceRuntime,
-              },
-            ],
-          },
-        ],
       },
     ],
   },
