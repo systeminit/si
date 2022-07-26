@@ -44,6 +44,7 @@ import {
 } from "@/organisms/SiCanvas/viewer_event";
 import { Category, Item, MenuItem } from "@/api/sdf/dal/menu";
 import { ApiResponse } from "@/api/sdf";
+import { ApplicationService } from "@/service/application";
 
 const props = defineProps<{
   viewerEvent$: ViewerEventObservable["viewerEvent$"];
@@ -63,37 +64,46 @@ interface AssetCategory {
 
 const assetCategories = ref<AssetCategory[]>([]);
 
-SchematicService.getNodeAddMenu({
-  menuFilter: {
-    rootComponentId: 1,
-    schematicKind: SchematicKind.Deployment,
-  },
-}).subscribe((response: ApiResponse<MenuItem[]>) => {
-  if (response.error) {
-    GlobalErrorService.set(response);
+// FIXME(nick,victor): temporary measure to populate the assetCategories dynamically based on the application.
+ApplicationService.currentApplication().subscribe((application) => {
+  if (application === null) {
+    assetCategories.value = [];
     return;
   }
 
-  // TODO(victor): when the old interface goes, the API probably could return the expected structure and we won't need this conversion
-  // for now, we assume the endpoint returns an array of `api/sdf/dal/menu.Category` containing an array of `api/sdf/dal/menu.Item`
-  assetCategories.value = response
-    .filter((c) => c.kind === "category")
-    .map((c) => {
-      const { name, items } = c as Category;
-      return {
-        name,
-        color: "#00F", // TODO(victor) refactor menu endpoint to send color info
-        assets: items
-          .filter((i) => i.kind === "item")
-          .map((i) => {
-            const { name, schema_id: id } = i as Item;
-            return {
-              name,
-              id,
-            };
-          }),
-      };
-    });
+  SchematicService.getNodeAddMenu({
+    menuFilter: {
+      rootComponentId: application.id,
+      schematicKind: SchematicKind.Deployment,
+    },
+  }).subscribe((response: ApiResponse<MenuItem[]>) => {
+    if (response.error) {
+      assetCategories.value = [];
+      GlobalErrorService.set(response);
+      return;
+    }
+
+    // TODO(victor): when the old interface goes, the API probably could return the expected structure and we won't need this conversion
+    // for now, we assume the endpoint returns an array of `api/sdf/dal/menu.Category` containing an array of `api/sdf/dal/menu.Item`
+    assetCategories.value = response
+      .filter((c) => c.kind === "category")
+      .map((c) => {
+        const { name, items } = c as Category;
+        return {
+          name,
+          color: "#00F", // TODO(victor) refactor menu endpoint to send color info
+          assets: items
+            .filter((i) => i.kind === "item")
+            .map((i) => {
+              const { name, schema_id: id } = i as Item;
+              return {
+                name,
+                id,
+              };
+            }),
+        };
+      });
+  });
 });
 
 const activeNode = ref<number | undefined>();
