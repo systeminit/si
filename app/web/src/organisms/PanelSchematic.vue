@@ -102,10 +102,7 @@ import NodeAddMenu from "@/molecules/NodeAddMenu.vue";
 import { ApplicationService } from "@/service/application";
 import { refFrom, untilUnmounted } from "vuse-rx";
 import { ChangeSetService } from "@/service/change_set";
-import {
-  NodeAddEvent,
-  ViewerEventObservable,
-} from "./SiCanvas/viewer_event";
+import { NodeAddEvent, ViewerEventObservable } from "./SiCanvas/viewer_event";
 import { lastSelectedDeploymentNode$ } from "@/observable/selection";
 
 const schematicData = refFrom<Schematic | null>(schematicData$);

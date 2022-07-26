@@ -5,7 +5,7 @@
   >
     <Navbar />
 
-    <router-view class="overflow-y-hidden" />
+    <router-view class="overflow-hidden" />
 
     <StatusBar class="flex-initial" />
   </div>
