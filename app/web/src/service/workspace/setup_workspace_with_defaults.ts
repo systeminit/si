@@ -1,94 +1,75 @@
 import _ from "lodash";
-import { take } from "rxjs";
+import { firstValueFrom } from "rxjs";
 import { ApplicationService } from "@/service/application";
 import { ChangeSetService } from "@/service/change_set";
 import { GlobalErrorService } from "@/service/global_error";
 
-export function setupWorkspaceWithDefaults() {
-  ApplicationService.currentApplication()
-    .pipe(take(1))
-    .subscribe((application) => {
-      if (application === null) {
-        ApplicationService.listApplications()
-          .pipe(take(1))
-          .subscribe((response) => {
-            if (response.error) {
-              console.log("oopsie poopsie! we could not list applications!");
-              GlobalErrorService.set(response);
-              return;
-            }
+export async function setupWorkspaceWithDefaults() {
+  const currentApp = await firstValueFrom(
+    ApplicationService.currentApplication(),
+  );
 
-            const potentialApplication = response.list.shift();
-            if (potentialApplication) {
-              ApplicationService.setCurrentApplication({
-                applicationId: potentialApplication.application.id,
-              })
-                .pipe(take(1))
-                .subscribe((response) => {
-                  if (response.error) {
-                    console.log("could not set current application");
-                    GlobalErrorService.set(response);
-                    return;
-                  }
-                });
-            } else {
-              ApplicationService.createApplication({
-                name: `poop-${_.uniqueId()}`,
-              })
-                .pipe(take(1))
-                .subscribe((response) => {
-                  if (response.error) {
-                    console.log(
-                      "oopsie poopsie! we could not create an application!",
-                    );
-                    GlobalErrorService.set(response);
-                    return;
-                  }
+  if (currentApp === null) {
+    const applications = await firstValueFrom(
+      ApplicationService.listApplications(),
+    );
 
-                  ApplicationService.setCurrentApplication({
-                    applicationId: response.application.id,
-                  })
-                    .pipe(take(1))
-                    .subscribe((response) => {
-                      if (response.error) {
-                        console.log("could not set current application");
-                        GlobalErrorService.set(response);
-                        return;
-                      }
-                    });
-                });
-            }
-          });
-      }
-    });
+    if (applications.error) {
+      console.log("oopsie poopsie! we could not list applications!");
+      GlobalErrorService.set(applications);
+      return;
+    }
 
-  ChangeSetService.currentChangeSet()
-    .pipe(take(1))
-    .subscribe((changeSet) => {
-      if (changeSet === null) {
-        ChangeSetService.createChangeSet({
-          changeSetName: `canoe-${_.uniqueId()}`,
-        })
-          .pipe(take(1))
-          .subscribe((response) => {
-            if (response.error) {
-              console.log("oopsie poopsie! we could not create a change set!");
-              GlobalErrorService.set(response);
-              return;
-            }
+    // NOTE(nick,victor): on first mount, this should only have one application, "default", which was created
+    // when signing up for an account.
+    const applicationToEnable = applications.list.shift();
+    if (applicationToEnable === undefined) {
+      console.log("oopsie poopsie! account does not have any applications!");
+      return;
+    }
 
-            ChangeSetService.startEditSession({
-              changeSetPk: response.changeSet.pk,
-            })
-              .pipe(take(1))
-              .subscribe((response) => {
-                if (response.error) {
-                  console.log("could not start edit session");
-                  GlobalErrorService.set(response);
-                  return;
-                }
-              });
-          });
-      }
-    });
+    const setCurrentApplicationResponse = await firstValueFrom(
+      ApplicationService.setCurrentApplication({
+        applicationId: applicationToEnable.application.id,
+      }),
+    );
+
+    if (setCurrentApplicationResponse.error) {
+      console.log("could not set current application");
+      GlobalErrorService.set(setCurrentApplicationResponse);
+      return;
+    }
+  }
+
+  const currentChangeset = await firstValueFrom(
+    ChangeSetService.currentChangeSet(),
+  );
+
+  if (currentChangeset === null) {
+    console.log("reating new changeset");
+
+    const changeSetCreation = await firstValueFrom(
+      ChangeSetService.createChangeSet({
+        changeSetName: `poop-canoe-${_.uniqueId()}`,
+      }),
+    );
+
+    if (changeSetCreation.error) {
+      console.log("oopsie poopsie! we could not create a change set!");
+      GlobalErrorService.set(changeSetCreation);
+      return;
+    }
+
+    const startEditSessionResponse = await firstValueFrom(
+      ChangeSetService.startEditSession({
+        changeSetPk: changeSetCreation.changeSet.pk,
+      }),
+    );
+
+    if (startEditSessionResponse.error) {
+      console.log("could not start edit session");
+      GlobalErrorService.set(startEditSessionResponse);
+      return;
+    }
+  } else console.log("No need to create new changeset");
 }

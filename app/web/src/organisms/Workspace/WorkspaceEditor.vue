@@ -2,26 +2,26 @@
   <div class="w-full h-full flex pointer-events-none relative overflow-hidden">
     <!-- FIXME(nick,victor): remove reliance on z index -->
     <SiCanvas
-      v-if="lightmode && editorContext"
+      v-if="lightmode && editorContext && selectedDeploymentNode"
       light-mode
       :schematic-viewer-id="schematicViewerId"
       :viewer-state="viewerState"
       :editor-context="editorContext"
       :schematic-data="schematicData"
       :viewer-event$="viewerEventObservable.viewerEvent$"
-      :schematic-kind="SchematicKind.Deployment"
-      :deployment-node-selected="null"
+      :schematic-kind="SchematicKind.Component"
+      :deployment-node-selected="selectedDeploymentNode.id"
       class="pointer-events-auto absolute z-10"
     />
     <SiCanvas
-      v-else-if="editorContext"
+      v-else-if="editorContext && selectedDeploymentNode"
       :schematic-viewer-id="schematicViewerId"
       :viewer-state="viewerState"
       :editor-context="editorContext"
       :schematic-data="schematicData"
       :viewer-event$="viewerEventObservable.viewerEvent$"
-      :schematic-kind="SchematicKind.Deployment"
-      :deployment-node-selected="null"
+      :schematic-kind="SchematicKind.Component"
+      :deployment-node-selected="selectedDeploymentNode.id"
       class="pointer-events-auto absolute z-10"
     />
 
@@ -46,6 +46,7 @@ import {
   EditorContext,
   Schematic,
   SchematicKind,
+  SchematicNode,
   SchematicSchemaVariants,
 } from "@/api/sdf/dal/schematic";
 import SiCanvas from "@/organisms/SiCanvas.vue";
@@ -55,7 +56,7 @@ import { ViewerStateMachine } from "@/organisms/SiCanvas/state_machine";
 import SiSidebar from "@/atoms/SiSidebar.vue";
 import { ThemeService } from "@/service/theme";
 import { refFrom, untilUnmounted } from "vuse-rx";
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { Theme } from "@/observable/theme";
 import SiChangesetForm from "@/organisms/SiChangesetForm.vue";
 import { combineLatest, forkJoin, from, map, switchMap, take } from "rxjs";
@@ -84,6 +85,17 @@ const schematicViewerId = _.uniqueId();
 const viewerState = new ViewerStateMachine();
 const viewerEventObservable = new VE.ViewerEventObservable();
 const schematicData = ref<Schematic>({ nodes: [], connections: [] });
+
+// NOTE(nick,victor): hack!
+const selectedDeploymentNode = ref<SchematicNode | null>(null);
+watch(schematicData, (sd) => {
+  for (const node of sd.nodes) {
+    if (node.kind.kind == "deployment") {
+      selectedDeploymentNode.value = node;
+      break;
+    }
+  }
+});
 
 schematicData$.subscribe((schematic) => {
   if (schematic) {

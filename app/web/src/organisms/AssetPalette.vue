@@ -74,7 +74,7 @@ ApplicationService.currentApplication().subscribe((application) => {
   SchematicService.getNodeAddMenu({
     menuFilter: {
       rootComponentId: application.id,
-      schematicKind: SchematicKind.Deployment,
+      schematicKind: SchematicKind.Component,
     },
   }).subscribe((response: ApiResponse<MenuItem[]>) => {
     if (response.error) {
