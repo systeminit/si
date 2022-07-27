@@ -1,3 +1,5 @@
+#![recursion_limit = "256"]
+
 use color_eyre::Result;
 use sdf::{Config, FaktoryProcessor, IncomingStream, JobQueueProcessor, MigrationMode, Server};
 use telemetry::{
