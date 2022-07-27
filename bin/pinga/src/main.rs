@@ -168,42 +168,6 @@ async fn run(
         const NUM_TASKS: usize = 5;
         let (task_wait_send, mut task_wait_recv) = mpsc::channel(1);
         let mut handles = Vec::with_capacity(NUM_TASKS + 1);
-        let beat_client = client.clone();
-        // The heartbeat gets its own shutdown channel, because we don't want it to shut down until
-        // _after_ all the worker tasks have already shutdown. If we shut down the heartbeat before
-        // then, the faktory server is likely to kill our TCP connection, and that is A Bad Thing™.
-        let (beat_shutdown_send, mut beat_shutdown_channel) = broadcast::channel(1);
-        handles.push(tokio::task::spawn(async move {
-            loop {
-                match beat_client.beat().await {
-                    Ok(BeatState::Ok) => {}
-                    // Both the Quiet and Terminate states from the
-                    // faktory server mean that we should initiate a
-                    // shutdown.
-                    Ok(BeatState::Quiet) | Ok(BeatState::Terminate) => break,
-                    Err(err) => {
-                        error!("Beat failed: {err}");
-                        break;
-                    }
-                }
-                // We use the "old" receive end in the async block,
-                // instead of the newly created one, so that we don't
-                // risk missing a shutdown message. We will then use
-                // the "new" one next time around in the loop.
-                let new_shutdown_channel = beat_shutdown_channel.resubscribe();
-                let shutdown_future = async move {
-                    let _ = beat_shutdown_channel.recv().await;
-                };
-                beat_shutdown_channel = new_shutdown_channel;
-                tokio::select! {
-                    _ = shutdown_future => {
-                        info!("Heartbeat task received shutdown notification; stopping.");
-                        break;
-                    }
-                    _ = tokio::time::sleep(Duration::from_secs(15)) => {}
-                }
-            }
-        }));
 
         for _ in 0..NUM_TASKS {
             handles.push(tokio::task::spawn(start_job_executor(
@@ -236,7 +200,6 @@ async fn run(
                 // Now that all the worker tasks have exited, we can
                 // safely stop sending heartbeats to the faktory
                 // server.
-                let _ = beat_shutdown_send.send(());
                 info!("Closing faktory-async client connection");
                 if let Err(err) = client.close() {
                     error!("Error closing faktory-async client connection: {err}");
