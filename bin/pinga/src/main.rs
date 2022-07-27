@@ -17,6 +17,7 @@ use dal::{
 };
 use dal::{FaktoryProcessor, JobQueueProcessor};
 use si_data::{NatsClient, PgPool, PgPoolError};
+use uuid::Uuid;
 
 mod args;
 mod config;
@@ -125,9 +126,12 @@ async fn run(
     if let MigrationMode::Run | MigrationMode::RunAndQuit = config.migration_mode() {
         info!("Running migrations");
 
-        let mut faktory_config = faktory_async::Config::from_uri(config.faktory().url.clone());
-        faktory_config.set_hostname("pinga-migrations");
-        let client = Client::new(&faktory_config).await?;
+        let faktory_config = faktory_async::Config::from_uri(
+            &config.faktory().url,
+            Some("pinga-migratoins".to_string()),
+            None,
+        );
+        let client = Client::new(faktory_config, 128);
         let job_processor =
             Box::new(FaktoryProcessor::new(client)) as Box<dyn JobQueueProcessor + Send + Sync>;
 
@@ -152,21 +156,14 @@ async fn run(
 
     loop {
         info!("Creating faktory connection");
-        let mut config = faktory_async::Config::from_uri(config.faktory().url.clone());
-        config.does_consume();
-        config.set_hostname("pinga");
+        let config = faktory_async::Config::from_uri(
+            &config.faktory().url,
+            Some("pinga".to_string()),
+            Some(Uuid::new_v4().to_string()),
+        );
 
-        let client = match Client::new(&config).await {
-            Ok(c) => {
-                info!("Connected to faktory");
-                c
-            }
-            Err(err) => {
-                error!("Job execution failed: {err}");
-                tokio::time::sleep(Duration::from_millis(5000)).await;
-                continue;
-            }
-        };
+        let client = Client::new(config.clone(), 256);
+        info!("Spawned faktory connection.");
 
         const NUM_TASKS: usize = 5;
         let (task_wait_send, mut task_wait_recv) = mpsc::channel(1);
@@ -241,8 +238,8 @@ async fn run(
                 // server.
                 let _ = beat_shutdown_send.send(());
                 info!("Closing faktory-async client connection");
-                if let Err(err) = client.close().await {
-                    error!("Unable to close client connection: {err}");
+                if let Err(err) = client.close() {
+                    error!("Error closing faktory-async client connection: {err}");
                 }
                 info!("All executor jobs finished; exiting main executor loop.");
                 break Ok(());
@@ -251,8 +248,8 @@ async fn run(
         }
 
         info!("Closing faktory-async client connection");
-        if let Err(err) = client.close().await {
-            error!("Unable to close client connection: {err}");
+        if let Err(err) = client.close() {
+            error!("Erro closing fakory-async client connection: {err}");
         }
     }
 }
@@ -292,15 +289,6 @@ async fn start_job_executor(
             }
         }
         tokio::time::sleep(Duration::from_millis(500)).await;
-
-        match client.reconnect_if_needed().await {
-            Ok(did_reconnect) => {
-                if did_reconnect {
-                    info!("Reconnected to faktory");
-                }
-            }
-            Err(err) => error!("Could not reconnect to faktory: {err})"),
-        };
 
         match client.last_beat().await {
             Ok(BeatState::Ok) => {

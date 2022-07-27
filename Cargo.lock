@@ -1073,9 +1073,22 @@ dependencies = [
 [[package]]
 name = "faktory-async"
 version = "0.1.0"
-source = "git+https://github.com/systeminit/faktory-async?branch=main#69937d20baaa4ce94314748d9483dd5aef753e24"
+source = "git+https://github.com/systeminit/faktory-async?branch=main#b62a9b67de412271fd758c006a752bde322c96ae"
 dependencies = [
- "async-recursion",
+ "chrono",
+ "faktory-lib-async",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "uuid",
+]
+
+[[package]]
+name = "faktory-lib-async"
+version = "0.1.0"
+source = "git+https://github.com/systeminit/faktory-lib-async?branch=main#8b3f2f183bcde2e532ca177ec673d34746581bca"
+dependencies = [
  "chrono",
  "serde",
  "serde_json",
@@ -2215,6 +2228,7 @@ dependencies = [
  "telemetry",
  "thiserror",
  "tokio",
+ "uuid",
  "veritech",
 ]
 
@@ -3754,9 +3768,9 @@ checksum = "5190c9442dcdaf0ddd50f37420417d219ae5261bbf5db120d0f9bab996c9cba1"
 
 [[package]]
 name = "uuid"
-version = "1.0.0"
+version = "1.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8cfcd319456c4d6ea10087ed423473267e1a071f3bc0aa89f80d60997843c6f0"
+checksum = "dd6469f4314d5f1ffec476e05f17cc9a78bc7a27a6a857842170bdf8d6f98d2f"
 dependencies = [
  "getrandom",
  "serde",
