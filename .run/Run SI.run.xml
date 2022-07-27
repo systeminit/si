@@ -1,0 +1,9 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Run SI" type="CompoundRunConfigurationType">
+    <toRun name="Run Pinga" type="MAKEFILE_TARGET_RUN_CONFIGURATION" />
+    <toRun name="Run SDF" type="MAKEFILE_TARGET_RUN_CONFIGURATION" />
+    <toRun name="Run Veritech" type="MAKEFILE_TARGET_RUN_CONFIGURATION" />
+    <toRun name="Run Web" type="MAKEFILE_TARGET_RUN_CONFIGURATION" />
+    <method v="2" />
+  </configuration>
+</component>
