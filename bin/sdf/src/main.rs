@@ -1,3 +1,5 @@
+#![recursion_limit = "256"]
+
 use color_eyre::Result;
 use sdf::{Config, FaktoryProcessor, IncomingStream, JobQueueProcessor, MigrationMode, Server};
 use telemetry::{
@@ -82,9 +84,10 @@ async fn run(args: args::Args, mut telemetry: telemetry::Client) -> Result<()> {
 
     let nats = Server::connect_to_nats(config.nats()).await?;
 
-    let job_processor = Box::new(FaktoryProcessor::new(
-        faktory_async::Client::new(&faktory_async::Config::from_uri(&config.faktory().url)).await?,
-    )) as Box<dyn JobQueueProcessor + Send + Sync>;
+    let job_processor = Box::new(FaktoryProcessor::new(faktory_async::Client::new(
+        faktory_async::Config::from_uri(&config.faktory().url, Some("sdf".to_string()), None),
+        256,
+    ))) as Box<dyn JobQueueProcessor + Send + Sync>;
 
     let pg_pool = Server::create_pg_pool(config.pg_pool()).await?;
 

@@ -17,6 +17,7 @@ use dal::{
 };
 use dal::{FaktoryProcessor, JobQueueProcessor};
 use si_data::{NatsClient, PgPool, PgPoolError};
+use uuid::Uuid;
 
 mod args;
 mod config;
@@ -125,9 +126,12 @@ async fn run(
     if let MigrationMode::Run | MigrationMode::RunAndQuit = config.migration_mode() {
         info!("Running migrations");
 
-        let mut faktory_config = faktory_async::Config::from_uri(config.faktory().url.clone());
-        faktory_config.set_hostname("pinga-migrations");
-        let client = Client::new(&faktory_config).await?;
+        let faktory_config = faktory_async::Config::from_uri(
+            &config.faktory().url,
+            Some("pinga-migrations".to_string()),
+            None,
+        );
+        let client = Client::new(faktory_config, 128);
         let job_processor =
             Box::new(FaktoryProcessor::new(client)) as Box<dyn JobQueueProcessor + Send + Sync>;
 
@@ -152,61 +156,18 @@ async fn run(
 
     loop {
         info!("Creating faktory connection");
-        let mut config = faktory_async::Config::from_uri(config.faktory().url.clone());
-        config.does_consume();
-        config.set_hostname("pinga");
+        let config = faktory_async::Config::from_uri(
+            &config.faktory().url,
+            Some("pinga".to_string()),
+            Some(Uuid::new_v4().to_string()),
+        );
 
-        let client = match Client::new(&config).await {
-            Ok(c) => {
-                info!("Connected to faktory");
-                c
-            }
-            Err(err) => {
-                error!("Job execution failed: {err}");
-                tokio::time::sleep(Duration::from_millis(5000)).await;
-                continue;
-            }
-        };
+        let client = Client::new(config.clone(), 256);
+        info!("Spawned faktory connection.");
 
         const NUM_TASKS: usize = 5;
         let (task_wait_send, mut task_wait_recv) = mpsc::channel(1);
         let mut handles = Vec::with_capacity(NUM_TASKS + 1);
-        let beat_client = client.clone();
-        // The heartbeat gets its own shutdown channel, because we don't want it to shut down until
-        // _after_ all the worker tasks have already shutdown. If we shut down the heartbeat before
-        // then, the faktory server is likely to kill our TCP connection, and that is A Bad Thing™.
-        let (beat_shutdown_send, mut beat_shutdown_channel) = broadcast::channel(1);
-        handles.push(tokio::task::spawn(async move {
-            loop {
-                match beat_client.beat().await {
-                    Ok(BeatState::Ok) => {}
-                    // Both the Quiet and Terminate states from the
-                    // faktory server mean that we should initiate a
-                    // shutdown.
-                    Ok(BeatState::Quiet) | Ok(BeatState::Terminate) => break,
-                    Err(err) => {
-                        error!("Beat failed: {err}");
-                        break;
-                    }
-                }
-                // We use the "old" receive end in the async block,
-                // instead of the newly created one, so that we don't
-                // risk missing a shutdown message. We will then use
-                // the "new" one next time around in the loop.
-                let new_shutdown_channel = beat_shutdown_channel.resubscribe();
-                let shutdown_future = async move {
-                    let _ = beat_shutdown_channel.recv().await;
-                };
-                beat_shutdown_channel = new_shutdown_channel;
-                tokio::select! {
-                    _ = shutdown_future => {
-                        info!("Heartbeat task received shutdown notification; stopping.");
-                        break;
-                    }
-                    _ = tokio::time::sleep(Duration::from_secs(15)) => {}
-                }
-            }
-        }));
 
         for _ in 0..NUM_TASKS {
             handles.push(tokio::task::spawn(start_job_executor(
@@ -239,10 +200,9 @@ async fn run(
                 // Now that all the worker tasks have exited, we can
                 // safely stop sending heartbeats to the faktory
                 // server.
-                let _ = beat_shutdown_send.send(());
                 info!("Closing faktory-async client connection");
-                if let Err(err) = client.close().await {
-                    error!("Unable to close client connection: {err}");
+                if let Err(err) = client.close() {
+                    error!("Error closing faktory-async client connection: {err}");
                 }
                 info!("All executor jobs finished; exiting main executor loop.");
                 break Ok(());
@@ -251,8 +211,8 @@ async fn run(
         }
 
         info!("Closing faktory-async client connection");
-        if let Err(err) = client.close().await {
-            error!("Unable to close client connection: {err}");
+        if let Err(err) = client.close() {
+            error!("Error closing fakory-async client connection: {err}");
         }
     }
 }
@@ -292,15 +252,6 @@ async fn start_job_executor(
             }
         }
         tokio::time::sleep(Duration::from_millis(500)).await;
-
-        match client.reconnect_if_needed().await {
-            Ok(did_reconnect) => {
-                if did_reconnect {
-                    info!("Reconnected to faktory");
-                }
-            }
-            Err(err) => error!("Could not reconnect to faktory: {err})"),
-        };
 
         match client.last_beat().await {
             Ok(BeatState::Ok) => {

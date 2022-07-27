@@ -1,7 +1,7 @@
 use std::{env, path::Path, sync::Arc};
 
 use anyhow::Result;
-use faktory_async::Client;
+use faktory_async::Client as FaktoryClient;
 use lazy_static::lazy_static;
 use names::{Generator, Name};
 use si_data::{NatsClient, NatsConfig, PgPool, PgPoolConfig};
@@ -97,11 +97,10 @@ impl TestContext {
         let nats_conn = NatsClient::new(&settings.nats)
             .await
             .expect("failed to connect to NATS");
-        let faktory = Box::new(FaktoryProcessor::new(
-            Client::new(&faktory_async::Config::from_uri(&settings.faktory))
-                .await
-                .expect("unable to connect to faktory"),
-        )) as Box<dyn JobQueueProcessor + Send + Sync>;
+        let faktory = Box::new(FaktoryProcessor::new(FaktoryClient::new(
+            faktory_async::Config::from_uri(&settings.faktory, None, None),
+            128,
+        ))) as Box<dyn JobQueueProcessor + Send + Sync>;
         // Create a dedicated Veritech server with a unique subject prefix for each test
         let nats_subject_prefix = nats_prefix();
         let veritech_server =
