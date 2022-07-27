@@ -128,7 +128,7 @@ async fn run(
 
         let faktory_config = faktory_async::Config::from_uri(
             &config.faktory().url,
-            Some("pinga-migratoins".to_string()),
+            Some("pinga-migrations".to_string()),
             None,
         );
         let client = Client::new(faktory_config, 128);
@@ -212,7 +212,7 @@ async fn run(
 
         info!("Closing faktory-async client connection");
         if let Err(err) = client.close() {
-            error!("Erro closing fakory-async client connection: {err}");
+            error!("Error closing fakory-async client connection: {err}");
         }
     }
 }
