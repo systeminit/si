@@ -31,7 +31,7 @@ watch: start ## Alias for `make start`
 
 clean: ## Cleans all build/test temporary work files
 	@echo "--- [$(shell basename ${CURDIR})] $@"
-	rm -rf ./node_modules ./dist ./lib
+	rm -rf ./node_modules ./dist ./target ./lib
 
 lint: node_modules ## Runs code/style linting
 	@echo "--- [$(shell basename ${CURDIR})] $@"
