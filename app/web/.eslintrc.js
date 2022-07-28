@@ -21,7 +21,6 @@ module.exports = {
     "no-console": "off",
     "no-debugger": "off",
     "no-alert": "error",
-    "no-unused-vars": "off", // Causes issues with ts enums
     "@typescript-eslint/no-unused-vars": [
       "warn",
       {
@@ -32,6 +31,13 @@ module.exports = {
     "vue/script-setup-uses-vars": "error",
     "@typescript-eslint/ban-ts-comment": "off",
     "vue/multi-word-component-names": "off",
+    "vue/v-on-event-hyphenation": "off",
+    "vue/require-default-prop": "off",
+    // some rules to downgrade to warning while developing
+    // useful so things dont crash when code is temporarily commented out
+    "@typescript-eslint/no-empty-function": process.env.STRICT_LINT
+      ? "error"
+      : "warn",
   },
   parser: "vue-eslint-parser",
   parserOptions: {

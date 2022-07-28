@@ -5,20 +5,15 @@
   <!-- </ShortcutsEventBroker> -->
 </template>
 
-<script lang="ts">
-// import ShortcutsEventBroker from "./organisms/ShortcutsEventBroker.vue";
+<script lang="ts" setup>
 import { restoreFromSession } from "@/observable/session_state";
 import "floating-vue/dist/style.css";
+import { onBeforeMount } from "vue";
+import { useThemeProvider } from "./composables/injectTheme";
 
-export default {
-  name: "App",
-  components: {
-    // ShortcutsEventBroker,
-  },
-  beforeMount() {
-    restoreFromSession();
-  },
-};
+onBeforeMount(restoreFromSession);
+
+useThemeProvider();
 </script>
 
 <style>
