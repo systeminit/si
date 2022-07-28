@@ -1,29 +1,30 @@
-use std::{collections::VecDeque, sync::Arc};
-
+use crate::job::{producer::JobProducer, queue::JobQueue};
 use async_trait::async_trait;
-use tokio::sync::Mutex;
-
-use crate::job::producer::JobProducer;
 
 use super::{JobQueueProcessor, JobQueueProcessorResult};
 
 #[derive(Clone, Debug)]
-pub struct TestNullProcessor {}
+pub struct TestNullProcessor {
+    queue: JobQueue,
+}
 
 impl TestNullProcessor {
     #[allow(clippy::new_ret_no_self)]
     pub fn new() -> Box<dyn JobQueueProcessor + Send + Sync> {
-        Box::new(Self {})
+        Box::new(Self {
+            queue: JobQueue::new(),
+        })
     }
 }
 
 #[async_trait]
 impl JobQueueProcessor for TestNullProcessor {
-    async fn process_queue(
-        &self,
-        queue: Arc<Mutex<VecDeque<Box<dyn JobProducer + Send + Sync>>>>,
-    ) -> JobQueueProcessorResult<()> {
-        if queue.lock().await.is_empty() {
+    async fn enqueue_job(&self, job: Box<dyn JobProducer + Send + Sync>) {
+        self.queue.enqueue_job(job).await;
+    }
+
+    async fn process_queue(&self) -> JobQueueProcessorResult<()> {
+        if self.queue.is_empty().await {
             Ok(())
         } else {
             panic!("ended transaction with non-empty job queue");
