@@ -61,7 +61,7 @@
               <li
                 v-if="props.navbarMode"
                 :class="[
-                  active ? 'text-white bg-[#2F80ED]' : 'text-gray-100',
+                  active ? 'text-white bg-action-500' : 'text-gray-100',
                   'cursor-default select-none relative py-2 pl-3 pr-9',
                 ]"
               >
@@ -167,7 +167,7 @@ const boxClasses = computed((): Record<string, boolean> => {
 const dropdownClasses = computed((): Record<string, boolean> => {
   if (props.navbarMode) {
     return {
-      "bg-[#333333]": true,
+      "bg-neutral-800": true,
     };
   }
   return {

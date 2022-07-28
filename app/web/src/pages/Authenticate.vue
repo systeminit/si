@@ -1,6 +1,6 @@
 <template>
   <div
-    class="flex flex-col items-center justify-center h-full w-full bg-[#171717]"
+    class="flex flex-col items-center justify-center h-full w-full bg-neutral-900"
   >
     <router-view />
   </div>

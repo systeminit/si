@@ -19,6 +19,7 @@ const props = defineProps<{
   disabled?: boolean;
   selected?: boolean;
   tooltipText?: string;
+  ignoreTextColor?: boolean;
 }>();
 const { disabled, selected, tooltipText } = toRefs(props);
 
@@ -27,8 +28,6 @@ const buttonClasses = computed(() => {
     block: true,
     "w-5": true,
     "h-5": true,
-    "text-gray-300": true,
-    "hover:text-gray-100": true,
   };
   if (disabled?.value) {
     results["opacity-50"] = true;
@@ -37,8 +36,9 @@ const buttonClasses = computed(() => {
     if (selected?.value) {
       results["text-blue-300"] = true;
       results["hover:text-blue-200"] = true;
-      results["hover:text-gray-100"] = false;
-      results["hover:text-gray-300"] = false;
+    } else if (!props.ignoreTextColor) {
+      results["text-gray-300"] = true;
+      results["hover:text-gray-100"] = true;
     }
   }
   return results;

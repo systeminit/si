@@ -34,8 +34,16 @@
       <!-- transparent div that flows through to the canvas -->
       <div class="grow h-full pointer-events-none"></div>
 
-      <SiSidebar side="right" :hidden="activeNode === null">
-        <ComponentDetails />
+      <SiSidebar
+        side="right"
+        :hidden="
+          activeNode === null || selectedComponentIdentification === null
+        "
+      >
+        <ComponentDetails
+          v-if="selectedComponentIdentification"
+          :component-identification="selectedComponentIdentification"
+        />
       </SiSidebar>
     </div>
   </div>
@@ -59,7 +67,15 @@ import { refFrom, untilUnmounted } from "vuse-rx";
 import { computed, ref, watch } from "vue";
 import { Theme } from "@/observable/theme";
 import SiChangesetForm from "@/organisms/SiChangesetForm.vue";
-import { combineLatest, forkJoin, from, map, switchMap, take } from "rxjs";
+import {
+  combineLatest,
+  firstValueFrom,
+  forkJoin,
+  from,
+  map,
+  switchMap,
+  take,
+} from "rxjs";
 import { GetSchematicArgs } from "@/service/schematic/get_schematic";
 import {
   standardVisibilityTriggers$,
@@ -76,6 +92,10 @@ import { applicationNodeId$ } from "@/observable/application";
 import AssetsTabs from "@/organisms/AssetsTabs.vue";
 import { lastSelectedNode$ } from "@/observable/selection";
 import ComponentDetails from "@/organisms/ComponentDetails.vue";
+import { ComponentIdentification } from "@/api/sdf/dal/component";
+import { LabelList } from "@/api/sdf/dal/label_list";
+import { ComponentService } from "@/service/component";
+import { Node } from "@/organisms/SiCanvas/canvas/obj/node";
 
 defineProps<{
   mutable: boolean;
@@ -85,6 +105,71 @@ const schematicViewerId = _.uniqueId();
 const viewerState = new ViewerStateMachine();
 const viewerEventObservable = new VE.ViewerEventObservable();
 const schematicData = ref<Schematic>({ nodes: [], connections: [] });
+
+const selectedComponentId = ref<number | "">("");
+const activeNode = refFrom(lastSelectedNode$);
+
+const componentIdentificationList = refFrom<
+  LabelList<ComponentIdentification | "">
+>(
+  ComponentService.listComponentsIdentification().pipe(
+    switchMap((response) => {
+      if (response.error) {
+        GlobalErrorService.set(response);
+        return from([[]]);
+      } else {
+        const list: LabelList<ComponentIdentification | ""> = _.cloneDeep(
+          response.list,
+        );
+        list.push({ label: "", value: "" });
+        return from([list]);
+      }
+    }),
+  ),
+);
+
+const componentRecord = computed(
+  (): Record<number, ComponentIdentification> => {
+    let record: Record<number, ComponentIdentification> = {};
+    if (componentIdentificationList.value) {
+      for (const item of componentIdentificationList.value) {
+        if (item.value !== "") {
+          record[item.value.componentId] = item.value;
+        }
+      }
+    }
+    return record;
+  },
+);
+
+const selectedComponentIdentification = computed(
+  (): ComponentIdentification | null => {
+    if (selectedComponentId.value) {
+      let record = componentRecord.value[selectedComponentId.value];
+      if (record === null || record === undefined) {
+        return null;
+      }
+      return componentRecord.value[selectedComponentId.value];
+    }
+    return null;
+  },
+);
+
+const updateSelection = (node: Node | null) => {
+  const componentId = node?.nodeKind?.componentId;
+
+  // FIXME(nick): re-add locking for the view-only mode.
+  // if (isPinned.value) return;
+
+  // Ignores deselection and fake nodes, as they don't have any attributes
+  if (!componentId || componentId === -1) return;
+
+  selectedComponentId.value = componentId;
+};
+lastSelectedNode$
+  .pipe(untilUnmounted)
+  .subscribe((node) => updateSelection(node));
+firstValueFrom(lastSelectedNode$).then((last) => updateSelection(last));
 
 // NOTE(nick,victor): hack!
 const selectedDeploymentNode = ref<SchematicNode | null>(null);
@@ -160,8 +245,6 @@ const editorContext = refFrom<EditorContext | null>(
     }),
   ),
 );
-
-const activeNode = refFrom(lastSelectedNode$);
 
 const theme = refFrom<Theme>(ThemeService.currentTheme());
 const lightmode = computed(() => {
