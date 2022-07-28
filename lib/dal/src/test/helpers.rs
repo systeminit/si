@@ -18,7 +18,8 @@ pub fn generate_fake_name() -> String {
     Generator::with_naming(Name::Numbered).next().unwrap()
 }
 
-pub async fn process_job_queue(ctx: &DalContext<'_, '_>) {
+pub async fn process_job_queue(_ctx: &DalContext<'_, '_>) {
+    /*
     loop {
         // This is ugly, but it's really only needed for the test environment.
         // In tests, we want to immediately start processing any jobs that were
@@ -42,6 +43,7 @@ pub async fn process_job_queue(ctx: &DalContext<'_, '_>) {
                 .expect("Failure processing background job");
         }
     }
+    */
 }
 
 pub async fn create_application(

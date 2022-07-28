@@ -6,6 +6,7 @@ use super::producer::{JobProducer, JobProducerError};
 
 pub mod faktory_processor;
 pub mod test_null_processor;
+pub mod sync_processor;
 
 #[derive(Error, Debug)]
 pub enum JobQueueProcessorError {
