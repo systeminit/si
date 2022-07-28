@@ -3,7 +3,7 @@ use std::time::Duration;
 use si_data::{NatsError, PgError, PgPoolError};
 use telemetry::prelude::*;
 use thiserror::Error;
-use tokio::time;
+use tokio::{sync::broadcast, time};
 
 use crate::{
     Component, ComponentError, HistoryActor, HistoryEventError, RequestContext, ServicesContext,
@@ -48,8 +48,15 @@ impl ResourceScheduler {
     /// Starts the scheduler. It returns the join handle to the spawned scheduler, and
     /// consumes itself. The caller should check for errors and restart the scheduler if
     /// it ever returns an error.
-    pub async fn start(self) {
-        tokio::spawn(async move { self.start_task().await });
+    pub fn start(self, mut shutdown_broadcast_rx: broadcast::Receiver<()>) {
+        tokio::spawn(async move {
+            tokio::select! {
+                _ = shutdown_broadcast_rx.recv() => {
+                    info!("Resource Syncing Scheduler received shutdown request, bailing out");
+                },
+                _ = self.start_task() => {}
+            }
+        });
     }
 
     /// The internal task spawned by `start`. No more frequently than every 30

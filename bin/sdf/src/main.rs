@@ -4,9 +4,10 @@ use color_eyre::Result;
 use sdf::{Config, FaktoryProcessor, IncomingStream, JobQueueProcessor, MigrationMode, Server};
 use telemetry::{
     start_tracing_level_signal_handler_task,
-    tracing::{debug, info, trace},
+    tracing::{debug, error, info, trace},
     TelemetryClient,
 };
+use tokio::sync::mpsc;
 
 mod args;
 
@@ -84,10 +85,13 @@ async fn run(args: args::Args, mut telemetry: telemetry::Client) -> Result<()> {
 
     let nats = Server::connect_to_nats(config.nats()).await?;
 
-    let job_processor = Box::new(FaktoryProcessor::new(faktory_async::Client::new(
+    let faktory_client = faktory_async::Client::new(
         faktory_async::Config::from_uri(&config.faktory().url, Some("sdf".to_string()), None),
         256,
-    ))) as Box<dyn JobQueueProcessor + Send + Sync>;
+    );
+    let (alive_marker, mut job_processor_shutdown_rx) = mpsc::channel(1);
+    let job_processor = Box::new(FaktoryProcessor::new(faktory_client.clone(), alive_marker))
+        as Box<dyn JobQueueProcessor + Send + Sync>;
 
     let pg_pool = Server::create_pg_pool(config.pg_pool()).await?;
 
@@ -130,45 +134,65 @@ async fn run(args: args::Args, mut telemetry: telemetry::Client) -> Result<()> {
     //)
     //.await;
 
-    Server::start_resource_sync_scheduler(
-        pg_pool.clone(),
-        nats.clone(),
-        job_processor.clone(),
-        veritech.clone(),
-        encryption_key,
-    )
-    .await;
-
     match config.incoming_stream() {
         IncomingStream::HTTPSocket(_) => {
-            Server::http(
+            let (server, shutdown_broadcast_rx) = Server::http(
                 config,
                 telemetry,
-                pg_pool,
-                nats,
+                pg_pool.clone(),
+                nats.clone(),
                 job_processor.clone(),
-                veritech,
+                veritech.clone(),
                 encryption_key,
                 jwt_secret_key,
-            )?
-            .run()
-            .await?;
-        }
-        IncomingStream::UnixDomainSocket(_) => {
-            Server::uds(
-                config,
-                telemetry,
+            )?;
+
+            Server::start_resource_sync_scheduler(
                 pg_pool,
                 nats,
-                job_processor.clone(),
+                job_processor,
                 veritech,
+                encryption_key,
+                shutdown_broadcast_rx,
+            )
+            .await;
+
+            server.run().await?;
+        }
+        IncomingStream::UnixDomainSocket(_) => {
+            let (server, shutdown_broadcast_rx) = Server::uds(
+                config,
+                telemetry,
+                pg_pool.clone(),
+                nats.clone(),
+                job_processor.clone(),
+                veritech.clone(),
                 encryption_key,
                 jwt_secret_key,
             )
-            .await?
-            .run()
             .await?;
+
+            Server::start_resource_sync_scheduler(
+                pg_pool,
+                nats,
+                job_processor,
+                veritech,
+                encryption_key,
+                shutdown_broadcast_rx,
+            )
+            .await;
+
+            server.run().await?;
         }
+    }
+
+    // Blocks until all FaktoryProcessors are gone so we don't skip jobs that are still being sent to faktory_async
+    info!("Waiting for all faktory processors to finish pushing jobs");
+    let _ = job_processor_shutdown_rx.recv().await;
+
+    info!("Shutting down the faktory client");
+    if let Err(err) = faktory_client.close().await {
+        error!("Failed to close faktory client: {err}");
     }
 
     Ok(())

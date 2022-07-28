@@ -6,6 +6,7 @@ use lazy_static::lazy_static;
 use names::{Generator, Name};
 use si_data::{NatsClient, NatsConfig, PgPool, PgPoolConfig};
 
+use tokio::sync::mpsc;
 use uuid::Uuid;
 use veritech::{EncryptionKey, Instance, StandardConfig};
 
@@ -97,10 +98,15 @@ impl TestContext {
         let nats_conn = NatsClient::new(&settings.nats)
             .await
             .expect("failed to connect to NATS");
-        let faktory = Box::new(FaktoryProcessor::new(FaktoryClient::new(
-            faktory_async::Config::from_uri(&settings.faktory, None, None),
-            128,
-        ))) as Box<dyn JobQueueProcessor + Send + Sync>;
+        // TODO: use null processor, or the upcomming inline one
+        let (alive_marker, _) = mpsc::channel(1);
+        let faktory = Box::new(FaktoryProcessor::new(
+            FaktoryClient::new(
+                faktory_async::Config::from_uri(&settings.faktory, None, None),
+                128,
+            ),
+            alive_marker,
+        )) as Box<dyn JobQueueProcessor + Send + Sync>;
         // Create a dedicated Veritech server with a unique subject prefix for each test
         let nats_subject_prefix = nats_prefix();
         let veritech_server =

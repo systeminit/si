@@ -15,7 +15,7 @@ async fn create_account() {
     let (pg, nats, faktory, _veritech, encr_key, jwt_secret_key) = ctx.entries();
     let veritech = veritech::Client::new(nats.clone());
     let telemetry = ctx.telemetry();
-    let (app, _) = sdf::build_service(
+    let (app, _, _) = sdf::build_service(
         telemetry,
         pg.clone(),
         nats.clone(),
@@ -62,7 +62,7 @@ async fn create_account_invalid_signup_secret() {
     let (pg, nats, faktory, _veritech, encr_key, jwt_secret_key) = ctx.entries();
     let veritech = veritech::Client::new(nats.clone());
     let telemetry = ctx.telemetry();
-    let (app, _) = sdf::build_service(
+    let (app, _, _) = sdf::build_service(
         telemetry,
         pg.clone(),
         nats.clone(),
