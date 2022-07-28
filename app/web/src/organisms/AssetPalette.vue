@@ -12,16 +12,16 @@
     <SiCollapsible
       v-for="(category, category_index) in assetCategories"
       :key="category_index"
+      :label="category.name"
       as="li"
       content-as="ul"
-      :label="category.name"
     >
       <li v-for="(node, node_index) in category.assets" :key="node_index">
         <SiNodeSprite
-          :color="category.color"
+          :class="activeNode === node.id ? 'bg-[#2F80ED]' : ''"
+          :color="node.color"
           :name="node.name"
           class="border-b-2 dark:border-[#525252] hover:bg-[#2F80ED] dark:text-white hover:text-white hover:cursor-pointer"
-          :class="activeNode === node.id ? 'bg-[#2F80ED]' : ''"
           @click="setActiveNode(node, $event)"
         />
       </li>
@@ -29,22 +29,28 @@
   </ul>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import SiNodeSprite from "@/molecules/SiNodeSprite.vue";
 import SiCollapsible from "@/organisms/SiCollapsible.vue";
 import SiSearch from "@/molecules/SiSearch.vue";
 import { ref } from "vue";
-import { firstValueFrom } from "rxjs";
+import { combineLatestWith, firstValueFrom } from "rxjs";
 import { SchematicService } from "@/service/schematic";
-import { GlobalErrorService } from "@/service/global_error";
-import { SchematicKind, SchematicNode } from "@/api/sdf/dal/schematic";
+import {
+  SchematicKind,
+  SchematicNode,
+  SchematicNodeTemplate,
+  variantById,
+} from "@/api/sdf/dal/schematic";
 import {
   NodeAddEvent,
   ViewerEventObservable,
 } from "@/organisms/SiCanvas/viewer_event";
-import { Category, Item, MenuItem } from "@/api/sdf/dal/menu";
-import { ApiResponse } from "@/api/sdf";
 import { ApplicationService } from "@/service/application";
+import { schematicSchemaVariants$ } from "@/observable/schematic";
+import { Category, Item } from "@/api/sdf/dal/menu";
+import { utils as PixiUtils } from "pixi.js";
+import { untilUnmounted } from "vuse-rx";
 
 const props = defineProps<{
   viewerEvent$: ViewerEventObservable["viewerEvent$"];
@@ -54,57 +60,79 @@ const props = defineProps<{
 interface Asset {
   id: number;
   name: string;
+  template: SchematicNodeTemplate;
+  color: string;
 }
 
 interface AssetCategory {
   name: string;
-  color: string;
   assets: Asset[];
 }
 
 const assetCategories = ref<AssetCategory[]>([]);
 
 // FIXME(nick,victor): temporary measure to populate the assetCategories dynamically based on the application.
-ApplicationService.currentApplication().subscribe((application) => {
-  if (application === null) {
-    assetCategories.value = [];
-    return;
-  }
-
-  SchematicService.getNodeAddMenu({
-    menuFilter: {
-      rootComponentId: application.id,
-      schematicKind: SchematicKind.Component,
-    },
-  }).subscribe((response: ApiResponse<MenuItem[]>) => {
-    if (response.error) {
+ApplicationService.currentApplication()
+  .pipe(combineLatestWith(schematicSchemaVariants$))
+  .pipe(untilUnmounted)
+  .subscribe(async ([application, schemaVariants]) => {
+    if (application === null || schemaVariants === null) {
       assetCategories.value = [];
-      GlobalErrorService.set(response);
+      return;
+    }
+
+    const nodeAddMenu = await firstValueFrom(
+      SchematicService.getNodeAddMenu({
+        menuFilter: {
+          rootComponentId: application.id,
+          schematicKind: SchematicKind.Component,
+        },
+      }),
+    );
+
+    if (nodeAddMenu.error) {
+      assetCategories.value = [];
       return;
     }
 
     // TODO(victor): when the old interface goes, the API probably could return the expected structure and we won't need this conversion
     // for now, we assume the endpoint returns an array of `api/sdf/dal/menu.Category` containing an array of `api/sdf/dal/menu.Item`
-    assetCategories.value = response
-      .filter((c) => c.kind === "category")
-      .map((c) => {
-        const { name, items } = c as Category;
-        return {
-          name,
-          color: "#00F", // TODO(victor) refactor menu endpoint to send color info
-          assets: items
-            .filter((i) => i.kind === "item")
-            .map((i) => {
-              const { name, schema_id: id } = i as Item;
-              return {
-                name,
-                id,
-              };
-            }),
-        };
-      });
+    assetCategories.value = await Promise.all(
+      nodeAddMenu
+        .filter((c) => c.kind === "category")
+        .map(async (c) => {
+          const { name, items } = c as Category;
+
+          const assets = [];
+
+          for (const item of items) {
+            if (item.kind !== "item") continue;
+
+            const { name, schema_id: schemaId } = item as Item;
+
+            const template = await firstValueFrom(
+              SchematicService.getNodeTemplate({ schemaId }),
+            );
+
+            if (template.error) continue;
+
+            const { color } = await variantById(template.schemaVariantId);
+
+            assets.push({
+              name: name,
+              id: schemaId,
+              template,
+              color: PixiUtils.hex2string(color),
+            });
+          }
+
+          return {
+            name,
+            assets,
+          };
+        }),
+    );
   });
-});
 
 const activeNode = ref<number | undefined>();
 
@@ -113,38 +141,37 @@ const setActiveNode = (e: Asset, _event: MouseEvent) => {
   activeNode.value = e.id !== activeNode.value ? e.id : undefined;
 
   // TODO(nick): temporarily embedding the add node into the active node event.
-  addNode(e.id, _event);
+  addNode(e.id, e.template, _event);
 };
 
-const addNode = async (schemaId: number, _event: MouseEvent) => {
-  const template = await firstValueFrom(
-    SchematicService.getNodeTemplate({ schemaId }),
-  );
-  if (template.error) {
-    GlobalErrorService.set(template);
-    return;
-  }
-
+const addNode = async (
+  schemaId: number,
+  schemaTemplate: SchematicNodeTemplate,
+  _event: MouseEvent,
+) => {
   // Generates fake node from template
   const node: SchematicNode = {
     id: -1,
-    kind: { kind: template.kind, componentId: -1 },
-    title: template.title,
-    name: template.name,
+    kind: { kind: schemaTemplate.kind, componentId: -1 },
+    title: schemaTemplate.title,
+    name: schemaTemplate.name,
     positions: [
       {
         schematicKind:
-          template.kind === "component"
+          schemaTemplate.kind === "component"
             ? SchematicKind.Component
             : SchematicKind.Deployment,
         x: 350,
         y: 0,
       },
     ],
-    schemaVariantId: template.schemaVariantId,
+    schemaVariantId: schemaTemplate.schemaVariantId,
   };
 
-  const event = new NodeAddEvent({ node, schemaId: schemaId });
+  const event = new NodeAddEvent({
+    node,
+    schemaId,
+  });
 
   props.viewerEvent$.next(event);
   // TODO(victor) we should subscribe to viewerEvents to sync the selected node with the real state
