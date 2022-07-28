@@ -26,12 +26,10 @@ async fn update_for_context_simple(ctx: &DalContext<'_, '_>) {
         .await
         .expect("cannot set parent of name_prop");
 
-    SchemaVariant::create_default_prototypes_and_values(ctx, *schema_variant.id())
+    schema_variant
+        .finalize(ctx)
         .await
-        .expect("cannot create default prototypes and values for SchemaVariant");
-    SchemaVariant::create_implicit_internal_providers(ctx, *schema.id(), *schema_variant.id())
-        .await
-        .expect("unable to create implicit internal providers for schema variant");
+        .expect("cannot finalize SchemaVariant");
 
     let (component, _) = Component::new_for_schema_with_node(ctx, "Basic component", schema.id())
         .await
@@ -169,12 +167,10 @@ async fn insert_for_context_simple(ctx: &DalContext<'_, '_>) {
         .await
         .expect("cannot set parent of array_element");
 
-    SchemaVariant::create_default_prototypes_and_values(ctx, *schema_variant.id())
+    schema_variant
+        .finalize(ctx)
         .await
-        .expect("cannot create default prototypes and values for SchemaVariant");
-    SchemaVariant::create_implicit_internal_providers(ctx, *schema.id(), *schema_variant.id())
-        .await
-        .expect("unable to create implicit internal providers for schema variant");
+        .expect("cannot finalize SchemaVariant");
 
     let (component, _) = Component::new_for_schema_with_node(ctx, "Array Component", schema.id())
         .await
@@ -287,10 +283,10 @@ async fn update_for_context_object(ctx: &DalContext<'_, '_>) {
         .await
         .expect("cannot set parent of tags child prop");
 
-    // Now, we can setup providers.
-    SchemaVariant::create_implicit_internal_providers(ctx, *schema.id(), *schema_variant.id())
+    schema_variant
+        .finalize(ctx)
         .await
-        .expect("unable to create implicit internal providers");
+        .expect("cannot finalize SchemaVariant");
 
     let (component, _) = Component::new_for_schema_with_node(ctx, "Basic component", schema.id())
         .await
@@ -486,12 +482,10 @@ async fn insert_for_context_creates_array_in_final_context(ctx: &DalContext<'_, 
         .await
         .expect("cannot set parent of array_element");
 
-    SchemaVariant::create_default_prototypes_and_values(ctx, *schema_variant.id())
+    schema_variant
+        .finalize(ctx)
         .await
-        .expect("cannot create default prop AttributePrototypes");
-    SchemaVariant::create_implicit_internal_providers(ctx, *schema.id(), *schema_variant.id())
-        .await
-        .expect("unable to create implicit internal providers for schema variant");
+        .expect("cannot finalize SchemaVariant");
 
     let (component, _) = Component::new_for_schema_with_node(ctx, "Array Component", schema.id())
         .await

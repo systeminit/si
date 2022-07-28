@@ -47,12 +47,10 @@ pub async fn create_schema_with_object_and_string_prop(
         .await
         .expect("cannot set parent prop");
 
-    SchemaVariant::create_default_prototypes_and_values(ctx, *schema_variant.id())
+    schema_variant
+        .finalize(ctx)
         .await
-        .expect("cannot create default prototypes & values for SchemaVariant");
-    SchemaVariant::create_implicit_internal_providers(ctx, *schema.id(), *schema_variant.id())
-        .await
-        .expect("unable to create implicit internal providers for schema variant");
+        .expect("cannot finalize SchemaVariant");
 
     (
         schema,
@@ -123,12 +121,10 @@ pub async fn create_schema_with_nested_objects_and_string_prop(
         .await
         .expect("cannot set parent prop");
 
-    SchemaVariant::create_default_prototypes_and_values(ctx, *schema_variant.id())
+    schema_variant
+        .finalize(ctx)
         .await
-        .expect("cannot create default prototypes & values for SchemaVariant");
-    SchemaVariant::create_implicit_internal_providers(ctx, *schema.id(), *schema_variant.id())
-        .await
-        .expect("unable to create implicit internal providers for schema variant");
+        .expect("cannot finalize SchemaVariant");
 
     (
         schema,
@@ -171,12 +167,10 @@ pub async fn create_schema_with_string_props(
         .await
         .expect("cannot set parent prop");
 
-    SchemaVariant::create_default_prototypes_and_values(ctx, *schema_variant.id())
+    schema_variant
+        .finalize(ctx)
         .await
-        .expect("cannot create default prototypes & values for SchemaVariant");
-    SchemaVariant::create_implicit_internal_providers(ctx, *schema.id(), *schema_variant.id())
-        .await
-        .expect("unable to create implicit internal providers for schema variant");
+        .expect("cannot finalize SchemaVariant");
 
     (schema, schema_variant, bohemian_prop, killer_prop, root)
 }
@@ -210,12 +204,10 @@ pub async fn create_schema_with_array_of_string_props(
         .await
         .expect("cannot set parent");
 
-    SchemaVariant::create_default_prototypes_and_values(ctx, *schema_variant.id())
+    schema_variant
+        .finalize(ctx)
         .await
-        .expect("cannot create default prototypes & values for SchemaVariant");
-    SchemaVariant::create_implicit_internal_providers(ctx, *schema.id(), *schema_variant.id())
-        .await
-        .expect("unable to create implicit internal providers for schema variant");
+        .expect("cannot finalize SchemaVariant");
 
     (schema, schema_variant, sammy_prop, album_string_prop, root)
 }
@@ -282,12 +274,10 @@ pub async fn create_schema_with_nested_array_objects(
         .await
         .expect("cannot set parent");
 
-    SchemaVariant::create_default_prototypes_and_values(ctx, *schema_variant.id())
+    schema_variant
+        .finalize(ctx)
         .await
-        .expect("cannot create default prototypes & values for SchemaVariant");
-    SchemaVariant::create_implicit_internal_providers(ctx, *schema.id(), *schema_variant.id())
-        .await
-        .expect("unable to create implicit internal providers for schema variant");
+        .expect("cannot finalize SchemaVariant");
 
     (
         schema,
@@ -333,12 +323,10 @@ pub async fn create_simple_map(
         .await
         .expect("cannot set parent");
 
-    SchemaVariant::create_default_prototypes_and_values(ctx, *schema_variant.id())
+    schema_variant
+        .finalize(ctx)
         .await
-        .expect("cannot create default prototypes & values for SchemaVariant");
-    SchemaVariant::create_implicit_internal_providers(ctx, *schema.id(), *schema_variant.id())
-        .await
-        .expect("unable to create implicit internal providers for schema variant");
+        .expect("cannot finalize SchemaVariant");
 
     (schema, schema_variant, album_prop, album_item_prop, root)
 }
@@ -411,12 +399,10 @@ pub async fn create_schema_with_nested_array_objects_and_a_map(
         .await
         .expect("cannot set parent");
 
-    SchemaVariant::create_default_prototypes_and_values(ctx, *schema_variant.id())
+    schema_variant
+        .finalize(ctx)
         .await
-        .expect("cannot create default prototypes & values for SchemaVariant");
-    SchemaVariant::create_implicit_internal_providers(ctx, *schema.id(), *schema_variant.id())
-        .await
-        .expect("unable to create implicit internal providers for schema variant");
+        .expect("cannot finalize SchemaVariant");
 
     (
         schema,
