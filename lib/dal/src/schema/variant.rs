@@ -37,6 +37,8 @@ pub enum SchemaVariantError {
     InternalProvider(#[from] InternalProviderError),
     #[error("missing a func in attribute update: {0} not found")]
     MissingFunc(String),
+    #[error("Schema is missing for SchemaVariant {0}")]
+    MissingSchema(SchemaVariantId),
     #[error("nats txn error: {0}")]
     Nats(#[from] NatsError),
     #[error("schema not found: {0}")]
@@ -114,6 +116,35 @@ impl SchemaVariant {
         Ok((object, root_prop))
     }
 
+    /// Once a [`SchemaVariant`] has had all of its [`Props`](crate::Prop) created, there are a few
+    /// things that need to happen before it is usable:
+    ///
+    /// * Create the default [`AttributePrototypes`](crate::AttributePrototype) and
+    ///   [`AttributeValues`](crate::AttributeValue).
+    /// * Create the _internally consuming_ [`InternalProviders`](crate::InternalProvider)
+    ///   corresponding to every [`Prop`](crate::Prop) in the [`SchemaVariant`] that is not a
+    ///   descendant of an Array or a Map.
+    ///
+    /// This method **MUST** be called once all the [`Props`](Prop) have been created for the
+    /// [`SchemaVariant`]. This method should only be called once, as it is not fully idempotent.
+    pub async fn finalize(&self, ctx: &DalContext<'_, '_>) -> SchemaVariantResult<()> {
+        let schema = self
+            .schema(ctx)
+            .await?
+            .ok_or(SchemaVariantError::MissingSchema(self.id))?;
+
+        Self::create_default_prototypes_and_values(ctx, self.id).await?;
+        Self::create_implicit_internal_providers(ctx, *schema.id(), self.id).await?;
+
+        Ok(())
+    }
+
+    /// Create the default [`AttributePrototypes`](crate::AttributePrototype) and
+    /// [`AttributeValues`](crate::AttributeValue) for the [`Props`](Prop) of the
+    /// [`SchemaVariant`].
+    ///
+    /// This method is idempotent, and may be safely called multiple times before
+    /// [`SchemaVariant.finalize(ctx)`](SchemaVariant#finalize()) is called.
     pub async fn create_default_prototypes_and_values(
         ctx: &DalContext<'_, '_>,
         schema_variant_id: SchemaVariantId,
@@ -129,7 +160,7 @@ impl SchemaVariant {
     /// Creates _internally consuming_ [`InternalProviders`](crate::InternalProvider) corresponding
     /// to every [`Prop`](crate::Prop) in the [`SchemaVariant`] that is not a descendant of an array
     /// or a map.
-    pub async fn create_implicit_internal_providers(
+    async fn create_implicit_internal_providers(
         ctx: &DalContext<'_, '_>,
         schema_id: SchemaId,
         schema_variant_id: SchemaVariantId,

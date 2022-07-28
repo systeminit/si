@@ -201,9 +201,8 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> BuiltinsResult<(
         .add_root_schematic(ctx, application_schema.id())
         .await?;
 
-    SchemaVariant::create_default_prototypes_and_values(ctx, *variant.id()).await?;
-    // Now, we can setup providers.
-    SchemaVariant::create_implicit_internal_providers(ctx, *schema.id(), *variant.id()).await?;
+    variant.finalize(ctx).await?;
+
     let base_attribute_read_context = AttributeReadContext {
         schema_id: Some(*schema.id()),
         schema_variant_id: Some(*variant.id()),

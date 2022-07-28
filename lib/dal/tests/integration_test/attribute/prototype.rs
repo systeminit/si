@@ -380,10 +380,10 @@ async fn remove_component_specific(ctx: &DalContext<'_, '_>) {
         .await
         .expect("cannot set parent of prop");
 
-    // Now, we can setup providers.
-    SchemaVariant::create_implicit_internal_providers(ctx, *schema.id(), *schema_variant.id())
+    schema_variant
+        .finalize(ctx)
         .await
-        .expect("unable to create implicit internal providers");
+        .expect("cannot finalize SchemaVariant");
 
     let (component, _) = Component::new_for_schema_with_node(ctx, "toddhoward", schema.id())
         .await

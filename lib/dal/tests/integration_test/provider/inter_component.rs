@@ -329,13 +329,11 @@ async fn setup_esp(ctx: &DalContext<'_, '_>) -> ComponentPayload {
     prop_map.insert("/root/domain/object/source", *source_prop.id());
     prop_map.insert("/root/domain/object/intermediate", *intermediate_prop.id());
 
-    SchemaVariant::create_default_prototypes_and_values(ctx, *schema_variant.id())
+    schema_variant
+        .finalize(ctx)
         .await
-        .expect("cannot create default prototypes and values for SchemaVariant");
-    // Create the internal providers for a schema variant. Afterwards, we can create the component.
-    SchemaVariant::create_implicit_internal_providers(ctx, *schema.id(), *schema_variant.id())
-        .await
-        .expect("could not create internal providers for schema variant");
+        .expect("cannot finalize SchemaVariant");
+
     let (component, _) = Component::new_for_schema_with_node(ctx, "esp", schema.id())
         .await
         .expect("unable to create component");
@@ -400,13 +398,11 @@ async fn setup_swings(ctx: &DalContext<'_, '_>) -> ComponentPayload {
     let mut prop_map = HashMap::new();
     prop_map.insert("/root/domain/destination", *destination_prop.id());
 
-    SchemaVariant::create_default_prototypes_and_values(ctx, *schema_variant.id())
+    schema_variant
+        .finalize(ctx)
         .await
-        .expect("cannot create default prototypes and values for SchemaVariant");
-    // Create the internal providers for a schema variant. Afterwards, we can create the component.
-    SchemaVariant::create_implicit_internal_providers(ctx, *schema.id(), *schema_variant.id())
-        .await
-        .expect("could not create internal providers for schema variant");
+        .expect("cannot finalize SchemVariant");
+
     let (component, _) = Component::new_for_schema_with_node(ctx, "swings", schema.id())
         .await
         .expect("unable to create component");
@@ -460,16 +456,12 @@ async fn with_deep_data_structure(ctx: &DalContext<'_, '_>) {
         .set_parent_prop(ctx, *source_object_prop.id())
         .await
         .expect("cannot set parent of bar_string");
-    SchemaVariant::create_default_prototypes_and_values(ctx, *source_schema_variant.id())
+
+    source_schema_variant
+        .finalize(ctx)
         .await
-        .expect("cannot create default prototypes and values for SchemaVariant");
-    SchemaVariant::create_implicit_internal_providers(
-        ctx,
-        *source_schema.id(),
-        *source_schema_variant.id(),
-    )
-    .await
-    .expect("cannot create internal providers for source schema");
+        .expect("cannot finalize source SchemaVariant");
+
     let (source_external_provider, _socket) = ExternalProvider::new_with_socket(
         ctx,
         *source_schema.id(),
@@ -531,16 +523,12 @@ async fn with_deep_data_structure(ctx: &DalContext<'_, '_>) {
         .set_parent_prop(ctx, *destination_object_prop.id())
         .await
         .expect("cannot set parent of bar_string");
-    SchemaVariant::create_default_prototypes_and_values(ctx, *destination_schema_variant.id())
+
+    destination_schema_variant
+        .finalize(ctx)
         .await
-        .expect("cannot create default prototypes and values for SchemaVariant");
-    SchemaVariant::create_implicit_internal_providers(
-        ctx,
-        *destination_schema.id(),
-        *destination_schema_variant.id(),
-    )
-    .await
-    .expect("cannot create internal providers for destination schema");
+        .expect("cannot finalize destination SchemaVariant");
+
     let destination_object_value = AttributeValue::find_for_context(
         ctx,
         AttributeReadContext {
