@@ -438,14 +438,11 @@ async fn remove_component_specific(ctx: &DalContext<'_, '_>) {
             .await
             .expect("could not get attribute values");
         for value in values {
-            let parent_value_id = match value
+            let parent_value_id = value
                 .parent_attribute_value(ctx)
                 .await
                 .expect("could not get parent attribute_value")
-            {
-                Some(parent) => Some(*parent.id()),
-                None => None,
-            };
+                .map(|parent| *parent.id());
 
             let _ = AttributeValue::update_for_context(
                 ctx,
@@ -504,7 +501,7 @@ async fn remove_component_specific(ctx: &DalContext<'_, '_>) {
             // been deleted.
             for confirm_deletion_prototype_id in &confirm_deletion_prototype_ids {
                 assert!(
-                    AttributePrototype::get_by_id(ctx, &confirm_deletion_prototype_id)
+                    AttributePrototype::get_by_id(ctx, confirm_deletion_prototype_id)
                         .await
                         .expect("could not get attribute prototype by id")
                         .is_none()

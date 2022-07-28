@@ -13,7 +13,7 @@ use dal::{
 
 #[test]
 async fn get_by_pk(ctx: &DalContext<'_, '_>, nba: &BillingAccountSignup) {
-    let retrieved = standard_model::get_by_pk(&ctx, "billing_accounts", nba.billing_account.pk())
+    let retrieved = standard_model::get_by_pk(ctx, "billing_accounts", nba.billing_account.pk())
         .await
         .expect("cannot get billing account by pk");
 
@@ -276,7 +276,7 @@ async fn set_belongs_to(ctx: &DalContext<'_, '_>) {
     let key_pair = create_key_pair(ctx).await;
 
     standard_model::set_belongs_to(
-        &ctx,
+        ctx,
         "key_pair_belongs_to_billing_account",
         key_pair.id(),
         first_billing_account.id(),
@@ -286,7 +286,7 @@ async fn set_belongs_to(ctx: &DalContext<'_, '_>) {
 
     // You cannot replace the existing belongs to relationship by calling it again with a new id
     match standard_model::set_belongs_to(
-        &ctx,
+        ctx,
         "key_pair_belongs_to_billing_account",
         key_pair.id(),
         second_billing_account.id(),
@@ -307,7 +307,7 @@ async fn unset_belongs_to(ctx: &DalContext<'_, '_>, nba: &BillingAccountSignup) 
     let key_pair = create_key_pair(ctx).await;
 
     standard_model::set_belongs_to(
-        &ctx,
+        ctx,
         "key_pair_belongs_to_billing_account",
         key_pair.id(),
         nba.billing_account.id(),
@@ -315,7 +315,7 @@ async fn unset_belongs_to(ctx: &DalContext<'_, '_>, nba: &BillingAccountSignup) 
     .await
     .expect("cannot set billing account for key pair");
 
-    standard_model::unset_belongs_to(&ctx, "key_pair_belongs_to_billing_account", key_pair.id())
+    standard_model::unset_belongs_to(ctx, "key_pair_belongs_to_billing_account", key_pair.id())
         .await
         .expect("cannot set billing account for key pair");
 }
@@ -702,7 +702,7 @@ async fn associate_many_to_many_no_repeat_entries(ctx: &DalContext<'_, '_>) {
 
 #[test]
 async fn find_by_attr(ctx: &DalContext<'_, '_>) {
-    let _billing_account = create_billing_account(&ctx).await;
+    let _billing_account = create_billing_account(ctx).await;
     let change_set = create_change_set(ctx).await;
     let edit_session = create_edit_session(ctx, &change_set).await;
     let edit_session_visibility = create_visibility_edit_session(&change_set, &edit_session);

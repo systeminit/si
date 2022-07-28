@@ -33,7 +33,7 @@ async fn set_state(ctx: &DalContext<'_, '_>) {
         .expect("cannot create a new func execution");
     assert_eq!(execution.state(), FuncExecutionState::Start);
     execution
-        .set_state(&ctx, FuncExecutionState::Dispatch)
+        .set_state(ctx, FuncExecutionState::Dispatch)
         .await
         .expect("cannot set state");
     assert_eq!(execution.state(), FuncExecutionState::Dispatch);

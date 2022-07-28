@@ -6,9 +6,7 @@ use dal::test::helpers::{find_prop_and_parent_by_name, process_job_queue};
 use dal::test_harness::{
     create_prop_of_kind_and_set_parent_with_name, create_schema, create_schema_variant_with_root,
 };
-use dal::{
-    AttributePrototypeArgument, AttributeValue, Component, ComponentView, Schema, SchemaVariant,
-};
+use dal::{AttributePrototypeArgument, AttributeValue, Component, ComponentView, Schema};
 use dal::{AttributeReadContext, DalContext, Func, PropKind, SchemaKind, StandardModel};
 use pretty_assertions_sorted::assert_eq_sorted;
 

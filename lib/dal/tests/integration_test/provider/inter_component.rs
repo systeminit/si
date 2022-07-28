@@ -9,7 +9,7 @@ use dal::test_harness::{
 use dal::{
     socket::SocketArity, AttributeContext, AttributePrototypeArgument, AttributeReadContext,
     AttributeValue, Component, ComponentView, Connection, DalContext, ExternalProvider,
-    InternalProvider, PropKind, SchemaKind, SchemaVariant, SchematicKind, StandardModel,
+    InternalProvider, PropKind, SchemaKind, SchematicKind, StandardModel,
 };
 use pretty_assertions_sorted::assert_eq_sorted;
 use std::collections::HashMap;

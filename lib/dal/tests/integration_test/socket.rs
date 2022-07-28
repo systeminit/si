@@ -40,5 +40,5 @@ async fn set_required(ctx: &DalContext<'_, '_>) {
         .set_required(ctx, true)
         .await
         .expect("cannot set required");
-    assert_eq!(socket.required(), true);
+    assert!(socket.required());
 }

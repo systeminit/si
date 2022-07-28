@@ -926,7 +926,7 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext<'_, '_>) {
     unset_attribute_context
         .set_schema_id(*schema.id())
         .set_schema_variant_id(*schema_variant.id());
-    let mut base_attribute_context = unset_attribute_context.clone();
+    let mut base_attribute_context = unset_attribute_context;
     base_attribute_context.set_component_id(*component.id());
 
     let domain_context = base_attribute_context
