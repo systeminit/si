@@ -4,8 +4,12 @@ use axum::{
     routing::post,
     Json, Router,
 };
-use dal::{BillingAccountError, TransactionsError};
 use thiserror::Error;
+
+use dal::{
+    BillingAccountError, ComponentError, NodeError, NodePositionError, ReadTenancyError,
+    SchemaError, StandardModelError, TransactionsError,
+};
 
 pub mod create_account;
 
@@ -22,6 +26,18 @@ pub enum SignupError {
     Nats(#[from] si_data::NatsError),
     #[error(transparent)]
     Pg(#[from] si_data::PgError),
+    #[error("component error: {0}")]
+    Component(#[from] ComponentError),
+    #[error("StandardModel error: {0}")]
+    StandardModel(#[from] StandardModelError),
+    #[error("Schema error: {0}")]
+    Schema(#[from] SchemaError),
+    #[error("Node error: {0}")]
+    Node(#[from] NodeError),
+    #[error("NodePosition error: {0}")]
+    NodePosition(#[from] NodePositionError),
+    #[error("ReadTenancy error: {0}")]
+    ReadTenancy(#[from] ReadTenancyError),
 }
 
 pub type SignupResult<T> = std::result::Result<T, SignupError>;

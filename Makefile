@@ -132,7 +132,7 @@ $(TESTABLE): % : %//TESTDEPS %//TEST %//RTESTDEPS
 test//lib/dal//TESTDEPS: build//bin/veritech deploy//partial
 test//lib/dal//RTESTDEPS: test//lib/sdf
 
-test//lib/sdf//TESTDEPS: deploy//partial
+test//lib/sdf//TESTDEPS: build//bin/cyclone deploy//partial
 test//lib/sdf//RTESTDEPS: test//bin/sdf test//bin/pinga
 
 test//lib/bytes-lines-codec//RTESTDEPS: test//lib/cyclone
