@@ -274,7 +274,7 @@ impl DalContext<'_, '_> {
     }
 
     pub async fn enqueue_job(&self, job: Box<dyn JobProducer + Send + Sync>) {
-        self.txns().job_processor.enqueue_job(job).await
+        self.txns().job_processor.enqueue_job(job, self).await
     }
 
     /// Gets the dal context's txns.
@@ -597,7 +597,7 @@ pub struct Transactions<'a> {
     pg_txn: PgTxn<'a>,
     /// A NATS transaction.
     nats_txn: NatsTxn,
-    job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
+    pub job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
 }
 
 impl<'a> Transactions<'a> {

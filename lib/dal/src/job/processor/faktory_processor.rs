@@ -3,7 +3,10 @@ use faktory_async::Client;
 use std::convert::TryInto;
 use telemetry::prelude::*;
 
-use crate::job::{producer::JobProducer, queue::JobQueue};
+use crate::{
+    job::{producer::JobProducer, queue::JobQueue},
+    DalContext,
+};
 
 use super::{JobQueueProcessor, JobQueueProcessorResult};
 
@@ -24,7 +27,11 @@ impl FaktoryProcessor {
 
 #[async_trait]
 impl JobQueueProcessor for FaktoryProcessor {
-    async fn enqueue_job(&self, job: Box<dyn JobProducer + Send + Sync>) {
+    async fn enqueue_job(
+        &self,
+        job: Box<dyn JobProducer + Send + Sync>,
+        _ctx: &DalContext<'_, '_>,
+    ) {
         self.queue.enqueue_job(job).await
     }
 

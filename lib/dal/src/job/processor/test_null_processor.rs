@@ -1,4 +1,7 @@
-use crate::job::{producer::JobProducer, queue::JobQueue};
+use crate::{
+    job::{producer::JobProducer, queue::JobQueue},
+    DalContext,
+};
 use async_trait::async_trait;
 
 use super::{JobQueueProcessor, JobQueueProcessorResult};
@@ -19,7 +22,11 @@ impl TestNullProcessor {
 
 #[async_trait]
 impl JobQueueProcessor for TestNullProcessor {
-    async fn enqueue_job(&self, job: Box<dyn JobProducer + Send + Sync>) {
+    async fn enqueue_job(
+        &self,
+        job: Box<dyn JobProducer + Send + Sync>,
+        _ctx: &DalContext<'_, '_>,
+    ) {
         self.queue.enqueue_job(job).await;
     }
 
