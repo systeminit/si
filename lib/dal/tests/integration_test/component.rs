@@ -5,8 +5,8 @@ use dal::{
         create_component_and_schema, create_component_for_schema_variant, create_schema,
         create_schema_variant, create_schema_variant_with_root,
     },
-    Component, DalContext, Prop, PropKind, Resource, Schema, SchemaKind, SchemaVariant,
-    StandardModel, WorkspaceId,
+    Component, DalContext, Prop, PropKind, Resource, Schema, SchemaKind, StandardModel,
+    WorkspaceId,
 };
 use pretty_assertions_sorted::{assert_eq, assert_eq_sorted};
 use serde_json::json;
@@ -38,7 +38,7 @@ async fn new_for_schema_variant_with_node(ctx: &DalContext<'_, '_>, wid: Workspa
         .expect("cannot retrieve resource for Component & System");
     assert!(resource.is_none());
 
-    let _ = component
+    component
         .add_to_system(ctx, system.id())
         .await
         .expect("failed to add node to system");
@@ -184,7 +184,7 @@ async fn get_resource_by_component_id(ctx: &DalContext<'_, '_>, wid: WorkspaceId
         .expect("cannot create ash component");
     process_job_queue(ctx).await;
 
-    let _ = component
+    component
         .add_to_system(ctx, system.id())
         .await
         .expect("failed to add component to system");

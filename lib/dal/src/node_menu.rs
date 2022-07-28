@@ -295,7 +295,7 @@ mod test {
             .insert_menu_item(&Vec::new(), MenuItem::category("application"))
             .expect("cannot insert menu item");
         let item = menu_items
-            .item_for_path(&vec!["application".to_string()])
+            .item_for_path(&["application".to_string()])
             .expect("cannot find application in menu");
         assert_eq!(item.borrow().name(), "application");
     }
@@ -305,12 +305,12 @@ mod test {
         let menu_items = MenuItems::new();
         menu_items
             .insert_menu_item(
-                &vec!["application".to_string(), "snakes".to_string()],
+                &["application".to_string(), "snakes".to_string()],
                 MenuItem::item("ninjas", 1.into()),
             )
             .expect("cannot insert menu item");
         let item = menu_items
-            .item_for_path(&vec![
+            .item_for_path(&[
                 "application".to_string(),
                 "snakes".to_string(),
                 "ninjas".to_string(),
@@ -324,18 +324,18 @@ mod test {
         let menu_items = MenuItems::new();
         menu_items
             .insert_menu_item(
-                &vec!["application".to_string(), "snakes".to_string()],
+                &["application".to_string(), "snakes".to_string()],
                 MenuItem::item("ninjas", 1.into()),
             )
             .expect("cannot insert menu item");
         menu_items
             .insert_menu_item(
-                &vec!["application".to_string(), "snakes".to_string()],
+                &["application".to_string(), "snakes".to_string()],
                 MenuItem::item("dragons", 1.into()),
             )
             .expect("cannot insert menu item");
         let ninjas = menu_items
-            .item_for_path(&vec![
+            .item_for_path(&[
                 "application".to_string(),
                 "snakes".to_string(),
                 "ninjas".to_string(),
@@ -343,7 +343,7 @@ mod test {
             .expect("cannot find application.snakes in menu");
         assert_eq!(ninjas.borrow().name(), "ninjas".to_string());
         let dragons = menu_items
-            .item_for_path(&vec![
+            .item_for_path(&[
                 "application".to_string(),
                 "snakes".to_string(),
                 "dragons".to_string(),

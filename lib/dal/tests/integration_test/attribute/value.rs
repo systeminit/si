@@ -4,7 +4,7 @@ use dal::{
     test::helpers::process_job_queue,
     test_harness::{create_prop_of_kind_with_name, create_schema, create_schema_variant_with_root},
     AttributeContext, AttributeReadContext, AttributeValue, Component, DalContext, PropKind,
-    SchemaKind, SchemaVariant, StandardModel, SystemId,
+    SchemaKind, StandardModel, SystemId,
 };
 use pretty_assertions_sorted::assert_eq_sorted;
 
