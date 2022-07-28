@@ -2,8 +2,8 @@ use axum::Json;
 use serde::{Deserialize, Serialize};
 
 use dal::{
-    BillingAccount, Component, HistoryActor, NodePosition, NodeTemplate, ReadTenancy, Schema,
-    SchemaError, SchematicKind, StandardModel, WriteTenancy,
+    BillingAccount, Component, HistoryActor, NodePosition, ReadTenancy, Schema, SchemaError,
+    SchematicKind, StandardModel, WriteTenancy,
 };
 use telemetry::prelude::*;
 
@@ -97,7 +97,6 @@ pub async fn create_account(
     .await?;
 
     // Create the (deployment) node for the service.
-    NodeTemplate::new_from_schema_id(&ctx, *schema.id()).await?;
     let position_deployment_panel =
         NodePosition::new(&ctx, SchematicKind::Deployment, None, None, "0", "0").await?;
     position_deployment_panel
