@@ -18,34 +18,6 @@ pub fn generate_fake_name() -> String {
     Generator::with_naming(Name::Numbered).next().unwrap()
 }
 
-pub async fn process_job_queue(_ctx: &DalContext<'_, '_>) {
-    /*
-    loop {
-        // This is ugly, but it's really only needed for the test environment.
-        // In tests, we want to immediately start processing any jobs that were
-        // enqueued by the jobs that were already in the queue (and that we
-        // just ran), and continue doing this until we run out of jobs that
-        // are being created.
-        //
-        // This is not a problem outside of the test code, as we'll only be
-        // running one "layer" of enqueued jobs at a time, which means we
-        // won't need to worry about deadlocking on ourselves when we try to
-        // lock the queue to enqueue a job from within a scope that has
-        // already locked the queue to be able to execute it.
-        let queue = std::mem::take(&mut *ctx.txns().job_queue.lock().await);
-        if queue.is_empty() {
-            break;
-        }
-
-        for job in queue {
-            job.run(ctx)
-                .await
-                .expect("Failure processing background job");
-        }
-    }
-    */
-}
-
 pub async fn create_application(
     builder: &DalContextBuilder,
     txns: &Transactions<'_>,
@@ -307,7 +279,6 @@ pub async fn update_attribute_value_for_prop_and_context(
     )
     .await
     .expect("cannot update value for context");
-    process_job_queue(ctx).await;
 
     // Return the updated attribute value id.
     updated_attribute_value_id

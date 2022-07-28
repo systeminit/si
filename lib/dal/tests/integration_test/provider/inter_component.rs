@@ -1,6 +1,5 @@
 use dal::test::helpers::{
-    process_job_queue, setup_identity_func, update_attribute_value_for_prop_and_context,
-    ComponentPayload,
+    setup_identity_func, update_attribute_value_for_prop_and_context, ComponentPayload,
 };
 use dal::test_harness::{
     create_prop_of_kind_and_set_parent_with_name, create_prop_of_kind_with_name, create_schema,
@@ -337,7 +336,6 @@ async fn setup_esp(ctx: &DalContext<'_, '_>) -> ComponentPayload {
     let (component, _) = Component::new_for_schema_with_node(ctx, "esp", schema.id())
         .await
         .expect("unable to create component");
-    process_job_queue(ctx).await;
 
     // This context can also be used for generating component views.
     let base_attribute_read_context = AttributeReadContext {
@@ -406,7 +404,6 @@ async fn setup_swings(ctx: &DalContext<'_, '_>) -> ComponentPayload {
     let (component, _) = Component::new_for_schema_with_node(ctx, "swings", schema.id())
         .await
         .expect("unable to create component");
-    process_job_queue(ctx).await;
 
     // This context can also be used for generating component views.
     let base_attribute_read_context = AttributeReadContext {
@@ -576,7 +573,6 @@ async fn with_deep_data_structure(ctx: &DalContext<'_, '_>) {
         Component::new_for_schema_with_node(ctx, "Source Component", source_schema.id())
             .await
             .expect("Unable to create source component");
-    process_job_queue(ctx).await;
 
     let source_attribute_read_context = AttributeReadContext {
         prop_id: None,
@@ -605,7 +601,6 @@ async fn with_deep_data_structure(ctx: &DalContext<'_, '_>) {
         Component::new_for_schema_with_node(ctx, "Destination Component", destination_schema.id())
             .await
             .expect("Unable to create destination component");
-    process_job_queue(ctx).await;
 
     let destination_attribute_read_context = AttributeReadContext {
         prop_id: None,
@@ -693,7 +688,6 @@ async fn with_deep_data_structure(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("cannot update source foo_string");
-    process_job_queue(ctx).await;
 
     assert_eq_sorted!(
         serde_json::json![
@@ -778,7 +772,6 @@ async fn with_deep_data_structure(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("cannot update source bar_string");
-    process_job_queue(ctx).await;
 
     assert_eq_sorted!(
         serde_json::json![

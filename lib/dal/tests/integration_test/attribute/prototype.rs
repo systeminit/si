@@ -1,4 +1,4 @@
-use dal::{test::helpers::process_job_queue, DalContext, SchemaVariant};
+use dal::{DalContext, SchemaVariant};
 
 use crate::dal::test;
 use dal::{
@@ -388,7 +388,6 @@ async fn remove_component_specific(ctx: &DalContext<'_, '_>) {
     let (component, _) = Component::new_for_schema_with_node(ctx, "toddhoward", schema.id())
         .await
         .expect("cannot create component");
-    process_job_queue(ctx).await;
 
     let read_context = AttributeReadContext {
         prop_id: None,
