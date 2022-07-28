@@ -925,6 +925,17 @@ impl AttributeValue {
             }
         }
 
+        let dependent_attribute_values =
+            AttributeValueDependentCollectionHarness::collect(ctx, attribute_value.context).await?;
+        for dependent_attribute_value in dependent_attribute_values {
+            ctx.enqueue_job(DependentValuesUpdate::new(
+                ctx,
+                *dependent_attribute_value.id(),
+                *ctx.visibility(),
+            ))
+            .await;
+        }
+
         if context.component_id().is_some() {
             // Check validations and qualifications for our component.
             let component = Component::get_by_id(ctx, &context.component_id())
@@ -936,17 +947,6 @@ impl AttributeValue {
                     .await
                     .map_err(|e| AttributeValueError::Component(e.to_string()))?,
             )
-            .await;
-        }
-
-        let dependent_attribute_values =
-            AttributeValueDependentCollectionHarness::collect(ctx, attribute_value.context).await?;
-        for dependent_attribute_value in dependent_attribute_values {
-            ctx.enqueue_job(DependentValuesUpdate::new(
-                ctx,
-                *dependent_attribute_value.id(),
-                *ctx.visibility(),
-            ))
             .await;
         }
 
