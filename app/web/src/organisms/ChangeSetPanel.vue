@@ -15,29 +15,20 @@
           :disabled="showCreateDialog"
           @change="changeSetChanged"
         />
-        <VButton
-          size="xs"
-          button-rank="primary"
-          button-type="action"
+        <PrimaryActionButtonXSmall
           label="Apply"
           icon-style="left"
           icon="git-merge"
         />
       </div>
       <div class="mb-3 flex items-center gap-x-[0.9375rem]">
-        <VButton
-          size="xs"
-          button-rank="tertiary"
-          button-type="destructive"
+        <TertiaryDestructiveButtonXSmall
           label="Discard"
           icon-style="left"
           icon="x"
           class="flex-grow"
         />
-        <VButton
-          size="xs"
-          button-rank="primary"
-          button-type="success"
+        <PrimarySuccessButtonXSmall
           label="Commit"
           icon-style="left"
           icon="git-branch"
@@ -82,13 +73,11 @@
                     v-if="createChangeSetErrorMessage"
                     class="mb-4 border bg-warning-300 py-1 px-2"
                   >
-                    <VButton
+                    <TertiaryNeutralButtonXSmall
                       label="Clear error message"
-                      class="float-right"
-                      button-rank="tertiary"
-                      icon="x"
                       icon-style="alone"
-                      size="xs"
+                      icon="x"
+                      class="float-right"
                       @click="createChangeSetErrorMessage = ''"
                     />
                     <p class="type-bold-xs">Failed to create Change Set</p>
@@ -127,20 +116,14 @@
                   </div>
                 </div>
                 <div class="flex flex-row-reverse justify-between">
-                  <VButton
-                    size="xs"
-                    button-rank="primary"
-                    button-type="success"
+                  <PrimarySuccessButtonXSmall
                     label="Create"
                     icon-style="left"
                     icon="plus"
                     :disabled="createButtonDisabled"
                     @click="createChangeSet"
                   />
-                  <VButton
-                    size="xs"
-                    button-rank="tertiary"
-                    button-type="destructive"
+                  <TertiaryDestructiveButtonXSmall
                     label="Cancel"
                     icon-style="left"
                     icon="trash"
@@ -168,7 +151,10 @@ import {
   TransitionRoot,
 } from "@headlessui/vue";
 
-import VButton from "@/molecules/VButton.vue";
+import PrimaryActionButtonXSmall from "@/molecules/PrimaryActionButtonXSmall.vue";
+import PrimarySuccessButtonXSmall from "@/molecules/PrimarySuccessButtonXSmall.vue";
+import TertiaryDestructiveButtonXSmall from "@/molecules/TertiaryDestructiveButtonXSmall.vue";
+import TertiaryNeutralButtonXSmall from "@/molecules/TertiaryNeutralButtonXSmall.vue";
 import SelectMenu, { Option } from "@/molecules/SelectMenu.vue";
 import { ChangeSet } from "@/api/sdf/dal/change_set";
 import { Workspace } from "@/api/sdf/dal/workspace";
