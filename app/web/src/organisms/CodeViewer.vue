@@ -1,18 +1,28 @@
 <template>
   <div v-if="props.componentId" class="flex flex-col w-full overflow-hidden">
     <div
-      class="flex flex-row items-center justify-between h-10 px-6 py-2 text-base text-white align-middle property-section-bg-color"
+      class="flex flex-row items-center justify-between h-10 px-6 py-2 text-base align-middle"
     >
-      <div class="text-lg">Component ID {{ props.componentId }} Code</div>
+      <div v-if="props.schemaName" class="text-lg">
+        {{ props.schemaName }}
+      </div>
+      <div v-else class="text-lg">
+        Component ID {{ props.componentId }} Code
+      </div>
 
       <div class="flex">
-        <SiButtonIcon tooltip-text="Copy code to clipboard" @click="copyCode">
+        <SiButtonIcon
+          tooltip-text="Copy code to clipboard"
+          ignore-text-color
+          @click="copyCode"
+        >
           <ClipboardCopyIcon />
         </SiButtonIcon>
 
         <SiButtonIcon
           v-if="editMode"
           tooltip-text="Re-generate code"
+          ignore-text-color
           @click="generateCode"
         >
           <RefreshIcon :class="refreshClasses" />
@@ -40,18 +50,22 @@ import { StreamLanguage } from "@codemirror/stream-parser";
 import { keymap } from "@codemirror/view";
 import { indentWithTab } from "@codemirror/commands";
 import { gruvboxDark } from "cm6-theme-gruvbox-dark";
+import { gruvboxLight } from "cm6-theme-gruvbox-light";
 import { fromRef, refFrom, untilUnmounted } from "vuse-rx/src";
 import { ComponentService } from "@/service/component";
 import { eventCodeGenerated$ } from "@/observable/code";
 import { GlobalErrorService } from "@/service/global_error";
-import { Compartment } from "@codemirror/state";
+import { Compartment, StateEffect } from "@codemirror/state";
 import { ChangeSetService } from "@/service/change_set";
 import { system$ } from "@/observable/system";
 import SiButtonIcon from "@/atoms/SiButtonIcon.vue";
 import { ClipboardCopyIcon, RefreshIcon } from "@heroicons/vue/solid";
+import { ThemeService } from "@/service/theme";
+import { Theme } from "@/observable/theme";
 
 const props = defineProps<{
   componentId: number;
+  schemaName?: string;
 }>();
 const { componentId } = toRefs(props);
 const componentId$ = fromRef(componentId, { immediate: true });
@@ -69,18 +83,19 @@ const copyCode = () => {
   navigator.clipboard.writeText(code);
 };
 
+const fixedHeightEditor = EditorView.theme({
+  "&": { height: "100%" },
+  ".cm-scroller": { overflow: "auto" },
+});
+const currentTheme = refFrom<Theme>(ThemeService.currentTheme());
+
 onMounted(() => {
   if (editorMount.value) {
-    const fixedHeightEditor = EditorView.theme({
-      "&": { height: "100%" },
-      ".cm-scroller": { overflow: "auto" },
-    });
-
     view.value = new EditorView({
       state: EditorState.create({
         extensions: [
           basicSetup,
-          gruvboxDark,
+          currentTheme.value?.value == "dark" ? gruvboxDark : gruvboxLight,
           fixedHeightEditor,
           keymap.of([indentWithTab]),
           StreamLanguage.define(yaml),
@@ -88,6 +103,22 @@ onMounted(() => {
         ],
       }),
       parent: editorMount.value,
+    });
+  }
+});
+
+// FIXME(nick,victor,wendy): do not reconfigure entire state when switching themes.
+ThemeService.currentTheme().subscribe((theme) => {
+  if (view.value) {
+    view.value.dispatch({
+      effects: StateEffect.reconfigure.of([
+        basicSetup,
+        theme.value === "dark" ? gruvboxDark : gruvboxLight,
+        fixedHeightEditor,
+        keymap.of([indentWithTab]),
+        StreamLanguage.define(yaml),
+        readOnly.of(EditorState.readOnly.of(true)),
+      ]),
     });
   }
 });
@@ -183,9 +214,3 @@ const generateCode = () => {
   });
 };
 </script>
-
-<style scoped>
-.property-section-bg-color {
-  background-color: #292c2d;
-}
-</style>
