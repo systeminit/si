@@ -255,7 +255,7 @@ macro_rules! test_setup {
         let $nats = $nats_conn.transaction();
         let mut $pgconn = $pg.get().await.expect("cannot connect to pg");
         let $pgtxn = $pgconn.transaction().await.expect("cannot create txn");
-        let ($app, _) = sdf::build_service(
+        let ($app, _, _) = sdf::build_service(
             telemetry,
             $pg.clone(),
             $nats_conn.clone(),

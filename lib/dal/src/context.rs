@@ -628,9 +628,7 @@ impl<'a> Transactions<'a> {
     pub async fn commit(self) -> Result<(), TransactionsError> {
         self.pg_txn.commit().await?;
         self.nats_txn.commit().await?;
-
         self.job_processor.process_queue().await?;
-
         Ok(())
     }
 

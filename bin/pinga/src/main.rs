@@ -1,10 +1,11 @@
+use color_eyre::Result;
 use faktory_async::{BeatState, Client, FailConfig};
 use futures::{future::FutureExt, Future};
 use std::{any::TypeId, panic::AssertUnwindSafe, sync::Arc, time::Duration};
 use telemetry::{prelude::*, TelemetryClient};
 use tokio::{
     signal,
-    sync::{broadcast, mpsc},
+    sync::{mpsc, watch},
     task::JoinError,
 };
 
@@ -21,8 +22,6 @@ use uuid::Uuid;
 
 mod args;
 mod config;
-
-type Result<T, E = JobError> = std::result::Result<T, E>;
 
 const RT_DEFAULT_THREAD_STACK_SIZE: usize = 2 * 1024 * 1024 * 3;
 
@@ -44,7 +43,7 @@ fn main() {
         .expect("pinga thread join failed");
 }
 
-async fn async_main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+async fn async_main() -> Result<()> {
     color_eyre::install()?;
     let config = telemetry::Config::builder()
         .service_name("pinga")
@@ -54,32 +53,43 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let telemetry = telemetry::init(config)?;
     let args = args::parse();
 
-    let (shutdown_send, shutdown_receive) = broadcast::channel(1);
+    let (shutdown_request_tx, shutdown_request_rx) = watch::channel(());
+    let (shutdown_finished_tx, mut shutdown_finished_rx) = mpsc::channel(1);
 
-    let run_result = tokio::task::spawn(run(args, telemetry, shutdown_receive));
+    let run_result = tokio::task::spawn(run(
+        args,
+        telemetry,
+        shutdown_request_rx,
+        shutdown_finished_tx,
+    ));
 
     let mut sigterm_watcher = signal::unix::signal(signal::unix::SignalKind::terminate())?;
 
     tokio::select! {
         _ = signal::ctrl_c() => {
             info!("SIGINT received; initiating graceful shutdown");
-            shutdown_send.send(())?;
+            // fails if shutdown_request_rx has been dropped, which means shutdown has already happened
+            let _ = shutdown_request_tx.send(());
         }
         _ = sigterm_watcher.recv() => {
             info!("SIGTERM received; initiating graceful shutdown");
-            shutdown_send.send(())?;
+            // fails if shutdown_request_rx has been dropped, which means shutdown has already happened
+            let _ = shutdown_request_tx.send(());
         }
+        // fails if shutdown_finished_tx has been dropped, which means shutdown has already happened
+        _ = shutdown_finished_rx.recv() => {},
     }
 
-    // We should return any errors that happened in our run method's task.
+    // Joins run(...) spawned task
     run_result.await?
 }
 
 async fn run(
     args: args::Args,
     mut telemetry: telemetry::Client,
-    mut shutdown_channel: broadcast::Receiver<()>,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    shutdown_request_rx: watch::Receiver<()>,
+    shutdown_finished_tx: mpsc::Sender<()>,
+) -> Result<()> {
     if args.verbose > 0 {
         telemetry.set_verbosity(args.verbose.into()).await?;
     }
@@ -123,6 +133,8 @@ async fn run(
 
     let veritech = veritech::Client::new(nats.clone());
 
+    let (alive_marker, mut job_processor_shutdown_rx) = mpsc::channel(1);
+
     if let MigrationMode::Run | MigrationMode::RunAndQuit = config.migration_mode() {
         info!("Running migrations");
 
@@ -132,8 +144,8 @@ async fn run(
             None,
         );
         let client = Client::new(faktory_config, 128);
-        let job_processor =
-            Box::new(FaktoryProcessor::new(client)) as Box<dyn JobQueueProcessor + Send + Sync>;
+        let job_processor = Box::new(FaktoryProcessor::new(client, alive_marker.clone()))
+            as Box<dyn JobQueueProcessor + Send + Sync>;
 
         dal::migrate_all(
             &pg_pool,
@@ -154,67 +166,46 @@ async fn run(
         trace!("migration mode is skip, not running migrations");
     }
 
-    loop {
-        info!("Creating faktory connection");
-        let config = faktory_async::Config::from_uri(
-            &config.faktory().url,
-            Some("pinga".to_string()),
-            Some(Uuid::new_v4().to_string()),
-        );
+    info!("Creating faktory connection");
+    let config = faktory_async::Config::from_uri(
+        &config.faktory().url,
+        Some("pinga".to_string()),
+        Some(Uuid::new_v4().to_string()),
+    );
 
-        let client = Client::new(config.clone(), 256);
-        info!("Spawned faktory connection.");
+    let client = Client::new(config.clone(), 256);
+    info!("Spawned faktory connection.");
 
-        const NUM_TASKS: usize = 5;
-        let (task_wait_send, mut task_wait_recv) = mpsc::channel(1);
-        let mut handles = Vec::with_capacity(NUM_TASKS + 1);
+    const NUM_TASKS: usize = 5;
+    let mut handles = Vec::with_capacity(NUM_TASKS);
 
-        for _ in 0..NUM_TASKS {
-            handles.push(tokio::task::spawn(start_job_executor(
-                client.clone(),
-                pg_pool.clone(),
-                nats.clone(),
-                veritech.clone(),
-                encryption_key,
-                shutdown_channel.resubscribe(),
-                task_wait_send.clone(),
-            )));
-        }
-
-        let new_shutdown_channel = shutdown_channel.resubscribe();
-        let shutdown_future = async move {
-            let _ = shutdown_channel.recv().await;
-        };
-        shutdown_channel = new_shutdown_channel;
-
-        // Watch for either all job tasks exiting on their own, or us
-        // receiving a shutdown signal. If they all exited on their
-        // own, we should restart them, but if we received a shutdown
-        // signal, then we should wait for them to exit before exiting
-        // the loop that would respawn them (and the heartbeat).
-        tokio::select! {
-            _ = shutdown_future => {
-                info!("Main executor loop received shutdown notification; stopping.");
-                drop(task_wait_send);
-                task_wait_recv.recv().await;
-                // Now that all the worker tasks have exited, we can
-                // safely stop sending heartbeats to the faktory
-                // server.
-                info!("Closing faktory-async client connection");
-                if let Err(err) = client.close() {
-                    error!("Error closing faktory-async client connection: {err}");
-                }
-                info!("All executor jobs finished; exiting main executor loop.");
-                break Ok(());
-            }
-            _ = futures::future::join_all(handles) => {}
-        }
-
-        info!("Closing faktory-async client connection");
-        if let Err(err) = client.close() {
-            error!("Error closing fakory-async client connection: {err}");
-        }
+    for _ in 0..NUM_TASKS {
+        handles.push(tokio::task::spawn(start_job_executor(
+            client.clone(),
+            pg_pool.clone(),
+            nats.clone(),
+            veritech.clone(),
+            encryption_key,
+            shutdown_request_rx.clone(),
+            alive_marker.clone(),
+        )));
     }
+    drop(alive_marker);
+
+    futures::future::join_all(handles).await;
+
+    // Blocks until all FaktoryProcessors are gone so we don't skip jobs that are still being sent to faktory_async
+    info!("Waiting for all faktory processors to finish pushing jobs");
+    let _ = job_processor_shutdown_rx.recv().await;
+
+    info!("Closing faktory-async client connection");
+    if let Err(err) = client.close().await {
+        error!("Error closing fakory-async client connection: {err}");
+    }
+
+    // Receiver can never be dropped as our caller owns it
+    shutdown_finished_tx.send(()).await?;
+    Ok(())
 }
 
 /// Start the faktory job executor
@@ -224,11 +215,11 @@ async fn start_job_executor(
     nats: NatsClient,
     veritech: veritech::Client,
     encryption_key: veritech::EncryptionKey,
-    mut shutdown_channel: broadcast::Receiver<()>,
-    _sender: mpsc::Sender<()>,
+    mut shutdown_request_rx: watch::Receiver<()>,
+    alive_marker: mpsc::Sender<()>,
 ) {
-    let job_processor =
-        Box::new(FaktoryProcessor::new(client.clone())) as Box<dyn JobQueueProcessor + Send + Sync>;
+    let job_processor = Box::new(FaktoryProcessor::new(client.clone(), alive_marker))
+        as Box<dyn JobQueueProcessor + Send + Sync>;
     let services_context = ServicesContext::new(
         pg.clone(),
         nats.clone(),
@@ -239,30 +230,22 @@ async fn start_job_executor(
     let ctx_builder = Arc::new(DalContext::builder(services_context));
 
     loop {
-        match shutdown_channel.try_recv() {
-            Err(broadcast::error::TryRecvError::Empty) => {
-                // No shutdown signal yet; nothing to do.
-            }
-            _ => {
-                // The sender has shut down, we're lagged (on a channel that can only hold 1 thing),
-                // or we got something over the channel. In any of these scenarios, we should be
-                // shutting down.
-                info!("Worker task received shutdown notification: stopping");
-                break;
-            }
-        }
         tokio::time::sleep(Duration::from_millis(500)).await;
 
         match client.last_beat().await {
             Ok(BeatState::Ok) => {
-                let job = match client.fetch(&["default".to_owned()]).await {
-                    Ok(Some(job)) => job,
-                    Ok(None) => {
-                        continue;
-                    }
-                    Err(err) => {
-                        error!("Unable to fetch from faktory: {err}");
-                        continue;
+                let job = tokio::select! {
+                    job = client.fetch(vec!["default".into()]) => match job {
+                        Ok(Some(job)) => job,
+                        Ok(None) => continue,
+                        Err(err) => {
+                            error!("Unable to fetch from faktory: {err}");
+                            continue;
+                        }
+                    },
+                    _ = shutdown_request_rx.changed() => {
+                        info!("Worker task received shutdown notification: stopping");
+                        break;
                     }
                 };
 
@@ -309,8 +292,8 @@ async fn start_job_executor(
                 break;
             }
             Err(err) => {
-                error!("Connection closed: {err}");
-                continue;
+                error!("Internal error in faktory-async, bailing out: {err}");
+                break;
             }
         }
     }
@@ -331,7 +314,7 @@ async fn start_job_executor_fallible(
     job: faktory_async::Job,
     ctx_builder: Arc<DalContextBuilder>,
     client: Client,
-) -> Result<()> {
+) -> Result<(), JobError> {
     let job_task = tokio::task::spawn(execute_job_fallible(job, ctx_builder));
 
     loop {
@@ -364,7 +347,7 @@ async fn start_job_executor_fallible(
 async fn execute_job_fallible(
     job: faktory_async::Job,
     ctx_builder: Arc<DalContextBuilder>,
-) -> Result<()> {
+) -> Result<(), JobError> {
     info!("Processing {job:?}");
 
     let job = match job_match!(job, ComponentPostProcessing, DependentValuesUpdate) {

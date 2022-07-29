@@ -1073,21 +1073,18 @@ dependencies = [
 [[package]]
 name = "faktory-async"
 version = "0.1.0"
-source = "git+https://github.com/systeminit/faktory-async?branch=main#b62a9b67de412271fd758c006a752bde322c96ae"
+source = "git+https://github.com/systeminit/faktory-async?branch=main#aafde3d790ef804f1a2a27d57ee84d4ab54e5bd9"
 dependencies = [
- "chrono",
  "faktory-lib-async",
- "serde",
- "serde_json",
+ "rand",
  "thiserror",
  "tokio",
- "uuid",
 ]
 
 [[package]]
 name = "faktory-lib-async"
 version = "0.1.0"
-source = "git+https://github.com/systeminit/faktory-lib-async?branch=main#8b3f2f183bcde2e532ca177ec673d34746581bca"
+source = "git+https://github.com/systeminit/faktory-lib-async?branch=main#f8980117a86ff8270980835c69883a3d7c75c92d"
 dependencies = [
  "chrono",
  "serde",

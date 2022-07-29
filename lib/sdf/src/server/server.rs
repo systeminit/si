@@ -17,7 +17,7 @@ use telemetry::{prelude::*, TelemetryClient};
 use thiserror::Error;
 use tokio::{
     io::{AsyncRead, AsyncWrite},
-    signal::unix,
+    signal,
     sync::{broadcast, mpsc, oneshot},
 };
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
@@ -76,10 +76,10 @@ impl Server<(), ()> {
         veritech: veritech::Client,
         encryption_key: veritech::EncryptionKey,
         jwt_secret_key: JwtSecretKey,
-    ) -> Result<Server<AddrIncoming, SocketAddr>> {
+    ) -> Result<(Server<AddrIncoming, SocketAddr>, broadcast::Receiver<()>)> {
         match config.incoming_stream() {
             IncomingStream::HTTPSocket(socket_addr) => {
-                let (service, shutdown_rx) = build_service(
+                let (service, shutdown_rx, shutdown_broadcast_rx) = build_service(
                     telemetry,
                     pg_pool,
                     nats,
@@ -94,12 +94,15 @@ impl Server<(), ()> {
                 let inner = axum::Server::bind(socket_addr).serve(service.into_make_service());
                 let socket = inner.local_addr();
 
-                Ok(Server {
-                    config,
-                    inner,
-                    socket,
-                    shutdown_rx,
-                })
+                Ok((
+                    Server {
+                        config,
+                        inner,
+                        socket,
+                        shutdown_rx,
+                    },
+                    shutdown_broadcast_rx,
+                ))
             }
             wrong @ IncomingStream::UnixDomainSocket(_) => {
                 Err(ServerError::WrongIncomingStream("http", wrong.clone()))
@@ -117,10 +120,10 @@ impl Server<(), ()> {
         veritech: veritech::Client,
         encryption_key: veritech::EncryptionKey,
         jwt_secret_key: JwtSecretKey,
-    ) -> Result<Server<UdsIncomingStream, PathBuf>> {
+    ) -> Result<(Server<UdsIncomingStream, PathBuf>, broadcast::Receiver<()>)> {
         match config.incoming_stream() {
             IncomingStream::UnixDomainSocket(path) => {
-                let (service, shutdown_rx) = build_service(
+                let (service, shutdown_rx, shutdown_broadcast_rx) = build_service(
                     telemetry,
                     pg_pool,
                     nats,
@@ -136,12 +139,15 @@ impl Server<(), ()> {
                     .serve(service.into_make_service());
                 let socket = path.clone();
 
-                Ok(Server {
-                    config,
-                    inner,
-                    socket,
-                    shutdown_rx,
-                })
+                Ok((
+                    Server {
+                        config,
+                        inner,
+                        socket,
+                        shutdown_rx,
+                    },
+                    shutdown_broadcast_rx,
+                ))
             }
             wrong @ IncomingStream::HTTPSocket(_) => {
                 Err(ServerError::WrongIncomingStream("http", wrong.clone()))
@@ -209,11 +215,11 @@ impl Server<(), ()> {
         job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
         veritech: veritech::Client,
         encryption_key: veritech::EncryptionKey,
+        shutdown_broadcast_rx: broadcast::Receiver<()>,
     ) {
         let services_context =
             ServicesContext::new(pg, nats, job_processor, veritech, Arc::new(encryption_key));
-        let scheduler = ResourceScheduler::new(services_context);
-        tokio::spawn(scheduler.start());
+        ResourceScheduler::new(services_context).start(shutdown_broadcast_rx);
     }
 
     #[instrument(name = "sdf.init.create_pg_pool", skip_all)]
@@ -273,12 +279,9 @@ pub fn build_service(
     encryption_key: veritech::EncryptionKey,
     jwt_secret_key: JwtSecretKey,
     signup_secret: SensitiveString,
-) -> Result<(Router, oneshot::Receiver<()>)> {
-    let (shutdown_tx, shutdown_rx) = mpsc::channel(4);
-    // Note the channel parameter corresponds to the number of channels that may be maintained when
-    // the sender is guaranteeing delivery. While this number may end of being related to the
-    // number of active WebSocket sessions, it's not necessarily the same number.
-    let (shutdown_broadcast_tx, _) = broadcast::channel(512);
+) -> Result<(Router, oneshot::Receiver<()>, broadcast::Receiver<()>)> {
+    let (shutdown_tx, shutdown_rx) = mpsc::channel(1);
+    let (shutdown_broadcast_tx, shutdown_broadcast_rx) = broadcast::channel(1);
 
     let routes = routes(
         telemetry,
@@ -300,7 +303,7 @@ pub fn build_service(
 
     let graceful_shutdown_rx = prepare_graceful_shutdown(shutdown_rx, shutdown_broadcast_tx)?;
 
-    Ok((routes, graceful_shutdown_rx))
+    Ok((routes, graceful_shutdown_rx, shutdown_broadcast_rx))
 }
 
 fn prepare_graceful_shutdown(
@@ -308,8 +311,8 @@ fn prepare_graceful_shutdown(
     shutdown_broadcast_tx: broadcast::Sender<()>,
 ) -> Result<oneshot::Receiver<()>> {
     let (graceful_shutdown_tx, graceful_shutdown_rx) = oneshot::channel::<()>();
-    let mut sigterm_stream =
-        unix::signal(unix::SignalKind::terminate()).map_err(ServerError::Signal)?;
+    let mut sigterm_watcher =
+        signal::unix::signal(signal::unix::SignalKind::terminate()).map_err(ServerError::Signal)?;
 
     tokio::spawn(async move {
         fn send_graceful_shutdown(
@@ -328,7 +331,11 @@ fn prepare_graceful_shutdown(
         }
 
         tokio::select! {
-            _ = sigterm_stream.recv() => {
+            _ = signal::ctrl_c() => {
+                info!("received SIGINT signal, performing graceful shutdown");
+                send_graceful_shutdown(graceful_shutdown_tx, shutdown_broadcast_tx);
+            }
+            _ = sigterm_watcher.recv() => {
                 info!("received SIGTERM signal, performing graceful shutdown");
                 send_graceful_shutdown(graceful_shutdown_tx, shutdown_broadcast_tx);
             }
