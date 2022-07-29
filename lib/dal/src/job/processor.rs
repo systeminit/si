@@ -7,7 +7,6 @@ use crate::DalContext;
 
 pub mod faktory_processor;
 pub mod sync_processor;
-pub mod test_null_processor;
 
 #[derive(Error, Debug)]
 pub enum JobQueueProcessorError {
