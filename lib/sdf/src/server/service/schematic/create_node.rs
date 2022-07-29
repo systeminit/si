@@ -53,7 +53,7 @@ pub async fn create_node(
             if let Some(parent_node) = parent_node {
                 match parent_node.kind() {
                     NodeKind::Component | NodeKind::System => {
-                        return Err(SchematicError::InvalidParentNode(*parent_node.kind()))
+                        return Err(SchematicError::InvalidParentNode(*parent_node.kind()));
                     }
                     NodeKind::Deployment => {}
                 }
@@ -82,7 +82,7 @@ pub async fn create_node(
             return Err(SchematicError::InvalidSchematicKindParentNodeIdPair(
                 schema_kind,
                 *parent_node_id,
-            ))
+            ));
         }
     };
 

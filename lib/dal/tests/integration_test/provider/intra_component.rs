@@ -2,13 +2,11 @@ use crate::dal::test;
 use dal::attribute::context::AttributeContextBuilder;
 use dal::func::binding::FuncBinding;
 use dal::provider::internal::InternalProvider;
-use dal::test::helpers::{find_prop_and_parent_by_name, process_job_queue};
+use dal::test::helpers::find_prop_and_parent_by_name;
 use dal::test_harness::{
     create_prop_of_kind_and_set_parent_with_name, create_schema, create_schema_variant_with_root,
 };
-use dal::{
-    AttributePrototypeArgument, AttributeValue, Component, ComponentView, Schema, SchemaVariant,
-};
+use dal::{AttributePrototypeArgument, AttributeValue, Component, ComponentView, Schema};
 use dal::{AttributeReadContext, DalContext, Func, PropKind, SchemaKind, StandardModel};
 use pretty_assertions_sorted::assert_eq_sorted;
 
@@ -47,13 +45,11 @@ async fn intra_component_identity_update(ctx: &DalContext<'_, '_>) {
     )
     .await;
 
-    SchemaVariant::create_default_prototypes_and_values(ctx, *schema_variant.id())
+    schema_variant
+        .finalize(ctx)
         .await
-        .expect("cannot create default prototypes and values for SchemaVariant");
-    // Create the internal providers for a schema variant. Afterwards, we can create the component.
-    SchemaVariant::create_implicit_internal_providers(ctx, *schema.id(), *schema_variant.id())
-        .await
-        .expect("could not create internal providers for schema variant");
+        .expect("cannot finalize SchemaVariant");
+
     let (component, _) = Component::new_for_schema_with_node(ctx, "starfield", schema.id())
         .await
         .expect("unable to create component");
@@ -103,7 +99,6 @@ async fn intra_component_identity_update(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("cannot update value for context");
-    process_job_queue(ctx).await;
 
     // Initialize the value corresponding to the "destination" prop.
     let set_object_attribute_value = AttributeValue::find_for_context(
@@ -142,7 +137,6 @@ async fn intra_component_identity_update(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("cannot set value for context");
-    process_job_queue(ctx).await;
 
     // Ensure that our rendered data matches what was intended.
     assert_eq_sorted!(
@@ -243,7 +237,6 @@ async fn intra_component_identity_update(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not update attribute value");
-    process_job_queue(ctx).await;
 
     // Observe that both the source and destination fields were updated.
     assert_eq_sorted!(
@@ -276,7 +269,6 @@ async fn intra_component_identity_update(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not update attribute value");
-    process_job_queue(ctx).await;
 
     // Observe it again!
     assert_eq_sorted!(
@@ -318,7 +310,6 @@ async fn docker_image_intra_component_update(ctx: &DalContext<'_, '_>) {
         Component::new_for_schema_with_node(ctx, "soulrender", schema.id())
             .await
             .expect("unable to create component");
-    process_job_queue(ctx).await;
 
     let soulrender_base_context = AttributeReadContext {
         prop_id: None,
@@ -347,7 +338,6 @@ async fn docker_image_intra_component_update(ctx: &DalContext<'_, '_>) {
         Component::new_for_schema_with_node(ctx, "bloodscythe", schema.id())
             .await
             .expect("unable to create component");
-    process_job_queue(ctx).await;
 
     let bloodscythe_base_context = AttributeReadContext {
         prop_id: None,
@@ -420,7 +410,6 @@ async fn docker_image_intra_component_update(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not update attribute value for context");
-    process_job_queue(ctx).await;
 
     assert_eq_sorted!(
         serde_json::json![{
@@ -494,7 +483,6 @@ async fn docker_image_intra_component_update(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not update attribute value for context");
-    process_job_queue(ctx).await;
 
     assert_eq_sorted!(
         serde_json::json![{

@@ -1,12 +1,13 @@
 <template>
-  <div class="flex flex-col w-full overflow-hidden">
+  <div class="flex flex-col w-full">
     <div
-      class="flex flex-row items-center h-10 px-6 py-2 text-base text-white align-middle property-section-bg-color"
+      class="flex flex-row items-center h-10 px-6 py-2 text-base align-middle"
     >
-      <div v-if="componentMetadata?.schemaName" class="text-lg">
-        {{ componentMetadata.schemaName }}
+      <div class="text-lg">
+        {{
+          componentMetadata?.schemaName || componentIdentification.schemaName
+        }}
       </div>
-
       <div class="ml-2 flex">
         <SiIcon
           :tooltip-text="qualificationTooltip"
@@ -47,6 +48,7 @@
 
     <PropertyEditor
       v-if="editorContext"
+      class="overflow-auto"
       :editor-context="editorContext"
       @updated-property="updateProperty($event)"
       @add-to-array="addToArray($event)"
@@ -399,9 +401,5 @@ const hackAwayTheZeroElementOfContainers = (
 
 .scrollbar::-webkit-scrollbar {
   display: none; /*chrome, opera, and safari */
-}
-
-.property-section-bg-color {
-  background-color: #292c2d;
 }
 </style>

@@ -23,7 +23,7 @@
     </div>
   </div>
 
-  <p v-if="props.docLink" class="mt-2 text-xs text-blue-300">
+  <p v-if="props.docLink" class="mt-2 text-xs text-action-500">
     <a :href="props.docLink" target="_blank" class="hover:underline">
       Documentation
     </a>

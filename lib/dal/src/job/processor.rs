@@ -1,13 +1,12 @@
-use std::{collections::VecDeque, sync::Arc};
-
 use async_trait::async_trait;
 use dyn_clone::DynClone;
 use thiserror::Error;
 
 use super::producer::{JobProducer, JobProducerError};
+use crate::DalContext;
 
 pub mod faktory_processor;
-pub mod test_null_processor;
+pub mod sync_processor;
 
 #[derive(Error, Debug)]
 pub enum JobQueueProcessorError {
@@ -21,10 +20,8 @@ pub type JobQueueProcessorResult<T> = Result<T, JobQueueProcessorError>;
 
 #[async_trait]
 pub trait JobQueueProcessor: std::fmt::Debug + DynClone {
-    async fn process_queue(
-        &self,
-        queue: Arc<tokio::sync::Mutex<VecDeque<Box<dyn JobProducer + Send + Sync>>>>,
-    ) -> JobQueueProcessorResult<()>;
+    async fn enqueue_job(&self, job: Box<dyn JobProducer + Send + Sync>, ctx: &DalContext<'_, '_>);
+    async fn process_queue(&self) -> JobQueueProcessorResult<()>;
 }
 
 dyn_clone::clone_trait_object!(JobQueueProcessor);

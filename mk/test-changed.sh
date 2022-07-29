@@ -14,19 +14,24 @@ echo "::endgroup::"
 
 if [ -z "$SKIP_LINT" ]; then
   echo "::group::Lint"
-  while IFS= read -r line; do
+  lint_targets="$(while IFS= read -r line; do
     if [[ -f "$line/Makefile" ]]; then
       echo "lint//$line"
     fi
-  done <<< "$CHANGED_COMPONENTS" | xargs make CI=true CI_FROM_REF=$BEFORE_SHA CI_TO_REF=$AFTER_SHA
+  done <<< "$CHANGED_COMPONENTS")"
+  set -x
+  make CI=true CI_FROM_REF=$BEFORE_SHA CI_TO_REF=$AFTER_SHA $lint_targets
+  set +x
   echo "::endgroup::"
 fi
 
 echo "::group::Test"
-while IFS= read -r line; do
+test_targets="$(while IFS= read -r line; do
   if [[ -f "$line/Makefile" ]]; then
     echo "test//$line"
   fi
-done <<< "$CHANGED_COMPONENTS" | xargs make CI=true CI_FROM_REF=$BEFORE_SHA CI_TO_REF=$AFTER_SHA
+done <<< "$CHANGED_COMPONENTS")"
+set -x
+make CI=true CI_FROM_REF=$BEFORE_SHA CI_TO_REF=$AFTER_SHA $test_targets
+set +x
 echo "::endgroup::"
-

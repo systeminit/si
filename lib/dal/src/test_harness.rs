@@ -1,12 +1,10 @@
 use std::{env, path::Path, sync::Arc};
 
 use anyhow::Result;
-use faktory_async::Client as FaktoryClient;
 use lazy_static::lazy_static;
 use names::{Generator, Name};
 use si_data::{NatsClient, NatsConfig, PgPool, PgPoolConfig};
 
-use tokio::sync::mpsc;
 use uuid::Uuid;
 use veritech::{EncryptionKey, Instance, StandardConfig};
 
@@ -14,13 +12,12 @@ use crate::{
     billing_account::BillingAccountSignup,
     component::ComponentKind,
     func::{binding::FuncBinding, FuncId},
-    job::processor::{faktory_processor::FaktoryProcessor, JobQueueProcessor},
+    job::processor::{sync_processor::SyncProcessor, JobQueueProcessor},
     jwt_key::JwtSecretKey,
     key_pair::KeyPairId,
     node::NodeKind,
     schema,
     socket::{Socket, SocketArity, SocketEdgeKind, SocketKind},
-    test::helpers::process_job_queue,
     BillingAccount, BillingAccountId, ChangeSet, Component, DalContext, EditSession,
     EncryptedSecret, Func, FuncBackendKind, FuncBackendResponseType, Group, HistoryActor, KeyPair,
     Node, Organization, Prop, PropId, PropKind, QualificationCheck, Schema, SchemaId, SchemaKind,
@@ -32,7 +29,6 @@ use crate::{
 pub struct TestConfig {
     pg: PgPoolConfig,
     nats: NatsConfig,
-    faktory: String,
     jwt_encrypt: JwtSecretKey,
 }
 
@@ -49,16 +45,9 @@ impl Default for TestConfig {
         }
         pg.dbname = env::var("SI_TEST_PG_DBNAME").unwrap_or_else(|_| "si_test".to_string());
 
-        let mut faktory =
-            env::var("SI_TEST_FAKTORY").unwrap_or_else(|_| "localhost:7419".to_owned());
-        if let Ok(value) = env::var("SI_TEST_FAKTORY_URL") {
-            faktory = value;
-        }
-
         Self {
             pg,
             nats,
-            faktory,
             jwt_encrypt: JwtSecretKey::default(),
         }
     }
@@ -78,7 +67,7 @@ pub struct TestContext {
     tmp_event_log_fs_root: tempfile::TempDir,
     pub pg: PgPool,
     pub nats_conn: NatsClient,
-    pub faktory: Box<dyn JobQueueProcessor + Send + Sync>,
+    pub job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
     pub veritech: veritech::Client,
     pub encryption_key: EncryptionKey,
     pub jwt_secret_key: JwtSecretKey,
@@ -98,15 +87,9 @@ impl TestContext {
         let nats_conn = NatsClient::new(&settings.nats)
             .await
             .expect("failed to connect to NATS");
-        // TODO: use null processor, or the upcomming inline one
-        let (alive_marker, _) = mpsc::channel(1);
-        let faktory = Box::new(FaktoryProcessor::new(
-            FaktoryClient::new(
-                faktory_async::Config::from_uri(&settings.faktory, None, None),
-                128,
-            ),
-            alive_marker,
-        )) as Box<dyn JobQueueProcessor + Send + Sync>;
+        let job_processor =
+            Box::new(SyncProcessor::new()) as Box<dyn JobQueueProcessor + Send + Sync>;
+
         // Create a dedicated Veritech server with a unique subject prefix for each test
         let nats_subject_prefix = nats_prefix();
         let veritech_server =
@@ -127,7 +110,7 @@ impl TestContext {
             tmp_event_log_fs_root,
             pg,
             nats_conn,
-            faktory,
+            job_processor,
             veritech,
             encryption_key,
             jwt_secret_key: secret_key,
@@ -148,7 +131,7 @@ impl TestContext {
         (
             &self.pg,
             &self.nats_conn,
-            self.faktory.clone(),
+            self.job_processor.clone(),
             self.veritech.clone(),
             &self.encryption_key,
             &self.jwt_secret_key,
@@ -432,7 +415,6 @@ pub async fn create_component_for_schema_variant(
     let (component, _) = Component::new_for_schema_variant_with_node(ctx, &name, schema_variant_id)
         .await
         .expect("cannot create component");
-    process_job_queue(ctx).await;
     component
 }
 

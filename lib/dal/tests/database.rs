@@ -13,7 +13,5 @@ const UNSET_ID_VALUE: i64 = -1;
 /// Smoke test to ensure the database is running and setup worked (migrations, etc.).
 #[test]
 async fn database_smoke(DalContextUniversalHeadRef(ctx): DalContextUniversalHeadRef<'_, '_, '_>) {
-    assert!(System::get_by_id(&ctx, &UNSET_ID_VALUE.into())
-        .await
-        .is_ok())
+    assert!(System::get_by_id(ctx, &UNSET_ID_VALUE.into()).await.is_ok())
 }

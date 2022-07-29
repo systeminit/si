@@ -1,12 +1,12 @@
 use dal::{
     qualification_resolver::UNSET_ID_VALUE,
-    test::helpers::{create_system_with_node, process_job_queue},
+    test::helpers::create_system_with_node,
     test_harness::{
         create_component_and_schema, create_component_for_schema_variant, create_schema,
         create_schema_variant, create_schema_variant_with_root,
     },
-    Component, DalContext, Prop, PropKind, Resource, Schema, SchemaKind, SchemaVariant,
-    StandardModel, WorkspaceId,
+    Component, DalContext, Prop, PropKind, Resource, Schema, SchemaKind, StandardModel,
+    WorkspaceId,
 };
 use pretty_assertions_sorted::{assert_eq, assert_eq_sorted};
 use serde_json::json;
@@ -38,7 +38,7 @@ async fn new_for_schema_variant_with_node(ctx: &DalContext<'_, '_>, wid: Workspa
         .expect("cannot retrieve resource for Component & System");
     assert!(resource.is_none());
 
-    let _ = component
+    component
         .add_to_system(ctx, system.id())
         .await
         .expect("failed to add node to system");
@@ -89,15 +89,15 @@ async fn qualification_view(ctx: &DalContext<'_, '_>) {
         .await
         .expect("Unable to set some_property parent to root.domain");
 
-    SchemaVariant::create_implicit_internal_providers(ctx, *schema.id(), *schema_variant.id())
+    schema_variant
+        .finalize(ctx)
         .await
-        .expect("unable to create implicit internal providers");
+        .expect("cannot finalize SchemaVariant");
 
     let (component, _) =
         Component::new_for_schema_variant_with_node(ctx, "mastodon", schema_variant.id())
             .await
             .expect("Unable to create component");
-    process_job_queue(ctx).await;
 
     let qualification_check_component = component
         .veritech_qualification_check_component(ctx, UNSET_ID_VALUE.into())
@@ -181,9 +181,8 @@ async fn get_resource_by_component_id(ctx: &DalContext<'_, '_>, wid: WorkspaceId
     let (component, _node) = Component::new_for_schema_with_node(ctx, "chvrches", schema.id())
         .await
         .expect("cannot create ash component");
-    process_job_queue(ctx).await;
 
-    let _ = component
+    component
         .add_to_system(ctx, system.id())
         .await
         .expect("failed to add component to system");

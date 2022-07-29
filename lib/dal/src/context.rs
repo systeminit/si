@@ -4,10 +4,7 @@ use si_data::{
     pg::{self, InstrumentedClient, InstrumentedTransaction, PgPoolResult},
     NatsClient, NatsTxn, PgPool, PgTxn,
 };
-use std::{
-    collections::{HashSet, VecDeque},
-    sync::Arc,
-};
+use std::sync::Arc;
 use telemetry::prelude::*;
 use thiserror::Error;
 use veritech::EncryptionKey;
@@ -277,19 +274,7 @@ impl DalContext<'_, '_> {
     }
 
     pub async fn enqueue_job(&self, job: Box<dyn JobProducer + Send + Sync>) {
-        let queued_jobs: HashSet<String> = {
-            self.txns()
-                .job_queue
-                .lock()
-                .await
-                .iter()
-                .map(|j| j.identity())
-                .collect()
-        };
-
-        if !queued_jobs.contains(&job.identity()) {
-            self.txns().job_queue.lock().await.push_back(job);
-        }
+        self.txns().job_processor.enqueue_job(job, self).await
     }
 
     /// Gets the dal context's txns.
@@ -612,8 +597,7 @@ pub struct Transactions<'a> {
     pg_txn: PgTxn<'a>,
     /// A NATS transaction.
     nats_txn: NatsTxn,
-    job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
-    pub job_queue: Arc<tokio::sync::Mutex<VecDeque<Box<dyn JobProducer + Send + Sync>>>>,
+    pub job_processor: Box<dyn JobQueueProcessor + Send + Sync>,
 }
 
 impl<'a> Transactions<'a> {
@@ -627,7 +611,6 @@ impl<'a> Transactions<'a> {
             pg_txn,
             nats_txn,
             job_processor,
-            job_queue: Default::default(),
         }
     }
 
@@ -645,7 +628,7 @@ impl<'a> Transactions<'a> {
     pub async fn commit(self) -> Result<(), TransactionsError> {
         self.pg_txn.commit().await?;
         self.nats_txn.commit().await?;
-        self.job_processor.process_queue(self.job_queue).await?;
+        self.job_processor.process_queue().await?;
         Ok(())
     }
 

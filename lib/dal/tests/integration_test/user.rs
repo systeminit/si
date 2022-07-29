@@ -70,7 +70,7 @@ async fn authorize(ctx: &mut DalContext<'_, '_>, nba: &BillingAccountSignup) {
     let worked = User::authorize(ctx, nba.user.id())
         .await
         .expect("admin group user should be authorized");
-    assert_eq!(worked, true, "authorized admin group user returns true");
+    assert!(worked, "authorized admin group user returns true");
 
     let password = "snakesOnAPlane123";
     let user_no_group = User::new(ctx, "funky", "bobotclown@systeminit.com", &password)
@@ -78,9 +78,8 @@ async fn authorize(ctx: &mut DalContext<'_, '_>, nba: &BillingAccountSignup) {
         .expect("cannot create user");
 
     let f = User::authorize(ctx, user_no_group.id()).await;
-    assert_eq!(
+    assert!(
         f.is_err(),
-        true,
         "user that is not in the admin group should fail"
     );
 }

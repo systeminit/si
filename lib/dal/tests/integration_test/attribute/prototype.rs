@@ -1,4 +1,4 @@
-use dal::{test::helpers::process_job_queue, DalContext, SchemaVariant};
+use dal::{DalContext, SchemaVariant};
 
 use crate::dal::test;
 use dal::{
@@ -380,15 +380,14 @@ async fn remove_component_specific(ctx: &DalContext<'_, '_>) {
         .await
         .expect("cannot set parent of prop");
 
-    // Now, we can setup providers.
-    SchemaVariant::create_implicit_internal_providers(ctx, *schema.id(), *schema_variant.id())
+    schema_variant
+        .finalize(ctx)
         .await
-        .expect("unable to create implicit internal providers");
+        .expect("cannot finalize SchemaVariant");
 
     let (component, _) = Component::new_for_schema_with_node(ctx, "toddhoward", schema.id())
         .await
         .expect("cannot create component");
-    process_job_queue(ctx).await;
 
     let read_context = AttributeReadContext {
         prop_id: None,
@@ -438,14 +437,11 @@ async fn remove_component_specific(ctx: &DalContext<'_, '_>) {
             .await
             .expect("could not get attribute values");
         for value in values {
-            let parent_value_id = match value
+            let parent_value_id = value
                 .parent_attribute_value(ctx)
                 .await
                 .expect("could not get parent attribute_value")
-            {
-                Some(parent) => Some(*parent.id()),
-                None => None,
-            };
+                .map(|parent| *parent.id());
 
             let _ = AttributeValue::update_for_context(
                 ctx,
@@ -504,7 +500,7 @@ async fn remove_component_specific(ctx: &DalContext<'_, '_>) {
             // been deleted.
             for confirm_deletion_prototype_id in &confirm_deletion_prototype_ids {
                 assert!(
-                    AttributePrototype::get_by_id(ctx, &confirm_deletion_prototype_id)
+                    AttributePrototype::get_by_id(ctx, confirm_deletion_prototype_id)
                         .await
                         .expect("could not get attribute prototype by id")
                         .is_none()

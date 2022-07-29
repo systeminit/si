@@ -2,26 +2,26 @@
   <div class="w-full h-full flex pointer-events-none relative overflow-hidden">
     <!-- FIXME(nick,victor): remove reliance on z index -->
     <SiCanvas
-      v-if="lightmode && editorContext"
-      light-mode
-      :schematic-viewer-id="schematicViewerId"
-      :viewer-state="viewerState"
+      v-if="lightmode && editorContext && selectedDeploymentNode"
+      :deployment-node-selected="selectedDeploymentNode.id"
       :editor-context="editorContext"
       :schematic-data="schematicData"
+      :schematic-kind="SchematicKind.Component"
+      :schematic-viewer-id="schematicViewerId"
       :viewer-event$="viewerEventObservable.viewerEvent$"
-      :schematic-kind="SchematicKind.Deployment"
-      :deployment-node-selected="null"
+      :viewer-state="viewerState"
       class="pointer-events-auto absolute z-10"
+      light-mode
     />
     <SiCanvas
-      v-else-if="editorContext"
-      :schematic-viewer-id="schematicViewerId"
-      :viewer-state="viewerState"
+      v-else-if="editorContext && selectedDeploymentNode"
+      :deployment-node-selected="selectedDeploymentNode.id"
       :editor-context="editorContext"
       :schematic-data="schematicData"
+      :schematic-kind="SchematicKind.Component"
+      :schematic-viewer-id="schematicViewerId"
       :viewer-event$="viewerEventObservable.viewerEvent$"
-      :schematic-kind="SchematicKind.Deployment"
-      :deployment-node-selected="null"
+      :viewer-state="viewerState"
       class="pointer-events-auto absolute z-10"
     />
 
@@ -34,18 +34,27 @@
       <!-- transparent div that flows through to the canvas -->
       <div class="grow h-full pointer-events-none"></div>
 
-      <SiSidebar side="right" :hidden="activeNode === null">
-        <ComponentDetails />
+      <SiSidebar
+        :hidden="
+          activeNode === null || selectedComponentIdentification === null
+        "
+        side="right"
+      >
+        <ComponentDetails
+          v-if="selectedComponentIdentification"
+          :component-identification="selectedComponentIdentification"
+        />
       </SiSidebar>
     </div>
   </div>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import {
   EditorContext,
   Schematic,
   SchematicKind,
+  SchematicNode,
   SchematicSchemaVariants,
 } from "@/api/sdf/dal/schematic";
 import SiCanvas from "@/organisms/SiCanvas.vue";
@@ -55,10 +64,18 @@ import { ViewerStateMachine } from "@/organisms/SiCanvas/state_machine";
 import SiSidebar from "@/atoms/SiSidebar.vue";
 import { ThemeService } from "@/service/theme";
 import { refFrom, untilUnmounted } from "vuse-rx";
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { Theme } from "@/observable/theme";
 import SiChangesetForm from "@/organisms/SiChangesetForm.vue";
-import { combineLatest, forkJoin, from, map, switchMap, take } from "rxjs";
+import {
+  combineLatest,
+  firstValueFrom,
+  forkJoin,
+  from,
+  map,
+  switchMap,
+  take,
+} from "rxjs";
 import { GetSchematicArgs } from "@/service/schematic/get_schematic";
 import {
   standardVisibilityTriggers$,
@@ -75,6 +92,10 @@ import { applicationNodeId$ } from "@/observable/application";
 import AssetsTabs from "@/organisms/AssetsTabs.vue";
 import { lastSelectedNode$ } from "@/observable/selection";
 import ComponentDetails from "@/organisms/ComponentDetails.vue";
+import { ComponentIdentification } from "@/api/sdf/dal/component";
+import { LabelList } from "@/api/sdf/dal/label_list";
+import { ComponentService } from "@/service/component";
+import { Node } from "@/organisms/SiCanvas/canvas/obj/node";
 
 defineProps<{
   mutable: boolean;
@@ -85,6 +106,82 @@ const viewerState = new ViewerStateMachine();
 const viewerEventObservable = new VE.ViewerEventObservable();
 const schematicData = ref<Schematic>({ nodes: [], connections: [] });
 
+const selectedComponentId = ref<number | "">("");
+const activeNode = refFrom(lastSelectedNode$);
+
+const componentIdentificationList = refFrom<
+  LabelList<ComponentIdentification | "">
+>(
+  ComponentService.listComponentsIdentification().pipe(
+    switchMap((response) => {
+      if (response.error) {
+        GlobalErrorService.set(response);
+        return from([[]]);
+      } else {
+        const list: LabelList<ComponentIdentification | ""> = _.cloneDeep(
+          response.list,
+        );
+        list.push({ label: "", value: "" });
+        return from([list]);
+      }
+    }),
+  ),
+);
+
+const componentRecord = computed(
+  (): Record<number, ComponentIdentification> => {
+    let record: Record<number, ComponentIdentification> = {};
+    if (componentIdentificationList.value) {
+      for (const item of componentIdentificationList.value) {
+        if (item.value !== "") {
+          record[item.value.componentId] = item.value;
+        }
+      }
+    }
+    return record;
+  },
+);
+
+const selectedComponentIdentification = computed(
+  (): ComponentIdentification | null => {
+    if (selectedComponentId.value) {
+      let record = componentRecord.value[selectedComponentId.value];
+      if (record === null || record === undefined) {
+        return null;
+      }
+      return componentRecord.value[selectedComponentId.value];
+    }
+    return null;
+  },
+);
+
+const updateSelection = (node: Node | null) => {
+  const componentId = node?.nodeKind?.componentId;
+
+  // FIXME(nick): re-add locking for the view-only mode.
+  // if (isPinned.value) return;
+
+  // Ignores deselection and fake nodes, as they don't have any attributes
+  if (!componentId || componentId === -1) return;
+
+  selectedComponentId.value = componentId;
+};
+lastSelectedNode$
+  .pipe(untilUnmounted)
+  .subscribe((node) => updateSelection(node));
+firstValueFrom(lastSelectedNode$).then((last) => updateSelection(last));
+
+// NOTE(nick,victor): hack!
+const selectedDeploymentNode = ref<SchematicNode | null>(null);
+watch(schematicData, (sd) => {
+  for (const node of sd.nodes) {
+    if (node.kind.kind == "deployment") {
+      selectedDeploymentNode.value = node;
+      break;
+    }
+  }
+});
+
 schematicData$.subscribe((schematic) => {
   if (schematic) {
     schematicData.value = schematic;
@@ -94,6 +191,7 @@ schematicData$.subscribe((schematic) => {
 });
 
 let oldSchematic: Schematic | undefined;
+let oldSchemaVariants: SchematicSchemaVariants | undefined;
 combineLatest([
   system$.pipe(
     map((system) => {
@@ -133,6 +231,10 @@ combineLatest([
     if (!oldSchematic || !_.isEqual(oldSchematic, schematic)) {
       oldSchematic = schematic as Schematic;
       schematicData$.next(schematic as Schematic);
+    }
+
+    if (!oldSchemaVariants || !_.isEqual(oldSchemaVariants, variants)) {
+      oldSchemaVariants = variants as SchematicSchemaVariants;
       schematicSchemaVariants$.next(variants as SchematicSchemaVariants);
     }
   });
@@ -148,8 +250,6 @@ const editorContext = refFrom<EditorContext | null>(
     }),
   ),
 );
-
-const activeNode = refFrom(lastSelectedNode$);
 
 const theme = refFrom<Theme>(ThemeService.currentTheme());
 const lightmode = computed(() => {

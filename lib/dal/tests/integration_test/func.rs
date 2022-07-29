@@ -55,17 +55,14 @@ async fn func_binding_find_or_create_head(ctx: &DalContext<'_, '_>) {
         FuncBinding::find_or_create(ctx, args_json.clone(), *func.id(), *func.backend_kind())
             .await
             .expect("cannot create func binding");
-    assert_eq!(
-        created, true,
-        "must create a new func binding when one is absent"
-    );
+    assert!(created, "must create a new func binding when one is absent");
 
     let (_func_binding, created) =
         FuncBinding::find_or_create(ctx, args_json, *func.id(), *func.backend_kind())
             .await
             .expect("cannot create func binding");
-    assert_eq!(
-        created, false,
+    assert!(
+        !created,
         "must not create a new func binding when one is present"
     );
 }
@@ -85,17 +82,14 @@ async fn func_binding_find_or_create_edit_session(ctx: &DalContext<'_, '_>) {
         FuncBinding::find_or_create(ctx, args_json.clone(), *func.id(), *func.backend_kind())
             .await
             .expect("cannot create func binding");
-    assert_eq!(
-        created, true,
-        "must create a new func binding when one is absent"
-    );
+    assert!(created, "must create a new func binding when one is absent");
 
     let (edit_session_func_binding_again, created) =
         FuncBinding::find_or_create(ctx, args_json.clone(), *func.id(), *func.backend_kind())
             .await
             .expect("cannot create func binding");
-    assert_eq!(
-        created, false,
+    assert!(
+        !created,
         "must not create a new func binding when one is present"
     );
     assert_eq!(
@@ -117,8 +111,8 @@ async fn func_binding_find_or_create_edit_session(ctx: &DalContext<'_, '_>) {
         FuncBinding::find_or_create(ctx, args_json.clone(), *func.id(), *func.backend_kind())
             .await
             .expect("cannot create func binding");
-    assert_eq!(
-        created, false,
+    assert!(
+        !created,
         "must not create a new func binding when one is present"
     );
     assert_eq!(
@@ -142,8 +136,8 @@ async fn func_binding_find_or_create_edit_session(ctx: &DalContext<'_, '_>) {
         FuncBinding::find_or_create(ctx, args_json, *func.id(), *func.backend_kind())
             .await
             .expect("cannot create func binding");
-    assert_eq!(
-        created, false,
+    assert!(
+        !created,
         "must not create a new func binding when one is present"
     );
     assert_eq!(

@@ -1,11 +1,9 @@
 use crate::dal::test;
-use dal::test::helpers::process_job_queue;
-use dal::DalContext;
 use dal::{
     schema::RootProp,
     test_harness::{create_prop_of_kind_with_name, create_schema, create_schema_variant_with_root},
-    AttributeContext, AttributeReadContext, AttributeValue, Component, ComponentView, Prop,
-    PropKind, Schema, SchemaKind, SchemaVariant, StandardModel,
+    AttributeContext, AttributeReadContext, AttributeValue, Component, ComponentView, DalContext,
+    Prop, PropKind, Schema, SchemaKind, SchemaVariant, StandardModel,
 };
 use pretty_assertions_sorted::{assert_eq, assert_eq_sorted};
 
@@ -47,12 +45,10 @@ pub async fn create_schema_with_object_and_string_prop(
         .await
         .expect("cannot set parent prop");
 
-    SchemaVariant::create_default_prototypes_and_values(ctx, *schema_variant.id())
+    schema_variant
+        .finalize(ctx)
         .await
-        .expect("cannot create default prototypes & values for SchemaVariant");
-    SchemaVariant::create_implicit_internal_providers(ctx, *schema.id(), *schema_variant.id())
-        .await
-        .expect("unable to create implicit internal providers for schema variant");
+        .expect("cannot finalize SchemaVariant");
 
     (
         schema,
@@ -123,12 +119,10 @@ pub async fn create_schema_with_nested_objects_and_string_prop(
         .await
         .expect("cannot set parent prop");
 
-    SchemaVariant::create_default_prototypes_and_values(ctx, *schema_variant.id())
+    schema_variant
+        .finalize(ctx)
         .await
-        .expect("cannot create default prototypes & values for SchemaVariant");
-    SchemaVariant::create_implicit_internal_providers(ctx, *schema.id(), *schema_variant.id())
-        .await
-        .expect("unable to create implicit internal providers for schema variant");
+        .expect("cannot finalize SchemaVariant");
 
     (
         schema,
@@ -171,12 +165,10 @@ pub async fn create_schema_with_string_props(
         .await
         .expect("cannot set parent prop");
 
-    SchemaVariant::create_default_prototypes_and_values(ctx, *schema_variant.id())
+    schema_variant
+        .finalize(ctx)
         .await
-        .expect("cannot create default prototypes & values for SchemaVariant");
-    SchemaVariant::create_implicit_internal_providers(ctx, *schema.id(), *schema_variant.id())
-        .await
-        .expect("unable to create implicit internal providers for schema variant");
+        .expect("cannot finalize SchemaVariant");
 
     (schema, schema_variant, bohemian_prop, killer_prop, root)
 }
@@ -210,12 +202,10 @@ pub async fn create_schema_with_array_of_string_props(
         .await
         .expect("cannot set parent");
 
-    SchemaVariant::create_default_prototypes_and_values(ctx, *schema_variant.id())
+    schema_variant
+        .finalize(ctx)
         .await
-        .expect("cannot create default prototypes & values for SchemaVariant");
-    SchemaVariant::create_implicit_internal_providers(ctx, *schema.id(), *schema_variant.id())
-        .await
-        .expect("unable to create implicit internal providers for schema variant");
+        .expect("cannot finalize SchemaVariant");
 
     (schema, schema_variant, sammy_prop, album_string_prop, root)
 }
@@ -282,12 +272,10 @@ pub async fn create_schema_with_nested_array_objects(
         .await
         .expect("cannot set parent");
 
-    SchemaVariant::create_default_prototypes_and_values(ctx, *schema_variant.id())
+    schema_variant
+        .finalize(ctx)
         .await
-        .expect("cannot create default prototypes & values for SchemaVariant");
-    SchemaVariant::create_implicit_internal_providers(ctx, *schema.id(), *schema_variant.id())
-        .await
-        .expect("unable to create implicit internal providers for schema variant");
+        .expect("cannot finalize SchemaVariant");
 
     (
         schema,
@@ -333,12 +321,10 @@ pub async fn create_simple_map(
         .await
         .expect("cannot set parent");
 
-    SchemaVariant::create_default_prototypes_and_values(ctx, *schema_variant.id())
+    schema_variant
+        .finalize(ctx)
         .await
-        .expect("cannot create default prototypes & values for SchemaVariant");
-    SchemaVariant::create_implicit_internal_providers(ctx, *schema.id(), *schema_variant.id())
-        .await
-        .expect("unable to create implicit internal providers for schema variant");
+        .expect("cannot finalize SchemaVariant");
 
     (schema, schema_variant, album_prop, album_item_prop, root)
 }
@@ -411,12 +397,10 @@ pub async fn create_schema_with_nested_array_objects_and_a_map(
         .await
         .expect("cannot set parent");
 
-    SchemaVariant::create_default_prototypes_and_values(ctx, *schema_variant.id())
+    schema_variant
+        .finalize(ctx)
         .await
-        .expect("cannot create default prototypes & values for SchemaVariant");
-    SchemaVariant::create_implicit_internal_providers(ctx, *schema.id(), *schema_variant.id())
-        .await
-        .expect("unable to create implicit internal providers for schema variant");
+        .expect("cannot finalize SchemaVariant");
 
     (
         schema,
@@ -439,7 +423,6 @@ async fn only_string_props(ctx: &DalContext<'_, '_>) {
         Component::new_for_schema_variant_with_node(ctx, "capoeira", schema_variant.id())
             .await
             .expect("Unable to create component");
-    process_job_queue(ctx).await;
 
     let mut base_attribute_context = AttributeContext::builder();
     base_attribute_context
@@ -476,7 +459,6 @@ async fn only_string_props(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not update bohemian prop value");
-    process_job_queue(ctx).await;
 
     let killer_context = base_attribute_context
         .clone()
@@ -497,7 +479,6 @@ async fn only_string_props(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not update bohemian prop value");
-    process_job_queue(ctx).await;
 
     let component_view = ComponentView::for_context(
         ctx,
@@ -534,7 +515,6 @@ async fn one_object_prop(ctx: &DalContext<'_, '_>) {
         Component::new_for_schema_variant_with_node(ctx, "santos dumont", schema_variant.id())
             .await
             .expect("Unable to create component");
-    process_job_queue(ctx).await;
 
     let mut base_attribute_context = AttributeContext::builder();
     base_attribute_context
@@ -571,7 +551,6 @@ async fn one_object_prop(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not update queen AttributeValue");
-    process_job_queue(ctx).await;
 
     let bohemian_context = base_attribute_context
         .clone()
@@ -592,7 +571,6 @@ async fn one_object_prop(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not update bohemian AttributeValue");
-    process_job_queue(ctx).await;
 
     let killer_context = base_attribute_context
         .clone()
@@ -613,7 +591,6 @@ async fn one_object_prop(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not update killer AttributeValue");
-    process_job_queue(ctx).await;
 
     let component_view = ComponentView::for_context(
         ctx,
@@ -657,7 +634,6 @@ async fn nested_object_prop(ctx: &DalContext<'_, '_>) {
         Component::new_for_schema_variant_with_node(ctx, "free ronaldinho", schema_variant.id())
             .await
             .expect("Unable to create component");
-    process_job_queue(ctx).await;
 
     let mut base_attribute_context = AttributeContext::builder();
     base_attribute_context
@@ -694,7 +670,6 @@ async fn nested_object_prop(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not update queen AttributeValue");
-    process_job_queue(ctx).await;
 
     let bohemian_context = base_attribute_context
         .clone()
@@ -715,7 +690,6 @@ async fn nested_object_prop(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not update bohemian AttributeValue");
-    process_job_queue(ctx).await;
 
     let killer_context = base_attribute_context
         .clone()
@@ -736,7 +710,6 @@ async fn nested_object_prop(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not update killer AttributeValue");
-    process_job_queue(ctx).await;
 
     let pressure_context = base_attribute_context
         .clone()
@@ -757,7 +730,6 @@ async fn nested_object_prop(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not update pressure AttributeValue");
-    process_job_queue(ctx).await;
 
     let dust_context = base_attribute_context
         .clone()
@@ -778,7 +750,6 @@ async fn nested_object_prop(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not update dust AttributeValue");
-    process_job_queue(ctx).await;
 
     let component_view = ComponentView::for_context(
         ctx,
@@ -822,7 +793,6 @@ async fn simple_array_of_strings(ctx: &DalContext<'_, '_>) {
         Component::new_for_schema_variant_with_node(ctx, "tim maia", schema_variant.id())
             .await
             .expect("Unable to create component");
-    process_job_queue(ctx).await;
 
     let mut base_attribute_context = AttributeContext::builder();
     base_attribute_context
@@ -859,7 +829,6 @@ async fn simple_array_of_strings(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not update sammy AttributeValue");
-    process_job_queue(ctx).await;
 
     let album_context = base_attribute_context
         .clone()
@@ -875,7 +844,6 @@ async fn simple_array_of_strings(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not insert album AttributeValue");
-    process_job_queue(ctx).await;
 
     let _ = AttributeValue::insert_for_context(
         ctx,
@@ -886,7 +854,6 @@ async fn simple_array_of_strings(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not insert album AttributeValue");
-    process_job_queue(ctx).await;
 
     let component_view = ComponentView::for_context(
         ctx,
@@ -934,13 +901,12 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("Unable to create component");
-    process_job_queue(ctx).await;
 
     let mut unset_attribute_context = AttributeContext::builder();
     unset_attribute_context
         .set_schema_id(*schema.id())
         .set_schema_variant_id(*schema_variant.id());
-    let mut base_attribute_context = unset_attribute_context.clone();
+    let mut base_attribute_context = unset_attribute_context;
     base_attribute_context.set_component_id(*component.id());
 
     let domain_context = base_attribute_context
@@ -977,7 +943,6 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not update sammy AttributeValue");
-    process_job_queue(ctx).await;
 
     let album_object_context = base_attribute_context
         .clone()
@@ -993,7 +958,6 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not insert album object AttributeValue");
-    process_job_queue(ctx).await;
 
     let album_string_context = base_attribute_context
         .clone()
@@ -1019,7 +983,6 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not update standing hampton album string AttributeValue");
-    process_job_queue(ctx).await;
 
     let songs_array_context = base_attribute_context
         .clone()
@@ -1045,7 +1008,6 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not update standing hampton songs array AttributeValue");
-    process_job_queue(ctx).await;
 
     let song_name_context = base_attribute_context
         .clone()
@@ -1061,7 +1023,6 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not insert fall in love again in standing hampton songs array");
-    process_job_queue(ctx).await;
 
     let _ = AttributeValue::insert_for_context(
         ctx,
@@ -1072,7 +1033,6 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not insert surrender in standing hampton songs array");
-    process_job_queue(ctx).await;
 
     let voa_album_value_id = AttributeValue::insert_for_context(
         ctx,
@@ -1083,7 +1043,6 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not insert voa album object into albums array");
-    process_job_queue(ctx).await;
 
     let voa_album_string_value = AttributeValue::find_with_parent_and_key_for_context(
         ctx,
@@ -1104,7 +1063,6 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not set voa album string AttributeValue");
-    process_job_queue(ctx).await;
 
     let voa_songs_array_value = AttributeValue::find_with_parent_and_key_for_context(
         ctx,
@@ -1125,7 +1083,6 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not update voa songs array AttributeValue");
-    process_job_queue(ctx).await;
 
     let _ = AttributeValue::insert_for_context(
         ctx,
@@ -1136,7 +1093,6 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not insert eagles fly into voa songs array");
-    process_job_queue(ctx).await;
 
     let _ = AttributeValue::insert_for_context(
         ctx,
@@ -1147,7 +1103,6 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not insert can't drive 55 into voa songs array");
-    process_job_queue(ctx).await;
 
     let component_view = ComponentView::for_context(
         ctx,
@@ -1198,7 +1153,6 @@ async fn simple_map(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("Unable to create component");
-    process_job_queue(ctx).await;
 
     let mut base_attribute_context = AttributeContext::builder();
     base_attribute_context
@@ -1235,7 +1189,6 @@ async fn simple_map(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not update album AttributeValue");
-    process_job_queue(ctx).await;
 
     let album_item_context = base_attribute_context
         .clone()
@@ -1251,7 +1204,6 @@ async fn simple_map(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not insert album item");
-    process_job_queue(ctx).await;
 
     let _ = AttributeValue::insert_for_context(
         ctx,
@@ -1262,7 +1214,6 @@ async fn simple_map(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not insert album item");
-    process_job_queue(ctx).await;
 
     let component_view = ComponentView::for_context(
         ctx,
@@ -1310,7 +1261,6 @@ async fn complex_nested_array_of_objects_with_a_map(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("Unable to create component");
-    process_job_queue(ctx).await;
 
     let mut base_attribute_context = AttributeContext::builder();
     base_attribute_context
@@ -1347,7 +1297,6 @@ async fn complex_nested_array_of_objects_with_a_map(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not update sammy AttributeValue");
-    process_job_queue(ctx).await;
 
     let album_object_context = base_attribute_context
         .clone()
@@ -1363,7 +1312,6 @@ async fn complex_nested_array_of_objects_with_a_map(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not insert standing_hampton into albums array");
-    process_job_queue(ctx).await;
 
     let album_string_context = base_attribute_context
         .clone()
@@ -1405,7 +1353,6 @@ async fn complex_nested_array_of_objects_with_a_map(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not update songs array AttributeValue");
-    process_job_queue(ctx).await;
 
     let song_map_context = base_attribute_context
         .clone()
@@ -1421,7 +1368,6 @@ async fn complex_nested_array_of_objects_with_a_map(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not insert song map into songs array");
-    process_job_queue(ctx).await;
 
     let song_map_item_context = base_attribute_context
         .clone()
@@ -1437,7 +1383,6 @@ async fn complex_nested_array_of_objects_with_a_map(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not insert fall in love again into standing hampton songs map");
-    process_job_queue(ctx).await;
 
     let _ = AttributeValue::insert_for_context(
         ctx,
@@ -1448,7 +1393,6 @@ async fn complex_nested_array_of_objects_with_a_map(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not insert surrender into standing hampton song map");
-    process_job_queue(ctx).await;
 
     let component_view = ComponentView::for_context(
         ctx,

@@ -65,7 +65,7 @@ async fn system(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
         .set_default_schema_variant_id(ctx, Some(*variant.id()))
         .await?;
 
-    SchemaVariant::create_default_prototypes_and_values(ctx, *variant.id()).await?;
+    variant.finalize(ctx).await?;
 
     let identity_func = setup_identity_func(ctx).await?;
 
@@ -115,7 +115,7 @@ async fn application(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
         .set_default_schema_variant_id(ctx, Some(*variant.id()))
         .await?;
 
-    SchemaVariant::create_default_prototypes_and_values(ctx, *variant.id()).await?;
+    variant.finalize(ctx).await?;
 
     let identity_func = setup_identity_func(ctx).await?;
 
@@ -408,9 +408,7 @@ async fn kubernetes_namespace(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     .await?;
     variant.add_socket(ctx, includes_socket.id()).await?;
 
-    SchemaVariant::create_default_prototypes_and_values(ctx, *variant.id()).await?;
-    // Now, we can setup providers.
-    SchemaVariant::create_implicit_internal_providers(ctx, *schema.id(), *variant.id()).await?;
+    variant.finalize(ctx).await?;
 
     // Connect the "/root/si/name" field to the "/root/domain/metadata/name" field.
     let base_attribute_read_context = AttributeReadContext {
@@ -522,7 +520,7 @@ async fn docker_hub_credential(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
 
     let identity_func = setup_identity_func(ctx).await?;
 
-    SchemaVariant::create_default_prototypes_and_values(ctx, *variant.id()).await?;
+    variant.finalize(ctx).await?;
 
     let (_output_provider, mut output_socket) = ExternalProvider::new_with_socket(
         ctx,
@@ -706,8 +704,8 @@ async fn docker_image(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     )
     .await?;
 
-    SchemaVariant::create_default_prototypes_and_values(ctx, *variant.id()).await?;
-    SchemaVariant::create_implicit_internal_providers(ctx, *schema.id(), *variant.id()).await?;
+    variant.finalize(ctx).await?;
+
     let base_attribute_read_context = AttributeReadContext {
         schema_id: Some(*schema.id()),
         schema_variant_id: Some(*variant.id()),
@@ -916,7 +914,7 @@ async fn bobao(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
         .set_widget_kind(ctx, WidgetKind::SecretSelect)
         .await?;
 
-    SchemaVariant::create_default_prototypes_and_values(ctx, *variant.id()).await?;
+    variant.finalize(ctx).await?;
 
     let includes_socket = Socket::new(
         ctx,

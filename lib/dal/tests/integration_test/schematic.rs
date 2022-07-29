@@ -107,7 +107,7 @@ async fn get_schematic(ctx: &DalContext<'_, '_>, application_id: ApplicationId) 
     .await
     .expect("could not create connection");
 
-    let schematic = Schematic::find(&ctx, Some(*system.id()))
+    let schematic = Schematic::find(ctx, Some(*system.id()))
         .await
         .expect("cannot find schematic");
 
