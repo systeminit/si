@@ -3,25 +3,25 @@
     <!-- FIXME(nick,victor): remove reliance on z index -->
     <SiCanvas
       v-if="lightmode && editorContext && selectedDeploymentNode"
-      light-mode
-      :schematic-viewer-id="schematicViewerId"
-      :viewer-state="viewerState"
+      :deployment-node-selected="selectedDeploymentNode.id"
       :editor-context="editorContext"
       :schematic-data="schematicData"
-      :viewer-event$="viewerEventObservable.viewerEvent$"
       :schematic-kind="SchematicKind.Component"
-      :deployment-node-selected="selectedDeploymentNode.id"
+      :schematic-viewer-id="schematicViewerId"
+      :viewer-event$="viewerEventObservable.viewerEvent$"
+      :viewer-state="viewerState"
       class="pointer-events-auto absolute z-10"
+      light-mode
     />
     <SiCanvas
       v-else-if="editorContext && selectedDeploymentNode"
-      :schematic-viewer-id="schematicViewerId"
-      :viewer-state="viewerState"
+      :deployment-node-selected="selectedDeploymentNode.id"
       :editor-context="editorContext"
       :schematic-data="schematicData"
-      :viewer-event$="viewerEventObservable.viewerEvent$"
       :schematic-kind="SchematicKind.Component"
-      :deployment-node-selected="selectedDeploymentNode.id"
+      :schematic-viewer-id="schematicViewerId"
+      :viewer-event$="viewerEventObservable.viewerEvent$"
+      :viewer-state="viewerState"
       class="pointer-events-auto absolute z-10"
     />
 
@@ -35,10 +35,10 @@
       <div class="grow h-full pointer-events-none"></div>
 
       <SiSidebar
-        side="right"
         :hidden="
           activeNode === null || selectedComponentIdentification === null
         "
+        side="right"
       >
         <ComponentDetails
           v-if="selectedComponentIdentification"
@@ -49,7 +49,7 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import {
   EditorContext,
   Schematic,
@@ -191,6 +191,7 @@ schematicData$.subscribe((schematic) => {
 });
 
 let oldSchematic: Schematic | undefined;
+let oldSchemaVariants: SchematicSchemaVariants | undefined;
 combineLatest([
   system$.pipe(
     map((system) => {
@@ -230,6 +231,10 @@ combineLatest([
     if (!oldSchematic || !_.isEqual(oldSchematic, schematic)) {
       oldSchematic = schematic as Schematic;
       schematicData$.next(schematic as Schematic);
+    }
+
+    if (!oldSchemaVariants || !_.isEqual(oldSchemaVariants, variants)) {
+      oldSchemaVariants = variants as SchematicSchemaVariants;
       schematicSchemaVariants$.next(variants as SchematicSchemaVariants);
     }
   });
