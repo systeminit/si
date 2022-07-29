@@ -1,6 +1,6 @@
 <template>
   <TabGroup
-    class="flex flex-col w-full bg-[#333333] text-white border-black border-t-[1px]"
+    class="flex flex-col w-full bg-neutral-800 text-white border-black border-t-[1px]"
     as="div"
     :selected-index="selectedTab"
     @change="changeTab"
@@ -21,7 +21,7 @@
             <StatusBarTabPill>
               Total: <span class="font-bold">&nbsp; 8</span>
             </StatusBarTabPill>
-            <StatusBarTabPill class="bg-[#DCFCE7] text-[#22C55E] font-bold">
+            <StatusBarTabPill class="bg-success-100 text-success-500 font-bold">
               + 3
             </StatusBarTabPill>
             <StatusBarTabPill class="bg-[#FDE8E8] text-[#F05252] font-bold">
@@ -32,14 +32,16 @@
       </Tab>
       <Tab v-slot="{ selected }">
         <StatusBarTab :selected="selected">
-          <template #icon><CheckCircleIcon class="text-[#22C55E]" /></template>
+          <template #icon
+            ><CheckCircleIcon class="text-success-500"
+          /></template>
           <template #name>Qualifications</template>
           <template #summary>
             <StatusBarTabPill>
               Total: <span class="font-bold">&nbsp; 3</span>
             </StatusBarTabPill>
-            <StatusBarTabPill class="bg-[#DCFCE7] text-[#22C55E] font-bold">
-              <CheckCircleIcon class="text-[#22C55E] w-4" />
+            <StatusBarTabPill class="bg-success-100 text-success-500 font-bold">
+              <CheckCircleIcon class="text-success-500 w-4" />
               <div class="pl-px">3</div>
             </StatusBarTabPill>
           </template>

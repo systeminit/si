@@ -6,13 +6,20 @@
     </template>
 
     <template #panels>
-      <TabPanel class="flex flex-col overflow-y-hidden">
-        <div class="text-center mt-10">
-          Selected node: {{ activeNode?.name ?? "" }}
+      <TabPanel class="flex flex-col overflow-y-auto">
+        <div class="text-center">
+          <!-- FIXME(nick): remove AttributeViewer's requirement of a componentId -->
+          <AttributeViewer
+            class="dark:text-neutral-50 text-neutral-900"
+            :component-id="props.componentIdentification.componentId"
+            :component-identification="props.componentIdentification"
+          />
         </div>
       </TabPanel>
       <TabPanel>
-        <div>Code Content for {{ activeNode?.name }}</div>
+        <div class="text-lg">
+          Code Content for {{ props.componentIdentification.schemaName }}
+        </div>
       </TabPanel>
     </template>
   </SiTabGroup>
@@ -22,8 +29,11 @@
 import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import { TabPanel } from "@headlessui/vue";
-import { refFrom } from "vuse-rx";
-import { lastSelectedNode$ } from "@/observable/selection";
+import AttributeViewer from "@/organisms/AttributeViewer.vue";
+import _ from "lodash";
+import { ComponentIdentification } from "@/api/sdf/dal/component";
 
-const activeNode = refFrom(lastSelectedNode$);
+const props = defineProps<{
+  componentIdentification: ComponentIdentification;
+}>();
 </script>

@@ -2,7 +2,7 @@
   <MenuItem v-slot="{ active }">
     <a
       :class="[
-        active ? 'bg-[#2F80ED]' : '',
+        active ? 'bg-action-500' : '',
         'flex relative items-center text-center whitespace-nowrap px-2 py-2 text-sm text-white cursor-pointer',
       ]"
       @click="emit('select')"
@@ -28,7 +28,7 @@ import { CheckIcon } from "@heroicons/vue/solid";
 const emit = defineEmits(["select"]);
 
 // NOTE(nick): below is the divider...
-// <div class="w-full h-0.5 my-2 bg-[#333333]" />
+// <div class="w-full h-0.5 my-2 bg-neutral-800" />
 
 const props = defineProps<{
   checked?: boolean;

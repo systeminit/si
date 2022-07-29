@@ -1,6 +1,10 @@
 <template>
   <div>
-    <label :for="props.id" class="block text-sm font-medium text-gray-200">
+    <label
+      :for="props.id"
+      class="block text-sm font-medium"
+      :class="titleClasses"
+    >
       {{ props.title }} <span v-if="required">(required)</span>
     </label>
 
@@ -16,7 +20,7 @@
         :aria-invalid="inError"
         :disabled="props.disabled"
         required
-        class="appearance-none block bg-gray-900 text-gray-100 w-full px-3 py-2 border rounded-sm shadow-sm placeholder-gray-400 focus:outline-none sm:text-sm disabled:border-gray-800"
+        class="appearance-none block w-full px-3 py-2 border rounded-sm shadow-sm focus:outline-none sm:text-sm"
         :class="textBoxClasses"
         v-bind="$attrs"
         @blur="setDirty"
@@ -32,7 +36,7 @@
       </div>
     </div>
 
-    <p v-if="props.docLink" class="mt-2 text-xs text-blue-300">
+    <p v-if="props.docLink" class="mt-2 text-xs text-action-500">
       <a :href="props.docLink" target="_blank" class="hover:underline">
         Documentation
       </a>
@@ -84,6 +88,7 @@ const props = defineProps<{
   docLink?: string;
 
   disabled?: boolean;
+  loginMode?: boolean;
 }>();
 
 const emit = defineEmits(["update:modelValue", "error", "blur"]);
@@ -129,18 +134,40 @@ const inputValue = computed<string>({
 });
 
 const textBoxClasses = computed((): Record<string, boolean> => {
+  const results: Record<string, boolean> = {
+    "placeholder-neutral-400": true,
+  };
+
+  if (props.loginMode) {
+    results["bg-gray-900"] = true;
+    results["text-gray-100"] = true;
+    results["disabled:border-gray-100"] = true;
+  } else {
+    results["bg-neutral-50"] = true;
+    results["border-neutral-300"] = true;
+    results["dark:border-neutral-600"] = true;
+    results["dark:bg-neutral-700"] = true;
+  }
+
   if (inError.value) {
+    results["border-red-400"] = true;
+    results["focus:ring-red-400"] = true;
+    results["focus:border-red-400"] = true;
+  } else {
+    results["border-gray-600"] = true;
+    results["focus:ring-indigo-200"] = true;
+    results["focus:border-indigo-200"] = true;
+  }
+  return results;
+});
+
+const titleClasses = computed((): Record<string, boolean> => {
+  if (props.loginMode) {
     return {
-      "border-red-400": true,
-      "focus:ring-red-400": true,
-      "focus:border-red-400": true,
+      "text-neutral-50": true,
     };
   }
-  return {
-    "border-gray-600": true,
-    "focus:ring-indigo-200": true,
-    "focus:border-indigo-200": true,
-  };
+  return {};
 });
 
 const type = computed((): string => {

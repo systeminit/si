@@ -2,7 +2,7 @@
   <SiSearch />
 
   <p
-    class="border-b-2 dark:border-[#525252] text-xs font-light leading-tight px-3 py-1"
+    class="border-b-2 dark:border-neutral-600 text-xs font-light leading-tight px-3 py-1"
   >
     Get Started by dragging the assets that you wish to include in your
     application into the canvas to the right
@@ -20,8 +20,8 @@
         <SiNodeSprite
           :color="category.color"
           :name="node.name"
-          class="border-b-2 dark:border-[#525252] hover:bg-[#2F80ED] dark:text-white hover:text-white hover:cursor-pointer"
-          :class="activeNode === node.id ? 'bg-[#2F80ED]' : ''"
+          class="border-b-2 dark:border-neutral-600 hover:bg-action-500 dark:text-white hover:text-white hover:cursor-pointer"
+          :class="activeNode === node.id ? 'bg-action-500' : ''"
           @click="setActiveNode(node, $event)"
         />
       </li>
