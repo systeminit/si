@@ -1,7 +1,6 @@
 use axum::Json;
 use dal::{
-    job::definition::component_post_processing::ComponentPostProcessing, Component, ComponentId,
-    StandardModel, SystemId, Visibility,
+    job::definition::Qualifications, Component, ComponentId, StandardModel, SystemId, Visibility,
 };
 use serde::{Deserialize, Serialize};
 
@@ -45,7 +44,7 @@ pub async fn check_qualifications(
         .await?
         .ok_or(ComponentError::ComponentNotFound)?;
 
-    ctx.enqueue_job(ComponentPostProcessing::new(&ctx, *component.id(), system_id, None).await?)
+    ctx.enqueue_job(Qualifications::new(&ctx, *component.id(), system_id).await?)
         .await;
     txns.commit().await?;
 

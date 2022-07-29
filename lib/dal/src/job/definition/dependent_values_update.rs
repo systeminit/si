@@ -1,4 +1,4 @@
-use std::convert::TryFrom;
+use std::{collections::HashMap, convert::TryFrom};
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -15,6 +15,14 @@ struct DependentValuesUpdateArgs {
     attribute_value_id: AttributeValueId,
 }
 
+impl From<DependentValuesUpdate> for DependentValuesUpdateArgs {
+    fn from(value: DependentValuesUpdate) -> Self {
+        Self {
+            attribute_value_id: value.attribute_value_id,
+        }
+    }
+}
+
 #[derive(Clone, Debug, Serialize)]
 pub struct DependentValuesUpdate {
     attribute_value_id: AttributeValueId,
@@ -24,12 +32,9 @@ pub struct DependentValuesUpdate {
 }
 
 impl DependentValuesUpdate {
-    pub fn new(
-        ctx: &DalContext<'_, '_>,
-        attribute_value_id: AttributeValueId,
-        visibility: Visibility,
-    ) -> Box<Self> {
+    pub fn new(ctx: &DalContext<'_, '_>, attribute_value_id: AttributeValueId) -> Box<Self> {
         let access_builder = AccessBuilder::from(ctx.clone());
+        let visibility = *ctx.visibility();
 
         Box::new(Self {
             attribute_value_id,
@@ -42,14 +47,25 @@ impl DependentValuesUpdate {
 
 impl JobProducer for DependentValuesUpdate {
     fn args(&self) -> JobProducerResult<serde_json::Value> {
-        Ok(serde_json::json!({
-            "attribute_value_id": self.attribute_value_id,
-        }))
+        Ok(serde_json::to_value(DependentValuesUpdateArgs::from(
+            self.clone(),
+        ))?)
     }
 
     fn meta(&self) -> JobProducerResult<JobMeta> {
+        let mut custom = HashMap::new();
+        custom.insert(
+            "access_builder".to_string(),
+            serde_json::to_value(self.access_builder.clone())?,
+        );
+        custom.insert(
+            "visibility".to_string(),
+            serde_json::to_value(self.visibility)?,
+        );
+
         Ok(JobMeta {
             retry: Some(0),
+            custom,
             ..JobMeta::default()
         })
     }
@@ -74,13 +90,9 @@ impl JobConsumer for DependentValuesUpdate {
     }
 
     async fn run(&self, ctx: &DalContext<'_, '_>) -> JobConsumerResult<()> {
-        Ok(
-            AttributeValueDependentUpdateHarness::update_dependent_values(
-                ctx,
-                self.attribute_value_id,
-            )
-            .await?,
-        )
+        AttributeValueDependentUpdateHarness::update_dependent_values(ctx, self.attribute_value_id)
+            .await?;
+        Ok(())
     }
 }
 
@@ -90,7 +102,8 @@ impl TryFrom<faktory_async::Job> for DependentValuesUpdate {
     fn try_from(job: faktory_async::Job) -> Result<Self, Self::Error> {
         if job.args().len() != 3 {
             return Err(JobConsumerError::InvalidArguments(
-                r#"[{ "attribute_value_id": <id> }, <AccessBuilder>, <Visibility>]"#.to_string(),
+                r#"[{ "attribute_value_id": <AttributeValueId> }, <AccessBuilder>, <Visibility>]"#
+                    .to_string(),
                 job.args().to_vec(),
             ));
         }

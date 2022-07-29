@@ -1,7 +1,7 @@
 use axum::Json;
 use dal::{
-    job::definition::component_post_processing::ComponentPostProcessing, Component, Func,
-    QualificationPrototype, QualificationPrototypeId, Schema, StandardModel, SystemId, Visibility,
+    job::definition::Qualification, Component, Func, QualificationPrototype,
+    QualificationPrototypeId, Schema, StandardModel, SystemId, Visibility,
 };
 use serde::{Deserialize, Serialize};
 
@@ -125,8 +125,7 @@ pub async fn set_code(
 
     for component in components {
         ctx.enqueue_job(
-            ComponentPostProcessing::new(&ctx, *component.id(), system_id, Some(*prototype.id()))
-                .await?,
+            Qualification::new(&ctx, *component.id(), *prototype.id(), system_id).await?,
         )
         .await;
     }
