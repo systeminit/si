@@ -17,9 +17,11 @@
         </div>
       </TabPanel>
       <TabPanel>
-        <div class="text-lg">
-          Code Content for {{ props.componentIdentification.schemaName }}
-        </div>
+        <CodeViewer
+          class="dark:text-neutral-50 text-neutral-900"
+          :component-id="props.componentIdentification.componentId"
+          :schema-name="props.componentIdentification.schemaName"
+        />
       </TabPanel>
     </template>
   </SiTabGroup>
@@ -32,6 +34,7 @@ import { TabPanel } from "@headlessui/vue";
 import AttributeViewer from "@/organisms/AttributeViewer.vue";
 import _ from "lodash";
 import { ComponentIdentification } from "@/api/sdf/dal/component";
+import CodeViewer from "@/organisms/CodeViewer.vue";
 
 const props = defineProps<{
   componentIdentification: ComponentIdentification;
