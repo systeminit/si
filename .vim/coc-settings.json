@@ -1,8 +1,0 @@
-{
-  "yaml.schemas": {
-    "kubernetes": [
-      "/research/kubernetes-native/*.yaml",
-      "/support/dev/k8s/*.yaml"
-    ]
-  }
-}

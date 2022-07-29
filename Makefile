@@ -19,15 +19,24 @@
 # This is like a half-baked version of habitats rdeps work, things like
 # mbt, and bazel. Lets see how far it gets us.
 
-# We declare our path to the directory containing the root Makefile before other imports.
-# This ensures that we have the accurate path to the root of the repository for our targets.
+# We declare our path to the directory containing the root Makefile before
+# other imports. This ensures that we have the accurate path to the root of the
+# repository for our targets.
+
 MAKEPATH := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
+THIS_FILE := $(lastword $(MAKEFILE_LIST))
+include mk/base.mk
+
 CI := false
 CI_FROM_REF := main
 CI_TO_REF := HEAD
+FORCE := false
 SHELL := /bin/bash
 
-COMPONENTS = app/corp \
+.DEFAULT_GOAL := help
+
+COMPONENTS = \
+	app/corp \
 	app/web \
 	bin/cyclone \
 	bin/lang-js \
@@ -36,45 +45,176 @@ COMPONENTS = app/corp \
 	bin/si-discord-bot \
 	bin/veritech \
 	lib/bytes-lines-codec \
-	lib/cyclone \
-	lib/deadpool-cyclone \
-	lib/si-data \
-	lib/si-test-macros \
-	lib/veritech \
 	lib/config-file \
+	lib/cyclone \
 	lib/dal \
+	lib/deadpool-cyclone \
 	lib/sdf \
+	lib/si-data \
 	lib/si-settings \
-	lib/telemetry-rs 
+	lib/si-test-macros \
+	lib/telemetry-rs \
+	lib/veritech
 
 RELEASEABLE_COMPONENTS = \
+	app/web \
+	bin/pinga \
+	bin/sdf \
+	bin/veritech \
 	component/nats \
 	component/otelcol \
-	component/postgres \
-	bin/sdf \
-	bin/veritech \
-	bin/pinga \
-	app/web
+	component/postgres
 
 RUNABLE_COMPONENTS = \
-	bin/veritech \
-	bin/sdf \
+	app/web \
 	bin/pinga \
-	app/web
+	bin/sdf \
+	bin/veritech
 
 BUILDABLE = $(patsubst %,build//%,$(COMPONENTS))
-WATCHABLE = $(patsubst %,watch//%,$(COMPONENTS))
-TESTABLE = $(patsubst %,test//%,$(COMPONENTS))
-LINTABLE = $(patsubst %,lint//%,$(COMPONENTS))
+CHECKABLE = $(patsubst %,check//%,$(COMPONENTS))
 CLEANABLE = $(patsubst %,clean//%,$(COMPONENTS))
-RELEASEABLE = $(patsubst %,release//%,$(RELEASEABLE_COMPONENTS))
-PROMOTABLE = $(patsubst %,promote//%,$(RELEASEABLE_COMPONENTS))
+FIXABLE = $(patsubst %,fix//%,$(COMPONENTS))
 IMAGEABLE = $(patsubst %,image//%,$(RELEASEABLE_COMPONENTS))
+PREPUSHABLE = $(patsubst %,prepush//%,$(COMPONENTS))
+PROMOTABLE = $(patsubst %,promote//%,$(RELEASEABLE_COMPONENTS))
+RELEASEABLE = $(patsubst %,release//%,$(RELEASEABLE_COMPONENTS))
 RUNABLE = $(patsubst %,run//%,$(RUNABLE_COMPONENTS))
+TESTABLE = $(patsubst %,test//%,$(COMPONENTS))
+WATCHABLE = $(patsubst %,watch//%,$(COMPONENTS))
 
-.DEFAULT_GOAL := help
+## ci: Invokes the primary continuous integration task
+ci:
+	$(call header,$@)
+	@echo "    CI_FROM_REF='$(CI_FROM_REF)'"
+	@echo "    CI_TO_REF='$(CI_TO_REF)'"
+	$(MAKEPATH)/mk/test-changed.sh $(CI_FROM_REF) $(CI_TO_REF)
+.PHONY: ci
 
-.PHONY: $(BUILDABLE) $(TESTABLE) $(RELEASEABLE) $(IMAGEABLE) image release help
+## build: Builds all components
+build: $(BUILDABLE)
+.PHONY: build
+
+## build//<cmpt>: Builds <cmpt>
+$(BUILDABLE): % : %//BUILDDEPS %//BUILD
+.PHONY: $(BUILDABLE)
+
+build//bin/cyclone//BUILDDEPS: build//bin/lang-js
+build//bin/pinga//BUILDDEPS: build//bin/cyclone
+build//bin/sdf//BUILDDEPS: build//bin/veritech
+build//bin/veritech//BUILDDEPS: build//bin/cyclone
+build//lib/cyclone//BUILDDEPS: build//bin/lang-js
+
+#@ echo "*** No build dependencies remaining for $@ ***"
+%//BUILDDEPS: ;
+
+## build//<cmpt>//BUILD: Skips build dependencies & builds <cmpt>
+%//BUILD:
+ifeq ($(CI),true)
+	@echo "::group::make $@"
+endif
+	@cd $(patsubst build//%//BUILD,%,$@); $(MAKE) build
+ifeq ($(CI),true)
+	@echo "::endgroup::"
+endif
+
+## check: Checks all components' linting, formatting, & other rules
+check: $(CHECKABLE)
+.PHONY: check
+
+## check//<cmpt>: Checks all linting, formatting & other rules for <cmpt>
+$(CHECKABLE):
+ifeq ($(CI),true)
+	@echo "::group::make $@"
+endif
+	@cd $(patsubst check//%,%,$@); $(MAKE) check
+ifeq ($(CI),true)
+	@echo "::endgroup::"
+endif
+.PHONY: $(CHECKABLE)
+
+## clean: Cleans all build/test temporary work files
+clean: $(CLEANABLE)
+.PHONY: $(CLEANABLE)
+
+## clean//<cmpt>: Cleans all build/test temporary files for <cmpt>
+$(CLEANABLE):
+	@cd $(patsubst clean//%,%,$@); $(MAKE) clean
+.PHONY: $(CLEANABLE)
+
+## fix: Updates all linting fixes & formatting for all components (may modify sources)
+fix: $(FIXABLE)
+.PHONY: fix
+
+## fix//<cmpt>: Updates all linting fixes & formatting for <cmpt> (may modify sources)
+$(FIXABLE):
+	@cd $(patsubst fix//%,%,$@); $(MAKE) fix
+.PHONY: $(FIXABLE)
+
+## image: Builds all container images for relevant components
+image: $(IMAGEABLE)
+.PHONY: image
+
+## image//<cmpt>: Builds the container for <cmpt>
+$(IMAGEABLE):
+	@cd $(patsubst image//%,%,$@) && $(MAKE) image
+.PHONY: $(IMAGEABLE)
+
+## prepush: Runs all checks & tests required before pushing commits
+prepush: check test
+.PHONY: prepush
+
+## prepush//<cmpt>: Runs all checks & tests required before pushing commits for <cmpt>
+$(PREPUSHABLE):
+	@cd $(patsubst prepush//%,%,$@); $(MAKE) prepush
+.PHONY: $(PREPUSHABLE)
+
+## promote//<cmpt>: Tags & pushes the current Git revision image as 'stable' for <cmpt>
+$(PROMOTABLE):
+	@cd $(patsubst promote//%,%,$@) && $(MAKE) promote
+.PHONY: $(PROMOTABLE)
+
+## release//<cmpt>: Builds & pushes the image for <cmpt> to the repository
+$(RELEASEABLE):
+	@cd $(patsubst release//%,%,$@) && $(MAKE) release
+.PHONY: $(RELEASEABLE)
+
+## run//<cmpt>: Runs the default program/server for <cmpt>
+$(RUNABLE): run//% : build//% run//%//RUN
+.PHONY: $(RUNABLE)
+
+## run//<cmpt>//RUN: Skips build dependencies & runs <cmpt>
+%//RUN:
+ifeq ($(CI),true)
+	@echo "::group::make $@"
+endif
+	@cd $(patsubst run//%//RUN,%,$@); $(MAKE) run
+ifeq ($(CI),true)
+	@echo "::endgroup::"
+endif
+
+## test: Tests all components
+test: $(TESTABLE)
+.PHONY: test
+
+test//app/web//TESTDEPS: build//app/web
+test//bin/cyclone//TESTDEPS: build//bin/lang-js
+test//bin/lang-js//RTESTDEPS: test//lib/cyclone
+test//lib/bytes-lines-codec//RTESTDEPS: test//lib/cyclone
+test//lib/config-file//RTESTDEPS: test//lib/si-settings//TEST
+test//lib/cyclone//RTESTDEPS: test//lib/veritech test//bin/cyclone
+test//lib/cyclone//TESTDEPS: deploy//partial build//bin/lang-js
+test//lib/dal//RTESTDEPS: test//lib/sdf
+test//lib/dal//TESTDEPS: build//bin/cyclone deploy//partial
+test//lib/deadpool-cyclone//RTESTDEPS: test//lib/veritech
+test//lib/deadpool-cyclone//TESTDEPS: build//bin/cyclone
+test//lib/sdf//RTESTDEPS: test//bin/sdf test//bin/pinga
+test//lib/sdf//TESTDEPS: build//bin/cyclone deploy//partial
+test//lib/si-data//RTESTDEPS: test//lib/veritech test//lib/dal test//lib/sdf
+test//lib/si-settings//RTESTDEPS: test//lib/veritech//TEST test//lib/cyclone//TEST test//lib/sdf//TEST
+test//lib/si-test-macros//RTESTDEPS: test//lib/dal//TEST test//lib/sdf//TEST
+test//lib/veritech//RTESTDEPS: test//lib/dal//TEST test//lib/sdf//TEST test//bin/veritech
+test//lib/veritech//TESTDEPS: build//bin/cyclone deploy//partial
 
 # @ echo "*** No test dependencies remaining for $@ ***"
 %//TESTDEPS: ;
@@ -82,188 +222,92 @@ RUNABLE = $(patsubst %,run//%,$(RUNABLE_COMPONENTS))
 #@ echo "*** No reverse test dependencies remaining for $@ ***"
 %//RTESTDEPS: ;
 
-#@ echo "*** No build dependencies remaining for $@ ***"
-%//BUILDDEPS: ;
-
-$(WATCHABLE):
-	@ pushd $(patsubst watch//%,%,$@); $(MAKE) watch
-
-$(IMAGEABLE):
-	cd $(patsubst image//%,%,$@) && $(MAKE) image
-
-$(RELEASEABLE):
-	 cd $(patsubst release//%,%,$@) && $(MAKE) release
-
-$(PROMOTABLE):
-	 cd $(patsubst promote//%,%,$@) && $(MAKE) promote
-
-$(CLEANABLE):
-	@cd $(patsubst clean//%,%,$@); $(MAKE) clean
-
-$(LINTABLE):
-	@echo "::group::$@"
-	@cd $(patsubst lint//%,%,$@); $(MAKE) lint
-	@echo "::endgroup::"
-
-%//BUILD:
-	@echo "::group::$@"
-	@pushd $(patsubst build//%//BUILD,%,$@); $(MAKE) build
-	@echo "::endgroup::"
-
-$(BUILDABLE): % : %//BUILDDEPS %//BUILD
-
-build//lib/cyclone//BUILDDEPS: build//bin/lang-js
-
-build//bin/cyclone//BUILDDEPS: build//bin/lang-js
-
-build//bin/veritech//BUILDDEPS: build//bin/cyclone
-
-build//bin/sdf//BUILDDEPS: build//bin/veritech
-
-build//bin/pinga//BUILDDEPS: build//bin/cyclone
-
+## test//<cmpt>//TEST: Skips test dependencies & runs tests for <cmpt>
 %//TEST:
-	@echo "::group::$@"
-	@pushd $(patsubst test//%//TEST,%,$@); $(MAKE) CI=$(CI) CI_FROM_REF=$(CI_FROM_REF) CI_TO_REF=$(CI_TO_REF) test
+ifeq ($(CI),true)
+	@echo "::group::make $@"
+endif
+	@cd $(patsubst test//%//TEST,%,$@); $(MAKE) test
+ifeq ($(CI),true)
 	@echo "::endgroup::"
+endif
 
+## test//<cmpt>: Tests <cmpt>
 $(TESTABLE): % : %//TESTDEPS %//TEST %//RTESTDEPS
+.PHONY: $(TESTABLE)
 
-test//lib/dal//TESTDEPS: build//bin/veritech deploy//partial
-test//lib/dal//RTESTDEPS: test//lib/sdf
+## watch//<cmpt>: Runs the default watch task for <cmpt>
+$(WATCHABLE):
+	@cd $(patsubst watch//%,%,$@); $(MAKE) watch
+.PHONY: $(WATCHABLE)
 
-test//lib/sdf//TESTDEPS: build//bin/cyclone deploy//partial
-test//lib/sdf//RTESTDEPS: test//bin/sdf test//bin/pinga
-
-test//lib/bytes-lines-codec//RTESTDEPS: test//lib/cyclone
-
-test//bin/cyclone//TESTDEPS: build//bin/lang-js
-
-test//lib/cyclone//TESTDEPS: deploy//partial build//bin/lang-js
-test//lib/cyclone//RTESTDEPS: test//lib/veritech test//bin/cyclone
-
-test//lib/deadpool-cyclone//RTESTDEPS: test//lib/veritech
-
-test//lib/si-data//RTESTDEPS: test//lib/veritech test//lib/dal test//lib/sdf
-
-test//lib/si-test-macros//RTESTDEPS: test//lib/dal//TEST test//lib/sdf//TEST
-
-test//lib/veritech//TESTDEPS: deploy//partial build//bin/cyclone
-test//lib/veritech//RTESTDEPS: test//lib/dal//TEST test//lib/sdf//TEST test//bin/veritech 
-
-test//lib/config-file//RTESTDEPS: test//lib/si-settings//TEST
-
-test//lib/si-settings//RTESTDEPS: test//lib/veritech//TEST test//lib/cyclone//TEST test//lib/sdf//TEST
-
-test//bin/lang-js//RTESTDEPS: test//lib/cyclone
-
-test//app/web//TESTDEPS: build//app/web
-# FIXME(nick): temporarily dropped --> build//bin/pinga deploy//web
-
-%//RUN:
-	@echo "::group::$@"
-	@pushd $(patsubst run//%//RUN,%,$@); $(MAKE) run
-	@echo "::endgroup::"
-
-run//app/web: run//app/web//RUN
-
-$(RUNABLE): run//% : build//% run//%//RUN
-
-
-test: $(TESTABLE)
-
-build: $(BUILDABLE)
-
-ci: 
-	@echo $(CI_FROM_REF) $(CI_TO_REF)
-	@$(MAKEPATH)/mk/test-changed.sh $(CI_FROM_REF) $(CI_TO_REF)
-.PHONY: ci
-
-deploy//web: deploy//down
-	@echo "::group::deploy//web"
+deploy//down:
 ifeq ($(CI),true)
-	@echo "--- [$@]"
-	@pushd $(MAKEPATH)/deploy; $(MAKE) CI_FROM_REF=$(CI_FROM_REF) CI_TO_REF=$(CI_TO_REF) web 
-	@$(MAKEPATH)/ci/scripts/readiness-check.sh
-else
-	@echo "Skipping deploy//web outside of CI; set CI=true if you want this to happen automatically."
+	@echo "::group::make $@"
 endif
-	@echo "::endgroup::"
-
-deploy//down: 
-	@echo "::group::deploy//down"
+	$(call header,$@)
+ifeq ($(shell [[ $(CI) == "true" || $(FORCE) == "true" ]] && echo "true"),true)
+	cd $(MAKEPATH)/deploy; $(MAKE) down
+else
+	@echo "  - Skipping $@ outside of CI; set FORCE=true if you want this to happen automatically."
+endif
 ifeq ($(CI),true)
-	@echo "--- [$@]"
-	@pushd $(MAKEPATH)/deploy; $(MAKE) down
-else
-	@echo "Skipping deploy//down outside of CI; set CI=true if you want this to happen automatically."
-endif
 	@echo "::endgroup::"
+endif
+.PHONY: deploy//down
 
 deploy//partial: deploy//down
-	@echo "::group::deploy//partial"
 ifeq ($(CI),true)
-	@echo "--- [$@]"
-	@pushd $(MAKEPATH)/deploy; $(MAKE) partial
-	@echo "Sleeping to not race postgres or the queue to being alive; you're welcome."
-	@sleep 10 
-else
-	@echo "Skipping deploy//partial outside of CI; set CI=true if you want this to happen automatically."
+	@echo "::group::make $@"
 endif
+	$(call header,$@)
+ifeq ($(shell [[ $(CI) == "true" || $(FORCE) == "true" ]] && echo "true"),true)
+	cd $(MAKEPATH)/deploy; $(MAKE) partial
+	@echo "  - Sleeping to not race postgres or the queue to being alive; you're welcome."
+	@sleep 10
+else
+	@echo "  - Skipping $@ outside of CI; set FORCE=true if you want this to happen automatically."
+endif
+ifeq ($(CI),true)
 	@echo "::endgroup::"
+endif
+.PHONY: deploy//partial
 
-clean: $(CLEANABLE)
+deploy//web: deploy//down
+ifeq ($(CI),true)
+	@echo "::group::make $@"
+endif
+	$(call header,$@)
+ifeq ($(shell [[ $(CI) == "true" || $(FORCE) == "true" ]] && echo "true"),true)
+	cd $(MAKEPATH)/deploy; $(MAKE) CI_FROM_REF=$(CI_FROM_REF) CI_TO_REF=$(CI_TO_REF) web
+	$(MAKEPATH)/ci/scripts/readiness-check.sh
+else
+	@echo "  - Skipping $@ outside of CI; set FORCE=true if you want this to happen automatically."
+endif
+ifeq ($(CI),true)
+	@echo "::endgroup::"
+endif
+.PHONY: deploy//web
 
-force_clean:
-	@echo "--- [$(shell basename ${CURDIR})] $@"
-	sudo rm -rf ./target
+## deploy//prod: Manually deploy production (requires Tailscale & SSH key)
+deploy//prod:
+	$(call header,$@)
+	$(MAKEPATH)/scripts/deploy-prod.sh
+.PHONY: deploy//prod
 
-# TODO(nick): The below targets are to be used during the transition period between the Vue 2 to
-# Vue 3 rewrite. These targets should be merged into existing ones once the transition is complete.
-
-down:
-	$(MAKE) CI=true deploy//down
-.PHONY: down
-
-prepare: down
-	$(MAKE) CI=true deploy//partial
+## prepare: Prepares supporting services for development (warning: deletes local database state)
+prepare:
+	$(MAKE) FORCE=true deploy//partial
 .PHONY: prepare
 
-troubleshoot: down
-	cd $(MAKEPATH)/app/web; npm install
-	cd $(MAKEPATH)/app/web; npm run vite-clean
-	cd $(MAKEPATH); cargo clean
-	$(MAKEPATH)/scripts/bootstrap.sh
-.PHONY: troubleshoot
+## down: Brings down supporting services (warning: deletes local database state)
+down:
+	$(MAKE) FORCE=true deploy//down
+.PHONY: down
 
-deploy-prod:
-	@$(MAKEPATH)/scripts/deploy-prod.sh
-.PHONY: deploy-prod
-
-lint:
-	cd $(MAKEPATH)/ci && $(MAKE) ci-lint
-.PHONY: lint
-
-tidy:
-	cd $(MAKEPATH)/ci && $(MAKE) tidy
-.PHONY: tidy
-
-tidy-crates:
-	cd $(MAKEPATH)/ci && $(MAKE) tidy-crates
-.PHONY: tidy-crates
-
-tidy-web:
-	cd $(MAKEPATH)/ci && $(MAKE) tidy-web
-.PHONY: tidy-web
-
-docs-open:
-	cd $(MAKEPATH); cargo doc --all
-	cd $(MAKEPATH); cargo doc -p dal --open
-.PHONY: docs-open
-
-docs-watch:
-	cd $(MAKEPATH); cargo watch -x doc
-.PHONY: docs-watch
-
-help:
-	@echo "Check out DEVELOPING.md for more info"
+## list: Prints a comprehensive list of Makefile targets
+#
+# Thanks to: https://stackoverflow.com/a/26339924
+list:
+	@LC_ALL=C $(MAKE) -pRrq -f $(THIS_FILE) : 2>/dev/null | awk -v RS= -F: '/(^|\n)# Files(\n|$$)/,/(^|\n)# Finished Make data base/ {if ($$1 !~ "^[#.]") {print $$1}}' | sort | egrep -v -e '^[^[:alnum:]]' -e '^$@$$'
+.PHONY: list

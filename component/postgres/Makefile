@@ -1,5 +1,5 @@
-include ../../component/mk/base.mk
-include ../../component/mk/image.mk
+include ../../mk/base.mk
+include ../../mk/image.mk
 
 .DEFAULT_GOAL := build
 CONTAINER_NAME := postgres

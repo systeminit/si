@@ -5,10 +5,10 @@ include ../../mk/image.mk
 .DEFAULT_GOAL := build
 CONTAINER_NAME := pinga
 IMG := systeminit/pinga
-
+WATCH_TASK := run
 WATCH_PATHS := . \
-	../../lib/config-file \
 	../../lib/dal \
 	../../lib/si-data \
 	../../lib/si-settings \
-	../../lib/telemetry-rs
+	../../lib/telemetry-rs \
+	../../lib/veritech

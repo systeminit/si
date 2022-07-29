@@ -5,10 +5,7 @@ include ../../mk/image.mk
 .DEFAULT_GOAL := build
 CONTAINER_NAME := veritech
 IMG := systeminit/veritech
-
+WATCH_TASK := run
 WATCH_PATHS := . \
-	../../lib/config-file \
-  ../../lib/dal \
-	../../lib/si-data \
-	../../lib/si-settings \
-	../../lib/telemetry-rs
+	../../lib/telemetry-rs \
+	../../lib/veritech

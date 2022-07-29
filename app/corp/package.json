@@ -1,11 +1,17 @@
 {
   "private": true,
   "scripts": {
-    "dev": "nuxi dev",
+    "clean": "rm -rf ./dist ./lib",
     "build": "nuxi build",
+    "build:clean": "npm run clean && npm run build",
+    "lint": "eslint --ext .ts,.js,.vue --ignore-path .gitignore pages components layouts",
+    "lint:fix": "eslint --fix",
+    "fmt": "prettier --write ./components ./layouts ./pages",
+    "fmt:check": "prettier --check ./components ./layouts ./pages",
+    "check": "npm run lint && npm run fmt:check",
+    "dev": "nuxi dev",
     "start": "node .output/server/index.mjs",
-    "eslint": "eslint --ext .ts,.js,.vue --ignore-path .gitignore pages components layouts",
-    "format": "prettier --write ./components ./layouts ./pages"
+    "test": "echo 'Sorry, no tests yet!'"
   },
   "devDependencies": {
     "@babel/eslint-parser": "^7.17.0",

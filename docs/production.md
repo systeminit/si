@@ -36,8 +36,7 @@ If, for some reason, you need to deploy the system manually, you can.
 Use the top level make target:
 
 ```bash
-make deploy-prod
+make deploy//prod
 ```
 
-You must have `rsync` installed on your workstation, and the ssh-key loaded.
-
+You must have `rsync` installed on your workstation, and the SSH key loaded.

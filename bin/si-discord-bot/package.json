@@ -7,6 +7,7 @@
   "scripts": {
     "clean": "rm -rf ./dist",
     "build": "tsc",
+    "build:check": "tsc --noEmit --skipLibCheck",
     "build:clean": "npm run clean && npm run build",
     "build:watch": "npm run clean && tsc --watch",
     "watch": "npm run build:watch",
@@ -14,6 +15,7 @@
     "lint:fix": "eslint --fix",
     "fmt": "prettier --write .",
     "fmt:check": "prettier --check .",
+    "check": "npm run lint && npm run build:check && npm run fmt:check",
     "start": "npm run build && node ./dist/index.js",
     "test": "jest --passWithNoTests",
     "test:watch": "jest --watch --forceExit",
