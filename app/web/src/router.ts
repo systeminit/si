@@ -1,27 +1,17 @@
 import { config } from "@/config";
 import {
-  createWebHistory,
   createRouter,
-  RouteRecordRaw,
-  RouteLocationNormalized,
+  createWebHistory,
   NavigationGuardNext,
+  RouteLocationNormalized,
+  RouteRecordRaw,
 } from "vue-router";
 import { SessionService } from "@/service/session";
-import OldHome from "@/pages/OldHome.vue";
 import NotFoundPage from "@/pages/NotFound.vue";
 import Authenticate from "@/pages/Authenticate.vue";
 import Login from "@/templates/Login.vue";
 import Signup from "@/templates/Signup.vue";
-import Schema from "@/templates/Schema.vue";
-import SchemaList from "@/organisms/Schema/SchemaList.vue";
-import SchemaNew from "@/organisms/Schema/SchemaNew.vue";
-import SchemaView from "@/organisms/Schema/SchemaView.vue";
-import Application from "@/templates/Application.vue";
-import ApplicationList from "@/organisms/Application/ApplicationList.vue";
-import ApplicationView from "@/organisms/Application/ApplicationView.vue";
-import Editor from "@/organisms/Editor.vue";
 import _ from "lodash";
-import SchematicViewer from "@/organisms/SchematicViewer.vue";
 import Home from "@/pages/Home.vue";
 import WorkspaceSingle from "@/templates/WorkspaceSingle.vue";
 import WorkspaceMultiple from "@/templates/WorkspaceMultiple.vue";
@@ -82,91 +72,6 @@ const routes: RouteRecordRaw[] = [
             ],
           },
         ],
-      },
-    ],
-  },
-  {
-    path: "/old",
-    name: "old",
-    component: OldHome,
-    children: [
-      {
-        path: "application",
-        props: true,
-        name: "application",
-        component: Application,
-        redirect: { name: "application-list" },
-        children: [
-          {
-            name: "application-list",
-            path: "list",
-            component: ApplicationList,
-            props: { modal: true },
-          },
-          {
-            name: "application-new",
-            path: "new",
-            component: Editor,
-          },
-          {
-            name: "application-view",
-            path: ":applicationId",
-            props: (route) => {
-              let applicationId;
-              if (_.isArray(route.params.applicationId)) {
-                applicationId = Number.parseInt(route.params.applicationId[0]);
-              } else {
-                applicationId = Number.parseInt(route.params.applicationId);
-              }
-              return {
-                applicationId,
-              };
-            },
-            component: ApplicationView,
-          },
-        ],
-      },
-      {
-        path: "schema",
-        props: true,
-        name: "schema",
-        component: Schema,
-        redirect: { name: "schema-list" },
-        children: [
-          {
-            name: "schema-list",
-            path: "list",
-            component: SchemaList,
-            props: { modal: true },
-          },
-          {
-            name: "schema-new",
-            path: "new",
-            component: SchemaNew,
-          },
-          {
-            name: "schema-view",
-            path: ":schemaId",
-            props: (route) => {
-              let schemaId;
-              if (_.isArray(route.params.schemaId)) {
-                schemaId = Number.parseInt(route.params.schemaId[0]);
-              } else {
-                schemaId = Number.parseInt(route.params.schemaId);
-              }
-              return {
-                schemaId,
-              };
-            },
-            component: SchemaView,
-          },
-        ],
-      },
-      {
-        path: "schematic",
-        props: true,
-        name: "schematic",
-        component: SchematicViewer,
       },
     ],
   },
