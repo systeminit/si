@@ -1,31 +1,42 @@
 use async_trait::async_trait;
 use faktory_async::Client;
-use std::{collections::VecDeque, convert::TryInto, sync::Arc};
+use std::convert::TryInto;
 use telemetry::prelude::*;
-use tokio::sync::Mutex;
 
-use crate::job::producer::JobProducer;
+use crate::{
+    job::{producer::JobProducer, queue::JobQueue},
+    DalContext,
+};
 
 use super::{JobQueueProcessor, JobQueueProcessorResult};
 
 #[derive(Clone, Debug)]
 pub struct FaktoryProcessor {
     client: Client,
+    queue: JobQueue,
 }
 
 impl FaktoryProcessor {
     pub fn new(client: Client) -> Self {
-        Self { client }
+        Self {
+            client,
+            queue: JobQueue::new(),
+        }
     }
 }
 
 #[async_trait]
 impl JobQueueProcessor for FaktoryProcessor {
-    async fn process_queue(
+    async fn enqueue_job(
         &self,
-        queue: Arc<Mutex<VecDeque<Box<dyn JobProducer + Send + Sync>>>>,
-    ) -> JobQueueProcessorResult<()> {
-        while let Some(job) = queue.lock().await.pop_front() {
+        job: Box<dyn JobProducer + Send + Sync>,
+        _ctx: &DalContext<'_, '_>,
+    ) {
+        self.queue.enqueue_job(job).await
+    }
+
+    async fn process_queue(&self) -> JobQueueProcessorResult<()> {
+        while let Some(job) = self.queue.fetch_job().await {
             let faktory_job = job.try_into()?;
             if let Err(err) = self.client.push(faktory_job).await {
                 error!("Faktory push failed, some jobs will be dropped");

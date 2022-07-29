@@ -12,7 +12,7 @@ use uuid::Uuid;
 use veritech::{EncryptionKey, Instance, StandardConfig};
 
 use crate::{
-    job::processor::{test_null_processor::TestNullProcessor, JobQueueProcessor},
+    job::processor::{sync_processor::SyncProcessor, JobQueueProcessor},
     DalContext, JwtSecretKey, ServicesContext,
 };
 
@@ -166,7 +166,8 @@ impl TestContext {
         let nats_conn = NatsClient::new(&config.nats)
             .await
             .expect("failed to create NatsClient");
-        let job_processor = TestNullProcessor::new();
+        let job_processor =
+            Box::new(SyncProcessor::new()) as Box<dyn JobQueueProcessor + Send + Sync>;
         let encryption_key = Arc::new(
             EncryptionKey::load(&config.encryption_key_path)
                 .await
@@ -253,7 +254,8 @@ impl TestContextBuilder {
         let nats_conn = NatsClient::new(&self.config.nats)
             .await
             .expect("failed to create NatsClient");
-        let job_processor = TestNullProcessor::new();
+        let job_processor =
+            Box::new(SyncProcessor::new()) as Box<dyn JobQueueProcessor + Send + Sync>;
 
         TestContext {
             config: self.config.clone(),
