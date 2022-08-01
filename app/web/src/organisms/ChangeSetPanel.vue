@@ -66,7 +66,7 @@
               leave-to="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
             >
               <DialogPanel
-                class="relative transform overflow-hidden rounded-lg bg-shade-100 px-4 pt-5 pb-4 text-left text-neutral-50 shadow-xl transition-all dark:bg-shade-0 dark:text-neutral-900 sm:my-8 sm:w-full sm:max-w-sm sm:p-6"
+                class="relative transform overflow-hidden rounded-lg bg-shade-0 text-neutral-900 px-4 pt-5 pb-4 text-left shadow-xl transition-all dark:bg-shade-100 dark:text-neutral-50 sm:my-8 sm:w-full sm:max-w-sm sm:p-6"
               >
                 <div>
                   <div
@@ -104,7 +104,7 @@
                         v-model="createChangeSetName"
                         type="text"
                         name="changeSetName"
-                        class="block w-full rounded-[0.1875rem] border-neutral-600 bg-neutral-800 text-neutral-50 shadow-sm type-regular-xs hover:border-neutral-400 focus:border-neutral-500 focus:outline-none focus:ring-1 focus:ring-action-500 focus:ring-offset-2 dark:border-neutral-300 dark:bg-shade-0 dark:text-neutral-900"
+                        class="block w-full rounded-[0.1875rem] border-neutral-300 bg-shade-0 text-neutral-900 shadow-sm type-regular-xs hover:border-neutral-400 focus:border-neutral-500 focus:outline-none focus:ring-1 focus:ring-action-500 focus:ring-offset-2 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-50"
                         placeholder="name"
                         @keyup.enter="createChangeSet"
                       />
