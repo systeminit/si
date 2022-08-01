@@ -11,6 +11,8 @@
 <script setup lang="ts">
 import { computed } from "vue";
 
+import NodeSkeleton from "@/atoms/NodeSkeleton.vue";
+
 const props = defineProps<{
   color: string;
   name?: string;
@@ -18,6 +20,4 @@ const props = defineProps<{
 }>();
 
 const classes = computed(() => props.class);
-
-import NodeSkeleton from "@/atoms/NodeSkeleton.vue";
 </script>

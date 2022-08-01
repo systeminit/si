@@ -27,7 +27,7 @@
 
     <div class="flex flex-row w-full bg-transparent">
       <SiSidebar side="left">
-        <SiChangesetForm />
+        <ChangeSetPanel class="border-b-2 dark:border-neutral-500 mb-2" />
         <AssetsTabs :viewer-event$="viewerEventObservable.viewerEvent$" />
       </SiSidebar>
 
@@ -66,7 +66,7 @@ import { ThemeService } from "@/service/theme";
 import { refFrom, untilUnmounted } from "vuse-rx";
 import { computed, ref, watch } from "vue";
 import { Theme } from "@/observable/theme";
-import SiChangesetForm from "@/organisms/SiChangesetForm.vue";
+import ChangeSetPanel from "@/organisms/ChangeSetPanel.vue";
 import {
   combineLatest,
   firstValueFrom,
