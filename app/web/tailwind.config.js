@@ -1,4 +1,4 @@
-const theme = require("./src/design/themes/tailwind/tailwind-dark");
+const theme = require("./src/design/themes/tailwind");
 const colors = require("tailwindcss/colors");
 
 module.exports = {

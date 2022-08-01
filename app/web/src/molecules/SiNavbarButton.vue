@@ -63,7 +63,7 @@ const buttonClasses = (open: boolean) => {
   // or we have explicitly passed in a selected value.
   if (props.selected || (open && slots.dropdownContent)) {
     results["hover:bg-black"] = false;
-    results["bg-[#2F80ED]"] = true;
+    results["bg-action-500"] = true;
   }
 
   return results;

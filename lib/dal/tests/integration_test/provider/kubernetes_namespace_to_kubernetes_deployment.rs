@@ -1,6 +1,5 @@
 use dal::test::helpers::{
-    find_prop_and_parent_by_name, process_job_queue, update_attribute_value_for_prop_and_context,
-    ComponentPayload,
+    find_prop_and_parent_by_name, update_attribute_value_for_prop_and_context, ComponentPayload,
 };
 use dal::Component;
 use dal::{
@@ -175,7 +174,6 @@ async fn setup_kubernetes_namespace(ctx: &DalContext<'_, '_>) -> ComponentPayloa
     let (component, _) = Component::new_for_schema_with_node(ctx, "namespace", schema.id())
         .await
         .expect("unable to create component");
-    process_job_queue(ctx).await;
 
     let base_attribute_read_context = AttributeReadContext {
         prop_id: None,
@@ -215,7 +213,6 @@ async fn setup_kubernetes_deployment(ctx: &DalContext<'_, '_>) -> ComponentPaylo
     let (component, _) = Component::new_for_schema_with_node(ctx, "deployment", schema.id())
         .await
         .expect("unable to create component");
-    process_job_queue(ctx).await;
 
     let base_attribute_read_context = AttributeReadContext {
         prop_id: None,

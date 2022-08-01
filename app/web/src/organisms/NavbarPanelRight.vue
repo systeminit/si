@@ -1,6 +1,6 @@
 <template>
   <div class="flex items-center h-full">
-    <SiNavbarButton tooltip-text="Zoom" :text-mode="true">
+    <SiNavbarButton :text-mode="true" tooltip-text="Zoom">
       <template #default="{ hovered, open }">
         <div class="flex-row flex text-white">
           100%
@@ -24,27 +24,26 @@
     <SiThemeSwitcher />
 
     <!-- FIXME(nick,theo): dropdown-classes needs to be removed in favor of the dropdown knowing whether or not it is offscreen. -->
-    <SiNavbarButton tooltip-text="Profile" dropdown-classes="right-2">
+    <SiNavbarButton dropdown-classes="right-2" tooltip-text="Profile">
       <template #default="{ hovered, open }">
         <div class="flex-row flex text-white">
           <img
-            class="h-8 w-8 rounded-full bg-white border-black border-2"
             :src="CheechSvg"
             alt="Cheech and Chong"
+            class="h-8 w-8 rounded-full bg-white border-black border-2"
           />
           <SiArrow :nudge="hovered || open" class="ml-1 w-4 text-white" />
         </div>
       </template>
 
       <template #dropdownContent>
-        <SiDropdownItem @select="onOld">Switch to old app</SiDropdownItem>
         <SiDropdownItem @select="onLogout">Logout</SiDropdownItem>
       </template>
     </SiNavbarButton>
   </div>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import LinkIcon from "@/atoms/CustomIcons/LinkIcon.vue";
 import SiNavbarButton from "@/molecules/SiNavbarButton.vue";
 import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
@@ -58,10 +57,6 @@ const router = useRouter();
 
 const copyURL = () => {
   navigator.clipboard.writeText(window.location.href);
-};
-
-const onOld = async () => {
-  await router.push({ name: "old" });
 };
 
 const onLogout = async () => {

@@ -38,6 +38,7 @@
               title="Billing Account Name"
               description="A name for your account. A company name is a good idea. You can change it later. (You'll need this to sign in!)"
               required
+              login-mode
               @error="setFieldInError('billingAccountName', $event)"
             />
           </div>
@@ -49,6 +50,7 @@
               title="Full Name"
               description="Your full name."
               required
+              login-mode
               @error="setFieldInError('userName', $event)"
             />
           </div>
@@ -60,6 +62,7 @@
               title="Email"
               description="Your email address."
               required
+              login-mode
               :validations="[
                 {
                   id: 'email',
@@ -79,6 +82,7 @@
               password
               description="Your password."
               required
+              login-mode
               :validations="[
                 {
                   id: 'strongPassword',
@@ -95,6 +99,7 @@
             <SiTextBox2
               id="signupSecret"
               v-model="form.signupSecret"
+              login-mode
               title="Agent Passphrase"
               password
               description="The secret agent passphrase provided to you by the Initiative."

@@ -4,7 +4,7 @@
     <input
       v-model="value"
       type="text"
-      class="w-full p-1 h-7 text-xs rounded-sm border-1 dark:text-black bg-[#FAFAFA] border-[#DBDBDB] placeholder:italic"
+      class="w-full p-1 h-7 text-xs rounded-sm border-1 dark:text-black bg-neutral-50 border-neutral-300 placeholder:italic"
       :placeholder="placeholder"
     />
   </div>

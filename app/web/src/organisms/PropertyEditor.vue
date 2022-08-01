@@ -1,11 +1,12 @@
 <template>
-  <div class="flex flex-col w-full overflow-auto h-full pb-5">
+  <div class="flex flex-col w-full h-full pb-5">
     <div
       v-for="pv in propertyValuesInOrder"
       :key="pv.id"
       class="flex flex-col w-full"
     >
       <PropertyWidget
+        class="text-left"
         :schema-prop="schemaForPropId(pv.propId)"
         :prop-value="pv"
         :path="paths[pv.id]"

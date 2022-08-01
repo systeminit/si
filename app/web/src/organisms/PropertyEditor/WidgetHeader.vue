@@ -1,7 +1,7 @@
 <template>
   <div
     v-show="showHeader"
-    class="flex flex-row w-full pl-7 pt-1 pb-1 mt-2 text-white cursor-pointer bg-gray-800 items-center h-12"
+    class="flex flex-row w-full pl-7 pt-1 pb-1 mt-2 cursor-pointer items-center h-12"
     @click="setCollapsed"
   >
     <div
@@ -9,7 +9,7 @@
       :key="index"
       class="flex flex-row items-center"
     >
-      <span v-if="index == 0" class="text-base font-extrabold">
+      <span v-if="index == 0" class="text-base font-bold">
         {{ part }}
       </span>
       <span v-else class="text-sm">
@@ -17,10 +17,10 @@
       </span>
     </div>
     <div class="flex flex-grow justify-end pr-4">
-      <SiButtonIcon v-if="isCollapsed" tooltip-text="Expand">
+      <SiButtonIcon v-if="isCollapsed" ignore-text-color tooltip-text="Expand">
         <ChevronUpIcon />
       </SiButtonIcon>
-      <SiButtonIcon v-else tooltip-text="Collapse">
+      <SiButtonIcon v-else ignore-text-color tooltip-text="Collapse">
         <ChevronDownIcon />
       </SiButtonIcon>
     </div>
