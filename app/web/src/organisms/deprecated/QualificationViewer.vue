@@ -71,9 +71,9 @@
             >
               <div v-if="qualificationStarting(q.title)" class="flex">
                 <VueLoading
+                  :size="{ width: '14px', height: '14px' }"
                   class="inline-flex"
                   type="cylon"
-                  :size="{ width: '14px', height: '14px' }"
                 />
               </div>
               <div v-else-if="q.result" class="flex">
@@ -117,12 +117,12 @@
 
                 <SiButtonIcon
                   v-if="q.description || q.result"
-                  class="focus:outline-none"
                   :tooltip-text="
                     showDescriptionMap[q.title]
                       ? 'Show description'
                       : 'Hide description'
                   "
+                  class="focus:outline-none"
                   @click="toggleShowDescription(q.title)"
                 >
                   <ChevronDownIcon v-if="showDescriptionMap[q.title]" />
@@ -138,7 +138,7 @@
               <!-- NOTE(nick): output is optional and can be empty. -->
               <div v-if="q.result" class="flex flex-col w-full">
                 <div class="mt-1">
-                  <QualificationOutput :result="q.result" :output="q.output" />
+                  <QualificationOutput :output="q.output" :result="q.result" />
                 </div>
               </div>
             </div>
@@ -149,7 +149,7 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import * as Rx from "rxjs";
 import { ComponentService } from "@/service/component";
 import QualificationOutput from "./QualificationViewer/QualificationOutput.vue";
@@ -167,18 +167,18 @@ import { eventCheckedQualifications$ } from "@/observable/qualification";
 import { system$ } from "@/observable/system";
 import SiLink from "@/atoms/SiLink.vue";
 import SiButtonIcon from "@/atoms/SiButtonIcon.vue";
-import QualificationEditor from "@/organisms/QualificationEditor.vue";
+import QualificationEditor from "@/organisms/deprecated/QualificationEditor.vue";
 import SiIcon from "@/atoms/SiIcon.vue";
-import { RefreshIcon, CheckCircleIcon } from "@heroicons/vue/solid";
+import { CheckCircleIcon, RefreshIcon } from "@heroicons/vue/solid";
 import {
-  InformationCircleIcon,
-  RefreshIcon as RefreshIconOutline,
-  EmojiSadIcon,
-  EmojiHappyIcon,
   ChevronDownIcon,
-  PencilAltIcon,
   ChevronUpIcon,
+  EmojiHappyIcon,
+  EmojiSadIcon,
+  InformationCircleIcon,
+  PencilAltIcon,
   PlusCircleIcon,
+  RefreshIcon as RefreshIconOutline,
 } from "@heroicons/vue/outline";
 import { toast$ } from "@/observable/toast";
 //import { ListQualificationsResponse } from "@/service/component/list_qualifications";
@@ -470,6 +470,7 @@ $button-brightness: 1.1;
 .header-background {
   background-color: #1f2122;
 }
+
 .run-button-invert {
   transform: scaleX(-1);
 }
