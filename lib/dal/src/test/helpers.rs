@@ -14,6 +14,8 @@ use crate::{
     WorkspaceId,
 };
 
+pub mod provider;
+
 pub fn generate_fake_name() -> String {
     Generator::with_naming(Name::Numbered).next().unwrap()
 }
@@ -226,64 +228,6 @@ pub async fn find_schema_and_default_variant_by_name(
     (schema, default_variant)
 }
 
-/// Update a [`AttributeValue`](crate::AttributeValue). This only works if the parent [`AttributeValue`]
-/// for the same context corresponds to an _"object"_ [`Prop`](crate::Prop).
-pub async fn update_attribute_value_for_prop_and_context(
-    ctx: &DalContext<'_, '_>,
-    prop_id: PropId,
-    value: Option<Value>,
-    base_attribute_read_context: AttributeReadContext,
-) -> AttributeValueId {
-    let attribute_value = AttributeValue::find_for_context(
-        ctx,
-        AttributeReadContext {
-            prop_id: Some(prop_id),
-            ..base_attribute_read_context
-        },
-    )
-    .await
-    .expect("cannot get attribute value")
-    .expect("attribute value not found");
-
-    let parent_prop = Prop::get_by_id(ctx, &prop_id)
-        .await
-        .expect("could not get prop by id")
-        .expect("prop not found by id")
-        .parent_prop(ctx)
-        .await
-        .expect("could not find parent prop")
-        .expect("parent prop not found or prop does not have parent");
-    let parent_attribute_value = AttributeValue::find_for_context(
-        ctx,
-        AttributeReadContext {
-            prop_id: Some(*parent_prop.id()),
-            ..base_attribute_read_context
-        },
-    )
-    .await
-    .expect("cannot get attribute value")
-    .expect("attribute value not found");
-
-    let update_attribute_context = AttributeContextBuilder::from(base_attribute_read_context)
-        .set_prop_id(prop_id)
-        .to_context()
-        .expect("could not convert builder to attribute context");
-
-    let (_, updated_attribute_value_id) = AttributeValue::update_for_context(
-        ctx,
-        *attribute_value.id(),
-        Some(*parent_attribute_value.id()),
-        update_attribute_context,
-        value,
-        None,
-    )
-    .await
-    .expect("cannot update value for context");
-
-    // Return the updated attribute value id.
-    updated_attribute_value_id
-}
-
 /// Get the "si:identity" [`Func`](crate::Func) and execute (if necessary).
 pub async fn setup_identity_func(
     ctx: &DalContext<'_, '_>,
@@ -419,5 +363,66 @@ impl ComponentPayload {
             .await
             .expect("cannot get component view")
             .properties
+    }
+
+    /// Update a [`AttributeValue`](crate::AttributeValue). This only works if the parent
+    /// [`AttributeValue`] for the same context corresponds to an _"object"_ [`Prop`](crate::Prop).
+    pub async fn update_attribute_value_for_prop_name(
+        &self,
+        ctx: &DalContext<'_, '_>,
+        prop_name: impl AsRef<str>,
+        value: Option<Value>,
+    ) -> AttributeValueId {
+        let prop_id = self.get_prop_id(prop_name.as_ref());
+
+        let attribute_value = AttributeValue::find_for_context(
+            ctx,
+            AttributeReadContext {
+                prop_id: Some(prop_id),
+                ..self.base_attribute_read_context
+            },
+        )
+        .await
+        .expect("cannot get attribute value")
+        .expect("attribute value not found");
+
+        let parent_prop = Prop::get_by_id(ctx, &prop_id)
+            .await
+            .expect("could not get prop by id")
+            .expect("prop not found by id")
+            .parent_prop(ctx)
+            .await
+            .expect("could not find parent prop")
+            .expect("parent prop not found or prop does not have parent");
+        let parent_attribute_value = AttributeValue::find_for_context(
+            ctx,
+            AttributeReadContext {
+                prop_id: Some(*parent_prop.id()),
+                ..self.base_attribute_read_context
+            },
+        )
+        .await
+        .expect("cannot get attribute value")
+        .expect("attribute value not found");
+
+        let update_attribute_context =
+            AttributeContextBuilder::from(self.base_attribute_read_context)
+                .set_prop_id(prop_id)
+                .to_context()
+                .expect("could not convert builder to attribute context");
+
+        let (_, updated_attribute_value_id) = AttributeValue::update_for_context(
+            ctx,
+            *attribute_value.id(),
+            Some(*parent_attribute_value.id()),
+            update_attribute_context,
+            value,
+            None,
+        )
+        .await
+        .expect("cannot update value for context");
+
+        // Return the updated attribute value id.
+        updated_attribute_value_id
     }
 }

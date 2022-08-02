@@ -1,6 +1,4 @@
-use dal::test::helpers::{
-    setup_identity_func, update_attribute_value_for_prop_and_context, ComponentPayload,
-};
+use dal::test::helpers::{setup_identity_func, ComponentPayload};
 use dal::test_harness::{
     create_prop_of_kind_and_set_parent_with_name, create_prop_of_kind_with_name, create_schema,
     create_schema_variant_with_root,
@@ -82,13 +80,13 @@ async fn inter_component_identity_update(ctx: &DalContext<'_, '_>) {
     .expect("could not create attribute prototype argument");
 
     // Update the "esp" field, "source", to see if the intra component connection continues to work.
-    update_attribute_value_for_prop_and_context(
-        ctx,
-        esp_payload.get_prop_id("/root/domain/object/source"),
-        Some(serde_json::json!["one"]),
-        esp_payload.base_attribute_read_context,
-    )
-    .await;
+    esp_payload
+        .update_attribute_value_for_prop_name(
+            ctx,
+            "/root/domain/object/source",
+            Some(serde_json::json!["one"]),
+        )
+        .await;
 
     // Ensure that they look as we expect.
     assert_eq_sorted!(
@@ -252,13 +250,13 @@ async fn inter_component_identity_update(ctx: &DalContext<'_, '_>) {
     );
 
     // Update the "esp" field, "source", again.
-    update_attribute_value_for_prop_and_context(
-        ctx,
-        esp_payload.get_prop_id("/root/domain/object/source"),
-        Some(serde_json::json!["two"]),
-        esp_payload.base_attribute_read_context,
-    )
-    .await;
+    esp_payload
+        .update_attribute_value_for_prop_name(
+            ctx,
+            "/root/domain/object/source",
+            Some(serde_json::json!["two"]),
+        )
+        .await;
 
     // Observe that inter component identity updating work.
     assert_eq_sorted!(
@@ -337,41 +335,41 @@ async fn setup_esp(ctx: &DalContext<'_, '_>) -> ComponentPayload {
         .await
         .expect("unable to create component");
 
-    // This context can also be used for generating component views.
-    let base_attribute_read_context = AttributeReadContext {
-        prop_id: None,
-        schema_id: Some(*schema.id()),
-        schema_variant_id: Some(*schema_variant.id()),
-        component_id: Some(*component.id()),
-        ..AttributeReadContext::default()
-    };
-
-    // Initialize the value corresponding to the "source" prop.
-    update_attribute_value_for_prop_and_context(
-        ctx,
-        *source_prop.id(),
-        Some(serde_json::json!["zero-source"]),
-        base_attribute_read_context,
-    )
-    .await;
-
-    // Initialize the value corresponding to the "intermediate" prop.
-    update_attribute_value_for_prop_and_context(
-        ctx,
-        *intermediate_prop.id(),
-        Some(serde_json::json!["zero-intermediate"]),
-        base_attribute_read_context,
-    )
-    .await;
-
-    // Return the payload.
-    ComponentPayload {
+    // The base attribute read context can also be used for generating component views.
+    let component_payload = ComponentPayload {
         schema_id: *schema.id(),
         schema_variant_id: *schema_variant.id(),
         component_id: *component.id(),
         prop_map,
-        base_attribute_read_context,
-    }
+        base_attribute_read_context: AttributeReadContext {
+            prop_id: None,
+            schema_id: Some(*schema.id()),
+            schema_variant_id: Some(*schema_variant.id()),
+            component_id: Some(*component.id()),
+            ..AttributeReadContext::default()
+        },
+    };
+
+    // Initialize the value corresponding to the "source" prop.
+    component_payload
+        .update_attribute_value_for_prop_name(
+            ctx,
+            "/root/domain/object/source",
+            Some(serde_json::json!["zero-source"]),
+        )
+        .await;
+
+    // Initialize the value corresponding to the "intermediate" prop.
+    component_payload
+        .update_attribute_value_for_prop_name(
+            ctx,
+            "/root/domain/object/intermediate",
+            Some(serde_json::json!["zero-intermediate"]),
+        )
+        .await;
+
+    // Return the payload.
+    component_payload
 }
 
 // 38.82091849697006, -77.05236860190759
