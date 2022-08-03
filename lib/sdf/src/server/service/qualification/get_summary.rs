@@ -2,30 +2,30 @@ use axum::extract::Query;
 use axum::Json;
 use serde::{Deserialize, Serialize};
 
-use dal::component::QualificationSummary;
-use dal::{Component, Visibility, WorkspaceId};
+use dal::qualification::QualificationSummary;
+use dal::Visibility;
 
 use crate::server::extract::{AccessBuilder, HandlerContext};
-
-use super::ComponentResult;
+use crate::service::qualification::QualificationResult;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct ListQualificationsRequest {
-    pub workspace_id: WorkspaceId,
+pub struct GetSummaryRequest {
     #[serde(flatten)]
     pub visibility: Visibility,
 }
 
-pub async fn list_qualifications_summary_by_tenancy(
+pub type GetSummaryResponse = QualificationSummary;
+
+pub async fn get_summary(
     HandlerContext(builder, mut txns): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
-    Query(request): Query<ListQualificationsRequest>,
-) -> ComponentResult<Json<QualificationSummary>> {
+    Query(request): Query<GetSummaryRequest>,
+) -> QualificationResult<Json<GetSummaryResponse>> {
     let txns = txns.start().await?;
     let ctx = builder.build(request_ctx.build(request.visibility), &txns);
 
-    let qual_summary = Component::list_qualifications_summary_by_tenancy(&ctx).await?;
+    let qual_summary = QualificationSummary::get_summary(&ctx).await?;
 
     txns.commit().await?;
 

@@ -170,27 +170,6 @@ const LIST_CODE_GENERATED: &str = include_str!("./queries/component_list_code_ge
 const LIST_FOR_RESOURCE_SYNC: &str = include_str!("./queries/component_list_for_resource_sync.sql");
 const LIST_FOR_SCHEMA_VARIANT: &str =
     include_str!("./queries/component_list_for_schema_variant.sql");
-const LIST_QUALIFICATIONS_SUMMARY_FOR_TENANCY: &str =
-    include_str!("queries/qualifications_summary_for_tenancy.sql");
-
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct QualificationSummaryForComponent {
-    component_id: ComponentId,
-    component_name: String,
-    total: i64,
-    succeeded: i64,
-    failed: i64,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct QualificationSummary {
-    total: i64,
-    succeeded: i64,
-    failed: i64,
-    components: Vec<QualificationSummaryForComponent>,
-}
 
 pk!(ComponentPk);
 pk!(ComponentId);
@@ -1168,68 +1147,6 @@ impl Component {
             }
         }
         Ok(results)
-    }
-
-    pub async fn list_qualifications_summary_by_tenancy(
-        ctx: &DalContext<'_, '_>,
-    ) -> ComponentResult<QualificationSummary> {
-        let rows = ctx
-            .txns()
-            .pg()
-            .query(
-                LIST_QUALIFICATIONS_SUMMARY_FOR_TENANCY,
-                &[ctx.read_tenancy(), ctx.visibility()],
-            )
-            .await?;
-
-        let mut components = Vec::new();
-        let mut total = 0;
-        let mut succeeded = 0;
-        let mut failed = 0;
-        for row in rows {
-            let component_id = row.try_get("component_id")?;
-
-            let (has_validation, validation_passed) =
-                match Self::list_validations_as_qualification_for_component_id(
-                    ctx,
-                    component_id,
-                    UNSET_ID_VALUE.into(),
-                )
-                .await?
-                .result
-                {
-                    None => (false, false),
-                    Some(qual_result) => (true, qual_result.success),
-                };
-
-            let component = QualificationSummaryForComponent {
-                component_id,
-                component_name: row.try_get("component_name")?,
-                total: row.get::<&str, i64>("total_qualifications")
-                    + if has_validation { 1 } else { 0 },
-                succeeded: row.get::<&str, i64>("succeeded")
-                    + if validation_passed { 1 } else { 0 },
-                failed: row.get::<&str, i64>("failed")
-                    + if has_validation && !validation_passed {
-                        1
-                    } else {
-                        0
-                    },
-            };
-
-            total += component.total;
-            succeeded += component.succeeded;
-            failed += component.failed;
-
-            components.push(component);
-        }
-
-        Ok(QualificationSummary {
-            total,
-            succeeded,
-            failed,
-            components,
-        })
     }
 
     #[instrument(skip_all)]

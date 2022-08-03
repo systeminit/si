@@ -3,13 +3,110 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use veritech::QualificationSubCheck;
 
+use crate::attribute::context::UNSET_ID_VALUE;
 use crate::func::backend::validation::ValidationError;
 use crate::func::binding_return_value::{FuncBindingReturnValue, FuncBindingReturnValueError};
 use crate::ws_event::{WsEvent, WsPayload};
 use crate::{
-    BillingAccountId, ComponentId, DalContext, HistoryActor, QualificationPrototype,
-    QualificationPrototypeId, StandardModel, SystemId,
+    component, BillingAccountId, Component, ComponentId, DalContext, HistoryActor,
+    QualificationPrototype, QualificationPrototypeId, StandardModel, SystemId,
 };
+
+const GET_SUMMARY: &str = include_str!("queries/qualifications_summary_for_tenancy.sql");
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct QualificationSummaryForComponent {
+    component_id: ComponentId,
+    component_name: String,
+    total: i64,
+    succeeded: i64,
+    failed: i64,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct QualificationSummary {
+    total: i64,
+    succeeded: i64,
+    failed: i64,
+    components: Vec<QualificationSummaryForComponent>,
+}
+
+#[derive(Error, Debug)]
+pub enum QualificationSummaryError {
+    #[error("error accessing database")]
+    PgError(#[from] tokio_postgres::Error),
+    #[error("error loading component validations")]
+    ComponentError(#[from] Box<component::ComponentError>),
+}
+
+pub type QualificationSummaryResult<T> = Result<T, QualificationSummaryError>;
+
+impl QualificationSummary {
+    pub async fn get_summary(
+        ctx: &DalContext<'_, '_>,
+    ) -> QualificationSummaryResult<QualificationSummary> {
+        let rows = ctx
+            .txns()
+            .pg()
+            .query(GET_SUMMARY, &[ctx.read_tenancy(), ctx.visibility()])
+            .await?;
+
+        let mut components = Vec::new();
+        let mut total = 0;
+        let mut succeeded = 0;
+        let mut failed = 0;
+        for row in rows {
+            let component_id = row.try_get("component_id")?;
+
+            let (has_validation, validation_passed) =
+                match Component::list_validations_as_qualification_for_component_id(
+                    ctx,
+                    component_id,
+                    UNSET_ID_VALUE.into(),
+                )
+                .await?
+                .result
+                {
+                    None => (false, false),
+                    Some(qual_result) => (true, qual_result.success),
+                };
+
+            let component_total =
+                row.get::<&str, i64>("total_qualifications") + if has_validation { 1 } else { 0 };
+            let component_succeeded =
+                row.get::<&str, i64>("succeeded") + if validation_passed { 1 } else { 0 };
+            let component_failed = row.get::<&str, i64>("failed")
+                + if has_validation && !validation_passed {
+                    1
+                } else {
+                    0
+                };
+
+            let component = QualificationSummaryForComponent {
+                component_id,
+                component_name: row.try_get("component_name")?,
+                total: component_total,
+                succeeded: component_succeeded,
+                failed: component_failed,
+            };
+
+            total += component.total;
+            succeeded += component.succeeded;
+            failed += component.failed;
+
+            components.push(component);
+        }
+
+        Ok(QualificationSummary {
+            total,
+            succeeded,
+            failed,
+            components,
+        })
+    }
+}
 
 #[derive(Error, Debug)]
 pub enum QualificationError {
