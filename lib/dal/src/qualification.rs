@@ -33,12 +33,13 @@ pub struct QualificationSummary {
     components: Vec<QualificationSummaryForComponent>,
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Error, Debug)]
 pub enum QualificationSummaryError {
     #[error("error accessing database")]
     PgError(#[from] tokio_postgres::Error),
     #[error("error loading component validations")]
-    ComponentError(#[from] Box<component::ComponentError>),
+    ComponentError(#[from] component::ComponentError),
 }
 
 pub type QualificationSummaryResult<T> = Result<T, QualificationSummaryError>;
