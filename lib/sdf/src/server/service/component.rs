@@ -4,13 +4,13 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
+use thiserror::Error;
+
 use dal::{
     node::NodeError, property_editor::PropertyEditorError, AttributeValueError,
     ComponentError as DalComponentError, ComponentId, ReadTenancyError, SchemaError,
     SchematicError, StandardModelError, SystemId, TransactionsError, WsEventError,
 };
-
-use thiserror::Error;
 
 pub mod check_qualifications;
 pub mod generate_code;
@@ -23,6 +23,7 @@ pub mod get_resource;
 pub mod insert_property_editor_value;
 pub mod list_components_identification;
 pub mod list_qualifications;
+pub mod list_qualifications_summary_by_tenancy;
 pub mod sync_resource;
 pub mod update_property_editor_value;
 
@@ -101,6 +102,10 @@ pub fn routes() -> Router {
         .route(
             "/list_qualifications",
             get(list_qualifications::list_qualifications),
+        )
+        .route(
+            "/list_qualifications_summary_by_tenancy",
+            get(list_qualifications_summary_by_tenancy::list_qualifications_summary_by_tenancy),
         )
         .route("/get_resource", get(get_resource::get_resource))
         .route("/sync_resource", post(sync_resource::sync_resource))
