@@ -38,7 +38,7 @@ pub struct QualificationSummary {
 pub enum QualificationSummaryError {
     #[error("error accessing database")]
     PgError(#[from] tokio_postgres::Error),
-    #[error("error loading component validations")]
+    #[error("error loading component validations: {0}")]
     ComponentError(#[from] component::ComponentError),
 }
 

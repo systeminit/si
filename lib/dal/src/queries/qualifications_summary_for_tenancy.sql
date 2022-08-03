@@ -16,14 +16,17 @@ FROM (SELECT DISTINCT ON (components.component_id, qualification_resolvers.id) c
               func_binding_return_values.id = func_binding_return_value_belongs_to_func_binding.object_id
                LEFT JOIN qualification_prototypes ON
               qualification_prototypes.id = qualification_resolvers.qualification_prototype_id
-
+               LEFT JOIN component_belongs_to_schema ON
+              components.component_id = component_belongs_to_schema.object_id
+               LEFT JOIN schemas ON
+              component_belongs_to_schema.belongs_to_id = schemas.id
       WHERE in_tenancy_v1($1, components.tenancy_universal,
                           components.tenancy_billing_account_ids,
                           components.tenancy_organization_ids,
                           components.tenancy_workspace_ids)
         AND is_visible_v1($2, components.visibility_change_set_pk,
                           components.visibility_edit_session_pk, components.visibility_deleted_at)
-
+        AND schemas.kind != 'concept'
       ORDER BY components.component_id, qualification_resolvers.id,
                qualification_prototypes.visibility_change_set_pk DESC,
                qualification_prototypes.visibility_edit_session_pk DESC,
