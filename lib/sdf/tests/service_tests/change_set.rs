@@ -77,6 +77,7 @@ async fn create_change_set() {
     );
     let request: CreateChangeSetRequest = CreateChangeSetRequest {
         change_set_name: "mastodon".to_string(),
+        current_edit_session_pk: None,
     };
     let response: CreateChangeSetResponse = api_request_auth_json_body(
         app,

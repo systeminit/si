@@ -5,10 +5,16 @@ import { applyChangeSet } from "./change_set/apply_change_set";
 import { getChangeSet } from "./change_set/get_change_set";
 import { startEditSession } from "./change_set/start_edit_session";
 import { cancelEditSession } from "./change_set/cancel_edit_session";
+import { cancelAndStartEditSession } from "./change_set/cancel_and_start_edit_session";
 import { saveEditSession } from "./change_set/save_edit_session";
+import { saveEditSessionAndApplyChangeSet } from "./change_set/save_edit_session_and_apply_change_set";
+import { saveAndStartEditSession } from "./change_set/save_and_start_edit_session";
 import { switchToHead } from "./change_set/switch_to_head";
 import { currentChangeSet } from "./change_set/current_change_set";
+import { currentEditSession } from "./change_set/current_edit_session";
 import { currentEditMode } from "./change_set/current_edit_mode";
+import { updateSelectedChangeSet } from "./change_set/update_selected_change_set";
+import { getStats } from "./change_set/get_stats";
 import {
   changeSet$,
   eventChangeSetApplied$,
@@ -21,14 +27,20 @@ import _ from "lodash";
 export const ChangeSetService = {
   currentEditMode,
   currentChangeSet,
+  currentEditSession,
   listOpenChangeSets,
   createChangeSet,
   applyChangeSet,
   getChangeSet,
+  getStats,
   startEditSession,
   cancelEditSession,
+  cancelAndStartEditSession,
   saveEditSession,
+  saveEditSessionAndApplyChangeSet,
+  saveAndStartEditSession,
   switchToHead,
+  updateSelectedChangeSet,
 };
 
 /**
