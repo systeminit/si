@@ -1,3 +1,5 @@
+use std::string::FromUtf8Error;
+
 use crate::{standard_model::TypeHint, HistoryEvent, WriteTenancy};
 use serde::{Deserialize, Serialize};
 use si_data::{NatsError, PgError};
@@ -28,6 +30,10 @@ pub enum FuncError {
     HistoryEvent(#[from] HistoryEventError),
     #[error("standard model error: {0}")]
     StandardModelError(#[from] StandardModelError),
+    #[error("error decoding base64_code: {0}")]
+    Decode(#[from] base64::DecodeError),
+    #[error("utf8 encoding error: {0}")]
+    FromUtf8(#[from] FromUtf8Error),
 
     #[error("could not find func by id: {0}")]
     NotFound(FuncId),
@@ -124,6 +130,13 @@ impl Func {
         self.timestamp.updated_at = updated_at;
         self.id = *id;
         Ok(())
+    }
+
+    pub fn code_plaintext(&self) -> FuncResult<Option<String>> {
+        Ok(match self.code_base64() {
+            Some(base64_code) => Some(String::from_utf8(base64::decode(base64_code)?)?),
+            None => None,
+        })
     }
 
     standard_model_accessor!(name, String, FuncResult);
