@@ -1,33 +1,34 @@
 import Bottle from "bottlejs";
+import { Observable, tap, mergeMap, take } from "rxjs";
 import { ApiResponse, SDF } from "@/api/sdf";
 import { ChangeSet } from "@/api/sdf/dal/change_set";
 import { EditSession } from "@/api/sdf/dal/edit_session";
+import { currentEditSession } from "@/service/change_set/current_edit_session";
 import { changeSet$ } from "@/observable/change_set";
 import { editSession$ } from "@/observable/edit_session";
 import { editMode$ } from "@/observable/edit_mode";
-import { currentEditSession } from "@/service/change_set/current_edit_session";
-import { Observable, tap, take, mergeMap } from "rxjs";
 
-interface CreateChangeSetArgs {
-  changeSetName: string;
+export interface UpdatedSelectedChangeSetArgs {
+  nextChangeSetPk: number;
 }
 
-export interface CreateChangeSetRequest extends CreateChangeSetArgs {
+export interface UpdatedSelectedChangeSetRequest
+  extends UpdatedSelectedChangeSetArgs {
   currentEditSessionPk?: number;
 }
 
-interface CreateChangeSetResponse {
+interface UpdateSelectedChangeSetResponse {
   changeSet: ChangeSet;
   editSession: EditSession;
 }
 
-export function createChangeSet(
-  args: CreateChangeSetArgs,
-): Observable<ApiResponse<CreateChangeSetResponse>> {
+export function updateSelectedChangeSet(
+  args: UpdatedSelectedChangeSetArgs,
+): Observable<ApiResponse<UpdateSelectedChangeSetResponse>> {
   return currentEditSession().pipe(
     take(1),
     mergeMap((currentEditSession) => {
-      const request: CreateChangeSetRequest = args;
+      const request: UpdatedSelectedChangeSetRequest = args;
       if (currentEditSession) {
         request.currentEditSessionPk = currentEditSession.pk;
       }
@@ -35,8 +36,8 @@ export function createChangeSet(
       const bottle = Bottle.pop("default");
       const sdf: SDF = bottle.container.SDF;
       return sdf
-        .post<ApiResponse<CreateChangeSetResponse>>(
-          "change_set/create_change_set",
+        .post<ApiResponse<UpdateSelectedChangeSetResponse>>(
+          "change_set/update_selected_change_set",
           request,
         )
         .pipe(
