@@ -6,7 +6,7 @@ use si_data::{FaktoryConfig, NatsConfig, PgPoolConfig};
 use si_settings::{CanonicalFile, CanonicalFileError};
 use thiserror::Error;
 
-pub use dal::{CycloneKeyPair, MigrationMode};
+pub use dal::CycloneKeyPair;
 pub use si_settings::{StandardConfig, StandardConfigFile};
 
 #[derive(Debug, Error)]
@@ -32,9 +32,6 @@ pub struct Config {
     #[builder(default = "FaktoryConfig::default()")]
     faktory: FaktoryConfig,
 
-    #[builder(default = "MigrationMode::default()")]
-    migration_mode: MigrationMode,
-
     cyclone_encryption_key_path: CanonicalFile,
 }
 
@@ -47,12 +44,6 @@ impl Config {
     #[must_use]
     pub fn pg_pool(&self) -> &PgPoolConfig {
         &self.pg_pool
-    }
-
-    /// Gets a reference to the config's migration mode.
-    #[must_use]
-    pub fn migration_mode(&self) -> &MigrationMode {
-        &self.migration_mode
     }
 
     /// Gets a reference to the config's nats.
@@ -79,7 +70,6 @@ pub struct ConfigFile {
     pg: PgPoolConfig,
     nats: NatsConfig,
     faktory: FaktoryConfig,
-    migration_mode: MigrationMode,
     cyclone_encryption_key_path: String,
 }
 
@@ -106,7 +96,6 @@ impl Default for ConfigFile {
             pg: Default::default(),
             nats: Default::default(),
             faktory: Default::default(),
-            migration_mode: Default::default(),
             cyclone_encryption_key_path,
         }
     }
@@ -124,7 +113,6 @@ impl TryFrom<ConfigFile> for Config {
         config.pg_pool(value.pg);
         config.nats(value.nats);
         config.faktory(value.faktory);
-        config.migration_mode(value.migration_mode);
         config.cyclone_encryption_key_path(value.cyclone_encryption_key_path.try_into()?);
         config.build().map_err(Into::into)
     }
