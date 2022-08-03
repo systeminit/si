@@ -9,6 +9,7 @@ use dal::{StandardModelError, TransactionsError};
 
 use thiserror::Error;
 
+pub mod get_func;
 pub mod list_funcs;
 
 #[derive(Error, Debug)]
@@ -21,6 +22,9 @@ pub enum FuncError {
     StandardModel(#[from] StandardModelError),
     #[error(transparent)]
     ContextTransaction(#[from] TransactionsError),
+    #[error(transparent)]
+    Func(#[from] dal::FuncError),
+
     #[error("func not found")]
     FuncNotFound,
 }
@@ -40,5 +44,7 @@ impl IntoResponse for FuncError {
 }
 
 pub fn routes() -> Router {
-    Router::new().route("/list_funcs", get(list_funcs::list_funcs))
+    Router::new()
+        .route("/list_funcs", get(list_funcs::list_funcs))
+        .route("/get_func", get(get_func::get_func))
 }
