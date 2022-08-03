@@ -30,7 +30,7 @@ pub enum FuncError {
     HistoryEvent(#[from] HistoryEventError),
     #[error("standard model error: {0}")]
     StandardModelError(#[from] StandardModelError),
-    #[error("error decoding base64_code: {0}")]
+    #[error("error decoding code_base64: {0}")]
     Decode(#[from] base64::DecodeError),
     #[error("utf8 encoding error: {0}")]
     FromUtf8(#[from] FromUtf8Error),
