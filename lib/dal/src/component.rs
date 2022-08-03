@@ -1,3 +1,5 @@
+pub mod stats;
+
 use serde::{Deserialize, Serialize};
 use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use thiserror::Error;
