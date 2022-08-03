@@ -34,17 +34,20 @@ pub async fn list_funcs(
     let txns = txns.start().await?;
     let ctx = builder.build(request_ctx.build(request.visibility), &txns);
 
-    let kind = "JsQualification".to_string();
-    let qualification_funcs = Func::find_by_attr(&ctx, "backend_kind", &kind)
-        .await?
-        .iter()
-        .map(|func| ListedFuncView {
-            id: func.id().to_owned(),
-            handler: func.handler().map(|handler| handler.to_owned()),
-            kind: func.backend_kind().to_owned(),
-            name: func.name().to_owned(),
-        })
-        .collect();
+    let qualification_funcs = Func::find_by_attr(
+        &ctx,
+        "backend_kind",
+        &FuncBackendKind::JsQualification.as_ref().to_string(),
+    )
+    .await?
+    .iter()
+    .map(|func| ListedFuncView {
+        id: func.id().to_owned(),
+        handler: func.handler().map(|handler| handler.to_owned()),
+        kind: func.backend_kind().to_owned(),
+        name: func.name().to_owned(),
+    })
+    .collect();
 
     txns.commit().await?;
 
