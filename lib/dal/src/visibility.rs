@@ -46,7 +46,7 @@ impl Visibility {
         }
     }
 
-    /// Constructs a new head `Visibility`.
+    /// Constructs a new head [`Visibility`].
     #[instrument]
     pub fn new_head(deleted: bool) -> Self {
         let deleted_at = match deleted {
@@ -56,9 +56,16 @@ impl Visibility {
         Visibility::new(NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK, deleted_at)
     }
 
-    /// Converts this `Visibility` to a new head `Visibility`.
+    /// Converts this [`Visibility`] to a new head [`Visibility`].
     pub fn to_head(&self) -> Self {
         Self::new_head(self.deleted_at.is_some())
+    }
+
+    /// Determines if this [`Visibility`] is a head [`Visibility`].
+    pub fn is_head(&self) -> bool {
+        self.change_set_pk == NO_CHANGE_SET_PK
+            && self.edit_session_pk == NO_EDIT_SESSION_PK
+            && self.deleted_at == None
     }
 
     /// Constructs a new change set `Visibility`.
