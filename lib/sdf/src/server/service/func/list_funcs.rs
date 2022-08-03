@@ -7,7 +7,6 @@ use serde::{Deserialize, Serialize};
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ListFuncsRequest {
-    pub kind: Option<FuncBackendKind>,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
