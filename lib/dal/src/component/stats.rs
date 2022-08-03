@@ -2,13 +2,11 @@
 
 use serde::Deserialize;
 use serde::Serialize;
-use std::fmt;
 use telemetry::prelude::*;
-use tokio_postgres::row::RowIndex;
 use tokio_postgres::Row;
 
 use crate::component::ComponentResult;
-use crate::{ComponentId, DalContext, StandardModelResult};
+use crate::{ComponentId, DalContext};
 
 const LIST_MODIFIED: &str = include_str!("../queries/component_stats_list_modified.sql");
 const LIST_ADDED: &str = include_str!("../queries/component_stats_list_added.sql");
@@ -18,9 +16,9 @@ const LIST_DELETED: &str = include_str!("../queries/component_stats_list_deleted
 /// [`ChangeSet`](crate::ChangeSet).
 #[derive(Deserialize, Serialize, Debug, Default)]
 pub struct ComponentStats {
-    added: usize,
-    deleted: usize,
-    modified: usize,
+    added: Vec<ComponentStatsGroup>,
+    deleted: Vec<ComponentStatsGroup>,
+    modified: Vec<ComponentStatsGroup>,
 }
 
 impl ComponentStats {
@@ -28,9 +26,9 @@ impl ComponentStats {
         let component_stats = if ctx.visibility().is_head() {
             Self::default()
         } else {
-            let added = Self::list_added(ctx).await?.len();
-            let deleted = Self::list_deleted(ctx).await?.len();
-            let modified = Self::list_modified(ctx).await?.len();
+            let added = Self::list_added(ctx).await?;
+            let deleted = Self::list_deleted(ctx).await?;
+            let modified = Self::list_modified(ctx).await?;
             Self {
                 added,
                 deleted,
@@ -41,7 +39,7 @@ impl ComponentStats {
     }
 
     #[instrument(skip_all)]
-    async fn list_added(ctx: &DalContext<'_, '_>) -> ComponentResult<Vec<ComponentId>> {
+    async fn list_added(ctx: &DalContext<'_, '_>) -> ComponentResult<Vec<ComponentStatsGroup>> {
         let rows = ctx
             .txns()
             .pg()
@@ -54,11 +52,11 @@ impl ComponentStats {
                 ],
             )
             .await?;
-        Ok(Self::component_ids_from_rows_with_idx(rows, "id")?)
+        ComponentStatsGroup::new_from_rows(rows)
     }
 
     #[instrument(skip_all)]
-    async fn list_deleted(ctx: &DalContext<'_, '_>) -> ComponentResult<Vec<ComponentId>> {
+    async fn list_deleted(ctx: &DalContext<'_, '_>) -> ComponentResult<Vec<ComponentStatsGroup>> {
         let rows = ctx
             .txns()
             .pg()
@@ -71,11 +69,11 @@ impl ComponentStats {
                 ],
             )
             .await?;
-        Ok(Self::component_ids_from_rows_with_idx(rows, "id")?)
+        ComponentStatsGroup::new_from_rows(rows)
     }
 
     #[instrument(skip_all)]
-    async fn list_modified(ctx: &DalContext<'_, '_>) -> ComponentResult<Vec<ComponentId>> {
+    async fn list_modified(ctx: &DalContext<'_, '_>) -> ComponentResult<Vec<ComponentStatsGroup>> {
         let rows = ctx
             .txns()
             .pg()
@@ -88,25 +86,27 @@ impl ComponentStats {
                 ],
             )
             .await?;
-        Ok(Self::component_ids_from_rows_with_idx(
-            rows,
-            "attribute_context_component_id",
-        )?)
+        ComponentStatsGroup::new_from_rows(rows)
     }
+}
 
-    /// Modification of [`standard_model::objects_from_rows()`] for resolving rows to
-    /// [`ComponentIds`](crate::Component).
-    fn component_ids_from_rows_with_idx<I>(
-        rows: Vec<Row>,
-        idx: I,
-    ) -> StandardModelResult<Vec<ComponentId>>
-    where
-        I: RowIndex + fmt::Display,
-    {
+/// An individual unit containing metadata for each "counting" statistic.
+#[derive(Deserialize, Serialize, Debug)]
+pub struct ComponentStatsGroup {
+    component_id: ComponentId,
+    component_name: String,
+}
+
+impl ComponentStatsGroup {
+    pub fn new_from_rows(rows: Vec<Row>) -> ComponentResult<Vec<Self>> {
         let mut result = Vec::new();
         for row in rows.into_iter() {
-            let object: ComponentId = row.try_get(&idx)?;
-            result.push(object);
+            let component_id: ComponentId = row.try_get("component_id")?;
+            let component_name: String = row.try_get("component_name")?;
+            result.push(Self {
+                component_id,
+                component_name,
+            });
         }
         Ok(result)
     }

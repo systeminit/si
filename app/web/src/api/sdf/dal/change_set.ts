@@ -14,8 +14,13 @@ export interface ChangeSet extends StandardModelNoVisibility {
   status: ChangeSetStatus;
 }
 
+export interface ComponentStatsGroup {
+  component_id: number;
+  component_name: string;
+}
+
 export interface ComponentStats {
-  added: number;
-  deleted: number;
-  modified: number;
+  added: ComponentStatsGroup[];
+  deleted: ComponentStatsGroup[];
+  modified: ComponentStatsGroup[];
 }

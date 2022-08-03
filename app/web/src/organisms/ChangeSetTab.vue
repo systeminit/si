@@ -1,15 +1,21 @@
 <template>
   <StatusBarTabPill>
-    Total: <span class="font-bold">&nbsp; {{ total }}</span>
+    Total:
+    <span class="font-bold"
+      >&nbsp;
+      {{
+        stats.added.length + stats.modified.length + stats.deleted.length
+      }}</span
+    >
   </StatusBarTabPill>
   <StatusBarTabPill class="bg-success-100 text-success-500 font-bold">
-    + {{ stats.added }}
+    + {{ stats.added.length }}
   </StatusBarTabPill>
   <StatusBarTabPill class="bg-warning-100 text-warning-500 font-bold">
-    ~ {{ stats.modified }}
+    ~ {{ stats.modified.length }}
   </StatusBarTabPill>
   <StatusBarTabPill class="bg-destructive-100 text-destructive-500 font-bold">
-    - {{ stats.deleted }}
+    - {{ stats.deleted.length }}
   </StatusBarTabPill>
 </template>
 
@@ -21,24 +27,17 @@ import { GlobalErrorService } from "@/service/global_error";
 import { ref } from "vue";
 import { untilUnmounted } from "vuse-rx";
 
-const defaultComponentStats: ComponentStats = {
-  added: 0,
-  deleted: 0,
-  modified: 0,
-};
-
-const stats = ref<ComponentStats>(defaultComponentStats);
-const total = ref<number>(0);
+const stats = ref<ComponentStats>({
+  added: [],
+  deleted: [],
+  modified: [],
+});
 
 untilUnmounted(ChangeSetService.getStats()).subscribe((response) => {
   if (response.error) {
     GlobalErrorService.set(response);
   } else {
     stats.value = response.componentStats;
-    total.value =
-      response.componentStats.added +
-      response.componentStats.deleted +
-      response.componentStats.modified;
   }
 });
 </script>
