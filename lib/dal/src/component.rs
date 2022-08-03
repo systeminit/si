@@ -1,3 +1,4 @@
+pub mod stats;
 pub mod view;
 
 pub use view::{ComponentView, ComponentViewError};
