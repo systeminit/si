@@ -37,7 +37,7 @@ impl FaktoryProcessor {
             let faktory_job = job.try_into()?;
             if let Err(err) = self.client.push(faktory_job).await {
                 error!("Faktory push failed, some jobs will be dropped");
-                return Err(err)?;
+                return Err(err.into());
             }
         }
         Ok(())

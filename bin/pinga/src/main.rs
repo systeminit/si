@@ -11,8 +11,7 @@ use tokio::{
 
 use dal::{
     job::consumer::{JobConsumer, JobConsumerError},
-    job::definition::component_post_processing::ComponentPostProcessing,
-    job::definition::dependent_values_update::DependentValuesUpdate,
+    job::definition::{CodeGeneration, DependentValuesUpdate, Qualification, Qualifications},
     CycloneKeyPair, DalContext, DalContextBuilder, JobFailure, JobFailureError, ServicesContext,
     TransactionsError,
 };
@@ -319,7 +318,13 @@ async fn execute_job_fallible(
 ) -> Result<(), JobError> {
     info!("Processing {job:?}");
 
-    let job = match job_match!(job, ComponentPostProcessing, DependentValuesUpdate) {
+    let job = match job_match!(
+        job,
+        Qualification,
+        Qualifications,
+        CodeGeneration,
+        DependentValuesUpdate
+    ) {
         Ok(job) => job,
         Err(err) => return Err(err),
     };

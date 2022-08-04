@@ -9,58 +9,47 @@ use crate::{
         consumer::{FaktoryJobInfo, JobConsumer, JobConsumerError, JobConsumerResult},
         producer::{JobMeta, JobProducer, JobProducerResult},
     },
-    AccessBuilder, Component, ComponentError, ComponentId, DalContext, QualificationPrototypeId,
-    StandardModel, SystemId, Visibility,
+    AccessBuilder, Component, ComponentError, ComponentId, DalContext, StandardModel, SystemId,
+    Visibility,
 };
 
 #[derive(Debug, Deserialize, Serialize)]
-struct ComponentPostProcessingArgs {
+struct QualificationsArgs {
     component_id: ComponentId,
     system_id: SystemId,
-    qualification_prototype_id: Option<QualificationPrototypeId>,
 }
 
-impl From<ComponentPostProcessing> for ComponentPostProcessingArgs {
-    fn from(value: ComponentPostProcessing) -> Self {
+impl From<Qualifications> for QualificationsArgs {
+    fn from(value: Qualifications) -> Self {
         Self {
             component_id: value.component_id,
             system_id: value.system_id,
-            qualification_prototype_id: value.qualification_prototype_id,
         }
     }
 }
 
 #[derive(Clone, Debug, Serialize)]
-pub struct ComponentPostProcessing {
+pub struct Qualifications {
     component_id: ComponentId,
     system_id: SystemId,
-    qualification_prototype_id: Option<QualificationPrototypeId>,
     access_builder: AccessBuilder,
     visibility: Visibility,
     faktory_job: Option<FaktoryJobInfo>,
 }
 
-impl ComponentPostProcessing {
+impl Qualifications {
     pub async fn new(
         ctx: &DalContext<'_, '_>,
         component_id: ComponentId,
         system_id: SystemId,
-        qualification_prototype_id: Option<QualificationPrototypeId>,
     ) -> ComponentResult<Box<Self>> {
         let component = Component::get_by_id(ctx, &component_id)
             .await?
             .ok_or(ComponentError::NotFound(component_id))?;
 
-        if let Some(qualification_prototype_id) = qualification_prototype_id {
-            component
-                .prepare_qualification_check(ctx, system_id, qualification_prototype_id)
-                .await?;
-        } else {
-            component.prepare_code_generation(ctx, system_id).await?;
-            component
-                .prepare_qualifications_check(ctx, system_id)
-                .await?;
-        }
+        component
+            .prepare_qualifications_check(ctx, system_id)
+            .await?;
 
         let access_builder = AccessBuilder::from(ctx.clone());
         let visibility = *ctx.visibility();
@@ -68,7 +57,6 @@ impl ComponentPostProcessing {
         Ok(Box::new(Self {
             component_id,
             system_id,
-            qualification_prototype_id,
             access_builder,
             visibility,
             faktory_job: None,
@@ -76,9 +64,9 @@ impl ComponentPostProcessing {
     }
 }
 
-impl JobProducer for ComponentPostProcessing {
+impl JobProducer for Qualifications {
     fn args(&self) -> JobProducerResult<serde_json::Value> {
-        Ok(serde_json::to_value(ComponentPostProcessingArgs::from(
+        Ok(serde_json::to_value(QualificationsArgs::from(
             self.clone(),
         ))?)
     }
@@ -102,14 +90,14 @@ impl JobProducer for ComponentPostProcessing {
     }
 
     fn identity(&self) -> String {
-        serde_json::to_string(self).expect("Cannot serialize ComponentPostProcessing")
+        serde_json::to_string(self).expect("Cannot serialize Qualifications")
     }
 }
 
 #[async_trait]
-impl JobConsumer for ComponentPostProcessing {
+impl JobConsumer for Qualifications {
     fn type_name(&self) -> String {
-        "ComponentPostProcessing".to_string()
+        "Qualifications".to_string()
     }
 
     fn access_builder(&self) -> AccessBuilder {
@@ -125,21 +113,13 @@ impl JobConsumer for ComponentPostProcessing {
             .await?
             .ok_or(ComponentError::NotFound(self.component_id))?;
 
-        if let Some(qualification_prototype_id) = self.qualification_prototype_id {
-            component
-                .check_qualification(ctx, self.system_id, qualification_prototype_id)
-                .await?;
-        } else {
-            component.generate_code(ctx, self.system_id).await?;
-            // Some qualifications depend on code generation, so remember to generate the code first
-            component.check_qualifications(ctx, self.system_id).await?;
-        }
+        component.check_qualifications(ctx, self.system_id).await?;
 
         Ok(())
     }
 }
 
-impl TryFrom<faktory_async::Job> for ComponentPostProcessing {
+impl TryFrom<faktory_async::Job> for Qualifications {
     type Error = JobConsumerError;
 
     fn try_from(job: faktory_async::Job) -> Result<Self, Self::Error> {
@@ -149,7 +129,7 @@ impl TryFrom<faktory_async::Job> for ComponentPostProcessing {
                 job.args().to_vec(),
             ));
         }
-        let args: ComponentPostProcessingArgs = serde_json::from_value(job.args()[0].clone())?;
+        let args: QualificationsArgs = serde_json::from_value(job.args()[0].clone())?;
         let access_builder: AccessBuilder = serde_json::from_value(job.args()[1].clone())?;
         let visibility: Visibility = serde_json::from_value(job.args()[2].clone())?;
 
@@ -158,7 +138,6 @@ impl TryFrom<faktory_async::Job> for ComponentPostProcessing {
         Ok(Self {
             component_id: args.component_id,
             system_id: args.system_id,
-            qualification_prototype_id: args.qualification_prototype_id,
             access_builder,
             visibility,
             faktory_job: Some(faktory_job_info),
