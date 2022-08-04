@@ -18,15 +18,7 @@
           <template #icon><ClockIcon class="text-white" /></template>
           <template #name>Changes</template>
           <template #summary>
-            <StatusBarTabPill>
-              Total: <span class="font-bold">&nbsp; 8</span>
-            </StatusBarTabPill>
-            <StatusBarTabPill class="bg-success-100 text-success-500 font-bold">
-              + 3
-            </StatusBarTabPill>
-            <StatusBarTabPill class="bg-[#FDE8E8] text-[#F05252] font-bold">
-              - 5
-            </StatusBarTabPill>
+            <ChangeSetTab />
           </template>
         </StatusBarTab>
       </Tab>
@@ -92,6 +84,7 @@ import {
 import SiButtonIcon from "@/atoms/SiButtonIcon.vue";
 import StatusBarTab from "./StatusBar/StatusBarTab.vue";
 import StatusBarTabPill from "./StatusBar/StatusBarTabPill.vue";
+import ChangeSetTab from "@/organisms/ChangeSetTab.vue";
 
 const panelOpen = ref(false);
 // Tab 0 is our phantom empty panel

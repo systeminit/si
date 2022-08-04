@@ -1,7 +1,6 @@
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use crate::service::schematic::{SchematicError, SchematicResult};
 use axum::Json;
-use dal::job::definition::component_post_processing::ComponentPostProcessing;
 use dal::{
     generate_name, node::NodeId, node::NodeViewKind, node_position::NodePositionView, Component,
     Node, NodeKind, NodePosition, NodeTemplate, NodeView, Schema, SchemaId, SchematicKind,
@@ -46,7 +45,7 @@ pub async fn create_node(
         .ok_or(SchematicError::SchemaVariantNotFound)?;
 
     let schematic_kind = SchematicKind::from(*schema.kind());
-    let (component, kind, node) = match (schematic_kind, &request.parent_node_id) {
+    let (_component, kind, node) = match (schematic_kind, &request.parent_node_id) {
         (SchematicKind::Component, Some(parent_node_id)) => {
             let parent_node = Node::get_by_id(&ctx, parent_node_id).await?;
             // Ensures parent node must be a NodeKind::Deployment
@@ -84,13 +83,6 @@ pub async fn create_node(
                 *parent_node_id,
             ));
         }
-    };
-
-    if let Some(system_id) = &request.system_id {
-        ctx.enqueue_job(
-            ComponentPostProcessing::new(&ctx, *component.id(), *system_id, None).await?,
-        )
-        .await;
     };
 
     let node_template = NodeTemplate::new_from_schema_id(&ctx, request.schema_id).await?;

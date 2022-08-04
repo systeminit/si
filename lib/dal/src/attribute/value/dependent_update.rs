@@ -7,13 +7,10 @@ use std::collections::HashMap;
 use crate::{
     attribute::context::AttributeContextBuilder,
     attribute::value::dependent_update::collection::AttributeValueDependentCollectionHarness,
-    job::definition::{
-        component_post_processing::ComponentPostProcessing,
-        dependent_values_update::DependentValuesUpdate,
-    },
-    AttributeContext, AttributePrototypeArgument, AttributeValue, AttributeValueError,
-    AttributeValueId, AttributeValueResult, Component, ComponentId, DalContext, FuncBinding,
-    InternalProvider, Prop, PropKind, StandardModel, SystemId, WsEvent,
+    job::definition::CodeGeneration, job::definition::DependentValuesUpdate, AttributeContext,
+    AttributePrototypeArgument, AttributeValue, AttributeValueError, AttributeValueId,
+    AttributeValueResult, Component, ComponentId, DalContext, FuncBinding, InternalProvider, Prop,
+    PropKind, StandardModel, SystemId, WsEvent
 };
 
 pub mod collection;
@@ -231,15 +228,18 @@ impl AttributeValueDependentUpdateHarness {
                                 AttributeValueError::PropNotFound(*internal_provider.prop_id())
                             })?;
 
-                        let system_id =
-                            attribute_value_that_needs_to_be_updated.context.system_id();
-
                         // The Root Prop won't have a parent Prop.
                         if provider_prop.parent_prop(ctx).await?.is_none() {
                             ctx.enqueue_job(
-                                ComponentPostProcessing::new(ctx, *component.id(), system_id, None)
-                                    .await
-                                    .map_err(|e| AttributeValueError::Component(e.to_string()))?,
+                                CodeGeneration::new(
+                                    ctx,
+                                    attribute_value_that_needs_to_be_updated
+                                        .context
+                                        .component_id(),
+                                    attribute_value_that_needs_to_be_updated.context.system_id(),
+                                )
+                                .await
+                                .map_err(|err| AttributeValueError::Component(err.to_string()))?,
                             )
                             .await;
                         }
@@ -257,7 +257,6 @@ impl AttributeValueDependentUpdateHarness {
             ctx.enqueue_job(DependentValuesUpdate::new(
                 ctx,
                 *dependent_attribute_value.id(),
-                *ctx.visibility(),
             ))
             .await;
         }
