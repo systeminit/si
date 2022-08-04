@@ -1,4 +1,4 @@
-import { MessageEmbed, } from "discord.js";
+import { MessageEmbed } from "discord.js";
 import { CHANNELS } from "./channels";
 import { rulesMessage } from "./embeds/rules";
 import { welcomeMessage } from "./embeds/welcome_message";
@@ -28,7 +28,7 @@ export async function sendEmbed(
       channel.send({ embeds: [embedToSend] });
     }
   } else {
-    throw new Error(`cannot send message to missing channel: ${channelName} `)
+    throw new Error(`cannot send message to missing channel: ${channelName} `);
   }
 
   return true;

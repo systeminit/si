@@ -1,8 +1,8 @@
-import { channelMention } from "@discordjs/builders"; 
+import { channelMention } from "@discordjs/builders";
 import { Client, TextChannel } from "discord.js";
 
 interface TextChannels {
-  [key: string]: TextChannel,
+  [key: string]: TextChannel;
 }
 
 export const CHANNELS: TextChannels = {};
@@ -25,4 +25,3 @@ export function getChannelMention(channel: string): string {
     throw new Error(`cannot find channel: ${channel}`);
   }
 }
-

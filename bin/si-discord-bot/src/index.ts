@@ -1,10 +1,10 @@
 #!/usr/bin/env tsc
 
 // Require the necessary discord.js classes
-import { Client, Intents }  from "discord.js";
+import { Client, Intents } from "discord.js";
 import { loadChannels } from "./channels";
 import { syncEmbeds } from "./embeds";
-import { loadRoles, } from "./roles";
+import { loadRoles } from "./roles";
 
 const TOKEN = process.env["DISCORD_TOKEN"];
 

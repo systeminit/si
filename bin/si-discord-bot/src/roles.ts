@@ -2,7 +2,7 @@ import { roleMention } from "@discordjs/builders";
 import { Client, Role } from "discord.js";
 
 interface Roles {
-  [key: string]: Role,
+  [key: string]: Role;
 }
 
 export const ROLES: Roles = {};
