@@ -76,10 +76,12 @@
         class="flex flex-col w-full h-52 lg:h-80 min-h-fit text-white"
       >
         <TabPanel class="hidden" aria-hidden="true">hidden</TabPanel>
-        <TabPanel>
+        <TabPanel class="h-full">
           <ChangeSetTabPanel />
         </TabPanel>
-        <TabPanel> Qualifications </TabPanel>
+        <TabPanel class="h-full">
+          <ComponentQualificationTabPanel />
+        </TabPanel>
       </TabPanels>
     </Transition>
   </TabGroup>
@@ -98,12 +100,12 @@ import {
 import SiButtonIcon from "@/atoms/SiButtonIcon.vue";
 import StatusBarTab from "./StatusBar/StatusBarTab.vue";
 import StatusBarTabPill from "./StatusBar/StatusBarTabPill.vue";
-import { untilUnmounted } from "vuse-rx";
-import { GlobalErrorService } from "@/service/global_error";
+import { refFrom } from "vuse-rx";
 import { QualificationService } from "@/service/qualification";
 import { GetSummaryResponse } from "@/service/qualification/get_summary";
 import ChangeSetTab from "@/organisms/ChangeSetTab.vue";
 import ChangeSetTabPanel from "@/organisms/ChangeSetTabPanel.vue";
+import ComponentQualificationTabPanel from "@/organisms/ComponentQualificationTabPanel.vue";
 
 const panelOpen = ref(false);
 // Tab 0 is our phantom empty panel
@@ -133,19 +135,10 @@ const barClasses = computed(() => {
   return result;
 });
 
-const qualificationSummary = ref<GetSummaryResponse>();
-
 // Loads data for qualifications - total, succeeded, failed
-untilUnmounted(QualificationService.getSummary()).subscribe((response) => {
-  if (response.error) {
-    GlobalErrorService.set(response);
-    // If we encounter an error, set the summary data to undefined.
-    qualificationSummary.value = undefined;
-    return;
-  }
-  // Update the qualification summary information
-  qualificationSummary.value = response;
-});
+const qualificationSummary = refFrom<GetSummaryResponse | undefined>(
+  QualificationService.getSummary(),
+);
 
 const tabTotalClass = computed(() => {
   return qualificationSummary.value === undefined ||
