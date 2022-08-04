@@ -1,6 +1,7 @@
-SELECT DISTINCT ON (id) id
+SELECT DISTINCT ON (component_id) component_id,
+                                  components.prop_values -> 'si' ->> 'name' AS component_name
 
-FROM components
+FROM components_with_attributes AS components
 
 -- Ensure they are deleted
 WHERE visibility_deleted_at IS NOT NULL
@@ -29,4 +30,5 @@ WHERE visibility_deleted_at IS NOT NULL
                     tenancy_organization_ids,
                     tenancy_workspace_ids)
 
-ORDER BY id DESC
+ORDER BY component_id DESC,
+         component_name DESC

@@ -65,7 +65,9 @@
         class="flex flex-col w-full h-52 lg:h-80 min-h-fit text-white"
       >
         <TabPanel class="hidden" aria-hidden="true">hidden</TabPanel>
-        <TabPanel> Changes </TabPanel>
+        <TabPanel>
+          <ChangeSetTabPanel />
+        </TabPanel>
         <TabPanel> Qualifications </TabPanel>
       </TabPanels>
     </Transition>
@@ -82,9 +84,10 @@ import {
   ClockIcon,
 } from "@heroicons/vue/solid";
 import SiButtonIcon from "@/atoms/SiButtonIcon.vue";
-import StatusBarTab from "./StatusBar/StatusBarTab.vue";
-import StatusBarTabPill from "./StatusBar/StatusBarTabPill.vue";
+import StatusBarTab from "@/organisms/StatusBar/StatusBarTab.vue";
+import StatusBarTabPill from "@/organisms/StatusBar/StatusBarTabPill.vue";
 import ChangeSetTab from "@/organisms/ChangeSetTab.vue";
+import ChangeSetTabPanel from "@/organisms/ChangeSetTabPanel.vue";
 
 const panelOpen = ref(false);
 // Tab 0 is our phantom empty panel
