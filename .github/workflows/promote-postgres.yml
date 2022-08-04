@@ -13,7 +13,7 @@ jobs:
   promote:
     uses: ./.github/workflows/promote-image.yml
     with:
-      component_name: bin/postgres
+      component_name: component/postgres
     secrets:
       SLACKBOT_TOKEN: ${{ secrets.SLACKBOT_TOKEN }}
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
