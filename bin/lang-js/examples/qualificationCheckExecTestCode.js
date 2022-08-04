@@ -5,7 +5,9 @@
 // ```
 
 async function exec(component) {
-  const child = await siExec.waitUntilEnd("echo", [`Component ${component.data.name} says: this will be my longest yeaaahhhhhhhhhhh boyyyyyyyyyyy ever`]);
+  const child = await siExec.waitUntilEnd("echo", [
+    `Component ${component.data.name} says: this will be my longest yeaaahhhhhhhhhhh boyyyyyyyyyyy ever`,
+  ]);
   return {
     qualified: child.exitCode === 0,
     message: child.stdout,

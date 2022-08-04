@@ -38,9 +38,14 @@ export function executeCodeGeneration(request: CodeGenerationRequest): void {
 
   debug({ code });
 
-  const compiledCode = new VMScript(wrapCode(code, request.handler, request.component)).compile();
+  const compiledCode = new VMScript(
+    wrapCode(code, request.handler, request.component)
+  ).compile();
   debug({ code: compiledCode.code });
-  const sandbox = createSandbox(FunctionKind.CodeGeneration, request.executionId);
+  const sandbox = createSandbox(
+    FunctionKind.CodeGeneration,
+    request.executionId
+  );
   const vm = createVm(sandbox);
 
   const result = execute(vm, compiledCode, request.executionId);

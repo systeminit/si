@@ -1,7 +1,7 @@
 import os from "os";
 import fs from "fs";
 import path from "path";
-import fetch from 'node-fetch';
+import fetch from "node-fetch";
 
 import _ from "lodash";
 import yaml from "js-yaml";
@@ -33,7 +33,7 @@ const resourceSyncSandbox = {};
 
 const codeGenerationSandbox = {
   // Is there any risk leaking this function plainly here? It smells like a risk for RCE outside of the sandbox
-  YAML: { stringify: yaml.dump }
+  YAML: { stringify: yaml.dump },
 };
 
 function qualificationCheckSandbox(executionId: string): Sandbox {

@@ -40,9 +40,9 @@ export interface QualificationCheckResultSuccess extends ResultSuccess {
   title?: string;
   link?: string;
   subChecks: Array<{
-    status: "Success" | "Failure" | "Unknown",
-    description: string,
-  }>,
+    status: "Success" | "Failure" | "Unknown";
+    description: string;
+  }>;
   message?: string;
 }
 
@@ -66,7 +66,12 @@ export async function executeQualificationCheck(
   );
   const vm = createNodeVm(sandbox);
 
-  const result = await execute(vm, code, request.component, request.executionId);
+  const result = await execute(
+    vm,
+    code,
+    request.component,
+    request.executionId
+  );
   debug({ result });
 
   console.log(JSON.stringify(result));
@@ -83,7 +88,9 @@ async function execute(
     const qualificationCheckRunner = vm.run(code);
     // Node(paulo): NodeVM doesn't support async rejection, we need a better way of handling it
     qualificationCheckResult = await new Promise((resolve) => {
-      qualificationCheckRunner(component, (resolution: unknown) => resolve(resolution));
+      qualificationCheckRunner(component, (resolution: unknown) =>
+        resolve(resolution)
+      );
     });
   } catch (err) {
     return failureExecution(err, executionId);

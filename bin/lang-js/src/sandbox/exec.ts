@@ -16,9 +16,13 @@ export const makeExec = (executionId: string) => {
   async function waitUntilEnd(
     execaFile: string,
     execaArgs?: readonly string[],
-    execaOptions?: Options<string>,
+    execaOptions?: Options<string>
   ): Promise<SiExecResult> {
-    debug(`running command; executionId="${executionId}"; cmd="${execaFile} ${execaArgs?.join(" ")}"`);
+    debug(
+      `running command; executionId="${executionId}"; cmd="${execaFile} ${execaArgs?.join(
+        " "
+      )}"`
+    );
 
     const child = await execa(execaFile, execaArgs, {
       all: true,
@@ -33,7 +37,7 @@ export const makeExec = (executionId: string) => {
     //ws: WebSocket,
     execaFile: string,
     execaArgs?: readonly string[],
-    execaOptions?: Options<string>,
+    execaOptions?: Options<string>
   ): Promise<SiExecResult> {
     throw new Error("unimplemented");
   }

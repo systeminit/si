@@ -36,7 +36,9 @@ export interface ResourceSyncResultFailure extends ResultFailure {
 export function executeResourceSync(request: ResourceSyncRequest): void {
   const code = base64Decode(request.codeBase64);
   debug({ code });
-  const compiledCode = new VMScript(wrapCode(code, request.handler, request.component)).compile();
+  const compiledCode = new VMScript(
+    wrapCode(code, request.handler, request.component)
+  ).compile();
   debug({ code: compiledCode.code });
   const sandbox = createSandbox(FunctionKind.ResourceSync, request.executionId);
   const vm = createVm(sandbox);
