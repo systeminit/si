@@ -2,46 +2,46 @@
   <div
     class="flex items-center justify-center place-items-center mx-auto h-full"
   >
-    <SiNavbarButton
+    <SiBarButton
       tooltip-text="Compose yourself, dammit!"
       :selected="route.name === 'workspace-compose'"
       @click="onCompose"
     >
       <ComposeIcon class="w-6" />
-    </SiNavbarButton>
+    </SiBarButton>
 
-    <SiNavbarButton
+    <SiBarButton
       tooltip-text="Are you a thrill beaker?"
       :selected="route.name === 'workspace-lab'"
       @click="onLab"
     >
       <BeakerIcon class="w-6" />
-    </SiNavbarButton>
+    </SiBarButton>
 
     <!-- Vertical bar -->
     <div class="w-0.5 h-8 self-center mx-2 bg-white"></div>
 
-    <SiNavbarButton
+    <SiBarButton
       tooltip-text="Eye see you"
       :selected="route.name === 'workspace-view'"
       @click="onView"
     >
       <ViewIcon class="w-6" />
-    </SiNavbarButton>
+    </SiBarButton>
 
-    <SiNavbarButton
+    <SiBarButton
       tooltip-text="Dookie, by Green Play"
       :selected="route.name === 'workspace-runtime'"
       @click="onRuntime"
     >
       <RunIcon class="w-6" />
-    </SiNavbarButton>
+    </SiBarButton>
   </div>
 </template>
 
 <script setup lang="ts">
 import ComposeIcon from "@/atoms/CustomIcons/ComposeIcon.vue";
-import SiNavbarButton from "@/molecules/SiNavbarButton.vue";
+import SiBarButton from "@/molecules/SiBarButton.vue";
 import ViewIcon from "@/atoms/CustomIcons/ViewIcon.vue";
 import RunIcon from "@/atoms/CustomIcons/RunIcon.vue";
 import BeakerIcon from "@/atoms/CustomIcons/BeakerIcon.vue";

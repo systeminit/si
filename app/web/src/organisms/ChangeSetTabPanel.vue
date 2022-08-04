@@ -3,7 +3,7 @@
     <!-- Filter button and list of components -->
     <div class="w-32 border-r-[1px] border-black text-center">
       <!-- Filter button and its dropdown -->
-      <SiNavbarButton
+      <SiBarButton
         class="h-10 border-b-[1px] border-black"
         dropdown-classes="top-1 left-4"
         tooltip-text="Filter"
@@ -37,7 +37,7 @@
             >Modified</SiDropdownItem
           >
         </template>
-      </SiNavbarButton>
+      </SiBarButton>
 
       <!-- List of components -->
       <div class="overflow-y-auto">
@@ -82,7 +82,7 @@ import { computed, ref } from "vue";
 import { untilUnmounted } from "vuse-rx";
 import { Node } from "@/organisms/SiCanvas/canvas/obj/node";
 import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
-import SiNavbarButton from "@/molecules/SiNavbarButton.vue";
+import SiBarButton from "@/molecules/SiBarButton.vue";
 import SiArrow from "@/atoms/SiArrow.vue";
 
 const filter = ref<"all" | "added" | "deleted" | "modified">("all");

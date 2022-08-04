@@ -1,6 +1,6 @@
 <template>
   <div class="flex items-center h-full">
-    <SiNavbarButton :text-mode="true" tooltip-text="Zoom">
+    <SiBarButton :text-mode="true" tooltip-text="Zoom">
       <template #default="{ hovered, open }">
         <div class="flex-row flex text-white">
           100%
@@ -15,16 +15,16 @@
         <SiDropdownItem>50%</SiDropdownItem>
         <SiDropdownItem>25%</SiDropdownItem>
       </template>
-    </SiNavbarButton>
+    </SiBarButton>
 
-    <SiNavbarButton tooltip-text="Copy link" @click="copyURL">
+    <SiBarButton tooltip-text="Copy link" @click="copyURL">
       <LinkIcon class="w-6" />
-    </SiNavbarButton>
+    </SiBarButton>
 
     <SiThemeSwitcher />
 
     <!-- FIXME(nick,theo): dropdown-classes needs to be removed in favor of the dropdown knowing whether or not it is offscreen. -->
-    <SiNavbarButton dropdown-classes="right-2" tooltip-text="Profile">
+    <SiBarButton dropdown-classes="right-2" tooltip-text="Profile">
       <template #default="{ hovered, open }">
         <div class="flex-row flex text-white">
           <img
@@ -39,13 +39,13 @@
       <template #dropdownContent>
         <SiDropdownItem @select="onLogout">Logout</SiDropdownItem>
       </template>
-    </SiNavbarButton>
+    </SiBarButton>
   </div>
 </template>
 
 <script lang="ts" setup>
 import LinkIcon from "@/atoms/CustomIcons/LinkIcon.vue";
-import SiNavbarButton from "@/molecules/SiNavbarButton.vue";
+import SiBarButton from "@/molecules/SiBarButton.vue";
 import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
 import SiArrow from "@/atoms/SiArrow.vue";
 import SiThemeSwitcher from "@/organisms/SiThemeSwitcher.vue";

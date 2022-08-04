@@ -10,7 +10,7 @@
             alt="SI Logo"
           />
 
-          <SiNavbarButton tooltip-text="Workspaces" :text-mode="true">
+          <SiBarButton tooltip-text="Workspaces" :text-mode="true">
             <template #default="{ hovered, open }">
               <div class="flex-col flex text-left">
                 <div class="text-xs font-medium">WORKSPACE:</div>
@@ -26,7 +26,7 @@
                 selectedWorkspaceName
               }}</SiDropdownItem>
             </template>
-          </SiNavbarButton>
+          </SiBarButton>
         </div>
 
         <!-- Center -->
@@ -48,7 +48,7 @@ import { computed } from "vue";
 import NavbarPanelRight from "@/organisms/NavbarPanelRight.vue";
 import NavbarPanelCenter from "@/organisms/NavbarPanelCenter.vue";
 import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
-import SiNavbarButton from "@/molecules/SiNavbarButton.vue";
+import SiBarButton from "@/molecules/SiBarButton.vue";
 import SiArrow from "@/atoms/SiArrow.vue";
 
 const workspace = refFrom<Workspace | null>(
