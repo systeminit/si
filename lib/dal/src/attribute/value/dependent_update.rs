@@ -10,7 +10,7 @@ use crate::{
     job::definition::CodeGeneration, job::definition::DependentValuesUpdate, AttributeContext,
     AttributePrototypeArgument, AttributeValue, AttributeValueError, AttributeValueId,
     AttributeValueResult, Component, ComponentId, DalContext, FuncBinding, InternalProvider, Prop,
-    PropKind, StandardModel, SystemId, WsEvent
+    PropKind, StandardModel, SystemId, WsEvent,
 };
 
 pub mod collection;

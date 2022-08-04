@@ -24,17 +24,28 @@
       </Tab>
       <Tab v-slot="{ selected }">
         <StatusBarTab :selected="selected">
-          <template #icon
-            ><CheckCircleIcon class="text-success-500"
-          /></template>
+          <template #icon>
+            <XCircleIcon
+              v-if="tabQualificationsIconStatus"
+              class="text-destructive-500"
+            />
+            <CheckCircleIcon v-else class="text-success-500" />
+          </template>
           <template #name>Qualifications</template>
           <template #summary>
-            <StatusBarTabPill>
-              Total: <span class="font-bold">&nbsp; 3</span>
+            <StatusBarTabPill :class="tabTotalClass">
+              Total:
+              <span class="font-bold ml-1">{{ tabTotalText }}</span>
             </StatusBarTabPill>
-            <StatusBarTabPill class="bg-success-100 text-success-500 font-bold">
-              <CheckCircleIcon class="text-success-500 w-4" />
-              <div class="pl-px">3</div>
+            <StatusBarTabPill class="font-bold" :class="tabSuccessClass">
+              <CheckCircleIcon
+                v-if="qualificationSummary !== undefined"
+                class="text-success-500 w-4"
+              />
+              <XCircleIcon v-else class="text-destructive-500 w-4" />
+              <div class="pl-px">
+                {{ tabSuccessText }}
+              </div>
             </StatusBarTabPill>
           </template>
         </StatusBarTab>
@@ -82,10 +93,15 @@ import {
   ChevronUpIcon,
   CheckCircleIcon,
   ClockIcon,
+  XCircleIcon,
 } from "@heroicons/vue/solid";
 import SiButtonIcon from "@/atoms/SiButtonIcon.vue";
-import StatusBarTab from "@/organisms/StatusBar/StatusBarTab.vue";
-import StatusBarTabPill from "@/organisms/StatusBar/StatusBarTabPill.vue";
+import StatusBarTab from "./StatusBar/StatusBarTab.vue";
+import StatusBarTabPill from "./StatusBar/StatusBarTabPill.vue";
+import { untilUnmounted } from "vuse-rx";
+import { GlobalErrorService } from "@/service/global_error";
+import { QualificationService } from "@/service/qualification";
+import { GetSummaryResponse } from "@/service/qualification/get_summary";
 import ChangeSetTab from "@/organisms/ChangeSetTab.vue";
 import ChangeSetTabPanel from "@/organisms/ChangeSetTabPanel.vue";
 
@@ -116,4 +132,39 @@ const barClasses = computed(() => {
   }
   return result;
 });
+
+const qualificationSummary = ref<GetSummaryResponse>();
+
+// Loads data for qualifications - total, succeeded, failed
+untilUnmounted(QualificationService.getSummary()).subscribe((response) => {
+  if (response.error) {
+    GlobalErrorService.set(response);
+    // If we encounter an error, set the summary data to undefined.
+    qualificationSummary.value = undefined;
+    return;
+  }
+  // Update the qualification summary information
+  qualificationSummary.value = response;
+});
+
+const tabTotalClass = computed(() => {
+  return qualificationSummary.value === undefined ||
+    qualificationSummary.value.failed > 0
+    ? "text-destructive-500 border-destructive-500"
+    : "border-white";
+});
+const tabTotalText = computed(() => qualificationSummary.value?.total ?? "-");
+const tabSuccessClass = computed(() => {
+  return qualificationSummary.value === undefined
+    ? "bg-destructive-100 text-destructive-500 border-destructive-500"
+    : "bg-success-100 text-success-500";
+});
+const tabSuccessText = computed(
+  () => qualificationSummary.value?.succeeded ?? "-",
+);
+const tabQualificationsIconStatus = computed(
+  () =>
+    qualificationSummary.value === undefined ||
+    qualificationSummary.value.failed > 0,
+);
 </script>
