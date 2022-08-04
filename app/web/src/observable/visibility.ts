@@ -6,6 +6,9 @@ import {
   Observable,
   shareReplay,
 } from "rxjs";
+
+import { tag } from "rxjs-spy/operators/tag";
+
 import {
   changeSet$,
   eventChangeSetApplied$,
@@ -55,4 +58,4 @@ export const standardVisibilityTriggers$ = combineLatest([
   eventChangeSetCanceled$,
   eventEditSessionSaved$,
   editSessionWritten$,
-]).pipe(shareReplay(1));
+]).pipe(tag("standard-visibility"), shareReplay(1));

@@ -11,6 +11,9 @@ import { SignupService } from "@/service/signup";
 import { SessionService } from "@/service/session";
 import { ChangeSetService } from "@/service/change_set";
 import FloatingVue from "floating-vue";
+import { create } from "rxjs-spy";
+// @ts-ignore
+const _spy = create();
 
 bottleSetup(config);
 
