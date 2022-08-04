@@ -1,4 +1,4 @@
-# si-webapp
+# app/web
 
 ## Project setup
 ```
@@ -17,22 +17,22 @@ npm run build
 
 ### Lint check (no fix)
 ```
-npm run eslint
+npm run lint
 ```
 
 ### Type check (no fix)
 ```
-npm run type-check
+npm run build:check
 ```
 
-### Prettier check (no fix)
+### Code formatting check (no fix)
 ```
-npm run prettier-check
+npm run fmt:check
 ```
 
-### Format code with prettier (WILL FIX)
+### Format code (WILL FIX)
 ```
-npm run prettier-format
+npm run fmt
 ```
 
 # Vue 3 + Typescript + Vite

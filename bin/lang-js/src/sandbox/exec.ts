@@ -1,5 +1,3 @@
-import { OutputLine } from "../function";
-
 import execa from "execa";
 import { ExecaReturnValue, Options } from "execa";
 import Debug from "debug";
@@ -16,9 +14,13 @@ export const makeExec = (executionId: string) => {
   async function waitUntilEnd(
     execaFile: string,
     execaArgs?: readonly string[],
-    execaOptions?: Options<string>,
+    execaOptions?: Options<string>
   ): Promise<SiExecResult> {
-    debug(`running command; executionId="${executionId}"; cmd="${execaFile} ${execaArgs?.join(" ")}"`);
+    debug(
+      `running command; executionId="${executionId}"; cmd="${execaFile} ${execaArgs?.join(
+        " "
+      )}"`
+    );
 
     const child = await execa(execaFile, execaArgs, {
       all: true,
@@ -31,9 +33,9 @@ export const makeExec = (executionId: string) => {
 
   async function stream(
     //ws: WebSocket,
-    execaFile: string,
-    execaArgs?: readonly string[],
-    execaOptions?: Options<string>,
+    _execaFile: string,
+    _execaArgs?: readonly string[],
+    _execaOptions?: Options<string>
   ): Promise<SiExecResult> {
     throw new Error("unimplemented");
   }

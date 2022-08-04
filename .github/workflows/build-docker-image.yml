@@ -1,3 +1,4 @@
+---
 name: build-docker-image
 
 on:
@@ -33,10 +34,10 @@ jobs:
           make release//${{ inputs.component_name }}
           echo "::endgroup::"
           echo "::group::Manifest info"
-          jq . <tmp/release-${{ inputs.component_name }}.manifest.json
+          jq . <tmp/release-$(basename ${{ inputs.component_name }}).manifest.json
           echo "::endgroup::"
           echo "::set-output name=manifest::$(
-            cat tmp/release-${{ inputs.component_name }}.manifest.json
+            cat tmp/release-$(basename ${{ inputs.component_name }}).manifest.json
           )"
       - name: report
         if: success()

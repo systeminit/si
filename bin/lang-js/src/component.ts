@@ -4,6 +4,6 @@ export interface System {
 
 export interface Component {
   name: string;
-  system?: System
+  system?: System;
   properties: Record<string, unknown>;
 }

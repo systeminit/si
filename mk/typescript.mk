@@ -1,40 +1,93 @@
-node_modules: package.json ## Installs the package's dependencies
-	@echo "--- [$(shell basename ${CURDIR})] $@"
+## node_modules: Installs the package's dependencies
+default--node_modules: package.json
+	$(call header,$@)
 	npm install
-.PHONY: node_modules
+.PHONY: default--node_modules
 
-release-build: node_modules ## Builds the TypeScript package
-	@echo "--- [$(shell basename ${CURDIR})] $@"
-	env NODE_ENV=production npm run build
-.PHONY: build
+## clean: Cleans all build/test temporary work files
+default--clean:
+	$(call header,$@)
+	npm run clean
+	rm -rf ./node_modules
+.PHONY: default--clean
 
-build: node_modules ## Builds the TypeScript package
-	@echo "--- [$(shell basename ${CURDIR})] $@"
+## build: Builds the TypeScript package
+default--build: node_modules
+	$(call header,$@)
 	npm run build
-.PHONY: build
+.PHONY: default--build
 
-test: node_modules ## Tests the TypeScript package
-	@echo "--- [$(shell basename ${CURDIR})] $@"
-	npm run test
-.PHONY: test
+## release-build: Builds the TypeScript package for production
+default--release-build: node_modules
+	$(call header,$@)
+	env NODE_ENV=production npm run build
+.PHONY: default--release-build
 
-run: start ## Alias for `make start`
-.PHONY: run
+## check-type: Performs TypeScript type checking
+default--check-type: node_modules
+	$(call header,$@)
+	npm run build:check
+.PHONY: default--check-type
 
-start: node_modules ## Runs a dev server for the package/app
-	@echo "--- [$(shell basename ${CURDIR})] $@"
+## check-lint: Checks all code linting for the TypeScript package
+default--check-lint: node_modules
+	$(call header,$@)
+	npm run lint
+.PHONY: default--check-lint
+
+## check-format: Checks all code formatting for the TypeScript package
+default--check-format: node_modules
+	$(call header,$@)
+	npm run fmt:check
+.PHONY: default--check-format
+
+## check: Checks all linting, formatting, & other rules
+default--check: check-type check-format check-lint
+.PHONY: default--check
+
+## fix-lint: Updates code with linting fixes for the package (may modify sources)
+default--fix-lint:
+	$(call header,$@)
+	npm run lint:fix
+.PHONY: default--fix-lint
+
+## fix-format: Updates code formatting for the package (may modify sources)
+default--fix-format:
+	$(call header,$@)
+	npm run fmt
+.PHONY: default--fix-format
+
+## fix: Updates all linting fixes & formatting for the package (may modify sources)
+default--fix: fix-format fix-lint
+.PHONY: default--fix
+
+## start: Runs a dev server for the package/app
+default--start: node_modules
+	$(call header,$@)
 	npm run start
-.PHONY: start
+.PHONY: default--start
 
-watch: start ## Alias for `make start`
-.PHONY: watch
+## run: Alias for `make start`
+default--run: start
+.PHONY: default--run
 
-clean: ## Cleans all build/test temporary work files
-	@echo "--- [$(shell basename ${CURDIR})] $@"
-	rm -rf ./node_modules ./dist ./target ./lib
+## watch: Alias for `make start`
+default--watch: start
+	$(call header,$@)
+	npm run build:watch
+.PHONY: default--watch
 
-lint: node_modules ## Runs code/style linting
-	@echo "--- [$(shell basename ${CURDIR})] $@"
-	npm run eslint
-.PHONY: lint
+## test: Tests the TypeScript package
+default--test: node_modules
+	$(call header,$@)
+	npm run test
+.PHONY: default--test
 
+## prepush: Runs all checks & tests required before pushing commits
+default--prepush: check test
+.PHONY: default--prepush
+
+# Thanks to:
+# https://newbedev.com/make-file-warning-overriding-commands-for-target
+%: default--%
+	@true

@@ -1,3 +1,4 @@
+---
 name: build-docker-images
 
 on:
@@ -11,13 +12,13 @@ jobs:
     name: Check changed paths
     runs-on: self-hosted
     outputs:
-      nats-changed: ${{ steps.check-component-changes.outputs.nats }}
-      otelcol-changed: ${{ steps.check-component-changes.outputs.otelcol }}
-      postgres-changed: ${{ steps.check-component-changes.outputs.postgres }}
-      sdf-changed: ${{ steps.check-component-changes.outputs.sdf }}
-      veritech-changed: ${{ steps.check-component-changes.outputs.veritech }}
-      web-changed: ${{ steps.check-component-changes.outputs.web }}
-      pinga-changed: ${{ steps.check-component-changes.outputs.pinga }}
+      nats-changed: ${{ steps.check-component-changes.outputs.component--nats }}
+      otelcol-changed: ${{ steps.check-component-changes.outputs.component--otelcol }}
+      postgres-changed: ${{ steps.check-component-changes.outputs.component--postgres }}
+      sdf-changed: ${{ steps.check-component-changes.outputs.bin--sdf }}
+      veritech-changed: ${{ steps.check-component-changes.outputs.bin--veritech }}
+      web-changed: ${{ steps.check-component-changes.outputs.app--web }}
+      pinga-changed: ${{ steps.check-component-changes.outputs.bin--pinga }}
     steps:
       - uses: actions/checkout@5a4ac9002d0be2fb38bd78e4b4dbde5606d7042f # pin@v2.3.4
         with:
@@ -30,7 +31,7 @@ jobs:
     if: needs.check-changes.outputs.nats-changed == 'true'
     uses: ./.github/workflows/build-docker-image.yml
     with:
-      component_name: nats
+      component_name: component/nats
     secrets:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
@@ -40,7 +41,7 @@ jobs:
     if: needs.check-changes.outputs.otelcol-changed == 'true'
     uses: ./.github/workflows/build-docker-image.yml
     with:
-      component_name: otelcol
+      component_name: component/otelcol
     secrets:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
@@ -50,7 +51,7 @@ jobs:
     if: needs.check-changes.outputs.postgres-changed == 'true'
     uses: ./.github/workflows/build-docker-image.yml
     with:
-      component_name: postgres
+      component_name: component/postgres
     secrets:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
@@ -60,7 +61,7 @@ jobs:
     if: needs.check-changes.outputs.sdf-changed == 'true'
     uses: ./.github/workflows/build-docker-image.yml
     with:
-      component_name: sdf
+      component_name: bin/sdf
     secrets:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
@@ -70,7 +71,7 @@ jobs:
     if: needs.check-changes.outputs.veritech-changed == 'true'
     uses: ./.github/workflows/build-docker-image.yml
     with:
-      component_name: veritech
+      component_name: bin/veritech
     secrets:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
@@ -80,7 +81,7 @@ jobs:
     if: needs.check-changes.outputs.web-changed == 'true'
     uses: ./.github/workflows/build-docker-image.yml
     with:
-      component_name: web
+      component_name: app/web
     secrets:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
@@ -90,7 +91,7 @@ jobs:
     if: needs.check-changes.outputs.pinga-changed == 'true'
     uses: ./.github/workflows/build-docker-image.yml
     with:
-      component_name: pinga
+      component_name: bin/pinga
     secrets:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
@@ -111,12 +112,14 @@ jobs:
       CHECK_CHANGES_STATUS: ${{ needs.check-changes.result }}
       NATS_RUN: ${{ needs.check-changes.outputs.nats-changed }}
       OTELCOL_RUN: ${{ needs.check-changes.outputs.otelcol-changed }}
+      PINGA_RUN: ${{ needs.check-changes.outputs.pinga-changed }}
       POSTGRES_RUN: ${{ needs.check-changes.outputs.postgres-changed }}
       SDF_RUN: ${{ needs.check-changes.outputs.sdf-changed }}
       VERITECH_RUN: ${{ needs.check-changes.outputs.veritech-changed }}
       WEB_RUN: ${{ needs.check-changes.outputs.web-changed }}
       NATS_STATUS: ${{ needs.nats.result }}
       OTELCOL_STATUS: ${{ needs.otelcol.result }}
+      PINGA_STATUS: ${{ needs.pinga.result }}
       POSTGRES_STATUS: ${{ needs.postgres.result }}
       SDF_STATUS: ${{ needs.sdf.result }}
       VERITECH_STATUS: ${{ needs.veritech.result }}

@@ -1,3 +1,4 @@
+---
 name: ci
 on:
   pull_request:
@@ -33,8 +34,16 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
-      - name: CI
-        run: ( source /data/runners/.profile; make CI=true CI_FROM_REF=${{github.event.pull_request.base.sha}} CI_TO_REF=${{ github.event.pull_request.head.sha}} ci)
+      - name: ci
+        id: ci
+        run: |
+          : make ci
+          source /data/runners/.profile
+          make \
+            CI=true \
+            CI_FROM_REF=${{ github.event.pull_request.base.sha }} \
+            CI_TO_REF=${{ github.event.pull_request.head.sha }} \
+            ci
         env:
           HONEYCOMB_TOKEN: ${{ secrets.HONEYCOMB_TOKEN }}
           RUSTC_WRAPPER: /usr/local/bin/sccache

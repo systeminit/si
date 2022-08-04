@@ -13,7 +13,8 @@ function calcBigObject(component) {
   console.log("I know you do");
 
   // Parameters can now be used and defaults to {}
-  const total = component.data.parameters["left"] + component.data.parameters["right"];
+  const total =
+    component.data.parameters["left"] + component.data.parameters["right"];
 
   const f = {
     poop: {

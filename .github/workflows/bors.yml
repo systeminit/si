@@ -1,12 +1,15 @@
+---
 name: bors
 on:
   push:
     branches:
       - staging
       - trying
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
 jobs:
   ci:
     timeout-minutes: 20
@@ -29,10 +32,18 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
-      - name: Test
-        run: (echo ${{ github.event.before }}; source /data/runners/.profile; make CI=true CI_FROM_REF=${{github.event.before }} CI_TO_REF=${{ github.event.after }} ci)
+      - name: bors merge test
+        id: bors-merge-test
+        run: |
+          : make ci
+          source /data/runners/.profile
+          make \
+            CI=true \
+            CI_FROM_REF=${{ github.event.before }} \
+            CI_TO_REF=${{ github.event.after }} \
+            SKIP_CHECK=true \
+            ci
         env:
           HONEYCOMB_TOKEN: ${{ secrets.HONEYCOMB_TOKEN }}
           RUSTC_WRAPPER: /usr/local/bin/sccache
           CARGO_INCREMENTAL: false
-          SKIP_LINT: true

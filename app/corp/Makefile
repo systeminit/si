@@ -3,9 +3,10 @@ include ../../mk/typescript.mk
 
 .DEFAULT_GOAL := build
 
-test: node_modules ## Tests the TypeScript package
-	@echo "--- [$(shell basename ${CURDIR})] $@"
-.PHONY: test
+test:
+	$(call header,$@)
+	@echo "Skipping '$@' for now"
 
-lint:
-	@echo "skipping lint for now"
+check:
+	$(call header,$@)
+	@echo "Skipping '$@' for now"

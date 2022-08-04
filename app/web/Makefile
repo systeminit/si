@@ -6,14 +6,8 @@ include ../../mk/image.mk
 CONTAINER_NAME := web
 IMG := systeminit/web
 
-test: node_modules ## Tests the TypeScript package
-	@echo "--- [$(shell basename ${CURDIR})] $@"
-	@echo "do nothing!"
-.PHONY: test
-
-# FIXME(nick): temporarily removed the test contents.
-#ifeq ($(CI),true)
-#	env CYPRESS_BASE_URL='https://localhost' npm run cypress:run || exit 0
-#else
-#	npm run cypress:run
-#endif
+## clean-vite: Cleans Vite cache
+clean-vite:
+	$(call header,$@)
+	npm run vite:clean
+.PHONY: clean-vite

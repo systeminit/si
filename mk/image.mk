@@ -1,21 +1,25 @@
 include $(CURDIR)/../../mk/container.mk
 
-image: ## Builds a container image (uses ./script/build-image.sh)
-	@echo "--- [$(shell basename ${CURDIR})] $@"
+## image: Builds a container image (uses ./script/build-image.sh)
+default--image:
+	@echo "--- [$(shell git rev-parse --show-prefix | sed s,/$$,,)] $@"
 	env BASE_VERSION=${BASE_VERSION} IMG=${IMG} ./script/build-image.sh
-.PHONY: image
+.PHONY: default--image
 
-publish: ## Builds and pushes the image to the repository (uses ./script/build-image.sh)
-	@echo "--- [$(shell basename ${CURDIR})] $@"
+## publish: Builds and pushes the image to the repository (uses ./script/build-image.sh)
+default--publish:
+	@echo "--- [$(shell git rev-parse --show-prefix | sed s,/$$,,)] $@"
 	env BASE_VERSION=${BASE_VERSION} IMG=${IMG} ./script/build-image.sh --push $(PUBLISH_ARGS)
-.PHONY: publish
+.PHONY: default--publish
 
-release: ## Builds and pushes the image and tags to the repository (uses ./script/build-image.sh)
-	@echo "--- [$(shell basename ${CURDIR})] $@"
+## release: Builds and pushes the image and tags to the repository (uses ./script/build-image.sh)
+default--release:
+	@echo "--- [$(shell git rev-parse --show-prefix | sed s,/$$,,)] $@"
 	env BASE_VERSION=${BASE_VERSION} IMG=${IMG} ./script/build-image.sh --ci
-.PHONY: release
+.PHONY: default--release
 
-promote: ## Tags and pushes the current Git revision image as 'stable'  (uses ./script/promote-image.sh)
-	@echo "--- [$(shell basename ${CURDIR})] $@"
+## promote: Tags and pushes the current Git revision image as 'stable'  (uses ./script/promote-image.sh)
+default--promote:
+	@echo "--- [$(shell git rev-parse --show-prefix | sed s,/$$,,)] $@"
 	./script/promote-image.sh ${IMG} "$${SHA:-$$( git show -s --format=%H)}" stable
-.PHONY: promote
+.PHONY: default--promote

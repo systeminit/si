@@ -17,7 +17,7 @@ const debug = Debug("langJs:resolverFunction");
 
 export interface ResolverComponent {
   data: Component;
-  parents: Array<Component>,
+  parents: Array<Component>;
 }
 
 export interface ResolverFunctionRequest extends Request {
@@ -115,7 +115,7 @@ function execute(
 function wrapCode(
   code: string,
   handle: string,
-  component: ResolverComponent,
+  component: ResolverComponent
 ): string {
   return code + `\n${handle}(${JSON.stringify(component)});\n`;
 }

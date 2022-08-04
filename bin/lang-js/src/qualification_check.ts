@@ -40,9 +40,9 @@ export interface QualificationCheckResultSuccess extends ResultSuccess {
   title?: string;
   link?: string;
   subChecks: Array<{
-    status: "Success" | "Failure" | "Unknown",
-    description: string,
-  }>,
+    status: "Success" | "Failure" | "Unknown";
+    description: string;
+  }>;
   message?: string;
 }
 
@@ -66,7 +66,12 @@ export async function executeQualificationCheck(
   );
   const vm = createNodeVm(sandbox);
 
-  const result = await execute(vm, code, request.component, request.executionId);
+  const result = await execute(
+    vm,
+    code,
+    request.component,
+    request.executionId
+  );
   debug({ result });
 
   console.log(JSON.stringify(result));
@@ -78,12 +83,15 @@ async function execute(
   component: QualificationComponent,
   executionId: string
 ): Promise<QualificationCheckResult> {
-  let qualificationCheckResult: any;
+  let qualificationCheckResult: Record<string, unknown>;
   try {
     const qualificationCheckRunner = vm.run(code);
     // Node(paulo): NodeVM doesn't support async rejection, we need a better way of handling it
     qualificationCheckResult = await new Promise((resolve) => {
-      qualificationCheckRunner(component, (resolution: unknown) => resolve(resolution));
+      qualificationCheckRunner(
+        component,
+        (resolution: Record<string, unknown>) => resolve(resolution)
+      );
     });
   } catch (err) {
     return failureExecution(err, executionId);
@@ -127,6 +135,48 @@ async function execute(
       error: {
         kind: "MessageFieldWrongType",
         message: "The message field type must be string, null, or undefined",
+      },
+    };
+  }
+  if (
+    !_.isString(qualificationCheckResult["title"]) &&
+    !_.isUndefined(qualificationCheckResult["title"])
+  ) {
+    return {
+      protocol: "result",
+      status: "failure",
+      executionId,
+      error: {
+        kind: "MessageFieldWrongType",
+        message: "The title field type must be string, or undefined",
+      },
+    };
+  }
+  if (
+    !_.isString(qualificationCheckResult["link"]) &&
+    !_.isUndefined(qualificationCheckResult["link"])
+  ) {
+    return {
+      protocol: "result",
+      status: "failure",
+      executionId,
+      error: {
+        kind: "MessageFieldWrongType",
+        message: "The link field type must be string, or undefined",
+      },
+    };
+  }
+  if (
+    !_.isArray(qualificationCheckResult["subChecks"]) &&
+    !_.isUndefined(qualificationCheckResult["subChecks"])
+  ) {
+    return {
+      protocol: "result",
+      status: "failure",
+      executionId,
+      error: {
+        kind: "MessageFieldWrongType",
+        message: "The link field type must be an array, or undefined",
       },
     };
   }

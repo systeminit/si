@@ -13,4 +13,13 @@ module.exports = {
     "prettier",
     "plugin:jest/recommended",
   ],
+  rules: {
+    "@typescript-eslint/no-unused-vars": [
+      "warn",
+      {
+        argsIgnorePattern: "^_",
+        varsIgnorePattern: "^_",
+      },
+    ],
+  },
 };
