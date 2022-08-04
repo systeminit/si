@@ -26,10 +26,7 @@
         <StatusBarTab :selected="selected">
           <template #icon>
             <XCircleIcon
-              v-if="
-                qualificationSummary === undefined ||
-                qualificationSummary.failed > 0
-              "
+              v-if="tabQualificationsIconStatus"
               class="text-destructive-500"
             />
             <CheckCircleIcon v-else class="text-success-500" />
@@ -164,5 +161,10 @@ const tabSuccessClass = computed(() => {
 });
 const tabSuccessText = computed(
   () => qualificationSummary.value?.succeeded ?? "-",
+);
+const tabQualificationsIconStatus = computed(
+  () =>
+    qualificationSummary.value === undefined ||
+    qualificationSummary.value.failed > 0,
 );
 </script>
