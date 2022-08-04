@@ -16,6 +16,7 @@ pub mod check_qualifications;
 pub mod generate_code;
 pub mod get_code;
 pub mod get_components_metadata;
+pub mod get_diff;
 pub mod get_property_editor_schema;
 pub mod get_property_editor_validations;
 pub mod get_property_editor_values;
@@ -109,6 +110,7 @@ pub fn routes() -> Router {
             post(check_qualifications::check_qualifications),
         )
         .route("/get_code", get(get_code::get_code))
+        .route("/get_diff", get(get_diff::get_diff))
         .route("/generate_code", post(generate_code::generate_code))
         .route(
             "/get_property_editor_schema",

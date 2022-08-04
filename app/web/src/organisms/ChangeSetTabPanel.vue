@@ -66,8 +66,27 @@
     </div>
 
     <!-- Selected component view -->
-    <div class="text-center text-xl p-2">
-      Selected componentId: {{ selectedComponentId }}
+    <div v-if="selectedComponentId">
+      <div
+        v-if="selectedComponentGroup === 'added'"
+        class="text-success-300 text-center text-lg p-2 ml-4"
+      >
+        Component ID {{ selectedComponentId }} Added
+      </div>
+      <div
+        v-else-if="selectedComponentGroup === 'deleted'"
+        class="text-destructive-300 text-center text-lg px-2 py-1 ml-4"
+      >
+        Component ID {{ selectedComponentId }} Deleted
+      </div>
+      <div v-else-if="selectedComponentGroup === 'modified'">
+        <CodeViewer
+          diff-mode
+          font-size="12px"
+          :component-id="selectedComponentId"
+          class="text-neutral-50"
+        />
+      </div>
     </div>
   </div>
 </template>
@@ -84,6 +103,7 @@ import { Node } from "@/organisms/SiCanvas/canvas/obj/node";
 import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
 import SiBarButton from "@/molecules/SiBarButton.vue";
 import SiArrow from "@/atoms/SiArrow.vue";
+import CodeViewer from "@/organisms/CodeViewer.vue";
 
 const filter = ref<"all" | "added" | "deleted" | "modified">("all");
 const changeFilter = (newFilter: "all" | "added" | "deleted" | "modified") => {
@@ -122,6 +142,29 @@ const stats = ref<ComponentStats>({
   deleted: [],
   modified: [],
 });
+
+const selectedComponentGroup = computed(
+  (): "added" | "deleted" | "modified" | false => {
+    if (selectedComponentId.value) {
+      for (const group of stats.value.added) {
+        if (group.component_id === selectedComponentId.value) {
+          return "added";
+        }
+      }
+      for (const group of stats.value.deleted) {
+        if (group.component_id === selectedComponentId.value) {
+          return "deleted";
+        }
+      }
+      for (const group of stats.value.modified) {
+        if (group.component_id === selectedComponentId.value) {
+          return "modified";
+        }
+      }
+    }
+    return false;
+  },
+);
 
 untilUnmounted(ChangeSetService.getStats()).subscribe((response) => {
   if (response.error) {

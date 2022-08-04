@@ -20,7 +20,7 @@
         </SiButtonIcon>
 
         <SiButtonIcon
-          v-if="editMode"
+          v-if="editMode && !props.diffMode"
           tooltip-text="Re-generate code"
           ignore-text-color
           @click="generateCode"
@@ -46,7 +46,8 @@ import * as Rx from "rxjs";
 import { ref, onMounted, toRefs, computed } from "vue";
 import { EditorState, EditorView, basicSetup } from "@codemirror/basic-setup";
 import { yaml } from "@codemirror/legacy-modes/mode/yaml";
-import { StreamLanguage } from "@codemirror/stream-parser";
+import { diff } from "@codemirror/legacy-modes/mode/diff";
+import { StreamLanguage, StreamParser } from "@codemirror/stream-parser";
 import { keymap } from "@codemirror/view";
 import { indentWithTab } from "@codemirror/commands";
 import { gruvboxDark } from "cm6-theme-gruvbox-dark";
@@ -55,7 +56,7 @@ import { fromRef, refFrom, untilUnmounted } from "vuse-rx/src";
 import { ComponentService } from "@/service/component";
 import { eventCodeGenerated$ } from "@/observable/code";
 import { GlobalErrorService } from "@/service/global_error";
-import { Compartment, StateEffect } from "@codemirror/state";
+import { Compartment, Extension, StateEffect } from "@codemirror/state";
 import { ChangeSetService } from "@/service/change_set";
 import { system$ } from "@/observable/system";
 import SiButtonIcon from "@/atoms/SiButtonIcon.vue";
@@ -66,6 +67,10 @@ import { Theme } from "@/observable/theme";
 const props = defineProps<{
   componentId: number;
   schemaName?: string;
+  // FIXME(nick): remove the need for diff mode and make the component more configurable.
+  diffMode?: boolean;
+  // Format: "0.0px"
+  fontSize?: string;
 }>();
 const { componentId } = toRefs(props);
 const componentId$ = fromRef(componentId, { immediate: true });
@@ -77,16 +82,35 @@ const readOnly = new Compartment();
 const editMode = refFrom<boolean>(ChangeSetService.currentEditMode());
 
 // This doesn't work on IE, do we care? (is it polyfilled by our build system?)
+// RE ^^: https://www.youtube.com/watch?v=Ram7AKbtkGE
 const copyCode = () => {
   if (!view.value) return;
   const code = view.value.state.doc.toString().trim();
   navigator.clipboard.writeText(code);
 };
 
-const fixedHeightEditor = EditorView.theme({
-  "&": { height: "100%" },
-  ".cm-scroller": { overflow: "auto" },
+// FIXME(nick): base mode off of the "CodeLanguage" type coming back.
+const mode = computed((): StreamParser<unknown> => {
+  if (props.diffMode) {
+    return diff;
+  }
+  return yaml;
 });
+
+// FIXME(nick): make this more configurable.
+const fixedHeightEditor = computed((): Extension => {
+  if (props.fontSize) {
+    return EditorView.theme({
+      "&": { height: "100%", fontSize: props.fontSize },
+      ".cm-scroller": { overflow: "auto" },
+    });
+  }
+  return EditorView.theme({
+    "&": { height: "100%" },
+    ".cm-scroller": { overflow: "auto" },
+  });
+});
+
 const currentTheme = refFrom<Theme>(ThemeService.currentTheme());
 
 onMounted(() => {
@@ -95,10 +119,14 @@ onMounted(() => {
       state: EditorState.create({
         extensions: [
           basicSetup,
-          currentTheme.value?.value == "dark" ? gruvboxDark : gruvboxLight,
-          fixedHeightEditor,
+          props.diffMode
+            ? gruvboxDark
+            : currentTheme.value?.value === "dark"
+            ? gruvboxDark
+            : gruvboxLight,
+          fixedHeightEditor.value,
           keymap.of([indentWithTab]),
-          StreamLanguage.define(yaml),
+          StreamLanguage.define(mode.value),
           readOnly.of(EditorState.readOnly.of(true)),
         ],
       }),
@@ -113,10 +141,14 @@ ThemeService.currentTheme().subscribe((theme) => {
     view.value.dispatch({
       effects: StateEffect.reconfigure.of([
         basicSetup,
-        theme.value === "dark" ? gruvboxDark : gruvboxLight,
-        fixedHeightEditor,
+        props.diffMode
+          ? gruvboxDark
+          : theme.value === "dark"
+          ? gruvboxDark
+          : gruvboxLight,
+        fixedHeightEditor.value,
         keymap.of([indentWithTab]),
-        StreamLanguage.define(yaml),
+        StreamLanguage.define(mode.value),
         readOnly.of(EditorState.readOnly.of(true)),
       ]),
     });
@@ -140,6 +172,9 @@ const _code = refFrom(
   Rx.combineLatest([componentId$, system$, codeGenerated$]).pipe(
     Rx.switchMap(([componentId]) => {
       if (componentId) {
+        if (props.diffMode) {
+          return ComponentService.getDiff({ componentId });
+        }
         return ComponentService.getCode({ componentId });
       } else {
         return Rx.from([null]);

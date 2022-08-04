@@ -659,6 +659,7 @@ dependencies = [
  "base64",
  "chrono",
  "derive_more",
+ "diff",
  "dyn-clone",
  "faktory-async",
  "futures",

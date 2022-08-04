@@ -11,6 +11,7 @@ import { getPropertyEditorValues } from "./component/get_property_editor_values"
 import { getPropertyEditorValidations } from "./component/get_property_editor_validations";
 import { updateFromEditField } from "./component/update_property_editor_value";
 import { insertFromEditField } from "./component/insert_property_editor_value";
+import { getDiff } from "./component/get_diff";
 
 export const ComponentService = {
   listComponentsIdentification,
@@ -20,6 +21,7 @@ export const ComponentService = {
   syncResource,
   checkQualifications,
   getCode,
+  getDiff,
   generateCode,
   getPropertyEditorSchema,
   getPropertyEditorValues,
