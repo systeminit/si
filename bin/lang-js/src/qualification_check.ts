@@ -83,13 +83,14 @@ async function execute(
   component: QualificationComponent,
   executionId: string
 ): Promise<QualificationCheckResult> {
-  let qualificationCheckResult: unknown;
+  let qualificationCheckResult: Record<string, unknown>;
   try {
     const qualificationCheckRunner = vm.run(code);
     // Node(paulo): NodeVM doesn't support async rejection, we need a better way of handling it
     qualificationCheckResult = await new Promise((resolve) => {
-      qualificationCheckRunner(component, (resolution: unknown) =>
-        resolve(resolution)
+      qualificationCheckRunner(
+        component,
+        (resolution: Record<string, unknown>) => resolve(resolution)
       );
     });
   } catch (err) {
@@ -134,6 +135,48 @@ async function execute(
       error: {
         kind: "MessageFieldWrongType",
         message: "The message field type must be string, null, or undefined",
+      },
+    };
+  }
+  if (
+    !_.isString(qualificationCheckResult["title"]) &&
+    !_.isUndefined(qualificationCheckResult["title"])
+  ) {
+    return {
+      protocol: "result",
+      status: "failure",
+      executionId,
+      error: {
+        kind: "MessageFieldWrongType",
+        message: "The title field type must be string, or undefined",
+      },
+    };
+  }
+  if (
+    !_.isString(qualificationCheckResult["link"]) &&
+    !_.isUndefined(qualificationCheckResult["link"])
+  ) {
+    return {
+      protocol: "result",
+      status: "failure",
+      executionId,
+      error: {
+        kind: "MessageFieldWrongType",
+        message: "The link field type must be string, or undefined",
+      },
+    };
+  }
+  if (
+    !_.isArray(qualificationCheckResult["subChecks"]) &&
+    !_.isUndefined(qualificationCheckResult["subChecks"])
+  ) {
+    return {
+      protocol: "result",
+      status: "failure",
+      executionId,
+      error: {
+        kind: "MessageFieldWrongType",
+        message: "The link field type must be an array, or undefined",
       },
     };
   }
