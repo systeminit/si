@@ -19,8 +19,12 @@ import FuncPicker from "@/organisms/FuncPicker.vue";
 import { FuncService } from "@/service/func";
 import { ListFuncsResponse } from "@/service/func/list_funcs";
 import { refFrom } from "vuse-rx/src";
+import { ApiResponse } from "@/api/sdf";
 
-const funcList = refFrom<ListFuncsResponse>(FuncService.listFuncs(), {
-  qualifications: [],
-});
+const funcList = refFrom<ApiResponse<ListFuncsResponse>>(
+  FuncService.listFuncs(),
+  {
+    qualifications: [],
+  },
+);
 </script>

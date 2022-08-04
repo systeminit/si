@@ -17,7 +17,7 @@ import SiCollapsible from "@/organisms/SiCollapsible.vue";
 import SiNodeSprite from "@/molecules/SiNodeSprite.vue";
 import { ListFuncsResponse } from "@/service/func/list_funcs";
 
-const _props = defineProps<{
+defineProps<{
   funcList: ListFuncsResponse;
 }>();
 </script>

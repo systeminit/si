@@ -5,11 +5,7 @@ import { switchMap } from "rxjs/operators";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import { standardVisibilityTriggers$ } from "@/observable/visibility";
 
-export function memoizedVisibilitySdfPipe<
-  A extends {},
-  R,
-  O extends ObservableInput<R>,
->(
+export function memoizedVisibilitySdfPipe<A, R, O extends ObservableInput<R>>(
   project: (visibility: Visibility, sdf: SDF, args?: A) => O,
 ): (args?: A) => Observable<R> {
   const memo: {
