@@ -83,7 +83,7 @@ async function execute(
   component: QualificationComponent,
   executionId: string
 ): Promise<QualificationCheckResult> {
-  let qualificationCheckResult: any;
+  let qualificationCheckResult: unknown;
   try {
     const qualificationCheckRunner = vm.run(code);
     // Node(paulo): NodeVM doesn't support async rejection, we need a better way of handling it
