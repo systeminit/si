@@ -65,7 +65,6 @@
 </template>
 
 <script setup lang="ts">
-import * as Rx from "rxjs";
 //import EditFormComponent from "@/organisms/EditFormComponent.vue";
 import { toRefs, computed } from "vue";
 import { fromRef, refFrom, untilUnmounted } from "vuse-rx";
@@ -96,6 +95,9 @@ import { ComponentService } from "@/service/component";
 import { SystemService } from "@/service/system";
 import { standardVisibilityTriggers$ } from "@/observable/visibility";
 import _, { parseInt } from "lodash";
+import { tag } from "rxjs-spy/operators";
+import { combineLatest, forkJoin, from, map, take } from "rxjs";
+import { switchMap } from "rxjs/operators";
 
 // TODO(nick): we technically only need one prop. We're sticking with two to not mess
 // with the reactivity guarentees in place.
@@ -108,33 +110,33 @@ const { componentId, componentIdentification } = toRefs(props);
 
 // We need an observable stream of props.componentId. We also want
 // that stream to emit a value immediately (the first value, as well as all
-// subsequent values)
+// subsequent. values)
 const componentId$ = fromRef<number>(componentId, { immediate: true });
 
 const editorContext = refFrom<PropertyEditorContext | undefined>(
-  Rx.combineLatest([
+  combineLatest([
     componentId$,
     SystemService.currentSystem(),
     standardVisibilityTriggers$,
   ]).pipe(
-    Rx.switchMap(([componentId, system, _triggers]) => {
+    switchMap(([componentId, system, _triggers]) => {
       const schema = ComponentService.getPropertyEditorSchema({
         componentId: componentId,
-      }).pipe(Rx.take(1));
+      }).pipe(take(1));
       const values = ComponentService.getPropertyEditorValues({
         componentId,
         systemId: system?.id ?? -1,
-      }).pipe(Rx.take(1));
+      }).pipe(take(1));
       const validations = ComponentService.getPropertyEditorValidations({
         componentId,
         systemId: system?.id ?? -1,
-      }).pipe(Rx.take(1));
-      return Rx.from([[schema, values, validations]]);
+      }).pipe(take(1));
+      return from([[schema, values, validations]]);
     }),
-    Rx.switchMap((calls) => {
-      return Rx.forkJoin(calls);
+    switchMap((calls) => {
+      return forkJoin(calls);
     }),
-    Rx.switchMap(
+    switchMap(
       ([
         propertyEditorSchema,
         propertyEditorValues,
@@ -144,30 +146,30 @@ const editorContext = refFrom<PropertyEditorContext | undefined>(
           propertyEditorSchema.error?.statusCode === 404 &&
           propertyEditorSchema.error?.message === "invalid visibility"
         ) {
-          return Rx.from([]);
+          return from([]);
         } else if (propertyEditorSchema.error) {
           GlobalErrorService.set(propertyEditorSchema);
-          return Rx.from([]);
+          return from([]);
         }
 
         if (
           propertyEditorValues.error?.statusCode === 404 &&
           propertyEditorValues.error?.message === "invalid visibility"
         ) {
-          return Rx.from([]);
+          return from([]);
         } else if (propertyEditorValues.error) {
           GlobalErrorService.set(propertyEditorValues);
-          return Rx.from([]);
+          return from([]);
         }
 
         if (
           propertyEditorValidations.error?.statusCode === 404 &&
           propertyEditorValidations.error?.message === "invalid visibility"
         ) {
-          return Rx.from([]);
+          return from([]);
         } else if (propertyEditorValidations.error) {
           GlobalErrorService.set(propertyEditorValidations);
-          return Rx.from([]);
+          return from([]);
         }
 
         const propertyEditorContext: PropertyEditorContext = {
@@ -175,20 +177,19 @@ const editorContext = refFrom<PropertyEditorContext | undefined>(
           values: propertyEditorValues as PropertyEditorValues,
           validations: propertyEditorValidations as PropertyEditorValidations,
         };
-        return Rx.from([propertyEditorContext]);
+        return from([propertyEditorContext]);
       },
     ),
-    Rx.switchMap((propertyEditorContext) => {
-      return Rx.from([
-        hackAwayTheZeroElementOfContainers(propertyEditorContext),
-      ]);
+    switchMap((propertyEditorContext) => {
+      return from([hackAwayTheZeroElementOfContainers(propertyEditorContext)]);
     }),
+    tag("properties"),
   ),
 );
 
 const componentMetadata = refFrom<ComponentMetadata | null>(
-  Rx.combineLatest([componentId$, componentsMetadata$]).pipe(
-    Rx.map(([componentId, componentsMetadata]) => {
+  combineLatest([componentId$, componentsMetadata$]).pipe(
+    map(([componentId, componentsMetadata]) => {
       if (!componentsMetadata) return null;
 
       for (const metadata of componentsMetadata) {
