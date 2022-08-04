@@ -1,12 +1,12 @@
-pub mod view;
-
-pub use view::{ComponentView, ComponentViewError};
+pub mod stats;
 
 use serde::{Deserialize, Serialize};
-use si_data::{NatsError, PgError, PgTxn};
 use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
-use telemetry::prelude::*;
 use thiserror::Error;
+
+use si_data::{NatsError, PgError, PgTxn};
+use telemetry::prelude::*;
+pub use view::{ComponentView, ComponentViewError};
 
 use crate::attribute::value::AttributeValue;
 use crate::attribute::{context::UNSET_ID_VALUE, value::AttributeValueError};
@@ -42,6 +42,8 @@ use crate::{
     ValidationResolverError, Visibility, WorkspaceError, WriteTenancy,
 };
 use crate::{AttributeValueId, QualificationPrototypeId};
+
+pub mod view;
 
 #[derive(Error, Debug)]
 pub enum ComponentError {

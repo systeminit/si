@@ -1,6 +1,7 @@
 pub mod application;
 pub mod change_set;
 pub mod component;
+pub mod func;
 pub mod provider;
 pub mod qualification;
 pub mod schema;

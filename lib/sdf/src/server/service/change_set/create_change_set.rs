@@ -1,14 +1,16 @@
-use super::ChangeSetResult;
-use crate::server::extract::{AccessBuilder, Authorization, HandlerContext};
 use axum::Json;
 use chrono::Utc;
-use dal::{ChangeSet, EditSession, WriteTenancy};
+use dal::{ChangeSet, EditSession, EditSessionPk, WriteTenancy};
 use serde::{Deserialize, Serialize};
+
+use super::{ChangeSetError, ChangeSetResult};
+use crate::server::extract::{AccessBuilder, Authorization, HandlerContext};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateChangeSetRequest {
     pub change_set_name: String,
+    pub current_edit_session_pk: Option<EditSessionPk>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -30,6 +32,13 @@ pub async fn create_change_set(
         ctx.read_tenancy().clone(),
         WriteTenancy::new_billing_account(claim.billing_account_id),
     );
+
+    if let Some(current_edit_session_pk) = request.current_edit_session_pk {
+        let mut current_edit_session = EditSession::get_by_pk(&ctx, &current_edit_session_pk)
+            .await?
+            .ok_or(ChangeSetError::EditSessionNotFound)?;
+        current_edit_session.save(&ctx).await?;
+    }
 
     let change_set = ChangeSet::new(&ctx, request.change_set_name, None).await?;
     let current_date_time = Utc::now();

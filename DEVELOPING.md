@@ -238,6 +238,12 @@ RUST_BACKTRACE=full cargo test integration_test
 cargo test
 ```
 
+If you would like to log output during tests with timestamps, use `tracing::info` and add the following environment variable.
+
+```bash
+SI_TEST_LOG=info
+```
+
 ### Debugging Integration Tests with Database Contents
 
 Integration tests from the dal will not have their transactions committed and persisted to the database.

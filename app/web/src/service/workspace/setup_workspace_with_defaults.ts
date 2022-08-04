@@ -1,7 +1,6 @@
 import _ from "lodash";
 import { firstValueFrom } from "rxjs";
 import { ApplicationService } from "@/service/application";
-import { ChangeSetService } from "@/service/change_set";
 import { GlobalErrorService } from "@/service/global_error";
 
 export async function setupWorkspaceWithDefaults() {
@@ -40,36 +39,4 @@ export async function setupWorkspaceWithDefaults() {
       return;
     }
   }
-
-  const currentChangeset = await firstValueFrom(
-    ChangeSetService.currentChangeSet(),
-  );
-
-  if (currentChangeset === null) {
-    console.log("reating new changeset");
-
-    const changeSetCreation = await firstValueFrom(
-      ChangeSetService.createChangeSet({
-        changeSetName: `poop-canoe-${_.uniqueId()}`,
-      }),
-    );
-
-    if (changeSetCreation.error) {
-      console.log("oopsie poopsie! we could not create a change set!");
-      GlobalErrorService.set(changeSetCreation);
-      return;
-    }
-
-    const startEditSessionResponse = await firstValueFrom(
-      ChangeSetService.startEditSession({
-        changeSetPk: changeSetCreation.changeSet.pk,
-      }),
-    );
-
-    if (startEditSessionResponse.error) {
-      console.log("could not start edit session");
-      GlobalErrorService.set(startEditSessionResponse);
-      return;
-    }
-  } else console.log("No need to create new changeset");
 }
