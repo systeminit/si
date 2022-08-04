@@ -5,7 +5,9 @@
         <SiNodeSprite
           :name="func.name"
           color="#921ed6"
+          :class="selectedFuncId == func.id ? 'bg-action-500' : ''"
           class="border-b-2 dark:border-neutral-600 hover:bg-action-500 dark:text-white hover:text-white hover:cursor-pointer"
+          @click="selectFunc(func.id)"
         />
       </li>
     </SiCollapsible>
@@ -19,5 +21,14 @@ import { ListFuncsResponse } from "@/service/func/list_funcs";
 
 defineProps<{
   funcList: ListFuncsResponse;
+  selectedFuncId: number;
 }>();
+
+const emits = defineEmits<{
+  (e: "selectedFunc", v: number): void;
+}>();
+
+const selectFunc = (funcId: number) => {
+  emits("selectedFunc", funcId);
+};
 </script>
