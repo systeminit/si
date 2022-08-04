@@ -14,6 +14,7 @@ import { currentChangeSet } from "./change_set/current_change_set";
 import { currentEditSession } from "./change_set/current_edit_session";
 import { currentEditMode } from "./change_set/current_edit_mode";
 import { updateSelectedChangeSet } from "./change_set/update_selected_change_set";
+import { getStats } from "./change_set/get_stats";
 import {
   changeSet$,
   eventChangeSetApplied$,
@@ -31,6 +32,7 @@ export const ChangeSetService = {
   createChangeSet,
   applyChangeSet,
   getChangeSet,
+  getStats,
   startEditSession,
   cancelEditSession,
   cancelAndStartEditSession,

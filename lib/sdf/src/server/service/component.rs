@@ -4,13 +4,13 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
+use thiserror::Error;
+
 use dal::{
     node::NodeError, property_editor::PropertyEditorError, AttributeValueError,
     ComponentError as DalComponentError, ComponentId, ReadTenancyError, SchemaError,
     SchematicError, StandardModelError, SystemId, TransactionsError, WsEventError,
 };
-
-use thiserror::Error;
 
 pub mod check_qualifications;
 pub mod generate_code;

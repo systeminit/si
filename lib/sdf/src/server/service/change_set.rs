@@ -5,7 +5,8 @@ use axum::{
     Json, Router,
 };
 use dal::{
-    ChangeSetError as DalChangeSetError, EditSessionError, StandardModelError, TransactionsError,
+    ChangeSetError as DalChangeSetError, ComponentError as DalComponentError, EditSessionError,
+    StandardModelError, TransactionsError,
 };
 use thiserror::Error;
 
@@ -14,6 +15,7 @@ pub mod cancel_and_start_edit_session;
 pub mod cancel_edit_session;
 pub mod create_change_set;
 pub mod get_change_set;
+pub mod get_stats;
 pub mod list_open_change_sets;
 pub mod save_and_start_edit_session;
 pub mod save_edit_session;
@@ -31,6 +33,8 @@ pub enum ChangeSetError {
     StandardModel(#[from] StandardModelError),
     #[error(transparent)]
     ChangeSet(#[from] DalChangeSetError),
+    #[error(transparent)]
+    Component(#[from] DalComponentError),
     #[error(transparent)]
     ContextError(#[from] TransactionsError),
     #[error(transparent)]
@@ -70,6 +74,7 @@ pub fn routes() -> Router {
             post(create_change_set::create_change_set),
         )
         .route("/get_change_set", get(get_change_set::get_change_set))
+        .route("/get_stats", get(get_stats::get_stats))
         .route(
             "/apply_change_set",
             post(apply_change_set::apply_change_set),

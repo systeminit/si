@@ -11,10 +11,9 @@ use tokio::{
 
 use dal::{
     job::consumer::{JobConsumer, JobConsumerError},
-    job::definition::component_post_processing::ComponentPostProcessing,
-    job::definition::dependent_values_update::DependentValuesUpdate,
-    CycloneKeyPair, DalContext, DalContextBuilder, JobFailure, JobFailureError, MigrationMode,
-    ServicesContext, TransactionsError,
+    job::definition::{CodeGeneration, DependentValuesUpdate, Qualification, Qualifications},
+    CycloneKeyPair, DalContext, DalContextBuilder, JobFailure, JobFailureError, ServicesContext,
+    TransactionsError,
 };
 use dal::{FaktoryProcessor, JobQueueProcessor};
 use si_data::{NatsClient, PgPool, PgPoolError};
@@ -134,37 +133,6 @@ async fn run(
     let veritech = veritech::Client::new(nats.clone());
 
     let (alive_marker, mut job_processor_shutdown_rx) = mpsc::channel(1);
-
-    if let MigrationMode::Run | MigrationMode::RunAndQuit = config.migration_mode() {
-        info!("Running migrations");
-
-        let faktory_config = faktory_async::Config::from_uri(
-            &config.faktory().url,
-            Some("pinga-migrations".to_string()),
-            None,
-        );
-        let client = Client::new(faktory_config, 128);
-        let job_processor = Box::new(FaktoryProcessor::new(client, alive_marker.clone()))
-            as Box<dyn JobQueueProcessor + Send + Sync>;
-
-        dal::migrate_all(
-            &pg_pool,
-            &nats,
-            job_processor,
-            veritech.clone(),
-            &encryption_key,
-        )
-        .await?;
-        if let MigrationMode::RunAndQuit = config.migration_mode() {
-            info!(
-                "migration mode is {}, shutting down",
-                config.migration_mode()
-            );
-            return Ok(());
-        }
-    } else {
-        trace!("migration mode is skip, not running migrations");
-    }
 
     info!("Creating faktory connection");
     let config = faktory_async::Config::from_uri(
@@ -316,7 +284,13 @@ async fn execute_job_fallible(
 ) -> Result<(), JobError> {
     info!("Processing {job:?}");
 
-    let job = match job_match!(job, ComponentPostProcessing, DependentValuesUpdate) {
+    let job = match job_match!(
+        job,
+        Qualification,
+        Qualifications,
+        CodeGeneration,
+        DependentValuesUpdate
+    ) {
         Ok(job) => job,
         Err(err) => return Err(err),
     };

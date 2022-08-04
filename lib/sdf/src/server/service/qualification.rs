@@ -9,6 +9,7 @@ use axum::{
 
 use thiserror::Error;
 
+use dal::qualification::QualificationSummaryError;
 use dal::{
     AttributeValueError, ComponentError, ComponentId, FuncError, FuncId,
     QualificationPrototypeError, QualificationPrototypeId, ReadTenancyError, SchemaError, SchemaId,
@@ -17,6 +18,7 @@ use dal::{
 
 pub mod create;
 pub mod get_code;
+pub mod get_summary;
 pub mod set_code;
 
 #[derive(Debug, Error)]
@@ -63,6 +65,8 @@ pub enum QualificationError {
     PrototypeNotFound(QualificationPrototypeId),
     #[error("not writable")]
     NotWritable,
+    #[error("qualification summary error: {0}")]
+    QualificationSummaryError(#[from] QualificationSummaryError),
 }
 
 pub type QualificationResult<T> = std::result::Result<T, QualificationError>;
@@ -84,4 +88,5 @@ pub fn routes() -> Router {
         .route("/get_code", get(get_code::get_code))
         .route("/set_code", post(set_code::set_code))
         .route("/create", post(create::create))
+        .route("/get_summary", get(get_summary::get_summary))
 }

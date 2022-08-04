@@ -32,18 +32,15 @@ use crate::{
         },
     },
     impl_standard_model,
-    job::definition::{
-        component_post_processing::ComponentPostProcessing,
-        dependent_values_update::DependentValuesUpdate,
-    },
+    job::definition::DependentValuesUpdate,
     pk,
     standard_model::{self, TypeHint},
     standard_model_accessor, standard_model_belongs_to, standard_model_has_many,
     ws_event::{WsEvent, WsEventError},
-    AttributeContextError, AttributePrototypeArgumentError, Component, ComponentId, DalContext,
-    Func, FuncError, HistoryEventError, IndexMap, InternalProviderId, Prop, PropError, PropId,
-    PropKind, ReadTenancyError, StandardModel, StandardModelError, Timestamp, TransactionsError,
-    Visibility, WriteTenancy,
+    AttributeContextError, AttributePrototypeArgumentError, ComponentId, DalContext, Func,
+    FuncError, HistoryEventError, IndexMap, InternalProviderId, Prop, PropError, PropId, PropKind,
+    ReadTenancyError, StandardModel, StandardModelError, Timestamp, TransactionsError, Visibility,
+    WriteTenancy,
 };
 use crate::{
     AccessBuilder, BillingAccountId, DalContextBuilder, HistoryActor, SystemId, WsPayload,
@@ -931,22 +928,7 @@ impl AttributeValue {
             ctx.enqueue_job(DependentValuesUpdate::new(
                 ctx,
                 *dependent_attribute_value.id(),
-                *ctx.visibility(),
             ))
-            .await;
-        }
-
-        if context.component_id().is_some() {
-            // Check validations and qualifications for our component.
-            let component = Component::get_by_id(ctx, &context.component_id())
-                .await?
-                .ok_or_else(|| AttributeValueError::ComponentNotFound(context.component_id()))?;
-
-            ctx.enqueue_job(
-                ComponentPostProcessing::new(ctx, *component.id(), context.system_id(), None)
-                    .await
-                    .map_err(|e| AttributeValueError::Component(e.to_string()))?,
-            )
             .await;
         }
 

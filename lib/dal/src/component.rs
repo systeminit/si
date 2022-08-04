@@ -1,12 +1,12 @@
-pub mod view;
-
-pub use view::{ComponentView, ComponentViewError};
+pub mod stats;
 
 use serde::{Deserialize, Serialize};
-use si_data::{NatsError, PgError, PgTxn};
 use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
-use telemetry::prelude::*;
 use thiserror::Error;
+
+use si_data::{NatsError, PgError, PgTxn};
+use telemetry::prelude::*;
+pub use view::{ComponentView, ComponentViewError};
 
 use crate::attribute::value::AttributeValue;
 use crate::attribute::{context::UNSET_ID_VALUE, value::AttributeValueError};
@@ -20,7 +20,6 @@ use crate::func::binding::{FuncBinding, FuncBindingError};
 use crate::func::binding_return_value::{
     FuncBindingReturnValue, FuncBindingReturnValueError, FuncBindingReturnValueId,
 };
-use crate::job::definition::component_post_processing::ComponentPostProcessing;
 use crate::qualification::QualificationView;
 use crate::qualification_resolver::QualificationResolverContext;
 use crate::resource_resolver::ResourceResolverContext;
@@ -43,6 +42,8 @@ use crate::{
     ValidationResolverError, Visibility, WorkspaceError, WriteTenancy,
 };
 use crate::{AttributeValueId, QualificationPrototypeId};
+
+pub mod view;
 
 #[derive(Error, Debug)]
 pub enum ComponentError {
@@ -350,9 +351,6 @@ impl Component {
         //       at some point in the future, by only creating it if there is also
         //       a ResourcePrototype for the Component's SchemaVariant.
         let _resource = Resource::new(ctx, &self.id, system_id).await?;
-
-        ctx.enqueue_job(ComponentPostProcessing::new(ctx, self.id, *system_id, None).await?)
-            .await;
 
         Ok(())
     }
