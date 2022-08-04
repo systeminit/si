@@ -36,34 +36,18 @@
           </template>
           <template #name>Qualifications</template>
           <template #summary>
-            <StatusBarTabPill
-              :class="
-                qualificationSummary === undefined ||
-                qualificationSummary.failed > 0
-                  ? 'text-destructive-500 border-destructive-500'
-                  : 'border-white'
-              "
-            >
+            <StatusBarTabPill :class="tabTotalClass">
               Total:
-              <span class="font-bold ml-1">
-                {{ qualificationSummary?.total ?? "-" }}</span
-              >
+              <span class="font-bold ml-1">{{ tabTotalText }}</span>
             </StatusBarTabPill>
-            <StatusBarTabPill
-              class="font-bold"
-              :class="
-                qualificationSummary === undefined
-                  ? 'bg-destructive-100 text-destructive-500 border-destructive-500'
-                  : 'bg-success-100 text-success-500'
-              "
-            >
+            <StatusBarTabPill class="font-bold" :class="tabSuccessClass">
               <CheckCircleIcon
                 v-if="qualificationSummary !== undefined"
                 class="text-success-500 w-4"
               />
               <XCircleIcon v-else class="text-destructive-500 w-4" />
               <div class="pl-px">
-                {{ qualificationSummary?.succeeded ?? "-" }}
+                {{ tabSuccessText }}
               </div>
             </StatusBarTabPill>
           </template>
@@ -165,4 +149,20 @@ untilUnmounted(QualificationService.getSummary()).subscribe((response) => {
   // Update the qualification summary information
   qualificationSummary.value = response;
 });
+
+const tabTotalClass = computed(() => {
+  return qualificationSummary.value === undefined ||
+    qualificationSummary.value.failed > 0
+    ? "text-destructive-500 border-destructive-500"
+    : "border-white";
+});
+const tabTotalText = computed(() => qualificationSummary.value?.total ?? "-");
+const tabSuccessClass = computed(() => {
+  return qualificationSummary.value === undefined
+    ? "bg-destructive-100 text-destructive-500 border-destructive-500"
+    : "bg-success-100 text-success-500";
+});
+const tabSuccessText = computed(
+  () => qualificationSummary.value?.succeeded ?? "-",
+);
 </script>
