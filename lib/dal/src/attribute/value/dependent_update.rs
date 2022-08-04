@@ -13,7 +13,7 @@ use crate::{
     },
     AttributeContext, AttributePrototypeArgument, AttributeValue, AttributeValueError,
     AttributeValueId, AttributeValueResult, Component, ComponentId, DalContext, FuncBinding,
-    InternalProvider, Prop, PropKind, StandardModel, SystemId,
+    InternalProvider, Prop, PropKind, StandardModel, SystemId, WsEvent,
 };
 
 pub mod collection;
@@ -38,6 +38,17 @@ impl AttributeValueDependentUpdateHarness {
             AttributeValue::get_by_id(ctx, &attribute_value_id_to_update)
                 .await?
                 .ok_or(AttributeValueError::Missing)?;
+
+        WsEvent::updated_dependent_value(
+            attribute_value_that_needs_to_be_updated
+                .context
+                .component_id(),
+            attribute_value_that_needs_to_be_updated.context.system_id(),
+            ctx.read_tenancy().billing_accounts().into(),
+            ctx.history_actor(),
+        )
+        .publish(ctx.txns().nats())
+        .await?;
 
         let attribute_prototype = attribute_value_that_needs_to_be_updated
             .attribute_prototype(ctx)

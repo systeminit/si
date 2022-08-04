@@ -176,7 +176,7 @@ async fn run(
     let client = Client::new(config.clone(), 256);
     info!("Spawned faktory connection.");
 
-    const NUM_TASKS: usize = 5;
+    const NUM_TASKS: usize = 10;
     let mut handles = Vec::with_capacity(NUM_TASKS);
 
     for _ in 0..NUM_TASKS {
@@ -230,7 +230,7 @@ async fn start_job_executor(
     let ctx_builder = Arc::new(DalContext::builder(services_context));
 
     loop {
-        tokio::time::sleep(Duration::from_millis(500)).await;
+        tokio::time::sleep(Duration::from_millis(10)).await;
 
         match client.last_beat().await {
             Ok(BeatState::Ok) => {
@@ -250,7 +250,7 @@ async fn start_job_executor(
                 };
 
                 let jid = job.id().to_owned();
-                match start_job_executor_fallible(job, ctx_builder.clone(), client.clone()).await {
+                match execute_job_fallible(job, ctx_builder.clone()).await {
                     Ok(()) => match client.ack(jid).await {
                         Ok(()) => {}
                         Err(err) => {
@@ -308,40 +308,6 @@ macro_rules! job_match {
             kind => Err(JobError::UnknownJobKind(kind.to_owned())),
         }
     };
-}
-
-async fn start_job_executor_fallible(
-    job: faktory_async::Job,
-    ctx_builder: Arc<DalContextBuilder>,
-    client: Client,
-) -> Result<(), JobError> {
-    let job_task = tokio::task::spawn(execute_job_fallible(job, ctx_builder));
-
-    loop {
-        // The sleep in this loop means that any job will take _at minimum_ 1 second to complete,
-        // and will really only complete in 1 second increments.
-        //
-        // Ideally, we'd do something like selecting on the job task with a timeout that let the
-        // task keep running if the timeout is reached, or select on the job_task and the future for
-        // the sleep. Unfortunately, tokio::select! both takes ownership of what's being selected,
-        // and cancels everything that's not the first one to finish. Since we don't want to limit
-        // all jobs to 1 second, and want to be able to check multiple times if the job task is
-        // done, this was the least awkward way to do it for now.
-        tokio::time::sleep(Duration::from_secs(1)).await;
-        if !job_task.is_finished() {
-            if let Ok(BeatState::Terminate) = client.last_beat().await {
-                job_task.abort();
-                break;
-            }
-        } else {
-            // The job task has finished, so there's no point in
-            // continuing to poll the client state watching to see if
-            // we should terminate early.
-            break;
-        }
-    }
-
-    job_task.await?
 }
 
 async fn execute_job_fallible(
