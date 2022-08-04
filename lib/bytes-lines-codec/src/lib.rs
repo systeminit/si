@@ -262,6 +262,7 @@ fn without_carriage_return(mut src: BytesMut) -> BytesMut {
     }
 }
 
+#[allow(clippy::panic)]
 #[cfg(test)]
 mod tests {
     use std::net::SocketAddr;
@@ -293,7 +294,9 @@ mod tests {
     impl Server {
         async fn new() -> Self {
             Self {
-                listener: TcpListener::bind("127.0.0.1:0").await.unwrap(),
+                listener: TcpListener::bind("127.0.0.1:0")
+                    .await
+                    .expect("failed to bind to an unused port"),
             }
         }
 
