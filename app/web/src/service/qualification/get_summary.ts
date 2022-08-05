@@ -35,10 +35,8 @@ export function getSummary(): Observable<GetSummaryResponse | undefined> {
           map((response: ApiResponse<GetSummaryResponse>) => {
             if (response.error) {
               GlobalErrorService.set(response);
-              // If we encounter an error, return undefined.
               return undefined;
             }
-            // Return the qualification summary information
             return response;
           }),
         );
