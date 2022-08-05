@@ -47,6 +47,8 @@ pub enum SchemaVariantError {
     Pg(#[from] PgError),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
+    #[error("root prop not found for schema variant: {0}")]
+    RootPropNotFound(SchemaVariantId),
     #[error("schema error: {0}")]
     Schema(#[from] Box<SchemaError>),
     #[error("error serializing/deserializing json: {0}")]
@@ -232,6 +234,7 @@ impl SchemaVariant {
         result: SchemaVariantResult,
     );
 
+    #[instrument(skip_all)]
     pub async fn all_props(&self, ctx: &DalContext<'_, '_>) -> SchemaVariantResult<Vec<Prop>> {
         let rows = ctx
             .txns()
@@ -243,5 +246,16 @@ impl SchemaVariant {
             .await?;
         let results = objects_from_rows(rows)?;
         Ok(results)
+    }
+
+    /// Find the root [`Prop`](crate::Prop) for [`Self`](Self).
+    pub async fn root_prop(&self, ctx: &DalContext<'_, '_>) -> SchemaVariantResult<Prop> {
+        // FIXME(nick): this is an inefficient solution that would be better suited by a database query.
+        for prop in self.all_props(ctx).await? {
+            if prop.parent_prop(ctx).await?.is_none() && prop.name() == "root" {
+                return Ok(prop);
+            }
+        }
+        return Err(SchemaVariantError::RootPropNotFound(*self.id()));
     }
 }

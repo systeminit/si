@@ -1,5 +1,3 @@
-pub mod stats;
-
 use serde::{Deserialize, Serialize};
 use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use thiserror::Error;
@@ -43,6 +41,8 @@ use crate::{
 };
 use crate::{AttributeValueId, QualificationPrototypeId};
 
+pub mod diff;
+pub mod stats;
 pub mod view;
 
 #[derive(Error, Debug)]
@@ -53,18 +53,24 @@ pub enum ComponentError {
     AttributeContextBuilder(#[from] AttributeContextBuilderError),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
+    #[error("attribute value not found for context: {0:?}")]
+    AttributeValueNotFoundForContext(AttributeReadContext),
     #[error("invalid json pointer: {0} for {1}")]
     BadJsonPointer(String, String),
     #[error("codegen function returned unexpected format, expected {0:?}, got {1:?}")]
     CodeLanguageMismatch(CodeLanguage, CodeLanguage),
-    #[error("internal provider error: {0}")]
-    InternalProvider(#[from] InternalProviderError),
     #[error("edge error: {0}")]
     Edge(#[from] EdgeError),
     #[error("func not found: {0}")]
     FuncNotFound(FuncId),
     #[error(transparent)]
     FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
+    #[error("internal provider error: {0}")]
+    InternalProvider(#[from] InternalProviderError),
+    #[error("internal provider not found for prop: {0}")]
+    InternalProviderNotFoundForProp(PropId),
+    #[error("invalid context(s) provided for diff")]
+    InvalidContextForDiff,
     #[error("missing attribute value for id: ({0})")]
     MissingAttributeValue(AttributeValueId),
     #[error("missing index map on attribute value: {0}")]
@@ -73,10 +79,6 @@ pub enum ComponentError {
     MultipleRootProps(Vec<Prop>),
     #[error("root prop not found for schema variant: {0}")]
     RootPropNotFound(SchemaVariantId),
-    #[error("internal provider not found for prop: {0}")]
-    InternalProviderNotFoundForProp(PropId),
-    #[error("attrubte value not found for context: {0:?}")]
-    AttributeValueNotFoundForContext(AttributeReadContext),
 
     // FIXME: change the below to be alphabetical and re-join with the above variants.
     #[error("qualification prototype error: {0}")]
