@@ -20,18 +20,18 @@
           <SiDropdownItem
             :checked="filter === 'all'"
             @select="changeFilter('all')"
-            >All</SiDropdownItem
-          >
+            >All
+          </SiDropdownItem>
           <SiDropdownItem
             :checked="filter === 'success'"
             @select="changeFilter('success')"
-            >Success</SiDropdownItem
-          >
+            >Success
+          </SiDropdownItem>
           <SiDropdownItem
             :checked="filter === 'failure'"
             @select="changeFilter('failure')"
-            >Failure</SiDropdownItem
-          >
+            >Failure
+          </SiDropdownItem>
         </template>
       </SiNavbarButton>
 
@@ -56,15 +56,21 @@
         </div>
       </div>
     </div>
-
+    <div
+      v-if="selectedComponentId === undefined"
+      class="flex flex-row items-center text-center w-full h-full"
+    >
+      <p class="w-full text-3xl text-neutral-500">No Component Selected</p>
+    </div>
     <ComponentQualificationViewer
+      v-else
       :component-id="selectedComponentId"
       :component-name="selectedComponentName"
     />
   </div>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import {
   GetSummaryResponse,
   QualificationSummaryForComponent,
@@ -82,8 +88,8 @@ const qualificationSummary = refFrom<GetSummaryResponse | undefined>(
   QualificationService.getSummary(),
 );
 
-const selectedComponentId = ref<number | false>(false);
-const selectedComponentName = ref<string | false>(false);
+const selectedComponentId = ref<number>();
+const selectedComponentName = ref<string>();
 const updateSelectedComponent = (
   component: QualificationSummaryForComponent,
 ) => {

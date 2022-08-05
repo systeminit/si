@@ -10,7 +10,7 @@ export interface Qualification {
   title: string;
   link?: string;
   description?: string;
-  result?: QualificationResult;
+  result?: QualificationResult | null; // FIXME(victor) Results returning null could be a backend bug
   output?: Array<QualificationOutputStream>;
   prototypeId?: number; // The validations qualification doesn't need a prototype, but it can't be edited
 }
