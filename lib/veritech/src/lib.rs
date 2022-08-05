@@ -32,7 +32,8 @@ pub use cyclone::{
     OutputStream, QualificationCheckComponent, QualificationCheckRequest,
     QualificationCheckResultSuccess, QualificationSubCheck, QualificationSubCheckStatus,
     ResolverFunctionComponent, ResolverFunctionRequest, ResourceSyncRequest,
-    ResourceSyncResultSuccess, SensitiveContainer, SystemView,
+    ResourceSyncResultSuccess, SensitiveContainer, SystemView, WorkflowResolveRequest,
+    WorkflowResolveResultSuccess,
 };
 
 const NATS_QUALIFICATION_CHECK_DEFAULT_SUBJECT: &str = "veritech.fn.qualificationcheck";

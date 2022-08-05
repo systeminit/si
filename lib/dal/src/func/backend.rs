@@ -13,6 +13,7 @@ pub mod js_attribute;
 pub mod js_code_generation;
 pub mod js_qualification;
 pub mod js_resource;
+pub mod js_workflow;
 pub mod map;
 pub mod prop_object;
 pub mod string;
@@ -71,6 +72,8 @@ pub enum FuncBackendKind {
     JsResourceSync,
     JsCodeGeneration,
     JsAttribute,
+    JsWorkflow,
+    JsCommand,
     Map,
     PropObject,
     String,
@@ -110,9 +113,10 @@ pub enum FuncBackendResponseType {
     CodeGeneration,
     String,
     Unset,
-    // Commented out while we climb back up - Adam & Fletcher
     Json,
     Validation,
+    Workflow,
+    Command,
 }
 
 impl ToLabelList for FuncBackendKind {}

@@ -601,7 +601,7 @@ impl AttributePrototype {
             prototype
         } else {
             // Create new prototype and clone the arguments of the given prototype into the new one.
-            let new_prototype = Self::new(
+            Self::new(
                 ctx,
                 func_id,
                 func_binding_id,
@@ -610,8 +610,7 @@ impl AttributePrototype {
                 given_attribute_prototype.key().map(|k| k.to_string()),
                 parent_attribute_value_id,
             )
-            .await?;
-            new_prototype
+            .await?
         };
 
         attribute_prototype.set_func_id(ctx, func_id).await?;

@@ -22,7 +22,12 @@ export type WorkflowResolveResult =
   | WorkflowResolveResultSuccess
   | WorkflowResolveResultFailure;
 
-export type WorkflowResolveResultSuccess = ResultSuccess;
+export interface WorkflowResolveResultSuccess extends ResultSuccess {
+  name: string;
+  kind: string;
+  steps: unknown;
+  args: unknown;
+}
 
 export type WorkflowResolveResultFailure = ResultFailure;
 
@@ -52,25 +57,29 @@ async function execute(
   code: string,
   executionId: string
 ): Promise<WorkflowResolveResult> {
-  let _workflowResolveResult: Record<string, unknown>;
+  let workflowResolveResult: Record<string, unknown>;
   try {
     const workflowResolveRunner = vm.run(code);
     // Node(paulo): NodeVM doesn't support async rejection, we need a better way of handling it
-    _workflowResolveResult = await new Promise((resolve) => {
+    workflowResolveResult = await new Promise((resolve) => {
       workflowResolveRunner((resolution: Record<string, unknown>) =>
         resolve(resolution)
       );
     });
+
+    const result: WorkflowResolveResultSuccess = {
+      protocol: "result",
+      status: "success",
+      executionId,
+      name: workflowResolveResult.name as string,
+      kind: workflowResolveResult.kind as string,
+      steps: workflowResolveResult.steps,
+      args: workflowResolveResult.args,
+    };
+    return result;
   } catch (err) {
     return failureExecution(err, executionId);
   }
-
-  const result: WorkflowResolveResultSuccess = {
-    protocol: "result",
-    status: "success",
-    executionId,
-  };
-  return result;
 }
 
 function wrapCode(code: string, handle: string): string {

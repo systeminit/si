@@ -769,7 +769,7 @@ mod tests {
             execution_id: "112233".to_string(),
             handler: "workItOut".to_string(),
             // TODO(fnichol): rewrite this function once we settle on contract
-            code_base64: base64::encode("function workItOut() { return {}; }"),
+            code_base64: base64::encode("function workItOut() { return { name: 'mc fioti', kind: 'vacina butantan - https://www.youtube.com/watch?v=yQ8xJHuW7TY', steps: [] }; }"),
         };
 
         let result = client
