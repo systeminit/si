@@ -81,12 +81,26 @@
       >
         Component ID {{ selectedComponentId }} Deleted
       </div>
-      <div v-else-if="selectedComponentGroup === 'modified'">
+      <div
+        v-else-if="selectedComponentGroup === 'modified'"
+        class="flex flex-row"
+      >
         <CodeViewer
-          diff-mode
           font-size="12px"
           :component-id="selectedComponentId"
-          class="text-neutral-50"
+          class="text-neutral-50 mx-5"
+          :code="diffCode"
+          force-theme="dark"
+          code-language="diff"
+        />
+
+        <CodeViewer
+          font-size="12px"
+          :component-id="selectedComponentId"
+          class="text-neutral-50 mx-5"
+          :code="currentCode"
+          force-theme="dark"
+          code-language="json"
         />
       </div>
     </div>
@@ -98,14 +112,17 @@ import { ComponentStats } from "@/api/sdf/dal/change_set";
 import { lastSelectedNode$ } from "@/observable/selection";
 import { ChangeSetService } from "@/service/change_set";
 import { GlobalErrorService } from "@/service/global_error";
-import { firstValueFrom } from "rxjs";
+import { firstValueFrom, from, switchMap, map } from "rxjs";
 import { computed, ref } from "vue";
-import { untilUnmounted } from "vuse-rx";
+import { fromRef, refFrom, untilUnmounted } from "vuse-rx";
 import { Node } from "@/organisms/SiCanvas/canvas/obj/node";
 import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
 import SiBarButton from "@/molecules/SiBarButton.vue";
 import SiArrow from "@/atoms/SiArrow.vue";
 import CodeViewer from "@/organisms/CodeViewer.vue";
+import { combineLatest } from "rxjs";
+import { ComponentService } from "@/service/component";
+import { ComponentDiff } from "@/api/sdf/dal/component";
 
 const filter = ref<"all" | "added" | "deleted" | "modified">("all");
 const changeFilter = (newFilter: "all" | "added" | "deleted" | "modified") => {
@@ -176,7 +193,8 @@ untilUnmounted(ChangeSetService.getStats()).subscribe((response) => {
   }
 });
 
-const selectedComponentId = ref<number | false>(false);
+const selectedComponentId = ref<number | null>(null);
+const selectedComponentId$ = fromRef(selectedComponentId, { immediate: true });
 const updateSelectedComponentId = (componentId: number) => {
   selectedComponentId.value = componentId;
 };
@@ -193,4 +211,44 @@ lastSelectedNode$
   .pipe(untilUnmounted)
   .subscribe((node) => updateSelection(node));
 firstValueFrom(lastSelectedNode$).then((last) => updateSelection(last));
+
+const currentCode = computed((): string => {
+  if (componentDiff.value) {
+    return componentDiff.value.current.code ?? "# No code found";
+  }
+  return "# Waiting for component diff...";
+});
+
+// FIXME(nick): allow for multiple diffs.
+const diffCode = computed((): string => {
+  if (componentDiff.value) {
+    return componentDiff.value.diffs[0].code ?? "# No code found";
+  }
+  return "# Waiting for component diff...";
+});
+
+const componentDiff = refFrom<ComponentDiff | null>(
+  combineLatest([selectedComponentId$]).pipe(
+    switchMap(([selectedComponentId]) => {
+      // Only collect the diff for modified components.
+      if (selectedComponentId && selectedComponentGroup.value === "modified") {
+        return ComponentService.getDiff({
+          componentId: selectedComponentId,
+        });
+      }
+      return from([null]);
+    }),
+    map((response) => {
+      if (response) {
+        if (response.error) {
+          GlobalErrorService.set(response);
+          return null;
+        } else {
+          return response.componentDiff;
+        }
+      }
+      return null;
+    }),
+  ),
+);
 </script>
