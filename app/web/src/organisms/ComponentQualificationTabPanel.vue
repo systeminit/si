@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-row h-full w-full">
     <div
-      class="w-32 border-r-[1px] border-black text-center h-full flex flex-col"
+      class="w-64 border-r-[1px] border-black text-center h-full flex flex-col"
     >
       <!-- Filter button and its dropdown -->
       <SiNavbarButton
@@ -48,9 +48,13 @@
                 ? 'bg-action-500'
                 : 'hover:bg-black '
             "
-            class="py-2"
+            class="py-2 text-left text-ellipsis truncate"
             @click="updateSelectedComponent(component)"
           >
+            <StatusIndicatorIcon
+              :status="component.iconStatus"
+              class="w-8 mr-1"
+            />
             {{ component.componentName }}
           </div>
         </div>
@@ -82,6 +86,7 @@ import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
 import SiNavbarButton from "@/molecules/SiNavbarButton.vue";
 import SiArrow from "@/atoms/SiArrow.vue";
 import ComponentQualificationViewer from "@/organisms/ComponentQualificationViewer.vue";
+import StatusIndicatorIcon from "@/molecules/StatusIndicatorIcon.vue";
 
 // Loads data for qualifications - total, succeeded, failed
 const qualificationSummary = refFrom<GetSummaryResponse | undefined>(
@@ -113,9 +118,18 @@ const filterTitle = computed(() => {
 
 const list = computed(() => {
   if (qualificationSummary.value === undefined) return [];
-  const c = qualificationSummary.value.components;
-  if (filter.value === "success") return c.filter((c) => c.failed === 0);
-  else if (filter.value === "failure") return c.filter((c) => c.failed > 0);
-  else return c;
+  let c = qualificationSummary.value.components;
+  if (filter.value === "success") c = c.filter((c) => c.failed === 0);
+  else if (filter.value === "failure") c = c.filter((c) => c.failed > 0);
+  c = c.map((o) => ({
+    ...o,
+    iconStatus:
+      o.succeeded === o.total
+        ? "success"
+        : o.failed + o.succeeded === o.total
+        ? "failure"
+        : "loading",
+  }));
+  return c;
 });
 </script>

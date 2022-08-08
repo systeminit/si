@@ -25,11 +25,10 @@
       <Tab v-slot="{ selected }">
         <StatusBarTab :selected="selected">
           <template #icon>
-            <XCircleIcon
-              v-if="tabQualificationsIconStatus"
-              class="text-destructive-500"
+            <StatusIndicatorIcon
+              :status="tabQualificationsIconStatus"
+              :icon-type="'solid'"
             />
-            <CheckCircleIcon v-else class="text-success-500" />
           </template>
           <template #name>Qualifications</template>
           <template #summary>
@@ -106,6 +105,7 @@ import { GetSummaryResponse } from "@/service/qualification/get_summary";
 import ChangeSetTab from "@/organisms/ChangeSetTab.vue";
 import ChangeSetTabPanel from "@/organisms/ChangeSetTabPanel.vue";
 import ComponentQualificationTabPanel from "@/organisms/ComponentQualificationTabPanel.vue";
+import StatusIndicatorIcon from "@/molecules/StatusIndicatorIcon.vue";
 
 const panelOpen = ref(false);
 // Tab 0 is our phantom empty panel
@@ -155,9 +155,10 @@ const tabSuccessClass = computed(() => {
 const tabSuccessText = computed(
   () => qualificationSummary.value?.succeeded ?? "-",
 );
-const tabQualificationsIconStatus = computed(
-  () =>
-    qualificationSummary.value === undefined ||
-    qualificationSummary.value.failed > 0,
+const tabQualificationsIconStatus = computed(() =>
+  qualificationSummary.value === undefined ||
+  qualificationSummary.value.failed > 0
+    ? "failure"
+    : "success",
 );
 </script>
