@@ -34,11 +34,11 @@
             {{ new Date(resource.updatedAt) }}
           </div>
         </div>
-        <SiTextBox
+        <SiTextBox2
           id="resourceJson"
           name="resourceJson"
           :placeholder="JSON.stringify(resource)"
-          :is-text-area="true"
+          text-area
           :model-value="JSON.stringify(resource)"
         />
       </div>
@@ -50,7 +50,7 @@
 import * as Rx from "rxjs";
 import { ref, toRefs, computed } from "vue";
 import { Resource, ResourceHealth } from "@/api/sdf/dal/resource";
-import SiTextBox from "@/atoms/SiTextBox.vue";
+import SiTextBox2 from "@/atoms/SiTextBox2.vue";
 import { ComponentService } from "@/service/component";
 import { GlobalErrorService } from "@/service/global_error";
 import { ChangeSetService } from "@/service/change_set";

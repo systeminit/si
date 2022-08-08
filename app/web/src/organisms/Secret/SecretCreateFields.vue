@@ -28,12 +28,11 @@
         >
       </div>
       <div class="w-1/2 align-middle">
-        <SiTextBox
+        <SiTextBox2
           :id="idFor(field.keyName, field.password)"
           v-model="secretMessage[field.keyName]"
           size="xs"
           placeholder=""
-          :is-show-type="false"
           required
           @input="updateInput"
         />
@@ -44,7 +43,7 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
-import SiTextBox from "@/atoms/SiTextBox.vue";
+import SiTextBox2 from "@/atoms/SiTextBox2.vue";
 import { SecretKindFields } from "@/api/sdf/dal/secret";
 
 const emit = defineEmits(["update:modelValue"]);

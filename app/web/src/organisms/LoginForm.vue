@@ -22,7 +22,7 @@
     </div>
 
     <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-      <div class="bg-gray-800 py-8 px-4 shadow sm:rounded-sm sm:px-10">
+      <div class="bg-neutral-900 py-8 px-4 shadow sm:rounded-sm sm:px-10">
         <div
           v-if="errorMessage"
           data-testid="error-message"
