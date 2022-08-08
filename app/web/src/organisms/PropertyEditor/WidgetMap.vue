@@ -11,7 +11,7 @@
       class="pl-8 flex flex-col w-full pt-4"
     >
       <div class="w-full pr-24">
-        <SiTextBox2 :id="newKeyId" v-model="newKey" title="key" />
+        <SiTextBox :id="newKeyId" v-model="newKey" title="key" />
       </div>
       <div class="flex pt-4 pr-16">
         <SiButton
@@ -28,7 +28,7 @@
 
 <script setup lang="ts">
 import { ref, toRefs, computed } from "vue";
-import SiTextBox2 from "@/atoms/SiTextBox2.vue";
+import SiTextBox from "@/atoms/SiTextBox.vue";
 import SiButton from "@/atoms/SiButton.vue";
 import _ from "lodash";
 import { usePropertyEditorIsShown } from "@/composables/usePropertyEditorIsShown";

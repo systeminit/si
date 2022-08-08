@@ -5,7 +5,7 @@
         <label for="secret-name-textbox">Secret Name:</label>
       </div>
       <div class="w-1/2 align-middle">
-        <SiTextBox2
+        <SiTextBox
           id="secret-name-textbox"
           v-model="secretName"
           size="xs"
@@ -80,7 +80,7 @@ import {
 } from "@/api/sdf/dal/secret";
 import SiButton from "@/atoms/SiButton.vue";
 import SiSelect, { SelectPropsOption } from "@/atoms/SiSelect.vue";
-import SiTextBox2 from "@/atoms/SiTextBox2.vue";
+import SiTextBox from "@/atoms/SiTextBox.vue";
 import SecretCreateFields from "@/organisms/Secret/SecretCreateFields.vue";
 import { ChangeSetService } from "@/service/change_set";
 import { GlobalErrorService } from "@/service/global_error";

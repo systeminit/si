@@ -2,7 +2,7 @@
   <div v-show="isShown" class="flex content-center">
     <div class="flex grow">
       <div class="w-full">
-        <SiTextBox2
+        <SiTextBox
           :id="fieldId"
           v-model="currentValue"
           :title="props.name"
@@ -27,7 +27,7 @@
 
 <script setup lang="ts">
 import { ref, toRefs, computed, watch } from "vue";
-import SiTextBox2 from "@/atoms/SiTextBox2.vue";
+import SiTextBox from "@/atoms/SiTextBox.vue";
 import UnsetButton from "./UnsetButton.vue";
 import { usePropertyEditorIsShown } from "@/composables/usePropertyEditorIsShown";
 import {

@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col w-full h-full px-4 py-2 overflow-hidden mt-2">
     <div @keyup.stop @keydown.stop>
-      <SiTextBox2
+      <SiTextBox
         id="qualification-name"
         v-model="name"
         class="mb-2 p-2 w-full"
@@ -60,7 +60,7 @@ import { Compartment } from "@codemirror/state";
 import { ChangeSetService } from "@/service/change_set";
 import { system$ } from "@/observable/system";
 import SiButton from "@/atoms/SiButton.vue";
-import SiTextBox2 from "@/atoms/SiTextBox2.vue";
+import SiTextBox from "@/atoms/SiTextBox.vue";
 
 const emit = defineEmits(["close"]);
 
