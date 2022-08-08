@@ -1,8 +1,8 @@
 <template>
   <div>
     <label
-      :for="props.id"
       v-if="props.title"
+      :for="props.id"
       class="block text-sm font-medium"
       :class="titleClasses"
     >

@@ -4,7 +4,7 @@
       class="w-64 border-r-[1px] border-black text-center h-full flex flex-col"
     >
       <!-- Filter button and its dropdown -->
-      <SiNavbarButton
+      <SiBarButton
         class="h-10 border-b-[1px] border-black"
         dropdown-classes="top-1 left-4"
         tooltip-text="Filter"
@@ -33,7 +33,7 @@
             >Failure
           </SiDropdownItem>
         </template>
-      </SiNavbarButton>
+      </SiBarButton>
 
       <!-- List of components -->
       <div class="overflow-y-auto flex-expand">
@@ -83,11 +83,12 @@ import { refFrom } from "vuse-rx";
 import { QualificationService } from "@/service/qualification";
 import { computed, ref } from "vue";
 import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
-import SiNavbarButton from "@/molecules/SiNavbarButton.vue";
+import SiBarButton from "@/molecules/SiBarButton.vue";
 import SiArrow from "@/atoms/SiArrow.vue";
 import ComponentQualificationViewer from "@/organisms/ComponentQualificationViewer.vue";
-import StatusIndicatorIcon from "@/molecules/StatusIndicatorIcon.vue";
-import component from "*.vue";
+import StatusIndicatorIcon, {
+  Status,
+} from "@/molecules/StatusIndicatorIcon.vue";
 
 // Loads data for qualifications - total, succeeded, failed
 const qualificationSummary = refFrom<GetSummaryResponse | undefined>(
@@ -125,7 +126,7 @@ const list = computed(() => {
   return c;
 });
 
-const iconStatus = (component: QualificationSummaryForComponent) =>
+const iconStatus = (component: QualificationSummaryForComponent): Status =>
   component.succeeded === component.total
     ? "success"
     : component.failed + component.succeeded === component.total
