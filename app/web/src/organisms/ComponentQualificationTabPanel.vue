@@ -89,7 +89,7 @@ const qualificationSummary = refFrom<GetSummaryResponse | undefined>(
 );
 
 const selectedComponentId = ref<number>();
-const selectedComponentName = ref<string>();
+const selectedComponentName = ref<string>("");
 const updateSelectedComponent = (
   component: QualificationSummaryForComponent,
 ) => {

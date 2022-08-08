@@ -23,7 +23,10 @@
 </template>
 
 <script lang="ts" setup>
-import { listQualifications } from "@/service/component/list_qualifications";
+import {
+  listQualifications,
+  ListQualificationsResponse,
+} from "@/service/component/list_qualifications";
 import { fromRef, refFrom } from "vuse-rx";
 import { map } from "rxjs";
 import { GlobalErrorService } from "@/service/global_error";
@@ -33,6 +36,7 @@ import StatusIndicatorIcon, {
 } from "@/molecules/StatusIndicatorIcon.vue";
 import { switchMap } from "rxjs/operators";
 import { ref } from "vue";
+import { Qualification } from "@/api/sdf/dal/qualification";
 
 const props = defineProps<{
   componentId: number;
@@ -41,7 +45,7 @@ const props = defineProps<{
 
 const componentQualificationStatus = ref<Status>("success"); // TODO(victor): This should be received from listQualifications, probably
 
-const qualificationList = refFrom(
+const qualificationList = refFrom<Array<Qualification>>(
   fromRef(props, { immediate: true }).pipe(
     switchMap(({ componentId }) =>
       listQualifications({ componentId }).pipe(
@@ -50,7 +54,7 @@ const qualificationList = refFrom(
             GlobalErrorService.set(response);
             return [];
           }
-          return response;
+          return response as ListQualificationsResponse;
         }),
       ),
     ),
