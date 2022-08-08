@@ -48,8 +48,6 @@ import {
   XCircleIcon as SolidX,
 } from "@heroicons/vue/solid";
 import { defineProps } from "vue";
-import { ButtonIconStyle } from "@/molecules/VButton.vue";
-import { IconName } from "@/molecules/VButton/Icon.vue";
 
 export type Status = "success" | "failure" | "loading";
 

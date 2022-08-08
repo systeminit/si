@@ -52,8 +52,8 @@
             @click="updateSelectedComponent(component)"
           >
             <StatusIndicatorIcon
-              :status="component.iconStatus"
-              class="w-8 mr-1"
+              :status="iconStatus(component)"
+              class="w-8 mx-1"
             />
             {{ component.componentName }}
           </div>
@@ -87,6 +87,7 @@ import SiNavbarButton from "@/molecules/SiNavbarButton.vue";
 import SiArrow from "@/atoms/SiArrow.vue";
 import ComponentQualificationViewer from "@/organisms/ComponentQualificationViewer.vue";
 import StatusIndicatorIcon from "@/molecules/StatusIndicatorIcon.vue";
+import component from "*.vue";
 
 // Loads data for qualifications - total, succeeded, failed
 const qualificationSummary = refFrom<GetSummaryResponse | undefined>(
@@ -118,18 +119,16 @@ const filterTitle = computed(() => {
 
 const list = computed(() => {
   if (qualificationSummary.value === undefined) return [];
-  let c = qualificationSummary.value.components;
-  if (filter.value === "success") c = c.filter((c) => c.failed === 0);
-  else if (filter.value === "failure") c = c.filter((c) => c.failed > 0);
-  c = c.map((o) => ({
-    ...o,
-    iconStatus:
-      o.succeeded === o.total
-        ? "success"
-        : o.failed + o.succeeded === o.total
-        ? "failure"
-        : "loading",
-  }));
+  const c = qualificationSummary.value.components;
+  if (filter.value === "success") return c.filter((c) => c.failed === 0);
+  else if (filter.value === "failure") return c.filter((c) => c.failed > 0);
   return c;
 });
+
+const iconStatus = (component: QualificationSummaryForComponent) =>
+  component.succeeded === component.total
+    ? "success"
+    : component.failed + component.succeeded === component.total
+    ? "failure"
+    : "loading";
 </script>
