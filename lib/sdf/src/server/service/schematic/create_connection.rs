@@ -2,7 +2,7 @@ use axum::Json;
 use dal::{
     job::definition::DependentValuesUpdate, node::NodeId, socket::SocketId, AttributeReadContext,
     AttributeValue, Connection, ExternalProviderId, InternalProviderId, Node, StandardModel,
-    SystemId, Visibility, WorkspaceId,
+    SystemId, Visibility, WorkspaceId, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 
@@ -86,6 +86,8 @@ pub async fn create_connection(
 
     ctx.enqueue_job(DependentValuesUpdate::new(&ctx, *attribute_value.id()))
         .await;
+
+    WsEvent::change_set_written(&ctx).publish(&ctx).await?;
 
     txns.commit().await?;
 

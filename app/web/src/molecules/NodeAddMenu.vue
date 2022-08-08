@@ -24,20 +24,14 @@ import { onBeforeUnmount, ref, computed } from "vue";
 import { refFrom, fromRef } from "vuse-rx";
 import _ from "lodash";
 import { SchematicService } from "@/service/schematic";
-import { ChangeSetService } from "@/service/change_set";
 import { GlobalErrorService } from "@/service/global_error";
 import { combineLatest, from, switchMap } from "rxjs";
 import SiButton from "@/atoms/SiButton.vue";
-import { editButtonPulse$ } from "@/observable/change_set";
 import SiMenu from "@/atoms/SiMenu.vue";
 import { SiMenuTree } from "@/utils/menu";
 
-const editMode = refFrom<boolean>(ChangeSetService.currentEditMode());
-
 const addMenuClick = () => {
-  if (!editMode.value) {
-    editButtonPulse$.next(true);
-  } else if (!props.disabled) {
+  if (!props.disabled) {
     isOpen.value = !isOpen.value;
   }
 };

@@ -7,7 +7,6 @@ CREATE TABLE internal_providers
     tenancy_organization_ids    bigint[],
     tenancy_workspace_ids       bigint[],
     visibility_change_set_pk    bigint,
-    visibility_edit_session_pk  bigint,
     visibility_deleted_at       timestamp with time zone,
     created_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     updated_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
@@ -25,7 +24,6 @@ CREATE UNIQUE INDEX unique_implicit_internal_providers
                            schema_id,
                            schema_variant_id,
                            visibility_change_set_pk,
-                           visibility_edit_session_pk,
                            (visibility_deleted_at IS NULL))
     WHERE visibility_deleted_at IS NULL
         AND NOT prop_id = -1;
@@ -35,7 +33,6 @@ CREATE UNIQUE INDEX unique_explicit_internal_providers
                            schema_id,
                            schema_variant_id,
                            visibility_change_set_pk,
-                           visibility_edit_session_pk,
                            (visibility_deleted_at IS NULL))
     WHERE visibility_deleted_at IS NULL
         AND prop_id = -1;
@@ -71,7 +68,6 @@ BEGIN
                                     tenancy_organization_ids,
                                     tenancy_workspace_ids,
                                     visibility_change_set_pk,
-                                    visibility_edit_session_pk,
                                     visibility_deleted_at,
                                     prop_id,
                                     schema_id,
@@ -84,7 +80,6 @@ BEGIN
             this_tenancy_record.tenancy_organization_ids,
             this_tenancy_record.tenancy_workspace_ids,
             this_visibility_record.visibility_change_set_pk,
-            this_visibility_record.visibility_edit_session_pk,
             this_visibility_record.visibility_deleted_at,
             this_prop_id,
             this_schema_id,

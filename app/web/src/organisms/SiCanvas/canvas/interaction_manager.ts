@@ -3,7 +3,6 @@ import * as Rx from "rxjs";
 import { untilUnmounted } from "vuse-rx";
 
 // Should we bypass the datamanager here?
-import { editSession$ } from "@/observable/edit_session";
 import { SocketType } from "./obj/node/sockets/socket";
 import { SceneManager } from "./scene_manager";
 import { SchematicDataManager } from "./../data_manager";
@@ -16,7 +15,6 @@ import { PanningManager } from "./interaction_manager/panning";
 import { ConnectingManager } from "./interaction_manager/connecting";
 import { ZoomingManager } from "./interaction_manager/zooming";
 import { NodeAddManager } from "./interaction_manager/node_add";
-import { editButtonPulse$ } from "@/observable/change_set";
 import {
   lastSelectedNode$,
   lastSelectedDeploymentNode$,
@@ -115,7 +113,6 @@ export class InteractionManager {
     this: InteractionManager,
     e: PIXI.InteractionEvent,
   ): Promise<void> {
-    const editSession = await Rx.firstValueFrom(editSession$);
     const schematicKind = await Rx.firstValueFrom(
       this.dataManager.schematicKind$,
     );
@@ -125,7 +122,7 @@ export class InteractionManager {
 
     const target = this.renderer.plugins.interaction.hitTest(e.data.global);
     const isFakeNode = target.id === -1;
-    const canEdit = editSession && !isFakeNode;
+    const canEdit = !isFakeNode;
 
     if (target.name === "scene") {
       if (ST.isPanningActivated(this.stateService)) {
@@ -225,7 +222,7 @@ export class InteractionManager {
     }
 
     // Adding a node
-    const canAdd = !!editSession;
+    const canAdd = true;
     if (canAdd && ST.isAddingNode(this.stateService)) {
       this.nodeAddManager.afterAddNode();
       ST.deactivateNodeAdd(this.stateService);
@@ -237,11 +234,9 @@ export class InteractionManager {
       this.dataManager.selectedDeploymentNodeId$,
     );
 
-    const editSession = await Rx.firstValueFrom(editSession$);
-
     const target = this.renderer.plugins.interaction.hitTest(e.data.global);
     const isFakeNode = target?.id === -1;
-    const canEdit = editSession && !isFakeNode;
+    const canEdit = !isFakeNode;
 
     // Panning
     if (this.stateService.state.value === ST.ViewerState.PANNING_INITIATED) {
@@ -264,7 +259,6 @@ export class InteractionManager {
       ST.dragging(this.stateService);
     }
     if (ST.isDragging(this.stateService)) {
-      editButtonPulse$.next(true);
       if (canEdit) {
         const nodes = await findSelectedNodes(
           this.sceneManager,

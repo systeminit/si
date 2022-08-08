@@ -1,6 +1,6 @@
 SELECT DISTINCT ON (props.id) props.id,
                               props.visibility_change_set_pk,
-                              props.visibility_edit_session_pk,
+
                               props.visibility_deleted_at,
                               row_to_json(props.*) AS object
 FROM props
@@ -14,21 +14,15 @@ WHERE in_tenancy_v1(
   AND is_visible_v1(
         $2,
         props.visibility_change_set_pk,
-        props.visibility_edit_session_pk,
         props.visibility_deleted_at
     )
-  AND props.id IN (
-    WITH RECURSIVE recursive_props AS (
-        SELECT $3::bigint AS prop_id
-        UNION ALL
-        SELECT pbp.belongs_to_id AS prop_id
-        FROM prop_belongs_to_prop AS pbp
-                 JOIN recursive_props ON pbp.object_id = recursive_props.prop_id
-    )
-    SELECT prop_id
-    FROM recursive_props
-)
+  AND props.id IN (WITH RECURSIVE recursive_props AS (SELECT $3::bigint AS prop_id
+                                                      UNION ALL
+                                                      SELECT pbp.belongs_to_id AS prop_id
+                                                      FROM prop_belongs_to_prop AS pbp
+                                                               JOIN recursive_props ON pbp.object_id = recursive_props.prop_id)
+                   SELECT prop_id
+                   FROM recursive_props)
 ORDER BY id,
          visibility_change_set_pk DESC,
-         visibility_edit_session_pk DESC,
          visibility_deleted_at DESC NULLS FIRST;

@@ -9,7 +9,7 @@ use axum::{
 
 use thiserror::Error;
 
-use dal::qualification::QualificationSummaryError;
+use dal::{qualification::QualificationSummaryError, WsEventError};
 use dal::{
     AttributeValueError, ComponentError, ComponentId, FuncError, FuncId,
     QualificationPrototypeError, QualificationPrototypeId, ReadTenancyError, SchemaError, SchemaId,
@@ -67,6 +67,8 @@ pub enum QualificationError {
     NotWritable,
     #[error("qualification summary error: {0}")]
     QualificationSummaryError(#[from] QualificationSummaryError),
+    #[error("ws event error: {0}")]
+    WsEvent(#[from] WsEventError),
 }
 
 pub type QualificationResult<T> = std::result::Result<T, QualificationError>;

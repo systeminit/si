@@ -10,8 +10,8 @@ use crate::func::binding_return_value::FuncBindingReturnValue;
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_belongs_to,
     ws_event::{WsEvent, WsPayload},
-    BillingAccountId, Component, ComponentId, HistoryActor, HistoryEventError, ReadTenancyError,
-    StandardModel, StandardModelError, System, SystemId, Timestamp, Visibility, WriteTenancy,
+    Component, ComponentId, HistoryEventError, ReadTenancyError, StandardModel, StandardModelError,
+    System, SystemId, Timestamp, Visibility, WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -225,14 +225,12 @@ pub struct ResourceSyncId {
 
 impl WsEvent {
     pub fn resource_synced(
+        ctx: &DalContext<'_, '_>,
         component_id: ComponentId,
         system_id: SystemId,
-        billing_account_ids: Vec<BillingAccountId>,
-        history_actor: &HistoryActor,
     ) -> Self {
         WsEvent::new(
-            billing_account_ids,
-            history_actor.clone(),
+            ctx,
             WsPayload::ResourceSynced(ResourceSyncId {
                 component_id,
                 system_id,

@@ -1,10 +1,10 @@
 use dal::{
     test::{
-        helpers::{create_change_set, create_edit_session, create_group},
-        DalContextHeadMutRef, DalContextHeadRef,
+        helpers::{create_change_set, create_group},
+        DalContextHeadRef,
     },
-    BillingAccountId, ChangeSet, ChangeSetStatus, Group, StandardModel, Visibility,
-    NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK,
+    BillingAccountId, ChangeSet, ChangeSetStatus, DalContext, Group, StandardModel, Visibility,
+    NO_CHANGE_SET_PK,
 };
 
 use crate::dal::test;
@@ -28,22 +28,14 @@ async fn new(DalContextHeadRef(ctx): DalContextHeadRef<'_, '_, '_>) {
 }
 
 #[test]
-async fn apply(DalContextHeadMutRef(ctx): DalContextHeadMutRef<'_, '_, '_>, bid: BillingAccountId) {
-    let mut change_set = create_change_set(ctx, bid).await;
-    let mut edit_session = create_edit_session(ctx, &change_set).await;
-
-    ctx.update_visibility(Visibility::new_edit_session(
-        change_set.pk,
-        edit_session.pk,
-        false,
-    ));
+async fn apply(ctx: &mut DalContext<'_, '_>) {
+    let mut change_set = ChangeSet::get_by_pk(ctx, &ctx.visibility().change_set_pk)
+        .await
+        .unwrap()
+        .unwrap();
 
     let group = create_group(ctx).await;
 
-    edit_session
-        .save(ctx)
-        .await
-        .expect("cannot save edit session");
     change_set
         .apply(ctx)
         .await
@@ -60,7 +52,6 @@ async fn apply(DalContextHeadMutRef(ctx): DalContextHeadMutRef<'_, '_, '_>, bid:
     assert_eq!(group.id(), head_group.id());
     assert_ne!(group.pk(), head_group.pk());
     assert_eq!(group.name(), head_group.name());
-    assert_eq!(head_group.visibility().edit_session_pk, NO_EDIT_SESSION_PK);
     assert_eq!(head_group.visibility().change_set_pk, NO_CHANGE_SET_PK,);
 }
 

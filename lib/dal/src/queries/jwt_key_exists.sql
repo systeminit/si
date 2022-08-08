@@ -1,1 +1,3 @@
-SELECT pk FROM jwt_keys LIMIT 1;
+SELECT pk
+FROM jwt_keys
+LIMIT 1;

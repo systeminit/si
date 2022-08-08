@@ -22,7 +22,7 @@ pub mod context;
 pub mod cyclone_key_pair;
 pub mod edge;
 pub mod edit_field;
-pub mod edit_session;
+
 pub mod func;
 pub mod group;
 pub mod history_event;
@@ -105,9 +105,7 @@ pub use context::{
 };
 pub use cyclone_key_pair::CycloneKeyPair;
 pub use edge::{Edge, EdgeError, EdgeResult};
-pub use edit_session::{
-    EditSession, EditSessionError, EditSessionPk, EditSessionStatus, NO_EDIT_SESSION_PK,
-};
+
 pub use func::binding::FuncBinding;
 pub use func::binding_return_value::FuncBindingReturnValue;
 pub use func::{

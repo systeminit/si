@@ -6,7 +6,6 @@ import { switchMap } from "rxjs/operators";
 import { ApiResponse, SDF } from "@/api/sdf";
 import { System } from "@/api/sdf/dal/system";
 import { Visibility } from "@/api/sdf/dal/visibility";
-import { editSessionWritten$ } from "@/observable/edit_session";
 import { visibility$ } from "@/observable/visibility";
 import { workspace$ } from "@/observable/workspace";
 import { SystemService } from "@/service/system";
@@ -57,7 +56,6 @@ export function createSystem(
           tap((response) => {
             if (!response.error) {
               SystemService.switchTo(response.system);
-              editSessionWritten$.next(true);
             }
           }),
         );

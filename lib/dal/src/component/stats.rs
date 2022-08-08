@@ -45,11 +45,7 @@ impl ComponentStats {
             .pg()
             .query(
                 LIST_ADDED,
-                &[
-                    ctx.read_tenancy(),
-                    &ctx.visibility().change_set_pk,
-                    &ctx.visibility().edit_session_pk,
-                ],
+                &[ctx.read_tenancy(), &ctx.visibility().change_set_pk],
             )
             .await?;
         ComponentStatsGroup::new_from_rows(rows)
@@ -62,11 +58,7 @@ impl ComponentStats {
             .pg()
             .query(
                 LIST_DELETED,
-                &[
-                    ctx.read_tenancy(),
-                    &ctx.visibility().change_set_pk,
-                    &ctx.visibility().edit_session_pk,
-                ],
+                &[ctx.read_tenancy(), &ctx.visibility().change_set_pk],
             )
             .await?;
         ComponentStatsGroup::new_from_rows(rows)
@@ -79,11 +71,7 @@ impl ComponentStats {
             .pg()
             .query(
                 LIST_MODIFIED,
-                &[
-                    ctx.read_tenancy(),
-                    &ctx.visibility().change_set_pk,
-                    &ctx.visibility().edit_session_pk,
-                ],
+                &[ctx.read_tenancy(), &ctx.visibility().change_set_pk],
             )
             .await?;
         ComponentStatsGroup::new_from_rows(rows)

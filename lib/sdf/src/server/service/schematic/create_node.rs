@@ -1,6 +1,7 @@
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use crate::service::schematic::{SchematicError, SchematicResult};
 use axum::Json;
+use dal::WsEvent;
 use dal::{
     generate_name, node::NodeId, node::NodeViewKind, node_position::NodePositionView, Component,
     Node, NodeKind, NodePosition, NodeTemplate, NodeView, Schema, SchemaId, SchematicKind,
@@ -114,6 +115,8 @@ pub async fn create_node(
         positions.push(NodePositionView::from(position_component_panel));
     }
     let node_view = NodeView::new(name, &node, kind, positions, node_template);
+
+    WsEvent::change_set_written(&ctx).publish(&ctx).await?;
 
     txns.commit().await?;
 

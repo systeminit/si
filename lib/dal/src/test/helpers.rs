@@ -8,10 +8,9 @@ use crate::func::binding_return_value::FuncBindingReturnValueId;
 use crate::{
     node::NodeId, AttributeContext, AttributeReadContext, AttributeValue, AttributeValueId,
     BillingAccount, BillingAccountId, BillingAccountSignup, ChangeSet, Component, ComponentId,
-    ComponentView, DalContext, DalContextBuilder, EditSession, Func, FuncBinding, FuncId, Group,
-    HistoryActor, JwtSecretKey, Node, Prop, PropId, RequestContext, Schema, SchemaId,
-    SchemaVariant, SchemaVariantId, StandardModel, System, Transactions, User, Visibility,
-    WorkspaceId,
+    ComponentView, DalContext, DalContextBuilder, Func, FuncBinding, FuncId, Group, HistoryActor,
+    JwtSecretKey, Node, Prop, PropId, RequestContext, Schema, SchemaId, SchemaVariant,
+    SchemaVariantId, StandardModel, System, Transactions, User, Visibility, WorkspaceId,
 };
 
 pub mod provider;
@@ -112,43 +111,23 @@ pub async fn create_change_set(
         .expect("cannot create change_set")
 }
 
-pub async fn create_edit_session(ctx: &DalContext<'_, '_>, change_set: &ChangeSet) -> EditSession {
-    let name = generate_fake_name();
-    EditSession::new(ctx, &change_set.pk, &name, None)
-        .await
-        .expect("cannot create edit_session")
+pub fn create_visibility_for_change_set(change_set: &ChangeSet) -> Visibility {
+    Visibility::new(change_set.pk, None)
 }
 
-pub async fn create_change_set_and_edit_session(
-    ctx: &DalContext<'_, '_>,
-    billing_account_id: BillingAccountId,
-) -> (ChangeSet, EditSession) {
-    let change_set = create_change_set(ctx, billing_account_id).await;
-    let edit_session = create_edit_session(ctx, &change_set).await;
-    (change_set, edit_session)
-}
-
-pub fn create_visibility_for_change_set_and_edit_session(
-    change_set: &ChangeSet,
-    edit_session: &EditSession,
-) -> Visibility {
-    Visibility::new(change_set.pk, edit_session.pk, None)
-}
-
-/// Creates a new [`Visibility`] backed by a new [`ChangeSet`] and a new [`EditSession`].
-pub async fn create_visibility_for_new_change_set_and_edit_session(
+/// Creates a new [`Visibility`] backed by a new [`ChangeSet`]
+pub async fn create_visibility_for_new_change_set(
     ctx: &DalContext<'_, '_>,
     billing_account_id: BillingAccountId,
 ) -> Visibility {
     let _history_actor = HistoryActor::SystemInit;
-    let (change_set, edit_session) =
-        create_change_set_and_edit_session(ctx, billing_account_id).await;
+    let change_set = create_change_set(ctx, billing_account_id).await;
 
-    create_visibility_for_change_set_and_edit_session(&change_set, &edit_session)
+    create_visibility_for_change_set(&change_set)
 }
 
 /// Creates a new [`DalContext`] in a change set and edit session in the given billing account.
-pub async fn create_ctx_for_new_change_set_and_edit_session<'s, 't>(
+pub async fn create_ctx_for_new_change_set<'s, 't>(
     builder: &'s DalContextBuilder,
     txns: &'t Transactions<'t>,
     nba: &BillingAccountSignup,
@@ -163,18 +142,15 @@ pub async fn create_ctx_for_new_change_set_and_edit_session<'s, 't>(
     .await
     .expect("failed to create request context");
     let ctx = builder.build(request_context, txns);
-    let visibility =
-        create_visibility_for_new_change_set_and_edit_session(&ctx, *nba.billing_account.id())
-            .await;
+    let visibility = create_visibility_for_new_change_set(&ctx, *nba.billing_account.id()).await;
     ctx.clone_with_new_visibility(visibility)
 }
 
-pub async fn new_ctx_for_new_change_set_and_edit_session<'a, 'b>(
+pub async fn new_ctx_for_new_change_set<'a, 'b>(
     ctx: &DalContext<'a, 'b>,
     billing_account_id: BillingAccountId,
 ) -> DalContext<'a, 'b> {
-    let visibility =
-        create_visibility_for_new_change_set_and_edit_session(ctx, billing_account_id).await;
+    let visibility = create_visibility_for_new_change_set(ctx, billing_account_id).await;
     ctx.clone_with_new_visibility(visibility)
 }
 

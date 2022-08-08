@@ -62,7 +62,7 @@ const emits = defineEmits<{
 }>();
 
 const disabled = refFrom<boolean>(
-  ChangeSetService.currentEditMode().pipe(
+  ChangeSetService.currentChangeSet().pipe(
     switchMap((value) => {
       return from([!value]);
     }),

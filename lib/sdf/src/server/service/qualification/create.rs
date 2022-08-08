@@ -3,7 +3,7 @@ use dal::{
     func::backend::js_qualification::FuncBackendJsQualificationArgs, generate_name,
     job::definition::Qualification, qualification_prototype::QualificationPrototypeContext,
     Component, ComponentId, Func, FuncBackendKind, FuncBackendResponseType, QualificationPrototype,
-    QualificationPrototypeId, Schema, StandardModel, SystemId, Visibility,
+    QualificationPrototypeId, Schema, StandardModel, SystemId, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 
@@ -147,6 +147,8 @@ async function qualification(component) {
         )
         .await;
     }
+
+    WsEvent::change_set_written(&ctx).publish(&ctx).await?;
 
     txns.commit().await?;
 

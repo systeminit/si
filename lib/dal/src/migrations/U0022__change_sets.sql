@@ -36,8 +36,8 @@ $$ LANGUAGE PLPGSQL VOLATILE;
 
 CREATE TYPE change_set_update_type_v1 as
 (
-    pk bigint,
-    id bigint,
+    pk                          bigint,
+    id                          bigint,
     tenancy_universal           bool,
     tenancy_billing_account_ids bigint[],
     tenancy_organization_ids    bigint[],
@@ -45,8 +45,8 @@ CREATE TYPE change_set_update_type_v1 as
 );
 
 CREATE OR REPLACE FUNCTION change_set_apply_v1(this_change_set_pk bigint,
-                                                this_actor jsonb,
-                                                OUT timestamp_updated_at timestamp with time zone) AS
+                                               this_actor jsonb,
+                                               OUT timestamp_updated_at timestamp with time zone) AS
 $$
 DECLARE
     standard_model      standard_models%ROWTYPE;
@@ -70,7 +70,7 @@ BEGIN
             FROM information_schema.columns
             WHERE information_schema.columns.table_name = standard_model.table_name
               AND information_schema.columns.column_name NOT IN
-                  ('visibility_change_set_pk', 'visibility_edit_session_pk', 'pk', 'created_at', 'updated_at')
+                  ('visibility_change_set_pk', 'pk', 'created_at', 'updated_at')
             INTO insert_column_names;
 
             SELECT string_agg(information_schema.columns.column_name::text || ' = EXCLUDED.' ||
@@ -79,8 +79,7 @@ BEGIN
             WHERE information_schema.columns.table_name = standard_model.table_name
               AND information_schema.columns.column_name NOT IN
                   ('pk', 'id', 'tenancy_universal', 'tenancy_billing_account_ids', 'tenancy_organization_ids',
-                   'tenancy_workspace_ids', 'visibility_change_set_pk', 'visibility_edit_session_pk', 'pk',
-                   'created_at', 'updated_at')
+                   'tenancy_workspace_ids', 'visibility_change_set_pk', 'pk', 'created_at', 'updated_at')
             INTO update_set_names;
 
             -- Ok, this looks neat, huh? What's going on?
@@ -92,19 +91,17 @@ BEGIN
             EXECUTE format('UPDATE %1$I ' ||
                            '  SET visibility_deleted_at = now() ' ||
                            'WHERE visibility_change_set_pk = -1 ' ||
-                           '  AND visibility_edit_session_pk = -1 ' ||
                            '  AND visibility_deleted_at IS NULL ' ||
                            '  AND id IN ( ' ||
                            '      SELECT id ' ||
                            '      FROM %1$I ' ||
                            '      WHERE visibility_change_set_pk = %2$L ' ||
-                           '        AND visibility_edit_session_pk = -1 ' ||
                            '        AND visibility_deleted_at IS NOT NULL ' ||
                            '  )', this_table_name, this_change_set_pk);
 
             query := format('INSERT INTO %1$I (%2$s) ' ||
-                            'SELECT %2$s FROM %1$I WHERE %1$I.visibility_change_set_pk = %3$L AND %1$I.visibility_edit_session_pk = -1 ' ||
-                            'ON CONFLICT (id, visibility_change_set_pk, visibility_edit_session_pk, (visibility_deleted_at IS NULL))  WHERE visibility_deleted_at IS NULL ' ||
+                            'SELECT %2$s FROM %1$I WHERE %1$I.visibility_change_set_pk = %3$L' ||
+                            'ON CONFLICT (id, visibility_change_set_pk, (visibility_deleted_at IS NULL))  WHERE visibility_deleted_at IS NULL ' ||
                             'DO UPDATE SET updated_at = now(), %4$s ' ||
                             'RETURNING pk, id, tenancy_universal, tenancy_billing_account_ids, tenancy_organization_ids, tenancy_workspace_ids',
                             this_table_name, insert_column_names, this_change_set_pk, update_set_names);
@@ -114,7 +111,8 @@ BEGIN
                 LOOP
                     PERFORM history_event_create_v1(standard_model.history_event_label_base || '.change_set.apply',
                                                     this_actor,
-                                                    standard_model.history_event_message_name || ' update applied by change set',
+                                                    standard_model.history_event_message_name ||
+                                                    ' update applied by change set',
                                                     jsonb_build_object(
                                                             'pk', updated_model.pk,
                                                             'id', updated_model.id,
@@ -122,8 +120,10 @@ BEGIN
                                                         ),
                                                     jsonb_build_object(
                                                             'tenancy_universal', updated_model.tenancy_universal,
-                                                            'tenancy_billing_account_ids', updated_model.tenancy_billing_account_ids,
-                                                            'tenancy_organization_ids', updated_model.tenancy_organization_ids,
+                                                            'tenancy_billing_account_ids',
+                                                            updated_model.tenancy_billing_account_ids,
+                                                            'tenancy_organization_ids',
+                                                            updated_model.tenancy_organization_ids,
                                                             'tenancy_workspace_ids', updated_model.tenancy_workspace_ids
                                                         )
                         );

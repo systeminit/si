@@ -49,8 +49,6 @@ import SecretList from "@/organisms/Secret/SecretList.vue";
 import Panel from "@/molecules/Panel.vue";
 import SiButton from "@/atoms/SiButton.vue";
 import { computed, ref } from "vue";
-import { refFrom } from "vuse-rx";
-import { ChangeSetService } from "@/service/change_set";
 
 const props = defineProps<{
   panelIndex: number;
@@ -61,10 +59,6 @@ const props = defineProps<{
   isVisible?: boolean;
   isMaximizedContainerEnabled?: boolean;
 }>();
-
-const editMode = refFrom<boolean | undefined>(
-  ChangeSetService.currentEditMode(),
-);
 
 const renderView = ref<"create" | "list">("list");
 
@@ -81,9 +75,8 @@ const secretCreateCancel = () => {
 };
 
 const enableNewSecretButton = computed((): boolean => {
-  const inEditMode = editMode.value != undefined && editMode.value;
   const notInCreateSecretView = renderView.value != "create";
 
-  return inEditMode && notInCreateSecretView;
+  return notInCreateSecretView;
 });
 </script>

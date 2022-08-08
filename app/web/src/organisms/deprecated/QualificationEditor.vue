@@ -31,7 +31,6 @@
       />
 
       <SiButton
-        v-if="editMode"
         label="save"
         size="xs"
         icon="save"
@@ -57,7 +56,6 @@ import { QualificationService } from "@/service/qualification";
 import { GetCodeResponse } from "@/service/qualification/get_code";
 import { GlobalErrorService } from "@/service/global_error";
 import { Compartment } from "@codemirror/state";
-import { ChangeSetService } from "@/service/change_set";
 import { system$ } from "@/observable/system";
 import SiButton from "@/atoms/SiButton.vue";
 import SiTextBox from "@/atoms/SiTextBox.vue";
@@ -77,8 +75,6 @@ const view$ = fromRef(view, { immediate: true });
 const readOnly = new Compartment();
 
 const name = ref("");
-
-const editMode = refFrom<boolean>(ChangeSetService.currentEditMode());
 
 onMounted(() => {
   if (editorMount.value) {
@@ -152,9 +148,9 @@ const code = refFrom<GetCodeResponse | undefined>(
               to: view.state.doc.length,
               insert: reply.code,
             },
-            effects: readOnly.reconfigure(
-              EditorState.readOnly.of(!editMode.value),
-            ),
+            //effects: readOnly.reconfigure(
+            //  EditorState.readOnly.of(!editMode.value),
+            //),
           });
         }
         name.value = reply.prototype.title;

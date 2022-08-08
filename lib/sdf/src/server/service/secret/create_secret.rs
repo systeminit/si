@@ -1,7 +1,7 @@
 use axum::Json;
 use dal::{
     key_pair::KeyPairId, EncryptedSecret, Secret, SecretAlgorithm, SecretKind, SecretObjectType,
-    SecretVersion, Visibility, WorkspaceId,
+    SecretVersion, Visibility, WorkspaceId, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 
@@ -51,6 +51,8 @@ pub async fn create_secret(
         claim.billing_account_id,
     )
     .await?;
+
+    WsEvent::change_set_written(&ctx).publish(&ctx).await?;
 
     txns.commit().await?;
 

@@ -44,7 +44,6 @@ import { toRefs } from "vue";
 import { fromRef, refFrom } from "vuse-rx";
 import { GlobalErrorService } from "@/service/global_error";
 import { standardVisibilityTriggers$ } from "@/observable/visibility";
-import { editSessionWritten$ } from "@/observable/edit_session";
 import { ProviderService } from "@/service/provider";
 import { ListAllProviderResponse } from "@/service/provider/list_all_providers";
 
@@ -56,11 +55,7 @@ const { schemaVariantId } = toRefs(props);
 const schemaVariantId$ = fromRef<number>(schemaVariantId, { immediate: true });
 
 const allProviders = refFrom<ListAllProviderResponse | undefined>(
-  Rx.combineLatest([
-    schemaVariantId$,
-    standardVisibilityTriggers$,
-    editSessionWritten$,
-  ]).pipe(
+  Rx.combineLatest([schemaVariantId$, standardVisibilityTriggers$]).pipe(
     Rx.switchMap(([schemaVariantId, [visibility]]) => {
       return ProviderService.listAllProviders({
         schemaVariantId: schemaVariantId,

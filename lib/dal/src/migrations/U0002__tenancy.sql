@@ -36,8 +36,8 @@ DECLARE
     read_tenancy_record   tenancy_record_v1;
     universal_check       bool;
     billing_account_check bool;
-    organization_check bool;
-    workspace_check bool;
+    organization_check    bool;
+    workspace_check       bool;
 BEGIN
     read_tenancy_record := tenancy_json_to_columns_v1(read_tenancy);
     RAISE DEBUG 'in_tenancy: % vs: u:% b:% o:% w:%', read_tenancy, row_tenancy_universal, row_tenancy_billing_account_ids, row_tenancy_organization_ids, row_tenancy_workspace_ids;

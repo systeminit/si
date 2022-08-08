@@ -4,8 +4,8 @@ import {
   eventChangeSetApplied$,
   eventChangeSetCanceled$,
   eventChangeSetCreated$,
+  eventChangeSetWritten$,
 } from "@/observable/change_set";
-import { eventEditSessionSaved$ } from "@/observable/edit_session";
 import { eventResourceSynced$ } from "@/observable/resource";
 import { eventCheckedQualifications$ } from "@/observable/qualification";
 import { eventDependentValuesUpdated$ } from "@/observable/attribute_value";
@@ -23,7 +23,7 @@ const eventMap: {
   ChangeSetCreated: eventChangeSetCreated$,
   ChangeSetApplied: eventChangeSetApplied$,
   ChangeSetCanceled: eventChangeSetCanceled$,
-  EditSessionSaved: eventEditSessionSaved$,
+  ChangeSetWritten: eventChangeSetWritten$,
   ResourceSynced: eventResourceSynced$,
   CodeGenerated: eventCodeGenerated$,
   CheckedQualifications: eventCheckedQualifications$,

@@ -1,5 +1,5 @@
 use axum::Json;
-use dal::{AttributeContext, AttributeValue, AttributeValueId, Visibility};
+use dal::{AttributeContext, AttributeValue, AttributeValueId, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
 
 use super::ComponentResult;
@@ -38,6 +38,8 @@ pub async fn insert_property_editor_value(
         request.key,
     )
     .await?;
+
+    WsEvent::change_set_written(&ctx).publish(&ctx).await?;
 
     txns.commit().await?;
 

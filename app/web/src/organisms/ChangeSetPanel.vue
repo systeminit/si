@@ -19,23 +19,7 @@
           label="Apply"
           icon-style="left"
           icon="git-merge"
-          @click="saveEditSessionAndApplyChangeSet"
-        />
-      </div>
-      <div class="mb-3 flex items-center gap-x-[0.9375rem]">
-        <TertiaryDestructiveButtonXSmall
-          label="Discard"
-          icon-style="left"
-          icon="x"
-          class="flex-grow"
-          @click="cancelAndStartEditSession"
-        />
-        <PrimarySuccessButtonXSmall
-          label="Commit"
-          icon-style="left"
-          icon="git-branch"
-          class="flex-grow"
-          @click="saveAndStartEditSession"
+          @click="applyChangeSet"
         />
       </div>
     </section>
@@ -260,32 +244,12 @@ const closeSelectDialog = async () => {
 };
 
 // Saves the current edit session and then applies the current change set
-const saveEditSessionAndApplyChangeSet = async () => {
-  ChangeSetService.saveEditSessionAndApplyChangeSet().subscribe(
-    async (response) => {
-      if (response.error) {
-        GlobalErrorService.set(response);
-      } else {
-        await navigateToView();
-      }
-    },
-  );
-};
-
-// Saves the current edit session and starts a new edit session
-const saveAndStartEditSession = () => {
-  ChangeSetService.saveAndStartEditSession().subscribe((response) => {
+const applyChangeSet = async () => {
+  ChangeSetService.applyChangeSet().subscribe(async (response) => {
     if (response.error) {
       GlobalErrorService.set(response);
-    }
-  });
-};
-
-// Cancels the current edit session and starts a new edit session
-const cancelAndStartEditSession = () => {
-  ChangeSetService.cancelAndStartEditSession().subscribe((response) => {
-    if (response.error) {
-      GlobalErrorService.set(response);
+    } else {
+      await navigateToView();
     }
   });
 };

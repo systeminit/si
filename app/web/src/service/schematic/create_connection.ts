@@ -1,12 +1,11 @@
 import { Visibility } from "@/api/sdf/dal/visibility";
-import { combineLatest, from, Observable, take, tap } from "rxjs";
+import { combineLatest, from, Observable, take } from "rxjs";
 import { ApiResponse, SDF } from "@/api/sdf";
 import { visibility$ } from "@/observable/visibility";
 import { workspace$ } from "@/observable/workspace";
 import { switchMap } from "rxjs/operators";
 import Bottle from "bottlejs";
 import _ from "lodash";
-import { editSessionWritten$ } from "@/observable/edit_session";
 
 export interface CreateConnectionArgs {
   headNodeId: number;
@@ -47,13 +46,7 @@ export function createConnection(
         ...visibility,
         workspaceId: workspace.id,
       };
-      return sdf.post("schematic/create_connection", request).pipe(
-        tap((response) => {
-          if (!response.error) {
-            editSessionWritten$.next(true);
-          }
-        }),
-      );
+      return sdf.post("schematic/create_connection", request);
     }),
   );
 }

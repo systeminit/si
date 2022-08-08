@@ -22,7 +22,9 @@
           </span>
         </h1>
         <h3>
-          <span class="block text-xl text-center leading-8 tracking-tight text-neutral-600 sm:text-md">
+          <span
+            class="block text-xl text-center leading-8 tracking-tight text-neutral-600 sm:text-md"
+          >
             By {{ blog.fields.author.fields.name }}
           </span>
         </h3>

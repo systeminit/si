@@ -1,12 +1,11 @@
 import Bottle from "bottlejs";
 import { ApiResponse, SDF } from "@/api/sdf";
 import { SchematicKind } from "@/api/sdf/dal/schematic";
-import { combineLatest, Observable, take, tap } from "rxjs";
+import { combineLatest, Observable, take } from "rxjs";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import { NodePosition } from "@/api/sdf/dal/node_position";
 import { visibility$ } from "@/observable/visibility";
 import { switchMap } from "rxjs/operators";
-import { editSessionWritten$ } from "@/observable/edit_session";
 import _ from "lodash";
 
 export interface SetNodePositionArgs {
@@ -39,18 +38,10 @@ export function setNodePosition(
         ...args,
         ...visibility,
       };
-      return sdf
-        .post<ApiResponse<SetNodePositionResponse>>(
-          "schematic/set_node_position",
-          request,
-        )
-        .pipe(
-          tap((response) => {
-            if (!response.error) {
-              editSessionWritten$.next(true);
-            }
-          }),
-        );
+      return sdf.post<ApiResponse<SetNodePositionResponse>>(
+        "schematic/set_node_position",
+        request,
+      );
     }),
   );
 }

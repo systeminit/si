@@ -20,7 +20,7 @@
         </SiButtonIcon>
 
         <SiButtonIcon
-          v-if="editMode"
+          v-if="!props.diffMode"
           tooltip-text="Re-generate code"
           ignore-text-color
           @click="emit('generate')"
@@ -54,7 +54,6 @@ import { gruvboxDark } from "cm6-theme-gruvbox-dark";
 import { gruvboxLight } from "cm6-theme-gruvbox-light";
 import { refFrom } from "vuse-rx/src";
 import { Compartment, Extension, StateEffect } from "@codemirror/state";
-import { ChangeSetService } from "@/service/change_set";
 import SiButtonIcon from "@/atoms/SiButtonIcon.vue";
 import { ClipboardCopyIcon } from "@heroicons/vue/solid";
 import { ThemeService } from "@/service/theme";
@@ -71,6 +70,8 @@ const props = defineProps<{
   // Format: "0.0px"
   fontSize?: string;
   forceTheme?: "dark" | "light";
+
+  diffMode?: boolean;
 }>();
 
 const emit = defineEmits(["generate"]);
@@ -78,8 +79,6 @@ const emit = defineEmits(["generate"]);
 const editorMount = ref(null);
 const view = ref<null | EditorView>(null);
 const readOnly = new Compartment();
-
-const editMode = refFrom<boolean>(ChangeSetService.currentEditMode());
 
 // This doesn't work on IE, do we care? (is it polyfilled by our build system?)
 // RE ^^: https://www.youtube.com/watch?v=Ram7AKbtkGE

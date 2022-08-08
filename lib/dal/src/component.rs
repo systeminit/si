@@ -294,6 +294,7 @@ impl Component {
         let _ = component
             .set_value_by_json_pointer(ctx, "/root/si/name", Some(name.as_ref()))
             .await?;
+
         Ok((component, node))
     }
 
@@ -523,15 +524,9 @@ impl Component {
             .await?;
         }
 
-        WsEvent::checked_qualifications(
-            *prototype.id(),
-            *self.id(),
-            system_id,
-            ctx.read_tenancy().billing_accounts().into(),
-            ctx.history_actor(),
-        )
-        .publish(ctx.txns().nats())
-        .await?;
+        WsEvent::checked_qualifications(ctx, *prototype.id(), *self.id(), system_id)
+            .publish(ctx)
+            .await?;
 
         Ok(())
     }
@@ -620,15 +615,9 @@ impl Component {
                 .await?;
             }
 
-            WsEvent::checked_qualifications(
-                *prototype.id(),
-                *self.id(),
-                system_id,
-                ctx.read_tenancy().billing_accounts().into(),
-                ctx.history_actor(),
-            )
-            .publish(ctx.txns().nats())
-            .await?;
+            WsEvent::checked_qualifications(ctx, *prototype.id(), *self.id(), system_id)
+                .publish(ctx)
+                .await?;
         }
 
         Ok(())
@@ -689,15 +678,9 @@ impl Component {
             .await?;
         }
 
-        WsEvent::checked_qualifications(
-            *prototype.id(),
-            *self.id(),
-            system_id,
-            ctx.read_tenancy().billing_accounts().into(),
-            ctx.history_actor(),
-        )
-        .publish(ctx.txns().nats())
-        .await?;
+        WsEvent::checked_qualifications(ctx, *prototype.id(), *self.id(), system_id)
+            .publish(ctx)
+            .await?;
 
         Ok(())
     }
@@ -778,15 +761,9 @@ impl Component {
                 .await?;
             }
 
-            WsEvent::checked_qualifications(
-                *prototype.id(),
-                *self.id(),
-                system_id,
-                ctx.read_tenancy().billing_accounts().into(),
-                ctx.history_actor(),
-            )
-            .publish(ctx.txns().nats())
-            .await?;
+            WsEvent::checked_qualifications(ctx, *prototype.id(), *self.id(), system_id)
+                .publish(ctx)
+                .await?;
         }
 
         Ok(())
@@ -877,14 +854,9 @@ impl Component {
             }
         }
 
-        WsEvent::code_generated(
-            *self.id(),
-            system_id,
-            ctx.read_tenancy().billing_accounts().into(),
-            ctx.history_actor(),
-        )
-        .publish(ctx.txns().nats())
-        .await?;
+        WsEvent::code_generated(ctx, *self.id(), system_id)
+            .publish(ctx)
+            .await?;
 
         Ok(())
     }
@@ -968,14 +940,9 @@ impl Component {
             }
         }
 
-        WsEvent::code_generated(
-            *self.id(),
-            system_id,
-            ctx.read_tenancy().billing_accounts().into(),
-            ctx.history_actor(),
-        )
-        .publish(ctx.txns().nats())
-        .await?;
+        WsEvent::code_generated(ctx, *self.id(), system_id)
+            .publish(ctx)
+            .await?;
 
         Ok(())
     }
@@ -1404,14 +1371,9 @@ impl Component {
                 .await?;
         }
 
-        WsEvent::resource_synced(
-            *self.id(),
-            system_id,
-            ctx.read_tenancy().billing_accounts().into(),
-            ctx.history_actor(),
-        )
-        .publish(ctx.txns().nats())
-        .await?;
+        WsEvent::resource_synced(ctx, *self.id(), system_id)
+            .publish(ctx)
+            .await?;
 
         Ok(())
     }

@@ -2,8 +2,6 @@ import Bottle from "bottlejs";
 import { ApiResponse, SDF } from "@/api/sdf";
 import { ChangeSet } from "@/api/sdf/dal/change_set";
 import { changeSet$, revision$ } from "@/observable/change_set";
-import { editSession$ } from "@/observable/edit_session";
-import { editMode$ } from "@/observable/edit_mode";
 import { Observable, tap } from "rxjs";
 
 interface GetChangeSetRequest {
@@ -28,9 +26,7 @@ export function getChangeSet(
       tap((response) => {
         if (!response.error) {
           changeSet$.next(response.changeSet);
-          editSession$.next(null);
           revision$.next(null);
-          editMode$.next(false);
         }
       }),
     );
