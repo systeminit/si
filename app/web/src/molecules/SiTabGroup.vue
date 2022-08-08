@@ -1,5 +1,5 @@
 <template>
-  <TabGroup>
+  <TabGroup :selected-index="selectedIndex" @change="change && change">
     <slot />
     <TabList
       class="border-b-2 dark:border-neutral-600 h-11 flex shrink-0 gap-4 px-4"
@@ -15,4 +15,9 @@
 
 <script setup lang="ts">
 import { TabGroup, TabPanels, TabList } from "@headlessui/vue";
+
+defineProps<{
+  selectedIndex?: number;
+  change?: (selectedIndex: number) => void;
+}>();
 </script>
