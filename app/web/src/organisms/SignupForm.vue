@@ -32,7 +32,7 @@
 
         <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
           <div class="sm:col-span-6">
-            <SiTextBox2
+            <SiTextBox
               id="billingAccountName"
               v-model="form.billingAccountName"
               title="Billing Account Name"
@@ -44,7 +44,7 @@
           </div>
 
           <div class="sm:col-span-6">
-            <SiTextBox2
+            <SiTextBox
               id="userName"
               v-model="form.userName"
               title="Full Name"
@@ -56,7 +56,7 @@
           </div>
 
           <div class="sm:col-span-6">
-            <SiTextBox2
+            <SiTextBox
               id="userEmail"
               v-model="form.userEmail"
               title="Email"
@@ -75,7 +75,7 @@
           </div>
 
           <div class="sm:col-span-6">
-            <SiTextBox2
+            <SiTextBox
               id="userPassword"
               v-model="form.userPassword"
               title="Password"
@@ -96,7 +96,7 @@
           </div>
 
           <div class="sm:col-span-6">
-            <SiTextBox2
+            <SiTextBox
               id="signupSecret"
               v-model="form.signupSecret"
               login-mode
@@ -130,7 +130,7 @@
 import { ref } from "vue";
 import { CreateAccountRequest, SignupService } from "@/service/signup";
 import siLogoWts from "@/assets/images/si-logo-wts.svg";
-import SiTextBox2 from "@/atoms/SiTextBox2.vue";
+import SiTextBox from "@/atoms/SiTextBox.vue";
 import validator from "validator";
 import _ from "lodash";
 import { useFieldErrors } from "@/composables/useFieldErrors";

@@ -11,7 +11,6 @@
           size="xs"
           name="secretName"
           placeholder="secret name"
-          :is-show-type="false"
           required
         />
       </div>

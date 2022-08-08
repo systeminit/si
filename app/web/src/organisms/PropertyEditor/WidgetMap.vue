@@ -28,7 +28,7 @@
 
 <script setup lang="ts">
 import { ref, toRefs, computed } from "vue";
-import SiTextBox from "@/atoms/SiTextBox2.vue";
+import SiTextBox from "@/atoms/SiTextBox.vue";
 import SiButton from "@/atoms/SiButton.vue";
 import _ from "lodash";
 import { usePropertyEditorIsShown } from "@/composables/usePropertyEditorIsShown";

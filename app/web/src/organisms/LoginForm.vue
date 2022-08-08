@@ -22,7 +22,7 @@
     </div>
 
     <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-      <div class="bg-gray-800 py-8 px-4 shadow sm:rounded-sm sm:px-10">
+      <div class="bg-neutral-900 py-8 px-4 shadow sm:rounded-sm sm:px-10">
         <div
           v-if="errorMessage"
           data-testid="error-message"
@@ -33,7 +33,7 @@
 
         <div class="space-y-6">
           <div>
-            <SiTextBox2
+            <SiTextBox
               id="billingAccountName"
               v-model="form.billingAccountName"
               title="Billing Account Name"
@@ -44,7 +44,7 @@
           </div>
 
           <div>
-            <SiTextBox2
+            <SiTextBox
               id="userEmail"
               v-model="form.userEmail"
               title="Email Address"
@@ -62,7 +62,7 @@
           </div>
 
           <div>
-            <SiTextBox2
+            <SiTextBox
               id="userPassword"
               v-model="form.userPassword"
               title="Password"
@@ -97,7 +97,7 @@
 import { ref } from "vue";
 import { SessionService } from "@/service/session";
 import siLogoWts from "@/assets/images/si-logo-wts.svg";
-import SiTextBox2 from "@/atoms/SiTextBox2.vue";
+import SiTextBox from "@/atoms/SiTextBox.vue";
 import { useFieldErrors } from "@/composables/useFieldErrors";
 import validator from "validator";
 

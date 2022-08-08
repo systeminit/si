@@ -33,7 +33,6 @@
           v-model="secretMessage[field.keyName]"
           size="xs"
           placeholder=""
-          :is-show-type="false"
           required
           @input="updateInput"
         />

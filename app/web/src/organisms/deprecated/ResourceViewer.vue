@@ -38,7 +38,7 @@
           id="resourceJson"
           name="resourceJson"
           :placeholder="JSON.stringify(resource)"
-          :is-text-area="true"
+          text-area
           :model-value="JSON.stringify(resource)"
         />
       </div>
