@@ -3,3 +3,8 @@
 @tailwind components;
 
 @tailwind utilities;
+
+@font-face {
+  font-family: "commodore";
+  src: url("fonts/Commodore-64-v6.3.ttf");
+}

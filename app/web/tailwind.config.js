@@ -12,6 +12,7 @@ module.exports = {
     },
     fontFamily: {
       sans: ["Inter", "Sans-serif"],
+      commodore: ["commodore", "Sans-serif"],
     },
     colors: {
       transparent: "transparent",
@@ -45,6 +46,6 @@ module.exports = {
   },
   plugins: [
     require("@tailwindcss/forms"),
-    require("./src/design/themes/tailwind/plugin/si_typography")
+    require("./src/design/themes/tailwind/plugin/si_typography"),
   ],
 };

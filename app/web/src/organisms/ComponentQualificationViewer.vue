@@ -14,9 +14,9 @@
       <div
         v-for="(qualification, index) in qualificationList"
         :key="index"
-        class="basis-full lg:basis-1/2 xl:basis-1/3"
+        class="basis-full lg:basis-1/2 xl:basis-1/3 overflow-hidden pb-4 px-2"
       >
-        <QualificationView :qualification="qualification" class="mb-4 mx-2" />
+        <QualificationView :qualification="qualification" />
       </div>
     </div>
   </div>
