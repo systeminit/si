@@ -3,15 +3,21 @@
     <SiTabGroup :selected-index="selectedTab" @change="changeTab">
       <template #tabs>
         <SiTabHeader v-for="(funcId, index) in funcList" :key="funcId">{{
-          editingFuncs[index].modifiedFunc.name
+          editingFuncs[index].origFunc.name
         }}</SiTabHeader>
       </template>
       <template #panels>
         <TabPanel v-for="(funcId, index) in funcList" :key="funcId">
           <FuncEditor
-            :funcId="funcId"
+            :func-id="funcId"
             @updated-code="
               (code) => updateCodeForFunc(editingFuncs[index], code)
+            "
+            @updated-handler="
+              (handler) => updateHandlerForFunc(editingFuncs[index], handler)
+            "
+            @updated-name="
+              (name) => updateNameForFunc(editingFuncs[index], name)
             "
           />
         </TabPanel>
@@ -53,7 +59,6 @@ const selectFunc = (funcId: number) => {
 const selectedFuncId = toRef(props, "selectedFuncId", 0);
 const selectedFuncId$ = fromRef(selectedFuncId, { immediate: true });
 const selectedTab = refFrom<number>(selectedTab$);
-const loadedFuncs = ref<{ [key: number]: GetFuncResponse }>({});
 
 const changeTab = (index: number) => {
   selectFunc(funcList.value[index] ?? 0);
@@ -77,6 +82,24 @@ const editingFuncs = refFrom<EditingFunc[]>(
   [],
 );
 
+const updateHandlerForFunc = (func: EditingFunc, newHandler: string) =>
+  updateFunc({
+    ...func,
+    modifiedFunc: {
+      ...func.modifiedFunc,
+      handler: newHandler,
+    },
+  });
+
+const updateNameForFunc = (func: EditingFunc, newName: string) =>
+  updateFunc({
+    ...func,
+    modifiedFunc: {
+      ...func.modifiedFunc,
+      name: newName,
+    },
+  });
+
 const updateCodeForFunc = (func: EditingFunc, newCode: string) =>
   updateFunc({
     ...func,
@@ -88,7 +111,6 @@ const updateCodeForFunc = (func: EditingFunc, newCode: string) =>
 
 const updateFunc = (func: EditingFunc) => {
   const funcList = [...editingFuncs.value];
-  console.log('updateFunc', func, funcList);
   const existingFuncIdx = findTabIndexForFunc(funcList, func);
   if (existingFuncIdx == -1) {
     console.error("Could not find func", func);
