@@ -13,7 +13,7 @@
       />
     </SiSidebar>
     <div
-      class="grow h-screen w-full place-items-center dark:bg-neutral-800 dark:text-white text-lg font-semibold"
+      class="grow h-screen w-full place-items-center dark:bg-neutral-800 dark:text-white text-lg font-semibold overflow-hidden"
     >
       <FuncEditorTabs
         v-if="selectedFuncId > 0"
