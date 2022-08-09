@@ -1,6 +1,6 @@
 use axum::{extract::Query, Json};
 use dal::component::diff::ComponentDiff;
-use dal::{CodeView, ComponentId, Visibility};
+use dal::{ComponentId, Visibility};
 use serde::{Deserialize, Serialize};
 
 use super::ComponentResult;
@@ -17,7 +17,7 @@ pub struct GetDiffRequest {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct GetDiffResponse {
-    pub code_views: Vec<CodeView>,
+    pub component_diff: ComponentDiff,
 }
 
 pub async fn get_diff(
@@ -34,7 +34,5 @@ pub async fn get_diff(
 
     txns.commit().await?;
 
-    Ok(Json(GetDiffResponse {
-        code_views: component_diff.diffs,
-    }))
+    Ok(Json(GetDiffResponse { component_diff }))
 }

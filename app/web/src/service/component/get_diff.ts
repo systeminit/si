@@ -5,16 +5,14 @@ import Bottle from "bottlejs";
 import { switchMap } from "rxjs/operators";
 import { workspace$ } from "@/observable/workspace";
 import _ from "lodash";
-import { CodeView } from "@/api/sdf/dal/code_view";
+import { ComponentDiff } from "@/api/sdf/dal/component";
 
 export interface GetDiffArgs {
   componentId: number;
 }
 
-// NOTE(nick): technically, we only require one code view for diffs, but perhaps, users will want
-// to look at a diff for more than one format for the same data (i.e. YAML vs. JSON).
 export interface GetDiffResponse {
-  codeViews: Array<CodeView>;
+  componentDiff: ComponentDiff;
 }
 
 const getDiffCollection: {

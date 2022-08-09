@@ -5,8 +5,10 @@ use strum_macros::{AsRefStr, Display};
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]
 pub enum CodeLanguage {
-    Yaml,
+    Diff,
+    Json,
     Unknown,
+    Yaml,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
