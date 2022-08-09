@@ -33,9 +33,7 @@ import FuncEditorTabs from "@/organisms/FuncEditorTabs.vue";
 import { FuncService } from "@/service/func";
 import { ListFuncsResponse } from "@/service/func/list_funcs";
 import { ref } from "vue";
-import { refFrom, fromRef } from "vuse-rx/src";
-import { combineLatest, ReplaySubject, ObservableInput, of } from "rxjs";
-import { switchMap } from "rxjs/operators";
+import { refFrom } from "vuse-rx/src";
 import TertiaryNeutralButtonXSmall from "@/molecules/TertiaryNeutralButtonXSmall.vue";
 
 const selectedFuncId = ref<number>(0);
@@ -43,15 +41,7 @@ const selectFunc = (id: number) => {
   selectedFuncId.value = id;
 };
 
-const updateList$ = new ReplaySubject<true>(1);
-updateList$.next(true);
-
-const createFunction = () => updateList$.next(true);
-
-const funcList = refFrom<ListFuncsResponse>(
-  combineLatest([FuncService.listFuncs(), updateList$]).pipe(
-    switchMap(([funcList]) => of(funcList)),
-  ),
-  { qualifications: [] },
-);
+const funcList = refFrom<ListFuncsResponse>(FuncService.listFuncs(), {
+  qualifications: [],
+});
 </script>
