@@ -57,7 +57,7 @@ export function listQualifications(
         },
       );
     }),
-    shareReplay({ bufferSize: 1, refCount: true }),
+    shareReplay({ bufferSize: 1, refCount: false }),
   );
   return listQualificationsCollection[args.componentId];
 }

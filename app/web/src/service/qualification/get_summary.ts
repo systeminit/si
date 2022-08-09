@@ -1,11 +1,12 @@
-import { combineLatest, Observable, shareReplay, switchMap } from "rxjs";
+import { combineLatest, map, Observable, shareReplay, switchMap } from "rxjs";
 import { ApiResponse, SDF } from "@/api/sdf";
 import Bottle from "bottlejs";
 import { standardVisibilityTriggers$ } from "@/observable/visibility";
+import { GlobalErrorService } from "@/service/global_error";
 
 export interface QualificationSummaryForComponent {
-  component_id: number;
-  component_name: string;
+  componentId: number;
+  componentName: string;
   total: number;
   succeeded: number;
   failed: number;
@@ -18,18 +19,29 @@ export interface GetSummaryResponse {
   components: QualificationSummaryForComponent[];
 }
 
-export function getSummary(): Observable<ApiResponse<GetSummaryResponse>> {
-  return combineLatest([standardVisibilityTriggers$]).pipe(
+let getSummaryObservableCache: Observable<GetSummaryResponse | undefined>;
+
+export function getSummary(): Observable<GetSummaryResponse | undefined> {
+  if (getSummaryObservableCache) return getSummaryObservableCache;
+  getSummaryObservableCache = combineLatest([standardVisibilityTriggers$]).pipe(
     switchMap(([[visibility]]) => {
       const bottle = Bottle.pop("default");
       const sdf: SDF = bottle.container.SDF;
-      return sdf.get<ApiResponse<GetSummaryResponse>>(
-        "qualification/get_summary",
-        {
+      return sdf
+        .get<ApiResponse<GetSummaryResponse>>("qualification/get_summary", {
           ...visibility,
-        },
-      );
+        })
+        .pipe(
+          map((response: ApiResponse<GetSummaryResponse>) => {
+            if (response.error) {
+              GlobalErrorService.set(response);
+              return undefined;
+            }
+            return response;
+          }),
+        );
     }),
     shareReplay({ bufferSize: 1, refCount: true }),
   );
+  return getSummaryObservableCache;
 }

@@ -1,7 +1,9 @@
 <template>
-  <div class="flex flex-row">
+  <div class="flex flex-row h-full">
     <!-- Filter button and list of components -->
-    <div class="w-32 border-r-[1px] border-black text-center">
+    <div
+      class="w-32 border-r-[1px] border-black text-center h-full flex flex-col"
+    >
       <!-- Filter button and its dropdown -->
       <SiBarButton
         class="h-10 border-b-[1px] border-black"
@@ -40,7 +42,7 @@
       </SiBarButton>
 
       <!-- List of components -->
-      <div class="overflow-y-auto">
+      <div class="overflow-y-auto flex-expand">
         <div
           v-for="group in list"
           :key="group.component_id"
