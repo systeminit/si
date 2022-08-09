@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
-
 use thiserror::Error;
+
 use veritech::QualificationSubCheck;
 
 use crate::attribute::context::UNSET_ID_VALUE;
@@ -55,10 +55,9 @@ impl QualificationSummary {
             .await?;
 
         let mut components = Vec::new();
-        let mut total = 0;
-        let mut succeeded = 0;
-        let mut failed = 0;
-        for row in rows {
+        let mut components_succeeded = 0;
+        let mut components_failed = 0;
+        for row in &rows {
             let component_id = row.try_get("component_id")?;
 
             let (has_validation, validation_passed) =
@@ -74,11 +73,11 @@ impl QualificationSummary {
                     Some(qual_result) => (true, qual_result.success),
                 };
 
-            let component_total =
+            let total =
                 row.get::<&str, i64>("total_qualifications") + if has_validation { 1 } else { 0 };
-            let component_succeeded =
+            let succeeded =
                 row.get::<&str, i64>("succeeded") + if validation_passed { 1 } else { 0 };
-            let component_failed = row.get::<&str, i64>("failed")
+            let failed = row.get::<&str, i64>("failed")
                 + if has_validation && !validation_passed {
                     1
                 } else {
@@ -88,22 +87,24 @@ impl QualificationSummary {
             let component = QualificationSummaryForComponent {
                 component_id,
                 component_name: row.try_get("component_name")?,
-                total: component_total,
-                succeeded: component_succeeded,
-                failed: component_failed,
+                total,
+                succeeded,
+                failed,
             };
 
-            total += component.total;
-            succeeded += component.succeeded;
-            failed += component.failed;
+            if failed > 0 {
+                components_failed += 1;
+            } else if succeeded == total {
+                components_succeeded += 1;
+            }
 
             components.push(component);
         }
 
         Ok(QualificationSummary {
-            total,
-            succeeded,
-            failed,
+            total: rows.len() as i64,
+            succeeded: components_succeeded,
+            failed: components_failed,
             components,
         })
     }

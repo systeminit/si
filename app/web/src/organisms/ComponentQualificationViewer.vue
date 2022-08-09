@@ -35,15 +35,13 @@ import StatusIndicatorIcon, {
   Status,
 } from "@/molecules/StatusIndicatorIcon.vue";
 import { switchMap } from "rxjs/operators";
-import { ref } from "vue";
 import { Qualification } from "@/api/sdf/dal/qualification";
 
 const props = defineProps<{
   componentId: number;
   componentName: string;
+  componentQualificationStatus: Status;
 }>();
-
-const componentQualificationStatus = ref<Status>("success"); // TODO(victor): This should be received from listQualifications, probably
 
 const qualificationList = refFrom<Array<Qualification>>(
   fromRef(props, { immediate: true }).pipe(

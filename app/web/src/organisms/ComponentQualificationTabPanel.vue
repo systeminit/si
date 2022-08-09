@@ -44,7 +44,7 @@
         >
           <div
             :class="
-              selectedComponentId === component.componentId
+              selectedComponent?.componentId === component.componentId
                 ? 'bg-action-500'
                 : 'hover:bg-black '
             "
@@ -61,15 +61,16 @@
       </div>
     </div>
     <div
-      v-if="selectedComponentId === undefined"
+      v-if="selectedComponent === undefined"
       class="flex flex-row items-center text-center w-full h-full"
     >
       <p class="w-full text-3xl text-neutral-500">No Component Selected</p>
     </div>
     <ComponentQualificationViewer
       v-else
-      :component-id="selectedComponentId"
-      :component-name="selectedComponentName"
+      :component-id="selectedComponent.componentId"
+      :component-name="selectedComponent.componentName"
+      :component-qualification-status="iconStatus(selectedComponent)"
     />
   </div>
 </template>
@@ -95,13 +96,11 @@ const qualificationSummary = refFrom<GetSummaryResponse | undefined>(
   QualificationService.getSummary(),
 );
 
-const selectedComponentId = ref<number>();
-const selectedComponentName = ref<string>("");
+const selectedComponent = ref<QualificationSummaryForComponent>();
 const updateSelectedComponent = (
   component: QualificationSummaryForComponent,
 ) => {
-  selectedComponentId.value = component.componentId;
-  selectedComponentName.value = component.componentName;
+  selectedComponent.value = component;
 };
 
 const filter = ref<"all" | "success" | "failure">("all");

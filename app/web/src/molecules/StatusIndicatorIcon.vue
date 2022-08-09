@@ -56,7 +56,7 @@ export type IconType = "solid" | "outline";
 withDefaults(
   defineProps<{
     status: Status;
-    iconType: IconType;
+    iconType?: IconType;
   }>(),
   {
     iconType: "outline",
