@@ -8,12 +8,7 @@
     />
   </div>
   <div>
-    <SiTextBox2
-        id="name"
-        v-model="name"
-        title="Name"
-        class="w-full"
-    />
+    <SiTextBox2 id="name" v-model="name" title="Name" class="w-full" />
   </div>
   <div class="mb-3 flex items-center gap-x-[0.9375rem]">
     <TertiaryDestructiveButtonXSmall
@@ -85,14 +80,8 @@ const setName = (handler: string) => emit("updatedName", handler);
 const setHandler = (name: string) => emit("updatedHandler", name);
 const setCode = (code: string) => emit("updatedCode", code);
 
-watch(
-  handler,
-  (newValue) => setHandler(newValue)
-);
-watch(
-  name,
-  (newValue) => setName(newValue)
-);
+watch(handler, (newValue) => setHandler(newValue));
+watch(name, (newValue) => setName(newValue));
 
 const editorMount = ref();
 const view = ref<EditorView | undefined>();
