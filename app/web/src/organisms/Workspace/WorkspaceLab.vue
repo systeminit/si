@@ -41,4 +41,8 @@ const selectFunc = (id: number) => {
 const funcList = refFrom<ListFuncsResponse>(FuncService.listFuncs(), {
   qualifications: [],
 });
+
+const createFunction = () => {
+  FuncService.createFunc().subscribe(console.log);
+}
 </script>
