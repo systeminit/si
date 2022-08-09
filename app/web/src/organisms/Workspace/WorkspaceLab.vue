@@ -2,6 +2,10 @@
   <div class="flex flex-row w-full bg-transparent">
     <SiSidebar side="left">
       <ChangeSetPanel class="border-b-2 dark:border-neutral-500 mb-2" />
+      <TertiaryNeutralButtonXSmall
+        label="Create new function"
+        @click="createFunction"
+      />
       <FuncPicker
         :func-list="funcList"
         :selected-func-id="selectedFuncId"
@@ -28,16 +32,26 @@ import FuncPicker from "@/organisms/FuncPicker.vue";
 import FuncEditorTabs from "@/organisms/FuncEditorTabs.vue";
 import { FuncService } from "@/service/func";
 import { ListFuncsResponse } from "@/service/func/list_funcs";
-import { ref, watch } from "vue";
+import { ref } from "vue";
 import { refFrom, fromRef } from "vuse-rx/src";
+import { combineLatest, ReplaySubject, ObservableInput, of } from "rxjs";
+import { switchMap } from "rxjs/operators";
+import TertiaryNeutralButtonXSmall from "@/molecules/TertiaryNeutralButtonXSmall.vue";
 
 const selectedFuncId = ref<number>(0);
-
 const selectFunc = (id: number) => {
   selectedFuncId.value = id;
 };
 
-const funcList = refFrom<ListFuncsResponse>(FuncService.listFuncs(), {
-  qualifications: [],
-});
+const updateList$ = new ReplaySubject<true>(1);
+updateList$.next(true);
+
+const createFunction = () => updateList$.next(true);
+
+const funcList = refFrom<ListFuncsResponse>(
+  combineLatest([FuncService.listFuncs(), updateList$]).pipe(
+    switchMap(([funcList]) => of(funcList)),
+  ),
+  { qualifications: [] },
+);
 </script>
