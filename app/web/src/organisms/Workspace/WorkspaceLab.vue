@@ -5,20 +5,24 @@
       <TertiaryNeutralButtonXSmall label="Create new function" />
       <FuncPicker
         :func-list="funcList"
-        :selected-func-id="selectedFuncId"
+        :selected-func-id="selectedFunc.id"
         @selected-func="selectFunc"
       />
     </SiSidebar>
     <div
-      class="grow h-screen w-full place-items-center dark:bg-neutral-800 dark:text-white text-lg font-semibold overflow-hidden"
+      class="grow h-screen place-items-center dark:bg-neutral-800 dark:text-white text-lg font-semibold overflow-hidden"
     >
       <FuncEditorTabs
-        v-if="selectedFuncId > 0"
-        :selected-func-id="selectedFuncId"
+        v-if="selectedFunc.id > 0"
+        :selected-func-id="selectedFunc.id"
         @selected-func="selectFunc"
       />
       <div v-else>Pick a function to edit</div>
     </div>
+    <SiSidebar :hidden="false" side="right">
+      <!-- if hiding is added later, condition is selectedFuncId < 1 -->
+      <FunctionDetails :func="selectedFunc" />
+    </SiSidebar>
   </div>
 </template>
 
@@ -28,14 +32,19 @@ import ChangeSetPanel from "@/organisms/ChangeSetPanel.vue";
 import FuncPicker from "@/organisms/FuncPicker.vue";
 import FuncEditorTabs from "@/organisms/FuncEditorTabs.vue";
 import { FuncService } from "@/service/func";
-import { ListFuncsResponse } from "@/service/func/list_funcs";
+import {
+  ListedFuncView,
+  ListFuncsResponse,
+  nullListFunc,
+} from "@/service/func/list_funcs";
 import { ref } from "vue";
 import { refFrom } from "vuse-rx/src";
 import TertiaryNeutralButtonXSmall from "@/molecules/TertiaryNeutralButtonXSmall.vue";
+import FunctionDetails from "@/organisms/FunctionDetails.vue";
 
-const selectedFuncId = ref<number>(0);
-const selectFunc = (id: number) => {
-  selectedFuncId.value = id;
+const selectedFunc = ref<ListedFuncView>(nullListFunc);
+const selectFunc = (func: ListedFuncView) => {
+  selectedFunc.value = func;
 };
 
 const funcList = refFrom<ListFuncsResponse>(FuncService.listFuncs(), {
@@ -44,5 +53,5 @@ const funcList = refFrom<ListFuncsResponse>(FuncService.listFuncs(), {
 
 const createFunction = () => {
   FuncService.createFunc().subscribe(console.log);
-}
+};
 </script>

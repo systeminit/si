@@ -7,7 +7,7 @@
           color="#921ed6"
           :class="selectedFuncId == func.id ? 'bg-action-500' : ''"
           class="border-b-2 dark:border-neutral-600 hover:bg-action-500 dark:text-white hover:text-white hover:cursor-pointer"
-          @click="selectFunc(func.id)"
+          @click="selectFunc(func)"
         />
       </li>
     </SiCollapsible>
@@ -17,7 +17,7 @@
 <script lang="ts" setup>
 import SiCollapsible from "@/organisms/SiCollapsible.vue";
 import SiNodeSprite from "@/molecules/SiNodeSprite.vue";
-import { ListFuncsResponse } from "@/service/func/list_funcs";
+import { ListedFuncView, ListFuncsResponse } from "@/service/func/list_funcs";
 
 defineProps<{
   funcList: ListFuncsResponse;
@@ -25,10 +25,10 @@ defineProps<{
 }>();
 
 const emits = defineEmits<{
-  (e: "selectedFunc", v: number): void;
+  (e: "selectedFunc", v: ListedFuncView): void;
 }>();
 
-const selectFunc = (funcId: number) => {
-  emits("selectedFunc", funcId);
+const selectFunc = (func: ListedFuncView) => {
+  emits("selectedFunc", func);
 };
 </script>

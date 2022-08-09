@@ -1,15 +1,11 @@
 <template>
-  <div class="overflow-y-scroll">
-    <SiTextBox2
-      id="handler"
-      v-model="handler"
-      class="w-full"
-      title="Entrypoint"
-    />
-  </div>
-  <div>
-    <SiTextBox2 id="name" v-model="name" title="Name" class="w-full" />
-  </div>
+  <SiTextBox2
+    id="handler"
+    v-model="handler"
+    class="w-full"
+    title="Entrypoint"
+  />
+  <SiTextBox2 id="name" v-model="name" title="Name" class="w-full" />
   <div class="mb-3 flex items-center gap-x-[0.9375rem]">
     <TertiaryDestructiveButtonXSmall
       label="Discard"

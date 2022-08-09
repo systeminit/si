@@ -11,12 +11,12 @@
       </template>
       <template #panels>
         <TabPanel
-          v-for="(funcId, index) in funcList"
-          :key="funcId"
+          v-for="(func, index) in funcList"
+          :key="func.id"
           class="w-full"
         >
           <FuncEditor
-            :func-id="funcId"
+            :func-id="func.id"
             @updated-code="
               (code) => updateCodeForFunc(editingFuncs[index], code)
             "
@@ -50,11 +50,11 @@ const props = defineProps<{
 }>();
 
 const emits = defineEmits<{
-  (e: "selectedFunc", v: number): void;
+  (e: "selectedFunc", v: ListedFuncView): void;
 }>();
 
-const selectFunc = (funcId: number) => {
-  emits("selectedFunc", funcId);
+const selectFunc = (func: ListedFuncView) => {
+  emits("selectedFunc", func);
 };
 
 const selectedFuncId = toRef(props, "selectedFuncId", 0);

@@ -1,6 +1,6 @@
 import { ApiResponse } from "@/api/sdf";
 import { memoizedVisibilitySdfPipe } from "@/utils/memoizedVisibilitySdfPipes";
-import { Func } from "@/api/sdf/dal/func";
+import { Func, FuncBackendKind } from "@/api/sdf/dal/func";
 import { GlobalErrorService } from "@/service/global_error";
 import { Observable } from "rxjs";
 import { map } from "rxjs/operators";
@@ -10,6 +10,13 @@ export type ListedFuncView = Omit<Func, "code">;
 export interface ListFuncsResponse {
   qualifications: ListedFuncView[];
 }
+
+export const nullListFunc: ListedFuncView = {
+  id: 0,
+  handler: "",
+  kind: FuncBackendKind.Unset,
+  name: "",
+};
 
 const memo: {
   [key: string]: Observable<ListFuncsResponse>;
