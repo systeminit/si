@@ -1,5 +1,5 @@
 <template>
-  <div class="overflow-auto w-full h-full">
+  <div class="overflow-hidden w-full h-full">
     <SiTabGroup :selected-index="selectedTab" @change="changeTab">
       <template #tabs>
         <SiTabHeader v-for="(funcId, index) in funcList" :key="funcId">{{
@@ -7,7 +7,11 @@
         }}</SiTabHeader>
       </template>
       <template #panels>
-        <TabPanel v-for="(funcId, index) in funcList" :key="funcId">
+        <TabPanel
+          v-for="(funcId, index) in funcList"
+          :key="funcId"
+          class="w-full"
+        >
           <FuncEditor
             :func-id="funcId"
             @updated-code="

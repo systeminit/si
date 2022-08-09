@@ -3,11 +3,17 @@
     <SiTextBox2
       id="handler"
       v-model="handler"
+      class="w-full"
       title="Entrypoint"
     />
   </div>
   <div>
-    <SiTextBox2 id="name" v-model="name" title="Name" />
+    <SiTextBox2
+        id="name"
+        v-model="name"
+        title="Name"
+        class="w-full"
+    />
   </div>
   <div class="mb-3 flex items-center gap-x-[0.9375rem]">
     <TertiaryDestructiveButtonXSmall
@@ -18,7 +24,7 @@
     />
     <PrimarySuccessButtonXSmall label="Save" icon-style="left" />
   </div>
-  <div>
+  <div class="w-full">
     <div ref="editorMount" class="w-full h-full" @keyup.stop @keydown.stop />
   </div>
 </template>
@@ -37,7 +43,6 @@ import SiTextBox2 from "@/atoms/SiTextBox2.vue";
 import PrimarySuccessButtonXSmall from "@/molecules/PrimarySuccessButtonXSmall.vue";
 import TertiaryDestructiveButtonXSmall from "@/molecules/TertiaryDestructiveButtonXSmall.vue";
 
-  
 const props = defineProps<{
   funcId: number;
 }>();
