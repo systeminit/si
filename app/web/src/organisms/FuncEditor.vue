@@ -9,7 +9,9 @@
   <!--    />-->
   <!--    <PrimarySuccessButtonXSmall label="Save" icon-style="left" />-->
   <!--  </div>-->
-  <div class="w-full border-neutral-300 dark:border-neutral-600 p-2">
+  <div
+    class="w-full border-neutral-300 dark:border-neutral-600 border-x border-b p-2"
+  >
     <div ref="editorMount" class="w-full h-full" @keyup.stop @keydown.stop />
   </div>
 </template>

@@ -2,7 +2,7 @@
   <ul class="overflow-y-auto">
     <SiCollapsible label="Qualification Functions" as="li" content-as="ul">
       <li v-for="func in funcList.qualifications" :key="func.id">
-        <SiNodeSprite
+        <SiFuncSprite
           :name="func.name"
           color="#921ed6"
           :class="selectedFuncId == func.id ? 'bg-action-500' : ''"
@@ -16,7 +16,7 @@
 
 <script lang="ts" setup>
 import SiCollapsible from "@/organisms/SiCollapsible.vue";
-import SiNodeSprite from "@/molecules/SiNodeSprite.vue";
+import SiFuncSprite from "@/molecules/SiFuncSprite.vue";
 import { ListedFuncView, ListFuncsResponse } from "@/service/func/list_funcs";
 
 defineProps<{
