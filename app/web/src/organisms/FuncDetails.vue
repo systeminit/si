@@ -1,13 +1,13 @@
 <template>
   <div v-if="funcId > 0" class="text-center">
-    <SiTextBox2
+    <SiTextBox
       id="handler"
       v-model="editingFunc.modifiedFunc.handler"
       class="w-full"
       title="Entrypoint"
       @change="updateFunc"
     />
-    <SiTextBox2
+    <SiTextBox
       id="name"
       v-model="editingFunc.modifiedFunc.name"
       title="Name"
@@ -21,7 +21,7 @@
 </template>
 
 <script setup lang="ts">
-import SiTextBox2 from "@/atoms/SiTextBox2.vue";
+import SiTextBox from "@/atoms/SiTextBox.vue";
 import { toRef } from "vue";
 import {
   EditingFunc,
@@ -58,5 +58,4 @@ const updateFunc = () => {
     }
   });
 }
-
 </script>
