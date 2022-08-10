@@ -1436,7 +1436,7 @@ mod tests {
             execution_id: "1234".to_string(),
             handler: "workit".to_string(),
             code_base64: base64::encode(
-                r#"function workit(component) {
+                r#"function workit() {
                     console.log('first');
                     console.log('second');
                     return {};
@@ -1510,7 +1510,7 @@ mod tests {
             execution_id: "1234".to_string(),
             handler: "workit".to_string(),
             code_base64: base64::encode(
-                r#"function workit(component) {
+                r#"function workit() {
                     console.log('first');
                     console.log('second');
                     return {};
