@@ -12,7 +12,7 @@ use cyclone::{
         CodeGenerationRequest, CodeGenerationResultSuccess, Connection, Execution, PingExecution,
         QualificationCheckRequest, QualificationCheckResultSuccess, ResolverFunctionRequest,
         ResolverFunctionResultSuccess, ResourceSyncRequest, ResourceSyncResultSuccess, UnixStream,
-        Watch, WatchError, WatchStarted,
+        Watch, WatchError, WatchStarted, WorkflowResolveRequest, WorkflowResolveResultSuccess,
     },
     process::{self, ShutdownError},
     Client, ClientError, CycloneClient, LivenessStatus, ReadinessStatus, UdsClient,
@@ -210,6 +210,23 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
 
         result
     }
+
+    async fn execute_workflow_resolve(
+        &mut self,
+        request: WorkflowResolveRequest,
+    ) -> result::Result<
+        Execution<UnixStream, WorkflowResolveRequest, WorkflowResolveResultSuccess>,
+        ClientError,
+    > {
+        self.ensure_healthy_client()
+            .await
+            .map_err(ClientError::unhealthy)?;
+
+        let result = self.client.execute_workflow_resolve(request).await;
+        self.count_request();
+
+        result
+    }
 }
 
 impl LocalUdsInstance {
@@ -288,6 +305,10 @@ pub struct LocalUdsInstanceSpec {
     /// Enables the `code_generation` execution endpoint for a spawned Cyclone server.
     #[builder(private, setter(name = "_code_generation"), default = "false")]
     code_generation: bool,
+
+    /// Enables the `workflow` execution endpoint for a spawned Cyclone server.
+    #[builder(private, setter(name = "_workflow"), default = "false")]
+    workflow: bool,
 }
 
 #[async_trait]
@@ -416,6 +437,11 @@ impl LocalUdsInstanceSpecBuilder {
     /// Enables the `code_generation` execution endpoint for a spawned Cyclone server.
     pub fn code_generation(&mut self) -> &mut Self {
         self._code_generation(true)
+    }
+
+    /// Enables the `workflow` execution endpoint for a spawned Cyclone server.
+    pub fn workflow(&mut self) -> &mut Self {
+        self._workflow(true)
     }
 }
 

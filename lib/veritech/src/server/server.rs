@@ -2,7 +2,8 @@ use deadpool_cyclone::{
     instance::cyclone::LocalUdsInstanceSpec, CodeGenerationRequest, CodeGenerationResultSuccess,
     CycloneClient, Manager, Pool, ProgressMessage, QualificationCheckRequest,
     QualificationCheckResultSuccess, ResolverFunctionRequest, ResolverFunctionResultSuccess,
-    ResourceSyncRequest, ResourceSyncResultSuccess,
+    ResourceSyncRequest, ResourceSyncResultSuccess, WorkflowResolveRequest,
+    WorkflowResolveResultSuccess,
 };
 use futures::{channel::oneshot, join, StreamExt};
 use si_data::NatsClient;
@@ -50,6 +51,8 @@ pub enum ServerError {
     Subscriber(#[from] SubscriberError),
     #[error("wrong cyclone spec type for {0} spec: {1:?}")]
     WrongCycloneSpec(&'static str, CycloneSpec),
+    #[error(transparent)]
+    WorkflowResolve(#[from] deadpool_cyclone::client::ExecutionError<WorkflowResolveResultSuccess>),
 }
 
 type Result<T> = std::result::Result<T, ServerError>;
@@ -155,6 +158,12 @@ impl Server {
                 self.shutdown_broadcast_tx.subscribe(),
             ),
             process_code_generation_requests_task(
+                self.nats.clone(),
+                self.subject_prefix.clone(),
+                self.cyclone_pool.clone(),
+                self.shutdown_broadcast_tx.subscribe(),
+            ),
+            process_workflow_resolve_requests_task(
                 self.nats.clone(),
                 self.subject_prefix.clone(),
                 self.cyclone_pool.clone(),
@@ -616,6 +625,119 @@ async fn code_generation_request(
         .map_err(|err| ServerError::CyclonePool(Box::new(err)))?;
     let mut progress = client
         .execute_code_generation(cyclone_request)
+        .await?
+        .start()
+        .await?;
+
+    while let Some(msg) = progress.next().await {
+        match msg {
+            Ok(ProgressMessage::OutputStream(output)) => {
+                publisher.publish_output(&output).await?;
+            }
+            Ok(ProgressMessage::Heartbeat) => {
+                trace!("received heartbeat message");
+            }
+            Err(err) => {
+                warn!(error = ?err, "next progress message was an error, bailing out");
+                break;
+            }
+        }
+    }
+    publisher.finalize_output().await?;
+
+    let function_result = progress.finish().await?;
+    publisher.publish_result(&function_result).await?;
+
+    Ok(())
+}
+
+async fn process_workflow_resolve_requests_task(
+    nats: NatsClient,
+    subject_prefix: Option<String>,
+    cyclone_pool: Pool<LocalUdsInstanceSpec>,
+    shutdown_broadcast_rx: broadcast::Receiver<()>,
+) {
+    if let Err(err) =
+        process_workflow_resolve_requests(nats, subject_prefix, cyclone_pool, shutdown_broadcast_rx)
+            .await
+    {
+        warn!(error = ?err, "processing resource sync requests failed");
+    }
+}
+
+async fn process_workflow_resolve_requests(
+    nats: NatsClient,
+    subject_prefix: Option<String>,
+    cyclone_pool: Pool<LocalUdsInstanceSpec>,
+    mut shutdown_broadcast_rx: broadcast::Receiver<()>,
+) -> Result<()> {
+    let mut requests = Subscriber::workflow_resolve(&nats, subject_prefix.as_deref()).await?;
+
+    loop {
+        tokio::select! {
+            // Got a broadcasted shutdown message
+            _ = shutdown_broadcast_rx.recv() => {
+                trace!("process workflow resolve requests task received shutdown");
+                break;
+            }
+            // Got the next message on from the subscriber
+            request = requests.next() => {
+                match request {
+                    Some(Ok(request)) => {
+                        // Spawn a task an process the request
+                        tokio::spawn(workflow_resolve_request_task(
+                            nats.clone(),
+                            cyclone_pool.clone(),
+                            request,
+                        ));
+                    }
+                    Some(Err(err)) => {
+                        warn!(error = ?err, "next workflow resolve request had error");
+                    }
+                    None => {
+                        trace!("workflow resolve requests subscriber stream has closed");
+                        break;
+                    }
+                }
+            }
+            // All other arms are closed, nothing left to do but return
+            else => {
+                trace!("returning with all select arms closed");
+                break
+            }
+        }
+    }
+
+    // Unsubscribe from subscription
+    requests.unsubscribe().await?;
+
+    Ok(())
+}
+
+async fn workflow_resolve_request_task(
+    nats: NatsClient,
+    cyclone_pool: Pool<LocalUdsInstanceSpec>,
+    request: Request<WorkflowResolveRequest>,
+) {
+    if let Err(err) = workflow_resolve_request(nats, cyclone_pool, request).await {
+        warn!(error = ?err, "workflow resolve execution failed");
+    }
+}
+
+async fn workflow_resolve_request(
+    nats: NatsClient,
+    cyclone_pool: Pool<LocalUdsInstanceSpec>,
+    request: Request<WorkflowResolveRequest>,
+) -> Result<()> {
+    let (reply_mailbox, cyclone_request) = request.into_parts();
+
+    let publisher = Publisher::new(&nats, &reply_mailbox);
+    let mut client = cyclone_pool
+        .get()
+        .await
+        .map_err(|err| ServerError::CyclonePool(Box::new(err)))?;
+    let mut progress = client
+        .execute_workflow_resolve(cyclone_request)
         .await?
         .start()
         .await?;

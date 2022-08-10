@@ -25,7 +25,8 @@ pub use cyclone::{
     client, CodeGenerationRequest, CodeGenerationResultSuccess, ComponentView, CycloneClient,
     FunctionResult, OutputStream, ProgressMessage, QualificationCheckRequest,
     QualificationCheckResultSuccess, ResolverFunctionRequest, ResolverFunctionResultSuccess,
-    ResourceSyncRequest, ResourceSyncResultSuccess, SystemView,
+    ResourceSyncRequest, ResourceSyncResultSuccess, SystemView, WorkflowResolveRequest,
+    WorkflowResolveResultSuccess,
 };
 
 /// [`Instance`] implementations.

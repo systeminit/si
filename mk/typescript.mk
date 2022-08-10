@@ -71,8 +71,8 @@ default--start: node_modules
 default--run: start
 .PHONY: default--run
 
-## watch: Alias for `make start`
-default--watch: start
+## watch: Runs default watch task for the package/app
+default--watch: node_modules
 	$(call header,$@)
 	npm run build:watch
 .PHONY: default--watch

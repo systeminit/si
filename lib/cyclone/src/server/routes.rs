@@ -119,6 +119,11 @@ fn execute_routes(config: &Config, shutdown_tx: mpsc::Sender<ShutdownSource>) ->
             get(handlers::ws_execute_code_generation),
         ));
     }
+    if config.enable_workflow_resolve() {
+        debug!("enabling workflow resolve endpoint");
+        router = router
+            .merge(Router::new().route("/workflow", get(handlers::ws_execute_workflow_resolve)));
+    }
 
     let limit_requests = Arc::new(config.limit_requests().map(|i| i.into()));
 

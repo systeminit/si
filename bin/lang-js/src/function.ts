@@ -1,15 +1,18 @@
 export enum FunctionKind {
+  CodeGeneration = "codeGeneration",
   QualificationCheck = "qualificationcheck",
   ResolverFunction = "resolverfunction",
   ResourceSync = "resourceSync",
-  CodeGeneration = "codeGeneration",
+  WorkflowResolve = "workflowResolve",
 }
 
 export function function_kinds(): Array<string> {
   return [
+    FunctionKind.CodeGeneration,
     FunctionKind.QualificationCheck,
     FunctionKind.ResolverFunction,
-    FunctionKind.CodeGeneration,
+    FunctionKind.ResourceSync,
+    FunctionKind.WorkflowResolve,
   ];
 }
 

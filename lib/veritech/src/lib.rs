@@ -39,6 +39,7 @@ const NATS_QUALIFICATION_CHECK_DEFAULT_SUBJECT: &str = "veritech.fn.qualificatio
 const NATS_RESOLVER_FUNCTION_DEFAULT_SUBJECT: &str = "veritech.fn.resolverfunction";
 const NATS_RESOURCE_SYNC_DEFAULT_SUBJECT: &str = "veritech.fn.resourcesync";
 const NATS_CODE_GENERATION_DEFAULT_SUBJECT: &str = "veritech.fn.codegeneration";
+const NATS_WORKFLOW_RESOLVE_DEFAULT_SUBJECT: &str = "veritech.fn.workflowresolve";
 
 pub(crate) const FINAL_MESSAGE_HEADER_KEY: &str = "X-Final-Message";
 
@@ -64,6 +65,10 @@ pub(crate) fn nats_resource_sync_subject(prefix: Option<&str>) -> String {
 
 pub(crate) fn nats_code_generation_subject(prefix: Option<&str>) -> String {
     nats_subject(prefix, NATS_CODE_GENERATION_DEFAULT_SUBJECT)
+}
+
+pub(crate) fn nats_workflow_resolve_subject(prefix: Option<&str>) -> String {
+    nats_subject(prefix, NATS_WORKFLOW_RESOLVE_DEFAULT_SUBJECT)
 }
 
 pub(crate) fn nats_subject(prefix: Option<&str>, suffix: impl AsRef<str>) -> String {
