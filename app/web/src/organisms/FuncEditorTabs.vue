@@ -35,7 +35,7 @@ import FuncEditor from "@/organisms/FuncEditor.vue";
 import VueFeather from "vue-feather";
 import { EditingFunc, funcStream$, funcEdit$ } from "@/observable/func_editor";
 import { ListedFuncView } from "@/service/func/list_funcs";
-import { map } from "rxjs/operators";
+import { map, switchMap } from "rxjs/operators";
 
 const props = defineProps<{
   selectedFuncId: number;
@@ -106,9 +106,8 @@ const insertFunc = (func: GetFuncResponse) => {
   });
 };
 
-selectedFuncId$.subscribe((selectedFuncId) =>
-  FuncService.getFunc({ id: selectedFuncId }).subscribe((func) =>
-    insertFunc(func),
-  ),
-);
+// Inserts a function into the funcstream when we fetch it from the backend. Insert is idempotent
+selectedFuncId$.pipe(
+  switchMap((selectedFuncId) => FuncService.getFunc({ id: selectedFuncId }))
+).subscribe(insertFunc);
 </script>
