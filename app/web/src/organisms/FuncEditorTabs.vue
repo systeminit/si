@@ -2,9 +2,9 @@
   <div class="overflow-hidden w-full h-full">
     <SiTabGroup :selected-index="selectedTab" @change="changeTab">
       <template #tabs>
-        <SiTabHeader v-for="(funcId, index) in funcList" :key="funcId">
+        <SiTabHeader v-for="(func, index) in funcList" :key="func.id">
           {{ editingFuncs[index].origFunc.name }}
-          <button class="inline-block rounded-sm" @click="closeFunc(funcId)">
+          <button class="inline-block rounded-sm" @click="closeFunc(func.id)">
             <VueFeather type="x-circle" />
           </button>
         </SiTabHeader>
@@ -44,6 +44,7 @@ import { TabPanel } from "@headlessui/vue";
 import FuncEditor from "@/organisms/FuncEditor.vue";
 import VueFeather from "vue-feather";
 import { EditingFunc, editingFuncs$ } from "@/observable/func_editor";
+import { ListedFuncView } from "@/service/func/list_funcs";
 
 const props = defineProps<{
   selectedFuncId: number;
@@ -68,7 +69,12 @@ const findTabIndexForFunc = (funcList: EditingFunc[], func: { id: number }) =>
 // list of tabs, hence the tap.
 const editingFuncs = refFrom<EditingFunc[]>(editingFuncs$, []);
 const funcList = computed(() =>
-  editingFuncs.value.map((editingFunc) => editingFunc.id),
+  editingFuncs.value.map(({ origFunc }) => ({
+    id: origFunc.id,
+    handler: origFunc.handler,
+    name: origFunc.name,
+    kind: origFunc.kind,
+  })),
 );
 const selectedTab = computed(() =>
   findTabIndexForFunc(editingFuncs.value, { id: selectedFuncId.value }),
