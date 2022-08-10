@@ -2,10 +2,7 @@
   <div class="flex flex-row w-full bg-transparent">
     <SiSidebar side="left">
       <ChangeSetPanel class="border-b-2 dark:border-neutral-500 mb-2" />
-      <TertiaryNeutralButtonXSmall
-        label="Create new function"
-        @click="createFunction"
-      />
+      <TertiaryNeutralButtonXSmall label="Create new function" />
       <FuncPicker
         :func-list="funcList"
         :selected-func-id="selectedFuncId"
