@@ -79,7 +79,7 @@
           <ChangeSetTabPanel />
         </TabPanel>
         <TabPanel class="h-full">
-          <ComponentQualificationTabPanel />
+          <QualificationTabPanel />
         </TabPanel>
       </TabPanels>
     </Transition>
@@ -97,14 +97,14 @@ import {
   XCircleIcon,
 } from "@heroicons/vue/solid";
 import SiButtonIcon from "@/atoms/SiButtonIcon.vue";
-import StatusBarTab from "./StatusBar/StatusBarTab.vue";
-import StatusBarTabPill from "./StatusBar/StatusBarTabPill.vue";
+import StatusBarTab from "@/organisms/StatusBar/StatusBarTab.vue";
+import StatusBarTabPill from "@/organisms/StatusBar/StatusBarTabPill.vue";
 import { refFrom } from "vuse-rx";
 import { QualificationService } from "@/service/qualification";
 import { GetSummaryResponse } from "@/service/qualification/get_summary";
-import ChangeSetTab from "@/organisms/ChangeSetTab.vue";
-import ChangeSetTabPanel from "@/organisms/ChangeSetTabPanel.vue";
-import ComponentQualificationTabPanel from "@/organisms/ComponentQualificationTabPanel.vue";
+import ChangeSetTab from "@/organisms/StatusBarTabs/ChangeSet/ChangeSetTab.vue";
+import ChangeSetTabPanel from "@/organisms/StatusBarTabs/ChangeSet/ChangeSetTabPanel.vue";
+import QualificationTabPanel from "@/organisms/StatusBarTabs/Qualification/QualificationTabPanel.vue";
 import StatusIndicatorIcon from "@/molecules/StatusIndicatorIcon.vue";
 
 const panelOpen = ref(false);

@@ -16,7 +16,7 @@
         :key="index"
         class="basis-full lg:basis-1/2 xl:basis-1/3 overflow-hidden pb-4 px-2"
       >
-        <QualificationView :qualification="qualification" />
+        <QualificationViewerSingle :qualification="qualification" />
       </div>
     </div>
   </div>
@@ -30,7 +30,7 @@ import {
 import { fromRef, refFrom } from "vuse-rx";
 import { map } from "rxjs";
 import { GlobalErrorService } from "@/service/global_error";
-import QualificationView from "@/organisms/QualificationView.vue";
+import QualificationViewerSingle from "@/organisms/StatusBarTabs/Qualification/QualificationViewerSingle.vue";
 import StatusIndicatorIcon, {
   Status,
 } from "@/molecules/StatusIndicatorIcon.vue";

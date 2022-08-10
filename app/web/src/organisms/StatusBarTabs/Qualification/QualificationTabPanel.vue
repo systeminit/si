@@ -66,7 +66,7 @@
     >
       <p class="w-full text-3xl text-neutral-500">No Component Selected</p>
     </div>
-    <ComponentQualificationViewer
+    <QualificationViewerMultiple
       v-else
       :component-id="selectedComponent.componentId"
       :component-name="selectedComponent.componentName"
@@ -86,7 +86,7 @@ import { computed, ref } from "vue";
 import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
 import SiBarButton from "@/molecules/SiBarButton.vue";
 import SiArrow from "@/atoms/SiArrow.vue";
-import ComponentQualificationViewer from "@/organisms/ComponentQualificationViewer.vue";
+import QualificationViewerMultiple from "@/organisms/StatusBarTabs/Qualification/QualificationViewerMultiple.vue";
 import StatusIndicatorIcon, {
   Status,
 } from "@/molecules/StatusIndicatorIcon.vue";
