@@ -1,14 +1,15 @@
 <template>
-  <div class="mb-3 flex items-center gap-x-[0.9375rem]">
-    <TertiaryDestructiveButtonXSmall
-      label="Discard"
-      icon-style="left"
-      icon="x"
-      @click="discardChanges"
-    />
-    <PrimarySuccessButtonXSmall label="Save" icon-style="left" />
-  </div>
-  <div class="w-full">
+  <!-- old save and discard buttons, move them! -->
+  <!--  <div class="mb-3 flex items-center gap-x-[0.9375rem]">-->
+  <!--    <TertiaryDestructiveButtonXSmall-->
+  <!--      label="Discard"-->
+  <!--      icon-style="left"-->
+  <!--      icon="x"-->
+  <!--      @click="discardChanges"-->
+  <!--    />-->
+  <!--    <PrimarySuccessButtonXSmall label="Save" icon-style="left" />-->
+  <!--  </div>-->
+  <div class="w-full border-neutral-300 dark:border-neutral-600 p-2">
     <div ref="editorMount" class="w-full h-full" @keyup.stop @keydown.stop />
   </div>
 </template>

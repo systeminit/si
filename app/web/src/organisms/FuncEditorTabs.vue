@@ -1,11 +1,22 @@
 <template>
   <div class="overflow-hidden w-full h-full">
-    <SiTabGroup :selected-index="selectedTab" @change="changeTab">
+    <SiTabGroup
+      :selected-index="selectedTab"
+      tab-list-classes="h-11 flex shrink-0 w-full"
+      @change="changeTab"
+    >
       <template #tabs>
-        <SiTabHeader v-for="(func, index) in funcList" :key="func.id">
+        <SiTabHeader
+          v-for="(func, index) in funcList"
+          :key="func.id"
+          class="border-x border-t border-neutral-300 dark:border-neutral-600 h-11 px-2"
+        >
           {{ editingFuncs[index].origFunc.name }}
-          <button class="inline-block rounded-sm" @click="closeFunc(func.id)">
-            <VueFeather type="x-circle" />
+          <button
+            class="inline-block rounded-sm w-5 ml-1"
+            @click="closeFunc(func.id)"
+          >
+            <VueFeather type="x" />
           </button>
         </SiTabHeader>
       </template>

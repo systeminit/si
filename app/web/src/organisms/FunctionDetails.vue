@@ -8,7 +8,9 @@
     />
     <SiTextBox2 id="name" v-model="name" title="Name" class="w-full" />
   </div>
-  <div v-else>Please select a function to see its properties.</div>
+  <div v-else class="p-2 text-center text-neutral-400">
+    Select a function to view its properties.
+  </div>
 </template>
 
 <script setup lang="ts">

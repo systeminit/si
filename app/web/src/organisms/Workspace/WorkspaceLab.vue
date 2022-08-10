@@ -10,7 +10,7 @@
       />
     </SiSidebar>
     <div
-      class="grow h-screen place-items-center dark:bg-neutral-800 dark:text-white text-lg font-semibold overflow-hidden"
+      class="grow h-screen place-items-center dark:bg-neutral-800 dark:text-white text-lg font-semibold overflow-hidden p-2"
     >
       <FuncEditorTabs
         v-if="selectedFunc.id > 0"
@@ -18,7 +18,9 @@
         @selected-func="selectFunc"
         @updated-code="({ func, code }) => updateCodeForFunc(func, code)"
       />
-      <div v-else>Pick a function to edit</div>
+      <div v-else class="p-2 text-center text-neutral-400">
+        Select a function to edit it.
+      </div>
     </div>
     <SiSidebar :hidden="false" side="right">
       <!-- if hiding is added later, condition is selectedFuncId < 1 -->
