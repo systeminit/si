@@ -1,11 +1,4 @@
 <template>
-  <SiTextBox2
-    id="handler"
-    v-model="handler"
-    class="w-full"
-    title="Entrypoint"
-  />
-  <SiTextBox2 id="name" v-model="name" title="Name" class="w-full" />
   <div class="mb-3 flex items-center gap-x-[0.9375rem]">
     <TertiaryDestructiveButtonXSmall
       label="Discard"
@@ -33,7 +26,6 @@ import {
 
 import { refFrom } from "vuse-rx/src";
 
-import SiTextBox2 from "@/atoms/SiTextBox2.vue";
 import PrimarySuccessButtonXSmall from "@/molecules/PrimarySuccessButtonXSmall.vue";
 import TertiaryDestructiveButtonXSmall from "@/molecules/TertiaryDestructiveButtonXSmall.vue";
 
@@ -53,17 +45,10 @@ const handler = ref<string>(editingFunc.value.modifiedFunc.handler ?? "");
 const name = ref<string>(editingFunc.value.modifiedFunc.name);
 
 const emit = defineEmits<{
-  (e: "updatedName", v: string): void;
-  (e: "updatedHandler", v: string): void;
   (e: "updatedCode", v: string): void;
 }>();
 
-const setName = (handler: string) => emit("updatedName", handler);
-const setHandler = (name: string) => emit("updatedHandler", name);
 const setCode = (code: string) => emit("updatedCode", code);
-
-watch(handler, (newValue) => setHandler(newValue));
-watch(name, (newValue) => setName(newValue));
 
 const editorMount = ref();
 const view = ref<EditorView | undefined>();

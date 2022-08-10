@@ -30,4 +30,15 @@ watch(
     handler.value = func.handler;
   },
 );
+
+const emit = defineEmits<{
+  (e: "updatedName", v: string): void;
+  (e: "updatedHandler", v: string): void;
+}>();
+
+const setName = (handler: string) => emit("updatedName", handler);
+const setHandler = (name: string) => emit("updatedHandler", name);
+
+watch(handler, (newValue) => setHandler(newValue ?? ""));
+watch(name, (newValue) => setName(newValue));
 </script>

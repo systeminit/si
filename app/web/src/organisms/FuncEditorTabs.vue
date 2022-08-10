@@ -20,12 +20,6 @@
             @updated-code="
               (code) => updateCodeForFunc(editingFuncs[index], code)
             "
-            @updated-handler="
-              (handler) => updateHandlerForFunc(editingFuncs[index], handler)
-            "
-            @updated-name="
-              (name) => updateNameForFunc(editingFuncs[index], name)
-            "
           />
         </TabPanel>
       </template>
@@ -52,7 +46,11 @@ const props = defineProps<{
 
 const emits = defineEmits<{
   (e: "selectedFunc", v: ListedFuncView): void;
+  (e: "updatedCode", v: { func: EditingFunc; code: string }): void;
 }>();
+
+const updateCodeForFunc = (func: EditingFunc, code: string) =>
+  emits("updatedCode", { func, code });
 
 const selectFunc = (func: ListedFuncView) => {
   emits("selectedFunc", func);
@@ -76,6 +74,7 @@ const funcList = computed(() =>
     kind: origFunc.kind,
   })),
 );
+
 const selectedTab = computed(() =>
   findTabIndexForFunc(editingFuncs.value, { id: selectedFuncId.value }),
 );
@@ -90,45 +89,6 @@ const changeTab = (index: number) => {
 const closeFunc = (funcId: number) => {
   const funcList = [...editingFuncs.value].filter((f) => f.id !== funcId);
   // Handle unsaved functions here with modal...  or dispatch a save on close?
-  editingFuncs$.next([...funcList]);
-};
-
-const updateHandlerForFunc = (func: EditingFunc, newHandler: string) =>
-  updateFunc({
-    ...func,
-    modifiedFunc: {
-      ...func.modifiedFunc,
-      handler: newHandler,
-    },
-  });
-
-const updateNameForFunc = (func: EditingFunc, newName: string) =>
-  updateFunc({
-    ...func,
-    modifiedFunc: {
-      ...func.modifiedFunc,
-      name: newName,
-    },
-  });
-
-const updateCodeForFunc = (func: EditingFunc, newCode: string) =>
-  updateFunc({
-    ...func,
-    modifiedFunc: {
-      ...func.modifiedFunc,
-      code: newCode,
-    },
-  });
-
-const updateFunc = (func: EditingFunc) => {
-  const funcList = [...editingFuncs.value];
-  const existingFuncIdx = findTabIndexForFunc(funcList, func);
-  if (existingFuncIdx == -1) {
-    console.error("Could not find func", func);
-    return;
-  }
-
-  funcList[existingFuncIdx] = { ...func };
   editingFuncs$.next([...funcList]);
 };
 
