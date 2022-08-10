@@ -14,12 +14,20 @@
 <script setup lang="ts">
 import SiTextBox2 from "@/atoms/SiTextBox2.vue";
 import { ListedFuncView } from "@/service/func/list_funcs";
-import { ref, toRef } from "vue";
+import { ref, watch } from "vue";
 
 const props = defineProps<{
   func: ListedFuncView;
 }>();
 
 const name = ref(props.func.name);
-const handler = toRef(props.func, "handler", "");
+const handler = ref(props.func.handler);
+
+watch(
+  () => props.func,
+  (func) => {
+    name.value = func.name;
+    handler.value = func.handler;
+  },
+);
 </script>
