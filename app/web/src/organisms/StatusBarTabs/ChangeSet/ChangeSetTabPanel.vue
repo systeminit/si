@@ -1,8 +1,8 @@
 <template>
-  <div class="flex flex-row h-full">
+  <div class="flex flex-row h-full w-full">
     <!-- Filter button and list of components -->
     <div
-      class="w-32 border-r-[1px] border-black text-center h-full flex flex-col"
+      class="w-64 border-r-[1px] border-black text-center h-full flex flex-col"
     >
       <!-- Filter button and its dropdown -->
       <SiBarButton
@@ -49,21 +49,21 @@
           class="flex flex-col text-sm"
         >
           <div
-            v-if="
-              selectedComponent &&
-              selectedComponent.component_id === statsGroup.component_id
+            :class="
+              selectedComponent?.component_id === statsGroup.component_id
+                ? 'bg-action-500'
+                : 'hover:bg-black'
             "
-            class="bg-action-500 py-2"
+            class="py-2 text-left text-ellipsis truncate cursor-pointer flex flex-row"
             @click="updateSelectedComponent(statsGroup)"
           >
-            {{ statsGroup.component_name }}
-          </div>
-
-          <div
-            v-else
-            class="hover:bg-black py-2"
-            @click="updateSelectedComponent(statsGroup)"
-          >
+            <div class="w-5 ml-1 mr-2">
+              <CheckIcon
+                v-if="
+                  selectedComponent?.component_id === statsGroup.component_id
+                "
+              />
+            </div>
             {{ statsGroup.component_name }}
           </div>
         </div>
@@ -142,6 +142,7 @@ import { combineLatest } from "rxjs";
 import { ComponentService } from "@/service/component";
 import { ComponentDiff } from "@/api/sdf/dal/component";
 import _ from "lodash";
+import { CheckIcon } from "@heroicons/vue/solid";
 
 export type ChangeSetTabPanelFilter = "all" | "added" | "deleted" | "modified";
 
