@@ -2,9 +2,12 @@
   <div class="overflow-hidden w-full h-full">
     <SiTabGroup :selected-index="selectedTab" @change="changeTab">
       <template #tabs>
-        <SiTabHeader v-for="(funcId, index) in funcList" :key="funcId">{{
-          editingFuncs[index].origFunc.name
-        }}</SiTabHeader>
+        <SiTabHeader v-for="(funcId, index) in funcList" :key="funcId">
+          {{ editingFuncs[index].origFunc.name }}
+          <button class="inline-block rounded-sm" @click="closeFunc(funcId)">
+            <VueFeather type="x-circle" />
+          </button>
+        </SiTabHeader>
       </template>
       <template #panels>
         <TabPanel
@@ -31,22 +34,16 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, toRef } from "vue";
+import { toRef, computed } from "vue";
 import { refFrom, fromRef } from "vuse-rx/src";
-import { combineLatest, iif, of } from "rxjs";
-import { switchMap, tap } from "rxjs/operators";
 import { FuncService } from "@/service/func";
 import { GetFuncResponse } from "@/service/func/get_func";
 import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import { TabPanel } from "@headlessui/vue";
 import FuncEditor from "@/organisms/FuncEditor.vue";
-import {
-  EditingFunc,
-  editingFuncs$,
-  selectedTab$,
-} from "@/observable/func_editor";
-import isEqual from "lodash/isEqual";
+import VueFeather from "vue-feather";
+import { EditingFunc, editingFuncs$ } from "@/observable/func_editor";
 
 const props = defineProps<{
   selectedFuncId: number;
@@ -62,29 +59,33 @@ const selectFunc = (funcId: number) => {
 
 const selectedFuncId = toRef(props, "selectedFuncId", 0);
 const selectedFuncId$ = fromRef(selectedFuncId, { immediate: true });
-const selectedTab = refFrom<number>(selectedTab$);
-
-const changeTab = (index: number) => {
-  selectFunc(funcList.value[index] ?? 0);
-  selectedTab$.next(index);
-};
-
-const funcList = ref<number[]>([]);
 
 const findTabIndexForFunc = (funcList: EditingFunc[], func: { id: number }) =>
   funcList.findIndex((fn) => fn.id == func.id);
 
-const editingFuncs = refFrom<EditingFunc[]>(
-  editingFuncs$.pipe(
-    tap((editingFuncs) => {
-      const newFuncList = editingFuncs.map((editingFunc) => editingFunc.id);
-      if (!isEqual(newFuncList, funcList.value)) {
-        funcList.value = [...newFuncList];
-      }
-    }),
-  ),
-  [],
+// We need the editingFuncs ref to manage updates to the observable,
+// but we also want to map it into a list of functions for managing the
+// list of tabs, hence the tap.
+const editingFuncs = refFrom<EditingFunc[]>(editingFuncs$, []);
+const funcList = computed(() =>
+  editingFuncs.value.map((editingFunc) => editingFunc.id),
 );
+const selectedTab = computed(() =>
+  findTabIndexForFunc(editingFuncs.value, { id: selectedFuncId.value }),
+);
+
+const changeTab = (index: number) => {
+  if (index > funcList.value.length - 1) {
+    index--;
+  }
+  selectFunc(funcList.value[index] ?? 0);
+};
+
+const closeFunc = (funcId: number) => {
+  const funcList = [...editingFuncs.value].filter((f) => f.id !== funcId);
+  // Handle unsaved functions here with modal...  or dispatch a save on close?
+  editingFuncs$.next([...funcList]);
+};
 
 const updateHandlerForFunc = (func: EditingFunc, newHandler: string) =>
   updateFunc({
@@ -128,14 +129,12 @@ const updateFunc = (func: EditingFunc) => {
 const insertFunc = (func: GetFuncResponse) => {
   const funcList = [...editingFuncs.value];
   const existingFuncIdx = findTabIndexForFunc(funcList, func);
-  let selectedTab = existingFuncIdx;
   if (existingFuncIdx == -1) {
     funcList.push({
       modifiedFunc: { ...func },
       origFunc: { ...func },
       id: func.id,
     });
-    selectedTab = funcList.length - 1;
   } else {
     funcList[existingFuncIdx] = {
       ...funcList[existingFuncIdx],
@@ -144,22 +143,11 @@ const insertFunc = (func: GetFuncResponse) => {
   }
 
   editingFuncs$.next([...funcList]);
-  selectedTab$.next(selectedTab);
 };
 
-refFrom<GetFuncResponse | undefined>(
-  combineLatest([selectedFuncId$]).pipe(
-    switchMap(([selectedFuncId]) =>
-      iif(
-        () => selectedFuncId > 0,
-        FuncService.getFunc({ id: selectedFuncId }),
-        of(undefined),
-      ),
-    ),
-    tap((func) => {
-      func && insertFunc(func);
-    }),
+selectedFuncId$.subscribe((selectedFuncId) =>
+  FuncService.getFunc({ id: selectedFuncId }).subscribe((func) =>
+    insertFunc(func),
   ),
-  undefined,
 );
 </script>

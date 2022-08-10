@@ -29,10 +29,13 @@ import { computed, onMounted, ref, toRef, watch } from "vue";
 import { EditorState, StateField } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
 import { defaultKeymap } from "@codemirror/commands";
-import { EditingFunc, editingFuncs$ } from "@/observable/func_editor";
+import {
+  EditingFunc,
+  editingFuncs$,
+  nullEditingFunc,
+} from "@/observable/func_editor";
 
 import { refFrom } from "vuse-rx/src";
-import { FuncBackendKind } from "@/api/sdf/dal/func";
 
 import SiTextBox2 from "@/atoms/SiTextBox2.vue";
 import PrimarySuccessButtonXSmall from "@/molecules/PrimarySuccessButtonXSmall.vue";
@@ -42,29 +45,12 @@ const props = defineProps<{
   funcId: number;
 }>();
 
-const nullFunc: EditingFunc = {
-  origFunc: {
-    id: 0,
-    handler: undefined,
-    kind: FuncBackendKind.Unset,
-    name: "",
-    code: "",
-  },
-  modifiedFunc: {
-    id: 0,
-    handler: undefined,
-    kind: FuncBackendKind.Unset,
-    name: "",
-    code: "",
-  },
-  id: 0,
-};
-
 const editingFuncs = refFrom<EditingFunc[]>(editingFuncs$, []);
 
 const funcId = toRef(props, "funcId", -1);
 const editingFunc = computed(
-  () => editingFuncs.value.find((f) => f.id === funcId.value) ?? nullFunc,
+  () =>
+    editingFuncs.value.find((f) => f.id === funcId.value) ?? nullEditingFunc,
 );
 
 const handler = ref<string>(editingFunc.value.modifiedFunc.handler ?? "");
