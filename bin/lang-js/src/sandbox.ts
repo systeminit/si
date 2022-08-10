@@ -36,6 +36,8 @@ const codeGenerationSandbox = {
   YAML: { stringify: yaml.dump },
 };
 
+const workflowResolveSandbox = {};
+
 function qualificationCheckSandbox(executionId: string): Sandbox {
   return {
     siExec: makeExec(executionId),
@@ -51,25 +53,30 @@ export function createSandbox(
   executionId: string
 ): Sandbox {
   switch (kind) {
-    case FunctionKind.ResolverFunction:
+    case FunctionKind.CodeGeneration:
       return {
         ...commonSandbox(executionId),
-        ...resolverFunctionSandbox,
+        ...codeGenerationSandbox,
       };
     case FunctionKind.QualificationCheck:
       return {
         ...commonSandbox(executionId),
         ...qualificationCheckSandbox(executionId),
       };
+    case FunctionKind.ResolverFunction:
+      return {
+        ...commonSandbox(executionId),
+        ...resolverFunctionSandbox,
+      };
     case FunctionKind.ResourceSync:
       return {
         ...commonSandbox(executionId),
         ...resourceSyncSandbox,
       };
-    case FunctionKind.CodeGeneration:
+    case FunctionKind.WorkflowResolve:
       return {
         ...commonSandbox(executionId),
-        ...codeGenerationSandbox,
+        ...workflowResolveSandbox,
       };
     default:
       throw new UnknownSandboxKind(kind);
