@@ -21,10 +21,12 @@
         <CodeViewer
           class="dark:text-neutral-50 text-neutral-900"
           :component-id="props.componentIdentification.componentId"
-          :schema-name="props.componentIdentification.schemaName"
           :code="code"
           @generate="generateCode"
         >
+          <template #title>
+            <span class="text-lg">{{ props.componentName }} Code</span>
+          </template>
           <template #refreshIcon>
             <RefreshIcon :class="refreshClasses" />
           </template>
@@ -53,6 +55,7 @@ import { RefreshIcon } from "@heroicons/vue/solid";
 
 const props = defineProps<{
   componentIdentification: ComponentIdentification;
+  componentName: string;
 }>();
 const componentIdentification$ = fromRef(props.componentIdentification, {
   immediate: true,

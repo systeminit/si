@@ -1,14 +1,9 @@
 <template>
   <div v-if="props.componentId" class="flex flex-col w-full overflow-hidden">
     <div
-      class="flex flex-row items-center justify-between h-10 px-6 py-2 text-base align-middle"
+      class="flex flex-row items-center justify-between h-10 mx-4 py-2 text-base align-middle"
     >
-      <div v-if="props.schemaName" class="text-lg">
-        {{ props.schemaName }}
-      </div>
-      <div v-else class="text-lg">
-        Component ID {{ props.componentId }} Code
-      </div>
+      <slot name="title"></slot>
 
       <div class="flex">
         <SiButtonIcon
@@ -63,9 +58,7 @@ import { CodeLanguage } from "@/api/sdf/dal/code_view";
 const props = defineProps<{
   componentId: number;
   code: string;
-
   codeLanguage?: CodeLanguage;
-  schemaName?: string;
 
   // Format: "0.0px"
   fontSize?: string;

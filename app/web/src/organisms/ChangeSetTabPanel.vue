@@ -44,42 +44,45 @@
       <!-- List of components -->
       <div class="overflow-y-auto flex-expand">
         <div
-          v-for="group in list"
-          :key="group.component_id"
+          v-for="statsGroup in list"
+          :key="statsGroup.component_id"
           class="flex flex-col text-sm"
         >
           <div
-            v-if="selectedComponentId === group.component_id"
+            v-if="
+              selectedComponent &&
+              selectedComponent.component_id === statsGroup.component_id
+            "
             class="bg-action-500 py-2"
-            @click="updateSelectedComponentId(group.component_id)"
+            @click="updateSelectedComponent(statsGroup)"
           >
-            {{ group.component_name }}
+            {{ statsGroup.component_name }}
           </div>
 
           <div
             v-else
             class="hover:bg-black py-2"
-            @click="updateSelectedComponentId(group.component_id)"
+            @click="updateSelectedComponent(statsGroup)"
           >
-            {{ group.component_name }}
+            {{ statsGroup.component_name }}
           </div>
         </div>
       </div>
     </div>
 
     <!-- Selected component view -->
-    <div v-if="selectedComponentId">
+    <div v-if="selectedComponent">
       <div
         v-if="selectedComponentGroup === 'added'"
         class="text-success-300 text-center text-lg p-2 ml-4"
       >
-        Component ID {{ selectedComponentId }} Added
+        {{ selectedComponent.component_name }} Added
       </div>
       <div
         v-else-if="selectedComponentGroup === 'deleted'"
         class="text-destructive-300 text-center text-lg px-2 py-1 ml-4"
       >
-        Component ID {{ selectedComponentId }} Deleted
+        {{ selectedComponent.component_name }} Deleted
       </div>
       <div
         v-else-if="selectedComponentGroup === 'modified'"
@@ -87,28 +90,43 @@
       >
         <CodeViewer
           font-size="12px"
-          :component-id="selectedComponentId"
+          :component-id="selectedComponent.component_id"
           class="text-neutral-50 mx-5"
           :code="diffCode"
           force-theme="dark"
           code-language="diff"
-        />
+        >
+          <template #title>
+            <span class="text-lg"
+              >{{ selectedComponent.component_name }} Diff</span
+            >
+          </template>
+        </CodeViewer>
 
         <CodeViewer
           font-size="12px"
-          :component-id="selectedComponentId"
+          :component-id="selectedComponent.component_id"
           class="text-neutral-50 mx-5"
           :code="currentCode"
           force-theme="dark"
           code-language="json"
-        />
+        >
+          <template #title
+            ><span class="text-lg"
+              >{{ selectedComponent.component_name }} Current</span
+            ></template
+          >
+        </CodeViewer>
       </div>
+    </div>
+    <div v-else class="flex flex-row items-center text-center w-full h-full">
+      <p class="w-full text-3xl text-neutral-500">No Component Selected</p>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ComponentStats } from "@/api/sdf/dal/change_set";
+import { ComponentStats, ComponentStatsGroup } from "@/api/sdf/dal/change_set";
 import { lastSelectedNode$ } from "@/observable/selection";
 import { ChangeSetService } from "@/service/change_set";
 import { GlobalErrorService } from "@/service/global_error";
@@ -123,9 +141,12 @@ import CodeViewer from "@/organisms/CodeViewer.vue";
 import { combineLatest } from "rxjs";
 import { ComponentService } from "@/service/component";
 import { ComponentDiff } from "@/api/sdf/dal/component";
+import _ from "lodash";
 
-const filter = ref<"all" | "added" | "deleted" | "modified">("all");
-const changeFilter = (newFilter: "all" | "added" | "deleted" | "modified") => {
+export type ChangeSetTabPanelFilter = "all" | "added" | "deleted" | "modified";
+
+const filter = ref<ChangeSetTabPanelFilter>("all");
+const changeFilter = (newFilter: ChangeSetTabPanelFilter) => {
   filter.value = newFilter;
 };
 const filterTitle = computed(() => {
@@ -164,19 +185,19 @@ const stats = ref<ComponentStats>({
 
 const selectedComponentGroup = computed(
   (): "added" | "deleted" | "modified" | false => {
-    if (selectedComponentId.value) {
-      for (const group of stats.value.added) {
-        if (group.component_id === selectedComponentId.value) {
+    if (selectedComponent.value) {
+      for (const statsGroup of stats.value.added) {
+        if (statsGroup.component_id === selectedComponent.value.component_id) {
           return "added";
         }
       }
-      for (const group of stats.value.deleted) {
-        if (group.component_id === selectedComponentId.value) {
+      for (const statsGroup of stats.value.deleted) {
+        if (statsGroup.component_id === selectedComponent.value.component_id) {
           return "deleted";
         }
       }
-      for (const group of stats.value.modified) {
-        if (group.component_id === selectedComponentId.value) {
+      for (const statsGroup of stats.value.modified) {
+        if (statsGroup.component_id === selectedComponent.value.component_id) {
           return "modified";
         }
       }
@@ -193,10 +214,10 @@ untilUnmounted(ChangeSetService.getStats()).subscribe((response) => {
   }
 });
 
-const selectedComponentId = ref<number | null>(null);
-const selectedComponentId$ = fromRef(selectedComponentId, { immediate: true });
-const updateSelectedComponentId = (componentId: number) => {
-  selectedComponentId.value = componentId;
+const selectedComponent = ref<ComponentStatsGroup | null>(null);
+const selectedComponent$ = fromRef(selectedComponent, { immediate: true });
+const updateSelectedComponent = (statsGroup: ComponentStatsGroup) => {
+  selectedComponent.value = statsGroup;
 };
 
 const updateSelection = (node: Node | null) => {
@@ -205,8 +226,12 @@ const updateSelection = (node: Node | null) => {
   // Ignores deselection and fake nodes, as they don't have any attributes
   if (!componentId || componentId === -1) return;
 
-  selectedComponentId.value = componentId;
+  selectedComponent.value = {
+    component_id: componentId,
+    component_name: node?.name,
+  };
 };
+
 lastSelectedNode$
   .pipe(untilUnmounted)
   .subscribe((node) => updateSelection(node));
@@ -228,12 +253,12 @@ const diffCode = computed((): string => {
 });
 
 const componentDiff = refFrom<ComponentDiff | null>(
-  combineLatest([selectedComponentId$]).pipe(
-    switchMap(([selectedComponentId]) => {
+  combineLatest([selectedComponent$]).pipe(
+    switchMap(([selectedComponent]) => {
       // Only collect the diff for modified components.
-      if (selectedComponentId && selectedComponentGroup.value === "modified") {
+      if (selectedComponent && selectedComponentGroup.value === "modified") {
         return ComponentService.getDiff({
-          componentId: selectedComponentId,
+          componentId: selectedComponent.component_id,
         });
       }
       return from([null]);

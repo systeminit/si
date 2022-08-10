@@ -18,6 +18,7 @@
     </div>
 
     <div
+      v-if="qualification.output"
       class="font-commodore bg-black overflow-hidden py-1 flex-grow flex flex-col justify-center"
     >
       <p

@@ -41,8 +41,9 @@
         side="right"
       >
         <ComponentDetails
-          v-if="selectedComponentIdentification"
+          v-if="selectedComponentIdentification && selectedComponentName"
           :component-identification="selectedComponentIdentification"
+          :component-name="selectedComponentName"
         />
       </SiSidebar>
     </div>
@@ -108,6 +109,20 @@ const schematicData = ref<Schematic>({ nodes: [], connections: [] });
 
 const selectedComponentId = ref<number | "">("");
 const activeNode = refFrom(lastSelectedNode$);
+
+const selectedComponentName = computed(() => {
+  if (selectedComponentId.value && componentIdentificationList.value) {
+    for (const identification of componentIdentificationList.value) {
+      if (
+        identification.value &&
+        identification.value.componentId === selectedComponentId.value
+      ) {
+        return identification.label;
+      }
+    }
+  }
+  return null;
+});
 
 const componentIdentificationList = refFrom<
   LabelList<ComponentIdentification | "">
