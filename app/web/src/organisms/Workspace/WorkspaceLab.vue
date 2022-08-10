@@ -16,7 +16,6 @@
         v-if="selectedFunc.id > 0"
         :selected-func-id="selectedFunc.id"
         @selected-func="selectFunc"
-        @updated-code="({ func, code }) => updateCodeForFunc(func, code)"
       />
       <div v-else class="p-2 text-center text-neutral-400">
         Select a function to edit it.
@@ -24,13 +23,7 @@
     </div>
     <SiSidebar :hidden="false" side="right">
       <!-- if hiding is added later, condition is selectedFuncId < 1 -->
-      <FunctionDetails
-        :func="selectedFunc"
-        @updated-handler="
-          (handler) => updateHandlerForFunc(selectedFunc, handler)
-        "
-        @updated-name="(name) => updateNameForFunc(selectedFunc, name)"
-      />
+      <FuncDetails :func-id="selectedFunc.id" />
     </SiSidebar>
   </div>
 </template>
@@ -49,9 +42,7 @@ import {
 import { ref } from "vue";
 import { refFrom } from "vuse-rx/src";
 import TertiaryNeutralButtonXSmall from "@/molecules/TertiaryNeutralButtonXSmall.vue";
-import FunctionDetails from "@/organisms/FunctionDetails.vue";
-import { EditingFunc, editingFuncs$ } from "@/observable/func_editor";
-import { tap } from "rxjs/operators";
+import FuncDetails from "@/organisms/FuncDetails.vue";
 
 const selectedFunc = ref<ListedFuncView>(nullListFunc);
 const selectFunc = (func: ListedFuncView) => {
@@ -61,48 +52,4 @@ const selectFunc = (func: ListedFuncView) => {
 const funcList = refFrom<ListFuncsResponse>(FuncService.listFuncs(), {
   qualifications: [],
 });
-
-const editingFuncs = refFrom<EditingFunc[]>(
-  editingFuncs$.pipe(tap(console.log)),
-  [],
-);
-
-const updateHandlerForFunc = (func: EditingFunc, newHandler: string) =>
-  updateFunc({
-    ...func,
-    modifiedFunc: {
-      ...func.modifiedFunc,
-      handler: newHandler,
-    },
-  });
-
-const updateNameForFunc = (func: EditingFunc, newName: string) =>
-  updateFunc({
-    ...func,
-    modifiedFunc: {
-      ...func.modifiedFunc,
-      name: newName,
-    },
-  });
-
-const updateCodeForFunc = (func: EditingFunc, newCode: string) =>
-  updateFunc({
-    ...func,
-    modifiedFunc: {
-      ...func.modifiedFunc,
-      code: newCode,
-    },
-  });
-
-const updateFunc = (func: EditingFunc) => {
-  const funcList = [...editingFuncs.value];
-  const existingFuncIdx = funcList.findIndex((f) => func.id === f.id);
-  if (existingFuncIdx == -1) {
-    console.error("Could not find func", func);
-    return;
-  }
-
-  funcList[existingFuncIdx] = { ...func };
-  editingFuncs$.next([...funcList]);
-};
 </script>

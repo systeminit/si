@@ -1,4 +1,5 @@
-import { BehaviorSubject } from "rxjs";
+import { of, ReplaySubject } from "rxjs";
+import { shareReplay, map, mergeMap } from "rxjs/operators";
 import { Func, FuncBackendKind } from "@/api/sdf/dal/func";
 
 export interface EditingFunc {
@@ -10,14 +11,14 @@ export interface EditingFunc {
 export const nullEditingFunc: EditingFunc = {
   origFunc: {
     id: 0,
-    handler: undefined,
+    handler: "",
     kind: FuncBackendKind.Unset,
     name: "",
     code: "",
   },
   modifiedFunc: {
     id: 0,
-    handler: undefined,
+    handler: "",
     kind: FuncBackendKind.Unset,
     name: "",
     code: "",
@@ -25,4 +26,45 @@ export const nullEditingFunc: EditingFunc = {
   id: 0,
 };
 
-export const editingFuncs$ = new BehaviorSubject<EditingFunc[]>([]);
+export interface FuncEdit {
+  type: "change" | "insert" | "remove";
+  func: Func;
+}
+
+export const funcEdit$ = new ReplaySubject<FuncEdit>(1);
+
+export const funcStream$ = of([] as EditingFunc[]).pipe(
+  mergeMap((editingFuncs) =>
+    funcEdit$.pipe(
+      map(({ type, func }) => {
+        switch (type) {
+          case "insert":
+            if (!editingFuncs.find((f) => f.id === func.id)) {
+              editingFuncs.push({
+                origFunc: func,
+                modifiedFunc: func,
+                id: func.id,
+              });
+            }
+            break;
+          case "remove":
+            editingFuncs = editingFuncs.filter((f) => f.id !== func.id);
+            break;
+          case "change": {
+            const currentFuncIdx = editingFuncs.findIndex(
+              (f) => f.id === func.id,
+            );
+            if (currentFuncIdx == -1) {
+              return editingFuncs;
+            }
+            editingFuncs[currentFuncIdx].modifiedFunc = { ...func };
+            break;
+          }
+        }
+
+        return editingFuncs;
+      }),
+    ),
+  ),
+  shareReplay(1),
+);
