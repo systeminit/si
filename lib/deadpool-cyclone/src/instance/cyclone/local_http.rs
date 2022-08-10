@@ -11,7 +11,7 @@ use cyclone::{
         CodeGenerationRequest, CodeGenerationResultSuccess, Connection, Execution, PingExecution,
         QualificationCheckRequest, QualificationCheckResultSuccess, ResolverFunctionRequest,
         ResolverFunctionResultSuccess, ResourceSyncRequest, ResourceSyncResultSuccess, Watch,
-        WatchError, WatchStarted,
+        WatchError, WatchStarted, WorkflowResolveRequest, WorkflowResolveResultSuccess,
     },
     process::{self, ShutdownError},
     Client, ClientError, CycloneClient, HttpClient, LivenessStatus, ReadinessStatus,
@@ -204,6 +204,23 @@ impl CycloneClient<TcpStream> for LocalHttpInstance {
 
         result
     }
+
+    async fn execute_workflow_resolve(
+        &mut self,
+        request: WorkflowResolveRequest,
+    ) -> result::Result<
+        Execution<TcpStream, WorkflowResolveRequest, WorkflowResolveResultSuccess>,
+        ClientError,
+    > {
+        self.ensure_healthy_client()
+            .await
+            .map_err(ClientError::unhealthy)?;
+
+        let result = self.client.execute_workflow_resolve(request).await;
+        self.count_request();
+
+        result
+    }
 }
 
 impl LocalHttpInstance {
@@ -278,6 +295,10 @@ pub struct LocalHttpInstanceSpec {
     /// Enables the `sync` execution endpoint for a spawned Cyclone server.
     #[builder(private, setter(name = "_sync"), default = "false")]
     sync: bool,
+
+    /// Enables the `workflow` execution endpoint for a spawned Cyclone server.
+    #[builder(private, setter(name = "_workflow"), default = "false")]
+    workflow: bool,
 }
 
 #[async_trait]
@@ -400,6 +421,11 @@ impl LocalHttpInstanceSpecBuilder {
     /// Enables the `sync` execution endpoint for a spawned Cyclone server.
     pub fn sync(&mut self) -> &mut Self {
         self._sync(true)
+    }
+
+    /// Enables the `workflow` execution endpoint for a spawned Cyclone server.
+    pub fn workflow(&mut self) -> &mut Self {
+        self._workflow(true)
     }
 }
 

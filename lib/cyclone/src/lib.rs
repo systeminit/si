@@ -21,6 +21,7 @@ mod readiness;
 mod resolver_function;
 mod resource_sync;
 mod sensitive_container;
+mod workflow_resolve;
 
 pub use code_generation::{CodeGenerated, CodeGenerationRequest, CodeGenerationResultSuccess};
 pub use component_view::{ComponentKind, ComponentView, SystemView};
@@ -39,6 +40,7 @@ pub use resolver_function::{
 };
 pub use resource_sync::{ResourceSyncRequest, ResourceSyncResultSuccess};
 pub use sensitive_container::{SensitiveContainer, SensitiveString};
+pub use workflow_resolve::{WorkflowResolveRequest, WorkflowResolveResultSuccess};
 
 #[cfg(feature = "process")]
 pub mod process;

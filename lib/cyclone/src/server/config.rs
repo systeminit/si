@@ -42,6 +42,9 @@ pub struct Config {
     #[builder(default = "true")]
     enable_code_generation: bool,
 
+    #[builder(default = "true")]
+    enable_workflow_resolve: bool,
+
     #[builder(default = "IncomingStream::default()")]
     incoming_stream: IncomingStream,
 
@@ -93,6 +96,12 @@ impl Config {
     #[must_use]
     pub fn enable_code_generation(&self) -> bool {
         self.enable_code_generation
+    }
+
+    /// Gets a reference to the config's enable workflow resolve.
+    #[must_use]
+    pub fn enable_workflow_resolve(&self) -> bool {
+        self.enable_workflow_resolve
     }
 
     /// Gets a reference to the config's incoming stream.
