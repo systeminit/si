@@ -6,6 +6,7 @@ use std::{
 
 use deadpool_cyclone::{
     CodeGenerationRequest, QualificationCheckRequest, ResolverFunctionRequest, ResourceSyncRequest,
+    WorkflowResolveRequest,
 };
 use futures::{Stream, StreamExt};
 use futures_lite::FutureExt;
@@ -17,7 +18,7 @@ use thiserror::Error;
 
 use crate::{
     nats_code_generation_subject, nats_qualification_check_subject, nats_resolver_function_subject,
-    nats_resource_sync_subject,
+    nats_resource_sync_subject, nats_workflow_resolve_subject,
 };
 
 #[derive(Error, Debug)]
@@ -109,6 +110,26 @@ impl Subscriber {
         debug!(
             messaging.destination = &subject.as_str(),
             "subscribing for code generation requests"
+        );
+        let inner = nats
+            .subscribe(subject)
+            .await
+            .map_err(SubscriberError::NatsSubscribe)?;
+
+        Ok(Subscription {
+            inner,
+            _phantom: PhantomData,
+        })
+    }
+
+    pub async fn workflow_resolve(
+        nats: &NatsClient,
+        subject_prefix: Option<&str>,
+    ) -> Result<Subscription<WorkflowResolveRequest>> {
+        let subject = nats_workflow_resolve_subject(subject_prefix);
+        debug!(
+            messaging.destination = &subject.as_str(),
+            "subscribing for workflow resolve requests"
         );
         let inner = nats
             .subscribe(subject)
