@@ -1,12 +1,14 @@
 <template>
-  <div class="border rounded-xl text-left py-2 px-5 h-full flex flex-col">
+  <div
+    class="border border-neutral-300 rounded-md text-left py-2 px-5 h-full flex flex-col"
+  >
     <div class="text-xl flex justify-between pb-2">
       <div>
         <StatusIndicatorIcon :status="qualificationStatus" class="w-6 mr-1.5" />
         <span class="align-middle">{{ qualification.title }}</span>
       </div>
       <ExternalLinkIcon
-        class="w-5 dark:text-white inline-block align-middle transition-all"
+        class="w-5 dark:text-neutral-300 inline-block align-middle transition-all"
       />
     </div>
 

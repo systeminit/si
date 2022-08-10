@@ -71,52 +71,44 @@
     </div>
 
     <!-- Selected component view -->
-    <div v-if="selectedComponent">
+    <div v-if="selectedComponent" class="w-full h-full flex flex-col">
       <div
         v-if="selectedComponentGroup === 'added'"
-        class="text-success-300 text-center text-lg p-2 ml-4"
+        class="flex flex-row items-center text-center w-full h-full"
       >
-        {{ selectedComponent.component_name }} Added
+        <p class="w-full text-3xl text-success-300">Component Added</p>
       </div>
       <div
         v-else-if="selectedComponentGroup === 'deleted'"
-        class="text-destructive-300 text-center text-lg px-2 py-1 ml-4"
+        class="flex flex-row items-center text-center w-full h-full"
       >
-        {{ selectedComponent.component_name }} Deleted
+        <p class="w-full text-3xl text-destructive-300">Component Deleted</p>
       </div>
       <div
         v-else-if="selectedComponentGroup === 'modified'"
-        class="flex flex-row"
+        class="overflow-y-auto flex flex-row flex-wrap"
       >
-        <CodeViewer
-          font-size="12px"
-          :component-id="selectedComponent.component_id"
-          class="text-neutral-50 mx-5"
-          :code="diffCode"
-          force-theme="dark"
-          code-language="diff"
+        <div
+          v-for="codeView in [diffCodeView, currentCodeView]"
+          :key="codeView.title"
+          class="basis-full lg:basis-1/2 overflow-hidden pr-10 pl-1 pt-2"
         >
-          <template #title>
-            <span class="text-lg"
-              >{{ selectedComponent.component_name }} Diff</span
-            >
-          </template>
-        </CodeViewer>
-
-        <CodeViewer
-          font-size="12px"
-          :component-id="selectedComponent.component_id"
-          class="text-neutral-50 mx-5"
-          :code="currentCode"
-          force-theme="dark"
-          code-language="json"
-        >
-          <template #title
-            ><span class="text-lg"
-              >{{ selectedComponent.component_name }} Current</span
-            ></template
+          <!-- FIXME(nick): make code viewer height malleable if the status bar no longer a fixed size.
+               1024 is the "min-width" for "lg" in tailwind, so we (maybe) should use it to detect if we need to add a height. -->
+          <CodeViewer
+            font-size="13px"
+            height="260px"
+            :component-id="selectedComponent.component_id"
+            class="text-neutral-50 mx-5"
+            :code="codeView.code"
+            force-theme="dark"
+            :code-language="codeView.language"
           >
-        </CodeViewer>
+            <template #title>
+              <span class="text-lg">{{ codeView.title }}</span>
+            </template>
+          </CodeViewer>
+        </div>
       </div>
     </div>
     <div v-else class="flex flex-row items-center text-center w-full h-full">
@@ -143,6 +135,7 @@ import { ComponentService } from "@/service/component";
 import { ComponentDiff } from "@/api/sdf/dal/component";
 import _ from "lodash";
 import { CheckIcon } from "@heroicons/vue/solid";
+import { CodeLanguage } from "@/api/sdf/dal/code_view";
 
 export type ChangeSetTabPanelFilter = "all" | "added" | "deleted" | "modified";
 
@@ -238,19 +231,56 @@ lastSelectedNode$
   .subscribe((node) => updateSelection(node));
 firstValueFrom(lastSelectedNode$).then((last) => updateSelection(last));
 
-const currentCode = computed((): string => {
+// We do not extend "CodeView" because the "code" field is required.
+interface CodeViewWithTitle {
+  code: string;
+  language: CodeLanguage;
+  title: string;
+}
+
+const currentCodeView = computed((): CodeViewWithTitle => {
   if (componentDiff.value) {
-    return componentDiff.value.current.code ?? "# No code found";
+    if (componentDiff.value.current.code) {
+      return {
+        code: componentDiff.value.current.code,
+        language: "json",
+        title: "Current",
+      };
+    }
+    return {
+      code: "# No code found",
+      language: "unknown",
+      title: "Current",
+    };
   }
-  return "# Waiting for component diff...";
+  return {
+    code: "# Waiting for component diff...",
+    language: "unknown",
+    title: "Current",
+  };
 });
 
 // FIXME(nick): allow for multiple diffs.
-const diffCode = computed((): string => {
+const diffCodeView = computed((): CodeViewWithTitle => {
   if (componentDiff.value) {
-    return componentDiff.value.diffs[0].code ?? "# No code found";
+    if (componentDiff.value.diffs[0].code) {
+      return {
+        code: componentDiff.value.diffs[0].code,
+        language: "diff",
+        title: "Diff",
+      };
+    }
+    return {
+      code: "# No code found",
+      language: "unknown",
+      title: "Diff",
+    };
   }
-  return "# Waiting for component diff...";
+  return {
+    code: "# Waiting for component diff...",
+    language: "unknown",
+    title: "Diff",
+  };
 });
 
 const componentDiff = refFrom<ComponentDiff | null>(
