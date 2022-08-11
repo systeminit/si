@@ -9,9 +9,9 @@ use dal::{StandardModelError, TransactionsError};
 
 use thiserror::Error;
 
+pub mod create_func;
 pub mod get_func;
 pub mod list_funcs;
-pub mod create_func;
 
 #[derive(Error, Debug)]
 pub enum FuncError {

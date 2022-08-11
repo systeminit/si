@@ -1,12 +1,11 @@
-use axum::Json;
 use super::FuncResult;
+use crate::server::extract::{AccessBuilder, HandlerContext};
+use axum::Json;
 use dal::{
-    generate_name,
-    Func, FuncId, FuncBackendKind, FuncBackendResponseType, 
-    StandardModel, Visibility,
+    generate_name, Func, FuncBackendKind, FuncBackendResponseType, FuncId, StandardModel,
+    Visibility,
 };
 use serde::{Deserialize, Serialize};
-use crate::server::extract::{AccessBuilder, HandlerContext};
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -89,10 +88,13 @@ pub async fn create_func(
         generate_name(None),
         FuncBackendKind::JsQualification,
         FuncBackendResponseType::Qualification,
-    ).await?;
+    )
+    .await?;
 
-    func.set_code_base64(&ctx, Some(base64::encode(DEFAULT_QUALIFICATION_CODE))).await?;
-    func.set_handler(&ctx, Some("qualification".to_owned())).await?;
+    func.set_code_base64(&ctx, Some(base64::encode(DEFAULT_QUALIFICATION_CODE)))
+        .await?;
+    func.set_handler(&ctx, Some("qualification".to_owned()))
+        .await?;
 
     txns.commit().await?;
 
@@ -104,6 +106,3 @@ pub async fn create_func(
         code: func.code_plaintext()?,
     }))
 }
-
-
-
