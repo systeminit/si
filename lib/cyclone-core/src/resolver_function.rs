@@ -28,27 +28,3 @@ pub struct ResolverFunctionResultSuccess {
     pub unset: bool,
     pub timestamp: u64,
 }
-
-#[cfg(feature = "server")]
-pub(crate) mod server {
-    use super::*;
-
-    #[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]
-    #[serde(rename_all = "camelCase")]
-    pub struct LangServerResolverFunctionResultSuccess {
-        pub execution_id: String,
-        pub data: Value,
-        pub unset: bool,
-    }
-
-    impl From<LangServerResolverFunctionResultSuccess> for ResolverFunctionResultSuccess {
-        fn from(value: LangServerResolverFunctionResultSuccess) -> Self {
-            Self {
-                execution_id: value.execution_id,
-                data: value.data,
-                unset: value.unset,
-                timestamp: crate::server::timestamp(),
-            }
-        }
-    }
-}

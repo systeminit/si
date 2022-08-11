@@ -25,7 +25,9 @@ A-web:
 #
 A-cyclone:
   - bin/cyclone/**/*
-  - lib/cyclone/**/*
+  - lib/cyclone-client/**/*
+  - lib/cyclone-core/**/*
+  - lib/cyclone-server/**/*
   - .cargo/**/*
   - Cargo.lock
   - rust-toolchain

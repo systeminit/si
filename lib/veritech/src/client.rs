@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use cyclone::{
+use cyclone_core::{
     CodeGenerationRequest, CodeGenerationResultSuccess, FunctionResult, OutputStream,
     QualificationCheckRequest, QualificationCheckResultSuccess, ResolverFunctionRequest,
     ResolverFunctionResultSuccess, ResourceSyncRequest, ResourceSyncResultSuccess,
@@ -389,7 +389,7 @@ mod subscription {
 mod tests {
     use std::env;
 
-    use cyclone::{
+    use cyclone_core::{
         CodeGenerated, ComponentView, QualificationCheckComponent, ResolverFunctionComponent,
     };
     use deadpool_cyclone::{instance::cyclone::LocalUdsInstance, Instance};
@@ -426,7 +426,7 @@ mod tests {
             LocalUdsInstance::spec()
                 .try_cyclone_cmd_path("../../target/debug/cyclone")
                 .expect("failed to setup cyclone_cmd_path")
-                .cyclone_decryption_key_path("../../lib/cyclone/src/dev.decryption.key")
+                .cyclone_decryption_key_path("../../lib/cyclone-server/src/dev.decryption.key")
                 .try_lang_server_cmd_path("../../bin/lang-js/target/lang-js")
                 .expect("failed to setup lang_js_cmd_path")
                 .resolver()

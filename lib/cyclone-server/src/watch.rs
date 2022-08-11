@@ -5,8 +5,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::{sync::mpsc, time};
 
-use super::server::ShutdownSource;
-use crate::server::WebSocketMessage;
+use crate::{ShutdownSource, WebSocketMessage};
 
 pub fn run(keepalive_tx: mpsc::Sender<()>, timeout: Duration) -> WatchRun {
     WatchRun {

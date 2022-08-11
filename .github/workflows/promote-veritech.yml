@@ -11,7 +11,9 @@ on:
       - Cargo.*
       - bin/veritech/**
       - lib/config-file/**
-      - lib/cyclone/**
+      - lib/cyclone-client/**
+      - lib/cyclone-core/**
+      - lib/cyclone-server/**
       - lib/si-data/**
       - lib/si-settings/**
       - lib/telemetry-rs/**

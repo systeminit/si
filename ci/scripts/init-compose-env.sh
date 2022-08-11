@@ -31,7 +31,7 @@ function set-jwt-secret-key {
 
 function set-cyclone-encryption-key {
   CYCLONE_ENCRYPTION_KEY="$(
-    realpath "$REPOPATH/lib/cyclone/src/dev.encryption.key"
+    realpath "$REPOPATH/lib/cyclone-server/src/dev.encryption.key"
   )"
   if [[ ! -f "$CYCLONE_ENCRYPTION_KEY" ]]; then
     echo "file does not exist or could not be found: $CYCLONE_ENCRYPTION_KEY"
@@ -41,7 +41,7 @@ function set-cyclone-encryption-key {
 
 function set-cyclone-decryption-key {
   CYCLONE_DECRYPTION_KEY="$(
-    realpath "$REPOPATH/lib/cyclone/src/dev.decryption.key"
+    realpath "$REPOPATH/lib/cyclone-server/src/dev.decryption.key"
   )"
   if [[ ! -f "$CYCLONE_DECRYPTION_KEY" ]]; then
     echo "file does not exist or could not be found: $CYCLONE_DECRYPTION_KEY"

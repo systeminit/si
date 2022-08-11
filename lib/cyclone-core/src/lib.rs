@@ -11,10 +11,12 @@
     clippy::module_name_repetitions
 )]
 
-pub mod canonical_command;
+mod canonical_command;
 mod code_generation;
 mod component_view;
+mod encryption_key;
 mod liveness;
+pub mod process;
 mod progress;
 mod qualification_check;
 mod readiness;
@@ -23,8 +25,10 @@ mod resource_sync;
 mod sensitive_container;
 mod workflow_resolve;
 
+pub use canonical_command::{CanonicalCommand, CanonicalCommandError};
 pub use code_generation::{CodeGenerated, CodeGenerationRequest, CodeGenerationResultSuccess};
 pub use component_view::{ComponentKind, ComponentView, SystemView};
+pub use encryption_key::{EncryptionKey, EncryptionKeyError};
 pub use liveness::{LivenessStatus, LivenessStatusParseError};
 pub use progress::{
     FunctionResult, FunctionResultFailure, FunctionResultFailureError, Message, OutputStream,
@@ -41,18 +45,3 @@ pub use resolver_function::{
 pub use resource_sync::{ResourceSyncRequest, ResourceSyncResultSuccess};
 pub use sensitive_container::{SensitiveContainer, SensitiveString};
 pub use workflow_resolve::{WorkflowResolveRequest, WorkflowResolveResultSuccess};
-
-#[cfg(feature = "process")]
-pub mod process;
-
-#[cfg(feature = "server")]
-mod server;
-#[cfg(feature = "server")]
-pub use server::{Config, ConfigError, IncomingStream, Server};
-
-#[cfg(feature = "client")]
-pub mod client;
-#[cfg(feature = "client")]
-pub use client::{
-    Client, ClientError, CycloneClient, EncryptionKey, EncryptionKeyError, HttpClient, UdsClient,
-};

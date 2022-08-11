@@ -12,6 +12,12 @@ use axum::{
     },
     response::IntoResponse,
 };
+use cyclone_core::{
+    CodeGenerationRequest, CodeGenerationResultSuccess, LivenessStatus, Message,
+    QualificationCheckRequest, QualificationCheckResultSuccess, ReadinessStatus,
+    ResolverFunctionRequest, ResolverFunctionResultSuccess, ResourceSyncRequest,
+    ResourceSyncResultSuccess, WorkflowResolveRequest, WorkflowResolveResultSuccess,
+};
 use hyper::StatusCode;
 use serde::{de::DeserializeOwned, Serialize};
 use telemetry::{prelude::*, TelemetryLevel};
@@ -21,21 +27,14 @@ use super::{
     routes::{LangServerPath, WatchKeepalive},
 };
 use crate::{
-    code_generation::server::LangServerCodeGenerationResultSuccess,
-    qualification_check::server::LangServerQualificationCheckResultSuccess,
-    resolver_function::server::LangServerResolverFunctionResultSuccess,
-    resource_sync::server::LangServerResourceSyncResultSuccess,
-    server::{
-        decryption_key::DecryptionKey,
-        execution::{self, Execution},
-        request::{DecryptRequest, ListSecrets},
-        watch,
+    execution::{self, Execution},
+    request::{DecryptRequest, ListSecrets},
+    result::{
+        LangServerCodeGenerationResultSuccess, LangServerQualificationCheckResultSuccess,
+        LangServerResolverFunctionResultSuccess, LangServerResourceSyncResultSuccess,
+        LangServerWorkflowResolveResultSuccess,
     },
-    workflow_resolve::server::LangServerWorkflowResolveResultSuccess,
-    CodeGenerationRequest, CodeGenerationResultSuccess, LivenessStatus, Message,
-    QualificationCheckRequest, QualificationCheckResultSuccess, ReadinessStatus,
-    ResolverFunctionRequest, ResolverFunctionResultSuccess, ResourceSyncRequest,
-    ResourceSyncResultSuccess, WorkflowResolveRequest, WorkflowResolveResultSuccess,
+    watch, DecryptionKey,
 };
 
 #[allow(clippy::unused_async)]

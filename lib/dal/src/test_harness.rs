@@ -99,7 +99,7 @@ impl TestContext {
         let veritech =
             veritech::Client::with_subject_prefix(nats_conn.clone(), nats_subject_prefix);
         let encryption_key = EncryptionKey::load(
-            Path::new(env!("CARGO_MANIFEST_DIR")).join("../cyclone/src/dev.encryption.key"),
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("../cyclone-server/src/dev.encryption.key"),
         )
         .await
         .expect("failed to load dev encryption key");
@@ -160,7 +160,7 @@ async fn veritech_server_for_uds_cyclone(
             )
             .expect("failed to setup cyclone_cmd_path")
             .cyclone_decryption_key_path(
-                dir.join("../../lib/cyclone/src/dev.decryption.key")
+                dir.join("../../lib/cyclone-server/src/dev.decryption.key")
                     .canonicalize()
                     .expect("failed to canonicalize cyclone decryption key path")
                     .to_string_lossy()

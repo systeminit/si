@@ -4,14 +4,13 @@ use std::{
     task::{Context, Poll},
 };
 
+use cyclone_core::{FunctionResult, Message, ProgressMessage};
 use futures::{Future, SinkExt, Stream, StreamExt};
 use hyper::client::connect::Connection;
 use serde::{de::DeserializeOwned, Serialize};
 use thiserror::Error;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_tungstenite::WebSocketStream;
-
-use crate::{FunctionResult, Message, ProgressMessage};
 
 pub use tokio_tungstenite::tungstenite::{
     protocol::frame::CloseFrame as WebSocketCloseFrame, Message as WebSocketMessage,

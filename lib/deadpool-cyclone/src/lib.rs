@@ -21,12 +21,14 @@ use thiserror::Error;
 
 pub use self::instance::{Instance, Spec};
 
-pub use cyclone::{
-    client, CodeGenerationRequest, CodeGenerationResultSuccess, ComponentView, CycloneClient,
-    FunctionResult, OutputStream, ProgressMessage, QualificationCheckRequest,
-    QualificationCheckResultSuccess, ResolverFunctionRequest, ResolverFunctionResultSuccess,
-    ResourceSyncRequest, ResourceSyncResultSuccess, SystemView, WorkflowResolveRequest,
-    WorkflowResolveResultSuccess,
+pub use cyclone_client::{
+    ClientError, CycloneClient, EncryptionKey, EncryptionKeyError, ExecutionError,
+};
+pub use cyclone_core::{
+    CodeGenerationRequest, CodeGenerationResultSuccess, ComponentView, FunctionResult,
+    OutputStream, ProgressMessage, QualificationCheckRequest, QualificationCheckResultSuccess,
+    ResolverFunctionRequest, ResolverFunctionResultSuccess, ResourceSyncRequest,
+    ResourceSyncResultSuccess, SystemView, WorkflowResolveRequest, WorkflowResolveResultSuccess,
 };
 
 /// [`Instance`] implementations.
@@ -98,7 +100,8 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::client::{CycloneClient, LivenessStatus, ReadinessStatus};
+    use cyclone_client::{LivenessStatus, ReadinessStatus};
+
     use super::*;
     use crate::instance::cyclone::LocalUdsInstance;
 
@@ -107,7 +110,7 @@ mod tests {
         let spec = LocalUdsInstance::spec()
             .try_cyclone_cmd_path("../../target/debug/cyclone")
             .expect("failed to find cyclone program")
-            .cyclone_decryption_key_path("../../lib/cyclone/src/dev.decryption.key")
+            .cyclone_decryption_key_path("../../lib/cyclone-server/src/dev.decryption.key")
             .try_lang_server_cmd_path("../../bin/lang-js/target/lang-js")
             .expect("failed to find lang server program")
             .limit_requests(2)

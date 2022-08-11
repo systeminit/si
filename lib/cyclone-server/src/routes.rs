@@ -8,11 +8,7 @@ use axum::{routing::get, Extension, Router};
 use telemetry::{prelude::*, TelemetryLevel};
 use tokio::sync::mpsc;
 
-use super::{
-    decryption_key::DecryptionKey, extract::RequestLimiter, handlers, server::ShutdownSource,
-    Config,
-};
-use crate::server::watch;
+use crate::{extract::RequestLimiter, handlers, watch, Config, DecryptionKey, ShutdownSource};
 
 #[derive(Debug)]
 pub struct LangServerPath(PathBuf);

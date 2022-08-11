@@ -26,7 +26,7 @@ pub mod client;
 #[cfg(feature = "client")]
 pub use client::{Client, ClientError, ClientResult};
 #[cfg(feature = "client")]
-pub use cyclone::{
+pub use cyclone_core::{
     CodeGenerated, CodeGenerationRequest, CodeGenerationResultSuccess, ComponentKind,
     ComponentView, EncryptionKey, EncryptionKeyError, FunctionResult, FunctionResultFailure,
     OutputStream, QualificationCheckComponent, QualificationCheckRequest,

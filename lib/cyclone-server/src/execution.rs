@@ -9,6 +9,11 @@ use std::{
 
 use axum::extract::ws::WebSocket;
 use bytes_lines_codec::BytesLinesCodec;
+use cyclone_core::{
+    process::{self, ShutdownError},
+    FunctionResult, FunctionResultFailure, FunctionResultFailureError, Message, OutputStream,
+    SensitiveString,
+};
 use futures::{SinkExt, StreamExt, TryStreamExt};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::Value;
@@ -22,14 +27,8 @@ use tokio_serde::{formats::SymmetricalJson, Deserializer, Framed, SymmetricallyF
 use tokio_util::codec::{Decoder, FramedRead, FramedWrite};
 
 use crate::{
-    process::{self, ShutdownError},
-    server::{
-        decryption_key::{DecryptionKey, DecryptionKeyError},
-        request::{DecryptRequest, ListSecrets},
-        WebSocketMessage,
-    },
-    FunctionResult, FunctionResultFailure, FunctionResultFailureError, Message, OutputStream,
-    SensitiveString,
+    request::{DecryptRequest, ListSecrets},
+    DecryptionKey, DecryptionKeyError, WebSocketMessage,
 };
 
 const TX_TIMEOUT_SECS: Duration = Duration::from_secs(5);
@@ -460,7 +459,7 @@ impl From<LangServerOutput> for OutputStream {
             group: value.group,
             data: value.data,
             message: value.message,
-            timestamp: crate::server::timestamp(),
+            timestamp: crate::timestamp(),
         }
     }
 }
@@ -486,7 +485,7 @@ where
                     kind: failure.error.kind,
                     message: failure.error.message,
                 },
-                timestamp: crate::server::timestamp(),
+                timestamp: crate::timestamp(),
             }),
         }
     }
