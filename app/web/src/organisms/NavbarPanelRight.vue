@@ -1,19 +1,19 @@
 <template>
   <div class="flex items-center h-full">
-    <SiBarButton :text-mode="true" tooltip-text="Zoom">
+    <SiBarButton tooltip-text="Zoom">
       <template #default="{ hovered, open }">
-        <div class="flex-row flex text-white">
+        <div class="flex-row flex text-shade-0">
           100%
-          <SiArrow :nudge="hovered || open" class="ml-1 w-4 text-white" />
+          <SiArrow :nudge="hovered || open" class="ml-1 w-4 text-shade-0" />
         </div>
       </template>
 
       <template #dropdownContent>
-        <SiDropdownItem>200%</SiDropdownItem>
-        <SiDropdownItem>150%</SiDropdownItem>
-        <SiDropdownItem>100%</SiDropdownItem>
-        <SiDropdownItem>50%</SiDropdownItem>
-        <SiDropdownItem>25%</SiDropdownItem>
+        <SiDropdownItem class="text-sm">200%</SiDropdownItem>
+        <SiDropdownItem class="text-sm">150%</SiDropdownItem>
+        <SiDropdownItem class="text-sm">100%</SiDropdownItem>
+        <SiDropdownItem class="text-sm">50%</SiDropdownItem>
+        <SiDropdownItem class="text-sm">25%</SiDropdownItem>
       </template>
     </SiBarButton>
 
@@ -37,7 +37,9 @@
       </template>
 
       <template #dropdownContent>
-        <SiDropdownItem @select="onLogout">Logout</SiDropdownItem>
+        <SiDropdownItem class="text-sm" @select="onLogout"
+          >Logout</SiDropdownItem
+        >
       </template>
     </SiBarButton>
   </div>

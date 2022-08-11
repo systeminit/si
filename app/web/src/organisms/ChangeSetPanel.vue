@@ -1,6 +1,6 @@
 <template>
   <div>
-    <section class="px-[0.9375rem]">
+    <section class="px-[0.9375rem] my-[0.625rem]">
       <h1
         class="mb-[0.3125rem] text-neutral-900 type-bold-sm dark:text-neutral-50"
       >

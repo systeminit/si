@@ -1,7 +1,7 @@
 <template>
   <button
     type="button"
-    class="inline-flex items-center justify-center rounded-[0.1875rem] border type-medium-sm focus:outline-none focus:ring-1 focus:ring-action-500 focus:ring-offset-2 disabled:opacity-50"
+    class="inline-flex items-center justify-center rounded-[0.1875rem] border text-sm focus:outline-none focus:ring-1 focus:ring-action-500 focus:ring-offset-2 disabled:opacity-50"
     :class="buttonClasses"
     :aria-label="label"
     :disabled="disabled"
@@ -111,10 +111,10 @@ const aloneIconClasses = computed(() => {
 });
 
 const sizeClasses: { [key in ButtonSize]: string[] } = {
-  lg: ["px-[0.3125rem]", "py-2.5"],
-  md: ["px-[0.3125rem]", "py-2"],
-  sm: ["px-[0.3125rem]", "py-1.5"],
-  xs: ["px-[0.3125rem]", "py-1"],
+  lg: ["px-[0.3125rem]", "py-[0.4375rem]"],
+  md: ["px-[0.3125rem]", "py-[0.4375rem]"],
+  sm: ["px-[0.3125rem]", "py-[0.4375rem]"],
+  xs: ["px-[0.3125rem]", "py-[0.4375rem]"],
 };
 
 const buttonRankClasses: { [key in ButtonRank]: string[] } = {

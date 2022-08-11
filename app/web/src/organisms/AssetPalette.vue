@@ -2,10 +2,10 @@
   <SiSearch />
 
   <p
-    class="border-b-2 dark:border-neutral-600 text-xs font-light leading-tight px-3 py-1"
+    class="border-b-2 dark:border-neutral-600 text-sm leading-tight p-2.5 text-neutral-500"
   >
-    Get Started by dragging the assets that you wish to include in your
-    application into the canvas to the right
+    Drag the assets that you wish to include in your application into the canvas
+    to the right.
   </p>
 
   <ul class="overflow-y-auto">
