@@ -1,6 +1,7 @@
 import { of, ReplaySubject } from "rxjs";
-import { shareReplay, map, mergeMap } from "rxjs/operators";
+import { shareReplay, map, mergeMap, switchMap } from "rxjs/operators";
 import { Func, FuncBackendKind } from "@/api/sdf/dal/func";
+import { standardVisibilityTriggers$ } from "@/observable/visibility";
 
 export interface EditingFunc {
   modifiedFunc: Func;
@@ -33,37 +34,42 @@ export interface FuncEdit {
 
 export const funcEdit$ = new ReplaySubject<FuncEdit>(1);
 
-export const funcStream$ = of([] as EditingFunc[]).pipe(
-  mergeMap((editingFuncs) =>
-    funcEdit$.pipe(
-      map(({ type, func }) => {
-        switch (type) {
-          case "insert":
-            if (!editingFuncs.find((f) => f.id === func.id)) {
-              editingFuncs.push({
-                origFunc: func,
-                modifiedFunc: func,
-                id: func.id,
-              });
+export const funcStream$ = standardVisibilityTriggers$.pipe(
+  switchMap(() =>
+    of([] as EditingFunc[]).pipe(
+      mergeMap((editingFuncs) =>
+        funcEdit$.pipe(
+          map(({ type, func }) => {
+            switch (type) {
+              case "insert":
+                if (!editingFuncs.find((f) => f.id === func.id)) {
+                  editingFuncs.push({
+                    origFunc: func,
+                    modifiedFunc: func,
+                    id: func.id,
+                  });
+                }
+                break;
+              case "remove":
+                editingFuncs = editingFuncs.filter((f) => f.id !== func.id);
+                break;
+              case "change": {
+                const currentFuncIdx = editingFuncs.findIndex(
+                  (f) => f.id === func.id,
+                );
+                if (currentFuncIdx == -1) {
+                  return editingFuncs;
+                }
+                editingFuncs[currentFuncIdx].modifiedFunc = { ...func };
+                break;
+              }
             }
-            break;
-          case "remove":
-            editingFuncs = editingFuncs.filter((f) => f.id !== func.id);
-            break;
-          case "change": {
-            const currentFuncIdx = editingFuncs.findIndex(
-              (f) => f.id === func.id,
-            );
-            if (currentFuncIdx == -1) {
-              return editingFuncs;
-            }
-            editingFuncs[currentFuncIdx].modifiedFunc = { ...func };
-            break;
-          }
-        }
 
-        return editingFuncs;
-      }),
+            return editingFuncs;
+          }),
+        ),
+      ),
+
     ),
   ),
   shareReplay(1),
