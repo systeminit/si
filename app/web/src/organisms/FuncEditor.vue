@@ -10,9 +10,9 @@
   <!--    <PrimarySuccessButtonXSmall label="Save" icon-style="left" />-->
   <!--  </div>-->
   <div
-    class="w-full border-neutral-300 dark:border-neutral-600 border-x border-b p-2"
+    class="w-full h-full border-neutral-300 dark:border-neutral-600 border-x border-b p-2"
   >
-    <div ref="editorMount" class="w-full h-full" @keyup.stop @keydown.stop />
+    <div ref="editorMount" @keyup.stop @keydown.stop />
   </div>
 </template>
 
@@ -30,9 +30,6 @@ import {
 import { map } from "rxjs/operators";
 
 import { refFrom } from "vuse-rx/src";
-
-import PrimarySuccessButtonXSmall from "@/molecules/PrimarySuccessButtonXSmall.vue";
-import TertiaryDestructiveButtonXSmall from "@/molecules/TertiaryDestructiveButtonXSmall.vue";
 
 const props = defineProps<{
   funcId: number;

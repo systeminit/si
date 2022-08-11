@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-row w-full bg-transparent">
+  <div class="flex flex-row w-full h-full bg-transparent overflow-hidden">
     <SiSidebar side="left">
       <ChangeSetPanel class="border-b-2 dark:border-neutral-500 mb-2" />
       <TertiaryNeutralButtonXSmall label="Create new function" />
@@ -10,7 +10,7 @@
       />
     </SiSidebar>
     <div
-      class="grow h-screen place-items-center dark:bg-neutral-800 dark:text-white text-lg font-semibold overflow-hidden p-2"
+      class="grow overflow-x-hidden overflow-y-scroll lace-items-center dark:bg-neutral-800 dark:text-white text-lg font-semibold p-0"
     >
       <FuncEditorTabs
         v-if="selectedFunc.id > 0"

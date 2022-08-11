@@ -1,15 +1,14 @@
 <template>
-  <div class="overflow-hidden w-full h-full">
     <SiTabGroup
       :selected-index="selectedTab"
-      tab-list-classes="h-11 flex shrink-0 w-full border-b border-neutral-300 dark:border-neutral-600"
+      tab-list-classes="h-11 flex shrink-0 w-full border-b dark:bg-neutral-800 border-neutral-300 dark:border-neutral-600 sticky top-0 z-50"
       @change="changeTab"
     >
       <template #tabs>
         <SiTabHeader
           v-for="func in funcList"
           :key="func.id"
-          classes="border-x border-t border-x-neutral-300 border-t-neutral-300 dark:border-x-neutral-600 dark:border-t-neutral-600 h-11 px-2 text-sm inline-flex items-center"
+          classes="border-x border-t border-x-neutral-300 border-t-neutral-300 dark:border-x-neutral-600 dark:border-t-neutral-600 h-11 px-2 text-sm inline-flex items-center z-50"
           selected-classes="border-b-white dark:border-b-neutral-800 border-b-2"
         >
           {{ func.name }}
@@ -22,12 +21,11 @@
         </SiTabHeader>
       </template>
       <template #panels>
-        <TabPanel v-for="func in funcList" :key="func.id" class="w-full">
+        <TabPanel v-for="func in funcList" :key="func.id" class="h-full">
           <FuncEditor :func-id="func.id" />
         </TabPanel>
       </template>
     </SiTabGroup>
-  </div>
 </template>
 
 <script lang="ts" setup>
