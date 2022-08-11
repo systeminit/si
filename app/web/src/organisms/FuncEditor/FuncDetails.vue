@@ -23,10 +23,7 @@
 <script setup lang="ts">
 import SiTextBox from "@/atoms/SiTextBox.vue";
 import { toRef, computed } from "vue";
-import {
-  nullEditingFunc,
-} from "@/observable/func_editor";
-import { funcState, changeFunc } from "./func_state";
+import { funcState, changeFunc, nullEditingFunc } from "./func_state";
 
 const props = defineProps<{
   funcId: number;

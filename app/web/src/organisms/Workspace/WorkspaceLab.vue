@@ -73,5 +73,4 @@ standardVisibilityTriggers$.subscribe(() => {
   clearFuncs();
   selectFunc(nullListFunc);
 });
-
 </script>

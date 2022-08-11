@@ -21,10 +21,7 @@ import { onMounted, ref, toRef, computed } from "vue";
 import { EditorState, StateField } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
 import { defaultKeymap } from "@codemirror/commands";
-import {
-  nullEditingFunc,
-} from "@/observable/func_editor";
-import { funcState, changeFunc } from "./func_state";
+import { funcState, changeFunc, nullEditingFunc } from "./func_state";
 
 const props = defineProps<{
   funcId: number;
