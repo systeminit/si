@@ -417,8 +417,7 @@ pub async fn create_component_for_schema(
 }
 
 pub async fn create_node(ctx: &DalContext<'_, '_>, node_kind: &NodeKind) -> Node {
-    let node = Node::new(ctx, node_kind).await.expect("cannot create node");
-    node
+    Node::new(ctx, node_kind).await.expect("cannot create node")
 }
 
 pub async fn create_qualification_check(ctx: &DalContext<'_, '_>) -> QualificationCheck {
