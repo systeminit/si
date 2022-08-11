@@ -38,7 +38,7 @@ export const getFunc: (args: GetFuncArgs) => Observable<GetFuncResponse> =
 
 export const nullFunc: GetFuncResponse = {
   id: 0,
-  handler: undefined,
+  handler: "",
   kind: FuncBackendKind.Unset,
   name: "",
   code: undefined,
