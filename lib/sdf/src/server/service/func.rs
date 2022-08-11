@@ -1,7 +1,7 @@
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
-    routing::{get, post},
+    routing::get,
     Json, Router,
 };
 
@@ -11,7 +11,6 @@ use thiserror::Error;
 
 pub mod get_func;
 pub mod list_funcs;
-pub mod create_func;
 
 #[derive(Error, Debug)]
 pub enum FuncError {
@@ -48,5 +47,4 @@ pub fn routes() -> Router {
     Router::new()
         .route("/list_funcs", get(list_funcs::list_funcs))
         .route("/get_func", get(get_func::get_func))
-        .route("/create_func", post(create_func::create_func))
 }

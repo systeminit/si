@@ -2,7 +2,6 @@
   <div class="flex flex-row w-full h-full bg-transparent overflow-hidden">
     <SiSidebar side="left">
       <ChangeSetPanel class="border-b-2 dark:border-neutral-500 mb-2" />
-      <TertiaryNeutralButtonXSmall label="Create new function" />
       <FuncPicker
         :func-list="funcList"
         :selected-func-id="selectedFunc.id"
@@ -42,7 +41,6 @@ import {
 } from "@/service/func/list_funcs";
 import { ref } from "vue";
 import { refFrom } from "vuse-rx/src";
-import TertiaryNeutralButtonXSmall from "@/molecules/TertiaryNeutralButtonXSmall.vue";
 
 const selectedFunc = ref<ListedFuncView>(nullListFunc);
 const selectFunc = (func: ListedFuncView) => {
