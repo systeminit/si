@@ -30,17 +30,18 @@
 
 <script lang="ts" setup>
 import { toRef, computed } from "vue";
-import { refFrom, fromRef } from "vuse-rx/src";
+import { fromRef } from "vuse-rx/src";
 import { FuncService } from "@/service/func";
-import { GetFuncResponse } from "@/service/func/get_func";
 import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import { TabPanel } from "@headlessui/vue";
 import FuncEditor from "@/organisms/FuncEditor/FuncEditor.vue";
 import VueFeather from "vue-feather";
-import { funcStream$, funcEdit$ } from "@/observable/func_editor";
 import { ListedFuncView } from "@/service/func/list_funcs";
-import { map, switchMap } from "rxjs/operators";
+import { switchMap, take } from "rxjs/operators";
+import { of } from "rxjs";
+import { funcState, funcById, removeFunc, insertFunc, clearFuncs } from "./func_state";
+import { standardVisibilityTriggers$ } from "@/observable/visibility";
 
 const props = defineProps<{
   selectedFuncId: number;
@@ -65,18 +66,13 @@ const findTabIndexForFunc = (
 // We need the editingFuncs ref to manage updates to the observable,
 // but we also want to map it into a list of functions for managing the
 // list of tabs, hence the tap.
-const funcList = refFrom<ListedFuncView[]>(
-  funcStream$.pipe(
-    map((editingFuncs) =>
-      editingFuncs.map(({ origFunc }) => ({
-        id: origFunc.id,
-        handler: origFunc.handler,
-        name: origFunc.name,
-        kind: origFunc.kind,
-      })),
-    ),
-  ),
-  [],
+const funcList = computed(() =>
+  funcState.funcs.map(({ origFunc, modifiedFunc }) => ({
+    id: origFunc.id,
+    handler: modifiedFunc.handler,
+    name: modifiedFunc.name,
+    kind: modifiedFunc.kind,
+  })),
 );
 
 const selectedTab = computed(() =>
@@ -93,24 +89,20 @@ const changeTab = (index: number) => {
 };
 
 const closeFunc = (func: ListedFuncView) => {
-  // Handle unsaved functions here with modal...  or dispatch a save on close?
-  funcEdit$.next({
-    type: "remove",
-    func: func,
-  });
+  removeFunc(func);
 };
 
-const insertFunc = (func: GetFuncResponse) => {
-  funcEdit$.next({
-    type: "insert",
-    func: func,
-  });
-};
-
-// Inserts a function into the funcstream when we fetch it from the backend. Insert is idempotent
 selectedFuncId$
   .pipe(
-    switchMap((selectedFuncId) => FuncService.getFunc({ id: selectedFuncId })),
+    switchMap((selectedFuncId) => {
+      const existingFunc = funcById(selectedFuncId);
+      return existingFunc
+        ? of({ ...existingFunc.origFunc })
+        : FuncService.getFunc({ id: selectedFuncId }).pipe(take(1));
+    }),
   )
   .subscribe(insertFunc);
+
+standardVisibilityTriggers$.subscribe(() => clearFuncs());
+
 </script>

@@ -15,6 +15,7 @@ import { tag } from "rxjs-spy/operators/tag";
 export function memoizedVisibilitySdfPipe<A, R, O extends ObservableInput<R>>(
   project: (visibility: Visibility, sdf: SDF, args?: A) => O,
   memo: { [key: string]: Observable<R> },
+  noReplay = false,
   shareReplayConfig: ShareReplayConfig = { bufferSize: 1, refCount: false },
 ): (args?: A) => Observable<R> {
   return (args?: A): Observable<R> => {
@@ -23,15 +24,24 @@ export function memoizedVisibilitySdfPipe<A, R, O extends ObservableInput<R>>(
       return memo[memoKey];
     }
 
-    memo[memoKey] = combineLatest([standardVisibilityTriggers$]).pipe(
-      switchMap(([[visibility]]) => {
-        const bottle = Bottle.pop("default");
-        const sdf: SDF = bottle.container.SDF;
-        return project(visibility, sdf, args);
-      }),
-      tag(`memoizedVisibilitySdfPipe:${memoKey}`),
-      shareReplay(shareReplayConfig),
-    );
+    memo[memoKey] = noReplay
+      ? combineLatest([standardVisibilityTriggers$]).pipe(
+          switchMap(([[visibility]]) => {
+            const bottle = Bottle.pop("default");
+            const sdf: SDF = bottle.container.SDF;
+            return project(visibility, sdf, args);
+          }),
+          tag(`memoizedVisibilitySdfPipe:${memoKey}`),
+        )
+      : combineLatest([standardVisibilityTriggers$]).pipe(
+          switchMap(([[visibility]]) => {
+            const bottle = Bottle.pop("default");
+            const sdf: SDF = bottle.container.SDF;
+            return project(visibility, sdf, args);
+          }),
+          tag(`memoizedVisibilitySdfPipe:${memoKey}`),
+          shareReplay(shareReplayConfig),
+        );
 
     return memo[memoKey];
   };
