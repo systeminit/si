@@ -39,7 +39,7 @@ pub trait StandardConfigFile:
         F: FnOnce(&mut ConfigMap),
     {
         let app_name = app_name.as_ref();
-        let p = config_file::layered_load(
+        config_file::layered_load(
             app_name,
             "toml",
             &Some(format!("SI_{}_CONFIG", app_name.to_uppercase())),
@@ -47,8 +47,7 @@ pub trait StandardConfigFile:
             set_func,
         )
         .map_err(SettingsError::ConfigFile)
-        .map_err(Into::into);
-        p
+        .map_err(Into::into)
     }
 }
 
