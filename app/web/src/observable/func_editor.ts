@@ -69,7 +69,6 @@ export const funcStream$ = standardVisibilityTriggers$.pipe(
           }),
         ),
       ),
-
     ),
   ),
   shareReplay(1),
