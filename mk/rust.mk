@@ -24,7 +24,7 @@ default--check-lint:
 ## check-format: Checks all code formatting for the Rust crate
 default--check-format:
 	$(call header,$@)
-	cargo fmt --all -- --check
+	cargo fmt -- --check
 .PHONY: default--check-format
 
 ## check: Checks all linting, formatting, & other rules
@@ -40,7 +40,7 @@ default--fix-lint:
 ## fix-format: Updates code formatting for the crate (may modify sources)
 default--fix-format:
 	$(call header,$@)
-	cargo fmt --all
+	cargo fmt
 .PHONY: default--fix-format
 
 ## fix: Updates all linting fixes & formatting for the crate (may modify sources)
