@@ -1,7 +1,7 @@
 <template>
   <SiTabGroup
     :selected-index="selectedTab"
-    tab-list-classes="h-11 flex shrink-0 w-full border-b dark:bg-neutral-800 border-neutral-300 dark:border-neutral-600 sticky top-0 z-50"
+    tab-list-classes="h-11 flex shrink-0 w-full border-b dark:bg-neutral-800 border-neutral-300 dark:border-neutral-600 sticky top-0 z-50 overflow-x-scroll"
     @change="changeTab"
   >
     <template #tabs>
