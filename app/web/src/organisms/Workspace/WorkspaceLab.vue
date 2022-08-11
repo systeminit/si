@@ -6,6 +6,7 @@
         :func-list="funcList"
         :selected-func-id="selectedFunc.id"
         @selected-func="selectFunc"
+        @create-func="createFunc"
       />
     </SiSidebar>
     <div
@@ -50,4 +51,19 @@ const selectFunc = (func: ListedFuncView) => {
 const funcList = refFrom<ListFuncsResponse>(FuncService.listFuncs(), {
   qualifications: [],
 });
+
+const createFunc = () => {
+  FuncService.createFunc().subscribe((func) => {
+    const newFunc = {
+      id: func.id,
+      kind: func.kind,
+      name: func.name,
+      handler: func.handler,
+    };
+
+    funcList.value.qualifications.push(newFunc);
+
+    selectFunc(newFunc);
+  });
+};
 </script>

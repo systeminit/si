@@ -15,7 +15,13 @@
   <div
     class="absolute bottom-0 w-full h-12 text-right p-2 border-t border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800"
   >
-    <SiButton icon="plus" kind="save" label="Create Function" size="lg" @click="createFunc" />
+    <SiButton
+      icon="plus"
+      kind="save"
+      label="Create Function"
+      size="lg"
+      @click="createFunc"
+    />
   </div>
 </template>
 
@@ -24,7 +30,6 @@ import SiCollapsible from "@/organisms/SiCollapsible.vue";
 import SiFuncSprite from "@/molecules/SiFuncSprite.vue";
 import SiButton from "@/atoms/SiButton.vue";
 import { ListedFuncView, ListFuncsResponse } from "@/service/func/list_funcs";
-import { FuncService } from "@/service/func";
 
 defineProps<{
   funcList: ListFuncsResponse;
@@ -33,6 +38,7 @@ defineProps<{
 
 const emits = defineEmits<{
   (e: "selectedFunc", v: ListedFuncView): void;
+  (e: "createFunc"): void;
 }>();
 
 const selectFunc = (func: ListedFuncView) => {
@@ -40,7 +46,6 @@ const selectFunc = (func: ListedFuncView) => {
 };
 
 const createFunc = () => {
-  FuncService.createFunc().subscribe();
-}
-  
+  emits("createFunc");
+};
 </script>
