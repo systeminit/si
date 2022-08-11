@@ -12,7 +12,7 @@
       <div class="justify-start flew flex-grow">
         <div class="min-w-max pl-2 align-middle">
           <SiButton
-            icon="plus"
+            icon="plus-square"
             label="new"
             size="xs"
             class="pl-2 align-middle"

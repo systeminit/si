@@ -1,6 +1,6 @@
 <template>
   <div class="flex flex-row w-full h-full bg-transparent overflow-hidden">
-    <SiSidebar side="left">
+    <SiSidebar side="left" class="h-full pb-12">
       <ChangeSetPanel class="border-b-2 dark:border-neutral-500 mb-2" />
       <FuncPicker
         :func-list="funcList"

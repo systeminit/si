@@ -1,7 +1,7 @@
 <template>
   <SiMenu :disabled="props.disabled" :tree="generateTree" @selected="onSelect">
     <SiButton
-      icon="plus"
+      icon="plus-square"
       :label="props.addTo ? `Add to ${props.addTo}` : `Add`"
       class="w-full focus:outline-none add-margin-top items-center self-center text-base subpixel-antialiased font-light tracking-tight"
       :class="{
