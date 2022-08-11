@@ -1,5 +1,5 @@
 import { reactive } from "vue";
-import { EditingFunc, nullEditingFunc } from "@/observable/func_editor";
+import { EditingFunc } from "@/observable/func_editor";
 import { Func } from "@/api/sdf/dal/func";
 
 export const funcState = reactive<{ funcs: EditingFunc[] }>({ funcs: [] });
@@ -20,7 +20,6 @@ export const funcById = (funcId: number) =>
 export const funcExists = (funcId: number) => !!funcById(funcId);
 
 export const changeFunc = (func: Func) => {
-  console.log("change");
   const currentFuncIdx = funcState.funcs.findIndex((f) => f.id === func.id);
 
   if (currentFuncIdx == -1) {
