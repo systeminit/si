@@ -71,6 +71,7 @@ const onCodeUpdate = StateField.define({
   },
 });
 
+/*
 const discardChanges = () => {
   view.value?.dispatch({
     changes: {
@@ -79,7 +80,7 @@ const discardChanges = () => {
       insert: editingFunc.value.origFunc.code,
     },
   });
-};
+};*/
 
 const mountEditor = () => {
   const editorState = EditorState.create({

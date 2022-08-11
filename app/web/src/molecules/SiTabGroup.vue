@@ -21,6 +21,8 @@ withDefaults(
     tabListClasses?: string;
   }>(),
   {
+    selectedIndex: undefined,
+    change: undefined,
     tabListClasses:
       "border-b-2 dark:border-neutral-600 h-11 flex shrink-0 gap-4 px-4 w-full",
   },

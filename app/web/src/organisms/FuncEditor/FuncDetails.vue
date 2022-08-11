@@ -54,8 +54,8 @@ const updateFunc = () => {
   funcEdit$.next({
     type: "change",
     func: {
-      ...editingFunc.value.modifiedFunc
-    }
+      ...editingFunc.value.modifiedFunc,
+    },
   });
-}
+};
 </script>

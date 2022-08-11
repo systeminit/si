@@ -31,9 +31,10 @@
 <script lang="ts" setup>
 import SiSidebar from "@/atoms/SiSidebar.vue";
 import ChangeSetPanel from "@/organisms/ChangeSetPanel.vue";
-import FuncPicker from "@/organisms/FuncPicker.vue";
-import FuncEditorTabs from "@/organisms/FuncEditorTabs.vue";
+import FuncPicker from "@/organisms/FuncEditor/FuncPicker.vue";
+import FuncEditorTabs from "@/organisms/FuncEditor/FuncEditorTabs.vue";
 import { FuncService } from "@/service/func";
+import FuncDetails from "@/organisms/FuncEditor/FuncDetails.vue";
 import {
   ListedFuncView,
   ListFuncsResponse,
@@ -42,7 +43,6 @@ import {
 import { ref } from "vue";
 import { refFrom } from "vuse-rx/src";
 import TertiaryNeutralButtonXSmall from "@/molecules/TertiaryNeutralButtonXSmall.vue";
-import FuncDetails from "@/organisms/FuncDetails.vue";
 
 const selectedFunc = ref<ListedFuncView>(nullListFunc);
 const selectFunc = (func: ListedFuncView) => {
