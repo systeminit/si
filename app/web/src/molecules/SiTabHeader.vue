@@ -1,10 +1,7 @@
 <template>
   <Tab v-slot="{ selected }" class="focus:outline-none">
     <span
-      class="text-sm"
-      :class="
-        selected ? 'font-bold text-black dark:text-white' : 'text-gray-400'
-      "
+      :class="classes + ' ' + (selected ? selectedClasses : defaultClasses)"
     >
       <slot />
     </span>
@@ -13,4 +10,17 @@
 
 <script setup lang="ts">
 import { Tab } from "@headlessui/vue";
+
+withDefaults(
+  defineProps<{
+    classes?: string;
+    defaultClasses?: string;
+    selectedClasses?: string;
+  }>(),
+  {
+    classes: "text-sm inline-flex items-center",
+    defaultClasses: "text-gray-400",
+    selectedClasses: "font-bold text-black dark:text-white",
+  },
+);
 </script>

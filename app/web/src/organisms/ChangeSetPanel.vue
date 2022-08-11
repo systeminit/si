@@ -74,7 +74,7 @@
           <PrimarySuccessButtonXSmall
             label="Create"
             icon-style="left"
-            icon="plus"
+            icon="plus-square"
             :disabled="createButtonDisabled"
             @click="createChangeSet"
           />

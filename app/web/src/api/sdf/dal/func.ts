@@ -17,7 +17,7 @@ export enum FuncBackendKind {
 
 export interface Func {
   id: number;
-  handler?: string;
+  handler: string;
   kind: FuncBackendKind;
   name: string;
   code?: string;
