@@ -2,36 +2,30 @@
   <template v-if="iconType === 'solid'">
     <SolidCheck
       v-if="status === 'success'"
-      :class="iconClasses"
-      class="text-success-500"
+      class="text-success-500 inline align-middle"
     />
     <SolidX
       v-else-if="status === 'failure'"
-      :class="iconClasses"
-      class="text-destructive-500"
+      class="text-destructive-500 inline align-middle"
     />
     <SolidClock
       v-else-if="status === 'loading'"
-      :class="iconClasses"
-      class="text-warning-500"
+      class="text-warning-500 inline align-middle"
     />
   </template>
 
   <template v-else>
     <OutlineCheck
       v-if="status === 'success'"
-      :class="iconClasses"
-      class="text-success-500"
+      class="text-success-500 inline align-middle"
     />
     <OutlineX
       v-else-if="status === 'failure'"
-      :class="iconClasses"
-      class="text-destructive-500"
+      class="text-destructive-500 inline align-middle"
     />
     <OutlineClock
       v-else-if="status === 'loading'"
-      :class="iconClasses"
-      class="text-warning-500"
+      class="text-warning-500 inline align-middle"
     />
   </template>
 </template>
@@ -62,6 +56,4 @@ withDefaults(
     iconType: "outline",
   },
 );
-
-const iconClasses = "inline align-middle";
 </script>

@@ -1,14 +1,10 @@
 <template>
   <div v-if="props.componentId" class="flex flex-col w-full overflow-hidden">
     <div
-      class="flex flex-row items-center justify-between h-10 px-6 py-2 text-base align-middle"
+      class="flex flex-row items-center justify-between h-10 py-2 text-base align-middle"
     >
-      <div v-if="props.schemaName" class="text-lg">
-        {{ props.schemaName }}
-      </div>
-      <div v-else class="text-lg">
-        Component ID {{ props.componentId }} Code
-      </div>
+      <!-- NOTE(nick): add defaults for title if the need arises -->
+      <slot name="title"></slot>
 
       <div class="flex">
         <SiButtonIcon
@@ -19,14 +15,7 @@
           <ClipboardCopyIcon />
         </SiButtonIcon>
 
-        <SiButtonIcon
-          v-if="!props.diffMode"
-          tooltip-text="Re-generate code"
-          ignore-text-color
-          @click="emit('generate')"
-        >
-          <slot name="refreshIcon"></slot>
-        </SiButtonIcon>
+        <slot name="actionButtons"></slot>
       </div>
     </div>
     <div class="w-full h-full overflow-auto">
@@ -46,12 +35,11 @@ import { ref, onMounted, computed, watch } from "vue";
 import { EditorState, EditorView, basicSetup } from "@codemirror/basic-setup";
 import { yaml } from "@codemirror/legacy-modes/mode/yaml";
 import { diff } from "@codemirror/legacy-modes/mode/diff";
-import { json } from "@codemirror/legacy-modes/mode/javascript";
 import { StreamLanguage, StreamParser } from "@codemirror/stream-parser";
 import { keymap } from "@codemirror/view";
 import { indentWithTab } from "@codemirror/commands";
 import { gruvboxDark } from "cm6-theme-gruvbox-dark";
-import { gruvboxLight } from "cm6-theme-gruvbox-light";
+import { basicLight } from "cm6-theme-basic-light";
 import { refFrom } from "vuse-rx/src";
 import { Compartment, Extension, StateEffect } from "@codemirror/state";
 import SiButtonIcon from "@/atoms/SiButtonIcon.vue";
@@ -60,21 +48,20 @@ import { ThemeService } from "@/service/theme";
 import { Theme } from "@/observable/theme";
 import { CodeLanguage } from "@/api/sdf/dal/code_view";
 
+// NOTE(nick): this took a long ass time to find. Javascript's JSON mode doesn't work. This does.
+import { properties as json } from "@codemirror/legacy-modes/mode/properties";
+
 const props = defineProps<{
   componentId: number;
   code: string;
-
   codeLanguage?: CodeLanguage;
-  schemaName?: string;
 
   // Format: "0.0px"
   fontSize?: string;
+  // Format: "0.0px" or "0%"
+  height?: string;
   forceTheme?: "dark" | "light";
-
-  diffMode?: boolean;
 }>();
-
-const emit = defineEmits(["generate"]);
 
 const editorMount = ref(null);
 const view = ref<null | EditorView>(null);
@@ -90,37 +77,45 @@ const copyCode = () => {
 
 // FIXME(nick): for now, we default to "yaml".
 const mode = computed((): StreamParser<unknown> => {
-  if (props.codeLanguage) {
-    if (props.codeLanguage === "diff") {
+  return getMode(props.codeLanguage);
+});
+
+const getMode = (
+  codeLanguage: CodeLanguage | undefined,
+): StreamParser<unknown> => {
+  if (codeLanguage) {
+    if (codeLanguage === "diff") {
       return diff;
-    } else if (props.codeLanguage === "json") {
+    } else if (codeLanguage === "json") {
       return json;
     }
   }
   return yaml;
-});
+};
 
 const forcedTheme = computed((): Extension | null => {
   if (props.forceTheme) {
     if (props.forceTheme === "dark") {
       return gruvboxDark;
     } else if (props.forceTheme === "light") {
-      return gruvboxLight;
+      return basicLight;
     }
   }
   return null;
 });
 
-// FIXME(nick): make this more configurable.
-const fixedHeightEditor = computed((): Extension => {
+const styleExtension = computed((): Extension => {
+  let ampersand: Record<string, string> = { height: "100%" };
+
   if (props.fontSize) {
-    return EditorView.theme({
-      "&": { height: "100%", fontSize: props.fontSize },
-      ".cm-scroller": { overflow: "auto" },
-    });
+    ampersand["fontSize"] = props.fontSize;
   }
+  if (props.height) {
+    ampersand["height"] = props.height;
+  }
+
   return EditorView.theme({
-    "&": { height: "100%" },
+    "&": ampersand,
     ".cm-scroller": { overflow: "auto" },
   });
 });
@@ -136,8 +131,8 @@ onMounted(() => {
           basicSetup,
           forcedTheme.value ?? currentTheme.value?.value === "dark"
             ? gruvboxDark
-            : gruvboxLight,
-          fixedHeightEditor.value,
+            : basicLight,
+          styleExtension.value,
           keymap.of([indentWithTab]),
           StreamLanguage.define(mode.value),
           readOnly.of(EditorState.readOnly.of(true)),
@@ -148,34 +143,50 @@ onMounted(() => {
   }
 });
 
-// FIXME(nick,victor,wendy): we should try to not reconfigure entire effects when switching themes.
-ThemeService.currentTheme().subscribe((theme) => {
-  if (view.value) {
+const updateCodeMirrorView = (theme?: Theme, codeLanguage?: CodeLanguage) => {
+  if (view.value && currentTheme.value) {
+    let tempTheme = currentTheme.value;
+    if (theme) {
+      tempTheme = theme;
+    }
+
+    let tempStreamLanguage = mode.value;
+    if (codeLanguage) {
+      tempStreamLanguage = getMode(codeLanguage);
+    }
+
     view.value.dispatch({
       effects: StateEffect.reconfigure.of([
         basicSetup,
-        forcedTheme.value ?? theme.value === "dark"
+        forcedTheme.value ?? tempTheme.value === "dark"
           ? gruvboxDark
-          : gruvboxLight,
-        fixedHeightEditor.value,
+          : basicLight,
+        styleExtension.value,
         keymap.of([indentWithTab]),
-        StreamLanguage.define(mode.value),
+        StreamLanguage.define(tempStreamLanguage),
         readOnly.of(EditorState.readOnly.of(true)),
       ]),
     });
   }
-});
+};
 
-// Dispatch new code if the prop has changed.
+// FIXME(nick,victor,wendy): we should try to not reconfigure entire effects when switching themes.
+ThemeService.currentTheme().subscribe((theme) => updateCodeMirrorView(theme));
+
 watch(
-  computed(() => props.code),
-  () => {
+  () => props.codeLanguage,
+  (codeLanguage) => updateCodeMirrorView(undefined, codeLanguage),
+);
+
+watch(
+  () => props.code,
+  (code) => {
     if (!view.value) return;
     view.value.dispatch({
       changes: {
         from: 0,
         to: view.value.state.doc.length,
-        insert: props.code,
+        insert: code,
       },
       effects: readOnly.reconfigure(EditorState.readOnly.of(true)),
     });

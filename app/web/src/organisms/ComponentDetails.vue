@@ -21,12 +21,21 @@
         <CodeViewer
           class="dark:text-neutral-50 text-neutral-900"
           :component-id="props.componentIdentification.componentId"
-          :schema-name="props.componentIdentification.schemaName"
           :code="code"
-          @generate="generateCode"
         >
-          <template #refreshIcon>
-            <RefreshIcon :class="refreshClasses" />
+          <template #title>
+            <span class="text-lg ml-4">{{ props.componentName }} Code</span>
+          </template>
+
+          <template #actionButtons>
+            <SiButtonIcon
+              tooltip-text="Re-generate code"
+              ignore-text-color
+              @click="generateCode"
+              class="mr-4"
+            >
+              <RefreshIcon :class="refreshClasses" />
+            </SiButtonIcon>
           </template>
         </CodeViewer>
       </TabPanel>
@@ -50,9 +59,11 @@ import { computed, ref } from "vue";
 import { CodeView } from "@/api/sdf/dal/code_view";
 import { eventCodeGenerated$ } from "@/observable/code";
 import { RefreshIcon } from "@heroicons/vue/solid";
+import SiButtonIcon from "@/atoms/SiButtonIcon.vue";
 
 const props = defineProps<{
   componentIdentification: ComponentIdentification;
+  componentName: string;
 }>();
 const componentIdentification$ = fromRef(props.componentIdentification, {
   immediate: true,

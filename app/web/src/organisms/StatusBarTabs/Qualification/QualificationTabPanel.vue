@@ -1,5 +1,6 @@
 <template>
   <div class="flex flex-row h-full w-full">
+    <!-- Filter button and list of components -->
     <div
       class="w-64 border-r-[1px] border-black text-center h-full flex flex-col"
     >
@@ -46,32 +47,31 @@
             :class="
               selectedComponent?.componentId === component.componentId
                 ? 'bg-action-500'
-                : 'hover:bg-black '
+                : 'hover:bg-black'
             "
-            class="py-2 text-left text-ellipsis truncate"
+            class="py-2 text-left text-ellipsis truncate cursor-pointer"
             @click="updateSelectedComponent(component)"
           >
             <StatusIndicatorIcon
               :status="iconStatus(component)"
-              class="w-8 mx-1"
+              class="w-5 ml-1 mr-2"
             />
             {{ component.componentName }}
           </div>
         </div>
       </div>
     </div>
-    <div
-      v-if="selectedComponent === undefined"
-      class="flex flex-row items-center text-center w-full h-full"
-    >
-      <p class="w-full text-3xl text-neutral-500">No Component Selected</p>
-    </div>
-    <ComponentQualificationViewer
-      v-else
+
+    <!-- Selected component view -->
+    <QualificationViewerMultiple
+      v-if="selectedComponent"
       :component-id="selectedComponent.componentId"
       :component-name="selectedComponent.componentName"
       :component-qualification-status="iconStatus(selectedComponent)"
     />
+    <div v-else class="flex flex-row items-center text-center w-full h-full">
+      <p class="w-full text-3xl text-neutral-500">No Component Selected</p>
+    </div>
   </div>
 </template>
 
@@ -86,7 +86,7 @@ import { computed, ref } from "vue";
 import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
 import SiBarButton from "@/molecules/SiBarButton.vue";
 import SiArrow from "@/atoms/SiArrow.vue";
-import ComponentQualificationViewer from "@/organisms/ComponentQualificationViewer.vue";
+import QualificationViewerMultiple from "@/organisms/StatusBarTabs/Qualification/QualificationViewerMultiple.vue";
 import StatusIndicatorIcon, {
   Status,
 } from "@/molecules/StatusIndicatorIcon.vue";
