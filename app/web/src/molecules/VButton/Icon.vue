@@ -20,6 +20,7 @@ export type IconName =
   | "git-commit"
   | "git-merge"
   | "plus"
+  | "plus-square"
   | "trash"
   | "x";
 

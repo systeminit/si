@@ -1,11 +1,12 @@
 <template>
   <div class="flex flex-row w-full h-full bg-transparent overflow-hidden">
-    <SiSidebar side="left">
+    <SiSidebar side="left" class="h-full pb-12">
       <ChangeSetPanel class="border-b-2 dark:border-neutral-500 mb-2" />
       <FuncPicker
         :func-list="funcList"
         :selected-func-id="selectedFunc.id"
         @selected-func="selectFunc"
+        @create-func="createFunc"
       />
     </SiSidebar>
     <div
@@ -41,6 +42,8 @@ import {
 } from "@/service/func/list_funcs";
 import { ref } from "vue";
 import { refFrom } from "vuse-rx/src";
+import { standardVisibilityTriggers$ } from "@/observable/visibility";
+import { clearFuncs } from "./../FuncEditor/func_state";
 
 const selectedFunc = ref<ListedFuncView>(nullListFunc);
 const selectFunc = (func: ListedFuncView) => {
@@ -49,5 +52,25 @@ const selectFunc = (func: ListedFuncView) => {
 
 const funcList = refFrom<ListFuncsResponse>(FuncService.listFuncs(), {
   qualifications: [],
+});
+
+const createFunc = () => {
+  FuncService.createFunc().subscribe((func) => {
+    const newFunc = {
+      id: func.id,
+      kind: func.kind,
+      name: func.name,
+      handler: func.handler,
+    };
+
+    funcList.value.qualifications.push(newFunc);
+
+    selectFunc(newFunc);
+  });
+};
+
+standardVisibilityTriggers$.subscribe(() => {
+  clearFuncs();
+  selectFunc(nullListFunc);
 });
 </script>

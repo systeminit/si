@@ -18,7 +18,7 @@
         <VueFeather v-else-if="icon === 'edit'" type="edit" :size="iconSize" />
         <VueFeather
           v-else-if="icon === 'deploy'"
-          type="upload-cload"
+          type="upload-cloud"
           :size="iconSize"
         />
         <VueFeather
@@ -31,8 +31,9 @@
           type="arrow-up-circle"
           :size="iconSize"
         />
+        <VueFeather v-else-if="icon === 'plus'" type="plus" :size="iconSize" />
         <VueFeather
-          v-else-if="icon === 'plus'"
+          v-else-if="icon === 'plus-square'"
           type="plus-square"
           :size="iconSize"
         />
@@ -69,6 +70,7 @@ interface ButtonProps {
     | "deploy"
     | "signup"
     | "plus"
+    | "plus-square"
     | "login"
     | "merge";
   size: "xs" | "sm" | "base" | "lg";

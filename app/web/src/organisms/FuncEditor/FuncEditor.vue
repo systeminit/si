@@ -17,33 +17,19 @@
 </template>
 
 <script lang="ts" setup>
-import { onMounted, ref, toRef } from "vue";
+import { onMounted, ref, toRef, computed } from "vue";
 import { EditorState, StateField } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
 import { defaultKeymap } from "@codemirror/commands";
-import {
-  EditingFunc,
-  funcEdit$,
-  funcStream$,
-  nullEditingFunc,
-} from "@/observable/func_editor";
-import { map } from "rxjs/operators";
-
-import { refFrom } from "vuse-rx/src";
+import { funcState, changeFunc, nullEditingFunc } from "./func_state";
 
 const props = defineProps<{
   funcId: number;
 }>();
 
 const funcId = toRef(props, "funcId", -1);
-const editingFunc = refFrom<EditingFunc>(
-  funcStream$.pipe(
-    map(
-      (editingFunc) =>
-        editingFunc?.find((f) => f.id == funcId.value) ?? nullEditingFunc,
-    ),
-  ),
-  nullEditingFunc,
+const editingFunc = computed(
+  () => funcState.funcs.find((f) => f.id == funcId.value) ?? nullEditingFunc,
 );
 
 const editorMount = ref();
@@ -58,12 +44,9 @@ const onCodeUpdate = StateField.define({
 
     if (view.value) {
       const code = view.value.state.doc.toString();
-      funcEdit$.next({
-        type: "change",
-        func: {
-          ...editingFunc.value.modifiedFunc,
-          code,
-        },
+      changeFunc({
+        ...editingFunc.value.modifiedFunc,
+        code,
       });
     }
 

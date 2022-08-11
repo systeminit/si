@@ -17,7 +17,7 @@
         <SiButton
           kind="standard"
           label="Add to map"
-          icon="plus"
+          icon="plus-square"
           :disabled="submitDisabled"
           @click="addToMap()"
         />

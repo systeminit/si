@@ -5,14 +5,14 @@
       v-model="editingFunc.modifiedFunc.handler"
       class="w-full"
       title="Entrypoint"
-      @change="updateFunc"
+      @blur="updateFunc"
     />
     <SiTextBox
       id="name"
       v-model="editingFunc.modifiedFunc.name"
       title="Name"
       class="w-full"
-      @change="updateFunc"
+      @blur="updateFunc"
     />
   </div>
   <div v-else class="p-2 text-center text-neutral-400">
@@ -22,40 +22,20 @@
 
 <script setup lang="ts">
 import SiTextBox from "@/atoms/SiTextBox.vue";
-import { toRef } from "vue";
-import {
-  EditingFunc,
-  funcEdit$,
-  funcStream$,
-  nullEditingFunc,
-} from "@/observable/func_editor";
-import { map, combineLatestWith } from "rxjs/operators";
-import { refFrom, fromRef } from "vuse-rx/src";
+import { toRef, computed } from "vue";
+import { funcState, changeFunc, nullEditingFunc } from "./func_state";
 
 const props = defineProps<{
   funcId: number;
 }>();
 
 const funcId = toRef(props, "funcId", -1);
-const funcId$ = fromRef<number>(funcId);
 
-const editingFunc = refFrom<EditingFunc>(
-  funcStream$.pipe(
-    combineLatestWith(funcId$),
-    map(
-      ([editingFuncs, funcId]) =>
-        editingFuncs?.find((f) => f.id == funcId) ?? nullEditingFunc,
-    ),
-  ),
-  nullEditingFunc,
+const editingFunc = computed(
+  () => funcState.funcs.find((f) => f.id == funcId.value) ?? nullEditingFunc,
 );
 
 const updateFunc = () => {
-  funcEdit$.next({
-    type: "change",
-    func: {
-      ...editingFunc.value.modifiedFunc,
-    },
-  });
+  changeFunc({ ...editingFunc.value.modifiedFunc });
 };
 </script>

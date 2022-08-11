@@ -13,7 +13,7 @@
       <SiButton
         kind="standard"
         label="Add to array"
-        icon="plus"
+        icon="plus-square"
         @click="addToArray()"
       />
     </div>
