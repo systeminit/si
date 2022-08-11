@@ -49,7 +49,6 @@ import {
 import { ApplicationService } from "@/service/application";
 import { schematicSchemaVariants$ } from "@/observable/schematic";
 import { Category, Item } from "@/api/sdf/dal/menu";
-import { utils as PixiUtils } from "pixi.js";
 import { untilUnmounted } from "vuse-rx";
 
 const props = defineProps<{
@@ -122,7 +121,7 @@ ApplicationService.currentApplication()
               name: name,
               id: schemaId,
               template,
-              color: PixiUtils.hex2string(color),
+              color: "#" + color.toString(16).padStart(6, "0"),
             });
           }
 
