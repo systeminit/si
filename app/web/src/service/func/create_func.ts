@@ -15,9 +15,6 @@ export const nullFunc: CreateFuncResponse = {
   name: "",
   code: undefined,
 };
-const memo: {
-  [key: string]: Observable<CreateFuncResponse>;
-} = {};
 
 export const createFunc: () => Observable<CreateFuncResponse> = () =>
   combineLatest([standardVisibilityTriggers$]).pipe(

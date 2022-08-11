@@ -42,6 +42,8 @@ import {
 } from "@/service/func/list_funcs";
 import { ref } from "vue";
 import { refFrom } from "vuse-rx/src";
+import { standardVisibilityTriggers$ } from "@/observable/visibility";
+import { clearFuncs } from "./../FuncEditor/func_state";
 
 const selectedFunc = ref<ListedFuncView>(nullListFunc);
 const selectFunc = (func: ListedFuncView) => {
@@ -66,4 +68,10 @@ const createFunc = () => {
     selectFunc(newFunc);
   });
 };
+
+standardVisibilityTriggers$.subscribe(() => {
+  clearFuncs();
+  selectFunc(nullListFunc);
+});
+
 </script>

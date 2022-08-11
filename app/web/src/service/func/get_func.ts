@@ -34,6 +34,7 @@ export const getFunc: (args: GetFuncArgs) => Observable<GetFuncResponse> =
           }),
         ),
     memo,
+    true,
   );
 
 export const nullFunc: GetFuncResponse = {
