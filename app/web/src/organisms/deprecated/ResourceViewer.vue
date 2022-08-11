@@ -8,11 +8,7 @@
       </div>
 
       <div class="flex pl-1">
-        <SiButtonIcon
-          v-if="!editMode"
-          tooltip-text="Sync Resource"
-          @click="runSync()"
-        >
+        <SiButtonIcon tooltip-text="Sync Resource" @click="runSync()">
           <RefreshIcon :class="refreshClasses" />
         </SiButtonIcon>
         <SiIcon :tooltip-text="resourceTooltip" :color="healthColor">
@@ -53,7 +49,6 @@ import { Resource, ResourceHealth } from "@/api/sdf/dal/resource";
 import SiTextBox from "@/atoms/SiTextBox.vue";
 import { ComponentService } from "@/service/component";
 import { GlobalErrorService } from "@/service/global_error";
-import { ChangeSetService } from "@/service/change_set";
 import { fromRef, refFrom, untilUnmounted } from "vuse-rx";
 import { system$ } from "@/observable/system";
 import { eventResourceSynced$ } from "@/observable/resource";
@@ -66,8 +61,6 @@ const props = defineProps<{
   componentId: number;
 }>();
 const { componentId } = toRefs(props);
-
-const editMode = refFrom<boolean>(ChangeSetService.currentEditMode());
 
 // NOTE(nick): making this "computed" will result in the active view breaking for the attribute panel.
 const healthColor = computed(() => {

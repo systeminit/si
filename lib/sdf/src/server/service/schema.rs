@@ -3,7 +3,7 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::Json;
 use axum::Router;
-use dal::{SchemaError as DalSchemaError, StandardModelError, TransactionsError};
+use dal::{SchemaError as DalSchemaError, StandardModelError, TransactionsError, WsEventError};
 use thiserror::Error;
 
 pub mod create_schema;
@@ -24,6 +24,8 @@ pub enum SchemaError {
     Schema(#[from] DalSchemaError),
     #[error("schema not found")]
     SchemaNotFound,
+    #[error("wsevent error: {0}")]
+    WsEvent(#[from] WsEventError),
 }
 
 pub type SchemaResult<T> = std::result::Result<T, SchemaError>;

@@ -1,7 +1,7 @@
 use axum::Json;
 use dal::{
     job::definition::Qualification, Component, Func, QualificationPrototype,
-    QualificationPrototypeId, Schema, StandardModel, SystemId, Visibility,
+    QualificationPrototypeId, Schema, StandardModel, SystemId, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 
@@ -54,9 +54,8 @@ pub async fn set_code(
             .await?;
 
         // Must be exactly in our visibility for us to edit
-        let is_in_our_visibility = prototype.visibility().edit_session_pk
-            == ctx.visibility().edit_session_pk
-            && prototype.visibility().change_set_pk == ctx.visibility().change_set_pk;
+        let is_in_our_visibility =
+            prototype.visibility().change_set_pk == ctx.visibility().change_set_pk;
 
         // Clone the qualification into our tenancy + visibility
         if !is_in_our_tenancy || !is_in_our_visibility {
@@ -91,9 +90,7 @@ pub async fn set_code(
         .await?;
 
     // Must be exactly in our visibility for us to edit
-    let is_in_our_visibility = func.visibility().edit_session_pk
-        == ctx.visibility().edit_session_pk
-        && func.visibility().change_set_pk == ctx.visibility().change_set_pk;
+    let is_in_our_visibility = func.visibility().change_set_pk == ctx.visibility().change_set_pk;
 
     // Clone the qualification into our tenancy + visibility
     if !is_in_our_tenancy || !is_in_our_visibility {
@@ -129,6 +126,8 @@ pub async fn set_code(
         )
         .await;
     }
+
+    WsEvent::change_set_written(&ctx).publish(&ctx).await?;
 
     txns.commit().await?;
 

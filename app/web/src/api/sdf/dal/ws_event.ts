@@ -31,8 +31,8 @@ export interface WsChangeSetCanceled extends WsPayload {
   data: number;
 }
 
-export interface WsEditSessionSaved extends WsPayload {
-  kind: "EditSessionSaved";
+export interface WsChangeSetWritten extends WsPayload {
+  kind: "ChangeSetWritten";
   data: number;
 }
 
@@ -62,10 +62,10 @@ export interface WsSecretCreated extends WsPayload {
 }
 
 export type WsPayloadKinds =
-  | WsEditSessionSaved
   | WsChangeSetCreated
   | WsChangeSetApplied
   | WsChangeSetCanceled
+  | WsChangeSetWritten
   | WsResourceSynced
   | WsCodeGenerated
   | WsCheckedQualifications

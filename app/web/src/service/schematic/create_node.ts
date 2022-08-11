@@ -1,10 +1,9 @@
 import Bottle from "bottlejs";
 import { ApiResponse, SDF } from "@/api/sdf";
-import { combineLatest, from, Observable, take, tap } from "rxjs";
+import { combineLatest, from, Observable, take } from "rxjs";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import { visibility$ } from "@/observable/visibility";
 import { switchMap } from "rxjs/operators";
-import { editSessionWritten$ } from "@/observable/edit_session";
 import { workspace$ } from "@/observable/workspace";
 import _ from "lodash";
 
@@ -51,15 +50,10 @@ export function createNode(
         ...visibility,
         workspaceId: workspace.id,
       };
-      return sdf
-        .post<ApiResponse<CreateNodeResponse>>("schematic/create_node", request)
-        .pipe(
-          tap((response) => {
-            if (!response.error) {
-              editSessionWritten$.next(true);
-            }
-          }),
-        );
+      return sdf.post<ApiResponse<CreateNodeResponse>>(
+        "schematic/create_node",
+        request,
+      );
     }),
   );
 }

@@ -1,6 +1,6 @@
 import Bottle from "bottlejs";
 import _ from "lodash";
-import { combineLatestWith, from, Observable, take, tap } from "rxjs";
+import { combineLatestWith, from, Observable, take } from "rxjs";
 import { switchMap } from "rxjs/operators";
 import { ApiResponse, SDF } from "@/api/sdf";
 import {
@@ -11,7 +11,6 @@ import {
   SecretVersion,
 } from "@/api/sdf/dal/secret";
 import { Visibility } from "@/api/sdf/dal/visibility";
-import { editSessionWritten$ } from "@/observable/edit_session";
 import { visibility$ } from "@/observable/visibility";
 import { workspace$ } from "@/observable/workspace";
 
@@ -57,18 +56,10 @@ export function createSecret(
         ...visibility,
         workspaceId: workspace.id,
       };
-      return sdf
-        .post<ApiResponse<CreateSecretResponse>>(
-          "secret/create_secret",
-          request,
-        )
-        .pipe(
-          tap((response) => {
-            if (!response.error) {
-              editSessionWritten$.next(true);
-            }
-          }),
-        );
+      return sdf.post<ApiResponse<CreateSecretResponse>>(
+        "secret/create_secret",
+        request,
+      );
     }),
   );
 }

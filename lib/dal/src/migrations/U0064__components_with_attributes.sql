@@ -12,7 +12,6 @@ SELECT components.id                                     AS component_id,
        func_binding_return_values.tenancy_organization_ids,
        func_binding_return_values.tenancy_workspace_ids,
        func_binding_return_values.visibility_change_set_pk,
-       func_binding_return_values.visibility_edit_session_pk,
        func_binding_return_values.visibility_deleted_at,
        func_binding_return_values.id                     AS func_binding_return_value_id,
        func_binding_return_values.value                  AS prop_values

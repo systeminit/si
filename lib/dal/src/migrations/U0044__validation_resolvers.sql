@@ -7,7 +7,6 @@ CREATE TABLE validation_resolvers
     tenancy_organization_ids     bigint[],
     tenancy_workspace_ids        bigint[],
     visibility_change_set_pk     bigint                   NOT NULL DEFAULT -1,
-    visibility_edit_session_pk   bigint                   NOT NULL DEFAULT -1,
     visibility_deleted_at        timestamp with time zone,
     created_at                   timestamp with time zone NOT NULL DEFAULT NOW(),
     updated_at                   timestamp with time zone NOT NULL DEFAULT NOW(),
@@ -31,41 +30,41 @@ CREATE OR REPLACE FUNCTION validation_resolver_create_v1(
     OUT object json) AS
 $$
 DECLARE
-    this_tenancy_record    tenancy_record_v1;
-    this_visibility_record visibility_record_v1;
-    this_new_row           validation_resolvers%ROWTYPE;
-    this_func_id bigint;
+    this_tenancy_record               tenancy_record_v1;
+    this_visibility_record            visibility_record_v1;
+    this_new_row                      validation_resolvers%ROWTYPE;
+    this_func_id                      bigint;
     this_func_binding_return_value_id bigint;
 BEGIN
     this_tenancy_record := tenancy_json_to_columns_v1(this_tenancy);
     this_visibility_record := visibility_json_to_columns_v1(this_visibility);
 
-    SELECT func_binding_return_value_id INTO STRICT this_func_binding_return_value_id
+    SELECT func_binding_return_value_id
+    INTO STRICT this_func_binding_return_value_id
     FROM attribute_values
     WHERE id = this_attribute_value_id;
 
-    SELECT belongs_to_id INTO STRICT this_func_id
+    SELECT belongs_to_id
+    INTO STRICT this_func_id
     FROM func_binding_belongs_to_func
     WHERE object_id = this_func_binding_id;
 
     INSERT INTO validation_resolvers (tenancy_universal,
-                                     tenancy_billing_account_ids,
-                                     tenancy_organization_ids,
-                                     tenancy_workspace_ids,
-                                     visibility_change_set_pk,
-                                     visibility_edit_session_pk,
-                                     visibility_deleted_at,
-                                     validation_prototype_id,
-                                     attribute_value_id,
-                                     func_id,
-                                     func_binding_id,
-                                     func_binding_return_value_id)
+                                      tenancy_billing_account_ids,
+                                      tenancy_organization_ids,
+                                      tenancy_workspace_ids,
+                                      visibility_change_set_pk,
+                                      visibility_deleted_at,
+                                      validation_prototype_id,
+                                      attribute_value_id,
+                                      func_id,
+                                      func_binding_id,
+                                      func_binding_return_value_id)
     VALUES (this_tenancy_record.tenancy_universal,
             this_tenancy_record.tenancy_billing_account_ids,
             this_tenancy_record.tenancy_organization_ids,
             this_tenancy_record.tenancy_workspace_ids,
             this_visibility_record.visibility_change_set_pk,
-            this_visibility_record.visibility_edit_session_pk,
             this_visibility_record.visibility_deleted_at,
             this_validation_prototype_id,
             this_attribute_value_id,
@@ -77,121 +76,3 @@ BEGIN
     object := row_to_json(this_new_row);
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
-
--- CREATE OR REPLACE FUNCTION validation_resolver_upsert_v1(
---     this_tenancy jsonb,
---     this_visibility jsonb,
---     this_validation_prototype_id bigint,
---     this_func_id bigint,
---     this_func_binding_id bigint,
---     this_prop_id bigint,
---     this_component_id bigint,
---     this_schema_id bigint,
---     this_schema_variant_id bigint,
---     this_system_id bigint,
---     OUT object json, OUT created boolean) AS
--- $$
--- DECLARE
---     this_tenancy_record        tenancy_record_v1;
---     this_visibility_record     visibility_record_v1;
---     this_update_id             bigint;
---     this_change_set_visibility jsonb;
---     this_head_visibility       jsonb;
--- BEGIN
---     this_tenancy_record := tenancy_json_to_columns_v1(this_tenancy);
---     this_visibility_record := visibility_json_to_columns_v1(this_visibility);
---     created := false;
---     this_change_set_visibility := jsonb_build_object(
---             'visibility_change_set_pk',
---             this_visibility_record.visibility_change_set_pk,
---             'visibility_edit_session_pk',
---             -1,
---             'visibility_deleted_at',
---             this_visibility_record.visibility_deleted_at);
---     this_head_visibility := jsonb_build_object(
---             'visibility_change_set_pk',
---             -1,
---             'visibility_edit_session_pk',
---             -1,
---             'visibility_deleted_at',
---             this_visibility_record.visibility_deleted_at);
--- 
---     -- If we have an ID at all in this query, its because something in our
---     -- possible visibilities has an validationResolver with our criteria!
---     SELECT id
---     FROM validation_resolvers
---     WHERE in_tenancy_v1(
---             this_tenancy,
---             validation_resolvers.tenancy_universal,
---             validation_resolvers.tenancy_billing_account_ids,
---             validation_resolvers.tenancy_organization_ids,
---             validation_resolvers.tenancy_workspace_ids)
---       AND (
---             is_visible_v1(
---                     this_visibility,
---                     validation_resolvers.visibility_change_set_pk,
---                     validation_resolvers.visibility_edit_session_pk,
---                     validation_resolvers.visibility_deleted_at)
---             OR
---             is_visible_v1(
---                     this_change_set_visibility,
---                     validation_resolvers.visibility_change_set_pk,
---                     validation_resolvers.visibility_edit_session_pk,
---                     validation_resolvers.visibility_deleted_at)
---             OR
---             is_visible_v1(
---                     this_visibility,
---                     validation_resolvers.visibility_change_set_pk,
---                     validation_resolvers.visibility_edit_session_pk,
---                     validation_resolvers.visibility_deleted_at)
---         )
---       AND validation_resolvers.prop_id = this_prop_id
---       AND validation_resolvers.component_id = this_component_id
---       AND validation_resolvers.schema_id = this_schema_id
---       AND validation_resolvers.schema_variant_id = this_schema_variant_id
---       AND validation_resolvers.system_id = this_system_id
---     LIMIT 1
---     INTO this_update_id;
--- 
---     IF this_update_id IS NULL THEN
---         created := true;
---         SELECT *
---         FROM validation_resolver_create_v1(
---                 this_tenancy,
---                 this_visibility,
---                 this_func_id,
---                 this_func_binding_id,
---                 this_prop_id,
---                 this_component_id,
---                 this_schema_id,
---                 this_schema_variant_id,
---                 this_system_id
---             )
---         INTO object;
---     ELSE
---         PERFORM update_by_id_v1('validation_resolvers', 'func_id', this_tenancy, this_visibility, this_update_id,
---                                 this_func_id);
---         PERFORM update_by_id_v1('validation_resolvers', 'func_binding_id', this_tenancy, this_visibility, this_update_id,
---                                 this_func_binding_id);
---         SELECT row_to_json(validation_resolvers.*)
---         FROM validation_resolvers
---         WHERE in_tenancy_v1(
---                 this_tenancy,
---                 validation_resolvers.tenancy_universal,
---                 validation_resolvers.tenancy_billing_account_ids,
---                 validation_resolvers.tenancy_organization_ids,
---                 validation_resolvers.tenancy_workspace_ids)
---           AND is_visible_v1(
---                 this_visibility,
---                 validation_resolvers.visibility_change_set_pk,
---                 validation_resolvers.visibility_edit_session_pk,
---                 validation_resolvers.visibility_deleted_at)
---           AND validation_resolvers.prop_id = this_prop_id
---           AND validation_resolvers.component_id = this_component_id
---           AND validation_resolvers.schema_id = this_schema_id
---           AND validation_resolvers.schema_variant_id = this_schema_variant_id
---           AND validation_resolvers.system_id = this_system_id
---         INTO object;
---     END IF;
--- END;
--- $$ LANGUAGE PLPGSQL VOLATILE;

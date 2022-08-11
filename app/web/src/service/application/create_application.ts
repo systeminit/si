@@ -1,10 +1,9 @@
 import Bottle from "bottlejs";
 import { ApiResponse, SDF } from "@/api/sdf";
-import { combineLatestWith, from, Observable, take, tap } from "rxjs";
+import { combineLatestWith, from, Observable, take } from "rxjs";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import { visibility$ } from "@/observable/visibility";
 import { switchMap } from "rxjs/operators";
-import { editSessionWritten$ } from "@/observable/edit_session";
 import { Component } from "@/api/sdf/dal/component";
 import { workspace$ } from "@/observable/workspace";
 import _ from "lodash";
@@ -48,18 +47,10 @@ export function createApplication(
         ...visibility,
         workspaceId: workspace.id,
       };
-      return sdf
-        .post<ApiResponse<CreateApplicationResponse>>(
-          "application/create_application",
-          request,
-        )
-        .pipe(
-          tap((response) => {
-            if (!response.error) {
-              editSessionWritten$.next(true);
-            }
-          }),
-        );
+      return sdf.post<ApiResponse<CreateApplicationResponse>>(
+        "application/create_application",
+        request,
+      );
     }),
   );
 }

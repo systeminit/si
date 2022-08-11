@@ -1,11 +1,10 @@
 import Bottle from "bottlejs";
 import { ApiResponse, SDF } from "@/api/sdf";
 import { Schema, SchemaKind } from "@/api/sdf/dal/schema";
-import { Observable, take, tap } from "rxjs";
+import { Observable, take } from "rxjs";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import { visibility$ } from "@/observable/visibility";
 import { switchMap } from "rxjs/operators";
-import { editSessionWritten$ } from "@/observable/edit_session";
 
 export interface CreateSchemaArgs {
   name: string;
@@ -26,18 +25,13 @@ export function createSchema(
   return visibility$.pipe(
     take(1),
     switchMap((visibility) => {
-      return sdf
-        .post<ApiResponse<CreateSchemaResponse>>("schema/create_schema", {
+      return sdf.post<ApiResponse<CreateSchemaResponse>>(
+        "schema/create_schema",
+        {
           ...args,
           ...visibility,
-        })
-        .pipe(
-          tap((response) => {
-            if (!response.error) {
-              editSessionWritten$.next(true);
-            }
-          }),
-        );
+        },
+      );
     }),
   );
 }

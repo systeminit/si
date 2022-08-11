@@ -7,7 +7,6 @@ CREATE TABLE attribute_prototype_arguments
     tenancy_organization_ids    bigint[],
     tenancy_workspace_ids       bigint[],
     visibility_change_set_pk    bigint,
-    visibility_edit_session_pk  bigint,
     visibility_deleted_at       timestamp with time zone,
     created_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     updated_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
@@ -24,7 +23,6 @@ CREATE UNIQUE INDEX intra_component_argument
                                       name,
                                       internal_provider_id,
                                       visibility_change_set_pk,
-                                      visibility_edit_session_pk,
                                       (visibility_deleted_at IS NULL))
     WHERE visibility_deleted_at IS NULL
         AND (external_provider_id = -1
@@ -38,7 +36,6 @@ CREATE UNIQUE INDEX inter_component_argument
                                       tail_component_id,
                                       head_component_id,
                                       visibility_change_set_pk,
-                                      visibility_edit_session_pk,
                                       (visibility_deleted_at IS NULL))
     WHERE visibility_deleted_at IS NULL
         AND internal_provider_id = -1;
@@ -71,7 +68,6 @@ BEGIN
                                                tenancy_organization_ids,
                                                tenancy_workspace_ids,
                                                visibility_change_set_pk,
-                                               visibility_edit_session_pk,
                                                visibility_deleted_at,
                                                attribute_prototype_id,
                                                name,
@@ -84,7 +80,6 @@ BEGIN
             this_tenancy_record.tenancy_organization_ids,
             this_tenancy_record.tenancy_workspace_ids,
             this_visibility_record.visibility_change_set_pk,
-            this_visibility_record.visibility_edit_session_pk,
             this_visibility_record.visibility_deleted_at,
             this_attribute_prototype_argument_id,
             this_name,

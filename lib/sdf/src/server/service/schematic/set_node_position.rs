@@ -2,7 +2,7 @@ use super::SchematicResult;
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::Json;
 use dal::node::NodeId;
-use dal::{NodePosition, SchematicKind, SystemId, Visibility};
+use dal::{NodePosition, SchematicKind, SystemId, Visibility, WsEvent};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -42,6 +42,8 @@ pub async fn set_node_position(
         &request.y,
     )
     .await?;
+
+    WsEvent::change_set_written(&ctx).publish(&ctx).await?;
 
     txns.commit().await?;
 

@@ -176,11 +176,11 @@ BEGIN
     check_context_record := attribute_context_json_to_columns_v1(check_context);
 
     prop_check := CASE
-        WHEN check_context_record.attribute_context_prop_id IS NULL THEN
-            TRUE
-        ELSE
-            check_context_record.attribute_context_prop_id = this_prop_id
-    END;
+                      WHEN check_context_record.attribute_context_prop_id IS NULL THEN
+                          TRUE
+                      ELSE
+                          check_context_record.attribute_context_prop_id = this_prop_id
+        END;
     RAISE DEBUG 'prop_check: %', prop_check;
 
     internal_provider_check :=

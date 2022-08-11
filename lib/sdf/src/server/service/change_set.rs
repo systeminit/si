@@ -5,22 +5,16 @@ use axum::{
     Json, Router,
 };
 use dal::{
-    ChangeSetError as DalChangeSetError, ComponentError as DalComponentError, EditSessionError,
-    StandardModelError, TransactionsError,
+    ChangeSetError as DalChangeSetError, ComponentError as DalComponentError, StandardModelError,
+    TransactionsError,
 };
 use thiserror::Error;
 
 pub mod apply_change_set;
-pub mod cancel_and_start_edit_session;
-pub mod cancel_edit_session;
 pub mod create_change_set;
 pub mod get_change_set;
 pub mod get_stats;
 pub mod list_open_change_sets;
-pub mod save_and_start_edit_session;
-pub mod save_edit_session;
-pub mod save_edit_session_and_apply_change_set;
-pub mod start_edit_session;
 pub mod update_selected_change_set;
 
 #[derive(Debug, Error)]
@@ -37,8 +31,6 @@ pub enum ChangeSetError {
     Component(#[from] DalComponentError),
     #[error(transparent)]
     ContextError(#[from] TransactionsError),
-    #[error(transparent)]
-    EditSession(#[from] EditSessionError),
     #[error("change set not found")]
     ChangeSetNotFound,
     #[error("edit session not found")]
@@ -78,30 +70,6 @@ pub fn routes() -> Router {
         .route(
             "/apply_change_set",
             post(apply_change_set::apply_change_set),
-        )
-        .route(
-            "/start_edit_session",
-            post(start_edit_session::start_edit_session),
-        )
-        .route(
-            "/save_edit_session",
-            post(save_edit_session::save_edit_session),
-        )
-        .route(
-            "/save_edit_session_and_apply_change_set",
-            post(save_edit_session_and_apply_change_set::save_edit_session_and_apply_change_set),
-        )
-        .route(
-            "/save_and_start_edit_session",
-            post(save_and_start_edit_session::save_and_start_edit_session),
-        )
-        .route(
-            "/cancel_edit_session",
-            post(cancel_edit_session::cancel_edit_session),
-        )
-        .route(
-            "/cancel_and_start_edit_session",
-            post(cancel_and_start_edit_session::cancel_and_start_edit_session),
         )
         .route(
             "/update_selected_change_set",

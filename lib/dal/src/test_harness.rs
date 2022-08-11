@@ -18,11 +18,11 @@ use crate::{
     node::NodeKind,
     schema,
     socket::{Socket, SocketArity, SocketEdgeKind, SocketKind},
-    BillingAccount, BillingAccountId, ChangeSet, Component, DalContext, EditSession,
-    EncryptedSecret, Func, FuncBackendKind, FuncBackendResponseType, Group, HistoryActor, KeyPair,
-    Node, Organization, Prop, PropId, PropKind, QualificationCheck, Schema, SchemaId, SchemaKind,
-    SchemaVariantId, SchematicKind, Secret, SecretKind, SecretObjectType, StandardModel, System,
-    User, Visibility, Workspace, WriteTenancy, NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK,
+    BillingAccount, BillingAccountId, ChangeSet, Component, DalContext, EncryptedSecret, Func,
+    FuncBackendKind, FuncBackendResponseType, Group, HistoryActor, KeyPair, Node, Organization,
+    Prop, PropId, PropKind, QualificationCheck, Schema, SchemaId, SchemaKind, SchemaVariantId,
+    SchematicKind, Secret, SecretKind, SecretObjectType, StandardModel, System, User, Visibility,
+    Workspace, WriteTenancy, NO_CHANGE_SET_PK,
 };
 
 #[derive(Debug)]
@@ -212,26 +212,12 @@ pub async fn create_change_set(ctx: &DalContext<'_, '_>) -> ChangeSet {
         .expect("cannot create change_set")
 }
 
-pub async fn create_edit_session(ctx: &DalContext<'_, '_>, change_set: &ChangeSet) -> EditSession {
-    let name = generate_fake_name();
-    EditSession::new(ctx, &change_set.pk, &name, None)
-        .await
-        .expect("cannot create edit_session")
-}
-
-pub fn create_visibility_edit_session(
-    change_set: &ChangeSet,
-    edit_session: &EditSession,
-) -> Visibility {
-    Visibility::new(change_set.pk, edit_session.pk, None)
-}
-
 pub fn create_visibility_change_set(change_set: &ChangeSet) -> Visibility {
-    Visibility::new(change_set.pk, NO_EDIT_SESSION_PK, None)
+    Visibility::new(change_set.pk, None)
 }
 
 pub fn create_visibility_head() -> Visibility {
-    Visibility::new(NO_CHANGE_SET_PK, NO_EDIT_SESSION_PK, None)
+    Visibility::new(NO_CHANGE_SET_PK, None)
 }
 
 pub async fn create_billing_account_with_name(

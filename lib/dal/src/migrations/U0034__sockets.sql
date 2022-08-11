@@ -7,7 +7,6 @@ CREATE TABLE sockets
     tenancy_organization_ids    bigint[],
     tenancy_workspace_ids       bigint[],
     visibility_change_set_pk    bigint                   NOT NULL DEFAULT -1,
-    visibility_edit_session_pk  bigint                   NOT NULL DEFAULT -1,
     visibility_deleted_at       timestamp with time zone,
     created_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     updated_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
@@ -46,12 +45,12 @@ BEGIN
 
     INSERT INTO sockets (tenancy_universal, tenancy_billing_account_ids, tenancy_organization_ids,
                          tenancy_workspace_ids,
-                         visibility_change_set_pk, visibility_edit_session_pk, visibility_deleted_at,
+                         visibility_change_set_pk, visibility_deleted_at,
                          name, kind, edge_kind, arity, schematic_kind)
     VALUES (this_tenancy_record.tenancy_universal, this_tenancy_record.tenancy_billing_account_ids,
             this_tenancy_record.tenancy_organization_ids, this_tenancy_record.tenancy_workspace_ids,
-            this_visibility_record.visibility_change_set_pk, this_visibility_record.visibility_edit_session_pk,
-            this_visibility_record.visibility_deleted_at, this_name, this_kind, this_edge_kind, this_arity, this_schematic_kind)
+            this_visibility_record.visibility_change_set_pk, this_visibility_record.visibility_deleted_at,
+            this_name, this_kind, this_edge_kind, this_arity, this_schematic_kind)
     RETURNING * INTO this_new_row;
 
     object := row_to_json(this_new_row);

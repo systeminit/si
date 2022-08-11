@@ -54,5 +54,4 @@ const socials = [
     }),
   },
 ];
-
 </script>

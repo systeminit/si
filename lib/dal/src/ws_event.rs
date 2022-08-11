@@ -1,15 +1,13 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use si_data::{NatsError, NatsTxn};
+use si_data::NatsError;
 
 use crate::attribute::value::DependentValuesUpdated;
 use crate::code_generation_resolver::CodeGenerationId;
 use crate::qualification::QualificationCheckId;
 use crate::resource::ResourceSyncId;
-use crate::{BillingAccountId, ChangeSetPk, HistoryActor, SchemaPk, WriteTenancy};
-
-// foo
+use crate::{BillingAccountId, ChangeSetPk, DalContext, HistoryActor, ReadTenancy, SchemaPk};
 
 #[derive(Error, Debug)]
 pub enum WsEventError {
@@ -27,7 +25,7 @@ pub enum WsPayload {
     ChangeSetCreated(ChangeSetPk),
     ChangeSetApplied(ChangeSetPk),
     ChangeSetCanceled(ChangeSetPk),
-    EditSessionSaved(ChangeSetPk),
+    ChangeSetWritten(ChangeSetPk),
     SchemaCreated(SchemaPk),
     ResourceSynced(ResourceSyncId),
     CodeGenerated(CodeGenerationId),
@@ -44,7 +42,18 @@ pub struct WsEvent {
 }
 
 impl WsEvent {
-    pub fn new(
+    pub fn new(ctx: &DalContext<'_, '_>, payload: WsPayload) -> Self {
+        let billing_account_ids = Self::billing_account_id_from_tenancy(ctx.read_tenancy());
+        let history_actor = ctx.history_actor().clone();
+        WsEvent {
+            version: 1,
+            billing_account_ids,
+            history_actor,
+            payload,
+        }
+    }
+
+    pub fn new_raw(
         billing_account_ids: Vec<BillingAccountId>,
         history_actor: HistoryActor,
         payload: WsPayload,
@@ -57,14 +66,14 @@ impl WsEvent {
         }
     }
 
-    pub fn billing_account_id_from_tenancy(tenancy: &WriteTenancy) -> Vec<BillingAccountId> {
+    pub fn billing_account_id_from_tenancy(tenancy: &ReadTenancy) -> Vec<BillingAccountId> {
         tenancy.billing_accounts().into()
     }
 
-    pub async fn publish(&self, nats: &NatsTxn) -> WsEventResult<()> {
+    pub async fn publish(&self, ctx: &DalContext<'_, '_>) -> WsEventResult<()> {
         for billing_account_id in self.billing_account_ids.iter() {
             let subject = format!("si.billing_account_id.{}.event", billing_account_id);
-            nats.publish(subject, &self).await?;
+            ctx.nats_txn().publish(subject, &self).await?;
         }
         Ok(())
     }

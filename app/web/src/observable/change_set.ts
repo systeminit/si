@@ -5,6 +5,7 @@ import {
   WsChangeSetApplied,
   WsChangeSetCanceled,
   WsChangeSetCreated,
+  WsChangeSetWritten,
   WsEvent,
 } from "@/api/sdf/dal/ws_event";
 
@@ -44,7 +45,8 @@ export const eventChangeSetCanceled$ =
 eventChangeSetCanceled$.next(null);
 
 /**
- * Fired when the user tries to edit something outside of an edit-session
+ * Fired with the pk of the new change set when one is canceled.
  */
-export const editButtonPulse$ = new ReplaySubject<boolean>(1);
-editButtonPulse$.next(false);
+export const eventChangeSetWritten$ =
+  new ReplaySubject<WsEvent<WsChangeSetWritten> | null>(1);
+eventChangeSetWritten$.next(null);

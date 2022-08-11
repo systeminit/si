@@ -1,11 +1,10 @@
 import Bottle from "bottlejs";
 import { ApiResponse, SDF } from "@/api/sdf";
-import { combineLatest, from, Observable, take, tap } from "rxjs";
+import { combineLatest, from, Observable, take } from "rxjs";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import { visibility$ } from "@/observable/visibility";
 import { switchMap } from "rxjs/operators";
 import { EditFieldObjectKind } from "@/api/sdf/dal/edit_field";
-import { editSessionWritten$ } from "@/observable/edit_session";
 import { workspace$ } from "@/observable/workspace";
 import _ from "lodash";
 import { AttributeContext } from "@/api/sdf/dal/attribute";
@@ -64,16 +63,10 @@ export function updateFromEditField(
           ...visibility,
         };
       }
-      return sdf
-        .post<ApiResponse<UpdateFromEditFieldResponse>>(
-          "edit_field/update_from_edit_field",
-          request,
-        )
-        .pipe(
-          tap((_response) => {
-            editSessionWritten$.next(true);
-          }),
-        );
+      return sdf.post<ApiResponse<UpdateFromEditFieldResponse>>(
+        "edit_field/update_from_edit_field",
+        request,
+      );
     }),
   );
 }

@@ -82,15 +82,10 @@ import SiButton from "@/atoms/SiButton.vue";
 import SiSelect, { SelectPropsOption } from "@/atoms/SiSelect.vue";
 import SiTextBox from "@/atoms/SiTextBox.vue";
 import SecretCreateFields from "@/organisms/Secret/SecretCreateFields.vue";
-import { ChangeSetService } from "@/service/change_set";
 import { GlobalErrorService } from "@/service/global_error";
 import { SecretService } from "@/service/secret";
 
 const emit = defineEmits(["cancel", "submit"]);
-
-const editMode = refFrom<boolean | undefined>(
-  ChangeSetService.currentEditMode(),
-);
 
 const secretName = ref<string>("");
 
@@ -129,7 +124,7 @@ const enableCreateButton = computed((): boolean => {
     }
   }
 
-  const inEditMode = editMode.value != undefined && editMode.value;
+  const inEditMode = true;
   const secretKindSelected = !!secretKind.value;
   const namePopulated = secretName.value.length > 0;
 

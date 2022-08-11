@@ -4,13 +4,13 @@ use axum::routing::{get, post};
 use axum::Json;
 use axum::Router;
 use dal::socket::{SocketError, SocketId};
-use dal::AttributeReadContext;
 use dal::{
     node::NodeId, schema::variant::SchemaVariantError, AttributeValueError, ComponentError,
     NodeError, NodeKind, NodeMenuError, NodePositionError, ReadTenancyError,
     SchemaError as DalSchemaError, SchematicError as DalSchematicError, SchematicKind,
     StandardModelError, TransactionsError,
 };
+use dal::{AttributeReadContext, WsEventError};
 use thiserror::Error;
 
 pub mod create_connection;
@@ -79,6 +79,8 @@ pub enum SchematicError {
     ParentNodeNotFound(NodeId),
     #[error("invalid parent node kind {0:?}")]
     InvalidParentNode(NodeKind),
+    #[error("ws event error: {0}")]
+    WsEvent(#[from] WsEventError),
 }
 
 pub type SchematicResult<T> = std::result::Result<T, SchematicError>;

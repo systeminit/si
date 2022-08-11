@@ -8,8 +8,8 @@ use crate::func::backend::validation::ValidationError;
 use crate::func::binding_return_value::{FuncBindingReturnValue, FuncBindingReturnValueError};
 use crate::ws_event::{WsEvent, WsPayload};
 use crate::{
-    component, BillingAccountId, Component, ComponentId, DalContext, HistoryActor,
-    QualificationPrototype, QualificationPrototypeId, StandardModel, SystemId,
+    component, Component, ComponentId, DalContext, QualificationPrototype,
+    QualificationPrototypeId, StandardModel, SystemId,
 };
 
 const GET_SUMMARY: &str = include_str!("queries/qualifications_summary_for_tenancy.sql");
@@ -229,15 +229,13 @@ pub struct QualificationCheckId {
 
 impl WsEvent {
     pub fn checked_qualifications(
+        ctx: &DalContext<'_, '_>,
         prototype_id: QualificationPrototypeId,
         component_id: ComponentId,
         system_id: SystemId,
-        billing_account_ids: Vec<BillingAccountId>,
-        history_actor: &HistoryActor,
     ) -> Self {
         WsEvent::new(
-            billing_account_ids,
-            history_actor.clone(),
+            ctx,
             WsPayload::CheckedQualifications(QualificationCheckId {
                 prototype_id,
                 component_id,

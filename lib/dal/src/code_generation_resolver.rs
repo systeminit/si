@@ -9,9 +9,8 @@ use crate::{
     func::{binding::FuncBindingId, FuncId},
     impl_standard_model, pk, standard_model, standard_model_accessor,
     ws_event::{WsEvent, WsPayload},
-    BillingAccountId, CodeGenerationPrototypeId, ComponentId, HistoryActor, HistoryEventError,
-    SchemaId, SchemaVariantId, StandardModel, StandardModelError, SystemId, Timestamp, Visibility,
-    WriteTenancy,
+    CodeGenerationPrototypeId, ComponentId, HistoryEventError, SchemaId, SchemaVariantId,
+    StandardModel, StandardModelError, SystemId, Timestamp, Visibility, WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -194,14 +193,12 @@ pub struct CodeGenerationId {
 
 impl WsEvent {
     pub fn code_generated(
+        ctx: &DalContext<'_, '_>,
         component_id: ComponentId,
         system_id: SystemId,
-        billing_account_ids: Vec<BillingAccountId>,
-        history_actor: &HistoryActor,
     ) -> Self {
         WsEvent::new(
-            billing_account_ids,
-            history_actor.clone(),
+            ctx,
             WsPayload::CodeGenerated(CodeGenerationId {
                 component_id,
                 system_id,

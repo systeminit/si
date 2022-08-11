@@ -648,7 +648,7 @@ impl FnSetupExpander {
         let application_id = self.setup_application_id();
         let application_id = application_id.as_ref();
         self.code.extend(quote! {
-            let #var = ::dal::test::helpers::create_ctx_for_new_change_set_and_edit_session(
+            let #var = ::dal::test::helpers::create_ctx_for_new_change_set(
                 &#dal_context_builder,
                 &#transactions,
                 &#nba,
@@ -676,7 +676,7 @@ impl FnSetupExpander {
         let application_id = self.setup_application_id();
         let application_id = application_id.as_ref();
         self.code.extend(quote! {
-            let mut #var = ::dal::test::helpers::create_ctx_for_new_change_set_and_edit_session(
+            let mut #var = ::dal::test::helpers::create_ctx_for_new_change_set(
                 &#dal_context_builder,
                 &#transactions,
                 &#nba,

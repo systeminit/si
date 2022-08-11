@@ -7,7 +7,6 @@ CREATE TABLE node_positions
     tenancy_organization_ids    bigint[],
     tenancy_workspace_ids       bigint[],
     visibility_change_set_pk    bigint                   NOT NULL DEFAULT -1,
-    visibility_edit_session_pk  bigint                   NOT NULL DEFAULT -1,
     visibility_deleted_at       timestamp with time zone,
     created_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     updated_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
@@ -23,7 +22,7 @@ SELECT belongs_to_table_create_v1('node_position_belongs_to_node', 'node_positio
 
 INSERT INTO standard_models (table_name, table_type, history_event_label_base, history_event_message_name)
 VALUES ('node_positions', 'model', 'node_position', 'Node Position'),
-        ('node_position_belongs_to_node', 'belongs_to', 'node_position.node', 'Node Position <> Node');
+       ('node_position_belongs_to_node', 'belongs_to', 'node_position.node', 'Node Position <> Node');
 
 CREATE OR REPLACE FUNCTION node_position_create_v1(
     this_tenancy jsonb,
@@ -45,12 +44,12 @@ BEGIN
     this_visibility_record := visibility_json_to_columns_v1(this_visibility);
 
     INSERT INTO node_positions (tenancy_universal, tenancy_billing_account_ids, tenancy_organization_ids,
-                         tenancy_workspace_ids,
-                         visibility_change_set_pk, visibility_edit_session_pk, visibility_deleted_at,
-                         schematic_kind, root_node_id, system_id, deployment_node_id, x, y)
+                                tenancy_workspace_ids,
+                                visibility_change_set_pk, visibility_deleted_at,
+                                schematic_kind, root_node_id, system_id, deployment_node_id, x, y)
     VALUES (this_tenancy_record.tenancy_universal, this_tenancy_record.tenancy_billing_account_ids,
             this_tenancy_record.tenancy_organization_ids, this_tenancy_record.tenancy_workspace_ids,
-            this_visibility_record.visibility_change_set_pk, this_visibility_record.visibility_edit_session_pk,
+            this_visibility_record.visibility_change_set_pk,
             this_visibility_record.visibility_deleted_at, this_schematic_kind, this_root_node_id, this_system_id,
             this_deployment_node_id, this_x, this_y)
     RETURNING * INTO this_new_row;

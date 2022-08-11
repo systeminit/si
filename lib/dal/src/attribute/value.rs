@@ -42,9 +42,7 @@ use crate::{
     ReadTenancyError, StandardModel, StandardModelError, Timestamp, TransactionsError, Visibility,
     WriteTenancy,
 };
-use crate::{
-    AccessBuilder, BillingAccountId, DalContextBuilder, HistoryActor, SystemId, WsPayload,
-};
+use crate::{AccessBuilder, DalContextBuilder, SystemId, WsPayload};
 
 use self::dependent_update::AttributeValueDependentUpdateHarness;
 
@@ -1684,14 +1682,7 @@ impl DependentValuesAsyncTasks {
             })?;
 
         if attribute_value.context.component_id().is_some() {
-            WsEvent::updated_dependent_value(
-                attribute_value.context.component_id(),
-                attribute_value.context.system_id(),
-                ctx.read_tenancy().billing_accounts().into(),
-                ctx.history_actor(),
-            )
-            .publish(ctx.txns().nats())
-            .await?;
+            WsEvent::change_set_written(ctx).publish(ctx).await?;
         }
         Ok(())
     }
@@ -1706,14 +1697,12 @@ pub struct DependentValuesUpdated {
 
 impl WsEvent {
     pub fn updated_dependent_value(
+        ctx: &DalContext<'_, '_>,
         component_id: ComponentId,
         system_id: SystemId,
-        billing_account_ids: Vec<BillingAccountId>,
-        history_actor: &HistoryActor,
     ) -> Self {
         WsEvent::new(
-            billing_account_ids,
-            history_actor.clone(),
+            ctx,
             WsPayload::UpdatedDependentValue(DependentValuesUpdated {
                 component_id,
                 system_id,

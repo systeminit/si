@@ -12,7 +12,6 @@
           <CheckCircleIcon :class="qualificationStatusClasses" />
         </SiIcon>
         <SiButtonIcon
-          v-if="editMode"
           class="ml-2"
           tooltip-text="Re-run qualifications"
           @click="runQualification"
@@ -43,7 +42,6 @@
 
         <div class="flex">
           <SiButtonIcon
-            v-if="editMode"
             class="mr-2 mt-1 text-green-300"
             tooltip-text="Create new qualification function"
             @click="createQualification"
@@ -161,7 +159,6 @@ import {
 } from "@/api/sdf/dal/qualification";
 import { VueLoading } from "vue-loading-template";
 import { computed, ref, toRefs } from "vue";
-import { ChangeSetService } from "@/service/change_set";
 import { QualificationService } from "@/service/qualification";
 import { eventCheckedQualifications$ } from "@/observable/qualification";
 import { system$ } from "@/observable/system";
@@ -182,8 +179,6 @@ import {
 } from "@heroicons/vue/outline";
 import { toast$ } from "@/observable/toast";
 //import { ListQualificationsResponse } from "@/service/component/list_qualifications";
-
-const editMode = refFrom<boolean>(ChangeSetService.currentEditMode());
 
 const editingQualificationId = ref<number | undefined>(undefined);
 
