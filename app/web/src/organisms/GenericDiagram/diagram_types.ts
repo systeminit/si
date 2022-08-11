@@ -18,19 +18,19 @@ export type DiagramNodeDef = {
   /** unique id of the node */
   id: string;
   /** node type within the context of the diagram */
-  type?: string;
+  type: string | null;
   /** title of diagram node */
   title: string;
   /** subtitle of diagram node */
-  subtitle?: string;
+  subtitle: string | null;
   /** more text content displayed within the node */
-  content?: string;
+  content: string | null;
   /** sockets on the node */
-  sockets?: DiagramSocketDef[];
+  sockets: DiagramSocketDef[] | null;
   /** x,y placement of the node on the diagram */
   position: GridPoint;
   // statusIcons?: NodeStatusIcon[];
-  color?: string;
+  color: string | null;
 };
 
 export type DiagramSocketDef = {
@@ -63,6 +63,11 @@ export type DiagramEdgeDef = {
   // color
   // thickness
 };
+
+export interface DiagramSchematicDef {
+  nodes: DiagramNodeDef[];
+  edges: DiagramEdgeDef[];
+}
 
 // specific features... likely will move these as the diagram functionality gets broken up
 export type PendingInsertedElement = {

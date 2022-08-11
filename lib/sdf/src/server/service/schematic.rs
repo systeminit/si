@@ -5,7 +5,8 @@ use axum::Json;
 use axum::Router;
 use dal::socket::{SocketError, SocketId};
 use dal::{
-    node::NodeId, schema::variant::SchemaVariantError, AttributeValueError, ComponentError,
+    node::NodeId, schema::variant::SchemaVariantError,
+    schematic2::SchematicError2 as DalSchematicError2, AttributeValueError, ComponentError,
     NodeError, NodeKind, NodeMenuError, NodePositionError, ReadTenancyError,
     SchemaError as DalSchemaError, SchematicError as DalSchematicError, SchematicKind,
     StandardModelError, TransactionsError,
@@ -18,6 +19,7 @@ pub mod create_node;
 pub mod get_node_add_menu;
 pub mod get_node_template;
 pub mod get_schematic;
+pub mod get_schematic2;
 pub mod list_schema_variants;
 pub mod set_node_position;
 
@@ -67,6 +69,8 @@ pub enum SchematicError {
     NodePosition(#[from] NodePositionError),
     #[error("dal schematic error: {0}")]
     SchematicError(#[from] DalSchematicError),
+    #[error("dal schematic2 error: {0}")]
+    SchematicError2(#[from] DalSchematicError2),
     #[error("read tenancy error: {0}")]
     ReadTenancy(#[from] ReadTenancyError),
     #[error("not authorized")]
@@ -103,6 +107,7 @@ impl IntoResponse for SchematicError {
 pub fn routes() -> Router {
     Router::new()
         .route("/get_schematic", get(get_schematic::get_schematic))
+        .route("/get_schematic2", get(get_schematic2::get_schematic))
         .route(
             "/get_node_add_menu",
             post(get_node_add_menu::get_node_add_menu),
