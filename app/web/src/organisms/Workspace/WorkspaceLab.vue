@@ -10,7 +10,7 @@
       />
     </SiSidebar>
     <div
-      class="grow overflow-x-hidden overflow-y-scroll lace-items-center dark:bg-neutral-800 dark:text-white text-lg font-semibold p-0"
+      class="grow overflow-x-hidden overflow-y-auto lace-items-center dark:bg-neutral-800 dark:text-white text-lg font-semibold p-0"
     >
       <FuncEditorTabs
         v-if="selectedFunc.id > 0"
@@ -21,7 +21,7 @@
         Select a function to edit it.
       </div>
     </div>
-    <SiSidebar :hidden="false" side="right">
+    <SiSidebar :hidden="false" side="right" class="h-full pb-12 min-w-[230px]">
       <!-- if hiding is added later, condition is selectedFuncId < 1 -->
       <FuncDetails :func-id="selectedFunc.id" />
     </SiSidebar>
