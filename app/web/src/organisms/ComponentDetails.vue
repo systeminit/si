@@ -27,9 +27,8 @@
             <span class="text-lg ml-4">{{ props.componentName }} Code</span>
           </template>
 
-          <template #regenerateCode>
+          <template #actionButtons>
             <SiButtonIcon
-              v-if="editMode"
               tooltip-text="Re-generate code"
               ignore-text-color
               @click="generateCode"
@@ -60,7 +59,7 @@ import { computed, ref } from "vue";
 import { CodeView } from "@/api/sdf/dal/code_view";
 import { eventCodeGenerated$ } from "@/observable/code";
 import { RefreshIcon } from "@heroicons/vue/solid";
-import { ChangeSetService } from "@/service/change_set";
+import SiButtonIcon from "@/atoms/SiButtonIcon.vue";
 
 const props = defineProps<{
   componentIdentification: ComponentIdentification;
@@ -69,8 +68,6 @@ const props = defineProps<{
 const componentIdentification$ = fromRef(props.componentIdentification, {
   immediate: true,
 });
-
-const editMode = refFrom<boolean>(ChangeSetService.currentEditMode());
 
 const codeGenerated$ = new ReplaySubject<true>();
 codeGenerated$.next(true); // we must fetch on setup if code gen is enabled

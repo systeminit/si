@@ -20,11 +20,10 @@
     </div>
 
     <div
-      v-if="qualification.output"
       class="font-commodore bg-black overflow-hidden py-1 flex-grow flex flex-col justify-center"
     >
       <p
-        v-if="!qualification.output.length"
+        v-if="!qualification.output?.length"
         class="text-neutral-500 text-center"
       >
         No Output

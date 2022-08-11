@@ -15,7 +15,7 @@
           <ClipboardCopyIcon />
         </SiButtonIcon>
 
-        <slot name="regenerateCode"></slot>
+        <slot name="actionButtons"></slot>
       </div>
     </div>
     <div class="w-full h-full overflow-auto">
@@ -77,15 +77,21 @@ const copyCode = () => {
 
 // FIXME(nick): for now, we default to "yaml".
 const mode = computed((): StreamParser<unknown> => {
-  if (props.codeLanguage) {
-    if (props.codeLanguage === "diff") {
+  return getMode(props.codeLanguage);
+});
+
+const getMode = (
+  codeLanguage: CodeLanguage | undefined,
+): StreamParser<unknown> => {
+  if (codeLanguage) {
+    if (codeLanguage === "diff") {
       return diff;
-    } else if (props.codeLanguage === "json") {
+    } else if (codeLanguage === "json") {
       return json;
     }
   }
   return yaml;
-});
+};
 
 const forcedTheme = computed((): Extension | null => {
   if (props.forceTheme) {
@@ -137,27 +143,16 @@ onMounted(() => {
   }
 });
 
-// Dispatch new code if the prop has changed.
-watch(
-  computed(() => props.code),
-  () => {
-    if (!view.value) return;
-    view.value.dispatch({
-      changes: {
-        from: 0,
-        to: view.value.state.doc.length,
-        insert: props.code,
-      },
-      effects: readOnly.reconfigure(EditorState.readOnly.of(true)),
-    });
-  },
-);
-
-const updateCodeMirrorView = (theme?: Theme) => {
+const updateCodeMirrorView = (theme?: Theme, codeLanguage?: CodeLanguage) => {
   if (view.value && currentTheme.value) {
     let tempTheme = currentTheme.value;
     if (theme) {
       tempTheme = theme;
+    }
+
+    let tempStreamLanguage = mode.value;
+    if (codeLanguage) {
+      tempStreamLanguage = getMode(codeLanguage);
     }
 
     view.value.dispatch({
@@ -168,7 +163,7 @@ const updateCodeMirrorView = (theme?: Theme) => {
           : basicLight,
         styleExtension.value,
         keymap.of([indentWithTab]),
-        StreamLanguage.define(mode.value),
+        StreamLanguage.define(tempStreamLanguage),
         readOnly.of(EditorState.readOnly.of(true)),
       ]),
     });
@@ -179,7 +174,22 @@ const updateCodeMirrorView = (theme?: Theme) => {
 ThemeService.currentTheme().subscribe((theme) => updateCodeMirrorView(theme));
 
 watch(
-  [() => props.codeLanguage, () => props.height],
-  () => updateCodeMirrorView,
+  () => props.codeLanguage,
+  (codeLanguage) => updateCodeMirrorView(undefined, codeLanguage),
+);
+
+watch(
+  () => props.code,
+  (code) => {
+    if (!view.value) return;
+    view.value.dispatch({
+      changes: {
+        from: 0,
+        to: view.value.state.doc.length,
+        insert: code,
+      },
+      effects: readOnly.reconfigure(EditorState.readOnly.of(true)),
+    });
+  },
 );
 </script>

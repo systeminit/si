@@ -89,8 +89,8 @@
         class="overflow-y-auto flex flex-row flex-wrap"
       >
         <div
-          v-for="codeView in [diffCodeView, currentCodeView]"
-          :key="codeView.title"
+          v-for="title in ['Diff', 'Current']"
+          :key="title"
           class="basis-full lg:basis-1/2 overflow-hidden pr-10 pl-1 pt-2"
         >
           <!-- FIXME(nick): make code viewer height malleable if the status bar no longer a fixed size.
@@ -100,12 +100,12 @@
             height="260px"
             :component-id="selectedComponent.component_id"
             class="text-neutral-50 mx-5"
-            :code="codeView.code"
+            :code="codeRecord[title]"
             force-theme="dark"
-            :code-language="codeView.language"
+            :code-language="getCodeLanguage(title)"
           >
             <template #title>
-              <span class="text-lg">{{ codeView.title }}</span>
+              <span class="text-lg">{{ title }}</span>
             </template>
           </CodeViewer>
         </div>
@@ -135,7 +135,6 @@ import { ComponentService } from "@/service/component";
 import { ComponentDiff } from "@/api/sdf/dal/component";
 import _ from "lodash";
 import { CheckIcon } from "@heroicons/vue/solid";
-import { CodeLanguage } from "@/api/sdf/dal/code_view";
 
 export type ChangeSetTabPanelFilter = "all" | "added" | "deleted" | "modified";
 
@@ -231,57 +230,28 @@ lastSelectedNode$
   .subscribe((node) => updateSelection(node));
 firstValueFrom(lastSelectedNode$).then((last) => updateSelection(last));
 
-// We do not extend "CodeView" because the "code" field is required.
-interface CodeViewWithTitle {
-  code: string;
-  language: CodeLanguage;
-  title: string;
-}
-
-const currentCodeView = computed((): CodeViewWithTitle => {
-  if (componentDiff.value) {
-    if (componentDiff.value.current.code) {
-      return {
-        code: componentDiff.value.current.code,
-        language: "json",
-        title: "Current",
-      };
-    }
-    return {
-      code: "# No code found",
-      language: "unknown",
-      title: "Current",
-    };
-  }
-  return {
-    code: "# Waiting for component diff...",
-    language: "unknown",
-    title: "Current",
+// FIXME(nick): we should be using the "unknown" language if there's no code once mode switching is reactive.
+const codeRecord = computed((): Record<string, string> => {
+  let code = {
+    Diff: "# Waiting for component diff...",
+    Current: "# Waiting for component diff...",
   };
+  if (componentDiff.value) {
+    // FIXME(nick): allow for multiple diffs.
+    code["Diff"] = componentDiff.value.diffs[0].code ?? "# No code found";
+    code["Current"] = componentDiff.value.current.code ?? "# No code found";
+  }
+  return code;
 });
 
-// FIXME(nick): allow for multiple diffs.
-const diffCodeView = computed((): CodeViewWithTitle => {
-  if (componentDiff.value) {
-    if (componentDiff.value.diffs[0].code) {
-      return {
-        code: componentDiff.value.diffs[0].code,
-        language: "diff",
-        title: "Diff",
-      };
-    }
-    return {
-      code: "# No code found",
-      language: "unknown",
-      title: "Diff",
-    };
+// FIXME(nick): remove this once reactivity is fixed.
+const getCodeLanguage = (title: string) => {
+  if (title === "Current") {
+    return "json";
   }
-  return {
-    code: "# Waiting for component diff...",
-    language: "unknown",
-    title: "Diff",
-  };
-});
+  // Default to diff.
+  return "diff";
+};
 
 const componentDiff = refFrom<ComponentDiff | null>(
   combineLatest([selectedComponent$]).pipe(
