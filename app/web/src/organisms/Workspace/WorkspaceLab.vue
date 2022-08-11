@@ -10,7 +10,7 @@
       />
     </SiSidebar>
     <div
-      class="grow overflow-x-hidden overflow-y-auto lace-items-center dark:bg-neutral-800 dark:text-white text-lg font-semibold p-0"
+      class="grow overflow-x-hidden overflow-y-hidden lace-items-center dark:bg-neutral-800 dark:text-white text-lg font-semi-bold p-2 flex flex-col"
     >
       <FuncEditorTabs
         v-if="selectedFunc.id > 0"
