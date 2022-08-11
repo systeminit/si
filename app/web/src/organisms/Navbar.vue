@@ -10,7 +10,7 @@
             alt="SI Logo"
           />
 
-          <SiBarButton tooltip-text="Workspaces" :text-mode="true">
+          <SiBarButton tooltip-text="Workspaces">
             <template #default="{ hovered, open }">
               <div class="flex-col flex text-left">
                 <div class="text-xs font-medium">WORKSPACE:</div>
@@ -22,7 +22,7 @@
             </template>
 
             <template #dropdownContent>
-              <SiDropdownItem checked>{{
+              <SiDropdownItem checked class="text-sm">{{
                 selectedWorkspaceName
               }}</SiDropdownItem>
             </template>

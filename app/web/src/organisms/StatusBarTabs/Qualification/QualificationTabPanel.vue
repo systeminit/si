@@ -2,16 +2,17 @@
   <div class="flex flex-row h-full w-full">
     <!-- Filter button and list of components -->
     <div
-      class="w-64 border-r-[1px] border-black text-center h-full flex flex-col"
+      class="w-80 border-r-[1px] border-black text-center h-full flex flex-col"
     >
       <!-- Filter button and its dropdown -->
       <SiBarButton
         class="h-10 border-b-[1px] border-black"
         dropdown-classes="top-1 left-4"
         tooltip-text="Filter"
+        fill-entire-width
       >
         <template #default="{ hovered, open }">
-          <div class="flex-row flex">
+          <div class="flex-row flex justify-center">
             {{ filterTitle }}
             <SiArrow :nudge="hovered || open" class="ml-1 w-4" />
           </div>
@@ -69,7 +70,10 @@
       :component-name="selectedComponent.componentName"
       :component-qualification-status="iconStatus(selectedComponent)"
     />
-    <div v-else class="flex flex-row items-center text-center w-full h-full">
+    <div
+      v-else
+      class="flex flex-row items-center text-center w-full h-full bg-shade-100"
+    >
       <p class="w-full text-3xl text-neutral-500">No Component Selected</p>
     </div>
   </div>
