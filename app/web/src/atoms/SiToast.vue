@@ -1,5 +1,5 @@
 <template>
-  <div class="absolute w-full h-full pointer-events-none m-0 top-0 left-0">
+  <div class="absolute w-full h-full pointer-events-none m-0 top-0 left-0 z-30">
     <div class="flex flex-row-reverse p-5 h-full w-full m-0">
       <div class="flex flex-col-reverse m-0">
         <div
@@ -10,12 +10,12 @@
           role="alert"
         >
           <div
-            class="inline-flex items-center justify-center flex-shrink-0 w-8 h-8 rounded-lg"
             :class="
               toast.success
                 ? ['text-green-500', 'bg-green-100']
                 : ['text-red-500', 'bg-red-100']
             "
+            class="inline-flex items-center justify-center flex-shrink-0 w-8 h-8 rounded-lg"
           >
             <CheckIcon v-if="toast.success" />
             <XIcon v-else />
@@ -38,9 +38,9 @@
             </a>
           </span>
           <button
-            type="button"
-            class="ml-auto -mx-1.5 -my-1.5 bg-neutral-700 text-gray-400 hover:text-gray-900 rounded-lg focus:ring-2 focus:ring-gray-300 p-1.5 hover:bg-gray-100 inline-flex h-8 w-8"
             aria-label="Close"
+            class="ml-auto -mx-1.5 -my-1.5 bg-neutral-700 text-gray-400 hover:text-gray-900 rounded-lg focus:ring-2 focus:ring-gray-300 p-1.5 hover:bg-gray-100 inline-flex h-8 w-8"
+            type="button"
             @click="hideToasted(toast.id)"
           >
             <span class="sr-only">Close</span>
@@ -52,8 +52,8 @@
   </div>
 </template>
 
-<script setup lang="ts">
-import { XIcon, CheckIcon } from "@heroicons/vue/solid";
+<script lang="ts" setup>
+import { CheckIcon, XIcon } from "@heroicons/vue/solid";
 import { toast$, Toasted } from "@/observable/toast";
 import { ref } from "vue";
 import { untilUnmounted } from "vuse-rx";

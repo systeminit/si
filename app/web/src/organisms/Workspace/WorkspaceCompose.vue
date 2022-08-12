@@ -67,16 +67,7 @@ import { ThemeService } from "@/service/theme";
 import { refFrom, untilUnmounted } from "vuse-rx";
 import { computed, ref } from "vue";
 import ChangeSetPanel from "@/organisms/ChangeSetPanel.vue";
-import {
-  combineLatest,
-  firstValueFrom,
-  forkJoin,
-  from,
-  map,
-  switchMap,
-  take,
-  tap,
-} from "rxjs";
+import { combineLatest, forkJoin, from, map, switchMap, take, tap } from "rxjs";
 import { GetSchematicArgs } from "@/service/schematic/get_schematic";
 import {
   standardVisibilityTriggers$,
@@ -179,7 +170,6 @@ const updateSelection = (node: Node | null) => {
 lastSelectedNode$
   .pipe(untilUnmounted)
   .subscribe((node) => updateSelection(node));
-firstValueFrom(lastSelectedNode$).then((last) => updateSelection(last));
 
 const deploymentNode = ref<SchematicNode | null>(null);
 const schematicData = refFrom<Schematic>(
