@@ -1,5 +1,5 @@
 <template>
-  <SiTabGroup start-margin="4">
+  <SiTabGroup :start-margin="4">
     <template #tabs>
       <SiTabHeader after-margin="2">Asset Palette</SiTabHeader>
       <SiTabHeader after-margin="2">Local Assets</SiTabHeader>
