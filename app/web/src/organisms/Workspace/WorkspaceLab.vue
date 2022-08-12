@@ -77,7 +77,7 @@ visibility$.subscribe(() => {
 
 saveFuncToBackend$
   .pipe(
-    debounceTime(200),
+    debounceTime(75),
     tap((saveFuncRequest) => FuncService.saveFunc(saveFuncRequest)),
   )
   .subscribe();
