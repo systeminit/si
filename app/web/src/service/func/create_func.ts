@@ -1,11 +1,11 @@
 import { ApiResponse } from "@/api/sdf";
 import { combineLatest, Observable } from "rxjs";
-import { map, switchMap } from "rxjs/operators";
+import { map, switchMap, take } from "rxjs/operators";
 import { Func, FuncBackendKind } from "@/api/sdf/dal/func";
 import { GlobalErrorService } from "@/service/global_error";
 import Bottle from "bottlejs";
 import { SDF } from "@/api/sdf";
-import { standardVisibilityTriggers$ } from "@/observable/visibility";
+import { visibility$ } from "@/observable/visibility";
 export type CreateFuncResponse = Func;
 
 export const nullFunc: CreateFuncResponse = {
@@ -17,8 +17,9 @@ export const nullFunc: CreateFuncResponse = {
 };
 
 export const createFunc: () => Observable<CreateFuncResponse> = () =>
-  combineLatest([standardVisibilityTriggers$]).pipe(
-    switchMap(([[visibility]]) => {
+  combineLatest([visibility$]).pipe(
+    take(1),
+    switchMap(([visibility]) => {
       const bottle = Bottle.pop("default");
       const sdf: SDF = bottle.container.SDF;
       return sdf.post<ApiResponse<CreateFuncResponse>>("func/create_func", {

@@ -108,6 +108,4 @@ selectedFuncId$
     }),
   )
   .subscribe(insertFunc);
-
-standardVisibilityTriggers$.subscribe(() => clearFuncs());
 </script>
