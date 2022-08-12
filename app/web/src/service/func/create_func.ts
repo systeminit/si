@@ -1,6 +1,5 @@
 import { ApiResponse } from "@/api/sdf";
-import { combineLatest, Observable } from "rxjs";
-import { map, switchMap, take } from "rxjs/operators";
+import { firstValueFrom } from "rxjs";
 import { Func, FuncBackendKind } from "@/api/sdf/dal/func";
 import { GlobalErrorService } from "@/service/global_error";
 import Bottle from "bottlejs";
@@ -16,22 +15,20 @@ export const nullFunc: CreateFuncResponse = {
   code: undefined,
 };
 
-export const createFunc: () => Observable<CreateFuncResponse> = () =>
-  combineLatest([visibility$]).pipe(
-    take(1),
-    switchMap(([visibility]) => {
-      const bottle = Bottle.pop("default");
-      const sdf: SDF = bottle.container.SDF;
-      return sdf.post<ApiResponse<CreateFuncResponse>>("func/create_func", {
-        ...visibility,
-      });
-    }),
-    map((response) => {
-      if (response.error) {
-        GlobalErrorService.set(response);
-        return nullFunc;
-      }
-
-      return response as CreateFuncResponse;
+export const createFunc: () => Promise<CreateFuncResponse> = async () => {
+  const visibility = await firstValueFrom(visibility$);
+  const bottle = Bottle.pop("default");
+  const sdf: SDF = bottle.container.SDF;
+  const response = await firstValueFrom(
+    sdf.post<ApiResponse<CreateFuncResponse>>("func/create_func", {
+      ...visibility,
     }),
   );
+
+  if (response.error) {
+    GlobalErrorService.set(response);
+    return nullFunc;
+  }
+
+  return response as CreateFuncResponse;
+};

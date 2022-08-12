@@ -44,7 +44,7 @@ import { ref } from "vue";
 import { refFrom } from "vuse-rx/src";
 import { visibility$ } from "@/observable/visibility";
 import { clearFuncs } from "./../FuncEditor/func_state";
-import { debounceTime, map, take } from "rxjs/operators";
+import { debounceTime, tap } from "rxjs/operators";
 import { saveFuncToBackend$ } from "@/observable/func";
 
 const selectedFunc = ref<ListedFuncView>(nullListFunc);
@@ -56,19 +56,18 @@ const funcList = refFrom<ListFuncsResponse>(FuncService.listFuncs(), {
   qualifications: [],
 });
 
-const createFunc = () => {
-  FuncService.createFunc().subscribe((func) => {
-    const newFunc = {
-      id: func.id,
-      kind: func.kind,
-      name: func.name,
-      handler: func.handler,
-    };
+const createFunc = async () => {
+  const func = await FuncService.createFunc();
+  const newFunc = {
+    id: func.id,
+    kind: func.kind,
+    name: func.name,
+    handler: func.handler,
+  };
 
-    funcList.value.qualifications.push(newFunc);
+  funcList.value.qualifications.push(newFunc);
 
-    selectFunc(newFunc);
-  });
+  selectFunc(newFunc);
 };
 
 visibility$.subscribe(() => {
@@ -79,9 +78,7 @@ visibility$.subscribe(() => {
 saveFuncToBackend$
   .pipe(
     debounceTime(200),
-    map((saveFuncRequest) =>
-      FuncService.saveFunc(saveFuncRequest).pipe(take(1)).subscribe(),
-    ),
+    tap((saveFuncRequest) => FuncService.saveFunc(saveFuncRequest)),
   )
   .subscribe();
 </script>
