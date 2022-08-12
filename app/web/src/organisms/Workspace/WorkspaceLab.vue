@@ -1,6 +1,6 @@
 <template>
   <div class="flex flex-row w-full h-full bg-transparent overflow-hidden">
-    <SiSidebar side="left" class="h-full pb-12">
+    <SiSidebar side="left" class="h-full pb-12" width-classes="shrink-0 w-80">
       <ChangeSetPanel class="border-b-2 dark:border-neutral-500 mb-2" />
       <FuncPicker
         :func-list="funcList"
@@ -21,7 +21,12 @@
         Select a function to edit it.
       </div>
     </div>
-    <SiSidebar :hidden="false" side="right" class="h-full pb-12 min-w-[230px]">
+    <SiSidebar
+      :hidden="false"
+      side="right"
+      class="h-full pb-12"
+      width-classes="shrink-0 w-80"
+    >
       <!-- if hiding is added later, condition is selectedFuncId < 1 -->
       <FuncDetails :func-id="selectedFunc.id" />
     </SiSidebar>

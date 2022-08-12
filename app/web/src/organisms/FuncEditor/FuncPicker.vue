@@ -23,8 +23,7 @@
       <TabPanel :key="0" class="h-full overflow-auto">
         <SiSearch placeholder="search functions" />
         <div class="w-full text-neutral-400 text-sm p-2">
-          Give this qualification a name, EntryPoint and brief description
-          below.
+          Select a function from the lists below to view or edit it.
         </div>
         <ul class="overflow-y-auto">
           <SiCollapsible
