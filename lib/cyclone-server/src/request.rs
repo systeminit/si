@@ -1,10 +1,10 @@
-use serde_json::Value;
-
-use crate::{
-    server::decryption_key::{DecryptionKey, DecryptionKeyError},
+use cyclone_core::{
     CodeGenerationRequest, ComponentKind, ComponentView, QualificationCheckRequest,
     ResolverFunctionRequest, ResourceSyncRequest, SensitiveString, WorkflowResolveRequest,
 };
+use serde_json::Value;
+
+use crate::{DecryptionKey, DecryptionKeyError};
 
 pub trait ListSecrets {
     fn list_secrets(&self, key: &DecryptionKey)

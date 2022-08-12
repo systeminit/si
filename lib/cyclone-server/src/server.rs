@@ -16,8 +16,8 @@ use tokio::{
 };
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 
-use super::{
-    routes, Config, DecryptionKey, DecryptionKeyError, IncomingStream, UdsIncomingStream,
+use crate::{
+    routes::routes, Config, DecryptionKey, DecryptionKeyError, IncomingStream, UdsIncomingStream,
     UdsIncomingStreamError,
 };
 

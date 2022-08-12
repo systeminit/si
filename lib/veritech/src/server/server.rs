@@ -22,7 +22,7 @@ use super::{
 #[derive(Error, Debug)]
 pub enum ServerError {
     #[error(transparent)]
-    Cyclone(#[from] deadpool_cyclone::client::ClientError),
+    Cyclone(#[from] deadpool_cyclone::ClientError),
     #[error("cyclone pool error")]
     CyclonePool(#[source] Box<dyn std::error::Error + Sync + Send + 'static>),
     #[error("cyclone progress error")]
@@ -34,17 +34,13 @@ pub enum ServerError {
     #[error(transparent)]
     Publisher(#[from] PublisherError),
     #[error(transparent)]
-    QualificationCheck(
-        #[from] deadpool_cyclone::client::ExecutionError<QualificationCheckResultSuccess>,
-    ),
+    QualificationCheck(#[from] deadpool_cyclone::ExecutionError<QualificationCheckResultSuccess>),
     #[error(transparent)]
-    ResolverFunction(
-        #[from] deadpool_cyclone::client::ExecutionError<ResolverFunctionResultSuccess>,
-    ),
+    ResolverFunction(#[from] deadpool_cyclone::ExecutionError<ResolverFunctionResultSuccess>),
     #[error(transparent)]
-    ResourceSync(#[from] deadpool_cyclone::client::ExecutionError<ResourceSyncResultSuccess>),
+    ResourceSync(#[from] deadpool_cyclone::ExecutionError<ResourceSyncResultSuccess>),
     #[error(transparent)]
-    CodeGeneration(#[from] deadpool_cyclone::client::ExecutionError<CodeGenerationResultSuccess>),
+    CodeGeneration(#[from] deadpool_cyclone::ExecutionError<CodeGenerationResultSuccess>),
     #[error("failed to setup signal handler")]
     Signal(#[source] io::Error),
     #[error(transparent)]
@@ -52,7 +48,7 @@ pub enum ServerError {
     #[error("wrong cyclone spec type for {0} spec: {1:?}")]
     WrongCycloneSpec(&'static str, CycloneSpec),
     #[error(transparent)]
-    WorkflowResolve(#[from] deadpool_cyclone::client::ExecutionError<WorkflowResolveResultSuccess>),
+    WorkflowResolve(#[from] deadpool_cyclone::ExecutionError<WorkflowResolveResultSuccess>),
 }
 
 type Result<T> = std::result::Result<T, ServerError>;

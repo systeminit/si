@@ -16,7 +16,7 @@ mod limit_requests {
     use tokio::sync::mpsc;
     use tower::{Layer, Service};
 
-    use crate::server::server::ShutdownSource;
+    use crate::ShutdownSource;
 
     #[derive(Clone, Debug)]
     pub struct LimitRequestLayer {

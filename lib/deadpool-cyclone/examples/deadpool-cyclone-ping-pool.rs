@@ -5,12 +5,11 @@ use std::{
 };
 
 use deadpool_cyclone::{
-    client::CycloneClient,
     instance::{
         cyclone::{LocalUdsInstance, LocalUdsInstanceSpec},
         Instance,
     },
-    Manager, Pool,
+    CycloneClient, Manager, Pool,
 };
 use futures::{stream, StreamExt, TryStreamExt};
 use tokio::signal;
@@ -34,7 +33,7 @@ async fn main() -> Result<(), Box<(dyn std::error::Error + 'static)>> {
 
     let spec = LocalUdsInstance::spec()
         .try_cyclone_cmd_path("../../target/debug/cyclone")?
-        .cyclone_decryption_key_path("../../lib/cyclone/src/dev.decryption.key")
+        .cyclone_decryption_key_path("../../lib/cyclone-server/src/dev.decryption.key")
         .try_lang_server_cmd_path("../../bin/lang-js/target/lang-js")?
         .ping()
         .build()?;

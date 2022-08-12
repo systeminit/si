@@ -9,17 +9,24 @@ use std::{
 };
 
 use async_trait::async_trait;
+use cyclone_core::{
+    CodeGenerationRequest, CodeGenerationResultSuccess, LivenessStatus, LivenessStatusParseError,
+    QualificationCheckRequest, QualificationCheckResultSuccess, ReadinessStatus,
+    ReadinessStatusParseError, ResolverFunctionRequest, ResolverFunctionResultSuccess,
+    ResourceSyncRequest, ResourceSyncResultSuccess, WorkflowResolveRequest,
+    WorkflowResolveResultSuccess,
+};
 use http::{
     request::Builder,
     uri::{Authority, InvalidUri, InvalidUriParts, PathAndQuery, Scheme},
 };
 use hyper::{
     body,
-    client::{HttpConnector, ResponseFuture},
+    client::{connect::Connection, HttpConnector, ResponseFuture},
     service::Service,
     Body, Method, Request, Response, StatusCode, Uri,
 };
-use hyperlocal::{UnixClientExt, UnixConnector};
+use hyperlocal::{UnixClientExt, UnixConnector, UnixStream};
 use thiserror::Error;
 use tokio::{
     io::{AsyncRead, AsyncWrite},
@@ -27,28 +34,7 @@ use tokio::{
 };
 use tokio_tungstenite::WebSocketStream;
 
-pub use hyper::client::connect::Connection;
-pub use hyperlocal::UnixStream;
-pub use tokio_tungstenite::tungstenite::{
-    protocol::frame::CloseFrame as WebSocketCloseFrame, Message as WebSocketMessage,
-};
-
-pub use self::encryption_key::{EncryptionKey, EncryptionKeyError};
-pub use self::execution::{Execution, ExecutionError};
-pub use self::ping::{PingExecution, PingExecutionError};
-pub use self::watch::{Watch, WatchError, WatchStarted};
-pub use crate::{
-    CodeGenerationRequest, CodeGenerationResultSuccess, LivenessStatus, LivenessStatusParseError,
-    QualificationCheckRequest, QualificationCheckResultSuccess, ReadinessStatus,
-    ReadinessStatusParseError, ResolverFunctionRequest, ResolverFunctionResultSuccess,
-    ResourceSyncRequest, ResourceSyncResultSuccess, WorkflowResolveRequest,
-    WorkflowResolveResultSuccess,
-};
-
-mod encryption_key;
-mod execution;
-mod ping;
-mod watch;
+use crate::{execution, ping, watch, Execution, PingExecution, Watch};
 
 #[derive(Debug, Error)]
 pub enum ClientError {
@@ -460,6 +446,11 @@ impl Default for ClientConfig {
 mod tests {
     use std::{borrow::Cow, env, path::Path};
 
+    use cyclone_core::{
+        CodeGenerated, ComponentKind, ComponentView, FunctionResult, ProgressMessage,
+        QualificationCheckComponent, ResolverFunctionComponent,
+    };
+    use cyclone_server::{Config, ConfigBuilder, DecryptionKey, Server, UdsIncomingStream};
     use futures::StreamExt;
     use hyper::server::conn::AddrIncoming;
     use serde_json::json;
@@ -468,15 +459,6 @@ mod tests {
     use test_log::test;
 
     use super::*;
-    use crate::{
-        code_generation::CodeGenerated,
-        component_view::ComponentKind,
-        qualification_check::QualificationCheckComponent,
-        resolver_function::ResolverFunctionComponent,
-        resolver_function::ResolverFunctionRequest,
-        server::{Config, ConfigBuilder, DecryptionKey, UdsIncomingStream},
-        ComponentView, FunctionResult, ProgressMessage, Server,
-    };
 
     fn gen_keys() -> (PublicKey, DecryptionKey) {
         let (pkey, skey) = sodiumoxide::crypto::box_::gen_keypair();

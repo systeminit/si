@@ -603,7 +603,58 @@ dependencies = [
 ]
 
 [[package]]
-name = "cyclone"
+name = "cyclone-cli"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "color-eyre",
+ "cyclone-server",
+ "telemetry",
+ "tokio",
+]
+
+[[package]]
+name = "cyclone-client"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "base64",
+ "cyclone-core",
+ "cyclone-server",
+ "futures",
+ "futures-lite",
+ "http",
+ "hyper",
+ "hyperlocal",
+ "serde",
+ "serde_json",
+ "sodiumoxide",
+ "telemetry",
+ "tempfile",
+ "test-log",
+ "thiserror",
+ "tokio",
+ "tokio-tungstenite",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "cyclone-core"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "nix",
+ "serde",
+ "serde_json",
+ "sodiumoxide",
+ "telemetry",
+ "thiserror",
+ "tokio",
+]
+
+[[package]]
+name = "cyclone-server"
 version = "0.1.0"
 dependencies = [
  "async-trait",
@@ -611,42 +662,22 @@ dependencies = [
  "base64",
  "bytes-lines-codec",
  "chrono",
+ "cyclone-core",
  "derive_builder",
  "futures",
- "futures-lite",
- "http",
  "hyper",
- "hyperlocal",
- "nix",
  "pin-project-lite",
  "serde",
  "serde_json",
  "si-settings",
  "sodiumoxide",
  "telemetry",
- "tempfile",
- "test-log",
  "thiserror",
  "tokio",
  "tokio-serde",
- "tokio-tungstenite",
  "tokio-util 0.7.1",
  "tower",
  "tower-http",
- "tracing",
- "tracing-subscriber",
- "uuid",
-]
-
-[[package]]
-name = "cyclone-cli"
-version = "0.1.0"
-dependencies = [
- "clap",
- "color-eyre",
- "cyclone",
- "telemetry",
- "tokio",
 ]
 
 [[package]]
@@ -802,7 +833,8 @@ name = "deadpool-cyclone"
 version = "0.1.0"
 dependencies = [
  "async-trait",
- "cyclone",
+ "cyclone-client",
+ "cyclone-core",
  "deadpool",
  "derive_builder",
  "futures",
@@ -3771,7 +3803,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dd6469f4314d5f1ffec476e05f17cc9a78bc7a27a6a857842170bdf8d6f98d2f"
 dependencies = [
  "getrandom",
- "serde",
 ]
 
 [[package]]
@@ -3785,7 +3816,7 @@ name = "veritech"
 version = "0.1.0"
 dependencies = [
  "base64",
- "cyclone",
+ "cyclone-core",
  "deadpool-cyclone",
  "derive_builder",
  "futures",

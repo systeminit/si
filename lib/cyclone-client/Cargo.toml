@@ -1,0 +1,30 @@
+[package]
+name = "cyclone-client"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.56"
+publish = false
+
+[dependencies]
+cyclone-core = { path = "../../lib/cyclone-core" }
+async-trait = { version = "0.1.51" }
+futures = { version = "0.3.17" }
+futures-lite = { version = "1.12.0" }
+http = { version = "0.2.5" }
+hyper = { version = "0.14", features = ["client", "http1", "runtime", "server"] }
+hyperlocal = { version = "0.8.0", default-features = false, features = ["client"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = { version = "1.0", features = ["preserve_order"] }
+telemetry = { path = "../../lib/telemetry-rs" }
+thiserror = { version = "1.0" }
+tokio = { version = "1.12.0", features = ["full"] }
+tokio-tungstenite = { version = "0.17.1" }
+
+[dev-dependencies]
+base64 = { version = "0.13.0" }
+cyclone-server = { path = "../../lib/cyclone-server" }
+sodiumoxide = { version = "0.2.6" }
+tempfile = { version = "3.2.0" }
+test-log = { version = "0.2.10", default-features = false, features = ["trace"] }
+tracing = { version = "0.1" }
+tracing-subscriber = { version = "0.3.11", default-features = false, features = ["env-filter", "fmt"] }

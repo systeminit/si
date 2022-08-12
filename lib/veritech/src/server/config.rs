@@ -93,7 +93,7 @@ fn create_hardcoded_cyclone_spec() -> Result<CycloneSpec> {
                 .to_string_lossy()
                 .to_string(),
             cyclone_decryption_key_path: Path::new(&dir)
-                .join("../../lib/cyclone/src/dev.decryption.key")
+                .join("../../lib/cyclone-server/src/dev.decryption.key")
                 .canonicalize()
                 .expect("failed to canonicalize local dev build of <root>/target/debug/cyclone")
                 .to_string_lossy()
