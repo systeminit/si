@@ -256,8 +256,12 @@ async fn handle_socket<Request, LangServerSuccess, Success>(
         Ok(processed) => processed,
         Err(err) => {
             warn!(error = ?err, "failed to process protocol");
-            if let Err(err) =
-                fail_to_process(socket, "failed to process protocol", success_marker).await
+            if let Err(err) = fail_to_process(
+                socket,
+                format!("failed to process protocol: {err:?}"),
+                success_marker,
+            )
+            .await
             {
                 warn!(error = ?err, kind = std::any::type_name::<Request>(), "failed to fail execute function");
             };

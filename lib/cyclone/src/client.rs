@@ -1439,7 +1439,7 @@ mod tests {
                 r#"function workit() {
                     console.log('first');
                     console.log('second');
-                    return {};
+                    return { name: 'name', kind: 'conditional', steps: [] };
                 }"#,
             ),
         };
@@ -1513,7 +1513,7 @@ mod tests {
                 r#"function workit() {
                     console.log('first');
                     console.log('second');
-                    return {};
+                    return { name: 'name', kind: 'conditional', steps: [] };
                 }"#,
             ),
         };
