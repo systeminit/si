@@ -10,7 +10,7 @@
   <!--    <PrimarySuccessButtonXSmall label="Save" icon-style="left" />-->
   <!--  </div>-->
   <div
-    class="w-full border-neutral-300 dark:border-neutral-600 border-x border-b px-2"
+    class="w-full h-full border-neutral-300 dark:border-neutral-600 border-x px-2"
   >
     <div ref="editorMount" @keyup.stop @keydown.stop />
   </div>

@@ -8,7 +8,7 @@
       <SearchIcon class="w-3.5 absolute top-2 left-1.5" />
       <input
         v-model="search"
-        placeholder="search"
+        :placeholder="placeholder"
         class="w-full text-black p-1 pl-6 text-xs rounded-sm border dark:text-black bg-neutral-100 border-neutral-200 placeholder:italic placeholder:text-neutral-400"
       />
     </label>
@@ -24,4 +24,13 @@ import { ref } from "vue";
 
 let search = ref<string>("");
 const resetSearch = () => (search.value = "");
+
+withDefaults(
+  defineProps<{
+    placeholder?: string;
+  }>(),
+  {
+    placeholder: "search",
+  },
+);
 </script>

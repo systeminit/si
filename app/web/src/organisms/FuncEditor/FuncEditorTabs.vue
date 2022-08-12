@@ -9,7 +9,7 @@
       <SiTabHeader
         v-for="func in funcList"
         :key="func.id"
-        classes="border-x border-t border-x-neutral-300 border-t-neutral-300 dark:border-x-neutral-600 dark:border-t-neutral-600 h-11 px-2 text-sm inline-flex items-center"
+        classes="border-x border-t border-x-neutral-300 border-t-neutral-300 dark:border-x-neutral-600 dark:border-t-neutral-600 h-11 px-2 text-sm inline-flex items-center rounded-t"
         selected-classes="border-b-white dark:border-b-neutral-800 border-b-2"
         default-classes="text-gray-400 border-b border-neutral-300 dark:border-neutral-600"
       >
