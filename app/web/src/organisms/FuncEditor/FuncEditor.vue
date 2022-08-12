@@ -18,7 +18,7 @@
 
 <script lang="ts" setup>
 import { onMounted, ref, toRef, computed } from "vue";
-import { EditorState, StateField } from "@codemirror/state";
+import { EditorState } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
 import { defaultKeymap } from "@codemirror/commands";
 import { funcState, changeFunc, nullEditingFunc } from "./func_state";
@@ -35,40 +35,18 @@ const editingFunc = computed(
 const editorMount = ref();
 const view = ref<EditorView | undefined>();
 
-const onCodeUpdate = StateField.define({
-  create: () => 0,
-  update: (value, tr) => {
-    if (!tr.docChanged) {
-      return value;
-    }
-
-    if (view.value) {
-      const code = view.value.state.doc.toString();
-      changeFunc({
-        ...editingFunc.value.modifiedFunc,
-        code,
-      });
-    }
-
-    return value + 1;
-  },
-});
-
-/*
-const discardChanges = () => {
-  view.value?.dispatch({
-    changes: {
-      from: 0,
-      to: view.value.state.doc.length,
-      insert: editingFunc.value.origFunc.code,
-    },
-  });
-};*/
-
 const mountEditor = () => {
+  const updateListener = EditorView.updateListener.of((update) => {
+    if (!update.docChanged) {
+      return;
+    }
+    const newCode = update.view.state.doc.toString();
+    changeFunc({ ...editingFunc.value.modifiedFunc, code: newCode });
+  });
+
   const editorState = EditorState.create({
     doc: editingFunc.value.modifiedFunc.code,
-    extensions: [keymap.of(defaultKeymap), onCodeUpdate],
+    extensions: [keymap.of(defaultKeymap), updateListener],
   });
 
   view.value = new EditorView({

@@ -34,6 +34,7 @@ import ChangeSetPanel from "@/organisms/ChangeSetPanel.vue";
 import FuncPicker from "@/organisms/FuncEditor/FuncPicker.vue";
 import FuncEditorTabs from "@/organisms/FuncEditor/FuncEditorTabs.vue";
 import { FuncService } from "@/service/func";
+import { SaveFuncRequest } from "@/service/func/save_func";
 import FuncDetails from "@/organisms/FuncEditor/FuncDetails.vue";
 import {
   ListedFuncView,
@@ -44,7 +45,7 @@ import { ref } from "vue";
 import { refFrom } from "vuse-rx/src";
 import { visibility$ } from "@/observable/visibility";
 import { clearFuncs } from "./../FuncEditor/func_state";
-import { debounceTime, tap } from "rxjs/operators";
+import { bufferTime } from "rxjs/operators";
 import { saveFuncToBackend$ } from "@/observable/func";
 
 const selectedFunc = ref<ListedFuncView>(nullListFunc);
@@ -76,9 +77,13 @@ visibility$.subscribe(() => {
 });
 
 saveFuncToBackend$
-  .pipe(
-    debounceTime(75),
-    tap((saveFuncRequest) => FuncService.saveFunc(saveFuncRequest)),
-  )
-  .subscribe();
+  .pipe(bufferTime(2000))
+  .subscribe((saveRequests) =>
+    Object.values(
+      saveRequests.reduce(
+        (acc, saveReq) => ({ ...acc, [saveReq.id]: saveReq }),
+        {} as { [key: number]: SaveFuncRequest },
+      ),
+    ).forEach((saveReq) => FuncService.saveFunc(saveReq)),
+  );
 </script>
