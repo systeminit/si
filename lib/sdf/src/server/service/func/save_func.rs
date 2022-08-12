@@ -1,0 +1,64 @@
+use super::{FuncError, FuncResult};
+use crate::server::extract::{AccessBuilder, HandlerContext};
+use axum::Json;
+use dal::{Func, FuncBackendKind, FuncId, StandardModel, Visibility, WsEvent};
+use serde::{Deserialize, Serialize};
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct SaveFuncRequest {
+    pub id: FuncId,
+    pub handler: Option<String>,
+    pub kind: FuncBackendKind,
+    pub name: String,
+    pub code: Option<String>,
+    #[serde(flatten)]
+    pub visibility: Visibility,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct SaveFuncResponse {
+    pub success: bool,
+}
+
+pub async fn save_func(
+    HandlerContext(builder, mut txns): HandlerContext,
+    AccessBuilder(request_ctx): AccessBuilder,
+    Json(request): Json<SaveFuncRequest>,
+) -> FuncResult<Json<SaveFuncResponse>> {
+    let txns = txns.start().await?;
+    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
+
+    let mut func = Func::get_by_id(&ctx, &request.id)
+        .await?
+        .ok_or(FuncError::FuncNotFound)?;
+
+    // check tenancy and visibility, we could be attempting to save a read-only function
+    let is_in_our_tenancy = ctx
+        .write_tenancy()
+        .check(
+            ctx.pg_txn(),
+            &func.tenancy().clone_into_read_tenancy(&ctx).await?,
+        )
+        .await?;
+
+    let is_in_our_visibility = func.visibility().change_set_pk == ctx.visibility().change_set_pk;
+
+    if !is_in_our_tenancy || !is_in_our_visibility {
+        return Err(FuncError::NotWritable);
+    }
+
+    func.set_name(&ctx, request.name).await?;
+    func.set_handler(&ctx, request.handler).await?;
+    func.set_backend_kind(&ctx, request.kind).await?;
+    func.set_code_plaintext(&ctx, &request.code.as_deref())
+        .await?;
+    func.set_backend_response_type(&ctx, request.kind).await?;
+
+    WsEvent::change_set_written(&ctx).publish(&ctx).await?;
+
+    txns.commit().await?;
+
+    Ok(Json(SaveFuncResponse { success: true }))
+}
