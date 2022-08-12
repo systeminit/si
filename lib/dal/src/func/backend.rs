@@ -130,6 +130,8 @@ impl From<FuncBackendKind> for FuncBackendResponseType {
             FuncBackendKind::JsResourceSync => FuncBackendResponseType::ResourceSync,
             FuncBackendKind::JsCodeGeneration => FuncBackendResponseType::CodeGeneration,
             FuncBackendKind::JsAttribute => FuncBackendResponseType::String,
+            FuncBackendKind::JsWorkflow => FuncBackendResponseType::Workflow,
+            FuncBackendKind::JsCommand => FuncBackendResponseType::Command,
             FuncBackendKind::Map => FuncBackendResponseType::Map,
             FuncBackendKind::PropObject => FuncBackendResponseType::PropObject,
             FuncBackendKind::String => FuncBackendResponseType::String,
