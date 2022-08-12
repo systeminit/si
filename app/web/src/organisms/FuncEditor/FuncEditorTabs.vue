@@ -1,18 +1,8 @@
 <template>
   <!-- border-b border-neutral-300 dark:border-neutral-600 -->
-  <SiTabGroup
-    :selected-index="selectedTab"
-    tab-list-classes="h-11 flex shrink-0 w-full bg-white dark:bg-neutral-800 sticky top-0 z-50 overflow-hidden"
-    @change="changeTab"
-  >
+  <SiTabGroup :selected-index="selectedTab" @change="changeTab">
     <template #tabs>
-      <SiTabHeader
-        v-for="func in funcList"
-        :key="func.id"
-        classes="border-x border-t border-x-neutral-300 border-t-neutral-300 dark:border-x-neutral-600 dark:border-t-neutral-600 h-11 px-2 text-sm inline-flex items-center rounded-t"
-        selected-classes="border-b-white dark:border-b-neutral-800 border-b-2"
-        default-classes="text-gray-400 border-b border-neutral-300 dark:border-neutral-600"
-      >
+      <SiTabHeader v-for="func in funcList" :key="func.id">
         {{ func.name }}
         <button
           class="inline-block rounded-sm w-5 ml-1"

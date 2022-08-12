@@ -1,23 +1,7 @@
 <template>
-  <SiTabGroup
-    :selected-index="0"
-    tab-list-classes="h-11 flex shrink-0 w-full bg-white dark:bg-neutral-800 sticky top-0 z-50 overflow-hidden"
-  >
+  <SiTabGroup :selected-index="0" start-margin="4">
     <template #tabs>
-      <div
-        class="w-2 border-b border-neutral-300 dark:border-neutral-600"
-      ></div>
-      <SiTabHeader
-        :key="0"
-        classes="border-x border-t border-x-neutral-300 border-t-neutral-300 dark:border-x-neutral-600 dark:border-t-neutral-600 h-11 px-4 text-sm inline-flex items-center rounded-t"
-        selected-classes="border-b-white dark:border-b-neutral-800 border-b-2"
-        default-classes="text-gray-400 border-b border-neutral-300 dark:border-neutral-600"
-      >
-        FUNCTIONS
-      </SiTabHeader>
-      <div
-        class="grow border-b border-neutral-300 dark:border-neutral-600"
-      ></div>
+      <SiTabHeader :key="0"> FUNCTIONS </SiTabHeader>
     </template>
     <template #panels>
       <TabPanel :key="0" class="h-full overflow-auto">

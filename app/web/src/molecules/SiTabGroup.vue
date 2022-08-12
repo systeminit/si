@@ -2,8 +2,15 @@
   <TabGroup :selected-index="selectedIndex" @change="onChange && onChange">
     <slot />
     <TabList :class="tabListClasses">
-      <!-- TODO(victor): This tabbed content should scroll horizontally on overflow and never wrap, probably-->
+      <div
+        v-if="startMargin > 0"
+        class="border-b border-neutral-300 dark:border-neutral-600"
+        :class="'w-' + startMargin"
+      ></div>
       <slot name="tabs" />
+      <div
+        class="grow border-b border-neutral-300 dark:border-neutral-600"
+      ></div>
     </TabList>
     <TabPanels as="template">
       <slot name="panels" />
@@ -19,12 +26,14 @@ withDefaults(
     selectedIndex?: number;
     onChange?: (_index: number) => void;
     tabListClasses?: string;
+    startMargin?: number;
   }>(),
   {
     selectedIndex: undefined,
     onChange: undefined,
     tabListClasses:
-      "border-b-2 dark:border-neutral-600 h-11 flex shrink-0 gap-4 px-4 w-full",
+      "h-11 flex shrink-0 w-full bg-white dark:bg-neutral-800 sticky top-0 z-50 overflow-hidden",
+    startMargin: 0,
   },
 );
 </script>
