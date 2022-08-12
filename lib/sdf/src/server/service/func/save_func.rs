@@ -52,7 +52,7 @@ pub async fn save_func(
     func.set_name(&ctx, request.name).await?;
     func.set_handler(&ctx, request.handler).await?;
     func.set_backend_kind(&ctx, request.kind).await?;
-    func.set_code_plaintext(&ctx, &request.code.as_deref())
+    func.set_code_plaintext(&ctx, request.code.as_deref())
         .await?;
     func.set_backend_response_type(&ctx, request.kind).await?;
 

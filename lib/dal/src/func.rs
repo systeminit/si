@@ -142,7 +142,7 @@ impl Func {
     pub async fn set_code_plaintext(
         &mut self,
         ctx: &DalContext<'_, '_>,
-        code: &Option<&'_ str>,
+        code: Option<&'_ str>,
     ) -> FuncResult<()> {
         self.set_code_base64(ctx, code.as_ref().map(|code| base64::encode(&code)))
             .await

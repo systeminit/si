@@ -91,7 +91,7 @@ pub async fn create_func(
     )
     .await?;
 
-    func.set_code_plaintext(&ctx, &Some(DEFAULT_QUALIFICATION_CODE))
+    func.set_code_plaintext(&ctx, Some(DEFAULT_QUALIFICATION_CODE))
         .await?;
     func.set_handler(&ctx, Some("qualification".to_owned()))
         .await?;
