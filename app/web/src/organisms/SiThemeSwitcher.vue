@@ -2,10 +2,10 @@
   <!-- FIXME(nick,theo): dropdown-classes needs to be removed in favor of the dropdown knowing whether or not it is offscreen. -->
   <SiBarButton tooltip-text="Change theme" dropdown-classes="-right-12">
     <div v-if="lightmode">
-      <MoonIcon class="w-6" />
+      <SunIcon class="w-6" />
     </div>
     <div v-else>
-      <SunIcon class="w-6" />
+      <MoonIcon class="w-6" />
     </div>
 
     <template #dropdownContent>
