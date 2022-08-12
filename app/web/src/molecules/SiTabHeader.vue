@@ -15,13 +15,13 @@
 
 <script setup lang="ts">
 import { Tab } from "@headlessui/vue";
+import { inject } from "vue";
 
 withDefaults(
   defineProps<{
     classes?: string;
     defaultClasses?: string;
     selectedClasses?: string;
-    afterMargin?: number;
   }>(),
   {
     classes:
@@ -29,7 +29,18 @@ withDefaults(
     defaultClasses:
       "text-gray-400 border-b border-neutral-300 dark:border-neutral-600",
     selectedClasses: "border-b-white dark:border-b-neutral-800 border-b",
-    afterMargin: 0,
   },
 );
+
+const afterMargin = inject("afterMargin", 0);
 </script>
+
+<style>
+/* TODO (Wendy) - Tailwind classes which seem to not be in our build? BUG! */
+.w-2 {
+  width: 0.5rem;
+}
+.w-1 {
+  width: 0.25rem;
+}
+</style>

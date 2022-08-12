@@ -1,9 +1,9 @@
 <template>
-  <SiTabGroup :start-margin="4">
+  <SiTabGroup :start-margin="4" after-margin="2">
     <template #tabs>
-      <SiTabHeader after-margin="2">Asset Palette</SiTabHeader>
-      <SiTabHeader after-margin="2">Local Assets</SiTabHeader>
-      <SiTabHeader after-margin="2">Panel</SiTabHeader>
+      <SiTabHeader>Asset Palette</SiTabHeader>
+      <SiTabHeader>Local Assets</SiTabHeader>
+      <SiTabHeader>Panel</SiTabHeader>
     </template>
 
     <template #panels>

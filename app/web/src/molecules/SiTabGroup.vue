@@ -20,13 +20,15 @@
 
 <script setup lang="ts">
 import { TabGroup, TabPanels, TabList } from "@headlessui/vue";
+import { provide } from "vue";
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     selectedIndex?: number;
     onChange?: (_index: number) => void;
     tabListClasses?: string;
     startMargin?: number;
+    afterMargin?: number;
   }>(),
   {
     selectedIndex: undefined,
@@ -34,6 +36,9 @@ withDefaults(
     tabListClasses:
       "h-11 flex shrink-0 w-full bg-white dark:bg-neutral-800 sticky top-0 z-50 overflow-hidden",
     startMargin: 0,
+    afterMargin: 0,
   },
 );
+
+provide("afterMargin", props.afterMargin);
 </script>
