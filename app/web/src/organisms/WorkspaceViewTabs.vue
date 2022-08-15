@@ -1,17 +1,19 @@
 <template>
-  <SiTabGroup>
-    <template #tabs>
-      <SiTabHeader>Diagram Outline</SiTabHeader>
-      <SiTabHeader>Local Assets</SiTabHeader>
-    </template>
+  <div class="mt-2">
+    <SiTabGroup :start-margin="4" :after-margin="2">
+      <template #tabs>
+        <SiTabHeader>Diagram Outline</SiTabHeader>
+        <SiTabHeader>Local Assets</SiTabHeader>
+      </template>
 
-    <template #panels>
-      <TabPanel class="flex flex-col overflow-y-hidden">
-        <SchematicOutline :viewer-event$="props.viewerEvent$" />
-      </TabPanel>
-      <TabPanel>Local Assets</TabPanel>
-    </template>
-  </SiTabGroup>
+      <template #panels>
+        <TabPanel class="flex flex-col overflow-y-hidden">
+          <SchematicOutline :viewer-event$="props.viewerEvent$" />
+        </TabPanel>
+        <TabPanel>Local Assets</TabPanel>
+      </template>
+    </SiTabGroup>
+  </div>
 </template>
 
 <script lang="ts" setup>
