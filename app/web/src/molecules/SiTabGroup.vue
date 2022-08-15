@@ -1,5 +1,5 @@
 <template>
-  <TabGroup :selected-index="selectedIndex" @change="onChange && onChange">
+  <TabGroup :selected-index="selectedIndex" @change="props.onChange">
     <slot />
     <TabList :class="tabListClasses">
       <!-- TODO(victor): This tabbed content should scroll horizontally on overflow and never wrap, probably-->
@@ -14,7 +14,7 @@
 <script setup lang="ts">
 import { TabGroup, TabPanels, TabList } from "@headlessui/vue";
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     selectedIndex?: number;
     onChange?: (_index: number) => void;
