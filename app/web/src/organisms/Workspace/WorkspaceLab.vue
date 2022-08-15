@@ -1,6 +1,6 @@
 <template>
   <div class="flex flex-row w-full h-full bg-transparent overflow-hidden">
-    <SiSidebar side="left" class="h-full pb-12">
+    <SiSidebar side="left" class="h-full pb-12" width-classes="shrink-0 w-80">
       <ChangeSetPanel class="border-b-2 dark:border-neutral-500 mb-2" />
       <FuncPicker
         :func-list="funcList"
@@ -10,7 +10,7 @@
       />
     </SiSidebar>
     <div
-      class="grow overflow-x-hidden overflow-y-auto lace-items-center dark:bg-neutral-800 dark:text-white text-lg font-semibold p-0"
+      class="grow overflow-x-hidden overflow-y-hidden lace-items-center dark:bg-neutral-800 dark:text-white text-lg font-semi-bold px-2 pt-2 flex flex-col"
     >
       <FuncEditorTabs
         v-if="selectedFunc.id > 0"
@@ -21,7 +21,12 @@
         Select a function to edit it.
       </div>
     </div>
-    <SiSidebar :hidden="false" side="right" class="h-full pb-12 min-w-[230px]">
+    <SiSidebar
+      :hidden="false"
+      side="right"
+      class="h-full pb-12"
+      width-classes="shrink-0 w-80"
+    >
       <!-- if hiding is added later, condition is selectedFuncId < 1 -->
       <FuncDetails :func-id="selectedFunc.id" />
     </SiSidebar>

@@ -8,7 +8,7 @@
     <div class="flex justify-center">
       <div v-if="icon" class="flex self-center">
         <VueFeather v-if="icon === 'play'" type="play" :size="iconSize" />
-        <VueFeather v-else-if="icon === 'save'" type="save" :size="iconSize" />
+        <SaveIcon v-else-if="icon === 'save'" :class="heroIconSize" />
         <VueFeather v-else-if="icon === 'cancel'" type="x" :size="iconSize" />
         <VueFeather
           v-else-if="icon === 'refresh'"
@@ -56,6 +56,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import VueFeather from "vue-feather";
+import { SaveIcon } from "@heroicons/vue/solid";
 
 interface ButtonProps {
   kind: "standard" | "save" | "cancel";
@@ -123,6 +124,21 @@ const iconSize = computed(() => {
       return "1.5rem";
     default:
       return "1.25rem";
+  }
+});
+
+const heroIconSize = computed(() => {
+  switch (props.size) {
+    case "xs":
+      return "w-3 h-3";
+    case "sm":
+      return "w-4 h-4";
+    case "base":
+      return "w-5 h-5";
+    case "lg":
+      return "w-6 h-6";
+    default:
+      return "w-5 h-5";
   }
 });
 </script>

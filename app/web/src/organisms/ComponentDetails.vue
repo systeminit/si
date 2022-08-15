@@ -31,8 +31,8 @@
             <SiButtonIcon
               tooltip-text="Re-generate code"
               ignore-text-color
-              @click="generateCode"
               class="mr-4"
+              @click="generateCode"
             >
               <RefreshIcon :class="refreshClasses" />
             </SiButtonIcon>

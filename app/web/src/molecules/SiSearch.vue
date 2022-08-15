@@ -7,7 +7,7 @@
     >
       <input
         v-model="search"
-        placeholder="search"
+        :placeholder="placeholder"
         class="w-full text-black px-1 py-[0.4375rem] pl-2.5 text-sm rounded-sm border dark:text-black bg-neutral-100 border-neutral-200 placeholder:italic placeholder:text-neutral-400"
       />
     </label>
@@ -22,5 +22,15 @@ import { SearchIcon } from "@heroicons/vue/solid";
 import { ref } from "vue";
 
 let search = ref<string>("");
+
+withDefaults(
+  defineProps<{
+    placeholder?: string;
+  }>(),
+  {
+    placeholder: "search",
+  },
+);
+
 const performSearch = () => console.log("perform search with...", search.value);
 </script>
