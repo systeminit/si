@@ -3,7 +3,7 @@
     class="flex items-center justify-center place-items-center mx-auto h-full"
   >
     <SiBarButton
-      tooltip-text="Compose yourself, dammit!"
+      tooltip-text="Compose"
       :selected="route.name === 'workspace-compose'"
       @click="onCompose"
     >
@@ -11,7 +11,7 @@
     </SiBarButton>
 
     <SiBarButton
-      tooltip-text="Are you a thrill beaker?"
+      tooltip-text="Extend"
       :selected="route.name === 'workspace-lab'"
       @click="onLab"
     >
@@ -22,7 +22,7 @@
     <div class="w-0.5 h-8 self-center mx-2 bg-white"></div>
 
     <SiBarButton
-      tooltip-text="Eye see you"
+      tooltip-text="View"
       :selected="route.name === 'workspace-view'"
       @click="onView"
     >
@@ -30,7 +30,7 @@
     </SiBarButton>
 
     <SiBarButton
-      tooltip-text="Dookie, by Green Play"
+      tooltip-text="Run"
       :selected="route.name === 'workspace-runtime'"
       @click="onRuntime"
     >
