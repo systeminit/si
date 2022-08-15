@@ -83,7 +83,7 @@ impl Default for ConfigFile {
             // In development we just take the keys cyclone is using (it needs both public and secret)
             // The dal integration tests will also need it
             cyclone_encryption_key_path = Path::new(&dir)
-                .join("../../lib/cyclone/src/dev.encryption.key")
+                .join("../../lib/cyclone-server/src/dev.encryption.key")
                 .to_string_lossy()
                 .to_string();
             telemetry::tracing::warn!(

@@ -1,5 +1,7 @@
 import { reactive } from "vue";
 import { Func, FuncBackendKind } from "@/api/sdf/dal/func";
+import { saveFuncToBackend$ } from "@/observable/func";
+import { SaveFuncRequest } from "@/service/func/save_func";
 
 export interface EditingFunc {
   modifiedFunc: Func;
@@ -49,6 +51,7 @@ export const changeFunc = (func: Func) => {
     return;
   }
   funcState.funcs[currentFuncIdx].modifiedFunc = { ...func };
+  saveFuncToBackend$.next(func as SaveFuncRequest);
 };
 
 export const removeFunc = (func: Func) => {

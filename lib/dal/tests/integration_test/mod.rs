@@ -36,6 +36,7 @@ mod user;
 mod validation_prototype;
 mod validation_resolver;
 mod visibility;
+mod workflow;
 mod workspace;
 
 #[macro_export]

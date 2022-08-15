@@ -19,7 +19,9 @@
 !bin/pinga
 !lib/bytes-lines-codec
 !lib/config-file
-!lib/cyclone
+!lib/cyclone-client
+!lib/cyclone-core
+!lib/cyclone-server
 !lib/dal
 !lib/deadpool-cyclone
 !lib/sdf

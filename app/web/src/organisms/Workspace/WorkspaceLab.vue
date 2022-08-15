@@ -39,6 +39,7 @@ import ChangeSetPanel from "@/organisms/ChangeSetPanel.vue";
 import FuncPicker from "@/organisms/FuncEditor/FuncPicker.vue";
 import FuncEditorTabs from "@/organisms/FuncEditor/FuncEditorTabs.vue";
 import { FuncService } from "@/service/func";
+import { SaveFuncRequest } from "@/service/func/save_func";
 import FuncDetails from "@/organisms/FuncEditor/FuncDetails.vue";
 import {
   ListedFuncView,
@@ -47,8 +48,10 @@ import {
 } from "@/service/func/list_funcs";
 import { ref } from "vue";
 import { refFrom } from "vuse-rx/src";
-import { standardVisibilityTriggers$ } from "@/observable/visibility";
+import { visibility$ } from "@/observable/visibility";
 import { clearFuncs } from "./../FuncEditor/func_state";
+import { bufferTime } from "rxjs/operators";
+import { saveFuncToBackend$ } from "@/observable/func";
 
 const selectedFunc = ref<ListedFuncView>(nullListFunc);
 const selectFunc = (func: ListedFuncView) => {
@@ -59,23 +62,33 @@ const funcList = refFrom<ListFuncsResponse>(FuncService.listFuncs(), {
   qualifications: [],
 });
 
-const createFunc = () => {
-  FuncService.createFunc().subscribe((func) => {
-    const newFunc = {
-      id: func.id,
-      kind: func.kind,
-      name: func.name,
-      handler: func.handler,
-    };
+const createFunc = async () => {
+  const func = await FuncService.createFunc();
+  const newFunc = {
+    id: func.id,
+    kind: func.kind,
+    name: func.name,
+    handler: func.handler,
+  };
 
-    funcList.value.qualifications.push(newFunc);
+  funcList.value.qualifications.push(newFunc);
 
-    selectFunc(newFunc);
-  });
+  selectFunc(newFunc);
 };
 
-standardVisibilityTriggers$.subscribe(() => {
+visibility$.subscribe(() => {
   clearFuncs();
   selectFunc(nullListFunc);
 });
+
+saveFuncToBackend$
+  .pipe(bufferTime(2000))
+  .subscribe((saveRequests) =>
+    Object.values(
+      saveRequests.reduce(
+        (acc, saveReq) => ({ ...acc, [saveReq.id]: saveReq }),
+        {} as { [key: number]: SaveFuncRequest },
+      ),
+    ).forEach((saveReq) => FuncService.saveFunc(saveReq)),
+  );
 </script>

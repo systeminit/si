@@ -2,10 +2,10 @@
   <SiSearch />
 
   <p
-    class="border-b-2 dark:border-neutral-600 text-xs font-light leading-tight px-3 py-1"
+    class="border-b-2 dark:border-neutral-600 text-sm leading-tight p-2.5 text-neutral-500"
   >
-    Get Started by dragging the assets that you wish to include in your
-    application into the canvas to the right
+    Drag the assets that you wish to include in your application into the canvas
+    to the right.
   </p>
 
   <ul class="overflow-y-auto">
@@ -49,7 +49,6 @@ import {
 import { ApplicationService } from "@/service/application";
 import { schematicSchemaVariants$ } from "@/observable/schematic";
 import { Category, Item } from "@/api/sdf/dal/menu";
-import { utils as PixiUtils } from "pixi.js";
 import { untilUnmounted } from "vuse-rx";
 
 const props = defineProps<{
@@ -122,7 +121,7 @@ ApplicationService.currentApplication()
               name: name,
               id: schemaId,
               template,
-              color: PixiUtils.hex2string(color),
+              color: "#" + color.toString(16).padStart(6, "0"),
             });
           }
 

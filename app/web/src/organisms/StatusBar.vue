@@ -72,7 +72,7 @@
       <TabPanels
         v-if="panelOpen"
         as="div"
-        class="flex flex-col w-full h-52 lg:h-80 min-h-fit text-white"
+        class="flex flex-col w-full h-80 min-h-fit text-white"
       >
         <TabPanel class="hidden" aria-hidden="true">hidden</TabPanel>
         <TabPanel class="h-full">
@@ -130,7 +130,7 @@ const barClasses = computed(() => {
   const result: Record<string, boolean> = {};
   if (panelOpen.value === true) {
     result["border-b"] = true;
-    result["border-black"] = true;
+    result["border-shade-100"] = true;
   }
   return result;
 });

@@ -8,7 +8,7 @@ use thiserror::Error;
 use tokio::sync::mpsc;
 use veritech::{
     CodeGenerationResultSuccess, OutputStream, QualificationCheckResultSuccess,
-    ResolverFunctionComponent, ResourceSyncResultSuccess,
+    ResolverFunctionComponent, ResourceSyncResultSuccess, WorkflowResolveResultSuccess,
 };
 
 use crate::func::backend::array::{FuncBackendArray, FuncBackendArrayArgs};
@@ -25,6 +25,8 @@ use crate::func::backend::{
     js_qualification::FuncBackendJsQualificationArgs,
     js_resource::FuncBackendJsResourceSync,
     js_resource::FuncBackendJsResourceSyncArgs,
+    js_workflow::FuncBackendJsWorkflow,
+    js_workflow::FuncBackendJsWorkflowArgs,
     string::FuncBackendString,
     string::FuncBackendStringArgs,
     validation::{FuncBackendValidateStringValue, FuncBackendValidateStringValueArgs},
@@ -34,7 +36,7 @@ use crate::{
     component::ComponentViewError, impl_standard_model, pk, qualification::QualificationResult,
     standard_model, standard_model_accessor, standard_model_belongs_to, ComponentView, Func,
     FuncBackendError, FuncBackendKind, HistoryEvent, HistoryEventError, ReadTenancyError,
-    StandardModel, StandardModelError, Timestamp, Visibility,
+    StandardModel, StandardModelError, Timestamp, Visibility, WorkflowView,
 };
 
 use super::{
@@ -367,6 +369,62 @@ impl FuncBinding {
                 std::mem::drop(tx);
                 execution.process_output(ctx, rx).await?;
                 let return_value = serde_json::to_value(&qual_result)?;
+                (Some(return_value.clone()), Some(return_value))
+            }
+            FuncBackendKind::JsCommand => todo!(),
+            FuncBackendKind::JsWorkflow => {
+                execution
+                    .set_state(ctx, super::execution::FuncExecutionState::Dispatch)
+                    .await?;
+
+                let (tx, rx) = mpsc::channel(64);
+
+                execution
+                    .set_state(ctx, super::execution::FuncExecutionState::Run)
+                    .await?;
+
+                let handler = func
+                    .handler()
+                    .ok_or(FuncBindingError::JsFuncNotFound(self.pk))?;
+                let code_base64 = func
+                    .code_base64()
+                    .ok_or(FuncBindingError::JsFuncNotFound(self.pk))?;
+
+                let args: FuncBackendJsWorkflowArgs = serde_json::from_value(self.args.clone())?;
+
+                let return_value = FuncBackendJsWorkflow::new(
+                    ctx.veritech().clone(),
+                    tx.clone(),
+                    handler.to_owned(),
+                    args,
+                    code_base64.to_owned(),
+                )
+                .execute()
+                .await?;
+
+                let veritech_result = WorkflowResolveResultSuccess::deserialize(&return_value)?;
+                if let Some(message) = veritech_result.message {
+                    tx.send(OutputStream {
+                        execution_id: veritech_result.execution_id,
+                        stream: "return".to_owned(),
+                        level: "info".to_owned(),
+                        group: None,
+                        data: None,
+                        message,
+                        timestamp: std::cmp::max(Utc::now().timestamp(), 0) as u64,
+                    })
+                    .await?;
+                }
+                let view = WorkflowView::new(
+                    veritech_result.name,
+                    serde_json::from_value(serde_json::Value::String(veritech_result.kind))?,
+                    serde_json::from_value(veritech_result.steps).unwrap(),
+                    serde_json::from_value(veritech_result.args).unwrap(),
+                );
+
+                std::mem::drop(tx);
+                execution.process_output(ctx, rx).await?;
+                let return_value = serde_json::to_value(&view)?;
                 (Some(return_value.clone()), Some(return_value))
             }
             FuncBackendKind::JsResourceSync => {

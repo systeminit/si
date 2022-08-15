@@ -41,6 +41,11 @@ const props = defineProps<{
   selected?: boolean;
   tooltipText: string;
   dropdownClasses?: string;
+
+  // Fills the entire width with the button (including the selected and hover colors).
+  // It is recommended that the item in the slot uses the "flex flex-row justify-center" classes in
+  // conjunction with this prop.
+  fillEntireWidth?: boolean;
 }>();
 
 const { disabled } = toRefs(props);
@@ -58,6 +63,10 @@ const buttonClasses = (open: boolean) => {
     "px-4": true,
     "hover:bg-black": true,
   };
+
+  if (props.fillEntireWidth) {
+    results["w-full"] = true;
+  }
 
   // Only display "selected" classes if there is a dropdown available
   // or we have explicitly passed in a selected value.

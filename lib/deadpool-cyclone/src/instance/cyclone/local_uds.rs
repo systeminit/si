@@ -6,16 +6,16 @@ use std::{
 };
 
 use async_trait::async_trait;
-use cyclone::{
-    canonical_command::CanonicalCommand,
-    client::{
-        CodeGenerationRequest, CodeGenerationResultSuccess, Connection, Execution, PingExecution,
-        QualificationCheckRequest, QualificationCheckResultSuccess, ResolverFunctionRequest,
-        ResolverFunctionResultSuccess, ResourceSyncRequest, ResourceSyncResultSuccess, UnixStream,
-        Watch, WatchError, WatchStarted, WorkflowResolveRequest, WorkflowResolveResultSuccess,
-    },
+use cyclone_client::{
+    Client, ClientError, Connection, CycloneClient, Execution, LivenessStatus, PingExecution,
+    ReadinessStatus, UdsClient, UnixStream, Watch, WatchError, WatchStarted,
+};
+use cyclone_core::{
     process::{self, ShutdownError},
-    Client, ClientError, CycloneClient, LivenessStatus, ReadinessStatus, UdsClient,
+    CanonicalCommand, CodeGenerationRequest, CodeGenerationResultSuccess,
+    QualificationCheckRequest, QualificationCheckResultSuccess, ResolverFunctionRequest,
+    ResolverFunctionResultSuccess, ResourceSyncRequest, ResourceSyncResultSuccess,
+    WorkflowResolveRequest, WorkflowResolveResultSuccess,
 };
 use derive_builder::Builder;
 use futures::StreamExt;

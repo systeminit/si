@@ -175,7 +175,7 @@ impl MenuItems {
                 } else {
                     let mut insert_into = self.list.clone();
                     for (path_idx, path_part) in path.iter().enumerate() {
-                        match self.item_for_path(&path[0..=path_idx].to_vec()) {
+                        match self.item_for_path(&path[0..=path_idx]) {
                             Ok(parent) => {
                                 insert_into = parent.borrow().inner_category()?.items.clone();
                             }
