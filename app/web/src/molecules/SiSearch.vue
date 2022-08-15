@@ -8,7 +8,7 @@
       <input
         v-model="search"
         :placeholder="placeholder"
-        class="w-full text-black p-1 pl-6 text-xs rounded-sm border dark:text-black bg-neutral-100 border-neutral-200 placeholder:italic placeholder:text-neutral-400"
+        class="w-full text-black px-1 py-[0.4375rem] pl-2.5 text-sm rounded-sm border dark:text-black bg-neutral-100 border-neutral-200 placeholder:italic placeholder:text-neutral-400"
       />
     </label>
     <button class="w-[2rem] text-action-" @click="performSearch">
@@ -23,8 +23,6 @@ import { ref } from "vue";
 
 let search = ref<string>("");
 
-const resetSearch = () => (search.value = "");
-
 withDefaults(
   defineProps<{
     placeholder?: string;
@@ -35,5 +33,4 @@ withDefaults(
 );
 
 const performSearch = () => console.log("perform search with...", search.value);
-
 </script>
