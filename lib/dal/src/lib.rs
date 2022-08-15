@@ -63,6 +63,7 @@ pub mod user;
 pub mod validation_prototype;
 pub mod validation_resolver;
 pub mod visibility;
+pub mod workflow;
 pub mod workspace;
 pub mod write_tenancy;
 pub mod ws_event;
@@ -105,11 +106,10 @@ pub use context::{
 };
 pub use cyclone_key_pair::CycloneKeyPair;
 pub use edge::{Edge, EdgeError, EdgeResult};
-
-pub use func::binding::FuncBinding;
 pub use func::binding_return_value::FuncBindingReturnValue;
 pub use func::{
     backend::{FuncBackendError, FuncBackendKind, FuncBackendResponseType},
+    binding::{FuncBinding, FuncBindingError},
     Func, FuncError, FuncId, FuncResult,
 };
 pub use group::{Group, GroupError, GroupId, GroupResult};
@@ -164,6 +164,10 @@ pub use validation_prototype::{
 pub use validation_resolver::{ValidationResolver, ValidationResolverError, ValidationResolverId};
 use veritech::EncryptionKey;
 pub use visibility::{Visibility, VisibilityError};
+pub use workflow::{
+    WorkflowError, WorkflowKind, WorkflowResult, WorkflowStep, WorkflowTree, WorkflowTreeStep,
+    WorkflowView,
+};
 pub use workspace::{Workspace, WorkspaceError, WorkspaceId, WorkspacePk, WorkspaceResult};
 pub use write_tenancy::{WriteTenancy, WriteTenancyError};
 pub use ws_event::{WsEvent, WsEventError, WsPayload};

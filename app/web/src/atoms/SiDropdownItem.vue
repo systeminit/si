@@ -3,7 +3,7 @@
     <a
       :class="[
         active ? 'bg-action-500' : '',
-        'flex relative items-center text-center whitespace-nowrap px-2 py-2 text-sm text-white cursor-pointer',
+        'flex relative items-center text-center whitespace-nowrap p-2 text-shade-0 cursor-pointer',
       ]"
       @click="emit('select')"
     >

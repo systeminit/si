@@ -83,7 +83,7 @@ pub struct Config {
 
 impl Config {
     fn default_encryption_key_path() -> PathBuf {
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("../cyclone/src/dev.encryption.key")
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../cyclone-server/src/dev.encryption.key")
     }
 
     fn default_nats() -> NatsConfig {
@@ -293,7 +293,7 @@ pub async fn veritech_server_for_uds_cyclone(
             )
             .expect("failed to setup cyclone_cmd_path")
             .cyclone_decryption_key_path(
-                dir.join("../../lib/cyclone/src/dev.decryption.key")
+                dir.join("../../lib/cyclone-server/src/dev.decryption.key")
                     .canonicalize()
                     .expect("failed to canonicalize cyclone decryption key path")
                     .to_string_lossy()

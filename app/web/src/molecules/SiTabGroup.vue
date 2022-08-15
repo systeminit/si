@@ -1,5 +1,5 @@
 <template>
-  <TabGroup :selected-index="selectedIndex" @change="onChange && onChange">
+  <TabGroup :selected-index="selectedIndex" @change="props.onChange">
     <slot />
     <TabList :class="tabListClasses">
       <div

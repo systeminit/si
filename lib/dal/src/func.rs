@@ -139,6 +139,15 @@ impl Func {
         })
     }
 
+    pub async fn set_code_plaintext(
+        &mut self,
+        ctx: &DalContext<'_, '_>,
+        code: Option<&'_ str>,
+    ) -> FuncResult<()> {
+        self.set_code_base64(ctx, code.as_ref().map(|code| base64::encode(&code)))
+            .await
+    }
+
     standard_model_accessor!(name, String, FuncResult);
     standard_model_accessor!(backend_kind, Enum(FuncBackendKind), FuncResult);
     standard_model_accessor!(

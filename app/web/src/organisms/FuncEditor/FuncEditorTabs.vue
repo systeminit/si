@@ -39,14 +39,7 @@ import VueFeather from "vue-feather";
 import { ListedFuncView } from "@/service/func/list_funcs";
 import { switchMap, take } from "rxjs/operators";
 import { of } from "rxjs";
-import {
-  funcState,
-  funcById,
-  removeFunc,
-  insertFunc,
-  clearFuncs,
-} from "./func_state";
-import { standardVisibilityTriggers$ } from "@/observable/visibility";
+import { funcState, funcById, removeFunc, insertFunc } from "./func_state";
 
 const props = defineProps<{
   selectedFuncId: number;
@@ -107,6 +100,4 @@ selectedFuncId$
     }),
   )
   .subscribe(insertFunc);
-
-standardVisibilityTriggers$.subscribe(() => clearFuncs());
 </script>

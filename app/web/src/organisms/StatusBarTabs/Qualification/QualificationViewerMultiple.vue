@@ -1,5 +1,5 @@
 <template>
-  <div class="w-full h-full flex flex-col">
+  <div class="w-full h-full flex flex-col bg-shade-100">
     <div class="overflow-y-auto flex flex-row mt-4 mx-2 flex-wrap">
       <!-- Note(victor): The only reason there's this extra Div here is to allow us to have margins between -->
       <!-- QualificationViews while using flex-basis to keep stuff responsive. We should revisit this and tune -->

@@ -12,7 +12,7 @@ default = []
 
 # The client implementation for a veritech service.
 client = [
-  "cyclone",
+  "cyclone-core",
   "futures-lite",
   "pin-project-lite",
 ]
@@ -28,12 +28,9 @@ server = [
 [dependencies]
 # server and client dependencies
 base64 = "0.13.0"
-deadpool-cyclone = { path = "../../lib/deadpool-cyclone", optional = true }
 futures = { version = "0.3.17"}
 serde = "1.0.123"
 serde_json = { version = "1.0.64", features = ["preserve_order"] }
-cyclone = { path = "../../lib/cyclone", optional = true }
-futures-lite = { version = "1.12.0", optional = true }
 pin-project-lite = { version = "0.2.7", optional = true }
 si-data = { path = "../../lib/si-data", features = ["nats"] }
 si-settings = { path = "../../lib/si-settings" }
@@ -42,8 +39,13 @@ thiserror = { version = "1.0" }
 tokio = { version = "1.2.0", features = ["full"] }
 toml = "0.5"
 
+# client only dependencies
+cyclone-core = { path = "../../lib/cyclone-core", optional = true }
+
 # server only dependencies
+deadpool-cyclone = { path = "../../lib/deadpool-cyclone", optional = true }
 derive_builder = { version = "0.11.2", optional = true }
+futures-lite = { version = "1.12.0", optional = true }
 
 [dev-dependencies]
 indoc = "1.0.3"

@@ -5,15 +5,18 @@
 A-ci:
   - .ci/**/*
   - .github/**/*
+  - Makefile
+  - ./**/Makefile
 A-docs:
   - docs/**/*
-A-corp:
-  - app/corp/**/*
 
 #
 # System Initiative apps (i.e. webapps/ios apps/android apps)
 #
-A-si-web:
+A-corp:
+  - app/corp/**/*
+  - .prettierrc.js
+A-web:
   - app/web/**/*
   - .prettierrc.js
 
@@ -22,7 +25,9 @@ A-si-web:
 #
 A-cyclone:
   - bin/cyclone/**/*
-  - lib/cyclone/**/*
+  - lib/cyclone-client/**/*
+  - lib/cyclone-core/**/*
+  - lib/cyclone-server/**/*
   - .cargo/**/*
   - Cargo.lock
   - rust-toolchain
@@ -44,12 +49,27 @@ A-veritech:
 A-lang-js:
   - bin/lang-js/**/*
   - .prettierrc.js
+A-si-discord-bot:
+  - bin/si-discord-bot/**/*
+  - .prettierrc.js
 
 #
 # System Initiative libs (i.e. crates/packages/libraries)
 #
-A-si-data:
-  - lib/si-data/**/*
+A-bytes-lines-codec:
+  - lib/bytes-lines-codec/**/*
+  - .cargo/**/*
+  - Cargo.lock
+  - rust-toolchain
+  - rustfmt.toml
+A-config-file:
+  - lib/config-file/**/*
+  - .cargo/**/*
+  - Cargo.lock
+  - rust-toolchain
+  - rustfmt.toml
+A-dal:
+  - lib/dal/**/*
   - .cargo/**/*
   - Cargo.lock
   - rust-toolchain
@@ -60,14 +80,26 @@ A-deadpool-cyclone:
   - Cargo.lock
   - rust-toolchain
   - rustfmt.toml
-A-si-model:
-  - lib/si-model/**/*
+A-si-data:
+  - lib/si-data/**/*
   - .cargo/**/*
   - Cargo.lock
   - rust-toolchain
   - rustfmt.toml
 A-si-settings:
   - lib/si-settings/**/*
+  - .cargo/**/*
+  - Cargo.lock
+  - rust-toolchain
+  - rustfmt.toml
+A-si-test-macros:
+  - lib/si-test-macros/**/*
+  - .cargo/**/*
+  - Cargo.lock
+  - rust-toolchain
+  - rustfmt.toml
+A-telemetry-rs:
+  - lib/telemetry-rs/**/*
   - .cargo/**/*
   - Cargo.lock
   - rust-toolchain

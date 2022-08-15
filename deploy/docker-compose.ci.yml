@@ -34,18 +34,18 @@ services:
         target: "/run/sdf/jwt_secret_key.bin"
         read_only: true
       - type: bind
-        source: "${REPOPATH:-..}/lib/cyclone/src/dev.encryption.key"
+        source: "${REPOPATH:-..}/lib/cyclone-server/src/dev.encryption.key"
         target: "/run/sdf/cyclone_encryption.key"
         read_only: true
   veritech:
     volumes:
       - type: bind
-        source: "${REPOPATH:-..}/lib/cyclone/src/dev.decryption.key"
+        source: "${REPOPATH:-..}/lib/cyclone-server/src/dev.decryption.key"
         target: "/run/cyclone/decryption.key"
         read_only: true
   pinga:
     volumes:
       - type: bind
-        source: "${REPOPATH:-..}/lib/cyclone/src/dev.encryption.key"
+        source: "${REPOPATH:-..}/lib/cyclone-server/src/dev.encryption.key"
         target: "/run/pinga/cyclone_encryption.key"
         read_only: true

@@ -1,5 +1,5 @@
 use color_eyre::Result;
-use cyclone::{Config, IncomingStream, Server};
+use cyclone_server::{Config, IncomingStream, Server};
 use telemetry::{start_tracing_level_signal_handler_task, tracing::debug, TelemetryClient};
 
 mod args;

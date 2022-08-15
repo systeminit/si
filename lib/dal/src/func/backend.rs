@@ -13,6 +13,7 @@ pub mod js_attribute;
 pub mod js_code_generation;
 pub mod js_qualification;
 pub mod js_resource;
+pub mod js_workflow;
 pub mod map;
 pub mod prop_object;
 pub mod string;
@@ -71,6 +72,8 @@ pub enum FuncBackendKind {
     JsResourceSync,
     JsCodeGeneration,
     JsAttribute,
+    JsWorkflow,
+    JsCommand,
     Map,
     PropObject,
     String,
@@ -110,9 +113,33 @@ pub enum FuncBackendResponseType {
     CodeGeneration,
     String,
     Unset,
-    // Commented out while we climb back up - Adam & Fletcher
     Json,
     Validation,
+    Workflow,
+    Command,
+}
+
+impl From<FuncBackendKind> for FuncBackendResponseType {
+    fn from(backend_kind: FuncBackendKind) -> Self {
+        match backend_kind {
+            FuncBackendKind::Array => FuncBackendResponseType::Array,
+            FuncBackendKind::Boolean => FuncBackendResponseType::Boolean,
+            FuncBackendKind::Identity => FuncBackendResponseType::Identity,
+            FuncBackendKind::Integer => FuncBackendResponseType::Integer,
+            FuncBackendKind::JsQualification => FuncBackendResponseType::Qualification,
+            FuncBackendKind::JsResourceSync => FuncBackendResponseType::ResourceSync,
+            FuncBackendKind::JsCodeGeneration => FuncBackendResponseType::CodeGeneration,
+            FuncBackendKind::JsAttribute => FuncBackendResponseType::String,
+            FuncBackendKind::JsWorkflow => FuncBackendResponseType::Workflow,
+            FuncBackendKind::JsCommand => FuncBackendResponseType::Command,
+            FuncBackendKind::Map => FuncBackendResponseType::Map,
+            FuncBackendKind::PropObject => FuncBackendResponseType::PropObject,
+            FuncBackendKind::String => FuncBackendResponseType::String,
+            FuncBackendKind::Unset => FuncBackendResponseType::Unset,
+            FuncBackendKind::Json => FuncBackendResponseType::Json,
+            FuncBackendKind::ValidateStringValue => FuncBackendResponseType::Validation,
+        }
+    }
 }
 
 impl ToLabelList for FuncBackendKind {}

@@ -3,7 +3,7 @@ use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::Json;
 use dal::{
     generate_name, Func, FuncBackendKind, FuncBackendResponseType, FuncId, StandardModel,
-    Visibility,
+    Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 
@@ -91,10 +91,12 @@ pub async fn create_func(
     )
     .await?;
 
-    func.set_code_base64(&ctx, Some(base64::encode(DEFAULT_QUALIFICATION_CODE)))
+    func.set_code_plaintext(&ctx, Some(DEFAULT_QUALIFICATION_CODE))
         .await?;
     func.set_handler(&ctx, Some("qualification".to_owned()))
         .await?;
+
+    WsEvent::change_set_written(&ctx).publish(&ctx).await?;
 
     txns.commit().await?;
 

@@ -342,12 +342,11 @@ mod tests {
 
         stream.send(req).await.expect("client failed to send msg");
 
-        let res = stream
+        stream
             .try_next()
             .await
             .expect("client failed to get msg")
-            .expect("there was no msg");
-        res
+            .expect("there was no msg")
     }
 
     #[tokio::test]

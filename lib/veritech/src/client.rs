@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use cyclone::{
+use cyclone_core::{
     CodeGenerationRequest, CodeGenerationResultSuccess, FunctionResult, OutputStream,
     QualificationCheckRequest, QualificationCheckResultSuccess, ResolverFunctionRequest,
     ResolverFunctionResultSuccess, ResourceSyncRequest, ResourceSyncResultSuccess,
@@ -389,7 +389,7 @@ mod subscription {
 mod tests {
     use std::env;
 
-    use cyclone::{
+    use cyclone_core::{
         CodeGenerated, ComponentView, QualificationCheckComponent, ResolverFunctionComponent,
     };
     use deadpool_cyclone::{instance::cyclone::LocalUdsInstance, Instance};
@@ -426,7 +426,7 @@ mod tests {
             LocalUdsInstance::spec()
                 .try_cyclone_cmd_path("../../target/debug/cyclone")
                 .expect("failed to setup cyclone_cmd_path")
-                .cyclone_decryption_key_path("../../lib/cyclone/src/dev.decryption.key")
+                .cyclone_decryption_key_path("../../lib/cyclone-server/src/dev.decryption.key")
                 .try_lang_server_cmd_path("../../bin/lang-js/target/lang-js")
                 .expect("failed to setup lang_js_cmd_path")
                 .resolver()
@@ -769,7 +769,7 @@ mod tests {
             execution_id: "112233".to_string(),
             handler: "workItOut".to_string(),
             // TODO(fnichol): rewrite this function once we settle on contract
-            code_base64: base64::encode("function workItOut() { return {}; }"),
+            code_base64: base64::encode("function workItOut() { return { name: 'mc fioti', kind: 'vacina butantan - https://www.youtube.com/watch?v=yQ8xJHuW7TY', steps: [] }; }"),
         };
 
         let result = client

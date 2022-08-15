@@ -780,7 +780,7 @@ impl AttributeValue {
                 _ => None,
             };
 
-            let av = if let Some(value) = maybe_value {
+            if let Some(value) = maybe_value {
                 value
             } else {
                 // We haven't found an appropriate `AttributeValue` to use, so we
@@ -813,9 +813,7 @@ impl AttributeValue {
                 }
 
                 value
-            };
-
-            av
+            }
         };
 
         let prop = AttributeValue::find_prop_for_value(ctx, *attribute_value.id()).await?;

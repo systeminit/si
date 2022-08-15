@@ -2,16 +2,17 @@
   <div class="flex flex-row h-full w-full">
     <!-- Filter button and list of components -->
     <div
-      class="w-64 border-r-[1px] border-black text-center h-full flex flex-col"
+      class="w-80 border-r-[1px] border-shade-100 text-center h-full flex flex-col"
     >
       <!-- Filter button and its dropdown -->
       <SiBarButton
-        class="h-10 border-b-[1px] border-black"
+        class="h-10 border-b-[1px] text-shade-0 text-[1rem] border-shade-100"
         dropdown-classes="top-1 left-4"
         tooltip-text="Filter"
+        fill-entire-width
       >
         <template #default="{ hovered, open }">
-          <div class="flex-row flex">
+          <div class="flex flex-row justify-center">
             {{ filterTitle }}
             <SiArrow :nudge="hovered || open" class="ml-1 w-4" />
           </div>
@@ -46,7 +47,7 @@
         <div
           v-for="statsGroup in list"
           :key="statsGroup.component_id"
-          class="flex flex-col text-sm"
+          class="flex flex-col"
         >
           <div
             :class="
@@ -54,16 +55,9 @@
                 ? 'bg-action-500'
                 : 'hover:bg-black'
             "
-            class="py-2 text-left text-ellipsis truncate cursor-pointer flex flex-row"
+            class="py-2 pl-5 text-ellipsis truncate cursor-pointer flex flex-row"
             @click="updateSelectedComponent(statsGroup)"
           >
-            <div class="w-5 ml-1 mr-2">
-              <CheckIcon
-                v-if="
-                  selectedComponent?.component_id === statsGroup.component_id
-                "
-              />
-            </div>
             {{ statsGroup.component_name }}
           </div>
         </div>
@@ -71,7 +65,10 @@
     </div>
 
     <!-- Selected component view -->
-    <div v-if="selectedComponent" class="w-full h-full flex flex-col">
+    <div
+      v-if="selectedComponent"
+      class="w-full h-full flex flex-col bg-shade-100"
+    >
       <div
         v-if="selectedComponentGroup === 'added'"
         class="flex flex-row items-center text-center w-full h-full"
@@ -97,7 +94,7 @@
                1024 is the "min-width" for "lg" in tailwind, so we (maybe) should use it to detect if we need to add a height. -->
           <CodeViewer
             font-size="13px"
-            height="260px"
+            height="250px"
             :component-id="selectedComponent.component_id"
             class="text-neutral-50 mx-5"
             :code="codeRecord[title]"
@@ -111,7 +108,10 @@
         </div>
       </div>
     </div>
-    <div v-else class="flex flex-row items-center text-center w-full h-full">
+    <div
+      v-else
+      class="flex flex-row items-center text-center w-full h-full bg-shade-100"
+    >
       <p class="w-full text-3xl text-neutral-500">No Component Selected</p>
     </div>
   </div>
@@ -134,7 +134,6 @@ import { combineLatest } from "rxjs";
 import { ComponentService } from "@/service/component";
 import { ComponentDiff } from "@/api/sdf/dal/component";
 import _ from "lodash";
-import { CheckIcon } from "@heroicons/vue/solid";
 
 export type ChangeSetTabPanelFilter = "all" | "added" | "deleted" | "modified";
 

@@ -10,18 +10,21 @@
 
     <template #dropdownContent>
       <SiDropdownItem
+        class="text-sm"
         :checked="theme?.source === 'system'"
         @select="ThemeService.resetToSystems"
       >
         System theme
       </SiDropdownItem>
       <SiDropdownItem
+        class="text-sm"
         :checked="theme?.source === 'user' && theme?.value === 'light'"
         @select="ThemeService.setTo('light')"
       >
         Light theme
       </SiDropdownItem>
       <SiDropdownItem
+        class="text-sm"
         :checked="theme?.source === 'user' && theme?.value === 'dark'"
         @select="ThemeService.setTo('dark')"
       >
