@@ -11,9 +11,6 @@
           <VueFeather type="x" />
         </button>
       </SiTabHeader>
-      <div
-        class="grow border-b border-neutral-300 dark:border-neutral-600"
-      ></div>
     </template>
     <template #panels>
       <TabPanel
