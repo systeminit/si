@@ -15,8 +15,8 @@ use crate::{
         producer::JobProducer,
     },
     node::NodeId,
-    BillingAccountId, HistoryActor, OrganizationId, ReadTenancy, ReadTenancyError, Visibility,
-    WorkspaceId, WriteTenancy,
+    BillingAccountId, HistoryActor, OrganizationId, ReadTenancy, ReadTenancyError, StandardModel,
+    Visibility, WorkspaceId, WriteTenancy, WriteTenancyError
 };
 
 /// A context type which contains handles to common core service dependencies.
@@ -337,6 +337,22 @@ impl DalContext<'_, '_> {
     pub fn application_node_id(&self) -> Option<NodeId> {
         self.application_node_id
     }
+
+    /// Determines if a standard model object matches the write tenancy of the current context and
+    /// is in the same visibility. If both match, it's safe to modify it in this context.
+    pub async fn check_standard_model_write_access<T: StandardModel>(
+        &self,
+        object: &T,
+    ) -> Result<bool, TransactionsError> {
+        let read_tenancy = object.tenancy().clone_into_read_tenancy(self).await?;
+        let is_in_our_tenancy = self
+            .write_tenancy()
+            .check(self.pg_txn(), &read_tenancy)
+            .await?;
+
+        Ok(is_in_our_tenancy
+            && self.visibility().change_set_pk == object.visibility().change_set_pk)
+    }
 }
 
 /// A context which represents a suitable tenancies, visibilities, etc. for consumption by a set
@@ -538,6 +554,8 @@ pub enum TransactionsError {
     SerdeJson(#[from] serde_json::Error),
     #[error(transparent)]
     ReadTenancy(#[from] ReadTenancyError),
+    #[error(transparent)]
+    WriteTenancy(#[from] WriteTenancyError),
     #[error(transparent)]
     JobQueueProcessor(#[from] JobQueueProcessorError),
     #[error("faktory error: {0}")]

@@ -34,18 +34,8 @@ pub async fn save_func(
         .await?
         .ok_or(FuncError::FuncNotFound)?;
 
-    // check tenancy and visibility, we could be attempting to save a read-only function
-    let is_in_our_tenancy = ctx
-        .write_tenancy()
-        .check(
-            ctx.pg_txn(),
-            &func.tenancy().clone_into_read_tenancy(&ctx).await?,
-        )
-        .await?;
-
-    let is_in_our_visibility = func.visibility().change_set_pk == ctx.visibility().change_set_pk;
-
-    if !is_in_our_tenancy || !is_in_our_visibility {
+    // Don't modify builtins or objects in another tenancy/visibility
+    if !ctx.check_standard_model_write_access(&func).await? {
         return Err(FuncError::NotWritable);
     }
 
