@@ -1,7 +1,7 @@
 <template>
   <Tab v-slot="{ selected }" class="focus:outline-none">
     <span
-      :class="classes + ' ' + (selected ? selectedClasses : defaultClasses)"
+      :class="classesF + ' ' + (selected ? selectedClassesF : defaultClassesF)"
     >
       <slot />
     </span>
@@ -17,22 +17,16 @@
 import { Tab } from "@headlessui/vue";
 import { inject } from "vue";
 
-withDefaults(
-  defineProps<{
-    classes?: string;
-    defaultClasses?: string;
-    selectedClasses?: string;
-  }>(),
-  {
-    classes:
-      "border-x border-t border-x-neutral-300 border-t-neutral-300 dark:border-x-neutral-600 dark:border-t-neutral-600 h-11 px-2 text-sm inline-flex items-center rounded-t",
-    defaultClasses:
-      "text-gray-400 border-b border-neutral-300 dark:border-neutral-600",
-    selectedClasses: "border-b-white dark:border-b-neutral-800 border-b",
-  },
-);
+const props = defineProps<{
+  classes?: string;
+  defaultClasses?: string;
+  selectedClasses?: string;
+}>();
 
 const afterMargin = inject("afterMargin", 0);
+const classesF = inject("tabClasses", props.classes);
+const defaultClassesF = inject("defaultTabClasses", props.defaultClasses);
+const selectedClassesF = inject("selectedTabClasses", props.selectedClasses);
 </script>
 
 <style>

@@ -48,6 +48,9 @@ const props = withDefaults(
     selectedIndex?: number;
     onChange?: (_index: number) => void;
     tabListClasses?: string;
+    tabClasses?: string;
+    defaultTabClasses?: string;
+    selectedTabClasses?: string;
     startMargin?: number;
     afterMargin?: number;
   }>(),
@@ -56,6 +59,12 @@ const props = withDefaults(
     onChange: undefined,
     tabListClasses:
       "h-11 flex shrink-0 w-full bg-white dark:bg-neutral-800 sticky top-0 z-5 overflow-hidden",
+    tabClasses:
+      "border-x border-t border-x-neutral-300 border-t-neutral-300 dark:border-x-neutral-600 dark:border-t-neutral-600 h-11 px-2 text-sm inline-flex items-center rounded-t",
+    defaultTabClasses:
+      "text-gray-400 border-b border-neutral-300 dark:border-neutral-600 font-medium",
+    selectedTabClasses:
+      "border-b-white dark:border-b-neutral-800 border-b text-action-700 dark:text-action-300 font-bold",
     startMargin: 0,
     afterMargin: 0,
   },
@@ -124,4 +133,7 @@ onBeforeUnmount(() => {
 });
 
 provide("afterMargin", props.afterMargin);
+provide("tabClasses", props.tabClasses);
+provide("defaultTabClasses", props.defaultTabClasses);
+provide("selectedTabClasses", props.selectedTabClasses);
 </script>
