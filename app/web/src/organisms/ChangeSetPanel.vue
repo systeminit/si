@@ -24,7 +24,7 @@
       </div>
     </section>
     <ChangeSetPanelDialog :show="showCreateDialog" @close="closeCreateDialog">
-      <template #title>Create Change Set...</template>
+      <template #title>Create Change Set</template>
       <template #error>
         <div
           v-if="createChangeSetErrorMessage"
@@ -44,13 +44,19 @@
         </div>
       </template>
       <template #body>
-        <div class="mb-4">
-          <p class="type-italic-xs">
-            Lorem ipsum dolor sit amet consectetur adipisicing elit. Consequatur
-            amet labore.
+        <div>
+          <p class="pb-2 type-regular-sm">
+            Modeling a configuration or extending SI happens within
+            <b>Change Sets</b>. Think of these like light-weight branches,
+            allowing you to experiment freely without risk of impacting
+            production systems.
+          </p>
+          <p class="type-regular-sm">
+            Please give your <b>Change Set</b> a name below, and click the
+            Create button.
           </p>
         </div>
-        <div>
+        <div class="pt-2">
           <label for="changeSetName" class="type-medium-xs"
             >Change Set Name:</label
           >
@@ -63,14 +69,14 @@
             placeholder="name"
             @keyup.enter="createChangeSet"
           />
-          <p class="my-2 type-italic-xs">
-            Lorem ipsum dolor sit amet consectetur adipisicing elit. Consequatur
-            amet labore.
+          <p class="pt-4 type-regular-sm">
+            In the future, you can create new change sets by selecting
+            <b>- new -</b> in the <b>Change Set drop down</b>.
           </p>
         </div>
       </template>
       <template #buttons>
-        <div class="flex flex-row-reverse justify-between">
+        <div class="flex flex-row-reverse justify-between pt-2">
           <PrimarySuccessButtonXSmall
             label="Create"
             icon-style="left"
@@ -90,10 +96,10 @@
     <ChangeSetPanelDialog :show="showSelectDialog" @close="closeSelectDialog">
       <template #title>Select Change Set</template>
       <template #body>
-        <div class="mb-4">
-          <p class="type-italic-xs">
-            Lorem ipsum dolor sit amet consectetur adipisicing elit. Consequatur
-            amet labore.
+        <div class="type-regular-sm pb-2">
+          <p>
+            Select the Change Set you would like to resume working in, or select
+            <b>- new -</b> to create a new Change Set.
           </p>
         </div>
         <div>

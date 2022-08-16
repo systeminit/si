@@ -29,18 +29,25 @@
             leave-to="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
           >
             <DialogPanel
-              class="relative transform overflow-hidden rounded-lg bg-shade-0 text-neutral-900 px-4 pt-5 pb-4 text-left shadow-xl transition-all dark:bg-shade-100 dark:text-neutral-50 sm:my-8 sm:w-full sm:max-w-sm sm:p-6"
+              class="relative transform overflow-hidden rounded-md bg-shade-0 text-neutral-900 text-left shadow-xl transition-all dark:bg-neutral-800 dark:text-neutral-50 sm:w-full sm:max-w-sm"
             >
-              <div>
+              <DialogTitle
+                as="h3"
+                class="type-regular-lg border-neutral-200 dark:border-neutral-900 border-2 pt-2 pb-2 px-3"
+              >
+                <slot name="title"></slot>
+              </DialogTitle>
+              <div class="type-regular-sm px-3">
                 <slot name="error"></slot>
-                <div>
-                  <DialogTitle as="h3" class="mb-2 type-bold-xs">
-                    <slot name="title"></slot>
-                  </DialogTitle>
+              </div>
+              <div>
+                <div class="px-3 pt-2">
                   <slot name="body"></slot>
                 </div>
               </div>
-              <slot name="buttons"></slot>
+              <div class="pl-4 pr-4 pb-3">
+                <slot name="buttons"></slot>
+              </div>
             </DialogPanel>
           </TransitionChild>
         </div>
