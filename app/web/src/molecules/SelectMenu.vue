@@ -2,7 +2,7 @@
   <Listbox v-model="selectedOption" :disabled="disabled" as="div">
     <div class="relative">
       <ListboxButton
-        class="cursor-default relative w-full rounded-[0.1875rem] border border-neutral-300 bg-shade-0 py-[0.4375rem] pl-3 pr-10 text-left text-neutral-900 shadow-sm hover:border-neutral-400 focus:border-neutral-500 focus:outline-none focus:ring-1 focus:ring-action-500 focus:ring-offset-2 disabled:opacity-50 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-50"
+        class="cursor-default relative w-full rounded-[0.1875rem] border border-neutral-300 bg-shade-0 py-[0.4375rem] pl-3 pr-10 text-left text-neutral-900 shadow-sm hover:border-neutral-400 focus:border-neutral-500 focus:outline-none focus:ring-1 focus:ring-action-500 focus:ring-offset-2 disabled:opacity-50 dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-50"
       >
         <span class="block truncate text-sm">{{ selectedOption.label }}</span>
         <span
@@ -21,7 +21,7 @@
         leave-to-class="opacity-0"
       >
         <ListboxOptions
-          class="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-shade-0 py-1 shadow-lg ring-1 ring-black ring-opacity-5 type-regular-xs focus:outline-none dark:bg-neutral-800"
+          class="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-shade-0 py-1 shadow-lg ring-1 ring-black ring-opacity-5 type-regular-xs focus:outline-none dark:bg-neutral-900"
         >
           <ListboxOption
             v-for="option in options"
