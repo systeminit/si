@@ -20,6 +20,11 @@ FROM (SELECT DISTINCT ON (attribute_prototype_arguments.id) attribute_prototype_
         AND is_visible_v1($2, attribute_prototype_arguments.visibility_change_set_pk,
                           attribute_prototype_arguments.visibility_deleted_at)
         AND attribute_prototype_arguments.attribute_prototype_id = $3
+        AND CASE WHEN external_provider_id != -1 THEN
+                head_component_id = $4
+            ELSE
+                TRUE
+            END
 
       ORDER BY attribute_prototype_arguments.id,
                visibility_change_set_pk DESC,
