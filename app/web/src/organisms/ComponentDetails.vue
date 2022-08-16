@@ -10,18 +10,18 @@
         <div class="text-center">
           <!-- FIXME(nick): remove AttributeViewer's requirement of a componentId -->
           <AttributeViewer
-            class="dark:text-neutral-50 text-neutral-900"
             :component-id="props.componentIdentification.componentId"
             :component-identification="props.componentIdentification"
+            class="dark:text-neutral-50 text-neutral-900"
           />
         </div>
       </TabPanel>
 
       <TabPanel>
         <CodeViewer
-          class="dark:text-neutral-50 text-neutral-900"
-          :component-id="props.componentIdentification.componentId"
           :code="code"
+          :component-id="props.componentIdentification.componentId"
+          class="dark:text-neutral-50 text-neutral-900"
         >
           <template #title>
             <span class="text-lg ml-4">{{ props.componentName }} Code</span>
@@ -43,18 +43,17 @@
   </SiTabGroup>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import { TabPanel } from "@headlessui/vue";
 import AttributeViewer from "@/organisms/AttributeViewer.vue";
-import _ from "lodash";
 import { ComponentIdentification } from "@/api/sdf/dal/component";
 import CodeViewer from "@/organisms/CodeViewer.vue";
 import { ComponentService } from "@/service/component";
 import { GlobalErrorService } from "@/service/global_error";
-import { combineLatest, switchMap, from, ReplaySubject } from "rxjs";
-import { refFrom, fromRef, untilUnmounted } from "vuse-rx/src";
+import { combineLatest, from, ReplaySubject, switchMap } from "rxjs";
+import { fromRef, refFrom, untilUnmounted } from "vuse-rx/src";
 import { computed, ref } from "vue";
 import { CodeView } from "@/api/sdf/dal/code_view";
 import { eventCodeGenerated$ } from "@/observable/code";

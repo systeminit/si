@@ -34,6 +34,14 @@
 
       <!-- transparent div that flows through to the canvas -->
       <div class="grow h-full pointer-events-none"></div>
+
+      <SiSidebar :hidden="selectedNode === null" side="right">
+        <ComponentDetails
+          v-if="selectedComponentIdentification"
+          :component-identification="selectedComponentIdentification.value"
+          :component-name="selectedComponentIdentification.label"
+        />
+      </SiSidebar>
     </div>
   </div>
 </template>
@@ -49,7 +57,16 @@ import {
 } from "@/api/sdf/dal/schematic";
 import _ from "lodash";
 import { refFrom, untilUnmounted } from "vuse-rx";
-import { combineLatest, forkJoin, map, switchMap, take, tap } from "rxjs";
+import {
+  combineLatest,
+  combineLatestWith,
+  filter,
+  forkJoin,
+  map,
+  switchMap,
+  take,
+  tap,
+} from "rxjs";
 import { system$ } from "@/observable/system";
 import { applicationNodeId$ } from "@/observable/application";
 import {
@@ -68,6 +85,13 @@ import { SchematicService } from "@/service/schematic";
 import { GlobalErrorService } from "@/service/global_error";
 import SiSidebar from "@/atoms/SiSidebar.vue";
 import WorkspaceViewTabs from "@/organisms/WorkspaceViewTabs.vue";
+import { lastSelectedNode$ } from "@/observable/selection";
+import { listComponentsIdentification } from "@/service/component/list_components_identification";
+import { ComponentIdentification } from "@/api/sdf/dal/component";
+import ComponentDetails from "@/organisms/ComponentDetails.vue";
+import { LabelEntry } from "@/api/sdf/dal/label_list";
+import { currentChangeSet } from "@/service/change_set/current_change_set";
+import { switchToHead } from "@/service/change_set/switch_to_head";
 
 const schematicViewerId = _.uniqueId();
 const viewerState = new ViewerStateMachine();
@@ -135,7 +159,41 @@ const schematicData = refFrom<Schematic>(
   ),
 );
 
+// Selected node logic
+const selectedComponentIdentification =
+  ref<LabelEntry<ComponentIdentification> | null>(null);
+const selectedNode = refFrom(
+  lastSelectedNode$.pipe(
+    filter((node) => node?.nodeKind?.componentId !== -1), //Ignore fake nodes
+    combineLatestWith(listComponentsIdentification()),
+    tap(([node, componentIdentifications]) => {
+      if (!node || componentIdentifications.error) {
+        selectedComponentIdentification.value = null;
+        return;
+      }
+
+      for (const identification of componentIdentifications.list) {
+        if (identification.value.componentId == node.nodeKind.componentId) {
+          selectedComponentIdentification.value = identification;
+          return;
+        }
+      }
+
+      selectedComponentIdentification.value = null;
+    }),
+    map(([node]) => node),
+  ),
+);
+
+// Auxiliary ref so that SiCanvas dark/light mode switching works
 const lightMode = refFrom<boolean>(
   ThemeService.currentTheme().pipe(map((theme) => theme?.value == "light")),
 );
+
+// Enforce no changeset on view mode
+currentChangeSet()
+  .pipe(untilUnmounted)
+  .subscribe((set) => {
+    if (set !== null) switchToHead();
+  });
 </script>
