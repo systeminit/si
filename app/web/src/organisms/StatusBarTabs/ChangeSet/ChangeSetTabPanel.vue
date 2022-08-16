@@ -46,19 +46,26 @@
       <div class="overflow-y-auto flex-expand">
         <div
           v-for="statsGroup in list"
-          :key="statsGroup.component_id"
+          :key="statsGroup.componentId"
           class="flex flex-col"
         >
           <div
             :class="
-              selectedComponent?.component_id === statsGroup.component_id
+              selectedComponent?.componentId === statsGroup.componentId
                 ? 'bg-action-500'
                 : 'hover:bg-black'
             "
-            class="py-2 pl-5 text-ellipsis truncate cursor-pointer flex flex-row"
+            class="py-2 truncate cursor-pointer flex flex-row justify-between"
             @click="updateSelectedComponent(statsGroup)"
           >
-            {{ statsGroup.component_name }}
+            <div class="text-left text-ellipsis ml-2.5 mr-6">
+              {{ statsGroup.componentName }}
+            </div>
+            <StatusIndicatorIcon
+              v-if="statsGroup"
+              :status="statsGroup.componentStatus"
+              class="w-6 mr-2.5 ml-6 text-right"
+            />
           </div>
         </div>
       </div>
@@ -70,7 +77,7 @@
       class="w-full h-full flex flex-col bg-shade-100"
     >
       <div
-        v-if="selectedComponentGroup === 'added'"
+        v-if="selectedComponent.componentStatus === 'added'"
         class="overflow-y-auto flex flex-row flex-wrap"
       >
         <div class="basis-full overflow-hidden pr-10 pl-1 pt-2">
@@ -79,7 +86,7 @@
           <CodeViewer
             font-size="13px"
             height="250px"
-            :component-id="selectedComponent.component_id"
+            :component-id="selectedComponent.componentId"
             class="text-neutral-50 mx-5"
             :code="codeRecord['Current']"
             force-theme="dark"
@@ -92,17 +99,17 @@
         </div>
       </div>
       <div
-        v-else-if="selectedComponentGroup === 'deleted'"
+        v-else-if="selectedComponent.componentStatus === 'deleted'"
         class="flex flex-row items-center text-center w-full h-full"
       >
         <p class="w-full text-3xl text-destructive-300">Component Deleted</p>
       </div>
       <div
-        v-else-if="selectedComponentGroup === 'modified'"
+        v-else-if="selectedComponent.componentStatus === 'modified'"
         class="overflow-y-auto flex flex-row flex-wrap"
       >
         <div
-          v-for="title in ['Diff', 'Current']"
+          v-for="title in ['Current', 'Diff']"
           :key="title"
           class="basis-full lg:basis-1/2 overflow-hidden pr-10 pl-1 pt-2"
         >
@@ -111,7 +118,7 @@
           <CodeViewer
             font-size="13px"
             height="250px"
-            :component-id="selectedComponent.component_id"
+            :component-id="selectedComponent.componentId"
             class="text-neutral-50 mx-5"
             :code="codeRecord[title]"
             force-theme="dark"
@@ -150,6 +157,7 @@ import { combineLatest } from "rxjs";
 import { ComponentService } from "@/service/component";
 import { ComponentDiff } from "@/api/sdf/dal/component";
 import _ from "lodash";
+import StatusIndicatorIcon from "@/molecules/StatusIndicatorIcon.vue";
 
 export type ChangeSetTabPanelFilter = "all" | "added" | "deleted" | "modified";
 
@@ -168,51 +176,20 @@ const filterTitle = computed(() => {
   return "Modified";
 });
 
-const list = computed(() => {
-  if (filter.value === "all") {
-    return total.value;
-  } else if (filter.value === "added") {
-    return stats.value.added;
-  } else if (filter.value === "deleted") {
-    return stats.value.deleted;
-  }
-  return stats.value.modified;
-});
-
-const total = computed(() => {
-  return stats.value.added.concat(
-    stats.value.deleted.concat(stats.value.modified),
-  );
-});
-
-const stats = ref<ComponentStats>({
-  added: [],
-  deleted: [],
-  modified: [],
-});
-
-const selectedComponentGroup = computed(
-  (): "added" | "deleted" | "modified" | false => {
-    if (selectedComponent.value) {
-      for (const statsGroup of stats.value.added) {
-        if (statsGroup.component_id === selectedComponent.value.component_id) {
-          return "added";
-        }
-      }
-      for (const statsGroup of stats.value.deleted) {
-        if (statsGroup.component_id === selectedComponent.value.component_id) {
-          return "deleted";
-        }
-      }
-      for (const statsGroup of stats.value.modified) {
-        if (statsGroup.component_id === selectedComponent.value.component_id) {
-          return "modified";
-        }
+const list = computed((): ComponentStatsGroup[] => {
+  if (filter.value !== "all" && stats.value) {
+    let list = [];
+    for (const statsGroup of stats.value.stats) {
+      if (statsGroup.componentStatus === filter.value) {
+        list.push(statsGroup);
       }
     }
-    return false;
-  },
-);
+    return list;
+  }
+  return stats.value.stats;
+});
+
+const stats = ref<ComponentStats>({ stats: [] });
 
 untilUnmounted(ChangeSetService.getStats()).subscribe((response) => {
   if (response.error) {
@@ -234,10 +211,17 @@ const updateSelection = (node: Node | null) => {
   // Ignores deselection and fake nodes, as they don't have any attributes
   if (!componentId || componentId === -1) return;
 
-  selectedComponent.value = {
-    component_id: componentId,
-    component_name: node?.name,
-  };
+  if (stats.value) {
+    for (const statsGroup of stats.value.stats) {
+      if (statsGroup.componentId === componentId) {
+        selectedComponent.value = statsGroup;
+        return;
+      }
+    }
+  }
+
+  // Unset the selected component if it is not in the stats list.
+  selectedComponent.value = null;
 };
 
 lastSelectedNode$
@@ -278,7 +262,7 @@ const componentDiff = refFrom<ComponentDiff | null>(
     switchMap(([selectedComponent]) => {
       if (selectedComponent) {
         return ComponentService.getDiff({
-          componentId: selectedComponent.component_id,
+          componentId: selectedComponent.componentId,
         });
       }
       return from([null]);

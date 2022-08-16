@@ -50,14 +50,16 @@
                 ? 'bg-action-500'
                 : 'hover:bg-black'
             "
-            class="py-2 text-left text-ellipsis truncate cursor-pointer"
+            class="py-2 truncate cursor-pointer flex flex-row justify-between"
             @click="updateSelectedComponent(component)"
           >
+            <div class="text-left text-ellipsis ml-2.5 mr-6">
+              {{ component.componentName }}
+            </div>
             <StatusIndicatorIcon
               :status="iconStatus(component)"
-              class="w-5 ml-1 mr-2"
+              class="w-6 mr-2.5 ml-6 text-right"
             />
-            {{ component.componentName }}
           </div>
         </div>
       </div>
