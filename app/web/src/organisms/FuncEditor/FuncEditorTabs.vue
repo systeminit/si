@@ -1,6 +1,10 @@
 <template>
   <!-- border-b border-neutral-300 dark:border-neutral-600 -->
-  <SiTabGroup :selected-index="selectedTab" @change="changeTab">
+  <SiTabGroup
+    :selected-index="selectedTab"
+    @change="changeTab"
+    :key="tabGroupRerenderKey"
+  >
     <template #tabs>
       <SiTabHeader v-for="func in funcList" :key="func.id">
         {{ func.name }}
@@ -28,7 +32,7 @@
 </template>
 
 <script lang="ts" setup>
-import { toRef, computed } from "vue";
+import { toRef, computed, ref } from "vue";
 import { fromRef } from "vuse-rx/src";
 import { FuncService } from "@/service/func";
 import SiTabGroup from "@/molecules/SiTabGroup.vue";
@@ -86,8 +90,11 @@ const changeTab = (index: number) => {
   }
 };
 
+const tabGroupRerenderKey = ref(0);
+
 const closeFunc = (func: ListedFuncView) => {
   removeFunc(func);
+  tabGroupRerenderKey.value = tabGroupRerenderKey.value + 1;
 };
 
 selectedFuncId$
