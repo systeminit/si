@@ -14,13 +14,7 @@
         <div class="hidden" aria-hidden="true" />
       </Tab>
       <Tab v-slot="{ selected }">
-        <StatusBarTab :selected="selected">
-          <template #icon><ClockIcon class="text-white" /></template>
-          <template #name>Changes</template>
-          <template #summary>
-            <ChangeSetTab />
-          </template>
-        </StatusBarTab>
+        <ChangeSetTab :selected="selected" />
       </Tab>
       <Tab v-slot="{ selected }">
         <StatusBarTab :selected="selected">
@@ -93,7 +87,6 @@ import {
   ChevronDownIcon,
   ChevronUpIcon,
   CheckCircleIcon,
-  ClockIcon,
   XCircleIcon,
 } from "@heroicons/vue/solid";
 import SiButtonIcon from "@/atoms/SiButtonIcon.vue";

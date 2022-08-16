@@ -27,6 +27,8 @@ pub struct ComponentDiff {
     /// The "diff(s)" between [`Component`](crate::Component)'s
     /// [`CodeViews`](crate::code_view::CodeView) found on _head_ and found in the current
     /// [`Visibility`](crate::Visibility).
+    ///
+    /// This will be empty if the [`Component`](crate::Component) has been newly added.
     pub diffs: Vec<CodeView>,
 }
 
@@ -63,30 +65,39 @@ impl ComponentDiff {
             ..AttributeReadContext::default()
         };
 
-        let prev_view = ComponentView::for_context(head_ctx, component_view_context).await?;
-        let curr_view = ComponentView::for_context(ctx, component_view_context).await?;
-
         // TODO(nick): perhaps, we can serialize the value into other kinds of structure in the future.
-        let prev = serde_json::to_string_pretty(&prev_view.properties)?;
-        let curr = serde_json::to_string_pretty(&curr_view.properties)?;
+        let curr_component_view = ComponentView::for_context(ctx, component_view_context).await?;
+        let curr_json = serde_json::to_string_pretty(&curr_component_view.properties)?;
 
-        let mut lines = Vec::new();
-        for diff_object in diff::lines(&prev, &curr) {
-            let line = match diff_object {
-                diff::Result::Left(left) => format!("-{}", left),
-                diff::Result::Both(unchanged, _) => format!(" {}", unchanged),
-                diff::Result::Right(right) => format!("+{}", right),
-            };
-            lines.push(line);
-        }
+        // Find the "diffs" given the head dal context only if the component exists on head.
+        let diffs: Vec<CodeView> = if Component::get_by_id(head_ctx, &component_id)
+            .await?
+            .is_some()
+        {
+            let prev_component_view =
+                ComponentView::for_context(head_ctx, component_view_context).await?;
+            let prev_json = serde_json::to_string_pretty(&prev_component_view.properties)?;
 
-        // FIXME(nick): generate multiple code views if there are multiple code views.
-        let current = CodeView::new(CodeLanguage::Json, Some(curr));
-        let diff = CodeView::new(CodeLanguage::Diff, Some(lines.join(NEWLINE)));
+            let mut lines = Vec::new();
+            for diff_object in diff::lines(&prev_json, &curr_json) {
+                let line = match diff_object {
+                    diff::Result::Left(left) => format!("-{}", left),
+                    diff::Result::Both(unchanged, _) => format!(" {}", unchanged),
+                    diff::Result::Right(right) => format!("+{}", right),
+                };
+                lines.push(line);
+            }
+
+            // FIXME(nick): generate multiple code views if there are multiple code views.
+            let diff = CodeView::new(CodeLanguage::Diff, Some(lines.join(NEWLINE)));
+            vec![diff]
+        } else {
+            vec![]
+        };
 
         Ok(Self {
-            current,
-            diffs: vec![diff],
+            current: CodeView::new(CodeLanguage::Json, Some(curr_json)),
+            diffs,
         })
     }
 }
