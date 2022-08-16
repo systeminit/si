@@ -30,7 +30,14 @@
 
 <script setup lang="ts">
 import { TabGroup, TabPanels, TabList } from "@headlessui/vue";
-import { onMounted, onUpdated, provide, ref } from "vue";
+import {
+  onBeforeUnmount,
+  onMounted,
+  onUpdated,
+  provide,
+  ref,
+  useSlots,
+} from "vue";
 import { DotsVerticalIcon } from "@heroicons/vue/outline";
 import SiBarButton from "@/molecules/SiBarButton.vue";
 import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
@@ -53,6 +60,8 @@ const props = withDefaults(
     afterMargin: 0,
   },
 );
+
+const slots = useSlots();
 
 const tabList = ref();
 const endSpace = ref();
@@ -108,6 +117,10 @@ const resizeObserver = new ResizeObserver(debounceForResize);
 
 onMounted(() => {
   resizeObserver.observe(tabList.value?.$el);
+});
+
+onBeforeUnmount(() => {
+  resizeObserver.unobserve(tabList.value?.$el);
 });
 
 provide("afterMargin", props.afterMargin);
