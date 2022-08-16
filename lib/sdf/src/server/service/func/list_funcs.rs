@@ -18,6 +18,7 @@ pub struct ListedFuncView {
     pub handler: Option<String>,
     pub kind: FuncBackendKind,
     pub name: String,
+    pub is_builtin: bool,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -46,6 +47,7 @@ pub async fn list_funcs(
         handler: func.handler().map(|handler| handler.to_owned()),
         kind: func.backend_kind().to_owned(),
         name: func.name().to_owned(),
+        is_builtin: func.is_builtin(),
     })
     .collect();
 

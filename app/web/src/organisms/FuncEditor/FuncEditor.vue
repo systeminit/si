@@ -18,8 +18,8 @@
 
 <script lang="ts" setup>
 import { onMounted, ref, toRef, computed } from "vue";
-import { EditorState } from "@codemirror/state";
-import { EditorView, keymap } from "@codemirror/view";
+import { EditorState, EditorView } from "@codemirror/basic-setup";
+import { keymap } from "@codemirror/view";
 import { defaultKeymap } from "@codemirror/commands";
 import { funcState, changeFunc, nullEditingFunc } from "./func_state";
 
@@ -46,7 +46,11 @@ const mountEditor = () => {
 
   const editorState = EditorState.create({
     doc: editingFunc.value.modifiedFunc.code,
-    extensions: [keymap.of(defaultKeymap), updateListener],
+    extensions: [
+      keymap.of(defaultKeymap),
+      EditorView.editable.of(!editingFunc.value.origFunc.isBuiltin),
+      updateListener,
+    ],
   });
 
   view.value = new EditorView({

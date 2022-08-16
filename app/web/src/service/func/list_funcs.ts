@@ -5,7 +5,9 @@ import { GlobalErrorService } from "@/service/global_error";
 import { Observable } from "rxjs";
 import { map } from "rxjs/operators";
 
-export type ListedFuncView = Omit<Func, "code">;
+export interface ListedFuncView extends Omit<Func, "code"> {
+  isBuiltin: boolean;
+}
 
 export interface ListFuncsResponse {
   qualifications: ListedFuncView[];
@@ -16,6 +18,7 @@ export const nullListFunc: ListedFuncView = {
   handler: "",
   kind: FuncBackendKind.Unset,
   name: "",
+  isBuiltin: false,
 };
 
 const memo: {

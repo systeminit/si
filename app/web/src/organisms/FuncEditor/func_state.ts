@@ -2,10 +2,11 @@ import { reactive } from "vue";
 import { Func, FuncBackendKind } from "@/api/sdf/dal/func";
 import { saveFuncToBackend$ } from "@/observable/func";
 import { SaveFuncRequest } from "@/service/func/save_func";
+import { GetFuncResponse } from "@/service/func/get_func";
 
 export interface EditingFunc {
-  modifiedFunc: Func;
-  origFunc: Func;
+  modifiedFunc: GetFuncResponse;
+  origFunc: GetFuncResponse;
   id: number;
 }
 
@@ -16,6 +17,7 @@ export const nullEditingFunc: EditingFunc = {
     kind: FuncBackendKind.Unset,
     name: "",
     code: "",
+    isBuiltin: false,
   },
   modifiedFunc: {
     id: 0,
@@ -23,13 +25,14 @@ export const nullEditingFunc: EditingFunc = {
     kind: FuncBackendKind.Unset,
     name: "",
     code: "",
+    isBuiltin: false,
   },
   id: 0,
 };
 
 export const funcState = reactive<{ funcs: EditingFunc[] }>({ funcs: [] });
 
-export const insertFunc = (func: Func) => {
+export const insertFunc = (func: GetFuncResponse) => {
   if (!funcState.funcs.find((f) => f.id === func.id)) {
     funcState.funcs.push({
       origFunc: func,
@@ -44,7 +47,7 @@ export const funcById = (funcId: number) =>
 
 export const funcExists = (funcId: number) => !!funcById(funcId);
 
-export const changeFunc = (func: Func) => {
+export const changeFunc = (func: GetFuncResponse) => {
   const currentFuncIdx = funcState.funcs.findIndex((f) => f.id === func.id);
 
   if (currentFuncIdx == -1) {

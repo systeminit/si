@@ -9,7 +9,9 @@ export interface GetFuncArgs {
   id: number;
 }
 
-export type GetFuncResponse = Func;
+export interface GetFuncResponse extends Func {
+  isBuiltin: boolean;
+}
 
 const memo: {
   [key: string]: Observable<GetFuncResponse>;
@@ -43,4 +45,5 @@ export const nullFunc: GetFuncResponse = {
   kind: FuncBackendKind.Unset,
   name: "",
   code: undefined,
+  isBuiltin: false,
 };

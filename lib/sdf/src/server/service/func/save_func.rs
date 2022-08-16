@@ -35,7 +35,10 @@ pub async fn save_func(
         .ok_or(FuncError::FuncNotFound)?;
 
     // Don't modify builtins or objects in another tenancy/visibility
-    if !ctx.check_standard_model_write_access(&func).await? {
+    if !ctx
+        .check_standard_model_tenancy_and_visibility_match(&func)
+        .await?
+    {
         return Err(FuncError::NotWritable);
     }
 

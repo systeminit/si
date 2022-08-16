@@ -69,6 +69,7 @@ const createFunc = async () => {
     kind: func.kind,
     name: func.name,
     handler: func.handler,
+    isBuiltin: false,
   };
 
   funcList.value.qualifications.push(newFunc);

@@ -16,7 +16,7 @@ use crate::{
     },
     node::NodeId,
     BillingAccountId, HistoryActor, OrganizationId, ReadTenancy, ReadTenancyError, StandardModel,
-    Visibility, WorkspaceId, WriteTenancy, WriteTenancyError
+    Visibility, WorkspaceId, WriteTenancy, WriteTenancyError,
 };
 
 /// A context type which contains handles to common core service dependencies.
@@ -339,8 +339,8 @@ impl DalContext<'_, '_> {
     }
 
     /// Determines if a standard model object matches the write tenancy of the current context and
-    /// is in the same visibility. If both match, it's safe to modify it in this context.
-    pub async fn check_standard_model_write_access<T: StandardModel>(
+    /// is in the same visibility.
+    pub async fn check_standard_model_tenancy_and_visibility_match<T: StandardModel>(
         &self,
         object: &T,
     ) -> Result<bool, TransactionsError> {
