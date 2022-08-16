@@ -71,9 +71,25 @@
     >
       <div
         v-if="selectedComponentGroup === 'added'"
-        class="flex flex-row items-center text-center w-full h-full"
+        class="overflow-y-auto flex flex-row flex-wrap"
       >
-        <p class="w-full text-3xl text-success-300">Component Added</p>
+        <div class="basis-full overflow-hidden pr-10 pl-1 pt-2">
+          <!-- FIXME(nick): make code viewer height malleable if the status bar no longer a fixed size.
+               1024 is the "min-width" for "lg" in tailwind, so we (maybe) should use it to detect if we need to add a height. -->
+          <CodeViewer
+            font-size="13px"
+            height="250px"
+            :component-id="selectedComponent.component_id"
+            class="text-neutral-50 mx-5"
+            :code="codeRecord['Current']"
+            force-theme="dark"
+            :code-language="getCodeLanguage('Current')"
+          >
+            <template #title>
+              <span class="text-lg">Current</span>
+            </template>
+          </CodeViewer>
+        </div>
       </div>
       <div
         v-else-if="selectedComponentGroup === 'deleted'"
@@ -236,8 +252,13 @@ const codeRecord = computed((): Record<string, string> => {
     Current: "# Waiting for component diff...",
   };
   if (componentDiff.value) {
-    // FIXME(nick): allow for multiple diffs.
-    code["Diff"] = componentDiff.value.diffs[0].code ?? "# No code found";
+    if (componentDiff.value.diffs.length > 0) {
+      // FIXME(nick): allow for multiple diffs.
+      code["Diff"] = componentDiff.value.diffs[0].code ?? "# No code found";
+    } else {
+      // This should never be read, but is here just in case.
+      code["Diff"] = "# No diff found";
+    }
     code["Current"] = componentDiff.value.current.code ?? "# No code found";
   }
   return code;
@@ -255,8 +276,7 @@ const getCodeLanguage = (title: string) => {
 const componentDiff = refFrom<ComponentDiff | null>(
   combineLatest([selectedComponent$]).pipe(
     switchMap(([selectedComponent]) => {
-      // Only collect the diff for modified components.
-      if (selectedComponent && selectedComponentGroup.value === "modified") {
+      if (selectedComponent) {
         return ComponentService.getDiff({
           componentId: selectedComponent.component_id,
         });
