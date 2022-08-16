@@ -74,8 +74,8 @@ export class SchematicDataManager {
     SchematicService.createNode({
       schemaId: e.nodeSchemaId,
       systemId: e.systemId,
-      x: e.x,
-      y: e.y,
+      x: parseInt(e.x),
+      y: parseInt(e.y),
       parentNodeId: e.parentNodeId,
     }).subscribe((response) => {
       if (response.error) {

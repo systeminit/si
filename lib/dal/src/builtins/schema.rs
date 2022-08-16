@@ -329,7 +329,7 @@ async fn kubernetes_namespace(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     };
 
     let (mut variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
-    variant.set_color(ctx, Some(0x85c9a3)).await?;
+    variant.set_color(ctx, Some(0x1ba97e)).await?;
     variant.set_link(ctx, Some("https://v1-22.docs.kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/".to_owned())).await?;
     schema
         .set_default_schema_variant_id(ctx, Some(*variant.id()))

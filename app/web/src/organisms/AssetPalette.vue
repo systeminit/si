@@ -18,11 +18,11 @@
     >
       <li v-for="(node, node_index) in category.assets" :key="node_index">
         <SiNodeSprite
-          :class="activeNode === node.id ? 'bg-action-500' : ''"
+          :class="selectedSchemaId === node.id ? 'bg-action-500' : ''"
           :color="node.color"
           :name="node.name"
           class="border-b-2 dark:border-neutral-600 hover:bg-action-500 dark:text-white hover:text-white hover:cursor-pointer"
-          @click="setActiveNode(node, $event)"
+          @mousedown="onSelect(node.id)"
         />
       </li>
     </SiCollapsible>
@@ -30,29 +30,25 @@
 </template>
 
 <script lang="ts" setup>
+import _ from "lodash";
 import SiNodeSprite from "@/molecules/SiNodeSprite.vue";
 import SiCollapsible from "@/organisms/SiCollapsible.vue";
 import SiSearch from "@/molecules/SiSearch.vue";
 import { ref } from "vue";
-import { combineLatestWith, firstValueFrom } from "rxjs";
+import { combineLatest, firstValueFrom } from "rxjs";
 import { SchematicService } from "@/service/schematic";
-import {
-  SchematicKind,
-  SchematicNode,
-  SchematicNodeTemplate,
-  variantById,
-} from "@/api/sdf/dal/schematic";
-import {
-  NodeAddEvent,
-  ViewerEventObservable,
-} from "@/organisms/SiCanvas/viewer_event";
+import SchematicDiagramService from "@/service/schematic-diagram";
+import { SchematicKind, SchematicNodeTemplate } from "@/api/sdf/dal/schematic";
 import { ApplicationService } from "@/service/application";
-import { schematicSchemaVariants$ } from "@/observable/schematic";
 import { Category, Item } from "@/api/sdf/dal/menu";
 import { untilUnmounted } from "vuse-rx";
 
-const props = defineProps<{
-  viewerEvent$: ViewerEventObservable["viewerEvent$"];
+export type SelectAssetEvent = {
+  schemaId: number;
+};
+
+const emit = defineEmits<{
+  (e: "select", selectAssetEvent: SelectAssetEvent): void;
 }>();
 
 // TODO(victor): this types shouldn't be here, but since we probably need to refactor the way nodes/assets are organized in the backend I'll keep them for now
@@ -70,9 +66,12 @@ interface AssetCategory {
 
 const assetCategories = ref<AssetCategory[]>([]);
 
+// TODO: move this whole thing into diagram data service - also return the data without needing so many API calls
 // FIXME(nick,victor): temporary measure to populate the assetCategories dynamically based on the application.
-ApplicationService.currentApplication()
-  .pipe(combineLatestWith(schematicSchemaVariants$))
+combineLatest([
+  ApplicationService.currentApplication(),
+  SchematicDiagramService.observables.schemaVariants$,
+])
   .pipe(untilUnmounted)
   .subscribe(async ([application, schemaVariants]) => {
     if (application === null || schemaVariants === null) {
@@ -115,13 +114,18 @@ ApplicationService.currentApplication()
 
             if (template.error) continue;
 
-            const { color } = await variantById(template.schemaVariantId);
+            const variant = _.find(
+              schemaVariants,
+              (v) => v.id === template.schemaVariantId,
+            );
 
             assets.push({
               name: name,
               id: schemaId,
               template,
-              color: "#" + color.toString(16).padStart(6, "0"),
+              color: variant
+                ? "#" + variant.color.toString(16).padStart(6, "0")
+                : "#777",
             });
           }
 
@@ -133,46 +137,10 @@ ApplicationService.currentApplication()
     );
   });
 
-const activeNode = ref<number | undefined>();
+const selectedSchemaId = ref<number>();
 
-const setActiveNode = (e: Asset, _event: MouseEvent) => {
-  // TODO(victor): This code makes it so that clicking the selected node deselects it. That should probably change when node addiction is handled by an observable
-  activeNode.value = e.id !== activeNode.value ? e.id : undefined;
-
-  // TODO(nick): temporarily embedding the add node into the active node event.
-  addNode(e.id, e.template, _event);
-};
-
-const addNode = async (
-  schemaId: number,
-  schemaTemplate: SchematicNodeTemplate,
-  _event: MouseEvent,
-) => {
-  // Generates fake node from template
-  const node: SchematicNode = {
-    id: -1,
-    kind: { kind: schemaTemplate.kind, componentId: -1 },
-    title: schemaTemplate.title,
-    name: schemaTemplate.name,
-    positions: [
-      {
-        schematicKind:
-          schemaTemplate.kind === "component"
-            ? SchematicKind.Component
-            : SchematicKind.Deployment,
-        x: 350,
-        y: 0,
-      },
-    ],
-    schemaVariantId: schemaTemplate.schemaVariantId,
-  };
-
-  const event = new NodeAddEvent({
-    node,
-    schemaId,
-  });
-
-  props.viewerEvent$.next(event);
-  // TODO(victor) we should subscribe to viewerEvents to sync the selected node with the real state
-};
+function onSelect(schemaId: number) {
+  selectedSchemaId.value = schemaId;
+  emit("select", { schemaId });
+}
 </script>

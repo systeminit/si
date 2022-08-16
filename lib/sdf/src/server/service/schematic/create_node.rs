@@ -31,7 +31,7 @@ pub struct CreateNodeResponse {
 pub async fn create_node(
     HandlerContext(builder, mut txns): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
-    Json(request): Json<CreateNodeRequest>,
+    Json(mut request): Json<CreateNodeRequest>,
 ) -> SchematicResult<Json<CreateNodeResponse>> {
     let txns = txns.start().await?;
     let ctx = builder.build(request_ctx.build(request.visibility), &txns);
@@ -46,6 +46,15 @@ pub async fn create_node(
         .ok_or(SchematicError::SchemaVariantNotFound)?;
 
     let schematic_kind = SchematicKind::from(*schema.kind());
+    let node = Node::find_by_attr(&ctx, "kind", &NodeKind::Deployment.as_ref())
+        .await?
+        .pop()
+        .ok_or(SchematicError::InvalidSchematicKindParentNodeIdPair(
+            schematic_kind,
+            request.parent_node_id,
+        ))?;
+    request.parent_node_id = Some(*node.id());
+
     let (_component, kind, node) = match (schematic_kind, &request.parent_node_id) {
         (SchematicKind::Component, Some(parent_node_id)) => {
             let parent_node = Node::get_by_id(&ctx, parent_node_id).await?;

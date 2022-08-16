@@ -6,23 +6,26 @@ import { visibility$ } from "@/observable/visibility";
 import { switchMap } from "rxjs/operators";
 import { workspace$ } from "@/observable/workspace";
 import _ from "lodash";
+import { SchematicNode } from "@/api/sdf/dal/schematic";
 
-// Note: eventually, this needs to include the name and the position. For now, just the ID is good enough.
 export interface CreateNodeArgs {
   schemaId: number;
-  x: string;
-  y: string;
+  x: number;
+  y: number;
   systemId?: number;
   parentNodeId: number | null;
 }
 
-export interface CreateNodeRequest extends CreateNodeArgs, Visibility {
+export interface CreateNodeRequest
+  extends Omit<CreateNodeArgs, "x" | "y">,
+    Visibility {
   workspaceId: number;
+  x: string;
+  y: string;
 }
 
-// These datastructure should use SchematicNode
 export interface CreateNodeResponse {
-  node: Node;
+  node: SchematicNode;
 }
 
 export function createNode(
@@ -47,6 +50,8 @@ export function createNode(
       }
       const request: CreateNodeRequest = {
         ...args,
+        x: args.x.toString(),
+        y: args.y.toString(),
         ...visibility,
         workspaceId: workspace.id,
       };

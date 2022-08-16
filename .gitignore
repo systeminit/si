@@ -3,6 +3,7 @@ tags
 node_modules
 .vagrant
 .idea
+.vscode
 target
 kubeconfig.yml
 vendor/automerge

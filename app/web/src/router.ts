@@ -19,8 +19,14 @@ import WorkspaceView from "@/organisms/Workspace/WorkspaceView.vue";
 import WorkspaceRuntime from "@/organisms/Workspace/WorkspaceRuntime.vue";
 import WorkspaceCompose from "@/organisms/Workspace/WorkspaceCompose.vue";
 import WorkspaceLab from "@/organisms/Workspace/WorkspaceLab.vue";
+import DiagramDemoPage from "@/organisms/GenericDiagram/DiagramDemoPage.vue";
 
 const routes: RouteRecordRaw[] = [
+  {
+    path: "/diagram",
+    name: "diagram",
+    component: DiagramDemoPage,
+  },
   {
     path: "/",
     name: "home",
@@ -110,7 +116,11 @@ export const routeCheck = async (
   _from: RouteLocationNormalized,
   next: NavigationGuardNext,
 ) => {
-  if (to.path == "/authenticate/signup" || to.path == "/authenticate/login") {
+  if (
+    to.path == "/authenticate/signup" ||
+    to.path == "/authenticate/login" ||
+    to.path == "/diagram"
+  ) {
     return next();
   }
 
