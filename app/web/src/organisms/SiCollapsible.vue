@@ -1,5 +1,5 @@
 <template>
-  <Disclosure v-slot="{ open }" :as="as">
+  <Disclosure v-slot="{ open }" :as="as" :default-open="defaultOpen">
     <DisclosureButton
       class="flex w-full px-2 py-2 text-left text-sm font-medium focus:outline-none dark:border-neutral-600 border-b-2"
     >
@@ -26,5 +26,6 @@ defineProps<{
   label: string;
   as?: string;
   contentAs?: string;
+  defaultOpen?: boolean;
 }>();
 </script>

@@ -2,7 +2,9 @@ use super::FuncResult;
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::Json;
 use dal::{
-    generate_name, Func, FuncBackendKind, FuncBackendResponseType, FuncId, StandardModel,
+    func::backend::js_qualification::FuncBackendJsQualificationArgs, generate_name,
+    qualification_prototype::QualificationPrototypeContext, Func, FuncBackendKind,
+    FuncBackendResponseType, FuncId, QualificationPrototype, SchemaVariantId, StandardModel,
     Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
@@ -22,6 +24,7 @@ pub struct CreateFuncResponse {
     pub kind: FuncBackendKind,
     pub name: String,
     pub code: Option<String>,
+    pub schema_variants: Vec<SchemaVariantId>,
 }
 
 static DEFAULT_QUALIFICATION_CODE: &str = "/*
@@ -96,6 +99,15 @@ pub async fn create_func(
     func.set_handler(&ctx, Some("qualification".to_owned()))
         .await?;
 
+    let _ = QualificationPrototype::new(
+        &ctx,
+        *func.id(),
+        serde_json::to_value(&FuncBackendJsQualificationArgs::default())?,
+        QualificationPrototypeContext::new(),
+        func.name(),
+    )
+    .await?;
+
     WsEvent::change_set_written(&ctx).publish(&ctx).await?;
 
     txns.commit().await?;
@@ -106,5 +118,6 @@ pub async fn create_func(
         kind: func.backend_kind().to_owned(),
         name: func.name().to_owned(),
         code: func.code_plaintext()?,
+        schema_variants: vec![],
     }))
 }

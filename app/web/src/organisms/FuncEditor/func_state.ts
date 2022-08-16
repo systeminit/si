@@ -1,14 +1,8 @@
 import { reactive } from "vue";
 import { Func, FuncBackendKind } from "@/api/sdf/dal/func";
-import { saveFuncToBackend$ } from "@/observable/func";
+import { EditingFunc, funcState$, saveFuncToBackend$ } from "@/observable/func";
 import { SaveFuncRequest } from "@/service/func/save_func";
 import { GetFuncResponse } from "@/service/func/get_func";
-
-export interface EditingFunc {
-  modifiedFunc: GetFuncResponse;
-  origFunc: GetFuncResponse;
-  id: number;
-}
 
 export const nullEditingFunc: EditingFunc = {
   origFunc: {
@@ -18,6 +12,7 @@ export const nullEditingFunc: EditingFunc = {
     name: "",
     code: "",
     isBuiltin: false,
+    schemaVariants: [],
   },
   modifiedFunc: {
     id: 0,
@@ -26,6 +21,7 @@ export const nullEditingFunc: EditingFunc = {
     name: "",
     code: "",
     isBuiltin: false,
+    schemaVariants: [],
   },
   id: 0,
 };
@@ -39,6 +35,7 @@ export const insertFunc = (func: GetFuncResponse) => {
       modifiedFunc: func,
       id: func.id,
     });
+    funcState$.next(funcState.funcs);
   }
 };
 
@@ -54,11 +51,13 @@ export const changeFunc = (func: GetFuncResponse) => {
     return;
   }
   funcState.funcs[currentFuncIdx].modifiedFunc = { ...func };
+  funcState$.next(funcState.funcs);
   saveFuncToBackend$.next(func as SaveFuncRequest);
 };
 
 export const removeFunc = (func: Func) => {
   funcState.funcs = funcState.funcs.filter((f) => f.id !== func.id);
+  funcState$.next(funcState.funcs);
 };
 
 export const clearFuncs = () => {
