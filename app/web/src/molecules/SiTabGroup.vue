@@ -18,7 +18,7 @@
         dropdown-classes="-right-0 z-100"
         ><DotsVerticalIcon class="w-6" />
         <template #dropdownContent>
-          <SiDropdownItem class="text-sm" :checked="true"> </SiDropdownItem>
+          <SiDropdownItem class="text-sm" :checked="true">TEST</SiDropdownItem>
         </template>
       </SiBarButton>
     </div>
@@ -34,6 +34,7 @@ import { onMounted, onUpdated, provide, ref } from "vue";
 import { DotsVerticalIcon } from "@heroicons/vue/outline";
 import SiBarButton from "@/molecules/SiBarButton.vue";
 import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
+import _ from "lodash";
 
 const props = withDefaults(
   defineProps<{
@@ -57,20 +58,20 @@ const tabList = ref();
 const endSpace = ref();
 const dropDown = ref();
 const updateDropDown = () => {
-  const tabListEl = tabList.value.$el;
+  const tabListEl = tabList.value?.$el;
+  const dropDownEl = dropDown.value?.$el;
   const endSpaceEl = endSpace.value;
-  const dropDownEl = dropDown.value.$el;
 
-  console.log(
-    tabList.value?.$el.scrollWidth + " / " + tabList.value?.$el.clientWidth,
-  );
-  console.log(dropDownEl);
+  // console.log(
+  //   tabList.value?.$el.scrollWidth + " / " + tabList.value?.$el.clientWidth,
+  // );
+  // console.log(dropDownEl);
 
   if (tabListEl !== undefined) {
     endSpaceEl.classList = "";
     dropDownEl.classList = "";
     if (tabListEl.scrollWidth > tabListEl.clientWidth) {
-      console.log("OVERFLOW!");
+      //console.log("OVERFLOW!");
       endSpaceEl.classList.add("hidden");
       dropDownEl.classList.add(
         "border",
@@ -86,9 +87,8 @@ const updateDropDown = () => {
         "dark:bg-neutral-800",
         "text-center",
       );
-      dropDownEl.classList.remove("hidden");
     } else {
-      console.log("NO OVERFLOW!");
+      //console.log("NO OVERFLOW!");
       endSpaceEl.classList.add("grow");
       dropDownEl.classList.add("hidden");
     }
@@ -102,6 +102,13 @@ const updateDropDown = () => {
 
 onMounted(updateDropDown);
 onUpdated(updateDropDown);
+
+const debounceForResize = _.debounce(updateDropDown, 50);
+const resizeObserver = new ResizeObserver(debounceForResize);
+
+onMounted(() => {
+  resizeObserver.observe(tabList.value?.$el);
+});
 
 provide("afterMargin", props.afterMargin);
 </script>

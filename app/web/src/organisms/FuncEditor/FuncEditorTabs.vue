@@ -33,7 +33,7 @@ import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import { TabPanel } from "@headlessui/vue";
 import FuncEditor from "@/organisms/FuncEditor/FuncEditor.vue";
 import VueFeather from "vue-feather";
-import { ListedFuncView } from "@/service/func/list_funcs";
+import { ListedFuncView, nullListFunc } from "@/service/func/list_funcs";
 import { switchMap, take } from "rxjs/operators";
 import { of } from "rxjs";
 import { funcState, funcById, removeFunc, insertFunc } from "./func_state";
@@ -80,6 +80,8 @@ const changeTab = (index: number) => {
   }
   if (funcList.value.length) {
     selectFunc(funcList.value[index]);
+  } else {
+    selectFunc(nullListFunc);
   }
 };
 
