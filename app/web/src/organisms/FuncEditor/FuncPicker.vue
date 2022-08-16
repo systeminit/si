@@ -19,8 +19,9 @@
               <SiFuncSprite
                 :name="func.name"
                 color="#921ed6"
-                :class="selectedFuncId == func.id ? 'bg-action-500' : ''"
+                :class="props.selectedFuncId == func.id ? 'bg-action-500' : ''"
                 class="border-b-2 dark:border-neutral-600 hover:bg-action-500 dark:text-white hover:text-white hover:cursor-pointer"
+                :is-builtin="func.isBuiltin"
                 @click="selectFunc(func)"
               />
             </li>
@@ -52,7 +53,7 @@ import { ListedFuncView, ListFuncsResponse } from "@/service/func/list_funcs";
 import SiSearch from "@/molecules/SiSearch.vue";
 import { TabPanel } from "@headlessui/vue";
 
-defineProps<{
+const props = defineProps<{
   funcList: ListFuncsResponse;
   selectedFuncId: number;
 }>();

@@ -20,6 +20,7 @@ pub struct GetFuncResponse {
     pub kind: FuncBackendKind,
     pub name: String,
     pub code: Option<String>,
+    pub is_builtin: bool,
 }
 
 pub async fn get_func(
@@ -42,5 +43,6 @@ pub async fn get_func(
         kind: func.backend_kind().to_owned(),
         name: func.name().to_owned(),
         code: func.code_plaintext()?,
+        is_builtin: func.is_builtin(),
     }))
 }

@@ -1,9 +1,9 @@
 <template>
   <!-- border-b border-neutral-300 dark:border-neutral-600 -->
   <SiTabGroup
+    :key="tabGroupRerenderKey"
     :selected-index="selectedTab"
     @change="changeTab"
-    :key="tabGroupRerenderKey"
   >
     <template #tabs>
       <SiTabHeader v-for="func in funcList" :key="func.id">
@@ -74,6 +74,7 @@ const funcList = computed(() =>
     handler: modifiedFunc.handler,
     name: modifiedFunc.name,
     kind: modifiedFunc.kind,
+    isBuiltin: origFunc.isBuiltin,
   })),
 );
 
