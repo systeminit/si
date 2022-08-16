@@ -10,10 +10,12 @@ import { restoreFromSession } from "@/observable/session_state";
 import "floating-vue/dist/style.css";
 import { onBeforeMount } from "vue";
 import { useThemeProvider } from "./composables/injectTheme";
+import { useCustomFontsLoadedProvider } from "./composables/useFontLoaded";
 
 onBeforeMount(restoreFromSession);
 
 useThemeProvider();
+useCustomFontsLoadedProvider();
 </script>
 
 <style>

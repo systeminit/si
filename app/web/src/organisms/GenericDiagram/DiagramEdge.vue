@@ -17,9 +17,6 @@
       stroke: strokeColor,
       strokeWidth: isHovered ? 3 : 2,
       hitStrokeWidth: 8,
-      // fill: '#A752DE',
-      // pointerAtBeginning: edge.isBidirectional,
-      // pointerAtEnding: true,
     }"
     @mouseover="onMouseOver"
     @mouseout="onMouseOut"
@@ -31,9 +28,9 @@
 import { useTheme } from "@/composables/injectTheme";
 import { KonvaEventObject } from "konva/lib/Node";
 import { Vector2d } from "konva/lib/types";
-import { computed, nextTick, onMounted, PropType, ref, watch } from "vue";
+import { computed, PropType } from "vue";
 import { SOCKET_SIZE, SELECTION_COLOR } from "./diagram_constants";
-import { DiagramEdgeDef, DiagramNodeDef } from "./diagram_types";
+import { DiagramEdgeDef } from "./diagram_types";
 import { pointAlongLine } from "./utils/math";
 
 const props = defineProps({
@@ -78,13 +75,13 @@ const points = computed(() => {
   ];
 });
 
-function onMouseOver(e: KonvaEventObject<MouseEvent>) {
+function onMouseOver(_e: KonvaEventObject<MouseEvent>) {
   emit("hover:start");
 }
-function onMouseOut(e: KonvaEventObject<MouseEvent>) {
+function onMouseOut(_e: KonvaEventObject<MouseEvent>) {
   emit("hover:end");
 }
-function onMouseDown(e: KonvaEventObject<MouseEvent>) {
+function onMouseDown(_e: KonvaEventObject<MouseEvent>) {
   // e.cancelBubble = true; // stops dragging of parent
 }
 

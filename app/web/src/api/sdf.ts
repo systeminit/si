@@ -5,6 +5,7 @@ import { from, mergeMap, Observable } from "rxjs";
 import _ from "lodash";
 import { Workspace } from "@/api/sdf/dal/workspace";
 import { SessionService } from "@/service/session";
+import { config } from "@/config";
 
 export class FetchError extends Error {
   response: Response;
@@ -202,3 +203,5 @@ export class SDF {
 export function isSdfError(obj: unknown): obj is ApiResponseError {
   return !!(obj as ApiResponseError).error;
 }
+
+export const sdf = new SDF(config);

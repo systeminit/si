@@ -12,7 +12,6 @@
     }"
     @mouseover="onMouseOver"
     @mouseout="onMouseOut"
-    @mousedown="onMouseDown"
   />
   <v-text
     ref="socketLabelRef"
@@ -38,11 +37,10 @@
 
 <script lang="ts" setup>
 import { KonvaEventObject } from "konva/lib/Node";
-import { computed, PropType, ref } from "vue";
+import { computed, PropType } from "vue";
 import {
   DiagramDrawEdgeState,
   DiagramEdgeDef,
-  DiagramNodeDef,
   DiagramSocketDef,
 } from "./diagram_types";
 
@@ -126,5 +124,4 @@ function onMouseOut(e: KonvaEventObject<MouseEvent>) {
   emit("hover:end");
   e.cancelBubble = true;
 }
-function onMouseDown(e: KonvaEventObject<MouseEvent>) {}
 </script>

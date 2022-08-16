@@ -12,10 +12,8 @@
 
 <script lang="ts" setup>
 import { useTheme } from "@/composables/injectTheme";
-import { KonvaEventObject } from "konva/lib/Node";
 import { Vector2d } from "konva/lib/types";
-import { computed, nextTick, onMounted, PropType, ref, watch } from "vue";
-import { DiagramEdgeDef, DiagramNodeDef } from "./diagram_types";
+import { computed, PropType } from "vue";
 
 const props = defineProps({
   fromPoint: {

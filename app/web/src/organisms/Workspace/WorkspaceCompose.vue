@@ -1,253 +1,182 @@
 <template>
-  <div class="w-full h-full flex pointer-events-none relative overflow-hidden">
-    <!-- FIXME(nick,victor): remove reliance on z index -->
-    <SiCanvas
-      v-if="lightMode && editorContext && deploymentNode && schematicData"
-      :deployment-node-selected="deploymentNode.id"
-      :editor-context="editorContext"
-      :schematic-data="schematicData"
-      :schematic-kind="SchematicKind.Component"
-      :schematic-viewer-id="schematicViewerId"
-      :viewer-event$="viewerEventObservable.viewerEvent$"
-      :viewer-state="viewerState"
-      class="pointer-events-auto absolute z-10"
-      light-mode
-    />
-    <SiCanvas
-      v-else-if="editorContext && deploymentNode && schematicData"
-      :deployment-node-selected="deploymentNode.id"
-      :editor-context="editorContext"
-      :schematic-data="schematicData"
-      :schematic-kind="SchematicKind.Component"
-      :schematic-viewer-id="schematicViewerId"
-      :viewer-event$="viewerEventObservable.viewerEvent$"
-      :viewer-state="viewerState"
-      class="pointer-events-auto absolute z-10"
-    />
-
+  <div class="w-full h-full flex relative overflow-hidden">
     <div class="flex flex-row w-full bg-transparent">
       <SiSidebar side="left">
         <ChangeSetPanel class="border-b-2 dark:border-neutral-500 mb-2" />
-        <AssetsTabs :viewer-event$="viewerEventObservable.viewerEvent$" />
+
+        <SiTabGroup>
+          <template #tabs>
+            <SiTabHeader>Asset Palette</SiTabHeader>
+            <!-- <SiTabHeader>Local Assets</SiTabHeader> -->
+          </template>
+
+          <template #panels>
+            <TabPanel class="flex flex-col overflow-y-hidden">
+              <AssetPalette @select="onSelectAssetToInsert" />
+            </TabPanel>
+            <!-- <TabPanel>Local Assets</TabPanel> -->
+          </template>
+        </SiTabGroup>
       </SiSidebar>
 
       <!-- transparent div that flows through to the canvas -->
-      <div class="grow h-full pointer-events-none"></div>
-
-      <SiSidebar
-        :hidden="
-          activeNode === null || selectedComponentIdentification === null
-        "
-        side="right"
-      >
-        <ComponentDetails
-          v-if="selectedComponentIdentification && selectedComponentName"
-          :component-identification="selectedComponentIdentification"
-          :component-name="selectedComponentName"
+      <div class="grow h-full relative bg-neutral-50 dark:bg-neutral-900">
+        <GenericDiagram
+          v-if="diagramData"
+          ref="diagramRef"
+          :nodes="diagramData?.nodes"
+          :edges="diagramData?.edges"
+          @insert-element="onDiagramInsertElement"
+          @move-element="onDiagramMoveElement"
+          @draw-edge="onDrawEdge"
+          @delete-elements="onDiagramDelete"
+          @update:selection="onDiagramUpdateSelection"
         />
+      </div>
+
+      <SiSidebar side="right">
+        <ComponentDetails
+          v-if="selectedComponent"
+          :component-identification="selectedComponent"
+          :component-name="selectedComponentLabel || 'selected component'"
+        />
+        <div v-else class="p-4">Select a single component to edit it</div>
       </SiSidebar>
     </div>
   </div>
 </template>
 
 <script lang="ts" setup>
-import {
-  EditorContext,
-  Schematic,
-  SchematicKind,
-  SchematicNode,
-  SchematicSchemaVariants,
-} from "@/api/sdf/dal/schematic";
-import SiCanvas from "@/organisms/SiCanvas.vue";
-import * as VE from "@/organisms/SiCanvas/viewer_event";
+import { TabPanel } from "@headlessui/vue";
 import _ from "lodash";
-import { ViewerStateMachine } from "@/organisms/SiCanvas/state_machine";
 import SiSidebar from "@/atoms/SiSidebar.vue";
-import { ThemeService } from "@/service/theme";
-import { refFrom, untilUnmounted } from "vuse-rx";
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import ChangeSetPanel from "@/organisms/ChangeSetPanel.vue";
-import { combineLatest, forkJoin, from, map, switchMap, take, tap } from "rxjs";
-import { GetSchematicArgs } from "@/service/schematic/get_schematic";
-import {
-  standardVisibilityTriggers$,
-  visibility$,
-} from "@/observable/visibility";
-import { SchematicService } from "@/service/schematic";
-import { GlobalErrorService } from "@/service/global_error";
-import {
-  schematicData$,
-  schematicSchemaVariants$,
-} from "@/observable/schematic";
-import { system$ } from "@/observable/system";
-import { applicationNodeId$ } from "@/observable/application";
-import AssetsTabs from "@/organisms/AssetsTabs.vue";
-import { lastSelectedNode$ } from "@/observable/selection";
 import ComponentDetails from "@/organisms/ComponentDetails.vue";
-import { ComponentIdentification } from "@/api/sdf/dal/component";
-import { LabelList } from "@/api/sdf/dal/label_list";
 import { ComponentService } from "@/service/component";
-import { Node } from "@/organisms/SiCanvas/canvas/obj/node";
+import SchematicDiagramService from "@/service/schematic-diagram";
+import {
+  InsertElementEvent,
+  MoveElementEvent,
+  DrawEdgeEvent,
+  DiagramElementIdentifier,
+  DeleteElementsEvent,
+} from "../GenericDiagram/diagram_types";
+import AssetPalette, { SelectAssetEvent } from "../AssetPalette.vue";
+import SiTabGroup from "@/molecules/SiTabGroup.vue";
+import SiTabHeader from "@/molecules/SiTabHeader.vue";
 
-const schematicViewerId = _.uniqueId();
-const viewerState = new ViewerStateMachine();
-const viewerEventObservable = new VE.ViewerEventObservable();
+import GenericDiagram from "../GenericDiagram/GenericDiagram.vue";
+import { useObservable } from "@vueuse/rxjs";
 
-const selectedComponentId = ref<number | "">("");
-const activeNode = refFrom(lastSelectedNode$);
+const diagramRef = ref<InstanceType<typeof GenericDiagram>>();
 
-const selectedComponentName = computed(() => {
-  if (selectedComponentId.value && componentIdentificationList.value) {
-    for (const identification of componentIdentificationList.value) {
-      if (
-        identification.value &&
-        identification.value.componentId === selectedComponentId.value
-      ) {
-        return identification.label;
-      }
-    }
-  }
-  return null;
+const diagramData = SchematicDiagramService.useDiagramData();
+const schemaVariants = SchematicDiagramService.useSchemaVariants();
+
+const selectedComponentId = ref<number>();
+
+const componentsListApiResponse = useObservable(
+  ComponentService.listComponentsIdentification(),
+);
+const componentsById = computed(() => {
+  if (componentsListApiResponse.value?.error) return {};
+  return _.keyBy(
+    componentsListApiResponse.value?.list,
+    (i) => i.value.componentId,
+  );
 });
 
-const componentIdentificationList = refFrom<
-  LabelList<ComponentIdentification | "">
->(
-  ComponentService.listComponentsIdentification().pipe(
-    switchMap((response) => {
-      if (response.error) {
-        GlobalErrorService.set(response);
-        return from([[]]);
-      } else {
-        const list: LabelList<ComponentIdentification | ""> = _.cloneDeep(
-          response.list,
-        );
-        list.push({ label: "", value: "" });
-        return from([list]);
-      }
-    }),
-  ),
-);
+const selectedComponent = computed(() => {
+  if (!selectedComponentId.value) return;
+  return componentsById.value[selectedComponentId.value]?.value;
+});
+// TODO: bit weird how the label is stored split - ideally wouldnt need to pass it in anyway
+const selectedComponentLabel = computed(() => {
+  if (!selectedComponentId.value) return;
+  return componentsById.value[selectedComponentId.value]?.label;
+});
 
-const componentRecord = computed(
-  (): Record<number, ComponentIdentification> => {
-    let record: Record<number, ComponentIdentification> = {};
-    if (componentIdentificationList.value) {
-      for (const item of componentIdentificationList.value) {
-        if (item.value !== "") {
-          record[item.value.componentId] = item.value;
-        }
-      }
-    }
-    return record;
-  },
-);
-
-const selectedComponentIdentification = computed(
-  (): ComponentIdentification | null => {
-    if (selectedComponentId.value) {
-      let record = componentRecord.value[selectedComponentId.value];
-      if (record === null || record === undefined) {
-        return null;
-      }
-      return componentRecord.value[selectedComponentId.value];
-    }
-    return null;
-  },
-);
-
-const updateSelection = (node: Node | null) => {
-  const componentId = node?.nodeKind?.componentId;
-
-  // FIXME(nick): re-add locking for the view-only mode.
-  // if (isPinned.value) return;
-
-  // Ignores deselection and fake nodes, as they don't have any attributes
-  if (!componentId || componentId === -1) return;
-
-  selectedComponentId.value = componentId;
-};
-lastSelectedNode$
-  .pipe(untilUnmounted)
-  .subscribe((node) => updateSelection(node));
-
-const deploymentNode = ref<SchematicNode | null>(null);
-const schematicData = refFrom<Schematic>(
-  schematicData$.pipe(
-    tap((sd) => {
-      if (!sd) {
-        deploymentNode.value = null;
-        return;
-      }
-      for (const node of sd.nodes) {
-        if (node.kind.kind == "deployment") {
-          deploymentNode.value = node;
-          break;
-        }
-      }
-    }),
-    map((sd) => sd ?? { nodes: [], connections: [] }),
-  ),
-);
-
-let oldSchematic: Schematic | undefined;
-let oldSchemaVariants: SchematicSchemaVariants | undefined;
-combineLatest([
-  system$.pipe(
-    map((system) => {
-      const request: GetSchematicArgs = {};
-      if (system) {
-        request.systemId = system.id;
-      }
-      return request;
-    }),
-  ),
-  standardVisibilityTriggers$,
-])
-  .pipe(
-    switchMap(([request]) => {
-      const variants = SchematicService.listSchemaVariants().pipe(take(1));
-      const schematic = SchematicService.getSchematic(request).pipe(take(1));
-      return from([[variants, schematic]]);
-    }),
-    switchMap((calls) => {
-      return forkJoin(calls);
-    }),
-  )
-  .pipe(untilUnmounted)
-  .subscribe(([variants, schematic]) => {
-    if (variants.error) {
-      GlobalErrorService.set(variants);
-      return from([]);
-    }
-
-    if (schematic.error) {
-      GlobalErrorService.set(schematic);
-      return from([]);
-    }
-
-    // If the schematic didn't change, but standard visibility triggers forced a refetch, we have to ignore it
-    // We avoid passing this stale data around (it races making nodes teleport right after a move, as the local data is more up to date)
-    if (!oldSchematic || !_.isEqual(oldSchematic, schematic)) {
-      oldSchematic = schematic as Schematic;
-      schematicData$.next(schematic as Schematic);
-    }
-
-    if (!oldSchemaVariants || !_.isEqual(oldSchemaVariants, variants)) {
-      oldSchemaVariants = variants as SchematicSchemaVariants;
-      schematicSchemaVariants$.next(variants as SchematicSchemaVariants);
-    }
+const lastInsertSelection = ref<{ schemaId: number }>();
+const insertCallbacks: Record<string, () => void> = {};
+function onSelectAssetToInsert(e: SelectAssetEvent) {
+  // keep track of what was selected to insert
+  lastInsertSelection.value = { schemaId: e.schemaId };
+  diagramRef.value?.beginInsertElement("node");
+}
+watch(diagramData, () => {
+  // TODO: this should be firing off the callback only when we find the matching new node, but we dont have the new ID yet
+  _.each(insertCallbacks, (insertCallback, newNodeId) => {
+    insertCallback();
+    delete insertCallbacks[newNodeId];
   });
+});
 
-const editorContext = refFrom<EditorContext | null>(
-  combineLatest([system$, applicationNodeId$, visibility$]).pipe(
-    map(([system, applicationNodeId]) =>
-      applicationNodeId ? { systemId: system?.id, applicationNodeId } : null,
-    ),
-  ),
-);
+async function onDrawEdge(e: DrawEdgeEvent) {
+  const [fromNodeId, fromSocketId] = e.fromSocketId.split("-");
+  const [toNodeId, toSocketId] = e.toSocketId.split("-");
 
-const lightMode = refFrom<boolean>(
-  ThemeService.currentTheme().pipe(map((theme) => theme?.value == "light")),
-);
+  // TODO: this is super hacky - we should not need to pass these IDs from the frontend anyway
+  const sockets = _.flatMap(schemaVariants.value, (sv) => [
+    ...sv.inputSockets,
+    ...sv.outputSockets,
+  ]);
+  const socketsById = _.keyBy(sockets, (s) => s.id);
+
+  const fromProviderId = socketsById[fromSocketId].provider.id;
+  const toProviderId = socketsById[toSocketId].provider.id;
+
+  await SchematicDiagramService.actions.createConnection({
+    fromNodeId,
+    fromSocketId,
+    fromProviderId: fromProviderId.toString(),
+    toNodeId,
+    toSocketId,
+    toProviderId: toProviderId.toString(),
+  });
+}
+
+async function onDiagramInsertElement(e: InsertElementEvent) {
+  if (!lastInsertSelection.value)
+    throw new Error("missing insert selection metadata");
+
+  await SchematicDiagramService.actions.createNode(
+    lastInsertSelection.value.schemaId,
+    e.position,
+  );
+
+  // TODO: we actually want the new node ID so we can watch for it in the updated data
+  // but the API currently doesn't have it right away :(
+  const newNodeId = +new Date();
+  insertCallbacks[newNodeId] = e.onComplete;
+}
+
+function onDiagramMoveElement(e: MoveElementEvent) {
+  // this gets called many times during a move, with e.isFinal telling you if the drag is in progress or complete
+  // eventually we will want to send those to the backend for realtime multiplayer
+  // But for now we just send off the final position
+  if (!e.isFinal) return;
+  SchematicDiagramService.actions.updateNodePosition(e.id, e.position);
+}
+
+function onDiagramUpdateSelection(newSelection: DiagramElementIdentifier[]) {
+  // for now, we dont support multiselect anywhere outside the diagram, so we just act like nothing is selected
+  if (newSelection.length !== 1) {
+    selectedComponentId.value = undefined;
+    return;
+  }
+
+  const selectedElement = newSelection[0];
+  // we also dont support selecting things other than nodes outside the diagram
+  if (selectedElement.diagramElementType !== "node") {
+    selectedComponentId.value = undefined;
+    return;
+  }
+  selectedComponentId.value = parseInt(selectedElement.id);
+}
+
+function onDiagramDelete(_e: DeleteElementsEvent) {
+  // eslint-disable-next-line no-alert
+  alert("Deletion not supported yet!");
+}
 </script>

@@ -18,19 +18,19 @@ export type DiagramNodeDef = {
   /** unique id of the node */
   id: string;
   /** node type within the context of the diagram */
-  type: string | null;
+  type?: string | null;
   /** title of diagram node */
   title: string;
   /** subtitle of diagram node */
-  subtitle: string | null;
+  subtitle?: string | null;
   /** more text content displayed within the node */
-  content: string | null;
+  content?: string | null;
   /** sockets on the node */
-  sockets: DiagramSocketDef[] | null;
+  sockets?: DiagramSocketDef[];
   /** x,y placement of the node on the diagram */
   position: GridPoint;
   // statusIcons?: NodeStatusIcon[];
-  color: string | null;
+  color?: string | null;
 };
 
 export type DiagramSocketDef = {
@@ -53,6 +53,11 @@ export type DiagramSocketDef = {
   // shape
 };
 
+export type DiagramContent = {
+  nodes: DiagramNodeDef[];
+  edges: DiagramEdgeDef[];
+};
+
 export type DiagramEdgeDef = {
   id: string;
   type?: string;
@@ -63,11 +68,6 @@ export type DiagramEdgeDef = {
   // color
   // thickness
 };
-
-export interface DiagramSchematicDef {
-  nodes: DiagramNodeDef[];
-  edges: DiagramEdgeDef[];
-}
 
 // specific features... likely will move these as the diagram functionality gets broken up
 export type PendingInsertedElement = {
@@ -86,18 +86,17 @@ export type DiagramDrawEdgeState = {
 };
 
 // Event payloads - emitted by generic diagram //////////////////////////////////
-export type NodeMoveEvent = {
+export type MoveElementEvent = {
   id: string;
+  diagramElementType: DiagramElementTypes;
   position: Vector2d;
   isFinal: boolean;
 };
 export type DrawEdgeEvent = {
-  fromNodeId: string;
   fromSocketId: string;
-  toNodeId: string;
   toSocketId: string;
 };
-export type DeleteEvent = {
+export type DeleteElementsEvent = {
   elements: DiagramElementIdentifier[];
 };
 export type InsertElementEvent = {

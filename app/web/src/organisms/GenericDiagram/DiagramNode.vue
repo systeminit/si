@@ -3,8 +3,8 @@
     ref="groupRef"
     :config="{
       id: `node-${node.id}`,
-      x: node.position.x,
-      y: node.position.y,
+      x: position.x,
+      y: position.y,
     }"
     @mouseover="onMouseOver"
     @mouseout="onMouseOut"
@@ -157,13 +157,16 @@ import {
   DIAGRAM_FONT_FAMILY,
   SELECTION_COLOR,
 } from "./diagram_constants";
-import { useZoomLevel } from "./utils/use-diagram-context-provider";
 import { useTheme } from "@/composables/injectTheme";
+import { Vector2d } from "konva/lib/types";
 
 const props = defineProps({
   node: {
     type: Object as PropType<DiagramNodeDef>,
     required: true,
+  },
+  tempPosition: {
+    type: Object as PropType<Vector2d>,
   },
   connectedEdges: {
     type: Object as PropType<Record<string, DiagramEdgeDef[]>>,
@@ -192,9 +195,7 @@ const rightSockets = computed(() =>
   _.filter(props.node.sockets, (s) => s.nodeSide === "right"),
 );
 
-const zoomLevel = useZoomLevel();
-
-const nodeWidth = computed(() => 150);
+const nodeWidth = computed(() => 170);
 const halfWidth = computed(() => nodeWidth.value / 2);
 
 const headerTextHeight = ref(20);
@@ -228,7 +229,7 @@ const nodeHeight = computed(
   () => nodeHeaderHeight.value + nodeBodyHeight.value,
 );
 
-const position = computed(() => props.node.position);
+const position = computed(() => props.tempPosition || props.node.position);
 
 watch([nodeWidth, nodeHeight, position], () => {
   // we call on nextTick to let the component actually update itself on the stage first
@@ -254,10 +255,10 @@ const colors = computed(() => {
   };
 });
 
-function onMouseOver(e: KonvaEventObject<MouseEvent>) {
+function onMouseOver(_e: KonvaEventObject<MouseEvent>) {
   emit("hover:start");
 }
-function onMouseOut(e: KonvaEventObject<MouseEvent>) {
+function onMouseOut(_e: KonvaEventObject<MouseEvent>) {
   emit("hover:end");
 }
 </script>

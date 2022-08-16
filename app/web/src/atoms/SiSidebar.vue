@@ -6,7 +6,7 @@
 </template>
 
 <script setup lang="ts">
-import { toRef, computed } from "vue";
+import { computed, toRef } from "vue";
 
 const props = withDefaults(
   defineProps<{

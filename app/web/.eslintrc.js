@@ -31,7 +31,6 @@ module.exports = {
     "vue/script-setup-uses-vars": "error",
     "@typescript-eslint/ban-ts-comment": "off",
     "vue/multi-word-component-names": "off",
-    "vue/v-on-event-hyphenation": "off",
     "vue/require-default-prop": "off",
     // some rules to downgrade to warning while developing
     // useful so things dont crash when code is temporarily commented out
@@ -43,8 +42,5 @@ module.exports = {
   parserOptions: {
     parser: "@typescript-eslint/parser",
   },
-  ignorePatterns: [
-    "src/ignore/*",
-    "src/organisms/SiCanvas/references/*",
-  ],
+  ignorePatterns: ["src/ignore/*", "src/organisms/SiCanvas/references/*"],
 };

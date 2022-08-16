@@ -7,6 +7,7 @@ overflow hidden */
       v-if="showDebugBar"
       class="absolute bg-black text-white flex space-x-10 z-10 opacity-50"
     >
+      <div>fonts loaded? {{ customFontsLoaded }}</div>
       <div>origin = {{ gridOrigin.x }}, {{ gridOrigin.y }}</div>
       <div>
         pointer (raw) =
@@ -18,6 +19,7 @@ overflow hidden */
       </div>
     </div>
     <v-stage
+      v-if="customFontsLoaded"
       ref="stageRef"
       :config="{
         width: containerWidth,
@@ -25,7 +27,7 @@ overflow hidden */
         scale: { x: zoomLevel, y: zoomLevel },
         offset: { x: gridMinX, y: gridMinY },
       }"
-      class="bg-neutral-100"
+      class=""
       :style="{ cursor }"
       @mousedown="onMouseDown"
     >
@@ -41,6 +43,7 @@ overflow hidden */
           v-for="node in nodes"
           :key="node.id"
           :node="node"
+          :temp-position="movedElementPositions[node.id]"
           :connected-edges="connectedEdgesByNodeIdBySocketId[node.id]"
           :draw-edge-state="drawEdgeState"
           :is-hovered="elementIsHovered('node', node.id)"
@@ -52,7 +55,6 @@ overflow hidden */
         <DiagramEdge
           v-for="edge in edges"
           :key="edge.id"
-          :ref="(el: any) => edgeRefs[edge.id] = el"
           :edge="edge"
           :from-point="socketsLocationInfo[edge.fromSocketId]?.center"
           :to-point="socketsLocationInfo[edge.toSocketId]?.center"
@@ -61,7 +63,7 @@ overflow hidden */
           @hover:start="onEdgeHoverStart(edge.id)"
           @hover:end="onEdgeHoverEnd(edge.id)"
         />
-        <!-- pending elements being inserted -->
+        <!-- placeholders for new inserted elements still processing -->
         <v-rect
           v-for="(pendingInsert, pendingInsertId) in pendingInsertedElements"
           :key="pendingInsertId"
@@ -71,7 +73,7 @@ overflow hidden */
             cornerRadius: CORNER_RADIUS,
             x: pendingInsert.position!.x - 50,
             y: pendingInsert.position!.y,
-            fill: 'rgba(0,0,0,.3)'
+            fill: 'rgba(0,0,0,.4)'
           }"
         />
         <!-- drag to select selection box -->
@@ -108,16 +110,14 @@ const ZOOM_PAN_FACTOR = 0.5; // scroll pan multiplied by this and zoom level whe
 </script>
 
 <script lang="ts" setup>
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import {
   onMounted,
   ref,
   computed,
   onBeforeUnmount,
-  provide,
   reactive,
-  nextTick,
   watch,
-  unref,
 } from "vue";
 import { PropType } from "vue";
 import { Stage as KonvaStage } from "konva/lib/Stage";
@@ -126,14 +126,14 @@ import DiagramGridBackground from "./DiagramGridBackground.vue";
 import { KonvaEventObject } from "konva/lib/Node";
 import { Vector2d } from "konva/lib/types";
 import {
-  DeleteEvent,
+  DeleteElementsEvent,
   DiagramConfig,
   DiagramDrawEdgeState,
   DiagramEdgeDef,
   DiagramElementIdentifier,
   DiagramNodeDef,
   DrawEdgeEvent,
-  NodeMoveEvent,
+  MoveElementEvent,
   Direction,
   PendingInsertedElement,
   DiagramElementTypes,
@@ -157,6 +157,7 @@ import {
 import DiagramNewEdge from "./DiagramNewEdge.vue";
 import { convertArrowKeyToDirection } from "./utils/keyboard";
 import tinycolor from "tinycolor2";
+import { useCustomFontsLoaded } from "@/composables/useFontLoaded";
 
 const props = defineProps({
   diagramConfig: {
@@ -176,19 +177,19 @@ const props = defineProps({
 const emit = defineEmits<{
   (e: "update:zoom", newZoom: number): void;
   (e: "update:selection", newSelection: DiagramElementIdentifier[]): void;
-  (e: "nodeMove", nodeMoveInfo: NodeMoveEvent): void;
-  (e: "drawEdge", drawEdgeInfo: DrawEdgeEvent): void;
-  (e: "deleteElements", deleteInfo: DeleteEvent): void;
-  (e: "insertElement", insertInfo: InsertElementEvent): void;
+  (e: "move-element", nodeMoveInfo: MoveElementEvent): void;
+  (e: "delete-elements", deleteInfo: DeleteElementsEvent): void;
+  (e: "insert-element", insertInfo: InsertElementEvent): void;
+  (e: "draw-edge", drawEdgeInfo: DrawEdgeEvent): void;
 }>();
 
-const showDebugBar = true;
+const showDebugBar = false;
+
+const customFontsLoaded = useCustomFontsLoaded();
 
 let kStage: KonvaStage;
 const stageRef = ref();
 const containerRef = ref<HTMLDivElement>();
-
-const edgeRefs = reactive<Record<string, any>>({});
 
 // we track the container dimensions and position locally here using a resize observer
 // so if the outside world wants to resize the diagram, it should just resize whatever container it lives in
@@ -221,10 +222,7 @@ const gridMaxX = computed(() => gridOrigin.value.x + gridWidth.value / 2);
 const gridMinY = computed(() => gridOrigin.value.y - gridHeight.value / 2);
 const gridMaxY = computed(() => gridOrigin.value.y + gridHeight.value / 2);
 
-function convertContainerCoordsToGridCoords(
-  v?: Vector2d,
-): Vector2d | undefined {
-  if (!v) return;
+function convertContainerCoordsToGridCoords(v: Vector2d): Vector2d {
   return {
     x: gridMinX.value + v.x / zoomLevel.value,
     y: gridMinY.value + v.y / zoomLevel.value,
@@ -234,9 +232,22 @@ function convertContainerCoordsToGridCoords(
 /** pointer position in frame of reference of container */
 const containerPointerPos = ref<Vector2d>();
 /** pointer position in frame of reference of grid  */
-const gridPointerPos = computed(() =>
-  convertContainerCoordsToGridCoords(containerPointerPos.value),
-);
+const gridPointerPos = computed(() => {
+  if (!containerPointerPos.value) return undefined;
+  const converted = convertContainerCoordsToGridCoords(
+    containerPointerPos.value,
+  );
+  converted.x = Math.round(converted.x);
+  converted.y = Math.round(converted.y);
+  return converted;
+});
+const pointerIsWithinGrid = computed(() => {
+  if (!gridPointerPos.value) return false;
+  const { x, y } = gridPointerPos.value;
+  if (x < gridMinX.value || x > gridMaxX.value) return false;
+  if (y < gridMinY.value || y > gridMaxY.value) return false;
+  return true;
+});
 
 function onMouseWheel(e: KonvaEventObject<WheelEvent>) {
   // TODO check if target is the stage?
@@ -304,7 +315,19 @@ const onResize: ResizeObserverCallback = (entries) => {
 const debouncedOnResize = _.debounce(onResize, 50);
 const resizeObserver = new ResizeObserver(debouncedOnResize);
 
+// this is all a little ugly, but basically we are waiting until custom fonts are loaded to initialize and display the canvas
+// or otherwise spacing gets messed up and we'd have to tell everything to rerender/recalculate when the fonts did get loaded
+const isMounted = ref(false);
 onMounted(() => {
+  isMounted.value = true;
+});
+
+watch([customFontsLoaded, () => isMounted.value, () => stageRef.value], () => {
+  if (!isMounted.value || !customFontsLoaded.value || !stageRef.value) return;
+  onMountedAndReady();
+});
+
+function onMountedAndReady() {
   kStage = stageRef.value.getNode();
   kStage.on("wheel", onMouseWheel);
   // attach to window so we have coords even when mouse is outside bounds or on other elements
@@ -314,7 +337,8 @@ onMounted(() => {
   window.addEventListener("keydown", onKeyDown);
   window.addEventListener("keyup", onKeyUp);
   resizeObserver.observe(containerRef.value!);
-});
+}
+
 onBeforeUnmount(() => {
   kStage.off("wheel", onMouseWheel);
   window.removeEventListener("mousemove", onMouseMove);
@@ -355,7 +379,11 @@ function onKeyDown(e: KeyboardEvent) {
   if (e.repeat) return; // don't process repeat events (key being held down fires multiple times)
 
   // TODO: escape will probably have more complex behaviour
-  if (e.key === "Escape") clearSelection();
+  if (e.key === "Escape") {
+    clearSelection();
+    if (insertElementActive.value) endInsertElement();
+    if (dragSelectActive.value) endDragSelect(false);
+  }
   if (e.key === "Delete" || e.key === "Backspace") deleteSelected();
 }
 function onKeyUp(e: KeyboardEvent) {
@@ -369,15 +397,18 @@ const dragThresholdBroken = ref(false);
 const lastMouseDownEvent = ref<MouseEvent>();
 const lastMouseDownContainerPointerPos = ref<Vector2d>();
 const lastMouseDownDiagramElement = ref<DiagramElementIdentifier>();
-function onMouseDown(e: KonvaEventObject<MouseEvent>) {
+function onMouseDown(ke: KonvaEventObject<MouseEvent>) {
   // not sure why, but this is being called twice, once with the konva event, and once with the bare event
   // so we ignore the bare event
-  if (!e.evt) return;
+  if (!ke.evt) return;
+  const e = ke.evt;
+  // we only care here about left click - might change this later...
+  if (e.button !== 0) return;
   mouseIsDown.value = true;
   dragThresholdBroken.value = false;
   lastMouseDownContainerPointerPos.value = containerPointerPos.value;
   // store the mouse event, as we may want to know modifier keys that were held on the original click
-  lastMouseDownEvent.value = e.evt;
+  lastMouseDownEvent.value = e;
   // track the originally clicked element, as the mouse may move off of it while beginning the drag
   lastMouseDownDiagramElement.value = hoveredElement.value;
 
@@ -388,12 +419,18 @@ function onMouseDown(e: KonvaEventObject<MouseEvent>) {
   else if (insertElementActive.value) triggerInsertElement();
   else handleMouseDownSelection();
 }
-function onMouseUp() {
+function onMouseUp(e: MouseEvent) {
+  // we only care here about left click - might change this later...
+  if (e.button !== 0) return;
   mouseIsDown.value = false;
   if (dragToPanActive.value) endDragToPan();
   else if (dragElementsActive.value) endDragElements();
   else if (dragSelectActive.value) endDragSelect();
   else if (drawEdgeActive.value) endDrawEdge();
+  // we'll handle insert on mouseup too in case the user dragged the element from the asset palette and then let go in the canvas
+  // TODO: probably change this - its a bit hacky...
+  else if (insertElementActive.value && pointerIsWithinGrid.value)
+    triggerInsertElement();
   else handleMouseUpSelection();
 }
 function onMouseMove(e: MouseEvent) {
@@ -630,6 +667,7 @@ const SELECTION_BOX_INNER_COLOR = tinycolor(SELECTION_COLOR)
   .setAlpha(0.4)
   .toRgbString();
 function beginDragSelect() {
+  if (!containerPointerPos.value) return;
   dragSelectSelectionPreview.value = [];
   dragSelectActive.value = true;
   // this triggers after the user breaks the dragging threshold, so we dont start at curent position, but where they clicked
@@ -668,12 +706,13 @@ function onDragSelectMove() {
     dragSelectSelectionPreview.value = selectedInBox;
   }
 }
-function endDragSelect() {
+function endDragSelect(doSelection = true) {
   dragSelectActive.value = false;
-  setSelection(dragSelectSelectionPreview.value);
+  if (doSelection) setSelection(dragSelectSelectionPreview.value);
 }
 
 // MOVING DIAGRAM ELEMENTS (nodes/groups/annotations/etc) ///////////////////////////////////////
+const movedElementPositions = reactive<Record<string, Vector2d>>({});
 const dragElementsActive = ref(false);
 const currentSelectionMovableElements = computed(() => {
   const draggableElIds = _.filter(
@@ -698,12 +737,24 @@ function beginDragElements() {
 
   draggedElementsPositionsPreDrag.value = _.map(
     currentSelectionMovableElements.value,
-    (el) => el.position!,
+    (el) => movedElementPositions[el.id] || el.position!,
   );
 }
 function endDragElements() {
   dragElementsActive.value = false;
-  // TODO: fire off final move event
+  // fire off final move event, might want to clean up how this is done...
+  _.each(currentSelectionMovableElements.value, (el, i) => {
+    if (!movedElementPositions[el.id]) return;
+    emit("move-element", {
+      id: el.id,
+      diagramElementType: "node",
+      position: movedElementPositions[el.id],
+      isFinal: true,
+    });
+
+    // TODO: probably should remove the temp position, but since the backend is super slow, we'll leave it for now
+    // delete movedElementPositions[el.id];
+  });
 }
 
 let dragToEdgeScrollInterval: ReturnType<typeof setInterval> | undefined;
@@ -711,16 +762,18 @@ function onDragElementsMove() {
   if (!containerPointerPos.value) return;
   if (!lastMouseDownContainerPointerPos.value) return;
   const delta: Vector2d = {
-    x:
+    x: Math.round(
       (containerPointerPos.value.x -
         lastMouseDownContainerPointerPos.value.x +
         totalScrolledDuringDrag.value.x) /
-      zoomLevel.value,
-    y:
+        zoomLevel.value,
+    ),
+    y: Math.round(
       (containerPointerPos.value.y -
         lastMouseDownContainerPointerPos.value.y +
         totalScrolledDuringDrag.value.y) /
-      zoomLevel.value,
+        zoomLevel.value,
+    ),
   };
 
   // if shift key is down, we only move on one axis (whichever delta is largest)
@@ -736,8 +789,14 @@ function onDragElementsMove() {
       draggedElementsPositionsPreDrag.value?.[i],
       delta,
     );
-    emit("nodeMove", { id: el.id, position: newPosition, isFinal: false });
-    // onNodeLayoutOrLocationChange(el.id);
+    // track the position locally, so we dont need to rely on parent to store the temporary position
+    movedElementPositions[el.id] = newPosition;
+    emit("move-element", {
+      id: el.id,
+      diagramElementType: "node",
+      position: newPosition,
+      isFinal: false,
+    });
   });
 
   // check if dragging to the edge of the screen, which will trigger scrolling
@@ -828,12 +887,15 @@ function alignSelection(direction: Direction) {
   else if (direction === "left") alignedX = _.min(xPositions);
   else if (direction === "right") alignedX = _.max(xPositions);
   _.each(currentSelectionMovableElements.value, (el) => {
-    emit("nodeMove", {
+    const newPosition = {
+      x: alignedX === undefined ? el.position.x : alignedX,
+      y: alignedY === undefined ? el.position.y : alignedY,
+    };
+    movedElementPositions[el.id] = newPosition;
+    emit("move-element", {
       id: el.id,
-      position: {
-        x: alignedX === undefined ? el.position.x : alignedX,
-        y: alignedY === undefined ? el.position.y : alignedY,
-      },
+      diagramElementType: "node",
+      position: newPosition,
       isFinal: true,
     });
   });
@@ -849,9 +911,12 @@ function nudgeSelection(direction: Direction, largeNudge: boolean) {
     down: { x: 0, y: 1 * nudgeSize },
   }[direction];
   _.each(currentSelectionMovableElements.value, (el) => {
-    emit("nodeMove", {
+    const newPosition = vectorAdd(el.position, nudgeVector);
+    movedElementPositions[el.id] = newPosition;
+    emit("move-element", {
       id: el.id,
-      position: vectorAdd(el.position, nudgeVector),
+      diagramElementType: "node",
+      position: newPosition,
       isFinal: true,
     });
   });
@@ -926,16 +991,21 @@ function onDrawEdgeMove() {
     drawEdgeToSocketId.value = undefined;
   }
 }
-function endDrawEdge() {
+async function endDrawEdge() {
   drawEdgeActive.value = false;
-  if (drawEdgeFromSocketId.value && drawEdgeToSocketId.value) {
-    emit("drawEdge", {
-      fromNodeId: socketIdToNodeIdLookup.value[drawEdgeFromSocketId.value].id,
-      fromSocketId: drawEdgeFromSocketId.value,
-      toNodeId: socketIdToNodeIdLookup.value[drawEdgeToSocketId.value].id,
-      toSocketId: drawEdgeToSocketId.value,
-    });
-  }
+  if (!drawEdgeFromSocketId.value || !drawEdgeToSocketId.value) return;
+
+  // if the user dragged from an input to an output, we'll reverse the direction when we fire off the event
+  const swapDirection =
+    allSocketsById.value[drawEdgeFromSocketId.value].direction === "input";
+  emit("draw-edge", {
+    fromSocketId: swapDirection
+      ? drawEdgeToSocketId.value
+      : drawEdgeFromSocketId.value,
+    toSocketId: swapDirection
+      ? drawEdgeFromSocketId.value
+      : drawEdgeToSocketId.value,
+  });
 }
 // ELEMENT ADDITION
 const insertElementActive = ref(false);
@@ -968,7 +1038,7 @@ function triggerInsertElement() {
   // ideally without trying to match up new data (nodes/etc) that comes in through props
   // because in multiplayer mode we may have new stuff flowing in
   // so we pass a callback for the parent to call when the insert is done
-  emit("insertElement", {
+  emit("insert-element", {
     diagramElementType: insertElementType.value,
     position: gridPointerPos.value,
     onComplete: () => {
@@ -996,7 +1066,7 @@ function deleteSelected() {
       id: e.id,
     }),
   );
-  emit("deleteElements", { elements: [...selected, ...edgeEls] });
+  emit("delete-elements", { elements: [...selected, ...edgeEls] });
 }
 
 // LAYOUT REGISTRY + HELPERS ///////////////////////////////////////////////////////////

@@ -25,10 +25,10 @@
         :nodes="nodes"
         :edges="edges"
         @update:zoom="onUpdateZoom"
-        @nodeMove="onNodeMove"
-        @drawEdge="onDrawEdge"
-        @deleteElements="onDelete"
-        @insertElement="onInsert"
+        @move-element="onNodeMove"
+        @delete-elements="onDelete"
+        @insert-element="onInsert"
+        @draw-edge="onDrawEdge"
       />
     </div>
   </div>
@@ -38,13 +38,13 @@
 import { reactive, ref, watch } from "vue";
 import _ from "lodash";
 import {
-  DeleteEvent,
+  DeleteElementsEvent,
   DiagramEdgeDef,
   DiagramNodeDef,
   DiagramSocketDef,
   DrawEdgeEvent,
   InsertElementEvent,
-  NodeMoveEvent,
+  MoveElementEvent,
 } from "./diagram_types";
 import GenericDiagram from "./GenericDiagram.vue";
 
@@ -152,7 +152,7 @@ const edges = reactive<DiagramEdgeDef[]>([
   // { id: "e3", fromSocketId: "n2/out", toSocketId: "n4/in" },
 ]);
 
-function onNodeMove(e: NodeMoveEvent) {
+function onNodeMove(e: MoveElementEvent) {
   const movedNode = nodes.find((n) => n.id === e.id);
   if (!movedNode) return;
   movedNode.position = e.position;
@@ -161,10 +161,10 @@ function onDrawEdge(e: DrawEdgeEvent) {
   edges.push({
     fromSocketId: e.fromSocketId,
     toSocketId: e.toSocketId,
-    id: `${e.fromNodeId}/${_.uniqueId()}`,
+    id: `${e.fromSocketId}/${_.uniqueId()}`,
   });
 }
-function onDelete(e: DeleteEvent) {
+function onDelete(e: DeleteElementsEvent) {
   _.each(e.elements, (el) => {
     if (el.diagramElementType === "node") {
       nodes.splice(_.findIndex(nodes, { id: el.id }), 1);

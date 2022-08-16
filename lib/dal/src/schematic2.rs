@@ -286,7 +286,7 @@ pub enum NodeSide2 {
     Right,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct SocketView2 {
     id: String,
@@ -309,6 +309,7 @@ impl SocketView2 {
             .sockets(ctx)
             .await?
             .into_iter()
+            .filter(|socket| socket.name() != "includes")
             .map(|socket| Self {
                 id: format!("{}-{}", node.id(), socket.id()),
                 label: socket.name().to_owned(),
@@ -332,17 +333,17 @@ impl SocketView2 {
     }
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct GridPoint2 {
     x: isize,
     y: isize,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct NodeView2 {
-    id: NodeId,
+    id: String,
     #[serde(rename = "type")]
     ty: Option<String>,
     title: String,
@@ -361,7 +362,7 @@ impl NodeView2 {
         schema_variant: &SchemaVariant,
     ) -> SchematicResult2<Self> {
         Ok(Self {
-            id: *node.id(),
+            id: node.id().to_string(),
             ty: None,
             title: schema_variant
                 .schema(ctx)
@@ -376,15 +377,17 @@ impl NodeView2 {
                 x: position.x().parse()?,
                 y: position.y().parse()?,
             },
-            color: schema_variant.color().map(ToString::to_string),
+            color: schema_variant
+                .color()
+                .map(|color_int| format!("#{color_int:x}")),
         })
     }
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct EdgeView2 {
-    id: EdgeId,
+    id: String,
     #[serde(rename = "type")]
     ty: Option<String>,
     name: Option<String>,
@@ -396,7 +399,7 @@ pub struct EdgeView2 {
 impl From<Connection> for EdgeView2 {
     fn from(conn: Connection) -> Self {
         Self {
-            id: conn.id,
+            id: conn.id.to_string(),
             ty: None,
             name: None,
             from_socket_id: format!("{}-{}", conn.source.node_id, conn.source.socket_id),
@@ -409,7 +412,7 @@ impl From<Connection> for EdgeView2 {
     }
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Schematic2 {
     nodes: Vec<NodeView2>,
@@ -428,6 +431,11 @@ impl Schematic2 {
         let mut node_views = Vec::with_capacity(nodes.len());
         for node in &nodes {
             // TODO: we have to filter the components here by system
+
+            // hide deployment nodes from the diagram since we'll likely remove it completely
+            if *node.kind() == NodeKind::Deployment {
+                continue;
+            }
 
             // Allows us to ignore nodes that aren't in current application
             let conns = connections
@@ -507,7 +515,11 @@ impl Schematic2 {
         Ok(Self {
             edges: valid_connections
                 .into_iter()
-                .filter(|conn| node_views.iter().any(|n| conn.destination.node_id == n.id))
+                .filter(|conn| {
+                    node_views
+                        .iter()
+                        .any(|n| conn.destination.node_id.to_string() == n.id)
+                })
                 .map(EdgeView2::from)
                 .collect(),
             nodes: node_views,
