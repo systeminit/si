@@ -1,14 +1,14 @@
 <template>
-  <div class="flex flex-col w-full bg-neutral-800">
+  <div class="flex flex-col w-full bg-neutral-700">
     <div class="relative overflow-hidden">
       <NextHeader hero-words />
 
       <div class="relative">
         <div class="absolute inset-0 flex flex-col" aria-hidden="true">
           <div class="flex-1" />
-          <div class="flex-1 w-full bg-neutral-900" />
+          <div class="flex-1 w-full bg-neutral-700" />
         </div>
-        <div class="max-w-7xl mx-auto px-4 sm:px-6">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 pb-24">
           <img
             class="relative rounded-lg"
             src="~/assets/hero-screenshot.png"
@@ -17,6 +17,304 @@
         </div>
       </div>
     </div>
+
+    <div class="py-16 bg-neutral-800 overflow-hidden lg:py-24">
+      <div class="relative max-w-xl mx-auto px-4 sm:px-6 lg:px-8 lg:max-w-7xl">
+        <div class="relative">
+          <h2
+            class="text-center text-3xl leading-8 font-bold tracking-tight text-gray-100 sm:text-4xl sm:tracking-tight"
+          >
+            Model, Act, Analyze, Customize
+          </h2>
+          <p class="mt-4 max-w-3xl mx-auto text-center text-xl text-gray-300">
+            System Initiative automates the entire DevOps lifecycle. Model your
+            infrastructure and applications; take action to manage their state;
+            analyze them over time; customize the System into the perfect
+            platform for your team.
+          </p>
+        </div>
+
+        <div
+          class="relative mt-12 lg:mt-24 lg:grid lg:grid-cols-2 lg:gap-8 lg:items-center"
+        >
+          <div class="relative">
+            <h3
+              class="text-2xl font-bold text-gray-100 tracking-tight sm:text-3xl sm:tracking-tight"
+            >
+              Model
+            </h3>
+            <p class="mt-3 text-lg text-gray-300">
+              Fully model your infrastructure and applications like you would
+              with Terraform, Pulumi, or CloudFormation. Only way faster.
+            </p>
+
+            <dl class="mt-10 space-y-10">
+              <div
+                v-for="item in modelFeatures"
+                :key="item.name"
+                class="relative"
+              >
+                <dt>
+                  <div
+                    class="absolute flex items-center justify-center h-12 w-12 rounded-md bg-neutral-900 text-white"
+                  >
+                    <component
+                      :is="item.icon"
+                      class="h-6 w-6"
+                      aria-hidden="true"
+                    />
+                  </div>
+                  <p class="ml-16 text-lg leading-6 font-medium text-gray-100">
+                    {{ item.name }}
+                  </p>
+                </dt>
+                <dd class="mt-2 ml-16 text-base text-gray-300">
+                  {{ item.description }}
+                </dd>
+              </div>
+            </dl>
+          </div>
+
+          <div class="mt-10 -mx-4 relative lg:mt-0" aria-hidden="true">
+            <img
+              class="relative mx-auto rounded-md"
+              width="490"
+              src="~/assets/hero-model.png"
+              alt=""
+            />
+          </div>
+        </div>
+
+        <div class="relative mt-12 sm:mt-16 lg:mt-24">
+          <div
+            class="lg:grid lg:grid-flow-row-dense lg:grid-cols-2 lg:gap-8 lg:items-center"
+          >
+            <div class="lg:col-start-2">
+              <h3
+                class="text-2xl font-bold text-gray-100 tracking-tight sm:text-3xl sm:tracking-tight"
+              >
+                Act
+              </h3>
+              <p class="mt-3 text-lg text-gray-300">
+                Take action to manage the state of your real world resources.
+                Like Ansible and GitHub Actions had a delightful baby.
+              </p>
+
+              <dl class="mt-10 space-y-10">
+                <div
+                  v-for="item in actFeatures"
+                  :key="item.id"
+                  class="relative"
+                >
+                  <dt>
+                    <div
+                      class="absolute flex items-center justify-center h-12 w-12 rounded-md bg-neutral-900 text-white"
+                    >
+                      <component
+                        :is="item.icon"
+                        class="h-6 w-6"
+                        aria-hidden="true"
+                      />
+                    </div>
+                    <p
+                      class="ml-16 text-lg leading-6 font-medium text-gray-100"
+                    >
+                      {{ item.name }}
+                    </p>
+                  </dt>
+                  <dd class="mt-2 ml-16 text-base text-gray-300">
+                    {{ item.description }}
+                  </dd>
+                </div>
+              </dl>
+            </div>
+
+            <div class="mt-10 -mx-4 relative lg:mt-0 lg:col-start-1">
+              <svg
+                class="absolute left-1/2 transform -translate-x-1/2 translate-y-16 lg:hidden"
+                width="784"
+                height="404"
+                fill="none"
+                viewBox="0 0 784 404"
+                aria-hidden="true"
+              >
+                <defs>
+                  <pattern
+                    id="e80155a9-dfde-425a-b5ea-1f6fadd20131"
+                    x="0"
+                    y="0"
+                    width="20"
+                    height="20"
+                    patternUnits="userSpaceOnUse"
+                  >
+                    <rect
+                      x="0"
+                      y="0"
+                      width="4"
+                      height="4"
+                      class="text-gray-200"
+                      fill="currentColor"
+                    />
+                  </pattern>
+                </defs>
+                <rect
+                  width="784"
+                  height="404"
+                  fill="url(#e80155a9-dfde-425a-b5ea-1f6fadd20131)"
+                />
+              </svg>
+              <img
+                class="relative mx-auto rounded-md"
+                width="490"
+                src="~/assets/hero-act.png"
+                alt=""
+              />
+            </div>
+          </div>
+        </div>
+
+        <div
+          class="relative mt-12 lg:mt-24 lg:grid lg:grid-cols-2 lg:gap-8 lg:items-center"
+        >
+          <div class="relative">
+            <h3
+              class="text-2xl font-bold text-gray-100 tracking-tight sm:text-3xl sm:tracking-tight"
+            >
+              Analyze
+            </h3>
+            <p class="mt-3 text-lg text-gray-300">
+              Analyze your real infrastructure and applications. Validate
+              compliance, view cost breakdowns, and troubleshoot issues.
+            </p>
+
+            <dl class="mt-10 space-y-10">
+              <div
+                v-for="item in analyzeFeatures"
+                :key="item.name"
+                class="relative"
+              >
+                <dt>
+                  <div
+                    class="absolute flex items-center justify-center h-12 w-12 rounded-md bg-neutral-900 text-white"
+                  >
+                    <component
+                      :is="item.icon"
+                      class="h-6 w-6"
+                      aria-hidden="true"
+                    />
+                  </div>
+                  <p class="ml-16 text-lg leading-6 font-medium text-gray-100">
+                    {{ item.name }}
+                  </p>
+                </dt>
+                <dd class="mt-2 ml-16 text-base text-gray-300">
+                  {{ item.description }}
+                </dd>
+              </div>
+            </dl>
+          </div>
+
+          <div class="mt-10 -mx-4 relative lg:mt-0" aria-hidden="true">
+            <img
+              class="relative mx-auto rounded-md"
+              width="490"
+              src="~/assets/hero-analyze.png"
+              alt=""
+            />
+          </div>
+        </div>
+
+        <div class="relative mt-12 sm:mt-16 lg:mt-24">
+          <div
+            class="lg:grid lg:grid-flow-row-dense lg:grid-cols-2 lg:gap-8 lg:items-center"
+          >
+            <div class="lg:col-start-2">
+              <h3
+                class="text-2xl font-bold text-gray-100 tracking-tight sm:text-3xl sm:tracking-tight"
+              >
+                Customize
+              </h3>
+              <p class="mt-3 text-lg text-gray-300">
+                Create your own models, change behavior, author custom workflows
+                - the sky is the limit. System Initiative is designed to become
+                the perfect platform for your team.
+              </p>
+
+              <dl class="mt-10 space-y-10">
+                <div
+                  v-for="item in customizeFeatures"
+                  :key="item.id"
+                  class="relative"
+                >
+                  <dt>
+                    <div
+                      class="absolute flex items-center justify-center h-12 w-12 rounded-md bg-neutral-900 text-white"
+                    >
+                      <component
+                        :is="item.icon"
+                        class="h-6 w-6"
+                        aria-hidden="true"
+                      />
+                    </div>
+                    <p
+                      class="ml-16 text-lg leading-6 font-medium text-gray-100"
+                    >
+                      {{ item.name }}
+                    </p>
+                  </dt>
+                  <dd class="mt-2 ml-16 text-base text-gray-300">
+                    {{ item.description }}
+                  </dd>
+                </div>
+              </dl>
+            </div>
+
+            <div class="mt-10 -mx-4 relative lg:mt-0 lg:col-start-1">
+              <svg
+                class="absolute left-1/2 transform -translate-x-1/2 translate-y-16 lg:hidden"
+                width="784"
+                height="404"
+                fill="none"
+                viewBox="0 0 784 404"
+                aria-hidden="true"
+              >
+                <defs>
+                  <pattern
+                    id="e80155a9-dfde-425a-b5ea-1f6fadd20131"
+                    x="0"
+                    y="0"
+                    width="20"
+                    height="20"
+                    patternUnits="userSpaceOnUse"
+                  >
+                    <rect
+                      x="0"
+                      y="0"
+                      width="4"
+                      height="4"
+                      class="text-gray-200"
+                      fill="currentColor"
+                    />
+                  </pattern>
+                </defs>
+                <rect
+                  width="784"
+                  height="404"
+                  fill="url(#e80155a9-dfde-425a-b5ea-1f6fadd20131)"
+                />
+              </svg>
+              <img
+                class="relative mx-auto rounded-md"
+                width="490"
+                src="~/assets/hero-customize.png"
+                alt=""
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div id="features" class="relative bg-neutral-900 py-16 sm:py-24 lg:py-32">
       <div
         class="mx-auto max-w-md px-4 text-center sm:max-w-3xl sm:px-6 lg:max-w-7xl lg:px-8"
@@ -117,9 +415,6 @@
 </template>
 
 <script setup>
-import { defineComponent, h } from "vue";
-import { Popover, PopoverButton, PopoverPanel } from "@headlessui/vue";
-import { MenuIcon, XIcon } from "@heroicons/vue/outline";
 import {
   CogIcon,
   ServerIcon,
@@ -130,7 +425,100 @@ import {
   AcademicCapIcon,
   UserGroupIcon,
   PresentationChartLineIcon,
+  SwitchHorizontalIcon,
+  ShieldCheckIcon,
+  TerminalIcon,
+  GlobeIcon,
+  EyeIcon,
+  ShieldExclamationIcon,
+  CurrencyDollarIcon,
+  CodeIcon,
+  PencilIcon,
+  DocumentDuplicateIcon,
 } from "@heroicons/vue/outline";
+
+const modelFeatures = [
+  {
+    name: "Intelligent",
+    description:
+      "Our intelligent, relationship aware models infer valid configuration automatically.",
+    icon: AcademicCapIcon,
+  },
+  {
+    name: "Safe",
+    description:
+      "Real-time qualifications tell you if your model will work without impacting real environements.",
+    icon: ShieldCheckIcon,
+  },
+  {
+    name: "Bi-Directional",
+    description:
+      "Start by importing what you already have; we will synchronize changes automatically.",
+    icon: SwitchHorizontalIcon,
+  },
+];
+
+const actFeatures = [
+  {
+    name: "Direct",
+    description:
+      "Run commands directly on models to manage the individual resources they represent.",
+    icon: TerminalIcon,
+  },
+  {
+    name: "Dynamic",
+    description:
+      "Script dynamic deployment and management workflows; if you can do it manually, you can script it with a workflow.",
+    icon: GlobeIcon,
+  },
+  {
+    name: "Reactive",
+    description:
+      "Trigger workflows and commands automatically when your resources change.",
+    icon: LightningBoltIcon,
+  },
+];
+
+const analyzeFeatures = [
+  {
+    name: "Visualize",
+    description: "Visualize your resources and their relationships.",
+    icon: PresentationChartLineIcon,
+  },
+  {
+    name: "Troubleshoot",
+    description:
+      "Spot where your infrastructure and applications aren't working correctly, and take action immediately.",
+    icon: ShieldExclamationIcon,
+  },
+  {
+    name: "Comply",
+    description:
+      "Use itemized cost breakdowns to stay on budget; check for compliance to regulatory requirements.",
+    icon: CurrencyDollarIcon,
+  },
+];
+
+const customizeFeatures = [
+  {
+    name: "Program",
+    description:
+      "Everything in System Initiative is a Typescript function you can author yourself.",
+    icon: CodeIcon,
+  },
+  {
+    name: "Control",
+    description:
+      "If you can see it, you can change it. We never sacrifice power.",
+    icon: PencilIcon,
+  },
+  {
+    name: "Specific",
+    description:
+      "Create the semantics that work for your organization on top of standardized models.",
+    icon: DocumentDuplicateIcon,
+  },
+];
 
 const features = [
   {
