@@ -52,11 +52,15 @@ impl AttributeValueDependentUpdateHarness {
         // - If one argument in group --> FuncBinding arg --> { name: value }
         // - If two arguments in group --> FuncBinding arg --> { name: [ value1, value2 ] }
         let mut func_binding_args: HashMap<String, Option<serde_json::Value>> = HashMap::new();
-        for mut argument_group in AttributePrototypeArgument::list_by_name_for_attribute_prototype(
-            ctx,
-            *attribute_prototype.id(),
-        )
-        .await?
+        for mut argument_group in
+            AttributePrototypeArgument::list_by_name_for_attribute_prototype_and_head_component_id(
+                ctx,
+                *attribute_prototype.id(),
+                attribute_value_that_needs_to_be_updated
+                    .context
+                    .component_id(),
+            )
+            .await?
         {
             #[allow(clippy::comparison_chain)]
             if argument_group.arguments.len() == 1 {

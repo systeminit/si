@@ -17,8 +17,8 @@ use crate::{
 
 const LIST_FOR_ATTRIBUTE_PROTOTYPE: &str =
     include_str!("../../queries/attribute_prototype_argument_list_for_attribute_prototype.sql");
-const LIST_BY_NAME_FOR_ATTRIBUTE_PROTOTYPE: &str = include_str!(
-    "../../queries/attribute_prototype_argument_list_by_name_for_attribute_prototype.sql"
+const LIST_BY_NAME_FOR_ATTRIBUTE_PROTOTYPE_AND_HEAD_COMPONENT_ID: &str = include_str!(
+    "../../queries/attribute_prototype_argument_list_by_name_for_attribute_prototype_and_head_component_id.sql"
 );
 
 #[derive(Error, Debug)]
@@ -336,19 +336,21 @@ impl AttributePrototypeArgument {
     /// [`Self::list_for_attribute_prototype()`] if the caller needs to group arguments that share
     /// the same "name" sharing the same name.
     #[tracing::instrument(skip(ctx))]
-    pub async fn list_by_name_for_attribute_prototype(
+    pub async fn list_by_name_for_attribute_prototype_and_head_component_id(
         ctx: &DalContext<'_, '_>,
         attribute_prototype_id: AttributePrototypeId,
+        head_component_id: ComponentId,
     ) -> AttributePrototypeArgumentResult<Vec<AttributePrototypeArgumentGroup>> {
         let rows = ctx
             .txns()
             .pg()
             .query(
-                LIST_BY_NAME_FOR_ATTRIBUTE_PROTOTYPE,
+                LIST_BY_NAME_FOR_ATTRIBUTE_PROTOTYPE_AND_HEAD_COMPONENT_ID,
                 &[
                     ctx.read_tenancy(),
                     ctx.visibility(),
                     &attribute_prototype_id,
+                    &head_component_id,
                 ],
             )
             .await?;
