@@ -26,8 +26,11 @@ FROM (SELECT DISTINCT ON (components.component_id, qualification_prototypes.id, 
                           components.tenancy_organization_ids,
                           components.tenancy_workspace_ids)
         AND is_visible_v1($2, components.visibility_change_set_pk, components.visibility_deleted_at)
-        AND is_visible_v1($2, qualification_resolvers.visibility_change_set_pk,
-                          qualification_resolvers.visibility_deleted_at)
+-- TODO(victor): This should be readded after the user tests, but something here is odd
+--         AND is_visible_v1($2, qualification_resolvers.visibility_change_set_pk,
+--                           qualification_resolvers.visibility_deleted_at)
+--         AND is_visible_v1($2, qualification_prototypes.visibility_change_set_pk,
+--                           qualification_prototypes.visibility_deleted_at)
         AND schemas.kind != 'concept'
       ORDER BY components.component_id, qualification_prototypes.id, qualification_resolvers.id,
                qualification_prototypes.visibility_change_set_pk DESC,

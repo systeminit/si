@@ -1,52 +1,176 @@
 <template>
-  <div
-    class="border border-neutral-300 rounded-md text-left py-2 px-5 h-full flex flex-col"
-  >
-    <div class="text-xl flex justify-between pb-2">
-      <div>
-        <StatusIndicatorIcon :status="qualificationStatus" class="w-6 mr-1.5" />
-        <span class="align-middle">{{ qualification.title }}</span>
+  <div class="bg-neutral-800 rounded text-left flex flex-col">
+    <div class="flex py-2 border-b border-black px-3 capitalize">
+      {{ qualification.title }}
+    </div>
+
+    <div class="w-full flex flex-col px-3 py-3 gap-2 text-sm">
+      <!-- TODO(victor): These StatusMessage components below should become their own molecules -->
+      <div
+        v-if="qualificationStatus === 'failure'"
+        class="flex p-2 border border-destructive-600 text-destructive-500 rounded items-start"
+      >
+        <StatusIndicatorIcon class="w-8 mr-2 shrink-0" status="failure" />
+        <span class="self-center">
+          Something went wrong! Click "View Details" to see the output.
+        </span>
       </div>
-      <ExternalLinkIcon
-        class="w-5 dark:text-neutral-300 inline-block align-middle transition-all"
-      />
-    </div>
-
-    <div class="w-full flex justify-between text-neutral-500 mb-2">
-      <p>{{ qualification.description ?? "No description" }}</p>
-      <a :href="qualification.link" target="_blank">
-        {{ qualification.link }}
-      </a>
-    </div>
-
-    <div
-      class="font-commodore bg-black overflow-hidden py-1 flex-grow flex flex-col justify-center"
-    >
-      <p
-        v-if="!qualification.output?.length"
-        class="text-neutral-500 text-center"
+      <div
+        v-else-if="qualificationStatus === 'success'"
+        class="flex p-2 border border-success-600 text-success-500 rounded items-start"
       >
-        No Output
-      </p>
-
-      <p
-        v-for="(output, index) in qualification.output.slice(-5)"
+        <StatusIndicatorIcon class="w-8 mr-2 shrink-0" status="success" />
+        <span class="self-center"> Passed! </span>
+      </div>
+      <div
         v-else
-        :key="index"
-        class="text-sm whitespace-nowrap overflow-hidden overflow-ellipsis px-1.5"
+        class="flex p-2 border border-action-600 text-action-500 rounded items-start"
       >
-        {{ output.line }}
-      </p>
+        <StatusIndicatorIcon class="w-8 mr-2 shrink-0" status="loading" />
+        <span class="self-center"> Qualification running, standby... </span>
+      </div>
+
+      <div v-if="qualification.description">
+        <b>Description: </b>
+        <p>{{ qualification.description }}</p>
+      </div>
+
+      <div class="text-right">
+        <button class="underline text-action-400" @click="openModal">
+          View Details
+        </button>
+      </div>
     </div>
+
+    <TransitionRoot :show="modalOpen" appear as="template">
+      <Dialog as="div" class="relative z-50" @close="closeModal">
+        <TransitionChild
+          as="template"
+          enter="duration-300 ease-out"
+          enter-from="opacity-0"
+          enter-to="opacity-100"
+          leave="duration-200 ease-in"
+          leave-from="opacity-100"
+          leave-to="opacity-0"
+        >
+          <div class="fixed inset-0 bg-black bg-opacity-50" />
+        </TransitionChild>
+
+        <div class="fixed inset-0 overflow-y-auto">
+          <div class="flex min-h-full items-center justify-center text-center">
+            <TransitionChild
+              as="template"
+              enter="duration-300 ease-out"
+              enter-from="opacity-0 scale-95"
+              enter-to="opacity-100 scale-100"
+              leave="duration-200 ease-in"
+              leave-from="opacity-100 scale-100"
+              leave-to="opacity-0 scale-95"
+            >
+              <DialogPanel
+                class="w-full max-w-md transform overflow-hidden rounded bg-white dark:bg-neutral-900 text-left align-middle shadow-xl transition-all text-black dark:text-white"
+              >
+                <div
+                  class="flex justify-between items-center py-2 border-b border-black px-2"
+                >
+                  <DialogTitle as="p" class="capitalize">
+                    {{ qualification.title }}
+                  </DialogTitle>
+                  <VButton
+                    button-rank="tertiary"
+                    button-type="neutral"
+                    icon="x"
+                    icon-style="alone"
+                    label=""
+                    @click="closeModal"
+                  />
+                </div>
+
+                <div class="w-full flex flex-col px-2 py-3 gap-3 text-sm">
+                  <div
+                    v-if="qualificationStatus === 'failure'"
+                    class="flex p-2 border border-destructive-600 text-destructive-500 rounded items-start"
+                  >
+                    <StatusIndicatorIcon
+                      class="w-8 mr-2 shrink-0"
+                      status="failure"
+                    />
+                    <span class="self-center"> Something went wrong! </span>
+                  </div>
+                  <div
+                    v-else-if="qualificationStatus === 'success'"
+                    class="flex p-2 border border-success-600 text-success-500 rounded items-start"
+                  >
+                    <StatusIndicatorIcon
+                      class="w-8 mr-2 shrink-0"
+                      status="success"
+                    />
+                    <span class="self-center"> Passed! </span>
+                  </div>
+                  <div
+                    v-else
+                    class="flex p-2 border border-action-600 text-action-500 rounded items-start"
+                  >
+                    <StatusIndicatorIcon
+                      class="w-8 mr-2 shrink-0"
+                      status="loading"
+                    />
+                    <span class="self-center">
+                      Qualification running, standby...
+                    </span>
+                  </div>
+
+                  <div v-if="qualification.description">
+                    <b>Description: </b>
+                    <p>{{ qualification.description }}</p>
+                  </div>
+
+                  <div
+                    v-if="qualification.output?.length"
+                    class="flex flex-col p-2 border border-warning-600 text-warning-500 rounded"
+                  >
+                    <b>Raw Output:</b>
+                    <p
+                      v-for="(output, index) in qualification.output.slice(-5)"
+                      :key="index"
+                      class="text-sm"
+                    >
+                      {{ output.line }}
+                    </p>
+                  </div>
+                </div>
+                <div class="py-1 px-2 border-t dark:border-black text-right">
+                  <VButton
+                    button-rank="tertiary"
+                    button-type="neutral"
+                    icon="x"
+                    icon-style="left"
+                    label="Close"
+                    @click="closeModal"
+                  />
+                </div>
+              </DialogPanel>
+            </TransitionChild>
+          </div>
+        </div>
+      </Dialog>
+    </TransitionRoot>
   </div>
 </template>
 
 <script lang="ts" setup>
-import StatusIndicatorIcon from "@/molecules/StatusIndicatorIcon.vue";
-import { ExternalLinkIcon } from "@heroicons/vue/solid";
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import _ from "lodash";
 import { Qualification } from "@/api/sdf/dal/qualification";
+import StatusIndicatorIcon from "@/molecules/StatusIndicatorIcon.vue";
+import {
+  Dialog,
+  DialogPanel,
+  DialogTitle,
+  TransitionChild,
+  TransitionRoot,
+} from "@headlessui/vue";
+import VButton from "@/molecules/VButton.vue";
 
 const props = defineProps<{
   qualification: Qualification;
@@ -59,4 +183,14 @@ const qualificationStatus = computed(() => {
 
   return "failure";
 });
+
+const modalOpen = ref(false);
+
+const openModal = () => {
+  modalOpen.value = true;
+};
+
+const closeModal = () => {
+  modalOpen.value = false;
+};
 </script>

@@ -58,16 +58,16 @@
 import {
   CheckCircleIcon as OutlineCheck,
   ExclamationIcon as OutlineExclamation,
-  PlusCircleIcon as OutlinePlusCircleIcon,
   MinusCircleIcon as OutlineMinusCircleIcon,
   PencilAltIcon as OutlinePencilAltIcon,
+  PlusCircleIcon as OutlinePlusCircleIcon,
 } from "@heroicons/vue/outline";
 import {
   CheckCircleIcon as SolidCheck,
   ExclamationIcon as SolidExclamation,
-  PlusCircleIcon as SolidPlusCircleIcon,
   MinusCircleIcon as SolidMinusCircleIcon,
   PencilAltIcon as SolidPencilAltIcon,
+  PlusCircleIcon as SolidPlusCircleIcon,
 } from "@heroicons/vue/solid";
 import SpinnerIcon from "@/atoms/CustomIcons/SpinnerIcon.vue";
 
