@@ -1,15 +1,28 @@
 <template>
-  <Tab v-slot="{ selected }" class="focus:outline-none">
-    <span
-      :class="classesF + ' ' + (selected ? selectedClassesF : defaultClassesF)"
+  <!-- selectedToFront ? (selected ? 'order-1' : 'order-2') : '' -->
+  <Tab v-slot="{ selected }" class="focus:outline-none" as="template">
+    <button
+      :class="
+        selectedToFront
+          ? selected
+            ? moveTabToFrontIfOverflowing($el.nextElementSibling)
+            : 'order-2'
+          : ''
+      "
     >
-      <slot />
-    </span>
+      <span
+        :class="
+          classesF + ' ' + (selected ? selectedClassesF : defaultClassesF)
+        "
+      >
+        <slot />
+      </span>
+    </button>
   </Tab>
   <div
     v-if="afterMargin > 0"
     class="border-b border-neutral-300 dark:border-neutral-600"
-    :class="'w-' + afterMargin"
+    :class="'w-' + afterMargin + (selectedToFront ? ' order-2' : '')"
   ></div>
 </template>
 
@@ -23,18 +36,31 @@ const props = defineProps<{
   selectedClasses?: string;
 }>();
 
+const moveTabToFrontIfOverflowing = (el: HTMLElement) => {
+  const parent = el.parentElement;
+  if (!parent) return "order-2"; // no parent? don't reorder elements
+
+  const tabInnerAreaWidth = parent.clientWidth;
+  const tabWidth = el.getBoundingClientRect().width;
+  const allButtons = [...parent.children].filter((e) =>
+    e.querySelector("button"),
+  );
+  let priorTabsWidth = 0;
+  for (let i = 0; i < allButtons.length; i++) {
+    const e = allButtons[i];
+    if (e === el) i = allButtons.length;
+    else priorTabsWidth += e.getBoundingClientRect().width;
+  }
+
+  console.log(priorTabsWidth + tabWidth, tabInnerAreaWidth);
+
+  if (priorTabsWidth + tabWidth > tabInnerAreaWidth) return "order-1";
+  else return "order-2";
+};
+
 const afterMargin = inject("afterMargin", 0);
+const selectedToFront = inject("selectedTabToFront", false);
 const classesF = inject("tabClasses", props.classes);
 const defaultClassesF = inject("defaultTabClasses", props.defaultClasses);
 const selectedClassesF = inject("selectedTabClasses", props.selectedClasses);
 </script>
-
-<style>
-/* TODO (Wendy) - Tailwind classes which seem to not be in our build? BUG! */
-.w-2 {
-  width: 0.5rem;
-}
-.w-1 {
-  width: 0.25rem;
-}
-</style>

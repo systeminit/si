@@ -1,8 +1,9 @@
 <template>
   <!-- border-b border-neutral-300 dark:border-neutral-600 -->
   <SiTabGroup
-    :key="tabGroupRerenderKey"
-    :selected-index="selectedTab"
+      :key="tabGroupRerenderKey"
+      :selected-index="selectedTab"
+    :selected-tab-to-front="true"
     @change="changeTab"
   >
     <template #tabs>

@@ -6,7 +6,9 @@
         <div
           v-if="startMargin > 0"
           class="border-b border-neutral-300 dark:border-neutral-600"
-          :class="'w-' + startMargin"
+          :class="
+            'w-' + startMargin + (selectedTabToFront ? ' order-first' : '')
+          "
         ></div>
         <slot name="tabs" />
         <div ref="endSpace"></div>
@@ -46,6 +48,7 @@ const props = withDefaults(
     selectedTabClasses?: string;
     startMargin?: number;
     afterMargin?: number;
+    selectedTabToFront?: boolean;
   }>(),
   {
     selectedIndex: undefined,
@@ -60,6 +63,7 @@ const props = withDefaults(
       "border-b-white dark:border-b-neutral-800 border-b text-action-700 dark:text-action-300 font-bold",
     startMargin: 0,
     afterMargin: 0,
+    selectedTabToFront: false,
   },
 );
 
@@ -94,6 +98,9 @@ const updateDropDown = () => {
     } else {
       //console.log("NO OVERFLOW!");
       endSpaceEl.classList.add("grow");
+      if (props.selectedTabToFront) {
+        endSpaceEl.classList.add("order-last");
+      }
       dropDownEl.classList.add("hidden");
     }
     endSpaceEl.classList.add(
@@ -122,4 +129,5 @@ provide("afterMargin", props.afterMargin);
 provide("tabClasses", props.tabClasses);
 provide("defaultTabClasses", props.defaultTabClasses);
 provide("selectedTabClasses", props.selectedTabClasses);
+provide("selectedTabToFront", props.selectedTabToFront);
 </script>
