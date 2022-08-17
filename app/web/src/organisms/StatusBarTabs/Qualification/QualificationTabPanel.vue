@@ -1,18 +1,19 @@
 <template>
   <div class="flex flex-row h-full w-full">
     <!-- Filter button and list of components -->
-    <div
-      class="w-80 border-r-[1px] border-black text-center h-full flex flex-col"
-    >
+    <div class="w-72 shrink-0 border-black h-full flex flex-col">
       <!-- Filter button and its dropdown -->
+      <span class="h-11 border-b border-black text-lg px-4 flex items-center">
+        Components Menu
+      </span>
       <SiBarButton
-        class="h-10 border-b-[1px] border-black"
-        dropdown-classes="top-1 left-4"
-        tooltip-text="Filter"
+        class="h-11 border-b border-black"
+        dropdown-classes=""
         fill-entire-width
+        tooltip-text="Filter"
       >
         <template #default="{ hovered, open }">
-          <div class="flex-row flex justify-center">
+          <div class="flex-row flex">
             {{ filterTitle }}
             <SiArrow :nudge="hovered || open" class="ml-1 w-4" />
           </div>
@@ -22,7 +23,7 @@
           <SiDropdownItem
             :checked="filter === 'all'"
             @select="changeFilter('all')"
-            >All
+            >Show All
           </SiDropdownItem>
           <SiDropdownItem
             :checked="filter === 'success'"
@@ -42,25 +43,21 @@
         <div
           v-for="component in list"
           :key="component.componentId"
-          class="flex flex-col text-sm"
+          :class="
+            selectedComponent?.componentId === component.componentId
+              ? 'bg-action-500'
+              : 'hover:bg-black'
+          "
+          class="py-2 pl-4 pr-3 cursor-pointer flex justify-between items-center"
+          @click="updateSelectedComponent(component)"
         >
-          <div
-            :class="
-              selectedComponent?.componentId === component.componentId
-                ? 'bg-action-500'
-                : 'hover:bg-black'
-            "
-            class="py-2 truncate cursor-pointer flex flex-row justify-between"
-            @click="updateSelectedComponent(component)"
-          >
-            <div class="text-left text-ellipsis ml-2.5 mr-6">
-              {{ component.componentName }}
-            </div>
-            <StatusIndicatorIcon
-              :status="iconStatus(component)"
-              class="w-6 mr-2.5 ml-6 text-right"
-            />
-          </div>
+          <span class="shrink min-w-0 truncate mr-3">
+            {{ component.componentName }}
+          </span>
+          <StatusIndicatorIcon
+            :status="iconStatus(component)"
+            class="w-6 shrink-0"
+          />
         </div>
       </div>
     </div>
@@ -74,7 +71,7 @@
     />
     <div
       v-else
-      class="flex flex-row items-center text-center w-full h-full bg-shade-100"
+      class="flex flex-row items-center text-center flex-grow h-full bg-shade-100"
     >
       <p class="w-full text-3xl text-neutral-500">No Component Selected</p>
     </div>
@@ -116,7 +113,7 @@ const changeFilter = (newFilter: "all" | "success" | "failure") => {
 
 const filterTitle = computed(() => {
   if (filter.value === "all") {
-    return "All";
+    return "Show All";
   } else if (filter.value === "success") {
     return "Success";
   }

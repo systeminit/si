@@ -1,47 +1,23 @@
 <template>
   <TabGroup
-    class="flex flex-col w-full bg-neutral-800 text-white border-black border-t-[1px]"
-    as="div"
     :selected-index="selectedTab"
+    as="div"
+    class="flex flex-col w-full bg-neutral-800 text-white border-black border-t-[1px]"
     @change="changeTab"
   >
     <TabList
+      :class="barClasses"
       as="div"
       class="flex flex-row w-full justify-end h-11"
-      :class="barClasses"
     >
       <Tab>
-        <div class="hidden" aria-hidden="true" />
+        <div aria-hidden="true" class="hidden" />
       </Tab>
       <Tab v-slot="{ selected }">
         <ChangeSetTab :selected="selected" />
       </Tab>
       <Tab v-slot="{ selected }">
-        <StatusBarTab :selected="selected">
-          <template #icon>
-            <StatusIndicatorIcon
-              :status="tabQualificationsIconStatus"
-              :icon-type="'solid'"
-            />
-          </template>
-          <template #name>Qualifications</template>
-          <template #summary>
-            <StatusBarTabPill :class="tabTotalClass">
-              Total:
-              <span class="font-bold ml-1">{{ tabTotalText }}</span>
-            </StatusBarTabPill>
-            <StatusBarTabPill class="font-bold" :class="tabSuccessClass">
-              <CheckCircleIcon
-                v-if="qualificationSummary !== undefined"
-                class="text-success-500 w-4"
-              />
-              <XCircleIcon v-else class="text-destructive-500 w-4" />
-              <div class="pl-px">
-                {{ tabSuccessText }}
-              </div>
-            </StatusBarTabPill>
-          </template>
-        </StatusBarTab>
+        <QualificationTab :selected="selected" />
       </Tab>
       <div
         class="flex w-12 border-black border-l h-full items-center justify-center cursor-pointer"
@@ -68,7 +44,7 @@
         as="div"
         class="flex flex-col w-full h-80 min-h-fit text-white"
       >
-        <TabPanel class="hidden" aria-hidden="true">hidden</TabPanel>
+        <TabPanel aria-hidden="true" class="hidden">hidden</TabPanel>
         <TabPanel class="h-full">
           <ChangeSetTabPanel />
         </TabPanel>
@@ -80,25 +56,15 @@
   </TabGroup>
 </template>
 
-<script setup lang="ts">
-import { TabGroup, TabList, Tab, TabPanels, TabPanel } from "@headlessui/vue";
+<script lang="ts" setup>
+import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/vue";
 import { computed, ref } from "vue";
-import {
-  ChevronDownIcon,
-  ChevronUpIcon,
-  CheckCircleIcon,
-  XCircleIcon,
-} from "@heroicons/vue/solid";
+import { ChevronDownIcon, ChevronUpIcon } from "@heroicons/vue/solid";
 import SiButtonIcon from "@/atoms/SiButtonIcon.vue";
-import StatusBarTab from "@/organisms/StatusBar/StatusBarTab.vue";
-import StatusBarTabPill from "@/organisms/StatusBar/StatusBarTabPill.vue";
-import { refFrom } from "vuse-rx";
-import { QualificationService } from "@/service/qualification";
-import { GetSummaryResponse } from "@/service/qualification/get_summary";
 import ChangeSetTab from "@/organisms/StatusBarTabs/ChangeSet/ChangeSetTab.vue";
 import ChangeSetTabPanel from "@/organisms/StatusBarTabs/ChangeSet/ChangeSetTabPanel.vue";
 import QualificationTabPanel from "@/organisms/StatusBarTabs/Qualification/QualificationTabPanel.vue";
-import StatusIndicatorIcon from "@/molecules/StatusIndicatorIcon.vue";
+import QualificationTab from "@/organisms/StatusBarTabs/Qualification/QualificationTab.vue";
 
 const panelOpen = ref(false);
 // Tab 0 is our phantom empty panel
@@ -127,31 +93,4 @@ const barClasses = computed(() => {
   }
   return result;
 });
-
-// Loads data for qualifications - total, succeeded, failed
-const qualificationSummary = refFrom<GetSummaryResponse | undefined>(
-  QualificationService.getSummary(),
-);
-
-const tabTotalClass = computed(() => {
-  return qualificationSummary.value === undefined ||
-    qualificationSummary.value.failed > 0
-    ? "text-destructive-500 border-destructive-500"
-    : "border-white";
-});
-const tabTotalText = computed(() => qualificationSummary.value?.total ?? "-");
-const tabSuccessClass = computed(() => {
-  return qualificationSummary.value === undefined
-    ? "bg-destructive-100 text-destructive-500 border-destructive-500"
-    : "bg-success-100 text-success-500";
-});
-const tabSuccessText = computed(
-  () => qualificationSummary.value?.succeeded ?? "-",
-);
-const tabQualificationsIconStatus = computed(() =>
-  qualificationSummary.value === undefined ||
-  qualificationSummary.value.failed > 0
-    ? "failure"
-    : "success",
-);
 </script>

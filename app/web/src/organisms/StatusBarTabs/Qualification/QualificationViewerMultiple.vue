@@ -1,5 +1,5 @@
 <template>
-  <div class="w-full h-full flex flex-col bg-shade-100">
+  <div class="h-full flex-grow flex flex-col bg-shade-100 min-w-0">
     <div class="overflow-y-auto flex flex-row mt-4 mx-2 flex-wrap">
       <!-- Note(victor): The only reason there's this extra Div here is to allow us to have margins between -->
       <!-- QualificationViews while using flex-basis to keep stuff responsive. We should revisit this and tune -->
@@ -23,10 +23,10 @@ import {
 import { fromRef, refFrom } from "vuse-rx";
 import { map } from "rxjs";
 import { GlobalErrorService } from "@/service/global_error";
-import QualificationViewerSingle from "@/organisms/StatusBarTabs/Qualification/QualificationViewerSingle.vue";
 import { Status } from "@/molecules/StatusIndicatorIcon.vue";
 import { switchMap } from "rxjs/operators";
 import { Qualification } from "@/api/sdf/dal/qualification";
+import QualificationViewerSingle from "@/organisms/StatusBarTabs/Qualification/QualificationViewerSingle.vue";
 
 const props = defineProps<{
   componentId: number;

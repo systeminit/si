@@ -2,13 +2,13 @@
   <Menu v-slot="{ open }" as="div" class="relative block h-full">
     <MenuButton
       v-tooltip.bottom="tooltipText"
-      :class="buttonClasses(open)"
       :aria-label="props.tooltipText"
-      class="relative"
+      :class="buttonClasses(open)"
       :disabled="disabled"
+      class="relative"
+      @click="emit('click')"
       @mouseenter="toggleHover"
       @mouseleave="toggleHover"
-      @click="emit('click')"
     >
       <slot :hovered="hovered" :open="open"></slot>
     </MenuButton>
@@ -29,12 +29,10 @@
   </Menu>
 </template>
 
-<script setup lang="ts">
-import { MenuButton } from "@headlessui/vue";
-import { toRefs, useSlots } from "vue";
-import { Menu } from "@headlessui/vue";
+<script lang="ts" setup>
+import { Menu, MenuButton } from "@headlessui/vue";
+import { ref, toRefs, useSlots } from "vue";
 import SiDropdown from "@/molecules/SiDropdown.vue";
-import { ref } from "vue";
 
 const props = defineProps<{
   disabled?: boolean;
