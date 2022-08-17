@@ -35,7 +35,6 @@ import { TabGroup, TabPanels, TabList } from "@headlessui/vue";
 import { onBeforeUnmount, onMounted, onUpdated, provide, ref } from "vue";
 import { DotsVerticalIcon } from "@heroicons/vue/outline";
 import SiBarButton from "@/molecules/SiBarButton.vue";
-import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
 import _ from "lodash";
 
 const props = withDefaults(

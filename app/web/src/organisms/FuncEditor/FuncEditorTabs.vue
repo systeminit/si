@@ -1,8 +1,7 @@
 <template>
-  <!-- border-b border-neutral-300 dark:border-neutral-600 -->
   <SiTabGroup
-      :key="tabGroupRerenderKey"
-      :selected-index="selectedTab"
+    :key="tabGroupRerenderKey"
+    :selected-index="selectedTab"
     :selected-tab-to-front="true"
     @change="changeTab"
   >
@@ -74,9 +73,6 @@ const findTabIndexForFunc = (
   func: { id: number },
 ) => funcList.findIndex((fn) => fn.id == func.id);
 
-// We need the editingFuncs ref to manage updates to the observable,
-// but we also want to map it into a list of functions for managing the
-// list of tabs, hence the tap.
 const funcList = computed(() =>
   funcState.funcs.map(({ origFunc, modifiedFunc }) => ({
     id: origFunc.id,
