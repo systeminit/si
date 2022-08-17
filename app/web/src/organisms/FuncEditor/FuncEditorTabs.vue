@@ -80,6 +80,10 @@ const selectedTab = computed(() =>
 );
 
 const changeTab = (index: number) => {
+  if (index < 0) {
+    index = 0;
+  }
+
   if (index > funcList.value.length - 1) {
     index--;
   }
@@ -91,7 +95,12 @@ const changeTab = (index: number) => {
 const tabGroupRerenderKey = ref(0);
 
 const closeFunc = (func: ListedFuncView) => {
+  const funcTab = findTabIndexForFunc(funcList.value, func);
+  const currentTab = selectedTab.value;
   removeFunc(func);
+  if (funcTab === currentTab) {
+    changeTab(funcTab - 1);
+  }
   tabGroupRerenderKey.value = tabGroupRerenderKey.value + 1;
 };
 
