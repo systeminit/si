@@ -6,6 +6,11 @@
         <SiTabHeader>Local Assets</SiTabHeader>
       </template>
 
+      <template #dropdownitems>
+        <SiDropdownItem>Diagram Outline</SiDropdownItem>
+        <SiDropdownItem>Local Assets</SiDropdownItem>
+      </template>
+
       <template #panels>
         <TabPanel class="flex flex-col overflow-y-hidden">
           <SchematicOutline :viewer-event$="props.viewerEvent$" />
@@ -19,6 +24,7 @@
 <script lang="ts" setup>
 import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
+import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
 import { TabPanel } from "@headlessui/vue";
 import { ViewerEventObservable } from "./SiCanvas/viewer_event";
 import SchematicOutline from "@/organisms/SchematicOutline.vue";
