@@ -6,46 +6,48 @@
       class="relative text-neutral-400 focus-within:text-gray-600 block flex-grow"
     >
       <input
-        v-model="search"
-        :placeholder="props.placeholder"
+        v-model="searchString"
+        :placeholder="placeholder"
         class="w-full px-1 py-[0.4375rem] pl-2.5 text-sm rounded-sm border text-black dark:text-white bg-neutral-50 dark:bg-neutral-900 border-neutral-300 dark:border-neutral-600 placeholder:italic placeholder:text-neutral-500 dark:placeholder:text-neutral-400"
+        @keydown="onKeyDown"
       />
     </label>
-    <button
-      v-if="!props.autosearch"
-      class="w-[2rem] text-action-"
-      @click="performSearch"
-    >
+    <button class="w-[2rem] text-action-" @click="triggerSearch">
       <SearchIcon class="w-full text-neutral-500" />
     </button>
   </div>
 </template>
 
 <script setup lang="ts">
+import _ from "lodash";
 import { SearchIcon } from "@heroicons/vue/solid";
 import { ref, watch } from "vue";
 
-let search = ref<string>("");
+// TODO: we may want to swap this over to vmodel instead, but we'll see
+const searchString = ref("");
 
-const props = withDefaults(
-  defineProps<{
-    placeholder?: string;
-    autosearch?: boolean;
-  }>(),
-  {
-    placeholder: "search",
-    autosearch: false,
-  },
-);
-
-const emits = defineEmits<{
-  (e: "search", v: string): void;
+const emit = defineEmits<{
+  (e: "search", searchTerm: string): void;
 }>();
 
-watch(
-  () => search.value,
-  (search) => props.autosearch && emits("search", search),
-);
+const props = defineProps({
+  placeholder: { type: String, default: "search..." },
+  modelValue: { type: String },
+  autoSearch: { type: Boolean },
+});
 
-const performSearch = () => emits("search", search.value);
+function triggerSearch() {
+  emit("search", searchString.value);
+}
+
+// if autoSearch prop is true, we'll trigger the search event as the user types (debounced)
+// rather than only when they click the search icon
+watch(() => searchString.value, _.debounce(triggerAutoSearch, 50));
+function triggerAutoSearch() {
+  if (props.autoSearch) triggerSearch();
+}
+
+function onKeyDown(e: KeyboardEvent) {
+  if (e.key === "Enter") triggerSearch();
+}
 </script>

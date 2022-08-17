@@ -10,7 +10,7 @@
       <TabPanel :key="0" class="h-full overflow-auto">
         <SiSearch
           placeholder="search functions"
-          :autosearch="true"
+          auto-search
           @search="onSearch"
         />
         <div class="w-full text-neutral-400 dark:text-neutral-300 text-sm p-2">
@@ -21,7 +21,7 @@
             label="Qualification Functions"
             as="li"
             content-as="ul"
-            :default-open="true"
+            default-open
             class="min-w-full w-fit"
           >
             <li v-for="func in filteredList" :key="func.id">

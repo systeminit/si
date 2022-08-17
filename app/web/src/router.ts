@@ -15,7 +15,6 @@ import _ from "lodash";
 import Home from "@/pages/Home.vue";
 import WorkspaceSingle from "@/templates/WorkspaceSingle.vue";
 import WorkspaceMultiple from "@/templates/WorkspaceMultiple.vue";
-import WorkspaceView from "@/organisms/Workspace/WorkspaceView.vue";
 import WorkspaceRuntime from "@/organisms/Workspace/WorkspaceRuntime.vue";
 import WorkspaceCompose from "@/organisms/Workspace/WorkspaceCompose.vue";
 import WorkspaceLab from "@/organisms/Workspace/WorkspaceLab.vue";
@@ -68,7 +67,7 @@ const routes: RouteRecordRaw[] = [
               {
                 path: "v",
                 name: "workspace-view",
-                component: WorkspaceView,
+                component: WorkspaceCompose,
               },
               {
                 path: "r",
