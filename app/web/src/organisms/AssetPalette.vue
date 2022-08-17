@@ -34,7 +34,7 @@
 import _ from "lodash";
 import SiNodeSprite from "@/molecules/SiNodeSprite.vue";
 import SiCollapsible from "@/organisms/SiCollapsible.vue";
-import SiSearch from "@/molecules/SiSearch.vue";
+//import SiSearch from "@/molecules/SiSearch.vue";
 import { ref } from "vue";
 import { combineLatest, firstValueFrom } from "rxjs";
 import { SchematicService } from "@/service/schematic";
