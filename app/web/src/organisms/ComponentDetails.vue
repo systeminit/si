@@ -60,17 +60,20 @@ import { ComponentService } from "@/service/component";
 import { GlobalErrorService } from "@/service/global_error";
 import { combineLatest, from, ReplaySubject, switchMap } from "rxjs";
 import { fromRef, refFrom, untilUnmounted } from "vuse-rx/src";
-import { computed, ref } from "vue";
+import { computed, ref, toRefs } from "vue";
 import { CodeView } from "@/api/sdf/dal/code_view";
 import { eventCodeGenerated$ } from "@/observable/code";
 import { RefreshIcon } from "@heroicons/vue/solid";
 import SiButtonIcon from "@/atoms/SiButtonIcon.vue";
+import { tag } from "rxjs-spy/operators";
 
 const props = defineProps<{
   componentIdentification: ComponentIdentification;
   componentName: string;
 }>();
-const componentIdentification$ = fromRef(props.componentIdentification, {
+
+const { componentIdentification } = toRefs(props);
+const componentIdentification$ = fromRef(componentIdentification, {
   immediate: true,
 });
 
@@ -100,6 +103,7 @@ const codeViews = refFrom<CodeView[]>(
         return from([response.codeViews]);
       }
     }),
+    tag("codeViews"),
   ),
 );
 
