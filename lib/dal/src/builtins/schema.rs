@@ -255,6 +255,7 @@ async fn service(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     )
     .await?;
     variant.add_socket(ctx, includes_socket.id()).await?;
+    variant.finalize(ctx).await?;
 
     Ok(())
 }

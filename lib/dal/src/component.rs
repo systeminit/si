@@ -30,14 +30,15 @@ use crate::{
     standard_model_belongs_to, standard_model_has_many, AttributeContext,
     AttributeContextBuilderError, AttributeContextError, AttributeReadContext,
     CodeGenerationPrototype, CodeGenerationPrototypeError, CodeGenerationResolver,
-    CodeGenerationResolverError, CodeLanguage, CodeView, DalContext, Edge, EdgeError, Func,
-    FuncBackendKind, HistoryEventError, Node, NodeError, OrganizationError, Prop, PropError,
-    PropId, QualificationPrototype, QualificationPrototypeError, QualificationResolver,
-    QualificationResolverError, ReadTenancyError, Resource, ResourceError, ResourcePrototype,
-    ResourcePrototypeError, ResourceResolver, ResourceResolverError, ResourceView, Schema,
-    SchemaError, SchemaId, StandardModel, StandardModelError, SystemId, Timestamp,
-    TransactionsError, ValidationPrototype, ValidationPrototypeError, ValidationResolver,
-    ValidationResolverError, Visibility, WorkspaceError, WriteTenancy,
+    CodeGenerationResolverError, CodeLanguage, CodeView, DalContext, Edge, EdgeError,
+    ExternalProviderId, Func, FuncBackendKind, HistoryEventError, InternalProvider, Node,
+    NodeError, OrganizationError, Prop, PropError, PropId, QualificationPrototype,
+    QualificationPrototypeError, QualificationResolver, QualificationResolverError,
+    ReadTenancyError, Resource, ResourceError, ResourcePrototype, ResourcePrototypeError,
+    ResourceResolver, ResourceResolverError, ResourceView, Schema, SchemaError, SchemaId,
+    StandardModel, StandardModelError, SystemId, Timestamp, TransactionsError, ValidationPrototype,
+    ValidationPrototypeError, ValidationResolver, ValidationResolverError, Visibility,
+    WorkspaceError, WriteTenancy,
 };
 use crate::{AttributeValueId, QualificationPrototypeId};
 
@@ -1508,24 +1509,57 @@ impl Component {
         ctx: &DalContext<'_, '_>,
         json_pointer: &str,
     ) -> ComponentResult<Option<T>> {
-        if let Some(attribute_value) = self
-            .find_attribute_value_by_json_pointer(ctx, json_pointer)
+        let schema = self
+            .schema(ctx)
             .await?
-        {
-            if let Some(func_binding_return_value) = FuncBindingReturnValue::get_by_id(
-                ctx,
-                &attribute_value.func_binding_return_value_id(),
-            )
+            .ok_or(ComponentError::SchemaNotFound)?;
+        let schema_variant = self
+            .schema_variant(ctx)
             .await?
-            {
-                return Ok(func_binding_return_value
-                    .value()
-                    .cloned()
-                    .map(serde_json::from_value)
-                    .transpose()?);
-            };
+            .ok_or(ComponentError::SchemaVariantNotFound)?;
+        let schema_variant_id = *schema_variant.id();
+        let prop = Prop::find_root_for_schema_variant(ctx, *schema_variant.id())
+            .await?
+            .ok_or_else(|| {
+                ComponentError::PropNotFound(format!(
+                    "root not found for schema variant {schema_variant_id}"
+                ))
+            })?;
+
+        let implicit_provider = InternalProvider::get_for_prop(ctx, *prop.id())
+            .await?
+            .ok_or_else(|| ComponentError::InternalProviderNotFoundForProp(*prop.id()))?;
+
+        let value_context = AttributeReadContext {
+            schema_id: Some(*schema.id()),
+            schema_variant_id: Some(*schema_variant.id()),
+            component_id: Some(*self.id()),
+            system_id: Some(SystemId::NONE),
+
+            internal_provider_id: Some(*implicit_provider.id()),
+            prop_id: Some(PropId::NONE),
+            external_provider_id: Some(ExternalProviderId::NONE),
         };
 
-        Ok(None)
+        let attribute_value = AttributeValue::find_for_context(ctx, value_context)
+            .await?
+            .ok_or(ComponentError::AttributeValueNotFoundForContext(
+                value_context,
+            ))?;
+
+        let properties =
+            FuncBindingReturnValue::get_by_id(ctx, &attribute_value.func_binding_return_value_id())
+                .await?
+                .ok_or_else(|| {
+                    ComponentError::FuncBindingReturnValueNotFound(
+                        attribute_value.func_binding_return_value_id(),
+                    )
+                })?;
+        let value = serde_json::json!({ "root": properties.value() })
+            .pointer(json_pointer)
+            .map(T::deserialize)
+            .transpose()?;
+
+        Ok(value)
     }
 }
