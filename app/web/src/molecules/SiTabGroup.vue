@@ -18,7 +18,7 @@
         dropdown-classes="-right-0 z-100"
         ><DotsVerticalIcon class="w-6" />
         <template #dropdownContent>
-          <SiDropdownItem class="text-sm" :checked="true">TEST</SiDropdownItem>
+          <slot name="dropdownitems" />
         </template>
       </SiBarButton>
     </div>
@@ -30,14 +30,7 @@
 
 <script setup lang="ts">
 import { TabGroup, TabPanels, TabList } from "@headlessui/vue";
-import {
-  onBeforeUnmount,
-  onMounted,
-  onUpdated,
-  provide,
-  ref,
-  useSlots,
-} from "vue";
+import { onBeforeUnmount, onMounted, onUpdated, provide, ref } from "vue";
 import { DotsVerticalIcon } from "@heroicons/vue/outline";
 import SiBarButton from "@/molecules/SiBarButton.vue";
 import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
@@ -70,8 +63,6 @@ const props = withDefaults(
   },
 );
 
-const slots = useSlots();
-
 const tabList = ref();
 const endSpace = ref();
 const dropDown = ref();
@@ -79,11 +70,6 @@ const updateDropDown = () => {
   const tabListEl = tabList.value?.$el;
   const dropDownEl = dropDown.value?.$el;
   const endSpaceEl = endSpace.value;
-
-  // console.log(
-  //   tabList.value?.$el.scrollWidth + " / " + tabList.value?.$el.clientWidth,
-  // );
-  // console.log(dropDownEl);
 
   if (tabListEl !== undefined) {
     endSpaceEl.classList = "";

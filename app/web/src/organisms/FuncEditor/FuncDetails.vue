@@ -52,7 +52,7 @@
       <SiButton icon="save" kind="save" label="Save Qualifications" size="lg" />
     </div>
   </div>
-  <div v-else class="p-2 text-center text-neutral-400">
+  <div v-else class="p-2 text-center text-neutral-400 dark:text-neutral-300">
     Select a function to view its properties.
   </div>
 </template>

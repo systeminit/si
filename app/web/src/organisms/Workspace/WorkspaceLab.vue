@@ -10,14 +10,17 @@
       />
     </SiSidebar>
     <div
-      class="grow overflow-x-hidden overflow-y-hidden lace-items-center dark:bg-neutral-800 dark:text-white text-lg font-semi-bold px-2 pt-2 flex flex-col"
+      class="grow overflow-x-hidden overflow-y-hidden dark:bg-neutral-800 dark:text-white text-lg font-semi-bold px-2 pt-2 flex flex-col"
     >
       <FuncEditorTabs
         v-if="selectedFunc.id > 0"
         :selected-func-id="selectedFunc.id"
         @selected-func="selectFunc"
       />
-      <div v-else class="p-2 text-center text-neutral-400">
+      <div
+        v-else
+        class="p-2 text-center text-neutral-400 dark:text-neutral-300"
+      >
         Select a function to edit it.
       </div>
     </div>

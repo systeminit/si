@@ -16,6 +16,16 @@
         </button>
       </SiTabHeader>
     </template>
+    <template #dropdownitems>
+      <SiDropdownItem
+        v-for="func in funcList"
+        :key="func.id"
+        :checked="findTabIndexForFunc(funcList, func) === selectedTab"
+        @select="changeTab(findTabIndexForFunc(funcList, func))"
+      >
+        {{ func.name }}
+      </SiDropdownItem>
+    </template>
     <template #panels>
       <TabPanel
         v-for="func in funcList"
@@ -34,6 +44,7 @@ import { fromRef } from "vuse-rx/src";
 import { FuncService } from "@/service/func";
 import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
+import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
 import { TabPanel } from "@headlessui/vue";
 import FuncEditor from "@/organisms/FuncEditor/FuncEditor.vue";
 import VueFeather from "vue-feather";

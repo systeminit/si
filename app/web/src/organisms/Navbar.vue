@@ -1,5 +1,5 @@
 <template>
-  <nav class="bg-neutral-800 text-white relative">
+  <nav class="bg-neutral-900 text-white relative">
     <div class="pl-2 border-b-2 border-neutral-300 dark:border-neutral-600">
       <div class="flex items-center h-16">
         <!-- Left side -->

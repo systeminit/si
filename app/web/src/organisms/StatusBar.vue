@@ -2,7 +2,7 @@
   <TabGroup
     :selected-index="selectedTab"
     as="div"
-    class="flex flex-col w-full bg-neutral-800 text-white border-black border-t-[1px]"
+    class="flex flex-col w-full bg-neutral-900 text-white border-black border-t-[1px]"
     @change="changeTab"
   >
     <TabList
