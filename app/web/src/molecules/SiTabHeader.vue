@@ -36,26 +36,24 @@ const props = defineProps<{
   selectedClasses?: string;
 }>();
 
-const moveTabToFrontIfOverflowing = (el: HTMLElement) => {
-  const parent = el.parentElement;
+const moveTabToFrontIfOverflowing = (tabElement: HTMLElement) => {
+  const parent = tabElement.parentElement;
   if (!parent) return "order-2"; // no parent? don't reorder elements
 
   const tabInnerAreaWidth = parent.clientWidth;
-  const tabWidth = el.getBoundingClientRect().width;
-  const allButtons = [...parent.children].filter((e) =>
-    e.querySelector("button"),
+  const tabWidth = tabElement.getBoundingClientRect().width;
+  const allButtons = [...parent.children].filter((element) =>
+    element.querySelector("button"),
   );
   let priorTabsWidth = 0;
   for (let i = 0; i < allButtons.length; i++) {
-    const e = allButtons[i];
-    if (e === el) i = allButtons.length;
-    else priorTabsWidth += e.getBoundingClientRect().width;
+    const priorTabElement = allButtons[i];
+    if (priorTabElement === tabElement) i = allButtons.length;
+    else priorTabsWidth += priorTabElement.getBoundingClientRect().width;
   }
 
-  console.log(priorTabsWidth + tabWidth, tabInnerAreaWidth);
-
   if (priorTabsWidth + tabWidth > tabInnerAreaWidth) return "order-1";
-  else return "order-2";
+  return "order-2";
 };
 
 const afterMargin = inject("afterMargin", 0);
