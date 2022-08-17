@@ -172,6 +172,8 @@ const props = defineProps({
     type: Array as PropType<DiagramEdgeDef[]>,
     default: () => [],
   },
+  // TODO: split this into controls for specific features rather than single toggle
+  readOnly: { type: Boolean },
 });
 
 const emit = defineEmits<{
@@ -358,6 +360,10 @@ function onKeyDown(e: KeyboardEvent) {
   // TODO: check is cursor is within graph bounds
   // TODO: check if something else (like an input) is focused and bail
 
+  // if focused on an input (or anything) dont do anything, let normal behaviour proceed
+  // TODO: this should be more sophisticated
+  if (document?.activeElement?.tagName !== "BODY") return;
+
   // console.log(e);
 
   // handle arrow keys - nudge and alignment
@@ -473,6 +479,9 @@ function checkIfDragStarted(e: MouseEvent) {
   if (!lastMouseDownDiagramElement.value) {
     // begin drag to multi-select
     beginDragSelect();
+  } else if (props.readOnly) {
+    // TODO: add controls for each of these modes...
+    return;
   } else if (
     lastMouseDownDiagramElement.value.diagramElementType === "socket"
   ) {
@@ -491,13 +500,16 @@ function checkIfDragStarted(e: MouseEvent) {
 const cursor = computed(() => {
   if (dragToPanActive.value) return "grabbing";
   if (dragToPanArmed.value) return "grab";
-  if (
-    hoveredElement.value?.diagramElementType === "socket" ||
-    drawEdgeActive.value
-  )
-    return "cell";
-  if (dragElementsActive.value) return "move";
   if (dragSelectActive.value) return "crosshair";
+
+  if (
+    !props.readOnly &&
+    hoveredElement.value?.diagramElementType === "socket"
+  ) {
+    return "cell";
+  }
+  if (drawEdgeActive.value) return "cell";
+  if (dragElementsActive.value) return "move";
   if (insertElementActive.value) return "copy"; // not sure about this...
   return "auto";
 });

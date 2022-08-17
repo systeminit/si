@@ -1,5 +1,5 @@
 <template>
-  <SiSearch />
+  <!-- <SiSearch /> -->
 
   <p
     class="border-b-2 dark:border-neutral-600 text-sm leading-tight p-2.5 text-neutral-500"
@@ -15,6 +15,7 @@
       :label="category.name"
       as="li"
       content-as="ul"
+      default-open
     >
       <li v-for="(node, node_index) in category.assets" :key="node_index">
         <SiNodeSprite

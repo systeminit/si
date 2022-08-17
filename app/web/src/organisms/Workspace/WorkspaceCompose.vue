@@ -2,30 +2,41 @@
   <div class="w-full h-full flex relative overflow-hidden">
     <div class="flex flex-row w-full bg-transparent">
       <SiSidebar side="left">
-        <ChangeSetPanel class="border-b-2 dark:border-neutral-500 mb-2" />
+        <ChangeSetPanel
+          v-if="!isViewMode"
+          class="border-b-2 dark:border-neutral-500 mb-2"
+        />
 
         <SiTabGroup :start-margin="4">
           <template #tabs>
-            <SiTabHeader>Asset Palette</SiTabHeader>
-            <!-- <SiTabHeader>Local Assets</SiTabHeader> -->
+            <SiTabHeader v-if="!isViewMode">Asset Palette</SiTabHeader>
+            <SiTabHeader>Diagram Outline</SiTabHeader>
           </template>
 
           <template #panels>
-            <TabPanel class="flex flex-col overflow-y-hidden">
+            <TabPanel
+              v-if="!isViewMode"
+              class="flex flex-col overflow-y-hidden"
+            >
               <AssetPalette @select="onSelectAssetToInsert" />
             </TabPanel>
-            <!-- <TabPanel>Local Assets</TabPanel> -->
+            <TabPanel class="flex flex-col overflow-y-hidden">
+              <SchematicOutline
+                :selected-component-id="selectedComponentId"
+                @select="onOutlineSelectComponent"
+              />
+            </TabPanel>
           </template>
         </SiTabGroup>
       </SiSidebar>
 
-      <!-- transparent div that flows through to the canvas -->
       <div class="grow h-full relative bg-neutral-50 dark:bg-neutral-900">
         <GenericDiagram
           v-if="diagramData"
           ref="diagramRef"
           :nodes="diagramData?.nodes"
           :edges="diagramData?.edges"
+          :read-only="isViewMode"
           @insert-element="onDiagramInsertElement"
           @move-element="onDiagramMoveElement"
           @draw-edge="onDrawEdge"
@@ -40,7 +51,12 @@
           :component-identification="selectedComponent"
           :component-name="selectedComponentLabel || 'selected component'"
         />
-        <div v-else class="p-4">Select a single component to edit it</div>
+        <div v-else class="p-4">
+          <template v-if="isViewMode">
+            Select a single component to see more details
+          </template>
+          <template v-else>Select a single component to edit it </template>
+        </div>
       </SiSidebar>
     </div>
   </div>
@@ -68,6 +84,18 @@ import SiTabHeader from "@/molecules/SiTabHeader.vue";
 
 import GenericDiagram from "../GenericDiagram/GenericDiagram.vue";
 import { useObservable } from "@vueuse/rxjs";
+import { useRoute } from "vue-router";
+import SchematicOutline from "../SchematicOutline.vue";
+import { ChangeSetService } from "@/service/change_set";
+
+const currentRoute = useRoute();
+
+// TODO: we'll very likely split view mode from compose mode again, so this is just temporary
+// but for now we watch if the route is for view mode, and if so, switch to head and toggle a few things
+const isViewMode = computed(() => currentRoute.name === "workspace-view");
+watch(currentRoute, () => {
+  if (isViewMode.value) ChangeSetService.switchToHead();
+});
 
 const diagramRef = ref<InstanceType<typeof GenericDiagram>>();
 
@@ -178,5 +206,12 @@ function onDiagramUpdateSelection(newSelection: DiagramElementIdentifier[]) {
 function onDiagramDelete(_e: DeleteElementsEvent) {
   // eslint-disable-next-line no-alert
   alert("Deletion not supported yet!");
+}
+
+function onOutlineSelectComponent(id: number) {
+  diagramRef.value?.setSelection({
+    diagramElementType: "node",
+    id: id.toString(),
+  });
 }
 </script>
