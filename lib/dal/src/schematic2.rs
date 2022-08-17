@@ -5,7 +5,6 @@ use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use thiserror::Error;
 
 use crate::edge::{Edge, EdgeId, EdgeKind, VertexObjectKind};
-use crate::node::NodeViewKind;
 use crate::provider::external::ExternalProviderError;
 use crate::provider::internal::InternalProviderError;
 use crate::socket::{SocketArity, SocketEdgeKind, SocketId};
@@ -23,8 +22,6 @@ pub enum SchematicError2 {
     AttributePrototypeArgument(#[from] AttributePrototypeArgumentError),
     #[error("component error: {0}")]
     Component(#[from] ComponentError),
-    #[error("component name not found")]
-    ComponentNameNotFound,
     #[error("component not found")]
     ComponentNotFound,
     #[error("edge error: {0}")]
@@ -361,6 +358,10 @@ impl NodeView2 {
         position: &NodePosition,
         schema_variant: &SchemaVariant,
     ) -> SchematicResult2<Self> {
+        let component = node
+            .component(ctx)
+            .await?
+            .ok_or(SchematicError2::ComponentNotFound)?;
         Ok(Self {
             id: node.id().to_string(),
             ty: None,
@@ -370,7 +371,9 @@ impl NodeView2 {
                 .ok_or(SchematicError2::SchemaNotFound)?
                 .name()
                 .to_owned(),
-            subtitle: None,
+            subtitle: component
+                .find_value_by_json_pointer(ctx, "/root/si/name")
+                .await?,
             content: None,
             sockets: Some(SocketView2::list(ctx, node, schema_variant).await?),
             position: GridPoint2 {
@@ -451,33 +454,16 @@ impl Schematic2 {
             }
             valid_connections.extend(conns.cloned());
 
-            let (schema_variant, _kind, _name) = match node.kind() {
+            let schema_variant = match node.kind() {
                 NodeKind::Deployment | NodeKind::Component => {
                     let component = node
                         .component(ctx)
                         .await?
                         .ok_or(SchematicError2::ComponentNotFound)?;
-                    let schema_variant = component
+                    component
                         .schema_variant(ctx)
                         .await?
-                        .ok_or(SchematicError2::SchemaVariantNotFound)?;
-
-                    (
-                        schema_variant,
-                        match node.kind() {
-                            NodeKind::Deployment => NodeViewKind::Deployment {
-                                component_id: *component.id(),
-                            },
-                            NodeKind::Component => NodeViewKind::Component {
-                                component_id: *component.id(),
-                            },
-                            NodeKind::System => unreachable!(),
-                        },
-                        component
-                            .find_value_by_json_pointer::<String>(ctx, "/root/si/name")
-                            .await?
-                            .ok_or(SchematicError2::ComponentNameNotFound)?,
-                    )
+                        .ok_or(SchematicError2::SchemaVariantNotFound)?
                 }
                 NodeKind::System => {
                     // We're going to skip all `NodeKind::System` nodes
