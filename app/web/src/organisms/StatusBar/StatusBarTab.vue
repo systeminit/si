@@ -1,9 +1,9 @@
 <template>
   <div
-    class="flex w-72 border-black border-l h-full place-content-center pl-2 pr-2"
     :class="tabClasses"
+    class="flex w-72 border-black border-l h-full place-content-center pl-2 pr-2"
   >
-    <div class="flex w-6">
+    <div class="flex w-6 items-center">
       <slot name="icon" />
     </div>
     <div class="flex text-sm place-content-center items-center pl-2">
@@ -15,8 +15,8 @@
   </div>
 </template>
 
-<script setup lang="ts">
-import { toRef, computed } from "vue";
+<script lang="ts" setup>
+import { computed, toRef } from "vue";
 
 const props = defineProps<{ selected: boolean }>();
 const selected = toRef(props, "selected");

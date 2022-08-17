@@ -4,21 +4,21 @@
       v-if="status === 'success'"
       class="text-success-500 inline align-middle"
     />
+    <SolidExclamation
+      v-else-if="status === 'failure'"
+      class="text-destructive-500 inline align-middle"
+    />
     <SolidPlusCircleIcon
       v-else-if="status === 'added'"
       class="text-success-500 inline align-middle"
     />
-    <SolidX
-      v-else-if="status === 'failure'"
-      class="text-destructive-500 inline align-middle"
+    <SpinnerIcon
+      v-else-if="status === 'loading'"
+      class="text-warning-500 inline align-middle animate-spin"
     />
     <SolidMinusCircleIcon
       v-else-if="status === 'deleted'"
       class="text-destructive-500 inline align-middle"
-    />
-    <SolidClock
-      v-else-if="status === 'loading'"
-      class="text-warning-500 inline align-middle"
     />
     <SolidPencilAltIcon
       v-else-if="status === 'modified'"
@@ -35,7 +35,7 @@
       v-else-if="status === 'added'"
       class="text-success-500 inline align-middle"
     />
-    <OutlineX
+    <OutlineExclamation
       v-else-if="status === 'failure'"
       class="text-destructive-500 inline align-middle"
     />
@@ -43,7 +43,7 @@
       v-else-if="status === 'deleted'"
       class="text-destructive-500 inline align-middle"
     />
-    <OutlineClock
+    <SpinnerIcon
       v-else-if="status === 'loading'"
       class="text-warning-500 inline align-middle"
     />
@@ -57,21 +57,19 @@
 <script lang="ts" setup>
 import {
   CheckCircleIcon as OutlineCheck,
-  ClockIcon as OutlineClock,
-  XCircleIcon as OutlineX,
+  ExclamationIcon as OutlineExclamation,
   PlusCircleIcon as OutlinePlusCircleIcon,
   MinusCircleIcon as OutlineMinusCircleIcon,
   PencilAltIcon as OutlinePencilAltIcon,
 } from "@heroicons/vue/outline";
 import {
   CheckCircleIcon as SolidCheck,
-  ClockIcon as SolidClock,
-  XCircleIcon as SolidX,
+  ExclamationIcon as SolidExclamation,
   PlusCircleIcon as SolidPlusCircleIcon,
   MinusCircleIcon as SolidMinusCircleIcon,
   PencilAltIcon as SolidPencilAltIcon,
 } from "@heroicons/vue/solid";
-import { defineProps } from "vue";
+import SpinnerIcon from "@/atoms/CustomIcons/SpinnerIcon.vue";
 
 export type Status =
   | "success"
@@ -89,7 +87,7 @@ withDefaults(
     iconType?: IconType;
   }>(),
   {
-    iconType: "outline",
+    iconType: "solid",
   },
 );
 </script>
