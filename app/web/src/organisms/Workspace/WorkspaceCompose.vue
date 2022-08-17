@@ -4,7 +4,7 @@
       <SiSidebar side="left">
         <ChangeSetPanel class="border-b-2 dark:border-neutral-500 mb-2" />
 
-        <SiTabGroup>
+        <SiTabGroup :start-margin="4">
           <template #tabs>
             <SiTabHeader>Asset Palette</SiTabHeader>
             <!-- <SiTabHeader>Local Assets</SiTabHeader> -->
