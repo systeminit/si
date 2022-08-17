@@ -19,7 +19,7 @@ impl JobQueueProcessor for SyncProcessor {
     async fn enqueue_job(&self, job: Box<dyn JobProducer + Send + Sync>, ctx: &DalContext<'_, '_>) {
         job.run(ctx)
             .await
-            .expect("Failure processing background job");
+            .unwrap_or_else(|e| panic!("Failure processing background job:\n  {:?}\n\n{}", job, e));
     }
 
     async fn process_queue(&self) -> JobQueueProcessorResult<()> {

@@ -11,7 +11,6 @@ use crate::{
             js_code_generation::FuncBackendJsCodeGenerationArgs,
             js_qualification::FuncBackendJsQualificationArgs,
             js_resource::FuncBackendJsResourceSyncArgs,
-            validation::FuncBackendValidateStringValueArgs,
         },
         binding::{FuncBinding, FuncBindingId},
         binding_return_value::FuncBindingReturnValueId,
@@ -20,13 +19,11 @@ use crate::{
     resource_prototype::ResourcePrototypeContext,
     schema::{SchemaVariant, UiMenu},
     socket::{Socket, SocketArity, SocketEdgeKind, SocketKind},
-    validation_prototype::ValidationPrototypeContext,
     AttributeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue,
     AttributeValueError, BuiltinsError, BuiltinsResult, CodeGenerationPrototype, CodeLanguage,
     DalContext, ExternalProvider, Func, FuncBackendKind, FuncBackendResponseType, FuncError,
     FuncId, InternalProvider, Prop, PropError, PropId, PropKind, QualificationPrototype,
     ResourcePrototype, Schema, SchemaError, SchemaKind, SchematicKind, StandardModel,
-    ValidationPrototype,
 };
 
 mod kubernetes;
