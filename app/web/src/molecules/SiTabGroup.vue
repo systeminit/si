@@ -78,7 +78,6 @@ const updateDropDown = () => {
     endSpaceEl.classList = "";
     dropDownEl.classList = "";
     if (tabListEl.scrollWidth > tabListEl.clientWidth) {
-      //console.log("OVERFLOW!");
       endSpaceEl.classList.add("hidden");
       dropDownEl.classList.add(
         "border",
@@ -95,7 +94,6 @@ const updateDropDown = () => {
         "text-center",
       );
     } else {
-      //console.log("NO OVERFLOW!");
       endSpaceEl.classList.add("grow");
       if (props.selectedTabToFront) {
         endSpaceEl.classList.add("order-last");
