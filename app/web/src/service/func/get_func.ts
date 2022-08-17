@@ -11,6 +11,7 @@ export interface GetFuncArgs {
 
 export interface GetFuncResponse extends Func {
   isBuiltin: boolean;
+  schemaVariants: number[];
 }
 
 const memo: {
@@ -46,4 +47,5 @@ export const nullFunc: GetFuncResponse = {
   name: "",
   code: undefined,
   isBuiltin: false,
+  schemaVariants: [],
 };

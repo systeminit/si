@@ -1,7 +1,11 @@
 use super::{FuncError, FuncResult};
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::Json;
-use dal::{Func, FuncBackendKind, FuncId, StandardModel, Visibility, WsEvent};
+use dal::{
+    func::backend::js_qualification::FuncBackendJsQualificationArgs,
+    qualification_prototype::QualificationPrototypeContext, Func, FuncBackendKind, FuncId,
+    QualificationPrototype, SchemaVariantId, StandardModel, Visibility, WsEvent,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -12,6 +16,7 @@ pub struct SaveFuncRequest {
     pub kind: FuncBackendKind,
     pub name: String,
     pub code: Option<String>,
+    pub schema_variants: Vec<SchemaVariantId>,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -48,6 +53,26 @@ pub async fn save_func(
     func.set_code_plaintext(&ctx, request.code.as_deref())
         .await?;
     func.set_backend_response_type(&ctx, request.kind).await?;
+
+    if !request.schema_variants.is_empty() {
+        let mut prototypes = QualificationPrototype::find_for_func(&ctx, func.id()).await?;
+        let mut prototype = match prototypes.pop() {
+            None => {
+                QualificationPrototype::new(
+                    &ctx,
+                    *func.id(),
+                    serde_json::to_value(&FuncBackendJsQualificationArgs::default())?,
+                    QualificationPrototypeContext::default(),
+                    func.name(),
+                )
+                .await?
+            }
+            Some(prototype) => prototype,
+        };
+        prototype
+            .set_schema_variant_id(&ctx, request.schema_variants[0])
+            .await?;
+    }
 
     WsEvent::change_set_written(&ctx).publish(&ctx).await?;
 

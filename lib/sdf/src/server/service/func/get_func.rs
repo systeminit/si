@@ -1,7 +1,10 @@
 use super::{FuncError, FuncResult};
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::{extract::Query, Json};
-use dal::{Func, FuncBackendKind, FuncId, StandardModel, Visibility};
+use dal::{
+    Func, FuncBackendKind, FuncId, QualificationPrototype, SchemaVariantId, StandardModel,
+    Visibility,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -21,6 +24,7 @@ pub struct GetFuncResponse {
     pub name: String,
     pub code: Option<String>,
     pub is_builtin: bool,
+    pub schema_variants: Vec<SchemaVariantId>,
 }
 
 pub async fn get_func(
@@ -35,6 +39,19 @@ pub async fn get_func(
         .await?
         .ok_or(FuncError::FuncNotFound)?;
 
+    let prototypes = QualificationPrototype::find_for_func(&ctx, func.id()).await?;
+    let schema_variants = prototypes
+        .iter()
+        .filter_map(|proto| {
+            let variant_id = proto.context().schema_variant_id();
+            if variant_id.is_none() {
+                None
+            } else {
+                Some(variant_id)
+            }
+        })
+        .collect();
+
     txns.commit().await?;
 
     Ok(Json(GetFuncResponse {
@@ -44,5 +61,6 @@ pub async fn get_func(
         name: func.name().to_owned(),
         code: func.code_plaintext()?,
         is_builtin: func.is_builtin(),
+        schema_variants,
     }))
 }

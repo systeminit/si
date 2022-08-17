@@ -6,7 +6,8 @@ use axum::{
 };
 
 use dal::{
-    ReadTenancyError, StandardModelError, TransactionsError, WriteTenancyError, WsEventError,
+    QualificationPrototypeError, ReadTenancyError, StandardModelError, TransactionsError,
+    WriteTenancyError, WsEventError,
 };
 
 use thiserror::Error;
@@ -34,6 +35,10 @@ pub enum FuncError {
     Func(#[from] dal::FuncError),
     #[error("could not publish websocket event: {0}")]
     WsEvent(#[from] WsEventError),
+    #[error(transparent)]
+    QualificationPrototype(#[from] QualificationPrototypeError),
+    #[error("json serialization error: {0}")]
+    SerdeJson(#[from] serde_json::Error),
 
     #[error("Function not found")]
     FuncNotFound,

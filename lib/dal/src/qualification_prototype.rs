@@ -9,9 +9,9 @@ use crate::{
     func::FuncId,
     impl_standard_model, pk,
     standard_model::{self, objects_from_rows, TypeHint},
-    standard_model_accessor, standard_model_accessor_ro, ComponentId, DalContext, HistoryEvent,
-    HistoryEventError, SchemaId, SchemaVariantId, StandardModel, StandardModelError, SystemId,
-    Timestamp, Visibility, WriteTenancy,
+    standard_model_accessor, ComponentId, DalContext, HistoryEvent, HistoryEventError, SchemaId,
+    SchemaVariantId, StandardModel, StandardModelError, SystemId, Timestamp, Visibility,
+    WriteTenancy,
 };
 
 #[derive(Error, Debug)]
@@ -40,6 +40,7 @@ pub type QualificationPrototypeResult<T> = Result<T, QualificationPrototypeError
 
 const FIND_FOR_CONTEXT: &str =
     include_str!("./queries/qualification_prototype_find_for_context.sql");
+const FIND_FOR_FUNC: &str = include_str!("./queries/qualification_prototype_find_for_func.sql");
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct QualificationPrototypeContext {
@@ -113,8 +114,10 @@ pub struct QualificationPrototype {
     title: String,
     description: Option<String>,
     link: Option<String>,
-    #[serde(flatten)]
-    context: QualificationPrototypeContext,
+    component_id: ComponentId,
+    schema_id: SchemaId,
+    schema_variant_id: SchemaVariantId,
+    system_id: SystemId,
     #[serde(flatten)]
     tenancy: WriteTenancy,
     #[serde(flatten)]
@@ -165,7 +168,15 @@ impl QualificationPrototype {
     standard_model_accessor!(title, String, QualificationPrototypeResult);
     standard_model_accessor!(description, Option<String>, QualificationPrototypeResult);
     standard_model_accessor!(link, Option<String>, QualificationPrototypeResult);
-    standard_model_accessor_ro!(context, QualificationPrototypeContext);
+    standard_model_accessor!(schema_id, Pk(SchemaId), QualificationPrototypeResult);
+    standard_model_accessor!(
+        schema_variant_id,
+        Pk(SchemaVariantId),
+        QualificationPrototypeResult
+    );
+    standard_model_accessor!(component_id, Pk(ComponentId), QualificationPrototypeResult);
+
+    standard_model_accessor!(system_id, Pk(SystemId), QualificationPrototypeResult);
 
     pub async fn set_id(
         &mut self,
@@ -222,6 +233,32 @@ impl QualificationPrototype {
             .await?;
         let object = objects_from_rows(rows)?;
         Ok(object)
+    }
+
+    pub async fn find_for_func(
+        ctx: &DalContext<'_, '_>,
+        func_id: &FuncId,
+    ) -> QualificationPrototypeResult<Vec<Self>> {
+        let rows = ctx
+            .txns()
+            .pg()
+            .query(
+                FIND_FOR_FUNC,
+                &[ctx.read_tenancy(), ctx.visibility(), func_id],
+            )
+            .await?;
+        let object = objects_from_rows(rows)?;
+        Ok(object)
+    }
+
+    pub fn context(&self) -> QualificationPrototypeContext {
+        let mut context = QualificationPrototypeContext::new();
+        context.set_component_id(self.component_id);
+        context.set_schema_id(self.schema_id);
+        context.set_schema_variant_id(self.schema_variant_id);
+        context.set_system_id(self.system_id);
+
+        context
     }
 }
 
