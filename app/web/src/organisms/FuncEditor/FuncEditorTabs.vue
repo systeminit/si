@@ -1,6 +1,10 @@
 <template>
   <!-- border-b border-neutral-300 dark:border-neutral-600 -->
-  <SiTabGroup :selected-index="selectedTab" @change="changeTab">
+  <SiTabGroup
+    :selected-index="selectedTab"
+    :selected-tab-to-front="true"
+    @change="changeTab"
+  >
     <template #tabs>
       <SiTabHeader v-for="func in funcList" :key="func.id">
         {{ func.name }}
