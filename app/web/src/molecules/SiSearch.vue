@@ -7,11 +7,15 @@
     >
       <input
         v-model="search"
-        :placeholder="placeholder"
+        :placeholder="props.placeholder"
         class="w-full px-1 py-[0.4375rem] pl-2.5 text-sm rounded-sm border text-black dark:text-white bg-neutral-50 dark:bg-neutral-900 border-neutral-300 dark:border-neutral-600 placeholder:italic placeholder:text-neutral-500 dark:placeholder:text-neutral-400"
       />
     </label>
-    <button class="w-[2rem] text-action-" @click="performSearch">
+    <button
+      v-if="!props.autosearch"
+      class="w-[2rem] text-action-"
+      @click="performSearch"
+    >
       <SearchIcon class="w-full text-neutral-500" />
     </button>
   </div>
@@ -19,18 +23,29 @@
 
 <script setup lang="ts">
 import { SearchIcon } from "@heroicons/vue/solid";
-import { ref } from "vue";
+import { ref, watch } from "vue";
 
 let search = ref<string>("");
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     placeholder?: string;
+    autosearch?: boolean;
   }>(),
   {
     placeholder: "search",
+    autosearch: false,
   },
 );
 
-const performSearch = () => console.log("perform search with...", search.value);
+const emits = defineEmits<{
+  (e: "search", v: string): void;
+}>();
+
+watch(
+  () => search.value,
+  (search) => props.autosearch && emits("search", search),
+);
+
+const performSearch = () => emits("search", search.value);
 </script>

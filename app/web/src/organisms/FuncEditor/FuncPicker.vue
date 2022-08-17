@@ -8,7 +8,11 @@
     </template>
     <template #panels>
       <TabPanel :key="0" class="h-full overflow-auto">
-        <SiSearch placeholder="search functions" />
+        <SiSearch
+          placeholder="search functions"
+          :autosearch="true"
+          @search="onSearch"
+        />
         <div class="w-full text-neutral-400 dark:text-neutral-300 text-sm p-2">
           Select a function from the lists below to view or edit it.
         </div>
@@ -17,8 +21,9 @@
             label="Qualification Functions"
             as="li"
             content-as="ul"
+            :default-open="true"
           >
-            <li v-for="func in funcList.qualifications" :key="func.id">
+            <li v-for="func in filteredList" :key="func.id">
               <SiFuncSprite
                 :name="func.name"
                 color="#921ed6"
@@ -51,6 +56,7 @@
 </template>
 
 <script lang="ts" setup>
+import { ref, computed } from "vue";
 import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import SiCollapsible from "@/organisms/SiCollapsible.vue";
@@ -61,10 +67,34 @@ import { ListedFuncView, ListFuncsResponse } from "@/service/func/list_funcs";
 import SiSearch from "@/molecules/SiSearch.vue";
 import { TabPanel } from "@headlessui/vue";
 
+const searchString = ref("");
+
+const onSearch = (search: string) =>
+  (searchString.value = search.trim().toLocaleLowerCase());
+
 const props = defineProps<{
   funcList: ListFuncsResponse;
   selectedFuncId: number;
 }>();
+
+const selectedFunc = computed(() =>
+  props.funcList.qualifications.find((f) => f.id === props.selectedFuncId),
+);
+
+const filteredList = computed(() => {
+  const filteredList =
+    searchString.value.length > 0
+      ? props.funcList.qualifications.filter((f) =>
+          f.name.toLocaleLowerCase().includes(searchString.value),
+        )
+      : props.funcList.qualifications;
+
+  if (selectedFunc.value && !filteredList.includes(selectedFunc.value)) {
+    filteredList.push(selectedFunc.value);
+  }
+
+  return filteredList;
+});
 
 const emits = defineEmits<{
   (e: "selectedFunc", v: ListedFuncView): void;
