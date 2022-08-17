@@ -1,6 +1,6 @@
 <template>
   <div
-    class="inline-block border-solid border rounded py-1 px-1"
+    class="inline-block border-solid border rounded py-1 px-1 whitespace-nowrap"
     :class="colorClasses"
   >
     {{ text }}

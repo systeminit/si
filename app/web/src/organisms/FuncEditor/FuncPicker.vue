@@ -22,6 +22,7 @@
             as="li"
             content-as="ul"
             :default-open="true"
+            class="min-w-full w-fit"
           >
             <li v-for="func in filteredList" :key="func.id">
               <SiFuncSprite
