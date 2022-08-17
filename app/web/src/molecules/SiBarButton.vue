@@ -34,17 +34,26 @@ import { Menu, MenuButton } from "@headlessui/vue";
 import { ref, toRefs, useSlots } from "vue";
 import SiDropdown from "@/molecules/SiDropdown.vue";
 
-const props = defineProps<{
-  disabled?: boolean;
-  selected?: boolean;
-  tooltipText: string;
-  dropdownClasses?: string;
+const props = withDefaults(
+  defineProps<{
+    disabled?: boolean;
+    selected?: boolean;
+    tooltipText?: string;
+    dropdownClasses?: string;
+    paddingX?: number;
+    hoverEffect?: boolean;
 
-  // Fills the entire width with the button (including the selected and hover colors).
-  // It is recommended that the item in the slot uses the "flex flex-row justify-center" classes in
-  // conjunction with this prop.
-  fillEntireWidth?: boolean;
-}>();
+    // Fills the entire width with the button (including the selected and hover colors).
+    // It is recommended that the item in the slot uses the "flex flex-row justify-center" classes in
+    // conjunction with this prop.
+    fillEntireWidth?: boolean;
+  }>(),
+  {
+    paddingX: 4,
+    hoverEffect: true,
+    tooltipText: "",
+  },
+);
 
 const { disabled } = toRefs(props);
 const slots = useSlots();
@@ -58,9 +67,15 @@ const toggleHover = () => {
 const buttonClasses = (open: boolean) => {
   const results: Record<string, boolean> = {
     "h-full": true,
-    "px-4": true,
-    "hover:bg-black": true,
   };
+
+  if (props.paddingX > 0) {
+    results[`px-${props.paddingX}`] = true;
+  }
+
+  if (props.hoverEffect) {
+    results["hover:bg-black"] = true;
+  }
 
   if (props.fillEntireWidth) {
     results["w-full"] = true;

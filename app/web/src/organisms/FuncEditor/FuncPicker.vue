@@ -3,6 +3,9 @@
     <template #tabs>
       <SiTabHeader :key="0"> FUNCTIONS </SiTabHeader>
     </template>
+    <template #dropdownitems>
+      <SiDropdownItem>FUNCTIONS</SiDropdownItem>
+    </template>
     <template #panels>
       <TabPanel :key="0" class="h-full overflow-auto">
         <SiSearch
@@ -10,7 +13,7 @@
           :autosearch="true"
           @search="onSearch"
         />
-        <div class="w-full text-neutral-400 text-sm p-2">
+        <div class="w-full text-neutral-400 dark:text-neutral-300 text-sm p-2">
           Select a function from the lists below to view or edit it.
         </div>
         <ul class="overflow-y-auto">
@@ -19,13 +22,18 @@
             as="li"
             content-as="ul"
             :default-open="true"
+            class="min-w-full w-fit"
           >
             <li v-for="func in filteredList" :key="func.id">
               <SiFuncSprite
                 :name="func.name"
                 color="#921ed6"
-                :class="props.selectedFuncId == func.id ? 'bg-action-500' : ''"
-                class="border-b-2 dark:border-neutral-600 hover:bg-action-500 dark:text-white hover:text-white hover:cursor-pointer"
+                :class="
+                  selectedFuncId == func.id
+                    ? 'bg-action-100 dark:bg-action-700 border border-action-500 dark:border-action-300'
+                    : ''
+                "
+                class="border dark:border-neutral-600 dark:text-white hover:cursor-pointer hover:border-action-500 dark:hover:border-action-300"
                 :is-builtin="func.isBuiltin"
                 @click="selectFunc(func)"
               />
@@ -55,6 +63,7 @@ import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import SiCollapsible from "@/organisms/SiCollapsible.vue";
 import SiFuncSprite from "@/molecules/SiFuncSprite.vue";
 import SiButton from "@/atoms/SiButton.vue";
+import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
 import { ListedFuncView, ListFuncsResponse } from "@/service/func/list_funcs";
 import SiSearch from "@/molecules/SiSearch.vue";
 import { TabPanel } from "@headlessui/vue";

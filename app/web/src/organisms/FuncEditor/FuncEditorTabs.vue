@@ -1,8 +1,8 @@
 <template>
-  <!-- border-b border-neutral-300 dark:border-neutral-600 -->
   <SiTabGroup
     :key="tabGroupRerenderKey"
     :selected-index="selectedTab"
+    :selected-tab-to-front="true"
     @change="changeTab"
   >
     <template #tabs>
@@ -15,9 +15,16 @@
           <VueFeather type="x" />
         </button>
       </SiTabHeader>
-      <div
-        class="grow border-b border-neutral-300 dark:border-neutral-600"
-      ></div>
+    </template>
+    <template #dropdownitems>
+      <SiDropdownItem
+        v-for="func in funcList"
+        :key="func.id"
+        :checked="findTabIndexForFunc(funcList, func) === selectedTab"
+        @select="changeTab(findTabIndexForFunc(funcList, func))"
+      >
+        {{ func.name }}
+      </SiDropdownItem>
     </template>
     <template #panels>
       <TabPanel
@@ -37,10 +44,11 @@ import { fromRef } from "vuse-rx/src";
 import { FuncService } from "@/service/func";
 import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
+import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
 import { TabPanel } from "@headlessui/vue";
 import FuncEditor from "@/organisms/FuncEditor/FuncEditor.vue";
 import VueFeather from "vue-feather";
-import { ListedFuncView } from "@/service/func/list_funcs";
+import { ListedFuncView, nullListFunc } from "@/service/func/list_funcs";
 import { switchMap, take } from "rxjs/operators";
 import { of } from "rxjs";
 import { funcState, funcById, removeFunc, insertFunc } from "./func_state";
@@ -89,6 +97,8 @@ const changeTab = (index: number) => {
   }
   if (funcList.value.length) {
     selectFunc(funcList.value[index]);
+  } else {
+    selectFunc(nullListFunc);
   }
 };
 

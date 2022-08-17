@@ -1,15 +1,28 @@
 <template>
-  <Tab v-slot="{ selected }" class="focus:outline-none">
-    <span
-      :class="classes + ' ' + (selected ? selectedClasses : defaultClasses)"
+  <!-- selectedToFront ? (selected ? 'order-1' : 'order-2') : '' -->
+  <Tab v-slot="{ selected }" class="focus:outline-none" as="template">
+    <button
+      :class="
+        selectedToFront
+          ? selected
+            ? moveTabToFrontIfOverflowing($el.nextElementSibling)
+            : 'order-2'
+          : ''
+      "
     >
-      <slot />
-    </span>
+      <span
+        :class="
+          classesF + ' ' + (selected ? selectedClassesF : defaultClassesF)
+        "
+      >
+        <slot />
+      </span>
+    </button>
   </Tab>
   <div
     v-if="afterMargin > 0"
     class="border-b border-neutral-300 dark:border-neutral-600"
-    :class="'w-' + afterMargin"
+    :class="'w-' + afterMargin + (selectedToFront ? ' order-2' : '')"
   ></div>
 </template>
 
@@ -17,30 +30,35 @@
 import { Tab } from "@headlessui/vue";
 import { inject } from "vue";
 
-withDefaults(
-  defineProps<{
-    classes?: string;
-    defaultClasses?: string;
-    selectedClasses?: string;
-  }>(),
-  {
-    classes:
-      "border-x border-t border-x-neutral-300 border-t-neutral-300 dark:border-x-neutral-600 dark:border-t-neutral-600 h-11 px-2 text-sm inline-flex items-center rounded-t",
-    defaultClasses:
-      "text-gray-400 border-b border-neutral-300 dark:border-neutral-600",
-    selectedClasses: "border-b-white dark:border-b-neutral-800 border-b",
-  },
-);
+const props = defineProps<{
+  classes?: string;
+  defaultClasses?: string;
+  selectedClasses?: string;
+}>();
+
+const moveTabToFrontIfOverflowing = (tabElement: HTMLElement) => {
+  const parent = tabElement.parentElement;
+  if (!parent) return "order-2"; // no parent? don't reorder elements
+
+  const tabInnerAreaWidth = parent.clientWidth;
+  const tabWidth = tabElement.getBoundingClientRect().width;
+  const allButtons = [...parent.children].filter((element) =>
+    element.querySelector("button"),
+  );
+  let priorTabsWidth = 0;
+  for (let i = 0; i < allButtons.length; i++) {
+    const priorTabElement = allButtons[i];
+    if (priorTabElement === tabElement) i = allButtons.length;
+    else priorTabsWidth += priorTabElement.getBoundingClientRect().width;
+  }
+
+  if (priorTabsWidth + tabWidth > tabInnerAreaWidth) return "order-1";
+  return "order-2";
+};
 
 const afterMargin = inject("afterMargin", 0);
+const selectedToFront = inject("selectedTabToFront", false);
+const classesF = inject("tabClasses", props.classes);
+const defaultClassesF = inject("defaultTabClasses", props.defaultClasses);
+const selectedClassesF = inject("selectedTabClasses", props.selectedClasses);
 </script>
-
-<style>
-/* TODO (Wendy) - Tailwind classes which seem to not be in our build? BUG! */
-.w-2 {
-  width: 0.5rem;
-}
-.w-1 {
-  width: 0.25rem;
-}
-</style>

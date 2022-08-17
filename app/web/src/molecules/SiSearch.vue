@@ -8,7 +8,7 @@
       <input
         v-model="search"
         :placeholder="props.placeholder"
-        class="w-full text-black px-1 py-[0.4375rem] pl-2.5 text-sm rounded-sm border dark:text-black bg-neutral-100 border-neutral-200 placeholder:italic placeholder:text-neutral-400"
+        class="w-full px-1 py-[0.4375rem] pl-2.5 text-sm rounded-sm border text-black dark:text-white bg-neutral-50 dark:bg-neutral-900 border-neutral-300 dark:border-neutral-600 placeholder:italic placeholder:text-neutral-500 dark:placeholder:text-neutral-400"
       />
     </label>
     <button
