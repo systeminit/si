@@ -69,6 +69,7 @@ pub async fn save_func(
             }
             Some(prototype) => prototype,
         };
+        prototype.set_title(&ctx, func.name()).await?;
         prototype
             .set_schema_variant_id(&ctx, request.schema_variants[0])
             .await?;
