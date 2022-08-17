@@ -1,14 +1,4 @@
 <template>
-  <!-- old save and discard buttons, move them! -->
-  <!--  <div class="mb-3 flex items-center gap-x-[0.9375rem]">-->
-  <!--    <TertiaryDestructiveButtonXSmall-->
-  <!--      label="Discard"-->
-  <!--      icon-style="left"-->
-  <!--      icon="x"-->
-  <!--      @click="discardChanges"-->
-  <!--    />-->
-  <!--    <PrimarySuccessButtonXSmall label="Save" icon-style="left" />-->
-  <!--  </div>-->
   <div
     class="w-full h-full border-neutral-300 dark:border-neutral-600 border-x px-2"
   >
@@ -17,11 +7,18 @@
 </template>
 
 <script lang="ts" setup>
-import { onMounted, ref, toRef, computed } from "vue";
-import { EditorState, EditorView } from "@codemirror/basic-setup";
+import { onMounted, ref, toRef, computed, watch } from "vue";
+import { basicSetup, EditorView } from "@codemirror/basic-setup";
+import { EditorState, Compartment } from "@codemirror/state";
 import { keymap } from "@codemirror/view";
-import { defaultKeymap } from "@codemirror/commands";
+import { indentWithTab } from "@codemirror/commands";
 import { funcState, changeFunc, nullEditingFunc } from "./func_state";
+import { gruvboxDark } from "cm6-theme-gruvbox-dark";
+import { basicLight } from "cm6-theme-basic-light";
+import { ThemeService } from "@/service/theme";
+import { Theme } from "@/observable/theme";
+import { refFrom } from "vuse-rx";
+import { javascript } from "@codemirror/lang-javascript";
 
 const props = defineProps<{
   funcId: number;
@@ -32,8 +29,27 @@ const editingFunc = computed(
   () => funcState.funcs.find((f) => f.id == funcId.value) ?? nullEditingFunc,
 );
 
+const currentTheme = refFrom<Theme>(ThemeService.currentTheme());
 const editorMount = ref();
 const view = ref<EditorView | undefined>();
+
+const language = new Compartment();
+const readOnly = new Compartment();
+const themeCompartment = new Compartment();
+
+watch(
+  () => currentTheme.value,
+  (newTheme) => {
+    view.value?.dispatch({
+      effects: [
+        themeCompartment.reconfigure(
+          newTheme?.value === "dark" ? gruvboxDark : basicLight,
+        ),
+      ],
+    });
+    console.log(newTheme, view.value?.state);
+  },
+);
 
 const mountEditor = () => {
   const updateListener = EditorView.updateListener.of((update) => {
@@ -47,9 +63,18 @@ const mountEditor = () => {
   const editorState = EditorState.create({
     doc: editingFunc.value.modifiedFunc.code,
     extensions: [
-      keymap.of(defaultKeymap),
-      EditorView.editable.of(!editingFunc.value.origFunc.isBuiltin),
+      basicSetup,
+      language.of(javascript()),
+      keymap.of([indentWithTab]),
+      themeCompartment.of(
+        currentTheme.value?.value === "dark" ? gruvboxDark : basicLight,
+      ),
+      keymap.of([indentWithTab]),
+      readOnly.of(
+        EditorState.readOnly.of(editingFunc.value.origFunc.isBuiltin),
+      ),
       updateListener,
+      EditorView.lineWrapping,
     ],
   });
 
@@ -65,3 +90,12 @@ onMounted(() => {
   }
 });
 </script>
+
+<style>
+.cm-editor .cm-content {
+  font-size: 14px;
+}
+.cm-editor .cm-gutter {
+  font-size: 14px;
+}
+</style>
