@@ -1,14 +1,14 @@
 <template>
   <TabGroup
-    :selected-index="selectedTab"
-    as="div"
     class="flex flex-col w-full bg-neutral-900 text-white border-black border-t-[1px]"
+    as="div"
+    :selected-index="selectedTab"
     @change="changeTab"
   >
     <TabList
-      :class="barClasses"
       as="div"
       class="flex flex-row w-full justify-end h-11"
+      :class="barClasses"
     >
       <Tab>
         <div aria-hidden="true" class="hidden" />
