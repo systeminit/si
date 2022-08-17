@@ -7,10 +7,9 @@ use std::collections::HashMap;
 use crate::{
     attribute::context::AttributeContextBuilder,
     attribute::value::dependent_update::collection::AttributeValueDependentCollectionHarness,
-    job::definition::CodeGeneration, job::definition::DependentValuesUpdate, AttributeContext,
-    AttributePrototypeArgument, AttributeValue, AttributeValueError, AttributeValueId,
-    AttributeValueResult, Component, ComponentId, DalContext, FuncBinding, InternalProvider, Prop,
-    PropKind, StandardModel, SystemId, WsEvent,
+    job::definition::DependentValuesUpdate, AttributeContext, AttributePrototypeArgument,
+    AttributeValue, AttributeValueError, AttributeValueId, AttributeValueResult, Component,
+    ComponentId, DalContext, FuncBinding, Prop, PropKind, StandardModel, SystemId, WsEvent,
 };
 
 pub mod collection;
@@ -170,76 +169,6 @@ impl AttributeValueDependentUpdateHarness {
                     unprocessed_value,
                 )
                 .await?;
-            }
-        }
-
-        if attribute_value_that_needs_to_be_updated
-            .context
-            .component_id()
-            .is_some()
-        {
-            if let Some(component) = Component::get_by_id(
-                ctx,
-                &attribute_value_that_needs_to_be_updated
-                    .context
-                    .component_id(),
-            )
-            .await?
-            {
-                component
-                    .check_validations(
-                        ctx,
-                        *attribute_value_that_needs_to_be_updated.id(),
-                        &func_binding_return_value.value().cloned(),
-                    )
-                    .await
-                    .map_err(|err| AttributeValueError::Component(err.to_string()))?;
-
-                // We only want to enqueue a job to check the qualifications if the AttributeValue
-                // is for the implicit InternalProvider of the Root Prop of the Component.
-                if attribute_value_that_needs_to_be_updated
-                    .context
-                    .is_least_specific_field_kind_internal_provider()?
-                {
-                    let internal_provider = InternalProvider::get_by_id(
-                        ctx,
-                        &attribute_value_that_needs_to_be_updated
-                            .context
-                            .internal_provider_id(),
-                    )
-                    .await?
-                    .ok_or_else(|| {
-                        AttributeValueError::InternalProviderNotFound(
-                            attribute_value_that_needs_to_be_updated
-                                .context
-                                .internal_provider_id(),
-                        )
-                    })?;
-
-                    if internal_provider.prop_id().is_some() {
-                        let provider_prop = Prop::get_by_id(ctx, internal_provider.prop_id())
-                            .await?
-                            .ok_or_else(|| {
-                                AttributeValueError::PropNotFound(*internal_provider.prop_id())
-                            })?;
-
-                        // The Root Prop won't have a parent Prop.
-                        if provider_prop.parent_prop(ctx).await?.is_none() {
-                            ctx.enqueue_job(
-                                CodeGeneration::new(
-                                    ctx,
-                                    attribute_value_that_needs_to_be_updated
-                                        .context
-                                        .component_id(),
-                                    attribute_value_that_needs_to_be_updated.context.system_id(),
-                                )
-                                .await
-                                .map_err(|err| AttributeValueError::Component(err.to_string()))?,
-                            )
-                            .await;
-                        }
-                    }
-                }
             }
         }
 

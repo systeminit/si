@@ -7,6 +7,7 @@ use crate::attribute::context::{AttributeContextBuilder, UNSET_ID_VALUE};
 use crate::func::backend::identity::FuncBackendIdentityArgs;
 use crate::func::binding::{FuncBindingError, FuncBindingId};
 use crate::func::binding_return_value::FuncBindingReturnValueId;
+use crate::job::definition::CodeGeneration;
 use crate::schema::variant::SchemaVariantError;
 use crate::socket::{Socket, SocketArity, SocketEdgeKind, SocketError, SocketKind};
 use crate::standard_model::object_option_from_row_option;
@@ -14,8 +15,8 @@ use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_accessor_ro,
     AttributeContextBuilderError, AttributePrototype, AttributePrototypeError,
     AttributePrototypeId, AttributeReadContext, AttributeValueError, AttributeView, FuncId,
-    HistoryEventError, Prop, SchemaVariant, SchematicKind, StandardModel, StandardModelError,
-    Timestamp, Visibility, WriteTenancy,
+    HistoryEventError, Prop, PropError, SchemaVariant, SchematicKind, StandardModel,
+    StandardModelError, Timestamp, Visibility, WriteTenancy,
 };
 use crate::{
     AttributeContext, AttributeContextError, AttributeValue, DalContext, Func, FuncBinding, PropId,
@@ -40,12 +41,16 @@ pub enum InternalProviderError {
     AttributePrototype(#[from] AttributePrototypeError),
     #[error("attribute value error: {0}")]
     AttributeValue(#[from] AttributeValueError),
+    #[error("component error: {0}")]
+    Component(String),
     #[error("func binding error: {0}")]
     FuncBinding(#[from] FuncBindingError),
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
     #[error("pg error: {0}")]
     Pg(#[from] PgError),
+    #[error("prop error: {0}")]
+    Prop(#[from] PropError),
     #[error("schema variant error: {0}")]
     SchemaVariant(String),
     #[error("serde_json error: {0}")]
@@ -405,7 +410,7 @@ impl InternalProvider {
         // We never want to mutate an emitted AttributeValue in the universal tenancy and we want
         // to ensure the found AttributeValue's context _exactly_ matches the one assembled. In
         // either case, just create a new one!
-        if let Some(mut emit_attribute_value) =
+        let maybe_new_emit_attribute_value = if let Some(mut emit_attribute_value) =
             AttributeValue::find_for_context(ctx, emit_attribute_context.into()).await?
         {
             // TODO(nick): we will likely want to replace the "universal" tenancy check with an
@@ -419,20 +424,52 @@ impl InternalProvider {
                 emit_attribute_value
                     .set_func_binding_return_value_id(ctx, *func_binding_return_value.id())
                     .await?;
-                return Ok(emit_attribute_value);
+
+                Some(emit_attribute_value)
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+        let new_emit_attribute_value = match maybe_new_emit_attribute_value {
+            None => {
+                let new_emit_attribute_value = AttributeValue::new(
+                    ctx,
+                    *func_binding.id(),
+                    *func_binding_return_value.id(),
+                    emit_attribute_context,
+                    Option::<String>::None,
+                )
+                .await?;
+                new_emit_attribute_value
+                    .set_attribute_prototype(ctx, attribute_prototype.id())
+                    .await?;
+
+                new_emit_attribute_value
+            }
+            Some(av) => av,
+        };
+
+        if emit_attribute_context.component_id().is_some() && self.prop_id().is_some() {
+            let provider_prop = Prop::get_by_id(ctx, self.prop_id())
+                .await?
+                .ok_or_else(|| InternalProviderError::PropNotFound(*self.prop_id()))?;
+
+            // The Root Prop won't have a parent Prop.
+            if provider_prop.parent_prop(ctx).await?.is_none() {
+                ctx.enqueue_job(
+                    CodeGeneration::new(
+                        ctx,
+                        emit_attribute_context.component_id(),
+                        emit_attribute_context.system_id(),
+                    )
+                    .await
+                    .map_err(|err| InternalProviderError::Component(err.to_string()))?,
+                )
+                .await;
             }
         }
-        let new_emit_attribute_value = AttributeValue::new(
-            ctx,
-            *func_binding.id(),
-            *func_binding_return_value.id(),
-            emit_attribute_context,
-            Option::<String>::None,
-        )
-        .await?;
-        new_emit_attribute_value
-            .set_attribute_prototype(ctx, attribute_prototype.id())
-            .await?;
 
         Ok(new_emit_attribute_value)
     }
