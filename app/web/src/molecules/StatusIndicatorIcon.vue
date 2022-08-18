@@ -3,26 +3,32 @@
     <SolidCheck
       v-if="status === 'success'"
       class="text-success-500 inline align-middle"
+      v-bind="$attrs"
     />
     <SolidExclamation
       v-else-if="status === 'failure'"
       class="text-destructive-500 inline align-middle"
+      v-bind="$attrs"
     />
     <SolidPlusCircleIcon
       v-else-if="status === 'added'"
       class="text-success-500 inline align-middle"
+      v-bind="$attrs"
     />
     <SpinnerIcon
       v-else-if="status === 'loading'"
       class="text-warning-500 inline align-middle animate-spin"
+      v-bind="$attrs"
     />
     <SolidMinusCircleIcon
       v-else-if="status === 'deleted'"
       class="text-destructive-500 inline align-middle"
+      v-bind="$attrs"
     />
     <SolidPencilAltIcon
       v-else-if="status === 'modified'"
       class="text-warning-500 inline align-middle"
+      v-bind="$attrs"
     />
   </template>
 
@@ -30,29 +36,41 @@
     <OutlineCheck
       v-if="status === 'success'"
       class="text-success-500 inline align-middle"
+      v-bind="$attrs"
     />
     <OutlinePlusCircleIcon
       v-else-if="status === 'added'"
       class="text-success-500 inline align-middle"
+      v-bind="$attrs"
     />
     <OutlineExclamation
       v-else-if="status === 'failure'"
       class="text-destructive-500 inline align-middle"
+      v-bind="$attrs"
     />
     <OutlineMinusCircleIcon
       v-else-if="status === 'deleted'"
       class="text-destructive-500 inline align-middle"
+      v-bind="$attrs"
     />
     <SpinnerIcon
       v-else-if="status === 'loading'"
       class="text-warning-500 inline align-middle"
+      v-bind="$attrs"
     />
     <OutlinePencilAltIcon
       v-else-if="status === 'modified'"
       class="text-warning-500 inline align-middle"
+      v-bind="$attrs"
     />
   </template>
 </template>
+
+<script lang="ts">
+export default {
+  inheritAttrs: false,
+};
+</script>
 
 <script lang="ts" setup>
 import {
