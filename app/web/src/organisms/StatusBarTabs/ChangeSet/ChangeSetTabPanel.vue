@@ -1,18 +1,20 @@
 <template>
   <div class="flex flex-row h-full w-full">
     <!-- Filter button and list of components -->
-    <div
-      class="w-80 border-r-[1px] border-shade-100 text-center h-full flex flex-col"
-    >
+    <div class="w-72 shrink-0 border-shade-100 h-full flex flex-col">
       <!-- Filter button and its dropdown -->
+      <span
+        class="h-11 border-b border-shade-100 text-lg px-4 flex items-center"
+      >
+        Components Menu
+      </span>
       <SiBarButton
-        class="h-10 border-b-[1px] text-shade-0 text-[1rem] border-shade-100"
-        dropdown-classes="top-1 left-4"
+        class="h-11 border-b border-shade-100"
         tooltip-text="Filter"
         fill-entire-width
       >
         <template #default="{ hovered, open }">
-          <div class="flex flex-row justify-center">
+          <div class="flex flex-row">
             {{ filterTitle }}
             <SiArrow :nudge="hovered || open" class="ml-1 w-4" />
           </div>
@@ -22,7 +24,7 @@
           <SiDropdownItem
             :checked="filter === 'all'"
             @select="changeFilter('all')"
-            >All</SiDropdownItem
+            >Show All</SiDropdownItem
           >
           <SiDropdownItem
             :checked="filter === 'added'"
@@ -47,26 +49,22 @@
         <div
           v-for="statsGroup in list"
           :key="statsGroup.componentId"
-          class="flex flex-col"
+          :class="
+            selectedComponent?.componentId === statsGroup.componentId
+              ? 'bg-action-500'
+              : 'hover:bg-black'
+          "
+          class="py-2 pl-4 pr-3 cursor-pointer flex justify-between items-center"
+          @click="updateSelectedComponent(statsGroup)"
         >
-          <div
-            :class="
-              selectedComponent?.componentId === statsGroup.componentId
-                ? 'bg-action-500'
-                : 'hover:bg-black'
-            "
-            class="py-2 truncate cursor-pointer flex flex-row justify-between"
-            @click="updateSelectedComponent(statsGroup)"
-          >
-            <div class="text-left text-ellipsis ml-2.5 mr-6">
-              {{ statsGroup.componentName }}
-            </div>
-            <StatusIndicatorIcon
-              v-if="statsGroup"
-              :status="statsGroup.componentStatus"
-              class="w-6 mr-2.5 ml-6 text-right"
-            />
-          </div>
+          <span class="shrink min-w-0 truncate mr-3">
+            {{ statsGroup.componentName }}
+          </span>
+          <StatusIndicatorIcon
+            v-if="statsGroup"
+            :status="statsGroup.componentStatus"
+            class="w-6 shrink-0"
+          />
         </div>
       </div>
     </div>
@@ -167,7 +165,7 @@ const changeFilter = (newFilter: ChangeSetTabPanelFilter) => {
 };
 const filterTitle = computed(() => {
   if (filter.value === "all") {
-    return "All";
+    return "Show All";
   } else if (filter.value === "added") {
     return "Added";
   } else if (filter.value === "deleted") {
