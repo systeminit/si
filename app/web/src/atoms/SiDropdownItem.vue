@@ -3,18 +3,20 @@
     <a
       :class="[
         active ? 'bg-action-500' : '',
-        'flex relative items-center text-center whitespace-nowrap p-2 text-shade-0 cursor-pointer',
+        'flex flex-row relative items-center whitespace-nowrap p-2 text-shade-0 cursor-pointer',
+        classes,
       ]"
       @click="emit('select')"
     >
-      <div class="w-5 mr-2">
+      <div class="w-5 mr-2 flex-none" :class="showPrefix ? '' : 'hidden'">
         <slot name="prefix">
           <CheckIcon v-if="props.checked" />
         </slot>
       </div>
-      <slot />
-
-      <div class="w-5 ml-2">
+      <div class="min-w-0 text-ellipsis overflow-hidden">
+        <slot />
+      </div>
+      <div class="w-5 ml-2" :class="showSuffix ? '' : 'hidden'">
         <slot name="suffix" />
       </div>
     </a>
@@ -24,6 +26,7 @@
 <script setup lang="ts">
 import { MenuItem } from "@headlessui/vue";
 import { CheckIcon } from "@heroicons/vue/solid";
+import { inject } from "vue";
 
 const emit = defineEmits(["select"]);
 
@@ -33,4 +36,8 @@ const emit = defineEmits(["select"]);
 const props = defineProps<{
   checked?: boolean;
 }>();
+
+const classes = inject("dropdownItemClasses", "text-center");
+const showPrefix = inject("dropdownItemShowPrefix", true);
+const showSuffix = inject("dropdownItemShowSuffix", true);
 </script>

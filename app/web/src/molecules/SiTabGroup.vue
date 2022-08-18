@@ -17,7 +17,9 @@
         ref="dropDown"
         :padding-x="2"
         :hover-effect="false"
-        dropdown-classes="-right-0 z-100"
+        dropdown-classes="right-0 overflow-hidden max-w-xs text-left text-ellipsis"
+        dropdown-item-classes="text-left text-ellipsis"
+        :dropdown-item-show-suffix="false"
         ><DotsVerticalIcon class="w-6" />
         <template #dropdownContent>
           <slot name="dropdownitems" />
@@ -48,6 +50,7 @@ const props = withDefaults(
     startMargin?: number;
     afterMargin?: number;
     selectedTabToFront?: boolean;
+    tabWidthMaximum: number;
   }>(),
   {
     selectedIndex: undefined,
@@ -63,6 +66,7 @@ const props = withDefaults(
     startMargin: 0,
     afterMargin: 0,
     selectedTabToFront: false,
+    tabWidthMaximum: 0,
   },
 );
 
@@ -127,4 +131,5 @@ provide("tabClasses", props.tabClasses);
 provide("defaultTabClasses", props.defaultTabClasses);
 provide("selectedTabClasses", props.selectedTabClasses);
 provide("selectedTabToFront", props.selectedTabToFront);
+provide("tabWidthMaximum", props.tabWidthMaximum);
 </script>
