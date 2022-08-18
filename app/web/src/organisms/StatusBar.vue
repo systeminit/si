@@ -16,6 +16,7 @@
       </Tab>
 
       <!-- Edit tabs -->
+      <Tab v-if="!isViewMode" aria-hidden="true" class="hidden" />
       <Tab v-if="!isViewMode" v-slot="{ selected }">
         <ChangeSetTab :selected="selected" />
       </Tab>
@@ -99,6 +100,9 @@
         <TabPanel aria-hidden="true" class="hidden">hidden</TabPanel>
 
         <!-- Edit panels -->
+        <TabPanel v-if="!isViewMode" aria-hidden="true" class="hidden">
+          hidden
+        </TabPanel>
         <TabPanel v-if="!isViewMode" class="h-full">
           <ChangeSetTabPanel />
         </TabPanel>
