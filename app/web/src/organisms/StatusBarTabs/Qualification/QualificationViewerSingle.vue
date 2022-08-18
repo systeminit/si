@@ -5,30 +5,15 @@
     </div>
 
     <div class="w-full flex flex-col px-3 py-3 gap-2 text-sm">
-      <!-- TODO(victor): These StatusMessage components below should become their own molecules -->
-      <div
-        v-if="qualificationStatus === 'failure'"
-        class="flex p-2 border border-destructive-600 text-destructive-500 rounded items-start"
-      >
-        <StatusIndicatorIcon class="w-8 mr-2 shrink-0" status="failure" />
-        <span class="self-center">
+      <StatusMessageBox :status="qualificationStatus">
+        <template v-if="qualificationStatus === 'failure'">
           Something went wrong! Click "View Details" to see the output.
-        </span>
-      </div>
-      <div
-        v-else-if="qualificationStatus === 'success'"
-        class="flex p-2 border border-success-600 text-success-500 rounded items-start"
-      >
-        <StatusIndicatorIcon class="w-8 mr-2 shrink-0" status="success" />
-        <span class="self-center"> Passed! </span>
-      </div>
-      <div
-        v-else
-        class="flex p-2 border border-action-600 text-action-500 rounded items-start"
-      >
-        <StatusIndicatorIcon class="w-8 mr-2 shrink-0" status="loading" />
-        <span class="self-center"> Qualification running, standby... </span>
-      </div>
+        </template>
+        <template v-else-if="qualificationStatus === 'success'">
+          Passed!
+        </template>
+        <template v-else> Qualification running, standby...</template>
+      </StatusMessageBox>
 
       <div v-if="qualification.description">
         <b>Description: </b>
@@ -68,7 +53,7 @@
               leave-to="opacity-0 scale-95"
             >
               <DialogPanel
-                class="w-full max-w-md transform overflow-hidden rounded bg-white dark:bg-neutral-900 text-left align-middle shadow-xl transition-all text-black dark:text-white"
+                class="w-full max-w-2xl transform overflow-hidden rounded bg-white dark:bg-neutral-900 text-left align-middle shadow-xl transition-all text-black dark:text-white"
               >
                 <div
                   class="flex justify-between items-center py-2 border-b border-black px-2"
@@ -87,38 +72,17 @@
                 </div>
 
                 <div class="w-full flex flex-col px-2 py-3 gap-3 text-sm">
-                  <div
-                    v-if="qualificationStatus === 'failure'"
-                    class="flex p-2 border border-destructive-600 text-destructive-500 rounded items-start"
-                  >
-                    <StatusIndicatorIcon
-                      class="w-8 mr-2 shrink-0"
-                      status="failure"
-                    />
-                    <span class="self-center"> Something went wrong! </span>
-                  </div>
-                  <div
-                    v-else-if="qualificationStatus === 'success'"
-                    class="flex p-2 border border-success-600 text-success-500 rounded items-start"
-                  >
-                    <StatusIndicatorIcon
-                      class="w-8 mr-2 shrink-0"
-                      status="success"
-                    />
-                    <span class="self-center"> Passed! </span>
-                  </div>
-                  <div
-                    v-else
-                    class="flex p-2 border border-action-600 text-action-500 rounded items-start"
-                  >
-                    <StatusIndicatorIcon
-                      class="w-8 mr-2 shrink-0"
-                      status="loading"
-                    />
-                    <span class="self-center">
+                  <StatusMessageBox :status="qualificationStatus">
+                    <template v-if="qualificationStatus === 'failure'">
+                      Something went wrong!
+                    </template>
+                    <template v-else-if="qualificationStatus === 'success'">
+                      Passed!
+                    </template>
+                    <template v-else>
                       Qualification running, standby...
-                    </span>
-                  </div>
+                    </template>
+                  </StatusMessageBox>
 
                   <div v-if="qualification.description">
                     <b>Description: </b>
@@ -131,7 +95,7 @@
                   >
                     <b>Raw Output:</b>
                     <p
-                      v-for="(output, index) in qualification.output.slice(-5)"
+                      v-for="(output, index) in qualification.output"
                       :key="index"
                       class="text-sm"
                     >
@@ -162,7 +126,6 @@
 import { computed, ref } from "vue";
 import _ from "lodash";
 import { Qualification } from "@/api/sdf/dal/qualification";
-import StatusIndicatorIcon from "@/molecules/StatusIndicatorIcon.vue";
 import {
   Dialog,
   DialogPanel,
@@ -171,6 +134,7 @@ import {
   TransitionRoot,
 } from "@headlessui/vue";
 import VButton from "@/molecules/VButton.vue";
+import StatusMessageBox from "@/molecules/StatusMessageBox.vue";
 
 const props = defineProps<{
   qualification: Qualification;

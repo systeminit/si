@@ -1,8 +1,16 @@
-import { combineLatest, map, Observable, shareReplay, switchMap } from "rxjs";
+import {
+  combineLatest,
+  map,
+  Observable,
+  shareReplay,
+  startWith,
+  switchMap,
+} from "rxjs";
 import { ApiResponse, SDF } from "@/api/sdf";
 import Bottle from "bottlejs";
 import { standardVisibilityTriggers$ } from "@/observable/visibility";
 import { GlobalErrorService } from "@/service/global_error";
+import { eventCheckedQualifications$ } from "@/observable/qualification";
 
 export interface QualificationSummaryForComponent {
   componentId: number;
@@ -23,7 +31,10 @@ let getSummaryObservableCache: Observable<GetSummaryResponse | undefined>;
 
 export function getSummary(): Observable<GetSummaryResponse | undefined> {
   if (getSummaryObservableCache) return getSummaryObservableCache;
-  getSummaryObservableCache = combineLatest([standardVisibilityTriggers$]).pipe(
+  getSummaryObservableCache = combineLatest([
+    standardVisibilityTriggers$,
+    eventCheckedQualifications$.pipe(startWith(null)),
+  ]).pipe(
     switchMap(([[visibility]]) => {
       const bottle = Bottle.pop("default");
       const sdf: SDF = bottle.container.SDF;
