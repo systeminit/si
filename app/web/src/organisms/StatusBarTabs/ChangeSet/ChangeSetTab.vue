@@ -51,7 +51,7 @@ const title = computed((): string => {
   if (total.value > 0) {
     return "Changes";
   }
-  return "No Changes yet...";
+  return "No Changes Yet...";
 });
 
 untilUnmounted(ChangeSetService.getStats()).subscribe((response) => {

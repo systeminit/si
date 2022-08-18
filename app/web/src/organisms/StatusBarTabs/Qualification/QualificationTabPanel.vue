@@ -1,14 +1,15 @@
 <template>
   <div class="flex flex-row h-full w-full">
     <!-- Filter button and list of components -->
-    <div class="w-72 shrink-0 border-black h-full flex flex-col">
+    <div class="w-72 shrink-0 border-shade-100 h-full flex flex-col">
       <!-- Filter button and its dropdown -->
-      <span class="h-11 border-b border-black text-lg px-4 flex items-center">
+      <span
+        class="h-11 border-b border-shade-100 text-lg px-4 flex items-center"
+      >
         Components Menu
       </span>
       <SiBarButton
-        class="h-11 border-b border-black"
-        dropdown-classes=""
+        class="h-11 border-b border-shade-100"
         fill-entire-width
         tooltip-text="Filter"
       >
