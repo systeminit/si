@@ -22,7 +22,7 @@
       leave-from-class="transform opacity-100 scale-100"
       leave-to-class="transform opacity-0 scale-95"
     >
-      <SiDropdown :class="props.dropdownClasses">
+      <SiDropdown :class="props.dropdownClasses" :navbar="navbar">
         <slot name="dropdownContent"></slot>
       </SiDropdown>
     </transition>
@@ -31,7 +31,7 @@
 
 <script lang="ts" setup>
 import { Menu, MenuButton } from "@headlessui/vue";
-import { ref, toRefs, useSlots } from "vue";
+import { provide, ref, toRefs, useSlots } from "vue";
 import SiDropdown from "@/molecules/SiDropdown.vue";
 
 const props = withDefaults(
@@ -47,11 +47,19 @@ const props = withDefaults(
     // It is recommended that the item in the slot uses the "flex flex-row justify-center" classes in
     // conjunction with this prop.
     fillEntireWidth?: boolean;
+    dropdownItemClasses?: string;
+    dropdownItemShowPrefix?: boolean;
+    dropdownItemShowSuffix?: boolean;
+    navbar?: boolean;
   }>(),
   {
     paddingX: 4,
     hoverEffect: true,
     tooltipText: "",
+    dropdownItemClasses: "text-center",
+    dropdownItemShowPrefix: true,
+    dropdownItemShowSuffix: true,
+    navbar: true,
   },
 );
 
@@ -90,6 +98,10 @@ const buttonClasses = (open: boolean) => {
 
   return results;
 };
+
+provide("dropdownItemClasses", props.dropdownItemClasses);
+provide("dropdownItemShowPrefix", props.dropdownItemShowPrefix);
+provide("dropdownItemShowSuffix", props.dropdownItemShowSuffix);
 </script>
 
 <style lang="scss" scoped>

@@ -154,10 +154,13 @@ const boxClasses = computed((): Record<string, boolean> => {
     };
   }
   return {
-    "bg-gray-900": true,
-    "text-gray-100": true,
+    "bg-neutral-50": true,
+    "dark:bg-neutral-900": true,
+    "text-neutral-900": true,
+    "dark:text-neutral-50": true,
     border: true,
-    "border-gray-600": true,
+    "border-neutral-300": true,
+    "dark:border-neutral-600": true,
     "focus:outline-none": true,
     "focus:ring-indigo-200": true,
     "focus:border-indigo-200": true,
@@ -171,7 +174,8 @@ const dropdownClasses = computed((): Record<string, boolean> => {
     };
   }
   return {
-    "bg-gray-900": true,
+    "bg-neutral-50": true,
+    "dark:bg-neutral-900": true,
   };
 });
 

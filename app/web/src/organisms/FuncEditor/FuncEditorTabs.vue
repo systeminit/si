@@ -3,17 +3,23 @@
     :key="tabGroupRerenderKey"
     :selected-index="selectedTab"
     :selected-tab-to-front="true"
+    :tab-width-maximum="0.3"
+    :start-margin="0"
+    :after-margin="0"
+    :top-margin="0"
     @change="changeTab"
   >
     <template #tabs>
       <SiTabHeader v-for="func in funcList" :key="func.id">
         {{ func.name }}
-        <button
-          class="inline-block rounded-sm w-5 ml-1"
-          @click="closeFunc(func)"
-        >
-          <VueFeather type="x" />
-        </button>
+        <template #icon>
+          <button
+            class="inline-block rounded-sm w-5 ml-1"
+            @click="closeFunc(func)"
+          >
+            <VueFeather type="x" />
+          </button>
+        </template>
       </SiTabHeader>
     </template>
     <template #dropdownitems>

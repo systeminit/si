@@ -1,6 +1,6 @@
 <template>
   <div v-if="props.funcId > 0" class="text-center h-full overflow-y-auto">
-    <SiTabGroup :selected-index="0" :start-margin="4">
+    <SiTabGroup :selected-index="0">
       <template #tabs>
         <SiTabHeader>Properties</SiTabHeader>
       </template>

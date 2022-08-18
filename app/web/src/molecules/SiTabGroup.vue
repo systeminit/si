@@ -1,7 +1,10 @@
 <template>
   <TabGroup :selected-index="selectedIndex" @change="props.onChange">
     <slot />
-    <div class="w-full h-11 relative">
+    <div
+      class="w-full h-11 relative"
+      :class="topMargin > 0 ? `mt-${topMargin}` : ''"
+    >
       <TabList ref="tabList" :class="tabListClasses">
         <div
           v-if="startMargin > 0"
@@ -17,7 +20,10 @@
         ref="dropDown"
         :padding-x="2"
         :hover-effect="false"
-        dropdown-classes="-right-0 z-100"
+        dropdown-classes="right-0 overflow-hidden max-w-xs text-left text-ellipsis"
+        dropdown-item-classes="text-left text-ellipsis"
+        :dropdown-item-show-suffix="false"
+        :navbar="false"
         ><DotsVerticalIcon class="w-6" />
         <template #dropdownContent>
           <slot name="dropdownitems" />
@@ -47,7 +53,9 @@ const props = withDefaults(
     selectedTabClasses?: string;
     startMargin?: number;
     afterMargin?: number;
+    topMargin?: number;
     selectedTabToFront?: boolean;
+    tabWidthMaximum: number;
   }>(),
   {
     selectedIndex: undefined,
@@ -60,9 +68,11 @@ const props = withDefaults(
       "text-gray-400 border-b border-neutral-300 dark:border-neutral-600 font-medium",
     selectedTabClasses:
       "border-b-white dark:border-b-neutral-800 border-b text-action-700 dark:text-action-300 font-bold",
-    startMargin: 0,
-    afterMargin: 0,
+    topMargin: 2,
+    startMargin: 4,
+    afterMargin: 2,
     selectedTabToFront: false,
+    tabWidthMaximum: 0,
   },
 );
 
@@ -127,4 +137,5 @@ provide("tabClasses", props.tabClasses);
 provide("defaultTabClasses", props.defaultTabClasses);
 provide("selectedTabClasses", props.selectedTabClasses);
 provide("selectedTabToFront", props.selectedTabToFront);
+provide("tabWidthMaximum", props.tabWidthMaximum);
 </script>

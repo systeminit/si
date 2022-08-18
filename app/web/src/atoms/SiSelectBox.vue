@@ -1,5 +1,8 @@
 <template>
-  <label :for="props.id" class="block text-sm font-medium text-gray-200">
+  <label
+    :for="props.id"
+    class="block text-sm font-medium text-neutral-900 dark:text-neutral-50"
+  >
     {{ props.title }} <span v-if="required">(required)</span>
   </label>
 
@@ -11,7 +14,7 @@
       :data-test="props.id"
       :disabled="props.disabled"
       required
-      class="appearance-none block px-3 py-2 border rounded-sm shadow-sm focus:outline-none sm:text-sm bg-gray-600"
+      class="appearance-none block px-3 py-2 border rounded-sm shadow-sm focus:outline-none sm:text-sm bg-neutral-50 dark:bg-gray-700 border-neutral-600"
       :class="boxClasses"
       @change="setDirty"
     />

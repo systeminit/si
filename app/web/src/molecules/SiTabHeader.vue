@@ -3,6 +3,7 @@
   <Tab
     v-slot="{ selected }"
     class="focus:outline-none whitespace-nowrap"
+    :style="maxWidthStyle"
     as="template"
   >
     <button
@@ -15,11 +16,17 @@
       "
     >
       <span
+        class="w-full"
         :class="
           classesF + ' ' + (selected ? selectedClassesF : defaultClassesF)
         "
       >
-        <slot />
+        <div class="overflow-hidden text-ellipsis">
+          <slot />
+        </div>
+        <div>
+          <slot name="icon" />
+        </div>
       </span>
     </button>
   </Tab>
@@ -32,13 +39,26 @@
 
 <script setup lang="ts">
 import { Tab } from "@headlessui/vue";
-import { inject } from "vue";
+import { computed, inject } from "vue";
 
 const props = defineProps<{
   classes?: string;
   defaultClasses?: string;
   selectedClasses?: string;
 }>();
+
+const afterMargin = inject("afterMargin", 0);
+const selectedToFront = inject("selectedTabToFront", false);
+const classesF = inject("tabClasses", props.classes);
+const defaultClassesF = inject("defaultTabClasses", props.defaultClasses);
+const selectedClassesF = inject("selectedTabClasses", props.selectedClasses);
+const maximumWidth = inject("tabWidthMaximum", 0);
+
+const maxWidthStyle = computed(() => {
+  if (maximumWidth <= 0) return "max-width: 90%"; // By default, tabs cannot take up more than 90% of the tab area
+  if (maximumWidth < 1) return `max-width: ${Math.floor(maximumWidth * 100)}%`; // values from 0 to 1 are converted to percentages
+  return `max-width: ${maximumWidth}px`;
+});
 
 const moveTabToFrontIfOverflowing = (tabElement: HTMLElement) => {
   const parent = tabElement.parentElement;
@@ -59,10 +79,4 @@ const moveTabToFrontIfOverflowing = (tabElement: HTMLElement) => {
   if (priorTabsWidth + tabWidth > tabInnerAreaWidth) return "order-1";
   return "order-2";
 };
-
-const afterMargin = inject("afterMargin", 0);
-const selectedToFront = inject("selectedTabToFront", false);
-const classesF = inject("tabClasses", props.classes);
-const defaultClassesF = inject("defaultTabClasses", props.defaultClasses);
-const selectedClassesF = inject("selectedTabClasses", props.selectedClasses);
 </script>

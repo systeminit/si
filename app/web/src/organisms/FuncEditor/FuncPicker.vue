@@ -1,7 +1,7 @@
 <template>
-  <SiTabGroup :selected-index="0" :start-margin="4">
+  <SiTabGroup :selected-index="0">
     <template #tabs>
-      <SiTabHeader :key="0"> FUNCTIONS </SiTabHeader>
+      <SiTabHeader :key="0">FUNCTIONS</SiTabHeader>
     </template>
     <template #dropdownitems>
       <SiDropdownItem>FUNCTIONS</SiDropdownItem>
@@ -22,7 +22,7 @@
             as="li"
             content-as="ul"
             default-open
-            class="min-w-full w-fit"
+            class="w-full"
           >
             <li v-for="func in filteredList" :key="func.id">
               <SiFuncSprite

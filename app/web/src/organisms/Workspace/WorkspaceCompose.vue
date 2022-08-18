@@ -7,7 +7,7 @@
           class="border-b-2 dark:border-neutral-500 mb-2"
         />
 
-        <SiTabGroup :start-margin="4">
+        <SiTabGroup :top-margin="0">
           <template #tabs>
             <SiTabHeader v-if="!isViewMode">Asset Palette</SiTabHeader>
             <SiTabHeader>Diagram Outline</SiTabHeader>
