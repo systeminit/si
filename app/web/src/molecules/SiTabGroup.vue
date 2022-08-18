@@ -20,6 +20,7 @@
         dropdown-classes="right-0 overflow-hidden max-w-xs text-left text-ellipsis"
         dropdown-item-classes="text-left text-ellipsis"
         :dropdown-item-show-suffix="false"
+        :navbar="false"
         ><DotsVerticalIcon class="w-6" />
         <template #dropdownContent>
           <slot name="dropdownitems" />

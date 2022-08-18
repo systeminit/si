@@ -22,7 +22,7 @@
       leave-from-class="transform opacity-100 scale-100"
       leave-to-class="transform opacity-0 scale-95"
     >
-      <SiDropdown :class="props.dropdownClasses">
+      <SiDropdown :class="props.dropdownClasses" :navbar="navbar">
         <slot name="dropdownContent"></slot>
       </SiDropdown>
     </transition>
@@ -50,6 +50,7 @@ const props = withDefaults(
     dropdownItemClasses?: string;
     dropdownItemShowPrefix?: boolean;
     dropdownItemShowSuffix?: boolean;
+    navbar?: boolean;
   }>(),
   {
     paddingX: 4,
@@ -58,6 +59,7 @@ const props = withDefaults(
     dropdownItemClasses: "text-center",
     dropdownItemShowPrefix: true,
     dropdownItemShowSuffix: true,
+    navbar: true,
   },
 );
 
