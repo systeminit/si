@@ -1,5 +1,5 @@
 <template>
-  <SiTabGroup :selected-index="0" :start-margin="4">
+  <SiTabGroup :selected-index="0">
     <template #tabs>
       <SiTabHeader :key="0">FUNCTIONS</SiTabHeader>
     </template>

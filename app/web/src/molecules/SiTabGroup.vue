@@ -1,7 +1,10 @@
 <template>
   <TabGroup :selected-index="selectedIndex" @change="props.onChange">
     <slot />
-    <div class="w-full h-11 relative">
+    <div
+      class="w-full h-11 relative"
+      :class="topMargin > 0 ? `mt-${topMargin}` : ''"
+    >
       <TabList ref="tabList" :class="tabListClasses">
         <div
           v-if="startMargin > 0"
@@ -50,6 +53,7 @@ const props = withDefaults(
     selectedTabClasses?: string;
     startMargin?: number;
     afterMargin?: number;
+    topMargin?: number;
     selectedTabToFront?: boolean;
     tabWidthMaximum: number;
   }>(),
@@ -64,8 +68,9 @@ const props = withDefaults(
       "text-gray-400 border-b border-neutral-300 dark:border-neutral-600 font-medium",
     selectedTabClasses:
       "border-b-white dark:border-b-neutral-800 border-b text-action-700 dark:text-action-300 font-bold",
-    startMargin: 0,
-    afterMargin: 0,
+    topMargin: 2,
+    startMargin: 4,
+    afterMargin: 2,
     selectedTabToFront: false,
     tabWidthMaximum: 0,
   },
