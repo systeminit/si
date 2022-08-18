@@ -10,7 +10,7 @@
     "build:pedantically": "npm run build:check && npm run build",
     "watch": "npm run build:watch",
     "lint": "eslint --ext .ts,.js,.vue --ignore-path .gitignore src",
-    "lint:fix": "npm run lint --fix",
+    "lint:fix": "npm run lint -- --fix",
     "lint:strict": "STRICT_LINT=1 npm run lint",
     "fmt": "prettier --write ./src",
     "fmt:check": "prettier --check ./src",
