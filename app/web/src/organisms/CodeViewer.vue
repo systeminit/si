@@ -1,5 +1,5 @@
 <template>
-  <div v-if="props.componentId" class="flex flex-col w-full overflow-hidden">
+  <div class="flex flex-col w-full overflow-hidden">
     <div
       class="flex flex-row items-center justify-between h-10 py-2 text-base align-middle"
     >
@@ -10,7 +10,7 @@
         <SiButtonIcon
           tooltip-text="Copy code to clipboard"
           ignore-text-color
-          @click="copyCode"
+          @click="copyCodeToClipboard"
         >
           <ClipboardCopyIcon />
         </SiButtonIcon>
@@ -20,7 +20,7 @@
     </div>
     <div class="w-full h-full overflow-auto">
       <div
-        ref="editorMount"
+        ref="editorMountRef"
         class="w-full h-full"
         @keyup.stop
         @keydown.stop
@@ -31,165 +31,123 @@
 
 <script setup lang="ts">
 import _ from "lodash";
-import { ref, onMounted, computed, watch } from "vue";
+import { ref, computed, watch, PropType, onMounted, onBeforeMount } from "vue";
 import { EditorState, EditorView, basicSetup } from "@codemirror/basic-setup";
-import { yaml } from "@codemirror/legacy-modes/mode/yaml";
-import { diff } from "@codemirror/legacy-modes/mode/diff";
-import { StreamLanguage, StreamParser } from "@codemirror/stream-parser";
+import { StreamLanguage } from "@codemirror/stream-parser";
 import { keymap } from "@codemirror/view";
 import { indentWithTab } from "@codemirror/commands";
 import { gruvboxDark } from "cm6-theme-gruvbox-dark";
 import { basicLight } from "cm6-theme-basic-light";
-import { refFrom } from "vuse-rx/src";
 import { Compartment, Extension, StateEffect } from "@codemirror/state";
+
+import { CodeLanguage } from "@/api/sdf/dal/code_view";
+// NOTE(nick): this took a long ass time to find. Javascript's JSON mode doesn't work. This does.
+import { properties as JsonModeParser } from "@codemirror/legacy-modes/mode/properties";
+import { yaml as YamlModeParser } from "@codemirror/legacy-modes/mode/yaml";
+import { diff as DiffModeParser } from "@codemirror/legacy-modes/mode/diff";
+
+import { useTheme } from "@/composables/injectTheme";
+import { ThemeValue } from "@/observable/theme";
+
 import SiButtonIcon from "@/atoms/SiButtonIcon.vue";
 import { ClipboardCopyIcon } from "@heroicons/vue/solid";
-import { ThemeService } from "@/service/theme";
-import { Theme } from "@/observable/theme";
-import { CodeLanguage } from "@/api/sdf/dal/code_view";
 
-// NOTE(nick): this took a long ass time to find. Javascript's JSON mode doesn't work. This does.
-import { properties as json } from "@codemirror/legacy-modes/mode/properties";
+const props = defineProps({
+  code: { type: String },
+  codeLanguage: { type: String as PropType<CodeLanguage>, default: "unknown" },
 
-const props = defineProps<{
-  componentId: number;
-  code: string;
-  codeLanguage?: CodeLanguage;
+  // // could add validation fns?
+  // // Format: "0.0px"
+  fontSize: { type: String },
+  // // Format: "0.0px" or "0%"
+  height: { type: String },
+  forceTheme: { type: String as PropType<ThemeValue> },
+});
 
-  // Format: "0.0px"
-  fontSize?: string;
-  // Format: "0.0px" or "0%"
-  height?: string;
-  forceTheme?: "dark" | "light";
-}>();
-
-const editorMount = ref(null);
-const view = ref<null | EditorView>(null);
+const editorMountRef = ref();
 const readOnly = new Compartment();
+let editorView: EditorView | undefined;
 
-// This doesn't work on IE, do we care? (is it polyfilled by our build system?)
-// RE ^^: https://www.youtube.com/watch?v=Ram7AKbtkGE
-const copyCode = () => {
-  if (!view.value) return;
-  const code = view.value.state.doc.toString().trim();
-  navigator.clipboard.writeText(code);
+// any new languages we want to support need to be added here
+const CODE_PARSER_LOOKUP = {
+  diff: DiffModeParser,
+  json: JsonModeParser,
+  yaml: YamlModeParser,
+  // TODO: what do we want to do here...?
+  unknown: YamlModeParser,
 };
 
-// FIXME(nick): for now, we default to "yaml".
-const mode = computed((): StreamParser<unknown> => {
-  return getMode(props.codeLanguage);
+const theme = useTheme();
+
+const editorThemeExtension = computed(() => {
+  return {
+    dark: gruvboxDark,
+    light: basicLight,
+  }[props.forceTheme || theme.value];
 });
 
-const getMode = (
-  codeLanguage: CodeLanguage | undefined,
-): StreamParser<unknown> => {
-  if (codeLanguage) {
-    if (codeLanguage === "diff") {
-      return diff;
-    } else if (codeLanguage === "json") {
-      return json;
-    }
-  }
-  return yaml;
-};
-
-const forcedTheme = computed((): Extension | null => {
-  if (props.forceTheme) {
-    if (props.forceTheme === "dark") {
-      return gruvboxDark;
-    } else if (props.forceTheme === "light") {
-      return basicLight;
-    }
-  }
-  return null;
-});
-
-const styleExtension = computed((): Extension => {
-  const ampersand: Record<string, string> = { height: "100%" };
-
-  if (props.fontSize) {
-    ampersand["fontSize"] = props.fontSize;
-  }
-  if (props.height) {
-    ampersand["height"] = props.height;
-  }
-
+const editorStyleExtension = computed(() => {
   return EditorView.theme({
-    "&": ampersand,
+    "&": {
+      height: "100%",
+      ..._.pick(props, "fontSize", "height"),
+    },
     ".cm-scroller": { overflow: "auto" },
   });
 });
 
-const currentTheme = refFrom<Theme>(ThemeService.currentTheme());
-
-onMounted(() => {
-  if (editorMount.value) {
-    view.value = new EditorView({
-      state: EditorState.create({
-        doc: props.code,
-        extensions: [
-          basicSetup,
-          forcedTheme.value ?? currentTheme.value?.value === "dark"
-            ? gruvboxDark
-            : basicLight,
-          styleExtension.value,
-          keymap.of([indentWithTab]),
-          StreamLanguage.define(mode.value),
-          readOnly.of(EditorState.readOnly.of(true)),
-        ],
-      }),
-      parent: editorMount.value,
-    });
-  }
+const editorExtensionList = computed<Extension[]>(() => {
+  return [
+    basicSetup,
+    editorThemeExtension.value,
+    editorStyleExtension.value,
+    keymap.of([indentWithTab]),
+    StreamLanguage.define(CODE_PARSER_LOOKUP[props.codeLanguage]),
+    readOnly.of(EditorState.readOnly.of(true)),
+  ];
 });
 
-const updateCodeMirrorView = (theme?: Theme, codeLanguage?: CodeLanguage) => {
-  if (view.value && currentTheme.value) {
-    let tempTheme = currentTheme.value;
-    if (theme) {
-      tempTheme = theme;
-    }
+function initCodeMirrorEditor() {
+  editorView = new EditorView({
+    state: EditorState.create({
+      doc: props.code,
+      extensions: editorExtensionList.value,
+    }),
+    parent: editorMountRef.value,
+  });
+}
+function teardownCodeMirrorEditor() {
+  editorView?.destroy();
+}
 
-    let tempStreamLanguage = mode.value;
-    if (codeLanguage) {
-      tempStreamLanguage = getMode(codeLanguage);
-    }
+function syncEditorConfig() {
+  editorView?.dispatch({
+    effects: StateEffect.reconfigure.of(editorExtensionList.value),
+  });
+}
 
-    view.value.dispatch({
-      effects: StateEffect.reconfigure.of([
-        basicSetup,
-        forcedTheme.value ?? tempTheme.value === "dark"
-          ? gruvboxDark
-          : basicLight,
-        styleExtension.value,
-        keymap.of([indentWithTab]),
-        StreamLanguage.define(tempStreamLanguage),
-        readOnly.of(EditorState.readOnly.of(true)),
-      ]),
-    });
-  }
-};
+function syncEditorCode() {
+  if (!editorView) return;
+  editorView.dispatch({
+    changes: {
+      from: 0,
+      to: editorView.state.doc.length,
+      insert: props.code,
+    },
+    effects: readOnly.reconfigure(EditorState.readOnly.of(true)),
+  });
+}
 
-// FIXME(nick,victor,wendy): we should try to not reconfigure entire effects when switching themes.
-ThemeService.currentTheme().subscribe((theme) => updateCodeMirrorView(theme));
+onMounted(initCodeMirrorEditor);
+onBeforeMount(teardownCodeMirrorEditor);
+watch(editorExtensionList, syncEditorConfig, { immediate: true });
+watch(() => props.code, syncEditorCode);
 
-watch(
-  () => props.codeLanguage,
-  (codeLanguage) => updateCodeMirrorView(undefined, codeLanguage),
-);
-
-watch(
-  () => props.code,
-  (code) => {
-    if (!view.value) return;
-    view.value.dispatch({
-      changes: {
-        from: 0,
-        to: view.value.state.doc.length,
-        insert: code,
-      },
-      effects: readOnly.reconfigure(EditorState.readOnly.of(true)),
-    });
-  },
-);
+// This doesn't work on IE, do we care? (is it polyfilled by our build system?)
+// RE ^^: https://www.youtube.com/watch?v=Ram7AKbtkGE
+function copyCodeToClipboard() {
+  if (!editorView) return;
+  const code = editorView.state.doc.toString().trim();
+  navigator.clipboard.writeText(code);
+}
 </script>
