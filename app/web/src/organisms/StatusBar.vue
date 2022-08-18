@@ -16,16 +16,27 @@
       </Tab>
 
       <!-- Edit tabs -->
-      <Tab v-if="!isViewMode" aria-hidden="true" class="hidden" />
-      <Tab v-if="!isViewMode" v-slot="{ selected }">
+      <Tab
+        v-slot="{ selected }"
+        :aria-hidden="!isViewMode"
+        :class="[isViewMode ? 'hidden' : '']"
+      >
         <ChangeSetTab :selected="selected" />
       </Tab>
-      <Tab v-if="!isViewMode" v-slot="{ selected }">
+      <Tab
+        v-slot="{ selected }"
+        :aria-hidden="!isViewMode"
+        :class="[isViewMode ? 'hidden' : '']"
+      >
         <QualificationTab :selected="selected" />
       </Tab>
 
       <!-- View tabs -->
-      <Tab v-if="isViewMode" v-slot="{ selected }">
+      <Tab
+        v-slot="{ selected }"
+        :aria-hidden="isViewMode"
+        :class="[isViewMode ? '' : 'hidden']"
+      >
         <StatusBarTab :selected="selected">
           <template #icon><BellIcon class="text-white" /></template>
           <template #name>SLA</template>
@@ -41,7 +52,11 @@
           </template>
         </StatusBarTab>
       </Tab>
-      <Tab v-if="isViewMode" v-slot="{ selected }">
+      <Tab
+        v-slot="{ selected }"
+        :aria-hidden="isViewMode"
+        :class="[isViewMode ? '' : 'hidden']"
+      >
         <StatusBarTab :selected="selected">
           <template #icon><CreditCardIcon class="text-white" /></template>
           <template #name>Costs</template>
@@ -52,7 +67,11 @@
           </template>
         </StatusBarTab>
       </Tab>
-      <Tab v-if="isViewMode" v-slot="{ selected }">
+      <Tab
+        v-slot="{ selected }"
+        :aria-hidden="isViewMode"
+        :class="[isViewMode ? '' : 'hidden']"
+      >
         <StatusBarTab :selected="selected">
           <template #icon><BadgeCheckIcon class="text-white" /></template>
           <template #name>Confirmations</template>
@@ -100,20 +119,37 @@
         <TabPanel aria-hidden="true" class="hidden">hidden</TabPanel>
 
         <!-- Edit panels -->
-        <TabPanel v-if="!isViewMode" aria-hidden="true" class="hidden">
-          hidden
-        </TabPanel>
-        <TabPanel v-if="!isViewMode" class="h-full">
+        <TabPanel
+          :aria-hidden="!isViewMode"
+          :class="[isViewMode ? 'hidden' : '']"
+          class="h-full"
+        >
           <ChangeSetTabPanel />
         </TabPanel>
-        <TabPanel v-if="!isViewMode" class="h-full">
+        <TabPanel
+          :aria-hidden="!isViewMode"
+          :class="[isViewMode ? 'hidden' : '']"
+          class="h-full"
+        >
           <QualificationTabPanel />
         </TabPanel>
 
         <!-- View panels -->
-        <TabPanel v-if="isViewMode" class="h-full bg-shade-100" />
-        <TabPanel v-if="isViewMode" class="h-full bg-shade-100" />
-        <TabPanel v-if="isViewMode" class="h-full bg-shade-100" />
+        <TabPanel
+          :aria-hidden="isViewMode"
+          :class="[isViewMode ? '' : 'hidden']"
+          class="h-full bg-shade-100"
+        />
+        <TabPanel
+          :aria-hidden="isViewMode"
+          :class="[isViewMode ? '' : 'hidden']"
+          class="h-full bg-shade-100"
+        />
+        <TabPanel
+          :aria-hidden="isViewMode"
+          :class="[isViewMode ? '' : 'hidden']"
+          class="h-full bg-shade-100"
+        />
       </TabPanels>
     </Transition>
   </TabGroup>
