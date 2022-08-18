@@ -1,6 +1,10 @@
 <template>
   <!-- selectedToFront ? (selected ? 'order-1' : 'order-2') : '' -->
-  <Tab v-slot="{ selected }" class="focus:outline-none" as="template">
+  <Tab
+    v-slot="{ selected }"
+    class="focus:outline-none whitespace-nowrap"
+    as="template"
+  >
     <button
       :class="
         selectedToFront
