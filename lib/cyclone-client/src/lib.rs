@@ -9,11 +9,12 @@ pub use ping::{PingExecution, PingExecutionError};
 pub use watch::{Watch, WatchError, WatchStarted};
 
 pub use cyclone_core::{
-    CodeGenerationRequest, CodeGenerationResultSuccess, EncryptionKey, EncryptionKeyError,
-    LivenessStatus, LivenessStatusParseError, QualificationCheckRequest,
-    QualificationCheckResultSuccess, ReadinessStatus, ReadinessStatusParseError,
-    ResolverFunctionRequest, ResolverFunctionResultSuccess, ResourceSyncRequest,
-    ResourceSyncResultSuccess, WorkflowResolveRequest, WorkflowResolveResultSuccess,
+    CodeGenerationRequest, CodeGenerationResultSuccess, CommandRunRequest, CommandRunResultSuccess,
+    EncryptionKey, EncryptionKeyError, LivenessStatus, LivenessStatusParseError,
+    QualificationCheckRequest, QualificationCheckResultSuccess, ReadinessStatus,
+    ReadinessStatusParseError, ResolverFunctionRequest, ResolverFunctionResultSuccess,
+    ResourceSyncRequest, ResourceSyncResultSuccess, WorkflowResolveRequest,
+    WorkflowResolveResultSuccess,
 };
 pub use hyper::client::connect::Connection;
 pub use hyperlocal::UnixStream;

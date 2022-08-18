@@ -1,6 +1,7 @@
+use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
-use crate::func::backend::FuncBackendResult;
+use crate::func::backend::{FuncBackend, FuncBackendResult};
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct FuncBackendValidateStringValueArgs {
@@ -29,12 +30,17 @@ pub struct FuncBackendValidateStringValue {
     args: FuncBackendValidateStringValueArgs,
 }
 
-impl FuncBackendValidateStringValue {
-    pub fn new(args: FuncBackendValidateStringValueArgs) -> Self {
-        Self { args }
+#[async_trait]
+impl FuncBackend for FuncBackendValidateStringValue {
+    type Args = FuncBackendValidateStringValueArgs;
+
+    fn new(args: FuncBackendValidateStringValueArgs) -> Box<Self> {
+        Box::new(Self { args })
     }
 
-    pub fn execute(&self) -> FuncBackendResult<serde_json::Value> {
+    async fn inline(
+        self: Box<Self>,
+    ) -> FuncBackendResult<(Option<serde_json::Value>, Option<serde_json::Value>)> {
         let value = self.args.value.clone();
         let expected = self.args.expected.clone();
         let mut validation_errors = vec![];
@@ -53,6 +59,7 @@ impl FuncBackendValidateStringValue {
             })
         }
 
-        Ok(serde_json::to_value(validation_errors)?)
+        let value = serde_json::to_value(validation_errors)?;
+        Ok((Some(value.clone()), Some(value)))
     }
 }

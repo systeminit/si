@@ -1,7 +1,7 @@
+use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use telemetry::prelude::*;
 
-use crate::{func::backend::FuncBackendResult, FuncBackendError};
+use crate::func::backend::{FuncBackend, FuncBackendResult};
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct FuncBackendBooleanArgs {
@@ -19,33 +19,18 @@ pub struct FuncBackendBoolean {
     args: FuncBackendBooleanArgs,
 }
 
-impl FuncBackendBoolean {
-    pub fn new(args: FuncBackendBooleanArgs) -> Self {
-        Self { args }
+#[async_trait]
+impl FuncBackend for FuncBackendBoolean {
+    type Args = FuncBackendBooleanArgs;
+
+    fn new(args: Self::Args) -> Box<Self> {
+        Box::new(Self { args })
     }
 
-    #[instrument(
-        name = "funcbackendboolean.execute",
-        skip_all,
-        level = "debug",
-        fields(
-            otel.kind = %SpanKind::Client,
-            otel.status_code = Empty,
-            otel.status_message = Empty,
-            si.func.result = Empty
-        )
-    )]
-    pub async fn execute(self) -> FuncBackendResult<serde_json::Value> {
-        let span = Span::current();
-
+    async fn inline(
+        self: Box<Self>,
+    ) -> FuncBackendResult<(Option<serde_json::Value>, Option<serde_json::Value>)> {
         let value = serde_json::to_value(&self.args.value)?;
-
-        if !value.is_boolean() {
-            return Err(span.record_err(FuncBackendError::InvalidBooleanData(value)));
-        }
-
-        span.record_ok();
-        span.record("si.func.result", &tracing::field::debug(&value));
-        Ok(value)
+        Ok((Some(value.clone()), Some(value)))
     }
 }

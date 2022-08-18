@@ -13,9 +13,9 @@ use axum::{
     response::IntoResponse,
 };
 use cyclone_core::{
-    CodeGenerationRequest, CodeGenerationResultSuccess, LivenessStatus, Message,
-    QualificationCheckRequest, QualificationCheckResultSuccess, ReadinessStatus,
-    ResolverFunctionRequest, ResolverFunctionResultSuccess, ResourceSyncRequest,
+    CodeGenerationRequest, CodeGenerationResultSuccess, CommandRunRequest, CommandRunResultSuccess,
+    LivenessStatus, Message, QualificationCheckRequest, QualificationCheckResultSuccess,
+    ReadinessStatus, ResolverFunctionRequest, ResolverFunctionResultSuccess, ResourceSyncRequest,
     ResourceSyncResultSuccess, WorkflowResolveRequest, WorkflowResolveResultSuccess,
 };
 use hyper::StatusCode;
@@ -30,9 +30,9 @@ use crate::{
     execution::{self, Execution},
     request::{DecryptRequest, ListSecrets},
     result::{
-        LangServerCodeGenerationResultSuccess, LangServerQualificationCheckResultSuccess,
-        LangServerResolverFunctionResultSuccess, LangServerResourceSyncResultSuccess,
-        LangServerWorkflowResolveResultSuccess,
+        LangServerCodeGenerationResultSuccess, LangServerCommandRunResultSuccess,
+        LangServerQualificationCheckResultSuccess, LangServerResolverFunctionResultSuccess,
+        LangServerResourceSyncResultSuccess, LangServerWorkflowResolveResultSuccess,
     },
     watch, DecryptionKey,
 };
@@ -212,6 +212,33 @@ pub async fn ws_execute_workflow_resolve(
             key,
             limit_request_guard,
             "workflowResolve".to_owned(),
+            request,
+            lang_server_success,
+            success,
+        )
+    })
+}
+
+#[allow(clippy::unused_async)]
+pub async fn ws_execute_command_run(
+    wsu: WebSocketUpgrade,
+    Extension(lang_server_path): Extension<Arc<LangServerPath>>,
+    Extension(key): Extension<Arc<DecryptionKey>>,
+    Extension(telemetry_level): Extension<Arc<Box<dyn TelemetryLevel>>>,
+    limit_request_guard: LimitRequestGuard,
+) -> impl IntoResponse {
+    let lang_server_path = lang_server_path.as_path().to_path_buf();
+    wsu.on_upgrade(move |socket| {
+        let request: PhantomData<CommandRunRequest> = PhantomData;
+        let lang_server_success: PhantomData<LangServerCommandRunResultSuccess> = PhantomData;
+        let success: PhantomData<CommandRunResultSuccess> = PhantomData;
+        handle_socket(
+            socket,
+            lang_server_path,
+            telemetry_level.is_debug_or_lower(),
+            key,
+            limit_request_guard,
+            "commandRun".to_owned(),
             request,
             lang_server_success,
             success,

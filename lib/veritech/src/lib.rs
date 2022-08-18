@@ -27,13 +27,13 @@ pub mod client;
 pub use client::{Client, ClientError, ClientResult};
 #[cfg(feature = "client")]
 pub use cyclone_core::{
-    CodeGenerated, CodeGenerationRequest, CodeGenerationResultSuccess, ComponentKind,
-    ComponentView, EncryptionKey, EncryptionKeyError, FunctionResult, FunctionResultFailure,
-    OutputStream, QualificationCheckComponent, QualificationCheckRequest,
-    QualificationCheckResultSuccess, QualificationSubCheck, QualificationSubCheckStatus,
-    ResolverFunctionComponent, ResolverFunctionRequest, ResourceSyncRequest,
-    ResourceSyncResultSuccess, SensitiveContainer, SystemView, WorkflowResolveRequest,
-    WorkflowResolveResultSuccess,
+    CodeGenerated, CodeGenerationRequest, CodeGenerationResultSuccess, CommandRunRequest,
+    CommandRunResultSuccess, ComponentKind, ComponentView, EncryptionKey, EncryptionKeyError,
+    FunctionResult, FunctionResultFailure, OutputStream, QualificationCheckComponent,
+    QualificationCheckRequest, QualificationCheckResultSuccess, QualificationSubCheck,
+    QualificationSubCheckStatus, ResolverFunctionComponent, ResolverFunctionRequest,
+    ResolverFunctionResultSuccess, ResourceSyncRequest, ResourceSyncResultSuccess,
+    SensitiveContainer, SystemView, WorkflowResolveRequest, WorkflowResolveResultSuccess,
 };
 
 const NATS_QUALIFICATION_CHECK_DEFAULT_SUBJECT: &str = "veritech.fn.qualificationcheck";
@@ -41,6 +41,7 @@ const NATS_RESOLVER_FUNCTION_DEFAULT_SUBJECT: &str = "veritech.fn.resolverfuncti
 const NATS_RESOURCE_SYNC_DEFAULT_SUBJECT: &str = "veritech.fn.resourcesync";
 const NATS_CODE_GENERATION_DEFAULT_SUBJECT: &str = "veritech.fn.codegeneration";
 const NATS_WORKFLOW_RESOLVE_DEFAULT_SUBJECT: &str = "veritech.fn.workflowresolve";
+const NATS_COMMAND_RUN_DEFAULT_SUBJECT: &str = "veritech.fn.commandrun";
 
 pub(crate) const FINAL_MESSAGE_HEADER_KEY: &str = "X-Final-Message";
 
@@ -70,6 +71,10 @@ pub(crate) fn nats_code_generation_subject(prefix: Option<&str>) -> String {
 
 pub(crate) fn nats_workflow_resolve_subject(prefix: Option<&str>) -> String {
     nats_subject(prefix, NATS_WORKFLOW_RESOLVE_DEFAULT_SUBJECT)
+}
+
+pub(crate) fn nats_command_run_subject(prefix: Option<&str>) -> String {
+    nats_subject(prefix, NATS_COMMAND_RUN_DEFAULT_SUBJECT)
 }
 
 pub(crate) fn nats_subject(prefix: Option<&str>, suffix: impl AsRef<str>) -> String {

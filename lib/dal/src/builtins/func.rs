@@ -26,6 +26,18 @@ pub async fn migrate(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     si_exceptional_workflow(ctx).await?;
     si_finalizing_workflow(ctx).await?;
 
+    si_title_command(ctx).await?;
+    si_title2_command(ctx).await?;
+    si_first_stanza_command(ctx).await?;
+    si_second_stanza_command(ctx).await?;
+    si_third_stanza_command(ctx).await?;
+    si_fourth_stanza_command(ctx).await?;
+    si_fifth_stanza_command(ctx).await?;
+    si_sixth_stanza_command(ctx).await?;
+    si_seventh_stanza_command(ctx).await?;
+    si_question_command(ctx).await?;
+    si_bye_command(ctx).await?;
+
     Ok(())
 }
 
@@ -435,6 +447,314 @@ async fn si_finalizing_workflow(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> 
 
         new_func
             .set_handler(ctx, Some("finalizing".to_string()))
+            .await
+            .expect("cannot set handler");
+        new_func
+            .set_code_base64(ctx, Some(workflow_code))
+            .await
+            .expect("cannot set code");
+    }
+
+    Ok(())
+}
+
+async fn si_title_command(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
+    let func_name = "si:title".to_string();
+    let existing_func = Func::find_by_attr(ctx, "name", &func_name).await?;
+    if existing_func.is_empty() {
+        let mut new_func = Func::new(
+            ctx,
+            &func_name,
+            FuncBackendKind::JsCommand,
+            FuncBackendResponseType::Command,
+        )
+        .await
+        .expect("cannot create func");
+
+        let workflow_code = base64::encode(include_str!("./func/leroLeroTitleCommand.js"));
+
+        new_func
+            .set_handler(ctx, Some("title".to_string()))
+            .await
+            .expect("cannot set handler");
+        new_func
+            .set_code_base64(ctx, Some(workflow_code))
+            .await
+            .expect("cannot set code");
+    }
+
+    Ok(())
+}
+
+async fn si_title2_command(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
+    let func_name = "si:title2".to_string();
+    let existing_func = Func::find_by_attr(ctx, "name", &func_name).await?;
+    if existing_func.is_empty() {
+        let mut new_func = Func::new(
+            ctx,
+            &func_name,
+            FuncBackendKind::JsCommand,
+            FuncBackendResponseType::Command,
+        )
+        .await
+        .expect("cannot create func");
+
+        let workflow_code = base64::encode(include_str!("./func/leroLeroTitle2Command.js"));
+
+        new_func
+            .set_handler(ctx, Some("title2".to_string()))
+            .await
+            .expect("cannot set handler");
+        new_func
+            .set_code_base64(ctx, Some(workflow_code))
+            .await
+            .expect("cannot set code");
+    }
+
+    Ok(())
+}
+
+async fn si_first_stanza_command(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
+    let func_name = "si:firstStanza".to_string();
+    let existing_func = Func::find_by_attr(ctx, "name", &func_name).await?;
+    if existing_func.is_empty() {
+        let mut new_func = Func::new(
+            ctx,
+            &func_name,
+            FuncBackendKind::JsCommand,
+            FuncBackendResponseType::Command,
+        )
+        .await
+        .expect("cannot create func");
+
+        let workflow_code = base64::encode(include_str!("./func/leroLeroFirstStanzaCommand.js"));
+
+        new_func
+            .set_handler(ctx, Some("firstStanza".to_string()))
+            .await
+            .expect("cannot set handler");
+        new_func
+            .set_code_base64(ctx, Some(workflow_code))
+            .await
+            .expect("cannot set code");
+    }
+
+    Ok(())
+}
+
+async fn si_second_stanza_command(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
+    let func_name = "si:secondStanza".to_string();
+    let existing_func = Func::find_by_attr(ctx, "name", &func_name).await?;
+    if existing_func.is_empty() {
+        let mut new_func = Func::new(
+            ctx,
+            &func_name,
+            FuncBackendKind::JsCommand,
+            FuncBackendResponseType::Command,
+        )
+        .await
+        .expect("cannot create func");
+
+        let workflow_code = base64::encode(include_str!("./func/leroLeroSecondStanzaCommand.js"));
+
+        new_func
+            .set_handler(ctx, Some("secondStanza".to_string()))
+            .await
+            .expect("cannot set handler");
+        new_func
+            .set_code_base64(ctx, Some(workflow_code))
+            .await
+            .expect("cannot set code");
+    }
+
+    Ok(())
+}
+
+async fn si_third_stanza_command(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
+    let func_name = "si:thirdStanza".to_string();
+    let existing_func = Func::find_by_attr(ctx, "name", &func_name).await?;
+    if existing_func.is_empty() {
+        let mut new_func = Func::new(
+            ctx,
+            &func_name,
+            FuncBackendKind::JsCommand,
+            FuncBackendResponseType::Command,
+        )
+        .await
+        .expect("cannot create func");
+
+        let workflow_code = base64::encode(include_str!("./func/leroLeroThirdStanzaCommand.js"));
+
+        new_func
+            .set_handler(ctx, Some("thirdStanza".to_string()))
+            .await
+            .expect("cannot set handler");
+        new_func
+            .set_code_base64(ctx, Some(workflow_code))
+            .await
+            .expect("cannot set code");
+    }
+
+    Ok(())
+}
+
+async fn si_fourth_stanza_command(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
+    let func_name = "si:fourthStanza".to_string();
+    let existing_func = Func::find_by_attr(ctx, "name", &func_name).await?;
+    if existing_func.is_empty() {
+        let mut new_func = Func::new(
+            ctx,
+            &func_name,
+            FuncBackendKind::JsCommand,
+            FuncBackendResponseType::Command,
+        )
+        .await
+        .expect("cannot create func");
+
+        let workflow_code = base64::encode(include_str!("./func/leroLeroFourthStanzaCommand.js"));
+
+        new_func
+            .set_handler(ctx, Some("fourthStanza".to_string()))
+            .await
+            .expect("cannot set handler");
+        new_func
+            .set_code_base64(ctx, Some(workflow_code))
+            .await
+            .expect("cannot set code");
+    }
+
+    Ok(())
+}
+
+async fn si_fifth_stanza_command(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
+    let func_name = "si:fifthStanza".to_string();
+    let existing_func = Func::find_by_attr(ctx, "name", &func_name).await?;
+    if existing_func.is_empty() {
+        let mut new_func = Func::new(
+            ctx,
+            &func_name,
+            FuncBackendKind::JsCommand,
+            FuncBackendResponseType::Command,
+        )
+        .await
+        .expect("cannot create func");
+
+        let workflow_code = base64::encode(include_str!("./func/leroLeroFifthStanzaCommand.js"));
+
+        new_func
+            .set_handler(ctx, Some("fifthStanza".to_string()))
+            .await
+            .expect("cannot set handler");
+        new_func
+            .set_code_base64(ctx, Some(workflow_code))
+            .await
+            .expect("cannot set code");
+    }
+
+    Ok(())
+}
+
+async fn si_sixth_stanza_command(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
+    let func_name = "si:sixthStanza".to_string();
+    let existing_func = Func::find_by_attr(ctx, "name", &func_name).await?;
+    if existing_func.is_empty() {
+        let mut new_func = Func::new(
+            ctx,
+            &func_name,
+            FuncBackendKind::JsCommand,
+            FuncBackendResponseType::Command,
+        )
+        .await
+        .expect("cannot create func");
+
+        let workflow_code = base64::encode(include_str!("./func/leroLeroSixthStanzaCommand.js"));
+
+        new_func
+            .set_handler(ctx, Some("sixthStanza".to_string()))
+            .await
+            .expect("cannot set handler");
+        new_func
+            .set_code_base64(ctx, Some(workflow_code))
+            .await
+            .expect("cannot set code");
+    }
+
+    Ok(())
+}
+
+async fn si_seventh_stanza_command(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
+    let func_name = "si:seventhStanza".to_string();
+    let existing_func = Func::find_by_attr(ctx, "name", &func_name).await?;
+    if existing_func.is_empty() {
+        let mut new_func = Func::new(
+            ctx,
+            &func_name,
+            FuncBackendKind::JsCommand,
+            FuncBackendResponseType::Command,
+        )
+        .await
+        .expect("cannot create func");
+
+        let workflow_code = base64::encode(include_str!("./func/leroLeroSeventhStanzaCommand.js"));
+
+        new_func
+            .set_handler(ctx, Some("seventhStanza".to_string()))
+            .await
+            .expect("cannot set handler");
+        new_func
+            .set_code_base64(ctx, Some(workflow_code))
+            .await
+            .expect("cannot set code");
+    }
+
+    Ok(())
+}
+
+async fn si_question_command(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
+    let func_name = "si:question".to_string();
+    let existing_func = Func::find_by_attr(ctx, "name", &func_name).await?;
+    if existing_func.is_empty() {
+        let mut new_func = Func::new(
+            ctx,
+            &func_name,
+            FuncBackendKind::JsCommand,
+            FuncBackendResponseType::Command,
+        )
+        .await
+        .expect("cannot create func");
+
+        let workflow_code = base64::encode(include_str!("./func/leroLeroQuestionCommand.js"));
+
+        new_func
+            .set_handler(ctx, Some("question".to_string()))
+            .await
+            .expect("cannot set handler");
+        new_func
+            .set_code_base64(ctx, Some(workflow_code))
+            .await
+            .expect("cannot set code");
+    }
+
+    Ok(())
+}
+
+async fn si_bye_command(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
+    let func_name = "si:bye".to_string();
+    let existing_func = Func::find_by_attr(ctx, "name", &func_name).await?;
+    if existing_func.is_empty() {
+        let mut new_func = Func::new(
+            ctx,
+            &func_name,
+            FuncBackendKind::JsCommand,
+            FuncBackendResponseType::Command,
+        )
+        .await
+        .expect("cannot create func");
+
+        let workflow_code = base64::encode(include_str!("./func/leroLeroByeCommand.js"));
+
+        new_func
+            .set_handler(ctx, Some("bye".to_string()))
             .await
             .expect("cannot set handler");
         new_func

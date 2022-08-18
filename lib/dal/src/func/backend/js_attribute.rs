@@ -1,9 +1,10 @@
+use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use telemetry::prelude::*;
-use tokio::sync::mpsc;
-use veritech::{Client, FunctionResult, OutputStream, ResolverFunctionRequest};
+use veritech::{FunctionResult, ResolverFunctionRequest, ResolverFunctionResultSuccess};
 
-use crate::func::backend::{FuncBackendError, FuncBackendResult};
+use crate::func::backend::{
+    ExtractPayload, FuncBackendError, FuncBackendResult, FuncDispatch, FuncDispatchContext,
+};
 
 #[derive(Deserialize, Serialize, Debug, Clone, Default)]
 pub struct FuncBackendJsAttributeArgs {
@@ -12,19 +13,21 @@ pub struct FuncBackendJsAttributeArgs {
 
 #[derive(Debug)]
 pub struct FuncBackendJsAttribute {
-    veritech: Client,
-    output_tx: mpsc::Sender<OutputStream>,
+    context: FuncDispatchContext,
     request: ResolverFunctionRequest,
 }
 
-impl FuncBackendJsAttribute {
-    pub fn new(
-        veritech: Client,
-        output_tx: mpsc::Sender<OutputStream>,
-        handler: impl Into<String>,
-        args: FuncBackendJsAttributeArgs,
-        code_base64: impl Into<String>,
-    ) -> Self {
+#[async_trait]
+impl FuncDispatch for FuncBackendJsAttribute {
+    type Args = FuncBackendJsAttributeArgs;
+    type Output = ResolverFunctionResultSuccess;
+
+    fn new(
+        context: FuncDispatchContext,
+        code_base64: &str,
+        handler: &str,
+        args: Self::Args,
+    ) -> Box<Self> {
         let request = ResolverFunctionRequest {
             // Once we start tracking the state of these executions, then this id will be useful,
             // but for now it's passed along and back, and is opaue
@@ -34,49 +37,29 @@ impl FuncBackendJsAttribute {
             code_base64: code_base64.into(),
         };
 
-        Self {
-            veritech,
-            output_tx,
-            request,
-        }
+        Box::new(Self { context, request })
     }
 
-    #[instrument(
-    name = "funcbackendjsstring.execute",
-    skip_all,
-    level = "debug",
-    fields(
-    otel.kind = %SpanKind::Client,
-    otel.status_code = Empty,
-    otel.status_message = Empty,
-    si.func.result = Empty
-    )
-    )]
-    pub async fn execute(self) -> FuncBackendResult<serde_json::Value> {
-        let span = Span::current();
-
-        let result = self
-            .veritech
-            .execute_resolver_function(self.output_tx, &self.request)
-            .await
-            .map_err(|err| span.record_err(err))?;
-        let value = match result {
-            FunctionResult::Success(success) => {
-                if success.unset {
-                    return Err(span.record_err(FuncBackendError::UnexpectedUnset));
-                }
-                success.data
+    async fn dispatch(self: Box<Self>) -> FuncBackendResult<FunctionResult<Self::Output>> {
+        let (veritech, output_tx) = self.context.into_inner();
+        let value = veritech
+            .execute_resolver_function(output_tx, &self.request)
+            .await?;
+        match &value {
+            FunctionResult::Success(success) if success.unset => {
+                return Err(FuncBackendError::UnexpectedUnset);
             }
-            FunctionResult::Failure(failure) => {
-                return Err(span.record_err(FuncBackendError::ResultFailure {
-                    kind: failure.error.kind,
-                    message: failure.error.message,
-                }));
-            }
+            _ => {}
         };
 
-        span.record_ok();
-        span.record("si.func.result", &tracing::field::debug(&value));
         Ok(value)
+    }
+}
+
+impl ExtractPayload for ResolverFunctionResultSuccess {
+    type Payload = serde_json::Value;
+
+    fn extract(self) -> Self::Payload {
+        self.data
     }
 }

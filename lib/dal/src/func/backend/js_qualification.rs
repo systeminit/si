@@ -1,11 +1,15 @@
+use async_trait::async_trait;
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
-use telemetry::prelude::*;
-use tokio::sync::mpsc;
 use veritech::{
-    Client, FunctionResult, OutputStream, QualificationCheckComponent, QualificationCheckRequest,
+    FunctionResult, OutputStream, QualificationCheckComponent, QualificationCheckRequest,
+    QualificationCheckResultSuccess,
 };
 
-use crate::func::backend::{FuncBackendError, FuncBackendResult};
+use crate::func::backend::{
+    ExtractPayload, FuncBackendError, FuncBackendResult, FuncDispatch, FuncDispatchContext,
+};
+use crate::qualification::QualificationResult;
 
 #[derive(Deserialize, Serialize, Debug, Clone, Default)]
 pub struct FuncBackendJsQualificationArgs {
@@ -14,66 +18,72 @@ pub struct FuncBackendJsQualificationArgs {
 
 #[derive(Debug)]
 pub struct FuncBackendJsQualification {
-    veritech: Client,
-    output_tx: mpsc::Sender<OutputStream>,
+    context: FuncDispatchContext,
     request: QualificationCheckRequest,
 }
 
-impl FuncBackendJsQualification {
-    pub fn new(
-        veritech: Client,
-        output_tx: mpsc::Sender<OutputStream>,
-        handler: impl Into<String>,
-        args: FuncBackendJsQualificationArgs,
-        code_base64: impl Into<String>,
-    ) -> Self {
+#[async_trait]
+impl FuncDispatch for FuncBackendJsQualification {
+    type Args = FuncBackendJsQualificationArgs;
+    type Output = QualificationCheckResultSuccess;
+
+    fn new(
+        context: FuncDispatchContext,
+        code_base64: &str,
+        handler: &str,
+        args: Self::Args,
+    ) -> Box<Self> {
         let request = QualificationCheckRequest {
             // Once we start tracking the state of these executions, then this id will be useful,
             // but for now it's passed along and back, and is opaue
             execution_id: "danielcraig".to_string(),
             handler: handler.into(),
-            component: args.component,
             code_base64: code_base64.into(),
+            component: args.component,
         };
 
-        Self {
-            veritech,
-            output_tx,
-            request,
-        }
+        Box::new(Self { context, request })
     }
 
-    #[instrument(
-    name = "funcbackendjsqualification.execute",
-    skip_all,
-    level = "debug",
-    fields(
-    otel.kind = %SpanKind::Client,
-    otel.status_code = Empty,
-    otel.status_message = Empty,
-    si.func.result = Empty
-    )
-    )]
-    pub async fn execute(self) -> FuncBackendResult<serde_json::Value> {
-        let span = Span::current();
-
-        let result = self
-            .veritech
-            .execute_qualification_check(self.output_tx, &self.request)
-            .await
-            .map_err(|err| span.record_err(err))?;
-        let value = match result {
-            FunctionResult::Success(check_result) => serde_json::to_value(&check_result)?,
-            FunctionResult::Failure(failure) => {
-                return Err(span.record_err(FuncBackendError::ResultFailure {
-                    kind: failure.error.kind,
-                    message: failure.error.message,
-                }));
+    async fn dispatch(self: Box<Self>) -> FuncBackendResult<FunctionResult<Self::Output>> {
+        let (veritech, output_tx) = self.context.into_inner();
+        let value = veritech
+            .execute_qualification_check(output_tx.clone(), &self.request)
+            .await?;
+        match &value {
+            FunctionResult::Failure(_) => {}
+            FunctionResult::Success(value) => {
+                if let Some(message) = &value.message {
+                    output_tx
+                        .send(OutputStream {
+                            execution_id: self.request.execution_id,
+                            stream: "return".to_owned(),
+                            level: "info".to_owned(),
+                            group: None,
+                            data: None,
+                            message: message.clone(),
+                            timestamp: std::cmp::max(Utc::now().timestamp(), 0) as u64,
+                        })
+                        .await
+                        .map_err(|_| FuncBackendError::SendError)?;
+                } else {
+                }
             }
-        };
+        }
 
-        span.record_ok();
-        span.record("si.func.result", &tracing::field::debug(&value));
         Ok(value)
+    }
+}
+
+impl ExtractPayload for QualificationCheckResultSuccess {
+    type Payload = QualificationResult;
+
+    fn extract(self) -> Self::Payload {
+        QualificationResult {
+            success: self.qualified,
+            title: self.title,
+            link: self.link,
+            sub_checks: self.sub_checks,
+        }
     }
 }
