@@ -45,7 +45,5 @@
     "src/ignore/**/*.ts",
     "src/ignore/**/*.tsx",
     "src/ignore/**/*.vue",
-    "src/organisms/SiCanvas/references",
-    "node_modules/@pixi/text/index.d.ts"
   ]
 }

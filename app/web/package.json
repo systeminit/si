@@ -33,10 +33,8 @@
     "@codemirror/view": "^0.19.0",
     "@headlessui/vue": "^1.6.1",
     "@heroicons/vue": "^1.0.6",
-    "@pixi/layers": "^1.0.11",
     "@tailwindcss/forms": "^0.5.1",
     "@vueuse/rxjs": "^9.1.0",
-    "@xstate/vue": "^2.0.0",
     "bottlejs": "^2.0.0",
     "chart.js": "^3.7.1",
     "cm6-theme-basic-light": "^0.1.0",
@@ -47,7 +45,6 @@
     "js-base64": "^3.7.2",
     "konva": "^8.3.10",
     "lodash": "^4.17.21",
-    "pixi.js": "^6.3.0",
     "rxjs": "^7.5.5",
     "rxjs-spy": "^8.0.2",
     "tinycolor2": "^1.4.2",
@@ -55,8 +52,7 @@
     "validator": "^13.7.0",
     "vue": "^3.2.33",
     "vue-konva": "^3.0.0",
-    "vuse-rx": "systeminit/vuse-rx#bug/hotfix-types",
-    "xstate": "^4.31.0"
+    "vuse-rx": "systeminit/vuse-rx#bug/hotfix-types"
   },
   "devDependencies": {
     "@types/chart.js": "^2.9.37",

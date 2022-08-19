@@ -42,5 +42,5 @@ module.exports = {
   parserOptions: {
     parser: "@typescript-eslint/parser",
   },
-  ignorePatterns: ["src/ignore/*", "src/organisms/SiCanvas/references/*"],
+  ignorePatterns: ["src/ignore/*"],
 };
