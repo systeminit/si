@@ -22,7 +22,7 @@
             </TabPanel>
             <TabPanel class="flex flex-col overflow-y-hidden">
               <SchematicOutline
-                :selected-component-id="selectedComponentId"
+                :selected-component-id="selectedComponentId ?? undefined"
                 @select="onOutlineSelectComponent"
               />
             </TabPanel>
@@ -87,6 +87,7 @@ import { useObservable } from "@vueuse/rxjs";
 import { useRoute } from "vue-router";
 import SchematicOutline from "../SchematicOutline.vue";
 import { ChangeSetService } from "@/service/change_set";
+import { SelectionService } from "@/service/selection";
 
 const currentRoute = useRoute();
 
@@ -102,7 +103,7 @@ const diagramRef = ref<InstanceType<typeof GenericDiagram>>();
 const diagramData = SchematicDiagramService.useDiagramData();
 const schemaVariants = SchematicDiagramService.useSchemaVariants();
 
-const selectedComponentId = ref<number>();
+const selectedComponentId = SelectionService.useSelectedComponentId();
 
 const componentsListApiResponse = useObservable(
   ComponentService.listComponentsIdentification(),
@@ -190,17 +191,17 @@ function onDiagramMoveElement(e: MoveElementEvent) {
 function onDiagramUpdateSelection(newSelection: DiagramElementIdentifier[]) {
   // for now, we dont support multiselect anywhere outside the diagram, so we just act like nothing is selected
   if (newSelection.length !== 1) {
-    selectedComponentId.value = undefined;
+    SelectionService.setSelectedComponentId(null);
     return;
   }
 
   const selectedElement = newSelection[0];
   // we also dont support selecting things other than nodes outside the diagram
   if (selectedElement.diagramElementType !== "node") {
-    selectedComponentId.value = undefined;
+    SelectionService.setSelectedComponentId(null);
     return;
   }
-  selectedComponentId.value = parseInt(selectedElement.id);
+  SelectionService.setSelectedComponentId(parseInt(selectedElement.id));
 }
 
 function onDiagramDelete(_e: DeleteElementsEvent) {
@@ -209,9 +210,20 @@ function onDiagramDelete(_e: DeleteElementsEvent) {
 }
 
 function onOutlineSelectComponent(id: number) {
-  diagramRef.value?.setSelection({
-    diagramElementType: "node",
-    id: id.toString(),
-  });
+  SelectionService.setSelectedComponentId(id);
 }
+
+watch(
+  () => selectedComponentId.value,
+  () => {
+    if (selectedComponentId.value) {
+      diagramRef.value?.setSelection({
+        diagramElementType: "node",
+        id: selectedComponentId.value.toString(),
+      });
+    } else {
+      diagramRef.value?.clearSelection();
+    }
+  },
+);
 </script>

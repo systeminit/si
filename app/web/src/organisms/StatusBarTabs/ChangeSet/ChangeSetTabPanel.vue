@@ -50,12 +50,14 @@
           v-for="statsGroup in list"
           :key="statsGroup.componentId"
           :class="
-            selectedComponent?.componentId === statsGroup.componentId
+            selectedComponentId === statsGroup.componentId
               ? 'bg-action-500'
               : 'hover:bg-black'
           "
           class="py-2 pl-4 pr-3 cursor-pointer flex justify-between items-center"
-          @click="updateSelectedComponent(statsGroup)"
+          @click="
+            SelectionService.setSelectedComponentId(statsGroup.componentId)
+          "
         >
           <span class="shrink min-w-0 truncate mr-3">
             {{ statsGroup.componentName }}
@@ -71,11 +73,11 @@
 
     <!-- Selected component view -->
     <div
-      v-if="selectedComponent"
+      v-if="selectedComponentId && selectedComponentStatsGroup"
       class="w-full h-full flex flex-col bg-shade-100"
     >
       <div
-        v-if="selectedComponent.componentStatus === 'added'"
+        v-if="selectedComponentStatsGroup.componentStatus === 'added'"
         class="overflow-y-auto flex flex-row flex-wrap"
       >
         <div class="basis-full overflow-hidden pr-10 pl-1 pt-2">
@@ -84,7 +86,7 @@
           <CodeViewer
             font-size="13px"
             height="250px"
-            :component-id="selectedComponent.componentId"
+            :component-id="selectedComponentStatsGroup.componentId"
             class="text-neutral-50 mx-5"
             :code="codeRecord['Current']"
             force-theme="dark"
@@ -97,13 +99,13 @@
         </div>
       </div>
       <div
-        v-else-if="selectedComponent.componentStatus === 'deleted'"
+        v-else-if="selectedComponentStatsGroup.componentStatus === 'deleted'"
         class="flex flex-row items-center text-center w-full h-full"
       >
         <p class="w-full text-3xl text-destructive-300">Component Deleted</p>
       </div>
       <div
-        v-else-if="selectedComponent.componentStatus === 'modified'"
+        v-else-if="selectedComponentStatsGroup.componentStatus === 'modified'"
         class="overflow-y-auto flex flex-row flex-wrap"
       >
         <div
@@ -116,7 +118,7 @@
           <CodeViewer
             font-size="13px"
             height="250px"
-            :component-id="selectedComponent.componentId"
+            :component-id="selectedComponentStatsGroup.componentId"
             class="text-neutral-50 mx-5"
             :code="codeRecord[title]"
             force-theme="dark"
@@ -140,13 +142,11 @@
 
 <script setup lang="ts">
 import { ComponentStats, ComponentStatsGroup } from "@/api/sdf/dal/change_set";
-import { lastSelectedNode$ } from "@/observable/selection";
 import { ChangeSetService } from "@/service/change_set";
 import { GlobalErrorService } from "@/service/global_error";
-import { firstValueFrom, from, switchMap, map } from "rxjs";
+import { from, switchMap, map } from "rxjs";
 import { computed, ref } from "vue";
-import { fromRef, refFrom, untilUnmounted } from "vuse-rx";
-import { Node } from "@/organisms/SiCanvas/canvas/obj/node";
+import { refFrom, fromRef, untilUnmounted } from "vuse-rx";
 import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
 import SiBarButton from "@/molecules/SiBarButton.vue";
 import SiArrow from "@/atoms/SiArrow.vue";
@@ -156,6 +156,7 @@ import { ComponentService } from "@/service/component";
 import { ComponentDiff } from "@/api/sdf/dal/component";
 import _ from "lodash";
 import StatusIndicatorIcon from "@/molecules/StatusIndicatorIcon.vue";
+import { SelectionService } from "@/service/selection";
 
 export type ChangeSetTabPanelFilter = "all" | "added" | "deleted" | "modified";
 
@@ -197,35 +198,14 @@ untilUnmounted(ChangeSetService.getStats()).subscribe((response) => {
   }
 });
 
-const selectedComponent = ref<ComponentStatsGroup | null>(null);
-const selectedComponent$ = fromRef(selectedComponent, { immediate: true });
-const updateSelectedComponent = (statsGroup: ComponentStatsGroup) => {
-  selectedComponent.value = statsGroup;
-};
-
-const updateSelection = (node: Node | null) => {
-  const componentId = node?.nodeKind?.componentId;
-
-  // Ignores deselection and fake nodes, as they don't have any attributes
-  if (!componentId || componentId === -1) return;
-
-  if (stats.value) {
-    for (const statsGroup of stats.value.stats) {
-      if (statsGroup.componentId === componentId) {
-        selectedComponent.value = statsGroup;
-        return;
-      }
-    }
-  }
-
-  // Unset the selected component if it is not in the stats list.
-  selectedComponent.value = null;
-};
-
-lastSelectedNode$
-  .pipe(untilUnmounted)
-  .subscribe((node) => updateSelection(node));
-firstValueFrom(lastSelectedNode$).then((last) => updateSelection(last));
+const selectedComponentId = SelectionService.useSelectedComponentId();
+const localSelectedComponentId$ = fromRef(selectedComponentId);
+const selectedComponentStatsGroup = computed(() => {
+  return _.find(
+    stats.value.stats,
+    (statsGroup) => statsGroup.componentId === selectedComponentId.value,
+  );
+});
 
 // FIXME(nick): we should be using the "unknown" language if there's no code once mode switching is reactive.
 const codeRecord = computed((): Record<string, string> => {
@@ -256,11 +236,11 @@ const getCodeLanguage = (title: string) => {
 };
 
 const componentDiff = refFrom<ComponentDiff | null>(
-  combineLatest([selectedComponent$]).pipe(
-    switchMap(([selectedComponent]) => {
-      if (selectedComponent) {
+  combineLatest([localSelectedComponentId$]).pipe(
+    switchMap(([selectedComponentId]) => {
+      if (selectedComponentId) {
         return ComponentService.getDiff({
-          componentId: selectedComponent.componentId,
+          componentId: selectedComponentId,
         });
       }
       return from([null]);
