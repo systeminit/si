@@ -18,6 +18,7 @@ overflow hidden */
         {{ gridPointerPos?.x }}, {{ gridPointerPos?.y }}
       </div>
     </div>
+    <DiagramZoomControls :zoom-level="zoomLevel" @update:zoom="setZoom" />
     <v-stage
       v-if="customFontsLoaded"
       ref="stageRef"
@@ -102,8 +103,6 @@ overflow hidden */
 
 <script lang="ts">
 // zoom config - zoom value of 1 is 100% zoom level
-const MIN_ZOOM = 0.1; // 10%
-const MAX_ZOOM = 10; // 1000%
 const ZOOM_SCROLL_FACTOR = 0.001; // scroll delta multiplied by this while zooming
 
 const ZOOM_PAN_FACTOR = 0.5; // scroll pan multiplied by this and zoom level when panning
@@ -148,6 +147,8 @@ import {
   SOCKET_SIZE,
   CORNER_RADIUS,
   SELECTION_COLOR,
+  MAX_ZOOM,
+  MIN_ZOOM,
 } from "./diagram_constants";
 import {
   vectorDistance,
@@ -158,6 +159,7 @@ import DiagramNewEdge from "./DiagramNewEdge.vue";
 import { convertArrowKeyToDirection } from "./utils/keyboard";
 import tinycolor from "tinycolor2";
 import { useCustomFontsLoaded } from "@/composables/useFontLoaded";
+import DiagramZoomControls from "./DiagramZoomControls.vue";
 
 const props = defineProps({
   diagramConfig: {
@@ -208,8 +210,9 @@ const gridOrigin = ref<Vector2d>({ x: 0, y: 0 });
 // I opted to track this internally rather than use v-model so the parent component isn't _forced_ to care about it
 // but there will often probably be some external controls, which can be done using exposed setZoom and update:zoom event
 const zoomLevel = ref(1);
-function setZoom(newZoom: number) {
-  zoomLevel.value = newZoom;
+function setZoom(newZoomLevel: number) {
+  if (newZoomLevel < MIN_ZOOM || newZoomLevel > MAX_ZOOM) return;
+  zoomLevel.value = newZoomLevel;
 }
 watch(zoomLevel, () => {
   emit("update:zoom", zoomLevel.value);
@@ -256,7 +259,7 @@ function onMouseWheel(e: KonvaEventObject<WheelEvent>) {
   e.evt.preventDefault();
 
   // if CMD key, treat wheel as zoom, otherwise pan
-  if (metaKeyIsDown.value) {
+  if (e.evt.metaKey) {
     // e.evt.metaKey
     // zoom
     let newZoomLevel = zoomLevel.value - e.evt.deltaY * ZOOM_SCROLL_FACTOR;
@@ -354,7 +357,6 @@ onBeforeUnmount(() => {
 
 const spaceKeyIsDown = ref(false);
 const shiftKeyIsDown = ref(false);
-const metaKeyIsDown = ref(false); // CMD key on mac
 
 function onKeyDown(e: KeyboardEvent) {
   // TODO: check is cursor is within graph bounds
@@ -378,8 +380,6 @@ function onKeyDown(e: KeyboardEvent) {
   // handle recording modifier keys globally, which can be useful elsewhere
   if (e.key === " ") spaceKeyIsDown.value = true;
   if (e.key === "Shift") shiftKeyIsDown.value = true;
-  // TODO: ensure this works correctly on non mac
-  if (e.key === "Meta") metaKeyIsDown.value = true;
 
   // TODO: probably want to consider repeat keydown events for using arrows to move stuff
   if (e.repeat) return; // don't process repeat events (key being held down fires multiple times)
@@ -395,7 +395,6 @@ function onKeyDown(e: KeyboardEvent) {
 function onKeyUp(e: KeyboardEvent) {
   if (e.key === " ") spaceKeyIsDown.value = false;
   if (e.key === "Shift") shiftKeyIsDown.value = false;
-  if (e.key === "Meta") metaKeyIsDown.value = false;
 }
 
 const mouseIsDown = ref(false);

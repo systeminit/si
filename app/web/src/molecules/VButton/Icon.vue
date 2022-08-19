@@ -4,6 +4,7 @@
     <GitCommitIcon v-else-if="icon == 'git-commit'" />
     <GitMergeIcon v-else-if="icon == 'git-merge'" />
     <PlusIcon v-else-if="icon == 'plus'" />
+    <MinusIcon v-else-if="icon == 'minus'" />
     <VueFeather v-else-if="icon == 'plus-square'" type="plus-square" />
     <TrashIcon v-else-if="icon == 'trash'" />
     <XIcon v-else-if="icon == 'x'" />
@@ -14,7 +15,7 @@
 import GitBranchIcon from "@/atoms/CustomIcons/GitBranchIcon.vue";
 import GitCommitIcon from "@/atoms/CustomIcons/GitCommitIcon.vue";
 import GitMergeIcon from "@/atoms/CustomIcons/GitMergeIcon.vue";
-import { XIcon, PlusIcon, TrashIcon } from "@heroicons/vue/solid";
+import { XIcon, PlusIcon, MinusIcon, TrashIcon } from "@heroicons/vue/solid";
 import VueFeather from "vue-feather";
 
 export type IconName =
@@ -22,12 +23,13 @@ export type IconName =
   | "git-commit"
   | "git-merge"
   | "plus"
+  | "minus"
   | "plus-square"
   | "trash"
   | "x";
 
 defineProps<{
   icon: IconName;
-  iconClasses: string[];
+  iconClasses?: string[];
 }>();
 </script>
