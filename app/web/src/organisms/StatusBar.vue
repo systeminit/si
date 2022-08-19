@@ -138,18 +138,27 @@
         <TabPanel
           :aria-hidden="!isViewMode"
           :class="[isViewMode ? '' : 'hidden']"
-          class="h-full bg-shade-100"
-        />
+          class="h-full"
+        >
+          <!-- TOOD(nick): replace with an SLA tab panel -->
+          <GenericTabPanel :component-list="componentList" />
+        </TabPanel>
         <TabPanel
           :aria-hidden="!isViewMode"
           :class="[isViewMode ? '' : 'hidden']"
-          class="h-full bg-shade-100"
-        />
+          class="h-full"
+        >
+          <!-- TOOD(nick): replace with a Costs tab panel -->
+          <GenericTabPanel :component-list="componentList" />
+        </TabPanel>
         <TabPanel
           :aria-hidden="!isViewMode"
           :class="[isViewMode ? '' : 'hidden']"
-          class="h-full bg-shade-100"
-        />
+          class="h-full"
+        >
+          <!-- TOOD(nick): replace with a Confirmations tab panel -->
+          <GenericTabPanel :component-list="componentList" />
+        </TabPanel>
       </TabPanels>
     </Transition>
   </TabGroup>
@@ -175,7 +184,11 @@ import QualificationTab from "@/organisms/StatusBarTabs/Qualification/Qualificat
 import { useRoute } from "vue-router";
 import { GetSummaryResponse } from "@/service/qualification/get_summary";
 import { QualificationService } from "@/service/qualification";
-import { refFrom } from "vuse-rx/src";
+import { refFrom, untilUnmounted } from "vuse-rx/src";
+import { ComponentService } from "@/service/component";
+import { GlobalErrorService } from "@/service/global_error";
+import { ComponentListItem } from "@/organisms/StatusBar/StatusBarTabPanelComponentList.vue";
+import GenericTabPanel from "@/organisms/StatusBarTabs/GenericTabPanel.vue";
 
 // Tab 0 is our phantom empty panel
 const selectedTab = ref(0);
@@ -212,8 +225,28 @@ const barClasses = computed(() => {
   return result;
 });
 
-// TODO(nick): move to new home once the view tabs are moved out of here.
+// TODO(nick): move these to new home(s) once the view tabs are moved out of here.
 const qualificationSummary = refFrom<GetSummaryResponse | undefined>(
   QualificationService.getSummary(),
+);
+const componentList = ref<ComponentListItem[]>([]);
+untilUnmounted(ComponentService.listComponentsIdentification()).subscribe(
+  (response) => {
+    if (response.error) {
+      GlobalErrorService.set(response);
+    } else {
+      let list: ComponentListItem[] = [];
+      for (const identification of response.list) {
+        // FIXME(nick): use the real component name. We may need a new route since other components lists
+        // use identifications with labels (currently showing "default"), track qualifications or changeset
+        // components.
+        list.push({
+          id: identification.value.componentId,
+          name: `Component ${identification.value.componentId} (${identification.value.schemaName})`,
+        });
+      }
+      componentList.value = list;
+    }
+  },
 );
 </script>

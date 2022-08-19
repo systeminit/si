@@ -1,75 +1,12 @@
 <template>
   <div class="flex flex-row h-full w-full">
     <!-- Filter button and list of components -->
-    <div class="w-72 shrink-0 border-shade-100 h-full flex flex-col">
-      <!-- Filter button and its dropdown -->
-      <span
-        class="h-11 border-b border-shade-100 text-lg px-4 flex items-center"
-      >
-        Components Menu
-      </span>
-      <SiBarButton
-        class="h-11 border-b border-shade-100"
-        tooltip-text="Filter"
-        fill-entire-width
-      >
-        <template #default="{ hovered, open }">
-          <div class="flex flex-row">
-            {{ filterTitle }}
-            <SiArrow :nudge="hovered || open" class="ml-1 w-4" />
-          </div>
-        </template>
-
-        <template #dropdownContent>
-          <SiDropdownItem
-            :checked="filter === 'all'"
-            @select="changeFilter('all')"
-            >Show All</SiDropdownItem
-          >
-          <SiDropdownItem
-            :checked="filter === 'added'"
-            @select="changeFilter('added')"
-            >Added</SiDropdownItem
-          >
-          <SiDropdownItem
-            :checked="filter === 'deleted'"
-            @select="changeFilter('deleted')"
-            >Deleted</SiDropdownItem
-          >
-          <SiDropdownItem
-            :checked="filter === 'modified'"
-            @select="changeFilter('modified')"
-            >Modified</SiDropdownItem
-          >
-        </template>
-      </SiBarButton>
-
-      <!-- List of components -->
-      <div class="overflow-y-auto flex-expand">
-        <div
-          v-for="statsGroup in list"
-          :key="statsGroup.componentId"
-          :class="
-            selectedComponentId === statsGroup.componentId
-              ? 'bg-action-500'
-              : 'hover:bg-black'
-          "
-          class="py-2 pl-4 pr-3 cursor-pointer flex justify-between items-center"
-          @click="
-            SelectionService.setSelectedComponentId(statsGroup.componentId)
-          "
-        >
-          <span class="shrink min-w-0 truncate mr-3">
-            {{ statsGroup.componentName }}
-          </span>
-          <StatusIndicatorIcon
-            v-if="statsGroup"
-            :status="statsGroup.componentStatus"
-            class="w-6 shrink-0"
-          />
-        </div>
-      </div>
-    </div>
+    <StatusBarTabPanelComponentList
+      :component-list="list"
+      :selected-filter="selectedFilter"
+      :filter-options="filterOptions"
+      @filter="changeSelectedFilter"
+    />
 
     <!-- Selected component view -->
     <div
@@ -141,51 +78,69 @@
 </template>
 
 <script setup lang="ts">
-import { ComponentStats, ComponentStatsGroup } from "@/api/sdf/dal/change_set";
+import { ComponentStats } from "@/api/sdf/dal/change_set";
 import { ChangeSetService } from "@/service/change_set";
 import { GlobalErrorService } from "@/service/global_error";
 import { from, switchMap, map } from "rxjs";
 import { computed, ref } from "vue";
 import { refFrom, fromRef, untilUnmounted } from "vuse-rx";
-import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
-import SiBarButton from "@/molecules/SiBarButton.vue";
-import SiArrow from "@/atoms/SiArrow.vue";
 import CodeViewer from "@/organisms/CodeViewer.vue";
 import { combineLatest } from "rxjs";
 import { ComponentService } from "@/service/component";
 import { ComponentDiff } from "@/api/sdf/dal/component";
 import _ from "lodash";
-import StatusIndicatorIcon from "@/molecules/StatusIndicatorIcon.vue";
 import { SelectionService } from "@/service/selection";
+import StatusBarTabPanelComponentList, {
+  ComponentListItem,
+  FilterOption,
+} from "@/organisms/StatusBar/StatusBarTabPanelComponentList.vue";
 
-export type ChangeSetTabPanelFilter = "all" | "added" | "deleted" | "modified";
-
-const filter = ref<ChangeSetTabPanelFilter>("all");
-const changeFilter = (newFilter: ChangeSetTabPanelFilter) => {
-  filter.value = newFilter;
+const defaultFilterOption = {
+  value: "all",
+  title: "Show All",
 };
-const filterTitle = computed(() => {
-  if (filter.value === "all") {
-    return "Show All";
-  } else if (filter.value === "added") {
-    return "Added";
-  } else if (filter.value === "deleted") {
-    return "Deleted";
-  }
-  return "Modified";
-});
+const filterOptions: FilterOption[] = [
+  defaultFilterOption,
+  {
+    value: "added",
+    title: "Added",
+  },
+  {
+    value: "modified",
+    title: "Modified",
+  },
+  {
+    value: "deleted",
+    title: "Deleted",
+  },
+];
 
-const list = computed((): ComponentStatsGroup[] => {
-  if (filter.value !== "all" && stats.value) {
-    let list = [];
-    for (const statsGroup of stats.value.stats) {
-      if (statsGroup.componentStatus === filter.value) {
-        list.push(statsGroup);
-      }
-    }
-    return list;
+const selectedFilter = ref<FilterOption>(defaultFilterOption);
+const changeSelectedFilter = (newFilter: FilterOption) => {
+  selectedFilter.value = newFilter;
+};
+
+const list = computed((): ComponentListItem[] => {
+  if (!stats.value) return [];
+
+  let list = [];
+  for (const statsGroup of stats.value.stats) {
+    list.push({
+      id: statsGroup.componentId,
+      name: statsGroup.componentName,
+      status: statsGroup.componentStatus,
+    });
   }
-  return stats.value.stats;
+
+  // Filter the results if a filter has been selected.
+  if (
+    selectedFilter.value &&
+    selectedFilter.value.value !== defaultFilterOption.value
+  ) {
+    list = list.filter((item) => item.status === selectedFilter.value.value);
+  }
+
+  return list;
 });
 
 const stats = ref<ComponentStats>({ stats: [] });

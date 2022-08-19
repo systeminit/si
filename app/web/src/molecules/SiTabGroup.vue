@@ -55,7 +55,7 @@ const props = withDefaults(
     afterMargin?: number;
     topMargin?: number;
     selectedTabToFront?: boolean;
-    tabWidthMaximum: number;
+    tabWidthMaximum?: number;
   }>(),
   {
     selectedIndex: undefined,
