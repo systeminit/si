@@ -31,3 +31,6 @@ export const DIAGRAM_FONT_FAMILY = "Inter";
 // color used to show what is selected (currently a nice blue)
 // TODO: pull from tailwind?
 export const SELECTION_COLOR = "#59B7FF";
+
+export const MIN_ZOOM = 0.1; // 10%
+export const MAX_ZOOM = 10; // 1000%

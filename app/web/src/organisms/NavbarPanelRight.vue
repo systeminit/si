@@ -1,22 +1,5 @@
 <template>
   <div class="flex items-center h-full">
-    <SiBarButton tooltip-text="Zoom">
-      <template #default="{ hovered, open }">
-        <div class="flex-row flex text-shade-0">
-          100%
-          <SiArrow :nudge="hovered || open" class="ml-1 w-4 text-shade-0" />
-        </div>
-      </template>
-
-      <template #dropdownContent>
-        <SiDropdownItem class="text-sm">200%</SiDropdownItem>
-        <SiDropdownItem class="text-sm">150%</SiDropdownItem>
-        <SiDropdownItem class="text-sm">100%</SiDropdownItem>
-        <SiDropdownItem class="text-sm">50%</SiDropdownItem>
-        <SiDropdownItem class="text-sm">25%</SiDropdownItem>
-      </template>
-    </SiBarButton>
-
     <SiBarButton tooltip-text="Copy link" @click="copyURL">
       <LinkIcon class="w-6" />
     </SiBarButton>
