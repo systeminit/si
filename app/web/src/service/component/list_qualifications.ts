@@ -1,5 +1,5 @@
 import { ApiResponse, SDF } from "@/api/sdf";
-import { combineLatest, from, Observable, shareReplay } from "rxjs";
+import { combineLatest, from, Observable, shareReplay, startWith } from "rxjs";
 import { standardVisibilityTriggers$ } from "@/observable/visibility";
 import Bottle from "bottlejs";
 import { switchMap } from "rxjs/operators";
@@ -7,6 +7,7 @@ import { Visibility } from "@/api/sdf/dal/visibility";
 import { Qualification } from "@/api/sdf/dal/qualification";
 import { workspace$ } from "@/observable/workspace";
 import _ from "lodash";
+import { eventCheckedQualifications$ } from "@/observable/qualification";
 
 export interface ListQualificationsArgs {
   componentId: number;
@@ -33,6 +34,7 @@ export function listQualifications(
   listQualificationsCollection[args.componentId] = combineLatest([
     standardVisibilityTriggers$,
     workspace$,
+    eventCheckedQualifications$.pipe(startWith(null)),
   ]).pipe(
     switchMap(([[visibility], workspace]) => {
       const bottle = Bottle.pop("default");
