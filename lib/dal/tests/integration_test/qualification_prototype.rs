@@ -1,5 +1,4 @@
 use crate::dal::test;
-use dal::func::backend::js_qualification::FuncBackendJsQualificationArgs;
 use dal::qualification_prototype::QualificationPrototypeContext;
 use dal::{Component, DalContext, Func, QualificationPrototype, Schema, StandardModel, SystemId};
 
@@ -23,24 +22,11 @@ async fn new(ctx: &DalContext<'_, '_>) {
         .pop()
         .expect("Missing builtin function si:qualificationDockerImageNameInspect");
 
-    let args = FuncBackendJsQualificationArgs {
-        component: component
-            .veritech_qualification_check_component(ctx, SystemId::NONE)
-            .await
-            .expect("could not create component qualification view"),
-    };
-
     let mut prototype_context = QualificationPrototypeContext::new();
     prototype_context.set_component_id(*component.id());
-    let _prototype = QualificationPrototype::new(
-        ctx,
-        *func.id(),
-        serde_json::to_value(&args).expect("serialization failed"),
-        prototype_context,
-        "docker image name must match component name",
-    )
-    .await
-    .expect("cannot create new prototype");
+    let _prototype = QualificationPrototype::new(ctx, *func.id(), prototype_context)
+        .await
+        .expect("cannot create new prototype");
 }
 
 #[test]
@@ -63,6 +49,22 @@ async fn find_for_component(ctx: &DalContext<'_, '_>) {
         .await
         .expect("cannot create new component");
 
+    let func = Func::find_by_attr(
+        ctx,
+        "name",
+        &"si:qualificationDockerImageNameInspect".to_string(),
+    )
+    .await
+    .expect("got func")
+    .pop()
+    .expect("cannot pop func off vec");
+
+    let mut proto_context = QualificationPrototypeContext::new();
+    proto_context.set_component_id(*component.id());
+    let _second_proto = QualificationPrototype::new(ctx, *func.id(), proto_context)
+        .await
+        .expect("cannot create qualification_prototype");
+
     let mut found_prototypes = QualificationPrototype::find_for_component(
         ctx,
         *component.id(),
@@ -73,7 +75,10 @@ async fn find_for_component(ctx: &DalContext<'_, '_>) {
     .await
     .expect("could not create component qualification view");
     assert_eq!(found_prototypes.len(), 1);
-    let _found = found_prototypes
+
+    let found = found_prototypes
         .pop()
         .expect("found no qualification prototypes");
+
+    assert_eq!(found.func_id(), *func.id());
 }

@@ -25,10 +25,14 @@ use crate::schema::variant::{SchemaVariantError, SchemaVariantId};
 use crate::schema::SchemaVariant;
 use crate::ws_event::{WsEvent, WsEventError};
 use crate::{
-    func::FuncId, impl_standard_model, node::NodeId, pk, provider::internal::InternalProviderError,
-    qualification::QualificationError, standard_model, standard_model_accessor,
-    standard_model_belongs_to, standard_model_has_many, AttributeContext,
-    AttributeContextBuilderError, AttributeContextError, AttributeReadContext,
+    func::{FuncId, FuncMetadataView},
+    impl_standard_model,
+    node::NodeId,
+    pk,
+    provider::internal::InternalProviderError,
+    qualification::QualificationError,
+    standard_model, standard_model_accessor, standard_model_belongs_to, standard_model_has_many,
+    AttributeContext, AttributeContextBuilderError, AttributeContextError, AttributeReadContext,
     CodeGenerationPrototype, CodeGenerationPrototypeError, CodeGenerationResolver,
     CodeGenerationResolverError, CodeLanguage, CodeView, DalContext, Edge, EdgeError,
     ExternalProviderId, Func, FuncBackendKind, HistoryEventError, InternalProvider, Node,
@@ -638,11 +642,11 @@ impl Component {
             .await?
             .ok_or_else(|| ComponentError::MissingFunc(prototype.func_id().to_string()))?;
 
-        let args = FuncBackendJsQualificationArgs {
+        let args = dbg!(FuncBackendJsQualificationArgs {
             component: self
                 .veritech_qualification_check_component(ctx, system_id)
                 .await?,
-        };
+        });
 
         let json_args = serde_json::to_value(args)?;
         let (func_binding, _created) =
@@ -1078,11 +1082,15 @@ impl Component {
             let json: serde_json::Value = row.try_get("object")?;
             let func_binding_return_value: FuncBindingReturnValue = serde_json::from_value(json)?;
 
+            let json: serde_json::Value = row.try_get("func_metadata_view")?;
+            let func_metadata_view: FuncMetadataView = serde_json::from_value(json)?;
+
             let json: serde_json::Value = row.try_get("prototype")?;
             let prototype: QualificationPrototype = serde_json::from_value(json)?;
             let qual_view = QualificationView::new_for_func_binding_return_value(
                 ctx,
                 prototype,
+                func_metadata_view,
                 func_binding_return_value,
             )
             .await?;
@@ -1110,7 +1118,14 @@ impl Component {
             )
             .await?;
             for prototype in prototypes.into_iter() {
-                let qual_view = QualificationView::new_for_qualification_prototype(prototype);
+                let func = Func::get_by_id(ctx, &prototype.func_id())
+                    .await?
+                    .ok_or_else(|| ComponentError::FuncNotFound(prototype.func_id()))?;
+
+                let qual_view = QualificationView::new_for_qualification_prototype(
+                    prototype,
+                    func.metadata_view(),
+                );
                 results.push(qual_view);
             }
         }

@@ -2,8 +2,7 @@ use super::FuncResult;
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::Json;
 use dal::{
-    func::backend::js_qualification::FuncBackendJsQualificationArgs, generate_name,
-    qualification_prototype::QualificationPrototypeContext, Func, FuncBackendKind,
+    generate_name, qualification_prototype::QualificationPrototypeContext, Func, FuncBackendKind,
     FuncBackendResponseType, FuncId, QualificationPrototype, SchemaVariantId, StandardModel,
     Visibility, WsEvent,
 };
@@ -99,14 +98,8 @@ pub async fn create_func(
     func.set_handler(&ctx, Some("qualification".to_owned()))
         .await?;
 
-    let _ = QualificationPrototype::new(
-        &ctx,
-        *func.id(),
-        serde_json::to_value(&FuncBackendJsQualificationArgs::default())?,
-        QualificationPrototypeContext::new(),
-        func.name(),
-    )
-    .await?;
+    let _ =
+        QualificationPrototype::new(&ctx, *func.id(), QualificationPrototypeContext::new()).await?;
 
     WsEvent::change_set_written(&ctx).publish(&ctx).await?;
 

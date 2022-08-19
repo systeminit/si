@@ -1,4 +1,4 @@
-SELECT DISTINCT ON (qualification_prototypes.id) qualification_prototypes.id,
+SELECT DISTINCT ON (qualification_prototypes.func_id) qualification_prototypes.id,
                                                  qualification_prototypes.component_id,
                                                  qualification_prototypes.schema_id,
                                                  qualification_prototypes.schema_variant_id,
@@ -17,7 +17,7 @@ WHERE in_tenancy_v1($1, qualification_prototypes.tenancy_universal,
     OR qualification_prototypes.schema_variant_id = $5
     OR qualification_prototypes.component_id = $3)
   AND (qualification_prototypes.system_id = $4 OR qualification_prototypes.system_id = -1)
-ORDER BY qualification_prototypes.id,
+ORDER BY qualification_prototypes.func_id,
          visibility_change_set_pk DESC,
          component_id DESC,
          func_id DESC,

@@ -1,3 +1,4 @@
+// deprecated 
 use axum::{extract::Query, Json};
 use dal::{
     Func, QualificationPrototype, QualificationPrototypeId, StandardModel, SystemId, Visibility,

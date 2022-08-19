@@ -1,6 +1,7 @@
 WATCH_PATHS ?= .
 WATCH_TASK ?= clippy
 TEST_ARGS ?=
+TEST_FILTER ?=
 SI_LOG ?= info
 
 ## clean: Cleans all build/test temporary work files
@@ -67,7 +68,7 @@ default--watch:
 ## test: Tests the Rust crate
 default--test:
 	$(call header,$@)
-	env RUST_BACKTRACE=1 cargo test --all-features -- $(TEST_ARGS)
+	env RUST_BACKTRACE=1 cargo test $(TEST_FILTER) --all-features -- $(TEST_ARGS)
 .PHONY: default--test
 
 ## prepush: Runs all checks & tests required before pushing commits

@@ -11,6 +11,8 @@ CREATE TABLE funcs
     created_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     updated_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     name                        text                     NOT NULL,
+    description                 text,
+    link                        text,
     backend_kind                text                     NOT NULL,
     backend_response_type       text                     NOT NULL,
     handler                     text,

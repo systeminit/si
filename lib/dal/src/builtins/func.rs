@@ -312,6 +312,15 @@ async fn si_qualification_docker_image_name_inspect(
             .set_code_base64(ctx, Some(qualification_code))
             .await
             .expect("cannot set code");
+
+        new_func
+            .set_description(ctx, "Verifies that the docker image exists".into())
+            .await
+            .expect("Set func description");
+        new_func
+            .set_link(ctx, "http://docker.com".into())
+            .await
+            .expect("set func link");
     }
 
     Ok(())
@@ -340,6 +349,11 @@ async fn si_qualification_yaml_kubeval(ctx: &DalContext<'_, '_>) -> BuiltinsResu
             .set_code_base64(ctx, Some(qualification_code))
             .await
             .expect("cannot set code");
+
+        new_func
+            .set_description(ctx, Some("Runs kubeval on the generated YAML".to_string()))
+            .await
+            .expect("Set func description");
     }
 
     Ok(())
@@ -369,6 +383,15 @@ async fn si_qualification_docker_hub_login(ctx: &DalContext<'_, '_>) -> Builtins
             .set_code_base64(ctx, Some(qualification_code))
             .await
             .expect("cannot set code");
+
+        new_func
+            .set_description(ctx, "Ensures docker hub login credentials work".into())
+            .await
+            .expect("set func description");
+        new_func
+            .set_link(ctx, "http://hub.docker.com".into())
+            .await
+            .expect("set func link");
     }
 
     Ok(())

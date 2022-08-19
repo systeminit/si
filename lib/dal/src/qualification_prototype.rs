@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use serde_json::Value as JsonValue;
 use si_data::{NatsError, PgError};
 use std::default::Default;
 use telemetry::prelude::*;
@@ -110,10 +109,6 @@ pub struct QualificationPrototype {
     pk: QualificationPrototypePk,
     id: QualificationPrototypeId,
     func_id: FuncId,
-    args: serde_json::Value,
-    title: String,
-    description: Option<String>,
-    link: Option<String>,
     component_id: ComponentId,
     schema_id: SchemaId,
     schema_variant_id: SchemaVariantId,
@@ -141,21 +136,21 @@ impl QualificationPrototype {
     pub async fn new(
         ctx: &DalContext<'_, '_>,
         func_id: FuncId,
-        args: serde_json::Value,
         context: QualificationPrototypeContext,
-        title: impl Into<String>,
     ) -> QualificationPrototypeResult<Self> {
-        let title = title.into();
-        let row = ctx.txns().pg().query_one(
-                "SELECT object FROM qualification_prototype_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9)",
-                &[ctx.write_tenancy(), ctx.visibility(),
+        let row = ctx
+            .txns()
+            .pg()
+            .query_one(
+                "SELECT object FROM qualification_prototype_create_v1($1, $2, $3, $4, $5, $6, $7)",
+                &[
+                    ctx.write_tenancy(),
+                    ctx.visibility(),
                     &func_id,
-                    &args,
                     &context.component_id(),
                     &context.schema_id(),
                     &context.schema_variant_id(),
                     &context.system_id(),
-                    &title,
                 ],
             )
             .await?;
@@ -164,10 +159,6 @@ impl QualificationPrototype {
     }
 
     standard_model_accessor!(func_id, Pk(FuncId), QualificationPrototypeResult);
-    standard_model_accessor!(args, Json<JsonValue>, QualificationPrototypeResult);
-    standard_model_accessor!(title, String, QualificationPrototypeResult);
-    standard_model_accessor!(description, Option<String>, QualificationPrototypeResult);
-    standard_model_accessor!(link, Option<String>, QualificationPrototypeResult);
     standard_model_accessor!(schema_id, Pk(SchemaId), QualificationPrototypeResult);
     standard_model_accessor!(
         schema_variant_id,
@@ -231,8 +222,8 @@ impl QualificationPrototype {
                 ],
             )
             .await?;
-        let object = objects_from_rows(rows)?;
-        Ok(object)
+
+        Ok(objects_from_rows(rows)?)
     }
 
     pub async fn find_for_func(
@@ -264,7 +255,7 @@ impl QualificationPrototype {
 
 #[cfg(test)]
 mod test {
-    use super::QualificationPrototypeContext;
+    use super::*;
 
     #[test]
     fn context_builder() {

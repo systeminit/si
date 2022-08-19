@@ -4,8 +4,11 @@ use thiserror::Error;
 use veritech::QualificationSubCheck;
 
 use crate::attribute::context::UNSET_ID_VALUE;
-use crate::func::backend::validation::ValidationError;
-use crate::func::binding_return_value::{FuncBindingReturnValue, FuncBindingReturnValueError};
+use crate::func::{
+    backend::validation::ValidationError,
+    binding_return_value::{FuncBindingReturnValue, FuncBindingReturnValueError},
+    FuncMetadataView,
+};
 use crate::ws_event::{WsEvent, WsPayload};
 use crate::{
     component, Component, ComponentId, DalContext, QualificationPrototype,
@@ -176,11 +179,14 @@ impl QualificationView {
         }
     }
 
-    pub fn new_for_qualification_prototype(prototype: QualificationPrototype) -> QualificationView {
+    pub fn new_for_qualification_prototype(
+        prototype: QualificationPrototype,
+        func_metadata: FuncMetadataView,
+    ) -> QualificationView {
         QualificationView {
-            title: prototype.title().into(),
-            description: prototype.description().map(Into::into),
-            link: prototype.link().map(Into::into),
+            title: func_metadata.name,
+            description: func_metadata.description.map(Into::into),
+            link: func_metadata.link.map(Into::into),
             output: vec![],
             result: None,
             prototype_id: Some(*prototype.id()),
@@ -190,6 +196,7 @@ impl QualificationView {
     pub async fn new_for_func_binding_return_value(
         ctx: &DalContext<'_, '_>,
         prototype: QualificationPrototype,
+        func_metadata: FuncMetadataView,
         func_binding_return_value: FuncBindingReturnValue,
     ) -> Result<Self, QualificationError> {
         let output_streams = func_binding_return_value.get_output_stream(ctx).await?;
@@ -206,9 +213,9 @@ impl QualificationView {
         };
 
         Ok(QualificationView {
-            title: prototype.title().into(),
-            description: prototype.description().map(Into::into),
-            link: prototype.link().map(Into::into),
+            title: func_metadata.name,
+            description: func_metadata.description.map(Into::into),
+            link: func_metadata.link.map(Into::into),
             output,
             result: func_binding_return_value
                 .value()

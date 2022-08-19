@@ -43,6 +43,15 @@ pub enum FuncError {
 
 pub type FuncResult<T> = Result<T, FuncError>;
 
+/// A subset of the `Func` type used when combining the `Func` and a `QualificationPrototype` into
+/// a `QualificationView`
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+pub struct FuncMetadataView {
+    pub name: String,
+    pub description: Option<String>,
+    pub link: Option<String>,
+}
+
 pk!(FuncPk);
 pk!(FuncId);
 
@@ -58,6 +67,8 @@ pub struct Func {
     pk: FuncPk,
     id: FuncId,
     name: String,
+    description: Option<String>,
+    link: Option<String>,
     backend_kind: FuncBackendKind,
     backend_response_type: FuncBackendResponseType,
     handler: Option<String>,
@@ -148,7 +159,17 @@ impl Func {
             .await
     }
 
+    pub fn metadata_view(&self) -> FuncMetadataView {
+        FuncMetadataView {
+            name: self.name().into(),
+            description: self.description().map(Into::into),
+            link: self.description().map(Into::into),
+        }
+    }
+
     standard_model_accessor!(name, String, FuncResult);
+    standard_model_accessor!(description, Option<String>, FuncResult);
+    standard_model_accessor!(link, Option<String>, FuncResult);
     standard_model_accessor!(backend_kind, Enum(FuncBackendKind), FuncResult);
     standard_model_accessor!(
         backend_response_type,

@@ -1,3 +1,4 @@
+// deprecated
 use axum::Json;
 use dal::{
     job::definition::Qualification, Component, Func, QualificationPrototype,
@@ -62,7 +63,6 @@ pub async fn set_code(
             let mut new_prototype = QualificationPrototype::new(
                 &ctx,
                 prototype.func_id(),
-                prototype.args().clone(),
                 prototype.context().clone(),
                 &request.prototype_title,
             )

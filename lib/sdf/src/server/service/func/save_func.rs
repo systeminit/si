@@ -2,7 +2,6 @@ use super::{FuncError, FuncResult};
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::Json;
 use dal::{
-    func::backend::js_qualification::FuncBackendJsQualificationArgs,
     qualification_prototype::QualificationPrototypeContext, Func, FuncBackendKind, FuncId,
     QualificationPrototype, SchemaVariantId, StandardModel, Visibility, WsEvent,
 };
@@ -61,15 +60,12 @@ pub async fn save_func(
                 QualificationPrototype::new(
                     &ctx,
                     *func.id(),
-                    serde_json::to_value(&FuncBackendJsQualificationArgs::default())?,
                     QualificationPrototypeContext::default(),
-                    func.name(),
                 )
                 .await?
             }
             Some(prototype) => prototype,
         };
-        prototype.set_title(&ctx, func.name()).await?;
         prototype
             .set_schema_variant_id(&ctx, request.schema_variants[0])
             .await?;

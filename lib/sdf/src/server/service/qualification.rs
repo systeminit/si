@@ -3,7 +3,7 @@ use std::string::FromUtf8Error;
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
-    routing::{get, post},
+    routing::get,
     Json, Router,
 };
 
@@ -16,10 +16,14 @@ use dal::{
     StandardModelError, TransactionsError, WriteTenancyError,
 };
 
-pub mod create;
-pub mod get_code;
 pub mod get_summary;
-pub mod set_code;
+
+// code endpoints here are deprecated, removing them from the module tree
+// moved to the func service - this probably means we can pair down the
+// QualificationError a bit
+//pub mod create;
+//pub mod get_code;
+//pub mod set_code;
 
 #[derive(Debug, Error)]
 pub enum QualificationError {
@@ -86,9 +90,5 @@ impl IntoResponse for QualificationError {
 }
 
 pub fn routes() -> Router {
-    Router::new()
-        .route("/get_code", get(get_code::get_code))
-        .route("/set_code", post(set_code::set_code))
-        .route("/create", post(create::create))
-        .route("/get_summary", get(get_summary::get_summary))
+    Router::new().route("/get_summary", get(get_summary::get_summary))
 }
