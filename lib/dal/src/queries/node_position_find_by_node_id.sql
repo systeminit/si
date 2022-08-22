@@ -12,6 +12,5 @@ WHERE in_tenancy_v1($1, node_positions.tenancy_universal, node_positions.tenancy
           WHEN $3::bigint IS NULL THEN node_positions.system_id IS NULL
           ELSE node_positions.system_id = $3::bigint
     END
-  AND node_positions.root_node_id = $4
-  AND bt.belongs_to_id = $5
+  AND bt.belongs_to_id = $4
 ORDER BY id, visibility_change_set_pk DESC;

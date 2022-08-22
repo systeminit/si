@@ -282,16 +282,6 @@ impl Component {
         let node = Node::new(ctx, &(*schema.kind()).into()).await?;
         node.set_component(ctx, component.id()).await?;
 
-        if let Some(root_node_id) = ctx.application_node_id() {
-            let _edge = Edge::include_component_in_node(
-                ctx,
-                component.id(),
-                &schema.kind().into(),
-                &root_node_id,
-            )
-            .await?;
-        }
-
         let _ = component
             .set_value_by_json_pointer(ctx, "/root/si/name", Some(name.as_ref()))
             .await?;
@@ -321,20 +311,6 @@ impl Component {
         .await?;
 
         Ok((component, node))
-    }
-
-    #[instrument(skip_all)]
-    pub async fn new_application_with_node(
-        ctx: &DalContext<'_, '_>,
-        name: impl AsRef<str>,
-    ) -> ComponentResult<(Self, Node)> {
-        let ctx = ctx.clone_with_new_application_node_id(None);
-
-        let schema_variant_id =
-            Schema::default_schema_variant_id_for_name(&ctx, "application").await?;
-        let (comp, node) =
-            Self::new_for_schema_variant_with_node(&ctx, name, &schema_variant_id).await?;
-        Ok((comp, node))
     }
 
     #[instrument(skip_all)]

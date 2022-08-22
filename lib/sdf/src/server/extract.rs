@@ -29,13 +29,11 @@ where
 
         let history_actor = dal::HistoryActor::from(claim.user_id);
         let Tenancy(write_tenancy, read_tenancy) = tenancy_from_request(req, &claim).await?;
-        let ApplicationId(node_id) = application_from_request(req).await?;
 
         Ok(Self(context::AccessBuilder::new(
             read_tenancy,
             write_tenancy,
             history_actor,
-            node_id,
         )))
     }
 }
@@ -335,38 +333,6 @@ where
         let Authorization(claim) = Authorization::from_request(req).await?;
         Ok(Self(dal::HistoryActor::from(claim.user_id)))
     }
-}
-
-pub struct ApplicationId(pub Option<NodeId>);
-
-#[async_trait]
-impl<P> FromRequest<P> for ApplicationId
-where
-    P: Send,
-{
-    type Rejection = (StatusCode, Json<serde_json::Value>);
-
-    async fn from_request(req: &mut RequestParts<P>) -> Result<Self, Self::Rejection> {
-        application_from_request(req).await
-    }
-}
-
-async fn application_from_request<P: Send>(
-    req: &mut RequestParts<P>,
-) -> Result<ApplicationId, (StatusCode, Json<serde_json::Value>)> {
-    let headers = req.headers();
-    let application_id = if let Some(application_header_value) = headers.get("ApplicationId") {
-        let application_id = application_header_value.to_str().map_err(internal_error)?;
-        Some(
-            application_id
-                .parse::<NodeId>()
-                .map_err(not_acceptable_error)?,
-        )
-    } else {
-        None
-    };
-
-    Ok(ApplicationId(application_id))
 }
 
 pub struct Tenancy(pub WriteTenancy, pub ReadTenancy);

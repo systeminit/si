@@ -77,10 +77,6 @@ pub fn routes(
     router = router
         .route("/api/demo", get(handlers::demo))
         .nest(
-            "/api/application",
-            crate::server::service::application::routes(),
-        )
-        .nest(
             "/api/change_set",
             crate::server::service::change_set::routes(),
         )

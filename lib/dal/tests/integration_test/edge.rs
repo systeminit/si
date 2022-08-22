@@ -1,6 +1,5 @@
 use dal::{
     edge::{EdgeKind, VertexObjectKind},
-    node::ApplicationId,
     socket::SocketEdgeKind,
     test::{
         helpers::{
@@ -68,7 +67,6 @@ async fn new(ctx: &DalContext<'_, '_>) {
 #[test]
 async fn include_component_in_system(
     DalContextHeadRef(ctx): DalContextHeadRef<'_, '_, '_>,
-    application_node_id: ApplicationId,
     wid: WorkspaceId,
 ) {
     let (system, system_node) = create_system_with_node(ctx, &wid).await;
@@ -117,7 +115,6 @@ async fn include_component_in_system(
 
     assert_eq!(edges[0].head_node_id(), *first_component_node.id());
     assert_eq!(edges[0].head_object_kind(), &VertexObjectKind::Component);
-    assert_eq!(edges[0].tail_node_id(), application_node_id);
     assert_eq!(edges[0].tail_object_kind(), &VertexObjectKind::Component);
 
     assert_eq!(edges[1].head_node_id(), *first_component_node.id());
@@ -127,7 +124,6 @@ async fn include_component_in_system(
 
     assert_eq!(edges[2].head_node_id(), *second_component_node.id());
     assert_eq!(edges[2].head_object_kind(), &VertexObjectKind::Component);
-    assert_eq!(edges[2].tail_node_id(), application_node_id);
     assert_eq!(edges[2].tail_object_kind(), &VertexObjectKind::Component);
 
     assert_eq!(edges[3].head_node_id(), *second_component_node.id());
@@ -139,7 +135,6 @@ async fn include_component_in_system(
 #[test]
 async fn include_component_in_system_with_edit_sessions(
     ctx: &DalContext<'_, '_>,
-    application_node_id: ApplicationId,
     wid: WorkspaceId,
 ) {
     let (system, system_node) = create_system_with_node(ctx, &wid).await;
@@ -188,7 +183,6 @@ async fn include_component_in_system_with_edit_sessions(
 
     assert_eq!(edges[0].head_node_id(), *first_component_node.id());
     assert_eq!(edges[0].head_object_kind(), &VertexObjectKind::Component);
-    assert_eq!(edges[0].tail_node_id(), application_node_id);
     assert_eq!(edges[0].tail_object_kind(), &VertexObjectKind::Component);
 
     assert_eq!(edges[1].head_node_id(), *first_component_node.id());
@@ -198,7 +192,6 @@ async fn include_component_in_system_with_edit_sessions(
 
     assert_eq!(edges[2].head_node_id(), *second_component_node.id());
     assert_eq!(edges[2].head_object_kind(), &VertexObjectKind::Component);
-    assert_eq!(edges[2].tail_node_id(), application_node_id);
     assert_eq!(edges[2].tail_object_kind(), &VertexObjectKind::Component);
 
     assert_eq!(edges[3].head_node_id(), *second_component_node.id());

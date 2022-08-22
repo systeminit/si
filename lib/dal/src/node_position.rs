@@ -73,13 +73,11 @@ impl NodePosition {
             .txns()
             .pg()
             .query_one(
-                "SELECT object FROM node_position_create_v1($1, $2, $3, $4, $5, $6, $7, $8)",
+                "SELECT object FROM node_position_create_v1($1, $2, $3, $4, $5, $6, $7)",
                 &[
                     ctx.write_tenancy(),
                     ctx.visibility(),
                     &schematic_kind.as_ref(),
-                    &ctx.application_node_id()
-                        .ok_or(NodePositionError::ApplicationNotFound)?,
                     &system_id,
                     &deployment_node_id,
                     &x.as_ref(),
@@ -101,14 +99,7 @@ impl NodePosition {
             .pg_txn()
             .query(
                 FIND_NODE_POSITION_BY_NODE_ID,
-                &[
-                    ctx.read_tenancy(),
-                    ctx.visibility(),
-                    &system_id,
-                    &ctx.application_node_id()
-                        .ok_or(NodePositionError::ApplicationNotFound)?,
-                    &node_id,
-                ],
+                &[ctx.read_tenancy(), ctx.visibility(), &system_id, &node_id],
             )
             .await?;
         let objects = standard_model::objects_from_rows(rows)?;

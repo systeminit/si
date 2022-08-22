@@ -6,7 +6,6 @@ export interface NodePosition {
   id: number;
   schematic_kind: number;
   deployment_node_id?: number;
-  root_node_id: number;
   system_id?: number;
   x: string;
   y: string;

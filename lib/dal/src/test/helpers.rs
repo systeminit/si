@@ -6,38 +6,17 @@ use crate::attribute::context::AttributeContextBuilder;
 use crate::func::binding::FuncBindingId;
 use crate::func::binding_return_value::FuncBindingReturnValueId;
 use crate::{
-    node::NodeId, AttributeContext, AttributeReadContext, AttributeValue, AttributeValueId,
-    BillingAccount, BillingAccountId, BillingAccountSignup, ChangeSet, Component, ComponentId,
-    ComponentView, DalContext, DalContextBuilder, Func, FuncBinding, FuncId, Group, HistoryActor,
-    JwtSecretKey, Node, Prop, PropId, RequestContext, Schema, SchemaId, SchemaVariant,
-    SchemaVariantId, StandardModel, System, Transactions, User, Visibility, WorkspaceId,
+    AttributeContext, AttributeReadContext, AttributeValue, AttributeValueId, BillingAccount,
+    BillingAccountId, BillingAccountSignup, ChangeSet, Component, ComponentId, ComponentView,
+    DalContext, DalContextBuilder, Func, FuncBinding, FuncId, Group, HistoryActor, JwtSecretKey,
+    Node, Prop, PropId, RequestContext, Schema, SchemaId, SchemaVariant, SchemaVariantId,
+    StandardModel, System, Transactions, User, Visibility, WorkspaceId,
 };
 
 pub mod provider;
 
 pub fn generate_fake_name() -> String {
     Generator::with_naming(Name::Numbered).next().unwrap()
-}
-
-pub async fn create_application(
-    builder: &DalContextBuilder,
-    txns: &Transactions<'_>,
-    nba: &BillingAccountSignup,
-) -> Node {
-    let request_context = RequestContext::new_workspace_head(
-        txns.pg(),
-        HistoryActor::SystemInit,
-        *nba.workspace.id(),
-        None,
-    )
-    .await
-    .expect("failed to create new workspace head request context");
-    let ctx = builder.build(request_context, txns);
-
-    let (_, node) = Component::new_application_with_node(&ctx, generate_fake_name())
-        .await
-        .expect("cannot create new application");
-    node
 }
 
 pub async fn billing_account_signup(
@@ -131,13 +110,11 @@ pub async fn create_ctx_for_new_change_set<'s, 't>(
     builder: &'s DalContextBuilder,
     txns: &'t Transactions<'t>,
     nba: &BillingAccountSignup,
-    application_node_id: NodeId,
 ) -> DalContext<'s, 't> {
     let request_context = RequestContext::new_workspace_head(
         txns.pg(),
         HistoryActor::SystemInit,
         *nba.workspace.id(),
-        Some(application_node_id),
     )
     .await
     .expect("failed to create request context");

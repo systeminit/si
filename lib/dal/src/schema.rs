@@ -287,6 +287,8 @@ impl Schema {
         }
     }
 
+    /// Return the default [`SchemaVariantId`](crate::SchemaVariant) for a given [`Schema`](Self)
+    /// name.
     pub async fn default_schema_variant_id_for_name(
         ctx: &DalContext<'_, '_>,
         name: impl AsRef<str>,

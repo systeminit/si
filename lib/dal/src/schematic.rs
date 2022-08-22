@@ -271,20 +271,10 @@ impl Schematic {
 
         let mut node_views = Vec::with_capacity(nodes.len());
         for node in &nodes {
-            // TODO: we have to filter the components here by system
-
-            // Allows us to ignore nodes that aren't in current application
+            // FIXME(nick): all connections should be valid now that applications are removed.
             let conns = connections
                 .iter()
                 .filter(|c| c.source.node_id == *node.id());
-
-            let is_from_this_schematic = Some(*node.id()) == ctx.application_node_id()
-                || conns
-                    .clone()
-                    .any(|conn| Some(conn.destination.node_id) == ctx.application_node_id());
-            if !is_from_this_schematic {
-                continue;
-            }
             valid_connections.extend(conns.cloned());
 
             let (schema, kind, name) = match node.kind() {

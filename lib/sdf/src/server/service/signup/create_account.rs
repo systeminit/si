@@ -46,7 +46,6 @@ pub async fn create_account(
             ReadTenancy::new_universal(),
             WriteTenancy::new_universal(),
             HistoryActor::SystemInit,
-            None,
         )
         .build_head(),
         &txns,
@@ -71,15 +70,9 @@ pub async fn create_account(
         WriteTenancy::new_workspace(*billing_acct.workspace.id()),
     );
 
-    // FIXME(nick,victor): create application and service upon creating a billing account. This is a temporary measure
-    // ensure both concepts are removed from the codebase.
-    let application_and_service_name = "default";
+    // FIXME(nick,victor): create service upon creating a billing account.
+    let service_name = "default";
     let service_schema_name = "service".to_string();
-
-    // Create the application.
-    let (_, app_node) =
-        Component::new_application_with_node(&ctx, application_and_service_name).await?;
-    ctx.update_application_node_id(Some(*app_node.id()));
 
     // Create the service.
     let schema = Schema::find_by_attr(&ctx, "name", &service_schema_name)
@@ -89,12 +82,8 @@ pub async fn create_account(
     let schema_variant_id = schema
         .default_schema_variant_id()
         .ok_or_else(|| SchemaError::NoDefaultVariant(*schema.id()))?;
-    let (_, deployment_node) = Component::new_for_schema_variant_with_node(
-        &ctx,
-        application_and_service_name,
-        schema_variant_id,
-    )
-    .await?;
+    let (_, deployment_node) =
+        Component::new_for_schema_variant_with_node(&ctx, service_name, schema_variant_id).await?;
 
     // Create the (deployment) node for the service.
     let position_deployment_panel =

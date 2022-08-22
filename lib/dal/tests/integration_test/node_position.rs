@@ -4,9 +4,6 @@ use dal::{BillingAccountSignup, DalContext};
 
 #[test]
 async fn new(ctx: &DalContext<'_, '_>, _nba: &BillingAccountSignup) {
-    let root_node = create_node(ctx, &NodeKind::Component).await;
-    let ctx = ctx.clone_with_new_application_node_id(Some(*root_node.id()));
-
     let node_position = NodePosition::new(&ctx, SchematicKind::Component, None, None, "123", "-10")
         .await
         .expect("cannot create node position");
@@ -16,9 +13,6 @@ async fn new(ctx: &DalContext<'_, '_>, _nba: &BillingAccountSignup) {
 
 #[test]
 async fn set_node(ctx: &DalContext<'_, '_>) {
-    let root_node = create_node(ctx, &NodeKind::Component).await;
-    let ctx = ctx.clone_with_new_application_node_id(Some(*root_node.id()));
-
     let node = create_node(&ctx, &NodeKind::Component).await;
     let node_position = NodePosition::new(&ctx, SchematicKind::Component, None, None, "123", "-10")
         .await
@@ -43,9 +37,6 @@ async fn set_node(ctx: &DalContext<'_, '_>) {
 
 #[test]
 async fn set_node_position(ctx: &DalContext<'_, '_>) {
-    let root_node = create_node(ctx, &NodeKind::Component).await;
-    let ctx = ctx.clone_with_new_application_node_id(Some(*root_node.id()));
-
     let node = create_node(&ctx, &NodeKind::Component).await;
 
     let node_position = NodePosition::upsert_by_node_id(
@@ -105,9 +96,6 @@ async fn set_node_position(ctx: &DalContext<'_, '_>) {
 
 #[test]
 async fn multiple_per_node(ctx: &DalContext<'_, '_>) {
-    let root_node = create_node(ctx, &NodeKind::Deployment).await;
-    let ctx = ctx.clone_with_new_application_node_id(Some(*root_node.id()));
-
     let node = create_node(&ctx, &NodeKind::Deployment).await;
 
     let node_position = NodePosition::upsert_by_node_id(

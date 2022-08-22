@@ -433,25 +433,15 @@ impl Schematic2 {
 
         let mut node_views = Vec::with_capacity(nodes.len());
         for node in &nodes {
-            // TODO: we have to filter the components here by system
-
             // hide deployment nodes from the diagram since we'll likely remove it completely
             if *node.kind() == NodeKind::Deployment {
                 continue;
             }
 
-            // Allows us to ignore nodes that aren't in current application
+            // FIXME(nick): all connections should be valid now that applications are removed.
             let conns = connections
                 .iter()
                 .filter(|c| c.source.node_id == *node.id());
-
-            let is_from_this_schematic = Some(*node.id()) == ctx.application_node_id()
-                || conns
-                    .clone()
-                    .any(|conn| Some(conn.destination.node_id) == ctx.application_node_id());
-            if !is_from_this_schematic {
-                continue;
-            }
             valid_connections.extend(conns.cloned());
 
             let schema_variant = match node.kind() {
