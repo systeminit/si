@@ -33,7 +33,7 @@ pub type SessionResult<T> = std::result::Result<T, SessionError>;
 impl IntoResponse for SessionError {
     fn into_response(self) -> Response {
         let (status, error_message) = match self {
-            SessionError::LoginFailed => (StatusCode::UNAUTHORIZED, self.to_string()),
+            SessionError::LoginFailed => (StatusCode::CONFLICT, self.to_string()),
             _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
         };
 
