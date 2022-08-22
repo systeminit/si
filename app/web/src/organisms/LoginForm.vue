@@ -1,22 +1,22 @@
 <template>
   <div class="min-h-full flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-    <div class="sm:mx-auto sm:w-full sm:max-w-md text-neutral-200">
+    <div class="sm:mx-auto sm:w-full sm:max-w-md">
       <img
         class="mx-auto h-12 w-auto"
         :src="siLogoWts"
         alt="System Initiative"
       />
-      <h2 class="mt-6 text-center text-3xl font-extrabold">
-        Sign in to an existing account
+      <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-200">
+        Sign in to your account
       </h2>
-      <p class="mt-2 text-center text-md">
+      <p class="mt-2 text-center text-sm text-gray-200">
         Or
         {{ " " }}
         <router-link
           :to="{ name: 'signup' }"
-          class="font-medium text-action-300 hover:text-action-400"
+          class="font-medium text-indigo-300 hover:text-indigo-400"
         >
-          create a new account to start your free trial
+          sign up for a free trial
         </router-link>
       </p>
     </div>
@@ -26,12 +26,12 @@
         <div
           v-if="errorMessage"
           data-testid="error-message"
-          class="text-white bg-destructive-500"
+          class="text-white bg-red-500"
         >
           Error: {{ errorMessage }}
         </div>
 
-        <form class="space-y-6">
+        <div class="space-y-6">
           <div>
             <SiTextBox
               id="billingAccountName"
@@ -67,6 +67,7 @@
               v-model="form.userPassword"
               title="Password"
               password
+              description="Your password."
               login-mode
               required
               autocomplete="current-password"
@@ -79,14 +80,14 @@
               type="submit"
               data-test="login"
               aria-label="Sign In"
-              class="w-full flex justify-center py-2 px-4 border border-transparent rounded-sm shadow-sm text-sm font-medium text-white bg-blue-500 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-400 disabled:opacity-50"
+              class="w-full flex justify-center py-2 px-4 border border-transparent rounded-sm shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-400 disabled:opacity-50"
               :disabled="formInError"
               @click.prevent="login"
             >
               Sign in
             </button>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   </div>
