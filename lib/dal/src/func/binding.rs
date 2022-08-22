@@ -112,6 +112,11 @@ impl FuncBinding {
         func_id: FuncId,
         backend_kind: FuncBackendKind,
     ) -> FuncBindingResult<Self> {
+        let mut octx = ctx.clone();
+        let write_tenancy = octx.write_tenancy().clone().into_universal();
+        octx.update_write_tenancy(write_tenancy);
+        let ctx = &octx;
+
         let row = ctx
             .txns()
             .pg()
@@ -137,13 +142,19 @@ impl FuncBinding {
         func_id: FuncId,
         backend_kind: FuncBackendKind,
     ) -> FuncBindingResult<(Self, bool)> {
+        let mut octx = ctx.clone();
+        let write_tenancy = octx.write_tenancy().clone().into_universal();
+        octx.update_write_tenancy(write_tenancy);
+        let ctx = &octx;
+
         let row = ctx
             .txns()
             .pg()
             .query_one(
-                "SELECT object, created FROM func_binding_find_or_create_v1($1, $2, $3, $4, $5)",
+                "SELECT object, created FROM func_binding_find_or_create_v1($1, $2, $3, $4, $5, $6)",
                 &[
                     ctx.read_tenancy(),
+                    ctx.write_tenancy(),
                     ctx.visibility(),
                     &args,
                     &backend_kind.as_ref(),

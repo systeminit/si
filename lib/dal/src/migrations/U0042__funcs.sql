@@ -132,7 +132,8 @@ $$ LANGUAGE PLPGSQL VOLATILE;
 -- We will account for this later, when we are reading the data back, by having a consistent
 -- ordering. (We order by `id` ASC, and limit 1)
 CREATE OR REPLACE FUNCTION func_binding_find_or_create_v1(
-    this_tenancy jsonb,
+    this_read_tenancy jsonb,
+    this_write_tenancy jsonb,
     this_visibility jsonb,
     this_args json,
     this_backend_kind text,
@@ -140,7 +141,6 @@ CREATE OR REPLACE FUNCTION func_binding_find_or_create_v1(
     OUT object json, OUT created bool) AS
 $$
 DECLARE
-    this_tenancy_record        tenancy_record_v1;
     this_visibility_record     visibility_record_v1;
     this_change_set_visibility jsonb;
     this_head_visibility       jsonb;
@@ -150,7 +150,6 @@ DECLARE
     dummy2                     bigint;
     dummy3                     bigint;
 BEGIN
-    this_tenancy_record := tenancy_json_to_columns_v1(this_tenancy);
     this_visibility_record := visibility_json_to_columns_v1(this_visibility);
     created := false;
 
@@ -164,7 +163,7 @@ BEGIN
                 func_binding_belongs_to_func.object_id = func_bindings.id
             AND func_binding_belongs_to_func.belongs_to_id = this_func_id
              INNER JOIN funcs ON funcs.id = this_func_id
-        AND in_tenancy_v1(this_tenancy,
+        AND in_tenancy_v1(this_read_tenancy,
                           funcs.tenancy_universal,
                           funcs.tenancy_billing_account_ids,
                           funcs.tenancy_organization_ids,
@@ -174,7 +173,7 @@ BEGIN
                           funcs.visibility_deleted_at)
     WHERE func_bindings.args::jsonb = this_args::jsonb
       AND func_bindings.backend_kind = this_backend_kind
-      AND in_tenancy_v1(this_tenancy,
+      AND in_tenancy_v1(this_read_tenancy,
                         func_bindings.tenancy_universal,
                         func_bindings.tenancy_billing_account_ids,
                         func_bindings.tenancy_organization_ids,
@@ -203,7 +202,7 @@ BEGIN
                     func_binding_belongs_to_func.object_id = func_bindings.id
                 AND func_binding_belongs_to_func.belongs_to_id = this_func_id
                  INNER JOIN funcs ON funcs.id = this_func_id
-            AND in_tenancy_v1(this_tenancy,
+            AND in_tenancy_v1(this_read_tenancy,
                               funcs.tenancy_universal,
                               funcs.tenancy_billing_account_ids,
                               funcs.tenancy_organization_ids,
@@ -213,7 +212,7 @@ BEGIN
                               funcs.visibility_deleted_at)
         WHERE func_bindings.args::jsonb = this_args::jsonb
           AND func_bindings.backend_kind = this_backend_kind
-          AND in_tenancy_v1(this_tenancy,
+          AND in_tenancy_v1(this_read_tenancy,
                             func_bindings.tenancy_universal,
                             func_bindings.tenancy_billing_account_ids,
                             func_bindings.tenancy_organization_ids,
@@ -243,7 +242,7 @@ BEGIN
                     func_binding_belongs_to_func.object_id = func_bindings.id
                 AND func_binding_belongs_to_func.belongs_to_id = this_func_id
                  INNER JOIN funcs ON funcs.id = this_func_id
-            AND in_tenancy_v1(this_tenancy,
+            AND in_tenancy_v1(this_read_tenancy,
                               funcs.tenancy_universal,
                               funcs.tenancy_billing_account_ids,
                               funcs.tenancy_organization_ids,
@@ -253,7 +252,7 @@ BEGIN
                               funcs.visibility_deleted_at)
         WHERE func_bindings.args::jsonb = this_args::jsonb
           AND func_bindings.backend_kind = this_backend_kind
-          AND in_tenancy_v1(this_tenancy,
+          AND in_tenancy_v1(this_read_tenancy,
                             func_bindings.tenancy_universal,
                             func_bindings.tenancy_billing_account_ids,
                             func_bindings.tenancy_organization_ids,
@@ -270,7 +269,7 @@ BEGIN
 
     IF object IS NULL THEN
         created := true;
-        SELECT * FROM func_binding_create_v1(this_tenancy, this_visibility, this_args, this_backend_kind) INTO object;
+        SELECT * FROM func_binding_create_v1(this_write_tenancy, this_visibility, this_args, this_backend_kind) INTO object;
     END IF;
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
