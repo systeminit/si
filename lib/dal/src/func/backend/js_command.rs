@@ -1,28 +1,25 @@
 use async_trait::async_trait;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
-use veritech::{
-    FunctionResult, OutputStream, WorkflowResolveRequest, WorkflowResolveResultSuccess,
-};
+use veritech::{CommandRunRequest, CommandRunResultSuccess, FunctionResult, OutputStream};
 
 use crate::func::backend::{
     ExtractPayload, FuncBackendError, FuncBackendResult, FuncDispatch, FuncDispatchContext,
 };
-use crate::WorkflowView;
 
 #[derive(Deserialize, Serialize, Debug, Clone, Default)]
-pub struct FuncBackendJsWorkflowArgs;
+pub struct FuncBackendJsCommandArgs(Vec<serde_json::Value>);
 
 #[derive(Debug)]
-pub struct FuncBackendJsWorkflow {
+pub struct FuncBackendJsCommand {
     pub context: FuncDispatchContext,
-    pub request: WorkflowResolveRequest,
+    pub request: CommandRunRequest,
 }
 
 #[async_trait]
-impl FuncDispatch for FuncBackendJsWorkflow {
-    type Args = FuncBackendJsWorkflowArgs;
-    type Output = WorkflowResolveResultSuccess;
+impl FuncDispatch for FuncBackendJsCommand {
+    type Args = FuncBackendJsCommandArgs;
+    type Output = CommandRunResultSuccess;
 
     fn new(
         context: FuncDispatchContext,
@@ -30,7 +27,7 @@ impl FuncDispatch for FuncBackendJsWorkflow {
         handler: &str,
         _args: Self::Args,
     ) -> Box<Self> {
-        let request = WorkflowResolveRequest {
+        let request = CommandRunRequest {
             // Once we start tracking the state of these executions, then this id will be useful,
             // but for now it's passed along and back, and is opaue
             execution_id: "danielfurlan".to_string(),
@@ -44,7 +41,7 @@ impl FuncDispatch for FuncBackendJsWorkflow {
     async fn dispatch(self: Box<Self>) -> FuncBackendResult<FunctionResult<Self::Output>> {
         let (veritech, output_tx) = self.context.into_inner();
         let value = veritech
-            .execute_workflow_resolve(output_tx.clone(), &self.request)
+            .execute_command_run(output_tx.clone(), &self.request)
             .await?;
         match &value {
             FunctionResult::Failure(_) => {}
@@ -70,16 +67,8 @@ impl FuncDispatch for FuncBackendJsWorkflow {
     }
 }
 
-impl ExtractPayload for WorkflowResolveResultSuccess {
-    type Payload = WorkflowView;
+impl ExtractPayload for CommandRunResultSuccess {
+    type Payload = ();
 
-    fn extract(self) -> Self::Payload {
-        WorkflowView::new(
-            self.name,
-            // TODO: propagate error
-            serde_json::from_value(serde_json::Value::String(self.kind)).unwrap(),
-            serde_json::from_value(self.steps).unwrap(),
-            serde_json::from_value(self.args).unwrap(),
-        )
-    }
+    fn extract(self) -> Self::Payload {}
 }

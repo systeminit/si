@@ -1,8 +1,8 @@
+use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
-use telemetry::prelude::*;
 
-use crate::{func::backend::FuncBackendResult, FuncBackendError};
+use crate::func::backend::{FuncBackend, FuncBackendResult};
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct FuncBackendMapArgs {
@@ -20,33 +20,18 @@ pub struct FuncBackendMap {
     args: FuncBackendMapArgs,
 }
 
-impl FuncBackendMap {
-    pub fn new(args: FuncBackendMapArgs) -> Self {
-        Self { args }
+#[async_trait]
+impl FuncBackend for FuncBackendMap {
+    type Args = FuncBackendMapArgs;
+
+    fn new(args: Self::Args) -> Box<Self> {
+        Box::new(Self { args })
     }
 
-    #[instrument(
-        name = "funcbackendmap.execute",
-        skip_all,
-        level = "debug",
-        fields(
-            otel.kind = %SpanKind::Client,
-            otel.status_code = Empty,
-            otel.status_message = Empty,
-            si.func.result = Empty
-        )
-    )]
-    pub async fn execute(self) -> FuncBackendResult<(serde_json::Value, serde_json::Value)> {
-        let span = Span::current();
-
+    async fn inline(
+        self: Box<Self>,
+    ) -> FuncBackendResult<(Option<serde_json::Value>, Option<serde_json::Value>)> {
         let value = serde_json::to_value(&self.args.value)?;
-
-        if !value.is_object() {
-            return Err(span.record_err(FuncBackendError::InvalidMapData(value)));
-        }
-
-        span.record_ok();
-        span.record("si.func.result", &tracing::field::debug(&value));
-        Ok((value, serde_json::json!({})))
+        Ok((Some(value), Some(serde_json::json!({}))))
     }
 }

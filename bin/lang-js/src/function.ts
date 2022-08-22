@@ -4,6 +4,7 @@ export enum FunctionKind {
   ResolverFunction = "resolverfunction",
   ResourceSync = "resourceSync",
   WorkflowResolve = "workflowResolve",
+  CommandRun = "commandRun",
 }
 
 export function function_kinds(): Array<string> {
@@ -13,6 +14,7 @@ export function function_kinds(): Array<string> {
     FunctionKind.ResolverFunction,
     FunctionKind.ResourceSync,
     FunctionKind.WorkflowResolve,
+    FunctionKind.CommandRun,
   ];
 }
 

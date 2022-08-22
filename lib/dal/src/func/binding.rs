@@ -1,42 +1,35 @@
 use crate::{FuncError, WriteTenancy};
-use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use si_data::{NatsError, PgError};
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::mpsc;
-use veritech::{
-    CodeGenerationResultSuccess, OutputStream, QualificationCheckResultSuccess,
-    ResolverFunctionComponent, ResourceSyncResultSuccess, WorkflowResolveResultSuccess,
-};
+use veritech::{OutputStream, ResolverFunctionComponent};
 
-use crate::func::backend::array::{FuncBackendArray, FuncBackendArrayArgs};
-use crate::func::backend::boolean::{FuncBackendBoolean, FuncBackendBooleanArgs};
-use crate::func::backend::identity::FuncBackendIdentityArgs;
-use crate::func::backend::integer::{FuncBackendInteger, FuncBackendIntegerArgs};
-use crate::func::backend::map::{FuncBackendMap, FuncBackendMapArgs};
-use crate::func::backend::prop_object::{FuncBackendPropObject, FuncBackendPropObjectArgs};
 use crate::func::backend::{
+    array::FuncBackendArray,
+    boolean::FuncBackendBoolean,
+    identity::FuncBackendIdentity,
+    integer::FuncBackendInteger,
     js_attribute::{FuncBackendJsAttribute, FuncBackendJsAttributeArgs},
     js_code_generation::FuncBackendJsCodeGeneration,
-    js_code_generation::FuncBackendJsCodeGenerationArgs,
+    js_command::FuncBackendJsCommand,
     js_qualification::FuncBackendJsQualification,
-    js_qualification::FuncBackendJsQualificationArgs,
     js_resource::FuncBackendJsResourceSync,
-    js_resource::FuncBackendJsResourceSyncArgs,
     js_workflow::FuncBackendJsWorkflow,
-    js_workflow::FuncBackendJsWorkflowArgs,
+    map::FuncBackendMap,
+    prop_object::FuncBackendPropObject,
     string::FuncBackendString,
-    string::FuncBackendStringArgs,
-    validation::{FuncBackendValidateStringValue, FuncBackendValidateStringValueArgs},
+    validation::FuncBackendValidateStringValue,
+    FuncBackend, FuncDispatch, FuncDispatchContext,
 };
 use crate::DalContext;
 use crate::{
-    component::ComponentViewError, impl_standard_model, pk, qualification::QualificationResult,
-    standard_model, standard_model_accessor, standard_model_belongs_to, ComponentView, Func,
-    FuncBackendError, FuncBackendKind, HistoryEvent, HistoryEventError, ReadTenancyError,
-    StandardModel, StandardModelError, Timestamp, Visibility, WorkflowView,
+    component::ComponentViewError, impl_standard_model, pk, standard_model,
+    standard_model_accessor, standard_model_belongs_to, Func, FuncBackendError, FuncBackendKind,
+    HistoryEvent, HistoryEventError, ReadTenancyError, StandardModel, StandardModelError,
+    Timestamp, Visibility,
 };
 
 use super::{
@@ -75,8 +68,6 @@ pub enum FuncBindingError {
     ComponentView(#[from] ComponentViewError),
     #[error("read tenancy error: {0}")]
     ReadTenancy(#[from] ReadTenancyError),
-    #[error("output stream error: {0}")]
-    OutputStream(#[from] mpsc::error::SendError<OutputStream>),
 }
 
 pub type FuncBindingResult<T> = Result<T, FuncBindingError>;
@@ -121,6 +112,11 @@ impl FuncBinding {
         func_id: FuncId,
         backend_kind: FuncBackendKind,
     ) -> FuncBindingResult<Self> {
+        let mut octx = ctx.clone();
+        let write_tenancy = octx.write_tenancy().clone().into_universal();
+        octx.update_write_tenancy(write_tenancy);
+        let ctx = &octx;
+
         let row = ctx
             .txns()
             .pg()
@@ -146,13 +142,19 @@ impl FuncBinding {
         func_id: FuncId,
         backend_kind: FuncBackendKind,
     ) -> FuncBindingResult<(Self, bool)> {
+        let mut octx = ctx.clone();
+        let write_tenancy = octx.write_tenancy().clone().into_universal();
+        octx.update_write_tenancy(write_tenancy);
+        let ctx = &octx;
+
         let row = ctx
             .txns()
             .pg()
             .query_one(
-                "SELECT object, created FROM func_binding_find_or_create_v1($1, $2, $3, $4, $5)",
+                "SELECT object, created FROM func_binding_find_or_create_v1($1, $2, $3, $4, $5, $6)",
                 &[
                     ctx.read_tenancy(),
+                    ctx.write_tenancy(),
                     ctx.visibility(),
                     &args,
                     &backend_kind.as_ref(),
@@ -230,6 +232,115 @@ impl FuncBinding {
         &self,
         ctx: &DalContext<'_, '_>,
     ) -> FuncBindingResult<FuncBindingReturnValue> {
+        let (func, execution, context, rx) = self.prepare_execution(ctx).await?;
+        let value = self.execute_critical_section(func.clone(), context).await?;
+        self.postprocess_execution(ctx, rx, &func, value, execution)
+            .await
+    }
+
+    pub async fn execute_critical_section(
+        &self,
+        func: Func,
+        context: FuncDispatchContext,
+    ) -> FuncBindingResult<(Option<serde_json::Value>, Option<serde_json::Value>)> {
+        // TODO: encrypt components
+        let value = match self.backend_kind() {
+            FuncBackendKind::JsCodeGeneration => {
+                FuncBackendJsCodeGeneration::create_and_execute(context, &func, &self.args).await?
+            }
+            FuncBackendKind::JsQualification => {
+                FuncBackendJsQualification::create_and_execute(context, &func, &self.args).await?
+            }
+            FuncBackendKind::JsWorkflow => {
+                FuncBackendJsWorkflow::create_and_execute(context, &func, &self.args).await?
+            }
+            FuncBackendKind::JsCommand => {
+                FuncBackendJsCommand::create_and_execute(context, &func, &self.args).await?
+            }
+            FuncBackendKind::JsResourceSync => {
+                FuncBackendJsResourceSync::create_and_execute(context, &func, &self.args).await?
+            }
+            FuncBackendKind::JsAttribute => {
+                FuncBackendJsAttribute::create_and_execute(context, &func, &self.args).await?
+            }
+            FuncBackendKind::Json => {
+                let component = FuncBackendJsAttributeArgs {
+                    component: ResolverFunctionComponent {
+                        data: veritech::ComponentView {
+                            properties: self.args.clone(),
+                            ..Default::default()
+                        },
+                        parents: Vec::new(),
+                    },
+                };
+                FuncBackendJsAttribute::create_and_execute(
+                    context,
+                    &func,
+                    &serde_json::to_value(component)?,
+                )
+                .await?
+            }
+            FuncBackendKind::Array => FuncBackendArray::create_and_execute(&self.args).await?,
+            FuncBackendKind::Boolean => FuncBackendBoolean::create_and_execute(&self.args).await?,
+            FuncBackendKind::Identity => {
+                FuncBackendIdentity::create_and_execute(&self.args).await?
+            }
+            FuncBackendKind::Integer => FuncBackendInteger::create_and_execute(&self.args).await?,
+            FuncBackendKind::Map => FuncBackendMap::create_and_execute(&self.args).await?,
+            FuncBackendKind::PropObject => {
+                FuncBackendPropObject::create_and_execute(&self.args).await?
+            }
+            FuncBackendKind::String => FuncBackendString::create_and_execute(&self.args).await?,
+            FuncBackendKind::Unset => (None, None),
+            FuncBackendKind::ValidateStringValue => {
+                FuncBackendValidateStringValue::create_and_execute(&self.args).await?
+            }
+        };
+        Ok(value)
+    }
+
+    pub async fn postprocess_execution(
+        &self,
+        ctx: &DalContext<'_, '_>,
+        rx: mpsc::Receiver<OutputStream>,
+        func: &Func,
+        (unprocessed_value, processed_value): (
+            Option<serde_json::Value>,
+            Option<serde_json::Value>,
+        ),
+        mut execution: FuncExecution,
+    ) -> FuncBindingResult<FuncBindingReturnValue> {
+        execution.process_output(ctx, rx).await?;
+
+        let func_binding_return_value = FuncBindingReturnValue::upsert(
+            ctx,
+            unprocessed_value,
+            processed_value,
+            *func.id(),
+            self.id,
+            execution.pk(),
+        )
+        .await?;
+
+        execution
+            .process_return_value(ctx, &func_binding_return_value)
+            .await?;
+        execution
+            .set_state(ctx, super::execution::FuncExecutionState::Success)
+            .await?;
+
+        Ok(func_binding_return_value)
+    }
+
+    pub async fn prepare_execution(
+        &self,
+        ctx: &DalContext<'_, '_>,
+    ) -> FuncBindingResult<(
+        Func,
+        FuncExecution,
+        FuncDispatchContext,
+        mpsc::Receiver<OutputStream>,
+    )> {
         // NOTE: This is probably a bug in how we relate to function execution. This
         // fixes an issue where we need to have all the function return values, at the very
         // least, be in in the universal tenancy in order to look up values that are
@@ -246,357 +357,35 @@ impl FuncBinding {
 
         let mut execution = FuncExecution::new(ctx, &func, self).await?;
 
-        let (unproceseed_value, processed_value) = match self.backend_kind() {
-            FuncBackendKind::Array => {
-                execution
-                    .set_state(ctx, super::execution::FuncExecutionState::Run)
-                    .await?;
-                let args: FuncBackendArrayArgs = serde_json::from_value(self.args.clone())?;
-                let (unprocessed_value, processed_value) =
-                    FuncBackendArray::new(args).execute().await?;
-                (Some(unprocessed_value), Some(processed_value))
-            }
-            FuncBackendKind::Boolean => {
-                execution
-                    .set_state(ctx, super::execution::FuncExecutionState::Run)
-                    .await?;
-                let args: FuncBackendBooleanArgs = serde_json::from_value(self.args.clone())?;
-                let return_value = FuncBackendBoolean::new(args).execute().await?;
-                (Some(return_value.clone()), Some(return_value))
-            }
-            FuncBackendKind::Identity => {
-                let args: FuncBackendIdentityArgs = serde_json::from_value(self.args.clone())?;
-                (Some(args.identity.clone()), Some(args.identity))
-            }
-            FuncBackendKind::Integer => {
-                execution
-                    .set_state(ctx, super::execution::FuncExecutionState::Run)
-                    .await?;
-                let args: FuncBackendIntegerArgs = serde_json::from_value(self.args.clone())?;
-                let return_value = FuncBackendInteger::new(args).execute().await?;
-                (Some(return_value.clone()), Some(return_value))
-            }
-            FuncBackendKind::JsCodeGeneration => {
+        match self.backend_kind() {
+            FuncBackendKind::Array
+            | FuncBackendKind::Boolean
+            | FuncBackendKind::Identity
+            | FuncBackendKind::Integer
+            | FuncBackendKind::Map
+            | FuncBackendKind::PropObject
+            | FuncBackendKind::String
+            | FuncBackendKind::Unset
+            | FuncBackendKind::ValidateStringValue => {}
+
+            FuncBackendKind::JsResourceSync
+            | FuncBackendKind::JsCodeGeneration
+            | FuncBackendKind::JsQualification
+            | FuncBackendKind::JsAttribute
+            | FuncBackendKind::JsWorkflow
+            | FuncBackendKind::JsCommand
+            | FuncBackendKind::Json => {
                 execution
                     .set_state(ctx, super::execution::FuncExecutionState::Dispatch)
                     .await?;
-
-                let (tx, rx) = mpsc::channel(64);
-
-                execution
-                    .set_state(ctx, super::execution::FuncExecutionState::Run)
-                    .await?;
-
-                let handler = func
-                    .handler()
-                    .ok_or(FuncBindingError::JsFuncNotFound(self.pk))?;
-                let code_base64 = func
-                    .code_base64()
-                    .ok_or(FuncBindingError::JsFuncNotFound(self.pk))?;
-
-                let args: FuncBackendJsCodeGenerationArgs =
-                    serde_json::from_value(self.args.clone())?;
-                let return_value = FuncBackendJsCodeGeneration::new(
-                    ctx.veritech().clone(),
-                    tx,
-                    handler.to_owned(),
-                    args,
-                    code_base64.to_owned(),
-                )
-                .execute()
-                .await?;
-
-                let veritech_result = CodeGenerationResultSuccess::deserialize(&return_value)?;
-                execution.process_output(ctx, rx).await?;
-                let return_value = serde_json::to_value(&veritech_result.data)?;
-                (Some(return_value.clone()), Some(return_value))
             }
-            FuncBackendKind::JsQualification => {
-                execution
-                    .set_state(ctx, super::execution::FuncExecutionState::Dispatch)
-                    .await?;
-
-                let (tx, rx) = mpsc::channel(64);
-
-                execution
-                    .set_state(ctx, super::execution::FuncExecutionState::Run)
-                    .await?;
-
-                let handler = func
-                    .handler()
-                    .ok_or(FuncBindingError::JsFuncNotFound(self.pk))?;
-                let code_base64 = func
-                    .code_base64()
-                    .ok_or(FuncBindingError::JsFuncNotFound(self.pk))?;
-
-                let mut args: FuncBackendJsQualificationArgs =
-                    serde_json::from_value(self.args.clone())?;
-                ComponentView::reencrypt_secrets(ctx, &mut args.component.data).await?;
-                for parent in &mut args.component.parents {
-                    ComponentView::reencrypt_secrets(ctx, parent).await?;
-                }
-
-                let return_value = FuncBackendJsQualification::new(
-                    ctx.veritech().clone(),
-                    tx.clone(),
-                    handler.to_owned(),
-                    args,
-                    code_base64.to_owned(),
-                )
-                .execute()
-                .await?;
-
-                let veritech_result = QualificationCheckResultSuccess::deserialize(&return_value)?;
-                if let Some(message) = veritech_result.message {
-                    tx.send(OutputStream {
-                        execution_id: veritech_result.execution_id,
-                        stream: "return".to_owned(),
-                        level: "info".to_owned(),
-                        group: None,
-                        data: None,
-                        message,
-                        timestamp: std::cmp::max(Utc::now().timestamp(), 0) as u64,
-                    })
-                    .await?;
-                }
-                let qual_result = QualificationResult {
-                    success: veritech_result.qualified,
-                    title: veritech_result.title,
-                    link: veritech_result.link,
-                    sub_checks: veritech_result.sub_checks,
-                };
-
-                std::mem::drop(tx);
-                execution.process_output(ctx, rx).await?;
-                let return_value = serde_json::to_value(&qual_result)?;
-                (Some(return_value.clone()), Some(return_value))
-            }
-            FuncBackendKind::JsCommand => todo!(),
-            FuncBackendKind::JsWorkflow => {
-                execution
-                    .set_state(ctx, super::execution::FuncExecutionState::Dispatch)
-                    .await?;
-
-                let (tx, rx) = mpsc::channel(64);
-
-                execution
-                    .set_state(ctx, super::execution::FuncExecutionState::Run)
-                    .await?;
-
-                let handler = func
-                    .handler()
-                    .ok_or(FuncBindingError::JsFuncNotFound(self.pk))?;
-                let code_base64 = func
-                    .code_base64()
-                    .ok_or(FuncBindingError::JsFuncNotFound(self.pk))?;
-
-                let args: FuncBackendJsWorkflowArgs = serde_json::from_value(self.args.clone())?;
-
-                let return_value = FuncBackendJsWorkflow::new(
-                    ctx.veritech().clone(),
-                    tx.clone(),
-                    handler.to_owned(),
-                    args,
-                    code_base64.to_owned(),
-                )
-                .execute()
-                .await?;
-
-                let veritech_result = WorkflowResolveResultSuccess::deserialize(&return_value)?;
-                if let Some(message) = veritech_result.message {
-                    tx.send(OutputStream {
-                        execution_id: veritech_result.execution_id,
-                        stream: "return".to_owned(),
-                        level: "info".to_owned(),
-                        group: None,
-                        data: None,
-                        message,
-                        timestamp: std::cmp::max(Utc::now().timestamp(), 0) as u64,
-                    })
-                    .await?;
-                }
-                let view = WorkflowView::new(
-                    veritech_result.name,
-                    serde_json::from_value(serde_json::Value::String(veritech_result.kind))?,
-                    serde_json::from_value(veritech_result.steps).unwrap(),
-                    serde_json::from_value(veritech_result.args).unwrap(),
-                );
-
-                std::mem::drop(tx);
-                execution.process_output(ctx, rx).await?;
-                let return_value = serde_json::to_value(&view)?;
-                (Some(return_value.clone()), Some(return_value))
-            }
-            FuncBackendKind::JsResourceSync => {
-                execution
-                    .set_state(ctx, super::execution::FuncExecutionState::Dispatch)
-                    .await?;
-
-                let (tx, rx) = mpsc::channel(64);
-
-                execution
-                    .set_state(ctx, super::execution::FuncExecutionState::Run)
-                    .await?;
-
-                let handler = func
-                    .handler()
-                    .ok_or(FuncBindingError::JsFuncNotFound(self.pk))?;
-                let code_base64 = func
-                    .code_base64()
-                    .ok_or(FuncBindingError::JsFuncNotFound(self.pk))?;
-
-                let args: FuncBackendJsResourceSyncArgs =
-                    serde_json::from_value(self.args.clone())?;
-                let return_value = FuncBackendJsResourceSync::new(
-                    ctx.veritech().clone(),
-                    tx,
-                    handler.to_owned(),
-                    args,
-                    code_base64.to_owned(),
-                )
-                .execute()
-                .await?;
-
-                let veritech_result = ResourceSyncResultSuccess::deserialize(&return_value)?;
-
-                execution.process_output(ctx, rx).await?;
-                let return_value = serde_json::to_value(&veritech_result)?;
-                (Some(return_value.clone()), Some(return_value))
-            }
-            FuncBackendKind::Json => {
-                execution
-                    .set_state(ctx, super::execution::FuncExecutionState::Dispatch)
-                    .await?;
-
-                let (tx, rx) = mpsc::channel(64);
-                let handler = func
-                    .handler()
-                    .ok_or(FuncBindingError::JsFuncNotFound(self.pk))?;
-                let code_base64 = func
-                    .code_base64()
-                    .ok_or(FuncBindingError::JsFuncNotFound(self.pk))?;
-
-                let mut component = ResolverFunctionComponent {
-                    data: veritech::ComponentView {
-                        properties: self.args.clone(),
-                        ..Default::default()
-                    },
-                    parents: Vec::new(),
-                };
-
-                // We don't need to encrypt parents as we are hardcoding them to be empty
-                // Note(paulo, nick): we should use a new request kind eventually, but now we gotta ship
-                ComponentView::reencrypt_secrets(ctx, &mut component.data).await?;
-
-                execution
-                    .set_state(ctx, super::execution::FuncExecutionState::Run)
-                    .await?;
-
-                let return_value = FuncBackendJsAttribute::new(
-                    ctx.veritech().clone(),
-                    tx,
-                    handler.to_owned(),
-                    FuncBackendJsAttributeArgs { component },
-                    code_base64.to_owned(),
-                )
-                .execute()
-                .await?;
-
-                execution.process_output(ctx, rx).await?;
-                (Some(return_value.clone()), Some(return_value))
-            }
-            FuncBackendKind::JsAttribute => {
-                execution
-                    .set_state(ctx, super::execution::FuncExecutionState::Dispatch)
-                    .await?;
-
-                let (tx, rx) = mpsc::channel(64);
-                let handler = func
-                    .handler()
-                    .ok_or(FuncBindingError::JsFuncNotFound(self.pk))?;
-                let code_base64 = func
-                    .code_base64()
-                    .ok_or(FuncBindingError::JsFuncNotFound(self.pk))?;
-
-                let mut args: FuncBackendJsAttributeArgs =
-                    serde_json::from_value(self.args.clone())?;
-                ComponentView::reencrypt_secrets(ctx, &mut args.component.data).await?;
-                for parent in &mut args.component.parents {
-                    ComponentView::reencrypt_secrets(ctx, parent).await?;
-                }
-
-                execution
-                    .set_state(ctx, super::execution::FuncExecutionState::Run)
-                    .await?;
-
-                let return_value = FuncBackendJsAttribute::new(
-                    ctx.veritech().clone(),
-                    tx,
-                    handler.to_owned(),
-                    args,
-                    code_base64.to_owned(),
-                )
-                .execute()
-                .await?;
-
-                execution.process_output(ctx, rx).await?;
-                (Some(return_value.clone()), Some(return_value))
-            }
-            FuncBackendKind::Map => {
-                execution
-                    .set_state(ctx, super::execution::FuncExecutionState::Run)
-                    .await?;
-                let args: FuncBackendMapArgs = serde_json::from_value(self.args.clone())?;
-                let (unprocessed_value, processed_value) =
-                    FuncBackendMap::new(args).execute().await?;
-                (Some(unprocessed_value), Some(processed_value))
-            }
-            FuncBackendKind::PropObject => {
-                execution
-                    .set_state(ctx, super::execution::FuncExecutionState::Run)
-                    .await?;
-                let args: FuncBackendPropObjectArgs = serde_json::from_value(self.args.clone())?;
-                let (unproceseed_value, processed_value) =
-                    FuncBackendPropObject::new(args).execute().await?;
-                (Some(unproceseed_value), Some(processed_value))
-            }
-            FuncBackendKind::String => {
-                execution
-                    .set_state(ctx, super::execution::FuncExecutionState::Run)
-                    .await?;
-                let args: FuncBackendStringArgs = serde_json::from_value(self.args.clone())?;
-                let return_value = FuncBackendString::new(args).execute().await?;
-                (Some(return_value.clone()), Some(return_value))
-            }
-            FuncBackendKind::Unset => (None, None),
-            FuncBackendKind::ValidateStringValue => {
-                execution
-                    .set_state(ctx, super::execution::FuncExecutionState::Run)
-                    .await?;
-                let args: FuncBackendValidateStringValueArgs =
-                    serde_json::from_value(self.args.clone())?;
-                let return_value = FuncBackendValidateStringValue::new(args).execute()?;
-                (Some(return_value.clone()), Some(return_value))
-            }
-        };
-
-        let func_binding_return_value = FuncBindingReturnValue::upsert(
-            ctx,
-            unproceseed_value,
-            processed_value,
-            *func.id(),
-            self.id,
-            execution.pk(),
-        )
-        .await?;
+        }
 
         execution
-            .process_return_value(ctx, &func_binding_return_value)
-            .await?;
-        execution
-            .set_state(ctx, super::execution::FuncExecutionState::Success)
+            .set_state(ctx, super::execution::FuncExecutionState::Run)
             .await?;
 
-        Ok(func_binding_return_value)
+        let (context, rx) = FuncDispatchContext::new(ctx);
+        Ok((func, execution, context, rx))
     }
 }

@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
 use cyclone_core::{
-    CodeGenerationRequest, CodeGenerationResultSuccess, FunctionResult, OutputStream,
-    QualificationCheckRequest, QualificationCheckResultSuccess, ResolverFunctionRequest,
-    ResolverFunctionResultSuccess, ResourceSyncRequest, ResourceSyncResultSuccess,
-    WorkflowResolveRequest, WorkflowResolveResultSuccess,
+    CodeGenerationRequest, CodeGenerationResultSuccess, CommandRunRequest, CommandRunResultSuccess,
+    FunctionResult, OutputStream, QualificationCheckRequest, QualificationCheckResultSuccess,
+    ResolverFunctionRequest, ResolverFunctionResultSuccess, ResourceSyncRequest,
+    ResourceSyncResultSuccess, WorkflowResolveRequest, WorkflowResolveResultSuccess,
 };
 use futures::{StreamExt, TryStreamExt};
 use serde::{de::DeserializeOwned, Serialize};
@@ -15,9 +15,9 @@ use tokio::sync::mpsc;
 
 use self::subscription::{Subscription, SubscriptionError};
 use crate::{
-    nats_code_generation_subject, nats_qualification_check_subject, nats_resolver_function_subject,
-    nats_resource_sync_subject, nats_subject, nats_workflow_resolve_subject,
-    reply_mailbox_for_output, reply_mailbox_for_result,
+    nats_code_generation_subject, nats_command_run_subject, nats_qualification_check_subject,
+    nats_resolver_function_subject, nats_resource_sync_subject, nats_subject,
+    nats_workflow_resolve_subject, reply_mailbox_for_output, reply_mailbox_for_result,
 };
 
 #[derive(Error, Debug)]
@@ -192,6 +192,35 @@ impl Client {
         request: &WorkflowResolveRequest,
         subject_suffix: impl AsRef<str>,
     ) -> ClientResult<FunctionResult<WorkflowResolveResultSuccess>> {
+        self.execute_request(
+            nats_subject(self.subject_prefix(), subject_suffix),
+            output_tx,
+            request,
+        )
+        .await
+    }
+
+    #[instrument(name = "client.execute_command_run", skip_all)]
+    pub async fn execute_command_run(
+        &self,
+        output_tx: mpsc::Sender<OutputStream>,
+        request: &CommandRunRequest,
+    ) -> ClientResult<FunctionResult<CommandRunResultSuccess>> {
+        self.execute_request(
+            nats_command_run_subject(self.subject_prefix()),
+            output_tx,
+            request,
+        )
+        .await
+    }
+
+    #[instrument(name = "client.execute_command_run_with_subject", skip_all)]
+    pub async fn execute_command_run_with_subject(
+        &self,
+        output_tx: mpsc::Sender<OutputStream>,
+        request: &CommandRunRequest,
+        subject_suffix: impl AsRef<str>,
+    ) -> ClientResult<FunctionResult<CommandRunResultSuccess>> {
         self.execute_request(
             nats_subject(self.subject_prefix(), subject_suffix),
             output_tx,

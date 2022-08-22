@@ -10,6 +10,7 @@ import { executeQualificationCheck } from "./qualification_check";
 import { executeResolverFunction } from "./resolver_function";
 import { executeResourceSync } from "./resource_sync";
 import { executeWorkflowResolve } from "./workflow_resolve";
+import { executeCommandRun } from "./command_run";
 
 const debug = Debug("langJs");
 
@@ -64,6 +65,9 @@ async function main() {
         break;
       case FunctionKind.WorkflowResolve:
         executeWorkflowResolve(request);
+        break;
+      case FunctionKind.CommandRun:
+        executeCommandRun(request);
         break;
       default:
         throw Error(`Unknown Kind variant: ${kind}`);

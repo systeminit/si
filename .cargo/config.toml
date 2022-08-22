@@ -1,4 +1,10 @@
 [target.x86_64-unknown-linux-gnu]
 rustflags = [
     "-C", "link-arg=-fuse-ld=lld",
+    "--cfg", "tokio_unstable",
+]
+
+[build]
+rustflags = [
+    "--cfg", "tokio_unstable",
 ]

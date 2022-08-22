@@ -5,8 +5,8 @@ use std::{
 };
 
 use deadpool_cyclone::{
-    CodeGenerationRequest, QualificationCheckRequest, ResolverFunctionRequest, ResourceSyncRequest,
-    WorkflowResolveRequest,
+    CodeGenerationRequest, CommandRunRequest, QualificationCheckRequest, ResolverFunctionRequest,
+    ResourceSyncRequest, WorkflowResolveRequest,
 };
 use futures::{Stream, StreamExt};
 use futures_lite::FutureExt;
@@ -17,8 +17,8 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
-    nats_code_generation_subject, nats_qualification_check_subject, nats_resolver_function_subject,
-    nats_resource_sync_subject, nats_workflow_resolve_subject,
+    nats_code_generation_subject, nats_command_run_subject, nats_qualification_check_subject,
+    nats_resolver_function_subject, nats_resource_sync_subject, nats_workflow_resolve_subject,
 };
 
 #[derive(Error, Debug)]
@@ -130,6 +130,26 @@ impl Subscriber {
         debug!(
             messaging.destination = &subject.as_str(),
             "subscribing for workflow resolve requests"
+        );
+        let inner = nats
+            .subscribe(subject)
+            .await
+            .map_err(SubscriberError::NatsSubscribe)?;
+
+        Ok(Subscription {
+            inner,
+            _phantom: PhantomData,
+        })
+    }
+
+    pub async fn command_run(
+        nats: &NatsClient,
+        subject_prefix: Option<&str>,
+    ) -> Result<Subscription<CommandRunRequest>> {
+        let subject = nats_command_run_subject(subject_prefix);
+        debug!(
+            messaging.destination = &subject.as_str(),
+            "subscribing for command resolve requests"
         );
         let inner = nats
             .subscribe(subject)

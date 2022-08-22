@@ -120,6 +120,11 @@ fn execute_routes(config: &Config, shutdown_tx: mpsc::Sender<ShutdownSource>) ->
         router = router
             .merge(Router::new().route("/workflow", get(handlers::ws_execute_workflow_resolve)));
     }
+    if config.enable_command_run() {
+        debug!("enabling command run endpoint");
+        router =
+            router.merge(Router::new().route("/command", get(handlers::ws_execute_command_run)));
+    }
 
     let limit_requests = Arc::new(config.limit_requests().map(|i| i.into()));
 

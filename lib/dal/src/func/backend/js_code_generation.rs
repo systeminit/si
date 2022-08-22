@@ -1,9 +1,8 @@
+use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use telemetry::prelude::*;
-use tokio::sync::mpsc;
-use veritech::{Client, CodeGenerationRequest, FunctionResult, OutputStream};
+use veritech::{CodeGenerated, CodeGenerationRequest, CodeGenerationResultSuccess, FunctionResult};
 
-use crate::func::backend::{FuncBackendError, FuncBackendResult};
+use crate::func::backend::{ExtractPayload, FuncBackendResult, FuncDispatch, FuncDispatchContext};
 use crate::ComponentView;
 
 #[derive(Deserialize, Serialize, Debug, Clone, Default)]
@@ -13,66 +12,46 @@ pub struct FuncBackendJsCodeGenerationArgs {
 
 #[derive(Debug)]
 pub struct FuncBackendJsCodeGeneration {
-    veritech: Client,
-    output_tx: mpsc::Sender<OutputStream>,
+    context: FuncDispatchContext,
     request: CodeGenerationRequest,
 }
 
-impl FuncBackendJsCodeGeneration {
-    pub fn new(
-        veritech: Client,
-        output_tx: mpsc::Sender<OutputStream>,
-        handler: impl Into<String>,
-        args: FuncBackendJsCodeGenerationArgs,
-        code_base64: impl Into<String>,
-    ) -> Self {
+#[async_trait]
+impl FuncDispatch for FuncBackendJsCodeGeneration {
+    type Args = FuncBackendJsCodeGenerationArgs;
+    type Output = CodeGenerationResultSuccess;
+
+    fn new(
+        context: FuncDispatchContext,
+        code_base64: &str,
+        handler: &str,
+        args: Self::Args,
+    ) -> Box<Self> {
         let request = CodeGenerationRequest {
             // Once we start tracking the state of these executions, then this id will be useful,
             // but for now it's passed along and back, and is opaue
             execution_id: "wagnermoura".to_string(),
             handler: handler.into(),
-            component: args.component.into(),
             code_base64: code_base64.into(),
+            component: args.component.into(),
         };
 
-        Self {
-            veritech,
-            output_tx,
-            request,
-        }
+        Box::new(Self { context, request })
     }
 
-    #[instrument(
-        name = "funcbackendjscodegeneration.execute",
-        skip_all,
-        level = "debug",
-        fields(
-            otel.kind = %SpanKind::Client,
-            otel.status_code = Empty,
-            otel.status_message = Empty,
-            si.func.result = Empty
-        )
-    )]
-    pub async fn execute(self) -> FuncBackendResult<serde_json::Value> {
-        let span = Span::current();
-
-        let result = self
-            .veritech
-            .execute_code_generation(self.output_tx, &self.request)
-            .await
-            .map_err(|err| span.record_err(err))?;
-        let value = match result {
-            FunctionResult::Success(check_result) => serde_json::to_value(&check_result)?,
-            FunctionResult::Failure(failure) => {
-                return Err(span.record_err(FuncBackendError::ResultFailure {
-                    kind: failure.error.kind,
-                    message: failure.error.message,
-                }));
-            }
-        };
-
-        span.record_ok();
-        span.record("si.func.result", &tracing::field::debug(&value));
+    async fn dispatch(self: Box<Self>) -> FuncBackendResult<FunctionResult<Self::Output>> {
+        let (veritech, output_tx) = self.context.into_inner();
+        let value = veritech
+            .execute_code_generation(output_tx, &self.request)
+            .await?;
         Ok(value)
+    }
+}
+
+impl ExtractPayload for CodeGenerationResultSuccess {
+    type Payload = CodeGenerated;
+
+    fn extract(self) -> Self::Payload {
+        self.data
     }
 }

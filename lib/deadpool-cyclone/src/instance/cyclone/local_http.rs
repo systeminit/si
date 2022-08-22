@@ -11,10 +11,10 @@ use cyclone_client::{
 };
 use cyclone_core::{
     process::{self, ShutdownError},
-    CanonicalCommand, CodeGenerationRequest, CodeGenerationResultSuccess,
-    QualificationCheckRequest, QualificationCheckResultSuccess, ResolverFunctionRequest,
-    ResolverFunctionResultSuccess, ResourceSyncRequest, ResourceSyncResultSuccess,
-    WorkflowResolveRequest, WorkflowResolveResultSuccess,
+    CanonicalCommand, CodeGenerationRequest, CodeGenerationResultSuccess, CommandRunRequest,
+    CommandRunResultSuccess, QualificationCheckRequest, QualificationCheckResultSuccess,
+    ResolverFunctionRequest, ResolverFunctionResultSuccess, ResourceSyncRequest,
+    ResourceSyncResultSuccess, WorkflowResolveRequest, WorkflowResolveResultSuccess,
 };
 use derive_builder::Builder;
 use futures::StreamExt;
@@ -221,6 +221,21 @@ impl CycloneClient<TcpStream> for LocalHttpInstance {
 
         result
     }
+
+    async fn execute_command_run(
+        &mut self,
+        request: CommandRunRequest,
+    ) -> result::Result<Execution<TcpStream, CommandRunRequest, CommandRunResultSuccess>, ClientError>
+    {
+        self.ensure_healthy_client()
+            .await
+            .map_err(ClientError::unhealthy)?;
+
+        let result = self.client.execute_command_run(request).await;
+        self.count_request();
+
+        result
+    }
 }
 
 impl LocalHttpInstance {
@@ -299,6 +314,10 @@ pub struct LocalHttpInstanceSpec {
     /// Enables the `workflow` execution endpoint for a spawned Cyclone server.
     #[builder(private, setter(name = "_workflow"), default = "false")]
     workflow: bool,
+
+    /// Enables the `command` execution endpoint for a spawned Cyclone server.
+    #[builder(private, setter(name = "_command"), default = "false")]
+    command: bool,
 }
 
 #[async_trait]
@@ -426,6 +445,11 @@ impl LocalHttpInstanceSpecBuilder {
     /// Enables the `workflow` execution endpoint for a spawned Cyclone server.
     pub fn workflow(&mut self) -> &mut Self {
         self._workflow(true)
+    }
+
+    /// Enables the `command` execution endpoint for a spawned Cyclone server.
+    pub fn command(&mut self) -> &mut Self {
+        self._command(true)
     }
 }
 
