@@ -31,7 +31,7 @@
           Error: {{ errorMessage }}
         </div>
 
-        <form class="space-y-6">
+        <form class="space-y-6" @submit.prevent="login">
           <div>
             <SiTextBox
               id="billingAccountName"
@@ -81,7 +81,6 @@
               aria-label="Sign In"
               class="w-full flex justify-center py-2 px-4 border border-transparent rounded-sm shadow-sm text-sm font-medium text-white bg-blue-500 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-400 disabled:opacity-50"
               :disabled="formInError"
-              @click.prevent="login"
             >
               Sign in
             </button>
@@ -99,12 +98,16 @@ import siLogoWts from "@/assets/images/si-logo-wts.svg";
 import SiTextBox from "@/atoms/SiTextBox.vue";
 import { useFieldErrors } from "@/composables/useFieldErrors";
 import validator from "validator";
+import { setFormSettings } from "@/composables/formSettings";
 
 const form = ref({
   billingAccountName: "",
   userEmail: "",
   userPassword: "",
 });
+
+setFormSettings({ hideRequiredLabel: true });
+
 const errorMessage = ref<string | null>(null);
 
 const { formInError, setFieldInError } = useFieldErrors();

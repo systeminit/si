@@ -30,7 +30,10 @@
           Error: {{ errorMessage }}
         </div>
 
-        <form class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
+        <form
+          class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6"
+          @submit.prevent="createAccount"
+        >
           <div class="sm:col-span-6">
             <SiTextBox
               id="billingAccountName"
@@ -115,7 +118,6 @@
               aria-label="Sign Up"
               class="w-full flex justify-center py-2 px-4 border border-transparent rounded-sm shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-400 disabled:opacity-50"
               :disabled="formInError"
-              @click="createAccount"
             >
               Sign up
             </button>
@@ -134,6 +136,7 @@ import SiTextBox from "@/atoms/SiTextBox.vue";
 import validator from "validator";
 import _ from "lodash";
 import { useFieldErrors } from "@/composables/useFieldErrors";
+import { setFormSettings } from "@/composables/formSettings";
 
 const emit = defineEmits(["success", "back-to-login"]);
 
@@ -144,6 +147,8 @@ const form = ref<CreateAccountRequest>({
   userPassword: "",
   signupSecret: "",
 });
+
+setFormSettings({ hideRequiredLabel: true });
 
 const errorMessage = ref<undefined | string>(undefined);
 
