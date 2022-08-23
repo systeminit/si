@@ -1,6 +1,5 @@
 import { ApiResponse, SDF } from "@/api/sdf";
 import { combineLatest, Observable, shareReplay } from "rxjs";
-import { applicationNodeId$ } from "@/observable/application";
 import { standardVisibilityTriggers$ } from "@/observable/visibility";
 import Bottle from "bottlejs";
 import { switchMap } from "rxjs/operators";
@@ -29,7 +28,6 @@ export function getSchematic(
   }
   getSchematicCollection[context] = combineLatest([
     standardVisibilityTriggers$,
-    applicationNodeId$, // Application id is passed implicitly but we need the reactivity
   ]).pipe(
     switchMap(([[visibility]]) => {
       const bottle = Bottle.pop("default");

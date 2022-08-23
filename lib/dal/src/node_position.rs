@@ -20,8 +20,6 @@ pub enum NodePositionError {
     StandardModel(#[from] StandardModelError),
     #[error("read tenancy error: {0}")]
     ReadTenancy(#[from] ReadTenancyError),
-    #[error("application not found")]
-    ApplicationNotFound,
 }
 
 const FIND_NODE_POSITION_BY_NODE_ID: &str =

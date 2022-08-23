@@ -106,24 +106,10 @@ async fn service(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     ui_menu
         .set_name(ctx, Some(schema.name().to_string()))
         .await?;
-
-    let application_name = "application".to_string();
-    ui_menu
-        .set_category(ctx, Some(application_name.clone()))
-        .await?;
     ui_menu
         .set_schematic_kind(ctx, SchematicKind::from(*schema.kind()))
         .await?;
     ui_menu.set_schema(ctx, schema.id()).await?;
-
-    let application_schema_results = Schema::find_by_attr(ctx, "name", &application_name).await?;
-    let application_schema = application_schema_results
-        .first()
-        .ok_or(SchemaError::NotFoundByName(application_name))?;
-
-    ui_menu
-        .add_root_schematic(ctx, application_schema.id())
-        .await?;
 
     let (mut variant, _) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
     variant.set_color(ctx, Some(0x00b0bc)).await?;
@@ -276,19 +262,10 @@ async fn kubernetes_namespace(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     let mut ui_menu = UiMenu::new(ctx, &(*schema.kind()).into()).await?;
     ui_menu.set_name(ctx, Some("namespace")).await?;
 
-    let application_name = "application".to_string();
     ui_menu
         .set_category(ctx, Some("kubernetes".to_owned()))
         .await?;
     ui_menu.set_schema(ctx, schema.id()).await?;
-
-    let application_schema_results = Schema::find_by_attr(ctx, "name", &application_name).await?;
-    let application_schema = application_schema_results
-        .first()
-        .ok_or(SchemaError::NotFoundByName(application_name))?;
-    ui_menu
-        .add_root_schematic(ctx, application_schema.id())
-        .await?;
 
     let metadata_prop = create_metadata_prop(ctx, true, root_prop.domain_prop_id).await?;
 
@@ -482,22 +459,11 @@ async fn docker_hub_credential(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     .await?;
     variant.add_socket(ctx, includes_socket.id()).await?;
 
-    let application_name = "application".to_string();
-
     // Note: I wasn't able to create a ui menu with two layers
     let mut ui_menu = UiMenu::new(ctx, &(*schema.kind()).into()).await?;
     ui_menu.set_name(ctx, Some("credential".to_owned())).await?;
     ui_menu.set_category(ctx, Some("docker".to_owned())).await?;
     ui_menu.set_schema(ctx, schema.id()).await?;
-
-    let application_schema_results = Schema::find_by_attr(ctx, "name", &application_name).await?;
-    let application_schema = application_schema_results
-        .first()
-        .ok_or(SchemaError::NotFoundByName(application_name))?;
-
-    ui_menu
-        .add_root_schematic(ctx, application_schema.id())
-        .await?;
 
     Ok(())
 }
@@ -522,17 +488,8 @@ async fn docker_image(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     let mut ui_menu = UiMenu::new(ctx, &(*schema.kind()).into()).await?;
     ui_menu.set_name(ctx, Some("image")).await?;
 
-    let application_name = "application".to_string();
     ui_menu.set_category(ctx, Some("docker".to_owned())).await?;
     ui_menu.set_schema(ctx, schema.id()).await?;
-
-    let application_schema_results = Schema::find_by_attr(ctx, "name", &application_name).await?;
-    let application_schema = application_schema_results
-        .first()
-        .ok_or(SchemaError::NotFoundByName(application_name))?;
-    ui_menu
-        .add_root_schematic(ctx, application_schema.id())
-        .await?;
 
     let image_prop = Prop::new(ctx, "image", PropKind::String).await?;
     image_prop

@@ -6,7 +6,6 @@ import {
   map,
   switchMap,
 } from "rxjs";
-import { applicationNodeId$ } from "@/observable/application";
 import {
   standardVisibilityTriggers$,
   visibility$,
@@ -30,9 +29,8 @@ const schematicDiagramData$ = combineLatest([
   system$,
   visibility$,
   standardVisibilityTriggers$,
-  applicationNodeId$,
 ]).pipe(
-  switchMap(([system, visibility, _visibilityTriggers, _applicationNodeId]) => {
+  switchMap(([system, visibility, _visibilityTriggers]) => {
     return sdf.get<ApiResponse<GetSchematicResponse>>(
       "schematic/get_schematic2",
       {

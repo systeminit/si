@@ -36,8 +36,6 @@ pub enum ValidationResolverError {
     Component(String),
     #[error("invalid prop id")]
     InvalidPropId,
-    #[error("application not found")]
-    ApplicationNotFound,
     #[error("component not found: {0}")]
     ComponentNotFound(ComponentId),
     #[error("schema variant not found")]
@@ -146,12 +144,6 @@ impl ValidationResolver {
             schema_variant_id: Some(*schema_variant.id()),
             schema_id: Some(*schema.id()),
             prop_id: None,
-            /*
-            application_id: Some(
-                ctx.application_node_id()
-                    .ok_or(ValidationResolverError::ApplicationNotFound)?,
-            ),
-            */
             ..AttributeReadContext::default()
         };
         let rows = ctx

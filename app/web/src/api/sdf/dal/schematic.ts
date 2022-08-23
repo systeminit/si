@@ -18,7 +18,6 @@ export function schematicKindFromString(s: string): SchematicKind {
 }
 
 export interface EditorContext {
-  applicationNodeId: number;
   systemId?: number;
 }
 

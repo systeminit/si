@@ -421,23 +421,16 @@ async fn your_dal_integration_test() {
         .start()
         .await
         .expect("failed to start transactions");
-    let (nba, auth_token) = ::dal::test::helpers::billing_account_signup(
+    let (nba, _auth_token) = ::dal::test::helpers::billing_account_signup(
         &dal_context_builder,
         &transactions,
         test_context.jwt_secret_key(),
     )
         .await;
-    let application_id =
-        ::dal::test::helpers::create_application(&dal_context_builder, &transactions, &nba).await;
-    let application_id = {
-        use dal::StandardModel;
-        *application_id.id()
-    };
     let default_dal_context = ::dal::test::helpers::create_ctx_for_new_change_set_and_edit_session(
         &dal_context_builder,
         &transactions,
         &nba,
-        application_id,
     )
         .await;
     let veritech_server = ::dal::test::veritech_server_for_uds_cyclone(

@@ -192,15 +192,6 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> BuiltinsResult<(
     ui_menu.set_category(ctx, Some("kubernetes")).await?;
     ui_menu.set_schema(ctx, schema.id()).await?;
 
-    let application_name = "application".to_string();
-    let application_schema_results = Schema::find_by_attr(ctx, "name", &application_name).await?;
-    let application_schema = application_schema_results
-        .first()
-        .ok_or(SchemaError::NotFoundByName(application_name))?;
-    ui_menu
-        .add_root_schematic(ctx, application_schema.id())
-        .await?;
-
     variant.finalize(ctx).await?;
 
     let base_attribute_read_context = AttributeReadContext {

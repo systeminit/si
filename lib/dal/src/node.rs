@@ -11,8 +11,6 @@ use crate::{
     StandardModel, StandardModelError, System, SystemId, Timestamp, Visibility, WriteTenancy,
 };
 
-pub type ApplicationId = NodeId;
-
 #[derive(Error, Debug)]
 pub enum NodeError {
     #[error("error serializing/deserializing json: {0}")]

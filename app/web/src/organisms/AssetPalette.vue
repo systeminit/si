@@ -40,7 +40,6 @@ import { combineLatest, firstValueFrom } from "rxjs";
 import { SchematicService } from "@/service/schematic";
 import SchematicDiagramService from "@/service/schematic-diagram";
 import { SchematicKind, SchematicNodeTemplate } from "@/api/sdf/dal/schematic";
-import { ApplicationService } from "@/service/application";
 import { Category, Item } from "@/api/sdf/dal/menu";
 import { untilUnmounted } from "vuse-rx";
 
@@ -68,14 +67,10 @@ interface AssetCategory {
 const assetCategories = ref<AssetCategory[]>([]);
 
 // TODO: move this whole thing into diagram data service - also return the data without needing so many API calls
-// FIXME(nick,victor): temporary measure to populate the assetCategories dynamically based on the application.
-combineLatest([
-  ApplicationService.currentApplication(),
-  SchematicDiagramService.observables.schemaVariants$,
-])
+combineLatest([SchematicDiagramService.observables.schemaVariants$])
   .pipe(untilUnmounted)
-  .subscribe(async ([application, schemaVariants]) => {
-    if (application === null || schemaVariants === null) {
+  .subscribe(async ([schemaVariants]) => {
+    if (schemaVariants === null) {
       assetCategories.value = [];
       return;
     }
@@ -83,7 +78,6 @@ combineLatest([
     const nodeAddMenu = await firstValueFrom(
       SchematicService.getNodeAddMenu({
         menuFilter: {
-          rootComponentId: application.id,
           schematicKind: SchematicKind.Component,
         },
       }),
