@@ -26,7 +26,6 @@ async fn login() {
         dal_txns,
         _faktory,
     );
-    );
 
     let request = LoginRequest {
         billing_account_name: nba.billing_account.name().to_string(),
