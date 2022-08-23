@@ -33,12 +33,24 @@
             <h1
               class="mb-[0.3125rem] text-neutral-700 type-bold-sm dark:text-neutral-50"
             >
+              Run on Component:
+            </h1>
+            <SelectMenu
+              v-model="selectedComponent"
+              class="flex-grow"
+              :options="components"
+              :disabled="editingFunc.origFunc.isBuiltin"
+              @change="selectComponent"
+            />
+            <h1
+              class="mb-[0.3125rem] text-neutral-700 type-bold-sm dark:text-neutral-50"
+            >
               Run on Schema Variant:
             </h1>
             <SelectMenu
               v-model="selectedVariant"
               class="flex-grow"
-              :options="variantOptions"
+              :options="schemaVariants"
               :disabled="editingFunc.origFunc.isBuiltin"
               @change="selectVariant"
             />
@@ -69,9 +81,9 @@ import { changeFunc, nullEditingFunc } from "./func_state";
 import { fromRef, refFrom } from "vuse-rx";
 import { map, combineLatestWith } from "rxjs/operators";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
-import { ListSchemaVariantsResponse } from "@/service/schematic/list_schema_variants";
 import { SchematicService } from "@/service/schematic";
 import { EditingFunc, funcState$ } from "@/observable/func";
+import { ComponentService } from "@/service/component";
 
 const props = defineProps<{
   funcId: number;
@@ -79,13 +91,37 @@ const props = defineProps<{
 
 const funcId = toRef(props, "funcId", -1);
 const funcId$ = fromRef(funcId);
+const noVariantSelected: Option = { label: "- none -", value: -1 };
+const selectedVariant = ref<Option>(noVariantSelected);
+const selectedComponent = ref<Option>(noVariantSelected);
 
-const schemaVariants = refFrom<ListSchemaVariantsResponse>(
+const schemaVariants = refFrom<Option[]>(
   SchematicService.listSchemaVariants().pipe(
     map((schemaVariants) =>
       schemaVariants.error
         ? []
-        : (schemaVariants as ListSchemaVariantsResponse),
+        : [noVariantSelected].concat(
+            schemaVariants.map((v) => ({
+              label: v.schemaName,
+              value: v.id,
+            })),
+          ),
+    ),
+  ),
+  [],
+);
+
+const components = refFrom<Option[]>(
+  ComponentService.listComponentsIdentification().pipe(
+    map((components) =>
+      components.error
+        ? []
+        : [noVariantSelected].concat(
+            components.list.map((c) => ({
+              label: c.label,
+              value: c.value.componentId,
+            })) as Option[],
+          ),
     ),
   ),
   [],
@@ -101,37 +137,33 @@ const editingFunc = refFrom<EditingFunc>(
   nullEditingFunc,
 );
 
-const noVariantSelected: Option = { label: "- none -", value: -1 };
-
-const variantOptions = computed(() =>
-  [noVariantSelected].concat(
-    schemaVariants.value.map((v) => ({
-      label: v.schemaName,
-      value: v.id,
-    })),
-  ),
-);
-
-const findSelectedVariant = (editingFunc: EditingFunc) =>
-  variantOptions.value.find(
-    (opt) => opt.value === (editingFunc.modifiedFunc.schemaVariants[0] ?? -1),
-  ) ?? noVariantSelected;
-
-const selectedVariant = ref<Option>(noVariantSelected);
-
 watch(
   () => editingFunc.value,
   (editingFunc) => {
-    selectedVariant.value = findSelectedVariant(editingFunc);
+    selectedVariant.value =
+      schemaVariants.value.find(
+        (opt) =>
+          opt.value === (editingFunc.modifiedFunc.schemaVariants[0] ?? -1),
+      ) ?? noVariantSelected;
+
+    selectedComponent.value =
+      components.value.find(
+        (opt) => opt.value === (editingFunc.modifiedFunc.components[0] ?? -1),
+      ) ?? noVariantSelected;
   },
 );
 
-const selectVariant = (option: Option) => {
+const selectVariant = (option: Option) =>
   changeFunc({
     ...editingFunc.value.modifiedFunc,
     schemaVariants: [typeof option.value === "string" ? -1 : option.value],
   });
-};
+
+const selectComponent = (option: Option) =>
+  changeFunc({
+    ...editingFunc.value.modifiedFunc,
+    components: [typeof option.value === "string" ? -1 : option.value],
+  });
 
 const updateFunc = () => {
   changeFunc({ ...editingFunc.value.modifiedFunc });

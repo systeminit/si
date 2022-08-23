@@ -642,11 +642,11 @@ impl Component {
             .await?
             .ok_or_else(|| ComponentError::MissingFunc(prototype.func_id().to_string()))?;
 
-        let args = dbg!(FuncBackendJsQualificationArgs {
+        let args = FuncBackendJsQualificationArgs {
             component: self
                 .veritech_qualification_check_component(ctx, system_id)
                 .await?,
-        });
+        };
 
         let json_args = serde_json::to_value(args)?;
         let (func_binding, _created) =

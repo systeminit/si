@@ -2,8 +2,8 @@ use super::{FuncError, FuncResult};
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::{extract::Query, Json};
 use dal::{
-    Func, FuncBackendKind, FuncId, QualificationPrototype, SchemaVariantId, StandardModel,
-    Visibility,
+    ComponentId, Func, FuncBackendKind, FuncId, QualificationPrototype, SchemaVariantId,
+    StandardModel, Visibility,
 };
 use serde::{Deserialize, Serialize};
 
@@ -25,6 +25,7 @@ pub struct GetFuncResponse {
     pub code: Option<String>,
     pub is_builtin: bool,
     pub schema_variants: Vec<SchemaVariantId>,
+    pub components: Vec<ComponentId>,
 }
 
 pub async fn get_func(
@@ -39,18 +40,18 @@ pub async fn get_func(
         .await?
         .ok_or(FuncError::FuncNotFound)?;
 
-    let prototypes = QualificationPrototype::find_for_func(&ctx, func.id()).await?;
-    let schema_variants = prototypes
-        .iter()
-        .filter_map(|proto| {
-            let variant_id = proto.context().schema_variant_id();
-            if variant_id.is_none() {
-                None
-            } else {
-                Some(variant_id)
-            }
-        })
-        .collect();
+    let prototypes = dbg!(QualificationPrototype::find_for_func(&ctx, func.id()).await)?;
+
+    let mut schema_variants = vec![];
+    let mut components = vec![];
+
+    for proto in prototypes {
+        if proto.context().schema_variant_id().is_some() {
+            schema_variants.push(proto.context().schema_variant_id());
+        } else if proto.context().component_id().is_some() {
+            components.push(proto.context().component_id());
+        }
+    }
 
     txns.commit().await?;
 
@@ -61,6 +62,7 @@ pub async fn get_func(
         name: func.name().to_owned(),
         code: func.code_plaintext()?,
         is_builtin: func.is_builtin(),
+        components,
         schema_variants,
     }))
 }

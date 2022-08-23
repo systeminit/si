@@ -2,8 +2,9 @@ use super::{FuncError, FuncResult};
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::Json;
 use dal::{
-    qualification_prototype::QualificationPrototypeContext, Func, FuncBackendKind, FuncId,
-    QualificationPrototype, SchemaVariantId, StandardModel, Visibility, WsEvent,
+    qualification_prototype::QualificationPrototypeContextField, ComponentId, Func,
+    FuncBackendKind, FuncId, QualificationPrototype, SchemaVariantId, StandardModel, Visibility,
+    WsEvent,
 };
 use serde::{Deserialize, Serialize};
 
@@ -16,6 +17,7 @@ pub struct SaveFuncRequest {
     pub name: String,
     pub code: Option<String>,
     pub schema_variants: Vec<SchemaVariantId>,
+    pub components: Vec<ComponentId>,
     #[serde(flatten)]
     pub visibility: Visibility,
 }
@@ -53,22 +55,23 @@ pub async fn save_func(
         .await?;
     func.set_backend_response_type(&ctx, request.kind).await?;
 
-    if !request.schema_variants.is_empty() {
-        let mut prototypes = QualificationPrototype::find_for_func(&ctx, func.id()).await?;
-        let mut prototype = match prototypes.pop() {
-            None => {
-                QualificationPrototype::new(
-                    &ctx,
-                    *func.id(),
-                    QualificationPrototypeContext::default(),
-                )
-                .await?
-            }
-            Some(prototype) => prototype,
-        };
-        prototype
-            .set_schema_variant_id(&ctx, request.schema_variants[0])
-            .await?;
+    let mut associations: Vec<QualificationPrototypeContextField> = vec![];
+    associations.append(
+        &mut request
+            .schema_variants
+            .iter()
+            .map(|f| (*f).into())
+            .collect(),
+    );
+    associations.append(&mut request.components.iter().map(|f| (*f).into()).collect());
+
+    if !associations.is_empty() {
+        let _ = QualificationPrototype::associate_prototypes_with_func_and_objects(
+            &ctx,
+            func.id(),
+            &associations,
+        )
+        .await?;
     }
 
     WsEvent::change_set_written(&ctx).publish(&ctx).await?;

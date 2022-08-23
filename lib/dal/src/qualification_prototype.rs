@@ -66,6 +66,38 @@ impl QualificationPrototypeContext {
         }
     }
 
+    pub fn new_for_context_field(context_field: QualificationPrototypeContextField) -> Self {
+        Self {
+            schema_id: if let QualificationPrototypeContextField::Schema(schema_id) = context_field
+            {
+                schema_id
+            } else {
+                (-1).into()
+            },
+            system_id: if let QualificationPrototypeContextField::System(system_id) = context_field
+            {
+                system_id
+            } else {
+                (-1).into()
+            },
+            schema_variant_id: if let QualificationPrototypeContextField::SchemaVariant(
+                schema_variant_id,
+            ) = context_field
+            {
+                schema_variant_id
+            } else {
+                (-1).into()
+            },
+            component_id: if let QualificationPrototypeContextField::Component(component_id) =
+                context_field
+            {
+                component_id
+            } else {
+                (-1).into()
+            },
+        }
+    }
+
     pub fn component_id(&self) -> ComponentId {
         self.component_id
     }
@@ -119,6 +151,38 @@ pub struct QualificationPrototype {
     timestamp: Timestamp,
     #[serde(flatten)]
     visibility: Visibility,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum QualificationPrototypeContextField {
+    Component(ComponentId),
+    Schema(SchemaId),
+    SchemaVariant(SchemaVariantId),
+    System(SystemId),
+}
+
+impl From<ComponentId> for QualificationPrototypeContextField {
+    fn from(component_id: ComponentId) -> Self {
+        QualificationPrototypeContextField::Component(component_id)
+    }
+}
+
+impl From<SchemaId> for QualificationPrototypeContextField {
+    fn from(schema_id: SchemaId) -> Self {
+        QualificationPrototypeContextField::Schema(schema_id)
+    }
+}
+
+impl From<SchemaVariantId> for QualificationPrototypeContextField {
+    fn from(schema_variant_id: SchemaVariantId) -> Self {
+        QualificationPrototypeContextField::SchemaVariant(schema_variant_id)
+    }
+}
+
+impl From<SystemId> for QualificationPrototypeContextField {
+    fn from(system_id: SystemId) -> Self {
+        QualificationPrototypeContextField::System(system_id)
+    }
 }
 
 impl_standard_model! {
@@ -250,6 +314,80 @@ impl QualificationPrototype {
         context.set_system_id(self.system_id);
 
         context
+    }
+
+    async fn create_missing_prototypes(
+        ctx: &DalContext<'_, '_>,
+        func_id: &FuncId,
+        existing_for_field: &[QualificationPrototypeContextField],
+        desired_for_field: &[QualificationPrototypeContextField],
+    ) -> QualificationPrototypeResult<Vec<Self>> {
+        let mut new_protos = vec![];
+
+        for desired in desired_for_field {
+            if existing_for_field.contains(desired) {
+                continue;
+            }
+
+            new_protos.push(
+                QualificationPrototype::new(
+                    ctx,
+                    *func_id,
+                    QualificationPrototypeContext::new_for_context_field(*desired),
+                )
+                .await?,
+            );
+        }
+
+        Ok(new_protos)
+    }
+
+    /// Given a list of `QualificationPrototypeContextField`s (specifically here only
+    /// `SchemaVariantId` and `ComponentId` context fields, make them the only context fields for
+    /// which we have a prototype connected to the given function by deleting any that are not
+    /// in the list and creating any that do not currently exist.
+    pub async fn associate_prototypes_with_func_and_objects<
+        T: Into<QualificationPrototypeContextField> + Copy,
+    >(
+        ctx: &DalContext<'_, '_>,
+        func_id: &FuncId,
+        prototype_context_field_ids: &[T],
+    ) -> QualificationPrototypeResult<Vec<Self>> {
+        let mut existing_field_ids = vec![];
+
+        let prototype_context_field_ids: Vec<QualificationPrototypeContextField> =
+            prototype_context_field_ids
+                .iter()
+                .map(|field| (*field).into())
+                .collect();
+
+        for proto in Self::find_for_func(ctx, &func_id).await? {
+            let component_id = proto.component_id();
+            let schema_variant_id = proto.schema_variant_id();
+
+            if component_id.is_none() && schema_variant_id.is_none() {
+                continue;
+            }
+
+            if component_id.is_some() && !prototype_context_field_ids.contains(&component_id.into())
+                || schema_variant_id.is_some()
+                    && !prototype_context_field_ids.contains(&schema_variant_id.into())
+            {
+                proto.delete(ctx).await?;
+            } else if component_id.is_some() {
+                existing_field_ids.push(component_id.into());
+            } else if schema_variant_id.is_some() {
+                existing_field_ids.push(schema_variant_id.into());
+            }
+        }
+
+        Self::create_missing_prototypes(
+            ctx,
+            func_id,
+            &existing_field_ids,
+            &prototype_context_field_ids,
+        )
+        .await
     }
 }
 
