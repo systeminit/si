@@ -37,6 +37,13 @@
         class="appearance-none block w-full px-3 py-2 border rounded-sm shadow-sm focus:outline-none sm:text-sm"
         :class="textBoxClasses"
         v-bind="$attrs"
+        :passwordrules="
+          password
+            ? `minlength: ${minPasswordLength}; maxlength: ${maxPasswordLength}; required: lower; required: upper; required: digit; required: special;`
+            : undefined
+        "
+        :minlength="password ? minPasswordLength : undefined"
+        :maxlength="password ? maxPasswordLength : undefined"
         @blur="setDirty"
       />
 
@@ -96,6 +103,8 @@ const props = defineProps({
 
   placeholder: String,
   password: Boolean,
+  minPasswordLength: { type: Number, default: 8 },
+  maxPasswordLength: { type: Number, default: 64 },
 
   validations: { type: Array as PropType<ValidatorArray> },
   required: Boolean,

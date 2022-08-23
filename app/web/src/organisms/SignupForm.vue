@@ -86,11 +86,13 @@
               description="Your password."
               required
               login-mode
+              :min-password-length="8"
+              :max-password-length="64"
               :validations="[
                 {
                   id: 'strongPassword',
                   message:
-                    'Must be > 8 characters and must have a mix of lowercase, uppercase, number and a symbol.',
+                    'Password must be between 8 and 64 characters and include lowercase, uppercase, number, and symbol.',
                   check: validator.isStrongPassword,
                 },
               ]"

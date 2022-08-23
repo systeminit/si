@@ -32,59 +32,51 @@
         </div>
 
         <form class="space-y-6" @submit.prevent="login">
-          <div>
-            <SiTextBox
-              id="billingAccountName"
-              v-model="form.billingAccountName"
-              title="Billing Account Name"
-              login-mode
-              required
-              @error="setFieldInError('billingAccountName', $event)"
-            />
-          </div>
+          <SiTextBox
+            id="billingAccountName"
+            v-model="form.billingAccountName"
+            title="Billing Account Name"
+            login-mode
+            required
+            @error="setFieldInError('billingAccountName', $event)"
+          />
 
-          <div>
-            <SiTextBox
-              id="userEmail"
-              v-model="form.userEmail"
-              title="Email Address"
-              login-mode
-              required
-              :validations="[
-                {
-                  id: 'email',
-                  message: 'Must be a valid email address.',
-                  check: validator.isEmail,
-                },
-              ]"
-              @error="setFieldInError('userEmail', $event)"
-            />
-          </div>
+          <SiTextBox
+            id="userEmail"
+            v-model="form.userEmail"
+            title="Email Address"
+            login-mode
+            required
+            :validations="[
+              {
+                id: 'email',
+                message: 'Must be a valid email address.',
+                check: validator.isEmail,
+              },
+            ]"
+            @error="setFieldInError('userEmail', $event)"
+          />
 
-          <div>
-            <SiTextBox
-              id="userPassword"
-              v-model="form.userPassword"
-              title="Password"
-              password
-              login-mode
-              required
-              autocomplete="current-password"
-              @error="setFieldInError('userPassword', $event)"
-            />
-          </div>
+          <SiTextBox
+            id="userPassword"
+            v-model="form.userPassword"
+            title="Password"
+            password
+            login-mode
+            required
+            autocomplete="current-password"
+            @error="setFieldInError('userPassword', $event)"
+          />
 
-          <div>
-            <button
-              type="submit"
-              data-test="login"
-              aria-label="Sign In"
-              class="w-full flex justify-center py-2 px-4 border border-transparent rounded-sm shadow-sm text-sm font-medium text-white bg-blue-500 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-400 disabled:opacity-50"
-              :disabled="formInError"
-            >
-              Sign in
-            </button>
-          </div>
+          <button
+            type="submit"
+            data-test="login"
+            aria-label="Sign In"
+            class="w-full flex justify-center py-2 px-4 border border-transparent rounded-sm shadow-sm text-sm font-medium text-white bg-blue-500 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-400 disabled:opacity-50"
+            :disabled="formInError"
+          >
+            Sign in
+          </button>
         </form>
       </div>
     </div>
