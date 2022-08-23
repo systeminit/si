@@ -1,6 +1,8 @@
 /** TEMPORARY demo page - route accessible at /diagram */
 <template>
-  <div class="bg-action-500 w-full h-full overflow-hidden flex flex-col">
+  <div
+    class="bg-action-500 w-full h-full h-screen overflow-hidden flex flex-col"
+  >
     <div class="text-white bg-black w-full h-10 z-10 flex space-x-10">
       <select v-model="zoom" class="text-black">
         <option
@@ -10,6 +12,10 @@
         >
           {{ zoomLevel }}
         </option>
+      </select>
+      <select v-model="theme" class="text-black">
+        <option>dark</option>
+        <option>light</option>
       </select>
 
       <div>zoom = {{ zoom }}</div>
@@ -22,6 +28,7 @@
     <div class="relative flex-grow">
       <GenericDiagram
         ref="diagramRef"
+        :custom-config="customDiagramConfig"
         :nodes="nodes"
         :edges="edges"
         @update:zoom="onUpdateZoom"
@@ -35,7 +42,7 @@
 </template>
 
 <script lang="ts" setup>
-import { reactive, ref, watch } from "vue";
+import { computed, reactive, ref, watch } from "vue";
 import _ from "lodash";
 import {
   DeleteElementsEvent,
@@ -48,11 +55,26 @@ import {
 } from "./diagram_types";
 import GenericDiagram from "./GenericDiagram.vue";
 
+import KubernetesIconRaw from "@/assets/images/3p-logos/kubernetes/kubernetes-icon.svg?raw";
+import DockerIconRaw from "@/assets/images/3p-logos/docker/docker-icon.svg?raw";
+import { useThemeProvider } from "@/composables/injectTheme";
+import { ThemeValue } from "@/observable/theme";
+
 const ZOOM_OPTIONS = [25, 50, 75, 100, 125, 150, 200, 300, 400, 500];
 const zoom = ref(1);
 watch(zoom, () => diagramRef?.value?.setZoom(zoom.value));
 
+const theme = ref<ThemeValue>("dark");
+useThemeProvider(computed(() => theme.value));
+
 const diagramRef = ref<InstanceType<typeof GenericDiagram>>();
+
+const customDiagramConfig = {
+  icons: {
+    docker: DockerIconRaw,
+    kubernetes: KubernetesIconRaw,
+  },
+};
 
 const getSockets = (nodeId: string): DiagramSocketDef[] => [
   {
@@ -106,6 +128,7 @@ const nodes = reactive<DiagramNodeDef[]>([
     position: { x: 0, y: 0 },
     sockets: getSockets("n1"),
     color: "#2F80ED",
+    typeIcon: "docker",
   },
   {
     id: "n2",
@@ -115,6 +138,7 @@ const nodes = reactive<DiagramNodeDef[]>([
     position: { x: 250, y: 0 },
     sockets: getSockets("n2"),
     color: "#A752DE",
+    typeIcon: "docker",
   },
   {
     id: "n3",
@@ -124,6 +148,14 @@ const nodes = reactive<DiagramNodeDef[]>([
     position: { x: 250, y: 150 },
     sockets: getSockets("n3"),
     color: "#C23E7F",
+    typeIcon: "kubernetes",
+    statusIcons: [
+      { icon: "check", tone: "success" },
+      { icon: "alert", tone: "warning" },
+      { icon: "error", tone: "error" },
+      { icon: "loading", tone: "info" },
+      // { icon: "docker", tone: "neutral" },
+    ],
   },
   {
     id: "n4",
@@ -133,6 +165,7 @@ const nodes = reactive<DiagramNodeDef[]>([
     position: { x: 500, y: 0 },
     sockets: getSockets("n4"),
     color: "#5AACAD",
+    typeIcon: "kubernetes",
   },
 ]);
 
@@ -185,6 +218,7 @@ function onInsert(e: InsertElementEvent) {
         type: "regular",
         position: e.position,
         sockets: getSockets(`n${newNodeId}`),
+        typeIcon: "docker",
       });
 
       // parent needs to call this when insert is complete

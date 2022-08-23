@@ -40,7 +40,7 @@
 </template>
 
 <script setup lang="ts">
-import SiLogoWts from "@/assets/images/si-logo-wts.svg";
+import SiLogoWts from "@/assets/images/si-logo-wts.svg?url";
 import { refFrom } from "vuse-rx";
 import { WorkspaceService } from "@/service/workspace";
 import { Workspace } from "@/api/sdf/dal/workspace";

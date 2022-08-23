@@ -2,10 +2,22 @@ import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import eslintPlugin from "vite-plugin-eslint";
 import path from "path";
+import svgLoaderPlugin from "vite-svg-loader";
+import IconsPlugin from "unplugin-icons/vite";
+
+import postcss from "./postcss.config.mjs";
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [vue(), eslintPlugin()],
+  plugins: [
+    vue(),
+    svgLoaderPlugin(),
+    IconsPlugin({ compiler: "vue3" }),
+    eslintPlugin(),
+  ],
+  css: {
+    postcss,
+  },
   server: {
     port: 8080,
     fs: {

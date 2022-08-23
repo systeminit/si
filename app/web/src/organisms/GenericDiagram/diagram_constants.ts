@@ -14,7 +14,7 @@ export const DRAG_EDGE_TRIGGER_SCROLL_WIDTH = 15;
 export const SOCKET_GAP = 22;
 // spacing above/below sockets within the node
 export const SOCKET_MARGIN_TOP = 10; // less because there is also a subtitle with some padding
-export const SOCKET_MARGIN_BOTTOM = 20; //
+export const NODE_PADDING_BOTTOM = 10; //
 // width/height of sockets
 export const SOCKET_SIZE = 15;
 

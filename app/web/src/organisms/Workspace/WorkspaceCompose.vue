@@ -34,6 +34,7 @@
         <GenericDiagram
           v-if="diagramData"
           ref="diagramRef"
+          :custom-config="diagramCustomConfig"
           :nodes="diagramData?.nodes"
           :edges="diagramData?.edges"
           :read-only="isViewMode"
@@ -89,6 +90,9 @@ import SchematicOutline from "../SchematicOutline.vue";
 import { ChangeSetService } from "@/service/change_set";
 import { SelectionService } from "@/service/selection";
 
+import KubernetesIconRaw from "@/assets/images/3p-logos/kubernetes/kubernetes-icon.svg?raw";
+import DockerIconRaw from "@/assets/images/3p-logos/docker/docker-icon.svg?raw";
+
 const currentRoute = useRoute();
 
 // TODO: we'll very likely split view mode from compose mode again, so this is just temporary
@@ -104,6 +108,13 @@ const diagramData = SchematicDiagramService.useDiagramData();
 const schemaVariants = SchematicDiagramService.useSchemaVariants();
 
 const selectedComponentId = SelectionService.useSelectedComponentId();
+
+const diagramCustomConfig = computed(() => ({
+  icons: {
+    docker: DockerIconRaw,
+    kubernetes: KubernetesIconRaw,
+  },
+}));
 
 const componentsListApiResponse = useObservable(
   ComponentService.listComponentsIdentification(),

@@ -1,4 +1,4 @@
-const colors = {
+export const colors = {
   //
   // # Neutral
   //
@@ -115,21 +115,21 @@ const colors = {
   selector1: "#343B3F",
 };
 
-const height = {
+export const height = {
   sm: "16px",
   md: "16px",
   lg: "24px",
   xl: "48px",
 };
 
-const screens = {
+export const screens = {
   sm: "640px",
   md: "768px",
   lg: "1024px",
   xl: "1280px",
 };
 
-const spacing = {
+export const spacing = {
   13: "3.25rem",
   14: "3.5rem",
   52: "13rem",
@@ -142,35 +142,26 @@ const spacing = {
   96: "24rem",
 };
 
-const margin = {
+export const margin = {
   "-05": "-0.05rem",
 };
 
-const maxHeight = {
+export const maxHeight = {
   0: "0",
   "1/4": "25%",
   "1/2": "50%",
   "3/4": "75%",
 };
 
-const width = {
+export const width = {
   "1/7": "14.285714285714286%",
   "2/7": "28.571428571428571%",
 };
 
-const zIndex = {
+export const zIndex = {
   60: 60,
   70: 70,
   80: 80,
   90: 90,
   100: 100,
 };
-
-exports.colors = colors;
-exports.spacing = spacing;
-exports.screens = screens;
-exports.margin = margin;
-exports.width = width;
-exports.height = height;
-exports.maxHeight = maxHeight;
-exports.zIndex = zIndex;

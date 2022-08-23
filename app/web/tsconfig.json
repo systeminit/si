@@ -30,7 +30,7 @@
       "dom.iterable",
       "scripthost"
     ],
-    "types": ["node"],
+    "types": ["node", "unplugin-icons/types/vue"],
     "typeRoots": [
       "./node_modules/@types"
     ]

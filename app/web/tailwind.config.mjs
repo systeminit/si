@@ -1,7 +1,9 @@
-const theme = require("./src/design/themes/tailwind");
-const colors = require("tailwindcss/colors");
+import * as theme from "./src/design/themes/tailwind.mjs";
+import colors from "tailwindcss/colors";
+import formsPlugin from "@tailwindcss/forms";
+import typographyPlugin from "./src/design/themes/tailwind/plugin/si_typography";
 
-module.exports = {
+export default {
   darkMode: "class",
   content: ["./src/**/*.html", "./src/**/*.vue"],
   theme: {
@@ -44,8 +46,5 @@ module.exports = {
       opacity: ["disabled"],
     },
   },
-  plugins: [
-    require("@tailwindcss/forms"),
-    require("./src/design/themes/tailwind/plugin/si_typography"),
-  ],
+  plugins: [formsPlugin, typographyPlugin],
 };

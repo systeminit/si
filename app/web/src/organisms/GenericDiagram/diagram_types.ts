@@ -2,6 +2,8 @@ import { Vector2d } from "konva/lib/types";
 
 export type DiagramConfig = {
   // canNodesConnectToThemselves: boolean;
+  icons?: Record<string, string>;
+  toneColors?: Record<string, string>;
 };
 
 export type GridPoint = { x: number; y: number };
@@ -29,8 +31,19 @@ export type DiagramNodeDef = {
   sockets?: DiagramSocketDef[];
   /** x,y placement of the node on the diagram */
   position: GridPoint;
-  // statusIcons?: NodeStatusIcon[];
+  /** single hex color to use for node theme */
   color?: string | null;
+  /** icon (name/slug) used to help convey node type */
+  typeIcon?: string | null;
+  /** array of icons (slug and colors) to show statuses */
+  statusIcons?: {
+    /* name/id of icon (registered in diagram config) */
+    icon: string;
+    /* tone of icon - gets mapped to some preset colors */
+    tone?: "success" | "error" | "warning" | "info" | "neutral";
+    /* set to override specific hex color */
+    color?: string;
+  }[];
 };
 
 export type DiagramSocketDef = {
