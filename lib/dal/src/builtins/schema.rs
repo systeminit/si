@@ -492,7 +492,7 @@ async fn docker_hub_credential(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
         .await?;
 
     // Qualification Prototype
-    let qual_func_name = "si:qualificationDockerHubLogin".to_string();
+    let qual_func_name = "Docker Hub login".to_string();
     let qual_func = Func::find_by_attr(ctx, "name", &qual_func_name)
         .await?
         .pop()
@@ -649,7 +649,7 @@ async fn docker_image(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     variant.add_socket(ctx, includes_socket.id()).await?;
 
     // Qualification Prototype
-    let qual_func_name = "si:qualificationDockerImageNameInspect".to_string();
+    let qual_func_name = "Inspect Docker image name".to_string();
     let mut qual_funcs = Func::find_by_attr(ctx, "name", &qual_func_name).await?;
     let qual_func = qual_funcs
         .pop()

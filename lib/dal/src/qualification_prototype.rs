@@ -67,34 +67,39 @@ impl QualificationPrototypeContext {
     }
 
     pub fn new_for_context_field(context_field: QualificationPrototypeContextField) -> Self {
-        Self {
-            schema_id: if let QualificationPrototypeContextField::Schema(schema_id) = context_field
-            {
-                schema_id
-            } else {
-                (-1).into()
-            },
-            system_id: if let QualificationPrototypeContextField::System(system_id) = context_field
-            {
-                system_id
-            } else {
-                (-1).into()
-            },
-            schema_variant_id: if let QualificationPrototypeContextField::SchemaVariant(
-                schema_variant_id,
-            ) = context_field
-            {
-                schema_variant_id
-            } else {
-                (-1).into()
-            },
-            component_id: if let QualificationPrototypeContextField::Component(component_id) =
-                context_field
-            {
-                component_id
-            } else {
-                (-1).into()
-            },
+        match context_field {
+            QualificationPrototypeContextField::Schema(schema_id) => {
+                QualificationPrototypeContext {
+                    component_id: ComponentId::NONE,
+                    schema_id,
+                    schema_variant_id: SchemaVariantId::NONE,
+                    system_id: SystemId::NONE,
+                }
+            }
+            QualificationPrototypeContextField::System(system_id) => {
+                QualificationPrototypeContext {
+                    component_id: ComponentId::NONE,
+                    schema_id: SchemaId::NONE,
+                    schema_variant_id: SchemaVariantId::NONE,
+                    system_id,
+                }
+            }
+            QualificationPrototypeContextField::SchemaVariant(schema_variant_id) => {
+                QualificationPrototypeContext {
+                    component_id: ComponentId::NONE,
+                    schema_id: SchemaId::NONE,
+                    schema_variant_id,
+                    system_id: SystemId::NONE,
+                }
+            }
+            QualificationPrototypeContextField::Component(component_id) => {
+                QualificationPrototypeContext {
+                    component_id,
+                    schema_id: SchemaId::NONE,
+                    schema_variant_id: SchemaVariantId::NONE,
+                    system_id: SystemId::NONE,
+                }
+            }
         }
     }
 
@@ -361,7 +366,7 @@ impl QualificationPrototype {
                 .map(|field| (*field).into())
                 .collect();
 
-        for proto in Self::find_for_func(ctx, &func_id).await? {
+        for proto in Self::find_for_func(ctx, func_id).await? {
             let component_id = proto.component_id();
             let schema_variant_id = proto.schema_variant_id();
 

@@ -24,13 +24,13 @@ async fn new(ctx: &DalContext<'_, '_>) {
 
     let component = create_component_for_schema_variant(ctx, schema_variant.id()).await;
 
-    let func_name = "si:qualificationDockerImageNameInspect".to_string();
+    let func_name = "Inspect Docker image name".to_string();
     let mut funcs = Func::find_by_attr(ctx, "name", &func_name)
         .await
         .expect("Error fetching builtin function");
     let func = funcs
         .pop()
-        .expect("Missing builtin function si:qualificationDockerImageNameInspect");
+        .expect("Missing builtin function Inspect Docker image name");
 
     let args = FuncBackendJsQualificationArgs {
         component: component
@@ -80,13 +80,13 @@ async fn find_for_prototype(ctx: &DalContext<'_, '_>) {
 
     let component = create_component_for_schema_variant(ctx, schema_variant.id()).await;
 
-    let func_name = "si:qualificationDockerImageNameInspect".to_string();
+    let func_name = "Inspect Docker image name".to_string();
     let mut funcs = Func::find_by_attr(ctx, "name", &func_name)
         .await
         .expect("Error fetching builtin function");
     let func = funcs
         .pop()
-        .expect("Missing builtin function si:qualificationDockerImageNameInspect");
+        .expect("Missing builtin function Inspect Docker image name");
 
     let args = FuncBackendJsQualificationArgs {
         component: component

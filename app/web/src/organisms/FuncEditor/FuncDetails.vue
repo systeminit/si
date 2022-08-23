@@ -76,7 +76,7 @@ import SiButton from "@/atoms/SiButton.vue";
 import SelectMenu, { Option } from "@/molecules/SelectMenu.vue";
 import SiCollapsible from "@/organisms/SiCollapsible.vue";
 import { TabPanel } from "@headlessui/vue";
-import { ref, toRef, computed, watch } from "vue";
+import { ref, toRef, watch } from "vue";
 import { changeFunc, nullEditingFunc } from "./func_state";
 import { fromRef, refFrom } from "vuse-rx";
 import { map, combineLatestWith } from "rxjs/operators";

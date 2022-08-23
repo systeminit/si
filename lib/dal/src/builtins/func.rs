@@ -229,7 +229,7 @@ async fn si_validate_string_equals(ctx: &DalContext<'_, '_>) -> BuiltinsResult<(
 }
 
 async fn si_qualification_always_true(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
-    let func_name = "si:qualificationAlwaysTrue".to_string();
+    let func_name = "Always True".to_string();
     let existing_func = Func::find_by_attr(ctx, "name", &func_name).await?;
     if existing_func.is_empty() {
         let mut new_func = Func::new(
@@ -288,7 +288,7 @@ async fn si_resource_sync_hammer(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()>
 async fn si_qualification_docker_image_name_inspect(
     ctx: &DalContext<'_, '_>,
 ) -> BuiltinsResult<()> {
-    let func_name = "si:qualificationDockerImageNameInspect".to_string();
+    let func_name = "Inspect Docker image name".to_string();
     let existing_func = Func::find_by_attr(ctx, "name", &func_name).await?;
     if existing_func.is_empty() {
         let mut new_func = Func::new(
@@ -327,7 +327,7 @@ async fn si_qualification_docker_image_name_inspect(
 }
 
 async fn si_qualification_yaml_kubeval(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
-    let func_name = "si:qualificationYamlKubeval".to_string();
+    let func_name = "Run kubeval on YAML".to_string();
     let existing_func = Func::find_by_attr(ctx, "name", &func_name).await?;
     if existing_func.is_empty() {
         let mut new_func = Func::new(
@@ -360,7 +360,7 @@ async fn si_qualification_yaml_kubeval(ctx: &DalContext<'_, '_>) -> BuiltinsResu
 }
 
 async fn si_qualification_docker_hub_login(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
-    let func_name = "si:qualificationDockerHubLogin".to_string();
+    let func_name = "Docker Hub login".to_string();
     let existing_func = Func::find_by_attr(ctx, "name", &func_name).await?;
     if existing_func.is_empty() {
         let mut new_func = Func::new(

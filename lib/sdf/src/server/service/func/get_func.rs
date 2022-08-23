@@ -40,7 +40,7 @@ pub async fn get_func(
         .await?
         .ok_or(FuncError::FuncNotFound)?;
 
-    let prototypes = dbg!(QualificationPrototype::find_for_func(&ctx, func.id()).await)?;
+    let prototypes = QualificationPrototype::find_for_func(&ctx, func.id()).await?;
 
     let mut schema_variants = vec![];
     let mut components = vec![];

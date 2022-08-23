@@ -5,12 +5,11 @@ use dal::{
     func::backend::validation::FuncBackendValidateStringValueArgs,
     generate_name,
     qualification_prototype::QualificationPrototypeContextField,
-    schema::UiMenu,
     socket::{Socket, SocketArity, SocketEdgeKind, SocketKind},
     validation_prototype::{ValidationPrototype, ValidationPrototypeContext},
-    AttributeContext, Component, DalContext, ExternalProvider, Func, FuncBackendKind,
-    FuncBackendResponseType, FuncBinding, Prop, PropKind, QualificationPrototype, Schema,
-    SchemaError, SchemaKind, SchemaVariant, SchematicKind, StandardModel, SystemId,
+    Component, DalContext, Func, FuncBackendKind, FuncBackendResponseType, Prop, PropKind,
+    QualificationPrototype, Schema, SchemaError, SchemaKind, SchemaVariant, SchematicKind,
+    StandardModel, SystemId,
 };
 
 #[test]
@@ -25,13 +24,13 @@ async fn new(ctx: &DalContext<'_, '_>) {
         .await
         .expect("could not create component");
 
-    let func_name = "si:qualificationDockerImageNameInspect".to_string();
+    let func_name = "Inspect Docker image name".to_string();
     let mut funcs = Func::find_by_attr(ctx, "name", &func_name)
         .await
         .expect("Error fetching builtin function");
     let func = funcs
         .pop()
-        .expect("Missing builtin function si:qualificationDockerImageNameInspect");
+        .expect("Missing builtin function Inspect Docker image name");
 
     let mut prototype_context = QualificationPrototypeContext::new();
     prototype_context.set_component_id(*component.id());
@@ -60,15 +59,11 @@ async fn find_for_component(ctx: &DalContext<'_, '_>) {
         .await
         .expect("cannot create new component");
 
-    let func = Func::find_by_attr(
-        ctx,
-        "name",
-        &"si:qualificationDockerImageNameInspect".to_string(),
-    )
-    .await
-    .expect("got func")
-    .pop()
-    .expect("cannot pop func off vec");
+    let func = Func::find_by_attr(ctx, "name", &"Inspect Docker image name".to_string())
+        .await
+        .expect("got func")
+        .pop()
+        .expect("cannot pop func off vec");
 
     let mut proto_context = QualificationPrototypeContext::new();
     proto_context.set_component_id(*component.id());
@@ -215,10 +210,8 @@ async fn associate_prototypes_with_func_and_objects(ctx: &DalContext<'_, '_>) {
         (&cinglé, &component_cinglé),
         (&fou, &component_fou),
     ] {
-        let mut associations: Vec<QualificationPrototypeContextField> = vec![];
-
-        associations.push((*variant.id()).into());
-        associations.push((*component.id()).into());
+        let associations: Vec<QualificationPrototypeContextField> =
+            vec![(*variant.id()).into(), (*component.id()).into()];
 
         let _ = QualificationPrototype::associate_prototypes_with_func_and_objects(
             ctx,

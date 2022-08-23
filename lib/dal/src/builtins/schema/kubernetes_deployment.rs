@@ -95,7 +95,7 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> BuiltinsResult<(
     let spec_prop = create_deployment_spec_prop(ctx, root_prop.domain_prop_id).await?;
 
     // Qualification Prototype
-    let qualification_func_name = "si:qualificationYamlKubeval".to_owned();
+    let qualification_func_name = "Run kubeval on YAML".to_owned();
     let mut qualification_funcs = Func::find_by_attr(ctx, "name", &qualification_func_name).await?;
     let qualification_func = qualification_funcs
         .pop()
