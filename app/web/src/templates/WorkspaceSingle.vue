@@ -1,7 +1,7 @@
 <template>
   <div
     id="workspace"
-    class="overflow-hidden flex flex-col w-full h-full select-none"
+    class="overflow-hidden flex flex-col w-full h-screen select-none"
   >
     <Navbar />
 
