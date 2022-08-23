@@ -9,7 +9,7 @@ use crate::func::binding::{FuncBindingError, FuncBindingId};
 use crate::func::binding_return_value::FuncBindingReturnValueId;
 use crate::job::definition::CodeGeneration;
 use crate::schema::variant::SchemaVariantError;
-use crate::socket::{Socket, SocketArity, SocketEdgeKind, SocketError, SocketKind};
+use crate::socket::{Socket, SocketArity, SocketEdgeKind, SocketError, SocketId, SocketKind};
 use crate::standard_model::object_option_from_row_option;
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_accessor_ro,
@@ -26,6 +26,8 @@ use crate::{
 const FIND_EXPLICIT_FOR_SCHEMA_VARIANT_AND_NAME: &str =
     include_str!("../queries/internal_provider_find_explicit_for_schema_variant_and_name.sql");
 const GET_FOR_PROP: &str = include_str!("../queries/internal_provider_get_for_prop.sql");
+const FIND_EXPLICIT_FOR_SOCKET: &str =
+    include_str!("../queries/internal_provider_find_explicit_for_socket.sql");
 const LIST_FOR_SCHEMA_VARIANT: &str =
     include_str!("../queries/internal_provider_list_for_schema_variant.sql");
 const LIST_FOR_ATTRIBUTE_PROTOTYPE: &str =
@@ -211,6 +213,7 @@ impl InternalProvider {
         Ok(internal_provider)
     }
 
+    /// This function will also create an _input_ [`Socket`](crate::Socket).
     #[allow(clippy::too_many_arguments)]
     #[tracing::instrument(skip(ctx, name))]
     pub async fn new_explicit_with_socket(
@@ -510,6 +513,23 @@ impl InternalProvider {
                     &schema_variant_id,
                     &name,
                 ],
+            )
+            .await?;
+        Ok(object_option_from_row_option(row)?)
+    }
+
+    /// Find [`Self`] with a provided [`SocketId`](crate::Socket).
+    #[instrument(skip_all)]
+    pub async fn find_explicit_for_socket(
+        ctx: &DalContext<'_, '_>,
+        socket_id: SocketId,
+    ) -> InternalProviderResult<Option<Self>> {
+        let row = ctx
+            .txns()
+            .pg()
+            .query_opt(
+                FIND_EXPLICIT_FOR_SOCKET,
+                &[ctx.read_tenancy(), ctx.visibility(), &socket_id],
             )
             .await?;
         Ok(object_option_from_row_option(row)?)

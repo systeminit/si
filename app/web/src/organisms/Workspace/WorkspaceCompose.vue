@@ -105,7 +105,6 @@ watch(currentRoute, () => {
 const diagramRef = ref<InstanceType<typeof GenericDiagram>>();
 
 const diagramData = SchematicDiagramService.useDiagramData();
-const schemaVariants = SchematicDiagramService.useSchemaVariants();
 
 const selectedComponentId = SelectionService.useSelectedComponentId();
 
@@ -156,23 +155,11 @@ async function onDrawEdge(e: DrawEdgeEvent) {
   const [fromNodeId, fromSocketId] = e.fromSocketId.split("-");
   const [toNodeId, toSocketId] = e.toSocketId.split("-");
 
-  // TODO: this is super hacky - we should not need to pass these IDs from the frontend anyway
-  const sockets = _.flatMap(schemaVariants.value, (sv) => [
-    ...sv.inputSockets,
-    ...sv.outputSockets,
-  ]);
-  const socketsById = _.keyBy(sockets, (s) => s.id);
-
-  const fromProviderId = socketsById[fromSocketId].provider.id;
-  const toProviderId = socketsById[toSocketId].provider.id;
-
   await SchematicDiagramService.actions.createConnection({
     fromNodeId,
     fromSocketId,
-    fromProviderId: fromProviderId.toString(),
     toNodeId,
     toSocketId,
-    toProviderId: toProviderId.toString(),
   });
 }
 

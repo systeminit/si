@@ -145,10 +145,8 @@ async function createNode(schemaId: number, position: Vector2d) {
 export type CreateConnectionArgs = {
   fromNodeId: string;
   fromSocketId: string;
-  fromProviderId: string;
   toNodeId: string;
   toSocketId: string;
-  toProviderId: string;
 };
 
 async function createConnection(args: CreateConnectionArgs) {
@@ -162,10 +160,8 @@ async function createConnection(args: CreateConnectionArgs) {
     {
       headNodeId: parseInt(args.toNodeId),
       headSocketId: parseInt(args.toSocketId),
-      headInternalProviderId: parseInt(args.toProviderId),
       tailNodeId: parseInt(args.fromNodeId),
       tailSocketId: parseInt(args.fromSocketId),
-      tailExternalProviderId: parseInt(args.fromProviderId),
       workspaceId: workspace.id,
       ...visibility,
     },

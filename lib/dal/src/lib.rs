@@ -156,6 +156,7 @@ pub use secret::{
     DecryptedSecret, EncryptedSecret, Secret, SecretAlgorithm, SecretError, SecretId, SecretKind,
     SecretObjectType, SecretPk, SecretResult, SecretVersion,
 };
+pub use socket::{Socket, SocketId};
 pub use standard_model::{StandardModel, StandardModelError, StandardModelResult};
 pub use system::{System, SystemError, SystemId, SystemPk, SystemResult};
 pub use timestamp::{Timestamp, TimestampError};

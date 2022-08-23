@@ -3,6 +3,7 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::Json;
 use axum::Router;
+use dal::provider::external::ExternalProviderError as DalExternalProviderError;
 use dal::socket::{SocketError, SocketId};
 use dal::{
     node::NodeId, schema::variant::SchemaVariantError, AttributeValueError, ComponentError,
@@ -53,6 +54,8 @@ pub enum SchematicError {
     Node(#[from] NodeError),
     #[error("socket error: {0}")]
     Socket(#[from] SocketError),
+    #[error("external provider error: {0}")]
+    ExternalProvider(#[from] DalExternalProviderError),
     #[error("external provider not found for socket id: {0}")]
     ExternalProviderNotFoundForSocket(SocketId),
     #[error("internal provider not found for socket id: {0}")]
@@ -83,7 +86,7 @@ pub enum SchematicError {
     WsEvent(#[from] WsEventError),
 }
 
-pub type SchematicResult<T> = std::result::Result<T, SchematicError>;
+pub type SchematicResult<T> = Result<T, SchematicError>;
 
 impl IntoResponse for SchematicError {
     fn into_response(self) -> Response {
