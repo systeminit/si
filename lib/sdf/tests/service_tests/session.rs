@@ -41,7 +41,7 @@ async fn login() {
     };
     let (wrong_ba_status, wrong_ba_response) =
         api_request_raw(app.clone(), "/api/session/login", &wrong_ba_request).await;
-    assert_eq!(wrong_ba_status, StatusCode::UNAUTHORIZED);
+    assert_eq!(wrong_ba_status, StatusCode::CONFLICT);
     assert_eq!(wrong_ba_response["error"]["message"], "login failed");
 
     let wrong_email_request = LoginRequest {
@@ -51,7 +51,7 @@ async fn login() {
     };
     let (wrong_email_status, wrong_email_response) =
         api_request_raw(app.clone(), "/api/session/login", &wrong_email_request).await;
-    assert_eq!(wrong_email_status, StatusCode::UNAUTHORIZED);
+    assert_eq!(wrong_email_status, StatusCode::CONFLICT);
     assert_eq!(wrong_email_response["error"]["message"], "login failed");
 
     let wrong_password_request = LoginRequest {
@@ -61,7 +61,7 @@ async fn login() {
     };
     let (wrong_password_status, wrong_password_response) =
         api_request_raw(app.clone(), "/api/session/login", &wrong_password_request).await;
-    assert_eq!(wrong_password_status, StatusCode::UNAUTHORIZED);
+    assert_eq!(wrong_password_status, StatusCode::CONFLICT);
     assert_eq!(wrong_password_response["error"]["message"], "login failed");
 }
 

@@ -1,36 +1,39 @@
 <template>
   <div class="min-h-full flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-    <div class="sm:mx-auto sm:w-full sm:max-w-md">
+    <div class="sm:mx-auto sm:w-full sm:max-w-md text-neutral-200">
       <img
         class="mx-auto h-12 w-auto"
         :src="siLogoWts"
         alt="System Initiative"
       />
-      <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-200">
-        Sign up for a free trial
+      <h2 class="mt-6 text-center text-3xl font-extrabold">
+        Sign up for your free trial
       </h2>
-      <p class="mt-2 text-center text-sm text-gray-200">
+      <p class="mt-2 text-center text-md">
         Or
         {{ " " }}
         <router-link
           :to="{ name: 'login' }"
-          class="font-medium text-indigo-300 hover:text-indigo-400"
+          class="font-medium text-action-300 hover:text-action-400"
         >
-          sign in to your account
+          sign in to an existing account
         </router-link>
       </p>
     </div>
 
     <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-      <div class="bg-gray-800 py-8 px-4 shadow sm:rounded-sm sm:px-10">
+      <div class="bg-neutral-800 py-8 px-4 shadow sm:rounded-sm sm:px-10">
         <div
           v-if="errorMessage"
-          class="bg-red-600 text-white p-1 mb-6 text-center text-sm font-medium"
+          class="bg-destructive-500 text-white p-1 mb-6 text-center text-sm font-medium"
         >
           Error: {{ errorMessage }}
         </div>
 
-        <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
+        <form
+          class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6"
+          @submit.prevent="createAccount"
+        >
           <div class="sm:col-span-6">
             <SiTextBox
               id="billingAccountName"
@@ -83,11 +86,13 @@
               description="Your password."
               required
               login-mode
+              :min-password-length="8"
+              :max-password-length="64"
               :validations="[
                 {
                   id: 'strongPassword',
                   message:
-                    'Must be > 8 characters and must have a mix of lowercase, uppercase, number and a symbol.',
+                    'Password must be between 8 and 64 characters and include lowercase, uppercase, number, and symbol.',
                   check: validator.isStrongPassword,
                 },
               ]"
@@ -115,12 +120,11 @@
               aria-label="Sign Up"
               class="w-full flex justify-center py-2 px-4 border border-transparent rounded-sm shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-400 disabled:opacity-50"
               :disabled="formInError"
-              @click="createAccount"
             >
               Sign up
             </button>
           </div>
-        </div>
+        </form>
       </div>
     </div>
   </div>
@@ -134,6 +138,7 @@ import SiTextBox from "@/atoms/SiTextBox.vue";
 import validator from "validator";
 import _ from "lodash";
 import { useFieldErrors } from "@/composables/useFieldErrors";
+import { setFormSettings } from "@/composables/formSettings";
 
 const emit = defineEmits(["success", "back-to-login"]);
 
@@ -144,6 +149,8 @@ const form = ref<CreateAccountRequest>({
   userPassword: "",
   signupSecret: "",
 });
+
+setFormSettings({ hideRequiredLabel: true });
 
 const errorMessage = ref<undefined | string>(undefined);
 

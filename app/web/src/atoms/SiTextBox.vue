@@ -6,7 +6,8 @@
       class="block text-sm font-medium"
       :class="titleClasses"
     >
-      {{ props.title }} <span v-if="required">(required)</span>
+      {{ props.title }}
+      <span v-if="required && !hideRequiredLabel">(required)</span>
     </label>
 
     <div class="mt-1 w-full relative">
@@ -36,6 +37,13 @@
         class="appearance-none block w-full px-3 py-2 border rounded-sm shadow-sm focus:outline-none sm:text-sm"
         :class="textBoxClasses"
         v-bind="$attrs"
+        :passwordrules="
+          password
+            ? `minlength: ${minPasswordLength}; maxlength: ${maxPasswordLength}; required: lower; required: upper; required: digit; required: special;`
+            : undefined
+        "
+        :minlength="password ? minPasswordLength : undefined"
+        :maxlength="password ? maxPasswordLength : undefined"
         @blur="setDirty"
       />
 
@@ -79,32 +87,39 @@ export default {
 
 <script setup lang="ts">
 import { ExclamationCircleIcon } from "@heroicons/vue/solid";
-import SiValidation, {
-  ValidatorArray,
-  ErrorsArray,
-} from "@/atoms/SiValidation.vue";
-import { computed, ref } from "vue";
+import { computed, PropType, ref } from "vue";
 import _ from "lodash";
+import { useFormSettings } from "@/composables/formSettings";
+import SiValidation, {
+  ErrorsArray,
+  ValidatorArray,
+} from "@/atoms/SiValidation.vue";
 
-const props = defineProps<{
-  modelValue: string;
-  title?: string;
-  id: string;
-  description?: string;
+const props = defineProps({
+  modelValue: { type: String, required: true },
+  title: String,
+  id: { type: String, required: true },
+  description: String,
 
-  placeholder?: string;
-  password?: boolean;
+  placeholder: String,
+  password: Boolean,
+  minPasswordLength: { type: Number, default: 8 },
+  maxPasswordLength: { type: Number, default: 64 },
 
-  validations?: ValidatorArray;
-  required?: boolean;
-  alwaysValidate?: boolean;
+  validations: { type: Array as PropType<ValidatorArray> },
+  required: Boolean,
+  alwaysValidate: Boolean,
 
-  docLink?: string;
+  docLink: String,
 
-  textArea?: boolean;
-  disabled?: boolean;
-  loginMode?: boolean;
-}>();
+  textArea: Boolean,
+  disabled: Boolean,
+  loginMode: Boolean,
+});
+
+const hideRequiredLabel = useFormSettings();
+
+// { type: String, required: true, default: 'x' },
 
 const emit = defineEmits(["update:modelValue", "error", "blur"]);
 
