@@ -7,7 +7,7 @@
         alt="System Initiative"
       />
       <h2 class="mt-6 text-center text-3xl font-extrabold">
-        Sign in to an existing account
+        Log in to an existing account
       </h2>
       <p class="mt-2 text-center text-md">
         Or
