@@ -9,7 +9,6 @@ use crate::{
         backend::{
             js_attribute::FuncBackendJsAttributeArgs,
             js_code_generation::FuncBackendJsCodeGenerationArgs,
-            js_qualification::FuncBackendJsQualificationArgs,
             js_resource::FuncBackendJsResourceSyncArgs,
         },
         binding::{FuncBinding, FuncBindingId},
@@ -498,22 +497,10 @@ async fn docker_hub_credential(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
         .await?
         .pop()
         .ok_or(SchemaError::FuncNotFound(qual_func_name))?;
-    let qual_args = FuncBackendJsQualificationArgs::default();
-    let qual_args_json = serde_json::to_value(&qual_args)?;
     let mut qual_prototype_context = QualificationPrototypeContext::new();
     qual_prototype_context.set_schema_variant_id(*variant.id());
 
-    let mut prototype = QualificationPrototype::new(
-        ctx,
-        *qual_func.id(),
-        qual_args_json,
-        qual_prototype_context,
-        "docker hub login credentials must work",
-    )
-    .await?;
-    prototype
-        .set_link(ctx, "http://hub.docker.com".into())
-        .await?;
+    let _ = QualificationPrototype::new(ctx, *qual_func.id(), qual_prototype_context).await?;
 
     let identity_func = setup_identity_func(ctx).await?;
 
@@ -667,20 +654,10 @@ async fn docker_image(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     let qual_func = qual_funcs
         .pop()
         .ok_or(SchemaError::FuncNotFound(qual_func_name))?;
-    let qual_args = FuncBackendJsQualificationArgs::default();
-    let qual_args_json = serde_json::to_value(&qual_args)?;
     let mut qual_prototype_context = QualificationPrototypeContext::new();
     qual_prototype_context.set_schema_variant_id(*variant.id());
 
-    let mut prototype = QualificationPrototype::new(
-        ctx,
-        *qual_func.id(),
-        qual_args_json,
-        qual_prototype_context,
-        "docker image must exist",
-    )
-    .await?;
-    prototype.set_link(ctx, "http://docker.com".into()).await?;
+    let _ = QualificationPrototype::new(ctx, *qual_func.id(), qual_prototype_context).await?;
 
     // Resource Prototype
     let resource_sync_func_name = "si:resourceSyncHammer".to_string();

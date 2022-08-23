@@ -230,6 +230,7 @@ async fn si_validate_string_equals(ctx: &DalContext<'_, '_>) -> BuiltinsResult<(
 
 async fn si_qualification_always_true(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     let func_name = "si:qualificationAlwaysTrue".to_string();
+    let display_name = "Always true".to_string();
     let existing_func = Func::find_by_attr(ctx, "name", &func_name).await?;
     if existing_func.is_empty() {
         let mut new_func = Func::new(
@@ -244,6 +245,10 @@ async fn si_qualification_always_true(ctx: &DalContext<'_, '_>) -> BuiltinsResul
         let qualification_code =
             base64::encode("function alwaysGood(_ignored) { return { qualified: true }; }");
 
+        new_func
+            .set_display_name(ctx, Some(display_name))
+            .await
+            .expect("Cannot set display name");
         new_func
             .set_handler(ctx, Some("alwaysGood".to_string()))
             .await
@@ -289,6 +294,7 @@ async fn si_qualification_docker_image_name_inspect(
     ctx: &DalContext<'_, '_>,
 ) -> BuiltinsResult<()> {
     let func_name = "si:qualificationDockerImageNameInspect".to_string();
+    let display_name = "Inspect docker image name".to_string();
     let existing_func = Func::find_by_attr(ctx, "name", &func_name).await?;
     if existing_func.is_empty() {
         let mut new_func = Func::new(
@@ -305,6 +311,10 @@ async fn si_qualification_docker_image_name_inspect(
         ));
 
         new_func
+            .set_display_name(ctx, Some(display_name))
+            .await
+            .expect("cannot set display name");
+        new_func
             .set_handler(ctx, Some("qualificationDockerImageNameInspect".to_string()))
             .await
             .expect("cannot set handler");
@@ -312,13 +322,22 @@ async fn si_qualification_docker_image_name_inspect(
             .set_code_base64(ctx, Some(qualification_code))
             .await
             .expect("cannot set code");
+        new_func
+            .set_description(ctx, "Verifies that the docker image exists".into())
+            .await
+            .expect("Set func description");
+        new_func
+            .set_link(ctx, "http://docker.com".into())
+            .await
+            .expect("set func link");
     }
 
     Ok(())
 }
 
 async fn si_qualification_yaml_kubeval(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
-    let func_name = "si:qualificationYamlKubeval".to_string();
+    let func_name = "si:qualificationKubevalYaml".to_string();
+    let display_name = "Run kubeval on YAML".to_string();
     let existing_func = Func::find_by_attr(ctx, "name", &func_name).await?;
     if existing_func.is_empty() {
         let mut new_func = Func::new(
@@ -333,6 +352,10 @@ async fn si_qualification_yaml_kubeval(ctx: &DalContext<'_, '_>) -> BuiltinsResu
         let qualification_code = base64::encode(include_str!("./func/qualificationYamlKubeval.js"));
 
         new_func
+            .set_display_name(ctx, Some(display_name))
+            .await
+            .expect("cannot set display_name");
+        new_func
             .set_handler(ctx, Some("qualificationYamlKubeval".to_string()))
             .await
             .expect("cannot set handler");
@@ -340,6 +363,10 @@ async fn si_qualification_yaml_kubeval(ctx: &DalContext<'_, '_>) -> BuiltinsResu
             .set_code_base64(ctx, Some(qualification_code))
             .await
             .expect("cannot set code");
+        new_func
+            .set_description(ctx, Some("Runs kubeval on the generated YAML".to_string()))
+            .await
+            .expect("Set func description");
     }
 
     Ok(())
@@ -347,6 +374,7 @@ async fn si_qualification_yaml_kubeval(ctx: &DalContext<'_, '_>) -> BuiltinsResu
 
 async fn si_qualification_docker_hub_login(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     let func_name = "si:qualificationDockerHubLogin".to_string();
+    let display_name = "Docker Hub login".to_string();
     let existing_func = Func::find_by_attr(ctx, "name", &func_name).await?;
     if existing_func.is_empty() {
         let mut new_func = Func::new(
@@ -362,6 +390,10 @@ async fn si_qualification_docker_hub_login(ctx: &DalContext<'_, '_>) -> Builtins
             base64::encode(include_str!("./func/qualificationDockerHubLogin.js"));
 
         new_func
+            .set_display_name(ctx, Some(display_name))
+            .await
+            .expect("cannot set display_name");
+        new_func
             .set_handler(ctx, Some("qualificationDockerHubLogin".to_string()))
             .await
             .expect("cannot set handler");
@@ -369,6 +401,14 @@ async fn si_qualification_docker_hub_login(ctx: &DalContext<'_, '_>) -> Builtins
             .set_code_base64(ctx, Some(qualification_code))
             .await
             .expect("cannot set code");
+        new_func
+            .set_description(ctx, "Ensures docker hub login credentials work".into())
+            .await
+            .expect("set func description");
+        new_func
+            .set_link(ctx, "http://hub.docker.com".into())
+            .await
+            .expect("set func link");
     }
 
     Ok(())

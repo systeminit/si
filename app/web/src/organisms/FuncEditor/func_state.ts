@@ -12,6 +12,7 @@ export const nullEditingFunc: EditingFunc = {
     name: "",
     code: "",
     isBuiltin: false,
+    components: [],
     schemaVariants: [],
   },
   modifiedFunc: {
@@ -21,6 +22,7 @@ export const nullEditingFunc: EditingFunc = {
     name: "",
     code: "",
     isBuiltin: false,
+    components: [],
     schemaVariants: [],
   },
   id: 0,

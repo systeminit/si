@@ -1,3 +1,5 @@
+// deprecated
+
 use axum::Json;
 use dal::{
     func::backend::js_qualification::FuncBackendJsQualificationArgs, generate_name,
@@ -96,8 +98,6 @@ async function qualification(component) {
     func.set_handler(&ctx, Some("qualification".to_owned()))
         .await?;
 
-    let json = serde_json::to_value(&FuncBackendJsQualificationArgs::default())?;
-
     let component = Component::get_by_id(&ctx, &request.component_id)
         .await?
         .ok_or(QualificationError::ComponentNotFound(request.component_id))?;
@@ -112,7 +112,6 @@ async function qualification(component) {
     let prototype = QualificationPrototype::new(
         &ctx,
         *func.id(),
-        json,
         prototype_context,
         generate_name(None),
     )

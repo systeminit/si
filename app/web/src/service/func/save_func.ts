@@ -6,7 +6,10 @@ import { SDF } from "@/api/sdf";
 import { visibility$ } from "@/observable/visibility";
 import { Func } from "@/api/sdf/dal/func";
 
-export type SaveFuncRequest = Func;
+export interface SaveFuncRequest extends Func {
+  schemaVariants: number[];
+  components: number[];
+}
 
 export interface SaveFuncResponse {
   success: boolean;

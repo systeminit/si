@@ -4,10 +4,7 @@ use crate::{
         create_schema, create_string_prop_with_default, kubernetes_metadata::create_metadata_prop,
     },
     code_generation_prototype::CodeGenerationPrototypeContext,
-    func::backend::{
-        js_code_generation::FuncBackendJsCodeGenerationArgs,
-        js_qualification::FuncBackendJsQualificationArgs,
-    },
+    func::backend::js_code_generation::FuncBackendJsCodeGenerationArgs,
     qualification_prototype::QualificationPrototypeContext,
     schema::{SchemaVariant, UiMenu},
     socket::{Socket, SocketArity, SocketEdgeKind, SocketKind},
@@ -98,27 +95,20 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> BuiltinsResult<(
     let spec_prop = create_deployment_spec_prop(ctx, root_prop.domain_prop_id).await?;
 
     // Qualification Prototype
-    let qualification_func_name = "si:qualificationYamlKubeval".to_owned();
+    let qualification_func_name = "si:qualificationKubevalYaml".to_owned();
     let mut qualification_funcs = Func::find_by_attr(ctx, "name", &qualification_func_name).await?;
     let qualification_func = qualification_funcs
         .pop()
         .ok_or(SchemaError::FuncNotFound(qualification_func_name))?;
-    let qualification_args = FuncBackendJsQualificationArgs::default();
-    let qualification_args_json = serde_json::to_value(&qualification_args)?;
     let mut qualification_prototype_context = QualificationPrototypeContext::new();
     qualification_prototype_context.set_schema_variant_id(*variant.id());
 
-    let mut prototype = QualificationPrototype::new(
+    let _ = QualificationPrototype::new(
         ctx,
         *qualification_func.id(),
-        qualification_args_json,
         qualification_prototype_context,
-        "Kubeval YAML".to_owned(),
     )
     .await?;
-    prototype
-        .set_description(ctx, Some("Runs kubeval on the generated YAML".to_owned()))
-        .await?;
 
     // Code Generation Prototype
     let code_generation_func_name = "si:generateYAML".to_owned();

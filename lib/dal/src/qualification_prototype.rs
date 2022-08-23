@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use serde_json::Value as JsonValue;
 use si_data::{NatsError, PgError};
 use std::default::Default;
 use telemetry::prelude::*;
@@ -67,6 +66,43 @@ impl QualificationPrototypeContext {
         }
     }
 
+    pub fn new_for_context_field(context_field: QualificationPrototypeContextField) -> Self {
+        match context_field {
+            QualificationPrototypeContextField::Schema(schema_id) => {
+                QualificationPrototypeContext {
+                    component_id: ComponentId::NONE,
+                    schema_id,
+                    schema_variant_id: SchemaVariantId::NONE,
+                    system_id: SystemId::NONE,
+                }
+            }
+            QualificationPrototypeContextField::System(system_id) => {
+                QualificationPrototypeContext {
+                    component_id: ComponentId::NONE,
+                    schema_id: SchemaId::NONE,
+                    schema_variant_id: SchemaVariantId::NONE,
+                    system_id,
+                }
+            }
+            QualificationPrototypeContextField::SchemaVariant(schema_variant_id) => {
+                QualificationPrototypeContext {
+                    component_id: ComponentId::NONE,
+                    schema_id: SchemaId::NONE,
+                    schema_variant_id,
+                    system_id: SystemId::NONE,
+                }
+            }
+            QualificationPrototypeContextField::Component(component_id) => {
+                QualificationPrototypeContext {
+                    component_id,
+                    schema_id: SchemaId::NONE,
+                    schema_variant_id: SchemaVariantId::NONE,
+                    system_id: SystemId::NONE,
+                }
+            }
+        }
+    }
+
     pub fn component_id(&self) -> ComponentId {
         self.component_id
     }
@@ -110,10 +146,6 @@ pub struct QualificationPrototype {
     pk: QualificationPrototypePk,
     id: QualificationPrototypeId,
     func_id: FuncId,
-    args: serde_json::Value,
-    title: String,
-    description: Option<String>,
-    link: Option<String>,
     component_id: ComponentId,
     schema_id: SchemaId,
     schema_variant_id: SchemaVariantId,
@@ -124,6 +156,38 @@ pub struct QualificationPrototype {
     timestamp: Timestamp,
     #[serde(flatten)]
     visibility: Visibility,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum QualificationPrototypeContextField {
+    Component(ComponentId),
+    Schema(SchemaId),
+    SchemaVariant(SchemaVariantId),
+    System(SystemId),
+}
+
+impl From<ComponentId> for QualificationPrototypeContextField {
+    fn from(component_id: ComponentId) -> Self {
+        QualificationPrototypeContextField::Component(component_id)
+    }
+}
+
+impl From<SchemaId> for QualificationPrototypeContextField {
+    fn from(schema_id: SchemaId) -> Self {
+        QualificationPrototypeContextField::Schema(schema_id)
+    }
+}
+
+impl From<SchemaVariantId> for QualificationPrototypeContextField {
+    fn from(schema_variant_id: SchemaVariantId) -> Self {
+        QualificationPrototypeContextField::SchemaVariant(schema_variant_id)
+    }
+}
+
+impl From<SystemId> for QualificationPrototypeContextField {
+    fn from(system_id: SystemId) -> Self {
+        QualificationPrototypeContextField::System(system_id)
+    }
 }
 
 impl_standard_model! {
@@ -141,21 +205,21 @@ impl QualificationPrototype {
     pub async fn new(
         ctx: &DalContext<'_, '_>,
         func_id: FuncId,
-        args: serde_json::Value,
         context: QualificationPrototypeContext,
-        title: impl Into<String>,
     ) -> QualificationPrototypeResult<Self> {
-        let title = title.into();
-        let row = ctx.txns().pg().query_one(
-                "SELECT object FROM qualification_prototype_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9)",
-                &[ctx.write_tenancy(), ctx.visibility(),
+        let row = ctx
+            .txns()
+            .pg()
+            .query_one(
+                "SELECT object FROM qualification_prototype_create_v1($1, $2, $3, $4, $5, $6, $7)",
+                &[
+                    ctx.write_tenancy(),
+                    ctx.visibility(),
                     &func_id,
-                    &args,
                     &context.component_id(),
                     &context.schema_id(),
                     &context.schema_variant_id(),
                     &context.system_id(),
-                    &title,
                 ],
             )
             .await?;
@@ -164,10 +228,6 @@ impl QualificationPrototype {
     }
 
     standard_model_accessor!(func_id, Pk(FuncId), QualificationPrototypeResult);
-    standard_model_accessor!(args, Json<JsonValue>, QualificationPrototypeResult);
-    standard_model_accessor!(title, String, QualificationPrototypeResult);
-    standard_model_accessor!(description, Option<String>, QualificationPrototypeResult);
-    standard_model_accessor!(link, Option<String>, QualificationPrototypeResult);
     standard_model_accessor!(schema_id, Pk(SchemaId), QualificationPrototypeResult);
     standard_model_accessor!(
         schema_variant_id,
@@ -231,8 +291,8 @@ impl QualificationPrototype {
                 ],
             )
             .await?;
-        let object = objects_from_rows(rows)?;
-        Ok(object)
+
+        Ok(objects_from_rows(rows)?)
     }
 
     pub async fn find_for_func(
@@ -260,11 +320,85 @@ impl QualificationPrototype {
 
         context
     }
+
+    async fn create_missing_prototypes(
+        ctx: &DalContext<'_, '_>,
+        func_id: &FuncId,
+        existing_for_field: &[QualificationPrototypeContextField],
+        desired_for_field: &[QualificationPrototypeContextField],
+    ) -> QualificationPrototypeResult<Vec<Self>> {
+        let mut new_protos = vec![];
+
+        for desired in desired_for_field {
+            if existing_for_field.contains(desired) {
+                continue;
+            }
+
+            new_protos.push(
+                QualificationPrototype::new(
+                    ctx,
+                    *func_id,
+                    QualificationPrototypeContext::new_for_context_field(*desired),
+                )
+                .await?,
+            );
+        }
+
+        Ok(new_protos)
+    }
+
+    /// Given a list of `QualificationPrototypeContextField`s (specifically here only
+    /// `SchemaVariantId` and `ComponentId` context fields, make them the only context fields for
+    /// which we have a prototype connected to the given function by deleting any that are not
+    /// in the list and creating any that do not currently exist.
+    pub async fn associate_prototypes_with_func_and_objects<
+        T: Into<QualificationPrototypeContextField> + Copy,
+    >(
+        ctx: &DalContext<'_, '_>,
+        func_id: &FuncId,
+        prototype_context_field_ids: &[T],
+    ) -> QualificationPrototypeResult<Vec<Self>> {
+        let mut existing_field_ids = vec![];
+
+        let prototype_context_field_ids: Vec<QualificationPrototypeContextField> =
+            prototype_context_field_ids
+                .iter()
+                .map(|field| (*field).into())
+                .collect();
+
+        for proto in Self::find_for_func(ctx, func_id).await? {
+            let component_id = proto.component_id();
+            let schema_variant_id = proto.schema_variant_id();
+
+            if component_id.is_none() && schema_variant_id.is_none() {
+                continue;
+            }
+
+            if component_id.is_some() && !prototype_context_field_ids.contains(&component_id.into())
+                || schema_variant_id.is_some()
+                    && !prototype_context_field_ids.contains(&schema_variant_id.into())
+            {
+                proto.delete(ctx).await?;
+            } else if component_id.is_some() {
+                existing_field_ids.push(component_id.into());
+            } else if schema_variant_id.is_some() {
+                existing_field_ids.push(schema_variant_id.into());
+            }
+        }
+
+        Self::create_missing_prototypes(
+            ctx,
+            func_id,
+            &existing_field_ids,
+            &prototype_context_field_ids,
+        )
+        .await
+    }
 }
 
 #[cfg(test)]
 mod test {
-    use super::QualificationPrototypeContext;
+    use super::*;
 
     #[test]
     fn context_builder() {
