@@ -1,4 +1,4 @@
-use dal::test::helpers::provider::ProviderBuiltinsHarness;
+use dal::test::helpers::builtins::BuiltinsHarness;
 use dal::{Connection, DalContext, ExternalProvider, InternalProvider, StandardModel};
 use pretty_assertions_sorted::assert_eq_sorted;
 
@@ -6,7 +6,7 @@ use crate::dal::test;
 
 #[test]
 async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &DalContext<'_, '_>) {
-    let mut harness = ProviderBuiltinsHarness::new();
+    let mut harness = BuiltinsHarness::new();
     let tail_docker_image_payload = harness.create_docker_image(ctx, "image").await;
     let head_deployment_payload = harness
         .create_kubernetes_deployment(ctx, "deployment")

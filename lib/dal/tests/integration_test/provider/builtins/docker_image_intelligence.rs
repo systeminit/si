@@ -1,4 +1,4 @@
-use dal::test::helpers::provider::ProviderBuiltinsHarness;
+use dal::test::helpers::builtins::BuiltinsHarness;
 use dal::DalContext;
 use pretty_assertions_sorted::assert_eq_sorted;
 
@@ -6,7 +6,7 @@ use crate::dal::test;
 
 #[test]
 async fn docker_image_intra_component_update(ctx: &DalContext<'_, '_>) {
-    let mut harness = ProviderBuiltinsHarness::new();
+    let mut harness = BuiltinsHarness::new();
     let soulrender_payload = harness.create_docker_image(ctx, "soulrender").await;
     let bloodscythe_payload = harness.create_docker_image(ctx, "bloodscythe").await;
 

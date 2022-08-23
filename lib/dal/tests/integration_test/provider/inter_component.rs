@@ -331,7 +331,7 @@ async fn setup_esp(ctx: &DalContext<'_, '_>) -> ComponentPayload {
         .await
         .expect("cannot finalize SchemaVariant");
 
-    let (component, _) = Component::new_for_schema_with_node(ctx, "esp", schema.id())
+    let (component, node) = Component::new_for_schema_with_node(ctx, "esp", schema.id())
         .await
         .expect("unable to create component");
 
@@ -341,6 +341,7 @@ async fn setup_esp(ctx: &DalContext<'_, '_>) -> ComponentPayload {
         schema_variant_id: *schema_variant.id(),
         component_id: *component.id(),
         prop_map,
+        node,
         base_attribute_read_context: AttributeReadContext {
             prop_id: None,
             schema_id: Some(*schema.id()),
@@ -399,7 +400,7 @@ async fn setup_swings(ctx: &DalContext<'_, '_>) -> ComponentPayload {
         .await
         .expect("cannot finalize SchemVariant");
 
-    let (component, _) = Component::new_for_schema_with_node(ctx, "swings", schema.id())
+    let (component, node) = Component::new_for_schema_with_node(ctx, "swings", schema.id())
         .await
         .expect("unable to create component");
 
@@ -418,6 +419,7 @@ async fn setup_swings(ctx: &DalContext<'_, '_>) -> ComponentPayload {
         schema_variant_id: *schema_variant.id(),
         component_id: *component.id(),
         prop_map,
+        node,
         base_attribute_read_context,
     }
 }

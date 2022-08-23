@@ -1,5 +1,5 @@
 use axum::{extract::Query, Json};
-use dal::{schematic::Schematic, system::SystemId, Visibility};
+use dal::{system::SystemId, Schematic, Visibility};
 use serde::{Deserialize, Serialize};
 
 use super::SchematicResult;

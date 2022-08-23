@@ -1,6 +1,6 @@
 use dal::{Connection, DalContext, ExternalProvider, InternalProvider, StandardModel};
 
-use dal::test::helpers::provider::ProviderBuiltinsHarness;
+use dal::test::helpers::builtins::BuiltinsHarness;
 use pretty_assertions_sorted::assert_eq_sorted;
 
 use crate::dal::test;
@@ -9,7 +9,7 @@ use crate::dal::test;
 async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(
     ctx: &DalContext<'_, '_>,
 ) {
-    let mut harness = ProviderBuiltinsHarness::new();
+    let mut harness = BuiltinsHarness::new();
     let tail_namespace_payload = harness.create_kubernetes_namespace(ctx, "tail").await;
     let head_deployment_payload = harness.create_kubernetes_deployment(ctx, "head").await;
 

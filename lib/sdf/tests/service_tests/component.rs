@@ -39,7 +39,7 @@ async fn list_components_identification() {
         .expect("Unable to create application");
     let dal_ctx = dal_ctx.clone_with_new_application_node_id(Some(*application.id()));
 
-    let schema = create_schema(&dal_ctx, &SchemaKind::Concept).await;
+    let schema = create_schema(&dal_ctx, &SchemaKind::Concrete).await;
     let schema_variant = create_schema_variant(&dal_ctx, *schema.id()).await;
     schema_variant
         .finalize(&dal_ctx)
@@ -158,7 +158,7 @@ async fn get_components_metadata() {
     );
     let visibility = Visibility::new_head(false);
 
-    let schema = create_schema(&dal_ctx, &SchemaKind::Concept).await;
+    let schema = create_schema(&dal_ctx, &SchemaKind::Concrete).await;
 
     let schema_variant = create_schema_variant(&dal_ctx, *schema.id()).await;
 

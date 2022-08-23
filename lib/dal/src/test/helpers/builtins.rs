@@ -1,5 +1,5 @@
-//! This module provides [`ProviderBuiltinsHarness`], for use in integration tests related to
-//! providers and builtins leveraging them.
+//! This module provides [`BuiltinsHarness`], for use in integration tests related to
+//! providers and builtin [`Schemas`](crate::Schema) leveraging them.
 
 use std::collections::HashMap;
 
@@ -10,11 +10,15 @@ use crate::{
     AttributeReadContext, Component, DalContext, PropId, SchemaId, SchemaVariantId, StandardModel,
 };
 
-/// This harness provides methods to create [`Components`](crate::Component) from builtins.
-/// All fields are private since they are purely used to reduce the number of total database
-/// queries.
+/// This harness provides methods to create [`Components`](crate::Component) from builtin
+/// [`Schemas`](crate::Schema). All fields are private since they are purely used to reduce the
+/// number of total database queries.
 #[derive(Default)]
-pub struct ProviderBuiltinsHarness {
+pub struct BuiltinsHarness {
+    docker_hub_credential_schema_id: Option<SchemaId>,
+    docker_hub_credential_schema_variant_id: Option<SchemaVariantId>,
+    docker_hub_credential_prop_map: HashMap<&'static str, PropId>,
+
     docker_image_schema_id: Option<SchemaId>,
     docker_image_schema_variant_id: Option<SchemaVariantId>,
     docker_image_prop_map: HashMap<&'static str, PropId>,
@@ -28,9 +32,58 @@ pub struct ProviderBuiltinsHarness {
     kubernetes_deployment_prop_map: HashMap<&'static str, PropId>,
 }
 
-impl ProviderBuiltinsHarness {
+// TODO(nick): make these functions and the core struct generic. I started doing this by creating
+// a "Builtin" struct with a schema variant id, schema id, and prop map, but stopped because
+// we need to make prop map collection generic as well. That may be difficult because the props
+// differ between each builtin schema. For example: kubernetes deployment has a containers array,
+// but docker image does not. Thus, we would need to find a way to either pass through complex
+// arguments or pass prop map collection to the user (probably the latter). For now, let's keep
+// adding builtins by hand.
+impl BuiltinsHarness {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    pub async fn create_docker_hub_credential(
+        &mut self,
+        ctx: &DalContext<'_, '_>,
+        name: impl AsRef<str>,
+    ) -> ComponentPayload {
+        let (schema_id, schema_variant_id) = match (
+            self.docker_hub_credential_schema_id,
+            self.docker_hub_credential_schema_variant_id,
+        ) {
+            (Some(schema_id), Some(schema_variant_id)) => (schema_id, schema_variant_id),
+            (_, _) => {
+                // Save them for next time!
+                let (schema, schema_variant) =
+                    find_schema_and_default_variant_by_name(ctx, "docker_hub_credential").await;
+                let (schema_id, schema_variant_id) = (*schema.id(), *schema_variant.id());
+                self.docker_hub_credential_schema_id = Some(schema_id);
+                self.docker_hub_credential_schema_variant_id = Some(schema_variant_id);
+                (schema_id, schema_variant_id)
+            }
+        };
+
+        // Add props that you would like to access here! We'll save them if other components
+        // are created in addition to the first one.
+        if self.docker_hub_credential_prop_map.is_empty() {
+            let (name_prop_id, _) =
+                find_prop_and_parent_by_name(ctx, "name", "si", None, schema_variant_id)
+                    .await
+                    .expect("could not find prop and/or parent");
+            self.docker_hub_credential_prop_map
+                .insert("/root/si/name", name_prop_id);
+        }
+
+        Self::create_component_from_schema(
+            ctx,
+            schema_id,
+            schema_variant_id,
+            self.docker_hub_credential_prop_map.clone(),
+            name,
+        )
+        .await
     }
 
     pub async fn create_docker_image(
@@ -54,8 +107,8 @@ impl ProviderBuiltinsHarness {
             }
         };
 
-        // Add props that you would like to access here! We'll save them if other docker
-        // images are created in addition to the first one.
+        // Add props that you would like to access here! We'll save them if other components
+        // are created in addition to the first one.
         if self.docker_image_prop_map.is_empty() {
             let (name_prop_id, _) =
                 find_prop_and_parent_by_name(ctx, "name", "si", None, schema_variant_id)
@@ -96,8 +149,8 @@ impl ProviderBuiltinsHarness {
             }
         };
 
-        // Add props that you would like to access here! We'll save them if other kubernetes
-        // namespace are created in addition to the first one.
+        // Add props that you would like to access here! We'll save them if other components
+        // are created in addition to the first one.
         if self.kubernetes_namespace_prop_map.is_empty() {
             let (metadata_name_prop_id, _) =
                 find_prop_and_parent_by_name(ctx, "name", "metadata", None, schema_variant_id)
@@ -145,8 +198,8 @@ impl ProviderBuiltinsHarness {
             }
         };
 
-        // Add props that you would like to access here! We'll save them if other kubernetes
-        // deployments are created in addition to the first one.
+        // Add props that you would like to access here! We'll save them if other components
+        // are created in addition to the first one.
         if self.kubernetes_deployment_prop_map.is_empty() {
             let (name_prop_id, _) =
                 find_prop_and_parent_by_name(ctx, "name", "si", None, schema_variant_id)
@@ -173,7 +226,7 @@ impl ProviderBuiltinsHarness {
         prop_map: HashMap<&'static str, PropId>,
         name: impl AsRef<str>,
     ) -> ComponentPayload {
-        let (component, _) = Component::new_for_schema_with_node(ctx, name, &schema_id)
+        let (component, node) = Component::new_for_schema_with_node(ctx, name, &schema_id)
             .await
             .expect("unable to create component");
 
@@ -182,6 +235,7 @@ impl ProviderBuiltinsHarness {
             schema_variant_id,
             component_id: *component.id(),
             prop_map,
+            node,
             base_attribute_read_context: AttributeReadContext {
                 prop_id: None,
                 schema_id: Some(schema_id),

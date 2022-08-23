@@ -1,8 +1,8 @@
 use axum::extract::Query;
 use axum::Json;
 use dal::{
-    node::Node, node::NodeId, ComponentId, Connection, LabelEntry, LabelList, SchemaId,
-    SchemaVariantId, SchematicKind, StandardModel, Visibility, WorkspaceId,
+    node::Node, node::NodeId, ComponentId, LabelEntry, LabelList, SchemaId, SchemaVariantId,
+    SchematicKind, StandardModel, Visibility, WorkspaceId,
 };
 use serde::{Deserialize, Serialize};
 
@@ -47,7 +47,6 @@ pub async fn list_components_identification(
     let txns = txns.start().await?;
     let ctx = builder.build(request_ctx.build(request.visibility), &txns);
 
-    let connections = Connection::list(&ctx).await?;
     let nodes = Node::list(&ctx).await?;
 
     let mut label_entries = Vec::with_capacity(nodes.len());
@@ -56,16 +55,6 @@ pub async fn list_components_identification(
             Some(component) => component,
             None => continue,
         };
-
-        // Allows us to ignore nodes that aren't in current application
-        let is_from_this_schematic = Some(*node.id()) == ctx.application_node_id()
-            || connections.iter().any(|c| {
-                c.source.node_id == *node.id()
-                    && Some(c.destination.node_id) == ctx.application_node_id()
-            });
-        if !is_from_this_schematic {
-            continue;
-        }
 
         let schema_variant = component
             .schema_variant(&ctx)
