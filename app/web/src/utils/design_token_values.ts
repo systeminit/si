@@ -13,4 +13,3 @@ export const colors = _.pick(fullConfig.theme.colors, [
   "warning",
   "destructive",
 ]);
-console.log(colors);

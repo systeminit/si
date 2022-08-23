@@ -197,7 +197,7 @@ const pathPartForValueId = (valueId: number) => {
     }
     if (currentProp.kind == "array") {
       const childCount = values.value.childValues[valueId];
-      let arrayLength = childCount ? childCount.length : 0;
+      const arrayLength = childCount ? childCount.length : 0;
       displayPathPart = `${currentProp.name}[${arrayLength}]`;
       triggerPathPart = `${currentProp.name}[]`;
     } else if (currentProp.kind == "object") {
@@ -205,7 +205,7 @@ const pathPartForValueId = (valueId: number) => {
       triggerPathPart = currentProp.name;
     } else if (currentProp.kind == "map") {
       const childCount = values.value.childValues[valueId];
-      let mapLength = childCount ? childCount.length : 0;
+      const mapLength = childCount ? childCount.length : 0;
       displayPathPart = `${currentProp.name}{${mapLength}}`;
       triggerPathPart = `${currentProp.name}{}`;
     } else {

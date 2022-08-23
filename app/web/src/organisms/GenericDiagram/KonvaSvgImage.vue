@@ -9,7 +9,6 @@ change the fill color. NOTE - this only works if the SVG has the fill set to
 <script lang="ts" setup>
 import { computed, nextTick, onMounted, ref, watchEffect } from "vue";
 import _ from "lodash";
-import TextWidgetVue from "../EditForm/TextWidget.vue";
 
 const props = defineProps({
   rawSvg: { type: String },

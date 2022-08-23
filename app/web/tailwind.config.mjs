@@ -1,7 +1,7 @@
-import * as theme from "./src/design/themes/tailwind.mjs";
 import colors from "tailwindcss/colors";
 import formsPlugin from "@tailwindcss/forms";
-import typographyPlugin from "./src/design/themes/tailwind/plugin/si_typography";
+import * as themeValues from "./src/assets/style/tailwind_customization/theme_values.mjs";
+import typographyPlugin from "./src/assets/style/tailwind_customization/typography_plugin.mjs";
 
 export default {
   darkMode: "class",
@@ -30,12 +30,12 @@ export default {
       green: colors.green,
     },
     extend: {
-      spacing: theme.spacing,
-      colors: theme.colors,
-      margin: theme.margin,
-      maxHeight: theme.maxHeight,
-      zIndex: theme.zIndex,
-      width: theme.width,
+      spacing: themeValues.spacing,
+      colors: themeValues.colors,
+      margin: themeValues.margin,
+      maxHeight: themeValues.maxHeight,
+      zIndex: themeValues.zIndex,
+      width: themeValues.width,
     },
   },
   variants: {

@@ -12,7 +12,7 @@ import "floating-vue/dist/style.css";
 
 import { restoreFromSession } from "@/observable/session_state";
 import { ThemeService } from "@/service/theme";
-import { Theme, ThemeValue } from "@/observable/theme";
+import { Theme } from "@/observable/theme";
 import { useThemeProvider } from "./composables/injectTheme";
 import { useCustomFontsLoadedProvider } from "./composables/useFontLoaded";
 

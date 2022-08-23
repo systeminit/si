@@ -200,7 +200,6 @@ import {
 } from "./diagram_constants";
 import { useTheme } from "@/composables/injectTheme";
 import { Vector2d } from "konva/lib/types";
-import KonvaSvgImage from "./KonvaSvgImage.vue";
 import DiagramIcon from "./DiagramIcon.vue";
 import { useDiagramConfig } from "./utils/use-diagram-context-provider";
 

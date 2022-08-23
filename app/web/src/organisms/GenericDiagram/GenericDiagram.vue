@@ -117,7 +117,6 @@ import {
   onBeforeUnmount,
   reactive,
   watch,
-  toRef,
 } from "vue";
 import { PropType } from "vue";
 import { Stage as KonvaStage } from "konva/lib/Stage";

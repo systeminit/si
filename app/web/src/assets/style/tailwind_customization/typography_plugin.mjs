@@ -1,6 +1,6 @@
 import plugin from "tailwindcss/plugin";
 
-const siTypography = plugin(function ({ addUtilities }) {
+const siTypographyTailwindPlugin = plugin(function ({ addUtilities }) {
   addUtilities({
     //
     // Type Scale / Light / Regular
@@ -279,4 +279,4 @@ const siTypography = plugin(function ({ addUtilities }) {
   });
 });
 
-export default siTypography;
+export default siTypographyTailwindPlugin;

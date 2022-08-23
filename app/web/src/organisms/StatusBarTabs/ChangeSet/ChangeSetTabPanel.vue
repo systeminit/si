@@ -164,7 +164,7 @@ const selectedComponentStatsGroup = computed(() => {
 
 // FIXME(nick): we should be using the "unknown" language if there's no code once mode switching is reactive.
 const codeRecord = computed((): Record<string, string> => {
-  let code = {
+  const code = {
     Diff: "# Waiting for component diff...",
     Current: "# Waiting for component diff...",
   };

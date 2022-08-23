@@ -205,7 +205,7 @@ const emits = defineEmits(["update:modelValue", "change"]);
 const { options } = toRefs(props);
 
 const selectedLabel = computed(() => {
-  let selectedOption = _.find(options.value, ["value", selectedValue.value]);
+  const selectedOption = _.find(options.value, ["value", selectedValue.value]);
   if (_.isNull(selectedValue.value)) {
     return "";
   }

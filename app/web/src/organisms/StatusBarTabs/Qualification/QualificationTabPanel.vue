@@ -90,7 +90,7 @@ const list = computed((): ComponentListItem[] => {
   else if (selectedFilter.value.value === "failure")
     components = components.filter((component) => component.failed > 0);
 
-  let list: ComponentListItem[] = [];
+  const list: ComponentListItem[] = [];
   for (const component of components) {
     list.push({
       id: component.componentId,

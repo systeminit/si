@@ -5,8 +5,8 @@ import { createApp } from "vue";
 import App from "@/App.vue";
 import router from "./router";
 
-import "@/assets/main.css";
-import "@/assets/tailwind.css";
+import "@/assets/style/main.css";
+import "@/assets/style/tailwind.css";
 import { SignupService } from "@/service/signup";
 import { SessionService } from "@/service/session";
 import { ChangeSetService } from "@/service/change_set";
