@@ -2,29 +2,30 @@
   <TabGroup :selected-index="selectedIndex" @change="props.onChange">
     <slot />
     <div
-      class="w-full h-11 relative"
       :class="topMargin > 0 ? `mt-${topMargin}` : ''"
+      class="w-full h-11 relative"
     >
       <TabList ref="tabList" :class="tabListClasses">
         <div
           v-if="startMargin > 0"
-          class="border-b border-neutral-300 dark:border-neutral-600"
           :class="
             'w-' + startMargin + (selectedTabToFront ? ' order-first' : '')
           "
+          class="border-b border-neutral-300 dark:border-neutral-600"
         ></div>
         <slot name="tabs" />
         <div ref="endSpace"></div>
       </TabList>
       <SiBarButton
         ref="dropDown"
-        :padding-x="2"
+        :dropdown-item-show-suffix="false"
         :hover-effect="false"
+        :navbar="false"
+        :padding-x="2"
         dropdown-classes="right-0 overflow-hidden max-w-xs text-left text-ellipsis"
         dropdown-item-classes="text-left text-ellipsis"
-        :dropdown-item-show-suffix="false"
-        :navbar="false"
-        ><DotsVerticalIcon class="w-6" />
+      >
+        <DotsVerticalIcon class="w-6" />
         <template #dropdownContent>
           <slot name="dropdownitems" />
         </template>
@@ -36,8 +37,8 @@
   </TabGroup>
 </template>
 
-<script setup lang="ts">
-import { TabGroup, TabPanels, TabList } from "@headlessui/vue";
+<script lang="ts" setup>
+import { TabGroup, TabList, TabPanels } from "@headlessui/vue";
 import { onBeforeUnmount, onMounted, onUpdated, provide, ref } from "vue";
 import { DotsVerticalIcon } from "@heroicons/vue/outline";
 import SiBarButton from "@/molecules/SiBarButton.vue";
