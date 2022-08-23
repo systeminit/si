@@ -47,7 +47,7 @@ pub type FuncResult<T> = Result<T, FuncError>;
 /// a `QualificationView`
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct FuncMetadataView {
-    pub name: String,
+    pub display_name: String,
     pub description: Option<String>,
     pub link: Option<String>,
 }
@@ -67,6 +67,7 @@ pub struct Func {
     pk: FuncPk,
     id: FuncId,
     name: String,
+    display_name: Option<String>,
     description: Option<String>,
     link: Option<String>,
     backend_kind: FuncBackendKind,
@@ -161,13 +162,14 @@ impl Func {
 
     pub fn metadata_view(&self) -> FuncMetadataView {
         FuncMetadataView {
-            name: self.name().into(),
+            display_name: self.display_name().unwrap_or_else(|| self.name()).into(),
             description: self.description().map(Into::into),
             link: self.description().map(Into::into),
         }
     }
 
     standard_model_accessor!(name, String, FuncResult);
+    standard_model_accessor!(display_name, Option<String>, FuncResult);
     standard_model_accessor!(description, Option<String>, FuncResult);
     standard_model_accessor!(link, Option<String>, FuncResult);
     standard_model_accessor!(backend_kind, Enum(FuncBackendKind), FuncResult);

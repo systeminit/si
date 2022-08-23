@@ -59,7 +59,10 @@ pub async fn get_func(
         id: func.id().to_owned(),
         handler: func.handler().map(|h| h.to_owned()),
         kind: func.backend_kind().to_owned(),
-        name: func.name().to_owned(),
+        name: func
+            .display_name()
+            .unwrap_or_else(|| func.name())
+            .to_owned(),
         code: func.code_plaintext()?,
         is_builtin: func.is_builtin(),
         components,

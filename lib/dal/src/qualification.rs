@@ -184,7 +184,7 @@ impl QualificationView {
         func_metadata: FuncMetadataView,
     ) -> QualificationView {
         QualificationView {
-            title: func_metadata.name,
+            title: func_metadata.display_name,
             description: func_metadata.description.map(Into::into),
             link: func_metadata.link.map(Into::into),
             output: vec![],
@@ -213,7 +213,7 @@ impl QualificationView {
         };
 
         Ok(QualificationView {
-            title: func_metadata.name,
+            title: func_metadata.display_name,
             description: func_metadata.description.map(Into::into),
             link: func_metadata.link.map(Into::into),
             output,

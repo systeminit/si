@@ -48,7 +48,7 @@ pub async fn save_func(
         return Err(FuncError::NotWritable);
     }
 
-    func.set_name(&ctx, request.name).await?;
+    func.set_display_name(&ctx, Some(request.name)).await?;
     func.set_handler(&ctx, request.handler).await?;
     func.set_backend_kind(&ctx, request.kind).await?;
     func.set_code_plaintext(&ctx, request.code.as_deref())

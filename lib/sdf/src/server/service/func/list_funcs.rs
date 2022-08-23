@@ -46,7 +46,10 @@ pub async fn list_funcs(
         id: func.id().to_owned(),
         handler: func.handler().map(|handler| handler.to_owned()),
         kind: func.backend_kind().to_owned(),
-        name: func.name().to_owned(),
+        name: func
+            .display_name()
+            .unwrap_or_else(|| func.name())
+            .to_owned(),
         is_builtin: func.is_builtin(),
     })
     .collect();

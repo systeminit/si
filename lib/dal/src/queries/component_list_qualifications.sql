@@ -5,14 +5,16 @@ SELECT DISTINCT ON (qualification_resolvers.id) qualification_resolvers.id,
 
                                                 row_to_json(qualification_prototypes)     AS prototype,
                                                 row_to_json(func_binding_return_values.*) AS object,
-                                                json_build_object('name', funcs.name, 'description', funcs.description, 'link', funcs.link) AS func_metadata_view
+                                                json_build_object('display_name', funcs.display_name, 'description',
+                                                                  funcs.description,
+                                                                  'link', funcs.link)     AS func_metadata_view
 FROM qualification_resolvers
          INNER JOIN func_binding_return_value_belongs_to_func_binding ON
         func_binding_return_value_belongs_to_func_binding.belongs_to_id = qualification_resolvers.func_binding_id
          INNER JOIN func_binding_return_values ON
         func_binding_return_values.id = func_binding_return_value_belongs_to_func_binding.object_id
          INNER JOIN qualification_prototypes ON
-            qualification_prototypes.id = qualification_resolvers.qualification_prototype_id
+        qualification_prototypes.id = qualification_resolvers.qualification_prototype_id
          INNER JOIN funcs ON
             funcs.id = qualification_prototypes.func_id
         AND in_tenancy_v1($1, qualification_prototypes.tenancy_universal,

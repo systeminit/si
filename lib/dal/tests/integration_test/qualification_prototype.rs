@@ -24,13 +24,13 @@ async fn new(ctx: &DalContext<'_, '_>) {
         .await
         .expect("could not create component");
 
-    let func_name = "Inspect Docker image name".to_string();
+    let func_name = "si:qualificationDockerImageNameInspect".to_string();
     let mut funcs = Func::find_by_attr(ctx, "name", &func_name)
         .await
         .expect("Error fetching builtin function");
     let func = funcs
         .pop()
-        .expect("Missing builtin function Inspect Docker image name");
+        .expect("Missing builtin function si:qualificationDockerImageNameInspect");
 
     let mut prototype_context = QualificationPrototypeContext::new();
     prototype_context.set_component_id(*component.id());
@@ -59,11 +59,15 @@ async fn find_for_component(ctx: &DalContext<'_, '_>) {
         .await
         .expect("cannot create new component");
 
-    let func = Func::find_by_attr(ctx, "name", &"Inspect Docker image name".to_string())
-        .await
-        .expect("got func")
-        .pop()
-        .expect("cannot pop func off vec");
+    let func = Func::find_by_attr(
+        ctx,
+        "name",
+        &"si:qualificationDockerImageNameInspect".to_string(),
+    )
+    .await
+    .expect("got func")
+    .pop()
+    .expect("cannot pop func off vec");
 
     let mut proto_context = QualificationPrototypeContext::new();
     proto_context.set_component_id(*component.id());

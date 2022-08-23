@@ -11,12 +11,15 @@ CREATE TABLE funcs
     created_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     updated_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     name                        text                     NOT NULL,
+    display_name                text,
     description                 text,
     link                        text,
     backend_kind                text                     NOT NULL,
     backend_response_type       text                     NOT NULL,
     handler                     text,
-    code_base64                 text
+    code_base64                 text,
+    CONSTRAINT unique_name unique (name, tenancy_universal, tenancy_billing_account_ids, tenancy_organization_ids,
+                                   tenancy_workspace_ids, visibility_change_set_pk, visibility_deleted_at)
 );
 SELECT standard_model_table_constraints_v1('funcs');
 
@@ -155,9 +158,8 @@ BEGIN
     this_visibility_record := visibility_json_to_columns_v1(this_visibility);
     created := false;
 
-    SELECT DISTINCT ON (funcs.id) 
-    funcs.id,
-    funcs.visibility_change_set_pk,
+    SELECT DISTINCT ON (funcs.id) funcs.id,
+                                  funcs.visibility_change_set_pk,
                                   funcs.visibility_deleted_at,
                                   row_to_json(func_bindings.*)
     FROM func_bindings
@@ -188,7 +190,7 @@ BEGIN
              funcs.visibility_deleted_at DESC NULLS FIRST
     LIMIT 1
     INTO dummy1, dummy2, dummy3, object;
-    
+
     IF object IS NULL THEN
         this_change_set_visibility := jsonb_build_object(
                 'visibility_change_set_pk',
@@ -271,7 +273,9 @@ BEGIN
 
     IF object IS NULL THEN
         created := true;
-        SELECT * FROM func_binding_create_v1(this_write_tenancy, this_visibility, this_args, this_backend_kind) INTO object;
+        SELECT *
+        FROM func_binding_create_v1(this_write_tenancy, this_visibility, this_args, this_backend_kind)
+        INTO object;
     END IF;
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;
