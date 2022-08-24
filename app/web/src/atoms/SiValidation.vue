@@ -32,6 +32,7 @@ const props = defineProps<{
   validations?: ValidatorArray;
   value: string;
   dirty: boolean;
+  hideRequiredUnlessDirty?: boolean;
 }>();
 const emit = defineEmits<{ (e: "errors", errors: ErrorsArray): void }>();
 
@@ -80,7 +81,13 @@ watch(
 );
 
 const displayErrors = computed(() => {
-  if (!showRequired?.value) {
+  if (
+    props.hideRequiredUnlessDirty &&
+    props.dirty &&
+    errors.value.length === 1
+  ) {
+    return errors.value;
+  } else if (!showRequired?.value) {
     return _.filter(errors.value, (e) => {
       return e.id != "required";
     });
@@ -93,10 +100,10 @@ const errorClasses = (id: string) => {
   const classes: Record<string, boolean> = {};
   classes["text-xs"] = true;
   classes["lg:text-sm"] = true;
-  if (id === "required") {
-    classes["text-gray-500"] = true;
+  if (id === "required" && !props.hideRequiredUnlessDirty) {
+    classes["text-neutral-500"] = true;
   } else {
-    classes["text-red-400"] = true;
+    classes["text-destructive-400"] = true;
   }
   return classes;
 };
