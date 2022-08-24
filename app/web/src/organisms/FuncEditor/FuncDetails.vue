@@ -37,8 +37,7 @@
             </h1>
             <FuncRunOnSelector
               v-model="selectedComponents"
-              none-selected-label="select component(s)"
-              none-selected-blurb="None selected. Select component(s) above..."
+              thing-label="components"
               :options="components"
               :disabled="editingFunc.origFunc.isBuiltin"
             />
@@ -49,8 +48,7 @@
             </h1>
             <FuncRunOnSelector
               v-model="selectedVariants"
-              none-selected-label="select schema variant(s)"
-              none-selected-blurb="None selected. Select schema variant(s) above..."
+              thing-label="schema variants"
               :options="schemaVariants"
               :disabled="editingFunc.origFunc.isBuiltin"
             />
