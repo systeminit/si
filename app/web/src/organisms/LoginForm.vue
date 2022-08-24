@@ -1,34 +1,37 @@
 <template>
   <div class="min-h-full flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-    <div class="sm:mx-auto sm:w-full sm:max-w-md text-neutral-200">
+    <div class="sm:mx-auto sm:max-w-md text-neutral-200 flex flex-row">
       <img
-        class="mx-auto h-12 w-auto"
+        class="mr-6 h-[4.25rem] w-auto"
         :src="siLogoWts"
         alt="System Initiative"
       />
-      <h2 class="mt-6 text-center text-3xl font-extrabold">
-        Log in to an existing account
-      </h2>
-      <p class="mt-2 text-center text-md">
-        Or
-        {{ " " }}
-        <router-link
-          :to="{ name: 'signup' }"
-          class="font-medium text-action-300 hover:text-action-400"
-        >
-          create a new account to start your free trial
-        </router-link>
-      </p>
+      <div>
+        <h2 class="text-left text-3xl font-extrabold">Log In</h2>
+        <p class="mt-2 text-left text-md">
+          Don't have an account?
+          <router-link
+            :to="{ name: 'signup' }"
+            class="font-medium underline text-action-300 hover:text-action-400"
+          >
+            Create one!
+          </router-link>
+        </p>
+      </div>
     </div>
 
     <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-      <div class="bg-neutral-900 py-8 px-4 shadow sm:rounded-sm sm:px-10">
+      <div
+        class="bg-neutral-900 pt-2 pb-4 px-4 shadow sm:rounded-t-md sm:px-10"
+      >
         <div
           v-if="errorMessage"
-          data-testid="error-message"
-          class="text-white bg-destructive-500"
+          class="bg-destructive-500 text-white p-1 my-2 text-center text-sm font-medium rounded-sm"
         >
           Error: {{ errorMessage }}
+        </div>
+        <div v-else class="text-neutral-50 text-sm text-right py-0.5">
+          Required Field <span class="text-destructive-500">*</span>
         </div>
 
         <form class="space-y-6" @submit.prevent="login">
@@ -38,6 +41,7 @@
             title="Billing Account Name"
             login-mode
             required
+            placeholder="Your billing account"
             @error="setFieldInError('billingAccountName', $event)"
           />
 
@@ -47,6 +51,7 @@
             title="Email Address"
             login-mode
             required
+            placeholder="Your email"
             :validations="[
               {
                 id: 'email',
@@ -64,6 +69,7 @@
             password
             login-mode
             required
+            placeholder="Your password"
             autocomplete="current-password"
             @error="setFieldInError('userPassword', $event)"
           />
@@ -75,9 +81,22 @@
             class="w-full flex justify-center py-2 px-4 border border-transparent rounded-sm shadow-sm text-sm font-medium text-white bg-blue-500 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-400 disabled:opacity-50"
             :disabled="formInError"
           >
-            Sign in
+            Log In
           </button>
         </form>
+      </div>
+
+      <div
+        class="border-t-2 border-black text-white text-center font-medium bg-neutral-900 pt-4 pb-8 px-4 shadow sm:rounded-b-md sm:px-10"
+      >
+        <div class="mb-4">Don't have an SI account?</div>
+
+        <router-link
+          :to="{ name: 'signup' }"
+          class="w-full flex justify-center py-2 px-4 border border-action-500 rounded-sm shadow-sm text-sm font-bold text-action-500 hover:bg-action-50 hover:text-action-600 hover:border-action-600 focus:bg-action-100 focus:border-action-700 focus:text-action-700"
+        >
+          Create An Account!
+        </router-link>
       </div>
     </div>
   </div>
@@ -91,6 +110,7 @@ import SiTextBox from "@/atoms/SiTextBox.vue";
 import { useFieldErrors } from "@/composables/useFieldErrors";
 import validator from "validator";
 import { setFormSettings } from "@/composables/formSettings";
+import SiButton from "@/atoms/SiButton.vue";
 
 const form = ref({
   billingAccountName: "",
@@ -98,7 +118,11 @@ const form = ref({
   userPassword: "",
 });
 
-setFormSettings({ hideRequiredLabel: true });
+setFormSettings({
+  hideRequiredLabel: false,
+  requiredLabel: "*",
+  requiredLabelClasses: "text-destructive-500",
+});
 
 const errorMessage = ref<string | null>(null);
 
