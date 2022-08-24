@@ -1,7 +1,7 @@
 <template>
   <div class="w-full h-full flex relative overflow-hidden">
     <div class="flex flex-row w-full bg-transparent">
-      <SiSidebar side="left">
+      <SiSidebar side="left" resizeable>
         <ChangeSetPanel
           v-if="!isViewMode"
           class="border-b-2 dark:border-neutral-500 mb-2"
@@ -46,7 +46,7 @@
         />
       </div>
 
-      <SiSidebar side="right">
+      <SiSidebar side="right" resizeable>
         <ComponentDetails
           v-if="selectedComponent"
           :component-identification="selectedComponent"
