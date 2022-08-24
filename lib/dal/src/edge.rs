@@ -1,3 +1,6 @@
+//! This module contains [`Edge`], the mathematical "edge" between two [`Nodes`](crate::Node) in a
+//! graph.
+
 use crate::DalContext;
 use serde::{Deserialize, Serialize};
 use si_data::{NatsError, PgError};

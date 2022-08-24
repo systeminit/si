@@ -1,43 +1,56 @@
 use crate::dal::test;
-use dal::DalContext;
 
-use dal::schematic::ConnectionView;
+use dal::socket::{SocketArity, SocketKind};
+use dal::test::helpers::builtins::BuiltinsHarness;
 use dal::{
-    node::ApplicationId, socket::SocketEdgeKind, test::helpers::create_system, Component,
-    Connection, NodePosition, Schema, Schematic, StandardModel,
+    socket::SocketEdgeKind, Connection, DalContext, NodePosition, Schema, Schematic, SchematicKind,
+    StandardModel,
 };
+use dal::{SchemaVariant, SchematicEdgeView};
 
 #[test]
-async fn get_schematic(ctx: &DalContext<'_, '_>, application_id: ApplicationId) {
-    let service_schema = Schema::find_by_attr(ctx, "name", &"service".to_string())
-        .await
-        .expect("cannot find service schema")
-        .pop()
-        .expect("no service schema found");
+async fn get_schematic_and_create_connection(ctx: &DalContext<'_, '_>) {
+    let mut harness = BuiltinsHarness::new();
+    let tail_docker_hub_credential = harness.create_docker_hub_credential(ctx, "tail").await;
+    let head_docker_image = harness.create_docker_image(ctx, "head").await;
 
-    let service_schema_variant = service_schema
-        .default_variant(ctx)
+    let tail_schema = Schema::get_by_id(ctx, &tail_docker_hub_credential.schema_id)
         .await
-        .expect("cannot get default schema variant");
+        .expect("could not find schema by id")
+        .expect("schema by id not found");
+    let head_schema = Schema::get_by_id(ctx, &head_docker_image.schema_id)
+        .await
+        .expect("could not find schema by id")
+        .expect("schema by id not found");
 
-    let sockets = service_schema_variant
+    let tail_schema_variant =
+        SchemaVariant::get_by_id(ctx, &tail_docker_hub_credential.schema_variant_id)
+            .await
+            .expect("could not find schema variant by id")
+            .expect("schema variant by id not found");
+    let head_schema_variant = SchemaVariant::get_by_id(ctx, &head_docker_image.schema_variant_id)
+        .await
+        .expect("could not find schema variant by id")
+        .expect("schema variant by id not found");
+
+    let tail_sockets = tail_schema_variant
+        .sockets(ctx)
+        .await
+        .expect("cannot fetch sockets");
+    let head_sockets = head_schema_variant
         .sockets(ctx)
         .await
         .expect("cannot fetch sockets");
 
-    let input_socket = sockets
+    let output_socket = tail_sockets
         .iter()
-        .find(|s| s.edge_kind() == &SocketEdgeKind::Configures && s.name() == "service")
-        .expect("cannot find input socket");
-    let explicit_internal_provider = input_socket
-        .internal_provider(ctx)
-        .await
-        .expect("cannot find external provider")
-        .expect("external provider not found");
-
-    let output_socket = sockets
-        .iter()
-        .find(|s| s.edge_kind() == &SocketEdgeKind::Output && s.name() == "service")
+        .find(|s| {
+            s.edge_kind() == &SocketEdgeKind::Output
+                && s.kind() == &SocketKind::Provider
+                && s.schematic_kind() == &SchematicKind::Component
+                && s.arity() == &SocketArity::Many
+                && s.name() == "docker_hub_credential"
+        })
         .expect("cannot find output socket");
     let external_provider = output_socket
         .external_provider(ctx)
@@ -45,50 +58,40 @@ async fn get_schematic(ctx: &DalContext<'_, '_>, application_id: ApplicationId) 
         .expect("cannot find external provider")
         .expect("external provider not found");
 
-    let (_component, node) =
-        Component::new_for_schema_with_node(ctx, "sc-component-get_schematic", service_schema.id())
-            .await
-            .expect("unable to create component for schema");
+    let input_socket = head_sockets
+        .iter()
+        .find(|s| {
+            s.edge_kind() == &SocketEdgeKind::Configures
+                && s.kind() == &SocketKind::Provider
+                && s.schematic_kind() == &SchematicKind::Component
+                && s.arity() == &SocketArity::Many
+                && s.name() == "docker_hub_credential"
+        })
+        .expect("cannot find input socket");
+    let explicit_internal_provider = input_socket
+        .internal_provider(ctx)
+        .await
+        .expect("cannot find external provider")
+        .expect("external provider not found");
 
-    let system = create_system(ctx).await;
-
-    let node_position = NodePosition::upsert_by_node_id(
+    let tail_node_position = NodePosition::upsert_by_node_id(
         ctx,
-        (*service_schema.kind()).into(),
-        Some(*system.id()),
+        (*tail_schema.kind()).into(),
         None,
-        *node.id(),
+        None,
+        *tail_docker_hub_credential.node.id(),
         "123",
         "-10",
     )
     .await
     .expect("cannot upsert node position");
 
-    // Change applications
-    let (_component, application_id2) = Component::new_application_with_node(
-        ctx, // application_node_id is nulled inside of the function
-        "sc-component-root-get_schematic2",
-    )
-    .await
-    .expect("unable to create component for schema");
-
-    let ctx = ctx.clone_with_new_application_node_id(Some(*application_id2.id()));
-    let ctx = &ctx;
-
-    let (_component, node2) = Component::new_for_schema_with_node(
+    let head_node_position = NodePosition::upsert_by_node_id(
         ctx,
-        "sc-component-get_schematic2",
-        service_schema.id(),
-    )
-    .await
-    .expect("unable to create component for schema");
-
-    let node_position2 = NodePosition::upsert_by_node_id(
-        ctx,
-        (*service_schema.kind()).into(),
-        Some(*system.id()),
+        (*head_schema.kind()).into(),
         None,
-        *node2.id(),
+        None,
+        *head_docker_image.node.id(),
         "124",
         "-11",
     )
@@ -97,123 +100,60 @@ async fn get_schematic(ctx: &DalContext<'_, '_>, application_id: ApplicationId) 
 
     let connection = Connection::new(
         ctx,
-        node2.id(),
-        output_socket.id(),
-        *explicit_internal_provider.id(),
-        node.id(),
+        head_docker_image.node.id(),
         input_socket.id(),
+        *explicit_internal_provider.id(),
+        tail_docker_hub_credential.node.id(),
+        output_socket.id(),
         *external_provider.id(),
     )
     .await
     .expect("could not create connection");
 
-    let schematic = Schematic::find(ctx, Some(*system.id()))
+    let schematic = Schematic::find(ctx, None)
         .await
         .expect("cannot find schematic");
 
+    // Check the nodes.
     assert_eq!(schematic.nodes().len(), 2);
-    assert_eq!(schematic.nodes()[0].id(), application_id2.id());
-    assert_eq!(schematic.nodes()[1].id(), node2.id());
-    assert_eq!(
-        schematic.nodes()[1].positions()[0].x.to_string(),
-        node_position2.x()
-    );
-    assert_eq!(
-        schematic.nodes()[1].positions()[0].y.to_string(),
-        node_position2.y()
-    );
-    assert_eq!(schematic.connections().len(), 1);
-    assert_ne!(
-        schematic.connections()[0],
-        ConnectionView::from(connection.clone())
-    );
+    let tail_node_id = *tail_docker_hub_credential.node.id();
+    let tail_node_id: i64 = tail_node_id.into();
+    assert_eq!(schematic.nodes()[0].id(), &tail_node_id.to_string());
+    let head_node_id = *head_docker_image.node.id();
+    let head_node_id: i64 = head_node_id.into();
+    assert_eq!(schematic.nodes()[1].id(), &head_node_id.to_string(),);
 
-    // Restores original context so we can properly check if data is properly hidden
-    let ctx = ctx.clone_with_new_application_node_id(Some(application_id));
-    let ctx = &ctx;
-    let schematic = Schematic::find(ctx, Some(*system.id()))
-        .await
-        .expect("cannot find schematic");
-    assert_eq!(schematic.nodes().len(), 2);
-    assert_eq!(schematic.nodes()[0].id(), &application_id);
-    assert_eq!(schematic.nodes()[1].id(), node.id());
+    // Check the node positions.
     assert_eq!(
-        schematic.nodes()[1].positions()[0].x.to_string(),
-        node_position.x()
+        schematic.nodes()[0].position().x().to_string(),
+        tail_node_position.x()
     );
     assert_eq!(
-        schematic.nodes()[1].positions()[0].y.to_string(),
-        node_position.y()
+        schematic.nodes()[0].position().y().to_string(),
+        tail_node_position.y()
     );
-    assert_eq!(schematic.connections().len(), 1);
-    assert_ne!(schematic.connections()[0], ConnectionView::from(connection));
-}
+    assert_eq!(
+        schematic.nodes()[1].position().x().to_string(),
+        head_node_position.x()
+    );
+    assert_eq!(
+        schematic.nodes()[1].position().y().to_string(),
+        head_node_position.y()
+    );
 
-#[test]
-async fn create_connection(ctx: &DalContext<'_, '_>) {
-    let service_schema = Schema::find_by_attr(ctx, "name", &"service".to_string())
-        .await
-        .expect("cannot find service schema")
-        .pop()
-        .expect("no service schema found");
+    // Check the connection on the schematic.
+    assert_eq!(schematic.edges().len(), 1);
+    assert_eq!(
+        schematic.edges()[0],
+        SchematicEdgeView::from(connection.clone())
+    );
 
-    let service_schema_variant = service_schema
-        .default_variant(ctx)
-        .await
-        .expect("cannot get default schema variant");
-
-    let sockets = service_schema_variant
-        .sockets(ctx)
-        .await
-        .expect("cannot fetch sockets");
-
-    let input_socket = sockets
-        .iter()
-        .find(|s| s.edge_kind() == &SocketEdgeKind::Configures && s.name() == "service")
-        .expect("cannot find input socket");
-    let explicit_internal_provider = input_socket
-        .internal_provider(ctx)
-        .await
-        .expect("cannot find external provider")
-        .expect("external provider not found");
-
-    let output_socket = sockets
-        .iter()
-        .find(|s| s.edge_kind() == &SocketEdgeKind::Output && s.name() == "service")
-        .expect("cannot find output socket");
-    let external_provider = output_socket
-        .external_provider(ctx)
-        .await
-        .expect("cannot find external provider")
-        .expect("external provider not found");
-
-    let (_head_component, head_node) =
-        Component::new_for_schema_with_node(ctx, "head", service_schema.id())
-            .await
-            .expect("cannot create component and node for service");
-
-    let (_tail_component, tail_node) =
-        Component::new_for_schema_with_node(ctx, "tail", service_schema.id())
-            .await
-            .expect("cannot create component and node for service");
-
-    let connection = Connection::new(
-        ctx,
-        head_node.id(),
-        output_socket.id(),
-        *explicit_internal_provider.id(),
-        tail_node.id(),
-        input_socket.id(),
-        *external_provider.id(),
-    )
-    .await
-    .expect("could not create connection");
-
+    // Check the connection itself.
     let (source_node_id, source_socket_id) = connection.source();
     let (destination_node_id, destination_socket_id) = connection.destination();
 
-    assert_eq!(source_node_id, *head_node.id());
-    assert_eq!(source_socket_id, output_socket.id().to_owned());
-    assert_eq!(destination_node_id, *tail_node.id());
-    assert_eq!(destination_socket_id, input_socket.id().to_owned());
+    assert_eq!(source_node_id, *tail_docker_hub_credential.node.id());
+    assert_eq!(source_socket_id, *output_socket.id());
+    assert_eq!(destination_node_id, *head_docker_image.node.id());
+    assert_eq!(destination_socket_id, *input_socket.id());
 }

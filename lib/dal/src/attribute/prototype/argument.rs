@@ -77,7 +77,6 @@ pub struct AttributePrototypeArgument {
     head_component_id: ComponentId,
 }
 
-/// This object is used for [`AttributePrototypeArgument::list_by_name_for_attribute_prototype()`].
 #[derive(Serialize, Deserialize, Debug)]
 pub struct AttributePrototypeArgumentGroup {
     pub name: String,

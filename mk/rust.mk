@@ -16,10 +16,11 @@ default--build:
 	cargo build
 .PHONY: default--build
 
-## check-lint: Checks all code linting for the Rust crate
+## check-lint: Checks all code and doc linting for the Rust crate
 default--check-lint:
 	$(call header,$@)
 	cargo clippy --no-deps --all-targets --all-features -- -D warnings
+	RUSTDOCFLAGS="-Dwarnings" cargo doc --all
 .PHONY: default--check-lint
 
 ## check-format: Checks all code formatting for the Rust crate

@@ -1,4 +1,4 @@
-use dal::test::helpers::provider::ProviderBuiltinsHarness;
+use dal::test::helpers::builtins::BuiltinsHarness;
 use dal::{Connection, DalContext, ExternalProvider, InternalProvider, StandardModel};
 use pretty_assertions_sorted::assert_eq_sorted;
 
@@ -8,7 +8,7 @@ use crate::dal::test;
 #[ignore]
 #[test]
 async fn kubernetes_deployment_intelligence(ctx: &DalContext<'_, '_>) {
-    let mut harness = ProviderBuiltinsHarness::new();
+    let mut harness = BuiltinsHarness::new();
     let tail_fedora_payload = harness.create_docker_image(ctx, "fedora").await;
     let tail_alpine_payload = harness.create_docker_image(ctx, "alpine").await;
     let tail_namespace_payload = harness.create_kubernetes_namespace(ctx, "namespace").await;

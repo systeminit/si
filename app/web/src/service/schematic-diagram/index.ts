@@ -34,7 +34,7 @@ const schematicDiagramData$ = combineLatest([
 ]).pipe(
   switchMap(([system, visibility, _visibilityTriggers, _applicationNodeId]) => {
     return sdf.get<ApiResponse<GetSchematicResponse>>(
-      "schematic/get_schematic2",
+      "schematic/get_schematic",
       {
         ...(system?.id && { systemId: system.id }),
         ...visibility,

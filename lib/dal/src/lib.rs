@@ -50,7 +50,6 @@ pub mod resource_resolver;
 pub mod resource_scheduler;
 pub mod schema;
 pub mod schematic;
-pub mod schematic2;
 pub mod secret;
 pub mod socket;
 pub mod standard_accessors;
@@ -150,8 +149,9 @@ pub use resource_scheduler::{ResourceScheduler, ResourceSchedulerError};
 pub use schema::{
     Schema, SchemaError, SchemaId, SchemaKind, SchemaPk, SchemaVariant, SchemaVariantId,
 };
-pub use schematic::{Connection, Schematic, SchematicError, SchematicKind};
-pub use schematic2::Schematic2;
+pub use schematic::{
+    connection::Connection, connection::SchematicEdgeView, Schematic, SchematicError, SchematicKind,
+};
 pub use secret::{
     DecryptedSecret, EncryptedSecret, Secret, SecretAlgorithm, SecretError, SecretId, SecretKind,
     SecretObjectType, SecretPk, SecretResult, SecretVersion,

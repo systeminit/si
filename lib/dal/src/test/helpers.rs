@@ -13,7 +13,7 @@ use crate::{
     SchemaVariantId, StandardModel, System, Transactions, User, Visibility, WorkspaceId,
 };
 
-pub mod provider;
+pub mod builtins;
 
 pub fn generate_fake_name() -> String {
     Generator::with_naming(Name::Numbered).next().unwrap()
@@ -299,6 +299,7 @@ pub struct ComponentPayload {
     pub component_id: ComponentId,
     /// A map that uses [`Prop`](crate::Prop) "json pointer names" as keys and their ids as values.
     pub prop_map: HashMap<&'static str, PropId>,
+    pub node: Node,
     /// An [`AttributeReadContext`](crate::AttributeReadContext) that can be used for generating
     /// a [`ComponentView`](crate::ComponentView).
     pub base_attribute_read_context: AttributeReadContext,
