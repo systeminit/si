@@ -20,5 +20,6 @@ export interface Func {
   handler: string;
   kind: FuncBackendKind;
   name: string;
+  description?: string;
   code?: string;
 }

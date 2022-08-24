@@ -15,6 +15,7 @@ pub struct SaveFuncRequest {
     pub handler: Option<String>,
     pub kind: FuncBackendKind,
     pub name: String,
+    pub description: Option<String>,
     pub code: Option<String>,
     pub schema_variants: Vec<SchemaVariantId>,
     pub components: Vec<ComponentId>,
@@ -49,6 +50,7 @@ pub async fn save_func(
     }
 
     func.set_display_name(&ctx, Some(request.name)).await?;
+    func.set_description(&ctx, request.description).await?;
     func.set_handler(&ctx, request.handler).await?;
     func.set_backend_kind(&ctx, request.kind).await?;
     func.set_code_plaintext(&ctx, request.code.as_deref())
