@@ -1,49 +1,28 @@
 {
   "compilerOptions": {
-    "target": "esnext",
-    "module": "esnext",
-    "moduleResolution": "node",
-    "jsx": "preserve",
+    "target": "ESNext",
+    "useDefineForClassFields": true,
+    "module": "ESNext",
+    "moduleResolution": "Node",
     "strict": true,
-    "noEmit": true,
-    "skipLibCheck": true,
-    "importHelpers": true,
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "forceConsistentCasingInFileNames": true,  
-    // "explainFiles": true,
-    // "extendedDiagnostics": true,
-    // "noErrorTruncation": true,
-    // "noUnusedLocals": true,
-    // "noUnusedParameters": true,
-    "pretty": true,
+    "jsx": "preserve",
     "sourceMap": true,
-    "baseUrl": ".",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "lib": ["ESNext", "DOM", "dom.iterable"],
+    "skipLibCheck": true,
+    
+    "baseUrl": "./",
     "paths": {
-      "@/*": [
-        "src/*"
-      ] 
+      "@/*": ["src/*"] 
     },
-    "lib": [
-      "esnext",
-      "dom",
-      "dom.iterable",
-      "scripthost"
-    ],
-    "types": ["node", "unplugin-icons/types/vue"],
-    "typeRoots": [
-      "./node_modules/@types"
-    ]
+    "types": ["unplugin-icons/types/vue"],
+    
+    "pretty": true,
+    "noEmit": true,
+    "forceConsistentCasingInFileNames": true,
   },
-  "include": [
-    "src/**/*.ts",
-    "src/**/*.tsx",
-    "src/**/*.vue"
-  ],
-  "exclude": [
-    "node_modules",
-    "src/ignore/**/*.ts",
-    "src/ignore/**/*.tsx",
-    "src/ignore/**/*.vue",
-  ]
+  "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.vue"],
+  "references": [{ "path": "./tsconfig.node.json" }],
 }
