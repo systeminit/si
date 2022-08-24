@@ -1,10 +1,10 @@
 <template>
-  <Listbox v-model="selectedOption" :disabled="disabled" as="div">
+  <Listbox v-model="selectedOptions" :disabled="disabled" as="div">
     <div class="relative">
       <ListboxButton
         class="cursor-default relative w-full rounded-[0.1875rem] border border-neutral-300 bg-shade-0 py-[0.4375rem] pl-3 pr-10 text-left text-neutral-900 shadow-sm hover:border-neutral-400 focus:border-neutral-500 focus:outline-none focus:ring-1 focus:ring-action-500 focus:ring-offset-2 disabled:opacity-50 dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-50"
       >
-        <span class="block truncate text-sm">{{ selectedOption.label }}</span>
+        <span class="block truncate text-sm">{{ selectedLabel }}</span>
         <span
           class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2"
         >
@@ -40,7 +40,9 @@
             >
               <span
                 :class="[
-                  selected ? 'font-semibold' : 'font-normal',
+                  isSelected(option, selected)
+                    ? 'font-semibold'
+                    : 'font-normal',
                   'block truncate',
                 ]"
               >
@@ -48,7 +50,7 @@
               </span>
 
               <span
-                v-if="selected"
+                v-if="isSelected(option, selected)"
                 :class="[
                   active ? 'text-white' : 'text-action-500',
                   'absolute inset-y-0 right-0 flex items-center pr-4',
@@ -83,21 +85,55 @@ const emit = defineEmits(["update:modelValue", "change"]);
 
 const props = defineProps<{
   options: Option[];
-  modelValue?: Option;
+  modelValue: Option | Option[]; // to make this a multiselect, just pass in an array of Option here
+  noneSelectedLabel?: string; // this is only valid in the multiple select case
   disabled?: boolean;
 }>();
 
-const selectedOption = computed<Option>({
+const isSelected = (option: Option, selected: boolean) =>
+  selected ||
+  ("length" in props.modelValue && props.modelValue.includes(option));
+
+const toggleSelection = (selection: Option) => {
+  if (!("length" in props.modelValue)) {
+    return [];
+  }
+
+  if (props.modelValue.includes(selection)) {
+    return props.modelValue.filter((option) => option !== selection);
+  } else {
+    return props.modelValue.concat([selection]);
+  }
+};
+
+const selectedOptions = computed<Option | Option[]>({
   get() {
-    return props.modelValue ?? { label: "", value: "" };
+    return props.modelValue;
   },
   set(value) {
-    if (value.value == "") {
-      emit("update:modelValue", null);
-    } else {
-      emit("update:modelValue", value);
+    if ("value" in value && value.value == "") {
+      emit("update:modelValue", value.value == "" ? null : value);
+    } else if ("length" in props.modelValue) {
+      emit("update:modelValue", toggleSelection(value as Option));
     }
     emit("change", value);
   },
+});
+
+const selectedLabel = computed<string>(() => {
+  if ("length" in selectedOptions.value) {
+    switch (selectedOptions.value.length) {
+      case 0:
+        return props.noneSelectedLabel ?? "select an option...";
+      case 1:
+        return selectedOptions.value[0].label;
+      default:
+        return `${selectedOptions.value[0].label} (+${
+          selectedOptions.value.length - 1
+        })`;
+    }
+  }
+
+  return selectedOptions.value.label;
 });
 </script>
