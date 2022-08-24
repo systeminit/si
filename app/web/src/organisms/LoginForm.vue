@@ -110,7 +110,6 @@ import SiTextBox from "@/atoms/SiTextBox.vue";
 import { useFieldErrors } from "@/composables/useFieldErrors";
 import validator from "validator";
 import { setFormSettings } from "@/composables/formSettings";
-import SiButton from "@/atoms/SiButton.vue";
 
 const form = ref({
   billingAccountName: "",

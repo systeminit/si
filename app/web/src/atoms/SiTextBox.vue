@@ -94,7 +94,7 @@ export default {
 import { ExclamationCircleIcon } from "@heroicons/vue/solid";
 import { computed, PropType, ref } from "vue";
 import _ from "lodash";
-import { FormSettings, useFormSettings } from "@/composables/formSettings";
+import { useFormSettings } from "@/composables/formSettings";
 import SiValidation, {
   ErrorsArray,
   ValidatorArray,
