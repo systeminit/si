@@ -178,6 +178,7 @@ const LIST_CODE_GENERATED: &str = include_str!("./queries/component_list_code_ge
 const LIST_FOR_RESOURCE_SYNC: &str = include_str!("./queries/component_list_for_resource_sync.sql");
 const LIST_FOR_SCHEMA_VARIANT: &str =
     include_str!("./queries/component_list_for_schema_variant.sql");
+const FIND_FOR_NODE: &str = include_str!("./queries/component_find_for_node.sql");
 
 pk!(ComponentPk);
 pk!(ComponentId);
@@ -397,6 +398,23 @@ impl Component {
 
     pub fn tenancy(&self) -> &WriteTenancy {
         &self.tenancy
+    }
+
+    /// Find [`Self`] with a provided [`NodeId`](crate::Node).
+    #[instrument(skip_all)]
+    pub async fn find_for_node(
+        ctx: &DalContext<'_, '_>,
+        node_id: NodeId,
+    ) -> ComponentResult<Option<Self>> {
+        let row = ctx
+            .txns()
+            .pg()
+            .query_opt(
+                FIND_FOR_NODE,
+                &[ctx.read_tenancy(), ctx.visibility(), &node_id],
+            )
+            .await?;
+        Ok(standard_model::object_option_from_row_option(row)?)
     }
 
     pub async fn check_validations(

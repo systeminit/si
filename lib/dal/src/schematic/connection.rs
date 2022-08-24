@@ -1,14 +1,10 @@
 use serde::{Deserialize, Serialize};
 
-use crate::edge::{Edge, EdgeId, EdgeKind, VertexObjectKind};
-use crate::provider::internal::InternalProviderError;
+use crate::edge::{Edge, EdgeId, EdgeKind};
+
 use crate::schematic::SchematicResult;
 use crate::socket::SocketId;
-use crate::{
-    node::NodeId, AttributePrototypeArgument, ComponentId, DalContext, ExternalProvider,
-    ExternalProviderId, InternalProvider, InternalProviderId, Node, NodeError, SchematicError,
-    StandardModel,
-};
+use crate::{node::NodeId, DalContext, StandardModel};
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -30,120 +26,15 @@ impl Connection {
     #[allow(clippy::too_many_arguments)]
     pub async fn new(
         ctx: &DalContext<'_, '_>,
-        tail_node_id: &NodeId,
-        tail_socket_id: &SocketId,
-        head_node_id: &NodeId,
-        head_socket_id: &SocketId,
+        from_node_id: NodeId,
+        from_socket_id: SocketId,
+        to_node_id: NodeId,
+        to_socket_id: SocketId,
     ) -> SchematicResult<Self> {
-        let head_node = Node::get_by_id(ctx, head_node_id)
-            .await?
-            .ok_or(SchematicError::Node(NodeError::NotFound(*head_node_id)))?;
-        let tail_node = Node::get_by_id(ctx, tail_node_id)
-            .await?
-            .ok_or(SchematicError::Node(NodeError::NotFound(*tail_node_id)))?;
-
-        let head_component = head_node
-            .component(ctx)
-            .await?
-            .ok_or(SchematicError::Node(NodeError::ComponentIsNone))?;
-        let tail_component = tail_node
-            .component(ctx)
-            .await?
-            .ok_or(SchematicError::Node(NodeError::ComponentIsNone))?;
-
-        let tail_external_provider = ExternalProvider::find_for_socket(ctx, *tail_socket_id)
-            .await?
-            .ok_or(SchematicError::ExternalProviderNotFoundForSocket(
-                *tail_socket_id,
-            ))?;
-        let head_explicit_internal_provider =
-            InternalProvider::find_explicit_for_socket(ctx, *head_socket_id)
-                .await?
-                .ok_or(SchematicError::InternalProviderNotFoundForSocket(
-                    *head_socket_id,
-                ))?;
-
-        // TODO(nick): allow for non-identity inter component connections.
-        Self::connect_providers(
-            ctx,
-            "identity",
-            *tail_external_provider.id(),
-            *tail_component.id(),
-            *head_explicit_internal_provider.id(),
-            *head_component.id(),
-        )
-        .await?;
-
-        // TODO(nick): a lot of hardcoded values here along with the (temporary) insinuation that an
-        // edge is equivalent to a connection.
-        let edge = match Edge::new(
-            ctx,
-            EdgeKind::Configures,
-            *head_node_id,
-            VertexObjectKind::Component,
-            (*head_component.id()).into(),
-            *head_socket_id,
-            *tail_node_id,
-            VertexObjectKind::Component,
-            (*tail_component.id()).into(),
-            *tail_socket_id,
-        )
-        .await
-        {
-            Ok(edge) => edge,
-            Err(e) => return Err(SchematicError::Edge(e)),
-        };
-
-        // TODO: do we have to call Component::resolve_attribute for the head_component here?
-
-        Ok(Self::from_edge(&edge))
-    }
-
-    /// This function should be only called by [`Connection::new()`] and integration tests. The
-    /// latter is why this function is public.
-    pub async fn connect_providers(
-        ctx: &DalContext<'_, '_>,
-        name: impl AsRef<str>,
-        tail_external_provider_id: ExternalProviderId,
-        tail_component_id: ComponentId,
-        head_explicit_internal_provider_id: InternalProviderId,
-        head_component_id: ComponentId,
-    ) -> SchematicResult<()> {
-        let tail_external_provider: ExternalProvider =
-            ExternalProvider::get_by_id(ctx, &tail_external_provider_id)
-                .await?
-                .ok_or(SchematicError::ExternalProviderNotFound(
-                    tail_external_provider_id,
-                ))?;
-        let head_explicit_internal_provider: InternalProvider =
-            InternalProvider::get_by_id(ctx, &head_explicit_internal_provider_id)
-                .await?
-                .ok_or(SchematicError::InternalProviderNotFound(
-                    head_explicit_internal_provider_id,
-                ))?;
-
-        // Check that the explicit internal provider is actually explicit and find its attribute
-        // prototype id.
-        if head_explicit_internal_provider.is_internal_consumer() {
-            return Err(SchematicError::FoundImplicitInternalProvider(
-                *head_explicit_internal_provider.id(),
-            ));
-        }
-        let head_explicit_internal_provider_attribute_prototype = head_explicit_internal_provider
-            .attribute_prototype_id()
-            .ok_or(InternalProviderError::EmptyAttributePrototype)?;
-
-        // Now, we can create the inter component attribute prototype argument.
-        AttributePrototypeArgument::new_for_inter_component(
-            ctx,
-            *head_explicit_internal_provider_attribute_prototype,
-            name,
-            *tail_external_provider.id(),
-            tail_component_id,
-            head_component_id,
-        )
-        .await?;
-        Ok(())
+        let edge =
+            Edge::new_for_connection(ctx, to_node_id, to_socket_id, from_node_id, from_socket_id)
+                .await?;
+        Ok(Connection::from_edge(&edge))
     }
 
     pub async fn list(ctx: &DalContext<'_, '_>) -> SchematicResult<Vec<Self>> {

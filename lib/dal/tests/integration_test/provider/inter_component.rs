@@ -5,8 +5,8 @@ use dal::test_harness::{
 };
 use dal::{
     socket::SocketArity, AttributeContext, AttributePrototypeArgument, AttributeReadContext,
-    AttributeValue, Component, ComponentView, Connection, DalContext, ExternalProvider,
-    InternalProvider, PropKind, SchemaKind, SchematicKind, StandardModel,
+    AttributeValue, Component, ComponentView, DalContext, Edge, ExternalProvider, InternalProvider,
+    PropKind, SchemaKind, SchematicKind, StandardModel,
 };
 use pretty_assertions_sorted::assert_eq_sorted;
 use std::collections::HashMap;
@@ -213,13 +213,13 @@ async fn inter_component_identity_update(ctx: &DalContext<'_, '_>) {
     );
 
     // Connect the two components.
-    Connection::connect_providers(
+    Edge::connect_providers_for_components(
         ctx,
         "identity",
-        *esp_external_provider.id(),
-        esp_payload.component_id,
         *swings_explicit_internal_provider.id(),
         swings_payload.component_id,
+        *esp_external_provider.id(),
+        esp_payload.component_id,
     )
     .await
     .expect("could not connect providers");
@@ -625,13 +625,13 @@ async fn with_deep_data_structure(ctx: &DalContext<'_, '_>) {
             .properties,
     );
 
-    Connection::connect_providers(
+    Edge::connect_providers_for_components(
         ctx,
         "identity",
-        *source_external_provider.id(),
-        *source_component.id(),
         *destination_internal_provider.id(),
         *destination_component.id(),
+        *source_external_provider.id(),
+        *source_component.id(),
     )
     .await
     .expect("could not connect providers");

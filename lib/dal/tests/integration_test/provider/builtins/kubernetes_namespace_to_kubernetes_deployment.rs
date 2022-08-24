@@ -1,6 +1,5 @@
-use dal::{Connection, DalContext, ExternalProvider, InternalProvider, StandardModel};
-
 use dal::test::helpers::builtins::BuiltinsHarness;
+use dal::{DalContext, Edge, ExternalProvider, InternalProvider, StandardModel};
 use pretty_assertions_sorted::assert_eq_sorted;
 
 use crate::dal::test;
@@ -65,13 +64,13 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(
         .expect("explicit internal provider not found");
 
     // Finally, create the inter component connection.
-    Connection::connect_providers(
+    Edge::connect_providers_for_components(
         ctx,
         "identity",
-        *tail_external_provider.id(),
-        tail_namespace_payload.component_id,
         *head_explicit_internal_provider.id(),
         head_deployment_payload.component_id,
+        *tail_external_provider.id(),
+        tail_namespace_payload.component_id,
     )
     .await
     .expect("could not connect providers");

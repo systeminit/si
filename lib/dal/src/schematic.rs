@@ -9,11 +9,11 @@ use crate::provider::internal::InternalProviderError;
 use crate::schema::variant::SchemaVariantError;
 use crate::schematic::connection::{Connection, SchematicEdgeView};
 use crate::schematic::node::SchematicNodeView;
-use crate::socket::SocketId;
+
 use crate::{
-    AttributePrototypeArgumentError, ComponentError, DalContext, EdgeError, ExternalProviderId,
-    InternalProviderId, Node, NodeError, NodeKind, NodePosition, NodePositionError, PropError,
-    ReadTenancyError, StandardModel, StandardModelError, SystemError, SystemId,
+    AttributePrototypeArgumentError, ComponentError, DalContext, EdgeError, Node, NodeError,
+    NodeKind, NodePosition, NodePositionError, PropError, ReadTenancyError, StandardModel,
+    StandardModelError, SystemError, SystemId,
 };
 
 pub mod connection;
@@ -31,18 +31,8 @@ pub enum SchematicError {
     Edge(#[from] EdgeError),
     #[error("external provider error: {0}")]
     ExternalProvider(#[from] ExternalProviderError),
-    #[error("external provider not found for id: {0}")]
-    ExternalProviderNotFound(ExternalProviderId),
-    #[error("external provider not found for socket id: {0}")]
-    ExternalProviderNotFoundForSocket(SocketId),
-    #[error("implicit internal provider cannot be used for inter component connection: {0}")]
-    FoundImplicitInternalProvider(InternalProviderId),
     #[error("internal provider error: {0}")]
     InternalProvider(#[from] InternalProviderError),
-    #[error("internal provider not found for id: {0}")]
-    InternalProviderNotFound(InternalProviderId),
-    #[error("internal provider not found for socket id: {0}")]
-    InternalProviderNotFoundForSocket(SocketId),
     #[error(transparent)]
     ParseInt(#[from] ParseIntError),
     #[error("pg error: {0}")]
