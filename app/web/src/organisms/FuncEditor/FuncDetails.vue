@@ -21,13 +21,15 @@
               :disabled="editingFunc.origFunc.isBuiltin"
               @blur="updateFunc"
             />
-            <!--            <SiTextBox
+            <SiTextBox
               id="description"
+              v-model="editingFunc.modifiedFunc.description"
               placeholder="Provide a brief description of what this qualification validates here..."
               title="Description"
               :text-area="true"
               :disabled="editingFunc.origFunc.isBuiltin"
-              />-->
+              @blur="updateFunc"
+            />
           </SiCollapsible>
           <SiCollapsible label="Run On" :default-open="true">
             <h1

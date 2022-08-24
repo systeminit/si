@@ -101,7 +101,7 @@ import SiValidation, {
 } from "@/atoms/SiValidation.vue";
 
 const props = defineProps({
-  modelValue: { type: String, required: true },
+  modelValue: { type: String },
   title: String,
   id: { type: String, required: true },
   description: String,
@@ -159,7 +159,7 @@ const setInError = (errors: ErrorsArray) => {
 
 const inputValue = computed<string>({
   get() {
-    return props.modelValue;
+    return props.modelValue ?? "";
   },
   set(value) {
     emit("update:modelValue", value);
