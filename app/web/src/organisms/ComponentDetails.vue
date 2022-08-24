@@ -23,11 +23,7 @@
       </TabPanel>
 
       <TabPanel>
-        <CodeViewer
-          :code="code"
-          :component-id="props.componentIdentification.componentId"
-          class="dark:text-neutral-50 text-neutral-900"
-        >
+        <CodeViewer :code="code" class="dark:text-neutral-50 text-neutral-900">
           <template #title>
             <span class="text-lg ml-4">{{ props.componentName }} Code</span>
           </template>

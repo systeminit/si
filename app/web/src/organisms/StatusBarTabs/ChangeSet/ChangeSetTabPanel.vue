@@ -23,11 +23,10 @@
           <CodeViewer
             font-size="13px"
             height="250px"
-            :component-id="selectedComponentStatsGroup.componentId"
             class="text-neutral-50 mx-5"
             :code="codeRecord['Current']"
-            force-theme="dark"
             :code-language="getCodeLanguage('Current')"
+            force-theme="dark"
           >
             <template #title>
               <span class="text-lg">Current</span>
@@ -55,7 +54,6 @@
           <CodeViewer
             font-size="13px"
             height="250px"
-            :component-id="selectedComponentStatsGroup.componentId"
             class="text-neutral-50 mx-5"
             :code="codeRecord[title]"
             force-theme="dark"
