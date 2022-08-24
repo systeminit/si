@@ -140,7 +140,10 @@ import {
 } from "./diagram_types";
 import DiagramNode from "./DiagramNode.vue";
 import DiagramEdge from "./DiagramEdge.vue";
-import { useZoomLevelProvider } from "./utils/use-diagram-context-provider";
+import {
+  useDiagramConfigProvider,
+  useZoomLevelProvider,
+} from "./utils/use-diagram-context-provider";
 import {
   DRAG_DISTANCE_THRESHOLD,
   DRAG_EDGE_TRIGGER_SCROLL_WIDTH,
@@ -161,8 +164,10 @@ import tinycolor from "tinycolor2";
 import { useCustomFontsLoaded } from "@/composables/useFontLoaded";
 import DiagramZoomControls from "./DiagramZoomControls.vue";
 
+import { baseConfig } from "./diagram_base_config";
+
 const props = defineProps({
-  diagramConfig: {
+  customConfig: {
     type: Object as PropType<DiagramConfig>,
     default: () => ({}),
   },
@@ -1146,12 +1151,19 @@ function getElement(el: DiagramElementIdentifier) {
     return _.find(allSockets.value, (s) => s.id === el.id);
   }
 }
-useZoomLevelProvider(zoomLevel);
 
 function recenter() {
   gridOrigin.value = { x: 0, y: 0 };
   zoomLevel.value = 1;
 }
+
+const diagramConfig = computed(() => {
+  return _.merge(baseConfig, props.customConfig);
+});
+
+// set up provider so children can grab config without needing to pass down through many levels
+useDiagramConfigProvider(diagramConfig);
+useZoomLevelProvider(zoomLevel);
 
 // functions exposed to outside world ///////////////////////////////////
 defineExpose({

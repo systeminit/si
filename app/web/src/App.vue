@@ -6,15 +6,21 @@
 </template>
 
 <script lang="ts" setup>
-import { restoreFromSession } from "@/observable/session_state";
+import { refFrom } from "vuse-rx/src";
+import { computed, onBeforeMount } from "vue";
 import "floating-vue/dist/style.css";
-import { onBeforeMount } from "vue";
+
+import { restoreFromSession } from "@/observable/session_state";
+import { ThemeService } from "@/service/theme";
+import { Theme } from "@/observable/theme";
 import { useThemeProvider } from "./composables/injectTheme";
 import { useCustomFontsLoadedProvider } from "./composables/useFontLoaded";
 
 onBeforeMount(restoreFromSession);
 
-useThemeProvider();
+const theme = refFrom<Theme>(ThemeService.currentTheme());
+useThemeProvider(computed(() => theme.value?.value || "light"));
+
 useCustomFontsLoadedProvider();
 </script>
 

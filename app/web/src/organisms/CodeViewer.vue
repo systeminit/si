@@ -105,7 +105,7 @@ const forcedTheme = computed((): Extension | null => {
 });
 
 const styleExtension = computed((): Extension => {
-  let ampersand: Record<string, string> = { height: "100%" };
+  const ampersand: Record<string, string> = { height: "100%" };
 
   if (props.fontSize) {
     ampersand["fontSize"] = props.fontSize;

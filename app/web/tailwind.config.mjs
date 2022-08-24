@@ -1,7 +1,9 @@
-const theme = require("./src/design/themes/tailwind");
-const colors = require("tailwindcss/colors");
+import colors from "tailwindcss/colors";
+import formsPlugin from "@tailwindcss/forms";
+import * as themeValues from "./src/assets/style/tailwind_customization/theme_values.mjs";
+import typographyPlugin from "./src/assets/style/tailwind_customization/typography_plugin.mjs";
 
-module.exports = {
+export default {
   darkMode: "class",
   content: ["./src/**/*.html", "./src/**/*.vue"],
   theme: {
@@ -28,12 +30,12 @@ module.exports = {
       green: colors.green,
     },
     extend: {
-      spacing: theme.spacing,
-      colors: theme.colors,
-      margin: theme.margin,
-      maxHeight: theme.maxHeight,
-      zIndex: theme.zIndex,
-      width: theme.width,
+      spacing: themeValues.spacing,
+      colors: themeValues.colors,
+      margin: themeValues.margin,
+      maxHeight: themeValues.maxHeight,
+      zIndex: themeValues.zIndex,
+      width: themeValues.width,
     },
   },
   variants: {
@@ -44,8 +46,5 @@ module.exports = {
       opacity: ["disabled"],
     },
   },
-  plugins: [
-    require("@tailwindcss/forms"),
-    require("./src/design/themes/tailwind/plugin/si_typography"),
-  ],
+  plugins: [formsPlugin, typographyPlugin],
 };

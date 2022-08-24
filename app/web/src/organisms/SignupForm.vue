@@ -133,7 +133,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { CreateAccountRequest, SignupService } from "@/service/signup";
-import siLogoWts from "@/assets/images/si-logo-wts.svg";
+import siLogoWts from "@/assets/images/si-logo-wts.svg?url";
 import SiTextBox from "@/atoms/SiTextBox.vue";
 import validator from "validator";
 import _ from "lodash";

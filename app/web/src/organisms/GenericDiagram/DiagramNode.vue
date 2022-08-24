@@ -56,17 +56,31 @@
         listening: false,
       }"
     />
+
+    <!-- type icon -->
+    <DiagramIcon
+      v-if="node.typeIcon"
+      :icon="node.typeIcon"
+      :color="colors.headerText"
+      :config="{
+        x: -halfWidth + 2,
+        y: 2,
+        width: 20,
+        height: 20,
+      }"
+    />
+
     <!-- header text -->
     <v-text
       ref="titleTextRef"
       :config="{
-        x: -halfWidth,
+        x: -halfWidth + 24,
         y: 0,
         verticalAlign: 'top',
         align: 'center',
         text: node.title,
-        width: nodeWidth,
-        padding: 5,
+        width: nodeWidth - 24 - 24,
+        padding: 6,
         fill: colors.headerText,
         fontStyle: 'bold',
         fontFamily: DIAGRAM_FONT_FAMILY,
@@ -94,7 +108,7 @@
     <v-group
       :config="{
         x: -halfWidth - 1,
-        y: nodeHeaderHeight + SOCKET_MARGIN_TOP + subtitleTextHeight,
+        y: nodeHeaderHeight + subtitleTextHeight + SOCKET_MARGIN_TOP,
       }"
     >
       <DiagramNodeSocket
@@ -132,6 +146,32 @@
         @hover:end="emit('hover:end', socket.id)"
       />
     </v-group>
+
+    <!-- status icons -->
+    <v-group
+      v-if="node.statusIcons?.length"
+      :config="{
+        x: halfWidth - node.statusIcons.length * 25,
+        y:
+          nodeHeaderHeight +
+          subtitleTextHeight +
+          SOCKET_MARGIN_TOP +
+          SOCKET_GAP * (leftSockets.length + rightSockets.length),
+      }"
+    >
+      <DiagramIcon
+        v-for="(statusIcon, i) in node.statusIcons"
+        :key="`status-icon-${i}`"
+        :icon="statusIcon.icon"
+        :color="statusIcon.color || diagramConfig?.toneColors?.[statusIcon.tone!] || diagramConfig?.toneColors?.neutral || '#AAA'"
+        :config="{
+          x: i * 25,
+          y: 0,
+          width: 20,
+          height: 20,
+        }"
+      />
+    </v-group>
   </v-group>
 </template>
 
@@ -151,14 +191,17 @@ import { KonvaEventObject } from "konva/lib/Node";
 import {
   SOCKET_GAP,
   CORNER_RADIUS,
-  SOCKET_MARGIN_BOTTOM,
+  NODE_PADDING_BOTTOM,
   SOCKET_MARGIN_TOP,
   DEFAULT_NODE_COLOR,
   DIAGRAM_FONT_FAMILY,
   SELECTION_COLOR,
+  SOCKET_SIZE,
 } from "./diagram_constants";
 import { useTheme } from "@/composables/injectTheme";
 import { Vector2d } from "konva/lib/types";
+import DiagramIcon from "./DiagramIcon.vue";
+import { useDiagramConfig } from "./utils/use-diagram-context-provider";
 
 const props = defineProps({
   node: {
@@ -183,6 +226,7 @@ const props = defineProps({
 const emit = defineEmits(["resize", "hover:start", "hover:end"]);
 
 const theme = useTheme();
+const diagramConfig = useDiagramConfig();
 
 const titleTextRef = ref();
 const subtitleTextRef = ref();
@@ -195,7 +239,7 @@ const rightSockets = computed(() =>
   _.filter(props.node.sockets, (s) => s.nodeSide === "right"),
 );
 
-const nodeWidth = computed(() => 170);
+const nodeWidth = computed(() => 180);
 const halfWidth = computed(() => nodeWidth.value / 2);
 
 const headerTextHeight = ref(20);
@@ -221,8 +265,11 @@ const nodeBodyHeight = computed(() => {
   return (
     subtitleTextHeight.value +
     SOCKET_MARGIN_TOP +
-    SOCKET_MARGIN_BOTTOM +
-    SOCKET_GAP * (leftSockets.value.length + rightSockets.value.length - 1)
+    SOCKET_GAP * (leftSockets.value.length + rightSockets.value.length - 1) +
+    SOCKET_SIZE / 2 +
+    // TODO: this isnt right yet!
+    NODE_PADDING_BOTTOM +
+    (props.node.statusIcons?.length ? 30 : 0)
   );
 });
 const nodeHeight = computed(

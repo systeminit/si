@@ -6,9 +6,8 @@
     @mouseleave="toggleHover"
   >
     <span class="sr-only">Open user menu</span>
-    <img
+    <CheechSvg
       class="h-8 w-8 rounded-full bg-white border-black border-2"
-      :src="CheechSvg"
       alt="Cheech and Chong"
     />
 
@@ -18,7 +17,7 @@
 
 <script setup lang="ts">
 import { MenuButton } from "@headlessui/vue";
-import CheechSvg from "@/assets/images/cheech-and-chong.svg";
+import CheechSvg from "@/assets/images/cheech-and-chong.svg?component";
 import { ref } from "vue";
 import SiArrow from "@/atoms/SiArrow.vue";
 

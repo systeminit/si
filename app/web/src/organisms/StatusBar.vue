@@ -235,7 +235,7 @@ untilUnmounted(ComponentService.listComponentsIdentification()).subscribe(
     if (response.error) {
       GlobalErrorService.set(response);
     } else {
-      let list: ComponentListItem[] = [];
+      const list: ComponentListItem[] = [];
       for (const identification of response.list) {
         // FIXME(nick): use the real component name. We may need a new route since other components lists
         // use identifications with labels (currently showing "default"), track qualifications or changeset

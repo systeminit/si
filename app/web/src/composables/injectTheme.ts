@@ -1,17 +1,12 @@
-import { Theme, ThemeValue } from "@/observable/theme";
-import { computed, ComputedRef, InjectionKey, provide, inject } from "vue";
-import { refFrom } from "vuse-rx/src";
-
-import { ThemeService } from "@/service/theme";
+import { ThemeValue } from "@/observable/theme";
+import { computed, ComputedRef, InjectionKey, provide, inject, Ref } from "vue";
 
 const THEME_INJECTION_KEY: InjectionKey<ComputedRef<ThemeValue>> = Symbol();
 
-export function useThemeProvider() {
-  const theme = refFrom<Theme>(ThemeService.currentTheme());
-
+export function useThemeProvider(themeValue: Ref<ThemeValue>) {
   provide(
     THEME_INJECTION_KEY,
-    computed(() => theme.value?.value),
+    computed(() => themeValue.value),
   );
 }
 

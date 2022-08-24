@@ -110,7 +110,7 @@ watch(
 );
 
 const inputStyles = computed((): Record<string, boolean> => {
-  let styles: Record<string, boolean> = {};
+  const styles: Record<string, boolean> = {};
 
   if (props.editField.visibility_diff.kind != "None") {
     styles["border-yellow-600"] = true;

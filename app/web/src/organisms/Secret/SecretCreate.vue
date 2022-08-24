@@ -145,7 +145,7 @@ const allSecretKindFields = refFrom<SecretKindFields[] | undefined>(
 );
 
 const secretKindOptionList = computed((): SelectPropsOption[] => {
-  let options: SelectPropsOption[] = [{ label: "", value: "" }];
+  const options: SelectPropsOption[] = [{ label: "", value: "" }];
   if (allSecretKindFields.value) {
     for (const kindFields of allSecretKindFields.value) {
       options.push({
