@@ -1,5 +1,5 @@
 use dal::test::helpers::builtins::BuiltinsHarness;
-use dal::{Connection, DalContext, ExternalProvider, InternalProvider, StandardModel};
+use dal::{DalContext, Edge, ExternalProvider, InternalProvider, StandardModel};
 use pretty_assertions_sorted::assert_eq_sorted;
 
 use crate::dal::test;
@@ -64,13 +64,13 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(ctx: &DalC
         .expect("explicit internal provider not found");
 
     // Finally, create the inter component connection.
-    Connection::connect_providers(
+    Edge::connect_providers_for_components(
         ctx,
         "identity",
-        *tail_external_provider.id(),
-        tail_docker_image_payload.component_id,
         *head_explicit_internal_provider.id(),
         head_deployment_payload.component_id,
+        *tail_external_provider.id(),
+        tail_docker_image_payload.component_id,
     )
     .await
     .expect("could not connect providers");

@@ -12,10 +12,10 @@ use crate::server::extract::{AccessBuilder, HandlerContext};
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateConnectionRequest {
-    pub tail_node_id: NodeId,
-    pub tail_socket_id: SocketId,
-    pub head_node_id: NodeId,
-    pub head_socket_id: SocketId,
+    pub from_node_id: NodeId,
+    pub from_socket_id: SocketId,
+    pub to_node_id: NodeId,
+    pub to_socket_id: SocketId,
     pub workspace_id: WorkspaceId,
     #[serde(flatten)]
     pub visibility: Visibility,
@@ -27,6 +27,8 @@ pub struct CreateConnectionResponse {
     pub connection: Connection,
 }
 
+/// Create a [`Connection`](dal::Connection) with a _to_ [`Socket`](dal::Socket) and
+/// [`Node`](dal::Node) and a _from_ [`Socket`](dal::Socket) and [`Node`](dal::Node).
 pub async fn create_connection(
     HandlerContext(builder, mut txns): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
@@ -37,18 +39,18 @@ pub async fn create_connection(
 
     let connection = Connection::new(
         &ctx,
-        &request.tail_node_id,
-        &request.tail_socket_id,
-        &request.head_node_id,
-        &request.head_socket_id,
+        request.from_node_id,
+        request.from_socket_id,
+        request.to_node_id,
+        request.to_socket_id,
     )
     .await?;
 
     let system_id = SystemId::NONE;
 
-    let node = Node::get_by_id(&ctx, &request.tail_node_id)
+    let node = Node::get_by_id(&ctx, &request.from_node_id)
         .await?
-        .ok_or(SchematicError::NodeNotFound(request.tail_node_id))?;
+        .ok_or(SchematicError::NodeNotFound(request.from_node_id))?;
 
     let component = node
         .component(&ctx)
@@ -65,18 +67,19 @@ pub async fn create_connection(
         .await?
         .ok_or(SchematicError::SchemaNotFound)?;
 
-    let tail_external_provider = ExternalProvider::find_for_socket(&ctx, request.tail_socket_id)
-        .await?
-        .ok_or(SchematicError::ExternalProviderNotFoundForSocket(
-            request.tail_socket_id,
-        ))?;
+    let from_socket_external_provider =
+        ExternalProvider::find_for_socket(&ctx, request.from_socket_id)
+            .await?
+            .ok_or(SchematicError::ExternalProviderNotFoundForSocket(
+                request.from_socket_id,
+            ))?;
 
     let attribute_value_context = AttributeReadContext {
         component_id: Some(*component.id()),
         schema_variant_id: Some(*schema_variant.id()),
         schema_id: Some(*schema.id()),
         system_id: Some(system_id),
-        external_provider_id: Some(*tail_external_provider.id()),
+        external_provider_id: Some(*from_socket_external_provider.id()),
         ..Default::default()
     };
     let attribute_value = AttributeValue::find_for_context(&ctx, attribute_value_context)

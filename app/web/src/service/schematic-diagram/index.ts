@@ -158,10 +158,10 @@ async function createConnection(args: CreateConnectionArgs) {
   const req$ = sdf.post<ApiResponse<CreateNodeResponse>>(
     "schematic/create_connection",
     {
-      headNodeId: parseInt(args.toNodeId),
-      headSocketId: parseInt(args.toSocketId),
-      tailNodeId: parseInt(args.fromNodeId),
-      tailSocketId: parseInt(args.fromSocketId),
+      fromNodeId: parseInt(args.fromNodeId),
+      fromSocketId: parseInt(args.fromSocketId),
+      toNodeId: parseInt(args.toNodeId),
+      toSocketId: parseInt(args.toSocketId),
       workspaceId: workspace.id,
       ...visibility,
     },

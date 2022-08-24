@@ -136,9 +136,9 @@ impl AttributePrototypeArgument {
         ctx: &DalContext<'_, '_>,
         attribute_prototype_id: AttributePrototypeId,
         name: impl AsRef<str>,
-        external_provider_id: ExternalProviderId,
-        tail_component_id: ComponentId,
         head_component_id: ComponentId,
+        tail_component_id: ComponentId,
+        external_provider_id: ExternalProviderId,
     ) -> AttributePrototypeArgumentResult<Self> {
         // Ensure the value fields are what we expect.
         let internal_provider_id: ExternalProviderId = UNSET_ID_VALUE.into();
