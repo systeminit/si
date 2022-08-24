@@ -46,9 +46,25 @@ BEGIN
     check_change_set := (this_visibility_change_set_pk = check_visibility_record.visibility_change_set_pk);
 
     result := check_deleted_at AND (
-      check_head
-      OR
-      check_change_set
-    );
+            check_head
+            OR
+            check_change_set
+        );
 END ;
 $$ LANGUAGE PLPGSQL IMMUTABLE;
+
+CREATE OR REPLACE FUNCTION is_visible_v1(check_visibility jsonb,
+                                         reference record,
+                                         OUT result bool
+)
+AS
+$$
+BEGIN
+    result := is_visible_v1(
+            check_visibility,
+            reference.visibility_change_set_pk,
+            reference.visibility_deleted_at);
+END ;
+$$ LANGUAGE PLPGSQL IMMUTABLE;
+
+

@@ -58,3 +58,18 @@ BEGIN
     RAISE DEBUG 'tenancy check result: %', result;
 END ;
 $$ LANGUAGE PLPGSQL IMMUTABLE;
+
+CREATE OR REPLACE FUNCTION in_tenancy_v1(read_tenancy jsonb,
+                                         reference record,
+                                         OUT result bool
+)
+AS
+$$
+BEGIN
+    result := in_tenancy_v1(read_tenancy,
+                            reference.tenancy_universal,
+                            reference.tenancy_billing_account_ids,
+                            reference.tenancy_organization_ids,
+                            reference.tenancy_workspace_ids);
+END ;
+$$ LANGUAGE PLPGSQL IMMUTABLE;
