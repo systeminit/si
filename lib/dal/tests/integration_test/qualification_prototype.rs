@@ -194,7 +194,7 @@ async fn associate_prototypes_with_func_and_objects(ctx: &DalContext<'_, '_>) {
     .await
     .expect("could not create third component");
 
-    let func = Func::new(
+    let mut func = Func::new(
         ctx,
         generate_name(None),
         FuncBackendKind::JsQualification,
@@ -202,6 +202,17 @@ async fn associate_prototypes_with_func_and_objects(ctx: &DalContext<'_, '_>) {
     )
     .await
     .expect("could not create func");
+
+    func.set_handler(ctx, Some("qualification".to_owned()))
+        .await
+        .expect("could not set handler on func");
+
+    func.set_code_plaintext(
+        ctx,
+        Some("function qualification(){return {qualified: true}}"),
+    )
+    .await
+    .expect("could not set code on func");
 
     assert!(QualificationPrototype::find_for_func(ctx, func.id())
         .await
