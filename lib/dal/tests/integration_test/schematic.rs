@@ -52,11 +52,6 @@ async fn get_schematic_and_create_connection(ctx: &DalContext<'_, '_>) {
                 && s.name() == "docker_hub_credential"
         })
         .expect("cannot find output socket");
-    let external_provider = output_socket
-        .external_provider(ctx)
-        .await
-        .expect("cannot find external provider")
-        .expect("external provider not found");
 
     let input_socket = head_sockets
         .iter()
@@ -68,11 +63,6 @@ async fn get_schematic_and_create_connection(ctx: &DalContext<'_, '_>) {
                 && s.name() == "docker_hub_credential"
         })
         .expect("cannot find input socket");
-    let explicit_internal_provider = input_socket
-        .internal_provider(ctx)
-        .await
-        .expect("cannot find external provider")
-        .expect("external provider not found");
 
     let tail_node_position = NodePosition::upsert_by_node_id(
         ctx,
@@ -100,12 +90,10 @@ async fn get_schematic_and_create_connection(ctx: &DalContext<'_, '_>) {
 
     let connection = Connection::new(
         ctx,
-        head_docker_image.node.id(),
-        input_socket.id(),
-        *explicit_internal_provider.id(),
         tail_docker_hub_credential.node.id(),
         output_socket.id(),
-        *external_provider.id(),
+        head_docker_image.node.id(),
+        input_socket.id(),
     )
     .await
     .expect("could not create connection");

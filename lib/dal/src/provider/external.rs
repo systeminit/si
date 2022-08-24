@@ -6,7 +6,7 @@ use thiserror::Error;
 use crate::func::binding::FuncBindingId;
 use crate::func::binding_return_value::FuncBindingReturnValueId;
 use crate::schema::variant::SchemaVariantError;
-use crate::socket::{Socket, SocketArity, SocketEdgeKind, SocketError, SocketKind};
+use crate::socket::{Socket, SocketArity, SocketEdgeKind, SocketError, SocketId, SocketKind};
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_accessor_ro,
     AttributePrototype, AttributePrototypeError, ComponentId, FuncId, HistoryEventError,
@@ -23,6 +23,7 @@ const LIST_FOR_ATTRIBUTE_PROTOTYPE_WITH_TAIL_COMPONENT_ID: &str = include_str!(
 );
 const FIND_FOR_SCHEMA_VARIANT_AND_NAME: &str =
     include_str!("../queries/external_provider_find_for_schema_variant_and_name.sql");
+const FIND_FOR_SOCKET: &str = include_str!("../queries/external_provider_find_for_socket.sql");
 const LIST_FOR_SCHEMA_VARIANT: &str =
     include_str!("../queries/external_provider_list_for_schema_variant.sql");
 const LIST_FROM_INTERNAL_PROVIDER_USE: &str =
@@ -98,6 +99,7 @@ pub struct ExternalProvider {
 }
 
 impl ExternalProvider {
+    /// This function will also create an _output_ [`Socket`](crate::Socket).
     #[allow(clippy::too_many_arguments)]
     #[tracing::instrument(skip(ctx, name))]
     pub async fn new_with_socket(
@@ -203,6 +205,23 @@ impl ExternalProvider {
             )
             .await?;
         Ok(standard_model::objects_from_rows(rows)?)
+    }
+
+    /// Find [`Self`] with a provided [`SocketId`](crate::Socket).
+    #[instrument(skip_all)]
+    pub async fn find_for_socket(
+        ctx: &DalContext<'_, '_>,
+        socket_id: SocketId,
+    ) -> ExternalProviderResult<Option<Self>> {
+        let row = ctx
+            .txns()
+            .pg()
+            .query_opt(
+                FIND_FOR_SOCKET,
+                &[ctx.read_tenancy(), ctx.visibility(), &socket_id],
+            )
+            .await?;
+        Ok(standard_model::object_option_from_row_option(row)?)
     }
 
     /// Find [`Self`] with a provided name.

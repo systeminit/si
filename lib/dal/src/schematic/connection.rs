@@ -30,12 +30,10 @@ impl Connection {
     #[allow(clippy::too_many_arguments)]
     pub async fn new(
         ctx: &DalContext<'_, '_>,
-        head_node_id: &NodeId,
-        head_socket_id: &SocketId,
-        head_explicit_internal_provider_id: InternalProviderId,
         tail_node_id: &NodeId,
         tail_socket_id: &SocketId,
-        tail_external_provider_id: ExternalProviderId,
+        head_node_id: &NodeId,
+        head_socket_id: &SocketId,
     ) -> SchematicResult<Self> {
         let head_node = Node::get_by_id(ctx, head_node_id)
             .await?
@@ -53,13 +51,25 @@ impl Connection {
             .await?
             .ok_or(SchematicError::Node(NodeError::ComponentIsNone))?;
 
+        let tail_external_provider = ExternalProvider::find_for_socket(ctx, *tail_socket_id)
+            .await?
+            .ok_or(SchematicError::ExternalProviderNotFoundForSocket(
+                *tail_socket_id,
+            ))?;
+        let head_explicit_internal_provider =
+            InternalProvider::find_explicit_for_socket(ctx, *head_socket_id)
+                .await?
+                .ok_or(SchematicError::InternalProviderNotFoundForSocket(
+                    *head_socket_id,
+                ))?;
+
         // TODO(nick): allow for non-identity inter component connections.
         Self::connect_providers(
             ctx,
             "identity",
-            tail_external_provider_id,
+            *tail_external_provider.id(),
             *tail_component.id(),
-            head_explicit_internal_provider_id,
+            *head_explicit_internal_provider.id(),
             *head_component.id(),
         )
         .await?;

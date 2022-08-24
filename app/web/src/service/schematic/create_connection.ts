@@ -8,12 +8,10 @@ import Bottle from "bottlejs";
 import _ from "lodash";
 
 export interface CreateConnectionArgs {
-  headNodeId: number;
-  headSocketId: number;
-  headInternalProviderId: number;
   tailNodeId: number;
   tailSocketId: number;
-  tailExternalProviderId: number;
+  headNodeId: number;
+  headSocketId: number;
 }
 
 export interface CreateConnectionRequest
