@@ -16,6 +16,15 @@ export type DiagramElementIdentifier = {
   id: string;
 };
 
+export type DiagramStatusIcon = {
+  /* name/id of icon (registered in diagram config) */
+  icon: string;
+  /* tone of icon - gets mapped to some preset colors */
+  tone?: "success" | "error" | "warning" | "info" | "neutral";
+  /* set to override specific hex color */
+  color?: string;
+};
+
 export type DiagramNodeDef = {
   /** unique id of the node */
   id: string;
@@ -36,14 +45,7 @@ export type DiagramNodeDef = {
   /** icon (name/slug) used to help convey node type */
   typeIcon?: string | null;
   /** array of icons (slug and colors) to show statuses */
-  statusIcons?: {
-    /* name/id of icon (registered in diagram config) */
-    icon: string;
-    /* tone of icon - gets mapped to some preset colors */
-    tone?: "success" | "error" | "warning" | "info" | "neutral";
-    /* set to override specific hex color */
-    color?: string;
-  }[];
+  statusIcons?: DiagramStatusIcon[];
 };
 
 export type DiagramSocketDef = {

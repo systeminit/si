@@ -27,11 +27,7 @@
 </template>
 
 <script lang="ts" setup>
-import {
-  GetSummaryResponse,
-  QualificationSummaryForComponent,
-} from "@/service/qualification/get_summary";
-import { refFrom } from "vuse-rx";
+import { QualificationSummaryForComponent } from "@/service/qualification/get_summary";
 import { QualificationService } from "@/service/qualification";
 import { computed, ref } from "vue";
 import QualificationViewerMultiple from "@/organisms/StatusBarTabs/Qualification/QualificationViewerMultiple.vue";
@@ -43,9 +39,7 @@ import StatusBarTabPanelComponentList, {
 import { SelectionService } from "@/service/selection";
 
 // Loads data for qualifications - total, succeeded, failed
-const qualificationSummary = refFrom<GetSummaryResponse | undefined>(
-  QualificationService.getSummary(),
-);
+const qualificationSummary = QualificationService.useQualificationSummary();
 
 const selectedComponentId = SelectionService.useSelectedComponentId();
 const selectedQualificationSummaryForComponent = computed(

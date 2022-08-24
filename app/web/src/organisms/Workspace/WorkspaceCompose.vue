@@ -78,6 +78,7 @@ import {
   DrawEdgeEvent,
   DiagramElementIdentifier,
   DeleteElementsEvent,
+  DiagramStatusIcon,
 } from "../GenericDiagram/diagram_types";
 import AssetPalette, { SelectAssetEvent } from "../AssetPalette.vue";
 import SiTabGroup from "@/molecules/SiTabGroup.vue";
@@ -92,6 +93,7 @@ import { SelectionService } from "@/service/selection";
 
 import KubernetesIconRaw from "@/assets/images/3p-logos/kubernetes/kubernetes-icon.svg?raw";
 import DockerIconRaw from "@/assets/images/3p-logos/docker/docker-icon.svg?raw";
+import { QualificationService } from "@/service/qualification";
 
 const currentRoute = useRoute();
 
@@ -104,7 +106,8 @@ watch(currentRoute, () => {
 
 const diagramRef = ref<InstanceType<typeof GenericDiagram>>();
 
-const diagramData = SchematicDiagramService.useDiagramData();
+const rawDiagramData = SchematicDiagramService.useDiagramData();
+const qualificationSummary = QualificationService.useQualificationSummary();
 
 const selectedComponentId = SelectionService.useSelectedComponentId();
 
@@ -114,6 +117,52 @@ const diagramCustomConfig = computed(() => ({
     kubernetes: KubernetesIconRaw,
   },
 }));
+
+type QualificationStatus = "success" | "failure" | "running";
+const qualificationStatusToIconMap: Record<
+  QualificationStatus,
+  DiagramStatusIcon
+> = {
+  success: { icon: "check", tone: "success" },
+  failure: { icon: "alert", tone: "error" },
+  running: { icon: "loading", tone: "info" },
+};
+
+// TODO: we'll probably want to link the qualification data to the components in the service layer / store
+// so that it will be reusable elsewhere... but we'll temporarily do it here to get it working
+const diagramData = computed(() => {
+  return {
+    ...rawDiagramData.value,
+    nodes: _.map(rawDiagramData.value?.nodes, (node) => {
+      let typeIcon = "docker";
+      if (node.title.startsWith("kubernetes_")) typeIcon = "kubernetes";
+
+      const componentQualificationSummary = _.find(
+        qualificationSummary.value?.components,
+        (cq) => cq.componentId.toString() === node.id,
+      );
+      let summaryStatus: QualificationStatus | undefined;
+      if (componentQualificationSummary) {
+        if (
+          componentQualificationSummary.total >
+          componentQualificationSummary.succeeded +
+            componentQualificationSummary.failed
+        )
+          summaryStatus = "running";
+        else if (componentQualificationSummary.failed > 0)
+          summaryStatus = "failure";
+        else summaryStatus = "success";
+      }
+      return {
+        ...node,
+        typeIcon,
+        statusIcons: summaryStatus
+          ? [qualificationStatusToIconMap[summaryStatus]]
+          : [],
+      };
+    }),
+  };
+});
 
 const componentsListApiResponse = useObservable(
   ComponentService.listComponentsIdentification(),
