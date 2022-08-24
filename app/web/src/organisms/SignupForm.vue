@@ -1,33 +1,37 @@
 <template>
   <div class="min-h-full flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-    <div class="sm:mx-auto sm:w-full sm:max-w-md text-neutral-200">
+    <div class="sm:mx-auto sm:max-w-md text-neutral-200 flex flex-row">
       <img
-        class="mx-auto h-12 w-auto"
+        class="mr-6 h-[4.25rem] w-auto"
         :src="siLogoWts"
         alt="System Initiative"
       />
-      <h2 class="mt-6 text-center text-3xl font-extrabold">
-        Sign up for your free trial
-      </h2>
-      <p class="mt-2 text-center text-md">
-        Or
-        {{ " " }}
-        <router-link
-          :to="{ name: 'login' }"
-          class="font-medium text-action-300 hover:text-action-400"
-        >
-          sign in to an existing account
-        </router-link>
-      </p>
+      <div>
+        <h2 class="text-left text-3xl font-extrabold">Sign Up</h2>
+        <p class="mt-2 text-left text-md">
+          Already have an account?
+          <router-link
+            :to="{ name: 'login' }"
+            class="font-medium text-action-300 hover:text-action-400"
+          >
+            Log in!
+          </router-link>
+        </p>
+      </div>
     </div>
 
     <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-      <div class="bg-neutral-800 py-8 px-4 shadow sm:rounded-sm sm:px-10">
+      <div
+        class="bg-neutral-900 pt-2 pb-4 px-4 shadow sm:rounded-t-md sm:px-10"
+      >
         <div
           v-if="errorMessage"
-          class="bg-destructive-500 text-white p-1 mb-6 text-center text-sm font-medium"
+          class="bg-destructive-500 text-white p-1 my-2 text-center text-sm font-medium rounded-sm"
         >
           Error: {{ errorMessage }}
+        </div>
+        <div v-else class="text-neutral-50 text-sm text-right py-0.5">
+          Required Field <span class="text-destructive-500">*</span>
         </div>
 
         <form
@@ -39,7 +43,7 @@
               id="billingAccountName"
               v-model="form.billingAccountName"
               title="Billing Account Name"
-              description="A name for your account. A company name is a good idea. You can change it later. (You'll need this to sign in!)"
+              placeholder="E.g. company name - you will need this to sign in"
               required
               login-mode
               @error="setFieldInError('billingAccountName', $event)"
@@ -51,7 +55,7 @@
               id="userName"
               v-model="form.userName"
               title="Full Name"
-              description="Your full name."
+              placeholder="First and last name - you can change this later"
               required
               login-mode
               @error="setFieldInError('userName', $event)"
@@ -63,7 +67,7 @@
               id="userEmail"
               v-model="form.userEmail"
               title="Email"
-              description="Your email address."
+              placeholder="The email you will use to sign in to your account"
               required
               login-mode
               :validations="[
@@ -83,7 +87,7 @@
               v-model="form.userPassword"
               title="Password"
               password
-              description="Your password."
+              placeholder="A secure password you won't forget, 8 to 64 characters"
               required
               login-mode
               :min-password-length="8"
@@ -107,7 +111,7 @@
               login-mode
               title="Agent Passphrase"
               password
-              description="The secret agent passphrase provided to you by the Initiative."
+              placeholder="The secret agent phrase provided to you by the Initiative"
               required
               @error="setFieldInError('signupSecret', $event)"
             />
@@ -121,10 +125,23 @@
               class="w-full flex justify-center py-2 px-4 border border-transparent rounded-sm shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-400 disabled:opacity-50"
               :disabled="formInError"
             >
-              Sign up
+              Create Account
             </button>
           </div>
         </form>
+      </div>
+
+      <div
+        class="border-t-2 border-black text-white text-center font-medium bg-neutral-900 pt-4 pb-8 px-4 shadow sm:rounded-b-md sm:px-10"
+      >
+        <div class="mb-4">Already have an account?</div>
+
+        <router-link
+          :to="{ name: 'login' }"
+          class="w-full flex justify-center py-2 px-4 border border-action-500 rounded-sm shadow-sm text-sm font-bold text-action-500 hover:bg-action-50 hover:text-action-600 hover:border-action-600 focus:bg-action-100 focus:border-action-700 focus:text-action-700"
+        >
+          Log In!
+        </router-link>
       </div>
     </div>
   </div>
@@ -150,7 +167,11 @@ const form = ref<CreateAccountRequest>({
   signupSecret: "",
 });
 
-setFormSettings({ hideRequiredLabel: true });
+setFormSettings({
+  hideRequiredLabel: false,
+  requiredLabel: "*",
+  requiredLabelClasses: "text-destructive-500",
+});
 
 const errorMessage = ref<undefined | string>(undefined);
 

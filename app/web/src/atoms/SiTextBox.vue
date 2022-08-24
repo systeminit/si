@@ -7,7 +7,11 @@
       :class="titleClasses"
     >
       {{ props.title }}
-      <span v-if="required && !hideRequiredLabel">(required)</span>
+      <span
+        v-if="required && !formSettings.hideRequiredLabel"
+        :class="formSettings.requiredLabelClasses"
+        >{{ formSettings.requiredLabel }}</span
+      >
     </label>
 
     <div class="mt-1 w-full relative">
@@ -19,7 +23,7 @@
         :placeholder="placeholder"
         :value="modelValue"
         :data-test="id"
-        class="appearance-none block h-24 bg-gray-900 text-gray-100 w-full px-3 py-2 border border-gray-600 rounded-sm shadow-sm placeholder-gray-900 focus:outline-none focus:ring-indigo-200 focus:border-indigo-200 sm:text-sm"
+        class="appearance-none block h-24 bg-neutral-900 text-neutral-100 w-full px-3 py-2 border border-neutral-600 rounded-sm shadow-sm placeholder:text-neutral-900 focus:outline-none focus:ring-action-200 focus:border-action-200 sm:text-sm"
         @input="valueChanged"
       />
       <input
@@ -73,6 +77,7 @@
       :validations="validations"
       :required="required"
       :dirty="reallyDirty"
+      hide-required-unless-dirty
       class="mt-2"
       @errors="setInError($event)"
     />
@@ -117,9 +122,7 @@ const props = defineProps({
   loginMode: Boolean,
 });
 
-const hideRequiredLabel = useFormSettings();
-
-// { type: String, required: true, default: 'x' },
+const formSettings = useFormSettings();
 
 const emit = defineEmits(["update:modelValue", "error", "blur"]);
 
@@ -172,6 +175,8 @@ const textBoxClasses = computed((): Record<string, boolean> => {
     results["bg-shade-100"] = true;
     results["text-neutral-100"] = true;
     results["disabled:border-neutral-100"] = true;
+    results["placeholder:italic"] = true;
+    results["placeholder:text-xs"] = true;
   } else {
     results["bg-neutral-50"] = true;
     results["border-neutral-300"] = true;

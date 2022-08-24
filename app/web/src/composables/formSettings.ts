@@ -1,7 +1,9 @@
 import { computed, ComputedRef, InjectionKey, provide, inject } from "vue";
 
-type FormSettings = {
+export type FormSettings = {
   hideRequiredLabel: boolean;
+  requiredLabel: string;
+  requiredLabelClasses: string;
 };
 
 const FORM_SETTINGS_INJECTION_KEY: InjectionKey<ComputedRef<FormSettings>> =
@@ -17,7 +19,11 @@ export function setFormSettings(settings: FormSettings) {
 export function useFormSettings() {
   const themeValue = inject(
     FORM_SETTINGS_INJECTION_KEY,
-    computed(() => ({ hideRequiredLabel: false })),
+    computed(() => ({
+      hideRequiredLabel: false,
+      requiredLabel: "(required)",
+      requiredLabelClasses: "",
+    })),
   );
-  return themeValue;
+  return themeValue as unknown as FormSettings;
 }
