@@ -4,7 +4,7 @@
       <SelectMenu
         v-model="optionsState"
         class="w-4/5"
-        :none-selected-label="noneSelectedLabel"
+        :none-selected-label="`select ${props.thingLabel}...`"
         :options="options"
         :disabled="disabled"
       />
@@ -17,9 +17,9 @@
       />
     </div>
     <div>
-      <h2>Selected components</h2>
+      <h2>Selected {{ props.thingLabel }}</h2>
       <h3 v-if="props.modelValue.length == 0">
-        {{ noneSelectedBlurb }}
+        None selected. Select {{ props.thingLabel }} above...
       </h3>
       <ul v-else>
         <li v-for="option in modelValue" :key="option.value">
@@ -45,8 +45,7 @@ import SiButton from "@/atoms/SiButton.vue";
 const props = defineProps<{
   options: Option[];
   modelValue: Option[];
-  noneSelectedLabel: string;
-  noneSelectedBlurb: string;
+  thingLabel: string;
   disabled?: boolean;
 }>();
 
