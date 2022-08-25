@@ -7,7 +7,7 @@
 
     <router-view class="overflow-hidden" />
 
-    <StatusBar class="flex-initial" />
+    <StatusBar class="flex-none" />
     <SiToast />
   </div>
 </template>
