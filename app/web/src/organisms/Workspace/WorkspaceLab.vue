@@ -4,7 +4,7 @@
       id="func-picker"
       side="left"
       class="h-full pb-12"
-      width-classes="shrink-0 w-96"
+      size-classes="shrink-0 w-96"
       :min-resize="300"
     >
       <ChangeSetPanel class="border-b-2 dark:border-neutral-500 mb-2" />
@@ -33,9 +33,9 @@
     <SiPanel
       id="func-details"
       :hidden="false"
-      class="h-full pb-12"
       side="right"
-      width-classes="shrink-0 w-80"
+      class="h-full pb-12"
+      size-classes="shrink-0 w-80"
       :min-resize="200"
     >
       <!-- if hiding is added later, condition is selectedFuncId < 1 -->
