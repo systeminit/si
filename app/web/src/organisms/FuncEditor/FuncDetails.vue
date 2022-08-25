@@ -1,11 +1,15 @@
 <template>
-  <div v-if="props.funcId > 0" class="text-center h-full overflow-y-auto">
+  <div
+    v-if="props.funcId > 0"
+    class="absolute text-center h-full w-full flex flex-col overflow-hidden"
+  >
     <SiTabGroup :selected-index="0">
       <template #tabs>
         <SiTabHeader>Properties</SiTabHeader>
       </template>
+
       <template #panels>
-        <TabPanel>
+        <TabPanel class="h-full overflow-auto">
           <SiCollapsible label="Attributes" :default-open="true">
             <SiTextBox
               id="handler"
@@ -59,7 +63,7 @@
       </template>
     </SiTabGroup>
     <div
-      class="absolute bottom-0 w-full h-12 text-right p-2 border-t border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800"
+      class="bottom-0 w-full h-12 text-right p-2 border-t border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800"
     >
       <SiButton icon="save" kind="save" label="Save Qualifications" size="lg" />
     </div>
