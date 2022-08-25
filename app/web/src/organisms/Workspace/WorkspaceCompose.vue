@@ -1,13 +1,13 @@
 <template>
   <div class="w-full h-full flex relative overflow-hidden">
     <div class="flex flex-row w-full bg-transparent">
-      <SiSidebar side="left" resizeable>
+      <SiPanel id="changeset-and-asset" side="left" resizeable>
         <ChangeSetPanel
           v-if="!isViewMode"
           class="border-b-2 dark:border-neutral-500 mb-2"
         />
 
-        <SiTabGroup :top-margin="0">
+        <SiTabGroup>
           <template #tabs>
             <SiTabHeader v-if="!isViewMode">Asset Palette</SiTabHeader>
             <SiTabHeader>Diagram Outline</SiTabHeader>
@@ -28,7 +28,7 @@
             </TabPanel>
           </template>
         </SiTabGroup>
-      </SiSidebar>
+      </SiPanel>
 
       <div class="grow h-full relative bg-neutral-50 dark:bg-neutral-900">
         <GenericDiagram
@@ -46,7 +46,7 @@
         />
       </div>
 
-      <SiSidebar side="right" resizeable>
+      <SiPanel id="component-details" side="right" resizeable>
         <ComponentDetails
           v-if="selectedComponent"
           :component-identification="selectedComponent"
@@ -58,7 +58,7 @@
           </template>
           <template v-else>Select a single component to edit it </template>
         </div>
-      </SiSidebar>
+      </SiPanel>
     </div>
   </div>
 </template>
@@ -66,7 +66,7 @@
 <script lang="ts" setup>
 import { TabPanel } from "@headlessui/vue";
 import _ from "lodash";
-import SiSidebar from "@/atoms/SiSidebar.vue";
+import SiPanel from "@/atoms/SiPanel.vue";
 import { computed, ref, watch } from "vue";
 import ChangeSetPanel from "@/organisms/ChangeSetPanel.vue";
 import ComponentDetails from "@/organisms/ComponentDetails.vue";
