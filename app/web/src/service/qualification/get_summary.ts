@@ -6,8 +6,7 @@ import {
   startWith,
   switchMap,
 } from "rxjs";
-import { ApiResponse, SDF } from "@/api/sdf";
-import Bottle from "bottlejs";
+import { ApiResponse, sdf } from "@/api/sdf";
 import { standardVisibilityTriggers$ } from "@/observable/visibility";
 import { GlobalErrorService } from "@/service/global_error";
 import { eventCheckedQualifications$ } from "@/observable/qualification";
@@ -36,8 +35,6 @@ export function getSummary(): Observable<GetSummaryResponse | undefined> {
     eventCheckedQualifications$.pipe(startWith(null)),
   ]).pipe(
     switchMap(([[visibility]]) => {
-      const bottle = Bottle.pop("default");
-      const sdf: SDF = bottle.container.SDF;
       return sdf
         .get<ApiResponse<GetSummaryResponse>>("qualification/get_summary", {
           ...visibility,

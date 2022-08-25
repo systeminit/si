@@ -1,11 +1,10 @@
-import { getCode } from "./qualification/get_code";
-import { setCode } from "./qualification/set_code";
-import { create } from "./qualification/create";
+import { useObservable } from "@vueuse/rxjs";
 import { getSummary } from "./qualification/get_summary";
 
+function useQualificationSummary() {
+  return useObservable(getSummary());
+}
+
 export const QualificationService = {
-  getCode,
-  setCode,
-  create,
-  getSummary,
+  useQualificationSummary,
 };
