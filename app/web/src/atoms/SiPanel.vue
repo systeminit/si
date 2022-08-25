@@ -72,16 +72,16 @@ const setSize = (size: number, delta: number) => {
   let finalSize =
     size + (side.value === "right" || side.value === "bottom" ? delta : -delta);
 
-  if (minResize.value > 1 && finalSize < minResize.value) {
-    finalSize = minResize.value;
+  if (minResize.value > 1) {
+    if (finalSize < minResize.value) finalSize = minResize.value;
   } else if (minResize.value > 0) {
     const limit =
       (isVertical.value ? window.innerHeight : window.innerWidth) *
       minResize.value;
     if (finalSize < limit) finalSize = limit;
   }
-  if (maxResize.value > 1 && finalSize > maxResize.value) {
-    finalSize = maxResize.value;
+  if (maxResize.value > 1) {
+    if (finalSize > maxResize.value) finalSize = maxResize.value;
   } else if (maxResize.value > 0) {
     const limit =
       (isVertical.value ? window.innerHeight : window.innerWidth) *
