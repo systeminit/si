@@ -60,7 +60,7 @@ const currentValue = ref<boolean | undefined>(undefined);
 watch(
   value,
   (newValue, oldValue) => {
-    if (oldValue != newValue) {
+    if (oldValue !== newValue) {
       if (_.isBoolean(newValue)) {
         currentValue.value = newValue;
       } else {
@@ -85,7 +85,7 @@ const fieldId = ref(props.path.triggerPath.join("."));
 const { isShown } = usePropertyEditorIsShown(name, collapsedPaths, path);
 
 const setField = () => {
-  if (!_.isNull(currentValue.value) && currentValue.value != props.value) {
+  if (!_.isNull(currentValue.value) && currentValue.value !== props.value) {
     emit("updatedProperty", {
       value: currentValue.value,
       propId: propId.value,

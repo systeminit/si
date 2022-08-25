@@ -56,7 +56,7 @@
       @updated-property="updatedProperty($event)"
     />
     <WidgetCheckBox
-      v-else-if="props.schemaProp.widgetKind.kind == 'checkBox'"
+      v-else-if="props.schemaProp.widgetKind.kind === 'checkBox'"
       :name="props.schemaProp.name"
       :path="path"
       :collapsed-paths="props.collapsedPaths"
@@ -70,7 +70,7 @@
       @updated-property="updatedProperty($event)"
     />
     <WidgetSelectBox
-      v-else-if="props.schemaProp.widgetKind.kind == 'select'"
+      v-else-if="props.schemaProp.widgetKind.kind === 'select'"
       :name="props.schemaProp.name"
       :options="props.schemaProp.widgetKind.options"
       :path="path"
@@ -164,7 +164,7 @@ const showArrayElementHeader = computed(() => {
     });
     return true;
   }
-  //if (props.schemaProp.kind == "array") {
+  //if (props.schemaProp.kind === "array") {
   //  console.log("checking an array", {
   //    arrayIndex: JSON.stringify(arrayIndex?.value),
   //  });
@@ -172,7 +172,7 @@ const showArrayElementHeader = computed(() => {
   //  if (_.isUndefined(arrayIndex?.value)) {
   //    return false;
   //  }
-  //} else if (props.schemaProp.kind == "map") {
+  //} else if (props.schemaProp.kind === "map") {
   //  if (_.isUndefined(props.propValue.key)) {
   //    return false;
   //  }

@@ -46,6 +46,6 @@ import { refFrom } from "vuse-rx/src";
 
 const theme = refFrom<Theme>(ThemeService.currentTheme());
 const lightmode = computed(() => {
-  return theme.value?.value == "light";
+  return theme.value?.value === "light";
 });
 </script>

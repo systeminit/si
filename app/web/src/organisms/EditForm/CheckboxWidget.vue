@@ -77,7 +77,7 @@ const onFocus = () => {
 };
 
 const onBlur = () => {
-  if (currentValue.value != startValue.value) {
+  if (currentValue.value !== startValue.value) {
     EditFieldService.updateFromEditField({
       objectKind: props.editField.object_kind,
       objectId: props.editField.object_id,
@@ -97,7 +97,7 @@ const onBlur = () => {
 watch(
   () => props.editField,
   (editField, _prevEditField) => {
-    if (!updating.value && editField.value != currentValue.value) {
+    if (!updating.value && editField.value !== currentValue.value) {
       currentValue.value = editField.value;
     }
   },
@@ -128,14 +128,14 @@ const inputValue = computed((): boolean | undefined => {
 });
 
 const borderColor = computed((): Record<string, boolean> => {
-  if (props.editField.visibility_diff.kind != "None") {
+  if (props.editField.visibility_diff.kind !== "None") {
     return { "input-border-gold": true };
   } else {
     return { "input-border-grey": true };
   }
 });
 const textColor = computed((): Record<string, boolean> => {
-  if (props.editField.visibility_diff.kind != "None") {
+  if (props.editField.visibility_diff.kind !== "None") {
     return { "text-gold": true };
   } else {
     return { "text-gold": false };

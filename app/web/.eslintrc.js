@@ -38,6 +38,7 @@ module.exports = {
       ? "error"
       : "warn",
     "prefer-const": process.env.STRICT_LINT ? "error" : "warn",
+    eqeqeq: ["error", "always"],
   },
   parser: "vue-eslint-parser",
   parserOptions: {

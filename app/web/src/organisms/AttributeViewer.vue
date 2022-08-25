@@ -250,11 +250,11 @@ const resourceTooltip = computed(() => {
   }
 
   const health = componentMetadata.value.resourceHealth;
-  if (health == ResourceHealth.Ok) {
+  if (health === ResourceHealth.Ok) {
     return "Resource Health Status is: Ok";
-  } else if (health == ResourceHealth.Warning) {
+  } else if (health === ResourceHealth.Warning) {
     return "Resource Health Status is: Warning";
-  } else if (health == ResourceHealth.Error) {
+  } else if (health === ResourceHealth.Error) {
     return "Resource Health Status is: Error";
   } else {
     return "Resource Health Status is: Unknown";
@@ -270,11 +270,11 @@ const resourceColor = computed(() => {
   }
 
   const health = componentMetadata.value.resourceHealth;
-  if (health == ResourceHealth.Ok) {
+  if (health === ResourceHealth.Ok) {
     return "#86f0ad";
-  } else if (health == ResourceHealth.Warning) {
+  } else if (health === ResourceHealth.Warning) {
     return "#f0d286";
-  } else if (health == ResourceHealth.Error) {
+  } else if (health === ResourceHealth.Error) {
     return "#f08686";
   } else {
     return "#bbbbbb";
@@ -371,7 +371,7 @@ const hackAwayTheZeroElementOfContainers = (
       continue;
     }
 
-    if (parentProp.kind == "array" || parentProp.kind == "map") {
+    if (parentProp.kind === "array" || parentProp.kind === "map") {
       filteredChildValues[parentValue.id] = childValuesIds.filter(
         (childValueId) => {
           const childValue = propertyEditorContext.values.values[childValueId];

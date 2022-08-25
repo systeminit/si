@@ -57,7 +57,7 @@ export class ChangedEditFieldCounterVisitor implements EditFieldVisitor {
   }
 
   private countIfChanged(diff: VisibilityDiff) {
-    if (diff.kind != "None") {
+    if (diff.kind !== "None") {
       this.n += 1;
     }
   }
@@ -71,7 +71,7 @@ export class ChangedEditFieldCounterVisitor implements EditFieldVisitor {
   visitArray(field: ArrayEditField) {
     this.countIfChanged(field.visibility_diff);
 
-    if (field.widget.kind == "Array") {
+    if (field.widget.kind === "Array") {
       for (const entry of field.widget.options.entries) {
         visitEditField(this, entry);
       }
@@ -93,7 +93,7 @@ export class ChangedEditFieldCounterVisitor implements EditFieldVisitor {
   visitMap(field: MapEditField) {
     this.countIfChanged(field.visibility_diff);
 
-    if (field.widget.kind == "Map") {
+    if (field.widget.kind === "Map") {
       for (const entry of field.widget.options.entries) {
         visitEditField(this, entry);
       }
@@ -111,7 +111,7 @@ export class ChangedEditFieldCounterVisitor implements EditFieldVisitor {
   visitObject(field: ObjectEditField) {
     this.countIfChanged(field.visibility_diff);
 
-    if (field.widget.kind == "Header") {
+    if (field.widget.kind === "Header") {
       for (const editField of field.widget.options.edit_fields) {
         visitEditField(this, editField);
       }
@@ -161,7 +161,7 @@ export class InitialTreeOpenStateVisitor implements EditFieldVisitor {
   }
 
   visitArray(field: ArrayEditField) {
-    if (field.widget.kind == "Array") {
+    if (field.widget.kind === "Array") {
       for (const entry of field.widget.options.entries) {
         visitEditField(this, entry);
       }
@@ -181,7 +181,7 @@ export class InitialTreeOpenStateVisitor implements EditFieldVisitor {
   }
 
   visitMap(field: MapEditField) {
-    if (field.widget.kind == "Map") {
+    if (field.widget.kind === "Map") {
       for (const entry of field.widget.options.entries) {
         visitEditField(this, entry);
       }
@@ -201,7 +201,7 @@ export class InitialTreeOpenStateVisitor implements EditFieldVisitor {
     this.state[headerId] = false;
     this.currentFieldId = headerId;
 
-    if (field.widget.kind == "Header") {
+    if (field.widget.kind === "Header") {
       for (const editField of field.widget.options.edit_fields) {
         visitEditField(this, editField);
       }

@@ -77,7 +77,7 @@ const selectedFuncId$ = fromRef(selectedFuncId, { immediate: true });
 const findTabIndexForFunc = (
   funcList: { id: number }[],
   func: { id: number },
-) => funcList.findIndex((fn) => fn.id == func.id);
+) => funcList.findIndex((fn) => fn.id === func.id);
 
 const funcList = computed(() =>
   funcState.funcs.map(({ origFunc, modifiedFunc }) => ({

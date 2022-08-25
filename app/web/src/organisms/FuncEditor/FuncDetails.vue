@@ -149,7 +149,8 @@ const editingFunc = refFrom<EditingFunc>(
   funcId$.pipe(
     combineLatestWith(funcState$),
     map(
-      ([funcId, funcs]) => funcs.find((f) => f.id == funcId) ?? nullEditingFunc,
+      ([funcId, funcs]) =>
+        funcs.find((f) => f.id === funcId) ?? nullEditingFunc,
     ),
   ),
   nullEditingFunc,

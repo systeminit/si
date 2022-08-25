@@ -131,7 +131,7 @@ const findParentProp = (propId: number) => {
     schema.value.childProps,
   )) {
     for (const childProp of childPropIds) {
-      if (childProp == propId) {
+      if (childProp === propId) {
         const parentProp = schema.value.props[parseInt(parentPropId, 10)];
         if (parentProp) {
           return parentProp;
@@ -148,7 +148,7 @@ const findParentValue = (valueId: number) => {
     values.value.childValues,
   )) {
     for (const childValueId of childValueIds) {
-      if (childValueId == valueId) {
+      if (childValueId === valueId) {
         const parentValue = values.value.values[parseInt(parentValueId, 10)];
         if (parentValue) {
           return parentValue;
@@ -172,10 +172,10 @@ const pathPartForValueId = (valueId: number) => {
 
   if (currentValue && currentProp) {
     if (parentProp) {
-      if (parentProp.kind == "array") {
+      if (parentProp.kind === "array") {
         const index = findArrayIndex(currentValue.id);
         if (!_.isUndefined(index)) {
-          if (currentProp.kind == "object") {
+          if (currentProp.kind === "object") {
             displayPathPart = `[${index}](${currentProp.name})`;
             triggerPathPart = `[${index}]`;
           } else {
@@ -184,8 +184,8 @@ const pathPartForValueId = (valueId: number) => {
           }
           return { displayPathPart, triggerPathPart };
         }
-      } else if (parentProp.kind == "map") {
-        if (currentProp.kind == "object") {
+      } else if (parentProp.kind === "map") {
+        if (currentProp.kind === "object") {
           displayPathPart = `{${currentValue.key}}(${currentProp.name})`;
           triggerPathPart = `{${currentValue.key}}`;
         } else {
@@ -195,15 +195,15 @@ const pathPartForValueId = (valueId: number) => {
         return { displayPathPart, triggerPathPart };
       }
     }
-    if (currentProp.kind == "array") {
+    if (currentProp.kind === "array") {
       const childCount = values.value.childValues[valueId];
       const arrayLength = childCount ? childCount.length : 0;
       displayPathPart = `${currentProp.name}[${arrayLength}]`;
       triggerPathPart = `${currentProp.name}[]`;
-    } else if (currentProp.kind == "object") {
+    } else if (currentProp.kind === "object") {
       displayPathPart = currentProp.name;
       triggerPathPart = currentProp.name;
-    } else if (currentProp.kind == "map") {
+    } else if (currentProp.kind === "map") {
       const childCount = values.value.childValues[valueId];
       const mapLength = childCount ? childCount.length : 0;
       displayPathPart = `${currentProp.name}{${mapLength}}`;
@@ -225,7 +225,7 @@ const findParentPath = (
     values.value.childValues,
   )) {
     for (const childValueId of childValueIds) {
-      if (childValueId == valueId) {
+      if (childValueId === valueId) {
         const pathPart = pathPartForValueId(parseInt(parentValueId, 10));
         displayPath.push(pathPart.displayPathPart);
         triggerPath.push(pathPart.triggerPathPart);
@@ -301,7 +301,7 @@ const findArrayIndex = (valueId: number) => {
   )) {
     for (let x = 0; x < childValues.length; x++) {
       const cv = childValues[x];
-      if (cv == valueId) {
+      if (cv === valueId) {
         index = x;
         const parentValue = values.value.values[parseInt(parentValueId, 10)];
         if (parentValue) {
@@ -311,7 +311,7 @@ const findArrayIndex = (valueId: number) => {
       }
     }
   }
-  if (parentProp?.kind == "array") {
+  if (parentProp?.kind === "array") {
     return index;
   } else {
     return undefined;
@@ -321,7 +321,7 @@ const findArrayIndex = (valueId: number) => {
 const findArrayLength = (propId: number) => {
   const prop = schema.value.props[propId];
   if (prop) {
-    if (prop.kind == "array") {
+    if (prop.kind === "array") {
       const arrayValue = _.find(values.value.values, ["propId", propId]);
       if (arrayValue) {
         const childrenOfArray = values.value.childValues[arrayValue.id];

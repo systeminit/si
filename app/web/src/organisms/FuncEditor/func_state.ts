@@ -49,7 +49,7 @@ export const funcExists = (funcId: number) => !!funcById(funcId);
 export const changeFunc = (func: GetFuncResponse) => {
   const currentFuncIdx = funcState.funcs.findIndex((f) => f.id === func.id);
 
-  if (currentFuncIdx == -1) {
+  if (currentFuncIdx === -1) {
     return;
   }
   funcState.funcs[currentFuncIdx].modifiedFunc = { ...func };

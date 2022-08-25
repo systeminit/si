@@ -35,8 +35,8 @@ eventChangeSetApplied$
   .pipe(withLatestFrom(user$, changeSet$))
   .subscribe(([event, user, changeSet]) => {
     if (event && user && changeSet) {
-      if (event.payload.data == changeSet.pk) {
-        if (event.history_actor == "SystemInit") {
+      if (event.payload.data === changeSet.pk) {
+        if (event.history_actor === "SystemInit") {
           GlobalErrorService.set({
             error: {
               message: "Active change set was applied by System Initiative",
@@ -62,8 +62,8 @@ eventChangeSetCanceled$
   .pipe(withLatestFrom(user$, changeSet$))
   .subscribe(([event, user, changeSet]) => {
     if (event && user && changeSet) {
-      if (event.payload.data == changeSet.pk) {
-        if (event.history_actor == "SystemInit") {
+      if (event.payload.data === changeSet.pk) {
+        if (event.history_actor === "SystemInit") {
           GlobalErrorService.set({
             error: {
               message: "Active change set was canceled by System Initiative",

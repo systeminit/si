@@ -20,7 +20,7 @@ const workspace = refFrom<Workspace | null>(
 
 onMounted(async () => {
   const defaults = await firstValueFrom(SessionService.getDefaults());
-  if (route.name == "home" && !defaults.error && workspace.value) {
+  if (route.name === "home" && !defaults.error && workspace.value) {
     await router.push({
       name: "workspace-single",
       path: "/w/:workspaceId",

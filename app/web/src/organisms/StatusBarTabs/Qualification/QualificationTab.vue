@@ -69,7 +69,7 @@ const tabQualificationsIconStatus = computed(() => {
 
   const { total, succeeded, failed } = qualificationSummary.value;
 
-  if (succeeded + failed != total) return "loading";
+  if (succeeded + failed !== total) return "loading";
 
   if (failed > 0) return "failure";
 

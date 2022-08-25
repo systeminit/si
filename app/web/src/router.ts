@@ -116,9 +116,9 @@ export const routeCheck = async (
   next: NavigationGuardNext,
 ) => {
   if (
-    to.path == "/authenticate/signup" ||
-    to.path == "/authenticate/login" ||
-    to.path == "/diagram"
+    to.path === "/authenticate/signup" ||
+    to.path === "/authenticate/login" ||
+    to.path === "/diagram"
   ) {
     return next();
   }

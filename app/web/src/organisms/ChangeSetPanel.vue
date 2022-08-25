@@ -199,9 +199,9 @@ const router = useRouter();
 // When the change set selection is changed, ignoring selections that don't
 // update the currently selected
 const updateSelectedChangeSet = () => {
-  if (changeSet.value.value == CHANGE_SET_NEW.value) {
+  if (changeSet.value.value === CHANGE_SET_NEW.value) {
     showDialog.value = "create";
-  } else if (currentChangeSet.value?.pk != changeSet.value.value) {
+  } else if (currentChangeSet.value?.pk !== changeSet.value.value) {
     GlobalErrorService.setIfError(
       ChangeSetService.updateSelectedChangeSet({
         nextChangeSetPk: changeSet.value.value,
@@ -293,7 +293,7 @@ untilUnmounted(ChangeSetService.listOpenChangeSets()).subscribe((response) => {
   } else {
     // If no open change sets are returned, display the create change set
     // dialog
-    if (response.list.length == 0) {
+    if (!response.list.length) {
       showDialog.value = "create";
     }
     openChangeSets.value = [...response.list, ...DEFAULT_CHANGE_SETS];

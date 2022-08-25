@@ -76,7 +76,7 @@ const emit = defineEmits<{
 }>();
 
 const widgetEditFields = computed<EditFields>(() => {
-  if (props.editField.widget.kind == "Header") {
+  if (props.editField.widget.kind === "Header") {
     return props.editField.widget.options.edit_fields;
   } else {
     return [];

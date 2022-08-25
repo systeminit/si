@@ -26,7 +26,7 @@ const props = defineProps<{
 
 const funcId = toRef(props, "funcId", -1);
 const editingFunc = computed(
-  () => funcState.funcs.find((f) => f.id == funcId.value) ?? nullEditingFunc,
+  () => funcState.funcs.find((f) => f.id === funcId.value) ?? nullEditingFunc,
 );
 
 const currentTheme = refFrom<Theme>(ThemeService.currentTheme());

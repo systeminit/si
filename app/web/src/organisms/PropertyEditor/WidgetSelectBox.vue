@@ -84,7 +84,7 @@ const fieldId = ref(props.path.triggerPath.join("."));
 const { isShown } = usePropertyEditorIsShown(name, collapsedPaths, path);
 
 const setField = () => {
-  if (currentValue.value != (props.value ?? undefined)) {
+  if (currentValue.value !== (props.value ?? undefined)) {
     emit("updatedProperty", {
       value: currentValue.value,
       propId: propId.value,

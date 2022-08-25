@@ -143,8 +143,8 @@ const reallyDirty = computed(() => {
 const inError = ref<boolean>(false);
 const setInError = (errors: ErrorsArray) => {
   let nextInError = false;
-  if (errors.length == 1) {
-    if (_.find(errors, (e) => e.id == "required")) {
+  if (errors.length === 1) {
+    if (_.find(errors, (e) => e.id === "required")) {
       if (dirty.value) {
         nextInError = true;
       }

@@ -54,7 +54,7 @@ const setCollapsed = (path: Array<string>) => {
 const newKeyId = ref<string>(`newMap${props.valueId}`);
 const newKey = ref<string>("");
 const submitDisabled = computed(() => {
-  return newKey.value == "";
+  return !newKey.value;
 });
 
 const { name, path, collapsedPaths } = toRefs(props);
