@@ -16,9 +16,15 @@
 import { DotsVerticalIcon, DotsHorizontalIcon } from "@heroicons/vue/solid";
 import { computed, defineEmits, ref } from "vue";
 
-const props = defineProps<{
-  panelSide: "left" | "right" | "top" | "bottom";
-}>();
+const props = withDefaults(
+  defineProps<{
+    panelSide: "left" | "right" | "top" | "bottom";
+    showResizeHoverAreas?: boolean;
+  }>(),
+  {
+    showResizeHoverAreas: false,
+  },
+);
 
 const isVertical = computed(() => {
   return props.panelSide === "top" || props.panelSide === "bottom";
@@ -40,9 +46,17 @@ const classes = computed(() => {
 
 const hoverClasses = computed(() => {
   const c =
-    "absolute left-1/2 top-1/2 translate-x-[-50%] translate-y-[-50%] bg-transparent z-50";
-  if (isVertical.value) return c + " w-full h-10";
-  return c + " w-10 h-full";
+    "absolute left-1/2 top-1/2 z-50 " +
+    (props.showResizeHoverAreas
+      ? "bg-destructive-500 opacity-25"
+      : "bg-transparent");
+  if (props.panelSide === "bottom")
+    return c + " w-full h-6 translate-x-[-50%] translate-y-[-100%]";
+  else if (props.panelSide === "top")
+    return c + " w-full h-6 translate-x-[-50%]";
+  else if (props.panelSide === "left")
+    return c + " w-6 h-full translate-y-[-50%]";
+  return c + " w-6 h-full translate-y-[-50%] translate-x-[-100%]";
 });
 
 const handleClasses = computed(() => {
