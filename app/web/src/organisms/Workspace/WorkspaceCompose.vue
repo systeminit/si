@@ -1,7 +1,12 @@
 <template>
   <div class="w-full h-full flex relative overflow-hidden">
     <div class="flex flex-row w-full bg-transparent">
-      <SiPanel id="changeset-and-asset" side="left" resizeable>
+      <SiPanel
+        id="changeset-and-asset"
+        side="left"
+        resizeable
+        :min-resize="260"
+      >
         <ChangeSetPanel
           v-if="!isViewMode"
           class="border-b-2 dark:border-neutral-500 mb-2"
@@ -46,7 +51,7 @@
         />
       </div>
 
-      <SiPanel id="component-details" side="right" resizeable>
+      <SiPanel id="component-details" side="right" resizeable :min-resize="300">
         <ComponentDetails
           v-if="selectedComponent"
           :component-identification="selectedComponent"
