@@ -1,9 +1,9 @@
 <template>
   <div>
     <WidgetHeader
+      :collapsed-paths="props.collapsedPaths"
       :name="props.name"
       :path="props.path"
-      :collapsed-paths="props.collapsedPaths"
       @toggle-collapsed="setCollapsed($event)"
     />
     <div
@@ -14,11 +14,10 @@
         <SiTextBox :id="newKeyId" v-model="newKey" title="key" />
       </div>
       <div class="flex pt-4 pr-16">
-        <SiButton
-          kind="standard"
-          label="Add to map"
-          icon="plus-square"
+        <VButton
           :disabled="submitDisabled"
+          icon="plus-square"
+          label="Add to map"
           @click="addToMap()"
         />
       </div>
@@ -26,14 +25,13 @@
   </div>
 </template>
 
-<script setup lang="ts">
-import { ref, toRefs, computed } from "vue";
+<script lang="ts" setup>
+import { computed, ref, toRefs } from "vue";
 import SiTextBox from "@/atoms/SiTextBox.vue";
-import SiButton from "@/atoms/SiButton.vue";
-import _ from "lodash";
 import { usePropertyEditorIsShown } from "@/composables/usePropertyEditorIsShown";
 import { AddToMap, PropertyPath } from "@/api/sdf/dal/property_editor";
 import WidgetHeader from "./WidgetHeader.vue";
+import VButton from "@/molecules/VButton.vue";
 
 const props = defineProps<{
   name: string;

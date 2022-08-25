@@ -77,9 +77,10 @@
     <div
       class="absolute bottom-0 w-full h-12 text-right p-2 border-t border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800"
     >
-      <SiButton
+      <VButton
+        button-rank="primary"
+        button-type="success"
         icon="save"
-        kind="save"
         label="Save Qualifications"
         size="lg"
         :disabled="editingFunc.origFunc.isBuiltin"
@@ -92,21 +93,21 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTextBox from "@/atoms/SiTextBox.vue";
-import SiButton from "@/atoms/SiButton.vue";
 import { Option } from "@/molecules/SelectMenu.vue";
 import SiCollapsible from "@/organisms/SiCollapsible.vue";
 import { TabPanel } from "@headlessui/vue";
 import { ref, toRef, watch } from "vue";
 import { changeFunc, nullEditingFunc } from "./func_state";
 import { fromRef, refFrom } from "vuse-rx";
-import { map, combineLatestWith } from "rxjs/operators";
+import { combineLatestWith, map } from "rxjs/operators";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import { SchematicService } from "@/service/schematic";
 import { EditingFunc, funcState$ } from "@/observable/func";
 import { ComponentService } from "@/service/component";
+import VButton from "@/molecules/VButton.vue";
 import FuncRunOnSelector from "./FuncRunOnSelector.vue";
 
 const props = defineProps<{

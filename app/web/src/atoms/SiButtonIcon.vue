@@ -1,8 +1,8 @@
 <template>
   <button
     v-tooltip.bottom="tooltipText"
-    :class="buttonClasses"
     :aria-label="props.tooltipText"
+    :class="buttonClasses"
     :disabled="disabled"
     @click="emit('click')"
   >
@@ -10,7 +10,8 @@
   </button>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
+// TODO(victor) this component can probably be replaced by our VButton with showLabel=false
 import { computed, toRefs } from "vue";
 
 const emit = defineEmits(["click"]);

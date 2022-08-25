@@ -12,13 +12,13 @@
         @keydown="onKeyDown"
       />
     </label>
-    <button class="w-[2rem] text-action-" @click="triggerSearch">
+    <button class="w-6 text-action-" @click="triggerSearch">
       <SearchIcon class="w-full text-neutral-500" />
     </button>
   </div>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import _ from "lodash";
 import { SearchIcon } from "@heroicons/vue/solid";
 import { ref, watch } from "vue";
@@ -43,6 +43,7 @@ function triggerSearch() {
 // if autoSearch prop is true, we'll trigger the search event as the user types (debounced)
 // rather than only when they click the search icon
 watch(() => searchString.value, _.debounce(triggerAutoSearch, 50));
+
 function triggerAutoSearch() {
   if (props.autoSearch) triggerSearch();
 }
