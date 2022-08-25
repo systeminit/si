@@ -33,7 +33,13 @@ The diagram below illustrates a _very_ high-level overview of SI's calling stack
 There are other components and paradigms that aren't displayed, but this diagram is purely meant to show the overall flow from "mouse-click" onwards.
 
 ```
-┌─────┐   ┌─────┐   ┌─────┐   ┌────┐
+                   ┌───────┐
+                   │ pinga │
+                   └───┬───┘
+                       │   ┌─────────┐
+                       ├───┤ faktory │
+                       │   └─────────┘
+┌─────┐   ┌─────┐   ┌──┴──┐   ┌────┐
 │ web ├───┤ sdf ├───┤ dal ├───┤ db │
 └─────┘   └─────┘   └──┬──┘   └────┘
                        │
