@@ -1,12 +1,23 @@
 <template>
-  <Menu v-slot="{ open }" as="div" class="relative block h-full">
+  <component
+    :is="routerLinkTo ? RouterLink : 'button'"
+    v-if="!$slots.dropdownContent || routerLinkTo"
+    v-tooltip.bottom="tooltipText"
+    :to="routerLinkTo"
+    class="relative block h-full flex items-center"
+    :class="buttonClasses(false)"
+    :aria-label="props.tooltipText"
+    @click="emit('click')"
+  >
+    <slot />
+  </component>
+  <Menu v-else v-slot="{ open }" as="div" class="relative block h-full">
     <MenuButton
       v-tooltip.bottom="tooltipText"
       :aria-label="props.tooltipText"
       :class="buttonClasses(open)"
       :disabled="disabled"
       class="relative"
-      @click="emit('click')"
       @mouseenter="toggleHover"
       @mouseleave="toggleHover"
     >
@@ -33,6 +44,7 @@
 import { Menu, MenuButton } from "@headlessui/vue";
 import { provide, ref, toRefs, useSlots } from "vue";
 import SiDropdown from "@/molecules/SiDropdown.vue";
+import { RouterLink } from "vue-router";
 
 const props = withDefaults(
   defineProps<{
@@ -51,6 +63,7 @@ const props = withDefaults(
     dropdownItemShowPrefix?: boolean;
     dropdownItemShowSuffix?: boolean;
     navbar?: boolean;
+    routerLinkTo?: object;
   }>(),
   {
     paddingX: 4,

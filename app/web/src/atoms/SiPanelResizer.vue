@@ -1,10 +1,12 @@
 <template>
-  <div :class="classes" @mousedown="mouseDown" @dblclick="dblClick">
+  <div :class="classes">
     <div
       :class="hoverClasses"
       @mouseover="showHandle"
       @mouseleave="hideHandle"
-    ></div>
+      @mousedown="mouseDown"
+      @dblclick="dblClick"
+    />
     <div ref="handle" :class="handleClasses">
       <DotsHorizontalIcon v-if="isVertical" :class="iconClasses" />
       <DotsVerticalIcon v-else :class="iconClasses" />
