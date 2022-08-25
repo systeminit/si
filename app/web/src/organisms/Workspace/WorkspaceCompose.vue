@@ -5,6 +5,7 @@
         id="changeset-and-asset"
         side="left"
         resizeable
+        size-classes="w-80"
         :min-resize="260"
       >
         <ChangeSetPanel
@@ -51,7 +52,13 @@
         />
       </div>
 
-      <SiPanel id="component-details" side="right" resizeable :min-resize="300">
+      <SiPanel
+        id="component-details"
+        side="right"
+        resizeable
+        :min-resize="300"
+        size-classes="w-96"
+      >
         <ComponentDetails
           v-if="selectedComponent"
           :component-identification="selectedComponent"
