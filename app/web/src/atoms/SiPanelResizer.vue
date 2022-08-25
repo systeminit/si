@@ -1,23 +1,19 @@
 <template>
   <div :class="classes" @mousedown="mouseDown" @dblclick="dblClick">
     <div
-      class="absolute left-1/2 top-1/2 translate-x-[-50%] translate-y-[-50%] bg-transparent w-10 h-full z-50"
+      :class="hoverClasses"
       @mouseover="showHandle"
       @mouseleave="hideHandle"
     ></div>
-    <div
-      ref="handle"
-      class="absolute left-1/2 top-1/2 translate-x-[-50%] translate-y-[-50%] hidden w-3 h-16 rounded-full bg-neutral-200 dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-900 text-xl"
-    >
-      <DotsVerticalIcon
-        class="absolute left-1/2 top-1/2 translate-x-[-50%] translate-y-[-50%] w-6 text-neutral-400 dark:text-neutral-500"
-      />
+    <div ref="handle" :class="handleClasses">
+      <DotsHorizontalIcon v-if="isVertical" :class="iconClasses" />
+      <DotsVerticalIcon v-else :class="iconClasses" />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { DotsVerticalIcon } from "@heroicons/vue/solid";
+import { DotsVerticalIcon, DotsHorizontalIcon } from "@heroicons/vue/solid";
 import { computed, defineEmits, ref } from "vue";
 
 const props = defineProps<{
@@ -41,6 +37,23 @@ const classes = computed(() => {
 
   return everyDirection + (isVertical.value ? vertical : horizontal) + side;
 });
+
+const hoverClasses = computed(() => {
+  const c =
+    "absolute left-1/2 top-1/2 translate-x-[-50%] translate-y-[-50%] bg-transparent z-50";
+  if (isVertical.value) return c + " w-full h-10";
+  return c + " w-10 h-full";
+});
+
+const handleClasses = computed(() => {
+  const c =
+    "absolute left-1/2 top-1/2 translate-x-[-50%] translate-y-[-50%] hidden rounded-full bg-neutral-200 dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-900 text-xl";
+  if (isVertical.value) return c + " h-3 w-16";
+  return c + " w-3 h-16";
+});
+
+const iconClasses =
+  "absolute left-1/2 top-1/2 translate-x-[-50%] translate-y-[-50%] w-6 text-neutral-400 dark:text-neutral-500";
 
 const emit = defineEmits<{
   (e: "start-resize"): void;

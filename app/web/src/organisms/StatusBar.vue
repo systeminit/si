@@ -176,6 +176,7 @@ import {
   BellIcon,
   BadgeCheckIcon,
 } from "@heroicons/vue/solid";
+import SiPanel from "@/atoms/SiPanel.vue";
 import SiButtonIcon from "@/atoms/SiButtonIcon.vue";
 import ChangeSetTab from "@/organisms/StatusBarTabs/ChangeSet/ChangeSetTab.vue";
 import ChangeSetTabPanel from "@/organisms/StatusBarTabs/ChangeSet/ChangeSetTabPanel.vue";

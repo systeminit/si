@@ -48,7 +48,7 @@ const panelClasses = computed(() => {
   if (side.value == "left") {
     if (!props.resizeable) classes["border-r-2"] = true;
     classes[props.hidden ? "right-96" : "right-0"] = true;
-  } else {
+  } else if (side.value == "right") {
     if (!props.resizeable) classes["border-l-2"] = true;
     classes[props.hidden ? "left-96" : "left-0"] = true;
   }
@@ -90,12 +90,14 @@ const setSize = (size: number, delta: number) => {
     if (finalSize > limit) finalSize = limit;
   }
 
-  panel.value.style.width = finalSize + "px";
+  if (isVertical.value) panel.value.style.height = finalSize + "px";
+  else panel.value.style.width = finalSize + "px";
   return finalSize;
 };
 
 const startResize = () => {
-  size.value = panel.value.clientWidth;
+  if (isVertical.value) size.value = panel.value.clientHeight;
+  else size.value = panel.value.clientWidth;
 };
 
 const resizing = (delta: number) => {
@@ -106,10 +108,13 @@ const resizing = (delta: number) => {
 const resetSize = () => {
   window.localStorage.removeItem(props.id + "-size");
   panel.value.style.width = "";
+  panel.value.style.height = "";
 };
 
 const onWindowResize = () => {
-  const currentSize = panel.value.clientWidth;
+  const currentSize = isVertical.value
+    ? panel.value.clientHeight
+    : panel.value.clientWidth;
   setSize(currentSize, 0);
 };
 
