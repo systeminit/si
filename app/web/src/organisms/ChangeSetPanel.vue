@@ -10,15 +10,17 @@
       <div class="mb-3 flex items-center gap-x-[0.9375rem]">
         <SelectMenu
           v-model="changeSet"
+          :disabled="showCreateDialog"
           :options="openChangeSets"
           class="flex-grow"
-          :disabled="showCreateDialog"
           @change="updateSelectedChangeSet"
         />
-        <PrimaryActionButtonXSmall
-          label="Apply"
-          icon-style="left"
+        <VButton
+          button-rank="primary"
+          button-type="action"
           icon="git-merge"
+          label="Apply"
+          size="sm"
           @click="applyChangeSet"
         />
       </div>
@@ -30,11 +32,13 @@
           v-if="createChangeSetErrorMessage"
           class="mb-4 border bg-warning-300 py-1 px-2"
         >
-          <TertiaryNeutralButtonXSmall
-            label="Clear error message"
-            icon-style="alone"
-            icon="x"
+          <VButton
+            :show-label="false"
+            button-rank="tertiary"
+            button-type="neutral"
             class="float-right"
+            icon="x"
+            label="Close Dialog"
             @click="createChangeSetErrorMessage = ''"
           />
           <p class="type-bold-xs">Failed to create Change Set</p>
@@ -57,16 +61,16 @@
           </p>
         </div>
         <div class="pt-2">
-          <label for="changeSetName" class="type-medium-xs"
+          <label class="type-medium-xs" for="changeSetName"
             >Change Set Name:</label
           >
           <input
             id="newChangeSetName"
             v-model="createChangeSetName"
-            type="text"
-            name="changeSetName"
             class="block w-full rounded-[0.1875rem] border-neutral-300 bg-shade-0 text-neutral-900 shadow-sm type-regular-xs hover:border-neutral-400 focus:border-neutral-500 focus:outline-none focus:ring-1 focus:ring-action-500 focus:ring-offset-2 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-50"
+            name="changeSetName"
             placeholder="name"
+            type="text"
             @keyup.enter="createChangeSet"
           />
           <p class="pt-4 type-regular-sm">
@@ -77,17 +81,21 @@
       </template>
       <template #buttons>
         <div class="flex flex-row-reverse justify-between pt-2">
-          <PrimarySuccessButtonXSmall
-            label="Create"
-            icon-style="left"
-            icon="plus-square"
+          <VButton
             :disabled="createButtonDisabled"
+            button-rank="primary"
+            button-type="success"
+            icon="plus-square"
+            label="Create"
+            size="xs"
             @click="createChangeSet"
           />
-          <TertiaryDestructiveButtonXSmall
-            label="Cancel"
-            icon-style="left"
+          <VButton
+            button-rank="tertiary"
+            button-type="destructive"
             icon="trash"
+            label="Cancel"
+            size="xs"
             @click="closeCreateDialog"
           />
         </div>
@@ -113,10 +121,12 @@
       </template>
       <template #buttons>
         <div class="mt-2 flex flex-row justify-between">
-          <TertiaryDestructiveButtonXSmall
-            label="Cancel"
-            icon-style="left"
+          <VButton
+            button-rank="tertiary"
+            button-type="destructive"
             icon="trash"
+            label="Cancel"
+            size="xs"
             @click="closeSelectDialog"
           />
         </div>
@@ -125,15 +135,10 @@
   </div>
 </template>
 
-<script setup lang="ts">
-import { ref, computed } from "vue";
+<script lang="ts" setup>
+import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
 import { refFrom, untilUnmounted } from "vuse-rx";
-
-import PrimaryActionButtonXSmall from "@/molecules/PrimaryActionButtonXSmall.vue";
-import PrimarySuccessButtonXSmall from "@/molecules/PrimarySuccessButtonXSmall.vue";
-import TertiaryDestructiveButtonXSmall from "@/molecules/TertiaryDestructiveButtonXSmall.vue";
-import TertiaryNeutralButtonXSmall from "@/molecules/TertiaryNeutralButtonXSmall.vue";
 import ChangeSetPanelDialog from "./ChangeSetPanelDialog.vue";
 import SelectMenu, { Option } from "@/molecules/SelectMenu.vue";
 import { ChangeSet } from "@/api/sdf/dal/change_set";
@@ -141,6 +146,7 @@ import { Workspace } from "@/api/sdf/dal/workspace";
 import { ChangeSetService } from "@/service/change_set";
 import { GlobalErrorService } from "@/service/global_error";
 import { WorkspaceService } from "@/service/workspace";
+import VButton from "@/molecules/VButton.vue";
 
 // The "create new change set" option
 const CHANGE_SET_NEW = { label: "- new -", value: -3 };

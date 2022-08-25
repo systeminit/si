@@ -62,11 +62,11 @@
                     {{ qualification.title }}
                   </DialogTitle>
                   <VButton
+                    :show-label="false"
                     button-rank="tertiary"
                     button-type="neutral"
                     icon="x"
-                    icon-style="alone"
-                    label=""
+                    label="Close Dialog"
                     @click="closeModal"
                   />
                 </div>
@@ -108,7 +108,6 @@
                     button-rank="tertiary"
                     button-type="neutral"
                     icon="x"
-                    icon-style="left"
                     label="Close"
                     @click="closeModal"
                   />
