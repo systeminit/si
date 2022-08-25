@@ -7,7 +7,7 @@
       @resizing="resizing"
       @reset-size="resetSize"
     />
-    <div class="absolute w-full h-full">
+    <div class="absolute w-full h-full flex flex-col">
       <slot />
     </div>
   </div>
