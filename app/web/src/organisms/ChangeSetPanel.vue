@@ -11,7 +11,7 @@
         <SelectMenu
           v-model="changeSet"
           :options="openChangeSets"
-          class="flex-grow"
+          class="flex-grow min-w-0"
           :disabled="showCreateDialog"
           @change="updateSelectedChangeSet"
         />
