@@ -95,10 +95,9 @@ const list = computed((): ComponentListItem[] => {
   return list;
 });
 
-const iconStatus = (component: QualificationSummaryForComponent): Status =>
-  component.succeeded === component.total
-    ? "success"
-    : component.failed + component.succeeded === component.total
-    ? "failure"
-    : "loading";
+const iconStatus = (component: QualificationSummaryForComponent): Status => {
+  if (component.succeeded === component.total) return "success";
+  if (component.failed + component.succeeded < component.total) return "loading";
+  return "failure";
+}
 </script>

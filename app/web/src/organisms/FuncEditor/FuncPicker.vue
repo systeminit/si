@@ -71,8 +71,9 @@ import VButton from "@/molecules/VButton.vue";
 
 const searchString = ref("");
 
-const onSearch = (search: string) =>
-  (searchString.value = search.trim().toLocaleLowerCase());
+const onSearch = (search: string) => {
+  searchString.value = search.trim().toLocaleLowerCase();
+}
 
 const props = defineProps<{
   funcList: ListFuncsResponse;

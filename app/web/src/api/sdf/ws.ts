@@ -21,7 +21,9 @@ export class SdfWs {
       const ttl = timeout / intrasleep; // time to loop
       let loop = 0;
       while (this.socket.readyState === WebSocket.CONNECTING && loop < ttl) {
-        await new Promise((resolve) => setTimeout(resolve, intrasleep));
+        await new Promise((resolve) => {
+          setTimeout(resolve, intrasleep)
+        });
         loop++;
       }
       return isOpened();

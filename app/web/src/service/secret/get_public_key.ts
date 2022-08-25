@@ -22,5 +22,5 @@ export async function getPublicKeyRaw(): Promise<
   const reply$ = sdf.get<ApiResponse<GetPublicKeyResponse>>(
     "secret/get_public_key",
   );
-  return await lastValueFrom(reply$);
+  return lastValueFrom(reply$);
 }

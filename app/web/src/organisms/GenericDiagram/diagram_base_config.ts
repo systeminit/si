@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any, import/extensions */
 import CheckIcon from "~icons/material-symbols/check-circle?raw";
 import AlertIcon from "~icons/material-symbols/warning?raw";
 import ErrorIcon from "~icons/material-symbols/cancel?raw";

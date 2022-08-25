@@ -187,6 +187,7 @@ export class SDF {
     return this.send_request(request);
   }
 
+  // eslint-disable-next-line class-methods-use-this
   send_request<T>(request: Request): Observable<ApiResponse<T>> {
     return fromFetch(request).pipe(
       mergeMap((response) => {

@@ -7,7 +7,7 @@ import { computed, ComputedRef, inject, InjectionKey, provide, Ref } from "vue";
 import { DiagramConfig } from "../diagram_types";
 
 // TODO: maybe use a single key to inject a diagram context object rather than individual bits of info?
-const DIAGRAM_ZOOM_INJECTION_KEY = Symbol() as InjectionKey<
+const DIAGRAM_ZOOM_INJECTION_KEY = Symbol("DIAGRAM_ZOOM") as InjectionKey<
   ComputedRef<number>
 >;
 
@@ -22,7 +22,7 @@ export function useZoomLevel() {
   return inject(DIAGRAM_ZOOM_INJECTION_KEY);
 }
 
-const DIAGRAM_CONFIG_INJECTION_KEY = Symbol() as InjectionKey<
+const DIAGRAM_CONFIG_INJECTION_KEY = Symbol("DIAGRAM_CONFIG") as InjectionKey<
   ComputedRef<DiagramConfig>
 >;
 

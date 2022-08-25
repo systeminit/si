@@ -105,13 +105,10 @@ const colors = computed(() => {
     state.value,
   );
   const primaryColor = tinycolor(theme.value === "dark" ? "#FFF" : "#000");
+  const noFillColor = theme.value === "dark" ? "#000" : "#FFF";
   return {
     stroke: primaryColor.toRgbString(),
-    fill: isFilled
-      ? primaryColor.toRgbString()
-      : theme.value === "dark"
-      ? "#000"
-      : "#FFF",
+    fill: isFilled ? primaryColor.toRgbString() : noFillColor,
     labelText: theme.value === "dark" ? "#FFF" : "#000",
   };
 });

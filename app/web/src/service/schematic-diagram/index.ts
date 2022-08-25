@@ -83,7 +83,7 @@ function useSchemaVariants() {
   return useObservable(schemaVariants$);
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////////
+// ---------------------------------------------------
 
 interface UpdateNodePositionResponse {
   position: NodePosition;
