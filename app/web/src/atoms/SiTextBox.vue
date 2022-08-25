@@ -23,7 +23,8 @@
         :placeholder="placeholder"
         :value="modelValue"
         :data-test="id"
-        class="appearance-none block h-24 bg-neutral-900 text-neutral-100 w-full px-3 py-2 border border-neutral-600 rounded-sm shadow-sm placeholder:text-neutral-900 focus:outline-none focus:ring-action-200 focus:border-action-200 sm:text-sm"
+        class="appearance-none block w-full px-3 py-2 border rounded-sm shadow-sm focus:outline-none sm:text-sm"
+        :class="textBoxClasses"
         @input="valueChanged"
       />
       <input
@@ -181,7 +182,7 @@ const textBoxClasses = computed((): Record<string, boolean> => {
     results["bg-neutral-50"] = true;
     results["border-neutral-300"] = true;
     results["dark:border-neutral-600"] = true;
-    results["dark:bg-neutral-700"] = true;
+    results["dark:bg-neutral-900"] = true;
   }
 
   if (inError.value) {
