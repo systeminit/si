@@ -8,9 +8,21 @@
     </template>
     <template #panels>
       <TabPanel :key="0" class="h-full overflow-auto">
+        <div class="w-full p-2 border-b dark:border-neutral-600">
+          <VButton
+            button-rank="primary"
+            button-type="success"
+            class="ml-auto"
+            icon="plus"
+            icon-right="chevron-down"
+            label="Function"
+            size="sm"
+            @click="createFunc"
+          />
+        </div>
         <SiSearch
-          placeholder="search functions"
           auto-search
+          placeholder="search functions"
           @search="onSearch"
         />
         <div class="w-full text-neutral-400 dark:text-neutral-300 text-sm p-2">
@@ -18,23 +30,23 @@
         </div>
         <ul class="overflow-y-auto">
           <SiCollapsible
-            label="Qualification Functions"
             as="li"
+            class="w-full"
             content-as="ul"
             default-open
-            class="w-full"
+            label="Qualification Functions"
           >
             <li v-for="func in filteredList" :key="func.id">
               <SiFuncSprite
-                :name="func.name"
-                color="#921ed6"
                 :class="
-                  selectedFuncId == func.id
+                  selectedFuncId === func.id
                     ? 'bg-action-100 dark:bg-action-700 border border-action-500 dark:border-action-300'
                     : ''
                 "
-                class="border dark:border-neutral-600 dark:text-white hover:cursor-pointer hover:border-action-500 dark:hover:border-action-300"
                 :is-builtin="func.isBuiltin"
+                :name="func.name"
+                class="border dark:border-neutral-600 dark:text-white hover:cursor-pointer hover:border-action-500 dark:hover:border-action-300"
+                color="#921ed6"
                 @click="selectFunc(func)"
               />
             </li>
@@ -43,30 +55,19 @@
       </TabPanel>
     </template>
   </SiTabGroup>
-  <div
-    class="absolute bottom-0 w-full h-12 text-right p-2 border-t border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800"
-  >
-    <SiButton
-      icon="plus"
-      kind="save"
-      label="Create Function"
-      size="lg"
-      @click="createFunc"
-    />
-  </div>
 </template>
 
 <script lang="ts" setup>
-import { ref, computed } from "vue";
+import { computed, ref } from "vue";
 import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import SiCollapsible from "@/organisms/SiCollapsible.vue";
 import SiFuncSprite from "@/molecules/SiFuncSprite.vue";
-import SiButton from "@/atoms/SiButton.vue";
 import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
 import { ListedFuncView, ListFuncsResponse } from "@/service/func/list_funcs";
 import SiSearch from "@/molecules/SiSearch.vue";
 import { TabPanel } from "@headlessui/vue";
+import VButton from "@/molecules/VButton.vue";
 
 const searchString = ref("");
 

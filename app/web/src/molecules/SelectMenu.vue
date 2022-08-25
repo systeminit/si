@@ -2,15 +2,15 @@
   <Listbox v-model="selectedOptions" :disabled="disabled" as="div">
     <div class="relative">
       <ListboxButton
-        class="cursor-default relative w-full rounded-[0.1875rem] border border-neutral-300 bg-shade-0 py-[0.4375rem] pl-3 pr-10 text-left text-neutral-900 shadow-sm hover:border-neutral-400 focus:border-neutral-500 focus:outline-none focus:ring-1 focus:ring-action-500 focus:ring-offset-2 disabled:opacity-50 dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-50"
+        class="cursor-default relative w-full rounded-[0.1875rem] border border-neutral-300 bg-shade-0 py-1.5 pl-3 pr-10 text-left text-neutral-900 shadow-sm hover:border-neutral-400 focus:border-neutral-500 focus:outline-none focus:ring-1 focus:ring-action-500 focus:ring-offset-2 disabled:opacity-50 dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-50"
       >
         <span class="block truncate text-sm">{{ selectedLabel }}</span>
         <span
           class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2"
         >
           <SelectorIcon
-            class="h-5 w-5 rounded-[0.1875rem] bg-neutral-300 text-shade-0"
             aria-hidden="true"
+            class="h-5 w-5 rounded-[0.1875rem] bg-neutral-300 text-shade-0"
           />
         </span>
       </ListboxButton>
@@ -56,7 +56,7 @@
                   'absolute inset-y-0 right-0 flex items-center pr-4',
                 ]"
               >
-                <CheckIcon class="h-5 w-5" aria-hidden="true" />
+                <CheckIcon aria-hidden="true" class="h-5 w-5" />
               </span>
             </li>
           </ListboxOption>
@@ -66,7 +66,7 @@
   </Listbox>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import { computed } from "vue";
 import {
   Listbox,

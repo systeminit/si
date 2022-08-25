@@ -8,10 +8,10 @@
         <SiTextBox
           id="secret-name-textbox"
           v-model="secretName"
-          size="xs"
           name="secretName"
           placeholder="secret name"
           required
+          size="xs"
         />
       </div>
     </div>
@@ -23,10 +23,10 @@
         <SiSelect
           id="secret-password-textbox"
           v-model="secretKind"
-          size="xs"
-          name="secretKind"
           :options="secretKindOptionList"
+          name="secretKind"
           required
+          size="xs"
         />
       </div>
     </div>
@@ -39,21 +39,13 @@
 
     <div class="flex justify-end w-full">
       <div class="pr-2">
-        <SiButton
-          size="xs"
-          label="Cancel"
-          kind="cancel"
-          :icon="null"
-          @click="cancel"
-        />
+        <VButton label="Cancel" size="xs" @click="cancel" />
       </div>
       <div>
-        <SiButton
-          size="xs"
-          label="Create"
-          kind="save"
-          :icon="null"
+        <VButton
           :disabled="!enableCreateButton"
+          label="Create"
+          size="xs"
           @click="create"
         />
       </div>
@@ -61,7 +53,7 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import { Base64 } from "js-base64";
 import _ from "lodash";
 // NOTE(nick): we have our own "tweetnacl-sealedbox-js" with types for TS.
@@ -78,12 +70,12 @@ import {
   SecretObjectType,
   SecretVersion,
 } from "@/api/sdf/dal/secret";
-import SiButton from "@/atoms/SiButton.vue";
 import SiSelect, { SelectPropsOption } from "@/atoms/SiSelect.vue";
 import SiTextBox from "@/atoms/SiTextBox.vue";
 import SecretCreateFields from "@/organisms/Secret/SecretCreateFields.vue";
 import { GlobalErrorService } from "@/service/global_error";
 import { SecretService } from "@/service/secret";
+import VButton from "@/molecules/VButton.vue";
 
 const emit = defineEmits(["cancel", "submit"]);
 
