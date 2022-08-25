@@ -24,15 +24,15 @@ const props = withDefaults(
     side: "left" | "right" | "top" | "bottom";
     hidden?: boolean;
     classes?: string;
-    widthClasses?: string;
+    sizeClasses?: string;
     resizeable?: boolean;
     minResize?: number;
     maxResize?: number;
   }>(),
   {
     classes:
-      "z-20 flex flex-col dark:text-white border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 pointer-events-auto relative", // transition-all
-    widthClasses: "w-72 xl:w-96",
+      "z-20 dark:text-white border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 pointer-events-auto relative",
+    sizeClasses: "",
     resizeable: true,
     minResize: 0.1,
     maxResize: 0.45,
@@ -51,10 +51,13 @@ const panelClasses = computed(() => {
   } else if (side.value == "right") {
     if (!props.resizeable) classes["border-l-2"] = true;
     classes[props.hidden ? "left-96" : "left-0"] = true;
+  } else if (side.value == "top") {
+    if (!props.resizeable) classes["border-b-2"] = true;
+    classes[props.hidden ? "top-96" : "top-0"] = true;
   }
   const propClasses = props.classes
     .split(" ")
-    .concat(props.widthClasses.split(" "));
+    .concat(props.sizeClasses.split(" "));
 
   propClasses.forEach((c) => {
     classes[c] = true;

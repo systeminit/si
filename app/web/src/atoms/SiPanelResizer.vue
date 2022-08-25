@@ -31,7 +31,7 @@ const classes = computed(() => {
 
   const vertical = "h-0.5 w-full cursor-row-resize ";
 
-  const side = { left: "right-0", right: "", top: "", bottom: "" }[
+  const side = { left: "right-0", right: "", top: "bottom-0", bottom: "" }[
     props.panelSide
   ];
 
