@@ -12,7 +12,7 @@
           v-model="changeSet"
           :disabled="showCreateDialog"
           :options="openChangeSets"
-          class="flex-grow"
+          class="flex-grow min-w-0"
           @change="updateSelectedChangeSet"
         />
         <VButton
