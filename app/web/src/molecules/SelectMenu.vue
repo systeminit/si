@@ -114,9 +114,11 @@ const selectedOptions = computed<Option | Option[]>({
     if ("value" in value) {
       emit("update:modelValue", value.value == "" ? null : value);
     } else if ("length" in props.modelValue) {
-      emit("update:modelValue", toggleSelection(value as Option));
+      emit(
+        "update:modelValue",
+        "value" in value ? toggleSelection(value as Option) : value,
+      );
     }
-    
     emit("change", value);
   },
 });
