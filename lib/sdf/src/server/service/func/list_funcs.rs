@@ -38,7 +38,7 @@ pub async fn list_funcs(
     let qualification_funcs = Func::find_by_attr(
         &ctx,
         "backend_kind",
-        &FuncBackendKind::JsQualification.as_ref().to_string(),
+        &FuncBackendKind::JsQualification.as_ref(),
     )
     .await?
     .iter()

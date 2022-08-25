@@ -1,7 +1,8 @@
 use crate::{
     func::backend::js_workflow::FuncBackendJsWorkflowArgs, func::backend::FuncDispatchContext,
     func::binding::FuncBindingId, func::execution::FuncExecution, DalContext, Func,
-    FuncBackendKind, FuncBinding, FuncBindingError, StandardModel, StandardModelError,
+    FuncBackendKind, FuncBinding, FuncBindingError, FuncBindingReturnValue, StandardModel,
+    StandardModelError,
 };
 use async_recursion::async_recursion;
 use serde::{Deserialize, Serialize};
@@ -88,10 +89,10 @@ impl WorkflowView {
         }
     }
 
-    pub async fn resolve(ctx: &DalContext<'_, '_>, name: &str) -> WorkflowResult<WorkflowTree> {
+    pub async fn resolve(ctx: &DalContext<'_, '_>, func: &Func) -> WorkflowResult<WorkflowTree> {
         // TODO: add args
         let args = vec![];
-        Self::resolve_inner(ctx, name, args, HashSet::new(), &mut HashMap::new()).await
+        Self::resolve_inner(ctx, func.name(), args, HashSet::new(), &mut HashMap::new()).await
     }
 
     async fn veritech_run(
@@ -195,6 +196,7 @@ pub struct WorkflowTree {
 
 #[derive(Debug, Clone)]
 pub struct FuncToExecute {
+    index: usize,
     func_binding: FuncBinding,
     func: Func,
     execution: FuncExecution,
@@ -203,11 +205,13 @@ pub struct FuncToExecute {
 }
 
 impl WorkflowTree {
-    pub async fn run(&self, ctx: &DalContext<'_, '_>) -> WorkflowResult<()> {
+    pub async fn run(
+        &self,
+        ctx: &DalContext<'_, '_>,
+    ) -> WorkflowResult<Vec<FuncBindingReturnValue>> {
         let (map, rxs) = self.prepare(ctx).await?;
         let map = self.clone().execute(map).await?;
-        self.postprocess(ctx, map, rxs).await?;
-        Ok(())
+        self.postprocess(ctx, map, rxs).await
     }
 
     #[async_recursion]
@@ -220,9 +224,11 @@ impl WorkflowTree {
     )> {
         let mut map = HashMap::new();
         let mut rxs = HashMap::new();
+        let mut index = 0;
         for step in &self.steps {
             match step {
                 WorkflowTreeStep::Command { func_binding } => {
+                    index += 1;
                     let id = *func_binding.id();
                     let func_binding = func_binding.clone();
                     let (func, execution, context, rx) =
@@ -230,6 +236,7 @@ impl WorkflowTree {
                     map.insert(
                         id,
                         FuncToExecute {
+                            index,
                             func_binding,
                             func,
                             execution,
@@ -241,7 +248,12 @@ impl WorkflowTree {
                 }
                 WorkflowTreeStep::Workflow(workflow) => {
                     let (m, r) = workflow.prepare(ctx).await?;
-                    map.extend(m);
+                    let count = m.len();
+                    map.extend(m.into_iter().map(|(id, mut meta)| {
+                        meta.index += index;
+                        (id, meta)
+                    }));
+                    index += count;
                     rxs.extend(r);
                 }
             }
@@ -347,7 +359,8 @@ impl WorkflowTree {
         ctx: &DalContext<'_, '_>,
         map: HashMap<FuncBindingId, FuncToExecute>,
         mut rxs: HashMap<FuncBindingId, mpsc::Receiver<OutputStream>>,
-    ) -> WorkflowResult<()> {
+    ) -> WorkflowResult<Vec<FuncBindingReturnValue>> {
+        let mut values = Vec::with_capacity(map.len());
         // Do we have a problem here, if the same func_binding gets executed twice?
         for (_, mut prepared) in map {
             let id = *prepared.func_binding.id();
@@ -360,11 +373,62 @@ impl WorkflowTree {
             let rx = rxs
                 .remove(&id)
                 .ok_or(WorkflowError::CommandNotPrepared(id))?;
-            prepared
+            let func_binding_return_value = prepared
                 .func_binding
                 .postprocess_execution(ctx, rx, &prepared.func, prepared.value, prepared.execution)
                 .await?;
+            values.push((prepared.index, func_binding_return_value));
         }
-        Ok(())
+        values.sort_by_key(|(index, _)| *index);
+        Ok(values.into_iter().map(|(_, v)| v).collect())
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(untagged, rename_all = "camelCase")]
+pub enum WorkflowTreeStepView {
+    Workflow(WorkflowTreeView),
+    Command {
+        command: String,
+        args: serde_json::Value,
+    },
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkflowTreeView {
+    name: String,
+    kind: WorkflowKind,
+    steps: Vec<WorkflowTreeStepView>,
+}
+
+impl WorkflowTreeView {
+    // We need to stop recursing so much
+    #[async_recursion]
+    pub async fn new(ctx: &DalContext<'_, '_>, tree: WorkflowTree) -> WorkflowResult<Self> {
+        let mut view = WorkflowTreeView {
+            name: tree.name,
+            kind: tree.kind,
+            steps: Vec::with_capacity(tree.steps.len()),
+        };
+        for step in tree.steps {
+            match step {
+                WorkflowTreeStep::Command { func_binding } => {
+                    view.steps.push(WorkflowTreeStepView::Command {
+                        command: func_binding
+                            .func(ctx)
+                            .await?
+                            .ok_or_else(|| FuncBindingError::FuncNotFound(*func_binding.pk()))?
+                            .name()
+                            .to_owned(),
+                        args: func_binding.args().clone(),
+                    })
+                }
+                WorkflowTreeStep::Workflow(tree) => view
+                    .steps
+                    .push(WorkflowTreeStepView::Workflow(Self::new(ctx, tree).await?)),
+            }
+        }
+        Ok(view)
     }
 }

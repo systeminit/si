@@ -22,10 +22,12 @@ pub async fn migrate(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     si_qualification_yaml_kubeval(ctx).await?;
     si_qualification_docker_hub_login(ctx).await?;
 
+    si_what_is_love_workflow(ctx).await?;
     si_poem_workflow(ctx).await?;
     si_exceptional_workflow(ctx).await?;
     si_finalizing_workflow(ctx).await?;
 
+    si_baby_dont_hurt_me_command(ctx).await?;
     si_title_command(ctx).await?;
     si_title2_command(ctx).await?;
     si_first_stanza_command(ctx).await?;
@@ -414,6 +416,34 @@ async fn si_qualification_docker_hub_login(ctx: &DalContext<'_, '_>) -> Builtins
     Ok(())
 }
 
+async fn si_what_is_love_workflow(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
+    let func_name = "si:whatIsLove".to_string();
+    let existing_func = Func::find_by_attr(ctx, "name", &func_name).await?;
+    if existing_func.is_empty() {
+        let mut new_func = Func::new(
+            ctx,
+            &func_name,
+            FuncBackendKind::JsWorkflow,
+            FuncBackendResponseType::Workflow,
+        )
+        .await
+        .expect("cannot create func");
+
+        let workflow_code = base64::encode(include_str!("./func/whatIsLoveWorkflow.js"));
+
+        new_func
+            .set_handler(ctx, Some("whatIsLove".to_string()))
+            .await
+            .expect("cannot set handler");
+        new_func
+            .set_code_base64(ctx, Some(workflow_code))
+            .await
+            .expect("cannot set code");
+    }
+
+    Ok(())
+}
+
 async fn si_poem_workflow(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     let func_name = "si:poem".to_string();
     let existing_func = Func::find_by_attr(ctx, "name", &func_name).await?;
@@ -487,6 +517,34 @@ async fn si_finalizing_workflow(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> 
 
         new_func
             .set_handler(ctx, Some("finalizing".to_string()))
+            .await
+            .expect("cannot set handler");
+        new_func
+            .set_code_base64(ctx, Some(workflow_code))
+            .await
+            .expect("cannot set code");
+    }
+
+    Ok(())
+}
+
+async fn si_baby_dont_hurt_me_command(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
+    let func_name = "si:babyDontHurtMe".to_string();
+    let existing_func = Func::find_by_attr(ctx, "name", &func_name).await?;
+    if existing_func.is_empty() {
+        let mut new_func = Func::new(
+            ctx,
+            &func_name,
+            FuncBackendKind::JsCommand,
+            FuncBackendResponseType::Command,
+        )
+        .await
+        .expect("cannot create func");
+
+        let workflow_code = base64::encode(include_str!("./func/babyDontHurtMeCommand.js"));
+
+        new_func
+            .set_handler(ctx, Some("babyDontHurtMe".to_string()))
             .await
             .expect("cannot set handler");
         new_func

@@ -11,4 +11,5 @@ pub mod session;
 pub mod signup;
 pub mod system;
 pub mod test;
+pub mod workflow;
 pub mod ws;
