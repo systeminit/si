@@ -1,39 +1,46 @@
 <template>
-  <div class="px-2 pb-5">
-    <div class="flex items-center">
-      <SelectMenu
-        v-model="optionsState"
-        class="w-4/5"
-        :none-selected-label="`select ${props.thingLabel}...`"
-        :options="options"
-        :disabled="disabled"
-      />
-      <SiButton
-        label="Add"
-        icon-style="alone"
-        icon="plus"
-        :disabled="disabled"
-        @click="addOptions"
-      />
-    </div>
-    <div>
-      <h2>Selected {{ props.thingLabel }}</h2>
-      <h3 v-if="props.modelValue.length == 0">
-        None selected. Select {{ props.thingLabel }} above...
-      </h3>
-      <ul v-else>
-        <li v-for="option in modelValue" :key="option.value">
-          {{ option.label }}
+  <div class="flex items-center">
+    <SelectMenu
+      v-model="optionsState"
+      class="w-4/5"
+      :none-selected-label="`select ${props.thingLabel}...`"
+      :options="options"
+      :disabled="disabled"
+    />
+    <SiButton
+      label="Add"
+      kind="tertiary"
+      icon-style="alone"
+      icon="plus"
+      :disabled="disabled"
+      @click="addOptions"
+    />
+  </div>
+  <div>
+    <h2 class="pb-2 text-sm">Selected {{ props.thingLabel }}</h2>
+    <p v-if="props.modelValue.length == 0" class="pl-4 text-sm">
+      None selected. Select {{ props.thingLabel }} above...
+    </p>
+    <ul v-else class="list-disc list-inside flex flex-col">
+      <li
+        v-for="option in modelValue"
+        :key="option.value"
+        class="flex items-center text-sm pb-2 pl-4"
+      >
+        <div class="pr-2" role="decoration">•</div>
+        {{ option.label }}
+        <div class="ml-auto">
           <SiButton
             label=""
             icon-style="alone"
-            icon="cancel"
+            icon="trash"
+            kind="tertiary"
             :disabled="disabled"
             @click="removeOption(option)"
           />
-        </li>
-      </ul>
-    </div>
+        </div>
+      </li>
+    </ul>
   </div>
 </template>
 

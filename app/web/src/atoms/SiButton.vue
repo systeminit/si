@@ -161,6 +161,10 @@ $button-brightness: 1.05;
 .button-standard:hover {
   filter: brightness($button-brightness);
 }
+.button-standard:focus {
+  outline: none;
+}
+
 .button-standard:active {
   filter: saturate(1.5) brightness($button-brightness);
 }
