@@ -111,13 +111,13 @@ const selectedOptions = computed<Option | Option[]>({
     return props.modelValue;
   },
   set(value) {
-    if ("value" in value) {
+    if ("value" in props.modelValue && "value" in value) {
       emit("update:modelValue", value.value == "" ? null : value);
-    } else if ("length" in props.modelValue) {
-      emit(
-        "update:modelValue",
-        "value" in value ? toggleSelection(value as Option) : value,
-      );
+    } else if ("length" in props.modelValue && "value" in value) {
+      emit("update:modelValue", toggleSelection(value as Option));
+    } else {
+      // should not be hit, but just in case
+      emit("update:modelValue", value);
     }
     emit("change", value);
   },
