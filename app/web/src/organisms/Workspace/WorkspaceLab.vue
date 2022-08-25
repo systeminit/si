@@ -1,6 +1,11 @@
 <template>
   <div class="flex flex-row w-full h-full bg-transparent overflow-hidden">
-    <SiSidebar class="h-full" side="left" width-classes="shrink-0 w-96">
+    <SiPanel
+      id="func-picker"
+      side="left"
+      class="h-full pb-12"
+      width-classes="shrink-0 w-96"
+    >
       <ChangeSetPanel class="border-b-2 dark:border-neutral-500 mb-2" />
       <FuncPicker
         :func-list="funcList"
@@ -8,7 +13,7 @@
         @selected-func="selectFunc"
         @create-func="createFunc"
       />
-    </SiSidebar>
+    </SiPanel>
     <div
       class="grow overflow-x-hidden overflow-y-hidden dark:bg-neutral-800 dark:text-white text-lg font-semi-bold px-2 pt-2 flex flex-col"
     >
@@ -24,7 +29,8 @@
         Select a function to edit it.
       </div>
     </div>
-    <SiSidebar
+    <SiPanel
+      id="func-details"
       :hidden="false"
       class="h-full pb-12"
       side="right"
@@ -32,12 +38,12 @@
     >
       <!-- if hiding is added later, condition is selectedFuncId < 1 -->
       <FuncDetails :func-id="selectedFunc.id" />
-    </SiSidebar>
+    </SiPanel>
   </div>
 </template>
 
 <script lang="ts" setup>
-import SiSidebar from "@/atoms/SiSidebar.vue";
+import SiPanel from "@/atoms/SiPanel.vue";
 import ChangeSetPanel from "@/organisms/ChangeSetPanel.vue";
 import FuncPicker from "@/organisms/FuncEditor/FuncPicker.vue";
 import FuncEditorTabs from "@/organisms/FuncEditor/FuncEditorTabs.vue";

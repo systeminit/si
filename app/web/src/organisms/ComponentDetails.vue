@@ -5,11 +5,6 @@
       <SiTabHeader>Code</SiTabHeader>
     </template>
 
-    <template #dropdownitems>
-      <SiDropdownItem>Attributes</SiDropdownItem>
-      <SiDropdownItem>Code</SiDropdownItem>
-    </template>
-
     <template #panels>
       <TabPanel class="flex flex-col overflow-y-auto">
         <div class="text-center">
