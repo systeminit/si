@@ -5,7 +5,7 @@
     <SiBarButton
       tooltip-text="Model"
       :selected="route.name === 'workspace-compose'"
-      @click="onCompose"
+      :router-link-to="{ name: 'workspace-compose' }"
     >
       <ComposeIcon class="w-6" />
     </SiBarButton>
@@ -13,7 +13,7 @@
     <SiBarButton
       tooltip-text="Customize"
       :selected="route.name === 'workspace-lab'"
-      @click="onLab"
+      :router-link-to="{ name: 'workspace-lab' }"
     >
       <BeakerIcon class="w-6" />
     </SiBarButton>
@@ -24,7 +24,7 @@
     <SiBarButton
       tooltip-text="Analyze"
       :selected="route.name === 'workspace-view'"
-      @click="onView"
+      :router-link-to="{ name: 'workspace-view' }"
     >
       <ViewIcon class="w-6" />
     </SiBarButton>
@@ -32,7 +32,7 @@
     <SiBarButton
       tooltip-text="Act"
       :selected="route.name === 'workspace-runtime'"
-      @click="onRuntime"
+      :router-link-to="{ name: 'workspace-runtime' }"
     >
       <RunIcon class="w-6" />
     </SiBarButton>
@@ -46,35 +46,6 @@ import ViewIcon from "@/atoms/CustomIcons/ViewIcon.vue";
 import RunIcon from "@/atoms/CustomIcons/RunIcon.vue";
 import BeakerIcon from "@/atoms/CustomIcons/BeakerIcon.vue";
 import { useRoute } from "vue-router";
-import router from "@/router";
 
 const route = useRoute();
-
-const onCompose = async () => {
-  await router.push({
-    name: "workspace-compose",
-    path: "c",
-  });
-};
-
-const onLab = async () => {
-  await router.push({
-    name: "workspace-lab",
-    path: "l",
-  });
-};
-
-const onView = async () => {
-  await router.push({
-    name: "workspace-view",
-    path: "v",
-  });
-};
-
-const onRuntime = async () => {
-  await router.push({
-    name: "workspace-runtime",
-    path: "r",
-  });
-};
 </script>
