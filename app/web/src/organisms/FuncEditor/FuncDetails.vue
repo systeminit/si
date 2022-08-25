@@ -1,5 +1,5 @@
 <template>
-  <div v-if="props.funcId > 0" class="text-center h-full overflow-y-auto">
+  <div v-if="props.funcId > 0" class="h-full overflow-y-auto">
     <SiTabGroup :selected-index="0">
       <template #tabs>
         <SiTabHeader>Properties</SiTabHeader>
@@ -7,53 +7,69 @@
       <template #panels>
         <TabPanel>
           <SiCollapsible label="Attributes" :default-open="true">
-            <SiTextBox
-              id="handler"
-              v-model="editingFunc.modifiedFunc.handler"
-              title="Entrypoint"
-              :disabled="editingFunc.origFunc.isBuiltin"
-              @blur="updateFunc"
-            />
-            <SiTextBox
-              id="name"
-              v-model="editingFunc.modifiedFunc.name"
-              title="Name"
-              :disabled="editingFunc.origFunc.isBuiltin"
-              @blur="updateFunc"
-            />
-            <SiTextBox
-              id="description"
-              v-model="editingFunc.modifiedFunc.description"
-              placeholder="Provide a brief description of what this qualification validates here..."
-              title="Description"
-              :text-area="true"
-              :disabled="editingFunc.origFunc.isBuiltin"
-              @blur="updateFunc"
-            />
+            <div class="px-2 py-2 flex flex-col gap-2">
+              <h1 class="text-neutral-400 dark:text-neutral-300 text-sm">
+                Give this qualification a Name, Entrypoint and brief description
+                below.
+              </h1>
+              <SiTextBox
+                id="name"
+                v-model="editingFunc.modifiedFunc.name"
+                title="Name"
+                required
+                placeholder="Type the name of this function here..."
+                :disabled="editingFunc.origFunc.isBuiltin"
+                @blur="updateFunc"
+              />
+              <SiTextBox
+                id="handler"
+                v-model="editingFunc.modifiedFunc.handler"
+                title="Entrypoint"
+                required
+                placeholder="The name of the function that will be executed first..."
+                :disabled="editingFunc.origFunc.isBuiltin"
+                @blur="updateFunc"
+              />
+              <SiTextBox
+                id="description"
+                v-model="editingFunc.modifiedFunc.description"
+                placeholder="Provide a brief description of what this qualification validates here..."
+                title="Description"
+                :text-area="true"
+                :disabled="editingFunc.origFunc.isBuiltin"
+                @blur="updateFunc"
+              />
+            </div>
           </SiCollapsible>
           <SiCollapsible label="Run On" :default-open="true">
-            <h1
-              class="mb-[0.3125rem] pt-5 text-neutral-700 type-bold-sm dark:text-neutral-50"
-            >
-              Run on Component:
-            </h1>
-            <FuncRunOnSelector
-              v-model="selectedComponents"
-              thing-label="components"
-              :options="components"
-              :disabled="editingFunc.origFunc.isBuiltin"
-            />
-            <h1
-              class="mb-[0.3125rem] text-neutral-700 type-bold-sm dark:text-neutral-50"
-            >
-              Run on Schema Variant:
-            </h1>
-            <FuncRunOnSelector
-              v-model="selectedVariants"
-              thing-label="schema variants"
-              :options="schemaVariants"
-              :disabled="editingFunc.origFunc.isBuiltin"
-            />
+            <div class="px-2 pt-3 flex flex-col gap-2">
+              <h1 class="text-neutral-400 dark:text-neutral-300 text-sm">
+                Run this qualification on the selected components and component
+                types below.
+              </h1>
+              <h2
+                class="pt-2 text-neutral-700 type-bold-sm dark:text-neutral-50"
+              >
+                Run on Component:
+              </h2>
+              <FuncRunOnSelector
+                v-model="selectedComponents"
+                thing-label="components"
+                :options="components"
+                :disabled="editingFunc.origFunc.isBuiltin"
+              />
+              <h2
+                class="pt-4 text-neutral-700 type-bold-sm dark:text-neutral-50"
+              >
+                Run on Schema Variant:
+              </h2>
+              <FuncRunOnSelector
+                v-model="selectedVariants"
+                thing-label="schema variants"
+                :options="schemaVariants"
+                :disabled="editingFunc.origFunc.isBuiltin"
+              />
+            </div>
           </SiCollapsible>
         </TabPanel>
       </template>

@@ -42,6 +42,7 @@
           type="git-merge"
           :size="iconSize"
         />
+        <TrashIcon v-else-if="icon === 'trash'" :class="heroIconSize" />
       </div>
       <div v-if="label && icon != null" class="ml-1 font-normal">
         {{ label }}
@@ -56,24 +57,25 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import VueFeather from "vue-feather";
-import { SaveIcon } from "@heroicons/vue/solid";
+import { SaveIcon, TrashIcon } from "@heroicons/vue/solid";
 
 interface ButtonProps {
-  kind: "standard" | "save" | "cancel";
+  kind: "standard" | "save" | "cancel" | "tertiary";
   label: undefined | string;
   icon:
     | null
-    | "play"
-    | "save"
     | "cancel"
-    | "refresh"
-    | "edit"
     | "deploy"
-    | "signup"
+    | "edit"
+    | "login"
+    | "merge"
+    | "play"
     | "plus"
     | "plus-square"
-    | "login"
-    | "merge";
+    | "refresh"
+    | "save"
+    | "signup"
+    | "trash";
   size: "xs" | "sm" | "base" | "lg";
   disabled: boolean;
 }
@@ -159,7 +161,6 @@ $button-brightness: 1.05;
 .button-standard:hover {
   filter: brightness($button-brightness);
 }
-
 .button-standard:focus {
   outline: none;
 }
@@ -207,5 +208,15 @@ $button-brightness: 1.05;
 }
 .cursor-not-allowed {
   cursor: not-allowed;
+}
+
+/* Tertiary button */
+.button-tertiary {
+  background-color: inherit;
+  @apply px-2;
+}
+
+.button-tertiary:hover {
+  filter: brightness($button-brightness);
 }
 </style>
