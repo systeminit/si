@@ -42,7 +42,6 @@
 <script lang="ts" setup>
 import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
-import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
 import { TabPanel } from "@headlessui/vue";
 import AttributeViewer from "@/organisms/AttributeViewer.vue";
 import { ComponentIdentification } from "@/api/sdf/dal/component";
