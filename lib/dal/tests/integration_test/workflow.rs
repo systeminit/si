@@ -18,7 +18,13 @@ async fn fb(ctx: &DalContext<'_, '_>, name: &str, args: serde_json::Value) -> se
 
 #[test]
 async fn resolve(ctx: &DalContext<'_, '_>) {
-    let tree = WorkflowView::resolve(ctx, "si:poem")
+    let name = "si:poem";
+    let func = Func::find_by_attr(ctx, "name", &name)
+        .await
+        .expect("unable to find func")
+        .pop()
+        .unwrap_or_else(|| panic!("function not found: {}", name));
+    let tree = WorkflowView::resolve(ctx, &func)
         .await
         .expect("unable to resolve workflow");
     // TODO: fix args propagation
@@ -62,7 +68,13 @@ async fn resolve(ctx: &DalContext<'_, '_>) {
 
 #[test]
 async fn run(ctx: &DalContext<'_, '_>) {
-    let tree = WorkflowView::resolve(ctx, "si:poem")
+    let name = "si:poem";
+    let func = Func::find_by_attr(ctx, "name", &name)
+        .await
+        .expect("unable to find func")
+        .pop()
+        .unwrap_or_else(|| panic!("function not found: {}", name));
+    let tree = WorkflowView::resolve(ctx, &func)
         .await
         .expect("unable to resolve workflow");
     // TODO: fix args propagation

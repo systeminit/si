@@ -15,10 +15,12 @@ use crate::{
     AttributeReadContext, AttributeValueError, CodeGenerationPrototypeError, DalContext,
     ExternalProviderId, FuncError, PropError, PropId, QualificationPrototypeError,
     ResourcePrototypeError, SchemaError, StandardModelError, ValidationPrototypeError,
+    WorkflowPrototypeError,
 };
 
 mod func;
 mod schema;
+mod workflow;
 
 #[derive(Error, Debug)]
 pub enum BuiltinsError {
@@ -72,6 +74,8 @@ pub enum BuiltinsError {
     StandardModel(#[from] StandardModelError),
     #[error("validation prototype error: {0}")]
     ValidationPrototype(#[from] ValidationPrototypeError),
+    #[error(transparent)]
+    WorkflowPrototype(#[from] WorkflowPrototypeError),
 }
 
 pub type BuiltinsResult<T> = Result<T, BuiltinsError>;
@@ -80,5 +84,6 @@ pub type BuiltinsResult<T> = Result<T, BuiltinsError>;
 pub async fn migrate(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     func::migrate(ctx).await?;
     schema::migrate(ctx).await?;
+    workflow::migrate(ctx).await?;
     Ok(())
 }

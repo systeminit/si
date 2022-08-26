@@ -103,6 +103,7 @@ pub fn routes(
         .nest("/api/session", crate::server::service::session::routes())
         .nest("/api/signup", crate::server::service::signup::routes())
         .nest("/api/system", crate::server::service::system::routes())
+        .nest("/api/workflow", crate::server::service::workflow::routes())
         .nest("/api/ws", crate::server::service::ws::routes());
     router = test_routes(router);
     router = router

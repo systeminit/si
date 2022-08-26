@@ -14,6 +14,7 @@
     <XIcon v-else-if="icon === 'x'" :class="iconClasses" />
     <ChevronDownIcon v-else-if="icon === 'chevron-down'" :class="iconClasses" />
     <SaveIcon v-else-if="icon === 'save'" :class="iconClasses" />
+    <PlayIcon v-else-if="icon === 'play'" :class="iconClasses" />
   </div>
 </template>
 
@@ -25,6 +26,7 @@ import {
   SaveIcon,
   TrashIcon,
   XIcon,
+  PlayIcon,
 } from "@heroicons/vue/solid";
 import VueFeather from "vue-feather";
 import GitBranchIcon from "@/atoms/CustomIcons/GitBranchIcon.vue";
@@ -41,7 +43,8 @@ export type IconName =
   | "trash"
   | "chevron-down"
   | "save"
-  | "x";
+  | "x"
+  | "play";
 
 defineProps<{
   icon: IconName;

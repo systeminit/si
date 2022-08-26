@@ -63,6 +63,8 @@ pub mod validation_prototype;
 pub mod validation_resolver;
 pub mod visibility;
 pub mod workflow;
+pub mod workflow_prototype;
+pub mod workflow_resolver;
 pub mod workspace;
 pub mod write_tenancy;
 pub mod ws_event;
@@ -108,7 +110,7 @@ pub use edge::{Edge, EdgeError, EdgeResult};
 pub use func::binding_return_value::FuncBindingReturnValue;
 pub use func::{
     backend::{FuncBackendError, FuncBackendKind, FuncBackendResponseType},
-    binding::{FuncBinding, FuncBindingError},
+    binding::{FuncBinding, FuncBindingError, FuncBindingId},
     Func, FuncError, FuncId, FuncResult,
 };
 pub use group::{Group, GroupError, GroupId, GroupResult};
@@ -170,6 +172,10 @@ pub use workflow::{
     WorkflowError, WorkflowKind, WorkflowResult, WorkflowStep, WorkflowTree, WorkflowTreeStep,
     WorkflowView,
 };
+pub use workflow_prototype::{
+    WorkflowPrototype, WorkflowPrototypeContext, WorkflowPrototypeError, WorkflowPrototypeId,
+};
+pub use workflow_resolver::{WorkflowResolver, WorkflowResolverError, WorkflowResolverId};
 pub use workspace::{Workspace, WorkspaceError, WorkspaceId, WorkspacePk, WorkspaceResult};
 pub use write_tenancy::{WriteTenancy, WriteTenancyError};
 pub use ws_event::{WsEvent, WsEventError, WsPayload};

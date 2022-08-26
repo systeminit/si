@@ -23,6 +23,7 @@ use crate::{
     DalContext, ExternalProvider, Func, FuncBackendKind, FuncBackendResponseType, FuncError,
     FuncId, InternalProvider, Prop, PropError, PropId, PropKind, QualificationPrototype,
     ResourcePrototype, Schema, SchemaError, SchemaKind, SchematicKind, StandardModel,
+    WorkflowPrototype, WorkflowPrototypeContext,
 };
 
 mod kubernetes;
@@ -462,6 +463,17 @@ async fn kubernetes_namespace(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
         *metadata_name_implicit_internal_provider.id(),
     )
     .await?;
+
+    let mut context = WorkflowPrototypeContext::new(); // workspace level
+    context.schema_id = *schema.id();
+    context.schema_variant_id = *variant.id();
+    let title = "What Is Love";
+    let func_name = "si:whatIsLove";
+    let func = Func::find_by_attr(ctx, "name", &func_name)
+        .await?
+        .pop()
+        .ok_or_else(|| SchemaError::FuncNotFound(func_name.to_owned()))?;
+    WorkflowPrototype::new(ctx, *func.id(), serde_json::Value::Null, context, title).await?;
 
     Ok(())
 }
