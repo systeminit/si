@@ -14,7 +14,7 @@
       :data-test="props.id"
       :disabled="props.disabled"
       required
-      class="appearance-none block px-3 py-2 border rounded-sm shadow-sm focus:outline-none sm:text-sm bg-neutral-50 dark:bg-gray-700 border-neutral-600"
+      class="appearance-none block px-3 py-2 border rounded-sm shadow-sm focus:outline-none sm:text-sm bg-neutral-50 dark:bg-neutral-700 border-neutral-600"
       :class="boxClasses"
       @change="setDirty"
     />
@@ -22,7 +22,10 @@
       v-if="inError"
       class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none"
     >
-      <ExclamationCircleIcon class="h-5 w-5 text-red-400" aria-hidden="true" />
+      <ExclamationCircleIcon
+        class="h-5 w-5 text-destructive-400"
+        aria-hidden="true"
+      />
     </div>
   </div>
 
@@ -32,7 +35,7 @@
     </a>
   </p>
 
-  <p v-if="props.description" class="mt-2 text-xs text-gray-300">
+  <p v-if="props.description" class="mt-2 text-xs text-neutral-300">
     {{ props.description }}
   </p>
 
@@ -118,15 +121,15 @@ const inputValue = computed<string | number | null>({
 const boxClasses = computed((): Record<string, boolean> => {
   if (inError.value) {
     return {
-      "border-red-400": true,
-      "focus:ring-red-400": true,
-      "focus:border-red-400": true,
+      "border-destructive-400": true,
+      "focus:ring-destructive-400": true,
+      "focus:border-destructive-400": true,
     };
   }
   return {
-    "border-gray-600": true,
-    "focus:ring-indigo-200": true,
-    "focus:border-indigo-200": true,
+    "border-neutral-600": true,
+    "focus:ring-action-200": true,
+    "focus:border-action-200": true,
   };
 });
 </script>

@@ -11,13 +11,13 @@
             v-if="showDetails"
             type="chevron-down"
             size="1.5em"
-            class="text-gray-300"
+            class="text-neutral-300"
           />
           <VueFeather
             v-else
             type="chevron-right"
             size="1.5rem"
-            class="text-gray-300"
+            class="text-neutral-300"
           />
         </button>
       </div>

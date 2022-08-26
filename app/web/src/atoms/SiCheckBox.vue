@@ -1,5 +1,5 @@
 <template>
-  <label :for="props.id" class="block text-sm font-medium text-gray-200">
+  <label :for="props.id" class="block text-sm font-medium text-neutral-200">
     {{ props.title }} <span v-if="required">(required)</span>
   </label>
 
@@ -15,7 +15,7 @@
       :disabled="props.disabled"
       :indeterminate.prop="isIndeterminate"
       required
-      class="appearance-none block px-3 py-2 border rounded-sm shadow-sm focus:outline-none sm:text-sm checked:bg-gray-900 bg-gray-600 indeterminate:bg-gray-900"
+      class="appearance-none block px-3 py-2 border rounded-sm shadow-sm focus:outline-none sm:text-sm checked:bg-neutral-900 bg-neutral-600 indeterminate:bg-neutral-900"
       :class="checkBoxClasses"
       @blur="setDirty"
     />
@@ -23,7 +23,10 @@
       v-if="inError"
       class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none"
     >
-      <ExclamationCircleIcon class="h-5 w-5 text-red-400" aria-hidden="true" />
+      <ExclamationCircleIcon
+        class="h-5 w-5 text-destructive-400"
+        aria-hidden="true"
+      />
     </div>
   </div>
 
@@ -33,7 +36,7 @@
     </a>
   </p>
 
-  <p v-if="props.description" class="mt-2 text-xs text-gray-300">
+  <p v-if="props.description" class="mt-2 text-xs text-neutral-300">
     {{ props.description }}
   </p>
 
@@ -124,19 +127,19 @@ const isIndeterminate = computed(() => {
 const checkBoxClasses = computed((): Record<string, boolean> => {
   if (inError.value) {
     return {
-      "border-red-400": true,
-      "focus:ring-red-400": true,
-      "focus:border-red-400": true,
-      "checked:border-red-400": true,
-      "indeterminate:border-red-400": true,
+      "border-destructive-400": true,
+      "focus:ring-destructive-400": true,
+      "focus:border-destructive-400": true,
+      "checked:border-destructive-400": true,
+      "indeterminate:border-destructive-400": true,
     };
   }
   return {
-    "border-gray-600": true,
-    "focus:ring-indigo-200": true,
-    "focus:border-indigo-200": true,
-    "checked:border-gray-600": true,
-    "indeterminate:border-gray-600": true,
+    "border-neutral-600": true,
+    "focus:ring-action-200": true,
+    "focus:border-action-200": true,
+    "checked:border-neutral-600": true,
+    "indeterminate:border-neutral-600": true,
   };
 });
 </script>

@@ -3,7 +3,7 @@
     class="flex nowrap gap-3 p-3 dark:border-neutral-600 border-b-2 justify-between"
   >
     <label
-      class="relative text-neutral-400 focus-within:text-gray-600 block flex-grow"
+      class="relative text-neutral-400 focus-within:text-neutral-600 block flex-grow"
     >
       <input
         v-model="searchString"

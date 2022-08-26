@@ -122,7 +122,7 @@
               type="submit"
               data-test="signUp"
               aria-label="Sign Up"
-              class="w-full flex justify-center py-2 px-4 border border-transparent rounded-sm shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-400 disabled:opacity-50"
+              class="w-full flex justify-center py-2 px-4 border border-transparent rounded-sm shadow-sm text-sm font-medium text-white bg-action-600 hover:bg-action-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-action-400 disabled:opacity-50"
               :disabled="formInError"
             >
               Create Account

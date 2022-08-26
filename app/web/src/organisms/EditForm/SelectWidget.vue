@@ -24,7 +24,7 @@
     <template #edit>
       <select
         v-model="currentValue"
-        class="pl-2 text-sm leading-tight text-gray-400 border border-solid focus:outline-none input-bg-color-grey si-property disabled:opacity-50"
+        class="pl-2 text-sm leading-tight text-neutral-400 border border-solid focus:outline-none input-bg-color-grey si-property disabled:opacity-50"
         :class="borderColor"
         @change="onBlur"
         @focus="onFocus"
@@ -40,7 +40,7 @@
       </select>
       <div
         v-if="!coreEditField"
-        class="flex flex-row items-center w-10 ml-1 bg-red"
+        class="flex flex-row items-center w-10 ml-1 bg-destructive-500"
       >
         <Unset
           :edit-field="props.editField"

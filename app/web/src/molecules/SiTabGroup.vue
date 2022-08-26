@@ -66,7 +66,7 @@ const props = withDefaults(
     tabClasses:
       "border-x border-t border-x-neutral-300 border-t-neutral-300 dark:border-x-neutral-600 dark:border-t-neutral-600 h-11 px-2 text-sm inline-flex items-center rounded-t",
     defaultTabClasses:
-      "text-gray-400 border-b border-neutral-300 dark:border-neutral-600 font-medium",
+      "text-neutral-400 border-b border-neutral-300 dark:border-neutral-600 font-medium",
     selectedTabClasses:
       "border-b-white dark:border-b-neutral-800 border-b text-action-700 dark:text-action-300 font-bold",
     topMargin: 2,
