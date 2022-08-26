@@ -7,50 +7,71 @@
       <SiDropdownItem>FUNCTIONS</SiDropdownItem>
     </template>
     <template #panels>
-      <TabPanel :key="0" class="h-full overflow-hidden flex flex-col">
+      <TabPanel :key="0" class="h-full overflow-auto flex flex-col">
         <div class="w-full p-2 border-b dark:border-neutral-600">
-          <VButton
-            button-rank="primary"
-            button-type="success"
-            class="ml-auto"
-            icon="plus"
-            icon-right="chevron-down"
-            label="Function"
-            size="sm"
-            @click="createFunc"
-          />
+          <Menu>
+            <div class="block ml-auto w-fit">
+              <MenuButton>
+                <VButton
+                  button-rank="primary"
+                  button-type="success"
+                  icon="plus"
+                  icon-right="chevron-down"
+                  label="Function"
+                  size="sm"
+                />
+              </MenuButton>
+
+              <MenuItems
+                class="z-30 absolute mt-2 rounded bg-white dark:bg-black shadow-lg border focus:outline-none overflow-hidden"
+              >
+                <MenuItem
+                  as="a"
+                  class="flex flex-row relative items-center whitespace-nowrap py-2 px-4 cursor-pointer gap-2 hover:bg-action-500 hover:text-white"
+                  @click="createFunc"
+                >
+                  <FuncSkeleton />
+
+                  Qualification
+                </MenuItem>
+              </MenuItems>
+            </div>
+          </Menu>
         </div>
         <SiSearch
           auto-search
           placeholder="search functions"
           @search="onSearch"
         />
-        <div class="w-full text-neutral-400 dark:text-neutral-300 text-sm p-2">
+        <div
+          class="w-full text-neutral-400 dark:text-neutral-300 text-sm p-2 border-b"
+        >
           Select a function from the lists below to view or edit it.
         </div>
         <ul class="overflow-y-auto">
-          <SiCollapsible
-            as="li"
-            class="w-full"
-            content-as="ul"
-            default-open
-            label="Qualification Functions"
-          >
-            <li v-for="func in filteredList" :key="func.id">
-              <SiFuncSprite
-                :class="
-                  selectedFuncId === func.id
-                    ? 'bg-action-100 dark:bg-action-700 border border-action-500 dark:border-action-300'
-                    : ''
-                "
-                :is-builtin="func.isBuiltin"
-                :name="func.name"
-                class="border dark:border-neutral-600 dark:text-white hover:cursor-pointer hover:border-action-500 dark:hover:border-action-300"
-                color="#921ed6"
-                @click="selectFunc(func)"
-              />
-              <!-- TODO: this is that random purple color... check with mark -->
-            </li>
+          <SiCollapsible as="li" class="w-full" content-as="ul" default-open>
+            <template #label>
+              <div class="flex items-center gap-2">
+                <FuncSkeleton />
+                <span> Qualifications </span>
+              </div>
+            </template>
+            <template #default>
+              <li v-for="func in filteredList" :key="func.id">
+                <SiFuncSprite
+                  :class="
+                    selectedFuncId === func.id
+                      ? 'bg-action-100 dark:bg-action-700 border border-action-500 dark:border-action-300'
+                      : ''
+                  "
+                  :is-builtin="func.isBuiltin"
+                  :name="func.name"
+                  class="border border-transparent dark:text-white hover:cursor-pointer hover:border-action-500 dark:hover:border-action-300"
+                  color="#921ed6"
+                  @click="selectFunc(func)"
+                />
+              </li>
+            </template>
           </SiCollapsible>
         </ul>
       </TabPanel>
@@ -60,7 +81,13 @@
 
 <script lang="ts" setup>
 import { computed, ref } from "vue";
-import { TabPanel } from "@headlessui/vue";
+import {
+  Menu,
+  MenuButton,
+  MenuItem,
+  MenuItems,
+  TabPanel,
+} from "@headlessui/vue";
 import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import SiCollapsible from "@/organisms/SiCollapsible.vue";
@@ -69,6 +96,7 @@ import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
 import { ListedFuncView, ListFuncsResponse } from "@/service/func/list_funcs";
 import SiSearch from "@/molecules/SiSearch.vue";
 import VButton from "@/molecules/VButton.vue";
+import FuncSkeleton from "@/atoms/FuncSkeleton.vue";
 
 const searchString = ref("");
 

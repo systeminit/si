@@ -62,7 +62,7 @@
                     {{ qualification.title }}
                   </DialogTitle>
                   <VButton
-                    :show-label="false"
+                    hide-label
                     button-rank="tertiary"
                     button-type="neutral"
                     icon="x"
