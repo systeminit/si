@@ -12,8 +12,8 @@
           <div
             :class="
               toast.success
-                ? ['text-green-500', 'bg-green-100']
-                : ['text-red-500', 'bg-red-100']
+                ? ['text-success-500', 'bg-success-100']
+                : ['text-destructive-500', 'bg-destructive-100']
             "
             class="inline-flex items-center justify-center flex-shrink-0 w-8 h-8 rounded-lg"
           >
@@ -39,7 +39,7 @@
           </span>
           <button
             aria-label="Close"
-            class="ml-auto -mx-1.5 -my-1.5 bg-neutral-700 text-gray-400 hover:text-gray-900 rounded-lg focus:ring-2 focus:ring-gray-300 p-1.5 hover:bg-gray-100 inline-flex h-8 w-8"
+            class="ml-auto -mx-1.5 -my-1.5 bg-neutral-700 text-neutral-400 hover:text-neutral-900 rounded-lg focus:ring-2 focus:ring-neutral-300 p-1.5 hover:bg-neutral-100 inline-flex h-8 w-8"
             type="button"
             @click="hideToasted(toast.id)"
           >

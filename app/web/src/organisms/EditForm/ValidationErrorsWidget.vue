@@ -3,7 +3,7 @@
     <li
       v-for="(error, index) in props.errors"
       :key="index"
-      class="text-red-400"
+      class="text-destructive-400"
     >
       <div class="flex flex-row items-center">
         <VueFeather
@@ -35,15 +35,15 @@ const props = defineProps<{
 
 const strokeColorForLevel = (errorLevel: string | undefined): string => {
   if (errorLevel === undefined) {
-    return "text-red-400";
+    return "text-destructive-400";
   }
   switch (errorLevel) {
     case "warning":
-      return "text-yellow-400";
+      return "text-warning-400";
     case "info":
-      return "text-gray-400";
+      return "text-neutral-400";
     default:
-      return "text-red-400";
+      return "text-destructive-400";
   }
 };
 </script>

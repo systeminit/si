@@ -12,4 +12,5 @@ export const colors = _.pick(fullConfig.theme.colors, [
   "success",
   "warning",
   "destructive",
+  "shade",
 ]);

@@ -51,7 +51,7 @@
     :core-edit-field="props.coreEditField"
     :attribute-context="attributeContext"
   />
-  <div v-else class="text-xs text-red-400">
+  <div v-else class="text-xs text-destructive-400">
     Error: WidgetKind not found or could not create AttributeContext for
     WidgetKind ({{ props.editField.widget.kind }})
   </div>

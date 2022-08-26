@@ -1,6 +1,10 @@
 <template>
   <div>
-    <div v-if="message" :data-test="test" class="bg-red-500 text-white flex">
+    <div
+      v-if="message"
+      :data-test="test"
+      class="bg-destructive-500 text-white flex"
+    >
       <span class="flex-grow">Error: {{ message }}</span>
       <button class="flex-grow-0" @click="clear">
         <VueFeather type="x" />

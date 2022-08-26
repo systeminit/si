@@ -5,7 +5,10 @@
     :triggers="props.isNotRoot ? ['hover'] : ['click']"
     :hide-triggers="['hover', 'click']"
   >
-    <button v-if="props.isNotRoot" class="button p-2 flex text-base">
+    <button
+      v-if="props.isNotRoot"
+      class="bg-action-900 hover:bg-action-600 p-2 flex text-base w-full text-white"
+    >
       <div class="grow">{{ props.tree.name }}</div>
       <div><ChevronRightIcon class="w-6 h-6 self-end" /></div>
     </button>
@@ -22,7 +25,7 @@
           />
           <div v-else>
             <button
-              class="button p-2 text-base"
+              class="bg-action-900 hover:bg-action-600 p-2 text-base w-full text-white"
               @click="selected(child.value, $event)"
             >
               {{ child.name }}
@@ -63,14 +66,3 @@ const props = defineProps<{
   isNotRoot?: boolean;
 }>();
 </script>
-
-<style scoped>
-.button {
-  width: 100%;
-  color: white;
-  background-color: #1a202c;
-}
-.button:hover {
-  background-color: #4e45e4;
-}
-</style>

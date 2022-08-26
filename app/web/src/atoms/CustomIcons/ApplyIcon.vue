@@ -34,6 +34,7 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
+import { colors } from "@/utils/design_token_values";
 
 const props = defineProps<{
   // Provided as a hex value.
@@ -41,6 +42,6 @@ const props = defineProps<{
   class?: string;
 }>();
 
-const color = computed(() => props.color ?? "#FFFFFF");
+const color = computed(() => props.color ?? colors.shade[0]);
 const classes = computed(() => props.class ?? "");
 </script>

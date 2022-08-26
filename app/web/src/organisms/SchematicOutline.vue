@@ -21,7 +21,7 @@
               : ['hover:bg-action-400 hover:text-white']
           "
           :style="{
-            'border-color': component.color || '#AAA',
+            'border-color': component.color || colors.neutral[400],
           }"
           class="block px-2 py-2 border-l-8 group"
         >
@@ -43,10 +43,10 @@
 </template>
 
 <script lang="ts" setup>
-import _ from "lodash";
 import { computed, ref } from "vue";
 import SiSearch from "@/molecules/SiSearch.vue";
 import SchematicDiagramService from "@/service/schematic-diagram";
+import { colors } from "@/utils/design_token_values";
 
 // TODO: deal with ids as numbers vs strings...
 

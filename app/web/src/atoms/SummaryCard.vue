@@ -11,6 +11,7 @@
 </template>
 
 <style scoped>
+/* TODO - What are these colors? check with mark */
 .details-panel {
   border: 1px solid #464753;
   background-color: #101010;

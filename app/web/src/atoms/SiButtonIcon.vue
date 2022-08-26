@@ -35,11 +35,11 @@ const buttonClasses = computed(() => {
     results["cursor-not-allowed"] = true;
   } else {
     if (selected?.value) {
-      results["text-blue-300"] = true;
-      results["hover:text-blue-200"] = true;
+      results["text-action-300"] = true;
+      results["hover:text-action-200"] = true;
     } else if (!props.ignoreTextColor) {
-      results["text-gray-300"] = true;
-      results["hover:text-gray-100"] = true;
+      results["text-neutral-300"] = true;
+      results["hover:text-neutral-100"] = true;
     }
   }
   return results;

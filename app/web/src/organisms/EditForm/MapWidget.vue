@@ -25,7 +25,7 @@
       <div class="flex flex-col mt-1">
         <div
           v-if="widget.options.entries"
-          class="flex flex-col justify-between w-full mx-1 border border-gray-500"
+          class="flex flex-col justify-between w-full mx-1 border border-neutral-500"
         >
           <Widgets
             :show="show"
@@ -42,7 +42,7 @@
         </div>
         <div
           v-if="!coreEditField"
-          class="flex flex-row items-center w-10 ml-1 bg-red"
+          class="flex flex-row items-center w-10 ml-1 bg-destructive-500"
         >
           <Unset
             :edit-field="props.editField"
@@ -55,7 +55,7 @@
       <div class="flex flex-col">
         <div
           v-if="widget.options.entries"
-          class="flex flex-col justify-between w-full mx-1 border border-gray-500"
+          class="flex flex-col justify-between w-full mx-1 border border-neutral-500"
         >
           <Widgets
             :show="show"

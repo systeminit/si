@@ -58,7 +58,7 @@ const hoverClasses = computed(() => {
     return `${c} w-full h-6 translate-x-[-50%]`;
   else if (props.panelSide === "left")
     return `${c} w-6 h-full translate-y-[-50%]`;
-  return `${c} w-6 h-full translate-y-[-50%] translate-x-[-100%]`;
+  return `${c} w-6 h-full translate-y-[-50%] translate-x-[-25%]`;
 });
 
 const handleClasses = computed(() => {

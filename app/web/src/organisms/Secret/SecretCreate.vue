@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col w-full">
     <div class="flex flex-row items-center w-full pb-2">
-      <div class="w-1/2 pr-2 text-sm text-right text-gray-400 align-middle">
+      <div class="w-1/2 pr-2 text-sm text-right text-neutral-400 align-middle">
         <label for="secret-name-textbox">Secret Name:</label>
       </div>
       <div class="w-1/2 align-middle">
@@ -16,7 +16,7 @@
       </div>
     </div>
     <div class="flex flex-row items-center w-full pb-2">
-      <div class="w-1/2 pr-2 text-sm text-right text-gray-400 align-middle">
+      <div class="w-1/2 pr-2 text-sm text-right text-neutral-400 align-middle">
         <label for="secret-password-textbox">Secret Kind:</label>
       </div>
       <div class="w-1/2 align-middle">
@@ -227,25 +227,3 @@ const serializeMessage = (message: Record<string, string>): Uint8Array => {
   return result;
 };
 </script>
-
-<style scoped>
-.background {
-  background-color: #1e1e1e;
-}
-
-.header {
-  background-color: #3a3d40;
-}
-
-.row-item {
-  background-color: #262626;
-}
-
-.row-item:nth-child(odd) {
-  background-color: #2c2c2c;
-}
-
-.table-border {
-  border-bottom: 1px solid #46494d;
-}
-</style>

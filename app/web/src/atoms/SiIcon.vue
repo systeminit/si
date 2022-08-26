@@ -23,8 +23,8 @@ const classes = computed(() => {
     block: true,
     "w-6": true,
     "h-6": true,
-    "text-gray-300": true,
-    "hover:text-gray-100": true,
+    "text-neutral-300": true,
+    "hover:text-neutral-100": true,
   };
   return results;
 });

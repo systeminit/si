@@ -49,6 +49,7 @@
                 color="#921ed6"
                 @click="selectFunc(func)"
               />
+              <!-- TODO: this is that random purple color... check with mark -->
             </li>
           </SiCollapsible>
         </ul>

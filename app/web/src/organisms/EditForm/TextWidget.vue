@@ -25,7 +25,7 @@
     <template #edit>
       <input
         v-model="currentValue"
-        class="appearance-none block bg-gray-900 text-gray-100 w-full px-3 py-2 border rounded-sm shadow-sm placeholder-gray-700 focus:outline-none focus:ring-indigo-200 focus:border-indigo-200 sm:text-sm"
+        class="appearance-none block bg-neutral-900 text-neutral-100 w-full px-3 py-2 border rounded-sm shadow-sm placeholder-neutral-700 focus:outline-none focus:ring-action-200 focus:border-action-200 sm:text-sm"
         :class="inputStyles"
         type="text"
         aria-label="name"
@@ -36,7 +36,7 @@
       />
       <div
         v-if="!coreEditField"
-        class="flex flex-row items-center w-10 ml-1 bg-red"
+        class="flex flex-row items-center w-10 ml-1 bg-destructive-500"
       >
         <Unset
           :edit-field="props.editField"

@@ -5,7 +5,7 @@
         <slot name="name"></slot>
       </div>
       <div
-        class="flex flex-grow pl-2 text-sm leading-tight text-gray-400"
+        class="flex flex-grow pl-2 text-sm leading-tight text-neutral-400"
         @keyup.stop
         @keydown.stop
       >
@@ -24,7 +24,7 @@
           </div>
           <div class="flex w-full">
             <div
-              class="flex mx-2 text-sm leading-tight text-gray-400"
+              class="flex mx-2 text-sm leading-tight text-neutral-400"
               @keyup.stop
               @keydown.stop
             >
