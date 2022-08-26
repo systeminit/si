@@ -17,7 +17,7 @@
   </div>
   <div>
     <h2 class="pb-2 text-sm">Selected {{ props.thingLabel }}</h2>
-    <p v-if="props.modelValue.length == 0" class="pl-4 text-sm">
+    <p v-if="props.modelValue.length === 0" class="pl-4 text-sm">
       None selected. Select {{ props.thingLabel }} above...
     </p>
     <ul v-else class="list-disc list-inside flex flex-col">

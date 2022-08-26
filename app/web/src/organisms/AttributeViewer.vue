@@ -29,7 +29,7 @@
         <SiLink
           v-if="componentMetadata?.schemaLink"
           :uri="componentMetadata.schemaLink"
-          :blank-target="true"
+          blank-target
           class="m-2 flex"
         >
           <SiButtonIcon tooltip-text="Go to documentation">

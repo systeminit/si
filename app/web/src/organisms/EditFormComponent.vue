@@ -1,9 +1,9 @@
 <template>
   <div class="flex flex-col w-full overflow-auto scrollbar">
     <Widgets
-      :show="true"
+      show
       :edit-fields="coreEditFields"
-      :core-edit-fields="true"
+      core-edit-field
       :indent-level="1"
       :tree-open-state="{}"
       :component-identification="componentIdentification"
@@ -15,7 +15,7 @@
     </div>
     <div class="flex flex-col w-full overflow-auto scrollbar">
       <Widgets
-        :show="true"
+        show
         :edit-fields="propertyEditFields"
         :indent-level="1"
         :tree-open-state="treeOpenState"

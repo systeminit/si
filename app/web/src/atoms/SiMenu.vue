@@ -17,7 +17,7 @@
           <SiMenu
             v-if="child.kind === 'tree'"
             :tree="child"
-            :is-not-root="true"
+            is-not-root
             @selected="selected"
           />
           <div v-else>

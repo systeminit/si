@@ -26,7 +26,54 @@ module.exports = {
     },
   },
   rules: {
+    // some customizations of vue rules ------------------
+    // standard order of sections in vue SFCs
+    "vue/component-tags-order": [
+      "error",
+      {
+        order: [
+          "template",
+          "script[setup]",
+          "script:not([setup])", // necessary for default exports to not get hoisted below imports in setup block
+          "style:not([scoped])",
+          "style[scoped]",
+        ],
+      },
+    ],
+    "vue/no-undef-components": [
+      "error",
+      {
+        ignorePatterns: [
+          "v-.*", // vue-konva requires global registration :( will hopefully fix soon!
+          "router-(view|link)", // vue router is fairly standard to use via global registration
+        ],
+      },
+    ],
+    "vue/script-setup-uses-vars": "error",
+    "vue/multi-word-component-names": "off",
+    "vue/require-default-prop": "off",
+    "vue/padding-line-between-blocks": "error",
+    "vue/prefer-true-attribute-shorthand": "error",
+    "vue/eqeqeq": "error",
+
+    // some strict rules from TS / airbnb presets to relax -----------
     camelcase: "off",
+    "@typescript-eslint/ban-ts-comment": "off",
+    "import/prefer-default-export": 0,
+    "no-plusplus": 0,
+    radix: 0,
+    "prefer-destructuring": 0,
+    "no-else-return": 0, // sometimes clearer even though unnecessary
+    "prefer-arrow-callback": 0,
+    "arrow-body-style": 0,
+    "@typescript-eslint/lines-between-class-members": 0, // often nice to group related one-liners
+    "max-classes-per-file": 0, // can make sense to colocate small classes
+    "consistent-return": 0, // often can make sense to return (undefined) early
+    "no-useless-return": 0, // sometimes helps clarify you are bailing early
+    "no-continue": 0,
+    "no-underscore-dangle": 0,
+    "no-await-in-loop": 0,
+    "no-lonely-if": 0,
     "@typescript-eslint/no-unused-vars": [
       "warn",
       {
@@ -34,11 +81,8 @@ module.exports = {
         varsIgnorePattern: "^_",
       },
     ],
-    "vue/script-setup-uses-vars": "error",
-    "@typescript-eslint/ban-ts-comment": "off",
-    "vue/multi-word-component-names": "off",
-    "vue/require-default-prop": "off",
 
+    // custom plugin configs ------------------------------------------
     // make import/order understand our alias paths
     "import/order": [
       "warn",
@@ -64,24 +108,7 @@ module.exports = {
       },
     ],
 
-    // some rules from these presets to relax
-    "import/prefer-default-export": 0,
-    "no-plusplus": 0,
-    radix: 0,
-    "prefer-destructuring": 0,
-    "no-else-return": 0, // sometimes clearer even though unnecessary
-    "prefer-arrow-callback": 0,
-    "arrow-body-style": 0,
-    "@typescript-eslint/lines-between-class-members": 0, // often nice to group related one-liners
-    "max-classes-per-file": 0, // can make sense to colocate small classes
-    "consistent-return": 0, // often can make sense to return (undefined) early
-    "no-useless-return": 0, // sometimes helps clarify you are bailing early
-    "no-continue": 0,
-    "no-underscore-dangle": 0,
-    "no-await-in-loop": 0,
-    "no-lonely-if": 0,
-
-    // rules to disable for now, for the sake of fewer changes and to get running again
+    // rules to disable for now, but will likely be turned back on --------
     // TODO: review these rules, infractions case by case, probably turn back on?
     "@typescript-eslint/no-use-before-define": 0,
     "import/no-cycle": 0,
@@ -92,7 +119,7 @@ module.exports = {
     "guard-for-in": 0,
     "no-console": 0,
 
-    // some rules to downgrade to warning while developing
+    // some rules to downgrade to warning while developing --------------------
     // useful so things dont crash when code is temporarily commented out
     "@typescript-eslint/no-empty-function": process.env.STRICT_LINT
       ? "error"

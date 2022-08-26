@@ -2,7 +2,7 @@
   <SiTabGroup
     :key="tabGroupRerenderKey"
     :selected-index="selectedTab"
-    :selected-tab-to-front="true"
+    selected-tab-to-front
     :tab-width-maximum="0.3"
     :start-margin="0"
     :after-margin="0"

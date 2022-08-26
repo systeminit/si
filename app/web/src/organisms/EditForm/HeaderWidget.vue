@@ -13,7 +13,7 @@
           <SiLink
             v-if="props.editField.baggage?.prop_doc_link"
             :uri="props.editField.baggage.prop_doc_link"
-            :blank-target="true"
+            blank-target
             class="flex flex-row justify-end"
           >
             <span class="flex flex-col content-center justify-center">

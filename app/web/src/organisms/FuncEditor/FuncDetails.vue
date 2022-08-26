@@ -6,7 +6,7 @@
       </template>
       <template #panels>
         <TabPanel>
-          <SiCollapsible label="Attributes" :default-open="true">
+          <SiCollapsible label="Attributes" default-open>
             <div class="px-2 py-2 flex flex-col gap-2">
               <h1 class="text-neutral-400 dark:text-neutral-300 text-sm">
                 Give this qualification a Name, Entrypoint and brief description
@@ -35,13 +35,13 @@
                 v-model="editingFunc.modifiedFunc.description"
                 placeholder="Provide a brief description of what this qualification validates here..."
                 title="Description"
-                :text-area="true"
+                text-area
                 :disabled="editingFunc.origFunc.isBuiltin"
                 @blur="updateFunc"
               />
             </div>
           </SiCollapsible>
-          <SiCollapsible label="Run On" :default-open="true">
+          <SiCollapsible label="Run On" default-open>
             <div class="px-2 pt-3 flex flex-col gap-2">
               <h1 class="text-neutral-400 dark:text-neutral-300 text-sm">
                 Run this qualification on the selected components and component

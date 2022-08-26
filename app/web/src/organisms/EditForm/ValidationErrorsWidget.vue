@@ -15,7 +15,7 @@
           {{ error.message }}
         </div>
         <div v-if="error.link" class="ml-1 align-top">
-          <SiLink :uri="error.link" :blank-target="true">
+          <SiLink :uri="error.link" blank-target>
             <VueFeather type="external-link" stroke="grey" size="1.0em" />
           </SiLink>
         </div>
