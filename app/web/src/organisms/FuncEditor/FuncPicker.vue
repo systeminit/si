@@ -7,7 +7,7 @@
       <SiDropdownItem>FUNCTIONS</SiDropdownItem>
     </template>
     <template #panels>
-      <TabPanel :key="0" class="h-full overflow-auto">
+      <TabPanel :key="0" class="h-full overflow-hidden flex flex-col">
         <div class="w-full p-2 border-b dark:border-neutral-600">
           <VButton
             button-rank="primary"

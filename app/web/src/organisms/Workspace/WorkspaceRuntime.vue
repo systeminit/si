@@ -1,12 +1,16 @@
 <template>
   <div class="flex flex-row w-full h-full bg-transparent overflow-hidden">
-    <SiSidebar side="left" class="h-full pb-12" width-classes="shrink-0 w-96">
+    <SiPanel
+      remember-size-key="workflow-left"
+      side="left"
+      size-classes="w-96 pb-12"
+    >
       <WorkflowPicker
         :list="list"
         :selected-id="selected?.id ?? null"
         @selected="select"
       />
-    </SiSidebar>
+    </SiPanel>
     <div
       class="grow overflow-x-hidden overflow-y-hidden dark:bg-neutral-800 dark:text-white text-lg font-semi-bold px-2 pt-2 flex flex-col"
     >
@@ -29,11 +33,10 @@
         Select a workflow to resolve.
       </div>
     </div>
-    <SiSidebar
-      :hidden="false"
+    <SiPanel
+      remember-size-key="workflow-right"
       side="right"
-      class="h-full"
-      width-classes="shrink-0 w-80"
+      size-classes="w-80"
     >
       <span v-if="logs" class="overflow-auto">
         <p class="text-lg">Output:</p>
@@ -41,14 +44,13 @@
       </span>
       <!-- if hiding is added later, condition is selectedFuncId < 1 -->
       <!--<FuncDetails :func-id="selectedFunc.id" />-->
-    </SiSidebar>
+    </SiPanel>
   </div>
 </template>
 
 <script lang="ts" setup>
 import { ref } from "vue";
 import { refFrom } from "vuse-rx/src";
-import SiSidebar from "@/atoms/SiSidebar.vue";
 import WorkflowPicker from "@/organisms/WorkflowRunner/WorkflowPicker.vue";
 import WorkflowResolver from "@/organisms/WorkflowRunner/WorkflowResolver.vue";
 import { WorkflowService } from "@/service/workflow";
@@ -57,6 +59,7 @@ import {
   ListWorkflowsResponse,
 } from "@/service/workflow/list";
 import VButton from "@/molecules/VButton.vue";
+import SiPanel from "@/atoms/SiPanel.vue";
 
 const selected = ref<ListedWorkflowView | null>(null);
 const select = (w: ListedWorkflowView | null) => {
