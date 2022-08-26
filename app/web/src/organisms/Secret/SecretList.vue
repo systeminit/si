@@ -2,7 +2,7 @@
   <div class="flex w-full h-full">
     <div class="flex w-full h-full">
       <div class="flex flex-col w-full shadow-sm table-fixed">
-        <div class="flex w-full text-sm font-medium text-gray-200 header">
+        <div class="flex w-full text-sm font-medium text-neutral-200 header">
           <div class="w-6/12 px-2 py-1 text-center align-middle table-border">
             Name
           </div>
@@ -10,7 +10,7 @@
           <div class="w-3/12 px-2 py-1 text-center table-border">Type</div>
         </div>
 
-        <div class="flex flex-col text-xs text-gray-300">
+        <div class="flex flex-col text-xs text-neutral-300">
           <div
             v-for="secret in secrets"
             :key="secret.id"

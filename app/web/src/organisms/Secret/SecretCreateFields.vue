@@ -2,7 +2,7 @@
   <div v-for="field in secretKindFields.fields" :key="field.keyName">
     <div v-if="field.password" class="flex flex-row items-center w-full pb-2">
       <div
-        class="w-1/2 pr-2 text-sm text-right text-gray-400 align-middle border-action-100"
+        class="w-1/2 pr-2 text-sm text-right text-neutral-400 align-middle border-action-100"
       >
         <label :for="idFor(field.keyName, field.password)"
           >{{ field.displayName }}:</label
@@ -22,7 +22,7 @@
       </div>
     </div>
     <div v-else class="flex flex-row items-center w-full pb-2">
-      <div class="w-1/2 pr-2 text-sm text-right text-gray-400 align-middle">
+      <div class="w-1/2 pr-2 text-sm text-right text-neutral-400 align-middle">
         <label :for="idFor(field.keyName, field.password)"
           >{{ field.displayName }}:</label
         >

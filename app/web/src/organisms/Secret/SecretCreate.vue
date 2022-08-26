@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col w-full">
     <div class="flex flex-row items-center w-full pb-2">
-      <div class="w-1/2 pr-2 text-sm text-right text-gray-400 align-middle">
+      <div class="w-1/2 pr-2 text-sm text-right text-neutral-400 align-middle">
         <label for="secret-name-textbox">Secret Name:</label>
       </div>
       <div class="w-1/2 align-middle">
@@ -16,7 +16,7 @@
       </div>
     </div>
     <div class="flex flex-row items-center w-full pb-2">
-      <div class="w-1/2 pr-2 text-sm text-right text-gray-400 align-middle">
+      <div class="w-1/2 pr-2 text-sm text-right text-neutral-400 align-middle">
         <label for="secret-password-textbox">Secret Kind:</label>
       </div>
       <div class="w-1/2 align-middle">
