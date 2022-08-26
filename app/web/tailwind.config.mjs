@@ -7,11 +7,6 @@ export default {
   darkMode: "class",
   content: ["./src/**/*.html", "./src/**/*.vue"],
   theme: {
-    cursor: {
-      resize: "ew-resize",
-      pointer: "pointer",
-      move: "move",
-    },
     fontFamily: {
       sans: ["Inter", "Sans-serif"],
       commodore: ["commodore", "Sans-serif"],

@@ -1,13 +1,18 @@
 <template>
   <div class="w-full h-full flex relative overflow-hidden">
     <div class="flex flex-row w-full bg-transparent">
-      <SiSidebar side="left">
+      <SiPanel
+        remember-size-key="changeset-and-asset"
+        side="left"
+        size-classes="w-80"
+        :min-resize="260"
+      >
         <ChangeSetPanel
           v-if="!isViewMode"
           class="border-b-2 dark:border-neutral-500 mb-2"
         />
 
-        <SiTabGroup :top-margin="0">
+        <SiTabGroup>
           <template #tabs>
             <SiTabHeader v-if="!isViewMode">Asset Palette</SiTabHeader>
             <SiTabHeader>Diagram Outline</SiTabHeader>
@@ -28,7 +33,7 @@
             </TabPanel>
           </template>
         </SiTabGroup>
-      </SiSidebar>
+      </SiPanel>
 
       <div class="grow h-full relative bg-neutral-50 dark:bg-neutral-900">
         <GenericDiagram
@@ -46,7 +51,12 @@
         />
       </div>
 
-      <SiSidebar side="right">
+      <SiPanel
+        remember-size-key="component-details"
+        side="right"
+        :min-resize="300"
+        size-classes="w-96"
+      >
         <ComponentDetails
           v-if="selectedComponent"
           :component-identification="selectedComponent"
@@ -58,7 +68,7 @@
           </template>
           <template v-else>Select a single component to edit it </template>
         </div>
-      </SiSidebar>
+      </SiPanel>
     </div>
   </div>
 </template>
@@ -69,7 +79,7 @@ import _ from "lodash";
 import { computed, ref, watch } from "vue";
 import { useObservable } from "@vueuse/rxjs";
 import { useRoute } from "vue-router";
-import SiSidebar from "@/atoms/SiSidebar.vue";
+import SiPanel from "@/atoms/SiPanel.vue";
 import ChangeSetPanel from "@/organisms/ChangeSetPanel.vue";
 import ComponentDetails from "@/organisms/ComponentDetails.vue";
 import { ComponentService } from "@/service/component";

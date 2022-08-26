@@ -5,11 +5,6 @@
       <SiTabHeader>Code</SiTabHeader>
     </template>
 
-    <template #dropdownitems>
-      <SiDropdownItem>Attributes</SiDropdownItem>
-      <SiDropdownItem>Code</SiDropdownItem>
-    </template>
-
     <template #panels>
       <TabPanel class="flex flex-col overflow-y-auto">
         <div class="text-center">
@@ -53,7 +48,6 @@ import { RefreshIcon } from "@heroicons/vue/solid";
 import { tag } from "rxjs-spy/operators";
 import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
-import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
 import AttributeViewer from "@/organisms/AttributeViewer.vue";
 import { ComponentIdentification } from "@/api/sdf/dal/component";
 import CodeViewer from "@/organisms/CodeViewer.vue";
