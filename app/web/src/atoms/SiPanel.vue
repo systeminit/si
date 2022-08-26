@@ -14,32 +14,35 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, toRef } from "vue";
+import {
+  computed,
+  onBeforeUnmount,
+  onMounted,
+  PropType,
+  ref,
+  toRef,
+} from "vue";
 import _ from "lodash";
 import SiPanelResizer from "@/atoms/SiPanelResizer.vue";
 
-const props = withDefaults(
-  defineProps<{
-    rememberSizeKey: string;
-    side: "left" | "right" | "top" | "bottom";
-    hidden?: boolean;
-    classes?: string;
-    sizeClasses?: string;
-    resizeable?: boolean;
-    minResize?: number;
-    maxResize?: number;
-    fixedDefaultSize?: number | undefined;
-  }>(),
-  {
-    classes:
-      "z-20 dark:text-white border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 pointer-events-auto relative",
-    sizeClasses: "",
-    resizeable: true,
-    minResize: 0.1,
-    maxResize: 0.45,
-    fixedDefaultSize: undefined,
+const props = defineProps({
+  rememberSizeKey: { type: String, required: true },
+  side: {
+    type: String as PropType<"left" | "right" | "top" | "bottom">,
+    required: true,
   },
-);
+  hidden: { type: Boolean },
+  classes: {
+    type: String,
+    default:
+      "z-20 dark:text-white border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 pointer-events-auto relative",
+  },
+  sizeClasses: { type: String, default: "" },
+  resizeable: { type: Boolean, default: true },
+  minResize: { type: Number, default: 0.1 },
+  maxResize: { type: Number, default: 0.45 },
+  fixedDefaultSize: { type: Number },
+});
 
 const isVertical = computed(
   () => props.side === "top" || props.side === "bottom",
