@@ -124,7 +124,6 @@
 <script lang="ts" setup>
 import { computed, ref } from "vue";
 import _ from "lodash";
-import { Qualification } from "@/api/sdf/dal/qualification";
 import {
   Dialog,
   DialogPanel,
@@ -132,6 +131,7 @@ import {
   TransitionChild,
   TransitionRoot,
 } from "@headlessui/vue";
+import { Qualification } from "@/api/sdf/dal/qualification";
 import VButton from "@/molecules/VButton.vue";
 import StatusMessageBox from "@/molecules/StatusMessageBox.vue";
 

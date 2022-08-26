@@ -1,11 +1,11 @@
-import { ApiResponse, SDF } from "@/api/sdf";
 import { combineLatest, take, Observable } from "rxjs";
-import { standardVisibilityTriggers$ } from "@/observable/visibility";
 import Bottle from "bottlejs";
 import { switchMap } from "rxjs/operators";
+import _ from "lodash";
+import { ApiResponse, SDF } from "@/api/sdf";
+import { standardVisibilityTriggers$ } from "@/observable/visibility";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import { system$ } from "@/observable/system";
-import _ from "lodash";
 
 export interface CheckQualificationArgs {
   componentId: number;

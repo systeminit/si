@@ -58,6 +58,7 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from "vue";
 import { EditField } from "@/api/sdf/dal/edit_field";
 import CheckboxWidget from "@/organisms/EditForm/CheckboxWidget.vue";
 import TextWidget from "@/organisms/EditForm/TextWidget.vue";
@@ -67,7 +68,6 @@ import ArrayWidget from "@/organisms/EditForm/ArrayWidget.vue";
 import { ITreeOpenState } from "@/utils/edit_field_visitor";
 import { buildAttributeContext } from "@/utils/attributeContext";
 import { ComponentIdentification } from "@/api/sdf/dal/component";
-import { computed } from "vue";
 import { AttributeContext } from "@/api/sdf/dal/attribute";
 import MapWidget from "@/organisms/EditForm/MapWidget.vue";
 

@@ -1,11 +1,11 @@
-import { ApiResponse, SDF } from "@/api/sdf";
 import { combineLatest, Observable, shareReplay, from } from "rxjs";
 import Bottle from "bottlejs";
 import { switchMap } from "rxjs/operators";
+import _ from "lodash";
+import { ApiResponse, SDF } from "@/api/sdf";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import { EditFieldObjectKind, EditFields } from "@/api/sdf/dal/edit_field";
 import { workspace$ } from "@/observable/workspace";
-import _ from "lodash";
 import { standardVisibilityTriggers$ } from "@/observable/visibility";
 
 export interface GetEditFieldsArgs {

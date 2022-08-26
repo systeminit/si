@@ -9,12 +9,6 @@
   </div>
 </template>
 
-<script lang="ts">
-export default {
-  inheritAttrs: false,
-};
-</script>
-
 <script setup lang="ts">
 import { ref, watch, toRefs, computed } from "vue";
 import _ from "lodash";
@@ -41,7 +35,7 @@ const errors = ref<ErrorsArray>([]);
 const evaluateErrors = (newValue: string) => {
   const currentErrors: ErrorsArray = [];
 
-  if (required?.value && value.value.length == 0) {
+  if (required?.value && value.value.length === 0) {
     currentErrors.push({
       id: "required",
       message: "This field is required.",
@@ -89,7 +83,7 @@ const displayErrors = computed(() => {
     return errors.value;
   } else if (!showRequired?.value) {
     return _.filter(errors.value, (e) => {
-      return e.id != "required";
+      return e.id !== "required";
     });
   } else {
     return errors.value;
@@ -106,5 +100,11 @@ const errorClasses = (id: string) => {
     classes["text-destructive-400"] = true;
   }
   return classes;
+};
+</script>
+
+<script lang="ts">
+export default {
+  inheritAttrs: false,
 };
 </script>

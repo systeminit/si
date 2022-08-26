@@ -1,11 +1,10 @@
-import { Config } from "@/config";
-import { SdfWs } from "@/api/sdf/ws";
 import { fromFetch } from "rxjs/fetch";
 import { from, mergeMap, Observable } from "rxjs";
 import _ from "lodash";
+import { SdfWs } from "@/api/sdf/ws";
+import { Config, config } from "@/config";
 import { Workspace } from "@/api/sdf/dal/workspace";
 import { SessionService } from "@/service/session";
-import { config } from "@/config";
 
 export class FetchError extends Error {
   response: Response;
@@ -187,6 +186,7 @@ export class SDF {
     return this.send_request(request);
   }
 
+  // eslint-disable-next-line class-methods-use-this
   send_request<T>(request: Request): Observable<ApiResponse<T>> {
     return fromFetch(request).pipe(
       mergeMap((response) => {

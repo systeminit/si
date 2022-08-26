@@ -17,7 +17,7 @@
           <SiMenu
             v-if="child.kind === 'tree'"
             :tree="child"
-            :is-not-root="true"
+            is-not-root
             @selected="selected"
           />
           <div v-else>
@@ -48,7 +48,7 @@ import { SiMenuTree } from "@/utils/menu";
 // See:
 // https://github.com/johnsoncodehk/volar/issues/644#issuecomment-1012716529
 const SiMenu = defineAsyncComponent(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any, import/no-self-import
   () => import("./SiMenu.vue") as any,
 );
 

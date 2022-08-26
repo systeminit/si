@@ -7,7 +7,7 @@ import { Config } from "./config";
 
 export function bottleSetup(config: Config) {
   const bottle = Bottle.pop("default");
-  bottle.factory("SDF", function (_container): SDF {
+  bottle.factory("SDF", function sdfBottleFactory(_container): SDF {
     return new SDF(config);
   });
 
@@ -19,7 +19,7 @@ export function bottleSetup(config: Config) {
 // @ts-ignore
 export function bottleSetStore(router: VueRouter, config: Config) {
   const bottle = Bottle.pop("default");
-  bottle.factory("SDF", function (_container): SDF {
+  bottle.factory("SDF", function sdfBottleFactory(_container): SDF {
     return new SDF(config);
   });
 

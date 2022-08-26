@@ -101,13 +101,6 @@ overflow hidden */
   </div>
 </template>
 
-<script lang="ts">
-// zoom config - zoom value of 1 is 100% zoom level
-const ZOOM_SCROLL_FACTOR = 0.001; // scroll delta multiplied by this while zooming
-
-const ZOOM_PAN_FACTOR = 0.5; // scroll pan multiplied by this and zoom level when panning
-</script>
-
 <script lang="ts" setup>
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import {
@@ -117,13 +110,15 @@ import {
   onBeforeUnmount,
   reactive,
   watch,
+  PropType,
 } from "vue";
-import { PropType } from "vue";
 import { Stage as KonvaStage } from "konva/lib/Stage";
 import _ from "lodash";
-import DiagramGridBackground from "./DiagramGridBackground.vue";
 import { KonvaEventObject } from "konva/lib/Node";
 import { Vector2d } from "konva/lib/types";
+import tinycolor from "tinycolor2";
+import { useCustomFontsLoaded } from "@/composables/useFontLoaded";
+import DiagramGridBackground from "./DiagramGridBackground.vue";
 import {
   DeleteElementsEvent,
   DiagramConfig,
@@ -160,11 +155,14 @@ import {
 } from "./utils/math";
 import DiagramNewEdge from "./DiagramNewEdge.vue";
 import { convertArrowKeyToDirection } from "./utils/keyboard";
-import tinycolor from "tinycolor2";
-import { useCustomFontsLoaded } from "@/composables/useFontLoaded";
 import DiagramZoomControls from "./DiagramZoomControls.vue";
 
 import { baseConfig } from "./diagram_base_config";
+
+// zoom config - zoom value of 1 is 100% zoom level
+const ZOOM_SCROLL_FACTOR = 0.001; // scroll delta multiplied by this while zooming
+// scroll pan multiplied by this and zoom level when panning
+const ZOOM_PAN_FACTOR = 0.5;
 
 const props = defineProps({
   customConfig: {
@@ -466,7 +464,7 @@ function onMouseMove(e: MouseEvent) {
   }
 }
 
-function checkIfDragStarted(e: MouseEvent) {
+function checkIfDragStarted(_e: MouseEvent) {
   if (!lastMouseDownContainerPointerPos.value || !containerPointerPos.value)
     return;
   const dragDistance = vectorDistance(
@@ -531,13 +529,13 @@ function onNodeHoverStart(nodeId: string, socketId?: string) {
     hoveredElement.value = { diagramElementType: "node", id: nodeId };
   }
 }
-function onNodeHoverEnd(nodeId: string, socketId?: string) {
+function onNodeHoverEnd(_nodeId: string, _socketId?: string) {
   hoveredElement.value = undefined;
 }
 function onEdgeHoverStart(edgeId: string) {
   hoveredElement.value = { diagramElementType: "edge", id: edgeId };
 }
-function onEdgeHoverEnd(edgeId: string) {
+function onEdgeHoverEnd(_edgeId: string) {
   hoveredElement.value = undefined;
 }
 const disableHoverEvents = computed(() => {
@@ -745,9 +743,9 @@ function beginDragElements() {
   if (!lastMouseDownDiagramElement.value) return;
   dragElementsActive.value = true;
   // TODO: better type here... wanting to use the helper which can return anything, but it will only be a "movable" element
-  const draggedElement = getElement(
-    lastMouseDownDiagramElement.value,
-  ) as DiagramNodeDef;
+  // const draggedElement = getElement(
+  //   lastMouseDownDiagramElement.value,
+  // ) as DiagramNodeDef;
 
   totalScrolledDuringDrag.value = { x: 0, y: 0 };
 
@@ -759,7 +757,7 @@ function beginDragElements() {
 function endDragElements() {
   dragElementsActive.value = false;
   // fire off final move event, might want to clean up how this is done...
-  _.each(currentSelectionMovableElements.value, (el, i) => {
+  _.each(currentSelectionMovableElements.value, (el) => {
     if (!movedElementPositions[el.id]) return;
     emit("move-element", {
       id: el.id,
@@ -876,8 +874,8 @@ function triggerDragToEdgeScrolling() {
   totalScrolledDuringDrag.value.y += deltaY;
 
   // adjust amount to scroll by zoom before we apply it
-  if (deltaX !== 0) deltaX = deltaX / zoomLevel.value;
-  if (deltaY !== 0) deltaY = deltaY / zoomLevel.value;
+  if (deltaX !== 0) deltaX /= zoomLevel.value;
+  if (deltaY !== 0) deltaY /= zoomLevel.value;
 
   gridOrigin.value = {
     x: gridOrigin.value.x + deltaX,

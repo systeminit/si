@@ -18,9 +18,6 @@
 </template>
 
 <script lang="ts" setup>
-import GitBranchIcon from "@/atoms/CustomIcons/GitBranchIcon.vue";
-import GitCommitIcon from "@/atoms/CustomIcons/GitCommitIcon.vue";
-import GitMergeIcon from "@/atoms/CustomIcons/GitMergeIcon.vue";
 import {
   ChevronDownIcon,
   MinusIcon,
@@ -30,6 +27,9 @@ import {
   XIcon,
 } from "@heroicons/vue/solid";
 import VueFeather from "vue-feather";
+import GitBranchIcon from "@/atoms/CustomIcons/GitBranchIcon.vue";
+import GitCommitIcon from "@/atoms/CustomIcons/GitCommitIcon.vue";
+import GitMergeIcon from "@/atoms/CustomIcons/GitMergeIcon.vue";
 
 export type IconName =
   | "git-branch"

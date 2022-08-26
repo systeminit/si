@@ -1,12 +1,12 @@
-import { ApiResponse, SDF } from "@/api/sdf";
 import { combineLatest, from, Observable, shareReplay, startWith } from "rxjs";
-import { standardVisibilityTriggers$ } from "@/observable/visibility";
 import Bottle from "bottlejs";
 import { switchMap } from "rxjs/operators";
+import _ from "lodash";
+import { ApiResponse, SDF } from "@/api/sdf";
+import { standardVisibilityTriggers$ } from "@/observable/visibility";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import { Qualification } from "@/api/sdf/dal/qualification";
 import { workspace$ } from "@/observable/workspace";
-import _ from "lodash";
 import { eventCheckedQualifications$ } from "@/observable/qualification";
 
 export interface ListQualificationsArgs {

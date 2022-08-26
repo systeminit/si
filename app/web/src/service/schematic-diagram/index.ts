@@ -1,4 +1,3 @@
-import { ApiResponse, sdf } from "@/api/sdf";
 import {
   combineLatest,
   firstValueFrom,
@@ -6,23 +5,24 @@ import {
   map,
   switchMap,
 } from "rxjs";
+import _ from "lodash";
+import { useObservable } from "@vueuse/rxjs";
+import { Vector2d } from "konva/lib/types";
+import { ApiResponse, sdf } from "@/api/sdf";
 import { applicationNodeId$ } from "@/observable/application";
 import {
   standardVisibilityTriggers$,
   visibility$,
 } from "@/observable/visibility";
-import _ from "lodash";
 import { DiagramContent } from "@/organisms/GenericDiagram/diagram_types";
 import { system$ } from "@/observable/system";
-import { useObservable } from "@vueuse/rxjs";
-import { Vector2d } from "konva/lib/types";
 import { NodePosition } from "@/api/sdf/dal/node_position";
-import { GlobalErrorService } from "../global_error";
 import { workspace$ } from "@/observable/workspace";
 import {
   SchematicNode,
   SchematicSchemaVariants,
 } from "@/api/sdf/dal/schematic";
+import { GlobalErrorService } from "../global_error";
 
 export type GetSchematicResponse = DiagramContent;
 
@@ -83,7 +83,7 @@ function useSchemaVariants() {
   return useObservable(schemaVariants$);
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////////
+// ---------------------------------------------------
 
 interface UpdateNodePositionResponse {
   position: NodePosition;

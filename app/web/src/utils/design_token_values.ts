@@ -2,7 +2,7 @@ import _ from "lodash";
 // @ts-ignore
 import resolveConfig from "tailwindcss/resolveConfig";
 // @ts-ignore
-import tailwindConfig from "../../tailwind.config.mjs";
+import tailwindConfig from "../../tailwind.config";
 
 const fullConfig = resolveConfig(tailwindConfig);
 

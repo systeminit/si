@@ -34,9 +34,9 @@
 
 <script setup lang="ts">
 import { refFrom } from "vuse-rx";
+import { from, switchMap } from "rxjs";
 import { Secret } from "@/api/sdf/dal/secret";
 import { SecretService } from "@/service/secret";
-import { from, switchMap } from "rxjs";
 import { GlobalErrorService } from "@/service/global_error";
 
 const secrets = refFrom<Secret[] | undefined>(

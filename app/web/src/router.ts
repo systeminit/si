@@ -1,4 +1,3 @@
-import { config } from "@/config";
 import {
   createRouter,
   createWebHistory,
@@ -6,12 +5,13 @@ import {
   RouteLocationNormalized,
   RouteRecordRaw,
 } from "vue-router";
+import _ from "lodash";
+import { config } from "@/config";
 import { SessionService } from "@/service/session";
 import NotFoundPage from "@/pages/NotFound.vue";
 import Authenticate from "@/pages/Authenticate.vue";
 import Login from "@/templates/Login.vue";
 import Signup from "@/templates/Signup.vue";
-import _ from "lodash";
 import Home from "@/pages/Home.vue";
 import WorkspaceSingle from "@/templates/WorkspaceSingle.vue";
 import WorkspaceMultiple from "@/templates/WorkspaceMultiple.vue";
@@ -116,9 +116,9 @@ export const routeCheck = async (
   next: NavigationGuardNext,
 ) => {
   if (
-    to.path == "/authenticate/signup" ||
-    to.path == "/authenticate/login" ||
-    to.path == "/diagram"
+    to.path === "/authenticate/signup" ||
+    to.path === "/authenticate/login" ||
+    to.path === "/diagram"
   ) {
     return next();
   }

@@ -1,9 +1,9 @@
 <template>
   <div class="flex flex-col w-full overflow-auto scrollbar">
     <Widgets
-      :show="true"
+      show
       :edit-fields="coreEditFields"
-      :core-edit-fields="true"
+      core-edit-field
       :indent-level="1"
       :tree-open-state="{}"
       :component-identification="componentIdentification"
@@ -15,7 +15,7 @@
     </div>
     <div class="flex flex-col w-full overflow-auto scrollbar">
       <Widgets
-        :show="true"
+        show
         :edit-fields="propertyEditFields"
         :indent-level="1"
         :tree-open-state="treeOpenState"
@@ -28,11 +28,6 @@
 
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import type {
-  EditFields,
-  EditField,
-  HeaderWidgetDal,
-} from "@/api/sdf/dal/edit_field";
 import { EditFieldDataType } from "@/api/sdf/dal/edit_field";
 import Widgets from "@/organisms/EditForm/Widgets.vue";
 import {
@@ -40,6 +35,11 @@ import {
   ITreeOpenState,
 } from "@/utils/edit_field_visitor";
 import { ComponentIdentification } from "@/api/sdf/dal/component";
+import type {
+  EditFields,
+  EditField,
+  HeaderWidgetDal,
+} from "@/api/sdf/dal/edit_field";
 
 const props = defineProps<{
   editFields: EditFields;

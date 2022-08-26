@@ -59,6 +59,7 @@
 
 <script lang="ts" setup>
 import { computed, ref } from "vue";
+import { TabPanel } from "@headlessui/vue";
 import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import SiCollapsible from "@/organisms/SiCollapsible.vue";
@@ -66,13 +67,13 @@ import SiFuncSprite from "@/molecules/SiFuncSprite.vue";
 import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
 import { ListedFuncView, ListFuncsResponse } from "@/service/func/list_funcs";
 import SiSearch from "@/molecules/SiSearch.vue";
-import { TabPanel } from "@headlessui/vue";
 import VButton from "@/molecules/VButton.vue";
 
 const searchString = ref("");
 
-const onSearch = (search: string) =>
-  (searchString.value = search.trim().toLocaleLowerCase());
+const onSearch = (search: string) => {
+  searchString.value = search.trim().toLocaleLowerCase();
+};
 
 const props = defineProps<{
   funcList: ListFuncsResponse;

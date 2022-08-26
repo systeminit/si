@@ -1,8 +1,8 @@
 import _ from "lodash";
-import { ApiResponse, SDF } from "@/api/sdf";
 import { combineLatest, from, Observable } from "rxjs";
 import Bottle from "bottlejs";
 import { switchMap } from "rxjs/operators";
+import { ApiResponse, SDF } from "@/api/sdf";
 import { workspace$ } from "@/observable/workspace";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import { standardVisibilityTriggers$ } from "@/observable/visibility";

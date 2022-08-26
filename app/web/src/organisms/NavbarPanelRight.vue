@@ -27,13 +27,13 @@
 </template>
 
 <script lang="ts" setup>
+import { useRouter } from "vue-router";
 import LinkIcon from "@/atoms/CustomIcons/LinkIcon.vue";
 import SiBarButton from "@/molecules/SiBarButton.vue";
 import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
 import SiArrow from "@/atoms/SiArrow.vue";
 import SiThemeSwitcher from "@/organisms/SiThemeSwitcher.vue";
 import { SessionService } from "@/service/session";
-import { useRouter } from "vue-router";
 import CheechSvg from "@/assets/images/cheech-and-chong.svg?component";
 
 const router = useRouter();

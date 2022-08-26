@@ -9,6 +9,7 @@ import {
 
 import { tag } from "rxjs-spy/operators/tag";
 
+import { switchMap } from "rxjs/operators";
 import {
   changeSet$,
   eventChangeSetApplied$,
@@ -16,7 +17,6 @@ import {
   eventChangeSetCreated$,
   eventChangeSetWritten$,
 } from "@/observable/change_set";
-import { switchMap } from "rxjs/operators";
 import { NO_CHANGE_SET_PK, Visibility } from "@/api/sdf/dal/visibility";
 
 export const showDeleted$ = new BehaviorSubject<boolean>(false);

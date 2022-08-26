@@ -94,7 +94,7 @@ const secretKindFields = computed((): SecretKindFields | undefined => {
   // `undefined` is returned
   const secretKindFields = _.find(
     allSecretKindFields.value,
-    (secretKindFields) => secretKindFields.secretKind == secretKind.value,
+    (secretKindFields) => secretKindFields.secretKind === secretKind.value,
   );
   return secretKindFields;
 });
@@ -109,7 +109,7 @@ const enableCreateButton = computed((): boolean => {
       if (!secretMessage.value[field.keyName]) {
         // Key is not yet set for this field in the message
         return false;
-      } else if (secretMessage.value[field.keyName].length == 0) {
+      } else if (secretMessage.value[field.keyName].length === 0) {
         // The value for this field is empty
         return false;
       }

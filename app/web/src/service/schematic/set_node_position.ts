@@ -1,12 +1,12 @@
 import Bottle from "bottlejs";
+import { combineLatest, Observable, take } from "rxjs";
+import { switchMap } from "rxjs/operators";
+import _ from "lodash";
 import { ApiResponse, SDF } from "@/api/sdf";
 import { SchematicKind } from "@/api/sdf/dal/schematic";
-import { combineLatest, Observable, take } from "rxjs";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import { NodePosition } from "@/api/sdf/dal/node_position";
 import { visibility$ } from "@/observable/visibility";
-import { switchMap } from "rxjs/operators";
-import _ from "lodash";
 
 export interface SetNodePositionArgs {
   deploymentNodeId: number | null;

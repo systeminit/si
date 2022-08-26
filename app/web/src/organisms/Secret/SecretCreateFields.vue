@@ -61,8 +61,8 @@ const secretMessage = ref<Record<string, string>>(props.modelValue);
 
 const idFor = (name: string, password: boolean): string => {
   if (password) {
-    return "secret-password-" + name;
+    return `secret-password-${name}`;
   }
-  return "secret-text-" + name;
+  return `secret-text-${name}`;
 };
 </script>

@@ -4,11 +4,11 @@ import { combineLatest, combineLatestWith, from, Observable, tap } from "rxjs";
 import { switchMap } from "rxjs/operators";
 
 import { ApiResponse, SDF } from "@/api/sdf";
-import { System } from "../../api/sdf/dal/system";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import { standardVisibilityTriggers$ } from "@/observable/visibility";
 import { workspace$ } from "@/observable/workspace";
 import { SystemService } from "@/service/system";
+import { System } from "../../api/sdf/dal/system";
 
 export interface GetSystemArgs {
   systemId: number;

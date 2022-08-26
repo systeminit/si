@@ -66,12 +66,6 @@
   </template>
 </template>
 
-<script lang="ts">
-export default {
-  inheritAttrs: false,
-};
-</script>
-
 <script lang="ts" setup>
 import {
   CheckCircleIcon as OutlineCheck,
@@ -108,4 +102,10 @@ withDefaults(
     iconType: "solid",
   },
 );
+</script>
+
+<script lang="ts">
+export default {
+  inheritAttrs: false,
+};
 </script>

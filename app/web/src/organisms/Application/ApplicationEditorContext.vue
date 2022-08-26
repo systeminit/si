@@ -82,12 +82,12 @@
 <script setup lang="ts">
 import { ref } from "vue";
 
+import VueFeather from "vue-feather";
 import ApplicationActivitySummary from "@/organisms/Application/Summary/ApplicationActivitySummary.vue";
 import ApplicationServicesSummary from "@/organisms/Application/Summary/ApplicationServicesSummary.vue";
 import ApplicationComputingResourcesSummary from "@/organisms/Application/ApplicationComputingResourcesSummary.vue";
 import ApplicationProviderSummary from "@/organisms/Application/Summary/ApplicationProviderSummary.vue";
 import ApplicationChangesSummary from "@/organisms/Application/Summary/ApplicationChangesSummary.vue";
-import VueFeather from "vue-feather";
 
 const showDetails = ref<boolean>(false);
 const toggleDetails = () => {

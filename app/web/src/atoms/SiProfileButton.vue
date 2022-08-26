@@ -17,8 +17,8 @@
 
 <script setup lang="ts">
 import { MenuButton } from "@headlessui/vue";
-import CheechSvg from "@/assets/images/cheech-and-chong.svg?component";
 import { ref } from "vue";
+import CheechSvg from "@/assets/images/cheech-and-chong.svg?component";
 import SiArrow from "@/atoms/SiArrow.vue";
 
 const hovered = ref<boolean>(false);

@@ -25,7 +25,7 @@ const side = toRef(props, "side");
 
 const panelClasses = computed(() => {
   const classes: Record<string, boolean> = {};
-  if (side.value == "left") {
+  if (side.value === "left") {
     classes["border-r-2"] = true;
     classes[props.hidden ? "right-96" : "right-0"] = true;
   } else {

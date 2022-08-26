@@ -127,9 +127,9 @@ import {
   ListboxOption,
   ListboxOptions,
 } from "@headlessui/vue";
-import { LabelList } from "@/api/sdf/dal/label_list";
 import { CheckIcon, SelectorIcon } from "@heroicons/vue/solid";
 import _ from "lodash";
+import { LabelList } from "@/api/sdf/dal/label_list";
 import SiArrow from "@/atoms/SiArrow.vue";
 
 export interface SelectPropsOption {

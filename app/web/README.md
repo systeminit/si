@@ -50,7 +50,8 @@ This template should help get you started developing with Vue 3 and Typescript i
   - Use workspace's typescript version
     - run "Volar: Select Typescript Version" from command pallete
     - select "Use workspace version"
-  - Install [Prettier](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode) plugin
+  - Install [ESLint](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint) plugin
+    - NOTE - you don't need the prettier plugin, as it will be running via the eslint plugin
   - Enable format on save (recommended)
     - add `"editor.formatOnSave": true` to `.vscode/settings.json` file
-    - add `"[vue][typescript][javascript]": { "editor.defaultFormatter": "esbenp.prettier-vscode" }` to `.vscode/settings.json` file
+    - add `"[vue][typescript][javascript]": { "editor.defaultFormatter": "dbaeumer.vscode-eslint" }` to `.vscode/settings.json` file

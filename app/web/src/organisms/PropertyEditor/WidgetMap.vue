@@ -30,8 +30,8 @@ import { computed, ref, toRefs } from "vue";
 import SiTextBox from "@/atoms/SiTextBox.vue";
 import { usePropertyEditorIsShown } from "@/composables/usePropertyEditorIsShown";
 import { AddToMap, PropertyPath } from "@/api/sdf/dal/property_editor";
-import WidgetHeader from "./WidgetHeader.vue";
 import VButton from "@/molecules/VButton.vue";
+import WidgetHeader from "./WidgetHeader.vue";
 
 const props = defineProps<{
   name: string;
@@ -54,7 +54,7 @@ const setCollapsed = (path: Array<string>) => {
 const newKeyId = ref<string>(`newMap${props.valueId}`);
 const newKey = ref<string>("");
 const submitDisabled = computed(() => {
-  return newKey.value == "";
+  return !newKey.value;
 });
 
 const { name, path, collapsedPaths } = toRefs(props);

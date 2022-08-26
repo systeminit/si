@@ -44,6 +44,12 @@
 <script lang="ts" setup>
 import { computed, reactive, ref, watch } from "vue";
 import _ from "lodash";
+
+import KubernetesIconRaw from "@/assets/images/3p-logos/kubernetes/kubernetes-icon.svg?raw";
+import DockerIconRaw from "@/assets/images/3p-logos/docker/docker-icon.svg?raw";
+import { useThemeProvider } from "@/composables/injectTheme";
+import { ThemeValue } from "@/observable/theme";
+import GenericDiagram from "./GenericDiagram.vue";
 import {
   DeleteElementsEvent,
   DiagramEdgeDef,
@@ -53,12 +59,6 @@ import {
   InsertElementEvent,
   MoveElementEvent,
 } from "./diagram_types";
-import GenericDiagram from "./GenericDiagram.vue";
-
-import KubernetesIconRaw from "@/assets/images/3p-logos/kubernetes/kubernetes-icon.svg?raw";
-import DockerIconRaw from "@/assets/images/3p-logos/docker/docker-icon.svg?raw";
-import { useThemeProvider } from "@/composables/injectTheme";
-import { ThemeValue } from "@/observable/theme";
 
 const ZOOM_OPTIONS = [25, 50, 75, 100, 125, 150, 200, 300, 400, 500];
 const zoom = ref(1);

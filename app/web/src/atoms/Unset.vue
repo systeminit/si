@@ -6,13 +6,13 @@
 </template>
 
 <script setup lang="ts">
-import type { EditField } from "@/api/sdf/dal/edit_field";
 import VueFeather from "vue-feather";
 import { AttributeContext } from "@/api/sdf/dal/attribute";
 import { EditFieldService } from "@/service/edit_field";
 import { ApiResponse } from "@/api/sdf";
 import { RemoveFromEditFieldResponse } from "@/service/edit_field/remove_from_edit_field";
 import { GlobalErrorService } from "@/service/global_error";
+import type { EditField } from "@/api/sdf/dal/edit_field";
 
 const props = defineProps<{
   attributeContext?: AttributeContext;

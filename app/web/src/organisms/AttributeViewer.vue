@@ -29,7 +29,7 @@
         <SiLink
           v-if="componentMetadata?.schemaLink"
           :uri="componentMetadata.schemaLink"
-          :blank-target="true"
+          blank-target
           class="m-2 flex"
         >
           <SiButtonIcon tooltip-text="Go to documentation">
@@ -65,9 +65,19 @@
 </template>
 
 <script setup lang="ts">
-//import EditFormComponent from "@/organisms/EditFormComponent.vue";
+// import EditFormComponent from "@/organisms/EditFormComponent.vue";
 import { toRefs, computed } from "vue";
 import { fromRef, refFrom, untilUnmounted } from "vuse-rx";
+import { CheckCircleIcon } from "@heroicons/vue/solid";
+import {
+  CubeIcon,
+  QuestionMarkCircleIcon,
+  PencilAltIcon,
+} from "@heroicons/vue/outline";
+import _, { parseInt } from "lodash";
+import { tag } from "rxjs-spy/operators";
+import { combineLatest, forkJoin, from, map, take } from "rxjs";
+import { switchMap } from "rxjs/operators";
 import { GlobalErrorService } from "@/service/global_error";
 import { ResourceHealth } from "@/api/sdf/dal/resource";
 import { ComponentIdentification } from "@/api/sdf/dal/component";
@@ -76,13 +86,6 @@ import { ComponentMetadata } from "@/service/component/get_components_metadata";
 import SiLink from "@/atoms/SiLink.vue";
 import SiButtonIcon from "@/atoms/SiButtonIcon.vue";
 import SiIcon from "@/atoms/SiIcon.vue";
-import { CheckCircleIcon } from "@heroicons/vue/solid";
-import {
-  CubeIcon,
-  QuestionMarkCircleIcon,
-  PencilAltIcon,
-} from "@heroicons/vue/outline";
-import PropertyEditor, { PropertyEditorContext } from "./PropertyEditor.vue";
 import {
   PropertyEditorSchema,
   PropertyEditorValues,
@@ -94,10 +97,7 @@ import {
 import { ComponentService } from "@/service/component";
 import { SystemService } from "@/service/system";
 import { standardVisibilityTriggers$ } from "@/observable/visibility";
-import _, { parseInt } from "lodash";
-import { tag } from "rxjs-spy/operators";
-import { combineLatest, forkJoin, from, map, take } from "rxjs";
-import { switchMap } from "rxjs/operators";
+import PropertyEditor, { PropertyEditorContext } from "./PropertyEditor.vue";
 
 // TODO(nick): we technically only need one prop. We're sticking with two to not mess
 // with the reactivity guarentees in place.
@@ -121,7 +121,7 @@ const editorContext = refFrom<PropertyEditorContext | undefined>(
   ]).pipe(
     switchMap(([componentId, system, _triggers]) => {
       const schema = ComponentService.getPropertyEditorSchema({
-        componentId: componentId,
+        componentId,
       }).pipe(take(1));
       const values = ComponentService.getPropertyEditorValues({
         componentId,
@@ -250,11 +250,11 @@ const resourceTooltip = computed(() => {
   }
 
   const health = componentMetadata.value.resourceHealth;
-  if (health == ResourceHealth.Ok) {
+  if (health === ResourceHealth.Ok) {
     return "Resource Health Status is: Ok";
-  } else if (health == ResourceHealth.Warning) {
+  } else if (health === ResourceHealth.Warning) {
     return "Resource Health Status is: Warning";
-  } else if (health == ResourceHealth.Error) {
+  } else if (health === ResourceHealth.Error) {
     return "Resource Health Status is: Error";
   } else {
     return "Resource Health Status is: Unknown";
@@ -270,11 +270,11 @@ const resourceColor = computed(() => {
   }
 
   const health = componentMetadata.value.resourceHealth;
-  if (health == ResourceHealth.Ok) {
+  if (health === ResourceHealth.Ok) {
     return "#86f0ad";
-  } else if (health == ResourceHealth.Warning) {
+  } else if (health === ResourceHealth.Warning) {
     return "#f0d286";
-  } else if (health == ResourceHealth.Error) {
+  } else if (health === ResourceHealth.Error) {
     return "#f08686";
   } else {
     return "#bbbbbb";
@@ -371,7 +371,7 @@ const hackAwayTheZeroElementOfContainers = (
       continue;
     }
 
-    if (parentProp.kind == "array" || parentProp.kind == "map") {
+    if (parentProp.kind === "array" || parentProp.kind === "map") {
       filteredChildValues[parentValue.id] = childValuesIds.filter(
         (childValueId) => {
           const childValue = propertyEditorContext.values.values[childValueId];

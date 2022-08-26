@@ -6,7 +6,7 @@
       </template>
       <template #panels>
         <TabPanel>
-          <SiCollapsible label="Attributes" :default-open="true">
+          <SiCollapsible label="Attributes" default-open>
             <div class="px-2 py-2 flex flex-col gap-2">
               <h1 class="text-neutral-400 dark:text-neutral-300 text-sm">
                 Give this qualification a Name, Entrypoint and brief description
@@ -35,13 +35,13 @@
                 v-model="editingFunc.modifiedFunc.description"
                 placeholder="Provide a brief description of what this qualification validates here..."
                 title="Description"
-                :text-area="true"
+                text-area
                 :disabled="editingFunc.origFunc.isBuiltin"
                 @blur="updateFunc"
               />
             </div>
           </SiCollapsible>
-          <SiCollapsible label="Run On" :default-open="true">
+          <SiCollapsible label="Run On" default-open>
             <div class="px-2 pt-3 flex flex-col gap-2">
               <h1 class="text-neutral-400 dark:text-neutral-300 text-sm">
                 Run this qualification on the selected components and component
@@ -94,20 +94,20 @@
 </template>
 
 <script lang="ts" setup>
-import SiTabGroup from "@/molecules/SiTabGroup.vue";
-import SiTextBox from "@/atoms/SiTextBox.vue";
-import { Option } from "@/molecules/SelectMenu.vue";
-import SiCollapsible from "@/organisms/SiCollapsible.vue";
 import { TabPanel } from "@headlessui/vue";
 import { ref, toRef, watch } from "vue";
-import { changeFunc, nullEditingFunc } from "./func_state";
 import { fromRef, refFrom } from "vuse-rx";
 import { combineLatestWith, map } from "rxjs/operators";
+import SiCollapsible from "@/organisms/SiCollapsible.vue";
+import { Option } from "@/molecules/SelectMenu.vue";
+import SiTextBox from "@/atoms/SiTextBox.vue";
+import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import { SchematicService } from "@/service/schematic";
 import { EditingFunc, funcState$ } from "@/observable/func";
 import { ComponentService } from "@/service/component";
 import VButton from "@/molecules/VButton.vue";
+import { changeFunc, nullEditingFunc } from "./func_state";
 import FuncRunOnSelector from "./FuncRunOnSelector.vue";
 
 const props = defineProps<{
@@ -149,7 +149,8 @@ const editingFunc = refFrom<EditingFunc>(
   funcId$.pipe(
     combineLatestWith(funcState$),
     map(
-      ([funcId, funcs]) => funcs.find((f) => f.id == funcId) ?? nullEditingFunc,
+      ([funcId, funcs]) =>
+        funcs.find((f) => f.id === funcId) ?? nullEditingFunc,
     ),
   ),
   nullEditingFunc,

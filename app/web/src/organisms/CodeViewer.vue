@@ -40,17 +40,17 @@ import { gruvboxDark } from "cm6-theme-gruvbox-dark";
 import { basicLight } from "cm6-theme-basic-light";
 import { Compartment, Extension, StateEffect } from "@codemirror/state";
 
-import { CodeLanguage } from "@/api/sdf/dal/code_view";
-// NOTE(nick): this took a long ass time to find. Javascript's JSON mode doesn't work. This does.
 import { properties as JsonModeParser } from "@codemirror/legacy-modes/mode/properties";
 import { yaml as YamlModeParser } from "@codemirror/legacy-modes/mode/yaml";
 import { diff as DiffModeParser } from "@codemirror/legacy-modes/mode/diff";
+import { ClipboardCopyIcon } from "@heroicons/vue/solid";
+import { CodeLanguage } from "@/api/sdf/dal/code_view";
+// NOTE(nick): this took a long ass time to find. Javascript's JSON mode doesn't work. This does.
 
 import { useTheme } from "@/composables/injectTheme";
 import { ThemeValue } from "@/observable/theme";
 
 import SiButtonIcon from "@/atoms/SiButtonIcon.vue";
-import { ClipboardCopyIcon } from "@heroicons/vue/solid";
 
 const props = defineProps({
   code: { type: String },

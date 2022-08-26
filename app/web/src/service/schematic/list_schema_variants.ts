@@ -1,11 +1,11 @@
 import Bottle from "bottlejs";
-import { ApiResponse, SDF } from "@/api/sdf";
 import { combineLatest, Observable, take, shareReplay } from "rxjs";
+import { switchMap } from "rxjs/operators";
+import _ from "lodash";
+import { ApiResponse, SDF } from "@/api/sdf";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import { standardVisibilityTriggers$ } from "@/observable/visibility";
-import { switchMap } from "rxjs/operators";
 import { SchematicSchemaVariants } from "@/api/sdf/dal/schematic";
-import _ from "lodash";
 
 export type ListSchemaVariantsRequest = Visibility;
 export type ListSchemaVariantsResponse = SchematicSchemaVariants;

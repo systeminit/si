@@ -27,8 +27,8 @@
 
 <script setup lang="ts">
 import { ref, toRefs, computed, watch } from "vue";
+import _, { parseInt } from "lodash";
 import SiTextBox from "@/atoms/SiTextBox.vue";
-import UnsetButton from "./UnsetButton.vue";
 import { usePropertyEditorIsShown } from "@/composables/usePropertyEditorIsShown";
 import {
   PropertyEditorValidation,
@@ -36,8 +36,8 @@ import {
   PropertyPath,
   PropertyEditorPropKind,
 } from "@/api/sdf/dal/property_editor";
-import _, { parseInt } from "lodash";
 import { ValidatorArray } from "@/atoms/SiValidation.vue";
+import UnsetButton from "./UnsetButton.vue";
 
 const props = defineProps<{
   name: string;
@@ -63,7 +63,7 @@ const currentValue = ref<string>("");
 watch(
   value,
   (newValue, oldValue) => {
-    if (oldValue != newValue) {
+    if (oldValue !== newValue) {
       if (_.isString(newValue)) {
         currentValue.value = newValue;
       } else if (_.isNumber(newValue)) {
@@ -92,10 +92,10 @@ const { isShown } = usePropertyEditorIsShown(name, collapsedPaths, path);
 const setField = () => {
   if (
     !_.isNull(currentValue.value) &&
-    currentValue.value != props.value &&
+    currentValue.value !== props.value &&
     ((!props.value && currentValue.value) || props.value)
   ) {
-    if (props.propKind == "integer") {
+    if (props.propKind === "integer") {
       emit("updatedProperty", {
         value: parseInt(currentValue.value, 10),
         propId: propId.value,

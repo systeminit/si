@@ -1,9 +1,9 @@
+import { Observable } from "rxjs";
+import { map } from "rxjs/operators";
 import { ApiResponse } from "@/api/sdf";
 import { memoizedVisibilitySdfPipe } from "@/utils/memoizedVisibilitySdfPipes";
 import { Func, FuncBackendKind } from "@/api/sdf/dal/func";
 import { GlobalErrorService } from "@/service/global_error";
-import { Observable } from "rxjs";
-import { map } from "rxjs/operators";
 
 export interface ListedFuncView extends Omit<Func, "code"> {
   isBuiltin: boolean;

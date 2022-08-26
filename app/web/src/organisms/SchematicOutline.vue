@@ -44,9 +44,9 @@
 
 <script lang="ts" setup>
 import _ from "lodash";
+import { computed, ref } from "vue";
 import SiSearch from "@/molecules/SiSearch.vue";
 import SchematicDiagramService from "@/service/schematic-diagram";
-import { computed, ref } from "vue";
 
 // TODO: deal with ids as numbers vs strings...
 

@@ -1,9 +1,9 @@
-import { ApiResponse, SDF } from "@/api/sdf";
-import { Schema } from "@/api/sdf/dal/schema";
 import { combineLatest, Observable, shareReplay } from "rxjs";
-import { standardVisibilityTriggers$ } from "@/observable/visibility";
 import Bottle from "bottlejs";
 import { switchMap } from "rxjs/operators";
+import { ApiResponse, SDF } from "@/api/sdf";
+import { Schema } from "@/api/sdf/dal/schema";
+import { standardVisibilityTriggers$ } from "@/observable/visibility";
 import { Visibility } from "@/api/sdf/dal/visibility";
 
 export interface GetSchemaArgs {

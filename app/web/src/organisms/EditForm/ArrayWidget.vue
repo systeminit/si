@@ -8,7 +8,7 @@
       <SiLink
         v-if="props.editField.baggage?.prop_doc_link"
         :uri="props.editField.baggage.prop_doc_link"
-        :blank-target="true"
+        blank-target
         class="flex flex-row justify-end"
       >
         <span class="flex flex-col content-center justify-center">
@@ -70,22 +70,21 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
-import type { EditField } from "@/api/sdf/dal/edit_field";
-import EditFormField from "./EditFormField.vue";
-import Unset from "@/atoms/Unset.vue";
-import { ArrayWidgetDal } from "@/api/sdf/dal/edit_field";
+import { computed, defineAsyncComponent, DefineComponent } from "vue";
 import VueFeather from "vue-feather";
 import { EditFieldService } from "@/service/edit_field";
 import { ApiResponse } from "@/api/sdf";
 import { UpdateFromEditFieldResponse } from "@/service/edit_field/update_from_edit_field";
 import { GlobalErrorService } from "@/service/global_error";
-import { defineAsyncComponent, DefineComponent } from "vue";
-import type { WidgetsProps } from "./Widgets.vue";
+import { ArrayWidgetDal } from "@/api/sdf/dal/edit_field";
+import Unset from "@/atoms/Unset.vue";
 import { ITreeOpenState } from "@/utils/edit_field_visitor";
 import { AttributeContext } from "@/api/sdf/dal/attribute";
 import SiLink from "@/atoms/SiLink.vue";
 import { ComponentIdentification } from "@/api/sdf/dal/component";
+import type { EditField } from "@/api/sdf/dal/edit_field";
+import EditFormField from "./EditFormField.vue";
+import type { WidgetsProps } from "./Widgets.vue";
 
 // Eliminate the circular dependency of HeaderWidget -> Widgets -> HeaderWidget
 // by using `defineAsyncComponent` in a careful way to preserve the ability for

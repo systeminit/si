@@ -9,7 +9,7 @@
       :key="index"
       class="flex flex-row items-center"
     >
-      <span v-if="index == 0" class="text-base font-bold">
+      <span v-if="index === 0" class="text-base font-bold">
         {{ part }}
       </span>
       <span v-else class="text-sm">
@@ -29,10 +29,10 @@
 
 <script setup lang="ts">
 import { computed, toRefs } from "vue";
-import SiButtonIcon from "@/atoms/SiButtonIcon.vue";
 import { ChevronLeftIcon } from "@heroicons/vue/outline";
 import { ChevronDownIcon, ChevronUpIcon } from "@heroicons/vue/solid";
 import _ from "lodash";
+import SiButtonIcon from "@/atoms/SiButtonIcon.vue";
 import { usePropertyEditorIsShown } from "@/composables/usePropertyEditorIsShown";
 import { PropertyPath } from "@/api/sdf/dal/property_editor";
 
@@ -71,7 +71,7 @@ const { isShown, isCollapsed } = usePropertyEditorIsShown(
 );
 
 const showHeader = computed(() => {
-  if (displayPath.value.length == 0) {
+  if (!displayPath.value.length) {
     return false;
   } else {
     return isShown.value;

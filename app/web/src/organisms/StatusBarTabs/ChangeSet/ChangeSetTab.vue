@@ -30,12 +30,12 @@
 
 <script setup lang="ts">
 import { ClockIcon } from "@heroicons/vue/solid";
+import { computed, ref } from "vue";
+import { untilUnmounted } from "vuse-rx";
 import StatusBarTab from "@/organisms/StatusBar/StatusBarTab.vue";
 import StatusBarTabPill from "@/organisms/StatusBar/StatusBarTabPill.vue";
 import { ChangeSetService } from "@/service/change_set";
 import { GlobalErrorService } from "@/service/global_error";
-import { computed, ref } from "vue";
-import { untilUnmounted } from "vuse-rx";
 
 const props = defineProps<{
   selected: boolean;

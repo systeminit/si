@@ -53,11 +53,11 @@
 </template>
 
 <script lang="ts" setup>
+import { computed } from "vue";
 import StatusBarTab from "@/organisms/StatusBar/StatusBarTab.vue";
 import StatusIndicatorIcon from "@/molecules/StatusIndicatorIcon.vue";
 import StatusBarTabPill from "@/organisms/StatusBar/StatusBarTabPill.vue";
 import { QualificationService } from "@/service/qualification";
-import { computed } from "vue";
 
 defineProps<{ selected: boolean }>();
 
@@ -69,7 +69,7 @@ const tabQualificationsIconStatus = computed(() => {
 
   const { total, succeeded, failed } = qualificationSummary.value;
 
-  if (succeeded + failed != total) return "loading";
+  if (succeeded + failed !== total) return "loading";
 
   if (failed > 0) return "failure";
 

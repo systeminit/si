@@ -9,7 +9,7 @@
       <SiLink
         v-if="props.editField.baggage?.prop_doc_link"
         :uri="props.editField.baggage.prop_doc_link"
-        :blank-target="true"
+        blank-target
         class="flex flex-row justify-end"
       >
         <span class="flex flex-col content-center justify-center">
@@ -52,8 +52,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
-import type { EditField } from "@/api/sdf/dal/edit_field";
-import EditFormField from "./EditFormField.vue";
+import VueFeather from "vue-feather";
 import Unset from "@/atoms/Unset.vue";
 import { EditFieldService } from "@/service/edit_field";
 import { GlobalErrorService } from "@/service/global_error";
@@ -61,7 +60,8 @@ import { UpdateFromEditFieldResponse } from "@/service/edit_field/update_from_ed
 import { ApiResponse } from "@/api/sdf";
 import { AttributeContext } from "@/api/sdf/dal/attribute";
 import SiLink from "@/atoms/SiLink.vue";
-import VueFeather from "vue-feather";
+import type { EditField } from "@/api/sdf/dal/edit_field";
+import EditFormField from "./EditFormField.vue";
 
 const props = defineProps<{
   show: boolean;
@@ -78,7 +78,7 @@ const onFocus = () => {
   startValue.value = currentValue.value;
 };
 const onBlur = () => {
-  if (currentValue.value != startValue.value) {
+  if (currentValue.value !== startValue.value) {
     EditFieldService.updateFromEditField({
       objectKind: props.editField.object_kind,
       objectId: props.editField.object_id,
@@ -103,7 +103,7 @@ const onKeyEnter = (event: KeyboardEvent) => {
 watch(
   () => props.editField,
   (editField, _prevEditField) => {
-    if (!updating.value && editField.value != currentValue.value) {
+    if (!updating.value && editField.value !== currentValue.value) {
       currentValue.value = editField.value;
     }
   },
@@ -112,7 +112,7 @@ watch(
 const inputStyles = computed((): Record<string, boolean> => {
   const styles: Record<string, boolean> = {};
 
-  if (props.editField.visibility_diff.kind != "None") {
+  if (props.editField.visibility_diff.kind !== "None") {
     styles["border-yellow-600"] = true;
     styles["border-grey-600"] = false;
   } else {
@@ -128,7 +128,7 @@ const inputStyles = computed((): Record<string, boolean> => {
   return styles;
 });
 const textColor = computed((): Record<string, boolean> => {
-  if (props.editField.visibility_diff.kind != "None") {
+  if (props.editField.visibility_diff.kind !== "None") {
     return { "text-gold": true };
   } else {
     return { "text-gold": false };

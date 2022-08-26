@@ -149,11 +149,11 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
+import validator from "validator";
+import _ from "lodash";
 import { CreateAccountRequest, SignupService } from "@/service/signup";
 import siLogoWts from "@/assets/images/si-logo-wts.svg?url";
 import SiTextBox from "@/atoms/SiTextBox.vue";
-import validator from "validator";
-import _ from "lodash";
 import { useFieldErrors } from "@/composables/useFieldErrors";
 import { setFormSettings } from "@/composables/formSettings";
 

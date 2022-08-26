@@ -167,8 +167,6 @@
 <script lang="ts" setup>
 import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/vue";
 import { computed, ref } from "vue";
-import StatusBarTab from "@/organisms/StatusBar/StatusBarTab.vue";
-import StatusBarTabPill from "@/organisms/StatusBar/StatusBarTabPill.vue";
 import {
   ChevronDownIcon,
   ChevronUpIcon,
@@ -176,14 +174,16 @@ import {
   BellIcon,
   BadgeCheckIcon,
 } from "@heroicons/vue/solid";
+import { useRoute } from "vue-router";
+import { untilUnmounted } from "vuse-rx/src";
+import StatusBarTab from "@/organisms/StatusBar/StatusBarTab.vue";
+import StatusBarTabPill from "@/organisms/StatusBar/StatusBarTabPill.vue";
 import SiButtonIcon from "@/atoms/SiButtonIcon.vue";
 import ChangeSetTab from "@/organisms/StatusBarTabs/ChangeSet/ChangeSetTab.vue";
 import ChangeSetTabPanel from "@/organisms/StatusBarTabs/ChangeSet/ChangeSetTabPanel.vue";
 import QualificationTabPanel from "@/organisms/StatusBarTabs/Qualification/QualificationTabPanel.vue";
 import QualificationTab from "@/organisms/StatusBarTabs/Qualification/QualificationTab.vue";
-import { useRoute } from "vue-router";
 import { QualificationService } from "@/service/qualification";
-import { untilUnmounted } from "vuse-rx/src";
 import { ComponentService } from "@/service/component";
 import { GlobalErrorService } from "@/service/global_error";
 import { ComponentListItem } from "@/organisms/StatusBar/StatusBarTabPanelComponentList.vue";

@@ -49,12 +49,12 @@
 
 <script setup lang="ts">
 import { ExclamationCircleIcon } from "@heroicons/vue/solid";
+import { computed, ref } from "vue";
+import _ from "lodash";
 import SiValidation, {
   ValidatorArray,
   ErrorsArray,
 } from "@/atoms/SiValidation.vue";
-import { computed, ref } from "vue";
-import _ from "lodash";
 
 const props = defineProps<{
   modelValue?: boolean;
@@ -89,8 +89,8 @@ const reallyDirty = computed(() => {
 const inError = ref<boolean>(false);
 const setInError = (errors: ErrorsArray) => {
   let nextInError = false;
-  if (errors.length == 1) {
-    if (_.find(errors, (e) => e.id == "required")) {
+  if (errors.length === 1) {
+    if (_.find(errors, (e) => e.id === "required")) {
       if (dirty.value) {
         nextInError = true;
       }

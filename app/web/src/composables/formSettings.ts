@@ -7,7 +7,7 @@ export type FormSettings = {
 };
 
 const FORM_SETTINGS_INJECTION_KEY: InjectionKey<ComputedRef<FormSettings>> =
-  Symbol();
+  Symbol("FORM_SETTINGS");
 
 export function setFormSettings(settings: FormSettings) {
   provide(

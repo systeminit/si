@@ -40,12 +40,12 @@
 </template>
 
 <script setup lang="ts">
+import { useRoute } from "vue-router";
 import ComposeIcon from "@/atoms/CustomIcons/ComposeIcon.vue";
 import SiBarButton from "@/molecules/SiBarButton.vue";
 import ViewIcon from "@/atoms/CustomIcons/ViewIcon.vue";
 import RunIcon from "@/atoms/CustomIcons/RunIcon.vue";
 import BeakerIcon from "@/atoms/CustomIcons/BeakerIcon.vue";
-import { useRoute } from "vue-router";
 import router from "@/router";
 
 const route = useRoute();

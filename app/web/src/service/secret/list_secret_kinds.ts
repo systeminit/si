@@ -1,6 +1,6 @@
+import { Observable } from "rxjs";
 import { ApiResponse } from "@/api/sdf";
 import { SecretKind, SecretKindFields } from "@/api/sdf/dal/secret";
-import { Observable } from "rxjs";
 
 export interface ListSecretKindFieldsResponse {
   fields: SecretKindFields[];

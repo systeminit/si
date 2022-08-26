@@ -8,7 +8,7 @@
       <SiLink
         v-if="props.editField.baggage?.prop_doc_link"
         :uri="props.editField.baggage.prop_doc_link"
-        :blank-target="true"
+        blank-target
         class="flex flex-row justify-end"
       >
         <span class="flex flex-col content-center justify-center">
@@ -49,16 +49,16 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
-import type { EditField } from "@/api/sdf/dal/edit_field";
+import VueFeather from "vue-feather";
 import { EditFieldService } from "@/service/edit_field";
-import EditFormField from "./EditFormField.vue";
 import Unset from "@/atoms/Unset.vue";
 import { GlobalErrorService } from "@/service/global_error";
 import { UpdateFromEditFieldResponse } from "@/service/edit_field/update_from_edit_field";
 import { ApiResponse } from "@/api/sdf";
 import { AttributeContext } from "@/api/sdf/dal/attribute";
-import VueFeather from "vue-feather";
 import SiLink from "@/atoms/SiLink.vue";
+import type { EditField } from "@/api/sdf/dal/edit_field";
+import EditFormField from "./EditFormField.vue";
 
 const props = defineProps<{
   show: boolean;
@@ -77,7 +77,7 @@ const onFocus = () => {
 };
 
 const onBlur = () => {
-  if (currentValue.value != startValue.value) {
+  if (currentValue.value !== startValue.value) {
     EditFieldService.updateFromEditField({
       objectKind: props.editField.object_kind,
       objectId: props.editField.object_id,
@@ -97,7 +97,7 @@ const onBlur = () => {
 watch(
   () => props.editField,
   (editField, _prevEditField) => {
-    if (!updating.value && editField.value != currentValue.value) {
+    if (!updating.value && editField.value !== currentValue.value) {
       currentValue.value = editField.value;
     }
   },
@@ -128,14 +128,14 @@ const inputValue = computed((): boolean | undefined => {
 });
 
 const borderColor = computed((): Record<string, boolean> => {
-  if (props.editField.visibility_diff.kind != "None") {
+  if (props.editField.visibility_diff.kind !== "None") {
     return { "input-border-gold": true };
   } else {
     return { "input-border-grey": true };
   }
 });
 const textColor = computed((): Record<string, boolean> => {
-  if (props.editField.visibility_diff.kind != "None") {
+  if (props.editField.visibility_diff.kind !== "None") {
     return { "text-gold": true };
   } else {
     return { "text-gold": false };

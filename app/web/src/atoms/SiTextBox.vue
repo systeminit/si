@@ -85,12 +85,6 @@
   </div>
 </template>
 
-<script lang="ts">
-export default {
-  inheritAttrs: false,
-};
-</script>
-
 <script setup lang="ts">
 import { ExclamationCircleIcon } from "@heroicons/vue/solid";
 import { computed, PropType, ref } from "vue";
@@ -143,8 +137,8 @@ const reallyDirty = computed(() => {
 const inError = ref<boolean>(false);
 const setInError = (errors: ErrorsArray) => {
   let nextInError = false;
-  if (errors.length == 1) {
-    if (_.find(errors, (e) => e.id == "required")) {
+  if (errors.length === 1) {
+    if (_.find(errors, (e) => e.id === "required")) {
       if (dirty.value) {
         nextInError = true;
       }
@@ -216,5 +210,11 @@ const type = computed((): string => {
 const valueChanged = (event: Event) => {
   const element = event.currentTarget as HTMLInputElement;
   emit("update:modelValue", element.value);
+};
+</script>
+
+<script lang="ts">
+export default {
+  inheritAttrs: false,
 };
 </script>

@@ -1,10 +1,10 @@
-import { ApiResponse, SDF } from "@/api/sdf";
 import { combineLatest, Observable, shareReplay } from "rxjs";
-import { standardVisibilityTriggers$ } from "@/observable/visibility";
 import Bottle from "bottlejs";
 import { switchMap } from "rxjs/operators";
-import { Visibility } from "@/api/sdf/dal/visibility";
 import _ from "lodash";
+import { Visibility } from "@/api/sdf/dal/visibility";
+import { standardVisibilityTriggers$ } from "@/observable/visibility";
+import { ApiResponse, SDF } from "@/api/sdf";
 import { PropertyEditorValues } from "@/api/sdf/dal/property_editor";
 
 export interface GetPropertyEditorValuesArgs {

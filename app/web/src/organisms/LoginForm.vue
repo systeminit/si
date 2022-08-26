@@ -104,11 +104,11 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
+import validator from "validator";
 import { SessionService } from "@/service/session";
 import siLogoWts from "@/assets/images/si-logo-wts.svg?url";
 import SiTextBox from "@/atoms/SiTextBox.vue";
 import { useFieldErrors } from "@/composables/useFieldErrors";
-import validator from "validator";
 import { setFormSettings } from "@/composables/formSettings";
 
 const form = ref({

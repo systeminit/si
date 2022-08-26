@@ -2,7 +2,7 @@
   <SiTabGroup
     :key="tabGroupRerenderKey"
     :selected-index="selectedTab"
-    :selected-tab-to-front="true"
+    selected-tab-to-front
     :tab-width-maximum="0.3"
     :start-margin="0"
     :after-margin="0"
@@ -47,16 +47,16 @@
 <script lang="ts" setup>
 import { toRef, computed, ref } from "vue";
 import { fromRef } from "vuse-rx/src";
+import { TabPanel } from "@headlessui/vue";
+import VueFeather from "vue-feather";
+import { switchMap, take } from "rxjs/operators";
+import { of } from "rxjs";
 import { FuncService } from "@/service/func";
 import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
-import { TabPanel } from "@headlessui/vue";
 import FuncEditor from "@/organisms/FuncEditor/FuncEditor.vue";
-import VueFeather from "vue-feather";
 import { ListedFuncView, nullListFunc } from "@/service/func/list_funcs";
-import { switchMap, take } from "rxjs/operators";
-import { of } from "rxjs";
 import { funcState, funcById, removeFunc, insertFunc } from "./func_state";
 
 const props = defineProps<{
@@ -77,7 +77,7 @@ const selectedFuncId$ = fromRef(selectedFuncId, { immediate: true });
 const findTabIndexForFunc = (
   funcList: { id: number }[],
   func: { id: number },
-) => funcList.findIndex((fn) => fn.id == func.id);
+) => funcList.findIndex((fn) => fn.id === func.id);
 
 const funcList = computed(() =>
   funcState.funcs.map(({ origFunc, modifiedFunc }) => ({
@@ -117,7 +117,7 @@ const closeFunc = (func: ListedFuncView) => {
   if (funcTab === currentTab) {
     changeTab(funcTab - 1);
   }
-  tabGroupRerenderKey.value = tabGroupRerenderKey.value + 1;
+  tabGroupRerenderKey.value += 1;
 };
 
 selectedFuncId$
