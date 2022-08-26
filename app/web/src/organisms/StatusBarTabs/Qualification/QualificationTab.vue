@@ -56,17 +56,13 @@
 import StatusBarTab from "@/organisms/StatusBar/StatusBarTab.vue";
 import StatusIndicatorIcon from "@/molecules/StatusIndicatorIcon.vue";
 import StatusBarTabPill from "@/organisms/StatusBar/StatusBarTabPill.vue";
-import { refFrom } from "vuse-rx";
-import { GetSummaryResponse } from "@/service/qualification/get_summary";
 import { QualificationService } from "@/service/qualification";
 import { computed } from "vue";
 
 defineProps<{ selected: boolean }>();
 
 // Loads data for qualifications - total, succeeded, failed
-const qualificationSummary = refFrom<GetSummaryResponse | undefined>(
-  QualificationService.getSummary(),
-);
+const qualificationSummary = QualificationService.useQualificationSummary();
 
 const tabQualificationsIconStatus = computed(() => {
   if (qualificationSummary.value === undefined) return "loading";

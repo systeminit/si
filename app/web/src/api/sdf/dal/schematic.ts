@@ -7,21 +7,6 @@ export enum SchematicKind {
   Component = "component",
 }
 
-export function schematicKindFromString(s: string): SchematicKind {
-  switch (s) {
-    case "deployment":
-      return SchematicKind.Deployment;
-    case "component":
-      return SchematicKind.Component;
-  }
-  throw Error(`Unknown SchematicKind member: ${s}`);
-}
-
-export interface EditorContext {
-  applicationNodeId: number;
-  systemId?: number;
-}
-
 export type SchematicProviderMetadata = string;
 
 export interface SchematicOutputProvider {
@@ -103,20 +88,7 @@ export interface SchematicNode {
 }
 export type SchematicNodes = Array<SchematicNode>;
 
-export interface SchematicConnection {
-  destinationNodeId: number;
-  destinationSocketId: number;
-  sourceNodeId: number;
-  sourceSocketId: number;
-}
-export type SchematicConnections = Array<SchematicConnection>;
-
 export type SchematicSchemaVariants = Array<SchematicSchemaVariant>;
-
-export interface Schematic {
-  nodes: SchematicNodes;
-  connections: SchematicConnections;
-}
 
 export async function variantById(id: number): Promise<SchematicSchemaVariant> {
   const variants = await Rx.firstValueFrom(schematicSchemaVariants$);

@@ -7,8 +7,16 @@ change the fill color. NOTE - this only works if the SVG has the fill set to
 </template>
 
 <script lang="ts" setup>
-import { computed, nextTick, onMounted, ref, watchEffect } from "vue";
+import {
+  computed,
+  nextTick,
+  ref,
+  watchEffect,
+  watch,
+  onBeforeUnmount,
+} from "vue";
 import _ from "lodash";
+import Konva from "konva";
 
 const props = defineProps({
   rawSvg: { type: String },
@@ -65,22 +73,48 @@ watchEffect(() => {
   };
 });
 
+// handle rotation with a Konva tween
+// NOTE - trying to be very mindful of memory leaks / cleaning up!
+let spinTween: Konva.Tween | undefined;
 function initSpin() {
-  const node = konvaImageRef.value.getNode();
-  node.to({
-    // for some reason, resetting rotation to 0 and then animating to 360 does not work
-    // although 360 -> 0 repeatedly works... and I could not recreate the problem in a jsbin using konva directly to report the issue...
-    // we can however can keep rotating to multiples of 360, so not worth deeper investigation
-    rotation: node.rotation() + 360,
-    duration: 1,
-    // note the arrow fn here - without it, initSpin gets called in a different context and doesn't work
-    onFinish: () => initSpin(),
-  });
-}
+  const node = konvaImageRef.value?.getNode();
 
-onMounted(() => {
-  // calling without nextTick shows an error in the console that the node is not added to the canvas yet
-  // although it does still work without any issues
-  if (props.spin) nextTick(initSpin);
-});
+  // on initial mount, the node may not be added to the canvas yet
+  // it does still work, but we get an error in the console
+  if (!node) {
+    nextTick(initSpin);
+    return;
+  }
+
+  if (!spinTween) {
+    spinTween = new Konva.Tween({
+      node,
+      duration: 1,
+      rotation: 360,
+      onFinish: () => {
+        spinTween?.reset();
+        spinTween?.play();
+      },
+    });
+  } else {
+    spinTween.reset();
+  }
+  spinTween.play();
+}
+function stopSpin() {
+  if (!spinTween) return;
+  konvaImageRef.value?.getNode().rotation(0);
+  spinTween.destroy();
+  spinTween = undefined;
+}
+onBeforeUnmount(stopSpin);
+
+watch(
+  [() => props.spin],
+  () => {
+    if (props.spin) initSpin();
+    else stopSpin();
+  },
+  { immediate: true },
+);
 </script>

@@ -22,6 +22,7 @@ pub struct GetFuncResponse {
     pub handler: Option<String>,
     pub kind: FuncBackendKind,
     pub name: String,
+    pub description: Option<String>,
     pub code: Option<String>,
     pub is_builtin: bool,
     pub schema_variants: Vec<SchemaVariantId>,
@@ -63,6 +64,7 @@ pub async fn get_func(
             .display_name()
             .unwrap_or_else(|| func.name())
             .to_owned(),
+        description: func.description().map(|d| d.to_owned()),
         code: func.code_plaintext()?,
         is_builtin: func.is_builtin(),
         components,

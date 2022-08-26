@@ -39,14 +39,18 @@ npm run fmt
 
 This template should help get you started developing with Vue 3 and Typescript in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
 
-## Recommended IDE Setup
-
-- [VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=johnsoncodehk.volar)
-
-## Type Support For `.vue` Imports in TS
-
-Since TypeScript cannot handle type information for `.vue` imports, they are shimmed to be a generic Vue component type by default. In most cases this is fine if you don't really care about component prop types outside of templates. However, if you wish to get actual prop types in `.vue` imports (for example to get props validation when using manual `h(...)` calls), you can enable Volar's `.vue` type support plugin by following instructions [here](https://github.com/johnsoncodehk/volar/discussions/471). TLDR is:
-- run "Extensions: Show built-in extensions" from command pallete
-- search for "@builtin typescript" in extensions panel
-- find "Typescript + Javascript Language Features", click gear and "Disable (Workspace)"
-
+## IDE Setup Instructions
+### [VSCode](https://code.visualstudio.com/) (preferred)
+  - Install [Volar](https://marketplace.visualstudio.com/items?itemName=johnsoncodehk.volar) plugin
+    - and disable Vetur if installed
+  - Enable TS "takeover mode" (see [here](https://github.com/johnsoncodehk/volar/discussions/471))
+    - run "Extensions: Show built-in extensions" from command pallete
+    - search for "@builtin typescript" in extensions panel
+    - find "Typescript + Javascript Language Features", click gear and "Disable (Workspace)"
+  - Use workspace's typescript version
+    - run "Volar: Select Typescript Version" from command pallete
+    - select "Use workspace version"
+  - Install [Prettier](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode) plugin
+  - Enable format on save (recommended)
+    - add `"editor.formatOnSave": true` to `.vscode/settings.json` file
+    - add `"[vue][typescript][javascript]": { "editor.defaultFormatter": "esbenp.prettier-vscode" }` to `.vscode/settings.json` file

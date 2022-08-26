@@ -1,21 +1,34 @@
 <template>
-  <div aria-hidden="true" :class="iconClasses">
-    <GitBranchIcon v-if="icon == 'git-branch'" />
-    <GitCommitIcon v-else-if="icon == 'git-commit'" />
-    <GitMergeIcon v-else-if="icon == 'git-merge'" />
-    <PlusIcon v-else-if="icon == 'plus'" />
-    <MinusIcon v-else-if="icon == 'minus'" />
-    <VueFeather v-else-if="icon == 'plus-square'" type="plus-square" />
-    <TrashIcon v-else-if="icon == 'trash'" />
-    <XIcon v-else-if="icon == 'x'" />
+  <div aria-hidden="true">
+    <GitBranchIcon v-if="icon === 'git-branch'" :class="iconClasses" />
+    <GitCommitIcon v-else-if="icon === 'git-commit'" :class="iconClasses" />
+    <GitMergeIcon v-else-if="icon === 'git-merge'" :class="iconClasses" />
+    <PlusIcon v-else-if="icon === 'plus'" :class="iconClasses" />
+    <MinusIcon v-else-if="icon === 'minus'" :class="iconClasses" />
+    <VueFeather
+      v-else-if="icon === 'plus-square'"
+      :class="iconClasses"
+      type="plus-square"
+    />
+    <TrashIcon v-else-if="icon === 'trash'" :class="iconClasses" />
+    <XIcon v-else-if="icon === 'x'" :class="iconClasses" />
+    <ChevronDownIcon v-else-if="icon === 'chevron-down'" :class="iconClasses" />
+    <SaveIcon v-else-if="icon === 'save'" :class="iconClasses" />
   </div>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import GitBranchIcon from "@/atoms/CustomIcons/GitBranchIcon.vue";
 import GitCommitIcon from "@/atoms/CustomIcons/GitCommitIcon.vue";
 import GitMergeIcon from "@/atoms/CustomIcons/GitMergeIcon.vue";
-import { XIcon, PlusIcon, MinusIcon, TrashIcon } from "@heroicons/vue/solid";
+import {
+  ChevronDownIcon,
+  MinusIcon,
+  PlusIcon,
+  SaveIcon,
+  TrashIcon,
+  XIcon,
+} from "@heroicons/vue/solid";
 import VueFeather from "vue-feather";
 
 export type IconName =
@@ -26,6 +39,8 @@ export type IconName =
   | "minus"
   | "plus-square"
   | "trash"
+  | "chevron-down"
+  | "save"
   | "x";
 
 defineProps<{

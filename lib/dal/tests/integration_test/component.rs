@@ -27,10 +27,20 @@ async fn new_for_schema_variant_with_node(ctx: &DalContext<'_, '_>, wid: Workspa
     let schema = create_schema(ctx, &SchemaKind::Concept).await;
     let schema_variant = create_schema_variant(ctx, *schema.id()).await;
 
-    let (component, _node) =
+    let (component, node) =
         Component::new_for_schema_variant_with_node(ctx, "mastodon", schema_variant.id())
             .await
             .expect("cannot create component");
+
+    let found_component = Component::find_for_node(ctx, *node.id())
+        .await
+        .expect("could not find component for node")
+        .expect("component for node not found");
+
+    assert_eq!(
+        *found_component.id(), // actual
+        *component.id()        // expected
+    );
 
     // A components does not get a Resource record when created.
     let resource = Resource::get_by_component_id_and_system_id(ctx, component.id(), system.id())

@@ -1,34 +1,19 @@
 <template>
   <button
-    type="button"
-    class="inline-flex items-center justify-center rounded-[0.1875rem] border text-sm focus:outline-none focus:ring-1 focus:ring-action-500 focus:ring-offset-2 disabled:opacity-50"
-    :class="buttonClasses"
     :aria-label="label"
+    :class="buttonClasses"
     :disabled="disabled"
+    class="flex items-center justify-center py-1 px-1.5 rounded-[0.1875rem] gap-1 border text-sm focus:outline-none focus:ring-1 focus:ring-action-500 focus:ring-offset-2 disabled:opacity-50"
+    type="button"
     @click="emit('click')"
   >
-    <Icon
-      v-if="icon && displayLeftIcon"
-      :icon="icon"
-      :icon-classes="leftIconClasses"
-    />
-    <Icon
-      v-if="icon && displayAloneIcon"
-      :icon="icon"
-      :icon-classes="aloneIconClasses"
-    />
-    <div v-if="iconStyle != 'alone'">
-      {{ label }}
-    </div>
-    <Icon
-      v-if="icon && displayRightIcon"
-      :icon="icon"
-      :icon-classes="rightIconClasses"
-    />
+    <Icon v-if="icon" :icon="icon" :icon-classes="iconClasses" />
+    <span v-if="showLabel"> {{ label }}</span>
+    <Icon v-if="iconRight" :icon="iconRight" :icon-classes="iconClasses" />
   </button>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import { computed } from "vue";
 import Icon, { IconName } from "./VButton/Icon.vue";
 
@@ -43,15 +28,6 @@ export type ButtonSize = "lg" | "md" | "sm" | "xs";
 
 export type ButtonRank = "primary" | "secondary" | "tertiary";
 
-export type ButtonIconStyle =
-  | "leftAndRight"
-  | "left"
-  | "right"
-  | "none"
-  | "alone";
-
-type IconPosition = "left" | "right" | "alone";
-
 const emit = defineEmits(["click"]);
 
 const props = withDefaults(
@@ -64,8 +40,9 @@ const props = withDefaults(
 
     disabled?: boolean;
 
-    iconStyle?: ButtonIconStyle;
+    showLabel?: boolean;
     icon?: IconName;
+    iconRight?: IconName;
   }>(),
   {
     size: "md",
@@ -73,22 +50,11 @@ const props = withDefaults(
     buttonType: "neutral",
 
     toolTip: undefined,
-    iconStyle: "none",
+    showLabel: true,
     icon: undefined,
+    iconRight: undefined,
   },
 );
-
-const displayLeftIcon = computed(() => {
-  return props.iconStyle == "left" || props.iconStyle == "leftAndRight";
-});
-
-const displayRightIcon = computed(() => {
-  return props.iconStyle == "right" || props.iconStyle == "leftAndRight";
-});
-
-const displayAloneIcon = computed(() => {
-  return props.iconStyle == "alone";
-});
 
 const buttonClasses = computed(() => {
   return [
@@ -98,23 +64,11 @@ const buttonClasses = computed(() => {
   ];
 });
 
-const leftIconClasses = computed(() => {
-  return buttonIconClasses.left;
-});
-
-const rightIconClasses = computed(() => {
-  return buttonIconClasses.right;
-});
-
-const aloneIconClasses = computed(() => {
-  return buttonIconClasses.alone;
-});
-
 const sizeClasses: { [key in ButtonSize]: string[] } = {
-  lg: ["px-[0.3125rem]", "py-[0.4375rem]"],
-  md: ["px-[0.3125rem]", "py-[0.4375rem]"],
-  sm: ["px-[0.3125rem]", "py-[0.4375rem]"],
-  xs: ["px-[0.3125rem]", "py-[0.4375rem]"],
+  lg: ["text-lg"],
+  md: ["text-md"],
+  sm: ["text-sm"],
+  xs: ["text-xs"],
 };
 
 const buttonRankClasses: { [key in ButtonRank]: string[] } = {
@@ -208,9 +162,14 @@ const buttonTypeClasses: {
   },
 };
 
-const buttonIconClasses: { [key in IconPosition]: string[] } = {
-  left: ["mr-[0.1875rem]", "h-5", "w-5"],
-  right: ["ml-[0.1875rem]", "h-5", "w-5"],
-  alone: ["mx-[0.3125rem]", "h-5", "w-5"],
+const iconClasses = computed(() => {
+  return IconSizeClasses[props.size];
+});
+
+const IconSizeClasses: { [key in ButtonSize]: string[] } = {
+  lg: ["h-6", "w-6"],
+  md: ["h-5", "w-5"],
+  sm: ["h-4", "w-4"],
+  xs: ["h-3", "w-3"],
 };
 </script>

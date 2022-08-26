@@ -196,9 +196,8 @@ import ChangeSetTabPanel from "@/organisms/StatusBarTabs/ChangeSet/ChangeSetTabP
 import QualificationTabPanel from "@/organisms/StatusBarTabs/Qualification/QualificationTabPanel.vue";
 import QualificationTab from "@/organisms/StatusBarTabs/Qualification/QualificationTab.vue";
 import { useRoute } from "vue-router";
-import { GetSummaryResponse } from "@/service/qualification/get_summary";
 import { QualificationService } from "@/service/qualification";
-import { refFrom, untilUnmounted } from "vuse-rx/src";
+import { untilUnmounted } from "vuse-rx/src";
 import { ComponentService } from "@/service/component";
 import { GlobalErrorService } from "@/service/global_error";
 import { ComponentListItem } from "@/organisms/StatusBar/StatusBarTabPanelComponentList.vue";
@@ -255,9 +254,8 @@ const barClasses = computed(() => {
 });
 
 // TODO(nick): move these to new home(s) once the view tabs are moved out of here.
-const qualificationSummary = refFrom<GetSummaryResponse | undefined>(
-  QualificationService.getSummary(),
-);
+const qualificationSummary = QualificationService.useQualificationSummary();
+
 const componentList = ref<ComponentListItem[]>([]);
 untilUnmounted(ComponentService.listComponentsIdentification()).subscribe(
   (response) => {

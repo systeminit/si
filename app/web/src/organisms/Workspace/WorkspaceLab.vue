@@ -33,10 +33,10 @@
     <SiPanel
       id="func-details"
       :hidden="false"
-      side="right"
       class="h-full pb-12"
       size-classes="shrink-0 w-80"
       :min-resize="200"
+      side="right"
     >
       <!-- if hiding is added later, condition is selectedFuncId < 1 -->
       <FuncDetails :func-id="selectedFunc.id" />

@@ -22,7 +22,6 @@ pub mod context;
 pub mod cyclone_key_pair;
 pub mod edge;
 pub mod edit_field;
-
 pub mod func;
 pub mod group;
 pub mod history_event;
@@ -129,8 +128,8 @@ pub use organization::{
     Organization, OrganizationError, OrganizationId, OrganizationPk, OrganizationResult,
 };
 pub use prop::{Prop, PropError, PropId, PropKind, PropPk, PropResult};
-pub use provider::external::{ExternalProvider, ExternalProviderId};
-pub use provider::internal::{InternalProvider, InternalProviderId};
+pub use provider::external::{ExternalProvider, ExternalProviderError, ExternalProviderId};
+pub use provider::internal::{InternalProvider, InternalProviderError, InternalProviderId};
 pub use qualification::{QualificationError, QualificationView};
 pub use qualification_check::{
     QualificationCheck, QualificationCheckError, QualificationCheckId, QualificationCheckPk,

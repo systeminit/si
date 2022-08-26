@@ -37,6 +37,7 @@ module.exports = {
     "@typescript-eslint/no-empty-function": process.env.STRICT_LINT
       ? "error"
       : "warn",
+    "prefer-const": process.env.STRICT_LINT ? "error" : "warn",
   },
   parser: "vue-eslint-parser",
   parserOptions: {

@@ -7,7 +7,11 @@
       :class="titleClasses"
     >
       {{ props.title }}
-      <span v-if="required && !hideRequiredLabel">(required)</span>
+      <span
+        v-if="required && !formSettings.hideRequiredLabel"
+        :class="formSettings.requiredLabelClasses"
+        >{{ formSettings.requiredLabel }}</span
+      >
     </label>
 
     <div class="mt-1 w-full relative">
@@ -19,7 +23,8 @@
         :placeholder="placeholder"
         :value="modelValue"
         :data-test="id"
-        class="appearance-none block h-24 bg-gray-900 text-gray-100 w-full px-3 py-2 border border-gray-600 rounded-sm shadow-sm placeholder-gray-900 focus:outline-none focus:ring-indigo-200 focus:border-indigo-200 sm:text-sm"
+        class="appearance-none block w-full px-3 py-2 border rounded-sm shadow-sm focus:outline-none sm:text-sm"
+        :class="textBoxClasses"
         @input="valueChanged"
       />
       <input
@@ -73,6 +78,7 @@
       :validations="validations"
       :required="required"
       :dirty="reallyDirty"
+      hide-required-unless-dirty
       class="mt-2"
       @errors="setInError($event)"
     />
@@ -96,7 +102,7 @@ import SiValidation, {
 } from "@/atoms/SiValidation.vue";
 
 const props = defineProps({
-  modelValue: { type: String, required: true },
+  modelValue: { type: String },
   title: String,
   id: { type: String, required: true },
   description: String,
@@ -117,9 +123,7 @@ const props = defineProps({
   loginMode: Boolean,
 });
 
-const hideRequiredLabel = useFormSettings();
-
-// { type: String, required: true, default: 'x' },
+const formSettings = useFormSettings();
 
 const emit = defineEmits(["update:modelValue", "error", "blur"]);
 
@@ -156,7 +160,7 @@ const setInError = (errors: ErrorsArray) => {
 
 const inputValue = computed<string>({
   get() {
-    return props.modelValue;
+    return props.modelValue ?? "";
   },
   set(value) {
     emit("update:modelValue", value);
@@ -172,11 +176,13 @@ const textBoxClasses = computed((): Record<string, boolean> => {
     results["bg-shade-100"] = true;
     results["text-neutral-100"] = true;
     results["disabled:border-neutral-100"] = true;
+    results["placeholder:italic"] = true;
+    results["placeholder:text-xs"] = true;
   } else {
     results["bg-neutral-50"] = true;
     results["border-neutral-300"] = true;
     results["dark:border-neutral-600"] = true;
-    results["dark:bg-neutral-700"] = true;
+    results["dark:bg-neutral-900"] = true;
   }
 
   if (inError.value) {

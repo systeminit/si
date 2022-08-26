@@ -1,5 +1,5 @@
 use dal::test::helpers::builtins::BuiltinsHarness;
-use dal::{Connection, DalContext, ExternalProvider, InternalProvider, StandardModel};
+use dal::{DalContext, Edge, ExternalProvider, InternalProvider, StandardModel};
 use pretty_assertions_sorted::assert_eq_sorted;
 
 use crate::dal::test;
@@ -143,13 +143,13 @@ async fn kubernetes_deployment_intelligence(ctx: &DalContext<'_, '_>) {
     .await
     .expect("cannot find external provider")
     .expect("external provider not found");
-    Connection::connect_providers(
+    Edge::connect_providers_for_components(
         ctx,
         "identity".to_string(),
-        *tail_fedora_provider.id(),
-        tail_fedora_payload.component_id,
         *head_deployment_spongebob_docker_image_provider.id(),
         head_deployment_spongebob_payload.component_id,
+        *tail_fedora_provider.id(),
+        tail_fedora_payload.component_id,
     )
     .await
     .expect("could not connect providers");
@@ -250,13 +250,13 @@ async fn kubernetes_deployment_intelligence(ctx: &DalContext<'_, '_>) {
     .await
     .expect("cannot find external provider")
     .expect("external provider not found");
-    Connection::connect_providers(
+    Edge::connect_providers_for_components(
         ctx,
         "identity".to_string(),
-        *tail_alpine_provider.id(),
-        tail_alpine_payload.component_id,
         *head_deployment_spongebob_docker_image_provider.id(),
         head_deployment_spongebob_payload.component_id,
+        *tail_alpine_provider.id(),
+        tail_alpine_payload.component_id,
     )
     .await
     .expect("could not connect providers");
@@ -270,25 +270,25 @@ async fn kubernetes_deployment_intelligence(ctx: &DalContext<'_, '_>) {
     .await
     .expect("cannot find external provider")
     .expect("external provider not found");
-    Connection::connect_providers(
+    Edge::connect_providers_for_components(
         ctx,
         "identity".to_string(),
-        *tail_namespace_provider.id(),
-        tail_namespace_payload.component_id,
         *head_deployment_kubernetes_namespace_provider.id(),
         head_deployment_spongebob_payload.component_id,
+        *tail_namespace_provider.id(),
+        tail_namespace_payload.component_id,
     )
     .await
     .expect("could not connect providers");
 
     // Finally, connect fedora to the squidward deployment.
-    Connection::connect_providers(
+    Edge::connect_providers_for_components(
         ctx,
         "identity".to_string(),
-        *tail_fedora_provider.id(),
-        tail_fedora_payload.component_id,
         *head_deployment_squidward_docker_image_provider.id(),
         head_deployment_squidward_payload.component_id,
+        *tail_fedora_provider.id(),
+        tail_fedora_payload.component_id,
     )
     .await
     .expect("could not connect providers");
