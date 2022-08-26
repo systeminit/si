@@ -16,8 +16,10 @@ import { gruvboxDark } from "cm6-theme-gruvbox-dark";
 import { basicLight } from "cm6-theme-basic-light";
 import { refFrom } from "vuse-rx";
 import { javascript } from "@codemirror/lang-javascript";
+import { lintGutter, linter } from "@codemirror/lint";
 import { ThemeService } from "@/service/theme";
 import { Theme } from "@/observable/theme";
+import { createLintSource } from "@/utils/typescriptLinter";
 import { funcState, changeFunc, nullEditingFunc } from "./func_state";
 
 const props = defineProps<{
@@ -36,6 +38,9 @@ const view = ref<EditorView | undefined>();
 const language = new Compartment();
 const readOnly = new Compartment();
 const themeCompartment = new Compartment();
+const lintCompartment = new Compartment();
+
+const lintSource = createLintSource();
 
 watch(
   () => currentTheme.value,
@@ -47,11 +52,10 @@ watch(
         ),
       ],
     });
-    console.log(newTheme, view.value?.state);
   },
 );
 
-const mountEditor = () => {
+const mountEditor = async () => {
   const updateListener = EditorView.updateListener.of((update) => {
     if (!update.docChanged) {
       return;
@@ -63,6 +67,8 @@ const mountEditor = () => {
   const editorState = EditorState.create({
     doc: editingFunc.value.modifiedFunc.code,
     extensions: [
+      lintCompartment.of(linter(await lintSource)),
+      lintGutter(),
       basicSetup,
       language.of(javascript()),
       keymap.of([indentWithTab]),
