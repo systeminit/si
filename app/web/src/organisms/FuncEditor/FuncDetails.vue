@@ -9,7 +9,7 @@
       </template>
 
       <template #panels>
-        <TabPanel class="h-full overflow-auto">
+        <TabPanel class="overflow-auto grow">
           <SiCollapsible label="Attributes" :default-open="true">
             <div class="px-2 py-2 flex flex-col gap-2">
               <h1 class="text-neutral-400 dark:text-neutral-300 text-sm">
@@ -79,7 +79,7 @@
       </template>
     </SiTabGroup>
     <div
-      class="absolute bottom-0 w-full h-14 text-right p-2 border-t border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800"
+      class="bottom-0 w-full h-14 text-right p-2 border-t border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 flex-none"
     >
       <VButton
         button-rank="primary"
