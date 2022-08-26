@@ -29,13 +29,7 @@ default--check-type: node_modules
 	npm run build:check
 .PHONY: default--check-type
 
-## check-lint: Checks all code linting for the TypeScript package
-default--check-lint: node_modules
-	$(call header,$@)
-	npm run lint
-.PHONY: default--check-lint
-
-## check-format: Checks all code formatting for the TypeScript package
+## check-format: Checks all code linting/formatting for the TypeScript package
 default--check-format: node_modules
 	$(call header,$@)
 	npm run fmt:check
