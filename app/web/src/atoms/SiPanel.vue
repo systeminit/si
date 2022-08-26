@@ -3,9 +3,9 @@
     <SiPanelResizer
       v-if="currentlyResizeable"
       :panel-side="side"
-      @start-resize="startResize"
-      @resizing="resizing"
-      @reset-size="resetSize"
+      @resize-start="onResizeStart"
+      @resize-move="onResizeMove"
+      @resize-reset="resetSize"
     />
     <div class="absolute w-full h-full flex flex-col">
       <slot />
@@ -20,7 +20,7 @@ import _ from "lodash";
 
 const props = withDefaults(
   defineProps<{
-    id: string;
+    rememberSizeKey: string;
     side: "left" | "right" | "top" | "bottom";
     hidden?: boolean;
     classes?: string;
@@ -40,23 +40,23 @@ const props = withDefaults(
     fixedDefaultSize: undefined,
   },
 );
-const side = toRef(props, "side");
+
 const isVertical = computed(
   () => props.side === "top" || props.side === "bottom",
 );
 
 const panelClasses = computed(() => {
   const classes: Record<string, boolean> = {};
-  if (side.value == "left") {
+  if (props.side == "left") {
     if (!currentlyResizeable.value) classes["border-r-2"] = true;
     classes[props.hidden ? "right-96" : "right-0"] = true;
-  } else if (side.value == "right") {
+  } else if (props.side == "right") {
     if (!currentlyResizeable.value) classes["border-l-2"] = true;
     classes[props.hidden ? "left-96" : "left-0"] = true;
-  } else if (side.value == "top") {
+  } else if (props.side == "top") {
     if (!currentlyResizeable.value) classes["border-b-2"] = true;
     classes[props.hidden ? "top-96" : "top-0"] = true;
-  } else if (side.value == "bottom") {
+  } else if (props.side == "bottom") {
     if (!currentlyResizeable.value) classes["border-t-2"] = true;
     classes[props.hidden ? "bottom-96" : "bottom-0"] = true;
   }
@@ -87,7 +87,7 @@ const setCurrentMinResize = (v: number) => {
 
 const setSize = (size: number, delta = 0) => {
   let finalSize =
-    size + (side.value === "right" || side.value === "bottom" ? delta : -delta);
+    size + (props.side === "right" || props.side === "bottom" ? delta : -delta);
 
   if (currentMinResize.value > 1) {
     if (finalSize < currentMinResize.value) finalSize = currentMinResize.value;
@@ -112,18 +112,18 @@ const setSize = (size: number, delta = 0) => {
   return finalSize;
 };
 
-const startResize = () => {
+const onResizeStart = () => {
   if (isVertical.value) size.value = panel.value.offsetHeight;
   else size.value = panel.value.offsetWidth;
 };
 
-const resizing = (delta: number) => {
+const onResizeMove = (delta: number) => {
   const finalSize = setSize(size.value, delta);
-  window.localStorage.setItem(props.id + "-size", "" + finalSize);
+  window.localStorage.setItem(props.rememberSizeKey + "-size", "" + finalSize);
 };
 
 const resetSize = (useDefaultSize = true) => {
-  window.localStorage.removeItem(props.id + "-size");
+  window.localStorage.removeItem(props.rememberSizeKey + "-size");
   panel.value.style.width = "";
   panel.value.style.height = "";
   if (props.fixedDefaultSize && useDefaultSize) setSize(props.fixedDefaultSize);
@@ -137,20 +137,22 @@ const onWindowResize = () => {
 };
 
 const debounceForResize = _.debounce(onWindowResize, 20);
-const resizeObserver = new ResizeObserver(debounceForResize);
+const windowResizeObserver = new ResizeObserver(debounceForResize);
 
 onMounted(() => {
   if (props.resizeable) {
-    const storedSize = window.localStorage.getItem(props.id + "-size");
-    if (storedSize) setSize(parseInt(storedSize), 0);
+    const storedSize = window.localStorage.getItem(
+      props.rememberSizeKey + "-size",
+    );
+    if (storedSize) setSize(parseInt(storedSize));
   } else {
-    window.localStorage.removeItem(props.id + "-size");
+    window.localStorage.removeItem(props.rememberSizeKey + "-size");
   }
-  resizeObserver.observe(document.body);
+  windowResizeObserver.observe(document.body);
 });
 
 onBeforeUnmount(() => {
-  resizeObserver.unobserve(document.body);
+  windowResizeObserver.unobserve(document.body);
 });
 
 defineExpose({

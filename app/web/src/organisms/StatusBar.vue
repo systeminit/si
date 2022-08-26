@@ -1,7 +1,7 @@
 <template>
   <SiPanel
-    id="status-bar"
     ref="panelRef"
+    remember-size-key="status-bar"
     side="bottom"
     :min-resize="0"
     :max-resize="0.8"
