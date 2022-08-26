@@ -79,7 +79,7 @@
       </template>
     </SiTabGroup>
     <div
-      class="bottom-0 w-full h-12 text-right p-2 border-t border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800"
+      class="absolute bottom-0 w-full h-14 text-right p-2 border-t border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800"
     >
       <VButton
         button-rank="primary"
