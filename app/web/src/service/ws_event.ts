@@ -11,6 +11,7 @@ import { eventCheckedQualifications$ } from "@/observable/qualification";
 import { eventDependentValuesUpdated$ } from "@/observable/attribute_value";
 import { eventCodeGenerated$ } from "@/observable/code";
 import { eventSecretCreated$ } from "@/observable/secret";
+import { eventCommandOutput$ } from "@/observable/command";
 
 const eventMap: {
   [E in WsPayloadKinds["kind"]]:  // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -29,6 +30,7 @@ const eventMap: {
   CheckedQualifications: eventCheckedQualifications$,
   UpdatedDependentValue: eventDependentValuesUpdated$,
   SecretCreated: eventSecretCreated$,
+  CommandOutput: eventCommandOutput$,
 };
 
 export function dispatch(wsEvent: WsEvent<WsPayloadKinds>) {

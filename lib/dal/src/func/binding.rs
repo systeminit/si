@@ -232,9 +232,15 @@ impl FuncBinding {
         &self,
         ctx: &DalContext<'_, '_>,
     ) -> FuncBindingResult<FuncBindingReturnValue> {
-        let (func, execution, context, rx) = self.prepare_execution(ctx).await?;
+        let (func, execution, context, mut rx) = self.prepare_execution(ctx).await?;
         let value = self.execute_critical_section(func.clone(), context).await?;
-        self.postprocess_execution(ctx, rx, &func, value, execution)
+
+        let mut output = Vec::new();
+        while let Some(output_stream) = rx.recv().await {
+            output.push(output_stream);
+        }
+
+        self.postprocess_execution(ctx, output, &func, value, execution)
             .await
     }
 
@@ -302,7 +308,7 @@ impl FuncBinding {
     pub async fn postprocess_execution(
         &self,
         ctx: &DalContext<'_, '_>,
-        rx: mpsc::Receiver<OutputStream>,
+        output_stream: Vec<OutputStream>,
         func: &Func,
         (unprocessed_value, processed_value): (
             Option<serde_json::Value>,
@@ -310,7 +316,7 @@ impl FuncBinding {
         ),
         mut execution: FuncExecution,
     ) -> FuncBindingResult<FuncBindingReturnValue> {
-        execution.process_output(ctx, rx).await?;
+        execution.set_output_stream(ctx, output_stream).await?;
 
         let func_binding_return_value = FuncBindingReturnValue::upsert(
             ctx,

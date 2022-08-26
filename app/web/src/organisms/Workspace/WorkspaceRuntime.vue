@@ -50,10 +50,11 @@
 
 <script lang="ts" setup>
 import { ref } from "vue";
-import { refFrom } from "vuse-rx/src";
+import { refFrom, untilUnmounted } from "vuse-rx";
 import WorkflowPicker from "@/organisms/WorkflowRunner/WorkflowPicker.vue";
 import WorkflowResolver from "@/organisms/WorkflowRunner/WorkflowResolver.vue";
 import { WorkflowService } from "@/service/workflow";
+import { eventCommandOutput$ } from "@/observable/command";
 import {
   ListedWorkflowView,
   ListWorkflowsResponse,
@@ -70,10 +71,17 @@ const select = (w: ListedWorkflowView | null) => {
 const logs = ref<string[] | null>(null);
 const runWorkflow = async () => {
   if (selected.value) {
+    logs.value = null;
     const outputs = await WorkflowService.run({ id: selected.value.id });
     logs.value = outputs?.logs ?? null;
   }
 };
+
+eventCommandOutput$.pipe(untilUnmounted).subscribe((command) => {
+  if (!command) return;
+  if (!logs.value) logs.value = [];
+  logs.value.push(command.payload.data.output);
+});
 
 const list = refFrom<ListWorkflowsResponse>(WorkflowService.list(), []);
 </script>

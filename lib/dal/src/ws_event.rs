@@ -7,6 +7,7 @@ use crate::attribute::value::DependentValuesUpdated;
 use crate::code_generation_resolver::CodeGenerationId;
 use crate::qualification::QualificationCheckId;
 use crate::resource::ResourceSyncId;
+use crate::workflow::CommandOutput;
 use crate::{BillingAccountId, ChangeSetPk, DalContext, HistoryActor, ReadTenancy, SchemaPk};
 
 #[derive(Error, Debug)]
@@ -31,6 +32,7 @@ pub enum WsPayload {
     CodeGenerated(CodeGenerationId),
     CheckedQualifications(QualificationCheckId),
     UpdatedDependentValue(DependentValuesUpdated),
+    CommandOutput(CommandOutput),
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, Eq, PartialEq)]
