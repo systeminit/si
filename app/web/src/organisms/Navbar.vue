@@ -40,11 +40,11 @@
 </template>
 
 <script setup lang="ts">
-import SiLogoWts from "@/assets/images/si-logo-wts.svg?url";
 import { refFrom } from "vuse-rx";
+import { computed } from "vue";
+import SiLogoWts from "@/assets/images/si-logo-wts.svg?url";
 import { WorkspaceService } from "@/service/workspace";
 import { Workspace } from "@/api/sdf/dal/workspace";
-import { computed } from "vue";
 import NavbarPanelRight from "@/organisms/NavbarPanelRight.vue";
 import NavbarPanelCenter from "@/organisms/NavbarPanelCenter.vue";
 import SiDropdownItem from "@/atoms/SiDropdownItem.vue";

@@ -19,7 +19,7 @@ module.exports = {
     sourceType: "module",
     project: ["./tsconfig.json", "./tsconfig.node.json"],
   },
-  plugins: ["vue", "@typescript-eslint", "prettier"],
+  plugins: ["vue", "@typescript-eslint", "prettier", "no-autofix"],
   settings: {
     "import/resolver": {
       typescript: {},
@@ -81,8 +81,8 @@ module.exports = {
     "no-await-in-loop": 0,
     "no-lonely-if": 0,
 
-    // rules to disable for now, for the sake of fewer changes and eslint disabling...
-    // TODO: review these and (maybe) turn back on
+    // rules to disable for now, for the sake of fewer changes and to get running again
+    // TODO: review these rules, infractions case by case, probably turn back on?
     "@typescript-eslint/no-use-before-define": 0,
     "import/no-cycle": 0,
     "no-param-reassign": 0,
@@ -90,24 +90,25 @@ module.exports = {
     "@typescript-eslint/naming-convention": 0,
     "@typescript-eslint/no-shadow": 0,
     "guard-for-in": 0,
+    "no-console": 0,
 
     // some rules to downgrade to warning while developing
     // useful so things dont crash when code is temporarily commented out
     "@typescript-eslint/no-empty-function": process.env.STRICT_LINT
       ? "error"
       : "warn",
-    "prefer-const": process.env.STRICT_LINT ? "error" : "warn",
-
-    "no-console": process.env.STRICT_LINT ? "error" : "warn",
     "no-debugger": process.env.STRICT_LINT ? "error" : "warn",
     "no-alert": process.env.STRICT_LINT ? "error" : "warn",
     "no-empty": process.env.STRICT_LINT ? "error" : "warn",
+    // "no-console": process.env.STRICT_LINT ? "error" : "warn",
 
-    // eqeqeq: "error",
-    // "object-shorthand": "error",
-    // "prefer-template": "error",
-
-    "import/no-duplicates": 0,
+    // rules that we want to warn, but disable agressive auto-fixing
+    "prefer-const": 0,
+    "no-unreachable": 0, // handy when you return early or throw an error while debugging
+    // unreachable code will be removed by default, so we disable autofix, but leave a warning
+    "no-autofix/no-unreachable": 1,
+    // useful while debugging and commenting things out, otherwise gets automatically changed from let to const
+    "no-autofix/prefer-const": process.env.STRICT_LINT ? "error" : "warn",
   },
 
   overrides: [

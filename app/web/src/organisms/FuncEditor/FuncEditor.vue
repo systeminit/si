@@ -12,13 +12,13 @@ import { basicSetup, EditorView } from "@codemirror/basic-setup";
 import { EditorState, Compartment } from "@codemirror/state";
 import { keymap } from "@codemirror/view";
 import { indentWithTab } from "@codemirror/commands";
-import { funcState, changeFunc, nullEditingFunc } from "./func_state";
 import { gruvboxDark } from "cm6-theme-gruvbox-dark";
 import { basicLight } from "cm6-theme-basic-light";
-import { ThemeService } from "@/service/theme";
-import { Theme } from "@/observable/theme";
 import { refFrom } from "vuse-rx";
 import { javascript } from "@codemirror/lang-javascript";
+import { ThemeService } from "@/service/theme";
+import { Theme } from "@/observable/theme";
+import { funcState, changeFunc, nullEditingFunc } from "./func_state";
 
 const props = defineProps<{
   funcId: number;

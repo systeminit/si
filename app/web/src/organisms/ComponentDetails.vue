@@ -45,23 +45,23 @@
 </template>
 
 <script lang="ts" setup>
+import { TabPanel } from "@headlessui/vue";
+import { combineLatest, from, ReplaySubject, switchMap } from "rxjs";
+import { fromRef, refFrom, untilUnmounted } from "vuse-rx/src";
+import { computed, ref, toRefs } from "vue";
+import { RefreshIcon } from "@heroicons/vue/solid";
+import { tag } from "rxjs-spy/operators";
 import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
-import { TabPanel } from "@headlessui/vue";
 import AttributeViewer from "@/organisms/AttributeViewer.vue";
 import { ComponentIdentification } from "@/api/sdf/dal/component";
 import CodeViewer from "@/organisms/CodeViewer.vue";
 import { ComponentService } from "@/service/component";
 import { GlobalErrorService } from "@/service/global_error";
-import { combineLatest, from, ReplaySubject, switchMap } from "rxjs";
-import { fromRef, refFrom, untilUnmounted } from "vuse-rx/src";
-import { computed, ref, toRefs } from "vue";
 import { CodeView } from "@/api/sdf/dal/code_view";
 import { eventCodeGenerated$ } from "@/observable/code";
-import { RefreshIcon } from "@heroicons/vue/solid";
 import SiButtonIcon from "@/atoms/SiButtonIcon.vue";
-import { tag } from "rxjs-spy/operators";
 
 const props = defineProps<{
   componentIdentification: ComponentIdentification;
@@ -115,11 +115,11 @@ const refreshClasses = computed(() => {
   const classes: { [key: string]: boolean } = {};
   if (currentSyncAnimate.value) {
     classes["animate-spin"] = true;
-    classes["transform"] = true;
+    classes.transform = true;
     classes["rotate-180"] = true;
   } else {
     classes["animate-spin"] = false;
-    classes["transform"] = false;
+    classes.transform = false;
     classes["rotate-180"] = false;
   }
   return classes;

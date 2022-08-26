@@ -55,6 +55,7 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from "vue";
 import StatusIndicatorIcon, {
   Status,
 } from "@/molecules/StatusIndicatorIcon.vue";
@@ -62,7 +63,6 @@ import SiBarButton from "@/molecules/SiBarButton.vue";
 import SiArrow from "@/atoms/SiArrow.vue";
 import { SelectionService } from "@/service/selection";
 import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
-import { computed } from "vue";
 
 export interface ComponentListItem {
   id: number;

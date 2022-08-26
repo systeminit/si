@@ -49,16 +49,16 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
-import type { EditField } from "@/api/sdf/dal/edit_field";
+import VueFeather from "vue-feather";
 import { EditFieldService } from "@/service/edit_field";
-import EditFormField from "./EditFormField.vue";
 import Unset from "@/atoms/Unset.vue";
 import { GlobalErrorService } from "@/service/global_error";
 import { UpdateFromEditFieldResponse } from "@/service/edit_field/update_from_edit_field";
 import { ApiResponse } from "@/api/sdf";
 import { AttributeContext } from "@/api/sdf/dal/attribute";
-import VueFeather from "vue-feather";
 import SiLink from "@/atoms/SiLink.vue";
+import type { EditField } from "@/api/sdf/dal/edit_field";
+import EditFormField from "./EditFormField.vue";
 
 const props = defineProps<{
   show: boolean;

@@ -32,17 +32,17 @@
 
 <script lang="ts" setup>
 import _ from "lodash";
+import { ref } from "vue";
+import { combineLatest, firstValueFrom } from "rxjs";
+import { untilUnmounted } from "vuse-rx";
 import SiNodeSprite from "@/molecules/SiNodeSprite.vue";
 import SiCollapsible from "@/organisms/SiCollapsible.vue";
 // import SiSearch from "@/molecules/SiSearch.vue";
-import { ref } from "vue";
-import { combineLatest, firstValueFrom } from "rxjs";
 import { SchematicService } from "@/service/schematic";
 import SchematicDiagramService from "@/service/schematic-diagram";
 import { SchematicKind, SchematicNodeTemplate } from "@/api/sdf/dal/schematic";
 import { ApplicationService } from "@/service/application";
 import { Category, Item } from "@/api/sdf/dal/menu";
-import { untilUnmounted } from "vuse-rx";
 
 export type SelectAssetEvent = {
   schemaId: number;
@@ -121,11 +121,11 @@ combineLatest([
             );
 
             assets.push({
-              name: name,
+              name,
               id: schemaId,
               template,
               color: variant
-                ? "#" + variant.color.toString(16).padStart(6, "0")
+                ? `#${variant.color.toString(16).padStart(6, "0")}`
                 : "#777",
             });
           }

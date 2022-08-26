@@ -76,17 +76,16 @@
 </template>
 
 <script setup lang="ts">
+import { from, switchMap, map, combineLatest } from "rxjs";
+import { computed, ref } from "vue";
+import { refFrom, fromRef, untilUnmounted } from "vuse-rx";
+import _ from "lodash";
 import { ComponentStats } from "@/api/sdf/dal/change_set";
 import { ChangeSetService } from "@/service/change_set";
 import { GlobalErrorService } from "@/service/global_error";
-import { from, switchMap, map } from "rxjs";
-import { computed, ref } from "vue";
-import { refFrom, fromRef, untilUnmounted } from "vuse-rx";
 import CodeViewer from "@/organisms/CodeViewer.vue";
-import { combineLatest } from "rxjs";
 import { ComponentService } from "@/service/component";
 import { ComponentDiff } from "@/api/sdf/dal/component";
-import _ from "lodash";
 import { SelectionService } from "@/service/selection";
 import StatusBarTabPanelComponentList, {
   ComponentListItem,
@@ -169,12 +168,12 @@ const codeRecord = computed((): Record<string, string> => {
   if (componentDiff.value) {
     if (componentDiff.value.diffs.length > 0) {
       // FIXME(nick): allow for multiple diffs.
-      code["Diff"] = componentDiff.value.diffs[0].code ?? "# No code found";
+      code.Diff = componentDiff.value.diffs[0].code ?? "# No code found";
     } else {
       // This should never be read, but is here just in case.
-      code["Diff"] = "# No diff found";
+      code.Diff = "# No diff found";
     }
-    code["Current"] = componentDiff.value.current.code ?? "# No code found";
+    code.Current = componentDiff.value.current.code ?? "# No code found";
   }
   return code;
 });

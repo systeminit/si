@@ -27,9 +27,9 @@
 </template>
 
 <script lang="ts" setup>
+import { computed, ref } from "vue";
 import { QualificationSummaryForComponent } from "@/service/qualification/get_summary";
 import { QualificationService } from "@/service/qualification";
-import { computed, ref } from "vue";
 import QualificationViewerMultiple from "@/organisms/StatusBarTabs/Qualification/QualificationViewerMultiple.vue";
 import { Status } from "@/molecules/StatusIndicatorIcon.vue";
 import StatusBarTabPanelComponentList, {
@@ -97,7 +97,8 @@ const list = computed((): ComponentListItem[] => {
 
 const iconStatus = (component: QualificationSummaryForComponent): Status => {
   if (component.succeeded === component.total) return "success";
-  if (component.failed + component.succeeded < component.total) return "loading";
+  if (component.failed + component.succeeded < component.total)
+    return "loading";
   return "failure";
-}
+};
 </script>

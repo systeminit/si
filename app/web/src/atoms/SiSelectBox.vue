@@ -48,14 +48,14 @@
 
 <script setup lang="ts">
 import { ExclamationCircleIcon } from "@heroicons/vue/solid";
+import { computed, ref } from "vue";
+import _ from "lodash";
 import SiValidation, {
   ValidatorArray,
   ErrorsArray,
 } from "@/atoms/SiValidation.vue";
 import SiSelect from "@/atoms/SiSelect.vue";
 import { LabelList } from "@/api/sdf/dal/label_list";
-import { computed, ref } from "vue";
-import _ from "lodash";
 
 const props = defineProps<{
   modelValue: string | number | null;

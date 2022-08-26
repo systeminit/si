@@ -28,11 +28,6 @@
 
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import type {
-  EditFields,
-  EditField,
-  HeaderWidgetDal,
-} from "@/api/sdf/dal/edit_field";
 import { EditFieldDataType } from "@/api/sdf/dal/edit_field";
 import Widgets from "@/organisms/EditForm/Widgets.vue";
 import {
@@ -40,6 +35,11 @@ import {
   ITreeOpenState,
 } from "@/utils/edit_field_visitor";
 import { ComponentIdentification } from "@/api/sdf/dal/component";
+import type {
+  EditFields,
+  EditField,
+  HeaderWidgetDal,
+} from "@/api/sdf/dal/edit_field";
 
 const props = defineProps<{
   editFields: EditFields;

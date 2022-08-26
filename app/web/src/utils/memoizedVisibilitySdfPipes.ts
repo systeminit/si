@@ -1,5 +1,4 @@
 import Bottle from "bottlejs";
-import { SDF } from "@/api/sdf";
 import {
   combineLatest,
   Observable,
@@ -8,9 +7,10 @@ import {
   ShareReplayConfig,
 } from "rxjs";
 import { switchMap } from "rxjs/operators";
+import { tag } from "rxjs-spy/operators/tag";
+import { SDF } from "@/api/sdf";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import { standardVisibilityTriggers$ } from "@/observable/visibility";
-import { tag } from "rxjs-spy/operators/tag";
 
 export function memoizedVisibilitySdfPipe<A, R, O extends ObservableInput<R>>(
   project: (visibility: Visibility, sdf: SDF, args?: A) => O,

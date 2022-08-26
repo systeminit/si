@@ -9,12 +9,6 @@
   </div>
 </template>
 
-<script lang="ts">
-export default {
-  inheritAttrs: false,
-};
-</script>
-
 <script setup lang="ts">
 import { ref, watch, toRefs, computed } from "vue";
 import _ from "lodash";
@@ -106,5 +100,11 @@ const errorClasses = (id: string) => {
     classes["text-destructive-400"] = true;
   }
   return classes;
+};
+</script>
+
+<script lang="ts">
+export default {
+  inheritAttrs: false,
 };
 </script>

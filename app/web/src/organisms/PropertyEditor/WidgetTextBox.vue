@@ -27,8 +27,8 @@
 
 <script setup lang="ts">
 import { ref, toRefs, computed, watch } from "vue";
+import _, { parseInt } from "lodash";
 import SiTextBox from "@/atoms/SiTextBox.vue";
-import UnsetButton from "./UnsetButton.vue";
 import { usePropertyEditorIsShown } from "@/composables/usePropertyEditorIsShown";
 import {
   PropertyEditorValidation,
@@ -36,8 +36,8 @@ import {
   PropertyPath,
   PropertyEditorPropKind,
 } from "@/api/sdf/dal/property_editor";
-import _, { parseInt } from "lodash";
 import { ValidatorArray } from "@/atoms/SiValidation.vue";
+import UnsetButton from "./UnsetButton.vue";
 
 const props = defineProps<{
   name: string;

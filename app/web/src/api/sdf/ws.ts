@@ -22,7 +22,7 @@ export class SdfWs {
       let loop = 0;
       while (this.socket.readyState === WebSocket.CONNECTING && loop < ttl) {
         await new Promise((resolve) => {
-          setTimeout(resolve, intrasleep)
+          setTimeout(resolve, intrasleep);
         });
         loop++;
       }

@@ -1,18 +1,17 @@
-import { bottleSetup } from "./di";
-import { config } from "./config";
-
 import { createApp } from "vue";
-import App from "@/App.vue";
-import router from "./router";
-
-import "@/assets/style/main.css";
-import "@/assets/style/tailwind.css";
-import { SignupService } from "@/service/signup";
-import { SessionService } from "@/service/session";
-import { ChangeSetService } from "@/service/change_set";
 import FloatingVue from "floating-vue";
 import VueKonva from "vue-konva";
 import { create } from "rxjs-spy";
+import "@/assets/style/main.css";
+import "@/assets/style/tailwind.css";
+import { ChangeSetService } from "@/service/change_set";
+import { SessionService } from "@/service/session";
+import { SignupService } from "@/service/signup";
+import App from "@/App.vue";
+import { bottleSetup } from "./di";
+import { config } from "./config";
+import router from "./router";
+
 // @ts-ignore
 const _spy = create();
 

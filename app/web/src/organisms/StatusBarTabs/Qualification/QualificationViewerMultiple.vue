@@ -16,15 +16,15 @@
 </template>
 
 <script lang="ts" setup>
+import { fromRef, refFrom } from "vuse-rx";
+import { map } from "rxjs";
+import { switchMap } from "rxjs/operators";
 import {
   listQualifications,
   ListQualificationsResponse,
 } from "@/service/component/list_qualifications";
-import { fromRef, refFrom } from "vuse-rx";
-import { map } from "rxjs";
 import { GlobalErrorService } from "@/service/global_error";
 import { Status } from "@/molecules/StatusIndicatorIcon.vue";
-import { switchMap } from "rxjs/operators";
 import { Qualification } from "@/api/sdf/dal/qualification";
 import QualificationViewerSingle from "@/organisms/StatusBarTabs/Qualification/QualificationViewerSingle.vue";
 

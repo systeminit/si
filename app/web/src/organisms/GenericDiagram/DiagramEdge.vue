@@ -25,10 +25,10 @@
 </template>
 
 <script lang="ts" setup>
-import { useTheme } from "@/composables/injectTheme";
 import { KonvaEventObject } from "konva/lib/Node";
 import { Vector2d } from "konva/lib/types";
 import { computed, PropType } from "vue";
+import { useTheme } from "@/composables/injectTheme";
 import { SOCKET_SIZE, SELECTION_COLOR } from "./diagram_constants";
 import { DiagramEdgeDef } from "./diagram_types";
 import { pointAlongLine } from "./utils/math";

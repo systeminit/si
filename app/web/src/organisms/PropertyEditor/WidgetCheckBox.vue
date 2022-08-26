@@ -26,16 +26,16 @@
 
 <script setup lang="ts">
 import { ref, toRefs, computed, watch } from "vue";
+import _ from "lodash";
 import SiCheckBox from "@/atoms/SiCheckBox.vue";
-import UnsetButton from "./UnsetButton.vue";
 import { usePropertyEditorIsShown } from "@/composables/usePropertyEditorIsShown";
 import {
   PropertyEditorValidation,
   UpdatedProperty,
   PropertyPath,
 } from "@/api/sdf/dal/property_editor";
-import _ from "lodash";
 import { ValidatorArray } from "@/atoms/SiValidation.vue";
+import UnsetButton from "./UnsetButton.vue";
 
 const props = defineProps<{
   name: string;

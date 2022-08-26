@@ -38,6 +38,8 @@
 <script lang="ts" setup>
 import { KonvaEventObject } from "konva/lib/Node";
 import { computed, PropType } from "vue";
+import tinycolor from "tinycolor2";
+import { useTheme } from "@/composables/injectTheme";
 import {
   DiagramDrawEdgeState,
   DiagramEdgeDef,
@@ -45,8 +47,6 @@ import {
 } from "./diagram_types";
 
 import { SOCKET_SIZE, DIAGRAM_FONT_FAMILY } from "./diagram_constants";
-import { useTheme } from "@/composables/injectTheme";
-import tinycolor from "tinycolor2";
 
 const theme = useTheme();
 

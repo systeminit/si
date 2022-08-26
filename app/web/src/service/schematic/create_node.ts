@@ -1,11 +1,11 @@
 import Bottle from "bottlejs";
-import { ApiResponse, SDF } from "@/api/sdf";
 import { combineLatest, from, Observable, take } from "rxjs";
+import { switchMap } from "rxjs/operators";
+import _ from "lodash";
+import { ApiResponse, SDF } from "@/api/sdf";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import { visibility$ } from "@/observable/visibility";
-import { switchMap } from "rxjs/operators";
 import { workspace$ } from "@/observable/workspace";
-import _ from "lodash";
 import { SchematicNode } from "@/api/sdf/dal/schematic";
 
 export interface CreateNodeArgs {

@@ -4,12 +4,12 @@
 
 <script setup lang="ts">
 import { onMounted } from "vue";
-import { SessionService } from "@/service/session";
 import { useRouter, useRoute } from "vue-router";
 import { firstValueFrom } from "rxjs";
+import { refFrom } from "vuse-rx/src";
+import { SessionService } from "@/service/session";
 import { Workspace } from "@/api/sdf/dal/workspace";
 import { WorkspaceService } from "@/service/workspace";
-import { refFrom } from "vuse-rx/src";
 
 const route = useRoute();
 const router = useRouter();

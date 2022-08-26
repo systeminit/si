@@ -40,14 +40,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
-import { EditField, EditFields } from "@/api/sdf/dal/edit_field";
+import { computed, defineAsyncComponent, DefineComponent } from "vue";
 import VueFeather from "vue-feather";
-import { defineAsyncComponent, DefineComponent } from "vue";
-import type { WidgetsProps } from "./Widgets.vue";
+import { EditField, EditFields } from "@/api/sdf/dal/edit_field";
 import { ITreeOpenState } from "@/utils/edit_field_visitor";
 import SiLink from "@/atoms/SiLink.vue";
 import { ComponentIdentification } from "@/api/sdf/dal/component";
+import type { WidgetsProps } from "./Widgets.vue";
 
 // Eliminate the circular dependency of HeaderWidget -> Widgets -> HeaderWidget
 // by using `defineAsyncComponent` in a careful way to preserve the ability for

@@ -1,4 +1,3 @@
-import { ApiResponse, SDF } from "@/api/sdf";
 import {
   combineLatest,
   combineLatestWith,
@@ -6,13 +5,14 @@ import {
   Observable,
   share,
 } from "rxjs";
-import { standardVisibilityTriggers$ } from "@/observable/visibility";
 import Bottle from "bottlejs";
 import { switchMap } from "rxjs/operators";
+import _ from "lodash";
+import { ApiResponse, SDF } from "@/api/sdf";
+import { standardVisibilityTriggers$ } from "@/observable/visibility";
 import { Component } from "@/api/sdf/dal/component";
 import { workspace$ } from "@/observable/workspace";
 import { Visibility } from "@/api/sdf/dal/visibility";
-import _ from "lodash";
 
 export interface ListApplicationRequest extends Visibility {
   workspaceId: number;
@@ -22,12 +22,12 @@ export interface ListApplicationItem {
   application: Component;
 
   // These populated the former card display
-  //servicesWithResources: [];
-  //systems: [];
-  //changeSetCounts: {
+  // servicesWithResources: [];
+  // systems: [];
+  // changeSetCounts: {
   //  open: number;
   //  closed: number;
-  //};
+  // };
 }
 
 export interface ListApplicationResponse {

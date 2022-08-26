@@ -1,11 +1,11 @@
-import { ApiResponse, SDF } from "@/api/sdf";
 import { combineLatest, from, Observable, shareReplay } from "rxjs";
-import { standardVisibilityTriggers$ } from "@/observable/visibility";
 import Bottle from "bottlejs";
 import { switchMap } from "rxjs/operators";
+import _ from "lodash";
+import { ApiResponse, SDF } from "@/api/sdf";
+import { standardVisibilityTriggers$ } from "@/observable/visibility";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import { workspace$ } from "@/observable/workspace";
-import _ from "lodash";
 import { CodeView } from "@/api/sdf/dal/code_view";
 
 export interface GetCodeArgs {

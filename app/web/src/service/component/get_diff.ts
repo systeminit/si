@@ -1,10 +1,10 @@
-import { ApiResponse, SDF } from "@/api/sdf";
 import { combineLatest, from, Observable, shareReplay } from "rxjs";
-import { standardVisibilityTriggers$ } from "@/observable/visibility";
 import Bottle from "bottlejs";
 import { switchMap } from "rxjs/operators";
-import { workspace$ } from "@/observable/workspace";
 import _ from "lodash";
+import { workspace$ } from "@/observable/workspace";
+import { standardVisibilityTriggers$ } from "@/observable/visibility";
+import { ApiResponse, SDF } from "@/api/sdf";
 import { ComponentDiff } from "@/api/sdf/dal/component";
 
 export interface GetDiffArgs {

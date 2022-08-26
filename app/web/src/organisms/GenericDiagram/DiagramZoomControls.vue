@@ -41,8 +41,8 @@
 <script lang="ts" setup>
 import { computed } from "vue";
 import _ from "lodash";
-import Icon from "@/molecules/VButton/Icon.vue";
 import { Menu, MenuButton, MenuItems } from "@headlessui/vue";
+import Icon from "@/molecules/VButton/Icon.vue";
 import SiDropdown from "@/molecules/SiDropdown.vue";
 import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
 

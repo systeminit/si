@@ -1,7 +1,8 @@
-export * from "./schema/create_schema";
 import { createSchema } from "./schema/create_schema";
 import { listSchemas } from "./schema/list_schemas";
 import { getSchema } from "./schema/get_schema";
+
+export * from "./schema/create_schema";
 
 export const SchemaService = {
   createSchema,

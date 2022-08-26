@@ -1,8 +1,8 @@
 import Bottle from "bottlejs";
-import { ApiResponse, SDF } from "@/api/sdf";
-import { LabelList } from "@/api/sdf/dal/label_list";
 import { combineLatest, Observable, shareReplay } from "rxjs";
 import { switchMap } from "rxjs/operators";
+import { ApiResponse, SDF } from "@/api/sdf";
+import { LabelList } from "@/api/sdf/dal/label_list";
 import {
   eventChangeSetApplied$,
   eventChangeSetCanceled$,

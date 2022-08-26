@@ -11,9 +11,9 @@
 </template>
 
 <script lang="ts" setup>
-import { useTheme } from "@/composables/injectTheme";
 import { Vector2d } from "konva/lib/types";
 import { computed, PropType } from "vue";
+import { useTheme } from "@/composables/injectTheme";
 
 const props = defineProps({
   fromPoint: {

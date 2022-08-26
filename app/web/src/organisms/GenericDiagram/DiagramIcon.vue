@@ -11,9 +11,9 @@ it from the diagram config's registry of icons */
 </template>
 
 <script lang="ts" setup>
+import { computed } from "vue";
 import { useDiagramConfig } from "./utils/use-diagram-context-provider";
 import KonvaSvgImage from "./KonvaSvgImage.vue";
-import { computed } from "vue";
 
 const props = defineProps({
   icon: { type: String },

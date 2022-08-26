@@ -1,12 +1,12 @@
-import { ApiResponse, SDF } from "@/api/sdf";
 import { combineLatest, combineLatestWith, from, Observable, tap } from "rxjs";
-import { standardVisibilityTriggers$ } from "@/observable/visibility";
 import Bottle from "bottlejs";
 import { switchMap } from "rxjs/operators";
+import _ from "lodash";
+import { ApiResponse, SDF } from "@/api/sdf";
+import { standardVisibilityTriggers$ } from "@/observable/visibility";
 import { Visibility } from "@/api/sdf/dal/visibility";
 import { Component } from "@/api/sdf/dal/component";
 import { workspace$ } from "@/observable/workspace";
-import _ from "lodash";
 import { application$, applicationNodeId$ } from "@/observable/application";
 
 export interface GetApplicationArgs {

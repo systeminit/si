@@ -101,6 +101,7 @@
 
 <script setup lang="ts">
 import { toRefs, computed } from "vue";
+import _ from "lodash";
 import {
   PropertyEditorProp,
   PropertyEditorValidation,
@@ -116,7 +117,6 @@ import WidgetCheckBox from "./WidgetCheckBox.vue";
 import WidgetSelectBox from "./WidgetSelectBox.vue";
 import WidgetArray from "./WidgetArray.vue";
 import WidgetMap from "./WidgetMap.vue";
-import _ from "lodash";
 
 const props = defineProps<{
   schemaProp: PropertyEditorProp;
@@ -164,7 +164,7 @@ const showArrayElementHeader = computed(() => {
     });
     return true;
   }
-  //if (props.schemaProp.kind === "array") {
+  // if (props.schemaProp.kind === "array") {
   //  console.log("checking an array", {
   //    arrayIndex: JSON.stringify(arrayIndex?.value),
   //  });
@@ -172,13 +172,13 @@ const showArrayElementHeader = computed(() => {
   //  if (_.isUndefined(arrayIndex?.value)) {
   //    return false;
   //  }
-  //} else if (props.schemaProp.kind === "map") {
+  // } else if (props.schemaProp.kind === "map") {
   //  if (_.isUndefined(props.propValue.key)) {
   //    return false;
   //  }
-  //} else {
+  // } else {
   //  return false;
-  //}
-  //return true;
+  // }
+  // return true;
 });
 </script>

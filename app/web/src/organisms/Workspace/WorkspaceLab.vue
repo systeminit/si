@@ -37,6 +37,9 @@
 </template>
 
 <script lang="ts" setup>
+import { ref } from "vue";
+import { refFrom } from "vuse-rx/src";
+import { bufferTime } from "rxjs/operators";
 import SiSidebar from "@/atoms/SiSidebar.vue";
 import ChangeSetPanel from "@/organisms/ChangeSetPanel.vue";
 import FuncPicker from "@/organisms/FuncEditor/FuncPicker.vue";
@@ -49,12 +52,9 @@ import {
   ListFuncsResponse,
   nullListFunc,
 } from "@/service/func/list_funcs";
-import { ref } from "vue";
-import { refFrom } from "vuse-rx/src";
 import { visibility$ } from "@/observable/visibility";
-import { clearFuncs } from "./../FuncEditor/func_state";
-import { bufferTime } from "rxjs/operators";
 import { saveFuncToBackend$ } from "@/observable/func";
+import { clearFuncs } from "../FuncEditor/func_state";
 
 const selectedFunc = ref<ListedFuncView>(nullListFunc);
 const selectFunc = (func: ListedFuncView) => {

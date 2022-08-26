@@ -1,4 +1,12 @@
 import { withLatestFrom } from "rxjs";
+import _ from "lodash";
+import {
+  changeSet$,
+  eventChangeSetApplied$,
+  eventChangeSetCanceled$,
+} from "@/observable/change_set";
+import { GlobalErrorService } from "@/service/global_error";
+import { user$ } from "@/observable/user";
 import { listOpenChangeSets } from "./change_set/list_open_change_sets";
 import { createChangeSet } from "./change_set/create_change_set";
 import { applyChangeSet } from "./change_set/apply_change_set";
@@ -7,14 +15,6 @@ import { switchToHead } from "./change_set/switch_to_head";
 import { currentChangeSet } from "./change_set/current_change_set";
 import { updateSelectedChangeSet } from "./change_set/update_selected_change_set";
 import { getStats } from "./change_set/get_stats";
-import {
-  changeSet$,
-  eventChangeSetApplied$,
-  eventChangeSetCanceled$,
-} from "@/observable/change_set";
-import { GlobalErrorService } from "@/service/global_error";
-import { user$ } from "@/observable/user";
-import _ from "lodash";
 
 export const ChangeSetService = {
   currentChangeSet,

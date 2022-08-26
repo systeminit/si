@@ -1,7 +1,7 @@
 import Bottle from "bottlejs";
+import { combineLatest, switchMap, Observable, shareReplay } from "rxjs";
 import { ApiResponse, SDF } from "@/api/sdf";
 import { ComponentStats } from "@/api/sdf/dal/change_set";
-import { combineLatest, switchMap, Observable, shareReplay } from "rxjs";
 import { standardVisibilityTriggers$ } from "@/observable/visibility";
 
 interface GetStatsResponse {

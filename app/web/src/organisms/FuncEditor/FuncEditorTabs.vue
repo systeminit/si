@@ -47,16 +47,16 @@
 <script lang="ts" setup>
 import { toRef, computed, ref } from "vue";
 import { fromRef } from "vuse-rx/src";
+import { TabPanel } from "@headlessui/vue";
+import VueFeather from "vue-feather";
+import { switchMap, take } from "rxjs/operators";
+import { of } from "rxjs";
 import { FuncService } from "@/service/func";
 import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
-import { TabPanel } from "@headlessui/vue";
 import FuncEditor from "@/organisms/FuncEditor/FuncEditor.vue";
-import VueFeather from "vue-feather";
 import { ListedFuncView, nullListFunc } from "@/service/func/list_funcs";
-import { switchMap, take } from "rxjs/operators";
-import { of } from "rxjs";
 import { funcState, funcById, removeFunc, insertFunc } from "./func_state";
 
 const props = defineProps<{
@@ -117,7 +117,7 @@ const closeFunc = (func: ListedFuncView) => {
   if (funcTab === currentTab) {
     changeTab(funcTab - 1);
   }
-  tabGroupRerenderKey.value = tabGroupRerenderKey.value + 1;
+  tabGroupRerenderKey.value += 1;
 };
 
 selectedFuncId$

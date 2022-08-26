@@ -180,13 +180,15 @@ import { computed, nextTick, PropType, ref, watch } from "vue";
 import _ from "lodash";
 import tinycolor from "tinycolor2";
 
+import { KonvaEventObject } from "konva/lib/Node";
+import { Vector2d } from "konva/lib/types";
+import { useTheme } from "@/composables/injectTheme";
 import {
   DiagramDrawEdgeState,
   DiagramEdgeDef,
   DiagramNodeDef,
 } from "./diagram_types";
 import DiagramNodeSocket from "./DiagramNodeSocket.vue";
-import { KonvaEventObject } from "konva/lib/Node";
 
 import {
   SOCKET_GAP,
@@ -198,8 +200,6 @@ import {
   SELECTION_COLOR,
   SOCKET_SIZE,
 } from "./diagram_constants";
-import { useTheme } from "@/composables/injectTheme";
-import { Vector2d } from "konva/lib/types";
 import DiagramIcon from "./DiagramIcon.vue";
 import { useDiagramConfig } from "./utils/use-diagram-context-provider";
 

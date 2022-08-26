@@ -29,10 +29,10 @@
 
 <script setup lang="ts">
 import { computed, toRefs } from "vue";
-import SiButtonIcon from "@/atoms/SiButtonIcon.vue";
 import { ChevronLeftIcon } from "@heroicons/vue/outline";
 import { ChevronDownIcon, ChevronUpIcon } from "@heroicons/vue/solid";
 import _ from "lodash";
+import SiButtonIcon from "@/atoms/SiButtonIcon.vue";
 import { usePropertyEditorIsShown } from "@/composables/usePropertyEditorIsShown";
 import { PropertyPath } from "@/api/sdf/dal/property_editor";
 

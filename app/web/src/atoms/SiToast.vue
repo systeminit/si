@@ -54,9 +54,9 @@
 
 <script lang="ts" setup>
 import { CheckIcon, XIcon } from "@heroicons/vue/solid";
-import { toast$, Toasted } from "@/observable/toast";
 import { ref } from "vue";
 import { untilUnmounted } from "vuse-rx";
+import { toast$, Toasted } from "@/observable/toast";
 
 interface Burnt extends Toasted {
   timeout: ReturnType<typeof setTimeout>;

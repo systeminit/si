@@ -65,9 +65,19 @@
 </template>
 
 <script setup lang="ts">
-//import EditFormComponent from "@/organisms/EditFormComponent.vue";
+// import EditFormComponent from "@/organisms/EditFormComponent.vue";
 import { toRefs, computed } from "vue";
 import { fromRef, refFrom, untilUnmounted } from "vuse-rx";
+import { CheckCircleIcon } from "@heroicons/vue/solid";
+import {
+  CubeIcon,
+  QuestionMarkCircleIcon,
+  PencilAltIcon,
+} from "@heroicons/vue/outline";
+import _, { parseInt } from "lodash";
+import { tag } from "rxjs-spy/operators";
+import { combineLatest, forkJoin, from, map, take } from "rxjs";
+import { switchMap } from "rxjs/operators";
 import { GlobalErrorService } from "@/service/global_error";
 import { ResourceHealth } from "@/api/sdf/dal/resource";
 import { ComponentIdentification } from "@/api/sdf/dal/component";
@@ -76,13 +86,6 @@ import { ComponentMetadata } from "@/service/component/get_components_metadata";
 import SiLink from "@/atoms/SiLink.vue";
 import SiButtonIcon from "@/atoms/SiButtonIcon.vue";
 import SiIcon from "@/atoms/SiIcon.vue";
-import { CheckCircleIcon } from "@heroicons/vue/solid";
-import {
-  CubeIcon,
-  QuestionMarkCircleIcon,
-  PencilAltIcon,
-} from "@heroicons/vue/outline";
-import PropertyEditor, { PropertyEditorContext } from "./PropertyEditor.vue";
 import {
   PropertyEditorSchema,
   PropertyEditorValues,
@@ -94,10 +97,7 @@ import {
 import { ComponentService } from "@/service/component";
 import { SystemService } from "@/service/system";
 import { standardVisibilityTriggers$ } from "@/observable/visibility";
-import _, { parseInt } from "lodash";
-import { tag } from "rxjs-spy/operators";
-import { combineLatest, forkJoin, from, map, take } from "rxjs";
-import { switchMap } from "rxjs/operators";
+import PropertyEditor, { PropertyEditorContext } from "./PropertyEditor.vue";
 
 // TODO(nick): we technically only need one prop. We're sticking with two to not mess
 // with the reactivity guarentees in place.
@@ -121,7 +121,7 @@ const editorContext = refFrom<PropertyEditorContext | undefined>(
   ]).pipe(
     switchMap(([componentId, system, _triggers]) => {
       const schema = ComponentService.getPropertyEditorSchema({
-        componentId: componentId,
+        componentId,
       }).pipe(take(1));
       const values = ComponentService.getPropertyEditorValues({
         componentId,

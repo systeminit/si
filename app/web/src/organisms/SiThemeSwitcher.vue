@@ -35,14 +35,14 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from "vue";
+import { refFrom } from "vuse-rx/src";
 import { ThemeService } from "@/service/theme";
 import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
 import MoonIcon from "@/atoms/CustomIcons/MoonIcon.vue";
 import SunIcon from "@/atoms/CustomIcons/SunIcon.vue";
 import SiBarButton from "@/molecules/SiBarButton.vue";
 import { Theme } from "@/observable/theme";
-import { computed } from "vue";
-import { refFrom } from "vuse-rx/src";
 
 const theme = refFrom<Theme>(ThemeService.currentTheme());
 const lightmode = computed(() => {

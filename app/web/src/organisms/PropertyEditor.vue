@@ -25,6 +25,12 @@
 </template>
 
 <script setup lang="ts">
+import { ref, computed, toRefs, watch } from "vue";
+import _ from "lodash";
+import { refFrom } from "vuse-rx";
+import { switchMap, from } from "rxjs";
+import { ChangeSetService } from "@/service/change_set";
+import { GlobalErrorService } from "@/service/global_error";
 import {
   PropertyEditorPropKind,
   PropertyEditorPropWidgetKindText,
@@ -37,13 +43,7 @@ import {
   AddToMap,
   PropertyPath,
 } from "@/api/sdf/dal/property_editor";
-import { GlobalErrorService } from "@/service/global_error";
 import PropertyWidget from "./PropertyEditor/PropertyWidget.vue";
-import { ref, computed, toRefs, watch } from "vue";
-import _ from "lodash";
-import { ChangeSetService } from "@/service/change_set";
-import { refFrom } from "vuse-rx";
-import { switchMap, from } from "rxjs";
 
 export interface PropertyEditorContext {
   schema: PropertyEditorSchema;
@@ -269,7 +269,7 @@ const determineOrder = (
 const propertyValuesInOrder = computed(() => {
   const results = determineOrder([], [values.value.rootValueId]);
 
-  //console.log("property results", { results });
+  // console.log("property results", { results });
   return results;
 });
 
@@ -349,7 +349,7 @@ const arrayIndex = computed(() => {
       result[propValue.id] = length;
     }
   }
-  //console.log("array index", { result });
+  // console.log("array index", { result });
   return result;
 });
 

@@ -7,10 +7,9 @@
       :options="options"
       :disabled="disabled"
     />
-    <SiButton
+    <VButton
       label="Add"
-      kind="tertiary"
-      icon-style="alone"
+      button-rank="tertiary"
       icon="plus"
       :disabled="disabled"
       @click="addOptions"
@@ -30,11 +29,10 @@
         <div class="pr-2" role="decoration">•</div>
         {{ option.label }}
         <div class="ml-auto">
-          <SiButton
+          <VButton
             label=""
-            icon-style="alone"
             icon="trash"
-            kind="tertiary"
+            button-rank="tertiary"
             :disabled="disabled"
             @click="removeOption(option)"
           />
@@ -47,7 +45,7 @@
 <script lang="ts" setup>
 import { ref } from "vue";
 import SelectMenu, { Option } from "@/molecules/SelectMenu.vue";
-import SiButton from "@/atoms/SiButton.vue";
+import VButton from "@/molecules/VButton.vue";
 
 const props = defineProps<{
   options: Option[];

@@ -85,12 +85,6 @@
   </div>
 </template>
 
-<script lang="ts">
-export default {
-  inheritAttrs: false,
-};
-</script>
-
 <script setup lang="ts">
 import { ExclamationCircleIcon } from "@heroicons/vue/solid";
 import { computed, PropType, ref } from "vue";
@@ -216,5 +210,11 @@ const type = computed((): string => {
 const valueChanged = (event: Event) => {
   const element = event.currentTarget as HTMLInputElement;
   emit("update:modelValue", element.value);
+};
+</script>
+
+<script lang="ts">
+export default {
+  inheritAttrs: false,
 };
 </script>

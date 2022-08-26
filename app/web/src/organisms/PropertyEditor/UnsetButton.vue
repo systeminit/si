@@ -5,6 +5,6 @@
 </template>
 
 <script setup lang="ts">
-import SiButtonIcon from "@/atoms/SiButtonIcon.vue";
 import { XCircleIcon } from "@heroicons/vue/solid";
+import SiButtonIcon from "@/atoms/SiButtonIcon.vue";
 </script>

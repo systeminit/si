@@ -1,7 +1,7 @@
+import path from "path";
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import eslintPlugin from "vite-plugin-eslint";
-import path from "path";
 import svgLoaderPlugin from "vite-svg-loader";
 import IconsPlugin from "unplugin-icons/vite";
 

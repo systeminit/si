@@ -54,13 +54,13 @@ export interface SchematicNodeDeploymentKind {
   componentId: number;
 }
 
-//export interface SchematicNodeSystemKind {
+// export interface SchematicNodeSystemKind {
 //  kind: "system";
-//}
+// }
 
 export type SchematicNodeKind =
   | SchematicNodeComponentKind
-  //| SchematicNodeSystemKind;
+  // | SchematicNodeSystemKind;
   | SchematicNodeDeploymentKind;
 
 export interface SchematicNodePosition {
@@ -95,7 +95,7 @@ export async function variantById(id: number): Promise<SchematicSchemaVariant> {
   if (!variants) throw new Error("variants not found");
 
   const variant = variants.find((v) => v.id === id);
-  if (!variant) throw Error("schema variant not found: " + id);
+  if (!variant) throw Error(`schema variant not found: ${id}`);
   return variant;
 }
 
@@ -112,7 +112,7 @@ export async function outputSocketById(
       }
     }
   }
-  throw new Error("output socket not found: " + id);
+  throw new Error(`output socket not found: ${id}`);
 }
 
 export async function inputSocketById(
@@ -128,7 +128,7 @@ export async function inputSocketById(
       }
     }
   }
-  throw new Error("input socket not found: " + id);
+  throw new Error(`input socket not found: ${id}`);
 }
 
 export function inputSocketByVariantAndProvider(

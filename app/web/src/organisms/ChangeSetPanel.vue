@@ -139,7 +139,6 @@
 import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
 import { refFrom, untilUnmounted } from "vuse-rx";
-import ChangeSetPanelDialog from "./ChangeSetPanelDialog.vue";
 import SelectMenu, { Option } from "@/molecules/SelectMenu.vue";
 import { ChangeSet } from "@/api/sdf/dal/change_set";
 import { Workspace } from "@/api/sdf/dal/workspace";
@@ -147,6 +146,7 @@ import { ChangeSetService } from "@/service/change_set";
 import { GlobalErrorService } from "@/service/global_error";
 import { WorkspaceService } from "@/service/workspace";
 import VButton from "@/molecules/VButton.vue";
+import ChangeSetPanelDialog from "./ChangeSetPanelDialog.vue";
 
 // The "create new change set" option
 const CHANGE_SET_NEW = { label: "- new -", value: -3 };

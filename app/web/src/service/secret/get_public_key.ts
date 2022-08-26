@@ -1,6 +1,6 @@
-import { ApiResponse, SDF } from "@/api/sdf";
 import { lastValueFrom } from "rxjs";
 import Bottle from "bottlejs";
+import { ApiResponse, SDF } from "@/api/sdf";
 import { PublicKey } from "@/api/sdf/dal/key_pair";
 
 // The response _is_ the "PublicKey" from the DAL. You may need to decode the actual public key via "Base64.toUint8Array"

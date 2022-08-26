@@ -66,12 +66,26 @@
 <script lang="ts" setup>
 import { TabPanel } from "@headlessui/vue";
 import _ from "lodash";
-import SiSidebar from "@/atoms/SiSidebar.vue";
 import { computed, ref, watch } from "vue";
+import { useObservable } from "@vueuse/rxjs";
+import { useRoute } from "vue-router";
+import SiSidebar from "@/atoms/SiSidebar.vue";
 import ChangeSetPanel from "@/organisms/ChangeSetPanel.vue";
 import ComponentDetails from "@/organisms/ComponentDetails.vue";
 import { ComponentService } from "@/service/component";
 import SchematicDiagramService from "@/service/schematic-diagram";
+import SiTabGroup from "@/molecules/SiTabGroup.vue";
+import SiTabHeader from "@/molecules/SiTabHeader.vue";
+
+import { ChangeSetService } from "@/service/change_set";
+import { SelectionService } from "@/service/selection";
+
+import KubernetesIconRaw from "@/assets/images/3p-logos/kubernetes/kubernetes-icon.svg?raw";
+import DockerIconRaw from "@/assets/images/3p-logos/docker/docker-icon.svg?raw";
+import { QualificationService } from "@/service/qualification";
+import SchematicOutline from "../SchematicOutline.vue";
+import GenericDiagram from "../GenericDiagram/GenericDiagram.vue";
+import AssetPalette, { SelectAssetEvent } from "../AssetPalette.vue";
 import {
   InsertElementEvent,
   MoveElementEvent,
@@ -80,20 +94,6 @@ import {
   DeleteElementsEvent,
   DiagramStatusIcon,
 } from "../GenericDiagram/diagram_types";
-import AssetPalette, { SelectAssetEvent } from "../AssetPalette.vue";
-import SiTabGroup from "@/molecules/SiTabGroup.vue";
-import SiTabHeader from "@/molecules/SiTabHeader.vue";
-
-import GenericDiagram from "../GenericDiagram/GenericDiagram.vue";
-import { useObservable } from "@vueuse/rxjs";
-import { useRoute } from "vue-router";
-import SchematicOutline from "../SchematicOutline.vue";
-import { ChangeSetService } from "@/service/change_set";
-import { SelectionService } from "@/service/selection";
-
-import KubernetesIconRaw from "@/assets/images/3p-logos/kubernetes/kubernetes-icon.svg?raw";
-import DockerIconRaw from "@/assets/images/3p-logos/docker/docker-icon.svg?raw";
-import { QualificationService } from "@/service/qualification";
 
 const currentRoute = useRoute();
 

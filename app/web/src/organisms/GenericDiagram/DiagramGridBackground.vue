@@ -38,8 +38,8 @@
 </template>
 
 <script lang="ts" setup>
-import { useTheme } from "@/composables/injectTheme";
 import { computed } from "vue";
+import { useTheme } from "@/composables/injectTheme";
 
 const props = defineProps({
   gridMinX: { type: Number, required: true },

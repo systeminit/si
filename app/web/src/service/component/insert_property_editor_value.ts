@@ -1,10 +1,10 @@
 import Bottle from "bottlejs";
-import { ApiResponse, SDF } from "@/api/sdf";
 import { combineLatest, Observable, take } from "rxjs";
-import { Visibility } from "@/api/sdf/dal/visibility";
-import { visibility$ } from "@/observable/visibility";
 import { switchMap } from "rxjs/operators";
 import _ from "lodash";
+import { ApiResponse, SDF } from "@/api/sdf";
+import { Visibility } from "@/api/sdf/dal/visibility";
+import { visibility$ } from "@/observable/visibility";
 import { AttributeContext } from "@/api/sdf/dal/attribute";
 
 export interface InsertPropertyEditorValueArgs {

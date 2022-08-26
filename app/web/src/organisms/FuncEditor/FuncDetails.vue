@@ -94,20 +94,20 @@
 </template>
 
 <script lang="ts" setup>
-import SiTabGroup from "@/molecules/SiTabGroup.vue";
-import SiTextBox from "@/atoms/SiTextBox.vue";
-import { Option } from "@/molecules/SelectMenu.vue";
-import SiCollapsible from "@/organisms/SiCollapsible.vue";
 import { TabPanel } from "@headlessui/vue";
 import { ref, toRef, watch } from "vue";
-import { changeFunc, nullEditingFunc } from "./func_state";
 import { fromRef, refFrom } from "vuse-rx";
 import { combineLatestWith, map } from "rxjs/operators";
+import SiCollapsible from "@/organisms/SiCollapsible.vue";
+import { Option } from "@/molecules/SelectMenu.vue";
+import SiTextBox from "@/atoms/SiTextBox.vue";
+import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import { SchematicService } from "@/service/schematic";
 import { EditingFunc, funcState$ } from "@/observable/func";
 import { ComponentService } from "@/service/component";
 import VButton from "@/molecules/VButton.vue";
+import { changeFunc, nullEditingFunc } from "./func_state";
 import FuncRunOnSelector from "./FuncRunOnSelector.vue";
 
 const props = defineProps<{

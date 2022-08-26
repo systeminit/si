@@ -19,8 +19,8 @@
 import { toRefs } from "vue";
 import { usePropertyEditorIsShown } from "@/composables/usePropertyEditorIsShown";
 import { AddToArray, PropertyPath } from "@/api/sdf/dal/property_editor";
-import WidgetHeader from "./WidgetHeader.vue";
 import VButton from "@/molecules/VButton.vue";
+import WidgetHeader from "./WidgetHeader.vue";
 
 const props = defineProps<{
   name: string;
