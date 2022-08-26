@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-row w-full h-full bg-transparent overflow-hidden">
     <SiPanel
-      id="func-picker"
+      remember-size-key="func-picker"
       side="left"
       class="h-full pb-12"
       size-classes="shrink-0 w-96"
@@ -31,7 +31,7 @@
       </div>
     </div>
     <SiPanel
-      id="func-details"
+      remember-size-key="func-details"
       :hidden="false"
       side="right"
       class="h-full pb-12"

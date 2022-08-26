@@ -7,7 +7,7 @@
       @mousedown="mouseDown"
       @dblclick="dblClick"
     />
-    <div ref="handle" :class="handleClasses">
+    <div ref="handleRef" :class="handleClasses">
       <DotsHorizontalIcon v-if="isVertical" :class="iconClasses" />
       <DotsVerticalIcon v-else :class="iconClasses" />
     </div>
@@ -16,7 +16,7 @@
 
 <script setup lang="ts">
 import { DotsVerticalIcon, DotsHorizontalIcon } from "@heroicons/vue/solid";
-import { computed, defineEmits, ref } from "vue";
+import { computed, defineEmits, onBeforeUnmount, ref } from "vue";
 
 const props = withDefaults(
   defineProps<{
@@ -72,52 +72,57 @@ const iconClasses =
   "absolute left-1/2 top-1/2 translate-x-[-50%] translate-y-[-50%] w-6 text-neutral-400 dark:text-neutral-500";
 
 const emit = defineEmits<{
-  (e: "start-resize"): void;
-  (e: "end-resize"): void;
-  (e: "resizing", delta: number): void;
-  (e: "reset-size"): void;
+  (e: "resize-start"): void;
+  (e: "resize-end"): void;
+  (e: "resize-move", delta: number): void;
+  (e: "resize-reset"): void;
 }>();
 
 const selected = ref(false);
-const handle = ref();
+const handleRef = ref();
 const handleShow = ref(false);
-const oldMouseX = ref(0);
-const oldMouseY = ref(0);
+const dragStartMouseX = ref(0);
+const dragStartMouseY = ref(0);
 
 const showHandle = () => {
   handleShow.value = true;
-  handle.value.classList.remove("hidden");
+  handleRef.value.classList.remove("hidden");
 };
 
 const hideHandle = () => {
   handleShow.value = false;
-  if (!selected.value) handle.value.classList.add("hidden");
+  if (!selected.value) handleRef.value.classList.add("hidden");
 };
 
 const mouseDown = (e: MouseEvent) => {
   selected.value = true;
-  oldMouseX.value = e.clientX;
-  oldMouseY.value = e.clientY;
+  dragStartMouseX.value = e.clientX;
+  dragStartMouseY.value = e.clientY;
   window.addEventListener("mousemove", mouseMove);
   window.addEventListener("mouseup", mouseUp);
-  emit("start-resize");
+  emit("resize-start");
 };
 
 const mouseMove = (e: MouseEvent) => {
-  const dx = oldMouseX.value - e.clientX;
-  const dy = oldMouseY.value - e.clientY;
-  emit("resizing", isVertical.value ? dy : dx);
+  const dx = dragStartMouseX.value - e.clientX;
+  const dy = dragStartMouseY.value - e.clientY;
+  emit("resize-move", isVertical.value ? dy : dx);
 };
 
 const mouseUp = () => {
   selected.value = false;
   window.removeEventListener("mousemove", mouseMove);
   window.removeEventListener("mouseup", mouseUp);
-  emit("end-resize");
+  emit("resize-end");
   if (!handleShow.value) hideHandle();
 };
 
 const dblClick = () => {
-  emit("reset-size");
+  emit("resize-reset");
 };
+
+onBeforeUnmount(() => {
+  window.removeEventListener("mousemove", mouseMove);
+  window.removeEventListener("mouseup", mouseUp);
+});
 </script>

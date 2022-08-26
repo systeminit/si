@@ -2,7 +2,7 @@
   <div class="w-full h-full flex relative overflow-hidden">
     <div class="flex flex-row w-full bg-transparent">
       <SiPanel
-        id="changeset-and-asset"
+        remember-size-key="changeset-and-asset"
         side="left"
         resizeable
         size-classes="w-80"
@@ -53,7 +53,7 @@
       </div>
 
       <SiPanel
-        id="component-details"
+        remember-size-key="component-details"
         side="right"
         resizeable
         :min-resize="300"
