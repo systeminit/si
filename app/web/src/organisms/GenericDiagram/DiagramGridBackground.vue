@@ -40,6 +40,7 @@
 <script lang="ts" setup>
 import { computed } from "vue";
 import { useTheme } from "@/composables/injectTheme";
+import { colors } from "../../utils/design_token_values";
 
 const props = defineProps({
   gridMinX: { type: Number, required: true },
@@ -77,9 +78,9 @@ const ySteps = computed(() =>
 
 const theme = useTheme();
 const bgColor = computed(() =>
-  theme.value === "dark" ? "#262626" : "#FAFAFA",
+  theme.value === "dark" ? colors.neutral[900] : colors.neutral[50],
 );
 const lineColor = computed(() =>
-  theme.value === "dark" ? "#404040 " : "#E5E5E5",
+  theme.value === "dark" ? colors.neutral[700] : colors.neutral[200],
 );
 </script>

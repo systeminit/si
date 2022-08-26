@@ -44,7 +44,7 @@
 <script lang="ts" setup>
 import { computed, reactive, ref, watch } from "vue";
 import _ from "lodash";
-
+import { colors } from "@/utils/design_token_values";
 import KubernetesIconRaw from "@/assets/images/3p-logos/kubernetes/kubernetes-icon.svg?raw";
 import DockerIconRaw from "@/assets/images/3p-logos/docker/docker-icon.svg?raw";
 import { useThemeProvider } from "@/composables/injectTheme";
@@ -127,7 +127,7 @@ const nodes = reactive<DiagramNodeDef[]>([
     type: "regular",
     position: { x: 0, y: 0 },
     sockets: getSockets("n1"),
-    color: "#2F80ED",
+    color: colors.action[500],
     typeIcon: "docker",
   },
   {

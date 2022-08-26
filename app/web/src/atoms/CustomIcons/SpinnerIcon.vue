@@ -10,7 +10,7 @@
       cx="15"
       cy="15.5"
       r="13.5"
-      stroke="#525252"
+      :stroke="colors.neutral[600]"
       stroke-linecap="round"
       stroke-linejoin="round"
       stroke-width="3"
@@ -31,9 +31,13 @@
         y1="14.5"
         y2="29.5"
       >
-        <stop offset="0" stop-color="#0E9BFF" />
-        <stop offset="1" stop-color="#0E9BFF" stop-opacity="0" />
+        <stop offset="0" :stop-color="colors.action[400]" />
+        <stop offset="1" :stop-color="colors.action[400]" stop-opacity="0" />
       </linearGradient>
     </defs>
   </svg>
 </template>
+
+<script lang="ts" setup>
+import { colors } from "../../utils/design_token_values";
+</script>

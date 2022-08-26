@@ -227,25 +227,3 @@ const serializeMessage = (message: Record<string, string>): Uint8Array => {
   return result;
 };
 </script>
-
-<style scoped>
-.background {
-  background-color: #1e1e1e;
-}
-
-.header {
-  background-color: #3a3d40;
-}
-
-.row-item {
-  background-color: #262626;
-}
-
-.row-item:nth-child(odd) {
-  background-color: #2c2c2c;
-}
-
-.table-border {
-  border-bottom: 1px solid #46494d;
-}
-</style>

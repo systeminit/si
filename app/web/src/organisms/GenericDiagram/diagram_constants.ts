@@ -4,6 +4,8 @@
   so that most of it can be overridden if necessary... but we'll wait until we see the need
 */
 
+import { colors } from "@/utils/design_token_values";
+
 // how far a user must move the mouse after initial click to start "dragging"
 export const DRAG_DISTANCE_THRESHOLD = 5;
 
@@ -29,8 +31,7 @@ export const DEFAULT_NODE_COLOR = "#8B39CB";
 export const DIAGRAM_FONT_FAMILY = "Inter";
 
 // color used to show what is selected (currently a nice blue)
-// TODO: pull from tailwind?
-export const SELECTION_COLOR = "#59B7FF";
+export const SELECTION_COLOR = colors.action[300];
 
 export const MIN_ZOOM = 0.1; // 10%
 export const MAX_ZOOM = 10; // 1000%

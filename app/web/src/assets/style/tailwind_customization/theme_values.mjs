@@ -26,7 +26,7 @@ export const colors = {
     50: "#EFF6FE",
     100: "#E2F3FE",
     200: "#B2E0FF",
-    300: "#49B7FF",
+    300: "#59B7FF",
     400: "#0E9BFF",
     500: "#2F80ED",
     600: "#1975DC",
@@ -93,26 +93,6 @@ export const colors = {
     100: "#000000",
     0: "#FFFFFF",
   },
-
-  //
-  // TODO(fnichol): Pre-existing colors from prior iterations. Should we
-  // consider removing these to limit our color palette choices, at least as
-  // far as outdated customized colors goes? Note that as of this note, we have
-  // an older interface iteration co-existing with the current iteration
-  // interface so this is here in an attempt to preserve backwards
-  // compatibility. Also note that I had to replace the `success` and `warning`
-  // keys as they collided with new color names.
-  //
-  primary: "#151B1E",
-  secondary: "#ECEFF1",
-  accent: "#607D8B",
-  error: "#FF5252",
-  info: "#2196F3",
-  // success: "#4CAF50",
-  // warning: "#FB8C00",
-  black: "#000000",
-  selectordark: "#1B1B1B",
-  selector1: "#343B3F",
 };
 
 export const height = {
