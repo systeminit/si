@@ -24,7 +24,7 @@ export const SOCKET_SIZE = 15;
 export const CORNER_RADIUS = 3;
 
 // default node color if nothing passed in
-// TODO: this is a random purple color... check with mark
+// TODO: this is that random purple color... check with mark
 export const DEFAULT_NODE_COLOR = "#8B39CB";
 
 // font family used for all text elements

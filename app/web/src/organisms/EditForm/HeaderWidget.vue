@@ -120,10 +120,6 @@ const propObjectStyle = computed<string>(() => {
 </script>
 
 <style scoped>
-.property-section-title-bg-color {
-  background-color: #292c2d;
-}
-
 .section-content {
   @apply overflow-hidden transition duration-150 ease-in-out;
 }

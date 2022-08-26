@@ -38,7 +38,10 @@
         </SiLink>
 
         <div v-if="editCount" class="flex flex-row items-center">
-          <SiIcon tooltip-text="Number of edit fields" color="#ce7f3e">
+          <SiIcon
+            tooltip-text="Number of edit fields"
+            :color="colors.warning[600]"
+          >
             <PencilAltIcon />
           </SiIcon>
           <div class="ml-1 text-center">{{ editCount }}</div>
@@ -97,6 +100,7 @@ import {
 import { ComponentService } from "@/service/component";
 import { SystemService } from "@/service/system";
 import { standardVisibilityTriggers$ } from "@/observable/visibility";
+import { colors } from "@/utils/design_token_values";
 import PropertyEditor, { PropertyEditorContext } from "./PropertyEditor.vue";
 
 // TODO(nick): we technically only need one prop. We're sticking with two to not mess
@@ -231,6 +235,7 @@ const qualificationTooltip = computed(() => {
   }
 });
 
+// TODO - What are these colors? check with mark
 const qualificationColor = computed(() => {
   if (!componentMetadata.value || componentMetadata.value.qualified === null) {
     return "#5b6163";
@@ -268,7 +273,7 @@ const resourceColor = computed(() => {
   ) {
     return "#bbbbbb";
   }
-
+  // TODO - What are these colors? check with mark
   const health = componentMetadata.value.resourceHealth;
   if (health === ResourceHealth.Ok) {
     return "#86f0ad";
