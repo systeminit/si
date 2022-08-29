@@ -28,10 +28,9 @@
               tooltip-text="Re-generate code"
               ignore-text-color
               class="mr-4"
+              :icon="currentSyncAnimate ? 'refresh-active' : 'refresh'"
               @click="generateCode"
-            >
-              <RefreshIcon :class="refreshClasses" />
-            </SiButtonIcon>
+            />
           </template>
         </CodeViewer>
       </TabPanel>
@@ -44,7 +43,6 @@ import { TabPanel } from "@headlessui/vue";
 import { combineLatest, from, ReplaySubject, switchMap } from "rxjs";
 import { fromRef, refFrom, untilUnmounted } from "vuse-rx/src";
 import { computed, ref, toRefs } from "vue";
-import { RefreshIcon } from "@heroicons/vue/solid";
 import { tag } from "rxjs-spy/operators";
 import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
@@ -105,19 +103,6 @@ const code = computed((): string => {
 });
 
 const currentSyncAnimate = ref<boolean>(false);
-const refreshClasses = computed(() => {
-  const classes: { [key: string]: boolean } = {};
-  if (currentSyncAnimate.value) {
-    classes["animate-spin"] = true;
-    classes.transform = true;
-    classes["rotate-180"] = true;
-  } else {
-    classes["animate-spin"] = false;
-    classes.transform = false;
-    classes["rotate-180"] = false;
-  }
-  return classes;
-});
 
 const generateCode = () => {
   currentSyncAnimate.value = true;

@@ -7,8 +7,7 @@
         @click="toggleHeader"
       >
         <div class="flex" :style="propObjectStyle">
-          <VueFeather v-if="openState" type="chevron-down" />
-          <VueFeather v-else type="chevron-right" />
+          <Icon :name="openState ? 'chevron--down' : 'chevron--right'" />
 
           <SiLink
             v-if="props.editField.baggage?.prop_doc_link"
@@ -19,7 +18,7 @@
             <span class="flex flex-col content-center justify-center">
               {{ props.editField.name }}
             </span>
-            <VueFeather type="help-circle" size="1em" class="m-2" />
+            <Icon name="help-circle" class="m-2" />
           </SiLink>
           <template v-else>
             {{ props.editField.name }}
@@ -41,11 +40,11 @@
 
 <script setup lang="ts">
 import { computed, defineAsyncComponent, DefineComponent } from "vue";
-import VueFeather from "vue-feather";
 import { EditField, EditFields } from "@/api/sdf/dal/edit_field";
 import { ITreeOpenState } from "@/utils/edit_field_visitor";
 import SiLink from "@/atoms/SiLink.vue";
 import { ComponentIdentification } from "@/api/sdf/dal/component";
+import Icon from "@/ui-lib/Icon.vue";
 import type { WidgetsProps } from "./Widgets.vue";
 
 // Eliminate the circular dependency of HeaderWidget -> Widgets -> HeaderWidget

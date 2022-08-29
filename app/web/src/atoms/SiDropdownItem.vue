@@ -10,7 +10,7 @@
     >
       <div class="w-5 mr-2 flex-none" :class="showPrefix ? '' : 'hidden'">
         <slot name="prefix">
-          <CheckIcon v-if="props.checked" />
+          <Icon v-if="checked" name="check" />
         </slot>
       </div>
       <div class="min-w-0 text-ellipsis overflow-hidden">
@@ -25,8 +25,8 @@
 
 <script setup lang="ts">
 import { MenuItem } from "@headlessui/vue";
-import { CheckIcon } from "@heroicons/vue/solid";
 import { inject } from "vue";
+import Icon from "@/ui-lib/Icon.vue";
 
 const emit = defineEmits(["select"]);
 

@@ -12,29 +12,27 @@
       <span v-if="index === 0" class="text-base font-bold">
         {{ part }}
       </span>
-      <span v-else class="text-sm">
-        <ChevronLeftIcon class="pl-2 h-5 inline" /> {{ part }}
+      <span v-else class="text-sm pl-2">
+        <Icon name="chevron--left" size="s" /> {{ part }}
       </span>
     </div>
     <div class="flex flex-grow justify-end pr-4">
-      <SiButtonIcon v-if="isCollapsed" ignore-text-color tooltip-text="Expand">
-        <ChevronUpIcon />
-      </SiButtonIcon>
-      <SiButtonIcon v-else ignore-text-color tooltip-text="Collapse">
-        <ChevronDownIcon />
-      </SiButtonIcon>
+      <SiButtonIcon
+        ignore-text-color
+        :tooltip-text="isCollapsed ? 'Expand' : 'Collapse'"
+        :icon="isCollapsed ? 'chevron--up' : 'chevron--down'"
+      />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, toRefs } from "vue";
-import { ChevronLeftIcon } from "@heroicons/vue/outline";
-import { ChevronDownIcon, ChevronUpIcon } from "@heroicons/vue/solid";
 import _ from "lodash";
 import SiButtonIcon from "@/atoms/SiButtonIcon.vue";
 import { usePropertyEditorIsShown } from "@/composables/usePropertyEditorIsShown";
 import { PropertyPath } from "@/api/sdf/dal/property_editor";
+import Icon from "@/ui-lib/Icon.vue";
 
 const props = defineProps<{
   name: string;

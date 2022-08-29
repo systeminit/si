@@ -1,87 +1,10 @@
 <template>
-  <template v-if="iconType === 'solid'">
-    <SolidCheck
-      v-if="status === 'success'"
-      class="text-success-500 inline align-middle"
-      v-bind="$attrs"
-    />
-    <SolidExclamation
-      v-else-if="status === 'failure'"
-      class="text-destructive-500 inline align-middle"
-      v-bind="$attrs"
-    />
-    <SolidPlusCircleIcon
-      v-else-if="status === 'added'"
-      class="text-success-500 inline align-middle"
-      v-bind="$attrs"
-    />
-    <SpinnerIcon
-      v-else-if="status === 'loading'"
-      class="text-warning-500 inline align-middle animate-spin"
-      v-bind="$attrs"
-    />
-    <SolidMinusCircleIcon
-      v-else-if="status === 'deleted'"
-      class="text-destructive-500 inline align-middle"
-      v-bind="$attrs"
-    />
-    <SolidPencilAltIcon
-      v-else-if="status === 'modified'"
-      class="text-warning-500 inline align-middle"
-      v-bind="$attrs"
-    />
-  </template>
-
-  <template v-else>
-    <OutlineCheck
-      v-if="status === 'success'"
-      class="text-success-500 inline align-middle"
-      v-bind="$attrs"
-    />
-    <OutlinePlusCircleIcon
-      v-else-if="status === 'added'"
-      class="text-success-500 inline align-middle"
-      v-bind="$attrs"
-    />
-    <OutlineExclamation
-      v-else-if="status === 'failure'"
-      class="text-destructive-500 inline align-middle"
-      v-bind="$attrs"
-    />
-    <OutlineMinusCircleIcon
-      v-else-if="status === 'deleted'"
-      class="text-destructive-500 inline align-middle"
-      v-bind="$attrs"
-    />
-    <SpinnerIcon
-      v-else-if="status === 'loading'"
-      class="text-warning-500 inline align-middle"
-      v-bind="$attrs"
-    />
-    <OutlinePencilAltIcon
-      v-else-if="status === 'modified'"
-      class="text-warning-500 inline align-middle"
-      v-bind="$attrs"
-    />
-  </template>
+  <Icon :name="iconName" :class="colorClass" size="full" />
 </template>
 
 <script lang="ts" setup>
-import {
-  CheckCircleIcon as OutlineCheck,
-  ExclamationIcon as OutlineExclamation,
-  MinusCircleIcon as OutlineMinusCircleIcon,
-  PencilAltIcon as OutlinePencilAltIcon,
-  PlusCircleIcon as OutlinePlusCircleIcon,
-} from "@heroicons/vue/outline";
-import {
-  CheckCircleIcon as SolidCheck,
-  ExclamationIcon as SolidExclamation,
-  MinusCircleIcon as SolidMinusCircleIcon,
-  PencilAltIcon as SolidPencilAltIcon,
-  PlusCircleIcon as SolidPlusCircleIcon,
-} from "@heroicons/vue/solid";
-import SpinnerIcon from "@/atoms/CustomIcons/SpinnerIcon.vue";
+import { computed, PropType } from "vue";
+import Icon, { IconNames } from "@/ui-lib/Icon.vue";
 
 export type Status =
   | "success"
@@ -91,21 +14,29 @@ export type Status =
   | "modified"
   | "deleted";
 
-export type IconType = "solid" | "outline";
+const props = defineProps({
+  status: { type: String as PropType<Status>, required: true },
+});
 
-withDefaults(
-  defineProps<{
-    status: Status;
-    iconType?: IconType;
-  }>(),
-  {
-    iconType: "solid",
-  },
-);
-</script>
-
-<script lang="ts">
-export default {
-  inheritAttrs: false,
+const ICON_NAME_MAP: Record<Status, IconNames> = {
+  success: "check-circle",
+  failure: "x-circle",
+  loading: "loader",
+  added: "plus-circle",
+  modified: "edit",
+  deleted: "minus-circle",
 };
+
+const iconName = computed(() => ICON_NAME_MAP[props.status]);
+
+const colorClass = computed(() => {
+  return {
+    success: "text-success-500",
+    failure: "text-destructive-500",
+    loading: "text-info-500",
+    added: "text-success-500",
+    modified: "text-warning-500",
+    deleted: "text-destructive-500",
+  }[props.status];
+});
 </script>

@@ -36,11 +36,8 @@
                 class="h-5 w-5 text-white"
               />
             </div>
-            <div v-else>
-              <SelectorIcon
-                class="h-5 w-5 text-neutral-400"
-                aria-hidden="true"
-              />
+            <div v-else class="text-neutral-400">
+              <Icon name="selector" />
             </div>
           </span>
         </ListboxButton>
@@ -84,7 +81,7 @@
                     'absolute inset-y-0 right-0 flex items-center pr-4',
                   ]"
                 >
-                  <CheckIcon class="h-5 w-5" aria-hidden="true" />
+                  <Icon name="check" />
                 </span>
               </li>
 
@@ -111,7 +108,7 @@
                     'absolute inset-y-0 right-0 flex items-center pr-4',
                   ]"
                 >
-                  <CheckIcon class="h-5 w-5" aria-hidden="true" />
+                  <Icon name="check" />
                 </span>
               </li>
             </ListboxOption>
@@ -130,10 +127,10 @@ import {
   ListboxOption,
   ListboxOptions,
 } from "@headlessui/vue";
-import { CheckIcon, SelectorIcon } from "@heroicons/vue/solid";
 import _ from "lodash";
 import { LabelList } from "@/api/sdf/dal/label_list";
 import SiArrow from "@/atoms/SiArrow.vue";
+import Icon from "@/ui-lib/Icon.vue";
 
 export interface SelectPropsOption {
   value: string | number;

@@ -1,7 +1,7 @@
 <template>
   <div class="flex items-center h-full">
     <SiBarButton tooltip-text="Copy link" @click="copyURL">
-      <LinkIcon class="w-6" />
+      <Icon name="link" />
     </SiBarButton>
 
     <SiThemeSwitcher />
@@ -9,11 +9,11 @@
     <!-- FIXME(nick,theo): dropdown-classes needs to be removed in favor of the dropdown knowing whether or not it is offscreen. -->
     <SiBarButton dropdown-classes="right-2" tooltip-text="Profile">
       <template #default="{ hovered, open }">
-        <div class="flex-row flex text-white">
+        <div class="flex-row flex text-white items-center">
           <CheechSvg
             class="h-8 w-8 rounded-full bg-white border-black border-2"
           />
-          <SiArrow :nudge="hovered || open" class="ml-1 w-4 text-white" />
+          <SiArrow :nudge="hovered || open" class="ml-1 w-4" />
         </div>
       </template>
 
@@ -28,13 +28,13 @@
 
 <script lang="ts" setup>
 import { useRouter } from "vue-router";
-import LinkIcon from "@/atoms/CustomIcons/LinkIcon.vue";
 import SiBarButton from "@/molecules/SiBarButton.vue";
 import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
 import SiArrow from "@/atoms/SiArrow.vue";
 import SiThemeSwitcher from "@/organisms/SiThemeSwitcher.vue";
 import { SessionService } from "@/service/session";
 import CheechSvg from "@/assets/images/cheech-and-chong.svg?component";
+import Icon from "@/ui-lib/Icon.vue";
 
 const router = useRouter();
 

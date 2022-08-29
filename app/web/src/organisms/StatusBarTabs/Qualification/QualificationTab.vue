@@ -30,7 +30,7 @@
         "
         class="bg-success-100 text-success-600 font-bold"
       >
-        <StatusIndicatorIcon class="w-4 text-success-600" status="success" />
+        <StatusIndicatorIcon status="success" />
         <div class="pl-px">
           {{ qualificationSummary?.succeeded }}
         </div>
@@ -40,10 +40,7 @@
         v-if="qualificationSummary?.failed && qualificationSummary?.failed > 0"
         class="bg-destructive-100 text-destructive-600 font-bold"
       >
-        <StatusIndicatorIcon
-          class="w-4 text-destructive-600"
-          status="failure"
-        />
+        <StatusIndicatorIcon status="failure" />
         <div class="pl-px">
           {{ qualificationSummary?.failed }}
         </div>

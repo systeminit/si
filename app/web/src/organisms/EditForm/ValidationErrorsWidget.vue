@@ -5,18 +5,17 @@
       :key="index"
       class="text-destructive-400"
     >
-      <div class="flex flex-row items-center">
-        <VueFeather
-          type="alert-triangle"
-          :class="strokeColorForLevel(error.level)"
-          size="1.0em"
-        />
-        <div class="ml-1 text-xs" :class="strokeColorForLevel(error.level)">
+      <div
+        class="flex flex-row items-center"
+        :class="strokeColorForLevel(error.level)"
+      >
+        <Icon name="alert-triangle" />
+        <div class="ml-1 text-xs">
           {{ error.message }}
         </div>
         <div v-if="error.link" class="ml-1 align-top">
           <SiLink :uri="error.link" blank-target>
-            <VueFeather type="external-link" stroke="grey" size="1.0em" />
+            <Icon name="link" />
           </SiLink>
         </div>
       </div>
@@ -25,8 +24,8 @@
 </template>
 
 <script setup lang="ts">
-import VueFeather from "vue-feather";
 import SiLink from "@/atoms/SiLink.vue";
+import Icon from "@/ui-lib/Icon.vue";
 import type { ValidationErrors } from "@/api/sdf/dal/edit_field";
 
 const props = defineProps<{

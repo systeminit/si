@@ -10,10 +10,9 @@
         <SiButtonIcon
           tooltip-text="Copy code to clipboard"
           ignore-text-color
+          icon="clipboard-copy"
           @click="copyCodeToClipboard"
-        >
-          <ClipboardCopyIcon />
-        </SiButtonIcon>
+        />
 
         <slot name="actionButtons"></slot>
       </div>
@@ -43,7 +42,6 @@ import { Compartment, Extension, StateEffect } from "@codemirror/state";
 import { properties as JsonModeParser } from "@codemirror/legacy-modes/mode/properties";
 import { yaml as YamlModeParser } from "@codemirror/legacy-modes/mode/yaml";
 import { diff as DiffModeParser } from "@codemirror/legacy-modes/mode/diff";
-import { ClipboardCopyIcon } from "@heroicons/vue/solid";
 import { CodeLanguage } from "@/api/sdf/dal/code_view";
 // NOTE(nick): this took a long ass time to find. Javascript's JSON mode doesn't work. This does.
 

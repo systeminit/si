@@ -48,7 +48,7 @@
           :class="[isViewMode ? '' : 'hidden']"
         >
           <StatusBarTab :selected="selected">
-            <template #icon><BellIcon class="text-white" /></template>
+            <template #icon><Icon name="bell" /></template>
             <template #name>SLA</template>
             <template #summary>
               <StatusBarTabPill
@@ -70,7 +70,7 @@
           :class="[isViewMode ? '' : 'hidden']"
         >
           <StatusBarTab :selected="selected">
-            <template #icon><CreditCardIcon class="text-white" /></template>
+            <template #icon><Icon name="credit-card" /></template>
             <template #name>Costs</template>
             <template #summary>
               <StatusBarTabPill>
@@ -85,7 +85,7 @@
           :class="[isViewMode ? '' : 'hidden']"
         >
           <StatusBarTab :selected="selected">
-            <template #icon><BadgeCheckIcon class="text-white" /></template>
+            <template #icon><Icon name="check-badge" /></template>
             <template #name>Confirmations</template>
             <template #summary>
               <StatusBarTabPill
@@ -106,12 +106,7 @@
           class="flex w-12 border-black border-l h-full items-center justify-center cursor-pointer"
           @click="togglePanel()"
         >
-          <SiButtonIcon v-if="panelOpen">
-            <ChevronDownIcon />
-          </SiButtonIcon>
-          <SiButtonIcon v-else>
-            <ChevronUpIcon />
-          </SiButtonIcon>
+          <Icon :name="panelOpen ? 'chevron--down' : 'chevron--up'" />
         </div>
       </TabList>
       <Transition
@@ -180,19 +175,11 @@
 <script lang="ts" setup>
 import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/vue";
 import { computed, onMounted, ref } from "vue";
-import {
-  ChevronDownIcon,
-  ChevronUpIcon,
-  CreditCardIcon,
-  BellIcon,
-  BadgeCheckIcon,
-} from "@heroicons/vue/solid";
 import { useRoute } from "vue-router";
 import { untilUnmounted } from "vuse-rx/src";
 import StatusBarTab from "@/organisms/StatusBar/StatusBarTab.vue";
 import StatusBarTabPill from "@/organisms/StatusBar/StatusBarTabPill.vue";
 import SiPanel from "@/atoms/SiPanel.vue";
-import SiButtonIcon from "@/atoms/SiButtonIcon.vue";
 import ChangeSetTab from "@/organisms/StatusBarTabs/ChangeSet/ChangeSetTab.vue";
 import ChangeSetTabPanel from "@/organisms/StatusBarTabs/ChangeSet/ChangeSetTabPanel.vue";
 import QualificationTabPanel from "@/organisms/StatusBarTabs/Qualification/QualificationTabPanel.vue";
@@ -202,6 +189,7 @@ import { ComponentService } from "@/service/component";
 import { GlobalErrorService } from "@/service/global_error";
 import { ComponentListItem } from "@/organisms/StatusBar/StatusBarTabPanelComponentList.vue";
 import GenericTabPanel from "@/organisms/StatusBarTabs/GenericTabPanel.vue";
+import Icon from "@/ui-lib/Icon.vue";
 
 // Tab 0 is our phantom empty panel
 const selectedTab = ref(0);

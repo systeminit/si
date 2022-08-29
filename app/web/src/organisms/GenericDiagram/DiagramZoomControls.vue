@@ -1,16 +1,13 @@
 <template>
   <div class="absolute flex left-4 bottom-4 z-20 h-8">
-    <div
-      class="rounded-full w-8 h-8 bg-neutral-600 text-white dark:bg-gray-200 dark:text-black p-2 cursor-pointer"
-      @click="adjustZoom('down')"
-    >
-      <Icon icon="minus" />
+    <div :class="iconButtonClasses" @click="adjustZoom('down')">
+      <Icon name="minus" size="full" />
     </div>
 
     <Menu>
       <MenuButton
         as="div"
-        class="bg-white border-neutral-300 border text-black dark:bg-black dark:text-white dark:border-black text-center w-20 cursor-pointer mx-2 h-8 flex flex-col justify-center"
+        class="bg-white border-neutral-300 border text-black dark:bg-black dark:text-white dark:border-black text-center w-20 cursor-pointer mx-2 flex flex-col justify-center"
         title="set zoom level"
       >
         {{ roundedZoomPercent }}%
@@ -29,11 +26,8 @@
       </MenuItems>
     </Menu>
 
-    <div
-      class="rounded-full w-8 h-8 bg-neutral-600 text-white dark:bg-gray-200 dark:text-black p-2 cursor-pointer"
-      @click="adjustZoom('up')"
-    >
-      <Icon icon="plus" />
+    <div :class="iconButtonClasses" @click="adjustZoom('up')">
+      <Icon name="plus" size="full" />
     </div>
   </div>
 </template>
@@ -42,9 +36,9 @@
 import { computed } from "vue";
 import _ from "lodash";
 import { Menu, MenuButton, MenuItems } from "@headlessui/vue";
-import Icon from "@/molecules/VButton/Icon.vue";
 import SiDropdown from "@/molecules/SiDropdown.vue";
 import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
+import Icon from "@/ui-lib/Icon.vue";
 
 const ZOOM_LEVEL_OPTIONS = [25, 50, 100, 150, 200];
 
@@ -62,4 +56,7 @@ function adjustZoom(direction: "up" | "down") {
 }
 
 const roundedZoomPercent = computed(() => Math.round(props.zoomLevel * 100));
+
+const iconButtonClasses =
+  "rounded-full p-1 bg-neutral-600 text-white dark:bg-gray-200 dark:text-black cursor-pointer";
 </script>

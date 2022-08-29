@@ -31,10 +31,6 @@ useCustomFontsLoadedProvider();
   -moz-osx-font-smoothing: grayscale;
 }
 
-.vue-feather {
-  display: flex !important;
-}
-
 .v-popper__arrow-container {
   display: none;
 }

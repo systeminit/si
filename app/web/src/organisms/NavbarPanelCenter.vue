@@ -7,7 +7,7 @@
       :selected="route.name === 'workspace-compose'"
       :router-link-to="{ name: 'workspace-compose' }"
     >
-      <ComposeIcon class="w-6" />
+      <Icon name="diagram" />
     </SiBarButton>
 
     <SiBarButton
@@ -15,7 +15,7 @@
       :selected="route.name === 'workspace-lab'"
       :router-link-to="{ name: 'workspace-lab' }"
     >
-      <BeakerIcon class="w-6" />
+      <Icon name="beaker" />
     </SiBarButton>
 
     <!-- Vertical bar -->
@@ -26,7 +26,7 @@
       :selected="route.name === 'workspace-view'"
       :router-link-to="{ name: 'workspace-view' }"
     >
-      <ViewIcon class="w-6" />
+      <Icon name="eye" />
     </SiBarButton>
 
     <SiBarButton
@@ -34,18 +34,15 @@
       :selected="route.name === 'workspace-runtime'"
       :router-link-to="{ name: 'workspace-runtime' }"
     >
-      <RunIcon class="w-6" />
+      <Icon name="play" />
     </SiBarButton>
   </div>
 </template>
 
 <script setup lang="ts">
 import { useRoute } from "vue-router";
-import ComposeIcon from "@/atoms/CustomIcons/ComposeIcon.vue";
 import SiBarButton from "@/molecules/SiBarButton.vue";
-import ViewIcon from "@/atoms/CustomIcons/ViewIcon.vue";
-import RunIcon from "@/atoms/CustomIcons/RunIcon.vue";
-import BeakerIcon from "@/atoms/CustomIcons/BeakerIcon.vue";
+import Icon from "@/ui-lib/Icon.vue";
 
 const route = useRoute();
 </script>

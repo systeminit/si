@@ -6,13 +6,14 @@
     :disabled="disabled"
     @click="emit('click')"
   >
-    <slot></slot>
+    <Icon :name="icon" />
   </button>
 </template>
 
 <script lang="ts" setup>
 // TODO(victor) this component can probably be replaced by our VButton with showLabel=false
 import { computed, toRefs } from "vue";
+import Icon, { IconNames } from "@/ui-lib/Icon.vue";
 
 const emit = defineEmits(["click"]);
 
@@ -21,6 +22,7 @@ const props = defineProps<{
   selected?: boolean;
   tooltipText?: string;
   ignoreTextColor?: boolean;
+  icon: IconNames;
 }>();
 const { disabled, selected, tooltipText } = toRefs(props);
 

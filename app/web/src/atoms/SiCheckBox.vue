@@ -21,12 +21,9 @@
     />
     <div
       v-if="inError"
-      class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none"
+      class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-destructive-400"
     >
-      <ExclamationCircleIcon
-        class="h-5 w-5 text-destructive-400"
-        aria-hidden="true"
-      />
+      <Icon name="exclamation-circle" size="s" />
     </div>
   </div>
 
@@ -51,13 +48,13 @@
 </template>
 
 <script setup lang="ts">
-import { ExclamationCircleIcon } from "@heroicons/vue/solid";
 import { computed, ref } from "vue";
 import _ from "lodash";
 import SiValidation, {
   ValidatorArray,
   ErrorsArray,
 } from "@/atoms/SiValidation.vue";
+import Icon from "@/ui-lib/Icon.vue";
 
 const props = defineProps<{
   modelValue?: boolean;

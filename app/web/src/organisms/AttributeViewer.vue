@@ -8,19 +8,12 @@
           componentMetadata?.schemaName || componentIdentification.schemaName
         }}
       </div>
-      <div class="ml-2 flex">
-        <SiIcon
-          :tooltip-text="qualificationTooltip"
-          :color="qualificationColor"
-        >
-          <CheckCircleIcon />
-        </SiIcon>
+      <div class="ml-2 flex" :aria-label="qualificationTooltip">
+        <Icon name="check-circle" :class="qualificationColorClass" />
       </div>
 
-      <div class="ml-2 flex">
-        <SiIcon :tooltip-text="resourceTooltip" :color="resourceColor">
-          <CubeIcon />
-        </SiIcon>
+      <div class="ml-2 flex" :aria-label="resourceTooltip">
+        <Icon name="component" :class="resourceIconColorClass" />
       </div>
 
       <div
@@ -32,18 +25,15 @@
           blank-target
           class="m-2 flex"
         >
-          <SiButtonIcon tooltip-text="Go to documentation">
-            <QuestionMarkCircleIcon />
-          </SiButtonIcon>
+          <SiButtonIcon tooltip-text="Go to documentation" icon="help-circle" />
         </SiLink>
 
-        <div v-if="editCount" class="flex flex-row items-center">
-          <SiIcon
-            tooltip-text="Number of edit fields"
-            :color="colors.warning[600]"
-          >
-            <PencilAltIcon />
-          </SiIcon>
+        <div
+          v-if="editCount"
+          class="flex flex-row items-center"
+          aria-label="Number of edit fields"
+        >
+          <Icon name="edit" class="text-warning-600" />
           <div class="ml-1 text-center">{{ editCount }}</div>
         </div>
       </div>
@@ -71,12 +61,6 @@
 // import EditFormComponent from "@/organisms/EditFormComponent.vue";
 import { toRefs, computed } from "vue";
 import { fromRef, refFrom, untilUnmounted } from "vuse-rx";
-import { CheckCircleIcon } from "@heroicons/vue/solid";
-import {
-  CubeIcon,
-  QuestionMarkCircleIcon,
-  PencilAltIcon,
-} from "@heroicons/vue/outline";
 import _, { parseInt } from "lodash";
 import { tag } from "rxjs-spy/operators";
 import { combineLatest, forkJoin, from, map, take } from "rxjs";
@@ -88,7 +72,6 @@ import { componentsMetadata$ } from "@/observable/component";
 import { ComponentMetadata } from "@/service/component/get_components_metadata";
 import SiLink from "@/atoms/SiLink.vue";
 import SiButtonIcon from "@/atoms/SiButtonIcon.vue";
-import SiIcon from "@/atoms/SiIcon.vue";
 import {
   PropertyEditorSchema,
   PropertyEditorValues,
@@ -100,7 +83,7 @@ import {
 import { ComponentService } from "@/service/component";
 import { SystemService } from "@/service/system";
 import { standardVisibilityTriggers$ } from "@/observable/visibility";
-import { colors } from "@/utils/design_token_values";
+import Icon from "@/ui-lib/Icon.vue";
 import PropertyEditor, { PropertyEditorContext } from "./PropertyEditor.vue";
 
 // TODO(nick): we technically only need one prop. We're sticking with two to not mess
@@ -235,14 +218,13 @@ const qualificationTooltip = computed(() => {
   }
 });
 
-// TODO - What are these colors? check with mark
-const qualificationColor = computed(() => {
+const qualificationColorClass = computed(() => {
   if (!componentMetadata.value || componentMetadata.value.qualified === null) {
-    return "#5b6163";
+    return "text-neutral-400";
   } else if (componentMetadata.value.qualified) {
-    return "#86f0ad";
+    return "text-success-400";
   } else {
-    return "#f08686";
+    return "text-destructive-400";
   }
 });
 
@@ -266,23 +248,16 @@ const resourceTooltip = computed(() => {
   }
 });
 
-const resourceColor = computed(() => {
-  if (
-    !componentMetadata.value ||
-    componentMetadata.value.resourceHealth === undefined
-  ) {
-    return "#bbbbbb";
-  }
-  // TODO - What are these colors? check with mark
-  const health = componentMetadata.value.resourceHealth;
+const resourceIconColorClass = computed(() => {
+  const health = componentMetadata.value?.resourceHealth;
   if (health === ResourceHealth.Ok) {
-    return "#86f0ad";
+    return "text-success-400";
   } else if (health === ResourceHealth.Warning) {
-    return "#f0d286";
+    return "text-warning-400";
   } else if (health === ResourceHealth.Error) {
-    return "#f08686";
+    return "text-destructive-400";
   } else {
-    return "#bbbbbb";
+    return "text-neutral-400";
   }
 });
 

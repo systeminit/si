@@ -1,12 +1,7 @@
 <template>
   <!-- FIXME(nick,theo): dropdown-classes needs to be removed in favor of the dropdown knowing whether or not it is offscreen. -->
   <SiBarButton tooltip-text="Change theme" dropdown-classes="-right-12">
-    <div v-if="lightmode">
-      <SunIcon class="w-6" />
-    </div>
-    <div v-else>
-      <MoonIcon class="w-6" />
-    </div>
+    <Icon :name="lightmode ? 'sun' : 'moon'" />
 
     <template #dropdownContent>
       <SiDropdownItem
@@ -39,10 +34,9 @@ import { computed } from "vue";
 import { refFrom } from "vuse-rx/src";
 import { ThemeService } from "@/service/theme";
 import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
-import MoonIcon from "@/atoms/CustomIcons/MoonIcon.vue";
-import SunIcon from "@/atoms/CustomIcons/SunIcon.vue";
 import SiBarButton from "@/molecules/SiBarButton.vue";
 import { Theme } from "@/observable/theme";
+import Icon from "@/ui-lib/Icon.vue";
 
 const theme = refFrom<Theme>(ThemeService.currentTheme());
 const lightmode = computed(() => {

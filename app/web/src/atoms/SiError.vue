@@ -7,7 +7,7 @@
     >
       <span class="flex-grow">Error: {{ message }}</span>
       <button class="flex-grow-0" @click="clear">
-        <VueFeather type="x" />
+        <Icon name="x-circle" />
       </button>
     </div>
     <div
@@ -19,7 +19,7 @@
 </template>
 
 <script setup lang="ts">
-import VueFeather from "vue-feather";
+import Icon from "@/ui-lib/Icon.vue";
 
 defineProps({
   message: { type: String, default: "" },
