@@ -6,19 +6,20 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
-    func::binding_return_value::{FuncBindingReturnValue, FuncBindingReturnValueError},
+    func::binding_return_value::FuncBindingReturnValue,
     func::{binding::FuncBindingId, FuncId},
     impl_standard_model, pk,
     standard_model::{self, objects_from_rows},
-    standard_model_accessor, ComponentId, FuncBinding, HistoryEventError, SchemaId,
-    SchemaVariantId, StandardModel, StandardModelError, SystemId, Timestamp, Visibility,
-    WorkflowPrototypeId, WorkflowTree, WriteTenancy,
+    standard_model_accessor, ComponentId, Func, FuncBinding, FuncBindingError, HistoryEventError,
+    SchemaId, SchemaVariantId, StandardModel, StandardModelError, SystemId, Timestamp, Visibility,
+    WorkflowError, WorkflowPrototype, WorkflowPrototypeError, WorkflowPrototypeId,
+    WorkflowResolverError, WorkflowResolverId, WriteTenancy,
 };
 
 #[derive(Error, Debug)]
-pub enum WorkflowResolverError {
+pub enum WorkflowRunnerError {
     #[error(transparent)]
-    FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
+    Workflow(#[from] WorkflowError),
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("pg error: {0}")]
@@ -28,35 +29,41 @@ pub enum WorkflowResolverError {
     #[error("history event error: {0}")]
     HistoryEvent(#[from] HistoryEventError),
     #[error("standard model error: {0}")]
-    StandardModelError(#[from] StandardModelError),
-    #[error("workflow not resolved yet")]
-    NotResolved(WorkflowResolverId),
-    #[error("func binding not found {0}")]
-    FuncBindingNotFound(FuncBindingId),
+    StandardModel(#[from] StandardModelError),
+    #[error(transparent)]
+    WorkflowResolver(#[from] WorkflowResolverError),
+    #[error(transparent)]
+    WorkflowPrototype(#[from] WorkflowPrototypeError),
+    #[error(transparent)]
+    FuncBinding(#[from] FuncBindingError),
+    #[error("prototype not found {0}")]
+    PrototypeNotFound(WorkflowPrototypeId),
+    #[error("missing workflow {0}")]
+    MissingWorkflow(String),
 }
 
-pub type WorkflowResolverResult<T> = Result<T, WorkflowResolverError>;
+pub type WorkflowRunnerResult<T> = Result<T, WorkflowRunnerError>;
 
-const FIND_FOR_PROTOTYPE: &str = include_str!("./queries/workflow_resolver_find_for_prototype.sql");
+const FIND_FOR_PROTOTYPE: &str = include_str!("./queries/workflow_runner_find_for_prototype.sql");
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-pub struct WorkflowResolverContext {
+pub struct WorkflowRunnerContext {
     component_id: ComponentId,
     schema_id: SchemaId,
     schema_variant_id: SchemaVariantId,
     system_id: SystemId,
 }
 
-// Hrm - is this a universal resolver context? -- Adam
-impl Default for WorkflowResolverContext {
+// Hrm - is this a universal runner context? -- Adam
+impl Default for WorkflowRunnerContext {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl WorkflowResolverContext {
+impl WorkflowRunnerContext {
     pub fn new() -> Self {
-        WorkflowResolverContext {
+        WorkflowRunnerContext {
             component_id: ComponentId::NONE,
             schema_id: SchemaId::NONE,
             schema_variant_id: SchemaVariantId::NONE,
@@ -97,20 +104,21 @@ impl WorkflowResolverContext {
     }
 }
 
-pk!(WorkflowResolverPk);
-pk!(WorkflowResolverId);
+pk!(WorkflowRunnerPk);
+pk!(WorkflowRunnerId);
 
-// An WorkflowResolver joins a `FuncBinding` to the context in which
+// An WorkflowRunner joins a `FuncBinding` to the context in which
 // its corresponding `FuncBindingResultValue` is consumed.
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-pub struct WorkflowResolver {
-    pk: WorkflowResolverPk,
-    id: WorkflowResolverId,
+pub struct WorkflowRunner {
+    pk: WorkflowRunnerPk,
+    id: WorkflowRunnerId,
     workflow_prototype_id: WorkflowPrototypeId,
+    workflow_resolver_id: WorkflowResolverId,
     func_id: FuncId,
     func_binding_id: FuncBindingId,
     #[serde(flatten)]
-    context: WorkflowResolverContext,
+    context: WorkflowRunnerContext,
     #[serde(flatten)]
     tenancy: WriteTenancy,
     #[serde(flatten)]
@@ -120,28 +128,32 @@ pub struct WorkflowResolver {
 }
 
 impl_standard_model! {
-    model: WorkflowResolver,
-    pk: WorkflowResolverPk,
-    id: WorkflowResolverId,
-    table_name: "workflow_resolvers",
-    history_event_label_base: "workflow_resolver",
-    history_event_message_name: "Workflow Resolver"
+    model: WorkflowRunner,
+    pk: WorkflowRunnerPk,
+    id: WorkflowRunnerId,
+    table_name: "workflow_runners",
+    history_event_label_base: "workflow_runner",
+    history_event_message_name: "Workflow Runner"
 }
 
-impl WorkflowResolver {
+impl WorkflowRunner {
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn new(
         ctx: &DalContext<'_, '_>,
         workflow_prototype_id: WorkflowPrototypeId,
+        workflow_resolver_id: WorkflowResolverId,
         func_id: FuncId,
         func_binding_id: FuncBindingId,
-        context: WorkflowResolverContext,
-    ) -> WorkflowResolverResult<Self> {
+        context: WorkflowRunnerContext,
+    ) -> WorkflowRunnerResult<Self> {
         let row = ctx.txns().pg().query_one(
-                "SELECT object FROM workflow_resolver_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9)",
-                &[ctx.write_tenancy(), ctx.visibility(),
+                "SELECT object FROM workflow_runner_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
+                &[
+                    ctx.write_tenancy(),
+                    ctx.visibility(),
                     &workflow_prototype_id,
+                    &workflow_resolver_id,
                     &func_id,
                     &func_binding_id,
                     &context.component_id(),
@@ -155,31 +167,57 @@ impl WorkflowResolver {
         Ok(object)
     }
 
-    pub async fn tree(&self, ctx: &DalContext<'_, '_>) -> WorkflowResolverResult<WorkflowTree> {
-        let func_binding = FuncBinding::get_by_id(ctx, &self.func_binding_id())
+    pub async fn run(
+        ctx: &DalContext<'_, '_>,
+        prototype_id: WorkflowPrototypeId,
+    ) -> WorkflowRunnerResult<(Self, Vec<FuncBindingReturnValue>)> {
+        let prototype = WorkflowPrototype::get_by_id(ctx, &prototype_id)
             .await?
-            .ok_or_else(|| WorkflowResolverError::FuncBindingNotFound(self.func_binding_id()))?;
-        let value = FuncBindingReturnValue::get_by_func_binding_id(ctx, *func_binding.id()).await?;
-        let value = value.as_ref().and_then(|v| v.value());
-        let tree = WorkflowTree::deserialize(
-            value.ok_or_else(|| WorkflowResolverError::NotResolved(*self.id()))?,
-        )?;
-        Ok(tree)
+            .ok_or(WorkflowRunnerError::PrototypeNotFound(prototype_id))?;
+        let resolver = prototype.resolve(ctx).await?;
+        let tree = resolver.tree(ctx).await?;
+        let func_binding_return_values = tree.run(ctx).await?;
+
+        let identity = Func::find_by_attr(ctx, "name", &"si:identity")
+            .await?
+            .pop()
+            .ok_or_else(|| WorkflowRunnerError::MissingWorkflow("si:identity".to_owned()))?;
+        let (func_binding, _) = FuncBinding::find_or_create_and_execute(
+            ctx,
+            serde_json::json!({ "identity": serde_json::to_value(&func_binding_return_values)? }),
+            *identity.id(),
+        )
+        .await?;
+        let mut context = WorkflowRunnerContext::new();
+        context.set_component_id(prototype.context().component_id);
+        context.set_schema_id(prototype.context().schema_id);
+        context.set_schema_variant_id(prototype.context().schema_variant_id);
+        context.set_system_id(prototype.context().system_id);
+        let runner = Self::new(
+            ctx,
+            *prototype.id(),
+            *resolver.id(),
+            *identity.id(),
+            *func_binding.id(),
+            context,
+        )
+        .await?;
+        Ok((runner, func_binding_return_values))
     }
 
     standard_model_accessor!(
         workflow_prototype_id,
         Pk(WorkflowPrototypeId),
-        WorkflowResolverResult
+        WorkflowRunnerResult
     );
-    standard_model_accessor!(func_id, Pk(FuncId), WorkflowResolverResult);
-    standard_model_accessor!(func_binding_id, Pk(FuncBindingId), WorkflowResolverResult);
+    standard_model_accessor!(func_id, Pk(FuncId), WorkflowRunnerResult);
+    standard_model_accessor!(func_binding_id, Pk(FuncBindingId), WorkflowRunnerResult);
 
     pub async fn find_for_prototype(
         ctx: &DalContext<'_, '_>,
         workflow_prototype_id: &WorkflowPrototypeId,
-        context: WorkflowResolverContext,
-    ) -> WorkflowResolverResult<Vec<Self>> {
+        context: WorkflowRunnerContext,
+    ) -> WorkflowRunnerResult<Vec<Self>> {
         let rows = ctx
             .txns()
             .pg()
@@ -203,11 +241,11 @@ impl WorkflowResolver {
 
 #[cfg(test)]
 mod test {
-    use super::WorkflowResolverContext;
+    use super::WorkflowRunnerContext;
 
     #[test]
     fn context_builder() {
-        let mut c = WorkflowResolverContext::new();
+        let mut c = WorkflowRunnerContext::new();
         c.set_component_id(15.into());
         assert_eq!(c.component_id(), 15.into());
     }

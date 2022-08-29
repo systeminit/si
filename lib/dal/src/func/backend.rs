@@ -259,7 +259,7 @@ pub trait FuncDispatch: std::fmt::Debug {
 
 #[async_trait]
 pub trait FuncBackend {
-    type Args: DeserializeOwned + Send;
+    type Args: DeserializeOwned + Send + std::fmt::Debug;
 
     async fn create_and_execute(
         args: &serde_json::Value,
