@@ -7,9 +7,29 @@
       <template #tabs>
         <SiTabHeader>Properties</SiTabHeader>
       </template>
-
       <template #panels>
         <TabPanel class="overflow-auto grow">
+          <div class="w-full flex p-2 gap-1 border-b dark:border-neutral-600">
+            <VButton
+              :disabled="editingFunc.origFunc.isBuiltin"
+              button-rank="primary"
+              button-type="success"
+              icon="save"
+              label="Save"
+              size="md"
+              @click="saveQualification"
+            />
+
+            <VButton
+              :disabled="editingFunc.origFunc.isBuiltin"
+              button-rank="tertiary"
+              button-type="neutral"
+              icon="x"
+              label="Cancel"
+              size="sm"
+            />
+          </div>
+
           <SiCollapsible label="Attributes" default-open>
             <div class="px-2 py-2 flex flex-col gap-2">
               <h1 class="text-neutral-400 dark:text-neutral-300 text-sm">
@@ -78,19 +98,6 @@
         </TabPanel>
       </template>
     </SiTabGroup>
-    <div
-      class="bottom-0 w-full h-14 text-right p-2 border-t border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 flex-none"
-    >
-      <VButton
-        button-rank="primary"
-        button-type="success"
-        icon="save"
-        label="Save Qualifications"
-        size="lg"
-        :disabled="editingFunc.origFunc.isBuiltin"
-        @click="saveQualification"
-      />
-    </div>
   </div>
   <div v-else class="p-2 text-center text-neutral-400 dark:text-neutral-300">
     Select a function to view its properties.

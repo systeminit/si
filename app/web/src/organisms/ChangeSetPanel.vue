@@ -33,7 +33,7 @@
           class="mb-4 border bg-warning-300 py-1 px-2"
         >
           <VButton
-            :show-label="false"
+            hide-label
             button-rank="tertiary"
             button-type="neutral"
             class="float-right"

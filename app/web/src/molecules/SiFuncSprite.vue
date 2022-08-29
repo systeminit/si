@@ -1,9 +1,8 @@
 <template>
   <div
-    class="flex flex-row items-center gap-2.5 px-4 py-4 text-xs relative"
+    class="flex flex-row items-center gap-2.5 py-4 pr-4 pl-8 text-xs relative"
     :class="classes"
   >
-    <FuncSkeleton class="flex-shrink-0" />
     <div class="w-full text-ellipsis whitespace-nowrap overflow-hidden">
       {{ props.name }}
     </div>
@@ -19,7 +18,6 @@
 import { computed } from "vue";
 
 import SiChip from "@/atoms/SiChip.vue";
-import FuncSkeleton from "@/atoms/FuncSkeleton.vue";
 
 const props = defineProps<{
   color: string;

@@ -46,7 +46,6 @@ import { from, switchMap } from "rxjs";
 import { Secret } from "@/api/sdf/dal/secret";
 import { SecretService } from "@/service/secret";
 import { GlobalErrorService } from "@/service/global_error";
-import { colors } from "../../utils/design_token_values";
 
 const secrets = refFrom<Secret[] | undefined>(
   SecretService.listSecrets().pipe(

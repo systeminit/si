@@ -8,7 +8,7 @@
     @click="emit('click')"
   >
     <Icon v-if="icon" :icon="icon" :icon-classes="iconClasses" />
-    <span v-if="showLabel"> {{ label }}</span>
+    <span v-if="!hideLabel"> {{ label }}</span>
     <Icon v-if="iconRight" :icon="iconRight" :icon-classes="iconClasses" />
   </button>
 </template>
@@ -40,7 +40,7 @@ const props = withDefaults(
 
     disabled?: boolean;
 
-    showLabel?: boolean;
+    hideLabel?: boolean;
     icon?: IconName;
     iconRight?: IconName;
   }>(),
@@ -50,7 +50,7 @@ const props = withDefaults(
     buttonType: "neutral",
 
     toolTip: undefined,
-    showLabel: true,
+    hideLabel: false,
     icon: undefined,
     iconRight: undefined,
   },
