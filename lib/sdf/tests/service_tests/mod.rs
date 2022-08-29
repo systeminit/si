@@ -5,7 +5,6 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use tower::ServiceExt;
 
-mod application;
 mod change_set;
 mod component;
 mod schema;
@@ -40,14 +39,6 @@ pub async fn api_request_auth_query<Req: Serialize, Res: DeserializeOwned>(
         .and_then(|value| value.as_u64())
     {
         api_request = api_request.header("WorkspaceId", &workspace_id.to_string());
-    }
-
-    if let Some(application_node_id) = request_json
-        .as_object()
-        .and_then(|obj| obj.get("rootNodeId"))
-        .and_then(|value| value.as_u64())
-    {
-        api_request = api_request.header("ApplicationId", &application_node_id.to_string());
     }
 
     let api_request = api_request
@@ -91,14 +82,6 @@ pub async fn api_request_auth_json_body<Req: Serialize, Res: DeserializeOwned>(
         .and_then(|value| value.as_u64())
     {
         api_request = api_request.header("WorkspaceId", &workspace_id.to_string());
-    }
-
-    if let Some(application_node_id) = request_json
-        .as_object()
-        .and_then(|obj| obj.get("rootNodeId"))
-        .and_then(|value| value.as_u64())
-    {
-        api_request = api_request.header("ApplicationId", &application_node_id.to_string());
     }
 
     let api_request = api_request
@@ -177,14 +160,6 @@ pub async fn api_request<Req: Serialize, Res: DeserializeOwned>(
         .and_then(|value| value.as_u64())
     {
         api_request = api_request.header("WorkspaceId", &workspace_id.to_string());
-    }
-
-    if let Some(application_node_id) = request_json
-        .as_object()
-        .and_then(|obj| obj.get("rootNodeId"))
-        .and_then(|value| value.as_u64())
-    {
-        api_request = api_request.header("ApplicationId", &application_node_id.to_string());
     }
 
     let api_request = api_request
@@ -313,12 +288,8 @@ macro_rules! test_setup {
         .await
         .expect("cannot construct read tenancy");
         let write_tenancy = dal::WriteTenancy::new_workspace(*$nba.workspace.id());
-        let ab = dal::AccessBuilder::new(
-            read_tenancy,
-            write_tenancy,
-            dal::HistoryActor::SystemInit,
-            None,
-        );
+        let ab =
+            dal::AccessBuilder::new(read_tenancy, write_tenancy, dal::HistoryActor::SystemInit);
         let request_context = ab.build(visibility);
         let $dal_ctx = builder.build(request_context, &$dal_txns);
     };

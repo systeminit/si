@@ -1,10 +1,3 @@
-import { SchematicKind } from "@/api/sdf/dal/schematic";
-
-export interface MenuFilter {
-  schematicKind: SchematicKind;
-  rootComponentId: number;
-}
-
 export interface Category {
   kind: "category";
   name: string;

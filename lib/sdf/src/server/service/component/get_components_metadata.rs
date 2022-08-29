@@ -1,8 +1,8 @@
 use axum::extract::Query;
 use axum::Json;
 use dal::{
-    node::NodeId, resource::ResourceHealth, Component, ComponentId, StandardModel, SystemId,
-    Visibility, WorkspaceId,
+    resource::ResourceHealth, Component, ComponentId, StandardModel, SystemId, Visibility,
+    WorkspaceId,
 };
 use serde::{Deserialize, Serialize};
 
@@ -16,11 +16,6 @@ pub struct GetComponentsMetadataRequest {
     pub workspace_id: WorkspaceId,
     #[serde(flatten)]
     pub visibility: Visibility,
-
-    // Shouldn't be set by the client
-    // It's a hack to allow for sdf tests to automatically infer
-    // The applicationNodeId header from the JSON payload
-    pub root_node_id: Option<NodeId>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]

@@ -77,10 +77,6 @@ pub fn routes(
     router = router
         .route("/api/demo", get(handlers::demo))
         .nest(
-            "/api/application",
-            crate::server::service::application::routes(),
-        )
-        .nest(
             "/api/change_set",
             crate::server::service::change_set::routes(),
         )
@@ -95,10 +91,7 @@ pub fn routes(
             crate::server::service::qualification::routes(),
         )
         .nest("/api/schema", crate::server::service::schema::routes())
-        .nest(
-            "/api/schematic",
-            crate::server::service::schematic::routes(),
-        )
+        .nest("/api/diagram", crate::server::service::diagram::routes())
         .nest("/api/secret", crate::server::service::secret::routes())
         .nest("/api/session", crate::server::service::session::routes())
         .nest("/api/signup", crate::server::service::signup::routes())

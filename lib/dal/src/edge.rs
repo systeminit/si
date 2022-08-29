@@ -10,8 +10,8 @@ use thiserror::Error;
 use crate::node::NodeId;
 use crate::{
     impl_standard_model, pk, socket::SocketId, standard_model, standard_model_accessor,
-    ComponentId, ExternalProviderError, HistoryEventError, InternalProviderError, ReadTenancyError,
-    SchematicKind, StandardModel, StandardModelError, SystemId, Timestamp, Visibility,
+    ComponentId, DiagramKind, ExternalProviderError, HistoryEventError, InternalProviderError,
+    ReadTenancyError, StandardModel, StandardModelError, SystemId, Timestamp, Visibility,
     WriteTenancy,
 };
 use crate::{
@@ -19,7 +19,8 @@ use crate::{
     ExternalProvider, ExternalProviderId, InternalProvider, InternalProviderId, NodeError,
 };
 
-const FIND_PARENT_COMPONENTS: &str = include_str!("./queries/edge_find_parent_components.sql");
+const LIST_PARENTS_FOR_COMPONENT: &str =
+    include_str!("queries/edge_list_parents_for_component.sql");
 
 #[derive(Error, Debug)]
 pub enum EdgeError {
@@ -60,28 +61,33 @@ pub enum EdgeError {
 
 pub type EdgeResult<T> = Result<T, EdgeError>;
 
+/// Used to dictate what [`EdgeKinds`](EdgeKind) can be for the head and tail of an [`Edges`](Edge).
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Display, EnumString, AsRefStr)]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]
 pub enum VertexObjectKind {
-    Component,
+    /// Used for [`Nodes`](crate::Node) of [`NodeKind::Configuration`](crate::NodeKind::Configuration).
+    Configuration,
+    /// Used for [`Nodes`](crate::Node) of [`NodeKind::System`](crate::NodeKind::System).
     System,
 }
 
+/// The kind of an [`Edge`](Edge). This provides the ability to categorize [`Edges`](Edge)
+/// and create [`EdgeKind`](Self)-specific graphs.
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Clone, Display, EnumString, AsRefStr)]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]
 pub enum EdgeKind {
-    Configures,
-    Includes,
-    Deployment,
-    Component,
-    Implementation,
+    /// Used to connect a configuration to another configuration.
+    Configuration,
+    /// Used to connect a configuration to a system.
+    System,
 }
 
 pk!(EdgeId);
 pk!(EdgePk);
 
+/// A mathematical edge between a head and a tail [`Node`](crate::Node).
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct Edge {
     pk: EdgePk,
@@ -201,13 +207,13 @@ impl Edge {
         // NOTE(nick): a lot of hardcoded values here that'll likely need to be adjusted.
         let edge = Edge::new(
             ctx,
-            EdgeKind::Configures,
+            EdgeKind::Configuration,
             head_node_id,
-            VertexObjectKind::Component,
+            VertexObjectKind::Configuration,
             (*head_component.id()).into(),
             head_socket_id,
             tail_node_id,
-            VertexObjectKind::Component,
+            VertexObjectKind::Configuration,
             (*tail_component.id()).into(),
             tail_socket_id,
         )
@@ -227,16 +233,16 @@ impl Edge {
     standard_model_accessor!(tail_object_id, i64, EdgeResult);
     standard_model_accessor!(tail_socket_id, Pk(SocketId), EdgeResult);
 
-    pub async fn find_component_configuration_parents(
+    pub async fn list_parents_for_component(
         ctx: &DalContext<'_, '_>,
-        component_id: &ComponentId,
+        head_component_id: ComponentId,
     ) -> EdgeResult<Vec<ComponentId>> {
         let rows = ctx
             .txns()
             .pg()
             .query(
-                FIND_PARENT_COMPONENTS,
-                &[ctx.read_tenancy(), ctx.visibility(), &component_id],
+                LIST_PARENTS_FOR_COMPONENT,
+                &[ctx.read_tenancy(), ctx.visibility(), &head_component_id],
             )
             .await?;
         let objects = rows
@@ -248,9 +254,9 @@ impl Edge {
 
     pub async fn include_component_in_system(
         ctx: &DalContext<'_, '_>,
-        component_id: &ComponentId,
-        schematic_kind: &SchematicKind,
-        system_id: &SystemId,
+        component_id: ComponentId,
+        diagram_kind: DiagramKind,
+        system_id: SystemId,
     ) -> EdgeResult<Self> {
         let row = ctx
             .txns()
@@ -260,41 +266,13 @@ impl Edge {
                 &[
                     &ctx.read_tenancy(),
                     ctx.visibility(),
-                    component_id,
-                    system_id,
-                    &schematic_kind.as_ref(),
+                    &component_id,
+                    &system_id,
+                    &(diagram_kind.to_string()),
                 ],
             )
             .await?;
-
         let object = standard_model::finish_create_from_row(ctx, row).await?;
-
-        Ok(object)
-    }
-
-    pub async fn include_component_in_node(
-        ctx: &DalContext<'_, '_>,
-        component_id: &ComponentId,
-        schematic_kind: &SchematicKind,
-        parent_node_id: &NodeId,
-    ) -> EdgeResult<Self> {
-        let row = ctx
-            .txns()
-            .pg()
-            .query_one(
-                "SELECT object FROM edge_include_component_in_node_v1($1, $2, $3, $4, $5)",
-                &[
-                    &ctx.read_tenancy(),
-                    ctx.visibility(),
-                    component_id,
-                    parent_node_id,
-                    &schematic_kind.as_ref(),
-                ],
-            )
-            .await?;
-
-        let object = standard_model::finish_create_from_row(ctx, row).await?;
-
         Ok(object)
     }
 

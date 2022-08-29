@@ -543,7 +543,7 @@ async fn find_by_attr(ctx: &mut DalContext<'_, '_>) {
     let _billing_account = create_billing_account(ctx).await;
     ctx.update_to_universal_head();
 
-    let schema_one = create_schema(ctx, &SchemaKind::Concept).await;
+    let schema_one = create_schema(ctx, &SchemaKind::Configuration).await;
 
     let result: Vec<Schema> =
         standard_model::find_by_attr(ctx, "schemas", "name", &schema_one.name().to_string())

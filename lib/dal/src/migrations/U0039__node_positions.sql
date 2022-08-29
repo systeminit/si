@@ -10,10 +10,8 @@ CREATE TABLE node_positions
     visibility_deleted_at       timestamp with time zone,
     created_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
     updated_at                  timestamp with time zone NOT NULL DEFAULT NOW(),
-    schematic_kind              text                     NOT NULL,
-    root_node_id                bigint                   NOT NULL,
+    diagram_kind              text                     NOT NULL,
     system_id                   bigint,
-    deployment_node_id          bigint,
     x                           text                     NOT NULL,
     y                           text                     NOT NULL
 );
@@ -27,10 +25,8 @@ VALUES ('node_positions', 'model', 'node_position', 'Node Position'),
 CREATE OR REPLACE FUNCTION node_position_create_v1(
     this_tenancy jsonb,
     this_visibility jsonb,
-    this_schematic_kind text,
-    this_root_node_id bigint,
+    this_diagram_kind text,
     this_system_id bigint,
-    this_deployment_node_id bigint,
     this_x text,
     this_y text,
     OUT object json) AS
@@ -46,12 +42,12 @@ BEGIN
     INSERT INTO node_positions (tenancy_universal, tenancy_billing_account_ids, tenancy_organization_ids,
                                 tenancy_workspace_ids,
                                 visibility_change_set_pk, visibility_deleted_at,
-                                schematic_kind, root_node_id, system_id, deployment_node_id, x, y)
+                                diagram_kind, system_id, x, y)
     VALUES (this_tenancy_record.tenancy_universal, this_tenancy_record.tenancy_billing_account_ids,
             this_tenancy_record.tenancy_organization_ids, this_tenancy_record.tenancy_workspace_ids,
             this_visibility_record.visibility_change_set_pk,
-            this_visibility_record.visibility_deleted_at, this_schematic_kind, this_root_node_id, this_system_id,
-            this_deployment_node_id, this_x, this_y)
+            this_visibility_record.visibility_deleted_at, this_diagram_kind, this_system_id,
+            this_x, this_y)
     RETURNING * INTO this_new_row;
 
     object := row_to_json(this_new_row);

@@ -3,7 +3,9 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::Json;
 use axum::Router;
-use dal::{SchemaError as DalSchemaError, StandardModelError, TransactionsError, WsEventError};
+use dal::{
+    SchemaError as DalSchemaError, SchemaKind, StandardModelError, TransactionsError, WsEventError,
+};
 use thiserror::Error;
 
 pub mod create_schema;
@@ -18,6 +20,8 @@ pub enum SchemaError {
     Pg(#[from] si_data::PgError),
     #[error(transparent)]
     ContextTransaction(#[from] TransactionsError),
+    #[error("no diagram kind for schema kind {0}")]
+    NoDiagramKindForSchemaKind(SchemaKind),
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
     #[error("schema error: {0}")]

@@ -26,7 +26,7 @@
               <AssetPalette @select="onSelectAssetToInsert" />
             </TabPanel>
             <TabPanel class="flex flex-col overflow-y-hidden">
-              <SchematicOutline
+              <DiagramOutline
                 :selected-component-id="selectedComponentId ?? undefined"
                 @select="onOutlineSelectComponent"
               />
@@ -83,17 +83,14 @@ import SiPanel from "@/atoms/SiPanel.vue";
 import ChangeSetPanel from "@/organisms/ChangeSetPanel.vue";
 import ComponentDetails from "@/organisms/ComponentDetails.vue";
 import { ComponentService } from "@/service/component";
-import SchematicDiagramService from "@/service/schematic-diagram";
 import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
-
 import { ChangeSetService } from "@/service/change_set";
 import { SelectionService } from "@/service/selection";
-
 import KubernetesIconRaw from "@/assets/images/3p-logos/kubernetes/kubernetes-icon.svg?raw";
 import DockerIconRaw from "@/assets/images/3p-logos/docker/docker-icon.svg?raw";
 import { QualificationService } from "@/service/qualification";
-import SchematicOutline from "../SchematicOutline.vue";
+import DiagramService2 from "@/service/diagram2";
 import GenericDiagram from "../GenericDiagram/GenericDiagram.vue";
 import AssetPalette, { SelectAssetEvent } from "../AssetPalette.vue";
 import {
@@ -104,6 +101,7 @@ import {
   DeleteElementsEvent,
   DiagramStatusIcon,
 } from "../GenericDiagram/diagram_types";
+import DiagramOutline from "../DiagramOutline.vue";
 
 const currentRoute = useRoute();
 
@@ -116,7 +114,7 @@ watch(currentRoute, () => {
 
 const diagramRef = ref<InstanceType<typeof GenericDiagram>>();
 
-const rawDiagramData = SchematicDiagramService.useDiagramData();
+const rawDiagramData = DiagramService2.useDiagramData();
 const qualificationSummary = QualificationService.useQualificationSummary();
 
 const selectedComponentId = SelectionService.useSelectedComponentId();
@@ -214,7 +212,7 @@ async function onDrawEdge(e: DrawEdgeEvent) {
   const [fromNodeId, fromSocketId] = e.fromSocketId.split("-");
   const [toNodeId, toSocketId] = e.toSocketId.split("-");
 
-  await SchematicDiagramService.actions.createConnection({
+  await DiagramService2.actions.createConnection({
     fromNodeId,
     fromSocketId,
     toNodeId,
@@ -226,7 +224,7 @@ async function onDiagramInsertElement(e: InsertElementEvent) {
   if (!lastInsertSelection.value)
     throw new Error("missing insert selection metadata");
 
-  await SchematicDiagramService.actions.createNode(
+  await DiagramService2.actions.createNode(
     lastInsertSelection.value.schemaId,
     e.position,
   );
@@ -242,7 +240,7 @@ function onDiagramMoveElement(e: MoveElementEvent) {
   // eventually we will want to send those to the backend for realtime multiplayer
   // But for now we just send off the final position
   if (!e.isFinal) return;
-  SchematicDiagramService.actions.updateNodePosition(e.id, e.position);
+  DiagramService2.actions.updateNodePosition(e.id, e.position);
 }
 
 function onDiagramUpdateSelection(newSelection: DiagramElementIdentifier[]) {

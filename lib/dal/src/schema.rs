@@ -15,10 +15,10 @@ use crate::{
     pk, schema::ui_menu::UiMenuId, standard_model, standard_model_accessor,
     standard_model_has_many, standard_model_many_to_many, AttributeContextBuilderError,
     AttributePrototypeError, AttributeValueError, BillingAccount, BillingAccountId,
-    CodeGenerationPrototypeError, Component, DalContext, FuncError, HistoryEventError,
+    CodeGenerationPrototypeError, Component, DalContext, DiagramKind, FuncError, HistoryEventError,
     Organization, OrganizationId, PropError, QualificationPrototypeError, ReadTenancyError,
-    ResourcePrototypeError, SchematicKind, StandardModel, StandardModelError, Timestamp,
-    ValidationPrototypeError, Visibility, Workspace, WorkspaceId, WsEventError,
+    ResourcePrototypeError, StandardModel, StandardModelError, Timestamp, ValidationPrototypeError,
+    Visibility, Workspace, WorkspaceId, WsEventError,
 };
 
 pub use ui_menu::UiMenu;
@@ -58,6 +58,8 @@ pub enum SchemaError {
     Nats(#[from] NatsError),
     #[error("no default variant for schema id: {0}")]
     NoDefaultVariant(SchemaId),
+    #[error("no diagram kind for schema kind {0}")]
+    NoDiagramKindForSchemaKind(SchemaKind),
     #[error("schema not found: {0}")]
     NotFound(SchemaId),
     #[error("schema not found by name: {0}")]
@@ -93,43 +95,25 @@ pub type SchemaResult<T> = Result<T, SchemaError>;
 pk!(SchemaPk);
 pk!(SchemaId);
 
+/// The kind of a [`Schema`](Schema). This provides the ability to categorize [`Schemas`](Schema)
+/// and create kind-specific graphs (using [`Edges`](crate::Edge) and [`Nodes`](crate::Node).
 #[derive(
     AsRefStr, Copy, Clone, Debug, Deserialize, Display, EnumString, Eq, PartialEq, Serialize,
 )]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]
 pub enum SchemaKind {
-    /// High level abstract idea within SI domain (application, service, system...)
-    Concept,
-    /// Pairs with a concept schema (kubernetes_service is an implementation of a si_service...)
-    Implementation,
-    /// Low level model of a particular external domain (docker image, k8s deployment...)
-    Concrete,
-}
-
-impl From<&SchemaKind> for SchematicKind {
-    fn from(kind: &SchemaKind) -> Self {
-        match kind {
-            SchemaKind::Concept => Self::Deployment,
-            SchemaKind::Concrete | SchemaKind::Implementation => Self::Component,
-        }
-    }
-}
-
-impl From<SchemaKind> for SchematicKind {
-    fn from(kind: SchemaKind) -> Self {
-        match kind {
-            SchemaKind::Concept => Self::Deployment,
-            SchemaKind::Concrete | SchemaKind::Implementation => Self::Component,
-        }
-    }
+    /// Exclusive to [`System`](crate::System).
+    System,
+    /// Low level model of a particular external domain (docker image, k8s deployment...).
+    Configuration,
 }
 
 impl From<SchemaKind> for NodeKind {
     fn from(kind: SchemaKind) -> Self {
         match kind {
-            SchemaKind::Concept => Self::Deployment,
-            SchemaKind::Concrete | SchemaKind::Implementation => Self::Component,
+            SchemaKind::Configuration => Self::Configuration,
+            SchemaKind::System => Self::System,
         }
     }
 }
@@ -301,5 +285,12 @@ impl Schema {
             .ok_or_else(|| SchemaError::NoDefaultVariant(*schema.id()))?;
 
         Ok(*schema_variant_id)
+    }
+
+    pub fn diagram_kind(&self) -> Option<DiagramKind> {
+        match self.kind {
+            SchemaKind::Configuration => Some(DiagramKind::Configuration),
+            SchemaKind::System => None,
+        }
     }
 }

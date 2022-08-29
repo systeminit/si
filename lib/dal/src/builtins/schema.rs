@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use crate::socket::{SocketEdgeKind, SocketKind};
 use crate::{
     builtins::schema::kubernetes_metadata::create_metadata_prop,
     code_generation_prototype::CodeGenerationPrototypeContext,
@@ -17,13 +18,13 @@ use crate::{
     qualification_prototype::QualificationPrototypeContext,
     resource_prototype::ResourcePrototypeContext,
     schema::{SchemaVariant, UiMenu},
-    socket::{Socket, SocketArity, SocketEdgeKind, SocketKind},
+    socket::SocketArity,
     AttributeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue,
     AttributeValueError, BuiltinsError, BuiltinsResult, CodeGenerationPrototype, CodeLanguage,
-    DalContext, ExternalProvider, Func, FuncBackendKind, FuncBackendResponseType, FuncError,
-    FuncId, InternalProvider, Prop, PropError, PropId, PropKind, QualificationPrototype,
-    ResourcePrototype, Schema, SchemaError, SchemaKind, SchematicKind, StandardModel,
-    WorkflowPrototype, WorkflowPrototypeContext,
+    DalContext, DiagramKind, ExternalProvider, Func, FuncBackendKind, FuncBackendResponseType,
+    FuncError, FuncId, InternalProvider, Prop, PropError, PropId, PropKind, QualificationPrototype,
+    ResourcePrototype, Schema, SchemaError, SchemaKind, Socket, StandardModel, WorkflowPrototype,
+    WorkflowPrototypeContext,
 };
 
 mod kubernetes;
@@ -37,9 +38,6 @@ use self::kubernetes_deployment::kubernetes_deployment;
 
 pub async fn migrate(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     system(ctx).await?;
-    application(ctx).await?;
-    service(ctx).await?;
-    kubernetes_service(ctx).await?;
     kubernetes_deployment(ctx).await?;
     kubernetes_namespace(ctx).await?;
     docker_hub_credential(ctx).await?;
@@ -50,7 +48,7 @@ pub async fn migrate(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
 
 async fn system(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     let name = "system".to_string();
-    let mut schema = match create_schema(ctx, &name, &SchemaKind::Concept).await? {
+    let mut schema = match create_schema(ctx, &name, &SchemaKind::System).await? {
         Some(schema) => schema,
         None => return Ok(()),
     };
@@ -64,22 +62,6 @@ async fn system(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     variant.finalize(ctx).await?;
 
     let identity_func = setup_identity_func(ctx).await?;
-
-    let (_deployment_output_provider, _deployment_output_socket) =
-        ExternalProvider::new_with_socket(
-            ctx,
-            *schema.id(),
-            *variant.id(),
-            "deployment_output",
-            None,
-            identity_func.0,
-            identity_func.1,
-            identity_func.2,
-            SocketArity::Many,
-            SchematicKind::Deployment,
-        )
-        .await?;
-
     let (_component_output_provider, _component_output_socket) = ExternalProvider::new_with_socket(
         ctx,
         *schema.id(),
@@ -90,237 +72,16 @@ async fn system(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
         identity_func.1,
         identity_func.2,
         SocketArity::Many,
-        SchematicKind::Component,
+        DiagramKind::Configuration,
     )
     .await?;
-
-    Ok(())
-}
-
-async fn application(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
-    let name = "application".to_string();
-    let mut schema = match create_schema(ctx, &name, &SchemaKind::Concept).await? {
-        Some(schema) => schema,
-        None => return Ok(()),
-    };
-
-    schema.set_ui_hidden(ctx, true).await?;
-
-    let (variant, _) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
-    schema
-        .set_default_schema_variant_id(ctx, Some(*variant.id()))
-        .await?;
-
-    variant.finalize(ctx).await?;
-
-    let identity_func = setup_identity_func(ctx).await?;
-
-    let (_deployment_output_provider, _deployment_output_socket) =
-        ExternalProvider::new_with_socket(
-            ctx,
-            *schema.id(),
-            *variant.id(),
-            "deployment_output",
-            None,
-            identity_func.0,
-            identity_func.1,
-            identity_func.2,
-            SocketArity::Many,
-            SchematicKind::Deployment,
-        )
-        .await?;
-
-    let (_component_output_provider, _component_output_socket) = ExternalProvider::new_with_socket(
-        ctx,
-        *schema.id(),
-        *variant.id(),
-        "component_output",
-        None,
-        identity_func.0,
-        identity_func.1,
-        identity_func.2,
-        SocketArity::Many,
-        SchematicKind::Component,
-    )
-    .await?;
-
-    let includes_socket = Socket::new(
-        ctx,
-        "includes",
-        SocketKind::Provider,
-        &SocketEdgeKind::Includes,
-        &SocketArity::Many,
-        &SchematicKind::Deployment,
-    )
-    .await?;
-    variant.add_socket(ctx, includes_socket.id()).await?;
-
-    Ok(())
-}
-
-async fn service(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
-    let name = "service".to_string();
-    let mut schema = match create_schema(ctx, &name, &SchemaKind::Concept).await? {
-        Some(schema) => schema,
-        None => return Ok(()),
-    };
-
-    let mut ui_menu = UiMenu::new(ctx, &(*schema.kind()).into()).await?;
-    ui_menu
-        .set_name(ctx, Some(schema.name().to_string()))
-        .await?;
-
-    let application_name = "application".to_string();
-    ui_menu
-        .set_category(ctx, Some(application_name.clone()))
-        .await?;
-    ui_menu
-        .set_schematic_kind(ctx, SchematicKind::from(*schema.kind()))
-        .await?;
-    ui_menu.set_schema(ctx, schema.id()).await?;
-
-    let application_schema_results = Schema::find_by_attr(ctx, "name", &application_name).await?;
-    let application_schema = application_schema_results
-        .first()
-        .ok_or(SchemaError::NotFoundByName(application_name))?;
-
-    ui_menu
-        .add_root_schematic(ctx, application_schema.id())
-        .await?;
-
-    let (mut variant, _) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
-    variant.set_color(ctx, Some(0x00b0bc)).await?;
-    schema
-        .set_default_schema_variant_id(ctx, Some(*variant.id()))
-        .await?;
-
-    let identity_func = setup_identity_func(ctx).await?;
-
-    let (_input_provider, _input_socket) = InternalProvider::new_explicit_with_socket(
-        ctx,
-        *schema.id(),
-        *variant.id(),
-        "service",
-        identity_func.0,
-        identity_func.1,
-        identity_func.2,
-        SocketArity::Many,
-        SchematicKind::Deployment,
-    )
-    .await?;
-
-    let (_deployment_output_provider, mut deployment_output_socket) =
-        ExternalProvider::new_with_socket(
-            ctx,
-            *schema.id(),
-            *variant.id(),
-            "service",
-            None,
-            identity_func.0,
-            identity_func.1,
-            identity_func.2,
-            SocketArity::Many,
-            SchematicKind::Deployment,
-        )
-        .await?;
-    deployment_output_socket
-        .set_color(ctx, Some(0x00b0bc))
-        .await?;
-
-    let (_component_output_provider, _component_output_socket) = ExternalProvider::new_with_socket(
-        ctx,
-        *schema.id(),
-        *variant.id(),
-        "output",
-        None,
-        identity_func.0,
-        identity_func.1,
-        identity_func.2,
-        SocketArity::Many,
-        SchematicKind::Component,
-    )
-    .await?;
-
-    let includes_socket = Socket::new(
-        ctx,
-        "includes",
-        SocketKind::Provider,
-        &SocketEdgeKind::Includes,
-        &SocketArity::Many,
-        &SchematicKind::Deployment,
-    )
-    .await?;
-    variant.add_socket(ctx, includes_socket.id()).await?;
-    variant.finalize(ctx).await?;
-
-    Ok(())
-}
-
-async fn kubernetes_service(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
-    let name = "kubernetes_service".to_string();
-    let mut schema = match create_schema(ctx, &name, &SchemaKind::Implementation).await? {
-        Some(schema) => schema,
-        None => return Ok(()),
-    };
-
-    let (mut variant, _) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
-    variant
-        .set_link(
-            ctx,
-            Some("https://kubernetes.io/docs/concepts/services-networking/service/".to_owned()),
-        )
-        .await?;
-
-    schema
-        .set_default_schema_variant_id(ctx, Some(*variant.id()))
-        .await?;
-
-    let identity_func = setup_identity_func(ctx).await?;
-
-    let (_input_provider, _input_socket) = InternalProvider::new_explicit_with_socket(
-        ctx,
-        *schema.id(),
-        *variant.id(),
-        "input",
-        identity_func.0,
-        identity_func.1,
-        identity_func.2,
-        SocketArity::Many,
-        SchematicKind::Component,
-    )
-    .await?;
-
-    let (_output_provider, _output_socket) = ExternalProvider::new_with_socket(
-        ctx,
-        *schema.id(),
-        *variant.id(),
-        "output",
-        None,
-        identity_func.0,
-        identity_func.1,
-        identity_func.2,
-        SocketArity::Many,
-        SchematicKind::Component,
-    )
-    .await?;
-
-    let includes_socket = Socket::new(
-        ctx,
-        "includes",
-        SocketKind::Provider,
-        &SocketEdgeKind::Includes,
-        &SocketArity::Many,
-        &SchematicKind::Component,
-    )
-    .await?;
-    variant.add_socket(ctx, includes_socket.id()).await?;
 
     Ok(())
 }
 
 async fn kubernetes_namespace(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     let name = "kubernetes_namespace".to_string();
-    let mut schema = match create_schema(ctx, &name, &SchemaKind::Concrete).await? {
+    let mut schema = match create_schema(ctx, &name, &SchemaKind::Configuration).await? {
         Some(schema) => schema,
         None => return Ok(()),
     };
@@ -336,22 +97,15 @@ async fn kubernetes_namespace(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
         .set_schema_id(*schema.id())
         .set_schema_variant_id(*variant.id());
 
-    let mut ui_menu = UiMenu::new(ctx, &(*schema.kind()).into()).await?;
+    let diagram_kind = schema
+        .diagram_kind()
+        .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
+    let mut ui_menu = UiMenu::new(ctx, &diagram_kind).await?;
     ui_menu.set_name(ctx, Some("namespace")).await?;
-
-    let application_name = "application".to_string();
     ui_menu
         .set_category(ctx, Some("kubernetes".to_owned()))
         .await?;
     ui_menu.set_schema(ctx, schema.id()).await?;
-
-    let application_schema_results = Schema::find_by_attr(ctx, "name", &application_name).await?;
-    let application_schema = application_schema_results
-        .first()
-        .ok_or(SchemaError::NotFoundByName(application_name))?;
-    ui_menu
-        .add_root_schematic(ctx, application_schema.id())
-        .await?;
 
     let metadata_prop = create_metadata_prop(ctx, true, root_prop.domain_prop_id).await?;
 
@@ -389,21 +143,21 @@ async fn kubernetes_namespace(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
         identity_func_binding_id,
         identity_func_binding_return_value_id,
         SocketArity::Many,
-        SchematicKind::Component,
+        DiagramKind::Configuration,
     )
     .await?;
     output_socket.set_color(ctx, Some(0x85c9a3)).await?;
 
-    let includes_socket = Socket::new(
+    let system_socket = Socket::new(
         ctx,
-        "includes",
+        "system",
         SocketKind::Provider,
-        &SocketEdgeKind::Includes,
+        &SocketEdgeKind::System,
         &SocketArity::Many,
-        &SchematicKind::Component,
+        &DiagramKind::Configuration,
     )
     .await?;
-    variant.add_socket(ctx, includes_socket.id()).await?;
+    variant.add_socket(ctx, system_socket.id()).await?;
 
     variant.finalize(ctx).await?;
 
@@ -480,7 +234,7 @@ async fn kubernetes_namespace(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
 
 async fn docker_hub_credential(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     let name = "docker_hub_credential".to_string();
-    let mut schema = match create_schema(ctx, &name, &SchemaKind::Concrete).await? {
+    let mut schema = match create_schema(ctx, &name, &SchemaKind::Configuration).await? {
         Some(schema) => schema,
         None => return Ok(()),
     };
@@ -516,7 +270,16 @@ async fn docker_hub_credential(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
 
     let identity_func = setup_identity_func(ctx).await?;
 
-    variant.finalize(ctx).await?;
+    let system_socket = Socket::new(
+        ctx,
+        "system",
+        SocketKind::Provider,
+        &SocketEdgeKind::System,
+        &SocketArity::Many,
+        &DiagramKind::Configuration,
+    )
+    .await?;
+    variant.add_socket(ctx, system_socket.id()).await?;
 
     let (_output_provider, mut output_socket) = ExternalProvider::new_with_socket(
         ctx,
@@ -528,45 +291,28 @@ async fn docker_hub_credential(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
         identity_func.1,
         identity_func.2,
         SocketArity::Many,
-        SchematicKind::Component,
+        DiagramKind::Configuration,
     )
     .await?;
     output_socket.set_color(ctx, Some(0x1e88d6)).await?;
 
-    let includes_socket = Socket::new(
-        ctx,
-        "includes",
-        SocketKind::Provider,
-        &SocketEdgeKind::Includes,
-        &SocketArity::Many,
-        &SchematicKind::Component,
-    )
-    .await?;
-    variant.add_socket(ctx, includes_socket.id()).await?;
-
-    let application_name = "application".to_string();
+    variant.finalize(ctx).await?;
 
     // Note: I wasn't able to create a ui menu with two layers
-    let mut ui_menu = UiMenu::new(ctx, &(*schema.kind()).into()).await?;
+    let diagram_kind = schema
+        .diagram_kind()
+        .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
+    let mut ui_menu = UiMenu::new(ctx, &diagram_kind).await?;
     ui_menu.set_name(ctx, Some("credential".to_owned())).await?;
     ui_menu.set_category(ctx, Some("docker".to_owned())).await?;
     ui_menu.set_schema(ctx, schema.id()).await?;
-
-    let application_schema_results = Schema::find_by_attr(ctx, "name", &application_name).await?;
-    let application_schema = application_schema_results
-        .first()
-        .ok_or(SchemaError::NotFoundByName(application_name))?;
-
-    ui_menu
-        .add_root_schematic(ctx, application_schema.id())
-        .await?;
 
     Ok(())
 }
 
 async fn docker_image(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     let name = "docker_image".to_string();
-    let mut schema = match create_schema(ctx, &name, &SchemaKind::Concrete).await? {
+    let mut schema = match create_schema(ctx, &name, &SchemaKind::Configuration).await? {
         Some(schema) => schema,
         None => return Ok(()),
     };
@@ -581,20 +327,14 @@ async fn docker_image(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
         .set_schema_id(*schema.id())
         .set_schema_variant_id(*variant.id());
 
-    let mut ui_menu = UiMenu::new(ctx, &(*schema.kind()).into()).await?;
+    let diagram_kind = schema
+        .diagram_kind()
+        .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
+    let mut ui_menu = UiMenu::new(ctx, &diagram_kind).await?;
     ui_menu.set_name(ctx, Some("image")).await?;
 
-    let application_name = "application".to_string();
     ui_menu.set_category(ctx, Some("docker".to_owned())).await?;
     ui_menu.set_schema(ctx, schema.id()).await?;
-
-    let application_schema_results = Schema::find_by_attr(ctx, "name", &application_name).await?;
-    let application_schema = application_schema_results
-        .first()
-        .ok_or(SchemaError::NotFoundByName(application_name))?;
-    ui_menu
-        .add_root_schematic(ctx, application_schema.id())
-        .await?;
 
     let image_prop = Prop::new(ctx, "image", PropKind::String).await?;
     image_prop
@@ -629,7 +369,7 @@ async fn docker_image(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
             identity_func_binding_id,
             identity_func_binding_return_value_id,
             SocketArity::Many,
-            SchematicKind::Component,
+            DiagramKind::Configuration,
         )
         .await?;
     input_socket.set_color(ctx, Some(0x1e88d6)).await?;
@@ -644,21 +384,21 @@ async fn docker_image(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
         identity_func_binding_id,
         identity_func_binding_return_value_id,
         SocketArity::Many,
-        SchematicKind::Component,
+        DiagramKind::Configuration,
     )
     .await?;
     output_socket.set_color(ctx, Some(0xd61e8c)).await?;
 
-    let includes_socket = Socket::new(
+    let system_socket = Socket::new(
         ctx,
-        "includes",
+        "system",
         SocketKind::Provider,
-        &SocketEdgeKind::Includes,
+        &SocketEdgeKind::System,
         &SocketArity::Many,
-        &SchematicKind::Component,
+        &DiagramKind::Configuration,
     )
     .await?;
-    variant.add_socket(ctx, includes_socket.id()).await?;
+    variant.add_socket(ctx, system_socket.id()).await?;
 
     // Qualification Prototype
     let qual_func_name = "si:qualificationDockerImageNameInspect".to_string();

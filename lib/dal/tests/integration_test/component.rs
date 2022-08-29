@@ -24,7 +24,7 @@ async fn new(ctx: &DalContext<'_, '_>) {
 async fn new_for_schema_variant_with_node(ctx: &DalContext<'_, '_>, wid: WorkspaceId) {
     let (system, _system_node) = create_system_with_node(ctx, &wid).await;
 
-    let schema = create_schema(ctx, &SchemaKind::Concept).await;
+    let schema = create_schema(ctx, &SchemaKind::Configuration).await;
     let schema_variant = create_schema_variant(ctx, *schema.id()).await;
 
     let (component, node) =
@@ -32,11 +32,11 @@ async fn new_for_schema_variant_with_node(ctx: &DalContext<'_, '_>, wid: Workspa
             .await
             .expect("cannot create component");
 
+    // Test the find for node query.
     let found_component = Component::find_for_node(ctx, *node.id())
         .await
         .expect("could not find component for node")
         .expect("component for node not found");
-
     assert_eq!(
         *found_component.id(), // actual
         *component.id()        // expected
@@ -49,7 +49,7 @@ async fn new_for_schema_variant_with_node(ctx: &DalContext<'_, '_>, wid: Workspa
     assert!(resource.is_none());
 
     component
-        .add_to_system(ctx, system.id())
+        .add_to_system(ctx, *system.id())
         .await
         .expect("failed to add node to system");
 
@@ -82,14 +82,14 @@ async fn new_for_schema_variant_with_node(ctx: &DalContext<'_, '_>, wid: Workspa
 
 #[test]
 async fn schema_relationships(ctx: &DalContext<'_, '_>) {
-    let schema = create_schema(ctx, &SchemaKind::Implementation).await;
+    let schema = create_schema(ctx, &SchemaKind::Configuration).await;
     let schema_variant = create_schema_variant(ctx, *schema.id()).await;
     let _component = create_component_for_schema_variant(ctx, schema_variant.id()).await;
 }
 
 #[test]
 async fn qualification_view(ctx: &DalContext<'_, '_>) {
-    let schema = create_schema(ctx, &SchemaKind::Implementation).await;
+    let schema = create_schema(ctx, &SchemaKind::Configuration).await;
     let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
 
     let prop = Prop::new(ctx, "some_property", PropKind::String)
@@ -180,20 +180,19 @@ async fn list_qualifications_by_component_id(ctx: &DalContext<'_, '_>) {
 // Also brittle, same reason
 #[test]
 async fn get_resource_by_component_id(ctx: &DalContext<'_, '_>, wid: WorkspaceId) {
+    let (system, _system_node) = create_system_with_node(ctx, &wid).await;
+
     let schema = Schema::find_by_attr(ctx, "name", &"docker_image".to_string())
         .await
         .expect("cannot find docker image schema")
         .pop()
         .expect("no docker image schema found");
-
-    let (system, _system_node) = create_system_with_node(ctx, &wid).await;
-
     let (component, _node) = Component::new_for_schema_with_node(ctx, "chvrches", schema.id())
         .await
         .expect("cannot create ash component");
 
     component
-        .add_to_system(ctx, system.id())
+        .add_to_system(ctx, *system.id())
         .await
         .expect("failed to add component to system");
 

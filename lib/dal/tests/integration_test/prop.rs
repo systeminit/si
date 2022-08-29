@@ -20,7 +20,7 @@ async fn new(ctx: &DalContext<'_, '_>) {
 
 #[test]
 async fn schema_variants(ctx: &DalContext<'_, '_>) {
-    let schema = create_schema(ctx, &SchemaKind::Concrete).await;
+    let schema = create_schema(ctx, &SchemaKind::Configuration).await;
     let schema_variant = create_schema_variant(ctx, *schema.id()).await;
     let prop = create_prop(ctx).await;
 

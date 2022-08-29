@@ -5,11 +5,10 @@ use dal::{
     func::backend::validation::FuncBackendValidateStringValueArgs,
     generate_name,
     qualification_prototype::QualificationPrototypeContextField,
-    socket::{Socket, SocketArity, SocketEdgeKind, SocketKind},
     validation_prototype::{ValidationPrototype, ValidationPrototypeContext},
     Component, DalContext, Func, FuncBackendKind, FuncBackendResponseType, Prop, PropKind,
-    QualificationPrototype, Schema, SchemaError, SchemaKind, SchemaVariant, SchematicKind,
-    StandardModel, SystemId,
+    QualificationPrototype, Schema, SchemaError, SchemaKind, SchemaVariant, StandardModel,
+    SystemId,
 };
 
 #[test]
@@ -98,7 +97,7 @@ async fn associate_prototypes_with_func_and_objects(ctx: &DalContext<'_, '_>) {
     let mut schema = Schema::new(
         ctx,
         "dingue",
-        &SchemaKind::Concrete,
+        &SchemaKind::Configuration,
         &ComponentKind::Standard,
     )
     .await
@@ -153,21 +152,6 @@ async fn associate_prototypes_with_func_and_objects(ctx: &DalContext<'_, '_>) {
         .await
         .unwrap();
         variant.finalize(ctx).await.expect("finalize variant");
-
-        let includes_socket = Socket::new(
-            ctx,
-            "includes",
-            SocketKind::Provider,
-            &SocketEdgeKind::Includes,
-            &SocketArity::Many,
-            &SchematicKind::Component,
-        )
-        .await
-        .expect("create includes socket");
-        variant
-            .add_socket(ctx, includes_socket.id())
-            .await
-            .expect("add socket");
     }
 
     let (component_farfelu, _) = Component::new_for_schema_variant_with_node(

@@ -1,13 +1,14 @@
 use axum::extract::Query;
 use axum::Json;
 use dal::{
-    node::Node, node::NodeId, ComponentId, LabelEntry, LabelList, SchemaId, SchemaVariantId,
-    SchematicKind, StandardModel, Visibility, WorkspaceId,
+    node::Node, ComponentId, DiagramKind, LabelEntry, LabelList, SchemaId, SchemaVariantId,
+    StandardModel, Visibility, WorkspaceId,
 };
 use serde::{Deserialize, Serialize};
 
 use super::{ComponentError, ComponentResult};
 use crate::server::extract::{AccessBuilder, HandlerContext};
+use crate::service::schema::SchemaError;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -15,11 +16,6 @@ pub struct ListComponentsIdentificationRequest {
     pub workspace_id: WorkspaceId,
     #[serde(flatten)]
     pub visibility: Visibility,
-
-    // Shouldn't be set by the client
-    // It's a hack to allow for sdf tests to automatically infer
-    // The applicationNodeId header from the JSON payload
-    pub root_node_id: Option<NodeId>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -29,7 +25,7 @@ pub struct ListComponentsIdentificationItem {
     pub schema_variant_id: SchemaVariantId,
     pub schema_id: SchemaId,
     pub schema_name: String,
-    pub schematic_kind: SchematicKind,
+    pub diagram_kind: DiagramKind,
     pub schema_variant_name: String,
 }
 
@@ -64,6 +60,9 @@ pub async fn list_components_identification(
             .schema(&ctx)
             .await?
             .ok_or(ComponentError::SchemaNotFound)?;
+        let diagram_kind = schema
+            .diagram_kind()
+            .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
 
         let value = ListComponentsIdentificationItem {
             component_id: *component.id(),
@@ -71,7 +70,7 @@ pub async fn list_components_identification(
             schema_variant_name: schema_variant.name().to_owned(),
             schema_id: *schema.id(),
             schema_name: schema.name().to_owned(),
-            schematic_kind: (*schema.kind()).into(),
+            diagram_kind,
         };
         label_entries.push(LabelEntry {
             label: component

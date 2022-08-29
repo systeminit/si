@@ -81,7 +81,7 @@ async fn new(ctx: &DalContext<'_, '_>) {
 
 #[test]
 async fn list_for_context_with_a_hash(ctx: &DalContext<'_, '_>) {
-    let mut schema = create_schema(ctx, &SchemaKind::Concrete).await;
+    let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
 
     let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
@@ -368,7 +368,7 @@ async fn remove_least_specific(ctx: &DalContext<'_, '_>) {
 /// Test attribute prototype removal corresponding to a component-specific context.
 #[test]
 async fn remove_component_specific(ctx: &DalContext<'_, '_>) {
-    let mut schema = create_schema(ctx, &SchemaKind::Concrete).await;
+    let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
     let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))

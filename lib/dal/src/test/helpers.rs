@@ -5,39 +5,19 @@ use std::collections::HashMap;
 use crate::attribute::context::AttributeContextBuilder;
 use crate::func::binding::FuncBindingId;
 use crate::func::binding_return_value::FuncBindingReturnValueId;
+use crate::node::NodeId;
 use crate::{
-    node::NodeId, AttributeContext, AttributeReadContext, AttributeValue, AttributeValueId,
-    BillingAccount, BillingAccountId, BillingAccountSignup, ChangeSet, Component, ComponentId,
-    ComponentView, DalContext, DalContextBuilder, Func, FuncBinding, FuncId, Group, HistoryActor,
-    JwtSecretKey, Node, Prop, PropId, RequestContext, Schema, SchemaId, SchemaVariant,
-    SchemaVariantId, StandardModel, System, Transactions, User, Visibility, WorkspaceId,
+    AttributeContext, AttributeReadContext, AttributeValue, AttributeValueId, BillingAccount,
+    BillingAccountId, BillingAccountSignup, ChangeSet, Component, ComponentId, ComponentView,
+    DalContext, DalContextBuilder, Func, FuncBinding, FuncId, Group, HistoryActor, JwtSecretKey,
+    Node, Prop, PropId, RequestContext, Schema, SchemaId, SchemaVariant, SchemaVariantId,
+    StandardModel, System, Transactions, User, Visibility, WorkspaceId,
 };
 
 pub mod builtins;
 
 pub fn generate_fake_name() -> String {
     Generator::with_naming(Name::Numbered).next().unwrap()
-}
-
-pub async fn create_application(
-    builder: &DalContextBuilder,
-    txns: &Transactions<'_>,
-    nba: &BillingAccountSignup,
-) -> Node {
-    let request_context = RequestContext::new_workspace_head(
-        txns.pg(),
-        HistoryActor::SystemInit,
-        *nba.workspace.id(),
-        None,
-    )
-    .await
-    .expect("failed to create new workspace head request context");
-    let ctx = builder.build(request_context, txns);
-
-    let (_, node) = Component::new_application_with_node(&ctx, generate_fake_name())
-        .await
-        .expect("cannot create new application");
-    node
 }
 
 pub async fn billing_account_signup(
@@ -131,13 +111,11 @@ pub async fn create_ctx_for_new_change_set<'s, 't>(
     builder: &'s DalContextBuilder,
     txns: &'t Transactions<'t>,
     nba: &BillingAccountSignup,
-    application_node_id: NodeId,
 ) -> DalContext<'s, 't> {
     let request_context = RequestContext::new_workspace_head(
         txns.pg(),
         HistoryActor::SystemInit,
         *nba.workspace.id(),
-        Some(application_node_id),
     )
     .await
     .expect("failed to create request context");
@@ -162,10 +140,6 @@ pub async fn create_component_for_schema(
     let (component, _) = Component::new_for_schema_with_node(ctx, &name, schema_id)
         .await
         .expect("cannot create component");
-    component
-        .set_schema(ctx, schema_id)
-        .await
-        .expect("cannot set the schema for our component");
     component
 }
 
@@ -297,9 +271,9 @@ pub struct ComponentPayload {
     pub schema_id: SchemaId,
     pub schema_variant_id: SchemaVariantId,
     pub component_id: ComponentId,
+    pub node_id: NodeId,
     /// A map that uses [`Prop`](crate::Prop) "json pointer names" as keys and their ids as values.
     pub prop_map: HashMap<&'static str, PropId>,
-    pub node: Node,
     /// An [`AttributeReadContext`](crate::AttributeReadContext) that can be used for generating
     /// a [`ComponentView`](crate::ComponentView).
     pub base_attribute_read_context: AttributeReadContext,

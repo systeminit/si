@@ -1,5 +1,5 @@
 import { StandardModel } from "@/api/sdf/dal/standard_model";
-import { SchematicKind } from "@/api/sdf/dal/schematic";
+import { DiagramKind } from "@/api/sdf/dal/diagram";
 import { CodeView } from "@/api/sdf/dal/code_view";
 
 export interface Component extends StandardModel {
@@ -12,7 +12,7 @@ export interface ComponentIdentification {
   schemaVariantName: string;
   schemaId: number;
   schemaName: string;
-  schematicKind: SchematicKind;
+  diagramKind: DiagramKind;
 }
 
 export interface ComponentDiff {

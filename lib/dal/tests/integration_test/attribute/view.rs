@@ -10,7 +10,7 @@ use pretty_assertions_sorted::assert_eq_sorted;
 #[test]
 async fn schema_variant_specific(ctx: &DalContext<'_, '_>) {
     // "name": String
-    let mut schema = create_schema(ctx, &SchemaKind::Concrete).await;
+    let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
     let (schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))

@@ -14,7 +14,7 @@ CREATE TABLE sockets
     kind                        text                     NOT NULL,
     edge_kind                   text                     NOT NULL,
     arity                       text                     NOT NULL,
-    schematic_kind              text                     NOT NULL,
+    diagram_kind              text                     NOT NULL,
     required                    bool                     NOT NULL DEFAULT false,
     color                       bigint
 );
@@ -32,7 +32,7 @@ CREATE OR REPLACE FUNCTION socket_create_v1(
     this_kind text,
     this_edge_kind text,
     this_arity text,
-    this_schematic_kind text,
+    this_diagram_kind text,
     OUT object json) AS
 $$
 DECLARE
@@ -46,11 +46,11 @@ BEGIN
     INSERT INTO sockets (tenancy_universal, tenancy_billing_account_ids, tenancy_organization_ids,
                          tenancy_workspace_ids,
                          visibility_change_set_pk, visibility_deleted_at,
-                         name, kind, edge_kind, arity, schematic_kind)
+                         name, kind, edge_kind, arity, diagram_kind)
     VALUES (this_tenancy_record.tenancy_universal, this_tenancy_record.tenancy_billing_account_ids,
             this_tenancy_record.tenancy_organization_ids, this_tenancy_record.tenancy_workspace_ids,
             this_visibility_record.visibility_change_set_pk, this_visibility_record.visibility_deleted_at,
-            this_name, this_kind, this_edge_kind, this_arity, this_schematic_kind)
+            this_name, this_kind, this_edge_kind, this_arity, this_diagram_kind)
     RETURNING * INTO this_new_row;
 
     object := row_to_json(this_new_row);

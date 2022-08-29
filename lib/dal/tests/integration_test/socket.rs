@@ -1,7 +1,7 @@
 use dal::{
     socket::{Socket, SocketArity, SocketEdgeKind, SocketKind},
     test::helpers::generate_fake_name,
-    DalContext, SchematicKind,
+    DalContext, DiagramKind,
 };
 
 use crate::dal::test;
@@ -12,14 +12,14 @@ async fn new(ctx: &DalContext<'_, '_>) {
         ctx,
         "jane",
         SocketKind::Provider,
-        &SocketEdgeKind::Component,
+        &SocketEdgeKind::ConfigurationOutput,
         &SocketArity::Many,
-        &SchematicKind::Component,
+        &DiagramKind::Configuration,
     )
     .await
     .expect("cannot create schema ui menu");
     assert_eq!(socket.name(), "jane");
-    assert_eq!(socket.edge_kind(), &SocketEdgeKind::Component);
+    assert_eq!(socket.edge_kind(), &SocketEdgeKind::ConfigurationOutput);
     assert_eq!(socket.arity(), &SocketArity::Many);
 }
 
@@ -29,9 +29,9 @@ async fn set_required(ctx: &DalContext<'_, '_>) {
         ctx,
         generate_fake_name(),
         SocketKind::Provider,
-        &SocketEdgeKind::Configures,
+        &SocketEdgeKind::ConfigurationInput,
         &SocketArity::One,
-        &SchematicKind::Component,
+        &DiagramKind::Configuration,
     )
     .await
     .expect("unable to create socket");

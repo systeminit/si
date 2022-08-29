@@ -37,11 +37,9 @@ import { combineLatest, firstValueFrom } from "rxjs";
 import { untilUnmounted } from "vuse-rx";
 import SiNodeSprite from "@/molecules/SiNodeSprite.vue";
 import SiCollapsible from "@/organisms/SiCollapsible.vue";
-// import SiSearch from "@/molecules/SiSearch.vue";
-import { SchematicService } from "@/service/schematic";
-import SchematicDiagramService from "@/service/schematic-diagram";
-import { SchematicKind, SchematicNodeTemplate } from "@/api/sdf/dal/schematic";
-import { ApplicationService } from "@/service/application";
+import { DiagramService } from "@/service/diagram";
+import DiagramService2 from "@/service/diagram2";
+import { DiagramNodeTemplate } from "@/api/sdf/dal/diagram";
 import { Category, Item } from "@/api/sdf/dal/menu";
 
 export type SelectAssetEvent = {
@@ -56,7 +54,7 @@ const emit = defineEmits<{
 interface Asset {
   id: number;
   name: string;
-  template: SchematicNodeTemplate;
+  template: DiagramNodeTemplate;
   color: string;
 }
 
@@ -68,25 +66,16 @@ interface AssetCategory {
 const assetCategories = ref<AssetCategory[]>([]);
 
 // TODO: move this whole thing into diagram data service - also return the data without needing so many API calls
-// FIXME(nick,victor): temporary measure to populate the assetCategories dynamically based on the application.
-combineLatest([
-  ApplicationService.currentApplication(),
-  SchematicDiagramService.observables.schemaVariants$,
-])
+combineLatest([DiagramService2.observables.schemaVariants$])
   .pipe(untilUnmounted)
-  .subscribe(async ([application, schemaVariants]) => {
-    if (application === null || schemaVariants === null) {
+  .subscribe(async ([schemaVariants]) => {
+    if (schemaVariants === null) {
       assetCategories.value = [];
       return;
     }
 
     const nodeAddMenu = await firstValueFrom(
-      SchematicService.getNodeAddMenu({
-        menuFilter: {
-          rootComponentId: application.id,
-          schematicKind: SchematicKind.Component,
-        },
-      }),
+      DiagramService.getNodeAddMenu({ diagramKind: "configuration" }),
     );
 
     if (nodeAddMenu.error) {
@@ -110,7 +99,7 @@ combineLatest([
             const { name, schema_id: schemaId } = item as Item;
 
             const template = await firstValueFrom(
-              SchematicService.getNodeTemplate({ schemaId }),
+              DiagramService.getNodeTemplate({ schemaId }),
             );
 
             if (template.error) continue;

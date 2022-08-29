@@ -13,7 +13,7 @@ use pretty_assertions_sorted::assert_eq;
 
 #[test]
 async fn create_and_list_for_attribute_prototype(ctx: &DalContext<'_, '_>) {
-    let mut schema = create_schema(ctx, &SchemaKind::Concrete).await;
+    let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
     let (schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))

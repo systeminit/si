@@ -37,7 +37,6 @@ pub async fn login(
             // Empty tenancy means things can be written, but won't ever be read
             WriteTenancy::new_empty(),
             HistoryActor::SystemInit,
-            None,
         )
         .build_head(),
         &txns,

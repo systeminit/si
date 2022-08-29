@@ -5,8 +5,8 @@ use dal::test_harness::{
 };
 use dal::{
     socket::SocketArity, AttributeContext, AttributePrototypeArgument, AttributeReadContext,
-    AttributeValue, Component, ComponentView, DalContext, Edge, ExternalProvider, InternalProvider,
-    PropKind, SchemaKind, SchematicKind, StandardModel,
+    AttributeValue, Component, ComponentView, DalContext, DiagramKind, Edge, ExternalProvider,
+    InternalProvider, PropKind, SchemaKind, StandardModel,
 };
 use pretty_assertions_sorted::assert_eq_sorted;
 use std::collections::HashMap;
@@ -124,7 +124,7 @@ async fn inter_component_identity_update(ctx: &DalContext<'_, '_>) {
         identity_func_binding_id,
         identity_func_binding_return_value_id,
         SocketArity::Many,
-        SchematicKind::Component,
+        DiagramKind::Configuration,
     )
     .await
     .expect("could not create external provider");
@@ -156,7 +156,7 @@ async fn inter_component_identity_update(ctx: &DalContext<'_, '_>) {
         identity_func_binding_id,
         identity_func_binding_return_value_id,
         SocketArity::Many,
-        SchematicKind::Component,
+        DiagramKind::Configuration,
     )
     .await
     .expect("could not create explicit internal provider");
@@ -288,7 +288,7 @@ async fn inter_component_identity_update(ctx: &DalContext<'_, '_>) {
 
 // 38.805354552534816, -77.05091482877533
 async fn setup_esp(ctx: &DalContext<'_, '_>) -> ComponentPayload {
-    let mut schema = create_schema(ctx, &SchemaKind::Concrete).await;
+    let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
     let (schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
@@ -341,7 +341,7 @@ async fn setup_esp(ctx: &DalContext<'_, '_>) -> ComponentPayload {
         schema_variant_id: *schema_variant.id(),
         component_id: *component.id(),
         prop_map,
-        node,
+        node_id: *node.id(),
         base_attribute_read_context: AttributeReadContext {
             prop_id: None,
             schema_id: Some(*schema.id()),
@@ -375,7 +375,7 @@ async fn setup_esp(ctx: &DalContext<'_, '_>) -> ComponentPayload {
 
 // 38.82091849697006, -77.05236860190759
 async fn setup_swings(ctx: &DalContext<'_, '_>) -> ComponentPayload {
-    let mut schema = create_schema(ctx, &SchemaKind::Concrete).await;
+    let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
     let (schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
@@ -419,7 +419,7 @@ async fn setup_swings(ctx: &DalContext<'_, '_>) -> ComponentPayload {
         schema_variant_id: *schema_variant.id(),
         component_id: *component.id(),
         prop_map,
-        node,
+        node_id: *node.id(),
         base_attribute_read_context,
     }
 }
@@ -429,7 +429,7 @@ async fn with_deep_data_structure(ctx: &DalContext<'_, '_>) {
     let (identity_func_id, identity_func_binding_id, identity_func_binding_return_value_id) =
         setup_identity_func(ctx).await;
 
-    let mut source_schema = create_schema(ctx, &SchemaKind::Concrete).await;
+    let mut source_schema = create_schema(ctx, &SchemaKind::Configuration).await;
     let (source_schema_variant, source_root) =
         create_schema_variant_with_root(ctx, *source_schema.id()).await;
     source_schema
@@ -469,7 +469,7 @@ async fn with_deep_data_structure(ctx: &DalContext<'_, '_>) {
         identity_func_binding_id,
         identity_func_binding_return_value_id,
         SocketArity::Many,
-        SchematicKind::Component,
+        DiagramKind::Configuration,
     )
     .await
     .expect("cannot create source external provider");
@@ -488,7 +488,7 @@ async fn with_deep_data_structure(ctx: &DalContext<'_, '_>) {
     .await
     .expect("cannot create source external provider attribute prototype argument");
 
-    let mut destination_schema = create_schema(ctx, &SchemaKind::Concrete).await;
+    let mut destination_schema = create_schema(ctx, &SchemaKind::Configuration).await;
     let (destination_schema_variant, destination_root) =
         create_schema_variant_with_root(ctx, *destination_schema.id()).await;
     destination_schema
@@ -556,7 +556,7 @@ async fn with_deep_data_structure(ctx: &DalContext<'_, '_>) {
         identity_func_binding_id,
         identity_func_binding_return_value_id,
         SocketArity::One,
-        SchematicKind::Component,
+        DiagramKind::Configuration,
     )
     .await
     .expect("cannot create destination explicit internal provider");

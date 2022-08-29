@@ -20,6 +20,7 @@ pub mod code_view;
 pub mod component;
 pub mod context;
 pub mod cyclone_key_pair;
+pub mod diagram;
 pub mod edge;
 pub mod edit_field;
 pub mod func;
@@ -48,7 +49,6 @@ pub mod resource_prototype;
 pub mod resource_resolver;
 pub mod resource_scheduler;
 pub mod schema;
-pub mod schematic;
 pub mod secret;
 pub mod socket;
 pub mod standard_accessors;
@@ -106,6 +106,9 @@ pub use context::{
     TransactionsError, TransactionsStarter,
 };
 pub use cyclone_key_pair::CycloneKeyPair;
+pub use diagram::{
+    connection::Connection, connection::DiagramEdgeView, Diagram, DiagramError, DiagramKind,
+};
 pub use edge::{Edge, EdgeError, EdgeResult};
 pub use func::binding_return_value::FuncBindingReturnValue;
 pub use func::{
@@ -122,7 +125,7 @@ pub use jwt_key::{create_jwt_key_if_missing, JwtSecretKey};
 pub use key_pair::{KeyPair, KeyPairError, KeyPairResult, PublicKey};
 pub use label_list::{LabelEntry, LabelList, LabelListError};
 pub use node::{Node, NodeError, NodeKind, NodeTemplate, NodeView};
-pub use node_menu::{MenuFilter, NodeMenuError};
+pub use node_menu::NodeMenuError;
 pub use node_position::{
     NodePosition, NodePositionError, NodePositionId, NodePositionPk, NodePositionResult,
 };
@@ -149,9 +152,6 @@ pub use resource_resolver::{ResourceResolver, ResourceResolverError, ResourceRes
 pub use resource_scheduler::{ResourceScheduler, ResourceSchedulerError};
 pub use schema::{
     Schema, SchemaError, SchemaId, SchemaKind, SchemaPk, SchemaVariant, SchemaVariantId,
-};
-pub use schematic::{
-    connection::Connection, connection::SchematicEdgeView, Schematic, SchematicError, SchematicKind,
 };
 pub use secret::{
     DecryptedSecret, EncryptedSecret, Secret, SecretAlgorithm, SecretError, SecretId, SecretKind,

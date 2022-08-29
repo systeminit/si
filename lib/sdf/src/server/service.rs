@@ -1,11 +1,10 @@
-pub mod application;
 pub mod change_set;
 pub mod component;
+pub mod diagram;
 pub mod func;
 pub mod provider;
 pub mod qualification;
 pub mod schema;
-pub mod schematic;
 pub mod secret;
 pub mod session;
 pub mod signup;

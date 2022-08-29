@@ -1,4 +1,5 @@
 use crate::builtins::schema::find_child_prop_by_name;
+use crate::socket::{SocketEdgeKind, SocketKind};
 use crate::{
     builtins::schema::{
         create_schema, create_string_prop_with_default, kubernetes_metadata::create_metadata_prop,
@@ -7,11 +8,11 @@ use crate::{
     func::backend::js_code_generation::FuncBackendJsCodeGenerationArgs,
     qualification_prototype::QualificationPrototypeContext,
     schema::{SchemaVariant, UiMenu},
-    socket::{Socket, SocketArity, SocketEdgeKind, SocketKind},
+    socket::SocketArity,
     AttributePrototypeArgument, AttributeReadContext, AttributeValue, BuiltinsError,
-    BuiltinsResult, CodeGenerationPrototype, CodeLanguage, DalContext, Func, FuncError,
-    InternalProvider, Prop, PropId, PropKind, QualificationPrototype, Schema, SchemaError,
-    SchemaKind, SchematicKind, StandardModel,
+    BuiltinsResult, CodeGenerationPrototype, CodeLanguage, DalContext, DiagramKind, Func,
+    FuncError, InternalProvider, Prop, PropId, PropKind, QualificationPrototype, SchemaError,
+    SchemaKind, Socket, StandardModel,
 };
 
 use super::{
@@ -21,7 +22,7 @@ use super::{
 
 pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     let name = "kubernetes_deployment".to_string();
-    let mut schema = match create_schema(ctx, &name, &SchemaKind::Concrete).await? {
+    let mut schema = match create_schema(ctx, &name, &SchemaKind::Configuration).await? {
         Some(schema) => schema,
         None => return Ok(()),
     };
@@ -144,7 +145,7 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> BuiltinsResult<(
             identity_func_binding_id,
             identity_func_binding_return_value_id,
             SocketArity::Many,
-            SchematicKind::Component,
+            DiagramKind::Configuration,
         )
         .await?;
     input_socket.set_color(ctx, Some(0xd61e8c)).await?;
@@ -159,37 +160,31 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> BuiltinsResult<(
             identity_func_binding_id,
             identity_func_binding_return_value_id,
             SocketArity::Many,
-            SchematicKind::Component,
+            DiagramKind::Configuration,
         )
         .await?;
     input_socket.set_color(ctx, Some(0x85c9a3)).await?;
 
-    let includes_socket = Socket::new(
+    let system_socket = Socket::new(
         ctx,
-        "includes",
+        "system",
         SocketKind::Provider,
-        &SocketEdgeKind::Includes,
+        &SocketEdgeKind::System,
         &SocketArity::Many,
-        &SchematicKind::Component,
+        &DiagramKind::Configuration,
     )
     .await?;
-    variant.add_socket(ctx, includes_socket.id()).await?;
+    variant.add_socket(ctx, system_socket.id()).await?;
 
     // TODO: abstract this boilerplate away
-    let mut ui_menu = UiMenu::new(ctx, &(*schema.kind()).into()).await?;
+    let diagram_kind = schema
+        .diagram_kind()
+        .expect("no diagram kind for schema kind");
+    let mut ui_menu = UiMenu::new(ctx, &diagram_kind).await?;
     ui_menu.set_name(ctx, Some("deployment".to_owned())).await?;
 
     ui_menu.set_category(ctx, Some("kubernetes")).await?;
     ui_menu.set_schema(ctx, schema.id()).await?;
-
-    let application_name = "application".to_string();
-    let application_schema_results = Schema::find_by_attr(ctx, "name", &application_name).await?;
-    let application_schema = application_schema_results
-        .first()
-        .ok_or(SchemaError::NotFoundByName(application_name))?;
-    ui_menu
-        .add_root_schematic(ctx, application_schema.id())
-        .await?;
 
     variant.finalize(ctx).await?;
 

@@ -9,9 +9,9 @@ use crate::schema::variant::SchemaVariantError;
 use crate::socket::{Socket, SocketArity, SocketEdgeKind, SocketError, SocketId, SocketKind};
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_accessor_ro,
-    AttributePrototype, AttributePrototypeError, ComponentId, FuncId, HistoryEventError,
-    InternalProviderId, SchemaVariant, SchematicKind, StandardModel, StandardModelError, Timestamp,
-    Visibility, WriteTenancy,
+    AttributePrototype, AttributePrototypeError, ComponentId, DiagramKind, FuncId,
+    HistoryEventError, InternalProviderId, SchemaVariant, StandardModel, StandardModelError,
+    Timestamp, Visibility, WriteTenancy,
 };
 use crate::{
     AttributeContext, AttributeContextBuilderError, AttributeContextError, AttributePrototypeId,
@@ -112,7 +112,7 @@ impl ExternalProvider {
         func_binding_id: FuncBindingId,
         func_binding_return_value_id: FuncBindingReturnValueId,
         arity: SocketArity,
-        schematic_kind: SchematicKind,
+        diagram_kind: DiagramKind,
     ) -> ExternalProviderResult<(Self, Socket)> {
         let name = name.as_ref();
         let row = ctx
@@ -152,9 +152,9 @@ impl ExternalProvider {
             ctx,
             name,
             SocketKind::Provider,
-            &SocketEdgeKind::Output,
+            &SocketEdgeKind::ConfigurationOutput,
             &arity,
-            &schematic_kind,
+            &diagram_kind,
         )
         .await?;
         socket

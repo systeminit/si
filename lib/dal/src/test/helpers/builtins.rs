@@ -148,7 +148,7 @@ impl BuiltinsHarness {
             schema_variant_id,
             component_id: *component.id(),
             prop_map,
-            node,
+            node_id: *node.id(),
             base_attribute_read_context: AttributeReadContext {
                 prop_id: None,
                 schema_id: Some(schema_id),

@@ -4,7 +4,7 @@ use crate::dal::test;
 use crate::service_tests::api_request_auth_query;
 use crate::test_setup;
 use dal::test_harness::{
-    create_component_for_schema_variant, create_schema, create_schema_variant, generate_fake_name,
+    create_component_for_schema_variant, create_schema, create_schema_variant,
 };
 use dal::{Component, SchemaKind, StandardModel, Visibility};
 use sdf::service::component::get_components_metadata::{
@@ -34,12 +34,7 @@ async fn list_components_identification() {
         _faktory,
     );
 
-    let (_, application) = Component::new_application_with_node(&dal_ctx, generate_fake_name())
-        .await
-        .expect("Unable to create application");
-    let dal_ctx = dal_ctx.clone_with_new_application_node_id(Some(*application.id()));
-
-    let schema = create_schema(&dal_ctx, &SchemaKind::Concrete).await;
+    let schema = create_schema(&dal_ctx, &SchemaKind::Configuration).await;
     let schema_variant = create_schema_variant(&dal_ctx, *schema.id()).await;
     schema_variant
         .finalize(&dal_ctx)
@@ -55,11 +50,6 @@ async fn list_components_identification() {
                 .expect("cannot create new component");
     }
 
-    let (_, application2) = Component::new_application_with_node(&dal_ctx, generate_fake_name())
-        .await
-        .expect("Unable to create application");
-    let dal_ctx = dal_ctx.clone_with_new_application_node_id(Some(*application2.id()));
-
     let component_name3 = "bobão";
     let component_name4 = "comédia";
     for name in &[component_name3, component_name4] {
@@ -74,7 +64,6 @@ async fn list_components_identification() {
 
     let request = ListComponentsIdentificationRequest {
         visibility,
-        root_node_id: Some(*application.id()),
         workspace_id: *nba.workspace.id(),
     };
     let response: ListComponentsIdentificationResponse = api_request_auth_query(
@@ -106,7 +95,6 @@ async fn list_components_identification() {
 
     let request = ListComponentsIdentificationRequest {
         visibility,
-        root_node_id: Some(*application2.id()),
         workspace_id: *nba.workspace.id(),
     };
     let response: ListComponentsIdentificationResponse = api_request_auth_query(
@@ -158,14 +146,9 @@ async fn get_components_metadata() {
     );
     let visibility = Visibility::new_head(false);
 
-    let schema = create_schema(&dal_ctx, &SchemaKind::Concrete).await;
+    let schema = create_schema(&dal_ctx, &SchemaKind::Configuration).await;
 
     let schema_variant = create_schema_variant(&dal_ctx, *schema.id()).await;
-
-    let (_, application) = Component::new_application_with_node(&dal_ctx, generate_fake_name())
-        .await
-        .expect("Unable to create application");
-    let dal_ctx = dal_ctx.clone_with_new_application_node_id(Some(*application.id()));
 
     let _component = create_component_for_schema_variant(&dal_ctx, schema_variant.id()).await;
     dal_txns.commit().await.expect("cannot commit transaction");
@@ -174,7 +157,6 @@ async fn get_components_metadata() {
         visibility,
         workspace_id: *nba.workspace.id(),
         system_id: None,
-        root_node_id: Some(*application.id()),
     };
     let response: GetComponentsMetadataResponse = api_request_auth_query(
         app,
@@ -184,6 +166,5 @@ async fn get_components_metadata() {
     )
     .await;
 
-    assert_eq!(response.data[0].schema_name, "application");
-    assert_eq!(response.data[1].schema_name, schema.name());
+    assert_eq!(response.data[0].schema_name, schema.name());
 }

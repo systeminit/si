@@ -6,9 +6,9 @@ use thiserror::Error;
 
 use crate::{
     impl_standard_model, label_list::ToLabelList, pk, standard_model, standard_model_accessor,
-    standard_model_belongs_to, standard_model_many_to_many, DalContext, ExternalProvider,
-    ExternalProviderId, HistoryEventError, InternalProvider, InternalProviderId, SchemaVariant,
-    SchemaVariantId, SchematicKind, StandardModel, StandardModelError, Timestamp, Visibility,
+    standard_model_belongs_to, standard_model_many_to_many, DalContext, DiagramKind,
+    ExternalProvider, ExternalProviderId, HistoryEventError, InternalProvider, InternalProviderId,
+    SchemaVariant, SchemaVariantId, StandardModel, StandardModelError, Timestamp, Visibility,
     WriteTenancy,
 };
 
@@ -29,6 +29,7 @@ pub type SocketResult<T> = Result<T, SocketError>;
 pk!(SocketPk);
 pk!(SocketId);
 
+/// Dictates the kind of behavior possible for a [`Socket`](Socket).
 #[derive(
     AsRefStr,
     Clone,
@@ -45,6 +46,7 @@ pk!(SocketId);
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]
 pub enum SocketKind {
+    /// Indicates that this [`Socket`](Socket) was created alongside a [`provider`](crate::provider).
     Provider,
 }
 
@@ -60,21 +62,29 @@ pub enum SocketArity {
 
 impl ToLabelList for SocketArity {}
 
+/// Dictates the kind of [`Edges`](crate::Edge) that can be created for a [`Socket`](Socket).
 #[derive(
     AsRefStr, Clone, Debug, Deserialize, Display, EnumIter, EnumString, Eq, PartialEq, Serialize,
 )]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]
 pub enum SocketEdgeKind {
-    Component,
-    Configures,
-    Deployment,
-    Includes,
-    Output,
+    /// The kind used for [`Sockets`](crate::Socket) created during
+    /// [`InternalProvider::new_explicit_with_socket()`].
+    ConfigurationInput,
+    /// The kind used for [`Sockets`](crate::Socket) created during
+    /// [`ExternalProvider::new_with_socket()`].
+    ConfigurationOutput,
+    /// The kind used for [`Sockets`](crate::Socket) on configuration
+    /// [`SchemaVariant`](crate::SchemaVariant) for including configurations in a
+    /// [`System`](crate::System).
+    System,
 }
 
 impl ToLabelList for SocketEdgeKind {}
 
+/// The mechanism for setting relationships between [`SchemaVariants`](crate::SchemaVariant) or
+/// instantiations of the same [`SchemaVariant`](crate::SchemaVariant).
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct Socket {
     pk: SocketPk,
@@ -82,7 +92,7 @@ pub struct Socket {
     name: String,
     kind: SocketKind,
     edge_kind: SocketEdgeKind,
-    schematic_kind: SchematicKind,
+    diagram_kind: DiagramKind,
     color: Option<i64>,
     arity: SocketArity,
     required: bool,
@@ -111,7 +121,7 @@ impl Socket {
         kind: SocketKind,
         edge_kind: &SocketEdgeKind,
         arity: &SocketArity,
-        schematic_kind: &SchematicKind,
+        diagram_kind: &DiagramKind,
     ) -> SocketResult<Self> {
         let name = name.as_ref();
         let row = ctx
@@ -126,7 +136,7 @@ impl Socket {
                     &kind.as_ref(),
                     &edge_kind.as_ref(),
                     &arity.as_ref(),
-                    &schematic_kind.as_ref(),
+                    &diagram_kind.as_ref(),
                 ],
             )
             .await?;
@@ -139,7 +149,7 @@ impl Socket {
     standard_model_accessor!(kind, Enum(SocketKind), SocketResult);
     standard_model_accessor!(edge_kind, Enum(SocketEdgeKind), SocketResult);
     standard_model_accessor!(arity, Enum(SocketArity), SocketResult);
-    standard_model_accessor!(schematic_kind, Enum(SchematicKind), SocketResult);
+    standard_model_accessor!(diagram_kind, Enum(DiagramKind), SocketResult);
     standard_model_accessor!(required, bool, SocketResult);
     standard_model_accessor!(color, OptionBigInt<i64>, SocketResult);
 
