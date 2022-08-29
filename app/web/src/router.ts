@@ -60,9 +60,10 @@ const routes: RouteRecordRaw[] = [
                 component: WorkspaceCompose,
               },
               {
-                path: "l",
+                path: "l/:funcId?",
                 name: "workspace-lab",
                 component: WorkspaceLab,
+                props: true,
               },
               {
                 path: "v",
