@@ -201,12 +201,20 @@ BEGIN
         END;
     RAISE DEBUG 'prop_check: %', prop_check;
 
-    internal_provider_check :=
-            (check_context_record.attribute_context_internal_provider_id = this_internal_provider_id);
+    internal_provider_check := CASE
+                                   WHEN check_context_record.attribute_context_internal_provider_id IS NULL THEN
+                                       TRUE
+                                   ELSE
+                                       check_context_record.attribute_context_internal_provider_id = this_internal_provider_id
+                               END;
     RAISE DEBUG 'internal_provider_check: %', internal_provider_check;
 
-    external_provider_check :=
-            (check_context_record.attribute_context_external_provider_id = this_external_provider_id);
+    external_provider_check := CASE
+                                   WHEN check_context_record.attribute_context_external_provider_id IS NULL THEN
+                                       TRUE
+                                   ELSE
+                                       check_context_record.attribute_context_external_provider_id = this_external_provider_id
+                               END;
     RAISE DEBUG 'external_provider_check: %', external_provider_check;
 
     least_specific_level_check := prop_check OR internal_provider_check OR external_provider_check;
