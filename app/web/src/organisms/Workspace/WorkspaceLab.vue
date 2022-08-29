@@ -10,7 +10,7 @@
       <ChangeSetPanel class="border-b-2 dark:border-neutral-500 mb-2" />
       <FuncPicker
         :func-list="funcList"
-        :selected-func-id="selectedFunc.id"
+        :selected-func-id="selectedFuncId"
         @selected-func="selectFunc"
         @create-func="createFunc"
       />
@@ -19,8 +19,8 @@
       class="grow overflow-x-hidden overflow-y-hidden dark:bg-neutral-800 dark:text-white text-lg font-semi-bold px-2 pt-2 flex flex-col"
     >
       <FuncEditorTabs
-        v-if="selectedFunc.id > 0"
-        :selected-func-id="selectedFunc.id"
+        v-if="selectedFuncId > 0"
+        :selected-func-id="selectedFuncId"
         @selected-func="selectFunc"
       />
       <div
@@ -39,13 +39,14 @@
       :min-resize="200"
     >
       <!-- if hiding is added later, condition is selectedFuncId < 1 -->
-      <FuncDetails :func-id="selectedFunc.id" />
+      <FuncDetails :func-id="selectedFuncId" />
     </SiPanel>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { ref } from "vue";
+import { ref, computed } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { refFrom } from "vuse-rx/src";
 import { bufferTime } from "rxjs/operators";
 import SiPanel from "@/atoms/SiPanel.vue";
@@ -64,9 +65,25 @@ import { visibility$ } from "@/observable/visibility";
 import { saveFuncToBackend$ } from "@/observable/func";
 import { clearFuncs } from "../FuncEditor/func_state";
 
+const props = defineProps<{ funcId?: string }>();
+
+const selectedFuncId = computed(() => {
+  const funcId = parseInt(props.funcId ?? "");
+  if (Number.isNaN(funcId)) {
+    return -1;
+  }
+  return funcId;
+});
+
+const router = useRouter();
+const route = useRoute();
+
+const routeToFunction = (funcId?: number) =>
+  router.push(`/w/${route.params.workspaceId}/l/${funcId ?? ""}`);
+
 const selectedFunc = ref<ListedFuncView>(nullListFunc);
 const selectFunc = (func: ListedFuncView) => {
-  selectedFunc.value = func;
+  routeToFunction(func.id);
 };
 
 const funcList = refFrom<ListFuncsResponse>(FuncService.listFuncs(), {
@@ -90,7 +107,7 @@ const createFunc = async () => {
 
 visibility$.subscribe(() => {
   clearFuncs();
-  selectFunc(nullListFunc);
+  routeToFunction();
 });
 
 saveFuncToBackend$
