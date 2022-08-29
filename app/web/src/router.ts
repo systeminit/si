@@ -8,39 +8,28 @@ import {
 import _ from "lodash";
 import { config } from "@/config";
 import { SessionService } from "@/service/session";
-import NotFoundPage from "@/pages/NotFound.vue";
-import Authenticate from "@/pages/Authenticate.vue";
-import Login from "@/templates/Login.vue";
-import Signup from "@/templates/Signup.vue";
-import Home from "@/pages/Home.vue";
-import WorkspaceSingle from "@/templates/WorkspaceSingle.vue";
-import WorkspaceMultiple from "@/templates/WorkspaceMultiple.vue";
-import WorkspaceRuntime from "@/organisms/Workspace/WorkspaceRuntime.vue";
-import WorkspaceCompose from "@/organisms/Workspace/WorkspaceCompose.vue";
-import WorkspaceLab from "@/organisms/Workspace/WorkspaceLab.vue";
-import DiagramDemoPage from "@/organisms/GenericDiagram/DiagramDemoPage.vue";
 
 const routes: RouteRecordRaw[] = [
   {
     path: "/diagram",
     name: "diagram",
-    component: DiagramDemoPage,
+    component: () => import("@/organisms/GenericDiagram/DiagramDemoPage.vue"),
   },
   {
     path: "/",
     name: "home",
-    component: Home,
+    component: () => import("@/pages/Home.vue"),
     children: [
       {
         path: "w",
         name: "workspace-multiple",
-        component: WorkspaceMultiple,
+        component: () => import("@/templates/WorkspaceMultiple.vue"),
         redirect: { name: "home" },
         children: [
           {
             name: "workspace-single",
             path: ":workspaceId",
-            component: WorkspaceSingle,
+            component: () => import("@/templates/WorkspaceSingle.vue"),
             redirect: { name: "workspace-compose" },
             props: (route) => {
               let workspaceId;
@@ -57,23 +46,27 @@ const routes: RouteRecordRaw[] = [
               {
                 path: "c",
                 name: "workspace-compose",
-                component: WorkspaceCompose,
+                component: () =>
+                  import("@/organisms/Workspace/WorkspaceCompose.vue"),
               },
               {
                 path: "l/:funcId?",
                 name: "workspace-lab",
-                component: WorkspaceLab,
                 props: true,
+                component: () =>
+                  import("@/organisms/Workspace/WorkspaceLab.vue"),
               },
               {
                 path: "v",
                 name: "workspace-view",
-                component: WorkspaceCompose,
+                component: () =>
+                  import("@/organisms/Workspace/WorkspaceCompose.vue"),
               },
               {
                 path: "r",
                 name: "workspace-runtime",
-                component: WorkspaceRuntime,
+                component: () =>
+                  import("@/organisms/Workspace/WorkspaceRuntime.vue"),
               },
             ],
           },
@@ -84,26 +77,26 @@ const routes: RouteRecordRaw[] = [
   {
     path: "/authenticate",
     name: "authenticate",
-    component: Authenticate,
+    component: () => import("@/pages/Authenticate.vue"),
     // redirect: { name: "login" },
     redirect: { name: "signup" },
     children: [
       {
         path: "login",
         name: "login",
-        component: Login,
+        component: () => import("@/templates/Login.vue"),
       },
       {
         path: "signup",
         name: "signup",
-        component: Signup,
+        component: () => import("@/templates/Signup.vue"),
       },
     ],
   },
   {
     path: "/404",
     name: "notFound",
-    component: NotFoundPage,
+    component: () => import("@/pages/NotFound.vue"),
   },
   {
     path: "/:catchAll(.*)",

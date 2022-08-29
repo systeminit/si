@@ -1,4 +1,4 @@
-import ts, { DiagnosticMessageChain, System } from "typescript";
+import { DiagnosticMessageChain, System } from "typescript";
 import {
   createSystem,
   createDefaultMapFromCDN,
@@ -17,6 +17,9 @@ let fsMap: Map<string, string>;
 let vfsSystem: System;
 
 export const createLintSource = async (): Promise<AsyncLintSource> => {
+  // we lazy load typescript to help speed things up
+  const ts = await import("typescript");
+
   if (!fsMap && !vfsSystem) {
     fsMap = await createDefaultMapFromCDN(
       { target: ts.ScriptTarget.ES2015 },

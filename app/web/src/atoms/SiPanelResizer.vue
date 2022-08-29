@@ -16,7 +16,7 @@
 
 <script setup lang="ts">
 import { DotsVerticalIcon, DotsHorizontalIcon } from "@heroicons/vue/solid";
-import { computed, defineEmits, onBeforeUnmount, ref } from "vue";
+import { computed, onBeforeUnmount, ref } from "vue";
 
 const props = withDefaults(
   defineProps<{

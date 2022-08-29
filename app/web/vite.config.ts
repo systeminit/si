@@ -1,9 +1,10 @@
 import path from "path";
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
-import eslintPlugin from "vite-plugin-eslint";
+import checkerPlugin from "vite-plugin-checker";
 import svgLoaderPlugin from "vite-svg-loader";
 import IconsPlugin from "unplugin-icons/vite";
+import packageJson from "./package.json";
 
 import postcss from "./postcss.config.mjs";
 
@@ -13,7 +14,12 @@ export default defineConfig({
     vue(),
     svgLoaderPlugin(),
     IconsPlugin({ compiler: "vue3" }),
-    eslintPlugin(),
+    checkerPlugin({
+      vueTsc: true,
+      eslint: {
+        lintCommand: packageJson.scripts.lint,
+      },
+    }),
   ],
   css: {
     postcss,
