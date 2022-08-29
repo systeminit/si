@@ -140,6 +140,24 @@ BEGIN
 END;
 $$ LANGUAGE PLPGSQL IMMUTABLE;
 
+CREATE OR REPLACE FUNCTION in_attribute_context_v1(check_context jsonb,
+                                                   reference record,
+                                                   OUT result bool
+)
+AS
+$$
+BEGIN
+    result := in_attribute_context_v1(check_context,
+                                      reference.attribute_context_prop_id,
+                                      reference.attribute_context_internal_provider_id,
+                                      reference.attribute_context_external_provider_id,
+                                      reference.attribute_context_schema_id,
+                                      reference.attribute_context_schema_variant_id,
+                                      reference.attribute_context_component_id,
+                                      reference.attribute_context_system_id);
+END;
+$$ LANGUAGE PLPGSQL IMMUTABLE;
+
 CREATE OR REPLACE FUNCTION exact_attribute_context_v1(check_context jsonb,
                                                       this_prop_id bigint,
                                                       this_internal_provider_id bigint,
@@ -183,12 +201,20 @@ BEGIN
         END;
     RAISE DEBUG 'prop_check: %', prop_check;
 
-    internal_provider_check :=
-            (check_context_record.attribute_context_internal_provider_id = this_internal_provider_id);
+    internal_provider_check := CASE
+                                   WHEN check_context_record.attribute_context_internal_provider_id IS NULL THEN
+                                       TRUE
+                                   ELSE
+                                       check_context_record.attribute_context_internal_provider_id = this_internal_provider_id
+                               END;
     RAISE DEBUG 'internal_provider_check: %', internal_provider_check;
 
-    external_provider_check :=
-            (check_context_record.attribute_context_external_provider_id = this_external_provider_id);
+    external_provider_check := CASE
+                                   WHEN check_context_record.attribute_context_external_provider_id IS NULL THEN
+                                       TRUE
+                                   ELSE
+                                       check_context_record.attribute_context_external_provider_id = this_external_provider_id
+                               END;
     RAISE DEBUG 'external_provider_check: %', external_provider_check;
 
     least_specific_level_check := prop_check OR internal_provider_check OR external_provider_check;
@@ -208,6 +234,24 @@ BEGIN
     result :=
             (least_specific_level_check AND schema_check AND schema_variant_check AND component_check AND system_check);
     RAISE DEBUG 'exact_attribute_context check result: %', result;
+END;
+$$ LANGUAGE PLPGSQL IMMUTABLE;
+
+CREATE OR REPLACE FUNCTION exact_attribute_context_v1(check_context jsonb,
+                                                      reference record,
+                                                      OUT result bool
+)
+AS
+$$
+BEGIN
+    result := exact_attribute_context_v1(check_context,
+                                         reference.attribute_context_prop_id,
+                                         reference.attribute_context_internal_provider_id,
+                                         reference.attribute_context_external_provider_id,
+                                         reference.attribute_context_schema_id,
+                                         reference.attribute_context_schema_variant_id,
+                                         reference.attribute_context_component_id,
+                                         reference.attribute_context_system_id);
 END;
 $$ LANGUAGE PLPGSQL IMMUTABLE;
 
@@ -313,6 +357,25 @@ BEGIN
     RAISE DEBUG 'in_attribute_context check result: %', result;
 END;
 $$ LANGUAGE PLPGSQL IMMUTABLE;
+
+CREATE OR REPLACE FUNCTION exact_attribute_read_context_v1(check_context jsonb,
+                                                           reference record,
+                                                           OUT result bool
+)
+AS
+$$
+BEGIN
+    result := exact_attribute_read_context_v1(check_context,
+                                              reference.attribute_context_prop_id,
+                                              reference.attribute_context_internal_provider_id,
+                                              reference.attribute_context_external_provider_id,
+                                              reference.attribute_context_schema_id,
+                                              reference.attribute_context_schema_variant_id,
+                                              reference.attribute_context_component_id,
+                                              reference.attribute_context_system_id);
+END;
+$$ LANGUAGE PLPGSQL IMMUTABLE;
+
 
 CREATE OR REPLACE FUNCTION exact_or_more_attribute_read_context_v1(check_context jsonb,
                                                                    this_prop_id bigint,
@@ -465,5 +528,23 @@ BEGIN
                       FALSE
                   END;
     RAISE DEBUG 'exact_or_more_attribute_read_context check result: %', result;
+END;
+$$ LANGUAGE PLPGSQL IMMUTABLE;
+
+CREATE OR REPLACE FUNCTION exact_or_more_attribute_read_context_v1(check_context jsonb,
+                                                                   reference record,
+                                                                   OUT result bool
+)
+AS
+$$
+BEGIN
+    result := exact_or_more_attribute_read_context_v1(check_context,
+                                                      reference.attribute_context_prop_id,
+                                                      reference.attribute_context_internal_provider_id,
+                                                      reference.attribute_context_external_provider_id,
+                                                      reference.attribute_context_schema_id,
+                                                      reference.attribute_context_schema_variant_id,
+                                                      reference.attribute_context_component_id,
+                                                      reference.attribute_context_system_id);
 END;
 $$ LANGUAGE PLPGSQL IMMUTABLE;
