@@ -9,7 +9,7 @@
     />
     <div ref="handleRef" :class="handleClasses">
       <Icon
-        :name="isVertical ? 'dots-vertical' : 'dots-horizontal'"
+        :name="isVertical ? 'dots-horizontal' : 'dots-vertical'"
         :class="iconClasses"
       />
     </div>
