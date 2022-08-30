@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col w-full overflow-hidden">
+  <div class="flex flex-col w-full max-h-full overflow-hidden">
     <div
       class="flex flex-row items-center justify-between h-10 py-2 text-base align-middle"
     >
@@ -20,7 +20,7 @@
     <div class="w-full h-full overflow-auto">
       <div
         ref="editorMountRef"
-        class="w-full h-full"
+        class="w-full h-full overflow-auto"
         @keyup.stop
         @keydown.stop
       ></div>
@@ -102,6 +102,7 @@ const editorExtensionList = computed<Extension[]>(() => {
     keymap.of([indentWithTab]),
     StreamLanguage.define(CODE_PARSER_LOOKUP[props.codeLanguage]),
     readOnly.of(EditorState.readOnly.of(true)),
+    EditorView.lineWrapping,
   ];
 });
 
