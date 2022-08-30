@@ -45,7 +45,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, computed } from "vue";
+import { computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { refFrom } from "vuse-rx/src";
 import { bufferTime } from "rxjs/operators";
@@ -56,11 +56,7 @@ import FuncEditorTabs from "@/organisms/FuncEditor/FuncEditorTabs.vue";
 import { FuncService } from "@/service/func";
 import { SaveFuncRequest } from "@/service/func/save_func";
 import FuncDetails from "@/organisms/FuncEditor/FuncDetails.vue";
-import {
-  ListedFuncView,
-  ListFuncsResponse,
-  nullListFunc,
-} from "@/service/func/list_funcs";
+import { ListedFuncView, ListFuncsResponse } from "@/service/func/list_funcs";
 import { visibility$ } from "@/observable/visibility";
 import { saveFuncToBackend$ } from "@/observable/func";
 import { clearFuncs } from "../FuncEditor/func_state";
@@ -81,7 +77,6 @@ const route = useRoute();
 const routeToFunction = (funcId?: number) =>
   router.push(`/w/${route.params.workspaceId}/l/${funcId ?? ""}`);
 
-const selectedFunc = ref<ListedFuncView>(nullListFunc);
 const selectFunc = (func: ListedFuncView) => {
   routeToFunction(func.id);
 };

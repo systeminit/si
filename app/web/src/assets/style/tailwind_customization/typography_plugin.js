@@ -1,4 +1,4 @@
-import plugin from "tailwindcss/plugin";
+const plugin = require("tailwindcss/plugin");
 
 const siTypographyTailwindPlugin = plugin(({ addUtilities }) => {
   addUtilities({
@@ -279,4 +279,4 @@ const siTypographyTailwindPlugin = plugin(({ addUtilities }) => {
   });
 });
 
-export default siTypographyTailwindPlugin;
+module.exports = siTypographyTailwindPlugin;
