@@ -3,7 +3,7 @@
     <SiPanel
       remember-size-key="workflow-left"
       side="left"
-      size-classes="w-96 pb-12"
+      size-classes="w-96 flex-none"
     >
       <WorkflowPicker
         :list="list"
@@ -37,7 +37,7 @@
     <SiPanel
       remember-size-key="workflow-right"
       side="right"
-      size-classes="w-80"
+      size-classes="w-96 flex-none"
     >
       <div class="p-2 w-full h-full overflow-hidden">
         <CodeViewer v-if="logs" :code="logs.join('\n')">
