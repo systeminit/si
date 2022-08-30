@@ -1,4 +1,4 @@
-use dal::test::helpers::builtins::BuiltinsHarness;
+use dal::test::helpers::builtins::{Builtin, BuiltinsHarness};
 use dal::{DalContext, Edge, ExternalProvider, InternalProvider, StandardModel};
 use pretty_assertions_sorted::assert_eq_sorted;
 
@@ -9,8 +9,12 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(
     ctx: &DalContext<'_, '_>,
 ) {
     let mut harness = BuiltinsHarness::new();
-    let tail_namespace_payload = harness.create_kubernetes_namespace(ctx, "tail").await;
-    let head_deployment_payload = harness.create_kubernetes_deployment(ctx, "head").await;
+    let tail_namespace_payload = harness
+        .create_component(ctx, "tail", Builtin::KubernetesNamespace)
+        .await;
+    let head_deployment_payload = harness
+        .create_component(ctx, "head", Builtin::KubernetesDeployment)
+        .await;
 
     // Initialize the tail name field.
     tail_namespace_payload

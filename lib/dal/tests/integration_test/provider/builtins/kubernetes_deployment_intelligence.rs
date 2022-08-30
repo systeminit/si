@@ -1,4 +1,4 @@
-use dal::test::helpers::builtins::BuiltinsHarness;
+use dal::test::helpers::builtins::{Builtin, BuiltinsHarness};
 use dal::{DalContext, Edge, ExternalProvider, InternalProvider, StandardModel};
 use pretty_assertions_sorted::assert_eq_sorted;
 
@@ -9,13 +9,21 @@ use crate::dal::test;
 #[test]
 async fn kubernetes_deployment_intelligence(ctx: &DalContext<'_, '_>) {
     let mut harness = BuiltinsHarness::new();
-    let tail_fedora_payload = harness.create_docker_image(ctx, "fedora").await;
-    let tail_alpine_payload = harness.create_docker_image(ctx, "alpine").await;
-    let tail_namespace_payload = harness.create_kubernetes_namespace(ctx, "namespace").await;
-    let head_deployment_spongebob_payload =
-        harness.create_kubernetes_deployment(ctx, "spongebob").await;
-    let head_deployment_squidward_payload =
-        harness.create_kubernetes_deployment(ctx, "squidward").await;
+    let tail_fedora_payload = harness
+        .create_component(ctx, "fedora", Builtin::DockerImage)
+        .await;
+    let tail_alpine_payload = harness
+        .create_component(ctx, "alpine", Builtin::DockerImage)
+        .await;
+    let tail_namespace_payload = harness
+        .create_component(ctx, "namespace", Builtin::KubernetesNamespace)
+        .await;
+    let head_deployment_spongebob_payload = harness
+        .create_component(ctx, "spongebob", Builtin::KubernetesDeployment)
+        .await;
+    let head_deployment_squidward_payload = harness
+        .create_component(ctx, "squidward", Builtin::KubernetesDeployment)
+        .await;
 
     // Initialize the tail component primary fields
     tail_fedora_payload

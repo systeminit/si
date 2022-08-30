@@ -10,216 +10,129 @@ use crate::{
     AttributeReadContext, Component, DalContext, PropId, SchemaId, SchemaVariantId, StandardModel,
 };
 
+/// A list of builtin [`Schemas`](crate::Schema) that can be used to create
+/// [`Components`](crate::Component) for integration tests.
+#[derive(Clone, Copy, Eq, Hash, PartialEq)]
+pub enum Builtin {
+    DockerHubCredential,
+    DockerImage,
+    KubernetesDeployment,
+    KubernetesNamespace,
+}
+
+impl Builtin {
+    /// Converts a [`Builtin`](Self) to its [`Schema`](crate::Schema) name.
+    pub fn as_str(&self) -> &'static str {
+        match &self {
+            Builtin::DockerHubCredential => "docker_hub_credential",
+            Builtin::DockerImage => "docker_image",
+            Builtin::KubernetesDeployment => "kubernetes_deployment",
+            Builtin::KubernetesNamespace => "kubernetes_namespace",
+        }
+    }
+}
+
+/// A private struct to provide helpful metadata for a given [`Builtin`](Builtin).
+#[derive(Clone)]
+struct BuiltinMetadata {
+    schema_id: SchemaId,
+    schema_variant_id: SchemaVariantId,
+    prop_map: PropMap,
+}
+
+/// A hash map of [`PropIds`](crate::Prop) where the key is the JSON pointer to the
+/// [`Prop`](crate::Prop) on the [`SchemaVariant`](crate::SchemaVariant).
+type PropMap = HashMap<&'static str, PropId>;
+
 /// This harness provides methods to create [`Components`](crate::Component) from builtin
 /// [`Schemas`](crate::Schema). All fields are private since they are purely used to reduce the
 /// number of total database queries.
 #[derive(Default)]
 pub struct BuiltinsHarness {
-    docker_hub_credential_schema_id: Option<SchemaId>,
-    docker_hub_credential_schema_variant_id: Option<SchemaVariantId>,
-    docker_hub_credential_prop_map: HashMap<&'static str, PropId>,
-
-    docker_image_schema_id: Option<SchemaId>,
-    docker_image_schema_variant_id: Option<SchemaVariantId>,
-    docker_image_prop_map: HashMap<&'static str, PropId>,
-
-    kubernetes_namespace_schema_id: Option<SchemaId>,
-    kubernetes_namespace_schema_variant_id: Option<SchemaVariantId>,
-    kubernetes_namespace_prop_map: HashMap<&'static str, PropId>,
-
-    kubernetes_deployment_schema_id: Option<SchemaId>,
-    kubernetes_deployment_schema_variant_id: Option<SchemaVariantId>,
-    kubernetes_deployment_prop_map: HashMap<&'static str, PropId>,
+    builtins: HashMap<Builtin, BuiltinMetadata>,
 }
 
-// TODO(nick): make these functions and the core struct generic. I started doing this by creating
-// a "Builtin" struct with a schema variant id, schema id, and prop map, but stopped because
-// we need to make prop map collection generic as well. That may be difficult because the props
-// differ between each builtin schema. For example: kubernetes deployment has a containers array,
-// but docker image does not. Thus, we would need to find a way to either pass through complex
-// arguments or pass prop map collection to the user (probably the latter). For now, let's keep
-// adding builtins by hand.
 impl BuiltinsHarness {
     pub fn new() -> Self {
         Self::default()
     }
 
-    pub async fn create_docker_hub_credential(
+    /// Create a [`ComponentPayload`](crate::test::helpers::ComponentPayload) (a
+    /// [`Component`](crate::Component) with contextual metadata) for a given
+    /// [`Builtin`](Builtin).
+    pub async fn create_component(
         &mut self,
         ctx: &DalContext<'_, '_>,
         name: impl AsRef<str>,
+        builtin: Builtin,
     ) -> ComponentPayload {
-        let (schema_id, schema_variant_id) = match (
-            self.docker_hub_credential_schema_id,
-            self.docker_hub_credential_schema_variant_id,
-        ) {
-            (Some(schema_id), Some(schema_variant_id)) => (schema_id, schema_variant_id),
-            (_, _) => {
-                // Save them for next time!
-                let (schema, schema_variant) =
-                    find_schema_and_default_variant_by_name(ctx, "docker_hub_credential").await;
-                let (schema_id, schema_variant_id) = (*schema.id(), *schema_variant.id());
-                self.docker_hub_credential_schema_id = Some(schema_id);
-                self.docker_hub_credential_schema_variant_id = Some(schema_variant_id);
-                (schema_id, schema_variant_id)
+        match self.builtins.get(&builtin) {
+            Some(populated_builtin_metadata) => {
+                Self::perform_component_creation_and_payload_assembly(
+                    ctx,
+                    populated_builtin_metadata.schema_id,
+                    populated_builtin_metadata.schema_variant_id,
+                    populated_builtin_metadata.prop_map.clone(),
+                    name,
+                )
+                .await
             }
-        };
+            None => {
+                let (schema, schema_variant) =
+                    find_schema_and_default_variant_by_name(ctx, builtin.as_str()).await;
+                let prop_map = Self::build_prop_map(ctx, builtin, *schema_variant.id()).await;
 
-        // Add props that you would like to access here! We'll save them if other components
-        // are created in addition to the first one.
-        if self.docker_hub_credential_prop_map.is_empty() {
-            let (name_prop_id, _) =
-                find_prop_and_parent_by_name(ctx, "name", "si", None, schema_variant_id)
-                    .await
-                    .expect("could not find prop and/or parent");
-            self.docker_hub_credential_prop_map
-                .insert("/root/si/name", name_prop_id);
+                let new_builtin_metadata = BuiltinMetadata {
+                    schema_id: *schema.id(),
+                    schema_variant_id: *schema_variant.id(),
+                    prop_map,
+                };
+                self.builtins.insert(builtin, new_builtin_metadata.clone());
+
+                Self::perform_component_creation_and_payload_assembly(
+                    ctx,
+                    new_builtin_metadata.schema_id,
+                    new_builtin_metadata.schema_variant_id,
+                    new_builtin_metadata.prop_map.clone(),
+                    name,
+                )
+                .await
+            }
         }
-
-        Self::create_component_from_schema(
-            ctx,
-            schema_id,
-            schema_variant_id,
-            self.docker_hub_credential_prop_map.clone(),
-            name,
-        )
-        .await
     }
 
-    pub async fn create_docker_image(
-        &mut self,
+    /// Private function to build a [`PropMap`](PropMap) for a given [`Builtin`](Builtin). This
+    /// function will populate the map differently depending on the [`Builtin`](Builtin) provided.
+    async fn build_prop_map(
         ctx: &DalContext<'_, '_>,
-        name: impl AsRef<str>,
-    ) -> ComponentPayload {
-        let (schema_id, schema_variant_id) = match (
-            self.docker_image_schema_id,
-            self.docker_image_schema_variant_id,
-        ) {
-            (Some(schema_id), Some(schema_variant_id)) => (schema_id, schema_variant_id),
-            (_, _) => {
-                // Save them for next time!
-                let (schema, schema_variant) =
-                    find_schema_and_default_variant_by_name(ctx, "docker_image").await;
-                let (schema_id, schema_variant_id) = (*schema.id(), *schema_variant.id());
-                self.docker_image_schema_id = Some(schema_id);
-                self.docker_image_schema_variant_id = Some(schema_variant_id);
-                (schema_id, schema_variant_id)
-            }
-        };
+        builtin: Builtin,
+        schema_variant_id: SchemaVariantId,
+    ) -> PropMap {
+        let mut prop_map = HashMap::new();
 
-        // Add props that you would like to access here! We'll save them if other components
-        // are created in addition to the first one.
-        if self.docker_image_prop_map.is_empty() {
-            let (name_prop_id, _) =
-                find_prop_and_parent_by_name(ctx, "name", "si", None, schema_variant_id)
-                    .await
-                    .expect("could not find prop and/or parent");
-            self.docker_image_prop_map
-                .insert("/root/si/name", name_prop_id);
-        }
-
-        Self::create_component_from_schema(
-            ctx,
-            schema_id,
-            schema_variant_id,
-            self.docker_image_prop_map.clone(),
-            name,
-        )
-        .await
-    }
-
-    pub async fn create_kubernetes_namespace(
-        &mut self,
-        ctx: &DalContext<'_, '_>,
-        name: impl AsRef<str>,
-    ) -> ComponentPayload {
-        let (schema_id, schema_variant_id) = match (
-            self.kubernetes_namespace_schema_id,
-            self.kubernetes_namespace_schema_variant_id,
-        ) {
-            (Some(schema_id), Some(schema_variant_id)) => (schema_id, schema_variant_id),
-            (_, _) => {
-                // Save them for next time!
-                let (schema, schema_variant) =
-                    find_schema_and_default_variant_by_name(ctx, "kubernetes_namespace").await;
-                let (schema_id, schema_variant_id) = (*schema.id(), *schema_variant.id());
-                self.kubernetes_namespace_schema_id = Some(schema_id);
-                self.kubernetes_namespace_schema_variant_id = Some(schema_variant_id);
-                (schema_id, schema_variant_id)
-            }
-        };
-
-        // Add props that you would like to access here! We'll save them if other components
-        // are created in addition to the first one.
-        if self.kubernetes_namespace_prop_map.is_empty() {
+        // For kubernetes namespaces, we also want "/root/si/metadata/name". We can add more
+        // Builtin-specific props to collect too in the future!
+        if let Builtin::KubernetesNamespace = builtin {
             let (metadata_name_prop_id, _) =
                 find_prop_and_parent_by_name(ctx, "name", "metadata", None, schema_variant_id)
                     .await
                     .expect("could not find prop and/or parent");
-            self.kubernetes_namespace_prop_map
-                .insert("/root/si/metadata/name", metadata_name_prop_id);
-
-            let (si_name_prop_id, _) =
-                find_prop_and_parent_by_name(ctx, "name", "si", None, schema_variant_id)
-                    .await
-                    .expect("could not find prop and/or parent");
-            self.kubernetes_namespace_prop_map
-                .insert("/root/si/name", si_name_prop_id);
+            prop_map.insert("/root/si/metadata/name", metadata_name_prop_id);
         }
 
-        Self::create_component_from_schema(
-            ctx,
-            schema_id,
-            schema_variant_id,
-            self.kubernetes_namespace_prop_map.clone(),
-            name,
-        )
-        .await
+        // Always provide "/root/si/name".
+        let (si_name_prop_id, _) =
+            find_prop_and_parent_by_name(ctx, "name", "si", None, schema_variant_id)
+                .await
+                .expect("could not find prop and/or parent");
+        prop_map.insert("/root/si/name", si_name_prop_id);
+
+        prop_map
     }
 
-    pub async fn create_kubernetes_deployment(
-        &mut self,
-        ctx: &DalContext<'_, '_>,
-        name: impl AsRef<str>,
-    ) -> ComponentPayload {
-        let (schema_id, schema_variant_id) = match (
-            self.kubernetes_deployment_schema_id,
-            self.kubernetes_deployment_schema_variant_id,
-        ) {
-            (Some(schema_id), Some(schema_variant_id)) => (schema_id, schema_variant_id),
-            (_, _) => {
-                // Save them for next time!
-                let (schema, schema_variant) =
-                    find_schema_and_default_variant_by_name(ctx, "kubernetes_deployment").await;
-                let (schema_id, schema_variant_id) = (*schema.id(), *schema_variant.id());
-                self.kubernetes_deployment_schema_id = Some(schema_id);
-                self.kubernetes_deployment_schema_variant_id = Some(schema_variant_id);
-                (schema_id, schema_variant_id)
-            }
-        };
-
-        // Add props that you would like to access here! We'll save them if other components
-        // are created in addition to the first one.
-        if self.kubernetes_deployment_prop_map.is_empty() {
-            let (name_prop_id, _) =
-                find_prop_and_parent_by_name(ctx, "name", "si", None, schema_variant_id)
-                    .await
-                    .expect("could not find prop and/or parent");
-            self.kubernetes_deployment_prop_map
-                .insert("/root/si/name", name_prop_id);
-        }
-
-        Self::create_component_from_schema(
-            ctx,
-            schema_id,
-            schema_variant_id,
-            self.kubernetes_deployment_prop_map.clone(),
-            name,
-        )
-        .await
-    }
-
-    async fn create_component_from_schema(
+    /// Private method to create a [`Component`](crate::Component) and assemble a
+    /// [`ComponentPayload`](crate::test::helpers::ComponentPayload).
+    async fn perform_component_creation_and_payload_assembly(
         ctx: &DalContext<'_, '_>,
         schema_id: SchemaId,
         schema_variant_id: SchemaVariantId,

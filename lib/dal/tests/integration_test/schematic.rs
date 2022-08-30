@@ -1,7 +1,7 @@
 use crate::dal::test;
 
 use dal::socket::{SocketArity, SocketKind};
-use dal::test::helpers::builtins::BuiltinsHarness;
+use dal::test::helpers::builtins::{Builtin, BuiltinsHarness};
 use dal::{
     socket::SocketEdgeKind, Connection, DalContext, NodePosition, Schema, Schematic, SchematicKind,
     StandardModel,
@@ -11,8 +11,12 @@ use dal::{SchemaVariant, SchematicEdgeView};
 #[test]
 async fn get_schematic_and_create_connection(ctx: &DalContext<'_, '_>) {
     let mut harness = BuiltinsHarness::new();
-    let from_docker_hub_credential = harness.create_docker_hub_credential(ctx, "from").await;
-    let to_docker_image = harness.create_docker_image(ctx, "to").await;
+    let from_docker_hub_credential = harness
+        .create_component(ctx, "from", Builtin::DockerHubCredential)
+        .await;
+    let to_docker_image = harness
+        .create_component(ctx, "to", Builtin::DockerImage)
+        .await;
 
     let from_schema = Schema::get_by_id(ctx, &from_docker_hub_credential.schema_id)
         .await
