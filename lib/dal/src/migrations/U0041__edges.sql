@@ -70,7 +70,7 @@ CREATE OR REPLACE FUNCTION edge_include_component_in_system_v1(
     this_visibility jsonb,
     this_component_id bigint,
     this_system_id bigint,
-    this_schematic_kind text,
+    this_diagram_kind text,
     OUT object json) AS
 $$
 DECLARE
@@ -129,31 +129,20 @@ BEGIN
                             AND is_visible_v1(this_visibility,
                                               nodes.visibility_change_set_pk,
                                               nodes.visibility_deleted_at)
-        -- We're using the in_tenancy_v1, and is_visible_v1 helpers here, because the schema_variant might not
+        -- We're using the in_tenancy_and_visible_v1 helper here, because the schema_variant might not
         -- exist in the _exact_ same tenancy/visibility as the component, so we need to be able to do the
         -- fallback/lookup logic here.
              INNER JOIN schema_variants
                         ON schema_variants.id = component_belongs_to_schema_variant.belongs_to_id
-                            AND in_tenancy_v1(this_tenancy, schema_variants.tenancy_universal,
-                                              schema_variants.tenancy_billing_account_ids,
-                                              schema_variants.tenancy_organization_ids,
-                                              schema_variants.tenancy_workspace_ids)
-                            AND is_visible_v1(this_visibility,
-                                              schema_variants.visibility_change_set_pk,
-                                              schema_variants.visibility_deleted_at)
-        -- We're using the in_tenancy_v1, and is_visible_v1 helpers here, because the schema_variant might not
+                            AND in_tenancy_and_visible_v1(this_tenancy, this_visibility, schema_variants)
+        -- We're using the in_tenancy_and_visible_v1 helper here, because the schema_variant might not
         -- exist in the _exact_ same tenancy/visibility as the component, so we need to be able to do the
         -- fallback/lookup logic here.
              INNER JOIN socket_many_to_many_schema_variants
                         ON schema_variants.id = socket_many_to_many_schema_variants.right_object_id
-                            AND in_tenancy_v1(this_tenancy, socket_many_to_many_schema_variants.tenancy_universal,
-                                              socket_many_to_many_schema_variants.tenancy_billing_account_ids,
-                                              socket_many_to_many_schema_variants.tenancy_organization_ids,
-                                              socket_many_to_many_schema_variants.tenancy_workspace_ids)
-                            AND is_visible_v1(this_visibility,
-                                              socket_many_to_many_schema_variants.visibility_change_set_pk,
-                                              socket_many_to_many_schema_variants.visibility_deleted_at)
-        -- We're using the in_tenancy_v1, and is_visible_v1 helpers here, because the socket might not
+                            AND
+                           in_tenancy_and_visible_v1(this_tenancy, this_visibility, socket_many_to_many_schema_variants)
+        -- We're using the in_tenancy_and_visible_v1 helper here, because the socket might not
         -- exist in the _exact_ same tenancy/visibility as the component, so we need to be able to do the
         -- fallback/lookup logic here.
              INNER JOIN sockets
@@ -165,15 +154,12 @@ BEGIN
                                 socket_many_to_many_schema_variants.tenancy_organization_ids
                             AND
                            sockets.tenancy_workspace_ids = socket_many_to_many_schema_variants.tenancy_workspace_ids
-                            AND sockets.edge_kind = 'includes'
-                            AND sockets.schematic_kind = this_schematic_kind
+                            AND sockets.edge_kind = 'system'
+                            AND sockets.diagram_kind = this_diagram_kind
                             AND is_visible_v1(this_visibility,
                                               sockets.visibility_change_set_pk,
                                               sockets.visibility_deleted_at)
-    WHERE in_tenancy_v1(this_tenancy, components.tenancy_universal, components.tenancy_billing_account_ids,
-                        components.tenancy_organization_ids,
-                        components.tenancy_workspace_ids)
-      AND is_visible_v1(this_visibility, components.visibility_change_set_pk, components.visibility_deleted_at)
+    WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility, components)
       AND components.id = this_component_id;
 
     SELECT nodes.id,
@@ -220,31 +206,20 @@ BEGIN
                             AND is_visible_v1(this_visibility,
                                               nodes.visibility_change_set_pk,
                                               nodes.visibility_deleted_at)
-        -- We're using the in_tenancy_v1, and is_visible_v1 helpers here, because the schema_variant might not
+        -- We're using the in_tenancy_and_visible_v1 helper here, because the schema_variant might not
         -- exist in the _exact_ same tenancy/visibility as the system, so we need to be able to do the
         -- fallback/lookup logic here.
              INNER JOIN schema_variants
                         ON schema_variants.id = system_belongs_to_schema_variant.belongs_to_id
-                            AND in_tenancy_v1(this_tenancy, schema_variants.tenancy_universal,
-                                              schema_variants.tenancy_billing_account_ids,
-                                              schema_variants.tenancy_organization_ids,
-                                              schema_variants.tenancy_workspace_ids)
-                            AND is_visible_v1(this_visibility,
-                                              schema_variants.visibility_change_set_pk,
-                                              schema_variants.visibility_deleted_at)
-        -- We're using the in_tenancy_v1, and is_visible_v1 helpers here, because the schema_variant might not
+                            AND in_tenancy_and_visible_v1(this_tenancy, this_visibility, schema_variants)
+        -- We're using the in_tenancy_and_visible_v1 helper here, because the schema_variant might not
         -- exist in the _exact_ same tenancy/visibility as the system, so we need to be able to do the
         -- fallback/lookup logic here.
              INNER JOIN socket_many_to_many_schema_variants
                         ON schema_variants.id = socket_many_to_many_schema_variants.right_object_id
-                            AND in_tenancy_v1(this_tenancy, socket_many_to_many_schema_variants.tenancy_universal,
-                                              socket_many_to_many_schema_variants.tenancy_billing_account_ids,
-                                              socket_many_to_many_schema_variants.tenancy_organization_ids,
-                                              socket_many_to_many_schema_variants.tenancy_workspace_ids)
-                            AND is_visible_v1(this_visibility,
-                                              socket_many_to_many_schema_variants.visibility_change_set_pk,
-                                              socket_many_to_many_schema_variants.visibility_deleted_at)
-        -- We're using the in_tenancy_v1, and is_visible_v1 helpers here, because the socket might not
+                            AND
+                           in_tenancy_and_visible_v1(this_tenancy, this_visibility, socket_many_to_many_schema_variants)
+        -- We're using the in_tenancy_and_visible_v1 helpers her, because the socket might not
         -- exist in the _exact_ same tenancy/visibility as the system, so we need to be able to do the
         -- fallback/lookup logic here.
              INNER JOIN sockets
@@ -256,15 +231,12 @@ BEGIN
                                 socket_many_to_many_schema_variants.tenancy_organization_ids
                             AND
                            sockets.tenancy_workspace_ids = socket_many_to_many_schema_variants.tenancy_workspace_ids
-                            AND sockets.edge_kind = 'output'
-                            AND sockets.schematic_kind = this_schematic_kind
+                            AND sockets.edge_kind = 'configurationOutput'
+                            AND sockets.diagram_kind = this_diagram_kind
                             AND is_visible_v1(this_visibility,
                                               sockets.visibility_change_set_pk,
                                               sockets.visibility_deleted_at)
-    WHERE in_tenancy_v1(this_tenancy, systems.tenancy_universal, systems.tenancy_billing_account_ids,
-                        systems.tenancy_organization_ids,
-                        systems.tenancy_workspace_ids)
-      AND is_visible_v1(this_visibility, systems.visibility_change_set_pk, systems.visibility_deleted_at)
+    WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility, systems)
       AND systems.id = this_system_id;
 
     SELECT *
@@ -274,241 +246,15 @@ BEGIN
         edge_create_v1(
                 this_tenancy,
                 this_visibility,
-                'includes',
+                'system',
                 this_component_node_id,
-                'component',
+                'configuration',
                 this_component_id,
                 this_component_socket_id,
                 this_system_node_id,
                 'system',
                 this_system_id,
                 this_system_socket_id
-            );
-
-END;
-$$ LANGUAGE plpgsql VOLATILE;
-
-CREATE OR REPLACE FUNCTION edge_include_component_in_node_v1(
-    this_tenancy jsonb,
-    this_visibility jsonb,
-    this_component_id bigint,
-    this_parent_node_id bigint,
-    this_schematic_kind text,
-    OUT object json) AS
-$$
-DECLARE
-    this_tenancy_record        tenancy_record_v1;
-    this_visibility_record     visibility_record_v1;
-    this_component_node_id     bigint;
-    this_component_socket_id   bigint;
-    this_parent_component_id   bigint;
-    this_parent_node_socket_id bigint;
-BEGIN
-    this_tenancy_record := tenancy_json_to_columns_v1(this_tenancy);
-    this_visibility_record := visibility_json_to_columns_v1(this_visibility);
-
-    SELECT nodes.id,
-           sockets.id
-           -- Using "STRICT" to ensure that this entire query must return _exactly_ one (1) row,
-           -- since there should ever only be one "includes" socket for the component.
-    INTO STRICT
-        this_component_node_id,
-        this_component_socket_id
-    FROM components
-             -- We're making sure the tenancy & visibility match the component's _exactly_ here, to ensure that
-             -- we are getting the _exact_ join record for _this_ version of the component that we're interested in.
-             INNER JOIN component_belongs_to_schema_variant
-                        ON components.id = component_belongs_to_schema_variant.object_id
-                            AND components.tenancy_universal = component_belongs_to_schema_variant.tenancy_universal
-                            AND components.tenancy_billing_account_ids =
-                                component_belongs_to_schema_variant.tenancy_billing_account_ids
-                            AND components.tenancy_organization_ids =
-                                component_belongs_to_schema_variant.tenancy_organization_ids
-                            AND
-                           components.tenancy_workspace_ids = component_belongs_to_schema_variant.tenancy_workspace_ids
-                            AND is_visible_v1(this_visibility,
-                                              component_belongs_to_schema_variant.visibility_change_set_pk,
-                                              component_belongs_to_schema_variant.visibility_deleted_at)
-        -- We're making sure the tenancy & visibility match the component's _exactly_ here, to ensure that
-        -- we are getting the _exact_ join record for _this_ version of the component that we're interested in.
-             INNER JOIN node_belongs_to_component
-                        ON components.id = node_belongs_to_component.belongs_to_id
-                            AND components.tenancy_universal = node_belongs_to_component.tenancy_universal
-                            AND
-                           components.tenancy_billing_account_ids =
-                           node_belongs_to_component.tenancy_billing_account_ids
-                            AND components.tenancy_organization_ids = node_belongs_to_component.tenancy_organization_ids
-                            AND components.tenancy_workspace_ids = node_belongs_to_component.tenancy_workspace_ids
-                            AND is_visible_v1(this_visibility,
-                                              node_belongs_to_component.visibility_change_set_pk,
-                                              node_belongs_to_component.visibility_deleted_at)
-        -- We're making sure the tenancy & visibility match the component's _exactly_ here, to ensure that
-        -- we are getting the _exact_ join record for _this_ version of the component that we're interested in.
-             INNER JOIN nodes
-                        ON nodes.id = node_belongs_to_component.object_id
-                            AND nodes.tenancy_universal = components.tenancy_universal
-                            AND nodes.tenancy_billing_account_ids = components.tenancy_billing_account_ids
-                            AND nodes.tenancy_organization_ids = components.tenancy_organization_ids
-                            AND nodes.tenancy_workspace_ids = components.tenancy_workspace_ids
-                            AND is_visible_v1(this_visibility,
-                                              nodes.visibility_change_set_pk,
-                                              nodes.visibility_deleted_at)
-        -- We're using the in_tenancy_v1, and is_visible_v1 helpers here, because the schema_variant might not
-        -- exist in the _exact_ same tenancy/visibility as the component, so we need to be able to do the
-        -- fallback/lookup logic here.
-             INNER JOIN schema_variants
-                        ON schema_variants.id = component_belongs_to_schema_variant.belongs_to_id
-                            AND in_tenancy_v1(this_tenancy, schema_variants.tenancy_universal,
-                                              schema_variants.tenancy_billing_account_ids,
-                                              schema_variants.tenancy_organization_ids,
-                                              schema_variants.tenancy_workspace_ids)
-                            AND is_visible_v1(this_visibility,
-                                              schema_variants.visibility_change_set_pk,
-                                              schema_variants.visibility_deleted_at)
-        -- We're using the in_tenancy_v1, and is_visible_v1 helpers here, because the schema_variant might not
-        -- exist in the _exact_ same tenancy/visibility as the component, so we need to be able to do the
-        -- fallback/lookup logic here.
-             INNER JOIN socket_many_to_many_schema_variants
-                        ON schema_variants.id = socket_many_to_many_schema_variants.right_object_id
-                            AND in_tenancy_v1(this_tenancy, socket_many_to_many_schema_variants.tenancy_universal,
-                                              socket_many_to_many_schema_variants.tenancy_billing_account_ids,
-                                              socket_many_to_many_schema_variants.tenancy_organization_ids,
-                                              socket_many_to_many_schema_variants.tenancy_workspace_ids)
-                            AND is_visible_v1(this_visibility,
-                                              socket_many_to_many_schema_variants.visibility_change_set_pk,
-                                              socket_many_to_many_schema_variants.visibility_deleted_at)
-        -- We're using the in_tenancy_v1, and is_visible_v1 helpers here, because the socket might not
-        -- exist in the _exact_ same tenancy/visibility as the component, so we need to be able to do the
-        -- fallback/lookup logic here.
-             INNER JOIN sockets
-                        ON sockets.id = socket_many_to_many_schema_variants.left_object_id
-                            AND sockets.tenancy_universal = socket_many_to_many_schema_variants.tenancy_universal
-                            AND sockets.tenancy_billing_account_ids =
-                                socket_many_to_many_schema_variants.tenancy_billing_account_ids
-                            AND sockets.tenancy_organization_ids =
-                                socket_many_to_many_schema_variants.tenancy_organization_ids
-                            AND
-                           sockets.tenancy_workspace_ids = socket_many_to_many_schema_variants.tenancy_workspace_ids
-                            AND sockets.edge_kind = 'includes'
-                            AND sockets.schematic_kind = this_schematic_kind
-                            AND is_visible_v1(this_visibility,
-                                              sockets.visibility_change_set_pk,
-                                              sockets.visibility_deleted_at)
-    WHERE in_tenancy_v1(this_tenancy, components.tenancy_universal, components.tenancy_billing_account_ids,
-                        components.tenancy_organization_ids,
-                        components.tenancy_workspace_ids)
-      AND is_visible_v1(this_visibility, components.visibility_change_set_pk, components.visibility_deleted_at)
-      AND components.id = this_component_id;
-
-    SELECT components.id,
-           sockets.id
-           -- Using "STRICT" to ensure that this entire query must return _exactly_ one (1) row,
-           -- since there should ever only be one "includes" socket for the parent node.
-    INTO STRICT
-        this_parent_component_id,
-        this_parent_node_socket_id
-    FROM components
-             -- We're making sure the tenancy & visibility match the component's _exactly_ here, to ensure that
-             -- we are getting the _exact_ join record for _this_ version of the component that we're interested in.
-             INNER JOIN component_belongs_to_schema_variant
-                        ON components.id = component_belongs_to_schema_variant.object_id
-                            AND components.tenancy_universal = component_belongs_to_schema_variant.tenancy_universal
-                            AND components.tenancy_billing_account_ids =
-                                component_belongs_to_schema_variant.tenancy_billing_account_ids
-                            AND components.tenancy_organization_ids =
-                                component_belongs_to_schema_variant.tenancy_organization_ids
-                            AND
-                           components.tenancy_workspace_ids = component_belongs_to_schema_variant.tenancy_workspace_ids
-                            AND is_visible_v1(this_visibility,
-                                              component_belongs_to_schema_variant.visibility_change_set_pk,
-                                              component_belongs_to_schema_variant.visibility_deleted_at)
-        -- We're making sure the tenancy & visibility match the component's _exactly_ here, to ensure that
-        -- we are getting the _exact_ join record for _this_ version of the component that we're interested in.
-             INNER JOIN node_belongs_to_component
-                        ON components.id = node_belongs_to_component.belongs_to_id
-                            AND components.tenancy_universal = node_belongs_to_component.tenancy_universal
-                            AND
-                           components.tenancy_billing_account_ids =
-                           node_belongs_to_component.tenancy_billing_account_ids
-                            AND components.tenancy_organization_ids = node_belongs_to_component.tenancy_organization_ids
-                            AND components.tenancy_workspace_ids = node_belongs_to_component.tenancy_workspace_ids
-                            AND is_visible_v1(this_visibility,
-                                              node_belongs_to_component.visibility_change_set_pk,
-                                              node_belongs_to_component.visibility_deleted_at)
-        -- We're making sure the tenancy & visibility match the component's _exactly_ here, to ensure that
-        -- we are getting the _exact_ join record for _this_ version of the component that we're interested in.
-             INNER JOIN nodes
-                        ON nodes.id = node_belongs_to_component.object_id
-                            AND nodes.tenancy_universal = components.tenancy_universal
-                            AND nodes.tenancy_billing_account_ids = components.tenancy_billing_account_ids
-                            AND nodes.tenancy_organization_ids = components.tenancy_organization_ids
-                            AND nodes.tenancy_workspace_ids = components.tenancy_workspace_ids
-                            AND is_visible_v1(this_visibility,
-                                              nodes.visibility_change_set_pk,
-                                              nodes.visibility_deleted_at)
-        -- We're using the in_tenancy_v1, and is_visible_v1 helpers here, because the schema_variant might not
-        -- exist in the _exact_ same tenancy/visibility as the component, so we need to be able to do the
-        -- fallback/lookup logic here.
-             INNER JOIN schema_variants
-                        ON schema_variants.id = component_belongs_to_schema_variant.belongs_to_id
-                            AND in_tenancy_v1(this_tenancy, schema_variants.tenancy_universal,
-                                              schema_variants.tenancy_billing_account_ids,
-                                              schema_variants.tenancy_organization_ids,
-                                              schema_variants.tenancy_workspace_ids)
-                            AND is_visible_v1(this_visibility,
-                                              schema_variants.visibility_change_set_pk,
-                                              schema_variants.visibility_deleted_at)
-        -- We're using the in_tenancy_v1, and is_visible_v1 helpers here, because the schema_variant might not
-        -- exist in the _exact_ same tenancy/visibility as the component, so we need to be able to do the
-        -- fallback/lookup logic here.
-             INNER JOIN socket_many_to_many_schema_variants
-                        ON schema_variants.id = socket_many_to_many_schema_variants.right_object_id
-                            AND in_tenancy_v1(this_tenancy, socket_many_to_many_schema_variants.tenancy_universal,
-                                              socket_many_to_many_schema_variants.tenancy_billing_account_ids,
-                                              socket_many_to_many_schema_variants.tenancy_organization_ids,
-                                              socket_many_to_many_schema_variants.tenancy_workspace_ids)
-                            AND is_visible_v1(this_visibility,
-                                              socket_many_to_many_schema_variants.visibility_change_set_pk,
-                                              socket_many_to_many_schema_variants.visibility_deleted_at)
-        -- We're using the in_tenancy_v1, and is_visible_v1 helpers here, because the socket might not
-        -- exist in the _exact_ same tenancy/visibility as the component, so we need to be able to do the
-        -- fallback/lookup logic here.
-             INNER JOIN sockets
-                        ON sockets.id = socket_many_to_many_schema_variants.left_object_id
-                            AND sockets.tenancy_universal = socket_many_to_many_schema_variants.tenancy_universal
-                            AND sockets.tenancy_billing_account_ids =
-                                socket_many_to_many_schema_variants.tenancy_billing_account_ids
-                            AND sockets.tenancy_organization_ids =
-                                socket_many_to_many_schema_variants.tenancy_organization_ids
-                            AND
-                           sockets.tenancy_workspace_ids = socket_many_to_many_schema_variants.tenancy_workspace_ids
-                            AND sockets.edge_kind = 'output'
-                            AND sockets.schematic_kind = this_schematic_kind
-                            AND is_visible_v1(this_visibility,
-                                              sockets.visibility_change_set_pk,
-                                              sockets.visibility_deleted_at)
-    WHERE in_tenancy_v1(this_tenancy, components.tenancy_universal, components.tenancy_billing_account_ids,
-                        components.tenancy_organization_ids,
-                        components.tenancy_workspace_ids)
-      AND is_visible_v1(this_visibility, components.visibility_change_set_pk, components.visibility_deleted_at)
-      AND nodes.id = this_parent_node_id;
-
-    SELECT *
-    INTO
-        object
-    FROM
-        edge_create_v1(
-                this_tenancy,
-                this_visibility,
-                'includes',
-                this_component_node_id,
-                'component',
-                this_component_id,
-                this_component_socket_id,
-                this_parent_node_id,
-                'component',
-                this_parent_component_id,
-                this_parent_node_socket_id
             );
 
 END;

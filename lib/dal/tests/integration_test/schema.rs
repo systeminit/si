@@ -13,7 +13,7 @@ async fn new(ctx: &DalContext<'_, '_>) {
     let _schema = Schema::new(
         ctx,
         "mastodon",
-        &SchemaKind::Concrete,
+        &SchemaKind::Configuration,
         &ComponentKind::Standard,
     )
     .await
@@ -26,7 +26,7 @@ async fn billing_accounts(ctx: &DalContext<'_, '_>, jwt_secret_key: &JwtSecretKe
     let schema = Schema::new(
         ctx,
         "mastodon",
-        &SchemaKind::Concrete,
+        &SchemaKind::Configuration,
         &ComponentKind::Standard,
     )
     .await
@@ -58,7 +58,7 @@ async fn organizations(ctx: &DalContext<'_, '_>, nba: &BillingAccountSignup) {
     let schema = Schema::new(
         ctx,
         "mastodon",
-        &SchemaKind::Concrete,
+        &SchemaKind::Configuration,
         &ComponentKind::Standard,
     )
     .await
@@ -90,7 +90,7 @@ async fn workspaces(ctx: &DalContext<'_, '_>, nba: &BillingAccountSignup) {
     let schema = Schema::new(
         ctx,
         "mastodon",
-        &SchemaKind::Concrete,
+        &SchemaKind::Configuration,
         &ComponentKind::Standard,
     )
     .await
@@ -113,7 +113,7 @@ async fn workspaces(ctx: &DalContext<'_, '_>, nba: &BillingAccountSignup) {
 
 #[test]
 async fn ui_menus(ctx: &DalContext<'_, '_>) {
-    let schema = create_schema(ctx, &SchemaKind::Concrete).await;
+    let schema = create_schema(ctx, &SchemaKind::Configuration).await;
     let schema_ui_menu = create_schema_ui_menu(ctx).await;
     schema_ui_menu
         .set_schema(ctx, schema.id())

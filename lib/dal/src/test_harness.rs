@@ -18,10 +18,10 @@ use crate::{
     node::NodeKind,
     schema,
     socket::{Socket, SocketArity, SocketEdgeKind, SocketKind},
-    BillingAccount, BillingAccountId, ChangeSet, Component, DalContext, EncryptedSecret, Func,
-    FuncBackendKind, FuncBackendResponseType, Group, HistoryActor, KeyPair, Node, Organization,
-    Prop, PropId, PropKind, QualificationCheck, Schema, SchemaId, SchemaKind, SchemaVariantId,
-    SchematicKind, Secret, SecretKind, SecretObjectType, StandardModel, System, User, Visibility,
+    BillingAccount, BillingAccountId, ChangeSet, Component, DalContext, DiagramKind,
+    EncryptedSecret, Func, FuncBackendKind, FuncBackendResponseType, Group, HistoryActor, KeyPair,
+    Node, Organization, Prop, PropId, PropKind, QualificationCheck, Schema, SchemaId, SchemaKind,
+    SchemaVariantId, Secret, SecretKind, SecretObjectType, StandardModel, System, User, Visibility,
     Workspace, WriteTenancy, NO_CHANGE_SET_PK,
 };
 
@@ -309,7 +309,7 @@ pub async fn create_schema(ctx: &DalContext<'_, '_>, kind: &SchemaKind) -> Schem
 }
 
 pub async fn create_schema_ui_menu(ctx: &DalContext<'_, '_>) -> schema::UiMenu {
-    schema::UiMenu::new(ctx, &SchematicKind::Component)
+    schema::UiMenu::new(ctx, &DiagramKind::Configuration)
         .await
         .expect("cannot create schema ui menu")
 }
@@ -335,13 +335,17 @@ pub async fn create_schema_variant_with_root(
         .await
         .expect("cannot find schema")
         .expect("schema not found");
+    let diagram_kind = schema
+        .diagram_kind()
+        .expect("no diagram kind for schema kind");
+
     let input_socket = Socket::new(
         ctx,
         "input",
         SocketKind::Provider,
-        &SocketEdgeKind::Configures,
+        &SocketEdgeKind::ConfigurationInput,
         &SocketArity::Many,
-        &schema.kind().into(),
+        &diagram_kind,
     )
     .await
     .expect("Unable to create socket");
@@ -354,9 +358,9 @@ pub async fn create_schema_variant_with_root(
         ctx,
         "output",
         SocketKind::Provider,
-        &SocketEdgeKind::Output,
+        &SocketEdgeKind::ConfigurationOutput,
         &SocketArity::Many,
-        &schema.kind().into(),
+        &diagram_kind,
     )
     .await
     .expect("Unable to create socket");
@@ -365,25 +369,26 @@ pub async fn create_schema_variant_with_root(
         .await
         .expect("Unable to add socket to variant");
 
-    let includes_socket = Socket::new(
+    let system_socket = Socket::new(
         ctx,
-        "includes",
+        "system",
         SocketKind::Provider,
-        &SocketEdgeKind::Includes,
+        &SocketEdgeKind::System,
         &SocketArity::Many,
-        &schema.kind().into(),
+        &DiagramKind::Configuration,
     )
     .await
-    .expect("Unable to create socket");
+    .expect("unable to create socket");
     variant
-        .add_socket(ctx, includes_socket.id())
+        .add_socket(ctx, system_socket.id())
         .await
         .expect("Unable to add socket to variant");
+
     (variant, root)
 }
 
 pub async fn create_component_and_schema(ctx: &DalContext<'_, '_>) -> Component {
-    let schema = create_schema(ctx, &SchemaKind::Concept).await;
+    let schema = create_schema(ctx, &SchemaKind::Configuration).await;
     let schema_variant = create_schema_variant(ctx, *schema.id()).await;
     schema_variant
         .finalize(ctx)

@@ -5,7 +5,7 @@ mod intra_component;
 use dal::test::helpers::setup_identity_func;
 use dal::test_harness::{create_schema, create_schema_variant_with_root};
 use dal::{
-    socket::SocketArity, DalContext, ExternalProvider, InternalProvider, SchemaKind, SchematicKind,
+    socket::SocketArity, DalContext, DiagramKind, ExternalProvider, InternalProvider, SchemaKind,
     StandardModel,
 };
 
@@ -13,7 +13,7 @@ use crate::dal::test;
 
 #[test]
 async fn new_external(ctx: &DalContext<'_, '_>) {
-    let mut schema = create_schema(ctx, &SchemaKind::Concrete).await;
+    let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
     let (schema_variant, _root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
@@ -31,7 +31,7 @@ async fn new_external(ctx: &DalContext<'_, '_>) {
         func_binding_id,
         func_binding_return_value_id,
         SocketArity::Many,
-        SchematicKind::Component,
+        DiagramKind::Configuration,
     )
     .await
     .expect("could not create external provider");
@@ -49,7 +49,7 @@ async fn new_external(ctx: &DalContext<'_, '_>) {
 
 #[test]
 async fn new_implicit_internal(ctx: &DalContext<'_, '_>) {
-    let mut schema = create_schema(ctx, &SchemaKind::Concrete).await;
+    let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
     let (schema_variant, _root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))
@@ -66,7 +66,7 @@ async fn new_implicit_internal(ctx: &DalContext<'_, '_>) {
         func_binding_id,
         func_binding_return_value_id,
         SocketArity::Many,
-        SchematicKind::Component,
+        DiagramKind::Configuration,
     )
     .await
     .expect("could not create (explicit internal provider");

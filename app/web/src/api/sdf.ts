@@ -88,14 +88,6 @@ export class SDF {
         headers.set("WorkspaceId", `${workspace.id}`);
       }
     }
-    const storedApplication =
-      sessionStorage.getItem("applicationNodeId") ?? null;
-    if (storedApplication !== null) {
-      const applicationNodeId: number = JSON.parse(storedApplication);
-      if (applicationNodeId) {
-        headers.set("ApplicationId", `${applicationNodeId}`);
-      }
-    }
     return headers;
   }
 

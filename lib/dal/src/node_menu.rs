@@ -1,22 +1,18 @@
 //! This module is responsible for creating NodeMenus. At the moment, it only really makes
-//! the node add menu. It creates a tree for the menu, and can create it from the Schema's
-//! menu items based on the schematic context for the menu.
-use crate::DalContext;
-use std::cell::RefCell;
-use std::sync::Arc;
+//! the node add menu. It creates a tree for the menu, and can create it from the
+//! [`Schema`](crate::Schema)'s menu items based on the diagram context for the menu.
 
 use serde::{Deserialize, Serialize};
+use si_data::PgError;
+use std::cell::RefCell;
+use std::sync::Arc;
 use thiserror::Error;
 
-use si_data::PgError;
-
 use crate::schema::UiMenu;
-use crate::{
-    standard_model, ComponentId, SchemaError, SchemaId, SchematicKind, StandardModel,
-    StandardModelError,
-};
+use crate::{standard_model, SchemaError, SchemaId, StandardModel, StandardModelError};
+use crate::{DalContext, DiagramKind};
 
-const UI_MENUS_FOR_NODE_MENU: &str = include_str!("./queries/ui_menus_for_node_menu.sql");
+const UI_MENUS_FOR_DIAGRAM_KIND: &str = include_str!("queries/ui_menus_for_diagram_kind.sql");
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Error, Debug)]
@@ -206,82 +202,62 @@ impl MenuItems {
     }
 }
 
+/// Used to generate a [`serde_json::Value`] of menu items.
 #[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct MenuFilter {
-    pub schematic_kind: SchematicKind,
-    pub root_component_id: ComponentId,
+pub struct GenerateMenuItem {
+    pub raw_items: Vec<(Vec<String>, Item)>,
+    menu_items: MenuItems,
 }
-
-impl MenuFilter {
-    pub fn new(schematic_kind: SchematicKind, root_component_id: ComponentId) -> Self {
-        MenuFilter {
-            schematic_kind,
-            root_component_id,
-        }
-    }
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-pub struct GenerateMenuItem(MenuItems);
 
 impl GenerateMenuItem {
-    pub fn new() -> Self {
-        GenerateMenuItem(MenuItems::new())
-    }
+    /// Generates raw items and initializes menu items as an empty vec.
+    pub async fn new(ctx: &DalContext<'_, '_>, diagram_kind: DiagramKind) -> NodeMenuResult<Self> {
+        let mut item_list = Vec::new();
+        let rows = ctx
+            .txns()
+            .pg()
+            .query(
+                UI_MENUS_FOR_DIAGRAM_KIND,
+                &[
+                    ctx.read_tenancy(),
+                    ctx.visibility(),
+                    &(diagram_kind.to_string()),
+                ],
+            )
+            .await?;
+        let result: Vec<UiMenu> = standard_model::objects_from_rows(rows)?;
 
-    pub fn create_menu_json(
-        self,
-        items: Vec<(Vec<String>, Item)>,
-    ) -> NodeMenuResult<serde_json::Value> {
-        for (path, item) in items {
-            self.0.insert_menu_item(&path, MenuItem::Item(item))?;
-        }
-        self.0.to_json_value()
-    }
-}
-
-impl Default for GenerateMenuItem {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-pub async fn get_node_menu_items(
-    ctx: &DalContext<'_, '_>,
-    filter: &MenuFilter,
-) -> NodeMenuResult<Vec<(Vec<String>, Item)>> {
-    let mut item_list = Vec::new();
-    let rows = ctx
-        .txns()
-        .pg()
-        .query(
-            UI_MENUS_FOR_NODE_MENU,
-            &[
-                ctx.read_tenancy(),
-                ctx.visibility(),
-                &filter.root_component_id,
-                &filter.schematic_kind.to_string(),
-            ],
-        )
-        .await?;
-    let result: Vec<UiMenu> = standard_model::objects_from_rows(rows)?;
-    for ui_menu in result.into_iter() {
-        if ui_menu.usable_in_menu(ctx).await? {
-            if let Some(schema) = ui_menu.schema(ctx).await? {
-                item_list.push((
-                    ui_menu.category_path(),
-                    Item::new(
-                        ui_menu
-                            .name()
-                            .expect("name does not exist; bug in usable_in_menu"),
-                        *schema.id(),
-                    ),
-                ));
+        for ui_menu in result.into_iter() {
+            if ui_menu.usable_in_menu(ctx).await? {
+                if let Some(schema) = ui_menu.schema(ctx).await? {
+                    item_list.push((
+                        ui_menu.category_path(),
+                        Item::new(
+                            ui_menu
+                                .name()
+                                .expect("name does not exist; bug in usable_in_menu"),
+                            *schema.id(),
+                        ),
+                    ));
+                }
             }
         }
+
+        Ok(Self {
+            raw_items: item_list,
+            menu_items: MenuItems::new(),
+        })
     }
-    Ok(item_list)
+
+    /// Create a usable [`serde_json::Value`] from the raw menu items assembled from
+    /// [`Self::new()`].
+    pub fn create_menu_json(self) -> NodeMenuResult<serde_json::Value> {
+        for (path, item) in self.raw_items {
+            self.menu_items
+                .insert_menu_item(&path, MenuItem::Item(item))?;
+        }
+        self.menu_items.to_json_value()
+    }
 }
 
 #[cfg(test)]
@@ -292,12 +268,12 @@ mod test {
     fn menu_item_for_top_level_path() {
         let menu_items = MenuItems::new();
         menu_items
-            .insert_menu_item(&Vec::new(), MenuItem::category("application"))
+            .insert_menu_item(&Vec::new(), MenuItem::category("valorant"))
             .expect("cannot insert menu item");
         let item = menu_items
-            .item_for_path(&["application".to_string()])
-            .expect("cannot find application in menu");
-        assert_eq!(item.borrow().name(), "application");
+            .item_for_path(&["valorant".to_string()])
+            .expect("cannot find valorant in menu");
+        assert_eq!(item.borrow().name(), "valorant");
     }
 
     #[test]
@@ -305,17 +281,17 @@ mod test {
         let menu_items = MenuItems::new();
         menu_items
             .insert_menu_item(
-                &["application".to_string(), "snakes".to_string()],
+                &["planes".to_string(), "snakes".to_string()],
                 MenuItem::item("ninjas", 1.into()),
             )
             .expect("cannot insert menu item");
         let item = menu_items
             .item_for_path(&[
-                "application".to_string(),
+                "planes".to_string(),
                 "snakes".to_string(),
                 "ninjas".to_string(),
             ])
-            .expect("cannot find application.snakes in menu");
+            .expect("cannot find planes.snakes in menu");
         assert_eq!(item.borrow().name(), "ninjas".to_string());
     }
 
@@ -324,31 +300,31 @@ mod test {
         let menu_items = MenuItems::new();
         menu_items
             .insert_menu_item(
-                &["application".to_string(), "snakes".to_string()],
+                &["planes".to_string(), "snakes".to_string()],
                 MenuItem::item("ninjas", 1.into()),
             )
             .expect("cannot insert menu item");
         menu_items
             .insert_menu_item(
-                &["application".to_string(), "snakes".to_string()],
+                &["planes".to_string(), "snakes".to_string()],
                 MenuItem::item("dragons", 1.into()),
             )
             .expect("cannot insert menu item");
         let ninjas = menu_items
             .item_for_path(&[
-                "application".to_string(),
+                "planes".to_string(),
                 "snakes".to_string(),
                 "ninjas".to_string(),
             ])
-            .expect("cannot find application.snakes in menu");
+            .expect("cannot find planes.snakes in menu");
         assert_eq!(ninjas.borrow().name(), "ninjas".to_string());
         let dragons = menu_items
             .item_for_path(&[
-                "application".to_string(),
+                "planes".to_string(),
                 "snakes".to_string(),
                 "dragons".to_string(),
             ])
-            .expect("cannot find application.snakes in menu");
+            .expect("cannot find planes.snakes in menu");
         assert_eq!(dragons.borrow().name(), "dragons".to_string());
     }
 }

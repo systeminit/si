@@ -14,9 +14,9 @@ use crate::standard_model::object_option_from_row_option;
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_accessor_ro,
     AttributeContextBuilderError, AttributePrototype, AttributePrototypeError,
-    AttributePrototypeId, AttributeReadContext, AttributeValueError, AttributeView, FuncId,
-    HistoryEventError, Prop, PropError, SchemaVariant, SchematicKind, StandardModel,
-    StandardModelError, Timestamp, Visibility, WriteTenancy,
+    AttributePrototypeId, AttributeReadContext, AttributeValueError, AttributeView, DiagramKind,
+    FuncId, HistoryEventError, Prop, PropError, SchemaVariant, StandardModel, StandardModelError,
+    Timestamp, Visibility, WriteTenancy,
 };
 use crate::{
     AttributeContext, AttributeContextError, AttributeValue, DalContext, Func, FuncBinding, PropId,
@@ -225,7 +225,7 @@ impl InternalProvider {
         func_binding_id: FuncBindingId,
         func_binding_return_value_id: FuncBindingReturnValueId,
         arity: SocketArity,
-        schematic_kind: SchematicKind,
+        diagram_kind: DiagramKind,
     ) -> InternalProviderResult<(Self, Socket)> {
         let name = name.as_ref();
         let prop_id: PropId = UNSET_ID_VALUE.into();
@@ -268,9 +268,9 @@ impl InternalProvider {
             ctx,
             name,
             SocketKind::Provider,
-            &SocketEdgeKind::Configures,
+            &SocketEdgeKind::ConfigurationInput,
             &arity,
-            &schematic_kind,
+            &diagram_kind,
         )
         .await?;
         socket

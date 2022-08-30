@@ -1,29 +1,27 @@
+use dal::node_menu::GenerateMenuItem;
+use dal::test::helpers::builtins::{Builtin, BuiltinsHarness};
+use dal::{DalContext, DiagramKind};
+
 use crate::dal::test;
-use dal::node_menu::get_node_menu_items;
-use dal::test_harness::{create_component_for_schema, create_schema_variant};
-use dal::DalContext;
-use dal::StandardModel;
-use dal::{node_menu::MenuFilter, Schema, SchematicKind};
 
 #[test]
 async fn get_node_menu(ctx: &DalContext<'_, '_>) {
-    let application_schema = Schema::find_by_attr(ctx, "name", &String::from("application"))
+    let mut harness = BuiltinsHarness::new();
+    let _docker_image_payload = harness
+        .create_component(ctx, "valorant", Builtin::DockerImage)
+        .await;
+
+    let gmi = GenerateMenuItem::new(ctx, DiagramKind::Configuration)
         .await
-        .expect("cannot query for built in application")
-        .first()
-        .expect("no built in application found")
-        .clone();
-    let _schema_variant = create_schema_variant(ctx, *application_schema.id()).await;
+        .expect("cannot get items");
+    let items = gmi.raw_items;
 
-    let application = create_component_for_schema(ctx, application_schema.id()).await;
-
-    let items = get_node_menu_items(
-        ctx,
-        &MenuFilter::new(SchematicKind::Deployment, *application.id()),
-    )
-    .await
-    .expect("cannot get items");
-
-    let service_item = items.iter().find(|(_path, item)| item.name == "service");
-    assert!(service_item.is_some(), "menu must include the service item");
+    let docker_image_item = items.iter().find(|(path, item)| {
+        let mut path = path.clone();
+        item.name == "image" && path.pop().expect("path not found") == "docker"
+    });
+    assert!(
+        docker_image_item.is_some(),
+        "menu must include the docker image item"
+    );
 }

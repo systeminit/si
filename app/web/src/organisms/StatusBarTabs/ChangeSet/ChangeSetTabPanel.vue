@@ -14,7 +14,16 @@
       class="w-full h-full flex flex-col bg-shade-100"
     >
       <div
-        v-if="selectedComponentStatsGroup.componentStatus === 'added'"
+        v-if="!filterMatchesSelectedComponentStatus"
+        class="flex flex-row items-center text-center w-full h-full bg-shade-100"
+      >
+        <p class="w-full text-3xl text-neutral-500">
+          Selected Component Has Not Been {{ selectedFilter.title }}
+        </p>
+      </div>
+
+      <div
+        v-else-if="selectedComponentStatsGroup.componentStatus === 'added'"
         class="overflow-y-auto flex flex-row flex-wrap"
       >
         <div class="basis-full overflow-hidden pr-10 pl-1 pt-2">
@@ -34,12 +43,14 @@
           </CodeViewer>
         </div>
       </div>
+
       <div
         v-else-if="selectedComponentStatsGroup.componentStatus === 'deleted'"
         class="flex flex-row items-center text-center w-full h-full"
       >
         <p class="w-full text-3xl text-destructive-300">Component Deleted</p>
       </div>
+
       <div
         v-else-if="selectedComponentStatsGroup.componentStatus === 'modified'"
         class="overflow-y-auto flex flex-row flex-wrap"
@@ -116,6 +127,24 @@ const selectedFilter = ref<FilterOption>(defaultFilterOption);
 const changeSelectedFilter = (newFilter: FilterOption) => {
   selectedFilter.value = newFilter;
 };
+
+// Only display individual component data if the filter is valid for the component status.
+// The filter is valid in two scenarios:
+// 1) If a component is selected _and_ the selected filter value is "all"
+// 2) If a component is selected _and_ its status matches the selected filter value
+const filterMatchesSelectedComponentStatus = computed((): boolean => {
+  if (selectedComponentStatsGroup.value) {
+    if (
+      selectedFilter.value.value === "all" ||
+      selectedComponentStatsGroup.value.componentStatus ===
+        selectedFilter.value.value
+    ) {
+      return true;
+    }
+    // Fall back to false if we have a selected component, but it doesn't pass the condition.
+  }
+  return false;
+});
 
 const list = computed((): ComponentListItem[] => {
   if (!stats.value) return [];

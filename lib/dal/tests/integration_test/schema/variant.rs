@@ -4,7 +4,7 @@ use dal::{schema::SchemaVariant, test_harness::create_schema, SchemaKind, Standa
 
 #[test]
 async fn new(ctx: &DalContext<'_, '_>) {
-    let schema = create_schema(ctx, &SchemaKind::Concrete).await;
+    let schema = create_schema(ctx, &SchemaKind::Configuration).await;
 
     let (variant, _) = SchemaVariant::new(ctx, *schema.id(), "ringo")
         .await
@@ -14,7 +14,7 @@ async fn new(ctx: &DalContext<'_, '_>) {
 
 #[test]
 async fn set_schema(ctx: &DalContext<'_, '_>) {
-    let schema = create_schema(ctx, &SchemaKind::Concrete).await;
+    let schema = create_schema(ctx, &SchemaKind::Configuration).await;
     let (variant, _) = SchemaVariant::new(ctx, *schema.id(), "v0")
         .await
         .expect("cannot create schema ui menu");

@@ -12,7 +12,7 @@ async fn new(ctx: &DalContext<'_, '_>) {
     let _write_tenancy = WriteTenancy::new_universal();
     let _visibility = Visibility::new_head(false);
     let _history_actor = HistoryActor::SystemInit;
-    let _node = Node::new(ctx, &NodeKind::Component)
+    let _node = Node::new(ctx, &NodeKind::Configuration)
         .await
         .expect("cannot create node");
 }
@@ -20,7 +20,7 @@ async fn new(ctx: &DalContext<'_, '_>) {
 #[test]
 async fn component_relationships(ctx: &DalContext<'_, '_>) {
     let component = create_component_and_schema(ctx).await;
-    let node = create_node(ctx, &NodeKind::Component).await;
+    let node = create_node(ctx, &NodeKind::Configuration).await;
     node.set_component(ctx, component.id())
         .await
         .expect("cannot associate node with component");
@@ -34,7 +34,7 @@ async fn component_relationships(ctx: &DalContext<'_, '_>) {
 
 #[test]
 async fn new_node_template(ctx: &DalContext<'_, '_>) {
-    let mut schema = create_schema(ctx, &SchemaKind::Concept).await;
+    let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
     let schema_variant = create_schema_variant(ctx, *schema.id()).await;
     schema
         .set_default_schema_variant_id(ctx, Some(*schema_variant.id()))

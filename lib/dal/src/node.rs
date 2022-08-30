@@ -1,17 +1,16 @@
-use crate::{node_position::NodePositionView, DalContext};
+use crate::{node_position::NodePositionView, DalContext, SchemaError};
 use serde::{Deserialize, Serialize};
 use si_data::{NatsError, PgError};
 use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
-    generate_name, impl_standard_model, pk, schema::variant::SchemaVariantError,
-    schematic::SchematicKind, standard_model, standard_model_accessor, standard_model_belongs_to,
-    Component, ComponentId, HistoryEventError, ReadTenancyError, Schema, SchemaId, SchemaVariantId,
-    StandardModel, StandardModelError, System, SystemId, Timestamp, Visibility, WriteTenancy,
+    diagram::DiagramKind, generate_name, impl_standard_model, pk,
+    schema::variant::SchemaVariantError, standard_model, standard_model_accessor,
+    standard_model_belongs_to, Component, ComponentId, HistoryEventError, ReadTenancyError, Schema,
+    SchemaId, SchemaVariantId, StandardModel, StandardModelError, System, SystemId, Timestamp,
+    Visibility, WriteTenancy,
 };
-
-pub type ApplicationId = NodeId;
 
 #[derive(Error, Debug)]
 pub enum NodeError {
@@ -25,6 +24,8 @@ pub enum NodeError {
     HistoryEvent(#[from] HistoryEventError),
     #[error("standard model error: {0}")]
     StandardModelError(#[from] StandardModelError),
+    #[error("schema error: {0}")]
+    Schema(#[from] SchemaError),
     #[error("cannot find schema id to generate node template")]
     SchemaIdNotFound,
     #[error("cannot generate node template with missing default schema variant")]
@@ -44,6 +45,8 @@ pub type NodeResult<T> = Result<T, NodeError>;
 pk!(NodePk);
 pk!(NodeId);
 
+/// The kind of a given [`Node`](Node). It is based on the [`SchemaKind`](crate::SchemaKind) of
+/// what object the [`Node`](Node) represents.
 #[derive(
     Deserialize,
     Serialize,
@@ -60,21 +63,13 @@ pk!(NodeId);
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "camelCase")]
 pub enum NodeKind {
-    Component,
-    Deployment,
+    /// The [`Node`](Node) created for a [`SchemaKind::Configuration`](crate::SchemaKind::Configuration).
+    Configuration,
+    /// The [`Node`](Node) created for a [`SchemaKind::System`](crate::SchemaKind::System).
     System,
 }
 
-impl From<NodeKind> for SchematicKind {
-    fn from(kind: NodeKind) -> Self {
-        match kind {
-            NodeKind::Component => Self::Component,
-            NodeKind::Deployment => Self::Deployment,
-            NodeKind::System => Self::System,
-        }
-    }
-}
-
+/// A mathematical node that can be used to create [`Edges`](crate::Edge).
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct Node {
     pk: NodePk,
@@ -142,7 +137,7 @@ impl Node {
 pub struct NodeTemplate {
     name: String,
     pub title: String,
-    kind: SchematicKind,
+    kind: DiagramKind,
     schema_variant_id: SchemaVariantId,
 }
 
@@ -157,9 +152,12 @@ impl NodeTemplate {
         let schema_variant_id = *schema
             .default_schema_variant_id()
             .ok_or(NodeError::SchemaMissingDefaultVariant)?;
+        let diagram_kind = schema
+            .diagram_kind()
+            .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
 
         Ok(NodeTemplate {
-            kind: (*schema.kind()).into(),
+            kind: diagram_kind,
             title: schema.name().to_owned(),
             name: generate_name(None),
             schema_variant_id,
@@ -176,7 +174,7 @@ pub enum NodeViewKind {
     Deployment { component_id: ComponentId },
 }
 
-/// This maps to the typescript SchematicNode, and can go from the database
+/// This maps to the typescript DiagramNode, and can go from the database
 /// representation of a node, combined with the schema data.
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]

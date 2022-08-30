@@ -34,7 +34,7 @@ async fn create_schema() {
     let visibility = Visibility::new_head(false);
     let request = CreateSchemaRequest {
         name: "fancyPants".to_string(),
-        kind: SchemaKind::Concrete,
+        kind: SchemaKind::Configuration,
         visibility,
     };
     let response: CreateSchemaResponse = api_request_auth_json_body(
@@ -46,7 +46,7 @@ async fn create_schema() {
     )
     .await;
     assert_eq!(response.schema.name(), "fancyPants");
-    assert_eq!(response.schema.kind(), &SchemaKind::Concrete);
+    assert_eq!(response.schema.kind(), &SchemaKind::Configuration);
 }
 
 #[test]
@@ -71,9 +71,9 @@ async fn list_schemas() {
     let dal_ctx = dal_ctx.clone_with_universal_head();
     let visibility = Visibility::new_head(false);
 
-    let rand_schema1 = dal_create_schema(&dal_ctx, &SchemaKind::Concrete).await;
+    let rand_schema1 = dal_create_schema(&dal_ctx, &SchemaKind::Configuration).await;
     let rand_schema1_name = rand_schema1.name();
-    let rand_schema2 = dal_create_schema(&dal_ctx, &SchemaKind::Concrete).await;
+    let rand_schema2 = dal_create_schema(&dal_ctx, &SchemaKind::Configuration).await;
     let rand_schema2_name = rand_schema2.name();
 
     dal_txns.commit().await.expect("cannot commit txn");
@@ -120,7 +120,7 @@ async fn get_schemas() {
     );
     let dal_ctx = dal_ctx.clone_with_universal_head();
     let visibility = Visibility::new_head(false);
-    let schema_one = dal_create_schema(&dal_ctx, &SchemaKind::Concrete).await;
+    let schema_one = dal_create_schema(&dal_ctx, &SchemaKind::Configuration).await;
     dal_txns.commit().await.expect("cannot commit txn");
     let request = GetSchemaRequest {
         visibility,

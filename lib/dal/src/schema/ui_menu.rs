@@ -3,8 +3,7 @@ use telemetry::prelude::*;
 
 use crate::{
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_belongs_to,
-    standard_model_many_to_many, DalContext, SchematicKind, StandardModel, Timestamp, Visibility,
-    WriteTenancy,
+    DalContext, DiagramKind, StandardModel, Timestamp, Visibility, WriteTenancy,
 };
 
 use super::{Schema, SchemaId, SchemaResult};
@@ -18,7 +17,7 @@ pub struct UiMenu {
     id: UiMenuId,
     name: Option<String>,
     category: Option<String>,
-    schematic_kind: SchematicKind,
+    diagram_kind: DiagramKind,
     #[serde(flatten)]
     tenancy: WriteTenancy,
     #[serde(flatten)]
@@ -38,10 +37,7 @@ impl_standard_model! {
 
 impl UiMenu {
     #[instrument(skip_all)]
-    pub async fn new(
-        ctx: &DalContext<'_, '_>,
-        schematic_kind: &SchematicKind,
-    ) -> SchemaResult<Self> {
+    pub async fn new(ctx: &DalContext<'_, '_>, diagram_kind: &DiagramKind) -> SchemaResult<Self> {
         let row = ctx
             .txns()
             .pg()
@@ -50,7 +46,7 @@ impl UiMenu {
                 &[
                     ctx.write_tenancy(),
                     ctx.visibility(),
-                    &schematic_kind.as_ref(),
+                    &diagram_kind.as_ref(),
                 ],
             )
             .await?;
@@ -60,7 +56,7 @@ impl UiMenu {
 
     standard_model_accessor!(name, Option<String>, SchemaResult);
     standard_model_accessor!(category, Option<String>, SchemaResult);
-    standard_model_accessor!(schematic_kind, Enum(SchematicKind), SchemaResult);
+    standard_model_accessor!(diagram_kind, Enum(DiagramKind), SchemaResult);
 
     standard_model_belongs_to!(
         lookup_fn: schema,
@@ -69,20 +65,6 @@ impl UiMenu {
         table: "schema_ui_menu_belongs_to_schema",
         model_table: "schemas",
         belongs_to_id: SchemaId,
-        returns: Schema,
-        result: SchemaResult,
-    );
-
-    standard_model_many_to_many!(
-        lookup_fn: root_schematics,
-        associate_fn: add_root_schematic,
-        disassociate_fn: remove_root_schematic,
-        table_name: "schema_ui_menu_root_schematic_many_to_many_schematic",
-        left_table: "schema_ui_menus",
-        left_id: UiMenuId,
-        right_table: "schemas",
-        right_id: SchemaId,
-        which_table_is_this: "left",
         returns: Schema,
         result: SchemaResult,
     );

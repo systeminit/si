@@ -233,7 +233,6 @@ impl WorkflowTree {
                 write_tenancy: ctx.write_tenancy().clone(),
                 visibility: *ctx.visibility(),
                 history_actor: ctx.history_actor().clone(),
-                application_node_id: ctx.application_node_id(),
             };
             let transactions_starter = services_context.transactions_starter().await?;
 

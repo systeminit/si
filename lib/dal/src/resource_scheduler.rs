@@ -109,7 +109,6 @@ impl ResourceScheduler {
                         .workspaces()
                         .first()
                         .expect("empty workspace array when we checked earlier; bug!"),
-                    None,
                 )
                 .await
                 {

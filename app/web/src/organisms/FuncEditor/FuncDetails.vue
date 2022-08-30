@@ -114,7 +114,7 @@ import { Option } from "@/molecules/SelectMenu.vue";
 import SiTextBox from "@/atoms/SiTextBox.vue";
 import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
-import { SchematicService } from "@/service/schematic";
+import { DiagramService } from "@/service/diagram";
 import { EditingFunc, funcState$ } from "@/observable/func";
 import { ComponentService } from "@/service/component";
 import VButton from "@/molecules/VButton.vue";
@@ -129,7 +129,7 @@ const funcId = toRef(props, "funcId", -1);
 const funcId$ = fromRef(funcId);
 
 const schemaVariants = refFrom<Option[]>(
-  SchematicService.listSchemaVariants().pipe(
+  DiagramService.listSchemaVariants().pipe(
     map((schemaVariants) =>
       schemaVariants.error
         ? []

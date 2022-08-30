@@ -45,7 +45,7 @@ export function createSecret(
           {
             error: {
               statusCode: 10,
-              message: "cannot create an application without a workspace; bug!",
+              message: "cannot create a secret without a workspace; bug!",
               code: 10,
             },
           },

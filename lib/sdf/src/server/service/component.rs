@@ -4,13 +4,14 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use thiserror::Error;
-
 use dal::{
     node::NodeError, property_editor::PropertyEditorError, AttributeValueError,
-    ComponentError as DalComponentError, ComponentId, ReadTenancyError, SchemaError,
-    SchematicError, StandardModelError, SystemId, TransactionsError, WsEventError,
+    ComponentError as DalComponentError, ComponentId, DiagramError, ReadTenancyError,
+    SchemaError as DalSchemaError, StandardModelError, SystemId, TransactionsError, WsEventError,
 };
+use thiserror::Error;
+
+use crate::service::schema::SchemaError;
 
 pub mod check_qualifications;
 pub mod generate_code;
@@ -37,6 +38,8 @@ pub enum ComponentError {
     ComponentNameNotFound,
     #[error("component not found")]
     ComponentNotFound,
+    #[error("dal schema error: {0}")]
+    DalSchema(#[from] DalSchemaError),
     #[error("invalid request")]
     InvalidRequest,
     #[error(transparent)]
@@ -49,8 +52,9 @@ pub enum ComponentError {
     ResourceNotFound(ComponentId, SystemId),
     #[error("node error: {0}")]
     Node(#[from] NodeError),
-    #[error("schematic error: {0}")]
-    Schematic(#[from] SchematicError),
+    #[error("diagram error: {0}")]
+    Diagram(#[from] DiagramError),
+
     #[error("schema error: {0}")]
     Schema(#[from] SchemaError),
     #[error("schema not found")]

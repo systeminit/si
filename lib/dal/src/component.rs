@@ -1,14 +1,13 @@
 use serde::{Deserialize, Serialize};
-use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
-use thiserror::Error;
-
 use si_data::{NatsError, PgError, PgTxn};
+use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
-pub use view::{ComponentView, ComponentViewError};
+use thiserror::Error;
 
 use crate::attribute::value::AttributeValue;
 use crate::attribute::{context::UNSET_ID_VALUE, value::AttributeValueError};
 use crate::code_generation_resolver::CodeGenerationResolverContext;
+use crate::edge::EdgeId;
 use crate::func::backend::validation::FuncBackendValidateStringValueArgs;
 use crate::func::backend::{
     js_code_generation::FuncBackendJsCodeGenerationArgs,
@@ -20,9 +19,11 @@ use crate::func::binding_return_value::{
 };
 use crate::qualification::QualificationView;
 use crate::qualification_resolver::QualificationResolverContext;
+use crate::resource::ResourceId;
 use crate::resource_resolver::ResourceResolverContext;
 use crate::schema::variant::{SchemaVariantError, SchemaVariantId};
 use crate::schema::SchemaVariant;
+use crate::socket::SocketEdgeKind;
 use crate::ws_event::{WsEvent, WsEventError};
 use crate::{
     func::{FuncId, FuncMetadataView},
@@ -39,12 +40,14 @@ use crate::{
     NodeError, OrganizationError, Prop, PropError, PropId, QualificationPrototype,
     QualificationPrototypeError, QualificationResolver, QualificationResolverError,
     ReadTenancyError, Resource, ResourceError, ResourcePrototype, ResourcePrototypeError,
-    ResourceResolver, ResourceResolverError, ResourceView, Schema, SchemaError, SchemaId,
-    StandardModel, StandardModelError, SystemId, Timestamp, TransactionsError, ValidationPrototype,
-    ValidationPrototypeError, ValidationResolver, ValidationResolverError, Visibility,
-    WorkspaceError, WriteTenancy,
+    ResourceResolver, ResourceResolverError, ResourceView, Schema, SchemaError, SchemaId, Socket,
+    SocketId, StandardModel, StandardModelError, SystemId, Timestamp, TransactionsError,
+    ValidationPrototype, ValidationPrototypeError, ValidationResolver, ValidationResolverError,
+    Visibility, WorkspaceError, WriteTenancy,
 };
 use crate::{AttributeValueId, QualificationPrototypeId};
+
+pub use view::{ComponentView, ComponentViewError};
 
 pub mod diff;
 pub mod stats;
@@ -120,6 +123,8 @@ pub enum ComponentError {
     NodeError(#[from] NodeError),
     #[error("component not found: {0}")]
     NotFound(ComponentId),
+    #[error("no system sockets found for component: {0}")]
+    NoSystemSocketsFound(ComponentId),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
     #[error("resource not found for component ({0}) in system ({1})")]
@@ -168,17 +173,21 @@ pub enum ComponentError {
     Organization(#[from] OrganizationError),
     #[error("invalid AttributeReadContext: {0}")]
     BadAttributeReadContext(String),
+    #[error("need exactly one system socket for component ({0}), found: {1:?}")]
+    NeedOneSystemSocket(ComponentId, Vec<SocketId>),
 }
 
 pub type ComponentResult<T> = Result<T, ComponentError>;
 
+const FIND_FOR_NODE: &str = include_str!("./queries/component_find_for_node.sql");
 const GET_RESOURCE: &str = include_str!("./queries/component_get_resource.sql");
 const LIST_QUALIFICATIONS: &str = include_str!("./queries/component_list_qualifications.sql");
 const LIST_CODE_GENERATED: &str = include_str!("./queries/component_list_code_generated.sql");
 const LIST_FOR_RESOURCE_SYNC: &str = include_str!("./queries/component_list_for_resource_sync.sql");
 const LIST_FOR_SCHEMA_VARIANT: &str =
     include_str!("./queries/component_list_for_schema_variant.sql");
-const FIND_FOR_NODE: &str = include_str!("./queries/component_find_for_node.sql");
+const LIST_SOCKETS_FOR_SOCKET_EDGE_KIND: &str =
+    include_str!("queries/component_list_sockets_for_socket_edge_kind.sql");
 
 pk!(ComponentPk);
 pk!(ComponentId);
@@ -287,16 +296,6 @@ impl Component {
         let node = Node::new(ctx, &(*schema.kind()).into()).await?;
         node.set_component(ctx, component.id()).await?;
 
-        if let Some(root_node_id) = ctx.application_node_id() {
-            let _edge = Edge::include_component_in_node(
-                ctx,
-                component.id(),
-                &schema.kind().into(),
-                &root_node_id,
-            )
-            .await?;
-        }
-
         let _ = component
             .set_value_by_json_pointer(ctx, "/root/si/name", Some(name.as_ref()))
             .await?;
@@ -305,63 +304,38 @@ impl Component {
     }
 
     #[instrument(skip_all)]
-    pub async fn new_for_schema_variant_with_node_in_deployment(
-        ctx: &DalContext<'_, '_>,
-        name: impl AsRef<str>,
-        schema_variant_id: &SchemaVariantId,
-        parent_node_id: &NodeId,
-    ) -> ComponentResult<(Self, Node)> {
-        let (component, node) =
-            Self::new_for_schema_variant_with_node(ctx, name, schema_variant_id).await?;
-        let schema = component
-            .schema(ctx)
-            .await?
-            .ok_or(ComponentError::SchemaNotFound)?;
-        let _edge = Edge::include_component_in_node(
-            ctx,
-            component.id(),
-            &schema.kind().into(),
-            parent_node_id,
-        )
-        .await?;
-
-        Ok((component, node))
-    }
-
-    #[instrument(skip_all)]
-    pub async fn new_application_with_node(
-        ctx: &DalContext<'_, '_>,
-        name: impl AsRef<str>,
-    ) -> ComponentResult<(Self, Node)> {
-        let ctx = ctx.clone_with_new_application_node_id(None);
-
-        let schema_variant_id =
-            Schema::default_schema_variant_id_for_name(&ctx, "application").await?;
-        let (comp, node) =
-            Self::new_for_schema_variant_with_node(&ctx, name, &schema_variant_id).await?;
-        Ok((comp, node))
-    }
-
-    #[instrument(skip_all)]
     pub async fn add_to_system(
         &self,
         ctx: &DalContext<'_, '_>,
-        system_id: &SystemId,
-    ) -> ComponentResult<()> {
+        system_id: SystemId,
+    ) -> ComponentResult<(EdgeId, ResourceId)> {
+        let system_sockets =
+            Self::list_sockets_for_kind(ctx, self.id, SocketEdgeKind::System).await?;
+
+        if system_sockets.len() != 1 {
+            let system_socket_ids: Vec<SocketId> = system_sockets.iter().map(|s| *s.id()).collect();
+            return Err(ComponentError::NeedOneSystemSocket(
+                self.id,
+                system_socket_ids,
+            ));
+        }
+
         let schema = self
             .schema(ctx)
             .await?
             .ok_or(ComponentError::SchemaNotFound)?;
-        let _edge =
-            Edge::include_component_in_system(ctx, &self.id, &schema.kind().into(), system_id)
-                .await;
+        let diagram_kind = schema
+            .diagram_kind()
+            .ok_or_else(|| SchemaError::NoDiagramKindForSchemaKind(*schema.kind()))?;
+
+        let edge = Edge::include_component_in_system(ctx, self.id, diagram_kind, system_id).await?;
 
         // NOTE: We may want to be a bit smarter about when we create the Resource
         //       at some point in the future, by only creating it if there is also
         //       a ResourcePrototype for the Component's SchemaVariant.
-        let _resource = Resource::new(ctx, &self.id, system_id).await?;
+        let resource = Resource::new(ctx, &self.id, &system_id).await?;
 
-        Ok(())
+        Ok((*edge.id(), *resource.id()))
     }
 
     standard_model_accessor!(kind, Enum(ComponentKind), ComponentResult);
@@ -398,6 +372,30 @@ impl Component {
 
     pub fn tenancy(&self) -> &WriteTenancy {
         &self.tenancy
+    }
+
+    /// List [`Sockets`](crate::Socket) with a given
+    /// [`SocketEdgeKind`](crate::socket::SocketEdgeKind).
+    #[instrument(skip_all)]
+    pub async fn list_sockets_for_kind(
+        ctx: &DalContext<'_, '_>,
+        component_id: ComponentId,
+        socket_edge_kind: SocketEdgeKind,
+    ) -> ComponentResult<Vec<Socket>> {
+        let rows = ctx
+            .txns()
+            .pg()
+            .query(
+                LIST_SOCKETS_FOR_SOCKET_EDGE_KIND,
+                &[
+                    ctx.read_tenancy(),
+                    ctx.visibility(),
+                    &component_id,
+                    &(socket_edge_kind.to_string()),
+                ],
+            )
+            .await?;
+        Ok(standard_model::objects_from_rows(rows)?)
     }
 
     /// Find [`Self`] with a provided [`NodeId`](crate::Node).
@@ -1260,7 +1258,7 @@ impl Component {
             ..AttributeReadContext::default()
         };
 
-        let parent_ids = Edge::find_component_configuration_parents(ctx, self.id()).await?;
+        let parent_ids = Edge::list_parents_for_component(ctx, *self.id()).await?;
 
         let mut parents = Vec::new();
         for id in parent_ids {
