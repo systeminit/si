@@ -1,14 +1,15 @@
 use crate::dal::test;
-use dal::{BillingAccountSignup, ChangeSet, DalContext, WriteTenancy};
+use dal::{BillingAccountSignup, ChangeSet, DalContext, Func, WriteTenancy};
 
 use dal::test_harness::{
-    create_billing_account, create_billing_account_with_name, create_group, create_key_pair,
-    create_schema, create_user, create_visibility_head,
+    create_billing_account, create_billing_account_with_name, create_func, create_group,
+    create_key_pair, create_schema, create_user, create_visibility_head,
 };
 use dal::{
-    component::ComponentKind, standard_model, BillingAccount, Group, GroupId, KeyPair, Schema,
-    SchemaKind, StandardModel, User, UserId, NO_CHANGE_SET_PK,
+    component::ComponentKind, standard_model, BillingAccount, FuncBackendKind, Group, GroupId,
+    KeyPair, Schema, SchemaKind, StandardModel, User, UserId, NO_CHANGE_SET_PK,
 };
+use itertools::Itertools;
 
 #[test]
 async fn get_by_pk(ctx: &DalContext<'_, '_>, nba: &BillingAccountSignup) {
@@ -567,4 +568,65 @@ async fn find_by_attr(ctx: &mut DalContext<'_, '_>) {
     assert_eq!(result.len(), 2);
     assert_eq!(result[0], schema_one);
     assert_eq!(result[1], schema_two);
+}
+
+#[test]
+async fn find_by_attr_in(ctx: &mut DalContext<'_, '_>) {
+    let _billing_account = create_billing_account(ctx).await;
+    ctx.update_to_universal_head();
+
+    // There are some functions in here already but we don't want to rely on
+    // them existing for the test to pass
+    let first_result: Vec<Func> = dbg!(standard_model::find_by_attr_in(
+        ctx,
+        "funcs",
+        "backend_kind",
+        &[&"JsQualification".to_string(), &"JsAttribute".to_string()],
+    )
+    .await
+    .expect("cannot find objects by backend_kind in slice"));
+
+    let mut func_one = create_func(ctx).await;
+    func_one
+        .set_backend_kind(ctx, FuncBackendKind::JsQualification)
+        .await
+        .expect("cannot set func backend kind");
+
+    let mut func_two = create_func(ctx).await;
+    func_two
+        .set_backend_kind(ctx, FuncBackendKind::JsAttribute)
+        .await
+        .expect("cannot set func backend kind");
+
+    let result: Vec<Func> = dbg!(standard_model::find_by_attr_in(
+        ctx,
+        "funcs",
+        "backend_kind",
+        &[
+            &FuncBackendKind::JsQualification.as_ref().to_string(),
+            &FuncBackendKind::JsAttribute.as_ref().to_string()
+        ],
+    )
+    .await
+    .expect("cannot find objects by backend_kind in slice"));
+
+    assert_eq!(2, result.len() - first_result.len());
+
+    assert_eq!(
+        Some(&func_one),
+        result
+            .iter()
+            .filter(|&f| f.id() == func_one.id())
+            .at_most_one()
+            .expect("could not find at most one func")
+    );
+
+    assert_eq!(
+        Some(&func_two),
+        result
+            .iter()
+            .filter(|&f| f.id() == func_two.id())
+            .at_most_one()
+            .expect("could not find at most one func")
+    );
 }
