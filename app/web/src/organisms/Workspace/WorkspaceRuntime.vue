@@ -39,9 +39,11 @@
       size-classes="w-96 flex-none"
     >
       <div class="p-2 w-full h-full overflow-hidden">
-        <CodeViewer v-if="logs" :code="logs.join('\n')">
-          <template #title>Output</template>
-        </CodeViewer>
+        <WorkflowOutput
+          v-if="logs"
+          :logs="logs"
+          :status="currentWorkflowStatus"
+        />
         <div v-else class="p-2 text-neutral-400 dark:text-neutral-300">
           When you run a workflow, it's output will display here.
         </div>
@@ -51,7 +53,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import { refFrom, untilUnmounted } from "vuse-rx";
 import WorkflowPicker from "@/organisms/WorkflowRunner/WorkflowPicker.vue";
 import WorkflowResolver from "@/organisms/WorkflowRunner/WorkflowResolver.vue";
@@ -63,7 +65,9 @@ import {
 } from "@/service/workflow/list";
 import VButton from "@/molecules/VButton.vue";
 import SiPanel from "@/atoms/SiPanel.vue";
-import CodeViewer from "@/organisms/CodeViewer.vue";
+import WorkflowOutput, {
+  workflowStatus,
+} from "../WorkflowRunner/WorkflowOutput.vue";
 
 const selected = ref<ListedWorkflowView | null>(null);
 const select = (w: ListedWorkflowView | null) => {
@@ -79,6 +83,10 @@ const runWorkflow = async () => {
     logs.value = outputs?.logs ?? null;
   }
 };
+
+const currentWorkflowStatus = computed((): workflowStatus => {
+  return "running";
+});
 
 eventCommandOutput$.pipe(untilUnmounted).subscribe((command) => {
   if (!command) return;
