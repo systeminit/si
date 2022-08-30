@@ -38,16 +38,13 @@
       side="right"
       size-classes="w-80"
     >
-      <div class="p-2 w-full h-full overflow-auto">
-        <CodeViewer :code="logs?.join('\n')">
+      <div class="p-2 w-full h-full overflow-hidden">
+        <CodeViewer v-if="logs" :code="logs.join('\n')">
           <template #title>Output</template>
         </CodeViewer>
-        <!--        <span v-if="logs" class="overflow-auto">-->
-        <!--          <p class="text-lg">Output:</p>-->
-        <!--          <p v-for="(log, index) in logs" :key="index">{{ log }}</p>-->
-        <!--        </span>-->
-        <!-- if hiding is added later, condition is selectedFuncId < 1 -->
-        <!--<FuncDetails :func-id="selectedFunc.id" />-->
+        <div v-else>
+          When you run a workflow, it's output will display here.
+        </div>
       </div>
     </SiPanel>
   </div>
