@@ -42,7 +42,8 @@
         </Tab>
 
         <!-- View tabs -->
-        <Tab
+        <!-- SLA Tab mockup, currently disabled -->
+        <!-- <Tab
           v-slot="{ selected }"
           :aria-hidden="!isViewMode"
           :class="[isViewMode ? '' : 'hidden']"
@@ -63,7 +64,7 @@
               </StatusBarTabPill>
             </template>
           </StatusBarTab>
-        </Tab>
+        </Tab> -->
         <Tab
           v-slot="{ selected }"
           :aria-hidden="!isViewMode"
@@ -77,6 +78,17 @@
                 <span class="font-bold">Total:&nbsp; $86,753.09</span>
               </StatusBarTabPill>
             </template>
+          </StatusBarTab>
+        </Tab>
+        <Tab
+          v-slot="{ selected }"
+          :aria-hidden="!isViewMode"
+          :class="[isViewMode ? '' : 'hidden']"
+        >
+          <StatusBarTab :selected="selected">
+            <template #icon><Icon name="clock" /></template>
+            <template #name>Workflow History</template>
+            <template #summary></template>
           </StatusBarTab>
         </Tab>
         <Tab
@@ -142,12 +154,21 @@
           </TabPanel>
 
           <!-- View panels -->
+          <!-- SLA TabPanel, currently incomplete and disabled -->
+          <!-- <TabPanel
+            :aria-hidden="!isViewMode"
+            :class="[isViewMode ? '' : 'hidden']"
+            class="h-full"
+          > -->
+          <!-- TOOD(nick): replace with an SLA tab panel -->
+          <!-- <GenericTabPanel :component-list="componentList" />
+          </TabPanel> -->
           <TabPanel
             :aria-hidden="!isViewMode"
             :class="[isViewMode ? '' : 'hidden']"
             class="h-full"
           >
-            <!-- TOOD(nick): replace with an SLA tab panel -->
+            <!-- TOOD(nick): replace with a Costs tab panel -->
             <GenericTabPanel :component-list="componentList" />
           </TabPanel>
           <TabPanel
@@ -155,7 +176,7 @@
             :class="[isViewMode ? '' : 'hidden']"
             class="h-full"
           >
-            <!-- TOOD(nick): replace with a Costs tab panel -->
+            <!-- TOOD(wendy): replace with a Workflow History tab panel -->
             <GenericTabPanel :component-list="componentList" />
           </TabPanel>
           <TabPanel
