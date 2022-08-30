@@ -10,7 +10,7 @@ export interface ListedFuncView extends Omit<Func, "code"> {
 }
 
 export interface ListFuncsResponse {
-  qualifications: ListedFuncView[];
+  funcs: ListedFuncView[];
 }
 
 export const nullListFunc: ListedFuncView = {
@@ -36,7 +36,7 @@ export const listFuncs: () => Observable<ListFuncsResponse> =
           map((response) => {
             if (response.error) {
               GlobalErrorService.set(response);
-              return { qualifications: [] };
+              return {} as ListFuncsResponse;
             }
 
             return response as ListFuncsResponse;

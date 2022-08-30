@@ -43,6 +43,7 @@ async-trait = "0.1.51"
 veritech = { path = "../../lib/veritech", features = ["client"] }
 faktory-async = { git = "https://github.com/systeminit/faktory-async", branch = "main" }
 serde_with = "1.10.0"
+itertools = "0.10.3"
 
 [dev-dependencies]
 insta = "1.8.0"

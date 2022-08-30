@@ -695,6 +695,7 @@ dependencies = [
  "faktory-async",
  "futures",
  "insta",
+ "itertools",
  "jwt-simple",
  "lazy_static",
  "names",

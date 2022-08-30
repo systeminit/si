@@ -49,6 +49,7 @@ import { computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { refFrom } from "vuse-rx/src";
 import { bufferTime } from "rxjs/operators";
+import { firstValueFrom } from "rxjs";
 import SiPanel from "@/atoms/SiPanel.vue";
 import ChangeSetPanel from "@/organisms/ChangeSetPanel.vue";
 import FuncPicker from "@/organisms/FuncEditor/FuncPicker.vue";
@@ -59,6 +60,7 @@ import FuncDetails from "@/organisms/FuncEditor/FuncDetails.vue";
 import { ListedFuncView, ListFuncsResponse } from "@/service/func/list_funcs";
 import { visibility$ } from "@/observable/visibility";
 import { saveFuncToBackend$ } from "@/observable/func";
+import { eventChangeSetWritten$ } from "@/observable/change_set";
 import { clearFuncs } from "../FuncEditor/func_state";
 
 const props = defineProps<{ funcId?: string }>();
@@ -82,7 +84,7 @@ const selectFunc = (func: ListedFuncView) => {
 };
 
 const funcList = refFrom<ListFuncsResponse>(FuncService.listFuncs(), {
-  qualifications: [],
+  funcs: [],
 });
 
 const createFunc = async () => {
@@ -95,8 +97,7 @@ const createFunc = async () => {
     isBuiltin: false,
   };
 
-  funcList.value.qualifications.push(newFunc);
-
+  await firstValueFrom(eventChangeSetWritten$);
   selectFunc(newFunc);
 };
 

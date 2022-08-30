@@ -24,7 +24,7 @@ pub struct ListedFuncView {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ListFuncsResponse {
-    pub qualifications: Vec<ListedFuncView>,
+    pub funcs: Vec<ListedFuncView>,
 }
 
 pub async fn list_funcs(
@@ -35,10 +35,13 @@ pub async fn list_funcs(
     let txns = txns.start().await?;
     let ctx = builder.build(request_ctx.build(request.visibility), &txns);
 
-    let qualification_funcs = Func::find_by_attr(
+    let funcs = Func::find_by_attr_in(
         &ctx,
         "backend_kind",
-        &FuncBackendKind::JsQualification.as_ref(),
+        &[
+            &FuncBackendKind::JsQualification.as_ref().to_string(),
+            &FuncBackendKind::JsAttribute.as_ref().to_string(),
+        ],
     )
     .await?
     .iter()
@@ -56,7 +59,5 @@ pub async fn list_funcs(
 
     txns.commit().await?;
 
-    Ok(Json(ListFuncsResponse {
-        qualifications: qualification_funcs,
-    }))
+    Ok(Json(ListFuncsResponse { funcs }))
 }
