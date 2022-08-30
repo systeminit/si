@@ -2,11 +2,15 @@
   <CodeViewer
     :code="workflowTree?.json ?? '// Resolving Workflow'"
     code-language="json"
+    title-classes="h-12"
   >
     <template #title>
-      <span class="text-lg ml-4">
+      <div class="text-lg ml-4 whitespace-nowrap text-ellipsis overflow-hidden">
         {{ JSON.parse(workflowTree?.json ?? "{}")?.name }} Plan
-      </span>
+      </div>
+      <div class="px-2">
+        <slot name="runButton" />
+      </div>
     </template>
   </CodeViewer>
 </template>

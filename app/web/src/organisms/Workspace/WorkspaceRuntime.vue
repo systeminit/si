@@ -15,16 +15,17 @@
       class="grow overflow-x-hidden overflow-y-hidden dark:bg-neutral-800 dark:text-white text-lg font-semi-bold px-2 pt-2 flex flex-col"
     >
       <span v-if="selected">
-        <div class="w-full flex flex-row-reverse">
-          <VButton
-            icon="play"
-            label="Run"
-            size="lg"
-            class="w-48"
-            @click="runWorkflow()"
-          />
-        </div>
-        <WorkflowResolver :selected-id="selected.id" />
+        <WorkflowResolver :selected-id="selected.id">
+          <template #runButton>
+            <VButton
+              icon="play"
+              label="Run"
+              size="lg"
+              class="w-48"
+              @click="runWorkflow()"
+            />
+          </template>
+        </WorkflowResolver>
       </span>
       <div
         v-else
@@ -42,7 +43,7 @@
         <CodeViewer v-if="logs" :code="logs.join('\n')">
           <template #title>Output</template>
         </CodeViewer>
-        <div v-else>
+        <div v-else class="p-2 text-neutral-400 dark:text-neutral-300">
           When you run a workflow, it's output will display here.
         </div>
       </div>
