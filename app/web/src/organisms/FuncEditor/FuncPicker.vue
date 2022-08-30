@@ -49,15 +49,25 @@
           Select a function from the lists below to view or edit it.
         </div>
         <ul class="overflow-y-auto">
-          <SiCollapsible as="li" class="w-full" content-as="ul" default-open>
+          <SiCollapsible
+            v-for="(kindName, kind) in funcTypes"
+            :key="kind"
+            as="li"
+            class="w-full"
+            content-as="ul"
+            default-open
+          >
             <template #label>
               <div class="flex items-center gap-2">
                 <FuncSkeleton />
-                <span> Qualifications </span>
+                <span> {{ kindName }} </span>
               </div>
             </template>
             <template #default>
-              <li v-for="func in filteredList" :key="func.id">
+              <li
+                v-for="func in filteredList.filter((f) => f.kind === kind)"
+                :key="func.id"
+              >
                 <SiFuncSprite
                   :class="
                     selectedFuncId === func.id
@@ -97,11 +107,17 @@ import { ListedFuncView, ListFuncsResponse } from "@/service/func/list_funcs";
 import SiSearch from "@/molecules/SiSearch.vue";
 import VButton from "@/molecules/VButton.vue";
 import FuncSkeleton from "@/atoms/FuncSkeleton.vue";
+import { FuncBackendKind } from "@/api/sdf/dal/func";
 
 const searchString = ref("");
 
 const onSearch = (search: string) => {
   searchString.value = search.trim().toLocaleLowerCase();
+};
+
+const funcTypes = {
+  [FuncBackendKind.JsQualification]: "Qualifications",
+  [FuncBackendKind.JsAttribute]: "Attributes",
 };
 
 const props = defineProps<{
@@ -110,16 +126,16 @@ const props = defineProps<{
 }>();
 
 const selectedFunc = computed(() =>
-  props.funcList.qualifications.find((f) => f.id === props.selectedFuncId),
+  props.funcList.funcs.find((f) => f.id === props.selectedFuncId),
 );
 
 const filteredList = computed(() => {
   const filteredList =
     searchString.value.length > 0
-      ? props.funcList.qualifications.filter((f) =>
+      ? props.funcList.funcs.filter((f) =>
           f.name.toLocaleLowerCase().includes(searchString.value),
         )
-      : props.funcList.qualifications;
+      : props.funcList.funcs;
 
   if (selectedFunc.value && !filteredList.includes(selectedFunc.value)) {
     filteredList.push(selectedFunc.value);

@@ -1,7 +1,7 @@
 <template>
   <div
     v-if="props.funcId > 0"
-    class="absolute text-center h-full w-full flex flex-col overflow-hidden"
+    class="absolute h-full w-full flex flex-col overflow-hidden"
   >
     <SiTabGroup :selected-index="0">
       <template #tabs>
@@ -31,7 +31,7 @@
           </div>
 
           <SiCollapsible label="Attributes" default-open>
-            <div class="px-2 py-2 flex flex-col gap-2">
+            <div class="p-3 flex flex-col gap-2">
               <h1 class="text-neutral-400 dark:text-neutral-300 text-sm">
                 Give this qualification a Name, Entrypoint and brief description
                 below.
@@ -66,7 +66,7 @@
             </div>
           </SiCollapsible>
           <SiCollapsible label="Run On" default-open>
-            <div class="px-2 pt-3 flex flex-col gap-2">
+            <div class="p-3 flex flex-col gap-2">
               <h1 class="text-neutral-400 dark:text-neutral-300 text-sm">
                 Run this qualification on the selected components and component
                 types below.

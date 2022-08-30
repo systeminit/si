@@ -577,14 +577,14 @@ async fn find_by_attr_in(ctx: &mut DalContext<'_, '_>) {
 
     // There are some functions in here already but we don't want to rely on
     // them existing for the test to pass
-    let first_result: Vec<Func> = dbg!(standard_model::find_by_attr_in(
+    let first_result: Vec<Func> = standard_model::find_by_attr_in(
         ctx,
         "funcs",
         "backend_kind",
         &[&"JsQualification".to_string(), &"JsAttribute".to_string()],
     )
     .await
-    .expect("cannot find objects by backend_kind in slice"));
+    .expect("cannot find objects by backend_kind in slice");
 
     let mut func_one = create_func(ctx).await;
     func_one
