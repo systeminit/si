@@ -1,17 +1,17 @@
 <template>
   <button @click="removeFromEditField">
     <!-- NOTE(nick): we may want to consider using the backspace icon or something else -->
-    <VueFeather type="trash-2" size="1em" class="ml-1" />
+    <Icon class="ml-1" name="trash" />
   </button>
 </template>
 
 <script setup lang="ts">
-import VueFeather from "vue-feather";
 import { AttributeContext } from "@/api/sdf/dal/attribute";
 import { EditFieldService } from "@/service/edit_field";
 import { ApiResponse } from "@/api/sdf";
 import { RemoveFromEditFieldResponse } from "@/service/edit_field/remove_from_edit_field";
 import { GlobalErrorService } from "@/service/global_error";
+import Icon from "@/ui-lib/Icon.vue";
 import type { EditField } from "@/api/sdf/dal/edit_field";
 
 const props = defineProps<{

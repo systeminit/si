@@ -8,8 +8,8 @@
         <span
           class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2"
         >
-          <SelectorIcon
-            aria-hidden="true"
+          <Icon
+            name="selector"
             class="h-5 w-5 rounded-[0.1875rem] bg-neutral-300 text-shade-0"
           />
         </span>
@@ -56,7 +56,7 @@
                   'absolute inset-y-0 right-0 flex items-center pr-4',
                 ]"
               >
-                <CheckIcon aria-hidden="true" class="h-5 w-5" />
+                <Icon name="check" />
               </span>
             </li>
           </ListboxOption>
@@ -74,7 +74,7 @@ import {
   ListboxOption,
   ListboxOptions,
 } from "@headlessui/vue";
-import { CheckIcon, SelectorIcon } from "@heroicons/vue/solid";
+import Icon from "@/ui-lib/Icon.vue";
 
 export interface Option {
   label: string;

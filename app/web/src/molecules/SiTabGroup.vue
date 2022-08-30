@@ -25,7 +25,7 @@
         dropdown-classes="right-0 overflow-hidden max-w-xs text-left text-ellipsis"
         dropdown-item-classes="text-left text-ellipsis"
       >
-        <DotsVerticalIcon class="w-6" />
+        <Icon name="dots-vertical" />
         <template #dropdownContent>
           <slot name="dropdownitems" />
         </template>
@@ -40,9 +40,9 @@
 <script lang="ts" setup>
 import { TabGroup, TabList, TabPanels } from "@headlessui/vue";
 import { onBeforeUnmount, onMounted, onUpdated, provide, ref } from "vue";
-import { DotsVerticalIcon } from "@heroicons/vue/outline";
 import _ from "lodash";
 import SiBarButton from "@/molecules/SiBarButton.vue";
+import Icon from "@/ui-lib/Icon.vue";
 
 const props = withDefaults(
   defineProps<{

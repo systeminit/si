@@ -1,20 +1,11 @@
 <template>
-  <ChevronDownIcon aria-hidden="true" :class="arrowNudged(props.nudge)" />
+  <Icon name="chevron--down" :class="props.nudge ? 'translate-y-0.5' : ''" />
 </template>
 
 <script setup lang="ts">
-import { ChevronDownIcon } from "@heroicons/vue/solid";
+import Icon from "@/ui-lib/Icon.vue";
 
 const props = defineProps<{
   nudge?: boolean;
 }>();
-
-const arrowNudged = (nudge: boolean | undefined): Record<string, boolean> => {
-  if (nudge) {
-    return {
-      "mt-1": true,
-    };
-  }
-  return {};
-};
 </script>

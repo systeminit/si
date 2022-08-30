@@ -17,8 +17,7 @@
             "
             class="inline-flex items-center justify-center flex-shrink-0 w-8 h-8 rounded-lg"
           >
-            <CheckIcon v-if="toast.success" />
-            <XIcon v-else />
+            <Icon :name="toast.success ? 'check' : 'x'" />
           </div>
           <span class="mx-3 text-sm font-normal">
             <h3>
@@ -44,7 +43,7 @@
             @click="hideToasted(toast.id)"
           >
             <span class="sr-only">Close</span>
-            <XIcon class="w-5 h-5" />
+            <Icon name="x" />
           </button>
         </div>
       </div>
@@ -53,10 +52,10 @@
 </template>
 
 <script lang="ts" setup>
-import { CheckIcon, XIcon } from "@heroicons/vue/solid";
 import { ref } from "vue";
 import { untilUnmounted } from "vuse-rx";
 import { toast$, Toasted } from "@/observable/toast";
+import Icon from "@/ui-lib/Icon.vue";
 
 interface Burnt extends Toasted {
   timeout: ReturnType<typeof setTimeout>;

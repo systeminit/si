@@ -12,16 +12,16 @@
         @keydown="onKeyDown"
       />
     </label>
-    <button class="w-6 text-action-" @click="triggerSearch">
-      <SearchIcon class="w-full text-neutral-500" />
+    <button class="w-6 text-action- text-neutral-500" @click="triggerSearch">
+      <Icon name="search" />
     </button>
   </div>
 </template>
 
 <script lang="ts" setup>
 import _ from "lodash";
-import { SearchIcon } from "@heroicons/vue/solid";
 import { ref, watch } from "vue";
+import Icon from "@/ui-lib/Icon.vue";
 
 // TODO: we may want to swap this over to vmodel instead, but we'll see
 const searchString = ref("");

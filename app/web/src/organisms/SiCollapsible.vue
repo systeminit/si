@@ -3,9 +3,10 @@
     <DisclosureButton
       class="flex w-full px-2 py-2 text-left text-sm font-medium focus:outline-none dark:border-neutral-600 border-b"
     >
-      <ChevronUpIcon
-        class="w-5 mr-1.5 dark:text-white flex-shrink-0 block"
-        :class="open ? 'rotate-180 transform' : ''"
+      <Icon
+        :name="open ? 'chevron--up' : 'chevron--down'"
+        size="s"
+        class="mr-1.5 dark:text-white flex-shrink-0 block"
       />
 
       <slot name="label" />
@@ -23,9 +24,9 @@
 </template>
 
 <script setup lang="ts">
-import { Disclosure, DisclosureButton, DisclosurePanel } from "@headlessui/vue";
-import { ChevronUpIcon } from "@heroicons/vue/solid";
 import { computed, useSlots } from "vue";
+import { Disclosure, DisclosurePanel, DisclosureButton } from "@headlessui/vue";
+import Icon from "@/ui-lib/Icon.vue";
 
 defineProps<{
   label?: string;

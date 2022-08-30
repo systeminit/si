@@ -7,15 +7,15 @@
     type="button"
     @click="emit('click')"
   >
-    <Icon v-if="icon" :icon="icon" :icon-classes="iconClasses" />
+    <Icon v-if="icon" :name="icon" :class="iconClasses" />
     <span v-if="!hideLabel"> {{ label }}</span>
-    <Icon v-if="iconRight" :icon="iconRight" :icon-classes="iconClasses" />
+    <Icon v-if="iconRight" :name="iconRight" :class="iconClasses" />
   </button>
 </template>
 
 <script lang="ts" setup>
 import { computed } from "vue";
-import Icon, { IconName } from "./VButton/Icon.vue";
+import Icon, { IconNames } from "@/ui-lib/Icon.vue";
 
 export type ButtonType =
   | "neutral"
@@ -41,8 +41,8 @@ const props = withDefaults(
     disabled?: boolean;
 
     hideLabel?: boolean;
-    icon?: IconName;
-    iconRight?: IconName;
+    icon?: IconNames;
+    iconRight?: IconNames;
   }>(),
   {
     size: "md",

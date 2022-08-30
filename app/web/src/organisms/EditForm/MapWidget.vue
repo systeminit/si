@@ -14,7 +14,7 @@
         <span class="flex flex-col content-center justify-center">
           {{ props.editField.name }}
         </span>
-        <VueFeather type="help-circle" size="1em" class="m-2" />
+        <Icon name="help-circle" class="m-2" />
       </SiLink>
       <template v-else>
         {{ props.editField.name }}
@@ -37,7 +37,7 @@
         </div>
         <div class="flex flex-row mt-1 ml-1">
           <button @click="addToMap">
-            <VueFeather type="plus" />
+            <Icon name="plus" />
           </button>
         </div>
         <div
@@ -71,7 +71,6 @@
 
 <script setup lang="ts">
 import { computed, defineAsyncComponent, DefineComponent } from "vue";
-import VueFeather from "vue-feather";
 import { ApiResponse } from "@/api/sdf";
 import { InsertFromEditFieldResponse } from "@/service/edit_field/insert_from_edit_field";
 import { GlobalErrorService } from "@/service/global_error";
@@ -81,6 +80,7 @@ import { ITreeOpenState } from "@/utils/edit_field_visitor";
 import { AttributeContext } from "@/api/sdf/dal/attribute";
 import SiLink from "@/atoms/SiLink.vue";
 import { ComponentIdentification } from "@/api/sdf/dal/component";
+import Icon from "@/ui-lib/Icon.vue";
 import type { EditField, MapWidgetDal } from "@/api/sdf/dal/edit_field";
 import EditFormField from "./EditFormField.vue";
 import type { WidgetsProps } from "./Widgets.vue";

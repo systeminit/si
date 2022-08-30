@@ -10,7 +10,7 @@
       class="bg-action-900 hover:bg-action-600 p-2 flex text-base w-full text-white"
     >
       <div class="grow">{{ props.tree.name }}</div>
-      <div><ChevronRightIcon class="w-6 h-6 self-end" /></div>
+      <div><Icon name="chevron--right" class="self-end" /></div>
     </button>
     <slot></slot>
 
@@ -40,8 +40,8 @@
 <script setup lang="ts">
 import { defineAsyncComponent } from "vue";
 import { Menu as VMenu } from "floating-vue";
-import { ChevronRightIcon } from "@heroicons/vue/solid";
 import { SiMenuTree } from "@/utils/menu";
+import Icon from "@/ui-lib/Icon.vue";
 
 // Eliminate the circular dependency of this recursive atom
 // by using `defineAsyncComponent` in a careful way to preserve the ability for

@@ -54,12 +54,9 @@
 
       <div
         v-if="inError"
-        class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none"
+        class="absolute inset-y-0 right-0 pr-3 flex items-center text-destructive-400"
       >
-        <ExclamationCircleIcon
-          class="h-5 w-5 text-destructive-400"
-          aria-hidden="true"
-        />
+        <Icon name="exclamation-circle" />
       </div>
     </div>
 
@@ -86,7 +83,6 @@
 </template>
 
 <script setup lang="ts">
-import { ExclamationCircleIcon } from "@heroicons/vue/solid";
 import { computed, PropType, ref } from "vue";
 import _ from "lodash";
 import { useFormSettings } from "@/composables/formSettings";
@@ -94,6 +90,7 @@ import SiValidation, {
   ErrorsArray,
   ValidatorArray,
 } from "@/atoms/SiValidation.vue";
+import Icon from "@/ui-lib/Icon.vue";
 
 const props = defineProps({
   modelValue: { type: String },

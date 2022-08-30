@@ -17,7 +17,7 @@
             class="inline-block rounded-sm w-5 ml-1"
             @click="closeFunc(func)"
           >
-            <VueFeather type="x" />
+            <Icon name="x" />
           </button>
         </template>
       </SiTabHeader>
@@ -48,7 +48,6 @@
 import { toRef, computed, ref } from "vue";
 import { fromRef } from "vuse-rx/src";
 import { TabPanel } from "@headlessui/vue";
-import VueFeather from "vue-feather";
 import { switchMap, take } from "rxjs/operators";
 import { of } from "rxjs";
 import { FuncService } from "@/service/func";
@@ -57,6 +56,7 @@ import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
 import FuncEditor from "@/organisms/FuncEditor/FuncEditor.vue";
 import { ListedFuncView, nullListFunc } from "@/service/func/list_funcs";
+import Icon from "@/ui-lib/Icon.vue";
 import { funcState, funcById, removeFunc, insertFunc } from "./func_state";
 
 const props = defineProps<{

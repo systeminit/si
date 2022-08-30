@@ -16,7 +16,7 @@
                   button-rank="primary"
                   button-type="success"
                   icon="plus"
-                  icon-right="chevron-down"
+                  icon-right="chevron--down"
                   label="Function"
                   size="sm"
                 />

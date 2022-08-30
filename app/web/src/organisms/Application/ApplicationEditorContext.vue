@@ -7,16 +7,8 @@
           data-cy="application-details-toggle"
           @click="toggleDetails"
         >
-          <VueFeather
-            v-if="showDetails"
-            type="chevron-down"
-            size="1.5em"
-            class="text-neutral-300"
-          />
-          <VueFeather
-            v-else
-            type="chevron-right"
-            size="1.5rem"
+          <Icon
+            :name="showDetails ? 'chevron--down' : 'chevron--right'"
             class="text-neutral-300"
           />
         </button>
@@ -82,12 +74,12 @@
 <script setup lang="ts">
 import { ref } from "vue";
 
-import VueFeather from "vue-feather";
 import ApplicationActivitySummary from "@/organisms/Application/Summary/ApplicationActivitySummary.vue";
 import ApplicationServicesSummary from "@/organisms/Application/Summary/ApplicationServicesSummary.vue";
 import ApplicationComputingResourcesSummary from "@/organisms/Application/ApplicationComputingResourcesSummary.vue";
 import ApplicationProviderSummary from "@/organisms/Application/Summary/ApplicationProviderSummary.vue";
 import ApplicationChangesSummary from "@/organisms/Application/Summary/ApplicationChangesSummary.vue";
+import Icon from "@/ui-lib/Icon.vue";
 
 const showDetails = ref<boolean>(false);
 const toggleDetails = () => {

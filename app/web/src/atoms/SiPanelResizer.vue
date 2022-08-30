@@ -8,15 +8,17 @@
       @dblclick="dblClick"
     />
     <div ref="handleRef" :class="handleClasses">
-      <DotsHorizontalIcon v-if="isVertical" :class="iconClasses" />
-      <DotsVerticalIcon v-else :class="iconClasses" />
+      <Icon
+        :name="isVertical ? 'dots-vertical' : 'dots-horizontal'"
+        :class="iconClasses"
+      />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { DotsVerticalIcon, DotsHorizontalIcon } from "@heroicons/vue/solid";
-import { computed, onBeforeUnmount, ref } from "vue";
+import { computed, defineEmits, onBeforeUnmount, ref } from "vue";
+import Icon from "@/ui-lib/Icon.vue";
 
 const props = withDefaults(
   defineProps<{
