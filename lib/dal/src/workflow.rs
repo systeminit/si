@@ -1,12 +1,13 @@
 use crate::{
     func::backend::js_workflow::FuncBackendJsWorkflowArgs, func::backend::FuncDispatchContext,
-    func::binding::FuncBindingId, func::execution::FuncExecution, DalContext, Func,
-    FuncBackendKind, FuncBinding, FuncBindingError, FuncBindingReturnValue, StandardModel,
-    StandardModelError,
+    func::binding::FuncBindingId, func::execution::FuncExecution, DalContext, DalContextBuilder,
+    Func, FuncBackendKind, FuncBinding, FuncBindingError, FuncBindingReturnValue, PgPoolError,
+    RequestContext, ServicesContext, StandardModel, StandardModelError, TransactionsError,
+    TransactionsStarter, WsEvent, WsEventError, WsPayload,
 };
 use async_recursion::async_recursion;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use std::{collections::HashMap, collections::HashSet, sync::Arc};
 use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use thiserror::Error;
 use tokio::sync::mpsc;
@@ -14,6 +15,12 @@ use veritech::OutputStream;
 
 #[derive(Error, Debug)]
 pub enum WorkflowError {
+    #[error(transparent)]
+    Transactions(#[from] TransactionsError),
+    #[error(transparent)]
+    PgPool(#[from] PgPoolError),
+    #[error(transparent)]
+    WsEvent(#[from] WsEventError),
     #[error(transparent)]
     StandardModel(#[from] StandardModelError),
     #[error(transparent)]
@@ -210,8 +217,78 @@ impl WorkflowTree {
         ctx: &DalContext<'_, '_>,
     ) -> WorkflowResult<Vec<FuncBindingReturnValue>> {
         let (map, rxs) = self.prepare(ctx).await?;
-        let map = self.clone().execute(map).await?;
-        self.postprocess(ctx, map, rxs).await
+
+        let mut handlers = tokio::task::JoinSet::new();
+        for (func_binding_id, rx) in rxs {
+            let services_context = ServicesContext::new(
+                ctx.pg_pool().clone(),
+                ctx.nats_conn().clone(),
+                ctx.job_processor(),
+                ctx.veritech().clone(),
+                Arc::new(*ctx.encryption_key()),
+            );
+            let ctx_builder = services_context.clone().into_builder();
+            let request_context = RequestContext {
+                read_tenancy: ctx.read_tenancy().clone(),
+                write_tenancy: ctx.write_tenancy().clone(),
+                visibility: *ctx.visibility(),
+                history_actor: ctx.history_actor().clone(),
+                application_node_id: ctx.application_node_id(),
+            };
+            let transactions_starter = services_context.transactions_starter().await?;
+
+            handlers.spawn(async move {
+                async fn process_output(
+                    ctx_builder: DalContextBuilder,
+                    request_context: RequestContext,
+                    mut transactions_starter: TransactionsStarter,
+                    func_binding_id: FuncBindingId,
+                    mut rx: mpsc::Receiver<OutputStream>,
+                ) -> WorkflowResult<(FuncBindingId, Vec<OutputStream>)> {
+                    let mut output = Vec::new();
+                    while let Some(stream) = rx.recv().await {
+                        let txns = transactions_starter.start().await?;
+                        let ctx = ctx_builder.build(request_context.clone(), &txns);
+
+                        let text = match &stream.data {
+                            Some(data) => format!(
+                                "{} {}",
+                                stream.message,
+                                serde_json::to_string_pretty(&data)?
+                            ),
+                            None => stream.message.clone(),
+                        };
+                        output.push(stream);
+
+                        WsEvent::command_output(&ctx, text).publish(&ctx).await?;
+                        txns.commit().await?;
+                    }
+                    Ok((func_binding_id, output))
+                }
+                process_output(
+                    ctx_builder,
+                    request_context,
+                    transactions_starter,
+                    func_binding_id,
+                    rx,
+                )
+                .await
+            });
+        }
+        let mut map = self.clone().execute(map).await?;
+
+        for prepared in map.values_mut() {
+            // Drops tx so rx will stop waiting for it
+            let (mut tx, _) = mpsc::channel(1);
+            std::mem::swap(&mut prepared.context.output_tx, &mut tx);
+        }
+
+        let mut outputs = HashMap::new();
+        while let Some(res) = handlers.join_next().await {
+            let (func_binding_id, output) = join_task(res)?;
+            outputs.insert(func_binding_id, output);
+        }
+        self.postprocess(ctx, map, outputs).await
     }
 
     #[async_recursion]
@@ -314,31 +391,10 @@ impl WorkflowTree {
                     }
                 }
 
-                fn join<T>(res: Result<T, tokio::task::JoinError>) -> T {
-                    match res {
-                        Ok(t) => t,
-                        Err(err) => {
-                            assert!(!err.is_cancelled(), "Task got cancelled but shouldn't");
-                            let any = err.into_panic();
-                            // Note: Technically panics can be of any form, but most should be &str or String
-                            match any.downcast::<String>() {
-                                Ok(msg) => panic!("{}", msg),
-                                Err(any) => match any.downcast::<&str>() {
-                                    Ok(msg) => panic!("{}", msg),
-                                    Err(any) => panic!(
-                                        "Panic message downcast failed of {:?}",
-                                        any.type_id()
-                                    ),
-                                },
-                            }
-                        }
-                    }
-                }
-
                 // TODO: poll both in the same future
 
                 while let Some(res) = commands.join_next().await {
-                    let (func_binding, value) = join(res)?;
+                    let (func_binding, value) = join_task(res)?;
                     let mut prepared = map.get_mut(func_binding.id()).ok_or_else(move || {
                         WorkflowError::CommandNotPrepared(*func_binding.id())
                     })?;
@@ -346,7 +402,7 @@ impl WorkflowTree {
                 }
 
                 while let Some(res) = workflows.join_next().await {
-                    map.extend(join(res)?);
+                    map.extend(join_task(res)?);
                 }
             }
             WorkflowKind::Exceptional => todo!(),
@@ -358,24 +414,24 @@ impl WorkflowTree {
         &self,
         ctx: &DalContext<'_, '_>,
         map: HashMap<FuncBindingId, FuncToExecute>,
-        mut rxs: HashMap<FuncBindingId, mpsc::Receiver<OutputStream>>,
+        mut outputs: HashMap<FuncBindingId, Vec<OutputStream>>,
     ) -> WorkflowResult<Vec<FuncBindingReturnValue>> {
         let mut values = Vec::with_capacity(map.len());
         // Do we have a problem here, if the same func_binding gets executed twice?
-        for (_, mut prepared) in map {
+        for (_, prepared) in map {
             let id = *prepared.func_binding.id();
-
-            // Drops tx so rx won't wait for it
-            let (mut tx, _) = mpsc::channel(1);
-            std::mem::swap(&mut prepared.context.output_tx, &mut tx);
-            std::mem::drop(tx);
-
-            let rx = rxs
+            let output = outputs
                 .remove(&id)
                 .ok_or(WorkflowError::CommandNotPrepared(id))?;
             let func_binding_return_value = prepared
                 .func_binding
-                .postprocess_execution(ctx, rx, &prepared.func, prepared.value, prepared.execution)
+                .postprocess_execution(
+                    ctx,
+                    output,
+                    &prepared.func,
+                    prepared.value,
+                    prepared.execution,
+                )
                 .await?;
             values.push((prepared.index, func_binding_return_value));
         }
@@ -430,5 +486,35 @@ impl WorkflowTreeView {
             }
         }
         Ok(view)
+    }
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct CommandOutput {
+    output: String,
+}
+
+impl WsEvent {
+    pub fn command_output(ctx: &DalContext<'_, '_>, output: String) -> Self {
+        WsEvent::new(ctx, WsPayload::CommandOutput(CommandOutput { output }))
+    }
+}
+
+fn join_task<T>(res: Result<T, tokio::task::JoinError>) -> T {
+    match res {
+        Ok(t) => t,
+        Err(err) => {
+            assert!(!err.is_cancelled(), "Task got cancelled but shouldn't");
+            let any = err.into_panic();
+            // Note: Technically panics can be of any form, but most should be &str or String
+            match any.downcast::<String>() {
+                Ok(msg) => panic!("{}", msg),
+                Err(any) => match any.downcast::<&str>() {
+                    Ok(msg) => panic!("{}", msg),
+                    Err(any) => panic!("Panic message downcast failed of {:?}", any.type_id()),
+                },
+            }
+        }
     }
 }

@@ -61,6 +61,11 @@ export interface WsSecretCreated extends WsPayload {
   data: number;
 }
 
+export interface WsCommandOutput extends WsPayload {
+  kind: "CommandOutput";
+  data: { output: string };
+}
+
 export type WsPayloadKinds =
   | WsChangeSetCreated
   | WsChangeSetApplied
@@ -70,4 +75,5 @@ export type WsPayloadKinds =
   | WsCodeGenerated
   | WsCheckedQualifications
   | WsSecretCreated
-  | WsDependentValuesUpdated;
+  | WsDependentValuesUpdated
+  | WsCommandOutput;

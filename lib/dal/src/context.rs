@@ -282,6 +282,10 @@ impl DalContext<'_, '_> {
         self.txns
     }
 
+    pub fn job_processor(&self) -> Box<dyn JobQueueProcessor + Send + Sync> {
+        self.services_context.job_processor.clone()
+    }
+
     /// Gets a reference to the DAL context's Postgres pool.
     pub fn pg_pool(&self) -> &PgPool {
         &self.services_context.pg_pool
