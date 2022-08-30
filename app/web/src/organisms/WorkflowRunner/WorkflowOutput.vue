@@ -28,7 +28,7 @@ import { PropType } from "vue";
 import CodeViewer from "@/organisms/CodeViewer.vue";
 import Icon from "@/ui-lib/Icon.vue";
 
-export type workflowStatus = "running" | "success" | "failure";
+export type WorkflowStatus = "running" | "success" | "failure";
 
 defineProps({
     logs: { type: Array<string>, required: true },

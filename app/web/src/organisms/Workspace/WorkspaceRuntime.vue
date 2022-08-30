@@ -66,7 +66,7 @@ import {
 import VButton from "@/molecules/VButton.vue";
 import SiPanel from "@/atoms/SiPanel.vue";
 import WorkflowOutput, {
-  workflowStatus,
+  WorkflowStatus,
 } from "../WorkflowRunner/WorkflowOutput.vue";
 
 const selected = ref<ListedWorkflowView | null>(null);
@@ -84,7 +84,7 @@ const runWorkflow = async () => {
   }
 };
 
-const currentWorkflowStatus = computed((): workflowStatus => {
+const currentWorkflowStatus = computed((): WorkflowStatus => {
   return "running";
 });
 

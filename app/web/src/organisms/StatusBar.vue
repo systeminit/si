@@ -85,11 +85,7 @@
           :aria-hidden="!isViewMode"
           :class="[isViewMode ? '' : 'hidden']"
         >
-          <StatusBarTab :selected="selected">
-            <template #icon><Icon name="clock" /></template>
-            <template #name>Workflow History</template>
-            <template #summary></template>
-          </StatusBarTab>
+          <WorkflowHistoryTab :selected="selected" />
         </Tab>
         <Tab
           v-slot="{ selected }"
@@ -177,7 +173,7 @@
             class="h-full"
           >
             <!-- TOOD(wendy): replace with a Workflow History tab panel -->
-            <GenericTabPanel :component-list="componentList" />
+            <WorkflowHistoryPanel :workflows="dummyWorkflows" />
           </TabPanel>
           <TabPanel
             :aria-hidden="!isViewMode"
@@ -211,6 +207,8 @@ import { GlobalErrorService } from "@/service/global_error";
 import { ComponentListItem } from "@/organisms/StatusBar/StatusBarTabPanelComponentList.vue";
 import GenericTabPanel from "@/organisms/StatusBarTabs/GenericTabPanel.vue";
 import Icon from "@/ui-lib/Icon.vue";
+import WorkflowHistoryTab from "./StatusBarTabs/WorkflowHistory/WorkflowHistoryTab.vue";
+import WorkflowHistoryPanel from "./StatusBarTabs/WorkflowHistory/WorkflowHistoryPanel.vue";
 
 // Tab 0 is our phantom empty panel
 const selectedTab = ref(0);
@@ -233,7 +231,7 @@ const togglePanel = () => {
   if (panelOpen.value) {
     closePanel();
   } else {
-    selectedTab.value = 2;
+    selectedTab.value = isViewMode.value ? 4 : 2;
     openPanel();
   }
 };
@@ -290,4 +288,9 @@ onMounted(() => {
   panelRef.value.resetSize(false);
   panelRef.value.setCurrentlyResizeable(false);
 });
+
+const dummyWorkflows = [
+  { id: 1, name: "dummy-1" },
+  { id: 2, name: "dummy-2" },
+];
 </script>
