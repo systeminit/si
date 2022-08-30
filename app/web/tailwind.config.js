@@ -1,9 +1,9 @@
-import colors from "tailwindcss/colors";
-import formsPlugin from "@tailwindcss/forms";
-import * as themeValues from "./src/assets/style/tailwind_customization/theme_values.mjs";
-import typographyPlugin from "./src/assets/style/tailwind_customization/typography_plugin.mjs";
+const formsPlugin = require("@tailwindcss/forms");
+const colors = require("tailwindcss/colors");
+const themeValues = require("./src/assets/style/tailwind_customization/theme_values.js");
+const typographyPlugin = require("./src/assets/style/tailwind_customization/typography_plugin.js");
 
-export default {
+module.exports = {
   darkMode: "class",
   content: ["./src/**/*.html", "./src/**/*.vue"],
   theme: {

@@ -6,7 +6,7 @@ import svgLoaderPlugin from "vite-svg-loader";
 import IconsPlugin from "unplugin-icons/vite";
 import packageJson from "./package.json";
 
-import postcss from "./postcss.config.mjs";
+import postcss from "./postcss.config.js";
 
 // https://vitejs.dev/config/
 export default defineConfig({

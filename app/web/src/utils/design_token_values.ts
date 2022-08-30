@@ -1,16 +1,1 @@
-import _ from "lodash";
-// @ts-ignore
-import resolveConfig from "tailwindcss/resolveConfig";
-// @ts-ignore
-import tailwindConfig from "../../tailwind.config";
-
-const fullConfig = resolveConfig(tailwindConfig);
-
-export const colors = _.pick(fullConfig.theme.colors, [
-  "neutral",
-  "action",
-  "success",
-  "warning",
-  "destructive",
-  "shade",
-]);
+export { default as colors } from "@/assets/style/tailwind_customization/colors.json";

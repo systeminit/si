@@ -146,7 +146,6 @@ module.exports = {
       rules: {
         // these files often refer to dev dependencies
         "import/no-extraneous-dependencies": 0,
-        // the typescript resolver can't find our mjs files without extension
         "import/extensions": 0,
       },
     },
