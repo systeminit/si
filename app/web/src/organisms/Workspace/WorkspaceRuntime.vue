@@ -12,21 +12,20 @@
       />
     </SiPanel>
     <div
-      class="grow overflow-x-hidden overflow-y-hidden dark:bg-neutral-800 dark:text-white text-lg font-semi-bold px-2 pt-2 flex flex-col"
+      class="grow overflow-hidden h-full dark:bg-neutral-800 dark:text-white text-lg font-semi-bold px-2 pt-2 flex flex-col"
     >
-      <span v-if="selected">
-        <WorkflowResolver :selected-id="selected.id">
-          <template #runButton>
-            <VButton
-              icon="play"
-              label="Run"
-              size="lg"
-              class="w-48"
-              @click="runWorkflow()"
-            />
-          </template>
-        </WorkflowResolver>
-      </span>
+      <WorkflowResolver v-if="selected" :selected-id="selected.id">
+        <template #runButton>
+          <VButton
+            icon="play"
+            label="Run"
+            size="lg"
+            class="w-48"
+            @click="runWorkflow()"
+          />
+        </template>
+      </WorkflowResolver>
+
       <div
         v-else
         class="p-2 text-center text-neutral-400 dark:text-neutral-300"
