@@ -1,9 +1,9 @@
 <template>
-  <div
-    class="flex flex-col items-center justify-center min-h-screen w-full bg-shade-100"
-  >
+  <AppLayout page-mode="scroll">
     <router-view />
-  </div>
+  </AppLayout>
 </template>
 
-<script setup lang="ts" />
+<script setup lang="ts">
+import AppLayout from "@/templates/AppLayout.vue";
+</script>
