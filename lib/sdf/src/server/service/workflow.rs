@@ -8,7 +8,7 @@ use axum::{
 use dal::{
     func::binding_return_value::FuncBindingReturnValueError, ComponentError, ComponentId,
     FuncBindingError, FuncBindingId, FuncId, SchemaId, SchemaVariantId, StandardModelError,
-    TransactionsError, WorkflowPrototypeError, WorkflowPrototypeId, WorkflowRunnerError,
+    TransactionsError, WorkflowPrototypeError, WorkflowPrototypeId, WorkflowRunnerError, WorkflowRunnerId
 };
 
 use thiserror::Error;

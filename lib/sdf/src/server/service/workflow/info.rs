@@ -2,8 +2,7 @@ use super::{WorkflowError, WorkflowResult};
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::{extract::Query, Json};
 use dal::{
-    Component, Schema, SchemaVariant, StandardModel, Visibility, WorkflowPrototype,
-    WorkflowPrototypeId, WorkflowRunnerId, WorkflowRunner, FuncBindingReturnValue,
+StandardModel, Visibility, WorkflowPrototype, WorkflowRunnerId, WorkflowRunner, FuncBindingReturnValue, Timestamp
 };
 use dal::workflow::HistoryWorkflowStatus;
 use serde::{Deserialize, Serialize};
@@ -19,7 +18,7 @@ pub struct WorkflowRunInfoRequest {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WorkflowRunInfoView {
-    id: WorkflowPrototypeId,
+    id: WorkflowRunnerId,
     title: String,
     description: Option<String>,
     status: HistoryWorkflowStatus,
@@ -39,6 +38,7 @@ pub async fn info(
     let ctx = builder.build(request_ctx.build(request.visibility), &txns);
 
     let runner = WorkflowRunner::get_by_id(&ctx, &request.id).await?.ok_or(WorkflowError::RunnerNotFound(request.id))?;
+    let prototype = WorkflowPrototype::get_by_id(&ctx, &runner.workflow_prototype_id()).await?.ok_or(WorkflowError::PrototypeNotFound(runner.workflow_prototype_id()))?;
 
     let func_binding_return_value = FuncBindingReturnValue::get_by_func_binding_id(&ctx, runner.func_binding_id()).await?.ok_or(WorkflowError::FuncBindingNotFound(runner.func_binding_id()))?;
 
@@ -61,8 +61,8 @@ pub async fn info(
 
     let view = WorkflowRunInfoView{
         id: *runner.id(),
-        title: runner.title().to_owned(),
-        description: runner.description().map(ToString::to_string),
+        title: prototype.title().to_owned(),
+        description: prototype.description().map(ToString::to_string),
         status: HistoryWorkflowStatus::Success,
         timestamp: *runner.timestamp(),
         logs,
