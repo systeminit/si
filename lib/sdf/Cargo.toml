@@ -33,6 +33,9 @@ veritech = { path = "../../lib/veritech", features = ["client", "server"] }
 base64 = "0.13.0"
 faktory-async = { git = "https://github.com/systeminit/faktory-async", branch = "main" }
 
+[build-dependencies]
+thiserror = { version = "1.0" }
+
 [dev-dependencies]
 serde_url_params = "0.2.1"
 si-test-macros = { path = "../../lib/si-test-macros" }
