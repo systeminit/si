@@ -19,56 +19,53 @@ const routes: RouteRecordRaw[] = [
     path: "/",
     name: "home",
     component: () => import("@/pages/Home.vue"),
+  },
+  {
+    path: "/w",
+    name: "workspace-multiple",
+    component: () => import("@/templates/WorkspaceMultiple.vue"),
+    redirect: { name: "home" },
     children: [
       {
-        path: "w",
-        name: "workspace-multiple",
-        component: () => import("@/templates/WorkspaceMultiple.vue"),
-        redirect: { name: "home" },
+        name: "workspace-single",
+        path: ":workspaceId",
+        component: () => import("@/templates/WorkspaceSingle.vue"),
+        redirect: { name: "workspace-compose" },
+        props: (route) => {
+          let workspaceId;
+          if (_.isArray(route.params.workspaceId)) {
+            workspaceId = Number.parseInt(route.params.workspaceId[0]);
+          } else {
+            workspaceId = Number.parseInt(route.params.workspaceId);
+          }
+          return {
+            workspaceId,
+          };
+        },
         children: [
           {
-            name: "workspace-single",
-            path: ":workspaceId",
-            component: () => import("@/templates/WorkspaceSingle.vue"),
-            redirect: { name: "workspace-compose" },
-            props: (route) => {
-              let workspaceId;
-              if (_.isArray(route.params.workspaceId)) {
-                workspaceId = Number.parseInt(route.params.workspaceId[0]);
-              } else {
-                workspaceId = Number.parseInt(route.params.workspaceId);
-              }
-              return {
-                workspaceId,
-              };
-            },
-            children: [
-              {
-                path: "c",
-                name: "workspace-compose",
-                component: () =>
-                  import("@/organisms/Workspace/WorkspaceCompose.vue"),
-              },
-              {
-                path: "l/:funcId?",
-                name: "workspace-lab",
-                props: true,
-                component: () =>
-                  import("@/organisms/Workspace/WorkspaceLab.vue"),
-              },
-              {
-                path: "v",
-                name: "workspace-view",
-                component: () =>
-                  import("@/organisms/Workspace/WorkspaceCompose.vue"),
-              },
-              {
-                path: "r",
-                name: "workspace-runtime",
-                component: () =>
-                  import("@/organisms/Workspace/WorkspaceRuntime.vue"),
-              },
-            ],
+            path: "c",
+            name: "workspace-compose",
+            component: () =>
+              import("@/organisms/Workspace/WorkspaceCompose.vue"),
+          },
+          {
+            path: "l/:funcId?",
+            name: "workspace-lab",
+            props: true,
+            component: () => import("@/organisms/Workspace/WorkspaceLab.vue"),
+          },
+          {
+            path: "v",
+            name: "workspace-view",
+            component: () =>
+              import("@/organisms/Workspace/WorkspaceCompose.vue"),
+          },
+          {
+            path: "r",
+            name: "workspace-runtime",
+            component: () =>
+              import("@/organisms/Workspace/WorkspaceRuntime.vue"),
           },
         ],
       },
