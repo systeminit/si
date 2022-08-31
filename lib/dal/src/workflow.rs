@@ -519,3 +519,24 @@ fn join_task<T>(res: Result<T, tokio::task::JoinError>) -> T {
         }
     }
 }
+
+#[derive(
+    Deserialize,
+    Serialize,
+    Debug,
+    Display,
+    AsRefStr,
+    PartialEq,
+    Eq,
+    EnumIter,
+    EnumString,
+    Clone,
+    Copy,
+)]
+#[serde(rename_all = "camelCase")]
+#[strum(serialize_all = "camelCase")]
+pub enum HistoryWorkflowStatus {
+    Success,
+    Failure,
+    Running
+}

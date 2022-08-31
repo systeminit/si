@@ -173,7 +173,7 @@
             class="h-full"
           >
             <!-- TOOD(wendy): replace with a Workflow History tab panel -->
-            <WorkflowHistoryPanel :workflows="dummyWorkflows" />
+            <WorkflowHistoryPanel />
           </TabPanel>
           <TabPanel
             :aria-hidden="!isViewMode"
@@ -288,9 +288,4 @@ onMounted(() => {
   panelRef.value.resetSize(false);
   panelRef.value.setCurrentlyResizeable(false);
 });
-
-const dummyWorkflows = [
-  { id: 1, name: "dummy-1" },
-  { id: 2, name: "dummy-2" },
-];
 </script>
