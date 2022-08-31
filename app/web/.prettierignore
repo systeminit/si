@@ -1,4 +1,5 @@
-src/ignore
-
-# Used by WebGL Shader
-*.frag
+node_modules
+.vscode
+nginx
+public
+script

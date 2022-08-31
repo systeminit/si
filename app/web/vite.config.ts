@@ -18,6 +18,9 @@ export default defineConfig({
       vueTsc: true,
       eslint: {
         lintCommand: packageJson.scripts.lint,
+        // I _think_ we only want to pop up an error on the screen for proper errors
+        // otherwise we can get a lot of unused var errors when you comment something out temporarily
+        dev: { logLevel: ["error"] },
       },
     }),
   ],

@@ -31,13 +31,19 @@
 <script setup lang="ts">
 import _ from "lodash";
 import { ref, computed, watch, PropType, onMounted, onBeforeMount } from "vue";
-import { EditorState, EditorView, basicSetup } from "@codemirror/basic-setup";
-import { StreamLanguage } from "@codemirror/stream-parser";
+import { basicSetup, EditorView } from "codemirror";
+import { StreamLanguage } from "@codemirror/language";
+
 import { keymap } from "@codemirror/view";
 import { indentWithTab } from "@codemirror/commands";
 import { gruvboxDark } from "cm6-theme-gruvbox-dark";
 import { basicLight } from "cm6-theme-basic-light";
-import { Compartment, Extension, StateEffect } from "@codemirror/state";
+import {
+  EditorState,
+  Compartment,
+  Extension,
+  StateEffect,
+} from "@codemirror/state";
 
 import { properties as JsonModeParser } from "@codemirror/legacy-modes/mode/properties";
 import { yaml as YamlModeParser } from "@codemirror/legacy-modes/mode/yaml";

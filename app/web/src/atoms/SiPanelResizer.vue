@@ -17,7 +17,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineEmits, onBeforeUnmount, ref } from "vue";
+import { computed, onBeforeUnmount, ref } from "vue";
 import Icon from "@/ui-lib/Icon.vue";
 
 const props = withDefaults(
