@@ -18,7 +18,8 @@ const _spy = create();
 bottleSetup(config);
 
 const app = createApp(App);
-app.use(FloatingVue);
+const floatingVueOptions = { container: "#app-layout" };
+app.use(FloatingVue, floatingVueOptions);
 
 // Expose our internal services to Cypress, so we can use them
 // directly in tests.

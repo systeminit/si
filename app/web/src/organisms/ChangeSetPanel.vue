@@ -277,10 +277,7 @@ const navigateToView = async () => {
   } else {
     // Fallback to the workspace list page in the case we can't yet determine
     // the current workspace (likely due to an observable race).
-    await router.push({
-      name: "workspace-multiple",
-      path: "/new/w",
-    });
+    await router.push({ name: "workspace-index" });
   }
 };
 
