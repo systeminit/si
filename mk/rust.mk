@@ -20,8 +20,13 @@ default--build:
 default--check-lint:
 	$(call header,$@)
 	cargo clippy --no-deps --all-targets --all-features -- -D warnings
-	RUSTDOCFLAGS="-Dwarnings" cargo doc --all
 .PHONY: default--check-lint
+
+## check-doc: Checks all documentation for the Rust crate
+default--check-doc:
+	$(call header,$@)
+	env RUSTDOCFLAGS="-Dwarnings" cargo doc --all
+.PHONY: default--check-doc
 
 ## check-format: Checks all code formatting for the Rust crate
 default--check-format:
@@ -30,7 +35,7 @@ default--check-format:
 .PHONY: default--check-format
 
 ## check: Checks all linting, formatting, & other rules
-default--check: check-format check-lint
+default--check: check-format check-lint check-doc
 .PHONY: default--check
 
 ## fix-lint: Updates code with linting fixes for the crate (may modify sources)
