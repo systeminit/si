@@ -12,6 +12,10 @@ mod secret;
 mod session;
 mod signup;
 
+// Only run dev tests if we are in dev mode (currently determined based on "opt-level").
+#[cfg(debug_assertions)]
+mod dev;
+
 pub async fn api_request_auth_query<Req: Serialize, Res: DeserializeOwned>(
     app: Router,
     uri: impl AsRef<str>,

@@ -1,16 +1,16 @@
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
-use axum::routing::post;
+use axum::routing::get;
 use axum::Json;
 use axum::Router;
 use dal::{BillingAccountError, TransactionsError, UserError};
 use thiserror::Error;
 
-mod signup;
-mod signup_and_login;
+pub mod test;
 
 #[derive(Debug, Error)]
-pub enum TestError {
+#[allow(clippy::large_enum_variant)]
+pub enum DevError {
     #[error(transparent)]
     Nats(#[from] si_data::NatsError),
     #[error(transparent)]
@@ -23,9 +23,9 @@ pub enum TestError {
     User(#[from] UserError),
 }
 
-pub type TestResult<T> = std::result::Result<T, TestError>;
+pub type DevResult<T> = Result<T, DevError>;
 
-impl IntoResponse for TestError {
+impl IntoResponse for DevError {
     fn into_response(self) -> Response {
         let (status, error_message) = (StatusCode::INTERNAL_SERVER_ERROR, self.to_string());
 
@@ -42,10 +42,5 @@ impl IntoResponse for TestError {
 }
 
 pub fn routes() -> Router {
-    Router::new()
-        .route("/fixtures/signup", post(signup::signup))
-        .route(
-            "/fixtures/signup_and_login",
-            post(signup_and_login::signup_and_login),
-        )
+    Router::new().route("/test", get(test::test))
 }

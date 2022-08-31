@@ -98,7 +98,13 @@ pub fn routes(
         .nest("/api/system", crate::server::service::system::routes())
         .nest("/api/workflow", crate::server::service::workflow::routes())
         .nest("/api/ws", crate::server::service::ws::routes());
+
+    // Load test routes if we are in test mode (decided by "opt-level" at the moment).
     router = test_routes(router);
+
+    // Load dev routes if we are in dev mode (decided by "opt-level" at the moment).
+    router = dev_routes(router);
+
     router = router
         .layer(Extension(shared_state))
         .layer(Extension(services_context))
@@ -121,6 +127,19 @@ pub fn test_routes(mut router: Router) -> Router {
 
 #[cfg(not(debug_assertions))]
 pub fn test_routes(router: Router) -> Router {
+    telemetry::prelude::debug!("skipping test routes...");
+    router
+}
+
+#[cfg(debug_assertions)]
+pub fn dev_routes(mut router: Router) -> Router {
+    router = router.nest("/api/dev", crate::server::service::dev::routes());
+    router
+}
+
+#[cfg(not(debug_assertions))]
+pub fn dev_routes(router: Router) -> Router {
+    telemetry::prelude::debug!("skipping dev routes...");
     router
 }
 
