@@ -14,7 +14,7 @@ cyclone-core = { path = "../cyclone-core" }
 deadpool = { version = "0.9.0", features = ["rt_tokio_1"] }
 derive_builder = { version = "0.11.2" }
 futures = { version = "0.3.17" }
-nix = { version = "0.24.1" }
+nix = { version = "0.25.0" }
 tempfile = { version = "3.2.0" }
 thiserror = { version = "1.0" }
 tokio = { version = "1.12.0", features = ["full"] }
@@ -27,3 +27,11 @@ tokio = { version = "1.12.0", features = ["full"] }
 tokio-test = "0.4.2"
 tracing-subscriber = { version = "0.3.11", features = ["env-filter"] }
 uuid = { version = "1.0.0", features = ["v4"] }
+
+[package.metadata.cargo-udeps.ignore]
+development = [
+  # used in examples to add tracing support
+  "tracing-subscriber",
+  # used in instance doctests to run async code with a suitable test runtime
+  "tokio-test",
+]

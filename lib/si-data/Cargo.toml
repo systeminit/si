@@ -42,7 +42,7 @@ strum_macros = { version = "0.24.0", optional = true }
 # nats only
 crossbeam-channel = { version = "0.5.1", optional = true }
 futures = { version = "0.3.17", optional = true }
-nats-client = { package = "nats", version = "0.19.0", optional = true }
+nats-client = { package = "nats", version = "0.23.0", optional = true }
 serde_json = { version = "1.0.64", optional = true }
 
 # postgres only
@@ -65,3 +65,11 @@ required-features = ["nats"]
 [[example]]
 name = "nats-publish"
 required-features = ["nats"]
+
+[package.metadata.cargo-udeps.ignore]
+development = [
+  # used in examples to add tracing support
+  "tracing-subscriber",
+  # used in NATS doctest to run async code with a suitable test runtime
+  "tokio-test",
+]

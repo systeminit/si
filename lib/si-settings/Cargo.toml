@@ -8,6 +8,6 @@ publish = false
 [dependencies]
 config-file = { path = "../../lib/config-file", features = ["layered-toml"] }
 serde = { version = "1.0", features = ["derive"] }
-serde_with = "1.10.0"
+serde_with = "2.0.0"
 sodiumoxide = "0.2"
 thiserror = "1.0"
