@@ -208,11 +208,10 @@ impl WorkflowPrototype {
                     .await?
                     .pop()
                     .ok_or_else(|| WorkflowError::MissingWorkflow("si:identity".to_owned()))?;
-                let (func_binding, _) = FuncBinding::find_or_create(
+                let (func_binding, _) = FuncBinding::find_or_create_and_execute(
                     ctx,
-                    serde_json::Value::Null,
+                    serde_json::json!({ "identity": null }),
                     *identity.id(),
-                    *identity.backend_kind(),
                 )
                 .await?;
                 let mut resolver = WorkflowResolver::new(
@@ -230,14 +229,8 @@ impl WorkflowPrototype {
                 let tree = WorkflowView::resolve(ctx, &func).await?;
 
                 let args = serde_json::json!({ "identity": serde_json::to_value(tree)? });
-                let (func_binding, _) = FuncBinding::find_or_create(
-                    ctx,
-                    args,
-                    *identity.id(),
-                    *identity.backend_kind(),
-                )
-                .await?;
-                func_binding.execute(ctx).await?;
+                let (func_binding, _) =
+                    FuncBinding::find_or_create_and_execute(ctx, args, *identity.id()).await?;
                 resolver
                     .set_func_binding_id(ctx, *func_binding.id())
                     .await?;

@@ -33,6 +33,8 @@ pub enum WorkflowError {
     MissingCommand(String),
     #[error("command not prepared {0}")]
     CommandNotPrepared(FuncBindingId),
+    #[error("unset func binding {0}")]
+    UnsetFuncBinding(FuncBindingId),
 }
 
 pub type WorkflowResult<T> = Result<T, WorkflowError>;
@@ -108,13 +110,13 @@ impl WorkflowView {
         args: FuncBackendJsWorkflowArgs,
     ) -> WorkflowResult<Self> {
         assert_eq!(func.backend_kind(), &FuncBackendKind::JsWorkflow);
-        let (_func_binding, func_binding_return_value) =
+        let (func_binding, func_binding_return_value) =
             FuncBinding::find_or_create_and_execute(ctx, serde_json::to_value(args)?, *func.id())
                 .await?;
         Ok(Self::deserialize(
             func_binding_return_value
                 .value()
-                .unwrap_or(&serde_json::Value::Null),
+                .ok_or_else(|| WorkflowError::UnsetFuncBinding(*func_binding.id()))?,
         )?)
     }
 

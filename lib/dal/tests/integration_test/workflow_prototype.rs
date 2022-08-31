@@ -1,6 +1,67 @@
 use crate::dal::test;
-use dal::{DalContext, Func, FuncBinding, StandardModel, WorkflowTree, WorkflowView};
+use dal::{
+    func::binding::FuncBinding, workflow_prototype::WorkflowPrototypeContext, ComponentId,
+    DalContext, Func, SchemaId, SchemaVariantId, StandardModel, SystemId, WorkflowPrototype,
+    WorkflowTree, WorkflowView,
+};
 use serde_json::json;
+
+#[test]
+async fn new(ctx: &DalContext<'_, '_>) {
+    let func_name = "si:poem".to_string();
+    let mut funcs = Func::find_by_attr(ctx, "name", &func_name)
+        .await
+        .expect("Error fetching builtin function");
+    let func = funcs.pop().expect("Missing builtin function si:poem");
+
+    let prototype_context = WorkflowPrototypeContext::new();
+    let _prototype = WorkflowPrototype::new(
+        ctx,
+        *func.id(),
+        serde_json::Value::Null,
+        prototype_context,
+        "prototype",
+    )
+    .await
+    .expect("cannot create new prototype");
+}
+
+#[test]
+async fn find_for_context(ctx: &DalContext<'_, '_>) {
+    let func = Func::find_by_attr(ctx, "name", &"si:poem".to_string())
+        .await
+        .expect("got func")
+        .pop()
+        .expect("cannot pop func off vec");
+
+    let proto_context = WorkflowPrototypeContext::new();
+    let _second_proto = WorkflowPrototype::new(
+        ctx,
+        *func.id(),
+        serde_json::Value::Null,
+        proto_context,
+        "prototype",
+    )
+    .await
+    .expect("cannot create workflow_prototype");
+
+    let mut found_prototypes = WorkflowPrototype::find_for_context(
+        ctx,
+        ComponentId::NONE,
+        SchemaId::NONE,
+        SchemaVariantId::NONE,
+        SystemId::NONE,
+    )
+    .await
+    .expect("could not find for context");
+    assert_eq!(found_prototypes.len(), 2);
+
+    let found = found_prototypes
+        .pop()
+        .expect("found no workflow prototypes");
+
+    assert_eq!(found.func_id(), *func.id());
+}
 
 async fn fb(ctx: &DalContext<'_, '_>, name: &str, args: serde_json::Value) -> serde_json::Value {
     let func = Func::find_by_attr(ctx, "name", &name)
@@ -69,9 +130,25 @@ async fn run(ctx: &DalContext<'_, '_>) {
         .expect("unable to find func")
         .pop()
         .unwrap_or_else(|| panic!("function not found: {}", name));
-    let tree = WorkflowView::resolve(ctx, &func)
+
+    let prototype_context = WorkflowPrototypeContext::new();
+    let prototype = WorkflowPrototype::new(
+        ctx,
+        *func.id(),
+        serde_json::Value::Null,
+        prototype_context,
+        "prototype",
+    )
+    .await
+    .expect("cannot create new prototype");
+    let tree = prototype
+        .resolve(ctx)
         .await
-        .expect("unable to resolve workflow");
+        .expect("unable to resolve prototype")
+        .tree(ctx)
+        .await
+        .expect("unable to extract tree");
+
     // TODO: fix args propagation
     // TODO: confirm output
     tree.run(ctx).await.expect("unable to run workflow");

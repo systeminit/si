@@ -65,6 +65,7 @@ pub mod visibility;
 pub mod workflow;
 pub mod workflow_prototype;
 pub mod workflow_resolver;
+pub mod workflow_runner;
 pub mod workspace;
 pub mod write_tenancy;
 pub mod ws_event;
@@ -176,6 +177,7 @@ pub use workflow_prototype::{
     WorkflowPrototype, WorkflowPrototypeContext, WorkflowPrototypeError, WorkflowPrototypeId,
 };
 pub use workflow_resolver::{WorkflowResolver, WorkflowResolverError, WorkflowResolverId};
+pub use workflow_runner::{WorkflowRunner, WorkflowRunnerError, WorkflowRunnerId};
 pub use workspace::{Workspace, WorkspaceError, WorkspaceId, WorkspacePk, WorkspaceResult};
 pub use write_tenancy::{WriteTenancy, WriteTenancyError};
 pub use ws_event::{WsEvent, WsEventError, WsPayload};
