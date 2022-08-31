@@ -48,7 +48,7 @@ const buttonClasses = computed(() => {
 });
 </script>
 
-<style lang="scss" scoped>
+<style scoped>
 .cursor-not-allowed {
   cursor: not-allowed;
 }
