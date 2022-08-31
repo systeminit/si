@@ -15,6 +15,16 @@ export enum FuncBackendKind {
   ValidateStringValue = "ValidateStringValue",
 }
 
+const CUSTOMIZABLE_FUNCS = [
+  FuncBackendKind.JsQualification,
+  FuncBackendKind.JsResourceSync,
+  FuncBackendKind.JsAttribute,
+  FuncBackendKind.JsCodeGeneration,
+];
+
+export const isCustomizableFuncKind = (f: FuncBackendKind) =>
+  CUSTOMIZABLE_FUNCS.includes(f);
+
 export interface Func {
   id: number;
   handler: string;
