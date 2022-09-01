@@ -8,16 +8,17 @@ use axum::{
 use dal::{
     func::binding_return_value::FuncBindingReturnValueError, ComponentError, ComponentId,
     FuncBindingError, FuncBindingId, FuncId, SchemaId, SchemaVariantId, StandardModelError,
-    TransactionsError, WorkflowPrototypeError, WorkflowPrototypeId, WorkflowRunnerError, WorkflowRunnerId
+    TransactionsError, WorkflowPrototypeError, WorkflowPrototypeId, WorkflowRunnerError,
+    WorkflowRunnerId,
 };
 
 use thiserror::Error;
 
+mod history;
+mod info;
 mod list;
 mod resolve;
 mod run;
-mod history;
-mod info;
 
 #[derive(Error, Debug)]
 pub enum WorkflowError {

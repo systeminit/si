@@ -1,8 +1,8 @@
 use super::{WorkflowError, WorkflowResult};
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::{extract::Query, Json};
-use dal::{ StandardModel, Visibility, WorkflowRunner, WorkflowRunnerId, WorkflowPrototype, };
 use dal::workflow::HistoryWorkflowStatus;
+use dal::{StandardModel, Visibility, WorkflowPrototype, WorkflowRunner, WorkflowRunnerId};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -32,18 +32,22 @@ pub async fn history(
     let ctx = builder.build(request_ctx.build(request.visibility), &txns);
 
     let workflows = WorkflowRunner::list(&ctx).await?;
-    
+
     let mut workflow_views = Vec::new();
 
     for workflow in workflows {
-        let prototype = WorkflowPrototype::get_by_id(&ctx, &workflow.workflow_prototype_id()).await?.ok_or(WorkflowError::PrototypeNotFound(workflow.workflow_prototype_id()))?;
-        workflow_views.push(WorkflowHistoryView{
+        let prototype = WorkflowPrototype::get_by_id(&ctx, &workflow.workflow_prototype_id())
+            .await?
+            .ok_or(WorkflowError::PrototypeNotFound(
+                workflow.workflow_prototype_id(),
+            ))?;
+        workflow_views.push(WorkflowHistoryView {
             id: *workflow.id(),
             title: prototype.title().to_owned(),
             description: prototype.description().map(ToString::to_string),
             status: HistoryWorkflowStatus::Success, // TODO(wendy) - implement status
         });
-    };
+    }
 
     txns.commit().await?;
 

@@ -1,10 +1,11 @@
 use super::{WorkflowError, WorkflowResult};
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::{extract::Query, Json};
-use dal::{
-StandardModel, Visibility, WorkflowPrototype, WorkflowRunnerId, WorkflowRunner, FuncBindingReturnValue, Timestamp
-};
 use dal::workflow::HistoryWorkflowStatus;
+use dal::{
+    FuncBindingReturnValue, StandardModel, Timestamp, Visibility, WorkflowPrototype,
+    WorkflowRunner, WorkflowRunnerId,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -37,10 +38,19 @@ pub async fn info(
     let txns = txns.start().await?;
     let ctx = builder.build(request_ctx.build(request.visibility), &txns);
 
-    let runner = WorkflowRunner::get_by_id(&ctx, &request.id).await?.ok_or(WorkflowError::RunnerNotFound(request.id))?;
-    let prototype = WorkflowPrototype::get_by_id(&ctx, &runner.workflow_prototype_id()).await?.ok_or(WorkflowError::PrototypeNotFound(runner.workflow_prototype_id()))?;
+    let runner = WorkflowRunner::get_by_id(&ctx, &request.id)
+        .await?
+        .ok_or(WorkflowError::RunnerNotFound(request.id))?;
+    let prototype = WorkflowPrototype::get_by_id(&ctx, &runner.workflow_prototype_id())
+        .await?
+        .ok_or(WorkflowError::PrototypeNotFound(
+            runner.workflow_prototype_id(),
+        ))?;
 
-    let func_binding_return_value = FuncBindingReturnValue::get_by_func_binding_id(&ctx, runner.func_binding_id()).await?.ok_or(WorkflowError::FuncBindingNotFound(runner.func_binding_id()))?;
+    let func_binding_return_value =
+        FuncBindingReturnValue::get_by_func_binding_id(&ctx, runner.func_binding_id())
+            .await?
+            .ok_or(WorkflowError::FuncBindingNotFound(runner.func_binding_id()))?;
 
     let mut logs = Vec::new();
 
@@ -59,7 +69,7 @@ pub async fn info(
         }
     }
 
-    let view = WorkflowRunInfoView{
+    let view = WorkflowRunInfoView {
         id: *runner.id(),
         title: prototype.title().to_owned(),
         description: prototype.description().map(ToString::to_string),

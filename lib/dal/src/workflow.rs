@@ -538,5 +538,5 @@ fn join_task<T>(res: Result<T, tokio::task::JoinError>) -> T {
 pub enum HistoryWorkflowStatus {
     Success,
     Failure,
-    Running
+    Running,
 }
