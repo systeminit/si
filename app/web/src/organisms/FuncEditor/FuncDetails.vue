@@ -107,18 +107,18 @@
 <script lang="ts" setup>
 import { TabPanel } from "@headlessui/vue";
 import { ref, toRef, watch } from "vue";
-import { fromRef, refFrom } from "vuse-rx";
-import { combineLatestWith, map } from "rxjs/operators";
+import { refFrom } from "vuse-rx";
+import { map } from "rxjs/operators";
 import SiCollapsible from "@/organisms/SiCollapsible.vue";
 import { Option } from "@/molecules/SelectMenu.vue";
 import SiTextBox from "@/atoms/SiTextBox.vue";
 import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import { DiagramService } from "@/service/diagram";
-import { EditingFunc, funcState$ } from "@/observable/func";
+import { EditingFunc } from "@/observable/func";
 import { ComponentService } from "@/service/component";
 import VButton from "@/molecules/VButton.vue";
-import { changeFunc, nullEditingFunc } from "./func_state";
+import { changeFunc, funcById, funcState, nullEditingFunc } from "./func_state";
 import FuncRunOnSelector from "./FuncRunOnSelector.vue";
 
 const props = defineProps<{
@@ -126,7 +126,6 @@ const props = defineProps<{
 }>();
 
 const funcId = toRef(props, "funcId", -1);
-const funcId$ = fromRef(funcId);
 
 const schemaVariants = refFrom<Option[]>(
   DiagramService.listSchemaVariants().pipe(
@@ -156,17 +155,7 @@ const components = refFrom<Option[]>(
   [],
 );
 
-const editingFunc = refFrom<EditingFunc>(
-  funcId$.pipe(
-    combineLatestWith(funcState$),
-    map(
-      ([funcId, funcs]) =>
-        funcs.find((f) => f.id === funcId) ?? nullEditingFunc,
-    ),
-  ),
-  nullEditingFunc,
-);
-
+const editingFunc = ref<EditingFunc>(nullEditingFunc);
 const selectedVariants = ref<Option[]>([]);
 const selectedComponents = ref<Option[]>([]);
 
@@ -175,19 +164,20 @@ const toOptionValues = (options: Option[], ids: number[]): Option[] =>
     typeof opt.value === "number" ? ids.includes(opt.value) : false,
   );
 
-watch(
-  () => editingFunc.value,
-  (editingFunc) => {
-    selectedVariants.value = toOptionValues(
-      schemaVariants.value,
-      editingFunc.modifiedFunc.schemaVariants ?? [],
-    );
+watch([funcId, funcState], async ([currentFuncId]) => {
+  editingFunc.value = funcById(currentFuncId) ?? nullEditingFunc;
 
-    selectedComponents.value =
-      toOptionValues(components.value, editingFunc.modifiedFunc.components) ??
-      [];
-  },
-);
+  selectedVariants.value = toOptionValues(
+    schemaVariants.value,
+    editingFunc.value.modifiedFunc.schemaVariants ?? [],
+  );
+
+  selectedComponents.value =
+    toOptionValues(
+      components.value,
+      editingFunc.value.modifiedFunc.components,
+    ) ?? [];
+});
 
 const updateFunc = () => {
   changeFunc({ ...editingFunc.value.modifiedFunc });

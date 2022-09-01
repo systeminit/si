@@ -10,4 +10,3 @@ export interface EditingFunc {
 }
 
 export const saveFuncToBackend$ = new ReplaySubject<SaveFuncRequest>(1);
-export const funcState$ = new ReplaySubject<EditingFunc[]>(1);

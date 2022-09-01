@@ -26,13 +26,16 @@
                 class="z-30 absolute mt-2 rounded bg-white dark:bg-black shadow-lg border focus:outline-none overflow-hidden"
               >
                 <MenuItem
+                  v-for="(kindName, kind) in funcCreateTypes"
+                  :key="kind"
                   as="a"
                   class="flex flex-row relative items-center whitespace-nowrap py-2 px-4 cursor-pointer gap-2 hover:bg-action-500 hover:text-white"
-                  @click="createFunc"
+                  @click="createFunc(kind)"
                 >
                   <FuncSkeleton />
 
-                  Qualification
+                  {{ kindName }}
+                  {{ kind }}
                 </MenuItem>
               </MenuItems>
             </div>
@@ -120,6 +123,11 @@ const funcTypes = {
   [FuncBackendKind.JsAttribute]: "Attributes",
 };
 
+const funcCreateTypes = {
+  [FuncBackendKind.JsQualification]: "Qualification",
+  [FuncBackendKind.JsAttribute]: "Attribute",
+};
+
 const props = defineProps<{
   funcList: ListFuncsResponse;
   selectedFuncId: number;
@@ -146,14 +154,15 @@ const filteredList = computed(() => {
 
 const emits = defineEmits<{
   (e: "selectedFunc", v: ListedFuncView): void;
-  (e: "createFunc"): void;
+  (e: "createFunc", v: FuncBackendKind): void;
 }>();
 
 const selectFunc = (func: ListedFuncView) => {
   emits("selectedFunc", func);
 };
 
-const createFunc = () => {
-  emits("createFunc");
+const createFunc = (kind: FuncBackendKind) => {
+  console.log(kind);
+  emits("createFunc", kind);
 };
 </script>
