@@ -1,12 +1,14 @@
 <template>
   <div
-    class="h-full flex flex-row p-2 rounded items-center justify-between bg-neutral-800"
+    class="h-full flex flex-row p-2 rounded items-center justify-between bg-neutral-800 overflow-hidden"
   >
-    <div class="h-full flex flex-row">
+    <div class="h-full flex flex-row whitespace-nowrap pr-2">
       <WorkflowStatusIcon :status="status" />
       <span>{{ name }}</span>
     </div>
-    <div>{{ timestamp ? timestamp : "Not Run Yet" }}</div>
+    <div class="whitespace-nowrap text-ellipsis overflow-hidden">
+      {{ timestamp ? timestamp : "Not Run Yet" }}
+    </div>
   </div>
 </template>
 

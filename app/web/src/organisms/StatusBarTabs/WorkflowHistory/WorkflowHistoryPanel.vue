@@ -35,7 +35,7 @@
       <!-- List of workflows -->
       <div class="overflow-y-auto flex-expand">
         <div
-          v-for="workflow in workflowList"
+          v-for="workflow in workflowListDisplay"
           :key="workflow.id"
           :class="
             workflow.id === selectedWorkflowId
@@ -47,7 +47,7 @@
         >
           <WorkflowStatusIcon :status="workflow.status" />
           <span class="shrink min-w-0 truncate mr-3 whitespace-nowrap">
-            {{ workflow.title }}
+            {{ workflowDisplayName(workflow) }}
           </span>
         </div>
       </div>
@@ -61,7 +61,7 @@
         <WorkflowStatusBar
           :name="selectedWorkflowInfo.title"
           :status="selectedWorkflowInfo.status"
-          :timestamp="selectedWorkflowInfo.timestamp"
+          :timestamp="selectedWorkflowInfo.created_at"
         />
       </div>
       <div class="w-full grow overflow-x-hidden flex flex-row flex-wrap p-1">
@@ -113,7 +113,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import { refFrom, fromRef } from "vuse-rx/src";
 // import SiBarButton from "@/molecules/SiBarButton.vue";
 // import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
@@ -134,7 +134,7 @@ export interface FilterOption {
   title: string;
 }
 
-const props = defineProps<{
+defineProps<{
   filterOptions?: FilterOption[];
   selectedFilter?: FilterOption;
 }>();
@@ -166,6 +166,14 @@ const workflowList = refFrom<ListWorkflowsHistoryResponse>(
   WorkflowService.history(),
   [],
 );
+
+const workflowListDisplay = computed(() => {
+  return [...workflowList.value].reverse();
+});
+
+const workflowDisplayName = (workflow: ListedWorkflowHistoryView) => {
+  return `${workflow.title} (${workflow.id})`;
+};
 
 const selectedWorkflowInfo = refFrom<WorkflowRunInfo | null>(
   combineLatest([selectedWorkflowId$]).pipe(

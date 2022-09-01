@@ -9,7 +9,7 @@ export interface WorkflowRunInfo {
   title: string;
   description: string | null;
   status: "success" | "failure" | "running";
-  timestamp: string;
+  created_at: string;
   logs: string[];
 }
 
