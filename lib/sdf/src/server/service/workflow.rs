@@ -9,10 +9,13 @@ use dal::{
     func::binding_return_value::FuncBindingReturnValueError, ComponentError, ComponentId,
     FuncBindingError, FuncBindingId, FuncId, SchemaId, SchemaVariantId, StandardModelError,
     TransactionsError, WorkflowPrototypeError, WorkflowPrototypeId, WorkflowRunnerError,
+    WorkflowRunnerId,
 };
 
 use thiserror::Error;
 
+mod history;
+mod info;
 mod list;
 mod resolve;
 mod run;
@@ -51,6 +54,8 @@ pub enum WorkflowError {
     SchemaNotFound(SchemaId),
     #[error("schema variant not found")]
     SchemaVariantNotFound(SchemaVariantId),
+    #[error("runner not found")]
+    RunnerNotFound(WorkflowRunnerId),
 }
 
 pub type WorkflowResult<T> = std::result::Result<T, WorkflowError>;
@@ -72,4 +77,6 @@ pub fn routes() -> Router {
         .route("/list", get(list::list))
         .route("/resolve", post(resolve::resolve))
         .route("/run", post(run::run))
+        .route("/history", get(history::history))
+        .route("/info", get(info::info))
 }

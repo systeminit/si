@@ -1,7 +1,8 @@
 <template>
   <div class="flex flex-col w-full max-h-full overflow-hidden">
     <div
-      class="flex flex-row items-center justify-between h-10 py-2 text-base align-middle"
+      class="flex flex-row items-center justify-between py-2 text-base align-middle"
+      :class="titleClasses"
     >
       <!-- NOTE(nick): add defaults for title if the need arises -->
       <slot name="title"></slot>
@@ -66,6 +67,7 @@ const props = defineProps({
   // // Format: "0.0px" or "0%"
   height: { type: String },
   forceTheme: { type: String as PropType<ThemeValue> },
+  titleClasses: { type: String, default: "h-10" },
 });
 
 const editorMountRef = ref();

@@ -42,7 +42,8 @@
         </Tab>
 
         <!-- View tabs -->
-        <Tab
+        <!-- SLA Tab mockup, currently disabled -->
+        <!-- <Tab
           v-slot="{ selected }"
           :aria-hidden="!isViewMode"
           :class="[isViewMode ? '' : 'hidden']"
@@ -63,7 +64,7 @@
               </StatusBarTabPill>
             </template>
           </StatusBarTab>
-        </Tab>
+        </Tab> -->
         <Tab
           v-slot="{ selected }"
           :aria-hidden="!isViewMode"
@@ -78,6 +79,13 @@
               </StatusBarTabPill>
             </template>
           </StatusBarTab>
+        </Tab>
+        <Tab
+          v-slot="{ selected }"
+          :aria-hidden="!isViewMode"
+          :class="[isViewMode ? '' : 'hidden']"
+        >
+          <WorkflowHistoryTab :selected="selected" />
         </Tab>
         <Tab
           v-slot="{ selected }"
@@ -142,14 +150,15 @@
           </TabPanel>
 
           <!-- View panels -->
-          <TabPanel
+          <!-- SLA TabPanel, currently incomplete and disabled -->
+          <!-- <TabPanel
             :aria-hidden="!isViewMode"
             :class="[isViewMode ? '' : 'hidden']"
             class="h-full"
-          >
-            <!-- TOOD(nick): replace with an SLA tab panel -->
-            <GenericTabPanel :component-list="componentList" />
-          </TabPanel>
+          > -->
+          <!-- TOOD(nick): replace with an SLA tab panel -->
+          <!-- <GenericTabPanel :component-list="componentList" />
+          </TabPanel> -->
           <TabPanel
             :aria-hidden="!isViewMode"
             :class="[isViewMode ? '' : 'hidden']"
@@ -157,6 +166,14 @@
           >
             <!-- TOOD(nick): replace with a Costs tab panel -->
             <GenericTabPanel :component-list="componentList" />
+          </TabPanel>
+          <TabPanel
+            :aria-hidden="!isViewMode"
+            :class="[isViewMode ? '' : 'hidden']"
+            class="h-full"
+          >
+            <!-- TOOD(wendy): replace with a Workflow History tab panel -->
+            <WorkflowHistoryPanel />
           </TabPanel>
           <TabPanel
             :aria-hidden="!isViewMode"
@@ -190,6 +207,8 @@ import { GlobalErrorService } from "@/service/global_error";
 import { ComponentListItem } from "@/organisms/StatusBar/StatusBarTabPanelComponentList.vue";
 import GenericTabPanel from "@/organisms/StatusBarTabs/GenericTabPanel.vue";
 import Icon from "@/ui-lib/Icon.vue";
+import WorkflowHistoryTab from "./StatusBarTabs/WorkflowHistory/WorkflowHistoryTab.vue";
+import WorkflowHistoryPanel from "./StatusBarTabs/WorkflowHistory/WorkflowHistoryPanel.vue";
 
 // Tab 0 is our phantom empty panel
 const selectedTab = ref(0);
@@ -212,7 +231,7 @@ const togglePanel = () => {
   if (panelOpen.value) {
     closePanel();
   } else {
-    selectedTab.value = 2;
+    selectedTab.value = isViewMode.value ? 4 : 2;
     openPanel();
   }
 };

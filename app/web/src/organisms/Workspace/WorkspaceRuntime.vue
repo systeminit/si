@@ -3,7 +3,7 @@
     <SiPanel
       remember-size-key="workflow-left"
       side="left"
-      size-classes="w-96 pb-12"
+      size-classes="w-96 flex-none"
     >
       <WorkflowPicker
         :list="list"
@@ -12,10 +12,10 @@
       />
     </SiPanel>
     <div
-      class="grow overflow-x-hidden overflow-y-hidden dark:bg-neutral-800 dark:text-white text-lg font-semi-bold px-2 pt-2 flex flex-col"
+      class="grow overflow-hidden h-full dark:bg-neutral-800 dark:text-white text-lg font-semi-bold px-2 pt-2 flex flex-col"
     >
-      <span v-if="selected">
-        <div class="w-full flex flex-row-reverse">
+      <WorkflowResolver v-if="selected" :selected-id="selected.id">
+        <template #runButton>
           <VButton
             icon="play"
             label="Run"
@@ -23,9 +23,9 @@
             class="w-48"
             @click="runWorkflow()"
           />
-        </div>
-        <WorkflowResolver :selected-id="selected.id" />
-      </span>
+        </template>
+      </WorkflowResolver>
+
       <div
         v-else
         class="p-2 text-center text-neutral-400 dark:text-neutral-300"
@@ -36,13 +36,15 @@
     <SiPanel
       remember-size-key="workflow-right"
       side="right"
-      size-classes="w-80"
+      size-classes="w-96 flex-none"
     >
       <div class="p-2 w-full h-full overflow-hidden">
-        <CodeViewer v-if="logs" :code="logs.join('\n')">
-          <template #title>Output</template>
-        </CodeViewer>
-        <div v-else>
+        <WorkflowOutput
+          v-if="logs"
+          :logs="logs"
+          :status="currentWorkflowStatus"
+        />
+        <div v-else class="p-2 text-neutral-400 dark:text-neutral-300">
           When you run a workflow, it's output will display here.
         </div>
       </div>
@@ -51,7 +53,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import { refFrom, untilUnmounted } from "vuse-rx";
 import WorkflowPicker from "@/organisms/WorkflowRunner/WorkflowPicker.vue";
 import WorkflowResolver from "@/organisms/WorkflowRunner/WorkflowResolver.vue";
@@ -63,7 +65,8 @@ import {
 } from "@/service/workflow/list";
 import VButton from "@/molecules/VButton.vue";
 import SiPanel from "@/atoms/SiPanel.vue";
-import CodeViewer from "@/organisms/CodeViewer.vue";
+import { WorkflowStatus } from "@/molecules/WorkflowStatusIcon.vue";
+import WorkflowOutput from "../WorkflowRunner/WorkflowOutput.vue";
 
 const selected = ref<ListedWorkflowView | null>(null);
 const select = (w: ListedWorkflowView | null) => {
@@ -79,6 +82,10 @@ const runWorkflow = async () => {
     logs.value = outputs?.logs ?? null;
   }
 };
+
+const currentWorkflowStatus = computed((): WorkflowStatus => {
+  return "running";
+});
 
 eventCommandOutput$.pipe(untilUnmounted).subscribe((command) => {
   if (!command) return;
