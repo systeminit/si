@@ -38,9 +38,7 @@ pub async fn history(
     for workflow in workflows {
         let prototype = WorkflowPrototype::get_by_id(&ctx, &workflow.workflow_prototype_id())
             .await?
-            .ok_or_else(|| WorkflowError::PrototypeNotFound(
-                workflow.workflow_prototype_id(),
-            ))?;
+            .ok_or_else(|| WorkflowError::PrototypeNotFound(workflow.workflow_prototype_id()))?;
         workflow_views.push(WorkflowHistoryView {
             id: *workflow.id(),
             title: prototype.title().to_owned(),

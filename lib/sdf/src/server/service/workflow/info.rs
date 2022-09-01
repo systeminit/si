@@ -43,9 +43,7 @@ pub async fn info(
         .ok_or(WorkflowError::RunnerNotFound(request.id))?;
     let prototype = WorkflowPrototype::get_by_id(&ctx, &runner.workflow_prototype_id())
         .await?
-        .ok_or_else(|| WorkflowError::PrototypeNotFound(
-            runner.workflow_prototype_id(),
-        ))?;
+        .ok_or_else(|| WorkflowError::PrototypeNotFound(runner.workflow_prototype_id()))?;
 
     let func_binding_return_value =
         FuncBindingReturnValue::get_by_func_binding_id(&ctx, runner.func_binding_id())
