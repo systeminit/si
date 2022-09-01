@@ -9,6 +9,9 @@ import _ from "lodash";
 import { config } from "@/config";
 import { SessionService } from "@/service/session";
 
+// Cannot use inside the template directly.
+const isDevMode = import.meta.env.DEV;
+
 const routes: RouteRecordRaw[] = [
   {
     path: "/diagram",
@@ -63,6 +66,16 @@ const routes: RouteRecordRaw[] = [
         name: "workspace-runtime",
         component: () => import("@/organisms/Workspace/WorkspaceRuntime.vue"),
       },
+      ...(isDevMode
+        ? [
+            {
+              path: "dev",
+              name: "workspace-dev-dashboard",
+              component: () =>
+                import("@/organisms/Workspace/WorkspaceDevDashboard.vue"),
+            },
+          ]
+        : []),
     ],
   },
   {

@@ -6,7 +6,7 @@ use axum::Router;
 use dal::{BillingAccountError, TransactionsError, UserError};
 use thiserror::Error;
 
-pub mod test;
+mod get_current_git_sha;
 
 #[derive(Debug, Error)]
 #[allow(clippy::large_enum_variant)]
@@ -42,5 +42,8 @@ impl IntoResponse for DevError {
 }
 
 pub fn routes() -> Router {
-    Router::new().route("/test", get(test::test))
+    Router::new().route(
+        "/get_current_git_sha",
+        get(get_current_git_sha::get_current_git_sha),
+    )
 }

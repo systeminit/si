@@ -18,9 +18,16 @@
       </template>
 
       <template #dropdownContent>
-        <SiDropdownItem class="text-sm" @select="onLogout"
-          >Logout</SiDropdownItem
+        <SiDropdownItem class="text-sm" @select="onLogout">
+          Logout
+        </SiDropdownItem>
+        <SiDropdownItem
+          v-if="isDevMode"
+          class="text-sm"
+          @select="onDevDashboard"
         >
+          Dev Dashboard
+        </SiDropdownItem>
       </template>
     </SiBarButton>
   </div>
@@ -42,8 +49,16 @@ const copyURL = () => {
   navigator.clipboard.writeText(window.location.href);
 };
 
+// Cannot use inside the template directly.
+const isDevMode = import.meta.env.DEV;
+
 const onLogout = async () => {
   await SessionService.logout();
   await router.push({ name: "login" });
+};
+const onDevDashboard = async () => {
+  if (import.meta.env.DEV) {
+    await router.push({ name: "workspace-dev-dashboard" });
+  }
 };
 </script>
