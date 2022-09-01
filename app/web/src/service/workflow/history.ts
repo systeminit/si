@@ -9,6 +9,7 @@ export interface ListedWorkflowHistoryView {
   title: string;
   description: string | null;
   status: "success" | "failure" | "running";
+  created_at: string;
 }
 
 export type ListWorkflowsHistoryResponse = ListedWorkflowHistoryView[];

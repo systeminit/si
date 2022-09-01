@@ -2,7 +2,9 @@ use super::{WorkflowError, WorkflowResult};
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::{extract::Query, Json};
 use dal::workflow::HistoryWorkflowStatus;
-use dal::{StandardModel, Visibility, WorkflowPrototype, WorkflowRunner, WorkflowRunnerId};
+use dal::{
+    StandardModel, Timestamp, Visibility, WorkflowPrototype, WorkflowRunner, WorkflowRunnerId,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -19,6 +21,8 @@ pub struct WorkflowHistoryView {
     title: String,
     description: Option<String>,
     status: HistoryWorkflowStatus,
+    #[serde(flatten)]
+    timestamp: Timestamp,
 }
 
 pub type HistoryWorkflowsResponse = Vec<WorkflowHistoryView>;
@@ -44,6 +48,7 @@ pub async fn history(
             title: prototype.title().to_owned(),
             description: prototype.description().map(ToString::to_string),
             status: HistoryWorkflowStatus::Success, // TODO(wendy) - implement status
+            timestamp: *workflow.timestamp(),
         });
     }
 

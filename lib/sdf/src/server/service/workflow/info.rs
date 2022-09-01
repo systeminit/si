@@ -71,7 +71,7 @@ pub async fn info(
         id: *runner.id(),
         title: prototype.title().to_owned(),
         description: prototype.description().map(ToString::to_string),
-        status: HistoryWorkflowStatus::Success,
+        status: HistoryWorkflowStatus::Success, // TODO(wendy) - implement status
         timestamp: *runner.timestamp(),
         logs,
     };

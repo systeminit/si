@@ -46,8 +46,17 @@
           @click="selectWorkflow(workflow)"
         >
           <WorkflowStatusIcon :status="workflow.status" />
-          <span class="shrink min-w-0 truncate mr-3 whitespace-nowrap">
-            {{ workflowDisplayName(workflow) }}
+          <span class="truncate mr-3 whitespace-nowrap">
+            {{ workflow.title }}
+          </span>
+          <span
+            class="text-xs text-neutral-400 shrink truncate whitespace-nowrap ml-auto"
+          >
+            <Timestamp
+              :date="new Date(workflow.created_at)"
+              size="mini"
+              relative
+            />
           </span>
         </div>
       </div>
@@ -128,6 +137,7 @@ import {
   ListWorkflowsHistoryResponse,
 } from "@/service/workflow/history";
 import { WorkflowRunInfo } from "@/service/workflow/info";
+import Timestamp from "@/ui-lib/Timestamp.vue";
 
 export interface FilterOption {
   value: string;
@@ -170,10 +180,6 @@ const workflowList = refFrom<ListWorkflowsHistoryResponse>(
 const workflowListDisplay = computed(() => {
   return [...workflowList.value].reverse();
 });
-
-const workflowDisplayName = (workflow: ListedWorkflowHistoryView) => {
-  return `${workflow.title} (${workflow.id})`;
-};
 
 const selectedWorkflowInfo = refFrom<WorkflowRunInfo | null>(
   combineLatest([selectedWorkflowId$]).pipe(
