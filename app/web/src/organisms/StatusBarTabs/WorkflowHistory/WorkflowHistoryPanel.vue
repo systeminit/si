@@ -1,10 +1,10 @@
 <template>
   <div class="w-full h-full flex flex-row">
-    <div class="w-64 shrink-0 border-shade-100 h-full flex flex-col">
+    <div class="w-72 shrink-0 border-shade-100 h-full flex flex-col">
       <span
-        class="h-11 border-b border-shade-100 text-lg px-4 flex items-center"
+        class="h-11 border-b border-shade-100 text-lg px-4 flex items-center flex-none"
       >
-        Workflows
+        Workflows Menu
       </span>
 
       <!-- Filter button and its dropdown -->
@@ -53,47 +53,61 @@
       </div>
     </div>
     <!-- Currently selected Workflow info panel -->
-    <div v-if="selectedWorkflowInfo" class="grow flex flex-col overflow-hidden">
-      <div class="h-12 m-2">
-        <!-- TODO(wendy) replace fixed info with updating info -->
+    <div
+      v-if="selectedWorkflowInfo"
+      class="grow flex flex-col overflow-hidden bg-shade-100"
+    >
+      <div class="h-12 mx-2 mt-2">
         <WorkflowStatusBar
-          name="workflow-name"
-          status="failure"
-          timestamp="Thu, 31 Mar 2022 04:20:00 +0000"
+          :name="selectedWorkflowInfo.title"
+          :status="selectedWorkflowInfo.status"
+          :timestamp="selectedWorkflowInfo.timestamp"
         />
       </div>
-      <div class="w-full grow flex flex-row overflow-hidden">
+      <div class="w-full grow overflow-x-hidden flex flex-row flex-wrap p-1">
         <div
-          class="w-1/2 m-2 p-2 border border-neutral-600 rounded overflow-hidden"
+          class="h-fit max-h-full lg:basis-1/2 grow overflow-hidden flex flex-row p-1"
         >
-          <!-- TODO(wendy) - replace fixed logs/status with updating info -->
-          <WorkflowOutput
-            :logs="selectedWorkflowInfo.logs"
-            :status="selectedWorkflowInfo.status"
-          />
+          <div
+            class="w-full shrink grow bg-neutral-800 rounded p-1 flex flex-row"
+          >
+            <WorkflowOutput
+              :logs="selectedWorkflowInfo.logs"
+              :status="selectedWorkflowInfo.status"
+              force-theme="dark"
+            />
+          </div>
         </div>
         <div
-          class="w-1/2 my-2 flex flex-col mr-2 border border-neutral-600 rounded overflow-hidden"
+          class="h-fit max-h-full lg:basis-1/2 grow overflow-hidden flex flex-row p-1"
         >
-          <div class="flex-none border-b p-2 border-neutral-600">
-            Resources Impacted
-          </div>
-          <div class="w-full grow overflow-auto">
-            <ul class="list-disc list-inside p-2">
-              <li>Resource 0</li>
-              <li>Resource 1</li>
-              <li>Resource 2</li>
-              <li>Resource 3</li>
-              <li>Resource 4</li>
-              <li>Resource 5</li>
-              <li>Resource 6</li>
-              <li>Resource 7</li>
-              <li>Resource 8</li>
-              <li>Resource 9</li>
-            </ul>
+          <div class="w-full shrink grow bg-neutral-800 rounded flex flex-col">
+            <div class="flex-none h-10 border-b p-2 border-neutral-600">
+              Resources Impacted
+            </div>
+            <div class="w-full grow shrink overflow-auto">
+              <ul class="list-disc list-inside p-2">
+                <li>Resource 0</li>
+                <li>Resource 1</li>
+                <li>Resource 2</li>
+                <li>Resource 3</li>
+                <li>Resource 4</li>
+                <li>Resource 5</li>
+                <li>Resource 6</li>
+                <li>Resource 7</li>
+                <li>Resource 8</li>
+                <li>Resource 9</li>
+              </ul>
+            </div>
           </div>
         </div>
       </div>
+    </div>
+    <div
+      v-else
+      class="grow flex flex-row overflow-hidden bg-shade-100 items-center text-center"
+    >
+      <p class="w-full text-3xl text-neutral-500">No Workflow Selected</p>
     </div>
   </div>
 </template>

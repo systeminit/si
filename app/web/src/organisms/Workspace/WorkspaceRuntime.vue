@@ -21,6 +21,7 @@
             label="Run"
             size="lg"
             class="w-48"
+            button-type="success"
             @click="runWorkflow()"
           />
         </template>

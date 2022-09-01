@@ -1,6 +1,6 @@
 <template>
   <div
-    class="h-full flex flex-row p-2 border border-neutral-600 rounded items-center justify-between"
+    class="h-full flex flex-row p-2 rounded items-center justify-between bg-neutral-800"
   >
     <div class="h-full flex flex-row">
       <WorkflowStatusIcon :status="status" />

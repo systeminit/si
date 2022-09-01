@@ -5,7 +5,7 @@
     side="bottom"
     :min-resize="0"
     :max-resize="0.8"
-    size-classes="h-11"
+    size-classes="h-11 bar"
     :resizeable="false"
     :fixed-default-size="320"
   >
@@ -289,3 +289,9 @@ onMounted(() => {
   panelRef.value.setCurrentlyResizeable(false);
 });
 </script>
+
+<style scoped>
+.bar {
+  color-scheme: dark;
+}
+</style>
