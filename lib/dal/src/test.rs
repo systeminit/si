@@ -395,7 +395,7 @@ async fn global_setup(test_context_builer: TestContextBuilder) {
         services_ctx.encryption_key(),
     )
     .await
-    .expect("failed to run builtin schema migrations");
+    .expect("failed to run builtin migrations");
 
     // Shutdown the Veritech server (each test gets their own server instance with an exclusively
     // unique subject prefix)

@@ -68,12 +68,18 @@ pub enum BuiltinsError {
     SchemaVariant(#[from] SchemaVariantError),
     #[error("serde json error: {0}")]
     SerdeJson(#[from] serde_json::Error),
+    #[error("encountered serde json error for func ({0}): {1}")]
+    SerdeJsonErrorForFunc(String, serde_json::Error),
     #[error("socket error: {0}")]
     Socket(#[from] SocketError),
     #[error("standard model error: {0}")]
     StandardModel(#[from] StandardModelError),
     #[error("validation prototype error: {0}")]
     ValidationPrototype(#[from] ValidationPrototypeError),
+    #[error("Filesystem IO error: {0}")]
+    FilesystemIO(#[from] std::io::Error),
+    #[error("Regex parsing error: {0}")]
+    Regex(#[from] regex::Error),
     #[error(transparent)]
     WorkflowPrototype(#[from] WorkflowPrototypeError),
 }

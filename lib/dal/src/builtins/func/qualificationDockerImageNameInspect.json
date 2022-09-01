@@ -1,0 +1,9 @@
+{
+  "display_name": "Inspect docker image name",
+  "kind": "JsQualification",
+  "response_type": "Qualification",
+  "description": "Verifies that the docker image exists",
+  "link": "https://docker.com",
+  "code_file": "qualificationDockerImageNameInspect.js",
+  "code_entrypoint": "qualificationDockerImageNameInspect"
+}

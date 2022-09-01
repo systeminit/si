@@ -124,6 +124,30 @@ pub async fn find_by_attr_in<V: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
     objects_from_rows(rows)
 }
 
+#[instrument(skip(ctx))]
+pub async fn find_by_attr_not_in<V: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
+    ctx: &DalContext<'_, '_>,
+    table: &str,
+    attr_name: &str,
+    value: &[&V],
+) -> StandardModelResult<Vec<OBJECT>> {
+    let txns = ctx.txns();
+    let rows = txns
+        .pg()
+        .query(
+            "SELECT * FROM find_by_attr_not_in_v1($1, $2, $3, $4, $5)",
+            &[
+                &table,
+                ctx.read_tenancy(),
+                ctx.visibility(),
+                &attr_name,
+                &value,
+            ],
+        )
+        .await?;
+    objects_from_rows(rows)
+}
+
 pub fn object_option_from_row_option<OBJECT: DeserializeOwned>(
     row_option: Option<tokio_postgres::Row>,
 ) -> StandardModelResult<Option<OBJECT>> {
@@ -519,6 +543,20 @@ pub trait StandardModel {
     {
         Ok(
             crate::standard_model::find_by_attr_in(ctx, Self::table_name(), attr_name, value)
+                .await?,
+        )
+    }
+
+    async fn find_by_attr_not_in<V: Send + Sync + ToSql>(
+        ctx: &DalContext<'_, '_>,
+        attr_name: &str,
+        value: &[&V],
+    ) -> StandardModelResult<Vec<Self>>
+    where
+        Self: Sized + DeserializeOwned,
+    {
+        Ok(
+            crate::standard_model::find_by_attr_not_in(ctx, Self::table_name(), attr_name, value)
                 .await?,
         )
     }

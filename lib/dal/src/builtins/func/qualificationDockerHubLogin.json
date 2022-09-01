@@ -1,0 +1,9 @@
+{
+  "display_name": "Docker Hub login",
+  "kind": "JsQualification",
+  "response_type": "Qualification",
+  "description": "Ensures docker hub login credentials work",
+  "link": "https://hub.docker.com",
+  "code_file": "qualificationDockerHubLogin.js",
+  "code_entrypoint": "qualificationDockerHubLogin"
+}

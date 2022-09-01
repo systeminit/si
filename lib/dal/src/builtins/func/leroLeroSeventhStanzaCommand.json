@@ -1,0 +1,7 @@
+{
+  "name": "seventhStanza",
+  "kind": "JsCommand",
+  "response_type": "Command",
+  "code_file": "leroLeroSeventhStanzaCommand.js",
+  "code_entrypoint": "seventhStanza"
+}

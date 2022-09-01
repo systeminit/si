@@ -125,6 +125,40 @@ END ;
 $$ LANGUAGE PLPGSQL STABLE;
 
 
+CREATE OR REPLACE FUNCTION find_by_attr_not_in_v1(this_table_text text, this_tenancy jsonb, this_visibility jsonb,
+                                                  this_attr_name text, this_value text[])
+    RETURNS TABLE
+            (
+                id                       bigint,
+                visibility_change_set_pk bigint,
+                object                   json
+            )
+AS
+$$
+DECLARE
+    this_table regclass;
+BEGIN
+    this_table := this_table_text::regclass;
+    RETURN QUERY EXECUTE format('SELECT DISTINCT ON (%1$I.id)' ||
+                                '   %1$I.id,' ||
+                                '   %1$I.visibility_change_set_pk,' ||
+                                '   row_to_json(%1$I.*) AS object' ||
+                                ' FROM %1$I' ||
+                                ' WHERE NOT %1$I.%4$I = ANY (%5$L)' ||
+                                '  AND in_tenancy_v1(%2$L, ' ||
+                                '                    %1$I.tenancy_universal, ' ||
+                                '                    %1$I.tenancy_billing_account_ids,' ||
+                                '                    %1$I.tenancy_organization_ids,' ||
+                                '                    %1$I.tenancy_workspace_ids)' ||
+                                '  AND is_visible_v1(%3$L,' ||
+                                '                    %1$I.visibility_change_set_pk,' ||
+                                '                    %1$I.visibility_deleted_at)' ||
+                                ' ORDER BY id, visibility_change_set_pk DESC'
+        , this_table, this_tenancy, this_visibility, this_attr_name, this_value);
+END ;
+$$ LANGUAGE PLPGSQL STABLE;
+
+
 CREATE OR REPLACE FUNCTION update_by_id_v1(this_table text,
                                            this_column text,
                                            this_tenancy jsonb,
