@@ -36,15 +36,20 @@ pub async fn run(
             .unwrap_or_default()
         {
             match stream.data {
-                Some(data) => logs.push(format!(
-                    "{} {}",
-                    stream.message,
-                    serde_json::to_string_pretty(&data)?
+                Some(data) => logs.push((
+                    stream.timestamp,
+                    format!(
+                        "{} {}",
+                        stream.message,
+                        serde_json::to_string_pretty(&data)?
+                    ),
                 )),
-                None => logs.push(stream.message),
+                None => logs.push((stream.timestamp, stream.message)),
             }
         }
     }
+    logs.sort_by_key(|(timestamp, _)| *timestamp);
+    let logs = logs.into_iter().map(|(_, log)| log).collect();
 
     txns.commit().await?;
 

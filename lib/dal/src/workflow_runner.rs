@@ -6,20 +6,28 @@ use telemetry::prelude::*;
 use thiserror::Error;
 
 use crate::{
-    func::binding_return_value::FuncBindingReturnValue,
+    func::binding_return_value::{FuncBindingReturnValue, FuncBindingReturnValueError},
+    func::execution::{FuncExecution, FuncExecutionError},
     func::{binding::FuncBindingId, FuncId},
     impl_standard_model, pk,
     standard_model::{self, objects_from_rows},
-    standard_model_accessor, ComponentId, Func, FuncBinding, FuncBindingError, HistoryEventError,
-    SchemaId, SchemaVariantId, StandardModel, StandardModelError, SystemId, Timestamp, Visibility,
-    WorkflowError, WorkflowPrototype, WorkflowPrototypeError, WorkflowPrototypeId,
-    WorkflowResolverError, WorkflowResolverId, WriteTenancy,
+    standard_model_accessor, ChangeSetPk, ComponentId, Func, FuncBinding, FuncBindingError,
+    HistoryEventError, SchemaId, SchemaVariantId, StandardModel, StandardModelError, SystemId,
+    Timestamp, Visibility, WorkflowError, WorkflowPrototype, WorkflowPrototypeError,
+    WorkflowPrototypeId, WorkflowResolverError, WorkflowResolverId, WriteTenancy, WsEvent,
+    WsEventError, WsPayload,
 };
 
 #[derive(Error, Debug)]
 pub enum WorkflowRunnerError {
     #[error(transparent)]
+    WsEvent(#[from] WsEventError),
+    #[error(transparent)]
     Workflow(#[from] WorkflowError),
+    #[error(transparent)]
+    FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
+    #[error(transparent)]
+    FuncExecution(#[from] FuncExecutionError),
     #[error("error serializing/deserializing json: {0}")]
     SerdeJson(#[from] serde_json::Error),
     #[error("pg error: {0}")]
@@ -164,6 +172,9 @@ impl WorkflowRunner {
             )
             .await?;
         let object = standard_model::finish_create_from_row(ctx, row).await?;
+        WsEvent::new(ctx, WsPayload::ChangeSetApplied(ChangeSetPk::NONE))
+            .publish(ctx)
+            .await?;
         Ok(object)
     }
 
@@ -182,12 +193,36 @@ impl WorkflowRunner {
             .await?
             .pop()
             .ok_or_else(|| WorkflowRunnerError::MissingWorkflow("si:identity".to_owned()))?;
-        let (func_binding, _) = FuncBinding::find_or_create_and_execute(
+        let (func_binding, mut func_binding_return_value) = FuncBinding::find_or_create_and_execute(
             ctx,
             serde_json::json!({ "identity": serde_json::to_value(&func_binding_return_values)? }),
             *identity.id(),
         )
         .await?;
+        let mut logs = Vec::new();
+        for return_value in &func_binding_return_values {
+            for stream in return_value
+                .get_output_stream(ctx)
+                .await?
+                .unwrap_or_default()
+            {
+                logs.push(stream);
+            }
+        }
+        logs.sort_by_key(|log| log.timestamp);
+        if func_binding_return_value.func_execution_pk().is_none() {
+            let pk = FuncExecution::new(ctx, &identity, &func_binding)
+                .await?
+                .pk();
+            func_binding_return_value
+                .set_func_execution_pk(ctx, pk)
+                .await?;
+        }
+
+        let mut func_execution =
+            FuncExecution::get_by_pk(ctx, &func_binding_return_value.func_execution_pk()).await?;
+        func_execution.set_output_stream(ctx, logs).await?;
+
         let mut context = WorkflowRunnerContext::new();
         context.set_component_id(prototype.context().component_id);
         context.set_schema_id(prototype.context().schema_id);
