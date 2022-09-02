@@ -18,7 +18,11 @@ overflow hidden */
         {{ gridPointerPos?.x }}, {{ gridPointerPos?.y }}
       </div>
     </div>
-    <DiagramZoomControls :zoom-level="zoomLevel" @update:zoom="setZoom" />
+    <DiagramControls
+      :zoom-level="zoomLevel"
+      @update:zoom="setZoom"
+      @open:help="openHelpModal"
+    />
     <v-stage
       v-if="customFontsLoaded"
       ref="stageRef"
@@ -99,6 +103,7 @@ overflow hidden */
       </v-layer>
     </v-stage>
   </div>
+  <DiagramHelpModal :open="helpModalOpen" @close="helpModalClose" />
 </template>
 
 <script lang="ts" setup>
@@ -155,8 +160,8 @@ import {
 } from "./utils/math";
 import DiagramNewEdge from "./DiagramNewEdge.vue";
 import { convertArrowKeyToDirection } from "./utils/keyboard";
-import DiagramZoomControls from "./DiagramZoomControls.vue";
-
+import DiagramControls from "./DiagramControls.vue";
+import DiagramHelpModal from "./DiagramHelpModal.vue";
 import { baseConfig } from "./diagram_base_config";
 
 // zoom config - zoom value of 1 is 100% zoom level
@@ -370,6 +375,9 @@ function onKeyDown(e: KeyboardEvent) {
   if (document?.activeElement?.tagName !== "BODY") return;
 
   // console.log(e);
+
+  // handle opening the help modal
+  if (e.key === "?" || e.key === "/") openHelpModal();
 
   // handle arrow keys - nudge and alignment
   if (e.key.startsWith("Arrow")) {
@@ -1171,4 +1179,13 @@ defineExpose({
   clearSelection,
   beginInsertElement,
 });
+
+// Help Modal
+const helpModalOpen = ref(false);
+const openHelpModal = () => {
+  helpModalOpen.value = true;
+};
+const helpModalClose = () => {
+  helpModalOpen.value = false;
+};
 </script>

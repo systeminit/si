@@ -29,6 +29,10 @@
     <div :class="iconButtonClasses" @click="adjustZoom('up')">
       <Icon name="plus" size="full" />
     </div>
+
+    <div class="ml-4" :class="iconButtonClasses" @click="emit('open:help')">
+      <Icon name="help-circle" size="full" />
+    </div>
   </div>
 </template>
 
@@ -48,6 +52,7 @@ const props = defineProps({
 
 const emit = defineEmits<{
   (e: "update:zoom", newZoom: number): void;
+  (e: "open:help"): void;
 }>();
 
 function adjustZoom(direction: "up" | "down") {
