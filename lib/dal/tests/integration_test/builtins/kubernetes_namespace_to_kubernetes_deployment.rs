@@ -1,7 +1,7 @@
 use crate::dal::test;
 use dal::test::helpers::builtins::{Builtin, SchemaBuiltinsTestHarness};
 use dal::{DalContext, Edge, ExternalProvider, InternalProvider, StandardModel};
-use pretty_assertions_sorted::assert_eq_sorted;
+use pretty_assertions_sorted::assert_eq;
 
 #[test]
 async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ctx: &DalContext) {
@@ -19,7 +19,7 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
         .await;
 
     // Ensure setup worked.
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![{
             "domain": {
                 "metadata": {
@@ -32,7 +32,7 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
         }], // expected
         tail_namespace_payload.component_view_properties(ctx).await // actual
     );
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![{
             "domain": {
                 "apiVersion": "apps/v1",
@@ -76,7 +76,7 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
     .expect("could not connect providers");
 
     // Ensure the view did not drift.
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![{
             "domain": {
                 "metadata": {
@@ -89,7 +89,7 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
         }], // expected
         tail_namespace_payload.component_view_properties(ctx).await // actual
     );
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![{
             "domain": {
                 "apiVersion": "apps/v1",
@@ -112,7 +112,7 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
         .await;
 
     // Observed that it worked.
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![{
             "domain": {
                 "metadata": {
@@ -126,7 +126,7 @@ async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(ct
         tail_namespace_payload.component_view_properties(ctx).await // actual
     );
 
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![{
             "domain": {
                 "apiVersion": "apps/v1",

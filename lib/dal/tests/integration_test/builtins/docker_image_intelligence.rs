@@ -1,7 +1,7 @@
 use crate::dal::test;
 use dal::test::helpers::builtins::{Builtin, SchemaBuiltinsTestHarness};
 use dal::DalContext;
-use pretty_assertions_sorted::assert_eq_sorted;
+use pretty_assertions_sorted::assert_eq;
 
 #[test]
 async fn docker_image_intra_component_update(ctx: &DalContext) {
@@ -14,7 +14,7 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
         .await;
 
     // Ensure that setup worked
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![{
             "domain": {
                 "image": "soulrender"
@@ -25,7 +25,7 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
         }], // expected
         soulrender_payload.component_view_properties(ctx).await // actual
     );
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![{
             "domain": {
                 "image": "bloodscythe"
@@ -47,7 +47,7 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
         )
         .await;
 
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![{
             "domain": {
                 "image": "soulrender"
@@ -59,7 +59,7 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
         soulrender_payload.component_view_properties(ctx).await // actual
     );
 
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![{
             "domain": {
                 "image": "bloodscythe-updated"
@@ -81,7 +81,7 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
         )
         .await;
 
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![{
             "domain": {
                 "image": "soulrender-updated"
@@ -92,7 +92,7 @@ async fn docker_image_intra_component_update(ctx: &DalContext) {
         }], // expected
         soulrender_payload.component_view_properties(ctx).await // actual
     );
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![{
             "domain": {
                 "image": "bloodscythe-updated"

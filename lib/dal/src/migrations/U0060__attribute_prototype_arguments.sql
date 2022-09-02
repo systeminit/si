@@ -89,6 +89,8 @@ BEGIN
             this_head_component_id)
     RETURNING * INTO this_new_row;
 
+    RAISE DEBUG 'attribute_prototype_argument_create_v1: Created AttributePrototypeArgument(%)', this_new_row;
+
     object := row_to_json(this_new_row);
 END;
 $$ LANGUAGE PLPGSQL VOLATILE;

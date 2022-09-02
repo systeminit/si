@@ -325,14 +325,14 @@ async fn setup_esp(ctx: &DalContext) -> ComponentPayload {
     )
     .await;
 
-    let mut prop_map = HashMap::new();
-    prop_map.insert("/root/domain/object/source", *source_prop.id());
-    prop_map.insert("/root/domain/object/intermediate", *intermediate_prop.id());
-
     schema_variant
         .finalize(ctx)
         .await
         .expect("cannot finalize SchemaVariant");
+
+    let mut prop_map = HashMap::new();
+    prop_map.insert("/root/domain/object/source", *source_prop.id());
+    prop_map.insert("/root/domain/object/intermediate", *intermediate_prop.id());
 
     let (component, node) = Component::new_for_schema_with_node(ctx, "esp", schema.id())
         .await
@@ -395,13 +395,14 @@ async fn setup_swings(ctx: &DalContext) -> ComponentPayload {
         root_prop.domain_prop_id,
     )
     .await;
-    let mut prop_map = HashMap::new();
-    prop_map.insert("/root/domain/destination", *destination_prop.id());
 
     schema_variant
         .finalize(ctx)
         .await
         .expect("cannot finalize SchemVariant");
+
+    let mut prop_map = HashMap::new();
+    prop_map.insert("/root/domain/destination", *destination_prop.id());
 
     let (component, node) = Component::new_for_schema_with_node(ctx, "swings", schema.id())
         .await

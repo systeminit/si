@@ -4,7 +4,7 @@ use dal::{
     Component, ComponentId, DalContext, Edge, ExternalProvider, InternalProvider, StandardModel,
     SystemId,
 };
-use pretty_assertions_sorted::assert_eq_sorted;
+use pretty_assertions_sorted::assert_eq;
 
 const SYSTEMD_UNIT_FILE_PAYLOAD: &str = "\
 [Unit]
@@ -60,7 +60,7 @@ async fn butane_is_valid_ignition(ctx: &DalContext) {
         .await;
 
     // Ensure setup worked.
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![{
             "domain": {
                 "variant": "fcos",
@@ -103,14 +103,14 @@ async fn butane_is_valid_ignition(ctx: &DalContext) {
         .and_then(|v| v.get("contents"))
         .and_then(|v| v.as_str())
         .expect("could not get contents from view");
-    assert_eq_sorted!(
+    assert_eq!(
         SYSTEMD_UNIT_FILE_PAYLOAD, // expected
         contents                   // actual
     );
 
     // Check the ignition qualification.
     let ignition = get_ignition_from_qualification_output(ctx, &butane_payload.component_id).await;
-    assert_eq_sorted!(
+    assert_eq!(
         &ignition,                         // actual
         EXPECTED_DISCRETE_IGNITION_OUTPUT  // expected
     );
@@ -222,7 +222,7 @@ async fn connected_butane_is_valid_ignition(ctx: &DalContext) {
 
     // Check the ignition qualification.
     let ignition = get_ignition_from_qualification_output(ctx, &butane_payload.component_id).await;
-    assert_eq_sorted!(
+    assert_eq!(
         &ignition,                          // actual
         EXPECTED_CONNECTED_IGNITION_OUTPUT  // expected
     );

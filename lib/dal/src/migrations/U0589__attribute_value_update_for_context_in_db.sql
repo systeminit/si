@@ -161,6 +161,25 @@ BEGIN
 END;
 $$ LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
 
+CREATE OR REPLACE FUNCTION attribute_context_from_jsonb_v1(
+    source_jsonb jsonb,
+    OUT attribute_context jsonb
+)
+AS
+$$
+BEGIN
+    attribute_context := jsonb_build_object(
+        'attribute_context_prop_id',              source_jsonb -> 'attribute_context_prop_id',
+        'attribute_context_internal_provider_id', source_jsonb -> 'attribute_context_internal_provider_id',
+        'attribute_context_external_provider_id', source_jsonb -> 'attribute_context_external_provider_id',
+        'attribute_context_schema_id',            source_jsonb -> 'attribute_context_schema_id',
+        'attribute_context_schema_variant_id',    source_jsonb -> 'attribute_context_schema_variant_id',
+        'attribute_context_component_id',         source_jsonb -> 'attribute_context_component_id',
+        'attribute_context_system_id',            source_jsonb -> 'attribute_context_system_id'
+    );
+END;
+$$ LANGUAGE PLPGSQL IMMUTABLE PARALLEL SAFE;
+
 CREATE OR REPLACE FUNCTION less_specific_attribute_context_v1(check_context jsonb,
                                                               reference     record,
                                                               OUT result    bool
@@ -235,6 +254,13 @@ BEGIN
               this_write_tenancy,
               this_visibility;
     END IF;
+
+    PERFORM unset_belongs_to_v1(
+        'attribute_value_belongs_to_attribute_value',
+        this_write_tenancy,
+        this_visibility,
+        this_attribute_value_id
+    );
 
     PERFORM set_belongs_to_v1('attribute_value_belongs_to_attribute_value',
                               this_write_tenancy,
@@ -450,6 +476,12 @@ BEGIN
                                     this_visibility,
                                     proxy_attribute_value.id,
                                     proxy_target.id);
+            PERFORM unset_belongs_to_v1(
+                'attribute_value_belongs_to_attribute_prototype',
+                this_write_tenancy,
+                this_visibility,
+                proxy_attribute_value.id
+            );
             PERFORM set_belongs_to_v1('attribute_value_belongs_to_attribute_prototype',
                                       this_write_tenancy,
                                       this_visibility,
@@ -492,7 +524,9 @@ BEGIN
                                        this_attribute_context,
                                        this_func_id,
                                        this_key) AS ap;
-    SELECT DISTINCT ON (id) *
+
+    SELECT DISTINCT ON (id) row_to_json(attribute_prototypes)
+    INTO new_attribute_prototype
     FROM attribute_prototypes
     WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, attribute_prototypes)
           AND id = new_attribute_prototype_id
@@ -504,9 +538,9 @@ BEGIN
     INTO attribute_value_id
     FROM attribute_value_create_v1(this_write_tenancy,
                                    this_visibility,
+                                   this_attribute_context,
                                    this_func_binding_id,
                                    this_func_binding_return_value_id,
-                                   this_attribute_context,
                                    this_key) AS av;
     PERFORM set_belongs_to_v1('attribute_value_belongs_to_attribute_prototype',
                               this_write_tenancy,
@@ -523,7 +557,7 @@ BEGIN
     END IF;
 
     IF NOT attribute_context_is_least_specific_v1(this_attribute_context) THEN
-        SELECT attribute_context_from_record_v1(av.attribute_value)
+        SELECT attribute_context_from_jsonb_v1(av.attribute_value)
         INTO existing_attribute_value_proxy_context
         FROM attribute_value_find_with_parent_and_key_for_context_v1(this_read_tenancy,
                                                                      this_visibility,
@@ -800,6 +834,7 @@ DECLARE
     func_binding_created      bool;
     func_binding_return_value func_binding_return_values%ROWTYPE;
 BEGIN
+    RAISE DEBUG 'func_binding_find_or_create_and_execute_v1: Args(%), FuncId(%)', this_func_args, this_func_id;
     SELECT DISTINCT ON (id) backend_kind
     INTO STRICT func_backend_kind
     FROM funcs
@@ -1009,7 +1044,6 @@ DECLARE
     func_binding                    func_bindings%ROWTYPE;
     func_binding_created            bool;
     func_binding_id                 bigint;
-    unprocessed_value               jsonb;
     func_binding_return_value_id    bigint;
     func_name                       text;
     given_attribute_value           attribute_values%ROWTYPE;
@@ -1019,6 +1053,8 @@ DECLARE
     parent_attribute_context        jsonb;
     parent_attribute_value          attribute_values%ROWTYPE;
     prop                            props%ROWTYPE;
+    typeof_value                    text;
+    unprocessed_value               jsonb;
 BEGIN
     maybe_parent_attribute_value_id := this_maybe_parent_attribute_value_id;
 
@@ -1030,7 +1066,7 @@ BEGIN
     ORDER BY id,
              visibility_change_set_pk DESC,
              visibility_deleted_at DESC NULLS FIRST;
-    IF given_attribute_value IS NULL THEN
+    IF NOT FOUND THEN
         RAISE 'Unable to find AttributeValue(%) in Tenancy(%), Visibility(%)', this_attribute_value_id,
                                                                                this_read_tenancy,
                                                                                this_visibility;
@@ -1052,7 +1088,7 @@ BEGIN
     ORDER BY id,
              visibility_change_set_pk DESC,
              visibility_deleted_at DESC NULLS FIRST;
-    IF original_attribute_prototype IS NULL THEN
+    IF NOT FOUND THEN
         RAISE 'Unable to find AttributePrototype for AttributeValue(%), Tenancy(%), Visibility(%)', attribute_value.id,
                                                                                                     this_read_tenancy,
                                                                                                     this_visibility;
@@ -1061,7 +1097,8 @@ BEGIN
     -- We need to make sure that all of the parents "exist" (are not the "unset" value).  We can't rely on the
     -- client having created/set all of the parents already, as the parent might be an Object, or an Array/Map
     -- (instead of an element in an Array/Map).  The client will only be creating new elements in Arrays/Maps,
-    -- and not Objects/Arrays/Maps themselves.
+    -- and not Objects/Arrays/Maps themselves (unless the Object/Array/Map itself is the element of an
+    -- Array/Map).
     IF maybe_parent_attribute_value_id IS NOT NULL THEN
         SELECT DISTINCT ON (id) *
         INTO parent_attribute_value
@@ -1146,35 +1183,75 @@ BEGIN
         END IF;
     END IF;
 
-    SELECT DISTINCT ON (id) *
-    INTO STRICT prop
-    FROM props
-    WHERE in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, props)
-          AND props.id = (this_attribute_context ->> 'attribute_context_prop_id')::bigint
-    ORDER BY id,
-             visibility_change_set_pk DESC,
-             visibility_deleted_at DESC NULLS FIRST;
+    RAISE DEBUG 'attribute_value_update_for_context_raw_v1: this_attribute_context - %', this_attribute_context;
+    IF this_attribute_context ->> 'attribute_context_prop_id' = '-1' THEN
+        typeof_value := jsonb_typeof(this_new_value);
 
-    IF this_new_value IS NULL THEN
-        func_name := 'si:unset';
-        func_args := 'null'::jsonb;
-    ELSIF prop.kind = 'array' THEN
-        func_name := 'si:setArray';
-    ELSIF prop.kind = 'boolean' THEN
-        func_name := 'si:setBoolean';
-    ELSIF prop.kind = 'integer' THEN
-        func_name := 'si:setInteger';
-    ELSIF prop.kind = 'map' THEN
-        func_name := 'si:setMap';
-    ELSIF prop.kind = 'object' THEN
-        func_name := 'si:setPropObject';
-    ELSIF prop.kind = 'string' THEN
-        func_name := 'si:setString';
+        -- jsonb_typeof returns: 'object', 'array', 'string', 'number', 'boolean', 'null' and SQL NULL
+        --
+        -- json_typeof('null'::json) → null
+        -- json_typeof(NULL::json) IS NULL → t
+        CASE
+            WHEN typeof_value = 'object' THEN
+                -- It's an array/map, but since we're setting the value for a Provider, then it's an Object.
+                func_name := 'si:setPropObject';
+            WHEN typeof_value = 'array' THEN
+                func_name := 'si:setArray';
+            WHEN typeof_value = 'string' THEN
+                func_name := 'si:setString';
+            WHEN typeof_value = 'number' THEN
+                -- This should be whatever our floating point func is when that becomes a thing, since
+                -- jsonb_typeof doesn't differentiate between integer & float.
+                func_name := 'si:setInteger';
+            WHEN typeof_value = 'boolean' THEN
+                func_name := 'si:setBoolean';
+            WHEN typeof_value = 'null' THEN
+                -- This should probably be different from 'si:unset' so we can differentiate between
+                -- "this doesn't have a value/shouldn't exist" and "this should exist with the literal
+                -- value 'nothing'".
+                func_name := 'si:unset';
+                func_args := 'null'::jsonb;
+            WHEN typeof_value IS NULL THEN
+                func_name := 'si:unset';
+                func_args := 'null'::jsonb;
+            ELSE
+                RAISE 'attribute_value_update_for_context_raw_v1: Unknown jsonb_typeof(%) - %',
+                    this_value,
+                    typeof_value;
+        END CASE;
     ELSE
-        RAISE 'Unknown Prop(%).kind(%) in Tenancy(%), Visibility(%)', prop.id, prop.kind, this_read_tenancy, this_visibility;
+        SELECT DISTINCT ON (id) *
+        INTO STRICT prop
+        FROM props
+        WHERE
+            in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, props)
+            AND props.id = (this_attribute_context ->> 'attribute_context_prop_id')::bigint
+        ORDER BY
+            id,
+            visibility_change_set_pk DESC,
+            visibility_deleted_at DESC NULLS FIRST;
+
+        IF this_new_value IS NULL THEN
+            func_name := 'si:unset';
+            func_args := 'null'::jsonb;
+        ELSIF prop.kind = 'array' THEN
+            func_name := 'si:setArray';
+        ELSIF prop.kind = 'boolean' THEN
+            func_name := 'si:setBoolean';
+        ELSIF prop.kind = 'integer' THEN
+            func_name := 'si:setInteger';
+        ELSIF prop.kind = 'map' THEN
+            func_name := 'si:setMap';
+        ELSIF prop.kind = 'object' THEN
+            func_name := 'si:setPropObject';
+        ELSIF prop.kind = 'string' THEN
+            func_name := 'si:setString';
+        ELSE
+            RAISE 'Unknown Prop(%).kind(%) in Tenancy(%), Visibility(%)', prop.id, prop.kind, this_read_tenancy, this_visibility;
+        END IF;
     END IF;
 
-    IF this_new_value IS NOT NULL THEN
+    IF func_args IS NULL THEN
         func_args := jsonb_build_object('value', this_new_value);
     END IF;
 
@@ -2203,6 +2280,10 @@ DECLARE
     func_id                         bigint;
     maybe_parent_attribute_value_id bigint;
 BEGIN
+    RAISE DEBUG 'attribute_value_vivify_value_and_parent_values_raw_v1(%, %, %)',
+        this_attribute_context,
+        this_attribute_value_id,
+        this_create_child_proxies;
     SELECT DISTINCT ON (id) *
     INTO attribute_value
     FROM attribute_values
@@ -2211,7 +2292,7 @@ BEGIN
     ORDER BY id,
              visibility_change_set_pk DESC,
              visibility_deleted_at DESC NULLS FIRST;
-    IF attribute_value.id IS NULL THEN
+    IF NOT FOUND THEN
         RAISE 'Unable to find AttributeValue(%) with Tenancy(%) and Visibility(%)', this_attribute_value_id,
                                                                                     this_read_tenancy,
                                                                                     this_visibility;
@@ -2225,10 +2306,33 @@ BEGIN
     ORDER BY id,
              visibility_change_set_pk DESC,
              visibility_deleted_at DESC NULLS FIRST;
-    IF prop.id IS NULL THEN
-        RAISE 'Unable to find Prop(%) with Tenancy(%) and Visibility(%)', attribute_value.attribute_context_prop_id,
-                                                                          this_read_tenancy,
-                                                                          this_visibility;
+    -- If the AttributeValue isn't for a Prop, check if it's for an InternalProvider, and grab the
+    -- associated Prop.
+    IF NOT FOUND THEN
+        SELECT DISTINCT ON (id) props.*
+        INTO prop
+        FROM props
+        INNER JOIN (
+            SELECT DISTINCT ON (id) prop_id
+            FROM internal_providers
+            WHERE
+                in_tenancy_and_visible_v1(this_read_tenancy, this_visibility, internal_providers)
+                AND id = attribute_value.attribute_context_internal_provider_id
+            ORDER BY
+                id,
+                visibility_change_set_pk DESC,
+                visibility_deleted_at DESC NULLS FIRST
+        ) AS ip ON ip.prop_id = props.id
+        ORDER BY
+            id,
+            visibility_change_set_pk DESC,
+            visibility_deleted_at DESC NULLS FIRST;
+    END IF;
+    -- If the AttributeValue isn't for a Prop, or an Internal Provider, then the only thing left
+    -- is an ExternalProvider, which doesn't have a Prop at all. Pretend that the `prop.kind` is
+    -- `map` for the purposes of creating the placeholder value.
+    IF NOT FOUND THEN
+        prop.kind := 'map';
     END IF;
 
     CASE
@@ -2237,12 +2341,8 @@ BEGIN
         WHEN prop.kind = 'object' OR prop.kind = 'map' THEN
             empty_value := '{}'::jsonb;
         ELSE
-            RAISE 'attribute_value_vivify_value_and_parent_values_raw_v1 '
-                  'not implemented for Prop.kind(%): AttributeValue(%), Tenancy(%), Visibility(%)',
-                  prop.kind,
-                  this_attribute_value_id,
-                  this_read_tenancy,
-                  this_visibility;
+            -- Everything else isn't a container, so the "empty" version is the "unset" value.
+            empty_value := NULL;
     END CASE;
 
     SELECT DISTINCT ON (object_id) belongs_to_id
@@ -2268,6 +2368,7 @@ BEGIN
             -- If the Prop is an Array or a Map, we need it to be set in the specific context we're looking
             -- at. All other PropKind, just need to exist as something other than unset.
             IF attribute_contexts_match_v1(this_attribute_context, to_jsonb(attribute_value)) THEN
+                RAISE DEBUG 'attribute_value_vivify_value_and_parent_values_raw_v1: Found appropriate AttributeValue(%) for array/map', attribute_value;
                 new_attribute_value_id := attribute_value.id;
                 RETURN;
             END IF;
@@ -2297,6 +2398,21 @@ BEGIN
                                                                         empty_value,
                                                                         null,
                                                                         this_create_child_proxies);
+
+    IF
+        new_attribute_value_id != attribute_value.id
+        -- Providers don't have Proxy values.
+        AND this_attribute_context ->> 'attribute_context_prop_id' != '-1'
+    THEN
+        PERFORM update_by_id_v1(
+            'attribute_values',
+            'proxy_for_attribute_value_id',
+            this_write_tenancy,
+            this_visibility,
+            new_attribute_value_id,
+            attribute_value.id
+        );
+    END IF;
 END;
 $$ LANGUAGE PLPGSQL;
 

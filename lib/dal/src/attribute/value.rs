@@ -16,7 +16,6 @@ use crate::{
             AttributeReadContext,
         },
         prototype::{AttributePrototype, AttributePrototypeId},
-        value::dependent_update::collection::AttributeValueDependentCollectionHarness,
     },
     func::{
         binding::{FuncBindingError, FuncBindingId},
@@ -26,33 +25,32 @@ use crate::{
         FuncId,
     },
     impl_standard_model,
-    job::definition::DependentValuesUpdate,
+    job::definition::{CodeGeneration, DependentValuesUpdate},
     pk,
     standard_model::{self, TypeHint},
     standard_model_accessor, standard_model_belongs_to, standard_model_has_many,
-    ws_event::{WsEvent, WsEventError},
     AttributeContextError, AttributePrototypeArgumentError, ComponentId, DalContext,
-    FuncBackendKind, FuncBackendResponseType, FuncError, HistoryEventError, IndexMap,
-    InternalProviderId, Prop, PropError, PropId, PropKind, ReadTenancyError, SchemaId,
-    SchemaVariantId, StandardModel, StandardModelError, Timestamp, TransactionsError, Visibility,
-    WriteTenancy,
+    FuncBackendKind, FuncBackendResponseType, FuncBinding, FuncError, HistoryEventError, IndexMap,
+    InternalProvider, InternalProviderId, Prop, PropError, PropId, PropKind, ReadTenancyError,
+    SchemaId, SchemaVariantId, StandardModel, StandardModelError, SystemId, Timestamp,
+    TransactionsError, Visibility, WriteTenancy,
 };
-use crate::{AccessBuilder, DalContextBuilder, SystemId, WsPayload};
 
-use self::dependent_update::AttributeValueDependentUpdateHarness;
-
-pub mod dependent_update;
 pub mod view;
 
 const CHILD_ATTRIBUTE_VALUES_FOR_CONTEXT: &str =
     include_str!("../queries/attribute_value_child_attribute_values_for_context.sql");
-const LIST_FOR_CONTEXT: &str = include_str!("../queries/attribute_value_list_for_context.sql");
+const FETCH_UPDATE_GRAPH_DATA: &str =
+    include_str!("../queries/attribute_value/fetch_update_graph_data.sql");
+const IS_FOR_INTERNAL_PROVIDER_OF_ROOT_PROP: &str =
+    include_str!("../queries/attribute_value/is_for_internal_provider_of_root_prop.sql");
 const FIND_PROP_FOR_VALUE: &str =
     include_str!("../queries/attribute_value_find_prop_for_value.sql");
 const FIND_WITH_PARENT_AND_KEY_FOR_CONTEXT: &str =
     include_str!("../queries/attribute_value_find_with_parent_and_key_for_context.sql");
 const FIND_WITH_PARENT_AND_PROTOTYPE_FOR_CONTEXT: &str =
     include_str!("../queries/attribute_value_find_with_parent_and_prototype_for_context.sql");
+const LIST_FOR_CONTEXT: &str = include_str!("../queries/attribute_value_list_for_context.sql");
 const LIST_PAYLOAD_FOR_READ_CONTEXT: &str =
     include_str!("../queries/attribute_value_list_payload_for_read_context.sql");
 const LIST_PAYLOAD_FOR_READ_CONTEXT_AND_ROOT: &str =
@@ -64,8 +62,6 @@ pub enum AttributeValueError {
     Transactions(#[from] TransactionsError),
     #[error(transparent)]
     PgPool(#[from] si_data::PgPoolError),
-    #[error("ws event error: {0}")]
-    WsEvent(#[from] WsEventError),
     #[error("AttributeContext error: {0}")]
     AttributeContext(#[from] AttributeContextError),
     #[error("AttributeContextBuilder error: {0}")]
@@ -138,6 +134,8 @@ pub enum AttributeValueError {
     NotFoundForExternalProviderContext(AttributeContext),
     #[error("missing attribute value for internal provider context: {0:?}")]
     NotFoundForInternalProviderContext(AttributeContext),
+    #[error("No AttributeValue found for AttributeReadContext: {0:?}")]
+    NotFoundForReadContext(AttributeReadContext),
     #[error("using json pointer for attribute view yielded no value")]
     NoValueForJsonPointer,
     #[error(
@@ -716,21 +714,8 @@ impl AttributeValue {
 
         let new_attribute_value_id: AttributeValueId = row.try_get("new_attribute_value_id")?;
 
-        let attribute_value = AttributeValue::get_by_id(ctx, &new_attribute_value_id)
-            .await?
-            .ok_or_else(|| {
-                AttributeValueError::NotFound(new_attribute_value_id, *ctx.visibility())
-            })?;
-
-        let dependent_attribute_values =
-            AttributeValueDependentCollectionHarness::collect(ctx, attribute_value.context).await?;
-        for dependent_attribute_value in dependent_attribute_values {
-            ctx.enqueue_job(DependentValuesUpdate::new(
-                ctx,
-                *dependent_attribute_value.id(),
-            ))
+        ctx.enqueue_job(DependentValuesUpdate::new(ctx, new_attribute_value_id))
             .await;
-        }
 
         Ok((value, new_attribute_value_id))
     }
@@ -804,21 +789,9 @@ impl AttributeValue {
         ).await?;
 
         let new_attribute_value_id: AttributeValueId = row.try_get("new_attribute_value_id")?;
-        let attribute_value = AttributeValue::get_by_id(ctx, &new_attribute_value_id)
-            .await?
-            .ok_or_else(|| {
-                AttributeValueError::NotFound(new_attribute_value_id, *ctx.visibility())
-            })?;
 
-        let dependent_attribute_values =
-            AttributeValueDependentCollectionHarness::collect(ctx, attribute_value.context).await?;
-        for dependent_attribute_value in dependent_attribute_values {
-            ctx.enqueue_job(DependentValuesUpdate::new(
-                ctx,
-                *dependent_attribute_value.id(),
-            ))
+        ctx.enqueue_job(DependentValuesUpdate::new(ctx, new_attribute_value_id))
             .await;
-        }
 
         Ok(new_attribute_value_id)
     }
@@ -841,39 +814,6 @@ impl AttributeValue {
         Ok(())
     }
 
-    #[instrument(skip_all)]
-    async fn vivify_value_and_parent_values_without_child_proxies(
-        ctx: &DalContext,
-        context: AttributeContext,
-        attribute_value_id: AttributeValueId,
-    ) -> AttributeValueResult<AttributeValueId> {
-        Self::vivify_value_and_parent_values_raw(ctx, context, attribute_value_id, false).await
-    }
-
-    #[instrument(skip_all)]
-    async fn vivify_value_and_parent_values_raw(
-        ctx: &DalContext,
-        context: AttributeContext,
-        attribute_value_id: AttributeValueId,
-        create_child_proxies: bool,
-    ) -> AttributeValueResult<AttributeValueId> {
-        let row = ctx.pg_txn().query_one(
-            "SELECT new_attribute_value_id FROM attribute_value_vivify_value_and_parent_values_raw_v1($1, $2, $3, $4, $5, $6)",
-            &[
-                ctx.write_tenancy(),
-                ctx.read_tenancy(),
-                ctx.visibility(),
-                &context,
-                &attribute_value_id,
-                &create_child_proxies,
-            ],
-        ).await?;
-
-        let new_attribute_value_id: AttributeValueId = row.try_get("new_attribute_value_id")?;
-
-        Ok(new_attribute_value_id)
-    }
-
     async fn populate_nested_values(
         ctx: &DalContext,
         parent_attribute_value_id: AttributeValueId,
@@ -894,6 +834,273 @@ impl AttributeValue {
                 ],
             )
             .await?;
+
+        Ok(())
+    }
+
+    /// Convenience method to determine if this `AttributeValue` is for the
+    /// implicit `InternalProvider` that represents the "snapshot" of the entire
+    /// `Component`. (Which means that the `Prop` that the `InternalProvider` is
+    /// sourcing its data from, does not have a parent `Prop`.)
+    async fn is_for_internal_provider_of_root_prop(
+        &mut self,
+        ctx: &DalContext,
+    ) -> AttributeValueResult<bool> {
+        let maybe_row = ctx
+            .txns()
+            .pg()
+            .query_opt(
+                IS_FOR_INTERNAL_PROVIDER_OF_ROOT_PROP,
+                &[&ctx.write_tenancy(), ctx.visibility(), &self.context],
+            )
+            .await?;
+        if let Some(row) = maybe_row {
+            // If we got a row back, that means that we are an AttributeValue for an InternalProvider,
+            // and we should have gotten a row back from the query.
+            Ok(row.try_get("is_for_root_prop")?)
+        } else {
+            // If we didn't get a row back, that means that we didn't find an InternalProvider for the
+            // InternalProviderId in our AttributeContext. Likely because it is -1, indicating that we're
+            // not for an InternalProvider at all.
+            Ok(false)
+        }
+    }
+
+    /// Returns a `HashMap` of `AttributeValueId -> Vec<AttributeValueId>` where the keys
+    /// are `AttributeValue`s that are affected (directly, and indirectly) by `self`
+    /// having a new value. The `Vec<AttributeValueId>` are the `AttributeValue` that the
+    /// key directly depends on that are also affected by `self` having a new value.
+    ///
+    /// **NOTE**: This has the side effect of **CREATING NEW [`AttributeValue`s][AttributeValue]**
+    /// if this [`AttributeValue`][AttributeValue] affects an [`AttributeContext`][AttributeContext]
+    /// where an [`AttributePrototype`][AttributePrototype] that uses it didn't already have an
+    /// [`AttributeValue`][AttributeValue].
+    pub async fn dependent_value_graph(
+        &mut self,
+        ctx: &DalContext,
+    ) -> AttributeValueResult<HashMap<AttributeValueId, Vec<AttributeValueId>>> {
+        println!("AttributeValue.dependent_value_graph(): {:?}", &self);
+        let total_start = std::time::Instant::now();
+
+        let _rows = ctx
+            .pg_txn()
+            .query(
+                "SELECT attribute_value_create_new_affected_values_v1($1, $2, $3, $4)",
+                &[
+                    &ctx.write_tenancy(),
+                    &ctx.read_tenancy(),
+                    &ctx.visibility(),
+                    &self.id,
+                ],
+            )
+            .await?;
+        println!(
+            "AttributeValue.dependent_value_graph(): Create new affected took {:?}",
+            total_start.elapsed()
+        );
+        let section_start = std::time::Instant::now();
+
+        let rows = ctx
+            .txns()
+            .pg()
+            .query(
+                FETCH_UPDATE_GRAPH_DATA,
+                &[&ctx.read_tenancy(), ctx.visibility(), &self.id],
+            )
+            .await?;
+        println!(
+            "AttributeValue.dependent_value_graph(): Graph query took {:?} (total elapsed {:?}",
+            section_start.elapsed(),
+            total_start.elapsed(),
+        );
+
+        let mut result: HashMap<AttributeValueId, Vec<AttributeValueId>> = HashMap::new();
+        for row in rows.into_iter() {
+            let attr_val_id: AttributeValueId = row.try_get("attribute_value_id")?;
+            let dependencies: Vec<AttributeValueId> =
+                row.try_get("dependent_attribute_value_ids")?;
+
+            result.insert(attr_val_id, dependencies);
+        }
+
+        println!(
+            "AttributeValue.dependent_value_graph(): Total elapsed {:?}",
+            total_start.elapsed()
+        );
+
+        Ok(result)
+    }
+
+    /// Re-evaluates the current `AttributeValue`'s `AttributePrototype` to update the
+    /// `FuncBinding`, and `FuncBindingReturnValue`, reflecting the current inputs to
+    /// the function.
+    ///
+    /// If the `AttributeValue` represents the `InternalProvider` for a `Prop` that
+    /// does not have a parent `Prop` (this is typically the `InternalProvider` for
+    /// the "root" `Prop` of a `SchemaVariant`), then it will also enqueue a
+    /// `CodeGeneration` job for the `Component`.
+    pub async fn update_from_prototype_function(
+        &mut self,
+        ctx: &DalContext,
+    ) -> AttributeValueResult<()> {
+        let update_start_time = std::time::Instant::now();
+
+        // Check if this AttributeValue is for an implicit InternalProvider as they have special behavior that doesn't involve
+        // AttributePrototype and AttributePrototypeArguments.
+        if self
+            .context
+            .is_least_specific_field_kind_internal_provider()?
+        {
+            let internal_provider =
+                InternalProvider::get_by_id(ctx, &self.context.internal_provider_id())
+                    .await?
+                    .ok_or_else(|| {
+                        AttributeValueError::InternalProviderNotFound(
+                            self.context.internal_provider_id(),
+                        )
+                    })?;
+            if internal_provider.is_internal_consumer() {
+                let prop_attribute_context = AttributeContextBuilder::from(self.context)
+                    .set_prop_id(*internal_provider.prop_id())
+                    .unset_internal_provider_id()
+                    .unset_external_provider_id()
+                    .to_context()?;
+
+                // We don't care about the AttributeValue that comes back from implicit_emit, since we should already be
+                // operating on an AttributeValue that has the correct AttributeContext, which means that a new one should
+                // not need to be created.
+                internal_provider
+                    .implicit_emit(ctx, prop_attribute_context)
+                    .await
+                    .map_err(|e| AttributeValueError::InternalProvider(e.to_string()))?;
+
+                return Ok(());
+            }
+        }
+
+        // The following should handle explicit "normal" Attributes, InternalProviders, and ExternalProviders already.
+        let attribute_prototype = self.attribute_prototype(ctx).await?.ok_or_else(|| {
+            AttributeValueError::AttributePrototypeNotFound(self.id, *ctx.visibility())
+        })?;
+
+        let mut func_binding_args: HashMap<String, Option<serde_json::Value>> = HashMap::new();
+        for mut argument_data in attribute_prototype
+            .argument_values(ctx, self.context)
+            .await
+            .map_err(|e| AttributeValueError::AttributePrototype(e.to_string()))?
+        {
+            match argument_data.values.len() {
+                1 => {
+                    let argument = argument_data.values.pop().ok_or_else(|| {
+                        AttributeValueError::EmptyAttributePrototypeArgumentsForGroup(
+                            argument_data.argument_name.clone(),
+                        )
+                    })?;
+
+                    func_binding_args.insert(
+                        argument_data.argument_name,
+                        Some(serde_json::to_value(argument)?),
+                    );
+                }
+                2.. => {
+                    func_binding_args.insert(
+                        argument_data.argument_name,
+                        Some(serde_json::to_value(argument_data.values)?),
+                    );
+                }
+                _ => {
+                    return Err(
+                        AttributeValueError::EmptyAttributePrototypeArgumentsForGroup(
+                            argument_data.argument_name,
+                        ),
+                    )
+                }
+            };
+        }
+        // If we haven't gathered up any arguments, then that means that this attribute value does not depend on any external input,
+        // and should not change if re-evaluated.
+        //
+        // TODO: Make sure that not re-evaulating functions with no input is the right product decision. For now this is to handle things like `si:setString`, as there's not really anything to re-evaluate.
+        if func_binding_args.is_empty() {
+            return Ok(());
+        }
+
+        let execution_start = std::time::Instant::now();
+        let (func_binding, mut func_binding_return_value, _) =
+            FuncBinding::find_or_create_and_execute(
+                ctx,
+                serde_json::to_value(func_binding_args)?,
+                attribute_prototype.func_id(),
+            )
+            .await?;
+        println!(
+            "update_from_prototype_function({:?}): Func execution took {:?}",
+            self.id,
+            execution_start.elapsed()
+        );
+
+        self.set_func_binding_id(ctx, *func_binding.id()).await?;
+        self.set_func_binding_return_value_id(ctx, *func_binding_return_value.id())
+            .await?;
+
+        // If the value we just updated was for a Prop, we might have run a function that
+        // generates a deep data structure. If the Prop is an Array/Map/Object, then the
+        // value should be an empty Array/Map/Object, while the unprocessed value contains
+        // the deep data structure.
+        if self.context.is_least_specific_field_kind_prop()? {
+            let processed_value = match func_binding_return_value.unprocessed_value().cloned() {
+                Some(unprocessed_value) => {
+                    let prop = Prop::get_by_id(ctx, &self.context.prop_id())
+                        .await?
+                        .ok_or_else(|| AttributeValueError::PropNotFound(self.context.prop_id()))?;
+
+                    match prop.kind() {
+                        PropKind::Object | PropKind::Map => Some(serde_json::json!({})),
+                        PropKind::Array => Some(serde_json::json!([])),
+                        _ => Some(unprocessed_value),
+                    }
+                }
+                None => None,
+            };
+            func_binding_return_value
+                .set_value(ctx, processed_value)
+                .await?;
+        };
+        // The value will be different from the unprocessed value if we updated it above
+        // for an Array/Map/Value. If they are different from each other, then we know
+        // that we need to fully process the deep data structure, populating
+        // AttributeValues for the child Props.
+        if func_binding_return_value.unprocessed_value() != func_binding_return_value.value() {
+            if let Some(unprocessed_value) = func_binding_return_value.unprocessed_value().cloned()
+            {
+                AttributeValue::populate_nested_values(
+                    ctx,
+                    self.id,
+                    self.context,
+                    unprocessed_value,
+                )
+                .await?;
+            }
+        }
+
+        // Check if we just updated the `InternalProvider` for the root `Prop` of a
+        // `SchemaVariant`. If so, we need to enqueue a `CodeGeneration` job as we
+        // consider the associated `Component` to have been fully updated at this
+        // point.
+        if self.is_for_internal_provider_of_root_prop(ctx).await? {
+            ctx.enqueue_job(
+                CodeGeneration::new(ctx, self.context.component_id(), self.context.system_id())
+                    .await
+                    .map_err(|e| AttributeValueError::Component(e.to_string()))?,
+            )
+            .await;
+        }
+
+        println!(
+            "update_from_prototype_function({:?}) took {:?}",
+            self.id,
+            update_start_time.elapsed()
+        );
 
         Ok(())
     }
@@ -923,74 +1130,5 @@ impl AttributeValuePayload {
             parent_attribute_value_id,
             func_with_prototype_context,
         }
-    }
-}
-
-#[must_use]
-#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
-pub struct DependentValuesAsyncTasks {
-    attribute_value_id: AttributeValueId,
-}
-
-impl DependentValuesAsyncTasks {
-    pub fn new(attribute_value_id: AttributeValueId) -> Self {
-        Self { attribute_value_id }
-    }
-
-    pub async fn run(
-        self,
-        access_builder: AccessBuilder,
-        visibility: Visibility,
-        ctx_builder: &DalContextBuilder,
-    ) -> AttributeValueResult<()> {
-        let ctx = ctx_builder
-            .build(access_builder.clone().build(visibility))
-            .await?;
-
-        self.run_in_ctx(&ctx).await?;
-
-        ctx.commit().await?;
-
-        Ok(())
-    }
-
-    pub async fn run_in_ctx(&self, ctx: &DalContext) -> AttributeValueResult<()> {
-        // After we have _completely_ updated ourself, we can update our dependent values.
-        AttributeValueDependentUpdateHarness::update_dependent_values(ctx, self.attribute_value_id)
-            .await?;
-
-        let attribute_value = AttributeValue::get_by_id(ctx, &self.attribute_value_id)
-            .await?
-            .ok_or_else(|| {
-                AttributeValueError::NotFound(self.attribute_value_id, *ctx.visibility())
-            })?;
-
-        if attribute_value.context.component_id().is_some() {
-            WsEvent::change_set_written(ctx).publish(ctx).await?;
-        }
-        Ok(())
-    }
-}
-
-#[derive(Clone, Deserialize, Serialize, Debug, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct DependentValuesUpdated {
-    component_id: ComponentId,
-    system_id: SystemId,
-}
-
-impl WsEvent {
-    pub fn updated_dependent_value(
-        ctx: &DalContext,
-        component_id: ComponentId,
-        system_id: SystemId,
-    ) -> Self {
-        WsEvent::new(
-            ctx,
-            WsPayload::UpdatedDependentValue(DependentValuesUpdated {
-                component_id,
-                system_id,
-            }),
-        )
     }
 }

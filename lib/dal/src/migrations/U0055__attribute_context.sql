@@ -377,15 +377,16 @@ END;
 $$ LANGUAGE PLPGSQL IMMUTABLE;
 
 
-CREATE OR REPLACE FUNCTION exact_or_more_attribute_read_context_v1(check_context jsonb,
-                                                                   this_prop_id bigint,
-                                                                   this_internal_provider_id bigint,
-                                                                   this_external_provider_id bigint,
-                                                                   this_schema_id bigint,
-                                                                   this_schema_variant_id bigint,
-                                                                   this_component_id bigint,
-                                                                   this_system_id bigint,
-                                                                   OUT result bool
+CREATE OR REPLACE FUNCTION exact_or_more_attribute_read_context_v1(
+    check_context jsonb,
+    this_prop_id bigint,
+    this_internal_provider_id bigint,
+    this_external_provider_id bigint,
+    this_schema_id bigint,
+    this_schema_variant_id bigint,
+    this_component_id bigint,
+    this_system_id bigint,
+    OUT result bool
 )
 AS
 $$
@@ -415,7 +416,6 @@ BEGIN
         this_system_id;
 
     check_context_record := attribute_context_json_to_columns_v1(check_context);
-
 
     -- We do not need to check if "system" if the most-specific because it is the highest level of specificity possible (at the time of writing). --
     component_is_most_specific := FALSE;
@@ -461,9 +461,8 @@ BEGIN
         END;
     RAISE DEBUG 'external_provider_check: %', external_provider_check;
 
-    least_specific_level_check := (prop_check AND this_internal_provider_id = -1 AND this_external_provider_id = -1) OR
-                                  (this_prop_id = -1 AND internal_provider_check AND this_external_provider_id = -1) OR
-                                  (this_prop_id = -1 AND this_internal_provider_id = -1 AND external_provider_check);
+    least_specific_level_check := (prop_check AND internal_provider_check AND external_provider_check);
+
     schema_check := CASE
                         WHEN check_context_record.attribute_context_schema_id IS NULL THEN
                             TRUE

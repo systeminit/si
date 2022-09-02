@@ -34,6 +34,9 @@ use crate::{
 
 pub mod argument;
 
+const ARGUMENT_VALUES_BY_NAME_FOR_HEAD_COMPONENT_ID: &str = include_str!(
+    "../queries/attribute_prototype/argument_values_by_name_for_head_component_id.sql"
+);
 const ATTRIBUTE_VALUES_IN_CONTEXT_OR_GREATER: &str =
     include_str!("../queries/attribute_prototype_attribute_values_in_context_or_greater.sql");
 const LIST_BY_HEAD_FROM_EXTERNAL_PROVIDER_USE_WITH_TAIL: &str = include_str!(
@@ -155,67 +158,22 @@ impl AttributePrototype {
         key: Option<String>,
         parent_attribute_value_id: Option<AttributeValueId>,
     ) -> AttributePrototypeResult<Self> {
-        let object = Self::new_with_context_only(ctx, func_id, context, key.as_deref()).await?;
+        let row = ctx.pg_txn().query_one(
+            "SELECT new_attribute_prototype AS object FROM attribute_prototype_new_v1($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+            &[
+                ctx.write_tenancy(),
+                ctx.read_tenancy(),
+                ctx.visibility(),
+                &func_id,
+                &func_binding_id,
+                &func_binding_return_value_id,
+                &context,
+                &key,
+                &parent_attribute_value_id,
+            ],
+        ).await?;
 
-        let value = AttributeValue::new(
-            ctx,
-            func_binding_id,
-            func_binding_return_value_id,
-            context,
-            key.clone(),
-        )
-        .await?;
-        value.set_attribute_prototype(ctx, object.id()).await?;
-
-        if let Some(parent_attribute_value_id) = parent_attribute_value_id {
-            value
-                .set_parent_attribute_value(ctx, &parent_attribute_value_id)
-                .await?;
-        }
-
-        if !context.is_least_specific() {
-            let maybe_existing_attribute_value_proxy =
-                AttributeValue::find_with_parent_and_key_for_context(
-                    ctx,
-                    parent_attribute_value_id,
-                    key.clone(),
-                    AttributeReadContext::from(context),
-                )
-                .await?;
-            let maybe_existing_attribute_value_proxy = if let Some(existing_attribute_value_proxy) =
-                maybe_existing_attribute_value_proxy
-            {
-                if existing_attribute_value_proxy.context == context {
-                    Some(existing_attribute_value_proxy)
-                } else {
-                    None
-                }
-            } else {
-                None
-            };
-
-            if maybe_existing_attribute_value_proxy.is_none() {
-                let original_prototype = Self::find_with_parent_value_and_key_for_context(
-                    ctx,
-                    parent_attribute_value_id,
-                    key,
-                    context.less_specific()?,
-                )
-                .await?;
-
-                if let Some(original_prototype) = original_prototype {
-                    Self::create_intermediate_proxy_values(
-                        ctx,
-                        parent_attribute_value_id,
-                        *original_prototype.id(),
-                        context.less_specific()?,
-                    )
-                    .await?;
-                }
-            }
-        }
-
-        Ok(object)
+        Ok(standard_model::finish_create_from_row(ctx, row).await?)
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -565,6 +523,28 @@ impl AttributePrototype {
         Ok(result)
     }
 
+    pub async fn argument_values(
+        &self,
+        ctx: &DalContext,
+        attribute_write_context: AttributeContext,
+    ) -> AttributePrototypeResult<Vec<AttributePrototypeArgumentValues>> {
+        let rows = ctx
+            .pg_txn()
+            .query(
+                ARGUMENT_VALUES_BY_NAME_FOR_HEAD_COMPONENT_ID,
+                &[
+                    ctx.read_tenancy(),
+                    ctx.visibility(),
+                    &self.id,
+                    &attribute_write_context.component_id(),
+                    &attribute_write_context,
+                ],
+            )
+            .await?;
+
+        Ok(standard_model::objects_from_rows(rows)?)
+    }
+
     /// List [`AttributeValues`](crate::AttributeValue) that belong to a provided [`AttributePrototypeId`](Self)
     /// and whose context contains the provided [`AttributeReadContext`](crate::AttributeReadContext)
     /// or are "more-specific" than the provided [`AttributeReadContext`](crate::AttributeReadContext).
@@ -736,4 +716,11 @@ impl AttributePrototype {
 
         Ok(standard_model::objects_from_rows(rows)?)
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AttributePrototypeArgumentValues {
+    pub attribute_prototype_id: AttributePrototypeId,
+    pub argument_name: String,
+    pub values: Vec<serde_json::Value>,
 }

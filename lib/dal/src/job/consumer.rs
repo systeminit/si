@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use si_data::PgPoolError;
 use thiserror::Error;
+use tokio::task::JoinError;
 
 use crate::{
     func::binding_return_value::FuncBindingReturnValueError, workflow_runner::WorkflowRunnerError,
@@ -21,6 +22,10 @@ pub enum JobConsumerError {
     Component(#[from] ComponentError),
     #[error("Invalid job arguments. Expected: {0} Actual: {1:?}")]
     InvalidArguments(String, Vec<Value>),
+    #[error(transparent)]
+    Io(#[from] ::std::io::Error),
+    #[error(transparent)]
+    TokioTask(#[from] JoinError),
     #[error(transparent)]
     PgPool(#[from] PgPoolError),
     #[error(transparent)]
@@ -92,8 +97,13 @@ pub trait JobConsumer: std::fmt::Debug + Sync {
     fn access_builder(&self) -> AccessBuilder;
     fn visibility(&self) -> Visibility;
 
+    /// Intended to be defined by implementations of this trait.
     async fn run(&self, ctx: &DalContext) -> JobConsumerResult<()>;
 
+    /// Called on the trait object to set up the data necessary to run the job,
+    /// and in-turn calls the `run` method. Can be overridden by an implementation
+    /// of the trait if you need more control over how the `DalContext` is managed
+    /// during the lifetime of the job.
     async fn run_job(&self, ctx_builder: DalContextBuilder) -> JobConsumerResult<()> {
         let ctx = ctx_builder
             .build(self.access_builder().build(self.visibility()))
