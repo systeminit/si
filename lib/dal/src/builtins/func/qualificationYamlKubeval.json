@@ -1,0 +1,9 @@
+{
+  "name": "qualificationKubevalYaml",
+  "display_name": "Run kubeval on YAML",
+  "kind": "JsQualification",
+  "response_type": "Qualification",
+  "description": "Runs kubeval on the generated YAML",
+  "code_file": "qualificationYamlKubeval.js",
+  "code_entrypoint": "qualificationYamlKubeval"
+}

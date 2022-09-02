@@ -1,0 +1,7 @@
+{
+  "name": "bye",
+  "kind": "JsCommand",
+  "response_type": "Command",
+  "code_file": "leroLeroByeCommand.js",
+  "code_entrypoint": "bye"
+}

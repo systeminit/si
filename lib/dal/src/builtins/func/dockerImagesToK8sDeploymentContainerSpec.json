@@ -1,0 +1,6 @@
+{
+  "kind": "Json",
+  "response_type": "Array",
+  "code_file": "dockerImagesToK8sDeploymentContainerSpec.js",
+  "code_entrypoint": "dockerImagesToK8sDeploymentContainerSpec"
+}

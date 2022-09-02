@@ -1,0 +1,7 @@
+{
+  "name": "exceptional",
+  "kind": "JsWorkflow",
+  "response_type": "Workflow",
+  "code_file": "exceptionalWorkflow.js",
+  "code_entrypoint": "exceptional"
+}

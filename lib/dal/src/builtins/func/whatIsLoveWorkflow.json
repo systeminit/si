@@ -1,0 +1,7 @@
+{
+  "name": "whatIsLove",
+  "kind": "JsWorkflow",
+  "response_type": "Workflow",
+  "code_file": "whatIsLoveWorkflow.js",
+  "code_entrypoint": "whatIsLove"
+}

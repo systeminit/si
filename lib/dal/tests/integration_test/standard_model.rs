@@ -1,5 +1,4 @@
-use crate::dal::test;
-use dal::{BillingAccountSignup, ChangeSet, DalContext, Func, WriteTenancy};
+use itertools::Itertools;
 
 use dal::test_harness::{
     create_billing_account, create_billing_account_with_name, create_func, create_group,
@@ -9,7 +8,9 @@ use dal::{
     component::ComponentKind, standard_model, BillingAccount, FuncBackendKind, Group, GroupId,
     KeyPair, Schema, SchemaKind, StandardModel, User, UserId, NO_CHANGE_SET_PK,
 };
-use itertools::Itertools;
+use dal::{BillingAccountSignup, ChangeSet, DalContext, Func, WriteTenancy};
+
+use crate::dal::test;
 
 #[test]
 async fn get_by_pk(ctx: &DalContext<'_, '_>, nba: &BillingAccountSignup) {
@@ -623,6 +624,45 @@ async fn find_by_attr_in(ctx: &mut DalContext<'_, '_>) {
 
     assert_eq!(
         Some(&func_two),
+        result
+            .iter()
+            .filter(|&f| f.id() == func_two.id())
+            .at_most_one()
+            .expect("could not find at most one func")
+    );
+}
+
+#[test]
+async fn find_by_attr_not_in(ctx: &mut DalContext<'_, '_>) {
+    let _billing_account = create_billing_account(ctx).await;
+    ctx.update_to_universal_head();
+
+    let func_one = create_func(ctx).await;
+    let func_two = create_func(ctx).await;
+
+    let func_one_name = func_one.name().to_string();
+    let func_two_name = func_two.name().to_string();
+
+    let result: Vec<Func> = standard_model::find_by_attr_not_in(
+        ctx,
+        "funcs",
+        "name",
+        &[&func_one_name, &func_two_name],
+    )
+    .await
+    .expect("cannot find objects by backend_kind in slice");
+
+    assert_eq!(
+        None,
+        result
+            .iter()
+            .filter(|&f| f.id() == func_one.id())
+            .at_most_one()
+            .expect("could not find at most one func")
+    );
+
+    assert_eq!(
+        None,
         result
             .iter()
             .filter(|&f| f.id() == func_two.id())
