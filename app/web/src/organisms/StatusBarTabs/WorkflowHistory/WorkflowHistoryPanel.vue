@@ -7,30 +7,30 @@
         Workflows Menu
       </span>
 
-      <!-- Filter button and its dropdown -->
-      <!-- <SiBarButton
+      <!-- Sort button and its dropdown -->
+      <SiBarButton
         class="h-11 border-b border-shade-100"
         tooltip-text="Sort"
         fill-entire-width
       >
         <template #default="{ hovered, open }">
           <div class="flex flex-row">
-            {{ selectedFilter.title }}
+            {{ selectedSort.title }}
             <SiArrow :nudge="hovered || open" class="ml-1 w-4" />
           </div>
         </template>
 
         <template #dropdownContent>
           <SiDropdownItem
-            v-for="option of filterOptions"
+            v-for="option of sortOptions"
             :key="option.value"
-            :checked="selectedFilter.value === option.value"
-            @select="emit('filter', option)"
+            :checked="selectedSort.value === option.value"
+            @select="emit('sort', option)"
           >
             {{ option.title }}
           </SiDropdownItem>
         </template>
-      </SiBarButton> -->
+      </SiBarButton>
 
       <!-- List of workflows -->
       <div class="overflow-y-auto flex-expand">
@@ -124,10 +124,10 @@
 <script lang="ts" setup>
 import { ref, computed } from "vue";
 import { refFrom, fromRef } from "vuse-rx/src";
-// import SiBarButton from "@/molecules/SiBarButton.vue";
-// import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
-// import SiArrow from "@/atoms/SiArrow.vue";
 import { combineLatest, from, switchMap } from "rxjs";
+import SiBarButton from "@/molecules/SiBarButton.vue";
+import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
+import SiArrow from "@/atoms/SiArrow.vue";
 import WorkflowStatusIcon from "@/molecules/WorkflowStatusIcon.vue";
 import WorkflowOutput from "@/organisms/WorkflowRunner/WorkflowOutput.vue";
 import WorkflowStatusBar from "@/molecules/WorkflowStatusBar.vue";
@@ -139,14 +139,14 @@ import {
 import { WorkflowRunInfo } from "@/service/workflow/info";
 import Timestamp from "@/ui-lib/Timestamp.vue";
 
-export interface FilterOption {
+export interface SortOption {
   value: string;
   title: string;
 }
 
-defineProps<{
-  filterOptions?: FilterOption[];
-  selectedFilter?: FilterOption;
+const props = defineProps<{
+  sortOptions?: SortOption[];
+  selectedSort?: SortOption;
 }>();
 
 const selectedWorkflowId = ref<number | null>(null);
@@ -155,18 +155,18 @@ const selectedWorkflowId$ = fromRef<number | null>(selectedWorkflowId, {
   immediate: true,
 });
 
-// const defaultFilterOption = {
-//   value: "r",
-//   title: "Most Recent",
-// };
+const emit = defineEmits<{
+  (e: "sort", sortOption: SortOption): void;
+}>();
 
-// const selectedFilter = computed(() => {
-//   return props.selectedFilter ?? defaultFilterOption;
-// });
+const defaultSortOption = {
+  value: "r",
+  title: "Newest",
+};
 
-// const emit = defineEmits<{
-//   (e: "filter", filterOption: FilterOption): void;
-// }>();
+const selectedSort = computed(() => {
+  return props.selectedSort ?? defaultSortOption;
+});
 
 const selectWorkflow = (workflow: ListedWorkflowHistoryView) => {
   selectedWorkflowId.value = workflow.id;
@@ -178,7 +178,9 @@ const workflowList = refFrom<ListWorkflowsHistoryResponse>(
 );
 
 const workflowListDisplay = computed(() => {
-  return [...workflowList.value].reverse();
+  if (selectedSort.value.value === "r") {
+    return [...workflowList.value].reverse();
+  } else return workflowList.value;
 });
 
 const selectedWorkflowInfo = refFrom<WorkflowRunInfo | null>(
