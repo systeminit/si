@@ -103,9 +103,8 @@ BEGIN
         SELECT array_agg(attribute_value_id) AS attribute_value_ids
         INTO STRICT new_child_attribute_value_ids
         FROM (SELECT DISTINCT ON (
-            avbtav.belongs_to_id,
-            attribute_values.attribute_context_prop_id,
             COALESCE(avbtav.belongs_to_id, -1),
+            attribute_values.attribute_context_prop_id,
             COALESCE(attribute_values.key, '')
             ) attribute_values.id AS attribute_value_id
               FROM attribute_values
@@ -114,9 +113,8 @@ BEGIN
                       AND in_tenancy_and_visible_v1(this_tenancy, this_visibility, avbtav)
               WHERE in_attribute_context_v1(this_context, attribute_values)
                 AND avbtav.belongs_to_id = ANY (parent_attribute_value_ids)
-              ORDER BY avbtav.belongs_to_id DESC,
+              ORDER BY COALESCE(avbtav.belongs_to_id, -1) DESC,
                        attribute_values.attribute_context_prop_id DESC,
-                       COALESCE(avbtav.belongs_to_id, -1),
                        COALESCE(attribute_values.key, ''),
                        attribute_values.visibility_change_set_pk DESC,
                        attribute_values.visibility_deleted_at DESC NULLS FIRST,

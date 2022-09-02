@@ -5,7 +5,7 @@ use dal::{
     AttributeContext, AttributeReadContext, AttributeValue, Component, DalContext, PropKind,
     SchemaKind, StandardModel, SystemId,
 };
-use pretty_assertions_sorted::assert_eq_sorted;
+use pretty_assertions_sorted::assert_eq;
 
 use crate::dal::test;
 
@@ -42,7 +42,7 @@ async fn update_for_context_simple(ctx: &DalContext) {
         ..AttributeReadContext::default()
     };
 
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![
             {
                 "si": {
@@ -96,7 +96,7 @@ async fn update_for_context_simple(ctx: &DalContext) {
     .await
     .expect("cannot set value for context");
 
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![
             {
                 "si": {
@@ -124,7 +124,7 @@ async fn update_for_context_simple(ctx: &DalContext) {
     .await
     .expect("cannot update value for context");
 
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![
             {
                 "si": {
@@ -180,7 +180,7 @@ async fn insert_for_context_simple(ctx: &DalContext) {
         ..AttributeReadContext::default()
     };
 
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![{
             "si": {
                 "name": "Array Component",
@@ -213,7 +213,7 @@ async fn insert_for_context_simple(ctx: &DalContext) {
             .await
             .expect("cannot insert new array element");
 
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![{
             "si": {
                 "name": "Array Component",
@@ -297,7 +297,7 @@ async fn update_for_context_object(ctx: &DalContext) {
         .await
         .expect("cannot get component view");
 
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![
             {
                 "si": {
@@ -379,7 +379,7 @@ async fn update_for_context_object(ctx: &DalContext) {
         .await
         .expect("cannot get component view");
 
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![
             {
                 "si": {
@@ -429,7 +429,7 @@ async fn update_for_context_object(ctx: &DalContext) {
         .await
         .expect("cannot get component view");
 
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![
             {
                 "si": {
@@ -490,7 +490,7 @@ async fn insert_for_context_creates_array_in_final_context(ctx: &DalContext) {
         ..AttributeReadContext::default()
     };
 
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![{
             "si": {
                 "name": "Array Component",
@@ -528,7 +528,7 @@ async fn insert_for_context_creates_array_in_final_context(ctx: &DalContext) {
     .await
     .expect("cannot insert new array element");
 
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![{
             "si": {
                 "name": "Array Component",
@@ -578,7 +578,7 @@ async fn insert_for_context_creates_array_in_final_context(ctx: &DalContext) {
         ..base_attribute_read_context
     };
 
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![{
             "si": {
                 "name": "Array Component",

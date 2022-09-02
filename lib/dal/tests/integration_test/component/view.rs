@@ -5,7 +5,7 @@ use dal::{
     AttributeContext, AttributeReadContext, AttributeValue, Component, ComponentView, DalContext,
     Prop, PropKind, Schema, SchemaKind, SchemaVariant, StandardModel,
 };
-use pretty_assertions_sorted::{assert_eq, assert_eq_sorted};
+use pretty_assertions_sorted::assert_eq;
 
 use tokio::sync::mpsc;
 
@@ -489,7 +489,7 @@ async fn only_string_props(ctx: &DalContext) {
     )
     .await
     .expect("cannot get component view");
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![
             {
                 "si": {
@@ -602,7 +602,7 @@ async fn one_object_prop(ctx: &DalContext) {
     .await
     .expect("cannot get component view");
 
-    assert_eq_sorted!(
+    assert_eq!(
         component_view.properties,
         serde_json::json![{
             "si": { "name": "santos dumont" },
@@ -1114,7 +1114,7 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext) {
     .await
     .expect("cannot get component view");
 
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![{
             "si": {"name": "An Integralist Doesn't Run, It Flies"},
             "domain": {
@@ -1225,7 +1225,7 @@ async fn simple_map(ctx: &DalContext) {
     .await
     .expect("cannot get component view");
 
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![{
             "si": {"name": "E como isso afeta o Grêmio?"},
             "domain": {
@@ -1405,7 +1405,7 @@ async fn complex_nested_array_of_objects_with_a_map(ctx: &DalContext) {
     .await
     .expect("cannot get component view");
 
-    assert_eq_sorted!(
+    assert_eq!(
         serde_json::json![{
             "si": { "name": "E como isso afeta o Grêmio?" },
             "domain": {

@@ -246,30 +246,31 @@ impl AttributePrototype {
             .txns()
             .pg()
             .query_one(
-                "SELECT object FROM attribute_prototype_create_v1($1, $2, $3, $4, $5)",
+                "SELECT new_attribute_prototype_id AS prototype_id
+                 FROM attribute_prototype_new_with_attribute_value_v1($1,
+                                                                      $2,
+                                                                      $3,
+                                                                      $4,
+                                                                      $5,
+                                                                      $6,
+                                                                      $7,
+                                                                      $8)",
                 &[
                     ctx.write_tenancy(),
+                    ctx.read_tenancy(),
                     ctx.visibility(),
-                    &context,
                     &func_id,
+                    &context,
                     &key,
+                    &parent_attribute_value_id,
+                    &attribute_value_id,
                 ],
             )
             .await?;
-        let object: AttributePrototype = standard_model::finish_create_from_row(ctx, row).await?;
-
-        let value = AttributeValue::get_by_id(ctx, &attribute_value_id)
+        let prototype_id: AttributePrototypeId = row.try_get("prototype_id")?;
+        let object = Self::get_by_id(ctx, &prototype_id)
             .await?
-            .ok_or(AttributeValueError::Missing)?;
-        value.unset_attribute_prototype(ctx).await?;
-        value.set_attribute_prototype(ctx, object.id()).await?;
-
-        value.unset_parent_attribute_value(ctx).await?;
-        if let Some(parent_attribute_value_id) = parent_attribute_value_id {
-            value
-                .set_parent_attribute_value(ctx, &parent_attribute_value_id)
-                .await?;
-        }
+            .ok_or_else(|| AttributePrototypeError::NotFound(prototype_id, *ctx.visibility()))?;
 
         Ok(object)
     }
