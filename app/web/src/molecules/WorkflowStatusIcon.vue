@@ -14,7 +14,7 @@
     <span v-if="showText">Failure</span>
   </div>
   <div v-else class="flex flex-row whitespace-nowrap items-center">
-    <div class="pr-2"><Icon name="loader" /></div>
+    <div class="pr-2 text-action-300"><Icon name="loader" /></div>
     <span v-if="showText">Running...</span>
   </div>
 </template>

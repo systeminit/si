@@ -24,15 +24,14 @@
 
       <div
         v-else-if="selectedComponentStatsGroup.componentStatus === 'added'"
-        class="overflow-y-auto flex flex-row flex-wrap"
+        class="w-full h-full p-2 first-letter:overflow-hidden flex flex-row flex-wrap"
       >
-        <div class="basis-full overflow-hidden pr-10 pl-1 pt-2">
-          <!-- FIXME(nick): make code viewer height malleable if the status bar no longer a fixed size.
-               1024 is the "min-width" for "lg" in tailwind, so we (maybe) should use it to detect if we need to add a height. -->
+        <div
+          class="w-full h-fit max-h-full p-2 overflow-hidden bg-neutral-800 rounded flex flex-row"
+        >
           <CodeViewer
             font-size="13px"
-            height="250px"
-            class="text-neutral-50 mx-5"
+            class="text-neutral-50 mx-2"
             :code="codeRecord['Current']"
             :code-language="getCodeLanguage('Current')"
             force-theme="dark"
@@ -53,27 +52,28 @@
 
       <div
         v-else-if="selectedComponentStatsGroup.componentStatus === 'modified'"
-        class="overflow-y-auto flex flex-row flex-wrap"
+        class="overflow-x-hidden flex flex-row flex-wrap p-2"
       >
         <div
           v-for="title in ['Current', 'Diff']"
           :key="title"
-          class="basis-full lg:basis-1/2 overflow-hidden pr-10 pl-1 pt-2"
+          class="h-fit max-h-full lg:basis-1/2 overflow-hidden flex flex-row p-2"
         >
-          <!-- FIXME(nick): make code viewer height malleable if the status bar no longer a fixed size.
-               1024 is the "min-width" for "lg" in tailwind, so we (maybe) should use it to detect if we need to add a height. -->
-          <CodeViewer
-            font-size="13px"
-            height="250px"
-            class="text-neutral-50 mx-5"
-            :code="codeRecord[title]"
-            force-theme="dark"
-            :code-language="getCodeLanguage(title)"
+          <div
+            class="w-full shrink grow bg-neutral-800 rounded p-1 flex flex-row"
           >
-            <template #title>
-              <span class="text-lg">{{ title }}</span>
-            </template>
-          </CodeViewer>
+            <CodeViewer
+              font-size="13px"
+              class="text-neutral-50 mx-2"
+              :code="codeRecord[title]"
+              force-theme="dark"
+              :code-language="getCodeLanguage(title)"
+            >
+              <template #title>
+                <span class="text-lg">{{ title }}</span>
+              </template>
+            </CodeViewer>
+          </div>
         </div>
       </div>
     </div>

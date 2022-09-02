@@ -21,6 +21,7 @@
             label="Run"
             size="lg"
             class="w-48"
+            button-type="success"
             @click="runWorkflow()"
           />
         </template>
@@ -78,14 +79,15 @@ const logs = ref<string[] | null>(null);
 const runWorkflow = async () => {
   if (selected.value) {
     logs.value = null;
+    currentWorkflowStatus.value = "running";
     const outputs = await WorkflowService.run({ id: selected.value.id });
     logs.value = outputs?.logs ?? null;
+    // TODO(wendy) - How do we know if a workflow was successful or failed?
+    currentWorkflowStatus.value = "success";
   }
 };
 
-const currentWorkflowStatus = computed((): WorkflowStatus => {
-  return "running";
-});
+const currentWorkflowStatus = ref("running" as WorkflowStatus);
 
 eventCommandOutput$.pipe(untilUnmounted).subscribe((command) => {
   if (!command) return;

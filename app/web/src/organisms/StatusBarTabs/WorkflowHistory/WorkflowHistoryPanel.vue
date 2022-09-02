@@ -1,41 +1,41 @@
 <template>
   <div class="w-full h-full flex flex-row">
-    <div class="w-64 shrink-0 border-shade-100 h-full flex flex-col">
+    <div class="w-72 shrink-0 border-shade-100 h-full flex flex-col">
       <span
-        class="h-11 border-b border-shade-100 text-lg px-4 flex items-center"
+        class="h-11 border-b border-shade-100 text-lg px-4 flex items-center flex-none"
       >
-        Workflows
+        Workflows Menu
       </span>
 
-      <!-- Filter button and its dropdown -->
-      <!-- <SiBarButton
+      <!-- Sort button and its dropdown -->
+      <SiBarButton
         class="h-11 border-b border-shade-100"
         tooltip-text="Sort"
         fill-entire-width
       >
         <template #default="{ hovered, open }">
           <div class="flex flex-row">
-            {{ selectedFilter.title }}
+            {{ selectedSort.title }}
             <SiArrow :nudge="hovered || open" class="ml-1 w-4" />
           </div>
         </template>
 
         <template #dropdownContent>
           <SiDropdownItem
-            v-for="option of filterOptions"
+            v-for="option of sortOptions"
             :key="option.value"
-            :checked="selectedFilter.value === option.value"
-            @select="emit('filter', option)"
+            :checked="selectedSort.value === option.value"
+            @select="emit('sort', option)"
           >
             {{ option.title }}
           </SiDropdownItem>
         </template>
-      </SiBarButton> -->
+      </SiBarButton>
 
       <!-- List of workflows -->
       <div class="overflow-y-auto flex-expand">
         <div
-          v-for="workflow in workflowList"
+          v-for="workflow in workflowListDisplay"
           :key="workflow.id"
           :class="
             workflow.id === selectedWorkflowId
@@ -46,65 +46,88 @@
           @click="selectWorkflow(workflow)"
         >
           <WorkflowStatusIcon :status="workflow.status" />
-          <span class="shrink min-w-0 truncate mr-3 whitespace-nowrap">
+          <span class="truncate mr-3 whitespace-nowrap">
             {{ workflow.title }}
+          </span>
+          <span
+            class="text-xs text-neutral-400 shrink truncate whitespace-nowrap ml-auto"
+          >
+            <Timestamp
+              :date="new Date(workflow.created_at)"
+              size="mini"
+              relative
+            />
           </span>
         </div>
       </div>
     </div>
     <!-- Currently selected Workflow info panel -->
-    <div v-if="selectedWorkflowInfo" class="grow flex flex-col overflow-hidden">
-      <div class="h-12 m-2">
-        <!-- TODO(wendy) replace fixed info with updating info -->
+    <div
+      v-if="selectedWorkflowInfo"
+      class="grow flex flex-col overflow-hidden bg-shade-100"
+    >
+      <div class="h-12 mx-2 mt-2">
         <WorkflowStatusBar
-          name="workflow-name"
-          status="failure"
-          timestamp="Thu, 31 Mar 2022 04:20:00 +0000"
+          :name="selectedWorkflowInfo.title"
+          :status="selectedWorkflowInfo.status"
+          :timestamp="selectedWorkflowInfo.created_at"
         />
       </div>
-      <div class="w-full grow flex flex-row overflow-hidden">
+      <div class="w-full grow overflow-x-hidden flex flex-row flex-wrap p-1">
         <div
-          class="w-1/2 m-2 p-2 border border-neutral-600 rounded overflow-hidden"
+          class="h-fit max-h-full lg:basis-1/2 grow overflow-hidden flex flex-row p-1"
         >
-          <!-- TODO(wendy) - replace fixed logs/status with updating info -->
-          <WorkflowOutput
-            :logs="selectedWorkflowInfo.logs"
-            :status="selectedWorkflowInfo.status"
-          />
+          <div
+            class="w-full shrink grow bg-neutral-800 rounded p-1 flex flex-row"
+          >
+            <WorkflowOutput
+              :logs="selectedWorkflowInfo.logs"
+              :status="selectedWorkflowInfo.status"
+              force-theme="dark"
+            />
+          </div>
         </div>
         <div
-          class="w-1/2 my-2 flex flex-col mr-2 border border-neutral-600 rounded overflow-hidden"
+          class="h-fit max-h-full lg:basis-1/2 grow overflow-hidden flex flex-row p-1"
         >
-          <div class="flex-none border-b p-2 border-neutral-600">
-            Resources Impacted
-          </div>
-          <div class="w-full grow overflow-auto">
-            <ul class="list-disc list-inside p-2">
-              <li>Resource 0</li>
-              <li>Resource 1</li>
-              <li>Resource 2</li>
-              <li>Resource 3</li>
-              <li>Resource 4</li>
-              <li>Resource 5</li>
-              <li>Resource 6</li>
-              <li>Resource 7</li>
-              <li>Resource 8</li>
-              <li>Resource 9</li>
-            </ul>
+          <div class="w-full shrink grow bg-neutral-800 rounded flex flex-col">
+            <div class="flex-none h-10 border-b p-2 border-neutral-600">
+              Resources Impacted
+            </div>
+            <div class="w-full grow shrink overflow-auto">
+              <ul class="list-disc list-inside p-2">
+                <li>Resource 0</li>
+                <li>Resource 1</li>
+                <li>Resource 2</li>
+                <li>Resource 3</li>
+                <li>Resource 4</li>
+                <li>Resource 5</li>
+                <li>Resource 6</li>
+                <li>Resource 7</li>
+                <li>Resource 8</li>
+                <li>Resource 9</li>
+              </ul>
+            </div>
           </div>
         </div>
       </div>
+    </div>
+    <div
+      v-else
+      class="grow flex flex-row overflow-hidden bg-shade-100 items-center text-center"
+    >
+      <p class="w-full text-3xl text-neutral-500">No Workflow Selected</p>
     </div>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import { refFrom, fromRef } from "vuse-rx/src";
-// import SiBarButton from "@/molecules/SiBarButton.vue";
-// import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
-// import SiArrow from "@/atoms/SiArrow.vue";
 import { combineLatest, from, switchMap } from "rxjs";
+import SiBarButton from "@/molecules/SiBarButton.vue";
+import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
+import SiArrow from "@/atoms/SiArrow.vue";
 import WorkflowStatusIcon from "@/molecules/WorkflowStatusIcon.vue";
 import WorkflowOutput from "@/organisms/WorkflowRunner/WorkflowOutput.vue";
 import WorkflowStatusBar from "@/molecules/WorkflowStatusBar.vue";
@@ -114,15 +137,16 @@ import {
   ListWorkflowsHistoryResponse,
 } from "@/service/workflow/history";
 import { WorkflowRunInfo } from "@/service/workflow/info";
+import Timestamp from "@/ui-lib/Timestamp.vue";
 
-export interface FilterOption {
+export interface SortOption {
   value: string;
   title: string;
 }
 
 const props = defineProps<{
-  filterOptions?: FilterOption[];
-  selectedFilter?: FilterOption;
+  sortOptions?: SortOption[];
+  selectedSort?: SortOption;
 }>();
 
 const selectedWorkflowId = ref<number | null>(null);
@@ -131,18 +155,18 @@ const selectedWorkflowId$ = fromRef<number | null>(selectedWorkflowId, {
   immediate: true,
 });
 
-// const defaultFilterOption = {
-//   value: "r",
-//   title: "Most Recent",
-// };
+const emit = defineEmits<{
+  (e: "sort", sortOption: SortOption): void;
+}>();
 
-// const selectedFilter = computed(() => {
-//   return props.selectedFilter ?? defaultFilterOption;
-// });
+const defaultSortOption = {
+  value: "r",
+  title: "Newest",
+};
 
-// const emit = defineEmits<{
-//   (e: "filter", filterOption: FilterOption): void;
-// }>();
+const selectedSort = computed(() => {
+  return props.selectedSort ?? defaultSortOption;
+});
 
 const selectWorkflow = (workflow: ListedWorkflowHistoryView) => {
   selectedWorkflowId.value = workflow.id;
@@ -152,6 +176,12 @@ const workflowList = refFrom<ListWorkflowsHistoryResponse>(
   WorkflowService.history(),
   [],
 );
+
+const workflowListDisplay = computed(() => {
+  if (selectedSort.value.value === "r") {
+    return [...workflowList.value].reverse();
+  } else return workflowList.value;
+});
 
 const selectedWorkflowInfo = refFrom<WorkflowRunInfo | null>(
   combineLatest([selectedWorkflowId$]).pipe(

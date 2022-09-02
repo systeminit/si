@@ -5,7 +5,7 @@
     side="bottom"
     :min-resize="0"
     :max-resize="0.8"
-    size-classes="h-11"
+    size-classes="h-11 bar"
     :resizeable="false"
     :fixed-default-size="320"
   >
@@ -172,8 +172,14 @@
             :class="[isViewMode ? '' : 'hidden']"
             class="h-full"
           >
-            <!-- TOOD(wendy): replace with a Workflow History tab panel -->
-            <WorkflowHistoryPanel />
+            <WorkflowHistoryPanel
+              :sort-options="[
+                { value: 'r', title: 'Newest' },
+                { value: 'o', title: 'Oldest' },
+              ]"
+              :selected-sort="selectedWorkflowSort"
+              @sort="changeWorkflowSort"
+            />
           </TabPanel>
           <TabPanel
             :aria-hidden="!isViewMode"
@@ -208,7 +214,9 @@ import { ComponentListItem } from "@/organisms/StatusBar/StatusBarTabPanelCompon
 import GenericTabPanel from "@/organisms/StatusBarTabs/GenericTabPanel.vue";
 import Icon from "@/ui-lib/Icon.vue";
 import WorkflowHistoryTab from "./StatusBarTabs/WorkflowHistory/WorkflowHistoryTab.vue";
-import WorkflowHistoryPanel from "./StatusBarTabs/WorkflowHistory/WorkflowHistoryPanel.vue";
+import WorkflowHistoryPanel, {
+  SortOption,
+} from "./StatusBarTabs/WorkflowHistory/WorkflowHistoryPanel.vue";
 
 // Tab 0 is our phantom empty panel
 const selectedTab = ref(0);
@@ -260,6 +268,15 @@ const barClasses = computed(() => {
   return result;
 });
 
+const defaultWorkflowSortOption = {
+  value: "r",
+  title: "Newest",
+};
+const selectedWorkflowSort = ref<SortOption>(defaultWorkflowSortOption);
+const changeWorkflowSort = (newSort: SortOption) => {
+  selectedWorkflowSort.value = newSort;
+};
+
 // TODO(nick): move these to new home(s) once the view tabs are moved out of here.
 const qualificationSummary = QualificationService.useQualificationSummary();
 
@@ -289,3 +306,9 @@ onMounted(() => {
   panelRef.value.setCurrentlyResizeable(false);
 });
 </script>
+
+<style scoped>
+.bar {
+  color-scheme: dark;
+}
+</style>
