@@ -20,7 +20,7 @@ use super::{
     setup_identity_func,
 };
 
-pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
+pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResult<()> {
     let name = "kubernetes_deployment".to_string();
     let mut schema = match create_schema(ctx, &name, &SchemaKind::Configuration).await? {
         Some(schema) => schema,
@@ -292,7 +292,7 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_>) -> BuiltinsResult<(
 }
 
 async fn create_deployment_spec_prop(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
     parent_prop_id: PropId,
 ) -> BuiltinsResult<Prop> {
     let mut spec_prop = create_prop(ctx, "spec", PropKind::Object, Some(parent_prop_id)).await?;
@@ -323,7 +323,7 @@ async fn create_deployment_spec_prop(
 }
 
 async fn create_pod_template_spec_prop(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
     parent_prop_id: PropId,
 ) -> BuiltinsResult<Prop> {
     let mut template_prop =
@@ -350,7 +350,7 @@ async fn create_pod_template_spec_prop(
 }
 
 async fn create_pod_spec_prop(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
     parent_prop_id: PropId,
 ) -> BuiltinsResult<Prop> {
     let mut spec_prop = create_prop(ctx, "spec", PropKind::Object, Some(parent_prop_id)).await?;
@@ -379,7 +379,7 @@ async fn create_pod_spec_prop(
 }
 
 async fn create_container_prop(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
     parent_prop_id: PropId,
 ) -> BuiltinsResult<Prop> {
     let mut container_prop =
@@ -431,7 +431,7 @@ async fn create_container_prop(
 }
 
 async fn create_container_port_prop(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
     parent_prop_id: PropId,
 ) -> BuiltinsResult<Prop> {
     let mut port_prop = create_prop(ctx, "port", PropKind::Object, Some(parent_prop_id)).await?;

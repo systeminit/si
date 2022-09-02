@@ -50,12 +50,12 @@ pub async fn billing_account_signup(
     (nba, auth_token)
 }
 
-pub async fn create_group(ctx: &DalContext<'_, '_>) -> Group {
+pub async fn create_group(ctx: &DalContext<'_, '_, '_>) -> Group {
     let name = generate_fake_name();
     Group::new(ctx, &name).await.expect("cannot create group")
 }
 
-pub async fn create_user(ctx: &DalContext<'_, '_>) -> User {
+pub async fn create_user(ctx: &DalContext<'_, '_, '_>) -> User {
     let name = generate_fake_name();
     User::new(
         ctx,
@@ -68,7 +68,7 @@ pub async fn create_user(ctx: &DalContext<'_, '_>) -> User {
 }
 
 pub async fn create_billing_account_with_name(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
     name: impl AsRef<str>,
 ) -> BillingAccount {
     BillingAccount::new(ctx, name, None)
@@ -76,13 +76,13 @@ pub async fn create_billing_account_with_name(
         .expect("cannot create billing_account")
 }
 
-pub async fn create_billing_account(ctx: &DalContext<'_, '_>) -> BillingAccount {
+pub async fn create_billing_account(ctx: &DalContext<'_, '_, '_>) -> BillingAccount {
     let name = generate_fake_name();
     create_billing_account_with_name(ctx, name).await
 }
 
 pub async fn create_change_set(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
     _billing_account_id: BillingAccountId,
 ) -> ChangeSet {
     let name = generate_fake_name();
@@ -97,7 +97,7 @@ pub fn create_visibility_for_change_set(change_set: &ChangeSet) -> Visibility {
 
 /// Creates a new [`Visibility`] backed by a new [`ChangeSet`]
 pub async fn create_visibility_for_new_change_set(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
     billing_account_id: BillingAccountId,
 ) -> Visibility {
     let _history_actor = HistoryActor::SystemInit;
@@ -107,11 +107,11 @@ pub async fn create_visibility_for_new_change_set(
 }
 
 /// Creates a new [`DalContext`] in a change set and edit session in the given billing account.
-pub async fn create_ctx_for_new_change_set<'s, 't>(
+pub async fn create_ctx_for_new_change_set<'a, 's, 't>(
     builder: &'s DalContextBuilder,
-    txns: &'t Transactions<'t>,
+    txns: &'t Transactions<'a>,
     nba: &BillingAccountSignup,
-) -> DalContext<'s, 't> {
+) -> DalContext<'a, 's, 't> {
     let request_context = RequestContext::new_workspace_head(
         txns.pg(),
         HistoryActor::SystemInit,
@@ -124,16 +124,16 @@ pub async fn create_ctx_for_new_change_set<'s, 't>(
     ctx.clone_with_new_visibility(visibility)
 }
 
-pub async fn new_ctx_for_new_change_set<'a, 'b>(
-    ctx: &DalContext<'a, 'b>,
+pub async fn new_ctx_for_new_change_set<'a, 'b, 'c>(
+    ctx: &DalContext<'a, 'b, 'c>,
     billing_account_id: BillingAccountId,
-) -> DalContext<'a, 'b> {
+) -> DalContext<'a, 'b, 'c> {
     let visibility = create_visibility_for_new_change_set(ctx, billing_account_id).await;
     ctx.clone_with_new_visibility(visibility)
 }
 
 pub async fn create_component_for_schema(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
     schema_id: &SchemaId,
 ) -> Component {
     let name = generate_fake_name();
@@ -143,13 +143,13 @@ pub async fn create_component_for_schema(
     component
 }
 
-pub async fn create_system(ctx: &DalContext<'_, '_>) -> System {
+pub async fn create_system(ctx: &DalContext<'_, '_, '_>) -> System {
     let name = generate_fake_name();
     System::new(ctx, name).await.expect("cannot create system")
 }
 
 pub async fn create_system_with_node(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
     wid: &WorkspaceId,
 ) -> (System, Node) {
     let name = generate_fake_name();
@@ -158,7 +158,10 @@ pub async fn create_system_with_node(
         .expect("cannot create system")
 }
 
-pub async fn find_schema_by_name(ctx: &DalContext<'_, '_>, schema_name: impl AsRef<str>) -> Schema {
+pub async fn find_schema_by_name(
+    ctx: &DalContext<'_, '_, '_>,
+    schema_name: impl AsRef<str>,
+) -> Schema {
     Schema::find_by_attr(ctx, "name", &schema_name.as_ref())
         .await
         .expect("cannot find schema by name")
@@ -167,7 +170,7 @@ pub async fn find_schema_by_name(ctx: &DalContext<'_, '_>, schema_name: impl AsR
 }
 
 pub async fn find_schema_and_default_variant_by_name(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
     schema_name: impl AsRef<str>,
 ) -> (Schema, SchemaVariant) {
     let schema = find_schema_by_name(ctx, schema_name).await;
@@ -180,7 +183,7 @@ pub async fn find_schema_and_default_variant_by_name(
 
 /// Get the "si:identity" [`Func`](crate::Func) and execute (if necessary).
 pub async fn setup_identity_func(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
 ) -> (FuncId, FuncBindingId, FuncBindingReturnValueId) {
     let identity_func: Func = Func::find_by_attr(ctx, "name", &"si:identity".to_string())
         .await
@@ -209,7 +212,7 @@ pub async fn setup_identity_func(
 ///
 /// _Use with caution!_
 pub async fn find_prop_and_parent_by_name(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
     prop_name: &str,
     parent_prop_name: &str,
     grandparent_prop_name: Option<&str>,
@@ -217,7 +220,7 @@ pub async fn find_prop_and_parent_by_name(
 ) -> Option<(PropId, PropId)> {
     // Internal grandparent prop name check function.
     async fn check_grandparent(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         grandparent_prop_name: &str,
         parent_prop: &Prop,
     ) -> bool {
@@ -309,7 +312,10 @@ impl ComponentPayload {
     }
 
     /// Generates a new [`ComponentView`](crate::ComponentView) and returns the "properites" field.
-    pub async fn component_view_properties(&self, ctx: &DalContext<'_, '_>) -> serde_json::Value {
+    pub async fn component_view_properties(
+        &self,
+        ctx: &DalContext<'_, '_, '_>,
+    ) -> serde_json::Value {
         ComponentView::for_context(ctx, self.base_attribute_read_context)
             .await
             .expect("cannot get component view")
@@ -320,7 +326,7 @@ impl ComponentPayload {
     /// [`AttributeValue`] for the same context corresponds to an _"object"_ [`Prop`](crate::Prop).
     pub async fn update_attribute_value_for_prop_name(
         &self,
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         prop_name: impl AsRef<str>,
         value: Option<Value>,
     ) -> AttributeValueId {

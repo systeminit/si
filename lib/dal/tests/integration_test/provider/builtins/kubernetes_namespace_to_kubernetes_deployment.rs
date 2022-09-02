@@ -6,7 +6,7 @@ use crate::dal::test;
 
 #[test]
 async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
 ) {
     let mut harness = BuiltinsHarness::new();
     let tail_namespace_payload = harness

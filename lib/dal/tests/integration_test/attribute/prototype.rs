@@ -15,7 +15,7 @@ use dal::{
 use pretty_assertions_sorted::{assert_eq, assert_eq_sorted};
 
 #[test]
-async fn new(ctx: &DalContext<'_, '_>) {
+async fn new(ctx: &DalContext<'_, '_, '_>) {
     let schema = Schema::find_by_attr(ctx, "name", &"docker_image".to_string())
         .await
         .expect("cannot find docker image")
@@ -80,7 +80,7 @@ async fn new(ctx: &DalContext<'_, '_>) {
 }
 
 #[test]
-async fn list_for_context_with_a_hash(ctx: &DalContext<'_, '_>) {
+async fn list_for_context_with_a_hash(ctx: &DalContext<'_, '_, '_>) {
     let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
 
     let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
@@ -341,7 +341,7 @@ async fn list_for_context_with_a_hash(ctx: &DalContext<'_, '_>) {
 
 /// Test attribute prototype removal corresponding to a least specific context.
 #[test]
-async fn remove_least_specific(ctx: &DalContext<'_, '_>) {
+async fn remove_least_specific(ctx: &DalContext<'_, '_, '_>) {
     let prop = create_prop_of_kind_with_name(ctx, PropKind::String, "toddhoward").await;
 
     let context = AttributeContextBuilder::new()
@@ -367,7 +367,7 @@ async fn remove_least_specific(ctx: &DalContext<'_, '_>) {
 
 /// Test attribute prototype removal corresponding to a component-specific context.
 #[test]
-async fn remove_component_specific(ctx: &DalContext<'_, '_>) {
+async fn remove_component_specific(ctx: &DalContext<'_, '_, '_>) {
     let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
     let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema

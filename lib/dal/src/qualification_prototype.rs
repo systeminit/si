@@ -206,7 +206,7 @@ impl QualificationPrototype {
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn new(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         func_id: FuncId,
         context: QualificationPrototypeContext,
     ) -> QualificationPrototypeResult<Self> {
@@ -243,7 +243,7 @@ impl QualificationPrototype {
 
     pub async fn set_id(
         &mut self,
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         id: &QualificationPrototypeId,
     ) -> QualificationPrototypeResult<()> {
         let updated_at = standard_model::update(
@@ -273,7 +273,7 @@ impl QualificationPrototype {
 
     #[allow(clippy::too_many_arguments)]
     pub async fn find_for_component(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         component_id: ComponentId,
         schema_id: SchemaId,
         schema_variant_id: SchemaVariantId,
@@ -299,7 +299,7 @@ impl QualificationPrototype {
     }
 
     pub async fn find_for_func(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         func_id: &FuncId,
     ) -> QualificationPrototypeResult<Vec<Self>> {
         let rows = ctx
@@ -325,7 +325,7 @@ impl QualificationPrototype {
     }
 
     async fn create_missing_prototypes(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         func_id: &FuncId,
         existing_for_field: &[QualificationPrototypeContextField],
         desired_for_field: &[QualificationPrototypeContextField],
@@ -394,7 +394,7 @@ impl QualificationPrototype {
     pub async fn associate_prototypes_with_func_and_objects<
         T: Into<QualificationPrototypeContextField> + Copy,
     >(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         func_id: &FuncId,
         prototype_context_field_ids: &[T],
     ) -> QualificationPrototypeResult<Vec<Self>> {

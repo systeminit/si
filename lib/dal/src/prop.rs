@@ -133,7 +133,7 @@ impl Prop {
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn new(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         name: impl AsRef<str>,
         kind: PropKind,
     ) -> PropResult<Self> {
@@ -202,7 +202,7 @@ impl Prop {
     /// is ignored.
     pub async fn set_parent_prop(
         &self,
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         parent_prop_id: PropId,
     ) -> PropResult<()> {
         let parent_prop = Prop::get_by_id(ctx, &parent_prop_id)
@@ -255,7 +255,7 @@ impl Prop {
     /// Returns the root [`Prop`] for a given [`SchemaVariantId`](crate::SchemaVariant). Returns
     /// [`None`] if no [`Props`](Self) have been created for the [`SchemaVariant`](crate::SchemaVariant).
     pub async fn find_root_for_schema_variant(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         schema_variant_id: SchemaVariantId,
     ) -> PropResult<Option<Prop>> {
         let row = ctx
@@ -270,7 +270,7 @@ impl Prop {
 
     /// Returns the given [`Prop`] and all ancestor [`Props`](crate::Prop) back to the root.
     pub async fn all_ancestor_props(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         prop_id: PropId,
     ) -> PropResult<Vec<Self>> {
         let rows = ctx
@@ -284,7 +284,7 @@ impl Prop {
     }
 
     pub async fn create_default_prototypes_and_values(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         prop_id: PropId,
     ) -> PropResult<()> {
         #[derive(Debug)]

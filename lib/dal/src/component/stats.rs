@@ -2,9 +2,9 @@
 
 use serde::Deserialize;
 use serde::Serialize;
+use si_data::PgRow;
 use strum_macros::{AsRefStr, Display, EnumString};
 use telemetry::prelude::*;
-use tokio_postgres::Row;
 
 use crate::component::ComponentResult;
 use crate::{ComponentId, DalContext};
@@ -22,7 +22,7 @@ pub struct ComponentStats {
 }
 
 impl ComponentStats {
-    pub async fn new(ctx: &DalContext<'_, '_>) -> ComponentResult<Self> {
+    pub async fn new(ctx: &DalContext<'_, '_, '_>) -> ComponentResult<Self> {
         let component_stats = if ctx.visibility().is_head() {
             Self::default()
         } else {
@@ -40,7 +40,7 @@ impl ComponentStats {
     }
 
     #[instrument(skip_all)]
-    async fn list_added(ctx: &DalContext<'_, '_>) -> ComponentResult<Vec<ComponentStatsGroup>> {
+    async fn list_added(ctx: &DalContext<'_, '_, '_>) -> ComponentResult<Vec<ComponentStatsGroup>> {
         let rows = ctx
             .txns()
             .pg()
@@ -53,7 +53,9 @@ impl ComponentStats {
     }
 
     #[instrument(skip_all)]
-    async fn list_deleted(ctx: &DalContext<'_, '_>) -> ComponentResult<Vec<ComponentStatsGroup>> {
+    async fn list_deleted(
+        ctx: &DalContext<'_, '_, '_>,
+    ) -> ComponentResult<Vec<ComponentStatsGroup>> {
         let rows = ctx
             .txns()
             .pg()
@@ -66,7 +68,9 @@ impl ComponentStats {
     }
 
     #[instrument(skip_all)]
-    async fn list_modified(ctx: &DalContext<'_, '_>) -> ComponentResult<Vec<ComponentStatsGroup>> {
+    async fn list_modified(
+        ctx: &DalContext<'_, '_, '_>,
+    ) -> ComponentResult<Vec<ComponentStatsGroup>> {
         let rows = ctx
             .txns()
             .pg()
@@ -101,7 +105,7 @@ pub struct ComponentStatsGroup {
 
 impl ComponentStatsGroup {
     pub fn new_from_rows(
-        rows: Vec<Row>,
+        rows: Vec<PgRow>,
         component_status: ComponentStatus,
     ) -> ComponentResult<Vec<Self>> {
         let mut result = Vec::new();

@@ -16,7 +16,7 @@ macro_rules! standard_model_many_to_many {
         #[telemetry::tracing::instrument(skip_all)]
         pub async fn $lookup_fn(
             &self,
-            ctx: &$crate::DalContext<'_, '_>,
+            ctx: &$crate::DalContext<'_, '_, '_>,
         ) -> $result_type<Vec<$returns>> {
             let other: Option<&$right_id> = None;
             let r = $crate::standard_model::many_to_many(
@@ -34,7 +34,7 @@ macro_rules! standard_model_many_to_many {
         #[telemetry::tracing::instrument(skip_all)]
         pub async fn $associate_fn(
             &self,
-            ctx: &$crate::DalContext<'_, '_>,
+            ctx: &$crate::DalContext<'_, '_, '_>,
             right_id: &$right_id,
         ) -> $result_type<()> {
             let _r = $crate::standard_model::associate_many_to_many(
@@ -57,7 +57,7 @@ macro_rules! standard_model_many_to_many {
         #[telemetry::tracing::instrument(skip_all)]
         pub async fn $disassociate_fn(
             &self,
-            ctx: &$crate::DalContext<'_, '_>,
+            ctx: &$crate::DalContext<'_, '_, '_>,
             right_id: &$right_id,
         ) -> $result_type<()> {
             let _r = $crate::standard_model::disassociate_many_to_many(
@@ -93,7 +93,7 @@ macro_rules! standard_model_many_to_many {
         #[telemetry::tracing::instrument(skip_all)]
         pub async fn $lookup_fn(
             &self,
-            ctx: &$crate::DalContext<'_, '_>,
+            ctx: &$crate::DalContext<'_, '_, '_>,
         ) -> $result_type<Vec<$returns>> {
             let other: Option<&$left_id> = None;
             let r = $crate::standard_model::many_to_many(
@@ -111,7 +111,7 @@ macro_rules! standard_model_many_to_many {
         #[telemetry::tracing::instrument(skip_all)]
         pub async fn $associate_fn(
             &self,
-            ctx: &$crate::DalContext<'_, '_>,
+            ctx: &$crate::DalContext<'_, '_, '_>,
             left_id: &$left_id,
         ) -> $result_type<()> {
             let _r = $crate::standard_model::associate_many_to_many(
@@ -134,7 +134,7 @@ macro_rules! standard_model_many_to_many {
         #[telemetry::tracing::instrument(skip_all)]
         pub async fn $disassociate_fn(
             &self,
-            ctx: &$crate::DalContext<'_, '_>,
+            ctx: &$crate::DalContext<'_, '_, '_>,
             left_id: &$left_id,
         ) -> $result_type<()> {
             let _r = $crate::standard_model::disassociate_many_to_many(
@@ -168,7 +168,7 @@ macro_rules! standard_model_has_many {
         #[telemetry::tracing::instrument(skip(ctx))]
         pub async fn $lookup_fn(
             &self,
-            ctx: &$crate::DalContext<'_, '_>,
+            ctx: &$crate::DalContext<'_, '_, '_>,
         ) -> $result_type<Vec<$has_many>> {
             let r =
                 $crate::standard_model::has_many(ctx, $table, $retrieve_table, &self.id()).await?;
@@ -192,7 +192,7 @@ macro_rules! standard_model_belongs_to {
         #[telemetry::tracing::instrument(skip(ctx))]
         pub async fn $lookup_fn(
             &self,
-            ctx: &$crate::DalContext<'_, '_>,
+            ctx: &$crate::DalContext<'_, '_, '_>,
         ) -> $result_type<Option<$belongs_to>> {
             let r = $crate::standard_model::belongs_to(
                 ctx,
@@ -207,7 +207,7 @@ macro_rules! standard_model_belongs_to {
         #[telemetry::tracing::instrument(skip(ctx))]
         pub async fn $set_fn(
             &self,
-            ctx: &$crate::DalContext<'_, '_>,
+            ctx: &$crate::DalContext<'_, '_, '_>,
             belongs_to_id: &$belongs_to_id,
         ) -> $result_type<()> {
             $crate::standard_model::set_belongs_to(
@@ -230,7 +230,7 @@ macro_rules! standard_model_belongs_to {
         #[telemetry::tracing::instrument(skip(ctx))]
         pub async fn $unset_fn(
             &self,
-            ctx: &$crate::DalContext<'_, '_>,
+            ctx: &$crate::DalContext<'_, '_, '_>,
         ) -> $result_type<()> {
             $crate::standard_model::unset_belongs_to(
                 ctx,
@@ -266,7 +266,7 @@ macro_rules! standard_model_accessor {
             #[telemetry::tracing::instrument(skip_all)]
             pub async fn [<set_ $column>](
                 &mut self,
-                ctx: &$crate::DalContext<'_, '_>,
+                ctx: &$crate::DalContext<'_, '_, '_>,
                 value: impl Into<$value_type>,
             ) -> $result_type<()> {
                 let value: $value_type = value.into();
@@ -302,7 +302,7 @@ macro_rules! standard_model_accessor {
             #[telemetry::tracing::instrument(skip_all)]
             pub async fn [<set_ $column>](
                 &mut self,
-                ctx: &$crate::DalContext<'_, '_>,
+                ctx: &$crate::DalContext<'_, '_, '_>,
                 value: impl Into<$value_type>,
             ) -> $result_type<()> {
                 let value: $value_type = value.into();
@@ -338,7 +338,7 @@ macro_rules! standard_model_accessor {
             #[telemetry::tracing::instrument(skip_all)]
             pub async fn [<set_ $column>](
                 &mut self,
-                ctx: &$crate::DalContext<'_, '_>,
+                ctx: &$crate::DalContext<'_, '_, '_>,
                 value: Option<impl Into<$value_type>>,
             ) -> $result_type<()> {
                 let value: Option<$value_type> = value.map(Into::into);
@@ -373,7 +373,7 @@ macro_rules! standard_model_accessor {
             #[telemetry::tracing::instrument(skip(ctx, value))]
             pub async fn [<set_ $column>](
                 &mut self,
-                ctx: &$crate::DalContext<'_, '_>,
+                ctx: &$crate::DalContext<'_, '_, '_>,
                 value: impl Into<$value_type>,
             ) -> $result_type<()> {
                 let value: $value_type = value.into();
@@ -408,7 +408,7 @@ macro_rules! standard_model_accessor {
             #[telemetry::tracing::instrument(skip_all)]
             pub async fn [<set_ $column>](
                 &mut self,
-                ctx: &$crate::DalContext<'_, '_>,
+                ctx: &$crate::DalContext<'_, '_, '_>,
                 value: Option<impl Into<$value_type>>,
             ) -> $result_type<()> {
                 let value: Option<$value_type> = value.map(Into::into);

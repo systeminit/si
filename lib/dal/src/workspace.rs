@@ -53,7 +53,7 @@ impl_standard_model! {
 
 impl Workspace {
     #[instrument(skip_all)]
-    pub async fn new(ctx: &DalContext<'_, '_>, name: impl AsRef<str>) -> WorkspaceResult<Self> {
+    pub async fn new(ctx: &DalContext<'_, '_, '_>, name: impl AsRef<str>) -> WorkspaceResult<Self> {
         let name = name.as_ref();
         let row = ctx
             .txns()

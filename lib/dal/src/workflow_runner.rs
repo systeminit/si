@@ -148,7 +148,7 @@ impl WorkflowRunner {
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn new(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         workflow_prototype_id: WorkflowPrototypeId,
         workflow_resolver_id: WorkflowResolverId,
         func_id: FuncId,
@@ -179,7 +179,7 @@ impl WorkflowRunner {
     }
 
     pub async fn run(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         prototype_id: WorkflowPrototypeId,
     ) -> WorkflowRunnerResult<(Self, Vec<FuncBindingReturnValue>)> {
         let prototype = WorkflowPrototype::get_by_id(ctx, &prototype_id)
@@ -249,7 +249,7 @@ impl WorkflowRunner {
     standard_model_accessor!(func_binding_id, Pk(FuncBindingId), WorkflowRunnerResult);
 
     pub async fn find_for_prototype(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         workflow_prototype_id: &WorkflowPrototypeId,
         context: WorkflowRunnerContext,
     ) -> WorkflowRunnerResult<Vec<Self>> {

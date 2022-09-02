@@ -8,7 +8,7 @@ use dal::{
 };
 
 #[test]
-async fn new(ctx: &DalContext<'_, '_>) {
+async fn new(ctx: &DalContext<'_, '_, '_>) {
     let name = "docker_image".to_string();
     let schema = Schema::find_by_attr(ctx, "name", &name)
         .await
@@ -47,7 +47,7 @@ async fn new(ctx: &DalContext<'_, '_>) {
 }
 
 #[test]
-async fn find_for_component(ctx: &DalContext<'_, '_>) {
+async fn find_for_component(ctx: &DalContext<'_, '_, '_>) {
     // TODO: This test is brittle, because it relies on the behavior of docker_image. I'm okay
     // with that for now, but not for long. If it breaks before we fix it - future person, I'm
     // sorry. ;)

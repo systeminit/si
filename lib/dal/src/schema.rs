@@ -148,7 +148,7 @@ impl Schema {
     #[instrument(skip_all)]
     #[allow(clippy::too_many_arguments)]
     pub async fn new(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         name: impl AsRef<str>,
         kind: &SchemaKind,
         component_kind: &ComponentKind,
@@ -262,7 +262,10 @@ impl Schema {
         result: SchemaResult,
     );
 
-    pub async fn default_variant(&self, ctx: &DalContext<'_, '_>) -> SchemaResult<SchemaVariant> {
+    pub async fn default_variant(
+        &self,
+        ctx: &DalContext<'_, '_, '_>,
+    ) -> SchemaResult<SchemaVariant> {
         match self.default_schema_variant_id() {
             Some(schema_variant_id) => Ok(SchemaVariant::get_by_id(ctx, schema_variant_id)
                 .await?
@@ -272,7 +275,7 @@ impl Schema {
     }
 
     pub async fn default_schema_variant_id_for_name(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         name: impl AsRef<str>,
     ) -> SchemaResult<SchemaVariantId> {
         let name = name.as_ref();

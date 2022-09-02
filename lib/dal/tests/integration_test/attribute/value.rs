@@ -10,7 +10,7 @@ use pretty_assertions_sorted::assert_eq_sorted;
 use crate::dal::test;
 
 #[test]
-async fn update_for_context_simple(ctx: &DalContext<'_, '_>) {
+async fn update_for_context_simple(ctx: &DalContext<'_, '_, '_>) {
     // "name": String
     let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
     let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
@@ -143,7 +143,7 @@ async fn update_for_context_simple(ctx: &DalContext<'_, '_>) {
 }
 
 #[test]
-async fn insert_for_context_simple(ctx: &DalContext<'_, '_>) {
+async fn insert_for_context_simple(ctx: &DalContext<'_, '_, '_>) {
     let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
     let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
@@ -230,7 +230,7 @@ async fn insert_for_context_simple(ctx: &DalContext<'_, '_>) {
 }
 
 #[test]
-async fn update_for_context_object(ctx: &DalContext<'_, '_>) {
+async fn update_for_context_object(ctx: &DalContext<'_, '_, '_>) {
     let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
     let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
@@ -453,7 +453,7 @@ async fn update_for_context_object(ctx: &DalContext<'_, '_>) {
 }
 
 #[test]
-async fn insert_for_context_creates_array_in_final_context(ctx: &DalContext<'_, '_>) {
+async fn insert_for_context_creates_array_in_final_context(ctx: &DalContext<'_, '_, '_>) {
     let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
     let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema

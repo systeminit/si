@@ -7,7 +7,7 @@ use pretty_assertions_sorted::assert_eq;
 use crate::dal::test;
 
 #[test]
-async fn new(ctx: &DalContext<'_, '_>) {
+async fn new(ctx: &DalContext<'_, '_, '_>) {
     let _write_tenancy = WriteTenancy::new_universal();
     let _visibility = Visibility::new_head(false);
     let _history_actor = HistoryActor::SystemInit;
@@ -19,7 +19,7 @@ async fn new(ctx: &DalContext<'_, '_>) {
 }
 
 #[test]
-async fn schema_variants(ctx: &DalContext<'_, '_>) {
+async fn schema_variants(ctx: &DalContext<'_, '_, '_>) {
     let schema = create_schema(ctx, &SchemaKind::Configuration).await;
     let schema_variant = create_schema_variant(ctx, *schema.id()).await;
     let prop = create_prop(ctx).await;
@@ -46,7 +46,7 @@ async fn schema_variants(ctx: &DalContext<'_, '_>) {
 }
 
 #[test]
-async fn parent_props(ctx: &DalContext<'_, '_>) {
+async fn parent_props(ctx: &DalContext<'_, '_, '_>) {
     let parent_prop = create_prop_of_kind(ctx, PropKind::Object).await;
     let child_prop = create_prop_of_kind(ctx, PropKind::String).await;
     child_prop
@@ -68,7 +68,7 @@ async fn parent_props(ctx: &DalContext<'_, '_>) {
 }
 
 #[test]
-async fn parent_props_wrong_prop_kinds(ctx: &DalContext<'_, '_>) {
+async fn parent_props_wrong_prop_kinds(ctx: &DalContext<'_, '_, '_>) {
     let parent_prop = create_prop_of_kind(ctx, PropKind::String).await;
     let child_prop = create_prop_of_kind(ctx, PropKind::Object).await;
 

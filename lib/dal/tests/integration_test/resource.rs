@@ -5,7 +5,7 @@ use dal::test_harness::create_component_and_schema;
 use dal::{Resource, StandardModel, System};
 
 #[test]
-async fn new(ctx: &DalContext<'_, '_>) {
+async fn new(ctx: &DalContext<'_, '_, '_>) {
     let component = create_component_and_schema(ctx).await;
     let system = System::new(ctx, "production system")
         .await
@@ -17,7 +17,7 @@ async fn new(ctx: &DalContext<'_, '_>) {
 }
 
 #[test]
-async fn get_by_component_and_system_id(ctx: &DalContext<'_, '_>) {
+async fn get_by_component_and_system_id(ctx: &DalContext<'_, '_, '_>) {
     let mastodon_component = create_component_and_schema(ctx).await;
     let blue_oyster_component = create_component_and_schema(ctx).await;
 

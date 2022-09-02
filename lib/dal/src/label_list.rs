@@ -1,8 +1,10 @@
-use serde::de::DeserializeOwned;
-use serde::{Deserialize, Serialize};
-use si_data::PgError;
-use std::fmt::Debug;
-use std::ops::{Deref, DerefMut};
+use std::{
+    fmt::Debug,
+    ops::{Deref, DerefMut},
+};
+
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use si_data::{PgError, PgRow};
 use strum::IntoEnumIterator;
 use thiserror::Error;
 
@@ -48,7 +50,7 @@ impl<V> LabelList<V>
 where
     V: Debug + DeserializeOwned + Serialize + postgres_types::FromSqlOwned,
 {
-    pub fn from_rows(rows: Vec<tokio_postgres::Row>) -> LabelListResult<LabelList<V>> {
+    pub fn from_rows(rows: Vec<PgRow>) -> LabelListResult<LabelList<V>> {
         let mut results = Vec::new();
         for row in rows.into_iter() {
             let name: String = row.try_get("name")?;

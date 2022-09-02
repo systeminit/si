@@ -20,7 +20,11 @@ pub type JobQueueProcessorResult<T> = Result<T, JobQueueProcessorError>;
 
 #[async_trait]
 pub trait JobQueueProcessor: std::fmt::Debug + DynClone {
-    async fn enqueue_job(&self, job: Box<dyn JobProducer + Send + Sync>, ctx: &DalContext<'_, '_>);
+    async fn enqueue_job(
+        &self,
+        job: Box<dyn JobProducer + Send + Sync>,
+        ctx: &DalContext<'_, '_, '_>,
+    );
     async fn process_queue(&self) -> JobQueueProcessorResult<()>;
 }
 

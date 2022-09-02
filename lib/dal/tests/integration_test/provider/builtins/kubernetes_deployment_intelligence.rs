@@ -7,7 +7,7 @@ use crate::dal::test;
 // Oh yeah, it's big brain time.
 #[ignore]
 #[test]
-async fn kubernetes_deployment_intelligence(ctx: &DalContext<'_, '_>) {
+async fn kubernetes_deployment_intelligence(ctx: &DalContext<'_, '_, '_>) {
     let mut harness = BuiltinsHarness::new();
     let tail_fedora_payload = harness
         .create_component(ctx, "fedora", Builtin::DockerImage)

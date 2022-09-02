@@ -59,7 +59,7 @@ impl NodePosition {
     /// [`NodeId`](crate::Node).
     #[allow(clippy::too_many_arguments)]
     pub async fn new(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         node_id: NodeId,
         diagram_kind: DiagramKind,
         system_id: Option<SystemId>,
@@ -87,7 +87,7 @@ impl NodePosition {
     }
 
     pub async fn list_for_node(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         node_id: NodeId,
         system_id: Option<SystemId>,
     ) -> NodePositionResult<Vec<Self>> {
@@ -104,7 +104,7 @@ impl NodePosition {
 
     #[allow(clippy::too_many_arguments)]
     pub async fn upsert_by_node_id(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         diagram_kind: DiagramKind,
         system_id: Option<SystemId>,
         node_id: NodeId,

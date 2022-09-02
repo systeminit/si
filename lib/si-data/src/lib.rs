@@ -22,7 +22,7 @@ pub use faktory::FaktoryConfig;
 #[cfg(feature = "pg")]
 pub mod pg;
 #[cfg(feature = "pg")]
-pub use pg::{Error as PgError, PgPool, PgPoolConfig, PgPoolError, PgTxn};
+pub use pg::{PgError, PgPool, PgPoolConfig, PgPoolError, PgRow, PgTxn};
 
 #[cfg(feature = "nats")]
 pub mod nats;

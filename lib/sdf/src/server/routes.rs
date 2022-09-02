@@ -149,7 +149,7 @@ pub enum AppError {
     #[error(transparent)]
     Nats(#[from] nats::Error),
     #[error(transparent)]
-    Pg(#[from] pg::Error),
+    Pg(#[from] pg::PgError),
     #[error(transparent)]
     Server(#[from] ServerError),
 }

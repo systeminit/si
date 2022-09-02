@@ -75,7 +75,7 @@ impl User {
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn new(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         name: impl AsRef<str>,
         email: impl AsRef<str>,
         password: impl AsRef<str>,
@@ -117,7 +117,7 @@ impl User {
     );
 
     pub async fn find_by_email(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         email: impl AsRef<str>,
     ) -> UserResult<Option<User>> {
         let email = email.as_ref();
@@ -133,7 +133,7 @@ impl User {
         Ok(result)
     }
 
-    pub async fn authorize(ctx: &DalContext<'_, '_>, user_id: &UserId) -> UserResult<bool> {
+    pub async fn authorize(ctx: &DalContext<'_, '_, '_>, user_id: &UserId) -> UserResult<bool> {
         let _row = ctx
             .txns()
             .pg()
@@ -147,7 +147,7 @@ impl User {
 
     pub async fn login(
         &self,
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         jwt_secret_key: &JwtSecretKey,
         billing_account_id: &BillingAccountId,
         password: impl Into<String>,
@@ -190,7 +190,7 @@ impl UserClaim {
     }
 
     pub async fn from_bearer_token(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         token: impl AsRef<str>,
     ) -> UserResult<UserClaim> {
         let claims = crate::jwt_key::validate_bearer_token(ctx, &token).await?;

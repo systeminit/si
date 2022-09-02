@@ -52,7 +52,10 @@ impl_standard_model! {
 
 impl Organization {
     #[instrument(skip_all)]
-    pub async fn new(ctx: &DalContext<'_, '_>, name: impl AsRef<str>) -> OrganizationResult<Self> {
+    pub async fn new(
+        ctx: &DalContext<'_, '_, '_>,
+        name: impl AsRef<str>,
+    ) -> OrganizationResult<Self> {
         let name = name.as_ref();
         let row = ctx
             .txns()

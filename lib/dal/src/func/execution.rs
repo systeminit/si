@@ -89,7 +89,7 @@ impl FuncExecution {
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn new(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         func: &Func,
         func_binding: &FuncBinding,
     ) -> FuncExecutionResult<Self> {
@@ -124,7 +124,7 @@ impl FuncExecution {
 
     pub async fn set_state(
         &mut self,
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         state: FuncExecutionState,
     ) -> FuncExecutionResult<()> {
         let row = ctx
@@ -146,7 +146,7 @@ impl FuncExecution {
     /// Takes the receiver stream from a Veritech function execution, and stores the output.
     pub async fn process_output(
         &mut self,
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         mut rx: Receiver<OutputStream>,
     ) -> FuncExecutionResult<()> {
         // Right now, we consume everything. This should really be happening in a separate thread altogether, and
@@ -169,7 +169,7 @@ impl FuncExecution {
 
     pub async fn set_output_stream(
         &mut self,
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         output_stream: Vec<OutputStream>,
     ) -> FuncExecutionResult<()> {
         let output_stream_json = serde_json::to_value(&output_stream)?;
@@ -191,7 +191,7 @@ impl FuncExecution {
     /// Take the return value of a function binding, and store its results.
     pub async fn process_return_value(
         &mut self,
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         func_binding_return_value: &FuncBindingReturnValue,
     ) -> FuncExecutionResult<()> {
         let row = ctx
@@ -221,7 +221,7 @@ impl FuncExecution {
 
     #[instrument(skip(ctx))]
     pub async fn get_by_pk(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         pk: &FuncExecutionPk,
     ) -> FuncExecutionResult<Self> {
         let row = ctx

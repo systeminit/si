@@ -6,7 +6,7 @@ use crate::{
 use super::kubernetes::doc_url;
 
 pub async fn create_selector_prop(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
     parent_prop_id: PropId,
 ) -> BuiltinsResult<Prop> {
     let mut selector_prop =

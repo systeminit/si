@@ -107,7 +107,7 @@ impl FuncBinding {
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn new(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         args: serde_json::Value,
         func_id: FuncId,
         backend_kind: FuncBackendKind,
@@ -137,7 +137,7 @@ impl FuncBinding {
 
     #[instrument(skip_all)]
     pub async fn find_or_create(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         args: serde_json::Value,
         func_id: FuncId,
         backend_kind: FuncBackendKind,
@@ -186,7 +186,7 @@ impl FuncBinding {
     /// Runs [`Self::find_or_create()`] and executes if [`Self`] was newly created or
     /// [`FuncBindingReturnValue`](crate::FuncBindingReturnValue) could not be found.
     pub async fn find_or_create_and_execute(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         args: serde_json::Value,
         func_id: FuncId,
     ) -> FuncBindingResult<(Self, FuncBindingReturnValue)> {
@@ -230,7 +230,7 @@ impl FuncBinding {
 
     pub async fn execute(
         &self,
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
     ) -> FuncBindingResult<FuncBindingReturnValue> {
         let (func, execution, context, mut rx) = self.prepare_execution(ctx).await?;
         let value = self.execute_critical_section(func.clone(), context).await?;
@@ -307,7 +307,7 @@ impl FuncBinding {
 
     pub async fn postprocess_execution(
         &self,
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         output_stream: Vec<OutputStream>,
         func: &Func,
         (unprocessed_value, processed_value): (
@@ -340,7 +340,7 @@ impl FuncBinding {
 
     pub async fn prepare_execution(
         &self,
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
     ) -> FuncBindingResult<(
         Func,
         FuncExecution,

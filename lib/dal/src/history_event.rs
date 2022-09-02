@@ -59,7 +59,7 @@ pub struct HistoryEvent {
 impl HistoryEvent {
     #[instrument(skip(ctx, label, message))]
     pub async fn new(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         label: impl AsRef<str>,
         message: impl AsRef<str>,
         data: &serde_json::Value,

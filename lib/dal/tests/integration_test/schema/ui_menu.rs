@@ -6,7 +6,7 @@ use dal::test_harness::{create_schema, create_schema_ui_menu};
 use dal::{schema::UiMenu, DiagramKind, HistoryActor, StandardModel, Visibility, WriteTenancy};
 
 #[test]
-async fn new(ctx: &DalContext<'_, '_>) {
+async fn new(ctx: &DalContext<'_, '_, '_>) {
     let _write_tenancy = WriteTenancy::new_universal();
     let _visibility = Visibility::new_head(false);
     let _history_actor = HistoryActor::SystemInit;
@@ -19,7 +19,7 @@ async fn new(ctx: &DalContext<'_, '_>) {
 }
 
 #[test]
-async fn set_schema(ctx: &DalContext<'_, '_>) {
+async fn set_schema(ctx: &DalContext<'_, '_, '_>) {
     let schema = create_schema(ctx, &SchemaKind::Configuration).await;
     let schema_ui_menu = create_schema_ui_menu(ctx).await;
 

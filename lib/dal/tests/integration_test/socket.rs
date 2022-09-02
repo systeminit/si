@@ -7,7 +7,7 @@ use dal::{
 use crate::dal::test;
 
 #[test]
-async fn new(ctx: &DalContext<'_, '_>) {
+async fn new(ctx: &DalContext<'_, '_, '_>) {
     let socket = Socket::new(
         ctx,
         "jane",
@@ -24,7 +24,7 @@ async fn new(ctx: &DalContext<'_, '_>) {
 }
 
 #[test]
-async fn set_required(ctx: &DalContext<'_, '_>) {
+async fn set_required(ctx: &DalContext<'_, '_, '_>) {
     let mut socket = Socket::new(
         ctx,
         generate_fake_name(),

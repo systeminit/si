@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use si_data::PgError;
 use thiserror::Error;
 
 use veritech::QualificationSubCheck;
@@ -39,8 +40,8 @@ pub struct QualificationSummary {
 #[allow(clippy::large_enum_variant)]
 #[derive(Error, Debug)]
 pub enum QualificationSummaryError {
-    #[error("error accessing database")]
-    PgError(#[from] tokio_postgres::Error),
+    #[error("pg error: {0}")]
+    PgError(#[from] PgError),
     #[error("error loading component validations: {0}")]
     ComponentError(#[from] component::ComponentError),
 }
@@ -49,7 +50,7 @@ pub type QualificationSummaryResult<T> = Result<T, QualificationSummaryError>;
 
 impl QualificationSummary {
     pub async fn get_summary(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
     ) -> QualificationSummaryResult<QualificationSummary> {
         let rows = ctx
             .txns()
@@ -194,7 +195,7 @@ impl QualificationView {
     }
 
     pub async fn new_for_func_binding_return_value(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         prototype: QualificationPrototype,
         func_metadata: FuncMetadataView,
         func_binding_return_value: FuncBindingReturnValue,
@@ -236,7 +237,7 @@ pub struct QualificationCheckId {
 
 impl WsEvent {
     pub fn checked_qualifications(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         prototype_id: QualificationPrototypeId,
         component_id: ComponentId,
         system_id: SystemId,

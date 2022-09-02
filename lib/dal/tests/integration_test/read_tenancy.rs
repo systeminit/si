@@ -8,7 +8,7 @@ use dal::{
 
 #[test]
 async fn check_organization_specific_billing_account(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
     nba: &BillingAccountSignup,
     _jwt_secret_key: &JwtSecretKey,
 ) {
@@ -24,7 +24,7 @@ async fn check_organization_specific_billing_account(
 
 #[test]
 async fn check_organization_in_billing_account(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
     nba: &BillingAccountSignup,
     _jwt_secret_key: &JwtSecretKey,
 ) {
@@ -43,7 +43,7 @@ async fn check_organization_in_billing_account(
 
 #[test]
 async fn check_workspace_specific_billing_account(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
     nba: &BillingAccountSignup,
     _jwt_secret_key: &JwtSecretKey,
 ) {
@@ -59,7 +59,7 @@ async fn check_workspace_specific_billing_account(
 
 #[test]
 async fn check_workspace_in_billing_account(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
     nba: &BillingAccountSignup,
     _jwt_secret_key: &JwtSecretKey,
 ) {
@@ -82,7 +82,7 @@ async fn check_workspace_in_billing_account(
 
 #[test]
 async fn check_workspace_specific_organization(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
     nba: &BillingAccountSignup,
     _jwt_secret_key: &JwtSecretKey,
 ) {
@@ -105,7 +105,7 @@ async fn check_workspace_specific_organization(
 
 #[test]
 async fn check_workspace_in_organization(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
     nba: &BillingAccountSignup,
     _jwt_secret_key: &JwtSecretKey,
 ) {
@@ -123,7 +123,7 @@ async fn check_workspace_in_organization(
 }
 
 #[test]
-async fn check_universal(ctx: &DalContext<'_, '_>) {
+async fn check_universal(ctx: &DalContext<'_, '_, '_>) {
     let read_tenancy = ReadTenancy::new_billing_account(vec![BillingAccountId::from(-1)]);
 
     let write_tenancy = WriteTenancy::new_billing_account(1.into());
@@ -170,7 +170,7 @@ async fn check_universal(ctx: &DalContext<'_, '_>) {
 }
 
 #[test]
-async fn check_billing_account_pk_identical(ctx: &DalContext<'_, '_>) {
+async fn check_billing_account_pk_identical(ctx: &DalContext<'_, '_, '_>) {
     let read_tenancy = ReadTenancy::new_billing_account(vec![1.into()]);
     let write_tenancy = WriteTenancy::new_billing_account(1.into());
 
@@ -182,7 +182,7 @@ async fn check_billing_account_pk_identical(ctx: &DalContext<'_, '_>) {
 }
 
 #[test]
-async fn check_billing_account_pk_overlapping(ctx: &DalContext<'_, '_>) {
+async fn check_billing_account_pk_overlapping(ctx: &DalContext<'_, '_, '_>) {
     let read_tenancy = ReadTenancy::new_billing_account(vec![
         1.into(),
         2.into(),
@@ -201,7 +201,7 @@ async fn check_billing_account_pk_overlapping(ctx: &DalContext<'_, '_>) {
 }
 
 #[test]
-async fn check_billing_account_pk_mismatched(ctx: &DalContext<'_, '_>) {
+async fn check_billing_account_pk_mismatched(ctx: &DalContext<'_, '_, '_>) {
     let read_tenancy = ReadTenancy::new_billing_account(vec![1.into()]);
     let write_tenancy = WriteTenancy::new_billing_account(2.into());
 
@@ -213,7 +213,7 @@ async fn check_billing_account_pk_mismatched(ctx: &DalContext<'_, '_>) {
 }
 
 #[test]
-async fn check_billing_account_pk_mismatched_level(ctx: &DalContext<'_, '_>) {
+async fn check_billing_account_pk_mismatched_level(ctx: &DalContext<'_, '_, '_>) {
     let read_tenancy = ReadTenancy::new_billing_account(vec![1.into()]);
     let write_tenancy = WriteTenancy::new_organization(1.into());
 
@@ -225,7 +225,7 @@ async fn check_billing_account_pk_mismatched_level(ctx: &DalContext<'_, '_>) {
 }
 
 #[test]
-async fn check_organization_pk_identical(ctx: &DalContext<'_, '_>, nba: &BillingAccountSignup) {
+async fn check_organization_pk_identical(ctx: &DalContext<'_, '_, '_>, nba: &BillingAccountSignup) {
     let read_tenancy =
         ReadTenancy::new_organization(ctx.pg_txn(), vec![*nba.organization.id()], ctx.visibility())
             .await
@@ -241,7 +241,7 @@ async fn check_organization_pk_identical(ctx: &DalContext<'_, '_>, nba: &Billing
 
 #[test]
 async fn check_organization_pk_overlapping(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
     jwt_secret_key: &JwtSecretKey,
 ) {
     let (nba, _) = billing_account_signup(ctx, jwt_secret_key).await;
@@ -268,7 +268,10 @@ async fn check_organization_pk_overlapping(
 }
 
 #[test]
-async fn check_organization_pk_mismatched(ctx: &DalContext<'_, '_>, jwt_secret_key: &JwtSecretKey) {
+async fn check_organization_pk_mismatched(
+    ctx: &DalContext<'_, '_, '_>,
+    jwt_secret_key: &JwtSecretKey,
+) {
     let (nba, _) = billing_account_signup(ctx, jwt_secret_key).await;
     let read_tenancy =
         ReadTenancy::new_organization(ctx.pg_txn(), vec![*nba.organization.id()], ctx.visibility())
@@ -284,7 +287,7 @@ async fn check_organization_pk_mismatched(ctx: &DalContext<'_, '_>, jwt_secret_k
 }
 
 #[test]
-async fn check_workspace_pk_identical(ctx: &DalContext<'_, '_>, jwt_secret_key: &JwtSecretKey) {
+async fn check_workspace_pk_identical(ctx: &DalContext<'_, '_, '_>, jwt_secret_key: &JwtSecretKey) {
     let (nba, _) = billing_account_signup(ctx, jwt_secret_key).await;
     let read_tenancy =
         ReadTenancy::new_workspace(ctx.pg_txn(), vec![*nba.workspace.id()], ctx.visibility())
@@ -300,7 +303,10 @@ async fn check_workspace_pk_identical(ctx: &DalContext<'_, '_>, jwt_secret_key: 
 }
 
 #[test]
-async fn check_workspace_pk_overlapping(ctx: &DalContext<'_, '_>, jwt_secret_key: &JwtSecretKey) {
+async fn check_workspace_pk_overlapping(
+    ctx: &DalContext<'_, '_, '_>,
+    jwt_secret_key: &JwtSecretKey,
+) {
     let (nba, _) = billing_account_signup(ctx, jwt_secret_key).await;
     let (nba2, _) = billing_account_signup(ctx, jwt_secret_key).await;
     let (nba3, _) = billing_account_signup(ctx, jwt_secret_key).await;
@@ -325,7 +331,10 @@ async fn check_workspace_pk_overlapping(ctx: &DalContext<'_, '_>, jwt_secret_key
 }
 
 #[test]
-async fn check_workspace_pk_mismatched(ctx: &DalContext<'_, '_>, jwt_secret_key: &JwtSecretKey) {
+async fn check_workspace_pk_mismatched(
+    ctx: &DalContext<'_, '_, '_>,
+    jwt_secret_key: &JwtSecretKey,
+) {
     let (nba, _) = billing_account_signup(ctx, jwt_secret_key).await;
     let read_tenancy =
         ReadTenancy::new_workspace(ctx.pg_txn(), vec![*nba.workspace.id()], ctx.visibility())

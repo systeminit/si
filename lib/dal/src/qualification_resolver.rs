@@ -127,7 +127,7 @@ impl QualificationResolver {
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn new(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         qualification_prototype_id: QualificationPrototypeId,
         func_id: FuncId,
         func_binding_id: FuncBindingId,
@@ -163,7 +163,7 @@ impl QualificationResolver {
     );
 
     pub async fn find_for_prototype_and_component(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         qualification_prototype_id: &QualificationPrototypeId,
         component_id: &ComponentId,
     ) -> QualificationResolverResult<Vec<Self>> {

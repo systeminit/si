@@ -7,7 +7,7 @@ use dal::{
 use serde_json::json;
 
 #[test]
-async fn new(ctx: &DalContext<'_, '_>) {
+async fn new(ctx: &DalContext<'_, '_, '_>) {
     let func_name = "si:poem".to_string();
     let mut funcs = Func::find_by_attr(ctx, "name", &func_name)
         .await
@@ -27,7 +27,7 @@ async fn new(ctx: &DalContext<'_, '_>) {
 }
 
 #[test]
-async fn find_for_context(ctx: &DalContext<'_, '_>) {
+async fn find_for_context(ctx: &DalContext<'_, '_, '_>) {
     let func = Func::find_by_attr(ctx, "name", &"si:poem".to_string())
         .await
         .expect("got func")
@@ -63,7 +63,11 @@ async fn find_for_context(ctx: &DalContext<'_, '_>) {
     assert_eq!(found.func_id(), *func.id());
 }
 
-async fn fb(ctx: &DalContext<'_, '_>, name: &str, args: serde_json::Value) -> serde_json::Value {
+async fn fb(
+    ctx: &DalContext<'_, '_, '_>,
+    name: &str,
+    args: serde_json::Value,
+) -> serde_json::Value {
     let func = Func::find_by_attr(ctx, "name", &name)
         .await
         .expect("unable to find func")
@@ -77,7 +81,7 @@ async fn fb(ctx: &DalContext<'_, '_>, name: &str, args: serde_json::Value) -> se
 }
 
 #[test]
-async fn resolve(ctx: &DalContext<'_, '_>) {
+async fn resolve(ctx: &DalContext<'_, '_, '_>) {
     let name = "si:poem";
     let func = Func::find_by_attr(ctx, "name", &name)
         .await
@@ -123,7 +127,7 @@ async fn resolve(ctx: &DalContext<'_, '_>) {
 }
 
 #[test]
-async fn run(ctx: &DalContext<'_, '_>) {
+async fn run(ctx: &DalContext<'_, '_, '_>) {
     let name = "si:poem";
     let func = Func::find_by_attr(ctx, "name", &name)
         .await

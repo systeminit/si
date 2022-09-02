@@ -49,7 +49,7 @@ impl JobQueueProcessor for FaktoryProcessor {
     async fn enqueue_job(
         &self,
         job: Box<dyn JobProducer + Send + Sync>,
-        _ctx: &DalContext<'_, '_>,
+        _ctx: &DalContext<'_, '_, '_>,
     ) {
         self.queue.enqueue_job(job).await
     }

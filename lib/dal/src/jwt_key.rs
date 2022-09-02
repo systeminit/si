@@ -131,7 +131,7 @@ impl JwtSecretKey {
 
 #[instrument(skip_all)]
 pub async fn get_jwt_validation_key(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
     jwt_id: impl AsRef<str>,
 ) -> JwtKeyResult<RS256PublicKey> {
     let jwt_id = jwt_id.as_ref();
@@ -156,7 +156,7 @@ pub async fn get_jwt_validation_key(
 
 #[instrument(skip_all)]
 pub async fn validate_bearer_token(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
     bearer_token: impl AsRef<str>,
 ) -> JwtKeyResult<JWTClaims<UserClaim>> {
     let bearer_token = bearer_token.as_ref();
@@ -187,7 +187,7 @@ pub async fn validate_bearer_token(
 
 #[instrument(skip_all)]
 pub async fn validate_bearer_token_api_client(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
     bearer_token: impl AsRef<str>,
 ) -> JwtKeyResult<JWTClaims<ApiClaim>> {
     let bearer_token = bearer_token.as_ref();
@@ -212,7 +212,7 @@ pub async fn validate_bearer_token_api_client(
 
 #[instrument(skip_all)]
 pub async fn get_jwt_signing_key(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
     jwt_secret_key: &JwtSecretKey,
 ) -> JwtKeyResult<RS256KeyPair> {
     let row = ctx

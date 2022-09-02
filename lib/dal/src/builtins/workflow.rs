@@ -3,12 +3,12 @@ use crate::{
     WorkflowPrototypeContext,
 };
 
-pub async fn migrate(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
+pub async fn migrate(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResult<()> {
     poem(ctx).await?;
     Ok(())
 }
 
-async fn poem(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
+async fn poem(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResult<()> {
     let func_name = "si:poem";
     let func = Func::find_by_attr(ctx, "name", &func_name)
         .await?

@@ -83,7 +83,7 @@ impl Secret {
     // `secrets` view
     pub async fn set_name(
         &mut self,
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         value: impl Into<String>,
     ) -> SecretResult<()> {
         let value = value.into();
@@ -202,7 +202,7 @@ impl EncryptedSecret {
     /// Creates a new encypted secret and returns a corresponding [`Secret`] representation.
     #[allow(clippy::too_many_arguments, clippy::new_ret_no_self)]
     pub async fn new(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         name: impl AsRef<str>,
         object_type: SecretObjectType,
         kind: SecretKind,
@@ -260,7 +260,7 @@ impl EncryptedSecret {
 
     /// Decrypts the encrypted secret with its associated [`KeyPair`] and returns a
     /// [`DecryptedSecret`].
-    pub async fn decrypt(self, ctx: &DalContext<'_, '_>) -> SecretResult<DecryptedSecret> {
+    pub async fn decrypt(self, ctx: &DalContext<'_, '_, '_>) -> SecretResult<DecryptedSecret> {
         let key_pair = self
             .key_pair(ctx)
             .await?

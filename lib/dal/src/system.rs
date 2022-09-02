@@ -59,7 +59,7 @@ impl_standard_model! {
 }
 
 impl System {
-    pub async fn new(ctx: &DalContext<'_, '_>, name: impl AsRef<str>) -> SystemResult<Self> {
+    pub async fn new(ctx: &DalContext<'_, '_, '_>, name: impl AsRef<str>) -> SystemResult<Self> {
         let name = name.as_ref();
         let row = ctx
             .txns()
@@ -118,7 +118,7 @@ impl System {
 
     #[instrument(skip_all)]
     pub async fn new_with_node(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         name: impl AsRef<str>,
         workspace_id: &WorkspaceId,
     ) -> SystemResult<(Self, Node)> {
@@ -143,7 +143,7 @@ impl System {
 
     #[instrument(skip_all)]
     pub async fn list_for_workspace(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         wid: &WorkspaceId,
     ) -> SystemResult<LabelList<SystemId>> {
         let system_labels: Vec<_> = Workspace::get_by_id(ctx, wid)

@@ -5,7 +5,7 @@ use dal::{DalContext, DiagramKind};
 use crate::dal::test;
 
 #[test]
-async fn get_node_menu(ctx: &DalContext<'_, '_>) {
+async fn get_node_menu(ctx: &DalContext<'_, '_, '_>) {
     let mut harness = BuiltinsHarness::new();
     let _docker_image_payload = harness
         .create_component(ctx, "valorant", Builtin::DockerImage)

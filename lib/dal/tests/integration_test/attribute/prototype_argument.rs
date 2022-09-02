@@ -12,7 +12,7 @@ use dal::test_harness::create_prop_of_kind_and_set_parent_with_name;
 use pretty_assertions_sorted::assert_eq;
 
 #[test]
-async fn create_and_list_for_attribute_prototype(ctx: &DalContext<'_, '_>) {
+async fn create_and_list_for_attribute_prototype(ctx: &DalContext<'_, '_, '_>) {
     let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
     let (schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
