@@ -18,7 +18,7 @@ overflow hidden */
         {{ gridPointerPos?.x }}, {{ gridPointerPos?.y }}
       </div>
     </div>
-    <DiagramZoomControls :zoom-level="zoomLevel" @update:zoom="setZoom" />
+    <DiagramControls :zoom-level="zoomLevel" @update:zoom="setZoom" />
     <v-stage
       v-if="customFontsLoaded"
       ref="stageRef"
@@ -155,7 +155,7 @@ import {
 } from "./utils/math";
 import DiagramNewEdge from "./DiagramNewEdge.vue";
 import { convertArrowKeyToDirection } from "./utils/keyboard";
-import DiagramZoomControls from "./DiagramZoomControls.vue";
+import DiagramControls from "./DiagramControls.vue";
 
 import { baseConfig } from "./diagram_base_config";
 

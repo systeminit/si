@@ -29,16 +29,22 @@
     <div :class="iconButtonClasses" @click="adjustZoom('up')">
       <Icon name="plus" size="full" />
     </div>
+
+    <div class="ml-4" :class="iconButtonClasses" @click="openHelpModal">
+      <Icon name="help-circle" size="full" />
+    </div>
   </div>
+  <DiagramHelpModal :open="helpModalOpen" @close="helpModalClose" />
 </template>
 
 <script lang="ts" setup>
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import _ from "lodash";
 import { Menu, MenuButton, MenuItems } from "@headlessui/vue";
 import SiDropdown from "@/molecules/SiDropdown.vue";
 import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
 import Icon from "@/ui-lib/Icon.vue";
+import DiagramHelpModal from "./DiagramHelpModal.vue";
 
 const ZOOM_LEVEL_OPTIONS = [25, 50, 100, 150, 200];
 
@@ -59,4 +65,12 @@ const roundedZoomPercent = computed(() => Math.round(props.zoomLevel * 100));
 
 const iconButtonClasses =
   "rounded-full p-1 bg-neutral-600 text-white dark:bg-gray-200 dark:text-black cursor-pointer";
+
+const helpModalOpen = ref(false);
+const openHelpModal = () => {
+  helpModalOpen.value = true;
+};
+const helpModalClose = () => {
+  helpModalOpen.value = false;
+};
 </script>
