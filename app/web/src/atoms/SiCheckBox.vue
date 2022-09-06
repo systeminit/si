@@ -15,8 +15,14 @@
       :disabled="props.disabled"
       :indeterminate.prop="isIndeterminate"
       required
-      class="appearance-none block px-3 py-2 border rounded-sm shadow-sm focus:outline-none sm:text-sm checked:bg-neutral-900 bg-neutral-600 indeterminate:bg-neutral-900"
-      :class="checkBoxClasses"
+      :class="
+        clsx(
+          'appearance-none block px-3 py-2 border rounded-sm shadow-sm focus:outline-none sm:text-sm checked:bg-neutral-900 bg-neutral-600 indeterminate:bg-neutral-900',
+          inError
+            ? 'border-destructive-400 focus:ring-destructive-400 focus:border-destructive-400 checked:border-destructive-400 indeterminate:border-destructive-400'
+            : 'border-neutral-600 focus:ring-action-200 focus:border-action-200 checked:border-neutral-600 indeterminate:border-neutral-600',
+        )
+      "
       @blur="setDirty"
     />
     <div
@@ -50,6 +56,7 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import _ from "lodash";
+import clsx from "clsx";
 import SiValidation, {
   ValidatorArray,
   ErrorsArray,
@@ -113,30 +120,5 @@ const inputValue = computed<boolean | undefined>({
   },
 });
 
-const isIndeterminate = computed(() => {
-  if (_.isUndefined(props.modelValue)) {
-    return true;
-  } else {
-    return false;
-  }
-});
-
-const checkBoxClasses = computed((): Record<string, boolean> => {
-  if (inError.value) {
-    return {
-      "border-destructive-400": true,
-      "focus:ring-destructive-400": true,
-      "focus:border-destructive-400": true,
-      "checked:border-destructive-400": true,
-      "indeterminate:border-destructive-400": true,
-    };
-  }
-  return {
-    "border-neutral-600": true,
-    "focus:ring-action-200": true,
-    "focus:border-action-200": true,
-    "checked:border-neutral-600": true,
-    "indeterminate:border-neutral-600": true,
-  };
-});
+const isIndeterminate = computed(() => _.isUndefined(props.modelValue));
 </script>
