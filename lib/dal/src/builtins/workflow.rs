@@ -10,7 +10,7 @@ pub async fn migrate(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResult<()> {
 }
 
 async fn poem(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResult<()> {
-    let func_name = "si:poem";
+    let func_name = "si:poemWorkflow";
     let func = Func::find_by_attr(ctx, "name", &func_name)
         .await?
         .pop()
@@ -28,7 +28,7 @@ async fn poem(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResult<()> {
 }
 
 async fn failure(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResult<()> {
-    let func_name = "si:failure";
+    let func_name = "si:failureWorkflow";
     let func = Func::find_by_attr(ctx, "name", &func_name)
         .await?
         .pop()

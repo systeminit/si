@@ -1,5 +1,4 @@
 {
-  "name": "poem",
   "kind": "JsWorkflow",
   "response_type": "Workflow",
   "code_file": "poemWorkflow.js",

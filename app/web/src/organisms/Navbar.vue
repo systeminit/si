@@ -4,11 +4,7 @@
       <div class="flex items-center h-16">
         <!-- Left side -->
         <div class="flex items-center justify-center place-items-center h-full">
-          <img
-            class="block h-11 w-11 my-2 mr-2 bg-black"
-            :src="SiLogoWts"
-            alt="SI Logo"
-          />
+          <img class="block h-11 w-11 my-2 mr-2" :src="logo" alt="SI Logo" />
 
           <SiBarButton tooltip-text="Workspaces">
             <template #default="{ hovered, open }">
@@ -22,9 +18,9 @@
             </template>
 
             <template #dropdownContent>
-              <SiDropdownItem checked class="text-sm">{{
-                selectedWorkspaceName
-              }}</SiDropdownItem>
+              <SiDropdownItem checked class="text-sm">
+                {{ selectedWorkspaceName }}
+              </SiDropdownItem>
             </template>
           </SiBarButton>
         </div>
@@ -43,6 +39,7 @@
 import { refFrom } from "vuse-rx";
 import { computed } from "vue";
 import SiLogoWts from "@/assets/images/si-logo-wts.svg?url";
+import SiLogoWtsDev from "@/assets/images/si-logo-wts-dev.svg?url";
 import { WorkspaceService } from "@/service/workspace";
 import { Workspace } from "@/api/sdf/dal/workspace";
 import NavbarPanelRight from "@/organisms/NavbarPanelRight.vue";
@@ -50,6 +47,10 @@ import NavbarPanelCenter from "@/organisms/NavbarPanelCenter.vue";
 import SiDropdownItem from "@/atoms/SiDropdownItem.vue";
 import SiBarButton from "@/molecules/SiBarButton.vue";
 import SiArrow from "@/atoms/SiArrow.vue";
+
+const isDevMode = import.meta.env.DEV;
+
+const logo = computed(() => (isDevMode ? SiLogoWtsDev : SiLogoWts));
 
 const workspace = refFrom<Workspace | null>(
   WorkspaceService.currentWorkspace(),

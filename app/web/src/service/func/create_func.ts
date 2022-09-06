@@ -13,6 +13,7 @@ export const nullFunc: CreateFuncResponse = {
   kind: FuncBackendKind.Unset,
   name: "",
   code: undefined,
+  isBuiltin: false,
 };
 
 export const createFunc: () => Promise<CreateFuncResponse> = async () => {

@@ -222,7 +222,7 @@ async fn kubernetes_namespace(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResult<()
     context.schema_id = *schema.id();
     context.schema_variant_id = *variant.id();
     let title = "What Is Love";
-    let func_name = "si:whatIsLove";
+    let func_name = "si:whatIsLoveWorkflow";
     let func = Func::find_by_attr(ctx, "name", &func_name)
         .await?
         .pop()

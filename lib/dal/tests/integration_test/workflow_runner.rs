@@ -12,11 +12,13 @@ use pretty_assertions_sorted::assert_eq;
 
 #[test]
 async fn new(ctx: &DalContext<'_, '_, '_>) {
-    let func_name = "si:poem".to_string();
+    let func_name = "si:poemWorkflow".to_string();
     let mut funcs = Func::find_by_attr(ctx, "name", &func_name)
         .await
         .expect("Error fetching builtin function");
-    let func = funcs.pop().expect("Missing builtin function si:poem");
+    let func = funcs
+        .pop()
+        .expect("Missing builtin function si:poemWorkflow");
 
     let args = FuncBackendJsWorkflowArgs;
     let func_binding = FuncBinding::new(
@@ -47,11 +49,13 @@ async fn new(ctx: &DalContext<'_, '_, '_>) {
 
 #[test]
 async fn find_for_prototype(ctx: &DalContext<'_, '_, '_>) {
-    let func_name = "si:poem".to_string();
+    let func_name = "si:poemWorkflow".to_string();
     let mut funcs = Func::find_by_attr(ctx, "name", &func_name)
         .await
         .expect("Error fetching builtin function");
-    let func = funcs.pop().expect("Missing builtin function si:poem");
+    let func = funcs
+        .pop()
+        .expect("Missing builtin function si:poemWorkflow");
 
     let args = FuncBackendJsWorkflowArgs;
     let func_binding = FuncBinding::new(
@@ -93,7 +97,7 @@ async fn find_for_prototype(ctx: &DalContext<'_, '_, '_>) {
 
 #[test]
 async fn run(ctx: &DalContext<'_, '_, '_>) {
-    let name = "si:poem";
+    let name = "si:poemWorkflow";
     let func = Func::find_by_attr(ctx, "name", &name)
         .await
         .expect("unable to find func")
@@ -118,7 +122,7 @@ async fn run(ctx: &DalContext<'_, '_, '_>) {
 
 #[test]
 async fn fail(ctx: &DalContext<'_, '_, '_>) {
-    let name = "si:failure";
+    let name = "si:failureWorkflow";
     let func = Func::find_by_attr(ctx, "name", &name)
         .await
         .expect("unable to find func")

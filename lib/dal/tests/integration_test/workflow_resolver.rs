@@ -1,19 +1,21 @@
-use dal::DalContext;
-
-use crate::dal::test;
 use dal::func::backend::js_workflow::FuncBackendJsWorkflowArgs;
+use dal::DalContext;
 use dal::{
     func::binding::FuncBinding, workflow_resolver::WorkflowResolverContext, Func, StandardModel,
     WorkflowPrototypeId, WorkflowResolver,
 };
 
+use crate::dal::test;
+
 #[test]
 async fn new(ctx: &DalContext<'_, '_, '_>) {
-    let func_name = "si:poem".to_string();
+    let func_name = "si:poemWorkflow".to_string();
     let mut funcs = Func::find_by_attr(ctx, "name", &func_name)
         .await
         .expect("Error fetching builtin function");
-    let func = funcs.pop().expect("Missing builtin function si:poem");
+    let func = funcs
+        .pop()
+        .expect("Missing builtin function si:poemWorkflow");
 
     let args = FuncBackendJsWorkflowArgs;
     let func_binding = FuncBinding::new(
@@ -43,11 +45,13 @@ async fn new(ctx: &DalContext<'_, '_, '_>) {
 
 #[test]
 async fn find_for_prototype(ctx: &DalContext<'_, '_, '_>) {
-    let func_name = "si:poem".to_string();
+    let func_name = "si:poemWorkflow".to_string();
     let mut funcs = Func::find_by_attr(ctx, "name", &func_name)
         .await
         .expect("Error fetching builtin function");
-    let func = funcs.pop().expect("Missing builtin function si:poem");
+    let func = funcs
+        .pop()
+        .expect("Missing builtin function si:poemWorkflow");
 
     let args = FuncBackendJsWorkflowArgs;
     let func_binding = FuncBinding::new(

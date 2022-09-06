@@ -1,6 +1,6 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg width="231px" height="230px" viewBox="0 0 231 230" version="1.1" xmlns="http://www.w3.org/2000/svg"
->
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="231px" height="230px"
+     viewBox="0 0 231 230" version="1.1" style="zoom: 1;">
     <title>si-logo-web white transparent small</title>
     <g id="Logo-Current" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
         <g id="si-logo-web-white-transparent-small" transform="translate(7.050000, 7.000000)">
@@ -10,4 +10,8 @@
                   id="SI" fill="#FFFFFF"/>
         </g>
     </g>
+    <text stroke="none" style="outline-style: none;" id="text1" stroke-width="1px" x="200px"
+          text-rendering="geometricPrecision" font-family="AmericanTypewriter" fill="#FF0000" font-size="56px" y="190px"
+          transform="rotate(-45,200,190)" text-anchor="middle">DEV
+    </text>
 </svg>
