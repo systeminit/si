@@ -2,9 +2,9 @@ use super::{FuncError, FuncResult};
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::Json;
 use dal::{
-    qualification_prototype::QualificationPrototypeContextField, ComponentId, Func,
-    FuncBackendKind, FuncId, QualificationPrototype, SchemaVariantId, StandardModel, Visibility,
-    WsEvent,
+    qualification_prototype::QualificationPrototypeContextField, AttributePrototype, ComponentId,
+    DalContext, Func, FuncBackendKind, FuncId, QualificationPrototype, SchemaVariantId,
+    StandardModel, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 
@@ -13,7 +13,6 @@ use serde::{Deserialize, Serialize};
 pub struct SaveFuncRequest {
     pub id: FuncId,
     pub handler: Option<String>,
-    pub kind: FuncBackendKind,
     pub name: String,
     pub description: Option<String>,
     pub code: Option<String>,
@@ -27,6 +26,30 @@ pub struct SaveFuncRequest {
 #[serde(rename_all = "camelCase")]
 pub struct SaveFuncResponse {
     pub success: bool,
+}
+
+async fn update_values_for_func(ctx: &DalContext<'_, '_, '_>, func: &Func) -> FuncResult<()> {
+    let prototypes = AttributePrototype::find_for_func(ctx, func.id()).await?;
+    for proto in prototypes {
+        for value in proto.attribute_values(ctx).await? {
+            let maybe_parent_value_id = value
+                .parent_attribute_value(ctx)
+                .await?
+                .map(|pav| *pav.id());
+
+            super::update_attribute_value_by_func_for_context(
+                ctx,
+                *value.id(),
+                maybe_parent_value_id,
+                func,
+                value.context,
+                false,
+            )
+            .await?;
+        }
+    }
+
+    Ok(())
 }
 
 pub async fn save_func(
@@ -52,28 +75,35 @@ pub async fn save_func(
     func.set_display_name(&ctx, Some(request.name)).await?;
     func.set_description(&ctx, request.description).await?;
     func.set_handler(&ctx, request.handler).await?;
-    func.set_backend_kind(&ctx, request.kind).await?;
     func.set_code_plaintext(&ctx, request.code.as_deref())
         .await?;
-    func.set_backend_response_type(&ctx, request.kind).await?;
 
-    let mut associations: Vec<QualificationPrototypeContextField> = vec![];
-    associations.append(
-        &mut request
-            .schema_variants
-            .iter()
-            .map(|f| (*f).into())
-            .collect(),
-    );
-    associations.append(&mut request.components.iter().map(|f| (*f).into()).collect());
+    match func.backend_kind() {
+        FuncBackendKind::JsQualification => {
+            let mut associations: Vec<QualificationPrototypeContextField> = vec![];
+            associations.append(
+                &mut request
+                    .schema_variants
+                    .iter()
+                    .map(|f| (*f).into())
+                    .collect(),
+            );
+            associations.append(&mut request.components.iter().map(|f| (*f).into()).collect());
 
-    if !associations.is_empty() {
-        let _ = QualificationPrototype::associate_prototypes_with_func_and_objects(
-            &ctx,
-            func.id(),
-            &associations,
-        )
-        .await?;
+            if !associations.is_empty() {
+                let _ = QualificationPrototype::associate_prototypes_with_func_and_objects(
+                    &ctx,
+                    func.id(),
+                    &associations,
+                )
+                .await?;
+            }
+        }
+        // Rexecute the function for every prototype it is defined on
+        FuncBackendKind::JsAttribute => {
+            update_values_for_func(&ctx, &func).await?;
+        }
+        _ => {}
     }
 
     WsEvent::change_set_written(&ctx).publish(&ctx).await?;

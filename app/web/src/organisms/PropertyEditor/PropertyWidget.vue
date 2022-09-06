@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col" @keyup.stop @keydown.stop>
+  <div class="flex flex-row items-center pr-4 pb-2" @keyup.stop @keydown.stop>
     <WidgetHeader
       v-if="showArrayElementHeader"
       :name="props.schemaProp.name"
@@ -21,7 +21,7 @@
       :name="props.schemaProp.name"
       :path="path"
       :collapsed-paths="props.collapsedPaths"
-      :disabled="props.disabled"
+      :disabled="disabled"
       :prop-id="props.propValue.propId"
       :value-id="props.propValue.id"
       :array-length="props.arrayLength"
@@ -33,7 +33,7 @@
       :name="props.schemaProp.name"
       :path="path"
       :collapsed-paths="props.collapsedPaths"
-      :disabled="props.disabled"
+      :disabled="disabled"
       :prop-id="props.propValue.propId"
       :value-id="props.propValue.id"
       :array-length="props.arrayLength"
@@ -51,7 +51,8 @@
       :prop-kind="props.schemaProp.kind"
       :doc-link="props.schemaProp.docLink"
       :validation="props.validation"
-      :disabled="props.disabled"
+      :disabled="disabled"
+      :func="props.propValue.func"
       class="py-4 px-8"
       @updated-property="updatedProperty($event)"
     />
@@ -65,7 +66,7 @@
       :value-id="props.propValue.id"
       :doc-link="props.schemaProp.docLink"
       :validation="props.validation"
-      :disabled="props.disabled"
+      :disabled="disabled"
       class="py-4 px-8"
       @updated-property="updatedProperty($event)"
     />
@@ -80,9 +81,16 @@
       :value-id="props.propValue.id"
       :doc-link="props.schemaProp.docLink"
       :validation="props.validation"
-      :disabled="props.disabled"
+      :disabled="disabled"
       class="py-4 px-8"
       @updated-property="updatedProperty($event)"
+    />
+    <!-- restricting to text props for now -->
+    <WidgetFuncButton
+      v-if="!props.isFirstProp"
+      :func="props.propValue.func"
+      :value-id="props.propValue.id"
+      @create-attribute-func="createAttributeFunc"
     />
     <!--<div v-else>
       <div class="flex">
@@ -110,13 +118,16 @@ import {
   AddToArray,
   AddToMap,
   PropertyPath,
+  FuncWithPrototypeContext,
 } from "@/api/sdf/dal/property_editor";
+import { isCustomizableFuncKind } from "@/api/sdf/dal/func";
 import WidgetHeader from "./WidgetHeader.vue";
 import WidgetTextBox from "./WidgetTextBox.vue";
 import WidgetCheckBox from "./WidgetCheckBox.vue";
 import WidgetSelectBox from "./WidgetSelectBox.vue";
 import WidgetArray from "./WidgetArray.vue";
 import WidgetMap from "./WidgetMap.vue";
+import WidgetFuncButton from "./WidgetFuncButton.vue";
 
 const props = defineProps<{
   schemaProp: PropertyEditorProp;
@@ -127,6 +138,7 @@ const props = defineProps<{
   disabled?: boolean;
   arrayIndex?: number;
   arrayLength?: number;
+  isFirstProp?: boolean;
 }>();
 
 const emits = defineEmits<{
@@ -134,7 +146,18 @@ const emits = defineEmits<{
   (e: "updatedProperty", v: UpdatedProperty): void;
   (e: "addToArray", v: AddToArray): void;
   (e: "addToMap", v: AddToMap): void;
+  (
+    e: "createAttributeFunc",
+    currentFunc: FuncWithPrototypeContext,
+    v: number,
+  ): void;
 }>();
+
+// If we have a custom func attached, don't allow them to set the attribute
+const disabled = computed(
+  () =>
+    props.disabled || isCustomizableFuncKind(props.propValue.func.backendKind),
+);
 
 const { arrayIndex } = toRefs(props);
 
@@ -153,6 +176,11 @@ const addToArray = (event: AddToArray) => {
 const addToMap = (event: AddToMap) => {
   emits("addToMap", event);
 };
+
+const createAttributeFunc = (
+  currentFunc: FuncWithPrototypeContext,
+  valueId: number,
+) => emits("createAttributeFunc", currentFunc, valueId);
 
 const showArrayElementHeader = computed(() => {
   if (_.isUndefined(arrayIndex?.value) && _.isNull(props.propValue.key)) {

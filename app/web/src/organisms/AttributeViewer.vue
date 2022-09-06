@@ -46,6 +46,7 @@
       @updated-property="updateProperty($event)"
       @add-to-array="addToArray($event)"
       @add-to-map="addToMap($event)"
+      @create-attribute-func="createAttributeFunc"
     />
 
     <!--
@@ -63,8 +64,10 @@ import { toRefs, computed } from "vue";
 import { fromRef, refFrom, untilUnmounted } from "vuse-rx";
 import _, { parseInt } from "lodash";
 import { tag } from "rxjs-spy/operators";
-import { combineLatest, forkJoin, from, map, take } from "rxjs";
+import { combineLatest, forkJoin, from, map, take, firstValueFrom } from "rxjs";
 import { switchMap } from "rxjs/operators";
+
+import { FuncService } from "@/service/func";
 import { GlobalErrorService } from "@/service/global_error";
 import { ResourceHealth } from "@/api/sdf/dal/resource";
 import { ComponentIdentification } from "@/api/sdf/dal/component";
@@ -79,19 +82,25 @@ import {
   UpdatedProperty,
   AddToArray,
   AddToMap,
+  FuncWithPrototypeContext,
 } from "@/api/sdf/dal/property_editor";
 import { ComponentService } from "@/service/component";
 import { SystemService } from "@/service/system";
 import { standardVisibilityTriggers$ } from "@/observable/visibility";
 import Icon from "@/ui-lib/Icon.vue";
+import { eventChangeSetWritten$ } from "@/observable/change_set";
+import { FuncBackendKind } from "@/api/sdf/dal/func";
+import { useRouteToFunc } from "@/utils/useRouteToFunc";
 import PropertyEditor, { PropertyEditorContext } from "./PropertyEditor.vue";
 
 // TODO(nick): we technically only need one prop. We're sticking with two to not mess
-// with the reactivity guarentees in place.
+// with the reactivity guarantees in place.
 const props = defineProps<{
   componentId: number;
   componentIdentification: ComponentIdentification;
 }>();
+
+const routeToFunc = useRouteToFunc();
 
 const { componentId, componentIdentification } = toRefs(props);
 
@@ -323,6 +332,28 @@ const addToMap = (event: AddToMap) => {
       GlobalErrorService.set(result);
     }
   });
+};
+
+const createAttributeFunc = async (
+  currentFunc: FuncWithPrototypeContext,
+  valueId: number,
+  parentValueId?: number,
+) => {
+  const newFunc = await FuncService.createFunc({
+    kind: FuncBackendKind.JsAttribute,
+    options: {
+      valueId,
+      parentValueId,
+      componentId: props.componentId,
+      schemaVariantId: props.componentIdentification.schemaVariantId,
+      schemaId: props.componentIdentification.schemaId,
+      currentFuncId: currentFunc.id,
+      type: "attributeOptions",
+    },
+  });
+
+  await firstValueFrom(eventChangeSetWritten$);
+  await routeToFunc(newFunc.id);
 };
 
 const hackAwayTheZeroElementOfContainers = (

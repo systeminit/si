@@ -67,21 +67,29 @@ BEGIN
                                  ON
                                              attribute_values.id = avbtav.object_id
                                          AND in_tenancy_and_visible_v1(this_tenancy, this_visibility, avbtav)
-                       LEFT JOIN attribute_value_belongs_to_attribute_prototype AS avbtap ON
-                          attribute_values.id = avbtap.object_id
-                      AND in_tenancy_and_visible_v1(this_tenancy, this_visibility, avbtap)
-                       LEFT JOIN attribute_prototypes ON
-                          avbtap.belongs_to_id = attribute_prototypes.id
-                      AND in_tenancy_and_visible_v1(this_tenancy, this_visibility, attribute_prototypes)
-                       LEFT JOIN funcs ON
-                          attribute_prototypes.func_id = funcs.id
-                      AND in_tenancy_and_visible_v1(this_tenancy, this_visibility, funcs)
-                       INNER JOIN props ON
-                          attribute_values.attribute_context_prop_id = props.id
-                      AND in_tenancy_and_visible_v1(this_tenancy, this_visibility, props)
-                       INNER JOIN func_binding_return_values ON
-                          func_binding_return_values.id = attribute_values.func_binding_return_value_id
-                      AND in_tenancy_and_visible_v1(this_tenancy, this_visibility, func_binding_return_values)
+                       INNER JOIN attribute_value_belongs_to_attribute_prototype AS avbtap
+                                  ON
+                                              avbtap.object_id = attribute_values.id
+                                          AND in_tenancy_and_visible_v1(this_tenancy, this_visibility, avbtap)
+                       INNER JOIN attribute_prototypes
+                                  ON
+                                              avbtap.belongs_to_id = attribute_prototypes.id
+                                          AND in_tenancy_and_visible_v1(this_tenancy, this_visibility,
+                                                                        attribute_prototypes)
+                       INNER JOIN funcs
+                                  ON
+                                              attribute_prototypes.func_id = funcs.id
+                                          AND in_tenancy_and_visible_v1(this_tenancy, this_visibility, funcs)
+                       INNER JOIN props
+                                  ON
+                                              attribute_values.attribute_context_prop_id = props.id
+                                          AND in_tenancy_and_visible_v1(this_tenancy, this_visibility, props)
+                       INNER JOIN func_binding_return_values
+                                  ON
+                                              func_binding_return_values.id =
+                                              attribute_values.func_binding_return_value_id
+                                          AND in_tenancy_and_visible_v1(this_tenancy, this_visibility,
+                                                                        func_binding_return_values)
               WHERE in_tenancy_and_visible_v1(this_tenancy
                   , this_visibility
                   , attribute_values)
@@ -106,8 +114,8 @@ BEGIN
                       AND in_tenancy_and_visible_v1(this_tenancy, this_visibility, avbtav)
               WHERE in_attribute_context_v1(this_context, attribute_values)
                 AND avbtav.belongs_to_id = ANY (parent_attribute_value_ids)
-              ORDER BY avbtav.belongs_to_id,
-                       attribute_values.attribute_context_prop_id,
+              ORDER BY avbtav.belongs_to_id DESC,
+                       attribute_values.attribute_context_prop_id DESC,
                        COALESCE(avbtav.belongs_to_id, -1),
                        COALESCE(attribute_values.key, ''),
                        attribute_values.visibility_change_set_pk DESC,
@@ -151,24 +159,33 @@ BEGIN
                                                                attribute_prototypes.attribute_context_system_id
                                                                ) AS func_with_attribute_prototype_context)) AS func_with_prototype_context
                   FROM attribute_values
-                           LEFT JOIN attribute_value_belongs_to_attribute_value AS avbtav ON
-                              attribute_values.id = avbtav.object_id
-                          AND in_tenancy_and_visible_v1(this_tenancy, this_visibility, avbtav)
-                           LEFT JOIN attribute_value_belongs_to_attribute_prototype AS avbtap ON
-                              attribute_values.id = avbtap.object_id
-                          AND in_tenancy_and_visible_v1(this_tenancy, this_visibility, avbtap)
-                           LEFT JOIN attribute_prototypes ON
-                              avbtap.belongs_to_id = attribute_prototypes.id
-                          AND in_tenancy_and_visible_v1(this_tenancy, this_visibility, attribute_prototypes)
-                           LEFT JOIN funcs ON
-                              attribute_prototypes.func_id = funcs.id
-                          AND in_tenancy_and_visible_v1(this_tenancy, this_visibility, funcs)
-                           INNER JOIN props ON
-                              attribute_values.attribute_context_prop_id = props.id
-                          AND in_tenancy_and_visible_v1(this_tenancy, this_visibility, props)
-                           INNER JOIN func_binding_return_values ON
-                              func_binding_return_values.id = attribute_values.func_binding_return_value_id
-                          AND in_tenancy_and_visible_v1(this_tenancy, this_visibility, func_binding_return_values)
+                           LEFT JOIN attribute_value_belongs_to_attribute_value AS avbtav
+                                     ON
+                                                 attribute_values.id = avbtav.object_id
+                                             AND in_tenancy_and_visible_v1(this_tenancy, this_visibility, avbtav)
+                           INNER JOIN attribute_value_belongs_to_attribute_prototype AS avbtap
+                                      ON
+                                                  attribute_values.id = avbtap.object_id
+                                              AND in_tenancy_and_visible_v1(this_tenancy, this_visibility, avbtap)
+                           INNER JOIN attribute_prototypes
+                                      ON
+                                                  avbtap.belongs_to_id = attribute_prototypes.id
+                                              AND in_tenancy_and_visible_v1(this_tenancy, this_visibility,
+                                                                            attribute_prototypes)
+                           INNER JOIN funcs
+                                      ON
+                                                  attribute_prototypes.func_id = funcs.id
+                                              AND in_tenancy_and_visible_v1(this_tenancy, this_visibility, funcs)
+                           INNER JOIN props
+                                      ON
+                                                  attribute_values.attribute_context_prop_id = props.id
+                                              AND in_tenancy_and_visible_v1(this_tenancy, this_visibility, props)
+                           INNER JOIN func_binding_return_values
+                                      ON
+                                                  func_binding_return_values.id =
+                                                  attribute_values.func_binding_return_value_id
+                                              AND in_tenancy_and_visible_v1(this_tenancy, this_visibility,
+                                                                            func_binding_return_values)
                   WHERE attribute_values.id = ANY (new_child_attribute_value_ids)
                     AND in_tenancy_and_visible_v1(this_tenancy, this_visibility, attribute_values)
                   ORDER BY attribute_values.id,
@@ -177,6 +194,10 @@ BEGIN
 
         -- Prime parent_attribute_value_ids with the child IDs we just found, so
         -- we can look for their children.
+
+--        RAISE LOG 'parent_attribute_value_ids: %',parent_attribute_value_ids;
+--        RAISE LOG 'new_child_attribute_value_ids: %',new_child_attribute_value_ids;
+
         parent_attribute_value_ids := new_child_attribute_value_ids;
     END LOOP;
 END;

@@ -189,18 +189,26 @@ pub enum AttributeValueError {
 
 /// This is the function that set the attribute value, along with the context which
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
-#[serde(rename(serialize = "camelCase"))]
 pub struct FuncWithPrototypeContext {
     id: FuncId,
     name: String,
+    #[serde(rename(serialize = "displayName"))]
     display_name: Option<String>,
+    #[serde(rename(serialize = "backendKind"))]
     backend_kind: FuncBackendKind,
+    #[serde(rename(serialize = "backendResponseType"))]
     backend_response_type: FuncBackendResponseType,
+    #[serde(rename(serialize = "isBuiltin"))]
     is_builtin: bool,
+    #[serde(rename(serialize = "attributePrototypeId"))]
     attribute_prototype_id: AttributePrototypeId,
+    #[serde(rename(serialize = "attributeContextSchemaId"))]
     attribute_context_schema_id: SchemaId,
+    #[serde(rename(serialize = "attributeContextSchemaVariantId"))]
     attribute_context_schema_variant_id: SchemaVariantId,
+    #[serde(rename(serialize = "attributeContextComponentId"))]
     attribute_context_component_id: ComponentId,
+    #[serde(rename(serialize = "attributeContextSchemaId"))]
     attribute_context_system_id: SystemId,
 }
 

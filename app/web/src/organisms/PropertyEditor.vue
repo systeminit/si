@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col w-full h-full pb-5">
     <div
-      v-for="pv in propertyValuesInOrder"
+      v-for="(pv, index) in propertyValuesInOrder"
       :key="pv.id"
       class="flex flex-col w-full"
     >
@@ -15,10 +15,12 @@
         :disabled="disabled"
         :array-index="arrayIndex[pv.id]"
         :array-length="arrayLength[pv.propId]"
+        :is-first-prop="index === 0"
         @toggle-collapsed="toggleCollapsed($event)"
         @updated-property="updatedProperty($event)"
         @add-to-array="addToArray($event)"
         @add-to-map="addToMap($event)"
+        @create-attribute-func="createAttributeFunc"
       />
     </div>
   </div>
@@ -42,6 +44,7 @@ import {
   AddToArray,
   AddToMap,
   PropertyPath,
+  FuncWithPrototypeContext,
 } from "@/api/sdf/dal/property_editor";
 import PropertyWidget from "./PropertyEditor/PropertyWidget.vue";
 
@@ -50,7 +53,6 @@ export interface PropertyEditorContext {
   values: PropertyEditorValues;
   validations: PropertyEditorValidations;
 }
-
 const props = defineProps<{
   editorContext: PropertyEditorContext;
 }>();
@@ -59,6 +61,12 @@ const emits = defineEmits<{
   (e: "updatedProperty", v: UpdatedProperty): void;
   (e: "addToArray", v: AddToArray): void;
   (e: "addToMap", v: AddToMap): void;
+  (
+    e: "createAttributeFunc",
+    currentFunc: FuncWithPrototypeContext,
+    valueId: number,
+    parentValueId?: number,
+  ): void;
 }>();
 
 const disabled = refFrom<boolean>(
@@ -363,4 +371,15 @@ const arrayLength = computed(() => {
   }
   return result;
 });
+
+const createAttributeFunc = (
+  currentFunc: FuncWithPrototypeContext,
+  valueId: number,
+) =>
+  emits(
+    "createAttributeFunc",
+    currentFunc,
+    valueId,
+    findParentValue(valueId)?.id,
+  );
 </script>

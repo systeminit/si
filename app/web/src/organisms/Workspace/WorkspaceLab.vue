@@ -46,7 +46,6 @@
 
 <script lang="ts" setup>
 import { computed, ref } from "vue";
-import { useRoute, useRouter } from "vue-router";
 import { bufferTime } from "rxjs/operators";
 import { firstValueFrom } from "rxjs";
 import SiPanel from "@/atoms/SiPanel.vue";
@@ -61,6 +60,7 @@ import { visibility$ } from "@/observable/visibility";
 import { saveFuncToBackend$ } from "@/observable/func";
 import { eventChangeSetWritten$ } from "@/observable/change_set";
 import { FuncBackendKind } from "@/api/sdf/dal/func";
+import { useRouteToFunc } from "@/utils/useRouteToFunc";
 import { clearFuncs } from "../FuncEditor/func_state";
 
 const props = defineProps<{ funcId?: string }>();
@@ -74,17 +74,9 @@ const selectedFuncId = computed(() => {
   return funcId;
 });
 
-const router = useRouter();
-const route = useRoute();
-
-const routeToFunction = (funcId?: number) => {
-  const newRoute = `/w/${route.params.workspaceId}/l/${funcId ?? ""}`;
-  console.log("rtf", newRoute);
-  router.push(newRoute);
-};
-
+const routeToFunc = useRouteToFunc();
 const selectFunc = (func: ListedFuncView) => {
-  routeToFunction(func.id);
+  routeToFunc(func.id);
 };
 
 const isLoading = ref(true);

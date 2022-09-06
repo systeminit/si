@@ -15,7 +15,6 @@ use si_data::{NatsError, PgError};
 use telemetry::prelude::*;
 use thiserror::Error;
 
-use crate::func::binding_return_value::FuncBindingReturnValueError;
 use crate::{
     attribute::{
         context::{AttributeContext, AttributeContextError},
@@ -24,7 +23,7 @@ use crate::{
     func::FuncId,
     func::{
         binding::{FuncBindingError, FuncBindingId},
-        binding_return_value::FuncBindingReturnValueId,
+        binding_return_value::{FuncBindingReturnValueError, FuncBindingReturnValueId},
     },
     impl_standard_model, pk, standard_model, standard_model_accessor, standard_model_has_many,
     AttributePrototypeArgument, AttributePrototypeArgumentError, AttributeReadContext, ComponentId,
@@ -45,6 +44,7 @@ const LIST_FROM_INTERNAL_PROVIDER_USE: &str =
 const LIST_FOR_CONTEXT: &str = include_str!("../queries/attribute_prototype_list_for_context.sql");
 const FIND_WITH_PARENT_VALUE_AND_KEY_FOR_CONTEXT: &str =
     include_str!("../queries/attribute_prototype_find_with_parent_value_and_key_for_context.sql");
+const FIND_FOR_FUNC: &str = include_str!("../queries/attribute_prototype_find_for_func.sql");
 
 #[derive(Error, Debug)]
 pub enum AttributePrototypeError {
@@ -97,6 +97,8 @@ pub enum AttributePrototypeError {
     LeastSpecificContextPrototypeRemovalNotAllowed(AttributePrototypeId),
     #[error("cannot remove value with a least-specific context: {0}")]
     LeastSpecificContextValueRemovalNotAllowed(AttributeValueId),
+    #[error("unable to construct component view for attribute function execution")]
+    ComponentView,
 }
 
 pub type AttributePrototypeResult<T> = Result<T, AttributePrototypeError>;
@@ -616,5 +618,21 @@ impl AttributePrototype {
         attribute_prototype.set_func_id(ctx, func_id).await?;
 
         Ok(*attribute_prototype.id())
+    }
+
+    pub async fn find_for_func(
+        ctx: &DalContext<'_, '_, '_>,
+        func_id: &FuncId,
+    ) -> AttributePrototypeResult<Vec<Self>> {
+        let rows = ctx
+            .txns()
+            .pg()
+            .query(
+                FIND_FOR_FUNC,
+                &[ctx.read_tenancy(), ctx.visibility(), func_id],
+            )
+            .await?;
+
+        Ok(standard_model::objects_from_rows(rows)?)
     }
 }

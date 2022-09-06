@@ -35,7 +35,6 @@
                   <FuncSkeleton />
 
                   {{ kindName }}
-                  {{ kind }}
                 </MenuItem>
               </MenuItems>
             </div>

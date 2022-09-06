@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 CREATE OR REPLACE FUNCTION attribute_value_id_for_prop_and_context_v1(this_tenancy jsonb, this_visibility jsonb,
                                                                       this_context jsonb, this_prop_id bigint)
     RETURNS bigint

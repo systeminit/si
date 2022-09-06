@@ -7,6 +7,21 @@ import { visibility$ } from "@/observable/visibility";
 
 export type CreateFuncResponse = Func;
 
+export interface AttributeOptions {
+  type: "attributeOptions";
+  valueId: number;
+  parentValueId?: number;
+  componentId: number;
+  schemaVariantId: number;
+  schemaId: number;
+  currentFuncId: number;
+}
+
+export interface CreateFuncRequest {
+  kind: FuncBackendKind;
+  options?: AttributeOptions;
+}
+
 export const nullFunc: CreateFuncResponse = {
   id: 0,
   handler: "",
@@ -15,12 +30,15 @@ export const nullFunc: CreateFuncResponse = {
   code: undefined,
 };
 
-export const createFunc: () => Promise<CreateFuncResponse> = async () => {
+export const createFunc: (
+  args: CreateFuncRequest,
+) => Promise<CreateFuncResponse> = async (args) => {
   const visibility = await firstValueFrom(visibility$);
   const bottle = Bottle.pop("default");
   const sdf: SDF = bottle.container.SDF;
   const response = await firstValueFrom(
     sdf.post<ApiResponse<CreateFuncResponse>>("func/create_func", {
+      ...args,
       ...visibility,
     }),
   );
