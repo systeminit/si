@@ -1,13 +1,15 @@
 use axum::Json;
+use serde::{Deserialize, Serialize};
+
 use dal::{
     ComponentId, Func, FuncBackendKind, FuncId, HistoryActor, ReadTenancy, SchemaVariantId,
     StandardModel, Visibility, WriteTenancy, WsEvent,
 };
-use serde::{Deserialize, Serialize};
+
+use crate::server::extract::{AccessBuilder, HandlerContext};
+use crate::service::dev::DevError;
 
 use super::DevResult;
-use crate::server::extract::HandlerContext;
-use crate::service::dev::DevError;
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -32,6 +34,7 @@ pub struct SaveBuiltinFuncResponse {
 
 pub async fn save_builtin_func(
     HandlerContext(builder, mut txns): HandlerContext,
+    AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<SaveBuiltinFuncRequest>,
 ) -> DevResult<Json<SaveBuiltinFuncResponse>> {
     let txns = txns.start().await?;
@@ -56,7 +59,11 @@ pub async fn save_builtin_func(
 
     dal::builtins::func::persist(&func).await?;
 
-    WsEvent::change_set_written(&ctx).publish(&ctx).await?;
+    let acct_ctx = builder.build(request_ctx.build(request.visibility), &txns);
+    WsEvent::change_set_written(&acct_ctx)
+        .publish(&acct_ctx)
+        .await?;
+
     txns.commit().await?;
 
     Ok(Json(SaveBuiltinFuncResponse { success: true }))

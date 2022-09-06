@@ -49,6 +49,7 @@ import { computed, ref } from "vue";
 import { untilUnmounted } from "vuse-rx/src";
 import { bufferTime } from "rxjs/operators";
 import { firstValueFrom } from "rxjs";
+import _ from "lodash";
 import SiPanel from "@/atoms/SiPanel.vue";
 import ChangeSetPanel from "@/organisms/ChangeSetPanel.vue";
 import FuncPicker from "@/organisms/FuncEditor/FuncPicker.vue";
@@ -62,7 +63,10 @@ import { saveFuncToBackend$ } from "@/observable/func";
 import { eventChangeSetWritten$ } from "@/observable/change_set";
 import { FuncBackendKind } from "@/api/sdf/dal/func";
 import { useRouteToFunc } from "@/utils/useRouteToFunc";
+import { DevService } from "@/service/dev";
 import { clearFuncs } from "../FuncEditor/func_state";
+
+const isDevMode = import.meta.env.DEV;
 
 const props = defineProps<{ funcId?: string }>();
 
@@ -71,7 +75,6 @@ const selectedFuncId = computed(() => {
   if (Number.isNaN(funcId)) {
     return -1;
   }
-
   return funcId;
 });
 
@@ -88,20 +91,22 @@ FuncService.listFuncs().subscribe((funcs) => {
   isLoading.value = false;
 });
 
-const createFunc = async (kind: FuncBackendKind) => {
-  const func = await FuncService.createFunc({
-    kind,
-  });
-  const newFunc = {
-    id: func.id,
-    kind: func.kind,
-    name: func.name,
-    handler: func.handler,
-    isBuiltin: false,
-  };
+const createFunc = async ({
+  isBuiltin,
+  kind,
+  name,
+}: {
+  kind: FuncBackendKind;
+  isBuiltin: boolean;
+  name?: string;
+}) => {
+  const func =
+    isDevMode && isBuiltin && !_.isNil(name)
+      ? await DevService.createBuiltinFunc({ name, kind })
+      : await FuncService.createFunc({ kind });
 
   await firstValueFrom(eventChangeSetWritten$);
-  selectFunc(newFunc);
+  selectFunc(func);
 };
 
 visibility$.subscribe(() => {
@@ -116,6 +121,9 @@ saveFuncToBackend$
         (acc, saveReq) => ({ ...acc, [saveReq.id]: saveReq }),
         {} as { [key: number]: SaveFuncRequest },
       ),
-    ).forEach((saveReq) => FuncService.saveFunc(saveReq)),
+    ).forEach((saveReq) => {
+      if (isDevMode && saveReq.isBuiltin) DevService.saveBuiltinFunc(saveReq);
+      else FuncService.saveFunc(saveReq);
+    }),
   );
 </script>

@@ -8,9 +8,11 @@
     </template>
     <template #panels>
       <TabPanel :key="0" class="h-full overflow-auto flex flex-col">
-        <div class="w-full p-2 border-b dark:border-neutral-600">
+        <div
+          class="w-full p-2 border-b dark:border-neutral-600 flex gap-1 flex-row-reverse"
+        >
           <Menu>
-            <div class="block ml-auto w-fit">
+            <div class="block w-fit">
               <MenuButton>
                 <VButton
                   button-rank="primary"
@@ -39,6 +41,12 @@
               </MenuItems>
             </div>
           </Menu>
+
+          <NewFuncDropdown
+            v-if="isDevMode"
+            label="Builtin"
+            @selected-func-kind="openFuncNameModal"
+          />
         </div>
         <SiSearch
           auto-search
@@ -89,10 +97,40 @@
       </TabPanel>
     </template>
   </SiTabGroup>
+
+  <Modal
+    size="sm"
+    :open="funcNameModalOpen"
+    type="save"
+    @close="closeFuncNameModal"
+    @save="createBuiltinFunc"
+  >
+    <template #title>Name your Builtin Function</template>
+    <template #content>
+      <SiTextBox
+        id="name"
+        v-model="newBuiltinFuncName"
+        class="pb-2"
+        autofocus
+        title=""
+        required
+        placeholder="Type the name of this function here..."
+        :validations="[
+          {
+            id: 'name',
+            message: 'Alphanumeric characters only.',
+            check: validator.isAlphanumeric,
+          },
+        ]"
+        @keyup.enter="createBuiltinFunc"
+        @error="updateFuncNameError"
+      />
+    </template>
+  </Modal>
 </template>
 
 <script lang="ts" setup>
-import { computed, ref } from "vue";
+import { computed, ref, Ref } from "vue";
 import {
   Menu,
   MenuButton,
@@ -100,6 +138,7 @@ import {
   MenuItems,
   TabPanel,
 } from "@headlessui/vue";
+import validator from "validator";
 import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import SiCollapsible from "@/organisms/SiCollapsible.vue";
@@ -110,6 +149,11 @@ import SiSearch from "@/molecules/SiSearch.vue";
 import VButton from "@/molecules/VButton.vue";
 import FuncSkeleton from "@/atoms/FuncSkeleton.vue";
 import { FuncBackendKind } from "@/api/sdf/dal/func";
+import NewFuncDropdown from "@/organisms/NewFuncDropdown.vue";
+import Modal from "@/ui-lib/Modal.vue";
+import SiTextBox from "@/atoms/SiTextBox.vue";
+
+const isDevMode = import.meta.env.DEV;
 
 const searchString = ref("");
 
@@ -153,7 +197,10 @@ const filteredList = computed(() => {
 
 const emits = defineEmits<{
   (e: "selectedFunc", v: ListedFuncView): void;
-  (e: "createFunc", v: FuncBackendKind): void;
+  (
+    e: "createFunc",
+    v: { kind: FuncBackendKind; isBuiltin: boolean; name?: string },
+  ): void;
 }>();
 
 const selectFunc = (func: ListedFuncView) => {
@@ -161,7 +208,37 @@ const selectFunc = (func: ListedFuncView) => {
 };
 
 const createFunc = (kind: FuncBackendKind) => {
-  console.log(kind);
-  emits("createFunc", kind);
+  emits("createFunc", { kind, isBuiltin: false });
+};
+
+const funcNameModalOpen = ref(false);
+const newBuiltinFuncName = ref("");
+const newBuiltinFuncKind = ref<FuncBackendKind>();
+
+const openFuncNameModal = (kind: FuncBackendKind) => {
+  newBuiltinFuncName.value = "";
+  funcNameModalOpen.value = true;
+  newBuiltinFuncKind.value = kind;
+};
+
+const closeFuncNameModal = () => {
+  funcNameModalOpen.value = false;
+};
+
+const funcNameHasError = ref(false);
+const updateFuncNameError = ({ value }: Ref<boolean>) => {
+  funcNameHasError.value = value;
+};
+
+const createBuiltinFunc = () => {
+  if (newBuiltinFuncName.value === "") return;
+  if (funcNameHasError.value) return;
+
+  emits("createFunc", {
+    kind: FuncBackendKind.JsQualification,
+    isBuiltin: true,
+    name: `si:${newBuiltinFuncName.value}`,
+  });
+  closeFuncNameModal();
 };
 </script>

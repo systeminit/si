@@ -46,13 +46,38 @@
               >
                 <slot name="content" />
 
-                <VButton
-                  button-rank="tertiary"
-                  button-type="neutral"
-                  icon="x"
-                  label="Close"
-                  @click="emit('close')"
-                />
+                <div v-if="type === 'alert'">
+                  <VButton
+                    class="w-full"
+                    button-rank="tertiary"
+                    button-type="neutral"
+                    icon="x"
+                    label="Close"
+                    @click="emit('close')"
+                  />
+                </div>
+                <div
+                  v-else-if="type === 'save'"
+                  class="py-3 flex justify-between"
+                >
+                  <VButton
+                    button-rank="tertiary"
+                    button-type="destructive"
+                    icon="trash"
+                    label="Cancel"
+                    size="xs"
+                    @click="emit('close')"
+                  />
+                  <VButton
+                    :disabled="disableSave"
+                    button-rank="primary"
+                    button-type="success"
+                    icon="plus-square"
+                    label="Create"
+                    size="xs"
+                    @click="emit('save')"
+                  />
+                </div>
               </div>
             </DialogPanel>
           </TransitionChild>
@@ -79,6 +104,14 @@ const props = defineProps({
     type: String as PropType<"sm" | "md" | "lg" | "xl" | "2xl">,
     required: true,
   },
+  type: {
+    type: String as PropType<"alert" | "save">,
+    default: "alert",
+  },
+  disableSave: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const dialogPanelClasses = computed(() => {
@@ -94,5 +127,6 @@ const dialogPanelClasses = computed(() => {
 
 const emit = defineEmits<{
   (e: "close"): void;
+  (e: "save"): void;
 }>();
 </script>
