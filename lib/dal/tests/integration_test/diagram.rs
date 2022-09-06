@@ -9,7 +9,7 @@ use dal::{
 use dal::{DiagramEdgeView, SchemaVariant};
 
 #[test]
-async fn get_diagram_and_create_connection(ctx: &DalContext<'_, '_>) {
+async fn get_diagram_and_create_connection(ctx: &DalContext<'_, '_, '_>) {
     let mut harness = BuiltinsHarness::new();
     let from_docker_hub_credential = harness
         .create_component(ctx, "from", Builtin::DockerHubCredential)

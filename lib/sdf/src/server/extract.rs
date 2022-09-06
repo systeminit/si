@@ -108,7 +108,7 @@ where
 }
 
 impl PgRwTxn {
-    pub async fn start(&mut self) -> Result<pg::PgTxn<'_>, pg::Error> {
+    pub async fn start(&mut self) -> Result<pg::PgTxn<'_>, pg::PgError> {
         self.0.transaction().await
     }
 }
@@ -129,7 +129,7 @@ where
 }
 
 impl PgRoTxn {
-    pub async fn start(&mut self) -> Result<pg::PgTxn<'_>, pg::Error> {
+    pub async fn start(&mut self) -> Result<pg::PgTxn<'_>, pg::PgError> {
         self.0.build_transaction().read_only(true).start().await
     }
 }

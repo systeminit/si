@@ -6,20 +6,35 @@ use deadpool_postgres::{
     Config, ConfigError, CreatePoolError, Manager, ManagerConfig, Pool, PoolConfig, PoolError,
     RecyclingMethod, Transaction, TransactionBuilder,
 };
+use futures::{Stream, StreamExt};
 use serde::{Deserialize, Serialize};
 use telemetry::prelude::*;
+use tokio::sync::{Mutex, MutexGuard};
 use tokio_postgres::{
-    types::{BorrowToSql, ToSql, Type},
-    CancelToken, Client, CopyInSink, CopyOutStream, IsolationLevel, NoTls, Portal, Row, RowStream,
+    row::RowIndex,
+    types::{BorrowToSql, FromSql, ToSql, Type},
+    CancelToken, Client, Column, CopyInSink, CopyOutStream, IsolationLevel, NoTls, Portal, Row,
     SimpleQueryMessage, Statement, ToStatement,
 };
 
-pub use tokio_postgres::{error::SqlState, Error};
-
 use crate::SensitiveString;
+
+pub use tokio_postgres::error::SqlState;
 
 const MIGRATION_LOCK_NUMBER: i64 = 42;
 const MAX_POOL_SIZE_MINIMUM: usize = 32;
+
+#[derive(thiserror::Error, Debug)]
+pub enum PgError {
+    #[error(transparent)]
+    Pg(#[from] tokio_postgres::Error),
+    #[error("transaction not exclusively referenced when commit attempted; arc_strong_count={0}")]
+    TxnCommitNotExclusive(usize),
+    #[error(
+        "transaction not exclusively referenced when rollback attempted; arc_strong_count={0}"
+    )]
+    TxnRollbackNotExclusive(usize),
+}
 
 #[derive(thiserror::Error, Debug)]
 pub enum PgPoolError {
@@ -29,6 +44,8 @@ pub enum PgPoolError {
     PoolError(#[from] PoolError),
     #[error("creating pg pool error: {0}")]
     CreatePoolError(#[from] CreatePoolError),
+    #[error("tokio pg error: {0}")]
+    Pg(#[from] PgError),
     #[error("migration error: {0}")]
     Refinery(#[from] refinery::Error),
     #[error("tokio pg error: {0}")]
@@ -301,8 +318,8 @@ impl InstrumentedClient {
             net.transport = %self.metadata.net_transport,
         )
     )]
-    pub async fn prepare_cached(&self, query: &str) -> Result<Statement, Error> {
-        self.inner.prepare_cached(query).await
+    pub async fn prepare_cached(&self, query: &str) -> Result<Statement, PgError> {
+        self.inner.prepare_cached(query).await.map_err(Into::into)
     }
 
     /// Like [`tokio_postgres::Transaction::prepare_typed`](#method.prepare_typed-1)
@@ -327,8 +344,11 @@ impl InstrumentedClient {
         &self,
         query: &str,
         types: &[Type],
-    ) -> Result<Statement, tokio_postgres::Error> {
-        self.inner.prepare_typed_cached(query, types).await
+    ) -> Result<Statement, PgError> {
+        self.inner
+            .prepare_typed_cached(query, types)
+            .await
+            .map_err(Into::into)
     }
 
     /// Begins a new database transaction.
@@ -350,7 +370,7 @@ impl InstrumentedClient {
             net.transport = %self.metadata.net_transport,
         )
     )]
-    pub async fn transaction(&mut self) -> Result<InstrumentedTransaction<'_>, Error> {
+    pub async fn transaction(&mut self) -> Result<InstrumentedTransaction<'_>, PgError> {
         Ok(InstrumentedTransaction::new(
             self.inner.transaction().await?,
             self.metadata.clone(),
@@ -391,8 +411,8 @@ impl InstrumentedClient {
             net.transport = %self.metadata.net_transport,
         )
     )]
-    pub async fn prepare(&self, query: &str) -> Result<Statement, Error> {
-        self.inner.prepare(query).await
+    pub async fn prepare(&self, query: &str) -> Result<Statement, PgError> {
+        self.inner.prepare(query).await.map_err(Into::into)
     }
 
     /// Like `prepare`, but allows the types of query parameters to be explicitly specified.
@@ -420,8 +440,11 @@ impl InstrumentedClient {
         &self,
         query: &str,
         parameter_types: &[Type],
-    ) -> Result<Statement, Error> {
-        self.inner.prepare_typed(query, parameter_types).await
+    ) -> Result<Statement, PgError> {
+        self.inner
+            .prepare_typed(query, parameter_types)
+            .await
+            .map_err(Into::into)
     }
 
     /// Executes a statement, returning a vector of the resulting rows.
@@ -457,8 +480,17 @@ impl InstrumentedClient {
         &self,
         statement: &str,
         params: &[&(dyn ToSql + Sync)],
-    ) -> Result<Vec<Row>, Error> {
-        let r = self.inner.query(statement, params).await;
+    ) -> Result<Vec<PgRow>, PgError> {
+        let r = self
+            .inner
+            .query(statement, params)
+            .await
+            .map(|rows| {
+                rows.into_iter()
+                    .map(|inner| PgRow { inner })
+                    .collect::<Vec<_>>()
+            })
+            .map_err(Into::into);
         if let Ok(ref rows) = r {
             Span::current().record("db.rows", &rows.len());
         }
@@ -500,8 +532,13 @@ impl InstrumentedClient {
         &self,
         statement: &str,
         params: &[&(dyn ToSql + Sync)],
-    ) -> Result<Row, Error> {
-        let r = self.inner.query_one(statement, params).await;
+    ) -> Result<PgRow, PgError> {
+        let r = self
+            .inner
+            .query_one(statement, params)
+            .await
+            .map(|inner| PgRow { inner })
+            .map_err(Into::into);
         if r.is_ok() {
             Span::current().record("db.rows", &1);
         }
@@ -543,8 +580,13 @@ impl InstrumentedClient {
         &self,
         statement: &str,
         params: &[&(dyn ToSql + Sync)],
-    ) -> Result<Option<Row>, Error> {
-        let r = self.inner.query_opt(statement, params).await;
+    ) -> Result<Option<PgRow>, PgError> {
+        let r = self
+            .inner
+            .query_opt(statement, params)
+            .await
+            .map(|maybe| maybe.map(|inner| PgRow { inner }))
+            .map_err(Into::into);
         if let Ok(ref maybe) = r {
             Span::current().record(
                 "db.rows",
@@ -587,13 +629,24 @@ impl InstrumentedClient {
             net.transport = %self.metadata.net_transport,
         )
     )]
-    pub async fn query_raw<P, I>(&self, statement: &str, params: I) -> Result<RowStream, Error>
+    pub async fn query_raw<P, I>(
+        &self,
+        statement: &str,
+        params: I,
+    ) -> Result<impl Stream<Item = Result<PgRow, PgError>>, PgError>
     where
         P: BorrowToSql,
         I: IntoIterator<Item = P>,
         I::IntoIter: ExactSizeIterator,
     {
-        self.inner.query_raw(statement, params).await
+        self.inner
+            .query_raw(statement, params)
+            .await
+            .map(|row_stream| {
+                row_stream
+                    .map(|row_result| row_result.map(|inner| PgRow { inner }).map_err(Into::into))
+            })
+            .map_err(Into::into)
     }
 
     /// Executes a statement, returning the number of rows modified.
@@ -630,8 +683,11 @@ impl InstrumentedClient {
         &self,
         statement: &str,
         params: &[&(dyn ToSql + Sync)],
-    ) -> Result<u64, Error> {
-        self.inner.execute(statement, params).await
+    ) -> Result<u64, PgError> {
+        self.inner
+            .execute(statement, params)
+            .await
+            .map_err(Into::into)
     }
 
     /// The maximally flexible version of [`execute`].
@@ -664,13 +720,16 @@ impl InstrumentedClient {
             net.transport = %self.metadata.net_transport,
         )
     )]
-    pub async fn execute_raw<P, I>(&self, statement: &str, params: I) -> Result<u64, Error>
+    pub async fn execute_raw<P, I>(&self, statement: &str, params: I) -> Result<u64, PgError>
     where
         P: BorrowToSql,
         I: IntoIterator<Item = P>,
         I::IntoIter: ExactSizeIterator,
     {
-        self.inner.execute_raw(statement, params).await
+        self.inner
+            .execute_raw(statement, params)
+            .await
+            .map_err(Into::into)
     }
 
     /// Executes a `COPY FROM STDIN` statement, returning a sink used to write the copy data.
@@ -697,12 +756,12 @@ impl InstrumentedClient {
             net.transport = %self.metadata.net_transport,
         )
     )]
-    pub async fn copy_in<T, U>(&self, statement: &T) -> Result<CopyInSink<U>, Error>
+    pub async fn copy_in<T, U>(&self, statement: &T) -> Result<CopyInSink<U>, PgError>
     where
         T: ?Sized + ToStatement,
         U: Buf + 'static + Send,
     {
-        self.inner.copy_in(statement).await
+        self.inner.copy_in(statement).await.map_err(Into::into)
     }
 
     /// Executes a `COPY TO STDOUT` statement, returning a stream of the resulting data.
@@ -728,11 +787,11 @@ impl InstrumentedClient {
             net.transport = %self.metadata.net_transport,
         )
     )]
-    pub async fn copy_out<T>(&self, statement: &T) -> Result<CopyOutStream, Error>
+    pub async fn copy_out<T>(&self, statement: &T) -> Result<CopyOutStream, PgError>
     where
         T: ?Sized + ToStatement,
     {
-        self.inner.copy_out(statement).await
+        self.inner.copy_out(statement).await.map_err(Into::into)
     }
 
     /// Executes a sequence of SQL statements using the simple query protocol, returning the
@@ -766,8 +825,8 @@ impl InstrumentedClient {
             net.transport = %self.metadata.net_transport,
         )
     )]
-    pub async fn simple_query(&self, query: &str) -> Result<Vec<SimpleQueryMessage>, Error> {
-        self.inner.simple_query(query).await
+    pub async fn simple_query(&self, query: &str) -> Result<Vec<SimpleQueryMessage>, PgError> {
+        self.inner.simple_query(query).await.map_err(Into::into)
     }
 
     /// Executes a sequence of SQL statements using the simple query protocol.
@@ -797,8 +856,8 @@ impl InstrumentedClient {
             net.transport = %self.metadata.net_transport,
         )
     )]
-    pub async fn batch_execute(&self, query: &str) -> Result<(), Error> {
-        self.inner.batch_execute(query).await
+    pub async fn batch_execute(&self, query: &str) -> Result<(), PgError> {
+        self.inner.batch_execute(query).await.map_err(Into::into)
     }
 
     /// Constructs a cancellation token that can later be used to request cancellation of a query
@@ -848,8 +907,9 @@ impl fmt::Debug for InstrumentedClient {
     }
 }
 
+#[derive(Clone)]
 pub struct InstrumentedTransaction<'a> {
-    inner: Transaction<'a>,
+    inner: Arc<Mutex<Transaction<'a>>>,
     metadata: Arc<ConnectionMetadata>,
     tx_span: Span,
 }
@@ -857,7 +917,7 @@ pub struct InstrumentedTransaction<'a> {
 impl<'a> InstrumentedTransaction<'a> {
     fn new(inner: Transaction<'a>, metadata: Arc<ConnectionMetadata>, tx_span: Span) -> Self {
         Self {
-            inner,
+            inner: Arc::new(Mutex::new(inner)),
             metadata,
             tx_span,
         }
@@ -881,12 +941,15 @@ impl<'a> InstrumentedTransaction<'a> {
             net.transport = %self.metadata.net_transport,
         )
     )]
-    pub async fn prepare_cached(&self, query: &str) -> Result<Statement, Error> {
+    pub async fn prepare_cached(&self, query: &str) -> Result<Statement, PgError> {
         Span::current().follows_from(&self.tx_span);
         self.inner
+            .lock()
+            .await
             .prepare_cached(query)
             .instrument(self.tx_span.clone())
             .await
+            .map_err(Into::into)
     }
 
     /// Like [`tokio_postgres::Transaction::prepare_typed`](#method.prepare_typed-1)
@@ -911,15 +974,32 @@ impl<'a> InstrumentedTransaction<'a> {
         &self,
         query: &str,
         types: &[Type],
-    ) -> Result<Statement, Error> {
+    ) -> Result<Statement, PgError> {
         Span::current().follows_from(&self.tx_span);
         self.inner
+            .lock()
+            .await
             .prepare_typed_cached(query, types)
             .instrument(self.tx_span.clone())
             .await
+            .map_err(Into::into)
     }
 
     /// Consumes the transaction, committing all changes made within it.
+    ///
+    /// # Runtime Safety Notes
+    ///
+    /// The only reasonable time to commit a transaction is when there are no other shared copies
+    /// of the transaction active in the system. This is because a commit will consume `self` and
+    /// therefore the internal locking mechanism needs to assert that there are no other potential
+    /// copies that could race for a lock.
+    ///
+    /// The implication is that if there are other clones of the `Transaction` instance, then a
+    /// runtime error of `PgError::TxnCommitNotExclusive` will be returned and the transaction will
+    /// remain in an un-committed state (that is not committed and also not rolled back). It is the
+    /// responsibility of the caller to ensure that there are no more copies before `commit` is
+    /// called meaning that it's *highly likely* that `PgError::TxnCommitNotExclusive` represents a
+    /// programmer error rather than a transient failure.
     #[instrument(
         name = "transaction.commit",
         skip_all,
@@ -935,10 +1015,24 @@ impl<'a> InstrumentedTransaction<'a> {
             net.transport = %self.metadata.net_transport,
         )
     )]
-    pub async fn commit(self) -> Result<(), Error> {
+    pub async fn commit(self) -> Result<(), PgError> {
         let _ = &self;
         Span::current().follows_from(&self.tx_span);
-        let r = self.inner.commit().instrument(self.tx_span.clone()).await;
+
+        // We are asserting here that there are no other `Arc` copies present, that is, the "strong
+        // count" of references will be `1`. If this is true it is safe to unwrap the `Arc` and
+        // return the inner `Mutex`.
+        let mutex = Arc::try_unwrap(self.inner)
+            .map_err(|arc| PgError::TxnCommitNotExclusive(Arc::strong_count(&arc)))?;
+        // There are no more concurrent uses of this `Mutex` so it is safe to unwrap it and return
+        // the inner `Transaction`
+        let txn = mutex.into_inner();
+
+        let r = txn
+            .commit()
+            .instrument(self.tx_span.clone())
+            .await
+            .map_err(Into::into);
         self.tx_span.record("db.transaction", &"commit");
         r
     }
@@ -947,6 +1041,21 @@ impl<'a> InstrumentedTransaction<'a> {
     ///
     /// This is equivalent to `Transaction`'s `Drop` implementation, but provides any error
     /// encountered to the caller.
+    ///
+    /// # Runtime Safety Notes
+    ///
+    /// The only reasonable time to roll back a transaction is when there are no other shared
+    /// copies of the transaction active in the system. This is because a rollback will consume
+    /// `self` and therefore the internal locking mechanism needs to assert that there are no other
+    /// potential copies that could race for a lock.
+    ///
+    /// The implication is that if there are other clones of the `Transaction` instance, then a
+    /// runtime error of `PgError::TxnRollbackNotExclusive` will be returned and the transaction
+    /// will remain in an un-rolledback state (that is not committed and also not rolled back). It
+    /// is the responsibility of the caller to ensure that there are no more copies before
+    /// `rollback` is called meaning that it's *highly likely* that
+    /// `PgError::TxnRollbackNotExclusive` represents a programmer error rather than a transient
+    /// failure.
     #[instrument(
         name = "transaction.rollback",
         skip_all,
@@ -962,10 +1071,24 @@ impl<'a> InstrumentedTransaction<'a> {
             net.transport = %self.metadata.net_transport,
         )
     )]
-    pub async fn rollback(self) -> Result<(), Error> {
+    pub async fn rollback(self) -> Result<(), PgError> {
         let _ = &self;
         Span::current().follows_from(&self.tx_span);
-        let r = self.inner.rollback().instrument(self.tx_span.clone()).await;
+
+        // We are asserting here that there are no other `Arc` copies present, that is, the "strong
+        // count" of references will be `1`. If this is true it is safe to unwrap the `Arc` and
+        // return the inner `Mutex`.
+        let mutex = Arc::try_unwrap(self.inner)
+            .map_err(|arc| PgError::TxnRollbackNotExclusive(Arc::strong_count(&arc)))?;
+        // There are no more concurrent uses of this `Mutex` so it is safe to unwrap it and return
+        // the inner `Transaction`
+        let txn = mutex.into_inner();
+
+        let r = txn
+            .rollback()
+            .instrument(self.tx_span.clone())
+            .await
+            .map_err(Into::into);
         self.tx_span.record("db.transaction", &"rollback");
         r
     }
@@ -991,12 +1114,15 @@ impl<'a> InstrumentedTransaction<'a> {
             net.transport = %self.metadata.net_transport,
         )
     )]
-    pub async fn prepare(&self, query: &str) -> Result<Statement, Error> {
+    pub async fn prepare(&self, query: &str) -> Result<Statement, PgError> {
         Span::current().follows_from(&self.tx_span);
         self.inner
+            .lock()
+            .await
             .prepare(query)
             .instrument(self.tx_span.clone())
             .await
+            .map_err(Into::into)
     }
 
     /// Like `prepare`, but allows the types of query parameters to be explicitly specified.
@@ -1024,12 +1150,15 @@ impl<'a> InstrumentedTransaction<'a> {
         &self,
         query: &str,
         parameter_types: &[Type],
-    ) -> Result<Statement, Error> {
+    ) -> Result<Statement, PgError> {
         Span::current().follows_from(&self.tx_span);
         self.inner
+            .lock()
+            .await
             .prepare_typed(query, parameter_types)
             .instrument(self.tx_span.clone())
             .await
+            .map_err(Into::into)
     }
 
     /// Executes a statement, returning a vector of the resulting rows.
@@ -1065,13 +1194,21 @@ impl<'a> InstrumentedTransaction<'a> {
         &self,
         statement: &str,
         params: &[&(dyn ToSql + Sync)],
-    ) -> Result<Vec<Row>, Error> {
+    ) -> Result<Vec<PgRow>, PgError> {
         Span::current().follows_from(&self.tx_span);
         let r = self
             .inner
+            .lock()
+            .await
             .query(statement, params)
             .instrument(self.tx_span.clone())
-            .await;
+            .await
+            .map(|rows| {
+                rows.into_iter()
+                    .map(|inner| PgRow { inner })
+                    .collect::<Vec<_>>()
+            })
+            .map_err(Into::into);
         if let Ok(ref rows) = r {
             Span::current().record("db.rows", &rows.len());
         }
@@ -1113,13 +1250,17 @@ impl<'a> InstrumentedTransaction<'a> {
         &self,
         statement: &str,
         params: &[&(dyn ToSql + Sync)],
-    ) -> Result<Row, Error> {
+    ) -> Result<PgRow, PgError> {
         Span::current().follows_from(&self.tx_span);
         let r = self
             .inner
+            .lock()
+            .await
             .query_one(statement, params)
             .instrument(self.tx_span.clone())
-            .await;
+            .await
+            .map(|inner| PgRow { inner })
+            .map_err(Into::into);
         if r.is_ok() {
             Span::current().record("db.rows", &1);
         }
@@ -1161,13 +1302,17 @@ impl<'a> InstrumentedTransaction<'a> {
         &self,
         statement: &str,
         params: &[&(dyn ToSql + Sync)],
-    ) -> Result<Option<Row>, Error> {
+    ) -> Result<Option<PgRow>, PgError> {
         Span::current().follows_from(&self.tx_span);
         let r = self
             .inner
+            .lock()
+            .await
             .query_opt(statement, params)
             .instrument(self.tx_span.clone())
-            .await;
+            .await
+            .map(|maybe| maybe.map(|inner| PgRow { inner }))
+            .map_err(Into::into);
         if let Ok(ref maybe) = r {
             Span::current().record(
                 "db.rows",
@@ -1210,7 +1355,11 @@ impl<'a> InstrumentedTransaction<'a> {
             net.transport = %self.metadata.net_transport,
         )
     )]
-    pub async fn query_raw<P, I>(&self, statement: &str, params: I) -> Result<RowStream, Error>
+    pub async fn query_raw<P, I>(
+        &self,
+        statement: &str,
+        params: I,
+    ) -> Result<impl Stream<Item = Result<PgRow, PgError>>, PgError>
     where
         P: BorrowToSql,
         I: IntoIterator<Item = P>,
@@ -1218,9 +1367,16 @@ impl<'a> InstrumentedTransaction<'a> {
     {
         Span::current().follows_from(&self.tx_span);
         self.inner
+            .lock()
+            .await
             .query_raw(statement, params)
             .instrument(self.tx_span.clone())
             .await
+            .map(|row_stream| {
+                row_stream
+                    .map(|row_result| row_result.map(|inner| PgRow { inner }).map_err(Into::into))
+            })
+            .map_err(Into::into)
     }
 
     /// Executes a statement, returning the number of rows modified.
@@ -1257,12 +1413,15 @@ impl<'a> InstrumentedTransaction<'a> {
         &self,
         statement: &str,
         params: &[&(dyn ToSql + Sync)],
-    ) -> Result<u64, Error> {
+    ) -> Result<u64, PgError> {
         Span::current().follows_from(&self.tx_span);
         self.inner
+            .lock()
+            .await
             .execute(statement, params)
             .instrument(self.tx_span.clone())
             .await
+            .map_err(Into::into)
     }
 
     /// The maximally flexible version of [`execute`].
@@ -1295,7 +1454,7 @@ impl<'a> InstrumentedTransaction<'a> {
             net.transport = %self.metadata.net_transport,
         )
     )]
-    pub async fn execute_raw<P, I>(&self, statement: &str, params: I) -> Result<u64, Error>
+    pub async fn execute_raw<P, I>(&self, statement: &str, params: I) -> Result<u64, PgError>
     where
         P: BorrowToSql,
         I: IntoIterator<Item = P>,
@@ -1303,9 +1462,12 @@ impl<'a> InstrumentedTransaction<'a> {
     {
         Span::current().follows_from(&self.tx_span);
         self.inner
+            .lock()
+            .await
             .execute_raw(statement, params)
             .instrument(self.tx_span.clone())
             .await
+            .map_err(Into::into)
     }
 
     /// Binds a statement to a set of parameters, creating a `Portal` which can be incrementally
@@ -1336,15 +1498,18 @@ impl<'a> InstrumentedTransaction<'a> {
         &self,
         statement: &T,
         params: &[&(dyn ToSql + Sync)],
-    ) -> Result<Portal, Error>
+    ) -> Result<Portal, PgError>
     where
         T: ?Sized + ToStatement,
     {
         Span::current().follows_from(&self.tx_span);
         self.inner
+            .lock()
+            .await
             .bind(statement, params)
             .instrument(self.tx_span.clone())
             .await
+            .map_err(Into::into)
     }
 
     /// A maximally flexible version of [`bind`].
@@ -1365,7 +1530,7 @@ impl<'a> InstrumentedTransaction<'a> {
             net.transport = %self.metadata.net_transport,
         )
     )]
-    pub async fn bind_raw<P, T, I>(&self, statement: &T, params: I) -> Result<Portal, Error>
+    pub async fn bind_raw<P, T, I>(&self, statement: &T, params: I) -> Result<Portal, PgError>
     where
         T: ?Sized + ToStatement,
         P: BorrowToSql,
@@ -1374,9 +1539,12 @@ impl<'a> InstrumentedTransaction<'a> {
     {
         Span::current().follows_from(&self.tx_span);
         self.inner
+            .lock()
+            .await
             .bind_raw(statement, params)
             .instrument(self.tx_span.clone())
             .await
+            .map_err(Into::into)
     }
 
     /// Continues execution of a portal, returning a stream of the resulting rows.
@@ -1399,12 +1567,24 @@ impl<'a> InstrumentedTransaction<'a> {
             net.transport = %self.metadata.net_transport,
         )
     )]
-    pub async fn query_portal(&self, portal: &Portal, max_rows: i32) -> Result<Vec<Row>, Error> {
+    pub async fn query_portal(
+        &self,
+        portal: &Portal,
+        max_rows: i32,
+    ) -> Result<Vec<PgRow>, PgError> {
         Span::current().follows_from(&self.tx_span);
         self.inner
+            .lock()
+            .await
             .query_portal(portal, max_rows)
             .instrument(self.tx_span.clone())
             .await
+            .map(|rows| {
+                rows.into_iter()
+                    .map(|inner| PgRow { inner })
+                    .collect::<Vec<_>>()
+            })
+            .map_err(Into::into)
     }
 
     /// The maximally flexible version of [`query_portal`].
@@ -1429,12 +1609,19 @@ impl<'a> InstrumentedTransaction<'a> {
         &self,
         portal: &Portal,
         max_rows: i32,
-    ) -> Result<RowStream, Error> {
+    ) -> Result<impl Stream<Item = Result<PgRow, PgError>>, PgError> {
         Span::current().follows_from(&self.tx_span);
         self.inner
+            .lock()
+            .await
             .query_portal_raw(portal, max_rows)
             .instrument(self.tx_span.clone())
             .await
+            .map(|row_stream| {
+                row_stream
+                    .map(|row_result| row_result.map(|inner| PgRow { inner }).map_err(Into::into))
+            })
+            .map_err(Into::into)
     }
 
     /// Executes a `COPY FROM STDIN` statement, returning a sink used to write the copy data.
@@ -1461,16 +1648,19 @@ impl<'a> InstrumentedTransaction<'a> {
             net.transport = %self.metadata.net_transport,
         )
     )]
-    pub async fn copy_in<T, U>(&self, statement: &T) -> Result<CopyInSink<U>, Error>
+    pub async fn copy_in<T, U>(&self, statement: &T) -> Result<CopyInSink<U>, PgError>
     where
         T: ?Sized + ToStatement,
         U: Buf + 'static + Send,
     {
         Span::current().follows_from(&self.tx_span);
         self.inner
+            .lock()
+            .await
             .copy_in(statement)
             .instrument(self.tx_span.clone())
             .await
+            .map_err(Into::into)
     }
 
     /// Executes a `COPY TO STDOUT` statement, returning a stream of the resulting data.
@@ -1496,15 +1686,18 @@ impl<'a> InstrumentedTransaction<'a> {
             net.transport = %self.metadata.net_transport,
         )
     )]
-    pub async fn copy_out<T>(&self, statement: &T) -> Result<CopyOutStream, Error>
+    pub async fn copy_out<T>(&self, statement: &T) -> Result<CopyOutStream, PgError>
     where
         T: ?Sized + ToStatement,
     {
         Span::current().follows_from(&self.tx_span);
         self.inner
+            .lock()
+            .await
             .copy_out(statement)
             .instrument(self.tx_span.clone())
             .await
+            .map_err(Into::into)
     }
 
     /// Executes a sequence of SQL statements using the simple query protocol, returning the
@@ -1538,12 +1731,15 @@ impl<'a> InstrumentedTransaction<'a> {
             net.transport = %self.metadata.net_transport,
         )
     )]
-    pub async fn simple_query(&self, query: &str) -> Result<Vec<SimpleQueryMessage>, Error> {
+    pub async fn simple_query(&self, query: &str) -> Result<Vec<SimpleQueryMessage>, PgError> {
         Span::current().follows_from(&self.tx_span);
         self.inner
+            .lock()
+            .await
             .simple_query(query)
             .instrument(self.tx_span.clone())
             .await
+            .map_err(Into::into)
     }
 
     /// Executes a sequence of SQL statements using the simple query protocol.
@@ -1573,12 +1769,15 @@ impl<'a> InstrumentedTransaction<'a> {
             net.transport = %self.metadata.net_transport,
         )
     )]
-    pub async fn batch_execute(&self, query: &str) -> Result<(), Error> {
+    pub async fn batch_execute(&self, query: &str) -> Result<(), PgError> {
         Span::current().follows_from(&self.tx_span);
         self.inner
+            .lock()
+            .await
             .batch_execute(query)
             .instrument(self.tx_span.clone())
             .await
+            .map_err(Into::into)
     }
 
     /// Constructs a cancellation token that can later be used to request cancellation of a query
@@ -1598,70 +1797,86 @@ impl<'a> InstrumentedTransaction<'a> {
             net.transport = %self.metadata.net_transport,
         )
     )]
-    pub fn cancel_token(&self) -> CancelToken {
+    pub async fn cancel_token(&self) -> CancelToken {
         Span::current().follows_from(&self.tx_span);
-        self.tx_span.in_scope(|| self.inner.cancel_token())
+        let fut = self
+            .tx_span
+            .in_scope(|| async { self.inner.lock().await.cancel_token() });
+        fut.await
     }
 
-    /// Like `Client::transaction`, but creates a nested transaction via a savepoint.
-    #[instrument(
-        name = "transaction.transaction",
-        skip_all,
-        level = "debug",
-        fields(
-            db.system = %self.metadata.db_system,
-            db.connection_string = %self.metadata.db_connection_string,
-            db.name = %self.metadata.db_name,
-            db.user = %self.metadata.db_user,
-            db.pool.max_size = %self.metadata.db_pool_max_size,
-            db.transaction = Empty,
-            net.peer.ip = %self.metadata.net_peer_ip,
-            net.peer.port = %self.metadata.net_peer_port,
-            net.transport = %self.metadata.net_transport,
-        )
-    )]
-    pub async fn transaction(&mut self) -> Result<InstrumentedTransaction<'_>, Error> {
-        Ok(InstrumentedTransaction::new(
-            self.inner
-                .transaction()
-                .instrument(self.tx_span.clone())
-                .await?,
-            self.metadata.clone(),
-            Span::current(),
-        ))
-    }
+    // TODO(fnichol): threading through "sub-transactions" is going to be nontrivial and
+    // potentially not useful. This may require a new `InstrumentedSubTransaction` which holds a
+    // `MutexGuard` of the underlying transaction, therefore holding a long-running lock on the
+    // parent transaction. This might not even be correct/safe behavior and increases the risk of
+    // either runtime errors, possible checkpointing data corruption, and/or mutex deadlocking. For
+    // these reasons, we aren't going to tackle upgrading `transaction` and `savepoint` which are
+    // more-or-less the same thing.
+    //
+    // /// Like `Client::transaction`, but creates a nested transaction via a savepoint.
+    // #[instrument(
+    //     name = "transaction.transaction",
+    //     skip_all,
+    //     level = "debug",
+    //     fields(
+    //         db.system = %self.metadata.db_system,
+    //         db.connection_string = %self.metadata.db_connection_string,
+    //         db.name = %self.metadata.db_name,
+    //         db.user = %self.metadata.db_user,
+    //         db.pool.max_size = %self.metadata.db_pool_max_size,
+    //         db.transaction = Empty,
+    //         net.peer.ip = %self.metadata.net_peer_ip,
+    //         net.peer.port = %self.metadata.net_peer_port,
+    //         net.transport = %self.metadata.net_transport,
+    //     )
+    // )]
+    // pub async fn transaction(&mut self) -> Result<InstrumentedTransaction<'_>, PgError> {
+    //     Ok(InstrumentedTransaction::new(
+    //         self.inner
+    //             .lock()
+    //             .await
+    //             .transaction()
+    //             .instrument(self.tx_span.clone())
+    //             .await?,
+    //         self.metadata.clone(),
+    //         Span::current(),
+    //     ))
+    // }
+    //
+    // /// Like `Client::transaction`, but creates a nested transaction via a savepoint with the
+    // /// specified name.
+    // #[instrument(
+    //     name = "transaction.savepoint",
+    //     skip_all,
+    //     level = "debug",
+    //     fields(
+    //         db.system = %self.metadata.db_system,
+    //         db.connection_string = %self.metadata.db_connection_string,
+    //         db.name = %self.metadata.db_name,
+    //         db.user = %self.metadata.db_user,
+    //         db.pool.max_size = %self.metadata.db_pool_max_size,
+    //         net.peer.ip = %self.metadata.net_peer_ip,
+    //         net.peer.port = %self.metadata.net_peer_port,
+    //         net.transport = %self.metadata.net_transport,
+    //     )
+    // )]
+    // pub async fn savepoint<I>(&mut self, name: I) -> Result<InstrumentedTransaction<'_>, PgError>
+    // where
+    //     I: Into<String>,
+    // {
+    //     Ok(InstrumentedTransaction::new(
+    //         self.inner
+    //             .lock()
+    //             .await
+    //             .savepoint(name)
+    //             .instrument(self.tx_span.clone())
+    //             .await?,
+    //         self.metadata.clone(),
+    //         Span::current(),
+    //     ))
+    // }
 
-    /// Like `Client::transaction`, but creates a nested transaction via a savepoint with the specified name.
-    #[instrument(
-        name = "transaction.savepoint",
-        skip_all,
-        level = "debug",
-        fields(
-            db.system = %self.metadata.db_system,
-            db.connection_string = %self.metadata.db_connection_string,
-            db.name = %self.metadata.db_name,
-            db.user = %self.metadata.db_user,
-            db.pool.max_size = %self.metadata.db_pool_max_size,
-            net.peer.ip = %self.metadata.net_peer_ip,
-            net.peer.port = %self.metadata.net_peer_port,
-            net.transport = %self.metadata.net_transport,
-        )
-    )]
-    pub async fn savepoint<I>(&mut self, name: I) -> Result<InstrumentedTransaction<'_>, Error>
-    where
-        I: Into<String>,
-    {
-        Ok(InstrumentedTransaction::new(
-            self.inner
-                .savepoint(name)
-                .instrument(self.tx_span.clone())
-                .await?,
-            self.metadata.clone(),
-            Span::current(),
-        ))
-    }
-
-    /// Returns a reference to the underlying `Client`.
+    /// Returns a mutex-guarded reference to the underlying `Client`.
     #[instrument(
         name = "transaction.client",
         skip_all,
@@ -1677,9 +1892,10 @@ impl<'a> InstrumentedTransaction<'a> {
             net.transport = %self.metadata.net_transport,
         )
     )]
-    pub fn client(&self) -> &Client {
+    pub async fn client(&'a self) -> MutexGuardClient {
         Span::current().follows_from(&self.tx_span);
-        self.tx_span.in_scope(|| self.inner.client())
+        let txn = self.inner.lock().await;
+        MutexGuardClient::new(txn, self.metadata.clone(), Span::current())
     }
 }
 
@@ -1688,6 +1904,93 @@ impl<'a> fmt::Debug for InstrumentedTransaction<'a> {
         f.debug_struct("InstrumentedTransaction")
             .field("metadata", &self.metadata)
             .finish_non_exhaustive()
+    }
+}
+
+/// A row of data returned from the database by a query.
+#[derive(Debug)]
+pub struct PgRow {
+    inner: Row,
+}
+
+impl PgRow {
+    /// Returns information about the columns of data in the row.
+    pub fn columns(&self) -> &[Column] {
+        self.inner.columns()
+    }
+
+    /// Determines if the row contains no values.
+    pub fn is_empty(&self) -> bool {
+        self.inner.is_empty()
+    }
+
+    /// Returns the number of values in the row.
+    pub fn len(&self) -> usize {
+        self.inner.len()
+    }
+
+    /// Deserializes a value from the row.
+    ///
+    /// The value can be specified either by its numeric index in the row, or by its column name.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the index is out of bounds or if the value cannot be converted to the specified type.
+    pub fn get<'a, I, T>(&'a self, idx: I) -> T
+    where
+        I: RowIndex + fmt::Display,
+        T: FromSql<'a>,
+    {
+        self.inner.get(idx)
+    }
+
+    /// Like `Row::get`, but returns a `Result` rather than panicking.
+    pub fn try_get<'a, I, T>(&'a self, idx: I) -> Result<T, PgError>
+    where
+        I: RowIndex + fmt::Display,
+        T: FromSql<'a>,
+    {
+        self.inner.try_get(idx).map_err(Into::into)
+    }
+}
+
+pub struct MutexGuardClient<'m, 't> {
+    inner: MutexGuard<'m, Transaction<'t>>,
+    metadata: Arc<ConnectionMetadata>,
+    tx_span: Span,
+}
+
+impl<'m, 't> MutexGuardClient<'m, 't> {
+    fn new(
+        inner: MutexGuard<'m, Transaction<'t>>,
+        metadata: Arc<ConnectionMetadata>,
+        tx_span: Span,
+    ) -> Self {
+        Self {
+            inner,
+            metadata,
+            tx_span,
+        }
+    }
+
+    #[instrument(
+        name = "mutexguardclient.get",
+        skip_all,
+        level = "debug",
+        fields(
+            db.system = %self.metadata.db_system,
+            db.connection_string = %self.metadata.db_connection_string,
+            db.name = %self.metadata.db_name,
+            db.user = %self.metadata.db_user,
+            db.pool.max_size = %self.metadata.db_pool_max_size,
+            net.peer.ip = %self.metadata.net_peer_ip,
+            net.peer.port = %self.metadata.net_peer_port,
+            net.transport = %self.metadata.net_transport,
+        )
+    )]
+    pub fn get(&self) -> &Client {
+        Span::current().follows_from(&self.tx_span);
+        self.inner.client()
     }
 }
 
@@ -1752,7 +2055,7 @@ impl<'a> InstrumentedTransactionBuilder<'a> {
             net.transport = %self.metadata.net_transport,
         )
     )]
-    pub async fn start(self) -> Result<InstrumentedTransaction<'a>, Error> {
+    pub async fn start(self) -> Result<InstrumentedTransaction<'a>, PgError> {
         Ok(InstrumentedTransaction::new(
             self.inner.start().await?,
             self.metadata,

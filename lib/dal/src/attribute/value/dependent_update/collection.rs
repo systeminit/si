@@ -21,7 +21,7 @@ impl AttributeValueDependentCollectionHarness {
     /// [`AttributeValue`](crate::AttributeValue) (which is where the source
     /// [`AttributeContext`](crate::AttributeContext) is derived from).
     pub async fn collect(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         source_attribute_context: AttributeContext,
     ) -> AttributeValueResult<Vec<AttributeValue>> {
         match source_attribute_context.least_specific_field_kind()? {
@@ -49,7 +49,7 @@ impl AttributeValueDependentCollectionHarness {
     /// provided source [`AttributeContext`](crate::AttributeContext) whose least specific field
     /// specified is a [`PropId`](crate::Prop).
     async fn collect_for_least_specific_kind_prop(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         source_attribute_context: AttributeContext,
     ) -> AttributeValueResult<Vec<AttributeValue>> {
         let mut attribute_values_that_need_to_be_updated = Vec::new();
@@ -113,7 +113,7 @@ impl AttributeValueDependentCollectionHarness {
     /// provided source [`AttributeContext`](crate::AttributeContext) whose least specific field
     /// specified is an [`InternalProviderId`](crate::InternalProvider).
     async fn collect_for_least_specific_kind_internal_provider(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         source_attribute_context: AttributeContext,
     ) -> AttributeValueResult<Vec<AttributeValue>> {
         let mut attribute_values_that_need_to_be_updated = Vec::new();
@@ -191,7 +191,7 @@ impl AttributeValueDependentCollectionHarness {
     /// provided source [`AttributeContext`](crate::AttributeContext) whose least specific field
     /// specified is an [`ExternalProviderId`](crate::ExternalProvider).
     async fn collect_for_least_specific_kind_external_provider(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         source_attribute_context: AttributeContext,
     ) -> AttributeValueResult<Vec<AttributeValue>> {
         let mut attribute_values_that_need_to_be_updated = Vec::new();
@@ -248,7 +248,7 @@ impl AttributeValueDependentCollectionHarness {
     /// the provided [`AttributePrototypes`](crate::AttributePrototype) and the source
     /// [`AttributeContext`](crate::AttributeContext).
     async fn find_or_create_attribute_values_that_need_to_be_updated(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         attribute_prototypes: Vec<AttributePrototype>,
         source_attribute_context: AttributeContext,
     ) -> AttributeValueResult<Vec<AttributeValue>> {

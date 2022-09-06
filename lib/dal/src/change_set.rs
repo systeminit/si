@@ -68,7 +68,7 @@ pub struct ChangeSet {
 impl ChangeSet {
     #[instrument(skip(ctx, name, note))]
     pub async fn new(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         name: impl AsRef<str>,
         note: Option<&String>,
     ) -> ChangeSetResult<Self> {
@@ -98,7 +98,7 @@ impl ChangeSet {
     }
 
     #[instrument(skip(ctx))]
-    pub async fn apply(&mut self, ctx: &DalContext<'_, '_>) -> ChangeSetResult<()> {
+    pub async fn apply(&mut self, ctx: &DalContext<'_, '_, '_>) -> ChangeSetResult<()> {
         let actor = serde_json::to_value(ctx.history_actor())?;
         let row = ctx
             .txns()
@@ -123,7 +123,9 @@ impl ChangeSet {
     }
 
     #[instrument(skip_all)]
-    pub async fn list_open(ctx: &DalContext<'_, '_>) -> ChangeSetResult<LabelList<ChangeSetPk>> {
+    pub async fn list_open(
+        ctx: &DalContext<'_, '_, '_>,
+    ) -> ChangeSetResult<LabelList<ChangeSetPk>> {
         let rows = ctx
             .txns()
             .pg()
@@ -135,7 +137,7 @@ impl ChangeSet {
 
     #[instrument(skip_all)]
     pub async fn get_by_pk(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         pk: &ChangeSetPk,
     ) -> ChangeSetResult<Option<ChangeSet>> {
         let row = ctx
@@ -149,19 +151,19 @@ impl ChangeSet {
 }
 
 impl WsEvent {
-    pub fn change_set_created(ctx: &DalContext<'_, '_>, change_set: &ChangeSet) -> Self {
+    pub fn change_set_created(ctx: &DalContext<'_, '_, '_>, change_set: &ChangeSet) -> Self {
         WsEvent::new(ctx, WsPayload::ChangeSetCreated(change_set.pk))
     }
 
-    pub fn change_set_applied(ctx: &DalContext<'_, '_>, change_set: &ChangeSet) -> Self {
+    pub fn change_set_applied(ctx: &DalContext<'_, '_, '_>, change_set: &ChangeSet) -> Self {
         WsEvent::new(ctx, WsPayload::ChangeSetApplied(change_set.pk))
     }
 
-    pub fn change_set_canceled(ctx: &DalContext<'_, '_>, change_set: &ChangeSet) -> Self {
+    pub fn change_set_canceled(ctx: &DalContext<'_, '_, '_>, change_set: &ChangeSet) -> Self {
         WsEvent::new(ctx, WsPayload::ChangeSetCanceled(change_set.pk))
     }
 
-    pub fn change_set_written(ctx: &DalContext<'_, '_>) -> Self {
+    pub fn change_set_written(ctx: &DalContext<'_, '_, '_>) -> Self {
         WsEvent::new(
             ctx,
             WsPayload::ChangeSetWritten(ctx.visibility().change_set_pk),

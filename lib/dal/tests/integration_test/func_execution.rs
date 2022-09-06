@@ -11,7 +11,7 @@ use dal::{
 use veritech::OutputStream;
 
 #[test]
-async fn new(ctx: &DalContext<'_, '_>) {
+async fn new(ctx: &DalContext<'_, '_, '_>) {
     let func = create_func(ctx).await;
     let args = FuncBackendStringArgs::new("slayer".to_string());
     let args_json = serde_json::to_value(args).expect("cannot serialize args to json");
@@ -23,7 +23,7 @@ async fn new(ctx: &DalContext<'_, '_>) {
 }
 
 #[test]
-async fn set_state(ctx: &DalContext<'_, '_>) {
+async fn set_state(ctx: &DalContext<'_, '_, '_>) {
     let func = create_func(ctx).await;
     let args = FuncBackendStringArgs::new("slayer".to_string());
     let args_json = serde_json::to_value(args).expect("cannot serialize args to json");
@@ -40,7 +40,7 @@ async fn set_state(ctx: &DalContext<'_, '_>) {
 }
 
 #[test]
-async fn set_output_stream(ctx: &DalContext<'_, '_>) {
+async fn set_output_stream(ctx: &DalContext<'_, '_, '_>) {
     let func = create_func(ctx).await;
     let args = FuncBackendStringArgs::new("slayer".to_string());
     let args_json = serde_json::to_value(args).expect("cannot serialize args to json");
@@ -71,7 +71,7 @@ async fn set_output_stream(ctx: &DalContext<'_, '_>) {
 }
 
 #[test]
-async fn process_return_value(ctx: &DalContext<'_, '_>) {
+async fn process_return_value(ctx: &DalContext<'_, '_, '_>) {
     let func = create_func(ctx).await;
     let args = FuncBackendStringArgs::new("slayer".to_string());
     let args_json = serde_json::to_value(args).expect("cannot serialize args to json");

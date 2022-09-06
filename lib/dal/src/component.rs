@@ -243,7 +243,7 @@ impl_standard_model! {
 impl Component {
     #[instrument(skip_all)]
     pub async fn new_for_schema_with_node(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         name: impl AsRef<str>,
         schema_id: &SchemaId,
     ) -> ComponentResult<(Self, Node)> {
@@ -260,7 +260,7 @@ impl Component {
 
     #[instrument(skip_all)]
     pub async fn new_for_schema_variant_with_node(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         name: impl AsRef<str>,
         schema_variant_id: &SchemaVariantId,
     ) -> ComponentResult<(Self, Node)> {
@@ -306,7 +306,7 @@ impl Component {
     #[instrument(skip_all)]
     pub async fn add_to_system(
         &self,
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         system_id: SystemId,
     ) -> ComponentResult<(EdgeId, ResourceId)> {
         let system_sockets =
@@ -378,7 +378,7 @@ impl Component {
     /// [`SocketEdgeKind`](crate::socket::SocketEdgeKind).
     #[instrument(skip_all)]
     pub async fn list_sockets_for_kind(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         component_id: ComponentId,
         socket_edge_kind: SocketEdgeKind,
     ) -> ComponentResult<Vec<Socket>> {
@@ -401,7 +401,7 @@ impl Component {
     /// Find [`Self`] with a provided [`NodeId`](crate::Node).
     #[instrument(skip_all)]
     pub async fn find_for_node(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         node_id: NodeId,
     ) -> ComponentResult<Option<Self>> {
         let row = ctx
@@ -417,7 +417,7 @@ impl Component {
 
     pub async fn check_validations(
         &self,
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         attribute_value_id: AttributeValueId,
         value: &Option<serde_json::Value>,
     ) -> ComponentResult<()> {
@@ -488,7 +488,7 @@ impl Component {
     /// just a placeholder for some qualification that will be executed.
     pub async fn prepare_qualification_check(
         &self,
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         system_id: SystemId,
         qualification_prototype_id: QualificationPrototypeId,
     ) -> ComponentResult<()> {
@@ -558,7 +558,7 @@ impl Component {
     /// just a placeholder for some qualification that will be executed.
     pub async fn prepare_qualifications_check(
         &self,
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         system_id: SystemId,
     ) -> ComponentResult<()> {
         let schema = self
@@ -646,7 +646,7 @@ impl Component {
 
     pub async fn check_qualification(
         &self,
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         system_id: SystemId,
         prototype_id: QualificationPrototypeId,
     ) -> ComponentResult<()> {
@@ -708,7 +708,7 @@ impl Component {
 
     pub async fn check_qualifications(
         &self,
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         system_id: SystemId,
     ) -> ComponentResult<()> {
         let schema = self
@@ -796,7 +796,7 @@ impl Component {
     /// it's just a placeholder for some code generation that will be executed.
     pub async fn prepare_code_generation(
         &self,
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         system_id: SystemId,
     ) -> ComponentResult<()> {
         let schema = self
@@ -884,7 +884,7 @@ impl Component {
 
     pub async fn generate_code(
         &self,
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         system_id: SystemId,
     ) -> ComponentResult<()> {
         let schema = self
@@ -969,7 +969,10 @@ impl Component {
     }
 
     #[instrument(skip_all)]
-    pub async fn is_in_tenancy(ctx: &DalContext<'_, '_>, id: ComponentId) -> ComponentResult<bool> {
+    pub async fn is_in_tenancy(
+        ctx: &DalContext<'_, '_, '_>,
+        id: ComponentId,
+    ) -> ComponentResult<bool> {
         let row = ctx
             .pg_txn()
             .query_opt(
@@ -986,7 +989,7 @@ impl Component {
 
     #[instrument(skip_all)]
     pub async fn list_validations_as_qualification_for_component_id(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         component_id: ComponentId,
         system_id: SystemId,
     ) -> ComponentResult<QualificationView> {
@@ -1001,7 +1004,7 @@ impl Component {
 
     #[instrument(skip_all)]
     pub async fn list_code_generated_by_component_id(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         component_id: ComponentId,
         system_id: SystemId,
     ) -> ComponentResult<Vec<CodeView>> {
@@ -1060,7 +1063,7 @@ impl Component {
     #[instrument(skip_all)]
     pub async fn list_qualifications(
         &self,
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         system_id: SystemId,
     ) -> ComponentResult<Vec<QualificationView>> {
         Self::list_qualifications_by_component_id(ctx, *self.id(), system_id).await
@@ -1068,7 +1071,7 @@ impl Component {
 
     #[instrument(skip_all)]
     pub async fn list_qualifications_by_component_id(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         component_id: ComponentId,
         system_id: SystemId,
     ) -> ComponentResult<Vec<QualificationView>> {
@@ -1150,7 +1153,7 @@ impl Component {
 
     #[instrument(skip_all)]
     pub async fn get_resource_by_component_and_system(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         component_id: ComponentId,
         system_id: SystemId,
     ) -> ComponentResult<Option<ResourceView>> {
@@ -1186,7 +1189,7 @@ impl Component {
 
     pub async fn veritech_code_generation_component(
         &self,
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         system_id: SystemId,
     ) -> ComponentResult<ComponentView> {
         let schema = self
@@ -1212,7 +1215,7 @@ impl Component {
 
     pub async fn veritech_resource_sync_component(
         &self,
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         system_id: SystemId,
     ) -> ComponentResult<ComponentView> {
         let schema = self
@@ -1238,7 +1241,7 @@ impl Component {
 
     pub async fn veritech_qualification_check_component(
         &self,
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         system_id: SystemId,
     ) -> ComponentResult<veritech::QualificationCheckComponent> {
         let schema = self
@@ -1288,7 +1291,7 @@ impl Component {
 
     #[instrument(skip_all)]
     pub async fn list_for_schema_variant(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         schema_variant_id: SchemaVariantId,
     ) -> ComponentResult<Vec<Component>> {
         let rows = ctx
@@ -1330,7 +1333,7 @@ impl Component {
     #[instrument(skip_all)]
     pub async fn sync_resource(
         &self,
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         system_id: SystemId,
     ) -> ComponentResult<()> {
         // Note(paulo): we don't actually care about the Resource here, we only care about the ResourcePrototype, is this wrong?
@@ -1414,7 +1417,7 @@ impl Component {
     #[instrument(skip_all)]
     pub async fn set_value_by_json_pointer<T: Serialize + std::fmt::Debug + std::clone::Clone>(
         &self,
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         json_pointer: &str,
         value: Option<T>,
     ) -> ComponentResult<Option<T>> {
@@ -1468,7 +1471,7 @@ impl Component {
     #[instrument(skip_all)]
     pub async fn find_prop_by_json_pointer(
         &self,
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         json_pointer: &str,
     ) -> ComponentResult<Option<Prop>> {
         let schema_variant = self
@@ -1502,7 +1505,7 @@ impl Component {
     #[instrument(skip_all)]
     pub async fn find_attribute_value_by_json_pointer(
         &self,
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         json_pointer: &str,
     ) -> ComponentResult<Option<AttributeValue>> {
         if let Some(prop) = self.find_prop_by_json_pointer(ctx, json_pointer).await? {
@@ -1537,7 +1540,7 @@ impl Component {
     #[instrument(skip_all)]
     pub async fn find_value_by_json_pointer<T: serde::de::DeserializeOwned + std::fmt::Debug>(
         &self,
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         json_pointer: &str,
     ) -> ComponentResult<Option<T>> {
         let schema = self

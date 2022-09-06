@@ -14,7 +14,7 @@ use std::collections::HashMap;
 use crate::dal::test;
 
 #[test]
-async fn inter_component_identity_update(ctx: &DalContext<'_, '_>) {
+async fn inter_component_identity_update(ctx: &DalContext<'_, '_, '_>) {
     // Setup both components used for inter component identity update.
     let esp_payload = setup_esp(ctx).await;
     let swings_payload = setup_swings(ctx).await;
@@ -287,7 +287,7 @@ async fn inter_component_identity_update(ctx: &DalContext<'_, '_>) {
 }
 
 // 38.805354552534816, -77.05091482877533
-async fn setup_esp(ctx: &DalContext<'_, '_>) -> ComponentPayload {
+async fn setup_esp(ctx: &DalContext<'_, '_, '_>) -> ComponentPayload {
     let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
     let (schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
@@ -374,7 +374,7 @@ async fn setup_esp(ctx: &DalContext<'_, '_>) -> ComponentPayload {
 }
 
 // 38.82091849697006, -77.05236860190759
-async fn setup_swings(ctx: &DalContext<'_, '_>) -> ComponentPayload {
+async fn setup_swings(ctx: &DalContext<'_, '_, '_>) -> ComponentPayload {
     let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
     let (schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
@@ -425,7 +425,7 @@ async fn setup_swings(ctx: &DalContext<'_, '_>) -> ComponentPayload {
 }
 
 #[test]
-async fn with_deep_data_structure(ctx: &DalContext<'_, '_>) {
+async fn with_deep_data_structure(ctx: &DalContext<'_, '_, '_>) {
     let (identity_func_id, identity_func_binding_id, identity_func_binding_return_value_id) =
         setup_identity_func(ctx).await;
 

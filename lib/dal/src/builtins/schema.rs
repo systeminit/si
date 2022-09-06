@@ -36,7 +36,7 @@ mod kubernetes_template;
 
 use self::kubernetes_deployment::kubernetes_deployment;
 
-pub async fn migrate(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
+pub async fn migrate(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResult<()> {
     system(ctx).await?;
     kubernetes_deployment(ctx).await?;
     kubernetes_namespace(ctx).await?;
@@ -46,7 +46,7 @@ pub async fn migrate(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     Ok(())
 }
 
-async fn system(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
+async fn system(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResult<()> {
     let name = "system".to_string();
     let mut schema = match create_schema(ctx, &name, &SchemaKind::System).await? {
         Some(schema) => schema,
@@ -79,7 +79,7 @@ async fn system(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     Ok(())
 }
 
-async fn kubernetes_namespace(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
+async fn kubernetes_namespace(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResult<()> {
     let name = "kubernetes_namespace".to_string();
     let mut schema = match create_schema(ctx, &name, &SchemaKind::Configuration).await? {
         Some(schema) => schema,
@@ -232,7 +232,7 @@ async fn kubernetes_namespace(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     Ok(())
 }
 
-async fn docker_hub_credential(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
+async fn docker_hub_credential(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResult<()> {
     let name = "docker_hub_credential".to_string();
     let mut schema = match create_schema(ctx, &name, &SchemaKind::Configuration).await? {
         Some(schema) => schema,
@@ -310,7 +310,7 @@ async fn docker_hub_credential(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
     Ok(())
 }
 
-async fn docker_image(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
+async fn docker_image(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResult<()> {
     let name = "docker_image".to_string();
     let mut schema = match create_schema(ctx, &name, &SchemaKind::Configuration).await? {
         Some(schema) => schema,
@@ -493,7 +493,7 @@ async fn docker_image(ctx: &DalContext<'_, '_>) -> BuiltinsResult<()> {
 }
 
 async fn create_schema(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
     schema_name: &str,
     schema_kind: &SchemaKind,
 ) -> BuiltinsResult<Option<Schema>> {
@@ -522,7 +522,7 @@ async fn create_schema(
 /// only used when a parent [`PropId`] is provided.
 #[allow(clippy::too_many_arguments)]
 pub async fn create_prop(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
     prop_name: &str,
     prop_kind: PropKind,
     parent_prop_id: Option<PropId>,
@@ -535,7 +535,7 @@ pub async fn create_prop(
 }
 
 pub async fn create_string_prop_with_default(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
     prop_name: &str,
     default_string: String,
     parent_prop_id: Option<PropId>,
@@ -605,7 +605,7 @@ pub async fn create_string_prop_with_default(
 
 /// Get the "si:identity" [`Func`](crate::Func) and execute (if necessary).
 pub async fn setup_identity_func(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
 ) -> BuiltinsResult<(FuncId, FuncBindingId, FuncBindingReturnValueId)> {
     let identity_func_name = "si:identity".to_string();
     let identity_func: Func = Func::find_by_attr(ctx, "name", &identity_func_name)
@@ -630,7 +630,7 @@ pub async fn setup_identity_func(
 ///
 /// _Use with caution!_
 pub async fn find_child_prop_by_name(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
     prop_id: PropId,
     child_prop_name: &str,
 ) -> BuiltinsResult<Prop> {

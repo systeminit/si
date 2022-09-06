@@ -9,7 +9,7 @@ use dal::{
 };
 
 #[test]
-async fn new(ctx: &DalContext<'_, '_>) {
+async fn new(ctx: &DalContext<'_, '_, '_>) {
     let func_name = "si:poem".to_string();
     let mut funcs = Func::find_by_attr(ctx, "name", &func_name)
         .await
@@ -44,7 +44,7 @@ async fn new(ctx: &DalContext<'_, '_>) {
 }
 
 #[test]
-async fn find_for_prototype(ctx: &DalContext<'_, '_>) {
+async fn find_for_prototype(ctx: &DalContext<'_, '_, '_>) {
     let func_name = "si:poem".to_string();
     let mut funcs = Func::find_by_attr(ctx, "name", &func_name)
         .await
@@ -90,7 +90,7 @@ async fn find_for_prototype(ctx: &DalContext<'_, '_>) {
 }
 
 #[test]
-async fn run(ctx: &DalContext<'_, '_>) {
+async fn run(ctx: &DalContext<'_, '_, '_>) {
     let name = "si:poem";
     let func = Func::find_by_attr(ctx, "name", &name)
         .await

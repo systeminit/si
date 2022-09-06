@@ -44,7 +44,7 @@ pub struct WsEvent {
 }
 
 impl WsEvent {
-    pub fn new(ctx: &DalContext<'_, '_>, payload: WsPayload) -> Self {
+    pub fn new(ctx: &DalContext<'_, '_, '_>, payload: WsPayload) -> Self {
         let billing_account_ids = Self::billing_account_id_from_tenancy(ctx.read_tenancy());
         let history_actor = ctx.history_actor().clone();
         WsEvent {
@@ -72,7 +72,7 @@ impl WsEvent {
         tenancy.billing_accounts().into()
     }
 
-    pub async fn publish(&self, ctx: &DalContext<'_, '_>) -> WsEventResult<()> {
+    pub async fn publish(&self, ctx: &DalContext<'_, '_, '_>) -> WsEventResult<()> {
         for billing_account_id in self.billing_account_ids.iter() {
             let subject = format!("si.billing_account_id.{}.event", billing_account_id);
             ctx.nats_txn().publish(subject, &self).await?;

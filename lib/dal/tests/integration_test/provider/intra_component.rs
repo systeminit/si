@@ -11,7 +11,7 @@ use dal::{AttributeReadContext, DalContext, Func, PropKind, SchemaKind, Standard
 use pretty_assertions_sorted::assert_eq_sorted;
 
 #[test]
-async fn intra_component_identity_update(ctx: &DalContext<'_, '_>) {
+async fn intra_component_identity_update(ctx: &DalContext<'_, '_, '_>) {
     let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
     let (schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
@@ -294,7 +294,7 @@ async fn intra_component_identity_update(ctx: &DalContext<'_, '_>) {
 }
 
 #[test]
-async fn docker_image_intra_component_update(ctx: &DalContext<'_, '_>) {
+async fn docker_image_intra_component_update(ctx: &DalContext<'_, '_, '_>) {
     let schema_name = "docker_image".to_string();
     let schema: Schema = Schema::find_by_attr(ctx, "name", &schema_name)
         .await

@@ -83,7 +83,7 @@ pub trait JobConsumer: std::fmt::Debug + Sync {
     fn access_builder(&self) -> AccessBuilder;
     fn visibility(&self) -> Visibility;
 
-    async fn run(&self, ctx: &DalContext<'_, '_>) -> JobConsumerResult<()>;
+    async fn run(&self, ctx: &DalContext<'_, '_, '_>) -> JobConsumerResult<()>;
 
     async fn run_job(&self, ctx_builder: Arc<DalContextBuilder>) -> JobConsumerResult<()> {
         let mut txns = ctx_builder.transactions_starter().await?;

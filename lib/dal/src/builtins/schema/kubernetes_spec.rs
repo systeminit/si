@@ -5,7 +5,7 @@ use crate::{
 
 #[allow(dead_code)]
 pub async fn create_spec_prop(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
     parent_prop_id: PropId,
 ) -> BuiltinsResult<Prop> {
     let spec_prop = create_prop(ctx, "spec", PropKind::Object, Some(parent_prop_id)).await?;

@@ -2,7 +2,11 @@ use crate::dal::test;
 use dal::{DalContext, Func, FuncBinding, StandardModel, WorkflowTree, WorkflowView};
 use serde_json::json;
 
-async fn fb(ctx: &DalContext<'_, '_>, name: &str, args: serde_json::Value) -> serde_json::Value {
+async fn fb(
+    ctx: &DalContext<'_, '_, '_>,
+    name: &str,
+    args: serde_json::Value,
+) -> serde_json::Value {
     let func = Func::find_by_attr(ctx, "name", &name)
         .await
         .expect("unable to find func")
@@ -16,7 +20,7 @@ async fn fb(ctx: &DalContext<'_, '_>, name: &str, args: serde_json::Value) -> se
 }
 
 #[test]
-async fn resolve(ctx: &DalContext<'_, '_>) {
+async fn resolve(ctx: &DalContext<'_, '_, '_>) {
     let name = "si:poem";
     let func = Func::find_by_attr(ctx, "name", &name)
         .await
@@ -62,7 +66,7 @@ async fn resolve(ctx: &DalContext<'_, '_>) {
 }
 
 #[test]
-async fn run(ctx: &DalContext<'_, '_>) {
+async fn run(ctx: &DalContext<'_, '_, '_>) {
     let name = "si:poem";
     let func = Func::find_by_attr(ctx, "name", &name)
         .await

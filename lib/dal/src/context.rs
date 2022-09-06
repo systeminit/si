@@ -97,11 +97,11 @@ impl ServicesContext {
 /// A context type which holds references to underlying services, transactions, and read/write
 /// context for DAL objects.
 #[derive(Clone, Debug)]
-pub struct DalContext<'s, 't> {
+pub struct DalContext<'a, 's, 't> {
     /// A reference to a [`ServicesContext`] which has handles to common core services.
     services_context: &'s ServicesContext,
     /// A reference to a set of atomically related transactions.
-    txns: &'t Transactions<'t>,
+    txns: &'t Transactions<'a>,
     /// A suitable read tenancy for the consuming DAL objects.
     read_tenancy: ReadTenancy,
     /// A suitable write tenancy for the consuming DAL objects.
@@ -112,7 +112,7 @@ pub struct DalContext<'s, 't> {
     history_actor: HistoryActor,
 }
 
-impl DalContext<'_, '_> {
+impl<'a, 't> DalContext<'a, '_, 't> {
     /// Takes a reference to a [`ServicesContext`] and returns a builder to construct a
     /// `DalContext`.
     pub fn builder(services_context: ServicesContext) -> DalContextBuilder {
@@ -215,7 +215,7 @@ impl DalContext<'_, '_> {
     /// Updates this context with read/write tenancies for a specific organization.
     pub async fn update_to_organization_tenancies(
         &mut self,
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         oid: OrganizationId,
     ) -> Result<(), TransactionsError> {
         self.read_tenancy =
@@ -224,21 +224,21 @@ impl DalContext<'_, '_> {
         Ok(())
     }
 
-    /// Clones a new context from this one with read/write tenancies for a specific organization.
-    pub async fn clone_with_new_organization_tenancies(
-        &self,
-        ctx: &DalContext<'_, '_>,
-        oid: OrganizationId,
-    ) -> Result<DalContext<'_, '_>, TransactionsError> {
-        let mut new = self.clone();
-        new.update_to_organization_tenancies(ctx, oid).await?;
-        Ok(new)
-    }
+    // /// Clones a new context from this one with read/write tenancies for a specific organization.
+    // pub async fn clone_with_new_organization_tenancies(
+    //     &self,
+    //     ctx: &DalContext<'_, '_, '_>,
+    //     oid: OrganizationId,
+    // ) -> Result<DalContext<'_, '_, '_>, TransactionsError> {
+    //     let mut new = self.clone();
+    //     new.update_to_organization_tenancies(ctx, oid).await?;
+    //     Ok(new)
+    // }
 
     /// Updates this context with read/write tenancies for a specific workspace.
     pub async fn update_to_workspace_tenancies(
         &mut self,
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         wid: WorkspaceId,
     ) -> Result<(), TransactionsError> {
         self.read_tenancy =
@@ -247,23 +247,23 @@ impl DalContext<'_, '_> {
         Ok(())
     }
 
-    /// Clones a new context from this one with read/write tenancies for a specific workspace.
-    pub async fn clone_with_new_workspace_tenancies(
-        &self,
-        ctx: &DalContext<'_, '_>,
-        wid: WorkspaceId,
-    ) -> Result<DalContext<'_, '_>, TransactionsError> {
-        let mut new = self.clone();
-        new.update_to_workspace_tenancies(ctx, wid).await?;
-        Ok(new)
-    }
+    // /// Clones a new context from this one with read/write tenancies for a specific workspace.
+    // pub async fn clone_with_new_workspace_tenancies(
+    //     &self,
+    //     ctx: &DalContext<'_, '_, '_>,
+    //     wid: WorkspaceId,
+    // ) -> Result<DalContext<'_, '_, '_>, TransactionsError> {
+    //     let mut new = self.clone();
+    //     new.update_to_workspace_tenancies(ctx, wid).await?;
+    //     Ok(new)
+    // }
 
     pub async fn enqueue_job(&self, job: Box<dyn JobProducer + Send + Sync>) {
         self.txns().job_processor.enqueue_job(job, self).await
     }
 
     /// Gets the dal context's txns.
-    pub fn txns(&self) -> &Transactions<'_> {
+    pub fn txns(&self) -> &Transactions<'a> {
         self.txns
     }
 
@@ -277,7 +277,7 @@ impl DalContext<'_, '_> {
     }
 
     /// Gets the dal context's pg txn.
-    pub fn pg_txn(&self) -> &InstrumentedTransaction<'_> {
+    pub fn pg_txn(&self) -> &InstrumentedTransaction<'a> {
         &self.txns.pg_txn
     }
 
@@ -457,8 +457,8 @@ impl AccessBuilder {
     }
 }
 
-impl From<DalContext<'_, '_>> for AccessBuilder {
-    fn from(ctx: DalContext<'_, '_>) -> Self {
+impl From<DalContext<'_, '_, '_>> for AccessBuilder {
+    fn from(ctx: DalContext<'_, '_, '_>) -> Self {
         Self::new(ctx.read_tenancy, ctx.write_tenancy, ctx.history_actor)
     }
 }
@@ -473,11 +473,11 @@ pub struct DalContextBuilder {
 impl DalContextBuilder {
     /// Contructs and returns a new [`DalContext`] using the given transaction references and
     /// [`RequestContext`].
-    pub fn build<'t>(
+    pub fn build<'a, 't>(
         &self,
         request_context: RequestContext,
-        txns: &'t Transactions<'_>,
-    ) -> DalContext<'_, 't> {
+        txns: &'t Transactions<'a>,
+    ) -> DalContext<'a, '_, 't> {
         DalContext {
             services_context: &self.services_context,
             txns,
@@ -507,7 +507,7 @@ impl DalContextBuilder {
 #[derive(Debug, Error)]
 pub enum TransactionsError {
     #[error(transparent)]
-    Pg(#[from] pg::Error),
+    Pg(#[from] pg::PgError),
     #[error(transparent)]
     Nats(#[from] nats::Error),
     #[error(transparent)]

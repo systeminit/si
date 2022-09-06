@@ -98,14 +98,17 @@ impl WorkflowView {
         }
     }
 
-    pub async fn resolve(ctx: &DalContext<'_, '_>, func: &Func) -> WorkflowResult<WorkflowTree> {
+    pub async fn resolve(
+        ctx: &DalContext<'_, '_, '_>,
+        func: &Func,
+    ) -> WorkflowResult<WorkflowTree> {
         // TODO: add args
         let args = vec![];
         Self::resolve_inner(ctx, func.name(), args, HashSet::new(), &mut HashMap::new()).await
     }
 
     async fn veritech_run(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         func: Func,
         args: FuncBackendJsWorkflowArgs,
     ) -> WorkflowResult<Self> {
@@ -122,7 +125,7 @@ impl WorkflowView {
 
     #[async_recursion]
     async fn resolve_inner(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         name: &str,
         _args: Vec<serde_json::Value>,
         mut recursion_marker: HashSet<String>,
@@ -216,7 +219,7 @@ pub struct FuncToExecute {
 impl WorkflowTree {
     pub async fn run(
         &self,
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
     ) -> WorkflowResult<Vec<FuncBindingReturnValue>> {
         let (map, rxs) = self.prepare(ctx).await?;
 
@@ -295,7 +298,7 @@ impl WorkflowTree {
     #[async_recursion]
     async fn prepare(
         &self,
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
     ) -> WorkflowResult<(
         HashMap<FuncBindingId, FuncToExecute>,
         HashMap<FuncBindingId, mpsc::Receiver<OutputStream>>,
@@ -413,7 +416,7 @@ impl WorkflowTree {
 
     async fn postprocess(
         &self,
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         map: HashMap<FuncBindingId, FuncToExecute>,
         mut outputs: HashMap<FuncBindingId, Vec<OutputStream>>,
     ) -> WorkflowResult<Vec<FuncBindingReturnValue>> {
@@ -462,7 +465,7 @@ pub struct WorkflowTreeView {
 impl WorkflowTreeView {
     // We need to stop recursing so much
     #[async_recursion]
-    pub async fn new(ctx: &DalContext<'_, '_>, tree: WorkflowTree) -> WorkflowResult<Self> {
+    pub async fn new(ctx: &DalContext<'_, '_, '_>, tree: WorkflowTree) -> WorkflowResult<Self> {
         let mut view = WorkflowTreeView {
             name: tree.name,
             kind: tree.kind,
@@ -497,7 +500,7 @@ pub struct CommandOutput {
 }
 
 impl WsEvent {
-    pub fn command_output(ctx: &DalContext<'_, '_>, output: String) -> Self {
+    pub fn command_output(ctx: &DalContext<'_, '_, '_>, output: String) -> Self {
         WsEvent::new(ctx, WsPayload::CommandOutput(CommandOutput { output }))
     }
 }

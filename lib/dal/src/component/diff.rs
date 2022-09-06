@@ -34,8 +34,8 @@ pub struct ComponentDiff {
 
 impl ComponentDiff {
     pub async fn new(
-        ctx: &DalContext<'_, '_>,
-        head_ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
+        head_ctx: &DalContext<'_, '_, '_>,
         component_id: ComponentId,
     ) -> ComponentResult<Self> {
         if ctx.visibility().is_head() || !head_ctx.visibility().is_head() {

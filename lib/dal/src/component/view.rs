@@ -42,7 +42,7 @@ impl Default for ComponentView {
 
 impl ComponentView {
     pub async fn for_context(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         context: AttributeReadContext,
     ) -> ComponentResult<ComponentView> {
         let component_id = match context.component_id() {
@@ -114,7 +114,7 @@ impl ComponentView {
     }
 
     pub async fn reencrypt_secrets(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         component: &mut veritech::ComponentView,
     ) -> Result<(), ComponentViewError> {
         if component.kind != veritech::ComponentKind::Credential {

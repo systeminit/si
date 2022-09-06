@@ -124,7 +124,7 @@ impl ResourceResolver {
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn new(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         resource_prototype_id: ResourcePrototypeId,
         func_id: FuncId,
         func_binding_id: FuncBindingId,
@@ -156,7 +156,7 @@ impl ResourceResolver {
     standard_model_accessor!(func_binding_id, Pk(FuncBindingId), ResourceResolverResult);
 
     pub async fn get_for_prototype_and_component(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         resource_prototype_id: &ResourcePrototypeId,
         component_id: &ComponentId,
     ) -> ResourceResolverResult<Option<Self>> {

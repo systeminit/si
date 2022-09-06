@@ -211,7 +211,10 @@ pub struct GenerateMenuItem {
 
 impl GenerateMenuItem {
     /// Generates raw items and initializes menu items as an empty vec.
-    pub async fn new(ctx: &DalContext<'_, '_>, diagram_kind: DiagramKind) -> NodeMenuResult<Self> {
+    pub async fn new(
+        ctx: &DalContext<'_, '_, '_>,
+        diagram_kind: DiagramKind,
+    ) -> NodeMenuResult<Self> {
         let mut item_list = Vec::new();
         let rows = ctx
             .txns()

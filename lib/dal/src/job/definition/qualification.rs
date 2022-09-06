@@ -42,7 +42,7 @@ pub struct Qualification {
 
 impl Qualification {
     pub async fn new(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         component_id: ComponentId,
         prototype_id: QualificationPrototypeId,
         system_id: SystemId,
@@ -111,7 +111,7 @@ impl JobConsumer for Qualification {
         self.visibility
     }
 
-    async fn run(&self, ctx: &DalContext<'_, '_>) -> JobConsumerResult<()> {
+    async fn run(&self, ctx: &DalContext<'_, '_, '_>) -> JobConsumerResult<()> {
         let component = Component::get_by_id(ctx, &self.component_id)
             .await?
             .ok_or(ComponentError::NotFound(self.component_id))?;

@@ -103,7 +103,7 @@ impl ExternalProvider {
     #[allow(clippy::too_many_arguments)]
     #[tracing::instrument(skip(ctx, name))]
     pub async fn new_with_socket(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         schema_id: SchemaId,
         schema_variant_id: SchemaVariantId,
         name: impl AsRef<str>,
@@ -193,7 +193,7 @@ impl ExternalProvider {
     /// Find all [`Self`] for a given [`SchemaVariant`](crate::SchemaVariant).
     #[tracing::instrument(skip(ctx))]
     pub async fn list_for_schema_variant(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         schema_variant_id: SchemaVariantId,
     ) -> ExternalProviderResult<Vec<Self>> {
         let rows = ctx
@@ -210,7 +210,7 @@ impl ExternalProvider {
     /// Find [`Self`] with a provided [`SocketId`](crate::Socket).
     #[instrument(skip_all)]
     pub async fn find_for_socket(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         socket_id: SocketId,
     ) -> ExternalProviderResult<Option<Self>> {
         let row = ctx
@@ -227,7 +227,7 @@ impl ExternalProvider {
     /// Find [`Self`] with a provided name.
     #[instrument(skip_all)]
     pub async fn find_for_schema_variant_and_name(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         schema_variant_id: SchemaVariantId,
         name: impl AsRef<str>,
     ) -> ExternalProviderResult<Option<Self>> {
@@ -251,7 +251,7 @@ impl ExternalProvider {
     /// Find all [`Self`] for a given [`AttributePrototypeId`](crate::AttributePrototype).
     #[tracing::instrument(skip(ctx))]
     pub async fn list_for_attribute_prototype_with_tail_component_id(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         attribute_prototype_id: AttributePrototypeId,
         tail_component_id: ComponentId,
     ) -> ExternalProviderResult<Vec<Self>> {
@@ -276,7 +276,7 @@ impl ExternalProvider {
     /// [`InternalProviderId`](crate::InternalProvider).
     #[tracing::instrument(skip(ctx))]
     pub async fn list_from_internal_provider_use(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         internal_provider_id: InternalProviderId,
     ) -> ExternalProviderResult<Vec<Self>> {
         let rows = ctx

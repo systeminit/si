@@ -118,7 +118,7 @@ impl WriteTenancy {
 
     pub async fn clone_into_read_tenancy(
         &self,
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
     ) -> Result<ReadTenancy, ReadTenancyError> {
         let read_tenancy = if self.workspace_ids.is_empty() {
             if self.organization_ids.is_empty() {

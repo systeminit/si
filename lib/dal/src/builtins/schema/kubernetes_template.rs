@@ -12,7 +12,7 @@ use crate::{
 #[allow(clippy::too_many_arguments)]
 #[allow(dead_code)]
 pub async fn create_template_prop(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
     parent_prop_id: Option<PropId>,
 ) -> BuiltinsResult<Prop> {
     let template_prop = create_prop(ctx, "template", PropKind::Object, parent_prop_id).await?;

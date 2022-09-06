@@ -94,7 +94,7 @@ impl_standard_model! {
 impl Func {
     #[instrument(skip_all)]
     pub async fn new(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         name: impl AsRef<str>,
         backend_kind: FuncBackendKind,
         backend_response_type: FuncBackendResponseType,
@@ -118,7 +118,7 @@ impl Func {
         Ok(object)
     }
 
-    pub async fn set_id(&mut self, ctx: &DalContext<'_, '_>, id: &FuncId) -> FuncResult<()> {
+    pub async fn set_id(&mut self, ctx: &DalContext<'_, '_, '_>, id: &FuncId) -> FuncResult<()> {
         let updated_at = standard_model::update(
             ctx,
             Self::table_name(),
@@ -153,7 +153,7 @@ impl Func {
 
     pub async fn set_code_plaintext(
         &mut self,
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         code: Option<&'_ str>,
     ) -> FuncResult<()> {
         self.set_code_base64(ctx, code.as_ref().map(|code| base64::encode(&code)))

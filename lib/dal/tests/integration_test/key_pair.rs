@@ -6,14 +6,14 @@ use dal::test_harness::{create_billing_account, create_key_pair};
 use dal::{BillingAccount, KeyPair, StandardModel};
 
 #[test]
-async fn new(ctx: &DalContext<'_, '_>) {
+async fn new(ctx: &DalContext<'_, '_, '_>) {
     let _key_pair = KeyPair::new(ctx, "funky")
         .await
         .expect("cannot create key_pair");
 }
 
 #[test]
-async fn belongs_to(ctx: &DalContext<'_, '_>) {
+async fn belongs_to(ctx: &DalContext<'_, '_, '_>) {
     let billing_account = create_billing_account(ctx).await;
     let key_pair = create_key_pair(ctx).await;
 
@@ -45,7 +45,7 @@ async fn belongs_to(ctx: &DalContext<'_, '_>) {
 }
 
 #[test]
-async fn public_key_get_current(ctx: &DalContext<'_, '_>) {
+async fn public_key_get_current(ctx: &DalContext<'_, '_, '_>) {
     let billing_account = create_billing_account(ctx).await;
     let first_key_pair = create_key_pair(ctx).await;
     first_key_pair

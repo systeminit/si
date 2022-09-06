@@ -61,7 +61,7 @@ pub struct SocketView {
 
 impl SocketView {
     pub async fn list(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         node: &Node,
         schema_variant: &SchemaVariant,
     ) -> DiagramResult<Vec<Self>> {
@@ -132,7 +132,7 @@ pub struct DiagramNodeView {
 
 impl DiagramNodeView {
     pub async fn new(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         node: &Node,
         position: &NodePosition,
         schema_variant: &SchemaVariant,

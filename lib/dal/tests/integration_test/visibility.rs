@@ -4,7 +4,7 @@ use dal::DalContext;
 use dal::Visibility;
 
 #[test]
-async fn head_is_visibile_to_head(ctx: &DalContext<'_, '_>) {
+async fn head_is_visibile_to_head(ctx: &DalContext<'_, '_, '_>) {
     let visibility = Visibility::new_head(false);
     let check_visibility = visibility;
 
@@ -16,7 +16,7 @@ async fn head_is_visibile_to_head(ctx: &DalContext<'_, '_>) {
 }
 
 #[test]
-async fn head_is_visible_to_change_set(ctx: &DalContext<'_, '_>) {
+async fn head_is_visible_to_change_set(ctx: &DalContext<'_, '_, '_>) {
     let visibility = Visibility::new_head(false);
     let check_visibility = Visibility::new_change_set(1.into(), false);
 
@@ -28,7 +28,7 @@ async fn head_is_visible_to_change_set(ctx: &DalContext<'_, '_>) {
 }
 
 #[test]
-async fn head_is_invisibile_to_deleted_head(ctx: &DalContext<'_, '_>) {
+async fn head_is_invisibile_to_deleted_head(ctx: &DalContext<'_, '_, '_>) {
     let visibility = Visibility::new_head(true);
     let check_visibility = Visibility::new_head(false);
 
@@ -40,7 +40,7 @@ async fn head_is_invisibile_to_deleted_head(ctx: &DalContext<'_, '_>) {
 }
 
 #[test]
-async fn delted_head_is_visibile_to_deleted_head(ctx: &DalContext<'_, '_>) {
+async fn delted_head_is_visibile_to_deleted_head(ctx: &DalContext<'_, '_, '_>) {
     let visibility = Visibility::new_head(true);
     let check_visibility = Visibility::new_head(true);
 
@@ -52,7 +52,7 @@ async fn delted_head_is_visibile_to_deleted_head(ctx: &DalContext<'_, '_>) {
 }
 
 #[test]
-async fn change_set_is_not_visible_to_head(ctx: &DalContext<'_, '_>) {
+async fn change_set_is_not_visible_to_head(ctx: &DalContext<'_, '_, '_>) {
     let visibility = Visibility::new_change_set(1.into(), false);
     let check_visibility = Visibility::new_head(false);
 
@@ -64,7 +64,7 @@ async fn change_set_is_not_visible_to_head(ctx: &DalContext<'_, '_>) {
 }
 
 #[test]
-async fn change_set_is_visible_to_change_set(ctx: &DalContext<'_, '_>) {
+async fn change_set_is_visible_to_change_set(ctx: &DalContext<'_, '_, '_>) {
     let visibility = Visibility::new_change_set(1.into(), false);
     let check_visibility = Visibility::new_change_set(1.into(), false);
 
@@ -76,7 +76,7 @@ async fn change_set_is_visible_to_change_set(ctx: &DalContext<'_, '_>) {
 }
 
 #[test]
-async fn change_set_is_invisible_to_different_change_set(ctx: &DalContext<'_, '_>) {
+async fn change_set_is_invisible_to_different_change_set(ctx: &DalContext<'_, '_, '_>) {
     let visibility = Visibility::new_change_set(1.into(), false);
     let check_visibility = Visibility::new_change_set(2.into(), false);
 

@@ -37,7 +37,10 @@ impl_standard_model! {
 
 impl UiMenu {
     #[instrument(skip_all)]
-    pub async fn new(ctx: &DalContext<'_, '_>, diagram_kind: &DiagramKind) -> SchemaResult<Self> {
+    pub async fn new(
+        ctx: &DalContext<'_, '_, '_>,
+        diagram_kind: &DiagramKind,
+    ) -> SchemaResult<Self> {
         let row = ctx
             .txns()
             .pg()
@@ -71,7 +74,7 @@ impl UiMenu {
 
     /// A menu item is unusable when it doesn't have the fields set yet that
     /// enable it to show up in a menu.
-    pub async fn usable_in_menu(&self, ctx: &DalContext<'_, '_>) -> SchemaResult<bool> {
+    pub async fn usable_in_menu(&self, ctx: &DalContext<'_, '_, '_>) -> SchemaResult<bool> {
         if self.name().is_none() || self.category().is_none() || self.schema(ctx).await?.is_none() {
             Ok(false)
         } else {

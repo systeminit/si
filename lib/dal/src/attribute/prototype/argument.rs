@@ -96,7 +96,7 @@ impl AttributePrototypeArgument {
     #[instrument(skip_all)]
     /// Create a new [`AttributePrototypeArgument`] for _intra_ [`Component`](crate::Component) use.
     pub async fn new_for_intra_component(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         attribute_prototype_id: AttributePrototypeId,
         name: impl AsRef<str>,
         internal_provider_id: InternalProviderId,
@@ -133,7 +133,7 @@ impl AttributePrototypeArgument {
     /// Create a new [`AttributePrototypeArgument`] for _inter_ [`Component`](crate::Component) use.
     #[instrument(skip_all)]
     pub async fn new_for_inter_component(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         attribute_prototype_id: AttributePrototypeId,
         name: impl AsRef<str>,
         head_component_id: ComponentId,
@@ -204,7 +204,7 @@ impl AttributePrototypeArgument {
     /// cannot become unset and vice versa.
     pub async fn set_internal_provider_id_safe(
         mut self,
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         internal_provider_id: InternalProviderId,
     ) -> AttributePrototypeArgumentResult<()> {
         if self.internal_provider_id != UNSET_ID_VALUE.into()
@@ -230,7 +230,7 @@ impl AttributePrototypeArgument {
     /// cannot become unset and vice versa.
     pub async fn set_external_provider_id_safe(
         mut self,
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         external_provider_id: ExternalProviderId,
     ) -> AttributePrototypeArgumentResult<()> {
         if self.external_provider_id != UNSET_ID_VALUE.into()
@@ -256,7 +256,7 @@ impl AttributePrototypeArgument {
     /// cannot become unset and vice versa.
     pub async fn set_tail_component_id_safe(
         mut self,
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         tail_component_id: ComponentId,
     ) -> AttributePrototypeArgumentResult<()> {
         if self.tail_component_id != UNSET_ID_VALUE.into()
@@ -281,7 +281,7 @@ impl AttributePrototypeArgument {
     /// cannot become unset and vice versa.
     pub async fn set_head_component_id_safe(
         mut self,
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         head_component_id: ComponentId,
     ) -> AttributePrototypeArgumentResult<()> {
         if self.head_component_id != UNSET_ID_VALUE.into()
@@ -312,7 +312,7 @@ impl AttributePrototypeArgument {
     /// [`AttributePrototype`](crate::AttributePrototype).
     #[tracing::instrument(skip(ctx))]
     pub async fn list_for_attribute_prototype(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         attribute_prototype_id: AttributePrototypeId,
     ) -> AttributePrototypeArgumentResult<Vec<Self>> {
         let rows = ctx
@@ -336,7 +336,7 @@ impl AttributePrototypeArgument {
     /// the same "name" sharing the same name.
     #[tracing::instrument(skip(ctx))]
     pub async fn list_by_name_for_attribute_prototype_and_head_component_id(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         attribute_prototype_id: AttributePrototypeId,
         head_component_id: ComponentId,
     ) -> AttributePrototypeArgumentResult<Vec<AttributePrototypeArgumentGroup>> {

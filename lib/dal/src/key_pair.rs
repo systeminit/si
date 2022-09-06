@@ -65,7 +65,7 @@ impl_standard_model! {
 }
 
 impl KeyPair {
-    pub async fn new(ctx: &DalContext<'_, '_>, name: impl AsRef<str>) -> KeyPairResult<Self> {
+    pub async fn new(ctx: &DalContext<'_, '_, '_>, name: impl AsRef<str>) -> KeyPairResult<Self> {
         let name = name.as_ref();
         let (public_key, secret_key) = box_::gen_keypair();
 
@@ -96,7 +96,7 @@ impl KeyPair {
     }
 
     pub async fn get_current(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         billing_account_id: &BillingAccountId,
     ) -> KeyPairResult<Self> {
         let row = ctx
@@ -165,7 +165,7 @@ pub struct PublicKey {
 
 impl PublicKey {
     pub async fn get_current(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         billing_account_id: &BillingAccountId,
     ) -> KeyPairResult<Self> {
         let row = ctx

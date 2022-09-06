@@ -55,7 +55,7 @@ impl_standard_model! {
 impl Capability {
     #[instrument(skip_all)]
     pub async fn new(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         subject: impl AsRef<str>,
         action: impl AsRef<str>,
     ) -> CapabilityResult<Self> {

@@ -32,7 +32,7 @@ pub struct DependentValuesUpdate {
 }
 
 impl DependentValuesUpdate {
-    pub fn new(ctx: &DalContext<'_, '_>, attribute_value_id: AttributeValueId) -> Box<Self> {
+    pub fn new(ctx: &DalContext<'_, '_, '_>, attribute_value_id: AttributeValueId) -> Box<Self> {
         let access_builder = AccessBuilder::from(ctx.clone());
         let visibility = *ctx.visibility();
 
@@ -89,7 +89,7 @@ impl JobConsumer for DependentValuesUpdate {
         self.visibility
     }
 
-    async fn run(&self, ctx: &DalContext<'_, '_>) -> JobConsumerResult<()> {
+    async fn run(&self, ctx: &DalContext<'_, '_, '_>) -> JobConsumerResult<()> {
         AttributeValueDependentUpdateHarness::update_dependent_values(ctx, self.attribute_value_id)
             .await?;
         Ok(())

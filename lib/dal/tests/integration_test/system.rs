@@ -6,7 +6,7 @@ use dal::{
 };
 
 #[test]
-async fn new(ctx: &DalContext<'_, '_>) {
+async fn new(ctx: &DalContext<'_, '_, '_>) {
     let system = System::new(ctx, "jonas-brothers-why-oh-why")
         .await
         .expect("cannot create system");
@@ -14,7 +14,7 @@ async fn new(ctx: &DalContext<'_, '_>) {
 }
 
 #[test]
-async fn set_workspace(ctx: &DalContext<'_, '_>) {
+async fn set_workspace(ctx: &DalContext<'_, '_, '_>) {
     let system = create_system(ctx).await;
     let workspace = create_workspace(ctx).await;
 

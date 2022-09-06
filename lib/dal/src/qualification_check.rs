@@ -50,7 +50,7 @@ impl_standard_model! {
 
 impl QualificationCheck {
     pub async fn new(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         name: impl AsRef<str>,
     ) -> QualificationCheckResult<Self> {
         let name = name.as_ref();

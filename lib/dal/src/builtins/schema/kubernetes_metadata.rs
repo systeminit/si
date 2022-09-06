@@ -6,7 +6,7 @@ use crate::{
 use super::kubernetes::doc_url;
 
 pub async fn create_metadata_prop(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
     is_name_required: bool,
     parent_prop_id: PropId,
 ) -> BuiltinsResult<Prop> {

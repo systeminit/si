@@ -3,7 +3,7 @@ use chrono::{DateTime, Utc};
 use postgres_types::ToSql;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use si_data::{NatsError, PgError};
+use si_data::{NatsError, PgError, PgRow};
 use strum_macros::AsRefStr;
 use telemetry::prelude::*;
 use thiserror::Error;
@@ -42,7 +42,7 @@ pub enum TypeHint {
 
 #[instrument(skip(ctx))]
 pub async fn get_by_pk<PK: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
     table: &str,
     pk: &PK,
 ) -> StandardModelResult<OBJECT> {
@@ -58,7 +58,7 @@ pub async fn get_by_pk<PK: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
 
 #[instrument(skip(ctx))]
 pub async fn get_by_id<ID: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
     table: &str,
     id: &ID,
 ) -> StandardModelResult<Option<OBJECT>> {
@@ -78,7 +78,7 @@ pub async fn get_by_id<ID: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
 // Hugs, Adam
 #[instrument(skip(ctx))]
 pub async fn find_by_attr<V: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
     table: &str,
     attr_name: &str,
     value: &V,
@@ -102,7 +102,7 @@ pub async fn find_by_attr<V: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
 
 #[instrument(skip(ctx))]
 pub async fn find_by_attr_in<V: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
     table: &str,
     attr_name: &str,
     value: &[&V],
@@ -126,7 +126,7 @@ pub async fn find_by_attr_in<V: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
 
 #[instrument(skip(ctx))]
 pub async fn find_by_attr_not_in<V: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
     table: &str,
     attr_name: &str,
     value: &[&V],
@@ -149,7 +149,7 @@ pub async fn find_by_attr_not_in<V: Send + Sync + ToSql, OBJECT: DeserializeOwne
 }
 
 pub fn object_option_from_row_option<OBJECT: DeserializeOwned>(
-    row_option: Option<tokio_postgres::Row>,
+    row_option: Option<PgRow>,
 ) -> StandardModelResult<Option<OBJECT>> {
     match row_option {
         Some(row) => {
@@ -163,7 +163,7 @@ pub fn object_option_from_row_option<OBJECT: DeserializeOwned>(
 
 #[instrument(skip(ctx))]
 pub async fn belongs_to<ID: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
     table: &str,
     retrieve_table: &str,
     id: &ID,
@@ -187,7 +187,7 @@ pub async fn belongs_to<ID: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
 
 #[instrument(skip(ctx))]
 pub async fn set_belongs_to<ObjectId: Send + Sync + ToSql, BelongsToId: Send + Sync + ToSql>(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
     table: &str,
     object_id: &ObjectId,
     belongs_to_id: &BelongsToId,
@@ -210,7 +210,7 @@ pub async fn set_belongs_to<ObjectId: Send + Sync + ToSql, BelongsToId: Send + S
 
 #[instrument(skip(ctx))]
 pub async fn unset_belongs_to<ObjectId: Send + Sync + ToSql>(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
     table: &str,
     object_id: &ObjectId,
 ) -> StandardModelResult<()> {
@@ -226,7 +226,7 @@ pub async fn unset_belongs_to<ObjectId: Send + Sync + ToSql>(
 
 #[instrument(skip(ctx))]
 pub async fn has_many<ID: Send + Sync + ToSql, OBJECT: DeserializeOwned>(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
     table: &str,
     retrieve_table: &str,
     belongs_to_id: &ID,
@@ -255,7 +255,7 @@ pub async fn many_to_many<
     RightId: Send + Sync + ToSql,
     Object: DeserializeOwned,
 >(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
     table: &str,
     left_table: &str,
     right_table: &str,
@@ -283,7 +283,7 @@ pub async fn many_to_many<
 
 #[instrument(skip(ctx))]
 pub async fn associate_many_to_many<LeftId: Send + Sync + ToSql, RightId: Send + Sync + ToSql>(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
     table: &str,
     left_object_id: &LeftId,
     right_object_id: &RightId,
@@ -309,7 +309,7 @@ pub async fn disassociate_many_to_many<
     LeftId: Send + Sync + ToSql,
     RightId: Send + Sync + ToSql,
 >(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
     table: &str,
     left_object_id: &LeftId,
     right_object_id: &RightId,
@@ -331,7 +331,7 @@ pub async fn disassociate_many_to_many<
 }
 
 pub fn objects_from_rows<OBJECT: DeserializeOwned>(
-    rows: Vec<tokio_postgres::Row>,
+    rows: Vec<PgRow>,
 ) -> StandardModelResult<Vec<OBJECT>> {
     let mut result = Vec::new();
     for row in rows.into_iter() {
@@ -342,16 +342,14 @@ pub fn objects_from_rows<OBJECT: DeserializeOwned>(
     Ok(result)
 }
 
-pub fn object_from_row<OBJECT: DeserializeOwned>(
-    row: tokio_postgres::Row,
-) -> StandardModelResult<OBJECT> {
+pub fn object_from_row<OBJECT: DeserializeOwned>(row: PgRow) -> StandardModelResult<OBJECT> {
     let json: serde_json::Value = row.try_get("object")?;
     let object: OBJECT = serde_json::from_value(json)?;
     Ok(object)
 }
 
 pub fn option_object_from_row<OBJECT: DeserializeOwned>(
-    maybe_row: Option<tokio_postgres::Row>,
+    maybe_row: Option<PgRow>,
 ) -> StandardModelResult<Option<OBJECT>> {
     let result = match maybe_row {
         Some(row) => Some(object_from_row(row)?),
@@ -363,7 +361,7 @@ pub fn option_object_from_row<OBJECT: DeserializeOwned>(
 #[instrument(skip_all)]
 #[allow(clippy::too_many_arguments)]
 pub async fn update<ID, VALUE>(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
     table: &str,
     column: &str,
     id: &ID,
@@ -400,7 +398,7 @@ where
 
 #[instrument(skip_all)]
 pub async fn list<OBJECT: DeserializeOwned>(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
     table: &str,
 ) -> StandardModelResult<Vec<OBJECT>> {
     let rows = ctx
@@ -416,7 +414,7 @@ pub async fn list<OBJECT: DeserializeOwned>(
 
 #[instrument(skip_all)]
 pub async fn delete<PK: Send + Sync + ToSql + std::fmt::Display>(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
     table: &str,
     pk: PK,
 ) -> StandardModelResult<DateTime<Utc>> {
@@ -434,7 +432,7 @@ pub async fn delete<PK: Send + Sync + ToSql + std::fmt::Display>(
 
 #[instrument(skip_all)]
 pub async fn undelete<PK: Send + Sync + ToSql + std::fmt::Display>(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
     table: &str,
     pk: PK,
 ) -> StandardModelResult<DateTime<Utc>> {
@@ -452,8 +450,8 @@ pub async fn undelete<PK: Send + Sync + ToSql + std::fmt::Display>(
 
 #[instrument(skip_all)]
 pub async fn finish_create_from_row<Object: Send + Sync + DeserializeOwned + StandardModel>(
-    ctx: &DalContext<'_, '_>,
-    row: tokio_postgres::Row,
+    ctx: &DalContext<'_, '_, '_>,
+    row: PgRow,
 ) -> StandardModelResult<Object> {
     let json: serde_json::Value = row.try_get("object")?;
     let _history_event = HistoryEvent::new(
@@ -497,7 +495,7 @@ pub trait StandardModel {
     }
 
     #[instrument(skip_all)]
-    async fn get_by_pk(ctx: &DalContext<'_, '_>, pk: &Self::Pk) -> StandardModelResult<Self>
+    async fn get_by_pk(ctx: &DalContext<'_, '_, '_>, pk: &Self::Pk) -> StandardModelResult<Self>
     where
         Self: Sized + DeserializeOwned,
     {
@@ -506,7 +504,10 @@ pub trait StandardModel {
     }
 
     #[instrument(skip_all)]
-    async fn get_by_id(ctx: &DalContext<'_, '_>, id: &Self::Id) -> StandardModelResult<Option<Self>>
+    async fn get_by_id(
+        ctx: &DalContext<'_, '_, '_>,
+        id: &Self::Id,
+    ) -> StandardModelResult<Option<Self>>
     where
         Self: Sized + DeserializeOwned,
     {
@@ -516,7 +517,7 @@ pub trait StandardModel {
 
     #[instrument(skip_all)]
     async fn find_by_attr<V: Send + Sync + ToSql>(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         attr_name: &str,
         value: &V,
     ) -> StandardModelResult<Vec<Self>>
@@ -534,7 +535,7 @@ pub trait StandardModel {
     /// other types.
     #[instrument(skip_all)]
     async fn find_by_attr_in<V: Send + Sync + ToSql>(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         attr_name: &str,
         value: &[&V],
     ) -> StandardModelResult<Vec<Self>>
@@ -548,7 +549,7 @@ pub trait StandardModel {
     }
 
     async fn find_by_attr_not_in<V: Send + Sync + ToSql>(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         attr_name: &str,
         value: &[&V],
     ) -> StandardModelResult<Vec<Self>>
@@ -562,7 +563,7 @@ pub trait StandardModel {
     }
 
     #[instrument(skip_all)]
-    async fn list(ctx: &DalContext<'_, '_>) -> StandardModelResult<Vec<Self>>
+    async fn list(ctx: &DalContext<'_, '_, '_>) -> StandardModelResult<Vec<Self>>
     where
         Self: Sized + DeserializeOwned,
     {
@@ -571,7 +572,7 @@ pub trait StandardModel {
     }
 
     #[instrument(skip_all)]
-    async fn delete(self, ctx: &DalContext<'_, '_>) -> StandardModelResult<()>
+    async fn delete(self, ctx: &DalContext<'_, '_, '_>) -> StandardModelResult<()>
     where
         Self: Send + Sync + Sized,
     {

@@ -97,7 +97,7 @@ impl_standard_model! {
 impl SchemaVariant {
     #[instrument(skip_all)]
     pub async fn new(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         schema_id: SchemaId,
         name: impl AsRef<str>,
     ) -> SchemaVariantResult<(Self, RootProp)> {
@@ -129,7 +129,7 @@ impl SchemaVariant {
     ///
     /// This method **MUST** be called once all the [`Props`](Prop) have been created for the
     /// [`SchemaVariant`]. This method should only be called once, as it is not fully idempotent.
-    pub async fn finalize(&self, ctx: &DalContext<'_, '_>) -> SchemaVariantResult<()> {
+    pub async fn finalize(&self, ctx: &DalContext<'_, '_, '_>) -> SchemaVariantResult<()> {
         let schema = self
             .schema(ctx)
             .await?
@@ -148,7 +148,7 @@ impl SchemaVariant {
     /// This method is idempotent, and may be safely called multiple times before
     /// [`SchemaVariant.finalize(ctx)`](SchemaVariant#finalize()) is called.
     pub async fn create_default_prototypes_and_values(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<()> {
         let root_prop = match Prop::find_root_for_schema_variant(ctx, schema_variant_id).await? {
@@ -163,7 +163,7 @@ impl SchemaVariant {
     /// to every [`Prop`](crate::Prop) in the [`SchemaVariant`] that is not a descendant of an array
     /// or a map.
     async fn create_implicit_internal_providers(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         schema_id: SchemaId,
         schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<()> {
@@ -235,7 +235,7 @@ impl SchemaVariant {
     );
 
     #[instrument(skip_all)]
-    pub async fn all_props(&self, ctx: &DalContext<'_, '_>) -> SchemaVariantResult<Vec<Prop>> {
+    pub async fn all_props(&self, ctx: &DalContext<'_, '_, '_>) -> SchemaVariantResult<Vec<Prop>> {
         let rows = ctx
             .txns()
             .pg()
@@ -249,7 +249,7 @@ impl SchemaVariant {
     }
 
     /// Find the root [`Prop`](crate::Prop) for [`Self`](Self).
-    pub async fn root_prop(&self, ctx: &DalContext<'_, '_>) -> SchemaVariantResult<Prop> {
+    pub async fn root_prop(&self, ctx: &DalContext<'_, '_, '_>) -> SchemaVariantResult<Prop> {
         // FIXME(nick): this is an inefficient solution that would be better suited by a database query.
         for prop in self.all_props(ctx).await? {
             if prop.parent_prop(ctx).await?.is_none() && prop.name() == "root" {

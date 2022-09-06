@@ -71,7 +71,7 @@ impl Resource {
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn new(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         component_id: &ComponentId,
         system_id: &SystemId,
     ) -> ResourceResult<Self> {
@@ -115,7 +115,7 @@ impl Resource {
 
     #[allow(clippy::too_many_arguments)]
     pub async fn get_by_component_id_and_system_id(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         component_id: &ComponentId,
         system_id: &SystemId,
     ) -> ResourceResult<Option<Self>> {
@@ -142,7 +142,7 @@ impl Resource {
 
     #[allow(clippy::too_many_arguments)]
     pub async fn upsert(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         component_id: &ComponentId,
         system_id: &SystemId,
     ) -> ResourceResult<Self> {
@@ -225,7 +225,7 @@ pub struct ResourceSyncId {
 
 impl WsEvent {
     pub fn resource_synced(
-        ctx: &DalContext<'_, '_>,
+        ctx: &DalContext<'_, '_, '_>,
         component_id: ComponentId,
         system_id: SystemId,
     ) -> Self {

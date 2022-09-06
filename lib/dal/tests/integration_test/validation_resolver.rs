@@ -12,7 +12,7 @@ use dal::{
 const UNSET_ID_VALUE: i64 = -1;
 
 #[test]
-async fn new(ctx: &DalContext<'_, '_>) {
+async fn new(ctx: &DalContext<'_, '_, '_>) {
     let schema = Schema::find_by_attr(ctx, "name", &"docker_image".to_string())
         .await
         .expect("cannot find docker image")
@@ -105,7 +105,7 @@ async fn new(ctx: &DalContext<'_, '_>) {
 }
 
 #[test]
-async fn find_errors(ctx: &DalContext<'_, '_>) {
+async fn find_errors(ctx: &DalContext<'_, '_, '_>) {
     let unset_system_id: SystemId = UNSET_ID_VALUE.into();
 
     let schema = Schema::find_by_attr(ctx, "name", &"docker_image".to_string())

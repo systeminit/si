@@ -14,7 +14,7 @@ use tokio::sync::mpsc;
 /// { "queen": { "bohemian_rhapsody": "", "killer_queen": ""} }
 /// ```
 pub async fn create_schema_with_object_and_string_prop(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
 ) -> (Schema, SchemaVariant, Prop, Prop, Prop, RootProp) {
     let octx = ctx.clone_with_universal_head();
     let ctx = &octx;
@@ -65,7 +65,7 @@ pub async fn create_schema_with_object_and_string_prop(
 /// { "queen": { "bohemian_rhapsody": "", "killer_queen": "", "under_pressure": { "another_one_bites_the_dust": "" }} }
 /// ```
 pub async fn create_schema_with_nested_objects_and_string_prop(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
 ) -> (
     Schema,
     SchemaVariant,
@@ -141,7 +141,7 @@ pub async fn create_schema_with_nested_objects_and_string_prop(
 /// { "bohemian_rhapsody": "", "killer_queen": "" }
 /// ```
 pub async fn create_schema_with_string_props(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
 ) -> (Schema, SchemaVariant, Prop, Prop, RootProp) {
     let octx = ctx.clone_with_universal_head();
     let ctx = &octx;
@@ -178,7 +178,7 @@ pub async fn create_schema_with_string_props(
 /// { "sammy_hagar": ["standing hampton", "voa"] }
 /// ```
 pub async fn create_schema_with_array_of_string_props(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
 ) -> (Schema, SchemaVariant, Prop, Prop, RootProp) {
     let octx = ctx.clone_with_universal_head();
     let ctx = &octx;
@@ -219,7 +219,7 @@ pub async fn create_schema_with_array_of_string_props(
 /// }
 /// ```
 pub async fn create_schema_with_nested_array_objects(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
 ) -> (
     Schema,
     SchemaVariant,
@@ -297,7 +297,7 @@ pub async fn create_schema_with_nested_array_objects(
 /// }
 /// ```
 pub async fn create_simple_map(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
 ) -> (Schema, SchemaVariant, Prop, Prop, RootProp) {
     let octx = ctx.clone_with_universal_head();
     let ctx = &octx;
@@ -337,7 +337,7 @@ pub async fn create_simple_map(
 /// }
 /// ```
 pub async fn create_schema_with_nested_array_objects_and_a_map(
-    ctx: &DalContext<'_, '_>,
+    ctx: &DalContext<'_, '_, '_>,
 ) -> (
     Schema,
     SchemaVariant,
@@ -416,7 +416,7 @@ pub async fn create_schema_with_nested_array_objects_and_a_map(
 }
 
 #[test]
-async fn only_string_props(ctx: &DalContext<'_, '_>) {
+async fn only_string_props(ctx: &DalContext<'_, '_, '_>) {
     let (schema, schema_variant, bohemian_prop, killer_prop, root_prop) =
         create_schema_with_string_props(ctx).await;
     let (component, _) =
@@ -508,7 +508,7 @@ async fn only_string_props(ctx: &DalContext<'_, '_>) {
 }
 
 #[test]
-async fn one_object_prop(ctx: &DalContext<'_, '_>) {
+async fn one_object_prop(ctx: &DalContext<'_, '_, '_>) {
     let (schema, schema_variant, queen_prop, killer_prop, bohemian_prop, root_prop) =
         create_schema_with_object_and_string_prop(ctx).await;
     let (component, _) =
@@ -619,7 +619,7 @@ async fn one_object_prop(ctx: &DalContext<'_, '_>) {
 }
 
 #[test]
-async fn nested_object_prop(ctx: &DalContext<'_, '_>) {
+async fn nested_object_prop(ctx: &DalContext<'_, '_, '_>) {
     let (
         schema,
         schema_variant,
@@ -785,7 +785,7 @@ async fn nested_object_prop(ctx: &DalContext<'_, '_>) {
 }
 
 #[test]
-async fn simple_array_of_strings(ctx: &DalContext<'_, '_>) {
+async fn simple_array_of_strings(ctx: &DalContext<'_, '_, '_>) {
     let (schema, schema_variant, sammy_prop, album_prop, root_prop) =
         create_schema_with_array_of_string_props(ctx).await;
 
@@ -883,7 +883,7 @@ async fn simple_array_of_strings(ctx: &DalContext<'_, '_>) {
 }
 
 #[test]
-async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext<'_, '_>) {
+async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext<'_, '_, '_>) {
     let (
         schema,
         schema_variant,
@@ -1143,7 +1143,7 @@ async fn complex_nested_array_of_objects_and_arrays(ctx: &DalContext<'_, '_>) {
 }
 
 #[test]
-async fn simple_map(ctx: &DalContext<'_, '_>) {
+async fn simple_map(ctx: &DalContext<'_, '_, '_>) {
     let (schema, schema_variant, album_prop, album_item_prop, root_prop) =
         create_simple_map(ctx).await;
     let (component, _) = Component::new_for_schema_variant_with_node(
@@ -1242,7 +1242,7 @@ async fn simple_map(ctx: &DalContext<'_, '_>) {
 }
 
 #[test]
-async fn complex_nested_array_of_objects_with_a_map(ctx: &DalContext<'_, '_>) {
+async fn complex_nested_array_of_objects_with_a_map(ctx: &DalContext<'_, '_, '_>) {
     let (
         schema,
         schema_variant,
@@ -1426,7 +1426,7 @@ async fn complex_nested_array_of_objects_with_a_map(ctx: &DalContext<'_, '_>) {
 }
 
 #[test]
-async fn cyclone_crypto_e2e(ctx: &DalContext<'_, '_>) {
+async fn cyclone_crypto_e2e(ctx: &DalContext<'_, '_, '_>) {
     let (tx, _rx) = mpsc::channel(64);
     let secret_value = "Beware Cuca will catch you";
     let secret = serde_json::to_string(&serde_json::json!({
