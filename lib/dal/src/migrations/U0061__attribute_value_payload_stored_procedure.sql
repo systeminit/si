@@ -21,14 +21,7 @@ BEGIN
                         ON attribute_values.attribute_context_prop_id = pmtmsv.left_object_id
                             AND in_tenancy_and_visible_v1(this_tenancy, this_visibility, pmtmsv)
     WHERE in_tenancy_and_visible_v1(this_tenancy, this_visibility, attribute_values)
-      AND in_attribute_context_v1(this_context,
-                                  attribute_values.attribute_context_prop_id,
-                                  attribute_values.attribute_context_internal_provider_id,
-                                  attribute_values.attribute_context_external_provider_id,
-                                  attribute_values.attribute_context_schema_id,
-                                  attribute_values.attribute_context_schema_variant_id,
-                                  attribute_values.attribute_context_component_id,
-                                  attribute_values.attribute_context_system_id)
+      AND in_attribute_context_v1(this_context, attribute_values)
       AND pmtmsv.right_object_id = this_prop_id
     ORDER BY attribute_values.attribute_context_prop_id, COALESCE(avbtav.belongs_to_id, -1),
              COALESCE(attribute_values.key, ''), attribute_values.visibility_change_set_pk DESC,
