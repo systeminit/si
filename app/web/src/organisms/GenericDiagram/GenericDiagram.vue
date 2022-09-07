@@ -219,8 +219,9 @@ const gridOrigin = ref<Vector2d>({ x: 0, y: 0 });
 // but there will often probably be some external controls, which can be done using exposed setZoom and update:zoom event
 const zoomLevel = ref(1);
 function setZoom(newZoomLevel: number) {
-  if (newZoomLevel < MIN_ZOOM || newZoomLevel > MAX_ZOOM) return;
-  zoomLevel.value = newZoomLevel;
+  if (newZoomLevel < MIN_ZOOM) zoomLevel.value = MIN_ZOOM;
+  else if (newZoomLevel > MAX_ZOOM) zoomLevel.value = MAX_ZOOM;
+  else zoomLevel.value = newZoomLevel;
 }
 watch(zoomLevel, () => {
   emit("update:zoom", zoomLevel.value);

@@ -55,3 +55,19 @@ This template should help get you started developing with Vue 3 and Typescript i
   - Enable format on save (recommended)
     - add `"editor.formatOnSave": true` to `.vscode/settings.json` file
     - add `"[vue][typescript][javascript]": { "editor.defaultFormatter": "dbaeumer.vscode-eslint" }` to `.vscode/settings.json` file
+
+### .vscode/settings.json
+```json
+{
+  "editor.formatOnSave": true,
+  "[vue][typescript][javascript]": {
+    "editor.defaultFormatter": "dbaeumer.vscode-eslint"
+  },
+  // enable tailwind class autocomplete / tooling outside of just "class" in templates
+  "tailwindCSS.experimental.classRegex": [
+    [
+      "tw`([^`]*)", // tw`...`
+    ]
+  ]
+}
+```

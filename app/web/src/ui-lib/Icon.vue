@@ -11,15 +11,23 @@
 -->
 
 <template>
-  <div class="icon" :class="sizeClasses">
+  <div
+    class="icon"
+    :class="
+      clsx(
+        'block h-full w-full pointer-events-none transition-transform duration-300',
+        sizeClasses,
+      )
+    "
+  >
     <component
       :is="iconComponent"
       class="icon__svg"
-      :class="{
-        'block h-full w-full pointer-events-none transition-transform duration-300': true,
-        'animate-spin': autoSpin,
-        ...(svgRotateClass && { [svgRotateClass]: true }),
-      }"
+      :class="
+        clsx(svgRotateClass, {
+          'animate-spin': AUTO_SPIN_ICONS.includes(props.name),
+        })
+      "
     />
   </div>
 </template>
@@ -76,6 +84,7 @@ import GitMerge from "~icons/octicon/git-merge-24";
 
 // custom icons
 import Diagram from "@/assets/images/custom-icons/diagram.svg?component";
+import clsx from "clsx";
 
 // restricting the type here (Record<string, FunctionalComponent>) kills our IconName type below
 /* eslint sort-keys: "error" */
@@ -213,5 +222,4 @@ const sizeClasses = computed(() => {
 });
 
 const AUTO_SPIN_ICONS = ["loader", "refresh-active"];
-const autoSpin = computed(() => AUTO_SPIN_ICONS.includes(props.name));
 </script>
