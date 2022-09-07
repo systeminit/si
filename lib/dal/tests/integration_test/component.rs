@@ -14,12 +14,12 @@ use crate::dal::test;
 mod view;
 
 #[test]
-async fn new(ctx: &DalContext<'_, '_, '_>) {
+async fn new(ctx: &DalContext) {
     let _component = create_component_and_schema(ctx).await;
 }
 
 #[test]
-async fn new_for_schema_variant_with_node(ctx: &DalContext<'_, '_, '_>) {
+async fn new_for_schema_variant_with_node(ctx: &DalContext) {
     let schema = create_schema(ctx, &SchemaKind::Configuration).await;
     let schema_variant = create_schema_variant(ctx, *schema.id()).await;
 
@@ -40,14 +40,14 @@ async fn new_for_schema_variant_with_node(ctx: &DalContext<'_, '_, '_>) {
 }
 
 #[test]
-async fn schema_relationships(ctx: &DalContext<'_, '_, '_>) {
+async fn schema_relationships(ctx: &DalContext) {
     let schema = create_schema(ctx, &SchemaKind::Configuration).await;
     let schema_variant = create_schema_variant(ctx, *schema.id()).await;
     let _component = create_component_for_schema_variant(ctx, schema_variant.id()).await;
 }
 
 #[test]
-async fn qualification_view(ctx: &DalContext<'_, '_, '_>) {
+async fn qualification_view(ctx: &DalContext) {
     let schema = create_schema(ctx, &SchemaKind::Configuration).await;
     let (schema_variant, root) = create_schema_variant_with_root(ctx, *schema.id()).await;
 
@@ -93,7 +93,7 @@ async fn qualification_view(ctx: &DalContext<'_, '_, '_>) {
 // to prove what we want right now. Figuring out a test that is less brittle is a great idea, but I'm choosing
 // expediency.
 #[test]
-async fn list_qualifications(ctx: &DalContext<'_, '_, '_>) {
+async fn list_qualifications(ctx: &DalContext) {
     let schema = Schema::find_by_attr(ctx, "name", &"docker_image".to_string())
         .await
         .expect("cannot find docker image schema")
@@ -116,7 +116,7 @@ async fn list_qualifications(ctx: &DalContext<'_, '_, '_>) {
 
 // Also brittle, same reason
 #[test]
-async fn list_qualifications_by_component_id(ctx: &DalContext<'_, '_, '_>) {
+async fn list_qualifications_by_component_id(ctx: &DalContext) {
     let schema = Schema::find_by_attr(ctx, "name", &"docker_image".to_string())
         .await
         .expect("cannot find docker image schema")

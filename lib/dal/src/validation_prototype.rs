@@ -126,7 +126,7 @@ impl ValidationPrototype {
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn new(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         func_id: FuncId,
         args: serde_json::Value,
         context: ValidationPrototypeContext,
@@ -158,7 +158,7 @@ impl ValidationPrototype {
 
     #[allow(clippy::too_many_arguments)]
     pub async fn find_for_prop(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         prop_id: PropId,
         system_id: SystemId,
     ) -> ValidationPrototypeResult<Vec<Self>> {

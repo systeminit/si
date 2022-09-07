@@ -23,12 +23,11 @@ pub struct SetNodePositionResponse {
 }
 
 pub async fn set_node_position(
-    HandlerContext(builder, mut txns): HandlerContext,
+    HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<SetNodePositionRequest>,
 ) -> DiagramResult<Json<SetNodePositionResponse>> {
-    let txns = txns.start().await?;
-    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
+    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let position = NodePosition::upsert_by_node_id(
         &ctx,
@@ -42,7 +41,7 @@ pub async fn set_node_position(
 
     WsEvent::change_set_written(&ctx).publish(&ctx).await?;
 
-    txns.commit().await?;
+    ctx.commit().await?;
 
     Ok(Json(SetNodePositionResponse { position }))
 }

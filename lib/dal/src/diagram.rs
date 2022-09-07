@@ -88,10 +88,7 @@ pub struct Diagram {
 impl Diagram {
     /// Assemble a [`Diagram`](Self) based on existing [`Nodes`](crate::Node) and
     /// [`Connections`](crate::Connection).
-    pub async fn assemble(
-        ctx: &DalContext<'_, '_, '_>,
-        system_id: Option<SystemId>,
-    ) -> DiagramResult<Self> {
+    pub async fn assemble(ctx: &DalContext, system_id: Option<SystemId>) -> DiagramResult<Self> {
         let connections = Connection::list(ctx).await?;
         let nodes = Node::list(ctx).await?;
 

@@ -80,7 +80,7 @@ impl Visibility {
     #[instrument(skip(ctx))]
     pub async fn is_visible_to(
         &self,
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         check_visibility: &Visibility,
     ) -> VisibilityResult<bool> {
         let row = ctx

@@ -250,12 +250,10 @@ pub async fn migrate_builtins(
         Arc::new(*encryption_key),
     );
     let dal_context = services_context.into_builder();
-    let mut starter = dal_context.transactions_starter().await?;
-    let txns = starter.start().await?;
     let request_context = RequestContext::new_universal_head(HistoryActor::SystemInit);
-    let ctx = dal_context.build(request_context, &txns);
+    let ctx = dal_context.build(request_context).await?;
     builtins::migrate(&ctx).await?;
-    txns.commit().await?;
+    ctx.commit().await?;
     Ok(())
 }
 

@@ -19,12 +19,11 @@ pub struct GetNodeTemplateRequest {
 pub type GetNodeTemplateResponse = NodeTemplate;
 
 pub async fn get_node_template(
-    HandlerContext(builder, mut txns): HandlerContext,
+    HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<GetNodeTemplateRequest>,
 ) -> DiagramResult<Json<GetNodeTemplateResponse>> {
-    let txns = txns.start().await?;
-    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
+    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let response = NodeTemplate::new_from_schema_id(&ctx, request.schema_id).await?;
 

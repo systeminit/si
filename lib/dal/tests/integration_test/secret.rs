@@ -7,7 +7,7 @@ use dal::{
 use dal::{BillingAccountSignup, DalContext};
 
 #[test]
-async fn new_encrypted_secret(ctx: &DalContext<'_, '_, '_>, nba: &BillingAccountSignup) {
+async fn new_encrypted_secret(ctx: &DalContext, nba: &BillingAccountSignup) {
     let name = generate_fake_name();
 
     let secret = EncryptedSecret::new(
@@ -37,7 +37,7 @@ async fn new_encrypted_secret(ctx: &DalContext<'_, '_, '_>, nba: &BillingAccount
 }
 
 #[test]
-async fn secret_get_by_id(ctx: &DalContext<'_, '_, '_>, nba: &BillingAccountSignup) {
+async fn secret_get_by_id(ctx: &DalContext, nba: &BillingAccountSignup) {
     let og_secret = create_secret(ctx, *nba.key_pair.id(), *nba.billing_account.id()).await;
 
     let secret = Secret::get_by_id(ctx, og_secret.id())
@@ -48,7 +48,7 @@ async fn secret_get_by_id(ctx: &DalContext<'_, '_, '_>, nba: &BillingAccountSign
 }
 
 #[test]
-async fn encrypted_secret_get_by_id(ctx: &DalContext<'_, '_, '_>, nba: &BillingAccountSignup) {
+async fn encrypted_secret_get_by_id(ctx: &DalContext, nba: &BillingAccountSignup) {
     let secret = create_secret(ctx, *nba.key_pair.id(), *nba.billing_account.id()).await;
 
     let encrypted_secret = EncryptedSecret::get_by_id(ctx, secret.id())
@@ -63,7 +63,7 @@ async fn encrypted_secret_get_by_id(ctx: &DalContext<'_, '_, '_>, nba: &BillingA
 }
 
 #[test]
-async fn secret_update_name(ctx: &DalContext<'_, '_, '_>, nba: &BillingAccountSignup) {
+async fn secret_update_name(ctx: &DalContext, nba: &BillingAccountSignup) {
     let mut secret = create_secret(ctx, *nba.key_pair.id(), *nba.billing_account.id()).await;
 
     let original_name = secret.name().to_string();
@@ -77,7 +77,7 @@ async fn secret_update_name(ctx: &DalContext<'_, '_, '_>, nba: &BillingAccountSi
 }
 
 #[test]
-async fn encrypt_decrypt_round_trip(ctx: &DalContext<'_, '_, '_>, nba: &BillingAccountSignup) {
+async fn encrypt_decrypt_round_trip(ctx: &DalContext, nba: &BillingAccountSignup) {
     let pkey = nba.key_pair.public_key();
     let name = generate_fake_name();
 

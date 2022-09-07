@@ -4,12 +4,12 @@ use crate::{
     ExternalProvider, SchemaKind, StandardModel,
 };
 
-pub async fn migrate(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResult<()> {
+pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
     system(ctx).await?;
     Ok(())
 }
 
-async fn system(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResult<()> {
+async fn system(ctx: &DalContext) -> BuiltinsResult<()> {
     let name = "system".to_string();
     let mut schema =
         match BuiltinSchemaHelpers::create_schema(ctx, &name, &SchemaKind::System).await? {

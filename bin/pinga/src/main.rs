@@ -195,7 +195,7 @@ async fn start_job_executor(
         veritech.clone(),
         Arc::new(encryption_key),
     );
-    let ctx_builder = Arc::new(DalContext::builder(services_context));
+    let ctx_builder = DalContext::builder(services_context);
 
     loop {
         tokio::time::sleep(Duration::from_millis(10)).await;
@@ -280,7 +280,7 @@ macro_rules! job_match {
 
 async fn execute_job_fallible(
     job: faktory_async::Job,
-    ctx_builder: Arc<DalContextBuilder>,
+    ctx_builder: DalContextBuilder,
 ) -> Result<(), JobError> {
     info!("Processing {job:?}");
 
@@ -311,13 +311,11 @@ async fn execute_job_fallible(
 
         let err_message = err.to_string();
         panic_wrapper(format!("Job failure reporting: {job_type_name}"), async {
-            let mut txns = ctx_builder.transactions_starter().await?;
-            let txns = txns.start().await?;
-            let ctx = ctx_builder.build(access_builder.build(visibility), &txns);
+            let ctx = ctx_builder.build(access_builder.build(visibility)).await?;
 
             JobFailure::new(&ctx, job_type_name.clone(), err_message).await?;
 
-            txns.commit().await?;
+            ctx.commit().await?;
             Result::<(), JobFailureError>::Ok(())
         })
         .await?;

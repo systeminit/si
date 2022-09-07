@@ -6,14 +6,14 @@ use dal::{
 use crate::dal::test;
 
 #[test]
-async fn new(ctx: &mut DalContext<'_, '_, '_>, bid: BillingAccountId) {
+async fn new(ctx: &mut DalContext, bid: BillingAccountId) {
     ctx.update_to_billing_account_tenancies(bid);
 
     let _group = Group::new(ctx, "funky").await.expect("cannot create group");
 }
 
 #[test]
-async fn add_user(ctx: &mut DalContext<'_, '_, '_>, bid: BillingAccountId) {
+async fn add_user(ctx: &mut DalContext, bid: BillingAccountId) {
     ctx.update_to_billing_account_tenancies(bid);
 
     let group = create_group(ctx).await;
@@ -31,7 +31,7 @@ async fn add_user(ctx: &mut DalContext<'_, '_, '_>, bid: BillingAccountId) {
 }
 
 #[test]
-async fn remove_user(ctx: &mut DalContext<'_, '_, '_>, bid: BillingAccountId) {
+async fn remove_user(ctx: &mut DalContext, bid: BillingAccountId) {
     ctx.update_to_billing_account_tenancies(bid);
 
     let group = create_group(ctx).await;
@@ -58,7 +58,7 @@ async fn remove_user(ctx: &mut DalContext<'_, '_, '_>, bid: BillingAccountId) {
 }
 
 #[test]
-async fn users(ctx: &mut DalContext<'_, '_, '_>, bid: BillingAccountId) {
+async fn users(ctx: &mut DalContext, bid: BillingAccountId) {
     ctx.update_to_billing_account_tenancies(bid);
 
     let group = create_group(ctx).await;

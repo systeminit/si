@@ -6,7 +6,7 @@ use dal::{
 };
 
 #[test]
-async fn new(ctx: &DalContext<'_, '_, '_>) {
+async fn new(ctx: &DalContext) {
     let _write_tenancy = WriteTenancy::new_universal();
     let _visibility = Visibility::new_head(false);
     let _history_actor = HistoryActor::SystemInit;
@@ -17,7 +17,7 @@ async fn new(ctx: &DalContext<'_, '_, '_>) {
 }
 
 #[test]
-async fn schema_variants(ctx: &DalContext<'_, '_, '_>) {
+async fn schema_variants(ctx: &DalContext) {
     let qualification_check = create_qualification_check(ctx).await;
     let schema = create_schema(ctx, &SchemaKind::Configuration).await;
     let variant = create_schema_variant(ctx, *schema.id()).await;

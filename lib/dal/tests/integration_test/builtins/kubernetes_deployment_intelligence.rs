@@ -6,7 +6,7 @@ use pretty_assertions_sorted::assert_eq_sorted;
 // Oh yeah, it's big brain time.
 #[ignore]
 #[test]
-async fn kubernetes_deployment_intelligence(ctx: &DalContext<'_, '_, '_>) {
+async fn kubernetes_deployment_intelligence(ctx: &DalContext) {
     let mut harness = BuiltinsHarness::new();
     let tail_fedora_payload = harness
         .create_component(ctx, "fedora", Builtin::DockerImage)

@@ -33,7 +33,7 @@ impl AttributeView {
     /// the [`SchemaVariant`](crate::SchemaVariant) is known and you only desire to generate a view
     /// for the entire value, you do not need to provide the root.
     pub async fn new(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         attribute_read_context: AttributeReadContext,
         root_attribute_value_id: Option<AttributeValueId>,
     ) -> AttributeValueResult<Self> {

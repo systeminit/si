@@ -935,7 +935,7 @@ impl NatsTxn {
     }
 
     #[instrument(
-        name = "transaction.commit",
+        name = "transaction.commit_into_conn",
         skip_all,
         level = "debug",
         fields(
@@ -945,7 +945,7 @@ impl NatsTxn {
             net.transport = %self.metadata.net_transport,
         )
     )]
-    pub async fn commit(self) -> Result<()> {
+    pub async fn commit_into_conn(self) -> Result<Client> {
         let span = Span::current();
         span.follows_from(&self.tx_span);
 
@@ -962,6 +962,23 @@ impl NatsTxn {
         self.tx_span.record_ok();
         self.tx_span.record("messaging.transaction", &"commit");
         span.record_ok();
+
+        Ok(self.client)
+    }
+
+    #[instrument(
+        name = "transaction.commit",
+        skip_all,
+        level = "debug",
+        fields(
+            messaging.protocol = %self.metadata.messaging_protocol,
+            messaging.system = %self.metadata.messaging_system,
+            messaging.url = %self.metadata.messaging_url,
+            net.transport = %self.metadata.net_transport,
+        )
+    )]
+    pub async fn commit(self) -> Result<()> {
+        let _ = self.commit_into_conn().await?;
         Ok(())
     }
 
@@ -976,7 +993,7 @@ impl NatsTxn {
             net.transport = %self.metadata.net_transport,
         )
     )]
-    pub async fn rollback(self) -> Result<()> {
+    pub async fn rollback_into_conn(self) -> Result<Client> {
         let span = Span::current();
         span.follows_from(&self.tx_span);
 
@@ -986,6 +1003,23 @@ impl NatsTxn {
         self.tx_span.record_ok();
         self.tx_span.record("messaging.transaction", &"rollback");
         span.record_ok();
+
+        Ok(self.client)
+    }
+
+    #[instrument(
+        name = "transaction.rollback",
+        skip_all,
+        level = "debug",
+        fields(
+            messaging.protocol = %self.metadata.messaging_protocol,
+            messaging.system = %self.metadata.messaging_system,
+            messaging.url = %self.metadata.messaging_url,
+            net.transport = %self.metadata.net_transport,
+        )
+    )]
+    pub async fn rollback(self) -> Result<()> {
+        let _ = self.rollback_into_conn().await?;
         Ok(())
     }
 

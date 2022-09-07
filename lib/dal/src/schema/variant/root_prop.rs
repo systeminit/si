@@ -23,7 +23,7 @@ impl RootProp {
     /// Creates and returns a [`RootProp`] for a [`SchemaVariant`](crate::SchemaVariant).
     #[instrument(skip_all)]
     pub async fn new(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
     ) -> SchemaVariantResult<Self> {
         let root_prop = Prop::new(ctx, "root", PropKind::Object).await?;

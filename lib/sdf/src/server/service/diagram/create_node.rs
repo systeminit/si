@@ -29,12 +29,11 @@ pub struct CreateNodeResponse {
 }
 
 pub async fn create_node(
-    HandlerContext(builder, mut txns): HandlerContext,
+    HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<CreateNodeRequest>,
 ) -> DiagramResult<Json<CreateNodeResponse>> {
-    let txns = txns.start().await?;
-    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
+    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let name = generate_name(None);
     let schema = Schema::get_by_id(&ctx, &request.schema_id)
@@ -74,7 +73,7 @@ pub async fn create_node(
 
     WsEvent::change_set_written(&ctx).publish(&ctx).await?;
 
-    txns.commit().await?;
+    ctx.commit().await?;
 
     Ok(Json(CreateNodeResponse { node: node_view }))
 }

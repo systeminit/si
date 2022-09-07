@@ -24,12 +24,11 @@ pub struct WorkflowResolveResponse {
 }
 
 pub async fn resolve(
-    HandlerContext(builder, mut txns): HandlerContext,
+    HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<WorkflowResolveRequest>,
 ) -> WorkflowResult<Json<WorkflowResolveResponse>> {
-    let txns = txns.start().await?;
-    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
+    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let prototype = WorkflowPrototype::get_by_id(&ctx, &request.id)
         .await?
@@ -43,7 +42,7 @@ pub async fn resolve(
     let tree = WorkflowTree::deserialize(value.unwrap_or(&serde_json::Value::Null))?;
     let view = WorkflowTreeView::new(&ctx, tree).await?;
 
-    txns.commit().await?;
+    ctx.commit().await?;
 
     Ok(Json(WorkflowResolveResponse {
         json: serde_json::to_string_pretty(&view)?,

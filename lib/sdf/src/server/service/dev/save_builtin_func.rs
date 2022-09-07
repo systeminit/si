@@ -2,8 +2,8 @@ use axum::Json;
 use serde::{Deserialize, Serialize};
 
 use dal::{
-    ComponentId, Func, FuncBackendKind, FuncId, HistoryActor, ReadTenancy, SchemaVariantId,
-    StandardModel, Visibility, WriteTenancy, WsEvent,
+    ComponentId, Func, FuncBackendKind, FuncId, HistoryActor, RequestContext, SchemaVariantId,
+    StandardModel, Visibility, WsEvent,
 };
 
 use crate::server::extract::{AccessBuilder, HandlerContext};
@@ -33,18 +33,13 @@ pub struct SaveBuiltinFuncResponse {
 }
 
 pub async fn save_builtin_func(
-    HandlerContext(builder, mut txns): HandlerContext,
+    HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<SaveBuiltinFuncRequest>,
 ) -> DevResult<Json<SaveBuiltinFuncResponse>> {
-    let txns = txns.start().await?;
-
-    let universal_req_ctx = dal::context::AccessBuilder::new(
-        ReadTenancy::new_universal(),
-        WriteTenancy::new_universal(),
-        HistoryActor::SystemInit,
-    );
-    let ctx = builder.build(universal_req_ctx.build(Visibility::new_head(false)), &txns);
+    let mut ctx = builder
+        .build(RequestContext::new_universal_head(HistoryActor::SystemInit))
+        .await?;
 
     let mut func = Func::get_by_id(&ctx, &request.id)
         .await?
@@ -59,12 +54,12 @@ pub async fn save_builtin_func(
 
     dal::builtins::func::persist(&func).await?;
 
-    let acct_ctx = builder.build(request_ctx.build(request.visibility), &txns);
-    WsEvent::change_set_written(&acct_ctx)
-        .publish(&acct_ctx)
-        .await?;
+    // Update the ctx with the account details for proper WS signaling
+    ctx.update_from_request_context(request_ctx.build(request.visibility));
 
-    txns.commit().await?;
+    WsEvent::change_set_written(&ctx).publish(&ctx).await?;
+
+    ctx.commit().await?;
 
     Ok(Json(SaveBuiltinFuncResponse { success: true }))
 }

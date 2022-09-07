@@ -16,17 +16,15 @@ pub struct GetSchemaRequest {
 pub type GetSchemaResponse = Schema;
 
 pub async fn get_schema(
-    HandlerContext(builder, mut txns): HandlerContext,
+    HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<GetSchemaRequest>,
 ) -> SchemaResult<Json<GetSchemaResponse>> {
-    let txns = txns.start().await?;
-    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
+    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let response = Schema::get_by_id(&ctx, &request.schema_id)
         .await?
         .ok_or(SchemaError::SchemaNotFound)?;
 
-    txns.commit().await?;
     Ok(Json(response))
 }

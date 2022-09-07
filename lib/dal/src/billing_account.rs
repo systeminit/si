@@ -89,7 +89,7 @@ impl_standard_model! {
 impl BillingAccount {
     #[instrument(skip_all)]
     pub async fn new(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         name: impl AsRef<str>,
         description: Option<&String>,
     ) -> BillingAccountResult<Self> {
@@ -134,7 +134,7 @@ impl BillingAccount {
     );
 
     pub async fn signup(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         billing_account_name: impl AsRef<str>,
         user_name: impl AsRef<str>,
         user_email: impl AsRef<str>,
@@ -214,7 +214,7 @@ impl BillingAccount {
     }
 
     pub async fn find_by_name(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         name: impl AsRef<str>,
     ) -> BillingAccountResult<Option<BillingAccount>> {
         let name = name.as_ref();
@@ -231,7 +231,7 @@ impl BillingAccount {
     }
 
     pub async fn get_defaults(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         id: &BillingAccountId,
     ) -> BillingAccountResult<BillingAccountDefaults> {
         let row = ctx

@@ -16,13 +16,13 @@ use crate::{
     SchemaKind, Socket, StandardModel, WorkflowPrototype, WorkflowPrototypeContext,
 };
 
-pub async fn migrate(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResult<()> {
+pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
     docker_hub_credential(ctx).await?;
     docker_image(ctx).await?;
     Ok(())
 }
 
-async fn docker_hub_credential(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResult<()> {
+async fn docker_hub_credential(ctx: &DalContext) -> BuiltinsResult<()> {
     let name = "docker_hub_credential".to_string();
     let mut schema =
         match BuiltinSchemaHelpers::create_schema(ctx, &name, &SchemaKind::Configuration).await? {
@@ -101,7 +101,7 @@ async fn docker_hub_credential(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResult<(
     Ok(())
 }
 
-async fn docker_image(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResult<()> {
+async fn docker_image(ctx: &DalContext) -> BuiltinsResult<()> {
     let name = "docker_image".to_string();
     let mut schema =
         match BuiltinSchemaHelpers::create_schema(ctx, &name, &SchemaKind::Configuration).await? {

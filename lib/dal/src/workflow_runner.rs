@@ -155,7 +155,7 @@ impl WorkflowRunner {
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn new(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         workflow_prototype_id: WorkflowPrototypeId,
         workflow_resolver_id: WorkflowResolverId,
         func_id: FuncId,
@@ -189,7 +189,7 @@ impl WorkflowRunner {
     /// runner, but also a corresponding, _terminating_
     /// [`WorkflowRunnerState`](crate::workflow_runner::workflow_runner_state::WorkflowRunnerState).
     pub async fn run(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         prototype_id: WorkflowPrototypeId,
         component_id: ComponentId,
     ) -> WorkflowRunnerResult<(Self, WorkflowRunnerState, Vec<FuncBindingReturnValue>)> {
@@ -268,7 +268,7 @@ impl WorkflowRunner {
     /// Upon a successful workflow runner "run" (within [`Self::run()`]), process the result
     /// as desired (e.g. processing logs).
     async fn process_successful_workflow_run(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         func_binding_return_values: &Vec<FuncBindingReturnValue>,
         prototype_id: WorkflowPrototypeId,
         component_id: ComponentId,
@@ -347,7 +347,7 @@ impl WorkflowRunner {
     standard_model_accessor!(func_binding_id, Pk(FuncBindingId), WorkflowRunnerResult);
 
     pub async fn find_for_prototype(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         workflow_prototype_id: &WorkflowPrototypeId,
         context: WorkflowRunnerContext,
     ) -> WorkflowRunnerResult<Vec<Self>> {

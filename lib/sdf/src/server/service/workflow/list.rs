@@ -36,12 +36,11 @@ pub struct ListedWorkflowView {
 pub type ListWorkflowsResponse = Vec<ListedWorkflowView>;
 
 pub async fn list(
-    HandlerContext(builder, mut txns): HandlerContext,
+    HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<ListWorkflowsRequest>,
 ) -> WorkflowResult<Json<ListWorkflowsResponse>> {
-    let txns = txns.start().await?;
-    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
+    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let prototypes = WorkflowPrototype::list(&ctx).await?;
     let mut views = Vec::with_capacity(prototypes.len());
@@ -106,8 +105,6 @@ pub async fn list(
             schema_variant_name,
         });
     }
-
-    txns.commit().await?;
 
     Ok(Json(views))
 }

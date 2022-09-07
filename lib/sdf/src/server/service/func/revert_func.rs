@@ -21,19 +21,19 @@ pub struct RevertFuncResponse {
 }
 
 pub async fn revert_func(
-    HandlerContext(builder, mut txns): HandlerContext,
+    HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<RevertFuncRequest>,
 ) -> FuncResult<Json<RevertFuncResponse>> {
-    let txns = txns.start().await?;
-    let ctx = builder.build(request_ctx.clone().build(request.visibility), &txns);
+    let ctx = builder
+        .build(request_ctx.clone().build(request.visibility))
+        .await?;
 
     let func = Func::get_by_id(&ctx, &request.id)
         .await?
         .ok_or(FuncError::FuncNotFound)?;
 
-    let is_revertable =
-        super::is_func_revertable(builder.clone(), &txns, request_ctx, &func).await?;
+    let is_revertable = super::is_func_revertable(&ctx, &func).await?;
 
     if !is_revertable {
         Err(FuncError::FuncNotRevertable)?
@@ -53,7 +53,8 @@ pub async fn revert_func(
         func.hard_delete(&ctx).await?;
 
         WsEvent::change_set_written(&ctx).publish(&ctx).await?;
-        txns.commit().await?;
+
+        ctx.commit().await?;
 
         Ok(Json(RevertFuncResponse { success: true }))
     }

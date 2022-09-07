@@ -31,12 +31,11 @@ pub struct WorkflowRunInfoView {
 pub type WorkflowRunInfoResponse = WorkflowRunInfoView;
 
 pub async fn info(
-    HandlerContext(builder, mut txns): HandlerContext,
+    HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<WorkflowRunInfoRequest>,
 ) -> WorkflowResult<Json<WorkflowRunInfoResponse>> {
-    let txns = txns.start().await?;
-    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
+    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let runner = WorkflowRunner::get_by_id(&ctx, &request.id)
         .await?
@@ -79,8 +78,6 @@ pub async fn info(
         timestamp: *runner.timestamp(),
         logs,
     };
-
-    txns.commit().await?;
 
     Ok(Json(view))
 }

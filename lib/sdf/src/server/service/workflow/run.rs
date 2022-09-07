@@ -25,12 +25,11 @@ pub struct WorkflowRunResponse {
 }
 
 pub async fn run(
-    HandlerContext(builder, mut txns): HandlerContext,
+    HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<WorkflowRunRequest>,
 ) -> WorkflowResult<Json<WorkflowRunResponse>> {
-    let txns = txns.start().await?;
-    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
+    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     // NOTE(nick,wendy): this looks similar to code insider WorkflowRunner::run(). Do we need to run
     // it twice?
@@ -60,7 +59,7 @@ pub async fn run(
     logs.sort_by_key(|(timestamp, _)| *timestamp);
     let logs = logs.into_iter().map(|(_, log)| log).collect();
 
-    txns.commit().await?;
+    ctx.commit().await?;
 
     Ok(Json(WorkflowRunResponse {
         logs,

@@ -23,12 +23,11 @@ pub struct ListAllProviderResponse {
 }
 
 pub async fn list_all_providers(
-    HandlerContext(builder, mut txns): HandlerContext,
+    HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<ListAllProviderRequest>,
 ) -> ProviderResult<Json<ListAllProviderResponse>> {
-    let txns = txns.start().await?;
-    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
+    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let internal_providers =
         InternalProvider::list_for_schema_variant(&ctx, request.schema_variant_id).await?;

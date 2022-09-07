@@ -22,7 +22,7 @@ pub struct ExecFuncResponse {
     pub success: bool,
 }
 
-async fn update_values_for_func(ctx: &DalContext<'_, '_, '_>, func: &Func) -> FuncResult<()> {
+async fn update_values_for_func(ctx: &DalContext, func: &Func) -> FuncResult<()> {
     let prototypes = AttributePrototype::find_for_func(ctx, func.id()).await?;
     for proto in prototypes {
         for value in proto.attribute_values(ctx).await? {
@@ -46,7 +46,7 @@ async fn update_values_for_func(ctx: &DalContext<'_, '_, '_>, func: &Func) -> Fu
     Ok(())
 }
 
-async fn run_qualifications(ctx: &DalContext<'_, '_, '_>, func: &Func) -> FuncResult<()> {
+async fn run_qualifications(ctx: &DalContext, func: &Func) -> FuncResult<()> {
     for proto in QualificationPrototype::find_for_func(ctx, func.id()).await? {
         let component_id = proto.component_id();
         let schema_variant_id = proto.schema_variant_id();
@@ -81,12 +81,11 @@ async fn run_qualifications(ctx: &DalContext<'_, '_, '_>, func: &Func) -> FuncRe
 }
 
 pub async fn exec_func(
-    HandlerContext(builder, mut txns): HandlerContext,
+    HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<ExecFuncRequest>,
 ) -> FuncResult<Json<ExecFuncResponse>> {
-    let txns = txns.start().await?;
-    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
+    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let func = Func::get_by_id(&ctx, &request.id)
         .await?
@@ -103,7 +102,8 @@ pub async fn exec_func(
     }
 
     WsEvent::change_set_written(&ctx).publish(&ctx).await?;
-    txns.commit().await?;
+
+    ctx.commit().await?;
 
     Ok(Json(ExecFuncResponse { success: true }))
 }

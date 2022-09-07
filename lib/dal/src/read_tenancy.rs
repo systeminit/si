@@ -64,7 +64,7 @@ impl ReadTenancy {
     }
 
     pub async fn new_organization(
-        txn: &PgTxn<'_>,
+        txn: &PgTxn,
         organization_ids: Vec<OrganizationId>,
         visibility: &Visibility,
     ) -> ReadTenancyResult<Self> {
@@ -88,7 +88,7 @@ impl ReadTenancy {
     }
 
     pub async fn new_workspace(
-        txn: &PgTxn<'_>,
+        txn: &PgTxn,
         workspace_ids: Vec<WorkspaceId>,
         visibility: &Visibility,
     ) -> ReadTenancyResult<Self> {

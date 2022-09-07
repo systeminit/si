@@ -8,7 +8,7 @@ use dal::{
 use pretty_assertions_sorted::assert_eq_sorted;
 
 #[test]
-async fn schema_variant_specific(ctx: &DalContext<'_, '_, '_>) {
+async fn schema_variant_specific(ctx: &DalContext) {
     // "name": String
     let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
     let (schema_variant, root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;

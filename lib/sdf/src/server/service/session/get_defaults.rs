@@ -21,15 +21,15 @@ impl From<BillingAccountDefaults> for GetDefaultsResponse {
 }
 
 pub async fn get_defaults(
-    HandlerContext(builder, mut txns): HandlerContext,
+    HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Authorization(claim): Authorization,
 ) -> SessionResult<Json<GetDefaultsResponse>> {
-    let txns = txns.start().await?;
-    let ctx = builder.build(request_ctx.build_head(), &txns);
+    let ctx = builder.build(request_ctx.build_head()).await?;
 
     let response = BillingAccount::get_defaults(&ctx, &claim.billing_account_id)
         .await?
         .into();
+
     Ok(Json(response))
 }

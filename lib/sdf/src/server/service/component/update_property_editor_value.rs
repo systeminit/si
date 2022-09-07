@@ -24,12 +24,11 @@ pub struct UpdatePropertyEditorValueResponse {
 }
 
 pub async fn update_property_editor_value(
-    HandlerContext(builder, mut txns): HandlerContext,
+    HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<UpdatePropertyEditorValueRequest>,
 ) -> ComponentResult<Json<UpdatePropertyEditorValueResponse>> {
-    let txns = txns.start().await?;
-    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
+    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let (_, _) = AttributeValue::update_for_context(
         &ctx,
@@ -43,7 +42,7 @@ pub async fn update_property_editor_value(
 
     WsEvent::change_set_written(&ctx).publish(&ctx).await?;
 
-    txns.commit().await?;
+    ctx.commit().await?;
 
     Ok(Json(UpdatePropertyEditorValueResponse { success: true }))
 }

@@ -1,8 +1,7 @@
 use axum::Json;
-use dal::billing_account::BillingAccountSignup;
 use dal::{
-    test_harness::generate_fake_name, BillingAccount, HistoryActor, ReadTenancy, StandardModel,
-    WriteTenancy,
+    billing_account::BillingAccountSignup, test_harness::generate_fake_name, BillingAccount,
+    HistoryActor, RequestContext, StandardModel,
 };
 use serde::{Deserialize, Serialize};
 
@@ -16,19 +15,12 @@ pub struct SignupResponse {
 }
 
 pub async fn signup_and_login(
-    HandlerContext(builder, mut txns): HandlerContext,
+    HandlerContext(builder): HandlerContext,
     JwtSecretKey(jwt_secret_key): JwtSecretKey,
 ) -> TestResult<Json<SignupResponse>> {
-    let txns = txns.start().await?;
-    let ctx = builder.build(
-        dal::context::AccessBuilder::new(
-            ReadTenancy::new_universal(),
-            WriteTenancy::new_universal(),
-            HistoryActor::SystemInit,
-        )
-        .build_head(),
-        &txns,
-    );
+    let ctx = builder
+        .build(RequestContext::new_universal_head(HistoryActor::SystemInit))
+        .await?;
 
     let billing_account_name = generate_fake_name();
     let user_name = generate_fake_name();
@@ -53,6 +45,7 @@ pub async fn signup_and_login(
         )
         .await?;
 
-    txns.commit().await?;
+    ctx.commit().await?;
+
     Ok(Json(SignupResponse { data: result, jwt }))
 }

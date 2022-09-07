@@ -90,7 +90,7 @@ impl ValidationResolver {
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn new(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         validation_prototype_id: ValidationPrototypeId,
         attribute_value_id: AttributeValueId,
         func_binding_id: FuncBindingId,
@@ -122,7 +122,7 @@ impl ValidationResolver {
     standard_model_accessor!(func_binding_id, Pk(FuncBindingId), ValidationResolverResult);
 
     pub async fn find_status(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         component_id: ComponentId,
         system_id: SystemId,
     ) -> ValidationResolverResult<Vec<ValidationStatus>> {

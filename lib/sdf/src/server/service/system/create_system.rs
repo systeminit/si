@@ -21,15 +21,15 @@ pub struct CreateSystemResponse {
 }
 
 pub async fn create_system(
-    HandlerContext(builder, mut txns): HandlerContext,
+    HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<CreateSystemRequest>,
 ) -> SystemResult<Json<CreateSystemResponse>> {
-    let txns = txns.start().await?;
-    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
+    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let (system, _node) = System::new_with_node(&ctx, request.name, &request.workspace_id).await?;
 
-    txns.commit().await?;
+    ctx.commit().await?;
+
     Ok(Json(CreateSystemResponse { system }))
 }

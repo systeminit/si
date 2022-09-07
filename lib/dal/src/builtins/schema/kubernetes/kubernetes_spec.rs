@@ -2,10 +2,7 @@ use crate::builtins::schema::BuiltinSchemaHelpers;
 use crate::{builtins::BuiltinsResult, DalContext, Prop, PropId, PropKind, StandardModel};
 
 #[allow(dead_code)]
-pub async fn create_spec_prop(
-    ctx: &DalContext<'_, '_, '_>,
-    parent_prop_id: PropId,
-) -> BuiltinsResult<Prop> {
+pub async fn create_spec_prop(ctx: &DalContext, parent_prop_id: PropId) -> BuiltinsResult<Prop> {
     let spec_prop = BuiltinSchemaHelpers::create_prop(
         ctx,
         "spec",

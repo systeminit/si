@@ -23,14 +23,13 @@ pub struct CheckQualficationsResponse {
 }
 
 pub async fn check_qualifications(
-    HandlerContext(builder, mut txns): HandlerContext,
+    HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<CheckQualficationsRequest>,
 ) -> ComponentResult<Json<CheckQualficationsResponse>> {
     let system_id = request.system_id.unwrap_or_else(|| SystemId::from(-1));
 
-    let txns = txns.start().await?;
-    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
+    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let is_component_in_tenancy = Component::is_in_tenancy(&ctx, request.component_id).await?;
     let is_component_in_visibility = Component::get_by_id(&ctx, &request.component_id)
@@ -46,7 +45,7 @@ pub async fn check_qualifications(
 
     ctx.enqueue_job(Qualifications::new(&ctx, *component.id(), system_id).await?)
         .await;
-    txns.commit().await?;
+    ctx.commit().await?;
 
     Ok(Json(CheckQualficationsResponse { success: true }))
 }

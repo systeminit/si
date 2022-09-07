@@ -107,7 +107,7 @@ impl FuncBinding {
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn new(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         args: serde_json::Value,
         func_id: FuncId,
         backend_kind: FuncBackendKind,
@@ -137,7 +137,7 @@ impl FuncBinding {
 
     #[instrument(skip_all)]
     pub async fn find_or_create(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         args: serde_json::Value,
         func_id: FuncId,
         backend_kind: FuncBackendKind,
@@ -190,7 +190,7 @@ impl FuncBinding {
     /// [`FuncBindingReturnValue`](crate::FuncBindingReturnValue) for a given
     /// [`FuncId`](crate::Func) and [`args`](serde_json::Value).
     pub async fn find_or_create_and_execute(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         args: serde_json::Value,
         func_id: FuncId,
     ) -> FuncBindingResult<(Self, FuncBindingReturnValue)> {
@@ -233,10 +233,7 @@ impl FuncBinding {
     );
 
     // For a given [`FuncBinding`](Self), execute using veritech.
-    pub async fn execute(
-        &self,
-        ctx: &DalContext<'_, '_, '_>,
-    ) -> FuncBindingResult<FuncBindingReturnValue> {
+    pub async fn execute(&self, ctx: &DalContext) -> FuncBindingResult<FuncBindingReturnValue> {
         let (func, execution, context, mut rx) = self.prepare_execution(ctx).await?;
         let value = self.execute_critical_section(func.clone(), context).await?;
 
@@ -314,7 +311,7 @@ impl FuncBinding {
 
     pub async fn postprocess_execution(
         &self,
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         output_stream: Vec<OutputStream>,
         func: &Func,
         (unprocessed_value, processed_value): (
@@ -347,7 +344,7 @@ impl FuncBinding {
 
     pub async fn prepare_execution(
         &self,
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
     ) -> FuncBindingResult<(
         Func,
         FuncExecution,

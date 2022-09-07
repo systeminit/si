@@ -85,7 +85,7 @@ impl Resource {
     #[allow(clippy::too_many_arguments)]
     #[instrument(skip_all)]
     pub async fn new(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         component_id: ComponentId,
         system_id: SystemId,
         key: String,
@@ -143,7 +143,7 @@ impl Resource {
     );
 
     pub async fn upsert(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         component_id: ComponentId,
         system_id: SystemId,
         key: String,
@@ -163,7 +163,7 @@ impl Resource {
     }
 
     pub async fn find_by_key(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         component_id: ComponentId,
         key: &str,
     ) -> ResourceResult<Option<Self>> {
@@ -180,7 +180,7 @@ impl Resource {
     }
 
     pub async fn list_by_component(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         component_id: ComponentId,
         system_id: SystemId,
     ) -> ResourceResult<Vec<Self>> {
@@ -266,7 +266,7 @@ pub struct ResourceSyncId {
 
 impl WsEvent {
     pub fn resource_synced(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         component_id: ComponentId,
         system_id: SystemId,
     ) -> Self {

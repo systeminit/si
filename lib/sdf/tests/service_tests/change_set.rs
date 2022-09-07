@@ -29,13 +29,13 @@ async fn list_open_change_sets() {
         nba,
         auth_token,
         dal_ctx,
-        dal_txns,
         _faktory,
     );
-    let dal_ctx = dal_ctx.clone_with_new_billing_account_tenancies(*nba.billing_account.id());
+    dal_ctx.update_to_billing_account_tenancies(*nba.billing_account.id());
     let _a_change_set = dal_create_change_set(&dal_ctx).await;
     let _b_change_set = dal_create_change_set(&dal_ctx).await;
-    dal_txns.commit().await.expect("cannot commit transaction");
+    dal_ctx.commit().await.expect("cannot commit transaction");
+
     let response: ListOpenChangeSetsResponse = api_request_auth_empty(
         app,
         Method::GET,
@@ -62,7 +62,6 @@ async fn create_change_set() {
         _nba,
         auth_token,
         _dal_ctx,
-        dal_txns,
         _faktory,
     );
     let request: CreateChangeSetRequest = CreateChangeSetRequest {
@@ -95,12 +94,11 @@ async fn get_change_set() {
         nba,
         auth_token,
         dal_ctx,
-        dal_txns,
         _faktory,
     );
-    let dal_ctx = dal_ctx.clone_with_new_billing_account_tenancies(*nba.billing_account.id());
+    dal_ctx.update_to_billing_account_tenancies(*nba.billing_account.id());
     let change_set = dal_create_change_set(&dal_ctx).await;
-    dal_txns.commit().await.expect("cannot commit txn");
+    dal_ctx.commit().await.expect("cannot commit txn");
 
     let request = GetChangeSetRequest { pk: change_set.pk };
     let response: GetChangeSetResponse =
@@ -124,12 +122,11 @@ async fn apply_change_set() {
         nba,
         auth_token,
         dal_ctx,
-        dal_txns,
         _faktory,
     );
-    let dal_ctx = dal_ctx.clone_with_new_billing_account_tenancies(*nba.billing_account.id());
+    dal_ctx.update_to_billing_account_tenancies(*nba.billing_account.id());
     let change_set = dal_create_change_set(&dal_ctx).await;
-    dal_txns.commit().await.expect("cannot commit txn");
+    dal_ctx.commit().await.expect("cannot commit txn");
 
     let request = ApplyChangeSetRequest {
         change_set_pk: change_set.pk,

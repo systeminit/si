@@ -21,7 +21,7 @@ pub struct SyncResourceResponse {
 }
 
 pub async fn sync_resource(
-    HandlerContext(builder, mut txns): HandlerContext,
+    HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<SyncResourceRequest>,
 ) -> ComponentResult<Json<SyncResourceResponse>> {
@@ -30,14 +30,14 @@ pub async fn sync_resource(
         return Err(ComponentError::SystemIdRequired);
     }
 
-    let txns = txns.start().await?;
-    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
+    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let component = Component::get_by_id(&ctx, &request.component_id)
         .await?
         .ok_or(ComponentError::ComponentNotFound)?;
     component.sync_resource(&ctx, system_id).await?;
 
-    txns.commit().await?;
+    ctx.commit().await?;
+
     Ok(Json(SyncResourceResponse { success: true }))
 }

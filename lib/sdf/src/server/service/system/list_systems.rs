@@ -21,12 +21,13 @@ pub struct ListSystemsResponse {
 }
 
 pub async fn list_systems(
-    HandlerContext(builder, mut txns): HandlerContext,
+    HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<ListSystemsRequest>,
 ) -> SystemResult<Json<ListSystemsResponse>> {
-    let txns = txns.start().await?;
-    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
+    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
+
     let list = System::list_for_workspace(&ctx, &request.workspace_id).await?;
+
     Ok(Json(ListSystemsResponse { list }))
 }

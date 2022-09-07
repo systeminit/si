@@ -3,11 +3,7 @@ use dal::{DalContext, Func, FuncBinding, StandardModel, WorkflowView};
 use pretty_assertions_sorted::assert_eq;
 use serde_json::json;
 
-async fn fb(
-    ctx: &DalContext<'_, '_, '_>,
-    name: &str,
-    args: serde_json::Value,
-) -> serde_json::Value {
+async fn fb(ctx: &DalContext, name: &str, args: serde_json::Value) -> serde_json::Value {
     let func = Func::find_by_attr(ctx, "name", &name)
         .await
         .expect("unable to find func")
@@ -21,7 +17,7 @@ async fn fb(
 }
 
 #[test]
-async fn resolve(ctx: &DalContext<'_, '_, '_>) {
+async fn resolve(ctx: &DalContext) {
     let name = "si:poemWorkflow";
     let func = Func::find_by_attr(ctx, "name", &name)
         .await
@@ -71,7 +67,7 @@ async fn resolve(ctx: &DalContext<'_, '_, '_>) {
 }
 
 #[test]
-async fn run(ctx: &DalContext<'_, '_, '_>) {
+async fn run(ctx: &DalContext) {
     let name = "si:poemWorkflow";
     let func = Func::find_by_attr(ctx, "name", &name)
         .await

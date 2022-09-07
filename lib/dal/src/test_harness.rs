@@ -205,7 +205,7 @@ pub fn generate_fake_name() -> String {
     Generator::with_naming(Name::Numbered).next().unwrap()
 }
 
-pub async fn create_change_set(ctx: &DalContext<'_, '_, '_>) -> ChangeSet {
+pub async fn create_change_set(ctx: &DalContext) -> ChangeSet {
     let name = generate_fake_name();
     ChangeSet::new(ctx, &name, None)
         .await
@@ -221,7 +221,7 @@ pub fn create_visibility_head() -> Visibility {
 }
 
 pub async fn create_billing_account_with_name(
-    ctx: &DalContext<'_, '_, '_>,
+    ctx: &DalContext,
     name: impl AsRef<str>,
 ) -> BillingAccount {
     BillingAccount::new(ctx, &name, None)
@@ -229,33 +229,33 @@ pub async fn create_billing_account_with_name(
         .expect("cannot create billing_account")
 }
 
-pub async fn create_billing_account(ctx: &DalContext<'_, '_, '_>) -> BillingAccount {
+pub async fn create_billing_account(ctx: &DalContext) -> BillingAccount {
     let name = generate_fake_name();
     create_billing_account_with_name(ctx, name).await
 }
 
-pub async fn create_organization(ctx: &DalContext<'_, '_, '_>) -> Organization {
+pub async fn create_organization(ctx: &DalContext) -> Organization {
     let name = generate_fake_name();
     Organization::new(ctx, &name)
         .await
         .expect("cannot create organization")
 }
 
-pub async fn create_workspace(ctx: &DalContext<'_, '_, '_>) -> Workspace {
+pub async fn create_workspace(ctx: &DalContext) -> Workspace {
     let name = generate_fake_name();
     Workspace::new(ctx, &name)
         .await
         .expect("cannot create workspace")
 }
 
-pub async fn create_key_pair(ctx: &DalContext<'_, '_, '_>) -> KeyPair {
+pub async fn create_key_pair(ctx: &DalContext) -> KeyPair {
     let name = generate_fake_name();
     KeyPair::new(ctx, &name)
         .await
         .expect("cannot create key_pair")
 }
 
-pub async fn create_user(ctx: &DalContext<'_, '_, '_>) -> User {
+pub async fn create_user(ctx: &DalContext) -> User {
     let name = generate_fake_name();
     User::new(
         ctx,
@@ -267,13 +267,13 @@ pub async fn create_user(ctx: &DalContext<'_, '_, '_>) -> User {
     .expect("cannot create user")
 }
 
-pub async fn create_group(ctx: &DalContext<'_, '_, '_>) -> Group {
+pub async fn create_group(ctx: &DalContext) -> Group {
     let name = generate_fake_name();
     Group::new(ctx, &name).await.expect("cannot create group")
 }
 
 pub async fn billing_account_signup(
-    ctx: &DalContext<'_, '_, '_>,
+    ctx: &DalContext,
     jwt_secret_key: &JwtSecretKey,
 ) -> (BillingAccountSignup, String) {
     let _write_tenancy = WriteTenancy::new_universal();
@@ -301,28 +301,25 @@ pub async fn billing_account_signup(
     (nba, auth_token)
 }
 
-pub async fn create_schema(ctx: &DalContext<'_, '_, '_>, kind: &SchemaKind) -> Schema {
+pub async fn create_schema(ctx: &DalContext, kind: &SchemaKind) -> Schema {
     let name = generate_fake_name();
     Schema::new(ctx, &name, kind, &ComponentKind::Standard)
         .await
         .expect("cannot create schema")
 }
 
-pub async fn create_schema_ui_menu(ctx: &DalContext<'_, '_, '_>) -> schema::UiMenu {
+pub async fn create_schema_ui_menu(ctx: &DalContext) -> schema::UiMenu {
     schema::UiMenu::new(ctx, &DiagramKind::Configuration)
         .await
         .expect("cannot create schema ui menu")
 }
 
-pub async fn create_schema_variant(
-    ctx: &DalContext<'_, '_, '_>,
-    schema_id: SchemaId,
-) -> schema::SchemaVariant {
+pub async fn create_schema_variant(ctx: &DalContext, schema_id: SchemaId) -> schema::SchemaVariant {
     create_schema_variant_with_root(ctx, schema_id).await.0
 }
 
 pub async fn create_schema_variant_with_root(
-    ctx: &DalContext<'_, '_, '_>,
+    ctx: &DalContext,
     schema_id: SchemaId,
 ) -> (schema::SchemaVariant, schema::RootProp) {
     let name = generate_fake_name();
@@ -387,7 +384,7 @@ pub async fn create_schema_variant_with_root(
     (variant, root)
 }
 
-pub async fn create_component_and_schema(ctx: &DalContext<'_, '_, '_>) -> Component {
+pub async fn create_component_and_schema(ctx: &DalContext) -> Component {
     let schema = create_schema(ctx, &SchemaKind::Configuration).await;
     let schema_variant = create_schema_variant(ctx, *schema.id()).await;
     schema_variant
@@ -403,7 +400,7 @@ pub async fn create_component_and_schema(ctx: &DalContext<'_, '_, '_>) -> Compon
 
 #[allow(clippy::too_many_arguments)]
 pub async fn create_component_for_schema_variant(
-    ctx: &DalContext<'_, '_, '_>,
+    ctx: &DalContext,
     schema_variant_id: &SchemaVariantId,
 ) -> Component {
     let name = generate_fake_name();
@@ -414,10 +411,7 @@ pub async fn create_component_for_schema_variant(
 }
 
 #[allow(clippy::too_many_arguments)]
-pub async fn create_component_for_schema(
-    ctx: &DalContext<'_, '_, '_>,
-    schema_id: &SchemaId,
-) -> Component {
+pub async fn create_component_for_schema(ctx: &DalContext, schema_id: &SchemaId) -> Component {
     let name = generate_fake_name();
     let (component, _) = Component::new_for_schema_with_node(ctx, &name, schema_id)
         .await
@@ -425,23 +419,23 @@ pub async fn create_component_for_schema(
     component
 }
 
-pub async fn create_node(ctx: &DalContext<'_, '_, '_>, node_kind: &NodeKind) -> Node {
+pub async fn create_node(ctx: &DalContext, node_kind: &NodeKind) -> Node {
     Node::new(ctx, node_kind).await.expect("cannot create node")
 }
 
-pub async fn create_qualification_check(ctx: &DalContext<'_, '_, '_>) -> QualificationCheck {
+pub async fn create_qualification_check(ctx: &DalContext) -> QualificationCheck {
     let name = generate_fake_name();
     QualificationCheck::new(ctx, name)
         .await
         .expect("cannot create qualification check")
 }
 
-pub async fn create_system(ctx: &DalContext<'_, '_, '_>) -> System {
+pub async fn create_system(ctx: &DalContext) -> System {
     let name = generate_fake_name();
     System::new(ctx, name).await.expect("cannot create system")
 }
 
-pub async fn create_prop(ctx: &DalContext<'_, '_, '_>) -> Prop {
+pub async fn create_prop(ctx: &DalContext) -> Prop {
     let name = generate_fake_name();
     Prop::new(ctx, name, PropKind::String)
         .await
@@ -449,7 +443,7 @@ pub async fn create_prop(ctx: &DalContext<'_, '_, '_>) -> Prop {
 }
 
 #[allow(clippy::too_many_arguments)]
-pub async fn create_prop_of_kind(ctx: &DalContext<'_, '_, '_>, prop_kind: PropKind) -> Prop {
+pub async fn create_prop_of_kind(ctx: &DalContext, prop_kind: PropKind) -> Prop {
     let name = generate_fake_name();
     Prop::new(ctx, name, prop_kind)
         .await
@@ -458,7 +452,7 @@ pub async fn create_prop_of_kind(ctx: &DalContext<'_, '_, '_>, prop_kind: PropKi
 
 #[allow(clippy::too_many_arguments)]
 pub async fn create_prop_of_kind_with_name(
-    ctx: &DalContext<'_, '_, '_>,
+    ctx: &DalContext,
     prop_kind: PropKind,
     name: impl AsRef<str>,
 ) -> Prop {
@@ -470,7 +464,7 @@ pub async fn create_prop_of_kind_with_name(
 
 #[allow(clippy::too_many_arguments)]
 pub async fn create_prop_of_kind_and_set_parent_with_name(
-    ctx: &DalContext<'_, '_, '_>,
+    ctx: &DalContext,
     prop_kind: PropKind,
     name: impl AsRef<str>,
     parent_prop_id: PropId,
@@ -486,7 +480,7 @@ pub async fn create_prop_of_kind_and_set_parent_with_name(
     new_prop
 }
 
-pub async fn create_func(ctx: &DalContext<'_, '_, '_>) -> Func {
+pub async fn create_func(ctx: &DalContext) -> Func {
     let name = generate_fake_name();
     Func::new(
         ctx,
@@ -500,7 +494,7 @@ pub async fn create_func(ctx: &DalContext<'_, '_, '_>) -> Func {
 
 #[allow(clippy::too_many_arguments)]
 pub async fn create_func_binding(
-    ctx: &DalContext<'_, '_, '_>,
+    ctx: &DalContext,
     args: serde_json::Value,
     func_id: FuncId,
     backend_kind: FuncBackendKind,
@@ -511,7 +505,7 @@ pub async fn create_func_binding(
 }
 
 pub async fn encrypt_message(
-    ctx: &DalContext<'_, '_, '_>,
+    ctx: &DalContext,
     key_pair_id: KeyPairId,
     message: &serde_json::Value,
 ) -> Vec<u8> {
@@ -528,7 +522,7 @@ pub async fn encrypt_message(
 }
 
 pub async fn create_secret(
-    ctx: &DalContext<'_, '_, '_>,
+    ctx: &DalContext,
     key_pair_id: KeyPairId,
     billing_account_id: BillingAccountId,
 ) -> Secret {
@@ -550,7 +544,7 @@ pub async fn create_secret(
 
 #[allow(clippy::too_many_arguments)]
 pub async fn create_secret_with_message(
-    ctx: &DalContext<'_, '_, '_>,
+    ctx: &DalContext,
     key_pair_id: KeyPairId,
     message: &serde_json::Value,
     billing_account_id: BillingAccountId,

@@ -65,12 +65,11 @@ pub struct SchemaVariantView {
 pub type ListSchemaVariantsResponse = Vec<SchemaVariantView>;
 
 pub async fn list_schema_variants(
-    HandlerContext(builder, mut txns): HandlerContext,
+    HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<ListSchemaVariantsRequest>,
 ) -> DiagramResult<Json<ListSchemaVariantsResponse>> {
-    let txns = txns.start().await?;
-    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
+    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let variants = SchemaVariant::list(&ctx).await?;
 

@@ -22,7 +22,7 @@ pub struct ComponentStats {
 }
 
 impl ComponentStats {
-    pub async fn new(ctx: &DalContext<'_, '_, '_>) -> ComponentResult<Self> {
+    pub async fn new(ctx: &DalContext) -> ComponentResult<Self> {
         let component_stats = if ctx.visibility().is_head() {
             Self::default()
         } else {
@@ -40,7 +40,7 @@ impl ComponentStats {
     }
 
     #[instrument(skip_all)]
-    async fn list_added(ctx: &DalContext<'_, '_, '_>) -> ComponentResult<Vec<ComponentStatsGroup>> {
+    async fn list_added(ctx: &DalContext) -> ComponentResult<Vec<ComponentStatsGroup>> {
         let rows = ctx
             .txns()
             .pg()
@@ -53,9 +53,7 @@ impl ComponentStats {
     }
 
     #[instrument(skip_all)]
-    async fn list_deleted(
-        ctx: &DalContext<'_, '_, '_>,
-    ) -> ComponentResult<Vec<ComponentStatsGroup>> {
+    async fn list_deleted(ctx: &DalContext) -> ComponentResult<Vec<ComponentStatsGroup>> {
         let rows = ctx
             .txns()
             .pg()
@@ -68,9 +66,7 @@ impl ComponentStats {
     }
 
     #[instrument(skip_all)]
-    async fn list_modified(
-        ctx: &DalContext<'_, '_, '_>,
-    ) -> ComponentResult<Vec<ComponentStatsGroup>> {
+    async fn list_modified(ctx: &DalContext) -> ComponentResult<Vec<ComponentStatsGroup>> {
         let rows = ctx
             .txns()
             .pg()

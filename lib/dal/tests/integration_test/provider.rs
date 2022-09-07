@@ -11,7 +11,7 @@ use dal::{
 use crate::dal::test;
 
 #[test]
-async fn new_external(ctx: &DalContext<'_, '_, '_>) {
+async fn new_external(ctx: &DalContext) {
     let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
     let (schema_variant, _root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema
@@ -47,7 +47,7 @@ async fn new_external(ctx: &DalContext<'_, '_, '_>) {
 }
 
 #[test]
-async fn new_implicit_internal(ctx: &DalContext<'_, '_, '_>) {
+async fn new_implicit_internal(ctx: &DalContext) {
     let mut schema = create_schema(ctx, &SchemaKind::Configuration).await;
     let (schema_variant, _root_prop) = create_schema_variant_with_root(ctx, *schema.id()).await;
     schema

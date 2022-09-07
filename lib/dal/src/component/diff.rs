@@ -33,11 +33,12 @@ pub struct ComponentDiff {
 }
 
 impl ComponentDiff {
-    pub async fn new(
-        ctx: &DalContext<'_, '_, '_>,
-        head_ctx: &DalContext<'_, '_, '_>,
-        component_id: ComponentId,
-    ) -> ComponentResult<Self> {
+    pub async fn new(ctx: &DalContext, component_id: ComponentId) -> ComponentResult<Self> {
+        // We take a clone of the original ctx for comparisons against the head visibility.
+        // Importantly, this `head_ctx` will be dropped at the end of this function and will not
+        // live any longer (that is, it's garbage collected at a reasonable time)
+        let head_ctx = ctx.clone_with_head();
+
         if ctx.visibility().is_head() || !head_ctx.visibility().is_head() {
             return Err(ComponentError::InvalidContextForDiff);
         }
@@ -70,12 +71,12 @@ impl ComponentDiff {
         let curr_json = serde_json::to_string_pretty(&curr_component_view.properties)?;
 
         // Find the "diffs" given the head dal context only if the component exists on head.
-        let diffs: Vec<CodeView> = if Component::get_by_id(head_ctx, &component_id)
+        let diffs: Vec<CodeView> = if Component::get_by_id(&head_ctx, &component_id)
             .await?
             .is_some()
         {
             let prev_component_view =
-                ComponentView::for_context(head_ctx, component_view_context).await?;
+                ComponentView::for_context(&head_ctx, component_view_context).await?;
             let prev_json = serde_json::to_string_pretty(&prev_component_view.properties)?;
 
             let mut lines = Vec::new();

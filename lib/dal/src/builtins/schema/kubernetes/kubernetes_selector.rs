@@ -4,7 +4,7 @@ use crate::{builtins::BuiltinsResult, DalContext, Prop, PropId, PropKind, Standa
 use crate::builtins::schema::kubernetes::doc_url;
 
 pub async fn create_selector_prop(
-    ctx: &DalContext<'_, '_, '_>,
+    ctx: &DalContext,
     parent_prop_id: PropId,
 ) -> BuiltinsResult<Prop> {
     let mut selector_prop = BuiltinSchemaHelpers::create_prop(

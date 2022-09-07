@@ -17,15 +17,15 @@ pub struct GetNodeAddMenuRequest {
 pub type GetNodeAddMenuResponse = serde_json::Value;
 
 pub async fn get_node_add_menu(
-    HandlerContext(builder, mut txns): HandlerContext,
+    HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Json(request): Json<GetNodeAddMenuRequest>,
 ) -> DiagramResult<Json<GetNodeAddMenuResponse>> {
-    let txns = txns.start().await?;
-    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
+    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     // NOTE(nick): return only components at the moment.
     let gmi = GenerateMenuItem::new(&ctx, DiagramKind::Configuration).await?;
     let response = gmi.create_menu_json()?;
+
     Ok(Json(response))
 }

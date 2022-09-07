@@ -6,12 +6,12 @@ use axum::{
 };
 
 use dal::{
-    attribute::context::AttributeContextBuilderError, context, AttributeContext,
-    AttributeContextError, AttributePrototype, AttributePrototypeError, AttributeValue,
-    AttributeValueError, AttributeValueId, ComponentError, DalContext, DalContextBuilder, Func,
-    FuncBackendKind, FuncBinding, FuncBindingError, Prop, PropError, PropKind,
-    QualificationPrototypeError, ReadTenancyError, StandardModel, StandardModelError, Transactions,
-    TransactionsError, Visibility, WriteTenancyError, WsEventError,
+    attribute::context::AttributeContextBuilderError, AttributeContext, AttributeContextError,
+    AttributePrototype, AttributePrototypeError, AttributeValue, AttributeValueError,
+    AttributeValueId, ComponentError, DalContext, Func, FuncBackendKind, FuncBinding,
+    FuncBindingError, Prop, PropError, PropKind, QualificationPrototypeError, ReadTenancyError,
+    StandardModel, StandardModelError, TransactionsError, Visibility, WriteTenancyError,
+    WsEventError,
 };
 
 use dal::attribute::value::dependent_update::collection::AttributeValueDependentCollectionHarness;
@@ -102,26 +102,18 @@ impl IntoResponse for FuncError {
     }
 }
 
-async fn is_func_revertable<'t>(
-    builder: DalContextBuilder,
-    txns: &'t Transactions<'_>,
-    request_ctx: context::AccessBuilder,
-    func: &Func,
-) -> FuncResult<bool> {
-    let request_ctx = request_ctx.build(Visibility {
-        change_set_pk: (-1).into(),
-        deleted_at: None,
-    });
-    let head_ctx = builder.build(request_ctx, txns);
+async fn is_func_revertable(ctx: &DalContext, func: &Func) -> FuncResult<bool> {
+    // Clone a new ctx vith head visibility
+    let ctx = ctx.clone_with_new_visibility(Visibility::new_head(false));
 
-    let head_func = dbg!(Func::get_by_id(&head_ctx, func.id()).await?);
+    let head_func = Func::get_by_id(&ctx, func.id()).await?;
 
     Ok(head_func.is_some() && func.visibility().in_change_set())
 }
 
 // Note: much of this function will be replaced by the "update just this value" work
 async fn update_attribute_value_by_func_for_context(
-    ctx: &DalContext<'_, '_, '_>,
+    ctx: &DalContext,
     value_id: AttributeValueId,
     parent_value_id: Option<AttributeValueId>,
     func: &Func,

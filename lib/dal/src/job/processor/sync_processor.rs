@@ -16,11 +16,7 @@ impl SyncProcessor {
 
 #[async_trait]
 impl JobQueueProcessor for SyncProcessor {
-    async fn enqueue_job(
-        &self,
-        job: Box<dyn JobProducer + Send + Sync>,
-        ctx: &DalContext<'_, '_, '_>,
-    ) {
+    async fn enqueue_job(&self, job: Box<dyn JobProducer + Send + Sync>, ctx: &DalContext) {
         job.run(ctx)
             .await
             .unwrap_or_else(|e| panic!("Failure processing background job:\n  {:?}\n\n{}", job, e));

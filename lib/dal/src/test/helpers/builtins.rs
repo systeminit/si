@@ -64,7 +64,7 @@ impl BuiltinsHarness {
     /// [`Builtin`](Builtin).
     pub async fn create_component(
         &mut self,
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         name: impl AsRef<str>,
         builtin: Builtin,
     ) -> ComponentPayload {
@@ -106,7 +106,7 @@ impl BuiltinsHarness {
     /// Private function to build a [`PropMap`](PropMap) for a given [`Builtin`](Builtin). This
     /// function will populate the map differently depending on the [`Builtin`](Builtin) provided.
     async fn build_prop_map(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         builtin: Builtin,
         schema_variant_id: SchemaVariantId,
     ) -> PropMap {
@@ -183,7 +183,7 @@ impl BuiltinsHarness {
     /// Private method to create a [`Component`](crate::Component) and assemble a
     /// [`ComponentPayload`](crate::test::helpers::ComponentPayload).
     async fn perform_component_creation_and_payload_assembly(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         schema_id: SchemaId,
         schema_variant_id: SchemaVariantId,
         prop_map: HashMap<&'static str, PropId>,

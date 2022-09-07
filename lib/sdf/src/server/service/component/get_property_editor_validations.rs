@@ -20,12 +20,11 @@ pub struct GetPropertyEditorValidationsRequest {
 pub type GetPropertyEditorValidationsResponse = PropertyEditorValidations;
 
 pub async fn get_property_editor_validations(
-    HandlerContext(builder, mut txns): HandlerContext,
+    HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<GetPropertyEditorValidationsRequest>,
 ) -> ComponentResult<Json<GetPropertyEditorValidationsResponse>> {
-    let txns = txns.start().await?;
-    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
+    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let is_component_in_tenancy = Component::is_in_tenancy(&ctx, request.component_id).await?;
     let is_component_in_visibility = Component::get_by_id(&ctx, &request.component_id)
@@ -38,8 +37,6 @@ pub async fn get_property_editor_validations(
     let prop_edit_validations =
         PropertyEditorValidations::for_component(&ctx, request.component_id, request.system_id)
             .await?;
-
-    txns.commit().await?;
 
     Ok(Json(prop_edit_validations))
 }

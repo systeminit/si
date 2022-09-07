@@ -142,7 +142,7 @@ pub struct InternalProvider {
 impl InternalProvider {
     #[tracing::instrument(skip(ctx))]
     pub async fn new_implicit(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         prop_id: PropId,
         schema_id: SchemaId,
         schema_variant_id: SchemaVariantId,
@@ -217,7 +217,7 @@ impl InternalProvider {
     #[allow(clippy::too_many_arguments)]
     #[tracing::instrument(skip(ctx, name))]
     pub async fn new_explicit_with_socket(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         schema_id: SchemaId,
         schema_variant_id: SchemaVariantId,
         name: impl AsRef<str>,
@@ -332,7 +332,7 @@ impl InternalProvider {
     ///   field on [`Self`]
     pub async fn implicit_emit(
         &self,
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         consume_attribute_context: AttributeContext,
     ) -> InternalProviderResult<AttributeValue> {
         if !self.is_internal_consumer() {
@@ -480,7 +480,7 @@ impl InternalProvider {
     /// Find all [`Self`] for a given [`SchemaVariant`](crate::SchemaVariant).
     #[tracing::instrument(skip(ctx))]
     pub async fn list_for_schema_variant(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
     ) -> InternalProviderResult<Vec<Self>> {
         let rows = ctx
@@ -497,7 +497,7 @@ impl InternalProvider {
     /// Find [`Self`] with a provided name.
     #[instrument(skip_all)]
     pub async fn find_explicit_for_schema_variant_and_name(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         schema_variant_id: SchemaVariantId,
         name: impl AsRef<str>,
     ) -> InternalProviderResult<Option<Self>> {
@@ -521,7 +521,7 @@ impl InternalProvider {
     /// Find [`Self`] with a provided [`SocketId`](crate::Socket).
     #[instrument(skip_all)]
     pub async fn find_explicit_for_socket(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         socket_id: SocketId,
     ) -> InternalProviderResult<Option<Self>> {
         let row = ctx
@@ -538,7 +538,7 @@ impl InternalProvider {
     /// Find all [`Self`] for a given [`AttributePrototypeId`](crate::AttributePrototype).
     #[tracing::instrument(skip(ctx))]
     pub async fn list_for_attribute_prototype(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         attribute_prototype_id: AttributePrototypeId,
     ) -> InternalProviderResult<Vec<Self>> {
         let rows = ctx
@@ -569,7 +569,7 @@ impl InternalProvider {
     /// Gets [`Self`] for a given [`PropId`](crate::Prop). This will only work for
     /// implicit [`InternalProviders`](Self).
     pub async fn get_for_prop(
-        ctx: &DalContext<'_, '_, '_>,
+        ctx: &DalContext,
         prop_id: PropId,
     ) -> InternalProviderResult<Option<Self>> {
         let row = ctx

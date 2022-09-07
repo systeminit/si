@@ -217,7 +217,6 @@ macro_rules! test_setup {
         $nba:ident,
         $auth_token:ident,
         $dal_ctx:ident,
-        $dal_txns:ident,
         $faktory:ident $(,)?
     ,
     ) => {
@@ -251,21 +250,22 @@ macro_rules! test_setup {
                 $veritech.clone(),
                 std::sync::Arc::new($encr_key.clone()),
             );
-            let mut starter = services_context
-                .transactions_starter()
-                .await
-                .expect("cannot start transaction starter");
-            let txns = starter.start().await.expect("cannot start transactions");
             let builder = services_context.into_builder();
-            let request_context =
-                dal::RequestContext::new_universal_head(dal::HistoryActor::SystemInit);
-            let ctx = builder.build(request_context, &txns);
+            let ctx = builder
+                .build(dal::RequestContext::new_universal_head(
+                    dal::HistoryActor::SystemInit,
+                ))
+                .await
+                .expect("cannot start transactions");
 
             let ($nba, $auth_token) =
                 dal::test_harness::billing_account_signup(&ctx, &$jwt_secret_key).await;
-            txns.commit().await.expect("cannot finish setup");
+
+            ctx.commit().await.expect("cannot finish setup");
+
             ($nba, $auth_token)
         };
+
         let services_context = dal::ServicesContext::new(
             $pg.clone(),
             $nats_conn.clone(),
@@ -273,24 +273,32 @@ macro_rules! test_setup {
             $veritech.clone(),
             std::sync::Arc::new($encr_key.clone()),
         );
-        let mut starter = services_context
-            .transactions_starter()
-            .await
-            .expect("cannot start transaction starter");
-        let $dal_txns = starter.start().await.expect("cannot start transactions");
         let builder = services_context.into_builder();
-        let visibility = dal::Visibility::new_head(false);
-        let read_tenancy = dal::ReadTenancy::new_workspace(
-            $dal_txns.pg(),
-            vec![*$nba.workspace.id()],
-            &visibility,
-        )
-        .await
-        .expect("cannot construct read tenancy");
-        let write_tenancy = dal::WriteTenancy::new_workspace(*$nba.workspace.id());
-        let ab =
-            dal::AccessBuilder::new(read_tenancy, write_tenancy, dal::HistoryActor::SystemInit);
-        let request_context = ab.build(visibility);
-        let $dal_ctx = builder.build(request_context, &$dal_txns);
+
+        // This macro expands into funcitons that might not need to mutate,
+        // triggering a lint warning
+        #[allow(unused_mut)]
+        let mut $dal_ctx = {
+            let mut ctx = builder
+                .build_default()
+                .await
+                .expect("cannot start transactions");
+
+            let visibility = dal::Visibility::new_head(false);
+
+            ctx.update_read_tenancy(
+                dal::ReadTenancy::new_workspace(
+                    ctx.pg_txn(),
+                    vec![*$nba.workspace.id()],
+                    &visibility,
+                )
+                .await
+                .expect("cannot construct read tenancy"),
+            );
+            ctx.update_write_tenancy(dal::WriteTenancy::new_workspace(*$nba.workspace.id()));
+            ctx.update_visibility(visibility);
+            ctx.update_history_actor(dal::HistoryActor::SystemInit);
+            ctx
+        };
     };
 }

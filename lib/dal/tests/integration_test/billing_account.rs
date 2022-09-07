@@ -9,7 +9,7 @@ use dal::{
 use crate::dal::test;
 
 #[test]
-async fn new(DalContextUniversalHeadRef(ctx): DalContextUniversalHeadRef<'_, '_, '_, '_>) {
+async fn new(DalContextUniversalHeadRef(ctx): DalContextUniversalHeadRef<'_>) {
     let name = generate_fake_name();
     let billing_account = BillingAccount::new(ctx, &name, Some(&"coheed and cambria".to_string()))
         .await
@@ -22,7 +22,7 @@ async fn new(DalContextUniversalHeadRef(ctx): DalContextUniversalHeadRef<'_, '_,
 }
 
 #[test]
-async fn get_by_pk(DalContextUniversalHeadRef(ctx): DalContextUniversalHeadRef<'_, '_, '_, '_>) {
+async fn get_by_pk(DalContextUniversalHeadRef(ctx): DalContextUniversalHeadRef<'_>) {
     let billing_account = create_billing_account(ctx).await;
 
     let retrieved = BillingAccount::get_by_pk(ctx, billing_account.pk())
@@ -33,7 +33,7 @@ async fn get_by_pk(DalContextUniversalHeadRef(ctx): DalContextUniversalHeadRef<'
 }
 
 #[test]
-async fn get_by_id(DalContextUniversalHeadRef(ctx): DalContextUniversalHeadRef<'_, '_, '_, '_>) {
+async fn get_by_id(DalContextUniversalHeadRef(ctx): DalContextUniversalHeadRef<'_>) {
     let billing_account = create_billing_account(ctx).await;
 
     let retrieved = BillingAccount::get_by_id(ctx, billing_account.id())
@@ -45,7 +45,7 @@ async fn get_by_id(DalContextUniversalHeadRef(ctx): DalContextUniversalHeadRef<'
 }
 
 #[test]
-async fn set_name(DalContextUniversalHeadRef(ctx): DalContextUniversalHeadRef<'_, '_, '_, '_>) {
+async fn set_name(DalContextUniversalHeadRef(ctx): DalContextUniversalHeadRef<'_>) {
     let mut billing_account = create_billing_account(ctx).await;
 
     let new_name = generate_fake_name();
@@ -58,9 +58,7 @@ async fn set_name(DalContextUniversalHeadRef(ctx): DalContextUniversalHeadRef<'_
 }
 
 #[test]
-async fn set_description(
-    DalContextUniversalHeadRef(ctx): DalContextUniversalHeadRef<'_, '_, '_, '_>,
-) {
+async fn set_description(DalContextUniversalHeadRef(ctx): DalContextUniversalHeadRef<'_>) {
     let mut billing_account = create_billing_account(ctx).await;
 
     billing_account
@@ -71,7 +69,7 @@ async fn set_description(
 }
 
 #[test]
-async fn find_by_name(DalContextUniversalHeadRef(ctx): DalContextUniversalHeadRef<'_, '_, '_, '_>) {
+async fn find_by_name(DalContextUniversalHeadRef(ctx): DalContextUniversalHeadRef<'_>) {
     let billing_account = create_billing_account(ctx).await;
 
     let name_billing_account = BillingAccount::find_by_name(ctx, &billing_account.name())
@@ -85,7 +83,7 @@ async fn find_by_name(DalContextUniversalHeadRef(ctx): DalContextUniversalHeadRe
 }
 
 #[test]
-async fn get_defaults(ctx: &mut DalContext<'_, '_, '_>, nba: &BillingAccountSignup) {
+async fn get_defaults(ctx: &mut DalContext, nba: &BillingAccountSignup) {
     let defaults = BillingAccount::get_defaults(ctx, nba.billing_account.id())
         .await
         .expect("cannot get defaults for billing account");

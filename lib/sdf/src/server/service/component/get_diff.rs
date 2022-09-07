@@ -21,18 +21,13 @@ pub struct GetDiffResponse {
 }
 
 pub async fn get_diff(
-    HandlerContext(builder, mut txns): HandlerContext,
+    HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<GetDiffRequest>,
 ) -> ComponentResult<Json<GetDiffResponse>> {
-    let txns = txns.start().await?;
+    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
-    let head_ctx = builder.build(request_ctx.build_head(), &txns);
-    let ctx = head_ctx.clone_with_new_visibility(request.visibility);
-
-    let component_diff = ComponentDiff::new(&ctx, &head_ctx, request.component_id).await?;
-
-    txns.commit().await?;
+    let component_diff = ComponentDiff::new(&ctx, request.component_id).await?;
 
     Ok(Json(GetDiffResponse { component_diff }))
 }

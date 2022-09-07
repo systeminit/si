@@ -5,7 +5,7 @@ use dal::test_harness::create_component_and_schema;
 use dal::{Resource, StandardModel, SystemId, WorkflowPrototypeId};
 
 #[test]
-async fn new(ctx: &DalContext<'_, '_, '_>) {
+async fn new(ctx: &DalContext) {
     let component = create_component_and_schema(ctx).await;
 
     let _resource = Resource::new(
@@ -21,7 +21,7 @@ async fn new(ctx: &DalContext<'_, '_, '_>) {
 }
 
 #[test]
-async fn list_by_component(ctx: &DalContext<'_, '_, '_>) {
+async fn list_by_component(ctx: &DalContext) {
     let component = create_component_and_schema(ctx).await;
 
     let resource = Resource::new(

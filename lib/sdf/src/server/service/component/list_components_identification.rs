@@ -36,12 +36,11 @@ pub struct ListComponentsIdentificationResponse {
 }
 
 pub async fn list_components_identification(
-    HandlerContext(builder, mut txns): HandlerContext,
+    HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<ListComponentsIdentificationRequest>,
 ) -> ComponentResult<Json<ListComponentsIdentificationResponse>> {
-    let txns = txns.start().await?;
-    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
+    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let nodes = Node::list(&ctx).await?;
 

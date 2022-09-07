@@ -22,18 +22,16 @@ pub struct GetCodeResponse {
 }
 
 pub async fn get_code(
-    HandlerContext(builder, mut txns): HandlerContext,
+    HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<GetCodeRequest>,
 ) -> ComponentResult<Json<GetCodeResponse>> {
-    let txns = txns.start().await?;
-    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
+    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let system_id = request.system_id.unwrap_or(SystemId::NONE);
     let code_views =
         Component::list_code_generated_by_component_id(&ctx, request.component_id, system_id)
             .await?;
 
-    txns.commit().await?;
     Ok(Json(GetCodeResponse { code_views }))
 }

@@ -10,13 +10,13 @@ use crate::{
 
 const BUTANE_DOCS_FCOS_1_4_URL: &str = "https://coreos.github.io/butane/config-fcos-v1_4/";
 
-pub async fn migrate(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResult<()> {
+pub async fn migrate(ctx: &DalContext) -> BuiltinsResult<()> {
     butane(ctx).await?;
     Ok(())
 }
 
 /// A [`Schema`](crate::Schema) migration for [`Butane`](https://coreos.github.io/butane/).
-async fn butane(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResult<()> {
+async fn butane(ctx: &DalContext) -> BuiltinsResult<()> {
     let name = "butane".to_string();
     let mut schema =
         match BuiltinSchemaHelpers::create_schema(ctx, &name, &SchemaKind::Configuration).await? {

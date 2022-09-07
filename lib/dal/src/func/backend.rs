@@ -132,7 +132,7 @@ pub struct FuncDispatchContext {
 }
 
 impl FuncDispatchContext {
-    pub fn new(ctx: &DalContext<'_, '_, '_>) -> (Self, mpsc::Receiver<OutputStream>) {
+    pub fn new(ctx: &DalContext) -> (Self, mpsc::Receiver<OutputStream>) {
         let (output_tx, rx) = mpsc::channel(64);
         (
             Self {

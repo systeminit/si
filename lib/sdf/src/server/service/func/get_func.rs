@@ -31,12 +31,11 @@ pub struct GetFuncResponse {
 }
 
 pub async fn get_func(
-    HandlerContext(builder, mut txns): HandlerContext,
+    HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<GetFuncRequest>,
 ) -> FuncResult<Json<GetFuncResponse>> {
-    let txns = txns.start().await?;
-    let ctx = builder.build(request_ctx.clone().build(request.visibility), &txns);
+    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let func = Func::get_by_id(&ctx, &request.id)
         .await?
@@ -55,10 +54,7 @@ pub async fn get_func(
         }
     }
 
-    let is_revertable =
-        super::is_func_revertable(builder.clone(), &txns, request_ctx, &func).await?;
-
-    txns.commit().await?;
+    let is_revertable = super::is_func_revertable(&ctx, &func).await?;
 
     Ok(Json(GetFuncResponse {
         id: func.id().to_owned(),

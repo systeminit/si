@@ -252,6 +252,7 @@ fn fn_setup<'a>(params: impl Iterator<Item = &'a FnArg>) -> FnSetup {
         expander.setup_start_veritech_server();
     }
 
+    expander.drop_transactions_clone_if_created();
     expander.finish()
 }
 
@@ -508,7 +509,7 @@ impl FnSetupExpander {
 
         let var = Ident::new("transactions", Span::call_site());
         self.code.extend(quote! {
-            let #var = #transactions_starter
+            let mut #var = #transactions_starter
                 .start()
                 .await
                 .expect("failed to start transactions");
@@ -525,19 +526,23 @@ impl FnSetupExpander {
 
         let test_context = self.setup_test_context();
         let test_context = test_context.as_ref();
-        let dal_context_builder = self.setup_dal_context_builder();
-        let dal_context_builder = dal_context_builder.as_ref();
         let transactions = self.setup_transactions();
         let transactions = transactions.as_ref();
+        let dal_context_builder = self.setup_dal_context_builder();
+        let dal_context_builder = dal_context_builder.as_ref();
 
         let var_nba = Ident::new("nba", Span::call_site());
         let var_auth_token = Ident::new("auth_token", Span::call_site());
         self.code.extend(quote! {
-            let (#var_nba, #var_auth_token) = ::dal::test::helpers::billing_account_signup(
-                &#dal_context_builder,
-                &#transactions,
-                #test_context.jwt_secret_key(),
-            ).await;
+            let (#var_nba, #var_auth_token) = {
+                let ctx = #dal_context_builder.build_default_with_txns(#transactions);
+                let r = ::dal::test::helpers::billing_account_signup(
+                    &ctx,
+                    #test_context.jwt_secret_key(),
+                ).await;
+                #transactions = ctx.into();
+                r
+            };
         });
         self.billing_account_signup = Some((Arc::new(var_nba), Arc::new(var_auth_token)));
 
@@ -609,11 +614,14 @@ impl FnSetupExpander {
 
         let var = Ident::new("default_dal_context", Span::call_site());
         self.code.extend(quote! {
-            let #var = ::dal::test::helpers::create_ctx_for_new_change_set(
-                &#dal_context_builder,
-                &#transactions,
-                &#nba,
-            ).await;
+            let #var = {
+                let mut ctx = #dal_context_builder.build_default_with_txns(#transactions.clone());
+                ::dal::test::helpers::create_change_set_and_update_ctx(
+                    &mut ctx,
+                    &#nba,
+                ).await;
+                ctx
+            };
         });
         self.dal_context_default = Some(Arc::new(var));
 
@@ -634,11 +642,14 @@ impl FnSetupExpander {
 
         let var = Ident::new("dal_context_default_mut", Span::call_site());
         self.code.extend(quote! {
-            let mut #var = ::dal::test::helpers::create_ctx_for_new_change_set(
-                &#dal_context_builder,
-                &#transactions,
-                &#nba,
-            ).await;
+            let mut #var = {
+                let mut ctx = #dal_context_builder.build_default_with_txns(#transactions.clone());
+                ::dal::test::helpers::create_change_set_and_update_ctx(
+                    &mut ctx,
+                    &#nba,
+                ).await;
+                ctx
+            };
         });
         self.dal_context_default_mut = Some(Arc::new(var));
 
@@ -657,12 +668,14 @@ impl FnSetupExpander {
 
         let var = Ident::new("dal_context_universal_head", Span::call_site());
         self.code.extend(quote! {
-            let #var = ::dal::test::DalContextUniversalHead(
-                    #dal_context_builder.build(
-                    ::dal::RequestContext::new_universal_head(::dal::HistoryActor::SystemInit),
-                    &#transactions
-                )
-            );
+            let #var = {
+                let ctx = #dal_context_builder
+                    .build_with_txns(
+                        ::dal::RequestContext::new_universal_head(::dal::HistoryActor::SystemInit),
+                        #transactions.clone(),
+                    );
+                ::dal::test::DalContextUniversalHead(ctx)
+            };
         });
         self.dal_context_universal_head = Some(Arc::new(var));
 
@@ -681,10 +694,14 @@ impl FnSetupExpander {
 
         let var = Ident::new("dal_context_universal_head_ref", Span::call_site());
         self.code.extend(quote! {
-            let _dcuhr = #dal_context_builder.build(
-                ::dal::RequestContext::new_universal_head(::dal::HistoryActor::SystemInit),
-                &#transactions
-            );
+            let _dcuhr = {
+                let ctx = #dal_context_builder
+                    .build_with_txns(
+                        ::dal::RequestContext::new_universal_head(::dal::HistoryActor::SystemInit),
+                        #transactions.clone(),
+                    );
+                ctx
+            };
             let #var = ::dal::test::DalContextUniversalHeadRef(&_dcuhr);
         });
         self.dal_context_universal_head_ref = Some(Arc::new(var));
@@ -707,10 +724,14 @@ impl FnSetupExpander {
 
         let var = Ident::new("dal_context_universal_head_mut_ref", Span::call_site());
         self.code.extend(quote! {
-            let mut _dcuhmr = #dal_context_builder.build(
-                ::dal::RequestContext::new_universal_head(::dal::HistoryActor::SystemInit),
-                &#transactions
-            );
+            let mut _dcuhmr = {
+                let ctx = #dal_context_builder
+                    .build_with_txns(
+                        ::dal::RequestContext::new_universal_head(::dal::HistoryActor::SystemInit),
+                        #transactions.clone(),
+                    );
+                ctx
+            };
             let #var = ::dal::test::DalContextUniversalHeadMutRef(&mut _dcuhmr);
         });
         self.dal_context_universal_head_mut_ref = Some(Arc::new(var));
@@ -736,15 +757,17 @@ impl FnSetupExpander {
         let var = Ident::new("dal_context_head", Span::call_site());
         self.code.extend(quote! {
             let #var = {
-                let request_context = ::dal::RequestContext::new_workspace_head(
-                    &#transactions.pg(),
-                    ::dal::HistoryActor::SystemInit,
-                    *#nba.workspace.id(),
-                ).await.expect("failed to create new workspace head request context");
+                let mut ctx = #dal_context_builder
+                    .build_with_txns(
+                        ::dal::RequestContext::new_universal_head(::dal::HistoryActor::SystemInit),
+                        #transactions.clone(),
+                    );
+                ctx
+                    .update_to_workspace_tenancies(*#nba.workspace.id())
+                    .await
+                    .expect("failed to update dal context to workspace tenancies");
 
-                ::dal::test::DalContextHead(
-                    #dal_context_builder.build(request_context, &#transactions)
-                );
+                ::dal::test::DalContextHead(ctx)
             };
         });
         self.dal_context_head = Some(Arc::new(var));
@@ -767,13 +790,16 @@ impl FnSetupExpander {
         let var = Ident::new("dal_context_head_ref", Span::call_site());
         self.code.extend(quote! {
             let _dchr = {
-                let request_context = ::dal::RequestContext::new_workspace_head(
-                    &#transactions.pg(),
-                    ::dal::HistoryActor::SystemInit,
-                    *#nba.workspace.id(),
-                ).await.expect("failed to create new workspace head request context");
-
-                #dal_context_builder.build(request_context, &#transactions)
+                let mut ctx = #dal_context_builder
+                    .build_with_txns(
+                        ::dal::RequestContext::new_universal_head(::dal::HistoryActor::SystemInit),
+                        #transactions.clone(),
+                    );
+                ctx
+                    .update_to_workspace_tenancies(*#nba.workspace.id())
+                    .await
+                    .expect("failed to update dal context to workspace tenancies");
+                ctx
             };
             let #var = ::dal::test::DalContextHeadRef(&_dchr);
         });
@@ -797,13 +823,16 @@ impl FnSetupExpander {
         let var = Ident::new("dal_context_head_mut_ref", Span::call_site());
         self.code.extend(quote! {
             let mut _dchmr = {
-                let request_context = ::dal::RequestContext::new_workspace_head(
-                    &#transactions.pg(),
-                    ::dal::HistoryActor::SystemInit,
-                    *#nba.workspace.id(),
-                ).await.expect("failed to create new workspace head request context");
-
-                #dal_context_builder.build(request_context, &#transactions)
+                let mut ctx = #dal_context_builder
+                    .build_with_txns(
+                        ::dal::RequestContext::new_universal_head(::dal::HistoryActor::SystemInit),
+                        #transactions.clone(),
+                    );
+                ctx
+                    .update_to_workspace_tenancies(*#nba.workspace.id())
+                    .await
+                    .expect("failed to update dal context to workspace tenancies");
+                ctx
             };
             let #var = ::dal::test::DalContextHeadMutRef(&mut _dchmr);
         });
@@ -812,8 +841,27 @@ impl FnSetupExpander {
         self.dal_context_head_mut_ref.as_ref().unwrap().clone()
     }
 
+    fn drop_transactions_clone_if_created(&mut self) {
+        if !self.has_transactions() {
+            return;
+        }
+
+        let transactions = self.setup_transactions();
+        let transactions = transactions.as_ref();
+
+        self.code.extend(quote! {
+            // Drop remaining clone so that no copies of the transaction can outlive a commit or
+            // rollback
+            drop(#transactions);
+        });
+    }
+
     fn has_args(&self) -> bool {
         !self.args.is_empty()
+    }
+
+    fn has_transactions(&self) -> bool {
+        self.transactions.is_some()
     }
 
     fn finish(self) -> FnSetup {

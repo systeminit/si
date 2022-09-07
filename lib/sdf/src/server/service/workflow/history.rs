@@ -28,12 +28,11 @@ pub struct WorkflowHistoryView {
 pub type HistoryWorkflowsResponse = Vec<WorkflowHistoryView>;
 
 pub async fn history(
-    HandlerContext(builder, mut txns): HandlerContext,
+    HandlerContext(builder): HandlerContext,
     AccessBuilder(request_ctx): AccessBuilder,
     Query(request): Query<HistoryWorkflowsRequest>,
 ) -> WorkflowResult<Json<HistoryWorkflowsResponse>> {
-    let txns = txns.start().await?;
-    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
+    let ctx = builder.build(request_ctx.build(request.visibility)).await?;
 
     let workflows = WorkflowRunner::list(&ctx).await?;
 
@@ -56,8 +55,6 @@ pub async fn history(
             timestamp: *workflow.timestamp(),
         });
     }
-
-    txns.commit().await?;
 
     Ok(Json(workflow_views))
 }

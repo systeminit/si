@@ -16,7 +16,7 @@ use crate::builtins::schema::kubernetes::doc_url;
 use crate::builtins::schema::kubernetes::kubernetes_metadata::create_metadata_prop;
 use crate::builtins::schema::kubernetes::kubernetes_selector::create_selector_prop;
 
-pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResult<()> {
+pub async fn kubernetes_deployment(ctx: &DalContext) -> BuiltinsResult<()> {
     let name = "kubernetes_deployment".to_string();
     let mut schema =
         match BuiltinSchemaHelpers::create_schema(ctx, &name, &SchemaKind::Configuration).await? {
@@ -297,7 +297,7 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResu
 }
 
 async fn create_deployment_spec_prop(
-    ctx: &DalContext<'_, '_, '_>,
+    ctx: &DalContext,
     parent_prop_id: PropId,
 ) -> BuiltinsResult<Prop> {
     let mut spec_prop = BuiltinSchemaHelpers::create_prop(
@@ -341,7 +341,7 @@ async fn create_deployment_spec_prop(
 }
 
 async fn create_pod_template_spec_prop(
-    ctx: &DalContext<'_, '_, '_>,
+    ctx: &DalContext,
     parent_prop_id: PropId,
 ) -> BuiltinsResult<Prop> {
     let mut template_prop = BuiltinSchemaHelpers::create_prop(
@@ -373,10 +373,7 @@ async fn create_pod_template_spec_prop(
     Ok(template_prop)
 }
 
-async fn create_pod_spec_prop(
-    ctx: &DalContext<'_, '_, '_>,
-    parent_prop_id: PropId,
-) -> BuiltinsResult<Prop> {
+async fn create_pod_spec_prop(ctx: &DalContext, parent_prop_id: PropId) -> BuiltinsResult<Prop> {
     let mut spec_prop = BuiltinSchemaHelpers::create_prop(
         ctx,
         "spec",
@@ -415,10 +412,7 @@ async fn create_pod_spec_prop(
     Ok(spec_prop)
 }
 
-async fn create_container_prop(
-    ctx: &DalContext<'_, '_, '_>,
-    parent_prop_id: PropId,
-) -> BuiltinsResult<Prop> {
+async fn create_container_prop(ctx: &DalContext, parent_prop_id: PropId) -> BuiltinsResult<Prop> {
     let mut container_prop = BuiltinSchemaHelpers::create_prop(
         ctx,
         "container",
@@ -492,7 +486,7 @@ async fn create_container_prop(
 }
 
 async fn create_container_port_prop(
-    ctx: &DalContext<'_, '_, '_>,
+    ctx: &DalContext,
     parent_prop_id: PropId,
 ) -> BuiltinsResult<Prop> {
     let mut port_prop = BuiltinSchemaHelpers::create_prop(
