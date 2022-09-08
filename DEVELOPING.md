@@ -1,15 +1,16 @@
 # Developing
 
-This document contains all information related to developing and running the SI stack.
+This document contains information related to developing and running the SI stack.
+However, since it cannot fit everything, you can check out the contents of the [docs directory](./docs) for even more information.
 
 ## Table of Contents
 
 - [Supported Developer Environments](#supported-developer-environments)
 - [Quickstart](#quickstart)
+- [Learning About SI Concepts](#learning-about-si-concepts)
 - [Repository Structure](#repository-structure)
 - [Preparing Your Changes and Running Tests](#preparing-your-changes-and-running-tests)
 - [Troubleshooting](#troubleshooting)
-- [Working with `lang-js`](#working-with-lang-js)
 
 ## Supported Developer Environments
 
@@ -160,9 +161,22 @@ make down
 
 The above target will not only stop all running containers, but will remove them as well.
 
-## Repository Structure
+## Learning About SI Concepts
 
-### General Directory Layout
+As referenced in [CODE_DOCUMENTATION](./docs/dev/CODE_DOCUMENTATION.md), the `rustdoc` static webpages are an entrypoint
+into learning about the Rust modules and structs that back many SI concepts.
+
+Let's say you want to learn about what a `Component` is.
+You can generate and open the Rust documentation locally via the following command:
+
+```bash
+cargo doc --open -p dal
+```
+
+Moreover, there are resources in [docs](./docs), [designs](./designs), our Miro boards, and our Figma projects that
+may prove useful as well.
+
+## Repository Structure
 
 While there are other directories in the project, these are primarily where
 most of the interesting source code lives and how they are generally organized:
@@ -368,7 +382,7 @@ make FORCE=true test//lib/sdf
 
 To ensure your code will pass CI, you can run the exact same code that the CI servers themselves will run.
 
-```
+```bash
 make down
 make CI=true ci
 ```
@@ -513,48 +527,3 @@ to a reasonable, stable, and likely-much-higher value.
 > exist!
 > [This guide](https://becomethesolution.com/blogs/mac/increase-open-file-descriptor-limits-fix-too-many-open-files-errors-mac-os-x-10-14)
 > from an unofficial source may help persist file descriptor limit changes on macOS.
-
-## Working with `lang-js`
-
-While [dal integration tests](./lib/dal/tests/integration.rs) are useful for testing new functions and workflows
-that leverage [`lang-js`](./bin/lang-js), it can be helpful to run `lang-js` directly for an efficient
-developer feedback loop.
-
-In the [`lang-js` directory](./bin/lang-js), let's look at an example.
-First, let's author a function and save it to the [examples directory](./bin/lang-js/examples) directory.
-
-```js
-function fail() {
-    throw new Error("wheeeeeeeeeeeeeeee");
-}
-```
-
-Now, let's base64 encode this function and save the result to our clipboard.
-
-```bash
-cat examples/commandRunFailCode.js | base64 | tr -d '\n'
-```
-
-Then, we can create a `json` file in the same directory that's in a format that `lang-js` expects.
-
-```json
-{
-  "executionId": "fail",
-  "handler": "fail",
-  "codeBase64": "ZnVuY3Rpb24gZmFpbCgpIHsKICAgIHRocm93IG5ldyBFcnJvcigid2hlZWVlZWVlZWVlZWVlZWVlIik7Cn0K"
-}
-```
-
-Finally, we can run our function in `lang-js` directly.
-
-> Ensure that `lang-js` has been built by running the following `make` target in the repository root:
->
-> ```bash
-> make build//bin/lang-js
-> ```
-
-When we run our function in `lang-js`, let's set the debug flag to see what's going on!
-
-```bash
-cat examples/commandRunFail.json | DEBUG=* target/lang-js commandRun
-```

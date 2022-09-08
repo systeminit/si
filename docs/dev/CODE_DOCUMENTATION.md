@@ -1,10 +1,23 @@
-# Documentation
+# Code Documentation
 
-This document contains all information related to developer documentation for the contents of this repository.
+This document contains all information related to developer documentation for this repository's source code.
 
-## How do we generate docs?
+## Quickstart
 
-For Rust crates, we leverage `rustdoc` for seamless integration with `cargo doc`
+Let's say you want to learn what a `Component` or an `AttributeValue` is.
+Where do you look?
+You can generate and open the docs in your browser to find out!
+
+```bash
+cargo doc --open -p dal
+```
+
+Our Rust crates contain module and documentation comments that can be generated into static webpages by `rustdoc`.
+When in doubt, see if `cargo doc` has what you are looking for.
+
+## How Do We Generate Rust Documentation?
+
+As previously mentioned, for our Rust crates, we leverage `rustdoc` for seamless integration with `cargo doc`
 , [IntelliJ Rust](https://www.jetbrains.com/rust/),
 [rust-analyzer](https://rust-analyzer.github.io/), and more.
 
