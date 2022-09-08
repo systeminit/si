@@ -19,7 +19,7 @@
       class="grow overflow-x-hidden overflow-y-hidden dark:bg-neutral-800 dark:text-white text-lg font-semi-bold px-2 pt-2 flex flex-col"
     >
       <FuncEditorTabs
-        v-if="selectedFuncId > 0"
+        v-if="selectedFuncId > 0 && !isLoading"
         :selected-func-id="selectedFuncId"
         @selected-func="selectFunc"
       />
@@ -32,7 +32,7 @@
     </div>
     <SiPanel
       remember-size-key="func-details"
-      :hidden="false"
+      :hidden="isLoading"
       side="right"
       class="h-full pb-12"
       size-classes="shrink-0 w-80"
@@ -45,9 +45,8 @@
 </template>
 
 <script lang="ts" setup>
-import { computed } from "vue";
-import { useRoute, useRouter } from "vue-router";
-import { refFrom, untilUnmounted } from "vuse-rx/src";
+import { computed, ref } from "vue";
+import { untilUnmounted } from "vuse-rx/src";
 import { bufferTime } from "rxjs/operators";
 import { firstValueFrom } from "rxjs";
 import SiPanel from "@/atoms/SiPanel.vue";
@@ -61,6 +60,8 @@ import { ListedFuncView, ListFuncsResponse } from "@/service/func/list_funcs";
 import { visibility$ } from "@/observable/visibility";
 import { saveFuncToBackend$ } from "@/observable/func";
 import { eventChangeSetWritten$ } from "@/observable/change_set";
+import { FuncBackendKind } from "@/api/sdf/dal/func";
+import { useRouteToFunc } from "@/utils/useRouteToFunc";
 import { clearFuncs } from "../FuncEditor/func_state";
 
 const props = defineProps<{ funcId?: string }>();
@@ -70,25 +71,27 @@ const selectedFuncId = computed(() => {
   if (Number.isNaN(funcId)) {
     return -1;
   }
+
   return funcId;
 });
 
-const router = useRouter();
-const route = useRoute();
-
-const routeToFunction = (funcId?: number) =>
-  router.push(`/w/${route.params.workspaceId}/l/${funcId ?? ""}`);
-
+const routeToFunc = useRouteToFunc();
 const selectFunc = (func: ListedFuncView) => {
-  routeToFunction(func.id);
+  routeToFunc(func.id);
 };
 
-const funcList = refFrom<ListFuncsResponse>(FuncService.listFuncs(), {
-  funcs: [],
+const isLoading = ref(true);
+const funcList = ref<ListFuncsResponse>({ funcs: [] });
+
+FuncService.listFuncs().subscribe((funcs) => {
+  funcList.value = funcs;
+  isLoading.value = false;
 });
 
-const createFunc = async () => {
-  const func = await FuncService.createFunc();
+const createFunc = async (kind: FuncBackendKind) => {
+  const func = await FuncService.createFunc({
+    kind,
+  });
   const newFunc = {
     id: func.id,
     kind: func.kind,
@@ -103,7 +106,6 @@ const createFunc = async () => {
 
 visibility$.subscribe(() => {
   clearFuncs();
-  routeToFunction();
 });
 
 saveFuncToBackend$

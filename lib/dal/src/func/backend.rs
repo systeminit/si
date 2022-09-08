@@ -123,29 +123,6 @@ pub enum FuncBackendResponseType {
     Command,
 }
 
-impl From<FuncBackendKind> for FuncBackendResponseType {
-    fn from(backend_kind: FuncBackendKind) -> Self {
-        match backend_kind {
-            FuncBackendKind::Array => FuncBackendResponseType::Array,
-            FuncBackendKind::Boolean => FuncBackendResponseType::Boolean,
-            FuncBackendKind::Identity => FuncBackendResponseType::Identity,
-            FuncBackendKind::Integer => FuncBackendResponseType::Integer,
-            FuncBackendKind::JsQualification => FuncBackendResponseType::Qualification,
-            FuncBackendKind::JsResourceSync => FuncBackendResponseType::ResourceSync,
-            FuncBackendKind::JsCodeGeneration => FuncBackendResponseType::CodeGeneration,
-            FuncBackendKind::JsAttribute => FuncBackendResponseType::String,
-            FuncBackendKind::JsWorkflow => FuncBackendResponseType::Workflow,
-            FuncBackendKind::JsCommand => FuncBackendResponseType::Command,
-            FuncBackendKind::Map => FuncBackendResponseType::Map,
-            FuncBackendKind::PropObject => FuncBackendResponseType::PropObject,
-            FuncBackendKind::String => FuncBackendResponseType::String,
-            FuncBackendKind::Unset => FuncBackendResponseType::Unset,
-            FuncBackendKind::Json => FuncBackendResponseType::Json,
-            FuncBackendKind::ValidateStringValue => FuncBackendResponseType::Validation,
-        }
-    }
-}
-
 impl ToLabelList for FuncBackendKind {}
 
 #[derive(Debug, Clone)]

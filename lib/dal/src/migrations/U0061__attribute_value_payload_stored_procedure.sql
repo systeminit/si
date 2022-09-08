@@ -46,7 +46,8 @@ CREATE
                 parent_attribute_value_id        bigint,
                 attribute_value_object           json,
                 prop_object                      json,
-                func_binding_return_value_object json
+                func_binding_return_value_object json,
+                func_with_prototype_context      json
             )
 AS
 $$

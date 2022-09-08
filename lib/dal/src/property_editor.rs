@@ -9,6 +9,7 @@ use serde_json::Value;
 use si_data::PgError;
 use thiserror::Error;
 
+use crate::attribute::value::FuncWithPrototypeContext;
 use crate::{
     edit_field::widget::WidgetKind, pk, schema::variant::SchemaVariantError, AttributeReadContext,
     AttributeValue, AttributeValueError, AttributeValueId, ComponentError, ComponentId, DalContext,
@@ -205,6 +206,7 @@ pub struct PropertyEditorValue {
     pub prop_id: PropertyEditorPropId,
     key: Option<String>,
     value: Value,
+    func: FuncWithPrototypeContext,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -253,6 +255,7 @@ impl PropertyEditorValues {
                         .func_binding_return_value
                         .and_then(|f| f.value().cloned())
                         .unwrap_or(Value::Null),
+                    func: work.func_with_prototype_context,
                 },
             );
             if let Some(parent_id) = work.parent_attribute_value_id {

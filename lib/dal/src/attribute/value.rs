@@ -30,6 +30,7 @@ use crate::{
         binding_return_value::{
             FuncBindingReturnValue, FuncBindingReturnValueError, FuncBindingReturnValueId,
         },
+        FuncId,
     },
     impl_standard_model,
     job::definition::DependentValuesUpdate,
@@ -38,8 +39,9 @@ use crate::{
     standard_model_accessor, standard_model_belongs_to, standard_model_has_many,
     ws_event::{WsEvent, WsEventError},
     AttributeContextError, AttributePrototypeArgumentError, ComponentId, DalContext, Func,
-    FuncError, HistoryEventError, IndexMap, InternalProviderId, Prop, PropError, PropId, PropKind,
-    ReadTenancyError, StandardModel, StandardModelError, Timestamp, TransactionsError, Visibility,
+    FuncBackendKind, FuncBackendResponseType, FuncError, HistoryEventError, IndexMap,
+    InternalProviderId, Prop, PropError, PropId, PropKind, ReadTenancyError, SchemaId,
+    SchemaVariantId, StandardModel, StandardModelError, Timestamp, TransactionsError, Visibility,
     WriteTenancy,
 };
 use crate::{AccessBuilder, DalContextBuilder, SystemId, WsPayload};
@@ -183,6 +185,33 @@ pub enum AttributeValueError {
     SchemaVariantMissing,
     #[error("schema missing in context")]
     SchemaMissing,
+}
+
+/// This is the function that set the attribute value, along with the function's prototype
+/// context (and other metadata). It corresponds to the PostgreSQL type
+/// "func_with_attribute_prototype_context"
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+pub struct FuncWithPrototypeContext {
+    id: FuncId,
+    name: String,
+    #[serde(rename(serialize = "displayName"))]
+    display_name: Option<String>,
+    #[serde(rename(serialize = "backendKind"))]
+    backend_kind: FuncBackendKind,
+    #[serde(rename(serialize = "backendResponseType"))]
+    backend_response_type: FuncBackendResponseType,
+    #[serde(rename(serialize = "isBuiltin"))]
+    is_builtin: bool,
+    #[serde(rename(serialize = "attributePrototypeId"))]
+    attribute_prototype_id: AttributePrototypeId,
+    #[serde(rename(serialize = "attributeContextSchemaId"))]
+    attribute_context_schema_id: SchemaId,
+    #[serde(rename(serialize = "attributeContextSchemaVariantId"))]
+    attribute_context_schema_variant_id: SchemaVariantId,
+    #[serde(rename(serialize = "attributeContextComponentId"))]
+    attribute_context_component_id: ComponentId,
+    #[serde(rename(serialize = "attributeContextSchemaId"))]
+    attribute_context_system_id: SystemId,
 }
 
 pub type AttributeValueResult<T> = Result<T, AttributeValueError>;
@@ -579,11 +608,15 @@ impl AttributeValue {
             let parent_attribute_value_id: Option<AttributeValueId> =
                 row.try_get("parent_attribute_value_id")?;
 
+            let func_view_json: serde_json::Value = row.try_get("func_with_prototype_context")?;
+            let func_view: FuncWithPrototypeContext = serde_json::from_value(func_view_json)?;
+
             result.push(AttributeValuePayload::new(
                 prop,
                 func_binding_return_value,
                 attribute_value,
                 parent_attribute_value_id,
+                func_view,
             ));
         }
         Ok(result)
@@ -637,11 +670,15 @@ impl AttributeValue {
             let parent_attribute_value_id: Option<AttributeValueId> =
                 row.try_get("parent_attribute_value_id")?;
 
+            let func_view_json: serde_json::Value = row.try_get("func_with_prototype_context")?;
+            let func_view: FuncWithPrototypeContext = serde_json::from_value(func_view_json)?;
+
             result.push(AttributeValuePayload::new(
                 prop,
                 func_binding_return_value,
                 attribute_value,
                 parent_attribute_value_id,
+                func_view,
             ));
         }
         Ok(result)
@@ -1622,6 +1659,7 @@ pub struct AttributeValuePayload {
     pub func_binding_return_value: Option<FuncBindingReturnValue>,
     pub attribute_value: AttributeValue,
     pub parent_attribute_value_id: Option<AttributeValueId>,
+    pub func_with_prototype_context: FuncWithPrototypeContext,
 }
 
 impl AttributeValuePayload {
@@ -1630,12 +1668,14 @@ impl AttributeValuePayload {
         func_binding_return_value: Option<FuncBindingReturnValue>,
         attribute_value: AttributeValue,
         parent_attribute_value_id: Option<AttributeValueId>,
+        func_with_prototype_context: FuncWithPrototypeContext,
     ) -> Self {
         Self {
             prop,
             func_binding_return_value,
             attribute_value,
             parent_attribute_value_id,
+            func_with_prototype_context,
         }
     }
 }
