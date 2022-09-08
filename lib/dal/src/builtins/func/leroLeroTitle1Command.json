@@ -1,7 +1,6 @@
 {
-  "name": "title",
   "kind": "JsCommand",
   "response_type": "Command",
-  "code_file": "leroLeroTitleCommand.js",
+  "code_file": "leroLeroTitle1Command.js",
   "code_entrypoint": "title"
 }

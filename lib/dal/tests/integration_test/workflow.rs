@@ -1,6 +1,10 @@
 use crate::dal::test;
-use dal::{DalContext, Func, FuncBinding, StandardModel, WorkflowTree, WorkflowView};
+use dal::{
+    DalContext, Func, FuncBackendError, FuncBinding, FuncBindingError, StandardModel,
+    WorkflowError, WorkflowTree, WorkflowView,
+};
 use serde_json::json;
+use veritech::FunctionResult;
 
 async fn fb(
     ctx: &DalContext<'_, '_, '_>,
@@ -21,7 +25,7 @@ async fn fb(
 
 #[test]
 async fn resolve(ctx: &DalContext<'_, '_, '_>) {
-    let name = "si:poem";
+    let name = "si:poemWorkflow";
     let func = Func::find_by_attr(ctx, "name", &name)
         .await
         .expect("unable to find func")
@@ -32,30 +36,30 @@ async fn resolve(ctx: &DalContext<'_, '_, '_>) {
         .expect("unable to resolve workflow");
     // TODO: fix args propagation
     let expected_json = json!({
-        "name": "si:poem",
+        "name": "si:poemWorkflow",
         "kind": "conditional",
         "steps": [
             //{
-            //    "name": "si:exceptional",
+            //    "name": "si:exceptionalWorkflow",
             //    "kind": "exceptional",
             //    "steps": [
-            //        { "func_binding": fb(ctx, "si:title", json!([])).await },
-            //        { "func_binding": fb(ctx, "si:title2", json!([])).await },
+            //        { "func_binding": fb(ctx, "si:leroLeroTitle1Command", json!([])).await },
+            //        { "func_binding": fb(ctx, "si:leroLeroTitle2Command", json!([])).await },
             //    ],
             //},
-            { "func_binding": fb(ctx, "si:firstStanza", json!([])).await },
-            { "func_binding": fb(ctx, "si:secondStanza", json!([])).await },
-            { "func_binding": fb(ctx, "si:thirdStanza", json!([])).await },
-            { "func_binding": fb(ctx, "si:fourthStanza", json!([])).await },
-            { "func_binding": fb(ctx, "si:fifthStanza", json!([])).await },
-            { "func_binding": fb(ctx, "si:sixthStanza", json!([])).await },
-            { "func_binding": fb(ctx, "si:seventhStanza", json!([])).await },
+            { "func_binding": fb(ctx, "si:leroLeroStanza1Command", json!([])).await },
+            { "func_binding": fb(ctx, "si:leroLeroStanza2Command", json!([])).await },
+            { "func_binding": fb(ctx, "si:leroLeroStanza3Command", json!([])).await },
+            { "func_binding": fb(ctx, "si:leroLeroStanza4Command", json!([])).await },
+            { "func_binding": fb(ctx, "si:leroLeroStanza5Command", json!([])).await },
+            { "func_binding": fb(ctx, "si:leroLeroStanza6Command", json!([])).await },
+            { "func_binding": fb(ctx, "si:leroLeroStanza7Command", json!([])).await },
             {
-                "name": "si:finalizing",
+                "name": "si:finalizingWorkflow",
                 "kind": "parallel",
                 "steps": [
-                    { "func_binding": fb(ctx, "si:question", json!([null])).await },
-                    { "func_binding": fb(ctx, "si:bye", json!([])).await },
+                    { "func_binding": fb(ctx, "si:leroLeroQuestionCommand", json!([null])).await },
+                    { "func_binding": fb(ctx, "si:leroLeroByeCommand", json!([])).await },
                 ],
             },
         ],
@@ -67,7 +71,7 @@ async fn resolve(ctx: &DalContext<'_, '_, '_>) {
 
 #[test]
 async fn run(ctx: &DalContext<'_, '_, '_>) {
-    let name = "si:poem";
+    let name = "si:poemWorkflow";
     let func = Func::find_by_attr(ctx, "name", &name)
         .await
         .expect("unable to find func")
@@ -79,4 +83,29 @@ async fn run(ctx: &DalContext<'_, '_, '_>) {
     // TODO: fix args propagation
     // TODO: confirm output
     tree.run(ctx).await.expect("unable to run workflow");
+}
+
+#[test]
+async fn fail(ctx: &DalContext<'_, '_, '_>) {
+    let name = "si:failureWorkflow";
+    let func = Func::find_by_attr(ctx, "name", &name)
+        .await
+        .expect("unable to find func")
+        .pop()
+        .unwrap_or_else(|| panic!("function not found: {}", name));
+    let tree = WorkflowView::resolve(ctx, &func)
+        .await
+        .expect("unable to resolve workflow");
+
+    // TODO: fix args propagation
+    // TODO: confirm output
+    let err = tree.run(ctx).await.expect_err("no error found");
+    if let WorkflowError::FuncBinding(FuncBindingError::FuncBackend(
+        FuncBackendError::FunctionResultCommandRun(FunctionResult::Failure(e)),
+    )) = &err
+    {
+        assert_eq!(e.error.message.as_str(), "oopsie!");
+    } else {
+        panic!("error found, but is unexpected {0:?}", err);
+    }
 }

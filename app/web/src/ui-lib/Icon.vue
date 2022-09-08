@@ -15,7 +15,7 @@
     class="icon"
     :class="
       clsx(
-        'block h-full w-full pointer-events-none transition-transform duration-300',
+        'block pointer-events-none transition-transform duration-300',
         sizeClasses,
       )
     "
@@ -84,7 +84,6 @@ import GitMerge from "~icons/octicon/git-merge-24";
 
 // custom icons
 import Diagram from "@/assets/images/custom-icons/diagram.svg?component";
-import clsx from "clsx";
 
 // restricting the type here (Record<string, FunctionalComponent>) kills our IconName type below
 /* eslint sort-keys: "error" */
@@ -162,6 +161,7 @@ export type IconNames = RegularIconNames | IconNameAliases | SpinnableIconNames;
 
 <script lang="ts" setup>
 import { computed, FunctionalComponent, PropType } from "vue";
+import clsx from "clsx";
 
 const props = defineProps({
   name: { type: String as PropType<IconNames>, required: true },

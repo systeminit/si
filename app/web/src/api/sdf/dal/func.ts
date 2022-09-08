@@ -32,4 +32,5 @@ export interface Func {
   name: string;
   description?: string;
   code?: string;
+  isBuiltin: boolean;
 }

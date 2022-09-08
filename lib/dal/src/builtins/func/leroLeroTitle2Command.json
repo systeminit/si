@@ -1,5 +1,4 @@
 {
-  "name": "title2",
   "kind": "JsCommand",
   "response_type": "Command",
   "code_file": "leroLeroTitle2Command.js",

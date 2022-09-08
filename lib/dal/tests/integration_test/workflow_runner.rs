@@ -1,20 +1,24 @@
-use dal::DalContext;
-
 use crate::dal::test;
 use dal::func::backend::js_workflow::FuncBackendJsWorkflowArgs;
+use dal::workflow_runner::workflow_runner_state::WorkflowRunnerStatus;
+
+use dal::DalContext;
 use dal::{
     func::binding::FuncBinding, workflow_prototype::WorkflowPrototypeContext,
     workflow_runner::WorkflowRunnerContext, Func, StandardModel, WorkflowPrototype,
     WorkflowPrototypeId, WorkflowResolverId, WorkflowRunner,
 };
+use pretty_assertions_sorted::assert_eq;
 
 #[test]
 async fn new(ctx: &DalContext<'_, '_, '_>) {
-    let func_name = "si:poem".to_string();
+    let func_name = "si:poemWorkflow".to_string();
     let mut funcs = Func::find_by_attr(ctx, "name", &func_name)
         .await
         .expect("Error fetching builtin function");
-    let func = funcs.pop().expect("Missing builtin function si:poem");
+    let func = funcs
+        .pop()
+        .expect("Missing builtin function si:poemWorkflow");
 
     let args = FuncBackendJsWorkflowArgs;
     let func_binding = FuncBinding::new(
@@ -45,11 +49,13 @@ async fn new(ctx: &DalContext<'_, '_, '_>) {
 
 #[test]
 async fn find_for_prototype(ctx: &DalContext<'_, '_, '_>) {
-    let func_name = "si:poem".to_string();
+    let func_name = "si:poemWorkflow".to_string();
     let mut funcs = Func::find_by_attr(ctx, "name", &func_name)
         .await
         .expect("Error fetching builtin function");
-    let func = funcs.pop().expect("Missing builtin function si:poem");
+    let func = funcs
+        .pop()
+        .expect("Missing builtin function si:poemWorkflow");
 
     let args = FuncBackendJsWorkflowArgs;
     let func_binding = FuncBinding::new(
@@ -91,7 +97,7 @@ async fn find_for_prototype(ctx: &DalContext<'_, '_, '_>) {
 
 #[test]
 async fn run(ctx: &DalContext<'_, '_, '_>) {
-    let name = "si:poem";
+    let name = "si:poemWorkflow";
     let func = Func::find_by_attr(ctx, "name", &name)
         .await
         .expect("unable to find func")
@@ -108,7 +114,38 @@ async fn run(ctx: &DalContext<'_, '_, '_>) {
     )
     .await
     .expect("cannot create new prototype");
-    WorkflowRunner::run(ctx, *prototype.id())
+    let (_, state, _) = WorkflowRunner::run(ctx, *prototype.id())
         .await
         .expect("unable to run workflow");
+    assert_eq!(state.status(), WorkflowRunnerStatus::Success);
+}
+
+#[test]
+async fn fail(ctx: &DalContext<'_, '_, '_>) {
+    let name = "si:failureWorkflow";
+    let func = Func::find_by_attr(ctx, "name", &name)
+        .await
+        .expect("unable to find func")
+        .pop()
+        .unwrap_or_else(|| panic!("function not found: {}", name));
+
+    let prototype_context = WorkflowPrototypeContext::new();
+    let prototype = WorkflowPrototype::new(
+        ctx,
+        *func.id(),
+        serde_json::Value::Null,
+        prototype_context,
+        "prototype",
+    )
+    .await
+    .expect("cannot create new prototype");
+
+    let (_, state, _) = WorkflowRunner::run(ctx, *prototype.id())
+        .await
+        .expect("unable to run workflow");
+    assert_eq!(
+        state.error_message().expect("no error message found"),
+        "oopsie!"
+    );
+    assert_eq!(state.status(), WorkflowRunnerStatus::Failure);
 }

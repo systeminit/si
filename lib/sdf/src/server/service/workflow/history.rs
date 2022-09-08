@@ -1,7 +1,7 @@
 use super::{WorkflowError, WorkflowResult};
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::{extract::Query, Json};
-use dal::workflow::HistoryWorkflowStatus;
+use dal::workflow_runner::workflow_runner_state::{WorkflowRunnerState, WorkflowRunnerStatus};
 use dal::{
     StandardModel, Timestamp, Visibility, WorkflowPrototype, WorkflowRunner, WorkflowRunnerId,
 };
@@ -20,7 +20,7 @@ pub struct WorkflowHistoryView {
     id: WorkflowRunnerId,
     title: String,
     description: Option<String>,
-    status: HistoryWorkflowStatus,
+    status: WorkflowRunnerStatus,
     #[serde(flatten)]
     timestamp: Timestamp,
 }
@@ -43,11 +43,16 @@ pub async fn history(
         let prototype = WorkflowPrototype::get_by_id(&ctx, &workflow.workflow_prototype_id())
             .await?
             .ok_or_else(|| WorkflowError::PrototypeNotFound(workflow.workflow_prototype_id()))?;
+
+        let runner_state = WorkflowRunnerState::find_for_workflow_runner(&ctx, *workflow.id())
+            .await?
+            .ok_or_else(|| WorkflowError::RunnerStateNotFound(*workflow.id()))?;
+
         workflow_views.push(WorkflowHistoryView {
             id: *workflow.id(),
             title: prototype.title().to_owned(),
             description: prototype.description().map(ToString::to_string),
-            status: HistoryWorkflowStatus::Success, // TODO(wendy) - implement status
+            status: runner_state.status(),
             timestamp: *workflow.timestamp(),
         });
     }

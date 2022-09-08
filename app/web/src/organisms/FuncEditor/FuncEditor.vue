@@ -7,18 +7,20 @@
 </template>
 
 <script lang="ts" setup>
-import { onMounted, ref, toRef, computed, watch } from "vue";
+import { computed, onMounted, ref, toRef, watch } from "vue";
 import { basicSetup, EditorView } from "codemirror";
-import { EditorState, Compartment } from "@codemirror/state";
+import { Compartment, EditorState } from "@codemirror/state";
 import { keymap } from "@codemirror/view";
 import { indentWithTab } from "@codemirror/commands";
 import { gruvboxDark } from "cm6-theme-gruvbox-dark";
 import { basicLight } from "cm6-theme-basic-light";
 import { javascript } from "@codemirror/lang-javascript";
-import { lintGutter, linter } from "@codemirror/lint";
+import { linter, lintGutter } from "@codemirror/lint";
 import { createLintSource } from "@/utils/typescriptLinter";
 import { useTheme } from "@/composables/injectTheme";
-import { funcState, changeFunc, nullEditingFunc } from "./func_state";
+import { changeFunc, funcState, nullEditingFunc } from "./func_state";
+
+const isDevMode = import.meta.env.DEV;
 
 const props = defineProps<{
   funcId: number;
@@ -68,7 +70,9 @@ const mountEditor = async () => {
       themeCompartment.of(codeMirrorTheme.value),
       keymap.of([indentWithTab]),
       readOnly.of(
-        EditorState.readOnly.of(editingFunc.value.origFunc.isBuiltin),
+        EditorState.readOnly.of(
+          !isDevMode && editingFunc.value.origFunc.isBuiltin,
+        ),
       ),
       updateListener,
       EditorView.lineWrapping,
@@ -92,6 +96,7 @@ onMounted(() => {
 .cm-editor .cm-content {
   font-size: 14px;
 }
+
 .cm-editor .cm-gutter {
   font-size: 14px;
 }

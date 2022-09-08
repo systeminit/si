@@ -33,7 +33,7 @@ impl FuncDispatch for FuncBackendJsWorkflow {
         let request = WorkflowResolveRequest {
             // Once we start tracking the state of these executions, then this id will be useful,
             // but for now it's passed along and back, and is opaue
-            execution_id: "danielfurlan".to_string(),
+            execution_id: "danielfurlanjsworkflow".to_string(),
             handler: handler.into(),
             code_base64: code_base64.into(),
         };

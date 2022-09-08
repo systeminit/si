@@ -1,0 +1,6 @@
+{
+  "kind": "JsWorkflow",
+  "response_type": "Workflow",
+  "code_file": "failureWorkflow.js",
+  "code_entrypoint": "failure"
+}

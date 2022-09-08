@@ -4,7 +4,7 @@ use strum_macros::{AsRefStr, Display, EnumIter, EnumString};
 use telemetry::prelude::*;
 use thiserror::Error;
 use tokio::sync::mpsc;
-use veritech::{FunctionResult, OutputStream};
+use veritech::{CommandRunResultSuccess, FunctionResult, OutputStream};
 
 use crate::{label_list::ToLabelList, DalContext, Func, FuncId, PropKind, StandardModel};
 
@@ -47,6 +47,8 @@ pub enum FuncBackendError {
     DispatchMissingBase64(FuncId),
     #[error("dispatch func missing code_base64 {0}")]
     DispatchMissingHandler(FuncId),
+    #[error("function result command run error: {0:?}")]
+    FunctionResultCommandRun(FunctionResult<CommandRunResultSuccess>),
 }
 
 pub type FuncBackendResult<T> = Result<T, FuncBackendError>;
@@ -163,6 +165,8 @@ pub trait FuncDispatch: std::fmt::Debug {
         Ok(executor.execute().await?)
     }
 
+    /// This private function creates the "request" to send to veritech in a shape that it
+    /// likes. The request's type is [`Self`].
     fn create(
         context: FuncDispatchContext,
         func: &Func,
@@ -187,15 +191,15 @@ pub trait FuncDispatch: std::fmt::Debug {
     //}
 
     #[instrument(
-        name = "funcdispatch.execute",
-        skip_all,
-        level = "debug",
-        fields(
-            otel.kind = %SpanKind::Client,
-            otel.status_code = Empty,
-            otel.status_message = Empty,
-            si.func.result = Empty
-        )
+    name = "funcdispatch.execute",
+    skip_all,
+    level = "debug",
+    fields(
+    otel.kind = % SpanKind::Client,
+    otel.status_code = Empty,
+    otel.status_message = Empty,
+    si.func.result = Empty
+    )
     )]
     async fn execute(
         self: Box<Self>,
@@ -205,6 +209,7 @@ pub trait FuncDispatch: std::fmt::Debug {
     {
         let span = Span::current();
 
+        // NOTE(nick,wendy): why is a debug output of "self" a valid backend?
         let backend = format!("{:?}", &self);
         let value = match self.dispatch().await.map_err(|err| span.record_err(err))? {
             FunctionResult::Success(check_result) => {
@@ -251,15 +256,15 @@ pub trait FuncBackend {
     }
 
     #[instrument(
-        name = "funcbackend.execute",
-        skip_all,
-        level = "debug",
-        fields(
-            otel.kind = %SpanKind::Client,
-            otel.status_code = Empty,
-            otel.status_message = Empty,
-            si.func.result = Empty
-        )
+    name = "funcbackend.execute",
+    skip_all,
+    level = "debug",
+    fields(
+    otel.kind = % SpanKind::Client,
+    otel.status_code = Empty,
+    otel.status_message = Empty,
+    si.func.result = Empty
+    )
     )]
     async fn execute(
         self: Box<Self>,

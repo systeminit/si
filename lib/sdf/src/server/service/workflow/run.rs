@@ -27,7 +27,10 @@ pub async fn run(
     let txns = txns.start().await?;
     let ctx = builder.build(request_ctx.build(request.visibility), &txns);
 
-    let (_, func_binding_return_values) = WorkflowRunner::run(&ctx, request.id).await?;
+    // NOTE(nick,wendy): this looks similar to code insider WorkflowRunner::run(). Do we need to run
+    // it twice?
+    // reference: https://github.com/systeminit/si/blob/87c5cce99d6b972f441358295bbabe27f1d787da/lib/dal/src/workflow_runner.rs#L209-L227
+    let (_, _, func_binding_return_values) = WorkflowRunner::run(&ctx, request.id).await?;
     let mut logs = Vec::new();
     for func_binding_return_value in func_binding_return_values {
         for stream in func_binding_return_value

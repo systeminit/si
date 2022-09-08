@@ -69,7 +69,7 @@ pub enum LocalUdsInstanceError {
 type Result<T> = result::Result<T, LocalUdsInstanceError>;
 
 /// A local Cyclone [`Instance`], managed as a spawned child process, communicating over a Unix
-/// domain socket.
+/// domain socket ("Uds").
 #[derive(Debug)]
 pub struct LocalUdsInstance {
     // The `TempPath` type is kept around as an [RAII
@@ -228,6 +228,8 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
         result
     }
 
+    // The request argument is the same as that in the "impl FuncDispatch for
+    // FuncBackendJsCommand" in the dal.
     async fn execute_command_run(
         &mut self,
         request: CommandRunRequest,
@@ -239,6 +241,7 @@ impl CycloneClient<UnixStream> for LocalUdsInstance {
             .await
             .map_err(ClientError::unhealthy)?;
 
+        // Use the websocket client for cyclone to execute command run.
         let result = self.client.execute_command_run(request).await;
         self.count_request();
 

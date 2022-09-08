@@ -11,7 +11,7 @@
         <TabPanel class="overflow-auto grow">
           <div class="w-full flex p-2 gap-1 border-b dark:border-neutral-600">
             <VButton
-              :disabled="editingFunc.origFunc.isBuiltin"
+              :disabled="!isDevMode && editingFunc.origFunc.isBuiltin"
               button-rank="primary"
               button-type="success"
               icon="save"
@@ -21,7 +21,7 @@
             />
 
             <VButton
-              :disabled="editingFunc.origFunc.isBuiltin"
+              :disabled="!isDevMode && editingFunc.origFunc.isBuiltin"
               button-rank="tertiary"
               button-type="neutral"
               icon="x"
@@ -42,7 +42,7 @@
                 title="Name"
                 required
                 placeholder="Type the name of this function here..."
-                :disabled="editingFunc.origFunc.isBuiltin"
+                :disabled="!isDevMode && editingFunc.origFunc.isBuiltin"
                 @blur="updateFunc"
               />
               <SiTextBox
@@ -51,7 +51,7 @@
                 title="Entrypoint"
                 required
                 placeholder="The name of the function that will be executed first..."
-                :disabled="editingFunc.origFunc.isBuiltin"
+                :disabled="!isDevMode && editingFunc.origFunc.isBuiltin"
                 @blur="updateFunc"
               />
               <SiTextBox
@@ -60,7 +60,7 @@
                 placeholder="Provide a brief description of what this qualification validates here..."
                 title="Description"
                 text-area
-                :disabled="editingFunc.origFunc.isBuiltin"
+                :disabled="!isDevMode && editingFunc.origFunc.isBuiltin"
                 @blur="updateFunc"
               />
             </div>
@@ -125,6 +125,8 @@ const props = defineProps<{
   funcId: number;
 }>();
 
+const isDevMode = import.meta.env.DEV;
+
 const funcId = toRef(props, "funcId", -1);
 
 const schemaVariants = refFrom<Option[]>(
@@ -183,10 +185,11 @@ const updateFunc = () => {
   changeFunc({ ...editingFunc.value.modifiedFunc });
 };
 
-const saveQualification = () =>
+const saveQualification = () => {
   changeFunc({
     ...editingFunc.value.modifiedFunc,
     components: selectedComponents.value.map(({ value }) => value as number),
     schemaVariants: selectedVariants.value.map(({ value }) => value as number),
   });
+};
 </script>

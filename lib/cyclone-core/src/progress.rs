@@ -101,6 +101,8 @@ pub enum FunctionResult<S> {
 pub struct FunctionResultFailure {
     pub execution_id: String,
     pub error: FunctionResultFailureError,
+    // FIXME(nick,wendy): get the Utc::now() shape as well
+    // (perhaps struct Foo { raw: Utc::now(), timestamp: crate::timestamp() } )
     pub timestamp: u64,
 }
 

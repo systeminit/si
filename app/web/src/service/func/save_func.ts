@@ -21,8 +21,12 @@ export const saveFunc: (
   const bottle = Bottle.pop("default");
   const sdf: SDF = bottle.container.SDF;
 
+  const isDevMode = import.meta.env.DEV;
+  const endpoint =
+    isDevMode && func.isBuiltin ? "dev/save_func" : "func/save_func";
+
   const response = await firstValueFrom(
-    sdf.post<ApiResponse<SaveFuncResponse>>("func/save_func", {
+    sdf.post<ApiResponse<SaveFuncResponse>>(endpoint, {
       ...func,
       ...visibility,
     }),

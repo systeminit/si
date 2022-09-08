@@ -1,6 +1,6 @@
 //! This module contains "builtin" objects that are included with System Initiative.
-//! The submodules are private since the only entrypoint to this module should be the
-//! [migrate()](crate::builtins::migrate()) function.
+//! Most submodules are private since the only entrypoint to this module should be the
+//! [migrate()](crate::builtins::migrate()) function, but we do some builtin editing on Dev Mode
 
 use thiserror::Error;
 
@@ -18,7 +18,7 @@ use crate::{
     WorkflowPrototypeError,
 };
 
-mod func;
+pub mod func;
 mod schema;
 mod workflow;
 
@@ -82,6 +82,8 @@ pub enum BuiltinsError {
     Regex(#[from] regex::Error),
     #[error(transparent)]
     WorkflowPrototype(#[from] WorkflowPrototypeError),
+    #[error("Func Metadata error: {0}")]
+    FuncMetadata(String),
 }
 
 pub type BuiltinsResult<T> = Result<T, BuiltinsError>;
