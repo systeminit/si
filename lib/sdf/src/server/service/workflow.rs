@@ -56,6 +56,8 @@ pub enum WorkflowError {
     SchemaVariantNotFound(SchemaVariantId),
     #[error("runner not found")]
     RunnerNotFound(WorkflowRunnerId),
+    #[error("runner state not found for runner id: {0}")]
+    RunnerStateNotFound(WorkflowRunnerId),
 }
 
 pub type WorkflowResult<T> = std::result::Result<T, WorkflowError>;

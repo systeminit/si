@@ -228,6 +228,8 @@ pub async fn ws_execute_command_run(
     limit_request_guard: LimitRequestGuard,
 ) -> impl IntoResponse {
     let lang_server_path = lang_server_path.as_path().to_path_buf();
+
+    // Hey! Let's upgrade from http communication to websocket communication.
     wsu.on_upgrade(move |socket| {
         let request: PhantomData<CommandRunRequest> = PhantomData;
         let lang_server_success: PhantomData<LangServerCommandRunResultSuccess> = PhantomData;

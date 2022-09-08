@@ -1,7 +1,7 @@
 use super::{WorkflowError, WorkflowResult};
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::{extract::Query, Json};
-use dal::workflow::HistoryWorkflowStatus;
+use dal::workflow_runner::workflow_runner_state::{WorkflowRunnerState, WorkflowRunnerStatus};
 use dal::{
     FuncBindingReturnValue, StandardModel, Timestamp, Visibility, WorkflowPrototype,
     WorkflowRunner, WorkflowRunnerId,
@@ -22,7 +22,7 @@ pub struct WorkflowRunInfoView {
     id: WorkflowRunnerId,
     title: String,
     description: Option<String>,
-    status: HistoryWorkflowStatus,
+    status: WorkflowRunnerStatus,
     #[serde(flatten)]
     timestamp: Timestamp,
     logs: Vec<String>,
@@ -67,11 +67,15 @@ pub async fn info(
         }
     }
 
+    let runner_state = WorkflowRunnerState::find_for_workflow_runner(&ctx, *runner.id())
+        .await?
+        .ok_or_else(|| WorkflowError::RunnerStateNotFound(*runner.id()))?;
+
     let view = WorkflowRunInfoView {
         id: *runner.id(),
         title: prototype.title().to_owned(),
         description: prototype.description().map(ToString::to_string),
-        status: HistoryWorkflowStatus::Success, // TODO(wendy) - implement status
+        status: runner_state.status(),
         timestamp: *runner.timestamp(),
         logs,
     };

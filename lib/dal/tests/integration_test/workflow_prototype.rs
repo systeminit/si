@@ -28,16 +28,16 @@ async fn new(ctx: &DalContext<'_, '_, '_>) {
 
 #[test]
 async fn find_for_context(ctx: &DalContext<'_, '_, '_>) {
-    let func = Func::find_by_attr(ctx, "name", &"si:poem".to_string())
+    let poem_func = Func::find_by_attr(ctx, "name", &"si:poem".to_string())
         .await
         .expect("got func")
         .pop()
         .expect("cannot pop func off vec");
 
     let proto_context = WorkflowPrototypeContext::new();
-    let _second_proto = WorkflowPrototype::new(
+    let new_prototype = WorkflowPrototype::new(
         ctx,
-        *func.id(),
+        *poem_func.id(),
         serde_json::Value::Null,
         proto_context,
         "prototype",
@@ -45,7 +45,7 @@ async fn find_for_context(ctx: &DalContext<'_, '_, '_>) {
     .await
     .expect("cannot create workflow_prototype");
 
-    let mut found_prototypes = WorkflowPrototype::find_for_context(
+    let found_prototypes = WorkflowPrototype::find_for_context(
         ctx,
         ComponentId::NONE,
         SchemaId::NONE,
@@ -54,13 +54,25 @@ async fn find_for_context(ctx: &DalContext<'_, '_, '_>) {
     )
     .await
     .expect("could not find for context");
-    assert_eq!(found_prototypes.len(), 2);
 
-    let found = found_prototypes
-        .pop()
-        .expect("found no workflow prototypes");
-
-    assert_eq!(found.func_id(), *func.id());
+    let mut found_poem_prototype = false;
+    let mut found_new_prototype = false;
+    for prototype in found_prototypes {
+        if prototype.func_id() == *poem_func.id() {
+            found_poem_prototype = true;
+            if found_new_prototype {
+                break;
+            }
+        }
+        if prototype.id() == new_prototype.id() {
+            found_new_prototype = true;
+            if found_poem_prototype {
+                break;
+            }
+        }
+    }
+    assert!(found_poem_prototype);
+    assert!(found_new_prototype);
 }
 
 async fn fb(

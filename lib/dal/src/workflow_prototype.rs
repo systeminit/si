@@ -158,17 +158,17 @@ impl WorkflowPrototype {
     ) -> WorkflowPrototypeResult<Self> {
         let title = title.into();
         let row = ctx.txns().pg().query_one(
-                "SELECT object FROM workflow_prototype_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9)",
-                &[ctx.write_tenancy(), ctx.visibility(),
-                    &func_id,
-                    &args,
-                    &context.component_id(),
-                    &context.schema_id(),
-                    &context.schema_variant_id(),
-                    &context.system_id(),
-                    &title,
-                ],
-            )
+            "SELECT object FROM workflow_prototype_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+            &[ctx.write_tenancy(), ctx.visibility(),
+                &func_id,
+                &args,
+                &context.component_id(),
+                &context.schema_id(),
+                &context.schema_variant_id(),
+                &context.system_id(),
+                &title,
+            ],
+        )
             .await?;
         let object = standard_model::finish_create_from_row(ctx, row).await?;
         Ok(object)
@@ -189,6 +189,11 @@ impl WorkflowPrototype {
 
     standard_model_accessor!(system_id, Pk(SystemId), WorkflowPrototypeResult);
 
+    /// For the given [`WorkflowPrototype`](Self), find or create a
+    /// [`WorkflowResolver`](crate::workflow_resolver::WorkflowResolver) corresponding to the
+    /// "si:identity" [`Func`](crate::Func).
+    ///
+    /// Found resolvers are not modified.
     pub async fn resolve(
         &self,
         ctx: &DalContext<'_, '_, '_>,
@@ -204,33 +209,37 @@ impl WorkflowPrototype {
         {
             Some(resolver) => Ok(resolver),
             None => {
-                let identity = Func::find_by_attr(ctx, "name", &"si:identity")
+                let identity_func = Func::find_by_attr(ctx, "name", &"si:identity")
                     .await?
                     .pop()
                     .ok_or_else(|| WorkflowError::MissingWorkflow("si:identity".to_owned()))?;
-                let (func_binding, _) = FuncBinding::find_or_create_and_execute(
+                let (identity_func_binding, _) = FuncBinding::find_or_create_and_execute(
                     ctx,
                     serde_json::json!({ "identity": null }),
-                    *identity.id(),
+                    *identity_func.id(),
                 )
                 .await?;
                 let mut resolver = WorkflowResolver::new(
                     ctx,
                     self.id,
-                    *identity.id(),
-                    *func_binding.id(),
+                    *identity_func.id(),
+                    *identity_func_binding.id(),
                     context.clone(),
                 )
                 .await?;
 
-                let func = Func::get_by_id(ctx, &self.func_id())
+                // FIXME(nick,wendy): why create the resolver before getting the workflow tree?
+                // It seems like we can assemble the args first? However, there might be a scenario
+                // where the workflow tree assembly requires the existence of the resolver first?
+                let workflow_prototype_func = Func::get_by_id(ctx, &self.func_id())
                     .await?
                     .ok_or_else(|| WorkflowPrototypeError::FuncNotFound(self.func_id()))?;
-                let tree = WorkflowView::resolve(ctx, &func).await?;
+                let tree = WorkflowView::resolve(ctx, &workflow_prototype_func).await?;
 
+                // Serialize the tree into the arguments for the identity function.
                 let args = serde_json::json!({ "identity": serde_json::to_value(tree)? });
                 let (func_binding, _) =
-                    FuncBinding::find_or_create_and_execute(ctx, args, *identity.id()).await?;
+                    FuncBinding::find_or_create_and_execute(ctx, args, *identity_func.id()).await?;
                 resolver
                     .set_func_binding_id(ctx, *func_binding.id())
                     .await?;

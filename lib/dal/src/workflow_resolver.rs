@@ -100,8 +100,9 @@ impl WorkflowResolverContext {
 pk!(WorkflowResolverPk);
 pk!(WorkflowResolverId);
 
-// An WorkflowResolver joins a `FuncBinding` to the context in which
-// its corresponding `FuncBindingResultValue` is consumed.
+/// A [`WorkflowResolver`] joins a [`FuncBinding`](crate::FuncBinding) to the
+/// [`WorkflowResolverContext`] in which its corresponding
+/// [`FuncBindingReturnValue`](crate::FuncBindingReturnValue) is consumed.
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct WorkflowResolver {
     pk: WorkflowResolverPk,

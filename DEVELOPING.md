@@ -2,6 +2,15 @@
 
 This document contains all information related to developing and running the SI stack.
 
+## Table of Contents
+
+- [Supported Developer Environments](#supported-developer-environments)
+- [Quickstart](#quickstart)
+- [Repository Structure](#repository-structure)
+- [Preparing Your Changes and Running Tests](#preparing-your-changes-and-running-tests)
+- [Troubleshooting](#troubleshooting)
+- [Working with `lang-js`](#working-with-lang-js)
+
 ## Supported Developer Environments
 
 | Environment | `x84_64 (amd64)` | `aarch64 (arm64)` |
@@ -151,7 +160,7 @@ make down
 
 The above target will not only stop all running containers, but will remove them as well.
 
-## Repository Component Structure
+## Repository Structure
 
 ### General Directory Layout
 
@@ -505,46 +514,47 @@ to a reasonable, stable, and likely-much-higher value.
 > [This guide](https://becomethesolution.com/blogs/mac/increase-open-file-descriptor-limits-fix-too-many-open-files-errors-mac-os-x-10-14)
 > from an unofficial source may help persist file descriptor limit changes on macOS.
 
-## Reading and Writing Documentation
+## Working with `lang-js`
 
-Our crates leverage `rustdoc` for seamless integration with `cargo doc`
-, [IntelliJ Rust](https://www.jetbrains.com/rust/),
-[rust-analyzer](https://rust-analyzer.github.io/), and more.
+While [dal integration tests](./lib/dal/tests/integration.rs) are useful for testing new functions and workflows
+that leverage [`lang-js`](./bin/lang-js), it can be helpful to run `lang-js` directly for an efficient
+developer feedback loop.
 
-### Reading Rust Documentation
+In the [`lang-js` directory](./bin/lang-js), let's look at an example.
+First, let's author a function and save it to the [examples directory](./bin/lang-js/examples) directory.
 
-Build the docs for all of our crates and open the docs in your browser at [dal](./lib/dal) by executing
-the following make target:
-
-```bash
-make docs-open
+```js
+function fail() {
+    throw new Error("wheeeeeeeeeeeeeeee");
+}
 ```
 
-If you would like to live-recompile docs while making changes on your development branch, you can execute the following
-make target:
+Now, let's base64 encode this function and save the result to our clipboard.
 
 ```bash
-make docs-watch
+cat examples/commandRunFailCode.js | base64 | tr -d '\n'
 ```
 
-> Please note: [cargo-watch](https://github.com/watchexec/cargo-watch) needs to be installed before using the above make
-> target.
+Then, we can create a `json` file in the same directory that's in a format that `lang-js` expects.
+
+```json
+{
+  "executionId": "fail",
+  "handler": "fail",
+  "codeBase64": "ZnVuY3Rpb24gZmFpbCgpIHsKICAgIHRocm93IG5ldyBFcnJvcigid2hlZWVlZWVlZWVlZWVlZWVlIik7Cn0K"
+}
+```
+
+Finally, we can run our function in `lang-js` directly.
+
+> Ensure that `lang-js` has been built by running the following `make` target in the repository root:
 >
 > ```bash
-> cargo install --locked cargo-watch
+> make build//bin/lang-js
 > ```
 
-### Writing Rust Documentation
+When we run our function in `lang-js`, let's set the debug flag to see what's going on!
 
-We try to follow the
-official ["How to write documentation"](https://doc.rust-lang.org/rustdoc/how-to-write-documentation.html) guide
-from `rustdoc` as closely as possible.
-Older areas of the codebase may not follow the guide and conventions derived from it.
-We encourage updating older documentation as whilst navigating through SI crates.
-
-#### Additional Resources
-
-* [RFC-1574](https://github.com/rust-lang/rfcs/blob/master/text/1574-more-api-documentation-conventions.md#appendix-a-full-conventions-text):
-  more API documentation conventions for `rust-lang`
-* ["Making Useful Documentation Comments" from "The Book"](https://doc.rust-lang.org/book/ch14-02-publishing-to-crates-io.html#making-useful-documentation-comments):
-  a section of "The Book" covering useful documentation in the context of crate publishing
+```bash
+cat examples/commandRunFail.json | DEBUG=* target/lang-js commandRun
+```
