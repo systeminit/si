@@ -53,7 +53,6 @@ pub async fn save_builtin_func(
     func.set_backend_kind(&ctx, request.kind).await?;
     func.set_code_plaintext(&ctx, request.code.as_deref())
         .await?;
-    func.set_backend_response_type(&ctx, request.kind).await?;
 
     dal::builtins::func::persist(&func).await?;
 
