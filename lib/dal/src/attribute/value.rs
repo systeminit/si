@@ -187,7 +187,9 @@ pub enum AttributeValueError {
     SchemaMissing,
 }
 
-/// This is the function that set the attribute value, along with the context which
+/// This is the function that set the attribute value, along with the function's prototype
+/// context (and other metadata). It corresponds to the PostgreSQL type
+/// "func_with_attribute_prototype_context"
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct FuncWithPrototypeContext {
     id: FuncId,

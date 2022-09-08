@@ -20,7 +20,7 @@
         @updated-property="updatedProperty($event)"
         @add-to-array="addToArray($event)"
         @add-to-map="addToMap($event)"
-        @create-attribute-func="createAttributeFunc"
+        @create-attribute-func="onCreateAttributeFunc"
       />
     </div>
   </div>
@@ -372,7 +372,7 @@ const arrayLength = computed(() => {
   return result;
 });
 
-const createAttributeFunc = (
+const onCreateAttributeFunc = (
   currentFunc: FuncWithPrototypeContext,
   valueId: number,
 ) =>

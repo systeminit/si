@@ -90,7 +90,7 @@
       v-if="!props.isFirstProp"
       :func="props.propValue.func"
       :value-id="props.propValue.id"
-      @create-attribute-func="createAttributeFunc"
+      @create-attribute-func="onCreateAttributeFunc"
     />
     <!--<div v-else>
       <div class="flex">
@@ -149,7 +149,7 @@ const emits = defineEmits<{
   (
     e: "createAttributeFunc",
     currentFunc: FuncWithPrototypeContext,
-    v: number,
+    valueId: number,
   ): void;
 }>();
 
@@ -177,7 +177,7 @@ const addToMap = (event: AddToMap) => {
   emits("addToMap", event);
 };
 
-const createAttributeFunc = (
+const onCreateAttributeFunc = (
   currentFunc: FuncWithPrototypeContext,
   valueId: number,
 ) => emits("createAttributeFunc", currentFunc, valueId);

@@ -46,7 +46,7 @@
       @updated-property="updateProperty($event)"
       @add-to-array="addToArray($event)"
       @add-to-map="addToMap($event)"
-      @create-attribute-func="createAttributeFunc"
+      @create-attribute-func="onCreateAttributeFunc"
     />
 
     <!--
@@ -334,7 +334,7 @@ const addToMap = (event: AddToMap) => {
   });
 };
 
-const createAttributeFunc = async (
+const onCreateAttributeFunc = async (
   currentFunc: FuncWithPrototypeContext,
   valueId: number,
   parentValueId?: number,

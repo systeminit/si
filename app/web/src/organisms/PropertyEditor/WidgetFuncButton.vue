@@ -15,8 +15,8 @@
         >
           <MenuItem
             v-if="hasExistingCustomFunction && !props.func.isBuiltin"
-            class="w-full flex relative flex-row whitespace-nowrap items-center py-2 px-4 cursor-pointer gap-2 hover:bg-action-500 hover:text-white"
             as="button"
+            :class="menuItemClasses"
             @click="routeToFunc(props.func.id)"
           >
             Modify current component attribute function
@@ -24,15 +24,15 @@
           <MenuItem
             v-if="!hasExistingCustomFunction || props.func.isBuiltin"
             as="button"
-            class="w-full flex relative flex-row whitespace-nowrap items-center py-2 px-4 cursor-pointer gap-2 hover:bg-action-500 hover:text-white"
-            @click="createAttributeFunc"
+            :class="menuItemClasses"
+            @click="onCreateAttributeFunc"
           >
             Attach new function for component attribute
           </MenuItem>
           <MenuItem
             v-if="hasExistingCustomFunction && !props.func.isBuiltin"
             as="button"
-            class="w-full flex relative flex-row whitespace-nowrap items-center py-2 px-4 cursor-pointer gap-2 hover:bg-action-500 hover:text-white"
+            :class="menuItemClasses"
           >
             Detach function
           </MenuItem>
@@ -52,6 +52,9 @@ import { useRouteToFunc } from "@/utils/useRouteToFunc";
 
 const routeToFunc = useRouteToFunc();
 
+const menuItemClasses =
+  "w-full flex relative flex-row whitespace-nowrap items-center py-2 px-4 cursor-pointer gap-2 hover:bg-action-500 hover:text-white";
+
 const hasExistingCustomFunction = computed(() =>
   isCustomizableFuncKind(props.func.backendKind),
 );
@@ -61,7 +64,7 @@ const props = defineProps<{
   valueId: number;
 }>();
 
-const emit = defineEmits<{
+const emits = defineEmits<{
   (
     e: "createAttributeFunc",
     currentFunc: FuncWithPrototypeContext,
@@ -69,6 +72,6 @@ const emit = defineEmits<{
   ): void;
 }>();
 
-const createAttributeFunc = () =>
-  emit("createAttributeFunc", props.func, props.valueId);
+const onCreateAttributeFunc = () =>
+  emits("createAttributeFunc", props.func, props.valueId);
 </script>
