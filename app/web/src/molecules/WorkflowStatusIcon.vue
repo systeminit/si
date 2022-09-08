@@ -3,18 +3,18 @@
     v-if="status === 'success'"
     class="flex flex-row whitespace-nowrap items-center"
   >
-    <div class="pr-2 text-success-500"><Icon name="check-circle" /></div>
+    <Icon name="check-circle" class="pr-2 text-success-500" :size="size" />
     <span v-if="showText">Success!</span>
   </div>
   <div
     v-else-if="status === 'failure'"
     class="flex flex-row whitespace-nowrap items-center"
   >
-    <div class="pr-2 text-destructive-500"><Icon name="x-circle" /></div>
+    <Icon name="x-circle" class="pr-2 text-destructive-500" :size="size" />
     <span v-if="showText">Failure</span>
   </div>
   <div v-else class="flex flex-row whitespace-nowrap items-center">
-    <div class="pr-2 text-action-300"><Icon name="loader" /></div>
+    <Icon name="loader" class="pr-2 text-action-300" :size="size" />
     <span v-if="showText">Running...</span>
   </div>
 </template>
@@ -31,5 +31,9 @@ defineProps({
     required: true,
   },
   showText: { type: Boolean, default: false },
+  size: {
+    type: String as PropType<"xs" | "s" | "m" | "l" | "xl" | "full">,
+    default: "xl",
+  },
 });
 </script>
