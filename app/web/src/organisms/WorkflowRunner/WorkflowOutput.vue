@@ -13,8 +13,11 @@ import WorkflowStatusIcon from "@/molecules/WorkflowStatusIcon.vue";
 import { ThemeValue } from "@/observable/theme";
 
 defineProps({
-    logs: { type: Array<string>, required: true },
-    status: {type: String as PropType<"running" | "success" | "failure">, required: true},
-    forceTheme: { type: String as PropType<ThemeValue> },
+  logs: { type: Array<string>, required: true },
+  status: {
+    type: String as PropType<"running" | "success" | "failure">,
+    required: true,
+  },
+  forceTheme: { type: String as PropType<ThemeValue> },
 });
 </script>

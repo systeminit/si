@@ -54,7 +54,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, ref } from "vue";
+import { ref } from "vue";
 import { refFrom, untilUnmounted } from "vuse-rx";
 import WorkflowPicker from "@/organisms/WorkflowRunner/WorkflowPicker.vue";
 import WorkflowResolver from "@/organisms/WorkflowRunner/WorkflowResolver.vue";
