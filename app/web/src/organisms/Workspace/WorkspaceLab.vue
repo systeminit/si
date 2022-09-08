@@ -47,7 +47,7 @@
 <script lang="ts" setup>
 import { computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { refFrom } from "vuse-rx/src";
+import { refFrom, untilUnmounted } from "vuse-rx/src";
 import { bufferTime } from "rxjs/operators";
 import { firstValueFrom } from "rxjs";
 import SiPanel from "@/atoms/SiPanel.vue";
@@ -107,7 +107,7 @@ visibility$.subscribe(() => {
 });
 
 saveFuncToBackend$
-  .pipe(bufferTime(2000))
+  .pipe(untilUnmounted, bufferTime(2000))
   .subscribe((saveRequests) =>
     Object.values(
       saveRequests.reduce(

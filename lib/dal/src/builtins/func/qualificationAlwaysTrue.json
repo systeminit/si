@@ -1,8 +1,9 @@
 {
-  "name": "qualificationAlwaysTrue",
-  "display_name": "Always true",
   "kind": "JsQualification",
   "response_type": "Qualification",
-  "code": "function alwaysGood(_ignored) { return { qualified: true }; }",
+  "display_name": "Always true",
+  "description": null,
+  "link": null,
+  "code_file": "qualificationAlwaysTrue.js",
   "code_entrypoint": "alwaysGood"
 }

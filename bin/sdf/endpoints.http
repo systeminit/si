@@ -1,0 +1,43 @@
+### Signup
+POST http://localhost:8080/api/signup/create_account
+Content-Type: application/json
+
+{
+  "billingAccountName": "Company",
+  "userName": "User",
+  "userEmail": "admin@systeminit.com",
+  "userPassword": "yJhbGciOiJSUzI1NiIsItpZC",
+  "signupSecret": "cool-steam"
+}
+
+### Login
+POST http://localhost:8080/api/session/login
+Content-Type: application/json
+
+{
+  "billingAccountName": "Company",
+  "userEmail": "admin@systeminit.com",
+  "userPassword": "yJhbGciOiJSUzI1NiIsItpZC"
+}
+
+> {% client.global.set("auth_token", response.body.jwt); %}
+
+### Save Builtin Func
+POST http://localhost:8080/api/dev/save_func
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+workspaceid: 1
+
+{
+  "id": 21,
+  "handler": "alwaysGood",
+  "kind": "JsQualification",
+  "name": "Always true",
+  "description": null,
+  "code": "function alwaysGood(_ignored) { return { qualified: false }; }",
+  "isBuiltin": true,
+  "schemaVariants": [],
+  "components": [],
+  "visibility_change_set_pk": 2
+}
+

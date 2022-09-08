@@ -1,18 +1,22 @@
-use crate::dal::test;
+use serde_json::json;
+
 use dal::{
     func::binding::FuncBinding, workflow_prototype::WorkflowPrototypeContext, ComponentId,
     DalContext, Func, SchemaId, SchemaVariantId, StandardModel, SystemId, WorkflowPrototype,
     WorkflowTree, WorkflowView,
 };
-use serde_json::json;
+
+use crate::dal::test;
 
 #[test]
 async fn new(ctx: &DalContext<'_, '_, '_>) {
-    let func_name = "si:poem".to_string();
+    let func_name = "si:poemWorkflow".to_string();
     let mut funcs = Func::find_by_attr(ctx, "name", &func_name)
         .await
         .expect("Error fetching builtin function");
-    let func = funcs.pop().expect("Missing builtin function si:poem");
+    let func = funcs
+        .pop()
+        .expect("Missing builtin function si:poemWorkflow");
 
     let prototype_context = WorkflowPrototypeContext::new();
     let _prototype = WorkflowPrototype::new(
@@ -28,7 +32,7 @@ async fn new(ctx: &DalContext<'_, '_, '_>) {
 
 #[test]
 async fn find_for_context(ctx: &DalContext<'_, '_, '_>) {
-    let poem_func = Func::find_by_attr(ctx, "name", &"si:poem".to_string())
+    let poem_func = Func::find_by_attr(ctx, "name", &"si:poemWorkflow".to_string())
         .await
         .expect("got func")
         .pop()
@@ -94,7 +98,7 @@ async fn fb(
 
 #[test]
 async fn resolve(ctx: &DalContext<'_, '_, '_>) {
-    let name = "si:poem";
+    let name = "si:poemWorkflow";
     let func = Func::find_by_attr(ctx, "name", &name)
         .await
         .expect("unable to find func")
@@ -105,30 +109,30 @@ async fn resolve(ctx: &DalContext<'_, '_, '_>) {
         .expect("unable to resolve workflow");
     // TODO: fix args propagation
     let expected_json = json!({
-        "name": "si:poem",
+        "name": "si:poemWorkflow",
         "kind": "conditional",
         "steps": [
             //{
-            //    "name": "si:exceptional",
+            //    "name": "si:exceptionalWorkflow",
             //    "kind": "exceptional",
             //    "steps": [
-            //        { "func_binding": fb(ctx, "si:title", json!([])).await },
-            //        { "func_binding": fb(ctx, "si:title2", json!([])).await },
+            //        { "func_binding": fb(ctx, "si:leroLeroTitle1Command", json!([])).await },
+            //        { "func_binding": fb(ctx, "si:leroLeroTitle2Command", json!([])).await },
             //    ],
             //},
-            { "func_binding": fb(ctx, "si:firstStanza", json!([])).await },
-            { "func_binding": fb(ctx, "si:secondStanza", json!([])).await },
-            { "func_binding": fb(ctx, "si:thirdStanza", json!([])).await },
-            { "func_binding": fb(ctx, "si:fourthStanza", json!([])).await },
-            { "func_binding": fb(ctx, "si:fifthStanza", json!([])).await },
-            { "func_binding": fb(ctx, "si:sixthStanza", json!([])).await },
-            { "func_binding": fb(ctx, "si:seventhStanza", json!([])).await },
+            { "func_binding": fb(ctx, "si:leroLeroStanza1Command", json!([])).await },
+            { "func_binding": fb(ctx, "si:leroLeroStanza2Command", json!([])).await },
+            { "func_binding": fb(ctx, "si:leroLeroStanza3Command", json!([])).await },
+            { "func_binding": fb(ctx, "si:leroLeroStanza4Command", json!([])).await },
+            { "func_binding": fb(ctx, "si:leroLeroStanza5Command", json!([])).await },
+            { "func_binding": fb(ctx, "si:leroLeroStanza6Command", json!([])).await },
+            { "func_binding": fb(ctx, "si:leroLeroStanza7Command", json!([])).await },
             {
-                "name": "si:finalizing",
+                "name": "si:finalizingWorkflow",
                 "kind": "parallel",
                 "steps": [
-                    { "func_binding": fb(ctx, "si:question", json!([null])).await },
-                    { "func_binding": fb(ctx, "si:bye", json!([])).await },
+                    { "func_binding": fb(ctx, "si:leroLeroQuestionCommand", json!([null])).await },
+                    { "func_binding": fb(ctx, "si:leroLeroByeCommand", json!([])).await },
                 ],
             },
         ],
@@ -140,7 +144,7 @@ async fn resolve(ctx: &DalContext<'_, '_, '_>) {
 
 #[test]
 async fn run(ctx: &DalContext<'_, '_, '_>) {
-    let name = "si:poem";
+    let name = "si:poemWorkflow";
     let func = Func::find_by_attr(ctx, "name", &name)
         .await
         .expect("unable to find func")

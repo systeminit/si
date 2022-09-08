@@ -1,7 +1,6 @@
 {
-  "name": "seventhStanza",
   "kind": "JsCommand",
   "response_type": "Command",
-  "code_file": "leroLeroSeventhStanzaCommand.js",
+  "code_file": "leroLeroStanza7Command.js",
   "code_entrypoint": "seventhStanza"
 }
