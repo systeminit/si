@@ -105,7 +105,9 @@ where
         self,
         ws: &mut WebSocket,
     ) -> Result<ExecutionStarted<LangServerSuccess, Success>> {
+        // Send start is the initial communication before we read the request.
         Self::ws_send_start(ws).await?;
+        // Now that the server said to start, I am going to read my message!
         let request = Self::read_request(ws).await?;
         let credentials: Vec<SensitiveString> = request.list_secrets(&self.key)?;
 

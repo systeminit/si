@@ -107,6 +107,7 @@ impl WorkflowView {
         Self::resolve_inner(ctx, func.name(), args, HashSet::new(), &mut HashMap::new()).await
     }
 
+    /// Run a workflow using veritech.
     async fn veritech_run(
         ctx: &DalContext<'_, '_, '_>,
         func: Func,
@@ -123,6 +124,7 @@ impl WorkflowView {
         )?)
     }
 
+    /// A recursive function to resolve inner workflows in order to build a [`WorkflowTree`].
     #[async_recursion]
     async fn resolve_inner(
         ctx: &DalContext<'_, '_, '_>,
@@ -521,25 +523,4 @@ fn join_task<T>(res: Result<T, tokio::task::JoinError>) -> T {
             }
         }
     }
-}
-
-#[derive(
-    Deserialize,
-    Serialize,
-    Debug,
-    Display,
-    AsRefStr,
-    PartialEq,
-    Eq,
-    EnumIter,
-    EnumString,
-    Clone,
-    Copy,
-)]
-#[serde(rename_all = "camelCase")]
-#[strum(serialize_all = "camelCase")]
-pub enum HistoryWorkflowStatus {
-    Success,
-    Failure,
-    Running,
 }

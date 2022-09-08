@@ -4,7 +4,10 @@ This is a monolithic repository containing the source for System Initiative (SI)
 
 ## Developing and Running the SI Stack
 
-Please refer to the [DEVELOPING](./DEVELOPING.md) guide for more information.
+Please refer to the following documentation for more information:
+
+- **[DEVELOPING](./DEVELOPING.md):** information related to developing and running the SI stack
+- **[DOCUMENTATION](./DOCUMENTATION.md):** information related to developer documentation for the contents of this repository
 
 ## Contributing
 
@@ -29,7 +32,7 @@ Welcome to the team! A few handy links:
 
 ## Architecture
 
-The diagram below illustrates a _very_ high-level overview of SI's calling stack.
+The diagram (created with [asciiflow](https://asciiflow.com)) below illustrates a _very_ high-level overview of SI's calling stack.
 There are other components and paradigms that aren't displayed, but this diagram is purely meant to show the overall flow from "mouse-click" onwards.
 
 ```
@@ -39,16 +42,30 @@ There are other components and paradigms that aren't displayed, but this diagram
                        │   ┌─────────┐
                        ├───┤ faktory │
                        │   └─────────┘
-┌─────┐   ┌─────┐   ┌──┴──┐   ┌────┐
-│ web ├───┤ sdf ├───┤ dal ├───┤ db │
-└─────┘   └─────┘   └──┬──┘   └────┘
+┌─────┐   ┌─────┐   ┌──┴──┐   ┌──────────┐
+│ web ├───┤ sdf ├───┤ dal ├───┤ postgres │
+└─────┘   └─────┘   └──┬──┘   └──────────┘
                        │
       ┌────────────────┘
       │
-┌─────┴────┐   ┌──────────────────┐   ┌─────────┐
-│ veritech ├───┤ deadpool_cyclone ├───┤ cyclone │
-└──────────┘   └──────────────────┘   └─────────┘
+┌─────┴────┐   ┌──────────────────┐   ┌─────────┐      ┌───────────────────┐
+│ veritech ├───┤ deadpool-cyclone ├───┤ cyclone ├ ─ ─> │ execution runtime │
+│          │   │                  │   │         │      │ (e.g. lang-js)    │
+└──────────┘   └──────────────────┘   └─────────┘      └───────────────────┘
 ```
+
+### Definitions for Architectural Components
+
+- **[web](./app/web/):** the primary frontend web application for SI
+- **[sdf](./bin/sdf/):** the backend webserver for communicating with `web`
+- **[dal](./lib/dal/):** the library used by `sdf` routes to "make stuff happen" (the keystone of SI)
+- **[pinga](./bin/pinga/):** the job queueing service used by the `dal` to execute non-trivial jobs via `faktory`
+- **[faktory](https://github.com/contribsys/faktory):** the job queueing mechanism used by `pinga` to execute non-trivial jobs
+- **[postgres](https://postgresql.org):** the database for storing SI data
+- **[veritech](./bin/veritech/):** a backend webserver for dispatching functions in secure runtime environments
+- **[deadpool-cyclone](./lib/deadpool-cyclone/):** a library used for managing a pool of `cyclone` instances of varying "types" (i.e. HTTP, UDS)
+- **[cyclone](./bin/cyclone/):** the manager for a secure execution runtime environment (e.g. `lang-js`)
+- **[lang-js](./bin/lang-js/):** a secure-ish (don't trust it) execution runtime environment for JS functions
 
 It's worth noting that our database has many stored procedures (i.e. database functions) that perform non-trivial logic.
 While the [dal](./lib/dal) is the primary "data access layer" for the rest of the SI stack, it does not perform _all_ the heavy lifting.

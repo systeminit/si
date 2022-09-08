@@ -1,12 +1,14 @@
-use dal::DalContext;
-
 use crate::dal::test;
 use dal::func::backend::js_workflow::FuncBackendJsWorkflowArgs;
+use dal::workflow_runner::workflow_runner_state::WorkflowRunnerStatus;
+
+use dal::DalContext;
 use dal::{
     func::binding::FuncBinding, workflow_prototype::WorkflowPrototypeContext,
     workflow_runner::WorkflowRunnerContext, Func, StandardModel, WorkflowPrototype,
     WorkflowPrototypeId, WorkflowResolverId, WorkflowRunner,
 };
+use pretty_assertions_sorted::assert_eq;
 
 #[test]
 async fn new(ctx: &DalContext<'_, '_, '_>) {
@@ -108,7 +110,38 @@ async fn run(ctx: &DalContext<'_, '_, '_>) {
     )
     .await
     .expect("cannot create new prototype");
-    WorkflowRunner::run(ctx, *prototype.id())
+    let (_, state, _) = WorkflowRunner::run(ctx, *prototype.id())
         .await
         .expect("unable to run workflow");
+    assert_eq!(state.status(), WorkflowRunnerStatus::Success);
+}
+
+#[test]
+async fn fail(ctx: &DalContext<'_, '_, '_>) {
+    let name = "si:failure";
+    let func = Func::find_by_attr(ctx, "name", &name)
+        .await
+        .expect("unable to find func")
+        .pop()
+        .unwrap_or_else(|| panic!("function not found: {}", name));
+
+    let prototype_context = WorkflowPrototypeContext::new();
+    let prototype = WorkflowPrototype::new(
+        ctx,
+        *func.id(),
+        serde_json::Value::Null,
+        prototype_context,
+        "prototype",
+    )
+    .await
+    .expect("cannot create new prototype");
+
+    let (_, state, _) = WorkflowRunner::run(ctx, *prototype.id())
+        .await
+        .expect("unable to run workflow");
+    assert_eq!(
+        state.error_message().expect("no error message found"),
+        "oopsie!"
+    );
+    assert_eq!(state.status(), WorkflowRunnerStatus::Failure);
 }

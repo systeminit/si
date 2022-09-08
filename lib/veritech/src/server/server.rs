@@ -853,6 +853,7 @@ async fn command_run_request(
         .get()
         .await
         .map_err(|err| ServerError::CyclonePool(Box::new(err)))?;
+
     let mut progress = client
         .execute_command_run(cyclone_request)
         .await?

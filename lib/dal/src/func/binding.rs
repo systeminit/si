@@ -185,6 +185,10 @@ impl FuncBinding {
 
     /// Runs [`Self::find_or_create()`] and executes if [`Self`] was newly created or
     /// [`FuncBindingReturnValue`](crate::FuncBindingReturnValue) could not be found.
+    ///
+    /// Use this function if you would like to receive the
+    /// [`FuncBindingReturnValue`](crate::FuncBindingReturnValue) for a given
+    /// [`FuncId`](crate::Func) and [`args`](serde_json::Value).
     pub async fn find_or_create_and_execute(
         ctx: &DalContext<'_, '_, '_>,
         args: serde_json::Value,
@@ -228,6 +232,7 @@ impl FuncBinding {
         result: FuncBindingResult,
     );
 
+    // For a given [`FuncBinding`](Self), execute using veritech.
     pub async fn execute(
         &self,
         ctx: &DalContext<'_, '_, '_>,
@@ -244,6 +249,8 @@ impl FuncBinding {
             .await
     }
 
+    /// Perform function execution to veritech for a given [`Func`](crate::Func) and
+    /// [`FuncDispatchContext`](crate::func::backend::FuncDispatchContext).
     pub async fn execute_critical_section(
         &self,
         func: Func,
@@ -387,6 +394,8 @@ impl FuncBinding {
             }
         }
 
+        // NOTE(nick,wendy): why is the state is set to Run immediately after it is set to
+        // Dispatch a few lines above?
         execution
             .set_state(ctx, super::execution::FuncExecutionState::Run)
             .await?;

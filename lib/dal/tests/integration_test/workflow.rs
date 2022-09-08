@@ -1,6 +1,10 @@
 use crate::dal::test;
-use dal::{DalContext, Func, FuncBinding, StandardModel, WorkflowTree, WorkflowView};
+use dal::{
+    DalContext, Func, FuncBackendError, FuncBinding, FuncBindingError, StandardModel,
+    WorkflowError, WorkflowTree, WorkflowView,
+};
 use serde_json::json;
+use veritech::FunctionResult;
 
 async fn fb(
     ctx: &DalContext<'_, '_, '_>,
@@ -79,4 +83,29 @@ async fn run(ctx: &DalContext<'_, '_, '_>) {
     // TODO: fix args propagation
     // TODO: confirm output
     tree.run(ctx).await.expect("unable to run workflow");
+}
+
+#[test]
+async fn fail(ctx: &DalContext<'_, '_, '_>) {
+    let name = "si:failure";
+    let func = Func::find_by_attr(ctx, "name", &name)
+        .await
+        .expect("unable to find func")
+        .pop()
+        .unwrap_or_else(|| panic!("function not found: {}", name));
+    let tree = WorkflowView::resolve(ctx, &func)
+        .await
+        .expect("unable to resolve workflow");
+
+    // TODO: fix args propagation
+    // TODO: confirm output
+    let err = tree.run(ctx).await.expect_err("no error found");
+    if let WorkflowError::FuncBinding(FuncBindingError::FuncBackend(
+        FuncBackendError::FunctionResultCommandRun(FunctionResult::Failure(e)),
+    )) = &err
+    {
+        assert_eq!(e.error.message.as_str(), "oopsie!");
+    } else {
+        panic!("error found, but is unexpected {0:?}", err);
+    }
 }

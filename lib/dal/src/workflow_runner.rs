@@ -1,10 +1,12 @@
-use crate::DalContext;
 use serde::{Deserialize, Serialize};
 use si_data::{NatsError, PgError};
 use std::default::Default;
 use telemetry::prelude::*;
 use thiserror::Error;
+use veritech::{FunctionResult, FunctionResultFailure};
 
+use crate::workflow_runner::workflow_runner_state::WorkflowRunnerState;
+use crate::workflow_runner::workflow_runner_state::WorkflowRunnerStatus;
 use crate::{
     func::binding_return_value::{FuncBindingReturnValue, FuncBindingReturnValueError},
     func::execution::{FuncExecution, FuncExecutionError},
@@ -17,6 +19,9 @@ use crate::{
     WorkflowPrototypeId, WorkflowResolverError, WorkflowResolverId, WriteTenancy, WsEvent,
     WsEventError, WsPayload,
 };
+use crate::{DalContext, FuncBackendError};
+
+pub mod workflow_runner_state;
 
 #[derive(Error, Debug)]
 pub enum WorkflowRunnerError {
@@ -156,20 +161,20 @@ impl WorkflowRunner {
         context: WorkflowRunnerContext,
     ) -> WorkflowRunnerResult<Self> {
         let row = ctx.txns().pg().query_one(
-                "SELECT object FROM workflow_runner_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
-                &[
-                    ctx.write_tenancy(),
-                    ctx.visibility(),
-                    &workflow_prototype_id,
-                    &workflow_resolver_id,
-                    &func_id,
-                    &func_binding_id,
-                    &context.component_id(),
-                    &context.schema_id(),
-                    &context.schema_variant_id(),
-                    &context.system_id(),
-                ],
-            )
+            "SELECT object FROM workflow_runner_create_v1($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
+            &[
+                ctx.write_tenancy(),
+                ctx.visibility(),
+                &workflow_prototype_id,
+                &workflow_resolver_id,
+                &func_id,
+                &func_binding_id,
+                &context.component_id(),
+                &context.schema_id(),
+                &context.schema_variant_id(),
+                &context.system_id(),
+            ],
+        )
             .await?;
         let object = standard_model::finish_create_from_row(ctx, row).await?;
         WsEvent::new(ctx, WsPayload::ChangeSetApplied(ChangeSetPk::NONE))
@@ -178,29 +183,126 @@ impl WorkflowRunner {
         Ok(object)
     }
 
+    /// Create a [`WorkflowRunner`](Self) and "run" it immediately. This not only creates the
+    /// runner, but also a corresponding, _terminating_
+    /// [`WorkflowRunnerState`](crate::workflow_runner::workflow_runner_state::WorkflowRunnerState).
     pub async fn run(
         ctx: &DalContext<'_, '_, '_>,
         prototype_id: WorkflowPrototypeId,
-    ) -> WorkflowRunnerResult<(Self, Vec<FuncBindingReturnValue>)> {
+    ) -> WorkflowRunnerResult<(Self, WorkflowRunnerState, Vec<FuncBindingReturnValue>)> {
         let prototype = WorkflowPrototype::get_by_id(ctx, &prototype_id)
             .await?
             .ok_or(WorkflowRunnerError::PrototypeNotFound(prototype_id))?;
+
+        // NOTE(nick,wendy): it seems like we already generate the tree inside
+        // "prototype.resolve()". What is the value of doing this in two steps? It is possible
+        // this is better for multiple runs because "prototype.resolve()" will only return the
+        // resolver rather than generate a tree and build the resolver. Maybe, we could return
+        // a boolean called "created" and only run "resolver.tree()" if "created" is false?
         let resolver = prototype.resolve(ctx).await?;
         let tree = resolver.tree(ctx).await?;
-        let func_binding_return_values = tree.run(ctx).await?;
 
+        // Perform the workflow runner "run" by running the workflow tree.
+        let (func_binding_return_values, func_id, func_binding_id, maybe_failure): (
+            Vec<FuncBindingReturnValue>,
+            FuncId,
+            FuncBindingId,
+            Option<FunctionResultFailure>,
+        ) = match tree.run(ctx).await {
+            Ok(func_binding_return_values) => {
+                let (func_id, func_binding_id) =
+                    Self::process_successful_workflow_run(ctx, &func_binding_return_values).await?;
+                (func_binding_return_values, func_id, func_binding_id, None)
+            }
+            Err(maybe_failure) => {
+                // The only kind of error we should "allow" is a function failure. All other errors
+                // will be returned.
+                if let WorkflowError::FuncBinding(FuncBindingError::FuncBackend(
+                    FuncBackendError::FunctionResultCommandRun(FunctionResult::Failure(failure)),
+                )) = &maybe_failure
+                {
+                    // We need to collect the FuncId if the workflow was not successful.
+                    let identity = Func::find_by_attr(ctx, "name", &"si:identity")
+                        .await?
+                        .pop()
+                        .ok_or_else(|| {
+                            WorkflowRunnerError::MissingWorkflow("si:identity".to_owned())
+                        })?;
+                    (
+                        Vec::new(),
+                        *identity.id(),
+                        FuncBindingId::NONE,
+                        Some(failure.clone()),
+                    )
+                } else {
+                    return Err(WorkflowRunnerError::Workflow(maybe_failure));
+                }
+            }
+        };
+
+        // Destructure the underlying function failure, if a function failure occurred.
+        let (workflow_runner_status, execution_id, error_kind, error_message) = match maybe_failure
+        {
+            Some(failure) => (
+                WorkflowRunnerStatus::Failure,
+                Some(failure.execution_id),
+                Some(failure.error.kind),
+                Some(failure.error.message),
+            ),
+            None => (WorkflowRunnerStatus::Success, None, None, None),
+        };
+
+        let mut context = WorkflowRunnerContext::new();
+        context.set_component_id(prototype.context().component_id);
+        context.set_schema_id(prototype.context().schema_id);
+        context.set_schema_variant_id(prototype.context().schema_variant_id);
+        context.set_system_id(prototype.context().system_id);
+
+        // TODO(nick,wendy,paulo): create the runner independent of it being ran (either at the
+        // beginning of this function or outside of it).
+        let runner = Self::new(
+            ctx,
+            *prototype.id(),
+            *resolver.id(),
+            func_id,
+            func_binding_id,
+            context,
+        )
+        .await?;
+
+        let runner_state = WorkflowRunnerState::new(
+            ctx,
+            *runner.id(),
+            workflow_runner_status,
+            execution_id,
+            error_kind,
+            error_message,
+        )
+        .await?;
+
+        Ok((runner, runner_state, func_binding_return_values))
+    }
+
+    /// Upon a successful workflow runner "run" (within [`Self::run()`]), process the result
+    /// as desired (e.g. processing logs).
+    async fn process_successful_workflow_run(
+        ctx: &DalContext<'_, '_, '_>,
+        func_binding_return_values: &Vec<FuncBindingReturnValue>,
+    ) -> WorkflowRunnerResult<(FuncId, FuncBindingId)> {
         let identity = Func::find_by_attr(ctx, "name", &"si:identity")
             .await?
             .pop()
             .ok_or_else(|| WorkflowRunnerError::MissingWorkflow("si:identity".to_owned()))?;
+
         let (func_binding, mut func_binding_return_value) = FuncBinding::find_or_create_and_execute(
             ctx,
-            serde_json::json!({ "identity": serde_json::to_value(&func_binding_return_values)? }),
+            serde_json::json!({ "identity": serde_json::to_value(func_binding_return_values)? }),
             *identity.id(),
         )
-        .await?;
+            .await?;
+
         let mut logs = Vec::new();
-        for return_value in &func_binding_return_values {
+        for return_value in func_binding_return_values {
             for stream in return_value
                 .get_output_stream(ctx)
                 .await?
@@ -223,21 +325,7 @@ impl WorkflowRunner {
             FuncExecution::get_by_pk(ctx, &func_binding_return_value.func_execution_pk()).await?;
         func_execution.set_output_stream(ctx, logs).await?;
 
-        let mut context = WorkflowRunnerContext::new();
-        context.set_component_id(prototype.context().component_id);
-        context.set_schema_id(prototype.context().schema_id);
-        context.set_schema_variant_id(prototype.context().schema_variant_id);
-        context.set_system_id(prototype.context().system_id);
-        let runner = Self::new(
-            ctx,
-            *prototype.id(),
-            *resolver.id(),
-            *identity.id(),
-            *func_binding.id(),
-            context,
-        )
-        .await?;
-        Ok((runner, func_binding_return_values))
+        Ok((*identity.id(), *func_binding.id()))
     }
 
     standard_model_accessor!(
