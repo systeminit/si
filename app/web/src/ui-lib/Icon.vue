@@ -24,7 +24,7 @@
       :is="iconComponent"
       class="icon__svg"
       :class="
-        clsx(svgRotateClass, {
+        clsx(svgRotateClass, 'w-full h-full', {
           'animate-spin': AUTO_SPIN_ICONS.includes(props.name),
         })
       "
@@ -167,7 +167,7 @@ const props = defineProps({
   name: { type: String as PropType<IconNames>, required: true },
   rotate: { type: String as PropType<"left" | "right" | "up" | "down"> },
   size: {
-    type: String as PropType<"xs" | "s" | "m" | "l" | "full">,
+    type: String as PropType<"xs" | "s" | "m" | "l" | "xl" | "full">,
     default: "m",
   },
 });
@@ -218,6 +218,7 @@ const sizeClasses = computed(() => {
     s: "w-5 h-5",
     m: "w-6 h-6",
     l: "w-8 h-8",
+    xl: "w-9 h-9",
   }[props.size];
 });
 

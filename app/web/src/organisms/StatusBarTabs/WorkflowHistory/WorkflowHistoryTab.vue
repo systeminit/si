@@ -1,6 +1,6 @@
 <template>
   <StatusBarTab :selected="selected">
-    <template #icon><WorkflowStatusIcon status="success" /></template>
+    <template #icon><WorkflowStatusIcon status="success" size="l" /></template>
     <!-- TODO(wendy) - replace fixed icon with updating one -->
     <template #name>Workflow History</template>
     <template #summary></template>
