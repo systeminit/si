@@ -82,6 +82,9 @@ module.exports = {
       },
     ],
 
+    // other -----------------------------------------------------
+    "no-undef": 0, // handled by typescript, which is better aware of global types
+
     // custom plugin configs ------------------------------------------
     // make import/order understand our alias paths
     "import/order": [

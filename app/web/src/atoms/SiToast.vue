@@ -58,7 +58,7 @@ import { toast$, Toasted } from "@/observable/toast";
 import Icon from "@/ui-lib/Icon.vue";
 
 interface Burnt extends Toasted {
-  timeout: ReturnType<typeof setTimeout>;
+  timeout: Timeout;
   viewFullOutput: boolean;
 }
 

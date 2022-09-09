@@ -1,14 +1,13 @@
 import Bottle from "bottlejs";
 import { SDF } from "./api/sdf";
-import { Config } from "./config";
 // import router from "./router";
 // import { routeCheck } from "./router";
 // import _ from "lodash";
 
-export function bottleSetup(config: Config) {
+export function bottleSetup() {
   const bottle = Bottle.pop("default");
   bottle.factory("SDF", function sdfBottleFactory(_container): SDF {
-    return new SDF(config);
+    return new SDF();
   });
 
   // bottle.factory("Router", function(_container): VueRouter {
@@ -17,10 +16,10 @@ export function bottleSetup(config: Config) {
 }
 
 // @ts-ignore
-export function bottleSetStore(router: VueRouter, config: Config) {
+export function bottleSetStore(_router: VueRouter) {
   const bottle = Bottle.pop("default");
   bottle.factory("SDF", function sdfBottleFactory(_container): SDF {
-    return new SDF(config);
+    return new SDF();
   });
 
   // bottle.factory("Router", function(_container): VueRouter {

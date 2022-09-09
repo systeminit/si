@@ -63,6 +63,7 @@ import Link from "~icons/heroicons-solid/link";
 import Moon from "~icons/heroicons-solid/moon";
 import Sun from "~icons/heroicons-solid/sun";
 import Eye from "~icons/heroicons-solid/eye";
+import EyeOff from "~icons/heroicons-solid/eye-off";
 import ClipboardCopy from "~icons/heroicons-solid/clipboard-copy";
 import Refresh from "~icons/heroicons-solid/refresh";
 import Pencil from "~icons/heroicons-outline/pencil";
@@ -76,6 +77,8 @@ import DotsHorizontal from "~icons/heroicons-solid/dots-horizontal";
 import DotsVertical from "~icons/heroicons-solid/dots-vertical";
 import Search from "~icons/heroicons-solid/search";
 import Selector from "~icons/heroicons-solid/selector";
+import Lock from "~icons/heroicons-solid/lock-closed";
+import LockOpen from "~icons/heroicons-solid/lock-open";
 
 // octicons (from github) available as no suffix, -16, -24
 import GitBranch from "~icons/octicon/git-branch-24";
@@ -108,8 +111,11 @@ const ICON_NAME_MAP = Object.freeze({
   "git-commit": GitCommit,
   "git-merge": GitMerge,
   "help-circle": QuestionMarkCircle,
+  hide: EyeOff,
   link: Link,
   loader: Loader,
+  lock: Lock,
+  "lock-open": LockOpen,
   minus: Minus,
   "minus-circle": MinusCircle,
   moon: Moon,
@@ -123,6 +129,7 @@ const ICON_NAME_MAP = Object.freeze({
   save: Save,
   search: Search,
   selector: Selector,
+  show: Eye,
   sun: Sun,
   trash: Trash,
   x: X,
@@ -163,11 +170,13 @@ export type IconNames = RegularIconNames | IconNameAliases | SpinnableIconNames;
 import { computed, FunctionalComponent, PropType } from "vue";
 import clsx from "clsx";
 
+export type IconSizes = "xs" | "s" | "m" | "l" | "xl" | "full";
+
 const props = defineProps({
   name: { type: String as PropType<IconNames>, required: true },
   rotate: { type: String as PropType<"left" | "right" | "up" | "down"> },
   size: {
-    type: String as PropType<"xs" | "s" | "m" | "l" | "xl" | "full">,
+    type: String as PropType<IconSizes>,
     default: "m",
   },
 });

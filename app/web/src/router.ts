@@ -6,7 +6,6 @@ import {
   RouteRecordRaw,
 } from "vue-router";
 import _ from "lodash";
-import { config } from "@/config";
 import { SessionService } from "@/service/session";
 
 // Cannot use inside the template directly.
@@ -78,25 +77,23 @@ const routes: RouteRecordRaw[] = [
         : []),
     ],
   },
+  // Auth
   {
     path: "/authenticate",
     name: "authenticate",
-    component: () => import("@/pages/Authenticate.vue"),
-    // redirect: { name: "login" },
-    redirect: { name: "signup" },
-    children: [
-      {
-        path: "login",
-        name: "login",
-        component: () => import("@/templates/Login.vue"),
-      },
-      {
-        path: "signup",
-        name: "signup",
-        component: () => import("@/templates/Signup.vue"),
-      },
-    ],
+    redirect: { name: "login" },
   },
+  {
+    path: "/authenticate/login",
+    name: "login",
+    component: () => import("@/pages/LoginPage.vue"),
+  },
+  {
+    path: "/authenticate/signup",
+    name: "signup",
+    component: () => import("@/pages/SignupPage.vue"),
+  },
+  // 404
   {
     path: "/404",
     name: "notFound",
@@ -133,7 +130,7 @@ export const routeCheck = async (
 };
 
 const router = createRouter({
-  history: createWebHistory(config.routerBase),
+  history: createWebHistory(),
   routes,
 });
 

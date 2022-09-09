@@ -2,9 +2,9 @@ import { fromFetch } from "rxjs/fetch";
 import { from, mergeMap, Observable } from "rxjs";
 import _ from "lodash";
 import { SdfWs } from "@/api/sdf/ws";
-import { Config, config } from "@/config";
 import { Workspace } from "@/api/sdf/dal/workspace";
 import { SessionService } from "@/service/session";
+import { API_HTTP_URL, API_WS_URL } from "@/utils/api";
 
 export class FetchError extends Error {
   response: Response;
@@ -35,9 +35,9 @@ export class SDF {
 
   ws?: SdfWs;
 
-  constructor(config: Config) {
-    this.baseUrl = config.sdfBaseUrl;
-    this.wsBaseUrl = config.sdfBaseWsUrl;
+  constructor() {
+    this.baseUrl = new URL(API_HTTP_URL);
+    this.wsBaseUrl = new URL(`${API_WS_URL}/billing_account_updates`); // this seems wrong... but no
     this.startUpdate();
   }
 
@@ -196,4 +196,4 @@ export function isSdfError(obj: unknown): obj is ApiResponseError {
   return !!(obj as ApiResponseError).error;
 }
 
-export const sdf = new SDF(config);
+export const sdf = new SDF();

@@ -18,16 +18,6 @@ export interface Theme {
 export const theme$ = new ReplaySubject<Theme>(1);
 persistToSession("theme", theme$);
 
-theme$.subscribe((newTheme) => {
-  if (newTheme.value === "dark") {
-    document.documentElement.classList.add("dark");
-    document.body.style.colorScheme = "dark";
-  } else {
-    document.documentElement.classList.remove("dark");
-    document.body.style.colorScheme = "light";
-  }
-});
-
 theme$.next({
   value: window.matchMedia("(prefers-color-scheme: dark)").matches
     ? "dark"

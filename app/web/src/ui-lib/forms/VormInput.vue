@@ -1,0 +1,853 @@
+<!-- eslint-disable vue/no-mutating-props -->
+/* This component is a bit of a monster, but it allows for really flexible forms
+to be built quickly and IMO it's much nicer to import a single component and
+change props than to have to import many components when building out forms.
+Soon I will try to break it apart a bit using some of vue 3's new composition
+tools, but realistically it's not super important as this component will not
+need to change very often Note that this is tightly coupled to the
+VormInputOption component and some pretty funky stuff is going on under the hood
+although this is only used for dropdown, multi-checkbox, and radio inputs, and
+you can pass in options as props too */
+
+<template>
+  <div :key="formInputId" class="vorm-input" :class="computedClasses">
+    <label v-if="!noLabel" class="vorm-input__label" :for="formInputId">
+      <Icon
+        v-if="disabledBySelfOrParent"
+        class="vorm-input__locked-icon"
+        name="lock"
+      />
+      <slot name="label"
+        >{{ label || "&nbsp;"
+        }}{{ required || requiredWarning ? "*" : "" }}</slot
+      >
+    </label>
+    <div class="vorm-input__input-and-instructions-wrap">
+      <div class="vorm-input__input-wrap">
+        <template v-if="type === 'container'"><slot /></template>
+
+        <template v-else-if="type === 'dropdown'">
+          <select
+            :id="formInputId"
+            ref="inputRef"
+            class="vorm-input__input"
+            :class="
+              modelValue === null && !placeholderSelectable
+                ? '--placeholder-selected'
+                : ''
+            "
+            :disabled="disabledBySelfOrParent"
+            :value="valueForSelectField"
+            @focus="onFocus"
+            @blur="onBlur"
+            @change="onSelectChange"
+          >
+            <VormInputOption
+              v-if="placeholder"
+              :value="null"
+              :hidden="!placeholderSelectable"
+              :disabled="!placeholderSelectable"
+            >
+              {{ placeholder }}
+            </VormInputOption>
+
+            <slot />
+
+            <VormInputOption
+              v-for="(o, i) in optionsFromProps"
+              :key="generateOptionKey(o, i)"
+              :value="o.value"
+              >{{ o.label }}</VormInputOption
+            >
+          </select>
+        </template>
+
+        <template v-else-if="type === 'radio' || type === 'multi-checkbox'">
+          <VormInputOption
+            v-for="(o, i) in optionsFromProps"
+            :key="generateOptionKey(o, i)"
+            ref="inputRef"
+            :disabled="disabledBySelfOrParent"
+            :value="o.value"
+            >{{ o.label }}</VormInputOption
+          >
+          <slot />
+        </template>
+
+        <template v-else-if="type === 'checkbox'">
+          <input
+            :id="formInputId"
+            ref="inputRef"
+            class="vorm-input__input"
+            :checked="modelValue === checkedValue"
+            type="checkbox"
+            :disabled="disabledBySelfOrParent"
+            @input="onCheckboxChange"
+          />
+          <label class="vorm-input__checkbox-text" :for="formInputId">
+            <slot />
+          </label>
+        </template>
+
+        <template v-else-if="type === 'textarea'">
+          <textarea
+            :id="formInputId"
+            ref="inputRef"
+            v-model="modelValueForTextArea"
+            class="vorm-input__input"
+            :placeholder="computedPlaceholder"
+            :disabled="disabledBySelfOrParent"
+            :maxlength="maxLength"
+            @focus="onFocus"
+            @blur="onBlur"
+            @input="onChange"
+          />
+        </template>
+
+        <template v-else>
+          <input
+            :id="formInputId"
+            ref="inputRef"
+            v-model="modelValue"
+            class="vorm-input__input"
+            :autocomplete="autocomplete"
+            :name="name"
+            :type="nativeInputTagTypeProp"
+            :placeholder="computedPlaceholder"
+            :disabled="disabledBySelfOrParent"
+            :step.prop="nativeInputNumberStepProp"
+            :maxlength="maxLength"
+            @keydown="onKeyboardEvent"
+            @focus="onFocus"
+            @blur="onBlur"
+            @input="onChange"
+          />
+          <Icon
+            v-if='type === "password" &amp;&amp; allowShowPassword'
+            class="vorm-input__pass-show-hide-toggle"
+            :name="isPasswordMasked ? 'show' : 'hide'"
+            @click="isPasswordMasked = !isPasswordMasked"
+          />
+        </template>
+      </div>
+
+      <div class="vorm-input__instructions">
+        <slot name="instructions">{{ instructions }}</slot>
+      </div>
+
+      <div v-if="validationState.isError" class="vorm-input__error-message">
+        {{ validationState.errorMessage }}
+      </div>
+    </div>
+  </div>
+</template>
+
+<script lang="ts" setup>
+/* eslint-disable @typescript-eslint/no-explicit-any,@typescript-eslint/no-non-null-assertion */
+
+import { ref, computed, onMounted, onUpdated, watch, toRefs } from "vue";
+import _ from "lodash";
+import Icon from "@/ui-lib/Icon.vue";
+
+import { useValidatedInput, validators } from "./helpers/form-validation";
+import { useDisabledBySelfOrParent } from "./helpers/form-disabling";
+import VormInputOption from "./VormInputOption.vue";
+import type { PropType, ComponentInternalInstance } from "vue";
+
+type InputTypes =
+  | "container"
+  | "text"
+  | "textarea"
+  | "email"
+  | "url"
+  | "password"
+  | "slug"
+  | "tel"
+  | "number"
+  | "integer"
+  | "decimal"
+  | "money"
+  | "percent"
+  | "date"
+  | "checkbox"
+  | "multi-checkbox"
+  | "dropdown"
+  | "radio";
+
+// object of the shape { option1Value: 'Label 1',  }
+type OptionsAsSimpleObject = Record<string, string>;
+type OptionsAsObjectWithLabels = Record<
+  string,
+  { label: string; [key: string]: any }
+>;
+type OptionsAsSimpleArray = string[];
+type OptionsAsArray = { value: any; label: string }[];
+type InputOptions =
+  | OptionsAsSimpleObject
+  | OptionsAsObjectWithLabels
+  | OptionsAsSimpleArray
+  | OptionsAsArray;
+
+const props = defineProps({
+  // to be used with v-model
+  // TODO: make modelValue more flexible and typed better
+  modelValue: {
+    // TODO: resolve some ts issues around binding modelValue to
+    type: [String, Number, Array, Boolean, null] as PropType<
+      string | number | string[] | boolean | null
+    >,
+    // type: [String, Number, Array, Boolean, null] as PropType<any>,
+  },
+  type: { type: String as PropType<InputTypes>, default: "text" },
+
+  // label, placeholder, additional text instructions
+  label: { type: String },
+  noLabel: { type: Boolean },
+  inlineLabel: { type: Boolean },
+  instructions: String,
+  placeholder: String,
+
+  disabled: Boolean,
+  defaultValue: {}, // eslint-disable-line vue/require-prop-types
+  autocomplete: { type: String },
+  name: { type: String },
+
+  // validations
+  required: Boolean,
+  requiredWarning: Boolean,
+  requiredMessage: { type: String, default: "This field is required" },
+  min: [Date, Number],
+  max: [Date, Number],
+  maxLength: Number,
+  toUpperCase: Boolean,
+  toLowerCase: Boolean,
+  digitsOnly: Boolean,
+  regex: { type: [String, RegExp] },
+  regexMessage: { type: String, default: "This field is invalid" },
+
+  // additional options for specific input types
+  // TODO: figure out how to further constrain sets of props to get better autocomplete
+
+  // for radio / dropdown / multi-checkbox
+  options: { type: [Object, Array] as PropType<InputOptions> },
+
+  // for dropdown only
+  autoSelect: Boolean,
+  placeholderSelectable: Boolean,
+
+  // for checkbox/toggle only
+  checkedValue: {
+    type: [String, Boolean, Number, null] as PropType<
+      string | boolean | number | null
+    >,
+    default: true,
+  },
+  uncheckedValue: {
+    type: [String, Boolean, Number, null] as PropType<
+      string | boolean | number | null
+    >,
+    default: null,
+  },
+  reverseCheckedValue: Boolean,
+
+  // for password only
+  allowShowPassword: Boolean,
+  checkPasswordStrength: Boolean,
+});
+
+const inputRef = ref<HTMLInputElement>(); // template ref
+
+const emit = defineEmits(["update:modelValue", "focus", "blur"]);
+
+// const originalValue = ref(props.modelValue); // store the original value
+const { modelValue: currentValue, disabled } = toRefs(props);
+const isFocus = ref(false);
+
+const disabledBySelfOrParent = useDisabledBySelfOrParent(disabled);
+
+const isPasswordMasked = ref(true); // only relevant for password
+
+const validationRules = computed(() => {
+  const rules = [];
+  if (props.required || props.requiredWarning) {
+    rules.push({
+      fn:
+        props.type === "checkbox"
+          ? validators.equals(props.checkedValue)
+          : validators.required,
+      message: props.requiredMessage,
+      ...(props.requiredWarning && { warning: true }),
+    });
+  }
+  if (props.type === "url")
+    rules.push({ fn: validators.url, message: "Invalid URL" });
+  if (props.type === "email")
+    rules.push({ fn: validators.email, message: "Invalid email" });
+
+  if (props.regex) {
+    rules.push({
+      fn: validators.regex(props.regex),
+      message: props.regexMessage,
+    });
+  }
+  // TODO: add more rule checks
+
+  return rules;
+});
+const { validationState, validationMethods } = useValidatedInput(
+  currentValue!,
+  validationRules,
+);
+
+// textarea typescript wont bind to null, so we have this annoying workaround
+// TODO: ideally we can just override the TS type for v-model on a textarea somehow...
+const modelValueForTextArea = ref(props.modelValue?.toString() || "");
+watch(
+  () => props.modelValue,
+  () => {
+    modelValueForTextArea.value = props.modelValue?.toString() || "";
+  },
+);
+
+const computedClasses = computed(() => ({
+  "--error": validationState.isError,
+  "--focused": isFocus.value,
+  "--disabled": disabledBySelfOrParent.value,
+  [`--type-${props.type}`]: true,
+}));
+
+// shared counter to generate unique IDs used for label + input tag binding
+// TODO: probably need to deal with component reuse issues to reset this?
+
+const formInputId = _.uniqueId("vorm-input-");
+
+const TYPES_WITH_OPTIONS = ["radio", "dropdown", "multi-checkbox"];
+const NUMERIC_TYPES = ["number", "integer", "decimal", "money", "percent"];
+const isTypeWithOptions = computed(() =>
+  TYPES_WITH_OPTIONS.includes(props.type),
+);
+
+// native html input tag type - ex: <input type="?">
+// not used when the tag is not an input (textarea, select)
+const nativeInputTagTypeProp = computed(() => {
+  if (props.type === "textarea") return undefined;
+  if (props.type === "password" && isPasswordMasked.value) return "password";
+  if (NUMERIC_TYPES.includes(props.type)) return "number";
+  return "text";
+});
+const nativeInputNumberStepProp = computed(() => {
+  if (
+    props.type === "decimal" ||
+    props.type === "money" ||
+    props.type === "percent"
+  )
+    return 0.01;
+  if (props.type === "integer" || props.type === "number") return 1;
+  return undefined;
+});
+
+const computedPlaceholder = computed(() => {
+  if (props.placeholder) return props.placeholder;
+  if (props.type === "date") return "YYYY-MM-DD";
+  return undefined;
+});
+
+function cleanValue(val: any) {
+  // called when setting a new value to clean/coerce values
+  if (val === "") return null;
+  if (!val) return val;
+
+  // text types ///////////////////////////////////////////////////////////
+  if (props.type === "url") {
+    return `${val.startsWith("http") ? "" : "https://"}${val}`;
+  } else if (props.type === "email") {
+    return val.trim().toLowerCase();
+  } else if (props.type === "text") {
+    let cleanVal = val.toString().trim();
+    if (props.digitsOnly) cleanVal = cleanVal.replace(/[^0-9]/g, "");
+    if (props.toLowerCase) cleanVal = cleanVal.toLowerCase();
+    if (props.toUpperCase) cleanVal = cleanVal.toUpperCase();
+    return cleanVal;
+  } else if (props.type === "tel") {
+    return val.replace(/[^0-9+]/g, "");
+  } else if (props.type === "date") {
+    try {
+      return new Date(val).toISOString().slice(0, 10);
+    } catch (err) {
+      return val;
+    }
+
+    // numeric types ///////////////////////////////////////////////////////////
+  } else if (props.type === "number") {
+    // default "number" behaviour pins min to 0 and rounds to nearest int
+    return Math.max(0, Math.round(val));
+  } else if (props.type === "integer") {
+    return Math.round(val);
+  } else if (props.type === "decimal" || props.type === "money") {
+    return parseFloat(val);
+  }
+
+  return val;
+}
+function setNewValue(newValue: any, clean = true) {
+  emit("update:modelValue", clean ? cleanValue(newValue) : newValue);
+}
+
+// helpers to deal with input types that have child options (radio, multicheckbox, dropdown)
+function generateOptionKey(option: { value: string }, index: number) {
+  return `vorm-input-option-${formInputId}-${index}`;
+}
+const optionsFromProps = computed((): OptionsAsArray => {
+  /* eslint-disable consistent-return */
+  if (!isTypeWithOptions.value) return [];
+  if (!props.options) return [];
+  if (_.isArray(props.options)) {
+    if (!_.isObject(props.options[0])) {
+      return _.map(props.options, (value) => ({
+        value,
+        label: value.toString(),
+      }));
+    }
+    // handle array of simple strings
+    if (_.isString(props.options[0])) {
+      return _.map(props.options, (value) => ({ value, label: value })) as any;
+    }
+    // otherwise its an array of { value, label } and we can pass through as is
+    return props.options as any;
+  } else if (_.isObject(props.options)) {
+    // map object of options in format of { val1: label1, ... } to array of options
+    return _.map(props.options, (value, key) => {
+      let label;
+      // if object looks like { o1val: 'o1 label', o2Val... }
+      if (_.isString(value)) label = value;
+      // if object looks like { o1val: { label: 'o1 label' }, o2val... }
+      else if (_.isObject(value)) label = _.get(value, "label");
+      label = label || key; // fallback to using the value as the label otherwise
+      return {
+        value: key,
+        label,
+      };
+    });
+  }
+  return [];
+});
+
+// event handlers
+function onFocus() {
+  isFocus.value = true;
+  emit("focus");
+}
+function onBlur() {
+  isFocus.value = false;
+  // inputs with child options fire change events from the VormInputOption component
+  if (!isTypeWithOptions.value && props.modelValue) {
+    emit("update:modelValue", cleanValue(props.modelValue));
+  }
+  validationMethods.touch();
+  emit("blur");
+}
+function onChange(event: Event) {
+  if (
+    event.target instanceof HTMLInputElement ||
+    event.target instanceof HTMLTextAreaElement
+  ) {
+    // do not run "cleaning" logic on change - it will be cleaned on blur
+    setNewValue(event.target?.value, false);
+  }
+}
+function onKeyboardEvent(event: KeyboardEvent) {
+  const keyCode = event.which;
+  if (NUMERIC_TYPES.includes(props.type)) {
+    // prevent typing more than one "."
+    if (
+      keyCode === 190 &&
+      (props.modelValue as any)?.toString().includes(".")
+    ) {
+      event.preventDefault();
+    }
+
+    // prevent typing e/E/+ since they can be valid numbers in default html tag
+    if ([69, 91, 187].includes(keyCode)) {
+      event.preventDefault();
+    }
+  }
+}
+
+const childInputOptions = ref([] as ComponentInternalInstance[]);
+function registerChildInputOption(
+  inputOptionComponent: ComponentInternalInstance,
+) {
+  childInputOptions.value.push(inputOptionComponent);
+}
+function unregisterChildInputOption(
+  inputOptionComponent: ComponentInternalInstance,
+) {
+  childInputOptions.value = _.reject(childInputOptions.value, {
+    uid: inputOptionComponent.uid,
+  });
+}
+
+// some specific type handlers
+
+// DROPDOWN + MULTI CHECKBOX TYPE ///////////////////////////////////////////////////////////////////////////////////////
+function onSelectChange(event: Event) {
+  // TODO: a little extra handling to grab the actual vue child and use its bound value
+  // rather than event.target.value as this will allow us to preserve any weird value types
+
+  const childIndex = (event?.target as any)?.selectedIndex;
+  const selectedOption = childInputOptions.value[childIndex];
+  const newSelectedValue = selectedOption?.exposed?.value;
+  // fallback to event.target.value for cases where the VormInputOption has no bound value
+  // for example `VormInputOption yes`
+
+  // console.log(childIndex, selectedOption, newSelectedValue);
+  setNewValue(
+    newSelectedValue === undefined
+      ? (event?.target as any)?.value
+      : newSelectedValue,
+  );
+}
+
+function fixOptionSelection() {
+  // if currently selected value doesnt exist reset selection to null
+  const possibleChildValues = _.map(
+    childInputOptions.value,
+    (input) => input?.exposed?.value,
+  );
+
+  // first deal with keeping only valid values
+  if (props.type === "multi-checkbox") {
+    // only keep valid values
+    const validValues = _.intersection(
+      props.modelValue as string[],
+      possibleChildValues,
+    );
+    // TODO figure out how we want to deal with defaulting empty to `null` vs `[]`
+    if (!_.isEqual(validValues, props.modelValue)) setNewValue(validValues);
+  } else if (!possibleChildValues.includes(props.modelValue)) {
+    setNewValue(null);
+  }
+
+  // now deal with auto-select (ie automatically select the first option)
+  // which happens on load, but could also be after the selected option was removed from the list
+  if (props.autoSelect && _.isNil(props.modelValue)) {
+    let autoSelectIndex = 0;
+    // dropdown has an actual child option as the placeholder
+    if (props.type === "dropdown" && props.placeholder) autoSelectIndex = 1;
+
+    const autoSelectOptionComponent = childInputOptions.value[autoSelectIndex];
+    if (autoSelectOptionComponent)
+      setNewValue(autoSelectOptionComponent?.exposed?.value);
+  }
+}
+// have to do some special handling for selects that are using empty and boolean values
+// see VormInputOption for more info
+const valueForSelectField = computed(() => {
+  if (typeof props.modelValue === "boolean") return String(props.modelValue);
+  if (props.modelValue === undefined) return "_null_";
+  if (props.modelValue === null) return "_null_";
+
+  return props.modelValue;
+});
+
+// CHECKBOX TYPE ////////////////////////////////////////////////////////////////////////////////////////
+function onCheckboxChange(event: Event) {
+  const checked = (event.target as HTMLInputElement).checked;
+  setNewValue(checked ? props.checkedValue : props.uncheckedValue);
+}
+
+// some extra handling to fix the selected value when options change
+// also handles selecting the first
+onMounted(() => {
+  // set default value if value is empty and defaultValue prop is provided
+  if (_.isNil(props.modelValue) && props.defaultValue)
+    setNewValue(props.defaultValue);
+
+  if (isTypeWithOptions.value) fixOptionSelection();
+});
+onUpdated(() => {
+  if (isTypeWithOptions.value) fixOptionSelection();
+});
+
+// also can be useful to expose a focus method if other things need to trigger focus programatically
+function focus() {
+  if (inputRef.value instanceof HTMLInputElement) inputRef.value.focus();
+}
+
+defineExpose({
+  focus,
+
+  // expose some props for child `VormInputOption` instances to use
+  // as these components are tightly coupled and meant to be used together
+  // TODO: we could pass these down as props or use events...
+  vormInputType: props.type,
+  formInputId,
+  currentValue,
+  onChildInputOptionBlur: onBlur,
+  onChildInputOptionFocus: onFocus,
+  onChildInputOptionChange: setNewValue,
+  registerChildInputOption,
+  unregisterChildInputOption,
+
+  // TODO: hopefully vue will start merging exposed properties?
+  // ideally these should already be exposed from calling `useValidatedInput()`
+  // but this second call to `expose` was overwriting that one, so we must include it again
+  validationState,
+  validationMethods,
+});
+</script>
+
+<style lang="less" scoped>
+// TODO: remove all these colors and use tw classes
+
+@border-color--default: @colors-neutral-600;
+@border-color--hover: @colors-neutral-500;
+@border-color--focus: @colors-action-500;
+@border-color--error: @colors-destructive-500;
+
+@backround-color--default: @colors-black;
+@text-color--default: @colors-white;
+@text-color--error: @colors-destructive-600;
+
+@vertical-gap: 12px;
+
+.vorm-input {
+  &.--error {
+    .vorm-input__label {
+      color: @text-color--error;
+    }
+    .vorm-input__input {
+      border-color: @border-color--error;
+      color: @text-color--error;
+    }
+  }
+
+  &.--focused {
+    .vorm-input__input {
+      box-shadow: none;
+      outline: 2px solid @border-color--focus;
+      outline-offset: -2px;
+    }
+  }
+
+  &.--disabled {
+    color: #777;
+
+    input,
+    select,
+    textarea {
+      cursor: not-allowed;
+      color: currentColor;
+    }
+
+    .vorm-input__input {
+      opacity: 0.3;
+    }
+  }
+}
+
+// this class is on whatever the input is, whether its input, textarea, select, etc
+.vorm-input__input {
+  width: 100%;
+  border: 1px solid @border-color--default;
+  border-radius: 3px;
+  transition: border-color 0.15s;
+  padding: 8px 12px;
+  height: 40px;
+  color: @text-color--default;
+  font: inherit;
+  background-color: @backround-color--default;
+
+  &:hover {
+    border-color: @border-color--hover;
+  }
+
+  textarea& {
+    min-height: 80px;
+    display: block;
+  }
+
+  select& {
+    -webkit-appearance: none;
+    padding-top: 0;
+    padding-bottom: 0;
+    padding-right: 22px; // to make space for dropdown arrow
+
+    // dropdown arrow on right
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='40' height='40' fill='%23666'><polygon points='10,15 30,15 20,25'/></svg>");
+    background-size: 25px 25px;
+    background-position: calc(100% - 4px) center;
+    background-repeat: no-repeat;
+
+    &.--placeholder-selected {
+      color: #777;
+      font-style: italic;
+    }
+
+    &:-moz-focusring {
+      color: transparent;
+      text-shadow: 0 0 0 #000;
+    }
+  }
+
+  // set font size for our inputs
+  // input[type='text']&,
+  // input[type='number']&,
+  // input[type='password']&,
+  input&,
+  select&,
+  textarea& {
+    font-size: 14px;
+
+    // if font-size is at least 16 on mobile, ios will not automatically zoom in
+    @media @mq-mobile-only {
+      font-size: 16px;
+    }
+  }
+
+  &::placeholder {
+    color: #aaa;
+    font-style: italic;
+  }
+
+  &:focus {
+    border-color: @border-color--focus;
+  }
+
+  // &:focus {
+  //   // we have a custom focus style instead
+  //    outline: none;
+  // }
+}
+
+.vorm-input__label {
+  @apply capsize text-sm;
+  padding-bottom: @vertical-gap;
+  display: block;
+  align-items: center;
+  color: currentColor;
+  font-weight: 700;
+  padding-left: 1px;
+
+  // TODO: replace this hacky capsize fix
+  // &::before {
+  //   content: "";
+  //   margin-bottom: -0.2em;
+  //   display: table;
+  // }
+  // &::after {
+  //   content: "";
+  //   margin-top: -0.3em;
+  //   display: table;
+  // }
+
+  > .icon {
+    margin-right: 4px;
+    height: 14px;
+    width: 14px;
+  }
+}
+
+.vorm-input__locked-icon {
+  margin-right: 4px;
+  width: 12px;
+  height: 12px;
+}
+
+.vorm-input__instructions,
+.vorm-input__error-message {
+  @apply capsize text-xs;
+  padding-top: @vertical-gap;
+
+  // TODO: replace this hacky capsize fix
+  &::before {
+    content: "";
+    margin-bottom: -4px;
+    display: table;
+  }
+  &::after {
+    content: "";
+    margin-top: -4px;
+    display: table;
+  }
+}
+
+.vorm-input__instructions {
+  color: #777;
+
+  a {
+    color: currentColor;
+    text-decoration: underline;
+  }
+
+  .icon {
+    height: 16px;
+    width: 16px;
+    vertical-align: bottom;
+    margin-right: 4px;
+  }
+  &:empty {
+    display: none;
+  }
+}
+
+.vorm-input__error-message {
+  color: @text-color--error;
+}
+
+.vorm-input__input-wrap {
+  position: relative;
+}
+
+.vorm-input__pass-show-hide-toggle {
+  cursor: pointer;
+  color: #333;
+  user-select: none;
+  opacity: 0.8;
+  font-size: 12px;
+  line-height: 40px;
+  position: absolute;
+  right: 0;
+  margin-right: 8px;
+  margin-top: 8px;
+  opacity: 0.6;
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
+// small adjustments for specific input types
+.vorm-input.--type-radio {
+  .vorm-input__input-wrap {
+    padding-left: 1px;
+  }
+}
+
+.vorm-input.--type-checkbox {
+  .vorm-input__input-wrap {
+    display: flex;
+    align-items: center;
+  }
+
+  .vorm-input__input {
+    display: block;
+    width: 24px;
+    height: 24px;
+    margin-top: 8px;
+    margin-bottom: 8px;
+    margin-right: 8px;
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+
+  .vorm-input__checkbox-text {
+    cursor: pointer;
+    // padding-top: 5px;
+    a {
+      // TODO: probably want to set this more broadly somewhere else
+      text-decoration: underline;
+    }
+  }
+}
+</style>

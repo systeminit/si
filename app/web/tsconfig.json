@@ -10,19 +10,34 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "esModuleInterop": true,
-    "lib": ["ESNext", "DOM", "dom.iterable"],
+    "lib": [
+      "ESNext",
+      "DOM",
+      "dom.iterable"
+    ],
     "skipLibCheck": true,
-    
     "baseUrl": "./",
     "paths": {
-      "@/*": ["src/*"] 
+      "@/*": [
+        "src/*"
+      ]
     },
-    "types": ["unplugin-icons/types/vue"],
-    
+    "types": [
+      "unplugin-icons/types/vue"
+    ],
     "pretty": true,
     "noEmit": true,
     "forceConsistentCasingInFileNames": true,
   },
-  "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.vue"],
-  "references": [{ "path": "./tsconfig.node.json" }],
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.d.ts",
+    "src/**/*.tsx",
+    "src/**/*.vue"
+  ],
+  "references": [
+    {
+      "path": "./tsconfig.node.json"
+    }
+  ],
 }
