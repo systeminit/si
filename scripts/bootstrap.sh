@@ -10,7 +10,6 @@ set -e
 
 SI_USER="unknown"
 SI_OS="unknown"
-SI_LINUX="unknown"
 SI_WSL2="unknown"
 SI_ARCH="unknown"
 
@@ -39,11 +38,8 @@ function set-config {
 
     if [ "$(uname -s)" = "Darwin" ]; then
         SI_OS="darwin"
-        SI_LINUX="false"
         SI_WSL2="false"
     elif [ "$(uname -s)" = "Linux" ]; then
-        SI_LINUX="true"
-
         if [ -f /etc/os-release ]; then
             SI_OS=$(grep '^ID=' /etc/os-release | sed 's/^ID=//' | tr -d '"')
         else
@@ -63,19 +59,19 @@ function darwin-bootstrap {
     brew update
     brew upgrade
     brew cleanup
-    brew install bash make git skopeo libtool automake kubeval
+    brew install bash make git skopeo libtool automake kubeval butane
 }
 
 function arch-bootstrap {
     sudo pacman -Syu --noconfirm base-devel make git skopeo wget
     install-kubeval-linux-amd64
+    install-butane-linux-amd64
 }
 
 function fedora-bootstrap {
     sudo dnf upgrade -y --refresh
     sudo dnf autoremove -y
-    sudo dnf install -y @development-tools make git lld skopeo wget
-    install-kubeval-linux-amd64
+    sudo dnf install -y @development-tools make git lld skopeo wget butane golang-github-instrumenta-kubeval
 }
 
 function ubuntu-bootstrap {
@@ -91,6 +87,7 @@ function ubuntu-bootstrap {
     sudo apt autoremove -y
     sudo apt install -y build-essential make git lld skopeo wget
     install-kubeval-linux-amd64
+    install-butane-linux-amd64
 
     if [ "${SI_WSL2}" == "false" ]; then
         echo "========================================= NOTE ========================================="
@@ -138,12 +135,26 @@ function install-kubeval-linux-amd64 {
     if [ -f /usr/local/bin/kubeval ]; then
         sudo rm -f /usr/local/bin/kubeval
     fi
-    sudo cp /tmp/kubeval-download/kubeval /usr/local/bin
+    sudo mv /tmp/kubeval-download/kubeval /usr/local/bin
     rm -rf /tmp/kubeval-download
 }
 
+function install-butane-linux-amd64 {
+    if [ -d /tmp/butane-download ]; then
+        rm -rf /tmp/butane-download
+    fi
+    mkdir -p /tmp/butane-download
+    wget https://github.com/coreos/butane/releases/latest/download/butane-x86_64-unknown-linux-gnu -O /tmp/butane-download/butane
+    chmod +x /tmp/butane-download/butane
+    if [ -f /usr/local/bin/butane ]; then
+        sudo rm -f /usr/local/bin/butane
+    fi
+    sudo mv /tmp/butane-download/butane /usr/local/bin
+    rm -rf /tmp/butane-download
+}
+
 function check-binaries {
-    for BINARY in "cargo" "node" "npm" "docker" "docker-compose" "skopeo" "kubeval"; do
+    for BINARY in "cargo" "node" "npm" "docker" "docker-compose" "skopeo" "kubeval" "butane"; do
         if ! [ "$(command -v ${BINARY})" ]; then
             die "\"$BINARY\" must be installed and in PATH"
         fi
@@ -165,7 +176,6 @@ Success! Ready to build System Initiative with your config 🦀:
   user  : $SI_USER
   os    : $SI_OS
   arch  : $SI_ARCH
-  linux : $SI_LINUX
   wsl2  : $SI_WSL2
 "
 }

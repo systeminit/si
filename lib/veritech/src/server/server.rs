@@ -103,6 +103,8 @@ impl Server {
                 let (shutdown_broadcast_tx, _) = broadcast::channel(16);
 
                 let nats = connect_to_nats(&config).await?;
+                info!("yeehaw! let's get this thing goin'");
+
                 let manager = Manager::new(spec.clone());
                 let cyclone_pool = Pool::builder(manager)
                     .build()

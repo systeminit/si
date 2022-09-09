@@ -383,12 +383,18 @@ make FORCE=true test//lib/sdf
 To ensure your code will pass CI, you can run the exact same code that the CI servers themselves will run.
 
 ```bash
-make down
-make CI=true ci
+(
+  make down
+  make CI=true ci
+)
 ```
 
 This will evaluate the delta between your current branch and `main`, and run only the tests and checks
 that are relevant to your changes.
+
+_However_, you should rarely need to run the above commands.
+It is usually best to run individual tests or module(s) of tests (likely from the [`dal integration tests directory`](./lib/dal/tests/integration_test/))
+that cover code you have edited.
 
 ### Running Integration Tests Manually
 

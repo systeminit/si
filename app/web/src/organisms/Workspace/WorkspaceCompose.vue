@@ -62,7 +62,7 @@
           :component-identification="selectedComponent"
           :component-name="selectedComponentLabel || 'selected component'"
         />
-        <div v-else class="p-4">
+        <div v-else class="p-4 text-neutral-400 dark:text-neutral-300">
           <template v-if="isViewMode">
             Select a single component to see more details
           </template>
@@ -87,8 +87,6 @@ import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import { ChangeSetService } from "@/service/change_set";
 import { SelectionService } from "@/service/selection";
-import KubernetesIconRaw from "@/assets/images/3p-logos/kubernetes/kubernetes-icon.svg?raw";
-import DockerIconRaw from "@/assets/images/3p-logos/docker/docker-icon.svg?raw";
 import { QualificationService } from "@/service/qualification";
 import DiagramService2 from "@/service/diagram2";
 import GenericDiagram from "../GenericDiagram/GenericDiagram.vue";
@@ -102,6 +100,7 @@ import {
   DiagramStatusIcon,
 } from "../GenericDiagram/diagram_types";
 import DiagramOutline from "../DiagramOutline.vue";
+import { LogoIcons } from "./logo_icons";
 
 const currentRoute = useRoute();
 
@@ -119,12 +118,9 @@ const qualificationSummary = QualificationService.useQualificationSummary();
 
 const selectedComponentId = SelectionService.useSelectedComponentId();
 
-const diagramCustomConfig = computed(() => ({
-  icons: {
-    docker: DockerIconRaw,
-    kubernetes: KubernetesIconRaw,
-  },
-}));
+const diagramCustomConfig = {
+  icons: LogoIcons,
+};
 
 type QualificationStatus = "success" | "failure" | "running";
 const qualificationStatusToIconMap: Record<
@@ -144,6 +140,11 @@ const diagramData = computed(() => {
     nodes: _.map(rawDiagramData.value?.nodes, (node) => {
       let typeIcon = "docker";
       if (node.title.startsWith("kubernetes_")) typeIcon = "kubernetes";
+      // NOTE(nick): not all CoreOS objects will be prefixed with "coreos". The name
+      // "CoreOS Fedora CoreOS" doesn't sounds great, right? We will probably need
+      // another way to index "schema family" or something similar in the future.
+      // For now, we only have one component, so let's use it.
+      else if (node.title === "butane") typeIcon = "coreos";
 
       const componentQualificationSummary = _.find(
         qualificationSummary.value?.components,

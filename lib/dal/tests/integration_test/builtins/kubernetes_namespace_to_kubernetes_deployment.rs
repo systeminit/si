@@ -1,23 +1,22 @@
+use crate::dal::test;
 use dal::test::helpers::builtins::{Builtin, BuiltinsHarness};
 use dal::{DalContext, Edge, ExternalProvider, InternalProvider, StandardModel};
 use pretty_assertions_sorted::assert_eq_sorted;
 
-use crate::dal::test;
-
 #[test]
-async fn docker_image_to_kubernetes_deployment_inter_component_update(
+async fn kubernetes_namespace_to_kubernetes_deployment_inter_component_update(
     ctx: &DalContext<'_, '_, '_>,
 ) {
     let mut harness = BuiltinsHarness::new();
-    let tail_docker_image_payload = harness
-        .create_component(ctx, "image", Builtin::DockerImage)
+    let tail_namespace_payload = harness
+        .create_component(ctx, "tail", Builtin::KubernetesNamespace)
         .await;
     let head_deployment_payload = harness
-        .create_component(ctx, "deployment", Builtin::KubernetesDeployment)
+        .create_component(ctx, "head", Builtin::KubernetesDeployment)
         .await;
 
-    // Initialize the tail "/root/si/name" field.
-    tail_docker_image_payload
+    // Initialize the tail name field.
+    tail_namespace_payload
         .update_attribute_value_for_prop_name(ctx, "/root/si/name", Some(serde_json::json!["tail"]))
         .await;
 
@@ -25,15 +24,15 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(
     assert_eq_sorted!(
         serde_json::json![{
             "domain": {
-                "image": "tail"
+                "metadata": {
+                    "name": "tail"
+                }
             },
             "si": {
                 "name": "tail"
             }
         }], // expected
-        tail_docker_image_payload
-            .component_view_properties(ctx)
-            .await // actual
+        tail_namespace_payload.component_view_properties(ctx).await // actual
     );
     assert_eq_sorted!(
         serde_json::json![{
@@ -42,7 +41,7 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(
                 "kind": "Deployment",
             },
             "si": {
-                "name": "deployment"
+                "name": "head"
             }
         }], // expected
         head_deployment_payload.component_view_properties(ctx).await // actual
@@ -51,8 +50,8 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(
     // Find the providers we need for connection.
     let tail_external_provider = ExternalProvider::find_for_schema_variant_and_name(
         ctx,
-        tail_docker_image_payload.schema_variant_id,
-        "docker_image",
+        tail_namespace_payload.schema_variant_id,
+        "kubernetes_namespace",
     )
     .await
     .expect("cannot find external provider")
@@ -61,7 +60,7 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(
         InternalProvider::find_explicit_for_schema_variant_and_name(
             ctx,
             head_deployment_payload.schema_variant_id,
-            "docker_image",
+            "kubernetes_namespace",
         )
         .await
         .expect("cannot find explicit internal provider")
@@ -74,7 +73,7 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(
         *head_explicit_internal_provider.id(),
         head_deployment_payload.component_id,
         *tail_external_provider.id(),
-        tail_docker_image_payload.component_id,
+        tail_namespace_payload.component_id,
     )
     .await
     .expect("could not connect providers");
@@ -83,15 +82,15 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(
     assert_eq_sorted!(
         serde_json::json![{
             "domain": {
-                "image": "tail"
+                "metadata": {
+                    "name": "tail"
+                }
             },
             "si": {
                 "name": "tail"
             }
         }], // expected
-        tail_docker_image_payload
-            .component_view_properties(ctx)
-            .await // actual
+        tail_namespace_payload.component_view_properties(ctx).await // actual
     );
     assert_eq_sorted!(
         serde_json::json![{
@@ -100,34 +99,34 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(
                 "kind": "Deployment",
             },
             "si": {
-                "name": "deployment"
+                "name": "head"
             }
         }], // expected
         head_deployment_payload.component_view_properties(ctx).await // actual
     );
 
     // Perform update!
-    tail_docker_image_payload
+    tail_namespace_payload
         .update_attribute_value_for_prop_name(
             ctx,
             "/root/si/name",
-            Some(serde_json::json!["ironsides"]),
+            Some(serde_json::json!["look-at-me-mom-i-updated"]),
         )
         .await;
 
-    // Observe that it worked.
+    // Observed that it worked.
     assert_eq_sorted!(
         serde_json::json![{
             "domain": {
-                "image": "ironsides"
+                "metadata": {
+                    "name": "look-at-me-mom-i-updated"
+                }
             },
             "si": {
-                "name": "ironsides"
+                "name": "look-at-me-mom-i-updated"
             }
         }], // expected
-        tail_docker_image_payload
-            .component_view_properties(ctx)
-            .await // actual
+        tail_namespace_payload.component_view_properties(ctx).await // actual
     );
 
     assert_eq_sorted!(
@@ -135,23 +134,20 @@ async fn docker_image_to_kubernetes_deployment_inter_component_update(
             "domain": {
                 "apiVersion": "apps/v1",
                 "kind": "Deployment",
+                "metadata": {
+                    "namespace": "look-at-me-mom-i-updated"
+                },
                 "spec": {
                     "template": {
-                        "spec": {
-                            "containers": [
-                                {
-                                    "image": "ironsides",
-                                    "name": "ironsides",
-                                    "ports": [],
-                                },
-                            ],
-                        },
-                    },
+                        "metadata": {
+                            "namespace": "look-at-me-mom-i-updated"
+                        }
+                    }
                 },
             },
             "si": {
-                "name": "deployment"
-            },
+                "name": "head"
+            }
         }], // expected
         head_deployment_payload.component_view_properties(ctx).await // actual
     );

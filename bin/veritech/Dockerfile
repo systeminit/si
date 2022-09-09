@@ -70,9 +70,14 @@ RUN useradd -ms /bin/bash app \
   && mkdir -p {/run,/etc,/usr/local/etc,/home/app/.confg}/$BIN
 RUN apt-get update && apt-get -y install skopeo wget
 WORKDIR /tmp
+
 RUN wget https://github.com/instrumenta/kubeval/releases/latest/download/kubeval-linux-amd64.tar.gz \
  && tar xf kubeval-linux-amd64.tar.gz \
- && cp kubeval /usr/local/bin
+ && mv kubeval /usr/local/bin \
+ && wget https://github.com/coreos/butane/releases/latest/download/butane-x86_64-unknown-linux-gnu -O butane \
+ && chmod +x butane \
+ && mv butane /usr/local/bin
+
 WORKDIR /run/$BIN
 COPY --from=builder /usr/src/target/release/$BIN /usr/local/bin/
 COPY --from=builder /usr/src/target/release/$BIN.dbg /usr/local/bin/.debug/

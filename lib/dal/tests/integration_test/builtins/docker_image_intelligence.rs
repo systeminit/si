@@ -1,8 +1,7 @@
+use crate::dal::test;
 use dal::test::helpers::builtins::{Builtin, BuiltinsHarness};
 use dal::DalContext;
 use pretty_assertions_sorted::assert_eq_sorted;
-
-use crate::dal::test;
 
 #[test]
 async fn docker_image_intra_component_update(ctx: &DalContext<'_, '_, '_>) {

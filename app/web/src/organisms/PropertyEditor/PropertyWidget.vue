@@ -57,7 +57,7 @@
       @updated-property="updatedProperty($event)"
     />
     <WidgetCheckBox
-      v-else-if="props.schemaProp.widgetKind.kind === 'checkBox'"
+      v-else-if="props.schemaProp.widgetKind.kind === 'checkbox'"
       :name="props.schemaProp.name"
       :path="path"
       :collapsed-paths="props.collapsedPaths"

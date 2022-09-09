@@ -21,7 +21,7 @@ export interface PropertyEditorPropWidgetKindArray {
   kind: "array";
 }
 export interface PropertyEditorPropWidgetKindCheckBox {
-  kind: "checkBox";
+  kind: "checkbox";
 }
 export interface PropertyEditorPropWidgetKindHeader {
   kind: "header";
