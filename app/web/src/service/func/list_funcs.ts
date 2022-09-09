@@ -5,9 +5,7 @@ import { memoizedVisibilitySdfPipe } from "@/utils/memoizedVisibilitySdfPipes";
 import { Func, FuncBackendKind } from "@/api/sdf/dal/func";
 import { GlobalErrorService } from "@/service/global_error";
 
-export interface ListedFuncView extends Omit<Func, "code"> {
-  isBuiltin: boolean;
-}
+export type ListedFuncView = Omit<Func, "code">;
 
 export interface ListFuncsResponse {
   funcs: ListedFuncView[];

@@ -1,12 +1,18 @@
+use crate::service::dev::create_builtin_func::create_builtin_func;
 use crate::service::dev::save_builtin_func::save_builtin_func;
+use crate::service::func;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::Json;
 use axum::Router;
-use dal::{BillingAccountError, StandardModelError, TransactionsError, UserError, WsEventError};
+use dal::{
+    BillingAccountError, QualificationPrototypeError, StandardModelError, TransactionsError,
+    UserError, WsEventError,
+};
 use thiserror::Error;
 
+mod create_builtin_func;
 mod get_current_git_sha;
 mod save_builtin_func;
 
@@ -31,6 +37,10 @@ pub enum DevError {
     WsEvent(#[from] WsEventError),
     #[error(transparent)]
     Func(#[from] dal::FuncError),
+    #[error(transparent)]
+    SdfFunc(#[from] func::FuncError),
+    #[error(transparent)]
+    QualificationPrototype(#[from] QualificationPrototypeError),
     #[error(transparent)]
     Builtin(#[from] dal::BuiltinsError),
 }
@@ -60,4 +70,5 @@ pub fn routes() -> Router {
             get(get_current_git_sha::get_current_git_sha),
         )
         .route("/save_func", post(save_builtin_func))
+        .route("/create_func", post(create_builtin_func))
 }

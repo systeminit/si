@@ -56,7 +56,7 @@ function HANDLER(component) {
 }
 ";
 
-static DEFAULT_QUALIFICATION_CODE: &str = "/*
+pub static DEFAULT_QUALIFICATION_CODE: &str = "/*
 * Your qualification function
 * The signature should never be changed
 *

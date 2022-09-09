@@ -1,3 +1,7 @@
+## This file contains a non exaustive list of API endpoints for SDF. It should be used for quickly testing stuff
+## during development but not as a reference of what's working and/or current.
+
+
 ### Signup
 POST http://localhost:8080/api/signup/create_account
 Content-Type: application/json
