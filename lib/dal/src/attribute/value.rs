@@ -1352,6 +1352,49 @@ impl AttributeValue {
         Ok(())
     }
 
+    /// If we're modifying a prop that stores an `Array`, `Map`, or `Object`, we need to set the
+    /// `processed_value` to the empty representation of the type (`[]`, or `{}`) and then
+    /// recursively populate the nested values (array elements, map values, or object subtrees),
+    /// into their own `AttributeValue` objects.
+    pub async fn process_value(&self,
+        ctx: &DalContext<'_, '_, '_>,
+        fbrv: &mut FuncBindingReturnValue,
+    ) -> AttributeValueResult<()> {
+        if !self.context.is_least_specific_field_kind_prop()? {
+            return Ok(());
+        }
+
+        let empty_object = serde_json::json!({});
+        let empty_array = serde_json::json!([]);
+
+        if let Some(unprocessed_value) = fbrv.unprocessed_value().cloned() {
+            let prop = Prop::get_by_id(ctx, &self.context.prop_id())
+                .await?
+                .ok_or_else(|| AttributeValueError::PropNotFound(self.context.prop_id()))?;
+
+            let processed_value = match prop.kind() {
+                PropKind::Object | PropKind::Map => Some(&empty_object),
+                PropKind::Array => Some(&empty_array),
+                _ => Some(&unprocessed_value)
+            };
+            fbrv.set_value(ctx, processed_value.cloned()).await?;
+
+            if processed_value != Some(&unprocessed_value) {
+                // todo: the following duplicates database queries for the data we already have
+                // above, should break out a version of the function that takes refs to the structs
+                // instead of ids
+                Self::populate_nested_values(
+                    ctx,
+                    *self.id(),
+                    self.context,
+                    unprocessed_value
+                ).await?;
+            }
+        }
+
+        Ok(())
+    }
+
     #[async_recursion]
     async fn populate_nested_values(
         ctx: &DalContext<'_, '_, '_>,

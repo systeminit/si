@@ -4,10 +4,10 @@ use crate::service::func::FuncError;
 use axum::Json;
 use dal::attribute::context::AttributeContextBuilder;
 use dal::{
-    generate_name, qualification_prototype::QualificationPrototypeContext, AttributeValue,
-    AttributeValueId, ComponentId, DalContext, Func, FuncBackendKind, FuncBackendResponseType,
-    FuncBindingReturnValue, FuncId, QualificationPrototype, SchemaId, SchemaVariantId,
-    StandardModel, Visibility, WsEvent,
+    generate_name, qualification_prototype::QualificationPrototypeContext, AttributeReadContext,
+    AttributeValue, AttributeValueId, AttributeView, ComponentId, DalContext, Func,
+    FuncBackendKind, FuncBackendResponseType, FuncId, QualificationPrototype, SchemaId,
+    SchemaVariantId, StandardModel, Visibility, WsEvent,
 };
 use serde::{Deserialize, Serialize};
 
@@ -152,17 +152,22 @@ async fn create_default_attribute_func(
     ctx: &DalContext<'_, '_, '_>,
     current_value_id: AttributeValueId,
     current_func: &Func,
+    context: AttributeReadContext,
 ) -> FuncResult<Func> {
-    let current_value = AttributeValue::get_by_id(ctx, &current_value_id)
-        .await?
-        .ok_or(FuncError::AttributeValueMissing)?;
+    let context_without_specificity = AttributeReadContext {
+        prop_id: None,
+        internal_provider_id: Some((-1).into()),
+        external_provider_id: Some((-1).into()),
+        schema_id: context.schema_id(),
+        schema_variant_id: context.schema_variant_id(),
+        component_id: context.component_id(),
+        system_id: context.system_id(),
+    };
 
-    let fbrv_id = current_value.func_binding_return_value_id();
-    let fbrv = FuncBindingReturnValue::get_by_id(ctx, &fbrv_id)
-        .await?
-        .ok_or(FuncError::FuncBindingReturnValueMissing)?;
+    let current_value_view =
+        AttributeView::new(ctx, context_without_specificity, Some(current_value_id)).await?;
 
-    let current_value_value = fbrv.unprocessed_value();
+    let current_value_value = current_value_view.value();
     let default_code = DEFAULT_ATTRIBUTE_CODE_TEMPLATE.replace(
         ATTRIBUTE_CODE_HANDLER_PLACEHOLDER,
         ATTRIBUTE_CODE_DEFAULT_HANDLER,
@@ -206,12 +211,6 @@ async fn create_attribute_func(
         false
     };
 
-    let func = if should_copy_existing {
-        copy_attribute_func(ctx, &current_func).await?
-    } else {
-        create_default_attribute_func(ctx, value_id, &current_func).await?
-    };
-
     let prop = AttributeValue::find_prop_for_value(ctx, value_id).await?;
     let context = AttributeContextBuilder::new()
         .set_prop_id(*prop.id())
@@ -219,6 +218,12 @@ async fn create_attribute_func(
         .set_schema_variant_id(schema_variant_id)
         .set_schema_id(schema_id)
         .to_context()?;
+
+    let func = if should_copy_existing {
+        copy_attribute_func(ctx, &current_func).await?
+    } else {
+        create_default_attribute_func(ctx, value_id, &current_func, context.into()).await?
+    };
 
     super::update_attribute_value_by_func_for_context(
         ctx,

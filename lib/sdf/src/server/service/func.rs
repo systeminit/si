@@ -161,31 +161,9 @@ async fn update_attribute_value_by_func_for_context(
     attribute_value
         .set_func_binding_return_value_id(ctx, *fbrv.id())
         .await?;
+    attribute_value.process_value(ctx, &mut fbrv).await?; 
 
-    // If the value we just updated was for a Prop, we might have run a function that
-    // generates a deep data structure. If the Prop is an Array/Map/Object, then the
-    // value should be an empty Array/Map/Object, while the unprocessed value contains
-    // the deep data structure.
-    if attribute_value
-        .context
-        .is_least_specific_field_kind_prop()?
-    {
-        let processed_value = match fbrv.unprocessed_value().cloned() {
-            Some(unprocessed_value) => {
-                let prop = Prop::get_by_id(ctx, &attribute_value.context.prop_id())
-                    .await?
-                    .ok_or(FuncError::PropNotFound)?;
 
-                match prop.kind() {
-                    PropKind::Object | PropKind::Map => Some(serde_json::json!({})),
-                    PropKind::Array => Some(serde_json::json!([])),
-                    _ => Some(unprocessed_value),
-                }
-            }
-            None => None,
-        };
-        fbrv.set_value(ctx, processed_value).await?;
-    };
 
     AttributePrototype::update_for_context(
         ctx,
