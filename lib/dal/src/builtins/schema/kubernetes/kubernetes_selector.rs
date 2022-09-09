@@ -1,7 +1,7 @@
 use crate::builtins::schema::BuiltinSchemaHelpers;
 use crate::{builtins::BuiltinsResult, DalContext, Prop, PropId, PropKind, StandardModel};
 
-use super::kubernetes::doc_url;
+use crate::builtins::schema::kubernetes::doc_url;
 
 pub async fn create_selector_prop(
     ctx: &DalContext<'_, '_, '_>,

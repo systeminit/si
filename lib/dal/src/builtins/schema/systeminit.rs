@@ -1,5 +1,4 @@
 use crate::builtins::schema::BuiltinSchemaHelpers;
-
 use crate::{
     schema::SchemaVariant, socket::SocketArity, BuiltinsResult, DalContext, DiagramKind,
     ExternalProvider, SchemaKind, StandardModel,

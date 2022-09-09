@@ -1,7 +1,6 @@
 use crate::builtins::schema::BuiltinSchemaHelpers;
 use crate::socket::{SocketEdgeKind, SocketKind};
 use crate::{
-    builtins::schema::kubernetes_metadata::create_metadata_prop,
     code_generation_prototype::CodeGenerationPrototypeContext,
     func::backend::js_code_generation::FuncBackendJsCodeGenerationArgs,
     qualification_prototype::QualificationPrototypeContext,
@@ -13,7 +12,9 @@ use crate::{
     SchemaKind, Socket, StandardModel,
 };
 
-use super::{kubernetes::doc_url, kubernetes_selector::create_selector_prop};
+use crate::builtins::schema::kubernetes::doc_url;
+use crate::builtins::schema::kubernetes::kubernetes_metadata::create_metadata_prop;
+use crate::builtins::schema::kubernetes::kubernetes_selector::create_selector_prop;
 
 pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResult<()> {
     let name = "kubernetes_deployment".to_string();

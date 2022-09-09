@@ -1,11 +1,7 @@
+use crate::builtins::schema::kubernetes::kubernetes_metadata::create_metadata_prop;
+use crate::builtins::schema::kubernetes::kubernetes_spec::create_spec_prop;
 use crate::builtins::schema::BuiltinSchemaHelpers;
-use crate::{
-    builtins::{
-        schema::{kubernetes_metadata::create_metadata_prop, kubernetes_spec::create_spec_prop},
-        BuiltinsResult,
-    },
-    DalContext, Prop, PropId, PropKind, StandardModel,
-};
+use crate::{builtins::BuiltinsResult, DalContext, Prop, PropId, PropKind, StandardModel};
 
 #[allow(clippy::too_many_arguments)]
 #[allow(dead_code)]
