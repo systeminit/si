@@ -1,7 +1,5 @@
-use crate::{
-    builtins::{schema::create_prop, BuiltinsResult},
-    DalContext, Prop, PropId, PropKind, StandardModel,
-};
+use crate::builtins::schema::BuiltinSchemaHelpers;
+use crate::{builtins::BuiltinsResult, DalContext, Prop, PropId, PropKind, StandardModel};
 
 use super::kubernetes::doc_url;
 
@@ -10,7 +8,8 @@ pub async fn create_selector_prop(
     parent_prop_id: PropId,
 ) -> BuiltinsResult<Prop> {
     let mut selector_prop =
-        create_prop(ctx, "selector", PropKind::Object, Some(parent_prop_id)).await?;
+        BuiltinSchemaHelpers::create_prop(ctx, "selector", PropKind::Object, Some(parent_prop_id))
+            .await?;
     selector_prop
         .set_doc_link(
             ctx,
@@ -21,7 +20,7 @@ pub async fn create_selector_prop(
         .await?;
 
     {
-        let mut match_labels_prop = create_prop(
+        let mut match_labels_prop = BuiltinSchemaHelpers::create_prop(
             ctx,
             "matchLabels",
             PropKind::Map, // How to specify it as an array of strings?
@@ -36,7 +35,7 @@ pub async fn create_selector_prop(
                 )),
             )
             .await?;
-        let mut match_labels_value_prop = create_prop(
+        let mut match_labels_value_prop = BuiltinSchemaHelpers::create_prop(
             ctx,
             "labelValue",
             PropKind::String,

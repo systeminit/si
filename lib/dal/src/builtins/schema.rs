@@ -48,10 +48,11 @@ pub async fn migrate(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResult<()> {
 
 async fn system(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResult<()> {
     let name = "system".to_string();
-    let mut schema = match create_schema(ctx, &name, &SchemaKind::System).await? {
-        Some(schema) => schema,
-        None => return Ok(()),
-    };
+    let mut schema =
+        match BuiltinSchemaHelpers::create_schema(ctx, &name, &SchemaKind::System).await? {
+            Some(schema) => schema,
+            None => return Ok(()),
+        };
     schema.set_ui_hidden(ctx, true).await?;
 
     let (variant, _) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
@@ -61,7 +62,7 @@ async fn system(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResult<()> {
 
     variant.finalize(ctx).await?;
 
-    let identity_func = setup_identity_func(ctx).await?;
+    let identity_func = BuiltinSchemaHelpers::setup_identity_func(ctx).await?;
     let (_component_output_provider, _component_output_socket) = ExternalProvider::new_with_socket(
         ctx,
         *schema.id(),
@@ -81,10 +82,11 @@ async fn system(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResult<()> {
 
 async fn kubernetes_namespace(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResult<()> {
     let name = "kubernetes_namespace".to_string();
-    let mut schema = match create_schema(ctx, &name, &SchemaKind::Configuration).await? {
-        Some(schema) => schema,
-        None => return Ok(()),
-    };
+    let mut schema =
+        match BuiltinSchemaHelpers::create_schema(ctx, &name, &SchemaKind::Configuration).await? {
+            Some(schema) => schema,
+            None => return Ok(()),
+        };
 
     let (mut variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
     variant.set_color(ctx, Some(0x1ba97e)).await?;
@@ -131,7 +133,7 @@ async fn kubernetes_namespace(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResult<()
     .await?;
 
     let (identity_func_id, identity_func_binding_id, identity_func_binding_return_value_id) =
-        setup_identity_func(ctx).await?;
+        BuiltinSchemaHelpers::setup_identity_func(ctx).await?;
 
     let (external_provider, mut output_socket) = ExternalProvider::new_with_socket(
         ctx,
@@ -167,7 +169,8 @@ async fn kubernetes_namespace(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResult<()
         schema_variant_id: Some(*variant.id()),
         ..AttributeReadContext::default()
     };
-    let metadata_name_prop = find_child_prop_by_name(ctx, *metadata_prop.id(), "name").await?;
+    let metadata_name_prop =
+        BuiltinSchemaHelpers::find_child_prop_by_name(ctx, *metadata_prop.id(), "name").await?;
     let metadata_name_attribute_value = AttributeValue::find_for_context(
         ctx,
         AttributeReadContext {
@@ -184,7 +187,8 @@ async fn kubernetes_namespace(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResult<()
     metadata_name_attribute_prototype
         .set_func_id(ctx, identity_func_id)
         .await?;
-    let si_name_prop = find_child_prop_by_name(ctx, root_prop.si_prop_id, "name").await?;
+    let si_name_prop =
+        BuiltinSchemaHelpers::find_child_prop_by_name(ctx, root_prop.si_prop_id, "name").await?;
     let si_name_internal_provider = InternalProvider::get_for_prop(ctx, *si_name_prop.id())
         .await?
         .ok_or_else(|| {
@@ -203,7 +207,8 @@ async fn kubernetes_namespace(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResult<()
         external_provider.attribute_prototype_id().ok_or_else(|| {
             BuiltinsError::MissingAttributePrototypeForExternalProvider(*external_provider.id())
         })?;
-    let metadata_name_prop = find_child_prop_by_name(ctx, *metadata_prop.id(), "name").await?;
+    let metadata_name_prop =
+        BuiltinSchemaHelpers::find_child_prop_by_name(ctx, *metadata_prop.id(), "name").await?;
     let metadata_name_implicit_internal_provider =
         InternalProvider::get_for_prop(ctx, *metadata_name_prop.id())
             .await?
@@ -234,10 +239,11 @@ async fn kubernetes_namespace(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResult<()
 
 async fn docker_hub_credential(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResult<()> {
     let name = "docker_hub_credential".to_string();
-    let mut schema = match create_schema(ctx, &name, &SchemaKind::Configuration).await? {
-        Some(schema) => schema,
-        None => return Ok(()),
-    };
+    let mut schema =
+        match BuiltinSchemaHelpers::create_schema(ctx, &name, &SchemaKind::Configuration).await? {
+            Some(schema) => schema,
+            None => return Ok(()),
+        };
     schema
         .set_component_kind(ctx, ComponentKind::Credential)
         .await?;
@@ -268,7 +274,7 @@ async fn docker_hub_credential(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResult<(
 
     let _ = QualificationPrototype::new(ctx, *qual_func.id(), qual_prototype_context).await?;
 
-    let identity_func = setup_identity_func(ctx).await?;
+    let identity_func = BuiltinSchemaHelpers::setup_identity_func(ctx).await?;
 
     let system_socket = Socket::new(
         ctx,
@@ -312,10 +318,11 @@ async fn docker_hub_credential(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResult<(
 
 async fn docker_image(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResult<()> {
     let name = "docker_image".to_string();
-    let mut schema = match create_schema(ctx, &name, &SchemaKind::Configuration).await? {
-        Some(schema) => schema,
-        None => return Ok(()),
-    };
+    let mut schema =
+        match BuiltinSchemaHelpers::create_schema(ctx, &name, &SchemaKind::Configuration).await? {
+            Some(schema) => schema,
+            None => return Ok(()),
+        };
 
     let (mut variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
     variant.set_color(ctx, Some(0xd61e8c)).await?;
@@ -357,7 +364,7 @@ async fn docker_image(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResult<()> {
     properties.insert("image".to_owned(), serde_json::json!(""));
 
     let (identity_func_id, identity_func_binding_id, identity_func_binding_return_value_id) =
-        setup_identity_func(ctx).await?;
+        BuiltinSchemaHelpers::setup_identity_func(ctx).await?;
 
     let (_docker_hub_credential_explicit_internal_provider, mut input_socket) =
         InternalProvider::new_explicit_with_socket(
@@ -455,7 +462,8 @@ async fn docker_image(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResult<()> {
     image_attribute_prototype
         .set_func_id(ctx, identity_func_id)
         .await?;
-    let si_name_prop = find_child_prop_by_name(ctx, root_prop.si_prop_id, "name").await?;
+    let si_name_prop =
+        BuiltinSchemaHelpers::find_child_prop_by_name(ctx, root_prop.si_prop_id, "name").await?;
     let si_name_internal_provider = InternalProvider::get_for_prop(ctx, *si_name_prop.id())
         .await?
         .ok_or_else(|| {
@@ -492,155 +500,161 @@ async fn docker_image(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResult<()> {
     Ok(())
 }
 
-async fn create_schema(
-    ctx: &DalContext<'_, '_, '_>,
-    schema_name: &str,
-    schema_kind: &SchemaKind,
-) -> BuiltinsResult<Option<Schema>> {
-    // TODO(nick): there's one issue here. If the schema kind has changed, then this check will be
-    // inaccurate. As a result, we will be unable to re-create the schema without manual intervention.
-    // This should be fine since this code should likely only last as long as default schemas need to
-    // be created... which is hopefully not long.... hopefully...
-    let default_schema_exists = !Schema::find_by_attr(ctx, "name", &schema_name.to_string())
-        .await?
-        .is_empty();
+/// This unit struct (zero bytes) provides a singular place to index helpers for creating builtin
+/// [`Schemas`](crate::Schema).
+pub struct BuiltinSchemaHelpers;
 
-    // TODO(nick): this should probably return an "AlreadyExists" error instead of "None", but
-    // since the calling function would have to deal with the result similarly, this should suffice
-    // for now.
-    match default_schema_exists {
-        true => Ok(None),
-        false => {
-            let schema =
-                Schema::new(ctx, schema_name, schema_kind, &ComponentKind::Standard).await?;
-            Ok(Some(schema))
+impl BuiltinSchemaHelpers {
+    pub async fn create_schema(
+        ctx: &DalContext<'_, '_, '_>,
+        schema_name: &str,
+        schema_kind: &SchemaKind,
+    ) -> BuiltinsResult<Option<Schema>> {
+        // TODO(nick): there's one issue here. If the schema kind has changed, then this check will be
+        // inaccurate. As a result, we will be unable to re-create the schema without manual intervention.
+        // This should be fine since this code should likely only last as long as default schemas need to
+        // be created... which is hopefully not long.... hopefully...
+        let default_schema_exists = !Schema::find_by_attr(ctx, "name", &schema_name.to_string())
+            .await?
+            .is_empty();
+
+        // TODO(nick): this should probably return an "AlreadyExists" error instead of "None", but
+        // since the calling function would have to deal with the result similarly, this should suffice
+        // for now.
+        match default_schema_exists {
+            true => Ok(None),
+            false => {
+                let schema =
+                    Schema::new(ctx, schema_name, schema_kind, &ComponentKind::Standard).await?;
+                Ok(Some(schema))
+            }
         }
     }
-}
 
-/// Creates a [`Prop`]. While a base [`AttributeReadContext`] is required for this function, it is
-/// only used when a parent [`PropId`] is provided.
-#[allow(clippy::too_many_arguments)]
-pub async fn create_prop(
-    ctx: &DalContext<'_, '_, '_>,
-    prop_name: &str,
-    prop_kind: PropKind,
-    parent_prop_id: Option<PropId>,
-) -> BuiltinsResult<Prop> {
-    let prop = Prop::new(ctx, prop_name, prop_kind).await?;
-    if let Some(parent_prop_id) = parent_prop_id {
-        prop.set_parent_prop(ctx, parent_prop_id).await?;
+    /// Creates a [`Prop`]. While a base [`AttributeReadContext`] is required for this function, it is
+    /// only used when a parent [`PropId`] is provided.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn create_prop(
+        ctx: &DalContext<'_, '_, '_>,
+        prop_name: &str,
+        prop_kind: PropKind,
+        parent_prop_id: Option<PropId>,
+    ) -> BuiltinsResult<Prop> {
+        let prop = Prop::new(ctx, prop_name, prop_kind).await?;
+        if let Some(parent_prop_id) = parent_prop_id {
+            prop.set_parent_prop(ctx, parent_prop_id).await?;
+        }
+        Ok(prop)
     }
-    Ok(prop)
-}
 
-pub async fn create_string_prop_with_default(
-    ctx: &DalContext<'_, '_, '_>,
-    prop_name: &str,
-    default_string: String,
-    parent_prop_id: Option<PropId>,
-    _base_attribute_read_context: AttributeReadContext,
-) -> BuiltinsResult<Prop> {
-    let prop = create_prop(ctx, prop_name, PropKind::String, parent_prop_id).await?;
+    pub async fn create_string_prop_with_default(
+        ctx: &DalContext<'_, '_, '_>,
+        prop_name: &str,
+        default_string: String,
+        parent_prop_id: Option<PropId>,
+        _base_attribute_read_context: AttributeReadContext,
+    ) -> BuiltinsResult<Prop> {
+        let prop = Self::create_prop(ctx, prop_name, PropKind::String, parent_prop_id).await?;
 
-    let mut func = Func::new(
-        ctx,
-        &format!("si:setDefaultToProp{:?}", prop.id()),
-        FuncBackendKind::JsAttribute,
-        FuncBackendResponseType::String,
-    )
-    .await
-    .expect("cannot create func");
-    func.set_handler(ctx, Some("defaultValue")).await?;
-    func.set_code_base64(
-        ctx,
-        Some(base64::encode(&format!(
-            "function defaultValue(component) {{ return \"{default_string}\"; }}"
-        ))),
-    )
-    .await?;
-
-    let (func_binding, func_binding_return_value) = FuncBinding::find_or_create_and_execute(
-        ctx,
-        // The default run doesn't have useful information, but it's just a reference for future reruns
-        serde_json::to_value(FuncBackendJsAttributeArgs {
-            component: veritech::ResolverFunctionComponent {
-                data: veritech::ComponentView {
-                    properties: serde_json::json!({}),
-                    system: None,
-                    kind: veritech::ComponentKind::Standard,
-                },
-                parents: vec![],
-            },
-        })?,
-        *func.id(),
-    )
-    .await?;
-
-    let attribute_value_context = AttributeReadContext {
-        prop_id: Some(*prop.id()),
-        ..AttributeReadContext::default()
-    };
-
-    Prop::create_default_prototypes_and_values(ctx, *prop.id()).await?;
-
-    let mut attribute_value = AttributeValue::find_for_context(ctx, attribute_value_context)
-        .await?
-        .ok_or(AttributeValueError::Missing)?;
-    attribute_value
-        .set_func_binding_id(ctx, *func_binding.id())
-        .await?;
-    attribute_value
-        .set_func_binding_return_value_id(ctx, *func_binding_return_value.id())
-        .await?;
-
-    let mut attribute_prototype = attribute_value
-        .attribute_prototype(ctx)
-        .await?
-        .ok_or(AttributeValueError::MissingAttributePrototype)?;
-    attribute_prototype.set_func_id(ctx, *func.id()).await?;
-
-    Ok(prop)
-}
-
-/// Get the "si:identity" [`Func`](crate::Func) and execute (if necessary).
-pub async fn setup_identity_func(
-    ctx: &DalContext<'_, '_, '_>,
-) -> BuiltinsResult<(FuncId, FuncBindingId, FuncBindingReturnValueId)> {
-    let identity_func_name = "si:identity".to_string();
-    let identity_func: Func = Func::find_by_attr(ctx, "name", &identity_func_name)
-        .await?
-        .pop()
-        .ok_or(FuncError::NotFoundByName(identity_func_name))?;
-    let (identity_func_binding, identity_func_binding_return_value) =
-        FuncBinding::find_or_create_and_execute(
+        let mut func = Func::new(
             ctx,
-            serde_json::json![{ "identity": null }],
-            *identity_func.id(),
+            &format!("si:setDefaultToProp{:?}", prop.id()),
+            FuncBackendKind::JsAttribute,
+            FuncBackendResponseType::String,
+        )
+        .await
+        .expect("cannot create func");
+        func.set_handler(ctx, Some("defaultValue")).await?;
+        func.set_code_base64(
+            ctx,
+            Some(base64::encode(&format!(
+                "function defaultValue(component) {{ return \"{default_string}\"; }}"
+            ))),
         )
         .await?;
-    Ok((
-        *identity_func.id(),
-        *identity_func_binding.id(),
-        *identity_func_binding_return_value.id(),
-    ))
-}
 
-/// Find the child of a [`Prop`](crate::Prop) by name.
-///
-/// _Use with caution!_
-pub async fn find_child_prop_by_name(
-    ctx: &DalContext<'_, '_, '_>,
-    prop_id: PropId,
-    child_prop_name: &str,
-) -> BuiltinsResult<Prop> {
-    let prop = Prop::get_by_id(ctx, &prop_id)
-        .await?
-        .ok_or_else(|| PropError::NotFound(prop_id, *ctx.visibility()))?;
-    for current in prop.child_props(ctx).await? {
-        if current.name() == child_prop_name {
-            return Ok(current);
-        }
+        let (func_binding, func_binding_return_value) = FuncBinding::find_or_create_and_execute(
+            ctx,
+            // The default run doesn't have useful information, but it's just a reference for future reruns
+            serde_json::to_value(FuncBackendJsAttributeArgs {
+                component: veritech::ResolverFunctionComponent {
+                    data: veritech::ComponentView {
+                        properties: serde_json::json!({}),
+                        system: None,
+                        kind: veritech::ComponentKind::Standard,
+                    },
+                    parents: vec![],
+                },
+            })?,
+            *func.id(),
+        )
+        .await?;
+
+        let attribute_value_context = AttributeReadContext {
+            prop_id: Some(*prop.id()),
+            ..AttributeReadContext::default()
+        };
+
+        Prop::create_default_prototypes_and_values(ctx, *prop.id()).await?;
+
+        let mut attribute_value = AttributeValue::find_for_context(ctx, attribute_value_context)
+            .await?
+            .ok_or(AttributeValueError::Missing)?;
+        attribute_value
+            .set_func_binding_id(ctx, *func_binding.id())
+            .await?;
+        attribute_value
+            .set_func_binding_return_value_id(ctx, *func_binding_return_value.id())
+            .await?;
+
+        let mut attribute_prototype = attribute_value
+            .attribute_prototype(ctx)
+            .await?
+            .ok_or(AttributeValueError::MissingAttributePrototype)?;
+        attribute_prototype.set_func_id(ctx, *func.id()).await?;
+
+        Ok(prop)
     }
-    Err(PropError::ExpectedChildNotFound(child_prop_name.to_string()).into())
+
+    /// Get the "si:identity" [`Func`](crate::Func) and execute (if necessary).
+    pub async fn setup_identity_func(
+        ctx: &DalContext<'_, '_, '_>,
+    ) -> BuiltinsResult<(FuncId, FuncBindingId, FuncBindingReturnValueId)> {
+        let identity_func_name = "si:identity".to_string();
+        let identity_func: Func = Func::find_by_attr(ctx, "name", &identity_func_name)
+            .await?
+            .pop()
+            .ok_or(FuncError::NotFoundByName(identity_func_name))?;
+        let (identity_func_binding, identity_func_binding_return_value) =
+            FuncBinding::find_or_create_and_execute(
+                ctx,
+                serde_json::json![{ "identity": null }],
+                *identity_func.id(),
+            )
+            .await?;
+        Ok((
+            *identity_func.id(),
+            *identity_func_binding.id(),
+            *identity_func_binding_return_value.id(),
+        ))
+    }
+
+    /// Find the child of a [`Prop`](crate::Prop) by name.
+    ///
+    /// _Use with caution!_
+    pub async fn find_child_prop_by_name(
+        ctx: &DalContext<'_, '_, '_>,
+        prop_id: PropId,
+        child_prop_name: &str,
+    ) -> BuiltinsResult<Prop> {
+        let prop = Prop::get_by_id(ctx, &prop_id)
+            .await?
+            .ok_or_else(|| PropError::NotFound(prop_id, *ctx.visibility()))?;
+        for current in prop.child_props(ctx).await? {
+            if current.name() == child_prop_name {
+                return Ok(current);
+            }
+        }
+        Err(PropError::ExpectedChildNotFound(child_prop_name.to_string()).into())
+    }
 }
