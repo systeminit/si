@@ -4,10 +4,8 @@ This is a monolithic repository containing the source for System Initiative (SI)
 
 ## Developing and Running the SI Stack
 
-Please refer to the following documentation for more information:
-
-- **[DEVELOPING](./DEVELOPING.md):** information related to developing and running the SI stack
-- **[DOCUMENTATION](./DOCUMENTATION.md):** information related to developer documentation for the contents of this repository
+Please refer to the [DEVELOPING](./DEVELOPING.md) guide for more information.
+You can also refer to the [docs directory](./docs) for even more information.
 
 ## Contributing
 
