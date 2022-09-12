@@ -1,3 +1,4 @@
+#![recursion_limit = "256"]
 #![warn(
     clippy::unwrap_in_result,
     clippy::unwrap_used,

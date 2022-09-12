@@ -3,13 +3,24 @@ import Bottle from "bottlejs";
 import { ApiResponse, SDF } from "@/api/sdf";
 import { GlobalErrorService } from "@/service/global_error";
 import { visibility$ } from "@/observable/visibility";
+import { WorkflowStatus } from "@/molecules/WorkflowStatusIcon.vue";
 
 export interface WorkflowRunRequest {
   id: number;
 }
 
+export interface WorkflowRunnerState {
+  created_at: string;
+  id: number;
+  pk: number;
+  status: WorkflowStatus;
+  updated_at: string;
+  workflow_runner_id: number;
+}
+
 export interface WorkflowRunResponse {
   logs: string[];
+  workflowRunnerState: WorkflowRunnerState;
 }
 
 export const run: (

@@ -81,9 +81,9 @@ const runWorkflow = async () => {
     logs.value = null;
     currentWorkflowStatus.value = "running";
     const outputs = await WorkflowService.run({ id: selected.value.id });
+    currentWorkflowStatus.value =
+      outputs?.workflowRunnerState.status || "failure";
     logs.value = outputs?.logs ?? null;
-    // TODO(wendy) - How do we know if a workflow was successful or failed?
-    currentWorkflowStatus.value = "success";
   }
 };
 
