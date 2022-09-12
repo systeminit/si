@@ -1,9 +1,6 @@
-use crate::builtins::schema::find_child_prop_by_name;
+use crate::builtins::schema::BuiltinSchemaHelpers;
 use crate::socket::{SocketEdgeKind, SocketKind};
 use crate::{
-    builtins::schema::{
-        create_schema, create_string_prop_with_default, kubernetes_metadata::create_metadata_prop,
-    },
     code_generation_prototype::CodeGenerationPrototypeContext,
     func::backend::js_code_generation::FuncBackendJsCodeGenerationArgs,
     qualification_prototype::QualificationPrototypeContext,
@@ -15,17 +12,17 @@ use crate::{
     SchemaKind, Socket, StandardModel,
 };
 
-use super::{
-    create_prop, kubernetes::doc_url, kubernetes_selector::create_selector_prop,
-    setup_identity_func,
-};
+use crate::builtins::schema::kubernetes::doc_url;
+use crate::builtins::schema::kubernetes::kubernetes_metadata::create_metadata_prop;
+use crate::builtins::schema::kubernetes::kubernetes_selector::create_selector_prop;
 
 pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResult<()> {
     let name = "kubernetes_deployment".to_string();
-    let mut schema = match create_schema(ctx, &name, &SchemaKind::Configuration).await? {
-        Some(schema) => schema,
-        None => return Ok(()),
-    };
+    let mut schema =
+        match BuiltinSchemaHelpers::create_schema(ctx, &name, &SchemaKind::Configuration).await? {
+            Some(schema) => schema,
+            None => return Ok(()),
+        };
 
     let (mut variant, root_prop) = SchemaVariant::new(ctx, *schema.id(), "v0").await?;
     variant.set_color(ctx, Some(0x921ed6)).await?;
@@ -51,7 +48,7 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResu
     SchemaVariant::create_default_prototypes_and_values(ctx, *variant.id()).await?;
 
     // TODO: add validation (si-registry ensures the value is unchanged)
-    let mut api_version_prop = create_string_prop_with_default(
+    let mut api_version_prop = BuiltinSchemaHelpers::create_string_prop_with_default(
         ctx,
         "apiVersion",
         "apps/v1".to_owned(),
@@ -69,7 +66,7 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResu
         .await?;
 
     // TODO: add validation (si-registry ensures the value is unchanged)
-    let mut kind_prop = create_string_prop_with_default(
+    let mut kind_prop = BuiltinSchemaHelpers::create_string_prop_with_default(
         ctx,
         "kind",
         "Deployment".to_owned(),
@@ -133,7 +130,7 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResu
     .await?;
 
     let (identity_func_id, identity_func_binding_id, identity_func_binding_return_value_id) =
-        setup_identity_func(ctx).await?;
+        BuiltinSchemaHelpers::setup_identity_func(ctx).await?;
 
     let (docker_image_explicit_internal_provider, mut input_socket) =
         InternalProvider::new_explicit_with_socket(
@@ -196,7 +193,8 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResu
 
     // Connect the "domain namespace" prop to the "kubernetes_namespace" explicit internal provider.
     let domain_namespace_prop =
-        find_child_prop_by_name(ctx, *metadata_prop.id(), "namespace").await?;
+        BuiltinSchemaHelpers::find_child_prop_by_name(ctx, *metadata_prop.id(), "namespace")
+            .await?;
     let domain_namespace_attribute_value_read_context = AttributeReadContext {
         prop_id: Some(*domain_namespace_prop.id()),
         ..base_attribute_read_context
@@ -223,11 +221,16 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResu
     .await?;
 
     // Connect the "template namespace" prop to the "kubernetes_namespace" explicit internal provider.
-    let template_prop = find_child_prop_by_name(ctx, *spec_prop.id(), "template").await?;
+    let template_prop =
+        BuiltinSchemaHelpers::find_child_prop_by_name(ctx, *spec_prop.id(), "template").await?;
     let template_metadata_prop =
-        find_child_prop_by_name(ctx, *template_prop.id(), "metadata").await?;
-    let template_namespace_prop =
-        find_child_prop_by_name(ctx, *template_metadata_prop.id(), "namespace").await?;
+        BuiltinSchemaHelpers::find_child_prop_by_name(ctx, *template_prop.id(), "metadata").await?;
+    let template_namespace_prop = BuiltinSchemaHelpers::find_child_prop_by_name(
+        ctx,
+        *template_metadata_prop.id(),
+        "namespace",
+    )
+    .await?;
     let template_namespace_attribute_value_read_context = AttributeReadContext {
         prop_id: Some(*template_namespace_prop.id()),
         ..base_attribute_read_context
@@ -255,9 +258,11 @@ pub async fn kubernetes_deployment(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResu
 
     // Connect the "/root/domain/spec/template/spec/containers" field to the "docker_image" explicit
     // internal provider. We need to use the appropriate function with and name the argument "images".
-    let template_spec_prop = find_child_prop_by_name(ctx, *template_prop.id(), "spec").await?;
+    let template_spec_prop =
+        BuiltinSchemaHelpers::find_child_prop_by_name(ctx, *template_prop.id(), "spec").await?;
     let containers_prop =
-        find_child_prop_by_name(ctx, *template_spec_prop.id(), "containers").await?;
+        BuiltinSchemaHelpers::find_child_prop_by_name(ctx, *template_spec_prop.id(), "containers")
+            .await?;
     let containers_attribute_value_read_context = AttributeReadContext {
         prop_id: Some(*containers_prop.id()),
         ..base_attribute_read_context
@@ -295,7 +300,9 @@ async fn create_deployment_spec_prop(
     ctx: &DalContext<'_, '_, '_>,
     parent_prop_id: PropId,
 ) -> BuiltinsResult<Prop> {
-    let mut spec_prop = create_prop(ctx, "spec", PropKind::Object, Some(parent_prop_id)).await?;
+    let mut spec_prop =
+        BuiltinSchemaHelpers::create_prop(ctx, "spec", PropKind::Object, Some(parent_prop_id))
+            .await?;
     spec_prop
         .set_doc_link(
             ctx,
@@ -305,8 +312,13 @@ async fn create_deployment_spec_prop(
         )
         .await?;
 
-    let mut replicas_prop =
-        create_prop(ctx, "replicas", PropKind::Integer, Some(*spec_prop.id())).await?;
+    let mut replicas_prop = BuiltinSchemaHelpers::create_prop(
+        ctx,
+        "replicas",
+        PropKind::Integer,
+        Some(*spec_prop.id()),
+    )
+    .await?;
     replicas_prop
         .set_doc_link(
             ctx,
@@ -327,7 +339,8 @@ async fn create_pod_template_spec_prop(
     parent_prop_id: PropId,
 ) -> BuiltinsResult<Prop> {
     let mut template_prop =
-        create_prop(ctx, "template", PropKind::Object, Some(parent_prop_id)).await?;
+        BuiltinSchemaHelpers::create_prop(ctx, "template", PropKind::Object, Some(parent_prop_id))
+            .await?;
     template_prop
         .set_doc_link(
             ctx,
@@ -353,7 +366,9 @@ async fn create_pod_spec_prop(
     ctx: &DalContext<'_, '_, '_>,
     parent_prop_id: PropId,
 ) -> BuiltinsResult<Prop> {
-    let mut spec_prop = create_prop(ctx, "spec", PropKind::Object, Some(parent_prop_id)).await?;
+    let mut spec_prop =
+        BuiltinSchemaHelpers::create_prop(ctx, "spec", PropKind::Object, Some(parent_prop_id))
+            .await?;
     spec_prop
         .set_doc_link(
             ctx,
@@ -363,8 +378,13 @@ async fn create_pod_spec_prop(
         )
         .await?;
 
-    let mut containers_prop =
-        create_prop(ctx, "containers", PropKind::Array, Some(*spec_prop.id())).await?;
+    let mut containers_prop = BuiltinSchemaHelpers::create_prop(
+        ctx,
+        "containers",
+        PropKind::Array,
+        Some(*spec_prop.id()),
+    )
+    .await?;
     containers_prop
         .set_doc_link(
             ctx,
@@ -383,7 +403,8 @@ async fn create_container_prop(
     parent_prop_id: PropId,
 ) -> BuiltinsResult<Prop> {
     let mut container_prop =
-        create_prop(ctx, "container", PropKind::Object, Some(parent_prop_id)).await?;
+        BuiltinSchemaHelpers::create_prop(ctx, "container", PropKind::Object, Some(parent_prop_id))
+            .await?;
     container_prop
         .set_doc_link(
             ctx,
@@ -393,8 +414,13 @@ async fn create_container_prop(
         )
         .await?;
 
-    let mut name_prop =
-        create_prop(ctx, "name", PropKind::String, Some(*container_prop.id())).await?;
+    let mut name_prop = BuiltinSchemaHelpers::create_prop(
+        ctx,
+        "name",
+        PropKind::String,
+        Some(*container_prop.id()),
+    )
+    .await?;
     name_prop
         .set_doc_link(
             ctx,
@@ -404,8 +430,13 @@ async fn create_container_prop(
         )
         .await?;
 
-    let mut image_prop =
-        create_prop(ctx, "image", PropKind::String, Some(*container_prop.id())).await?;
+    let mut image_prop = BuiltinSchemaHelpers::create_prop(
+        ctx,
+        "image",
+        PropKind::String,
+        Some(*container_prop.id()),
+    )
+    .await?;
     image_prop
         .set_doc_link(
             ctx,
@@ -415,8 +446,13 @@ async fn create_container_prop(
         )
         .await?;
 
-    let mut ports_prop =
-        create_prop(ctx, "ports", PropKind::Array, Some(*container_prop.id())).await?;
+    let mut ports_prop = BuiltinSchemaHelpers::create_prop(
+        ctx,
+        "ports",
+        PropKind::Array,
+        Some(*container_prop.id()),
+    )
+    .await?;
     ports_prop
         .set_doc_link(
             ctx,
@@ -434,7 +470,9 @@ async fn create_container_port_prop(
     ctx: &DalContext<'_, '_, '_>,
     parent_prop_id: PropId,
 ) -> BuiltinsResult<Prop> {
-    let mut port_prop = create_prop(ctx, "port", PropKind::Object, Some(parent_prop_id)).await?;
+    let mut port_prop =
+        BuiltinSchemaHelpers::create_prop(ctx, "port", PropKind::Object, Some(parent_prop_id))
+            .await?;
     port_prop
         .set_doc_link(
             ctx,
@@ -444,7 +482,7 @@ async fn create_container_port_prop(
         )
         .await?;
 
-    let mut container_port_prop = create_prop(
+    let mut container_port_prop = BuiltinSchemaHelpers::create_prop(
         ctx,
         "containerPort",
         PropKind::Integer,
@@ -461,7 +499,8 @@ async fn create_container_port_prop(
         .await?;
 
     let mut protocol_prop =
-        create_prop(ctx, "protocol", PropKind::String, Some(*port_prop.id())).await?;
+        BuiltinSchemaHelpers::create_prop(ctx, "protocol", PropKind::String, Some(*port_prop.id()))
+            .await?;
     protocol_prop
         .set_doc_link(
             ctx,

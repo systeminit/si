@@ -1,17 +1,17 @@
-use crate::{
-    builtins::{schema::create_prop, BuiltinsResult},
-    DalContext, Prop, PropId, PropKind, StandardModel,
-};
+use crate::builtins::schema::BuiltinSchemaHelpers;
+use crate::{builtins::BuiltinsResult, DalContext, Prop, PropId, PropKind, StandardModel};
 
 #[allow(dead_code)]
 pub async fn create_spec_prop(
     ctx: &DalContext<'_, '_, '_>,
     parent_prop_id: PropId,
 ) -> BuiltinsResult<Prop> {
-    let spec_prop = create_prop(ctx, "spec", PropKind::Object, Some(parent_prop_id)).await?;
+    let spec_prop =
+        BuiltinSchemaHelpers::create_prop(ctx, "spec", PropKind::Object, Some(parent_prop_id))
+            .await?;
 
     {
-        let containers_prop = create_prop(
+        let containers_prop = BuiltinSchemaHelpers::create_prop(
             ctx,
             "containers",
             PropKind::Array, // How to specify it as an array of objects?
@@ -21,18 +21,28 @@ pub async fn create_spec_prop(
 
         {
             // Do we want default values here?
-            let _name_prop =
-                create_prop(ctx, "name", PropKind::String, Some(*containers_prop.id())).await?;
+            let _name_prop = BuiltinSchemaHelpers::create_prop(
+                ctx,
+                "name",
+                PropKind::String,
+                Some(*containers_prop.id()),
+            )
+            .await?;
         }
 
         {
-            let _image_prop =
-                create_prop(ctx, "image", PropKind::String, Some(*containers_prop.id())).await?;
+            let _image_prop = BuiltinSchemaHelpers::create_prop(
+                ctx,
+                "image",
+                PropKind::String,
+                Some(*containers_prop.id()),
+            )
+            .await?;
         }
 
         {
             // si-registry has some editPartials, but I'm not clear what are they
-            let env_prop = create_prop(
+            let env_prop = BuiltinSchemaHelpers::create_prop(
                 ctx,
                 "env",
                 PropKind::Array, // How to specify it as an array of objects?
@@ -41,21 +51,36 @@ pub async fn create_spec_prop(
             .await?;
 
             {
-                let _name_prop =
-                    create_prop(ctx, "name", PropKind::String, Some(*env_prop.id())).await?;
+                let _name_prop = BuiltinSchemaHelpers::create_prop(
+                    ctx,
+                    "name",
+                    PropKind::String,
+                    Some(*env_prop.id()),
+                )
+                .await?;
             }
 
             {
-                let _value_prop =
-                    create_prop(ctx, "value", PropKind::String, Some(*env_prop.id())).await?;
+                let _value_prop = BuiltinSchemaHelpers::create_prop(
+                    ctx,
+                    "value",
+                    PropKind::String,
+                    Some(*env_prop.id()),
+                )
+                .await?;
             }
 
             {
-                let _value_from_prop =
-                    create_prop(ctx, "valueFrom", PropKind::Object, Some(*env_prop.id())).await?;
+                let _value_from_prop = BuiltinSchemaHelpers::create_prop(
+                    ctx,
+                    "valueFrom",
+                    PropKind::Object,
+                    Some(*env_prop.id()),
+                )
+                .await?;
 
                 {
-                    let _secret_key_ref_prop = create_prop(
+                    let _secret_key_ref_prop = BuiltinSchemaHelpers::create_prop(
                         ctx,
                         "secretKeyRef",
                         PropKind::Object,
@@ -64,7 +89,7 @@ pub async fn create_spec_prop(
                     .await?;
 
                     {
-                        let _name_prop = create_prop(
+                        let _name_prop = BuiltinSchemaHelpers::create_prop(
                             ctx,
                             "name",
                             PropKind::String,
@@ -74,7 +99,7 @@ pub async fn create_spec_prop(
                     }
 
                     {
-                        let _key_prop = create_prop(
+                        let _key_prop = BuiltinSchemaHelpers::create_prop(
                             ctx,
                             "key",
                             PropKind::String,
@@ -84,7 +109,7 @@ pub async fn create_spec_prop(
                     }
 
                     {
-                        let _optional_prop = create_prop(
+                        let _optional_prop = BuiltinSchemaHelpers::create_prop(
                             ctx,
                             "optional",
                             PropKind::Boolean,
@@ -95,7 +120,7 @@ pub async fn create_spec_prop(
                 }
 
                 {
-                    let _config_map_ref_prop = create_prop(
+                    let _config_map_ref_prop = BuiltinSchemaHelpers::create_prop(
                         ctx,
                         "configMapRef",
                         PropKind::Object,
@@ -104,7 +129,7 @@ pub async fn create_spec_prop(
                     .await?;
 
                     {
-                        let _name_prop = create_prop(
+                        let _name_prop = BuiltinSchemaHelpers::create_prop(
                             ctx,
                             "name",
                             PropKind::String,
@@ -114,7 +139,7 @@ pub async fn create_spec_prop(
                     }
 
                     {
-                        let _key_prop = create_prop(
+                        let _key_prop = BuiltinSchemaHelpers::create_prop(
                             ctx,
                             "key",
                             PropKind::String,
@@ -124,7 +149,7 @@ pub async fn create_spec_prop(
                     }
 
                     {
-                        let _optional_prop = create_prop(
+                        let _optional_prop = BuiltinSchemaHelpers::create_prop(
                             ctx,
                             "optional",
                             PropKind::Boolean,
@@ -135,7 +160,7 @@ pub async fn create_spec_prop(
                 }
 
                 {
-                    let _resource_field_ref_prop = create_prop(
+                    let _resource_field_ref_prop = BuiltinSchemaHelpers::create_prop(
                         ctx,
                         "resourceFieldRef",
                         PropKind::Object,
@@ -144,7 +169,7 @@ pub async fn create_spec_prop(
                     .await?;
 
                     {
-                        let _container_name_prop = create_prop(
+                        let _container_name_prop = BuiltinSchemaHelpers::create_prop(
                             ctx,
                             "containerName",
                             PropKind::String,
@@ -154,7 +179,7 @@ pub async fn create_spec_prop(
                     }
 
                     {
-                        let _resource_prop = create_prop(
+                        let _resource_prop = BuiltinSchemaHelpers::create_prop(
                             ctx,
                             "resource",
                             PropKind::String,
@@ -164,7 +189,7 @@ pub async fn create_spec_prop(
                     }
 
                     {
-                        let _divisor_prop = create_prop(
+                        let _divisor_prop = BuiltinSchemaHelpers::create_prop(
                             ctx,
                             "divisor",
                             PropKind::String,
@@ -175,7 +200,7 @@ pub async fn create_spec_prop(
                 }
 
                 {
-                    let _field_ref_prop = create_prop(
+                    let _field_ref_prop = BuiltinSchemaHelpers::create_prop(
                         ctx,
                         "fieldRef",
                         PropKind::Object,
@@ -185,7 +210,7 @@ pub async fn create_spec_prop(
 
                     {
                         // TODO: this should be autopopulated
-                        let _api_version_prop = create_prop(
+                        let _api_version_prop = BuiltinSchemaHelpers::create_prop(
                             ctx,
                             "apiVersion",
                             PropKind::String,
@@ -195,7 +220,7 @@ pub async fn create_spec_prop(
                     }
 
                     {
-                        let _field_path_prop = create_prop(
+                        let _field_path_prop = BuiltinSchemaHelpers::create_prop(
                             ctx,
                             "fieldPath",
                             PropKind::String,
@@ -211,7 +236,7 @@ pub async fn create_spec_prop(
             // TODO: validate to ensure it's either "Always", "Never", "IfNotPresent"
             // Is there a selector widget? If so how to enable it
             // TODO: required
-            let _image_pull_policy_prop = create_prop(
+            let _image_pull_policy_prop = BuiltinSchemaHelpers::create_prop(
                 ctx,
                 "imagePullPolicy",
                 PropKind::String,
@@ -221,7 +246,7 @@ pub async fn create_spec_prop(
         }
 
         {
-            let ports_prop = create_prop(
+            let ports_prop = BuiltinSchemaHelpers::create_prop(
                 ctx,
                 "ports",
                 PropKind::Array, // How to specify it as an array of objects?
@@ -230,13 +255,18 @@ pub async fn create_spec_prop(
             .await?;
 
             {
-                let _name_prop =
-                    create_prop(ctx, "name", PropKind::String, Some(*ports_prop.id())).await?;
+                let _name_prop = BuiltinSchemaHelpers::create_prop(
+                    ctx,
+                    "name",
+                    PropKind::String,
+                    Some(*ports_prop.id()),
+                )
+                .await?;
             }
 
             {
                 // TODO: int from 0 to 65536
-                let _container_port_prop = create_prop(
+                let _container_port_prop = BuiltinSchemaHelpers::create_prop(
                     ctx,
                     "containerPort",
                     PropKind::Integer,
@@ -246,26 +276,41 @@ pub async fn create_spec_prop(
             }
 
             {
-                let _host_ip_prop =
-                    create_prop(ctx, "hostIp", PropKind::String, Some(*ports_prop.id())).await?;
+                let _host_ip_prop = BuiltinSchemaHelpers::create_prop(
+                    ctx,
+                    "hostIp",
+                    PropKind::String,
+                    Some(*ports_prop.id()),
+                )
+                .await?;
             }
 
             {
                 // TODO: int from 0 to 65536
-                let _host_port_prop =
-                    create_prop(ctx, "hostPort", PropKind::Integer, Some(*ports_prop.id())).await?;
+                let _host_port_prop = BuiltinSchemaHelpers::create_prop(
+                    ctx,
+                    "hostPort",
+                    PropKind::Integer,
+                    Some(*ports_prop.id()),
+                )
+                .await?;
             }
 
             {
                 // TODO: validate to ensure it's either "TCP", "UDP" or "SCTP"
                 // Is there a selector widget? If so how to enable it
-                let _protocol_prop =
-                    create_prop(ctx, "protocol", PropKind::String, Some(*ports_prop.id())).await?;
+                let _protocol_prop = BuiltinSchemaHelpers::create_prop(
+                    ctx,
+                    "protocol",
+                    PropKind::String,
+                    Some(*ports_prop.id()),
+                )
+                .await?;
             }
         }
 
         {
-            let volume_mounts_prop = create_prop(
+            let volume_mounts_prop = BuiltinSchemaHelpers::create_prop(
                 ctx,
                 "volumeMounts",
                 PropKind::Array, // How to specify it as an array of objects?
@@ -274,7 +319,7 @@ pub async fn create_spec_prop(
             .await?;
 
             {
-                let _name_prop = create_prop(
+                let _name_prop = BuiltinSchemaHelpers::create_prop(
                     ctx,
                     "name",
                     PropKind::String,
@@ -284,7 +329,7 @@ pub async fn create_spec_prop(
             }
 
             {
-                let _mount_path_prop = create_prop(
+                let _mount_path_prop = BuiltinSchemaHelpers::create_prop(
                     ctx,
                     "mountPath",
                     PropKind::String,
@@ -296,7 +341,7 @@ pub async fn create_spec_prop(
     }
 
     {
-        let volumes_prop = create_prop(
+        let volumes_prop = BuiltinSchemaHelpers::create_prop(
             ctx,
             "volumes",
             PropKind::Array, // How to specify it as an array of objects?
@@ -305,23 +350,38 @@ pub async fn create_spec_prop(
         .await?;
 
         {
-            let _name_prop =
-                create_prop(ctx, "name", PropKind::String, Some(*volumes_prop.id())).await?;
+            let _name_prop = BuiltinSchemaHelpers::create_prop(
+                ctx,
+                "name",
+                PropKind::String,
+                Some(*volumes_prop.id()),
+            )
+            .await?;
         }
 
         {
-            let config_map_prop =
-                create_prop(ctx, "configMap", PropKind::Object, Some(*volumes_prop.id())).await?;
+            let config_map_prop = BuiltinSchemaHelpers::create_prop(
+                ctx,
+                "configMap",
+                PropKind::Object,
+                Some(*volumes_prop.id()),
+            )
+            .await?;
 
             {
-                let _name_prop =
-                    create_prop(ctx, "name", PropKind::String, Some(*config_map_prop.id())).await?;
+                let _name_prop = BuiltinSchemaHelpers::create_prop(
+                    ctx,
+                    "name",
+                    PropKind::String,
+                    Some(*config_map_prop.id()),
+                )
+                .await?;
             }
         }
     }
 
     {
-        let image_pull_secrets_prop = create_prop(
+        let image_pull_secrets_prop = BuiltinSchemaHelpers::create_prop(
             ctx,
             "imagePullSecrets",
             PropKind::Array, // How to specify it as an array of objects?
@@ -330,7 +390,7 @@ pub async fn create_spec_prop(
         .await?;
 
         {
-            let _name_prop = create_prop(
+            let _name_prop = BuiltinSchemaHelpers::create_prop(
                 ctx,
                 "name",
                 PropKind::String,
