@@ -67,6 +67,7 @@ import {
 import VButton from "@/molecules/VButton.vue";
 import SiPanel from "@/atoms/SiPanel.vue";
 import { WorkflowStatus } from "@/molecules/WorkflowStatusIcon.vue";
+import WorkflowStatusBarVue from "@/molecules/WorkflowStatusBar.vue";
 import WorkflowOutput from "../WorkflowRunner/WorkflowOutput.vue";
 
 const selected = ref<ListedWorkflowView | null>(null);
@@ -81,9 +82,9 @@ const runWorkflow = async () => {
     logs.value = null;
     currentWorkflowStatus.value = "running";
     const outputs = await WorkflowService.run({ id: selected.value.id });
+    currentWorkflowStatus.value =
+      outputs?.workflowRunnerState.status || "failure";
     logs.value = outputs?.logs ?? null;
-    // TODO(wendy) - How do we know if a workflow was successful or failed?
-    currentWorkflowStatus.value = "success";
   }
 };
 

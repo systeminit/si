@@ -3,7 +3,7 @@
     ref="statusBar"
     class="h-full flex flex-row p-2 rounded items-center justify-between bg-neutral-800 overflow-hidden"
   >
-    <div class="h-full flex flex-row whitespace-nowrap pr-2">
+    <div class="h-full flex flex-row whitespace-nowrap pr-2 items-center">
       <WorkflowStatusIcon :status="status" />
       <span>{{ name }}</span>
     </div>
