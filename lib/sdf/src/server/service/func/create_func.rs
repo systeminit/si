@@ -164,8 +164,13 @@ async fn create_default_attribute_func(
         system_id: context.system_id(),
     };
 
-    let current_value_view =
-        AttributeView::new(ctx, context_without_specificity, Some(current_value_id)).await?;
+    let current_value_view = AttributeView::new(
+        ctx,
+        context_without_specificity,
+        Some(current_value_id),
+        true,
+    )
+    .await?;
 
     let current_value_value = current_value_view.value();
     let default_code = DEFAULT_ATTRIBUTE_CODE_TEMPLATE.replace(
@@ -174,7 +179,7 @@ async fn create_default_attribute_func(
     );
     let default_code = default_code.replace(
         ATTRIBUTE_CODE_RETURN_VALUE_PLACEHOLDER,
-        &serde_json::to_string_pretty(&current_value_value)?,
+        &serde_json::to_string(&current_value_value)?,
     );
 
     let mut func = Func::new(

@@ -1356,7 +1356,8 @@ impl AttributeValue {
     /// `processed_value` to the empty representation of the type (`[]`, or `{}`) and then
     /// recursively populate the nested values (array elements, map values, or object subtrees),
     /// into their own `AttributeValue` objects.
-    pub async fn process_value(&self,
+    pub async fn process_value(
+        &self,
         ctx: &DalContext<'_, '_, '_>,
         fbrv: &mut FuncBindingReturnValue,
     ) -> AttributeValueResult<()> {
@@ -1375,7 +1376,7 @@ impl AttributeValue {
             let processed_value = match prop.kind() {
                 PropKind::Object | PropKind::Map => Some(&empty_object),
                 PropKind::Array => Some(&empty_array),
-                _ => Some(&unprocessed_value)
+                _ => Some(&unprocessed_value),
             };
             fbrv.set_value(ctx, processed_value.cloned()).await?;
 
@@ -1383,12 +1384,8 @@ impl AttributeValue {
                 // todo: the following duplicates database queries for the data we already have
                 // above, should break out a version of the function that takes refs to the structs
                 // instead of ids
-                Self::populate_nested_values(
-                    ctx,
-                    *self.id(),
-                    self.context,
-                    unprocessed_value
-                ).await?;
+                Self::populate_nested_values(ctx, *self.id(), self.context, unprocessed_value)
+                    .await?;
             }
         }
 

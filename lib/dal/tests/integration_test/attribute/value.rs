@@ -495,7 +495,9 @@ async fn insert_for_context_creates_array_in_final_context(ctx: &DalContext<'_, 
             "si": {
                 "name": "Array Component",
             },
-            "domain": {},
+            "domain": {
+               "array_prop": [],
+            },
         }],
         ComponentView::for_context(ctx, base_attribute_read_context)
             .await

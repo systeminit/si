@@ -36,6 +36,7 @@ impl AttributeView {
         ctx: &DalContext<'_, '_, '_>,
         attribute_read_context: AttributeReadContext,
         root_attribute_value_id: Option<AttributeValueId>,
+        expand_unset_collections: bool,
     ) -> AttributeValueResult<Self> {
         let mut initial_work = match root_attribute_value_id {
             Some(root_attribute_value_id) => {
@@ -114,67 +115,85 @@ impl AttributeView {
             }) = work_queue.pop_front()
             {
                 if let Some(func_binding_return_value) = func_binding_return_value {
-                    if let Some(found_value) = func_binding_return_value.value() {
-                        if root_id == parent_attribute_value_id {
-                            let insertion_pointer =
-                                if let Some(parent_avi) = parent_attribute_value_id {
-                                    match json_pointer_for_attribute_value_id.get(&parent_avi) {
-                                        Some(ptr) => ptr.clone(),
-                                        // A `None` here would mean that we're trying to process a child before we've handled its parent,
-                                        // and that shouldn't be possible given how we're going through the work_queue.
-                                        None => unreachable!(),
+                    let found_value = match func_binding_return_value.value() {
+                        Some(found_value) => found_value.clone(),
+                        None => {
+                            if expand_unset_collections {
+                                // allow expansion of unset values, so we get the whole prop tree
+                                // of this schema variant
+                                match prop.kind() {
+                                    PropKind::Object | PropKind::Map => serde_json::json![{}],
+                                    PropKind::Array => serde_json::json![[]],
+                                    _ => {
+                                        // only expand unset collection types
+                                        continue;
                                     }
-                                } else {
-                                    // After we've processed the "root" property, we shouldn't hit this case any more.
-                                    json_pointer.clone()
-                                };
-                            let write_location = match properties.pointer_mut(&insertion_pointer) {
-                                Some(write_location) => write_location,
-                                None => {
-                                    return Err(AttributeValueError::BadJsonPointer(
-                                        insertion_pointer.clone(),
-                                        properties.to_string(),
-                                    ));
                                 }
-                            };
-                            let next_json_pointer =
-                                if let Some(object) = write_location.as_object_mut() {
-                                    if let Some(key) = attribute_value.key() {
-                                        object.insert(key.to_string(), found_value.clone());
-                                        format!("{}/{}", insertion_pointer, key)
-                                    } else {
-                                        object.insert(prop.name().to_string(), found_value.clone());
-                                        format!("{}/{}", insertion_pointer, prop.name())
-                                    }
-                                } else if let Some(array) = write_location.as_array_mut() {
-                                    // This code can just push, because we ordered the work queue above.
-                                    // Magic!
-                                    array.push(found_value.clone());
-                                    format!("{}/{}", insertion_pointer, array.len() - 1)
-                                } else {
-                                    // Note: this shouldn't ever actually get used.
-                                    insertion_pointer.to_string()
-                                };
-                            // Record the json pointer path to this specific attribute value's location.
-                            json_pointer_for_attribute_value_id
-                                .insert(*attribute_value.id(), next_json_pointer.clone());
+                            } else {
+                                // skip unset value entirely
+                                continue;
+                            }
+                        }
+                    };
 
-                            match prop.kind() {
-                                &PropKind::Object | &PropKind::Array | &PropKind::Map => {
-                                    root_stack
-                                        .push((Some(*attribute_value.id()), next_json_pointer));
-                                }
-                                _ => {}
+                    if root_id == parent_attribute_value_id {
+                        let insertion_pointer = if let Some(parent_avi) = parent_attribute_value_id
+                        {
+                            match json_pointer_for_attribute_value_id.get(&parent_avi) {
+                                Some(ptr) => ptr.clone(),
+                                // A `None` here would mean that we're trying to process a child before we've handled its parent,
+                                // and that shouldn't be possible given how we're going through the work_queue.
+                                None => unreachable!(),
                             }
                         } else {
-                            unprocessed.push(AttributeValuePayload::new(
-                                prop,
-                                Some(func_binding_return_value),
-                                attribute_value,
-                                parent_attribute_value_id,
-                                func_with_prototype_context,
-                            ));
+                            // After we've processed the "root" property, we shouldn't hit this case any more.
+                            json_pointer.clone()
+                        };
+                        let write_location = match properties.pointer_mut(&insertion_pointer) {
+                            Some(write_location) => write_location,
+                            None => {
+                                return Err(AttributeValueError::BadJsonPointer(
+                                    insertion_pointer.clone(),
+                                    properties.to_string(),
+                                ));
+                            }
+                        };
+                        let next_json_pointer = if let Some(object) = write_location.as_object_mut()
+                        {
+                            if let Some(key) = attribute_value.key() {
+                                object.insert(key.to_string(), found_value.clone());
+                                format!("{}/{}", insertion_pointer, key)
+                            } else {
+                                object.insert(prop.name().to_string(), found_value.clone());
+                                format!("{}/{}", insertion_pointer, prop.name())
+                            }
+                        } else if let Some(array) = write_location.as_array_mut() {
+                            // This code can just push, because we ordered the work queue above.
+                            // Magic!
+                            array.push(found_value.clone());
+                            format!("{}/{}", insertion_pointer, array.len() - 1)
+                        } else {
+                            // Note: this shouldn't ever actually get used.
+                            insertion_pointer.to_string()
+                        };
+                        // Record the json pointer path to this specific attribute value's location.
+                        json_pointer_for_attribute_value_id
+                            .insert(*attribute_value.id(), next_json_pointer.clone());
+
+                        match prop.kind() {
+                            &PropKind::Object | &PropKind::Array | &PropKind::Map => {
+                                root_stack.push((Some(*attribute_value.id()), next_json_pointer));
+                            }
+                            _ => {}
                         }
+                    } else {
+                        unprocessed.push(AttributeValuePayload::new(
+                            prop,
+                            Some(func_binding_return_value),
+                            attribute_value,
+                            parent_attribute_value_id,
+                            func_with_prototype_context,
+                        ));
                     }
                 }
             }

@@ -399,6 +399,7 @@ impl InternalProvider {
             ctx,
             found_attribute_view_context,
             Some(*found_attribute_value.id()),
+            true,
         )
         .await?;
         let (func_binding, func_binding_return_value) = FuncBinding::find_or_create_and_execute(

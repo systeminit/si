@@ -9,8 +9,8 @@ use dal::{
     attribute::context::AttributeContextBuilderError, AttributeContext, AttributeContextError,
     AttributePrototype, AttributePrototypeError, AttributeValue, AttributeValueError,
     AttributeValueId, ComponentError, DalContext, Func, FuncBackendKind, FuncBinding,
-    FuncBindingError, Prop, PropError, PropKind, QualificationPrototypeError, ReadTenancyError,
-    StandardModel, StandardModelError, TransactionsError, WriteTenancyError, WsEventError,
+    FuncBindingError, PropError, QualificationPrototypeError, ReadTenancyError, StandardModel,
+    StandardModelError, TransactionsError, WriteTenancyError, WsEventError,
 };
 
 use dal::attribute::value::dependent_update::collection::AttributeValueDependentCollectionHarness;
@@ -161,9 +161,7 @@ async fn update_attribute_value_by_func_for_context(
     attribute_value
         .set_func_binding_return_value_id(ctx, *fbrv.id())
         .await?;
-    attribute_value.process_value(ctx, &mut fbrv).await?; 
-
-
+    attribute_value.process_value(ctx, &mut fbrv).await?;
 
     AttributePrototype::update_for_context(
         ctx,
