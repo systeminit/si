@@ -67,7 +67,6 @@ import {
 import VButton from "@/molecules/VButton.vue";
 import SiPanel from "@/atoms/SiPanel.vue";
 import { WorkflowStatus } from "@/molecules/WorkflowStatusIcon.vue";
-import WorkflowStatusBarVue from "@/molecules/WorkflowStatusBar.vue";
 import WorkflowOutput from "../WorkflowRunner/WorkflowOutput.vue";
 
 const selected = ref<ListedWorkflowView | null>(null);
