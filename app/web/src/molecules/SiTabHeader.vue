@@ -9,7 +9,7 @@
     <button
       :class="
         selectedToFront
-          ? selected
+          ? selected && $el && $el.nextElementSibling
             ? moveTabToFrontIfOverflowing($el.nextElementSibling)
             : 'order-2'
           : ''
