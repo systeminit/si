@@ -58,8 +58,6 @@ async function execute(
       );
     });
 
-    debug({_commandRunResult: commandRunResult});
-
     const result: CommandRunResultSuccess = {
       protocol: "result",
       status: "success",
