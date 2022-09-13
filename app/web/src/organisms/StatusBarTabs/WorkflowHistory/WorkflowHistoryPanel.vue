@@ -91,23 +91,7 @@
           class="h-fit max-h-full lg:basis-1/2 grow overflow-hidden flex flex-row p-1"
         >
           <div class="w-full shrink grow bg-neutral-800 rounded flex flex-col">
-            <div class="flex-none h-10 border-b p-2 border-neutral-600">
-              Resources Impacted
-            </div>
-            <div class="w-full grow shrink overflow-auto">
-              <ul class="list-disc list-inside p-2">
-                <li>Resource 0</li>
-                <li>Resource 1</li>
-                <li>Resource 2</li>
-                <li>Resource 3</li>
-                <li>Resource 4</li>
-                <li>Resource 5</li>
-                <li>Resource 6</li>
-                <li>Resource 7</li>
-                <li>Resource 8</li>
-                <li>Resource 9</li>
-              </ul>
-            </div>
+            <WorkflowResources />
           </div>
         </div>
       </div>
@@ -138,6 +122,7 @@ import {
 } from "@/service/workflow/history";
 import { WorkflowRunInfo } from "@/service/workflow/info";
 import Timestamp from "@/ui-lib/Timestamp.vue";
+import WorkflowResources from "@/organisms/WorkflowRunner/WorkflowResources.vue";
 
 export interface SortOption {
   value: string;

@@ -45,8 +45,11 @@
           <SiTabHeader>Resources</SiTabHeader>
         </template>
         <template #panels>
-          <TabPanel class="px-2 py-2 overflow-auto">
+          <TabPanel class="h-full px-2 py-2 overflow-hidden">
             <WorkflowOutput :logs="logs" :status="currentWorkflowStatus" />
+          </TabPanel>
+          <TabPanel class="h-full overflow-hidden">
+            <WorkflowResources />
           </TabPanel>
         </template>
       </SiTabGroup>
@@ -80,6 +83,7 @@ import { WorkflowStatus } from "@/molecules/WorkflowStatusIcon.vue";
 import SiTabGroup from "@/molecules/SiTabGroup.vue";
 import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import WorkflowOutput from "../WorkflowRunner/WorkflowOutput.vue";
+import WorkflowResources from "../WorkflowRunner/WorkflowResources.vue";
 
 const selected = ref<ListedWorkflowView | null>(null);
 const select = (w: ListedWorkflowView | null) => {
