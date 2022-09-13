@@ -11,10 +11,10 @@ use crate::{
     standard_model::{self, objects_from_rows},
     standard_model_accessor,
     workflow_resolver::WorkflowResolverContext,
-    ComponentId, DalContext, Func, FuncBinding, FuncBindingError, HistoryEventError, SchemaId,
-    SchemaVariantId, StandardModel, StandardModelError, SystemId, Timestamp, Visibility,
-    WorkflowError, WorkflowResolver, WorkflowResolverError, WorkflowView, WriteTenancy, WsEvent,
-    WsEventError,
+    AttributeReadContext, Component, ComponentId, ComponentView, DalContext, Func, FuncBinding,
+    FuncBindingError, HistoryEventError, SchemaId, SchemaVariantId, StandardModel,
+    StandardModelError, SystemId, Timestamp, Visibility, WorkflowError, WorkflowResolver,
+    WorkflowResolverError, WorkflowView, WriteTenancy, WsEvent, WsEventError,
 };
 
 #[derive(Error, Debug)]
@@ -47,6 +47,8 @@ pub enum WorkflowPrototypeError {
     SchemaVariantNotFound,
     #[error("func not found {0}")]
     FuncNotFound(FuncId),
+    #[error("schema doesnt match, prototype = {0}, component = {1}")]
+    SchemaDoesntMatch(WorkflowPrototypeId, ComponentId),
 }
 
 pub type WorkflowPrototypeResult<T> = Result<T, WorkflowPrototypeError>;
@@ -197,58 +199,101 @@ impl WorkflowPrototype {
     pub async fn resolve(
         &self,
         ctx: &DalContext<'_, '_, '_>,
+        component_id: ComponentId,
     ) -> WorkflowPrototypeResult<WorkflowResolver> {
+        let component = if component_id.is_some() {
+            let component = Component::get_by_id(ctx, &component_id)
+                .await?
+                .ok_or(WorkflowPrototypeError::ComponentNotFound(component_id))?;
+            let schema = component
+                .schema(ctx)
+                .await
+                .map_err(|err| WorkflowPrototypeError::Component(err.to_string()))?
+                .ok_or(WorkflowPrototypeError::SchemaNotFound)?;
+            let schema_variant = component
+                .schema_variant(ctx)
+                .await
+                .map_err(|err| WorkflowPrototypeError::Component(err.to_string()))?
+                .ok_or(WorkflowPrototypeError::SchemaVariantNotFound)?;
+            if *schema.id() != self.schema_id || *schema_variant.id() != self.schema_variant_id {
+                return Err(WorkflowPrototypeError::SchemaDoesntMatch(
+                    self.id,
+                    component_id,
+                ));
+            }
+
+            let context = AttributeReadContext {
+                prop_id: None,
+                schema_id: Some(*schema.id()),
+                schema_variant_id: Some(*schema_variant.id()),
+                component_id: Some(*component.id()),
+                ..AttributeReadContext::default()
+            };
+            let component = ComponentView::for_context(ctx, context)
+                .await
+                .map_err(|err| WorkflowPrototypeError::Component(err.to_string()))?;
+            Some(component)
+        } else {
+            None
+        };
+
         let mut context = WorkflowResolverContext::new();
         context.set_component_id(self.component_id);
         context.set_schema_id(self.schema_id);
         context.set_schema_variant_id(self.schema_variant_id);
         context.set_system_id(self.system_id);
-        match WorkflowResolver::find_for_prototype(ctx, self.id(), context.clone())
+        let resolver = WorkflowResolver::find_for_prototype(ctx, self.id(), context.clone())
+            .await?
+            .pop();
+
+        let identity_func = Func::find_by_attr(ctx, "name", &"si:identity")
             .await?
             .pop()
-        {
-            Some(resolver) => Ok(resolver),
-            None => {
-                let identity_func = Func::find_by_attr(ctx, "name", &"si:identity")
-                    .await?
-                    .pop()
-                    .ok_or_else(|| WorkflowError::MissingWorkflow("si:identity".to_owned()))?;
-                let (identity_func_binding, _) = FuncBinding::find_or_create_and_execute(
-                    ctx,
-                    serde_json::json!({ "identity": null }),
-                    *identity_func.id(),
-                )
-                .await?;
-                let mut resolver = WorkflowResolver::new(
-                    ctx,
-                    self.id,
-                    *identity_func.id(),
-                    *identity_func_binding.id(),
-                    context.clone(),
-                )
-                .await?;
+            .ok_or_else(|| WorkflowError::MissingWorkflow("si:identity".to_owned()))?;
 
-                // FIXME(nick,wendy): why create the resolver before getting the workflow tree?
-                // It seems like we can assemble the args first? However, there might be a scenario
-                // where the workflow tree assembly requires the existence of the resolver first?
-                let workflow_prototype_func = Func::get_by_id(ctx, &self.func_id())
-                    .await?
-                    .ok_or_else(|| WorkflowPrototypeError::FuncNotFound(self.func_id()))?;
-                let tree = WorkflowView::resolve(ctx, &workflow_prototype_func).await?;
+        let mut resolver = if let Some(resolver) = resolver {
+            resolver
+        } else {
+            let (identity_func_binding, _) = FuncBinding::find_or_create_and_execute(
+                ctx,
+                serde_json::json!({ "identity": null }),
+                *identity_func.id(),
+            )
+            .await?;
+            WorkflowResolver::new(
+                ctx,
+                self.id,
+                *identity_func.id(),
+                *identity_func_binding.id(),
+                context.clone(),
+            )
+            .await?
+        };
 
-                // Serialize the tree into the arguments for the identity function.
-                let args = serde_json::json!({ "identity": serde_json::to_value(tree)? });
-                let (func_binding, _) =
-                    FuncBinding::find_or_create_and_execute(ctx, args, *identity_func.id()).await?;
-                resolver
-                    .set_func_binding_id(ctx, *func_binding.id())
-                    .await?;
+        // FIXME(nick,wendy): why create the resolver before getting the workflow tree?
+        // It seems like we can assemble the args first? However, there might be a scenario
+        // where the workflow tree assembly requires the existence of the resolver first?
+        let workflow_prototype_func = Func::get_by_id(ctx, &self.func_id())
+            .await?
+            .ok_or_else(|| WorkflowPrototypeError::FuncNotFound(self.func_id()))?;
+        let tree = WorkflowView::resolve(
+            ctx,
+            &workflow_prototype_func,
+            serde_json::to_value(component)?,
+        )
+        .await?;
+        let args = serde_json::json!({ "identity": serde_json::to_value(tree)? });
 
-                WsEvent::change_set_written(ctx).publish(ctx).await?;
+        // Serialize the tree into the arguments for the identity function.
+        let (func_binding, _) =
+            FuncBinding::find_or_create_and_execute(ctx, args, *identity_func.id()).await?;
+        resolver
+            .set_func_binding_id(ctx, *func_binding.id())
+            .await?;
 
-                Ok(resolver)
-            }
-        }
+        WsEvent::change_set_written(ctx).publish(ctx).await?;
+
+        Ok(resolver)
     }
 
     #[allow(clippy::too_many_arguments)]

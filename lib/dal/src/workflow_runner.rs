@@ -8,16 +8,17 @@ use crate::workflow_runner::workflow_runner_state::WorkflowRunnerState;
 use crate::workflow_runner::workflow_runner_state::WorkflowRunnerStatus;
 use crate::DalContext;
 use crate::{
+    func::backend::js_command::CommandRunResult,
     func::binding_return_value::{FuncBindingReturnValue, FuncBindingReturnValueError},
     func::execution::{FuncExecution, FuncExecutionError},
     func::{binding::FuncBindingId, FuncId},
     impl_standard_model, pk,
     standard_model::{self, objects_from_rows},
     standard_model_accessor, ChangeSetPk, ComponentId, Func, FuncBinding, FuncBindingError,
-    HistoryEventError, SchemaId, SchemaVariantId, StandardModel, StandardModelError, SystemId,
-    Timestamp, Visibility, WorkflowError, WorkflowPrototype, WorkflowPrototypeError,
-    WorkflowPrototypeId, WorkflowResolverError, WorkflowResolverId, WriteTenancy, WsEvent,
-    WsEventError, WsPayload,
+    HistoryEventError, Resource, ResourceError, SchemaId, SchemaVariantId, StandardModel,
+    StandardModelError, SystemId, Timestamp, Visibility, WorkflowError, WorkflowPrototype,
+    WorkflowPrototypeError, WorkflowPrototypeId, WorkflowResolverError, WorkflowResolverId,
+    WriteTenancy, WsEvent, WsEventError, WsPayload,
 };
 
 pub mod workflow_runner_state;
@@ -28,6 +29,8 @@ pub enum WorkflowRunnerError {
     WsEvent(#[from] WsEventError),
     #[error(transparent)]
     Workflow(#[from] WorkflowError),
+    #[error(transparent)]
+    Resource(#[from] ResourceError),
     #[error(transparent)]
     FuncBindingReturnValue(#[from] FuncBindingReturnValueError),
     #[error(transparent)]
@@ -188,6 +191,7 @@ impl WorkflowRunner {
     pub async fn run(
         ctx: &DalContext<'_, '_, '_>,
         prototype_id: WorkflowPrototypeId,
+        component_id: ComponentId,
     ) -> WorkflowRunnerResult<(Self, WorkflowRunnerState, Vec<FuncBindingReturnValue>)> {
         let prototype = WorkflowPrototype::get_by_id(ctx, &prototype_id)
             .await?
@@ -198,13 +202,18 @@ impl WorkflowRunner {
         // this is better for multiple runs because "prototype.resolve()" will only return the
         // resolver rather than generate a tree and build the resolver. Maybe, we could return
         // a boolean called "created" and only run "resolver.tree()" if "created" is false?
-        let resolver = prototype.resolve(ctx).await?;
+        let resolver = prototype.resolve(ctx, component_id).await?;
         let tree = resolver.tree(ctx).await?;
 
         // Perform the workflow runner "run" by running the workflow tree.
         let func_binding_return_values = tree.run(ctx).await?;
-        let (func_id, func_binding_id) =
-            Self::process_successful_workflow_run(ctx, &func_binding_return_values).await?;
+        let (func_id, func_binding_id) = Self::process_successful_workflow_run(
+            ctx,
+            &func_binding_return_values,
+            prototype_id,
+            component_id,
+        )
+        .await?;
         let (workflow_runner_status, error_message) =
             Self::detect_failure_from_tree_execution(&func_binding_return_values);
 
@@ -261,6 +270,8 @@ impl WorkflowRunner {
     async fn process_successful_workflow_run(
         ctx: &DalContext<'_, '_, '_>,
         func_binding_return_values: &Vec<FuncBindingReturnValue>,
+        prototype_id: WorkflowPrototypeId,
+        component_id: ComponentId,
     ) -> WorkflowRunnerResult<(FuncId, FuncBindingId)> {
         let identity = Func::find_by_attr(ctx, "name", &"si:identity")
             .await?
@@ -274,6 +285,7 @@ impl WorkflowRunner {
         )
             .await?;
 
+        let mut resources = Vec::new();
         let mut logs = Vec::new();
         for return_value in func_binding_return_values {
             for stream in return_value
@@ -282,6 +294,31 @@ impl WorkflowRunner {
                 .unwrap_or_default()
             {
                 logs.push(stream);
+            }
+
+            if let Some(value) = return_value.value() {
+                let result = CommandRunResult::deserialize(value)?;
+                for (key, value) in result.updated {
+                    resources.push(
+                        Resource::upsert(
+                            ctx,
+                            component_id,
+                            SystemId::NONE,
+                            key,
+                            value,
+                            prototype_id,
+                        )
+                        .await?,
+                    );
+                }
+                for (key, value) in result.created {
+                    // If the function creates multiple resources with the same key we will duplicate them
+                    // Otherwise a EC2 instance might get lost if the command function has a glitch
+                    resources.push(
+                        Resource::new(ctx, component_id, SystemId::NONE, key, value, prototype_id)
+                            .await?,
+                    );
+                }
             }
         }
         logs.sort_by_key(|log| log.timestamp);

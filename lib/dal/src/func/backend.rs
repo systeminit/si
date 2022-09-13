@@ -185,7 +185,7 @@ pub trait FuncDispatch: std::fmt::Debug {
 
     // TODO: re-enable encryption
     //{
-    //    for view in value.extract() {
+    //    for view in value.extract()? {
     //        ComponentView::reencrypt_secrets(ctx, view).await?;
     //    }
     //}
@@ -213,7 +213,7 @@ pub trait FuncDispatch: std::fmt::Debug {
         let backend = format!("{:?}", &self);
         let value = match self.dispatch().await.map_err(|err| span.record_err(err))? {
             FunctionResult::Success(check_result) => {
-                let payload = serde_json::to_value(check_result.extract())?;
+                let payload = serde_json::to_value(check_result.extract()?)?;
                 (Some(payload.clone()), Some(payload))
             }
             FunctionResult::Failure(failure) => {
@@ -287,5 +287,5 @@ pub trait FuncBackend {
 pub trait ExtractPayload {
     type Payload: std::fmt::Debug;
 
-    fn extract(self) -> Self::Payload;
+    fn extract(self) -> FuncBackendResult<Self::Payload>;
 }

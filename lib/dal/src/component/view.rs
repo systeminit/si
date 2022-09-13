@@ -3,8 +3,8 @@ use serde::{Deserialize, Serialize};
 use crate::{
     component::{ComponentKind, ComponentResult},
     AttributeReadContext, AttributeValue, Component, ComponentError, DalContext, EncryptedSecret,
-    ExternalProviderId, FuncBindingReturnValue, InternalProvider, Prop, PropId, SecretError,
-    SecretId, StandardModel, StandardModelError, System,
+    ExternalProviderId, FuncBindingReturnValue, InternalProvider, Prop, PropId, Resource,
+    SecretError, SecretId, StandardModel, StandardModelError, System, SystemId,
 };
 
 use thiserror::Error;
@@ -28,6 +28,7 @@ pub struct ComponentView {
     pub system: Option<System>,
     pub kind: ComponentKind,
     pub properties: serde_json::Value,
+    pub resources: Vec<veritech::ResourceView>,
 }
 
 impl Default for ComponentView {
@@ -36,6 +37,7 @@ impl Default for ComponentView {
             system: Default::default(),
             kind: Default::default(),
             properties: serde_json::json!({}),
+            resources: Default::default(),
         }
     }
 }
@@ -106,10 +108,21 @@ impl ComponentView {
             .unwrap_or(&serde_json::Value::Null)
             .clone();
 
+        let resources = Resource::list_by_component(
+            ctx,
+            component_id,
+            context.system_id().unwrap_or(SystemId::NONE),
+        )
+        .await?
+        .into_iter()
+        .map(Into::into)
+        .collect();
+
         Ok(ComponentView {
             system,
             kind: *component.kind(),
             properties,
+            resources,
         })
     }
 
@@ -182,6 +195,7 @@ impl From<ComponentView> for veritech::ComponentView {
             }),
             kind: view.kind.into(),
             properties: view.properties,
+            resources: view.resources,
         }
     }
 }

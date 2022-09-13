@@ -16,13 +16,17 @@ const debug = Debug("langJs:commandRun");
 export interface CommandRunRequest extends Request {
   handler: string;
   codeBase64: string;
+  args: unknown;
 }
 
 export type CommandRunResult =
   | CommandRunResultSuccess
   | CommandRunResultFailure;
 
-export type CommandRunResultSuccess = ResultSuccess;
+export interface CommandRunResultSuccess extends ResultSuccess {
+  created?: Record<string, unknown>;
+  updated?: Record<string, unknown>;
+}
 export type CommandRunResultFailure = ResultFailure;
 
 export async function executeCommandRun(
@@ -37,7 +41,7 @@ export async function executeCommandRun(
   const sandbox = createSandbox(FunctionKind.CommandRun, request.executionId);
   const vm = createNodeVm(sandbox);
 
-  const result = await execute(vm, code, request.executionId);
+  const result = await execute(vm, code, request.executionId, request.args);
   debug({ result });
 
   console.log(JSON.stringify(result));
@@ -46,15 +50,17 @@ export async function executeCommandRun(
 async function execute(
   vm: NodeVM,
   code: string,
-  executionId: string
+  executionId: string,
+  args: unknown,
 ): Promise<CommandRunResult> {
   let commandRunResult: Record<string, unknown>;
   try {
     const commandRunRunner = vm.run(code);
     // Node(paulo): NodeVM doesn't support async rejection, we need a better way of handling it
     commandRunResult = await new Promise((resolve) => {
-      commandRunRunner((resolution: Record<string, unknown>) =>
-        resolve(resolution)
+      commandRunRunner(
+        args,
+        (resolution: Record<string, unknown>) => resolve(resolution)
       );
     });
 
@@ -63,6 +69,8 @@ async function execute(
       status: "success",
       executionId,
       error: commandRunResult?.error as string,
+      updated: commandRunResult?.updated as Record<string, unknown> | undefined,
+      created: commandRunResult?.created as Record<string, unknown> | undefined,
     };
     return result;
   } catch (err) {
@@ -71,9 +79,10 @@ async function execute(
 }
 
 function wrapCode(code: string, handle: string): string {
-  const wrapped = `module.exports = function(callback) {
+  const wrapped = `module.exports = function(args, callback) {
     ${code}
-    const returnValue = ${handle}(callback);
+    const arguments = Array.isArray(args) ? args : [args];
+    const returnValue = ${handle}(...arguments, callback);
     if (returnValue instanceof Promise) {
       returnValue.then((data) => callback(data))
         .catch((err) => {

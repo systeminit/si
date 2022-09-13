@@ -78,12 +78,12 @@ impl FuncDispatch for FuncBackendJsQualification {
 impl ExtractPayload for QualificationCheckResultSuccess {
     type Payload = QualificationResult;
 
-    fn extract(self) -> Self::Payload {
-        QualificationResult {
+    fn extract(self) -> FuncBackendResult<Self::Payload> {
+        Ok(QualificationResult {
             success: self.qualified,
             title: self.title,
             link: self.link,
             sub_checks: self.sub_checks,
-        }
+        })
     }
 }

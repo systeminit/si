@@ -6,6 +6,7 @@ import { visibility$ } from "@/observable/visibility";
 
 export interface WorkflowResolveRequest {
   id: number;
+  componentId: number | null;
 }
 
 export enum WorkflowKind {
@@ -41,7 +42,8 @@ export const resolve: (
 
   const response = await firstValueFrom(
     sdf.post<ApiResponse<WorkflowResolveResponse>>("workflow/resolve", {
-      ...arg,
+      id: arg.id,
+      componentId: arg.componentId ?? -1,
       ...visibility,
     }),
   );

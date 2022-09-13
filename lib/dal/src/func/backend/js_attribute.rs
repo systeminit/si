@@ -59,7 +59,7 @@ impl FuncDispatch for FuncBackendJsAttribute {
 impl ExtractPayload for ResolverFunctionResultSuccess {
     type Payload = serde_json::Value;
 
-    fn extract(self) -> Self::Payload {
-        self.data
+    fn extract(self) -> FuncBackendResult<Self::Payload> {
+        Ok(self.data)
     }
 }

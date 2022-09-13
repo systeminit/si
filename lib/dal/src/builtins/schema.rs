@@ -103,6 +103,7 @@ impl BuiltinSchemaHelpers {
                         properties: serde_json::json!({}),
                         system: None,
                         kind: veritech::ComponentKind::Standard,
+                        resources: vec![],
                     },
                     parents: vec![],
                 },

@@ -64,12 +64,12 @@ pub async fn get_components_metadata(
             .reduce(|q, acc| acc.and_then(|acc| q.map(|q| acc && q)))
             .and_then(|opt| opt);
 
-        let resource = if system_id.is_none() {
+        /*let resource = if system_id.is_none() {
             None
         } else {
             Component::get_resource_by_component_and_system(&ctx, *component.id(), system_id)
                 .await?
-        };
+        };*/
 
         metadata.push(ComponentMetadata {
             schema_name: schema.name().to_owned(),
@@ -78,7 +78,7 @@ pub async fn get_components_metadata(
                 .await?
                 .and_then(|v| v.link().map(ToOwned::to_owned)),
             qualified,
-            resource_health: resource.map(|r| r.health),
+            resource_health: None, //resource.map(|r| r.health),
             component_id: *component.id(),
         });
     }

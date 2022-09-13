@@ -14,7 +14,7 @@
     <div
       class="grow overflow-hidden h-full dark:bg-neutral-800 dark:text-white text-lg font-semi-bold px-2 pt-2 flex flex-col"
     >
-      <WorkflowResolver v-if="selected" :selected-id="selected.id">
+      <WorkflowResolver v-if="selected" :selected="selected">
         <template #runButton>
           <VButton
             icon="play"
@@ -69,10 +69,10 @@ import SiPanel from "@/atoms/SiPanel.vue";
 import { WorkflowStatus } from "@/molecules/WorkflowStatusIcon.vue";
 import WorkflowOutput from "../WorkflowRunner/WorkflowOutput.vue";
 
-const selected = ref<ListedWorkflowView | null>(null);
-const select = (w: ListedWorkflowView | null) => {
+const selected = ref<{ id: number, componentId: number | null } | null>(null);
+const select = (w: ListedWorkflowView, componentId: number | null) => {
   logs.value = null;
-  selected.value = w;
+  selected.value = { id: w.id, componentId };
 };
 
 const logs = ref<string[] | null>(null);
@@ -80,7 +80,10 @@ const runWorkflow = async () => {
   if (selected.value) {
     logs.value = null;
     currentWorkflowStatus.value = "running";
-    const outputs = await WorkflowService.run({ id: selected.value.id });
+    const outputs = await WorkflowService.run({
+      id: selected.value.id,
+      componentId: selected.value.componentId,
+    });
     currentWorkflowStatus.value =
       outputs?.workflowRunnerState.status || "failure";
     logs.value = outputs?.logs ?? null;

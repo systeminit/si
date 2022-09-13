@@ -1,10 +1,12 @@
 use serde_json::json;
 
 use dal::{
-    func::binding::FuncBinding, workflow_prototype::WorkflowPrototypeContext, ComponentId,
-    DalContext, Func, SchemaId, SchemaVariantId, StandardModel, SystemId, WorkflowPrototype,
-    WorkflowTree, WorkflowView,
+    func::binding::FuncBinding, test_harness::create_component_for_schema,
+    workflow_prototype::WorkflowPrototypeContext, AttributeReadContext, ComponentId, ComponentView,
+    DalContext, Func, Schema, SchemaId, SchemaVariantId, StandardModel, SystemId,
+    WorkflowPrototype,
 };
+use pretty_assertions_sorted::assert_eq;
 
 use crate::dal::test;
 
@@ -98,78 +100,80 @@ async fn fb(
 
 #[test]
 async fn resolve(ctx: &DalContext<'_, '_, '_>) {
-    let name = "si:poemWorkflow";
-    let func = Func::find_by_attr(ctx, "name", &name)
+    let title = "Docker Image Resource Refresh";
+    let prototype = WorkflowPrototype::find_by_attr(ctx, "title", &title)
         .await
-        .expect("unable to find func")
+        .expect("unable to find workflow by attr")
         .pop()
-        .unwrap_or_else(|| panic!("function not found: {}", name));
-    let tree = WorkflowView::resolve(ctx, &func)
-        .await
-        .expect("unable to resolve workflow");
-    // TODO: fix args propagation
-    let expected_json = json!({
-        "name": "si:poemWorkflow",
-        "kind": "conditional",
-        "steps": [
-            //{
-            //    "name": "si:exceptionalWorkflow",
-            //    "kind": "exceptional",
-            //    "steps": [
-            //        { "func_binding": fb(ctx, "si:leroLeroTitle1Command", json!([])).await },
-            //        { "func_binding": fb(ctx, "si:leroLeroTitle2Command", json!([])).await },
-            //    ],
-            //},
-            { "func_binding": fb(ctx, "si:leroLeroStanza1Command", json!([])).await },
-            { "func_binding": fb(ctx, "si:leroLeroStanza2Command", json!([])).await },
-            { "func_binding": fb(ctx, "si:leroLeroStanza3Command", json!([])).await },
-            { "func_binding": fb(ctx, "si:leroLeroStanza4Command", json!([])).await },
-            { "func_binding": fb(ctx, "si:leroLeroStanza5Command", json!([])).await },
-            { "func_binding": fb(ctx, "si:leroLeroStanza6Command", json!([])).await },
-            { "func_binding": fb(ctx, "si:leroLeroStanza7Command", json!([])).await },
-            {
-                "name": "si:finalizingWorkflow",
-                "kind": "parallel",
-                "steps": [
-                    { "func_binding": fb(ctx, "si:leroLeroQuestionCommand", json!([null])).await },
-                    { "func_binding": fb(ctx, "si:leroLeroByeCommand", json!([])).await },
-                ],
-            },
-        ],
-    });
-    let expected: WorkflowTree =
-        serde_json::from_value(expected_json).expect("unable to serialize expected workflow tree");
-    assert_eq!(tree, expected);
-}
+        .expect("unable to find docker image resource refresh workflow prototype");
 
-#[test]
-async fn run(ctx: &DalContext<'_, '_, '_>) {
-    let name = "si:poemWorkflow";
-    let func = Func::find_by_attr(ctx, "name", &name)
+    let schema = Schema::find_by_attr(ctx, "name", &"docker_image")
         .await
-        .expect("unable to find func")
+        .expect("unable to find docker image schema")
         .pop()
-        .unwrap_or_else(|| panic!("function not found: {}", name));
+        .expect("unable to find docker image");
+    let schema_variant = schema
+        .default_variant(ctx)
+        .await
+        .expect("unable to find default schema variant");
+    let component = create_component_for_schema(ctx, schema.id()).await;
 
-    let prototype_context = WorkflowPrototypeContext::new();
-    let prototype = WorkflowPrototype::new(
-        ctx,
-        *func.id(),
-        serde_json::Value::Null,
-        prototype_context,
-        "prototype",
-    )
-    .await
-    .expect("cannot create new prototype");
+    let context = AttributeReadContext {
+        prop_id: None,
+        schema_id: Some(*schema.id()),
+        schema_variant_id: Some(*schema_variant.id()),
+        component_id: Some(*component.id()),
+        system_id: Some(SystemId::NONE),
+        ..AttributeReadContext::default()
+    };
+
+    let component_view = ComponentView::for_context(ctx, context)
+        .await
+        .expect("unable to generate component view for docker image component");
     let tree = prototype
-        .resolve(ctx)
+        .resolve(ctx, *component.id())
         .await
         .expect("unable to resolve prototype")
         .tree(ctx)
         .await
         .expect("unable to extract tree");
 
-    // TODO: fix args propagation
-    // TODO: confirm output
+    let expected_json = json!({
+        "name": "si:dockerImageRefreshWorkflow",
+        "kind": "conditional",
+        "steps": [
+            { "func_binding": fb(ctx, "si:dockerImageRefreshCommand", json!([ serde_json::to_value(component_view).expect("unable to serialize component view") ])).await },
+        ],
+    });
+    assert_eq!(
+        serde_json::to_value(tree).expect("unable to serialize tree"),
+        expected_json
+    );
+}
+
+#[test]
+async fn run(ctx: &DalContext<'_, '_, '_>) {
+    let title = "Docker Image Resource Refresh";
+    let prototype = WorkflowPrototype::find_by_attr(ctx, "title", &title)
+        .await
+        .expect("unable to find workflow by attr")
+        .pop()
+        .expect("unable to find docker image resource refresh workflow prototype");
+
+    let schema = Schema::find_by_attr(ctx, "name", &"docker_image")
+        .await
+        .expect("unable to find docker image schema")
+        .pop()
+        .expect("unable to find docker image");
+    let component = create_component_for_schema(ctx, schema.id()).await;
+
+    let tree = prototype
+        .resolve(ctx, *component.id())
+        .await
+        .expect("unable to resolve prototype")
+        .tree(ctx)
+        .await
+        .expect("unable to extract tree");
+
     tree.run(ctx).await.expect("unable to run workflow");
 }

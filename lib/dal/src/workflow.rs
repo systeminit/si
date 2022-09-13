@@ -66,12 +66,12 @@ pub enum WorkflowStep {
     Workflow {
         workflow: String,
         #[serde(default)]
-        args: Vec<serde_json::Value>,
+        args: serde_json::Value,
     },
     Command {
         command: String,
         #[serde(default)]
-        args: Vec<serde_json::Value>,
+        args: serde_json::Value,
     },
 }
 
@@ -80,7 +80,7 @@ pub struct WorkflowView {
     name: String,
     kind: WorkflowKind,
     steps: Vec<WorkflowStep>,
-    args: Vec<serde_json::Value>,
+    args: serde_json::Value,
 }
 
 impl WorkflowView {
@@ -88,22 +88,21 @@ impl WorkflowView {
         name: String,
         kind: WorkflowKind,
         steps: Vec<WorkflowStep>,
-        args: Option<Vec<serde_json::Value>>,
+        args: serde_json::Value,
     ) -> Self {
         Self {
             name,
             kind,
             steps,
-            args: args.unwrap_or_default(),
+            args,
         }
     }
 
     pub async fn resolve(
         ctx: &DalContext<'_, '_, '_>,
         func: &Func,
+        args: serde_json::Value,
     ) -> WorkflowResult<WorkflowTree> {
-        // TODO: add args
-        let args = vec![];
         Self::resolve_inner(ctx, func.name(), args, HashSet::new(), &mut HashMap::new()).await
     }
 
@@ -129,7 +128,7 @@ impl WorkflowView {
     async fn resolve_inner(
         ctx: &DalContext<'_, '_, '_>,
         name: &str,
-        _args: Vec<serde_json::Value>,
+        args: FuncBackendJsWorkflowArgs,
         mut recursion_marker: HashSet<String>,
         workflows_cache: &mut HashMap<String, WorkflowTree>,
     ) -> WorkflowResult<WorkflowTree> {
@@ -140,7 +139,7 @@ impl WorkflowView {
             .await?
             .pop()
             .ok_or_else(|| WorkflowError::MissingWorkflow(name.to_owned()))?;
-        let view = Self::veritech_run(ctx, func, FuncBackendJsWorkflowArgs).await?;
+        let view = Self::veritech_run(ctx, func, args).await?;
 
         let mut steps = Vec::with_capacity(view.steps.len());
         for step in view.steps {

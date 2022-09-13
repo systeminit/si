@@ -6,6 +6,7 @@ pub struct WorkflowResolveRequest {
     pub execution_id: String,
     pub handler: String,
     pub code_base64: String,
+    pub args: serde_json::Value,
 }
 
 #[derive(Debug, Deserialize, Eq, PartialEq, Serialize)]

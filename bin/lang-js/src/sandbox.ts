@@ -38,7 +38,11 @@ const codeGenerationSandbox = {
 
 const workflowResolveSandbox = {};
 
-const commandRunSandbox = {};
+function commandRunSandbox(executionId: string): Sandbox {
+  return {
+    siExec: makeExec(executionId),
+  };
+}
 
 function qualificationCheckSandbox(executionId: string): Sandbox {
   return {
@@ -83,7 +87,7 @@ export function createSandbox(
     case FunctionKind.CommandRun:
       return {
         ...commonSandbox(executionId),
-        ...commandRunSandbox,
+        ...commandRunSandbox(executionId),
       };
     default:
       throw new UnknownSandboxKind(kind);

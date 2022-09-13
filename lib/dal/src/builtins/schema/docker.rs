@@ -13,7 +13,7 @@ use crate::{
     AttributeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue,
     AttributeValueError, BuiltinsError, BuiltinsResult, DalContext, DiagramKind, ExternalProvider,
     Func, InternalProvider, Prop, PropKind, QualificationPrototype, ResourcePrototype, SchemaError,
-    SchemaKind, Socket, StandardModel,
+    SchemaKind, Socket, StandardModel, WorkflowPrototype, WorkflowPrototypeContext,
 };
 
 pub async fn migrate(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResult<()> {
@@ -281,6 +281,19 @@ async fn docker_image(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResult<()> {
         *root_implicit_internal_provider.id(),
     )
     .await?;
+
+    let func_name = "si:dockerImageRefreshWorkflow";
+    let func = Func::find_by_attr(ctx, "name", &func_name)
+        .await?
+        .pop()
+        .ok_or_else(|| SchemaError::FuncNotFound(func_name.to_owned()))?;
+    let title = "Docker Image Resource Refresh";
+    let context = WorkflowPrototypeContext {
+        schema_id: *schema.id(),
+        schema_variant_id: *variant.id(),
+        ..Default::default()
+    };
+    WorkflowPrototype::new(ctx, *func.id(), serde_json::Value::Null, context, title).await?;
 
     Ok(())
 }
