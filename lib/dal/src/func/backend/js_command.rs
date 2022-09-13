@@ -47,12 +47,12 @@ impl FuncDispatch for FuncBackendJsCommand {
             .execute_command_run(output_tx.clone(), &self.request)
             .await?;
         if let FunctionResult::Success(value) = &value {
-            if let Some(message) = &value.message {
+            if let Some(message) = &value.error {
                 output_tx
                     .send(OutputStream {
                         execution_id: self.request.execution_id,
                         stream: "return".to_owned(),
-                        level: "info".to_owned(),
+                        level: "error".to_owned(),
                         group: None,
                         data: None,
                         message: message.clone(),
@@ -70,9 +70,15 @@ impl FuncDispatch for FuncBackendJsCommand {
         Ok(value)
     }
 }
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CommandRunResult {
+    pub error: Option<String>,
+}
 
 impl ExtractPayload for CommandRunResultSuccess {
-    type Payload = ();
+    type Payload = CommandRunResult;
 
-    fn extract(self) -> Self::Payload {}
+    fn extract(self) -> Self::Payload {
+        CommandRunResult { error: self.error }
+    }
 }

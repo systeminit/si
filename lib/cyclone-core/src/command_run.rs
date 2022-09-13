@@ -13,5 +13,5 @@ pub struct CommandRunRequest {
 pub struct CommandRunResultSuccess {
     pub execution_id: String,
     // Collects the error if the function throws
-    pub message: Option<String>,
+    pub error: Option<String>,
 }

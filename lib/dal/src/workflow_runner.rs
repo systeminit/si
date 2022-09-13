@@ -5,6 +5,7 @@ use telemetry::prelude::*;
 use thiserror::Error;
 use veritech::{FunctionResult, FunctionResultFailure};
 
+use crate::func::execution;
 use crate::workflow_runner::workflow_runner_state::WorkflowRunnerState;
 use crate::workflow_runner::workflow_runner_state::WorkflowRunnerStatus;
 use crate::{
@@ -203,54 +204,11 @@ impl WorkflowRunner {
         let tree = resolver.tree(ctx).await?;
 
         // Perform the workflow runner "run" by running the workflow tree.
-        let (func_binding_return_values, func_id, func_binding_id, maybe_failure): (
-            Vec<FuncBindingReturnValue>,
-            FuncId,
-            FuncBindingId,
-            Option<FunctionResultFailure>,
-        ) = match tree.run(ctx).await {
-            Ok(func_binding_return_values) => {
-                let (func_id, func_binding_id) =
-                    Self::process_successful_workflow_run(ctx, &func_binding_return_values).await?;
-                (func_binding_return_values, func_id, func_binding_id, None)
-            }
-            Err(maybe_failure) => {
-                // The only kind of error we should "allow" is a function failure. All other errors
-                // will be returned.
-                if let WorkflowError::FuncBinding(FuncBindingError::FuncBackend(
-                    FuncBackendError::FunctionResultCommandRun(FunctionResult::Failure(failure)),
-                )) = &maybe_failure
-                {
-                    // We need to collect the FuncId if the workflow was not successful.
-                    let identity = Func::find_by_attr(ctx, "name", &"si:identity")
-                        .await?
-                        .pop()
-                        .ok_or_else(|| {
-                            WorkflowRunnerError::MissingWorkflow("si:identity".to_owned())
-                        })?;
-                    (
-                        Vec::new(),
-                        *identity.id(),
-                        FuncBindingId::NONE,
-                        Some(failure.clone()),
-                    )
-                } else {
-                    return Err(WorkflowRunnerError::Workflow(maybe_failure));
-                }
-            }
-        };
-
-        // Destructure the underlying function failure, if a function failure occurred.
-        let (workflow_runner_status, execution_id, error_kind, error_message) = match maybe_failure
-        {
-            Some(failure) => (
-                WorkflowRunnerStatus::Failure,
-                Some(failure.execution_id),
-                Some(failure.error.kind),
-                Some(failure.error.message),
-            ),
-            None => (WorkflowRunnerStatus::Success, None, None, None),
-        };
+        let func_binding_return_values = tree.run(ctx).await?;
+        let (func_id, func_binding_id) =
+            Self::process_successful_workflow_run(ctx, &func_binding_return_values).await?;
+        let (workflow_runner_status, error_message) =
+            Self::detect_failure_from_tree_execution(&func_binding_return_values);
 
         let mut context = WorkflowRunnerContext::new();
         context.set_component_id(prototype.context().component_id);
@@ -274,13 +232,30 @@ impl WorkflowRunner {
             ctx,
             *runner.id(),
             workflow_runner_status,
-            execution_id,
-            error_kind,
+            None,
+            None,
             error_message,
         )
         .await?;
 
         Ok((runner, runner_state, func_binding_return_values))
+    }
+
+    /// Greedy algorithm to find the first instance of failure in a list of given [`FuncBindingReturnValues`](Vec<FuncBindingReturnValue>)
+    /// for a given tree execution.
+    fn detect_failure_from_tree_execution(
+        func_binding_return_values: &Vec<FuncBindingReturnValue>,
+    ) -> (WorkflowRunnerStatus, Option<String>) {
+        for func_binding_return_value in func_binding_return_values {
+            if let Some(value) = func_binding_return_value.value() {
+                if let Some(maybe_error) = value.get("error") {
+                    if let Some(error) = maybe_error.as_str() {
+                        return (WorkflowRunnerStatus::Failure, Some(error.to_string()));
+                    }
+                }
+            }
+        }
+        (WorkflowRunnerStatus::Success, None)
     }
 
     /// Upon a successful workflow runner "run" (within [`Self::run()`]), process the result

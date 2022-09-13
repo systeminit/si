@@ -31,7 +31,7 @@ export interface Result {
 export interface ResultSuccess extends Result {
   status: "success";
   executionId: string;
-  error?: never;
+  error?: string;
 }
 
 export interface ResultFailure extends Result {
