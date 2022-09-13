@@ -6,13 +6,12 @@ use thiserror::Error;
 use si_data::{NatsError, PgError};
 use telemetry::prelude::*;
 
-use crate::job::definition::Qualification;
 use crate::{
     func::FuncId,
     impl_standard_model, pk,
     standard_model::{self, objects_from_rows, TypeHint},
-    standard_model_accessor, Component, ComponentId, DalContext, HistoryEvent, HistoryEventError,
-    SchemaId, SchemaVariantId, StandardModel, StandardModelError, SystemId, Timestamp, Visibility,
+    standard_model_accessor, ComponentId, DalContext, HistoryEvent, HistoryEventError, SchemaId,
+    SchemaVariantId, StandardModel, StandardModelError, SystemId, Timestamp, Visibility,
     WriteTenancy,
 };
 
@@ -337,51 +336,14 @@ impl QualificationPrototype {
                 continue;
             }
 
-            let qualification_prototype = QualificationPrototype::new(
-                ctx,
-                *func_id,
-                QualificationPrototypeContext::new_for_context_field(*desired),
-            )
-            .await?;
-
-            let QualificationPrototype {
-                component_id,
-                schema_variant_id,
-                ..
-            } = &qualification_prototype;
-
-            if component_id.is_some() {
-                ctx.enqueue_job(
-                    Qualification::new(
-                        ctx,
-                        *component_id,
-                        *qualification_prototype.id(),
-                        SystemId::NONE,
-                    )
-                    .await
-                    .map_err(|err| QualificationPrototypeError::Component(err.to_string()))?,
+            new_protos.push(
+                QualificationPrototype::new(
+                    ctx,
+                    *func_id,
+                    QualificationPrototypeContext::new_for_context_field(*desired),
                 )
-                .await;
-            } else if schema_variant_id.is_some() {
-                for component in Component::list_for_schema_variant(ctx, *schema_variant_id)
-                    .await
-                    .map_err(|err| QualificationPrototypeError::Component(err.to_string()))?
-                {
-                    ctx.enqueue_job(
-                        Qualification::new(
-                            ctx,
-                            *component.id(),
-                            *qualification_prototype.id(),
-                            SystemId::NONE,
-                        )
-                        .await
-                        .map_err(|err| QualificationPrototypeError::Component(err.to_string()))?,
-                    )
-                    .await;
-                }
-            }
-
-            new_protos.push(qualification_prototype);
+                .await?,
+            );
         }
 
         Ok(new_protos)
@@ -399,7 +361,6 @@ impl QualificationPrototype {
         prototype_context_field_ids: &[T],
     ) -> QualificationPrototypeResult<Vec<Self>> {
         let mut existing_field_ids = vec![];
-
         let prototype_context_field_ids: Vec<QualificationPrototypeContextField> =
             prototype_context_field_ids
                 .iter()
@@ -422,27 +383,8 @@ impl QualificationPrototype {
                 continue;
             } else if component_id.is_some() {
                 existing_field_ids.push(component_id.into());
-                ctx.enqueue_job(
-                    Qualification::new(ctx, component_id, *proto.id(), SystemId::NONE)
-                        .await
-                        .map_err(|err| QualificationPrototypeError::Component(err.to_string()))?,
-                )
-                .await;
             } else if schema_variant_id.is_some() {
                 existing_field_ids.push(schema_variant_id.into());
-                for component in Component::list_for_schema_variant(ctx, schema_variant_id)
-                    .await
-                    .map_err(|err| QualificationPrototypeError::Component(err.to_string()))?
-                {
-                    ctx.enqueue_job(
-                        Qualification::new(ctx, *component.id(), *proto.id(), SystemId::NONE)
-                            .await
-                            .map_err(|err| {
-                                QualificationPrototypeError::Component(err.to_string())
-                            })?,
-                    )
-                    .await;
-                }
             }
         }
 

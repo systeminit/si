@@ -1,0 +1,109 @@
+use super::{FuncError, FuncResult};
+use crate::server::extract::{AccessBuilder, HandlerContext};
+use axum::Json;
+use dal::{
+    job::definition::Qualification, AttributePrototype, Component, DalContext, Func,
+    FuncBackendKind, FuncId, QualificationPrototype, QualificationPrototypeError, StandardModel,
+    SystemId, Visibility, WsEvent,
+};
+use serde::{Deserialize, Serialize};
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ExecFuncRequest {
+    pub id: FuncId,
+    #[serde(flatten)]
+    pub visibility: Visibility,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ExecFuncResponse {
+    pub success: bool,
+}
+
+async fn update_values_for_func(ctx: &DalContext<'_, '_, '_>, func: &Func) -> FuncResult<()> {
+    let prototypes = AttributePrototype::find_for_func(ctx, func.id()).await?;
+    for proto in prototypes {
+        for value in proto.attribute_values(ctx).await? {
+            let maybe_parent_value_id = value
+                .parent_attribute_value(ctx)
+                .await?
+                .map(|pav| *pav.id());
+
+            super::update_attribute_value_by_func_for_context(
+                ctx,
+                *value.id(),
+                maybe_parent_value_id,
+                func,
+                value.context,
+                false,
+            )
+            .await?;
+        }
+    }
+
+    Ok(())
+}
+
+async fn run_qualifications(ctx: &DalContext<'_, '_, '_>, func: &Func) -> FuncResult<()> {
+    for proto in QualificationPrototype::find_for_func(ctx, func.id()).await? {
+        let component_id = proto.component_id();
+        let schema_variant_id = proto.schema_variant_id();
+
+        if component_id.is_none() && schema_variant_id.is_none() {
+            continue;
+        }
+
+        if component_id.is_some() {
+            ctx.enqueue_job(
+                Qualification::new(ctx, component_id, *proto.id(), SystemId::NONE)
+                    .await
+                    .map_err(|err| QualificationPrototypeError::Component(err.to_string()))?,
+            )
+            .await;
+        } else if schema_variant_id.is_some() {
+            for component in Component::list_for_schema_variant(ctx, schema_variant_id)
+                .await
+                .map_err(|err| QualificationPrototypeError::Component(err.to_string()))?
+            {
+                ctx.enqueue_job(
+                    Qualification::new(ctx, *component.id(), *proto.id(), SystemId::NONE)
+                        .await
+                        .map_err(|err| QualificationPrototypeError::Component(err.to_string()))?,
+                )
+                .await;
+            }
+        }
+    }
+
+    Ok(())
+}
+
+pub async fn exec_func(
+    HandlerContext(builder, mut txns): HandlerContext,
+    AccessBuilder(request_ctx): AccessBuilder,
+    Json(request): Json<ExecFuncRequest>,
+) -> FuncResult<Json<ExecFuncResponse>> {
+    let txns = txns.start().await?;
+    let ctx = builder.build(request_ctx.build(request.visibility), &txns);
+
+    let func = Func::get_by_id(&ctx, &request.id)
+        .await?
+        .ok_or(FuncError::FuncNotFound)?;
+
+    match func.backend_kind() {
+        FuncBackendKind::JsQualification => {
+            run_qualifications(&ctx, &func).await?;
+        }
+        FuncBackendKind::JsAttribute => {
+            update_values_for_func(&ctx, &func).await?;
+        }
+        _ => {}
+    }
+
+    WsEvent::change_set_written(&ctx).publish(&ctx).await?;
+    txns.commit().await?;
+
+    Ok(Json(ExecFuncResponse { success: true }))
+}

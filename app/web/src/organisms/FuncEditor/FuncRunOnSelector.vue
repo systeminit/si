@@ -68,6 +68,7 @@ const addOptions = () => {
 
   emit("update:modelValue", newOptions);
   optionsState.value = [];
+  emit("change", newOptions);
 };
 
 const removeOption = (remove: Option) => {

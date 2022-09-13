@@ -11,21 +11,21 @@
         <TabPanel class="overflow-auto grow">
           <div class="w-full flex p-2 gap-1 border-b dark:border-neutral-600">
             <VButton
-              :disabled="!isDevMode && editingFunc.origFunc.isBuiltin"
+              :disabled="!isDevMode && editingFunc.isBuiltin"
               button-rank="primary"
               button-type="success"
               icon="save"
-              label="Save"
+              label="Execute"
               size="md"
-              @click="saveQualification"
+              @click="execFunc"
             />
 
             <VButton
-              :disabled="!isDevMode && editingFunc.origFunc.isBuiltin"
+              :disabled="!isDevMode && editingFunc.isBuiltin"
               button-rank="tertiary"
               button-type="neutral"
               icon="x"
-              label="Cancel"
+              label="Revert"
               size="sm"
             />
           </div>
@@ -38,34 +38,38 @@
               </h1>
               <SiTextBox
                 id="name"
-                v-model="editingFunc.modifiedFunc.name"
+                v-model="editingFunc.name"
                 title="Name"
                 required
                 placeholder="Type the name of this function here..."
-                :disabled="!isDevMode && editingFunc.origFunc.isBuiltin"
+                :disabled="!isDevMode && editingFunc.isBuiltin"
                 @blur="updateFunc"
               />
               <SiTextBox
                 id="handler"
-                v-model="editingFunc.modifiedFunc.handler"
+                v-model="editingFunc.handler"
                 title="Entrypoint"
                 required
                 placeholder="The name of the function that will be executed first..."
-                :disabled="!isDevMode && editingFunc.origFunc.isBuiltin"
+                :disabled="!isDevMode && editingFunc.isBuiltin"
                 @blur="updateFunc"
               />
               <SiTextBox
                 id="description"
-                v-model="editingFunc.modifiedFunc.description"
+                v-model="editingFunc.description"
                 placeholder="Provide a brief description of what this qualification validates here..."
                 title="Description"
                 text-area
-                :disabled="!isDevMode && editingFunc.origFunc.isBuiltin"
+                :disabled="!isDevMode && editingFunc.isBuiltin"
                 @blur="updateFunc"
               />
             </div>
           </SiCollapsible>
-          <SiCollapsible label="Run On" default-open>
+          <SiCollapsible
+            v-if="editingFunc.kind === 'JsQualification'"
+            label="Run On"
+            default-open
+          >
             <div class="p-3 flex flex-col gap-2">
               <h1 class="text-neutral-400 dark:text-neutral-300 text-sm">
                 Run this qualification on the selected components and component
@@ -80,7 +84,7 @@
                 v-model="selectedComponents"
                 thing-label="components"
                 :options="components"
-                :disabled="editingFunc.origFunc.isBuiltin"
+                :disabled="editingFunc.isBuiltin"
               />
               <h2
                 class="pt-4 text-neutral-700 type-bold-sm dark:text-neutral-50"
@@ -91,7 +95,8 @@
                 v-model="selectedVariants"
                 thing-label="schema variants"
                 :options="schemaVariants"
-                :disabled="editingFunc.origFunc.isBuiltin"
+                :disabled="editingFunc.isBuiltin"
+                @change="updateFunc"
               />
             </div>
           </SiCollapsible>
@@ -118,6 +123,7 @@ import { DiagramService } from "@/service/diagram";
 import { EditingFunc } from "@/observable/func";
 import { ComponentService } from "@/service/component";
 import VButton from "@/molecules/VButton.vue";
+import { FuncService } from "@/service/func";
 import { changeFunc, funcById, funcState, nullEditingFunc } from "./func_state";
 import FuncRunOnSelector from "./FuncRunOnSelector.vue";
 
@@ -171,25 +177,22 @@ watch([funcId, funcState], async ([currentFuncId]) => {
 
   selectedVariants.value = toOptionValues(
     schemaVariants.value,
-    editingFunc.value.modifiedFunc.schemaVariants ?? [],
+    editingFunc.value.schemaVariants ?? [],
   );
 
   selectedComponents.value =
-    toOptionValues(
-      components.value,
-      editingFunc.value.modifiedFunc.components,
-    ) ?? [];
+    toOptionValues(components.value, editingFunc.value.components) ?? [];
 });
 
 const updateFunc = () => {
-  changeFunc({ ...editingFunc.value.modifiedFunc });
-};
-
-const saveQualification = () => {
   changeFunc({
-    ...editingFunc.value.modifiedFunc,
+    ...editingFunc.value,
     components: selectedComponents.value.map(({ value }) => value as number),
     schemaVariants: selectedVariants.value.map(({ value }) => value as number),
   });
+};
+
+const execFunc = () => {
+  FuncService.execFunc({ id: editingFunc.value.id });
 };
 </script>

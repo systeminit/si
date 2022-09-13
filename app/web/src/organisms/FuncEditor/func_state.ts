@@ -5,38 +5,21 @@ import { SaveFuncRequest } from "@/service/func/save_func";
 import { GetFuncResponse } from "@/service/func/get_func";
 
 export const nullEditingFunc: EditingFunc = {
-  origFunc: {
-    id: 0,
-    handler: "",
-    kind: FuncBackendKind.Unset,
-    name: "",
-    code: "",
-    isBuiltin: false,
-    components: [],
-    schemaVariants: [],
-  },
-  modifiedFunc: {
-    id: 0,
-    handler: "",
-    kind: FuncBackendKind.Unset,
-    name: "",
-    code: "",
-    isBuiltin: false,
-    components: [],
-    schemaVariants: [],
-  },
   id: 0,
+  handler: "",
+  kind: FuncBackendKind.Unset,
+  name: "",
+  code: "",
+  isBuiltin: false,
+  components: [],
+  schemaVariants: [],
 };
 
 export const funcState = reactive<{ funcs: EditingFunc[] }>({ funcs: [] });
 
 export const insertFunc = (func: GetFuncResponse) => {
   if (!funcState.funcs.find((f) => f.id === func.id)) {
-    funcState.funcs.push({
-      origFunc: func,
-      modifiedFunc: func,
-      id: func.id,
-    });
+    funcState.funcs.push(func);
   }
 };
 
@@ -51,7 +34,7 @@ export const changeFunc = (func: GetFuncResponse) => {
   if (currentFuncIdx === -1) {
     return;
   }
-  funcState.funcs[currentFuncIdx].modifiedFunc = { ...func };
+  funcState.funcs[currentFuncIdx] = { ...func };
   saveFuncToBackend$.next(func as SaveFuncRequest);
 };
 

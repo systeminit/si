@@ -20,6 +20,7 @@ use dal::job::definition::DependentValuesUpdate;
 use thiserror::Error;
 
 pub mod create_func;
+pub mod exec_func;
 pub mod get_func;
 pub mod list_funcs;
 pub mod save_func;
@@ -218,4 +219,5 @@ pub fn routes() -> Router {
         .route("/get_func", get(get_func::get_func))
         .route("/create_func", post(create_func::create_func))
         .route("/save_func", post(save_func::save_func))
+        .route("/exec_func", post(exec_func::exec_func))
 }

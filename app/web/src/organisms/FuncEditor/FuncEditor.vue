@@ -56,11 +56,11 @@ const mountEditor = async () => {
       return;
     }
     const newCode = update.view.state.doc.toString();
-    changeFunc({ ...editingFunc.value.modifiedFunc, code: newCode });
+    changeFunc({ ...editingFunc.value, code: newCode });
   });
 
   const editorState = EditorState.create({
-    doc: editingFunc.value.modifiedFunc.code,
+    doc: editingFunc.value.code,
     extensions: [
       lintCompartment.of(linter(await lintSource)),
       lintGutter(),
@@ -70,9 +70,7 @@ const mountEditor = async () => {
       themeCompartment.of(codeMirrorTheme.value),
       keymap.of([indentWithTab]),
       readOnly.of(
-        EditorState.readOnly.of(
-          !isDevMode && editingFunc.value.origFunc.isBuiltin,
-        ),
+        EditorState.readOnly.of(!isDevMode && editingFunc.value.isBuiltin),
       ),
       updateListener,
       EditorView.lineWrapping,

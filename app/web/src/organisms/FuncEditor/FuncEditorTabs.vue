@@ -10,7 +10,7 @@
     @change="changeTab"
   >
     <template #tabs>
-      <SiTabHeader v-for="func in funcList" :key="func.id">
+      <SiTabHeader v-for="func in funcState.funcs" :key="func.id">
         {{ func.name }}
         <template #icon>
           <button
@@ -24,17 +24,17 @@
     </template>
     <template #dropdownitems>
       <SiDropdownItem
-        v-for="func in funcList"
+        v-for="func in funcState.funcs"
         :key="func.id"
-        :checked="findTabIndexForFunc(funcList, func) === selectedTab"
-        @select="changeTab(findTabIndexForFunc(funcList, func))"
+        :checked="findTabIndexForFunc(funcState.funcs, func) === selectedTab"
+        @select="changeTab(findTabIndexForFunc(funcState.funcs, func))"
       >
         {{ func.name }}
       </SiDropdownItem>
     </template>
     <template #panels>
       <TabPanel
-        v-for="func in funcList"
+        v-for="func in funcState.funcs"
         :key="func.id"
         class="h-full overflow-auto"
       >
@@ -79,18 +79,8 @@ const findTabIndexForFunc = (
   func: { id: number },
 ) => funcList.findIndex((fn) => fn.id === func.id);
 
-const funcList = computed(() =>
-  funcState.funcs.map(({ origFunc, modifiedFunc }) => ({
-    id: origFunc.id,
-    handler: modifiedFunc.handler,
-    name: modifiedFunc.name,
-    kind: modifiedFunc.kind,
-    isBuiltin: origFunc.isBuiltin,
-  })),
-);
-
 const selectedTab = computed(() =>
-  findTabIndexForFunc(funcList.value, { id: selectedFuncId.value }),
+  findTabIndexForFunc(funcState.funcs, { id: selectedFuncId.value }),
 );
 
 const changeTab = (index: number) => {
@@ -98,11 +88,11 @@ const changeTab = (index: number) => {
     index = 0;
   }
 
-  if (index > funcList.value.length - 1) {
+  if (index > funcState.funcs.length - 1) {
     index--;
   }
-  if (funcList.value.length) {
-    selectFunc(funcList.value[index]);
+  if (funcState.funcs.length) {
+    selectFunc(funcState.funcs[index]);
   } else {
     selectFunc(nullListFunc);
   }
@@ -111,7 +101,7 @@ const changeTab = (index: number) => {
 const tabGroupRerenderKey = ref(0);
 
 const closeFunc = (func: ListedFuncView) => {
-  const funcTab = findTabIndexForFunc(funcList.value, func);
+  const funcTab = findTabIndexForFunc(funcState.funcs, func);
   const currentTab = selectedTab.value;
   removeFunc(func);
   if (funcTab === currentTab) {
@@ -125,7 +115,7 @@ selectedFuncId$
     switchMap((selectedFuncId) => {
       const existingFunc = funcById(selectedFuncId);
       return existingFunc
-        ? of({ ...existingFunc.origFunc })
+        ? of({ ...existingFunc })
         : FuncService.getFunc({ id: selectedFuncId }).pipe(take(1));
     }),
   )
