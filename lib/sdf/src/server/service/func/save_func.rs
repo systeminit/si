@@ -2,9 +2,9 @@ use super::{FuncError, FuncResult};
 use crate::server::extract::{AccessBuilder, HandlerContext};
 use axum::Json;
 use dal::{
-    qualification_prototype::QualificationPrototypeContextField, AttributePrototype, ComponentId,
-    DalContext, Func, FuncBackendKind, FuncId, QualificationPrototype, SchemaVariantId,
-    StandardModel, Visibility, WsEvent,
+    qualification_prototype::QualificationPrototypeContextField, ComponentId, Func,
+    FuncBackendKind, FuncId, QualificationPrototype, SchemaVariantId, StandardModel, Visibility,
+    WsEvent,
 };
 use serde::{Deserialize, Serialize};
 
@@ -26,30 +26,6 @@ pub struct SaveFuncRequest {
 #[serde(rename_all = "camelCase")]
 pub struct SaveFuncResponse {
     pub success: bool,
-}
-
-async fn update_values_for_func(ctx: &DalContext<'_, '_, '_>, func: &Func) -> FuncResult<()> {
-    let prototypes = AttributePrototype::find_for_func(ctx, func.id()).await?;
-    for proto in prototypes {
-        for value in proto.attribute_values(ctx).await? {
-            let maybe_parent_value_id = value
-                .parent_attribute_value(ctx)
-                .await?
-                .map(|pav| *pav.id());
-
-            super::update_attribute_value_by_func_for_context(
-                ctx,
-                *value.id(),
-                maybe_parent_value_id,
-                func,
-                value.context,
-                false,
-            )
-            .await?;
-        }
-    }
-
-    Ok(())
 }
 
 pub async fn save_func(
@@ -99,9 +75,8 @@ pub async fn save_func(
                 .await?;
             }
         }
-        // Rexecute the function for every prototype it is defined on
         FuncBackendKind::JsAttribute => {
-            update_values_for_func(&ctx, &func).await?;
+            // here we need to update the attribute prototypes based on the chosen props and contexts
         }
         _ => {}
     }

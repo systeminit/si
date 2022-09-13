@@ -15,9 +15,9 @@
               button-rank="primary"
               button-type="success"
               icon="save"
-              label="Save"
+              label="Execute"
               size="md"
-              @click="saveQualification"
+              @click="execFunc"
             />
 
             <VButton
@@ -25,7 +25,7 @@
               button-rank="tertiary"
               button-type="neutral"
               icon="x"
-              label="Cancel"
+              label="Revert"
               size="sm"
             />
           </div>
@@ -65,7 +65,11 @@
               />
             </div>
           </SiCollapsible>
-          <SiCollapsible label="Run On" default-open>
+          <SiCollapsible
+            v-if="editingFunc.kind === 'JsQualification'"
+            label="Run On"
+            default-open
+          >
             <div class="p-3 flex flex-col gap-2">
               <h1 class="text-neutral-400 dark:text-neutral-300 text-sm">
                 Run this qualification on the selected components and component
@@ -92,6 +96,7 @@
                 thing-label="schema variants"
                 :options="schemaVariants"
                 :disabled="editingFunc.isBuiltin"
+                @change="updateFunc"
               />
             </div>
           </SiCollapsible>
@@ -118,6 +123,7 @@ import { DiagramService } from "@/service/diagram";
 import { EditingFunc } from "@/observable/func";
 import { ComponentService } from "@/service/component";
 import VButton from "@/molecules/VButton.vue";
+import { FuncService } from "@/service/func";
 import { changeFunc, funcById, funcState, nullEditingFunc } from "./func_state";
 import FuncRunOnSelector from "./FuncRunOnSelector.vue";
 
@@ -179,14 +185,14 @@ watch([funcId, funcState], async ([currentFuncId]) => {
 });
 
 const updateFunc = () => {
-  changeFunc({ ...editingFunc.value });
-};
-
-const saveQualification = () => {
   changeFunc({
     ...editingFunc.value,
     components: selectedComponents.value.map(({ value }) => value as number),
     schemaVariants: selectedVariants.value.map(({ value }) => value as number),
   });
+};
+
+const execFunc = () => {
+  FuncService.execFunc({ id: editingFunc.value.id });
 };
 </script>
