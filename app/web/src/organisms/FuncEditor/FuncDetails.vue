@@ -11,7 +11,7 @@
         <TabPanel class="overflow-auto grow">
           <div class="w-full flex p-2 gap-1 border-b dark:border-neutral-600">
             <VButton
-              :disabled="!isDevMode && editingFunc.origFunc.isBuiltin"
+              :disabled="!isDevMode && editingFunc.isBuiltin"
               button-rank="primary"
               button-type="success"
               icon="save"
@@ -21,7 +21,7 @@
             />
 
             <VButton
-              :disabled="!isDevMode && editingFunc.origFunc.isBuiltin"
+              :disabled="!isDevMode && editingFunc.isBuiltin"
               button-rank="tertiary"
               button-type="neutral"
               icon="x"
@@ -38,29 +38,29 @@
               </h1>
               <SiTextBox
                 id="name"
-                v-model="editingFunc.modifiedFunc.name"
+                v-model="editingFunc.name"
                 title="Name"
                 required
                 placeholder="Type the name of this function here..."
-                :disabled="!isDevMode && editingFunc.origFunc.isBuiltin"
+                :disabled="!isDevMode && editingFunc.isBuiltin"
                 @blur="updateFunc"
               />
               <SiTextBox
                 id="handler"
-                v-model="editingFunc.modifiedFunc.handler"
+                v-model="editingFunc.handler"
                 title="Entrypoint"
                 required
                 placeholder="The name of the function that will be executed first..."
-                :disabled="!isDevMode && editingFunc.origFunc.isBuiltin"
+                :disabled="!isDevMode && editingFunc.isBuiltin"
                 @blur="updateFunc"
               />
               <SiTextBox
                 id="description"
-                v-model="editingFunc.modifiedFunc.description"
+                v-model="editingFunc.description"
                 placeholder="Provide a brief description of what this qualification validates here..."
                 title="Description"
                 text-area
-                :disabled="!isDevMode && editingFunc.origFunc.isBuiltin"
+                :disabled="!isDevMode && editingFunc.isBuiltin"
                 @blur="updateFunc"
               />
             </div>
@@ -80,7 +80,7 @@
                 v-model="selectedComponents"
                 thing-label="components"
                 :options="components"
-                :disabled="editingFunc.origFunc.isBuiltin"
+                :disabled="editingFunc.isBuiltin"
               />
               <h2
                 class="pt-4 text-neutral-700 type-bold-sm dark:text-neutral-50"
@@ -91,7 +91,7 @@
                 v-model="selectedVariants"
                 thing-label="schema variants"
                 :options="schemaVariants"
-                :disabled="editingFunc.origFunc.isBuiltin"
+                :disabled="editingFunc.isBuiltin"
               />
             </div>
           </SiCollapsible>
@@ -171,23 +171,20 @@ watch([funcId, funcState], async ([currentFuncId]) => {
 
   selectedVariants.value = toOptionValues(
     schemaVariants.value,
-    editingFunc.value.modifiedFunc.schemaVariants ?? [],
+    editingFunc.value.schemaVariants ?? [],
   );
 
   selectedComponents.value =
-    toOptionValues(
-      components.value,
-      editingFunc.value.modifiedFunc.components,
-    ) ?? [];
+    toOptionValues(components.value, editingFunc.value.components) ?? [];
 });
 
 const updateFunc = () => {
-  changeFunc({ ...editingFunc.value.modifiedFunc });
+  changeFunc({ ...editingFunc.value });
 };
 
 const saveQualification = () => {
   changeFunc({
-    ...editingFunc.value.modifiedFunc,
+    ...editingFunc.value,
     components: selectedComponents.value.map(({ value }) => value as number),
     schemaVariants: selectedVariants.value.map(({ value }) => value as number),
   });
