@@ -3,11 +3,10 @@ use si_data::{NatsError, PgError};
 use std::default::Default;
 use telemetry::prelude::*;
 use thiserror::Error;
-use veritech::{FunctionResult, FunctionResultFailure};
 
-use crate::func::execution;
 use crate::workflow_runner::workflow_runner_state::WorkflowRunnerState;
 use crate::workflow_runner::workflow_runner_state::WorkflowRunnerStatus;
+use crate::DalContext;
 use crate::{
     func::binding_return_value::{FuncBindingReturnValue, FuncBindingReturnValueError},
     func::execution::{FuncExecution, FuncExecutionError},
@@ -20,7 +19,6 @@ use crate::{
     WorkflowPrototypeId, WorkflowResolverError, WorkflowResolverId, WriteTenancy, WsEvent,
     WsEventError, WsPayload,
 };
-use crate::{DalContext, FuncBackendError};
 
 pub mod workflow_runner_state;
 
