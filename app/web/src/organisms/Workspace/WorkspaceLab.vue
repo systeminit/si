@@ -111,6 +111,7 @@ const createFunc = async ({
 
 visibility$.subscribe(() => {
   clearFuncs();
+  routeToFunc(); // route to no func
 });
 
 saveFuncToBackend$
