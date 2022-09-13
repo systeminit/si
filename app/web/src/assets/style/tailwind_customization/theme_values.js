@@ -1,3 +1,4 @@
+// TODO: set up nice way to keep these values synced with less vars
 const colors = require("./colors.json");
 
 const height = {
@@ -7,14 +8,27 @@ const height = {
   xl: "48px",
 };
 
+// picked these values with a little help from
+// https://css-tricks.com/optimizing-large-scale-displays/
 const screens = {
-  sm: "640px",
-  md: "768px",
-  lg: "1024px",
-  xl: "1280px",
+  // everything smaller is considered "mobile"
+  tablet: "768px", // smaller laptops may also fall into this group
+  desktop: "1366px", // size of 13" mac laptop
+  wide: "1920px", // large-ish screen
+  huge: "2560px", // 27" hi res monitors
 };
 
 const spacing = {
+  // named spacing scale, hopefully can help reduce the number of variations being used?
+  none: "0",
+  "2xs": `${4 / 16}rem`, // tw 1
+  xs: `${8 / 16}rem`, // tw 2
+  sm: `${16 / 16}rem`, // tw 4
+  md: `${24 / 16}rem`, // tw 6
+  lg: `${36 / 16}rem`, // tw 8
+  xl: `${64 / 16}rem`, // tw 16
+  "2xl": `${96 / 16}rem`, // tw 24
+
   13: "3.25rem",
   14: "3.5rem",
   52: "13rem",

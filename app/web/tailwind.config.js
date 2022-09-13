@@ -1,15 +1,26 @@
 const formsPlugin = require("@tailwindcss/forms");
 const colors = require("tailwindcss/colors");
+const capsizePlugin = require("tailwindcss-capsize");
 const themeValues = require("./src/assets/style/tailwind_customization/theme_values.js");
 const typographyPlugin = require("./src/assets/style/tailwind_customization/typography_plugin.js");
 
 module.exports = {
   darkMode: "class",
-  content: ["./src/**/*.html", "./src/**/*.vue"],
+  content: ["./src/**/*.vue"],
   theme: {
     fontFamily: {
-      sans: ["Inter", "Sans-serif"],
+      sans: ["Inter", "sans-serif"],
       commodore: ["commodore", "Sans-serif"],
+    },
+    fontMetrics: {
+      sans: {
+        capHeight: 2048,
+        ascent: 2728,
+        descent: -680,
+        lineGap: 0,
+        unitsPerEm: 2816,
+        xHeight: 1536,
+      },
     },
     colors: {
       transparent: "transparent",
@@ -31,6 +42,8 @@ module.exports = {
       maxHeight: themeValues.maxHeight,
       zIndex: themeValues.zIndex,
       width: themeValues.width,
+      // TODO: change from extends to override once we remove references to those sizes
+      screens: themeValues.screens,
     },
   },
   variants: {
@@ -41,5 +54,5 @@ module.exports = {
       opacity: ["disabled"],
     },
   },
-  plugins: [formsPlugin, typographyPlugin],
+  plugins: [capsizePlugin, formsPlugin, typographyPlugin],
 };

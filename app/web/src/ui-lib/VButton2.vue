@@ -1,0 +1,418 @@
+<template>
+  <component
+    :is="htmlTagOrComponentType"
+    class="vbutton"
+    :class="computedClasses"
+    v-bind="dynamicAttrs"
+    @click="clickHandler"
+  >
+    <div class="vbutton__inner">
+      <template v-if="computedLoading">
+        <Icon class="vbutton__icon" name="loader" />
+        <span class="vbutton__text"> {{ loadingText }}</span>
+      </template>
+      <template v-else-if="showSuccess">
+        <Icon class="vbutton__icon" name="check" />
+        <span class="vbutton__text">
+          <slot name="success">{{ successText }}</slot>
+        </span>
+      </template>
+
+      <template v-else>
+        <Icon v-if="icon" class="vbutton__icon" :name="icon" />
+        <span class="vbutton__text">
+          <slot v-if="confirmClick && confirmFirstClickAt" name="confirm-click">
+            |
+            {{
+              confirmClick === true
+                ? "You sure? Click again to confirm"
+                : confirmClick
+            }}
+          </slot>
+          <slot v-else />
+        </span>
+        <Icon v-if="iconRight" class="vbutton__icon" :name="iconRight" />
+      </template>
+    </div>
+  </component>
+</template>
+
+<script lang="ts" setup>
+import { ref, computed, onBeforeUnmount } from "vue";
+import { RouterLink } from "vue-router";
+import _ from "lodash";
+
+import Icon, { IconNames } from "@/ui-lib/Icon.vue";
+// import type { ApiRequestStatus } from "@/utils/pinia-api-tools";
+import type { PropType } from "vue";
+
+const SHOW_SUCCESS_DELAY = 2000;
+
+type ButtonSizes = "xs" | "sm" | "md" | "lg" | "xl";
+type ButtonVariants = "solid" | "ghost" | "soft" | "transparent";
+type ButtonTones =
+  | "action"
+  | "destructive"
+  | "success"
+  | "warning"
+  | "neutral"
+  | "shade";
+
+const props = defineProps({
+  size: { type: String as PropType<ButtonSizes>, default: "md" },
+
+  variant: { type: String as PropType<ButtonVariants>, default: "solid" },
+  tone: { type: String as PropType<ButtonTones>, default: "action" },
+
+  icon: String as PropType<IconNames>,
+  iconRight: String as PropType<IconNames>,
+  href: String,
+  linkToNamedRoute: String,
+  linkTo: [String, Object],
+  target: String,
+
+  disabled: Boolean,
+  loading: Boolean,
+  loadingText: { type: String, default: "Loading..." },
+
+  // requestStatus: {
+  //   type: [Boolean, Object] as PropType<false | ApiRequestStatus>, // can be false if passing 'someCondition && status'
+  // },
+
+  clickSuccess: { type: Boolean },
+  successText: { type: String, default: "Success!" },
+
+  confirmClick: { type: [Boolean, String] },
+
+  submit: { type: Boolean },
+
+  rounded: { type: Boolean },
+});
+
+const emit = defineEmits(["click"]);
+
+const htmlTagOrComponentType = computed(() => {
+  if (props.href) return "a";
+  if (props.linkTo || props.linkToNamedRoute) return RouterLink;
+  return "button";
+});
+const htmlButtonType = computed(() => {
+  if (htmlTagOrComponentType.value !== "button") return undefined;
+  if (props.submit) return "submit";
+  return "button";
+});
+
+// loading status can be passed in via loading prop or from requestStatus
+const computedLoading = computed(
+  () => props.loading || !!_.get(props, "requestStatus.isPending"),
+);
+
+// we use an object to do some dynamic bindings so we don't attach props that are not needed
+const dynamicAttrs = computed(() => {
+  return {
+    // set the "to" prop if we are in router link mode
+    ...(htmlTagOrComponentType.value === RouterLink && {
+      to: props.linkToNamedRoute
+        ? { name: props.linkToNamedRoute }
+        : props.linkTo,
+    }),
+
+    // if we set href to undefined when in RouterLink mode, it doesn't set it properly
+    ...(htmlTagOrComponentType.value === "a" && {
+      href: props.href,
+    }),
+
+    // set the target when its a link/router link
+    ...((htmlTagOrComponentType.value === RouterLink ||
+      (htmlTagOrComponentType.value === "a" && props.target)) && {
+      target: props.target,
+    }),
+
+    ...(htmlButtonType.value && {
+      type: htmlButtonType.value,
+    }),
+  };
+});
+
+// watch request status and show a success message for a short time when request goes through
+const showSuccess = ref(false);
+
+// watch(
+//   () => props.requestStatus,
+//   (newStatus, oldStatus, onInvalidate) => {
+//     // TODO: look over the reactivity / types here...
+
+//     // status object can change without values changing if using a keyed request status with a /*
+//     // that returns an object of keyed statuses
+//     if (_.isEqual(newStatus, oldStatus)) return;
+//     if (!newStatus) return;
+
+//     // toggle button to show a success message for a short period
+//     if (newStatus.isSuccess && props.successText) {
+//       showSuccess.value = true;
+//       const timeout = setTimeout(() => {
+//         showSuccess.value = false;
+//       }, SHOW_SUCCESS_DELAY);
+//       onInvalidate(() => clearTimeout(timeout));
+//     }
+//   },
+//   { deep: true },
+// );
+
+// confirm click functionality -- requires the user to click twice to confirm
+// can be a nicer lightweight alternative to a modal
+const confirmFirstClickAt = ref<Date | null>(null);
+let confirmClickTimeout: Timeout;
+let successClickTimeout: Timeout;
+function clickHandler() {
+  if (props.confirmClick) {
+    if (confirmFirstClickAt.value) {
+      // check if the 2 clicks are super close together and ignore if they are
+      // this is to help ignore some users who always double click everything
+      if (+new Date() - +confirmFirstClickAt.value < 300) {
+        return;
+      }
+
+      confirmFirstClickAt.value = null;
+      clearTimeout(confirmClickTimeout);
+      emit("click");
+    } else {
+      confirmFirstClickAt.value = new Date();
+      confirmClickTimeout = setTimeout(() => {
+        confirmFirstClickAt.value = null;
+      }, 3000);
+    }
+  } else {
+    if (props.clickSuccess) {
+      showSuccess.value = true;
+      successClickTimeout = setTimeout(() => {
+        showSuccess.value = false;
+      }, SHOW_SUCCESS_DELAY);
+    }
+
+    emit("click");
+  }
+}
+
+onBeforeUnmount(() => {
+  if (successClickTimeout) clearTimeout(successClickTimeout);
+});
+
+const computedClasses = computed(() => ({
+  "--disabled": !!props.disabled,
+  "--loading": !!computedLoading.value,
+  ...(props.variant && { [`--variant-${props.variant}`]: true }),
+  ...(props.size && { [`--size-${props.size}`]: true }),
+  ...(props.tone && { [`--tone-${props.tone}`]: true }),
+  "--rounded": !!props.rounded,
+}));
+</script>
+
+<style lang="less">
+.vbutton {
+  display: inline-block;
+  vertical-align: middle;
+  border-radius: 3px;
+  border-style: solid;
+  border-width: 1px;
+  border-color: rgba(0, 0, 0, 0);
+  // margin-right: 4px;
+  // margin-bottom: 1px;
+  font-size: 16px;
+  // font-family: @fancy-font;
+  // text-transform: uppercase;
+  text-decoration: none;
+  font-weight: bold;
+  text-align: center;
+  text-shadow: none;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.25s;
+  transition-property: color, border-color, background-color;
+  position: relative;
+  z-index: 2;
+  // border-color: rgba(0,0,0,0) !important;
+  // background-color: rgba(0,0,0,0) !important;
+
+  > * {
+    pointer-events: none;
+  }
+
+  .vbutton__inner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    z-index: 2;
+    gap: 8px;
+  }
+  .vbutton__text {
+    line-height: 24px;
+    &:empty {
+      display: none;
+    }
+  }
+  .vbutton__icon {
+    flex-grow: 0;
+    flex-shrink: 0;
+  }
+
+  // &:focus {
+  // }
+  // &:hover {
+  // }
+
+  // Size options (medium is default)
+  &.--size-xs {
+    font-size: 12px;
+    padding: 2px 2px;
+    // border-radius: 8px;
+    .vbutton__icon {
+      padding: 4px;
+    }
+    .vbutton__inner {
+      gap: 4px;
+    }
+    .vbutton__text {
+      padding: 0 8px;
+    }
+  }
+  &.--size-sm {
+    font-size: 14px;
+    padding: 6px 8px;
+    .vbutton__icon {
+      padding: 4px;
+    }
+  }
+
+  &.--size-md {
+    padding: 6px 16px;
+    .vbutton__icon {
+      width: 24px;
+      height: 24px;
+    }
+  }
+
+  &.--size-lg {
+    padding: 14px 24px;
+    border-width: 2px;
+    font-size: 18px;
+    .vbutton__icon {
+      width: 32px;
+      height: 32px;
+      margin-top: -4px; // to keep the icon size 24x24
+      margin-bottom: -4px;
+    }
+  }
+
+  &.--size-xl {
+    max-width: 100%;
+    font-size: 20px;
+    padding: 22px 36px;
+    border-width: 2px;
+    .vbutton__inner {
+      gap: 16px;
+    }
+    .vbutton__icon {
+      width: 40px;
+      height: 40px;
+      margin-top: -8px; // to keep the icon size 24x24
+      margin-bottom: -8px;
+    }
+  }
+
+  &.--disabled,
+  &.--loading {
+    pointer-events: none;
+    opacity: 0.4;
+    // cannot change cursor since pointer events are disabled
+  }
+
+  &:active {
+    transform: scale3d(0.95, 0.95, 1);
+  }
+
+  // Set up theme helpers so we can quickly add new color themes
+  .button-theme-generator(@color) {
+    &.--variant-solid {
+      background-color: @color;
+      color: contrast(
+        @color
+      ); // sets legible text color based on the background color
+
+      // set hover to either lighten or darken depending on if color is bright or dark
+      &:hover when (lightness(@color) > 50%) {
+        background: darken(@color, 10%);
+      }
+      &:hover when (lightness(@color) < 50%) {
+        background: lighten(@color, 10%);
+      }
+    }
+    &.--variant-ghost {
+      color: @color;
+      border-color: @color;
+      background-color: fade(@color, 0);
+      &:hover {
+        background-color: fade(@color, 15);
+      }
+      &:active {
+        background-color: fade(@color, 20);
+      }
+    }
+    &.--variant-soft {
+      color: @color;
+      background: fade(@color, 15);
+      &:hover {
+        background: fade(@color, 20);
+      }
+      &:active {
+        background: fade(@color, 25);
+      }
+    }
+    &.--variant-transparent {
+      color: @color;
+      background: fade(@color, 0);
+      &:hover {
+        background: fade(@color, 15);
+      }
+      &:active {
+        background: fade(@color, 25);
+      }
+    }
+  }
+  .create-transparent-button-theme(@color, @alpha: 0) {
+    border-color: @color;
+    background: fade(@color, @alpha);
+    color: @color !important;
+
+    &:hover {
+      background: fade(@color, 10);
+      border-color: @color;
+    }
+  }
+
+  &.--tone-action {
+    .button-theme-generator(@colors-action-400);
+  }
+  &.--tone-destructive {
+    .button-theme-generator(@colors-destructive-500);
+  }
+  &.--tone-success {
+    .button-theme-generator(@colors-success-500);
+  }
+  &.--tone-warning {
+    .button-theme-generator(@colors-warning-500);
+  }
+  &.--tone-neutral {
+    .button-theme-generator(@colors-neutral-500);
+  }
+  &.--tone-shade {
+    .button-theme-generator(@colors-black);
+  }
+
+  &.--rounded {
+    border-radius: 9999px;
+  }
+}
+</style>

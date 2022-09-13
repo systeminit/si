@@ -1,23 +1,29 @@
 <template>
-  <div id="app-layout" :class="classes">
+  <!-- this div/id is used as the attaching point for FloatingVue (tooltips) -->
+  <div
+    id="app-layout"
+    :class="
+      clsx(
+        'flex flex-col w-full bg-black',
+        pageMode === 'fullscreen' && 'overflow-hidden h-screen select-none',
+        pageMode === 'scroll' && 'items-center justify-center min-h-screen',
+        pageMode === 'modal' &&
+          'items-center justify-center min-h-screen p-4 sm:p-12 flex flex-col',
+      )
+    "
+  >
     <slot />
   </div>
 </template>
 
 <script lang="ts" setup>
-import { computed, PropType } from "vue";
+import clsx from "clsx";
+import { PropType } from "vue";
 
 const props = defineProps({
   pageMode: {
-    type: String as PropType<"scroll" | "fullscreen">,
+    type: String as PropType<"scroll" | "fullscreen" | "modal">,
     default: "fullscreen",
   },
-});
-
-const classes = computed(() => {
-  if (props.pageMode === "fullscreen") {
-    return "overflow-hidden flex flex-col w-full h-screen select-none";
-  }
-  return "flex flex-col items-center justify-center min-h-screen w-full bg-shade-100";
 });
 </script>

@@ -5,7 +5,7 @@
     >
       <Icon
         :name="open ? 'chevron--up' : 'chevron--down'"
-        size="s"
+        size="sm"
         class="mr-1.5 dark:text-white flex-shrink-0 block"
       />
 
