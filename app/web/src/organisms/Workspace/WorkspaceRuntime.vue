@@ -12,7 +12,7 @@
       />
     </SiPanel>
     <div
-      class="grow overflow-hidden h-full dark:bg-neutral-800 dark:text-white text-lg font-semi-bold px-2 pt-2 flex flex-col"
+      class="grow overflow-hidden h-full bg-shade-0 dark:bg-neutral-800 dark:text-shade-0 text-lg font-semi-bold px-2 pt-2 flex flex-col"
     >
       <WorkflowResolver v-if="selected" :selected-id="selected.id">
         <template #runButton>
@@ -39,15 +39,24 @@
       side="right"
       size-classes="w-96 flex-none"
     >
-      <div class="p-2 w-full h-full overflow-hidden">
-        <WorkflowOutput
-          v-if="logs"
-          :logs="logs"
-          :status="currentWorkflowStatus"
-        />
-        <div v-else class="p-2 text-neutral-400 dark:text-neutral-300">
-          When you run a workflow, it's output will display here.
-        </div>
+      <SiTabGroup v-if="logs" :selected-index="0">
+        <template #tabs>
+          <SiTabHeader>Output</SiTabHeader>
+          <SiTabHeader>Resources</SiTabHeader>
+        </template>
+        <template #panels>
+          <TabPanel class="px-2 py-2 overflow-auto">
+            <WorkflowOutput :logs="logs" :status="currentWorkflowStatus" />
+          </TabPanel>
+        </template>
+      </SiTabGroup>
+
+      <div v-else class="p-4 text-neutral-400 dark:text-neutral-300">
+        {{
+          selected
+            ? `When you run ${selected.title}, the output will display here.`
+            : "When you run a workflow, the output will display here."
+        }}
       </div>
     </SiPanel>
   </div>
@@ -56,6 +65,7 @@
 <script lang="ts" setup>
 import { ref } from "vue";
 import { refFrom, untilUnmounted } from "vuse-rx";
+import { TabPanel } from "@headlessui/vue";
 import WorkflowPicker from "@/organisms/WorkflowRunner/WorkflowPicker.vue";
 import WorkflowResolver from "@/organisms/WorkflowRunner/WorkflowResolver.vue";
 import { WorkflowService } from "@/service/workflow";
@@ -67,6 +77,8 @@ import {
 import VButton from "@/molecules/VButton.vue";
 import SiPanel from "@/atoms/SiPanel.vue";
 import { WorkflowStatus } from "@/molecules/WorkflowStatusIcon.vue";
+import SiTabGroup from "@/molecules/SiTabGroup.vue";
+import SiTabHeader from "@/molecules/SiTabHeader.vue";
 import WorkflowOutput from "../WorkflowRunner/WorkflowOutput.vue";
 
 const selected = ref<ListedWorkflowView | null>(null);

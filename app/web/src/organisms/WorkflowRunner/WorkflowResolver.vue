@@ -3,6 +3,7 @@
     :code="workflowTree?.json ?? '// Resolving Workflow'"
     code-language="json"
     title-classes="h-12"
+    border
   >
     <template #title>
       <div class="text-lg ml-4 whitespace-nowrap text-ellipsis overflow-hidden">

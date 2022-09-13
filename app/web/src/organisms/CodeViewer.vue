@@ -18,7 +18,10 @@
         <slot name="actionButtons"></slot>
       </div>
     </div>
-    <div class="w-full h-full overflow-auto">
+    <div
+      class="w-full h-full overflow-auto"
+      :class="border ? 'border border-neutral-300 dark:border-neutral-600' : ''"
+    >
       <div
         ref="editorMountRef"
         class="w-full h-full overflow-auto"
@@ -68,6 +71,7 @@ const props = defineProps({
   height: { type: String },
   forceTheme: { type: String as PropType<ThemeValue> },
   titleClasses: { type: String, default: "h-10" },
+  border: { type: Boolean, default: false },
 });
 
 const editorMountRef = ref();

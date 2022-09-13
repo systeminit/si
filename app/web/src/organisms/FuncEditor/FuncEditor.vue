@@ -2,7 +2,12 @@
   <div
     class="w-full h-full border-neutral-300 dark:border-neutral-600 border-x p-2"
   >
-    <div ref="editorMount" @keyup.stop @keydown.stop />
+    <div
+      ref="editorMount"
+      class="border border-neutral-300 dark:border-neutral-600"
+      @keyup.stop
+      @keydown.stop
+    />
   </div>
 </template>
 
