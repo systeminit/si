@@ -13,7 +13,7 @@ import Divider from "./Divider.vue";
 import type { PropType } from "vue";
 
 const propsDefinition = {
-  ...responsiveSpacingProps("s"),
+  ...responsiveSpacingProps("sm"),
   tagName: { type: String as PropType<"div" | "section">, default: "div" },
   dividers: Boolean,
 };
@@ -29,6 +29,7 @@ const Stack = (
     [`--spacing-${props.spacingTablet}-tablet`]: !!props.spacingTablet,
     [`--spacing-${props.spacingDesktop}-desktop`]: !!props.spacingDesktop,
     [`--spacing-${props.spacingWide}-wide`]: !!props.spacingWide,
+    [`--spacing-${props.spacingHuge}-huge`]: !!props.spacingHuge,
   };
 
   const wrappedChildren = [] as VNode[];

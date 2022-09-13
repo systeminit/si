@@ -1,12 +1,12 @@
 <template>
   <div
     :class="
-      clsx('bg-neutral-900 p-l shadow text-white', rounded && 'rounded-sm')
+      clsx('bg-neutral-900 p-lg shadow text-white', rounded && 'rounded-sm')
     "
   >
     <slot />
 
-    <hr v-if="$slots.footer" class="border border-shade-100 -mx-l my-l" />
+    <hr v-if="$slots.footer" class="border border-shade-100 -mx-lg my-lg" />
     <slot name="footer" />
   </div>
 </template>

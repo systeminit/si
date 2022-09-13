@@ -2,18 +2,18 @@ import { Comment, DefineComponent, Fragment, PropType, Slot, VNode } from "vue";
 import _ from "lodash";
 
 export type BreakpointNames = "mobile" | "tablet" | "desktop" | "wide" | "huge";
-export type BreakpointNamesWithoutMobile = Exclude<BreakpointNames, "mobile">;
+export type BreakpointNamesWithoutSmallest = Exclude<BreakpointNames, "mobile">;
 export type BreakpointNamesWithoutLargest = Exclude<BreakpointNames, "huge">;
 
 export type SpacingSizes =
   | "none"
-  | "xxs"
+  | "2xs"
   | "xs"
-  | "s"
-  | "m"
-  | "l"
+  | "sm"
+  | "md"
+  | "lg"
   | "xl"
-  | "xxl";
+  | "2xl";
 
 // TODO: maybe there is a way to get these objects generated with a helper rather than manually creating them?
 // I tried with no luck... Not a huge deal to define manually
@@ -70,17 +70,9 @@ export const responsiveNumColumnsProps = {
   columnsHuge: { type: String as PropType<NumColumnsValues> },
 };
 
-export type HeadingTextSizes =
-  | "xxs"
-  | "xs"
-  | "s"
-  | "m"
-  | "m2"
-  | "l"
-  | "xl"
-  | "xxl";
+export type HeadingTextSizes = "2xs" | "xs" | "sm" | "md" | "lg" | "xl" | "2xl";
 export const responsiveTextSizeProps = {
-  size: { type: String as PropType<HeadingTextSizes>, default: "m" },
+  size: { type: String as PropType<HeadingTextSizes>, default: "md" },
   sizeMobile: { type: String as PropType<HeadingTextSizes> },
   sizeTablet: { type: String as PropType<HeadingTextSizes> },
   sizeDesktop: { type: String as PropType<HeadingTextSizes> },

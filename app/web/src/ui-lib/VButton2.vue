@@ -48,7 +48,7 @@ import type { PropType } from "vue";
 
 const SHOW_SUCCESS_DELAY = 2000;
 
-type ButtonSizes = "xs" | "s" | "m" | "l" | "xl";
+type ButtonSizes = "xs" | "sm" | "md" | "lg" | "xl";
 type ButtonVariants = "solid" | "ghost" | "soft" | "transparent";
 type ButtonTones =
   | "action"
@@ -59,7 +59,7 @@ type ButtonTones =
   | "shade";
 
 const props = defineProps({
-  size: { type: String as PropType<ButtonSizes>, default: "m" },
+  size: { type: String as PropType<ButtonSizes>, default: "md" },
 
   variant: { type: String as PropType<ButtonVariants>, default: "solid" },
   tone: { type: String as PropType<ButtonTones>, default: "action" },
@@ -278,7 +278,7 @@ const computedClasses = computed(() => ({
       padding: 0 8px;
     }
   }
-  &.--size-s {
+  &.--size-sm {
     font-size: 14px;
     padding: 6px 8px;
     .vbutton__icon {
@@ -286,7 +286,7 @@ const computedClasses = computed(() => ({
     }
   }
 
-  &.--size-m {
+  &.--size-md {
     padding: 6px 16px;
     .vbutton__icon {
       width: 24px;
@@ -294,7 +294,7 @@ const computedClasses = computed(() => ({
     }
   }
 
-  &.--size-l {
+  &.--size-lg {
     padding: 14px 24px;
     border-width: 2px;
     font-size: 18px;

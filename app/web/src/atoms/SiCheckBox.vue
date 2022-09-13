@@ -29,7 +29,7 @@
       v-if="inError"
       class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-destructive-400"
     >
-      <Icon name="exclamation-circle" size="s" />
+      <Icon name="exclamation-circle" size="sm" />
     </div>
   </div>
 

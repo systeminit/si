@@ -5,7 +5,7 @@ improve perf */
 <script lang="ts">
 import { h, VNode } from "vue";
 import {
-  BreakpointNamesWithoutMobile,
+  BreakpointNamesWithoutSmallest,
   FunctionalComponentContextArg,
   FunctionalComponentPropsType,
   getSlotChildren,
@@ -17,10 +17,10 @@ import {
 import type { PropType } from "vue";
 
 const propsDefinition = {
-  ...responsiveSpacingProps("xxs"),
+  ...responsiveSpacingProps("xs"),
   ...responsiveAlignProps,
   ...responsiveVerticalAlignProps,
-  collapseBelow: { type: String as PropType<BreakpointNamesWithoutMobile> },
+  collapseBelow: { type: String as PropType<BreakpointNamesWithoutSmallest> },
   tagName: {
     type: String as PropType<"div" | "section" | "ol" | "ul">,
     default: "div",
@@ -55,6 +55,7 @@ const Inline = (
     [`--spacing-${props.spacingTablet}-tablet`]: !!props.spacingTablet,
     [`--spacing-${props.spacingDesktop}-desktop`]: !!props.spacingDesktop,
     [`--spacing-${props.spacingWide}-wide`]: !!props.spacingWide,
+    [`--spacing-${props.spacingHuge}-huge`]: !!props.spacingHuge,
 
     // need to flip the alignment option if reversed option is being used
     [`--align-${flipAlignIfReversed(props.reverse, props.align)}`]: true,
@@ -70,12 +71,15 @@ const Inline = (
     )}-desktop`]: !!props.alignDesktop,
     [`--align-${flipAlignIfReversed(props.reverse, props.alignWide)}-wide`]:
       !!props.alignWide,
+    [`--align-${flipAlignIfReversed(props.reverse, props.alignHuge)}-huge`]:
+      !!props.alignHuge,
 
     [`--aligny-${props.alignY}`]: true,
     [`--aligny-${props.alignYMobile}-mobile-only`]: !!props.alignYMobile,
     [`--aligny-${props.alignYTablet}-tablet`]: !!props.alignYTablet,
     [`--aligny-${props.alignYDesktop}-desktop`]: !!props.alignYDesktop,
     [`--aligny-${props.alignYWide}-wide`]: !!props.alignYWide,
+    [`--aligny-${props.alignYHuge}-huge`]: !!props.alignYHuge,
 
     "--reverse": props.reverse,
 

@@ -170,14 +170,14 @@ export type IconNames = RegularIconNames | IconNameAliases | SpinnableIconNames;
 import { computed, FunctionalComponent, PropType } from "vue";
 import clsx from "clsx";
 
-export type IconSizes = "xs" | "s" | "m" | "l" | "xl" | "full";
+export type IconSizes = "xs" | "sm" | "md" | "lg" | "xl" | "full";
 
 const props = defineProps({
   name: { type: String as PropType<IconNames>, required: true },
   rotate: { type: String as PropType<"left" | "right" | "up" | "down"> },
   size: {
     type: String as PropType<IconSizes>,
-    default: "m",
+    default: "md",
   },
 });
 
@@ -224,9 +224,9 @@ const sizeClasses = computed(() => {
   return {
     full: "w-full h-full",
     xs: "w-4 h-4",
-    s: "w-5 h-5",
-    m: "w-6 h-6",
-    l: "w-8 h-8",
+    sm: "w-5 h-5",
+    md: "w-6 h-6",
+    lg: "w-8 h-8",
     xl: "w-9 h-9",
   }[props.size];
 });

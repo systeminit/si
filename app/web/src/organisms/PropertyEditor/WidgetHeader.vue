@@ -13,7 +13,7 @@
         {{ part }}
       </span>
       <span v-else class="text-sm pl-2">
-        <Icon name="chevron--left" size="s" /> {{ part }}
+        <Icon name="chevron--left" size="sm" /> {{ part }}
       </span>
     </div>
     <div class="flex flex-grow justify-end pr-4">

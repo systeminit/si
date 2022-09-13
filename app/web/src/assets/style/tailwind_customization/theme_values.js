@@ -21,13 +21,13 @@ const screens = {
 const spacing = {
   // named spacing scale, hopefully can help reduce the number of variations being used?
   none: "0",
-  xxs: `${4 / 16}rem`, // tw 1
+  "2xs": `${4 / 16}rem`, // tw 1
   xs: `${8 / 16}rem`, // tw 2
-  s: `${16 / 16}rem`, // tw 4
-  m: `${24 / 16}rem`, // tw 6
-  l: `${36 / 16}rem`, // tw 8
+  sm: `${16 / 16}rem`, // tw 4
+  md: `${24 / 16}rem`, // tw 6
+  lg: `${36 / 16}rem`, // tw 8
   xl: `${64 / 16}rem`, // tw 16
-  xxl: `${96 / 16}rem`, // tw 24
+  "2xl": `${96 / 16}rem`, // tw 24
 
   13: "3.25rem",
   14: "3.5rem",

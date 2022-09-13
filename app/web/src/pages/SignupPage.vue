@@ -1,9 +1,9 @@
 <template>
   <AppLayout page-mode="modal" class="font-medium">
-    <Stack spacing="l" class="max-w-md">
-      <div class="text-neutral-200 flex flex-row gap-m px-l">
+    <Stack spacing="lg" class="max-w-md">
+      <div class="text-neutral-200 flex flex-row gap-md px-lg">
         <img class="h-16" :src="siLogoWts" alt="System Initiative" />
-        <Stack spacing="m">
+        <Stack spacing="md">
           <h2 class="text-4xl font-extrabold capsize">Sign Up</h2>
           <RichText class="capsize">
             Already have an account?
@@ -14,7 +14,7 @@
 
       <form @submit.prevent="onSubmit">
         <Card rounded>
-          <Stack spacing="m">
+          <Stack spacing="md">
             <ErrorMessage :message="errorMessage" />
             <VormInput
               v-model="signupPayload.billingAccountName"

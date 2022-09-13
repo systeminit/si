@@ -2,7 +2,11 @@ Generic diagram component * NOTE - uses a resize observer to react to size
 changes, so this must be placed in a container that is sized explicitly has
 overflow hidden */
 <template>
-  <div ref="containerRef" class="absolute inset-0 overflow-hidden">
+  <div
+    ref="containerRef"
+    class="absolute inset-0 overflow-hidden"
+    :style="{ cursor }"
+  >
     <div
       v-if="showDebugBar"
       class="absolute bg-black text-white flex space-x-10 z-10 opacity-50"
@@ -32,8 +36,6 @@ overflow hidden */
         scale: { x: zoomLevel, y: zoomLevel },
         offset: { x: gridMinX, y: gridMinY },
       }"
-      class=""
-      :style="{ cursor }"
       @mousedown="onMouseDown"
     >
       <DiagramGridBackground

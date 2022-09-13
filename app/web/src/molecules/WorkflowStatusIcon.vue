@@ -21,7 +21,7 @@
 
 <script lang="ts" setup>
 import { PropType } from "vue";
-import Icon from "@/ui-lib/Icon.vue";
+import Icon, { IconSizes } from "@/ui-lib/Icon.vue";
 
 export type WorkflowStatus = "running" | "success" | "failure";
 
@@ -32,7 +32,7 @@ defineProps({
   },
   showText: { type: Boolean, default: false },
   size: {
-    type: String as PropType<"xs" | "s" | "m" | "l" | "xl" | "full">,
+    type: String as PropType<IconSizes>,
     default: "xl",
   },
 });

@@ -38,7 +38,7 @@ const computedClasses = computed(() => ({
 }
 .divider__label {
   font-size: 12px;
-  padding: 0 @spacing-rem[xxs];
+  padding: 0 @spacing-rem[2xs];
   text-transform: uppercase;
 }
 .divider__line {
