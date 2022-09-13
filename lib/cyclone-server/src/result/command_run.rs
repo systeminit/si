@@ -7,14 +7,14 @@ pub struct LangServerCommandRunResultSuccess {
     pub execution_id: String,
     // Collects the error if the function throws
     #[serde(default)]
-    pub message: Option<String>,
+    pub error: Option<String>,
 }
 
 impl From<LangServerCommandRunResultSuccess> for CommandRunResultSuccess {
     fn from(value: LangServerCommandRunResultSuccess) -> Self {
         Self {
             execution_id: value.execution_id,
-            message: value.message,
+            error: value.error,
         }
     }
 }

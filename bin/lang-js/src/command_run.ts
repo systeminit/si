@@ -48,11 +48,11 @@ async function execute(
   code: string,
   executionId: string
 ): Promise<CommandRunResult> {
-  let _commandRunResult: Record<string, unknown>;
+  let commandRunResult: Record<string, unknown>;
   try {
     const commandRunRunner = vm.run(code);
     // Node(paulo): NodeVM doesn't support async rejection, we need a better way of handling it
-    _commandRunResult = await new Promise((resolve) => {
+    commandRunResult = await new Promise((resolve) => {
       commandRunRunner((resolution: Record<string, unknown>) =>
         resolve(resolution)
       );
@@ -62,6 +62,7 @@ async function execute(
       protocol: "result",
       status: "success",
       executionId,
+      error: commandRunResult?.error as string,
     };
     return result;
   } catch (err) {
@@ -76,9 +77,8 @@ function wrapCode(code: string, handle: string): string {
     if (returnValue instanceof Promise) {
       returnValue.then((data) => callback(data))
         .catch((err) => {
-          const message = "Uncaught throw in a promise, in function ${handle}: " + err.message;
           callback({
-            message,
+            error: err.message,
           })
         });
     } else {
