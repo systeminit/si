@@ -5,8 +5,8 @@ use dal::test_harness::{
     create_key_pair, create_schema, create_user, create_visibility_head,
 };
 use dal::{
-    component::ComponentKind, standard_model, BillingAccount, FuncBackendKind, Group, GroupId,
-    KeyPair, Schema, SchemaKind, StandardModel, User, UserId, NO_CHANGE_SET_PK,
+    component::ComponentKind, standard_model, BillingAccount, BillingAccountPk, FuncBackendKind,
+    Group, GroupId, KeyPair, Schema, SchemaKind, StandardModel, User, UserId, NO_CHANGE_SET_PK,
 };
 use dal::{BillingAccountSignup, ChangeSet, DalContext, Func, WriteTenancy};
 
@@ -139,6 +139,28 @@ async fn delete(ctx: &DalContext<'_, '_, '_>, nba: &BillingAccountSignup) {
     assert!(
         soft_deleted.visibility().deleted_at.is_some(),
         "should be deleted"
+    );
+}
+
+#[test]
+async fn hard_delete(ctx: &DalContext<'_, '_, '_>, nba: &BillingAccountSignup) {
+    let ba: BillingAccount =
+        standard_model::get_by_pk(ctx, "billing_accounts", nba.billing_account.pk())
+            .await
+            .expect("cannot get billing account");
+
+    let ba_pk = *ba.pk();
+    let hard_deleted = ba.hard_delete(ctx).await.expect("could not hard delete");
+    assert_eq!(&ba_pk, hard_deleted.pk());
+
+    assert!(
+        standard_model::get_by_pk::<BillingAccountPk, BillingAccount>(
+            ctx,
+            "billing_accounts",
+            hard_deleted.pk()
+        )
+        .await
+        .is_err()
     );
 }
 
