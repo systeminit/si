@@ -18,6 +18,7 @@ pub enum Builtin {
     DockerImage,
     KubernetesDeployment,
     KubernetesNamespace,
+    CoreOsButane,
 }
 
 impl Builtin {
@@ -28,6 +29,7 @@ impl Builtin {
             Builtin::DockerImage => "docker_image",
             Builtin::KubernetesDeployment => "kubernetes_deployment",
             Builtin::KubernetesNamespace => "kubernetes_namespace",
+            Builtin::CoreOsButane => "butane",
         }
     }
 }
@@ -110,14 +112,62 @@ impl BuiltinsHarness {
     ) -> PropMap {
         let mut prop_map = HashMap::new();
 
-        // For kubernetes namespaces, we also want "/root/si/metadata/name". We can add more
-        // Builtin-specific props to collect too in the future!
+        // Add props specific to each builtin!
         if let Builtin::KubernetesNamespace = builtin {
             let (metadata_name_prop_id, _) =
                 find_prop_and_parent_by_name(ctx, "name", "metadata", None, schema_variant_id)
                     .await
                     .expect("could not find prop and/or parent");
             prop_map.insert("/root/si/metadata/name", metadata_name_prop_id);
+        } else if let Builtin::CoreOsButane = builtin {
+            let (variant_prop_id, _) =
+                find_prop_and_parent_by_name(ctx, "variant", "domain", None, schema_variant_id)
+                    .await
+                    .expect("could not find prop and/or parent");
+            prop_map.insert("/root/si/domain/variant", variant_prop_id);
+            let (version_prop_id, _) =
+                find_prop_and_parent_by_name(ctx, "version", "domain", None, schema_variant_id)
+                    .await
+                    .expect("could not find prop and/or parent");
+            prop_map.insert("/root/si/domain/version", version_prop_id);
+            let (systemd_prop_id, _) =
+                find_prop_and_parent_by_name(ctx, "systemd", "domain", None, schema_variant_id)
+                    .await
+                    .expect("could not find prop and/or parent");
+            prop_map.insert("/root/si/domain/systemd", systemd_prop_id);
+            let (units_prop_id, _) =
+                find_prop_and_parent_by_name(ctx, "units", "systemd", None, schema_variant_id)
+                    .await
+                    .expect("could not find prop and/or parent");
+            prop_map.insert("/root/si/domain/systemd/units", units_prop_id);
+            let (unit_prop_id, _) =
+                find_prop_and_parent_by_name(ctx, "unit", "units", None, schema_variant_id)
+                    .await
+                    .expect("could not find prop and/or parent");
+            prop_map.insert("/root/si/domain/systemd/units/unit", unit_prop_id);
+
+            // All fields under "unit".
+            let (unit_name_prop_id, _) =
+                find_prop_and_parent_by_name(ctx, "name", "unit", None, schema_variant_id)
+                    .await
+                    .expect("could not find prop and/or parent");
+            prop_map.insert("/root/si/domain/systemd/units/unit/name", unit_name_prop_id);
+            let (unit_enabled_prop_id, _) =
+                find_prop_and_parent_by_name(ctx, "enabled", "unit", None, schema_variant_id)
+                    .await
+                    .expect("could not find prop and/or parent");
+            prop_map.insert(
+                "/root/si/domain/systemd/units/unit/enabled",
+                unit_enabled_prop_id,
+            );
+            let (unit_contents_prop_id, _) =
+                find_prop_and_parent_by_name(ctx, "contents", "unit", None, schema_variant_id)
+                    .await
+                    .expect("could not find prop and/or parent");
+            prop_map.insert(
+                "/root/si/domain/systemd/units/unit/contents",
+                unit_contents_prop_id,
+            );
         }
 
         // Always provide "/root/si/name".

@@ -1,0 +1,21 @@
+variant: fcos
+version: 1.4.0
+systemd:
+  units:
+    - name: whiskers.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Whiskers
+        After=network-online.target
+        Wants=network-online.target
+
+        [Service]
+        TimeoutStartSec=0
+        ExecStartPre=-/bin/podman kill whiskers1
+        ExecStartPre=-/bin/podman rm whiskers1
+        ExecStartPre=/bin/podman pull docker.io/systeminit/whiskers
+        ExecStart=/bin/podman run --name whiskers1 --publish 80:80 docker.io/systeminit/whiskers
+
+        [Install]
+        WantedBy=multi-user.target

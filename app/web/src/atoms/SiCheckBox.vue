@@ -1,5 +1,8 @@
 <template>
-  <label :for="props.id" class="block text-sm font-medium text-neutral-200">
+  <label
+    :for="props.id"
+    class="block text-sm font-medium text-neutral-800 dark:text-neutral-50"
+  >
     {{ props.title }} <span v-if="required">(required)</span>
   </label>
 
@@ -17,10 +20,10 @@
       required
       :class="
         clsx(
-          'appearance-none block px-3 py-2 border rounded-sm shadow-sm focus:outline-none sm:text-sm checked:bg-neutral-900 bg-neutral-600 indeterminate:bg-neutral-900',
+          'appearance-none block px-5 py-4 border border-neutral-300 dark:border-neutral-500 rounded-sm shadow-xs focus:outline-none sm:text-sm dark:bg-shade-100 bg-neutral-50 indeterminate:bg-neutral-500 indeterminate:dark:bg-neutral-500',
           inError
             ? 'border-destructive-400 focus:ring-destructive-400 focus:border-destructive-400 checked:border-destructive-400 indeterminate:border-destructive-400'
-            : 'border-neutral-600 focus:ring-action-200 focus:border-action-200 checked:border-neutral-600 indeterminate:border-neutral-600',
+            : 'border-neutral-600 checked:dark:border-neutral-600 checked:border-neutral-200 indeterminate:dark:border-neutral-500 indeterminate:border-neutral-500',
         )
       "
       @blur="setDirty"

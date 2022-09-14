@@ -10,7 +10,7 @@ pub async fn create_template_prop(
     parent_prop_id: Option<PropId>,
 ) -> BuiltinsResult<Prop> {
     let template_prop =
-        BuiltinSchemaHelpers::create_prop(ctx, "template", PropKind::Object, parent_prop_id)
+        BuiltinSchemaHelpers::create_prop(ctx, "template", PropKind::Object, parent_prop_id, None)
             .await?;
 
     {

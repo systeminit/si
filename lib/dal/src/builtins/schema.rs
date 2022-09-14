@@ -10,6 +10,7 @@ use crate::{
     Schema, SchemaKind, StandardModel,
 };
 
+mod coreos;
 mod docker;
 mod kubernetes;
 mod systeminit;
@@ -18,6 +19,7 @@ pub async fn migrate(ctx: &DalContext<'_, '_, '_>) -> BuiltinsResult<()> {
     systeminit::migrate(ctx).await?;
     docker::migrate(ctx).await?;
     kubernetes::migrate(ctx).await?;
+    coreos::migrate(ctx).await?;
     Ok(())
 }
 
@@ -60,10 +62,14 @@ impl BuiltinSchemaHelpers {
         prop_name: &str,
         prop_kind: PropKind,
         parent_prop_id: Option<PropId>,
+        doc_link: Option<String>,
     ) -> BuiltinsResult<Prop> {
-        let prop = Prop::new(ctx, prop_name, prop_kind).await?;
+        let mut prop = Prop::new(ctx, prop_name, prop_kind).await?;
         if let Some(parent_prop_id) = parent_prop_id {
             prop.set_parent_prop(ctx, parent_prop_id).await?;
+        }
+        if doc_link.is_some() {
+            prop.set_doc_link(ctx, doc_link).await?;
         }
         Ok(prop)
     }
@@ -75,7 +81,8 @@ impl BuiltinSchemaHelpers {
         parent_prop_id: Option<PropId>,
         _base_attribute_read_context: AttributeReadContext,
     ) -> BuiltinsResult<Prop> {
-        let prop = Self::create_prop(ctx, prop_name, PropKind::String, parent_prop_id).await?;
+        let prop =
+            Self::create_prop(ctx, prop_name, PropKind::String, parent_prop_id, None).await?;
 
         let mut func = Func::new(
             ctx,

@@ -1,8 +1,7 @@
+use crate::dal::test;
 use dal::test::helpers::builtins::{Builtin, BuiltinsHarness};
 use dal::{DalContext, Edge, ExternalProvider, InternalProvider, StandardModel};
 use pretty_assertions_sorted::assert_eq_sorted;
-
-use crate::dal::test;
 
 // Oh yeah, it's big brain time.
 #[ignore]
@@ -433,6 +432,4 @@ async fn kubernetes_deployment_intelligence(ctx: &DalContext<'_, '_, '_>) {
             .component_view_properties(ctx)
             .await // actual
     );
-
-    println!("hi");
 }

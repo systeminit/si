@@ -7,9 +7,14 @@ pub async fn create_selector_prop(
     ctx: &DalContext<'_, '_, '_>,
     parent_prop_id: PropId,
 ) -> BuiltinsResult<Prop> {
-    let mut selector_prop =
-        BuiltinSchemaHelpers::create_prop(ctx, "selector", PropKind::Object, Some(parent_prop_id))
-            .await?;
+    let mut selector_prop = BuiltinSchemaHelpers::create_prop(
+        ctx,
+        "selector",
+        PropKind::Object,
+        Some(parent_prop_id),
+        None,
+    )
+    .await?;
     selector_prop
         .set_doc_link(
             ctx,
@@ -25,6 +30,7 @@ pub async fn create_selector_prop(
             "matchLabels",
             PropKind::Map, // How to specify it as an array of strings?
             Some(*selector_prop.id()),
+            None,
         )
         .await?;
         match_labels_prop
@@ -40,6 +46,7 @@ pub async fn create_selector_prop(
             "labelValue",
             PropKind::String,
             Some(*match_labels_prop.id()),
+            None,
         )
         .await?;
         match_labels_value_prop

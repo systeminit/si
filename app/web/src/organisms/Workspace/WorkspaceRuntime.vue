@@ -12,7 +12,7 @@
       />
     </SiPanel>
     <div
-      class="grow overflow-hidden h-full dark:bg-neutral-800 dark:text-white text-lg font-semi-bold px-2 pt-2 flex flex-col"
+      class="grow overflow-hidden h-full bg-shade-0 dark:bg-neutral-800 dark:text-shade-0 text-lg font-semi-bold px-2 pt-2 flex flex-col"
     >
       <WorkflowResolver v-if="selected" :selected-id="selected.id">
         <template #runButton>
@@ -46,7 +46,7 @@
           :status="currentWorkflowStatus"
         />
         <div v-else class="p-2 text-neutral-400 dark:text-neutral-300">
-          When you run a workflow, it's output will display here.
+          When you run a workflow, its output will display here.
         </div>
       </div>
     </SiPanel>

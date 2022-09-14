@@ -300,9 +300,14 @@ async fn create_deployment_spec_prop(
     ctx: &DalContext<'_, '_, '_>,
     parent_prop_id: PropId,
 ) -> BuiltinsResult<Prop> {
-    let mut spec_prop =
-        BuiltinSchemaHelpers::create_prop(ctx, "spec", PropKind::Object, Some(parent_prop_id))
-            .await?;
+    let mut spec_prop = BuiltinSchemaHelpers::create_prop(
+        ctx,
+        "spec",
+        PropKind::Object,
+        Some(parent_prop_id),
+        None,
+    )
+    .await?;
     spec_prop
         .set_doc_link(
             ctx,
@@ -317,6 +322,7 @@ async fn create_deployment_spec_prop(
         "replicas",
         PropKind::Integer,
         Some(*spec_prop.id()),
+        None,
     )
     .await?;
     replicas_prop
@@ -338,9 +344,14 @@ async fn create_pod_template_spec_prop(
     ctx: &DalContext<'_, '_, '_>,
     parent_prop_id: PropId,
 ) -> BuiltinsResult<Prop> {
-    let mut template_prop =
-        BuiltinSchemaHelpers::create_prop(ctx, "template", PropKind::Object, Some(parent_prop_id))
-            .await?;
+    let mut template_prop = BuiltinSchemaHelpers::create_prop(
+        ctx,
+        "template",
+        PropKind::Object,
+        Some(parent_prop_id),
+        None,
+    )
+    .await?;
     template_prop
         .set_doc_link(
             ctx,
@@ -366,9 +377,14 @@ async fn create_pod_spec_prop(
     ctx: &DalContext<'_, '_, '_>,
     parent_prop_id: PropId,
 ) -> BuiltinsResult<Prop> {
-    let mut spec_prop =
-        BuiltinSchemaHelpers::create_prop(ctx, "spec", PropKind::Object, Some(parent_prop_id))
-            .await?;
+    let mut spec_prop = BuiltinSchemaHelpers::create_prop(
+        ctx,
+        "spec",
+        PropKind::Object,
+        Some(parent_prop_id),
+        None,
+    )
+    .await?;
     spec_prop
         .set_doc_link(
             ctx,
@@ -383,6 +399,7 @@ async fn create_pod_spec_prop(
         "containers",
         PropKind::Array,
         Some(*spec_prop.id()),
+        None,
     )
     .await?;
     containers_prop
@@ -402,9 +419,14 @@ async fn create_container_prop(
     ctx: &DalContext<'_, '_, '_>,
     parent_prop_id: PropId,
 ) -> BuiltinsResult<Prop> {
-    let mut container_prop =
-        BuiltinSchemaHelpers::create_prop(ctx, "container", PropKind::Object, Some(parent_prop_id))
-            .await?;
+    let mut container_prop = BuiltinSchemaHelpers::create_prop(
+        ctx,
+        "container",
+        PropKind::Object,
+        Some(parent_prop_id),
+        None,
+    )
+    .await?;
     container_prop
         .set_doc_link(
             ctx,
@@ -419,6 +441,7 @@ async fn create_container_prop(
         "name",
         PropKind::String,
         Some(*container_prop.id()),
+        None,
     )
     .await?;
     name_prop
@@ -435,6 +458,7 @@ async fn create_container_prop(
         "image",
         PropKind::String,
         Some(*container_prop.id()),
+        None,
     )
     .await?;
     image_prop
@@ -451,6 +475,7 @@ async fn create_container_prop(
         "ports",
         PropKind::Array,
         Some(*container_prop.id()),
+        None,
     )
     .await?;
     ports_prop
@@ -470,9 +495,14 @@ async fn create_container_port_prop(
     ctx: &DalContext<'_, '_, '_>,
     parent_prop_id: PropId,
 ) -> BuiltinsResult<Prop> {
-    let mut port_prop =
-        BuiltinSchemaHelpers::create_prop(ctx, "port", PropKind::Object, Some(parent_prop_id))
-            .await?;
+    let mut port_prop = BuiltinSchemaHelpers::create_prop(
+        ctx,
+        "port",
+        PropKind::Object,
+        Some(parent_prop_id),
+        None,
+    )
+    .await?;
     port_prop
         .set_doc_link(
             ctx,
@@ -487,6 +517,7 @@ async fn create_container_port_prop(
         "containerPort",
         PropKind::Integer,
         Some(*port_prop.id()),
+        None,
     )
     .await?;
     container_port_prop
@@ -498,9 +529,14 @@ async fn create_container_port_prop(
         )
         .await?;
 
-    let mut protocol_prop =
-        BuiltinSchemaHelpers::create_prop(ctx, "protocol", PropKind::String, Some(*port_prop.id()))
-            .await?;
+    let mut protocol_prop = BuiltinSchemaHelpers::create_prop(
+        ctx,
+        "protocol",
+        PropKind::String,
+        Some(*port_prop.id()),
+        None,
+    )
+    .await?;
     protocol_prop
         .set_doc_link(
             ctx,

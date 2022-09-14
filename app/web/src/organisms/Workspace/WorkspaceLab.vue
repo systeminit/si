@@ -16,7 +16,7 @@
       />
     </SiPanel>
     <div
-      class="grow overflow-x-hidden overflow-y-hidden dark:bg-neutral-800 dark:text-white text-lg font-semi-bold px-2 pt-2 flex flex-col"
+      class="grow overflow-x-hidden overflow-y-hidden bg-shade-0 dark:bg-neutral-800 dark:text-white text-lg font-semi-bold px-2 pt-2 flex flex-col"
     >
       <FuncEditorTabs
         v-if="selectedFuncId > 0 && !isLoading"

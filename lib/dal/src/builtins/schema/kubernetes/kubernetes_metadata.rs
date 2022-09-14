@@ -8,9 +8,14 @@ pub async fn create_metadata_prop(
     is_name_required: bool,
     parent_prop_id: PropId,
 ) -> BuiltinsResult<Prop> {
-    let mut metadata_prop =
-        BuiltinSchemaHelpers::create_prop(ctx, "metadata", PropKind::Object, Some(parent_prop_id))
-            .await?;
+    let mut metadata_prop = BuiltinSchemaHelpers::create_prop(
+        ctx,
+        "metadata",
+        PropKind::Object,
+        Some(parent_prop_id),
+        None,
+    )
+    .await?;
     metadata_prop
         .set_doc_link(
             ctx,
@@ -40,6 +45,7 @@ pub async fn create_metadata_prop(
             "name",
             PropKind::String,
             Some(*metadata_prop.id()),
+            None,
         )
         .await?;
         name_prop
@@ -58,6 +64,7 @@ pub async fn create_metadata_prop(
             "generateName",
             PropKind::String,
             Some(*metadata_prop.id()),
+            None,
         )
         .await?;
         generate_name_prop
@@ -77,6 +84,7 @@ pub async fn create_metadata_prop(
             "namespace",
             PropKind::String,
             Some(*metadata_prop.id()),
+            None,
         )
         .await?;
         namespace_prop
@@ -95,6 +103,7 @@ pub async fn create_metadata_prop(
             "labels",
             PropKind::Map,
             Some(*metadata_prop.id()),
+            None,
         )
         .await?;
         labels_prop
@@ -108,6 +117,7 @@ pub async fn create_metadata_prop(
             "labelValue",
             PropKind::String,
             Some(*labels_prop.id()),
+            None,
         )
         .await?;
         labels_value_prop
@@ -124,6 +134,7 @@ pub async fn create_metadata_prop(
             "annotations",
             PropKind::Map, // How to specify it as a map of string values?
             Some(*metadata_prop.id()),
+            None,
         )
         .await?;
         annotations_prop
@@ -139,6 +150,7 @@ pub async fn create_metadata_prop(
             "annotationValue",
             PropKind::String,
             Some(*annotations_prop.id()),
+            None,
         )
         .await?;
         annotations_value_prop
