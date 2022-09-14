@@ -186,8 +186,7 @@
             :class="[isViewMode ? '' : 'hidden']"
             class="h-full"
           >
-            <!-- TOOD(nick): replace with a Confirmations tab panel -->
-            <GenericTabPanel :component-list="componentList" />
+            <ConfirmationsPanel />
           </TabPanel>
         </TabPanels>
       </Transition>
@@ -217,6 +216,7 @@ import WorkflowHistoryTab from "./StatusBarTabs/WorkflowHistory/WorkflowHistoryT
 import WorkflowHistoryPanel, {
   SortOption,
 } from "./StatusBarTabs/WorkflowHistory/WorkflowHistoryPanel.vue";
+import ConfirmationsPanel from "./StatusBarTabs/Confirmations/ConfirmationsPanel.vue";
 
 // Tab 0 is our phantom empty panel
 const selectedTab = ref(0);

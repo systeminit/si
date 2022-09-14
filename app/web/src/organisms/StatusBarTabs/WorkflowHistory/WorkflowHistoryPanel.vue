@@ -1,6 +1,6 @@
 <template>
   <div class="w-full h-full flex flex-row">
-    <div class="w-72 shrink-0 border-shade-100 h-full flex flex-col">
+    <div class="w-64 shrink-0 border-shade-100 h-full flex flex-col">
       <span
         class="h-11 border-b border-shade-100 text-lg px-4 flex items-center flex-none"
       >
@@ -9,12 +9,12 @@
 
       <!-- Sort button and its dropdown -->
       <SiBarButton
-        class="h-11 border-b border-shade-100"
+        class="h-11 border-b border-shade-100 flex-none"
         tooltip-text="Sort"
         fill-entire-width
       >
         <template #default="{ hovered, open }">
-          <div class="flex flex-row">
+          <div class="flex flex-row items-center">
             {{ selectedSort.title }}
             <SiArrow :nudge="hovered || open" class="ml-1 w-4" />
           </div>
