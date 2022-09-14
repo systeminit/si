@@ -93,7 +93,6 @@ impl Server<(), ()> {
                 info!("binding to HTTP socket; socket_addr={}", &socket_addr);
                 let inner = axum::Server::bind(socket_addr).serve(service.into_make_service());
                 let socket = inner.local_addr();
-                info!("yeehaw! let's get this thing goin'");
 
                 Ok((
                     Server {

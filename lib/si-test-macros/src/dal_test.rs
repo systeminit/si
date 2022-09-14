@@ -187,7 +187,7 @@ fn fn_setup<'a>(params: impl Iterator<Item = &'a FnArg>) -> FnSetup {
                             // ```ignore
                             // #[test]
                             // async fn does_things(
-                            //      ctx: &mut DalContext<'_, '_>,
+                            //      ctx: &mut DalContext,
                             //      nba: &BillingAccountSignup
                             //  ) {
                             //      // ...

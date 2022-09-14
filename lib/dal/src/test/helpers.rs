@@ -391,6 +391,47 @@ impl ComponentPayload {
         updated_attribute_value_id
     }
 
+    /// Inserts an [`AttributeValue`](crate::AttributeValue) corresponding to a _primitive_
+    /// [`Prop`](crate::Prop) (string, boolean or integer) in an _array_ [`Prop`](crate::Prop).
+    pub async fn insert_array_primitive_element(
+        &self,
+        ctx: &DalContext,
+        array_prop_name: impl AsRef<str>,
+        element_prop_name: impl AsRef<str>,
+        value: Value,
+    ) -> AttributeValueId {
+        let array_prop_id = self.get_prop_id(array_prop_name.as_ref());
+        let element_prop_id = self.get_prop_id(element_prop_name.as_ref());
+
+        let array_attribute_value = AttributeValue::find_for_context(
+            ctx,
+            AttributeReadContext {
+                prop_id: Some(array_prop_id),
+                ..self.base_attribute_read_context
+            },
+        )
+        .await
+        .expect("cannot get attribute value")
+        .expect("attribute value not found");
+
+        let insert_attribute_context =
+            AttributeContextBuilder::from(self.base_attribute_read_context)
+                .set_prop_id(element_prop_id)
+                .to_context()
+                .expect("could not create insert context");
+
+        // Return the element attribute value id.
+        AttributeValue::insert_for_context(
+            ctx,
+            insert_attribute_context,
+            *array_attribute_value.id(),
+            Some(value),
+            None,
+        )
+        .await
+        .expect("could not insert object into array")
+    }
+
     /// Inserts an [`AttributeValue`](crate::AttributeValue) corresponding to an "empty" _object_
     /// [`Prop`](crate::Prop) in an _array_ [`Prop`](crate::Prop).
     pub async fn insert_array_object_element(
@@ -428,7 +469,7 @@ impl ComponentPayload {
             None,
         )
         .await
-        .expect("could not insert empty object into array")
+        .expect("could not insert object into array")
     }
 
     /// Using the element [`AttributeValueId`](AttributeValueId) from

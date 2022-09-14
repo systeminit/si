@@ -4,8 +4,9 @@ use crate::socket::{SocketArity, SocketEdgeKind, SocketKind};
 use crate::{
     qualification_prototype::QualificationPrototypeContext,
     schema::{SchemaVariant, UiMenu},
-    AttributeContext, BuiltinsResult, DalContext, DiagramKind, Func, PropKind,
-    QualificationPrototype, SchemaError, SchemaKind, Socket, StandardModel,
+    AttributeContext, AttributePrototypeArgument, AttributeReadContext, AttributeValue,
+    BuiltinsError, BuiltinsResult, DalContext, DiagramKind, Func, FuncError, InternalProvider,
+    PropKind, QualificationPrototype, SchemaError, SchemaKind, Socket, StandardModel,
 };
 
 const BUTANE_DOCS_FCOS_1_4_URL: &str = "https://coreos.github.io/butane/config-fcos-v1_4/";
@@ -45,24 +46,22 @@ async fn butane(ctx: &DalContext) -> BuiltinsResult<()> {
     ui_menu.set_schema(ctx, schema.id()).await?;
 
     // Prop creation
-    {
-        let _variant_prop = BuiltinSchemaHelpers::create_prop(
-            ctx,
-            "variant",
-            PropKind::String,
-            Some(root_prop.domain_prop_id),
-            Some(BUTANE_DOCS_FCOS_1_4_URL.to_string()),
-        )
-        .await?;
-        let _version_prop = BuiltinSchemaHelpers::create_prop(
-            ctx,
-            "version",
-            PropKind::String,
-            Some(root_prop.domain_prop_id),
-            Some(BUTANE_DOCS_FCOS_1_4_URL.to_string()),
-        )
-        .await?;
-    }
+    let variant_prop = BuiltinSchemaHelpers::create_prop(
+        ctx,
+        "variant",
+        PropKind::String,
+        Some(root_prop.domain_prop_id),
+        Some(BUTANE_DOCS_FCOS_1_4_URL.to_string()),
+    )
+    .await?;
+    let version_prop = BuiltinSchemaHelpers::create_prop(
+        ctx,
+        "version",
+        PropKind::String,
+        Some(root_prop.domain_prop_id),
+        Some(BUTANE_DOCS_FCOS_1_4_URL.to_string()),
+    )
+    .await?;
     let systemd_prop = BuiltinSchemaHelpers::create_prop(
         ctx,
         "systemd",
@@ -140,15 +139,82 @@ async fn butane(ctx: &DalContext) -> BuiltinsResult<()> {
     qual_prototype_context.set_schema_variant_id(*schema_variant.id());
     let _ = QualificationPrototype::new(ctx, *qual_func.id(), qual_prototype_context).await?;
 
-    // Wrap it up
+    // Wrap it up.
     schema_variant.finalize(ctx).await?;
 
-    // NOTE(nick): we will use this if we want to create intra-component connections.
-    // let base_attribute_read_context = AttributeReadContext {
-    //     schema_id: Some(*schema.id()),
-    //     schema_variant_id: Some(*variant.id()),
-    //     ..AttributeReadContext::default()
-    // };
+    // Set default values after finalization.
+    BuiltinSchemaHelpers::set_default_value_for_prop(
+        ctx,
+        *variant_prop.id(),
+        *schema.id(),
+        *schema_variant.id(),
+        serde_json::json!["fcos"],
+    )
+    .await?;
+    BuiltinSchemaHelpers::set_default_value_for_prop(
+        ctx,
+        *version_prop.id(),
+        *schema.id(),
+        *schema_variant.id(),
+        serde_json::json!["1.4.0"],
+    )
+    .await?;
+
+    // Add the ability to use docker image as an input.
+    let base_attribute_read_context = AttributeReadContext {
+        schema_id: Some(*schema.id()),
+        schema_variant_id: Some(*schema_variant.id()),
+        ..AttributeReadContext::default()
+    };
+    let (identity_func_id, identity_func_binding_id, identity_func_binding_return_value_id) =
+        BuiltinSchemaHelpers::setup_identity_func(ctx).await?;
+    let (docker_image_explicit_internal_provider, mut input_socket) =
+        InternalProvider::new_explicit_with_socket(
+            ctx,
+            *schema.id(),
+            *schema_variant.id(),
+            "docker_image",
+            identity_func_id,
+            identity_func_binding_id,
+            identity_func_binding_return_value_id,
+            SocketArity::Many,
+            DiagramKind::Configuration,
+        )
+        .await?;
+    input_socket.set_color(ctx, Some(0xd61e8c)).await?;
+
+    // Enable connections from the "docker_image" explicit internal provider to the
+    // "/root/domain/systemd/units/" field. We need to use the appropriate function with and name
+    // the argument "images".
+    let units_attribute_value_read_context = AttributeReadContext {
+        prop_id: Some(*units_prop.id()),
+        ..base_attribute_read_context
+    };
+    let units_attribute_value =
+        AttributeValue::find_for_context(ctx, units_attribute_value_read_context)
+            .await?
+            .ok_or(BuiltinsError::AttributeValueNotFoundForContext(
+                units_attribute_value_read_context,
+            ))?;
+    let mut units_attribute_prototype = units_attribute_value
+        .attribute_prototype(ctx)
+        .await?
+        .ok_or(BuiltinsError::MissingAttributePrototypeForAttributeValue)?;
+    let transformation_func_name = "si:dockerImagesToButaneUnits".to_string();
+    let transformation_func = Func::find_by_attr(ctx, "name", &transformation_func_name)
+        .await?
+        .pop()
+        .ok_or(FuncError::NotFoundByName(transformation_func_name))?;
+    units_attribute_prototype
+        .set_func_id(ctx, *transformation_func.id())
+        .await?;
+    AttributePrototypeArgument::new_for_intra_component(
+        ctx,
+        *units_attribute_prototype.id(),
+        "images",
+        *docker_image_explicit_internal_provider.id(),
+    )
+    .await?;
 
     Ok(())
 }

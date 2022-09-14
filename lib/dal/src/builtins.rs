@@ -12,10 +12,10 @@ use crate::schema::variant::SchemaVariantError;
 use crate::socket::SocketError;
 use crate::{
     AttributeContextBuilderError, AttributePrototypeArgumentError, AttributePrototypeError,
-    AttributeReadContext, AttributeValueError, CodeGenerationPrototypeError, DalContext,
-    ExternalProviderId, FuncError, PropError, PropId, QualificationPrototypeError,
-    ResourcePrototypeError, SchemaError, StandardModelError, ValidationPrototypeError,
-    WorkflowPrototypeError,
+    AttributeReadContext, AttributeValueError, AttributeValueId, CodeGenerationPrototypeError,
+    DalContext, ExternalProviderId, FuncError, PropError, PropId, PropKind,
+    QualificationPrototypeError, ResourcePrototypeError, SchemaError, StandardModelError,
+    ValidationPrototypeError, WorkflowPrototypeError,
 };
 
 pub mod func;
@@ -34,6 +34,8 @@ pub enum BuiltinsError {
     AttributeValue(#[from] AttributeValueError),
     #[error("attribute value not found for attribute read context: {0:?}")]
     AttributeValueNotFoundForContext(AttributeReadContext),
+    #[error("no parent found for attribute value: {0}")]
+    AttributeValueDoesNotHaveParent(AttributeValueId),
     #[error("code generation prototype error: {0}")]
     CodeGenerationPrototype(#[from] CodeGenerationPrototypeError),
     #[error("func error: {0}")]
@@ -52,12 +54,14 @@ pub enum BuiltinsError {
     MissingAttributePrototypeForAttributeValue,
     #[error("missing attribute prototype for external provider id: {0}")]
     MissingAttributePrototypeForExternalProvider(ExternalProviderId),
+    #[error("expected primitive prop kind (string, boolean, integer), found {0}")]
+    NonPrimitivePropKind(PropKind),
+    #[error("parent prop kind is not \"Object\", which is required for setting default values on props (found {0})")]
+    ParentPropIsNotObjectForPropWithDefaultValue(PropKind),
     #[error("prop error: {0}")]
     Prop(#[from] PropError),
     #[error("prop not bound by id: {0}")]
     PropNotFound(PropId),
-    #[error("parent for prop not found (or prop does not have parent) by id: {0}")]
-    PropParentNotFoundOrEmpty(PropId),
     #[error("qualification prototype error: {0}")]
     QualificationPrototype(#[from] QualificationPrototypeError),
     #[error("resource prototype error: {0}")]

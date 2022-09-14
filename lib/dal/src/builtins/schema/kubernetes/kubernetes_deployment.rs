@@ -39,49 +39,26 @@ pub async fn kubernetes_deployment(ctx: &DalContext) -> BuiltinsResult<()> {
         .set_default_schema_variant_id(ctx, Some(*variant.id()))
         .await?;
 
-    let base_attribute_read_context = AttributeReadContext {
-        schema_id: Some(*schema.id()),
-        schema_variant_id: Some(*variant.id()),
-        ..AttributeReadContext::default()
-    };
-
-    SchemaVariant::create_default_prototypes_and_values(ctx, *variant.id()).await?;
-
-    // TODO: add validation (si-registry ensures the value is unchanged)
-    let mut api_version_prop = BuiltinSchemaHelpers::create_string_prop_with_default(
+    let api_version_prop = BuiltinSchemaHelpers::create_prop(
         ctx,
         "apiVersion",
-        "apps/v1".to_owned(),
+        PropKind::String,
         Some(root_prop.domain_prop_id),
-        base_attribute_read_context,
+        Some(doc_url(
+            "reference/kubernetes-api/workload-resources/deployment-v1/#Deployment",
+        )),
     )
     .await?;
-    api_version_prop
-        .set_doc_link(
-            ctx,
-            Some(doc_url(
-                "reference/kubernetes-api/workload-resources/deployment-v1/#Deployment",
-            )),
-        )
-        .await?;
-
-    // TODO: add validation (si-registry ensures the value is unchanged)
-    let mut kind_prop = BuiltinSchemaHelpers::create_string_prop_with_default(
+    let kind_prop = BuiltinSchemaHelpers::create_prop(
         ctx,
         "kind",
-        "Deployment".to_owned(),
+        PropKind::String,
         Some(root_prop.domain_prop_id),
-        base_attribute_read_context,
+        Some(doc_url(
+            "reference/kubernetes-api/workload-resources/deployment-v1/#Deployment",
+        )),
     )
     .await?;
-    kind_prop
-        .set_doc_link(
-            ctx,
-            Some(doc_url(
-                "reference/kubernetes-api/workload-resources/deployment-v1/#Deployment",
-            )),
-        )
-        .await?;
 
     let metadata_prop = create_metadata_prop(
         ctx,
@@ -184,6 +161,24 @@ pub async fn kubernetes_deployment(ctx: &DalContext) -> BuiltinsResult<()> {
     ui_menu.set_schema(ctx, schema.id()).await?;
 
     variant.finalize(ctx).await?;
+
+    // Set default values after finalization.
+    BuiltinSchemaHelpers::set_default_value_for_prop(
+        ctx,
+        *api_version_prop.id(),
+        *schema.id(),
+        *variant.id(),
+        serde_json::json!["apps/v1"],
+    )
+    .await?;
+    BuiltinSchemaHelpers::set_default_value_for_prop(
+        ctx,
+        *kind_prop.id(),
+        *schema.id(),
+        *variant.id(),
+        serde_json::json!["Deployment"],
+    )
+    .await?;
 
     let base_attribute_read_context = AttributeReadContext {
         schema_id: Some(*schema.id()),
