@@ -27,7 +27,7 @@
       output="whatever"
       status="Unknown"
       :force-theme="forceTheme"
-      hide-bottom-border-while-closed
+      :hide-bottom-border-while-closed="forceTheme === 'dark'"
     />
   </ul>
 </template>

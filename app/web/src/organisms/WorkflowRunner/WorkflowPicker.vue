@@ -13,7 +13,9 @@
           auto-search
           @search="onSearch"
         />
-        <div class="w-full text-neutral-400 dark:text-neutral-300 text-sm p-2">
+        <div
+          class="w-full text-neutral-400 dark:text-neutral-300 text-sm p-2 border-b border-neutral-200 dark:border-neutral-600"
+        >
           Select a workflow from the lists below to view or edit it.
         </div>
         <ul class="overflow-y-auto">
