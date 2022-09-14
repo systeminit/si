@@ -90,7 +90,9 @@
         <div
           class="h-fit max-h-full lg:basis-1/2 grow overflow-hidden flex flex-row p-1"
         >
-          <div class="w-full shrink grow bg-neutral-800 rounded flex flex-col">
+          <div
+            class="w-full shrink grow bg-neutral-800 rounded flex flex-col overflow-auto"
+          >
             <WorkflowResources force-theme="dark" />
           </div>
         </div>

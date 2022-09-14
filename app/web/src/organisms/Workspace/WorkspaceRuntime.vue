@@ -33,7 +33,7 @@
         <SiTabHeader>Resources</SiTabHeader>
       </template>
       <template #panels>
-        <TabPanel class="h-full p-sm overflow-hidden">
+        <TabPanel class="h-full p-xs overflow-hidden">
           <WorkflowOutput :logs="logs" :status="currentWorkflowStatus" />
         </TabPanel>
         <TabPanel>

@@ -5,6 +5,7 @@
     :output="whiskersJson"
     status="Warning"
     :force-theme="forceTheme"
+    :default-closed="defaultClosed"
   />
   <WorkflowResource
     name="joe"
@@ -12,20 +13,23 @@
     output="whatever"
     status="Ok"
     :force-theme="forceTheme"
+    :default-closed="defaultClosed"
   />
   <WorkflowResource
-    name="jet"
+    name="bob"
     kind="docker image"
     output="whatever"
     status="Error"
     :force-theme="forceTheme"
+    :default-closed="defaultClosed"
   />
   <WorkflowResource
-    name="jen"
+    name="ann"
     kind="docker image"
     output="whatever"
     status="Unknown"
     :force-theme="forceTheme"
+    :default-closed="defaultClosed"
     :hide-bottom-border-while-closed="forceTheme === 'dark'"
   />
 </template>
@@ -37,6 +41,7 @@ import WorkflowResource from "./WorkflowResource.vue";
 
 defineProps({
   forceTheme: { type: String as PropType<ThemeValue> },
+  defaultClosed: { type: Boolean, default: true },
 });
 
 const whiskersJson = `[

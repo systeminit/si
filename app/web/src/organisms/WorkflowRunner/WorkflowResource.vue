@@ -1,7 +1,7 @@
 <template>
   <SiCollapsible
     :label="`${kind} &quot;${name}&quot;`"
-    default-open
+    :default-open="!defaultClosed"
     text-size="md"
     show-label-and-slot
     :force-theme="forceTheme"
@@ -10,7 +10,10 @@
     <template #label>
       <HealthIcon :status="status" size="md" hide-text />
     </template>
-    <div class="p-sm max-h-96 overflow-hidden flex" :class="borderClasses">
+    <div
+      class="px-xs pb-xs max-h-96 overflow-hidden flex"
+      :class="borderClasses"
+    >
       <div class="flex-grow">
         <CodeViewer :code="output" border :force-theme="forceTheme">
           <template #title><HealthIcon :status="status" /></template>
@@ -34,6 +37,7 @@ const props = defineProps({
   status: { type: String as PropType<Health>, required: true },
   forceTheme: { type: String as PropType<ThemeValue> },
   hideBottomBorderWhileClosed: { type: Boolean, default: false },
+  defaultClosed: { type: Boolean, default: false },
 });
 
 const borderClasses = computed(() => {

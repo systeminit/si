@@ -197,7 +197,7 @@
 
 <script lang="ts" setup>
 import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/vue";
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { untilUnmounted } from "vuse-rx/src";
 import clsx from "clsx";

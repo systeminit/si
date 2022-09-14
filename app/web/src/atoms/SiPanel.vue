@@ -35,6 +35,7 @@
 </template>
 
 <script setup lang="ts">
+import { ifError } from "assert";
 import { computed, onBeforeUnmount, onMounted, PropType, ref } from "vue";
 import _ from "lodash";
 import clsx from "clsx";
@@ -122,7 +123,8 @@ const resetSize = (useDefaultSize = true) => {
 
 const onWindowResize = () => {
   // may change the size because min/max ratio of window size may have changed
-  setSize(currentSize.value);
+  if (props.resizeable) setSize(currentSize.value);
+  else currentSize.value = props.defaultSize;
 };
 
 const debounceForResize = _.debounce(onWindowResize, 20);
